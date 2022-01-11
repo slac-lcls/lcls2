@@ -109,10 +109,14 @@ int main(int argc, char* argv[])
 
             printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
                    size, dest, transition_id, event_header->pulseId(), event_header->evtCounter, index);
-            printf("env %08x\n", event_header->env);
             if (lverbose) {
-              for(unsigned i=0; i<((size+3)>>2); i++)
-                printf("%08x%c",reinterpret_cast<uint32_t*>(dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
+                printf("env %08x\n", event_header->env);
+                for(unsigned i=0; i<((size+3)>>2); i++)
+                    printf("%08x%c",reinterpret_cast<uint32_t*>(dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
+            }
+            else {
+                const uint32_t* p = reinterpret_cast<const uint32_t*>(event_header+1);
+                printf("env %08x | payload %08x %08x %08x %08x\n", event_header->env,p[0],p[1],p[2],p[3]);
             }
         }
 	    if ( ret > 0 ) dmaRetIndexes(fd, ret, dmaIndex);
