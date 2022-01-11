@@ -106,7 +106,7 @@ def figure(**kwa):
 
 
 def set_win_title(fig, titwin='Image', **kwa):
-    fig.canvas.set_window_title(titwin, **kwa)
+    fig.canvas.manager.set_window_title(titwin, **kwa)
 
 
 def move_fig(fig, x0=200, y0=100):
