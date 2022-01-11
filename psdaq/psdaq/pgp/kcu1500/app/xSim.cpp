@@ -614,24 +614,24 @@ int main(int argc, char* argv[])
       set_reg32( 0x00a00000,v);
     }
 
-    if (partition >= 0) {
+    if (partition >= 0 && partition<8) {
       unsigned v =
         ((length&0xffffff)<<0) |
         (1<<31);
-      set_reg32( 0x00a00000, v);
-      unsigned w = get_reg32( 0x00a00000);
-      printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
-             partition, length, links, v, w);
+      printf("Configured partition [%u], length [%u], links [%x]: [%x]\n",
+             partition, length, links, v);
       for(int i=0; i<lanes; i++)
         if (links&(1<<i)) {
+          set_reg32( 0x00a00000+4*i, v);
           set_reg32( 0x00800084+32*i, 0x1f00);
           set_reg32( TRG_LANES(i)+4, partition);
           set_reg32( TRG_LANES(i)+8, 16);
           set_reg32( TRG_LANES(i)+0, 3);
         }
-        else {
-          set_reg32( TRG_LANES(i), 0);
-        }
+    }
+    else if (partition >= 8) {
+        for(int i=0; i<lanes; i++)
+            set_reg32( TRG_LANES(i), 0);
     }
 
     return 0;

@@ -88,6 +88,7 @@ static void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("Options: -l <mask> -I\n");
   printf("Options: -l <mask>\n");
+  printf("         -d <dev> (/dev/datadev_<dev>,<dev>+1\n");
   printf("         -I (initialize 186MHz clock)\n");
   printf("         -R (reset to 156.25MHz clock)\n");
   printf("         -C (reset counters)\n");
@@ -101,10 +102,12 @@ int main (int argc, char **argv) {
   bool         lCounterReset = false;
   bool         lUpdateId = false;
   bool         lIntEnable = false;
+  int          dev = 0;
   int          c;
 
-  while((c=getopt(argc,argv,"l:CIRQ"))!=-1) {
+  while((c=getopt(argc,argv,"d:l:CIRQ"))!=-1) {
     switch(c) {
+    case 'd': dev = strtoul(optarg,NULL,0); break;
     case 'l': lbmask = strtoul(optarg,NULL,0); break;
     case 'C': lCounterReset = true; lUpdateId = true; break;
     case 'I': lInit = true; lUpdateId = true; break;
@@ -114,13 +117,16 @@ int main (int argc, char **argv) {
     }
   }
 
-  if ( (fd[0] = open("/dev/datadev_1", O_RDWR)) <= 0 ) {
-    cout << "Error opening /dev/datadev_1" << endl;
+  char cdev[32];
+  sprintf(cdev,"/dev/datadev_%d",dev+1);
+  if ( (fd[0] = open(cdev, O_RDWR)) <= 0 ) {
+    cout << "Error opening " << cdev << endl;
     //    return(1);
   }
 
-  if ( (fd[1] = open("/dev/datadev_0", O_RDWR)) <= 0 ) {
-    cout << "Error opening /dev/datadev_0" << endl;
+  sprintf(cdev,"/dev/datadev_%d",dev);
+  if ( (fd[1] = open(cdev, O_RDWR)) <= 0 ) {
+    cout << "Error opening " << cdev << endl;
     //    return(1);
   }
 
