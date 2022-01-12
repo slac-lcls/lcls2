@@ -67,7 +67,7 @@ public:
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
-    EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
+    EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
                const std::shared_ptr<Pds::MetricExporter>& exporter);
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;

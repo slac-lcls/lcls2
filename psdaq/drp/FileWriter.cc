@@ -113,7 +113,7 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
     if ((size > (m_buffer.size() - m_count)) || age_seconds>2) {
         ++m_writing;
         if (_write(m_fd, m_buffer.data(), m_count) == -1) {
-            throw std::string("File writing failed");
+            throw "File writing failed";
         }
         --m_writing;
         // reset these to prepare for the new batch
@@ -129,10 +129,16 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
     m_count += size;
 }
 
-static const unsigned FIFO_DEPTH = 64;
+static const unsigned FIFO_DEPTH     = 64;
+static const unsigned FIFO_DEPTH_DIO = 2;
+static const size_t   FIFO_MIN_SIZE  = 512 * 1024 * 1024;
+
+static size_t roundUpSize(size_t bufSize, size_t quantum)
+{
+    return quantum * ((bufSize + quantum - 1) / quantum);
+}
 
 BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
-    m_bufferSize(bufferSize),
     m_fd(0),
     m_batch_starttime(0,0),
     m_free(FIFO_DEPTH),
@@ -143,14 +149,27 @@ BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
     m_freeBlocked(0),
     m_pendBlocked(0),
     m_terminate(false),
-    m_thread{&BufferedFileWriterMT::run,this}
+    m_thread{&BufferedFileWriterMT::run,this},
+    m_dio(false)
 {
-    Buffer b;
-    b.count = 0;
-    for(unsigned i=0; i<FIFO_DEPTH; i++) {
-        b.p = new uint8_t[bufferSize];
-        m_free.push(b);
-    }
+    _initialize(bufferSize);
+}
+
+BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize, bool dio) :
+    m_fd(0),
+    m_batch_starttime(0,0),
+    m_free(dio ? FIFO_DEPTH_DIO : FIFO_DEPTH),
+    m_pend(dio ? FIFO_DEPTH_DIO : FIFO_DEPTH),
+    m_depth(m_free.size()),
+    m_size(m_free.size()),
+    m_writing(0),
+    m_freeBlocked(0),
+    m_pendBlocked(0),
+    m_terminate(false),
+    m_thread{&BufferedFileWriterMT::run,this},
+    m_dio(dio)
+{
+    _initialize(bufferSize);
 }
 
 BufferedFileWriterMT::~BufferedFileWriterMT()
@@ -160,9 +179,24 @@ BufferedFileWriterMT::~BufferedFileWriterMT()
     Buffer b;
     while(!m_free.empty()) {
         m_free.pop(b);
-        delete[] b.p;
+        free(b.p);
     }
     m_depth = m_free.count();
+}
+
+void BufferedFileWriterMT::_initialize(size_t bufferSize)
+{
+    Buffer b;
+    b.count = 0;
+    if (m_dio)  bufferSize = roundUpSize(FIFO_MIN_SIZE, bufferSize); // N buffers >= FIFO_MIN_SIZE
+    m_bufferSize = roundUpSize(bufferSize, sysconf(_SC_PAGESIZE));   // N pages
+    for (unsigned i=0; i<m_free.size(); i++) {
+        if (posix_memalign((void**)&b.p, sysconf(_SC_PAGESIZE), m_bufferSize)) {
+          logging::critical("BufferedFileWriterMT posix_memalign: %m");
+          throw "BufferedFileWriterMT posix_memalign";
+        }
+        m_free.push(b);
+    }
 }
 
 int BufferedFileWriterMT::open(const std::string& fileName)
@@ -174,7 +208,12 @@ int BufferedFileWriterMT::open(const std::string& fileName)
     flk.l_start  = 0;
     flk.l_len    = 0;
 
-    m_fd = ::open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP);
+    printf("*** BufferedFileWriterMT::open: DIO %c, depth %zu, bufSz %zu = 0x%0zx\n",
+           m_dio ? 'Y' : 'N', m_free.size(), m_bufferSize, m_bufferSize);
+
+    auto oFlags = O_WRONLY | O_CREAT | O_TRUNC;
+    if (m_dio)  oFlags |= O_DIRECT;
+    m_fd = ::open(fileName.c_str(), oFlags, S_IRUSR | S_IRGRP);
     if (m_fd == -1) {
         // %m will be replaced by the string strerror(errno)
         logging::error("Error creating file %s: %m", fileName.c_str());
@@ -198,17 +237,7 @@ int BufferedFileWriterMT::close()
 {
     int rv = 0;
     if (m_fd > 0) {
-        if (!m_free.empty() && m_free.front().count > 0) {
-            Buffer b;
-            m_free.pop(b);
-            logging::debug("Flushing %zu bytes to fd %d", b.count, m_fd);
-            m_pend.push(b);
-            m_depth = m_free.count();
-            m_batch_starttime = XtcData::TimeStamp(0,0);
-        }
-        m_pendBlocked += 2;
-        m_pend.pendn();  // block until writing complete
-        m_pendBlocked -= 2;
+        flush();
         logging::debug("Closing fd %d", m_fd);
         rv = ::close(m_fd);
     } else {
@@ -221,6 +250,21 @@ int BufferedFileWriterMT::close()
         m_fd = 0;
     }
     return rv;
+}
+
+void BufferedFileWriterMT::flush()
+{
+    if (!m_free.empty() && m_free.front().count > 0) {
+        Buffer b;
+        m_free.pop(b);
+        logging::debug("Flushing %zu bytes to fd %d", b.count, m_fd);
+        m_pend.push(b);
+        m_depth = m_free.count();
+        m_batch_starttime = XtcData::TimeStamp(0,0);
+    }
+    m_pendBlocked += 2;
+    m_pend.pendn();  // block until writing complete
+    m_pendBlocked -= 2;
 }
 
 void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::TimeStamp timestamp)
@@ -278,7 +322,7 @@ void BufferedFileWriterMT::run()
         Buffer& b = m_pend.front();
         ++m_writing;
         if (_write(m_fd, b.p, b.count) == -1) {
-            throw std::string("File writing failed");
+            throw "File writing failed";
         }
         --m_writing;
         m_pend.pop(b);

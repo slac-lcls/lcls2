@@ -1244,6 +1244,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "timebase")      continue;  // XpmDetector
             if (kwargs.first == "pebbleBufSize") continue;  // DrpBase
             if (kwargs.first == "batching")      continue;  // DrpBase
+            if (kwargs.first == "directIO")      continue;  // DrpBase
             if (kwargs.first == "match_tmo_ms")  continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());

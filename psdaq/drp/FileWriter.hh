@@ -33,9 +33,11 @@ class BufferedFileWriterMT
 {
 public:
     BufferedFileWriterMT(size_t bufferSize);
+    BufferedFileWriterMT(size_t bufferSize, bool dio);
     ~BufferedFileWriterMT();
     int open(const std::string& fileName);
     int close();
+    void flush();
     void writeEvent(const void* data, size_t size, XtcData::TimeStamp ts);
     void run();
     const uint64_t& depth() const { return m_depth; }
@@ -43,6 +45,8 @@ public:
     const uint64_t& writing() const { return *const_cast<uint64_t*>(&m_writing); }
     const uint64_t& freeBlocked()  const { return *const_cast<uint64_t*>(&m_freeBlocked); }
     const uint64_t& pendBlocked()  const { return *const_cast<uint64_t*>(&m_pendBlocked); }
+private:
+    void _initialize(size_t bufferSize);
 private:
     size_t m_bufferSize;
     int m_fd;
@@ -61,6 +65,7 @@ private:
     volatile uint64_t m_pendBlocked;
     std::atomic<bool> m_terminate;
     std::thread m_thread;
+    bool m_dio;
 };
 
 class BufferedMultiFileWriterMT

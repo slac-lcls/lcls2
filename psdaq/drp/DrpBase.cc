@@ -115,14 +115,14 @@ Pds::EbDgram* MemPool::allocateTr()
 }
 
 
-EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
+EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
                        const std::shared_ptr<Pds::MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
-  m_fileWriter(8388688), // sized for the Manta 4MPixel camera
-  m_smdWriter(8388688),  // ideally would be sized with the pebble
+  m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] == "yes"),
+  m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
   m_writing(false),
   m_inprocSend(inprocSend),
   m_count(0),
