@@ -1,7 +1,8 @@
 if not platform: platform = '0'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
+epics_env = f'EPICS_PVA_ADDR_LIST=172.21.156.77 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
+manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
 
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
@@ -15,14 +16,15 @@ cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 #
 #  drp variables
 #
-prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom' #/{hutch}' # Prometheus
-data_dir = f'/cds/data/drpsrcf/{hutch}'
+prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
+data_dir = f'/cds/data/drpsrcf'
 
 task_set = 'taskset -c 4-63'
 batching = 'batching=no'
+directIO = 'directIO=yes'
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}'
-std_opts0 = f'{std_opts} -o {data_dir} -k {batching} -d /dev/datadev_0'
-std_opts1 = f'{std_opts} -o {data_dir} -k {batching} -d /dev/datadev_1'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO}'
 
 teb_cmd  = f'{task_set} teb '+        std_opts
 meb_cmd  = f'{task_set} monReqServer {std_opts}'
@@ -34,10 +36,9 @@ pva_cmd1 = f'{task_set} drp_pva {std_opts1}'
 bld_cmd0 = f'{task_set} drp_bld {std_opts0} -k interface=eno1'
 bld_cmd1 = f'{task_set} drp_bld {std_opts1} -k interface=eno1'
 
-elog_cfg = '/cds/group/pcds/dist/pds/tst/misc/elog_tst.txt'
+elog_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/elog_{hutch}.txt'
 
-#ea_cfg = '/cds/group/pcds/dist/pds/tst/misc/epicsArch.txt'
-ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
+ea_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/epicsArch.txt'
 ea_cmd0 = f'{task_set} epicsArch {std_opts0} {ea_cfg}'
 ea_cmd1 = f'{task_set} epicsArch {std_opts1} {ea_cfg}'
 
@@ -68,7 +69,7 @@ ami_manager_node = "drp-srcf-cmp003"
 procmgr_config = [
  {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:f'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
  {                          id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH 0 {groups} --prod'},
- {                          id:'procstat',    flags:'p',                  cmd:f'procstat p{platform}.cnf.last'},
+ {                          id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
 
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
@@ -77,17 +78,18 @@ procmgr_config = [
  { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
  {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-srcf-cmp003', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
+ { host: 'drp-srcf-cmp002', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
 
- { host: 'drp-srcf-cmp003', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -d -q {ami_workers_per_node}'},
+ { host: 'drp-srcf-cmp002', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -d -q {ami_workers_per_node}'},
 
- { host: 'drp-srcf-cmp001', id:'timing_0',    flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D ts'},
+ { host: 'drp-srcf-cmp001', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D ts'},
 
-# { host: 'drp-srcf-cmp002', id:'bld_0',       flags:'spu', env:epics_env, cmd:f'{bld_cmd0} -l 0x1 -D ebeam,gmd,xgmd,pcav'},
+ { host: 'drp-srcf-cmp002', id:'bld_0',       flags:'spu', env:epics_env, cmd:f'{bld_cmd0} -l 0x1 -D ebeam,gmd,xgmd,pcav'},
 
 # { host: 'drp-srcf-cmp002', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd0} -l 0x2'},
 
  { host: 'drp-srcf-cmp001', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=14'},
+ { host: 'drp-srcf-cmp001', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd1} -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 ]
 
 #
