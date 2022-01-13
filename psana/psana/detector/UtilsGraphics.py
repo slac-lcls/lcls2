@@ -195,6 +195,7 @@ class flexhist(flexbase):
         self.axhi.cla()
         kwa.setdefault('amp_range', (amin, amax))
         kwa.setdefault('orientation', u'vertical')
+        kwa.pop('arr')
         self.his = gr_hist(self.axhi, arr, **kwa)
 
 
@@ -231,9 +232,7 @@ class fleximagespec(flexbase):
         kwa.setdefault('amax', amax)
         self.imsh, self.cbar = gr_imshow_cbar(self.fig, self.axim, self.axcb, img, **kwa)
 
-
         self.update_his(arr, **kwa)
-
         gr.draw_fig(self.fig)
 
 
@@ -255,6 +254,7 @@ class fleximagespec(flexbase):
         kwa.setdefault('amp_range', amp_range)
         kwa.setdefault('color', self.hcolor)
         kwa.setdefault('orientation', u'horizontal')
+        kwa.pop('arr')
         self.his = gr_hist(self.axhi, nda.ravel(), **kwa)
 
         wei, bins, patches = self.his
