@@ -10,6 +10,10 @@ See:
 Created on 2021-10-18 by Mikhail Dubrovin
 """
 import sys
+
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+if len(sys.argv)<2: sys.exit( '\nMISSING PARAMETERS\nTry: %s -h' % SCRNAME)
+
 import math
 import numpy as np
 import logging
@@ -23,9 +27,8 @@ from psana.detector.UtilsGraphics import gr, fleximagespec#, fleximage, flexhist
 from psana.detector.UtilsEpix10ka  import event_constants
 import argparse
 
-
-SCRNAME = sys.argv[0].rsplit('/')[-1]
-USAGE = '\n    %s -r554 -t1' % SCRNAME\
+USAGE = '\n    %s -h' % SCRNAME\
+      + '\n    %s -r554 -t1' % SCRNAME\
       + '\n    %s -e ueddaq02 -d epixquad -r554 -t1' % SCRNAME\
       + '\n    -t, --tname - test name/number:'\
       + '\n      1 - segment numeration'\
@@ -72,7 +75,6 @@ parser.add_argument('-l', '--loglev',  default=d_loglev,  type=str, help='logger
 parser.add_argument('--amin',          default=d_amin,    type=float, help='spectrum minimal value, def=%s' % str(d_amin))
 parser.add_argument('--amax',          default=d_amax,    type=float, help='spectrum maximal value, def=%s' % str(d_amax))
 parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
-
 
 args = parser.parse_args()
 print('*** parser.parse_args: %s' % str(args))
