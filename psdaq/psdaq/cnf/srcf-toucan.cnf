@@ -38,7 +38,9 @@ bld_cmd1 = f'{task_set} drp_bld {std_opts1} -k interface=eno1'
 
 elog_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/elog_{hutch}.txt'
 
-ea_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/epicsArch.txt'
+#ea_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/epicsArch.txt'
+#ea_cfg = f'/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
+ea_cfg = f'/cds/group/pcds/dist/pds/rix/misc/epicsArch.txt'
 ea_cmd0 = f'{task_set} epicsArch {std_opts0} {ea_cfg}'
 ea_cmd1 = f'{task_set} epicsArch {std_opts1} {ea_cfg}'
 
@@ -86,7 +88,7 @@ procmgr_config = [
 
  { host: 'drp-srcf-cmp002', id:'bld_0',       flags:'spu', env:epics_env, cmd:f'{bld_cmd0} -l 0x1 -D ebeam,gmd,xgmd,pcav'},
 
-# { host: 'drp-srcf-cmp002', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd0} -l 0x2'},
+ { host: 'drp-srcf-cmp002', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd0} -l 0x2'},
 
  { host: 'drp-srcf-cmp001', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=14'},
  { host: 'drp-srcf-cmp001', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd1} -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
