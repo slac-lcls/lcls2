@@ -208,9 +208,6 @@ int BufferedFileWriterMT::open(const std::string& fileName)
     flk.l_start  = 0;
     flk.l_len    = 0;
 
-    printf("*** BufferedFileWriterMT::open: DIO %c, depth %zu, bufSz %zu = 0x%0zx\n",
-           m_dio ? 'Y' : 'N', m_free.size(), m_bufferSize, m_bufferSize);
-
     auto oFlags = O_WRONLY | O_CREAT | O_TRUNC;
     if (m_dio)  oFlags |= O_DIRECT;
     m_fd = ::open(fileName.c_str(), oFlags, S_IRUSR | S_IRGRP);
