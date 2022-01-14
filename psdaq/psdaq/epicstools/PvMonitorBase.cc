@@ -342,21 +342,20 @@ int PvMonitorBase::getParams(pvd::ScalarType& type,
     return 0;
 }
 
-void PvMonitorBase::_getDimensions(size_t count, uint32_t shape[MaxRank]) const
+void PvMonitorBase::_getDimensions(uint32_t shape[MaxRank]) const
 {
     const auto& pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
     if (pvStructureArray) {
         const auto& pvStructure = pvStructureArray->view();
-        const auto  sz          = pvStructureArray->getLength();
-        if (sz > MaxRank)
-        {
+        const auto  ranks       = pvStructureArray->getLength();
+        if (ranks > MaxRank) {
           logging::critical("%s: Unsupported number of dimensions %zs\n",
-                            MonTracker::name().c_str(), sz);
+                            MonTracker::name().c_str(), ranks);
           throw "Unsupported number of shape dimensions";
         }
-        for (unsigned i = 0; i < sz; ++i) {
-            // Revisit: EPICS data shows up in [x,y] order but psana wants [y,x]
-            shape[i] = pvStructure[sz - 1 - i]->getSubField<pvd::PVInt>("size")->getAs<uint32_t>();
+        for (unsigned i = 0; i < ranks; ++i) {
+            // EPICS data shows up in [x,y] order but psana wants [y,x]
+            shape[i] = pvStructure[ranks - 1 - i]->getSubField<pvd::PVInt>("size")->getAs<uint32_t>();
         }
     }
     // else leave the already calculated shape alone
@@ -388,7 +387,7 @@ size_t PvMonitorBase::_getScalarString(void* data, size_t size, uint32_t shape[M
 
 template<typename T>
 size_t PvMonitorBase::_getArray(std::shared_ptr<const pvd::PVScalarArray> const& pvScalarArray, void* data, size_t size, uint32_t shape[MaxRank]) const {
-    //pvd::shared_vector<const T> vec((T*)data, [](void*){}, 0, 128); // Doesn't work
+    //pvd::shared_vector<const T> vec((T*)data, [](void*){}, 0, 128); // Doesn't work: tries to delete [] data
     pvd::shared_vector<const T> vec;
     pvScalarArray->getAs<T>(vec);
     auto count = vec.size();

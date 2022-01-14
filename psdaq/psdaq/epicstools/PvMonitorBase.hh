@@ -42,7 +42,7 @@ public:
     //          (if returned size > avalable size, truncation occurred)
     std::function<size_t(void* data, size_t size, uint32_t shape[MaxRank])> getData;
 private:
-    void _getDimensions(size_t length, uint32_t shape[MaxRank]) const;
+    void _getDimensions(uint32_t shape[MaxRank]) const;
 private:
     template<typename T>
     size_t _getScalar(std::shared_ptr<const pvd::PVScalar> const& pvScalar, void* data, size_t size, uint32_t shape[MaxRank]) const;
@@ -67,9 +67,9 @@ private:
     template<typename T>
     size_t _getUnionSclArr(void* data, size_t size, uint32_t shape[MaxRank]) const {
         const auto& pvUnion = _strct->getSubField<pvd::PVUnion>(m_fieldName);
-        auto count = _getArray<T>(pvUnion->get<pvd::PVScalarArray>(), data, size, shape);
-        _getDimensions(count, shape);
-        return count * sizeof(T);
+        auto sz = _getArray<T>(pvUnion->get<pvd::PVScalarArray>(), data, size, shape);
+        _getDimensions(shape);
+        return sz;
     }
 protected:
     const unsigned long m_epochDiff;
