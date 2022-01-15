@@ -79,6 +79,7 @@ public:
     std::string reopenFiles();
     std::string closeFiles();
     uint64_t chunkSize();
+    bool writing();
     static const uint64_t DefaultChunkThresh = 500ull * 1024ull * 1024ull * 1024ull;    // 500 GB
     FileParameters *fileParameters()    { return m_fileParameters; }
 private:

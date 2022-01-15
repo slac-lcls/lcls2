@@ -287,6 +287,11 @@ uint64_t EbReceiver::chunkSize()
     return m_offset - m_chunkOffset;
 }
 
+bool EbReceiver::writing()
+{
+    return m_writing;
+}
+
 void EbReceiver::resetCounters()
 {
     EbCtrbInBase::resetCounters();
@@ -652,6 +657,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 
 void DrpBase::runInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
 {
+    logging::debug("entered %s", __PRETTY_FUNCTION__);
     XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
     XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
     XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg,
@@ -671,6 +677,7 @@ void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& run
 
 void DrpBase::chunkInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
 {
+    logging::debug("entered %s", __PRETTY_FUNCTION__);
     XtcData::Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
     XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
     XtcData::Names& chunkInfoNames = *new(xtc) XtcData::Names("chunkinfo", chunkInfoAlg,
@@ -697,19 +704,20 @@ std::string DrpBase::enable(const json& phase1Info, bool& chunkRequest, ChunkInf
 {
     std::string retval = std::string{};
 
-    logging::debug("%s: chunkSize() = %lu", __PRETTY_FUNCTION__, m_ebRecv->chunkSize());
+    logging::debug("%s: writing() is %s", __PRETTY_FUNCTION__, m_ebRecv->writing() ? "true" : "false");
+    chunkRequest = false;
+    if (m_ebRecv->writing()) {
+        logging::debug("%s: chunkSize() = %lu", __PRETTY_FUNCTION__, m_ebRecv->chunkSize());
+        if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2) {
+            // advance the chunk number
+            logging::debug("%s: calling advanceChunkId()", __PRETTY_FUNCTION__);
+            m_ebRecv->advanceChunkId();
 
-    if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2) {
-        // advance the chunk number
-        logging::debug("%s: calling advanceChunkId()", __PRETTY_FUNCTION__);
-        m_ebRecv->advanceChunkId();
-
-        // request new chunk after this Enable dgram is written
-        chunkRequest = true;
-        chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
-        chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
-    } else {
-        chunkRequest = false;
+            // request new chunk after this Enable dgram is written
+            chunkRequest = true;
+            chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
+            chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
+        }
     }
     return retval;
 }
