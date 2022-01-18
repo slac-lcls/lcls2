@@ -23,6 +23,7 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
                                 timespec create_time, timespec modify_time,
                                 unsigned run_num, std::string hostname);
 static json createPulseIdMsg(uint64_t pulseId);
+static json createChunkRequestMsg();
 
 namespace Drp {
 
@@ -114,6 +115,15 @@ Pds::EbDgram* MemPool::allocateTr()
     return static_cast<Pds::EbDgram*>(dgram);
 }
 
+std::string Drp::FileParameters::runName()
+{
+    std::ostringstream ss;
+    ss << m_experimentName <<
+          "-r" << std::setfill('0') << std::setw(4) << m_runNumber <<
+          "-s" << std::setw(3) << m_nodeId <<
+          "-c" << std::setw(3) << m_chunkId;
+    return ss.str();
+}
 
 EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
@@ -127,6 +137,8 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_inprocSend(inprocSend),
   m_count(0),
   m_offset(0),
+  m_chunkOffset(0),
+  m_chunkRequest(false),
   m_configureBuffer(para.maxTrSize),
   m_damage(0)
 {
@@ -190,8 +202,65 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         }
         if (retVal.empty()) {
             m_writing = true;
+            // cache file parameters for use by reopenFiles() (data file chunking)
+            m_fileParameters = new FileParameters(para, runInfo, hostname, nodeId);
         }
     }
+    return retVal;
+}
+
+void EbReceiver::advanceChunkId()
+{
+    if (m_fileParameters) {
+        m_fileParameters->advanceChunkId();
+    }
+}
+
+std::string EbReceiver::reopenFiles()
+{
+    if (m_fileParameters == NULL) {
+        logging::error("%s: m_fileParameters is NULL", __PRETTY_FUNCTION__);
+        return std::string("reopenFiles: m_fileParameters is NULL");
+    }
+    if (m_writing == false) {
+        logging::error("%s: m_writing is false", __PRETTY_FUNCTION__);
+        return std::string("reopenFiles: m_writing is false");
+    }
+    std::string outputDir = m_fileParameters->outputDir();
+    std::string instrument = m_fileParameters->instrument();
+    std::string experimentName = m_fileParameters->experimentName();
+    unsigned runNumber = m_fileParameters->runNumber();
+    std::string hostname = m_fileParameters->hostname();
+
+    std::string retVal = std::string{};     // return empty string on success
+    m_chunkRequest = false;
+    m_chunkOffset = m_offset;
+
+    // close data file (for old chunk)
+    logging::debug("%s: calling m_fileWriter.close()...", __PRETTY_FUNCTION__);
+    m_fileWriter.close();
+
+    // open data file (for new chunk)
+    std::string runName = m_fileParameters->runName();
+    std::string exptDir = {outputDir + "/" + instrument + "/" + experimentName};
+    local_mkdir(exptDir.c_str());
+    std::string dataDir = {exptDir + "/xtc"};
+    local_mkdir(dataDir.c_str());
+    std::string path = {"/" + instrument + "/" + experimentName + "/xtc/" + runName + ".xtc2"};
+    std::string absolute_path = {outputDir + path};
+    // cpo suggests leaving this print statement in because
+    // filesystems can hang in ways we can't timeout/detect
+    // and this print statement may speed up debugging significantly.
+    std::cout << "Opening file " << absolute_path << std::endl;
+    logging::info("%s: Opening file '%s'", __PRETTY_FUNCTION__, absolute_path.c_str());
+    if (m_fileWriter.open(absolute_path) == 0) {
+        timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
+        json msg = createFileReportMsg(path, absolute_path, tt, tt, runNumber, hostname);
+        m_inprocSend.send(msg.dump());
+    } else if (retVal.empty()) {
+        retVal = {"Failed to open file '" + absolute_path + "'"};
+    }
+
     return retVal;
 }
 
@@ -204,8 +273,23 @@ std::string EbReceiver::closeFiles()
         m_smdWriter.close();
         logging::debug("calling m_fileWriter.close()...");
         m_fileWriter.close();
+        if (m_fileParameters) {
+            logging::debug("deleting m_fileParameters...");
+            delete m_fileParameters;
+            m_fileParameters = NULL;
+        }
     }
     return std::string{};
+}
+
+uint64_t EbReceiver::chunkSize()
+{
+    return m_offset - m_chunkOffset;
+}
+
+bool EbReceiver::writing()
+{
+    return m_writing;
 }
 
 void EbReceiver::resetCounters()
@@ -225,7 +309,7 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
     // small data writing
     Smd smd;
     XtcData::NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
-    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, m_offset, size,
+    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, chunkSize(), size,
                                             m_smdWriter.namesLookup, namesId);
     m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
     m_offset += size;
@@ -243,8 +327,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
     uint64_t pulseId = dgram->pulseId();
     XtcData::TransitionId::Value transitionId = dgram->service();
-    if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId == 0) {
+if (transitionId != XtcData::TransitionId::L1Accept) {
+    if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
         dgram = m_pool.pgpEvents[index].transitionDgram;
@@ -322,6 +406,16 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         }
     }
 
+    if (m_writing && !m_chunkRequest && (transitionId == XtcData::TransitionId::L1Accept)) {
+        if (chunkSize() > DefaultChunkThresh) {
+            // request chunking opportunity
+            m_chunkRequest = true;
+            logging::debug("EbReceiver chunk request (chunkSize() > DefaultChunkThresh)");
+            json msg = createChunkRequestMsg();
+            m_inprocSend.send(msg.dump());
+        }
+    }
+
     if (m_writing) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
         if (result.persist() || result.prescale()) {
@@ -333,7 +427,10 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
                 _writeDgram(reinterpret_cast<XtcData::Dgram*>(m_configureBuffer.data()));
             }
             _writeDgram(dgram);
-            if (transitionId == XtcData::TransitionId::EndRun) {
+            if ((transitionId == XtcData::TransitionId::Enable) && m_chunkRequest) {
+                logging::debug("%s calling reopenFiles()", __PRETTY_FUNCTION__);
+                reopenFiles();
+            } else if (transitionId == XtcData::TransitionId::EndRun) {
                 logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
                 closeFiles();
             }
@@ -560,6 +657,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 
 void DrpBase::runInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
 {
+    logging::debug("entered %s", __PRETTY_FUNCTION__);
     XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
     XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
     XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg,
@@ -579,6 +677,7 @@ void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& run
 
 void DrpBase::chunkInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
 {
+    logging::debug("entered %s", __PRETTY_FUNCTION__);
     XtcData::Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
     XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
     XtcData::Names& chunkInfoNames = *new(xtc) XtcData::Names("chunkinfo", chunkInfoAlg,
@@ -599,6 +698,28 @@ void DrpBase::chunkInfoData(Xtc& xtc, NamesLookup& namesLookup, const ChunkInfo&
 std::string DrpBase::endrun(const json& phase1Info)
 {
     return std::string{};
+}
+
+std::string DrpBase::enable(const json& phase1Info, bool& chunkRequest, ChunkInfo& chunkInfo)
+{
+    std::string retval = std::string{};
+
+    logging::debug("%s: writing() is %s", __PRETTY_FUNCTION__, m_ebRecv->writing() ? "true" : "false");
+    chunkRequest = false;
+    if (m_ebRecv->writing()) {
+        logging::debug("%s: chunkSize() = %lu", __PRETTY_FUNCTION__, m_ebRecv->chunkSize());
+        if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2) {
+            // advance the chunk number
+            logging::debug("%s: calling advanceChunkId()", __PRETTY_FUNCTION__);
+            m_ebRecv->advanceChunkId();
+
+            // request new chunk after this Enable dgram is written
+            chunkRequest = true;
+            chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
+            chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
+        }
+    }
+    return retval;
 }
 
 void DrpBase::unconfigure()
@@ -805,3 +926,12 @@ static json createPulseIdMsg(uint64_t pulseId)
     msg["body"] = body;
     return msg;
 }
+
+static json createChunkRequestMsg()
+{
+    json msg, body;
+    msg["key"] = "chunkRequest";
+    msg["body"] = body;
+    return msg;
+}
+

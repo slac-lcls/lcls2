@@ -40,20 +40,20 @@ class FileParameters
     std::string m_experimentName;
     std::string m_hostname;
     unsigned m_nodeId;
-    unsigned m_chunkNumber;
+    unsigned m_chunkId;
 
 public:
-    FileParameters(Parameters& para, RunInfo& runInfo, std::string hostname, unsigned nodeId) {
+    FileParameters(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId) {
         m_outputDir = para.outputDir;
         m_instrument = para.instrument;
         m_runNumber = runInfo.runNumber;
         m_experimentName = runInfo.experimentName;
         m_hostname = hostname;
         m_nodeId = nodeId;
-        m_chunkNumber = 0;
+        m_chunkId = 0;
     }
 
-    void     nextChunk()            { ++ m_chunkNumber; }
+    void advanceChunkId()           { ++ m_chunkId; }
     // getters
     std::string outputDir()         { return m_outputDir; }
     std::string instrument()        { return m_instrument; }
@@ -61,7 +61,8 @@ public:
     std::string experimentName()    { return m_experimentName; }
     std::string hostname()          { return m_hostname; }
     unsigned nodeId()               { return m_nodeId; }
-    unsigned chunkNumber()          { return m_chunkNumber; }
+    unsigned chunkId()              { return m_chunkId; }
+    std::string runName();
 };
 
 class EbReceiver : public Pds::Eb::EbCtrbInBase
@@ -74,7 +75,13 @@ public:
 public:
     void resetCounters();
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
+    void advanceChunkId();
+    std::string reopenFiles();
     std::string closeFiles();
+    uint64_t chunkSize();
+    bool writing();
+    static const uint64_t DefaultChunkThresh = 500ull * 1024ull * 1024ull * 1024ull;    // 500 GB
+    FileParameters *fileParameters()    { return m_fileParameters; }
 private:
     void _writeDgram(XtcData::Dgram* dgram);
 private:
@@ -92,10 +99,12 @@ private:
     uint64_t m_lastPid;
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
+    uint64_t m_chunkOffset;
+    bool m_chunkRequest;
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
-
+    FileParameters *m_fileParameters;
 };
 
 class DrpBase
@@ -108,6 +117,7 @@ public:
     std::string configure(const nlohmann::json& msg);
     std::string beginrun(const nlohmann::json& phase1Info, RunInfo& runInfo);
     std::string endrun(const nlohmann::json& phase1Info);
+    std::string enable(const nlohmann::json& phase1Info, bool& chunkRequest, ChunkInfo& chunkInfo);
     void unconfigure();
     void disconnect();
     void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);

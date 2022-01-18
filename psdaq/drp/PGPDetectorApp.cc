@@ -313,6 +313,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             }
             else {
                 m_drp.runInfoSupport(xtc, m_det->namesLookup());
+                m_drp.chunkInfoSupport(xtc, m_det->namesLookup());
             }
         }
     }
@@ -383,12 +384,17 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
     }
     else if (key == "enable") {
-        unsigned error = m_det->enable(xtc, phase1Info);
-        if (error) {
-            std::string errorMsg = "Phase 1 error in Detector::enable()";
+        bool chunkRequest;
+        ChunkInfo chunkInfo;
+        std::string errorMsg = m_drp.enable(phase1Info, chunkRequest, chunkInfo);
+        if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
+        } else if (chunkRequest) {
+            logging::debug("handlePhase1 enable found chunkRequest");
+            m_drp.chunkInfoData(xtc, m_det->namesLookup(), chunkInfo);
         }
+        logging::debug("handlePhase1 enable complete");
     }
     else if (key == "disable") {
         unsigned error = m_det->disable(xtc, phase1Info);
