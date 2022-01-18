@@ -1,5 +1,5 @@
 """
-:py:class:`UtilsAreaCalib` dark processing algorithms for generic area detector 
+:py:class:`UtilsAreaCalib` dark processing algorithms for generic area detector
 ===============================================================================
 
 Usage::
@@ -27,19 +27,15 @@ from psana.detector.utils_psana import seconds, datasource_kwargs, info_run #, t
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, save_2darray_in_textfile#, save_ndarray_in_textfile
 from psana import DataSource
 
-#from psana.pscalib.calib.NDArrIO import save_txt; global save_txt
 from psana.pscalib.calib.MDBUtils import data_from_file
 import psana.pscalib.calib.MDBWebUtils as wu
 
-cc = wu.cc # import psana.pscalib.calib.CalibConstants as cc
-#cc.TSFORMAT_SHORT = '%Y%m%d%H%M%S'
+cc = wu.cc # import psana.pscalib.calib.CalibConstants as cc # cc.TSFORMAT_SHORT = '%Y%m%d%H%M%S'
 
 def selected_record(nrec):
     return nrec<5\
        or (nrec<50 and not nrec%10)\
        or (not nrec%100)
-       #or (nrec<500 and not nrec%100)\
-       #or (not nrec%1000)
 
 
 def info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):', sep='\n '):
@@ -159,15 +155,10 @@ def add_metadata_kwargs(orun, odet, **kwa):
 def pedestals_calibration(**kwa):
 
   logger.info('log_rec_on_start: %s' % log_rec_on_start()) # tsfmt='%Y-%m-%dT%H:%M:%S%z'
-
   logger.info('command line: %s' % info_command_line())
-  #logger.info('input parameters:\n%s' % info_namespace(pars)) #, fmt='%s: %s', sep=', '))
   logger.info('input parameters: %s' % info_dict(kwa, fmt='%s: %s', sep=' '))
 
-  #ds = DataSource(**datasource_arguments(pars_namespace))
   ds = DataSource(**datasource_kwargs(**kwa))
-  #ds = DataSource(exp='tmoc00118', run=123, max_events=100)
-  #ds = DataSource(exp=pars.expname, run=pars.runs, max_events=pars.evtmax)
 
   detname = kwa.get('det',None)
   expname = kwa.get('exp',None)
@@ -201,13 +192,13 @@ def pedestals_calibration(**kwa):
           break
 
       elif stepnum is not None:
-          if   istep < stepnum:
+          if istep < stepnum:
               logger.info('==== Step:%02d is skipped --stepnum=%d' % (istep, stepnum))
               continue
           elif istep > stepnum:
               logger.info('==== Step:%02d loop is terminated --stepnum=%d' % (istep, stepnum))
               break
-      ss = None
+      ss = ''
       for ievt,evt in enumerate(step.events()):
         print('Event %04d' % ievt, end='\r')
 
@@ -245,11 +236,9 @@ def pedestals_calibration(**kwa):
         print(ss, end='\r')
         if selected_record(ievt) or selected_record(iblrec):
             logger.info(ss)
-            #print() # new line
 
         if iblrec > nrecs2:
             logger.info(ss)
-            #print() # new line
             logger.info('\nNumber of records limit is reached, option --nrecs=%d' % nrecs)
             break_loop = True
             break          # break evt  loop
@@ -274,15 +263,14 @@ def pedestals_calibration(**kwa):
   deploy_constants(dic_consts, **kwa_depl)
 
 
-
 if __name__ == "__main__":
 
-    print(80*'_')  
+    print(80*'_')
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.INFO)
     #logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.DEBUG)
-  
+
     SCRNAME = sys.argv[0].rsplit('/')[-1]
-  
+
     kwa = {\
         'fname'   : None,\
         'exp'     : 'tmoc00118',\
@@ -293,7 +281,7 @@ if __name__ == "__main__":
     }
 
     pedestals_calibration(**kwa)
-  
+
     sys.exit('End of %s' % sys.argv[0])
 
 # EOF

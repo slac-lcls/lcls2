@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#----
+
 import sys
 from time import time
 from psana.detector.Utils import info_parser_arguments
@@ -16,11 +16,10 @@ USAGE = 'Usage:'\
       + '\n     [-x <xtc-directory>] [-o <output-result-directory>] [-L <logging-mode>] [...]'\
       + '\nExamples:'\
       + '\n  %s -e tmoc00118 -d tmoopal -r123' % SCRNAME\
-      + '\n  %s -e tmoc00118 -d tmoopal -r123 -o ./work -L DEBUG' % SCRNAME\
-      + '\n  mpirun -n 5 %s -e tmoc00118 -d tmoopal -r123 -o ./work -L DEBUG' % SCRNAME\
+      + '\n  %s -e tmoc00118 -d tmoopal -r123 -D' % SCRNAME\
+      + '\n  %s -e tmoc00118 -d tmoopal -r123 -D -o ./work -L DEBUG' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
-#----
 
 def do_main():
 
@@ -61,27 +60,27 @@ def argument_parser():
     d_nrecs   = 200  # number of records to collect and process
     d_nrecs1  = 100  # number of records to process at 1st stage
     d_dirxtc  = None # '/cds/data/psdm/tmo/tmoc00118/xtc'
-    d_dirrepo = './work' 
+    d_dirrepo = './work'
     d_usesmd  = True
     d_logmode = 'INFO'
     d_errskip = True
-    d_stepnum    = None
-    d_stepmax    = 1
-    d_evskip     = 100     # number of events to skip in the beginning of each step
-    d_events     = 1000    # number of events to process from the beginning of each step
-    d_dirmode    = 0o777
-    d_filemode   = 0o666
-    d_int_lo     = 1       # lowest  intensity accepted for dark evaluation
-    d_int_hi     = 16000   # highest intensity accepted for dark evaluation
-    d_intnlo     = 6.0     # intensity ditribution number-of-sigmas low
-    d_intnhi     = 6.0     # intensity ditribution number-of-sigmas high
-    d_rms_lo     = 0.001   # rms ditribution low
-    d_rms_hi     = 16000   # rms ditribution high
-    d_rmsnlo     = 6.0     # rms ditribution number-of-sigmas low
-    d_rmsnhi     = 6.0     # rms ditribution number-of-sigmas high
-    d_fraclm     = 0.1     # allowed fraction limit
-    d_fraclo     = 0.05    # fraction of statistics [0,1] below low limit
-    d_frachi     = 0.95    # fraction of statistics [0,1] below high limit
+    d_stepnum = None
+    d_stepmax = 1
+    d_evskip  = 0       # number of events to skip in the beginning of each step
+    d_events  = 1000    # number of events to process from the beginning of each step
+    d_dirmode = 0o777
+    d_filemode= 0o666
+    d_int_lo  = 1       # lowest  intensity accepted for dark evaluation
+    d_int_hi  = 16000   # highest intensity accepted for dark evaluation
+    d_intnlo  = 6.0     # intensity ditribution number-of-sigmas low
+    d_intnhi  = 6.0     # intensity ditribution number-of-sigmas high
+    d_rms_lo  = 0.001   # rms ditribution low
+    d_rms_hi  = 16000   # rms ditribution high
+    d_rmsnlo  = 6.0     # rms ditribution number-of-sigmas low
+    d_rmsnhi  = 6.0     # rms ditribution number-of-sigmas high
+    d_fraclm  = 0.1     # allowed fraction limit
+    d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
+    d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
     d_deploy  = False
     d_tstamp  = None # 20180910111049 or run number <10000
     d_version = 'V2021-03-12'
@@ -99,24 +98,24 @@ def argument_parser():
     h_usesmd  = 'add "smd" in dataset string, default = %s' % d_usesmd
     h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
-    h_stepnum    = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
-    h_stepmax    = 'maximum number of steps to process, default = %s' % str(d_stepmax)
-    h_evskip     = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
-    h_events     = 'number of events to process from the beginning of each step, default = %s' % str(d_events)
-    h_dirmode    = 'directory access mode, default = %s' % oct(d_dirmode)
-    h_filemode   = 'file access mode, default = %s' % oct(d_filemode)
-    h_int_lo     = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
-    h_int_hi     = 'highest intensity accepted for dark evaluation, default = %d' % d_int_hi
-    h_intnlo     = 'intensity ditribution number-of-sigmas low, default = %f' % d_intnlo
-    h_intnhi     = 'intensity ditribution number-of-sigmas high, default = %f' % d_intnhi
-    h_rms_lo     = 'rms ditribution low, default = %f' % d_rms_lo
-    h_rms_hi     = 'rms ditribution high, default = %f' % d_rms_hi
-    h_rmsnlo     = 'rms ditribution number-of-sigmas low, default = %f' % d_rmsnlo
-    h_rmsnhi     = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
-    h_fraclm     = 'allowed fraction limit, default = %f' % d_fraclm
-    h_fraclo     = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
-    h_frachi     = 'fraction of statistics [0,1] below high limit of the gate, default = %f' % d_frachi
-    h_deploy  = 'deploy constants to the calib dir, default = %s' % d_deploy
+    h_stepnum = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
+    h_stepmax = 'maximum number of steps to process, default = %s' % str(d_stepmax)
+    h_evskip  = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
+    h_events  = 'number of events to process from the beginning of each step, default = %s' % str(d_events)
+    h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
+    h_filemode= 'file access mode, default = %s' % oct(d_filemode)
+    h_int_lo  = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
+    h_int_hi  = 'highest intensity accepted for dark evaluation, default = %d' % d_int_hi
+    h_intnlo  = 'intensity ditribution number-of-sigmas low, default = %f' % d_intnlo
+    h_intnhi  = 'intensity ditribution number-of-sigmas high, default = %f' % d_intnhi
+    h_rms_lo  = 'rms ditribution low, default = %f' % d_rms_lo
+    h_rms_hi  = 'rms ditribution high, default = %f' % d_rms_hi
+    h_rmsnlo  = 'rms ditribution number-of-sigmas low, default = %f' % d_rmsnlo
+    h_rmsnhi  = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
+    h_fraclm  = 'fraction of statistics [0,1] below low or above high gate limit to assign pixel bad status, default = %f' % d_fraclm
+    h_fraclo  = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
+    h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
+    h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
     h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS or run number(<10000) for constants selection in repo. '\
                 'By default run time is used, default = %s' % str(d_tstamp)
     h_version = 'constants version, default = %s' % str(d_version)
@@ -160,7 +159,6 @@ def argument_parser():
 
     return parser
 
-#----
 
 if __name__ == "__main__":
     do_main()
