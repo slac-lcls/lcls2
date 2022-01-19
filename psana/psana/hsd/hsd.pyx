@@ -1,6 +1,7 @@
 #
 # See psalg/digitizer/Hsd.hh for a summary of hsd software design ideas.
 #
+import time
 
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
@@ -150,6 +151,28 @@ cdef class cyhsd_base_1_2_3:
         else:
             return False
 
+    def _padEvt(self):
+        """ Slow padding routine currently only needed by AMI"""
+        if not self._pychansegs: return
+        
+        cdef int iseg
+        for iseg, (chanNum, pychan) in self._pychansegs.items():
+            times = []
+            for start, peak in zip(pychan.startPosList, pychan.peakList):
+                times.append(np.arange(start, start+len(peak)) * 1/(6.4*1e9*13/14))
+
+            if iseg not in self._peakTimesDict:
+                self._peakTimesDict[iseg]={}
+            self._peakTimesDict[iseg][chanNum] = times
+
+            padvalues = np.zeros(self._padLength[iseg])+self._padValue[iseg]
+            for start, peak in zip(pychan.startPosList, pychan.peakList):
+                padvalues[start:start+len(peak)]=peak
+            if iseg not in self._padDict:
+                self._padDict[iseg]={}
+            self._padDict[iseg][chanNum] = padvalues
+            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg]) * 1/(6.4e9*13/14)
+
     def _parseEvt(self, evt):
         self._wvDict = {}
         self._spDict = {}
@@ -159,43 +182,42 @@ cdef class cyhsd_base_1_2_3:
         self._hsdsegments = self._segments(evt)
         if self._hsdsegments is None: return # no segments at all
         self._evt = evt
-        seglist = []
+        #seglist = [] # not used at the moment
+
+        # Keep segment-pychan data for slow padding routine when asked
+        self._pychansegs = {}
+
+        cdef int iseg
         for iseg in self._hsdsegments:
-            seglist.append(iseg)
-            for chanNum in xrange(16): # Maximum channels: 16
-                chanName = 'chan'+'{num:02d}'.format(num=chanNum) # e.g. chan16
-                if hasattr(self._hsdsegments[iseg], chanName):
-                    chan = eval('self._hsdsegments[iseg].'+chanName)
-                    if chan.size > 0:
-                        pychan = PyChannelPython(self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg])
-                        if pychan.waveform is not None:
-                            if iseg not in self._wvDict.keys():
-                                self._wvDict[iseg] = {}
-                                # FIXME: this needs to be put in units of seconds
-                                # perhaps both for 5GHz and 6GHz models
-                                self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform)) * 1/(6.4*1e9*13/14)
-                            self._wvDict[iseg][chanNum] = pychan.waveform
+            #seglist.append(iseg) # not used at the moment
+
+            chans = [seg_key for seg_key in self._hsdsegments[iseg].__dict__.keys() \
+                    if seg_key.startswith('chan')]
+            if not chans: continue
+
+            # Only permit one channel per segment
+            chanName = chans[0]
+            chanNum = int(chanName[4:])
+            
+            chan = getattr(self._hsdsegments[iseg], chanName)
+            if chan.size > 0:
+                pychan = PyChannelPython(self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg])
+                self._pychansegs[iseg] = (chanNum, pychan)
+                if pychan.waveform is not None:
+                    if iseg not in self._wvDict.keys():
+                        self._wvDict[iseg] = {}
+                        # FIXME: this needs to be put in units of seconds
+                        # perhaps both for 5GHz and 6GHz models
+                        self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform)) * 1/(6.4*1e9*13/14)
+                    self._wvDict[iseg][chanNum] = pychan.waveform
 #                        if pychan.sparse is not None:
 #                            if iseg not in self._spDict.keys():
 #                                self._spDict[iseg] = {}
 #                                self._spDict[iseg][chanNum] = pychan.sparse
-                        if pychan.peakList is not None:
-                            if iseg not in self._peaksDict.keys():
-                                self._peaksDict[iseg]={}
-                                self._peakTimesDict[iseg]={}
-                                self._padDict[iseg]={}
-                            self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
-
-                            times = []
-                            for start, peak in zip(pychan.startPosList, pychan.peakList):
-                                times.append(np.arange(start, start+len(peak)) * 1/(6.4*1e9*13/14))
-                            self._peakTimesDict[iseg][chanNum] = times
-
-                            padvalues = np.zeros(self._padLength[iseg])+self._padValue[iseg]
-                            for start, peak in zip(pychan.startPosList, pychan.peakList):
-                                padvalues[start:start+len(peak)]=peak
-                            self._padDict[iseg][chanNum] = padvalues
-                            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg]) * 1/(6.4e9*13/14)
+                if pychan.peakList is not None:
+                    if iseg not in self._peaksDict.keys():
+                        self._peaksDict[iseg]={}
+                    self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
 
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
@@ -287,8 +309,17 @@ cdef class cyhsd_base_1_2_3:
         times:  time axis (s)
         """
         cdef cnp.ndarray wv # TODO: make readonly
+
+        # Padding data is slow so it's not done when _parseEvt is called and
+        # so to check if has been done already, we have to check the _padDict
+        # variable and CANNOT rely on _isNewEvt.
         if self._isNewEvt(evt):
             self._parseEvt(evt)
+            self._padEvt()
+        else:
+            if not self._padDict:
+                self._padEvt()
+        
         if not self._padDict:
             return None
         else:
