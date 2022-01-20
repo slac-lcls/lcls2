@@ -121,7 +121,8 @@ def file_name_prefix(dirrepo, dettype, panel_id, tstamp, exp, irun):
 
 
 def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
-    """Returns (str) tstamp_run, tstamp_now#, e.g. (str) 20201209191018, 20201217140026
+    """DEPRECATED HERE - USE FROM UtilsCalib.py
+       Returns (str) tstamp_run, tstamp_now#, e.g. (str) 20201209191018, 20201217140026
     """
     ts_run = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=trun_sec)
     ts_now = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None)
@@ -172,7 +173,8 @@ def mean_constrained(arr, lo, hi):
 
 
 def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
-    """Evaluates low and high limit of the array, which are used to find bad pixels.
+    """DEPRECATED HERE - USE FROM UtilsCalib.py
+       Evaluates low and high limit of the array, which are used to find bad pixels.
     """
     ave, std = (arr.mean(), arr.std()) if (nneg>0 or npos>0) else (None,None)
     lo = ave-nneg*std if nneg>0 else lim_lo
@@ -186,7 +188,8 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
 
 
 def proc_dark_block(block, **kwa):
-    """Returns per-panel (352, 384) arrays of mean, rms, ...
+    """DEPRECATED HERE - USE proc_block FROM UtilsCalib.py
+       Returns per-panel (352, 384) arrays of mean, rms, ...
        block.shape = (nrecs, 352, 384), where nrecs <= 1024
     """
     exp        = kwa.get('exp', None)
