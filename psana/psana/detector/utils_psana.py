@@ -13,6 +13,8 @@ Usage::
 
     s = info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:\n ', sep='\n ')
     s = info_run(run, cmt='run info:', sep='\n    ', verb=0o377)
+    s = info_detector(det, cmt='detector info:', sep='\n    ')
+    s = info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):', sep='\n ')
 
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -105,5 +107,22 @@ def info_run(run, cmt='run info:', sep='\n    ', verb=0o377):
       +('%srun.id        : %s' % (sep, run.id) if verb & 1 else '')\
       +('%s%s' % (sep, info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:', sep=sep+'   ')) if verb & 2 else '')
 
+
+def info_detector(det, cmt='detector info:', sep='\n    '):
+    return cmt\
+        +  'det.raw._det_name   : %s' % (det.raw._det_name)\
+        +'%sdet.raw._dettype    : %s' % (sep, det.raw._dettype)\
+        +'%s_sorted_segment_ids : %s' % (sep, str(det.raw._sorted_segment_ids))\
+        +'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
+        +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
+        +'%sdet methods vbisible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\
+        +'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det) if (v[0]=='_' and v[1]!='_')]))\
+        +'%sdet.raw     vbisible: %s' % (sep, ' '.join([v for v in dir(det.raw) if v[0]!='_']))\
+        +'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det.raw) if (v[0]=='_' and v[1]!='_')]))\
+        +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(det.raw._calibconst.keys()))
+
+
+def info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):', sep='\n '):
+    return cmt + sep.join(det.raw._uniqueid.split('_'))
 
 #EOF
