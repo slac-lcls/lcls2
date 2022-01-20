@@ -8,8 +8,6 @@ Usage::
     #OR
     import psana.detector.UtilsAreaCalib as uac
 
-    uac.
-
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
