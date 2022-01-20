@@ -12,9 +12,13 @@ Usage::
   s = info_command_line(sep=' ')
   s = info_command_line_parameters(parser) # for OptionParser
   s = info_parser_arguments(parser) # for ArgumentParser
+  save_log_record_on_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT%H:%M:%S%z')
 
 2020-11-06 created by Mikhail Dubrovin
 """
+
+#import logging
+#logger = logging.getLogger(__name__)
 
 import sys
 import numpy as np
@@ -75,4 +79,21 @@ def info_parser_arguments(parser):
 
 info_command_line_arguments = info_parser_arguments
 
+
+def save_log_record_on_start(dirrepo, procname, dirmode=0o774, filemode=0o774, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+    """Adds record on start to the log file <dirrepo>/logs/log-<procname>-<year>.txt
+    """
+    from psana.pyalgos.generic.Utils import os, logger, log_rec_on_start, str_tstamp, create_directory, save_textfile, set_file_access_mode
+
+    rec = log_rec_on_start(tsfmt)
+    logger.debug('Record on start: %s' % rec)
+    year = str_tstamp(fmt='%Y')
+    create_directory(dirrepo, dirmode)
+    dirlog = '%s/logs' % dirrepo
+    create_directory(dirlog, dirmode)
+    logfname = '%s/log_%s_%s.txt' % (dirlog, procname, year)
+    fexists = os.path.exists(logfname)
+    save_textfile(rec, logfname, mode='a')
+    if not fexists: set_file_access_mode(logfname, filemode)
+    logger.info('Saved: %s' % logfname)
 # EOF
