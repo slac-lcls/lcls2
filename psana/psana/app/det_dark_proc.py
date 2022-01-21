@@ -3,11 +3,13 @@
 import sys
 from time import time
 from psana.detector.Utils import info_parser_arguments
-from psana.detector.UtilsAreaCalib import pedestals_calibration
+#from psana.detector.UtilsAreaCalib import pedestals_calibration
+from psana.detector.UtilsCalib import pedestals_calibration
+from psana.detector.RepoManager import RepoManager
+from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, STR_LEVEL_NAMES, init_logger
+from psana.pyalgos.generic.Utils import get_login
 
-import logging
 logger = logging.getLogger(__name__)
-DICT_NAME_TO_LEVEL = logging._nameToLevel
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -36,12 +38,10 @@ def do_main():
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.runs is not None, 'WARNING: option "-r <run-number(s)>" MUST be specified.'
 
-    fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
-    logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
-    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(filename)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
-    #logging.basicConfig(filename='log.txt', filemode='w', format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
+    logfname = RepoManager(args.dirrepo, dirmode=args.dirmode, filemode=args.filemode).logname('%s_%s' % (SCRNAME, get_login()))
+    init_logger(loglevel=args.logmode, logfname=logfname)
 
-    logger.debug('%s\nIn epix10ka_pedestals_calibration' % (50*'_'))
+    logger.debug('%s\nIn %s' % ((50*'_'), SCRNAME))
     logger.debug('Command line:%s' % ' '.join(sys.argv))
     logger.info(info_parser_arguments(parser))
 
@@ -68,8 +68,8 @@ def argument_parser():
     d_stepmax = 1
     d_evskip  = 0       # number of events to skip in the beginning of each step
     d_events  = 1000    # number of events to process from the beginning of each step
-    d_dirmode = 0o777
-    d_filemode= 0o666
+    d_dirmode = 0o775
+    d_filemode= 0o664
     d_int_lo  = 1       # lowest  intensity accepted for dark evaluation
     d_int_hi  = 16000   # highest intensity accepted for dark evaluation
     d_intnlo  = 6.0     # intensity ditribution number-of-sigmas low
@@ -83,7 +83,7 @@ def argument_parser():
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
     d_deploy  = False
     d_tstamp  = None # 20180910111049 or run number <10000
-    d_version = 'V2021-03-12'
+    d_version = 'V2022-01-20'
     d_run_end = 'end'
     d_comment = 'no comment'
 
