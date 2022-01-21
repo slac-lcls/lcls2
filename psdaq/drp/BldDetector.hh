@@ -97,7 +97,8 @@ class Pgp
 public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
-    Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
+    Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes); // Slow case
+    Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes); // Non-Slow case
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
