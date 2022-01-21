@@ -8,8 +8,7 @@ import json
 from psana.detector.Utils import info_dict, info_command_line, info_namespace
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import datasource_arguments, info_run
-from psana.detector.UtilsAreaCalib import info_detector
+from psana.detector.utils_psana import datasource_arguments, info_run, info_detector
 from psana import DataSource
 
 import logging
