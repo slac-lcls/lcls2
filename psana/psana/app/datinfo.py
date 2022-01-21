@@ -72,18 +72,25 @@ def ds_run_det(args):
     #print('expname:', expname)
     #print('runnum :', run.runnum)
     #print('run.timestamp :', run.timestamp)
-    print('_fullname       :', det.raw._fullname())
-    print('_segment_ids    :', det.raw._segment_ids())
-    print('_segment_indices:', det.raw._segment_indices())
+
+    det_raw_attrs = dir(det.raw)
+    print('dir(det.raw)    :', det_raw_attrs)
+
+    print('det.raw._fullname       :', det.raw._fullname() if '_fullname' in det_raw_attrs else 'MISSING')
+    print('det.raw._segment_ids    :', det.raw._segment_ids() if '_segment_ids' in det_raw_attrs else 'MISSING')
+    print('det.raw._segment_indices:', det.raw._segment_indices() if '_segment_indices' in det_raw_attrs else 'MISSING')
 
     #print('_config_object  :', str(det.raw._config_object()))
     #print('_config_object2 :', str(ue.config_object_det(det)))
     #print('_config_object3 :', str(ue.config_object_det_raw(det.raw)))
 
-    dcfg = det.raw._config_object()
-    for k,v in dcfg.items():
+
+    if '_config_object' in det_raw_attrs:
+      dcfg = det.raw._config_object()
+      for k,v in dcfg.items():
         print('  seg:%s %s' % (str(k), info_ndarr(v.config.trbit, ' v.config.trbit for ASICs')))
         print('  seg:%s %s' % (str(k), info_ndarr(v.config.asicPixelConfig, ' v.config.asicPixelConfig')))
+    else: print('det.raw._config_object  : MISSING')
 
     print(info_run(run, cmt='run info\n    ', sep='\n    '))
     if det is not None:
@@ -136,7 +143,8 @@ def loop_run_step_evt(args):
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
       print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape())
 
-      dcfg = det.raw._config_object() #_config_object() #ue.config_object_det(det)
+      dcfg = det.raw._config_object() if '_config_object' in dir(det.raw) else None
+      if dcfg is None: print('det.raw._config_object is MISSING')
 
       for istep,step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
