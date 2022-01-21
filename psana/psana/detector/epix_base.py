@@ -20,13 +20,13 @@ from amitypes import Array3d
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.detector.areadetector import AreaDetector, np, DTYPE_MASK, DTYPE_STATUS
+from psana.detector.areadetector import sgs, AreaDetector, np, DTYPE_MASK, DTYPE_STATUS
 from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index,\
   cbits_config_epix10ka, cbits_config_epixhr2x2,\
   cbits_config_and_data_detector, M14, M15, B14, B15
 from psana.detector.UtilsMask import merge_status
 #from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one as seg
-from psana.pscalib.geometry.SegGeometryStore import sgs
+#from psana.pscalib.geometry.SegGeometryStore import sgs
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
 
