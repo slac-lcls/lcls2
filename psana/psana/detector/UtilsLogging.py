@@ -6,39 +6,40 @@ Usage::
         init_logger(loglevel='DEBUG', logfname=None)
 """
 
+import sys
 import logging
-logger = logging.getLogger(__name__)
-#DICT_NAME_TO_LEVEL = {k:v for k,v in logging._levelNames.iteritems() if isinstance(k, str)} # py2
 DICT_NAME_TO_LEVEL = logging._nameToLevel
 STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 
-#fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
-#logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
 ##logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(filename)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
 ##logging.basicConfig(filename='log.txt', filemode='w', format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
-#logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s %(message)s', level=logging.INFO)
-#logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(message)s', level=logging.INFO)
 
-def init_logger(loglevel='DEBUG', logfname=None):
-    import sys
-
+def logger_formatter_int_loglevel(loglevel='DEBUG'):
     int_loglevel = DICT_NAME_TO_LEVEL[loglevel.upper()]
-
     logger = logging.getLogger()
     logger.setLevel(int_loglevel) # logging.DEBUG
     fmt = '[%(levelname).1s] %(filename)s L%(lineno)04d %(message)s' if int_loglevel==logging.DEBUG else\
-          '[%(levelname).1s] L%(lineno)04d %(message)s'
+          '[%(levelname).1s] L%(lineno)04d %(message)s' # %(asctime)s
     formatter = logging.Formatter(fmt)
+    return logger, logging.Formatter(fmt), int_loglevel
 
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(int_loglevel)
-    stdout_handler.setFormatter(formatter)
-    logger.addHandler(stdout_handler)
+def init_stream_handler(loglevel='DEBUG'):
+    logger, formatter, int_loglevel = logger_formatter_int_loglevel(loglevel)
+    strh = logging.StreamHandler(sys.stdout)
+    strh.setLevel(int_loglevel)
+    strh.setFormatter(formatter)
+    logger.addHandler(strh)
 
-    if logfname is not None:
-        file_handler = logging.FileHandler(logfname) #'log-in-file-test.log'
-        file_handler.setLevel(int_loglevel) # logging.DEBUG
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+def init_file_handler(loglevel='DEBUG', logfname=None):
+    if logfname is None: return
+    logger, formatter, int_loglevel = logger_formatter_int_loglevel(loglevel)
+    filh = logging.FileHandler(logfname)
+    filh.setLevel(int_loglevel) # logging.DEBUG
+    filh.setFormatter(formatter)
+    logger.addHandler(filh)
+
+def init_logger(loglevel='DEBUG', logfname=None):
+    init_stream_handler(loglevel)
+    init_file_handler(loglevel, logfname)
 
 # EOF

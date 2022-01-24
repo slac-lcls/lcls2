@@ -5,9 +5,7 @@ from time import time
 from psana.detector.Utils import info_parser_arguments
 #from psana.detector.UtilsAreaCalib import pedestals_calibration
 from psana.detector.UtilsCalib import pedestals_calibration
-from psana.detector.RepoManager import RepoManager
-from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, STR_LEVEL_NAMES, init_logger
-from psana.pyalgos.generic.Utils import get_login
+from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler #, init_logger
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +36,7 @@ def do_main():
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.runs is not None, 'WARNING: option "-r <run-number(s)>" MUST be specified.'
 
-    logfname = RepoManager(args.dirrepo, dirmode=args.dirmode, filemode=args.filemode).logname('%s_%s' % (SCRNAME, get_login()))
-    init_logger(loglevel=args.logmode, logfname=logfname)
+    init_stream_handler(loglevel=args.logmode)
 
     logger.debug('%s\nIn %s' % ((50*'_'), SCRNAME))
     logger.debug('Command line:%s' % ' '.join(sys.argv))
@@ -48,6 +45,7 @@ def do_main():
     pedestals_calibration(**kwa)
 
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
+
 
 
 def argument_parser():

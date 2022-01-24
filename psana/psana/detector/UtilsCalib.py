@@ -24,11 +24,11 @@ import numpy as np
 from psana.detector.utils_psana import datasource_kwargs, info_run, info_detector, seconds
 from psana import DataSource
 from psana.detector.Utils import save_log_record_on_start, info_command_line, info_dict
-
-from psana.pyalgos.generic.Utils import str_tstamp, time #create_directory, log_rec_on_start,
+from psana.pyalgos.generic.Utils import str_tstamp, time, get_login #create_directory, log_rec_on_start,
 import psana.pscalib.calib.CalibConstants as cc
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_2darray_in_textfile
-
+from psana.detector.RepoManager import RepoManager
+from psana.detector.UtilsLogging import init_file_handler
 
 def selected_record(i, events):
     return i<5\
@@ -452,7 +452,6 @@ def fname_prefix(detname, tstamp, exp, runnum, dirname):
 
 def deploy_constants(dic_consts, **kwa):
 
-    from psana.detector.RepoManager import RepoManager
     from psana.pscalib.calib.MDBUtils import data_from_file
     from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
 
@@ -460,6 +459,7 @@ def deploy_constants(dic_consts, **kwa):
 
     expname  = kwa.get('exp',None)
     detname  = kwa.get('det',None)
+    dettype  = kwa.get('dettype', None)
     deploy   = kwa.get('deploy', False)
     dirrepo  = kwa.get('dirrepo', './work')
     dirmode  = kwa.get('dirmode',  0o774)
@@ -479,7 +479,7 @@ def deploy_constants(dic_consts, **kwa):
     #create_directory(dirrepo, dirmode)
     #fprefix = fname_prefix(detname, tsshort, expname, runnum, dirrepo)
 
-    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode)
+    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, dettype=dettype)
     dircons = repoman.makedir_constants(dname='constants')
     fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
 
@@ -534,10 +534,11 @@ def pedestals_calibration(**kwa):
   events  = kwa.get('events', 1000)
   dirmode = kwa.get('dirmode', 0o777)
   filemode= kwa.get('filemode', 0o666)
+  logmode = kwa.get('logmode', 'INFO')
 
   #procname = sys._getframe().f_code.co_name # pedestals_calibration
   procname = sys.argv[0].rsplit('/')[-1]
-  save_log_record_on_start(dirrepo, procname, dirmode, filemode, tsfmt='%Y-%m-%dT%H:%M:%S%z')
+  #save_log_record_on_start(dirrepo, procname, dirmode, filemode, tsfmt='%Y-%m-%dT%H:%M:%S%z')
 
   ds = DataSource(**datasource_kwargs(**kwa))
 
@@ -548,6 +549,7 @@ def pedestals_calibration(**kwa):
   nevsel = 0
   nsteptot = 0
   break_loop = False
+  dettype = None
 
   for irun,orun in enumerate(ds.runs()):
     nevrun = 0
@@ -555,6 +557,14 @@ def pedestals_calibration(**kwa):
     logger.info(info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
 
     odet = orun.Detector(detname)
+    if dettype is None:
+        #dettype = det.raw._dettype
+        repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, dettype=dettype)
+        logfname = repoman.logname('%s_%s' % (procname, get_login()))
+        init_file_handler(logmode, logfname)
+        save_log_record_on_start(dirrepo, procname, dirmode, filemode, tsfmt='%Y-%m-%dT%H:%M:%S%z')
+
+
     logger.info('created %s detector object' % detname)
     logger.info(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
 

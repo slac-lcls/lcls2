@@ -6,7 +6,7 @@
 Usage::
 
       from psana.detector.UtilsCalib import RepoManager
-      repoman = RepoManager(dirrepo, dirmode=0o775, filemode=0o664)
+      repoman = RepoManager(dirrepo, dirmode=0o777, filemode=0o666)
       d = repoman.dir_logs()
       d = repoman.makedir_logs()
       f = repoman.logname_on_start(fname)
@@ -49,10 +49,11 @@ class RepoManager(object):
 
     def __init__(self, dirrepo, **kwa):
         self.dirrepo = dirrepo.rstrip('/')
-        self.dirmode     = kwa.get('dirmode',  0o775)
-        self.filemode    = kwa.get('filemode', 0o664)
+        self.dirmode     = kwa.get('dirmode',  0o777)
+        self.filemode    = kwa.get('filemode', 0o666)
         self.dirname_log = kwa.get('dirname_log', 'logs')
-
+        self.dettype     = kwa.get('dettype', None)
+        if self.dettype is not None: self.dirrepo += '/%s' % self.dettype
 
     def makedir(self, d):
         """create and return directory d with mode defined in object property
@@ -177,7 +178,7 @@ if __name__ == "__main__":
     dirrepo = './work'
     fname = 'testfname'
     scrname = 'testscrname-%s' % get_login()
-    repoman = RepoManager(dirrepo, dirmode=0o775, filemode=0o664)
+    repoman = RepoManager(dirrepo, dirmode=0o777, filemode=0o666)
     print('makedir_logs %s' % repoman.makedir_logs())
     print('logname_on_start %s' % repoman.logname_on_start(fname))
     print('logname %s' % repoman.logname(scrname))
