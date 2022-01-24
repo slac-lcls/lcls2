@@ -28,6 +28,7 @@ USAGE = '\n  %s -d <detector> -e <experiment> -r <run-number(s)> [kwargs]' % SCR
       + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2' % SCRNAME\
       + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
       + '\n  %s -d tmoopal -e tmoc00118 -r 123 -td' % SCRNAME\
+      + '\n  %s -e tmoc00318 -r 8 -d epix100hw' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
 
 def ds_run_det(args):
@@ -73,6 +74,12 @@ def ds_run_det(args):
     #print('runnum :', run.runnum)
     #print('run.timestamp :', run.timestamp)
 
+    print(info_run(run, cmt='run info\n    ', sep='\n    '))
+
+    if det is None:
+        print('detector object is None for detname %s' % args.detname)
+        sys.exit('EXIT')
+
     det_raw_attrs = dir(det.raw)
     print('dir(det.raw)    :', det_raw_attrs)
 
@@ -92,10 +99,8 @@ def ds_run_det(args):
         print('  seg:%s %s' % (str(k), info_ndarr(v.config.asicPixelConfig, ' v.config.asicPixelConfig')))
     else: print('det.raw._config_object  : MISSING')
 
-    print(info_run(run, cmt='run info\n    ', sep='\n    '))
-    if det is not None:
-      print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
-      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape())
+    print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
+    print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
 
     #sys.exit('TEST EXIT')
 
@@ -141,7 +146,7 @@ def loop_run_step_evt(args):
       try:    step_docstring = run.Detector('step_docstring')
       except: step_docstring = None
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
-      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape())
+      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
 
       dcfg = det.raw._config_object() if '_config_object' in dir(det.raw) else None
       if dcfg is None: print('det.raw._config_object is MISSING')
