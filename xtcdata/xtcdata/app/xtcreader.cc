@@ -237,12 +237,13 @@ int main(int argc, char* argv[])
 {
     int c;
     char* xtcname = 0;
+    char* cfg_xtcname = 0;
     int parseErr = 0;
     unsigned neventreq = 0xffffffff;
     bool debugprint = false;
     unsigned numWords = 3;
 
-    while ((c = getopt(argc, argv, "hf:n:dw:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:dw:c:")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -258,6 +259,9 @@ int main(int argc, char* argv[])
             break;
         case 'w':
             numWords = atoi(optarg);
+            break;
+        case 'c':
+            cfg_xtcname = optarg;
             break;
         default:
             parseErr++;
@@ -275,10 +279,31 @@ int main(int argc, char* argv[])
         exit(2);
     }
 
-    XtcFileIterator iter(fd, 0x4000000);
+
+    // Open xtc file for config if given
+    int cfg_fd = -1;
     Dgram* dg;
-    unsigned nevent=0;
     DebugIter dbgiter(numWords);
+    if (cfg_xtcname) {
+        cfg_fd = open(cfg_xtcname, O_RDONLY);
+        if (cfg_fd < 0) {
+            fprintf(stderr, "Unable to open config file '%s'\n", cfg_xtcname);
+            exit(2);
+        }
+
+        // Use config from given config file as default
+        XtcFileIterator cfg_iter(cfg_fd, 0x4000000);
+
+        // Only access the first dgram (config)
+        dg = cfg_iter.next();
+        
+        // dbgiter will remember all the configs
+        if (debugprint) dbgiter.iterate(&(dg->xtc));
+        
+    }
+
+    XtcFileIterator iter(fd, 0x4000000);
+    unsigned nevent=0;
     while ((dg = iter.next())) {
         if (nevent>=neventreq) break;
         nevent++;
@@ -291,6 +316,9 @@ int main(int argc, char* argv[])
         if (debugprint) dbgiter.iterate(&(dg->xtc));
     }
 
+    if (cfg_fd >= 0) {
+        ::close(cfg_fd);
+    } 
     ::close(fd);
     return 0;
 }
