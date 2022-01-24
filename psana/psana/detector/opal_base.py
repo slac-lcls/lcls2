@@ -29,6 +29,7 @@ class opal_base(AreaDetector):
     def __init__(self, *args, **kwa):
         logger.debug('opal_base.__init__')
         AreaDetector.__init__(self, *args, **kwa)
+        self._seg_geo = None
 
 
     def raw(self,evt) -> Array3d:
