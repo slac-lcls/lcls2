@@ -56,14 +56,14 @@ def detnames():
   for ntuple in names:
     lengths = [len(n) for n in ntuple]
     maxlen = [max(oldmax,length) for oldmax,length in zip(maxlen,lengths)]
-  
+
   # assumes that data rows are tuples
   template = format_string % tuple(maxlen)
   header = template.format(*headers)
   print('-'*len(header))
   print(header)
   print('-'*len(header))
-  for n in names: 
+  for n in names:
     print(template.format(*n))
   print('-'*len(header))
 
