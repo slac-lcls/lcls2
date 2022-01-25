@@ -108,6 +108,13 @@ def info_run(run, cmt='run info:', sep='\n    ', verb=0o377):
       +('%s%s' % (sep, info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:', sep=sep+'   ')) if verb & 2 else '')
 
 
+def print_detnames(run, cmt='command: '):
+    import os
+    cmd = 'detnames -r exp=%s,run=%d' % (run.expt, run.runnum)
+    print(cmt + cmd)
+    os.system(cmd)
+
+
 def info_detector(det, cmt='detector info:', sep='\n    '):
     return cmt\
         +  'det.raw._det_name   : %s' % (det.raw._det_name)\
