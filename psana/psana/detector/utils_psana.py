@@ -108,6 +108,17 @@ def info_run(run, cmt='run info:', sep='\n    ', verb=0o377):
       +('%s%s' % (sep, info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:', sep=sep+'   ')) if verb & 2 else '')
 
 
+def info_detnames(run, cmt='command: '):
+    #import subprocess
+    #cmd = 'detnames -r exp=%s,run=%d' % (run.expt, run.runnum)
+    #p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #out = str(p.stdout.read())
+    #return fmt%(cmt, cmd, out)
+    from subprocess import getoutput
+    cmd = 'detnames -r exp=%s,run=%d' % (run.expt, run.runnum)
+    return cmt + cmd + '\n' + getoutput(cmd)
+
+
 def print_detnames(run, cmt='command: '):
     import os
     cmd = 'detnames -r exp=%s,run=%d' % (run.expt, run.runnum)
