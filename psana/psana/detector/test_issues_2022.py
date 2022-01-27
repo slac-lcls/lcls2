@@ -25,22 +25,54 @@ def issue_2022_01_21():
     myrun = next(ds.runs())
     det = myrun.Detector('epix100hw')
     for nevt,evt in enumerate(myrun.events()):
-        print('det.raw.raw(evt).shape:', det.raw.raw(evt).shape)
+        print('det.raw.raw(evt).shape  :', det.raw.raw(evt).shape)
         print('det.raw.calib(evt).shape:', det.raw.calib(evt).shape)
         print('det.raw.image(evt).shape:', det.raw.image(evt).shape)
+
+
+def issue_2022_01_26():
+    """The same as issue_2022_01_21 but for run 10, print ndarray, access constants.
+    """
+    from psana.pyalgos.generic.NDArrUtils import info_ndarr
+    from psana import DataSource
+    ds = DataSource(exp='tmoc00318',run=10)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epix100')
+
+    print('dir(det.raw):', dir(det.raw))
+    print()
+    print(info_ndarr(det.raw._pedestals(),   'det.raw._pedestals()  '))
+    print(info_ndarr(det.raw._gain(),        'det.raw._gain()'))
+    print(info_ndarr(det.raw._rms(),         'det.raw._rms()'))
+    print(info_ndarr(det.raw._status(),      'det.raw._status()'))
+    print(info_ndarr(det.raw._mask_calib(),  'det.raw._mask_calib()'))
+    print(info_ndarr(det.raw._mask_from_status(),  'det.raw._mask_from_status()'))
+    print(info_ndarr(det.raw._mask_edges(),  'det.raw._mask_edges()'))
+    print(info_ndarr(det.raw._common_mode(), 'det.raw._common_mode()'))
+    #print(info_ndarr(det.raw.,   'det.raw.'))
+    print(info_ndarr(det.raw._pixel_coords(do_tilt=True, cframe=0), 'det.raw._pixel_coords(...)'))
+
+    print()
+
+    for nevt,evt in enumerate(myrun.events()):
+        if nevt>10: break
+        print(info_ndarr(det.raw.raw(evt),   'det.raw.raw(evt)  '))
+        print(info_ndarr(det.raw.calib(evt), 'det.raw.calib(evt)'))
 
 
 USAGE = '\nUsage:'\
       + '\n  python %s <test-name> <loglevel-e.g.-DEBUG-or-INFO>' % SCRNAME\
       + '\n  where test-name: '\
       + '\n    0 - print usage'\
-      + '\n    1 - issue_2022_01_21 - cpo '\
+      + '\n    1 - issue_2022_01_21 - cpo epix100hw'\
+      + '\n    2 - issue_2022_01_26 - cpo epix100'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
 if   TNAME in  ('1',): issue_2022_01_21()
-elif TNAME in  ('2',): issue_2022_01_dd()
+elif TNAME in  ('2',): issue_2022_01_26()
+elif TNAME in  ('3',): issue_2022_01_dd()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
