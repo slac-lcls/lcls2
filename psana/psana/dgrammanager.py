@@ -96,6 +96,10 @@ class DgramManager(object):
             self.fds = np.asarray(fds, dtype=np.int32)
         else:
             self.fds = np.array([os.open(xtc_file, os.O_RDONLY) for xtc_file in self.xtc_files], dtype=np.int32)
+
+        self.fds_map = {}
+        for fd, xtc_file in zip(self.fds, self.xtc_files):
+            self.fds_map[fd] = xtc_file
         
         given_configs = True if len(configs) > 0 else False
         if given_configs:
