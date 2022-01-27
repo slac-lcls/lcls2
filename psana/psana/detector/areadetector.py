@@ -367,7 +367,7 @@ class AreaDetector(DetectorImpl):
 
 
     def _mask_edges(self, **kwa): # -> Array3d:
-        mask = self._mask_default(self, dtype=DTYPE_MASK)
+        mask = self._mask_default(dtype=DTYPE_MASK)
         return None if mask is None else\
           mask_edges(mask,\
             edge_rows=kwa.get('edge_rows', 1),\
