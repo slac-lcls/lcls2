@@ -38,7 +38,7 @@ def test_pedestas_difference_between_dark_runs(run1, run2):
       amplimits = arr_median_limits(arr, nneg=50, npos=50)
 
       fig, axhi, hi = gr.hist1d(arr, bins=None, amp_range=amplimits, weights=None, color=None, show_stat=True,
-                              log=False, figsize=(6,5), axwin=(0.15, 0.12, 0.78, 0.80), title=None, 
+                              log=False, figsize=(6,5), axwin=(0.15, 0.12, 0.78, 0.80), title=None,
                               xlabel=None, ylabel=None, titwin=None)
       #gr.move_fig(fig, x0=ig*100, y0=10)
 

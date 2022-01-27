@@ -30,7 +30,7 @@ if tname == '1':
         for segment,panel in raw.items():
             print(segment,panel.shape)
         if evnum > evtmax: break
-else: 
+else:
     print('NON-RECOGNIZED TEST NAME\n%s' % usage)
 
 print('END OF %s\n%s'%(SCRNAME,50*'-'))
