@@ -194,10 +194,13 @@ class EventManager(object):
     def _read(self, fd, size, offset):
         st = time.monotonic()
         chunk = bytearray()
+        
+        request_size = size
         for i_retry in range(self.max_retries+1):
-            chunk.extend(os.pread(fd, size, offset))
-            got = memoryview(chunk).nbytes
-            if got == size:
+            new_read = os.pread(fd, size, offset)
+            chunk.extend(new_read)
+            got = memoryview(new_read).nbytes
+            if memoryview(chunk).nbytes == request_size:
                 break
             
             # Check if we should exit when asked amount is not fulfilled
@@ -216,12 +219,7 @@ class EventManager(object):
             offset += got
             size -= got
             
-            found_xtc2_flags = self.dm.found_xtc2('bd')
-            if got == 0 and all(found_xtc2_flags):
-                print(f'Warning: bigdata got 0 byte and .xtc2 files found on disk. stop reading this .inprogress file')
-                break
-
-            print(f'Warning: bigdata read retry#{i_retry} fd:{fd} - waiting for {size/1e6} MB, max_retries: {self.max_retries} (PS_R_MAX_RETRIES), sleeping 1 second...') 
+            print(f'Warning: bigdata read retry#{i_retry}/{self.max_retries} fd:{fd} {self.dm.fds_map[fd]} ask={size} offset={offset} got={got}') 
 
             time.sleep(1)
         
