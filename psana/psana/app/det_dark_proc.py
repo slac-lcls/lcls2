@@ -58,6 +58,7 @@ def argument_parser():
     d_nrecs   = 200  # number of records to collect and process
     d_nrecs1  = 100  # number of records to process at 1st stage
     d_dirxtc  = None # '/cds/data/psdm/tmo/tmoc00118/xtc'
+    #d_dirrepo = '/cds/group/psdm/detector/calib2' #'./work'
     d_dirrepo = './work'
     d_usesmd  = True
     d_logmode = 'INFO'
@@ -66,8 +67,8 @@ def argument_parser():
     d_stepmax = 1
     d_evskip  = 0       # number of events to skip in the beginning of each step
     d_events  = 1000    # number of events to process from the beginning of each step
-    d_dirmode = 0o775
-    d_filemode= 0o664
+    d_dirmode = 0o777
+    d_filemode= 0o666
     d_int_lo  = 1       # lowest  intensity accepted for dark evaluation
     d_int_hi  = 16000   # highest intensity accepted for dark evaluation
     d_intnlo  = 6.0     # intensity ditribution number-of-sigmas low
@@ -84,6 +85,7 @@ def argument_parser():
     d_version = 'V2022-01-20'
     d_run_end = 'end'
     d_comment = 'no comment'
+    d_doplot  = False
 
     h_fname   = 'input xtc file name, default = %s' % d_fname
     h_exp     = 'experiment name, default = %s' % d_exp
@@ -119,6 +121,7 @@ def argument_parser():
     h_version = 'constants version, default = %s' % str(d_version)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
+    h_doplot  = 'plot image of pedestals, default = %s' % str(d_doplot)
 
     parser = ArgumentParser(description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-f', '--fname',   default=d_fname,      type=str,   help=h_fname)
@@ -154,6 +157,7 @@ def argument_parser():
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('-R', '--run_end', default=d_run_end,    type=str,   help=h_run_end)
     parser.add_argument('-C', '--comment', default=d_comment,    type=str,   help=h_comment)
+    parser.add_argument('-P', '--doplot',  action='store_true',              help=h_doplot)
 
     return parser
 
