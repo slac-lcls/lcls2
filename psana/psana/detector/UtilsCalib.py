@@ -26,7 +26,7 @@ from psana import DataSource
 from psana.detector.Utils import save_log_record_on_start, info_command_line, info_dict
 from psana.pyalgos.generic.Utils import str_tstamp, time, get_login #create_directory, log_rec_on_start,
 import psana.pscalib.calib.CalibConstants as cc
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_2darray_in_textfile
+from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile #, save_2darray_in_textfile
 from psana.detector.RepoManager import RepoManager
 from psana.detector.UtilsLogging import init_file_handler
 
@@ -173,6 +173,7 @@ class DarkProc():
         self.rms_hi = kwa.get('rms_hi', 16000)   # rms ditribution high
         self.rmsnlo = kwa.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
         self.rmsnhi = kwa.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
+        self.doplot = kwa.get('doplot', False)   # plot image of pedestals
 
         self.status = 0 # 0/1/2 stage
         self.kwa    = kwa
@@ -247,6 +248,7 @@ class DarkProc():
 
         fraclm  = self.fraclm
         counter = self.irec
+        doplot  = self.doplot
 
         arr_av1 = divide_protected(self.arr_sum1, self.arr_sum0)
         arr_av2 = divide_protected(self.arr_sum2, self.arr_sum0)
@@ -295,7 +297,7 @@ class DarkProc():
         self.arr_msk = np.select((arr_sta>0,), (self.arr0,), 1)
 
         logger.debug(self.info_results())
-        self.plot_images(titpref='')
+        if doplot: self.plot_images(titpref='')
 
         self.block = None
         self.irec = -1
@@ -462,8 +464,8 @@ def deploy_constants(dic_consts, **kwa):
     dettype  = kwa.get('dettype', None)
     deploy   = kwa.get('deploy', False)
     dirrepo  = kwa.get('dirrepo', './work')
-    dirmode  = kwa.get('dirmode',  0o774)
-    filemode = kwa.get('filemode', 0o664)
+    dirmode  = kwa.get('dirmode',  0o777)
+    filemode = kwa.get('filemode', 0o666)
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
@@ -488,8 +490,8 @@ def deploy_constants(dic_consts, **kwa):
         fmt = CTYPE_FMT.get(ctype,'%.5f')
         #logger.info(info_ndarr(nda, 'constants for %s ' % ctype))
         #logger.info(info_ndarr(nda, 'constants'))
-        #save_ndarray_in_textfile(nda, fname, filemode, fmt)
-        save_2darray_in_textfile(nda, fname, filemode, fmt)
+        save_ndarray_in_textfile(nda, fname, filemode, fmt)
+        #save_2darray_in_textfile(nda, fname, filemode, fmt)
 
         dtype = 'ndarray'
         kwa['iofname'] = fname
@@ -561,7 +563,7 @@ def pedestals_calibration(**kwa):
         #dettype = det.raw._dettype
         repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, dettype=dettype)
         logfname = repoman.logname('%s_%s' % (procname, get_login()))
-        init_file_handler(logmode, logfname)
+        init_file_handler(logmode, logfname, filemode=0o664)
         save_log_record_on_start(dirrepo, procname, dirmode, filemode, tsfmt='%Y-%m-%dT%H:%M:%S%z')
 
 
@@ -683,6 +685,7 @@ if __name__ == "__main__":
         'det'     : 'tmoopal',\
         'nrecs1'  : 100,\
         'nrecs'   : 200,\
+        'doplot'  : True,\
     }
 
     pedestals_calibration(**kwa)
