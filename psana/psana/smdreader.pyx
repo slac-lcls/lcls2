@@ -72,8 +72,14 @@ cdef class SmdReader:
         return is_complete
 
     def get(self, found_xtc2):
-        # SmdReaderManager only calls this function when there's no more event
-        # in one or more buffers. Reset the indices for buffers that need re-read.
+        """SmdReaderManager only calls this function when there's no more event
+        in one or more buffers. Reset the indices for buffers that need re-read."""
+
+        # Exit if EndRun is found for all files. This is safe even though
+        # we support mulirun in one xtc2 file but this is only for shmem mode,
+        # which doesn't use SmdReader.
+        if self.found_endrun(): return
+
         cdef int i=0
         for i in range(self.prl_reader.nfiles):
             buf = &(self.prl_reader.bufs[i])
