@@ -45,6 +45,8 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
+                                            {"detname", prms.detName},
+                                            {"detseg", std::to_string(prms.detSegment)},
                                             {"alias", prms.alias}};
 
   exporter->constant("TCtb_IUMax",  labels, MAX_BATCHES);

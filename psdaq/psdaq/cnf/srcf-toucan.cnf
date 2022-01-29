@@ -108,7 +108,7 @@ procmgr_hsd = [
  {host:'drp-srcf-cmp004', id:'hsd_11', flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
 ]
 
-procmgr_config.extend(procmgr_hsd)
+#procmgr_config.extend(procmgr_hsd)
 
 #
 # ami

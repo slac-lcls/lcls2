@@ -64,6 +64,8 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
+                                            {"detname", prms.detName},
+                                            {"detseg", std::to_string(prms.detSegment)},
                                             {"alias", prms.alias}};
   exporter->add("TCtbI_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add("TCtbI_BatCt", labels, MetricType::Counter, [&](){ return _batchCount;          });

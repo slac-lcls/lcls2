@@ -504,22 +504,26 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_exporter->constant("drp_dma_in_use_max", labels, pool.nbuffers());
 
     m_tPrms.instrument = para.instrument;
-    m_tPrms.partition = para.partition;
-    m_tPrms.alias     = para.alias;
-    m_tPrms.batching  = m_para.kwargs["batching"] == "yes"; // Default to "no"
-    m_tPrms.core[0]   = -1;
-    m_tPrms.core[1]   = -1;
-    m_tPrms.verbose   = para.verbose;
-    m_tPrms.kwargs    = para.kwargs;
+    m_tPrms.partition  = para.partition;
+    m_tPrms.alias      = para.alias;
+    m_tPrms.detName    = para.detName;
+    m_tPrms.detSegment = para.detSegment;
+    m_tPrms.batching   = m_para.kwargs["batching"] == "yes"; // Default to "no"
+    m_tPrms.core[0]    = -1;
+    m_tPrms.core[1]    = -1;
+    m_tPrms.verbose    = para.verbose;
+    m_tPrms.kwargs     = para.kwargs;
     m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
 
     m_mPrms.instrument = para.instrument;
-    m_mPrms.partition = para.partition;
-    m_mPrms.alias     = para.alias;
-    m_mPrms.maxEvSize = pool.bufferSize();
-    m_mPrms.maxTrSize = para.maxTrSize;
-    m_mPrms.verbose   = para.verbose;
-    m_mPrms.kwargs    = para.kwargs;
+    m_mPrms.partition  = para.partition;
+    m_mPrms.alias      = para.alias;
+    m_tPrms.detName    = para.detName;
+    m_tPrms.detSegment = para.detSegment;
+    m_mPrms.maxEvSize  = pool.bufferSize();
+    m_mPrms.maxTrSize  = para.maxTrSize;
+    m_mPrms.verbose    = para.verbose;
+    m_mPrms.kwargs     = para.kwargs;
     m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
 
     m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor, m_exporter);

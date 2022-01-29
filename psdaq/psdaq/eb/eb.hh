@@ -66,6 +66,8 @@ namespace Pds {
       string_t instrument;         // Instrument name for monitoring
       unsigned partition;          // The chosen system
       string_t alias;              // Unique name passed on cmd line
+      string_t detName;            // The detector name
+      unsigned detSegment;         // The detector segment
       unsigned id;                 // Contributor instance identifier
       uint64_t builders;           // ID bit list of EBs
       vecstr_t addrs;              // TEB addresses
@@ -91,6 +93,8 @@ namespace Pds {
       string_t instrument;         // Instrument name for monitoring
       unsigned partition;          // The chosen system
       string_t alias;              // Unique name passed on cmd line
+      string_t detName;            // The detector name
+      unsigned detSegment;         // The detector segment
       unsigned id;                 // Contributor instance identifier
       unsigned maxEvents;          // Max # of events to provide for
       size_t   maxEvSize;          // Max event size

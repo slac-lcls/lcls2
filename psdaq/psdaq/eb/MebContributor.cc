@@ -31,6 +31,8 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
+                                            {"detname", prms.detName},
+                                            {"detseg", std::to_string(prms.detSegment)},
                                             {"alias", prms.alias}};
   exporter->add("MCtbO_EvCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
   exporter->add("MCtbO_TxPdg", labels, MetricType::Counter, [&](){ return _transport.pending(); });
