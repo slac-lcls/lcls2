@@ -168,6 +168,7 @@ Teb::Teb(const EbParams&         prms,
   exporter->add("TEB_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
   exporter->add("TEB_BtFrCt", labels, MetricType::Counter, [&](){ return _batMan.batchFreeCnt();  });
   exporter->add("TEB_BtWtg",  labels, MetricType::Gauge,   [&](){ return _batMan.batchWaiting();  });
+  exporter->add("TEB_IUBats", labels, MetricType::Gauge,   [&](){ return _batMan.inUseBatchCnt(); });
   exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.pending();  });
   exporter->add("TEB_WrtRt",  labels, MetricType::Rate,    [&](){ return _writeCount;             });
   exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;             });

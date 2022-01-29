@@ -105,4 +105,6 @@ void BatchManager::dump() const
   printf("  Number of allocs  %lu  frees %lu  diff %ld  waiting %c\n",
          batchAllocCnt(), batchFreeCnt(), batchAllocCnt() - batchFreeCnt(),
          batchWaiting() ? 'T' : 'F');
+  printf("  Number of in-use  %lu, last freed PID %014lx\n",
+         inUseBatchCnt(), _lastFreed.load(std::memory_order_relaxed));
 }

@@ -59,7 +59,7 @@ namespace Pds {
       unsigned              _batching;     // Is batching enabled?
       std::atomic<uint64_t> _numAllocs;    // Number of Batch allocates
       std::atomic<uint64_t> _numFrees;     // Number of Batch frees
-      std::atomic<uint64_t> _numInUse;     // Number of Batch allocates - frees
+      std::atomic< int64_t> _numInUse;     // Number of Batch allocates - frees
       mutable uint64_t      _nAllocs;      // Run-time monitoring version
       mutable uint64_t      _nFrees;       // Run-time monitoring version
       mutable uint64_t      _nInUse;       // Run-time monitoring version
@@ -152,12 +152,14 @@ inline
 void Pds::Eb::BatchManager::release(uint64_t pid)
 {
   std::unique_lock<std::mutex> lock(_lock);
+  //auto lastFreed = _lastFreed.load();  // Revisit: Temporary
   _lastFreed.store(pid, std::memory_order_release);
   _cv.notify_one();
   _numFrees.fetch_add(1, std::memory_order_acq_rel);
   _numInUse.fetch_sub(1, std::memory_order_acq_rel);
-  //printf("Release pid %014lx, numAlloc %lu, numFree %lu, numInUse %lu\n",
-  //       pid, _numAllocs.load(), _numFrees.load(), _numInUse.load());
+  //if (_numInUse.load() < 0)
+  //  printf("Release pid %014lx, lastFreed %014lx, numAlloc %lu, numFree %lu, numInUse %ld\n",
+  //         pid, lastFreed, _numAllocs.load(), _numFrees.load(), _numInUse.load());
 }
 
 inline
