@@ -2,16 +2,15 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
-import pyrogue as pr
+import pyrogue
 import rogue
 import lcls2_epix_hr_pcie
-#import ePixFpga as fpga
+import epix100a_gen2 # necessary to pick up sys.path for ePixFpga below
+import ePixFpga as fpga
 import time
 import json
 import os
 import numpy as np
-import IPython
-from collections import deque
 import logging
 
 base = None
@@ -34,7 +33,7 @@ def gain_mode_map(gain_mode):
     trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
     return (mapv,trbit)
 
-class Board(pr.Root):
+class Board(pyrogue.Root):
     def __init__(self,dev='/dev/datadev_0',):
         super().__init__(name='ePixHr10kT',description='ePixHrGen1 board')
         self.dmaCtrlStreams = [None]
@@ -42,7 +41,7 @@ class Board(pr.Root):
 
         # Create and Connect SRP to VC1 to send commands
         self._srp = rogue.protocols.srp.SrpV3()
-        pr.streamConnectBiDir(self.dmaCtrlStreams[0],self._srp)
+        pyrogue.streamConnectBiDir(self.dmaCtrlStreams[0],self._srp)
 
         self.add(epixHr.SysReg  (name='Core'  , memBase=self._srp, offset=0x00000000, sim=False, expand=False, pgpVersion=4,))
         self.add(fpga.EpixHR10kT(name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
@@ -147,6 +146,12 @@ def user_to_rogue(a):
 
     return s
 
+class EpixBoard(pyrogue.Root):
+    def __init__(self, srp, **kwargs):
+        super().__init__(name = 'ePixBoard', description = 'ePix 100a Board', **kwargs)
+
+        self.add(fpga.Epix100a(name='ePix100aFPGA', offset=0, memBase=srp, hidden=False, enabled=True))
+
 #
 #  Initialize the rogue accessor
 #
@@ -161,23 +166,18 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
     base = {}
 
     #  Configure the PCIe card first (timing, datavctap)
-    #if True:
-    print('**** cpo hack out kcu1500')
-    if False:
+    if True:
         pbase = lcls2_epix_hr_pcie.DevRoot(dev           =dev,
                                            enLclsI       =False,
                                            enLclsII      =True,
                                            yamlFileLclsI =None,
                                            yamlFileLclsII=None,
                                            startupMode   =True,
-                                           standAloneMode=xpmpv is not None,
+                                           standAloneMode=False,
                                            pgp4          =True,
-                                           #dataVc        =0,
                                            pollEn        =False,
                                            initRead      =False,
-                                           #numLanes      =4,
                                            pcieBoardType = 'Kcu1500')
-
         pbase.__enter__()
 
         base['pci'] = pbase
@@ -185,9 +185,32 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
         time.sleep(1)
         pbase.DevPcie.Application.EventBuilder.Blowoff.set(False)
 
-    print('*** cpo hack early return')
-    return base # cpo hack
+    # VC0 is the register interface.  See README.md here:
+    # https://github.com/slaclab/lcls2-epix-hr-pcie
+    VC = 0
+    lane = 0
+    pgpVc0DmaDest = rogue.hardware.axi.AxiStreamDma(dev,(lane*0x100)+VC,True)
 
+    # Create and Connect SRP to VC0 to send register read-write commands
+    srp = rogue.protocols.srp.SrpV3()
+    # Create and Connect SRP to VC0 DMA destination to send commands
+    pyrogue.streamConnectBiDir(pgpVc0DmaDest,srp)
+
+    ePixBoard = EpixBoard(srp)
+    ePixBoard.__enter__()
+
+    for i in range(4):
+        print("----------")
+        print("pass",i)
+        print("Talking to the PCIe card.....")
+        print(f"FpgaVersion {hex(pbase.DevPcie.AxiPcieCore.AxiVersion.FpgaVersion.get())}")
+        print(f"GitHash {hex(pbase.DevPcie.AxiPcieCore.AxiVersion.GitHash.get())}")
+        print(f"GitHashShort {pbase.DevPcie.AxiPcieCore.AxiVersion.GitHashShort.get()}")
+        print("Talking to the camera......")
+        print(f"FpgaVersion {hex(ePixBoard.ePix100aFPGA.AxiVersion.FpgaVersion.get())}")
+        print(f"GitHashShort {ePixBoard.ePix100aFPGA.AxiVersion.GitHashShort.get()}")
+        print("")
+    return base
     #  Connect to the camera
 #    cbase = epix_hr_single_10k.ePixFpga.EpixHR10kT(dev=dev,hwType='datadev',lane=lane,pollEn=False,
 #                                                   enVcMask=0x2,enWriter=False,enPrbs=False)
