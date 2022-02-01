@@ -15,13 +15,14 @@ def epix100_cdict():
 
     help_str  = "-- user interface --"
     help_str += "\nstart_ns     : nanoseconds to exposure start"
+    help_str += "\ngate_ns     : nanoseconds to exposure start"
 
-    top.set("user.start_ns" , 107749, 'UINT32')
+    top.set("user.start_ns" , 58000, 'UINT32') # taken from epixHR
+    top.set("user.gate_ns" , 100000, 'UINT32') # 100us 
+    # add daqtriggerdelay and runtriggerdelay?
 
     # timing system
     top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.PauseThreshold',16,'UINT32')
-    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay',42,'UINT32')
-    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition',0,'UINT32')
 
     return top
 

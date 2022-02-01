@@ -15,136 +15,12 @@ import logging
 
 base = None
 pv = None
-#lane = 0  # An element consumes all 4 lanes
+#lane = 0
 chan = None
 group = None
 ocfg = None
 segids = None
-#cposeglist
-#seglist = [0,1]
 seglist = [0]
-
-elemRowsC = 146
-elemRowsD = 144
-elemCols  = 192
-
-def gain_mode_map(gain_mode):
-    mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
-    trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
-    return (mapv,trbit)
-
-class Board(pyrogue.Root):
-    def __init__(self,dev='/dev/datadev_0',):
-        super().__init__(name='ePixHr10kT',description='ePixHrGen1 board')
-        self.dmaCtrlStreams = [None]
-        self.dmaCtrlStreams[0] = rogue.hardware.axi.AxiStreamDma(dev,(0x100*0)+0,1)# Registers  
-
-        # Create and Connect SRP to VC1 to send commands
-        self._srp = rogue.protocols.srp.SrpV3()
-        pyrogue.streamConnectBiDir(self.dmaCtrlStreams[0],self._srp)
-
-        self.add(epixHr.SysReg  (name='Core'  , memBase=self._srp, offset=0x00000000, sim=False, expand=False, pgpVersion=4,))
-        self.add(fpga.EpixHR10kT(name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
-
-def mode(a):
-    uniqueValues = np.unique(a).tolist()
-    uniqueCounts = [len(np.nonzero(a == uv)[0])
-                    for uv in uniqueValues]
-
-    modeIdx = uniqueCounts.index(max(uniqueCounts))
-    return uniqueValues[modeIdx]
-
-def dumpvars(prefix,c):
-    print(prefix)
-    for key,val in c.nodes.items():
-        name = prefix+'.'+key
-        dumpvars(name,val)
-
-def retry(cmd,val):
-    itry=0
-    while(True):
-        try:
-            cmd(val)
-        except Exception as e:
-            logging.warning(f'Try {itry} of {cmd}({val}) failed.')
-            if itry < 3:
-                itry+=1
-                continue
-            else:
-                raise e
-        break
-
-#
-#  Apply the configuration dictionary to the rogue registers
-#
-def apply_dict(pathbase,base,cfg):
-    rogue_translate = {}
-    rogue_translate['TriggerEventBuffer'] = f'TriggerEventBuffer[0]'
-
-    depth = 0
-    my_queue  =  deque([[pathbase,depth,base,cfg]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
-    while(my_queue):
-        path,depth,rogue_node, configdb_node = my_queue.pop()
-        if(dict is type(configdb_node)):
-            for i in configdb_node:
-                k = rogue_translate[i] if i in rogue_translate else i
-                try:
-                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[k],configdb_node[i]])
-                except KeyError:
-                    logging.warning('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
-
-        #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
-            if False:
-                logging.info(f'NOT setting {path} to {configdb_node}')
-            else:
-                logging.info(f'Setting {path} to {configdb_node}')
-                retry(rogue_node.set,configdb_node)
-
-def _dict_compare(d1,d2,path):
-    for k in d1.keys():
-        if k in d2.keys():
-            if d1[k] is dict:
-                _dict_compare(d1[k],d2[k],path+'.'+k)
-            elif (d1[k] != d2[k]):
-                print(f'key[{k}] d1[{d1[k]}] != d2[{d2[k]}]')
-        else:
-            print(f'key[{k}] not in d1')
-    for k in d2.keys():
-        if k not in d1.keys():
-            print(f'key[{k}] not in d2')
-
-#
-#  Construct an asic pixel mask with square spacing
-#
-def pixel_mask_square(value0,value1,spacing,position):
-    ny,nx=288,384;
-    if position>=spacing**2:
-        logging.error('position out of range')
-        position=0;
-    out=np.zeros((ny,nx),dtype=np.int)+value0
-    position_x=position%spacing; position_y=position//spacing
-    out[position_y::spacing,position_x::spacing]=value1
-    return out
-
-#
-#  Scramble the user element pixel array into the native asic orientation
-#
-#
-#    A1   |   A3       (A1,A3) rotated 180deg
-# --------+--------
-#    A0   |   A2
-#
-def user_to_rogue(a):
-    v = a.reshape((elemRowsD*2,elemCols*2))
-    s = np.zeros((4,elemRowsC,elemCols),dtype=np.uint8)
-    s[0,:elemRowsD] = v[elemRowsD:,:elemCols]
-    s[2,:elemRowsD] = v[elemRowsD:,elemCols:]
-    vf = np.flip(v)
-    s[1,:elemRowsD] = vf[elemRowsD:,elemCols:]
-    s[3,:elemRowsD] = vf[elemRowsD:,:elemCols]
-
-    return s
 
 class EpixBoard(pyrogue.Root):
     def __init__(self, srp, **kwargs):
@@ -196,35 +72,22 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
     # Create and Connect SRP to VC0 DMA destination to send commands
     pyrogue.streamConnectBiDir(pgpVc0DmaDest,srp)
 
-    ePixBoard = EpixBoard(srp)
-    ePixBoard.__enter__()
-
-    for i in range(4):
-        print("----------")
-        print("pass",i)
-        print("Talking to the PCIe card.....")
-        print(f"FpgaVersion {hex(pbase.DevPcie.AxiPcieCore.AxiVersion.FpgaVersion.get())}")
-        print(f"GitHash {hex(pbase.DevPcie.AxiPcieCore.AxiVersion.GitHash.get())}")
-        print(f"GitHashShort {pbase.DevPcie.AxiPcieCore.AxiVersion.GitHashShort.get()}")
-        print("Talking to the camera......")
-        print(f"FpgaVersion {hex(ePixBoard.ePix100aFPGA.AxiVersion.FpgaVersion.get())}")
-        print(f"GitHashShort {ePixBoard.ePix100aFPGA.AxiVersion.GitHashShort.get()}")
-        print("")
-    return base
-    #  Connect to the camera
-#    cbase = epix_hr_single_10k.ePixFpga.EpixHR10kT(dev=dev,hwType='datadev',lane=lane,pollEn=False,
-#                                                   enVcMask=0x2,enWriter=False,enPrbs=False)
-    cbase = Board(dev=dev)
+    cbase = EpixBoard(srp)
     cbase.__enter__()
-    base['cam'] = cbase
 
-    base['bypass'] = 0x3f
+    print(f"KCU FpgaVersion {hex(pbase.DevPcie.AxiPcieCore.AxiVersion.FpgaVersion.get())}")
+    print(f"CAM FpgaVersion {hex(cbase.ePix100aFPGA.AxiVersion.FpgaVersion.get())}")
+    cbase.ePix100aFPGA.Oscilloscope.enable.set(False)
+
+    base['cam'] = cbase
+    base['bypass'] = 0x38
 
     #  Enable the environmental monitoring
-    cbase.EpixHR.SlowAdcRegisters.enable.set(1)
-    cbase.EpixHR.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
-    cbase.EpixHR.SlowAdcRegisters.StreamEn.set(1)
-    cbase.EpixHR.SlowAdcRegisters.enable.set(0)
+    # cpo: currently crashes the GUI
+    #cbase.ePix100aFPGA.SlowAdcRegisters.enable.set(1)
+    #cbase.ePix100aFPGA.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
+    #cbase.ePix100aFPGA.SlowAdcRegisters.StreamEn.set(1)
+    #cbase.ePix100aFPGA.SlowAdcRegisters.enable.set(0)
 
     logging.info('epix100_unconfig')
     epix100_unconfig(base)
@@ -242,16 +105,10 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
 
-    # configure internal ADC
-#    cbase.InitHSADC()
-
     time.sleep(1)
-    epix100_internal_trigger(base)
+    pbase.DevPcie.Application.EventBuilder.Bypass.set(0x38)
     return base
 
-#
-#  Set the PGP lane
-#
 def epix100_init_feb(slane=None,schan=None):
     global lane
     global chan
@@ -272,8 +129,6 @@ def epix100_connect(base):
         txId = timTxId('epix100')
         logging.debug('TxId {:x}'.format(txId))
         pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
-        #print('*** cpohack partition/readout group to 4')
-        #pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition=4
     else:
         print('*** cpohack rxid')
         #rxId = 0xffffffff
@@ -304,13 +159,10 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
     ocfg = cfg
 
-    #  Apply the expert settings to the device
-    if 'pci' in base:
-        pbase = base['pci']
-        pbase.StopRun()
-        time.sleep(0.01)
-        
-        pbase.StartRun()
+    pbase = base['pci']
+    pbase.StopRun()
+    time.sleep(0.01)
+    pbase.StartRun()
 
     #  Capture the firmware version to persist in the xtc
     #cbase = base['cam']
@@ -351,7 +203,18 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
         logging.debug('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
         result.append( json.dumps(scfg[i]) )
 
-    print('****',result)
+    partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+    rawStart       = cfg['user']['start_ns']
+    triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
+    logging.debug('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+    if triggerDelay < 0:
+        logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+        raise ValueError('triggerDelay computes to < 0')
+
+    lane = 0
+    pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].TriggerDelay.set(triggerDelay)
+    print('**** result',result,'trigdelay',triggerDelay)
+    pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition.set(group)
 
     return result
 
