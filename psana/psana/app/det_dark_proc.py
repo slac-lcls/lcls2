@@ -16,7 +16,7 @@ USAGE = 'Usage:'\
       + '\n  %s -e tmoc00118 -d tmoopal -r123' % SCRNAME\
       + '\n  %s -e tmoc00118 -d tmoopal -r123 -D' % SCRNAME\
       + '\n  %s -e tmoc00118 -d tmoopal -r123 -D -o ./work -L DEBUG' % SCRNAME\
-      + '\n  %s -e tmoc00318 -d epix100 -r10 -o ./work' % SCRNAME\
+      + '\n  %s -e tmoc00318 -d epix100 -r10 -D' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -54,11 +54,10 @@ def argument_parser():
     d_exp     = None # 'tmoc00118'
     d_det     = None # 'tmoopal'
     d_runs    = None # 123 or 123,125-126
-    d_nrecs   = 200  # number of records to collect and process
+    d_nrecs   = 1000 # number of records to collect and process
     d_nrecs1  = 100  # number of records to process at 1st stage
     d_dirxtc  = None # '/cds/data/psdm/tmo/tmoc00118/xtc'
-    #d_dirrepo = '/cds/group/psdm/detector/calib2' #'./work'
-    d_dirrepo = './work'
+    d_dirrepo = '/cds/group/psdm/detector/calib2'
     d_usesmd  = True
     d_logmode = 'INFO'
     d_errskip = True
