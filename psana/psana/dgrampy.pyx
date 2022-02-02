@@ -95,9 +95,14 @@ cdef class PyXtcUpdateIter():
         else:
             return memoryview(bytearray()) 
 
+    def clear_buf(self):
+        self.cptr.clear_buf()
+
     def copy_dgram(self, PyDgram pydg):
-        print(f'sizeof(Dgram): {sizeof(Dgram)}')
         self.cptr.copy2buf(<char *>pydg.cptr, sizeof(Dgram))
+
+    def updatetimestamp(self, PyDgram pydg, sec, nsec):
+        self.cptr.updateTimeStamp(pydg.cptr[0], sec, nsec)
 
     def names(self, PyXtc pyxtc, detdef, algdef, PyDataDef pydatadef, 
             nodeId=None, namesId=None, segment=None):
@@ -124,7 +129,7 @@ cdef class PyXtcUpdateIter():
         self.cptr.createData(pyxtc.cptr[0], namesdef.nodeId, namesdef.namesId)
 
     def adddata(self, PyXtc pyxtc, namesdef, PyDataDef pydatadef, 
-            datadef_name, unsigned[:] shape, char[:] data):
+            datadef_name, unsigned[:] shape, data):
         cdef unsigned* shape_ptr
         cdef Py_buffer shape_pybuf
         PyObject_GetBuffer(shape, &shape_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
@@ -218,7 +223,6 @@ def datadef(datadict):
         datadef.add(key, val[0], val[1])
     return datadef
 
-
 def copy_dgram(PyDgram pydg):
     uiter.copy_dgram(pydg)
 
@@ -228,3 +232,9 @@ def get_buf():
 def iterate(PyDgram pydg):
     pyxtc = pydg.get_pyxtc()
     uiter.iterate(pyxtc)
+
+def clearbuf():
+    uiter.clear_buf()
+
+def updatetimestamp(PyDgram pydg, sec, nsec):
+    uiter.updatetimestamp(pydg, sec, nsec)

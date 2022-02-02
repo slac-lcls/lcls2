@@ -90,6 +90,10 @@ public:
         return _bufsize;
     }
 
+    void clear_buf(){
+        _bufsize = 0;
+    }
+
     void copy2buf(char* in_buf, unsigned in_size);
     void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
             unsigned nodeId, unsigned namesId, unsigned segment,
@@ -100,6 +104,7 @@ public:
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
                         unsigned timestamp_val);
     void createData(Xtc& xtc, unsigned nodeId, unsigned namesId);
+    void updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec);
 
 
 private:

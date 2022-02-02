@@ -230,6 +230,10 @@ void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
 }
 
 
+void XtcUpdateIter::updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec){
+    d.time = TimeStamp(sec, nsec);
+}
+
 void XtcUpdateIter::addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
         unsigned nodeId, unsigned namesId, unsigned segment,
         char* algName, uint8_t major, uint8_t minor, uint8_t micro,
@@ -249,34 +253,42 @@ void XtcUpdateIter::createData(Xtc& xtc, unsigned nodeId, unsigned namesId) {
 
 void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
         unsigned* shape, char* data, DataDef& datadef, char* varname) {
+    printf("addData\n");
     for(unsigned i=0; i<MaxRank; i++){
         printf("shape[%u]: %u ", i, shape[i]);
     }
     printf("\n");
 
-    uint8_t* cdata = (uint8_t*) data;
-    for(unsigned i=0; i<6; i++){
-        printf("data[%u]: %u", i, cdata[i]);
-    }
-    printf("\n");
-    
     NamesId namesId0(nodeId, namesId);
 
     // TODO: Add check for newIndex >= 0
     int newIndex = datadef.index(varname);
-
-    Array<uint8_t> arrayT = _newData->allocate<uint8_t>(newIndex, shape);
+    
+    // Get shape and name (rank and type)
     Shape shp(shape);
     Name& name = _namesLookup[namesId0].names().get(newIndex);
-    printf("copy to ArrayT size=%u\n", shp.size(name)); 
-    memcpy(arrayT.data(), cdata, shp.size(name));
+
+    switch(name.type()){
+    case(Name::UINT8):{
+        Array<uint8_t> arrayT = _newData->allocate<uint8_t>(newIndex, shape);
+        memcpy(arrayT.data(), (uint8_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::UINT16):{
+        Array<uint16_t> arrayT = _newData->allocate<uint16_t>(newIndex, shape);
+        memcpy(arrayT.data(), (uint16_t*) data, shp.size(name));
+        break;
+    }
+    }
+
+    printf("copied %u bytes\n", shp.size(name));
     
-    for(unsigned i=0; i<shape[0]; i++){
+    /*for(unsigned i=0; i<shape[0]; i++){
         for (unsigned j=0; j<shape[1]; j++) {
             //arrayT(i,j) = 142+i*shape[1]+j;
             printf("arrayT(%u,%u)=%u\n", i, j, arrayT(i,j));
         }
-    }
+    }*/
 }
 
 Dgram& XtcUpdateIter::createTransition(unsigned utransId, 

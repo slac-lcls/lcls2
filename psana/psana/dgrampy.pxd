@@ -67,6 +67,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void get_value(int i, Name& name, DescData& descdata)
         void iterate(Xtc* xtc)
         char* get_buf()
+        void clear_buf()
         unsigned get_bufsize()
         void copy2buf(char* in_buf, unsigned in_size)
         void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
@@ -78,6 +79,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         Dgram& createTransition(unsigned transId, unsigned counting_timestamps,
                         unsigned timestamp_val)
         void createData(Xtc& xtc, unsigned nodeId, unsigned namesId)
+        void updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec)
 
     cdef cppclass DataDef:
         DataDef() except +
