@@ -59,7 +59,7 @@ def input_argument_parser():
     parser.add_argument('-f', '--fname', default=c.d_fname, type=str, help=c.h_fname)
     parser.add_argument('-l', '--loglevel', default=c.d_loglevel, type=str, help=c.h_loglevel)
     return parser
-  
+
 
 if __name__ == "__main__":
     image_viewer()
