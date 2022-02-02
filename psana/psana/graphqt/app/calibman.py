@@ -81,7 +81,7 @@ def input_argument_parser():
     parser.add_argument('-p', '--upwd',       default=c.d_upwd,       type=str, help=c.h_upwd)
     parser.add_argument('-S', '--savecfg',    default=c.d_savecfg, action='store_true', help=c.h_savecfg)
     return parser
-  
+
 
 if __name__ == "__main__":
     calibman_gui()
