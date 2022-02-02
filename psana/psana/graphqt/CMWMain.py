@@ -20,9 +20,14 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt, QPoint
 
-from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line, log_rec_on_start
+from psana.detector.RepoManager import RepoManager
+from psana.detector.Utils import gu, save_record_at_start
+#from psana.detector.Utils import print_kwargs, is_in_command_line, log_rec_at_start
+#from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line, log_rec_on_start
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWLoggerStd import QWLoggerStd
+
+print_kwargs, is_in_command_line = gu.print_kwargs, gu.is_in_command_line
 
 
 class CMWMain(QWidget):
@@ -35,6 +40,9 @@ class CMWMain(QWidget):
 
         from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER set_input_pars !!!!\
         self.wlog = cp.wlog = QWLoggerStd(cp, show_buttons=False)
+
+        repoman = RepoManager(kwargs['logdir'], dettype=None)
+        save_record_at_start(repoman, 'calibman')
 
         self.wtab = CMWMainTabs()
 
@@ -63,7 +71,7 @@ class CMWMain(QWidget):
         x,y,w,h = self.xywh
         self.setGeometry(x,y,w,h)
         logger.info('set preserved window geometry x,y,w,h: %d,%d,%d,%d' % (x,y,w,h))
-        logger.info(log_rec_on_start())
+        #logger.info(log_rec_at_start())
 
         self.main_win_pos_x  = cp.main_win_pos_x
         self.main_win_pos_y  = cp.main_win_pos_y
