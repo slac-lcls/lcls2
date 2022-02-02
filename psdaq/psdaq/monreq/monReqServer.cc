@@ -491,7 +491,7 @@ public:
   MebApp(const std::string& collSrv, MebParams&);
   ~MebApp();
 public:                                 // For CollectionApp
-  json connectionInfo() override;
+  json connectionInfo(const nlohmann::json& msg) override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
   void handlePhase1(const json& msg) override;
@@ -552,7 +552,7 @@ std::string MebApp::_error(const json&        msg,
   return errorMsg;
 }
 
-json MebApp::connectionInfo()
+json MebApp::connectionInfo(const nlohmann::json& msg)
 {
   // Allow the default NIC choice to be overridden
   if (_prms.ifAddr.empty())

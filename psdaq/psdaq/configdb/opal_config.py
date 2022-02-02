@@ -18,6 +18,7 @@ cl = None
 pv = None
 xpmpv_global = None
 barrier_global = Barrier()
+connect_info_global = {}
 lm = 1
 
 #FEB parameters
@@ -94,19 +95,15 @@ def opal_init_feb(slane=None,schan=None):
     if schan is not None:
         chan = int(schan)
 
-def opal_connect(cl, connect_json_str):
-    global lane
-    global chan
-    global barrier_global
+# called on alloc
+def connectionInfo(alloc_json_str):
+    alloc_json = json.loads(alloc_json_str)
+    print('*** alloc_json_str',alloc_json_str)
+    print('*** alloc_json',alloc_json)
 
-    connect_json = json.loads(connect_json_str)
-    print('***',connect_json['body']['drp'])
-
-    supervisor,nworker = supervisor_info(connect_json)
-    print('***',supervisor,nworker)
+    supervisor,nworker = supervisor_info(alloc_json)
+    print('Opal supervisor:',supervisor,'nworkers:',nworker)
     barrier_global.init(supervisor,nworker)
-
-    txId = timTxId('opal')
 
     # Open a new thread here
     if xpmpv_global is not None:
@@ -117,6 +114,8 @@ def opal_connect(cl, connect_json_str):
         #  Empirically found that we need to cycle to LCLS1 timing
         #  to get the timing feedback link to lock
         if barrier_global.supervisor:
+            txId = timTxId('opal')
+
             cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
             time.sleep(0.1)
             cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
@@ -130,6 +129,17 @@ def opal_connect(cl, connect_json_str):
         barrier_global.wait()
         rxId = cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
         print('rxId {:x}'.format(rxId))
+
+    if barrier_global.supervisor:
+        cl.StopRun()
+    barrier_global.wait()
+    connect_info_global['paddr'] = rxId
+
+    return connect_info_global
+
+def opal_connect(cl, connect_json_str):
+    global lane
+    global chan
 
     # initialize the serial link
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan)
@@ -148,21 +158,15 @@ def opal_connect(cl, connect_json_str):
     opalid = uart._rx._last
     print('opalid {:}'.format(opalid))
 
-    # maybe should be done by supervisor only. not sure.
-    print('*** cpo: fix cl.StopRun')
-    cl.StopRun()
-
-    d = {}
-    d['paddr'] = rxId
     try:
-        d['model'] = opalid.split('-')[1].split('/')[0]
-        d['serno'] = opalid.split(':')[1]
+        connect_info_global['model'] = opalid.split('-')[1].split('/')[0]
+        connect_info_global['serno'] = opalid.split(':')[1]
     except:
-        logging.warning('No opal model/serialnum available on camlink serial port. Configure camera.')
-        d['model'] = 'none'
-        d['serno'] = '1000' # not ideal: default to opal1000
+        logging.warning('No opal model/serialnum available on camlink serial port. Configure camera with rogue.')
+        connect_info_global['model'] = 'none'
+        connect_info_global['serno'] = '1000' # not ideal: default to opal1000
 
-    return d
+    return connect_info_global
 
 def user_to_expert(cl, cfg, full=False):
     global group
@@ -374,8 +378,9 @@ def opal_update(update):
 
 def opal_shutdown(cl):
     # this routine gets called on disconnect transition
-    print('*** here in shutdown')
+    if barrier_global.supervisor:
+        cl.StopRun()
+    barrier_global.wait()
     barrier_global.shutdown()
-    cl.StopRun()
 
     return cl

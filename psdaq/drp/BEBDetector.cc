@@ -104,12 +104,13 @@ void BEBDetector::_init_feb()
     Py_DECREF(mybytes);
 }
 
-json BEBDetector::connectionInfo()
+json BEBDetector::connectionInfo(const json& msg)
 {
     unsigned reg = m_paddr;
     int xpm  = (reg >> 20) & 0x0F;
     int port = (reg >>  0) & 0xFF;
     json info = {{"xpm_id", xpm}, {"xpm_port", port}};
+    printf("*** BEBDet %d %d %x\n",xpm,port,m_paddr);
     return info;
 }
 

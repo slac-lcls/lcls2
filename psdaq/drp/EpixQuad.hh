@@ -10,7 +10,7 @@ class EpixQuad : public BEBDetector
 public:
     EpixQuad(Parameters* para, MemPool* pool);
     ~EpixQuad();
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     unsigned enable   (XtcData::Xtc& xtc, const nlohmann::json& info) override;
     unsigned disable  (XtcData::Xtc& xtc, const nlohmann::json& info) override;
     void slowupdate(XtcData::Xtc&) override;

@@ -660,7 +660,7 @@ public:
   TebApp(const std::string& collSrv, EbParams&);
   ~TebApp();
 public:                                 // For CollectionApp
-  json connectionInfo() override;
+  json connectionInfo(const nlohmann::json& msg) override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
   void handlePhase1(const json& msg) override;
@@ -729,7 +729,7 @@ std::string TebApp::_error(const json&        msg,
   return errorMsg;
 }
 
-json TebApp::connectionInfo()
+json TebApp::connectionInfo(const nlohmann::json& msg)
 {
   // Allow the default NIC choice to be overridden
   if (_prms.ifAddr.empty())

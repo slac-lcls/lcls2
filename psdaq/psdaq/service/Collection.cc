@@ -270,7 +270,7 @@ void CollectionApp::handleAlloc(const json &msg)
     auto it = std::find(msg["body"]["ids"].begin(), msg["body"]["ids"].end(), m_id);
     if (it != msg["body"]["ids"].end()) {
         subscribePartition();       // ZMQ_SUBSCRIBE
-        json info = connectionInfo();
+        json info = connectionInfo(msg);
         json body = {{m_level, info}};
         std::ostringstream ss;
         ss << std::setw(4) << body;

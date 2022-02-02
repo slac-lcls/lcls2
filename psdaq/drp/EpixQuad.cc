@@ -125,13 +125,13 @@ unsigned EpixQuad::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
     return 0;
 }
 
-json EpixQuad::connectionInfo()
+json EpixQuad::connectionInfo(const nlohmann::json& msg)
 {
     // Exclude connection info until cameralink-gateway timingTxLink is fixed
     logging::error("Returning NO XPM link; implementation incomplete");
     return json({});
 
-    return BEBDetector::connectionInfo();
+    return BEBDetector::connectionInfo(msg);
 }
 
 unsigned EpixQuad::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)

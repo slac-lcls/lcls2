@@ -72,7 +72,7 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     }
 }
 
-json XpmDetector::connectionInfo()
+json XpmDetector::connectionInfo(const nlohmann::json& msg)
 {
     int fd = m_pool->fd();
 

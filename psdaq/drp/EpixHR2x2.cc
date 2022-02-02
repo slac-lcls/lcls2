@@ -142,13 +142,13 @@ unsigned EpixHR2x2::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
     return 0;
 }
 
-json EpixHR2x2::connectionInfo()
+json EpixHR2x2::connectionInfo(const nlohmann::json& msg)
 {
     // Exclude connection info until lcls2-epix-hr-pcie timingTxLink is fixed
     logging::error("Returning NO XPM link; implementation incomplete");
     return json({});
 
-    return BEBDetector::connectionInfo();
+    return BEBDetector::connectionInfo(msg);
 }
 
 unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)

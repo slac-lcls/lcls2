@@ -163,7 +163,7 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
     _init(para->kwargs["epics_prefix"].c_str());
 }
 
-json Wave8::connectionInfo()
+json Wave8::connectionInfo(const nlohmann::json& msg)
 {
     // Exclude connection info until cameralink-gateway timingTxLink is fixed
     logging::error("Returning NO XPM link; implementation incomplete");

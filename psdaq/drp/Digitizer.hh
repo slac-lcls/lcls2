@@ -16,7 +16,7 @@ namespace Drp {
     public:
         Digitizer(Parameters* para, MemPool* pool);
         ~Digitizer();
-        nlohmann::json connectionInfo() override;
+        nlohmann::json connectionInfo(const nlohmann::json& msg) override;
         void connect(const nlohmann::json&, const std::string& collectionId) override;
         unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
         void event(XtcData::Dgram& dgram, PGPEvent* event) override;

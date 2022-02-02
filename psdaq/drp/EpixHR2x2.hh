@@ -10,7 +10,7 @@ class EpixHR2x2 : public BEBDetector
 public:
     EpixHR2x2(Parameters* para, MemPool* pool);
     ~EpixHR2x2();
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     unsigned enable   (XtcData::Xtc& xtc, const nlohmann::json& info) override;
     unsigned disable  (XtcData::Xtc& xtc, const nlohmann::json& info) override;
     void slowupdate(XtcData::Xtc&) override;

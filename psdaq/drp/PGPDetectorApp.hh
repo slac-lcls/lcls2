@@ -15,7 +15,7 @@ class PGPDetectorApp : public CollectionApp
 public:
     PGPDetectorApp(Parameters& para);
     virtual ~PGPDetectorApp();
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void handleReset(const nlohmann::json& msg) override;
 private:
     void handleConnect(const nlohmann::json& msg) override;
