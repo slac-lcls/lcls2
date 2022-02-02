@@ -9,7 +9,7 @@ Usage::
       repoman = RepoManager(dirrepo, dirmode=0o777, filemode=0o666)
       d = repoman.dir_logs()
       d = repoman.makedir_logs()
-      f = repoman.logname_on_start(fname)
+      f = repoman.logname_at_start(fname)
 
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -17,34 +17,17 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2022-01-20 by Mikhail Dubrovin
 """
 
-import os
-from psana.pyalgos.generic.Utils import str_tstamp, logging, get_login
-logger = logging.getLogger(__name__)
-
-
-def file_mode(fname) :
-    """Returns file mode
-    """
-    from stat import ST_MODE
-    return os.stat(fname)[ST_MODE]
-
-
-def create_directory(dir, mode=0o777, **kwa):
-    """Creates directory and sets its mode"""
-    if os.path.exists(dir):
-        logger.debug('Exists: %s mode(oct): %s' % (dir, oct(file_mode(dir))))
-    else:
-        os.makedirs(dir)
-        os.chmod(dir, mode)
-        logger.debug('Created: %s, mode(oct)=%s' % (dir, oct(mode)))
+from psana.detector.Utils import os, str_tstamp, get_login, create_directory
+DIR_LOG_AT_START = '/cds/group/psdm/logs/atstart'
 
 
 class RepoManager(object):
     """Supports repository directories/files naming structure
        <dirrepo>/<panel_id>/<constant_type>/<files-with-constants>
        <dirrepo>/logs/<year>/<log-files>
-       <dirrepo>/logs/log-<fname>-<year>.txt # file with log_rec_on_start()
+       <dirrepo>/logs/log-<fname>-<year>.txt # file with log_rec_at_start()
        e.g.: dirrepo = '/reg/g/psdm/detector/gains/epix10k/panels'
+       DIR_LOG_AT_START/<year>/<year>_logrec_<procname>.txt
     """
 
     def __init__(self, dirrepo, **kwa):
@@ -52,8 +35,12 @@ class RepoManager(object):
         self.dirmode     = kwa.get('dirmode',  0o777)
         self.filemode    = kwa.get('filemode', 0o666)
         self.dirname_log = kwa.get('dirname_log', 'logs')
+        self.year        = kwa.get('year', str_tstamp(fmt='%Y'))
+        self.tstamp      = kwa.get('tstamp', str_tstamp(fmt='%Y-%m-%dT%H%M%S'))
         self.dettype     = kwa.get('dettype', None)
         if self.dettype is not None: self.dirrepo += '/%s' % self.dettype
+        self.dir_log_at_start = kwa.get('dir_log_at_start', DIR_LOG_AT_START)
+
 
     def makedir(self, d):
         """create and return directory d with mode defined in object property
@@ -88,18 +75,17 @@ class RepoManager(object):
         return self.makedir(self.dir_logs())
 
 
-    def dir_logs_year(self, year=None):
+    def dir_logs_year(self):
         """return directory <dirrepo>/logs/<year>
         """
-        _year = str_tstamp(fmt='%Y') if year is None else year
-        return os.path.join(self.dir_logs(), _year)
+        return os.path.join(self.dir_logs(), self.year)
 
 
-    def makedir_logs_year(self, year=None):
+    def makedir_logs_year(self):
         """create and return directory <dirrepo>/logs/<year>
         """
         d = self.makedir_logs()
-        return self.makedir(self.dir_logs_year(year))
+        return self.makedir(self.dir_logs_year())
 
 
     def dir_merge(self, dname='merge_tmp'):
@@ -152,16 +138,6 @@ class RepoManager(object):
         return dirs
 
 
-    def logname_on_start(self, scrname, year=None):
-        _year = str_tstamp(fmt='%Y') if year is None else str(year)
-        return '%s/%s_log_%s.txt' % (self.makedir_logs(), _year, scrname)
-
-
-    def logname(self, scrname):
-        tstamp = str_tstamp(fmt='%Y-%m-%dT%H%M%S')
-        return '%s/%s_log_%s.txt' % (self.makedir_logs_year(), tstamp, scrname)
-
-
     def dir_constants(self, dname='constants'):
         """returns path to the directory like <dirrepo>/<logs>/<year>/<constants>
         """
@@ -173,15 +149,33 @@ class RepoManager(object):
         return self.makedir(self.dir_constants(dname))
 
 
+    def logname(self, procname):
+        return '%s/%s_log_%s.txt' % (self.makedir_logs_year(), self.tstamp, procname)
+
+
+    def dir_log_at_start_year(self):
+        """return directory <dirlog_at_start>/<year>"""
+        return os.path.join(self.dir_log_at_start, self.year)
+
+
+    def makedir_log_at_start_year(self):
+        """create and return directory"""
+        return self.makedir(self.dir_log_at_start_year())
+
+
+    def logname_at_start(self, procname):
+        return '%s/%s_logrec_%s.txt' % (self.makedir_log_at_start_year(), self.year, procname)
+
+
 if __name__ == "__main__":
 
     dirrepo = './work'
     fname = 'testfname'
-    scrname = 'testscrname-%s' % get_login()
+    procname = 'testproc-%s' % get_login()
     repoman = RepoManager(dirrepo, dirmode=0o777, filemode=0o666)
     print('makedir_logs %s' % repoman.makedir_logs())
-    print('logname_on_start %s' % repoman.logname_on_start(fname))
-    print('logname %s' % repoman.logname(scrname))
+    print('logname %s' % repoman.logname(procname))
     print('makedir_constants %s' % repoman.makedir_constants())
+    print('logname_at_start %s' % repoman.logname_at_start(fname))
 
 # EOF
