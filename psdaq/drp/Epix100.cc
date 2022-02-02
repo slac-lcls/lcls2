@@ -127,12 +127,10 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
     {
         Alg alg("raw", 2, 0, 1);
         // copy the detName, detType, detId from the Config Names
-        // cposeglist
-        // Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
         Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
-        logging::debug("Constructing panel eventNames src 0x%x",
-                       unsigned(nid));
+        logging::info("Constructing panel eventNames src 0x%x ids %s",
+                      unsigned(nid),configNames.detId());
         Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
                                             configNames.detType(),
                                             configNames.detId(), 
@@ -197,7 +195,7 @@ void Epix100::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& 
     }
 
     uint16_t* indata = (uint16_t*)(subframes[3].data()+headersize);
-    // unscamble asics like lcls1's pds/epix100a/Epix100aServer.cc
+    // unscramble asics like lcls1's pds/epix100a/Epix100aServer.cc
     for(unsigned i=0; i<nasicrows; i++) {
         memcpy(aframe.data()+(nasicrows+i+0)*ncols, indata+(2*i+0)*ncols, ncols*sizeof(uint16_t));
         memcpy(aframe.data()+(nasicrows-i-1)*ncols, indata+(2*i+1)*ncols, ncols*sizeof(uint16_t));

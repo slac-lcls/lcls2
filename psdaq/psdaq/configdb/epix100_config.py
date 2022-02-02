@@ -80,14 +80,16 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
     cbase.ePix100aFPGA.Oscilloscope.enable.set(False)
 
     base['cam'] = cbase
+    # which event-batcher streams to ignore.  this include lowest two bits
+    # (0x3, timing), third lowest-bit (0x4) is epix100. ignore upper-bit streams.
     base['bypass'] = 0x38
 
     #  Enable the environmental monitoring
     # cpo: currently crashes the GUI
-    #cbase.ePix100aFPGA.SlowAdcRegisters.enable.set(1)
-    #cbase.ePix100aFPGA.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
-    #cbase.ePix100aFPGA.SlowAdcRegisters.StreamEn.set(1)
-    #cbase.ePix100aFPGA.SlowAdcRegisters.enable.set(0)
+    cbase.ePix100aFPGA.SlowAdcRegisters.enable.set(1)
+    cbase.ePix100aFPGA.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
+    cbase.ePix100aFPGA.SlowAdcRegisters.StreamEn.set(1)
+    cbase.ePix100aFPGA.SlowAdcRegisters.enable.set(0)
 
     logging.info('epix100_unconfig')
     epix100_unconfig(base)
@@ -106,7 +108,7 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
 
     time.sleep(1)
-    pbase.DevPcie.Application.EventBuilder.Bypass.set(0x38)
+    pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
     return base
 
 def epix100_init_feb(slane=None,schan=None):
@@ -164,11 +166,6 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     time.sleep(0.01)
     pbase.StartRun()
 
-    #  Capture the firmware version to persist in the xtc
-    #cbase = base['cam']
-    #firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
-    firmwareVersion = 567
-
     ocfg = cfg
 
     topname = cfg['detName:RO'].split('_')
@@ -181,17 +178,22 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     scfg[0]['detName:RO'] = topname[0]+'_'+topname[1]
 
 
+    cbase = base['cam']
+    firmwareVersion = cbase.ePix100aFPGA.AxiVersion.FpgaVersion.get()
     for seg in range(1):
         #  Construct the ID
-#        carrierId = [ cbase.SystemRegs.CarrierIdLow [seg].get(),
-#                      cbase.SystemRegs.CarrierIdHigh[seg].get() ]
-        carrierId = [ 0, 0 ]
-        digitalId = [ 0, 0 ]
-        analogId  = [ 0, 0 ]
+        epixregs = cbase.ePix100aFPGA.EpixFpgaRegisters
+        carrierId = [ epixregs.CarrierCardId0.get(),
+                      epixregs.CarrierCardId1.get()]
+        digitalId = [ epixregs.DigitalCardId0.get(),
+                      epixregs.DigitalCardId1.get()]
+        analogId  = [ epixregs.AnalogCardId0.get(),
+                      epixregs.AnalogCardId1.get()]
         id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
                                                           carrierId[0], carrierId[1],
                                                           digitalId[0], digitalId[1],
                                                           analogId [0], analogId [1])
+        print('*** setting id to',id)
         segids[seg] = id
         top = cdict()
         top.setAlg('config', [2,0,0])
