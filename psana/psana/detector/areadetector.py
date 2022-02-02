@@ -51,7 +51,7 @@ import numpy as np
 
 from psana.pscalib.geometry.SegGeometryStore import sgs
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess #, img_from_pixel_arrays
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
+from psana.detector.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes

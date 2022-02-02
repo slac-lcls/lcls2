@@ -27,7 +27,7 @@ from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_
 from psana.detector.UtilsMask import merge_status
 #from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one as seg
 #from psana.pscalib.geometry.SegGeometryStore import sgs
-from psana.pyalgos.generic.NDArrUtils import info_ndarr
+from psana.detector.NDArrUtils import info_ndarr
 
 
 class epix_base(AreaDetector):

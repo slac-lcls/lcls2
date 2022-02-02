@@ -4,7 +4,7 @@
 
 from time import time
 import numpy as np
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
+from psana.detector.NDArrUtils import info_ndarr, print_ndarr
 
 
 def load_ndarray(fname='/reg/g/psdm/detector/data2_test/npy/nda-mfxp17218-r0505-lysozyme-max-10k.npy'):

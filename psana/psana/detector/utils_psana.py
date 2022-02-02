@@ -22,7 +22,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2021-02-16 by Mikhail Dubrovin
 """
 
-from psana.pyalgos.generic.Utils import str_tstamp
+from psana.detector.Utils import str_tstamp
 from psana.detector.Utils import info_dict #, info_namespace, info_command_line
 
 

@@ -49,8 +49,8 @@ def issue_2020_12_02():
         print('XXX run.detnames: ', run.detnames) # {'epixquad'}
         print('XXX run.expt    : ', run.expt)     # amox27716
         print('XXX run.id      : ', run.id)       # 0
-        #det = run.Detector('epixquad') 
-    exit('TEST EXIT') 
+        #det = run.Detector('epixquad')
+    exit('TEST EXIT')
 
 
 def issue_2020_12_10():
@@ -63,8 +63,8 @@ def issue_2020_12_10():
     >>but I can't get anything useful from this detector. Something is still missing.
 
     The script below works for me for the ued epix-scan.
-    At the moment I?ve forgotten why we did it with two Detectors 
-    instead of putting the information into one detector 
+    At the moment I?ve forgotten why we did it with two Detectors
+    instead of putting the information into one detector
     or the Step object (like we do with the runinfo).
     Perhaps Mona/ChrisF/Matt (cc?d) can remind me post tag-up.
     We?ve had several long discussions about this and changed it a few times ...
@@ -89,7 +89,7 @@ def issue_2020_12_10():
 
 def issue_2020_12_16():
     """Chriss access to config does not work, Matts' works """
-    from psana.pyalgos.generic.NDArrUtils import print_ndarr
+    from psana.detector.NDArrUtils import print_ndarr
     from psana import DataSource
     ds = DataSource(files='/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2')
     detname = 'epixquad'
@@ -120,17 +120,17 @@ def issue_2020_12_16():
           for k,v in scfg.items():
               cob = v.config
               print_ndarr(cob.asicPixelConfig, 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(cob.trbit)))
-              
+
 
 def issue_2020_12_19():
     """First version of det.raw.calib"""
-    from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
+    from psana.detector.NDArrUtils import print_ndarr, info_ndarr
     from psana import DataSource
 
     ds = DataSource(exp='ueddaq02',run=28)
 
     for run in ds.runs():
-        print('====== run.runnum: ', run.runnum) 
+        print('====== run.runnum: ', run.runnum)
 
         det = run.Detector('epixquad')
 

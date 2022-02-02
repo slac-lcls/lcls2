@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 from psana.detector.areadetector import AreaDetector, np
 from psana.detector.UtilsAreaDetector import arr3d_from_dict
-from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, divide_protected, info_ndarr
+from psana.detector.NDArrUtils import reshape_to_2d, divide_protected, info_ndarr
 
 class opal_base(AreaDetector):
 

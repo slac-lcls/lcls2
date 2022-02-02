@@ -3,7 +3,6 @@
 import sys
 import logging
 SCRNAME = sys.argv[0].rsplit('/')[-1]
-
 STRLOGLEV = sys.argv[2] if len(sys.argv)>2 else 'INFO'
 INTLOGLEV = logging._nameToLevel[STRLOGLEV]
 logger = logging.getLogger(__name__)
@@ -33,7 +32,7 @@ def issue_2022_01_21():
 def issue_2022_01_26():
     """The same as issue_2022_01_21 but for run 10, print ndarray, access constants.
     """
-    from psana.pyalgos.generic.NDArrUtils import info_ndarr
+    from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
     ds = DataSource(exp='tmoc00318',run=10)
     myrun = next(ds.runs())
@@ -55,7 +54,9 @@ def issue_2022_01_26():
     print()
 
     for nevt,evt in enumerate(myrun.events()):
-        if nevt>10: break
+        if nevt>10:
+            print('event loop is terminated by maximal number of events')
+            break
         print(info_ndarr(det.raw.raw(evt),   'det.raw.raw(evt)  '))
         print(info_ndarr(det.raw.calib(evt), 'det.raw.calib(evt)'))
 
@@ -64,8 +65,8 @@ USAGE = '\nUsage:'\
       + '\n  python %s <test-name> <loglevel-e.g.-DEBUG-or-INFO>' % SCRNAME\
       + '\n  where test-name: '\
       + '\n    0 - print usage'\
-      + '\n    1 - issue_2022_01_21 - cpo epix100hw'\
-      + '\n    2 - issue_2022_01_26 - cpo epix100'\
+      + '\n    1 - issue_2022_01_21 - test epix100hw raw, calib, image'\
+      + '\n    2 - issue_2022_01_26 - test epix100 raw, calib, image and calib constants'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
