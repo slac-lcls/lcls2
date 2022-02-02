@@ -13,34 +13,44 @@ logger = logging.getLogger(__name__)
 DICT_NAME_TO_LEVEL = logging._nameToLevel
 #print('DICT_NAME_TO_LEVEL:',DICT_NAME_TO_LEVEL)
 #{'CRITICAL': 50, 'FATAL': 50, 'ERROR': 40, 'WARN': 30, 'WARNING': 30, 'INFO': 20, 'DEBUG': 10, 'NOTSET': 0}
+SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 import numpy as np
 
 import json
 from psana import DataSource
 from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
-from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp
+from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
 from psana.detector.utils_psana import seconds
+from psana.detector.UtilsLogging import init_file_handler
 
 
-def save_log_record_at_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, logmode='INFO', tsfmt='%Y-%m-%dT%H:%M:%S%z'):
     """Adds record on start to the log file <dirrepo>/logs/log-<procname>-<year>.txt
     """
-    rec = log_rec_at_start(tsfmt)
-    year = str_tstamp(fmt='%Y')
-    create_directory(dirrepo, fac_mode)
+    from psana.detector.RepoManager import RepoManager
+
+    repoman = RepoManager(dirrepo, dettype=None, dirmode=dirmode, filemode=filemode)
+    logfname = repoman.logname('%s_%s' % (procname, get_login()))
+
+    create_directory(dirrepo, dirmode)
     dirlog = '%s/logs' % dirrepo
-    create_directory(dirlog, fac_mode)
-    logfname = '%s/log_%s_%s.txt' % (dirlog, procname, year)
+    create_directory(dirlog, dirmode)
 
-    fexists = os.path.exists(logfname)
-    save_textfile(rec, logfname, mode='a')
-    if not fexists: set_file_access_mode(logfname, fac_mode)
+    init_file_handler(logmode, logfname, filemode=0o664)
+    logger.info('Begin logfile: %s' % logfname)
+    repoman.save_record_at_start(SCRNAME, tsfmt=tsfmt)
 
-    logger.debug('Record on start: %s' % rec)
-    logger.info('Saved: %s' % logfname)
+#    rec = log_rec_at_start(tsfmt)
+#    year = str_tstamp(fmt='%Y')
+#    logfname = '%s/log_%s_%s.txt' % (dirlog, procname, year)
+#    fexists = os.path.exists(logfname)
+#    save_textfile(rec, logfname, mode='a')
+#    if not fexists: set_file_access_mode(logfname, dirmode)
+#    logger.debug('Record on start: %s' % rec)
+#    logger.info('Saved: %s' % logfname)
 
 
 def find_file_for_timestamp(dirname, pattern, tstamp):
@@ -209,7 +219,7 @@ def proc_dark_block(block, **kwa):
     nrecs1     = kwa.get('nrecs1', None)    # number of records for the 1st stage processing
 
     logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
-    logger.info(info_ndarr(block, 'Begin pricessing of the data block:\n    ', first=100, last=105))
+    logger.info(info_ndarr(block, 'Begin processing of the data block:\n    ', first=100, last=105))
     logger.debug('fraction of statistics for gate limits low: %.3f high: %.3f' % (fraclo, frachi))
 
     t0_sec = time()
@@ -454,9 +464,10 @@ def pedestals_calibration(*args, **kwa):
     #dsname = 'exp=%s:run=%s'%(exp,runs) if dirxtc is None else 'exp=%s:run=%s:dir=%s'%(exp, runs, dirxtc)
     #if usesmd: dsname += ':smd'
 
-    _name = sys._getframe().f_code.co_name
+    #_name = sys._getframe().f_code.co_name
+    _name = SCRNAME
     logger.info('In %s\n  exp: %s\n  runs: %s\n  detector: %s' % (_name, exp, str(runs), detname))
-    save_log_record_at_start(dirrepo, _name, dirmode)
+    save_log_record_at_start(dirrepo, _name, dirmode, filemode, logmode)
 
     #cpdic = get_config_info_for_dataset_detname(dsname, detname)
     #tstamp      = cpdic.get('tstamp', None)
@@ -924,9 +935,9 @@ def deploy_constants(*args, **kwa):
 
     #dsname = 'exp=%s:run=%d'%(exp,irun) if dirxtc is None else 'exp=%s:run=%d:dir=%s'%(exp, irun, dirxtc)
     irun = irun_first(runs)
-    _name = sys._getframe().f_code.co_name
-
-    save_log_record_at_start(dirrepo, _name, dirmode)
+    #_name = sys._getframe().f_code.co_name
+    _name = SCRNAME
+    save_log_record_at_start(dirrepo, _name, dirmode, filemode, logmode)
 
     cpdic = get_config_info_for_dataset_detname(**kwa)
     tstamp_run  = cpdic.get('tstamp',    None) # str

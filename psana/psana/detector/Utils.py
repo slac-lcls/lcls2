@@ -118,7 +118,7 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, t
     fexists = os.path.exists(logfname)
     save_textfile(rec, logfname, mode='a')
     if not fexists: set_file_access_mode(logfname, filemode)
-    logger.info('Saved: %s\nRecord: %s' % (logfname,rec))
+    logger.info('Record: %s\nSaved: %s' % (rec, logfname))
 
 
 def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
@@ -127,6 +127,6 @@ def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
     fexists = os.path.exists(logfname)
     save_textfile(rec, logfname, mode='a')
     if not fexists: set_file_access_mode(logfname, repoman.filemode)
-    logger.info('Saved: %s\nRecord: %s' % (logfname,rec))
+    logger.info('Record: %s\nSaved: %s' % (rec, logfname))
 
 # EOF

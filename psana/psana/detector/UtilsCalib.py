@@ -23,7 +23,7 @@ import numpy as np
 
 from psana.detector.utils_psana import datasource_kwargs, info_run, info_detector, seconds
 from psana import DataSource
-from psana.detector.Utils import str_tstamp, time, get_login, save_record_at_start, info_command_line, info_dict
+from psana.detector.Utils import str_tstamp, time, get_login, info_command_line, info_dict
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
 from psana.detector.RepoManager import RepoManager
@@ -82,7 +82,7 @@ def proc_block(block, **kwa):
     #nrecs1     = kwa.get('nrecs1', None)    # number of records for the 1st stage processing
 
     logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
-    logger.info(info_ndarr(block, 'begin pricessing of the data block', first=100, last=105))
+    logger.info(info_ndarr(block, 'begin processing of the data block', first=100, last=105))
 
     t0_sec = time()
 
@@ -563,7 +563,7 @@ def pedestals_calibration(**kwa):
         repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, dettype=dettype)
         logfname = repoman.logname('%s_%s' % (procname, get_login()))
         init_file_handler(logmode, logfname, filemode=0o664)
-        save_record_at_start(repoman, procname) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
+        repoman.save_record_at_start(procname) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
     logger.info('created %s detector object' % detname)
     logger.info(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
