@@ -14,6 +14,7 @@ See:
 Created on 2017-02-01 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
+import sys
 import logging
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QSplitter, QText
 from PyQt5.QtCore import Qt, QPoint
 
 from psana.detector.RepoManager import RepoManager
-from psana.detector.Utils import gu, save_record_at_start
+from psana.detector.Utils import gu #, save_record_at_start
 #from psana.detector.Utils import print_kwargs, is_in_command_line, log_rec_at_start
 #from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line, log_rec_on_start
 from psana.graphqt.CMConfigParameters import cp
@@ -42,7 +43,7 @@ class CMWMain(QWidget):
         self.wlog = cp.wlog = QWLoggerStd(cp, show_buttons=False)
 
         repoman = RepoManager(kwargs['logdir'], dettype=None)
-        save_record_at_start(repoman, 'calibman')
+        repoman.save_record_at_start(sys.argv[0].rsplit('/')[-1])
 
         self.wtab = CMWMainTabs()
 

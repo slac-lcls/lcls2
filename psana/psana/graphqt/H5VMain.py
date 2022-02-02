@@ -1,5 +1,5 @@
 
-"""Class :py:class:`H5VMain` is a QWidget for main window of hdf5viewer 
+"""Class :py:class:`H5VMain` is a QWidget for main window of hdf5viewer
 ========================================================================
 
 Usage ::
@@ -18,19 +18,19 @@ import logging
 
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
-from psana.graphqt.QWLoggerStd import QWLoggerStd#, QWFilter
+from psana.graphqt.QWLoggerStd import QWLoggerStd
 
 from psana.graphqt.H5VControl import H5VControl
 from psana.graphqt.H5VQWTree import Qt, H5VQWTree
 from psana.graphqt.CMConfigParameters import cp
 from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line
+from psana.detector.RepoManager import RepoManager
 
 
 class H5VMain(QWidget):
 
     def __init__(self, **kwargs):
         QWidget.__init__(self, parent=None)
-        #self._name = self.__class__.__name__
 
         cp.h5vmain = self
 
@@ -43,26 +43,23 @@ class H5VMain(QWidget):
 
         self.wtree = H5VQWTree(**kwargs)
         self.wctrl = H5VControl(**kwargs)
-        #self.wtext = QTextEdit('Some text')
         self.wtree.wctrl = self.wctrl
 
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wtree)
         if cp.wlog is None: self.hspl.addWidget(self.wlog)
-        #self.hspl.addWidget(self.wtext)
 
-        #self.hbox = QHBoxLayout() 
-        #self.hbox.addWidget(self.hspl)
-
-        self.vbox = QVBoxLayout() 
+        self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.wctrl)
         self.vbox.addWidget(self.hspl)
-        #self.vbox.addLayout(self.hspl)
 
         self.setLayout(self.vbox)
 
         self.set_style()
         self.set_tool_tips()
+
+        RepoManager(kwargs['logdir'], dettype=None).\
+        save_record_at_start(sys.argv[0].rsplit('/')[-1])
 
         #self.connect_signals_to_slots()
 
@@ -73,8 +70,6 @@ class H5VMain(QWidget):
         logdir     = kwargs.get('logdir', './')
         savelog    = kwargs.get('savelog', False)
         if is_in_command_line('-l', '--loglevel'): cp.log_level.setValue(loglevel)
-        #if is_in_command_line('-S', '--saveloglogdir'):
-        #if is_in_command_line('-L', '--logdir'):
         cp.log_prefix.setValue(logdir)
         cp.save_log_at_exit.setValue(savelog)
 
@@ -91,55 +86,13 @@ class H5VMain(QWidget):
 
     def set_style(self):
         self.setGeometry(50, 50, 500, 600)
-        #self.setGeometry(self.main_win_pos_x .value(),\
-        #                 self.main_win_pos_y .value(),\
-        #                 self.main_win_width .value(),\
-        #                 self.main_win_height.value())
-        #w_height = self.main_win_height.value()
-
-        #self.setMinimumSize(500, 400)
-
-        #w = self.main_win_width.value()
-
         self.layout().setContentsMargins(0,0,0,0)
 
-        #self.wlog.setMinimumWidth(500)
-
         self.wctrl.setFixedHeight(50)
-        #self.wctrl.setMaximumHeight(80)
-
-        #spl_pos = cp.main_vsplitter.value()
-        #self.vspl.setSizes((spl_pos,w_height-spl_pos,))
-
-        #self.wrig.setMinimumWidth(350)
-        #self.wrig.setMaximumWidth(450)
-
-        #self.wrig.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Ignored)
-        #self.hspl.moveSplitter(w*0.5,0)
-
-        #self.setFixedSize(800,500)
-        #self.setMinimumSize(500,800)
-
-        #self.butELog.setStyleSheet(style.styleButton)
-        #self.butFile.setStyleSheet(style.styleButton)
-
-        #self.butELog    .setVisible(False)
-        #self.butFBrowser.setVisible(False)
-
-        #self.but1.raise_()
 
     def closeEvent(self, e):
-        #logger.debug('closeEvent')
         QWidget.closeEvent(self, e)
-
         cp.h5vmain = None
-
-        #try   : self.gui_win.close()
-        #except: pass
-
-        #try   : del self.gui_win
-        #except: pass
-
 
 
 def hdf5explorer(**kwargs):

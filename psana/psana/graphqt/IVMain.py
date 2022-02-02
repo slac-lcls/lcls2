@@ -66,11 +66,6 @@ class IVMain(QWidget):
             self.wctrl.wfnm_nda.but.setText(fname)
             self.wctrl.on_changed_fname_nda(fname)
 
-#        self.connect_signals_to_slots()
-#    def connect_signals_to_slots(self):
-#        self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
-#        self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
-
 
     def proc_kwargs(self, **kwargs):
         #print_kwargs(kwargs)
@@ -79,8 +74,6 @@ class IVMain(QWidget):
         savelog    = kwargs.get('savelog', False)
         self.wlog  = kwargs.get('wlog', None)
         self.signal_fast = kwargs.get('signal_fast', True)
-        #if is_in_command_line('-l', '--loglevel'): cp.log_level.setValue(loglevel)
-        #cp.save_log_at_exit.setValue(savelog)
 
 
     def set_tool_tips(self):
@@ -103,6 +96,10 @@ def image_viewer(**kwargs):
     loglevel = kwargs.get('loglevel', 'DEBUG').upper()
     intlevel = logging._nameToLevel[loglevel]
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=intlevel)
+
+    from psana.detector.RepoManager import RepoManager
+    RepoManager('log-file', dettype=None).\
+    save_record_at_start(sys.argv[0].rsplit('/')[-1])
 
     a = QApplication(sys.argv)
     w = IVMain(**kwargs)
