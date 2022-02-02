@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 import os
 
-from psana.pyalgos.generic.Utils import save_textfile, load_textfile
+from psana.detector.Utils import save_textfile, load_textfile
 
 CALIB_REPO_EPIX10KA = '/cds/group/psdm/detector/gains2/epix10ka/panels'
 FNAME_PANEL_ID_ALIASES = '.aliases.txt'

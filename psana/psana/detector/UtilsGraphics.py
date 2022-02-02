@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 import psana.pyalgos.generic.Graphics as gr
-#from psana.pyalgos.generic.NDArrUtils import info_ndarr
+#from psana.detector.NDArrUtils import info_ndarr
 
 def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.05, frachi=0.95):
     """ returns tuple of intensity limits (amin, amax) evaluated from arr or passed directly.

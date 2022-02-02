@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 from math import fabs
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
+from psana.detector.NDArrUtils import info_ndarr, print_ndarr
 
 
 def common_mode_rows(arr, mask=None, cormax=None, npix_min=10):

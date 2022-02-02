@@ -45,7 +45,7 @@ from time import time
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
+from psana.detector.NDArrUtils import info_ndarr, divide_protected
 from psana.detector.UtilsMask import merge_masks, DTYPE_MASK
 from psana.detector.UtilsCommonMode import common_mode_cols,\
   common_mode_rows_hsplit_nbanks, common_mode_2d_hsplit_nbanks
