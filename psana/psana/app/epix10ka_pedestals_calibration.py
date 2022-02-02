@@ -4,6 +4,8 @@ import sys
 from time import time
 from psana.detector.Utils import info_parser_arguments
 from psana.detector.UtilsEpix10kaCalib import pedestals_calibration, CALIB_REPO_EPIX10KA
+from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
+logger = logging.getLogger(__name__)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -38,10 +40,7 @@ def do_main():
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.runs is not None, 'WARNING: option "-r <run-number(s)>" MUST be specified.'
 
-    fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
-    logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
-    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(filename)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
-    #logging.basicConfig(filename='log.txt', filemode='w', format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
+    init_stream_handler(loglevel=args.logmode)
 
     logger.debug('%s\nIn epix10ka_pedestals_calibration' % (50*'_'))
     logger.debug('Command line:%s' % ' '.join(sys.argv))
@@ -151,6 +150,6 @@ def argument_parser():
 
 if __name__ == "__main__":
     do_main()
-    exit('End of %s'%SCRNAME)
+    sys.exit('End of %s'%SCRNAME)
 
 # EOF

@@ -34,12 +34,12 @@ Usage::
 2020-11-06 created by Mikhail Dubrovin
 """
 
-#from psana.pyalgos.generic.NDArrUtils import shape_as_2d, shape_as_3d, reshape_to_2d, reshape_to_3d
+#from psana.detector.NDArrUtils import shape_as_2d, shape_as_3d, reshape_to_2d, reshape_to_3d
 import logging
 logger = logging.getLogger(__name__)
 
 import numpy as np
-from psana.pyalgos.generic.NDArrUtils import info_ndarr
+from psana.detector.NDArrUtils import info_ndarr
 from time import time
 
 def arr_rot_n90(arr, rot_ang_n90=0) :

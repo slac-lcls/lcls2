@@ -19,16 +19,16 @@ import numpy as np
 import json
 from psana import DataSource
 from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
-from psana.pyalgos.generic.Utils import log_rec_on_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
+from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp
+from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
 from psana.detector.utils_psana import seconds
 
 
-def save_log_record_on_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+def save_log_record_at_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
     """Adds record on start to the log file <dirrepo>/logs/log-<procname>-<year>.txt
     """
-    rec = log_rec_on_start(tsfmt)
+    rec = log_rec_at_start(tsfmt)
     year = str_tstamp(fmt='%Y')
     create_directory(dirrepo, fac_mode)
     dirlog = '%s/logs' % dirrepo
@@ -456,7 +456,7 @@ def pedestals_calibration(*args, **kwa):
 
     _name = sys._getframe().f_code.co_name
     logger.info('In %s\n  exp: %s\n  runs: %s\n  detector: %s' % (_name, exp, str(runs), detname))
-    save_log_record_on_start(dirrepo, _name, dirmode)
+    save_log_record_at_start(dirrepo, _name, dirmode)
 
     #cpdic = get_config_info_for_dataset_detname(dsname, detname)
     #tstamp      = cpdic.get('tstamp', None)
@@ -926,7 +926,7 @@ def deploy_constants(*args, **kwa):
     irun = irun_first(runs)
     _name = sys._getframe().f_code.co_name
 
-    save_log_record_on_start(dirrepo, _name, dirmode)
+    save_log_record_at_start(dirrepo, _name, dirmode)
 
     cpdic = get_config_info_for_dataset_detname(**kwa)
     tstamp_run  = cpdic.get('tstamp',    None) # str

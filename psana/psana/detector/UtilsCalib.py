@@ -23,10 +23,9 @@ import numpy as np
 
 from psana.detector.utils_psana import datasource_kwargs, info_run, info_detector, seconds
 from psana import DataSource
-from psana.detector.Utils import save_log_record_on_start, info_command_line, info_dict
-from psana.pyalgos.generic.Utils import str_tstamp, time, get_login #create_directory, log_rec_on_start,
+from psana.detector.Utils import str_tstamp, time, get_login, save_record_at_start, info_command_line, info_dict
 import psana.pscalib.calib.CalibConstants as cc
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile #, save_2darray_in_textfile
+from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
 from psana.detector.RepoManager import RepoManager
 from psana.detector.UtilsLogging import init_file_handler
 
@@ -400,7 +399,7 @@ class DarkProc():
 def plot_image(nda, tit=''):
     """Plots averaged image
     """
-    import psana.pyalgos.generic.Graphics as gg
+    from psana.detector.UtilsGraphics import gr
 
     #img = det.image(evt, nda)
     img = reshape_to_2d(nda)
@@ -412,8 +411,8 @@ def plot_image(nda, tit=''):
 
     amin = np.quantile(img, 0.01, interpolation='lower')
     amax = np.quantile(img, 0.99, interpolation='higher')
-    gg.plotImageLarge(img, amp_range=(amin, amax), title=tit)
-    gg.show()
+    gr.plotImageLarge(img, amp_range=(amin, amax), title=tit)
+    gr.show()
 
 
 
@@ -540,7 +539,7 @@ def pedestals_calibration(**kwa):
 
   #procname = sys._getframe().f_code.co_name # pedestals_calibration
   procname = sys.argv[0].rsplit('/')[-1]
-  #save_log_record_on_start(dirrepo, procname, dirmode, filemode, tsfmt='%Y-%m-%dT%H:%M:%S%z')
+  #save_log_record_at_start(dirrepo, procname, dirmode, filemode, tsfmt='%Y-%m-%dT%H:%M:%S%z')
 
   ds = DataSource(**datasource_kwargs(**kwa))
 
@@ -560,12 +559,11 @@ def pedestals_calibration(**kwa):
 
     odet = orun.Detector(detname)
     if dettype is None:
-        #dettype = det.raw._dettype
+        dettype = odet.raw._dettype
         repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, dettype=dettype)
         logfname = repoman.logname('%s_%s' % (procname, get_login()))
         init_file_handler(logmode, logfname, filemode=0o664)
-        save_log_record_on_start(dirrepo, procname, dirmode, filemode, tsfmt='%Y-%m-%dT%H:%M:%S%z')
-
+        save_record_at_start(repoman, procname) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
     logger.info('created %s detector object' % detname)
     logger.info(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))

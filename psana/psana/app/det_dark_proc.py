@@ -3,10 +3,8 @@
 import sys
 from time import time
 from psana.detector.Utils import info_parser_arguments
-#from psana.detector.UtilsAreaCalib import pedestals_calibration
 from psana.detector.UtilsCalib import pedestals_calibration
-from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler #, init_logger
-
+from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
@@ -18,6 +16,7 @@ USAGE = 'Usage:'\
       + '\n  %s -e tmoc00118 -d tmoopal -r123' % SCRNAME\
       + '\n  %s -e tmoc00118 -d tmoopal -r123 -D' % SCRNAME\
       + '\n  %s -e tmoc00118 -d tmoopal -r123 -D -o ./work -L DEBUG' % SCRNAME\
+      + '\n  %s -e tmoc00318 -d epix100 -r10 -o ./work' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 

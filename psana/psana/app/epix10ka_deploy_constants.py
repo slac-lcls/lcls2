@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import os
 import sys
 from time import time
 
@@ -8,15 +7,10 @@ from psana.detector.Utils import info_parser_arguments
 from psana.detector.UtilsEpix10kaCalib import deploy_constants
 from psana.detector.UtilsEpix10ka import GAIN_MODES_IN
 from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA
-
-import logging
+from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
 logger = logging.getLogger(__name__)
-DICT_NAME_TO_LEVEL = logging._nameToLevel
-STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 
-#scrname = sys.argv[0].rsplit('/')[-1]
-scrname = os.path.basename(sys.argv[0])
-
+scrname = sys.argv[0].rsplit('/')[-1]
 
 def do_main():
 
@@ -34,8 +28,7 @@ def do_main():
     assert args.det is not None,  'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.runs is not None, 'WARNING: option "-r <run-number(s)>" MUST be specified.'
 
-    fmt = '[%(levelname).1s] %(name)s L%(lineno)d: %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
-    logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
+    init_stream_handler(loglevel=args.logmode)
 
     logger.debug('%s\nIn epix10ka_deploy_constants' % (50*'_'))
     logger.debug('Command line:%s' % ' '.join(sys.argv))
@@ -95,7 +88,7 @@ def argument_parser():
     h_dirxtc  = 'non-default xtc directory which is used to access run start time, default = %s' % d_dirxtc
     h_dirrepo = 'non-default repository of calibration results, default = %s' % d_dirrepo
     h_deploy  = 'deploy constants to the calib dir, default = %s' % d_deploy
-    h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
+    h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
     h_high    = 'default high   gain ADU/keV, default = %s' % str(d_high)
     h_medium  = 'default medium gain ADU/keV, default = %s' % str(d_medium)
     h_low     = 'default low    gain ADU/keV, default = %s' % str(d_low)
@@ -131,6 +124,6 @@ def argument_parser():
 
 if __name__ == "__main__":
     do_main()
-    exit('End of %s'%scrname)
+    sys.exit('End of %s'%scrname)
 
 # EOF
