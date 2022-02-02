@@ -4,7 +4,7 @@ Utilities of common use for detector project
 
 Usage::
 
-  from psana.detector.Utils *
+  from psana.detector.Utils import *
 
   is_selected = selected_record(nrec)
   s = info_dict(d, fmt='  %12s: %s', sep='\n')
@@ -12,16 +12,34 @@ Usage::
   s = info_command_line(sep=' ')
   s = info_command_line_parameters(parser) # for OptionParser
   s = info_parser_arguments(parser) # for ArgumentParser
-  save_log_record_on_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT%H:%M:%S%z')
+  save_log_record_at_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT%H:%M:%S%z')
 
 2020-11-06 created by Mikhail Dubrovin
 """
 
-#import logging
-#logger = logging.getLogger(__name__)
+import logging
+logger = logging.getLogger(__name__)
 
+import os
 import sys
 import numpy as np
+
+import psana.pyalgos.generic.Utils as gu
+time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile, set_file_access_mode, time_sec_from_stamp, create_directory, file_mode\
+= gu.time, gu.str_tstamp, gu.get_login, gu.get_hostname, gu.get_cwd, gu.save_textfile, gu.load_textfile, gu.set_file_access_mode, gu.time_sec_from_stamp, gu.create_directory, gu.file_mode
+
+#log_rec_at_start = gu.log_rec_on_start
+#create_directory = gu.create_directory
+
+#def create_directory(dir, mode=0o777, **kwa):
+#    """Creates directory and sets its mode"""
+#    if os.path.exists(dir):
+#        logger.debug('Exists: %s mode(oct): %s' % (dir, oct(file_mode(dir))))
+#    else:
+#        os.makedirs(dir)
+#        os.chmod(dir, mode)
+#        logger.debug('Created: %s, mode(oct)=%s' % (dir, oct(mode)))
+
 
 def selected_record(nrec):
     return nrec<5\
@@ -80,20 +98,35 @@ def info_parser_arguments(parser):
 info_command_line_arguments = info_parser_arguments
 
 
-def save_log_record_on_start(dirrepo, procname, dirmode=0o777, filemode=0o666, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
-    """Adds record on start to the log file <dirrepo>/logs/log-<procname>-<year>.txt
+def log_rec_at_start(tsfmt='%Y-%m-%dT%H:%M:%S%z', **kwa):
+    """Returns (str) record containing timestamp, login, host, cwd, and command line
     """
-    from psana.pyalgos.generic.Utils import os, logger, log_rec_on_start, str_tstamp, create_directory, save_textfile, set_file_access_mode
+    s_kwa = ' '.join(['%s:%s'%(k,str(v)) for k,v in kwa.items()])
+    return '\n%s user:%s@%s cwd:%s %s command:%s'%\
+           (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), s_kwa, ' '.join(sys.argv))\
 
-    rec = log_rec_on_start(tsfmt)
+
+def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+    """Adds record at start to the log file defined in RepoManager.
+    """
+    from psana.detector.RepoManager import RepoManager
+
+    rec = log_rec_at_start(tsfmt, **{'dirrepo':dirrepo,})
     logger.debug('Record on start: %s' % rec)
-    year = str_tstamp(fmt='%Y')
-    create_directory(dirrepo, dirmode)
-    dirlog = '%s/logs' % dirrepo
-    create_directory(dirlog, dirmode)
-    logfname = '%s/%s_log_%s.txt' % (dirlog, year, procname)
+    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode) #, dettype=dettype)
+    logfname = repoman.logname_at_start(procname)
     fexists = os.path.exists(logfname)
     save_textfile(rec, logfname, mode='a')
     if not fexists: set_file_access_mode(logfname, filemode)
-    logger.info('Saved: %s' % logfname)
+    logger.info('Saved: %s\nRecord: %s' % (logfname,rec))
+
+
+def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+    rec = log_rec_at_start(tsfmt, **{'dirrepo':repoman.dirrepo,})
+    logfname = repoman.logname_at_start(procname)
+    fexists = os.path.exists(logfname)
+    save_textfile(rec, logfname, mode='a')
+    if not fexists: set_file_access_mode(logfname, repoman.filemode)
+    logger.info('Saved: %s\nRecord: %s' % (logfname,rec))
+
 # EOF
