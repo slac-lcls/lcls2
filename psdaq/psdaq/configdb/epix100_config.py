@@ -208,14 +208,27 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
     logging.debug('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
     if triggerDelay < 0:
-        logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+        logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:} clk_period {:} msg_period {:}'.format(partitionDelay,rawStart,triggerDelay,base['clk_period'],base['msg_period']))
         raise ValueError('triggerDelay computes to < 0')
 
     lane = 0
     pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].TriggerDelay.set(triggerDelay)
     print('**** result',result,'trigdelay',triggerDelay)
-    pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition.set(group)
+    pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].Partition.set(group)
 
+    cbase = base['cam']
+    cbase.ePix100aFPGA.EpixFpgaRegisters.RunTriggerDelay.set(0)
+    # 11905 taken from LCLS1 fixed delay offset.  see:
+    # pds/epix100a/Epix100aConfigurator.cc
+    # corresponds to 91.7975us give the 129.6875MHz clock
+    cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerDelay.set(11905)
+    cbase.ePix100aFPGA.EpixFpgaRegisters.RunTriggerEnable.set(True)
+    cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerEnable.set(True)
+    baseClockMHz = cbase.ePix100aFPGA.EpixFpgaRegisters.BaseClockMHz.get()
+    width_us = cfg['user']['gate_ns']/1000.
+    width_clockticks = int(width_us*baseClockMHz)
+    print('*** width',width_clockticks)
+    cbase.ePix100aFPGA.EpixFpgaRegisters.AsicAcqWidth.set(width_clockticks)
     return result
 
 def epix100_unconfig(base):
