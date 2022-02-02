@@ -34,16 +34,17 @@ from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QLabel, QPushButto
 from PyQt5.QtGui import QTextCursor
 from psana.graphqt.Styles import style
 import psana.pyalgos.generic.Utils as gu
+scrname = sys.argv[0].rsplit('/')[-1]
 
 
 def log_file_name(lfpath):
     """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/2018/20180518T122407-dubrovin.txt
     """
     t0_sec = gu.time()
-    tstamp = gu.str_tstamp('%Y%m%dT%H%M%S', t0_sec) 
-    #year_month = gu.str_tstamp('%Y/%m', time_sec=None) 
-    year = gu.str_tstamp('%Y', time_sec=None) 
-    return '%s/%s/%s-%s.txt' % (lfpath, year, tstamp, gu.get_login())#, os.getpid())
+    tstamp = gu.str_tstamp('%Y%m%dT%H%M%S', t0_sec)
+    #year_month = gu.str_tstamp('%Y/%m', time_sec=None)
+    year = gu.str_tstamp('%Y', time_sec=None)
+    return '%s/%s/%s-%s-%s.txt' % (lfpath, year, tstamp, scrname, gu.get_login())#, os.getpid())
 
 
 class QWFilter(logging.Filter):
@@ -92,25 +93,25 @@ class QWLoggerStd(QWidget):
         self.dict_level_to_name = logging._levelToName
         self.dict_name_to_level = logging._nameToLevel
         self.level_names = list(logging._levelToName.values())
-        
+
         self.edi_txt   = QTextEdit('Logger window')
         self.lab_level = QLabel('Log level:')
-        self.but_close = QPushButton('&Close') 
-        self.but_save  = QPushButton('&Save log-file') 
-        self.but_rand  = QPushButton('&Random') 
-        self.cmb_level = QComboBox(self) 
+        self.but_close = QPushButton('&Close')
+        self.but_save  = QPushButton('&Save log-file')
+        self.but_rand  = QPushButton('&Random')
+        self.cmb_level = QComboBox(self)
         self.cmb_level.addItems(self.level_names)
         self.cmb_level.setCurrentIndex(self.level_names.index(self.log_level.value()))
-        
+
         self.hboxM = QHBoxLayout()
         self.hboxM.addWidget(self.edi_txt)
 
         self.hboxB = QHBoxLayout()
-        self.hboxB.addStretch(4)     
+        self.hboxB.addStretch(4)
         self.hboxB.addWidget(self.lab_level)
         self.hboxB.addWidget(self.cmb_level)
         self.hboxB.addWidget(self.but_rand)
-        self.hboxB.addStretch(1)     
+        self.hboxB.addStretch(1)
         self.hboxB.addWidget(self.but_save)
         self.hboxB.addWidget(self.but_close)
 
@@ -200,11 +201,11 @@ class QWLoggerStd(QWidget):
         #self.lab_title.setStyleSheet(style.styleTitleBold)
         self.lab_level .setStyleSheet(style.styleTitle)
         self.but_close .setStyleSheet(style.styleButton)
-        self.but_save  .setStyleSheet(style.styleButton) 
-        self.but_rand  .setStyleSheet(style.styleButton) 
-        self.cmb_level .setStyleSheet(style.styleButton) 
+        self.but_save  .setStyleSheet(style.styleButton)
+        self.but_rand  .setStyleSheet(style.styleButton)
+        self.cmb_level .setStyleSheet(style.styleButton)
         self.edi_txt   .setReadOnly(True)
-        self.edi_txt   .setStyleSheet(style.styleWhiteFixed) 
+        self.edi_txt   .setStyleSheet(style.styleWhiteFixed)
         #self.edi_txt   .ensureCursorVisible()
         #self.lab_title.setAlignment(QtCore.Qt.AlignCenter)
         #self.titTitle.setBold()
@@ -215,7 +216,7 @@ class QWLoggerStd(QWidget):
         self.but_rand  .setVisible(self.show_buttons)
         self.but_close .setVisible(self.show_buttons)
 
-        #if not self.show_buttons: 
+        #if not self.show_buttons:
         self.layout().setContentsMargins(0,0,0,0)
         #self.setMinimumSize(300,50)
         #self.setBaseSize(500,200)
@@ -226,12 +227,12 @@ class QWLoggerStd(QWidget):
 
 
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent') 
+        #logger.debug('resizeEvent')
         #pass
 
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
+        #logger.debug('moveEvent')
         #self.cp.posGUIMain = (self.pos().x(),self.pos().y())
         #pass
 
@@ -284,7 +285,7 @@ class QWLoggerStd(QWidget):
                                                ))
         if path == '':
             logger.debug('Saving is cancelled.')
-            return 
+            return
         self.log_file.setValue(path)
         logger.info('TBD ????????????????  Output file: ' + path)
 
@@ -304,7 +305,7 @@ class QWLoggerStd(QWidget):
     def scrollDown(self):
         #logger.debug('scrollDown')
         #scrol_bar_v = self.edi_txt.verticalScrollBar() # QScrollBar
-        #scrol_bar_v.setValue(scrol_bar_v.maximum()) 
+        #scrol_bar_v.setValue(scrol_bar_v.maximum())
         self.edi_txt.moveCursor(QTextCursor.End)
         self.edi_txt.repaint()
         #self.raise_()
