@@ -33,15 +33,15 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, l
     from psana.detector.RepoManager import RepoManager
 
     repoman = RepoManager(dirrepo, dettype=None, dirmode=dirmode, filemode=filemode)
+    repoman.makedir_logs()
     logfname = repoman.logname('%s_%s' % (procname, get_login()))
-
-    create_directory(dirrepo, dirmode)
-    dirlog = '%s/logs' % dirrepo
-    create_directory(dirlog, dirmode)
-
     init_file_handler(logmode, logfname, filemode=0o664)
     logger.info('Begin logfile: %s' % logfname)
     repoman.save_record_at_start(SCRNAME, tsfmt=tsfmt)
+
+#    create_directory(dirrepo, dirmode)
+#    dirlog = '%s/logs' % dirrepo
+#    create_directory(dirlog, dirmode)
 
 #    rec = log_rec_at_start(tsfmt)
 #    year = str_tstamp(fmt='%Y')

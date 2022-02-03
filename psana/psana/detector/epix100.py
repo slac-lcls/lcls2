@@ -17,3 +17,5 @@ class epix100_raw_2_0_1(ad.AreaDetector):
     def __init__(self, *args, **kwa):
         ad.AreaDetector.__init__(self, *args, **kwa)
         self._seg_geo = ad.sgs.Create(segname='EPIX100:V1')
+
+        self._data_bit_mask = 0xffff
