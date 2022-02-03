@@ -129,8 +129,8 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
         // copy the detName, detType, detId from the Config Names
         Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
-        logging::info("Constructing panel eventNames src 0x%x ids %s",
-                      unsigned(nid),configNames.detId());
+        logging::debug("Constructing panel eventNames src 0x%x ids %s",
+                       unsigned(nid),configNames.detId());
         Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
                                             configNames.detType(),
                                             configNames.detId(), 
@@ -141,15 +141,16 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
         m_namesLookup[nid] = NameIndex(eventNames);
     }
 
-    {
-        XtcData::Names&    names    = detector::configNames(configo);
-        XtcData::DescData& descdata = configo.desc_shape();
-        for(unsigned i=0; i< names.num(); i++) {
-            XtcData::Name& name = names.get(i);
-            //if (strcmp(name.name(),"user.asic_enable")==0)
-            //    m_asics = descdata.get_value<uint32_t>(name.name());
-        }
-    }
+    // cpo: in case we need to iterate over the config object
+    // {
+    //     XtcData::Names&    names    = detector::configNames(configo);
+    //     XtcData::DescData& descdata = configo.desc_shape();
+    //     for(unsigned i=0; i< names.num(); i++) {
+    //         XtcData::Name& name = names.get(i);
+    //         //if (strcmp(name.name(),"user.asic_enable")==0)
+    //         //    m_asics = descdata.get_value<uint32_t>(name.name());
+    //     }
+    // }
 
     return 0;
 }

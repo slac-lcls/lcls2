@@ -18,7 +18,6 @@ pv = None
 #lane = 0
 chan = None
 group = None
-ocfg = None
 segids = None
 seglist = [0]
 
@@ -149,7 +148,6 @@ def epix100_connect(base):
 #  Called on Configure
 #
 def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
-    global ocfg
     global group
     global segids
 
@@ -159,51 +157,11 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Retrieve the full configuration from the configDB
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
-    ocfg = cfg
 
     pbase = base['pci']
     pbase.StopRun()
     time.sleep(0.01)
     pbase.StartRun()
-
-    ocfg = cfg
-
-    topname = cfg['detName:RO'].split('_')
-
-    scfg = {}
-    segids = {}
-
-    #  Rename the complete config detector
-    scfg[0] = cfg.copy()
-    scfg[0]['detName:RO'] = topname[0]+'_'+topname[1]
-
-
-    cbase = base['cam']
-    firmwareVersion = cbase.ePix100aFPGA.AxiVersion.FpgaVersion.get()
-    for seg in range(1):
-        #  Construct the ID
-        epixregs = cbase.ePix100aFPGA.EpixFpgaRegisters
-        carrierId = [ epixregs.CarrierCardId0.get(),
-                      epixregs.CarrierCardId1.get()]
-        digitalId = [ epixregs.DigitalCardId0.get(),
-                      epixregs.DigitalCardId1.get()]
-        analogId  = [ epixregs.AnalogCardId0.get(),
-                      epixregs.AnalogCardId1.get()]
-        id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
-                                                          carrierId[0], carrierId[1],
-                                                          digitalId[0], digitalId[1],
-                                                          analogId [0], analogId [1])
-        print('*** setting id to',id)
-        segids[seg] = id
-        top = cdict()
-        top.setAlg('config', [2,0,0])
-        top.setInfo(detType='epix100', detName=topname[0], detSegm=seg+int(topname[1]), detId=id, doc='No comment')
-        scfg[seg+1] = top.typed_json()
-
-    result = []
-    for i in seglist:
-        logging.debug('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
-        result.append( json.dumps(scfg[i]) )
 
     partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
     rawStart       = cfg['user']['start_ns']
@@ -215,7 +173,6 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     lane = 0
     pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].TriggerDelay.set(triggerDelay)
-    print('**** result',result,'trigdelay',triggerDelay)
     pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].Partition.set(group)
 
     cbase = base['cam']
@@ -229,9 +186,24 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     baseClockMHz = cbase.ePix100aFPGA.EpixFpgaRegisters.BaseClockMHz.get()
     width_us = cfg['user']['gate_ns']/1000.
     width_clockticks = int(width_us*baseClockMHz)
-    print('*** width',width_clockticks)
     cbase.ePix100aFPGA.EpixFpgaRegisters.AsicAcqWidth.set(width_clockticks)
-    return result
+
+    firmwareVersion = cbase.ePix100aFPGA.AxiVersion.FpgaVersion.get()
+    #  Construct the ID
+    epixregs = cbase.ePix100aFPGA.EpixFpgaRegisters
+    carrierId = [ epixregs.CarrierCardId0.get(),
+                  epixregs.CarrierCardId1.get()]
+    digitalId = [ epixregs.DigitalCardId0.get(),
+                  epixregs.DigitalCardId1.get()]
+    analogId  = [ epixregs.AnalogCardId0.get(),
+                  epixregs.AnalogCardId1.get()]
+    id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
+                                                      carrierId[0], carrierId[1],
+                                                      digitalId[0], digitalId[1],
+                                                      analogId [0], analogId [1])
+    cfg['detId:RO']=id
+
+    return json.dumps(cfg)
 
 def epix100_unconfig(base):
     pbase = base['pci']
