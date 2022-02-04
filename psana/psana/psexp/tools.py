@@ -48,4 +48,19 @@ class ConfigHelper(object):
             self.ds.xtc_files = sel_xtc_files
             self.ds._configs  = sel_configs
 
+def get_excl_ranks():
+    if mode != 'mpi': return []
 
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    size = comm.Get_size()
+
+    if size == 1: return []
+
+    n_ebs   = int(os.environ.get('PS_EB_NODES', '1'))
+    n_srvs  = int(os.environ.get('PS_SRV_NODES', '0'))
+    excl_ranks = [0] # SMD0
+    excl_ranks += list(range(1, n_ebs+1))
+    excl_ranks += list(range(size-n_srvs, size))
+
+    return excl_ranks
