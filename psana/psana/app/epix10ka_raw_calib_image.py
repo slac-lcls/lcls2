@@ -247,6 +247,10 @@ def test_image(args):
     is_epixhr2x2 = False if det is None else det.raw._dettype == 'epixhr2x2'
     dcfg = ue.config_object_det(det) if is_epix10ka else None
 
+    geo = det.raw._det_geo()
+    pscsize = geo.get_pixel_scale_size()
+    #print('pscsize', pscsize)
+
     break_event_loop = False
 
     nframes = 0
@@ -340,7 +344,8 @@ def test_image(args):
             continue
 
         t0_sec = time()
-        img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
+
+        img = det.raw.image(evt, nda=arr, pix_scale_size_um=pscsize, mapmode=args.mapmode)
         print('image composition time = %.6f sec ' % (time()-t0_sec))
 
         logger.info(info_ndarr(img, 'img '))
@@ -433,6 +438,9 @@ def test_single_image(args):
     elif tname=='zcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[2] #, **kwa)
     else: arr = det.raw._mask_calib()
 
+    geo = det.raw._det_geo()
+    pscsize = geo.get_pixel_scale_size()
+
     print(info_ndarr(arr, 'array for %s' % tname))
 
     if args.dograph:
@@ -443,7 +451,7 @@ def test_single_image(args):
             print('Found non-empty event %d' % evnum); break
         if evt is None: sys.exit('ALL events are None')
 
-        img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
+        img = det.raw.image(evt, nda=arr, pix_scale_size_um=pscsize, mapmode=args.mapmode)
         print(info_ndarr(img, 'image for %s' % tname))
 
         flimg = fleximage(img, arr=arr, h_in=8, w_in=11.5, amin=amin, amax=amax)#, cmap='jet')
@@ -500,7 +508,6 @@ def do_main():
     d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
     d_ofname  = None
     d_mapmode = 1
-    d_pscsize = 100
     d_events  = 1000
     d_evskip  = 0
     d_evjump  = 100
@@ -542,7 +549,6 @@ def do_main():
     parser.add_argument('-N', '--events',  default=d_events,  type=int, help='maximal number of events, def=%s' % d_events)
     parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
     parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
-    parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int,   help='bitmask for raw MDBITS=16383/0x7fff=32767, def=%s' % hex(d_bitmask))
     parser.add_argument('-M', '--stepnum', default=d_stepnum, type=int,   help='step selected to show or None for all, def=%s' % d_stepnum)
     parser.add_argument('-g', '--grindex', default=d_grindex, type=int,   help='gain range index [0,6] for peds, def=%s' % str(d_grindex))
@@ -579,7 +585,7 @@ def do_main():
     if   tname=='raw':   test_raw  (args)
     elif tname=='calib': test_calib(args)
     elif tname=='image': test_image(args)
-    elif tname in ('mask', 'peds', 'status', 'rms', 'gain', 'xcoords', 'ycoords', 'zcoords') :  test_single_image(args)
+    elif tname in ('mask', 'peds', 'status', 'rms', 'gain', 'xcoords', 'ycoords', 'zcoords'): test_single_image(args)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
 
