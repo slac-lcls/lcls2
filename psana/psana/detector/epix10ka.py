@@ -25,14 +25,15 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         self._gains_def = (16.4, 5.466, 0.164) # epix10ka ADU/keV H:M:L = 1 : 1/3 : 1/100
 
 
-    def calib(self, evt, **kwa) -> Array3d:
-        logger.debug('epix10ka_raw_2_0_1.calib')
-        return eb.calib_epix10ka_any(self, evt, **kwa)
-
-
     def _cbits_config_segment(self, cob):
         """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object"""
         return eb.cbits_config_epix10ka(cob, shape=(352, 384))
+
+
+# calib is the same as in epix_base
+#    def calib(self, evt, **kwa) -> Array3d:
+#        logger.debug('epix10ka_raw_2_0_1.calib')
+#        return eb.calib_epix10ka_any(self, evt, **kwa)
 
 
 # MOVED TO epix_base
