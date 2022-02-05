@@ -71,7 +71,8 @@ class AreaDetector(DetectorImpl):
         self._pix_xyz_ = None, None, None
         self._interpol_pars_ = None
         self._pedestals_ = None
-        self._gain_ = None
+        self._gain_ = None # ADU/eV
+        self._gain_factor_ = None # keV/ADU
         self._rms_ = None
         self._status_ = None
         self._common_mode_ = None
@@ -142,11 +143,19 @@ class AreaDetector(DetectorImpl):
 
 
     def _pedestals(self): return self._cached_array(self._pedestals_, 'pedestals')
-    def _gain(self):      return self._cached_array(self._gain_, 'pixel_gain')
     def _rms(self):       return self._cached_array(self._rms_, 'pixel_rms')
     def _status(self):    return self._cached_array(self._status_, 'pixel_status')
     def _mask_calib(self):return self._cached_array(self._mask_calib_, 'pixel_mask')
     def _common_mode(self):return self._cached_array(self._common_mode_, 'common_mode')
+    def _gain(self)       :return self._cached_array(self._gain_, 'pixel_gain')
+
+
+    def _gain_factor(self):
+        """Evaluate and return gain factor as 1/gain if gain is available in calib constants else 1."""
+        if self._gain_factor_ is None:
+            g = self._gain()
+            self._gain_factor_ = divide_protected(np.ones_like(g), g) if isinstance(g, np.ndarray) else 1
+        return self._gain_factor_
 
 
     def _det_geotxt_and_meta(self):
@@ -267,7 +276,11 @@ class AreaDetector(DetectorImpl):
         if peds is None:
             logger.debug('det.raw._pedestals() is None - return det.raw.raw(evt)')
             return raw
-        return raw - peds
+
+        arr = raw - peds
+        gfac = self._gain_factor()
+
+        return arr*gfac if gfac != 1 else arr
 
 
     def image(self, evt, nda=None, **kwa) -> Array2d:
