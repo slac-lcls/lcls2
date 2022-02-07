@@ -148,6 +148,8 @@ PGPDetectorApp::~PGPDetectorApp()
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
 
+    if (m_det)  delete m_det;
+
     try {
         PyGILState_Ensure();
         Py_Finalize(); // for use by configuration
