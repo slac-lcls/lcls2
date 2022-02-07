@@ -63,9 +63,24 @@
 
 #define CLIENTS(i)       (0x00800080 + i*0x20)
 #define DMA_LANES(i)     (0x00800100 + i*0x20)
-#define TRG_LANES(i)     (0x00C20100 + i*0x100)
-#define SI570(i)         (0x00e00800 +i*4)
 
+#define NEWTEM
+#ifdef NEWTEM
+#define XMA_REG(i)       (0x00C28000 + i)
+#define TEB_REG(i)       (0x00C29000 + i)
+#define TRG_LANES(i)     (0x00C29000 + i*0x100)
+#else
+#define XMA_REG(i)       (0x00C20000 + i)
+#define TEB_REG(i)       (0x00C20100 + i)
+#define TRG_LANES(i)     (0x00C20100 + i*0x100)
+#endif
+
+//#define NEWMUX
+#ifdef NEWMUX
+#define SI570(i)         (0x00072000 +i*4)
+#else
+#define SI570(i)         (0x00e00800 +i*4)
+#endif
 
 static int fd;
 static int lanes = 4;
@@ -125,11 +140,15 @@ static void print_lane(const char* name, int addr, int offset, int stride, int m
 
 static void select_si570()
 {
+#ifdef NEWMUX
+    return; // handled by firmware
+#else
   unsigned i2c_mux = get_reg32(0x00e00000);
   printf("i2c_mux : 0x%x\n", i2c_mux);
   i2c_mux = (1<<2);
   set_reg32(0x00e00000,i2c_mux);
   printf("i2c_mux : 0x%x\n", i2c_mux);
+#endif
 }
 
 static void reset_si570()
@@ -413,7 +432,7 @@ int main(int argc, char* argv[])
           unsigned ip = ntohl(saddr->sin_addr.s_addr);
           if ((ip>>16)==0xac15) {
               unsigned id = 0xfb000000 | (ip&0xffff);
-              set_reg32( 0x00c20020, id);
+              set_reg32( XMA_REG(0x20), id);
               break;
           }
           result = result->ai_next;
@@ -422,7 +441,7 @@ int main(int argc, char* argv[])
       if (!result) {
           printf("No 172.21 address found.  Defaulting");
           unsigned id = 0xfb000000;
-          set_reg32( 0x00c20020, id);
+          set_reg32( XMA_REG(0x20), id);
       }
 
     }
@@ -543,23 +562,24 @@ int main(int argc, char* argv[])
 
       { printf("%20.20s", "messagedelay");
         for(unsigned i=0; i<8; i++) {
-          uint32_t reg = get_reg32( 0x00c20000+i*4);
+            uint32_t reg = get_reg32(XMA_REG(i*4));
           printf(" %8x", reg & 0xff); }
         printf("\n"); }
 
-      print_field("localid"  , 0x00c20020,  0, 0xffffffff);
-      print_field("remoteid" , 0x00c20024,  0, 0xffffffff);
+      print_field("localid"  , XMA_REG(0x20),  0, 0xffffffff);
+      print_field("remoteid" , XMA_REG(0x24),  0, 0xffffffff);
 
-      print_lane("enable"     , 0x00c20100,  0, 256, 0x7);
-      print_lane("partition"  , 0x00c20104,  0, 256, 0xf);
-      print_lane("cntL0"      , 0x00c20114,  0, 256, 0xffffffff);
-      print_lane("cntL1A"     , 0x00c20118,  0, 256, 0xffffffff);
-      print_lane("cntL1R"     , 0x00c2011c,  0, 256, 0xffffffff);
-      print_lane("cntTra"     , 0x00c20120,  0, 256, 0xffffffff);
-      print_lane("cntFrame"   , 0x00c20124,  0, 256, 0xffffffff);
-      print_lane("cntTrig"    , 0x00c20128,  0, 256, 0xffffffff);
-      print_lane("fullToTrig" , 0x00c20138,  0, 256, 0xfff);
-      print_lane("nfullToTrig", 0x00c2013c,  0, 256, 0xfff);
+      print_lane("enable"     , TEB_REG(0x00),  0, 256, 0x7);
+      print_lane("partition"  , TEB_REG(0x04),  0, 256, 0xf);
+      print_lane("pauseOF"    , TEB_REG(0x10),  0, 256, 0x1f);
+      print_lane("cntL0"      , TEB_REG(0x14),  0, 256, 0xffffffff);
+      print_lane("cntL1A"     , TEB_REG(0x18),  0, 256, 0xffffffff);
+      print_lane("cntL1R"     , TEB_REG(0x1c),  0, 256, 0xffffffff);
+      print_lane("cntTra"     , TEB_REG(0x20),  0, 256, 0xffffffff);
+      print_lane("cntFrame"   , TEB_REG(0x24),  0, 256, 0xffffffff);
+      print_lane("cntTrig"    , TEB_REG(0x28),  0, 256, 0xffffffff);
+      print_lane("fullToTrig" , TEB_REG(0x38),  0, 256, 0xfff);
+      print_lane("nfullToTrig", TEB_REG(0x3c),  0, 256, 0xfff);
 
       //      if (core_pcie) {
       if (1) {

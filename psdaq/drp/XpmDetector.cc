@@ -4,7 +4,7 @@
 #include "AxisDriver.h"
 #include "DataDriver.h"
 #include "psalg/utils/SysLog.hh"
-#include "psdaq/mmhw/TriggerEventManager.hh"
+#include "psdaq/mmhw/TriggerEventManager2.hh"
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -76,8 +76,8 @@ json XpmDetector::connectionInfo()
 {
     int fd = m_pool->fd();
 
-    Pds::Mmhw::TriggerEventManager* mem_pointer = (Pds::Mmhw::TriggerEventManager*)0x00C20000;
-    Pds::Mmhw::TriggerEventManager* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager;
+    Pds::Mmhw::TriggerEventManager2* mem_pointer = (Pds::Mmhw::TriggerEventManager2*)0x00C20000;
+    Pds::Mmhw::TriggerEventManager2* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager2;
 
     //  Advertise ID on the timing link
     {
@@ -156,8 +156,8 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
        links <<= 4;
 
     //Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
-    Pds::Mmhw::TriggerEventManager* mem_pointer = (Pds::Mmhw::TriggerEventManager*)0x00C20000;
-    Pds::Mmhw::TriggerEventManager* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager;
+    Pds::Mmhw::TriggerEventManager2* mem_pointer = (Pds::Mmhw::TriggerEventManager2*)0x00C20000;
+    Pds::Mmhw::TriggerEventManager2* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager2;
     for(unsigned i=0, l=links; l; i++) {
         Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
         if (l&(1<<i)) {
