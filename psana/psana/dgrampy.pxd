@@ -74,12 +74,18 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
                 unsigned nodeId, unsigned namesId, unsigned segment,
                 char* algName, uint8_t major, uint8_t minor, uint8_t micro,
                 DataDef& datadef)
-        void addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
+        void setString(char* data, DataDef& datadef, char* varname)
+        void setValue(unsigned nodeId, unsigned namesId,
+                char* data, DataDef& datadef, char* varname)
+        void addData(unsigned nodeId, unsigned namesId,
                 unsigned* shape, char* data, DataDef& datadef, char* varname)
         Dgram& createTransition(unsigned transId, unsigned counting_timestamps,
-                        unsigned timestamp_val)
+                unsigned timestamp_val)
         void createData(Xtc& xtc, unsigned nodeId, unsigned namesId)
         void updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec)
+        int  getElementSize(unsigned nodeId, unsigned namesId,
+                DataDef& datadef, char* varname)
+
 
     cdef cppclass DataDef:
         DataDef() except +

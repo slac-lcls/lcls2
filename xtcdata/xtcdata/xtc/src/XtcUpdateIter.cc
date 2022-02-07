@@ -26,7 +26,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
     switch(name.type()){
     case(Name::UINT8):{
         if(data_rank > 0){
-            _dump<uint8_t>(name.name(), descdata.get_array<uint8_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
+            _dump<uint8_t>(name.name(), descdata.get_array<uint8_t>(i), _numWords, descdata.shape(name), name.rank(), " %u");
         }
         else{
             printf("'%s': %d\n",name.name(),descdata.get_value<uint8_t>(i));
@@ -36,7 +36,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 
     case(Name::UINT16):{
         if(data_rank > 0){
-            _dump<uint16_t>(name.name(), descdata.get_array<uint16_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
+            _dump<uint16_t>(name.name(), descdata.get_array<uint16_t>(i), _numWords, descdata.shape(name), name.rank(), " %u");
         }
         else{
             printf("'%s': %d\n",name.name(),descdata.get_value<uint16_t>(i));
@@ -46,7 +46,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 
     case(Name::UINT32):{
         if(data_rank > 0){
-            _dump<uint32_t>(name.name(), descdata.get_array<uint32_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
+            _dump<uint32_t>(name.name(), descdata.get_array<uint32_t>(i), _numWords, descdata.shape(name), name.rank(), " %u");
         }
         else{
             printf("'%s': %d\n",name.name(),descdata.get_value<uint32_t>(i));
@@ -56,7 +56,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 
     case(Name::UINT64):{
         if(data_rank > 0){
-            _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
+            _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, descdata.shape(name), name.rank(), " %lu");
         }
         else{
             printf("'%s': %llu\n",name.name(),descdata.get_value<uint64_t>(i));
@@ -251,23 +251,91 @@ void XtcUpdateIter::createData(Xtc& xtc, unsigned nodeId, unsigned namesId) {
     _newData = std::unique_ptr<CreateData>(new CreateData{xtc, _namesLookup, namesId0});
 }
 
-void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
+void XtcUpdateIter::setString(char* data, DataDef& datadef, char* varname){
+    // TODO: Add check for newIndex >= 0
+    unsigned newIndex = datadef.index(varname);
+    _newData->set_string(newIndex, data);
+}
+
+void XtcUpdateIter::setValue(unsigned nodeId, unsigned namesId,
+        char* data, DataDef& datadef, char* varname){
+    NamesId namesId0(nodeId, namesId);
+    
+    // TODO: Add check for newIndex >= 0
+    unsigned newIndex = datadef.index(varname);
+    
+    Name& name = _namesLookup[namesId0].names().get(newIndex);
+    
+    switch(name.type()){
+    case(Name::UINT8):{
+        _newData->set_value(newIndex, *(uint8_t*)data);
+        break;
+    }
+    case(Name::UINT16):{
+        _newData->set_value(newIndex, *(uint16_t*)data);
+        break;
+    }
+    case(Name::UINT32):{
+        _newData->set_value(newIndex, *(uint32_t*)data);
+        break;
+    }
+    case(Name::UINT64):{
+        _newData->set_value(newIndex, *(uint64_t*)data);
+        break;
+    }
+    case(Name::INT8):{
+        _newData->set_value(newIndex, *(int8_t*)data);
+        break;
+    }
+    case(Name::INT16):{
+        _newData->set_value(newIndex, *(int16_t*)data);
+        break;
+    }
+    case(Name::INT32):{
+        _newData->set_value(newIndex, *(int32_t*)data);
+        break;
+    }
+    case(Name::INT64):{
+        _newData->set_value(newIndex, *(int64_t*)data);
+        break;
+    }
+    case(Name::FLOAT):{
+        _newData->set_value(newIndex, *(float*)data);
+        break;
+    }
+    case(Name::DOUBLE):{
+        _newData->set_value(newIndex, *(double*)data);
+        break;
+    }
+    }
+}
+
+int XtcUpdateIter::getElementSize(unsigned nodeId, unsigned namesId, 
+        DataDef& datadef, char* varname) {
+    NamesId namesId0(nodeId, namesId);
+    // TODO: Add check for newIndex >= 0
+    unsigned newIndex = datadef.index(varname);
+    Name& name = _namesLookup[namesId0].names().get(newIndex);
+    return Name::get_element_size(name.type());
+}
+
+void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
         unsigned* shape, char* data, DataDef& datadef, char* varname) {
-    printf("addData\n");
+    printf("addData ");
     for(unsigned i=0; i<MaxRank; i++){
         printf("shape[%u]: %u ", i, shape[i]);
     }
-    printf("\n");
 
     NamesId namesId0(nodeId, namesId);
 
     // TODO: Add check for newIndex >= 0
-    int newIndex = datadef.index(varname);
+    unsigned newIndex = datadef.index(varname);
     
     // Get shape and name (rank and type)
     Shape shp(shape);
     Name& name = _namesLookup[namesId0].names().get(newIndex);
 
+    // Add data
     switch(name.type()){
     case(Name::UINT8):{
         Array<uint8_t> arrayT = _newData->allocate<uint8_t>(newIndex, shape);
@@ -279,16 +347,55 @@ void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
         memcpy(arrayT.data(), (uint16_t*) data, shp.size(name));
         break;
     }
+    case(Name::UINT32):{
+        Array<uint32_t> arrayT = _newData->allocate<uint32_t>(newIndex, shape);
+        memcpy(arrayT.data(), (uint32_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::UINT64):{
+        Array<uint64_t> arrayT = _newData->allocate<uint64_t>(newIndex, shape);
+        memcpy(arrayT.data(), (uint64_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::INT8):{
+        Array<int8_t> arrayT = _newData->allocate<int8_t>(newIndex, shape);
+        memcpy(arrayT.data(), (int8_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::INT16):{
+        Array<int16_t> arrayT = _newData->allocate<int16_t>(newIndex, shape);
+        memcpy(arrayT.data(), (int16_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::INT32):{
+        Array<int32_t> arrayT = _newData->allocate<int32_t>(newIndex, shape);
+        memcpy(arrayT.data(), (int32_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::INT64):{
+        Array<int64_t> arrayT = _newData->allocate<int64_t>(newIndex, shape);
+        memcpy(arrayT.data(), (int64_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::FLOAT):{
+        Array<float> arrayT = _newData->allocate<float>(newIndex, shape);
+        memcpy(arrayT.data(), (float*) data, shp.size(name));
+        break;
+    }
+    case(Name::DOUBLE):{
+        Array<double> arrayT = _newData->allocate<double>(newIndex, shape);
+        memcpy(arrayT.data(), (double*) data, shp.size(name));
+        break;
+    }
+    case(Name::CHARSTR):{
+        Array<char> arrayT = _newData->allocate<char>(newIndex, shape);
+        memcpy(arrayT.data(), (char*) data, shp.size(name));
+        break;
+    }
     }
 
     printf("copied %u bytes\n", shp.size(name));
     
-    /*for(unsigned i=0; i<shape[0]; i++){
-        for (unsigned j=0; j<shape[1]; j++) {
-            //arrayT(i,j) = 142+i*shape[1]+j;
-            printf("arrayT(%u,%u)=%u\n", i, j, arrayT(i,j));
-        }
-    }*/
 }
 
 Dgram& XtcUpdateIter::createTransition(unsigned utransId, 

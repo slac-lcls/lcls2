@@ -52,7 +52,7 @@ public:
         // Locate name index using name in datadef
         std::string s(name);
         for (auto itr = _index.find(s); itr!=_index.end(); itr++){
-            std::cout << itr->first << '\t' << itr->second << '\n';
+            std::cout << "DataDef.index " << itr->first << '\t' << itr->second << '\n';
             return itr->second;
         }
         return -1;
@@ -99,12 +99,17 @@ public:
             unsigned nodeId, unsigned namesId, unsigned segment,
             char* algName, uint8_t major, uint8_t minor, uint8_t micro,
             DataDef& datadef);
-    void addData(Xtc& xtc, unsigned nodeId, unsigned namesId, 
+    void setString(char* data, DataDef& datadef, char* varname);
+    void setValue(unsigned nodeId, unsigned namesId,          
+            char* data, DataDef& datadef, char* varname);
+    void addData(unsigned nodeId, unsigned namesId, 
             unsigned* shape, char* data, DataDef& datadef, char* varname);
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
                         unsigned timestamp_val);
     void createData(Xtc& xtc, unsigned nodeId, unsigned namesId);
     void updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec);
+    int getElementSize(unsigned nodeId, unsigned namesId, 
+            DataDef& datadef, char* varname);
 
 
 private:

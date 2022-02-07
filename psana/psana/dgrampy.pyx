@@ -1,10 +1,13 @@
 from libc.string    cimport memcpy
+from libc.stdlib    cimport malloc, free
 from libcpp.string  cimport string
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from psana.dgrampy  cimport *
 from cpython cimport array
 import array
 from psana.psexp import TransitionId
+import numpy as np
+import numbers
 
 
 class AlgDef:
@@ -28,6 +31,8 @@ class NamesDef:
 
 class DataType:
     """ This list has to match Name.DataType c++ 
+    {UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, 
+    CHARSTR, ENUMVAL, ENUMDICT}
     but it doesn't make sense to wrap it ..."""
     UINT8   = 0
     UINT16  = 1
@@ -39,6 +44,9 @@ class DataType:
     INT64   = 7
     FLOAT   = 8
     DOUBLE  = 9
+    CHARSTR = 10
+    ENUMVAL = 11
+    ENUMDICT= 12
 
 cdef class PyDataDef:
     cdef DataDef* cptr
@@ -76,7 +84,7 @@ cdef class PyDgram():
 
 cdef class PyXtcUpdateIter():
     cdef XtcUpdateIter* cptr
-    _numWords = 3 # no. of print-out elements for an array
+    _numWords = 6 # no. of print-out elements for an array
     
     def __cinit__(self):
         self.cptr = new XtcUpdateIter(self._numWords)
@@ -128,7 +136,20 @@ cdef class PyXtcUpdateIter():
     def createdata(self, PyXtc pyxtc, namesdef):
         self.cptr.createData(pyxtc.cptr[0], namesdef.nodeId, namesdef.namesId)
 
-    def adddata(self, PyXtc pyxtc, namesdef, PyDataDef pydatadef, 
+    def setstring(self, PyDataDef pydatadef, datadef_name, str_data):
+        self.cptr.setString(str_data.encode(), pydatadef.cptr[0], datadef_name.encode())
+    
+    def setvalue(self, namesdef, PyDataDef pydatadef, datadef_name, data):
+        cdef int shape_size
+        shape_size = self.cptr.getElementSize(namesdef.nodeId, namesdef.namesId, 
+                pydatadef.cptr[0], datadef_name.encode())
+        cdef char* data_ptr = <char *>malloc(shape_size);
+        data_ptr[0] = data
+        self.cptr.setValue(namesdef.nodeId, namesdef.namesId, 
+                data_ptr, pydatadef.cptr[0], datadef_name.encode())
+        free(data_ptr);
+
+    def adddata(self, namesdef, PyDataDef pydatadef, 
             datadef_name, unsigned[:] shape, data):
         cdef unsigned* shape_ptr
         cdef Py_buffer shape_pybuf
@@ -137,10 +158,11 @@ cdef class PyXtcUpdateIter():
 
         cdef char* data_ptr
         cdef Py_buffer data_pybuf
+        cdef float* float_ptr
         PyObject_GetBuffer(data, &data_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
         data_ptr = <char *>data_pybuf.buf
 
-        self.cptr.addData(pyxtc.cptr[0], namesdef.nodeId, namesdef.namesId, shape_ptr, 
+        self.cptr.addData(namesdef.nodeId, namesdef.namesId, shape_ptr, 
                 data_ptr, pydatadef.cptr[0], datadef_name.encode())
         
         PyBuffer_Release(&shape_pybuf)
@@ -210,12 +232,35 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
     uiter.createdata(pyxtc, namesdef)
 
     for datadef_name, data in datadict.items():
-        for i in range(len(shape)):
-            if i < len(data.shape):
-                shape[i] = data.shape[i]
+        # Handle scalar types (string or number)
+        if np.ndim(data) == 0:
+            if isinstance(data, numbers.Number):
+                uiter.setvalue(namesdef, pydatadef, datadef_name, data)
             else:
-                shape[i] = 0
-        uiter.adddata(pyxtc, namesdef, pydatadef, datadef_name, shape, data.flatten())
+                uiter.setstring(pydatadef, datadef_name, data)
+            continue
+        
+        # Handle array type
+        array.zero(shape)
+        if data.dtype.type is np.str_:
+            # For strings, from what I understand is each string is
+            # an array so for MaxRank=5 we can only store up to 5 strings.
+            # shape[i] is no. of bytes for string i.
+            
+            assert len(data.shape) == 1, "Only support writing 1D string array"
+            
+            str_as_byte = bytearray()
+            for i in range(data.shape[0]):
+                data_encode = data[i].encode()
+                str_as_byte.extend(data_encode)
+                shape[i] = len(data_encode)
+            
+            uiter.adddata(namesdef, pydatadef, datadef_name, shape, str_as_byte)
+        else:
+            for i in range(len(shape)):
+                if i < len(data.shape):
+                    shape[i] = data.shape[i]
+            uiter.adddata(namesdef, pydatadef, datadef_name, shape, data)
 
 def datadef(datadict):
     datadef = PyDataDef()
