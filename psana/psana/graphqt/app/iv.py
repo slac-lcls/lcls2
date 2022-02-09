@@ -37,6 +37,8 @@ def image_viewer():
         parser.print_usage()
         print(80*'_')
 
+    kwargs['rec_at_start'] = True
+
     do_main(**kwargs)
 
 

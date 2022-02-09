@@ -97,9 +97,10 @@ def image_viewer(**kwargs):
     intlevel = logging._nameToLevel[loglevel]
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=intlevel)
 
-    from psana.detector.RepoManager import RepoManager
-    RepoManager('log-file', dettype=None).\
-    save_record_at_start(sys.argv[0].rsplit('/')[-1])
+    if kwargs.get('rec_at_start', False):
+        from psana.detector.RepoManager import RepoManager
+        RepoManager('log-file', dettype=None).\
+        save_record_at_start(sys.argv[0].rsplit('/')[-1])
 
     a = QApplication(sys.argv)
     w = IVMain(**kwargs)
