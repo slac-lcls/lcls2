@@ -21,9 +21,9 @@ def issue_2022_01_21():
     """
     from psana import DataSource
     ds = DataSource(exp='tmoc00318',run=8)
-    myrun = next(ds.runs())
-    det = myrun.Detector('epix100hw')
-    for nevt,evt in enumerate(myrun.events()):
+    orun = next(ds.runs())
+    det = orun.Detector('epix100hw')
+    for nevt,evt in enumerate(orun.events()):
         print('det.raw.raw(evt).shape  :', det.raw.raw(evt).shape)
         print('det.raw.calib(evt).shape:', det.raw.calib(evt).shape)
         print('det.raw.image(evt).shape:', det.raw.image(evt).shape)
@@ -35,8 +35,8 @@ def issue_2022_01_26():
     from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
     ds = DataSource(exp='tmoc00318',run=10)
-    myrun = next(ds.runs())
-    det = myrun.Detector('epix100')
+    orun = next(ds.runs())
+    det = orun.Detector('epix100')
 
     print('dir(det.raw):', dir(det.raw))
     print()
@@ -53,12 +53,33 @@ def issue_2022_01_26():
 
     print()
 
-    for nevt,evt in enumerate(myrun.events()):
+    for nevt,evt in enumerate(orun.events()):
         if nevt>10:
             print('event loop is terminated by maximal number of events')
             break
         print(info_ndarr(det.raw.raw(evt),   'det.raw.raw(evt)  '))
         print(info_ndarr(det.raw.calib(evt), 'det.raw.calib(evt)'))
+
+
+def issue_2022_02_08():
+    """test copy xtc2 file to .../public01/xtc/
+    cd /cds/data/psdm/prj/public01/xtc/
+    cp /cds/data/psdm/tmo/tmoc00318/xtc/tmoc00318-r0010-s000-c000.xtc2 .
+    sudo chown psdatmgr tmoc00318-r0010-s000-c000.xtc2
+    the same for smalldata/
+    """
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    ds = DataSource(exp='tmoc00318',run=10, dir='/cds/data/psdm/prj/public01/xtc')
+    orun = next(ds.runs())
+    det = orun.Detector('epix100')
+    for i,evt in enumerate(orun.events()):
+        if i>20: break
+        t0_sec = time()
+        arr = det.raw.calib(evt, cmpars=(0,7,100,10)) # None or 0/1/2/4/7 : dt=0.02/0.036/0.049/0.016/0.90 sec
+        #arr = det.raw._common_mode_increment(evt, cmpars=(0,7,100,10))
+        print(info_ndarr(arr, 'Ev.%3d dt=%.3f sec  det.raw.calib(evt, cmpars=(0,7,100,10)): '%(i, time()-t0_sec)))
 
 
 USAGE = '\nUsage:'\
@@ -67,13 +88,15 @@ USAGE = '\nUsage:'\
       + '\n    0 - print usage'\
       + '\n    1 - issue_2022_01_21 - test epix100hw raw, calib, image'\
       + '\n    2 - issue_2022_01_26 - test epix100 raw, calib, image and calib constants'\
+      + '\n    3 - issue_2022_02_08 - test copy xtc2 file to .../public01/xtc/, epix100 common mode timing'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
 if   TNAME in  ('1',): issue_2022_01_21()
 elif TNAME in  ('2',): issue_2022_01_26()
-elif TNAME in  ('3',): issue_2022_01_dd()
+elif TNAME in  ('3',): issue_2022_02_08()
+elif TNAME in  ('0',): issue_2022_01_dd()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
