@@ -35,6 +35,7 @@ class H5VMain(QWidget):
         cp.h5vmain = self
 
         self.proc_kwargs(**kwargs)
+        logdir = cp.log_prefix.value()
 
         kwargs['parent'] = self
 
@@ -58,8 +59,9 @@ class H5VMain(QWidget):
         self.set_style()
         self.set_tool_tips()
 
-        RepoManager(kwargs['logdir'], dettype=None).\
-        save_record_at_start(sys.argv[0].rsplit('/')[-1])
+        if kwargs.get('rec_at_start', False):
+            RepoManager(logdir, dettype=None).\
+            save_record_at_start(sys.argv[0].rsplit('/')[-1])
 
         #self.connect_signals_to_slots()
 

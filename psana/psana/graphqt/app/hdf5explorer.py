@@ -34,6 +34,7 @@ def hdf5explorer_gui():
 
     fname = pargs[0] if len(pargs) else FNAME_TEST
     kwargs['fname'] = fname
+    kwargs['rec_at_start'] = True
 
     hdf5explorer(**kwargs)
 
