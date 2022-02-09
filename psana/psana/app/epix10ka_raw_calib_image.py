@@ -378,7 +378,7 @@ def test_image(args):
                                       amin=args.gramin,   amax=args.gramax,\
                                       nneg=args.grnneg,   npos=args.grnpos,\
                                       fraclo=args.grfrlo, frachi=args.grfrhi,\
-                                      w_in=14, h_in=8,\
+                                      w_in=args.figwid, h_in=args.fighig,\
                 )
                 flims.move(10,20)
             else:
@@ -524,6 +524,8 @@ def do_main():
     d_grfrlo  = 0.01
     d_grfrhi  = 0.99
     d_cframe  = 0
+    d_figwid  = 14
+    d_fighig  = 8
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
@@ -562,6 +564,8 @@ def do_main():
     parser.add_argument('--grfrlo',        default=d_grfrlo,  type=float, help='fraqction of statistics [0,1] below low  limit for grphics, def=%s' % str(d_grfrlo))
     parser.add_argument('--grfrhi',        default=d_grfrhi,  type=float, help='fraqction of statistics [0,1] below high limit for grphics, def=%s' % str(d_grfrhi))
     parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
+    parser.add_argument('--figwid',        default=d_figwid,  type=float, help='figure width, inch, def=%f' % d_figwid)
+    parser.add_argument('--fighig',        default=d_fighig,  type=float, help='figure width, inch, def=%f' % d_fighig)
 
     args = parser.parse_args()
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(name)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
