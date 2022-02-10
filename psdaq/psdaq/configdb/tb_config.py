@@ -90,7 +90,7 @@ def tb_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbo
     with _DevRoot(dev = dev) as _base:
         fwImage = _base.DevPcie.AxiVersion.ImageName.get()
     #  Some images have conflicting versions of surf module
-    sys.module.pop('surf')
+    sys.modules.pop('surf')
 
     print(f'Found image {fwImage}')
  
