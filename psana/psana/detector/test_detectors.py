@@ -23,6 +23,21 @@ class hsd_fex_4_5_6(DetectorImpl):
         super(hsd_fex_4_5_6, self).__init__(*args)
     def calib(self, evt) -> Array1d:
         return np.zeros((6))
+    def show(self, evt):
+        segs = self._segments(evt)
+        print(f'valFex: {segs[0].valFex}')
+        print(f'strFex: {segs[0].strFex}')
+        print(f'arrayFex0: {segs[0].arrayFex0}')
+        print(f'arrayFex1: {segs[0].arrayFex1}')
+        print(f'arrayFex2: {segs[0].arrayFex2}')
+        print(f'arrayFex3: {segs[0].arrayFex3}')
+        print(f'arrayFex4: {segs[0].arrayFex4}')
+        print(f'arrayFex5: {segs[0].arrayFex5}')
+        print(f'arrayFex6: {segs[0].arrayFex6}')
+        print(f'arrayFex7: {segs[0].arrayFex7}')
+        print(f'arrayFex8: {segs[0].arrayFex8}')
+        print(f'arrayFex9: {segs[0].arrayFex9}')
+        print(f'arrayString: {segs[0].arrayString}')
 
 # for the fake cameras in the teststand
 class cspad_cspadRawAlg_1_2_3(DetectorImpl):
