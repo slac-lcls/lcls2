@@ -87,12 +87,75 @@ static int lanes = 4;
 
 static inline uint32_t get_reg32(int reg) {
   unsigned v;
-  dmaReadRegister(fd, reg, &v);
+  if (-1==dmaReadRegister(fd, reg, &v))
+      printf("  Error in dmaReadRegister(%d, %x, %p)\n",fd,reg,&v);
   return v;
 }
 
 static inline void set_reg32(int reg, uint32_t value) {
   dmaWriteRegister(fd, reg, value);
+}
+
+static inline uint32_t get_i2c(int reg) {
+#ifdef NEWMUX
+    //    reg &= 0xffff;
+    printf("get_i2c %x\n",reg);
+    set_reg32(0x70008,reg);
+    set_reg32(0x70000,1);
+    uint32_t status;
+    unsigned tmo=0;
+    while(1) {
+        status = get_reg32(0x70004);
+        if ((status&1)==0)
+            break;
+        tmo++;
+        usleep(1000);
+    }
+    printf("get_i2c wait for done [%x]\n",tmo);
+    tmo=0;
+    while(1) {
+        status = get_reg32(0x70004);
+        if (status&1)
+            break;
+        usleep(1000);
+        tmo++;
+    }
+    uint32_t value = get_reg32(0x7000c);
+    printf("get_i2c returning %x [%x : %x]\n",value,(status>>1),tmo);
+    return value;
+#else
+    return get_reg32(reg);
+#endif
+}
+
+static inline void set_i2c(int reg, uint32_t value) {
+#ifdef NEWMUX
+    //    reg &= 0xffff;
+    printf("set_i2c %x %x\n",reg,value);
+    set_reg32(0x70008,reg);
+    set_reg32(0x7000c,value);
+    set_reg32(0x70000,0);
+    unsigned tmo=0;
+    while(1) {
+        value = get_reg32(0x70004);
+        if ((value&1)==0)
+            break;
+        tmo++;
+        usleep(1000);
+    }
+    printf("set_i2c wait for done [%x]\n",tmo);
+    tmo=0;
+    while(1) {
+        value = get_reg32(0x70004);
+        if (value&1)
+            break;
+        tmo++;
+        usleep(1000);
+    }
+    printf("set_i2c done [%x : %x]\n",(value>>1),tmo);
+#else
+    set_reg32(reg);
+#endif
 }
 
 static void print_mig_lane(const char* name, int addr, int offset, int mask)
@@ -155,32 +218,32 @@ static void reset_si570()
 {
 //  Reset to factory defaults
 
-  unsigned v = get_reg32(SI570(135));
+  unsigned v = get_i2c(SI570(135));
   v |= 1;
-  set_reg32(SI570(135), v);
-  do { usleep(100); } while (get_reg32(SI570(135))&1);
+  set_i2c(SI570(135), v);
+  do { usleep(100); } while (get_i2c(SI570(135))&1);
 }
 
 static double read_si570()
 {
   //  Read factory calibration for 156.25 MHz
-  unsigned v = get_reg32(SI570(7));
+  unsigned v = get_i2c(SI570(7));
   unsigned hs_div = ((v>>5)&7) + 4;
   unsigned n1 = (v&0x1f)<<2;
-  v = get_reg32(SI570(8));
+  v = get_i2c(SI570(8));
   n1 |= (v>>6)&3;
   uint64_t rfreq = v&0x3f;
   rfreq <<= 32;
-  rfreq |= ((get_reg32(SI570( 9))&0xff)<<24) |
-    ((get_reg32(SI570(10))&0xff)<<16) |
-    ((get_reg32(SI570(11))&0xff)<< 8) |
-    ((get_reg32(SI570(12))&0xff)<< 0);
+  rfreq |= ((get_i2c(SI570( 9))&0xff)<<24) |
+    ((get_i2c(SI570(10))&0xff)<<16) |
+    ((get_i2c(SI570(11))&0xff)<< 8) |
+    ((get_i2c(SI570(12))&0xff)<< 0);
 
   double f = (156.25 * double(hs_div * (n1+1))) * double(1<<28)/ double(rfreq);
 
   printf("Reg[7:12]:");
   for(unsigned i=7; i<13; i++)
-      printf(" %02x", get_reg32(SI570(i)));
+      printf(" %02x", get_i2c(SI570(i)));
   printf("\n");
 
   printf("Read: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
@@ -194,37 +257,37 @@ static void set_si570(double f)
   //  Program for 1300/7 MHz
 
   //  Freeze DCO
-  unsigned v = get_reg32(SI570(137));
+  unsigned v = get_i2c(SI570(137));
   v |= (1<<4);
-  set_reg32(SI570(137),v);
+  set_i2c(SI570(137),v);
 
   unsigned hs_div = 3; // =7
   unsigned n1     = 3; // =4
   uint64_t rfreq  = uint64_t(5200. / f * double(1<<28));
 
-  set_reg32(SI570( 7),((hs_div&7)<<5) | ((n1>>2)&0x1f));
-  set_reg32(SI570( 8),((n1&3)<<6) | ((rfreq>>32)&0x3f));
-  set_reg32(SI570( 9),(rfreq>>24)&0xff);
-  set_reg32(SI570(10),(rfreq>>16)&0xff);
-  set_reg32(SI570(11),(rfreq>> 8)&0xff);
-  set_reg32(SI570(12),(rfreq>> 0)&0xff);
+  set_i2c(SI570( 7),((hs_div&7)<<5) | ((n1>>2)&0x1f));
+  set_i2c(SI570( 8),((n1&3)<<6) | ((rfreq>>32)&0x3f));
+  set_i2c(SI570( 9),(rfreq>>24)&0xff);
+  set_i2c(SI570(10),(rfreq>>16)&0xff);
+  set_i2c(SI570(11),(rfreq>> 8)&0xff);
+  set_i2c(SI570(12),(rfreq>> 0)&0xff);
 
   printf("Reg[7:12]:");
   for(unsigned i=7; i<13; i++)
-      printf(" %02x", get_reg32(SI570(i)));
+      printf(" %02x", get_i2c(SI570(i)));
   printf("\n");
 
   printf("Wrote: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
          hs_div+4, n1, rfreq, f);
 
   //  Unfreeze DCO
-  v = get_reg32(SI570(137));
+  v = get_i2c(SI570(137));
   v &= ~(1<<4);
-  set_reg32(SI570(137),v);
+  set_i2c(SI570(137),v);
 
-  v = get_reg32(SI570(135));
+  v = get_i2c(SI570(135));
   v |= (1<<6);
-  set_reg32(SI570(135),v);
+  set_i2c(SI570(135),v);
 }
 
 static void set_si570_119m(double f)
@@ -232,9 +295,9 @@ static void set_si570_119m(double f)
   //  Program for 119 MHz
 
   //  Freeze DCO
-  unsigned v = get_reg32(SI570(137));
+  unsigned v = get_i2c(SI570(137));
   v |= (1<<4);
-  set_reg32(SI570(137),v);
+  set_i2c(SI570(137),v);
 
   // DCO = 476M * 11 = 5236M
   // HSDIV = 11
@@ -243,29 +306,29 @@ static void set_si570_119m(double f)
   unsigned n1     = 3; // =4
   uint64_t rfreq  = uint64_t(5236. / f * double(1<<28));
 
-  set_reg32(SI570( 7),((hs_div&7)<<5) | ((n1>>2)&0x1f));
-  set_reg32(SI570( 8),((n1&3)<<6) | ((rfreq>>32)&0x3f));
-  set_reg32(SI570( 9),(rfreq>>24)&0xff);
-  set_reg32(SI570(10),(rfreq>>16)&0xff);
-  set_reg32(SI570(11),(rfreq>> 8)&0xff);
-  set_reg32(SI570(12),(rfreq>> 0)&0xff);
+  set_i2c(SI570( 7),((hs_div&7)<<5) | ((n1>>2)&0x1f));
+  set_i2c(SI570( 8),((n1&3)<<6) | ((rfreq>>32)&0x3f));
+  set_i2c(SI570( 9),(rfreq>>24)&0xff);
+  set_i2c(SI570(10),(rfreq>>16)&0xff);
+  set_i2c(SI570(11),(rfreq>> 8)&0xff);
+  set_i2c(SI570(12),(rfreq>> 0)&0xff);
 
   printf("Reg[7:12]:");
   for(unsigned i=7; i<13; i++)
-      printf(" %02x", get_reg32(SI570(i)));
+      printf(" %02x", get_i2c(SI570(i)));
   printf("\n");
 
   printf("Wrote: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
          hs_div+4, n1, rfreq, f);
 
   //  Unfreeze DCO
-  v = get_reg32(SI570(137));
+  v = get_i2c(SI570(137));
   v &= ~(1<<4);
-  set_reg32(SI570(137),v);
+  set_i2c(SI570(137),v);
 
-  v = get_reg32(SI570(135));
+  v = get_i2c(SI570(135));
   v |= (1<<6);
-  set_reg32(SI570(135),v);
+  set_i2c(SI570(135),v);
 }
 
 static void measure_clks(double& txrefclk, double& rxrefclk)
@@ -572,12 +635,14 @@ int main(int argc, char* argv[])
       print_lane("enable"     , TEB_REG(0x00),  0, 256, 0x7);
       print_lane("partition"  , TEB_REG(0x04),  0, 256, 0xf);
       print_lane("pauseOF"    , TEB_REG(0x10),  0, 256, 0x1f);
+      print_lane("modes"      , TEB_REG(0x10), 17, 256, 0x3);
       print_lane("cntL0"      , TEB_REG(0x14),  0, 256, 0xffffffff);
       print_lane("cntL1A"     , TEB_REG(0x18),  0, 256, 0xffffffff);
       print_lane("cntL1R"     , TEB_REG(0x1c),  0, 256, 0xffffffff);
       print_lane("cntTra"     , TEB_REG(0x20),  0, 256, 0xffffffff);
       print_lane("cntFrame"   , TEB_REG(0x24),  0, 256, 0xffffffff);
       print_lane("cntTrig"    , TEB_REG(0x28),  0, 256, 0xffffffff);
+      print_lane("word0"      , TEB_REG(0x30),  0, 256, 0xffffffff);
       print_lane("fullToTrig" , TEB_REG(0x38),  0, 256, 0xfff);
       print_lane("nfullToTrig", TEB_REG(0x3c),  0, 256, 0xfff);
 
