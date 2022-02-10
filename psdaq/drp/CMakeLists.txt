@@ -28,6 +28,8 @@ add_executable(drp
     Digitizer.cc
     EpixHR2x2.cc
     EpixQuad.cc
+    TimingDef.cc
+    TimingBEB.cc
     TimingSystem.cc
     TimeTool.cc
     Wave8.cc

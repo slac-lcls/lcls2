@@ -1,8 +1,7 @@
 #include "TimingSystem.hh"
+#include "TimingDef.hh"
 #include "PythonConfigScanner.hh"
 #include "psdaq/service/EbDgram.hh"
-#include "xtcdata/xtc/VarDef.hh"
-#include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
@@ -32,47 +31,9 @@ static PyObject* check(PyObject* obj) {
     return obj;
 }
 
-namespace Drp {
+static Drp::TimingDef TSDef;
 
-class TSDef : public VarDef
-{
-public:
-    enum index {
-      pulseId,
-      timeStamp,
-      fixedRates,
-      acRates,
-      timeSlot,
-      timeSlotPhase,
-      ebeamPresent,
-      ebeamDestn,
-      ebeamCharge,
-      ebeamEnergy,
-      xWavelength,
-      dmod5,
-      mpsLimits,
-      mpsPowerClass,
-      sequenceValues,
-    };
-    TSDef()
-    {
-        NameVec.push_back({"pulseId"       , Name::UINT64, 0});
-        NameVec.push_back({"timeStamp"     , Name::UINT64, 0});
-        NameVec.push_back({"fixedRates"    , Name::UINT8 , 1});
-        NameVec.push_back({"acRates"       , Name::UINT8 , 1});
-        NameVec.push_back({"timeSlot"      , Name::UINT8 , 0});
-        NameVec.push_back({"timeSlotPhase" , Name::UINT16, 0});
-        NameVec.push_back({"ebeamPresent"  , Name::UINT8 , 0});
-        NameVec.push_back({"ebeamDestn"    , Name::UINT8 , 0});
-        NameVec.push_back({"ebeamCharge"   , Name::UINT16, 0});
-        NameVec.push_back({"ebeamEnergy"   , Name::UINT16, 1});
-        NameVec.push_back({"xWavelength"   , Name::UINT16, 1});
-        NameVec.push_back({"dmod5"         , Name::UINT16, 0});
-        NameVec.push_back({"mpsLimits"     , Name::UINT8 , 1});
-        NameVec.push_back({"mpsPowerClass" , Name::UINT8 , 1});
-        NameVec.push_back({"sequenceValues", Name::UINT16, 1});
-    }
-} TSDef;
+using Drp::TimingSystem;
 
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
     XpmDetector   (para, pool),
@@ -215,25 +176,10 @@ bool TimingSystem::scanEnabled() {
 
 void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    DescribedData ts(dgram.xtc, m_namesLookup, m_evtNamesId);
-
     int lane = __builtin_ffs(event->mask) - 1;
     // there should be only one lane of data in the timing system
     uint32_t dmaIndex  = event->buffers[lane].index;
-    //    unsigned data_size = event->buffers[lane].size - sizeof(Pds::TimingHeader);
-    // DMA is padded to workaround firmware problem; only copy relevant part.
-    unsigned data_size = 968/8;
 
-    memcpy(ts.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
-    ts.set_data_length(data_size);
-
-    ts.set_array_shape(TSDef::fixedRates    ,(const unsigned[MaxRank]){10});
-    ts.set_array_shape(TSDef::acRates       ,(const unsigned[MaxRank]){ 6});
-    ts.set_array_shape(TSDef::ebeamEnergy   ,(const unsigned[MaxRank]){ 4});
-    ts.set_array_shape(TSDef::xWavelength   ,(const unsigned[MaxRank]){ 2});
-    ts.set_array_shape(TSDef::mpsLimits     ,(const unsigned[MaxRank]){16});
-    ts.set_array_shape(TSDef::mpsPowerClass ,(const unsigned[MaxRank]){16});
-    ts.set_array_shape(TSDef::sequenceValues,(const unsigned[MaxRank]){18});
-}
-
+    TSDef.describeData(dgram.xtc, m_namesLookup, m_evtNamesId, 
+                       (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader));
 }

@@ -84,6 +84,13 @@ void BEBDetector::_init(const char* arg)
                                             xpmpv,
 					    timebase,
                                             m_para->verbose));
+
+      // check if m_root has "virtChan" member and set accordingly
+      if (m_root) {
+          PyObject* o_virtChan = PyDict_GetItemString(m_root,"virtChan");
+          if (o_virtChan)
+              virtChan = PyLong_AsLong(o_virtChan);
+      }
     }
 
     {
