@@ -82,6 +82,13 @@ cdef class PyDgram():
     def get_size(self):
         return sizeof(Dgram)
 
+    def dec_extent(self, uint32_t removed_size):
+        self.cptr.xtc.extent -= removed_size
+
+    def get_payload_size(self):
+        return self.cptr.xtc.sizeofPayload()
+
+
 cdef class PyXtcUpdateIter():
     cdef XtcUpdateIter* cptr
     _numWords = 6 # no. of print-out elements for an array
@@ -147,7 +154,7 @@ cdef class PyXtcUpdateIter():
         data_ptr[0] = data
         self.cptr.setValue(namesdef.nodeId, namesdef.namesId, 
                 data_ptr, pydatadef.cptr[0], datadef_name.encode())
-        free(data_ptr);
+        free(data_ptr)
 
     def adddata(self, namesdef, PyDataDef pydatadef, 
             datadef_name, unsigned[:] shape, data):
@@ -178,6 +185,9 @@ cdef class PyXtcUpdateIter():
         pydgram.cptr = &(self.cptr.createTransition(transId, 
                 counting_timestamps, timestamp_val))
         return pydgram
+    
+    def get_removed_size(self):
+        return self.cptr.get_removed_size()
 
 
 
@@ -229,8 +239,11 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
     cdef array.array shape = array.array('I', [0,0,0,0,0])
     cdef int i
 
+    print(f"\nCYTHON adddata")
+    print(f"CYTHON call createdata")
     uiter.createdata(pyxtc, namesdef)
 
+    print(f"CYTHON call adddata/setvalue/setstring")
     for datadef_name, data in datadict.items():
         # Handle scalar types (string or number)
         if np.ndim(data) == 0:
@@ -261,6 +274,7 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
                 if i < len(data.shape):
                     shape[i] = data.shape[i]
             uiter.adddata(namesdef, pydatadef, datadef_name, shape, data)
+    print(f'CYTHON DONE addata')
 
 def datadef(datadict):
     datadef = PyDataDef()
@@ -277,6 +291,11 @@ def get_buf():
 def iterate(PyDgram pydg):
     pyxtc = pydg.get_pyxtc()
     uiter.iterate(pyxtc)
+    cdef uint32_t removed_size = uiter.get_removed_size()
+    if removed_size > 0:
+        print(f'pydg payload before:{pydg.get_payload_size()}')
+        pydg.dec_extent(removed_size)
+        print(f'pydg payload after:{pydg.get_payload_size()}')
 
 def clearbuf():
     uiter.clear_buf()

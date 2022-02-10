@@ -72,6 +72,7 @@ public:
     XtcUpdateIter(unsigned numWords) : XtcData::XtcIterator(), _numWords(numWords) {
         _bufsize = 0;
         _buf = (char *) malloc(BUFSIZE);
+        _removed_size = 0; // counting size of removed det/alg in bytes
     }
 
     ~XtcUpdateIter() {
@@ -92,6 +93,10 @@ public:
 
     void clear_buf(){
         _bufsize = 0;
+    }
+
+    uint32_t get_removed_size(){
+        return _removed_size;
     }
 
     void copy2buf(char* in_buf, unsigned in_size);
@@ -118,6 +123,7 @@ private:
     char* _buf;
     unsigned _bufsize;
     std::unique_ptr<CreateData> _newData;
+    uint32_t _removed_size;
 }; // end class XtcUpdateIter
 
 

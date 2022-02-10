@@ -158,6 +158,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 
 int XtcUpdateIter::process(Xtc* xtc)
 {
+    printf("\nC NEW XTC\n");
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
         iterate(xtc);
@@ -167,7 +168,7 @@ int XtcUpdateIter::process(Xtc* xtc)
         Names& names = *(Names*)xtc;
         _namesLookup[names.namesId()] = NameIndex(names);
         Alg& alg = names.alg();
-    printf("*** DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
+    printf("C TypeId::Names DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
                names.detName(), names.segment(), names.detType(), names.detId(),
                alg.name(), alg.version(), (int)names.namesId());
 
@@ -205,7 +206,7 @@ int XtcUpdateIter::process(Xtc* xtc)
         Data& data = shapesdata.data();
         
         Alg& alg = names.alg();
-    printf("*** DetName: %s, Alg: %s\n", names.detName(), alg.name());
+    printf("C TypeId::ShapesData DetName: %s, Alg: %s\n", names.detName(), alg.name());
     
     printf("Found %d names\n",names.num());
         for (unsigned i = 0; i < names.num(); i++) {
@@ -214,8 +215,17 @@ int XtcUpdateIter::process(Xtc* xtc)
         }
 
         // copy ShapesData to out buffer
-        copy2buf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
-        printf("COPY ShapesData sizeof(Xtc):%u sizeofPayload: %u bufsize: %u\n", sizeof(Xtc), xtc->sizeofPayload(), _bufsize);
+        char detName[15];
+        char algName[15];
+        strcpy(detName, "hsd");
+        strcpy(algName, "raw");
+        if (strcmp(names.detName(), detName) == 0 && strcmp(alg.name(), algName)==0){
+            _removed_size += sizeof(Xtc) + xtc->sizeofPayload();
+            printf("Found unwanted %s %s _removed_size: %u\n", names.detName(), alg.name(), _removed_size); 
+        }else{
+            copy2buf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+            printf("COPY ShapesData sizeof(Xtc):%u sizeofPayload: %u bufsize: %u\n", sizeof(Xtc), xtc->sizeofPayload(), _bufsize);
+        }
         break;
     }
     default:

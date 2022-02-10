@@ -42,14 +42,18 @@ if __name__ == "__main__":
 
     names0 = None
     for i in range(5):
+        print(f"\nPYTHON NEW DGRAM {i}")
         pydg = pyiter.next()
         
         # Add new Names to config
         if i == 0:
+            print(f"PYTHON GOT CONFIG")
             names0 = dp.names(pydg, det, alg, datadef)
+            print(f"PYTHON CONFIG DONE ADD NAME")
 
         # Add new Data to L1
         if i == 4:
+            print(f"PYTHON L1ACCEPT")
             data = {
                     "valFex": 41,
                     "strFex": "hello string",
@@ -67,16 +71,17 @@ if __name__ == "__main__":
                     }
             if names0:
                 dp.adddata(pydg, names0, datadef, data)
+            print(f"PYTHON L1ACCEPT DONE ADDDATA")
         
         # Copy dgram header
         dp.copy_dgram(pydg)
         buf = dp.get_buf()
-        print(f'nevt={i} header={pydg.get_size()}')
-        print(f'         copy config header --> bufsize:{memoryview(buf).nbytes}')
+        print(f'PYTHON nevt={i} header={pydg.get_size()}')
+        print(f'PYTHON BEFORE --> bufsize:{memoryview(buf).nbytes}')
         
         dp.iterate(pydg)
         buf = dp.get_buf()
-        print(f'         copy Names and ShapesData --> bufsize:{memoryview(buf).nbytes}')
+        print(f'PYTHON AFTER --> bufsize:{memoryview(buf).nbytes}')
 
     with open('out.xtc2', 'wb') as f:
         f.write(dp.get_buf())

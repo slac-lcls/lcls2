@@ -1,4 +1,4 @@
-from libc.stdint cimport uint8_t
+from libc.stdint cimport uint8_t, uint32_t
 cimport numpy as cnp
 cnp.import_array() # needed
 
@@ -11,6 +11,7 @@ cdef extern from 'xtcdata/xtc/Xtc.hh' namespace "XtcData":
     cdef cppclass Xtc:
         Xtc() except + 
         int sizeofPayload() const
+        uint32_t extent
 
 cdef extern from "xtcdata/xtc/NamesId.hh" namespace "XtcData":
     cdef cppclass NamesId:
@@ -85,6 +86,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec)
         int  getElementSize(unsigned nodeId, unsigned namesId,
                 DataDef& datadef, char* varname)
+        cnp.uint32_t get_removed_size()
 
 
     cdef cppclass DataDef:
