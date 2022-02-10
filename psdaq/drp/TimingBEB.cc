@@ -66,7 +66,7 @@ unsigned TimingBEB::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     Alg alg("raw", 2, 0, 0);
     Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
+                                        "ts", m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
     eventNames.add(xtc, TSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;
