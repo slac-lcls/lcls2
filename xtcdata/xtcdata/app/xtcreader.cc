@@ -15,10 +15,16 @@ using std::string;
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
+    unsigned maxWords = 1;
     printf("'%s' ", name);
     printf("(shape:");
-    for (unsigned w = 0; w < rank; w++) printf(" %d",shape[w]);
+    for (unsigned w = 0; w < rank; w++) {
+        printf(" %d",shape[w]);
+        maxWords *= shape[w];
+    }
     printf("): ");
+    if (maxWords < numWords)
+        numWords = maxWords;
     for (unsigned w = 0; w < numWords; ++w) {
         printf(fmt, arrT.data()[w]);
     }
