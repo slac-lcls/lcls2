@@ -72,11 +72,14 @@ public:
     XtcUpdateIter(unsigned numWords) : XtcData::XtcIterator(), _numWords(numWords) {
         _bufsize = 0;
         _buf = (char *) malloc(BUFSIZE);
+        _tmpbufsize = 0;
+        _tmpbuf = (char *) malloc(BUFSIZE);
         _removed_size = 0; // counting size of removed det/alg in bytes
     }
 
     ~XtcUpdateIter() {
         free(_buf);
+        free(_tmpbuf);
     }
     
     virtual int process(XtcData::Xtc* xtc);
@@ -99,7 +102,6 @@ public:
         return _removed_size;
     }
 
-    void copy2buf(char* in_buf, unsigned in_size);
     void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
             unsigned nodeId, unsigned namesId, unsigned segment,
             char* algName, uint8_t major, uint8_t minor, uint8_t micro,
@@ -115,6 +117,9 @@ public:
     void updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec);
     int getElementSize(unsigned nodeId, unsigned namesId, 
             DataDef& datadef, char* varname);
+    void copy(Dgram* parent_d);
+    void copy2buf(char* in_buf, unsigned in_size);
+    void copy2tmpbuf(char* in_buf, unsigned in_size);
 
 
 private:
@@ -122,6 +127,8 @@ private:
     unsigned _numWords;
     char* _buf;
     unsigned _bufsize;
+    char* _tmpbuf;
+    unsigned _tmpbufsize;
     std::unique_ptr<CreateData> _newData;
     uint32_t _removed_size;
 }; // end class XtcUpdateIter

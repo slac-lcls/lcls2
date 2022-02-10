@@ -113,8 +113,8 @@ cdef class PyXtcUpdateIter():
     def clear_buf(self):
         self.cptr.clear_buf()
 
-    def copy_dgram(self, PyDgram pydg):
-        self.cptr.copy2buf(<char *>pydg.cptr, sizeof(Dgram))
+    def copy(self, PyDgram pydg):
+        self.cptr.copy(pydg.cptr)
 
     def updatetimestamp(self, PyDgram pydg, sec, nsec):
         self.cptr.updateTimeStamp(pydg.cptr[0], sec, nsec)
@@ -282,20 +282,28 @@ def datadef(datadict):
         datadef.add(key, val[0], val[1])
     return datadef
 
-def copy_dgram(PyDgram pydg):
-    uiter.copy_dgram(pydg)
-
 def get_buf():
     return uiter.get_buf()
 
-def iterate(PyDgram pydg):
+def save(PyDgram pydg):
+    """ Copies Names and ShapesData to _tmpbuf and update
+    parent dgram extent to new size (if some ShapesData
+    were removed. The parent dgram and _tmpbuf are then
+    copied to _buf as one new event. """
+    # Copies Names and ShapesData (also applies remove for 
+    # ShapesData) to _tmpbuf
     pyxtc = pydg.get_pyxtc()
     uiter.iterate(pyxtc)
+
+    # Update parent dgram with new size
     cdef uint32_t removed_size = uiter.get_removed_size()
     if removed_size > 0:
         print(f'pydg payload before:{pydg.get_payload_size()}')
         pydg.dec_extent(removed_size)
         print(f'pydg payload after:{pydg.get_payload_size()}')
+
+    # Copy updated parent dgram and _tmpbuf to _buf 
+    uiter.copy(pydg)
 
 def clearbuf():
     uiter.clear_buf()

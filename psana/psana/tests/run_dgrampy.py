@@ -1,6 +1,7 @@
 import dgrampy as dp
 import os
 import numpy as np
+from psana import DataSource
 
 def create_array(dtype):
     if dtype in (np.float32, np.float64):
@@ -10,6 +11,14 @@ def create_array(dtype):
         arr = np.stack([np.arange(np.iinfo(dtype).min, np.iinfo(dtype).min+3, dtype=dtype), 
                 np.arange(np.iinfo(dtype).max-2, np.iinfo(dtype).max+1, dtype=dtype)])
     return arr
+
+def test_output(fname):
+    ds = DataSource(files=[fname])
+    myrun = next(ds.runs())
+    det = myrun.Detector('xpphsd')
+    for evt in myrun.events():
+        det.fex.show(evt)
+
 
 if __name__ == "__main__":
     filename = '/cds/data/drpsrcf/users/monarin/tmolv9418/tmolv9418-r0175-s000-c000.xtc2'
@@ -73,17 +82,12 @@ if __name__ == "__main__":
                 dp.adddata(pydg, names0, datadef, data)
             print(f"PYTHON L1ACCEPT DONE ADDDATA")
         
-        # Copy dgram header
-        dp.copy_dgram(pydg)
-        buf = dp.get_buf()
-        print(f'PYTHON nevt={i} header={pydg.get_size()}')
-        print(f'PYTHON BEFORE --> bufsize:{memoryview(buf).nbytes}')
-        
-        dp.iterate(pydg)
-        buf = dp.get_buf()
-        print(f'PYTHON AFTER --> bufsize:{memoryview(buf).nbytes}')
+        # Copy the event to buffer
+        dp.save(pydg)
 
     with open('out.xtc2', 'wb') as f:
         f.write(dp.get_buf())
 
     os.close(fd)
+
+    test_output('out.xtc2')

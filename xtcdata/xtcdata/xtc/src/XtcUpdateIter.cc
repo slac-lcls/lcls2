@@ -158,6 +158,13 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 
 int XtcUpdateIter::process(Xtc* xtc)
 {
+    /* 
+    A callback from iterate. 
+    Dgrampy uses iterate to go through Names and ShapesData.
+    For Names, both new and existing Names are copied to _tmpbuf.
+    For ShapesData, only those that are not filtered out are
+    copied to _tmpbuf. 
+    */
     printf("\nC NEW XTC\n");
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
@@ -168,7 +175,7 @@ int XtcUpdateIter::process(Xtc* xtc)
         Names& names = *(Names*)xtc;
         _namesLookup[names.namesId()] = NameIndex(names);
         Alg& alg = names.alg();
-    printf("C TypeId::Names DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
+        printf("C TypeId::Names DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
                names.detName(), names.segment(), names.detType(), names.detId(),
                alg.name(), alg.version(), (int)names.namesId());
 
@@ -178,11 +185,9 @@ int XtcUpdateIter::process(Xtc* xtc)
         }
 
         unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name)); 
-        printf("BEFORE sizeof(Names):%u names.num():%u sizeof(Name):%u total:%u sizeof(Xtc):%u sizeofPayload:%d\n", sizeof(Names), names.num(), sizeof(Name), namesSize, sizeof(Xtc), xtc->sizeofPayload());
 
-        // copy Names to out buffer
-        copy2buf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
-        printf("COPY Names sizeof(Xtc):%u sizeofPayload: %u bufsize: %u\n", sizeof(Xtc), xtc->sizeofPayload(), _bufsize);
+        // copy Names to tmp buffer
+        copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
 
         break;
     }
@@ -206,25 +211,23 @@ int XtcUpdateIter::process(Xtc* xtc)
         Data& data = shapesdata.data();
         
         Alg& alg = names.alg();
-    printf("C TypeId::ShapesData DetName: %s, Alg: %s\n", names.detName(), alg.name());
+        printf("C TypeId::ShapesData DetName: %s, Alg: %s\n", names.detName(), alg.name());
     
-    printf("Found %d names\n",names.num());
+        printf("Found %d names\n",names.num());
         for (unsigned i = 0; i < names.num(); i++) {
             Name& name = names.get(i);
             get_value(i, name, descdata);
         }
 
-        // copy ShapesData to out buffer
+        // copy ShapesData to tmp buffer
         char detName[15];
         char algName[15];
         strcpy(detName, "hsd");
         strcpy(algName, "raw");
         if (strcmp(names.detName(), detName) == 0 && strcmp(alg.name(), algName)==0){
             _removed_size += sizeof(Xtc) + xtc->sizeofPayload();
-            printf("Found unwanted %s %s _removed_size: %u\n", names.detName(), alg.name(), _removed_size); 
         }else{
-            copy2buf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
-            printf("COPY ShapesData sizeof(Xtc):%u sizeofPayload: %u bufsize: %u\n", sizeof(Xtc), xtc->sizeofPayload(), _bufsize);
+            copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
         }
         break;
     }
@@ -234,11 +237,27 @@ int XtcUpdateIter::process(Xtc* xtc)
     return Continue;
 }
 
+void XtcUpdateIter::copy2tmpbuf(char* in_buf, unsigned in_size){
+    memcpy(_tmpbuf + _tmpbufsize, in_buf, in_size);
+    _tmpbufsize += in_size;
+}
+
 void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
-    memcpy(_buf+get_bufsize(), in_buf, in_size);
+    memcpy(_buf + _bufsize, in_buf, in_size);
     _bufsize += in_size;
 }
 
+// Performs atomic copy that results in all necessary parts of
+// an event being copied to the main output buffer _buf. This 
+// requires `parent_d`, which can be updated after Names and
+// ShapesData were copied to _tmpbuf. The `parent_d` is first
+// copied followed by _tmpbuf (Names & ShapesData). The _tmpbuf
+// is then cleared for next event.
+void XtcUpdateIter::copy(Dgram* parent_d){
+    copy2buf((char*) parent_d, sizeof(Dgram));
+    copy2buf(_tmpbuf, _tmpbufsize);
+    _tmpbufsize = 0;
+}
 
 void XtcUpdateIter::updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec){
     d.time = TimeStamp(sec, nsec);

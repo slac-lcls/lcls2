@@ -70,7 +70,6 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         char* get_buf()
         void clear_buf()
         unsigned get_bufsize()
-        void copy2buf(char* in_buf, unsigned in_size)
         void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
                 unsigned nodeId, unsigned namesId, unsigned segment,
                 char* algName, uint8_t major, uint8_t minor, uint8_t micro,
@@ -87,6 +86,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         int  getElementSize(unsigned nodeId, unsigned namesId,
                 DataDef& datadef, char* varname)
         cnp.uint32_t get_removed_size()
+        void copy(Dgram* parent_d)
 
 
     cdef cppclass DataDef:
