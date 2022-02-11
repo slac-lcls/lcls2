@@ -21,6 +21,10 @@
 namespace XtcData
 {
 
+/* Keeps a triplet Name vector and a lookup _index map
+      NameVec: stores triplet `name`, `dtype`, and `rank`
+      _index:  maps element no. (in the order it was added)
+*/
 class DataDef : public XtcData::VarDef
 {
 public:
@@ -63,6 +67,7 @@ private:
     int _n_elems;
 
 }; // end class DataDef
+
 
 class XtcUpdateIter : public XtcData::XtcIterator
 {
