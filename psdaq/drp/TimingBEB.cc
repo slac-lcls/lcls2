@@ -74,7 +74,6 @@ unsigned TimingBEB::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
 
 void TimingBEB::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    logging::debug("_event subframes size %u\n",subframes.size());
     TSDef.createDataETM(xtc, m_namesLookup, m_evtNamesId, subframes[0].data(), subframes[subframes.size()-1].data());
 }
 

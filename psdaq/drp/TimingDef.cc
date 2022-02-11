@@ -32,12 +32,6 @@ namespace Drp {
                                  XtcData::NamesId      namesId,
                                  const uint8_t*        data)
     {
-        char cbuff[256]; char* cptr=cbuff;
-        for(unsigned i=0; i<16; i++)
-            cptr += sprintf(cptr,"%08x_",reinterpret_cast<const uint32_t*>(data)[i]);
-        sprintf(cptr,"\n");
-        logging::warning(cbuff);
-
         DescribedData ts(xtc, namesLookup, namesId);
 
         unsigned data_size = 968/8;
@@ -58,12 +52,6 @@ namespace Drp {
                                     XtcData::NamesId      namesId,
                                     const uint8_t*        p)
     {
-        char cbuff[256]; char* cptr=cbuff;
-        for(unsigned i=0; i<16; i++)
-            cptr += sprintf(cptr,"%08x_",reinterpret_cast<const uint32_t*>(p)[i]);
-        sprintf(cptr,"\n");
-        logging::warning(cbuff);
-
         CreateData cd(xtc, namesLookup, namesId);
         unsigned index = 0;
         unsigned shape[MaxRank];
@@ -119,12 +107,6 @@ namespace Drp {
                                   const uint8_t*        pHdr,
                                   const uint8_t*        pEtm)
     {
-        char cbuff[256]; char* cptr=cbuff;
-        for(unsigned i=0; i<16; i++)
-            cptr += sprintf(cptr,"%08x_",reinterpret_cast<const uint32_t*>(pEtm)[i]);
-        sprintf(cptr,"\n");
-        logging::warning(cbuff);
-
         CreateData cd(xtc, namesLookup, namesId);
         unsigned index = 0;
         unsigned shape[MaxRank];
