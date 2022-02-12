@@ -19,6 +19,7 @@ task_set = 'taskset 0xffbfeffbfe '
 std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
 
 drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no '
+drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no '
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -39,4 +40,5 @@ procmgr_config = [
  {                        flags:'p', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING --uris {cdb} --expert {auth} -H '+collect_host},
  { host: 'drp-neh-cmp014', id:'teb0', flags:'pu', cmd:'teb -P '+hutch+' -C '+collect_host},
  { host: 'drp-neh-cmp014', id:'epix100_0',   flags:'sxpu', env:epics_env, cmd:drp_cmd0+' -D epix100 -l 0x1'},
+ #{ host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 ]

@@ -33,7 +33,6 @@ class EpixBoard(pyrogue.Root):
 def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
     global base
     global pv
-    print('*** here in epix100_init')
 
 #    logging.getLogger().setLevel(40-10*verbosity)
     logging.debug('epix100_init')
@@ -183,6 +182,7 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerDelay.set(11905)
     cbase.ePix100aFPGA.EpixFpgaRegisters.RunTriggerEnable.set(True)
     cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerEnable.set(True)
+    cbase.ePix100aFPGA.EpixFpgaRegisters.PgpTrigEn.set(True)
     baseClockMHz = cbase.ePix100aFPGA.EpixFpgaRegisters.BaseClockMHz.get()
     width_us = cfg['user']['gate_ns']/1000.
     width_clockticks = int(width_us*baseClockMHz)
@@ -209,3 +209,13 @@ def epix100_unconfig(base):
     pbase = base['pci']
     pbase.StopRun()
     return base
+
+def epix100_scan_keys(update):
+    print('***scan_keys:',update)
+    logging.info('epixhr2x2_scan_keys')
+    return update
+
+def epix100_update(update):
+    print('***update:',update)
+    logging.info('epixhr2x2_update')
+    return update
