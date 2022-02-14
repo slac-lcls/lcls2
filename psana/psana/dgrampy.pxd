@@ -87,6 +87,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
                 DataDef& datadef, char* varname)
         cnp.uint32_t get_removed_size()
         void copy(Dgram* parent_d)
+        void setFilter(char* detName, char* algName)
 
 
     cdef cppclass DataDef:

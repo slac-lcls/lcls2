@@ -3,7 +3,8 @@
 #include <sys/time.h>
 
 using namespace XtcData;
-using std::string;
+using namespace std;
+//using std::string;
 
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
@@ -190,6 +191,13 @@ int XtcUpdateIter::process(Xtc* xtc)
 
         // copy Names to tmp buffer
         copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+
+        // initialize filter flag
+        string sDet(names.detName());
+        string sAlg(alg.name());
+        _flagFilter.insert(pair<string, int>(sDet+"_"+sAlg, 0));
+        cout << "_flagFilter init " << sDet+"_"+sAlg << endl;
+
 
         break;
     }
@@ -478,5 +486,13 @@ Dgram& XtcUpdateIter::createTransition(unsigned utransId,
     }
     Transition tr(Dgram::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), env);
     return *new(buf) Dgram(tr, Xtc(tid));
+}
+
+
+// Set _filterFlag with key detName_algName to 1
+void XtcUpdateIter::setFilter(char* detName, char* algName){
+    string sDet(detName);
+    string sAlg(algName);
+    cout << "_flagFilter set " << sDet << "_" << sAlg << endl;
 }
 

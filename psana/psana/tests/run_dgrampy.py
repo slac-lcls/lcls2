@@ -29,6 +29,7 @@ if __name__ == "__main__":
     # TODO: Think about initializing these by adding another example
     # where we create xtc from scratch.
     alg = dp.alg("fex", 4, 5, 6)
+    # DetName DetType DetId
     det = dp.det("xpphsd", "hsd", "detnum1234")
     
     # Define data formats
@@ -49,11 +50,12 @@ if __name__ == "__main__":
             }
     datadef = dp.datadef(datadef_dict)
 
+
     names0 = None
     for i in range(5):
         print(f"\nPYTHON NEW DGRAM {i}")
         pydg = pyiter.next()
-        
+
         # Add new Names to config
         if i == 0:
             print(f"PYTHON GOT CONFIG")
@@ -79,7 +81,7 @@ if __name__ == "__main__":
                     "arrayString": np.array(['hello string array']),
                     }
             if names0:
-                dp.adddata(pydg, names0, datadef, data)
+                dp.adddata(pydg, names0, datadef, data) # either change to add
             print(f"PYTHON L1ACCEPT DONE ADDDATA")
         
         # Copy the event to buffer

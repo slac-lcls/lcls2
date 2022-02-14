@@ -125,17 +125,32 @@ public:
     void copy(Dgram* parent_d);
     void copy2buf(char* in_buf, unsigned in_size);
     void copy2tmpbuf(char* in_buf, unsigned in_size);
+    void setFilter(char* detName, char* algName);
 
 
 private:
     NamesLookup _namesLookup;
     unsigned _numWords;
-    char* _buf;
-    unsigned _bufsize;
+    std::unique_ptr<CreateData> _newData;
+    
+    // _tmpbuf* are used for storing Names and ShapesData
+    // while they are being iterated (copy if no filter matched).
+    // bu* are the main buffer that has both parent dgram
+    // and Names & ShapesData. It aslo has infinite lifetime
+    // until it gets cleared manually.
     char* _tmpbuf;
     unsigned _tmpbufsize;
-    std::unique_ptr<CreateData> _newData;
+    char* _buf;
+    unsigned _bufsize;
+
+    // Used for couting no. of ShapesData bytes removed per event.
+    // This gets reset to 0 when the event is saved. 
     uint32_t _removed_size;
+    
+    // Used for storing detName_algName (key) and its per-event 
+    // filter flag. 0 (initial values) means keeps while 1 means 
+    // filtered. This map gets reset to 0 when an event is saved. 
+    std::map<std::string, int> _flagFilter; 
 }; // end class XtcUpdateIter
 
 

@@ -174,6 +174,9 @@ cdef class PyXtcUpdateIter():
         
         PyBuffer_Release(&shape_pybuf)
         PyBuffer_Release(&data_pybuf)
+
+    def removedata(self, det_name, alg_name):
+        self.cptr.setFilter(det_name.encode(), alg_name.encode())
     
     def createTransition(self, transId, timestamp_val):
         counting_timestamps = 1
@@ -275,6 +278,9 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
                     shape[i] = data.shape[i]
             uiter.adddata(namesdef, pydatadef, datadef_name, shape, data)
     print(f'CYTHON DONE addata')
+
+def removedata(det_name, alg_name):
+    uiter.removedata(det_name, alg_name)
 
 def datadef(datadict):
     datadef = PyDataDef()
