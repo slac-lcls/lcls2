@@ -41,6 +41,7 @@ pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
 
 teb_cmd = task_set+'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -k '+kwargs
 meb_cmd = task_set+'monReqServer '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -k '+kwargs
+pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/configdb/ws/,configDB,ued,XPM -P DAQ:UED:XPM:%d'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -57,20 +58,22 @@ meb_cmd = task_set+'monReqServer '+'-P '+hutch+' -C '+collect_host+' -M '+prom_d
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
+
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:UED:XPM:0'},
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:UED 0 '+groups}, #+' --prod'},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
-# { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1'},
  { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger'},
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  { host: 'drp-ued-cmp001', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
- { host: 'drp-ued-cmp001', id:'epixquad_0',  flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixquad -k timebase=119M'},
+# { host: 'drp-ued-cmp001', id:'epixquad_0',  flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixquad -k timebase=119M'},
+ { host: 'drp-ued-cmp001', id:'wave8_0',     flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x2 -D wave8 -k epics_prefix=UED:USR:DIO,timebase=119M'},
 
- { host: 'drp-ued-cmp002', id:'timing_0',    flags:'spu',                cmd:drp_cmd0+' -l 0x1 -D ts -k timebase=119M'},
+# { host: 'drp-ued-cmp001', id:'timing_0',    flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x8 -D tb -k feb_lane=3,timebase=119M'},
+ { host: 'drp-ued-cmp002', id:'timing_0',    flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D ts -k timebase=119M'},
 
  { host: 'drp-ued-cmp002', id:'epics_0',     flags:'spu', env:ued_epics_env, cmd:ea_cmd0+' -l 0x2 -k timebase=119M'},
 
@@ -108,3 +111,9 @@ for N, worker_node in enumerate(ami_worker_nodes):
 procmgr_config.extend(procmgr_ami)
 
 #procmgr_config.append({ host:'drp-ued-cmp001', id:f'mebN', flags:'spux', cmd:f'{meb_cmd} -d -q {ami_workers_per_node} -P {hutch}usr '})
+
+if platform=='0':
+   procmgr_xpm = [{ host: 'drp-ued-cmp001', id:'pyxpm-0' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.104 '+pyxpm_optsdb%0+' -L -F 2.0e-6'},
+                  { host: 'drp-ued-cmp001', id:'pvrtmon',  port:'29460', flags:'s', env:epics_env, cmd:f'epics_exporter -H ued -M /cds/group/psdm/psdatmgr/etc/config/prom/ued -P DAQ:UED:XPM:0 -G Cu:FIDs,Cu:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},]
+   procmgr_config.extend(procmgr_xpm)
+

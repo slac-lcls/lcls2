@@ -45,7 +45,7 @@ ami_manager_node = "drp-neh-ctl001"
 
 procmgr_config = [
  #{                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups},
- { id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
+  {                         id:'procstat',    flags:'p',   cmd:'procstat '+CONFIGDIR+'/p'+platform+'.cnf.last'},
 
  { host: 'drp-neh-cmp016', id:'teb0',        flags:'spu', cmd:'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir},
 

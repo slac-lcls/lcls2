@@ -1,12 +1,10 @@
 if not platform: platform = '2'
 
-#epics_path = f'PATH={CONDA_PREFIX}/epics/bin/linux-x86_64:'+os.environ['PATH']
-epics_path = ' '
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path+' '+epics_path
-manta_env = 'EPICS_PVA_ADDR_LIST=172.21.156.12 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path+' '+epics_path
-hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path+' '+epics_path
-andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.84  EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path+' '+epics_path
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
+manta_env = 'EPICS_PVA_ADDR_LIST=172.21.156.12 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
+andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.84  EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
