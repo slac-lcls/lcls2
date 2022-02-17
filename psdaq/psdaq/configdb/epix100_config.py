@@ -15,11 +15,12 @@ import logging
 
 base = None
 pv = None
-#lane = 0
+lane = 0
 chan = None
 group = None
 segids = None
 seglist = [0]
+cfgfile = '/cds/home/c/cpo/git/epix-100a-gen2/software/yml/junk1.yml'
 
 class EpixBoard(pyrogue.Root):
     def __init__(self, srp, **kwargs):
@@ -33,6 +34,8 @@ class EpixBoard(pyrogue.Root):
 def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
     global base
     global pv
+
+    assert lanemask==1,'Epix100 KCU firmware requires camera to be on lane 0'
 
 #    logging.getLogger().setLevel(40-10*verbosity)
     logging.debug('epix100_init')
@@ -62,7 +65,6 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
     # VC0 is the register interface.  See README.md here:
     # https://github.com/slaclab/lcls2-epix-hr-pcie
     VC = 0
-    lane = 0
     pgpVc0DmaDest = rogue.hardware.axi.AxiStreamDma(dev,(lane*0x100)+VC,True)
 
     # Create and Connect SRP to VC0 to send register read-write commands
@@ -72,6 +74,9 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
 
     cbase = EpixBoard(srp)
     cbase.__enter__()
+    print('*** Loading camera configuration from',cfgfile)
+    cbase.LoadConfig(cfgfile)
+    print('*** Done loading camera configuration')
 
     print(f"KCU FpgaVersion {hex(pbase.DevPcie.AxiPcieCore.AxiVersion.FpgaVersion.get())}")
     print(f"CAM FpgaVersion {hex(cbase.ePix100aFPGA.AxiVersion.FpgaVersion.get())}")
@@ -116,6 +121,7 @@ def epix100_init_feb(slane=None,schan=None):
         lane = int(slane)
     if schan is not None:
         chan = int(schan)
+    assert lane==0,'Epix100 KCU firmware requires camera to be on lane 0'
 
 #
 #  Set the local timing ID and fetch the remote timing ID
@@ -170,7 +176,6 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
         logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:} clk_period {:} msg_period {:}'.format(partitionDelay,rawStart,triggerDelay,base['clk_period'],base['msg_period']))
         raise ValueError('triggerDelay computes to < 0')
 
-    lane = 0
     pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].TriggerDelay.set(triggerDelay)
     pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].Partition.set(group)
 
@@ -202,7 +207,9 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
                                                       digitalId[0], digitalId[1],
                                                       analogId [0], analogId [1])
     cfg['detId:RO']=id
-
+    myfile = open(cfgfile)
+    cfg['expert']['cfgyaml']=myfile.read()
+    myfile.close()
     return json.dumps(cfg)
 
 def epix100_unconfig(base):

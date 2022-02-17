@@ -13,16 +13,20 @@ def epix100_cdict():
     #top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     #top.set("firmwareVersion:RO",   0, 'UINT32')
 
-    help_str  = "-- user interface --"
-    help_str += "\nstart_ns     : nanoseconds to exposure start"
-    help_str += "\ngate_ns     : nanoseconds to exposure start"
+    #help_str  = "-- user interface --"
+    #help_str += "\nstart_ns     : exposure start (nanoseconds)"
+    #help_str += "\ngate_ns     : exposure time (nanoseconds)"
+    #top.set("help.user:RO", help_str, 'CHARSTR')
 
-    top.set("user.start_ns" , 58000, 'UINT32') # taken from epixHR
-    top.set("user.gate_ns" , 100000, 'UINT32') # 100us 
+    # set to 88000 to get triggerDelay larger than zero when
+    # L0Delay is 81 (used by TMO)
+    top.set("user.start_ns" , 88000, 'UINT32') # taken from epixHR
+    top.set("user.gate_ns" , 154000, 'UINT32') # taken from lcls1 xpptut15 run 260
     # add daqtriggerdelay and runtriggerdelay?
 
     # timing system
     top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.PauseThreshold',16,'UINT32')
+    top.set('expert.cfgyaml:RO','NoYaml','CHARSTR')
 
     return top
 
