@@ -318,16 +318,13 @@ void XtcUpdateIter::createData(Xtc& xtc, unsigned nodeId, unsigned namesId) {
    arrayFex0 returns 0). 
 */
 void XtcUpdateIter::setString(char* data, DataDef& datadef, char* varname){
-    // TODO: Add check for newIndex >= 0
     unsigned newIndex = datadef.index(varname);
     _newData->set_string(newIndex, data);
 }
 
-
 void XtcUpdateIter::setValue(unsigned nodeId, unsigned namesId,
         char* data, DataDef& datadef, char* varname){
     NamesId namesId0(nodeId, namesId);
-    // TODO: Add check for newIndex >= 0
     unsigned newIndex = datadef.index(varname);
     Name& name = _namesLookup[namesId0].names().get(newIndex);
     
@@ -375,12 +372,10 @@ void XtcUpdateIter::setValue(unsigned nodeId, unsigned namesId,
     }
 }
 
-
 // Returns element size of the given `varname`
 int XtcUpdateIter::getElementSize(unsigned nodeId, unsigned namesId, 
         DataDef& datadef, char* varname) {
     NamesId namesId0(nodeId, namesId);
-    // TODO: Add check for newIndex >= 0
     unsigned newIndex = datadef.index(varname);
     Name& name = _namesLookup[namesId0].names().get(newIndex);
     return Name::get_element_size(name.type());
@@ -397,7 +392,6 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
 
     NamesId namesId0(nodeId, namesId);
 
-    // TODO: Add check for newIndex >= 0
     unsigned newIndex = datadef.index(varname);
     
     // Get shape and name (rank and type)

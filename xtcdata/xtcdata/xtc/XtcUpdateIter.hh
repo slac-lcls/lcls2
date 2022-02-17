@@ -53,13 +53,21 @@ public:
     }
 
     int index(char* name) {
-        // Locate name index using name in datadef
+        // Locates name index using name in datadef
+        // TODO: Add check for newIndex >= 0
         std::string s(name);
         for (auto itr = _index.find(s); itr!=_index.end(); itr++){
-            std::cout << "DataDef.index " << itr->first << '\t' << itr->second << '\n';
+            //std::cout << "DataDef.index " << itr->first << '\t' << itr->second << '\n';
             return itr->second;
         }
         return -1;
+    }
+
+    int getDtype(char* name) {
+        // Returns corresponding dtype 
+        int foundIndex = index(name);
+        Name foundName = NameVec[foundIndex];
+        return foundName.type();
     }
 
 private:
@@ -67,7 +75,6 @@ private:
     int _n_elems;
 
 }; // end class DataDef
-
 
 class XtcUpdateIter : public XtcData::XtcIterator
 {

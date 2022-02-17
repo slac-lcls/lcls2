@@ -94,5 +94,6 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         DataDef() except +
         void show()
         void add(char* name, unsigned dtype, int rank)
+        int getDtype(char* name)
 
 

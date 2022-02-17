@@ -47,6 +47,18 @@ class DataType:
     CHARSTR = 10
     ENUMVAL = 11
     ENUMDICT= 12
+    nptypes = {
+                0: np.uint8,
+                1: np.uint16,
+                2: np.uint32,
+                3: np.uint64,
+                4: np.int8, 
+                5: np.int16,
+                6: np.int32,
+                7: np.int64,
+                8: np.float32,
+                9: np.float64,
+    }
 
 cdef class PyDataDef:
     cdef DataDef* cptr
@@ -147,14 +159,22 @@ cdef class PyXtcUpdateIter():
         self.cptr.setString(str_data.encode(), pydatadef.cptr[0], datadef_name.encode())
     
     def setvalue(self, namesdef, PyDataDef pydatadef, datadef_name, data):
-        cdef int shape_size
-        shape_size = self.cptr.getElementSize(namesdef.nodeId, namesdef.namesId, 
-                pydatadef.cptr[0], datadef_name.encode())
-        cdef char* data_ptr = <char *>malloc(shape_size);
-        data_ptr[0] = data
+        """Sets scalar value to the given `datadef_name`.
+        
+        Converts (any) given scalar `data` to the specified known dtype
+        using numpy array format. The buffer is passed in (and later converted
+        to the correct dtype) as char*. 
+        """
+        cdef int dtypeNo = pydatadef.cptr.getDtype(datadef_name.encode())
+        
+        d_arr = np.array([data], dtype=DataType.nptypes[dtypeNo])
+        cdef char* data_ptr
+        cdef Py_buffer data_pybuf
+        PyObject_GetBuffer(d_arr, &data_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+        data_ptr = <char *>data_pybuf.buf
         self.cptr.setValue(namesdef.nodeId, namesdef.namesId, 
-                data_ptr, pydatadef.cptr[0], datadef_name.encode())
-        free(data_ptr)
+                           data_ptr, pydatadef.cptr[0], datadef_name.encode())
+        PyBuffer_Release(&data_pybuf)
 
     def adddata(self, namesdef, PyDataDef pydatadef, 
             datadef_name, unsigned[:] shape, data):
@@ -165,7 +185,6 @@ cdef class PyXtcUpdateIter():
 
         cdef char* data_ptr
         cdef Py_buffer data_pybuf
-        cdef float* float_ptr
         PyObject_GetBuffer(data, &data_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
         data_ptr = <char *>data_pybuf.buf
 

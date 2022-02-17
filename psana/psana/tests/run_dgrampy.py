@@ -34,7 +34,7 @@ if __name__ == "__main__":
     
     # Define data formats
     datadef_dict = {
-            "valFex": (dp.DataType.UINT8, 0),
+            "valFex": (dp.DataType.FLOAT, 0),
             "strFex": (dp.DataType.CHARSTR, 1),
             "arrayFex0": (dp.DataType.UINT8, 2),
             "arrayFex1": (dp.DataType.UINT16, 2),
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         if i == 4:
             print(f"PYTHON L1ACCEPT")
             data = {
-                    "valFex": 41,
+                    "valFex": 1600.1234,
                     "strFex": "hello string",
                     "arrayFex0": create_array(np.uint8),
                     "arrayFex1": create_array(np.uint16),
