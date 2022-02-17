@@ -81,6 +81,26 @@ def issue_2022_02_08():
         #arr = det.raw._common_mode_increment(evt, cmpars=(0,7,100,10))
         print(info_ndarr(arr, 'Ev.%3d dt=%.3f sec  det.raw.calib(evt, cmpars=(0,7,100,10)): '%(i, time()-t0_sec)))
 
+def issue_2022_02_15():
+    """O'Grady, Paul Christopher <cpo@slac.stanford.edu> Tue 2/15/2022 3:32 PM
+       Hi Mikhail,
+       I?m having trouble getting det.raw.image to work from the head of git.
+       I ran pedestals as shown in ~cpo/junk.txt, but det.raw.image returns None even though det.raw.raw and det.raw.calib show data.
+       So it feels like it?s a geometry issue?  Would you have some advice?  Thank you?
+       chris
+
+       *** event 1404 (1, 704, 768) (1, 704, 768) None
+       *** event 1405 (1, 704, 768) (1, 704, 768) None
+       *** event 1406 (1, 704, 768) (1, 704, 768) None
+    """
+    from psana import DataSource
+    ds = DataSource(exp='tmox49720',run=209)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epix100')
+    for nevt,evt in enumerate(myrun.events()):
+        print('*** event',nevt,det.raw.raw(evt).shape,det.raw.calib(evt).shape,det.raw.image(evt))
+
+
 
 USAGE = '\nUsage:'\
       + '\n  python %s <test-name> <loglevel-e.g.-DEBUG-or-INFO>' % SCRNAME\
@@ -89,6 +109,7 @@ USAGE = '\nUsage:'\
       + '\n    1 - issue_2022_01_21 - test epix100hw raw, calib, image'\
       + '\n    2 - issue_2022_01_26 - test epix100 raw, calib, image and calib constants'\
       + '\n    3 - issue_2022_02_08 - test copy xtc2 file to .../public01/xtc/, epix100 common mode timing'\
+      + '\n    4 - issue_2022_02_15 - test epix100 cpo - missing geometry'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -96,6 +117,7 @@ TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 if   TNAME in  ('1',): issue_2022_01_21()
 elif TNAME in  ('2',): issue_2022_01_26()
 elif TNAME in  ('3',): issue_2022_02_08()
+elif TNAME in  ('4',): issue_2022_02_15()
 elif TNAME in  ('0',): issue_2022_01_dd()
 else:
     print(USAGE)
