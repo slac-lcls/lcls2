@@ -3,16 +3,18 @@ from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import *
 from psdaq.cas.xpm_utils import timTxId
 import epics
-import logging
 
 import json
 import time
 import pprint
+import logging
 
 prefix = None
 ocfg   = None
 group  = None
 lane   = 0
+timebase = '186M'
+base = {'timebase':'186M', 'prefix':None, lane:0}
 
 #
 #  Change this script to do minimal configuration:
@@ -111,12 +113,13 @@ def epics_get(d):
                 out[key] = pvname
     return out
 
-def config_timing(epics_prefix, lcls2=False):
+def config_timing(epics_prefix, lcls2=False, timebase='186M'):
     names = [epics_prefix+':Top:SystemRegs:timingUseMiniTpg',
              epics_prefix+':Top:TimingFrameRx:ModeSelEn',
+             epics_prefix+':Top:TimingFrameRx:ModeSel',
              epics_prefix+':Top:TimingFrameRx:ClkSel',
              epics_prefix+':Top:TimingFrameRx:RxPllReset']
-    values = [0, 0, 1, 1] if lcls2 else [0, 0, 0, 1]
+    values = [0, 1, 1 if lcls2 else 0, 1 if timebase=='186M' else 0, 1]
     ctxt_put(names,values)
 
     time.sleep(1.0)
@@ -135,19 +138,26 @@ def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timeb
     global prefix
     logging.getLogger().setLevel(40-10*verbosity)
     prefix = epics_prefix
-    return epics_prefix
+    base['prefix'] = epics_prefix
+    base['timebase'] = timebase
+    return base
 
 def wave8_init_feb(slane=None,schan=None):
     global lane
     if slane is not None:
         lane = int(slane)
 
-def wave8_connect(epics_prefix):
+def wave8_connect(base):
+    epics_prefix = base['prefix']
 
     #  Switch to LCLS2 Timing
     #    Need this to properly receive RxId
     #    Controls is no longer in-control
-    config_timing(epics_prefix,lcls2=True)
+    config_timing(epics_prefix,lcls2=True,timebase=base['timebase'])
+
+    #  This fails with the current IOC, but hopefully it will be fixed.  It works directly via pgp.
+    txId = timTxId('wave8')
+    ctxt_put(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:TxId', txId)
 
     # Retrieve connection information from EPICS
     # May need to wait for other processes here, so poll
@@ -158,8 +168,6 @@ def wave8_connect(epics_prefix):
         print('{:} is zero, retry'.format(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId'))
         time.sleep(0.1)
 
-    txId = timTxId('wave8')
-
     d = {}
     d['paddr'] = values
     print(f'wave8_connect returning {d}')
@@ -168,15 +176,23 @@ def wave8_connect(epics_prefix):
 def user_to_expert(prefix, cfg, full=False):
     global group
     global ocfg
+    global timebase
 
     d = {}
     try:
 #        lcls1Delay     = ctxt_get(prefix+'TriggerEventManager:EvrV2CoreTriggers.EvrV2TriggerReg[0]:Delay')
-        lcls1Delay = 0.9e-3*119e6
         partitionDelay = ctxt_get(prefix+'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]'%group)
         delta          = cfg['user']['delta_ns']
-        triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
-        print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
+        #  This is not so good; using timebase to distinguish LCLS from UED
+        if timebase=='186M':
+            lcls1Delay = 0.9e-3*119e6
+            triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
+            print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
+        else:
+            #  119M = UED, 238 clks per timing frame (500kHz)
+            lcls1Delay = 0.9e-3*119e6
+            triggerDelay   = int(lcls1Delay + delta*119.e-3 - partitionDelay*238)
+            print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
         if triggerDelay < 0:
             raise ValueError('triggerDelay computes to < 0')
         
@@ -195,11 +211,14 @@ def user_to_expert(prefix, cfg, full=False):
 #        pass
 
 
-def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
+def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     global lane
     global group
     global ocfg
+    global timebase
 
+    prefix = base['prefix']
+    timebase = base['timebase']
     group = grp
 
     #  Read the configdb
@@ -274,7 +293,7 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
     top.set("expert.RawBuffers.TrigPrescale"      , 0,'UINT32')    # user config
 
     top.set("expert.BatcherEventBuilder.Bypass" , 0,'UINT8')
-    top.set("expert.BatcherEventBuilder.Timeout", 156,'UINT32')      # timeout needs non-zero value (156 is 1 us)
+    top.set("expert.BatcherEventBuilder.Timeout", 0,'UINT32')
     top.set("expert.BatcherEventBuilder.Blowoff", 0,'UINT8')
 
     top.set("expert.TriggerEventManager.TriggerEventBuffer.TriggerDelay"  , 0,'UINT32')  # user config
@@ -371,9 +390,12 @@ def wave8_update(update):
 
 
 #  This is really shutdown/disconnect
-def wave8_unconfig(epics_prefix):
+def wave8_unconfig(base):
 
+    epics_prefix = base['prefix']
     ctxt_put(epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable', 0)
-    #config_timing(epics_prefix, lcls2=False)
+    #  Leaving DAQ control.  Put back into LCLS1 mode in LCLS hutches
+    if base['timebase']=='186M':
+        config_timing(epics_prefix, lcls2=False)
 
     return None;
