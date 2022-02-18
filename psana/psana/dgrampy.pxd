@@ -1,4 +1,4 @@
-from libc.stdint cimport uint8_t, uint32_t
+from libc.stdint cimport uint8_t, uint32_t, uint64_t
 cimport numpy as cnp
 cnp.import_array() # needed
 
@@ -80,9 +80,9 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void addData(unsigned nodeId, unsigned namesId,
                 unsigned* shape, char* data, DataDef& datadef, char* varname)
         Dgram& createTransition(unsigned transId, unsigned counting_timestamps,
-                unsigned timestamp_val)
+                uint64_t timestamp_val)
         void createData(Xtc& xtc, unsigned nodeId, unsigned namesId)
-        void updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec)
+        void updateTimeStamp(Dgram& d, uint64_t timestamp_val)
         int  getElementSize(unsigned nodeId, unsigned namesId,
                 DataDef& datadef, char* varname)
         cnp.uint32_t get_removed_size()

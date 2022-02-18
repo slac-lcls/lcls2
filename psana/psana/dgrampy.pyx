@@ -128,8 +128,8 @@ cdef class PyXtcUpdateIter():
     def copy(self, PyDgram pydg):
         self.cptr.copy(pydg.cptr)
 
-    def updatetimestamp(self, PyDgram pydg, sec, nsec):
-        self.cptr.updateTimeStamp(pydg.cptr[0], sec, nsec)
+    def updatetimestamp(self, PyDgram pydg, timestamp_val):
+        self.cptr.updateTimeStamp(pydg.cptr[0], timestamp_val)
 
     def names(self, PyXtc pyxtc, detdef, algdef, PyDataDef pydatadef, 
             nodeId=None, namesId=None, segment=None):
@@ -139,9 +139,9 @@ cdef class PyXtcUpdateIter():
         detId   = detdef.detid.encode()
         algName = algdef.name.encode()
 
-        if not nodeId: nodeId = 1
-        if not namesId: namesId = 1
-        if not segment: segment = 0
+        if nodeId is None: nodeId = 1
+        if namesId is None: namesId = 1
+        if segment is None: segment = 0
         
         # Dereference in cython with * is not allowed. You can either use [0] index or
         # from cython.operator import dereference
@@ -240,8 +240,8 @@ def config(ts=-1):
     cfg = uiter.createTransition(TransitionId.Configure, ts)
     return cfg
 
-def dgram(ts=-1):
-    dg = uiter.createTransition(TransitionId.L1Accept, ts)
+def dgram(transid=TransitionId.L1Accept, ts=-1):
+    dg = uiter.createTransition(transid, ts)
     return dg
 
 def alg(algname, major, minor, macro):
@@ -333,5 +333,5 @@ def save(PyDgram pydg):
 def clearbuf():
     uiter.clear_buf()
 
-def updatetimestamp(PyDgram pydg, sec, nsec):
-    uiter.updatetimestamp(pydg, sec, nsec)
+def updatetimestamp(PyDgram pydg, timestamp_val):
+    uiter.updatetimestamp(pydg, timestamp_val)

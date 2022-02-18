@@ -274,8 +274,8 @@ void XtcUpdateIter::copy(Dgram* parent_d){
 }
 
 
-void XtcUpdateIter::updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec){
-    d.time = TimeStamp(sec, nsec);
+void XtcUpdateIter::updateTimeStamp(Dgram& d, uint64_t timestamp_val){
+    d.time = TimeStamp(timestamp_val);
 }
 
 
@@ -465,7 +465,7 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
 // Returns new Dgram created from `utransId` and `timestamp_val`
 Dgram& XtcUpdateIter::createTransition(unsigned utransId, 
         bool counting_timestamps,
-        unsigned timestamp_val) {
+        uint64_t timestamp_val) {
     TransitionId::Value transId = (TransitionId::Value) utransId;
     TypeId tid(TypeId::Parent, 0);
     uint64_t pulseId = 0;
@@ -473,13 +473,13 @@ Dgram& XtcUpdateIter::createTransition(unsigned utransId,
     struct timeval tv;
     void* buf = malloc(BUFSIZE);
     if (counting_timestamps) {
-        tv.tv_sec = 1;
-        tv.tv_usec = timestamp_val;
+        Transition tr(Dgram::Event, transId, TimeStamp(timestamp_val), env);
+        return *new(buf) Dgram(tr, Xtc(tid));
     } else {
         gettimeofday(&tv, NULL);
+        Transition tr(Dgram::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+        return *new(buf) Dgram(tr, Xtc(tid));
     }
-    Transition tr(Dgram::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), env);
-    return *new(buf) Dgram(tr, Xtc(tid));
 }
 
 

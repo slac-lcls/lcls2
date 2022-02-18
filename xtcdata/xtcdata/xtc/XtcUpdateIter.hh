@@ -124,9 +124,9 @@ public:
     void addData(unsigned nodeId, unsigned namesId, 
             unsigned* shape, char* data, DataDef& datadef, char* varname);
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
-                        unsigned timestamp_val);
+                        uint64_t timestamp_val);
     void createData(Xtc& xtc, unsigned nodeId, unsigned namesId);
-    void updateTimeStamp(Dgram& d, unsigned sec, unsigned nsec);
+    void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
     int getElementSize(unsigned nodeId, unsigned namesId, 
             DataDef& datadef, char* varname);
     void copy(Dgram* parent_d);
