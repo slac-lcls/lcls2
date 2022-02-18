@@ -16,7 +16,7 @@
 #include <typeinfo>
 #include <memory>
 
-#define BUFSIZE 0x1000000
+#define BUFSIZE 0x10000000
 
 namespace XtcData
 {
