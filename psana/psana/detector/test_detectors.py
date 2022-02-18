@@ -8,6 +8,17 @@ class hsd_raw_0_0_0(DetectorImpl):
     def calib(self, evt) -> Array1d:
         return np.zeros((5))
 
+class pnccd_raw_1_2_3(DetectorImpl):
+    """Test detector produced by dgrampy"""
+    def __init__(self, *args):
+        super(pnccd_raw_1_2_3, self).__init__(*args)
+    def calib(self, evt) -> Array3d:
+        segs = self._segments(evt)
+        return segs[0].calib
+    def photon_energy(self, evt):
+        segs = self._segments(evt)
+        return segs[0].photon_energy
+
 class hexanode_raw_0_0_1(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
