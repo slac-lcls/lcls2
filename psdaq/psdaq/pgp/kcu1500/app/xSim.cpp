@@ -64,7 +64,7 @@
 #define CLIENTS(i)       (0x00800080 + i*0x20)
 #define DMA_LANES(i)     (0x00800100 + i*0x20)
 
-#define NEWTEM
+//#define NEWTEM
 #ifdef NEWTEM
 #define XMA_REG(i)       (0x00C28000 + i)
 #define TEB_REG(i)       (0x00C29000 + i)
@@ -154,7 +154,7 @@ static inline void set_i2c(int reg, uint32_t value) {
     }
     printf("set_i2c done [%x : %x]\n",(value>>1),tmo);
 #else
-    set_reg32(reg);
+    set_reg32(reg,value);
 #endif
 }
 
@@ -623,6 +623,7 @@ int main(int argc, char* argv[])
       print_lane("clear"     , 0x00a00000, 30, 4, 0x1, lanes);
       print_lane("enable"    , 0x00a00000, 31, 4, 0x1, lanes);
 
+      // TriggerEventManager
       { printf("%20.20s", "messagedelay");
         for(unsigned i=0; i<8; i++) {
             uint32_t reg = get_reg32(XMA_REG(i*4));
@@ -633,9 +634,11 @@ int main(int argc, char* argv[])
       print_field("remoteid" , XMA_REG(0x24),  0, 0xffffffff);
 
       print_lane("enable"     , TEB_REG(0x00),  0, 256, 0x7);
-      print_lane("partition"  , TEB_REG(0x04),  0, 256, 0xf);
+      print_lane("group"      , TEB_REG(0x04),  0, 256, 0xf);
+      print_lane("pauseThr"   , TEB_REG(0x08),  0, 256, 0x1f);
       print_lane("pauseOF"    , TEB_REG(0x10),  0, 256, 0x1f);
-      print_lane("modes"      , TEB_REG(0x10), 17, 256, 0x3);
+      print_lane("modes"      , TEB_REG(0x10), 16, 256, 0x7);
+      print_lane("cntFifoWr"  , TEB_REG(0x10),  4, 256, 0x1f);
       print_lane("cntL0"      , TEB_REG(0x14),  0, 256, 0xffffffff);
       print_lane("cntL1A"     , TEB_REG(0x18),  0, 256, 0xffffffff);
       print_lane("cntL1R"     , TEB_REG(0x1c),  0, 256, 0xffffffff);
