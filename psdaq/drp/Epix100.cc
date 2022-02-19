@@ -114,6 +114,9 @@ unsigned Epix100::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
 json Epix100::connectionInfo()
 {
     // Exclude connection info until lcls2-epix-hr-pcie timingTxLink is fixed
+    // What I observed with epix100: when deadtime is enabled the epix100
+    // asserted 90% deadtime (only 10Hz rate).  Matt says he also saw
+    // strange behavior with epixhr, but I don't know the details. -cpo
     logging::error("Returning NO XPM link; implementation incomplete");
     return json({});
 

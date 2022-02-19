@@ -21,6 +21,7 @@ group = None
 segids = None
 seglist = [0]
 cfgfile = '/cds/home/c/cpo/git/epix-100a-gen2/software/yml/junk1.yml'
+cfg = None
 
 class EpixBoard(pyrogue.Root):
     def __init__(self, srp, **kwargs):
@@ -155,6 +156,7 @@ def epix100_connect(base):
 def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     global group
     global segids
+    global cfg
 
     group = rog
 
@@ -218,11 +220,38 @@ def epix100_unconfig(base):
     return base
 
 def epix100_scan_keys(update):
-    print('***scan_keys:',update)
-    logging.info('epixhr2x2_scan_keys')
-    return update
+    # this routine returns json with all config params that will be updated
+    print('***epix100_scan_keys:',update)
+    # eliminate variables that are not being scanned
+    newcfg = {}
+    copy_reconfig_keys(newcfg,cfg,json.loads(update))
+    #  Retain mandatory fields for XTC translation
+    for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
+        copy_config_entry(newcfg,cfg,key)
+        copy_config_entry(newcfg[':types:'],cfg[':types:'],key)
+    return json.dumps(newcfg)
 
 def epix100_update(update):
-    print('***update:',update)
-    logging.info('epixhr2x2_update')
-    return update
+    # called on each step
+    # receive json with the new value of the scan variable and program it
+    newcfg = {}
+    update_config_entry(newcfg,cfg,json.loads(update))
+    #  Retain mandatory fields for XTC translation
+    for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
+        copy_config_entry(newcfg,cfg,key)
+        copy_config_entry(newcfg[':types:'],cfg[':types:'],key)
+    # if the input can affect multiple params, update the json if necessary
+
+    # set the register
+    partitionDelay = getattr(base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+    rawStart       = newcfg['user']['start_ns']
+    print('***epix100_update start_ns:',rawStart)
+    triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
+    logging.debug('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+    if triggerDelay < 0:
+        logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:} clk_period {:} msg_period {:}'.format(partitionDelay,rawStart,triggerDelay,base['clk_period'],base['msg_period']))
+        raise ValueError('triggerDelay computes to < 0')
+
+    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].TriggerDelay.set(triggerDelay)
+
+    return json.dumps(newcfg)

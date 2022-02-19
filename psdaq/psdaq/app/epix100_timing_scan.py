@@ -5,21 +5,26 @@ from psdaq.control.ControlDef import ControlDef, MyFloatPv, MyStringPv
 from psdaq.control.DaqControl import DaqControl
 from psdaq.control.ConfigScan import ConfigScan
 import argparse
+import json
+import numpy as np
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
-                        help='platform (default 0)')
-    parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
-                        help='collection host (default localhost)')
-    parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
-                        help='timeout msec (default 10000)')
-    parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
-    parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<platform)')
-    parser.add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
-    parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
-    parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
+    parser.add_argument('-p', type=int, choices=range(0, 8), default=4,
+                        help='platform (default 4)')
+    parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-neh-cmp014',
+                        help='collection host (default drp-neh-cmp014)')
+    parser.add_argument('-t', type=int, metavar='TIMEOUT', default=20000,
+                        help='timeout msec (default 20000)')
+    parser.add_argument('-g', type=int, default=1<<4, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
+    parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (e.g. BEAM)')
+    parser.add_argument('--detname', default='epix100_0', help="detector name (default 'epix100_0')")
+    parser.add_argument('--scantype', default='timing', help="scan type (default 'timing')")
     parser.add_argument('-v', action='store_true', help='be verbose')
+
+    parser.add_argument('--events', type=int, default=100, help='events per step (default 100)')
+    parser.add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
+
     args = parser.parse_args()
 
     if args.g is not None:
@@ -29,8 +34,10 @@ def main():
     else:
         group_mask = 1 << args.p
 
-    if args.c < 1:
-        parser.error('readout count (-c) must be >= 1')
+    if args.events < 1:
+        parser.error('readout count (--events) must be >= 1')
+
+    keys = [f'{args.detname}:user.start_ns']
 
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
@@ -64,6 +71,15 @@ def main():
         if rv is not None:
             logging.error('%s' % rv)
 
+    if args.record is not None:
+        # recording flag request
+        if args.record == 0:
+            rv = control.setRecord(False)
+        else:
+            rv = control.setRecord(True)
+        if rv is not None:
+            print('Error: %s' % rv)
+
     # instantiate ConfigScan
     scan = ConfigScan(control, daqState=daqState, args=args)
 
@@ -72,6 +88,9 @@ def main():
     # -- begin script --------------------------------------------------------
 
     # PV scan setup
+    # cpo: even though this is a config scan, I think the PV
+    # is used to have an easy way to inject step_value/step_docstring
+    # into the scan
     motors = [MyFloatPv(ControlDef.STEP_VALUE)]
     scan.configure(motors = motors)
 
@@ -86,7 +105,7 @@ def main():
     data = {
       "motors":           my_config_data,
       "timestamp":        0,
-      "detname":          args.detname,
+      "detname":          "scan",
       "dettype":          "scan",
       "scantype":         args.scantype,
       "serial_number":    "1234",
@@ -97,12 +116,16 @@ def main():
     configureBlock = scan.getBlock(transition="Configure", data=data)
 
     # config scan setup
-    keys_dict = {"configure": {"step_keys":     ["epix100_0:user.start_ns"],
+    keys_dict = {"configure": {"step_keys":     keys,
                                "NamesBlockHex": configureBlock},
-                 "enable":    {"readout_count": args.c,
+                 "enable":    {"readout_count": args.events,
                                "group_mask":    group_mask}}
     # scan loop
-    for start_ns in [58000, 59000, 60000]:
+    def steps():
+        for start_ns in [88000,89000,90000]:
+            yield int(start_ns)
+
+    for step in steps():
         # update
         scan.update(value=scan.step_count())
 
@@ -111,14 +134,15 @@ def main():
             my_step_data.update({motor.name: motor.position})
             # derive step_docstring from step_value
             if motor.name == ControlDef.STEP_VALUE:
-                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {motor.position}}}'
+                #  Need an integer for "step" value.  Config scan analysis uses as an array index.
+                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {int(motor.position)}}}'
                 my_step_data.update({'step_docstring': docstring})
 
         data["motors"] = my_step_data
 
         beginStepBlock = scan.getBlock(transition="BeginStep", data=data)
         values_dict = \
-          {"beginstep": {"step_values":        {"epix100_0:user.start_ns": start_ns},
+          {"beginstep": {"step_values":        {f'{args.detname}:user.start_ns': step},
                          "ShapesDataBlockHex": beginStepBlock}}
         # trigger
         scan.trigger(phase1Info = {**keys_dict, **values_dict})
@@ -129,6 +153,7 @@ def main():
 
     scan.push_socket.send_string('shutdown') #shutdown the daq communicator thread
     scan.comm_thread.join()
+
 
 if __name__ == '__main__':
     main()
