@@ -40,5 +40,35 @@ procmgr_config = [
  {                        flags:'p', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING --uris {cdb} --expert {auth} -H '+collect_host},
  { host: 'drp-neh-cmp014', id:'teb0', flags:'pu', cmd:'teb -P '+hutch+' -C '+collect_host},
  { host: 'drp-neh-cmp014', id:'epix100_0',   flags:'sxpu', env:epics_env, cmd:drp_cmd0+' -D epix100 -l 0x1'},
- { host: 'drp-neh-cmp001', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
+ { host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 ]
+
+#
+#  ami variables
+#
+heartbeat_period = 1000 # units are ms
+
+ami_workers_per_node = 4
+#ami_worker_nodes = ["drp-neh-cmp013","drp-neh-cmp017","drp-neh-cmp018"]
+ami_worker_nodes = ["drp-neh-cmp017"]
+ami_num_workers = len(ami_worker_nodes)
+ami_manager_node = "drp-neh-cmp018"
+
+# cpo: this formula should be base_port=5555+50*platform+10*instance
+# to minimize port conflicts for both platform/instance
+platform_base_port = 5555+50*int(platform)
+for instance, base_port in {"first": platform_base_port,}.items():
+    procmgr_ami = [
+      { host:ami_manager_node, id:f'ami-global_{instance}',  flags:'s', env:epics_env, cmd:f'ami-global -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+      { host:ami_manager_node, id:f'ami-manager_{instance}', flags:'s', cmd:f'ami-manager -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+      {                        id:f'ami-client_{instance}',  flags:'s', cmd:f'ami-client -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_{instance}' },
+    ]
+
+    # ami workers
+    for N, worker_node in enumerate(ami_worker_nodes):
+        procmgr_ami.append({ host:worker_node, id:f'meb{N}_{instance}', flags:'spu',
+                             cmd:f'{task_set} monReqServer -P {hutch}{instance} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}' })
+        procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}_{instance}', flags:'s', env:epics_env,
+                             cmd:f'ami-node -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}{instance}' })
+
+    procmgr_config.extend(procmgr_ami)

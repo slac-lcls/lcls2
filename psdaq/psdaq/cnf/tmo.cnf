@@ -155,8 +155,8 @@ procmgr_ami = [
  { host:ami_monitor_node, id:'ami-monitor', flags:'s', env:ami_monitor_env, cmd:f'ami-monitor -H {ami_manager_node} -a {ami_monitor_node} -l 8647' },
 #  Add a second AMI window for timetool feedback graph
 #{                        id:'ami-client-tt',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} -g "tt_graph" -l /cds/group/pcds/dist/pds/tmo/scripts/tt-feedback.fc' },
-{                        id:f'ami-client_acr',  flags:'s', cmd:f'ami-client -l tmo_acr_opal_feedback.fc -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_acr -g "acr_graph"'},
-{                        id:f'acr_server',  flags:'s', cmd:f'python tmo_acr_opal_feedback.py -P TMO:ACR'},
+#{                        id:f'ami-client_acr',  flags:'s', cmd:f'ami-client -l tmo_acr_opal_feedback.fc -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_acr -g "acr_graph"'},
+#{                        id:f'acr_server',  flags:'s', cmd:f'python tmo_acr_opal_feedback.py -P TMO:ACR'},
 ]
 
 #

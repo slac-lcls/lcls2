@@ -122,7 +122,7 @@ def main():
                                "group_mask":    group_mask}}
     # scan loop
     def steps():
-        for start_ns in [88000,89000,90000]:
+        for start_ns in range(15000,105000,10000):
             yield int(start_ns)
 
     for step in steps():

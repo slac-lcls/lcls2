@@ -190,6 +190,11 @@ def epix100_config(base,connect_str,cfgtype,detname,detsegm,rog):
     cbase.ePix100aFPGA.EpixFpgaRegisters.RunTriggerEnable.set(True)
     cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerEnable.set(True)
     cbase.ePix100aFPGA.EpixFpgaRegisters.PgpTrigEn.set(True)
+
+    # we had difficulty moving the triggers early enough with the
+    # the default setting of this register.  could also put this in yml file.
+    cbase.ePix100aFPGA.EpixFpgaRegisters.AcqToAsicR0Delay.set(0)
+
     baseClockMHz = cbase.ePix100aFPGA.EpixFpgaRegisters.BaseClockMHz.get()
     width_us = cfg['user']['gate_ns']/1000.
     width_clockticks = int(width_us*baseClockMHz)
