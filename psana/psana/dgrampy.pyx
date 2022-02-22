@@ -103,10 +103,17 @@ cdef class PyDgram():
 
 cdef class PyXtcUpdateIter():
     cdef XtcUpdateIter* cptr
-    _numWords = 6 # no. of print-out elements for an array
+    _numWords = 6               # no. of print-out elements for an array
     
     def __cinit__(self):
         self.cptr = new XtcUpdateIter(self._numWords)
+
+    def savextc2(self, f):
+        """Writes data from main buffer `'buf` to xtc2 file
+        and cleans up the main buffer
+        """
+        f.write(self.get_buf())
+        self.cptr.clear_buf()
 
     def process(self, PyXtc pyxtc):       
         self.cptr.process(pyxtc.cptr)
@@ -121,9 +128,6 @@ cdef class PyXtcUpdateIter():
             return buf
         else:
             return memoryview(bytearray()) 
-
-    def clear_buf(self):
-        self.cptr.clear_buf()
 
     def copy(self, PyDgram pydg):
         self.cptr.copy(pydg.cptr)
@@ -236,6 +240,9 @@ x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 # Main class used for creating and updating xtc data
 uiter = PyXtcUpdateIter()
 
+# Output xtc2 file that gets created and passed around
+out_xtc2 = None
+
 def config(ts=-1):
     cfg = uiter.createTransition(TransitionId.Configure, ts)
     return cfg
@@ -307,9 +314,6 @@ def datadef(datadict):
         datadef.add(key, val[0], val[1])
     return datadef
 
-def get_buf():
-    return uiter.get_buf()
-
 def save(PyDgram pydg):
     """ Copies Names and ShapesData to _tmpbuf and update
     parent dgram extent to new size (if some ShapesData
@@ -330,8 +334,16 @@ def save(PyDgram pydg):
     # Copy updated parent dgram and _tmpbuf to _buf 
     uiter.copy(pydg)
 
-def clearbuf():
-    uiter.clear_buf()
+    if out_xtc2 is not None:
+        uiter.savextc2(out_xtc2)
 
 def updatetimestamp(PyDgram pydg, timestamp_val):
     uiter.updatetimestamp(pydg, timestamp_val)
+
+def creatextc2(filename):
+    global out_xtc2
+    out_xtc2 = open(filename, "wb")
+
+def closextc2():
+    if out_xtc2 is not None:
+        out_xtc2.close()

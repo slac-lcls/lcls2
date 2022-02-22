@@ -142,7 +142,7 @@ private:
     
     // _tmpbuf* are used for storing Names and ShapesData
     // while they are being iterated (copy if no filter matched).
-    // bu* are the main buffer that has both parent dgram
+    // buf* are the main buffer that has both parent dgram
     // and Names & ShapesData. It aslo has infinite lifetime
     // until it gets cleared manually.
     char* _tmpbuf;
