@@ -20,7 +20,7 @@ chan = None
 group = None
 segids = None
 seglist = [0]
-cfgfile = '/cds/home/c/cpo/git/epix-100a-gen2/software/yml/junk1.yml'
+cfgfile = '/cds/group/pcds/dist/pds/tmo/misc/epix100_config.yml'
 cfg = None
 
 class EpixBoard(pyrogue.Root):
