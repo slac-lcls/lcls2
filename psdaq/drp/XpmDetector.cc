@@ -16,6 +16,9 @@ using logging = psalg::SysLog;
 static void dmaReadRegister (int, uint32_t*, uint32_t*);
 static void dmaWriteRegister(int, uint32_t*, uint32_t);
 
+typedef Pds::Mmhw::TriggerEventManager TEM;
+//typedef Pds::Mmhw::TriggerEventManager2 TEM;
+
 namespace Drp {
 
 XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
@@ -76,8 +79,8 @@ json XpmDetector::connectionInfo()
 {
     int fd = m_pool->fd();
 
-    Pds::Mmhw::TriggerEventManager2* mem_pointer = (Pds::Mmhw::TriggerEventManager2*)0x00C20000;
-    Pds::Mmhw::TriggerEventManager2* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager2;
+    TEM* mem_pointer = (TEM*)0x00C20000;
+    TEM* tem = new (mem_pointer) TEM;
 
     //  Advertise ID on the timing link
     {
@@ -156,8 +159,8 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
        links <<= 4;
 
     //Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
-    Pds::Mmhw::TriggerEventManager2* mem_pointer = (Pds::Mmhw::TriggerEventManager2*)0x00C20000;
-    Pds::Mmhw::TriggerEventManager2* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager2;
+    TEM* mem_pointer = (TEM*)0x00C20000;
+    TEM* tem = new (mem_pointer) TEM;
     for(unsigned i=0, l=links; l; i++) {
         Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
         if (l&(1<<i)) {
