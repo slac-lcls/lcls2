@@ -536,7 +536,6 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
             sublist_physical_units = [list_physical_units[i] for i in indices]
             
             eventTime[j][g] = sublist_shot_to_shot[-1].unixtime
-            eventFid[j][g] = sublist_shot_to_shot[-1].fiducial
             distT=[(sublist_image_stats[i][j].xCOM-sublist_image_stats[i][0].xCOM) \
                    *sublist_physical_units[i].xfsPerPix for i in range(num_in_cluster)]
             distE=[(sublist_image_stats[i][j].yCOM-sublist_image_stats[i][0].yCOM) \
@@ -571,7 +570,7 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
 
     return AveragedProfiles(t, averageECurrent, averageECOMslice, 
         averageERMSslice, averageDistT, averageDistE, averageTRMS, 
-        averageERMS, num_bunches, eventTime, eventFid), num_clusters
+        averageERMS, num_bunches, eventTime), num_clusters
 
 
 # http://stackoverflow.com/questions/26248654/numpy-return-0-with-divide-by-zero
@@ -654,8 +653,7 @@ AveragedProfiles = namedtuple('AveragedProfiles',
     'tRMS',                       #Total dispersion in time in fs
     'eRMS',                       #Total dispersion in energy in MeV
     'num_bunches',                #Number of bunches
-    'eventTime',                  #Unix times used for jumping to events
-    'eventFid'])                  #Fiducial values used for jumping to events
+    'eventTime'])                 #Unix times used for jumping to events
 
 PulseCharacterization = namedtuple('PulseCharacterization',
     ['t',                        #Master time vector in fs
