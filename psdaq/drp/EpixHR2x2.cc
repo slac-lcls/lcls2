@@ -132,12 +132,14 @@ void EpixHR2x2::_connect(PyObject* mbytes)
 
 unsigned EpixHR2x2::enable(XtcData::Xtc& xtc, const nlohmann::json& info)
 {
+    logging::debug("EpixHR2x2 enable");
     monStreamDisable();
     return 0;
 }
 
 unsigned EpixHR2x2::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
 {
+    logging::debug("EpixHR2x2 disable");
     monStreamEnable();
     return 0;
 }

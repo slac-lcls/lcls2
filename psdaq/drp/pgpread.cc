@@ -29,6 +29,12 @@ void int_handler(int dummy)
     // dmaUnMapDma();
 }
 
+static void show_usage(const char* p)
+{
+    printf("Usage: %s -d <device file> [-c <virtChan>] [-r]\n",p);
+    printf("       -r  Has batcher event builder\n");
+}
+
 int main(int argc, char* argv[])
 {
     int c, virtChan;
@@ -37,7 +43,8 @@ int main(int argc, char* argv[])
     std::string device;
     bool lverbose = false;
     bool lrogue = false;
-    while((c = getopt(argc, argv, "c:d:vr")) != EOF) {
+    bool lusage = false;
+    while((c = getopt(argc, argv, "c:d:vrh?")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
@@ -51,7 +58,15 @@ int main(int argc, char* argv[])
             case 'v':
                 lverbose = true;
                 break;
+            default:
+                lusage = true;
+                break;
         }
+    }
+
+    if (lusage) {
+        show_usage(argv[0]);
+        return -1;
     }
 
     terminate.store(false, std::memory_order_release);
@@ -107,14 +122,16 @@ int main(int argc, char* argv[])
             }
             XtcData::TransitionId::Value transition_id = event_header->service();
 
-            printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
-                   size, dest, transition_id, event_header->pulseId(), event_header->evtCounter, index);
             if (lverbose) {
+                printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
+                       size, dest, transition_id, event_header->pulseId(), event_header->evtCounter, index);
                 printf("env %08x\n", event_header->env);
                 for(unsigned i=0; i<((size+3)>>2); i++)
                     printf("%08x%c",reinterpret_cast<uint32_t*>(dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
             }
-            else {
+            else if (transition_id != XtcData::TransitionId::L1Accept) {
+                printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
+                       size, dest, transition_id, event_header->pulseId(), event_header->evtCounter, index);
                 const uint32_t* p = reinterpret_cast<const uint32_t*>(event_header+1);
                 printf("env %08x | payload %08x %08x %08x %08x\n", event_header->env,p[0],p[1],p[2],p[3]);
             }

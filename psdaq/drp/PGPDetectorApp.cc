@@ -398,6 +398,12 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::debug("handlePhase1 enable found chunkRequest");
             m_drp.chunkInfoData(xtc, m_det->namesLookup(), chunkInfo);
         }
+        unsigned error = m_det->enable(xtc, phase1Info);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::enable()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
         logging::debug("handlePhase1 enable complete");
     }
     else if (key == "disable") {
