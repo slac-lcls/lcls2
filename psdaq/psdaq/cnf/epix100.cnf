@@ -40,7 +40,7 @@ procmgr_config = [
  {                        flags:'p', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING --uris {cdb} --expert {auth} -H '+collect_host},
  { host: 'drp-neh-cmp014', id:'teb0', flags:'pu', cmd:'teb -P '+hutch+' -C '+collect_host},
  { host: 'drp-neh-cmp014', id:'epix100_0',   flags:'sxpu', env:epics_env, cmd:drp_cmd0+' -D epix100 -l 0x1'},
- { host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
+ #{ host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 ]
 
 #
@@ -71,4 +71,4 @@ for instance, base_port in {"first": platform_base_port,}.items():
         procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}_{instance}', flags:'s', env:epics_env,
                              cmd:f'ami-node -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}{instance}' })
 
-    procmgr_config.extend(procmgr_ami)
+    #procmgr_config.extend(procmgr_ami)
