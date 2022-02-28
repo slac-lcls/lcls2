@@ -17,7 +17,7 @@ Usage::
     s = gu.info_ndarr(nda, name='', first=0, last=5)
 
     shape = (32,185,388)
-    size  = size_from_shape(shape) # returns 32*185*388   
+    size  = size_from_shape(shape) # returns 32*185*388
     shp2d = shape_as_2d(shape) # returns (32*185,388)
 
     shape = (4,8,185,388)
@@ -33,10 +33,11 @@ Usage::
 
     mmask = gu.merge_masks(mask1=None, mask2=None, dtype=np.uint8)
     mask  = gu.mask_neighbors(mask_in, allnbrs=True, dtype=np.uint8)
+    mask  = gu.mask_neighbors_in_radius(mask, rad=5, ptrn='r')
     mask  = gu.mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8)
     mask  = gu.mask_2darr_edges(shape=(185,388), width=2)
     mask  = gu.mask_3darr_edges(shape=(32,185,388), width=2)
-    res   = gu.divide_protected(num, den, vsub_zero=0) 
+    res   = gu.divide_protected(num, den, vsub_zero=0)
 
 
     # Make mask n-d numpy array using shape and windows
@@ -71,6 +72,8 @@ Adopted for LCLS2 on 2018-02-02
 """
 
 import os
+import sys
+
 #from time import localtime, strftime, time
 
 import numpy as np
@@ -110,7 +113,7 @@ def print_ndarr(nda, name=' ', first=0, last=5):
 
 
 def size_from_shape(shape):
-    """Returns size from the shape sequence 
+    """Returns size from the shape sequence
     """
     size=1
     for d in shape: size*=d
@@ -191,7 +194,7 @@ reshape_nda_to_3d = reshape_to_3d
 
 
 def merge_masks(mask1=None, mask2=None, dtype=np.uint8):
-    """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1) 
+    """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1)
     """
     if mask1 is None: return mask2
     if mask2 is None: return mask1
@@ -234,7 +237,7 @@ def mask_neighbors(mask, allnbrs=True, dtype=np.uint8):
 
     else : # shape>2
 
-        mask_out.shape = mask.shape = shape_nda_as_3d(mask)       
+        mask_out.shape = mask.shape = shape_nda_as_3d(mask)
 
         # mask nearest neighbors
         mask_out[:, 0:-1,:] = np.logical_and(mask_out[:, 0:-1,:], mask[:, 1:,  :])
@@ -251,6 +254,38 @@ def mask_neighbors(mask, allnbrs=True, dtype=np.uint8):
         mask_out.shape = mask.shape = shape_in
 
     return mask_out
+
+
+def mask_neighbors_in_radius(mask, rad=5, ptrn='r'):
+    """In mask array increase region of masked pixels around bad by radial paramerer rad.
+       Parameters:
+       -----------
+       - mask (np.ndarray) - input mask array ndim >=2
+       - rad (int) - radial parameter of masked region
+       - ptrn (char) - pattern of the masked region, for now ptrn='r' -rhombus, othervise square [-rad,+rad] in rows and columns.
+
+       Time on psanagpu109 for img shape:(2203, 2299)
+       rad=4: 0.5s
+       rad=9: 2.5s
+    """
+    #t0_sec = time()
+    assert isinstance(mask, np.ndarray)
+    assert mask.ndim>1
+    mmask = np.array(mask)
+    rows, cols = mask.shape[-2],mask.shape[-1]
+    for dr in range(-rad, rad+1):
+      r1b, r1e = max(dr, 0), min(rows, rows+dr)
+      r2b, r2e = max(-dr, 0), min(rows, rows-dr)
+      for dc in range(-rad, rad+1):
+        if ptrn=='r' and (abs(dr)+abs(dc) > rad): continue
+        c1b, c1e = max(dc, 0), min(cols, cols+dc)
+        c2b, c2e = max(-dc, 0), min(cols, cols-dc)
+        if mask.ndim==2:
+          mmask[r1b:r1e,c1b:c1e] = merge_masks(mmask[r1b:r1e,c1b:c1e], mask[r2b:r2e,c2b:c2e])
+        else:
+          mmask[:,r1b:r1e,c1b:c1e] = merge_masks(mmask[:,r1b:r1e,c1b:c1e], mask[:,r2b:r2e,c2b:c2e])
+    #logger.info('mask_neighbors(rad=%d) time = %.3f sec' % (rad, time()-t0_sec))
+    return mmask
 
 
 def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8):
@@ -270,10 +305,10 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8):
     if len(sh) == 2:
         rows, cols = sh
 
-        if mrows > rows: 
+        if mrows > rows:
           raise ValueError('Requested number of edge rows=%d to mask exceeds 2-d, shape=%s' % (mrows, str(sh)))
 
-        if mcols > cols: 
+        if mcols > cols:
           raise ValueError('Requested number of edge columns=%d to mask exceeds 2-d, shape=%s' % (mcols, str(sh)))
 
         if mrows>0:
@@ -289,14 +324,14 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8):
           mask_out[:,-mcols:] = mask_cols
 
     else: # shape>2
-        mask_out.shape = shape_nda_as_3d(mask)       
+        mask_out.shape = shape_nda_as_3d(mask)
 
         segs, rows, cols = mask_out.shape
 
-        if mrows > rows: 
+        if mrows > rows:
           raise ValueError('Requested number of edge rows=%d to mask exceeds 2-d, shape=%s' % (mrows, str(sh)))
 
-        if mcols > cols: 
+        if mcols > cols:
           raise ValueError('Requested number of edge columns=%d to mask exceeds 2-d, shape=%s' % (mcols, str(sh)))
 
         if mrows>0:
@@ -346,10 +381,10 @@ def mask_from_windows(ashape=(32,185,388), winds=None):
     """Makes mask as 2-d or 3-d numpy array defined by the shape with ones in windows.
        N-d shape for N>3 is converted to 3-d.
        - param shape - shape of the output numpy array with mask.
-       - param winds - list of windows, each window is a sequence of 5 parameters (segment, rowmin, rowmax, colmin, colmax)     
+       - param winds - list of windows, each window is a sequence of 5 parameters (segment, rowmin, rowmax, colmin, colmax)
     """
     ndim = len(ashape)
-        
+
     if ndim<2:
         print('ERROR in mask_from_windows(...):',\
               ' Wrong number of dimensions %d in the shape=%s parameter. Allowed ndim>1.' % (ndim, str(shape)))
@@ -393,7 +428,7 @@ def mean_of_listwarr(lst_warr):
     """Evaluates the mean value of the list of 2-d arrays.
        - lst_warr - list of numpy arrays to evaluate per pixel mean intensity value.
     """
-    s1, sa = 0., 0. 
+    s1, sa = 0., 0.
     for warr in lst_warr:
         sa += np.sum(warr, dtype=np.float64)
         s1 += warr.size
@@ -411,7 +446,7 @@ def subtract_bkgd(data, bkgd, mask=None, winds=None, pbits=0):
        - data - numpy array for data.
        - bkgd - numpy array for background.
        - mask - numpy array for mask.
-       - winds - list of windows, each window is a sequence of 5 parameters.     
+       - winds - list of windows, each window is a sequence of 5 parameters.
        - pbits - print control bits; =0 - print nothing, !=0 - normalization factor.
     """
     mdata = data if mask is None else data*mask
@@ -419,7 +454,7 @@ def subtract_bkgd(data, bkgd, mask=None, winds=None, pbits=0):
 
     lwdata = list_of_windarr(mdata, winds)
     lwbkgd = list_of_windarr(mbkgd, winds)
-    
+
     mean_data = mean_of_listwarr(lwdata)
     mean_bkgd = mean_of_listwarr(lwbkgd)
 
@@ -431,7 +466,7 @@ def subtract_bkgd(data, bkgd, mask=None, winds=None, pbits=0):
 
 # See: http://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.argrelmax.html#scipy.signal.argrelmax
 def locxymax(nda, order=1, mode='clip'):
-    """For 2-d or 3-d numpy array finds mask of local maxima in x and y axes (diagonals are ignored) 
+    """For 2-d or 3-d numpy array finds mask of local maxima in x and y axes (diagonals are ignored)
        using scipy.signal.argrelmax and return their product.
 
        - param nda - input ndarray
@@ -448,7 +483,7 @@ def locxymax(nda, order=1, mode='clip'):
 
     ext_cols = argrelmax(nda, -1, order, mode)
     ext_rows = argrelmax(nda, -2, order, mode)
-    
+
     indc = np.array(ext_cols, dtype=np.uint16)
     indr = np.array(ext_rows, dtype=np.uint16)
 
@@ -456,7 +491,7 @@ def locxymax(nda, order=1, mode='clip'):
     msk_ext_rows = np.zeros(shape, dtype=np.uint16)
 
     if ndim == 2:
-        icr = indc[0,:] 
+        icr = indc[0,:]
         icc = indc[1,:]
         irr = indr[0,:]
         irc = indr[1,:]
@@ -465,8 +500,8 @@ def locxymax(nda, order=1, mode='clip'):
         msk_ext_rows[irr,irc] = 1
 
     elif ndim == 3:
-        ics = indc[0,:] 
-        icr = indc[1,:] 
+        ics = indc[0,:]
+        icr = indc[1,:]
         icc = indc[2,:]
         irs = indr[0,:]
         irr = indr[1,:]
@@ -478,7 +513,7 @@ def locxymax(nda, order=1, mode='clip'):
     #print('nda.size:',   nda.size)
     #print('indc.shape:', indc.shape)
     #print('indr.shape:', indr.shape)
-    
+
     return msk_ext_rows * msk_ext_cols
 
 
@@ -500,150 +535,7 @@ def save_ndarray_in_textfile(nda, fname, fmode, fmt):
     logger.debug('saved: %s fmode: %s fmt: %s' % (fname, oct(fmode), fmt))
 
 
-#----------- TEST -------------
-
 if __name__ == "__main__":
-
-  def test_01():
-    from psana.pyalgos.generic.NDArrGenerators import random_standard
-
-    print('%s\n%s\n' % (80*'_','Test method subtract_bkgd(...):'))
-    shape1 = (32,185,388)
-    winds = [(s, 10, 155, 20, 358) for s in (0,1)]
-    data = random_standard(shape=shape1, mu=300, sigma=50)
-    bkgd = random_standard(shape=shape1, mu=100, sigma=10)
-    cdata = subtract_bkgd(data, bkgd, mask=None, winds=winds, pbits=0o377)
-
-
-  def test_02():
-    from psana.pyalgos.generic.NDArrGenerators import random_standard
-    shape1 = (32,185,388)
-    data = random_standard(shape=shape1, mu=300, sigma=50)
-    print(info_ndarr(data, 'test_02: info_ndarr', first=0, last=3))
-    print(info_ndarr(shape1, 'test_02: info_ndarr'))
-
-
-  def test_08():
-    import psana.pyalgos.generic.Graphics as gg
-    from psana.pyalgos.generic.NDArrGenerators import random_standard
-    from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
-
-    print('%s\n%s\n' % (80*'_','Test method locxymax(nda, order, mode):'))
-    #data = random_standard(shape=(32,185,388), mu=0, sigma=10)
-    data = random_standard(shape=(2,185,388), mu=0, sigma=10)
-    t0_sec = time()
-    mask = locxymax(data, order=1, mode='clip')
-    print('Consumed t = %10.6f sec' % (time()-t0_sec))
-
-    if True:
-      img = data if len(data.shape)==2 else reshape_to_2d(data)
-      msk = mask if len(mask.shape)==2 else reshape_to_2d(mask)
-
-      ave, rms = img.mean(), img.std()
-      amin, amax = ave-2*rms, ave+2*rms
-      gg.plotImageLarge(img, amp_range=(amin, amax), title='random')
-      gg.plotImageLarge(msk, amp_range=(0, 1), title='mask loc max')
-      gg.show()
-
- 
-  def test_mask_neighbors_2d(allnbrs=True):
-
-    randexp = random_exponential(shape=(40,60), a0=1)
-    fig  = gr.figure(figsize=(16,7), title='Random 2-d mask')
-    axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.40, 0.91))
-    axcb1 = gr.add_axes(fig, axwin=(0.452, 0.05, 0.01, 0.91))
-
-    axim2 = gr.add_axes(fig, axwin=(0.55,  0.05, 0.40, 0.91))
-    axcb2 = gr.add_axes(fig, axwin=(0.952, 0.05, 0.01, 0.91))
-
-    mask = np.select((randexp>6,), (0,), default=1)
-    mask_nbrs = mask_neighbors(mask, allnbrs)
-    img1 = mask # mask # randexp
-    img2 = mask_nbrs # mask # randexp
-    
-    imsh1, cbar1 = gr.imshow_cbar(fig, axim1, axcb1, img1, amin=0, amax=10, orientation='vertical', cmap='jet')
-    imsh2, cbar2 = gr.imshow_cbar(fig, axim2, axcb2, img2,  amin=0, amax=10, orientation='vertical', cmap='jet')
-    gr.show(mode=None)
-    
-
-  def test_mask_neighbors_3d(allnbrs=True):
-
-    #randexp = random_exponential(shape=(2,2,30,80), a0=1)
-    randexp = random_exponential(shape=(2,30,80), a0=1)
-
-    fig  = gr.figure(figsize=(16,7), title='Random > 2-d mask')
-    axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.40, 0.91))
-    axcb1 = gr.add_axes(fig, axwin=(0.452, 0.05, 0.01, 0.91))
-
-    axim2 = gr.add_axes(fig, axwin=(0.55,  0.05, 0.40, 0.91))
-    axcb2 = gr.add_axes(fig, axwin=(0.952, 0.05, 0.01, 0.91))
-
-    mask = np.select((randexp>6,), (0,), default=1)
-    mask_nbrs = mask_neighbors(mask, allnbrs)
-
-    img1 = reshape_to_2d(mask)
-    img2 = reshape_to_2d(mask_nbrs)
-    
-    imsh1, cbar1 = gr.imshow_cbar(fig, axim1, axcb1, img1, amin=0, amax=10, orientation='vertical', cmap='jet')
-    imsh2, cbar2 = gr.imshow_cbar(fig, axim2, axcb2, img2, amin=0, amax=10, orientation='vertical', cmap='jet')
-    gr.show(mode=None)
-    
-
-  def test_mask_edges_2d(mrows=1, mcols=1):
-
-    fig  = gr.figure(figsize=(8,7), title='Mask edges 2-d')
-    axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.87, 0.91))
-    axcb1 = gr.add_axes(fig, axwin=(0.922, 0.05, 0.01, 0.91))
-
-    mask = np.ones((20,30))
-    mask_out = mask_edges(mask, mrows, mcols)
-
-    img1 = mask_out
-    imsh1, cbar1 = gr.imshow_cbar(fig, axim1, axcb1, img1, amin=0, amax=10, orientation='vertical', cmap='jet')
-    gr.show(mode=None)
-    
-
-  def test_mask_edges_3d(mrows=1, mcols=1):
-
-    fig  = gr.figure(figsize=(8,7), title='Mask edges 2-d')
-    axim1 = gr.add_axes(fig, axwin=(0.05,  0.05, 0.87, 0.91))
-    axcb1 = gr.add_axes(fig, axwin=(0.922, 0.05, 0.01, 0.91))
-
-    #mask = np.ones((2,2,20,30))
-    mask = np.ones((2,20,30))
-    mask_out = mask_edges(mask, mrows, mcols)
-
-    img1 = reshape_to_2d(mask_out)
-    imsh1, cbar1 = gr.imshow_cbar(fig, axim1, axcb1, img1, amin=0, amax=10, orientation='vertical', cmap='jet')
-    gr.show(mode=None)
-    
-
-  def do_test():
-
-    from psana.pyalgos.generic.NDArrGenerators import random_exponential; global random_exponential 
-    import psana.pyalgos.generic.Graphics as gr; global gr
-
-    print(80*'_')
-    tname = sys.argv[1] if len(sys.argv)>1 else '1'
-    if   tname == '1': test_mask_neighbors_2d(allnbrs = False)
-    elif tname == '2': test_mask_neighbors_2d(allnbrs = True)
-    elif tname == '3': test_mask_neighbors_3d(allnbrs = False)
-    elif tname == '4': test_mask_neighbors_3d(allnbrs = True)
-    elif tname == '5': test_mask_edges_2d(mrows=5, mcols=1)
-    elif tname == '6': test_mask_edges_2d(mrows=0, mcols=5)
-    elif tname == '7': test_mask_edges_3d(mrows=1, mcols=2)
-    elif tname == '8': test_mask_edges_3d(mrows=5, mcols=0)
-    elif tname =='12': test_02()
-    else: sys.exit ('Not recognized test name: "%s"    Try tests 1-8' % tname)
-
-
-if __name__ == "__main__":
-    import sys; global sys
-    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
-                        datefmt='%m-%d-%Y %H:%M:%S',\
-                        level=logging.DEBUG)
-                        #filename='example.log', filemode='w'
-    do_test()
-    sys.exit('\nEnd of test')
+    sys.exit('See examples/test_NDArrUtils.py')
 
 # EOF
