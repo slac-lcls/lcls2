@@ -37,6 +37,14 @@ def selected_record(i, events):
        or i>events-5
 
 
+def info_pixel_status(status, bits=0xffff):
+    arr1 = np.ones_like(status, dtype=np.int32)
+    statist_bits = np.select((status & bits,), (arr1,), 0)
+    statist_tot = np.select((status>0,), (arr1,), 0)
+    return 'number of pixels containing bits %4d(dec) %4s(oct): %d of total bad %d of total %d'%\
+            (bits, oct(bits), statist_bits.sum(), statist_tot.sum(), status.size)
+
+
 def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
     """Evaluates low and high limit of the array, which are used to find bad pixels.
     """
