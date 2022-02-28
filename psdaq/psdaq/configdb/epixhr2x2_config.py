@@ -193,6 +193,13 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     cbase.__enter__()
     base['cam'] = cbase
 
+    firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
+    buildStamp = cbase.Core.AxiVersion.BuildStamp.get()
+    gitHash = cbase.Core.AxiVersion.GitHash.get()
+    print(f'firmwareVersion [{firmwareVersion:x}]')
+    print(f'buildStamp      [{buildStamp}]')
+    print(f'gitHash         [{gitHash:x}]')
+
     base['bypass'] = 0x3f
 
     #  Enable the environmental monitoring
@@ -378,6 +385,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
     for i in asics:
         m = m | (4<<i)
     base['bypass'] = 0x3f^m
+    print('=== configure bypass {:x} ==='.format(base['bypass']))
     pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
@@ -699,7 +707,7 @@ def _resetSequenceCount():
 
 def epixhr2x2_external_trigger(base):
     #  Switch to external triggering
-    print('=== external triggering with bypass {} ==='.format(base['bypass']))
+    print('=== external triggering with bypass {:x} ==='.format(base['bypass']))
     cbase = base['cam'].EpixHR
     cbase.TriggerRegisters.enable.set(1)
     cbase.TriggerRegisters.AutoRunEn.set(0)
@@ -715,6 +723,7 @@ def epixhr2x2_external_trigger(base):
 
 def epixhr2x2_internal_trigger(base):
     #  Disable frame readout 
+    print('=== internal triggering with bypass {:x} ==='.format(0x3c))
     pbase = base['pci']
     pbase.DevPcie.Application.EventBuilder.Bypass.set(0x3c)
     return
@@ -732,9 +741,11 @@ def epixhr2x2_internal_trigger(base):
     cbase.TriggerRegisters.enable.set(0)
 
 def epixhr2x2_enable(base):
+    print('epixhr2x2_enable')
     epixhr2x2_external_trigger(base)
 
 def epixhr2x2_disable(base):
+    print('epixhr2x2_disable')
     epixhr2x2_internal_trigger(base)
 
 #

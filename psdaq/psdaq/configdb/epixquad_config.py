@@ -104,7 +104,7 @@ def pixel_mask_square(value0,value1,spacing,position):
 #
 #  Initialize the rogue accessor
 #
-def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
+def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M", verbose=0):
     global base
     global pv
     global lane
@@ -121,12 +121,10 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
                                             yamlFileLclsII=None,
                                             startupMode   =True,
                                             standAloneMode=xpmpv is not None,
-                                            pgp3          =True,
+                                            pgp4          =True,
                                             dataVc        =0,
                                             pollEn        =False,
-                                            initRead      =False,
-                                            numLanes      =4,
-                                            devTarget     =lcls2_pgp_pcie_apps.Kcu1500)
+                                            initRead      =False)
         #dumpvars('pbase',pbase)
 
         pbase.__enter__()
@@ -144,6 +142,13 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
                          enVcMask=0x2,enWriter=False,enPrbs=False)
     cbase.__enter__()
     base['cam'] = cbase
+
+    firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
+    buildStamp = cbase.AxiVersion.BuildStamp.get()
+    gitHash = cbase.AxiVersion.GitHash.get()
+    print(f'firmwareVersion [{firmwareVersion:x}]')
+    print(f'buildStamp      [{buildStamp}]')
+    print(f'gitHash         [{gitHash:x}]')
 
     logging.info('epixquad_unconfig')
     epixquad_unconfig(base)
