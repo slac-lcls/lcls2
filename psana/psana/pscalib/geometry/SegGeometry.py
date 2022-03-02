@@ -58,6 +58,7 @@ import logging
 logger = logging.getLogger(__name__)
 import numpy as np
 
+DTYPE_MASK = np.uint8
 
 def rotation(X, Y, C, S):
     """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot

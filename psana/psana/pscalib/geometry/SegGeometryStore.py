@@ -18,6 +18,7 @@ Usage::
     sg = sgs.Create(segname='JUNGFRAU:V1')
     sg = sgs.Create(segname='JUNGFRAU:V2')
     sg = sgs.Create(segname='MTRX:512:512:54:54')
+    sg = sgs.Create(segname='MTRX:V2:512:512:54:54')
 
     sg.print_seg_info(pbits=0o377)
     size_arr = sg.size()
@@ -60,34 +61,45 @@ Created: 2013-03-08 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one, epix10ka_wpc
-from psana.pscalib.geometry.SegGeometryEpixHR2x2V1 import epixhr2x2_one, epixhr2x2_wpc
-from psana.pscalib.geometry.SegGeometryMatrixV1 import SegGeometryMatrixV1, matrix_pars, segment_one
-from psana.pscalib.geometry.SegGeometryJungfrauV1 import jungfrau_one
-from psana.pscalib.geometry.SegGeometryJungfrauV2 import jungfrau_front
-
 def segment_geometry(**kwa):
     """Factory method returns segment geomentry object for specified segname."""
     segname = kwa.get('segname', 'SENS2X1:V1')
     wpc     = kwa.get('use_wide_pix_center', False)
     logger.debug('segment geometry of %s is requested, use_wide_pix_center=%s' % (segname, str(wpc)))
 
-    if   segname=='EPIX10KA:V1': return epix10ka_wpc if wpc else epix10ka_one # SegGeometryEpix10kaV1(use_wide_pix_center=False)
-    elif segname=='EPIXHR2X2:V1': return epixhr2x2_wpc if wpc else epixhr2x2_one # SegGeometryEpixHR2x2V1V1(use_wide_pix_center=False)
+    if segname=='EPIX10KA:V1':
+        from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one, epix10ka_wpc
+        return epix10ka_wpc if wpc else epix10ka_one
+    elif segname=='EPIXHR2X2:V1':
+        from psana.pscalib.geometry.SegGeometryEpixHR2x2V1 import epixhr2x2_one, epixhr2x2_wpc
+        return epixhr2x2_wpc if wpc else epixhr2x2_one
+    elif segname[:7]=='MTRX:V2':
+        from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
+        rows, cols, psize_row, psize_col = matrix_pars_v2(segname)
+        return SegGeometryMatrixV2(rows, cols, psize_row, psize_col,\
+                                   pix_size_depth=100,\
+                                   pix_scale_size=min(psize_row, psize_col))
     elif segname[:4]=='MTRX':
+        from psana.pscalib.geometry.SegGeometryMatrixV1 import SegGeometryMatrixV1, matrix_pars, segment_one
         rows, cols, psize_row, psize_col = matrix_pars(segname)
         return SegGeometryMatrixV1(rows, cols, psize_row, psize_col,\
                                    pix_size_depth=100,\
                                    pix_scale_size=min(psize_row, psize_col))
-    elif segname=='JUNGFRAU:V1': return jungfrau_one # SegGeometryJungfrauV1()
-    elif segname=='JUNGFRAU:V2': return jungfrau_front # SegGeometryJungfrauV2()
-    elif segname=='PNCCD:V1': return segment_one  # SegGeometryMatrixV1()
+    elif segname=='JUNGFRAU:V1':
+        from psana.pscalib.geometry.SegGeometryJungfrauV1 import jungfrau_one
+        return jungfrau_one
+    elif segname=='JUNGFRAU:V2':
+        from psana.pscalib.geometry.SegGeometryJungfrauV2 import jungfrau_front
+        return jungfrau_front
+    elif segname=='PNCCD:V1':
+        from psana.pscalib.geometry.SegGeometryMatrixV1 import segment_one
+        return segment_one
     elif segname=='EPIX100:V1':
         from psana.pscalib.geometry.SegGeometryEpix100V1 import epix2x2_one, epix2x2_wpc
-        return epix2x2_wpc if wpc else epix2x2_one  # SegGeometryEpix100V1 (use_wide_pix_center=False)
+        return epix2x2_wpc if wpc else epix2x2_one
     elif segname=='SENS2X1:V1':
         from psana.pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one, cspad2x1_wpc
-        return cspad2x1_wpc if wpc else cspad2x1_one # SegGeometryCspad2x1V1(use_wide_pix_center=False)
+        return cspad2x1_wpc if wpc else cspad2x1_one
     #elif segname=='ANDOR3D:V1': return seg_andor3d # SegGeometryMatrixV1()
     else:
         logger.debug('segment "%s" gometry IS NOT IMPLEMENTED' % segname)
@@ -95,7 +107,6 @@ def segment_geometry(**kwa):
 
 
 class SegGeometryStore():
-    """Factory class for SegGeometry-base objects of different detectors."""
     def __init__(sp):
         pass
 
@@ -105,5 +116,4 @@ class SegGeometryStore():
 
 sgs = SegGeometryStore() # singleton
 
-# See test in test_SegGeometryStore.py
-# EOF
+# EOF - See test_SegGeometryStore.py

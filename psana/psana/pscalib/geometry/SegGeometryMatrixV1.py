@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------
+
 """
 Class :py:class:`SegGeometryMatrixV1` defines the matrix V1 (pnCCD, 512x512) sensor pixel coordinates in its local frame
 ========================================================================================================================
@@ -14,7 +14,7 @@ In this class we use natural matrix notations like in data array
 \n ::
 
   MatrixV1 sensor coordinate frame has a matrix-style coordinate system:
- 
+
   @code
     (Xmin,Ymin)        (Xmin,Ymax)
     (0,0)              (0,511)
@@ -69,11 +69,11 @@ Usage of interface methods::
     ...
 
 See:
- * :py:class:`GeometryObject`, 
- * :py:class:`SegGeometry`, 
- * :py:class:`SegGeometryCspad2x1V1`, 
- * :py:class:`SegGeometryEpix100V1`, 
- * :py:class:`SegGeometryMatrixV1`, 
+ * :py:class:`GeometryObject`,
+ * :py:class:`SegGeometry`,
+ * :py:class:`SegGeometryCspad2x1V1`,
+ * :py:class:`SegGeometryEpix100V1`,
+ * :py:class:`SegGeometryMatrixV1`,
  * :py:class:`SegGeometryStore`
 
 For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/Detector+Geometry>`_.
@@ -84,12 +84,9 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created: 2013-03-08 by Mikhail Dubrovin
 2020-09-04 - converted to py3
 """
-#------------------------------
 
 from psana.pscalib.geometry.SegGeometry import *
 logger = logging.getLogger(__name__)
-
-#------------------------------
 
 def matrix_pars(segname):
     """Returns the matrix sensor parameters from its string-name, ex: MTRX:512:512:54:54
@@ -102,7 +99,6 @@ def matrix_pars(segname):
     #print('matrix sensor %s parameters:' % (segname), rows, cols, psize_row, psize_col)
     return rows, cols, psize_row, psize_col
 
-#------------------------------
 
 class SegGeometryMatrixV1(SegGeometry):
     """Self-sufficient class for generation of sensor pixel coordinate array"""
@@ -118,7 +114,6 @@ class SegGeometryMatrixV1(SegGeometry):
     _nasics_in_rows = 1
     _nasics_in_cols = 1
 
-#------------------------------
 
     def __init__(sp, rows=512, cols=512, pix_size_rows=75, pix_size_cols=75, pix_size_depth=400, pix_scale_size=75):
 
@@ -136,11 +131,10 @@ class SegGeometryMatrixV1(SegGeometry):
 
         sp.make_pixel_coord_arrs()
 
-#------------------------------
 
     def make_pixel_coord_arrs(sp):
         """Makes maps of x, y, and z of segment pixel coordinates
-        """        
+        """
         sp.x_arr_um = np.arange(sp._rows)*sp._pix_size_rows
         sp.y_arr_um = np.arange(sp._cols)*sp._pix_size_cols
 
@@ -148,12 +142,11 @@ class SegGeometryMatrixV1(SegGeometry):
         # where X is directed from up to down, Y from left to right
         sp.y_pix_arr_um, sp.x_pix_arr_um = np.meshgrid(sp.y_arr_um, sp.x_arr_um)
         sp.z_pix_arr_um = np.zeros((sp._rows,sp._cols))
-        
-#------------------------------
+
 
     def make_pixel_size_arrs(sp):
-        """Makes maps of x, y, and z segment pixel size 
-        """        
+        """Makes maps of x, y, and z segment pixel size
+        """
         if sp.pix_area_arr is not None: return
 
         x_arr_size_um = np.ones(sp._rows) * sp._pix_size_rows
@@ -161,10 +154,9 @@ class SegGeometryMatrixV1(SegGeometry):
 
         sp.y_pix_size_um, sp.x_pix_size_um = np.meshgrid(y_arr_size_um, x_arr_size_um)
         sp.z_pix_size_um = np.ones((sp._rows,sp._cols)) * sp._pix_size_depth
- 
+
         sp.pix_area_arr = np.ones((sp._rows,sp._cols))
 
-#------------------------------
 
     def print_member_data(sp):
         s = 'SegGeometryMatrixV1.print_member_data()'\
@@ -176,7 +168,6 @@ class SegGeometryMatrixV1(SegGeometry):
           + '\n    _pix_size_depth: %7.2f' % sp._pix_size_depth
         logger.info(s)
 
-#------------------------------
 
     def print_pixel_size_arrs(sp):
         sp.make_pixel_size_arrs()
@@ -192,7 +183,6 @@ class SegGeometryMatrixV1(SegGeometry):
           + '\n  sp.pix_area_arr.shape  = '        + str(sp.pix_area_arr.shape)
         logger.info(s)
 
-#------------------------------
 
     def print_maps_seg_um(sp):
         s = 'SegGeometryMatrixV1.print_maps_seg_um()'\
@@ -204,7 +194,6 @@ class SegGeometryMatrixV1(SegGeometry):
           + '\n  z_pix_arr_um.shape = ' + str(sp.z_pix_arr_um.shape)
         logger.info(s)
 
-#------------------------------
 
     def print_xy_1darr_um(sp):
         s = 'SegGeometryyMatrixV1.print_xy_1darr_um()'\
@@ -214,7 +203,6 @@ class SegGeometryMatrixV1(SegGeometry):
           + '\n  y_arr_um.shape = ' + str(sp.y_arr_um.shape)
         logger.info(s)
 
-#------------------------------
 
     def print_xyz_min_max_um(sp):
         xmin, ymin, zmin = sp.get_xyz_min_um()
@@ -224,28 +212,27 @@ class SegGeometryMatrixV1(SegGeometry):
             % (xmin, xmax, ymin, ymax, zmin, zmax)
         logger.info(s)
 
-#------------------------------
 
-    def get_xyz_min_um(sp): 
+    def get_xyz_min_um(sp):
         return sp.x_arr_um[0], sp.y_arr_um[0], 0
 
-    def get_xyz_max_um(sp): 
+    def get_xyz_max_um(sp):
         return sp.x_arr_um[-1], sp.y_arr_um[-1], 0
 
-    def get_seg_xy_maps_um(sp): 
+    def get_seg_xy_maps_um(sp):
         return sp.x_pix_arr_um, sp.y_pix_arr_um
 
-    def get_seg_xyz_maps_um(sp): 
+    def get_seg_xyz_maps_um(sp):
         return sp.x_pix_arr_um, sp.y_pix_arr_um, sp.z_pix_arr_um
 
-    def get_seg_xy_maps_um_with_offset(sp): 
+    def get_seg_xy_maps_um_with_offset(sp):
         if  sp.x_pix_arr_um_offset is None:
             x_min_um, y_min_um, z_min_um = sp.get_xyz_min_um()
             sp.x_pix_arr_um_offset = sp.x_pix_arr_um - x_min_um
             sp.y_pix_arr_um_offset = sp.y_pix_arr_um - y_min_um
         return sp.x_pix_arr_um_offset, sp.y_pix_arr_um_offset
 
-    def get_seg_xyz_maps_um_with_offset(sp): 
+    def get_seg_xyz_maps_um_with_offset(sp):
         if  sp.x_pix_arr_um_offset is None:
             x_min_um, y_min_um, z_min_um = sp.get_xyz_min_um()
             sp.x_pix_arr_um_offset = sp.x_pix_arr_um - x_min_um
@@ -253,7 +240,7 @@ class SegGeometryMatrixV1(SegGeometry):
             sp.z_pix_arr_um_offset = sp.z_pix_arr_um - z_min_um
         return sp.x_pix_arr_um_offset, sp.y_pix_arr_um_offset, sp.z_pix_arr_um_offset
 
-    def get_pix_size_um(sp): 
+    def get_pix_size_um(sp):
         return sp._pixs
 
     def get_pixel_size_arrs_um(sp):
@@ -274,9 +261,7 @@ class SegGeometryMatrixV1(SegGeometry):
         xmin, ymin = X.min(), Y.min()
         return X-xmin, Y-ymin
 
-#------------------------------
 # INTERFACE METHODS
-#------------------------------
 
     def print_seg_info(sp, pbits=0):
         """ Prints segment info for selected bits
@@ -352,32 +337,31 @@ class SegGeometryMatrixV1(SegGeometry):
         return sp.return_switch(sp.get_xyz_max_um, axis)
 
 
-    def pixel_mask_array(sp, mbits=0o377, width=1, **kwa):
+    def pixel_mask_array(sp, width=0, edge_rows=0, edge_cols=0, dtype=DTYPE_MASK, **kwa):
         """ Returns numpy array of pixel mask: 1/0 = ok/masked,
-        mbits=1 - mask edges,
-        +2 - mask two central columns, 
-        +4 - mask non-bonded pixels,
-        +8 - mask nearest neighbours of nonbonded pixels.
         """
-        w = width
-        zero_col = np.zeros((sp._rows,w),dtype=np.uint8)
-        zero_row = np.zeros((w,sp._cols),dtype=np.uint8)
-        mask     = np.ones((sp._rows,sp._cols),dtype=np.uint8)
+        if width>0: edge_rows = edge_cols = width
+        mask = np.ones((sp._rows, sp._cols), dtype=dtype)
 
-        if mbits & 1: 
-        # mask edges
-            mask[0:w,:] = zero_row # mask top    edge
-            mask[-w:,:] = zero_row # mask bottom edge
-            mask[:,0:w] = zero_col # mask left   edge
-            mask[:,-w:] = zero_col # mask right  edge
+        if edge_rows>0: # mask edge rows
+            w = edge_rows
+            zero_row = np.zeros((w, sp._cols), dtype=dtype)
+            mask[0:w,:] = zero_row # mask top    edge rows
+            mask[-w:,:] = zero_row # mask bottom edge rows
+
+        if edge_cols>0: # mask edge cols
+            w = edge_cols
+            zero_col = np.zeros((sp._rows, w), dtype=dtype)
+            mask[:,0:w] = zero_col # mask left  edge columns
+            mask[:,-w:] = zero_col # mask right edge columns
 
         return mask
 
-#----------
+
 # 2020-08 added for converter
 
     def asic0indices(sp):
-        """ Returns list of ASIC (0,0)-corner indices in panel daq array. 
+        """ Returns list of ASIC (0,0)-corner indices in panel daq array.
         """
         return sp._asic0indices
 
@@ -395,149 +379,10 @@ class SegGeometryMatrixV1(SegGeometry):
         """ Returns segment name.
         """
         return sp._name
-  
-#------------------------------
-#------------------------------
-#------------------------------
 
 segment_one = SegGeometryMatrixV1()
 #seg_andor3d = SegGeometryMatrixV1(rows=2048, cols=2048, pix_size_rows=13.5,\
 #                pix_size_cols=13.5, pix_size_depth=50, pix_scale_size=13.5)
 
-#------------------------------
-#----------- TEST -------------
-#------------------------------
+# EOF
 
-if __name__ == "__main__":
-
-  import sys
-  from time import time
-  import psana.pyalgos.generic.Graphics as gg
-
-  logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
-
-  def test_xyz_min_max():
-    w = segment_one
-    w.print_xyz_min_max_um() 
-    s = 'test_xyz_min_max'\
-      + '\n  Ymin = %.1f' % w.pixel_coord_min('Y')\
-      + '\n  Ymax = %.1f' % w.pixel_coord_max('Y')
-    logger.info(s)
-
-#------------------------------
-
-  def test_xyz_maps():
-
-    w = segment_one
-    w.print_maps_seg_um()
-
-    titles = ['X map','Y map']
-    for i,arr2d in enumerate( w.get_seg_xy_maps_pix() ):
-        amp_range = (arr2d.min(), arr2d.max())
-        gg.plotImageLarge(arr2d, amp_range=amp_range, figsize=(10,5), title=titles[i])
-        gg.move(200*i,100*i)
-
-    gg.show()
-
-#------------------------------
-
-  def test_img():
-
-    w = segment_one
-
-    X,Y = w.get_seg_xy_maps_pix()
-
-    w.print_seg_info(0o377)
-
-    xmin, ymin, zmin = w.get_xyz_min_um()
-    xmax, ymax, zmax = w.get_xyz_max_um()
-    xmin /= w.pixel_scale_size()
-    xmax /= w.pixel_scale_size()
-    ymin /= w.pixel_scale_size()
-    ymax /= w.pixel_scale_size()
-
-    xsize = int(xmax - xmin + 1)
-    ysize = int(ymax - ymin + 1)
-
-    H, Xedges, Yedges = np.histogram2d(X.flatten(), Y.flatten(), bins=[xsize,ysize],\
-       range=[[xmin, xmax], [ymin, ymax]], normed=False, weights=X.flatten()+Y.flatten()) 
-
-    s = 'test_img'\
-      + '\n  X.shape:' + str(X.shape)\
-      + '\n  xsize = %.1f' % xsize\
-      + '\n  ysize = %.1f' % ysize\
-      + '\n  Xedges:'  + str(Xedges)\
-      + '\n  Yedges:'  + str(Yedges)\
-      + '\n  H.shape:' + str(H.shape)
-    logger.info(s)
-
-    gg.plotImageLarge(H, amp_range=(0, 1100), figsize=(8,10)) # range=(-1, 2), 
-    gg.show()
-
-#------------------------------
-
-  def test_img_easy():
-    o = segment_one
-    X, Y = o.get_seg_xy_maps_pix()
-    xmin, xmax, ymin, ymax  = X.min(), X.max(), Y.min(), Y.max()
-    Xoff, Yoff = X-xmin, Y-ymin
-    iX, iY = (Xoff+0.25).astype(int), (Yoff+0.25).astype(int)
-    img = gg.getImageFromIndexArrays(iY,iX,X+2*Y)
-    gg.plotImageLarge(img, amp_range=(xmin+2*ymin, xmax+2*ymax), figsize=(8,10))
-    gg.show()
-
-#------------------------------
-
-  def test_pix_sizes():
-    w = segment_one
-    w.print_pixel_size_arrs()
-    size_arr = w.pixel_size_array('X')
-    area_arr = w.pixel_area_array()
-    s = 'test_pix_sizes\n'\
-      + '\n  area_arr[0:10,190:198]:\n' + str(area_arr[0:10,190:198])\
-      + '\n  area_arr.shape:'           + str(area_arr.shape)\
-      + '\n  size_arr[0:10,190:198]:\n' + str(size_arr[0:10,190:198])\
-      + '\n  size_arr.shape:'           + str(size_arr.shape)
-    logger.info(s)
-
-#------------------------------
-
-  def test_mask(mbits=0o377, width=5):
-    o = segment_one
-    X, Y = o.get_seg_xy_maps_pix_with_offset()
-    mask = o.pixel_mask_array(mbits,width)
-    iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
-    img = gg.getImageFromIndexArrays(iX,iY,mask)
-    gg.plotImageLarge(img, amp_range=(-1, 2), figsize=(8,10))
-    gg.show()
-
-#------------------------------
-
-  def usage(tname='0'):
-    s = ''
-    if tname in ('0',): s+='\n==== Usage: python %s <test-number>' % sys.argv[0]
-    if tname in ('0','1'): s+='\n 1 - test_xyz_min_max()'
-    if tname in ('0','2'): s+='\n 2 - test_xyz_maps()'
-    if tname in ('0','3'): s+='\n 3 - test_img()'
-    if tname in ('0','4'): s+='\n 4 - test_img_easy()'
-    if tname in ('0','5'): s+='\n 5 - test_pix_sizes()'
-    if tname in ('0','6'): s+='\n 6 - test_mask(mbits=1+2+4+8, width=5)'
-    return s
-
-#------------------------------
- 
-  if __name__ == "__main__":
-
-    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    if len(sys.argv)==1: logger.info(usage())
-    elif tname=='1': test_xyz_min_max()
-    elif tname=='2': test_xyz_maps()
-    elif tname=='3': test_img()
-    elif tname=='4': test_img_easy()
-    elif tname=='5': test_pix_sizes()
-    elif tname=='6': test_mask(mbits=1+2+4+8, width=5)
-    else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
-    if len(sys.argv)>1: logger.info(usage(tname))
-    sys.exit('END OF TEST')
-
-#------------------------------
