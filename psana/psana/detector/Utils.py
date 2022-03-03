@@ -113,7 +113,7 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, t
     os.umask(umask)
     rec = log_rec_at_start(tsfmt, **{'dirrepo':dirrepo,})
     logger.debug('Record on start: %s' % rec)
-    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode) #, dettype=dettype)
+    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=umask)
     logfname = repoman.logname_at_start(procname)
     fexists = os.path.exists(logfname)
     save_textfile(rec, logfname, mode='a')
