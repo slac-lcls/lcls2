@@ -192,16 +192,20 @@ def log_rec_on_start(tsfmt='%Y-%m-%dT%H:%M:%S%z'):
            (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), ' '.join(sys.argv))
 
 
-def create_directory(dir, mode=0o777, umask=0o0):
+def create_directory(d, mode=0o777, umask=0o0):
     """Creates directory and sets its mode
     """
     os.umask(umask)
-    if os.path.exists(dir):
-        logger.debug('Directory exists: %s' % dir)
+    if os.path.exists(d):
+        logger.debug('Directory exists: %s' % d)
     else:
-        os.makedirs(dir)
-        os.chmod(dir, mode)
-        logger.debug('Directory created: %s, mode(oct)=%s' % (dir, oct(mode)))
+        try: os.makedirs(d, mode) #, exist_ok=True)
+        except Exception as err:
+           logger.debug('exception in os.makedirs("%s") err: %s' % (d,err))
+           return
+        #os.makedirs(d, mode, exist_ok=True)
+        os.chmod(d, mode)
+        logger.debug('Directory created: %s, mode(oct)=%s' % (d, oct(mode)))
 
 
 def create_path(path, depth=6, mode=0o777):
