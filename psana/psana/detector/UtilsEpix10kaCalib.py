@@ -492,7 +492,12 @@ def pedestals_calibration(*args, **kwa):
     #=================
 
     kwa = data_source_kwargs(**kwa)
-    ds = DataSource(**kwa)
+    #ds = DataSource(**kwa)
+    try: ds = DataSource(**kwa)
+    except Exception as err:
+        logger.error('DataSource(**kwa) does not work:\n    %s' % err)
+        sys.exit('EXIT - requested DataSource does not exist or is not accessible.')
+
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
     logger.info('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
