@@ -71,9 +71,11 @@ def issue_2022_02_08():
     from time import time
     from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
+
     ds = DataSource(exp='tmoc00318',run=10, dir='/cds/data/psdm/prj/public01/xtc')
     orun = next(ds.runs())
     det = orun.Detector('epix100')
+
     for i,evt in enumerate(orun.events()):
         if i>20: break
         t0_sec = time()
@@ -116,6 +118,30 @@ def issue_2022_03_01():
         print(det.raw.calib(evt).shape,det.raw.image(evt))
         if nevent>10: break
 
+def issue_2022_03_02():
+    """epix100 default geometry implementation
+    """
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+
+    #ds = DataSource(exp='tmox49720',run=209)
+    #orun = next(ds.runs())
+    #det = orun.Detector('epix100')
+
+    ds = DataSource(exp='rixx45619',run=119)
+    orun = next(ds.runs())
+    det = orun.Detector('epixhr')
+
+    for nevt,evt in enumerate(orun.events()):
+        geotxt = det.raw._det_geotxt_default()
+        print('_det_geotxt_default:\n%s' % geotxt)
+        o = GeometryAccess()
+        o.load_pars_from_str(geotxt)
+        x,y,z = o.get_pixel_coords()
+        print(info_ndarr(x,'x:'))
+        if det.raw.image(evt) is not None: break
+
 def issue_2022_01_dd():
     print('template')
 
@@ -128,6 +154,7 @@ USAGE = '\nUsage:'\
       + '\n    3 - issue_2022_02_08 - test copy xtc2 file to .../public01/xtc/, epix100 common mode timing'\
       + '\n    4 - issue_2022_02_15 - test epix100 cpo - missing geometry'\
       + '\n    5 - issue_2022_03_01 - test epixquad cpo - copy constants'\
+      + '\n    6 - issue_2022_03_02 - test epix100 - default geometry'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -137,6 +164,7 @@ elif TNAME in  ('2',): issue_2022_01_26()
 elif TNAME in  ('3',): issue_2022_02_08()
 elif TNAME in  ('4',): issue_2022_02_15()
 elif TNAME in  ('5',): issue_2022_03_01()
+elif TNAME in  ('6',): issue_2022_03_02()
 elif TNAME in  ('0',): issue_2022_01_dd()
 else:
     print(USAGE)
