@@ -20,6 +20,7 @@ Usage::
   a = o._mask_calib()
   a = o._common_mode()
   a = o._det_geotxt_and_meta()
+  a = o._det_geotxt_default()
   a = o._det_geo()
   a = o._pixel_coord_indexes(pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0, **kwa)
   a = o._pixel_coords(do_tilt=True, cframe=0, **kwa)
@@ -56,6 +57,7 @@ from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
 from psana.detector.UtilsMask import CC, DTYPE_MASK, DTYPE_STATUS, mask_edges, merge_masks
+import psana.detector.Utils as ut
 
 from amitypes import Array2d, Array3d
 
@@ -169,14 +171,21 @@ class AreaDetector(DetectorImpl):
         return geotxt_and_meta
 
 
+    def _det_geotxt_default(self):
+        logger.debug('_det_geotxt_default should be re-implemented in specific detector subclass, othervise returns None')
+        return None
+
+
     def _det_geo(self):
         """
         """
         if self._geo_ is None:
             geotxt, meta = self._det_geotxt_and_meta()
             if geotxt is None:
-                logger.debug('_det_geo geotxt is None')
-                return None
+                geotxt = self._det_geotxt_default()
+                if geotxt is None:
+                    logger.debug('_det_geo geotxt is None')
+                    return None
             self._geo_ = GeometryAccess()
             self._geo_.load_pars_from_str(geotxt)
         return self._geo_
