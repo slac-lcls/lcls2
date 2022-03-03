@@ -27,11 +27,11 @@ from psana.detector.utils_psana import seconds
 from psana.detector.UtilsLogging import init_file_handler
 
 
-def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, logmode='INFO', tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, logmode='INFO', tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
     """Adds record on start to the log file <dirrepo>/logs/log-<procname>-<year>.txt
     """
     from psana.detector.RepoManager import RepoManager
-
+    os.umask(umask)
     repoman = RepoManager(dirrepo, dettype=None, dirmode=dirmode, filemode=filemode)
     repoman.makedir_logs()
     logfname = repoman.logname('%s_%s' % (procname, get_login()))
