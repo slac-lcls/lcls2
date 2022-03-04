@@ -157,6 +157,9 @@ cdef class cyhsd_base_1_2_3:
         
         cdef int iseg
         for iseg, (chanNum, pychan) in self._pychansegs.items():
+            # Skip padding for empty peak segments
+            if pychan.peakList is None: continue
+
             times = []
             for start, peak in zip(pychan.startPosList, pychan.peakList):
                 times.append(np.arange(start, start+len(peak)) * 1/(6.4*1e9*13/14))
