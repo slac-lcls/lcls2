@@ -426,8 +426,12 @@ def test_single_image(args):
 
     arr, amin, amax, title = None, None, None, '%s for --grindex=%d ' % (tname, grindex)
     if tname == 'mask':
-        arr = det.raw._mask_comb(mbits=0o7,edge_rows=20, edge_cols=10, center_rows=4, center_cols=2) + 1
-        amin, amax =-1, 2
+        #arr = det.raw._mask_comb(mbits=0o7,edge_rows=20, edge_cols=10, center_rows=4, center_cols=2) + 1
+        arr = 1 + det.raw._mask(status=True,\
+                                neighbors=False, rad=3, ptrn='r',\
+                                edges=True, edge_rows=10, edge_cols=5,\
+                                center=True, center_rows=5, center_cols=3)
+        amin, amax = 0, 2
         title = 'mask+1'
     elif tname=='peds':    arr = det.raw._pedestals()[grindex,:]
     elif tname=='status':  arr = det.raw._status()[grindex,:]
