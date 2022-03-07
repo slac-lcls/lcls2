@@ -47,9 +47,8 @@ Usage::
     shape    = sg.shape()
     pix_size = pixel_scale_size()
 
-    area     = sg.pixel_area_array()
-    mask     = sg.pixel_mask_array(mbits=0o377, width=1)
-    # where mbits = +1-edges, +2-wide pixels
+    area = sg.pixel_area_array()
+    mask = sg.pixel_mask_array(width=0, wcenter=0, edge_rows=1, edge_cols=1, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa)
 
     sizeX = sg.pixel_size_array('X')
     sizeX, sizeY, sizeZ = sg.pixel_size_array()
@@ -330,40 +329,56 @@ class SegGeometryJungfrauV1(SegGeometry):
         return sp.return_switch(sp.get_xyz_max_um, axis)
 
 
-    def pixel_mask_array(sp, width=0, wcentral=0, **kwa):
-        """ Returns numpy array of pixel mask: 1/0 = ok/masked,
+    def pixel_mask_array(sp, width=0, wcenter=0, edge_rows=1, edge_cols=1, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa):
+        """ Returns numpy array of pixel mask: 1/0 = ok/masked.
 
         Parameters
+        ----------
+
         - width (uint) - width in pixels of masked edge
-        - wcentral (uint) - width in pixels of masked central rows and columns
+        - wcenter (uint) - width in pixels of masked central rows and columns
+        - edge_rows (uint) - width in pixels of masked edge rows
+        - edge_cols (uint) - width in pixels of masked edge columns
+        - center_rows (uint) - width in pixels of masked central rows
+        - center_cols (uint) - width in pixels of masked central columns
+
+        Return
+        ------
+
+        np.array (dtype=np.uint8) - mask array shaped as data
         """
-        w = width
-        u = wcentral # kwargs.get('wcentral', 1)
 
-        mask = np.ones((sp._rows,sp._cols),dtype=np.uint8)
+        if width>0: edge_rows = edge_cols = width
+        if wcenter>0: center_rows = center_cols = wcenter
 
-        if width>0:
-        # mask edges
-            zero_col = np.zeros((sp._rows,w),dtype=np.uint8)
-            zero_row = np.zeros((w,sp._cols),dtype=np.uint8)
+        mask = np.ones((sp._rows,sp._cols),dtype=np.dtype)
 
-            mask[0:w,:] = zero_row # mask top    edge
-            mask[-w:,:] = zero_row # mask bottom edge
-            mask[:,0:w] = zero_col # mask left   edge
-            mask[:,-w:] = zero_col # mask right  edge
+        if edge_rows>0: # mask edge rows
+            w = edge_rows
+            zero_row = np.zeros((w,sp._cols),dtype=dtype)
+            mask[0:w,:] = zero_row # mask top    edge rows
+            mask[-w:,:] = zero_row # mask bottom edge rows
 
-        if wcentral>0:
-        # mask central rows and colums - gaps edges
-            zero_col = np.zeros((sp._rows,u),dtype=np.uint8)
-            zero_row = np.zeros((u,sp._cols),dtype=np.uint8)
+        if edge_cols>0: # mask edge cols
+            w = edge_cols
+            zero_col = np.zeros((sp._rows,w),dtype=dtype)
+            mask[:,0:w] = zero_col # mask left  edge columns
+            mask[:,-w:] = zero_col # mask right edge columns
+
+        if center_cols>0: # mask central colums
+            u = center_cols
+            zero_col = np.zeros((sp._rows,u),dtype=dtype)
             for i in range(1,4):
                 g = sp._casic*i
                 mask[:,g-u:g] = zero_col # mask central-left  column
                 mask[:,g:g+u] = zero_col # mask central-right column
 
+        if center_rows>0: # mask central rows
+            w = center_rows
             g = sp._rasic
-            mask[g-u:g,:] = zero_row # mask central-low   row
-            mask[g:g+u,:] = zero_row # mask central-high  row
+            zero_row = np.zeros((w,sp._cols),dtype=dtype)
+            mask[g-w:g,:] = zero_row # mask central-low   row
+            mask[g:g+w,:] = zero_row # mask central-high  row
 
         return mask
 

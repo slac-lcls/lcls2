@@ -337,8 +337,21 @@ class SegGeometryMatrixV1(SegGeometry):
         return sp.return_switch(sp.get_xyz_max_um, axis)
 
 
-    def pixel_mask_array(sp, width=0, edge_rows=0, edge_cols=0, dtype=DTYPE_MASK, **kwa):
-        """ Returns numpy array of pixel mask: 1/0 = ok/masked,
+    def pixel_mask_array(sp, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa):
+        """ Returns numpy array of pixel mask: 1/0 = ok/masked.
+
+        Parameters
+        ----------
+
+        - width (uint) - width in pixels of masked edge
+        - wcenter (uint) - width in pixels of masked central rows and columns
+        - edge_rows (uint) - width in pixels of masked edge rows
+        - edge_cols (uint) - width in pixels of masked edge columns
+
+        Return
+        ------
+
+        np.array (dtype=np.uint8) - mask array shaped as data
         """
         if width>0: edge_rows = edge_cols = width
         mask = np.ones((sp._rows, sp._cols), dtype=dtype)

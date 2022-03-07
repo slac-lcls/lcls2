@@ -39,10 +39,8 @@ Usage::
     pix_size = pixel_scale_size()
 
     area  = sg.pixel_area_array()
-    mask = sg.pixel_mask_array(mbits=0o377, width=1, wcentral=1)
-    # where mbits = +1  - edges,
-    #               +2  - wide pixels,
-    #               +4  - non-bonded pixels,
+    mask = sg.pixel_mask_array(mbits=0o4, width=0, wcenter=0, edge_rows=1, edge_cols=1, center_cols=1, dtype=DTYPE_MASK, **kwa)
+    # where mbits =  4  - non-bonded pixels,
     #               +8  - nearest four neighbours of non-bonded
     #               +16 - eight neighbours of non-bonded
 
@@ -335,40 +333,50 @@ class SegGeometryCspad2x1V1(SegGeometry):
         return sp.return_switch(sp.get_xyz_max_um, axis)
 
 
-    def pixel_mask_array(sp, mbits=0o7, width=1, wcentral=1, **kwa):
+    def pixel_mask_array(sp, mbits=0o4, width=0, wcenter=0, edge_rows=1, edge_cols=1, center_cols=1, dtype=DTYPE_MASK, **kwa):
         """ Returns numpy array of pixel mask: 1/0 = ok/masked,
 
         Parameters
+        ----------
 
-        mbits=1 - mask edges,
-             +2 - mask two central columns,
-             +4 - mask non-bonded pixels,
-             +8 - mask nearest four neighbours of nonbonded pixels,
-             +16- mask eight neighbours of nonbonded pixels.
+        - mbits=+4  - mask non-bonded pixels,
+                +8  - mask nearest four neighbours of nonbonded pixels,
+                +16 - mask eight neighbours of nonbonded pixels.
+        - width (uint) - width in pixels of masked edge
+        - wcenter (uint) - width in pixels of masked central rows and columns
+        - edge_rows (uint) - width in pixels of masked edge rows
+        - edge_cols (uint) - width in pixels of masked edge columns
+        - center_cols (uint) - width in pixels of masked central columns
 
-        width (uint) - width in pixels of masked edge
-        wcentral (uint) - width in pixels of masked central columns
+        Return
+        ------
+
+        np.array (dtype=np.uint8) - mask array shaped as data
         """
         mask = np.ones((sp._rows,sp._cols),dtype=np.uint8)
-        w = width    # kwargs.get('width', 1)
-        u = wcentral # kwargs.get('wcentral', 1)
+
+        if width>0: edge_rows = edge_cols = width
+        if wcenter>0: center_rows = center_cols = wcenter
         h = sp._colsh
 
-        if mbits & 1:
-            # mask edges with "width"
-            zero_col = np.zeros((sp._rows,w),dtype=np.uint8)
-            zero_row = np.zeros((w,sp._cols),dtype=np.uint8)
+        if edge_rows>0: # mask edge rows
+            w = edge_rows
+            zero_row = np.zeros((w,sp._cols),dtype=dtype)
+            mask[0:w,:] = zero_row # mask top    edge rows
+            mask[-w:,:] = zero_row # mask bottom edge rows
 
-            mask[0:w,:] = zero_row # mask top    edge
-            mask[-w:,:] = zero_row # mask bottom edge
-            mask[:,0:w] = zero_col # mask left   edge
-            mask[:,-w:] = zero_col # mask right  edge
+        if edge_cols>0: # mask edge cols
+            w = edge_cols
+            zero_col = np.zeros((sp._rows,w),dtype=dtype)
+            mask[:,0:w] = zero_col # mask left  edge columns
+            mask[:,-w:] = zero_col # mask right edge columns
 
-        if mbits & 2:
-            # mask wcentral central columns for each ASIC
-            zero_cols = np.zeros((sp._rows, u),dtype=np.uint8)
-            mask[:,h-u:h] = zero_cols # mask central-left columns
-            mask[:,h:h+u] = zero_cols # mask central-right columns
+        if center_cols>0: # mask central rows
+            w = center_cols
+            g = sp._colsh
+            zero_col = np.zeros((sp._rows,w),dtype=dtype)
+            mask[:,g-w:g] = zero_col # mask central-left  columns
+            mask[:,g:g+w] = zero_col # mask central-right columns
 
         if mbits & 4 or mbits & 8 or mbits & 16:
             # mask non-bonded pixels

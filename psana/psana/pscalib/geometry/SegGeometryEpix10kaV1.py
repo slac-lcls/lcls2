@@ -46,8 +46,9 @@ Usage::
     shape    = sg.shape()
     pix_size = pixel_scale_size()
 
-    area     = sg.pixel_area_array()
-    mask     = sg.pixel_mask_array(width=5, wcentral=5)
+    area = sg.pixel_area_array()
+    mask = sg.pixel_mask_array(width=5, wcenter=5)
+    mask = sg.pixel_mask_array(width=0, wcenter=0, edge_rows=1, edge_cols=1, center_rows=1, center_cols=1)
 
     sizeX = sg.pixel_size_array('X')
     sizeX, sizeY, sizeZ = sg.pixel_size_array()
@@ -348,13 +349,28 @@ class SegGeometryEpix10kaV1(SegGeometry):
         return np.ones((sp._rows,sp._cols), dtype=dtype)
 
 
-    def pixel_mask_array(sp, width=0, wcentral=0, edge_rows=0, edge_cols=0, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa):
-        """ Returns numpy array of pixel mask: 1/0 = ok/masked,
+    def pixel_mask_array(sp, width=0, wcenter=0, edge_rows=1, edge_cols=1, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa):
+        """ Returns numpy array of pixel mask: 1/0 = ok/masked.
+
+        Parameters
+        ----------
+
+        - width (uint) - width in pixels of masked edge
+        - wcenter (uint) - width in pixels of masked central rows and columns
+        - edge_rows (uint) - width in pixels of masked edge rows
+        - edge_cols (uint) - width in pixels of masked edge columns
+        - center_rows (uint) - width in pixels of masked central rows
+        - center_cols (uint) - width in pixels of masked central columns
+
+        Return
+        ------
+
+        np.array (dtype=np.uint8) - mask array shaped as data
         """
         mask = sp.pixel_ones_array()
 
         if width>0: edge_rows = edge_cols = width
-        if wcentral>0: center_rows = center_cols = wcentral
+        if wcenter>0: center_rows = center_cols = wcenter
 
         if edge_rows>0: # mask edge rows
             w = edge_rows

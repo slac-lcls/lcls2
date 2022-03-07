@@ -47,9 +47,8 @@ Usage::
     shape    = sg.shape()
     pix_size = pixel_scale_size()
 
-    area     = sg.pixel_area_array()
-    mask     = sg.pixel_mask_array(mbits=0o377, width=1)
-    # where mbits = +1-edges, +2-wide pixels
+    area = sg.pixel_area_array()
+    mask = sg.pixel_mask_array(width=0, wcenter=0, edge_rows=1, edge_cols=1, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa)
 
     sizeX = sg.pixel_size_array('X')
     sizeX, sizeY, sizeZ = sg.pixel_size_array()
