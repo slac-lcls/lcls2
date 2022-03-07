@@ -24,7 +24,7 @@ from psana.detector.areadetector import sgs, AreaDetector, np, ut, DTYPE_MASK, D
 from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index,\
   cbits_config_epix10ka, cbits_config_epixhr2x2,\
   cbits_config_and_data_detector, M14, M15, B14, B15
-from psana.detector.UtilsMask import merge_status
+import psana.detector.UtilsMask as um #import merge_status
 #from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one as seg
 #from psana.pscalib.geometry.SegGeometryStore import sgs
 from psana.detector.NDArrUtils import info_ndarr
@@ -131,53 +131,15 @@ class epix_base(AreaDetector):
         return cbits_config_and_data_detector(self, evt)
 
 
-    def _mask_from_status(self, **kwa):
+    def _mask_from_status(self, mstcode=0xffff, grinds=(0,1,2,3,4), dtype=DTYPE_MASK, **kwa):
+        """re-implementation of AreaDetector._mask_from_status for multi-gain detector.
         """
-        Parameters **kwa
-        ----------------
-        'grinds', (0,1,2,3,4)) # gain range indexes for 'FH','FM','FL','AHL-H','AML-M'
-        Returns
-        -------
-        mask made of status: np.array, ndim=3, shaped as full detector data
-        """
-        logger.debug('epix_base._mask_from_status')
-        _grinds = kwa.get('grinds',(0,1,2,3,4))
-        status = self._status() # pixel_status from calibration constants
-        statmrg = merge_status(status, grinds=_grinds, dtype=DTYPE_STATUS) # dtype=np.uint64
-        return np.asarray(np.select((statmrg>0,), (0,), default=1), dtype=DTYPE_MASK)
-        #logger.info(info_ndarr(status, 'status '))
-        #return statmrg
-
+        smask = AreaDetector._mask_from_status(self, mstcode=mstcode, dtype=dtype, **kwa)
+        return um.merge_mask_for_grinds(smask, grinds=grinds, dtype=dtype, **kwa)
 
 #    def _seg_geo(**kwa):
 #        #logger.debug('epix_base._seg_geo MUST BE RE-IMPLEMENTED')
 #        return None
-
-
-    def _mask_edges(self, edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa):
-        """
-        Parameters
-        ----------
-        edge_rows: int number of edge rows to mask on both side of the panel
-        edge_cols: int number of edge columns to mask on both side of the panel
-        center_rows: int number of edge rows to mask for all ASICs
-        center_cols: int number of edge columns to mask for all ASICs
-        dtype: numpy dtype of the output array
-        **kwa: is not used
-        Returns
-        -------
-        mask: np.ndarray, ndim=3, shaped as full detector data, mask of the panel and asic edges
-        """
-        logger.debug('epix_base._mask_edges')
-        mask1 = self._seg_geo.pixel_mask_array(edge_rows, edge_cols, center_rows, center_cols, dtype)
-        nsegs = self._number_of_segments_total()
-        if nsegs is None:
-            logger.debug('_number_of_segments_total is None')
-            return None
-        logger.info('_mask_edges for %d-segment epix10ka'%nsegs)
-        mask = np.stack([mask1 for i in range(nsegs)])
-        logger.info(info_ndarr(mask, '_mask_edges '))
-        return mask
 
 
 if __name__ == "__main__":
