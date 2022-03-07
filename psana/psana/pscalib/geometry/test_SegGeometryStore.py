@@ -13,11 +13,11 @@ logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level
 
 from psana.pscalib.geometry.SegGeometryStore import sgs # SegGeometryStore
 
-def test_mask(sg, width=6, wcentral=4):
+def test_mask(sg, width=6, wcenter=4):
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
     import psana.pyalgos.generic.Graphics as gg
     X, Y = sg.get_seg_xy_maps_pix_with_offset()
-    mask = 1 + sg.pixel_mask_array(width=width, wcentral=wcentral)
+    mask = 1 + sg.pixel_mask_array(width=width, wcenter=wcenter)
     #mask[mask==0]=3
     iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
     img = gg.getImageFromIndexArrays(iX,iY,mask)

@@ -82,14 +82,14 @@ if __name__ == "__main__":
     logger.info(s)
 
 
-  def test_jungfrau_mask(width=1, wcentral=1):
-    o = jungfrau_front
+  def test_jungfrau_mask(width=0, wcenter=0, edge_rows=3, edge_cols=6, center_rows=2, center_cols=4):
+    o = jungfrau_one
     X, Y = o.get_seg_xy_maps_pix_with_offset()
-    mask = o.pixel_mask_array(width=width, wcentral=wcentral)
+    mask = 1 + o.pixel_mask_array(width, wcenter, edge_rows, edge_cols, center_rows, center_cols)
     mask[mask==0]=4
     iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
     img = gg.getImageFromIndexArrays(iY,iX,mask)
-    gg.plotImageLarge(img, amp_range=(-1, 4), figsize=(14,7))
+    gg.plotImageLarge(img, amp_range=(0,2), figsize=(14,7))
     gg.show()
 
 
@@ -101,8 +101,8 @@ if __name__ == "__main__":
     if tname in ('0','3'): s+='\n 3 - test_jungfrau_img()'
     if tname in ('0','4'): s+='\n 4 - test_jungfrau_img_easy()'
     if tname in ('0','5'): s+='\n 5 - test_pix_sizes()'
-    if tname in ('0','6'): s+='\n 6 - test_jungfrau_mask(width=5, wcentral=10)'
-    if tname in ('0','7'): s+='\n 7 - test_jungfrau_mask(width=10, wcentral=5)'
+    if tname in ('0','6'): s+='\n 6 - test_jungfrau_mask(width=10, wcenter=5)'
+    if tname in ('0','7'): s+='\n 7 - test_jungfrau_mask(width=0, wcenter=0, edge_rows=10, edge_cols=20, center_rows=5, center_cols=10)'
     return s
 
 
@@ -116,8 +116,8 @@ if __name__ == "__main__":
     elif tname in ('3',): test_jungfrau_img()
     elif tname in ('4',): test_jungfrau_img_easy()
     elif tname in ('5',): test_pix_sizes()
-    elif tname in ('6',): test_jungfrau_mask(width=5, wcentral=10)
-    elif tname in ('7',): test_jungfrau_mask(width=10, wcentral=5)
+    elif tname in ('6',): test_jungfrau_mask(width=10, wcenter=5)
+    elif tname in ('7',): test_jungfrau_mask(width=0, wcenter=0, edge_rows=10, edge_cols=20, center_rows=5, center_cols=10)
     else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
     if len(sys.argv)>1: logger.info(usage(tname))
     sys.exit('END OF TEST')

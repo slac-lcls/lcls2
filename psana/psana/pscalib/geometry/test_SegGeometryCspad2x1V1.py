@@ -87,16 +87,16 @@ if __name__ == "__main__":
     logger.info(s)
 
 
-  def test_2x1_mask(mbits=0o7, width=1, wcentral=1):
+  def test_2x1_mask(mbits=0o7, width=0, wcenter=0, edge_rows=10, edge_cols=6, center_cols=4):
     pc2x1 = SegGeometryCspad2x1V1(use_wide_pix_center=False)
     X, Y = pc2x1.get_seg_xy_maps_pix_with_offset()
-    mask = pc2x1.pixel_mask_array(mbits, width=width, wcentral=wcentral)
+    mask = 1 + pc2x1.pixel_mask_array(mbits, width, wcenter, edge_rows, edge_cols, center_cols)
     s = '\n  mask:\n%s' % str(mask)\
       + '\n  mask.shape: %s' % str(mask.shape)
     logger.info(s)
     iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
     img = gg.getImageFromIndexArrays(iX,iY,mask)
-    gg.plotImageLarge(img, amp_range=(-1, 2), figsize=(7,10))
+    gg.plotImageLarge(img, amp_range=(0, 2), figsize=(7,10))
     gg.show()
 
 
@@ -108,8 +108,8 @@ if __name__ == "__main__":
     if tname in ('0','3'): s+='\n 3 - test_img()'
     if tname in ('0','4'): s+='\n 4 - test_img_easy()'
     if tname in ('0','5'): s+='\n 5 - test_pix_sizes()'
-    if tname in ('0','6'): s+='\n 6 - test_mask(mbits=4+8)'
-    if tname in ('0','7'): s+='\n 7 - test_mask(mbits=7, width=3, wcentral=6)'
+    if tname in ('0','6'): s+='\n 6 - test_mask(mbits=4+8, width=4, wcenter=6, mbits=4+8)'
+    if tname in ('0','7'): s+='\n 7 - test_mask(width=0, wcenter=0, edge_rows=10, center_cols=8, mbits=4)'
     return s
 
 
@@ -123,8 +123,8 @@ if __name__ == "__main__":
     elif tname=='3': test_2x1_img()
     elif tname=='4': test_2x1_img_easy()
     elif tname=='5': test_pix_sizes()
-    elif tname=='6': test_2x1_mask(mbits=4+8)
-    elif tname=='7': test_2x1_mask(mbits=7, width=3, wcentral=6)
+    elif tname=='6': test_2x1_mask(width=8, wcenter=4, mbits=4+8)
+    elif tname=='7': test_2x1_mask(width=0, wcenter=0, edge_rows=10, edge_cols=5, center_cols=8, mbits=4)
     else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
     if len(sys.argv)>1: logger.info(usage(tname))
     sys.exit('END OF TEST')

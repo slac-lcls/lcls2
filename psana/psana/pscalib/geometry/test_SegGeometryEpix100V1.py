@@ -76,14 +76,13 @@ if __name__ == "__main__":
     logger.info(s)
 
 
-  def test_2x2_mask(width=0, wcentral=0):
+  def test_2x2_mask(width=0, wcenter=0, edge_rows=3, edge_cols=6, center_rows=2, center_cols=4):
     pc2x2 = SegGeometryEpix100V1(use_wide_pix_center=False)
     X, Y = pc2x2.get_seg_xy_maps_pix_with_offset()
-    mask = pc2x2.pixel_mask_array(width=width, wcentral=wcentral)
-    mask[mask==0]=3
+    mask = 1+pc2x2.pixel_mask_array(width, wcenter, edge_rows, edge_cols, center_rows, center_cols)#, dtype=DTYPE_MASK, **kwa)
     iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
     img = gg.getImageFromIndexArrays(iX,iY,mask)
-    gg.plotImageLarge(img, amp_range=(-1, 2), figsize=(11,10))
+    gg.plotImageLarge(img, amp_range=(0, 2), figsize=(11,10))
     gg.show()
 
 
@@ -95,7 +94,8 @@ if __name__ == "__main__":
     if tname in ('0','3'): s+='\n 3 - test_2x2_img()'
     if tname in ('0','4'): s+='\n 4 - test_2x2_img_easy()'
     if tname in ('0','5'): s+='\n 5 - test_pix_sizes()'
-    if tname in ('0','6'): s+='\n 6 - test_2x2_mask(width=3, wcentral=5)'
+    if tname in ('0','6'): s+='\n 6 - test_2x2_mask(width=3, wcenter=5)'
+    if tname in ('0','7'): s+='\n 7 - test_2x2_mask(width=0, wcenter=0, edge_rows=3, edge_cols=6, center_rows=2, center_cols=4)'
     return s
 
 
@@ -109,7 +109,8 @@ if __name__ == "__main__":
     elif tname=='3': test_2x2_img()
     elif tname=='4': test_2x2_img_easy()
     elif tname=='5': test_pix_sizes()
-    elif tname=='6': test_2x2_mask(width=3, wcentral=5)
+    elif tname=='6': test_2x2_mask(width=3, wcenter=5)
+    elif tname=='7': test_2x2_mask(width=0, wcenter=0, edge_rows=20, edge_cols=10, center_rows=10, center_cols=5)
     else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
     if len(sys.argv)>1: logger.info(usage(tname))
     sys.exit('END OF TEST')
