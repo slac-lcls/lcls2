@@ -1,4 +1,4 @@
-from psana.psexp import RunLegion, DataSourceBase, SmdReaderManager, TransitionId
+from psana.psexp import RunLegion, DataSourceBase, SmdReaderManager, TransitionId, LSmd0, LEventBuilderNode
 from psana.dgrammanager import DgramManager
 from psana.event import Event
 import numpy as np
@@ -7,6 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import os
+from psana.psexp import legion_node
 
 class LegionDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
@@ -14,7 +15,18 @@ class LegionDataSource(DataSourceBase):
         super()._setup_runnum_list()
         self.runnum_list_index = 0
         self.smd_fds = None
+
+        # No. of event builder processors
+        self.eb_size = int(os.environ.get('PS_EB_NODES', 1))
+        import pygion
+
+        # of big data processors = global_procs-(eb_procs+smd0) || 1
+        self.bd_size =  pygion.Tunable.select(
+            pygion.Tunable.GLOBAL_PYS).get() - (self.eb_size + 1)
         
+        if self.bd_size <= 0:
+            self.bd_size=1
+
         self._setup_run()
         super()._start_prometheus_client()
 
@@ -30,17 +42,26 @@ class LegionDataSource(DataSourceBase):
         self._configs = self.smdr_man.get_next_dgrams()
         super()._setup_det_class_table()
         super()._set_configinfo()
+
+        self.dm = DgramManager(self.xtc_files, configs=self._configs,
+                found_xtc2_callback=super().found_xtc2_callback)
+
+        # Legion Smd0
+        self.smd0 = LSmd0(self.eb_size, self._configs, self.smdr_man, self.dsparms)
+        # Legion Event Builder Node
+        # Big Data Point Start Offset = # of eb processors + smd0
+        offset = self.eb_size+1
+        self.eb = LEventBuilderNode(self.bd_size, offset, self._configs, self.dsparms, self.dm)
     
     def _setup_run(self):
         if self.runnum_list_index == len(self.runnum_list):
             return False
-        
         runnum = self.runnum_list[self.runnum_list_index]
         self.runnum_list_index += 1
         super()._setup_run_files(runnum)
+        super()._apply_detector_selection()
         self._setup_configs()
-        self.dm = DgramManager(self.xtc_files, configs=self._configs,
-                found_xtc2_callback=super().found_xtc2_callback)
+
         return True
     
     def _setup_beginruns(self):
@@ -74,3 +95,11 @@ class LegionDataSource(DataSourceBase):
     
     def is_mpi(self):
         return False
+
+    def analyze(self, run_fn = None, event_fn=None):
+        for run in self.runs():
+            if run_fn is not None:
+                run_fn(run)
+            legion_node.analyze(run, event_fn, run.det)
+            import pygion
+            pygion.execution_fence(block=True)

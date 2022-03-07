@@ -315,16 +315,20 @@ class RunSerial(Run):
 
 class RunLegion(Run):
     def __init__(self, ds, run_evt):
-        self.dsparms = ds.dsparms
-        self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
-        RunHelper(self)
-        self._evt       = run_evt
-        self.beginruns  = run_evt._dgrams
-        self.smdr_man   = ds.smdr_man
-        self.dm         = ds.dm
-        self.configs    = ds._configs
+        super(RunLegion, self).__init__(ds)
+        self._evt      = run_evt
+        self.beginruns = run_evt._dgrams
+        self.configs   = ds._configs
+        self.ds = ds
         super()._get_runinfo()
         super()._setup_envstore()
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
+                                filter_callback=ds.dsparms.filter,
+                                smdr_man=ds.smdr_man)
+        self.smdr_man   = ds.smdr_man
+        self.dm         = ds.dm
+        self.dsparms = ds.dsparms
+        self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
 
     def analyze(self, **kwargs):
         return legion_node.analyze(self, **kwargs)

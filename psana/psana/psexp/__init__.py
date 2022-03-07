@@ -10,8 +10,8 @@ from .packet_footer import PacketFooter
 from .step import Step
 from . import TransitionId
 from .events import Events
-from . import legion_node
 from .ds_base import DataSourceBase
 from .run import Run, RunShmem, RunSingleFile, RunLegion, RunSerial
-from .node import Smd0, EventBuilderNode, BigDataNode
+from .node import Smd0, EventBuilderNode, BigDataNode, StepHistory, repack_for_bd
+from .legion_node import LSmd0, LEventBuilderNode
 from .step import Step

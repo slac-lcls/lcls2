@@ -1,4 +1,27 @@
-from psana.psexp import mode
+from psana.psexp import mode, StepHistory, repack_for_bd, PacketFooter
+from psana.psexp import EventBuilderManager, TransitionId, Events
+from psana.psexp.run import RunLegion
+import numpy as np
+import time
+import logging
+logger = logging.getLogger(__name__)
+
+evt_kinds = {
+    0: "ClearReadout",
+    1: "Reset",
+    2: "Configure",
+    3: "Unconfigure",
+    4: "BeginRun",
+    5: "EndRun",
+    6: "BeginStep",
+    7: "EndStep",
+    8: "Enable",
+    9: "Disable",
+    10: "SlowUpdate",
+    11: "Unused_11",
+    12: "L1Accept",
+    13: "NumberOf",
+}
 
 pygion = None
 if mode == 'legion':
@@ -11,7 +34,206 @@ else:
             return lambda fn: fn
         return fn
 
-from psana.psexp import EventBuilderManager, TransitionId, Events
+run_objs = []
+
+class LEventBuilderNode(object):
+    def __init__(self, bd_size, point_ofst, configs, dsparms, dm):
+        self.configs    = configs
+        self.dsparms    = dsparms
+        self.dm         = dm
+        self.step_hist  = StepHistory(bd_size+1, len(self.configs))
+        # Collecting Smd0 performance using prometheus
+        self.c_sent     = dsparms.prom_man.get_metric('psana_eb_sent')
+        self.requests   = []
+        self.bd_size = bd_size
+        self.point_ofst = point_ofst
+        for i in range(self.bd_size):
+            self.requests.append(0)
+
+    ''' Sends a processed batch to Big Data Task '''
+    def _send_to_dest(self, dest_rank, smd_batch_dict,
+                      step_batch_dict, eb_man, batches):
+
+        smd_batch, _ = smd_batch_dict[dest_rank]
+
+        missing_step_views = self.step_hist.get_buffer(dest_rank)
+
+        batches[dest_rank] = repack_for_bd(smd_batch,
+                                           missing_step_views,
+                                           self.configs,
+                                           client=dest_rank)
+
+        self.requests[dest_rank-1] = run_bigdata_task_psana2(
+            batches[dest_rank], point=dest_rank)
+
+        step_batch, _ = step_batch_dict[dest_rank]
+
+        if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:
+            step_pf = PacketFooter(view=step_batch)
+            self.step_hist.extend_buffers(
+                step_pf.split_packets(), dest_rank, as_event=True)
+
+@task(inner=True)
+def eb_task(smd_chunk, idx):
+    run  = run_objs[idx]
+    eb = run.ds.eb
+    eb_man = EventBuilderManager(smd_chunk, run.configs, run.dsparms, run)
+    batches = {}
+    i=0
+    for smd_batch_dict, step_batch_dict  in eb_man.batches():
+        # send to any bigdata nodes.
+        smd_batch, _ = smd_batch_dict[0]
+        step_batch, _ = step_batch_dict[0]
+        point = i%eb.bd_size + 1 # smd0 is point 0
+        logger.debug(f'bd_size {eb.bd_size}, point {point}')
+        i=i+1
+
+        #start on the packaging for BD nodes
+        missing_step_views = eb.step_hist.get_buffer(point)
+        batches[point] = repack_for_bd(smd_batch,
+                                       missing_step_views,
+                                       eb.configs,
+                                       client=point)
+
+        if eb.requests[point-1] != 0:
+            eb.requests[point-1].get()
+
+        eb.requests[point-1] = run_bigdata_task_psana2(
+            batches[point], idx, point=point+eb.point_ofst)
+
+        logger.debug(f'eb_task launched big data task point {point} {time.monotonic()}')
+
+        # sending data to prometheus
+        logger.debug(f'node: eb sent {eb_man.eb.nevents} events ({memoryview(smd_batch).nbytes} bytes) to task bd{point}')
+
+        eb.c_sent.labels('evts', point).inc(eb_man.eb.nevents)
+        eb.c_sent.labels('batches', point).inc()
+        eb.c_sent.labels('MB', point).inc(
+            memoryview(batches[point]).nbytes/1e6)
+
+        if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:
+            step_pf = PacketFooter(view=step_batch)
+            eb.step_hist.extend_buffers(step_pf.split_packets(),
+                                        point, as_event=True)
+        batches = {}
+        # Check if any of the bds need missing steps from the last batch
+        for i in range(eb.bd_size):
+            logger.debug(f'i={i} n_bd_nodes={eb.bd_size}')
+            client_id = i+1
+            missing_step_views = eb.step_hist.get_buffer(client_id)
+            batches[client_id] = repack_for_bd(bytearray(),
+                                       missing_step_views,
+                                       eb.configs, client=client_id)
+
+            if batches[client_id]:
+                if eb.requests[client_id-1] != 0:
+                    eb.requests[client_id-1].get()
+
+                eb.requests[client_id-1] = run_bigdata_task_psana2(batches[client_id],
+                                                                 idx, point=client_id+eb.point_ofst)
+                logger.debug(f'eb task sent missing step to big data task {client_id} {time.monotonic()}')
+
+
+
+# builds batches and launches eb_tasks
+# Use futures to track task completion for next set of batches
+# Batches are patched to reflect missing SU datagrams
+class LSmd0(object):
+    """ Sends blocks of smds to eb nodes
+    Identifies limit timestamp of the slowest detector then
+    sends all smds within that timestamp.
+    """
+    def __init__(self, eb_size, configs, smdr_man, dsparms):
+        self.smdr_man = smdr_man
+        self.configs = configs
+        self.smd_size =  eb_size
+        assert self.smd_size > 0
+        self.step_hist = StepHistory(self.smd_size+1, len(self.configs))
+        # Collecting Smd0 performance using prometheus
+        self.c_sent = dsparms.prom_man.get_metric('psana_smd0_sent')
+
+    def start(self):
+        rankreq = np.empty(self.smd_size, dtype='i')
+        requests = []
+        future_eb = [None]*(self.smd_size+1)
+        logger.debug(f'Legion SMD0 smd_size = {self.smd_size}')
+
+        # SmdReaderManager has starting index and block size
+        # that it needs to share later when data are packaged
+        # for sending to EventBuilders.
+        repack_smds = {}
+        for i_chunk in self.smdr_man.chunks():
+            st_req = time.monotonic()
+            logger.debug(f' smd0 task got i_chunk={i_chunk} {st_req}')
+            # task to send this chunk with history
+            # SEEMA: check (+1)
+            point = i_chunk%self.smd_size + 1
+
+            if future_eb[point] != None:
+                future_eb[point].get()
+
+            # Check missing steps for the current client
+            missing_step_views = self.step_hist.get_buffer(point,
+                                                           smd0=True)
+            # Update step buffers (after getting the missing steps
+            step_views = [self.smdr_man.smdr.show(i, step_buf=True)
+                          for i in range(self.smdr_man.n_files)]
+
+            self.step_hist.extend_buffers(step_views, point)
+            repack_smds[point] = self.smdr_man.smdr.repack_parallel(
+                missing_step_views, point)
+
+            future_eb[point] = run_smd_task_psana2(
+                bytearray(repack_smds[point]), point-1)
+
+            logger.debug(f'smd0 done launching  eb task {point} {time.monotonic()}')
+            en_req = time.monotonic()
+            # sending data to prometheus
+            self.c_sent.labels('evts', point).inc(
+                self.smdr_man.got_events)
+
+            self.c_sent.labels('batches', point).inc()
+            self.c_sent.labels('MB', point).inc(
+                memoryview(repack_smds[point]).nbytes/1e6)
+
+            self.c_sent.labels('seconds', point).inc(en_req - st_req)
+            found_endrun = self.smdr_man.smdr.found_endrun()
+            if found_endrun:
+                break
+
+        # end for (smd_chunk, step_chunk)
+        for i in range(self.smd_size):
+            point=i+1
+            # build the missing step views and then check the futures
+            missing_step_views = self.step_hist.get_buffer(point,
+                                                           smd0=True)
+
+            repack_smds[point] = self.smdr_man.smdr.repack_parallel(
+                missing_step_views, point, only_steps=1)
+
+            if memoryview(repack_smds[point]).nbytes > 0:
+                future_eb[point] = run_smd_task_psana2(
+                    bytearray(repack_smds[point]), point-1)
+            else:
+                future_eb[point] = 0
+
+@task(inner=True)
+def run_bigdata_task_psana2(batch, idx):
+    run = run_objs[idx]
+    for evt in batch_events(batch, run):
+        run.event_fn(evt, run.det)
+
+def run_smd_task_psana2(smd_chunk,idx):
+    f =  eb_task(smd_chunk, idx, point=idx-1)
+    return f
+
+@task(inner=True)
+def run_smd0_task_psana2(idx):
+    run = run_objs[idx]
+    run.ds.smd0.start()
+    # Block before returning so that the caller can
+    # use this task's future for synchronization
+    pygion.execution_fence(block=True)
 
 def smd_chunks(run):
     for smd_chunk, update_chunk in run.smdr_man.chunks():
@@ -42,10 +264,10 @@ def batch_events(smd_batch, run):
     def get_smd():
         for this_batch in batch_iter:
             return this_batch
-
     events = Events(run.configs, run.dm, run.dsparms, 
             filter_callback=run.dsparms.filter, get_smd=get_smd)
-    for evt in events:
+    for i, evt in enumerate(events):
+        logger.debug(f'{i}:evt = {evt.service()},{evt_kinds[evt.service()]}')
         if evt.service() != TransitionId.L1Accept: continue
         yield evt
 
@@ -65,14 +287,14 @@ def analyze(run, event_fn=None, det=None):
         pygion.c.legion_phase_barrier_arrive(pygion._my.ctx.runtime, pygion._my.ctx.context, bar, 1)
         global_task_registration_barrier = pygion.c.legion_phase_barrier_advance(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
         pygion.c.legion_phase_barrier_wait(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
-
-        return run_smd0_task(run)
+        run_objs.append(run)
+        return run_smd0_task_psana2(len(run_objs)-1)
     else:
-        run_to_process.append(run)
+        run_objs.append(run)
     
 
 if pygion is not None and not pygion.is_script:
     @task(top_level=True)
     def legion_main():
-        for run in run_to_process:
-            run_smd0_task(run, point=0)
+        for i, _ in enumerate(run_objs):
+            run_smd0_task_psana2(i, point=0)
