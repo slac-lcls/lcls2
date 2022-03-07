@@ -28,12 +28,19 @@ Usage::
 
   a = o._shape_as_daq()
   a = o._number_of_segments_total()
-  m = o._mask_default(dtype=DTYPE_MASK)
-  m = o._mask_calib_or_default(dtype=DTYPE_MASK)
-  m = o._mask_from_status()
-  m = o._mask_edges(edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa)
-  m = o._mask(calib=False, status=False, edges=False, dtype=DTYPE_MASK, **kwa) # TBD: neighbors=False
-  m = o._mask_comb(mbits=0o377, **kwa)
+
+  a = o._mask_default(dtype=DTYPE_MASK)
+  a = o._mask_calib()
+  a = o._mask_calib_or_default(dtype=DTYPE_MASK)
+  a = o._mask_from_status(mstcode=0xffff, dtype=DTYPE_MASK, **kwa)
+  a = o._mask_edges(width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa)
+  a = o._mask_center(wcenter=0, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa)
+  a = o._mask_comb(status=True, neighbors=False, edges=False, center=False, calib=False, mask_user=None, **kwa)
+
+  m = o._mask(status=True,\
+              neighbors=False, rad=3, ptrn='r',\
+              edges=True, edge_rows=10, edge_cols=5,\
+              center=True, center_rows=5, center_cols=3)
 
   a = o.calib(evt, cmpars=(7,2,100,10),\
                             mbits=0o7, mask=None, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)
@@ -56,10 +63,18 @@ from psana.detector.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,sh
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
-from psana.detector.UtilsMask import CC, DTYPE_MASK, DTYPE_STATUS, mask_edges, merge_masks
+import psana.detector.UtilsMask as um
 import psana.detector.Utils as ut
 
+DTYPE_MASK, DTYPE_STATUS = um.DTYPE_MASK, um.DTYPE_STATUS
+
 from amitypes import Array2d, Array3d
+
+
+def is_none(par, msg):
+    resp = par is None
+    if resp: logger.debug(msg)
+    return resp
 
 
 class AreaDetector(DetectorImpl):
@@ -100,9 +115,7 @@ class AreaDetector(DetectorImpl):
         """
         if evt is None: return None
         segs = self._segments(evt)
-        if segs is None:
-            logger.debug('self._segments(evt) is None')
-            return None
+        if is_none(segs, 'self._segments(evt) is None'): return None
         return arr3d_from_dict({k:v.raw for k,v in segs.items()})
 
 
@@ -111,18 +124,14 @@ class AreaDetector(DetectorImpl):
         from dict self._segments(evt)
         """
         segs = self._segments(evt)
-        if segs is None:
-            logger.debug('self._segments(evt) is None')
-            return None
+        if is_none(segs, 'self._segments(evt) is None'): return None
         return np.array(sorted(segs.keys()), dtype=np.uint16)
 
 
     def _det_calibconst(self):
         logger.debug('AreaDetector._det_calibconst')
         cc = self._calibconst
-        if cc is None:
-            logger.debug('self._calibconst is None')
-            return None
+        if is_none(cc, 'self._calibconst is None'): return None
         return cc
 
 
@@ -131,9 +140,7 @@ class AreaDetector(DetectorImpl):
         cc = self._det_calibconst()
         if cc is None: return None
         cons_and_meta = cc.get(ctype, None)
-        if cons_and_meta is None:
-            logger.debug('calibconst["%s"] is None'%ctype)
-            return None, None
+        if is_none(cons_and_meta, 'calibconst["%s"] is None'%ctype): return None, None
         return cons_and_meta
 
 
@@ -165,9 +172,7 @@ class AreaDetector(DetectorImpl):
         cc = self._det_calibconst()
         if cc is None: return None
         geotxt_and_meta = cc.get('geometry', None)
-        if geotxt_and_meta is None:
-            logger.debug('calibconst[geometry] is None')
-            return None, None
+        if is_none(geotxt_and_meta, 'calibconst[geometry] is None'): return None, None
         return geotxt_and_meta
 
 
@@ -183,9 +188,7 @@ class AreaDetector(DetectorImpl):
             geotxt, meta = self._det_geotxt_and_meta()
             if geotxt is None:
                 geotxt = self._det_geotxt_default()
-                if geotxt is None:
-                    logger.debug('_det_geo geotxt is None')
-                    return None
+                if is_none(geotxt, '_det_geo geotxt is None'): return None
             self._geo_ = GeometryAccess()
             self._geo_.load_pars_from_str(geotxt)
         return self._geo_
@@ -196,9 +199,7 @@ class AreaDetector(DetectorImpl):
         """
         logger.debug('AreaDetector._pixel_coord_indexes')
         geo = self._det_geo()
-        if geo is None:
-            logger.debug('geo is None')
-            return None
+        if is_none(geo, 'geo is None'): return None
 
         return geo.get_pixel_coord_indexes(\
             pix_scale_size_um  = kwa.get('pix_scale_size_um',None),\
@@ -212,9 +213,8 @@ class AreaDetector(DetectorImpl):
         """
         logger.debug('AreaDetector._pixel_coords')
         geo = self._det_geo()
-        if geo is None:
-            logger.debug('geo is None')
-            return None
+        if is_none(geo, 'geo is None'): return None
+
         #return geo.get_pixel_xy_at_z(self, zplane=None, oname=None, oindex=0, do_tilt=True, cframe=0)
         return geo.get_pixel_coords(\
             do_tilt            = kwa.get('do_tilt',True),\
@@ -277,14 +277,10 @@ class AreaDetector(DetectorImpl):
         logger.debug('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
                       +'\n  If needed more, it needs to be re-implemented for this detector type.')
         raw = self.raw(evt)
-        if raw is None:
-            logger.debug('det.raw.raw(evt) is None')
-            return None
+        if is_none(raw, 'det.raw.raw(evt) is None'): return None
 
         peds = self._pedestals()
-        if peds is None:
-            logger.debug('det.raw._pedestals() is None - return det.raw.raw(evt)')
-            return raw
+        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)'): return raw
 
         arr = raw - peds
         gfac = self._gain_factor()
@@ -328,9 +324,8 @@ class AreaDetector(DetectorImpl):
         if mapmode==0: return self.img_entries
 
         data = self.calib(evt) if nda is None else nda
-        if data is None:
-            logger.debug('AreaDetector.image calib returns None')
-            return None
+
+        if is_none(data, 'AreaDetector.image calib returns None'): return None
 
         #logger.debug(info_ndarr(data, 'data ', last=3))
 
@@ -348,9 +343,7 @@ class AreaDetector(DetectorImpl):
 
     def _shape_as_daq(self):
         peds = self._pedestals()
-        if peds is None:
-            logger.debug('In _shape_as_daq pedestals are None, can not define daq data shape')
-            return None
+        if is_none(peds, 'In _shape_as_daq pedestals is None, can not define daq data shape - returns None'): return None
         return peds.shape if peds.ndim<4 else peds.shape[-3:]
 
 
@@ -369,74 +362,139 @@ class AreaDetector(DetectorImpl):
         return self._mask_default(dtype) if mask is None else mask.astype(dtype)
 
 
-    def _mask_from_status(self, **kwa):
+    def _mask_from_status(self, mstcode=0xffff, dtype=DTYPE_MASK, **kwa):
         """
-        For simple detectors w/o multi-gain ranges
+        Mask made of pixel_status calibration constants.
 
         Parameters **kwa
         ----------------
-        ##mode - int 0/1/2 masks zero/four/eight neighbors around each bad pixel
+
+        - mstcode : uint - bitword for mask status codes.
+        - dtype : numpy.dtype - mask np.array dtype
 
         Returns
         -------
-        mask made of status: np.array, ndim=3, shape: as full detector data
+        np.array - mask made of pixel_status calibration constants, shapeed as full detector data
         """
         status = self._status()
-        if status is None:
-            logger.debug('pixel_status is None')
-            return None
-        return np.asarray(np.select((status>0,), (0,), default=1), dtype=DTYPE_MASK)
+        if is_none(status, 'pixel_status is None'): return None
+        return um.status_as_mask(status, mstcode=mstcode, dtype=DTYPE_MASK, **kwa)
 
 
-    def _mask_edges(self, **kwa): # -> Array3d:
-        mask = self._mask_default(dtype=DTYPE_MASK)
-        return None if mask is None else\
-          mask_edges(mask,\
-            edge_rows=kwa.get('edge_rows', 1),\
-            edge_cols=kwa.get('edge_cols', 1),\
-            dtype=DTYPE_MASK) # kwa.get('dtype', DTYPE_MASK)):
+    def mask_neighbors(self, mask, rad=9, ptrn='r'):
+        """Returns 2-d or n-d mask array with increased by radial paramerer rad region around all 0-pixels in the input mask.
 
+           Parameter
 
-#     def _mask_neighbors(self, **kwa) -> Array3d:
-       #mode = kwargs.get('mode', 0)
-        #if mode: smask = gu.mask_neighbors(smask, allnbrs=(True if mode>=2 else False))
+           - mask : np.array - input mask of good/bad (1/0) pixels
+           - rad  : int - radisl parameter for masking region aroung each 0-pixel in mask
+           - ptrn : char - pattern of the masked region, ptrn='r'-rhombus, 'c'-circle, othervise square [-rad,+rad] in rows and columns.
 
-        #segs = self._segments(evt)
-        #if segs is None:
-        #    logger.debug('self._segments(evt) is None')
-        #    return None
-        #return arr3d_from_dict({k:v.raw for k,v in segs.items()})
-
-
-    def _mask(self, calib=False, status=False, edges=False, neighbors=False, **kwa):
-        """Returns per-pixel array with mask values (per-pixel product of all requested masks).
-           Parameters
-           - calib    : bool - True/False = on/off mask from calib directory.
-           - status   : bool - True/False = on/off mask generated from calib pixel_status.
-           - edges    : bool - True/False = on/off mask of edges.
-           - neighbors: bool - True/False = on/off mask of neighbors.
-           - kwa      : dict - additional parameters passed to low level methods (width,...)
-                        for edges: edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK
-                        for status of epix10ka: grinds=(0,1,2,3,4)
            Returns
-           - np.array - per-pixel mask values 1/0 for good/bad pixels.
+
+           - np.array - mask with masked neighbors, shape = mask.shape
         """
-        dtype = kwa.get('dtype', DTYPE_MASK)
-        mask = self._mask_calib_or_default(dtype) if calib else self._mask_default(dtype)
-        if status: mask = merge_masks(mask, self._mask_from_status(**kwa))
-        if edges: mask = merge_masks(mask, self._mask_edges(**kwa))
-        #if neighbors: mask = merge_masks(mask, self._mask_neighbors(self, **kwa))
+        return um.mask_neighbors(mask, rad, ptrn)
+
+
+    def _mask_edges(self, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa):
+        return um.mask_edges(self._mask_default(),\
+            width=width, edge_rows=edge_rows, edge_cols=edge_cols, dtype=dtype, **kwa)
+
+
+    def _mask_center(self, wcenter=0, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa):
+        """
+        Parameters
+        ----------
+        center_rows: int number of edge rows to mask for all ASICs
+        center_cols: int number of edge columns to mask for all ASICs
+        dtype: numpy dtype of the output array
+        **kwa: is not used
+        Returns
+        -------
+        mask: np.ndarray, ndim=3, shaped as full detector data, mask of the panel and asic edges
+        """
+        logger.debug('epix_base._mask_edges')
+        mask1 = self._seg_geo.pixel_mask_array(width=0, edge_rows=0, edge_cols=0,\
+                  center_rows=center_rows, center_cols=center_cols, dtype=dtype, **kwa)
+        nsegs = self._number_of_segments_total()
+        if is_none(nsegs, '_number_of_segments_total is None'): return None
+        return np.stack([mask1 for i in range(nsegs)])
+
+
+    def _mask_comb(self, status=True, neighbors=False, edges=False, center=False, calib=False, mask_user=None, **kwa):
+        """Returns combined mask controlled by the keyword arguments.
+           Parameters
+           ----------
+           - status   : bool : True  - mask from pixel_status constants,
+                                       kwa: mstcode=0xffff - status bits to use in mask.
+                                       Status bits show why pixel is considered as bad.
+                                       Content of the bitword depends on detector and code version.
+                                       It is wise to exclude pixels with any bad status by setting mstcode=0xffff.
+                                       kwa: grinds=(0,1,2,3,4) - list of gain range indexes to merge for epix10ka or jungfrau
+           - neighbor : bool : False - mask of neighbors of all bad pixels,
+                                       kwa: rad=5 - radial parameter of masked region
+                                       kwa: ptrn='r'-rhombus, 'c'-circle, othervise square region around each bad pixel
+           - edges    : bool : False - mask edge rows and columns of each panel,
+                                       kwa: width=0 or edge_rows=1, edge_cols=1 - number of masked edge rows, columns
+           - center  : bool : False - mask center rows and columns of each panel consisting of ASICS (cspad, epix, jungfrau),
+                                       kwa: wcenter=0 or center_rows=1, center_cols=1 -
+                                       number of masked center rows and columns in the segment,
+                                       works for cspad2x1, epix100, epix10ka, jungfrau panels
+           - calib    : bool : False - apply user's defined mask from pixel_mask constants
+           - mask_user: np.array: None - apply user's defined mask from input parameters (shaped as data)
+
+           Returns
+           -------
+           np.array: dtype=np.uint8, shape as det.raw - mask array of 1 or 0 or None if all switches are False.
+        """
+
+        mask = None
+        if status:
+            mstcode = kwa.get('mstcode', 0xffff)
+            grinds  = kwa.get('grinds', (0,1,2,3,4)) # works for epix10ka
+            mask = self._mask_from_status(mstcode=0xffff, grinds=grinds)
+
+#        if unbond and (self.is_cspad2x2() or self.is_cspad()):
+#            mask_unbond = self.mask_geo(par, width=0, wcenter=0, mbits=4) # mbits=4 - unbonded pixels for cspad2x1 segments
+#            mask = mask_unbond if mask is None else um.merge_masks(mask, mask_unbond)
+
+        if neighbors and mask is not None:
+            rad  = kwa.get('rad', 5)
+            ptrn = kwa.get('ptrn', 'r')
+            mask = um.mask_neighbors(mask, rad=rad, ptrn=ptrn)
+
+        if edges:
+            width = kwa.get('width', 0)
+            erows = kwa.get('edge_rows', 1)
+            ecols = kwa.get('edge_cols', 1)
+            mask_edges = um.mask_edges(mask, width=width, edge_rows=erows, edge_cols=ecols) # masks each segment edges only
+            mask = mask_edges if mask is None else um.merge_masks(mask, mask_edges)
+
+        if center:
+            wcent = kwa.get('wcenter', 0)
+            crows = kwa.get('center_rows', 1)
+            ccols = kwa.get('center_cols', 1)
+            mask_center = self._mask_center(wcenter=wcent, center_rows=crows, center_cols=ccols)
+            mask = mask_center if mask is None else um.merge_masks(mask, mask_center)
+
+        if calib:
+            mask_calib = self._mask_calib()
+            mask = mask_calib if mask is None else um.merge_masks(mask, mask_calib)
+
+        mask_user = kwa.get('mask_user', None)
+        if mask_user is not None:
+            mask = mask_user if mask is None else um.merge_masks(mask, mask_user)
+
         return mask
 
 
-    def _mask_comb(self, **kwa):
-        mbits=kwa.get('mbits', 1)
-        return self._mask(\
-          calib     = mbits & 1,\
-          status    = mbits & 2,\
-          edges     = mbits & 4,\
-          neighbors = mbits & 8,\
-          **kwa)
+    def _mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, mask_user=None, **kwa):
+        """returns cached mask.
+        """
+        if self._mask_ is None or kwa.get('force_update', False):\
+           self._mask_ = self._mask_comb(status, neighbors, edges, center, calib, mask_user, **kwa)
+        return self._mask_
 
 
 if __name__ == "__main__":
