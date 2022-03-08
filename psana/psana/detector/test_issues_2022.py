@@ -142,6 +142,22 @@ def issue_2022_03_02():
         print(info_ndarr(x,'x:'))
         if det.raw.image(evt) is not None: break
 
+
+def issue_2022_03_08():
+    """test copy xtc2 file to .../public01/xtc/
+    cd /cds/data/psdm/prj/public01/xtc/
+    cp /cds/data/psdm/tmo/tmoc00318/xtc/tmoc00318-r0010-s000-c000.xtc2 .
+    sudo chown psdatmgr tmoc00318-r0010-s000-c000.xtc2
+    the same for smalldata/
+    """
+    from psana import DataSource
+    ds = DataSource(exp='tmoc00318',run=10, dir='/cds/data/psdm/prj/public01/xtc')
+    orun = next(ds.runs())
+    det = orun.Detector('epix100')
+    peds, meta = det.calibconst['pedestals']
+    print('det.calibconst["pedestals"] constants\n', peds, '\nmetadata\n', meta)
+
+
 def issue_2022_01_dd():
     print('template')
 
@@ -155,6 +171,7 @@ USAGE = '\nUsage:'\
       + '\n    4 - issue_2022_02_15 - test epix100 cpo - missing geometry'\
       + '\n    5 - issue_2022_03_01 - test epixquad cpo - copy constants'\
       + '\n    6 - issue_2022_03_02 - test epix100 - default geometry'\
+      + '\n    7 - issue_2022_03_08 - test det.calibconst'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -165,6 +182,7 @@ elif TNAME in  ('3',): issue_2022_02_08()
 elif TNAME in  ('4',): issue_2022_02_15()
 elif TNAME in  ('5',): issue_2022_03_01()
 elif TNAME in  ('6',): issue_2022_03_02()
+elif TNAME in  ('7',): issue_2022_03_08()
 elif TNAME in  ('0',): issue_2022_01_dd()
 else:
     print(USAGE)
