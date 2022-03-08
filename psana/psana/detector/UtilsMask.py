@@ -5,9 +5,9 @@ Utilities for mask
 Usage::
   from psana.detector.UtilsMask import *
 
-  statmgd = merge_status(status, grinds=(0,1,2,3,4), dtype=DTYPE_STATUS)
+  statmgd = merge_status(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS)
          # merges status.shape=(7, 16, 352, 384) to statmgd.shape=(16, 352, 384) of dtype
-         # grinds list stands for gain ranges for 'FH','FM','FL','AHL-H','AML-M'
+         # gain_range_inds list stands for gain ranges for 'FH','FM','FL','AHL-H','AML-M'
   m = mask_neighbors(mask, allnbrs=True, dtype=DTYPE_MASK)
   m = mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK)
   mask_merged = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK)
@@ -39,23 +39,23 @@ def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
     #return mask if dtype==np.bool else np.asarray(mask, dtype)
 
 
-def merge_mask_for_grinds(mask, grinds=(0,1,2,3,4), dtype=DTYPE_MASK):
+def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK):
     """Merges mask bits over gain range index.
-       grinds list(uint) - list of gain range inices in array mask[i,:]
-       grinds=(0,1,2,3,4) for epix10ka/quad/2m mask array mask.shape=(7, <num-segments>, 352, 384) merging to (<num-segments>, 352, 384)
-       grinds=(0,1,2) for Jungfrau mask array mask.shape=(3, <num-segments>, 512, 512) merging to (<num-segments>, 512, 512)
+       gain_range_inds list(uint) - list of gain range inices in array mask[i,:]
+       gain_range_inds=(0,1,2,3,4) for epix10ka/quad/2m mask array mask.shape=(7, <num-segments>, 352, 384) merging to (<num-segments>, 352, 384)
+       gain_range_inds=(0,1,2) for Jungfrau mask array mask.shape=(3, <num-segments>, 512, 512) merging to (<num-segments>, 512, 512)
     """
     if mask.ndim < 4: return mask # ignore 3-d arrays
     _mask = mask.astype(dtype)
-    mask1 = np.copy(_mask[grinds[0],:])
-    for i in grinds[1:]:
+    mask1 = np.copy(_mask[gain_range_inds[0],:])
+    for i in gain_range_inds[1:]:
         if i<mask.shape[0]:
             cond = np.logical_and(mask1, _mask[i,:]) #, out=mask1)
             mask1 = np.asarray(np.select((cond,), (1,), default=0), dtype=dtype)
     return mask1
 
 
-def merge_status_for_grinds(status, grinds=(0,1,2,3,4), dtype=DTYPE_STATUS):
+def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS):
     """Merges status bits over gain range index.
        Originaly intended for epix10ka(quad/2m) status array status.shape=(7, 16, 352, 384) merging to (16, 352, 384)
        Also can be used with Jungfrau status array status.shape=(7, 8, 512, 512) merging to (8, 512, 512)
@@ -63,8 +63,8 @@ def merge_status_for_grinds(status, grinds=(0,1,2,3,4), dtype=DTYPE_STATUS):
     """
     if status.ndim < 2: return status # ignore 1-d arrays
     _status = status.astype(dtype)
-    st1 = np.copy(_status[grinds[0],:])
-    for i in grinds[1:]: # range(1,status.shape[0]):
+    st1 = np.copy(_status[gain_range_inds[0],:])
+    for i in gain_range_inds[1:]: # range(1,status.shape[0]):
         if i<status.shape[0]: # boundary check for index
             np.bitwise_or(st1, _status[i,:], out=st1)
     return st1
@@ -181,13 +181,13 @@ def mask_edges(mask, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
     return mask_out
 
 
-def status_as_mask(status, mstcode=0xffff, dtype=DTYPE_MASK, **kwa):
+def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
     """Returns per-pixel array of mask generated from pixel_status.
 
        Parameters
 
        - status  : np.array - pixel_status calibration constants
-       - mstcode : bitword for mask status codes
+       - status_bits : bitword for mask status codes
        - dtype : mask np.array dtype
 
        Returns
@@ -200,7 +200,7 @@ def status_as_mask(status, mstcode=0xffff, dtype=DTYPE_MASK, **kwa):
 
     from psana.detector.NDArrUtils import info_ndarr
     print(info_ndarr(status, 'status'))
-    cond = (status & mstcode)>0
+    cond = (status & status_bits)>0
     return np.asarray(np.select((cond,), (0,), default=1), dtype=dtype)
 
 # EOF
