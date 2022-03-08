@@ -32,18 +32,18 @@ Usage::
   a = o._mask_default(dtype=DTYPE_MASK)
   a = o._mask_calib()
   a = o._mask_calib_or_default(dtype=DTYPE_MASK)
-  a = o._mask_from_status(mstcode=0xffff, dtype=DTYPE_MASK, **kwa)
+  a = o._mask_from_status(status_bits=0xffff, dtype=DTYPE_MASK, **kwa) # gain_range_inds=(0,1,2,3,4) - gain ranges to merge for apropriate detectors
   a = o._mask_neighbors(mask, rad=9, ptrn='r')
   a = o._mask_edges(width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa)
   a = o._mask_center(wcenter=0, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa)
-  a = o._mask_comb(status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa)
-  a = o._mask(status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa)
-  a = o._mask(status=True, mstcode=0xffff, grinds=grinds\
+  a = o._mask_comb(**kwa) # the same as _mask but w/o caching
+  a = o._mask(status=True, status_bits=0xffff, gain_range_inds=(0,1,2,3,4),\
               neighbors=False, rad=3, ptrn='r',\
               edges=True, width=0, edge_rows=10, edge_cols=5,\
               center=True, wcenter=0, center_rows=5, center_cols=3,\
               calib=False,\
-              umask=None)
+              umask=None,\
+              force_update=False)
 
   a = o.calib(evt, cmpars=(7,2,100,10), *kwargs)
   a = o.calib(evt, **kwa)
@@ -364,14 +364,14 @@ class AreaDetector(DetectorImpl):
         return self._mask_default(dtype) if mask is None else mask.astype(dtype)
 
 
-    def _mask_from_status(self, mstcode=0xffff, dtype=DTYPE_MASK, **kwa):
+    def _mask_from_status(self, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
         """
         Mask made of pixel_status calibration constants.
 
         Parameters **kwa
         ----------------
 
-        - mstcode : uint - bitword for mask status codes.
+        - status_bits : uint - bitword for mask status codes.
         - dtype : numpy.dtype - mask np.array dtype
 
         Returns
@@ -380,7 +380,7 @@ class AreaDetector(DetectorImpl):
         """
         status = self._status()
         if is_none(status, 'pixel_status is None'): return None
-        return um.status_as_mask(status, mstcode=mstcode, dtype=DTYPE_MASK, **kwa)
+        return um.status_as_mask(status, status_bits=status_bits, dtype=DTYPE_MASK, **kwa)
 
 
     def _mask_neighbors(self, mask, rad=9, ptrn='r'):
@@ -429,11 +429,11 @@ class AreaDetector(DetectorImpl):
            Parameters
            ----------
            - status   : bool : True  - mask from pixel_status constants,
-                                       kwa: mstcode=0xffff - status bits to use in mask.
+                                       kwa: status_bits=0xffff - status bits to use in mask.
                                        Status bits show why pixel is considered as bad.
                                        Content of the bitword depends on detector and code version.
-                                       It is wise to exclude pixels with any bad status by setting mstcode=0xffff.
-                                       kwa: grinds=(0,1,2,3,4) - list of gain range indexes to merge for epix10ka or jungfrau
+                                       It is wise to exclude pixels with any bad status by setting status_bits=0xffff.
+                                       kwa: gain_range_inds=(0,1,2,3,4) - list of gain range indexes to merge for epix10ka or jungfrau
            - neighbor : bool : False - mask of neighbors of all bad pixels,
                                        kwa: rad=5 - radial parameter of masked region
                                        kwa: ptrn='r'-rhombus, 'c'-circle, othervise square region around each bad pixel
@@ -453,9 +453,9 @@ class AreaDetector(DetectorImpl):
 
         mask = None
         if status:
-            mstcode = kwa.get('mstcode', 0xffff)
-            grinds  = kwa.get('grinds', (0,1,2,3,4)) # works for epix10ka
-            mask = self._mask_from_status(mstcode=0xffff, grinds=grinds, dtype=dtype)
+            status_bits = kwa.get('status_bits', 0xffff)
+            gain_range_inds  = kwa.get('gain_range_inds', (0,1,2,3,4)) # works for epix10ka
+            mask = self._mask_from_status(status_bits=0xffff, gain_range_inds=gain_range_inds, dtype=dtype)
 
 #        if unbond and (self.is_cspad2x2() or self.is_cspad()):
 #            mask_unbond = self.mask_geo(par, width=0, wcenter=0, mbits=4) # mbits=4 - unbonded pixels for cspad2x1 segments
@@ -490,10 +490,10 @@ class AreaDetector(DetectorImpl):
         return mask
 
 
-    def _mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa):
+    def _mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
         """returns cached mask.
         """
-        if self._mask_ is None or kwa.get('force_update', False):
+        if self._mask_ is None or force_update:
            self._mask_ = self._mask_comb(status=status, neighbors=neighbors, edges=edges, center=center, calib=calib, umask=umask, dtype=dtype, **kwa)
         return self._mask_
 
