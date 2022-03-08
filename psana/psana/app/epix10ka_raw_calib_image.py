@@ -429,12 +429,13 @@ def test_single_image(args):
 
         umask = np.ones((4, 352, 384), dtype=np.uint8)
         umask[3, 100:120, 160:200] = 0
-        arr = 1 + det.raw._mask(status=True,\
+        arr = 1 + det.raw._mask(status=True, status_bits=0xffff, gain_range_inds=(0,1,2,3,4),\
                                 neighbors=True, rad=5, ptrn='r',\
                                 edges=True, edge_rows=10, edge_cols=5,\
                                 center=True, center_rows=5, center_cols=3,\
                                 calib=False,\
-                                umask=umask)
+                                umask=umask,\
+                                force_update=False)
         amin, amax = 0, 2
         title = 'mask+1'
     elif tname=='peds':    arr = det.raw._pedestals()[grindex,:]
