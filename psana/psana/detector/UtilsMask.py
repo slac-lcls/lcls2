@@ -51,7 +51,7 @@ def merge_mask_for_grinds(mask, grinds=(0,1,2,3,4), dtype=DTYPE_MASK):
     for i in grinds[1:]:
         if i<mask.shape[0]:
             cond = np.logical_and(mask1, _mask[i,:]) #, out=mask1)
-            mask1 = np.asarray(np.select(cond, (1,), default=0), dtype=dtype)
+            mask1 = np.asarray(np.select((cond,), (1,), default=0), dtype=dtype)
     return mask1
 
 
