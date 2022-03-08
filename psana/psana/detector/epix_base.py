@@ -9,7 +9,7 @@ Usage::
 
   o = epix_base(*args, **kwargs) # inherits from AreaDetector
   a = o.calib(evt)
-  m = o._mask_from_status(grinds=(0,1,2,3,4), **kwa)
+  m = o._mask_from_status(gain_range_inds=(0,1,2,3,4), **kwa)
   m = o._mask_edges(self, edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa)
 
 2020-11-06 created by Mikhail Dubrovin
@@ -131,11 +131,11 @@ class epix_base(AreaDetector):
         return cbits_config_and_data_detector(self, evt)
 
 
-    def _mask_from_status(self, mstcode=0xffff, grinds=(0,1,2,3,4), dtype=DTYPE_MASK, **kwa):
+    def _mask_from_status(self, status_bits=0xffff, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK, **kwa):
         """re-implementation of AreaDetector._mask_from_status for multi-gain detector.
         """
-        smask = AreaDetector._mask_from_status(self, mstcode=mstcode, dtype=dtype, **kwa)
-        return um.merge_mask_for_grinds(smask, grinds=grinds, dtype=dtype, **kwa)
+        smask = AreaDetector._mask_from_status(self, status_bits=status_bits, dtype=dtype, **kwa)
+        return um.merge_mask_for_grinds(smask, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
 
 #    def _seg_geo(**kwa):
 #        #logger.debug('epix_base._seg_geo MUST BE RE-IMPLEMENTED')
