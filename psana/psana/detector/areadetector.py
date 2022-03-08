@@ -33,17 +33,19 @@ Usage::
   a = o._mask_calib()
   a = o._mask_calib_or_default(dtype=DTYPE_MASK)
   a = o._mask_from_status(mstcode=0xffff, dtype=DTYPE_MASK, **kwa)
+  a = o._mask_neighbors(mask, rad=9, ptrn='r')
   a = o._mask_edges(width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa)
-  a = o._mask_center(wcenter=0, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa)
-  a = o._mask_comb(status=True, neighbors=False, edges=False, center=False, calib=False, mask_user=None, **kwa)
-
-  m = o._mask(status=True,\
+  a = o._mask_center(wcenter=0, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa)
+  a = o._mask_comb(status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa)
+  a = o._mask(status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa)
+  a = o._mask(status=True, mstcode=0xffff, grinds=grinds\
               neighbors=False, rad=3, ptrn='r',\
-              edges=True, edge_rows=10, edge_cols=5,\
-              center=True, center_rows=5, center_cols=3)
+              edges=True, width=0, edge_rows=10, edge_cols=5,\
+              center=True, wcenter=0, center_rows=5, center_cols=3,\
+              calib=False,\
+              umask=None)
 
-  a = o.calib(evt, cmpars=(7,2,100,10),\
-                            mbits=0o7, mask=None, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)
+  a = o.calib(evt, cmpars=(7,2,100,10), *kwargs)
   a = o.calib(evt, **kwa)
   a = o.image(self, evt, nda=None, **kwa)
 
@@ -381,7 +383,7 @@ class AreaDetector(DetectorImpl):
         return um.status_as_mask(status, mstcode=mstcode, dtype=DTYPE_MASK, **kwa)
 
 
-    def mask_neighbors(self, mask, rad=9, ptrn='r'):
+    def _mask_neighbors(self, mask, rad=9, ptrn='r'):
         """Returns 2-d or n-d mask array with increased by radial paramerer rad region around all 0-pixels in the input mask.
 
            Parameter
@@ -402,7 +404,7 @@ class AreaDetector(DetectorImpl):
             width=width, edge_rows=edge_rows, edge_cols=edge_cols, dtype=dtype, **kwa)
 
 
-    def _mask_center(self, wcenter=0, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa):
+    def _mask_center(self, wcenter=0, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa):
         """
         Parameters
         ----------
@@ -422,7 +424,7 @@ class AreaDetector(DetectorImpl):
         return np.stack([mask1 for i in range(nsegs)])
 
 
-    def _mask_comb(self, status=True, neighbors=False, edges=False, center=False, calib=False, mask_user=None, **kwa):
+    def _mask_comb(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa):
         """Returns combined mask controlled by the keyword arguments.
            Parameters
            ----------
@@ -437,12 +439,12 @@ class AreaDetector(DetectorImpl):
                                        kwa: ptrn='r'-rhombus, 'c'-circle, othervise square region around each bad pixel
            - edges    : bool : False - mask edge rows and columns of each panel,
                                        kwa: width=0 or edge_rows=1, edge_cols=1 - number of masked edge rows, columns
-           - center  : bool : False - mask center rows and columns of each panel consisting of ASICS (cspad, epix, jungfrau),
+           - center   : bool : False - mask center rows and columns of each panel consisting of ASICS (cspad, epix, jungfrau),
                                        kwa: wcenter=0 or center_rows=1, center_cols=1 -
                                        number of masked center rows and columns in the segment,
                                        works for cspad2x1, epix100, epix10ka, jungfrau panels
            - calib    : bool : False - apply user's defined mask from pixel_mask constants
-           - mask_user: np.array: None - apply user's defined mask from input parameters (shaped as data)
+           - umask  : np.array: None - apply user's defined mask from input parameters (shaped as data)
 
            Returns
            -------
@@ -453,7 +455,7 @@ class AreaDetector(DetectorImpl):
         if status:
             mstcode = kwa.get('mstcode', 0xffff)
             grinds  = kwa.get('grinds', (0,1,2,3,4)) # works for epix10ka
-            mask = self._mask_from_status(mstcode=0xffff, grinds=grinds)
+            mask = self._mask_from_status(mstcode=0xffff, grinds=grinds, dtype=dtype)
 
 #        if unbond and (self.is_cspad2x2() or self.is_cspad()):
 #            mask_unbond = self.mask_geo(par, width=0, wcenter=0, mbits=4) # mbits=4 - unbonded pixels for cspad2x1 segments
@@ -468,32 +470,31 @@ class AreaDetector(DetectorImpl):
             width = kwa.get('width', 0)
             erows = kwa.get('edge_rows', 1)
             ecols = kwa.get('edge_cols', 1)
-            mask_edges = um.mask_edges(mask, width=width, edge_rows=erows, edge_cols=ecols) # masks each segment edges only
-            mask = mask_edges if mask is None else um.merge_masks(mask, mask_edges)
+            mask_edges = um.mask_edges(mask, width=width, edge_rows=erows, edge_cols=ecols, dtype=dtype) # masks each segment edges only
+            mask = mask_edges if mask is None else um.merge_masks(mask, mask_edges, dtype=dtype)
 
         if center:
             wcent = kwa.get('wcenter', 0)
             crows = kwa.get('center_rows', 1)
             ccols = kwa.get('center_cols', 1)
-            mask_center = self._mask_center(wcenter=wcent, center_rows=crows, center_cols=ccols)
-            mask = mask_center if mask is None else um.merge_masks(mask, mask_center)
+            mask_center = self._mask_center(wcenter=wcent, center_rows=crows, center_cols=ccols, dtype=dtype)
+            mask = mask_center if mask is None else um.merge_masks(mask, mask_center, dtype=dtype)
 
         if calib:
             mask_calib = self._mask_calib()
-            mask = mask_calib if mask is None else um.merge_masks(mask, mask_calib)
+            mask = mask_calib if mask is None else um.merge_masks(mask, mask_calib, dtype=dtype)
 
-        mask_user = kwa.get('mask_user', None)
-        if mask_user is not None:
-            mask = mask_user if mask is None else um.merge_masks(mask, mask_user)
+        if umask is not None:
+            mask = umask if mask is None else um.merge_masks(mask, umask, dtype=dtype)
 
         return mask
 
 
-    def _mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, mask_user=None, **kwa):
+    def _mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa):
         """returns cached mask.
         """
-        if self._mask_ is None or kwa.get('force_update', False):\
-           self._mask_ = self._mask_comb(status, neighbors, edges, center, calib, mask_user, **kwa)
+        if self._mask_ is None or kwa.get('force_update', False):
+           self._mask_ = self._mask_comb(status=status, neighbors=neighbors, edges=edges, center=center, calib=calib, umask=umask, dtype=dtype, **kwa)
         return self._mask_
 
 
