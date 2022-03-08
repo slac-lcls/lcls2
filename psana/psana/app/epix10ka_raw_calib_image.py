@@ -426,20 +426,24 @@ def test_single_image(args):
 
     arr, amin, amax, title = None, None, None, '%s for --grindex=%d ' % (tname, grindex)
     if tname == 'mask':
-        #arr = det.raw._mask_comb(mbits=0o7,edge_rows=20, edge_cols=10, center_rows=4, center_cols=2) + 1
+
+        umask = np.ones((4, 352, 384), dtype=np.uint8)
+        umask[3, 100:120, 160:200] = 0
         arr = 1 + det.raw._mask(status=True,\
-                                neighbors=False, rad=3, ptrn='r',\
+                                neighbors=True, rad=5, ptrn='r',\
                                 edges=True, edge_rows=10, edge_cols=5,\
-                                center=True, center_rows=5, center_cols=3)
+                                center=True, center_rows=5, center_cols=3,\
+                                calib=False,\
+                                umask=umask)
         amin, amax = 0, 2
         title = 'mask+1'
     elif tname=='peds':    arr = det.raw._pedestals()[grindex,:]
     elif tname=='status':  arr = det.raw._status()[grindex,:]
     elif tname=='rms':     arr = det.raw._rms()[grindex,:]
     elif tname=='gain':    arr = det.raw._gain()[grindex,:]
-    elif tname=='xcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[0] #, **kwa)
-    elif tname=='ycoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[1] #, **kwa)
-    elif tname=='zcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[2] #, **kwa)
+    elif tname=='xcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[0]
+    elif tname=='ycoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[1]
+    elif tname=='zcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[2]
     else: arr = det.raw._mask_calib()
 
     geo = det.raw._det_geo()
@@ -458,7 +462,7 @@ def test_single_image(args):
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=pscsize, mapmode=args.mapmode)
         print(info_ndarr(img, 'image for %s' % tname))
 
-        flimg = fleximage(img, arr=arr, h_in=8, w_in=11.5, amin=amin, amax=amax)#, cmap='jet')
+        flimg = fleximage(img, arr=arr, h_in=args.fighig, w_in=args.figwid, amin=amin, amax=amax)#, cmap='jet')
         flimg.fig.canvas.set_window_title(title)
         flimg.move(10,20)
         gr.show()
@@ -529,7 +533,7 @@ def do_main():
     d_grfrhi  = 0.99
     d_cframe  = 0
     d_figwid  = 14
-    d_fighig  = 8
+    d_fighig  = 12
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
