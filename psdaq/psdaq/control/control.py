@@ -1090,12 +1090,25 @@ class CollectionManager():
         # create group-dependent PVs
         self.pva.pvListMsgHeader = []
         self.pva.pvListXPM = []
+        self.pva.pvListL0Groups = []
         for g in range(8):
             if self.groups & (1 << g):
                 self.pva.pvListMsgHeader.append(self.pva.pv_xpm_base+":PART:"+str(g)+':MsgHeader')
                 self.pva.pvListXPM.append(self.pva.pv_xpm_base+":PART:"+str(g)+':Master')
+                self.pva.pvListL0Groups.append(self.pva.pv_xpm_base+":PART:"+str(g)+':L0Groups')
         logging.debug('pvListMsgHeader: %s' % self.pva.pvListMsgHeader)
         logging.debug('pvListXPM: %s' % self.pva.pvListXPM)
+        logging.debug('pvListL0Groups: %s' % self.pva.pvListL0Groups)
+
+        # Set L0Groups PVs.  In order to couple the deadtime of multiple readout groups being
+        # used in a DAQ, all the variables DAQ:NEH:XPM:0:PART:<group>:L0Groups must be set to
+        # the bit mask of the groups.
+        for pv in self.pva.pvListL0Groups:
+            logging.debug(f'condition_alloc() putting {self.groups} to PV {pv}')
+            if not self.pva.pv_put(pv, self.groups):
+                self.report_error(f'condition_alloc() failed putting {self.groups} to PV {pv}')
+                logging.debug('condition_alloc() returning False')
+                return False
 
         # give number to teb nodes for the event builder
         if 'teb' in active_state:
@@ -1148,6 +1161,16 @@ class CollectionManager():
                 self.report_error('%s did not respond to dealloc' % alias)
             self.report_error('%d client did not respond to dealloc' % ret)
             dealloc_ok = False
+
+        if dealloc_ok:
+            # clear L0Groups PVs
+            for pv in self.pva.pvListL0Groups:
+                logging.debug(f'condition_dealloc() putting 0 to PV {pv}')
+                if not self.pva.pv_put(pv, 0):
+                    self.report_error(f'condition_dealloc() failed putting 0 to PV {pv}')
+                    dealloc_ok = False
+                    break
+
         if dealloc_ok:
             self.lastTransition = 'dealloc'
         logging.debug('condition_dealloc() returning %s' % dealloc_ok)
