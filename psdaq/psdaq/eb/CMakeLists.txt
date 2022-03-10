@@ -197,6 +197,17 @@ target_include_directories(tstIndexPool PUBLIC
 target_link_libraries(tstIndexPool
 )
 
+add_executable(tstClocks    tstClocks.cc)
+
+target_include_directories(tstClocks PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(tstClocks
+  rt
+)
+
 #
 # The following builds for use with gprof
 #
