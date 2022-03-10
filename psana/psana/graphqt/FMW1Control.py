@@ -94,7 +94,7 @@ class FMW1Control(CMWControlBase):
         if cp.fmw1main is not None:
             global full_path_for_item
             from psana.graphqt.FSTree import full_path_for_item
-            cp.fmw1main.wfstree.connect_item_selected_to(self.on_item_selected)
+            cp.fmw1main.wfstree.connect_item_selected(self.on_item_selected)
             cp.fmw1main.wfstree.clicked[QModelIndex].connect(self.on_click)
 
 

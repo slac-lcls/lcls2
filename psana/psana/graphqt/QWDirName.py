@@ -34,12 +34,10 @@ class QWDirName(QWFileName): # QtGui.QWidget
 
         QWFileName.__init__(self, parent, butname, label, path, mode='r', fltr=fltr, show_frame=show_frame)
 
- 
+
     def on_but(self):
         logger.debug('on_but')
         path0 = self.edi.text()
-        #pdir, dir = os.path.split(path0)
-        #pdir, dir = path0.rsplit('/',1)
         path1 = str(QFileDialog.getExistingDirectory(self,'Select directory', path0, self.fltr))
 
         if   path1 == '':
@@ -64,7 +62,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = QWDirName(None, butname='Select', label='Dir:', path='/cds/group/psdm/detector/data2_test', show_frame=True)
     w.setGeometry(100, 50, 400, 80)
-    w.connect_path_is_changed_to_recipient(w.test_signal_reception)
+    w.connect_path_is_changed(w.test_signal_reception)
     w.show()
     app.exec_()
 

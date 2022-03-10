@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`QWTable` is a QTableView->QWidget for tree model
 ======================================================================
 
@@ -11,10 +11,9 @@ Usage ::
 
 Created on 2017-03-26 by Mikhail Dubrovin
 """
-#------------------------------
+
 import logging
 logger = logging.getLogger(__name__)
-#from psana.pyalgos.generic.Logger import logger
 
 from psana.graphqt.QWIcons import icon
 from PyQt5.QtWidgets import QTableView, QVBoxLayout, QAbstractItemView #QWidget
@@ -23,10 +22,9 @@ from PyQt5.QtCore import Qt, QModelIndex
 
 from psana.graphqt.CMConfigParameters import cp
 
-#------------------------------ 
 
 class QWTable(QTableView):
-     
+
     def __init__(self, parent=None):
         QTableView.__init__(self, parent)
         self._name = self.__class__.__name__
@@ -40,10 +38,10 @@ class QWTable(QTableView):
         self.fill_table_model() # defines self.model
         self.setModel(self.model)
 
-        self.connect_item_selected_to(self.on_item_selected)
+        self.connect_item_selected(self.on_item_selected)
         self.clicked.connect(self.on_click)
         self.doubleClicked.connect(self.on_double_click)
-        #self.connect_item_changed_to(self.on_item_changed)
+        #self.connect_item_changed(self.on_item_changed)
 
         self.set_style()
 
@@ -57,40 +55,38 @@ class QWTable(QTableView):
         self.setSelectionMode(smode)
 
 
-    def connect_item_changed_to(self, recipient) :
+    def connect_item_changed(self, recipient) :
         self.model.itemChanged.connect(recipient)
         self.is_connected_item_changed = True
 
 
-    def disconnect_item_changed_from(self, recipient) :
+    def disconnect_item_changed(self, recipient) :
         if self.is_connected_item_changed :
             self.model.itemChanged.disconnect(recipient)
             self.is_connected_item_changed = False
 
 
-    def connect_item_selected_to(self, recipient) :
+    def connect_item_selected(self, recipient) :
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].connect(recipient)
 
 
-    def disconnect_item_selected_from(self, recipient) :
-        #self.selectionModel().selectionChanged[QModelIndex, QModelIndex].disconnect(recipient)
+    def disconnect_item_selected(self, recipient) :
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
 
 
-    def set_style(self): 
+    def set_style(self):
         self.setStyleSheet("QTableView::item:hover{background-color:#00FFAA;}")
-        #self.setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed)
 
 
     def fill_table_model(self):
         self.clear_model()
-        self.model.setHorizontalHeaderLabels(['col0', 'col1', 'col2', 'col3', 'col4']) 
-        self.model.setVerticalHeaderLabels(['row0', 'row1', 'row2', 'row3']) 
+        self.model.setHorizontalHeaderLabels(['col0', 'col1', 'col2', 'col3', 'col4'])
+        self.model.setVerticalHeaderLabels(['row0', 'row1', 'row2', 'row3'])
         for row in range(0, 4):
             for col in range(0, 6):
                 item = QStandardItem("itemA %d %d"%(row,col))
                 item.setIcon(icon.icon_table)
-                item.setCheckable(True) 
+                item.setCheckable(True)
                 self.model.setItem(row,col,item)
                 if col==2 : item.setIcon(icon.icon_folder_closed)
                 if col==3 : item.setText('Some text')
@@ -111,14 +107,14 @@ class QWTable(QTableView):
         indexes =  self.selectedIndexes()
         return [self.model.itemFromIndex(i) for i in self.selectedIndexes()]
 
- 
-    def getFullNameFromItem(self, item): 
-        #item = self.model.itemFromIndex(ind)        
-        ind   = self.model.indexFromItem(item)        
+
+    def getFullNameFromItem(self, item):
+        #item = self.model.itemFromIndex(ind)
+        ind   = self.model.indexFromItem(item)
         return self.getFullNameFromIndex(ind)
 
 
-    def getFullNameFromIndex(self, ind): 
+    def getFullNameFromIndex(self, ind):
         item = self.model.itemFromIndex(ind)
         if item is None : return None
         self._full_name = item.text()
@@ -126,7 +122,7 @@ class QWTable(QTableView):
         return self._full_name
 
 
-    def _getFullName(self, ind): 
+    def _getFullName(self, ind):
         ind_par  = self.model.parent(ind)
         if(ind_par.column() == -1) :
             item = self.model.itemFromIndex(ind)
@@ -137,10 +133,6 @@ class QWTable(QTableView):
             item_par = self.model.itemFromIndex(ind_par)
             self._full_name = item_par.text() + '/' + self._full_name
             self._getFullName(ind_par)
-
-
-#    def resizeEvent(self, e) :
-#        logger.debug('resizeEvent')
 
 
     def closeEvent(self, event): # if the x is clicked
@@ -160,11 +152,8 @@ class QWTable(QTableView):
 
 
     def on_item_selected(self, ind_sel, ind_desel):
-        #logger.debug("ind   selected : ", ind_sel.row(),  ind_sel.column())
-        #logger.debug("ind deselected : ", ind_desel.row(),ind_desel.column()) 
         item = self.model.itemFromIndex(ind_sel)
         logger.debug('on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
-        #logger.debug('on_item_selected: %s' % self.getFullNameFromItem(item))
 
 
     def on_item_changed(self, item):
@@ -188,17 +177,16 @@ class QWTable(QTableView):
 
 
     def keyPressEvent(self, e) :
-        #logger.info('keyPressEvent, key=', e.key())       
+        logger.info('keyPressEvent, key=', e.key())
         if   e.key() == Qt.Key_Escape :
             self.close()
 
-        elif e.key() == Qt.Key_S : 
+        elif e.key() == Qt.Key_S :
             self.process_selected_items()
 
         else :
             logger.info(self.key_usage())
 
-#------------------------------ 
 
 if __name__ == '__main__':
     import sys
@@ -216,5 +204,5 @@ if __name__ == '__main__':
     del w
     del app
 
-#------------------------------
+# EOF
 

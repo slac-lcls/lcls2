@@ -50,23 +50,23 @@ class H5VControl(CMWControlBase):
         #self.w_fname = QWFileNameV2(None, label='HDF5 file:',\
         #   path=fname, fltr='*.h5 *.hdf5 \n*', dirs=dirs_to_search())
 
-        self.hbox = QHBoxLayout() 
+        self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.w_fname)
         self.hbox.addWidget(self.lab_ctrl)
         self.hbox.addWidget(self.but_exp_col)
-        self.hbox.addStretch(1) 
+        self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_save)
         self.hbox.addWidget(self.but_view)
         self.hbox.addWidget(self.but_tabs)
         #self.hbox.addSpacing(20)
         self.setLayout(self.hbox)
- 
+
         self.but_exp_col.clicked.connect(self.on_but_exp_col)
         #self.but_save.clicked.connect(self.on_but_save)
 
         if cp.h5vmain is not None:
-            self.w_fname.connect_path_is_changed_to_recipient(cp.h5vmain.wtree.set_file)
-            cp.h5vmain.wtree.connect_item_selected_to(self.on_item_selected)
+            self.w_fname.connect_path_is_changed(cp.h5vmain.wtree.set_file)
+            cp.h5vmain.wtree.connect_item_selected(self.on_item_selected)
 
         self.set_tool_tips()
         self.set_style()
@@ -130,7 +130,7 @@ class H5VControl(CMWControlBase):
             fmt = '%d' if 'int' in str(data.dtype) else '%.3f'
             save_data_in_file(data, prefix, control, fmt)
             cp.last_selected_fname.setValue('%s.npy' % prefix)
-        else: 
+        else:
             logger.info('command "Save" is cancelled')
 
 
@@ -160,15 +160,6 @@ class H5VControl(CMWControlBase):
 
             is_good_to_save = isinstance(data, np.ndarray) and data.size>1
             self.enable_buts(is_good_to_save)
-
-
-#    def on_but_clicked(self):
-#        for but in self.list_of_buts:
-#            if but.hasFocus(): break
-#        logger.info('Click on "%s"' % but.text())
-#        if   but == self.but_exp_col : self.expand_collapse_dbtree()
-#        elif but == self.but_tabs    : self.view_hide_tabs()
-#        #elif but == self.but_level   : self.set_logger_level()
 
 
 if __name__ == "__main__":

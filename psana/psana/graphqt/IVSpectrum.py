@@ -73,14 +73,14 @@ class IVSpectrum(QWidget):
         self.box.addWidget(self.wcbar,      1,  9,  9,  1)
         self.box.addWidget(self.but_reset, 10,  9,  1,  2, alignment=Qt.AlignCenter)
         self.setLayout(self.box)
- 
+
         self.set_tool_tips()
         self.set_style()
 
         self.connect_scene_rect_changed()
         self.but_reset.clicked.connect(self.on_but_reset)
 
-#        self.wcbar.connect_new_color_table_to(self.on_color_table_changed)
+#        self.wcbar.connect_new_color_table(self.on_color_table_changed)
 
 #    def on_color_table_changed(self):
 #        logger.debug('on_color_table_changed')
@@ -91,17 +91,17 @@ class IVSpectrum(QWidget):
         self.wax.signal_fast = is_fast
         self.way.signal_fast = is_fast
 
- 
+
     def connect_scene_rect_changed(self):
-        self.whis.connect_scene_rect_changed_to(self.on_whis_scene_rect_changed)
-        self.wax.connect_scene_rect_changed_to(self.on_wax_scene_rect_changed)
-        self.way.connect_scene_rect_changed_to(self.on_way_scene_rect_changed)
+        self.whis.connect_scene_rect_changed(self.on_whis_scene_rect_changed)
+        self.wax.connect_scene_rect_changed(self.on_wax_scene_rect_changed)
+        self.way.connect_scene_rect_changed(self.on_way_scene_rect_changed)
 
 
     def disconnect_scene_rect_changed(self):
-        self.whis.disconnect_scene_rect_changed_from(self.on_whis_scene_rect_changed)
-        self.wax.disconnect_scene_rect_changed_from(self.on_wax_scene_rect_changed)
-        self.way.disconnect_scene_rect_changed_from(self.on_way_scene_rect_changed)
+        self.whis.disconnect_scene_rect_changed(self.on_whis_scene_rect_changed)
+        self.wax.disconnect_scene_rect_changed(self.on_wax_scene_rect_changed)
+        self.way.disconnect_scene_rect_changed(self.on_way_scene_rect_changed)
 
 
     def on_but_reset(self):
@@ -145,7 +145,7 @@ class IVSpectrum(QWidget):
 
     def connect_histogram_scene_rect_changed(self, recip):
         self.histogram_scene_rect_changed.connect(recip)
- 
+
 
     def disconnect_histogram_scene_rect_changed(self, recip):
         self.histogram_scene_rect_changed.disconnect(recip)

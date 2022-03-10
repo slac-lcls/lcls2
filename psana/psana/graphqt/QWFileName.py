@@ -118,10 +118,10 @@ class QWFileName(QWidget):
             self.path_is_changed.emit(self.path)
 
 
-    def connect_path_is_changed_to_recipient(self, recip):
+    def connect_path_is_changed(self, recip):
         self.path_is_changed['QString'].connect(recip)
 
- 
+
     def test_signal_reception(self, s):
         logger.debug('test_signal_reception: %s' % s)
 
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     w = QWFileName(None, butname='Select', label='Path:',\
                    path='/cds/group/psdm/detector/data2_test/npy/nda-mfxc00118-r0224-silver-behenate-max.txt', show_frame=True)
     w.setGeometry(100, 50, 400, 80)
-    w.connect_path_is_changed_to_recipient(w.test_signal_reception)
+    w.connect_path_is_changed(w.test_signal_reception)
     w.show()
     app.exec_()
 

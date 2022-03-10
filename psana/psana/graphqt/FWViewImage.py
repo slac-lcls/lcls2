@@ -22,9 +22,9 @@ Usage ::
     w.set_pixmap_from_arr(arr, set_def=True)
     w.set_coltab(self, coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20))
 
-    w.connect_mouse_press_event_to(w.test_mouse_press_event_reception)
-    w.connect_mouse_move_event_to(w.test_mouse_move_event_reception)
-    w.connect_scene_rect_changed_to(w.test_scene_rect_changed_reception)
+    w.connect_mouse_press_event(w.test_mouse_press_event_reception)
+    w.connect_mouse_move_event(w.test_mouse_move_event_reception)
+    w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
 
     # Methods
     #--------
@@ -66,7 +66,7 @@ from PyQt5.QtGui import QImage, QPixmap
 
 
 class FWViewImage(FWView):
-    
+
     image_pixmap_changed = pyqtSignal()
 
     def __init__(self, parent=None, arr=None,\
@@ -82,7 +82,7 @@ class FWViewImage(FWView):
         self.arr_limits_old = None
         self.arr_in_rect = None
         self.set_pixmap_from_arr(arr)
-        #self.connect_mouse_move_event_to(self.on_mouse_move_event)
+        #self.connect_mouse_move_event(self.on_mouse_move_event)
 
 
     def set_coltab(self, coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)):
@@ -95,20 +95,6 @@ class FWViewImage(FWView):
         self.setAttribute(Qt.WA_TranslucentBackground)
         #self.layout().setContentsMargins(0,0,0,0)
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-
-
-#    def mousePressEvent(self, e):
-#        FWView.mousePressEvent(self, e)
-#        #print('XXX FWViewImage.mousePressEvent')
-
-
-#    def mouseMoveEvent(self, e):
-#        FWView.mouseMoveEvent(self, e)
-
- 
-#    def closeEvent(self, e):
-#        FWView.closeEvent(self, e)
-#        print('%s.closeEvent' % self._name)
 
 
     def add_pixmap_to_scene(self, pixmap):
@@ -187,7 +173,7 @@ class FWViewImage(FWView):
         """Overrides method from FWView"""
         p = self.mapToScene(e.pos())
         ix, iy, v = self.cursor_on_image_pixcoords_and_value(p)
-        fv = 0 if v is None else v 
+        fv = 0 if v is None else v
         self.setWindowTitle('FWViewImage x=%d y=%d v=%s%s' % (ix, iy, '%.1f'%fv, 25*' '))
 
 
@@ -288,9 +274,9 @@ if __name__ == "__main__":
         print('test %s is not implemented' % tname)
         return
 
-    w.connect_mouse_press_event_to(w.test_mouse_press_event_reception)
-    w.connect_mouse_move_event_to(w.test_mouse_move_event_reception)
-    w.connect_scene_rect_changed_to(w.test_scene_rect_changed_reception)
+    w.connect_mouse_press_event(w.test_mouse_press_event_reception)
+    w.connect_mouse_move_event(w.test_mouse_move_event_reception)
+    w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
 
     w.show()
     app.exec_()

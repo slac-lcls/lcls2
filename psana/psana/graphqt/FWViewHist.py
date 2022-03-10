@@ -49,7 +49,7 @@ See:
 This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-Created on 2020-11-02 by Mikhail Dubrovin 
+Created on 2020-11-02 by Mikhail Dubrovin
 """
 
 from psana.graphqt.FWView import * # FWView, QtGui, QtCore, Qt
@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 
 
 class FWViewHist(FWView):
-    
+
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10), origin='DL', **kwargs):
 
         self.bgcolor_def = 'black'
@@ -126,17 +126,13 @@ class FWViewHist(FWView):
 #        self.set_view()
 #        self.update_my_scene()
 #        self.check_axes_limits_changed()
-#    def mouseMoveEvent(self, e):
-#        self.update_my_scene()
-#        FWView.mouseMoveEvent(self, e)
-
 
     def mouseReleaseEvent(self, e):
         logger.debug('mouseReleaseEvent')
         FWView.update_my_scene(self)
         FWView.mouseReleaseEvent(self, e)
 
- 
+
     def closeEvent(self, e):
         self.hist.remove()
         FWView.closeEvent(self, e)
@@ -194,8 +190,8 @@ if __name__ == "__main__":
 
     w.print_attributes()
 
-    #w.connect_axes_limits_changed_to(w.test_axes_limits_changed_reception)
-    #w.disconnect_axes_limits_changed_from(w.test_axes_limits_changed_reception)
+    #w.connect_axes_limits_changed(w.test_axes_limits_changed_reception)
+    #w.disconnect_axes_limits_changed(w.test_axes_limits_changed_reception)
     w.show()
     app.exec_()
 

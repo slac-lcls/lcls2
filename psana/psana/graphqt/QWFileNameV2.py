@@ -57,7 +57,7 @@ class QWFileNameV2(QWidget):
         self.lab = QLabel(label)
         self.but = QPushButton(self.but_text())
 
-        self.hbox = QHBoxLayout() 
+        self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.lab)
         self.hbox.addWidget(self.but)
         self.hbox.addStretch(1)
@@ -131,14 +131,14 @@ class QWFileNameV2(QWidget):
             self.but.setStyleSheet(self.but_style_selected)
 
 
-    def connect_path_is_changed_to_recipient(self, recip):
+    def connect_path_is_changed(self, recip):
         self.path_is_changed['QString'].connect(recip)
 
 
-    def disconnect_path_is_changed_from_recipient(self, recip):
+    def disconnect_path_is_changed(self, recip):
         self.path_is_changed['QString'].disconnect(recip)
 
- 
+
     def test_signal_reception(self, s):
         logger.debug('test_signal_reception: %s' % s)
 
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = QWFileNameV2(None, label='Path:', path='/cds/group/psdm/detector/data2_test/npy/Select')
     w.setGeometry(100, 50, 350, 80)
-    w.connect_path_is_changed_to_recipient(w.test_signal_reception)
+    w.connect_path_is_changed(w.test_signal_reception)
     w.show()
     app.exec_()
 

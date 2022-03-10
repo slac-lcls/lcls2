@@ -14,7 +14,7 @@ LEVEL_NAMES = ', '.join(list(logging._levelToName.values()))
 
 USAGE = 'Image Viewer\n\n'\
       + 'command example:\n'\
-      + '  iv /cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy\n' #%SCRNAME
+      + '  iv /cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy\n'
 
 
 def image_viewer():
@@ -25,8 +25,8 @@ def image_viewer():
     parser = input_argument_parser()
     args = parser.parse_args() # TRICK! this line allows -h or --help potion !!!
     print('parser args:', args)
-    kwargs = vars(args) # use dict in stead of Namespace
     pargs = args.posargs
+    kwargs = vars(args) # use dict in stead of Namespace
 
     if kwargs['fname'] is None:
        kwargs['fname'] = pargs[0] if len(pargs)>0 else None
@@ -43,14 +43,13 @@ def image_viewer():
 
 
 class Constants:
-    #import psana.pscalib.calib.CalibConstants as cc
-    d_posargs= None
-    d_fname = None #'/cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy'
+    d_posargs  = None
+    d_fname    = None #'/cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy'
     d_loglevel = 'INFO'
 
     h_posargs  = 'list of positional arguments, default = %s' % d_posargs
-    h_fname      = 'file name for input array, default = %s' % d_fname
-    h_loglevel   = 'logging level from the list (%s), default = %s' % (LEVEL_NAMES, d_loglevel)
+    h_fname    = 'file name for input array, default = %s' % d_fname
+    h_loglevel = 'logging level from the list (%s), default = %s' % (LEVEL_NAMES, d_loglevel)
 
 
 def input_argument_parser():

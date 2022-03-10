@@ -27,10 +27,8 @@ from DragTypes import POINT, LINE, RECT, CIRC, POLY, WEDG, ELLIPSE,\
 from DragFactory import add_item, DragPoint
 from DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
 
-#----
-
 class FWViewImageShapes(FWViewImage):
-    
+
     def __init__(self, parent=None, arr=None,\
                  coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20),\
                  origin='UL', scale_ctl='HV'):
@@ -41,7 +39,7 @@ class FWViewImageShapes(FWViewImage):
         self.lst_drag_items = []
         self.scale_ctl_normal = scale_ctl
 
-        self.connect_scene_rect_changed_to(self.on_scene_rect_changed)
+        self.connect_scene_rect_changed(self.on_scene_rect_changed)
 
 
     def on_scene_rect_changed(self):
@@ -123,7 +121,7 @@ class FWViewImageShapes(FWViewImage):
             self.setShapesEnabled()
             self.add_request = None
 
- 
+
     def closeEvent(self, e):
         FWViewImage.closeEvent(self, e)
         #print('FWViewImage.closeEvent' # % self._name)
@@ -131,13 +129,12 @@ class FWViewImageShapes(FWViewImage):
 
     def delete_item(self, item):
         if item is None: return
-        
+
         self.set_scale_control('')
         self.scene().removeItem(item)
         self.lst_drag_items.remove(item)
         self.setShapesEnabled()
 
-#----
 
     if __name__ == "__main__":
 
@@ -157,7 +154,7 @@ class FWViewImageShapes(FWViewImage):
 
 
       def keyPressEvent(self, e):
-        #print('keyPressEvent, key=', e.key())        
+        #print('keyPressEvent, key=', e.key())
         # POINT,   LINE,   RECT,   CIRC,   POLY,   WEDG
         #FWViewImage.keyPressEvent(self, e) # uses Key_R and Key_N
 
@@ -173,13 +170,13 @@ class FWViewImageShapes(FWViewImage):
             logger.info('click-drag-release mouse button on image to add %s' % dic_drag_type_to_name[type])
             self.setShapesEnabled(False)
 
-        elif e.key() == Qt.Key_D: 
+        elif e.key() == Qt.Key_D:
             logger.info('delete selected item')
             self.delete_item(self.selected_item())
 
-        elif e.key() == Qt.Key_S: 
+        elif e.key() == Qt.Key_S:
             logger.info('switch interactive session between scene and shapes')
-            
+
             if self.scale_control():
                 self.set_scale_control(scale_ctl='')
                 self.setShapesEnabled()
@@ -189,7 +186,6 @@ class FWViewImageShapes(FWViewImage):
         else:
             logger.info(self.key_usage())
 
-#----
 
 if __name__ == "__main__":
 
@@ -206,4 +202,4 @@ if __name__ == "__main__":
     del w
     del app
 
-#----
+# EOF

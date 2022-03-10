@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`CMWDBTree` is a QWTree for database-collection tree presentation
 ======================================================================================
 
@@ -27,12 +27,11 @@ from psana.graphqt.CMDBUtils import dbu
 from psana.graphqt.CMQThreadClient import CMQThreadClient
 
 #import psana.pscalib.calib.MDBUtils as dbu
-from PyQt5.QtCore import pyqtSignal # Qt 
+from PyQt5.QtCore import pyqtSignal
 
-#---
 
 class CMWDBTree(QWTree):
-    """GUI for database-collection tree 
+    """GUI for database-collection tree
     """
     db_and_collection_selected = pyqtSignal('QString','QString')
 
@@ -56,7 +55,7 @@ class CMWDBTree(QWTree):
         # connect in thread
         if self.thread is not None: self.thread.quit()
         self.thread = CMQThreadClient()
-        self.thread.connect_client_is_ready_to(self.fill_tree_model_for_client)
+        self.thread.connect_client_is_ready(self.fill_tree_model_for_client)
         self.thread.start()
 
 
@@ -88,20 +87,20 @@ class CMWDBTree(QWTree):
             itdb = QStandardItem(dbname)
             itdb.setIcon(icon.icon_folder_closed)
             itdb.setEditable(False)
-            #itdb.setCheckable(True) 
+            #itdb.setCheckable(True)
             parentItem.appendRow(itdb)
 
-            db = dbu.database(client, dbname) 
+            db = dbu.database(client, dbname)
 
             for col in dbu.collection_names(db):
                 if not col: continue
-                itcol = QStandardItem(col)  
+                itcol = QStandardItem(col)
                 itcol.setIcon(icon.icon_folder_closed)
                 itcol.setEditable(False)
                 itdb.appendRow(itcol)
 
                 #item.setIcon(icon.icon_table)
-                #item.setCheckable(True) 
+                #item.setCheckable(True)
                 #print('append item %s' % (item.text()))
 
 
@@ -122,7 +121,7 @@ class CMWDBTree(QWTree):
         wdocs = cp.cmwdbdocs
         if wdocs is None: return
         wdocs.show_documents(dbname, colname)
- 
+
 
     def on_item_selected(self, selected, deselected):
         QWTree.on_item_selected(self, selected, deselected)
@@ -138,7 +137,6 @@ class CMWDBTree(QWTree):
         del self.thread
         QWTree.closeEvent(self, e)
 
-#---
 
 if __name__ == "__main__":
     import sys

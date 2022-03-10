@@ -76,12 +76,12 @@ class IVControl(CMWControlBase):
         self.box.addWidget(self.wfnm_geo, 1, 0, 1, 5)
         self.box.addWidget(self.wctl_spec,1, 5, 1, 6)
         self.setLayout(self.box)
- 
+
         self.but_exp.clicked.connect(self.on_but_exp)
         self.but_reset.clicked.connect(self.on_but_reset)
         self.but_buts.clicked.connect(self.on_buts)
-        self.wfnm_nda.connect_path_is_changed_to_recipient(self.on_changed_fname_nda)
-        self.wfnm_geo.connect_path_is_changed_to_recipient(self.on_changed_fname_geo)
+        self.wfnm_nda.connect_path_is_changed(self.on_changed_fname_nda)
+        self.wfnm_geo.connect_path_is_changed(self.on_changed_fname_geo)
         self.wctl_spec.connect_signal_spectrum_range_changed(self.on_spectrum_range_changed)
 
         self.connect_image_scene_rect_changed()
@@ -89,7 +89,7 @@ class IVControl(CMWControlBase):
         self.connect_image_pixmap_changed()
 
         w = cp.ivspectrum
-        if w is not None: w.wcbar.connect_new_color_table_to(self.on_color_table_changed)
+        if w is not None: w.wcbar.connect_new_color_table(self.on_color_table_changed)
 
         self.set_tool_tips()
         self.set_style()

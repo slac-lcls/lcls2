@@ -56,10 +56,9 @@ from psana.graphqt.FWView import * # FWView, QtGui, QtCore, Qt
 from psana.graphqt.FWRuler import FWRuler
 from PyQt5.QtGui import QColor, QFont
 
-#----
 
 class FWViewAxis(FWView):
-    
+
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10), origin='UL', side='U', **kwargs):
 
         self.bgcolor_def = 'black'
@@ -135,22 +134,15 @@ class FWViewAxis(FWView):
 #        self.check_axes_limits_changed()
 
 
-#    def mouseMoveEvent(self, e):
-#        self.update_my_scene()
-#        FWView.mouseMoveEvent(self, e)
-
-
     def mouseReleaseEvent(self, e):
         self.update_my_scene()
         FWView.mouseReleaseEvent(self, e)
 
- 
     def closeEvent(self, e):
         self.ruler.remove()
         FWView.closeEvent(self, e)
         #print('FWViewAxis.closeEvent')
 
-#----
 
 if __name__ == "__main__":
 
@@ -186,15 +178,14 @@ if __name__ == "__main__":
 
     w.print_attributes()
 
-    #w.connect_axes_limits_changed_to(w.test_axes_limits_changed_reception)
-    #w.disconnect_axes_limits_changed_from(w.test_axes_limits_changed_reception)
+    #w.connect_axes_limits_changed(w.test_axes_limits_changed_reception)
+    #w.disconnect_axes_limits_changed(w.test_axes_limits_changed_reception)
     w.show()
     app.exec_()
 
     del w
     del app
 
-#----
 
 if __name__ == "__main__":
     import os
@@ -204,4 +195,4 @@ if __name__ == "__main__":
     test_guiview(tname)
     sys.exit('End of Test %s' % tname)
 
-#----
+# EOF
