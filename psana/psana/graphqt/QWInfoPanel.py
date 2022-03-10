@@ -84,10 +84,6 @@ class QWInfoPanel(QWidget):
         w = self.winfo
         w.setReadOnly(True)
         w.setFont(QFont('monospace'))
-        #cursor = w.textCursor()
-        #w.selectAll()
-        #w.setFontPointSize(32)
-        #w.setTextCursor(cursor)
 
 
     def set_info_filename(self, fname=FNAME_INFO_DEF):

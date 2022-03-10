@@ -18,7 +18,6 @@ Usage ::
     ruler4 = FWRuler(v, 'R')
 
     ruler1.remove()
-    
     ruler4.remove()
 
 See:
@@ -61,8 +60,6 @@ class FWRuler():
         self.zvalue      = kwargs.get('zvalue',     10)
         self.fmt         = kwargs.get('fmt',      '%g')
 
-        #QPainterPath.__init__(self)
-   
         self.pen.setCosmetic(True)
         self.pen.setColor(self.color)
 
@@ -74,8 +71,6 @@ class FWRuler():
         vmin = r.x() if self.horiz else r.y()
         vmax = r.x()+r.width() if self.horiz else r.y()+r.height()
         self.labels = best_label_locs(vmin, vmax, self.size_inches, density=1, steps=None)
-
-        #print('labels', self.labels)
 
         self.set_pars()
         self.add()
@@ -112,7 +107,7 @@ class FWRuler():
             self.dt1  = QPointF(0, sv*self.tick_fr * h)
             self.dtxt = QPointF(-0.5, 0.1)
             self.vort = self.p1.y()
- 
+
         elif self.axside == 'L':
             if sh > 0:
               self.p1   = r.topLeft()
@@ -125,7 +120,7 @@ class FWRuler():
             self.dtxt0 = QPointF(6, 0)
             self.vort = self.p1.x()
 
-        elif self.axside == 'R': 
+        elif self.axside == 'R':
             if sh > 0:
               self.p1   = r.topRight()
               self.p2   = r.bottomRight()
@@ -133,7 +128,7 @@ class FWRuler():
               self.p1   = r.topLeft()
               self.p2   = r.bottomLeft()
             self.dt1  = QPointF(-sh*self.tick_fr * w, 0)
-            self.dtxt = QPointF(-1, -0.5)            
+            self.dtxt = QPointF(-1, -0.5)
             self.dtxt0 = QPointF(-3, 0)
             self.vort = self.p2.x()
 
@@ -172,7 +167,7 @@ class FWRuler():
 
         r = self.rect
         w,h = r.width(), r.height()
-        # add labels to scene 
+        # add labels to scene
         for v in self.labels:
             pv = QPointF(v, self.vort) if self.horiz else QPointF(self.vort, v)
             vstr = self.fmt%v
@@ -198,7 +193,7 @@ class FWRuler():
             txtitem.setZValue(self.zvalue)
 
 
-            self.lst_of_items.append(txtitem)       
+            self.lst_of_items.append(txtitem)
 
         #self.item_group = self.scene.createItemGroup(self.lst_of_items)
 
@@ -207,7 +202,6 @@ class FWRuler():
         for item in self.lst_of_items:
             self.scene.removeItem(item)
         self.lst_of_items=[]
-
         #self.scene.removeItem(self.path_item)
         #self.scene.destroyItemGroup(self.item_group)
 

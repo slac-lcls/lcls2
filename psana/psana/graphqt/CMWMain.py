@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`CMWMain` is a QWidget for interactive image
 ============================================================
@@ -22,9 +23,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QSplitter, QText
 from PyQt5.QtCore import Qt, QPoint
 
 from psana.detector.RepoManager import RepoManager
-from psana.detector.Utils import gu #, save_record_at_start
-#from psana.detector.Utils import print_kwargs, is_in_command_line, log_rec_at_start
-#from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line, log_rec_on_start
+from psana.detector.Utils import gu
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWLoggerStd import QWLoggerStd
 
@@ -126,12 +125,6 @@ class CMWMain(QWidget):
         cp.wlog = None
 
 
-#    def resizeEvent(self, e):
-#        QWidget.resizeEvent(self, e)
-#    def moveEvent(self, e):
-#        QWidget.moveEvent(self, e)
-
-
     def key_usage(self):
         return 'Keys:'\
                '\n  V - view/hide tabs'\
@@ -169,9 +162,6 @@ class CMWMain(QWidget):
         if cp.save_cp_at_exit.value():
             cp.printParameters()
             cp.saveParametersInFile() # see ConfigParameters
-
-#        if cp.save_log_at_exit.value():
-#            pass # see QWLoggerStd.py /reg/g/psdm/logs/calibman/lcls2/<year>/
 
 
 def calibman(**kwargs):

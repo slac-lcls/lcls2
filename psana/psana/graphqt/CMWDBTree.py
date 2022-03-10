@@ -54,12 +54,6 @@ class CMWDBTree(QWTree):
 
         logger.info('tree-model filling time %.3f sec' % (time()-t0_sec))
 
-        # connect in thread
-        #if self.thread is not None: self.thread.quit()
-        #self.thread = CMQThreadClient()
-        #self.thread.connect_client_is_ready(self.fill_tree_model_web)
-        #self.thread.start()
-
 
     def fill_tree_model_dbs(self):
 
@@ -85,8 +79,6 @@ class CMWDBTree(QWTree):
             #itdb.setCheckable(True)
             parentItem.appendRow(itdb)
 
-            #db = dbu.database(client, dbname)
-
             if False: # DO NOT FILL COLLECTIONS
 
               for col in dbu.collection_names(dbname):
@@ -95,10 +87,6 @@ class CMWDBTree(QWTree):
                 itcol.setIcon(icon.icon_folder_closed)
                 itcol.setEditable(False)
                 itdb.appendRow(itcol)
-
-                #item.setIcon(icon.icon_table)
-                #item.setCheckable(True)
-                #print('append item %s' % (item.text()))
 
 
     def fill_tree_model_collections(self, index):

@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from psana.graphqt.QWIcons import icon
-from PyQt5.QtWidgets import QTableView, QVBoxLayout, QAbstractItemView #QWidget
+from PyQt5.QtWidgets import QTableView, QVBoxLayout, QAbstractItemView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, QModelIndex
 
@@ -46,31 +46,31 @@ class QWTable(QTableView):
         self.set_style()
 
 
-    #def __del__(self) :
+    #def __del__(self):
     #    QTableView.__del__(self) - it does not have __del__
 
 
-    def set_selection_mode(self, smode=QAbstractItemView.ExtendedSelection) :
+    def set_selection_mode(self, smode=QAbstractItemView.ExtendedSelection):
         logger.debug('Set selection mode: %s'%smode)
         self.setSelectionMode(smode)
 
 
-    def connect_item_changed(self, recipient) :
+    def connect_item_changed(self, recipient):
         self.model.itemChanged.connect(recipient)
         self.is_connected_item_changed = True
 
 
-    def disconnect_item_changed(self, recipient) :
-        if self.is_connected_item_changed :
+    def disconnect_item_changed(self, recipient):
+        if self.is_connected_item_changed:
             self.model.itemChanged.disconnect(recipient)
             self.is_connected_item_changed = False
 
 
-    def connect_item_selected(self, recipient) :
+    def connect_item_selected(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].connect(recipient)
 
 
-    def disconnect_item_selected(self, recipient) :
+    def disconnect_item_selected(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
 
 
@@ -88,8 +88,8 @@ class QWTable(QTableView):
                 item.setIcon(icon.icon_table)
                 item.setCheckable(True)
                 self.model.setItem(row,col,item)
-                if col==2 : item.setIcon(icon.icon_folder_closed)
-                if col==3 : item.setText('Some text')
+                if col==2: item.setIcon(icon.icon_folder_closed)
+                if col==3: item.setText('Some text')
                 #self.model.appendRow(item)
 
 
@@ -116,7 +116,7 @@ class QWTable(QTableView):
 
     def getFullNameFromIndex(self, ind):
         item = self.model.itemFromIndex(ind)
-        if item is None : return None
+        if item is None: return None
         self._full_name = item.text()
         self._getFullName(ind)
         return self._full_name
@@ -124,10 +124,10 @@ class QWTable(QTableView):
 
     def _getFullName(self, ind):
         ind_par  = self.model.parent(ind)
-        if(ind_par.column() == -1) :
+        if(ind_par.column() == -1):
             item = self.model.itemFromIndex(ind)
             self.full_name = '/' + self._full_name
-            #logger.debug('Item full name :' + self._full_name)
+            #logger.debug('Item full name:' + self._full_name)
             return self._full_name
         else:
             item_par = self.model.itemFromIndex(ind_par)
@@ -161,39 +161,37 @@ class QWTable(QTableView):
         logger.debug('abstract on_item_changed: "%s" at state %s' % (self.getFullNameFromItem(item), state))
 
 
-    def process_selected_items(self) :
+    def process_selected_items(self):
         selitems = self.selected_items()
         msg = '%d Selected items:' % len(selitems)
-        for i in selitems :
+        for i in selitems:
             msg += '\n  %s' % i.text()
         logger.info(msg)
 
 
-    def key_usage(self) :
+    def key_usage(self):
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  S - show selected items'\
                '\n'
 
 
-    def keyPressEvent(self, e) :
+    def keyPressEvent(self, e):
         logger.info('keyPressEvent, key=', e.key())
-        if   e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_S :
+        elif e.key() == Qt.Key_S:
             self.process_selected_items()
 
-        else :
+        else:
             logger.info(self.key_usage())
 
 
 if __name__ == '__main__':
     import sys
     from PyQt5.QtWidgets import QApplication
-
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
-    #logger.setPrintBits(0o177777)
     app = QApplication(sys.argv)
     w = QWTable()
     w.setGeometry(100, 100, 700, 300)

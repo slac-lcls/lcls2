@@ -132,14 +132,10 @@ class IVControl(CMWControlBase):
 
     def set_style(self):
         CMWControlBase.set_style(self)
-        #self.but_tabs.setFixedWidth(50)
         self.but_reset.setFixedWidth(50)
         self.but_buts.setFixedWidth(50)
         self.but_exp.setFixedWidth(80)
-        #self.wfnm_nda.lab.setStyleSheet(style.styleLabel)
         self.wfnm_geo.lab.setStyleSheet(style.styleLabel)
-         #self.but_buts.setStyleSheet(style.styleButtonstyleLabel)
-        #self.but_tabs.setVisible(True)
 
 
     def set_signal_fast(self, is_fast=True):
@@ -344,7 +340,6 @@ if __name__ == "__main__":
 
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
-
     app = QApplication(sys.argv)
     w = IVControl()
     w.setGeometry(100, 50, 500, 80)

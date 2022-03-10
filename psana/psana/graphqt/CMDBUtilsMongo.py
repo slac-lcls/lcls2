@@ -1,5 +1,4 @@
 
-
 """Class :py:class:`CMDBBUtils` utilities for calib manager DB methods
 ==============================================================================
 
@@ -41,13 +40,6 @@ exportdb          = dbu.exportdb
 importdb          = dbu.importdb
 out_fname_prefix  = dbu.out_fname_prefix
 save_doc_and_data_in_file = dbu.save_doc_and_data_in_file
-
-#insert_data_and_doc = dbu.insert_data_and_doc
-#document_info     = dbu.document_info
-#db_prefixed_name  = dbu.db_prefixed_name   # ('') 
-#delete_databases  = dbu.delete_databases   # (list_db_names)
-#delete_collections= dbu.delete_collections # (dic_db_cols)
-#collection_info   = dbu.collection_info    # (client, dbname, colname)
 
 
 from psana.graphqt.CMConfigParameters import cp

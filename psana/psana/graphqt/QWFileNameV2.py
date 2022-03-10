@@ -92,7 +92,6 @@ class QWFileNameV2(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
         self.but.setStyleSheet(self.but_style_on_start)
         self.lab.setAlignment(Qt.AlignRight)
-        #self.lab.setStyleSheet(style.styleLabel)
 
 
     def on_but(self):

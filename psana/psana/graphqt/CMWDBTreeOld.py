@@ -25,8 +25,6 @@ from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
 from psana.graphqt.CMDBUtils import dbu
 from psana.graphqt.CMQThreadClient import CMQThreadClient
-
-#import psana.pscalib.calib.MDBUtils as dbu
 from PyQt5.QtCore import pyqtSignal
 
 
@@ -49,7 +47,6 @@ class CMWDBTree(QWTree):
         logger.debug('CMWDBTree.fill_tree_model')
         self._pattern = pattern
         self.clear_model()
-
         #self.fill_tree_model_for_client()
 
         # connect in thread
@@ -98,10 +95,6 @@ class CMWDBTree(QWTree):
                 itcol.setIcon(icon.icon_folder_closed)
                 itcol.setEditable(False)
                 itdb.appendRow(itcol)
-
-                #item.setIcon(icon.icon_table)
-                #item.setCheckable(True)
-                #print('append item %s' % (item.text()))
 
 
     def on_click(self, index):

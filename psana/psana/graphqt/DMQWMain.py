@@ -63,7 +63,6 @@ class DMQWMain(QWidget):
 
 
     def proc_kwargs(self, **kwa):
-        #print_kwa(kwa)
         loglevel   = kwa.get('loglevel', 'DEBUG').upper()
         logdir     = kwa.get('logdir', './')
         savelog    = kwa.get('savelog', False)
@@ -172,7 +171,6 @@ if __name__ == "__main__":
       'loglevel':'DEBUG',\
       'expname':expname_def(),\
     }
-
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     if tname == '0': data_manager(**kwa)
     else: logger.debug('Not-implemented test "%s"' % tname)

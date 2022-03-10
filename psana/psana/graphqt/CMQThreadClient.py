@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`CMQThreadClient` -  sub-class of QThread
 ==========================================================
@@ -42,16 +43,6 @@ class CMQThreadClient(QThread):
         """
         #logger.debug('In CMQThreadClient.run - connect client')
         self._client = dbu.connect_client(self._host, self._port)
-
-        if self._client is None:
-            #logger.warning("Can't connect to server")
-            #print("Can't connect to server")
-            pass
-        else:
-            #logger.debug('Connection to server is ready')
-            #print('Connection to server is ready')
-            pass
-
         self.client_is_ready.emit()
 
 

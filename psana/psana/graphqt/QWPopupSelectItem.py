@@ -26,7 +26,6 @@ Adopted for LCLS2 on 2018-02-15
 """
 
 import os
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -46,26 +45,9 @@ class QWPopupSelectItem(QDialog):
         self.show_frame = show_frame
 
         self.fill_list(lst)
-        #self.fill_list_icons(lst_icons)
-
-        # Confirmation buttons
-        #self.but_cancel = QPushButton('&Cancel') 
-        #self.but_apply  = QPushButton('&Apply') 
-        #cp.setIcons()
-        #self.but_cancel.setIcon(cp.icon_button_cancel)
-        #self.but_apply .setIcon(cp.icon_button_ok)
-        #self.connect(self.but_cancel, QtCore.SIGNAL('clicked()'), self.onCancel)
-        #self.connect(self.but_apply,  QtCore.SIGNAL('clicked()'), self.onApply)
-
-        #self.hbox = QVBoxLayout()
-        #self.hbox.addWidget(self.but_cancel)
-        #self.hbox.addWidget(self.but_apply)
-        ##self.hbox.addStretch(1)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.list)
-        #vbox.addLayout(self.hbox)
-        #vbox.addStretch(1)
         self.setLayout(vbox)
 
         self.list.itemClicked.connect(self.on_item_click)
@@ -75,10 +57,6 @@ class QWPopupSelectItem(QDialog):
 
         self.dt_msec=1000
         QTimer().singleShot(self.dt_msec, self.on_timeout)
-
-#    def focusOutEvent(self, e):
-#        QDialog.focusOutEvent(self, e)
-#        print('XXX focusOutEvent')
 
 
     def on_timeout(self):
@@ -97,23 +75,12 @@ class QWPopupSelectItem(QDialog):
         #self.list.sortItems(Qt.AscendingOrder)
 
 
-#    def fill_list_icons(self, lst_icons):
-#        for ind, icon in enumerate(lst_icons):
-#            item = QListWidgetItem(icon, '%d'%ind, self.list) #'%d'%ind
-#            item.setSizeHint(QtCore.QSize(80,30))
-#        #self.list.sortItems(Qt.AscendingOrder)
-
-
     def set_style(self):
         self.setWindowTitle('Select')
         if not self.show_frame:
           self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        #self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setEnabled(True)
-        #self.setWindowModality(Qt.WindowModal)
-        #self.setWindowState(Qt.WindowActive)
-        #self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
         self.layout().setContentsMargins(0,0,0,0)
         parent = self.parentWidget()
         if parent is None:
@@ -132,11 +99,6 @@ class QWPopupSelectItem(QDialog):
         self.done(QDialog.Accepted)
 
 
-#    def mousePressEvent(self, e):
-#        QDialog.mousePressEvent(self, e)
-#        logger.debug('mousePressEvent')
-
-        
     def event(self, e):
         #logger.debug('event.type %s' % str(e.type()))
         if e.type() == QEvent.WindowDeactivate:
@@ -144,7 +106,7 @@ class QWPopupSelectItem(QDialog):
             self.reject()
             self.done(QDialog.Rejected)
         return QDialog.event(self, e)
-    
+
 
     def closeEvent(self, e):
         logger.debug('closeEvent')
@@ -154,17 +116,6 @@ class QWPopupSelectItem(QDialog):
 
     def selectedName(self):
         return self.name_sel
-
- 
-#    def onCancel(self):
-#        logger.debug('onCancel', __name__)
-#        self.reject()
-#        self.done(QDialog.Rejected)
- 
-#    def onApply(self):
-#        logger.debug('onApply', __name__)  
-#        self.accept()
-#        self.done(QDialog.Accepted)
 
 
 def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_frame=False):
@@ -177,12 +128,8 @@ def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_fr
     w.setFixedHeight(height)
     if dx or dy: w.move(QCursor.pos().__add__(QPoint(dx,dy)))
     resp=w.exec_()
-    #if   resp == QDialog.Accepted: return w.selectedName()
-    #elif resp == QDialog.Rejected: return None    
-    #else: return None
     return w.selectedName()
 
-#----------- TESTS ------------
 
 if __name__ == "__main__":
   logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
@@ -192,7 +139,7 @@ if __name__ == "__main__":
     logger.debug('lst: %s' % str(lst))
     app = QApplication(sys.argv)
     exp_name = popup_select_item_from_list(None, lst)
-    logger.debug('exp_name = %s' % exp_name) 
+    logger.debug('exp_name = %s' % exp_name)
 
 
 if __name__ == "__main__":

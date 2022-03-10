@@ -65,8 +65,6 @@ class DMQWControl(CMWControlBase):
 
     def __init__(self, **kwa):
 
-        #parent = kwa.get('parent', None)
-
         CMWControlBase.__init__(self, **kwa)
         cp.dmqwcontrol = self
         self.osp = None

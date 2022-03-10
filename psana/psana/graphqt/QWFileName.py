@@ -1,7 +1,7 @@
 
 """
 :py:class:`QWFileName` - widget to enter file name
-============================================================================================
+==================================================
 
 Usage::
 
@@ -52,9 +52,9 @@ class QWFileName(QWidget):
         self.lab = QLabel(label)
         self.but = QPushButton(butname)
         self.edi = QLineEdit(path)
-        self.edi.setReadOnly(True) 
+        self.edi.setReadOnly(True)
 
-        self.hbox = QHBoxLayout() 
+        self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.lab)
         self.hbox.addWidget(self.edi)
         self.hbox.addWidget(self.but)
@@ -73,7 +73,7 @@ class QWFileName(QWidget):
 
     def set_tool_tips(self):
         self.but.setToolTip('Select input file.')
-        self.edi.setToolTip('Path to the file (read-only).\nClick on button to change it.') 
+        self.edi.setToolTip('Path to the file (read-only).\nClick on button to change it.')
 
 
     def set_style(self):
@@ -82,7 +82,7 @@ class QWFileName(QWidget):
         self.edi.setMinimumWidth(210)
         self.setFixedHeight(34)
         self.layout().setContentsMargins(5,0,5,0)
- 
+
 
     def on_but(self):
         logger.debug('on_but')

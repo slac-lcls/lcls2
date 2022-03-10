@@ -80,8 +80,6 @@ class CMWMainTabs(QWidget):
             tab_ind = self.tab_bar.addTab(tab_name)
             self.tab_bar.setTabTextColor(tab_ind, QColor('blue')) #gray, red, grayblue
 
-        #self.tab_bar.setTabsClosable(True)
-        #self.tab_bar.setMovable(True)
         self.tab_bar.setShape(QTabBar.RoundedNorth)
 
         tab_index = self.tab_names.index(start_tab_name)

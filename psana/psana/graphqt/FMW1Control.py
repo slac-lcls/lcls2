@@ -45,7 +45,6 @@ class FMW1Control(CMWControlBase):
         self.osp = None
         self.dt_msec = 1000
 
-        #expname = kwa.get('expname', cp.exp_name.value())
         expname = kwa.get('expname', expname_def())
 
         self.wfnm.setVisible(False)
@@ -85,9 +84,6 @@ class FMW1Control(CMWControlBase):
         self.but_stop.clicked.connect(self.on_but_stop)
         self.cmb_cmd.currentIndexChanged[int].connect(self.on_cmb_cmd)
 
-#        self.but_save.clicked.connect(self.on_but_save)
-#        self.connect_instr_exp_is_changed(self.on_instr_exp_is_changed)
-
         self.set_tool_tips()
         self.set_style()
 
@@ -122,8 +118,6 @@ class FMW1Control(CMWControlBase):
         self.cmb_cmd.setFixedWidth(80)
         self.but_deploy.setFixedWidth(60)
         self.but_stop.setFixedWidth(40)
-         #self.but_buts.setStyleSheet(style.styleButton)
-        #self.but_tabs.setVisible(True)
         self.layout().setContentsMargins(5,0,5,0)
 
 
@@ -295,17 +289,6 @@ class FMW1Control(CMWControlBase):
             return
 
         logger.info('selected file names:\n  %s' % '\n  '.join(fnames_selected))
-
-#        self.instr_exp_is_changed.emit(instr_name, exp_name)
-
-#    def connect_instr_exp_is_changed(self, recip):
-#        self.instr_exp_is_changed.connect(recip)
-
-#    def disconnect_instr_exp_is_changed(self, recip):
-#        self.instr_exp_is_changed.disconnect(recip)
-
-#    def on_instr_exp_is_changed(self, instr, exp):
-#        logger.debug('selected instrument: %s experiment: %s' % (instr, exp))
 
 
     def view_hide_tabs(self):

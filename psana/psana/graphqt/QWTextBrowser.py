@@ -85,13 +85,7 @@ class QWTextBrowser(CMWControlBase):
 
 
     def set_text(self, txt):
-        #self.edi_txt.setLineWrapColumnOrWidth(300)
-        #self.edi_txt.setLineWrapMode(self.edi_txt.NoWrap) # WidgetWidth) # FixedColumnWidth)
-        #self.edi_txt.document().setTextWidth(200)
-        #logger.debug('XXX lineWrapMode: %d' % self.edi_txt.lineWrapMode())
-        #logger.debug('XXX lineWrapColumnOrWidth: %d' % self.edi_txt.lineWrapColumnOrWidth())
         self.edi_txt.setText(txt)
-        #print(txt)
 
 
     def on_changed_fname(self, fname):

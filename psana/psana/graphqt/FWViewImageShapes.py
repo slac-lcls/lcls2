@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`FWViewImageShapes` is a QWidget for interactive image
 ==========================================================================
@@ -50,9 +51,6 @@ class FWViewImageShapes(FWViewImage):
 
         for item in self.scene().items():
             if isinstance(item, DragPoint):
-                 #print('item:', item)
-                 #path_new = item.pathForPointR(item.pos_of_item, self.scene())
-                 #item.setTransformOriginPoint(item.pos_of_item)
                  item.setScale(item.scx0/scx)
 
 
@@ -106,11 +104,6 @@ class FWViewImageShapes(FWViewImage):
             #FWViewImage.mousePressEvent(self, e) # to move pixmap on click
         else:
             self.set_scale_control(scale_ctl='')
-
-
-#    def mouseMoveEvent(self, e):
-#        print('%s.mouseMoveEvent' % self.__class__.__name__, e.pos())
-#        FWViewImage.mouseMoveEvent(self, e)
 
 
     def mouseReleaseEvent(self, e):

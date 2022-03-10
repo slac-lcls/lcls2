@@ -86,14 +86,14 @@ def color_table_monochr256(inverted=False):
     """
     ncolors=256
     inds = range(ncolors-1,-1,-1) if inverted else range(ncolors)
-    return np.array([c + c*0x100 + c*0x10000 + 0xff000000 for c in inds], dtype=np.uint32)  
+    return np.array([c + c*0x100 + c*0x10000 + 0xff000000 for c in inds], dtype=np.uint32)
 
 
 def color_table_linear(ncolors=100):
     """ Returns numpy array with ncolors constructed from entire range of RGB colors
     """
     f = 1./ncolors
-    return np.array([0xffffff*c*f + 0xff000000 for c in range(ncolors)], dtype=np.uint32)  
+    return np.array([0xffffff*c*f + 0xff000000 for c in range(ncolors)], dtype=np.uint32)
 
 
 def interpolate_colors(ctab, p1, p2, c1, c2):
@@ -172,7 +172,7 @@ def get_pixmap(ind, orient='H', size=(200,30)):
     return pixmap
 
 
-def array_for_color_bar(ctab=color_table_monochr256(), orient='V', width=2): 
+def array_for_color_bar(ctab=color_table_monochr256(), orient='V', width=2):
     """Returns 2-d array made of repeated 1-d array ctab to display as a color bar
     """
     arr = [(c,c) for c in ctab[::-1]] if orient=='V' else\
@@ -187,12 +187,12 @@ class ColorTable():
     """Creates and provide access to color table
     """
     def __init__(self, ncolors=1000, hang1=0, hang2=360, vmin=-10000, vmax=10000):
-        """Makes color table - list of QColors of length ncolors 
+        """Makes color table - list of QColors of length ncolors
         """
         self.make_ctable_for_hue_range(ncolors, hang1, hang2)
         self.set_value_range(vmin, vmax)
 
-    
+
     def make_ctable_for_hue_range(self, ncolors=1000, hang1=0, hang2=360):
         """Makes color table in the range of hue values
         """
@@ -227,14 +227,14 @@ class ColorTable():
         self.make_ctable_for_hue_range(ncolors, self.hang1, self.hang2)
         self.set_value_range(self.vmin, self.vmax)
 
-        
+
     def set_hue_range(self, hang1, hang2):
         """Sets the range of hue angles and re-generate color table
         """
         self.make_ctable_for_hue_range(self.ncolors, hang1, hang2)
         self.set_value_range(self.vmin, self.vmax)
 
-                
+
     def set_value_range(self, vmin, vmax):
         """Sets the range of values which will be mapped to color table
         """
@@ -250,8 +250,8 @@ class ColorTable():
         elif v < self.vmax: return self.ctable[self.vfct*v]
         else              : return self.ctable[-1]
 
-      
-    def print_color_table(self):    
+
+    def print_color_table(self):
         for ic, qc in enumerate(self.ctable):
             print('i:%4d  R:%3d  G:%3d  B:%3d' % (ic, qc.red(), qc.green(), qc.blue()))
 
@@ -260,7 +260,7 @@ if __name__ == '__main__':
   def test():
     ct = ColorTable()
     ct.print_color_table()
-    
+
 
 if __name__ == '__main__':
     test()

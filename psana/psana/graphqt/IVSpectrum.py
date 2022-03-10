@@ -80,11 +80,6 @@ class IVSpectrum(QWidget):
         self.connect_scene_rect_changed()
         self.but_reset.clicked.connect(self.on_but_reset)
 
-#        self.wcbar.connect_new_color_table(self.on_color_table_changed)
-
-#    def on_color_table_changed(self):
-#        logger.debug('on_color_table_changed')
-
 
     def set_signal_fast(self, is_fast=True):
         self.whis.signal_fast = is_fast

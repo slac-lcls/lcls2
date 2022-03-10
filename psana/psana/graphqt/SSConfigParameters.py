@@ -1,21 +1,17 @@
-#------------------------------
+
 """SSConfigParameters - class supporting configuration parameters for application.
-   Created: 2017-07-26 
+   Created: 2017-07-26
    Author : Mikhail Dubrovin
 """
-#------------------------------
-# import os
+
 from expmon.PSConfigParameters import PSConfigParameters
 from expmon.PSNameManager      import nm # It is here for initialization
 
-#------------------------------
-
-class SSConfigParameters(PSConfigParameters) :
+class SSConfigParameters(PSConfigParameters):
     """A storage of configuration parameters for Experiment Monitor (EM) project.
     """
-
-    def __init__(self, fname=None) :
-        """fname : str - the file name with configuration parameters, if not specified then use default.
+    def __init__(self, fname=None):
+        """fname: str - the file name with configuration parameters, if not specified then use default.
         """
         PSConfigParameters.__init__(self)
         #self._name = self.__class__.__name__
@@ -33,10 +29,8 @@ class SSConfigParameters(PSConfigParameters) :
 
         nm.set_config_pars(self)
 
-#------------------------------
-        
-    def declareParameters(self) :
-        # Possible typs for declaration : 'str', 'int', 'long', 'float', 'bool'
+    def declareParameters(self):
+        # Possible typs for declaration: 'str', 'int', 'long', 'float', 'bool'
         self.log_level = self.declareParameter(name='LOG_LEVEL_OF_MSGS', val_def='info', type='str')
         self.dir_log_repo     = self.declareParameter(name='DIR_LOG_REPO', val_def='/reg/g/psdm/logs/sourse-selector', type='str')
         self.log_file         = self.declareParameter(name='LOG_FILE_NAME', val_def='sourse-selector-log.txt', type='str')
@@ -52,13 +46,9 @@ class SSConfigParameters(PSConfigParameters) :
         det_srcs_def = [('None', 'None', 'str') for i in range(self.number_of_sources_max)]
         self.det_src_list = self.declareListOfPars('DET_SRC', det_srcs_def)
 
-#------------------------------
-
 cp = SSConfigParameters()
 
-#------------------------------
-
-def test_SSConfigParameters() :
+def test_SSConfigParameters():
     from expmon.Logger import log
 
     log.setPrintBits(0o377)
@@ -67,11 +57,9 @@ def test_SSConfigParameters() :
     cp.log_level.setValue('debug')
     cp.saveParametersInFile()
 
-#------------------------------
-
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
     test_SSConfigParameters()
     sys.exit(0)
 
-#------------------------------
+# EOF

@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`FWViewAxis` is a widget with interactive axes
 ==============================================================
@@ -90,13 +91,6 @@ class FWViewAxis(FWView):
     def set_style(self):
         FWView.set_style(self)
 
-        #style_default = "background-color: rgb(239, 235, 231, 255); color: rgb(0, 0, 0);" # Gray bkgd 
-        #bgcolor = self.palette().color(QPalette.Background)
-        #style_default = '' if self.bgcolor is None else 'background-color: %s' % self.bgcolor
-        #self.setStyleSheet(style_default)
-
-        #self.layout().setContentsMargins(0,0,0,0)
-        #color = Qt.white
         color = QColor(self.fgcolor)
         self.colax = QColor(color)
         self.fonax = QFont('Courier', 12, QFont.Normal)
@@ -108,8 +102,6 @@ class FWViewAxis(FWView):
         else:
             self.setMinimumSize(2, self.wlength)
             self.setFixedWidth(self.wwidth)
-
-        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
 
     def update_my_scene(self):

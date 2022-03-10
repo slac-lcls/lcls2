@@ -38,7 +38,7 @@ class H5VQWTree(QWTree):
         QWTree.__init__(self, wparent)
         self.h5py = h5py
         self.process_expand()
- 
+
 
     def set_file(self, fname):
         self.collapseAll()
@@ -67,7 +67,7 @@ class H5VQWTree(QWTree):
             item.setIcon(icon.icon_folder_open)
             item.setData(g)
             root_item.appendRow(item)
-        
+
         elif isinstance(g,h5py.Group):
             logger.debug('(Group) %s' % g.name)
             item = QStandardItem(name_in_path(g.name))
@@ -76,17 +76,17 @@ class H5VQWTree(QWTree):
             parent_item.appendRow(item)
 
         elif isinstance(g,h5py.Dataset):
-            logger.debug('(Dataset) %s   len=%s   dtype=%s' % (g.name, g.shape, g.dtype)) #, g.dtype
+            logger.debug('(Dataset) %s   len=%s   dtype=%s' % (g.name, g.shape, g.dtype))
             item = QStandardItem('%s: %s %s' % (name_in_path(g.name), g.shape, g.dtype))
             item.setIcon(icon.icon_table)
-            item.setCheckable(True) 
+            item.setCheckable(True)
             item.setData(g)
             parent_item.appendRow(item)
 
         else:
             print('WORNING: UNKNOWN ITEM IN HDF5 FILE', g.name)
             sys.exit ( "EXECUTION IS TERMINATED" )
-        
+
         if isinstance(g, h5py.File) or isinstance(g, h5py.Group):
             #if item is None: return
             for k,v in dict(g).items():
@@ -97,7 +97,7 @@ class H5VQWTree(QWTree):
 
 
     def show_tool_tips(self):
-        self.setToolTip('HDF5 tree') 
+        self.setToolTip('HDF5 tree')
 
 
     def set_style(self):
@@ -131,25 +131,9 @@ class H5VQWTree(QWTree):
                 logger.debug(msg)
 
 
-#    #def resizeEvent(self, e):
-#        #self.frame.setGeometry(self.rect())
-#        #logger.debug('resizeEvent')
-
-#    #def moveEvent(self, e):
-#        #self.position = self.mapToGlobal(self.pos())
-#        #self.position = self.pos()
-#        #logger.debug('moveEvent - pos:' + str(self.position))
-
-
     def closeEvent(self, e):
         logger.debug('closeEvent')
         QWTree.closeEvent(self, e)
-
-        #try   : self.gui_win.close()
-        #except: pass
-
-        #try   : del self.gui_win
-        #except: pass
 
 
     if __name__ == "__main__":
@@ -174,7 +158,6 @@ class H5VQWTree(QWTree):
 
         else:
             logger.debug(self.key_usage())
-
 
 
 if __name__ == "__main__":

@@ -55,40 +55,24 @@ class QWPopupEditConfirm(QDialog):
         self.but_cancel.setFocusPolicy(Qt.NoFocus)
 
         self.set_style()
-#        self.set_icons()
-#        self.set_tool_tips()
 
 
     def set_style(self):
         self.layout().setContentsMargins(2,2,2,2)
-        styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);" # Gray
-#        styleDefault = ""
-#        self.setStyleSheet(styleDefault)
+        styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);"
         self.but_cancel.setStyleSheet(styleGray)
         self.but_apply.setStyleSheet(styleGray)
         self.edi_msg.setMinimumSize(500,60)
         self.setFixedHeight(100)
-#        self.setModal(True)
-#        self.setFixedWidth(200)
 
-#    def set_icons(self):
-#        from psana.graphqt.QWIcons import icon
-#        icon.set_icons()
-#        self.but_cancel.setIcon(icon.icon_button_cancel)
-#        self.but_apply .setIcon(icon.icon_button_ok)
 
-#    def set_tool_tips(self):
-#        self.but_apply.setToolTip('Apply')
-#        self.but_cancel.setToolTip('Cancel')
-
- 
     def on_cancel(self):
         logger.debug('on_cancel')
         self.reject()
 
 
     def on_apply(self):
-        logger.debug('on_apply')  
+        logger.debug('on_apply')
         self.accept()
 
 

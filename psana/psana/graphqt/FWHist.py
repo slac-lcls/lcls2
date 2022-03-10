@@ -1,7 +1,7 @@
 
 """
-Class :py:class:`FWHist` 
-===========================
+Class :py:class:`FWHist`
+========================
 
 Usage ::
 

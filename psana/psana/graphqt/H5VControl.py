@@ -11,7 +11,7 @@ Usage ::
 Created on 2020-01-04 by Mikhail Dubrovin
 """
 
-from psana.graphqt.CMWControlBase import *  # CMWControlBase, QApplication, QSize, ..., icon, style, cp, logging, os, sys, QWFileNameV2
+from psana.graphqt.CMWControlBase import *
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, np
 
 logger = logging.getLogger(__name__)
@@ -84,9 +84,6 @@ class H5VControl(CMWControlBase):
         CMWControlBase.set_style(self)
         self.lab_ctrl.setStyleSheet(style.styleLabel)
         self.but_exp_col.setIcon(icon.icon_folder_open)
-        #self.w_fname.lab.setStyleSheet(style.styleLabel)
-        #self.but_save.setIcon(icon.icon_save)
-        #self.but_save.setStyleSheet('') #style.styleButton, style.styleButtonGood
         self.enable_buts()
 
 

@@ -1,10 +1,10 @@
+
 """
 Class :py:class:`DragEllipse` - for draggable shape item
 =======================================================
 
 Created on 2019-07-11 by Mikhail Dubrovin
 """
-#-----------------------------
 
 from math import atan2, degrees, radians, sin, cos
 import logging
@@ -15,17 +15,16 @@ from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE, ELLIPSE
 from psana.graphqt.DragPoint import * # DragPoint, DragBase, Qt, QPen, QBrush, QCursor
 from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
 
-#-----------------------------
 
-class DragEllipse(QGraphicsEllipseItem, DragBase) :
+class DragEllipse(QGraphicsEllipseItem, DragBase):
                 # QRectF, QGraphicsItem, QGraphicsScene
     def __init__(self, obj, parent=None, scene=None,\
-                 brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)) :
-        """Adds QGraphics(Rect)Item to the scene. 
+                 brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)):
+        """Adds QGraphics(Rect)Item to the scene.
 
         Parameters
 
-        obj : QPointF or shape type e.g. QRectF
+        obj: QPointF or shape type e.g. QRectF
               obj is QPointF - shape parameters are defined at first mouse click
               obj is QRectF - it will be drawn as is
         """
@@ -34,7 +33,7 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         rect = obj if isinstance(obj, QRectF) else\
                QRectF(obj, obj + QPointF(5,5)) if isinstance(obj, QPointF) else\
                None
-        if rect is None :
+        if rect is None:
             logger.warning('DragEllipse - wrong init object type:', str(obj))
             return
 
@@ -44,15 +43,15 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         #DragBase.__init__(self, parent, brush, pen) # is called inside QGraphicsEllipseItem
 
         logger.debug('In DragEllipse - superclass initialization is done')
-        
-        if isinstance(obj, QPointF) :
+
+        if isinstance(obj, QPointF):
             self._drag_mode = ADD
             logger.debug('set elf._drag_mode = ADD, ADD:%d  _drag_mode:%d' % (ADD, self._drag_mode))
 
         if scene is not None: scene.addItem(self)
 
-        if self._drag_mode == ADD :
-            self.grabMouse() # makes available mouseMoveEvent 
+        if self._drag_mode == ADD:
+            self.grabMouse() # makes available mouseMoveEvent
             logger.debug('In DragEllipse mode grabMouse()')
 
         self.setAcceptHoverEvents(True)
@@ -77,7 +76,7 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         #self.setEnabled(True)
 
 
-    def set_control_points(self) :
+    def set_control_points(self):
         parent = self # None
         r = self.rect()
         scene=self.scene()
@@ -103,7 +102,7 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         self.pro = DragPoint(ct+(ct-cb)/5, parent, scene, pshape='r', rsize=6)
 
         sta = radians(self.startAngle()/16)
-        spa = radians(self.spanAngle()/16) 
+        spa = radians(self.spanAngle()/16)
         end = sta + spa
         c, w, h = r.center(), r.width(), r.height()
         eb = c + 0.3*QPointF(w*cos(sta), -h*sin(sta))
@@ -116,10 +115,10 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
                                self.pct, self.pcl, self.pcb, self.pcr,\
                                self.ped, self.pro, self.peb, self.pee]
 
-        for cpt in self.lst_ctl_points : self.setZValue(100)
+        for cpt in self.lst_ctl_points: self.setZValue(100)
 
 
-    def move_control_points(self) :
+    def move_control_points(self):
 
         r = self.rect().normalized()
         r0 = self.rect0
@@ -162,7 +161,7 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         diag = dpbr-dptl
         dx, dy = diag.x(), diag.y()
         eb = c + QPointF(dx*ceb, dy*seb)
-        ee = c + QPointF(dx*cee, dy*see) 
+        ee = c + QPointF(dx*cee, dy*see)
         print('XXX eb:', eb)
         print('XXX ee:', ee)
         self.peb.setPos(eb)
@@ -178,16 +177,15 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         #self.pee.setPos(c + self.rotate_point(ee, sign=1))
 
 
-    def itemChange(self, change, value) :
+    def itemChange(self, change, value):
         #print('%s.itemChange' % (self.__class__.__name__), ' change: %d, value:' % change, value)
         valnew = QGraphicsEllipseItem.itemChange(self, change, value)
-        if change == self.ItemSelectedHasChanged :
-            #self.set_control_points_visible(visible=True)            
-            self.set_control_points_visible(visible=self.isSelected())            
+        if change == self.ItemSelectedHasChanged:
+            self.set_control_points_visible(visible=self.isSelected())
         return valnew
 
 
-    def mousePressEvent(self, e) :
+    def mousePressEvent(self, e):
         logger.debug('DragEllipse.mousePressEvent, at point: %s on scene: %s '%\
                      (str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsEllipseItem.mousePressEvent(self, e) # points would not show up w/o this line
@@ -200,11 +198,11 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         item_sel = self.scene().itemAt(ps.x(), ps.y(), t)
         #item_sel = self.scene().itemAt(ps)
 
-        if self.lst_ctl_points is None : 
+        if self.lst_ctl_points is None:
             logger.warning('DragEllipse.lst_ctl_points is None')
             return
 
-        if item_sel in self.lst_ctl_points :
+        if item_sel in self.lst_ctl_points:
             #print('set mode EDIT')
             self.set_drag_mode(EDIT)
             self.set_child_item_sel(item_sel)
@@ -216,79 +214,76 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
             self.p0_pbr = self.pbr.pos()
             self.p0_pbl = self.pbl.pos()
 
-            if item_sel == self.ped : self.control_point_menu()
-
-            #print('%s.mousePressEvent rect0' % self.__class__.__name__, self.rect0)      
-            #print('%s.mousePressEvent: pcb.pos()' % self.__class__.__name__, self.pcb.pos())
+            if item_sel == self.ped: self.control_point_menu()
 
 
-    def mouseMoveEvent(self, e) :
+    def mouseMoveEvent(self, e):
         QGraphicsEllipseItem.mouseMoveEvent(self, e)
         #logger.debug('%s.mouseMoveEvent' % self.__class__.__name__)
         #print('%s.mouseMoveEvent, at point: ' % self.__class__.__name__, e.pos(), ' scenePos: ', e.scenePos())
 
-        dp = e.scenePos() - e.lastScenePos() 
+        dp = e.scenePos() - e.lastScenePos()
 
-        if self._drag_mode == MOVE and self.isSelected() :
+        if self._drag_mode == MOVE and self.isSelected():
             self.moveBy(dp.x(), dp.y())
             #self.move_control_points()
 
-        elif self._drag_mode == ADD :
+        elif self._drag_mode == ADD:
             #print('%s.mouseMoveEvent _drag_mode=ADD' % self.__class__.__name__)
             rect = self.rect()
             rect.setBottomRight(rect.bottomRight() + dp)
             self.setRect(rect)
 
-        elif self._drag_mode == EDIT :
+        elif self._drag_mode == EDIT:
 
             dp = self.rotate_point(dp)
 
             r = self.rect()
             i = self.child_item_sel()
-            if   i == self.pbr : 
+            if   i == self.pbr:
                 r.setBottomRight(r.bottomRight() + 0.5*dp)
                 r.setTopRight   (r.topRight()    + 0.5*QPointF( dp.x(), -dp.y()))
                 r.setTopLeft    (r.topLeft()     + 0.5*QPointF(-dp.x(), -dp.y()))
                 r.setBottomLeft (r.bottomLeft()  + 0.5*QPointF(-dp.x(),  dp.y()))
 
-            elif i == self.ptr : 
+            elif i == self.ptr:
                 r.setTopRight   (r.topRight()    + 0.5*dp)
                 r.setTopLeft    (r.topLeft()     + 0.5*QPointF(-dp.x(),  dp.y()))
                 r.setBottomLeft (r.bottomLeft()  + 0.5*QPointF(-dp.x(), -dp.y()))
                 r.setBottomRight(r.bottomRight() + 0.5*QPointF( dp.x(), -dp.y()))
 
-            elif i == self.ptl : 
+            elif i == self.ptl:
                 r.setTopLeft    (r.topLeft()     + 0.5*dp)
                 r.setTopRight   (r.topRight()    + 0.5*QPointF(-dp.x(),  dp.y()))
                 r.setBottomLeft (r.bottomLeft()  + 0.5*QPointF( dp.x(), -dp.y()))
                 r.setBottomRight(r.bottomRight() + 0.5*QPointF(-dp.x(), -dp.y()))
 
-            elif i == self.pbl : 
+            elif i == self.pbl:
                 r.setBottomLeft (r.bottomLeft()  + 0.5*dp)
                 r.setBottomRight(r.bottomRight() + 0.5*QPointF(-dp.x(),  dp.y()))
                 r.setTopRight   (r.topRight()    + 0.5*QPointF(-dp.x(), -dp.y()))
                 r.setTopLeft    (r.topLeft()     + 0.5*QPointF( dp.x(), -dp.y()))
 
-            elif i == self.pct : r.setTop   (r.top()    + dp.y()); r.setBottom(r.bottom() - dp.y())
-            elif i == self.pcl : r.setLeft  (r.left()   + dp.x()); r.setRight (r.right()  - dp.x())
-            elif i == self.pcb : r.setBottom(r.bottom() + dp.y()); r.setTop   (r.top()    - dp.y())
-            elif i == self.pcr : r.setRight (r.right()  + dp.x()); r.setLeft  (r.left()   - dp.x())
+            elif i == self.pct: r.setTop   (r.top()    + dp.y()); r.setBottom(r.bottom() - dp.y())
+            elif i == self.pcl: r.setLeft  (r.left()   + dp.x()); r.setRight (r.right()  - dp.x())
+            elif i == self.pcb: r.setBottom(r.bottom() + dp.y()); r.setTop   (r.top()    - dp.y())
+            elif i == self.pcr: r.setRight (r.right()  + dp.x()); r.setLeft  (r.left()   - dp.x())
 
-            elif i == self.pro :
+            elif i == self.pro:
                 c = r.center()
                 #print('=== rect center %6.1f %6.1f' % (c.x(), c.y()))
                 v = e.scenePos() - self.mapToScene(c.x(), c.y()) # in scene coordinates
                 angle = degrees(atan2(v.y(), v.x())) + 90
                 self.setRotation(angle)
 
-            elif i == self.peb :
+            elif i == self.peb:
                 c = r.center()
                 v = e.scenePos() - self.mapToScene(c.x(), c.y()) # in scene coordinates
                 #angle0 = self.startAngle()/16
                 angle = degrees(atan2(v.y(), v.x()))
                 self.setStartAngle(-angle*16)
 
-            elif i == self.pee :
+            elif i == self.pee:
                 c = r.center()
                 v = e.scenePos() - self.mapToScene(c.x(), c.y()) # in scene coordinates
                 angle = degrees(atan2(v.y(), v.x())) + 180
@@ -309,7 +304,7 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         #logger.debug('DragEllipse.mouseReleaseEvent') # % self.__class__.__name__)
         QGraphicsEllipseItem.mouseReleaseEvent(self, e)
 
-        if self._drag_mode == ADD :
+        if self._drag_mode == ADD:
             self.ungrabMouse()
             self.setRect(self.rect().normalized())
 
@@ -320,53 +315,45 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
             self.set_control_points()
             #self.setSelected(False)
 
-        if self._drag_mode == EDIT :
+        if self._drag_mode == EDIT:
             self.set_child_item_sel(None)
 
         self.set_drag_mode()
 
         c = self.rect().center()
         self.setTransformOriginPoint(c)
-        #self.redefine_rect()
-        #print('XXX set rect transform origin to rect center x:%6.1f y:%6.1f' % (c.x(), c.y()))
-        #print('XXX item scenePos() x:%6.1f y:%6.1f' % (p.x(), p.y()))
 
 
-
-#    def hoverEnterEvent(self, e) :
+#    def hoverEnterEvent(self, e):
 #        #print('%s.hoverEnterEvent' % self.__class__.__name__)
 #        QGraphicsEllipseItem.hoverEnterEvent(self, e)
 #        #QApplication.setOverrideCursor(QCursor(self.hover_cursor))
 
-
-#    def hoverLeaveEvent(self, e) :
+#    def hoverLeaveEvent(self, e):
 #        #print('%s.hoverLeaveEvent' % self.__class__.__name__)
 #        QGraphicsEllipseItem.hoverLeaveEvent(self, e)
 #        #QApplication.setOverrideCursor(QCursor(self.hover_cursor))
 #        #QApplication.restoreOverrideCursor()
-        
 
-#    def hoverMoveEvent(self, e) :
+#    def hoverMoveEvent(self, e):
 #        #print('%s.hoverMoveEvent' % self.__class__.__name__)
 #        QGraphicsEllipseItem.hoverMoveEvent(self, e)
 
-
-#    def mouseDoubleClickEvent(self, e) :
+#    def mouseDoubleClickEvent(self, e):
 #        QGraphicsEllipseItem.hoverLeaveEvent(self, e)
 #        print('%s.mouseDoubleClickEvent, at point: ' % self.__class__.__name__, e.pos() #e.globalX(), e.globalY())
 
-
-#    def wheelEvent(self, e) :
+#    def wheelEvent(self, e):
 #        QGraphicsEllipseItem.wheelEvent(self, e)
 #        #print('%s.wheelEvent, at point: ' % self.__class__.__name__, e.pos() #e.globalX(), e.globalY())
 
-
-#    def emit_signal(self, msg='click') :
+#    def emit_signal(self, msg='click'):
 #        self.emit(QtCore.SIGNAL('event_on_rect(QString)'), msg)
 #        #print(msg)
 
-#-----------------------------
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
     print('Self test is not implemented...')
     print('use > python FWViewImageShapes.py')
-#-----------------------------
+
+# EOF

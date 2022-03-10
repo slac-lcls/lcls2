@@ -156,12 +156,6 @@ class CMWDBControl(CMWControlBase):
         # TEST BUTTON
         self.but_test.setIcon(icon.icon_undo)
         self.but_test.setCheckable(True)
-        #self.but_test.setChecked(True)
-        #self.but_test.setFlat(True)
-        #self.but_test.setVisible(False)
-        #self.but_test.setFixedWidth(100)
-        #self.but_test.setFixedHeight(100)
-        #self.but_test.setIconSize(QSize(96,96))
 
         self.layout().setContentsMargins(10,0,10,0) # L,U,R,D
         self.setMinimumWidth(500)
@@ -180,16 +174,9 @@ class CMWDBControl(CMWControlBase):
         self.wfnm.setVisible(False)
         self.wfnm.setEnabled(False)
 
-#    def resizeEvent(self, e):
-#        logger.debug('resizeEvent size: %s' % str(e.size()))
-#    def moveEvent(self, e):
-#        logger.debug('moveEvent pos: %s' % str(e.pos()))
-
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
-        #try   : del cp.guiworkresdirs # CMWDBControl
-        #except: pass # silently ignore
 
 
     def on_edi_db_filter_finished(self):

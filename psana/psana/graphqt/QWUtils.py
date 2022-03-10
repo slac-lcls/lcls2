@@ -71,7 +71,7 @@ def change_check_box_list_in_popup_menu(list, win_title='Set check boxes', paren
     response = popupMenu.exec_()
 
     if   response == QDialog.Accepted:
-        #logger.debug('New checkbox list is accepted')         
+        #logger.debug('New checkbox list is accepted')
         return 1
     elif response == QDialog.Rejected:
         #logger.debug('Will use old checkbox list')
@@ -94,7 +94,7 @@ def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes', paren
     response = popupMenu.exec_()
 
     if   response == QDialog.Accepted:
-        #logger.debug('New checkbox dict is accepted',)         
+        #logger.debug('New checkbox dict is accepted',)
         return 1
     elif response == QDialog.Rejected:
         #logger.debug('Will use old checkbox dict')
@@ -122,7 +122,7 @@ def print_rect(r, cmt=''):
     logger.debug('%s L=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f' % (len(cmt)*' ', L, B, R, T))
 
 
-def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):       
+def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
 
     path, fext = QFileDialog.getSaveFileName(parent,
                                              caption   = title,
@@ -135,7 +135,7 @@ def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
     return path
 
 
-def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):       
+def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
 
     path, fext = QFileDialog.getOpenFileName(parent, title, path0, filter=filter)
 
@@ -143,11 +143,11 @@ def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
     if dname == '' or fname == '':
         #logger.debug('Input directiry name or file name is empty... keep file path unchanged...'
         return None
-    #logger.info('Input file: ' + path + 'get_open_fname_through_dialog_box') 
+    #logger.info('Input file: ' + path + 'get_open_fname_through_dialog_box')
     return path
 
 
-def get_existing_directory_through_dialog_box(parent, path0, title, options = QFileDialog.ShowDirsOnly):       
+def get_existing_directory_through_dialog_box(parent, path0, title, options = QFileDialog.ShowDirsOnly):
 
     path = QFileDialog.getExistingDirectory(parent, title, path0, options)
 
@@ -155,7 +155,7 @@ def get_existing_directory_through_dialog_box(parent, path0, title, options = QF
     if dname == '':
         # logger.debug('Input directiry name or file name is empty... keep file path unchanged...'
         return None
-    logger.info('Selected directory: %s' % path) 
+    logger.info('Selected directory: %s' % path)
     return path
 
 
@@ -230,7 +230,7 @@ if __name__ == "__main__":
 
     if tname == '0':
         instrs = ['SXR', 'AMO', 'XPP', 'CXI', 'MEC']
-        resp = select_item_from_popup_menu(instrs, title='Select INS', default='AMO') 
+        resp = select_item_from_popup_menu(instrs, title='Select INS', default='AMO')
         logger.debug('Selected: %s' % resp)
 
     elif tname == '1':
@@ -238,8 +238,8 @@ if __name__ == "__main__":
         resp = change_check_box_list_in_popup_menu(list_of_cbox, win_title='Select vars(s)')
         for (var,stat) in list_of_cbox: logger.debug('%s: %s' % (var, stat))
         logger.debug('resp: %s' % resp)
-        
-    elif tname == '2': 
+
+    elif tname == '2':
         dict_of_pars = {'checked':'radio1', 'list':['radio0', 'radio1', 'radio2']}
         resp = select_radio_button_in_popup_menu(dict_of_pars, win_title='Select vars(s)', do_confirm=True)
         for (k,v) in dict_of_pars.items(): logger.debug('%s: %s' % (k, v))
@@ -250,27 +250,27 @@ if __name__ == "__main__":
         resp = get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt')
         logger.debug('resp: %s' % resp)
 
-    elif tname == '4': 
+    elif tname == '4':
         parent=None; path0='./'; title='get_open_fname_through_dialog_box'
         resp = get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt')
         logger.debug('resp: %s' % resp)
 
-    elif tname == '5': 
+    elif tname == '5':
         resp = confirm_dialog_box(parent=None, text='Confirm that you aware!', title='Acknowledge')
         logger.debug('resp: %s' % resp)
 
-    elif tname == '6': 
-        resp = confirm_or_cancel_dialog_box(parent=None, text='Confirm or cancel', title='Confirm or cancel') 
+    elif tname == '6':
+        resp = confirm_or_cancel_dialog_box(parent=None, text='Confirm or cancel', title='Confirm or cancel')
         logger.debug('resp: %s' % resp)
 
-    elif tname == '7': 
+    elif tname == '7':
         from time import sleep
         resp = help_dialog_box(parent=None, text='Help message goes here', title='Help')
         logger.debug('resp: %s' % resp)
         sleep(3)
         del resp
 
-    elif tname == '8': 
+    elif tname == '8':
         resp = select_color(colini=Qt.blue, parent=None)
 
     elif tname == '9':
@@ -278,7 +278,7 @@ if __name__ == "__main__":
         resp = change_check_box_dict_in_popup_menu(dict_of_cbox, win_title='Select vars(s)')
         for (var,stat) in dict_of_cbox.items(): logger.debug('%s: %s' % (var, stat))
         logger.debug('resp: %s' % resp)
-        
+
     elif tname == '10':
         resp=edit_and_confirm_or_cancel_dialog_box(parent=None, text='Text confirm or cancel', title='Edit and confirm or cancel')
         logger.debug('resp=%s' % resp)
