@@ -18,11 +18,11 @@ Usage::
     edges         = hb.edges()         # returns np.array input list of bin edges
     vmin          = hb.vmin()          # returns vtype minimal value of bin edges
     vmax          = hb.vmax()          # returns vtype maximal value of bin edges
-    vtype         = hb.vtype()         # returns np.dtype - type of bin edge values 
-    equalbins     = hb.equalbins()     # returns bool True/False for equal/variable size bins 
+    vtype         = hb.vtype()         # returns np.dtype - type of bin edge values
+    equalbins     = hb.equalbins()     # returns bool True/False for equal/variable size bins
 
     limits        = hb.limits()        # returns np.array of limits (vmin, vmax)
-    binedges      = hb.binedges()      # returns np.array with bin edges of size nbins+1 
+    binedges      = hb.binedges()      # returns np.array with bin edges of size nbins+1
     binedgesleft  = hb.binedgesleft()  # returns np.array with bin left edges of size nbins
     binedgesright = hb.binedgesright() # returns np.array with bin rignt edges of size nbins
     bincenters    = hb.bincenters()    # returns np.array with bin centers of size nbins
@@ -30,7 +30,7 @@ Usage::
     halfbinw      = hb.halfbinw()      # returns np.array with half-bin widths of size nbins or scalar bin half-width for equal bins
     strrange      = hb.strrange(fmt)   # returns str of formatted vmin, vmax, nbins ex: 1-6-5
 
-    ind     = hb.bin_index(value, edgemode=0)    # returns bin index [0,nbins) for value. 
+    ind     = hb.bin_index(value, edgemode=0)    # returns bin index [0,nbins) for value.
     indarr  = hb.bin_indexes(valarr, edgemode=0) # returns array of bin index [0,nbins) for array of values
     hisarr  = hb.bin_count(valarr, edgemode=0)   # returns array of bin counts [0,nbins) for array of values (histogram value per bin)
     # edgemode - defines what to do with underflow overflow indexes;
@@ -65,7 +65,6 @@ import math
 import numpy as np
 sqrt = math.sqrt
 
-
 #import logging
 #logger = logging.getLogger(__name__)
 
@@ -80,7 +79,7 @@ class HBins():
            Parameters:
            - edges - sequence of two or more bin edges
            - nbins - (int) number of bins for equal size bins
-           - vtype - numpy type of bin values (optional parameter)          
+           - vtype - numpy type of bin values (optional parameter)
         """
         self._name       = self.__class__.__name__
         self._vtype      = vtype
@@ -95,13 +94,13 @@ class HBins():
 
         # dynamic parameters
         self._limits     = None
-        self._binwidth   = None 
-        self._halfbinw   = None 
-        self._binedges   = None 
-        self._bincenters = None 
-        self._inds       = None 
-        self._indedges   = None 
-        self._indcenters = None 
+        self._binwidth   = None
+        self._halfbinw   = None
+        self._binedges   = None
+        self._bincenters = None
+        self._inds       = None
+        self._indedges   = None
+        self._indcenters = None
         self._strrange   = None
 
 
@@ -242,7 +241,7 @@ class HBins():
 
     def bin_index(self, v, edgemode=0):
         """Returns bin index for scalar value"""
-        
+
         indmin, indmax = self._set_limit_indexes(edgemode)
         if self._ascending:
             if v< self._edges[0] : return indmin
@@ -250,11 +249,11 @@ class HBins():
         else:
             if v> self._edges[0] : return indmin
             if v<=self._edges[-1]: return indmax
-            
+
         if self._equalbins:
             return int(math.floor((v-self._edges[0])/self.binwidth()))
 
-            
+
         if self._ascending:
             for ind, edgeright in enumerate(self.binedgesright()):
                 if v<edgeright:
@@ -421,9 +420,9 @@ def test(o, cmt=''):
     print('binedgesright', o.binedgesright())
     print('bincenters',    o.bincenters())
     print('binwidth',      o.binwidth())
-    print('halfbinw',      o.halfbinw()) 
-    print('strrange',      o.strrange()) 
-    print('equalbins',     o.equalbins())  
+    print('halfbinw',      o.halfbinw())
+    print('strrange',      o.strrange())
+    print('equalbins',     o.equalbins())
     o.print_attrs_defined()
     print('%s' % (80*'_'))
 
@@ -435,7 +434,7 @@ def test_bin_data(o, cmt=''):
     data_ret = o.bin_data(dtype=np.int)
     print('data saved   :', data)
     print('data retrieved:', data_ret)
-    
+
 
 if __name__ == "__main__":
 
@@ -444,22 +443,22 @@ if __name__ == "__main__":
 
     try: o = HBins((1,6), 5.5)
     except Exception as e: print('Test Exception non-int nbins:', e)
- 
+
     try: o = HBins((1,6), -5)
     except Exception as e: print('Test Exception nbins<1:', e)
- 
+
     try: o = HBins((1,6), 0)
     except Exception as e: print('Test Exception nbins<1:', e)
- 
+
     try: o = HBins((1,6,3))
     except Exception as e: print('Test Exception non-monotonic edges:', e)
- 
+
     try: o = HBins((3,6,1))
     except Exception as e: print('Test Exception non-monotonic edges:', e)
- 
+
     try: o = HBins((3,2,2,1))
     except Exception as e: print('Test Exception non-monotonic edges:', e)
- 
+
     try: o = HBins((3,'s',1))
     except Exception as e: print('Test Exception wrong type value in edges:', e)
 
