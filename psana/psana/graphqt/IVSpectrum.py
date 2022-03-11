@@ -48,7 +48,7 @@ class IVSpectrum(QWidget):
         self.rs_old = None
         rs=QRectF(0, 0, 100, 1000)
         self.whis = FWViewHist(self, rs, origin='DR', scale_ctl='V', fgcolor='yellow', bgcolor='dark', orient='V', signal_fast=signal_fast, hbins=None)
-        self.whis.set_histogram_from_arr(image, nbins, amin, amax, frmin, frmax, edgemode)
+        self.whis.set_histogram_from_arr(image, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits=True)
 
         self.wcbar = FWViewColorBar(self, coltab=ctab, orient='V')
 
@@ -176,9 +176,9 @@ class IVSpectrum(QWidget):
         self.edi_info.setMaximumHeight(80)
 
 
-    def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+    def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0, update_hblimits=True):
         #logger.debug('set_spectrum_from_arr size=%d' % arr.size)
-        self.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode)
+        self.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)
 
 
     def reset_original_size(self):
