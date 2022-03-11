@@ -26,7 +26,7 @@ def is_epix10ka(detname): return detname_contains_pattern(detname, 'Epix10')
 def is_jungfrau(detname): return detname_contains_pattern(detname, 'Jungfrau')
 
 def is_area_detector(detname):
-    logger.warning('TBD: is_area_detector for DETECTOR NAME "%s"' % detname)
+    logger.warning('is_area_detector for DETECTOR NAME "%s" returns True' % detname)
     return True
 
 

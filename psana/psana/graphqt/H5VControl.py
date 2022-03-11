@@ -142,7 +142,7 @@ class H5VControl(CMWControlBase):
 
 
     def on_item_selected(self, selected, deselected):
-        logger.debug('TBD on_item_selected')
+        logger.debug('on_item_selected')
         wtree = cp.h5vmain.wtree
         self.enable_buts()
         itemsel = wtree.model.itemFromIndex(selected)

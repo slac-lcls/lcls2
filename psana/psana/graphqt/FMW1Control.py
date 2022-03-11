@@ -134,7 +134,7 @@ class FMW1Control(CMWControlBase):
 
 
     def on_but_deploy(self):
-        logger.debug('TBD on_but_deploy')
+        logger.debug('on_but_deploy')
 
         if cp.fmw1main is None: return
         wtree = cp.fmw1main.wfstree
@@ -197,7 +197,7 @@ class FMW1Control(CMWControlBase):
 
 
     def subprocess_command(self, cmd, **kwa):
-        logger.warning('TBD subprocess_command\n%s' % cmd)
+        logger.warning('subprocess_command\n%s' % cmd)
         cp.fmw1main.append_info(cmd)
         self.force_stop = False
         #return

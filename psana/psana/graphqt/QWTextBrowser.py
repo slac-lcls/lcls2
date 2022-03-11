@@ -106,7 +106,7 @@ class QWTextBrowser(CMWControlBase):
 
 
     def on_but_view(self):
-        logger.debug('TBD re-implemented on_but_view')
+        logger.debug('on_but_view should be re-implemented')
 
 
     def on_but_save(self):

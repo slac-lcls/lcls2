@@ -416,7 +416,7 @@ class FWView(QGraphicsView):
 
     def add_rect_to_scene(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)):
         """Adds rect to scene, returns QWGraphicsRectItem - for interactive stuff"""
-        #logger.debug('XXX:QWGraphicsRectItem TBD')
+        logger.debug('add_rect_to_scene')
         pen.setCosmetic(True)
         item = QWGraphicsRectItem(rect, parent=None, scene=self.scene())
         item.setPen(pen)

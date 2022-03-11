@@ -137,10 +137,10 @@ class FWViewImageShapes(FWViewImage):
                '\n  M - add point'\
                '\n  A - add rect'\
                '\n  P - add polyline'\
-               '\n  E - add ellipse TBD'\
-               '\n  L - add line TBD'\
-               '\n  C - add circle TBD'\
-               '\n  W - add wedge TBD'\
+               '\n  E - add ellipse'\
+               '\n  L - add line'\
+               '\n  C - add circle'\
+               '\n  W - add wedge'\
                '\n  S - switch interactive session between scene and shapes'\
                '\n  D - delete selected item'\
                '\n'

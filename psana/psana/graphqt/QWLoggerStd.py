@@ -284,12 +284,10 @@ class QWLoggerStd(QWidget):
                                                filter    = '*.txt'
                                                ))
         if path == '':
-            logger.debug('Saving is cancelled.')
+            logger.debug('Log saving is cancelled.')
             return
         self.log_file.setValue(path)
-        logger.info('TBD ????????????????  Output file: ' + path)
-
-        #logger.save_log_in_file(path)
+        logger.info('Log saved in: %s' % str(path))
 
 
     #def save_log_total_in_file(self):

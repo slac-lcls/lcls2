@@ -451,7 +451,7 @@ class CMWDBControl(CMWControlBase):
     def add_db(self):
         """Adds DB from file
         """
-        logger.debug('TBD: In add_db - Adds DB from file')
+        logger.debug('add_db - Adds DB from file')
 
         path0 = '.'
         path = qwu.get_open_fname_through_dialog_box(self, path0, 'Select file with DB to add', filter='*')
@@ -462,10 +462,10 @@ class CMWDBControl(CMWControlBase):
         host = cp.cdb_host.value()
         port = cp.cdb_port.value()
 
-        dbname = os.path.basename(path) # ????????????????????? split file extension?
+        dbname = os.path.basename(path)
 
         logger.info('Add DB "%s" from file %s' % (dbname, path))
-        dbu.importdb(host, port, dbname, path) #, **kwa)
+        dbu.importdb(host, port, dbname, path)
 
 
     def add_doc(self):

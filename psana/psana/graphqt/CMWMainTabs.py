@@ -213,7 +213,6 @@ class CMWMainTabs(QWidget):
             self.set_tab(tabname)
         elif isinstance(data, np.ndarray):
             logger.info(info_ndarr(data, 'switch to Image Viewer to view data:'))
-            #logger.warning('TBD: IV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
             self.set_tab(tabname='Image')
         elif isinstance(data, str):
             logger.info(info_ndarr(data, 'switch to Text Viewer to view data:'))
