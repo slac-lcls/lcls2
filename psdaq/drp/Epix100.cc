@@ -31,7 +31,7 @@ namespace Drp {
         //        enum index { raw, aux, numfields };
         enum index { raw, numfields };
 
-        Epix100PanelDef() { 
+        Epix100PanelDef() {
             ADD_FIELD(raw              ,UINT16,2);
             //            ADD_FIELD(aux              ,UINT16,2);
         }
@@ -50,14 +50,14 @@ namespace Drp {
     public:
         enum index { sht31Hum, sht31TempC,
                      num_fields };
-        
-        Epix100Def() { 
+
+        Epix100Def() {
             ADD_FIELD(sht31Hum         ,FLOAT,0);
             ADD_FIELD(sht31TempC       ,FLOAT,0);
         }
     } epix100Def;
 };
-            
+
 #undef ADD_FIELD
 
 using Drp::Epix100;
@@ -134,12 +134,12 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
         logging::debug("Constructing panel eventNames src 0x%x ids %s",
                        unsigned(nid),configNames.detId());
-        Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
+        Names& eventNames = *new(xtc) Names(configNames.detName(), alg,
                                             configNames.detType(),
-                                            configNames.detId(), 
+                                            configNames.detId(),
                                             nid,
                                             m_para->detSegment);
-            
+
         eventNames.add(xtc, epix100PanelDef);
         m_namesLookup[nid] = NameIndex(eventNames);
     }
@@ -166,7 +166,7 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
 void Epix100::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
-  
+
     // data structure in lcls1's psddldata/data/epix.ddl::ElementV3
     // epix100 has 32 byte header, frame data, 2 environmental rows,
     // 2 calibration rows, and 12 bytes on the end (4 2-byte
@@ -187,14 +187,14 @@ void Epix100::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& 
 
     cpocount++;
     if (cpocount%100==0) {
-        printf("*** event %d subframes.size: %d\n",cpocount,subframes.size());
+        printf("*** event %d subframes.size: %zd\n",cpocount,subframes.size());
         for (unsigned i=0; i<subframes.size(); i++) {
-            printf("*** subframes[%d].num_elem(): %d\n",i,subframes[i].num_elem());
+            printf("*** subframes[%d].num_elem(): %zd\n",i,subframes[i].num_elem());
         }
     }
 
     if (subframes[3].num_elem() != expectedsize) {
-        printf("*** incorrect size %d %d\n",subframes[3].num_elem(),expectedsize);
+        printf("*** incorrect size %zd %d\n",subframes[3].num_elem(),expectedsize);
         // raise damage here
     }
 
