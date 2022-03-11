@@ -16,11 +16,8 @@ using namespace Pds::Eb;
 
 void EbEpoch::dump(int number)
 {
-  auto now = fast_monotonic_clock::now();
-  auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - t0).count();
-
-  printf(" Epoch #%2d  @ %16p nxt %16p prv %16p key %014lx        age %5ld ms\n",
-         number, this, forward(), reverse(), key, age);
+  printf(" Epoch #%2d  @ %16p nxt %16p prv %16p key %014lx\n",
+         number, this, forward(), reverse(), key);
 
   EbEvent* end   = pending.empty();
   EbEvent* event = pending.forward();

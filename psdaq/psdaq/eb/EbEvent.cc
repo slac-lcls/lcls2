@@ -32,6 +32,7 @@ EbEvent::EbEvent(uint64_t        contract,
                  const EbDgram*  cdg,
                  unsigned        prm) :
   _contract (contract),
+  _t0       (fast_monotonic_clock::now()),
   _prm      (prm),
   _damage   (0),
   _last     (_contributions)

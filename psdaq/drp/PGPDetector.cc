@@ -201,6 +201,13 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
                   [&](){return queueLength(m_workerOutputQueues);});
 
+    uint64_t nDmaRet = 0L;
+    exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
+                  [&](){return nDmaRet;});
+    uint64_t dmaSize = 0L;
+    exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
+                  [&](){return dmaSize;});
+
     int64_t worker = 0L;
     uint64_t batchId = 0L;
     const unsigned bufferMask = m_pool.nbuffers() - 1;
@@ -214,10 +221,12 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
             break;
         }
         int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, dmaFlags, dmaErrors, dest);
+        nDmaRet = ret;
         for (int b=0; b < ret; b++) {
             uint32_t size = dmaRet[b];
             uint32_t index = dmaIndex[b];
             uint32_t lane = (dest[b] >> 8) & 7;
+            dmaSize = size;
             bytes += size;
             if (size > m_pool.dmaSize()) {
                 logging::critical("DMA overflowed buffer: %u vs %u", size, m_pool.dmaSize());

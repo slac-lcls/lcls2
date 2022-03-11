@@ -69,11 +69,14 @@ EbAppBase::EbAppBase(const EbParams&         prms,
 
   exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();     });
   exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();      });
+  exporter->add("EB_EvOcCt", labels, MetricType::Gauge,   [&](){ return  eventOccCnt();       });
+  //exporter->add("EB_EpOcCt", labels, MetricType::Gauge,   [&](){ return  epochOccCnt();       });
   exporter->add("EB_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add("EB_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
   exporter->add("EB_ToEvCt", labels, MetricType::Counter, [&](){ return  timeoutCnt();        });
   exporter->add("EB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();          });
   exporter->add("EB_CbMsMk", labels, MetricType::Gauge,   [&](){ return  missing();           });
+  exporter->add("EB_EvAge",  labels, MetricType::Gauge,   [&](){ return  eventAge();          });
 }
 
 EbAppBase::~EbAppBase()
@@ -278,6 +281,7 @@ int EbAppBase::process()
   {
     if (rc == -FI_ETIMEDOUT)
     {
+      // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
       rc = 0;
     }

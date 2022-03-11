@@ -46,12 +46,19 @@ namespace Pds {
       void               dump(unsigned detail) const;
       const uint64_t&    epochAllocCnt()  const;
       const uint64_t&    epochFreeCnt()   const;
+      //const uint64_t&    epochOccCnt()    const;
       const uint64_t&    eventAllocCnt()  const;
       const uint64_t&    eventFreeCnt()   const;
+      const uint64_t&    eventOccCnt()    const;
       const uint64_t     eventPoolDepth() const; // Right: not a ref
       const uint64_t&    timeoutCnt()     const;
       const uint64_t&    fixupCnt()       const;
       const uint64_t&    missing()        const;
+      const uint64_t&    eventAge()       const;
+    private:
+      friend class EbEvent;
+      using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
+      using ns_t         = std::chrono::nanoseconds;
     private:
       unsigned          _epIndex(uint64_t key) const;
       unsigned          _evIndex(uint64_t key) const;
@@ -60,30 +67,28 @@ namespace Pds {
       EbEpoch*          _epoch(uint64_t key, EbEpoch* after);
       void              _flushBefore(EbEpoch*);
       EbEpoch*          _discard(EbEpoch*);
-      void              _fixup(EbEvent*);
+      void              _fixup(EbEvent*, ns_t age);
       EbEvent*          _event(const Pds::EbDgram*, EbEvent* after, unsigned prm);
-      bool              _lookAhead(const EbEpoch*,
-                                   const EbEvent*,
-                                   const EbEvent* const due) const;
       void              _flush(const EbEvent* const due);
+      void              _flush();
+      void              _tryFlush();
       void              _retire(EbEvent*);
       EbEvent*          _insert(EbEpoch*, const Pds::EbDgram*, EbEvent*, unsigned prm);
     private:
-      friend class EbEvent;
-      using Duration_ms_t = std::chrono::duration<int, std::milli>;
-    private:
       LinkedList<EbEpoch>   _pending;       // Listhead, Epochs with events pending
-      fast_monotonic_clock::time_point
-                            _tLastFlush;    // Starting time of timeout
+      time_point_t          _tLastFlush;    // Starting time of timeout
       const uint64_t        _mask;          // Sequence mask
       GenericPool           _epochFreelist; // Freelist for new epochs
       std::vector<EbEpoch*> _epochLut;      // LUT of allocated epochs
       GenericPool           _eventFreelist; // Freelist for new events
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
-      const Duration_ms_t   _eventTimeout;  // Maximum event age in ms
-      uint64_t              _tmoEvtCnt;     // Count of timed out events
-      uint64_t              _fixupCnt;      // Count of flushed   events
-      uint64_t              _missing;       // Bit list of missing contributors
+      const ns_t            _eventTimeout;  // Maximum event age in ms
+      mutable uint64_t      _tmoEvtCnt;     // Count of timed out events
+      mutable uint64_t      _fixupCnt;      // Count of flushed   events
+      mutable uint64_t      _missing;       // Bit list of missing contributors
+      //mutable uint64_t      _epochOccCnt;   // Number of epochs in use
+      mutable uint64_t      _eventOccCnt;   // Number of events in use
+      mutable uint64_t      _age;           // Event age
       const unsigned&       _verbose;       // Print progress info
     };
   };
@@ -99,6 +104,14 @@ inline const uint64_t& Pds::Eb::EventBuilder::epochFreeCnt() const
   return _epochFreelist.numberofFrees();
 }
 
+// Revisit: This one is not terribly interesting and mirrors eventOccCnt()
+//inline const uint64_t& Pds::Eb::EventBuilder::epochOccCnt() const
+//{
+//  _epochOccCnt = _epochFreelist.numberofAllocs() - _epochFreelist.numberofFrees();
+//
+//  return _epochOccCnt;
+//}
+
 inline const uint64_t& Pds::Eb::EventBuilder::eventAllocCnt() const
 {
   return _eventFreelist.numberofAllocs();
@@ -107,6 +120,13 @@ inline const uint64_t& Pds::Eb::EventBuilder::eventAllocCnt() const
 inline const uint64_t& Pds::Eb::EventBuilder::eventFreeCnt() const
 {
   return _eventFreelist.numberofFrees();
+}
+
+inline const uint64_t& Pds::Eb::EventBuilder::eventOccCnt() const
+{
+  _eventOccCnt = _eventFreelist.numberofAllocs() - _eventFreelist.numberofFrees();
+
+  return _eventOccCnt;
 }
 
 inline const uint64_t Pds::Eb::EventBuilder::eventPoolDepth() const
@@ -129,6 +149,11 @@ inline const uint64_t& Pds::Eb::EventBuilder::fixupCnt() const
 inline const uint64_t& Pds::Eb::EventBuilder::missing() const
 {
   return _missing;
+}
+
+inline const uint64_t& Pds::Eb::EventBuilder::eventAge() const
+{
+  return _age;
 }
 
 #endif

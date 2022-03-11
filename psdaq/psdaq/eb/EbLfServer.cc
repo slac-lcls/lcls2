@@ -266,9 +266,8 @@ void EbLfServer::shutdown()
 
 int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 {
-  int                              rc;
-  fast_monotonic_clock::time_point t0;
-  bool                             first = true;
+  int  rc;
+  auto t0{fast_monotonic_clock::now()};
 
   ++_pending;
 
@@ -276,33 +275,23 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
   {
     const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
     rc = _poll(cqEntry, flags);
-    if (rc > 0)
-    {
-      break;
-    }
-    else if (rc == -FI_EAGAIN)
+    if (rc > 0)  break;
+
+    if (rc == -FI_EAGAIN)
     {
       if (_tmo)
       {
         rc = -FI_ETIMEDOUT;
         break;
       }
-      if (!first)
-      {
-        using ms_t = std::chrono::milliseconds;
-        auto  t1   = fast_monotonic_clock::now();
+      const ms_t tmo{msTmo};
+      auto       t1 {fast_monotonic_clock::now()};
 
-        if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
-        {
-          _tmo = msTmo;               // Switch to waiting after a timeout
-          rc = -FI_ETIMEDOUT;
-          break;
-        }
-      }
-      else
+      if (t1 - t0 > tmo)
       {
-        t0    = fast_monotonic_clock::now();
-        first = false;
+        _tmo = msTmo;               // Switch to waiting after a timeout
+        rc = -FI_ETIMEDOUT;
+        break;
       }
     }
     else

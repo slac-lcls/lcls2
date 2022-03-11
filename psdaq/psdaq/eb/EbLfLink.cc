@@ -443,10 +443,9 @@ int EbLfCltLink::post(const void* buf,
                       uint64_t    immData,
                       void*       ctx)
 {
-  RemoteAddress                    ra(_ra.rkey, _ra.addr + offset, len);
-  ssize_t                          rc;
-  fast_monotonic_clock::time_point t0;
-  bool                             first = true;
+  RemoteAddress ra{_ra.rkey, _ra.addr + offset, len};
+  auto          t0{fast_monotonic_clock::now()};
+  ssize_t       rc;
 
   _pending |= 1 << _id;
 
@@ -474,23 +473,18 @@ int EbLfCltLink::post(const void* buf,
     //  break;
     //}
 
-    if (!first)
-    {
-      using     ms_t  = std::chrono::milliseconds;
-      auto      t1    = fast_monotonic_clock::now();
-      const int msTmo = 5000;
+    const ms_t tmo{5000};
+    auto       t1 {fast_monotonic_clock::now()};
 
-      if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
-      {
-        rc = -FI_ETIMEDOUT;
-        break;
-      }
-    }
-    else
+    if (t1 - t0 > tmo)
     {
-      t0    = fast_monotonic_clock::now();
-      first = false;
+      rc = -FI_ETIMEDOUT;
+      break;
     }
+
+    usleep(100);                        // Don't retry too quickly
+
+    // Maybe check if an EQ event indicates the link is shut down?
   }
 
   _pending &= ~(1 << _id);
@@ -545,7 +539,7 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
 {
   int  rc;
   auto cq = _ep->rxcq();
-  auto t0(std::chrono::steady_clock::now());
+  auto t0{fast_monotonic_clock::now()};
 
   do
   {
@@ -565,9 +559,9 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
     }
     if (rc == -FI_EAGAIN)
     {
-      auto t1 = std::chrono::steady_clock::now();
-      auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-      if (dT > msTmo)  return rc;
+      const ms_t tmo{msTmo};
+      auto       t1 {fast_monotonic_clock::now()};
+      if (t1 - t0 > tmo)  return rc;
     }
   }
   while ((rc == -FI_EAGAIN) || (rc == 0));

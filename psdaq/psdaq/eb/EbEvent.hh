@@ -6,6 +6,7 @@
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
 #include "psdaq/service/EbDgram.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 
 namespace Pds {
@@ -46,10 +47,13 @@ namespace Pds {
       EbEvent* _add(const Pds::EbDgram*);
       void     _insert(const Pds::EbDgram*);
     private:
+      using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
+
       size_t               _size;            // Total contribution size (in bytes)
       uint64_t             _remaining;       // List of clients which have contributed
       const uint64_t       _contract;        // -> potential list of contributors
-      int                  _living;          // Aging counter
+      //int                  _living;          // Aging counter
+      time_point_t         _t0;              // Starting time of timeout
       unsigned             _prm;             // An application level free parameter
       XtcData::Damage      _damage;          // Accumulate damage about this event
       const Pds::EbDgram** _last;            // Pointer into the contributions array

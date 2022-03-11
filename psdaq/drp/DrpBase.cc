@@ -140,7 +140,8 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_chunkOffset(0),
   m_chunkRequest(false),
   m_configureBuffer(para.maxTrSize),
-  m_damage(0)
+  m_damage(0),
+  m_evtSize(0)
 {
     std::map<std::string, std::string> labels
         {{"instrument", para.instrument},
@@ -156,6 +157,7 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     exporter->add("DRP_fileWriting",  labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.writing(); });
     exporter->add("DRP_bufFreeBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.freeBlocked(); });
     exporter->add("DRP_bufPendBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.pendBlocked(); });
+    exporter->add("DRP_evtSize",      labels, Pds::MetricType::Gauge,   [&](){ return m_evtSize; });
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)
@@ -327,7 +329,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
     uint64_t pulseId = dgram->pulseId();
     XtcData::TransitionId::Value transitionId = dgram->service();
-if (transitionId != XtcData::TransitionId::L1Accept) {
+    if (transitionId != XtcData::TransitionId::L1Accept) {
     if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
@@ -436,6 +438,8 @@ if (transitionId != XtcData::TransitionId::L1Accept) {
             }
         }
     }
+
+    m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
 
     if (m_mon.enabled()) {
         // L1Accept

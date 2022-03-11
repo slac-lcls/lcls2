@@ -103,6 +103,7 @@ private:
     bool m_chunkRequest;
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
+    uint64_t m_evtSize;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
     FileParameters *m_fileParameters;
 };
