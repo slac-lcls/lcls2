@@ -18,7 +18,7 @@ no_ana=0
 no_shmem=0
 build_ext_list=""
 
-while getopts ":c:p:s:b:f:dam" opt; do
+while getopts "c:p:s:b:fdam" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
@@ -37,6 +37,7 @@ while getopts ":c:p:s:b:f:dam" opt; do
     f) force_clean=1                       # Force clean is required building between rhel6&7
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
+        exit 1
     ;;
   esac
 done
