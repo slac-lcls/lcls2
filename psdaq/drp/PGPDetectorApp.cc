@@ -12,6 +12,7 @@
 #include "Epix100.hh"
 #include "Opal.hh"
 #include "Wave8.hh"
+#include "Piranha4.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
@@ -126,6 +127,7 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     f.register_type<TimingBEB>   ("tb");
     f.register_type<TimingSystem>("ts");
     f.register_type<Wave8>       ("wave8");
+    f.register_type<Piranha4>    ("piranha4");
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {

@@ -38,6 +38,8 @@ add_executable(drp
 #    OpalTT.cc
     OpalTTFex.cc
 #    OpalTTSim.cc
+    Piranha4.cc
+    Piranha4TTFex.cc
     PGPDetector.cc
     PGPDetectorApp.cc
     drp.cc

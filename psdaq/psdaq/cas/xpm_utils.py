@@ -45,6 +45,9 @@ def nameLinkEpixHR2x2(v):
 def nameLinkEpix100(v):
     return ('Epix100', hostName(v))
 
+def nameLinkPiranha4(v):
+    return ('Piranha4', hostName(v))
+
 timDevType = {}
 timDevType['xpm']      = 0xff
 timDevType['dti']      = 0xfe
@@ -57,6 +60,7 @@ timDevType['timetool'] = 0xf8
 timDevType['epixquad'] = 0xf7
 timDevType['epixhr2x2']= 0xf6
 timDevType['epix100']  = 0xf5
+timDevType['piranha4'] = 0xf4
 
 linkType = {}
 linkType[0xff] = nameLinkXpm
@@ -70,6 +74,7 @@ linkType[0xf8] = nameLinkTimeTool
 linkType[0xf7] = nameLinkEpixQuad
 linkType[0xf6] = nameLinkEpixHR2x2
 linkType[0xf5] = nameLinkEpix100
+linkType[0xf4] = nameLinkPiranha4
 
 def xpmLinkId(value):
     itype = (value>>24)&0xff
