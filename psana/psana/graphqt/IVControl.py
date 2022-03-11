@@ -113,7 +113,7 @@ class IVControl(CMWControlBase):
             logger.debug('on_color_table_changed - do nothing here')
             return
         ctab =  w.wcbar.color_table()
-        logger.debug(info_ndarr(ctab, 'TBD on_color_table_changed: new color table'))
+        logger.debug(info_ndarr(ctab, 'on_color_table_changed: new color table'))
         w = cp.ivimageaxes
         if w is not None:
             wi = w.wimg
@@ -158,7 +158,7 @@ class IVControl(CMWControlBase):
         wimg = cp.ivimageaxes.wimg
         a = wimg.array_in_rect(r)
         logger.debug(info_ndarr(a, 'on_image_scene_rect_changed: selected array in rect'))
-        self.set_spectrum_from_arr(a)
+        self.set_spectrum_from_arr(a, update_hblimits=False)
 
 
     def connect_image_pixmap_changed(self):
@@ -172,20 +172,22 @@ class IVControl(CMWControlBase):
 
 
     def on_image_pixmap_changed(self):
-        logger.debug('TBD on_image_pixmap_changed')
+        logger.debug('on_image_pixmap_changed')
         wimg = cp.ivimageaxes.wimg
         arr = wimg.array_in_rect()
         coltab = wimg.coltab
-        self.set_spectrum_from_arr(arr)
+        self.set_spectrum_from_arr(arr, update_hblimits=False)
 
 
-    def set_spectrum_from_arr(self, arr, edgemode=0): #, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+    def set_spectrum_from_arr(self, arr, edgemode=0, update_hblimits=True): #, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
         if arr is self.arr_his_old: return
         self.arr_his_old = arr
         w = cp.ivspectrum
         if w is not None:
+            whis = w.whis
+            r = whis.scene().sceneRect()
             mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
-            w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode)
+            w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)
 
 
     def connect_histogram_scene_rect_changed(self):
@@ -199,7 +201,7 @@ class IVControl(CMWControlBase):
 
 
     def on_histogram_scene_rect_changed(self, r):
-        logger.debug('TBD on_histogram_scene_rect_changed: %s'%str(r))
+        logger.debug('on_histogram_scene_rect_changed: %s'%str(r))
         x1,y1,x2,y2 = r.getCoords()
         logger.debug('on_histogram_scene_rect_changed: reset image for spectal value in range %.3f:%.3f'%(y1,y2))
         w = cp.ivimageaxes
