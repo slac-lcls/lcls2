@@ -139,20 +139,24 @@ class FWViewHist(FWView):
         #print('FWViewHist.closeEvent')
 
 
-    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0, update_hblimits=True):
         #if np.array_equal(arr, self.arr_old): return
         if arr is self.arr_old: return
         self.arr_old = arr
         if arr.size<1: return
 
         aravel = arr.ravel()
-        vmin = amin if amin is not None else\
+
+        vmin, vmax = self.hbins.limits() if self.hbins is not None else (None, None)
+
+        if self.hbins is None or update_hblimits:
+          vmin = amin if amin is not None else\
                aravel.min() if frmin in (0,None) else\
                np.quantile(aravel, frmin, axis=0, interpolation='lower')
-        vmax = amax if amax is not None else\
+          vmax = amax if amax is not None else\
                aravel.max() if frmax in (1,None) else\
                np.quantile(aravel, frmax, axis=0, interpolation='higher')
-        if not vmin<vmax: vmax=vmin+1
+          if not vmin<vmax: vmax=vmin+1
 
         hb = HBins((vmin,vmax), nbins=nbins)
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
