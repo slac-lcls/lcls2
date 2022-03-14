@@ -177,7 +177,7 @@ class IVSpectrum(QWidget):
 
 
     def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0, update_hblimits=True):
-        #logger.debug('set_spectrum_from_arr size=%d' % arr.size)
+        """shotcut"""
         self.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)
 
 
