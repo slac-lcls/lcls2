@@ -115,11 +115,18 @@ def select_radio_button_in_popup_menu(dict_of_pars, win_title='Select option', d
     return popupMenu.exec_() # QDialog.Accepted or QDialog.Rejected
 
 
-def print_rect(r, cmt=''):
+def info_rect_xywh(r, cmt='', fmt='%sx=%8.2f  y=%8.2f  w=%8.2f  h=%8.2f'):
     x, y, w, h = r.x(), r.y(), r.width(), r.height()
+    return fmt % (cmt, x, y, w, h)
+
+
+def info_rect_lbrt(r, cmt='', fmt='%sL=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f'):
     L, R, T, B = r.left(), r.right(), r.top(), r.bottom()
-    logger.debug('%s x=%8.2f  y=%8.2f  w=%8.2f  h=%8.2f' % (cmt, x, y, w, h))
-    logger.debug('%s L=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f' % (len(cmt)*' ', L, B, R, T))
+    return fmt % (len(cmt)*' ', L, B, R, T)
+
+
+def print_rect(r, cmt=''):
+    logger.debug('%s %s'% (cmt, info_rect_xywh(r), info_rect_lbrt(r)))
 
 
 def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
