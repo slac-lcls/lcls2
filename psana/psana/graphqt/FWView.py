@@ -107,7 +107,7 @@ from PyQt5.QtGui import QBrush, QPen, QCursor, QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
 
 from psana.graphqt.QWGraphicsRectItem import QWGraphicsRectItem
-from psana.graphqt.QWUtils import print_rect
+import psana.graphqt.QWUtils as qu # print_rect
 
 
 class FWView(QGraphicsView):
@@ -378,7 +378,7 @@ class FWView(QGraphicsView):
 
 
     def test_scene_rect_changed_reception(self, rs):
-        print_rect(rs, cmt='FWView.test_scene_rect_changed_reception')
+        qu.print_rect(rs, cmt='FWView.test_scene_rect_changed_reception')
 
 
     def enterEvent(self, e):
@@ -416,7 +416,7 @@ class FWView(QGraphicsView):
 
     def add_rect_to_scene(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)):
         """Adds rect to scene, returns QWGraphicsRectItem - for interactive stuff"""
-        logger.debug('add_rect_to_scene')
+        logger.debug('add_rect_to_scene %s' % qu.info_rect_xywh(rect))
         pen.setCosmetic(True)
         item = QWGraphicsRectItem(rect, parent=None, scene=self.scene())
         item.setPen(pen)
