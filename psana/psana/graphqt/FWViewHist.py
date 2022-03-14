@@ -160,13 +160,17 @@ class FWViewHist(FWView):
 
         hb = HBins((vmin,vmax), nbins=nbins)
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
-        hmin, hmax = 0, hb.bin_data_max()
 
+        hmin, hmax = 0, hb.bin_data_max()
         #logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
         #             (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
         hgap = 0.05*(hmax-hmin)
-        rs = QRectF(hmin-hgap, hb.vmin(), hmax-hmin+2*hgap, hb.vmax()-hb.vmin())
-        self.set_rect_scene(rs, set_def=True)
+
+        rs0 = self.scene().sceneRect()
+        rsy, rsh = (hb.vmin(), hb.vmax()-hb.vmin()) if update_hblimits else (rs0.y(), rs0.height())
+        rs = QRectF(hmin-hgap, rsy, hmax-hmin+2*hgap, rsh)
+        self.set_rect_scene(rs, set_def=update_hblimits)
+
         self.update_my_scene(hbins=hb)
         self.hbins = hb
 
