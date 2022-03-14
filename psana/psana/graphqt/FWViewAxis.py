@@ -93,7 +93,7 @@ class FWViewAxis(FWView):
 
         color = QColor(self.fgcolor)
         self.colax = QColor(color)
-        self.fonax = QFont('Courier', 12, QFont.Normal)
+        self.fonax = QFont('Courier', 10, QFont.Normal)
         self.penax = QPen(color, 1, Qt.SolidLine)
 
         if self.side in ('U','D') :
