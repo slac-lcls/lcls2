@@ -16,6 +16,7 @@ from psana.graphqt.CMWControlBase import * #cp, CMWControlBase, QApplication, os
 from psana.graphqt.IVControlSpec import IVControlSpec
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr, np
+import psana.graphqt.QWUtils as qu
 
 logger = logging.getLogger(__name__)
 
@@ -154,10 +155,10 @@ class IVControl(CMWControlBase):
 
 
     def on_image_scene_rect_changed(self, r):
-        logger.debug('on_image_scene_rect_changed: %s'%str(r))
         wimg = cp.ivimageaxes.wimg
         a = wimg.array_in_rect(r)
-        logger.debug(info_ndarr(a, 'on_image_scene_rect_changed: selected array in rect'))
+        logger.debug('on_image_scene_rect_changed: %s' % qu.info_rect_xywh(r))
+        #logger.debug('on_image_scene_rect_changed: %s\n    %s' % (qu.info_rect_xywh(r), info_ndarr(a, 'selected array in rect', first=0, last=3)))
         self.set_spectrum_from_arr(a, update_hblimits=False)
 
 
@@ -184,8 +185,7 @@ class IVControl(CMWControlBase):
         self.arr_his_old = arr
         w = cp.ivspectrum
         if w is not None:
-            whis = w.whis
-            r = whis.scene().sceneRect()
+            #r = w.whis.scene().sceneRect()
             mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
             w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)
 
@@ -201,9 +201,9 @@ class IVControl(CMWControlBase):
 
 
     def on_histogram_scene_rect_changed(self, r):
-        logger.debug('on_histogram_scene_rect_changed: %s'%str(r))
         x1,y1,x2,y2 = r.getCoords()
-        logger.debug('on_histogram_scene_rect_changed: reset image for spectal value in range %.3f:%.3f'%(y1,y2))
+        logger.debug('on_histogram_scene_rect_changed: %s reset image for spectal value in range %.3f:%.3f '%\
+                     (qu.info_rect_xywh(r),y1,y2))
         w = cp.ivimageaxes
         if w is not None:
             wi = w.wimg
