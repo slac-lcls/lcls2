@@ -139,6 +139,7 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_offset(0),
   m_chunkOffset(0),
   m_chunkRequest(false),
+  m_chunkPending(false),
   m_configureBuffer(para.maxTrSize),
   m_damage(0),
   m_evtSize(0)
@@ -164,6 +165,7 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
 {
     std::string retVal = std::string{};     // return empty string on success
     if (runInfo.runNumber) {
+        m_chunkOffset = m_offset = 0;
         std::ostringstream ss;
         ss << runInfo.experimentName <<
               "-r" << std::setfill('0') << std::setw(4) << runInfo.runNumber <<
@@ -205,6 +207,7 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         if (retVal.empty()) {
             m_writing = true;
             // cache file parameters for use by reopenFiles() (data file chunking)
+            logging::debug("allocating m_fileParameters...");
             m_fileParameters = new FileParameters(para, runInfo, hostname, nodeId);
         }
     }
@@ -214,12 +217,16 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
 void EbReceiver::advanceChunkId()
 {
     if (m_fileParameters) {
+        logging::debug("%s: m_fileParameters->advanceChunkId()", __PRETTY_FUNCTION__);
         m_fileParameters->advanceChunkId();
+        logging::debug("%s: m_chunkPending = true", __PRETTY_FUNCTION__);
+        m_chunkPending = true;
     }
 }
 
 std::string EbReceiver::reopenFiles()
 {
+    logging::debug("entered %s", __PRETTY_FUNCTION__);
     if (m_fileParameters == NULL) {
         logging::error("%s: m_fileParameters is NULL", __PRETTY_FUNCTION__);
         return std::string("reopenFiles: m_fileParameters is NULL");
@@ -239,7 +246,7 @@ std::string EbReceiver::reopenFiles()
     m_chunkOffset = m_offset;
 
     // close data file (for old chunk)
-    logging::debug("%s: calling m_fileWriter.close()...", __PRETTY_FUNCTION__);
+    logging::info("%s: calling m_fileWriter.close()...", __PRETTY_FUNCTION__);
     m_fileWriter.close();
 
     // open data file (for new chunk)
@@ -259,6 +266,8 @@ std::string EbReceiver::reopenFiles()
         timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
         json msg = createFileReportMsg(path, absolute_path, tt, tt, runNumber, hostname);
         m_inprocSend.send(msg.dump());
+        logging::debug("%s: m_chunkPending = false", __PRETTY_FUNCTION__);
+        m_chunkPending = false;
     } else if (retVal.empty()) {
         retVal = {"Failed to open file '" + absolute_path + "'"};
     }
@@ -287,6 +296,11 @@ std::string EbReceiver::closeFiles()
 uint64_t EbReceiver::chunkSize()
 {
     return m_offset - m_chunkOffset;
+}
+
+bool EbReceiver::chunkPending()
+{
+    return m_chunkPending;
 }
 
 bool EbReceiver::writing()
@@ -717,14 +731,18 @@ std::string DrpBase::enable(const json& phase1Info, bool& chunkRequest, ChunkInf
     if (m_ebRecv->writing()) {
         logging::debug("%s: chunkSize() = %lu", __PRETTY_FUNCTION__, m_ebRecv->chunkSize());
         if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2) {
-            // advance the chunk number
-            logging::debug("%s: calling advanceChunkId()", __PRETTY_FUNCTION__);
-            m_ebRecv->advanceChunkId();
+            if (m_ebRecv->chunkPending()) {
+                logging::debug("%s: m_ebRecv->chunkPending() already true", __PRETTY_FUNCTION__);
+            } else {
+                // advance the chunk number
+                logging::debug("%s: calling advanceChunkId()", __PRETTY_FUNCTION__);
+                m_ebRecv->advanceChunkId();
 
-            // request new chunk after this Enable dgram is written
-            chunkRequest = true;
-            chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
-            chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
+                // request new chunk after this Enable dgram is written
+                chunkRequest = true;
+                chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
+                chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
+            }
         }
     }
     return retval;
