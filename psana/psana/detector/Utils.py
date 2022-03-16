@@ -103,7 +103,7 @@ def log_rec_at_start(tsfmt='%Y-%m-%dT%H:%M:%S%z', **kwa):
     """
     s_kwa = ' '.join(['%s:%s'%(k,str(v)) for k,v in kwa.items()])
     return '\n%s user:%s@%s cwd:%s %s command:%s'%\
-           (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), s_kwa, ' '.join(sys.argv))\
+           (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), s_kwa, ' '.join(sys.argv))
 
 
 def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
