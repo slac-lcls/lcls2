@@ -1,4 +1,5 @@
-#include <unistd.h>                     // gethostname()
+#include <unistd.h>                     // gethostname(), sysconf()
+#include <stdlib.h>                     // posix_memalign()
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -58,6 +59,22 @@ static unsigned nextPowerOf2(unsigned n)
 }
 
 
+void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, size_t trBufSize)
+{
+    size_t algnSz = 16;                    // For cache boundaries
+    m_bufferSize  = algnSz * ((l1BufSize + algnSz - 1) / algnSz);
+
+    size_t pgSz   = sysconf(_SC_PAGESIZE); // For shmem/MMU
+    m_size        = nL1Buffers*m_bufferSize + nTrBuffers*trBufSize;
+    m_size        = pgSz * ((m_size + pgSz - 1) / pgSz);
+    m_buffer      = nullptr;
+    int    ret    = posix_memalign((void**)&m_buffer, pgSz, m_size);
+    if (ret) {
+        logging::critical("Pebble creation of size %zu failed: %s\n", m_size, strerror(ret));
+        throw "Pebble creation failed";
+    }
+}
+
 MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
     m_inUse(0),
@@ -75,7 +92,7 @@ MemPool::MemPool(Parameters& para) :
         logging::critical("Failed to map dma buffers: %s", strerror(errno));
         throw "Error calling dmaMapDma!!";
     }
-    logging::info("dmaCount %u  dmaSize %u", dmaCount, m_dmaSize);
+    logging::info("dmaCount %u,  dmaSize %u", dmaCount, m_dmaSize);
 
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
@@ -86,15 +103,13 @@ MemPool::MemPool(Parameters& para) :
     // Also include space in the pebble for a pool of transition buffers of
     // worst case size so that they will be part of the memory region that can
     // be RDMAed from to the MEB
-    auto pebbleBufSize = para.kwargs["pebbleBufSize"];
-    if (pebbleBufSize.empty())          // Allow overriding the Pebble size
-        m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
-    else
-        m_bufferSize = std::stoul(pebbleBufSize);
+    size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
+                      ? __builtin_popcount(para.laneMask) * m_dmaSize
+                      : std::stoul(para.kwargs["pebbleBufSize"]);
     auto nTrBuffers = m_transitionBuffers.size();
-    pebble.resize(m_nbuffers, m_bufferSize, nTrBuffers, para.maxTrSize);
-    logging::info("nbuffers %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
-    logging::info("nTrBuffers %u  transition buffer size %u", nTrBuffers, para.maxTrSize);
+    pebble.create(m_nbuffers, maxL1ASize, nTrBuffers, para.maxTrSize);
+    logging::info("nL1Buffers %u,  pebble buffer size %zu", m_nbuffers, pebble.bufferSize());
+    logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, para.maxTrSize);
 
     pgpEvents.resize(m_nbuffers);
 
@@ -344,7 +359,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     uint64_t pulseId = dgram->pulseId();
     XtcData::TransitionId::Value transitionId = dgram->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {
-    if (transitionId == 0) {
+        if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
         dgram = m_pool.pgpEvents[index].transitionDgram;

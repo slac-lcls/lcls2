@@ -73,22 +73,24 @@ struct Parameters
 class Pebble
 {
 public:
-    void resize(unsigned nbuffers, size_t bufferSize, unsigned nTrBuffers, size_t trBufSize)
-    {
-        m_bufferSize = bufferSize;
-        size_t size = nbuffers*m_bufferSize + nTrBuffers*trBufSize;
-        m_buffer.resize(size);
+    ~Pebble() {
+        if (m_buffer) {
+            delete m_buffer;
+            m_buffer = nullptr;
+        }
     }
+    void create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, size_t trBufSize);
 
     inline uint8_t* operator [] (unsigned index) {
         uint64_t offset = index*m_bufferSize;
         return &m_buffer[offset];
     }
-    size_t size() const {return m_buffer.size();}
+    size_t size() const {return m_size;}
     size_t bufferSize() const {return m_bufferSize;}
 private:
-    size_t m_bufferSize;
-    std::vector<uint8_t> m_buffer;
+    size_t   m_size;
+    size_t   m_bufferSize;
+    uint8_t* m_buffer;
 };
 
 class MemPool
@@ -99,7 +101,7 @@ public:
     std::vector<PGPEvent> pgpEvents;
     void** dmaBuffers;
     unsigned nbuffers() const {return m_nbuffers;}
-    unsigned bufferSize() const {return m_bufferSize;}
+    size_t bufferSize() const {return pebble.bufferSize();}
     unsigned dmaSize() const {return m_dmaSize;}
     int fd () const {return m_fd;}
     Pds::EbDgram* allocateTr();
@@ -110,7 +112,6 @@ public:
                                     return m_dmaBuffersInUse; }
 private:
     unsigned m_nbuffers;
-    unsigned m_bufferSize;
     unsigned m_dmaSize;
     int m_fd;
     SPSCQueue<void*> m_transitionBuffers;
