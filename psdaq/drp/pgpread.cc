@@ -112,6 +112,7 @@ int main(int argc, char* argv[])
             uint32_t index = dmaIndex[b];
             uint32_t size = dmaRet[b];
             uint32_t dest = dmaDest[b] >> 8;
+            uint32_t vc   = dmaDest[b] & 0xff;
             const Pds::TimingHeader* event_header;
             if (!lrogue)
                 event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
@@ -126,8 +127,8 @@ int main(int argc, char* argv[])
             ++nevents;
 
             if (lverbose || (transition_id != XtcData::TransitionId::L1Accept)) {
-                printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
-                       size, dest, transition_id, event_header->pulseId(), event_header->evtCounter, index);
+                printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
+                       size, dest, vc, transition_id, event_header->pulseId(), event_header->evtCounter, index);
                 if (lverbose > 1) {
                     printf("env %08x\n", event_header->env);
                     for(unsigned i=0; i<((size+3)>>2); i++)
