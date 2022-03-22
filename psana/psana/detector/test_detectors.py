@@ -29,6 +29,33 @@ class hexanode_raw_0_0_1(DetectorImpl):
         segments = self._segments(evt)
         return segments[0].times[2:7,...]
 
+class quadanode_fex_4_5_6(DetectorImpl):
+    """Test detector for tmo-fex simulated data."""
+    def __init__(self, *args):
+        super().__init__(*args)
+    def waveforms(self, evt, segid):
+        """ Returns list of fex waveforms for `segid` channel.
+        
+        List of segments/ channels:
+        MCP, X1, X2, Y1, Y2
+
+        Converts 1D waveform into a list of waveforms using lengths array
+        as delimiters.
+        """
+        wf1d = self._segments(evt)[segid].waveforms
+        lengths = self._segments(evt)[segid].lengths
+        n_wf = len(lengths)
+        waveforms = []
+        for i in range(n_wf):
+            st = np.sum(lengths[:i])
+            en = st + lengths[i]
+            waveforms.append(wf1d[st:en])
+        return waveforms
+
+    def times(self, evt, segid):
+        startpos = self._segments(evt)[segid].startpos
+        return startpos
+
 class hsd_fex_4_5_6(DetectorImpl):
     def __init__(self, *args):
         super(hsd_fex_4_5_6, self).__init__(*args)
