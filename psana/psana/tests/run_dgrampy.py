@@ -21,16 +21,16 @@ def test_output(fname):
 
 
 if __name__ == "__main__":
-    filename = '/cds/data/drpsrcf/users/monarin/tmolv9418/tmolv9418-r0175-s000-c000.xtc2'
-    fd = os.open(filename, os.O_RDONLY)
+    ifname = '/cds/data/drpsrcf/users/monarin/tmolv9418/tmolv9418-r0175-s000-c000.xtc2'
+    fd = os.open(ifname, os.O_RDONLY)
     pyiter = dp.PyXtcFileIterator(fd, 0x1000000)
     
-    # Define detector and alg
+    # Defines detector and alg.
+    # Below example settings become hsd_fex_4_5_6 for its detector interface.
     # TODO: Think about initializing these by adding another example
     # where we create xtc from scratch.
     alg = dp.alg("fex", 4, 5, 6)
-    # DetName DetType DetId
-    det = dp.det("xpphsd", "hsd", "detnum1234")
+    det = dp.det("xpphsd", "hsd", "detnum1234")     # detname, dettype, detid
     
     # Define data formats
     datadef_dict = {
@@ -49,7 +49,10 @@ if __name__ == "__main__":
             "arrayString": (dp.DataType.CHARSTR, 1),
             }
     datadef = dp.datadef(datadef_dict)
-
+    
+    # Let dp know the file to write to
+    ofname = 'out.xtc2'
+    dp.creatextc2(ofname)
 
     names0 = None
     for i in range(5):
@@ -87,9 +90,6 @@ if __name__ == "__main__":
         # Copy the event to buffer
         dp.save(pydg)
 
-    with open('out.xtc2', 'wb') as f:
-        f.write(dp.get_buf())
+    dp.closextc2()
 
-    os.close(fd)
-
-    test_output('out.xtc2')
+    test_output(ofname)
