@@ -349,6 +349,7 @@ void Piranha4::write_image(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_
 
 void     Piranha4::slowupdate(XtcData::Xtc& xtc)
 {
+    logging::debug("%s: m_tt = %s", __PRETTY_FUNCTION__, m_tt ? "true" : "false");
     if (m_tt) m_tt->slowupdate(xtc);
     else this->Detector::slowupdate(xtc);
 }
@@ -395,6 +396,7 @@ TT::~TT() {}
 
 void     TT::slowupdate(XtcData::Xtc& xtc)
 {
+    logging::debug("%s: m_background_empty = %s", __PRETTY_FUNCTION__, m_background_empty ? "true" : "false");
     m_background_sem.take();
     if (!m_background_empty) {
         memcpy((void*)&xtc, (const void*)&m_det.transitionXtc(), m_det.transitionXtc().extent);
