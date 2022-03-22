@@ -396,8 +396,15 @@ TT::~TT() {}
 void     TT::slowupdate(XtcData::Xtc& xtc)
 {
     m_background_sem.take();
-    memcpy((void*)&xtc, (const void*)&m_det.transitionXtc(), m_det.transitionXtc().extent);
-    m_background_empty = true;
+    if (!m_background_empty) {
+        memcpy((void*)&xtc, (const void*)&m_det.transitionXtc(), m_det.transitionXtc().extent);
+        m_background_empty = true;
+    }
+    else {
+        // no payload
+        const XtcData::Xtc emptyXtc = {{XtcData::TypeId::Parent, 0}, {m_det.nodeId}};
+        memcpy((void*)&xtc, (const void*)&emptyXtc, emptyXtc.extent);
+    }
     m_background_sem.give();
 }
 

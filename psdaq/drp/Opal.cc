@@ -346,6 +346,7 @@ void Opal::write_image(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
 
 void     Opal::slowupdate(XtcData::Xtc& xtc)
 {
+    logging::info("*** %s: m_tt = %s", __PRETTY_FUNCTION__, m_tt ? "true" : "false");
     if (m_tt) m_tt->slowupdate(xtc);
     else this->Detector::slowupdate(xtc);
 }
@@ -392,13 +393,16 @@ OpalTT::~OpalTT() {}
 
 void     OpalTT::slowupdate(XtcData::Xtc& xtc)
 {
+    logging::info("*** %s: m_background_empty = %s", __PRETTY_FUNCTION__, m_background_empty ? "true" : "false");
     m_background_sem.take();
     if (!m_background_empty) {
         memcpy((void*)&xtc, (const void*)&m_det.transitionXtc(), m_det.transitionXtc().extent);
         m_background_empty = true;
     }
     else {
-        xtc.extent = sizeof(Xtc);  // no payload
+        // no payload
+        const XtcData::Xtc emptyXtc = {{XtcData::TypeId::Parent, 0}, {m_det.nodeId}};
+        memcpy((void*)&xtc, (const void*)&emptyXtc, emptyXtc.extent);
     }
     m_background_sem.give();
 }
