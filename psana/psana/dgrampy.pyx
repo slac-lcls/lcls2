@@ -268,11 +268,8 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
     cdef array.array shape = array.array('I', [0,0,0,0,0])
     cdef int i
 
-    print(f"\nCYTHON adddata")
-    print(f"CYTHON call createdata")
     uiter.createdata(pyxtc, namesdef)
 
-    print(f"CYTHON call adddata/setvalue/setstring")
     for datadef_name, data in datadict.items():
         # Handle scalar types (string or number)
         if np.ndim(data) == 0:
@@ -303,7 +300,6 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
                 if i < len(data.shape):
                     shape[i] = data.shape[i]
             uiter.adddata(namesdef, pydatadef, datadef_name, shape, data)
-    print(f'CYTHON DONE addata')
 
 def removedata(det_name, alg_name):
     uiter.removedata(det_name, alg_name)
@@ -327,9 +323,7 @@ def save(PyDgram pydg):
     # Update parent dgram with new size
     cdef uint32_t removed_size = uiter.get_removed_size()
     if removed_size > 0:
-        print(f'pydg payload before:{pydg.get_payload_size()}')
         pydg.dec_extent(removed_size)
-        print(f'pydg payload after:{pydg.get_payload_size()}')
 
     # Copy updated parent dgram and _tmpbuf to _buf 
     uiter.copy(pydg)

@@ -6,14 +6,22 @@ using namespace XtcData;
 using namespace std;
 //using std::string;
 
+#define VERBOSE 0
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
+    if (VERBOSE == 0) return;
+
     printf("'%s' ", name);
     printf(" numWords:%u rank:%u ", numWords, rank); 
     printf("(shape:");
     for (unsigned w = 0; w < rank; w++) printf(" %d",shape[w]);
     printf("): ");
+
+    if (shape[0] < numWords) {
+        numWords = shape[0];
+    }
+
     for (unsigned w = 0; w < numWords; ++w) {
         printf(fmt, arrT.data()[w]);
     }
@@ -24,7 +32,7 @@ template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigne
 void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
     int data_rank = name.rank();
     int data_type = name.type();
-    printf("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
+    if (VERBOSE > 0) printf("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
 
     switch(name.type()){
     case(Name::UINT8):{
@@ -168,7 +176,8 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 */
 int XtcUpdateIter::process(Xtc* xtc)
 {
-    printf("\nC NEW XTC\n");
+    if (VERBOSE > 0) printf("XtcUpdateIter:process\n");
+
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
         iterate(xtc);
@@ -178,13 +187,9 @@ int XtcUpdateIter::process(Xtc* xtc)
         Names& names = *(Names*)xtc;
         _namesLookup[names.namesId()] = NameIndex(names);
         Alg& alg = names.alg();
-        printf("C TypeId::Names DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
-               names.detName(), names.segment(), names.detType(), names.detId(),
-               alg.name(), alg.version(), (int)names.namesId());
 
         for (unsigned i = 0; i < names.num(); i++) {
             Name& name = names.get(i);
-            printf("Name: '%s' Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
         }
 
         unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name)); 
@@ -196,8 +201,6 @@ int XtcUpdateIter::process(Xtc* xtc)
         string sDet(names.detName());
         string sAlg(alg.name());
         _flagFilter.insert(pair<string, int>(sDet+"_"+sAlg, 0));
-        cout << "_flagFilter init " << sDet+"_"+sAlg << endl;
-
 
         break;
     }
@@ -221,16 +224,15 @@ int XtcUpdateIter::process(Xtc* xtc)
         Data& data = shapesdata.data();
         
         Alg& alg = names.alg();
-        printf("C TypeId::ShapesData DetName: %s, Alg: %s\n", names.detName(), alg.name());
     
-        printf("Found %d names\n",names.num());
         for (unsigned i = 0; i < names.num(); i++) {
             Name& name = names.get(i);
             get_value(i, name, descdata);
         }
 
-        // copy ShapesData to tmp buffer
-        char detName[15];
+        // Determines removed size (if detname and alg matched with given))
+        // or copies ShapesData to tmp buffer
+        char detName[15];       // TODO: Interface for passing detName, algName here
         char algName[15];
         strcpy(detName, "hsd");
         strcpy(algName, "raw");
@@ -385,11 +387,6 @@ int XtcUpdateIter::getElementSize(unsigned nodeId, unsigned namesId,
 // Allocates new memory space and copies given `data` to it
 void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
         unsigned* shape, char* data, DataDef& datadef, char* varname) {
-    printf("addData ");
-    for(unsigned i=0; i<MaxRank; i++){
-        printf("shape[%u]: %u ", i, shape[i]);
-    }
-
     NamesId namesId0(nodeId, namesId);
 
     unsigned newIndex = datadef.index(varname);
@@ -456,9 +453,15 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
         break;
     }
     }
-
-    printf("copied %u bytes\n", shp.size(name));
     
+    if (VERBOSE > 0) {
+        printf("  addData: ");
+        for(unsigned i=0; i<MaxRank; i++){
+            printf("shape[%u]: %u ", i, shape[i]);
+        }
+        printf(" %u bytes\n", shp.size(name));
+    }
+
 }
 
 
@@ -487,6 +490,6 @@ Dgram& XtcUpdateIter::createTransition(unsigned utransId,
 void XtcUpdateIter::setFilter(char* detName, char* algName){
     string sDet(detName);
     string sAlg(algName);
-    cout << "_flagFilter set " << sDet << "_" << sAlg << endl;
+    if (VERBOSE > 0) cout << "  setFilter: " << sDet << "_" << sAlg << endl;
 }
 
