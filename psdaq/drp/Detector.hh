@@ -27,8 +27,8 @@ public:
     virtual unsigned beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {return 0;};
     virtual unsigned enable   (XtcData::Xtc& xtc, const nlohmann::json& info) {return 0;};
     virtual unsigned disable  (XtcData::Xtc& xtc, const nlohmann::json& info) {return 0;};
-    virtual void slowupdate(XtcData::Xtc& xtc) { XtcData::Xtc& trXtc = transitionXtc();
-                                                 memcpy((void*)&xtc, (const void*)&trXtc, trXtc.extent); };
+    virtual void slowupdate(XtcData::Xtc& xtc) { const XtcData::Xtc emptyXtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
+                                                 memcpy((void*)&xtc, (const void*)&emptyXtc, emptyXtc.extent); };
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     virtual void shutdown() {};
 
