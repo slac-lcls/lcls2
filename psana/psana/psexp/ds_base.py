@@ -474,14 +474,18 @@ class DataSourceBase(abc.ABC):
                 self.dsparms.calibconst[det_name] = None
 
     def _get_runinfo(self):
-        if not self.beginruns : return
+        expt, runnum, timestamp = (None, None, None)
 
-        beginrun_dgram = self.beginruns[0]
-        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
-            expt = beginrun_dgram.runinfo[0].runinfo.expt
-            runnum = beginrun_dgram.runinfo[0].runinfo.runnum
-            timestamp = beginrun_dgram.timestamp()
-            return expt, runnum, timestamp
+        if self.beginruns:
+            beginrun_dgram = self.beginruns[0]
+            if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
+                # BeginRun in all streams have the same information.
+                # We just need to get one from the first segment/ dgram.
+                segment_id = list(beginrun_dgram.runinfo.keys())[0]
+                expt = beginrun_dgram.runinfo[segment_id].runinfo.expt
+                runnum = beginrun_dgram.runinfo[segment_id].runinfo.runnum
+                timestamp = beginrun_dgram.timestamp()
+        return expt, runnum, timestamp
 
     def _close_opened_smd_files(self):
         # Make sure to close all smd files opened by previous run
