@@ -111,9 +111,19 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
+    m_det(nullptr),
     m_unconfigure(false)
 {
     Py_Initialize(); // for use by configuration
+    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+}
+
+// This initialization is in its own method (to be called from a higher layer)
+// so that the dtor will run if it throws an exception.  This is needed to
+// ensure Py_Finalize is executed.
+void PGPDetectorApp::initialize()
+{
+    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
 
     Factory<Detector> f;
     f.register_type<AreaDetector>("fakecam");
@@ -129,7 +139,13 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     f.register_type<Wave8>       ("wave8");
     f.register_type<Piranha4>    ("piranha4");
 
-    m_det = f.create(&m_para, &m_drp.pool);
+    try {
+        m_det = f.create(&m_para, &m_drp.pool);
+    }
+    catch (...) {
+        m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+        throw;
+    }
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -165,7 +181,8 @@ PGPDetectorApp::~PGPDetectorApp()
 void PGPDetectorApp::disconnect()
 {
     m_drp.disconnect();
-    m_det->shutdown();
+    if (m_det)
+        m_det->shutdown();
 }
 
 void PGPDetectorApp::unconfigure()
@@ -186,7 +203,8 @@ void PGPDetectorApp::unconfigure()
     }
     m_drp.unconfigure();
 
-    m_det->namesLookup().clear();   // erase all elements
+    if (m_det)
+        m_det->namesLookup().clear();   // erase all elements
 
     m_unconfigure = false;
 }

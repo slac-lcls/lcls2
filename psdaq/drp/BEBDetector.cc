@@ -54,7 +54,7 @@ BEBDetector::BEBDetector(Parameters* para, MemPool* pool) :
 BEBDetector::~BEBDetector()
 {
     delete m_configScanner;
-    Py_DECREF(m_module);
+    if (m_module)  Py_DECREF(m_module);
 }
 
 void BEBDetector::_init(const char* arg)
@@ -182,7 +182,7 @@ unsigned BEBDetector::configure(const std::string& config_alias,
 
     XtcData::ConfigIter iter(&jsonxtc);
     unsigned r = _configure(xtc,iter);
-        
+
     // append the config xtc info to the dgram
     memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
@@ -237,7 +237,7 @@ void BEBDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
                               p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
             p += 8;
         }
-    }                           
+    }
 }
 
 void BEBDetector::shutdown()
