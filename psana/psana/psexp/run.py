@@ -62,6 +62,7 @@ class Run(object):
     smd_fds = None
 
     def __init__(self, ds):
+        self.expt, self.runnum, self.timestamp = ds._get_runinfo()
         self.dsparms = ds.dsparms
         self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
         if hasattr(ds, "dm"): ds.dm.set_run(self)
@@ -195,15 +196,6 @@ class Run(object):
     def __reduce__(self):
         return (run_from_id, (self.id,))
 
-    def _get_runinfo(self):
-        if not self.beginruns : return
-
-        beginrun_dgram = self.beginruns[0]
-        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
-            self.expt = beginrun_dgram.runinfo[0].runinfo.expt
-            self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
-            self.timestamp = beginrun_dgram.timestamp()
-
     def step(self, evt):
         step_dgrams = self.esm.stores['scan'].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self)
@@ -231,7 +223,6 @@ class RunShmem(Run):
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
-        super()._get_runinfo()
         super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter)
@@ -261,7 +252,6 @@ class RunSingleFile(Run):
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
-        super()._get_runinfo()
         super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter)
@@ -291,7 +281,6 @@ class RunSerial(Run):
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
-        super()._get_runinfo()
         super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter, smdr_man=ds.smdr_man)
@@ -323,7 +312,6 @@ class RunLegion(Run):
         self.smdr_man   = ds.smdr_man
         self.dm         = ds.dm
         self.configs    = ds._configs
-        super()._get_runinfo()
         super()._setup_envstore()
 
     def analyze(self, **kwargs):

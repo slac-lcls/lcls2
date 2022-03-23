@@ -30,7 +30,6 @@ class RunParallel(Run):
         self.beginruns  = run_evt._dgrams
         self.configs    = ds._configs
         
-        self._get_runinfo()
         super()._setup_envstore()
 
     def events(self):
