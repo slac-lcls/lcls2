@@ -21,6 +21,7 @@ public:
     unsigned unconfigure();
 public:                                 // Detector virtuals
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
+    void slowupdate(XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:
     void _worker();

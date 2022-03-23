@@ -270,11 +270,16 @@ unsigned EaDetector::unconfigure()
     return 0;
 }
 
-void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
+void EaDetector::event(XtcData::Dgram&, PGPEvent*)
+{
+    // Unused
+}
+
+void EaDetector::slowupdate(XtcData::Xtc& xtc)
 {
     auto payloadSize = m_para->maxTrSize - sizeof(Pds::EbDgram);
 
-    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize, m_nStales);
+    m_monitor->getData(xtc, m_namesLookup, nodeId, payloadSize, m_nStales);
 }
 
 void EaDetector::_worker()
@@ -326,7 +331,7 @@ void EaDetector::_worker()
                 if (service == XtcData::TransitionId::SlowUpdate) {
                     m_nUpdates++;
 
-                    event(*trDgram, pgpEvent);
+                    slowupdate(trDgram->xtc);
                 }
                 else {
                     // copy the temporary xtc created on phase 1 of the transition
