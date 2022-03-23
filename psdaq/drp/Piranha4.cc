@@ -3,6 +3,7 @@
 #include "psdaq/service/Semaphore.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 #include "psdaq/epicstools/EpicsProviders.hh"
+
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
@@ -279,8 +280,8 @@ void Piranha4::_connect(PyObject* mbytes)
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
 #define MODEL(num,rows,cols) case num: m_rows = rows; m_columns = cols; break
     switch(modelnum) {
-        MODEL(2,2048,2);
-        MODEL(4,4096,2);
+        MODEL(2,2048,1);                // Revisit: cols = 1 if Line, 2 if Area
+        MODEL(4,4096,1);                // Revisit: cols = 1 if Line, 2 if Area
 #undef MODEL
     default:
         _fatal_error("Piranha4 camera model " + std::to_string(modelnum) +
@@ -336,7 +337,7 @@ void Piranha4::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 }
 
 void Piranha4::write_image(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes,
-                       XtcData::NamesId& namesId)
+                           XtcData::NamesId& namesId)
 {
     CreateData cd(xtc, m_namesLookup, namesId);
 
@@ -372,8 +373,7 @@ TT::TT(Piranha4& d, Parameters* para) :
         try {
             m_fex_pv = pvac::ClientChannel(Pds_Epics::EpicsProviders::ca().connect(m_ttpv));
             m_request = pvd::createRequest("field(value)");
-            pvd::PVStructure::const_shared_pointer cpv =
-                m_fex_pv.get(3.0,m_request);
+            pvd::PVStructure::const_shared_pointer cpv = m_fex_pv.get(3.0,m_request);
             const pvd::PVFieldPtrArray& fields = cpv->getPVFields();
             for(unsigned i=0; i<fields.size(); i++) {
                 const pvd::PVFieldPtr field = fields[i];
@@ -467,7 +467,7 @@ bool TT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subfra
     }
     else if (result == Piranha4TTFex::VALID) {
         //  Live feedback
-	m_vec = new double[6];
+        m_vec = new double[6];
         pvd::shared_vector<const double> ttvec(m_vec,0,6);
         m_vec[0] = m_fex.amplitude();
         m_vec[1] = m_fex.filtered_position();
@@ -793,4 +793,3 @@ int Drp::Piranha::L2Iter::process(Xtc* xtc)
     }
     return Continue;
 }
-

@@ -431,7 +431,7 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
       printf("-->INVALID2\n");
 #endif
       return INVALID;
-}
+  }
 
   if (nobeam) {
 

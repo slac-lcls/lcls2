@@ -40,8 +40,8 @@ def piranha4_cdict():
 
     #Create a user interface that is an abstraction of the common inputs
     top.set("user.start_ns", 110000, 'UINT32')
-    top.set("user.gate_ns" ,  10000, 'UINT32')
-    top.set("user.black_level",  31, 'UINT32')
+    top.set("user.gate_ns" ,   4000, 'UINT32')
+    top.set("user.black_level",   0, 'UINT32')
     top.set("user.vertical_bin",  1, 'binEnum')
 
     # timing system
@@ -52,7 +52,7 @@ def piranha4_cdict():
     top.define_enum('rateEnum', {'929kHz':0, '71kHz':1, '10kHz':2, '1kHz':3, '100Hz':4, '10Hz':5, '1Hz':6})
     top.set('expert.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
 
-    # Feb[0] refers to pgp lane, Ch[0][,1] refers to camera link channel from Feb (these should be abstracted)
+    # Feb[0] refers to pgp lane, Ch[0],[1] refers to camera link channel from Feb (these should be abstracted)
     # UartPiranha4 is camType; sets serial registers
     # ClinkTop.LinkMode is Disable,Base,Medium,Full
     # ClinkTop.DataMode is None,8b,10b,12b
@@ -63,38 +63,39 @@ def piranha4_cdict():
     top.set('expert.ClinkFeb.TrigCtrl.InvCC'     , 0, 'UINT8')   # rogue wants 'bool'
     top.set('expert.ClinkFeb.TrigCtrl.TrigMap'   , 0, 'UINT32')  # ChanA/ChanB
     top.set('expert.ClinkFeb.TrigCtrl.TrigMask'  , 1, 'UINT32')  # CC1
-    top.set('expert.ClinkFeb.TrigCtrl.TrigPulseWidth', 32.768, 'FLOAT')
+    top.set('expert.ClinkFeb.TrigCtrl.TrigPulseWidth', 4.000, 'FLOAT')  #32.768, 'FLOAT')
 
     top.set("expert.ClinkFeb.ClinkTop.PllConfig0"      ,'85MHz','CHARSTR')
     top.set("expert.ClinkFeb.ClinkTop.PllConfig1"      ,'85MHz','CHARSTR')
     top.set("expert.ClinkFeb.ClinkTop.PllConfig2"      ,'85MHz','CHARSTR')
 
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.LinkMode"    ,      2,'UINT32')   # Med mode
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.DataMode"    ,      1,'UINT32')   # 8-bit
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.LinkMode"    ,      2,'UINT32')   # Medium mode
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.DataMode"    ,      3,'UINT32')   # 12-bit: Requires Base or Medium LinkMode
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.FrameMode"    ,     1,'UINT32')   # Line
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.TapCount"    ,      4,'UINT32')   #
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.DataEn"    ,        1,'UINT8')   # rogue wants 'bool'
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.Blowoff"    ,       0,'UINT8')   # rogue wants 'bool'
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.BaudRate"      , 9600,'UINT32')   # bps
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SerThrottle"   ,10000,'UINT32')
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SerThrottle"   ,30000,'UINT32')
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SwControlValue",    0,'UINT32')   # Frame
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SwControlEn"   ,    0,'UINT32')   # Frame
 
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLM",         1,'clmEnum')   # Camera Link Mode <0:Base 1:Med 2:Full>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLS",         0,'clsEnum')   # Camera Link Speed  <0 - 85MHz, 1 - 66MHz>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.DST",         0,'dstEnum')   # Device Scan Type <0 - Line Scan, 1 - Area Scan>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB",        31, 'UINT32')   # Contrast Offset <DN>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSG", '0 f10.0','CHARSTR')   # Gain <0:System 1:Bottom Line 2:Top Line>  f<gain>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBV",         1,'binEnum')   # Vertical Binning <1|2> pixels
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBH",         1,'binEnum')   # Horizontal Binning <1|2> pixels
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SCD",         0,'dirEnum')   # Direction <0:Fwd, 1:Rev 2:Ext>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",         0,'expEnum')   # Exposure Mode <0:Int 1:Ext>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET",     20000, 'UINT32')   # Exposure Time <ns>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SMM",         0,'offOnEnum') # Mirroring <0:Off 1:On>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",         0,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
-    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSF",         1, 'UINT32')   # Internal Line Rate <Hz>; Requires 'STM 0'
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",         1,'offOnEnum') # External Trigger <0:Off 1:On>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SVM",         0,'tpEnum')    # Test Pattern <0-1>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",        0,'expEnum')   # Internal Exposure Mode for quick commanding (?!)
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLM",        1,'clmEnum')   # Camera Link Mode <0:Base 1:Med 2:Full>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLS",        0,'clsEnum')   # Camera Link Speed  <0 - 85MHz, 1 - 66MHz>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.DST",        0,'dstEnum')   # Device Scan Type <0 - Line Scan, 1 - Area Scan>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB",        0, 'UINT32')   # Contrast Offset <DN>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSG", '0 f1.0','CHARSTR')   # Gain <0:System 1:Bottom Line 2:Top Line>  f<gain>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBV",        1,'binEnum')   # Vertical Binning <1|2> pixels
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBH",        1,'binEnum')   # Horizontal Binning <1|2> pixels
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SCD",        0,'dirEnum')   # Direction <0:Fwd, 1:Rev 2:Ext>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SMM",        0,'offOnEnum') # Mirroring <0:Off 1:On>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",        2,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
+    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSF",        1, 'UINT32')   # Internal Line Rate <Hz>; Requires 'STM 0'
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",        0,'offOnEnum') # Internal Trigger <0:Off 1:On>, to be toggled by code if desired
+    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SVM",        0,'tpEnum')    # Test Pattern <0-1>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET",     4000, 'UINT32')   # Exposure Time <ns>; Requires 'SEM 0'
+    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",        1,'expEnum')   # Exposure Mode <0:Int 1:Ext>; Last as it slows commanding down
 
     return top
 

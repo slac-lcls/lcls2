@@ -28,14 +28,23 @@ class MyUartPiranha4Rx(clink.ClinkSerialRx):
 
     def __init__(self, path):
         super().__init__(path=path)
+        self._cur  = []
         self._resp = []
 
     def _clear(self):
-        self._last = ''
+        self._resp = []
+        self._cur  = []
 
-    def _awaitPrompt(self):
-        while self._last != 'USER>':
-            time.sleep(0.01)              # Wait for the Prompt to show up
+    def _check(self):                 # Check if camera is sitting at a prompt
+        return ''.join(self._cur) == 'USER>'
+
+    def _await(self, tmo = 5.0):
+        tEnd = time.time() + tmo
+        while time.time() < tEnd:
+            time.sleep(0.01)          # Wait for the Prompt to show up
+            if self._check() and len(self._resp):
+                return
+        print('*** await: prompt not seen: len', len(self._resp), ', resp:', self._resp)
 
     def _acceptFrame(self,frame):
         ba = bytearray(frame.getPayload())
@@ -45,14 +54,13 @@ class MyUartPiranha4Rx(clink.ClinkSerialRx):
             c = chr(ba[i])
 
             if c == '\n':
-                #print(self._path+": Got NL Response: {}".format(''.join(self._cur)))
+                #print(self._path+": My Got NL Response: {}".format(''.join(self._cur)))
                 self._cur = []
-                if self._last == 'USER>': # Prompt arrives before command's output
-                    self._resp = []       # Reset
             elif c == '\r':
-                self._last = ''.join(self._cur)
-                #print(self._path+": RecvString: {}".format(self._last))
-                self._resp.append(self._last)
+                last = ''.join(self._cur)
+                #print(self._path+": My RecvString: {}".format(last))
+                if last != 'USER>':
+                    self._resp.append(last)
             elif c != '':
                 self._cur.append(c)
 
@@ -117,11 +125,6 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
         time.sleep(0.1)
 
-    ## the opal seems to intermittently lose lock back to the XPM
-    ## and empirically this fixes it.  not sure if we need the sleep - cpo
-    #cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
-    #time.sleep(0.1)
-
     return cl
 
 def piranha4_init_feb(slane=None,schan=None):
@@ -145,26 +148,40 @@ def piranha4_connect(cl):
     #uart.SerThrottle.set(10000)
     #time.sleep(0.10)
 
-    # Startup's GCP returned 'Model  P4_CM_0xKxxD_00_R' and 'Serial #  xxxxxxxx', etc.
+    # Startup's GCP returns 'Model  P4_CM_0xKxxD_00_R' and 'Serial #  xxxxxxxx', etc.
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).UartPiranha4
 
-    if uart._rx._last is not None and not uart._rx._last.startswith('CPA'):
+    if len(uart._rx._resp) == 0 or not uart._rx._resp[-1].startswith('CPA'):
+        uart._rx._clear()
+        uart.SEM.set('0') # Set internal exposure mode for quicker commanding (?!)
+        uart._rx._await()
+        uart._rx._clear()
         uart.GCP()
-        time.sleep(5.0)
+        uart._rx._await()
 
     model = ''
     serno = ''
     bist  = ''
     for line in uart._rx._resp:
-        if   line.startswith("Model"):     model = line.split()[-1]
-        elif line.startswith("Serial #"):  serno = line.split()[-1]
-        elif line.startswith("BiST"):      bist  = line.split()[-1]
+        if   line.startswith('Model'):     model = line.split()[-1]
+        elif line.startswith('Serial #'):  serno = line.split()[-1]
+        elif line.startswith('BiST'):      bist  = line.split()[-1]
 
     print('model {:}'.format(model))
     print('serno {:}'.format(serno))
     print('bist {:}' .format(bist))
-    if bist != 'Good':
+    if len(bist) and bist != 'Good':
         print('Piranha BiST error: Check User\'s manual for meaning')
+
+    uart._rx._clear()
+    uart.VT()
+    uart._rx._await()
+    print('Temperature: ', uart._rx._resp[-1])
+
+    uart._rx._clear()
+    uart.VV()
+    uart._rx._await()
+    print('Voltage: ', uart._rx._resp[-1])
 
     cl.StopRun()
 
@@ -197,10 +214,14 @@ def user_to_expert(cl, cfg, full=False):
 
     if (hasUser and 'gate_ns' in cfg['user']):
         gate = cfg['user']['gate_ns']
+        if gate < 4000:
+            print('gate_ns {:} must be at least 4000 ns'.format(gate))
+            raise ValueError('gate_ns < 4000')
         if gate > 160000:
-            print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate));
+            print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate))
             raise ValueError('gate_ns > 160000')
-        d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=gate*0.001
+        d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=1.0 #gate*0.001
+        d['expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET']=gate
 
     if (hasUser and 'black_level' in cfg['user']):
         d['expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB']=cfg['user']['black_level']
@@ -250,7 +271,7 @@ def config_expert(cl, cfg):
             rogue_node.set(configdb_node)
             #  Parameters like black-level need time to take affect (up to 1.75s)
             if 'UartPiranha4' in str(rogue_node):
-                uart._rx._awaitPrompt()
+                uart._rx._await()
 
 #  Apply the full configuration
 def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
@@ -280,24 +301,21 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg['expert']['ClinkFeb']['TrigCtrl']['InvCC'] = False
     cfg['expert']['ClinkFeb']['ClinkTop']['ClinkCh']['DataEn'] = True
 
-    uart = getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).UartPiranha4
-
-    # CCE is a special command in the rogue surf. it waits for
-    # both CCE[0] and CCE[1] to be filled in before transmitting.
-    # a possible issue: when we do a second configure, the
-    # fields will be non-empty, so we think we will do two
-    # uart writes of the same value.  not ideal, but should be ok.
-    #getattr(uart,'CCE[1]').set(0)  # normal polarity
-
-    # CCE[0] is the "trigger input source" portion of CCE.
-    #getattr(uart,'CCE[0]').set(0)  # trigger on CC1
-    uart._rx._clear()
-    uart.STM.set('1')  # set to externally triggered mode
-    uart._rx._awaitPrompt()
-
     user_to_expert(cl,cfg,full=True)
 
     config_expert(cl,cfg['expert'])
+
+    uart = getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).UartPiranha4
+
+    uart._rx._clear()
+    uart.VT()
+    uart._rx._await()
+    #print('Temperature: ', uart._rx._resp[-1])
+
+    uart._rx._clear()
+    uart.VV()
+    uart._rx._await()
+    #print('Voltage: ', uart._rx._resp[-1])
 
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
@@ -307,7 +325,23 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg['firmwareVersion'] = cl.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
     cfg['firmwareBuild'  ] = cl.ClinkPcie.AxiPcieCore.AxiVersion.BuildStamp.get()
 
+    # Epirically found that StartRun must be done before externally triggered mode
+    # is enabled or the Piranha goes into an error state and causes deadtime.
+    # The sequence 'sem 0', 'set 4000', 'stm 0', stm 1' clears the error state so
+    # the configDb sequence (piranha4_config_store.py) and this code is arranged
+    # to reproduce that.
     cl.StartRun()
+
+    uart._rx._clear()
+    uart.STM.set('1')  # set to externally triggered mode
+    uart._rx._await()
+
+    ## We want to use external exposure mode so that the exposure is driven by
+    ## the length of the CC1 pulse.  Unfortunately this setting makes commanding
+    ## the Piranha much slower (2+ sec per command), so we issue this one last.
+    #uart._rx._clear()
+    #uart.SEM.set('1')  # set to exposure mode to external
+    #uart._rx._await()
 
     # must be done after StartRun because that routine sets MasterEnable
     # to True for all lanes. That causes 100% deadtime from unused lanes.
