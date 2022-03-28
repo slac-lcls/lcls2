@@ -222,50 +222,52 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         if (retVal.empty()) {
             m_writing = true;
             // cache file parameters for use by reopenFiles() (data file chunking)
-            logging::debug("allocating m_fileParameters...");
-            m_fileParameters = new FileParameters(para, runInfo, hostname, nodeId);
+            logging::debug("initializing m_fileParameters...");
+            new((void *)&m_fileParameters) FileParameters(para, runInfo, hostname, nodeId);
         }
     }
     return retVal;
 }
 
-void EbReceiver::advanceChunkId()
+// return true if incremented chunkId
+bool EbReceiver::advanceChunkId()
 {
-    if (m_fileParameters) {
-        logging::debug("%s: m_fileParameters->advanceChunkId()", __PRETTY_FUNCTION__);
-        m_fileParameters->advanceChunkId();
-        logging::debug("%s: m_chunkPending = true", __PRETTY_FUNCTION__);
+    bool status = false;
+//  m_chunkPending_sem.take();
+    if (!m_chunkPending) {
+        logging::debug("%s: m_fileParameters.advanceChunkId()", __PRETTY_FUNCTION__);
+        m_fileParameters.advanceChunkId();
+        logging::debug("%s: m_chunkPending = true  chunkId = %u", __PRETTY_FUNCTION__, m_fileParameters.chunkId());
         m_chunkPending = true;
+        status = true;
     }
+//  m_chunkPending_sem.give();
+    return status;
 }
 
 std::string EbReceiver::reopenFiles()
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
-    if (m_fileParameters == NULL) {
-        logging::error("%s: m_fileParameters is NULL", __PRETTY_FUNCTION__);
-        return std::string("reopenFiles: m_fileParameters is NULL");
-    }
     if (m_writing == false) {
         logging::error("%s: m_writing is false", __PRETTY_FUNCTION__);
         return std::string("reopenFiles: m_writing is false");
     }
-    std::string outputDir = m_fileParameters->outputDir();
-    std::string instrument = m_fileParameters->instrument();
-    std::string experimentName = m_fileParameters->experimentName();
-    unsigned runNumber = m_fileParameters->runNumber();
-    std::string hostname = m_fileParameters->hostname();
+    std::string outputDir = m_fileParameters.outputDir();
+    std::string instrument = m_fileParameters.instrument();
+    std::string experimentName = m_fileParameters.experimentName();
+    unsigned runNumber = m_fileParameters.runNumber();
+    std::string hostname = m_fileParameters.hostname();
 
     std::string retVal = std::string{};     // return empty string on success
     m_chunkRequest = false;
     m_chunkOffset = m_offset;
 
     // close data file (for old chunk)
-    logging::info("%s: calling m_fileWriter.close()...", __PRETTY_FUNCTION__);
+    logging::debug("%s: calling m_fileWriter.close()...", __PRETTY_FUNCTION__);
     m_fileWriter.close();
 
     // open data file (for new chunk)
-    std::string runName = m_fileParameters->runName();
+    std::string runName = m_fileParameters.runName();
     std::string exptDir = {outputDir + "/" + instrument + "/" + experimentName};
     local_mkdir(exptDir.c_str());
     std::string dataDir = {exptDir + "/xtc"};
@@ -299,11 +301,6 @@ std::string EbReceiver::closeFiles()
         m_smdWriter.close();
         logging::debug("calling m_fileWriter.close()...");
         m_fileWriter.close();
-        if (m_fileParameters) {
-            logging::debug("deleting m_fileParameters...");
-            delete m_fileParameters;
-            m_fileParameters = NULL;
-        }
     }
     return std::string{};
 }
@@ -316,6 +313,20 @@ uint64_t EbReceiver::chunkSize()
 bool EbReceiver::chunkPending()
 {
     return m_chunkPending;
+}
+
+void EbReceiver::chunkRequestSet()
+{
+    m_chunkRequest = true;
+}
+
+void EbReceiver::chunkReset()
+{
+    // clean up the state left behind by a previous run
+    m_chunkOffset = 0;
+    m_chunkRequest = false;
+//  m_chunkPending_sem = Pds::Semaphore::FULL;
+    m_chunkPending = false;
 }
 
 bool EbReceiver::writing()
@@ -440,8 +451,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     if (m_writing && !m_chunkRequest && (transitionId == XtcData::TransitionId::L1Accept)) {
         if (chunkSize() > DefaultChunkThresh) {
             // request chunking opportunity
-            m_chunkRequest = true;
-            logging::debug("EbReceiver chunk request (chunkSize() > DefaultChunkThresh)");
+            chunkRequestSet();
+            logging::debug("%s: sending chunk request (chunkSize() > DefaultChunkThresh)", __PRETTY_FUNCTION__);
             json msg = createChunkRequestMsg();
             m_inprocSend.send(msg.dump());
         }
@@ -689,6 +700,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
     m_tebContributor->resetCounters();
     m_mebContributor->resetCounters();
     m_ebRecv->resetCounters();
+    m_ebRecv->chunkReset();
     return msg;
 }
 
@@ -745,18 +757,16 @@ std::string DrpBase::enable(const json& phase1Info, bool& chunkRequest, ChunkInf
     chunkRequest = false;
     if (m_ebRecv->writing()) {
         logging::debug("%s: chunkSize() = %lu", __PRETTY_FUNCTION__, m_ebRecv->chunkSize());
-        if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2) {
-            if (m_ebRecv->chunkPending()) {
-                logging::debug("%s: m_ebRecv->chunkPending() already true", __PRETTY_FUNCTION__);
-            } else {
-                // advance the chunk number
-                logging::debug("%s: calling advanceChunkId()", __PRETTY_FUNCTION__);
-                m_ebRecv->advanceChunkId();
-
+        if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2ull) {
+            if (m_ebRecv->advanceChunkId()) {
+                logging::debug("%s: advanceChunkId() returned true", __PRETTY_FUNCTION__);
                 // request new chunk after this Enable dgram is written
                 chunkRequest = true;
+                m_ebRecv->chunkRequestSet();
                 chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
                 chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
+                logging::debug("%s: chunkInfo.filename = %s", __PRETTY_FUNCTION__, chunkInfo.filename.c_str());
+                logging::debug("%s: chunkInfo.chunkId  = %u", __PRETTY_FUNCTION__, chunkInfo.chunkId);
             }
         }
     }

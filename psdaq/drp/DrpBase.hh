@@ -43,6 +43,16 @@ class FileParameters
     unsigned m_chunkId;
 
 public:
+    FileParameters() {
+        m_outputDir = "777";
+        m_instrument = "777";
+        m_runNumber = 777;
+        m_experimentName = "777";
+        m_hostname = "777";
+        m_nodeId = 777;
+        m_chunkId = 777;
+    }
+
     FileParameters(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId) {
         m_outputDir = para.outputDir;
         m_instrument = para.instrument;
@@ -53,7 +63,7 @@ public:
         m_chunkId = 0;
     }
 
-    void advanceChunkId()           { ++ m_chunkId; }
+    bool advanceChunkId()           { ++ m_chunkId; return true; }
     // getters
     std::string outputDir()         { return m_outputDir; }
     std::string instrument()        { return m_instrument; }
@@ -75,14 +85,16 @@ public:
 public:
     void resetCounters();
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
-    void advanceChunkId();
+    bool advanceChunkId();
     std::string reopenFiles();
     std::string closeFiles();
     uint64_t chunkSize();
     bool chunkPending();
+    void chunkRequestSet();
+    void chunkReset();
     bool writing();
     static const uint64_t DefaultChunkThresh = 500ull * 1024ull * 1024ull * 1024ull;    // 500 GB
-    FileParameters *fileParameters()    { return m_fileParameters; }
+    FileParameters *fileParameters()    { return &m_fileParameters; }
 private:
     void _writeDgram(XtcData::Dgram* dgram);
 private:
@@ -107,7 +119,7 @@ private:
     uint64_t m_damage;
     uint64_t m_evtSize;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
-    FileParameters *m_fileParameters;
+    FileParameters m_fileParameters;
 };
 
 class DrpBase
