@@ -144,7 +144,8 @@ def issue_2022_03_02():
 
 
 def issue_2022_03_08():
-    """test copy xtc2 file to .../public01/xtc/
+    """test generic access to calibconst for the detector interface
+    copy xtc2 file to .../public01/xtc/
     cd /cds/data/psdm/prj/public01/xtc/
     cp /cds/data/psdm/tmo/tmoc00318/xtc/tmoc00318-r0010-s000-c000.xtc2 .
     sudo chown psdatmgr tmoc00318-r0010-s000-c000.xtc2
@@ -156,6 +157,34 @@ def issue_2022_03_08():
     det = orun.Detector('epix100')
     peds, meta = det.calibconst['pedestals']
     print('det.calibconst["pedestals"] constants\n', peds, '\nmetadata\n', meta)
+
+
+def issue_2022_03_16():
+    """Uervirojnangkoorn, Monarin <monarin@slac.stanford.edu> Wed 3/16/2022 12:25 PM
+    Hi Mikhail, I mentioned that I tried to use calibcfg and calibtab for amox27716 run 85.
+    I can see the contents of both variables from det.calibconst but they are (I believe)
+    not compatible for DLDProcess.
+    Here?s the script that works (this script uses calibcfg and calibtab from txt files)
+    /cds/home/m/monarin/psana-nersc/psana2/dgrampy/ex-01-conv-raw-to-fex-wf.py
+    If you uncomment line 144 (kwargs.update(cc)), you will see the error that I showed earlier.
+    The cc has calibcfg and calibtab contents.
+    My question is Is there a way to pass calibcfg and calibtab contents instead of the file paths.
+    Thank you in advance!
+    Mona
+    """
+    from psana import DataSource
+
+    ds    = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
+    orun  = next(ds.runs())
+    det   = orun.Detector('tmo_quadanode')
+    cc    = det.calibconst
+
+    print('cc.keys():', cc.keys())
+    for k in cc.keys():
+        data, meta = cc[k]
+        print(k, 'meta:\n', meta)
+        print(k, 'type(data):\n', type(data))
+        print(k, 'data[:500]:\n', data[:500])
 
 
 def issue_2022_01_dd():
@@ -171,7 +200,8 @@ USAGE = '\nUsage:'\
       + '\n    4 - issue_2022_02_15 - test epix100 cpo - missing geometry'\
       + '\n    5 - issue_2022_03_01 - test epixquad cpo - copy constants'\
       + '\n    6 - issue_2022_03_02 - test epix100 - default geometry'\
-      + '\n    7 - issue_2022_03_08 - test det.calibconst'\
+      + '\n    7 - issue_2022_03_08 - test det.calibconst as generic access to cc'\
+      + '\n    8 - issue_2022_03_16 - test calibconst for Mona'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -183,6 +213,7 @@ elif TNAME in  ('4',): issue_2022_02_15()
 elif TNAME in  ('5',): issue_2022_03_01()
 elif TNAME in  ('6',): issue_2022_03_02()
 elif TNAME in  ('7',): issue_2022_03_08()
+elif TNAME in  ('8',): issue_2022_03_16()
 elif TNAME in  ('0',): issue_2022_01_dd()
 else:
     print(USAGE)
