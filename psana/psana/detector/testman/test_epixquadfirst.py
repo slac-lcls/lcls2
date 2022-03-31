@@ -1,5 +1,5 @@
 from psana import DataSource
-from cfg_utils import *
+#from cfg_utils import *
 import numpy as np
 import scipy as sp
 import argparse
@@ -23,6 +23,7 @@ plotPeriod = 10
 #else:
 #    ds = DataSource(exp='ueddaq02',run=args.run,dir='/u2/pcds/pds/ued/ueddaq02/xt#c')
 ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc')
+#ds = DataSource(exp='tmoc00318',run=10, dir='/cds/data/psdm/prj/public01/xtc')
 
 from psmon import publish
 import psmon.plots as plots
@@ -62,11 +63,11 @@ print('--dethw--')
 for nstep,step in enumerate(myrun.steps()):
 
     print('--step {}--'.format(nstep))
-    dump_det_config(det,args.detname)
+    #dump_det_config(det,args.detname)
 
     avgimg = None
     for nevt,evt in enumerate(step.events()):
-        image = det.raw.array(evt).astype(np.float)
+        image = det.raw.image(evt).astype(np.float)
         if avgimg is None:
             avgimg = image.copy()
         else:
