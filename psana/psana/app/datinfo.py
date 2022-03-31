@@ -29,6 +29,11 @@ USAGE = '\n  %s -d <detector> -e <experiment> -r <run-number(s)> [kwargs]' % SCR
       + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
       + '\n  %s -d tmoopal -e tmoc00118 -r 123 -td' % SCRNAME\
       + '\n  %s -e tmoc00318 -r 8 -d epix100hw' % SCRNAME\
+      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/rixx45619-r0121-s001-c000.xtc2 -d epixhr' % SCRNAME\
+      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/tmoc00318-r0010-s000-c000.xtc2 -d epix100' % SCRNAME\
+      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/tmoc00118-r0222-s006-c000.xtc2 -d tmo_atmopal' % SCRNAME\
+      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/uedcom103-r0007-s002-c000.xtc2 -d epixquad' % SCRNAME\
+      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/ueddaq02-r0569-s001-c000.xtc2  -d epixquad' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
 
 def ds_run_det(args):
