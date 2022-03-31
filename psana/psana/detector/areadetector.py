@@ -470,7 +470,7 @@ class AreaDetector(DetectorImpl):
             width = kwa.get('width', 0)
             erows = kwa.get('edge_rows', 1)
             ecols = kwa.get('edge_cols', 1)
-            mask_edges = um.mask_edges(mask, width=width, edge_rows=erows, edge_cols=ecols, dtype=dtype) # masks each segment edges only
+            mask_edges = self._mask_edges(width=width, edge_rows=erows, edge_cols=ecols, dtype=dtype) # masks each segment edges only
             mask = mask_edges if mask is None else um.merge_masks(mask, mask_edges, dtype=dtype)
 
         if center:
@@ -481,7 +481,7 @@ class AreaDetector(DetectorImpl):
             mask = mask_center if mask is None else um.merge_masks(mask, mask_center, dtype=dtype)
 
         if calib:
-            mask_calib = self._mask_calib()
+            mask_calib = self._mask_calib_or_default(dtype=dtype)
             mask = mask_calib if mask is None else um.merge_masks(mask, mask_calib, dtype=dtype)
 
         if umask is not None:
