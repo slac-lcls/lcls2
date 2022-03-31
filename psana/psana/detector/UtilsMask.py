@@ -14,6 +14,8 @@ Usage::
 
 2021-01-25 created by Mikhail Dubrovin
 """
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 import psana.pscalib.calib.CalibConstants as CC
 DTYPE_MASK   = CC.dic_calib_type_to_dtype[CC.PIXEL_MASK]   # np.uint8
