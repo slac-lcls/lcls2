@@ -20,9 +20,9 @@ public:
     unsigned disconnect();
     unsigned unconfigure();
 public:                                 // Detector virtuals
-    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
-    void slowupdate(XtcData::Xtc& xtc) override;
-    void event(XtcData::Dgram& dgram, PGPEvent* event) override;
+    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
+    void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
 private:
     void _worker();
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);

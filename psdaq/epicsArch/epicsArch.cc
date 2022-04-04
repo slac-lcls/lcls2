@@ -224,11 +224,11 @@ unsigned EaDetector::disconnect()
     return 0;
 }
 
-unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 {
     logging::info("EpicsArch configure");
 
-    if (XpmDetector::configure(config_alias, xtc))
+    if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
     if (m_exporter)  m_exporter.reset();
@@ -240,7 +240,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     size_t payloadSize;
     m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
                         m_para->detSegment,
-                        xtc, m_namesLookup, nodeId, payloadSize);
+                        xtc, bufEnd, m_namesLookup, nodeId, payloadSize);
     // make sure config transition will fit in the transition buffer (where SlowUpdate goes), however this check is too late: code can unfortunately segfault in the above line -cpo
     if (sizeof(XtcData::Dgram)+xtc.sizeofPayload() > m_para->maxTrSize) {
         logging::critical("Increase Parameter::maxTrSize (%zd) to avoid truncation of configure transition (%zd)",
@@ -270,16 +270,14 @@ unsigned EaDetector::unconfigure()
     return 0;
 }
 
-void EaDetector::event(XtcData::Dgram&, PGPEvent*)
+void EaDetector::event(XtcData::Dgram&, const void* bufEnd, PGPEvent*)
 {
     // Unused
 }
 
-void EaDetector::slowupdate(XtcData::Xtc& xtc)
+void EaDetector::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 {
-    auto payloadSize = m_para->maxTrSize - sizeof(Pds::EbDgram);
-
-    m_monitor->getData(xtc, m_namesLookup, nodeId, payloadSize, m_nStales);
+    m_monitor->getData(xtc, bufEnd, m_namesLookup, nodeId, m_nStales);
 }
 
 void EaDetector::_worker()
@@ -324,6 +322,7 @@ void EaDetector::_worker()
             if (service != XtcData::TransitionId::L1Accept) {
                 // Allocate a transition dgram from the pool and initialize its header
                 Pds::EbDgram* trDgram = m_pool->allocateTr();
+                const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
                 *trDgram = *dgram;
                 PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
                 pgpEvent->transitionDgram = trDgram;
@@ -331,13 +330,15 @@ void EaDetector::_worker()
                 if (service == XtcData::TransitionId::SlowUpdate) {
                     m_nUpdates++;
 
-                    slowupdate(trDgram->xtc);
+                    slowupdate(trDgram->xtc, bufEnd);
                 }
                 else {
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
                     XtcData::Xtc& trXtc = transitionXtc();
-                    memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
+                    trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                    auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
                     if (service == XtcData::TransitionId::Enable) {
                         m_running = true;
@@ -370,8 +371,10 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
     if (event->l3InpBuf) { // else shutting down
         Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
         if (l3InpDg->isEvent()) {
-            if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
-                m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
+            auto tp = m_drp.triggerPrimitive();
+            if (tp) { // else this DRP doesn't provide input
+                const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tp->size();
+                tp->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
             }
         }
         m_drp.tebContributor().process(l3InpDg);
@@ -392,11 +395,6 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Fatal: Could not create Detector object";
-    }
-    if (m_para.outputDir.empty()) {
-        logging::info("output dir: n/a");
-    } else {
-        logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
 }
@@ -502,11 +500,8 @@ void EpicsArchApp::handlePhase1(const json& msg)
     logging::debug("handlePhase1 for %s in EpicsArchApp", key.c_str());
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    xtc.src = XtcData::Src(m_det->nodeId); // set the src field for the event builders
-    xtc.damage = 0;
-    xtc.contains = tid;
-    xtc.extent = sizeof(XtcData::Xtc);
+    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    auto bufEnd = m_det->trXtcBufEnd();
 
     json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
@@ -531,7 +526,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
         }
 
         std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc);
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
             std::string errorMsg = "Failed transition phase 1";
             logging::error("%s", errorMsg.c_str());
@@ -539,7 +534,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_drp.runInfoSupport(xtc, m_det->namesLookup());
+        m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -553,7 +548,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else if (runInfo.runNumber > 0) {
-            m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
+            m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
     }
     else if (key == "endrun") {

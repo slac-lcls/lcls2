@@ -50,9 +50,9 @@ class PvaDetector : public XpmDetector
 {
 public:
     PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonitor, DrpBase& drp);
-  //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc);
-    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
-    void event(XtcData::Dgram& dgram, PGPEvent* event) override;
+  //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
+    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
     unsigned unconfigure();
     void process(const XtcData::TimeStamp&);
 private:

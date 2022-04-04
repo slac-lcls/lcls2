@@ -170,7 +170,7 @@ json Digitizer::connectionInfo()
     return info;
 }
 
-unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& config_alias) {
+unsigned Digitizer::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesId, const std::string& config_alias) {
 
   timespec tv_b; clock_gettime(CLOCK_REALTIME,&tv_b);
 
@@ -206,7 +206,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string
     // convert to json to xtc
     const unsigned BUFSIZE = 1024*1024;
     char buffer[BUFSIZE];
-    unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detName.c_str(), m_para->detSegment);
+    unsigned len = Pds::translateJson2Xtc(json, buffer, &buffer[BUFSIZE], configNamesId, m_para->detName.c_str(), m_para->detSegment);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer";
     }
@@ -218,8 +218,8 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string
 
     // append the config xtc info to the dgram
     Xtc& jsonxtc = *(Xtc*)buffer;
-    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
-    xtc.alloc(jsonxtc.sizeofPayload());
+    auto payload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
+    memcpy(payload,(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
 
     // get the lane mask from the json
     unsigned lane_mask = 1;
@@ -239,7 +239,7 @@ void Digitizer::connect(const json& connect_json, const std::string& collectionI
   m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 }
 
-unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
+unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
     //  Reset the PGP links
     int fd = m_pool->fd();
@@ -261,21 +261,22 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    lane_mask = Digitizer::_addJson(xtc, configNamesId, config_alias);
+    lane_mask = Digitizer::_addJson(xtc, bufEnd, configNamesId, config_alias);
 
     // set up the names for L1Accept data
     Alg alg("raw", 2, 0, 0);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
+    Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                m_para->detName.c_str(), alg,
+                                                m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
     HsdDef myHsdDef(lane_mask);
-    eventNames.add(xtc, myHsdDef);
+    eventNames.add(xtc, bufEnd, myHsdDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;
 }
 
-void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
+void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
-    CreateData hsd(dgram.xtc, m_namesLookup, m_evtNamesId);
+    CreateData hsd(dgram.xtc, bufEnd, m_namesLookup, m_evtNamesId);
 
     // HSD data includes two uint32_t "event header" words
     unsigned data_size;
@@ -333,16 +334,17 @@ void Digitizer::shutdown()
 }
 
 unsigned Digitizer::configureScan(const json& scan_keys,
-                                  Xtc&        xtc)
+                                  Xtc&        xtc,
+                                  const void* bufEnd)
 {
     NamesId namesId(nodeId,UpdateNamesIndex);
-    return m_configScanner->configure(scan_keys,xtc,namesId,m_namesLookup);
+    return m_configScanner->configure(scan_keys,xtc,bufEnd,namesId,m_namesLookup);
 }
 
-unsigned Digitizer::stepScan(const json& stepInfo, Xtc& xtc)
+unsigned Digitizer::stepScan(const json& stepInfo, Xtc& xtc, const void* bufEnd)
 {
     NamesId namesId(nodeId,UpdateNamesIndex);
-    return m_configScanner->step(stepInfo,xtc,namesId,m_namesLookup);
+    return m_configScanner->step(stepInfo,xtc,bufEnd,namesId,m_namesLookup);
 }
 
 }

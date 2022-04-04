@@ -176,7 +176,7 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
       }
 }
 
-unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 {
     return 0;
 }

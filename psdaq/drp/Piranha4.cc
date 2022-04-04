@@ -97,10 +97,10 @@ namespace Drp {
             TT(Piranha4& d, Parameters* para);
             ~TT();
         public:
-            void           slowupdate(XtcData::Xtc&);
+            void           slowupdate(XtcData::Xtc&, const void* bufEnd);
             void           shutdown ();
-            unsigned       configure(XtcData::Xtc&,XtcData::ConfigIter&);
-            bool           event    (XtcData::Xtc&,
+            unsigned       configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&);
+            bool           event    (XtcData::Xtc&, const void* bufEnd,
                                      std::vector< XtcData::Array<uint8_t> >&);
         private:
             Piranha4&             m_det;
@@ -120,8 +120,8 @@ namespace Drp {
         class TTSim {
         public:
             virtual ~TTSim() {}
-            virtual unsigned       configure(XtcData::Xtc&,XtcData::ConfigIter&) = 0;
-            virtual void           event    (XtcData::Xtc&,
+            virtual unsigned       configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) = 0;
+            virtual void           event    (XtcData::Xtc&, const void* bufEnd,
                                              std::vector< XtcData::Array<uint8_t> >&) = 0;
         };
 
@@ -130,8 +130,8 @@ namespace Drp {
             TTSimL1(const char*, Piranha4&, Parameters* para);
             ~TTSimL1();
         public:
-            unsigned       configure(XtcData::Xtc&,XtcData::ConfigIter&);
-            void           event    (XtcData::Xtc&,
+            unsigned       configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&);
+            void           event    (XtcData::Xtc&, const void* bufEnd,
                                      std::vector< XtcData::Array<uint8_t> >&);
         private:
             Piranha4&             m_det;
@@ -160,8 +160,8 @@ namespace Drp {
             TTSimL2(const char*,const char*, Piranha4&, Parameters* para);
             ~TTSimL2();
         public:
-            unsigned       configure(XtcData::Xtc&,XtcData::ConfigIter&);
-            void           event    (XtcData::Xtc&,
+            unsigned       configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&);
+            void           event    (XtcData::Xtc&, const void* bufEnd,
                                      std::vector< XtcData::Array<uint8_t> >&);
         private:
             Piranha4&             m_det;
@@ -305,15 +305,18 @@ json Piranha4::connectionInfo()
     return json({});
 }
 
-unsigned Piranha4::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
+unsigned Piranha4::_configure(XtcData::Xtc&        xtc,
+                              const void*          bufEnd,
+                              XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     Alg alg("raw", 2, 0, 0);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
+    Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                m_para->detName.c_str(), alg,
+                                                m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
 
-    eventNames.add(xtc, Piranha::rawDef);
+    eventNames.add(xtc, bufEnd, Piranha::rawDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
 
     if (m_tt) { delete m_tt; m_tt = 0; }
@@ -321,25 +324,25 @@ unsigned Piranha4::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
     XtcData::DescData& descdata = configo.desc_shape();
     IndexMap& nameMap = descdata.nameindex().nameMap();
     if (nameMap.find("fex.enable")!=nameMap.end() && descdata.get_value<uint8_t>("fex.enable"))
-        (m_tt = new TT(*this,m_para))->configure(xtc,configo);
+        (m_tt = new TT(*this,m_para))->configure(xtc,bufEnd,configo);
 
-    if (m_sim) m_sim->configure(xtc,configo);
+    if (m_sim) m_sim->configure(xtc,bufEnd,configo);
 
     return 0;
 }
 
-void Piranha4::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void Piranha4::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    if (m_sim) m_sim->event(xtc,subframes);
-    if (m_tt && !m_tt->event(xtc,subframes))
+    if (m_sim) m_sim->event(xtc,bufEnd,subframes);
+    if (m_tt && !m_tt->event(xtc,bufEnd,subframes))
         return;
-    write_image(xtc,subframes, m_evtNamesId);
+    write_image(xtc,bufEnd,subframes, m_evtNamesId);
 }
 
-void Piranha4::write_image(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes,
+void Piranha4::write_image(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes,
                            XtcData::NamesId& namesId)
 {
-    CreateData cd(xtc, m_namesLookup, namesId);
+    CreateData cd(xtc, bufEnd, m_namesLookup, namesId);
 
     unsigned shape[MaxRank];
     shape[0] = m_rows;
@@ -348,11 +351,11 @@ void Piranha4::write_image(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_
     memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
 }
 
-void     Piranha4::slowupdate(XtcData::Xtc& xtc)
+void     Piranha4::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 {
     logging::debug("%s: m_tt = %s", __PRETTY_FUNCTION__, m_tt ? "true" : "false");
-    if (m_tt) m_tt->slowupdate(xtc);
-    else this->Detector::slowupdate(xtc);
+    if (m_tt) m_tt->slowupdate(xtc, bufEnd);
+    else this->Detector::slowupdate(xtc, bufEnd);
 }
 
 void     Piranha4::shutdown()
@@ -394,45 +397,49 @@ TT::TT(Piranha4& d, Parameters* para) :
 
 TT::~TT() {}
 
-void     TT::slowupdate(XtcData::Xtc& xtc)
+void     TT::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 {
     logging::debug("%s: m_background_empty = %s", __PRETTY_FUNCTION__, m_background_empty ? "true" : "false");
     m_background_sem.take();
     if (!m_background_empty) {
-        memcpy((void*)&xtc, (const void*)&m_det.transitionXtc(), m_det.transitionXtc().extent);
+        XtcData::Xtc& trXtc = m_det.transitionXtc();
+        xtc = trXtc; // Preserve header info, but allocate to check fit
+        auto payload = xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+        memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
         m_background_empty = true;
     }
     else {
         // no payload
-        const XtcData::Xtc emptyXtc = {{XtcData::TypeId::Parent, 0}, {m_det.nodeId}};
-        memcpy((void*)&xtc, (const void*)&emptyXtc, emptyXtc.extent);
+        xtc = {{XtcData::TypeId::Parent, 0}, {m_det.nodeId}};
     }
     m_background_sem.give();
 }
 
 void     TT::shutdown() { m_fex.unconfigure(); }
 
-unsigned TT::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
+unsigned TT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& cfg)
 {
     m_fex.configure(cfg, m_det.m_columns, m_det.m_rows);
 
     // set up the names for L1Accept data
     { m_fexNamesId = NamesId(m_det.nodeId, EventNamesIndex+1);
         Alg alg("ttfex", 2, 1, 0);
-        Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                          m_para->detType.c_str(), m_para->serNo.c_str(), m_fexNamesId, m_para->detSegment);
+        Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                  m_para->detName.c_str(), alg,
+                                                  m_para->detType.c_str(), m_para->serNo.c_str(), m_fexNamesId, m_para->detSegment);
         FexDef fexDef;
-        fexNames.add(xtc, fexDef);
+        fexNames.add(xtc, bufEnd, fexDef);
         m_det.namesLookup()[m_fexNamesId] = NameIndex(fexNames);
     }
 
     // and the conditional projections
     { m_projNamesId = NamesId(m_det.nodeId, EventNamesIndex+2);
         Alg alg("ttproj", 2, 0, 0);
-        Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                          m_para->detType.c_str(), m_para->serNo.c_str(), m_projNamesId, m_para->detSegment);
+        Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                  m_para->detName.c_str(), alg,
+                                                  m_para->detType.c_str(), m_para->serNo.c_str(), m_projNamesId, m_para->detSegment);
         ProjDef fexDef;
-        fexNames.add(xtc, fexDef);
+        fexNames.add(xtc, bufEnd, fexDef);
         m_det.namesLookup()[m_projNamesId] = NameIndex(fexNames);
     }
 
@@ -443,19 +450,20 @@ unsigned TT::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
         Alg alg("piranha4tt", 2, 0, 0);
         // cpo: rename this away from "epics" for now because the
         // segment number can conflict with epicsarch.
-        Names& bkgNames = *new(xtc) Names("epics_dontuse", alg,
-                                          "epics_dontuse", m_para->serNo.c_str(), m_refNamesId, m_para->detSegment);
+        Names& bkgNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                  "epics_dontuse", alg,
+                                                  "epics_dontuse", m_para->serNo.c_str(), m_refNamesId, m_para->detSegment);
         RefDef refDef(m_para->detName.c_str(),"piranhatt",
                       m_fex.write_ref_image(),
                       m_fex.write_ref_projection());
-        bkgNames.add(xtc, refDef);
+        bkgNames.add(xtc, bufEnd, refDef);
         m_det.namesLookup()[m_refNamesId] = NameIndex(bkgNames);
     }
 
     return 0;
 }
 
-bool TT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     m_fex.reset();
 
@@ -479,7 +487,7 @@ bool TT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subfra
             m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
         }
         //  Insert the results
-        CreateData cd(xtc, m_det.namesLookup(), m_fexNamesId);
+        CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_fexNamesId);
         cd.set_value(FexDef::ampl      , m_fex.amplitude());
         cd.set_value(FexDef::fltpos    , m_fex.filtered_position());
         cd.set_value(FexDef::fltpos_ps , m_fex.filtered_pos_ps());
@@ -497,7 +505,7 @@ bool TT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subfra
 #ifdef DBUG
             printf("writing projections sized %zu %zu\n",sig.size(),ref.size());
 #endif
-            CreateData cdp(xtc, m_det.namesLookup(), m_projNamesId);
+            CreateData cdp(xtc, bufEnd, m_det.namesLookup(), m_projNamesId);
             copy_projection(double, sig, ProjDef::proj_sig);
             copy_projection(double, ref, ProjDef::proj_ref);
         }
@@ -508,7 +516,7 @@ bool TT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subfra
         if (m_background_empty) {
             m_det.transitionXtc().extent = sizeof(Xtc);
             if (m_fex.write_ref_image() || m_fex.write_ref_projection()) {
-                CreateData cd(m_det.transitionXtc(), m_det.m_namesLookup, m_refNamesId);
+                CreateData cd(m_det.transitionXtc(), m_det.trXtcBufEnd(), m_det.m_namesLookup, m_refNamesId);
                 unsigned index=0;
                 if (m_fex.write_ref_image()) {
                     unsigned shape[MaxRank];
@@ -548,22 +556,23 @@ TTSimL1::~TTSimL1()
 {
 }
 
-unsigned TTSimL1::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
+unsigned TTSimL1::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& cfg)
 {
     //  Add results into the dgram
     m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+4);
     Alg alg("simfex", 2, 1, 0);
-    Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                      m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);
+    Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
+                                              m_para->detName.c_str(), alg,
+                                              m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);
 
     FexDef fexDef;
-    fexNames.add(xtc, fexDef);
+    fexNames.add(xtc, bufEnd, fexDef);
     m_det.namesLookup()[m_simNamesId] = NameIndex(fexNames);
 
     return 0;
 }
 
-void TTSimL1::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void TTSimL1::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
 #define L1PAYLOAD(ptype,f)                                              \
     ptype& f = *reinterpret_cast<ptype*>( reinterpret_cast<PdsL1::Xtc*>(&m_evtbuffer[m_evtindex])->payload() ); \
@@ -577,7 +586,7 @@ void TTSimL1::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& s
         m_evtindex=0;
     }
 
-    CreateData cd(xtc, m_det.namesLookup(), m_simNamesId);
+    CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_simNamesId);
 
     //  Insert the results
     cd.set_value(FexDef::ampl      , t._amplitude);
@@ -640,16 +649,17 @@ TTSimL2::~TTSimL2()
 {
 }
 
-unsigned TTSimL2::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
+unsigned TTSimL2::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& cfg)
 {
     //  Add results into the dgram
     m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+4);
     Alg alg("simfex", 2, 1, 0);
-    Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                      m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);
+    Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
+                                              m_para->detName.c_str(), alg,
+                                              m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);
 
     FexDef fexDef;
-    fexNames.add(xtc, fexDef);
+    fexNames.add(xtc, bufEnd, fexDef);
     m_det.namesLookup()[m_simNamesId] = NameIndex(fexNames);
 
     //  Retrieve the offline configuration for parsing the event data
@@ -682,7 +692,7 @@ unsigned TTSimL2::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
     return 0;
 }
 
-void TTSimL2::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void TTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     m_filesem.take();
     Dgram* dg;
@@ -706,7 +716,7 @@ void TTSimL2::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& s
     FIND_L1A(m_timiter,m_timinput);
 
     /*
-    CreateData cd(xtc, m_det.namesLookup(), m_simNamesId);
+    CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_simNamesId);
 
     //  Insert the results
     cd.set_value(FexDef::ampl      , t._amplitude);

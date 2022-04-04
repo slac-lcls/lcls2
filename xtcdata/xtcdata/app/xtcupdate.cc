@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
         exit(2);
     }
 
-    // open xtc file 
+    // open xtc file
     int fd = open(xtcname, O_RDONLY);
     if (fd < 0) {
         fprintf(stderr, "Unable to open file '%s'\n", xtcname);
@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
 
     // create update iterator
     XtcUpdateIter uiter(numWords);
-    
+
     char detName[] = "xpphsd";
     char detType[] = "hsd";
     char detId[] = "detnum1234";
@@ -80,11 +80,13 @@ int main(int argc, char* argv[])
 
         nevent++;
         printf("event %d ", nevent);
-        
+
+        const void* bufEnd = ((char*)dg) + 0x4000000;
+
         // add Names to configure
         if (dg->service() == TransitionId::Configure) {
             printf("[Configure] ");
-            uiter.addNames(dg->xtc, detName, detType, detId,
+            uiter.addNames(dg->xtc, bufEnd, detName, detType, detId,
                     nodeId, namesId, segment,
                     algName, major, minor, micro, datadef);
             uiter.iterate(&(dg->xtc));
@@ -94,7 +96,7 @@ int main(int argc, char* argv[])
         if (dg->service() == TransitionId::L1Accept) {
             printf("[L1Accept] ");
             unsigned shape[MaxRank] = {2,3};
-            uiter.createData(dg->xtc, nodeId, namesId);
+            uiter.createData(dg->xtc, bufEnd, nodeId, namesId);
             uint8_t data[6] = {141,142,143,144,145,146};
             uiter.addData(nodeId, namesId, shape, (char *)data, datadef, defName);
             uiter.iterate(&(dg->xtc));

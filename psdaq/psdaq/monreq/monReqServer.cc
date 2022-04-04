@@ -86,7 +86,6 @@ namespace Pds {
                        prms.maxBufferSize,
                        prms.numEvBuffers,
                        prms.nevqueues),
-      _sizeofBuffers(prms.maxBufferSize),
       _iTeb         (0),
       _mrqLinks     (links),
       _requestCount (requestCount),
@@ -112,7 +111,7 @@ namespace Pds {
       return _bufFreeList.count();
     }
   private:
-    virtual void _copyDatagram(Dgram* dg, char* buf)
+    virtual void _copyDatagram(Dgram* dg, char* buf, size_t bSz)
     {
       if (unlikely(_prms.verbose >= VL_EVENT))
         printf("_copyDatagram:   dg %p, ts %u.%09u to %p\n",
@@ -126,22 +125,24 @@ namespace Pds {
       Dgram*                 odg  = new((void*)buf) Dgram(**ctrb); // Not an EbDgram!
       odg->xtc.src      = XtcData::Src(XtcData::Level::Event);
       odg->xtc.contains = XtcData::TypeId(XtcData::TypeId::Parent, 0);
+      const void* bufEnd = buf + bSz;
       do
       {
         const EbDgram* idg = *ctrb;
 
         odg->xtc.damage.increase(idg->xtc.damage.value());
 
-        size_t   oSz  = sizeof(*odg) + odg->xtc.sizeofPayload();
+        //size_t   oSz  = sizeof(*odg) + odg->xtc.sizeofPayload();
         uint32_t iExt = idg->xtc.extent;
-        if (oSz + iExt > _sizeofBuffers)
-        {
-          logging::debug("Truncated: Buffer of size %zu is too small to add Xtc of size %zu\n",
-                         _sizeofBuffers, iExt);
-          odg->xtc.damage.increase(XtcData::Damage::Truncated);
-          iExt = _sizeofBuffers - oSz;
-        }
-        buf = (char*)odg->xtc.alloc(iExt);
+        // Truncation goes unnoticed, so crash instead to get it fixed
+        //if (oSz + iExt > bSz)
+        //{
+        //  logging::debug("Truncated: Buffer of size %zu is too small to add Xtc of size %zu\n",
+        //                 bSz, iExt);
+        //  odg->xtc.damage.increase(XtcData::Damage::Truncated);
+        //  iExt = bSz - oSz;
+        //}
+        buf = (char*)odg->xtc.alloc(iExt, bufEnd);
         memcpy(buf, &idg->xtc, iExt);
       }
       while (++ctrb != last);
@@ -226,7 +227,6 @@ namespace Pds {
     }
 
   private:
-    unsigned                   _sizeofBuffers;
     unsigned                   _iTeb;
     std::vector<EbLfCltLink*>& _mrqLinks;
     uint64_t&                  _requestCount;
@@ -435,9 +435,10 @@ void Meb::process(EbEvent* event)
   // copy it into shmem in _copyDatagram() above.  Since the contributions,
   // and thus the full datagram, can be quite large, this would amount to
   // a lot of copying
-  size_t   sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
-  unsigned idx    = ImmData::idx(event->parameter());
-  void*    buffer = _pool->alloc(sizeof(Dgram) + sz);
+  size_t      sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
+  unsigned    idx    = ImmData::idx(event->parameter());
+  void*       buffer = _pool->alloc(sizeof(Dgram) + sz);
+  const void* bufEnd = ((char*)buffer) + _pool->sizeofObject();
   if (!buffer)
   {
     logging::critical("%s:\n  Dgram pool allocation of size %zd failed:",
@@ -450,7 +451,7 @@ void Meb::process(EbEvent* event)
   }
 
   Dgram* dg  = new(buffer) Dgram(*(event->creator()));
-  void*  buf = dg->xtc.alloc(sz);
+  void*  buf = dg->xtc.alloc(sz, bufEnd);
   memcpy(buf, event->begin(), sz);
   dg->env = (dg->env & 0xff00ffff) | (idx << 16); // Pass buffer's index to _deleteDatagram()
 

@@ -23,7 +23,8 @@ namespace Pds {
       void   event(const Drp::MemPool& pool,
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,
-                   XtcData::Xtc&       xtc) override;
+                   XtcData::Xtc&       xtc,
+                   const void*         bufEnd) override;
       size_t size() const  { return sizeof(TmoTebData); }
     };
   };
@@ -42,13 +43,13 @@ int Pds::Trg::TmoTebPrimitive::configure(const Document& top,
 void Pds::Trg::TmoTebPrimitive::event(const Drp::MemPool& pool,
                                       uint32_t            idx,
                                       const XtcData::Xtc& ctrb,
-                                      XtcData::Xtc&       xtc)
+                                      XtcData::Xtc&       xtc,
+                                      const void*         bufEnd)
 {
-  void* buf  = xtc.alloc(sizeof(TmoTebData));
-  auto  data = static_cast<TmoTebData*>(buf);
+  uint32_t write_   = 0xdeadbeef;
+  uint32_t monitor_ = 0x12345678;
 
-  data->write   = 0xdeadbeef;
-  data->monitor = 0x12345678;
+  new(xtc.alloc(sizeof(TmoTebData), bufEnd)) TmoTebData(write_, monitor_);
 }
 
 // The class factory

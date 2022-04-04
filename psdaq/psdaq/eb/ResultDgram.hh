@@ -41,7 +41,7 @@ namespace Pds {
         _data(0),
         _monBufNo(0)
       {
-        xtc.alloc(sizeof(ResultDgram) - sizeof(Pds::EbDgram));
+        xtc.extent += sizeof(ResultDgram) - sizeof(Pds::EbDgram);
       }
     public:
       void     persist (unsigned line, bool value) { if (value) _data |=   s_persist  << (4 * line);

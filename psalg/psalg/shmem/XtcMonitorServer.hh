@@ -95,7 +95,7 @@ namespace psalg {
       void _update           (int, XtcData::TransitionId::Value);
       void _clearDest        (mqd_t);
     private:
-      virtual void _copyDatagram   (XtcData::Dgram* dg, char*);
+      virtual void _copyDatagram   (XtcData::Dgram* dg, char*, size_t);
       virtual void _deleteDatagram (XtcData::Dgram* dg);
       virtual void _requestDatagram();
     private:

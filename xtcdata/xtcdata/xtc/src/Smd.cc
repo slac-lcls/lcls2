@@ -60,20 +60,20 @@ private:
     NamesId _offset_namesId;
 };
 
-void addNames(Xtc& parent, NamesLookup& namesLookup, NamesId namesId)
+void addNames(Xtc& parent, const void* bufEnd, NamesLookup& namesLookup, NamesId namesId)
 {
     Alg alg("offsetAlg",0,0,0);
 
     // check that our chose namesId isn't already in use
     CheckNamesIdIter checkNamesId(namesId);
     checkNamesId.iterate(&parent);
-    
-    Names& offsetNames = *new(parent) Names("smdinfo", alg, "offset", "", namesId);
-    offsetNames.add(parent,SmdDef);
+
+    Names& offsetNames = *new(parent, bufEnd) Names(bufEnd, "smdinfo", alg, "offset", "", namesId);
+    offsetNames.add(parent,bufEnd,SmdDef);
     namesLookup[namesId] = NameIndex(offsetNames);
 }
 
-Dgram* Smd::generate(Dgram* dgIn, void* buf, uint64_t offset, uint64_t size,
+Dgram* Smd::generate(Dgram* dgIn, void* buf, const void* bufEnd, uint64_t offset, uint64_t size,
         NamesLookup& namesLookup, NamesId namesId)
 {
     if (dgIn->service() != TransitionId::L1Accept) {
@@ -81,24 +81,20 @@ Dgram* Smd::generate(Dgram* dgIn, void* buf, uint64_t offset, uint64_t size,
         dgOut = (Dgram*)buf;
         memcpy(dgOut, dgIn, sizeof(*dgIn));
         memcpy(dgOut->xtc.payload(), dgIn->xtc.payload(), dgIn->xtc.sizeofPayload());
-        
+
         if (dgIn->service() == TransitionId::Configure) {
-            addNames(dgOut->xtc, namesLookup, namesId);
+            addNames(dgOut->xtc, bufEnd, namesLookup, namesId);
         }
-        
+
         return dgOut;
 
-    } else { 
+    } else {
         Dgram& dgOut = *(Dgram*)buf;
-        dgOut.env = dgIn->env;
-        
-        TypeId tid(TypeId::Parent, 0);
-        dgOut.xtc.contains = tid;
-        dgOut.xtc.damage = 0;
-        dgOut.xtc.extent = sizeof(Xtc);
         dgOut.time = dgIn->time;
-        
-        CreateData createSmd(dgOut.xtc, namesLookup, namesId);
+        dgOut.env = dgIn->env;
+        dgOut.xtc = {{TypeId::Parent, 0}};
+
+        CreateData createSmd(dgOut.xtc, bufEnd, namesLookup, namesId);
         createSmd.set_value(SmdDef::intOffset, offset);
         createSmd.set_value(SmdDef::intDgramSize, size);
 
@@ -108,9 +104,9 @@ Dgram* Smd::generate(Dgram* dgIn, void* buf, uint64_t offset, uint64_t size,
         if (size <= 0) {
             cout << "Error size value (size=" << size << ")" << endl;
         }
-        
+
         return &dgOut;
 
-    } // end else dgIn->service() 
+    } // end else dgIn->service()
 
 }

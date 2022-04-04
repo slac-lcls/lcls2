@@ -27,12 +27,13 @@ namespace Drp {
         NameVec.push_back({"sequenceValues", Name::UINT16, 1});
     }
 
-    void TimingDef::describeData(XtcData::Xtc&         xtc, 
-                                 XtcData::NamesLookup& namesLookup, 
+    void TimingDef::describeData(XtcData::Xtc&         xtc,
+                                 const void*           bufEnd,
+                                 XtcData::NamesLookup& namesLookup,
                                  XtcData::NamesId      namesId,
                                  const uint8_t*        data)
     {
-        DescribedData ts(xtc, namesLookup, namesId);
+        DescribedData ts(xtc, bufEnd, namesLookup, namesId);
 
         unsigned data_size = 968/8;
         memcpy(ts.data(), data, data_size);
@@ -48,11 +49,12 @@ namespace Drp {
     }
 
     void TimingDef::createDataNoBSA(XtcData::Xtc&         xtc,
+                                    const void*           bufEnd,
                                     XtcData::NamesLookup& namesLookup,
                                     XtcData::NamesId      namesId,
                                     const uint8_t*        p)
     {
-        CreateData cd(xtc, namesLookup, namesId);
+        CreateData cd(xtc, bufEnd, namesLookup, namesId);
         unsigned index = 0;
         unsigned shape[MaxRank];
 
@@ -98,16 +100,17 @@ namespace Drp {
         }
         COPYARRAY(uint16_t, 18);  // sequenceValues
 #undef COPYARRAY
-#undef BYTEFROMBIT        
+#undef BYTEFROMBIT
     }
 
     void TimingDef::createDataETM(XtcData::Xtc&         xtc,
+                                  const void*           bufEnd,
                                   XtcData::NamesLookup& namesLookup,
                                   XtcData::NamesId      namesId,
                                   const uint8_t*        pHdr,
                                   const uint8_t*        pEtm)
     {
-        CreateData cd(xtc, namesLookup, namesId);
+        CreateData cd(xtc, bufEnd, namesLookup, namesId);
         unsigned index = 0;
         unsigned shape[MaxRank];
 
@@ -153,5 +156,5 @@ namespace Drp {
     }
 #undef ZEROARRAY
 #undef COPYARRAY
-#undef BYTEFROMBIT        
+#undef BYTEFROMBIT
 }

@@ -9,7 +9,7 @@ cdef extern from 'xtcdata/xtc/Dgram.hh' namespace "XtcData":
 
 cdef extern from 'xtcdata/xtc/Xtc.hh' namespace "XtcData":
     cdef cppclass Xtc:
-        Xtc() except + 
+        Xtc() except +
         int sizeofPayload() const
         uint32_t extent
 
@@ -38,7 +38,7 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
         const char* name()
 
     cdef cppclass NameInfo:
-        NameInfo(const char* detname, Alg& alg0, const char* dettype, 
+        NameInfo(const char* detname, Alg& alg0, const char* dettype,
                 const char* detid, cnp.uint32_t segment0, cnp.uint32_t numarr):
             alg(alg0), segment(segment0)
 
@@ -70,7 +70,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         char* get_buf()
         void clear_buf()
         unsigned get_bufsize()
-        void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
+        void addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
                 unsigned nodeId, unsigned namesId, unsigned segment,
                 char* algName, uint8_t major, uint8_t minor, uint8_t micro,
                 DataDef& datadef)
@@ -81,7 +81,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
                 unsigned* shape, char* data, DataDef& datadef, char* varname)
         Dgram& createTransition(unsigned transId, unsigned counting_timestamps,
                 uint64_t timestamp_val)
-        void createData(Xtc& xtc, unsigned nodeId, unsigned namesId)
+        void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId)
         void updateTimeStamp(Dgram& d, uint64_t timestamp_val)
         int  getElementSize(unsigned nodeId, unsigned namesId,
                 DataDef& datadef, char* varname)

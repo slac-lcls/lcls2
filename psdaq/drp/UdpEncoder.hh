@@ -89,14 +89,14 @@ class UdpEncoder : public XpmDetector
 public:
     UdpEncoder(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor, DrpBase& drp);
     ~UdpEncoder();
-  //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc);
-    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
-    void event(XtcData::Dgram& dgram, PGPEvent* event) override;
+  //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
+    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
     unsigned unconfigure();
     void setOutOfOrder(std::string errMsg);
     bool getOutOfOrder() { return (m_outOfOrder); }
     void process();
-    void addNames(unsigned segment, XtcData::Xtc& xtc);
+    void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
     int drainFd(int fd);
     int reset();
     enum { DefaultDataPort = 5006 };

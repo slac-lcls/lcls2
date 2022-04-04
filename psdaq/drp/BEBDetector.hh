@@ -21,8 +21,8 @@ namespace Drp {
   class PythonConfigScanner;
 
   enum { MaxSegsPerNode = 10 };
-  enum {ConfigNamesIndex = NamesIndex::BASE, 
-        EventNamesIndex  = ConfigNamesIndex + MaxSegsPerNode, 
+  enum {ConfigNamesIndex = NamesIndex::BASE,
+        EventNamesIndex  = ConfigNamesIndex + MaxSegsPerNode,
         UpdateNamesIndex = EventNamesIndex  + MaxSegsPerNode }; // index for xtc NamesId
 
 class BEBDetector : public Detector
@@ -33,12 +33,12 @@ public:
 public:  // Implementation of Detector
     nlohmann::json connectionInfo() override;
     void           connect       (const nlohmann::json&, const std::string& collectionId) override;
-    unsigned       configure     (const std::string& config_alias, XtcData::Xtc& xtc) override;
-    void           event         (XtcData::Dgram& dgram, PGPEvent* event) override;
+    unsigned       configure     (const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
+    void           event         (XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
     void           shutdown      () override;
 
-    unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc) override;
-    unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc) override;
+    unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
+    unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
 
     Pds::TimingHeader* getTimingHeader(uint32_t index) const override
     {
@@ -48,8 +48,9 @@ public:  // Implementation of Detector
     static PyObject* _check(PyObject*);
 protected:  // This is the sub class interface
     virtual void           _connect  (PyObject*) {}     // handle dictionary entries returned by <detType>_connect python
-    virtual unsigned       _configure(XtcData::Xtc&, XtcData::ConfigIter&)=0; // attach descriptions to xtc
+    virtual unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&)=0; // attach descriptions to xtc
     virtual void           _event    (XtcData::Xtc&,    // fill xtc from subframes
+                                      const void* bufEnd,
                                       std::vector< XtcData::Array<uint8_t> >&) {}
 protected:
     void _init(const char*);  // Must call from subclass constructor

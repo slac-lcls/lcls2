@@ -80,6 +80,7 @@ public:
 public:
     Bld&               handler   ();
     XtcData::NameIndex addToXtc  (XtcData::Xtc&,
+                                  const void* bufEnd,
                                   const XtcData::NamesId&);
 private:
     std::string                    _detName;

@@ -30,8 +30,8 @@ class NamesDef:
 
 
 class DataType:
-    """ This list has to match Name.DataType c++ 
-    {UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, 
+    """ This list has to match Name.DataType c++
+    {UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE,
     CHARSTR, ENUMVAL, ENUMDICT}
     but it doesn't make sense to wrap it ..."""
     UINT8   = 0
@@ -52,7 +52,7 @@ class DataType:
                 1: np.uint16,
                 2: np.uint32,
                 3: np.uint64,
-                4: np.int8, 
+                4: np.int8,
                 5: np.int16,
                 6: np.int32,
                 7: np.int64,
@@ -65,7 +65,7 @@ cdef class PyDataDef:
 
     def __init__(self):
         self.cptr = new DataDef()
-        
+
     def show(self):
         self.cptr.show()
 
@@ -80,12 +80,12 @@ cdef class PyXtc():
 
     def sizeofPayload(self):
         return self.cptr.sizeofPayload()
-    
+
 cdef class PyDgram():
     cdef Dgram* cptr
 
     # No constructor - the Dgram ptr gets assigned elsewhere.
-    
+
     def get_pyxtc(self):
         pyxtc = PyXtc()
         pyxtc.cptr = &(self.cptr.xtc)
@@ -104,7 +104,7 @@ cdef class PyDgram():
 cdef class PyXtcUpdateIter():
     cdef XtcUpdateIter* cptr
     _numWords = 6               # no. of print-out elements for an array
-    
+
     def __cinit__(self):
         self.cptr = new XtcUpdateIter(self._numWords)
 
@@ -115,7 +115,7 @@ cdef class PyXtcUpdateIter():
         f.write(self.get_buf())
         self.cptr.clear_buf()
 
-    def process(self, PyXtc pyxtc):       
+    def process(self, PyXtc pyxtc):
         self.cptr.process(pyxtc.cptr)
 
     def iterate(self, PyXtc pyxtc):
@@ -127,7 +127,7 @@ cdef class PyXtcUpdateIter():
             buf = <char [:self.cptr.get_bufsize()]>self.cptr.get_buf()
             return buf
         else:
-            return memoryview(bytearray()) 
+            return memoryview(bytearray())
 
     def copy(self, PyDgram pydg):
         self.cptr.copy(pydg.cptr)
@@ -135,52 +135,54 @@ cdef class PyXtcUpdateIter():
     def updatetimestamp(self, PyDgram pydg, timestamp_val):
         self.cptr.updateTimeStamp(pydg.cptr[0], timestamp_val)
 
-    def names(self, PyXtc pyxtc, detdef, algdef, PyDataDef pydatadef, 
+    def names(self, PyXtc pyxtc, detdef, algdef, PyDataDef pydatadef,
             nodeId=None, namesId=None, segment=None):
         # Passing string to c needs utf-8 encoding
         detName = detdef.name.encode()
         detType = detdef.dettype.encode()
         detId   = detdef.detid.encode()
         algName = algdef.name.encode()
+        bufEnd  = NULL          # Revisit
 
         if nodeId is None: nodeId = 1
         if namesId is None: namesId = 1
         if segment is None: segment = 0
-        
+
         # Dereference in cython with * is not allowed. You can either use [0] index or
         # from cython.operator import dereference
         # cdef Xtc xtc = dereference(pyxtc.cptr)
-        self.cptr.addNames(pyxtc.cptr[0], detName, detType, detId,
+        self.cptr.addNames(pyxtc.cptr[0], bufEnd, detName, detType, detId,
                 nodeId, namesId, segment,
                 algName, algdef.major, algdef.minor, algdef.micro,
                 pydatadef.cptr[0])
         return NamesDef(nodeId, namesId)
 
     def createdata(self, PyXtc pyxtc, namesdef):
-        self.cptr.createData(pyxtc.cptr[0], namesdef.nodeId, namesdef.namesId)
+        bufEnd  = NULL          # Revisit
+        self.cptr.createData(pyxtc.cptr[0], bufEnd, namesdef.nodeId, namesdef.namesId)
 
     def setstring(self, PyDataDef pydatadef, datadef_name, str_data):
         self.cptr.setString(str_data.encode(), pydatadef.cptr[0], datadef_name.encode())
-    
+
     def setvalue(self, namesdef, PyDataDef pydatadef, datadef_name, data):
         """Sets scalar value to the given `datadef_name`.
-        
+
         Converts (any) given scalar `data` to the specified known dtype
         using numpy array format. The buffer is passed in (and later converted
-        to the correct dtype) as char*. 
+        to the correct dtype) as char*.
         """
         cdef int dtypeNo = pydatadef.cptr.getDtype(datadef_name.encode())
-        
+
         d_arr = np.array([data], dtype=DataType.nptypes[dtypeNo])
         cdef char* data_ptr
         cdef Py_buffer data_pybuf
         PyObject_GetBuffer(d_arr, &data_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
         data_ptr = <char *>data_pybuf.buf
-        self.cptr.setValue(namesdef.nodeId, namesdef.namesId, 
+        self.cptr.setValue(namesdef.nodeId, namesdef.namesId,
                            data_ptr, pydatadef.cptr[0], datadef_name.encode())
         PyBuffer_Release(&data_pybuf)
 
-    def adddata(self, namesdef, PyDataDef pydatadef, 
+    def adddata(self, namesdef, PyDataDef pydatadef,
             datadef_name, unsigned[:] shape, data):
         cdef unsigned* shape_ptr
         cdef Py_buffer shape_pybuf
@@ -192,26 +194,26 @@ cdef class PyXtcUpdateIter():
         PyObject_GetBuffer(data, &data_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
         data_ptr = <char *>data_pybuf.buf
 
-        self.cptr.addData(namesdef.nodeId, namesdef.namesId, shape_ptr, 
+        self.cptr.addData(namesdef.nodeId, namesdef.namesId, shape_ptr,
                 data_ptr, pydatadef.cptr[0], datadef_name.encode())
-        
+
         PyBuffer_Release(&shape_pybuf)
         PyBuffer_Release(&data_pybuf)
 
     def removedata(self, det_name, alg_name):
         self.cptr.setFilter(det_name.encode(), alg_name.encode())
-    
+
     def createTransition(self, transId, timestamp_val):
         counting_timestamps = 1
         if timestamp_val == -1:
             counting_timestamps = 0
-            timestamp_val = 0 
+            timestamp_val = 0
 
         pydgram = PyDgram()
-        pydgram.cptr = &(self.cptr.createTransition(transId, 
+        pydgram.cptr = &(self.cptr.createTransition(transId,
                 counting_timestamps, timestamp_val))
         return pydgram
-    
+
     def get_removed_size(self):
         return self.cptr.get_removed_size()
 
@@ -257,10 +259,10 @@ def alg(algname, major, minor, macro):
 def det(detname, dettype, detid):
     return DetectorDef(detname, dettype, detid)
 
-def names(PyDgram pydg, detdef, algdef, PyDataDef pydatadef, 
+def names(PyDgram pydg, detdef, algdef, PyDataDef pydatadef,
         nodeId=None, namesId=None, segment=None):
     pyxtc = pydg.get_pyxtc()
-    return uiter.names(pyxtc, detdef, algdef, pydatadef, 
+    return uiter.names(pyxtc, detdef, algdef, pydatadef,
             nodeId, namesId, segment)
 
 def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
@@ -278,22 +280,22 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
             else:
                 uiter.setstring(pydatadef, datadef_name, data)
             continue
-        
+
         # Handle array type
         array.zero(shape)
         if data.dtype.type is np.str_:
             # For strings, from what I understand is each string is
             # an array so for MaxRank=5 we can only store up to 5 strings.
             # shape[i] is no. of bytes for string i.
-            
+
             assert len(data.shape) == 1, "Only support writing 1D string array"
-            
+
             str_as_byte = bytearray()
             for i in range(data.shape[0]):
                 data_encode = data[i].encode()
                 str_as_byte.extend(data_encode)
                 shape[i] = len(data_encode)
-            
+
             uiter.adddata(namesdef, pydatadef, datadef_name, shape, str_as_byte)
         else:
             for i in range(len(shape)):
@@ -315,7 +317,7 @@ def save(PyDgram pydg):
     parent dgram extent to new size (if some ShapesData
     were removed. The parent dgram and _tmpbuf are then
     copied to _buf as one new event. """
-    # Copies Names and ShapesData (also applies remove for 
+    # Copies Names and ShapesData (also applies remove for
     # ShapesData) to _tmpbuf
     pyxtc = pydg.get_pyxtc()
     uiter.iterate(pyxtc)
@@ -325,7 +327,7 @@ def save(PyDgram pydg):
     if removed_size > 0:
         pydg.dec_extent(removed_size)
 
-    # Copy updated parent dgram and _tmpbuf to _buf 
+    # Copy updated parent dgram and _tmpbuf to _buf
     uiter.copy(pydg)
 
     if out_xtc2 is not None:

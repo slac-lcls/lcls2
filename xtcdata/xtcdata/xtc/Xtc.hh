@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <cstdlib>
 
 #pragma pack(push,2)
@@ -38,21 +39,33 @@ public:
     : src(_src), damage(_damage), contains(_tag), extent(sizeof(Xtc))
     {
     }
+    Xtc& operator=(const Xtc& xtc)
+    {
+      src      = xtc.src;
+      damage   = xtc.damage;
+      contains = xtc.contains;
+      extent   = sizeof(Xtc);
+      return *this;
+    }
     void* operator new(size_t size)
     {
         return (void*)std::malloc(size);
     }
-    void* operator new(size_t size, char* p)
+    void* operator new(size_t size, char* p, const void* end)
     {
+      if (end && (&p[size] > end)) {
+            printf("*** %s:%d: Insufficient space for %zu bytes\n",__FILE__,__LINE__,size);
+            abort(); // Set gdb breakpoint to reported file:line to see how it got here
+        }
         return (void*)p;
     }
-    void* operator new(size_t size, Xtc* p)
+    void* operator new(size_t size, Xtc* p, const void* end)
     {
-        return p->alloc(size);
+        return p->alloc(size, end);
     }
-    void* operator new(size_t size, Xtc& p)
+    void* operator new(size_t size, Xtc& p, const void* end)
     {
-        return p.alloc(size);
+        return p.alloc(size, end);
     }
 
     char* payload() const
@@ -72,9 +85,13 @@ public:
         return (const Xtc*)((char*)this + extent);
     }
 
-    void* alloc(uint32_t size)
+    void* alloc(size_t size, const void* end)
     {
         void* buffer = next();
+        if (end && ((char*)buffer + size > end)){
+            printf("*** %s:%d: Insufficient space for %zu bytes\n",__FILE__,__LINE__,size);
+            abort(); // Set gdb breakpoint to reported file:line to see how it got here
+        }
         extent += size;
         return buffer;
     }

@@ -71,7 +71,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {
-                det->event(*dgram, event);
+                const void* bufEnd = (char*)dgram + pool.bufferSize();
+                det->event(*dgram, bufEnd, event);
                 // make sure the detector hasn't made the event too big
                 if (dgram->xtc.extent > pool.bufferSize()) {
                     logging::critical("L1Accept: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
@@ -80,8 +81,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 if (event->l3InpBuf) {  // else shutting down
                     Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(*dgram);
-                    if (drp.triggerPrimitive()) { // else this DRP doesn't provide input
-                        drp.triggerPrimitive()->event(pool, index, dgram->xtc, l3InpDg->xtc);
+                    auto tp = drp.triggerPrimitive();
+                    if (tp) { // else this DRP doesn't provide input
+                        const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tp->size();
+                        tp->event(pool, index, dgram->xtc, l3InpDg->xtc, l3BufEnd);
                         size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
                         if (size > drp.tebPrms().maxInputSize) {
                             logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, drp.tebPrms().maxInputSize);
@@ -97,16 +100,19 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
                 // Initialize the transition dgram's header
                 Pds::EbDgram* trDgram = event->transitionDgram;
+                const void*   bufEnd  = (char*)trDgram + para.maxTrSize;
                 if (!trDgram)  continue; // Can occur when shutting down
                 memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                 if (transitionId != XtcData::TransitionId::SlowUpdate) {
-                   // copy the temporary xtc created on phase 1 of the transition
-                   // into the real location
-                   XtcData::Xtc& trXtc = det->transitionXtc();
-                   memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
+                    // copy the temporary xtc created on phase 1 of the transition
+                    // into the real location
+                    XtcData::Xtc& trXtc = det->transitionXtc();
+                    trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                    auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
                 }
                 else {
-                   det->slowupdate(trDgram->xtc);
+                    det->slowupdate(trDgram->xtc, bufEnd);
                 }
                 // make sure the detector hasn't made the transition too big
                 size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
@@ -356,8 +362,8 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
                 continue;               // Skip broken event
             if (event->l3InpBuf) // else shutting down
             {
-                Pds::EbDgram* dgram = static_cast<Pds::EbDgram*>(event->l3InpBuf);
-                tebContributor.process(dgram);
+                Pds::EbDgram* l3InpDg = static_cast<Pds::EbDgram*>(event->l3InpBuf);
+                tebContributor.process(l3InpDg);
             }
         }
         worker++;

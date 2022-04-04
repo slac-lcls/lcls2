@@ -13,7 +13,7 @@ template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigne
     if (VERBOSE == 0) return;
 
     printf("'%s' ", name);
-    printf(" numWords:%u rank:%u ", numWords, rank); 
+    printf(" numWords:%u rank:%u ", numWords, rank);
     printf("(shape:");
     for (unsigned w = 0; w < rank; w++) printf(" %d",shape[w]);
     printf("): ");
@@ -168,11 +168,11 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 }
 
 
-/* Is a callback from iterate. 
+/* Is a callback from iterate.
    Dgrampy uses iterate to go through Names and ShapesData.
    For Names, both new and existing Names are copied to _tmpbuf.
    For ShapesData, only those that are not filtered out are
-   copied to _tmpbuf. 
+   copied to _tmpbuf.
 */
 int XtcUpdateIter::process(Xtc* xtc)
 {
@@ -192,7 +192,7 @@ int XtcUpdateIter::process(Xtc* xtc)
             Name& name = names.get(i);
         }
 
-        unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name)); 
+        unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name));
 
         // copy Names to tmp buffer
         copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
@@ -209,7 +209,7 @@ int XtcUpdateIter::process(Xtc* xtc)
         // lookup the index of the names we are supposed to use
         NamesId namesId = shapesdata.namesId();
         // if this is the namesId that we want (raw.fex), copy it
-        
+
         // protect against the fact that this namesid
         // may not have a NamesLookup.  cpo thinks this
         // should be fatal, since it is a sign the xtc is "corrupted",
@@ -222,9 +222,9 @@ int XtcUpdateIter::process(Xtc* xtc)
         DescData descdata(shapesdata, _namesLookup[namesId]);
         Names& names = descdata.nameindex().names();
         Data& data = shapesdata.data();
-        
+
         Alg& alg = names.alg();
-    
+
         for (unsigned i = 0; i < names.num(); i++) {
             Name& name = names.get(i);
             get_value(i, name, descdata);
@@ -263,7 +263,7 @@ void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
 
 
 /* Performs atomic copy that results in all necessary parts of
-   an event being copied to the main output buffer _buf. This 
+   an event being copied to the main output buffer _buf. This
    requires `parent_d`, which can be updated after Names and
    ShapesData were copied to _tmpbuf. The `parent_d` is first
    copied followed by _tmpbuf (Names & ShapesData). The _tmpbuf
@@ -286,38 +286,38 @@ void XtcUpdateIter::updateTimeStamp(Dgram& d, uint64_t timestamp_val){
       - Alg object (`algName`, `major`, `minor`, & `micro`)
       - Detector components (`detName`, `detType`, and `detId)
       - NamesId object (`nodeId` and `namesId)
-   
+
    This new Names object is subsequently populated with DataDef
    object (e.g. a triplet of arrayFex0, dtype, & rankNo) and stored
    in _namesLookup for later use.
 */
-void XtcUpdateIter::addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
+void XtcUpdateIter::addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
         unsigned nodeId, unsigned namesId, unsigned segment,
         char* algName, uint8_t major, uint8_t minor, uint8_t micro,
-        DataDef& datadef) 
+        DataDef& datadef)
 {
     Alg alg0(algName,major,minor,micro);
     NamesId namesId0(nodeId, namesId);
-    Names& names0 = *new(xtc) Names(detName, alg0, detType, detId, namesId0, segment);
-    names0.add(xtc, datadef);
+    Names& names0 = *new(xtc, bufEnd) Names(bufEnd, detName, alg0, detType, detId, namesId0, segment);
+    names0.add(xtc, bufEnd, datadef);
     _namesLookup[namesId0] = NameIndex(names0);
 }
 
 
-/* Creates new CreateData object from `xtc`, `nodeId`, and `namesId`  
-   
+/* Creates new CreateData object from `xtc`, `nodeId`, and `namesId`
+
    This new object is refered to by a unique pointer class member so
    that its life-time membership is managed automatically.
 */
-void XtcUpdateIter::createData(Xtc& xtc, unsigned nodeId, unsigned namesId) {
+void XtcUpdateIter::createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId) {
     NamesId namesId0(nodeId, namesId);
-    _newData = std::unique_ptr<CreateData>(new CreateData{xtc, _namesLookup, namesId0});
+    _newData = std::unique_ptr<CreateData>(new CreateData{xtc, bufEnd, _namesLookup, namesId0});
 }
 
 
 /* Wraps set_string member function of CreateData object so
    that we can look up newIndex from the given `varname` (e.g.
-   arrayFex0 returns 0). 
+   arrayFex0 returns 0).
 */
 void XtcUpdateIter::setString(char* data, DataDef& datadef, char* varname){
     unsigned newIndex = datadef.index(varname);
@@ -329,7 +329,7 @@ void XtcUpdateIter::setValue(unsigned nodeId, unsigned namesId,
     NamesId namesId0(nodeId, namesId);
     unsigned newIndex = datadef.index(varname);
     Name& name = _namesLookup[namesId0].names().get(newIndex);
-    
+
     switch(name.type()){
     case(Name::UINT8):{
         _newData->set_value(newIndex, *(uint8_t*)data);
@@ -375,7 +375,7 @@ void XtcUpdateIter::setValue(unsigned nodeId, unsigned namesId,
 }
 
 // Returns element size of the given `varname`
-int XtcUpdateIter::getElementSize(unsigned nodeId, unsigned namesId, 
+int XtcUpdateIter::getElementSize(unsigned nodeId, unsigned namesId,
         DataDef& datadef, char* varname) {
     NamesId namesId0(nodeId, namesId);
     unsigned newIndex = datadef.index(varname);
@@ -390,7 +390,7 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
     NamesId namesId0(nodeId, namesId);
 
     unsigned newIndex = datadef.index(varname);
-    
+
     // Get shape and name (rank and type)
     Shape shp(shape);
     Name& name = _namesLookup[namesId0].names().get(newIndex);
@@ -453,7 +453,7 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
         break;
     }
     }
-    
+
     if (VERBOSE > 0) {
         printf("  addData: ");
         for(unsigned i=0; i<MaxRank; i++){
@@ -466,7 +466,7 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
 
 
 // Returns new Dgram created from `utransId` and `timestamp_val`
-Dgram& XtcUpdateIter::createTransition(unsigned utransId, 
+Dgram& XtcUpdateIter::createTransition(unsigned utransId,
         bool counting_timestamps,
         uint64_t timestamp_val) {
     TransitionId::Value transId = (TransitionId::Value) utransId;

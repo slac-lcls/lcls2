@@ -106,7 +106,7 @@ class SmdWriter : public BufferedFileWriter
 {
 public:
     SmdWriter(size_t bufferSize);
-    void addNames(XtcData::Xtc& parent, unsigned nodeId);
+    void addNames(XtcData::Xtc& parent, const void* bufEnd, unsigned nodeId);
     uint8_t buffer[0x4000000];
     XtcData::NamesLookup namesLookup;
 };

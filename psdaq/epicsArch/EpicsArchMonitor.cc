@@ -1,7 +1,3 @@
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -146,38 +142,41 @@ void EpicsArchMonitor::_addInfo(XtcData::CreateData& epicsInfo)
 }
 
 void EpicsArchMonitor::addNames(const std::string& detName, const std::string& detType, const std::string& serNo, unsigned segment,
-                                XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId,
+                                XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, unsigned nodeId,
                                 size_t& payloadSize)
 {
   XtcData::Alg     rawAlg("raw", 2, 0, 0);
   XtcData::NamesId rawNamesId(nodeId, iRawNamesIndex);
-  XtcData::Names&  rawNames = *new(xtc) XtcData::Names(detName.c_str(), rawAlg,
-                                                       detType.c_str(), serNo.c_str(), rawNamesId, segment);
+  XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                               detName.c_str(), rawAlg,
+                                                               detType.c_str(), serNo.c_str(), rawNamesId, segment);
   _initDef(payloadSize);
   payloadSize += (sizeof(Pds::EbDgram)    + // An EbDgram is needed by the MEB
                   24                      + // Space needed by DescribedData
                   sizeof(XtcData::Shapes) + // Needed by DescribedData
                   sizeof(XtcData::Shape)  + // 1 for the stale vector
                   sizeof(XtcData::Shape) * _lpvPvList.size()); // 1 per PV
-  rawNames.add(xtc, _epicsArchDef);
+  rawNames.add(xtc, bufEnd, _epicsArchDef);
   namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
 
   XtcData::Alg     infoAlg("epicsinfo", 1, 0, 0);
   XtcData::NamesId infoNamesId(nodeId, iInfoNamesIndex);
-  XtcData::Names&  infoNames = *new(xtc) XtcData::Names("epicsinfo", infoAlg,
-                                                        "epicsinfo", "detnum1234", infoNamesId, segment);
+  XtcData::Names&  infoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                "epicsinfo", infoAlg,
+                                                                "epicsinfo", "detnum1234", infoNamesId, segment);
   _initInfoDef();
-  infoNames.add(xtc, _epicsInfoDef);
+  infoNames.add(xtc, bufEnd, _epicsInfoDef);
   namesLookup[infoNamesId] = XtcData::NameIndex(infoNames);
 
-  XtcData::CreateData epicsInfo(xtc, namesLookup, infoNamesId);
+  XtcData::CreateData epicsInfo(xtc, bufEnd, namesLookup, infoNamesId);
   _addInfo(epicsInfo);
 }
 
-int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize, uint64_t& nStales)
+int EpicsArchMonitor::getData(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, unsigned nodeId, uint64_t& nStales)
 {
   XtcData::NamesId namesId(nodeId, iRawNamesIndex);
-  XtcData::DescribedData desc(xtc, namesLookup, namesId);
+  XtcData::DescribedData desc(xtc, bufEnd, namesLookup, namesId);
+  size_t payloadSize = (char*)bufEnd - (char*)&xtc - sizeof(xtc);
   payloadSize -= xtc.sizeofPayload();     // = the '24' in addNames()
   payloadSize -= sizeof(XtcData::Shapes); // Reserve space for one of these
   payloadSize -= sizeof(XtcData::Shape);  // Reserve space for the stale vector

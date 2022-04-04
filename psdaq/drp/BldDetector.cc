@@ -231,12 +231,14 @@ Bld& BldFactory::handler()
 }
 
 XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
+                                          const void* bufEnd,
                                           const XtcData::NamesId& namesId)
 {
-    XtcData::Names& bldNames = *new(xtc) XtcData::Names(_detName.c_str(), _alg,
-                                                        _detType.c_str(), _detId.c_str(), namesId);
+    XtcData::Names& bldNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                _detName.c_str(), _alg,
+                                                                _detType.c_str(), _detId.c_str(), namesId);
 
-    bldNames.add(xtc, _varDef);
+    bldNames.add(xtc, bufEnd, _varDef);
     return XtcData::NameIndex(bldNames);
 }
 
@@ -395,7 +397,7 @@ class BldDetector : public XpmDetector
 {
 public:
     BldDetector(Parameters& para, DrpBase& drp) : XpmDetector(&para, &drp.pool) {}
-    void event(XtcData::Dgram& dgram, PGPEvent* event) override {}
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override {}
 };
 
 
@@ -649,13 +651,14 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             }
             else {
                 if (dgram->service() == XtcData::TransitionId::L1Accept) {
+                    const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
                     bool lMissed = false;
                     for(unsigned i=0; i<m_config.size(); i++) {
                         if (timestamp[i] == nextId) {
                             // Revisit: This is intended to be done by BldDetector::event()
                             XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
                             const Bld& bld = m_config[i]->handler();
-                            XtcData::DescribedData desc(dgram->xtc, namesLookup, namesId);
+                            XtcData::DescribedData desc(dgram->xtc, bufEnd, namesLookup, namesId);
                             memcpy(desc.data(), bld.payload(), bld.payloadSize());
                             desc.set_data_length(bld.payloadSize());
                         }
@@ -681,11 +684,14 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 
                     // Allocate a transition dgram from the pool and initialize its header
                     Pds::EbDgram* trDgram = m_drp.pool.allocateTr();
+                    const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
                     memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
                     XtcData::Xtc& trXtc = m_det->transitionXtc();
-                    memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
+                    trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                    auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
                     PGPEvent* pgpEvent = &m_drp.pool.pgpEvents[index];
                     pgpEvent->transitionDgram = trDgram;
 
@@ -696,7 +702,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             // Revisit: This is intended to be done by BldDetector::configure()
                             for(unsigned i=0; i<m_config.size(); i++) {
                                 XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                                namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, namesId);
+                                namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
                             }
                             break;
                         }
@@ -752,8 +758,10 @@ void Pgp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
     if (event->l3InpBuf) { // else timed out
         Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
         if (l3InpDg->isEvent()) {
-            if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
-                m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
+            auto tp = m_drp.triggerPrimitive();
+            if (tp) { // else this DRP doesn't provide input
+                const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tp->size();
+                tp->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
             }
         }
         m_drp.tebContributor().process(l3InpDg);
@@ -773,11 +781,6 @@ BldApp::BldApp(Parameters& para) :
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
-    }
-    if (m_para.outputDir.empty()) {
-        logging::info("output dir: n/a");
-    } else {
-        logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
 }
@@ -898,11 +901,8 @@ void BldApp::handlePhase1(const json& msg)
     logging::debug("handlePhase1 for %s in BldDetectorApp", key.c_str());
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    xtc.src = XtcData::Src(m_det->nodeId); // set the src field for the event builders
-    xtc.damage = 0;
-    xtc.contains = tid;
-    xtc.extent = sizeof(XtcData::Xtc);
+    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    auto bufEnd = m_det->trXtcBufEnd();
 
     json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
@@ -935,7 +935,7 @@ void BldApp::handlePhase1(const json& msg)
         }
 
         std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc);
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::configure";
             logging::error("%s", errorMsg.c_str());
@@ -945,7 +945,7 @@ void BldApp::handlePhase1(const json& msg)
 
         m_workerThread = std::thread{&Pgp::worker, std::ref(*m_pgp), m_exporter};
 
-        m_drp.runInfoSupport(xtc, m_det->namesLookup());
+        m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -960,7 +960,7 @@ void BldApp::handlePhase1(const json& msg)
             return;
         }
 
-	m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
+        m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
     }
     else if (key == "endrun") {
         std::string errorMsg = m_drp.endrun(phase1Info);

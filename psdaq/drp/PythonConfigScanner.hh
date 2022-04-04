@@ -17,18 +17,20 @@ namespace XtcData  {
 
 namespace Drp {
 class Parameters;
-class PythonConfigScanner 
+class PythonConfigScanner
 {
 public:
     PythonConfigScanner(const Parameters&, PyObject& module);
     ~PythonConfigScanner();
 public:
-    unsigned configure(const nlohmann::json& keys, 
+    unsigned configure(const nlohmann::json& keys,
                        XtcData::Xtc&         xtc,
+                       const void*           bufEnd,
                        XtcData::NamesId&     namesId,
                        XtcData::NamesLookup& namesLookup);
-    unsigned step     (const nlohmann::json& dict, 
+    unsigned step     (const nlohmann::json& dict,
                        XtcData::Xtc&         xtc,
+                       const void*           bufEnd,
                        XtcData::NamesId&     namesId,
                        XtcData::NamesLookup& namesLookup);
 private:

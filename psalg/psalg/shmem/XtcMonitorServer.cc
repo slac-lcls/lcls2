@@ -240,7 +240,7 @@ XtcMonitorServer::Result XtcMonitorServer::events(Dgram* dg)
     int ibuffer = itr + _numberOfEvBuffers;
 
     _myMsg.bufferIndex(ibuffer);
-    _copyDatagram(dg, _myShm + _sizeOfBuffers*ibuffer);
+    _copyDatagram(dg, _myShm + _sizeOfBuffers*ibuffer, _sizeOfBuffers);
 
     if (trid == TransitionId::Enable) {
       //
@@ -411,7 +411,7 @@ void XtcMonitorServer::routine()
         if (mq_receive(_shuffleQueue, (char*)&m, sizeof(m), NULL) < 0)
           perror("mq_receive");
 
-        _copyDatagram(m.dg(),_myShm+_sizeOfBuffers*m.msg().bufferIndex());
+        _copyDatagram(m.dg(),_myShm+_sizeOfBuffers*m.msg().bufferIndex(), _sizeOfBuffers);
         _deleteDatagram(m.dg());
 
         if (m.msg().serial()) {
@@ -722,10 +722,12 @@ void XtcMonitorServer::_update(int iclient,
   }
 }
 
-void XtcMonitorServer::_copyDatagram(Dgram* p, char* b)
+void XtcMonitorServer::_copyDatagram(Dgram* p, char* b, size_t s)
 {
   Dgram* dg = (Dgram*)p;
-  memcpy((char*)b, dg, sizeof(Dgram)+dg->xtc.sizeofPayload());
+  size_t sz = sizeof(Dgram)+dg->xtc.sizeofPayload();
+  if (sz > s)  throw "XtcMonitorServer::_copyDatagram: dgram too big for buffer";
+  memcpy((char*)b, dg, sz);
 }
 
 void XtcMonitorServer::_deleteDatagram(Dgram* p) {}

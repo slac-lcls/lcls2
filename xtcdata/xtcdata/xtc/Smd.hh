@@ -14,7 +14,7 @@ public:
     Smd() {
     };
 
-    Dgram* generate(Dgram* dgIn, void* buf, uint64_t offset, uint64_t size,
+    Dgram* generate(Dgram* dgIn, void* buf, const void* bufEnd, uint64_t offset, uint64_t size,
                     NamesLookup& namesLookup, NamesId namesId);
 
 }; // end class Smd

@@ -14,13 +14,13 @@ public:
     Opal(Parameters* para, MemPool* pool);
     ~Opal();
     nlohmann::json connectionInfo() override;
-    void slowupdate(XtcData::Xtc&) override;
+    void slowupdate(XtcData::Xtc&, const void* bufEnd) override;
     void shutdown() override;
-    void write_image(XtcData::Xtc&, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
+    void write_image(XtcData::Xtc&, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
 protected:
     void           _connect  (PyObject*) override;
-    unsigned       _configure(XtcData::Xtc&, XtcData::ConfigIter&) override;
-    void           _event    (XtcData::Xtc&,
+    unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
+    void           _event    (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&) override;
     void           _fatal_error(std::string errMsg);
 protected:

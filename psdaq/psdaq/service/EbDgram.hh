@@ -46,11 +46,7 @@ class EbDgram : public PulseId, public XtcData::Dgram {
 public:
     EbDgram(const PulseId& pulseId, const Dgram& dgram) : PulseId(pulseId.pulseId()), Dgram(dgram) {}
     EbDgram(const TimingHeader& th, const XtcData::Src src, uint32_t envRogMask) : PulseId(th.pulseId()) {
-        XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-        xtc.src = src; // set the src field for the event builders
-        xtc.damage = 0;
-        xtc.contains = tid;
-        xtc.extent = sizeof(XtcData::Xtc);
+        xtc = {{XtcData::TypeId::Parent, 0}, {src}}; // set the src field for the event builders
         time = th.time;
         // move the control bits from the pulseId into the top 8 bits of env.
         env = (th.control()<<24) | (th.env & envRogMask); // filter out other partition ROGs

@@ -41,8 +41,8 @@ public:
         _n_elems++;
     }
 
-    void show() { 
-        printf("List of names\n"); 
+    void show() {
+        printf("List of names\n");
         for (auto i=NameVec.begin(); i!=NameVec.end(); ++i)
             std::cout << i->name() << std::endl;
         printf("List of indices\n");
@@ -64,7 +64,7 @@ public:
     }
 
     int getDtype(char* name) {
-        // Returns corresponding dtype 
+        // Returns corresponding dtype
         int foundIndex = index(name);
         Name foundName = NameVec[foundIndex];
         return foundName.type();
@@ -80,7 +80,7 @@ class XtcUpdateIter : public XtcData::XtcIterator
 {
 public:
     enum {Stop, Continue};
-    
+
     XtcUpdateIter(unsigned numWords) : XtcData::XtcIterator(), _numWords(numWords) {
         _bufsize = 0;
         _buf = (char *) malloc(BUFSIZE);
@@ -93,9 +93,9 @@ public:
         free(_buf);
         free(_tmpbuf);
     }
-    
+
     virtual int process(XtcData::Xtc* xtc);
-    
+
     void get_value(int i, Name& name, DescData& descdata);
 
     char* get_buf(){
@@ -114,20 +114,20 @@ public:
         return _removed_size;
     }
 
-    void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
+    void addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
             unsigned nodeId, unsigned namesId, unsigned segment,
             char* algName, uint8_t major, uint8_t minor, uint8_t micro,
             DataDef& datadef);
     void setString(char* data, DataDef& datadef, char* varname);
-    void setValue(unsigned nodeId, unsigned namesId,          
+    void setValue(unsigned nodeId, unsigned namesId,
             char* data, DataDef& datadef, char* varname);
-    void addData(unsigned nodeId, unsigned namesId, 
+    void addData(unsigned nodeId, unsigned namesId,
             unsigned* shape, char* data, DataDef& datadef, char* varname);
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
                         uint64_t timestamp_val);
-    void createData(Xtc& xtc, unsigned nodeId, unsigned namesId);
+    void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId);
     void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
-    int getElementSize(unsigned nodeId, unsigned namesId, 
+    int getElementSize(unsigned nodeId, unsigned namesId,
             DataDef& datadef, char* varname);
     void copy(Dgram* parent_d);
     void copy2buf(char* in_buf, unsigned in_size);
@@ -139,7 +139,7 @@ private:
     NamesLookup _namesLookup;
     unsigned _numWords;
     std::unique_ptr<CreateData> _newData;
-    
+
     // _tmpbuf* are used for storing Names and ShapesData
     // while they are being iterated (copy if no filter matched).
     // buf* are the main buffer that has both parent dgram
@@ -151,13 +151,13 @@ private:
     unsigned _bufsize;
 
     // Used for couting no. of ShapesData bytes removed per event.
-    // This gets reset to 0 when the event is saved. 
+    // This gets reset to 0 when the event is saved.
     uint32_t _removed_size;
-    
-    // Used for storing detName_algName (key) and its per-event 
-    // filter flag. 0 (initial values) means keeps while 1 means 
-    // filtered. This map gets reset to 0 when an event is saved. 
-    std::map<std::string, int> _flagFilter; 
+
+    // Used for storing detName_algName (key) and its per-event
+    // filter flag. 0 (initial values) means keeps while 1 means
+    // filtered. This map gets reset to 0 when an event is saved.
+    std::map<std::string, int> _flagFilter;
 }; // end class XtcUpdateIter
 
 

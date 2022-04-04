@@ -288,22 +288,23 @@ UdpEncoder::~UdpEncoder()
     }
 }
 
-void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc)
+void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd)
 {
     XtcData::Alg encoderRawAlg("raw",0,0,1);
     XtcData::NamesId rawNamesId(nodeId, segment);
-    XtcData::Names&  rawNames = *new(xtc) XtcData::Names(m_para->detName.c_str(), encoderRawAlg,
-                                                         m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, segment);
-    rawNames.add(xtc, RawDef);
+    XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                 m_para->detName.c_str(), encoderRawAlg,
+                                                                 m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, segment);
+    rawNames.add(xtc, bufEnd, RawDef);
     m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
 }
 
-  //std::string UdpEncoder::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc)
-unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+  //std::string UdpEncoder::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
+unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 {
     logging::info("UDP configure");
 
-    if (XpmDetector::configure(config_alias, xtc))
+    if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
     if (m_exporter)  m_exporter.reset();
@@ -319,7 +320,7 @@ unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xt
         return 1;
     }
 
-    addNames(0, xtc);
+    addNames(0, xtc, bufEnd);
 
     size_t bufSize = m_pool->pebble.bufferSize();
     m_buffer.resize(m_pvQueue.size() * bufSize);
@@ -352,7 +353,7 @@ unsigned UdpEncoder::unconfigure()
     return 0;
 }
 
-void UdpEncoder::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
+void UdpEncoder::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpEvent)
 {
     encoder_frame_t frame;
 
@@ -415,7 +416,7 @@ void UdpEncoder::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
     unsigned segment = 0;
 
     XtcData::NamesId namesId1(nodeId, segment);
-    XtcData::CreateData raw(dgram.xtc, m_namesLookup, namesId1);
+    XtcData::CreateData raw(dgram.xtc, bufEnd, m_namesLookup, namesId1);
     unsigned shape[XtcData::MaxRank] = {1};
 
     // ...encoderValue
@@ -624,11 +625,14 @@ void UdpEncoder::_worker()
             else {
                 // Allocate a transition dgram from the pool and initialize its header
                 Pds::EbDgram* trDgram = m_pool->allocateTr();
-                memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
+                *trDgram = *dgram;
                 // copy the temporary xtc created on phase 1 of the transition
                 // into the real location
                 XtcData::Xtc& trXtc = transitionXtc();
-                memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
+                trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
                 PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
                 pgpEvent->transitionDgram = trDgram;
 
@@ -709,7 +713,8 @@ void UdpEncoder::process()
 
             dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
 
-            event(*dgram, nullptr);            // PGPEvent not needed in this case
+            const void* bufEnd = (char*)dgram + m_pool->pebble.bufferSize();
+            event(*dgram, bufEnd, nullptr);    // PGPEvent not needed in this case
 
             m_pvQueue.push(dgram);
         }
@@ -780,7 +785,10 @@ void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
 
     XtcData::Dgram* dgram;
     if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
-        memcpy((void*)&pgpDg.xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
+        pgpDg.xtc.damage.increase(pvDg.xtc.damage.value());
+        auto bufEnd  = (char*)&pgpDg + m_pool->pebble.bufferSize();
+        auto payload = pgpDg.xtc.alloc(pvDg.xtc.sizeofPayload(), bufEnd);
+        memcpy(payload, (const void*)pvDg.xtc.payload(), pvDg.xtc.sizeofPayload());
 
         m_pvQueue.try_pop(dgram);       // Actually consume the element
         m_bufferFreelist.push(dgram);   // Return buffer to freelist
@@ -790,7 +798,7 @@ void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     else { // SlowUpdate
         // Allocate a transition dgram from the pool and initialize its header
         Pds::EbDgram* trDg = m_pool->allocateTr();
-        *trDg = pgpDg;
+        *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
         PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
         pgpEvent->transitionDgram = trDg;
 
@@ -798,10 +806,6 @@ void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
           m_pvQueue.try_pop(dgram);     // Actually consume the element
           m_bufferFreelist.push(dgram); // Return buffer to freelist
         }
-
-        // Ignore PV data on SlowUpdates and instead provide an empty XTC
-        //memcpy((void*)&trDg->xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
-        trDg->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
     }
 
     _sendToTeb(pgpDg, pgpIdx);
@@ -843,12 +847,9 @@ void UdpEncoder::_timeout(const XtcData::TimeStamp& timestamp)
         else { // SlowUpdate
             // Allocate a transition dgram from the pool and initialize its header
             Pds::EbDgram* trDg = m_pool->allocateTr();
-            *trDg = dgram;
+            *trDg = dgram;              // Initialized Xtc, possibly w/ damage
             PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
             pgpEvent->transitionDgram = trDg;
-
-            // Provide an empty XTC
-            trDg->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
         }
 
         _sendToTeb(dgram, index);
@@ -873,8 +874,10 @@ void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
     if (event->l3InpBuf) { // else shutting down
         Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
         if (l3InpDg->isEvent()) {
-            if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
-                m_drp.triggerPrimitive()->event(*m_pool, index, dgram.xtc, l3InpDg->xtc); // Produce
+            auto tp = m_drp.triggerPrimitive();
+            if (tp) { // else this DRP doesn't provide input
+                const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tp->size();
+                tp->event(*m_pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
             }
         }
         m_drp.tebContributor().process(l3InpDg);
@@ -916,11 +919,6 @@ UdpApp::UdpApp(Parameters& para, std::shared_ptr<UdpMonitor> udpMonitor) :
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
-    }
-    if (m_para.outputDir.empty()) {
-        logging::info("output dir: n/a");
-    } else {
-        logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
 }
@@ -1011,11 +1009,8 @@ void UdpApp::handlePhase1(const json& msg)
     logging::debug("handlePhase1 for %s in UdpEncoderApp", key.c_str());
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    xtc.src = XtcData::Src(m_det->nodeId); // set the src field for the event builders
-    xtc.damage = 0;
-    xtc.contains = tid;
-    xtc.extent = sizeof(XtcData::Xtc);
+    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    auto bufEnd = m_det->trXtcBufEnd();
 
     json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
@@ -1040,7 +1035,7 @@ void UdpApp::handlePhase1(const json& msg)
         }
 
         std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc);
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
             std::string errorMsg = "Failed transition phase 1";
             logging::error("%s", errorMsg.c_str());
@@ -1048,7 +1043,7 @@ void UdpApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_drp.runInfoSupport(xtc, m_det->namesLookup());
+        m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -1061,7 +1056,7 @@ void UdpApp::handlePhase1(const json& msg)
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
-        m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
+        m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
     }
     else if (key == "endrun") {
         std::string errorMsg = m_drp.endrun(phase1Info);

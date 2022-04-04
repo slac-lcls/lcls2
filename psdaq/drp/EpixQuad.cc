@@ -30,7 +30,7 @@ namespace Drp {
     public:
         enum index { raw, aux, numfields };
 
-        EpixPanelDef() { 
+        EpixPanelDef() {
             ADD_FIELD(raw              ,UINT16,2);
             ADD_FIELD(aux              ,UINT16,2);
         }
@@ -63,10 +63,10 @@ namespace Drp {
                      pwrAnaCurr,
                      pwrAnaVin,
                      pwrAnaTempC,
-                     asic_temp, 
+                     asic_temp,
                      num_fields };
-        
-        EpixQuadDef() { 
+
+        EpixQuadDef() {
             ADD_FIELD(sht31Hum         ,FLOAT,0);
             ADD_FIELD(sht31TempC       ,FLOAT,0);
             ADD_FIELD(nctLocTempC      ,UINT16 ,0);
@@ -89,7 +89,7 @@ namespace Drp {
         }
     } epixQuadDef;
 };
-            
+
 #undef ADD_FIELD
 
 using Drp::EpixQuad;
@@ -113,13 +113,13 @@ void EpixQuad::_connect(PyObject* mbytes)
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
 
-unsigned EpixQuad::enable(XtcData::Xtc& xtc, const nlohmann::json& info)
+unsigned EpixQuad::enable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
     _monStreamDisable();
     return 0;
 }
 
-unsigned EpixQuad::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
+unsigned EpixQuad::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
     _monStreamEnable();
     return 0;
@@ -134,7 +134,7 @@ json EpixQuad::connectionInfo()
     return BEBDetector::connectionInfo();
 }
 
-unsigned EpixQuad::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
+unsigned EpixQuad::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     unsigned seg=0;
@@ -147,13 +147,14 @@ unsigned EpixQuad::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
             NamesId nid = m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);
             logging::debug("Constructing panel eventNames src 0x%x",
                            unsigned(nid));
-            Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
-                                                configNames.detType(),
-                                                configNames.detId(), 
-                                                nid,
-                                                q+4*m_para->detSegment);
-            
-            eventNames.add(xtc, epixPanelDef);
+            Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                        configNames.detName(), alg,
+                                                        configNames.detType(),
+                                                        configNames.detId(),
+                                                        nid,
+                                                        q+4*m_para->detSegment);
+
+            eventNames.add(xtc, bufEnd, epixPanelDef);
             m_namesLookup[nid] = NameIndex(eventNames);
         }
 #ifdef INCLUDE_ENV
@@ -165,13 +166,14 @@ unsigned EpixQuad::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
             NamesId nid = m_evtNamesId[seg+4] = NamesId(nodeId, EventNamesIndex+seg+4);
             logging::debug("Constructing panel eventNames src 0x%x",
                            unsigned(nid));
-            Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
-                                                configNames.detType(),
-                                                configNames.detId(), 
-                                                nid,
-                                                q+4*m_para->detSegment);
-            
-            eventNames.add(xtc, epixQuadDef);
+            Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                        configNames.detName(), alg,
+                                                        configNames.detType(),
+                                                        configNames.detId(),
+                                                        nid,
+                                                        q+4*m_para->detSegment);
+
+            eventNames.add(xtc, bufEnd, epixQuadDef);
             m_namesLookup[nid] = NameIndex(eventNames);
         }
 #endif
@@ -197,10 +199,10 @@ static float _getThermistorTemp(uint16_t x)
     return 0.;
 }
 
-void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void EpixQuad::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
-  
+
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const unsigned asicRows     = 176;
     const unsigned elemRowSize  = 2*192;
@@ -215,13 +217,13 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 
     unsigned seg=0;
     for(unsigned q=0; q<4; q++) {
-        CreateData cd(xtc, m_namesLookup, m_evtNamesId[seg]);
+        CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[seg]);
         logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[seg]));
         shape[0] = asicRows*2; shape[1] = elemRowSize;
         Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixPanelDef::raw, shape);
 
         const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[2].data()) + 16;
-      
+
 #define MMCPY(a,el,row,src,sz) {                \
             if (q==el) {                        \
                 uint16_t* dst = &a(row,0);      \
@@ -236,7 +238,7 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
         for(unsigned i=0; i<asicRows; i++) { // 4 super rows at a time
             unsigned dnRow = asicRows+i;
             unsigned upRow = asicRows-i-1;
-            
+
             MMCPY(aframe, 2, upRow, u, elemRowSize);
             MMCPY(aframe, 3, upRow, u, elemRowSize);
             MMCPY(aframe, 2, dnRow, u, elemRowSize);
@@ -263,10 +265,10 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 #define ADD_FIELD(name,ntype,val) qcd.set_value<ntype>(EpixQuadDef::name, val)
 #ifdef SLOW_UPDATE_ENV
         if (env_empty) {
-            CreateData qcd(transitionXtc(), m_namesLookup, m_evtNamesId[seg+4]);
+            CreateData qcd(transitionXtc(), trXtcBufEnd(), m_namesLookup, m_evtNamesId[seg+4]);
 #else
         if (1) {
-            CreateData qcd(xtc, m_namesLookup, m_evtNamesId[seg+4]);
+            CreateData qcd(xtc, bufEnd, m_namesLookup, m_evtNamesId[seg+4]);
 #endif
             logging::debug("Writing quad event src 0x%x",unsigned(m_evtNamesId[seg+4]));
             const uint8_t* u8 = reinterpret_cast<const uint8_t*>(u);
@@ -312,15 +314,18 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 
 }
 
-void     EpixQuad::slowupdate(XtcData::Xtc& xtc)
+void     EpixQuad::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 {
 #ifdef SLOW_UPDATE_ENV
     m_env_sem.take();
-    memcpy((void*)&xtc, (const void*)&transitionXtc(), transitionXtc().extent);
+    XtcData::Xtc& trXtc = transitionXtc();
+    xtc = trXtc; // Preserve header info, but allocate to check fit
+    auto payload = xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
     m_env_empty = true;
     m_env_sem.give();
 #else
-    this->Detector::slowupdate(xtc);
+    this->Detector::slowupdate(xtc, bufEnd);
 #endif
 }
 

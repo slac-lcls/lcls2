@@ -135,10 +135,10 @@ public:
     std::string enable(const nlohmann::json& phase1Info, bool& chunkRequest, ChunkInfo& chunkInfo);
     void unconfigure();
     void disconnect();
-    void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
-    void runInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
-    void chunkInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
-    void chunkInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const ChunkInfo& chunkInfo);
+    void runInfoSupport  (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup);
+    void runInfoData     (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
+    void chunkInfoSupport(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup);
+    void chunkInfoData   (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, const ChunkInfo& chunkInfo);
     Pds::Eb::TebContributor& tebContributor() {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}

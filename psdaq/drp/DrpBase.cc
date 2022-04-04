@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <bitset>
 #include <climits>                      // HOST_NAME_MAX
+#include <sys/types.h>
+#include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include <DmaDriver.h>
@@ -350,8 +352,9 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 
     // small data writing
     Smd smd;
+    const void* bufEnd = m_smdWriter.buffer + sizeof(m_smdWriter.buffer);
     XtcData::NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
-    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, chunkSize(), size,
+    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, bufEnd, chunkSize(), size,
                                             m_smdWriter.namesLookup, namesId);
     m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
     m_offset += size;
@@ -573,6 +576,18 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor, m_exporter);
 
     m_inprocSend.connect("inproc://drp");
+
+    if (para.outputDir.empty()) {
+        logging::info("output dir: n/a");
+    } else {
+        // Induce the automounter to mount in case user enables recording
+        struct stat statBuf;
+        std::string statPth = para.outputDir + "/" + para.instrument;
+        if (::stat(statPth.c_str(), &statBuf) < 0) {
+            logging::error("%s: stat(%s) error: %m", __PRETTY_FUNCTION__, statPth.c_str());
+        }
+        logging::info("output dir: %s", statPth.c_str());
+    }
 }
 
 void DrpBase::shutdown()
@@ -704,42 +719,44 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
     return msg;
 }
 
-void DrpBase::runInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
+void DrpBase::runInfoSupport(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup)
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
     XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
     XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
-    XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg,
-                                                            "runinfo", "", runInfoNamesId);
+    XtcData::Names& runInfoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                    "runinfo", runInfoAlg,
+                                                                    "runinfo", "", runInfoNamesId);
     RunInfoDef myRunInfoDef;
-    runInfoNames.add(xtc, myRunInfoDef);
+    runInfoNames.add(xtc, bufEnd, myRunInfoDef);
     namesLookup[runInfoNamesId] = XtcData::NameIndex(runInfoNames);
 }
 
-void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& runInfo)
+void DrpBase::runInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, const RunInfo& runInfo)
 {
     XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
-    XtcData::CreateData runinfo(xtc, namesLookup, runInfoNamesId);
+    XtcData::CreateData runinfo(xtc, bufEnd, namesLookup, runInfoNamesId);
     runinfo.set_string(RunInfoDef::EXPT, runInfo.experimentName.c_str());
     runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
 }
 
-void DrpBase::chunkInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
+void DrpBase::chunkInfoSupport(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup)
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
     XtcData::Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
     XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
-    XtcData::Names& chunkInfoNames = *new(xtc) XtcData::Names("chunkinfo", chunkInfoAlg,
-                                                              "chunkinfo", "", chunkInfoNamesId);
+    XtcData::Names& chunkInfoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                      "chunkinfo", chunkInfoAlg,
+                                                                      "chunkinfo", "", chunkInfoNamesId);
     ChunkInfoDef myChunkInfoDef;
-    chunkInfoNames.add(xtc, myChunkInfoDef);
+    chunkInfoNames.add(xtc, bufEnd, myChunkInfoDef);
     namesLookup[chunkInfoNamesId] = XtcData::NameIndex(chunkInfoNames);
 }
 
-void DrpBase::chunkInfoData(Xtc& xtc, NamesLookup& namesLookup, const ChunkInfo& chunkInfo)
+void DrpBase::chunkInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, const ChunkInfo& chunkInfo)
 {
     XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
-    XtcData::CreateData chunkinfo(xtc, namesLookup, chunkInfoNamesId);
+    XtcData::CreateData chunkinfo(xtc, bufEnd, namesLookup, chunkInfoNamesId);
     chunkinfo.set_string(ChunkInfoDef::FILENAME, chunkInfo.filename.c_str());
     chunkinfo.set_value(ChunkInfoDef::CHUNKID, chunkInfo.chunkId);
 }

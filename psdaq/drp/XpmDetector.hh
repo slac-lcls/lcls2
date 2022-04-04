@@ -18,7 +18,7 @@ protected:
     XpmDetector(Parameters* para, MemPool* pool);
     nlohmann::json connectionInfo() override;
     void connect(const nlohmann::json&, const std::string& collectionId) override;
-    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
+    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     void shutdown() override;
 protected:
     unsigned m_length;
