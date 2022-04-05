@@ -59,7 +59,7 @@ def retry(cmd,val):
 #
 def apply_dict(pathbase,base,cfg):
     rogue_translate = {}
-    rogue_translate['TriggerEventBuffer0'] = f'TriggerEventBuffer[{lane}]'
+    rogue_translate['TriggerEventBuffer'] = f'TriggerEventBuffer[{lane}]'
     for i in range(16):
         rogue_translate[f'Epix10kaSaci{i}'] = f'Epix10kaSaci[{i}]'
     for i in range(3):
@@ -135,6 +135,9 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         #dumpvars('pbase',pbase)
 
         pbase.__enter__()
+
+        #  Disable flow control on the PGP lane at the PCIe end
+        getattr(pbase.DevPcie.Hsio,f'PgpMon[{lane}]').Ctrl.FlowControlDisable.set(1)
 
         # Open a new thread here
         if xpmpv is not None:
@@ -240,7 +243,7 @@ def user_to_expert(base, cfg, full=False):
             logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
 
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.TriggerDelay']=triggerDelay
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
 
     if (hasUser and 'gate_ns' in cfg['user']):
         triggerWidth = int(cfg['user']['gate_ns']/10)
@@ -251,7 +254,7 @@ def user_to_expert(base, cfg, full=False):
         d[f'expert.EpixQuad.AcqCore.AsicAcqWidth']=triggerWidth
 
     if full:
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.Partition']=group
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
 
     pixel_map_changed = False
     a = None
@@ -398,7 +401,8 @@ def reset_counters(base):
     base['pci'].DevPcie.Hsio.TimingRx.TimingFrameRx.countReset()
     
     # Reset the trigger counters
-    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
+#    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
+    getattr(base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').countReset()
 
     # Reset the Epix counters
     base['cam'].RdoutStreamMonitoring.countReset()
