@@ -36,25 +36,20 @@ def epixquad_roi(xroi,yroi,inner,outer):
     for i in range(16):
         d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
 
-    pixelMap = np.zeros((16,178,192),dtype=np.uint8)+gain_to_value[outer]
-    image    = np.zeros(((4*178),(4*192)),dtype=np.uint8)+gain_to_value[outer]
+    _height = 192
+    _width  = 176
+    pixelMap = np.zeros((16,_width+2,_height),dtype=np.uint8)+gain_to_value[outer]
+    image    = np.zeros(((4*_width),(4*_height)),dtype=np.uint8)+gain_to_value[outer]
 
     vinner = gain_to_value[inner]
-    
-    #  Copy some code from lcls1 pdsapp/config/Epix10kaQuadGainMap.cc:
-    shape = (4,352,384)
-    _height = 176
-    _width  = 192
+
+    #  Approximate the geometry
     _xoff   = 4
     _yoff   = 4
-    #asic_xo = ( _xoff, _xoff           , _width +_xoff+1  , _width+_xoff+1 )
-    #asic_yo = ( _yoff, _height+_yoff+1 , _height+_yoff+1  , _yoff )
-    #elem_xo = ( 0    , 2*_width+_xoff+2, 0                , 2*_width+_xoff+2 )
-    #elem_yo = ( 0    , 0               , 2*_height+_xoff+2, 2*_height+_xoff+2 )
-    asic_xo = ( _width +_xoff+1, _width+_xoff+1, _xoff, _xoff )
-    asic_yo = ( _height+_yoff+1, _yoff         , _yoff, _height+_yoff+1 )
-    elem_xo = ( 2*_width+_xoff+2, 0, 2*_width+_xoff+2 , 0 )
-    elem_yo = ( 0               , 0, 2*_height+_xoff+2, 2*_height+_xoff+2 )
+    asic_xo = ( _xoff, _width+_xoff+1 , _width+_xoff+1  , _xoff )
+    asic_yo = ( _yoff, _yoff          , _height +_yoff+1, _height+_yoff+1 )
+    elem_xo = ( 2*_width +_xoff+2, 2*_width+_xoff+2, 0                , 0 )
+    elem_yo = ( 2*_height+_yoff+2, 0               , 2*_height+_yoff+2, 0 )
 
     #  Loop over asics
     for j in range(16):
@@ -64,17 +59,16 @@ def epixquad_roi(xroi,yroi,inner,outer):
         yo = elem_yo[ie] + asic_yo[ia]
 
         sh = (352,384)
-        xoff = sh[1]-1 if (ia==0 or ia==1) else sh[1]/2-1
-        yoff = sh[0]-1 if (ia==0 or ia==3) else sh[0]/2-1
+        xoff = _width-1
+        yoff = _height-1
 
         #  Loop over pixels in asic
-        for y in range(0,176):
-            for x in range(0,192):
+        for x in range(0,_width):
+            for y in range(0,_height):
                 #  Are we in the ROI?
                 if (xo+x > xroi[0] and xo+x < xroi[1] and
                     yo+y > yroi[0] and yo+y < yroi[1]):
-                    #pixelMap[j][yoff-y][xoff-x] = vinner
-                    pixelMap[j][y][x] = vinner
+                    pixelMap[j][xoff-x][yoff-y] = vinner
                     image[xo+x][yo+y] = vinner
                 if x%32==0 and y%32==0:
                     print(f'ax {x}  ay {y}  xo+x {xo+x}  yo+y {yo+y}  xroi {xroi}  yroi {yroi}')
@@ -94,13 +88,14 @@ if __name__ == "__main__":
     parser.add_argument('--y', help='low gain x-bounds', type=int, nargs=2, required=True)
 
     parser.add_argument('--dev', help='use development db', action='store_true')
-    parser.add_argument('--inst', help='instrument', type=str, default='tmo')
+    parser.add_argument('--inst', help='instrument', type=str, default='ued')
     parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
-    parser.add_argument('--name', help='detector name', type=str, default='tmoopal2')
+    parser.add_argument('--name', help='detector name', type=str, default='epixquad')
     parser.add_argument('--segm', help='detector segment', type=int, default=0)
     parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
-    parser.add_argument('--user', help='user for HTTP authentication', type=str, default='tstopr')
+    parser.add_argument('--user', help='user for HTTP authentication', type=str, default='uedopr')
     parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
+    parser.add_argument('--test', help='test transformation', action='store_true')
     args = parser.parse_args()
 
     create = False
@@ -131,9 +126,11 @@ if __name__ == "__main__":
 
     #  Store
     top.setInfo('epix10kaquad', args.name, args.segm, args.id, 'No comment')
-    mycdb.modify_device(args.alias, top)
+    if not args.test:
+        mycdb.modify_device(args.alias, top)
 
     #  Show image
     print(d['user.pixel_map'])
-    plt.imshow(image)
+#    plt.imshow(np.rot90(image))
+    plt.pcolormesh(image.transpose())
     plt.show()

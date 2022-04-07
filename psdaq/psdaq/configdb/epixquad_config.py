@@ -137,7 +137,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         pbase.__enter__()
 
         #  Disable flow control on the PGP lane at the PCIe end
-        getattr(pbase.DevPcie.Hsio,f'PgpMon[{lane}]').Ctrl.FlowControlDisable.set(1)
+#        getattr(pbase.DevPcie.Hsio,f'PgpMon[{lane}]').Ctrl.FlowControlDisable.set(1)
 
         # Open a new thread here
         if xpmpv is not None:
