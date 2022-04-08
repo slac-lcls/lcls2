@@ -42,8 +42,9 @@ namespace Pds {
 
     // Keep *EB_TMO* below control.py's transition and phase 2 timeout
     // Too low results in spurious timeouts and split events
-    const unsigned TEB_TMO_MS     = 7000;   // Must be < MAX_LATENCY/TICK_RATE
-    const unsigned MEB_TMO_MS     = 7000;   // <= TEB_TMO_MS
+    // - 7 s seems to be too short for UED, so we go back to the previous value:
+    const unsigned TEB_TMO_MS     = 12000;  // Must be < MAX_LATENCY/TICK_RATE
+    const unsigned MEB_TMO_MS     = 12000;  // <= TEB_TMO_MS
     const unsigned TEB_TR_BUFFERS = 128;    // # of TEB transition buffers
                                             // > TEB_TMO * SlowUpdate rate
     const unsigned MEB_TR_BUFFERS = 24;     // # of MEB transition buffers

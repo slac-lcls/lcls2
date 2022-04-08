@@ -2228,7 +2228,9 @@ def main():
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-t', metavar='TRIGGER_CONFIG', default='tmoteb', help='trigger configuration name')
     parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, default=1, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 1)')
-    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
+#    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
+# 7.5 s seems to be too short for UED and this timeout must be larger than the EB timeouts, currently at 12 s
+    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=12500, help='phase 2 timeout msec (default 12500)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument('-V', metavar='LOGBOOK_FILE', default='/dev/null', help='run parameters file')

@@ -111,7 +111,7 @@ int EbLfLink::recvU32(uint32_t*   u32,
 {
   ssize_t  rc;
   uint64_t data;
-  if ((rc = poll(&data, 5000)))
+  if ((rc = poll(&data, 7000)))
   {
     const char* errMsg = rc == -FI_EAGAIN ? "Timed out" : _ep->error();
     fprintf(stderr, "%s:\n  Failed to receive %s from %s: %s\n",
@@ -132,7 +132,7 @@ int EbLfLink::sendU32(uint32_t    u32,
 {
   ssize_t  rc;
   uint64_t imm = u32;
-  if ((rc = post(nullptr, 0, imm)))
+  if ((rc = post(imm)))
   {
     const char* errMsg = rc == -FI_ETIMEDOUT ? "Timed out" : _ep->error();
     fprintf(stderr, "%s:\n  Failed to send %s to %s: %s\n",
@@ -155,7 +155,7 @@ int EbLfLink::recvMr(RemoteAddress& ra,
   for (unsigned i = 0; i < sizeof(ra)/sizeof(*ptr); ++i)
   {
     uint64_t imm;
-    if ((rc = poll(&imm, 5000)))
+    if ((rc = poll(&imm, 7000)))
     {
       const char* errMsg = rc == -FI_EAGAIN ? "Timed out" : _ep->error();
       fprintf(stderr, "%s:\n  Failed to receive %s from %s ID %d: %s\n",
@@ -184,7 +184,7 @@ int EbLfLink::sendMr(MemoryRegion* mr,
   for (unsigned i = 0; i < sizeof(ra)/sizeof(*ptr); ++i)
   {
     uint64_t imm = *ptr++;
-    if ((rc = post(nullptr, 0, imm)) < 0)
+    if ((rc = post(imm)) < 0)
     {
       const char* errMsg = rc == -FI_ETIMEDOUT ? "Timed out" : _ep->error();
       fprintf(stderr, "%s:\n  Failed to send %s to %s ID %d: %s\n",
@@ -217,13 +217,19 @@ int EbLfSvrLink::_synchronizeBegin()
 
   // Send a synchronization message to _one_ client
   uint64_t imm = _BegSync;              // Use a different value from Clients
-  if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
+  if ( (rc = EbLfLink::post(imm)) )  return rc;
 
   // Drain any stale transmissions that are stuck in the pipe
   while ((rc = EbLfLink::poll(&imm, 60000)) == 0)
   {
     if (imm == _EndSync)  break;        // Break on synchronization message
+
+    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+            __PRETTY_FUNCTION__, _id, imm, _EndSync);
   }
+
+  if (rc == -FI_EAGAIN)
+    fprintf(stderr, "\n%s:  Timed out\n\n", __PRETTY_FUNCTION__);
 
   return rc;
 }
@@ -233,14 +239,20 @@ int EbLfSvrLink::_synchronizeEnd()
   int rc;
 
   uint64_t imm = _SvrSync;
-  if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
-  if ( (rc = EbLfLink::poll(&imm, 5000)) )       return rc;
-  if (imm != _CltSync)
+  if ( (rc = EbLfLink::post(imm)) )  return rc;
+
+  // Drain any stale transmissions that are stuck in the pipe
+  while ((rc = EbLfLink::poll(&imm, 7000)) == 0)
   {
-    fprintf(stderr, "%s:\n  Failed protocol: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, imm, _CltSync);
-    return 1;
+    if (imm == _CltSync)  break;
+
+    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+            __PRETTY_FUNCTION__, _id, imm, _CltSync);
+    //return 1;
   }
+
+  if (rc == -FI_EAGAIN)
+    fprintf(stderr, "\n%s:  Timed out\n\n", __PRETTY_FUNCTION__);
 
   return rc;
 }
@@ -351,13 +363,20 @@ int EbLfCltLink::_synchronizeBegin()
   while ((rc = EbLfLink::poll(&imm, 60000)) == 0)
   {
     if (imm == _BegSync)  break;        // Break on synchronization message
+
+    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+            __PRETTY_FUNCTION__, _id, imm, _BegSync);
   }
-  if (rc != 0)                                   return rc;
 
-  // Send a synchronization message to the server
-  imm = _EndSync;                       // Use a different value from Servers
-  if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
+  if (rc == -FI_EAGAIN)
+    fprintf(stderr, "\n%s:  Timed out\n\n", __PRETTY_FUNCTION__);
 
+  if (rc == 0)
+  {
+    // Send a synchronization message to the server
+    imm = _EndSync;                       // Use a different value from Servers
+    if ( (rc = EbLfLink::post(imm)) )  return rc;
+  }
   return rc;
 }
 
@@ -366,14 +385,20 @@ int EbLfCltLink::_synchronizeEnd()
   int rc;
 
   uint64_t imm = _CltSync;
-  if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
-  if ( (rc = EbLfLink::poll(&imm, 5000)) )       return rc;
-  if (imm != _SvrSync)
+  if ( (rc = EbLfLink::post(imm)) )  return rc;
+
+  // Drain any stale transmissions that are stuck in the pipe
+  while ((rc = EbLfLink::poll(&imm, 7000)) == 0)
   {
-    fprintf(stderr, "%s:\n  Failed protocol: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, imm, _SvrSync);
-    return 1;
+    if (imm == _SvrSync)  break;
+
+    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+            __PRETTY_FUNCTION__, _id, imm, _SvrSync);
+    //return 1;
   }
+
+  if (rc == -FI_EAGAIN)
+    fprintf(stderr, "\n%s:  Timed out\n\n", __PRETTY_FUNCTION__);
 
   return rc;
 }
@@ -473,7 +498,7 @@ int EbLfCltLink::post(const void* buf,
     //  break;
     //}
 
-    const ms_t tmo{5000};
+    const ms_t tmo{7000};
     auto       t1 {fast_monotonic_clock::now()};
 
     if (t1 - t0 > tmo)
@@ -509,6 +534,16 @@ int EbLfLink::post(const void* buf,
   return rc;
 }
 
+int EbLfLink::post(uint64_t immData)
+{
+  auto rc = post(nullptr, 0, immData);
+
+  //printf("%s:  To ID %d, sent imm %08lx: rc %zd\n",
+  //       __PRETTY_FUNCTION__, _id, immData, rc);
+
+  return rc;
+}
+
 int EbLfLink::poll(uint64_t* data)      // Sample only, don't wait
 {
   int              rc;
@@ -525,6 +560,10 @@ int EbLfLink::poll(uint64_t* data)      // Sample only, don't wait
     }
 
     *data = cqEntry.data;
+
+    //printf("%s: From ID %d, received imm %08lx, rc %d\n",
+    //       __PRETTY_FUNCTION__, _id, cqEntry.data, rc);
+
     return 0;
   }
 
@@ -555,6 +594,10 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
       }
 
       *data = cqEntry.data;
+
+      //printf("%s:  From ID %d, received imm %08lx, rc %d\n",
+      //       __PRETTY_FUNCTION__, _id, cqEntry.data, rc);
+
       return 0;
     }
     if (rc == -FI_EAGAIN)

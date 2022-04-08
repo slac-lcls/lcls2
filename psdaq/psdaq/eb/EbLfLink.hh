@@ -38,6 +38,7 @@ namespace Pds {
       int post(const void* buf,
                size_t      len,
                uint64_t    immData);
+      int post(uint64_t    immData);
       int poll(uint64_t* data);
       int poll(uint64_t* data, int msTmo);
     public:
