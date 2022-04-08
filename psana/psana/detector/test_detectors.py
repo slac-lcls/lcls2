@@ -1,6 +1,9 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array1d, Array2d, Array3d
+        
+# For testing quadanode (this uses Cython for speed)        
+from quadanode import waveforms, times
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):
@@ -33,7 +36,8 @@ class quadanode_fex_4_5_6(DetectorImpl):
     """Test detector for tmo-fex simulated data."""
     def __init__(self, *args):
         super().__init__(*args)
-    def waveforms(self, evt, segid):
+
+    def waveforms(self, evt, n_dets=1):
         """ Returns list of fex waveforms for `segid` channel.
         
         List of segments/ channels:
@@ -42,19 +46,23 @@ class quadanode_fex_4_5_6(DetectorImpl):
         Converts 1D waveform into a list of waveforms using lengths array
         as delimiters.
         """
-        wf1d = self._segments(evt)[segid].waveforms
-        lengths = self._segments(evt)[segid].lengths
-        n_wf = len(lengths)
-        waveforms = []
-        for i in range(n_wf):
-            st = np.sum(lengths[:i])
-            en = st + lengths[i]
-            waveforms.append(wf1d[st:en])
-        return waveforms
+        return waveforms(evt, self, n_dets=n_dets, n_chans_per_det=5)
+        
+        #wf1d = self._segments(evt)[segid].waveforms
+        #lengths = self._segments(evt)[segid].lengths
+        #n_wf = len(lengths)
+        #waveforms = []
+        #for i in range(n_wf):
+        #    st = np.sum(lengths[:i])
+        #    en = st + lengths[i]
+        #    waveforms.append(wf1d[st:en])
+        #return waveforms
 
-    def times(self, evt, segid):
-        startpos = self._segments(evt)[segid].startpos
-        return startpos
+    def times(self, evt, n_dets=1):
+        return times(evt, self, n_dets=n_dets, n_chans_per_det=5)
+        
+        #startpos = self._segments(evt)[segid].startpos
+        #return startpos
 
 class hsd_fex_4_5_6(DetectorImpl):
     def __init__(self, *args):
