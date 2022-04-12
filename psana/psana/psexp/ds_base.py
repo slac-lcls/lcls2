@@ -207,18 +207,12 @@ class DataSourceBase(abc.ABC):
                      if os.path.isfile(os.path.join(self.xtc_path, \
                      os.path.basename(smd_file).split('.smd')[0] + self.xtc_ext))]
 
-        # For chunking test, xtc_files are in -cNN format.
-        if not xtc_files:
-            logger.debug(f'WARNING: looks like bigdata could have been chunked.')
-            xtc_files = [os.path.join(self.xtc_path, \
-                         os.path.basename(smd_file).split('.smd')[0] + '-c00' + self.xtc_ext) \
-                         for smd_file in smd_files \
-                         if os.path.isfile(os.path.join(self.xtc_path, \
-                         os.path.basename(smd_file).split('.smd')[0] + '-c00' + self.xtc_ext))]
-
         self.smd_files = smd_files
         self.xtc_files = xtc_files
         self.n_files   = len(self.smd_files)
+
+        # Do not allow runs without bigdata files
+        assert len(self.xtc_files) > 0 , f"No xtc2 files found from this path: {self.xtc_path}"
 
         logger.debug(f'smd_files={smd_files}')
         logger.debug(f'xtc_files={xtc_files}')
