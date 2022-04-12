@@ -700,7 +700,7 @@ void addChunkInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, un
     NamesId namesId(nodeId,MyNamesId::ChunkInfo+MyNamesId::NumberOf*(segment%nSegments));
     CreateData chunkinfo(xtc, bufEnd, namesLookup, namesId);
     chunkinfo.set_value(ChunkInfoDef::CHUNKID, (uint32_t)1);
-    chunkinfo.set_string(ChunkInfoDef::FILENAME, "data-r0001-s01-c01.xtc2");
+    chunkinfo.set_string(ChunkInfoDef::FILENAME, "data-r0001-s000-c001.xtc2");
 }
 
 
