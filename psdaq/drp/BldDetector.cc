@@ -946,6 +946,7 @@ void BldApp::handlePhase1(const json& msg)
         m_workerThread = std::thread{&Pgp::worker, std::ref(*m_pgp), m_exporter};
 
         m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -969,6 +970,25 @@ void BldApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
+    }
+    else if (key == "enable") {
+        bool chunkRequest;
+        ChunkInfo chunkInfo;
+        std::string errorMsg = m_drp.enable(phase1Info, chunkRequest, chunkInfo);
+        if (!errorMsg.empty()) {
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        } else if (chunkRequest) {
+            logging::debug("handlePhase1 enable found chunkRequest");
+            m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
+        }
+        unsigned error = m_det->enable(xtc, bufEnd, phase1Info);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::enable()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
+        logging::debug("handlePhase1 enable complete");
     }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
