@@ -71,7 +71,7 @@ cdef class SmdReader:
 
         return is_complete
 
-    def get(self, found_xtc2):
+    def get(self, smd_inprogress_converted):
         """SmdReaderManager only calls this function when there's no more event
         in one or more buffers. Reset the indices for buffers that need re-read."""
 
@@ -95,7 +95,7 @@ cdef class SmdReader:
 
             cn_retries = 0
             while not self.is_complete():
-                flag_founds = found_xtc2('smd') 
+                flag_founds = smd_inprogress_converted()
 
                 # Only when .inprogress file is used and ALL xtc2 files are found 
                 # that this will return a list of all(True). If we have a mixed

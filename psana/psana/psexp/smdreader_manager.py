@@ -81,7 +81,7 @@ class SmdReaderManager(object):
 
     def _get(self):
         st = time.monotonic()
-        self.smdr.get(self.dsparms.found_xtc2_callback)
+        self.smdr.get(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
         logger.debug(f'read {self.smdr.got/1e6:.3f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
         self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
