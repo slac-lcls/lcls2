@@ -182,8 +182,7 @@ class MPIDataSource(DataSourceBase):
         self.dsparms.use_smds = self.comms.psana_comm.bcast(self.dsparms.use_smds, root=0)
         
         self._setup_configs()
-        self.dm = DgramManager(self.xtc_files, configs=self._configs,
-                found_xtc2_callback=super().found_xtc2_callback)
+        self.dm = DgramManager(self.xtc_files, configs=self._configs)
         
         if nodetype == 'smd0':
             self.smd0 = Smd0(self.comms, self._configs, self.smdr_man, self.dsparms)
