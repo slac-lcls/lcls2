@@ -30,7 +30,7 @@ class DsParms:
     prom_man:           int
     max_retries:        int
     live:               bool
-    found_xtc2_callback:int
+    smd_inprogress_converted: int
     timestamps:         np.ndarray
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
@@ -121,7 +121,7 @@ class DataSourceBase(abc.ABC):
                 self.prom_man,
                 max_retries,
                 self.live,
-                self.found_xtc2_callback,
+                self.smd_inprogress_converted,
                 self.timestamps,
                 )
 
@@ -131,26 +131,28 @@ class DataSourceBase(abc.ABC):
             if kwargs['mpi_ts'] == 0:
                 self.dsparms.set_timestamps()
 
-    def found_xtc2_callback(self, file_type):
-        """ Returns a list of True/False if .xtc2 file is found
+    def smd_inprogress_converted(self):
+        """ Returns a list of True/False if smd.xtc2.inprogress has been
+        converted to smd.xtc2.
 
-        Required file_type is either 'smd' or 'bd'.
+        Only applies to smalldata files. Bigdata gets read-in at offsets
+        and thus doesn't care about the end of file checking.
 
         For each xtc file, returns True ONLY IF using .inprogress files and .xtc2 files
         are found on disk. We return False in the case where .inprogress
         files are not used because this callback is used to check if we
         should wait for more data on the xtc files. The read-retry will not
-        happen if this callback returns True and there's 0 byte read out."""
+        happen if this callback returns True and there's 0 byte read out.
+        
+        See https://github.com/monarin/psana-nersc/blob/master/psana2/write_then_move.sh 
+        to mimic a live run for testing this feature.
+        """
         found_flags = [False] * self.n_files
 
-        xtc_files = []
-        if file_type == 'smd':
-            xtc_files = self.smd_files
-        elif file_type == 'bd':
-            xtc_files = self.xtc_files
-
-        if self.xtc_ext == '.xtc2.inprogress' and xtc_files:
-            found_flags = [os.path.isfile(os.path.splitext(xtc_file)[0]) for xtc_file  in xtc_files]
+        for i_file, smd_file in enumerate(self.smd_files):
+            if smd_file.find(".xtc2.inprogress") >= 0:
+                if os.path.isfile(os.path.splitext(smd_file)[0]):
+                        found_flags[i_file] = True
         return found_flags
 
     @abc.abstractmethod
@@ -185,37 +187,41 @@ class DataSourceBase(abc.ABC):
     def _setup_run_files(self, runnum):
         """
         Generate list of smd and xtc files given a run number.
-        Priority is given to .inprogress files.
+
+        Allowed extentions include .xtc2 and .xtc2.inprogress.
         """
         smd_dir = os.path.join(self.xtc_path, 'smalldata')
-        all_smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4)))) + \
-                glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2.inprogress'%(str(runnum).zfill(4))))
-        logger.debug(f'all_smd_files={all_smd_files}')
+        smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4)))) + \
+                    glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2.inprogress'%(str(runnum).zfill(4))))
+        self.n_files   = len(smd_files)
+        assert self.n_files > 0 , f"No smalldata files found from this path: {smd_dir}"
 
-        smd_files = [smd_file for smd_file in all_smd_files if smd_file.endswith('.inprogress')]
+        # Look for matching bigdata files - MUST match all.
+        # We start by looking for smd basename with .inprogress extension.
+        # If this name is not found, try .xtc2. 
+        xtc_files = []
+        for smd_file in smd_files:
+            xtc_file = ""
+            base_name = os.path.basename(smd_file).split('.smd')[0]
+            try_this_name = os.path.join(self.xtc_path, base_name + ".xtc2.inprogress")
+            if os.path.isfile(try_this_name): 
+                xtc_file = try_this_name
+            
+            if not xtc_file:
+                try_this_name = os.path.join(self.xtc_path, base_name + ".xtc2")
+                if os.path.isfile(try_this_name):
+                    xtc_file = try_this_name
 
-        # No .inprogress files found
-        if not smd_files:
-            smd_files = all_smd_files
-            self.xtc_ext = '.xtc2'
-        else:
-            self.xtc_ext = '.xtc2.inprogress'
-
-        xtc_files = [os.path.join(self.xtc_path, \
-                     os.path.basename(smd_file).split('.smd')[0] + self.xtc_ext) \
-                     for smd_file in smd_files \
-                     if os.path.isfile(os.path.join(self.xtc_path, \
-                     os.path.basename(smd_file).split('.smd')[0] + self.xtc_ext))]
+            assert xtc_file, f"Unable to locate bigdata file: {try_this_name}"
+            xtc_files.append(xtc_file)
 
         self.smd_files = smd_files
         self.xtc_files = xtc_files
-        self.n_files   = len(self.smd_files)
 
-        # Do not allow runs without bigdata files
-        assert len(self.xtc_files) > 0 , f"No xtc2 files found from this path: {self.xtc_path}"
-
-        logger.debug(f'smd_files={smd_files}')
-        logger.debug(f'xtc_files={xtc_files}')
+        logger.debug('smd_files:\n'+'\n'.join(self.smd_files))
+        logger.debug('xtc_files:\n'+'\n'.join(self.xtc_files))
+        
+        # Set default flag for replacing smalldata with bigda files.
         self.dsparms.set_use_smds([False] * self.n_files)
 
     def _setup_runnum_list(self):
