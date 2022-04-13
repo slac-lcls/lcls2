@@ -1,7 +1,14 @@
 source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
 
-conda activate ps-4.3.2
-RELDIR="/cds/home/opr/uedopr/git/lcls2_220211"
+conda activate ps-4.5.10
+RELDIR="/cds/home/opr/uedopr/git/lcls2_220408"
+
+# in production until Apr 08, 2022
+#RELDIR="/cds/home/opr/tmoopr/git/lcls2_040522"
+
+# in production until Apr 05, 2022
+#conda activate ps-4.5.10
+#RELDIR="/cds/home/opr/tmoopr/git/lcls2_022522"
 
 # in production until Feb 11, 2022
 #conda activate ps-4.3.2

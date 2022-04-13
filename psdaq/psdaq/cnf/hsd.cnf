@@ -26,6 +26,16 @@ for hsd in hsd_ids:
     procmgr_config.append({host:ioc_node, id:'hsdioc_{:}'.format(hsd), port:'%d'%iport, flags:'s', conda:conda_rel, env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(hsd_epics,hsd.upper(),hsd)})
     iport += 1
 
+peppex_node = 'daq-tmo-hsd-02'
+peppex_epics = 'DAQ:TMO:HSD:2'
+peppex_hsd = '41' # relies on this not conflicting with hsd_ids above
+
+for ch in ['a','b']:
+    procmgr_config.append({host:peppex_node, id:'hsdpvs_{:}_{:}'.format(peppex_hsd,ch), port:'%d'%iport, flags:'s', conda:conda_rel, env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(peppex_epics,peppex_hsd.upper(),ch.upper())})
+    iport += 1
+procmgr_config.append({host:peppex_node, id:'hsdioc_{:}'.format(peppex_hsd), port:'%d'%iport, flags:'s', conda:conda_rel, env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(peppex_epics,peppex_hsd.upper(),peppex_hsd)})
+iport += 1
+
 #  Map of HSD connections
 #  hsd_0  1B:A   drp-neh-cmp020:0   OK
 #  hsd_1  1B:B   drp-neh-cmp020:4   no conn  [RxPwr at DRP OK] [3 lanes OK]
