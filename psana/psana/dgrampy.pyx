@@ -34,19 +34,6 @@ class DataType:
     {UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE,
     CHARSTR, ENUMVAL, ENUMDICT}
     but it doesn't make sense to wrap it ..."""
-    UINT8   = 0
-    UINT16  = 1
-    UINT32  = 2
-    UINT64  = 3
-    INT8    = 4
-    INT16   = 5
-    INT32   = 6
-    INT64   = 7
-    FLOAT   = 8
-    DOUBLE  = 9
-    CHARSTR = 10
-    ENUMVAL = 11
-    ENUMDICT= 12
     nptypes = {
                 0: np.uint8,
                 1: np.uint16,
@@ -59,6 +46,20 @@ class DataType:
                 8: np.float32,
                 9: np.float64,
     }
+    psana_types = {np.uint8:    0,
+                   np.uint16:   1,
+                   np.uint32:   2,
+                   np.uint64:   3,
+                   np.int8:     4,
+                   np.int16:    5,
+                   np.int32:    6,
+                   np.int64:    7,
+                   np.float32:  8,
+                   np.float64:  9,
+                   np.str:      10,
+                  }
+    def to_psana2(self, numpy_dtype):
+        return self.psana_types[numpy_dtype]
 
 cdef class PyDataDef:
     cdef DataDef* cptr
@@ -308,8 +309,9 @@ def removedata(det_name, alg_name):
 
 def datadef(datadict):
     datadef = PyDataDef()
-    for key, val in datadict.items():
-        datadef.add(key, val[0], val[1])
+    dt = DataType()
+    for key, (numpy_dtype, rank)  in datadict.items():
+        datadef.add(key, dt.to_psana2(numpy_dtype), rank)
     return datadef
 
 def save(PyDgram pydg):

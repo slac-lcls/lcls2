@@ -13,6 +13,7 @@ def create_array(dtype):
     return arr
 
 def test_output(fname):
+    print(f"TEST OUTPUT by reading {fname} using DataSource")
     ds = DataSource(files=[fname])
     myrun = next(ds.runs())
     det = myrun.Detector('xpphsd')
@@ -34,19 +35,19 @@ if __name__ == "__main__":
     
     # Define data formats
     datadef_dict = {
-            "valFex": (dp.DataType.FLOAT, 0),
-            "strFex": (dp.DataType.CHARSTR, 1),
-            "arrayFex0": (dp.DataType.UINT8, 2),
-            "arrayFex1": (dp.DataType.UINT16, 2),
-            "arrayFex2": (dp.DataType.UINT32, 2),
-            "arrayFex3": (dp.DataType.UINT64, 2),
-            "arrayFex4": (dp.DataType.INT8, 2),
-            "arrayFex5": (dp.DataType.INT16, 2),
-            "arrayFex6": (dp.DataType.INT32, 2),
-            "arrayFex7": (dp.DataType.INT64, 2),
-            "arrayFex8": (dp.DataType.FLOAT, 2),
-            "arrayFex9": (dp.DataType.DOUBLE, 2),
-            "arrayString": (dp.DataType.CHARSTR, 1),
+            "valFex": (np.float32, 0),
+            "strFex": (np.str, 1),
+            "arrayFex0": (np.uint8, 2),
+            "arrayFex1": (np.uint16, 2),
+            "arrayFex2": (np.uint32, 2),
+            "arrayFex3": (np.uint64, 2),
+            "arrayFex4": (np.int8, 2),
+            "arrayFex5": (np.int16, 2),
+            "arrayFex6": (np.int32, 2),
+            "arrayFex7": (np.int64, 2),
+            "arrayFex8": (np.float32, 2),
+            "arrayFex9": (np.float64, 2),
+            "arrayString": (np.str, 1),
             }
     datadef = dp.datadef(datadef_dict)
     
