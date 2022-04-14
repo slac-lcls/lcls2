@@ -265,12 +265,14 @@ EbEvent* EventBuilder::_insert(EbEpoch*       epoch,
   return _event(ctrb, after, prm);
 }
 
-void EventBuilder::_fixup(EbEvent* event, // Always called with remaining != 0
-                          ns_t     age)
+void EventBuilder::_fixup(EbEvent*             event,
+                          ns_t                 age,
+                          const EbEvent* const due)
 {
   uint64_t remaining = event->_remaining;
   _missing = remaining;
 
+  // remaining != 0 whenever _fixup() is called
   do
   {
     unsigned srcId = __builtin_ffsl(remaining) - 1;
@@ -281,7 +283,6 @@ void EventBuilder::_fixup(EbEvent* event, // Always called with remaining != 0
   }
   while (remaining);
 
-
   if (age < _eventTimeout)  ++_fixupCnt;
   else                      ++_tmoEvtCnt;
 
@@ -289,12 +290,16 @@ void EventBuilder::_fixup(EbEvent* event, // Always called with remaining != 0
   if (_fixupCnt + _tmoEvtCnt < 1000)
   {
     const EbDgram* dg = event->creator();
-    printf("%-9s %15s %014lx, size %5zu, for remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, tmo %ld ms\n",
+    printf("%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, tmo %ld ms\n",
            age < _eventTimeout ? "Fixed-up" : "Timed-out",
            TransitionId::name(dg->service()), event->sequence(), event->_size,
            event->_remaining, dg->readoutGroups(), event->_contract,
            std::chrono::duration_cast<ms_t>(age).count(),
            std::chrono::duration_cast<ms_t>(_eventTimeout).count());
+    if (age < _eventTimeout)
+      printf("Flushed by %15s %014lx, size %5zu, with remaining %016lx, RoGs %04hx, contract %016lx\n",
+             TransitionId::name(due->creator()->service()), due->sequence(),
+             due->_size, due->_remaining, dg->readoutGroups(), due->_contract);
   }
 }
 
@@ -345,7 +350,7 @@ void EventBuilder::_flush(const EbEvent* const due)
           if (age < _eventTimeout)  return;
         }
 
-        _fixup(event, age);
+        _fixup(event, age, due);
       }
       if (event == due)
       {

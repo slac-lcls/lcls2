@@ -67,7 +67,7 @@ namespace Pds {
       EbEpoch*          _epoch(uint64_t key, EbEpoch* after);
       void              _flushBefore(EbEpoch*);
       EbEpoch*          _discard(EbEpoch*);
-      void              _fixup(EbEvent*, ns_t age);
+      void              _fixup(EbEvent*, ns_t age, const EbEvent* const due);
       EbEvent*          _event(const Pds::EbDgram*, EbEvent* after, unsigned prm);
       void              _flush(const EbEvent* const due);
       void              _flush();

@@ -218,7 +218,7 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
     // Log a message so we can perhaps see the source of timeouts in UED,
     // where some servers and clients run on the same machine.  Compare
     // timestamps in /var/log/messages.
-    logging::info("Starting to prepare link with a %s", peer);
+    logging::info("Preparing link with a %3s, my ID: %2d", peer, id);
     auto   t0(std::chrono::steady_clock::now());
     int    rc;
     size_t regSize;
@@ -265,7 +265,7 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Inbound link with %s ID %d configured in %lu ms",
+    logging::info("Inbound   link with   %3s ID %2d configured in %4lu ms",
                   peer, rmtId, dT);
   }
 
@@ -328,13 +328,13 @@ int EbAppBase::process()
     auto svc = idg->service();
     if (svc != XtcData::TransitionId::L1Accept) {
       if (svc != XtcData::TransitionId::SlowUpdate) {
-        logging::info("EbAppBase  saw %s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
+        logging::info("EbAppBase  saw %15s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
                       XtcData::TransitionId::name(svc),
                       idg->time.seconds(), idg->time.nanoseconds(),
                       idg->pulseId(), src, idg, _bufRegSize[src], idx, _maxTrSize[src]);
       }
       else {
-        logging::debug("EbAppBase  saw %s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
+        logging::debug("EbAppBase  saw %15s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
                        XtcData::TransitionId::name(svc),
                        idg->time.seconds(), idg->time.nanoseconds(),
                        idg->pulseId(), src, idg, _bufRegSize[src], idx, _maxTrSize[src]);

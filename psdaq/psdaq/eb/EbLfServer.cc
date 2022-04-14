@@ -369,7 +369,7 @@ int Pds::Eb::linksConfigure(std::vector<EbLfSvrLink*>& links,
     // Log a message so we can perhaps see the source of timeouts in UED,
     // where some servers and clients run on the same machine.  Compare
     // timestamps in /var/log/messages.
-    logging::info("Starting to prepare link with a %s", peer);
+    logging::info("Preparing link with a %3s, my ID: %2d", peer, id);
     auto t0(std::chrono::steady_clock::now());
     int  rc;
     if ( (rc = link->prepare(id, peer)) )
@@ -383,7 +383,7 @@ int Pds::Eb::linksConfigure(std::vector<EbLfSvrLink*>& links,
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Inbound link with %s ID %d configured in %lu ms",
+    logging::info("Inbound   link with   %3s ID %2d configured in %4lu ms",
                   peer, rmtId, dT);
   }
 

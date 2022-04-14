@@ -101,6 +101,9 @@ namespace Pds {
         }
       }
 
+      // Clear the counter here because _init() will cause it to count
+      _requestCount = 0;
+
       _init();
     }
     virtual ~MyXtcMonitorServer()
@@ -123,7 +126,7 @@ namespace Pds {
       const EbDgram** const  last = (const EbDgram**)dg->xtc.next();
       const EbDgram*  const* ctrb = (const EbDgram**)dg->xtc.payload();
       Dgram*                 odg  = new((void*)buf) Dgram(**ctrb); // Not an EbDgram!
-      odg->xtc.src      = XtcData::Src(XtcData::Level::Event);
+      odg->xtc.src      = XtcData::Src(_prms.id, XtcData::Level::Event);
       odg->xtc.contains = XtcData::TypeId(XtcData::TypeId::Parent, 0);
       const void* bufEnd = buf + bSz;
       do
@@ -132,16 +135,15 @@ namespace Pds {
 
         odg->xtc.damage.increase(idg->xtc.damage.value());
 
-        //size_t   oSz  = sizeof(*odg) + odg->xtc.sizeofPayload();
+        size_t   oSz  = sizeof(*odg) + odg->xtc.sizeofPayload();
         uint32_t iExt = idg->xtc.extent;
         // Truncation goes unnoticed, so crash instead to get it fixed
-        //if (oSz + iExt > bSz)
-        //{
-        //  logging::debug("Truncated: Buffer of size %zu is too small to add Xtc of size %zu\n",
-        //                 bSz, iExt);
-        //  odg->xtc.damage.increase(XtcData::Damage::Truncated);
-        //  iExt = bSz - oSz;
-        //}
+        if (oSz + iExt > bSz)
+        {
+          logging::critical("Buffer of size %zu (%zu in use) is too small to add Xtc of size %zu\n",
+                            bSz, oSz, iExt);
+          throw "Buffer too small";
+        }
         buf = (char*)odg->xtc.alloc(iExt, bufEnd);
         memcpy(buf, &idg->xtc, iExt);
       }
@@ -150,7 +152,7 @@ namespace Pds {
 
     virtual void _deleteDatagram(Dgram* dg) // Not called for transitions
     {
-      unsigned idx = (dg->env >> 16) & 0xff;
+      unsigned idx = dg->xtc.src.value();
 
       if (unlikely(_prms.verbose >= VL_EVENT))
         printf("_deleteDatagram: dg %p, ts %u.%09u, idx %u\n",
@@ -165,9 +167,8 @@ namespace Pds {
       {
         if (idx == _bufFreeList.peek(i))
         {
-          logging::error("Attempted double free of list entry %u: idx %u, dg %p, ts %u.%09u, svc %s",
+          logging::error("Index is already on list at %u: idx %u, dg %p, ts %u.%09u, svc %s",
                          i, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
-          // Does the dg still need to be freed?  Apparently so.
           //Pool::free((void*)dg);
           return;
         }
@@ -180,6 +181,7 @@ namespace Pds {
           printf("Free list entry %u: %u\n", i, _bufFreeList.peek(i));
         }
       }
+      //printf("_deleteDatagram: _bufFreeList.push(): %u, count = %zd\n", idx, _bufFreeList.count());
 
       Pool::free((void*)dg);
     }
@@ -194,7 +196,6 @@ namespace Pds {
         logging::error("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
         return;
       }
-
       //printf("_requestDatagram: _bufFreeList.pop(): %u, count = %zd\n", data, _bufFreeList.count());
 
       data = ImmData::value(ImmData::Buffer, _prms.id, data);
@@ -206,7 +207,7 @@ namespace Pds {
         unsigned iTeb = _iTeb++;
         if (_iTeb == _mrqLinks.size())  _iTeb = 0;
 
-        rc = _mrqLinks[iTeb]->EbLfLink::post(nullptr, 0, data);
+        rc = _mrqLinks[iTeb]->EbLfLink::post(data);
 
         if (unlikely(_prms.verbose >= VL_EVENT))
           printf("_requestDatagram: Post %u EB[iTeb %u], value %08x, rc %d\n",
@@ -292,9 +293,8 @@ int Meb::resetCounters()
 {
   EbAppBase::resetCounters();
 
-  _eventCount   = 0;
-  _splitCount   = 0;
-  _requestCount = 0;
+  _eventCount = 0;
+  _splitCount = 0;
 
   return 0;
 }
@@ -405,27 +405,36 @@ void Meb::process(EbEvent* event)
     event->dump(++cnt);
   }
 
-   const EbDgram* dgram = event->creator();
-   uint64_t pid = dgram->pulseId();
-   if (!(pid > _pidPrv))
-   {
-     if (event->remaining())             // I.e., this event was fixed up
-     {
-       // This can happen only for a split event (I think), which was fixed up and
-       // posted earlier, so return to dismiss this counterpart and not post it
-       ++_splitCount;
-       logging::error("%s:\n  Split event: pid %014lx, prv %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u\n",
+  const EbDgram* dgram = event->creator();
+  if (!(dgram->readoutGroups() & (1 << _prms.partition)))
+  {
+    // The common readout group keeps events and batches in pulse ID order
+    logging::error("%s:\n  Event %014lx, env %08x is missing the common readout group %u",
+                   __PRETTY_FUNCTION__, dgram->pulseId(), dgram->env, _prms.partition);
+    // Revisit: Should this be fatal?
+  }
+
+  uint64_t pid = dgram->pulseId();
+  if (unlikely(!(pid > _pidPrv)))
+  {
+    event->damage(Damage::OutOfOrder);
+
+    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u\n",
                       __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->parameter(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
-       return;
-     }
 
-     event->damage(Damage::OutOfOrder);
-
-     logging::error("%s:\n  Pulse ID did not advance: %014lx vs %014lx, rem %08lx, prm %08x, svc %u, ts %u.09u\n",
-                    __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->parameter(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
-     // Revisit: fatal?  throw "Pulse ID did not advance";
-   }
-   _pidPrv = pid;
+    if (event->remaining())             // I.e., this event was fixed up
+    {
+      // This can happen only for a split event (I think), which was fixed up and
+      // posted earlier, so return to dismiss this counterpart and not post it
+      // However, we can't know whether this is a split event or a fixed-up out-of-order event
+      ++_splitCount;
+      logging::critical("%s:\n  Split event, if pid %014lx was fixed up multiple times\n",
+                        __PRETTY_FUNCTION__, pid);
+      // return, if we knew this PID had been fixed up before
+    }
+    throw "Pulse ID did not advance";   // Can't recover from non-spit events
+  }
+  _pidPrv = pid;
 
   ++_eventCount;
 
@@ -437,9 +446,9 @@ void Meb::process(EbEvent* event)
   // a lot of copying
   size_t      sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
   unsigned    idx    = ImmData::idx(event->parameter());
-  void*       buffer = _pool->alloc(sizeof(Dgram) + sz);
-  const void* bufEnd = ((char*)buffer) + _pool->sizeofObject();
-  if (!buffer)
+  Dgram*      dg     = new(_pool->alloc(sizeof(Dgram) + sz)) Dgram(*(event->creator()));
+  const void* bufEnd = ((char*)dg) + _pool->sizeofObject();
+  if (!dg)
   {
     logging::critical("%s:\n  Dgram pool allocation of size %zd failed:",
                       __PRETTY_FUNCTION__, sizeof(Dgram) + sz);
@@ -450,14 +459,13 @@ void Meb::process(EbEvent* event)
     abort();
   }
 
-  Dgram* dg  = new(buffer) Dgram(*(event->creator()));
+  dg->xtc.src = {idx, Level::Event}; // Pass buffer's index to _deleteDatagram()
+
   void*  buf = dg->xtc.alloc(sz, bufEnd);
   memcpy(buf, event->begin(), sz);
-  dg->env = (dg->env & 0xff00ffff) | (idx << 16); // Pass buffer's index to _deleteDatagram()
 
   if (_prms.verbose >= VL_EVENT)
   {
-    uint64_t    pid = event->creator()->pulseId();
     unsigned    ctl = dg->control();
     unsigned    env = dg->env;
     size_t      sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
@@ -467,10 +475,22 @@ void Meb::process(EbEvent* event)
            "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, ts %u.%09u\n",
            _eventCount, svc, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
   }
+  else
+  {
+    auto svc = dg->service();
+    if ((svc != TransitionId::L1Accept) && (svc != TransitionId::SlowUpdate))
+    {
+      logging::info("MEB built      %15s @ %u.%09u (%014lx) from buffer %2u @ %16p",
+                    TransitionId::name(svc),
+                    dg->time.seconds(), dg->time.nanoseconds(),
+                    pid, dg->xtc.src.value(), dg);
+    }
+  }
 
+  // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred
   if (_apps->events(dg) == XtcMonitorServer::Handled)
   {
-    // Make the buffer available to the contributor again
+    // Make the transition buffer available to the contributor again
     post(event->begin(), event->end());
 
     Pool::free((void*)dg);          // Handled means _deleteDatagram() won't be called

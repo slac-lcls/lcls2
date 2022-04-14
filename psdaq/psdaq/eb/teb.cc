@@ -186,7 +186,7 @@ int Teb::resetCounters()
   _splitCount    = 0;
   _batchCount    = 0;
   _writeCount    = 0;
-  _monitorCount  = 0;
+  //_monitorCount  = 0;  // Cleared in Configure to stay in sync with MEB
   _prescaleCount = 0;
 
   return 0;
@@ -280,6 +280,8 @@ int Teb::connect()
 int Teb::configure(Trigger* object,
                    unsigned prescale)
 {
+  _monitorCount = 0; // Cleared here to stay in sync with MEB
+
   _trigger    = object;
   _prescale   = prescale - 1;           // Be zero based
   _wrtCounter = _prescale;              // Reset prescale counter
@@ -369,21 +371,24 @@ void Teb::process(EbEvent* event)
   }
 
   uint64_t pid = dgram->pulseId();
-  if (!(pid > _pidPrv))
+  if (unlikely(!(pid > _pidPrv)))
   {
+    event->damage(Damage::OutOfOrder);
+
+    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u\n",
+                      __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->parameter(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
+
     if (event->remaining())             // I.e., this event was fixed up
     {
       // This can happen only for a split event (I think), which was fixed up and
       // posted earlier, so return to dismiss this counterpart and not post it
+      // However, we can't know whether this is a split event or a fixed-up out-of-order event
       ++_splitCount;
-      return;
+      logging::critical("%s:\n  Split event, if pid %014lx was fixed up multiple times\n",
+                        __PRETTY_FUNCTION__, pid);
+      // return, if we could know this PID had been fixed up before
     }
-
-    event->damage(Damage::OutOfOrder);
-
-    logging::error("%s:\n  Pulse ID did not advance: %014lx vs %014lx\n",
-                   __PRETTY_FUNCTION__, pid, _pidPrv);
-    // Revisit: fatal?  throw "Pulse ID did not advance";
+    throw "Pulse ID did not advance";   // Can't recover from non-spit events
   }
   _pidPrv = pid;
 
