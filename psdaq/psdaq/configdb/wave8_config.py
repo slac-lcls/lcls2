@@ -2,6 +2,7 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import *
 from psdaq.cas.xpm_utils import timTxId
+import lcls2_pgp_pcie_apps
 import epics
 
 import json
@@ -36,16 +37,13 @@ def ctxt_get(names):
     return v
 
 def ctxt_put(names, values):
+
     if isinstance(names,str):
-        print(f'Put {names} {values}')
         epics.PV(names).put(values)
-        print(f'Put {names} complete')
     else:
         if isinstance(names,list):
             for i,n in enumerate(names):
-                print(f'Put {n} {values[i]}')
                 epics.PV(n).put(values[i])
-                print(f'Put {n} complete')
 
 def epics_put(cfg,epics_prefix,names,values):
     global lane
@@ -136,10 +134,37 @@ def config_timing(epics_prefix, lcls2=False, timebase='186M'):
         
 def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
     global prefix
+    global lane
     logging.getLogger().setLevel(40-10*verbosity)
     prefix = epics_prefix
     base['prefix'] = epics_prefix
     base['timebase'] = timebase
+    lm=lanemask
+    lane = (lm&-lm).bit_length()-1
+    assert(lm==(1<<lane)) # check that lanemask only has 1 bit for wave8
+
+    print(f'--- lanemask {lanemask:x}  lane {lane}  timebase {timebase} ---')
+
+    if timebase=="119M":  # UED
+        print('Configure for UED')
+        #  We need pcie control to configure event batcher (which normally doesnt exist)
+        #  Concerned if we will interfere with other pcie operation (for epixquad)
+        pbase = lcls2_pgp_pcie_apps.DevRoot(dev           =dev,
+                                            enLclsI       =False,
+                                            enLclsII      =True,
+                                            yamlFileLclsI =None,
+                                            yamlFileLclsII=None,
+                                            startupMode   =True,
+                                            standAloneMode=False,
+                                            pgp4          =True,
+                                            dataVc        =0,
+                                            pollEn        =False,
+                                            initRead      =False)
+        pbase.__enter__()
+        base['pci'] = pbase
+        eventBuilder = getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder
+        eventBuilder.Blowoff.set(True)
+
     return base
 
 def wave8_init_feb(slane=None,schan=None):
@@ -188,15 +213,15 @@ def user_to_expert(prefix, cfg, full=False):
             lcls1Delay = 0.9e-3*119e6
             triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
             print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
+            if triggerDelay < 0:
+                raise ValueError('triggerDelay computes to < 0')
+        
+            ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
+
         else:
             #  119M = UED, 238 clks per timing frame (500kHz)
-            lcls1Delay = 0.9e-3*119e6
-            triggerDelay   = int(lcls1Delay + delta*119.e-3 - partitionDelay*238)
-            print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
-        if triggerDelay < 0:
-            raise ValueError('triggerDelay computes to < 0')
-        
-        ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
+            #  UED is only LCLS2 timing.  Let controls set the delay value.
+            pass
 
     except KeyError:
         pass
@@ -217,6 +242,7 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     global ocfg
     global timebase
 
+    print(f'base [{base}]')
     prefix = base['prefix']
     timebase = base['timebase']
     group = grp
@@ -308,22 +334,22 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
                  [ 0x13,0x12,0x13,0x12,0x12,0x11,0x12,0x11 ] ]
 
     for iadc in range(4):
-        base = 'AdcReadout%d'%iadc
-        top.set('expert.'+base+'.DelayAdcALane', dlyAlane[iadc], 'UINT8')
-        top.set('expert.'+base+'.DelayAdcBLane', dlyBlane[iadc], 'UINT8')
-        top.set('expert.'+base+'.DMode'  , 3, 'UINT8')
-        top.set('expert.'+base+'.Invert' , 0, 'UINT8')
-        top.set('expert.'+base+'.Convert', 3, 'UINT8')
+        adc = 'AdcReadout%d'%iadc
+        top.set('expert.'+adc+'.DelayAdcALane', dlyAlane[iadc], 'UINT8')
+        top.set('expert.'+adc+'.DelayAdcBLane', dlyBlane[iadc], 'UINT8')
+        top.set('expert.'+adc+'.DMode'  , 3, 'UINT8')
+        top.set('expert.'+adc+'.Invert' , 0, 'UINT8')
+        top.set('expert.'+adc+'.Convert', 3, 'UINT8')
 
     for iadc in range(4):
-        base = 'AdcConfig%d'%iadc
+        adc = 'AdcConfig%d'%iadc
         zeroregs = [7,8,0xb,0xc,0xf,0x10,0x11,0x12,0x12,0x13,0x14,0x16,0x17,0x18,0x20]
         for r in zeroregs:
-            top.set('expert.'+base+'.AdcReg_0x%04X'%r,    0, 'UINT8')
-        top.set('expert.'+base+'.AdcReg_0x0006'  , 0x80, 'UINT8')
-        top.set('expert.'+base+'.AdcReg_0x000D'  , 0x6c, 'UINT8')
-        top.set('expert.'+base+'.AdcReg_0x0015'  ,    1, 'UINT8')
-        top.set('expert.'+base+'.AdcReg_0x001F'  , 0xff, 'UINT8')
+            top.set('expert.'+adc+'.AdcReg_0x%04X'%r,    0, 'UINT8')
+        top.set('expert.'+adc+'.AdcReg_0x0006'  , 0x80, 'UINT8')
+        top.set('expert.'+adc+'.AdcReg_0x000D'  , 0x6c, 'UINT8')
+        top.set('expert.'+adc+'.AdcReg_0x0015'  ,    1, 'UINT8')
+        top.set('expert.'+adc+'.AdcReg_0x001F'  , 0xff, 'UINT8')
 
     top.set('expert.AdcPatternTester.Channel', 0, 'UINT8' )
     top.set('expert.AdcPatternTester.Mask'   , 0, 'UINT8' )
@@ -357,6 +383,16 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
 
     pprint.pprint(scfg)
     v = json.dumps(scfg)
+
+    if 'pci' in base:
+        #  Note that other segment levels can step on EventBuilder settings (Bypass,VcDataTap)
+        pbase = base['pci']
+        getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').VcDataTap.Tap.set(1)
+        eventBuilder = getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder
+        eventBuilder.Bypass.set(5)
+        eventBuilder.Blowoff.set(False)
+        eventBuilder.SoftRst()
+
     return v
 
 def wave8_scan_keys(update):

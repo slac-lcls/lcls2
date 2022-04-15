@@ -1,5 +1,6 @@
 #include "Wave8.hh"
 
+#include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
@@ -11,6 +12,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <fstream>
+#include <string>
 
 using namespace XtcData;
 using logging = psalg::SysLog;
@@ -158,12 +160,17 @@ namespace Drp {
                 ProcStream::createData(fex,index,streams[9]);
        }
     };
+    
   };
 
 Wave8::Wave8(Parameters* para, MemPool* pool) :
     BEBDetector(para, pool)
 {
     _init(para->kwargs["epics_prefix"].c_str());
+
+    if (para->kwargs.find("timebase")!=para->kwargs.end() &&
+        para->kwargs["timebase"]==std::string("119M"))
+        m_debatch = true;
 }
 
 json Wave8::connectionInfo()

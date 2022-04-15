@@ -40,11 +40,8 @@ public:  // Implementation of Detector
     unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
     unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
 
-    Pds::TimingHeader* getTimingHeader(uint32_t index) const override
-    {
-        EvtBatcherHeader& ebh = *static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
-        return static_cast<Pds::TimingHeader*>(ebh.next());
-    }
+    Pds::TimingHeader* getTimingHeader(uint32_t index) const override;
+
     static PyObject* _check(PyObject*);
 protected:  // This is the sub class interface
     virtual void           _connect  (PyObject*) {}     // handle dictionary entries returned by <detType>_connect python
@@ -56,6 +53,7 @@ protected:
     void _init(const char*);  // Must call from subclass constructor
     void _init_feb();         // Must call from subclass constructor
     // Helper functions
+    std::vector< XtcData::Array<uint8_t> > _subframes(void* buffer, unsigned length);
     static std::string _string_from_PyDict(PyObject*, const char* key);
 protected:
     std::string          m_connect_json;  // info passed on connect phase
@@ -64,6 +62,7 @@ protected:
     PyObject*            m_root;          // handle for python functions
     unsigned             m_paddr;         // timing system link id
     PythonConfigScanner* m_configScanner;
+    bool                 m_debatch;       // data is contained in an extra AxiStreamBatcherEventBuilder
   };
 
 }

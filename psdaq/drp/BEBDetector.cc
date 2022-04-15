@@ -46,7 +46,8 @@ BEBDetector::BEBDetector(Parameters* para, MemPool* pool) :
     Detector      (para, pool),
     m_connect_json(""),
     m_module      (0),
-    m_configScanner (0)
+    m_configScanner (0),
+    m_debatch     (false)
 {
     virtChan = 1;
 }
@@ -216,6 +217,26 @@ void BEBDetector::connect(const json& connect_json, const std::string& collectio
     m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 }
 
+Pds::TimingHeader* BEBDetector::getTimingHeader(uint32_t index) const
+{
+    EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
+    if (m_debatch) ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
+    return static_cast<Pds::TimingHeader*>(ebh->next());
+}
+
+std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, unsigned length) 
+{
+    EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)buffer, length);
+    EvtBatcherSubFrameTail* ebsft = ebit.next();
+    unsigned nsubs = ebsft->tdest()+1;
+    std::vector< XtcData::Array<uint8_t> > subframes(nsubs, XtcData::Array<uint8_t>(0, 0, 1) );
+    do {
+        logging::debug("Deb::event: array[%d] sz[%d]\n",ebsft->tdest(),ebsft->size());
+        subframes[ebsft->tdest()] = XtcData::Array<uint8_t>(ebsft->data(), &ebsft->size(), 1);
+    } while ((ebsft=ebit.next()));
+    return subframes;
+}
+
 void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
     int lane = __builtin_ffs(event->mask) - 1;
@@ -223,14 +244,9 @@ void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
     unsigned data_size = event->buffers[lane].size;
 
     try {
-        EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)m_pool->dmaBuffers[dmaIndex], data_size);
-        EvtBatcherSubFrameTail* ebsft = ebit.next();
-        unsigned nsubs = ebsft->tdest()+1;
-        std::vector< XtcData::Array<uint8_t> > subframes(nsubs, XtcData::Array<uint8_t>(0, 0, 1) );
-        do {
-            logging::debug("_event: array[%d] sz[%d]\n",ebsft->tdest(),ebsft->size());
-            subframes[ebsft->tdest()] = XtcData::Array<uint8_t>(ebsft->data(), &ebsft->size(), 1);
-        } while ((ebsft=ebit.next()));
+        std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
+        if (m_debatch)
+            subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
         _event(dgram.xtc, bufEnd, subframes);
     } catch (std::runtime_error& e) {
         logging::critical("BatcherIterator error");
