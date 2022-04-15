@@ -79,9 +79,10 @@ namespace Pds {
 
   class MyXtcMonitorServer : public XtcMonitorServer {
   public:
-    MyXtcMonitorServer(std::vector<EbLfCltLink*>& links,
-                       uint64_t&                  requestCount,
-                       const MebParams&           prms) :
+    MyXtcMonitorServer(std::vector<EbLfCltLink*>&     links,
+                       uint64_t&                      requestCount,
+                       std::shared_ptr<PromHistogram> bufUseCnts,
+                       const MebParams&               prms) :
       XtcMonitorServer(prms.tag.c_str(),
                        prms.maxBufferSize,
                        prms.numEvBuffers,
@@ -90,6 +91,7 @@ namespace Pds {
       _mrqLinks     (links),
       _requestCount (requestCount),
       _bufFreeList  (prms.numEvBuffers),
+      _bufUseCnts   (bufUseCnts),
       _prms         (prms)
     {
       for (unsigned i = 0; i < _bufFreeList.size(); ++i)
@@ -103,6 +105,7 @@ namespace Pds {
 
       // Clear the counter here because _init() will cause it to count
       _requestCount = 0;
+      _bufUseCnts->clear();
 
       _init();
     }
@@ -198,7 +201,7 @@ namespace Pds {
       }
       //printf("_requestDatagram: _bufFreeList.pop(): %u, count = %zd\n", data, _bufFreeList.count());
 
-      data = ImmData::value(ImmData::Buffer, _prms.id, data);
+      auto immData = ImmData::value(ImmData::Buffer, _prms.id, data);
 
       int rc = -1;
       for (unsigned i = 0; i < _mrqLinks.size(); ++i)
@@ -207,39 +210,41 @@ namespace Pds {
         unsigned iTeb = _iTeb++;
         if (_iTeb == _mrqLinks.size())  _iTeb = 0;
 
-        rc = _mrqLinks[iTeb]->EbLfLink::post(data);
+        rc = _mrqLinks[iTeb]->EbLfLink::post(immData);
 
         if (unlikely(_prms.verbose >= VL_EVENT))
           printf("_requestDatagram: Post %u EB[iTeb %u], value %08x, rc %d\n",
-                 i, iTeb, data, rc);
+                 i, iTeb, immData, rc);
 
         if (rc == 0)
         {
           ++_requestCount;
+          _bufUseCnts->observe(double(data));
           break;            // Break if message was delivered
         }
       }
       if (rc)
       {
-        logging::error("%s:\n  Unable to post request to any TEB: rc %d, data %u = %08x",
-                       __PRETTY_FUNCTION__, rc, data, data);
+        logging::error("%s:\n  Unable to post request to any TEB: rc %d, data %u (%08x)",
+                       __PRETTY_FUNCTION__, rc, data, immData);
         // Revisit: Is this fatal or ignorable?
       }
     }
 
   private:
-    unsigned                   _iTeb;
-    std::vector<EbLfCltLink*>& _mrqLinks;
-    uint64_t&                  _requestCount;
-    FifoMT<unsigned>           _bufFreeList;
-    const MebParams&           _prms;
+    unsigned                       _iTeb;
+    std::vector<EbLfCltLink*>&     _mrqLinks;
+    uint64_t&                      _requestCount;
+    FifoMT<unsigned>               _bufFreeList;
+    std::shared_ptr<PromHistogram> _bufUseCnts;
+    const MebParams&               _prms;
   };
 
 
   class Meb : public EbAppBase
   {
   public:
-    Meb(const MebParams& prms, const MetricExporter_t& exporter);
+    Meb(const MebParams& prms, ZmqContext& context, const MetricExporter_t& exporter);
   public:
     int  resetCounters();
     int  connect();
@@ -259,13 +264,25 @@ namespace Pds {
     uint64_t                            _eventCount;
     uint64_t                            _splitCount;
     uint64_t                            _requestCount;
+    std::shared_ptr<PromHistogram>      _bufUseCnts;
     const MebParams&                    _prms;
     EbLfClient                          _mrqTransport;
+    ZmqSocket                           _inprocSend;
   };
 };
 
 
+static json createPulseIdMsg(uint64_t pulseId)
+{
+  json msg, body;
+  msg["key"] = "pulseId";
+  body["pulseId"] = pulseId;
+  msg["body"] = body;
+  return msg;
+}
+
 Meb::Meb(const MebParams&        prms,
+         ZmqContext&             context,
          const MetricExporter_t& exporter) :
   EbAppBase    (prms, exporter, "MEB",
                 EPOCH_DURATION, 1, prms.numEvBuffers, MEB_TR_BUFFERS, MEB_TMO_MS),
@@ -274,7 +291,8 @@ Meb::Meb(const MebParams&        prms,
   _splitCount  (0),
   _requestCount(0),
   _prms        (prms),
-  _mrqTransport(prms.verbose, prms.kwargs)
+  _mrqTransport(prms.verbose, prms.kwargs),
+  _inprocSend  (&context, ZMQ_PAIR)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
@@ -287,6 +305,9 @@ Meb::Meb(const MebParams&        prms,
   exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
   exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
+  _bufUseCnts = exporter->histogram("MRQ_BufUseCnts", labels, prms.numEvBuffers);
+
+  _inprocSend.connect("inproc://drp");  // Yes, 'drp' is the name
 }
 
 int Meb::resetCounters()
@@ -352,7 +373,7 @@ int Meb::configure()
 
   // Code added here involving the links must be coordinated with the other side
 
-  _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount, _prms);
+  _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount, _bufUseCnts, _prms);
 
   _apps->distribute(_prms.ldist);
 
@@ -493,6 +514,13 @@ void Meb::process(EbEvent* event)
     // Make the transition buffer available to the contributor again
     post(event->begin(), event->end());
 
+    if (dg->service() != TransitionId::SlowUpdate)
+    {
+      // send pulseId to inproc so it gets forwarded to the collection
+      json msg = createPulseIdMsg(pid);
+      _inprocSend.send(msg.dump());
+    }
+
     Pool::free((void*)dg);          // Handled means _deleteDatagram() won't be called
   }
 }
@@ -541,9 +569,9 @@ MebApp::MebApp(const std::string& collSrv,
   CollectionApp(collSrv, prms.partition, "meb", prms.alias),
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
-  _exposer     (Pds::createExposer(prms.prometheusDir, getHostname())),
+  _exposer     (createExposer(prms.prometheusDir, getHostname())),
   _exporter    (std::make_shared<MetricExporter>()),
-  _meb         (std::make_unique<Meb>(_prms, _exporter)),
+  _meb         (std::make_unique<Meb>(_prms, context(), _exporter)),
   _unconfigFlag(false)
 {
   if (_exposer)

@@ -1026,7 +1026,7 @@ class CollectionManager():
     def get_phase2_replies(self, transition):
         # get responses from the drp timing systems
         ids = self.filter_active_set(self.ids)
-        ids = self.filter_level('drp', ids)
+        ids = self.filter_level('drp', ids) | self.filter_level('meb', ids)
         # make sure all the clients respond to transition before timeout
         missing, answers, reports = self.confirm_response(self.back_pull, self.phase2_timeout, None, ids, progress_txt=transition+' phase 2')
         try:
