@@ -16,6 +16,7 @@ from psalg.utils.syslog import SysLog
 from p4p.client.thread import Context
 import epics
 from threading import Thread, Event, Condition
+from copy import deepcopy
 import dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
                                   progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
@@ -572,6 +573,7 @@ class CollectionManager():
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
+        self.history = {}   # history of drp group assignments
         self.phase1Info = {}
         self.level_keys = {'drp', 'teb', 'meb', 'control'}
 
@@ -1128,8 +1130,17 @@ class CollectionManager():
 
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
 
+        # update drp group history
+        for drp in self.cmstate['drp'].values():
+            try:
+                alias = drp['proc_info']['alias']
+                readout = drp['det_info']['readout']
+                self.history['drp'][alias] = {'det_info' : {'readout' : readout}}
+            except KeyError as ex:
+                logging.error(f'condition_alloc(): KeyError: {ex}')
+
         # write to the activedet file only if the contents would change
-        dst = levels_to_activedet(self.cmstate_levels())
+        dst = {**levels_to_activedet(self.cmstate_levels()), **{'history': self.history}}
         json_from_file = self.read_json_file(self.activedetfilename)
         if dst == json_from_file:
             logging.debug('condition_alloc(): no change to activedet file %s' % self.activedetfilename)
@@ -1562,6 +1573,15 @@ class CollectionManager():
             # determine which clients are required by reading the active detectors file
             json_data = self.read_json_file(self.activedetfilename)
             if len(json_data) > 0:
+                if 'history' in json_data.keys():
+                    logging.debug('rollcall: history found in json_data.keys()')
+                    self.history = deepcopy(json_data['history'])
+                else:
+                    logging.info('rollcall: history not found in json_data.keys()')
+
+                if 'drp' not in self.history:
+                    self.history = dict(drp = dict())
+
                 if "activedet" in json_data.keys():
                     active_set, inactive_set = self.get_active_and_inactive(json_data)
                     logging.debug(f'rollcall: active_set = {active_set}')
@@ -1616,12 +1636,19 @@ class CollectionManager():
                             self.cmstate[level][id]['active'] = 0
                             self.report_warning('rollcall: %s NOT selected for data collection' % responder)
                             if level == 'drp':
-                                if responder in inactive_set:
-                                    # use readout group from active detector file
-                                    group = json_data['activedet'][level][alias]['det_info']['readout']
-                                else:
-                                    # not yet in active detector file, use default readout group
-                                    group = self.platform
+                                try:
+                                    group = json_data['activedet']['drp'][alias]['det_info']['readout']
+                                    logging.debug(f'rollcall: {alias} found in activedet, readout group is {group}')
+                                except KeyError:
+                                    logging.debug(f'rollcall: {alias} not in activedet')
+                                    try:
+                                        group = self.history['drp'][alias]['det_info']['readout']
+                                        logging.debug(f'rollcall: {alias} found in history, readout group is {group}')
+                                    except KeyError:
+                                        logging.debug(f'rollcall: {alias} not in history')
+                                        # not yet in active detector file, use default readout group
+                                        group = self.platform
+                                        logging.debug(f'rollcall: {alias} using default readout group {group}')
                                 self.cmstate[level][id]['det_info'] = {}
                                 self.cmstate[level][id]['det_info']['readout'] = group
                                 logging.info(f"rollcall: newfound drp {responder} is in readout group {group}")
