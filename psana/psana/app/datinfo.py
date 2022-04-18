@@ -165,7 +165,7 @@ def loop_run_step_evt(args):
           try: sdsdict = json.loads(sds)
           except Exception as err:
             print('\nERROR FOR step_docstring: ', sds)
-            logger.error('json.loads(step_docstring(step)) err:', err)
+            logger.error('json.loads(step_docstring(step)) err: %s' % str(err))
             sdsdict = None
 
         metadic = None if step_docstring is None else sdsdict
