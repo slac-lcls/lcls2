@@ -121,6 +121,7 @@ namespace Pds {
       uint64_t                  _pidPrv;
     private:
       uint64_t                  _eventCount;
+      uint64_t                  _trCount;
       uint64_t                  _splitCount;
       uint64_t                  _batchCount;
       uint64_t                  _writeCount;
@@ -149,6 +150,7 @@ Teb::Teb(const EbParams&         prms,
   _trigger      (nullptr),
   _pidPrv       (0),
   _eventCount   (0),
+  _trCount      (0),
   _splitCount   (0),
   _batchCount   (0),
   _writeCount   (0),
@@ -163,6 +165,7 @@ Teb::Teb(const EbParams&         prms,
                                             {"alias", prms.alias}};
   exporter->add("TEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
   exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
+  exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;                });
   exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;             });
   exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             }); // Outbound
   exporter->add("TEB_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
@@ -183,6 +186,7 @@ int Teb::resetCounters()
 
   //_trimmed       = 0;
   _eventCount    = 0;
+  _trCount       = 0;
   _splitCount    = 0;
   _batchCount    = 0;
   _writeCount    = 0;
@@ -392,7 +396,8 @@ void Teb::process(EbEvent* event)
   }
   _pidPrv = pid;
 
-  ++_eventCount;
+  if (dgram->isEvent())  ++_eventCount;
+  else                   ++_trCount;
 
   // "Selected" EBs respond with a Result, others simply acknowledge
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)

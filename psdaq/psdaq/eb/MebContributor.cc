@@ -27,7 +27,8 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
   _id        (-1),
   _enabled   (false),
   _verbose   (prms.verbose),
-  _eventCount(0)
+  _eventCount(0),
+  _trCount   (0)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
@@ -35,12 +36,14 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
                                             {"detseg", std::to_string(prms.detSegment)},
                                             {"alias", prms.alias}};
   exporter->add("MCtbO_EvCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
-  exporter->add("MCtbO_TxPdg", labels, MetricType::Counter, [&](){ return _transport.pending(); });
+  exporter->add("MCtbO_TrCt",  labels, MetricType::Counter, [&](){ return _trCount;             });
+  exporter->add("MCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
 }
 
 int MebContributor::resetCounters()
 {
   _eventCount = 0;
+  _trCount    = 0;
 
   return 0;
 }
@@ -150,7 +153,20 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
            _eventCount, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data);
   }
 
-  if (int rc = link->post(ddg, sz, offset, data) < 0)  return rc;
+  if (int rc = link->post(ddg, sz, offset, data) < 0)
+  {
+    if (link->tmoCnt() < 100)
+    {
+      uint64_t pid    = ddg->pulseId();
+      unsigned ctl    = ddg->control();
+      uint32_t env    = ddg->env;
+      void*    rmtAdx = (void*)link->rmtAdx(offset);
+      logging::error("%s:\n  Failed to post monEvt [%8u]  @ "
+                     "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x, rc %d\n",
+                     __PRETTY_FUNCTION__, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data, rc);
+    }
+    return rc;
+  }
 
   ++_eventCount;
 
@@ -238,7 +254,7 @@ int MebContributor::post(const EbDgram* dgram)
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("MebCtrb posts %9lu %15s       @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
-             _eventCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
+             _trCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
     }
     else
     {
@@ -268,7 +284,7 @@ int MebContributor::post(const EbDgram* dgram)
     }
   }
 
-  ++_eventCount;                        // Revisit: Count these?
+  ++_trCount;
 
   return 0;
 }

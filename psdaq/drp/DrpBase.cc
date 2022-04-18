@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <bitset>
 #include <climits>                      // HOST_NAME_MAX
+#include <chrono>
 #include <sys/types.h>
 #include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
@@ -17,9 +18,14 @@
 
 #include "rapidjson/document.h"
 
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
+
 using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 static void local_mkdir (const char * path);
 static json createFileReportMsg(std::string path, std::string absolute_path,
@@ -159,7 +165,8 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_chunkPending(false),
   m_configureBuffer(para.maxTrSize),
   m_damage(0),
-  m_evtSize(0)
+  m_evtSize(0),
+  m_latency(0)
 {
     std::map<std::string, std::string> labels
         {{"instrument", para.instrument},
@@ -176,6 +183,7 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     exporter->add("DRP_bufFreeBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.freeBlocked(); });
     exporter->add("DRP_bufPendBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.pendBlocked(); });
     exporter->add("DRP_evtSize",      labels, Pds::MetricType::Gauge,   [&](){ return m_evtSize; });
+    exporter->add("DRP_evtLatency",   labels, Pds::MetricType::Gauge,   [&](){ return m_latency; });
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)
@@ -343,6 +351,7 @@ void EbReceiver::resetCounters()
     m_lastIndex = 0;
     m_damage = 0;
     m_dmgType->clear();
+    m_latency = 0;
 }
 
 void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
@@ -496,6 +505,15 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             m_mon.post(dgram);
         }
     }
+
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    auto latency{now - tp};
+    const ms_t maxLatency{100000};
+    if (latency < maxLatency)           // Ignore garbage measurements
+      m_latency = std::chrono::duration_cast<ms_t>(latency).count();
 
     // Free the transition datagram buffer
     if (!dgram->isEvent()) {

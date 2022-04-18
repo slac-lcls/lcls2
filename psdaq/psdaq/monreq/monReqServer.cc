@@ -25,6 +25,11 @@
 #include <sstream>
 #include <atomic>
 #include <climits>                      // For HOST_NAME_MAX
+#include <chrono>
+
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
 
 static const int      CORE_0               = -1; // devXXX: 18, devXX:  7, accXX:  9
 static const int      CORE_1               = -1; // devXXX: 19, devXX: 19, accXX: 21
@@ -39,6 +44,7 @@ using namespace Pds::Eb;
 using json     = nlohmann::json;
 using logging  = psalg::SysLog;
 using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
+using ms_t     = std::chrono::milliseconds;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -193,15 +199,15 @@ namespace Pds {
     {
       //printf("_requestDatagram\n");
 
-      unsigned data;
-      if (_bufFreeList.pop(data))
+      unsigned idx;
+      if (_bufFreeList.pop(idx))
       {
         logging::error("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
         return;
       }
       //printf("_requestDatagram: _bufFreeList.pop(): %u, count = %zd\n", data, _bufFreeList.count());
 
-      auto immData = ImmData::value(ImmData::Buffer, _prms.id, data);
+      auto data = ImmData::value(ImmData::Buffer, _prms.id, idx);
 
       int rc = -1;
       for (unsigned i = 0; i < _mrqLinks.size(); ++i)
@@ -210,24 +216,33 @@ namespace Pds {
         unsigned iTeb = _iTeb++;
         if (_iTeb == _mrqLinks.size())  _iTeb = 0;
 
-        rc = _mrqLinks[iTeb]->EbLfLink::post(immData);
+        rc = _mrqLinks[iTeb]->EbLfLink::post(data);
 
         if (unlikely(_prms.verbose >= VL_EVENT))
           printf("_requestDatagram: Post %u EB[iTeb %u], value %08x, rc %d\n",
-                 i, iTeb, immData, rc);
+                 i, iTeb, data, rc);
 
         if (rc == 0)
         {
           ++_requestCount;
-          _bufUseCnts->observe(double(data));
+          _bufUseCnts->observe(double(idx));
           break;            // Break if message was delivered
         }
       }
       if (rc)
       {
-        logging::error("%s:\n  Unable to post request to any TEB: rc %d, data %u (%08x)",
-                       __PRETTY_FUNCTION__, rc, data, immData);
-        // Revisit: Is this fatal or ignorable?
+        logging::error("%s:\n  Unable to post request to any TEB: rc %d, idx %u (%08x)",
+                       __PRETTY_FUNCTION__, rc, idx, data);
+
+        // Don't leak buffers
+        if (_bufFreeList.push(idx))
+        {
+          logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
+          for (unsigned i = 0; i < _bufFreeList.size(); ++i)
+          {
+            printf("Free list entry %u: %u\n", i, _bufFreeList.peek(i));
+          }
+        }
       }
     }
 
@@ -261,7 +276,9 @@ namespace Pds {
     std::vector<EbLfCltLink*>           _mrqLinks;
     std::unique_ptr<GenericPool>        _pool;
     uint64_t                            _pidPrv;
+    uint64_t                            _latency;
     uint64_t                            _eventCount;
+    uint64_t                            _trCount;
     uint64_t                            _splitCount;
     uint64_t                            _requestCount;
     std::shared_ptr<PromHistogram>      _bufUseCnts;
@@ -287,7 +304,9 @@ Meb::Meb(const MebParams&        prms,
   EbAppBase    (prms, exporter, "MEB",
                 EPOCH_DURATION, 1, prms.numEvBuffers, MEB_TR_BUFFERS, MEB_TMO_MS),
   _pidPrv      (0),
+  _latency     (0),
   _eventCount  (0),
+  _trCount     (0),
   _splitCount  (0),
   _requestCount(0),
   _prms        (prms),
@@ -300,6 +319,8 @@ Meb::Meb(const MebParams&        prms,
                                             {"alias", prms.alias}};
   exporter->add("MEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;      });
   exporter->add("MEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;      });
+  exporter->add("MEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;         });
+  exporter->add("MEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;         });
   exporter->add("MEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;      });
   exporter->add("MEB_ReqRt",  labels, MetricType::Rate,    [&](){ return _requestCount;    });
   exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
@@ -314,7 +335,9 @@ int Meb::resetCounters()
 {
   EbAppBase::resetCounters();
 
+  _latency    = 0;
   _eventCount = 0;
+  _trCount    = 0;
   _splitCount = 0;
 
   return 0;
@@ -457,7 +480,8 @@ void Meb::process(EbEvent* event)
   }
   _pidPrv = pid;
 
-  ++_eventCount;
+  if (dgram->isEvent())  ++_eventCount;
+  else                   ++_trCount;
 
   // Create a Dgram with a payload that is a directory of contribution
   // Dgrams to the built event in order to avoid first assembling the
@@ -492,9 +516,10 @@ void Meb::process(EbEvent* event)
     size_t      sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
     unsigned    src = dg->xtc.src.value();
     const char* svc = TransitionId::name(dg->service());
+    auto        cnt = dg->isEvent() ? _eventCount : _trCount;
     printf("MEB processed %5lu %15s  [%8u] @ "
            "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, ts %u.%09u\n",
-           _eventCount, svc, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
+           cnt, svc, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
   }
   else
   {
@@ -507,6 +532,15 @@ void Meb::process(EbEvent* event)
                     pid, dg->xtc.src.value(), dg);
     }
   }
+
+  auto now = std::chrono::system_clock::now();
+  auto dgt = std::chrono::seconds{dg->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+           + std::chrono::nanoseconds{dg->time.nanoseconds()};
+  std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+  auto latency{now - tp};
+  const ms_t maxLatency{100000};
+  if (latency < maxLatency)             // Ignore garbage measurements
+    _latency = std::chrono::duration_cast<ms_t>(latency).count();
 
   // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred
   if (_apps->events(dg) == XtcMonitorServer::Handled)

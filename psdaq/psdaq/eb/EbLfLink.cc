@@ -96,11 +96,12 @@ int Pds::Eb::setupMr(Fabric*         fabric,
 EbLfLink::EbLfLink(Endpoint*       ep,
                    int             depth,
                    const unsigned& verbose) :
-  _id     (-1),
-  _ep     (ep),
-  _mr     (nullptr),
-  _verbose(verbose),
-  _depth  (depth)
+  _id      (-1),
+  _ep      (ep),
+  _mr      (nullptr),
+  _verbose (verbose),
+  _timedOut(0ull),
+  _depth   (depth)
 {
   postCompRecv(depth);
 }
@@ -503,6 +504,7 @@ int EbLfCltLink::post(const void* buf,
 
     if (t1 - t0 > tmo)
     {
+      ++_timedOut;
       rc = -FI_ETIMEDOUT;
       break;
     }
@@ -567,7 +569,9 @@ int EbLfLink::poll(uint64_t* data)      // Sample only, don't wait
     return 0;
   }
 
-  if (rc != -FI_EAGAIN)
+  if (rc == -FI_EAGAIN)
+    ++_timedOut;
+  else
     fprintf(stderr, "%s:\n  No CQ entries for ID %d: rc %d: %s\n",
             __PRETTY_FUNCTION__, _id, rc, _ep->rxcq()->error());
 
@@ -604,7 +608,11 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
     {
       const ms_t tmo{msTmo};
       auto       t1 {fast_monotonic_clock::now()};
-      if (t1 - t0 > tmo)  return rc;
+      if (t1 - t0 > tmo)
+      {
+        ++_timedOut;
+        return rc;
+      }
     }
   }
   while ((rc == -FI_EAGAIN) || (rc == 0));

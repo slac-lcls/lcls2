@@ -34,6 +34,7 @@ namespace Pds {
     public:
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           id()       const { return _id;  }
+      const uint64_t&    tmoCnt()   const { return _timedOut; }
     public:
       int post(const void* buf,
                size_t      len,
@@ -55,6 +56,7 @@ namespace Pds {
       Fabrics::MemoryRegion* _mr;      // Memory Region
       Fabrics::RemoteAddress _ra;      // Remote address descriptor
       const unsigned&        _verbose; // Print some stuff if set
+      uint64_t               _timedOut;
     public:
       int                    _depth;
     };
