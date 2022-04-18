@@ -186,6 +186,30 @@ def issue_2022_03_16():
         print(k, 'type(data):\n', type(data))
         print(k, 'data[:500]:\n', data[:500])
 
+def issue_2022_04_06():
+    """O'Grady, Paul Christopher <cpo@slac.stanford.edu> Wed 4/6/2022 6:01 PM
+    Hi Mikhail,
+    I started looking at this, but I think you will be more efficient than me. since you are more expert on calibration.
+    The script below has a det.raw.calib that always returns 0.
+    I think it might be because all pixels are marked bad in pixel_status with values of 42
+    (the corresponding pedestal run is 397 I believe).  A later run 463 (which uses pedestal run 420) is fine.
+    So it feels like there is some issue generating the constants with run 397?
+    Would you have time to see what is going wrong with the run 397 pedestals (I think)?
+    If you don?t have time I will continue looking.  Thanks!
+    chris
+    """
+    import psana
+    import numpy as np
+    expname = 'uedcom103'
+    runnum = 419
+    ds = psana.DataSource(exp=expname,run=runnum,detectors=['epixquad','epicsinfo'])
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    print(det.calibconst.keys(),det.calibconst)
+    for nevent,evt in enumerate(myrun.events()):
+        print(det.raw.calib(evt))
+        break
+
 
 def issue_2022_01_dd():
     print('template')
@@ -202,6 +226,7 @@ USAGE = '\nUsage:'\
       + '\n    6 - issue_2022_03_02 - test epix100 - default geometry'\
       + '\n    7 - issue_2022_03_08 - test det.calibconst as generic access to cc'\
       + '\n    8 - issue_2022_03_16 - test calibconst for Mona'\
+      + '\n    9 - issue_2022_04_06 - test epixquad cpo - constants'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -214,6 +239,7 @@ elif TNAME in  ('5',): issue_2022_03_01()
 elif TNAME in  ('6',): issue_2022_03_02()
 elif TNAME in  ('7',): issue_2022_03_08()
 elif TNAME in  ('8',): issue_2022_03_16()
+elif TNAME in  ('9',): issue_2022_04_06()
 elif TNAME in  ('0',): issue_2022_01_dd()
 else:
     print(USAGE)
