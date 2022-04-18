@@ -16,7 +16,7 @@
 #include <typeinfo>
 #include <memory>
 
-#define BUFSIZE 0x10000000
+#define BUFSIZE 0x4000000
 
 namespace XtcData
 {
@@ -124,7 +124,7 @@ public:
     void addData(unsigned nodeId, unsigned namesId,
             unsigned* shape, char* data, DataDef& datadef, char* varname);
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
-                        uint64_t timestamp_val);
+                        uint64_t timestamp_val, void** bufEnd);
     void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId);
     void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
     int getElementSize(unsigned nodeId, unsigned namesId,

@@ -194,6 +194,8 @@ int XtcUpdateIter::process(Xtc* xtc)
 
         unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name));
 
+        cout << names.detName() << " " << alg.name() << " nodeId:" << names.namesId().nodeId() << " namesId:" << names.namesId().namesId() << endl;
+
         // copy Names to tmp buffer
         copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
 
@@ -468,13 +470,17 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
 // Returns new Dgram created from `utransId` and `timestamp_val`
 Dgram& XtcUpdateIter::createTransition(unsigned utransId,
         bool counting_timestamps,
-        uint64_t timestamp_val) {
+        uint64_t timestamp_val,
+        void** bufEnd) 
+{
     TransitionId::Value transId = (TransitionId::Value) utransId;
     TypeId tid(TypeId::Parent, 0);
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
     void* buf = malloc(BUFSIZE);
+    *bufEnd = ( (char*)buf ) + BUFSIZE;
+
     if (counting_timestamps) {
         Transition tr(Dgram::Event, transId, TimeStamp(timestamp_val), env);
         return *new(buf) Dgram(tr, Xtc(tid));

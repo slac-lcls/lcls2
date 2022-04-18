@@ -1,4 +1,5 @@
-import dgrampy as dp
+from dgrampy import DgramPy, AlgDef, DetectorDef, PyXtcFileIterator
+from dgrampy import datadef as DataDef
 import os
 import numpy as np
 from psana import DataSource
@@ -24,19 +25,19 @@ def test_output(fname):
 if __name__ == "__main__":
     ifname = '/cds/data/drpsrcf/users/monarin/tmolv9418/tmolv9418-r0175-s000-c000.xtc2'
     fd = os.open(ifname, os.O_RDONLY)
-    pyiter = dp.PyXtcFileIterator(fd, 0x1000000)
+    pyiter = PyXtcFileIterator(fd, 0x1000000)
     
     # Defines detector and alg.
     # Below example settings become hsd_fex_4_5_6 for its detector interface.
     # TODO: Think about initializing these by adding another example
     # where we create xtc from scratch.
-    alg = dp.alg("fex", 4, 5, 6)
-    det = dp.det("xpphsd", "hsd", "detnum1234")     # detname, dettype, detid
+    alg = AlgDef("fex", 4, 5, 6)
+    det = DetectorDef("xpphsd", "hsd", "detnum1234")     # detname, dettype, detid
     
     # Define data formats
     datadef_dict = {
             "valFex": (np.float32, 0),
-            "strFex": (np.str, 1),
+            "strFex": (str, 1),
             "arrayFex0": (np.uint8, 2),
             "arrayFex1": (np.uint16, 2),
             "arrayFex2": (np.uint32, 2),
@@ -47,13 +48,13 @@ if __name__ == "__main__":
             "arrayFex7": (np.int64, 2),
             "arrayFex8": (np.float32, 2),
             "arrayFex9": (np.float64, 2),
-            "arrayString": (np.str, 1),
+            "arrayString": (str, 1),
             }
-    datadef = dp.datadef(datadef_dict)
+    datadef = DataDef(datadef_dict)
     
-    # Let dp know the file to write to
+    # Open output file for writing
     ofname = 'out.xtc2'
-    dp.creatextc2(ofname)
+    xtc2file = open(ofname, "wb")
 
     names0 = None
     for i in range(5):
@@ -62,12 +63,15 @@ if __name__ == "__main__":
 
         # Add new Names to config
         if i == 0:
+            config = DgramPy(pydg)
             print(f"PYTHON GOT CONFIG")
-            names0 = dp.names(pydg, det, alg, datadef)
+            names0 = config.addnames(det, alg, datadef)
             print(f"PYTHON CONFIG DONE ADD NAME")
+            config.save(xtc2file)
 
         # Add new Data to L1
-        if i == 4:
+        elif i == 4:
+            dgram = DgramPy(pydg, config=config)
             print(f"PYTHON L1ACCEPT")
             data = {
                     "valFex": 1600.1234,
@@ -85,12 +89,15 @@ if __name__ == "__main__":
                     "arrayString": np.array(['hello string array']),
                     }
             if names0:
-                dp.adddata(pydg, names0, datadef, data) # either change to add
+                dgram.adddata(names0, datadef, data) # either change to add
             print(f"PYTHON L1ACCEPT DONE ADDDATA")
+            dgram.save(xtc2file)
         
-        # Copy the event to buffer
-        dp.save(pydg)
+        # Other transitions
+        else: 
+            dgram = DgramPy(pydg, config=config)
+            dgram.save(xtc2file)
 
-    dp.closextc2()
+    xtc2file.close()
 
     test_output(ofname)
