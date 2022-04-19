@@ -336,7 +336,7 @@ class SmallData: # (client)
 
             self._comm_partition()
 
-    def setup_parms(self, filename=None, batch_size=10000, cache_size=None,
+    def setup_parms(self, filename=None, batch_size=30, cache_size=None,
                  callbacks=[]):
         """
         Parameters
