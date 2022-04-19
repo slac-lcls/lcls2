@@ -4,6 +4,7 @@
 #include "EbLfLink.hh"
 #include "utilities.hh"
 
+#include "psdaq/service/kwargs.hh"
 #include "psdaq/epicstools/PvMonitorBase.hh"
 
 #ifndef _GNU_SOURCE
@@ -28,6 +29,8 @@
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
+
+using kwmap_t  = std::map<std::string,std::string>;
 
 static const unsigned port_base     = 1024; // Pick from range 1024 - 32768, 61000 - 65535
 static const unsigned default_size  = 4096;
@@ -79,18 +82,23 @@ int main(int argc, char **argv)
   int         core     = default_core;
   bool        start    = false;
   unsigned    verbose  = 0;
+  std::string kwargs_str;
+  kwmap_t     kwargs;
 
-  while ((op = getopt(argc, argv, "h?A:P:s:r:n:c:Sv")) != -1)
+  while ((op = getopt(argc, argv, "h?A:P:s:r:n:c:k:Sv")) != -1)
   {
     switch (op)
     {
-      case 'A':  ifAddr   = optarg;        break;
-      case 'P':  portBase = atoi(optarg);  break;
-      case 's':  size     = atoi(optarg);  break;
-      case 'n':  iters    = atoi(optarg);  break;
-      case 'c':  core     = atoi(optarg);  break;
-      case 'S':  start    = true;          break;
-      case 'v':  verbose  = 1;             break;
+      case 'A':  ifAddr     = optarg;                      break;
+      case 'P':  portBase   = atoi(optarg);                break;
+      case 's':  size       = atoi(optarg);                break;
+      case 'n':  iters      = atoi(optarg);                break;
+      case 'c':  core       = atoi(optarg);                break;
+      case 'S':  start      = true;                        break;
+      case 'k':  kwargs_str = kwargs_str.empty()
+                            ? optarg
+                            : kwargs_str + ", " + optarg;  break;
+      case 'v':  verbose    = 1;                           break;
       case '?':
       case 'h':
       default:
@@ -127,6 +135,17 @@ int main(int argc, char **argv)
   else
   {
     fprintf(stderr, "Peer address is required\n");
+    return 1;
+  }
+
+  get_kwargs(kwargs_str, kwargs);
+  for (const auto& kwargs : kwargs)
+  {
+    if (kwargs.first == "ep_fabric")    continue;
+    if (kwargs.first == "ep_domain")    continue;
+    if (kwargs.first == "ep_provider")  continue;
+    fprintf(stderr, "Unrecognized kwarg '%s=%s'\n",
+            kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
   }
 
@@ -175,7 +194,7 @@ int main(int argc, char **argv)
   std::vector<EbLfCltLink*> cltLinks(nLinks);
   if (!start)
   {
-    srv = new EbLfServer(verbose);
+    srv = new EbLfServer(verbose, kwargs);
     if ( (rc = linksStart(*srv, ifAddr, srvPort, nLinks, "Srv")) )
     {
       fprintf(stderr, "Failed to initialize EbLfServer\n");
@@ -205,7 +224,7 @@ int main(int argc, char **argv)
     }
     printf("EbLfClient (ID %d) connected\n", srvLinks[0]->id());
 
-    clt = new EbLfClient(verbose);
+    clt = new EbLfClient(verbose, kwargs);
     if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, "Srv")) )
     {
       fprintf(stderr, "Error connecting to server\n");
@@ -222,7 +241,7 @@ int main(int argc, char **argv)
   {
     pvMon = new PvMon("EM1K0:GMD:HPS:STR0:STREAM_SHORT2", "ca");
 
-    clt = new EbLfClient(verbose);
+    clt = new EbLfClient(verbose, kwargs);
     if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, "Clt")) )
     {
       fprintf(stderr, "Error connecting to server\n");
@@ -235,7 +254,7 @@ int main(int argc, char **argv)
     }
     printf("EbLfServer (ID %d) connected\n", cltLinks[0]->id());
 
-    srv = new EbLfServer(verbose);
+    srv = new EbLfServer(verbose, kwargs);
     if ( (rc = linksStart(*srv, ifAddr, srvPort, nLinks, "Clt")) )
     {
       fprintf(stderr, "Failed to initialize EbLfServer\n");

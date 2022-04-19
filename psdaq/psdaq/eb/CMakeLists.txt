@@ -140,6 +140,7 @@ target_link_libraries(ft_writemsg_server
 
 target_link_libraries(eblf_pingpong
   utilities
+  collection
   epicstools
 )
 
