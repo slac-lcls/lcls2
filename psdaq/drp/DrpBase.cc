@@ -510,10 +510,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
              + std::chrono::nanoseconds{dgram->time.nanoseconds()};
     std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    auto latency{now - tp};
-    const ms_t maxLatency{100000};
-    if (latency < maxLatency)           // Ignore garbage measurements
-      m_latency = std::chrono::duration_cast<ms_t>(latency).count();
+    auto latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+    if (latency > 0 && latency < 100000) // Ignore garbage measurements
+      m_latency = latency;               // Revisit: Negative should be valid
 
     // Free the transition datagram buffer
     if (!dgram->isEvent()) {

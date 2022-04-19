@@ -537,10 +537,9 @@ void Meb::process(EbEvent* event)
   auto dgt = std::chrono::seconds{dg->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
            + std::chrono::nanoseconds{dg->time.nanoseconds()};
   std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  auto latency{now - tp};
-  const ms_t maxLatency{100000};
-  if (latency < maxLatency)             // Ignore garbage measurements
-    _latency = std::chrono::duration_cast<ms_t>(latency).count();
+  auto latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+  if (latency > 0 && latency < 100000) // Ignore garbage measurements
+    _latency = latency;               // Revisit: Negative should be valid
 
   // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred
   if (_apps->events(dg) == XtcMonitorServer::Handled)
