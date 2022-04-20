@@ -6,7 +6,7 @@ using namespace XtcData;
 using namespace std;
 //using std::string;
 
-#define VERBOSE 0
+#define VERBOSE 0 
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
@@ -196,8 +196,10 @@ int XtcUpdateIter::process(Xtc* xtc)
 
         cout << names.detName() << " " << alg.name() << " nodeId:" << names.namesId().nodeId() << " namesId:" << names.namesId().namesId() << endl;
 
-        // copy Names to tmp buffer
-        copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+        // copy Names to _cfgbuf if flag is set
+        if (_cfgWriteFlag == 1) {
+            copy2cfgbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+        }
 
         // initialize filter flag
         string sDet(names.detName());
@@ -232,16 +234,22 @@ int XtcUpdateIter::process(Xtc* xtc)
             get_value(i, name, descdata);
         }
 
-        // Determines removed size (if detname and alg matched with given))
-        // or copies ShapesData to tmp buffer
-        char detName[15];       // TODO: Interface for passing detName, algName here
-        char algName[15];
-        strcpy(detName, "hsd");
-        strcpy(algName, "raw");
-        if (strcmp(names.detName(), detName) == 0 && strcmp(alg.name(), algName)==0){
-            _removed_size += sizeof(Xtc) + xtc->sizeofPayload();
-        }else{
-            copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+        // For ShapesData in Configure (check if write flag is set).
+        // Note that dgrampy sets this to False for all non-configure dgrams.
+        if (_cfgWriteFlag == 1) {
+            copy2cfgbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+        } else {
+            // For ShapesData in non-configure dgrams, determines removed size 
+            // (if detname and alg matched with given))or copies ShapesData to tmp buffer
+            char detName[15];       // TODO: Interface for passing detName, algName here
+            char algName[15];
+            strcpy(detName, "hsd");
+            strcpy(algName, "raw");
+            if (strcmp(names.detName(), detName) == 0 && strcmp(alg.name(), algName)==0){
+                _removed_size += sizeof(Xtc) + xtc->sizeofPayload();
+            }else{
+                copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+            }
         }
         break;
     }
@@ -264,6 +272,13 @@ void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
 }
 
 
+void XtcUpdateIter::copy2cfgbuf(char* in_buf, unsigned in_size){
+    memcpy(_cfgbuf + _cfgbufsize, in_buf, in_size);
+    _cfgbufsize += in_size;
+    cout << "copied " << in_size << " bytes to cfbuf. current _cfgbufsize=" << _cfgbufsize << endl;
+}
+
+
 /* Performs atomic copy that results in all necessary parts of
    an event being copied to the main output buffer _buf. This
    requires `parent_d`, which can be updated after Names and
@@ -271,10 +286,15 @@ void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
    copied followed by _tmpbuf (Names & ShapesData). The _tmpbuf
    is then cleared for next event.
 */
-void XtcUpdateIter::copy(Dgram* parent_d){
+void XtcUpdateIter::copy(Dgram* parent_d, int isConfig){
     copy2buf((char*) parent_d, sizeof(Dgram));
-    copy2buf(_tmpbuf, _tmpbufsize);
-    _tmpbufsize = 0;
+    if (isConfig == 1) {
+        copy2buf(_cfgbuf, _cfgbufsize);
+        _cfgbufsize = 0;
+    } else {
+        copy2buf(_tmpbuf, _tmpbufsize);
+        _tmpbufsize = 0;
+    }
 }
 
 
@@ -303,6 +323,7 @@ void XtcUpdateIter::addNames(Xtc& xtc, const void* bufEnd, char* detName, char* 
     Names& names0 = *new(xtc, bufEnd) Names(bufEnd, detName, alg0, detType, detId, namesId0, segment);
     names0.add(xtc, bufEnd, datadef);
     _namesLookup[namesId0] = NameIndex(names0);
+    cout << "addNames xtc->sizeofPayload() " << xtc.sizeofPayload() << endl;
 }
 
 

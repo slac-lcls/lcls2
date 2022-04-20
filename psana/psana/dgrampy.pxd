@@ -2,10 +2,15 @@ from libc.stdint cimport uint8_t, uint32_t, uint64_t
 cimport numpy as cnp
 cnp.import_array() # needed
 
+cdef extern from 'xtcdata/xtc/TransitionId.hh' namespace "XtcData":
+    cdef cppclass TransitionId:
+        enum Value: ClearReadout, Reset, Configure, Unconfigure, BeginRun, EndRun, BeginStep, EndStep, Enable, Disable, SlowUpdate, Unused_11, L1Accept = 12, NumberOf
+
 cdef extern from 'xtcdata/xtc/Dgram.hh' namespace "XtcData":
     cdef cppclass Dgram:
         Dgram() except +
         Xtc xtc
+        TransitionId.Value service()
 
 cdef extern from 'xtcdata/xtc/Xtc.hh' namespace "XtcData":
     cdef cppclass Xtc:
@@ -88,8 +93,9 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         int  getElementSize(unsigned nodeId, unsigned namesId,
                 DataDef& datadef, char* varname)
         cnp.uint32_t get_removed_size()
-        void copy(Dgram* parent_d)
+        void copy(Dgram* parent_d, int isConfig)
         void setFilter(char* detName, char* algName)
+        void setCfgWriteFlag(int cfgWriteFalg)
 
 
     cdef cppclass DataDef:

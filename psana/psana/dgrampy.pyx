@@ -5,9 +5,11 @@ from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONT
 from psana.dgrampy  cimport *
 from cpython cimport array
 import array
-from psana.psexp import TransitionId
 import numpy as np
 import numbers
+
+# Need a different name to prevent clashing with cpp class
+from psana.psexp import TransitionId as PyTransitionId 
 
 
 class AlgDef:
@@ -105,6 +107,9 @@ cdef class PyDgram():
     def get_payload_size(self):
         return self.cptr.xtc.sizeofPayload()
 
+    def service(self):
+        return self.cptr.service()
+
 
 cdef class PyXtcUpdateIter():
     cdef XtcUpdateIter* cptr
@@ -114,8 +119,7 @@ cdef class PyXtcUpdateIter():
         self.cptr = new XtcUpdateIter(self._numWords)
 
     def savextc2(self, f):
-        """Writes data from main buffer `'buf` to xtc2 file
-        and cleans up the main buffer
+        """Writes data from _buf to xtc2 file and resets the buffer.
         """
         f.write(self.get_buf())
         self.cptr.clear_buf()
@@ -128,14 +132,17 @@ cdef class PyXtcUpdateIter():
 
     def get_buf(self):
         cdef char[:] buf
-        if self.cptr.get_bufsize() > 0:
-            buf = <char [:self.cptr.get_bufsize()]>self.cptr.get_buf()
+        cdef uint64_t bufsize=0
+
+        bufsize = self.cptr.get_bufsize()
+        if bufsize > 0:
+            buf = <char [:bufsize]>self.cptr.get_buf()
             return buf
         else:
             return memoryview(bytearray())
 
-    def copy(self, PyDgram pydg):
-        self.cptr.copy(pydg.cptr)
+    def copy(self, PyDgram pydg, is_config=False):
+        self.cptr.copy(pydg.cptr, is_config)
 
     def updatetimestamp(self, PyDgram pydg, timestamp_val):
         self.cptr.updateTimeStamp(pydg.cptr[0], timestamp_val)
@@ -225,6 +232,9 @@ cdef class PyXtcUpdateIter():
     def get_removed_size(self):
         return self.cptr.get_removed_size()
 
+    def set_cfgwrite(self, int flag):
+        self.cptr.setCfgWriteFlag(flag)
+
 
 cdef class PyXtcFileIterator():
     cdef XtcFileIterator* cptr
@@ -261,7 +271,7 @@ class DgramPy:
                 self.uiter = PyXtcUpdateIter()
             self.pydg = pydg
         elif transid:
-            if transid == TransitionId.Configure:
+            if transid == PyTransitionId.Configure:
                 self.uiter = PyXtcUpdateIter()
             else:
                 assert config
@@ -321,22 +331,42 @@ class DgramPy:
         self.uiter.removedata(det_name, alg_name)
 
     def save(self, xtc2file):
-        """ Copies Names and ShapesData to _tmpbuf and update
+        """ 
+        For L1Accept,
+        Copies ShapesData to _tmpbuf and update
         parent dgram extent to new size (if some ShapesData
-        were removed. The parent dgram and _tmpbuf are then
-        copied to _buf as one new event. """
-        # Copies Names and ShapesData (also applies remove for
-        # ShapesData) to _tmpbuf
+        were removed. 
+        
+        For Configure,
+        Calls iterate after setting cfgWriteFlag to True. This 
+        does two things:
+        1. Iterating Names (writing is optional because we also
+        just want to count NodeId and NamesId here). will also 
+        save to _cfgbuf
+        2. Iterating ShapesData (writing is always) will save to 
+        _cfgbuf instead of _tmpbuf (for non-configure dgrams). 
+        
+        The parent dgram and _tmpbuf/_cfgbuf are then
+        copied to _buf as one new event.
+        """
         pyxtc = self.pydg.get_pyxtc()
+        is_config = False
+        self.uiter.set_cfgwrite(False)
+        if self.pydg.service() == PyTransitionId.Configure:
+            is_config = True
+            self.uiter.set_cfgwrite(True)
+        
+        # Copies Names for Configure or ShapesData for L1Accept 
+        # (also applies remove for ShapesData).
         self.uiter.iterate(pyxtc)
 
         # Update parent dgram with new size
         cdef uint32_t removed_size = self.uiter.get_removed_size()
         if removed_size > 0:
             self.pydg.dec_extent(removed_size)
-
-        # Copy updated parent dgram and _tmpbuf to _buf
-        self.uiter.copy(self.pydg)
+        
+        # Copy updated parent dgram and _tmpbuf/_cfgbuf to _buf then save.
+        self.uiter.copy(self.pydg, is_config=is_config)
         self.uiter.savextc2(xtc2file)
 
     def updatetimestamp(self, timestamp_val):

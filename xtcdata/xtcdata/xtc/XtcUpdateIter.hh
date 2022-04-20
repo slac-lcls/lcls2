@@ -86,12 +86,16 @@ public:
         _buf = (char *) malloc(BUFSIZE);
         _tmpbufsize = 0;
         _tmpbuf = (char *) malloc(BUFSIZE);
-        _removed_size = 0; // counting size of removed det/alg in bytes
+        _cfgbufsize = 0;
+        _cfgbuf = (char *) malloc(BUFSIZE);
+        _removed_size = 0;              // counting size of removed det/alg in bytes
+        _cfgWriteFlag = 0;              // default is not to write to _cfgbuf when iterated.
     }
 
     ~XtcUpdateIter() {
         free(_buf);
         free(_tmpbuf);
+        free(_cfgbuf);
     }
 
     virtual int process(XtcData::Xtc* xtc);
@@ -129,10 +133,14 @@ public:
     void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
     int getElementSize(unsigned nodeId, unsigned namesId,
             DataDef& datadef, char* varname);
-    void copy(Dgram* parent_d);
+    void copy(Dgram* parent_d, int isConfig);
     void copy2buf(char* in_buf, unsigned in_size);
     void copy2tmpbuf(char* in_buf, unsigned in_size);
+    void copy2cfgbuf(char* in_buf, unsigned in_size);
     void setFilter(char* detName, char* algName);
+    void setCfgWriteFlag(int cfgWriteFlag) {
+        _cfgWriteFlag = cfgWriteFlag;
+    }
 
 
 private:
@@ -140,15 +148,23 @@ private:
     unsigned _numWords;
     std::unique_ptr<CreateData> _newData;
 
-    // _tmpbuf* are used for storing Names and ShapesData
+    // For L1Accept,
+    // _tmpbuf is used for storing ShapesData
     // while they are being iterated (copy if no filter matched).
     // buf* are the main buffer that has both parent dgram
-    // and Names & ShapesData. It aslo has infinite lifetime
+    // and ShapesData. It aslo has infinite lifetime
     // until it gets cleared manually.
+    // For Configure,
+    // _cfgbuf is used for storing Names.
+    // Configure is first iterated to get NodeId and (next) NamesId
+    // then iterated again after all Names have been added for writing
+    // to _cfgbuf. Caller has to set _cfgWriteFlag for writing.
     char* _tmpbuf;
     unsigned _tmpbufsize;
     char* _buf;
     unsigned _bufsize;
+    char* _cfgbuf;
+    unsigned _cfgbufsize;
 
     // Used for couting no. of ShapesData bytes removed per event.
     // This gets reset to 0 when the event is saved.
@@ -158,6 +174,10 @@ private:
     // filter flag. 0 (initial values) means keeps while 1 means
     // filtered. This map gets reset to 0 when an event is saved.
     std::map<std::string, int> _flagFilter;
+
+    // Use this flag to specify writing to _cfgbuf when Configure
+    // is iterated.
+    int _cfgWriteFlag;
 }; // end class XtcUpdateIter
 
 
