@@ -122,8 +122,12 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     # Origin of ASICs in bottom-right corner, so
     # stack them in upside-down matrix and rotete it by 180 deg.
 
-    cbits = np.flipud(np.fliplr(np.vstack((np.hstack((pca[2],pca[1])),
-                                           np.hstack((pca[3],pca[0])))))) # 0.000090 sec
+    #cbits = np.flipud(np.fliplr(np.vstack((np.hstack((pca[2],pca[1])),
+    #                                       np.hstack((pca[3],pca[0])))))) # 0.000090 sec
+
+    cbits = np.vstack((np.hstack((np.flipud(np.fliplr(pca[2])),
+                                  np.flipud(np.fliplr(pca[1])))),
+                       np.hstack((pca[3],pca[0]))))
 
     #cbits = np.bitwise_and(cbits,12) # 0o14 (bin:1100) # 0.000202 sec
     np.bitwise_and(cbits,12,out=cbits) # 0o14 (bin:1100) # 0.000135 sec

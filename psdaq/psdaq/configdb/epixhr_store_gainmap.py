@@ -1,4 +1,5 @@
-from psdaq.configdb.epixquad_cdict import epixquad_cdict
+from psdaq.configdb.epixhr2x2_config_store import epixhr2x2_cdict,elemRows,elemCols
+from psdaq.configdb.typed_json import updateValue
 import psdaq.configdb.configdb as cdb
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,54 +23,13 @@ def copyValues(din,dout,k=None):
             dout.set(k,din,'UINT8')
         else:
             print(f'Updating {k}')
-            dout.set(k,din,v[0])
-
-def epixquad_readmap(fname,gain0,gain1):
-    d = {}
-    gain_to_value = (0xc,0xc,0x8,0x0,0x0) # H/M/L/AHL/AML
-    gain_to_trbit = (0x1,0x0,0x0,0x1,0x0) # H/M/L/AHL/AML
-
-    if gain_to_trbit[gain0]!=gain_to_trbit[gain1]:
-        raise ValueError(f'Incompatible gains {gain0},{gain1} for pixel configuration')
-
-    trbit = gain_to_trbit[gain0]
-    for i in range(16):
-        d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
-
-    _height = 192
-    _width  = 176
-
-    vgain0 = gain_to_value[gain0]
-    vgain1 = gain_to_value[gain1]
-
-    e = np.genfromtxt(fname,dtype=np.uint8)
-    e = e*vgain1 + (vgain0-vgain1)
-    e = np.vsplit(e,4)
-    
-    #  break the elements into asics
-    pca = []
-    for i in e:
-        a = []
-        for j in np.vsplit(i,2):
-            a.extend(np.hsplit(j,2))
-        #pca.extend([np.asarray(a[3],dtype=np.uint8),
-        #            np.flipud(np.fliplr(a[0])),
-        #            np.flipud(np.fliplr(a[1])),
-        #            np.asarray(a[2],dtype=np.uint8)])
-        pca.extend([np.asarray(a[3],dtype=np.uint8),
-                    np.flipud(np.fliplr(a[1])),
-                    np.flipud(np.fliplr(a[0])),
-                    np.asarray(a[2],dtype=np.uint8)])
-
-    d['user.pixel_map'] = np.asarray(np.pad(pca,((0,0),(0,2),(0,0))),dtype=np.uint8)
-    return d
+            updateValue(dout,k,din)
+#            dout.set(k,din,v[0])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Update gain map')
-    parser.add_argument('--file' , help='input pixel mask', type=str, required=True)
-    parser.add_argument('--gain0', help='0-value gain [H/M/L/AHL/AML]', type=int, required=True)
-    parser.add_argument('--gain1', help='1-value gain [H/M/L/AHL/AML]', type=int, required=True)
-
+    parser.add_argument('--trbit', help='trbit setting', type=int, default=0)
+    parser.add_argument('--pixel', help='pixel setting', type=int, default=0)
     parser.add_argument('--dev', help='use development db', action='store_true')
     parser.add_argument('--inst', help='instrument', type=str, default='ued')
     parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
@@ -97,17 +57,21 @@ if __name__ == "__main__":
 
     if cfg is None: raise ValueError('Config for instrument/detname %s/%s not found. dbase url: %s, db_name: %s, config_style: %s'%(args.inst,detname,url,dbname,args.alias))
 
-    top = epixquad_cdict()  # We need the full cdict in order to store
+    #  Set gainmap
+    for i in range(4):
+        cfg['expert']['EpixHR'][f'Hr10kTAsic{i}']['trbit'] = args.trbit
+    pixelMap = np.zeros((elemRows*2,elemCols*2),dtype=np.uint8)+args.pixel
+
+    print(cfg)
+
+    top = epixhr2x2_cdict()  # We need the full cdict in order to store
     copyValues(cfg,top)     # Now copy old values into the cdict
 
-    #  Write gainmap
-    d = epixquad_readmap(args.file,args.gain0,args.gain1)
-    copyValues(d,top)
-
     print('Setting user.pixel_map')
-    top.set('user.pixel_map', d['user.pixel_map'])
+    top.set('user.pixel_map', pixelMap)
 
     #  Store
-    top.setInfo('epix10kaquad', args.name, args.segm, args.id, 'No comment')
+    top.setInfo('epixhr2x2hw', args.name, args.segm, args.id, 'No comment')
     if not args.test:
         mycdb.modify_device(args.alias, top)
+
