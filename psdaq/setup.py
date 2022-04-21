@@ -27,6 +27,8 @@ setup(
                 'testAsyncErr = psdaq.control.testAsyncErr:main',
                 'testFileReport = psdaq.control.testFileReport:main',
                 'configdb = psdaq.configdb.configdb:main',
+                'epixquad_store_gainmap = psdaq.configdb.epixquad_store_gainmap:main',
+                'epixquad_create_pixelmask = psdaq.configdb.epixquad_create_pixelmask:main',
                 'getrun = psdaq.control.getrun:main',
                 'groupca = psdaq.cas.groupca:main',
                 'partca = psdaq.cas.partca:main',

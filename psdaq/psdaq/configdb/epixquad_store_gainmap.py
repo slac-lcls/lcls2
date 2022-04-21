@@ -5,6 +5,12 @@ import numpy as np
 import sys
 import argparse
 
+gain_dict = {'H'  :{'value':0xc,'trbit':1},
+             'M'  :{'value':0xc,'trbit':0},
+             'L'  :{'value':0x8,'trbit':0},
+             'AHL':{'value':0  ,'trbit':1},
+             'AML':{'value':0  ,'trbit':0},}
+
 def copyValues(din,dout,k=None):
     if k is not None and ':RO' in k:
         return
@@ -24,23 +30,23 @@ def copyValues(din,dout,k=None):
             print(f'Updating {k}')
             dout.set(k,din,v[0])
 
-def epixquad_readmap(fname,gain0,gain1):
+def epixquad_readmap(fname,gains):
     d = {}
     gain_to_value = (0xc,0xc,0x8,0x0,0x0) # H/M/L/AHL/AML
     gain_to_trbit = (0x1,0x0,0x0,0x1,0x0) # H/M/L/AHL/AML
 
-    if gain_to_trbit[gain0]!=gain_to_trbit[gain1]:
-        raise ValueError(f'Incompatible gains {gain0},{gain1} for pixel configuration')
+    if gain_dict[gains[0]]['trbit']!=gain_dict[gains[1]]['trbit']:
+        raise ValueError(f'Incompatible gains {gains} for pixel configuration')
 
-    trbit = gain_to_trbit[gain0]
+    trbit = gain_dict[gains[0]]['trbit']
     for i in range(16):
         d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
 
     _height = 192
     _width  = 176
 
-    vgain0 = gain_to_value[gain0]
-    vgain1 = gain_to_value[gain1]
+    vgain0 = gain_dict[gains[0]]['value']
+    vgain1 = gain_dict[gains[1]]['value']
 
     e = np.genfromtxt(fname,dtype=np.uint8)
     e = e*vgain1 + (vgain0-vgain1)
@@ -64,12 +70,10 @@ def epixquad_readmap(fname,gain0,gain1):
     d['user.pixel_map'] = np.asarray(np.pad(pca,((0,0),(0,2),(0,0))),dtype=np.uint8)
     return d
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description='Update gain map')
     parser.add_argument('--file' , help='input pixel mask', type=str, required=True)
-    parser.add_argument('--gain0', help='0-value gain [H/M/L/AHL/AML]', type=int, required=True)
-    parser.add_argument('--gain1', help='1-value gain [H/M/L/AHL/AML]', type=int, required=True)
-
+    parser.add_argument('--gain', help='gain for pixels [0 1]', default=['M','L'], nargs=2, choices=gain_dict.keys(), required=True)
     parser.add_argument('--dev', help='use development db', action='store_true')
     parser.add_argument('--inst', help='instrument', type=str, default='ued')
     parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
@@ -101,7 +105,7 @@ if __name__ == "__main__":
     copyValues(cfg,top)     # Now copy old values into the cdict
 
     #  Write gainmap
-    d = epixquad_readmap(args.file,args.gain0,args.gain1)
+    d = epixquad_readmap(args.file,args.gain)
     copyValues(d,top)
 
     print('Setting user.pixel_map')
@@ -111,3 +115,6 @@ if __name__ == "__main__":
     top.setInfo('epix10kaquad', args.name, args.segm, args.id, 'No comment')
     if not args.test:
         mycdb.modify_device(args.alias, top)
+
+if __name__ == "__main__":
+    main()

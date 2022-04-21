@@ -30,7 +30,7 @@ def epixquad_roi(xroi,yroi,vinner,vouter):
 
     return (e,image)
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description='Update gain map')
     parser.add_argument('--x', help='low gain x-bounds', type=int, nargs=2, required=True)
     parser.add_argument('--y', help='low gain x-bounds', type=int, nargs=2, required=True)
@@ -48,3 +48,5 @@ if __name__ == "__main__":
     plt.pcolormesh(image.transpose())
     plt.show()
 
+if __name__ == "__main__":
+    main()
