@@ -31,11 +31,12 @@ class Top(pr.Device):
                   ['MmcmPL186', 0x80040000] ]
 
     def __init__(   self,       
-            name        = "Top",
-            description = "Container for XPM",
-            ipAddr      = '10.0.1.101',
-            memBase     = 0,
-            **kwargs):
+                    name        = "Top",
+                    description = "Container for XPM",
+                    ipAddr      = '10.0.1.101',
+                    memBase     = 0,
+                    fidPeriod   = 200,
+                    **kwargs):
         super().__init__(name=name, description=description, **kwargs)
         
 
@@ -194,6 +195,7 @@ class Top(pr.Device):
             memBase = self.srp,
             name   = 'XpmApp',
             offset = 0x80000000,
+            fidPeriod = fidPeriod,
         ))
         
         self.add(AxiLiteRingBuffer(

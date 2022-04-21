@@ -106,3 +106,28 @@ class AxiLiteRingBuffer(pr.Device):
                     print()
             if (len_&0xf)!=0:
                 print()
+
+            i=0
+            while i<len_:
+                if buff[i]==0x1b5f7:
+                    if i+FRAMELEN < len_:
+                        ts  = buff[i+2] + (buff[i+3]<<16) + (buff[i+4]<<32) + (buff[i+5]<<48)
+                        pid = buff[i+6] + (buff[i+7]<<16) + (buff[i+8]<<32) + (buff[i+9]<<48)
+                        print(f'ts [{ts}:016x]  pid [{pid}:016x]  rates [{buff[i+10]}]')
+                        gl0a     = ''
+                        gl0tag   = ''
+                        gl0count = ''
+                        for g in range(8):
+                            gl0a   += f'{buff[i+x]&1:08x}'
+                            gl0tag += f'{(buff[i+x]>>1)&0x1f ):08x}'
+                            gcount += f'{(buff[i+x+1])+((buff[i+x+2]&0xff)<<16) ):08x}'
+                        print(f'l0a     : {gl0a}')
+                        print(f'l0tag   : {gl0tag}')
+                        print(f'l0count : {gl0count}')
+                        i += FRAMELEN
+                    else:
+                        break
+                else:
+                    i += 1
+
+                        
