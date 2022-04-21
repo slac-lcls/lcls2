@@ -21,7 +21,23 @@ class FixedRateSync(Instruction):
 
     opcode = 0
 
+    FixedIntvsDict = {"1H"   :{"intv":910000,"marker":6}, 
+                      "10H"  :{"intv":91000 ,"marker":5}, 
+                      "100H" :{"intv":9100  ,"marker":4}, 
+                      "1kH"  :{"intv":910   ,"marker":3}, 
+                      "10kH" :{"intv":91    ,"marker":2}, 
+                      "70kH" :{"intv":13    ,"marker":1}, 
+                      "910kH":{"intv":1     ,"marker":0}}
+
     def __init__(self, marker, occ):
+        if occ > 0xfff:
+            raise ValueError('FixedRateSync called with occ={}'.format(occ))
+        if marker in self.FixedIntvsDict:
+            mk     = marker
+            marker = self.FixedIntvsDict[mk]['marker']
+            self.intv = self.FixedIntvsDict[mk]['intv']
+        else:
+            self.intv = FixedIntvs[marker]
         super(FixedRateSync, self).__init__( (self.opcode, marker, occ) )
 
     def _word(self):
@@ -31,7 +47,7 @@ class FixedRateSync(Instruction):
         return 'FixedRateSync({}) # occ({})'.format(fixedRates[self.args[1]],self.args[2])
 
     def execute(self,engine):
-        intv = FixedIntvs[self.args[1]]
+        intv = self.intv
         engine.instr += 1
         step = intv*self.args[2]-(engine.frame%intv)
         if step>0:

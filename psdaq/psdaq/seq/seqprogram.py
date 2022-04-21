@@ -119,6 +119,9 @@ def main():
 
     exec(compile(open(args.seq).read(), args.seq, 'exec'), {}, config)
 
+    print(f'descset  {config["descset"]}')
+    print(f'instrset {config["instrset"]}')
+
     seq = SeqUser(args.pv)
     seq.execute(config['title'],config['instrset'],config['descset'])
 
