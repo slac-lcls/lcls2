@@ -35,7 +35,7 @@ class Top(pr.Device):
                     description = "Container for XPM",
                     ipAddr      = '10.0.1.101',
                     memBase     = 0,
-                    fidPeriod   = 200,
+                    fidPrescale = 200,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
         
@@ -195,7 +195,7 @@ class Top(pr.Device):
             memBase = self.srp,
             name   = 'XpmApp',
             offset = 0x80000000,
-            fidPeriod = fidPeriod,
+            fidPrescale = fidPrescale,
         ))
         
         self.add(AxiLiteRingBuffer(

@@ -439,7 +439,7 @@ class PVStats(object):
             self._usTiming.update()
             self._cuTiming.update()
             self._cuGen   .update()
-            self._sfpStat .update()
+#            self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:

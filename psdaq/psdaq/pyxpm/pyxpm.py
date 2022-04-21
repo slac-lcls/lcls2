@@ -63,7 +63,7 @@ def main():
     base.add(Top(
         name   = 'XPM',
         ipAddr = args.ip,
-        fidPeriod = args.C,
+        fidPrescale = args.C,
     ))
     
     # Start the system

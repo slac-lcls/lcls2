@@ -119,8 +119,8 @@ class AxiLiteRingBuffer(pr.Device):
                         gl0count = ''
                         for g in range(8):
                             gl0a   += f'{buff[i+x]&1:08x}'
-                            gl0tag += f'{(buff[i+x]>>1)&0x1f ):08x}'
-                            gcount += f'{(buff[i+x+1])+((buff[i+x+2]&0xff)<<16) ):08x}'
+                            gl0tag += f'{(buff[i+x]>>1)&0x1f:08x}'
+                            gcount += f'{(buff[i+x+1])+((buff[i+x+2]&0xff)<<16) :08x}'
                         print(f'l0a     : {gl0a}')
                         print(f'l0tag   : {gl0tag}')
                         print(f'l0count : {gl0count}')
