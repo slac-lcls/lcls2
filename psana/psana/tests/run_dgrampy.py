@@ -33,6 +33,9 @@ if __name__ == "__main__":
     # where we create xtc from scratch.
     alg = AlgDef("fex", 4, 5, 6)
     det = DetectorDef("xpphsd", "hsd", "detnum1234")     # detname, dettype, detid
+
+    alg2 = AlgDef("fex", 7, 8, 9)
+    det2 = DetectorDef("xpphsd2", "hsd", "detnum1234")
     
     # Define data formats
     datadef_dict = {
@@ -48,31 +51,33 @@ if __name__ == "__main__":
             "arrayFex7": (np.int64, 2),
             "arrayFex8": (np.float32, 2),
             "arrayFex9": (np.float64, 2),
-            "arrayString": (str, 1),
+            #"arrayString": (str, 1),
             }
     datadef = DataDef(datadef_dict)
+    
+    datadef_dict2 = {"val": (np.int16, 0), "arrayFex": (np.uint8, 2)}
+    datadef2 = DataDef(datadef_dict2)
     
     # Open output file for writing
     ofname = 'out.xtc2'
     xtc2file = open(ofname, "wb")
 
     names0 = None
-    for i in range(5):
-        print(f"\nPYTHON NEW DGRAM {i}")
+    for i in range(6):
         pydg = pyiter.next()
 
         # Add new Names to config
         if i == 0:
             config = DgramPy(pydg)
-            print(f"PYTHON GOT CONFIG")
+            #det0 = config.createdet(det, alg, datadef)
             names0 = config.addnames(det, alg, datadef)
-            print(f"PYTHON CONFIG DONE ADD NAME")
+            names2 = config.addnames(det2, alg2, datadef2)
             config.save(xtc2file)
 
         # Add new Data to L1
-        elif i == 4:
+        elif i >= 4:
             dgram = DgramPy(pydg, config=config)
-            print(f"PYTHON L1ACCEPT")
+            #datatdef['valFex'] = 1600.1234 # all datadef fileds must be assigned
             data = {
                     "valFex": 1600.1234,
                     "strFex": "hello string",
@@ -86,11 +91,15 @@ if __name__ == "__main__":
                     "arrayFex7": create_array(np.int64),
                     "arrayFex8": create_array(np.float32),
                     "arrayFex9": create_array(np.float64),
-                    "arrayString": np.array(['hello string array']),
+                    #"arrayString": np.array(['hello string array'.encode()]),
                     }
             if names0:
+                # TODO: dgram.adddata(det0, data)
                 dgram.adddata(names0, datadef, data) # either change to add
-            print(f"PYTHON L1ACCEPT DONE ADDDATA")
+                dgram.adddata(names2, datadef2, {"val": 1, "arrayFex": create_array(np.uint8)})
+            
+            if i == 4:
+                dgram.removedata("hsd","raw") # per event removal 
             dgram.save(xtc2file)
         
         # Other transitions

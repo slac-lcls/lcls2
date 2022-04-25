@@ -77,6 +77,8 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         char* get_buf()
         void clear_buf()
         unsigned get_bufsize()
+        unsigned getNodeId()
+        unsigned getMaxUsedNamesId()
         void addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
                 unsigned nodeId, unsigned namesId, unsigned segment,
                 char* algName, uint8_t major, uint8_t minor, uint8_t micro,
@@ -95,6 +97,9 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         cnp.uint32_t get_removed_size()
         void copy(Dgram* parent_d, int isConfig)
         void setFilter(char* detName, char* algName)
+        void clearFilter()
+        void resetRemovedSize()
+        void setCfgFlag(int cfgFlag)
         void setCfgWriteFlag(int cfgWriteFalg)
 
 

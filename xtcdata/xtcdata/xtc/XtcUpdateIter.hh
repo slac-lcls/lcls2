@@ -18,6 +18,8 @@
 
 #define BUFSIZE 0x4000000
 
+using namespace std;
+
 namespace XtcData
 {
 
@@ -36,28 +38,28 @@ public:
     void add(char* name, unsigned dtype, int rank){
         Name::DataType dt = (Name::DataType) dtype;
         NameVec.push_back({name, dt, rank});
-        std::string s(name);
-        _index.insert(std::pair<std::string, int>(s, _n_elems));
+        string s(name);
+        _index.insert(pair<string, int>(s, _n_elems));
         _n_elems++;
     }
 
     void show() {
         printf("List of names\n");
         for (auto i=NameVec.begin(); i!=NameVec.end(); ++i)
-            std::cout << i->name() << std::endl;
+            cout << i->name() << endl;
         printf("List of indices\n");
-        std::map<std::string, int>::iterator itr;
+        map<string, int>::iterator itr;
         for (itr = _index.begin(); itr != _index.end(); ++itr){
-            std::cout << '\t' << itr->first << '\t' << itr->second << '\n';
+            cout << '\t' << itr->first << '\t' << itr->second << '\n';
         }
     }
 
     int index(char* name) {
         // Locates name index using name in datadef
         // TODO: Add check for newIndex >= 0
-        std::string s(name);
+        string s(name);
         for (auto itr = _index.find(s); itr!=_index.end(); itr++){
-            //std::cout << "DataDef.index " << itr->first << '\t' << itr->second << '\n';
+            //cout << "DataDef.index " << itr->first << '\t' << itr->second << '\n';
             return itr->second;
         }
         return -1;
@@ -71,7 +73,7 @@ public:
     }
 
 private:
-    std::map<std::string, int> _index;
+    map<string, int> _index;
     int _n_elems;
 
 }; // end class DataDef
@@ -89,7 +91,11 @@ public:
         _cfgbufsize = 0;
         _cfgbuf = (char *) malloc(BUFSIZE);
         _removed_size = 0;              // counting size of removed det/alg in bytes
+        _cfgFlag = 0;                   // tells if this dgram is a Configure
         _cfgWriteFlag = 0;              // default is not to write to _cfgbuf when iterated.
+        _nodeId = 0;
+        _maxUsedNamesId = 0;
+        _reservedNamesId = 255;         // cannot be used (reserved for runinfo).
     }
 
     ~XtcUpdateIter() {
@@ -118,6 +124,21 @@ public:
         return _removed_size;
     }
 
+    unsigned getNodeId(){
+        return _nodeId;
+    }
+
+    unsigned getMaxUsedNamesId(){
+        return _maxUsedNamesId;
+    }
+    
+    void setCfgFlag(int cfgFlag) {
+        _cfgFlag = cfgFlag;
+    }
+    void setCfgWriteFlag(int cfgWriteFlag) {
+        _cfgWriteFlag = cfgWriteFlag;
+    }
+
     void addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
             unsigned nodeId, unsigned namesId, unsigned segment,
             char* algName, uint8_t major, uint8_t minor, uint8_t micro,
@@ -138,15 +159,15 @@ public:
     void copy2tmpbuf(char* in_buf, unsigned in_size);
     void copy2cfgbuf(char* in_buf, unsigned in_size);
     void setFilter(char* detName, char* algName);
-    void setCfgWriteFlag(int cfgWriteFlag) {
-        _cfgWriteFlag = cfgWriteFlag;
+    void clearFilter();
+    void resetRemovedSize(){
+        _removed_size = 0;
     }
-
 
 private:
     NamesLookup _namesLookup;
     unsigned _numWords;
-    std::unique_ptr<CreateData> _newData;
+    unique_ptr<CreateData> _newData;
 
     // For L1Accept,
     // _tmpbuf is used for storing ShapesData
@@ -173,11 +194,18 @@ private:
     // Used for storing detName_algName (key) and its per-event
     // filter flag. 0 (initial values) means keeps while 1 means
     // filtered. This map gets reset to 0 when an event is saved.
-    std::map<std::string, int> _flagFilter;
+    map<string, int> _flagFilter;
 
-    // Use this flag to specify writing to _cfgbuf when Configure
-    // is iterated.
+    // Used for checking if this is a Configure dgram and allowing
+    // writing to _cfgbuf when iterated.
+    int _cfgFlag;
     int _cfgWriteFlag;
+
+    // When Names is iterated, we keep track of NodeId and NamesId
+    unsigned _nodeId;
+    unsigned _maxUsedNamesId;
+    unsigned _reservedNamesId;
+
 }; // end class XtcUpdateIter
 
 

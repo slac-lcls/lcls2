@@ -3,10 +3,8 @@
 #include <sys/time.h>
 
 using namespace XtcData;
-using namespace std;
-//using std::string;
 
-#define VERBOSE 0 
+#define VERBOSE 1
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
@@ -176,7 +174,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 */
 int XtcUpdateIter::process(Xtc* xtc)
 {
-    if (VERBOSE > 0) printf("XtcUpdateIter:process\n");
+    if (VERBOSE > 0) printf("\nXtcUpdateIter:process\n");
 
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
@@ -194,21 +192,33 @@ int XtcUpdateIter::process(Xtc* xtc)
 
         unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name));
 
-        cout << names.detName() << " " << alg.name() << " nodeId:" << names.namesId().nodeId() << " namesId:" << names.namesId().namesId() << endl;
 
-        // copy Names to _cfgbuf if flag is set
+        // Copy Names to _cfgbuf if flag is set
         if (_cfgWriteFlag == 1) {
             copy2cfgbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
         }
 
-        // initialize filter flag
+        // Initialize filter flag
         string sDet(names.detName());
         string sAlg(alg.name());
         _flagFilter.insert(pair<string, int>(sDet+"_"+sAlg, 0));
 
+        // Keep track of nodeId and  maximum-number used namesId.
+        // For namesId, we don't record reserved namesId (e.g. 255 for runinfo).
+        _nodeId = names.namesId().nodeId();
+        if (names.namesId().namesId() > _maxUsedNamesId && 
+                names.namesId().namesId() != _reservedNamesId) {
+            _maxUsedNamesId = names.namesId().namesId();
+        }
+
+
+        if (VERBOSE > 0) {
+            cout << "[Names] detName:" << names.detName() << " alg:" << alg.name() << " nodeId:" << names.namesId().nodeId() << " namesId:" << names.namesId().namesId() << " _nodeId:" << _nodeId << " _maxUsedNamesId:" << _maxUsedNamesId << endl;
+        }
         break;
     }
     case (TypeId::ShapesData): {
+        if (VERBOSE > 0) printf("[ShapesData]\n");
         ShapesData& shapesdata = *(ShapesData*)xtc;
         // lookup the index of the names we are supposed to use
         NamesId namesId = shapesdata.namesId();
@@ -223,31 +233,49 @@ int XtcUpdateIter::process(Xtc* xtc)
             throw "invalid namesid";
             break;
         }
+
         DescData descdata(shapesdata, _namesLookup[namesId]);
         Names& names = descdata.nameindex().names();
         Data& data = shapesdata.data();
+        if (VERBOSE > 0) {
+            for (unsigned i = 0; i < names.num(); i++) {
+                Name& name = names.get(i);
+                get_value(i, name, descdata);
+            }
+        }
 
         Alg& alg = names.alg();
 
-        for (unsigned i = 0; i < names.num(); i++) {
-            Name& name = names.get(i);
-            get_value(i, name, descdata);
-        }
 
         // For ShapesData in Configure (check if write flag is set).
         // Note that dgrampy sets this to False for all non-configure dgrams.
-        if (_cfgWriteFlag == 1) {
-            copy2cfgbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+        if (_cfgFlag == 1) {
+            if (_cfgWriteFlag == 1) {
+                copy2cfgbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+            }
         } else {
             // For ShapesData in non-configure dgrams, determines removed size 
             // (if detname and alg matched with given))or copies ShapesData to tmp buffer
-            char detName[15];       // TODO: Interface for passing detName, algName here
-            char algName[15];
-            strcpy(detName, "hsd");
-            strcpy(algName, "raw");
-            if (strcmp(names.detName(), detName) == 0 && strcmp(alg.name(), algName)==0){
-                _removed_size += sizeof(Xtc) + xtc->sizeofPayload();
-            }else{
+            string sDet(names.detName());
+            string sAlg(alg.name());
+            map<string, int>::iterator itr;
+            int flagRemoved = 0;
+
+            if (VERBOSE > 0)
+                cout << "  Check remove for det:" << sDet << " alg:" << sAlg << " "; 
+
+            for (itr = _flagFilter.begin(); itr != _flagFilter.end(); ++itr){
+                if (sDet+"_"+sAlg == itr->first) {
+                    if (itr->second == 1) {
+                        _removed_size += sizeof(Xtc) + xtc->sizeofPayload();
+                        flagRemoved = 1;
+                        cout << "--> Removed size:" << _removed_size << endl;
+                    }
+                    break;
+                }
+            }
+            if (flagRemoved == 0) {
+                cout << "--> Keep" << endl;
                 copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
             }
         }
@@ -263,6 +291,7 @@ int XtcUpdateIter::process(Xtc* xtc)
 void XtcUpdateIter::copy2tmpbuf(char* in_buf, unsigned in_size){
     memcpy(_tmpbuf + _tmpbufsize, in_buf, in_size);
     _tmpbufsize += in_size;
+    cout << "copied " << in_size << " bytes to tmpbuf. current _tmpbufsize=" << _tmpbufsize << endl;
 }
 
 
@@ -323,7 +352,9 @@ void XtcUpdateIter::addNames(Xtc& xtc, const void* bufEnd, char* detName, char* 
     Names& names0 = *new(xtc, bufEnd) Names(bufEnd, detName, alg0, detType, detId, namesId0, segment);
     names0.add(xtc, bufEnd, datadef);
     _namesLookup[namesId0] = NameIndex(names0);
-    cout << "addNames xtc->sizeofPayload() " << xtc.sizeofPayload() << endl;
+
+    // Increments current namesId
+    _maxUsedNamesId++;
 }
 
 
@@ -517,6 +548,25 @@ Dgram& XtcUpdateIter::createTransition(unsigned utransId,
 void XtcUpdateIter::setFilter(char* detName, char* algName){
     string sDet(detName);
     string sAlg(algName);
-    if (VERBOSE > 0) cout << "  setFilter: " << sDet << "_" << sAlg << endl;
+
+    if (VERBOSE > 0) printf("setFilter\n");
+    map<string, int>::iterator itr;
+    for (itr = _flagFilter.begin(); itr != _flagFilter.end(); ++itr){
+        if ( sDet+"_"+sAlg == itr->first ){
+            itr->second = 1;
+            if (VERBOSE > 0)
+                cout << '\t' << itr->first << '\t' << itr->second << '\n';
+            break;
+        }
+    }
+
 }
 
+
+void XtcUpdateIter::clearFilter(){
+    if (VERBOSE > 0) printf("clearFilter\n");
+    map<string, int>::iterator itr;
+    for (itr=_flagFilter.begin(); itr!=_flagFilter.end(); ++itr){
+        itr->second = 0;
+    }
+}

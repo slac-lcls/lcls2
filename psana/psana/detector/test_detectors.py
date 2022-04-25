@@ -83,7 +83,7 @@ class hsd_fex_4_5_6(DetectorImpl):
         print(f'arrayFex7: {segs[0].arrayFex7}')
         print(f'arrayFex8: {segs[0].arrayFex8}')
         print(f'arrayFex9: {segs[0].arrayFex9}')
-        print(f'arrayString: {segs[0].arrayString}')
+        #print(f'arrayString: {segs[0].arrayString}')
 
 # for the fake cameras in the teststand
 class cspad_cspadRawAlg_1_2_3(DetectorImpl):

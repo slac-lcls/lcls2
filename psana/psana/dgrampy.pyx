@@ -148,7 +148,7 @@ cdef class PyXtcUpdateIter():
         self.cptr.updateTimeStamp(pydg.cptr[0], timestamp_val)
 
     def names(self, PyDgram pydg, detdef, algdef, PyDataDef pydatadef,
-            nodeId=None, namesId=None, segment=None):
+            nodeId, namesId, segment):
         cdef PyXtc pyxtc = pydg.get_pyxtc()
         
         # Passing string to c needs utf-8 encoding
@@ -157,9 +157,14 @@ cdef class PyXtcUpdateIter():
         detId   = detdef.detid.encode()
         algName = algdef.name.encode()
 
-        if nodeId is None: nodeId = 1
-        if namesId is None: namesId = 1
+        # For automatic assignment, 
+        # for namesId, increment the current value by 1.
+        # for nodeId, use the current nodeId of this Configure.
+        # for segment, use 0.
+        if nodeId is None: nodeId = self.cptr.getNodeId()
+        if namesId is None: namesId = self.cptr.getMaxUsedNamesId() + 1
         if segment is None: segment = 0
+        print(f'uiter.names nodeId={nodeId} namesId={namesId}')
 
         # Dereference in cython with * is not allowed. You can either use [0] index or
         # from cython.operator import dereference
@@ -213,8 +218,12 @@ cdef class PyXtcUpdateIter():
         PyBuffer_Release(&shape_pybuf)
         PyBuffer_Release(&data_pybuf)
 
-    def removedata(self, det_name, alg_name):
+    def set_filter(self, det_name, alg_name):
         self.cptr.setFilter(det_name.encode(), alg_name.encode())
+
+    def clear_filter(self):
+        self.cptr.clearFilter()
+        self.cptr.resetRemovedSize()
 
     def createTransition(self, transId, timestamp_val):
         counting_timestamps = 1
@@ -234,6 +243,9 @@ cdef class PyXtcUpdateIter():
 
     def set_cfgwrite(self, int flag):
         self.cptr.setCfgWriteFlag(flag)
+    
+    def set_cfg(self, int flag):
+        self.cptr.setCfgFlag(flag)
 
 
 cdef class PyXtcFileIterator():
@@ -266,27 +278,31 @@ class DgramPy:
         if pydg:
             if config:
                 self.uiter = config.uiter
+                self.uiter.set_cfg(False)
             else:
                 # Assumes this is a config so we create new XtcUpdateIter here.
                 self.uiter = PyXtcUpdateIter()
+                self.uiter.set_cfg(True)
+                # Iterates Configure without writing to buffer to get
+                # current nodeId and namesId
+                self.uiter.set_cfgwrite(False)
+                self.uiter.iterate(pydg.get_pyxtc())
+
             self.pydg = pydg
         elif transid:
             if transid == PyTransitionId.Configure:
                 self.uiter = PyXtcUpdateIter()
+                self.uiter.set_cfg(True)
             else:
                 assert config
                 self.uiter = config.uiter
+                self.uiter.set_cfg(False)
             self.pydg = self.uiter.createTransition(transid, ts)
         else:
             raise IOError, "Unsupported input arguments"
 
     def addnames(self, detdef, algdef, PyDataDef pydatadef,
             nodeId=None, namesId=None, segment=None):
-
-        # For automatic assignment, 
-        # for namesId, increment the current value by 1.
-        # for nodeId, copy for pydg.
-        # for segment, use 0.
         return self.uiter.names(self.pydg, detdef, algdef, pydatadef,
                 nodeId, namesId, segment)
 
@@ -308,6 +324,8 @@ class DgramPy:
             # Handle array type
             array.zero(shape)
             if data.dtype.type is np.str_:
+                # FIXME: Currently adding string array gives unterminated string 
+                # error when read using dgram.cc.
                 # For strings, from what I understand is each string is
                 # an array so for MaxRank=5 we can only store up to 5 strings.
                 # shape[i] is no. of bytes for string i.
@@ -328,7 +346,7 @@ class DgramPy:
                 self.uiter.adddata(namesdef, pydatadef, datadef_name, shape, data)
 
     def removedata(self, det_name, alg_name):
-        self.uiter.removedata(det_name, alg_name)
+        self.uiter.set_filter(det_name, alg_name)
 
     def save(self, xtc2file):
         """ 
@@ -364,10 +382,14 @@ class DgramPy:
         cdef uint32_t removed_size = self.uiter.get_removed_size()
         if removed_size > 0:
             self.pydg.dec_extent(removed_size)
+        print(f'SAVE removed_size={removed_size}')
         
         # Copy updated parent dgram and _tmpbuf/_cfgbuf to _buf then save.
         self.uiter.copy(self.pydg, is_config=is_config)
         self.uiter.savextc2(xtc2file)
+
+        # Clear filter flags and reset removed size for the next event
+        self.uiter.clear_filter()
 
     def updatetimestamp(self, timestamp_val):
         self.uiter.updatetimestamp(self.pydg, timestamp_val)
