@@ -376,17 +376,19 @@ class DgramPy:
                 else:
                     assert isinstance(data, str), err_t
                     self.uiter.setstring(pydatadef, datadef_name, data)
-                continue
+            else:
+                # Handle array type
+                assert data.dtype.type != np.str_, f"Incorrect data for '{datadef_name}'. Array of string is not permitted. Use string instead (e.g. 'hello world')."
+                assert pydatadef.get_dtype(datadef_name) == dt.to_psana2(data.dtype.type), err_t
+                
+                array.zero(shape)
+                for i in range(len(shape)):
+                    if i < len(data.shape):
+                        shape[i] = data.shape[i]
+                self.uiter.adddata(det, pydatadef, datadef_name, shape, data)
+            # Clears data container for next event
+            datadict[datadef_name] = None
 
-            # Handle array type
-            assert data.dtype.type != np.str_, f"Incorrect data for '{datadef_name}'. Array of string is not permitted. Use string instead (e.g. 'hello world')."
-            assert pydatadef.get_dtype(datadef_name) == dt.to_psana2(data.dtype.type), err_t
-            
-            array.zero(shape)
-            for i in range(len(shape)):
-                if i < len(data.shape):
-                    shape[i] = data.shape[i]
-            self.uiter.adddata(det, pydatadef, datadef_name, shape, data)
 
     def removedata(self, det_name, alg_name):
         self.uiter.set_filter(det_name, alg_name)
