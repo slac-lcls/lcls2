@@ -72,6 +72,13 @@ public:
         return foundName.type();
     }
 
+    int getRank(char* name) {
+        // Returns corresponding rank
+        int foundIndex = index(name);
+        Name foundName = NameVec[foundIndex];
+        return foundName.rank();
+    }
+
 private:
     map<string, int> _index;
     int _n_elems;
@@ -137,6 +144,10 @@ public:
     }
     void setCfgWriteFlag(int cfgWriteFlag) {
         _cfgWriteFlag = cfgWriteFlag;
+    }
+
+    int isConfig(){
+        return _cfgFlag;
     }
 
     void addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,

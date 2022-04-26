@@ -47,6 +47,7 @@ class DataType:
                 7: np.int64,
                 8: np.float32,
                 9: np.float64,
+                10: str,
     }
     psana_types = {np.uint8:    0,
                    np.uint16:   1,
@@ -63,6 +64,9 @@ class DataType:
     def to_psana2(self, numpy_dtype):
         return self.psana_types[numpy_dtype]
 
+    def to_numpy(self, psana_dtype):
+        return self.nptypes[psana_dtype]
+
 cdef class PyDataDef:
     cdef DataDef* cptr
 
@@ -74,6 +78,18 @@ cdef class PyDataDef:
 
     def add(self, name, dtype, rank):
         self.cptr.add(name.encode(), dtype, rank)
+
+    def get_dtype(self, name):
+        return self.cptr.getDtype(name.encode())
+
+    def get_rank(self, name):
+        return self.cptr.getRank(name.encode())
+
+    def is_number(self, name):
+        flag = False
+        if self.cptr.getDtype(name.encode()) != DataType.psana_types[str]:
+            flag = True
+        return flag
 
 cdef class PyXtc():
     cdef Xtc* cptr
@@ -164,7 +180,6 @@ cdef class PyXtcUpdateIter():
         if nodeId is None: nodeId = self.cptr.getNodeId()
         if namesId is None: namesId = self.cptr.getMaxUsedNamesId() + 1
         if segment is None: segment = 0
-        print(f'uiter.names nodeId={nodeId} namesId={namesId}')
 
         # Dereference in cython with * is not allowed. You can either use [0] index or
         # from cython.operator import dereference
@@ -247,6 +262,9 @@ cdef class PyXtcUpdateIter():
     def set_cfg(self, int flag):
         self.cptr.setCfgFlag(flag)
 
+    def is_config(self):
+        return self.cptr.isConfig()
+
 
 cdef class PyXtcFileIterator():
     cdef XtcFileIterator* cptr
@@ -301,49 +319,74 @@ class DgramPy:
         else:
             raise IOError, "Unsupported input arguments"
 
-    def addnames(self, detdef, algdef, PyDataDef pydatadef,
+    def Detector(self, detdef, algdef, datadef_dict,
             nodeId=None, namesId=None, segment=None):
-        return self.uiter.names(self.pydg, detdef, algdef, pydatadef,
+        """Returns Names object, which represents to a detector."""
+        assert self.uiter.is_config() == 1, "Expect a Configure dgram."
+        
+        # Creates a datadef from data definition dictionary
+        pydatadef = PyDataDef()
+        dt = DataType()
+        for key, (numpy_dtype, rank)  in datadef_dict.items():
+            pydatadef.add(key, dt.to_psana2(numpy_dtype), rank)
+        
+        det = self.uiter.names(self.pydg, detdef, algdef, pydatadef,
                 nodeId, namesId, segment)
+        setattr(det, 'datadef', pydatadef)
+        
+        class Container:
+            """Wraps all fields  in `pydatadef`"""
+            def __init__(self):
+                for dtdef_name, _ in datadef_dict.items():
+                    setattr(self, dtdef_name, None)
 
-    def adddata(self, namesdef, PyDataDef pydatadef, datadict):
+        setattr(det, algdef.name, Container())
+        return det
+
+
+    def adddata(self, det, data_container):
         cdef array.array shape = array.array('I', [0,0,0,0,0])
         cdef int i
 
-        self.uiter.createdata(self.pydg, namesdef)
+        self.uiter.createdata(self.pydg, det)
+        
+        pydatadef = det.datadef
+        datadict = data_container.__dict__
+        dt = DataType()
 
         for datadef_name, data in datadict.items():
+            assert data is not None, f"Missing data for '{datadef_name}'."
+
+            # Check rank (dimension) of data (note that string is rank 1 in psana2).
+            data_rank = np.ndim(data)
+            if isinstance(data, str): 
+                data_rank = 1
+            
+            # Prepares error messages for incorrect ranks and types
+            err_r = f"Incorrect rank for '{datadef_name}'. Expected: {pydatadef.get_rank(datadef_name)}."
+            err_t = f"Incorrect type for '{datadef_name}'. Expected: {DataType.nptypes[pydatadef.get_dtype(datadef_name)]}."
+            assert data_rank == pydatadef.get_rank(datadef_name), err_r
+
+
             # Handle scalar types (string or number)
             if np.ndim(data) == 0:
-                if isinstance(data, numbers.Number):
-                    self.uiter.setvalue(namesdef, pydatadef, datadef_name, data)
+                if pydatadef.is_number(datadef_name):
+                    assert isinstance(data, numbers.Number), err_t
+                    self.uiter.setvalue(det, pydatadef, datadef_name, data)
                 else:
+                    assert isinstance(data, str), err_t
                     self.uiter.setstring(pydatadef, datadef_name, data)
                 continue
 
             # Handle array type
+            assert data.dtype.type != np.str_, f"Incorrect data for '{datadef_name}'. Array of string is not permitted. Use string instead (e.g. 'hello world')."
+            assert pydatadef.get_dtype(datadef_name) == dt.to_psana2(data.dtype.type), err_t
+            
             array.zero(shape)
-            if data.dtype.type is np.str_:
-                # FIXME: Currently adding string array gives unterminated string 
-                # error when read using dgram.cc.
-                # For strings, from what I understand is each string is
-                # an array so for MaxRank=5 we can only store up to 5 strings.
-                # shape[i] is no. of bytes for string i.
-
-                assert len(data.shape) == 1, "Only support writing 1D string array"
-
-                str_as_byte = bytearray()
-                for i in range(data.shape[0]):
-                    data_encode = data[i].encode()
-                    str_as_byte.extend(data_encode)
-                    shape[i] = len(data_encode)
-
-                self.uiter.adddata(namesdef, pydatadef, datadef_name, shape, str_as_byte)
-            else:
-                for i in range(len(shape)):
-                    if i < len(data.shape):
-                        shape[i] = data.shape[i]
-                self.uiter.adddata(namesdef, pydatadef, datadef_name, shape, data)
+            for i in range(len(shape)):
+                if i < len(data.shape):
+                    shape[i] = data.shape[i]
+            self.uiter.adddata(det, pydatadef, datadef_name, shape, data)
 
     def removedata(self, det_name, alg_name):
         self.uiter.set_filter(det_name, alg_name)
@@ -382,7 +425,6 @@ class DgramPy:
         cdef uint32_t removed_size = self.uiter.get_removed_size()
         if removed_size > 0:
             self.pydg.dec_extent(removed_size)
-        print(f'SAVE removed_size={removed_size}')
         
         # Copy updated parent dgram and _tmpbuf/_cfgbuf to _buf then save.
         self.uiter.copy(self.pydg, is_config=is_config)
@@ -393,22 +435,5 @@ class DgramPy:
 
     def updatetimestamp(self, timestamp_val):
         self.uiter.updatetimestamp(self.pydg, timestamp_val)
-
-
-"""
-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
-List of convenient functions that allow users to access
-above classes w/o typing them out.
-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
-"""
-
-
-def datadef(datadict):
-    datadef = PyDataDef()
-    dt = DataType()
-    for key, (numpy_dtype, rank)  in datadict.items():
-        datadef.add(key, dt.to_psana2(numpy_dtype), rank)
-    return datadef
-
 
 

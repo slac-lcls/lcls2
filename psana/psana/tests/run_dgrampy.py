@@ -1,5 +1,4 @@
 from dgrampy import DgramPy, AlgDef, DetectorDef, PyXtcFileIterator
-from dgrampy import datadef as DataDef
 import os
 import numpy as np
 from psana import DataSource
@@ -29,34 +28,24 @@ if __name__ == "__main__":
     
     # Defines detector and alg.
     # Below example settings become hsd_fex_4_5_6 for its detector interface.
-    # TODO: Think about initializing these by adding another example
-    # where we create xtc from scratch.
-    alg = AlgDef("fex", 4, 5, 6)
-    det = DetectorDef("xpphsd", "hsd", "detnum1234")     # detname, dettype, detid
+    algdef = AlgDef("fex", 4, 5, 6)
+    detdef = DetectorDef("xpphsd", "hsd", "detnum1234")     # detname, dettype, detid
 
-    alg2 = AlgDef("fex", 7, 8, 9)
-    det2 = DetectorDef("xpphsd2", "hsd", "detnum1234")
-    
     # Define data formats
-    datadef_dict = {
-            "valFex": (np.float32, 0),
-            "strFex": (str, 1),
-            "arrayFex0": (np.uint8, 2),
-            "arrayFex1": (np.uint16, 2),
-            "arrayFex2": (np.uint32, 2),
-            "arrayFex3": (np.uint64, 2),
-            "arrayFex4": (np.int8, 2),
-            "arrayFex5": (np.int16, 2),
-            "arrayFex6": (np.int32, 2),
-            "arrayFex7": (np.int64, 2),
-            "arrayFex8": (np.float32, 2),
-            "arrayFex9": (np.float64, 2),
-            #"arrayString": (str, 1),
-            }
-    datadef = DataDef(datadef_dict)
-    
-    datadef_dict2 = {"val": (np.int16, 0), "arrayFex": (np.uint8, 2)}
-    datadef2 = DataDef(datadef_dict2)
+    datadef = {
+                "valFex": (np.float32, 0),
+                "strFex": (str, 1),
+                "arrayFex0": (np.uint8, 2),
+                "arrayFex1": (np.uint16, 2),
+                "arrayFex2": (np.uint32, 2),
+                "arrayFex3": (np.uint64, 2),
+                "arrayFex4": (np.int8, 2),
+                "arrayFex5": (np.int16, 2),
+                "arrayFex6": (np.int32, 2),
+                "arrayFex7": (np.int64, 2),
+                "arrayFex8": (np.float32, 2),
+                "arrayFex9": (np.float64, 2),
+              }
     
     # Open output file for writing
     ofname = 'out.xtc2'
@@ -69,34 +58,28 @@ if __name__ == "__main__":
         # Add new Names to config
         if i == 0:
             config = DgramPy(pydg)
-            #det0 = config.createdet(det, alg, datadef)
-            names0 = config.addnames(det, alg, datadef)
-            names2 = config.addnames(det2, alg2, datadef2)
+            det = config.Detector(detdef, algdef, datadef)
             config.save(xtc2file)
 
         # Add new Data to L1
         elif i >= 4:
             dgram = DgramPy(pydg, config=config)
-            #datatdef['valFex'] = 1600.1234 # all datadef fileds must be assigned
-            data = {
-                    "valFex": 1600.1234,
-                    "strFex": "hello string",
-                    "arrayFex0": create_array(np.uint8),
-                    "arrayFex1": create_array(np.uint16),
-                    "arrayFex2": create_array(np.uint32),
-                    "arrayFex3": create_array(np.uint64),
-                    "arrayFex4": create_array(np.int8),
-                    "arrayFex5": create_array(np.int16),
-                    "arrayFex6": create_array(np.int32),
-                    "arrayFex7": create_array(np.int64),
-                    "arrayFex8": create_array(np.float32),
-                    "arrayFex9": create_array(np.float64),
-                    #"arrayString": np.array(['hello string array'.encode()]),
-                    }
-            if names0:
-                # TODO: dgram.adddata(det0, data)
-                dgram.adddata(names0, datadef, data) # either change to add
-                dgram.adddata(names2, datadef2, {"val": 1, "arrayFex": create_array(np.uint8)})
+
+            # Fill in data for previously given datadef (all fields
+            # must be completed)
+            det.fex.valFex = 1600.1234
+            det.fex.strFex = "hello string"
+            det.fex.arrayFex0 = create_array(np.uint8)
+            det.fex.arrayFex1 = create_array(np.uint16)
+            det.fex.arrayFex2 = create_array(np.uint32)
+            det.fex.arrayFex3 = create_array(np.uint64)
+            det.fex.arrayFex4 = create_array(np.int8)
+            det.fex.arrayFex5 = create_array(np.int16)
+            det.fex.arrayFex6 = create_array(np.int32)
+            det.fex.arrayFex7 = create_array(np.int64)
+            det.fex.arrayFex8 = create_array(np.float32)
+            det.fex.arrayFex9 = create_array(np.float64)
+            dgram.adddata(det, det.fex)
             
             if i == 4:
                 dgram.removedata("hsd","raw") # per event removal 

@@ -101,6 +101,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void resetRemovedSize()
         void setCfgFlag(int cfgFlag)
         void setCfgWriteFlag(int cfgWriteFalg)
+        int isConfig()
 
 
     cdef cppclass DataDef:
@@ -108,5 +109,6 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void show()
         void add(char* name, unsigned dtype, int rank)
         int getDtype(char* name)
+        int getRank(char* name)
 
 

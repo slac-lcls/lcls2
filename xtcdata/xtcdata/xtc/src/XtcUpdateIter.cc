@@ -4,7 +4,7 @@
 
 using namespace XtcData;
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
@@ -269,13 +269,15 @@ int XtcUpdateIter::process(Xtc* xtc)
                     if (itr->second == 1) {
                         _removed_size += sizeof(Xtc) + xtc->sizeofPayload();
                         flagRemoved = 1;
-                        cout << "--> Removed size:" << _removed_size << endl;
+                        if (VERBOSE > 0)
+                            cout << "--> Removed size:" << _removed_size << endl;
                     }
                     break;
                 }
             }
             if (flagRemoved == 0) {
-                cout << "--> Keep" << endl;
+                if (VERBOSE > 0)
+                    cout << "--> Keep" << endl;
                 copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
             }
         }
@@ -291,7 +293,6 @@ int XtcUpdateIter::process(Xtc* xtc)
 void XtcUpdateIter::copy2tmpbuf(char* in_buf, unsigned in_size){
     memcpy(_tmpbuf + _tmpbufsize, in_buf, in_size);
     _tmpbufsize += in_size;
-    cout << "copied " << in_size << " bytes to tmpbuf. current _tmpbufsize=" << _tmpbufsize << endl;
 }
 
 
@@ -304,7 +305,6 @@ void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
 void XtcUpdateIter::copy2cfgbuf(char* in_buf, unsigned in_size){
     memcpy(_cfgbuf + _cfgbufsize, in_buf, in_size);
     _cfgbufsize += in_size;
-    cout << "copied " << in_size << " bytes to cfbuf. current _cfgbufsize=" << _cfgbufsize << endl;
 }
 
 
