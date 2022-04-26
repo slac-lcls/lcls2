@@ -288,7 +288,7 @@ class DgramPy:
     def __init__(self, 
                  PyDgram pydg=None, 
                  config=None,
-                 transid=None,
+                 transition_id=None,
                  ts=-1):
         # We need to have only one PyXtcUpdateIter when working with 
         # the same xtc. This class always read in config first and
@@ -307,15 +307,15 @@ class DgramPy:
                 self.uiter.iterate(pydg.get_pyxtc())
 
             self.pydg = pydg
-        elif transid:
-            if transid == PyTransitionId.Configure:
+        elif transition_id:
+            if transition_id == PyTransitionId.Configure:
                 self.uiter = PyXtcUpdateIter()
                 self.uiter.set_cfg(True)
             else:
                 assert config
                 self.uiter = config.uiter
                 self.uiter.set_cfg(False)
-            self.pydg = self.uiter.createTransition(transid, ts)
+            self.pydg = self.uiter.createTransition(transition_id, ts)
         else:
             raise IOError, "Unsupported input arguments"
 
@@ -335,8 +335,11 @@ class DgramPy:
         setattr(det, 'datadef', pydatadef)
         
         class Container:
-            """Wraps all fields  in `pydatadef`"""
+            """Make datadef available as attributes of det.alg."""
             def __init__(self):
+                # Save parent detector object here for later use
+                setattr(self, '_det', det)
+                # Wraps all fields in `pydatadef`
                 for dtdef_name, _ in datadef_dict.items():
                     setattr(self, dtdef_name, None)
 
@@ -344,10 +347,11 @@ class DgramPy:
         return det
 
 
-    def adddata(self, det, data_container):
+    def adddata(self, data_container):
         cdef array.array shape = array.array('I', [0,0,0,0,0])
         cdef int i
-
+        
+        det = data_container._det
         self.uiter.createdata(self.pydg, det)
         
         pydatadef = det.datadef
@@ -355,6 +359,10 @@ class DgramPy:
         dt = DataType()
 
         for datadef_name, data in datadict.items():
+            # Skips all reserved names
+            if datadef_name.startswith('_'): 
+                continue
+            
             assert data is not None, f"Missing data for '{datadef_name}'."
 
             # Check rank (dimension) of data (note that string is rank 1 in psana2).

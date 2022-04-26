@@ -79,7 +79,7 @@ if __name__ == "__main__":
             det.fex.arrayFex7 = create_array(np.int64)
             det.fex.arrayFex8 = create_array(np.float32)
             det.fex.arrayFex9 = create_array(np.float64)
-            dgram.adddata(det, det.fex)
+            dgram.adddata(det.fex)
             
             if i == 4:
                 dgram.removedata("hsd","raw") # per event removal 
