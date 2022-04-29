@@ -179,7 +179,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     time.sleep(1)
     #  Reset rx with the new reference
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.C_RxReset()
-    time.sleep(1)
+    time.sleep(2)
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
 
     epixquad_internal_trigger(base)

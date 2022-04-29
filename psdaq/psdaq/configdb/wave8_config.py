@@ -38,43 +38,13 @@ def ctxt_get(names):
 
 def ctxt_put(names, values):
 
+    print(f'ctxt_put [{names}] [{values}]')
     if isinstance(names,str):
         epics.PV(names).put(values)
     else:
         if isinstance(names,list):
             for i,n in enumerate(names):
                 epics.PV(n).put(values[i])
-
-def epics_put(cfg,epics_prefix,names,values):
-    global lane
-
-    # translate legal Python names to Rogue names
-    rogue_translate = {'TriggerEventBuffer':'TriggerEventBuffer[%d]'%lane,
-                       'AdcReadout0'       :'AdcReadout[0]',
-                       'AdcReadout1'       :'AdcReadout[1]',
-                       'AdcReadout2'       :'AdcReadout[2]',
-                       'AdcReadout3'       :'AdcReadout[3]',
-                       'AdcConfig0'        :'AdcConfig[0]',
-                       'AdcConfig1'        :'AdcConfig[1]',
-                       'AdcConfig2'        :'AdcConfig[2]',
-                       'AdcConfig3'        :'AdcConfig[3]'}
-
-    rogue_not_arrays = ['CorrCoefficientFloat64','BuffEn','DelayAdcALane','DelayAdcBLane']
-
-    for key,val in cfg.items():
-        if key in rogue_translate:
-            key = rogue_translate[key]
-        if isinstance(val,dict):
-            epics_put(val,epics_prefix+key+':',names,values)
-        else:
-            if ':RO' in key:
-                continue
-            if key in rogue_not_arrays:
-                for i,v in enumerate(val):
-                    names.append(epics_prefix+key+'[%d]'%i)
-                    values.append(v)
-            names.append(epics_prefix+key)
-            values.append(val)
 
 #  Create a dictionary of config key to PV name
 def epics_get(d):
@@ -165,6 +135,8 @@ def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timeb
         eventBuilder = getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder
         eventBuilder.Blowoff.set(True)
 
+    wave8_unconfig(base)
+
     return base
 
 def wave8_init_feb(slane=None,schan=None):
@@ -183,6 +155,7 @@ def wave8_connect(base):
     #  This fails with the current IOC, but hopefully it will be fixed.  It works directly via pgp.
     txId = timTxId('wave8')
     ctxt_put(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:TxId', txId)
+    ctxt_put(epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',0)
 
     # Retrieve connection information from EPICS
     # May need to wait for other processes here, so poll
@@ -429,7 +402,11 @@ def wave8_update(update):
 def wave8_unconfig(base):
 
     epics_prefix = base['prefix']
-    ctxt_put(epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable', 0)
+    names_cfg = [epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:Partition',
+                 epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
+    values = [1,0]
+    ctxt_put(names_cfg, values)
+
     #  Leaving DAQ control.  Put back into LCLS1 mode in LCLS hutches
     if base['timebase']=='186M':
         config_timing(epics_prefix, lcls2=False)

@@ -265,6 +265,7 @@ unsigned EaDetector::unconfigure()
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
+    m_exporter.reset();
     m_namesLookup.clear();   // erase all elements
 
     return 0;
