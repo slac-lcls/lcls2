@@ -312,7 +312,7 @@ class DgramPy:
                 self.uiter = PyXtcUpdateIter()
                 self.uiter.set_cfg(True)
             else:
-                assert config
+                assert config, "Missing config dgram"
                 self.uiter = config.uiter
                 self.uiter.set_cfg(False)
             self.pydg = self.uiter.createTransition(transition_id, ts)

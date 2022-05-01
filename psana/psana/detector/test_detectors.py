@@ -32,8 +32,8 @@ class hexanode_raw_0_0_1(DetectorImpl):
         segments = self._segments(evt)
         return segments[0].times[2:7,...]
 
+# for tmo-fex simulated data test
 class quadanode_fex_4_5_6(DetectorImpl):
-    """Test detector for tmo-fex simulated data."""
     def __init__(self, *args):
         super().__init__(*args)
 
@@ -64,6 +64,7 @@ class quadanode_fex_4_5_6(DetectorImpl):
         #startpos = self._segments(evt)[segid].startpos
         #return startpos
 
+# for dgrampy test
 class hsd_fex_4_5_6(DetectorImpl):
     def __init__(self, *args):
         super(hsd_fex_4_5_6, self).__init__(*args)
@@ -84,6 +85,22 @@ class hsd_fex_4_5_6(DetectorImpl):
         print(f'arrayFex8: {segs[0].arrayFex8}')
         print(f'arrayFex9: {segs[0].arrayFex9}')
         #print(f'arrayString: {segs[0].arrayString}')
+
+# for integrating detector test (1) hsd/fast (2) andor/slow 
+class hsd_raw_0_0_2(DetectorImpl):
+    def __init__(self, *args):
+        super(hsd_raw_0_0_2, self).__init__(*args)
+    def calib(self, evt):
+        segs = self._segments(evt)
+        return segs[0].calib
+class andor_raw_0_0_2(DetectorImpl):
+    def __init__(self, *args):
+        super(andor_raw_0_0_2, self).__init__(*args)
+    def calib(self, evt):
+        segs = self._segments(evt)
+        if segs is None:
+            return None
+        return segs[1].calib
 
 # for the fake cameras in the teststand
 class cspad_cspadRawAlg_1_2_3(DetectorImpl):

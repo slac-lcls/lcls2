@@ -32,9 +32,13 @@ class DsParms:
     live:               bool
     smd_inprogress_converted: int
     timestamps:         np.ndarray
+    intg_det:           str
 
-    def set_det_class_table(self, det_classes, xtc_info, det_info_table):
-        self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
+    def set_det_class_table(self, det_classes, xtc_info, det_info_table, det_stream_id_table):
+        self.det_classes        = det_classes
+        self.xtc_info           = xtc_info
+        self.det_info_table     = det_info_table
+        self.det_stream_id_table= det_stream_id_table
 
     def set_use_smds(self, use_smds):
         self.use_smds = use_smds
@@ -46,6 +50,7 @@ class DsParms:
     def set_timestamps(self):
         if isinstance(self.timestamps, str):
             self.timestamps = self.read_ts_npy_file()
+
 
 class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):
@@ -66,6 +71,7 @@ class DataSourceBase(abc.ABC):
         self.timestamps  = np.empty(0, dtype=np.uint64)
                                      # list of user-selected timestamps
         self.dbsuffix  = ''          # calibration database name extension for private constants
+        self.intg_det  = ''          # integrating detector name (contains marker ts for a batch)
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -85,6 +91,7 @@ class DataSourceBase(abc.ABC):
                     'small_xtc',
                     'timestamps',
                     'dbsuffix',
+                    'intg_det',
                     )
 
             for k in keywords:
@@ -123,6 +130,7 @@ class DataSourceBase(abc.ABC):
                 self.live,
                 self.smd_inprogress_converted,
                 self.timestamps,
+                self.intg_det,
                 )
 
         if 'mpi_ts' not in kwargs:
@@ -351,6 +359,9 @@ class DataSourceBase(abc.ABC):
         xtc_info = []
         det_info_table = {}
 
+        # collect corresponding stream id for a detector (first found)
+        det_stream_id_table = {}
+
         # loop over the dgrams in the configuration
         # if a detector/drp_class combo exists in two cfg dgrams
         # it will be OK... they should give the same final Detector class
@@ -398,7 +409,10 @@ class DataSourceBase(abc.ABC):
 
                 det_info_table[det_name] = (dettype, detid)
 
-        self.dsparms.set_det_class_table(det_classes, xtc_info, det_info_table)
+                if det_name not in det_stream_id_table:
+                    det_stream_id_table[det_name] = i
+
+        self.dsparms.set_det_class_table(det_classes, xtc_info, det_info_table, det_stream_id_table)
 
     def _set_configinfo(self):
         """ From configs, we generate a dictionary lookup with det_name as a key.
