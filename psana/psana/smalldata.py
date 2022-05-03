@@ -551,6 +551,11 @@ class SmallData: # (client)
         """
         method that is robust to ranks that have received no data
         """
+
+        # convert float/int to array
+        if isinstance(value,int) or isinstance(value,float):
+            value = np.array([value])
+
         comm = self._client_comm
         if not isinstance(value,np.ndarray):
             arrInfo= None
