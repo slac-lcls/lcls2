@@ -51,6 +51,17 @@ class DsParms:
         if isinstance(self.timestamps, str):
             self.timestamps = self.read_ts_npy_file()
 
+    @property
+    def intg_stream_id(self):
+        # We only set detector related fields later (setup run files) so there
+        # is a chance that the stream id table is not created yet.
+        stream_id = -1
+        if hasattr(self, "det_stream_id_table"):
+            if self.intg_det in self.det_stream_id_table:
+                stream_id=self.det_stream_id_table[self.intg_det]
+        return stream_id
+
+
 
 class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):

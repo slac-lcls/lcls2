@@ -115,12 +115,15 @@ cdef class SmdReader:
         self.winner = -1
 
     @cython.boundscheck(False)
-    def view(self, int batch_size=1000):
+    def view(self, int batch_size=1000, int intg_stream_id=-1):
         """ Returns memoryview of the data and step buffers.
 
         This function is called by SmdReaderManager only when is_complete is True (
         all buffers have at least one event). It returns events of batch_size if
         possible or as many as it has for the buffer.
+
+        Integrating detector:
+        When intg_stream_id is set (value > -1)
         """
         st_all = time.monotonic()
         cdef int i=0

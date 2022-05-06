@@ -131,7 +131,8 @@ class SmdReaderManager(object):
         The iterator stops reading under two conditions. Either there's
         no more data or max_events reached.
         """
-        #print(f'intg_det={self.dsparms.intg_det} stream_id={self.dsparms.det_stream_id_table[self.dsparms.intg_det]}')
+        intg_stream_id = self.dsparms.intg_stream_id
+        
         if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
             raise StopIteration
         
@@ -140,7 +141,7 @@ class SmdReaderManager(object):
             if not self.smdr.is_complete():
                 raise StopIteration
         
-        self.smdr.view(batch_size=self.smd0_n_events)
+        self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=intg_stream_id)
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
         batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, 
                 batch_size  = self.dsparms.batch_size, 
