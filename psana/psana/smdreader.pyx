@@ -45,6 +45,7 @@ cdef class SmdReader:
         self.n_eb_nodes         = int(os.environ.get('PS_EB_NODES', '1'))
         self.send_bufs          = <Buffer *>malloc(self.n_eb_nodes * sizeof(Buffer))
         self.sendbufsize        = 0x10000000
+        self.winner             = -1
         self._init_send_buffers()
 
     def __dealloc__(self):
@@ -110,6 +111,8 @@ cdef class SmdReader:
                 if cn_retries >= self.max_retries:
                     break
         
+        # Reset winning buffer when we read-in more data
+        self.winner = -1
 
     @cython.boundscheck(False)
     def view(self, int batch_size=1000):
@@ -120,15 +123,21 @@ cdef class SmdReader:
         possible or as many as it has for the buffer.
         """
         st_all = time.monotonic()
-
-        # Find the winning buffer
         cdef int i=0
+
+        # Find the winning buffer (only when we read the first time or re-read)
         cdef uint64_t limit_ts=0
         
-        for i in range(self.prl_reader.nfiles):
-            if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
-                limit_ts = self.prl_reader.bufs[i].timestamp
-                self.winner = i
+        if self.winner == -1:
+            for i in range(self.prl_reader.nfiles):
+                #print(f'i={i} ts={self.prl_reader.bufs[i].timestamp} limit_ts={limit_ts}')
+                if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
+                    limit_ts = self.prl_reader.bufs[i].timestamp
+                    self.winner = i
+        else:
+            limit_ts = self.prl_reader.bufs[self.winner].timestamp
+        
+       # print(f'  limit_ts={limit_ts} self.winner={self.winner}')
 
         # Apply batch_size
         # Find the boundary or limit ts of the winning buffer
