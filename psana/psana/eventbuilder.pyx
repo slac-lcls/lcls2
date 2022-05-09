@@ -290,12 +290,9 @@ cdef class EventBuilder:
                         print(f'Error: Transtion: {(ts >> 32) & 0xffffffff}.{ts & 0xffffffff} (service:{service}) is missing one or more dgrams (found: {cn_dgrams}/ expected: {self.nsmds})')
                         raise
 
-            if got == batch_size:
-                break
-
-
         # end while got < batch_size...
         
+
         self.nevents = got
         self.nsteps = got_step
         
