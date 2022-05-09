@@ -210,8 +210,9 @@ class DataSourceBase(abc.ABC):
         Allowed extentions include .xtc2 and .xtc2.inprogress.
         """
         smd_dir = os.path.join(self.xtc_path, 'smalldata')
-        smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4)))) + \
-                    glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2.inprogress'%(str(runnum).zfill(4))))
+        smd_files = sorted(glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4)))) + \
+                           glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2.inprogress'%(str(runnum).zfill(4))))
+                          )
         self.n_files   = len(smd_files)
         assert self.n_files > 0 , f"No smalldata files found from this path: {smd_dir}"
 
