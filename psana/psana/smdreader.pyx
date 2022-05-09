@@ -168,12 +168,14 @@ cdef class SmdReader:
         
         st_search = time.monotonic()
         
+        # Find the boundary of each buffer using limit_ts
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
             buf = &(self.prl_reader.bufs[i])
             i_st_bufs[i] = 0
             block_size_bufs[i] = 0
             
-            # Find boundary using limit_ts
+            if buf.ts_arr[i_starts[i]] > limit_ts: continue
+            
             i_ends[i] = i_starts[i] 
             if i_ends[i] < buf.n_ready_events:
                 if buf.ts_arr[i_ends[i]] != limit_ts:
