@@ -18,19 +18,19 @@ cdef class SmdReader:
     cdef ParallelReader prl_reader
     cdef int        winner, n_view_events
     cdef int        max_retries, sleep_secs
-    cdef uint64_t   i_starts[100]           # these 5 are aux. local variables 
-    cdef uint64_t   i_ends[100]             #    
-    cdef uint64_t   i_stepbuf_starts[100]   #
-    cdef uint64_t   i_stepbuf_ends[100]     #
-    cdef uint64_t   block_sizes[100]        # 
-    cdef uint64_t   i_st_bufs[100]          # these 4 are global - can be used for
-    cdef uint64_t   block_size_bufs[100]    # sharing viewing windows.
-    cdef uint64_t   i_st_stepbufs[100]      #
-    cdef uint64_t   block_size_stepbufs[100]#
+    cdef uint64_t   i_starts[100]               # ¬ used locally for finding boundary of each
+    cdef uint64_t   i_ends[100]                 # } stream file (defined here for speed) in view(),  
+    cdef uint64_t   i_stepbuf_starts[100]       # } which generates sharing window variables below.
+    cdef uint64_t   i_stepbuf_ends[100]         # }
+    cdef uint64_t   block_sizes[100]            # }
+    cdef uint64_t   i_st_bufs[100]              # ¬ for sharing viewing windows in show() 
+    cdef uint64_t   block_size_bufs[100]        # }
+    cdef uint64_t   i_st_stepbufs[100]          # }
+    cdef uint64_t   block_size_stepbufs[100]    # }
     cdef float      total_time
     cdef int        num_threads
-    cdef Buffer*    send_bufs               # array of customed Buffers (one per EB node)
-    cdef int        sendbufsize             # size of each send buffer
+    cdef Buffer*    send_bufs                   # array of customed Buffers (one per EB node)
+    cdef int        sendbufsize                 # size of each send buffer
     cdef int        n_eb_nodes
 
     def __init__(self, int[:] fds, int chunksize, int max_retries):
@@ -128,28 +128,26 @@ cdef class SmdReader:
         st_all = time.monotonic()
         cdef int i=0
 
-        # Find the winning buffer (only when we read the first time or re-read)
+        # Find the winning buffer (slowest detector)- skip when no new read.
         cdef uint64_t limit_ts=0
-        
-        if self.winner == -1:
-            for i in range(self.prl_reader.nfiles):
-                #print(f'i={i} ts={self.prl_reader.bufs[i].timestamp} limit_ts={limit_ts}')
-                if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
-                    limit_ts = self.prl_reader.bufs[i].timestamp
-                    self.winner = i
+        if intg_stream_id > -1:
+            self.winner = intg_stream_id
         else:
-            limit_ts = self.prl_reader.bufs[self.winner].timestamp
+            if self.winner == -1:
+                for i in range(self.prl_reader.nfiles):
+                    if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
+                        self.winner = i
+                        limit_ts = self.prl_reader.bufs[self.winner].timestamp
+        limit_ts = self.prl_reader.bufs[self.winner].timestamp
         
-       # print(f'  limit_ts={limit_ts} self.winner={self.winner}')
-
-        # Apply batch_size
-        # Find the boundary or limit ts of the winning buffer
+        # Apply batch_size- find boundaries (limit ts) of the winning buffer.
         # this is either the nth or the batch_size event.
         self.n_view_events = self.prl_reader.bufs[self.winner].n_ready_events - \
                 self.prl_reader.bufs[self.winner].n_seen_events
+        cdef int i_eob=0
         if self.n_view_events > batch_size:
-            limit_ts = self.prl_reader.bufs[self.winner].ts_arr[\
-                    self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size]
+            i_eob = self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size
+            limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
             self.n_view_events = batch_size
 
         # Locate the viewing window and update seen_offset for each buffer
@@ -175,7 +173,7 @@ cdef class SmdReader:
             block_size_bufs[i] = 0
             
             if buf.ts_arr[i_starts[i]] > limit_ts: continue
-            
+
             i_ends[i] = i_starts[i] 
             if i_ends[i] < buf.n_ready_events:
                 if buf.ts_arr[i_ends[i]] != limit_ts:
@@ -228,7 +226,7 @@ cdef class SmdReader:
                 buf.seen_offset = buf.en_offset_arr[i_stepbuf_ends[i]]
                 buf.n_seen_events = i_stepbuf_ends[i] + 1
                 i_stepbuf_starts[i]  = i_stepbuf_ends[i] + 1
-            
+
         # end for i in ...
         en_all = time.monotonic()
 
