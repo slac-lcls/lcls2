@@ -69,6 +69,7 @@ class opal_base(AreaDetector):
     def image(self, evt, nda=None, **kwa) -> Array2d:
         logger.debug('opal_base.image')
         arr = self.calib(evt, **kwa) if nda is None else nda
+        if arr is None: return None
         return arr if arr.ndim==2 else reshape_to_2d(arr)
 
 
