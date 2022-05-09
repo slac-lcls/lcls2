@@ -69,7 +69,7 @@ cdef class EventBuilder:
         return False
 
     def build(self, uint64_t[:] timestamps, batch_size=1, 
-            filter_fn=0, destination=0, limit_ts=-1, 
+            filter_fn=0, destination=0, 
             prometheus_counter=None, run=None):
         """
         Builds a list of batches.
@@ -117,8 +117,6 @@ cdef class EventBuilder:
         cdef unsigned evt_idx = 0
         cdef unsigned aux_idx =0
 
-        cdef unsigned reach_limit_ts = 0
-        
         # For checking step dgrams
         cdef unsigned service = 0, aux_service = 0
         cdef unsigned long aux_ts = 0, ts = 0
@@ -130,8 +128,8 @@ cdef class EventBuilder:
         
         # For counting if all transtion dgrams show up
         cdef cn_dgrams = 0
-        
-        while got < batch_size and self._has_more() and not reach_limit_ts:
+
+        while got < batch_size and self._has_more():
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
             array.zero(self.services)
@@ -291,11 +289,6 @@ cdef class EventBuilder:
                     if cn_dgrams != self.nsmds:
                         print(f'Error: Transtion: {(ts >> 32) & 0xffffffff}.{ts & 0xffffffff} (service:{service}) is missing one or more dgrams (found: {cn_dgrams}/ expected: {self.nsmds})')
                         raise
-
-            if limit_ts > -1:
-                if self.max_ts >= limit_ts:
-                    reach_limit_ts = 1
-                    break
 
             if got == batch_size:
                 break
