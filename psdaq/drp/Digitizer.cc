@@ -7,7 +7,7 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
-// #include "psalg/digitizer/Hsd.hh"
+#include "psalg/digitizer/Hsd.hh"
 #include "DataDriver.h"
 #include "Si570.hh"
 #include "psalg/utils/SysLog.hh"
@@ -310,6 +310,20 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(i+1, shape);
             uint32_t dmaIndex = event->buffers[i].index;
             memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
+            //
+            // Check the overflow bit in the stream headers
+            //
+            const uint8_t* p = (const uint8_t*)m_pool->dmaBuffers[dmaIndex]+sizeof(Pds::TimingHeader);
+            const uint8_t* const p_end = p + data_size;
+            do {
+                const Pds::HSD::StreamHeader& stream = *reinterpret_cast<const Pds::HSD::StreamHeader*>(p);
+                if (stream.overflow()) {
+                    dgram.xtc.damage.increase(Damage::UserDefined);
+                    break;
+                }
+                p += stream.num_samples()*sizeof(uint16_t);
+            } while( p < p_end);
+
             // example showing how to use psalg Hsd code to extract data.
             // we are now not using this code since it was too complex
             // (see comment at top of Hsd.hh)
