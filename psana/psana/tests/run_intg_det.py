@@ -9,7 +9,7 @@ size = comm.Get_size()
 def intg_det():
     # Set SMD0 and EB batch size
     os.environ['PS_SMD_N_EVENTS'] = '2'
-    batch_size = 4
+    batch_size = 1
 
     xtc_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'intg_det')
     ds = DataSource(exp='xpptut15', 
