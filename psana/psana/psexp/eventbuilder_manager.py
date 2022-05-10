@@ -9,6 +9,7 @@ class EventBuilderManager(object):
         self.filter_fn      = dsparms.filter
         self.destination    = dsparms.destination
         self.timestamps     = dsparms.timestamps
+        self.intg_stream_id = dsparms.intg_stream_id
         self.run            = run
         self.n_files        = len(self.configs)
 
@@ -25,6 +26,7 @@ class EventBuilderManager(object):
                     destination         = self.destination,
                     prometheus_counter  = self.c_filter,
                     run                 = self.run,
+                    intg_stream_id      = self.intg_stream_id,
                     ) 
             self.min_ts = self.eb.min_ts
             self.max_ts = self.eb.max_ts

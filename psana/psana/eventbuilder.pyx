@@ -68,9 +68,15 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def build(self, uint64_t[:] timestamps, batch_size=1, 
-            filter_fn=0, destination=0, 
-            prometheus_counter=None, run=None):
+    def build(self, 
+              uint64_t[:] timestamps, 
+              batch_size=1, 
+              filter_fn=0, 
+              destination=0, 
+              prometheus_counter=None, 
+              run=None,
+              intg_stream_id=-1
+             ):
         """
         Builds a list of batches.
 
@@ -80,9 +86,11 @@ cdef class EventBuilder:
         evt_footer_view:    [sizeof(d0) | sizeof(d1) | sizeof(d2) | 3] (for 3 dgrams in 1 evt)
         batch_footer_view:  [sizeof(evt0) | sizeof(evt1) | 2] (for 2 evts in 1 batch)
 
-        batch_size: no. of events in a batch
-        filter_fn: takes an event and return True/False
-        destination: takes an event and returns rank no.
+        batch_size:     No. of events in a batch
+        filter_fn:      Takes an event and return True/False
+        destination:    Takes an event and returns rank no.
+        intg_stream_id: Overrides counting every event (got) with counting only 
+                        events in this stream.
         """
         cdef unsigned got = 0
         cdef unsigned got_step = 0
@@ -100,14 +108,15 @@ cdef class EventBuilder:
         cdef list event_dgrams = [0] * self.nsmds
 
         # Setup event footer and batch footer - see above comments for the content of batch_dict
+        cdef unsigned MAX_BATCH_SIZE = 10000 
         cdef array.array int_array_template = array.array('I', [])
         cdef array.array evt_footer = array.clone(int_array_template, self.nsmds + 1, zero=False)
         cdef unsigned[:] evt_footer_view = evt_footer
         cdef unsigned evt_footer_size = sizeof(unsigned) * (self.nsmds + 1)
         evt_footer_view[-1] = self.nsmds
-        cdef array.array batch_footer= array.clone(int_array_template, batch_size + 1, zero=True)
+        cdef array.array batch_footer= array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
         cdef unsigned[:] batch_footer_view = batch_footer
-        cdef array.array step_batch_footer= array.clone(int_array_template, batch_size + 1, zero=True)
+        cdef array.array step_batch_footer= array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
         cdef unsigned[:] step_batch_footer_view = step_batch_footer
         
         # Use typed variables for performance
@@ -129,7 +138,11 @@ cdef class EventBuilder:
         # For counting if all transtion dgrams show up
         cdef cn_dgrams = 0
 
-        while got < batch_size and self._has_more():
+        # For counting no. of events in integrating stream. If `intg_stream_id`
+        # is not given, this counts no. of events (equivalent to `got`).
+        cdef cn_intg_events = 0
+
+        while cn_intg_events < batch_size and self._has_more():
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
             array.zero(self.services)
@@ -276,6 +289,14 @@ cdef class EventBuilder:
             if accept == 1:
                 batch.extend(evt_bytes)
                 evt_sizes.append(evt_size + evt_footer_size)
+
+                # Either counting no. of events normally or counting only
+                # events in integrating stream as set by `intg_stream_id`.
+                if intg_stream_id > -1:
+                    if self.event_timestamps[intg_stream_id] > 0:
+                        cn_intg_events += 1
+                else:
+                    cn_intg_events += 1
                 got += 1
                 
                 # Add step
@@ -292,21 +313,21 @@ cdef class EventBuilder:
 
         # end while got < batch_size...
         
-
+        assert got <= MAX_BATCH_SIZE, f"No. of events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got})"
+        assert got_step <= MAX_BATCH_SIZE, f"No. of transition events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got_step})"
         self.nevents = got
         self.nsteps = got_step
         
         # Add packet_footer for all events in each batch
         for _, val in batch_dict.items():
             batch, evt_sizes = val
-            
+           
             if memoryview(batch).nbytes == 0: continue
 
             for evt_idx in range(len(evt_sizes)):
                 batch_footer_view[evt_idx] = evt_sizes[evt_idx]
-            batch_footer_view[-1] = evt_idx + 1
-            batch.extend(batch_footer_view[:evt_idx+1])
-            batch.extend(batch_footer_view[batch_size:]) # when convert to bytearray negative index doesn't work
+            batch_footer_view[evt_idx+1] = evt_idx + 1
+            batch.extend(batch_footer_view[:evt_idx+2])
 
         for _, val in step_dict.items():
             step_batch, step_sizes = val
@@ -315,10 +336,8 @@ cdef class EventBuilder:
 
             for evt_idx in range(len(step_sizes)):
                 step_batch_footer_view[evt_idx] = step_sizes[evt_idx]
-            step_batch_footer_view[-1] = evt_idx + 1
-            step_batch.extend(step_batch_footer_view[:evt_idx+1])
-            step_batch.extend(step_batch_footer_view[batch_size:])
-        
+            step_batch_footer_view[evt_idx+1] = evt_idx + 1
+            step_batch.extend(step_batch_footer_view[:evt_idx+2])
         
         return batch_dict, step_dict
 
