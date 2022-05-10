@@ -14,14 +14,21 @@ class BatchIterator(object):
 
     SmdReaderManager returns this object when a chunk is read.
     """
-    def __init__(self, views, configs, run, 
-            batch_size=1, filter_fn=0, 
-            destination=0, timestamps=0):
+    def __init__(self, 
+                 views, 
+                 configs, 
+                 run, 
+                 batch_size=1, 
+                 filter_fn=0, 
+                 destination=0, 
+                 timestamps=0,
+                 intg_stream_id=-1):
         self.batch_size     = batch_size
         self.filter_fn      = filter_fn
         self.destination    = destination
         self.timestamps     = timestamps
         self.run            = run 
+        self.intg_stream_id = intg_stream_id
         
         empty_view = True
         for view in views:
@@ -51,6 +58,7 @@ class BatchIterator(object):
                 filter_fn=self.filter_fn, 
                 destination=self.destination,
                 run=self.run,
+                intg_stream_id=self.intg_stream_id,
                 )
         if self.eb.nevents == 0 and self.eb.nsteps == 0: 
             raise StopIteration
@@ -93,6 +101,11 @@ class SmdReaderManager(object):
             raise ValueError(msg)
 
     def get_next_dgrams(self):
+        """ Returns list of dgrams as appeared in the current offset of the smd chunks.
+
+        Currently used to retrieve Configure and BeginRun. This allows read with wait
+        for these two types of dgram.
+        """
         if self.dsparms.max_events > 0 and \
                 self.processed_events >= self.dsparms.max_events:
             logger.debug(f'max_events={self.dsparms.max_events} reached')
@@ -103,6 +116,9 @@ class SmdReaderManager(object):
             self._get()
          
         if self.smdr.is_complete():
+            # Get chunks with only one dgram each. There's no need to set
+            # integrating stream id here since Configure and BeginRun
+            # must exist in this stream too. 
             self.smdr.view(batch_size=1)
 
             # For configs, we need to copy data from smdreader's buffers
@@ -144,10 +160,11 @@ class SmdReaderManager(object):
         self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=intg_stream_id)
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
         batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, 
-                batch_size  = self.dsparms.batch_size, 
-                filter_fn   = self.dsparms.filter, 
-                destination = self.dsparms.destination,
-                timestamps  = self.dsparms.timestamps)
+                batch_size      = self.dsparms.batch_size, 
+                filter_fn       = self.dsparms.filter, 
+                destination     = self.dsparms.destination,
+                timestamps      = self.dsparms.timestamps,
+                intg_stream_id  = intg_stream_id)
         self.got_events = self.smdr.view_size
         self.processed_events += self.got_events
 
@@ -171,7 +188,7 @@ class SmdReaderManager(object):
                 st_view = time.monotonic()
 
                 # Gets the next batch of already read-in data. 
-                self.smdr.view(batch_size=self.smd0_n_events)
+                self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id)
                 self.got_events = self.smdr.view_size
                 got_events = self.got_events
                 self.processed_events += self.got_events
