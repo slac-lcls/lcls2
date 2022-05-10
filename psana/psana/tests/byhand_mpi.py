@@ -32,6 +32,9 @@ class Test:
         run_chunking = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_chunking.py')
         subprocess.check_call(['mpirun','-n','5','python',run_chunking], env=env)
         
+        run_intg_det = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_intg_det.py')
+        subprocess.check_call(['mpirun','-n','4','python',run_intg_det], env=env)
+        
         # Test more than 1 eb node
         env['PS_EB_NODES'] = '2'
         subprocess.check_call(['mpirun','-n','7','python',run_mixed_rate], env=env)

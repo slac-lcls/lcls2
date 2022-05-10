@@ -101,6 +101,14 @@ class andor_raw_0_0_2(DetectorImpl):
         if segs is None:
             return None
         return segs[1].calib
+class epix_raw_0_0_2(DetectorImpl):
+    def __init__(self, *args):
+        super(epix_raw_0_0_2, self).__init__(*args)
+    def calib(self, evt):
+        segs = self._segments(evt)
+        if segs is None:
+            return None
+        return segs[2].calib
 
 # for the fake cameras in the teststand
 class cspad_cspadRawAlg_1_2_3(DetectorImpl):
