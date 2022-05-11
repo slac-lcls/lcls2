@@ -81,10 +81,10 @@ cdef class EventBuilder:
         Builds a list of batches.
 
         Each batch is bytearray with this content:
-        [ [[d0][d1][d2][evt_footer_view]] [[d0][d1][d2][evt_footer_view]] ][batch_footer_view]
+        [ [[d0][d1][d2][evt_footer]] [[d0][d1][d2][evt_footer]] ][batch_footer]
         | ---------- evt 0 -------------| |------------evt 1 -----------| 
-        evt_footer_view:    [sizeof(d0) | sizeof(d1) | sizeof(d2) | 3] (for 3 dgrams in 1 evt)
-        batch_footer_view:  [sizeof(evt0) | sizeof(evt1) | 2] (for 2 evts in 1 batch)
+        evt_footer:    [sizeof(d0) | sizeof(d1) | sizeof(d2) | 3] (for 3 dgrams in 1 evt)
+        batch_footer:  [sizeof(evt0) | sizeof(evt1) | 2] (for 2 evts in 1 batch)
 
         batch_size:     No. of events in a batch
         filter_fn:      Takes an event and return True/False
@@ -92,10 +92,10 @@ cdef class EventBuilder:
         intg_stream_id: Overrides counting every event (got) with counting only 
                         events in this stream.
         """
-        cdef unsigned got = 0
-        cdef unsigned got_step = 0
-        batch_dict = {} # keeps list of batches (w/o destination callback, only one batch is returned at index 0)
-        step_dict = {}
+        cdef unsigned got       = 0
+        cdef unsigned got_step  = 0
+        batch_dict  = {} # keeps list of batches (w/o destination callback, only one batch is returned at index 0)
+        step_dict   = {}
         self.min_ts = 0
         self.max_ts = 0
 
@@ -104,33 +104,31 @@ cdef class EventBuilder:
         cdef size_t payload = 0
         cdef char* view_ptr
         cdef Py_buffer buf
-        cdef list raw_dgrams = [0] * self.nsmds
-        cdef list event_dgrams = [0] * self.nsmds
+        cdef list raw_dgrams    = [0] * self.nsmds
+        cdef list event_dgrams  = [0] * self.nsmds
 
         # Setup event footer and batch footer - see above comments for the content of batch_dict
-        cdef unsigned MAX_BATCH_SIZE = 10000 
         cdef array.array int_array_template = array.array('I', [])
-        cdef array.array evt_footer = array.clone(int_array_template, self.nsmds + 1, zero=False)
-        cdef unsigned[:] evt_footer_view = evt_footer
-        cdef unsigned evt_footer_size = sizeof(unsigned) * (self.nsmds + 1)
-        evt_footer_view[-1] = self.nsmds
-        cdef array.array batch_footer= array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
-        cdef unsigned[:] batch_footer_view = batch_footer
-        cdef array.array step_batch_footer= array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
-        cdef unsigned[:] step_batch_footer_view = step_batch_footer
+        cdef array.array evt_footer         = array.clone(int_array_template, self.nsmds + 1, zero=False)
+        cdef unsigned evt_footer_size       = sizeof(unsigned) * (self.nsmds + 1)
+        cdef unsigned MAX_BATCH_SIZE        = 10000 
+        cdef array.array batch_footer       = array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
+        cdef array.array step_batch_footer  = array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
         
         # Use typed variables for performance
-        cdef unsigned evt_size = 0
-        cdef short dgram_idx = 0
-        cdef short view_idx = 0
-        cdef unsigned evt_idx = 0
-        cdef unsigned aux_idx =0
+        cdef unsigned evt_size  = 0
+        cdef short dgram_idx    = 0
+        cdef short view_idx     = 0
+        cdef unsigned evt_idx   = 0
+        cdef unsigned aux_idx   = 0
 
         # For checking step dgrams
-        cdef unsigned service = 0, aux_service = 0
-        cdef unsigned long aux_ts = 0, ts = 0
-        cdef unsigned long aux_min_ts = 0
-        cdef int smd_id=0
+        cdef unsigned service           = 0
+        cdef unsigned aux_service       = 0
+        cdef unsigned long aux_ts       = 0
+        cdef unsigned long ts           = 0
+        cdef unsigned long aux_min_ts   = 0
+        cdef int smd_id                 = 0
 
         # For filter callback
         cdef int accept = 1 
@@ -141,6 +139,9 @@ cdef class EventBuilder:
         # For counting no. of events in integrating stream. If `intg_stream_id`
         # is not given, this counts no. of events (equivalent to `got`).
         cdef cn_intg_events = 0
+
+        # Set no. of dgrams in an event 
+        evt_footer[-1] = self.nsmds
 
         while cn_intg_events < batch_size and self._has_more():
             array.zero(self.timestamps)
@@ -245,12 +246,12 @@ cdef class EventBuilder:
             evt_bytes = bytearray()
             for dgram_idx in range(self.nsmds):
                 dgram = event_dgrams[dgram_idx]
-                evt_footer_view[dgram_idx] = 0
+                evt_footer[dgram_idx] = 0
                 if dgram: 
-                    evt_footer_view[dgram_idx] = dgram.nbytes
+                    evt_footer[dgram_idx] = dgram.nbytes
                     evt_bytes.extend(bytearray(dgram))
-                evt_size += evt_footer_view[dgram_idx]
-            evt_bytes.extend(evt_footer_view)
+                evt_size += evt_footer[dgram_idx]
+            evt_bytes.extend(evt_footer)
 
             # If destination() is not specifed, use batch 0.
             dest_rank = 0
@@ -325,9 +326,9 @@ cdef class EventBuilder:
             if memoryview(batch).nbytes == 0: continue
 
             for evt_idx in range(len(evt_sizes)):
-                batch_footer_view[evt_idx] = evt_sizes[evt_idx]
-            batch_footer_view[evt_idx+1] = evt_idx + 1
-            batch.extend(batch_footer_view[:evt_idx+2])
+                batch_footer[evt_idx] = evt_sizes[evt_idx]
+            batch_footer[evt_idx+1] = evt_idx + 1
+            batch.extend(batch_footer[:evt_idx+2])
 
         for _, val in step_dict.items():
             step_batch, step_sizes = val
@@ -335,9 +336,9 @@ cdef class EventBuilder:
             if memoryview(step_batch).nbytes ==0: continue
 
             for evt_idx in range(len(step_sizes)):
-                step_batch_footer_view[evt_idx] = step_sizes[evt_idx]
-            step_batch_footer_view[evt_idx+1] = evt_idx + 1
-            step_batch.extend(step_batch_footer_view[:evt_idx+2])
+                step_batch_footer[evt_idx] = step_sizes[evt_idx]
+            step_batch_footer[evt_idx+1] = evt_idx + 1
+            step_batch.extend(step_batch_footer[:evt_idx+2])
         
         return batch_dict, step_dict
 
