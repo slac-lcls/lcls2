@@ -1,5 +1,10 @@
 source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
 
+#conda deactivate
+#conda activate ps-4.5.11
+#RELDIR="/cds/home/opr/rixopr/git/lcls2_051022"
+
+# in use until May 10, 2022
 conda activate ps-4.5.10
 RELDIR="/cds/home/opr/rixopr/git/lcls2_021522"
 
