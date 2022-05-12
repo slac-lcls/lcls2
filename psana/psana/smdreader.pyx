@@ -30,10 +30,12 @@ cdef class SmdReader:
     cdef float      total_time
     cdef int        num_threads
     cdef Buffer*    send_bufs               # array of customed Buffers (one per EB node)
+    cdef Buffer*    send_step_bufs          # array of customed step Buffers (one per EB node)
     cdef int        sendbufsize             # size of each send buffer
     cdef int        n_eb_nodes
+    cdef int        is_legion
 
-    def __init__(self, int[:] fds, int chunksize, int max_retries):
+    def __init__(self, int[:] fds, int chunksize, int max_retries, int is_lg):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
         self.prl_reader         = ParallelReader(fds, chunksize)
         
@@ -43,19 +45,39 @@ cdef class SmdReader:
         self.total_time         = 0
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
         self.n_eb_nodes         = int(os.environ.get('PS_EB_NODES', '1'))
+        if is_lg:
+            self.is_legion = 1
+        else:
+            self.is_legion = 0
         self.send_bufs          = <Buffer *>malloc(self.n_eb_nodes * sizeof(Buffer))
+        if self.is_legion > 0:
+            self.send_step_bufs  = <Buffer *>malloc(self.n_eb_nodes * sizeof(Buffer))
+
         self.sendbufsize        = 0x10000000
         self._init_send_buffers()
+
+        if self.is_legion > 0:
+            self._init_step_buffers()
+
+
 
     def __dealloc__(self):
         cdef Py_ssize_t i
         for i in range(self.n_eb_nodes):
             free(self.send_bufs[i].chunk)
+        if self.is_legion:
+            for i in range(self.n_eb_nodes):
+                free(self.send_step_bufs[i].chunk)
     
     cdef void _init_send_buffers(self):
         cdef Py_ssize_t i
         for i in range(self.n_eb_nodes):
             self.send_bufs[i].chunk      = <char *>malloc(self.sendbufsize)
+
+    cdef void _init_step_buffers(self):
+        cdef Py_ssize_t i
+        for i in range(self.n_eb_nodes):
+            self.send_step_bufs[i].chunk      = <char *>malloc(self.sendbufsize)
     
     def is_complete(self):
         """ Checks that all buffers have at least one event 
@@ -312,7 +334,7 @@ cdef class SmdReader:
             footer[i] = step_size + smd_size
             total_size += footer[i]
 
-        # Copy footer 
+        # Copy footer
         footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
         memcpy(send_buf + offset, &footer, footer_size) 
         total_size += footer_size
@@ -335,7 +357,10 @@ cdef class SmdReader:
         cdef int c_only_steps = only_steps
         cdef int eb_idx = eb_node_id - 1        # eb rank starts from 1 (0 is Smd0)
         cdef char* send_buf
-        send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
+        if only_steps and self.is_legion:
+            send_buf = self.send_step_bufs[eb_idx].chunk # select the buffer for this eb
+        else:
+            send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
 
         # Compute beginning offsets of each chunk and get a list of buffer objects
         for i in range(self.prl_reader.nfiles):
@@ -365,6 +390,42 @@ cdef class SmdReader:
                             self.block_size_bufs[i])
                     footer[i] += self.block_size_bufs[i]
             
+        # Copy footer
+        footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
+        memcpy(send_buf + total_size, &footer, footer_size)
+        total_size += footer_size
+        view = <char [:total_size]> (send_buf)
+        return view
+
+    def repack_only_buf(self, eb_node_id):
+        """ Repack step and smd data in one consecutive chunk with footer at end.
+        Memory copying is done is parallel.
+        """
+        cdef int i=0, offset=0
+        cdef uint64_t offsets[1000]
+        cdef uint64_t footer_size=0, total_size=0
+        cdef unsigned footer[1000]
+        footer[self.prl_reader.nfiles] = self.prl_reader.nfiles
+        cdef char[:] view
+        cdef int eb_idx = eb_node_id - 1        # eb rank starts from 1 (0 is Smd0)
+        cdef char* send_buf
+        send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
+
+        # Compute beginning offsets of each chunk and get a list of buffer objects
+        for i in range(self.prl_reader.nfiles):
+            offsets[i] = offset
+            total_size += self.block_size_bufs[i]
+            offset += self.block_size_bufs[i]
+
+        # Copy smd buffers if exist
+        for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
+            footer[i] = 0
+            if self.block_size_bufs[i] > 0:
+                memcpy(send_buf + offsets[i],
+                       self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[self.i_st_bufs[i]],
+                       self.block_size_bufs[i])
+                footer[i] += self.block_size_bufs[i]
+
         # Copy footer 
         footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
         memcpy(send_buf + total_size, &footer, footer_size) 

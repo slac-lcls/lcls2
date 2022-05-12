@@ -71,7 +71,11 @@ class SmdReaderManager(object):
                 self.smd0_n_events = self.dsparms.max_events
         
         self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000000))
-        self.smdr = SmdReader(smd_fds, self.chunksize, self.dsparms.max_retries)
+        is_legion = 0
+        mode = os.environ.get('PS_PARALLEL')
+        if mode and mode == 'legion':
+            is_legion = 1
+        self.smdr = SmdReader(smd_fds, self.chunksize, self.dsparms.max_retries, is_legion)
         self.processed_events = 0
         self.got_events = -1
         self._run = None
@@ -168,6 +172,7 @@ class SmdReaderManager(object):
                 st_view = time.monotonic()
 
                 #mmrv_bufs, mmrv_step_bufs = self.smdr.view(batch_size=self.smd0_n_events)
+                # internally updates the buffeer step/start/blocksize
                 self.smdr.view(batch_size=self.smd0_n_events)
                 self.got_events = self.smdr.view_size
                 got_events = self.got_events

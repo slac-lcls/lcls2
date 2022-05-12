@@ -1,6 +1,7 @@
-from psana.psexp import mode, StepHistory, repack_for_bd, PacketFooter
+from psana.psexp import mode, StepHistory, repack_for_bd, repack_with_step_dg, PacketFooter
 from psana.psexp import EventBuilderManager, TransitionId, Events
 from psana.psexp.run import RunLegion
+from psana import dgram
 import numpy as np
 import time
 import logging
@@ -26,7 +27,8 @@ evt_kinds = {
 pygion = None
 if mode == 'legion':
     import pygion
-    from pygion import task
+    import sys
+    from pygion import task, RW, RO, WD, Partition, Ipartition, Region, Ispace, Domain
 else:
     # Nop when not using Legion
     def task(fn=None, **kwargs):
@@ -132,6 +134,7 @@ def eb_task(smd_chunk, idx):
                 eb.requests[client_id-1] = run_bigdata_task_psana2(batches[client_id],
                                                                  idx, point=client_id+eb.point_ofst)
                 logger.debug(f'eb task sent missing step to big data task {client_id} {time.monotonic()}')
+    return i
 
 
 
@@ -152,6 +155,41 @@ class LSmd0(object):
         # Collecting Smd0 performance using prometheus
         self.c_sent = dsparms.prom_man.get_metric('psana_smd0_sent')
 
+    """ support separate chunks for step and smds
+    """
+    def get_region_step_smd_chunk(self):
+        # pack_smds and step separately
+        pack_smds = {}
+        pack_steps = {}
+
+        # internally smdreader i.e. smdr_man.smdr
+        # keeps track of start,step,buffer position
+        # for this chunk
+        for i_chunk in self.smdr_man.chunks():
+            # Check missing steps: assume only single eb
+            # Initially returns empty views
+            # Next update (via extend_buffers_state) will record new transition
+            # history
+            missing_step_views = self.step_hist.get_buffer_only(1, smd0=True)
+            # get step entries and add them to the step region
+            step_views = [self.smdr_man.smdr.show(i, step_buf=True)
+                          for i in range(self.smdr_man.n_files)]
+            # append the new step view to the end of the buffer
+            extend_buffers = self.step_hist.extend_buffers_state(step_views,1)
+            # pack only the buffer without steps
+            # pack step views only if there are missing steps
+            # add those to legion's step region
+            eb_id = 1
+            step_only = 1
+            if extend_buffers:
+                pack_steps[1] = self.smdr_man.smdr.repack_parallel(missing_step_views,
+                                                                   eb_id, step_only)
+            else:
+                pack_steps[1] = bytearray()
+            pack_smds[1] = self.smdr_man.smdr.repack_only_buf(eb_id)
+            yield pack_smds[1], pack_steps[1]
+
+
     def start(self):
         rankreq = np.empty(self.smd_size, dtype='i')
         requests = []
@@ -162,11 +200,11 @@ class LSmd0(object):
         # that it needs to share later when data are packaged
         # for sending to EventBuilders.
         repack_smds = {}
+
         for i_chunk in self.smdr_man.chunks():
             st_req = time.monotonic()
             logger.debug(f' smd0 task got i_chunk={i_chunk} {st_req}')
             # task to send this chunk with history
-            # SEEMA: check (+1)
             point = i_chunk%self.smd_size + 1
 
             if future_eb[point] != None:
@@ -175,11 +213,13 @@ class LSmd0(object):
             # Check missing steps for the current client
             missing_step_views = self.step_hist.get_buffer(point,
                                                            smd0=True)
-            # Update step buffers (after getting the missing steps
+            # returns a view into each file for step entries
             step_views = [self.smdr_man.smdr.show(i, step_buf=True)
                           for i in range(self.smdr_man.n_files)]
 
+            # Update step buffers (after getting the missing steps)
             self.step_hist.extend_buffers(step_views, point)
+            # combine steps views + actual data
             repack_smds[point] = self.smdr_man.smdr.repack_parallel(
                 missing_step_views, point)
 
@@ -227,6 +267,115 @@ def run_smd_task_psana2(smd_chunk,idx):
     f =  eb_task(smd_chunk, idx, point=idx-1)
     return f
 
+# use regions for transition data
+# 1 partition  = [start:end]
+def make_ipartition(r_ispace, start, end):
+    colors = [1]
+    index_spaces = []
+    IP1 = Ipartition.pending(r_ispace, [1])
+    index_spaces.append(Ispace([end-start],[start]))
+    IP1.union([0], index_spaces)
+    return IP1
+
+# debug task that logs all the datagrams
+@task(privileges=[RO])
+def eb_task_debug(R, smd_batch, idx):
+    logger.debug(f'EB_Task_With_Region_DEBUG: Subregion has volume %s extent %s bounds %s' % (
+        R.ispace.volume, R.ispace.domain.extent, R.ispace.bounds))
+    run = run_objs[idx]
+    pf = PacketFooter(view=smd_batch)
+    chunks = pf.split_packets()
+    logger.debug(f'------------------EB Task Dgrams-------------------')
+    offsets = [0] * pf.n_packets
+    for i, chunk in enumerate(chunks):
+        logger.debug(f'----File %d----' % (i))
+        while offsets[i] < pf.get_size(i):
+            # Creates a dgram from this chunk at the given offset.
+            d = dgram.Dgram(view=chunk, config=run.configs[i], offset=offsets[i])
+            logger.debug(f'timestamp: %s : %s' % (str(d.timestamp()), evt_kinds[d.service()]))
+            offsets[i] += d._size
+
+    pf = PacketFooter(view=bytearray(R.x))
+    chunks = pf.split_packets()
+    logger.debug(f'-----------EB Task Transition Region Dgrams-------------')
+    offsets = [0] * pf.n_packets
+    for i, chunk in enumerate(chunks):
+        logger.debug(f'----File %d----' % (i))
+        while offsets[i] < pf.get_size(i):
+            # Creates a dgram from this chunk at the given offset.
+            d = dgram.Dgram(view=chunk, config=run.configs[i], offset=offsets[i])
+            logger.debug(f'timestamp: %s : %s' % (str(d.timestamp()), evt_kinds[d.service()]))
+            offsets[i] += d._size
+
+# EB task with a region for transition datagrams
+@task(privileges=[RO])
+def eb_task_with_region(R, smd_batch, idx):
+    ''' log the datagrams
+    eb_task_debug(R, smd_batch, idx)
+    '''
+    run = run_objs[idx]
+    eb = run.ds.eb
+    eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
+    batches = {}
+    for smd_batch_dict, step_batch_dict  in eb_man.batches():
+        # send to any bigdata nodes if destination is required
+        smd_batch, _ = smd_batch_dict[0]
+        step_batch, _ = step_batch_dict[0]
+        batches[1] = repack_with_step_dg(smd_batch,
+                                         bytearray(R.x),
+                                         eb.configs)
+
+        run = run_objs[idx]
+        for evt in batch_events(batches[1], run):
+            run.event_fn(evt, run.det)
+
+@task(privileges=[WD])
+def fill_task(R):
+    pygion.fill(R, 'x', 0)
+
+@task
+def make_region_task(size):
+    R = Region([size], {'x': pygion.int8})
+    return R
+
+@task(privileges=[WD])
+def fill_data(R, data):
+    logger.debug(f'Fill_Data_Task: Subregion has volume %s extent %s bounds %s' % (
+        R.ispace.volume, R.ispace.domain.extent, R.ispace.bounds))
+    np.copyto(R.x,bytearray(data))
+
+def check_partition(R, P, step_data):
+    # make a new partition only if transitions have occured in the chunk
+    if len(step_data) != 0:
+        start = 0
+        end = len(bytearray(step_data))
+        # previous old partition instance can be cleared
+        fill_task(P[0])
+        IP = make_ipartition(R.ispace, start, end)
+        P = Partition(R, IP)
+        fill_data(P[0], bytearray(step_data))
+        return P
+    return P
+
+def smd_chunks_steps(run):
+    return run.ds.smd0.get_region_step_smd_chunk()
+
+# This is the entry task for SMD0 with a Region for Transition Datagrams
+@task(inner=True, replicable=True)
+def run_smd0_with_region_task_psana2(idx):
+    # TODO: FIXME
+    #R = make_region_task(sys.maxsize).get()
+    R = make_region_task(100000).get()
+    IP = make_ipartition(R.ispace, 0, 0)
+    P = Partition(R, IP)
+    fill_task(P[0])
+    run = run_objs[idx]
+    for smd_data, step_data in smd_chunks_steps(run):
+        # make a new partition only if additional transitions have occured in the chunk
+        P = check_partition(R, P, step_data)
+        eb_task_with_region(P[0], bytearray(smd_data), idx)
+    pygion.execution_fence(block=True)
+
 @task(inner=True)
 def run_smd0_task_psana2(idx):
     run = run_objs[idx]
@@ -242,7 +391,6 @@ def smd_chunks(run):
 @task(inner=True)
 def run_smd0_task(run):
     global_procs = pygion.Tunable.select(pygion.Tunable.GLOBAL_PYS).get()
-
     for i, smd_chunk in enumerate(smd_chunks(run)):
         run_smd_task(smd_chunk, run, point=i)
     # Block before returning so that the caller can use this task's future for synchronization
@@ -288,7 +436,8 @@ def analyze(run, event_fn=None, det=None):
         global_task_registration_barrier = pygion.c.legion_phase_barrier_advance(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
         pygion.c.legion_phase_barrier_wait(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
         run_objs.append(run)
-        return run_smd0_task_psana2(len(run_objs)-1)
+        # return run_smd0_task_psana2(len(run_objs)-1)
+        return run_smd0_with_region_task_psana2(len(run_objs)-1)
     else:
         run_objs.append(run)
     
@@ -297,4 +446,4 @@ if pygion is not None and not pygion.is_script:
     @task(top_level=True)
     def legion_main():
         for i, _ in enumerate(run_objs):
-            run_smd0_task_psana2(i, point=0)
+            run_smd0_with_region_task_psana2(i)

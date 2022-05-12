@@ -133,7 +133,7 @@ class StepHistory(object):
         # [ -----------client 0------------- ,  ----------- client 1------------ ,
         for i in range(1, client_size):
             self.send_history.append(np.zeros(self.n_smds, dtype=np.int))
-
+        self.state = True
 
     def extend_buffers(self, views, client_id, as_event=False):
         idx = client_id - 1 # rank 0 has no send history.
@@ -158,6 +158,19 @@ class StepHistory(object):
         for i, view in enumerate(views):
             self.send_history[indexed_id][i] += view.nbytes
 
+    # change variable keeps track of whether there are any transitions
+    # in the current batch. Is so we need to re-partition the region next
+    # time around and pack the new transition data.
+    # If there are no new transitions then we re-use the existing region
+    def extend_buffers_state(self, views, client_id):
+        idx = client_id - 1
+        change = self.state
+        self.state = False
+        for i_smd, view in enumerate(views):
+            self.bufs[i_smd].extend(view)
+            if view.nbytes:
+                self.state = True
+        return change
 
     def get_buffer(self, client_id, smd0=False):
         """ Returns new step data (if any) for this client
@@ -175,6 +188,23 @@ class StepHistory(object):
                     views[i].extend(current_buf[current_offset:])
                     self.send_history[indexed_id][i] = current_buf_size
         return views
+
+    def get_buffer_only(self, client_id, smd0=False):
+        """ Returns new step data (if any) for this client
+        then updates the sent record."""
+        views = []
+
+        if self.n_smds: # do nothing if no step data found
+            indexed_id = client_id - 1 # rank 0 has no send history.
+            views = [bytearray() for i in range(self.n_smds)]
+            for i, buf in enumerate(self.bufs):
+                current_buf = self.bufs[i]
+                current_offset = self.send_history[indexed_id][i]
+                current_buf_size = memoryview(current_buf).nbytes
+                if current_offset < current_buf_size:
+                    views[i].extend(current_buf[current_offset:])
+        return views
+
 
 def repack_for_bd(smd_batch, step_views, configs, client=-1):
     """ EventBuilder Node uses this to prepend missing step views 
@@ -197,7 +227,7 @@ def repack_for_bd(smd_batch, step_views, configs, client=-1):
                 offsets[i] += d._size
                 step_size += d._size
                 step_pf.set_size(i, d._size)
-            
+
             steps.extend(step_pf.footer)
             step_sizes.append(step_size + memoryview(step_pf.footer).nbytes)
             n_steps += 1
@@ -206,7 +236,7 @@ def repack_for_bd(smd_batch, step_views, configs, client=-1):
         new_batch_pf = PacketFooter(n_packets = batch_pf.n_packets + n_steps)
         for i in range(n_steps):
             new_batch_pf.set_size(i, step_sizes[i])
-        
+
         for i in range(n_steps, new_batch_pf.n_packets):
             new_batch_pf.set_size(i, batch_pf.get_size(i-n_steps))
 
@@ -217,6 +247,53 @@ def repack_for_bd(smd_batch, step_views, configs, client=-1):
         return new_batch
     else:
         return smd_batch
+
+def repack_with_step_dg(smd_batch, step_views, configs):
+    """ EventBuilder Node uses this to prepend missing step datagrams
+    to the smd_batch. This output chunk contains list of pre-built events."""
+    pf = PacketFooter(view=step_views)
+    if pf and pf.get_size(0):
+        batch_pf = PacketFooter(view=smd_batch)
+        # initialize offsets array to 0
+        offsets = [0]*pf.n_packets
+        # get the chunks from SMD0
+        chunks = pf.split_packets()
+        # Create bytearray containing a list of events from step_views
+        steps = bytearray()
+        # number of files
+        n_smds = pf.n_packets
+        step_sizes = []
+        n_steps = 0
+        while offsets[0] < pf.get_size(0):
+            step_pf = PacketFooter(n_packets=n_smds)
+            step_size = 0
+            # organize dgrams vertically
+            for i, chunk in enumerate(chunks):
+                d = Dgram(view=chunk,config=configs[i],offset=offsets[i])
+                steps.extend(d)
+                offsets[i] += d._size
+                step_size += d._size
+                step_pf.set_size(i, d._size)
+
+            steps.extend(step_pf.footer)
+            step_sizes.append(step_size + memoryview(step_pf.footer).nbytes)
+            n_steps += 1
+
+        # Create new batch with total_events = smd_batch_events + step_events
+        new_batch_pf = PacketFooter(n_packets = batch_pf.n_packets + n_steps)
+        for i in range(n_steps):
+            new_batch_pf.set_size(i, step_sizes[i])
+
+        for i in range(n_steps, new_batch_pf.n_packets):
+            new_batch_pf.set_size(i, batch_pf.get_size(i-n_steps))
+
+        new_batch = bytearray()
+        new_batch.extend(steps)
+        new_batch.extend(smd_batch[:memoryview(smd_batch).nbytes-memoryview(batch_pf.footer).nbytes])
+        new_batch.extend(new_batch_pf.footer)
+        return new_batch
+    return smd_batch
+
 
 def wait_for(requests):
     status = [MPI.Status() for i in range(len(requests))]
