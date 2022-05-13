@@ -101,11 +101,10 @@ procmgr_config = [
 
  { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50, cmd:udp_cmd0+' -l 0x8'},
 
-# 9/23/2021 - fim2 h/w not stable
   { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
   { host: 'drp-neh-cmp007', id:'rix_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x20'},
   { host: 'drp-neh-cmp007', id:'rix_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x80'},
-# valmar and cpo removed the ttpv since it causes fex mode to give 100% deadtime
+
 # { host: 'drp-neh-cmp013', id:'atmopal_0',   flags:'spu' ,  env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=RIX:TIMETOOL:TTALL'},
 
  #     Note: '-1' specifies fuzzy timestamping
