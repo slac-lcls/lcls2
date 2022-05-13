@@ -32,6 +32,7 @@ Usage::
 
     # Print attributes and n-d arrays
     # -------------------------------
+    hp.info_attrs()
     hp.print_attrs()
     hp.print_ndarrs()
 
@@ -61,7 +62,7 @@ Created in 2015 by Mikhail Dubrovin
 import math
 import numpy as np
 from psana.pyalgos.generic.HBins import HBins
-from psana.pyalgos.generic.NDArrUtils import print_ndarr
+from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
 
 def divide_protected(num, den, vsub_zero=0):
     """Returns result of devision of numpy arrays num/den with substitution of value vsub_zero for zero den elements.
@@ -91,8 +92,8 @@ def polar2cart(r, theta):
 def bincount(map_bins, map_weights=None, length=None):
     """Wrapper for numpy.bincount with protection of weights and alattening numpy arrays.
     """
-    weights = None if map_weights is None else map_weights.flatten()
-    return np.bincount(map_bins.flatten(), weights, length)
+    weights = None if map_weights is None else map_weights.ravel()
+    return np.bincount(map_bins.ravel(), weights, length)
 
 
 def polarization_factor(rad, phi_deg, z, vertical=False):
@@ -148,10 +149,10 @@ class HPolar():
                )
 
         if mask is not None:
-            self.cond = np.logical_and(self.cond, mask.astype(np.bool).flatten())
+            self.cond = np.logical_and(self.cond, mask.astype(np.bool).ravel())
 
         # index ntbins stands for overflow bin
-        self.iseq = np.select((self.cond,), (self.iphi*nrbins + self.irad,), self.ntbins).flatten()
+        self.iseq = np.select((self.cond,), (self.iphi*nrbins + self.irad,), self.ntbins).ravel()
 
         #self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=None)
         self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=self.ntbins+1)
@@ -176,10 +177,14 @@ class HPolar():
         self.is360 = math.fabs(math.fabs(phi2-phi1)-360) < 1e-3
 
 
+    def info_attrs(self):
+        return '%s attrbutes:' % self.__class__.__name__\
+          + self.pb.strrange(fmt='\nPhi bins:  min:%8.1f  max:%8.1f  nbins:%5d')\
+          + self.rb.strrange(fmt='\nRad bins:  min:%8.1f  max:%8.1f  nbins:%5d')
+
+
     def print_attrs(self):
-        print('%s attrbutes:' % self.__class__.__name__)
-        print(self.pb.strrange(fmt='Phi bins:  min:%8.1f  max:%8.1f  nbins:%5d'))
-        print(self.rb.strrange(fmt='Rad bins:  min:%8.1f  max:%8.1f  nbins:%5d'))
+        print(self.info_attrs())
 
 
     def print_ndarrs(self):
@@ -238,24 +243,24 @@ class HPolar():
         return self.npix_per_bin
 
 
-    def _flatten_(self, nda):
+    def _ravel_(self, nda):
         if len(nda.shape)>1:
             #nda.shape = self.shapeflat
-            return nda.flatten() # return flatten copy in order to preserve input array shape
+            return nda.ravel() # return ravel copy in order to preserve input array shape
         return nda
 
 
     def bin_intensity(self, nda):
         """Returns 1-d numpy array of total pixel intensity per bin for input array nda."""
-        #return np.bincount(self.iseq, weights=self._flatten_(nda), minlength=None)
-        return np.bincount(self.iseq, weights=self._flatten_(nda), minlength=self.ntbins+1) # +1 for overflow bin
+        #return np.bincount(self.iseq, weights=self._ravel_(nda), minlength=None)
+        return np.bincount(self.iseq, weights=self._ravel_(nda), minlength=self.ntbins+1) # +1 for overflow bin
 
 
     def bin_avrg(self, nda):
         """Returns 1-d numpy array of averaged in r-phi bin intensities for input image array nda.
            WARNING array range [0, nrbins*npbins + 1], where +1 bin intensity is for all off ROI pixels.
         """
-        num = self.bin_intensity(self._flatten_(nda))
+        num = self.bin_intensity(self._ravel_(nda))
         den = self.bin_number_of_pixels()
         #print_ndarr(nda, name='ZZZ bin_avrg: nda', first=0, last=5)
         #print_ndarr(num, name='ZZZ bin_avrg: num', first=0, last=5)
@@ -265,7 +270,7 @@ class HPolar():
 
     def bin_avrg_rad_phi(self, nda, do_transp=True):
         """Returns 2-d (rad,phi) numpy array of averaged in bin intensity for input array nda."""
-        arr_rphi = self.bin_avrg(self._flatten_(nda))[:-1] # -1 removes off ROI bin
+        arr_rphi = self.bin_avrg(self._ravel_(nda))[:-1] # -1 removes off ROI bin
         arr_rphi.shape = (self.pb.nbins(), self.rb.nbins())
         return np.transpose(arr_rphi) if do_transp else arr_rphi
 
@@ -273,12 +278,12 @@ class HPolar():
     def pixel_avrg(self, nda, subs_value=0):
         """Makes r-phi histogram of intensities from input image array and
            projects r-phi averaged intensities back to image.
-           Returns flatten 1-d numpy array of per-pixel intensities taken from r-phi histogram.
-           - nda - input (2-d or 1-d-flatten) pixel array.
+           Returns ravel 1-d numpy array of per-pixel intensities taken from r-phi histogram.
+           - nda - input (2-d or 1-d-ravel) pixel array.
            - subs_value - value sabstituted for pixels out of ROI defined by the min/max in r-phi.
         """
-        bin_avrg= self.bin_avrg(self._flatten_(nda))
-        return np.select((self.cond,), (bin_avrg[self.iseq],), subs_value).flatten()
+        bin_avrg= self.bin_avrg(self._ravel_(nda))
+        return np.select((self.cond,), (bin_avrg[self.iseq],), subs_value).ravel()
         #return np.array([bin_avrg[i] for i in self.iseq]) # iseq may be outside the bin_avrg range
 
 
@@ -296,7 +301,7 @@ class HPolar():
             self.griddata = griddata
 
         # 1) get values in bin centers
-        binv = self.bin_avrg_rad_phi(self._flatten_(nda), do_transp=False)
+        binv = self.bin_avrg_rad_phi(self._ravel_(nda), do_transp=False)
 
         # 2) add values in bin edges
 
@@ -326,8 +331,8 @@ class HPolar():
         points_rad, points_phi = np.meshgrid(rad_nodes, phi_nodes)
         if verb: print('points_phi.shape', points_phi.shape)
         if verb: print('points_rad.shape', points_rad.shape)
-        points = np.vstack((points_phi.flatten(), points_rad.flatten())).T
-        values = val_nodes.flatten()
+        points = np.vstack((points_phi.ravel(), points_rad.ravel())).T
+        values = val_nodes.ravel()
         if verb:
             #print('points:', points)
             print('points.shape', points.shape)
