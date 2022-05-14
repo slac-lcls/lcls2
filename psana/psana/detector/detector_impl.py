@@ -3,9 +3,19 @@ import amitypes
 from psana.dgram import Dgram
 
 
+def hiddenmethod(obj):
+    """
+    Adds an '_hidden' attribute to an object so it won't be picked up by detinfo
+    """
+    obj._hidden = True
+    return obj
+
+
+
 class Container(object):
     def __init__(self):
         pass
+
 
 class MissingDet:
     def __init__(self):

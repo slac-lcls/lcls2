@@ -1,5 +1,5 @@
 import numpy as np
-from psana.detector.detector_impl import DetectorImpl
+from psana.detector.detector_impl import hiddenmethod, DetectorImpl
 from amitypes import Array1d, Array2d, Array3d
         
 # For testing quadanode (this uses Cython for speed)        
@@ -70,6 +70,7 @@ class hsd_fex_4_5_6(DetectorImpl):
         super(hsd_fex_4_5_6, self).__init__(*args)
     def calib(self, evt) -> Array1d:
         return np.zeros((6))
+    @hiddenmethod
     def show(self, evt):
         segs = self._segments(evt)
         print(f'valFex: {segs[0].valFex}')

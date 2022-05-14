@@ -14,17 +14,27 @@ from psana.psexp import *
 class DetectorNameError(Exception): pass
 
 
+def _is_hidden_attr(obj, name):
+    if name.startswith('_'):
+        return True
+    else:
+        attr = getattr(obj, name)
+        if hasattr(attr, '_hidden'):
+            return attr._hidden
+        else:
+            return False
+
+
 def _enumerate_attrs(obj):
     state = []
     found = []
 
     def mygetattr(obj):
-        children = [attr for attr in dir(obj) if not attr.startswith('_') and attr != "dtype"]
-
+        children = [attr for attr in dir(obj) if not _is_hidden_attr(obj, attr) and attr != "dtype"]
         for child in children:
             childobj = getattr(obj,child)
 
-            if len([attr for attr in dir(childobj) if not attr.startswith('_')]) == 0:
+            if len([attr for attr in dir(childobj) if not _is_hidden_attr(childobj, attr)]) == 0:
                 found.append( '.'.join(state + [child]) )
             elif type(childobj) == property:
                 found.append( '.'.join(state + [child]) )
