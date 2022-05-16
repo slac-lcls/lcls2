@@ -251,8 +251,9 @@ class Server: # (hdf5 handling)
         else:
             raise TypeError('Type: Dataset %s type %s not compatible' % (dataset_name, type(data)))
 
-        self._dsets[dataset_name] = (dtype, shape)
+        if shape==(0,): raise ValueError('Dataset %s has illegal shape (0,)' % dataset_name)
 
+        self._dsets[dataset_name] = (dtype, shape)
         dset = self.file_handle.create_dataset(dataset_name,
                                                (0,) + shape, # (0,) -> expand dim
                                                maxshape=maxshape,
