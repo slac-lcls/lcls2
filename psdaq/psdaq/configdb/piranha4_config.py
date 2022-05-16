@@ -292,8 +292,14 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     if(cl.ClinkPcie.Hsio.PgpMon[lane].RxRemLinkReady.get() != 1): # This is for PGP2
         raise ValueError(f'PGP Link is down' )
 
+    applicationLane = getattr(cl.ClinkPcie.Application,appLane)
+
+    # weaver-recommended default for new register for cameralink_gateway 7.11
+    if hasattr(applicationLane,'XpmPauseThresh'):
+        applicationLane.XpmPauseThresh.set(0xff)
+
     # drain any data in the event pipeline
-    getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(True)
+    applicationLane.EventBuilder.Blowoff.set(True)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(True)
 
     #  set bool parameters
@@ -319,7 +325,7 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
 
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
-    getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(False)
+    applicationLane.EventBuilder.Blowoff.set(False)
 
     #  Capture the firmware version to persist in the xtc
     cfg['firmwareVersion'] = cl.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
