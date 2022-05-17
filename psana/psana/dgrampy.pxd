@@ -96,6 +96,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
                 DataDef& datadef, char* varname)
         cnp.uint32_t get_removed_size()
         void copy(Dgram* parent_d, int isConfig)
+        void copyTo(Dgram* parent_d, char* outbuf, int isConfig)
         void setFilter(char* detName, char* algName)
         void clearFilter()
         void resetRemovedSize()

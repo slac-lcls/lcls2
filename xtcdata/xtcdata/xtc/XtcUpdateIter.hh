@@ -166,6 +166,7 @@ public:
     int getElementSize(unsigned nodeId, unsigned namesId,
             DataDef& datadef, char* varname);
     void copy(Dgram* parent_d, int isConfig);
+    void copyTo(Dgram* parent_d, char* out_buf, int isConfig);
     void copy2buf(char* in_buf, unsigned in_size);
     void copy2tmpbuf(char* in_buf, unsigned in_size);
     void copy2cfgbuf(char* in_buf, unsigned in_size);

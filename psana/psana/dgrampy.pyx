@@ -7,6 +7,7 @@ from cpython cimport array
 import array
 import numpy as np
 import numbers
+import io
 
 # Need a different name to prevent clashing with cpp class
 from psana.psexp import TransitionId as PyTransitionId 
@@ -134,12 +135,6 @@ cdef class PyXtcUpdateIter():
     def __cinit__(self):
         self.cptr = new XtcUpdateIter(self._numWords)
 
-    def savextc2(self, f):
-        """Writes data from _buf to xtc2 file and resets the buffer.
-        """
-        f.write(self.get_buf())
-        self.cptr.clear_buf()
-
     def process(self, PyXtc pyxtc):
         self.cptr.process(pyxtc.cptr)
 
@@ -157,8 +152,19 @@ cdef class PyXtcUpdateIter():
         else:
             return memoryview(bytearray())
 
+    def clear_buf(self):
+        self.cptr.clear_buf()
+
     def copy(self, PyDgram pydg, is_config=False):
         self.cptr.copy(pydg.cptr, is_config)
+
+    def copy_to(self, PyDgram pydg, outbuf, is_config=False):
+        cdef char* o_ptr
+        cdef Py_buffer o_pybuf
+        PyObject_GetBuffer(outbuf, &o_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+        o_ptr = <char *>o_pybuf.buf
+        self.cptr.copyTo(pydg.cptr, o_ptr, is_config)
+        PyBuffer_Release(&o_pybuf)
 
     def updatetimestamp(self, PyDgram pydg, timestamp_val):
         self.cptr.updateTimeStamp(pydg.cptr[0], timestamp_val)
@@ -401,7 +407,7 @@ class DgramPy:
     def removedata(self, det_name, alg_name):
         self.uiter.set_filter(det_name, alg_name)
 
-    def save(self, xtc2file):
+    def save(self, out):
         """ 
         For L1Accept,
         Copies ShapesData to _tmpbuf and update
@@ -437,13 +443,24 @@ class DgramPy:
             self.pydg.dec_extent(removed_size)
         
         # Copy updated parent dgram and _tmpbuf/_cfgbuf to _buf then save.
-        self.uiter.copy(self.pydg, is_config=is_config)
-        self.uiter.savextc2(xtc2file)
+        # We support two types of output:
+        # 1. Binary file (IOBase) - copy _tmpbuf/_cfgbuf with parent dgram
+        # to _buf and write data in _buf out the binary file (two copies).
+        # 2. Object with buffer interface - copy _tmpbuf/_cfgbuf with
+        # parent dgram directly to the given object.
+        if isinstance(out, io.IOBase):
+            self.uiter.copy(self.pydg, is_config=is_config)
+            out.write(self.uiter.get_buf())
+        else:
+            self.uiter.copy_to(self.pydg, out, is_config=is_config)
+
+        self.uiter.clear_buf()
 
         # Clear filter flags and reset removed size for the next event
         self.uiter.clear_filter()
 
     def updatetimestamp(self, timestamp_val):
         self.uiter.updatetimestamp(self.pydg, timestamp_val)
+
 
 

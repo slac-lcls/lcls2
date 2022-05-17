@@ -327,6 +327,20 @@ void XtcUpdateIter::copy(Dgram* parent_d, int isConfig){
 }
 
 
+/* Performs atomic copy (see detail from copy()) but the output
+   is copied to the given buffer (and not the main _buf).
+*/
+void XtcUpdateIter::copyTo(Dgram* parent_d, char* out_buf, int isConfig){
+    // TODO Add checks for overflown
+    memcpy(out_buf, (char *) parent_d, sizeof(Dgram));
+    if (isConfig == 1) {
+        memcpy(out_buf + sizeof(Dgram), _cfgbuf, _cfgbufsize);
+    } else {
+        memcpy(out_buf + sizeof(Dgram), _tmpbuf, _tmpbufsize);
+    }
+}
+
+
 void XtcUpdateIter::updateTimeStamp(Dgram& d, uint64_t timestamp_val){
     d.time = TimeStamp(timestamp_val);
 }
