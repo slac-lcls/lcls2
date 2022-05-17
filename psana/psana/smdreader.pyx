@@ -27,6 +27,9 @@ cdef class SmdReader:
     cdef array.array block_size_bufs            # }
     cdef array.array i_st_stepbufs              # }
     cdef array.array block_size_stepbufs        # }
+    cdef array.array repack_offsets             # ¬ for parallel repack 
+    cdef array.array repack_step_sizes          # }
+    cdef array.array repack_footer              # }
     cdef unsigned    winner_last_sv             # ¬ transition id and ts of the last dgram in winner's chunk
     cdef uint64_t    winner_last_ts             # } 
     cdef uint64_t    _next_fake_ts              # incremented from winner_last_ts if 0 otherwise from itself
@@ -41,7 +44,7 @@ cdef class SmdReader:
     def __init__(self, int[:] fds, int chunksize, int max_retries):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
         self.prl_reader         = ParallelReader(fds, chunksize)
-        self.max_retries        = max_retries   # no default value (set when creating datasource)
+        self.max_retries        = max_retries                       # no default value (set when creating datasource)
         self.sleep_secs         = 1
         self.total_time         = 0
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
@@ -58,6 +61,12 @@ cdef class SmdReader:
         self.block_size_bufs    = array.array('L', [0]*fds.size) 
         self.i_st_stepbufs      = array.array('L', [0]*fds.size) 
         self.block_size_stepbufs= array.array('L', [0]*fds.size) 
+        self.repack_offsets     = array.array('L', [0]*fds.size)
+        self.repack_step_sizes  = array.array('L', [0]*fds.size)
+        self.repack_footer      = array.array('I', [0]*(fds.size+1))# size of all smd chunks plus no. of smds
+
+        # Repack footer contains constant (per run) no. of smd files
+        self.repack_footer[fds.size] = fds.size 
         
         # For speed, SmdReader puts together smd chunk and missing step info
         # in parallel and store the new data in `send_bufs` (one buffer per stream).
@@ -394,18 +403,16 @@ cdef class SmdReader:
         Memory copying is done is parallel.
         """
         cdef Py_buffer step_buf
-        cdef char* ptr_step_bufs[1000]
-        cdef int i=0, offset=0
-        cdef uint64_t offsets[1000]
-        cdef uint64_t step_sizes[1000]
-        cdef uint64_t footer_size=0, total_size=0
-        cdef unsigned footer[1000]
-        footer[self.prl_reader.nfiles] = self.prl_reader.nfiles 
+        cdef char* ptr_step_bufs[1000]          # FIXME No easy way to fix this yet.
+        cdef uint64_t* offsets = <uint64_t*>self.repack_offsets.data.as_voidptr
+        cdef uint64_t* step_sizes = <uint64_t*>self.repack_step_sizes.data.as_voidptr
         cdef char[:] view
         cdef int c_only_steps = only_steps
         cdef int eb_idx = eb_node_id - 1        # eb rank starts from 1 (0 is Smd0)
         cdef char* send_buf
         send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
+        cdef int i=0, offset=0
+        cdef uint64_t footer_size=0, total_size=0
 
         # Compute beginning offsets of each chunk and get a list of buffer objects
         for i in range(self.prl_reader.nfiles):
@@ -423,6 +430,8 @@ cdef class SmdReader:
         # Access raw C pointers so they can be used in nogil loop below
         cdef uint64_t* block_size_bufs = <uint64_t*>self.block_size_bufs.data.as_voidptr
         cdef uint64_t* i_st_bufs = <uint64_t*>self.i_st_bufs.data.as_voidptr
+        cdef uint32_t* footer = <uint32_t*>self.repack_footer.data.as_voidptr
+        
         # Copy step and smd buffers if exist
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
             footer[i] = 0
@@ -439,8 +448,8 @@ cdef class SmdReader:
                     footer[i] += block_size_bufs[i]
             
         # Copy footer 
-        footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
-        memcpy(send_buf + total_size, &footer, footer_size) 
+        footer_size = sizeof(uint32_t) * (self.prl_reader.nfiles + 1)
+        memcpy(send_buf + total_size, footer, footer_size) 
         total_size += footer_size
         view = <char [:total_size]> (send_buf) 
         return view
