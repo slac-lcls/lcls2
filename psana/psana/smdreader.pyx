@@ -16,35 +16,32 @@ from psana.dgrampy import DgramPy
 
 cdef class SmdReader:
     cdef ParallelReader prl_reader
-    cdef int        winner, n_view_events
-    cdef int        max_retries, sleep_secs
-    cdef uint64_t   i_starts[100]               # ¬ used locally for finding boundary of each
-    cdef uint64_t   i_ends[100]                 # } stream file (defined here for speed) in view(),  
-    cdef uint64_t   i_stepbuf_starts[100]       # } which generates sharing window variables below.
-    cdef uint64_t   i_stepbuf_ends[100]         # }
-    cdef uint64_t   block_sizes[100]            # }
-    cdef uint64_t   i_st_bufs[100]              # ¬ for sharing viewing windows in show() 
-    cdef uint64_t   block_size_bufs[100]        # }
-    cdef uint64_t   i_st_stepbufs[100]          # }
-    cdef uint64_t   block_size_stepbufs[100]    # }
-    cdef unsigned   winner_last_sv              # ¬ transition id and ts of the last dgram in winner's chunk
-    cdef uint64_t   winner_last_ts              # } 
-    cdef uint64_t   _next_fake_ts               # incremented from winner_last_ts if 0 otherwise from itself
-    cdef float      total_time
-    cdef int        num_threads
-    cdef Buffer*    send_bufs                   # array of customed Buffers (one per EB node)
-    cdef int        sendbufsize                 # size of each send buffer
-    cdef int        n_eb_nodes
-    cdef int        fakestep_size               
-    cdef list       configs
+    cdef int         winner, n_view_events
+    cdef int         max_retries, sleep_secs
+    cdef array.array i_starts                   # ¬ used locally for finding boundary of each
+    cdef array.array i_ends                     # } stream file (defined here for speed) in view(),  
+    cdef array.array i_stepbuf_starts           # } which generates sharing window variables below.
+    cdef array.array i_stepbuf_ends             # }
+    cdef array.array block_sizes                # }
+    cdef array.array i_st_bufs                  # ¬ for sharing viewing windows in show() 
+    cdef array.array block_size_bufs            # }
+    cdef array.array i_st_stepbufs              # }
+    cdef array.array block_size_stepbufs        # }
+    cdef unsigned    winner_last_sv             # ¬ transition id and ts of the last dgram in winner's chunk
+    cdef uint64_t    winner_last_ts             # } 
+    cdef uint64_t    _next_fake_ts              # incremented from winner_last_ts if 0 otherwise from itself
+    cdef float       total_time
+    cdef int         num_threads
+    cdef Buffer*     send_bufs                  # array of customed Buffers (one per EB node)
+    cdef int         sendbufsize                # size of each send buffer
+    cdef int         n_eb_nodes
+    cdef int         fakestep_size               
+    cdef list        configs
 
     def __init__(self, int[:] fds, int chunksize, int max_retries):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
         self.prl_reader         = ParallelReader(fds, chunksize)
-        
-        # Max retries has no default value (set when creating datasource)
-        self.max_retries        = max_retries
-
+        self.max_retries        = max_retries   # no default value (set when creating datasource)
         self.sleep_secs         = 1
         self.total_time         = 0
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
@@ -52,11 +49,21 @@ cdef class SmdReader:
         self.winner_last_ts     = 0
         self._next_fake_ts      = 0
         self.configs            = []
+        self.i_starts           = array.array('L', [0]*fds.size) 
+        self.i_ends             = array.array('L', [0]*fds.size) 
+        self.i_stepbuf_starts   = array.array('L', [0]*fds.size) 
+        self.i_stepbuf_ends     = array.array('L', [0]*fds.size) 
+        self.block_sizes        = array.array('L', [0]*fds.size) 
+        self.i_st_bufs          = array.array('L', [0]*fds.size) 
+        self.block_size_bufs    = array.array('L', [0]*fds.size) 
+        self.i_st_stepbufs      = array.array('L', [0]*fds.size) 
+        self.block_size_stepbufs= array.array('L', [0]*fds.size) 
         
         # For speed, SmdReader puts together smd chunk and missing step info
         # in parallel and store the new data in `send_bufs` (one buffer per stream).
         self.send_bufs          = <Buffer *>malloc(self.n_eb_nodes * sizeof(Buffer))
         self.sendbufsize        = 0x10000000                                
+        self._init_send_buffers()
         
         # Index of the slowest detector or intg_stream_id if given.
         self.winner             = -1
@@ -64,7 +71,6 @@ cdef class SmdReader:
         # Sets event frequency that fake EndStep/BeginStep pair is inserted.
         self.fakestep_size = int(os.environ.get('PS_FAKESTEP_SIZE', 0))
         
-        self._init_send_buffers()
 
     def __dealloc__(self):
         cdef Py_ssize_t i
@@ -414,6 +420,9 @@ cdef class SmdReader:
             ptr_step_bufs[i] = <char *>step_buf.buf
             PyBuffer_Release(&step_buf)
 
+        # Access raw C pointers so they can be used in nogil loop below
+        cdef uint64_t* block_size_bufs = <uint64_t*>self.block_size_bufs.data.as_voidptr
+        cdef uint64_t* i_st_bufs = <uint64_t*>self.i_st_bufs.data.as_voidptr
         # Copy step and smd buffers if exist
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
             footer[i] = 0
@@ -423,11 +432,11 @@ cdef class SmdReader:
                 footer[i] += step_sizes[i]
             
             if c_only_steps == 0:
-                if self.block_size_bufs[i] > 0:
+                if block_size_bufs[i] > 0:
                     memcpy(send_buf + offsets[i], 
-                            self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[self.i_st_bufs[i]], 
-                            self.block_size_bufs[i])
-                    footer[i] += self.block_size_bufs[i]
+                            self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[i_st_bufs[i]], 
+                            block_size_bufs[i])
+                    footer[i] += block_size_bufs[i]
             
         # Copy footer 
         footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
