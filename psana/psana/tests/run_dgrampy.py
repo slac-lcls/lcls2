@@ -1,4 +1,4 @@
-from dgrampy import DgramPy, AlgDef, DetectorDef, PyXtcFileIterator
+from psana.dgrampy import DgramPy, AlgDef, DetectorDef, PyXtcFileIterator
 import os
 import numpy as np
 from psana import DataSource
