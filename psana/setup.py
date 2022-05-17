@@ -281,7 +281,7 @@ if 'DGRAM' in BUILD_LIST :
     )
     CYTHON_EXTS.append(ext)
 
-    ext = Extension("dgrampy",
+    ext = Extension("psana.dgrampy",
                     sources=["psana/dgrampy.pyx"],
                     libraries = ['xtc'],
                     include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
