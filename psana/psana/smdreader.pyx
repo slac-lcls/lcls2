@@ -2,7 +2,6 @@
 ## distutils: define_macros=CYTHON_TRACE_NOGIL=1
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
-from dgramlite cimport Xtc, Sequence, Dgram
 from parallelreader cimport Buffer, ParallelReader
 from libc.stdint cimport uint32_t, uint64_t
 from cpython cimport array
@@ -12,6 +11,7 @@ from psana.psexp import TransitionId
 import numpy as np
 from cython.parallel import prange
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
+from psana.dgrampy import DgramPy
 
 
 cdef class SmdReader:
@@ -27,25 +27,43 @@ cdef class SmdReader:
     cdef uint64_t   block_size_bufs[100]        # }
     cdef uint64_t   i_st_stepbufs[100]          # }
     cdef uint64_t   block_size_stepbufs[100]    # }
+    cdef unsigned   winner_last_sv              # ¬ transition id and ts of the last dgram in winner's chunk
+    cdef uint64_t   winner_last_ts              # } 
+    cdef uint64_t   _next_fake_ts               # incremented from winner_last_ts if 0 otherwise from itself
     cdef float      total_time
     cdef int        num_threads
     cdef Buffer*    send_bufs                   # array of customed Buffers (one per EB node)
     cdef int        sendbufsize                 # size of each send buffer
     cdef int        n_eb_nodes
+    cdef int        fakestep_size               
+    cdef list       configs
 
     def __init__(self, int[:] fds, int chunksize, int max_retries):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
         self.prl_reader         = ParallelReader(fds, chunksize)
         
-        # max retries has no default value (set when creating datasource)
+        # Max retries has no default value (set when creating datasource)
         self.max_retries        = max_retries
+
         self.sleep_secs         = 1
         self.total_time         = 0
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
         self.n_eb_nodes         = int(os.environ.get('PS_EB_NODES', '1'))
+        self.winner_last_ts     = 0
+        self._next_fake_ts      = 0
+        self.configs            = []
+        
+        # For speed, SmdReader puts together smd chunk and missing step info
+        # in parallel and store the new data in `send_bufs` (one buffer per stream).
         self.send_bufs          = <Buffer *>malloc(self.n_eb_nodes * sizeof(Buffer))
-        self.sendbufsize        = 0x10000000
+        self.sendbufsize        = 0x10000000                                
+        
+        # Index of the slowest detector or intg_stream_id if given.
         self.winner             = -1
+        
+        # Sets event frequency that fake EndStep/BeginStep pair is inserted.
+        self.fakestep_size = int(os.environ.get('PS_FAKESTEP_SIZE', 0))
+        
         self._init_send_buffers()
 
     def __dealloc__(self):
@@ -71,6 +89,12 @@ cdef class SmdReader:
                 break
 
         return is_complete
+
+    def set_configs(self, configs):
+        # SmdReaderManager calls view (with batch_size=1)  at the beginning
+        # to read config dgrams. It passes the configs to SmdReader for
+        # creating any fake dgrams using DgramPy.
+        self.configs = configs
 
     def get(self, smd_inprogress_converted):
         """SmdReaderManager only calls this function when there's no more event
@@ -146,9 +170,11 @@ cdef class SmdReader:
                 self.prl_reader.bufs[self.winner].n_seen_events
         cdef int i_eob=0
         if self.n_view_events > batch_size:
-            i_eob = self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size
-            limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
-            self.n_view_events = batch_size
+            i_eob               = self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size
+            limit_ts            = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
+            self.n_view_events  = batch_size
+            self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_eob]      
+            self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
 
         # Locate the viewing window and update seen_offset for each buffer
         cdef Buffer* buf
@@ -162,6 +188,8 @@ cdef class SmdReader:
         cdef uint64_t[:] block_size_bufs    = self.block_size_bufs
         cdef uint64_t[:] i_st_stepbufs      = self.i_st_stepbufs
         cdef uint64_t[:] block_size_stepbufs= self.block_size_stepbufs
+
+        # Need to convert Python object to c++ data type for the nogil loop 
         cdef unsigned endrun_id = TransitionId.EndRun
         
         st_search = time.monotonic()
@@ -232,9 +260,17 @@ cdef class SmdReader:
 
         self.total_time += en_all - st_all
 
+    def get_next_fake_ts(self):
+        if self._next_fake_ts == 0:
+            self._next_fake_ts = self.winner_last_ts + 1
+        else:
+            self._next_fake_ts += 1
+        return self._next_fake_ts
+
     def show(self, int i_buf, step_buf=False):
         """ Returns memoryview of buffer i_buf at the current viewing
         i_st and block_size"""
+
         cdef Buffer* buf
         cdef uint64_t[:] block_size_bufs
         cdef uint64_t[:] i_st_bufs      
@@ -249,6 +285,15 @@ cdef class SmdReader:
         
         cdef char[:] view
         if block_size_bufs[i_buf] > 0:
+            if self.fakestep_size > 0 and self.configs:
+                out = bytearray(0x100000)
+                fake_config = DgramPy(transition_id=TransitionId.Configure, ts=0)
+                fake_config.save(out)
+                endstep = DgramPy(transition_id=TransitionId.EndStep, config=fake_config, ts=self.get_next_fake_ts())
+                endstep.save(out)
+                from psana.dgram import Dgram
+                d = Dgram(view=out, config=self.configs[i_buf], offset=0)
+                #print(f'ts={self._next_fake_ts} d_ts={d.timestamp()} d_sv={d.service()}')
             view = <char [:block_size_bufs[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_bufs[i_buf]])
             return view
         else:
@@ -270,7 +315,6 @@ cdef class SmdReader:
     def total_time(self):
         return self.total_time
 
-
     @property
     def got(self):
         return self.prl_reader.got
@@ -278,6 +322,14 @@ cdef class SmdReader:
     @property
     def chunk_overflown(self):
         return self.prl_reader.chunk_overflown
+
+    @property
+    def winner_last_sv(self):
+        return self.winner_last_sv
+
+    @property
+    def winner_last_ts(self):
+        return self.winner_last_ts
 
     def found_endrun(self):
         cdef int i

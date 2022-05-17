@@ -73,12 +73,16 @@ class SmdReaderManager(object):
         self.configs = configs
         assert self.n_files > 0
         
+        # Sets no. of events Smd0 sends to each EventBuilder core. This gets
+        # overridden by max_events set by DataSource if max_events is smaller.
         self.smd0_n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
         if self.dsparms.max_events:
             if self.dsparms.max_events < self.smd0_n_events:
                 self.smd0_n_events = self.dsparms.max_events
         
+        # Sets the memory size for smalldata buffer for each stream file.
         self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000000))
+
         self.smdr = SmdReader(smd_fds, self.chunksize, self.dsparms.max_retries)
         self.processed_events = 0
         self.got_events = -1
@@ -128,6 +132,7 @@ class SmdReaderManager(object):
             if self.configs is None:
                 dgrams = [dgram.Dgram(view=ba_buf, offset=0) for ba_buf in bytearray_bufs]
                 self.configs = dgrams
+                self.smdr.set_configs(self.configs)
             else:
                 dgrams = [dgram.Dgram(view=ba_buf, config=config, offset=0) for ba_buf, config in zip(bytearray_bufs, self.configs)]
         return dgrams
@@ -167,7 +172,6 @@ class SmdReaderManager(object):
                 intg_stream_id  = intg_stream_id)
         self.got_events = self.smdr.view_size
         self.processed_events += self.got_events
-
         return batch_iter
         
 
