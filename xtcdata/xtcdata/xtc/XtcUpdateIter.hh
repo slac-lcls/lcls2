@@ -123,6 +123,16 @@ public:
         return _bufsize;
     }
 
+    unsigned getSize(){
+        unsigned bufsize=0;
+        if (isConfig()) {
+            bufsize = _cfgbufsize;
+        }else{
+            bufsize = _tmpbufsize;
+        }
+        return sizeof(Dgram) + bufsize;
+    }
+
     void clear_buf(){
         _bufsize = 0;
     }
