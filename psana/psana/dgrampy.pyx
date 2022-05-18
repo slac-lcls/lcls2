@@ -155,14 +155,17 @@ cdef class PyXtcUpdateIter():
     def clear_buf(self):
         self.cptr.clear_buf()
 
+    def size(self):
+        return self.cptr.getSize()
+
     def copy(self, PyDgram pydg, is_config=False):
         self.cptr.copy(pydg.cptr, is_config)
 
-    def copy_to(self, PyDgram pydg, outbuf, is_config=False):
+    def copy_to(self, PyDgram pydg, outbuf, uint64_t offset, is_config=False):
         cdef char* o_ptr
         cdef Py_buffer o_pybuf
         PyObject_GetBuffer(outbuf, &o_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
-        o_ptr = <char *>o_pybuf.buf
+        o_ptr = <char *>o_pybuf.buf + offset
         self.cptr.copyTo(pydg.cptr, o_ptr, is_config)
         PyBuffer_Release(&o_pybuf)
 
@@ -407,7 +410,7 @@ class DgramPy:
     def removedata(self, det_name, alg_name):
         self.uiter.set_filter(det_name, alg_name)
 
-    def save(self, out):
+    def save(self, out, offset=0):
         """ 
         For L1Accept,
         Copies ShapesData to _tmpbuf and update
@@ -447,12 +450,12 @@ class DgramPy:
         # 1. Binary file (IOBase) - copy _tmpbuf/_cfgbuf with parent dgram
         # to _buf and write data in _buf out the binary file (two copies).
         # 2. Object with buffer interface - copy _tmpbuf/_cfgbuf with
-        # parent dgram directly to the given object.
+        # parent dgram directly to the given object at the given offset.
         if isinstance(out, io.IOBase):
             self.uiter.copy(self.pydg, is_config=is_config)
             out.write(self.uiter.get_buf())
         else:
-            self.uiter.copy_to(self.pydg, out, is_config=is_config)
+            self.uiter.copy_to(self.pydg, out, offset, is_config=is_config)
 
         self.uiter.clear_buf()
 
@@ -461,6 +464,15 @@ class DgramPy:
 
     def updatetimestamp(self, timestamp_val):
         self.uiter.updatetimestamp(self.pydg, timestamp_val)
+
+    @property
+    def size(self):
+        """Returns current size of the dgram.
+
+        This is calculated from size of the parent dgram plus the size
+        of _tmpbuf or _cfgbuf depending on the type of the dgram.
+        """
+        return self.uiter.size()
 
 
 
