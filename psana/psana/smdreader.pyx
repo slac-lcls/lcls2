@@ -40,7 +40,9 @@ cdef class SmdReader:
     cdef int         n_eb_nodes
     cdef int         fakestep_size               
     cdef list        configs
-    cdef bytearray   fake_buffer
+    cdef bytearray   _fakebuf
+    cdef unsigned    _fakebuf_maxsize
+    cdef unsigned    _fakebuf_size
 
     def __init__(self, int[:] fds, int chunksize, int max_retries):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
@@ -65,7 +67,9 @@ cdef class SmdReader:
         self.repack_offsets     = array.array('L', [0]*fds.size)
         self.repack_step_sizes  = array.array('L', [0]*fds.size)
         self.repack_footer      = array.array('I', [0]*(fds.size+1))# size of all smd chunks plus no. of smds
-        self.fake_buffer        = bytearray()
+        self._fakebuf_maxsize   = 0x1000
+        self._fakebuf           = bytearray(self._fakebuf_maxsize)
+        self._fakebuf_size      = 0
 
         # Repack footer contains constant (per run) no. of smd files
         self.repack_footer[fds.size] = fds.size 
@@ -181,12 +185,15 @@ cdef class SmdReader:
                         self.winner = i
                         limit_ts = self.prl_reader.bufs[self.winner].timestamp
         limit_ts = self.prl_reader.bufs[self.winner].timestamp
-        i_eob = self.n_view_events - 1
+
+        # No. of events available in the viewing window
+        self.n_view_events = self.prl_reader.bufs[self.winner].n_ready_events - \
+                self.prl_reader.bufs[self.winner].n_seen_events
+        # Index of the last event in the viewing window
+        i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
         
         # Apply batch_size- find boundaries (limit ts) of the winning buffer.
         # this is either the nth or the batch_size event.
-        self.n_view_events = self.prl_reader.bufs[self.winner].n_ready_events - \
-                self.prl_reader.bufs[self.winner].n_seen_events
         if self.n_view_events > batch_size:
             i_eob               = self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size
             limit_ts            = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
@@ -198,7 +205,7 @@ cdef class SmdReader:
 
         # Reset timestamp and buffer for fake steps (will be calculated lazily)
         self._next_fake_ts = 0
-        self.fake_buffer   = bytearray()
+        self._fakebuf_size = 0
 
         # Locate the viewing window and update seen_offset for each buffer
         cdef Buffer* buf
@@ -298,36 +305,36 @@ cdef class SmdReader:
             self._next_fake_ts = self.winner_last_ts + 1
         return self._next_fake_ts
 
-    def build_fake_buffer(self):
+    def get_fake_buffer(self):
         """Returns set of fake transitions.
 
         For inserting in all streams files. These transtion set is the
         same therefore we only need to generate once.
         """
-        if self.fake_buffer:
-            print(f'return pre careted fake_buffer {memoryview(self.fake_buffer).nbytes} bytes')
-            return
-        
-        print(f'create fake transtions')
-        self.fake_buffer = bytearray()
-        fake_config = DgramPy(transition_id=TransitionId.Configure, ts=0)
-        fake_transitions = [TransitionId.Disable, 
-                            TransitionId.EndStep,
-                            TransitionId.BeginStep,
-                            TransitionId.Enable,
-                           ]
-        fake_ts = self.get_next_fake_ts()
         cdef unsigned i_fake=0, out_offset = 0
-        for i_fake, fake_transition in enumerate(fake_transitions):
-            fake_dgram = DgramPy(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
-            self.fake_buffer.extend(b'0'*fake_dgram.size)
-            fake_dgram.save(self.fake_buffer, offset=out_offset)
-            out_offset += fake_dgram.size 
-            print(f'fake_buffer size={memoryview(self.fake_buffer).nbytes}')
+        if self._fakebuf_size == 0:
+            fake_config = DgramPy(transition_id=TransitionId.Configure, ts=0)
+            fake_transitions = [TransitionId.Disable, 
+                                TransitionId.EndStep,
+                                TransitionId.BeginStep,
+                                TransitionId.Enable,
+                               ]
+            fake_ts = self.get_next_fake_ts()
+            for i_fake, fake_transition in enumerate(fake_transitions):
+                fake_dgram = DgramPy(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
+                fake_dgram.save(self._fakebuf, offset=out_offset)
+                out_offset += fake_dgram.size 
+            self._fakebuf_size = out_offset
+        return self._fakebuf[:self._fakebuf_size]
 
     def show(self, int i_buf, step_buf=False):
         """ Returns memoryview of buffer i_buf at the current viewing
-        i_st and block_size"""
+        i_st and block_size.
+        
+        If fake transition need to be inserted (see conditions below),
+        we need to copy smd or step buffers to a new buffer and append
+        it with these transitions.
+        """
 
         cdef Buffer* buf
         cdef uint64_t[:] block_size_bufs
@@ -343,28 +350,9 @@ cdef class SmdReader:
         
         cdef char[:] view
         if block_size_bufs[i_buf] > 0:
-            if self.fakestep_size > 0 and self.configs:
-                #out = bytearray(0x1000)
-                #fake_config = DgramPy(transition_id=TransitionId.Configure, ts=0)
-                #fake_transitions = [TransitionId.Disable, 
-                #                    TransitionId.EndStep,
-                #                    TransitionId.BeginStep,
-                #                    TransitionId.Enable,
-                #                   ]
-                #fake_ts = self.get_next_fake_ts()
-                #out_offset = 0
-                #for i_fake, fake_transition in enumerate(fake_transitions):
-                #    fake_dgram = DgramPy(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
-                #    fake_dgram.save(out, offset=out_offset)
-                #    out_offset += fake_dgram.size 
-                self.build_fake_buffer()
+            if self.fakestep_size > 0 and self.winner_last_sv in (TransitionId.L1Accept, TransitionId.SlowUpdate):
+                out = self.get_fake_buffer()
                 
-                from psana.dgram import Dgram
-                offset = 0
-                while offset < memoryview(self.fake_buffer).nbytes:
-                    d = Dgram(view=self.fake_buffer, config=self.configs[i_buf], offset=offset)
-                    print(f'fake d_ts={d.timestamp()} d_sv={d.service()}')
-                    offset += d._size
             view = <char [:block_size_bufs[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_bufs[i_buf]])
             return view
         else:
