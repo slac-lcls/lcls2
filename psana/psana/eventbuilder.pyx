@@ -68,9 +68,9 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def build(self, uint64_t[:] timestamps, batch_size=1, 
-            filter_fn=0, destination=0, limit_ts=-1, 
-            prometheus_counter=None, run=None):
+    def build(self, uint64_t[:] timestamps, batch_size=1,
+              filter_fn=0, destination=0, limit_ts=-1,
+              prometheus_counter=None, run=None, do_step=True):
         """
         Builds a list of batches.
 
@@ -266,12 +266,13 @@ cdef class EventBuilder:
                 batch_dict[dest_rank] = (bytearray(), [])
             batch, evt_sizes = batch_dict[dest_rank]
 
-            if step_dict:
-                if dest_rank not in step_dict:
-                    step_dict[dest_rank] = (bytearray(), [])
-            else:
-                step_dict[dest_rank] = (bytearray(), [])
-            step_batch, step_sizes = step_dict[dest_rank] 
+            if do_step:
+                if step_dict:
+                    if dest_rank not in step_dict:
+                        step_dict[dest_rank] = (bytearray(), [])
+                    else:
+                        step_dict[dest_rank] = (bytearray(), [])
+                    step_batch, step_sizes = step_dict[dest_rank]
 
             # Extend this batch bytearray to include this event and collect
             # the size of this event for batch footer.
@@ -281,10 +282,11 @@ cdef class EventBuilder:
                 got += 1
                 
                 # Add step
-                if service != self.L1Accept:
-                    step_batch.extend(evt_bytes)
-                    step_sizes.append(evt_size + evt_footer_size)
-                    got_step += 1
+                if do_step:
+                    if service != self.L1Accept:
+                        step_batch.extend(evt_bytes)
+                        step_sizes.append(evt_size + evt_footer_size)
+                        got_step += 1
 
                 # Check that all transition dgrams show up in all streams
                 if service != self.L1Accept:
@@ -304,7 +306,8 @@ cdef class EventBuilder:
         # end while got < batch_size...
         
         self.nevents = got
-        self.nsteps = got_step
+        if do_step:
+            self.nsteps = got_step
         
         # Add packet_footer for all events in each batch
         for _, val in batch_dict.items():
@@ -318,19 +321,22 @@ cdef class EventBuilder:
             batch.extend(batch_footer_view[:evt_idx+1])
             batch.extend(batch_footer_view[batch_size:]) # when convert to bytearray negative index doesn't work
 
-        for _, val in step_dict.items():
-            step_batch, step_sizes = val
+        if do_step:
+            for _, val in step_dict.items():
+                step_batch, step_sizes = val
+                if memoryview(step_batch).nbytes ==0: continue
 
-            if memoryview(step_batch).nbytes ==0: continue
+                for evt_idx in range(len(step_sizes)):
+                    step_batch_footer_view[evt_idx] = step_sizes[evt_idx]
 
-            for evt_idx in range(len(step_sizes)):
-                step_batch_footer_view[evt_idx] = step_sizes[evt_idx]
             step_batch_footer_view[-1] = evt_idx + 1
             step_batch.extend(step_batch_footer_view[:evt_idx+1])
             step_batch.extend(step_batch_footer_view[batch_size:])
         
-        
-        return batch_dict, step_dict
+        if do_step:
+            return batch_dict, step_dict
+        else:
+            return batch_dict
 
     @property
     def nevents(self):

@@ -1,4 +1,4 @@
-from psana.psexp import mode, StepHistory, repack_for_bd, repack_with_step_dg, PacketFooter
+from psana.psexp import mode, StepHistory, repack_for_bd, repack_with_step_dg, repack_with_mstep_dg, PacketFooter
 from psana.psexp import EventBuilderManager, TransitionId, Events
 from psana.psexp.run import RunLegion
 from psana import dgram
@@ -170,7 +170,9 @@ class LSmd0(object):
             # Initially returns empty views
             # Next update (via extend_buffers_state) will record new transition
             # history
-            missing_step_views = self.step_hist.get_buffer_only(1, smd0=True)
+            # note: to test with task run_smd0_with_region_task_psana2
+            # invoke get_buffer_only
+            missing_step_views = self.step_hist.get_buffer(1)
             # get step entries and add them to the step region
             step_views = [self.smdr_man.smdr.show(i, step_buf=True)
                           for i in range(self.smdr_man.n_files)]
@@ -277,6 +279,34 @@ def make_ipartition(r_ispace, start, end):
     IP1.union([0], index_spaces)
     return IP1
 
+def eb_debug_batches(idx, smd_batch, cnt):
+    run = run_objs[idx]
+    pf = PacketFooter(view=smd_batch, num_views=cnt)
+    for j, chunks in enumerate(pf.split_multiple_packets()):
+        offsets = [0] * pf.n_packets
+        logger.debug(f'n_packets={pf.n_packets}, partition[{j}]')
+        for i, chunk in enumerate(chunks):
+            logger.debug(f'----File %d----' % (i))
+            while offsets[i] < pf.get_size(i):
+                # Creates a dgram from this chunk at the given offset.
+                d = dgram.Dgram(view=chunk, config=run.configs[i], offset=offsets[i])
+                logger.debug(f'timestamp: %s : %s' % (str(d.timestamp()), evt_kinds[d.service()]))
+                offsets[i] += d._size
+
+# debug task that logs all the datagrams
+@task(privileges=[RO])
+def eb_task_debug_multiple(R, idx, smd_batch, cnt):
+    logger.debug(f'EB_Task_With_Multiple_Region_DEBUG: Subregion has volume %s extent %s bounds %s' % (
+        R.ispace.volume, R.ispace.domain.extent, R.ispace.bounds))
+
+    if smd_batch:
+        logger.debug(f'--------------L1Accept Dgrams---------------')
+        eb_debug_batches(idx, smd_batch, 1)
+    if cnt:
+        logger.debug(f'-------------Transition Dgrams--------------')
+        eb_debug_batches(idx, bytearray(R.x), cnt)
+
+
 # debug task that logs all the datagrams
 @task(privileges=[RO])
 def eb_task_debug(R, smd_batch, idx):
@@ -292,7 +322,7 @@ def eb_task_debug(R, smd_batch, idx):
         while offsets[i] < pf.get_size(i):
             # Creates a dgram from this chunk at the given offset.
             d = dgram.Dgram(view=chunk, config=run.configs[i], offset=offsets[i])
-            logger.debug(f'timestamp: %s : %s' % (str(d.timestamp()), evt_kinds[d.service()]))
+            logger.debug(f'timestamp: %s : size: %d %s' % (str(d.timestamp()), d._size, evt_kinds[d.service()]))
             offsets[i] += d._size
 
     pf = PacketFooter(view=bytearray(R.x))
@@ -304,30 +334,52 @@ def eb_task_debug(R, smd_batch, idx):
         while offsets[i] < pf.get_size(i):
             # Creates a dgram from this chunk at the given offset.
             d = dgram.Dgram(view=chunk, config=run.configs[i], offset=offsets[i])
-            logger.debug(f'timestamp: %s : %s' % (str(d.timestamp()), evt_kinds[d.service()]))
+            logger.debug(f'timestamp: %s : size: %d %s' % (str(d.timestamp()), d._size, evt_kinds[d.service()]))
             offsets[i] += d._size
 
 # EB task with a region for transition datagrams
 @task(privileges=[RO])
 def eb_task_with_region(R, smd_batch, idx):
     ''' log the datagrams
-    eb_task_debug(R, smd_batch, idx)
     '''
+    eb_task_debug(R, smd_batch, idx)
     run = run_objs[idx]
     eb = run.ds.eb
     eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
     batches = {}
-    for smd_batch_dict, step_batch_dict  in eb_man.batches():
+    for smd_batch_dict in eb_man.smd_batches():
         # send to any bigdata nodes if destination is required
         smd_batch, _ = smd_batch_dict[0]
-        step_batch, _ = step_batch_dict[0]
         batches[1] = repack_with_step_dg(smd_batch,
                                          bytearray(R.x),
                                          eb.configs)
-
         run = run_objs[idx]
         for evt in batch_events(batches[1], run):
             run.event_fn(evt, run.det)
+
+
+# EB task with a region for transition datagrams
+@task(privileges=[RO])
+def eb_task_with_multiple_region(R, smd_batch, idx, num_dgrams):
+    ''' log the datagrams
+    eb_task_debug_multiple(R, idx, smd_batch, num_dgrams)
+    '''
+    logger.debug(f'EB_Task_With_Multiple_Region: Subregion has volume %s extent %s bounds %s' % (
+        R.ispace.volume, R.ispace.domain.extent, R.ispace.bounds))
+    run = run_objs[idx]
+    eb = run.ds.eb
+    eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
+    batches = {}
+    for smd_batch_dict in eb_man.smd_batches():
+        # send to any bigdata nodes if destination is required: TODO
+        smd_batch, _ = smd_batch_dict[0]
+        batches[1] = repack_with_mstep_dg(smd_batch,
+                                          bytearray(R.x),
+                                          eb.configs, num_dgrams)
+        run = run_objs[idx]
+        for evt in batch_events(batches[1], run):
+            run.event_fn(evt, run.det)
+
 
 @task(privileges=[WD])
 def fill_task(R):
@@ -344,6 +396,9 @@ def fill_data(R, data):
         R.ispace.volume, R.ispace.domain.extent, R.ispace.bounds))
     np.copyto(R.x,bytearray(data))
 
+
+# If step_data exists -> Partition -> [0,len(step_data)-1]
+# Launch fill_data task to copy the step_data
 def check_partition(R, P, step_data):
     # make a new partition only if transitions have occured in the chunk
     if len(step_data) != 0:
@@ -354,8 +409,47 @@ def check_partition(R, P, step_data):
         IP = make_ipartition(R.ispace, start, end)
         P = Partition(R, IP)
         fill_data(P[0], bytearray(step_data))
-        return P
     return P
+
+# Partition -> [P.ispace.volume, P.ispace.volume + len(step_data)-1]
+# Fill the new partition with step_data
+def fill_new_subregion(R, P, step_data):
+    index_space = []
+    start = P.ispace.volume
+    size = len(bytearray(step_data))
+    IP = Ipartition.pending(R.ispace, [1])
+    index_space.append(Ispace([size], [start]))
+    IP.union([0], index_space)
+    P = Partition(R, IP)
+    logger.debug(f'Fill_new_subregion: Subregion has bounds %s' % (index_space[0].bounds))
+    fill_data(P[0], bytearray(step_data))
+    return P
+
+# Partition -> [0,size_old-1] U [size_old, size_new-1]
+def union_partitions(R, Pold, Pnew):
+    index_space = []
+    size_old = Pold.ispace.volume
+    size_new = Pnew.ispace.volume
+    IP = Ipartition.pending(R.ispace, [1])
+    index_space.append(Ispace([size_old], [0]))
+    index_space.append(Ispace([size_new], [size_old]))
+    logger.debug(f'union_partitions: Subregion[0] has bounds %s' % (index_space[0].bounds))
+    logger.debug(f'union_partitions: Subregion[1] has bounds %s' % (index_space[1].bounds))
+    IP.union([0], index_space)
+    P = Partition(R, IP)
+    return P
+
+# 1) check if new transition/step data exists
+# 2) if True:
+#      a) create new partition and fill subregion ->fill_new_subregion
+#      b) merge old partition and new partition and return new merged partition -> union_partitions
+def update_partition(R, P, step_data,cnt):
+    if len(step_data) != 0:
+        Pnew = fill_new_subregion(R, P[0], step_data)
+        Punion = union_partitions(R, P[0], Pnew[0])
+        cnt=cnt+1
+        return Punion, cnt
+    return P,cnt
 
 def smd_chunks_steps(run):
     return run.ds.smd0.get_region_step_smd_chunk()
@@ -363,9 +457,7 @@ def smd_chunks_steps(run):
 # This is the entry task for SMD0 with a Region for Transition Datagrams
 @task(inner=True, replicable=True)
 def run_smd0_with_region_task_psana2(idx):
-    # TODO: FIXME
-    #R = make_region_task(sys.maxsize).get()
-    R = make_region_task(100000).get()
+    R = make_region_task(sys.maxsize).get() # specify mapper option -dm:exact_region
     IP = make_ipartition(R.ispace, 0, 0)
     P = Partition(R, IP)
     fill_task(P[0])
@@ -374,6 +466,22 @@ def run_smd0_with_region_task_psana2(idx):
         # make a new partition only if additional transitions have occured in the chunk
         P = check_partition(R, P, step_data)
         eb_task_with_region(P[0], bytearray(smd_data), idx)
+    pygion.execution_fence(block=True)
+
+
+# This is the entry task for SMD0 with a Region for Transition Datagrams with multiple Partitions
+@task(inner=True, replicable=True)
+def run_smd0_with_region_task_multiple_psana2(idx):
+    R = make_region_task(sys.maxsize).get()
+    IP = make_ipartition(R.ispace, 0, -1)
+    P = Partition(R, IP)
+    fill_task(P[0])
+    run = run_objs[idx]
+    cnt = 0
+    for smd_data, step_data in smd_chunks_steps(run):
+        # make a new partition only if additional transitions have occured in the chunk
+        P, cnt = update_partition(R, P, step_data, cnt)
+        eb_task_with_multiple_region(P[0], bytearray(smd_data), idx, cnt)
     pygion.execution_fence(block=True)
 
 @task(inner=True)
@@ -415,7 +523,7 @@ def batch_events(smd_batch, run):
     events = Events(run.configs, run.dm, run.dsparms, 
             filter_callback=run.dsparms.filter, get_smd=get_smd)
     for i, evt in enumerate(events):
-        logger.debug(f'{i}:evt = {evt.service()},{evt_kinds[evt.service()]}')
+        logger.debug(f'evt[{i}] = {evt_kinds[evt.service()]}')
         if evt.service() != TransitionId.L1Accept: continue
         yield evt
 
@@ -437,7 +545,8 @@ def analyze(run, event_fn=None, det=None):
         pygion.c.legion_phase_barrier_wait(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
         run_objs.append(run)
         # return run_smd0_task_psana2(len(run_objs)-1)
-        return run_smd0_with_region_task_psana2(len(run_objs)-1)
+        return run_smd0_with_region_task_multiple_psana2(len(run_objs)-1)
+        #return run_smd0_with_region_task_psana2(len(run_objs)-1)
     else:
         run_objs.append(run)
     
@@ -446,4 +555,5 @@ if pygion is not None and not pygion.is_script:
     @task(top_level=True)
     def legion_main():
         for i, _ in enumerate(run_objs):
-            run_smd0_with_region_task_psana2(i)
+            run_smd0_with_region_task_multiple_psana2(i)
+            #run_smd0_with_region_task_psana2(i)

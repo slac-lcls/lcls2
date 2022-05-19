@@ -18,16 +18,30 @@ class EventBuilderManager(object):
         self.c_filter       = PrometheusManager.get_metric('psana_eb_filter')
 
     def batches(self):
-        while True: 
+        while True:
             batch_dict, step_dict = self.eb.build(self.timestamps,
                     batch_size          = self.batch_size, 
                     filter_fn           = self.filter_fn, 
                     destination         = self.destination,
                     prometheus_counter  = self.c_filter,
                     run                 = self.run,
-                    ) 
+                    )
             self.min_ts = self.eb.min_ts
             self.max_ts = self.eb.max_ts
             if self.eb.nevents==0 and self.eb.nsteps==0: break
             yield batch_dict, step_dict
-
+    # legion mode doesn't need step/transition batches-reuse build method with option to not process steps
+    def smd_batches(self):
+        while True:
+            batch_dict = self.eb.build(self.timestamps,
+                    batch_size          = self.batch_size,
+                    filter_fn           = self.filter_fn,
+                    destination         = self.destination,
+                    prometheus_counter  = self.c_filter,
+                    run                 = self.run,
+                    do_step = False,
+                    )
+            self.min_ts = self.eb.min_ts
+            self.max_ts = self.eb.max_ts
+            if self.eb.nevents==0: break
+            yield batch_dict
