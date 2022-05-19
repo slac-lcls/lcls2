@@ -35,6 +35,8 @@ else:
         if fn is None:
             return lambda fn: fn
         return fn
+    RO=True
+    WD=True
 
 run_objs = []
 

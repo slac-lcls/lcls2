@@ -270,9 +270,9 @@ cdef class EventBuilder:
                 if step_dict:
                     if dest_rank not in step_dict:
                         step_dict[dest_rank] = (bytearray(), [])
-                    else:
-                        step_dict[dest_rank] = (bytearray(), [])
-                    step_batch, step_sizes = step_dict[dest_rank]
+                else:
+                    step_dict[dest_rank] = (bytearray(), [])
+                step_batch, step_sizes = step_dict[dest_rank]
 
             # Extend this batch bytearray to include this event and collect
             # the size of this event for batch footer.
@@ -329,9 +329,9 @@ cdef class EventBuilder:
                 for evt_idx in range(len(step_sizes)):
                     step_batch_footer_view[evt_idx] = step_sizes[evt_idx]
 
-            step_batch_footer_view[-1] = evt_idx + 1
-            step_batch.extend(step_batch_footer_view[:evt_idx+1])
-            step_batch.extend(step_batch_footer_view[batch_size:])
+                step_batch_footer_view[-1] = evt_idx + 1
+                step_batch.extend(step_batch_footer_view[:evt_idx+1])
+                step_batch.extend(step_batch_footer_view[batch_size:])
         
         if do_step:
             return batch_dict, step_dict
