@@ -187,10 +187,11 @@ class EnvStore(object):
                         if p < 0:
                             break
                         env_d = env_man.dgrams[p]
-                        envs = getattr(env_man.dgrams[p], self.env_name)[segment_id]
-                        if hasattr(envs, alg):
-                            val = getattr(getattr(envs, alg), env_variable)
-                            break
+                        if hasattr(env_man.dgrams[p], self.env_name):
+                            envs = getattr(env_man.dgrams[p], self.env_name)[segment_id]
+                            if hasattr(envs, alg):
+                                val = getattr(getattr(envs, alg), env_variable)
+                                break
                     
                     if val is not None: break # found the value from this env manager
             env_values.append(val)
