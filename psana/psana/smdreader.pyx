@@ -38,7 +38,7 @@ cdef class SmdReader:
     cdef Buffer*     send_bufs                  # array of customed Buffers (one per EB node)
     cdef int         sendbufsize                # size of each send buffer
     cdef int         n_eb_nodes
-    cdef int         fakestep_size               
+    cdef int         fakestep_flag               
     cdef list        configs
     cdef bytearray   _fakebuf
     cdef unsigned    _fakebuf_maxsize
@@ -84,7 +84,7 @@ cdef class SmdReader:
         self.winner             = -1
         
         # Sets event frequency that fake EndStep/BeginStep pair is inserted.
-        self.fakestep_size = int(os.environ.get('PS_FAKESTEP_SIZE', 0))
+        self.fakestep_flag = int(os.environ.get('PS_FAKESTEP_FLAG', 0))
         
 
     def __dealloc__(self):
@@ -350,11 +350,20 @@ cdef class SmdReader:
         
         cdef char[:] view
         if block_size_bufs[i_buf] > 0:
-            if self.fakestep_size > 0 and self.winner_last_sv in (TransitionId.L1Accept, TransitionId.SlowUpdate):
-                out = self.get_fake_buffer()
-                
             view = <char [:block_size_bufs[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_bufs[i_buf]])
-            return view
+            if self.fakestep_flag == 1 and self.winner_last_sv in (TransitionId.L1Accept, TransitionId.SlowUpdate):
+                outbuf = bytearray()
+                outbuf.extend(view)
+                fakebuf = self.get_fake_buffer()
+                outbuf.extend(fakebuf)
+                # Fake step transition set (four events: Disable, EndStep,
+                # BeginStep Enable) is inserted in all streams but
+                # we only need to increase no. of available `events` once.
+                if i_buf == self.winner:
+                    self.n_view_events += 4
+                return memoryview(outbuf)
+            else:
+                return view
         else:
             return memoryview(bytearray()) 
     
