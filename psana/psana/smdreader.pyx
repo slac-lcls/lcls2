@@ -416,12 +416,11 @@ cdef class SmdReader:
         cdef Py_buffer step_buf
         cdef int i=0, offset=0
         cdef uint64_t smd_size=0, step_size=0, footer_size=0, total_size=0
-        cdef unsigned footer[1000]
-        footer[self.prl_reader.nfiles] = self.prl_reader.nfiles 
         cdef char[:] view
         cdef int eb_idx = eb_node_id - 1        # eb rank starts from 1 (0 is Smd0)
         cdef char* send_buf
         send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
+        cdef uint32_t* footer = <uint32_t*>self.repack_footer.data.as_voidptr
         
         # Copy step and smd buffers if exist
         for i in range(self.prl_reader.nfiles):
@@ -446,7 +445,7 @@ cdef class SmdReader:
 
         # Copy footer 
         footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
-        memcpy(send_buf + offset, &footer, footer_size) 
+        memcpy(send_buf + offset, footer, footer_size) 
         total_size += footer_size
         view = <char [:total_size]> (send_buf) 
         return view
