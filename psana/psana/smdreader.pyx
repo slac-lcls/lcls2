@@ -312,20 +312,26 @@ cdef class SmdReader:
         same therefore we only need to generate once.
         """
         cdef unsigned i_fake=0, out_offset = 0
-        if self._fakebuf_size == 0:
-            fake_config = DgramPy(transition_id=TransitionId.Configure, ts=0)
-            fake_transitions = [TransitionId.Disable, 
-                                TransitionId.EndStep,
-                                TransitionId.BeginStep,
-                                TransitionId.Enable,
-                               ]
-            fake_ts = self.get_next_fake_ts()
-            for i_fake, fake_transition in enumerate(fake_transitions):
-                fake_dgram = DgramPy(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
-                fake_dgram.save(self._fakebuf, offset=out_offset)
-                out_offset += fake_dgram.size 
-            self._fakebuf_size = out_offset
-        return self._fakebuf[:self._fakebuf_size]
+        
+        # Only create fake buffer when set and the last dgram is a valid transition
+        if self.fakestep_flag == 1 and self.winner_last_sv in (TransitionId.L1Accept, TransitionId.SlowUpdate):
+            # Only need to create once since fake transition set is the same for all streams.
+            if self._fakebuf_size == 0:
+                fake_config = DgramPy(transition_id=TransitionId.Configure, ts=0)
+                fake_transitions = [TransitionId.Disable, 
+                                    TransitionId.EndStep,
+                                    TransitionId.BeginStep,
+                                    TransitionId.Enable,
+                                   ]
+                fake_ts = self.get_next_fake_ts()
+                for i_fake, fake_transition in enumerate(fake_transitions):
+                    fake_dgram = DgramPy(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
+                    fake_dgram.save(self._fakebuf, offset=out_offset)
+                    out_offset += fake_dgram.size 
+                self._fakebuf_size = out_offset
+            return self._fakebuf[:self._fakebuf_size]
+        else:
+            return memoryview(bytearray())
 
     def show(self, int i_buf, step_buf=False):
         """ Returns memoryview of buffer i_buf at the current viewing
@@ -351,14 +357,21 @@ cdef class SmdReader:
         cdef char[:] view
         if block_size_bufs[i_buf] > 0:
             view = <char [:block_size_bufs[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_bufs[i_buf]])
-            if self.fakestep_flag == 1 and self.winner_last_sv in (TransitionId.L1Accept, TransitionId.SlowUpdate):
+            # Check if there's any data in fake buffer
+            fakebuf = self.get_fake_buffer()
+            if self._fakebuf_size > 0:
                 outbuf = bytearray()
                 outbuf.extend(view)
-                fakebuf = self.get_fake_buffer()
                 outbuf.extend(fakebuf)
-                # Fake step transition set (four events: Disable, EndStep,
+
+                # Increase total no. of events in the viewing window to include
+                # fake step transition set (four events: Disable, EndStep,
                 # BeginStep Enable) is inserted in all streams but
                 # we only need to increase no. of available `events` once.
+                #
+                # NOTE that it's NOT ideal to do it here but this show() function is 
+                # called once for normal buffer by RunSerial and once for step buffer 
+                # by RunParallel.
                 if i_buf == self.winner:
                     self.n_view_events += 4
                 return memoryview(outbuf)
@@ -465,16 +478,35 @@ cdef class SmdReader:
         send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
         cdef int i=0, offset=0
         cdef uint64_t footer_size=0, total_size=0
+        
+        # Check if we need to append fakestep transition set
+        cdef Py_buffer fake_pybuf
+        cdef char* fakebuf_ptr
+        fakebuf = self.get_fake_buffer()
+        PyObject_GetBuffer(fakebuf, &fake_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+        fakebuf_ptr = <char *>fake_pybuf.buf
+        PyBuffer_Release(&fake_pybuf)
 
         # Compute beginning offsets of each chunk and get a list of buffer objects
+        # If fakestep_flag is set, we need to append fakestep transition step
+        # to the new repacked data.
         for i in range(self.prl_reader.nfiles):
             offsets[i] = offset
+            # Move offset and total size to include missing steps
             step_sizes[i]  = memoryview(step_views[i]).nbytes
             total_size += step_sizes[i] 
             offset += step_sizes[i]
+
+            # Move offset and total size to include smd data 
             if only_steps==0:
                 total_size += self.block_size_bufs[i]
                 offset += self.block_size_bufs[i]
+            
+            # Move offset and total size to include fakestep transition set (if set)
+            total_size += self._fakebuf_size 
+            offset += self._fakebuf_size
+            
+            # Stores the pointers to missing step buffers for parallel loop below
             PyObject_GetBuffer(step_views[i], &step_buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
             ptr_step_bufs[i] = <char *>step_buf.buf
             PyBuffer_Release(&step_buf)
@@ -483,7 +515,7 @@ cdef class SmdReader:
         cdef uint64_t* block_size_bufs = <uint64_t*>self.block_size_bufs.data.as_voidptr
         cdef uint64_t* i_st_bufs = <uint64_t*>self.i_st_bufs.data.as_voidptr
         cdef uint32_t* footer = <uint32_t*>self.repack_footer.data.as_voidptr
-        
+
         # Copy step and smd buffers if exist
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
             footer[i] = 0
@@ -497,8 +529,14 @@ cdef class SmdReader:
                     memcpy(send_buf + offsets[i], 
                             self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[i_st_bufs[i]], 
                             block_size_bufs[i])
+                    offsets[i] += block_size_bufs[i]
                     footer[i] += block_size_bufs[i]
             
+            if self._fakebuf_size > 0:
+                memcpy(send_buf + offsets[i], fakebuf_ptr, self._fakebuf_size)
+                offsets[i] += self._fakebuf_size
+                footer[i] += self._fakebuf_size
+
         # Copy footer 
         footer_size = sizeof(uint32_t) * (self.prl_reader.nfiles + 1)
         memcpy(send_buf + total_size, footer, footer_size) 
