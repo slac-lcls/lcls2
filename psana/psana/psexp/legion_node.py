@@ -292,7 +292,7 @@ def eb_debug_batches(idx, smd_batch, cnt):
             while offsets[i] < pf.get_size(i):
                 # Creates a dgram from this chunk at the given offset.
                 d = dgram.Dgram(view=chunk, config=run.configs[i], offset=offsets[i])
-                logger.debug(f'timestamp: %s : %s' % (str(d.timestamp()), evt_kinds[d.service()]))
+                logger.debug(f'timestamp: %s : size: %d %s' % (str(d.timestamp()), d._size, evt_kinds[d.service()]))
                 offsets[i] += d._size
 
 # debug task that logs all the datagrams
@@ -470,20 +470,35 @@ def run_smd0_with_region_task_psana2(idx):
         eb_task_with_region(P[0], bytearray(smd_data), idx)
     pygion.execution_fence(block=True)
 
+def perform_eb(R,P,smd_data,step_data,global_procs,pt,num_partitions,idx):
+    if global_procs==1:
+        pt=-1
+    else:
+        pt=pt+1
+        pt=pt%(global_procs-1)
+    # make a new partition only if additional transitions have occured in the chunk
+    P, num_partitions = update_partition(R, P, step_data,num_partitions)
+    eb_task_with_multiple_region(P[0], bytearray(smd_data), idx, num_partitions, point=pt+1)
+    return P, pt, num_partitions
+    # use all python processors
 
-# This is the entry task for SMD0 with a Region for Transition Datagrams with multiple Partitions
-@task(inner=True, replicable=True)
-def run_smd0_with_region_task_multiple_psana2(idx):
+def init_region_partition():
     R = make_region_task(sys.maxsize).get()
     IP = make_ipartition(R.ispace, 0, -1)
     P = Partition(R, IP)
     fill_task(P[0])
+    return R, P
+
+# This is the entry task for SMD0 with a Region for Transition Datagrams with multiple Partitions
+@task(inner=True, replicable=True)
+def run_smd0_with_region_task_multiple_psana2(idx):
+    global_procs = pygion.Tunable.select(pygion.Tunable.GLOBAL_PYS).get()
+    num_partitions=0
+    point=-1
+    R, P = init_region_partition()
     run = run_objs[idx]
-    cnt = 0
     for smd_data, step_data in smd_chunks_steps(run):
-        # make a new partition only if additional transitions have occured in the chunk
-        P, cnt = update_partition(R, P, step_data, cnt)
-        eb_task_with_multiple_region(P[0], bytearray(smd_data), idx, cnt)
+        P, point, num_partitions = perform_eb(R,P,smd_data,step_data,global_procs,point,num_partitions,idx)
     pygion.execution_fence(block=True)
 
 @task(inner=True)
@@ -540,14 +555,13 @@ def analyze(run, event_fn=None, det=None):
     run.det = det
     if pygion.is_script:
         num_procs = pygion.Tunable.select(pygion.Tunable.GLOBAL_PYS).get()
-
         bar = pygion.c.legion_phase_barrier_create(pygion._my.ctx.runtime, pygion._my.ctx.context, num_procs)
         pygion.c.legion_phase_barrier_arrive(pygion._my.ctx.runtime, pygion._my.ctx.context, bar, 1)
         global_task_registration_barrier = pygion.c.legion_phase_barrier_advance(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
         pygion.c.legion_phase_barrier_wait(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
         run_objs.append(run)
         # return run_smd0_task_psana2(len(run_objs)-1)
-        return run_smd0_with_region_task_multiple_psana2(len(run_objs)-1)
+        return run_smd0_with_region_task_multiple_psana2(len(run_objs)-1,point=0)
         #return run_smd0_with_region_task_psana2(len(run_objs)-1)
     else:
         run_objs.append(run)
@@ -557,5 +571,5 @@ if pygion is not None and not pygion.is_script:
     @task(top_level=True)
     def legion_main():
         for i, _ in enumerate(run_objs):
-            run_smd0_with_region_task_multiple_psana2(i)
+            run_smd0_with_region_task_multiple_psana2(i,point=0)
             #run_smd0_with_region_task_psana2(i)

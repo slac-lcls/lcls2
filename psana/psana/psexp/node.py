@@ -297,25 +297,22 @@ def repack_with_step_dg(smd_batch, step_views, configs):
 def repack_with_mstep_dg(smd_batch, step_views, configs, nviews):
     """ EventBuilder Node uses this to prepend missing step datagrams
     to the smd_batch. This output chunk contains list of pre-built events."""
-    return smd_batch
     pf = PacketFooter(view=step_views, num_views=nviews)
     if pf == None:
         return smd_batch
-    if pf.get_size(0) == 0:
-        return smd_batch
     batch_pf = PacketFooter(view=smd_batch)
     # Create bytearray containing a list of events from step_views
-
     # number of files
     n_smds = pf.n_packets
     # Create bytearray containing a list of events from step_views
     step_sizes = []
     n_steps = 0
-    steps = []
+    steps = {}
     for j, chunks in enumerate(pf.split_multiple_packets()):
         steps[j] = bytearray()
         # initialize offsets array to 0
         offsets = [0]*pf.n_packets
+        icnt=0
         while offsets[0] < pf.get_size(0):
             step_pf = PacketFooter(n_packets=n_smds)
             step_size = 0
@@ -331,8 +328,8 @@ def repack_with_mstep_dg(smd_batch, step_views, configs, nviews):
             # total size of the vertical transition + it's footer
             # file=2, [d0,d1, d0_size, d1_size, num_files], [d0,d1,d0_size,d1_size,num_files]
             # step_sizes [size_0][size_1]
-            #step_sizes.append(step_size + memoryview(step_pf.footer).nbytes)
-            step_sizes.insert(0,step_size + memoryview(step_pf.footer).nbytes)
+            step_sizes.insert(icnt,step_size + memoryview(step_pf.footer).nbytes)
+            icnt = icnt + 1
             n_steps += 1
 
     # Create new batch with total_events = smd_batch_events + step_events
@@ -346,7 +343,8 @@ def repack_with_mstep_dg(smd_batch, step_views, configs, nviews):
     new_batch = bytearray()
     # the order is reversed with legion subregions
     for i in steps:
-        new_batch.extend(steps[len(steps)-i+1])
+        if len(steps[len(steps)-i-1]) > 0:
+            new_batch.extend(steps[len(steps)-i-1])
 
     new_batch.extend(smd_batch[:memoryview(smd_batch).nbytes-memoryview(batch_pf.footer).nbytes])
     new_batch.extend(new_batch_pf.footer)
