@@ -28,7 +28,7 @@ pygion = None
 if mode == 'legion':
     import pygion
     import sys
-    from pygion import task, RW, RO, WD, Partition, Ipartition, Region, Ispace, Domain
+    from pygion import task, RW, RO, WD, Partition, Ipartition, Region, Ispace, Domain, Reduce
 else:
     # Nop when not using Legion
     def task(fn=None, **kwargs):
@@ -37,6 +37,8 @@ else:
         return fn
     RO=True
     WD=True
+    def Reduce(r):
+        pass
 
 run_objs = []
 
@@ -382,6 +384,53 @@ def eb_task_with_multiple_region(R, smd_batch, idx, num_dgrams):
         for evt in batch_events(batches[1], run):
             run.event_fn(evt, run.det)
 
+def eb_reduc(R, Redc, smd_batch, idx, num_dgrams):
+    ''' log the datagrams
+    eb_task_debug_multiple(R, idx, smd_batch, num_dgrams)
+    '''
+    logger.debug(f'EB_Task_With_Multiple_Region_Reduc: Subregion has volume %s extent %s bounds %s' % (
+        R.ispace.volume, R.ispace.domain.extent, R.ispace.bounds))
+    logger.debug(f'EB_Task_With_Multiple_Region_Reduc: Subregion Reduc has volume %s extent %s bounds %s' % (
+        Redc.ispace.volume, Redc.ispace.domain.extent, Redc.ispace.bounds))
+    run = run_objs[idx]
+    eb = run.ds.eb
+    eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
+    batches = {}
+    for smd_batch_dict in eb_man.smd_batches():
+        smd_batch, _ = smd_batch_dict[0]
+        batches[1] = repack_with_mstep_dg(smd_batch,
+                                          bytearray(R.x),
+                                          eb.configs, num_dgrams)
+        run = run_objs[idx]
+        for evt in batch_events(batches[1], run):
+            run.reduc_fn(Redc.rval, evt, run.det)
+
+# EB task with a region for transition datagrams
+# and a reduction region
+@task(privileges=[RO,Reduce('+')])
+def eb_reduc_task_sum(R, Redc, smd_batch, idx, num_dgrams):
+    eb_reduc(R, Redc, smd_batch, idx, num_dgrams)
+
+@task(privileges=[RO,Reduce('-')])
+def eb_reduc_task_minus(R, Redc, smd_batch, idx, num_dgrams):
+    eb_reduc(R, Redc, smd_batch, idx, num_dgrams)
+
+@task(privileges=[RO,Reduce('min')])
+def eb_reduc_task_min(R, Redc, smd_batch, idx, num_dgrams):
+    eb_reduc(R, Redc, smd_batch, idx, num_dgrams)
+
+@task(privileges=[RO,Reduce('max')])
+def eb_reduc_task_max(R, Redc, smd_batch, idx, num_dgrams):
+    eb_reduc(R, Redc, smd_batch, idx, num_dgrams)
+
+@task(privileges=[RO,Reduce('/')])
+def eb_reduc_task_div(R, Redc, smd_batch, idx, num_dgrams):
+    eb_reduc(R, Redc, smd_batch, idx, num_dgrams)
+
+@task(privileges=[RO,Reduce('*')])
+def eb_reduc_task_mult(R, Redc, smd_batch, idx, num_dgrams):
+    eb_reduc(R, Redc, smd_batch, idx, num_dgrams)
+
 
 @task(privileges=[WD])
 def fill_task(R):
@@ -480,7 +529,31 @@ def perform_eb(R,P,smd_data,step_data,global_procs,pt,num_partitions,idx):
     P, num_partitions = update_partition(R, P, step_data,num_partitions)
     eb_task_with_multiple_region(P[0], bytearray(smd_data), idx, num_partitions, point=pt+1)
     return P, pt, num_partitions
-    # use all python processors
+
+
+def perform_eb_reduc(R,P,smd_data,step_data,global_procs,pt,num_partitions,idx,reduc_region,reduc_type):
+    if global_procs==1:
+        pt=-1
+    else:
+        pt=pt+1
+        pt=pt%(global_procs-1)
+
+    eb_reduc_task = {
+        '+': eb_reduc_task_sum,
+        '-': eb_reduc_task_minus,
+        'min': eb_reduc_task_min,
+        'max': eb_reduc_task_max,
+        '/': eb_reduc_task_div,
+        '*': eb_reduc_task_mult
+    }
+    reduc_task = eb_reduc_task.get(reduc_type, None)
+    assert reduc_task !=  None
+    # make a new partition only if additional transitions have occured in the chunk
+    P, num_partitions = update_partition(R, P, step_data,num_partitions)
+    reduc_task(P[0], reduc_region,
+               bytearray(smd_data), idx, num_partitions,
+               point=pt+1)
+    return P, pt, num_partitions
 
 def init_region_partition():
     R = make_region_task(sys.maxsize).get()
@@ -500,6 +573,46 @@ def run_smd0_with_region_task_multiple_psana2(idx):
     for smd_data, step_data in smd_chunks_steps(run):
         P, point, num_partitions = perform_eb(R,P,smd_data,step_data,global_procs,point,num_partitions,idx)
     pygion.execution_fence(block=True)
+
+
+@task(privileges=[RO])
+def run_smd0_reduc_final_task(R, idx):
+    run = run_objs[idx]
+    run.reduc_final_fn(R.rval)
+
+# perform the reduction operation
+def perform_reduc_op(Redc, idx):
+    global_procs = pygion.Tunable.select(pygion.Tunable.GLOBAL_PYS).get()
+    num_partitions=0
+    point=-1
+    R, P = init_region_partition()
+    run = run_objs[idx]
+    reduc_type = run.reduc_privileges
+
+    for smd_data, step_data in smd_chunks_steps(run):
+        P, point, num_partitions = perform_eb_reduc(R,P,smd_data,step_data,
+                                                    global_procs,point,num_partitions,
+                                                    idx,Redc,reduc_type)
+    pygion.execution_fence(block=True)
+    # callback for final reduction
+    if run.reduc_final_fn:
+        run_smd0_reduc_final_task(Redc,idx,point=0)
+
+# This is the entry task for SMD0 with
+# a) a Region for Transition Datagrams with multiple Partitions
+# b) Reduction Operation with a callback
+@task(inner=True, replicable=True)
+def run_smd0_reduc_task(idx):
+    run = run_objs[idx]
+    field_dict = {"rval":getattr(pygion, run.reduc_rtype)}
+    reduc_region = Region(run.reduc_shape, field_dict)
+    pygion.fill(reduc_region, 'rval', run.reduc_fill_val)
+    perform_reduc_op(reduc_region, idx)
+
+@task(privileges=[RO])
+def dump_reduc(R):
+    print('Dumping Reduc Values')
+    print(R.rval)
 
 @task(inner=True)
 def run_smd0_task_psana2(idx):
@@ -560,9 +673,11 @@ def analyze(run, event_fn=None, det=None):
         global_task_registration_barrier = pygion.c.legion_phase_barrier_advance(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
         pygion.c.legion_phase_barrier_wait(pygion._my.ctx.runtime, pygion._my.ctx.context, bar)
         run_objs.append(run)
-        # return run_smd0_task_psana2(len(run_objs)-1)
-        return run_smd0_with_region_task_multiple_psana2(len(run_objs)-1,point=0)
-        #return run_smd0_with_region_task_psana2(len(run_objs)-1)
+        if run.reduc:
+            return run_smd0_reduc_task(len(run_objs)-1,point=0)
+        else:
+            return run_smd0_with_region_task_multiple_psana2(len(run_objs)-1,point=0)
+            #return run_smd0_with_region_task_psana2(len(run_objs)-1)
     else:
         run_objs.append(run)
     
@@ -571,5 +686,8 @@ if pygion is not None and not pygion.is_script:
     @task(top_level=True)
     def legion_main():
         for i, _ in enumerate(run_objs):
-            run_smd0_with_region_task_multiple_psana2(i,point=0)
-            #run_smd0_with_region_task_psana2(i)
+            if run.reduc:
+                run_smd0_reduc_task(i,point=0)
+            else:
+                run_smd0_with_region_task_multiple_psana2(i,point=0)
+                #run_smd0_with_region_task_psana2(i)

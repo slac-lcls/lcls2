@@ -320,6 +320,7 @@ class RunLegion(Run):
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
         self.ds = ds
+        self.reduc = False
         super()._get_runinfo()
         super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,

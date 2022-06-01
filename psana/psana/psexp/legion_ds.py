@@ -1,13 +1,14 @@
-from psana.psexp import RunLegion, DataSourceBase, SmdReaderManager, TransitionId, LSmd0, LEventBuilderNode
+from psana.psexp import RunLegion, DataSourceBase, SmdReaderManager, TransitionId, LSmd0, LEventBuilderNode, mode
 from psana.dgrammanager import DgramManager
 from psana.event import Event
 import numpy as np
 
 import logging
 logger = logging.getLogger(__name__)
-
 import os
-from psana.psexp import legion_node
+if mode == 'legion':
+    import pygion
+    from psana.psexp import legion_node
 
 class LegionDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
@@ -15,11 +16,8 @@ class LegionDataSource(DataSourceBase):
         super()._setup_runnum_list()
         self.runnum_list_index = 0
         self.smd_fds = None
-
         # No. of event builder processors
         self.eb_size = int(os.environ.get('PS_EB_NODES', 1))
-        import pygion
-
         # of big data processors = global_procs-(eb_procs+smd0) || 1
         self.bd_size =  pygion.Tunable.select(
             pygion.Tunable.GLOBAL_PYS).get() - (self.eb_size + 1)
@@ -52,7 +50,10 @@ class LegionDataSource(DataSourceBase):
         # Big Data Point Start Offset = # of eb processors + smd0
         offset = self.eb_size+1
         self.eb = LEventBuilderNode(self.bd_size, offset, self._configs, self.dsparms, self.dm)
-    
+
+        # Legion Reductions
+        self.reduc = False
+
     def _setup_run(self):
         if self.runnum_list_index == len(self.runnum_list):
             return False
@@ -100,6 +101,40 @@ class LegionDataSource(DataSourceBase):
         for run in self.runs():
             if run_fn is not None:
                 run_fn(run)
+            reduc_fn=None
+            reduc_region=None
+            reduc_pr=None
+            reduc_final_fn=None
+            reduc_shape = None
+            reduc_fill_val = None
+            reduc_rtype = None
+            if self.reduc:
+                run.reduc = True
+                run.reduc_fn=self.reduc_fn
+                run.reduc_privileges = self.reduc_pr
+                run.reduc_final_fn = self.reduc_final_fn
+                run.reduc_shape = self.reduc_shape
+                run.reduc_fill_val = self.reduc_fill_val
+                run.reduc_rtype = self.reduc_rtype
             legion_node.analyze(run, event_fn, run.det)
             import pygion
             pygion.execution_fence(block=True)
+
+    # register a reduction operation
+    def register_reduc(self, reduc_type, shape, rtype, fill_val, reduc_fn=None,
+                       reduc_final=None):
+        operators = ['+', '-', '*', '/', 'max', 'min']
+        assert reduc_type in operators
+        assert rtype != None
+        assert fill_val != None
+        assert shape != None
+        assert self.reduc==False
+        logger.debug(f'reduc_type={reduc_type}, shape={shape}, {rtype}, {fill_val}')
+        self.reduc=True
+        self.reduc_shape = shape
+        self.reduc_fill_val = fill_val
+        self.reduc_fn = reduc_fn
+        self.reduc_final_fn = reduc_final
+        self.reduc_pr = reduc_type
+        self.reduc_rtype = rtype
+
