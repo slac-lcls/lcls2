@@ -361,6 +361,24 @@ def eb_task_with_region(R, smd_batch, idx):
         for evt in batch_events(batches[1], run):
             run.event_fn(evt, run.det)
 
+def smd_batches_with_transitions(smd_batch, run, R, num_dgrams):
+    eb = run.ds.eb
+    eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
+    batches = {}
+    for smd_batch_dict in eb_man.smd_batches():
+        smd_batch, _ = smd_batch_dict[0]
+        batches[0] = repack_with_mstep_dg(smd_batch,
+                                         bytearray(R.x),
+                                         eb.configs, num_dgrams)
+        yield batches[0]
+
+def smd_batches_without_transitions(smd_batch, run):
+    eb = run.ds.eb
+    eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
+    batches = {}
+    for smd_batch_dict in eb_man.smd_batches():
+        smd_batch, _ = smd_batch_dict[0]
+        yield smd_batch
 
 # EB task with a region for transition datagrams
 @task(privileges=[RO])
@@ -371,17 +389,8 @@ def eb_task_with_multiple_region(R, smd_batch, idx, num_dgrams):
     logger.debug(f'EB_Task_With_Multiple_Region: Subregion has volume %s extent %s bounds %s' % (
         R.ispace.volume, R.ispace.domain.extent, R.ispace.bounds))
     run = run_objs[idx]
-    eb = run.ds.eb
-    eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
-    batches = {}
-    for smd_batch_dict in eb_man.smd_batches():
-        # send to any bigdata nodes if destination is required: TODO
-        smd_batch, _ = smd_batch_dict[0]
-        batches[1] = repack_with_mstep_dg(smd_batch,
-                                          bytearray(R.x),
-                                          eb.configs, num_dgrams)
-        run = run_objs[idx]
-        for evt in batch_events(batches[1], run):
+    for batch in smd_batches_with_transitions(smd_batch, run, R, num_dgrams):
+        for evt in batch_events(batch, run):
             run.event_fn(evt, run.det)
 
 def eb_reduc(R, Redc, smd_batch, idx, num_dgrams):
@@ -393,16 +402,8 @@ def eb_reduc(R, Redc, smd_batch, idx, num_dgrams):
     logger.debug(f'EB_Task_With_Multiple_Region_Reduc: Subregion Reduc has volume %s extent %s bounds %s' % (
         Redc.ispace.volume, Redc.ispace.domain.extent, Redc.ispace.bounds))
     run = run_objs[idx]
-    eb = run.ds.eb
-    eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
-    batches = {}
-    for smd_batch_dict in eb_man.smd_batches():
-        smd_batch, _ = smd_batch_dict[0]
-        batches[1] = repack_with_mstep_dg(smd_batch,
-                                          bytearray(R.x),
-                                          eb.configs, num_dgrams)
-        run = run_objs[idx]
-        for evt in batch_events(batches[1], run):
+    for batch in smd_batches_with_transitions(smd_batch, run, R, num_dgrams):
+        for evt in batch_events(batch, run):
             run.reduc_fn(Redc.rval, evt, run.det)
 
 # EB task with a region for transition datagrams
