@@ -471,7 +471,7 @@ void EventBuilder::process(const EbDgram* ctrb,
                            const size_t   size,
                            unsigned       imm)
 {
-  auto t0{fast_monotonic_clock::now(MONOTONIC_CLOCK)};
+  auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
 
   EbEpoch*       epoch = _match(ctrb->pulseId());
   EbEvent*       event = epoch->pending.forward();
@@ -507,7 +507,7 @@ void EventBuilder::process(const EbDgram* ctrb,
   if (due)  _flush(due);     // Attempt to flush everything up to the due event
   else      _tryFlush();     // Periodically flush when no events are completing
 
-  auto t1{fast_monotonic_clock::now(MONOTONIC_CLOCK)};
+  auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
   _ebTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
 }
 
