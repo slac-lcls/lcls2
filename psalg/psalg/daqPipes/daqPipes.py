@@ -457,7 +457,7 @@ def daqPipes(srvurl, args):
     DRP_WrkInQue  = _q(args, 'drp_worker_input_queue')
     DRP_WrkOutQue = _q(args, 'drp_worker_output_queue')
     TCtb_IUMax    = _q(args, 'TCtb_IUMax')
-    TCtb_IUBats   = _q(args, 'TCtb_IUBats')
+#    TCtb_IUBats   = _q(args, 'TCtb_IUBats')
     TCtbO_IFMax   = _q(args, 'TCtbO_IFMax')
     TCtbO_InFlt   = _q(args, 'TCtbO_InFlt')
     TCtbO_BatCt   = _q(args, 'TCtbO_BatCt')
@@ -504,16 +504,16 @@ def daqPipes(srvurl, args):
         return entry, color
 
     queries = {
-        '%_DMA_occ'   : (f'200.0*{DRP_DmaInUse}/{DRP_DmaCtMax}', # Compensate for the nextPowerOf2() in DrpBase
+        '%_DMA_occ'   : (f'100.0*{DRP_DmaInUse}/{DRP_DmaCtMax}',
                          _fmtPct, 'Percentage of occupied DRP DMA buffers'),
         '%_WkrI_occ'  : (f'100.0*{DRP_WrkInQue}/{DRP_WrkQueDp}',
                          _fmtPct, 'Percentage occupancy of all Input work queues on a DRP'),
         '%_WkrO_occ'  : (f'100.0*{DRP_WrkOutQue}/{DRP_WrkQueDp}',
                          _fmtPct, 'Percentage occupancy of all Output work queues on a DRP'),
-        '%_Bat_InUse' : (f'100.0*{TCtb_IUBats}/{TCtb_IUMax}',
-                         _fmtPct, 'Percentage of DRP Input batches allocated'),
-        'Bat_Wtg'     : (_q(args, 'TCtbO_BtWtg'),
-                         _fmtBool, 'Indicator of the DRP Input batch pool being exhausted', 7),
+#        '%_Bat_InUse' : (f'100.0*{TCtb_IUBats}/{TCtb_IUMax}',
+#                         _fmtPct, 'Percentage of DRP Input batches allocated'),
+#        'Bat_Wtg'     : (_q(args, 'TCtbO_BtWtg'),
+#                         _fmtBool, 'Indicator of the DRP Input batch pool being exhausted', 7),
         '%_Bat_InFlt' : (f'100.0*{TCtbO_InFlt}/{TCtbO_IFMax}',
                          _fmtPct, 'Percentage of DRP Input batches queued to await a Result'),
         'DRP->TEB'    : (_q(args, 'TCtbO_TxPdg'),
