@@ -264,7 +264,6 @@ namespace Pds {
     int  resetCounters();
     int  connect();
     int  configure();
-    int  beginrun();
     void unconfigure();
     void disconnect();
     void run();
@@ -301,8 +300,7 @@ static json createPulseIdMsg(uint64_t pulseId)
 Meb::Meb(const MebParams&        prms,
          ZmqContext&             context,
          const MetricExporter_t& exporter) :
-  EbAppBase    (prms, exporter, "MEB",
-                EPOCH_DURATION, 1, prms.numEvBuffers, MEB_TR_BUFFERS, MEB_TMO_MS),
+  EbAppBase    (prms, exporter, "MEB", MEB_TMO_MS),
   _pidPrv      (0),
   _latency     (0),
   _eventCount  (0),
@@ -317,13 +315,12 @@ Meb::Meb(const MebParams&        prms,
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
                                             {"alias", prms.alias}};
-  exporter->add("MEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;      });
   exporter->add("MEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;      });
   exporter->add("MEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;         });
   exporter->add("MEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;         });
   exporter->add("MEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;      });
-  exporter->add("MEB_ReqRt",  labels, MetricType::Rate,    [&](){ return _requestCount;    });
   exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
+  exporter->add("MRQ_TxPdg",  labels, MetricType::Gauge,   [&](){ return _mrqTransport.posting(); });
   exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
   _bufUseCnts = exporter->histogram("MRQ_BufUseCnts", labels, prms.numEvBuffers);
@@ -403,13 +400,6 @@ int Meb::configure()
   return 0;
 }
 
-int Meb::beginrun()
-{
-  resetCounters();
-
-  return 0;
-}
-
 void Meb::run()
 {
   logging::info("MEB thread started");
@@ -464,7 +454,7 @@ void Meb::process(EbEvent* event)
     event->damage(Damage::OutOfOrder);
 
     logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u\n",
-                      __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->parameter(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
+                      __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->immData(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
 
     if (event->remaining())             // I.e., this event was fixed up
     {
@@ -490,7 +480,7 @@ void Meb::process(EbEvent* event)
   // and thus the full datagram, can be quite large, this would amount to
   // a lot of copying
   size_t      sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
-  unsigned    idx    = ImmData::idx(event->parameter());
+  unsigned    idx    = ImmData::idx(event->immData());
   Dgram*      dg     = new(_pool->alloc(sizeof(Dgram) + sz)) Dgram(*(event->creator()));
   const void* bufEnd = ((char*)dg) + _pool->sizeofObject();
   if (!dg)
@@ -544,7 +534,7 @@ void Meb::process(EbEvent* event)
   // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred
   if (_apps->events(dg) == XtcMonitorServer::Handled)
   {
-    // Make the transition buffer available to the contributor again
+    // Make the transition buffer available to the contributors again
     post(event->begin(), event->end());
 
     if (dg->service() != TransitionId::SlowUpdate)
@@ -670,8 +660,6 @@ void MebApp::handleConnect(const json &msg)
     return;
   }
 
-  _meb->resetCounters();
-
   rc = _meb->connect();
   if (rc)
   {
@@ -688,6 +676,10 @@ int MebApp::_configure(const json &msg)
   int rc = _meb->configure();
   if (rc)  logging::error("%s:\n  Failed to configure MEB",
                           __PRETTY_FUNCTION__);
+
+  _printParams(_prms, _groups);
+
+  _meb->resetCounters();                // Same time as DRPs
 
   return rc;
 }
@@ -720,8 +712,6 @@ void MebApp::handlePhase1(const json& msg)
       return;
     }
 
-    _printParams(_prms, _groups);
-
     lRunning = 1;
 
     _appThread = std::thread(&Meb::run, std::ref(*_meb));
@@ -733,11 +723,7 @@ void MebApp::handlePhase1(const json& msg)
   }
   else if (key == "beginrun")
   {
-    if (_meb->beginrun())
-    {
-      _error(msg, "Phase 1 error: Failed to " + key);
-      return;
-    }
+    _meb->resetCounters();              // Same time as DRPs
   }
 
   // Reply to collection with transition status
@@ -781,15 +767,18 @@ int MebApp::_parseConnectionParams(const json& body)
     return 1;
   }
 
-  size_t   maxTrSize     = 0;
-  size_t   maxBufferSize = 0;
-  _prms.contributors     = 0;
-  _prms.maxBufferSize    = 0;
+  size_t maxTrSize     = 0;
+  size_t maxBufferSize = 0;
+  _prms.contributors   = 0;
+  _prms.maxBufferSize  = 0;
   _prms.maxTrSize.resize(body["drp"].size());
 
   _prms.contractors.fill(0);
   _prms.receivers.fill(0);
   _groups = 0;
+
+  _prms.maxEntries = 1;                  // No batching: each event stands alone
+  _prms.numBuffers = _prms.numEvBuffers; // For EbAppBase
 
   for (auto it : body["drp"].items())
   {
@@ -877,10 +866,10 @@ void MebApp::_printParams(const EbParams& prms, unsigned groups) const
                                                                std::bitset<64>(_prms.contributors).count());
   printf("  Readout group contractors:  ");                    _printGroups(_groups, _prms.contractors);
   printf("  # of TEB requestees:        %zu\n",                _prms.addrs.size());
-  printf("  Buffer duration:            %u\n",                 EPOCH_DURATION);
-  printf("  Max # of entries / buffer:  0x%08x = %u\n",        1, 1);
-  printf("  # of transition buffers:    0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
+  printf("  Buffer duration:            %u\n",                 prms.maxEntries);
+  printf("  Max # of entries / buffer:  0x%08x = %u\n",        prms.maxEntries, prms.maxEntries);
   printf("  # of event      buffers:    0x%08x = %u\n",        _prms.numEvBuffers, _prms.numEvBuffers);
+  printf("  # of transition buffers:    0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
   printf("  Max buffer size:            0x%08x = %u\n",        _prms.maxBufferSize, _prms.maxBufferSize);
   printf("  # of event message queues:  0x%08x = %u\n",        _prms.nevqueues, _prms.nevqueues);
   printf("  Distribute:                 %s\n",                 _prms.ldist ? "yes" : "no");

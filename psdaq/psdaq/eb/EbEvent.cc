@@ -27,15 +27,16 @@ using namespace Pds::Eb;
 ** --
 */
 
-EbEvent::EbEvent(uint64_t        contract,
-                 EbEvent*        after,
-                 const EbDgram*  cdg,
-                 unsigned        prm) :
-  _contract (contract),
-  _t0       (fast_monotonic_clock::now()),
-  _prm      (prm),
-  _damage   (0),
-  _last     (_contributions)
+EbEvent::EbEvent(uint64_t            contract,
+                 EbEvent*            after,
+                 const EbDgram*      cdg,
+                 unsigned            immData,
+                 const time_point_t& t0) :
+  _contract(contract),
+  _t0      (t0),
+  _immData (immData),
+  _damage  (0),
+  _last    (_contributions)
 {
   *_last++   = cdg;
 
@@ -53,35 +54,6 @@ EbEvent::EbEvent(uint64_t        contract,
   }
 
   connect(after);
-}
-
-/*
-** ++
-**
-**    As soon as an event becomes "complete" its datagram is the only
-**    information of value within the event. Therefore, when the event
-**    becomes complete it is deleted which cause the destructor to
-**    remove the event from the pending queue.
-**
-** --
-*/
-
-Pds::Eb::EbEvent::~EbEvent()
-{
-}
-
-/*
-** ++
-**
-**    This function is used to insert a "dummy" contribution into the event.
-**    The dummy contribution is identified by the input argument.
-**
-** --
-*/
-
-void EbEvent::_insert(const EbDgram* dummy)
-{
-  *_last++ = dummy;
 }
 
 /*
@@ -114,6 +86,13 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
             TransitionId::name(cdg->service()), cdg, cdg->pulseId(),
             cdg->readoutGroups(), _contract);
     throw "Fatal: _remaining == remaining";
+  }
+
+  if (cdg->pulseId() != sequence())
+  {
+    printf("*** EbEvent::_add: pulseId mismatch: %014lx vs %014lx\n",
+           cdg->pulseId(), sequence());
+    abort();
   }
 
   return this;

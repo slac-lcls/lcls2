@@ -16,6 +16,7 @@ using ms_t = std::chrono::milliseconds;
 
 EbLfClient::EbLfClient(const unsigned& verbose) :
   _pending(0),
+  _posting(0),
   _verbose(verbose)
 {
 }
@@ -23,6 +24,7 @@ EbLfClient::EbLfClient(const unsigned& verbose) :
 EbLfClient::EbLfClient(const unsigned&                           verbose,
                        const std::map<std::string, std::string>& kwargs) :
   _pending(0),
+  _posting(0),
   _verbose(verbose),
   _info   (kwargs)
 {
@@ -38,8 +40,6 @@ int EbLfClient::connect(EbLfCltLink** link,
             __PRETTY_FUNCTION__, _info.error());
     return _info.error_num();
   }
-
-  _pending = 0;
 
   const uint64_t flags  = 0;
   _info.hints->tx_attr->size = 0; //192;     // Tunable parameter
@@ -119,7 +119,7 @@ int EbLfClient::connect(EbLfCltLink** link,
 
   int rxDepth = fab->info()->rx_attr->size;
   if (_verbose > 1)  printf("EbLfClient: rx_attr.size = %d\n", rxDepth);
-  *link = new EbLfCltLink(ep, rxDepth, _verbose, _pending);
+  *link = new EbLfCltLink(ep, rxDepth, _verbose, _pending, _posting);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
@@ -147,7 +147,6 @@ int EbLfClient::disconnect(EbLfCltLink* link)
     if (txcq)  delete txcq;
     if (fab)   delete fab;
   }
-  _pending = 0;
 
   return FI_SUCCESS;
 }

@@ -38,21 +38,9 @@ using ms_t             = std::chrono::milliseconds;
 EbAppBase::EbAppBase(const EbParams&         prms,
                      const MetricExporter_t& exporter,
                      const std::string&      pfx,
-                     const uint64_t          duration,
-                     const unsigned          maxEntries,
-                     const unsigned          maxEvBuffers,
-                     const unsigned          maxTrBuffers,
                      const unsigned          msTimeout) :
-  EventBuilder (maxEvBuffers + maxTrBuffers,
-                maxEntries,
-                MAX_DRPS, //Revisit: std::bitset<64>(prms.contributors).count(),
-                duration,
-                msTimeout,
-                prms.verbose),
+  EventBuilder (msTimeout, prms.verbose),
   _transport   (prms.verbose, prms.kwargs),
-  _maxEntries  (maxEntries),
-  _maxEvBuffers(maxEvBuffers),
-  _maxTrBuffers(maxTrBuffers),
   _verbose     (prms.verbose),
   _bufferCnt   (0),
   _contributors(0),
@@ -70,13 +58,15 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();     });
   exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();      });
   exporter->add("EB_EvOcCt", labels, MetricType::Gauge,   [&](){ return  eventOccCnt();       });
-  //exporter->add("EB_EpOcCt", labels, MetricType::Gauge,   [&](){ return  epochOccCnt();       });
+  exporter->add("EB_EpOcCt", labels, MetricType::Gauge,   [&](){ return  epochOccCnt();       });
   exporter->add("EB_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add("EB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
   exporter->add("EB_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
   exporter->add("EB_ToEvCt", labels, MetricType::Counter, [&](){ return  timeoutCnt();        });
   exporter->add("EB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();          });
   exporter->add("EB_CbMsMk", labels, MetricType::Gauge,   [&](){ return  missing();           });
   exporter->add("EB_EvAge",  labels, MetricType::Gauge,   [&](){ return  eventAge();          });
+  exporter->add("EB_dTime",  labels, MetricType::Gauge,   [&](){ return  ebTime();            });
 }
 
 EbAppBase::~EbAppBase()
@@ -141,13 +131,22 @@ int EbAppBase::startConnection(const std::string& ifAddr,
 
 int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
 {
+  int      rc;
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
+
+  // Initialize the event builder
+  auto duration = prms.maxEntries;
+  _maxEntries   = prms.maxEntries;
+  _maxEvBuffers = prms.numBuffers / prms.maxEntries;
+  _maxTrBuffers = TEB_TR_BUFFERS;
+  rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
+  if (rc)  return rc;
+
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
                                             {"alias", prms.alias},
                                             {"eb", _pfx}};
-
   _links        .resize(nCtrbs);
   _region       .resize(nCtrbs);
   _regSize      .resize(nCtrbs);
@@ -160,10 +159,16 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   _fixupSrc     = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
   _ctrbSrc      = _exporter->histogram("EB_CtrbSc", labels, nCtrbs); // Revisit: For testing
 
-  int rc = linksConnect(_transport, _links, "DRP");
+  for (auto i = 0u; i < nCtrbs; ++i)
+  {
+    // Pass loop index by value or it will be out of scope when lambda runs
+    _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=](){ return  arrTime(i);});
+  }
+
+  rc = linksConnect(_transport, _links, "DRP");
   if (rc)  return rc;
 
-  // Set up a guess at the RDMA region now that we know the number of Contributors
+  // Set up a guess at the RDMA region now to avoid spending time in Configure
   // If it's too small, it will be corrected during Configure
   for (unsigned i = 0; i < nCtrbs; ++i)
   {
@@ -219,10 +224,10 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
     // where some servers and clients run on the same machine.  Compare
     // timestamps in /var/log/messages.
     logging::info("Preparing link with a %3s, my ID: %2d", peer, id);
-    auto   t0(std::chrono::steady_clock::now());
+    auto   t0{std::chrono::steady_clock::now()};
     int    rc;
-    size_t regSize;
-    if ( (rc = link->prepare(id, &regSize, peer)) )
+    size_t regEntrySize;
+    if ( (rc = link->prepare(id, &regEntrySize, peer)) )
     {
       logging::error("%s:\n  Failed to prepare link with %s ID %d",
                      __PRETTY_FUNCTION__, peer, link->id());
@@ -231,12 +236,13 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
     unsigned rmtId     = link->id();
     tmpLinks[rmtId]    = link;
 
+    size_t regSize     = regEntrySize * _maxEvBuffers * _maxEntries;
     _bufRegSize[rmtId] = regSize;
-    _maxBufSize[rmtId] = regSize / (_maxEvBuffers * _maxEntries);
+    _maxBufSize[rmtId] = regEntrySize;
     _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
     regSize           += roundUpSize(_maxTrBuffers * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
 
-    // Allocate the region, and reallocate if the required size is larger
+    // Reallocate the region if the new size is larger
     if (regSize > _regSize[rmtId])
     {
       if (_region[rmtId])  free(_region[rmtId]);
@@ -263,8 +269,8 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
       return rc;
     }
 
-    auto t1 = std::chrono::steady_clock::now();
-    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    auto t1{std::chrono::steady_clock::now()};
+    auto dT{std::chrono::duration_cast<ms_t>(t1 - t0).count()};
     logging::info("Inbound   link with   %3s ID %2d configured in %4lu ms",
                   peer, rmtId, dT);
   }
@@ -297,8 +303,6 @@ int EbAppBase::process()
     return rc;
   }
 
-  ++_bufferCnt;
-
   unsigned       flg = ImmData::flg(data);
   unsigned       src = ImmData::src(data);
   unsigned       idx = ImmData::idx(data);
@@ -306,7 +310,7 @@ int EbAppBase::process()
   size_t         ofs = (ImmData::buf(flg) == ImmData::Buffer)
                      ? (                   idx * _maxBufSize[src]) // In batch/buffer region
                      : (_bufRegSize[src] + idx * _maxTrSize[src]); // Tr region for non-selected EB is after batch/buffer region
-  const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));
+  const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));    // Or, (char*)(_region[src]) + ofs;
 
   if (src != idg->xtc.src.value())
     logging::warning("Link src (%d) != dgram src (%d)", src, idg->xtc.src.value());
@@ -345,6 +349,8 @@ int EbAppBase::process()
   // Tr space bufSize value is irrelevant since idg has EOL set in that case
   EventBuilder::process(idg, _maxBufSize[src], data);
 
+  ++_bufferCnt;
+
   return 0;
 }
 
@@ -355,7 +361,7 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
     auto     idg = *pdg;
     unsigned src = idg->xtc.src.value();
     auto     lnk = _links[src];
-    size_t   ofs = lnk->lclOfs(reinterpret_cast<const void*>(idg));
+    size_t   ofs = lnk->lclOfs(idg);
     unsigned idx = (ofs - _bufRegSize[src]) / _maxTrSize[src];
     uint64_t imm = ImmData::value(ImmData::Transition, _id, idx);
 
@@ -363,7 +369,7 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
       printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",
              idx, src, imm);
 
-    int rc = lnk->post(nullptr, 0, imm);
+    int rc = lnk->post(imm);
     if (rc)
     {
       logging::error("%s:\n  Failed to post transition buffer index %u to DRP ID %u: rc %d, imm %08lx",

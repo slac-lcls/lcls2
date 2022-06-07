@@ -194,8 +194,8 @@ void PGPDetectorApp::disconnect()
 
 void PGPDetectorApp::unconfigure()
 {
+    m_drp.pool.shutdown();              // Release Tr buffer pool
     if (m_pgpDetector) {
-        m_drp.stop();                   // Release allocate()
         m_pgpDetector->shutdown();
         if (m_pgpThread.joinable()) {
             m_pgpThread.join();

@@ -78,9 +78,9 @@ add_executable(tstEbLfLink      tstEbLfLink.cc)
 
 #add_executable(ibMon            ibMon.cc)
 
-add_executable(ctrb
-  ctrb.cc
-)
+#add_executable(ctrb
+#  ctrb.cc
+#)
 
 add_executable(teb
   teb.cc
@@ -157,13 +157,13 @@ target_link_libraries(tstEbLfLink
 #)
 #
 
-target_link_libraries(ctrb
-  contributor
-  collection
-  exporter
-  Threads::Threads
-  rt
-)
+#target_link_libraries(ctrb
+#  contributor
+#  collection
+#  exporter
+#  Threads::Threads
+#  rt
+#)
 
 target_link_libraries(teb
   eventBuilder
@@ -181,7 +181,7 @@ install(TARGETS
   utilities
   contributor
   eventBuilder
-  ctrb
+#  ctrb
   teb
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

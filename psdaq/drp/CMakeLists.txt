@@ -168,11 +168,12 @@ add_executable(drp_validate
     validate.cc
 )
 target_include_directories(drp_validate PUBLIC
-     ../psdaq/pgp/aes-stream-drivers/include
- )
- target_link_libraries(drp_validate
-     Threads::Threads
- )
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    ../psdaq/pgp/aes-stream-drivers/include
+)
+target_link_libraries(drp_validate
+    Threads::Threads
+)
 
 add_executable(opaltt_test
     opaltt_test.cc
@@ -198,14 +199,18 @@ add_executable(drp_groupsync
     groupsync.cc
 )
 target_include_directories(drp_groupsync PUBLIC
-     ../psdaq/pgp/aes-stream-drivers/include
- )
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    ../psdaq/pgp/aes-stream-drivers/include
+)
 target_link_libraries(drp_groupsync
-     Threads::Threads
+    Threads::Threads
 )
 
 
-install(TARGETS drp drp_bld drp_pva drp_udpencoder
+install(TARGETS drp
+  drp_bld
+  drp_pva
+  drp_udpencoder
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

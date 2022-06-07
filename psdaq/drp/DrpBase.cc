@@ -138,6 +138,11 @@ Pds::EbDgram* MemPool::allocateTr()
     return static_cast<Pds::EbDgram*>(dgram);
 }
 
+void MemPool::shutdown()
+{
+    m_transitionBuffers.shutdown();
+}
+
 std::string Drp::FileParameters::runName()
 {
     std::ostringstream ss;
@@ -369,10 +374,9 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
     m_offset += size;
 }
 
-void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
+void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 {
     bool error = false;
-    unsigned index = (uintptr_t)appPrm;
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
         error = true;
@@ -511,8 +515,29 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
              + std::chrono::nanoseconds{dgram->time.nanoseconds()};
     std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
     auto latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-    if (latency > 0 && latency < 100000) // Ignore garbage measurements
-      m_latency = latency;               // Revisit: Negative should be valid
+    if (latency >= 0 && latency < 100000) // Ignore garbage measurements
+        m_latency = latency;             // Revisit: Negative should be valid
+
+#if 0  // For "Pause/Resume" deadtime test:
+    // For this test, SlowUpdates either need to obey deadtime or be turned off.
+    // Also, the TEB and MEB must not time out events.
+    if (dgram->xtc.src.value() == 0) {  // Do this on only one DRP
+        static auto _t0(tp);
+        static bool _enabled(false);
+        if (transitionId == XtcData::TransitionId::Enable) {
+            _t0 = tp;
+            _enabled = true;
+        }
+        if (_enabled && (tp - _t0 > std::chrono::seconds(1 * 60))) { // Delay a bit before sleeping
+            printf("*** EbReceiver: Inducing deadtime by sleeping for 30s at PID %014lx, ts %9u.%09u\n",
+                   pulseId, dgram->time.seconds(), dgram->time.nanoseconds());
+            std::this_thread::sleep_for(std::chrono::seconds(30));
+            _t0 = tp;
+            _enabled = false;
+            printf("*** EbReceiver: Continuing after sleeping for 30s\n");
+        }
+    }
+#endif
 
     // Free the transition datagram buffer
     if (!dgram->isEvent()) {
@@ -572,12 +597,13 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_tPrms.batching   = m_para.kwargs["batching"] == "yes"; // Default to "no"
+//    m_tPrms.batching   = m_para.kwargs["batching"] == "yes"; // Default to "no"
+    m_tPrms.maxEntries = m_para.kwargs["batching"] == "yes" ? Pds::Eb::MAX_ENTRIES : 1; // Default to "no"
     m_tPrms.core[0]    = -1;
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
-    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
+    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, pool.nbuffers(), m_exporter);
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition  = para.partition;
@@ -622,12 +648,13 @@ json DrpBase::connectionInfo(const std::string& ip)
     // Make a guess at the size of the Result entries
     size_t resSizeGuess = sizeof(Pds::EbDgram) + 2  * sizeof(uint32_t);
 
-    int rc = m_ebRecv->startConnection(m_tPrms.port, resSizeGuess);
+    int rc = m_ebRecv->startConnection(m_tPrms.port, resSizeGuess, pool.nbuffers());
     if (rc)  throw "Error starting connection";
 
     json info = {{"drp_port", m_tPrms.port},
-                 {"max_ev_size", m_mPrms.maxEvSize},
-                 {"max_tr_size", m_mPrms.maxTrSize}};
+                 {"num_buffers", pool.nbuffers()},
+                 {"max_ev_size", pool.bufferSize()},
+                 {"max_tr_size", m_para.maxTrSize}};
     return info;
 }
 
@@ -685,7 +712,7 @@ std::string DrpBase::configure(const json& msg)
         }
     }
 
-    rc = m_ebRecv->configure();
+    rc = m_ebRecv->configure(m_numTebBuffers);
     if (rc) {
         return std::string{"EbReceiver configure failed"};
     }
@@ -695,6 +722,7 @@ std::string DrpBase::configure(const json& msg)
     // start eb receiver thread
     m_tebContributor->startup(*m_ebRecv);
 
+    // Same time as the TEBs and MEBs
     m_tebContributor->resetCounters();
     m_mebContributor->resetCounters();
     m_ebRecv->resetCounters();
@@ -729,6 +757,8 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
             msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname, m_nodeId);
         }
     }
+
+    // Same time as the TEBs and MEBs
     m_tebContributor->resetCounters();
     m_mebContributor->resetCounters();
     m_ebRecv->resetCounters();
@@ -877,6 +907,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
 
 int DrpBase::parseConnectionParams(const json& body, size_t id)
 {
+    int rc = 0;
     std::string stringId = std::to_string(id);
     logging::debug("id %zu", id);
     m_tPrms.id = body["drp"][stringId]["drp_id"];
@@ -901,10 +932,14 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.readoutGroup = 1 << unsigned(body["drp"][stringId]["det_info"]["readout"]);
     m_tPrms.contractor = 0;             // Overridden during Configure
 
-    // Build readout group mask for ignoring other partitions' RoGs
-    // Also prepare the mask for placing the service bits at the top of Env
     m_para.rogMask = 0x00ff0000;
+    m_numTebBuffers = 0;                // Only need the largest value
+    unsigned maxBuffers = 0;
+    bool bufErr = false;
     for (auto it : body["drp"].items()) {
+        unsigned drpId = it.value()["drp_id"];
+
+        // Build readout group mask for ignoring other partitions' RoGs
         unsigned rog(it.value()["det_info"]["readout"]);
         if (rog < Pds::Eb::NUM_READOUT_GROUPS - 1) {
             m_para.rogMask |= 1 << rog;
@@ -912,6 +947,29 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
         else {
             logging::warning("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
         }
+
+        // The Common RoG governs the index into the Results region.
+        // Its range must be >= that of any subsidary RoG.
+        auto numBuffers = it.value()["connect_info"]["num_buffers"];
+        if (numBuffers > m_numTebBuffers) {
+            if (rog == m_tPrms.partition) {
+                m_numTebBuffers = numBuffers;
+            }
+            else if (numBuffers > maxBuffers) {
+                maxBuffers = numBuffers;
+                bufErr = drpId == m_nodeId; // Report only for the current DRP
+            }
+        }
+    }
+
+    // Disallow non-common RoG DRPs from having more buffers than the common one
+    // because the buffer index based on the common RoG DRPs won't be able to
+    // reach the higher buffer numbers.  Can't use an index based on the largest
+    // non-common RoG DRP because it would overrun the common RoG DRPs' region.
+    if ((maxBuffers > m_numTebBuffers) && bufErr) {
+        logging::error("DMA buffer count (%u) must be <= %u\n",
+                       pool.nbuffers(), m_numTebBuffers);
+        rc = 1;
     }
 
     m_mPrms.addrs.clear();
@@ -930,12 +988,12 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
             if (count != m_mPrms.maxEvents) {
                 logging::error("maxEvents (%u) must be the same for all MEBs, got %u from ID %u",
                                m_mPrms.maxEvents, count, mebId);
-                return 1;
+                rc = 1;
             }
         }
     }
 
-    return 0;
+    return rc;
 }
 
 void DrpBase::printParams() const
@@ -951,11 +1009,11 @@ void DrpBase::printParams() const
     printf("  Bit list of TEBs:             0x%016lx, cnt: %zu\n", m_tPrms.builders,
                                                                    std::bitset<64>(m_tPrms.builders).count());
     printf("  Number of MEBs:               %zu\n",                m_mPrms.addrs.size());
-    printf("  Batching state:               %s\n",                 m_tPrms.batching ? "Enabled" : "Disabled");
-    printf("  Batch duration:               0x%014lx = %lu uS\n",  BATCH_DURATION, BATCH_DURATION);
-    printf("  Batch pool depth:             0x%08x = %u\n",        MAX_BATCHES, MAX_BATCHES);
-    printf("  Max # of entries / batch:     0x%08x = %u\n",        MAX_ENTRIES, MAX_ENTRIES);
-    printf("  # of TEB contrib.   buffers:  0x%08x = %u\n",        MAX_LATENCY, MAX_LATENCY);
+    printf("  Batching state:               %s\n",                 m_tPrms.maxEntries > 1 ? "Enabled" : "Disabled");
+    printf("  Batch duration:               0x%014x = %u uS\n",    m_tPrms.maxEntries, m_tPrms.maxEntries); // Revisit: * 14/13
+    printf("  Batch pool depth:             0x%08x = %u\n",        pool.nbuffers() / m_tPrms.maxEntries, pool.nbuffers() / m_tPrms.maxEntries);
+    printf("  Max # of entries / batch:     0x%08x = %u\n",        m_tPrms.maxEntries, m_tPrms.maxEntries);
+    printf("  # of TEB contrib.   buffers:  0x%08x = %u\n",        pool.nbuffers(), pool.nbuffers());
     printf("  # of TEB transition buffers:  0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
     printf("  Max  TEB contribution  size:  0x%08zx = %zu\n",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
     printf("  Max  MEB L1Accept      size:  0x%08zx = %zu\n",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);

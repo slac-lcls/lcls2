@@ -11,7 +11,12 @@
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
 
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
+
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 using namespace Drp;
 
@@ -45,7 +50,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 {
     Batch batch;
     MemPool& pool = drp.pool;
-    const unsigned nbuffers = pool.nbuffers();
+    const unsigned bufferMask = pool.nbuffers() - 1;
+    auto& tebContributor = drp.tebContributor();
+    auto triggerPrimitive = drp.triggerPrimitive();
+    auto& tebPrms = drp.tebPrms();
 
     while (true) {
         if (!inputQueue.pop(batch)) {
@@ -53,7 +61,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         }
 
         for (unsigned i=0; i<batch.size; i++) {
-            unsigned index = (batch.start + i) % nbuffers;
+            unsigned index = (batch.start + i) & bufferMask;
             PGPEvent* event = &pool.pgpEvents[index];
             if (event->mask == 0)
                 continue;               // Skip broken event
@@ -73,23 +81,22 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             if (transitionId == XtcData::TransitionId::L1Accept) {
                 const void* bufEnd = (char*)dgram + pool.bufferSize();
                 det->event(*dgram, bufEnd, event);
+
                 // make sure the detector hasn't made the event too big
                 if (dgram->xtc.extent > pool.bufferSize()) {
                     logging::critical("L1Accept: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
                     throw "Buffer too small";
                 }
 
-                if (event->l3InpBuf) {  // else shutting down
-                    Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(*dgram);
-                    auto tp = drp.triggerPrimitive();
-                    if (tp) { // else this DRP doesn't provide input
-                        const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tp->size();
-                        tp->event(pool, index, dgram->xtc, l3InpDg->xtc, l3BufEnd);
-                        size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
-                        if (size > drp.tebPrms().maxInputSize) {
-                            logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, drp.tebPrms().maxInputSize);
-                            throw "Input Dgram overflowed buffer";
-                        }
+                auto l3InpBuf = tebContributor.fetch(index);
+                Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(*dgram);
+                if (triggerPrimitive) { // else this DRP doesn't provide input
+                    const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
+                    triggerPrimitive->event(pool, index, dgram->xtc, l3InpDg->xtc, l3BufEnd);
+                    size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
+                    if (size > tebPrms.maxInputSize) {
+                        logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, tebPrms.maxInputSize);
+                        throw "Input Dgram overflowed buffer";
                     }
                 }
             }
@@ -126,9 +133,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                       XtcData::TransitionId::name(transitionId), event->transitionDgram->pulseId(), dgram->pulseId());
                 }
 
-                if (event->l3InpBuf) { // else shutting down
-                    new(event->l3InpBuf) Pds::EbDgram(*dgram);
-                }
+                auto l3InpBuf = tebContributor.fetch(index);
+                new(l3InpBuf) Pds::EbDgram(*dgram);
             }
         }
 
@@ -213,6 +219,10 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     uint64_t dmaSize = 0L;
     exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
                   [&](){return dmaSize;});
+
+    uint64_t latency = 0L;
+    exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                  [&](){return latency;});
 
     int64_t worker = 0L;
     uint64_t batchId = 0L;
@@ -324,12 +334,16 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 // but not in the workers or there will be concurrency issues.
                 if (transitionId != XtcData::TransitionId::L1Accept) {
                     event->transitionDgram = m_pool.allocateTr();
+                    if (!event->transitionDgram)  break; // Can happen during shutdown
                 }
 
-                // To ensure L3 Input Dgrams appear in the batch in sequential
-                // order, entry allocation must occur here rather than in the
-                // worker threads, the execution order of which may get scrambled
-                event->l3InpBuf = tebContributor.allocate(*timingHeader, (void*)((uintptr_t)current));
+                auto now = std::chrono::system_clock::now();
+                auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+                         + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
+                std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+                auto dt = std::chrono::duration_cast<ms_t>(now - tp).count();
+                if (dt >= 0 && dt < 100000) // Ignore garbage measurements
+                    latency = dt;           // Revisit: Negative should be valid
 
                 // send batch to worker if batch is full or if it's a transition
                 if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||
@@ -344,27 +358,24 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
             }
         }
     }
+    logging::info("PGPReader is exiting");
 }
 
 void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
 {
     int64_t worker = 0L;
     Batch batch;
-    const unsigned nbuffers = m_pool.nbuffers();
+    const unsigned bufferMask = m_pool.nbuffers() - 1;
     while (true) {
         if (!m_workerOutputQueues[worker % m_para.nworkers].pop(batch)) {
             break;
         }
         for (unsigned i=0; i<batch.size; i++) {
-            unsigned index = (batch.start + i) % nbuffers;
+            unsigned index = (batch.start + i) & bufferMask;
             PGPEvent* event = &m_pool.pgpEvents[index];
             if (event->mask == 0)
                 continue;               // Skip broken event
-            if (event->l3InpBuf) // else shutting down
-            {
-                Pds::EbDgram* l3InpDg = static_cast<Pds::EbDgram*>(event->l3InpBuf);
-                tebContributor.process(l3InpDg);
-            }
+            tebContributor.process(index);
         }
         worker++;
     }
@@ -379,6 +390,8 @@ void PGPDetector::resetEventCounter()
 
 void PGPDetector::shutdown()
 {
+    if (m_terminate.load(std::memory_order_relaxed))
+        return;                         // Already shut down
     m_terminate.store(true, std::memory_order_release);
     logging::info("shutting down PGPReader");
     for (unsigned i = 0; i < m_para.nworkers; i++) {

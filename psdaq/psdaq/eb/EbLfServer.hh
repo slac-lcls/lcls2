@@ -44,6 +44,7 @@ namespace Pds {
       int  setupMr(void* region, size_t size);
     public:
       const uint64_t& pending() const { return *const_cast<uint64_t*>(&_pending); } // Cast away volatile
+      const uint64_t& posting() const { return *const_cast<uint64_t*>(&_posting); } // Cast away volatile
     private:
       int _poll(fi_cq_data_entry*, uint64_t flags);
     private:                              // Arranged in order of access frequency
@@ -52,7 +53,8 @@ namespace Pds {
       int                       _tmo;     // Timeout for polling or waiting
       const unsigned&           _verbose; // Print some stuff if set
     private:
-      uint64_t                  _pending; // Flag set when currently pending
+      volatile uint64_t         _pending; // Flag set when currently pending
+      volatile uint64_t         _posting; // Bit list of IDs currently posting
     private:
       Fabrics::PassiveEndpoint* _pep;     // EP for establishing connections
       LinkMap                   _linkByEp;// Map to retrieve link given raw EP

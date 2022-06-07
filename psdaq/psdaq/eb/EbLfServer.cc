@@ -23,6 +23,7 @@ EbLfServer::EbLfServer(const unsigned& verbose) :
   _tmo    (0),                          // Start by polling
   _verbose(verbose),
   _pending(0),
+  _posting(0),
   _pep    (nullptr)
 {
 }
@@ -34,6 +35,7 @@ EbLfServer::EbLfServer(const unsigned&                           verbose,
   _tmo    (0),                          // Start by polling
   _verbose(verbose),
   _pending(0),
+  _posting(0),
   _pep    (nullptr),
   _info   (kwargs)
 {
@@ -60,8 +62,6 @@ int EbLfServer::listen(const std::string& addr,
             __PRETTY_FUNCTION__, _info.error());
     return _info.error_num();
   }
-
-  _pending = 0;
 
   const uint64_t flags = 0;               // For fi_getinfo(), e.g., FI_SOURCE
   _info.hints->tx_attr->size = 0;         // Default for the return path
@@ -152,7 +152,7 @@ int EbLfServer::connect(EbLfSvrLink** link, unsigned nLinks, int msTmo)
 
   int rxDepth = info->rx_attr->size;
   if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
-  *link = new EbLfSvrLink(ep, rxDepth, _verbose);
+  *link = new EbLfSvrLink(ep, rxDepth, _verbose, _pending, _posting);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);

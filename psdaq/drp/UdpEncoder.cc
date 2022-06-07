@@ -217,8 +217,6 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     m_lastTid = transitionId;
     memcpy(m_lastData, data, 24);
 
-    event->l3InpBuf = m_tebContributor.allocate(*timingHeader, (void*)((uintptr_t)current));
-
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
     Pds::EbDgram* dgram = new(m_pool.pebble[current]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
@@ -860,28 +858,24 @@ void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 {
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
-    const size_t maxSize = ((dgram.service() == XtcData::TransitionId::L1Accept) ||
-                            (dgram.service() == XtcData::TransitionId::SlowUpdate))
+    const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
                          ? m_pool->pebble.bufferSize()
                          : m_para->maxTrSize;
-    logging::debug("%s: dgram.xtc.sizeofPayload() = %zd", __PRETTY_FUNCTION__, dgram.xtc.sizeofPayload());
     if (size > maxSize) {
         logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
         throw "Dgram overflowed buffer";
     }
 
-    PGPEvent* event = &m_pool->pgpEvents[index];
-    if (event->l3InpBuf) { // else shutting down
-        Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
-        if (l3InpDg->isEvent()) {
-            auto tp = m_drp.triggerPrimitive();
-            if (tp) { // else this DRP doesn't provide input
-                const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tp->size();
-                tp->event(*m_pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
-            }
+    auto l3InpBuf = m_drp.tebContributor().fetch(index);
+    Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(dgram);
+    if (l3InpDg->isEvent()) {
+        auto triggerPrimitive = m_drp.triggerPrimitive();
+        if (triggerPrimitive) { // else this DRP doesn't provide input
+            const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
+            triggerPrimitive->event(*m_pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
         }
-        m_drp.tebContributor().process(l3InpDg);
     }
+    m_drp.tebContributor().process(l3InpDg);
 }
 
 int UdpEncoder::drainFd(int fd)
@@ -940,7 +934,8 @@ void UdpApp::_disconnect()
 
 void UdpApp::_unconfigure()
 {
-    m_drp.unconfigure();  // TebContributor must be shut down before the worker
+    m_drp.pool.shutdown();  // Release Tr buffer pool
+    m_drp.unconfigure();    // TebContributor must be shut down before the worker
     m_udpDetector->unconfigure();
     m_unconfigure = false;
 }

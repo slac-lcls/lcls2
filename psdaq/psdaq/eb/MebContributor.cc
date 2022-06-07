@@ -37,7 +37,8 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
                                             {"alias", prms.alias}};
   exporter->add("MCtbO_EvCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
   exporter->add("MCtbO_TrCt",  labels, MetricType::Counter, [&](){ return _trCount;             });
-  exporter->add("MCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add("MCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
+  exporter->add("MCtbO_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
 }
 
 int MebContributor::resetCounters()
@@ -96,7 +97,7 @@ int MebContributor::configure(void*  region,
                               size_t regSize)
 {
   //printf("*** MC::cfg: region %p, regSize %zu\n", region, regSize);
-  int rc = linksConfigure(_links, _id, region, regSize, _bufRegSize, "MEB");
+  int rc = linksConfigure(_links, _id, region, regSize, _maxEvSize, "MEB");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -153,19 +154,17 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
            _eventCount, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data);
   }
 
-  if (int rc = link->post(ddg, sz, offset, data) < 0)
+  int rc = link->post(ddg, sz, offset, data);
+  if (rc < 0)
   {
-    if (link->tmoCnt() < 100)
-    {
-      uint64_t pid    = ddg->pulseId();
-      unsigned ctl    = ddg->control();
-      uint32_t env    = ddg->env;
-      void*    rmtAdx = (void*)link->rmtAdx(offset);
-      logging::error("%s:\n  Failed to post monEvt [%8u]  @ "
-                     "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x, rc %d\n",
-                     __PRETTY_FUNCTION__, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data, rc);
-    }
-    return rc;
+    uint64_t pid    = ddg->pulseId();
+    unsigned ctl    = ddg->control();
+    uint32_t env    = ddg->env;
+    void*    rmtAdx = (void*)link->rmtAdx(offset);
+    logging::critical("%s:\n  Failed to post monEvt [%8u]  @ "
+                      "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x, rc %d\n",
+                      __PRETTY_FUNCTION__, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data, rc);
+    abort();
   }
 
   ++_eventCount;

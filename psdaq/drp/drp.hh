@@ -105,6 +105,7 @@ public:
     unsigned dmaSize() const {return m_dmaSize;}
     int fd () const {return m_fd;}
     Pds::EbDgram* allocateTr();
+    void shutdown();
     void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
     void allocate(unsigned count) { m_inUse.fetch_add(count, std::memory_order_acq_rel) ; }
     void release(unsigned count) { m_inUse.fetch_sub(count, std::memory_order_acq_rel); }

@@ -93,17 +93,30 @@ int Pds::Eb::setupMr(Fabric*         fabric,
 
 // ---
 
-EbLfLink::EbLfLink(Endpoint*       ep,
-                   int             depth,
-                   const unsigned& verbose) :
+EbLfLink::EbLfLink(Endpoint*          ep,
+                   int                depth,
+                   const unsigned&    verbose,
+                   volatile uint64_t& pending,
+                   volatile uint64_t& posting) :
   _id      (-1),
   _ep      (ep),
   _mr      (nullptr),
   _verbose (verbose),
   _timedOut(0ull),
+  _pending (pending),
+  _posting (posting),
   _depth   (depth)
 {
+  _pending = 0;
+  _posting = 0;
+
   postCompRecv(depth);
+}
+
+EbLfLink::~EbLfLink()
+{
+  _pending = 0;
+  _posting = 0;
 }
 
 int EbLfLink::recvU32(uint32_t*   u32,
@@ -205,10 +218,12 @@ int EbLfLink::sendMr(MemoryRegion* mr,
 
 // ---
 
-EbLfSvrLink::EbLfSvrLink(Endpoint*       ep,
-                         int             depth,
-                         const unsigned& verbose) :
-  EbLfLink(ep, depth, verbose)
+EbLfSvrLink::EbLfSvrLink(Endpoint*          ep,
+                         int                depth,
+                         const unsigned&    verbose,
+                         volatile uint64_t& pending,
+                         volatile uint64_t& posting) :
+  EbLfLink(ep, depth, verbose, pending, posting)
 {
 }
 
@@ -339,9 +354,9 @@ int EbLfSvrLink::setupMr(void*       region,
 EbLfCltLink::EbLfCltLink(Endpoint*          ep,
                          int                depth,
                          const unsigned&    verbose,
-                         volatile uint64_t& pending) :
-  EbLfLink(ep, depth, verbose),
-  _pending(pending)
+                         volatile uint64_t& pending,
+                         volatile uint64_t& posting) :
+  EbLfLink(ep, depth, verbose, pending, posting)
 {
 }
 
@@ -349,8 +364,8 @@ int EbLfCltLink::setupMr(void* region, size_t size)
 {
   if (_ep)
     return Pds::Eb::setupMr(_ep->fabric(), region, size, nullptr, _verbose);
-  else
-    return -1;
+
+  return -1;
 }
 
 int EbLfCltLink::_synchronizeBegin()
@@ -473,7 +488,7 @@ int EbLfCltLink::post(const void* buf,
   auto          t0{fast_monotonic_clock::now()};
   ssize_t       rc;
 
-  _pending |= 1 << _id;
+  _posting |= 1 << _id;
 
   while (true)
   {
@@ -488,18 +503,7 @@ int EbLfCltLink::post(const void* buf,
       break;
     }
 
-    // With FI_SELECTIVE_COMPLETION, fabtests seems to indicate there is no need
-    // to check the Tx completion queue as nothing will ever appear in it
-    //fi_cq_data_entry cqEntry;
-    //rc = _ep->txcq()->comp(&cqEntry, 1);
-    //if ((rc < 0) && (rc != -FI_EAGAIN)) // EAGAIN means no completions available
-    //{
-    //  fprintf(stderr, "%s:\n  Error reading Tx CQ: %s\n",
-    //          __PRETTY_FUNCTION__, _ep->txcq()->error());
-    //  break;
-    //}
-
-    const ms_t tmo{7000};
+    const ms_t tmo{300000};            // Revisit: Skip the timeout altogether?
     auto       t1 {fast_monotonic_clock::now()};
 
     if (t1 - t0 > tmo)
@@ -508,13 +512,9 @@ int EbLfCltLink::post(const void* buf,
       rc = -FI_ETIMEDOUT;
       break;
     }
-
-    usleep(100);                        // Don't retry too quickly
-
-    // Maybe check if an EQ event indicates the link is shut down?
   }
 
-  _pending &= ~(1 << _id);
+  _posting &= ~(1 << _id);
 
   return rc;
 }
@@ -526,22 +526,34 @@ int EbLfLink::post(const void* buf,
                    size_t      len,
                    uint64_t    immData)
 {
+  auto    t0{fast_monotonic_clock::now()};
   ssize_t rc;
-  if ( (rc = _ep->injectdata(buf, len, immData)) )
+
+  _posting |= 1 << _id;
+
+  while (true)
   {
-    fprintf(stderr, "%s:\n  injectdata() to ID %d failed: %s\n",
-            __PRETTY_FUNCTION__, _id, _ep->error());
+    if ( !(rc = _ep->injectdata(buf, len, immData)) )  break;
+
+    if (rc != -FI_EAGAIN)
+    {
+      fprintf(stderr, "%s:\n  injectdata() to ID %d failed: %s\n",
+              __PRETTY_FUNCTION__, _id, _ep->error());
+      break;
+    }
+
+    const ms_t tmo{300000};            // Revisit: Skip the timeout altogether?
+    auto       t1 {fast_monotonic_clock::now()};
+
+    if (t1 - t0 > tmo)
+    {
+      ++_timedOut;
+      rc = -FI_ETIMEDOUT;
+      break;
+    }
   }
 
-  return rc;
-}
-
-int EbLfLink::post(uint64_t immData)
-{
-  auto rc = post(nullptr, 0, immData);
-
-  //printf("%s:  To ID %d, sent imm %08lx: rc %zd\n",
-  //       __PRETTY_FUNCTION__, _id, immData, rc);
+  _posting &= ~(1 << _id);
 
   return rc;
 }
@@ -583,6 +595,15 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
   int  rc;
   auto cq = _ep->rxcq();
   auto t0{fast_monotonic_clock::now()};
+
+  class Pending
+  {
+  public:
+    Pending(volatile uint64_t& pending) : _pending(pending) { ++_pending; }
+    ~Pending() { --_pending; }
+  private:
+    volatile uint64_t& _pending;
+  } pending(_pending);
 
   do
   {

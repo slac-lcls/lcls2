@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "eb.hh"
+
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -19,16 +21,19 @@ namespace Pds {
 
     class EbEvent : public LinkedList<EbEvent>
     {
+    private:
+      using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
     public:
       PoolDeclare;
     public:
       EbEvent(uint64_t            contract,
               EbEvent*            after,
               const Pds::EbDgram* ctrb,
-              unsigned            prm);
+              unsigned            immData,
+              const time_point_t& t0);
       ~EbEvent();
     public:
-      unsigned        parameter() const;
+      unsigned        immData()   const;
       uint64_t        sequence()  const;
       size_t          size()      const;
       uint64_t        remaining() const;
@@ -47,14 +52,11 @@ namespace Pds {
       EbEvent* _add(const Pds::EbDgram*);
       void     _insert(const Pds::EbDgram*);
     private:
-      using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
-
       size_t               _size;            // Total contribution size (in bytes)
       uint64_t             _remaining;       // List of clients which have contributed
       const uint64_t       _contract;        // -> potential list of contributors
-      //int                  _living;          // Aging counter
       time_point_t         _t0;              // Starting time of timeout
-      unsigned             _prm;             // An application level free parameter
+      unsigned             _immData;         // A contribution's immediate data
       XtcData::Damage      _damage;          // Accumulate damage about this event
       const Pds::EbDgram** _last;            // Pointer into the contributions array
       const Pds::EbDgram*  _contributions[]; // Array of contributions
@@ -65,14 +67,43 @@ namespace Pds {
 /*
 ** ++
 **
-**    Give EventBuilder user interface access to the free parameter.
+**    As soon as an event becomes "complete" its datagram is the only
+**    information of value within the event. Therefore, when the event
+**    becomes complete it is deleted which cause the destructor to
+**    remove the event from the pending queue.
 **
 ** --
 */
 
-inline unsigned Pds::Eb::EbEvent::parameter() const
+inline Pds::Eb::EbEvent::~EbEvent()
 {
-  return _prm;
+}
+
+/*
+** ++
+**
+**    This function is used to insert a "dummy" contribution into the event.
+**    The dummy contribution is identified by the input argument.
+**
+** --
+*/
+
+inline void Pds::Eb::EbEvent::_insert(const EbDgram* dummy)
+{
+  *_last++ = dummy;
+}
+
+/*
+** ++
+**
+**    Give EventBuilder user interface access to the immediate data.
+**
+** --
+*/
+
+inline unsigned Pds::Eb::EbEvent::immData() const
+{
+  return _immData;
 }
 
 /*

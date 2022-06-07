@@ -79,6 +79,16 @@ namespace Pds {
 
     using MetricExporter_t = std::shared_ptr<MetricExporter>;
 
+    struct Batch
+    {
+      Batch(const EbDgram* dgram, uint64_t dsts_, unsigned idx_) :
+        start(dgram), end(dgram), dsts(dsts_), idx(idx_) {};
+      const EbDgram* start;
+      const EbDgram* end;
+      uint64_t       dsts;
+      unsigned       idx;
+    };
+
     class Teb : public EbAppBase
     {
     public:
@@ -88,7 +98,6 @@ namespace Pds {
       int      startConnection(std::string& tebPort, std::string& mrqPort);
       int      connect();
       int      configure(Trigger* object, unsigned prescale);
-      int      beginrun ();
       void     unconfigure();
       void     disconnect();
       void     shutdown();
@@ -99,20 +108,17 @@ namespace Pds {
       virtual
       void     process(EbEvent* event) override;
     private:
-      void     _tryPost(const EbDgram* dg, uint64_t dsts);
-      void     _post(const EbDgram* start, const EbDgram* end);
+      void     _tryPost(const EbDgram* dg, uint64_t dsts, unsigned immData);
+      void     _post(const Batch& batch);
       uint64_t _receivers(unsigned rogs) const;
     private:
       std::vector<EbLfCltLink*> _l3Links;
       EbLfServer                _mrqTransport;
       std::vector<EbLfSvrLink*> _mrqLinks;
+      unsigned                  _eventIdx;
       BatchManager              _batMan;
-      unsigned                  _id;
-      const EbDgram*            _batchStart;
-      const EbDgram*            _batchEnd;
-      uint64_t                  _resultDsts;
+      Batch                     _batch;
     private:
-      EbAppBase::u64arr_t       _rcvrs;
       //uint64_t                  _trimmed;
       Trigger*                  _trigger;
       unsigned                  _prescale;
@@ -139,13 +145,9 @@ using namespace Pds::Eb;
 
 Teb::Teb(const EbParams&         prms,
          const MetricExporter_t& exporter) :
-  EbAppBase     (prms, exporter, "TEB",
-                 BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES, TEB_TR_BUFFERS, TEB_TMO_MS),
+  EbAppBase     (prms, exporter, "TEB", TEB_TMO_MS),
   _mrqTransport (prms.verbose, prms.kwargs),
-  _id           (-1),
-  _batchStart   (nullptr),
-  _batchEnd     (nullptr),
-  _resultDsts   (0),
+  _batch        {nullptr, 0, 0},
   //_trimmed      (0),
   _trigger      (nullptr),
   _pidPrv       (0),
@@ -163,19 +165,12 @@ Teb::Teb(const EbParams&         prms,
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
                                             {"alias", prms.alias}};
-  exporter->add("TEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
   exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
   exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;                });
   exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;             });
   exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             }); // Outbound
-  exporter->add("TEB_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
-  exporter->add("TEB_BtFrCt", labels, MetricType::Counter, [&](){ return _batMan.batchFreeCnt();  });
-  exporter->add("TEB_BtWtg",  labels, MetricType::Gauge,   [&](){ return _batMan.batchWaiting();  });
-  exporter->add("TEB_IUBats", labels, MetricType::Gauge,   [&](){ return _batMan.inUseBatchCnt(); });
-  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.pending();  });
-  exporter->add("TEB_WrtRt",  labels, MetricType::Rate,    [&](){ return _writeCount;             });
+  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.posting();  });
   exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;             });
-  exporter->add("TEB_MonRt",  labels, MetricType::Rate,    [&](){ return _monitorCount;           });
   exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;           });
   exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;          });
 }
@@ -213,8 +208,6 @@ void Teb::disconnect()
 
   EbAppBase::disconnect();
 
-  _id = -1;
-  _rcvrs.fill(0);
 }
 
 void Teb::unconfigure()
@@ -247,8 +240,6 @@ int Teb::connect()
 {
   _l3Links .resize(_prms.addrs.size());
   _mrqLinks.resize(_prms.numMrqs);
-  _id      = _prms.id;
-  _rcvrs   = _prms.receivers;
 
   // Make a guess at the size of the Input entries
   size_t inpSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);
@@ -264,10 +255,19 @@ int Teb::connect()
   if (!_batMan.batchRegion())           // No need to guess again
   {
     // Make a guess at the size of the Result entries
-    size_t maxResultSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
-    _batMan.initialize(maxResultSizeGuess, true); // TEB always batches
+    auto maxResultSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
+    auto maxEntries         = _prms.maxEntries;
+    auto numBatches         = _prms.numBuffers / maxEntries;
+    if (numBatches * maxEntries != _prms.numBuffers)
+    {
+      logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
+                        maxEntries, _prms.numBuffers);
+      abort();
+    }
+    _batMan.initialize(maxResultSizeGuess, maxEntries, numBatches); // TEB always batches
   }
 
+  // This is the local Results batch region from which we'll post batches back to the DRPs
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
 
@@ -281,12 +281,12 @@ int Teb::connect()
   return 0;
 }
 
-int Teb::configure(Trigger* object,
+int Teb::configure(Trigger* trigger,
                    unsigned prescale)
 {
   _monitorCount = 0; // Cleared here to stay in sync with MEB
 
-  _trigger    = object;
+  _trigger    = trigger;                // The trigger object
   _prescale   = prescale - 1;           // Be zero based
   _wrtCounter = _prescale;              // Reset prescale counter
 
@@ -294,25 +294,22 @@ int Teb::configure(Trigger* object,
   if (rc)  return rc;
 
   // maxResultSize becomes known during Configure, so reinitialize BatchManager now
-  _batMan.initialize(_prms.maxResultSize, true); // TEB always batches
+  auto maxResultSize = _trigger->size();
+  auto maxEntries    = _prms.maxEntries;
+  auto numBatches    = _prms.numBuffers / maxEntries;
+  _batMan.initialize(maxResultSize, maxEntries, numBatches); // TEB always batches
 
+  // This is the local Results batch region from which we'll post batches back to the DRPs
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
 
   //printf("*** TEB::cfg: region %p, regSize %zu\n", region, regSize);
-  rc = linksConfigure(_l3Links, _id, region, regSize, "DRP");
+  rc = linksConfigure(_l3Links, _prms.id, region, regSize, "DRP");
   if (rc)  return rc;
-  rc = linksConfigure(_mrqLinks, _id, "MRQ");
+  rc = linksConfigure(_mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
-
-  return 0;
-}
-
-int Teb::beginrun()
-{
-  resetCounters();
 
   return 0;
 }
@@ -328,9 +325,11 @@ void Teb::run()
                    __PRETTY_FUNCTION__, strerror(rc));
   }
 
-  _batchStart    = nullptr;
-  _batchEnd      = nullptr;
-  _resultDsts    = 0;
+  _batch.start = nullptr;
+  _batch.end   = nullptr;
+  _batch.dsts  = 0;
+  _batch.idx   = 0;
+  _eventIdx    = 0;
 
   resetCounters();
 
@@ -360,9 +359,8 @@ void Teb::process(EbEvent* event)
 
   if (unlikely(_prms.verbose >= VL_DETAILED))
   {
-    static unsigned cnt = 0;
     printf("Teb::process event dump:\n");
-    event->dump(++cnt);
+    event->dump(_eventIdx);
   }
 
   const EbDgram* dgram = event->creator();
@@ -374,13 +372,14 @@ void Teb::process(EbEvent* event)
     // Revisit: Should this be fatal?
   }
 
+  unsigned imm = event->immData();
   uint64_t pid = dgram->pulseId();
   if (unlikely(!(pid > _pidPrv)))
   {
     event->damage(Damage::OutOfOrder);
 
-    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u\n",
-                      __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->parameter(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
+    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, imm %08x, svc %u, ts %u.%09u\n",
+                      __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), imm, dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
 
     if (event->remaining())             // I.e., this event was fixed up
     {
@@ -399,11 +398,13 @@ void Teb::process(EbEvent* event)
   if (dgram->isEvent())  ++_eventCount;
   else                   ++_trCount;
 
+  auto idx = _eventIdx++ & (_prms.numBuffers - 1);
+
   // "Selected" EBs respond with a Result, others simply acknowledge
-  if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
+  if (ImmData::rsp(ImmData::flg(imm)) == ImmData::Response)
   {
-    Batch*       batch = _batMan.fetch(pid);
-    ResultDgram* rdg   = new(batch->allocate()) ResultDgram(*dgram, _id);
+    auto buf = _batMan.fetch(idx);
+    auto rdg = new(buf) ResultDgram(*dgram, _prms.id);
 
     rdg->xtc.damage.increase(event->damage().value());
 
@@ -446,7 +447,6 @@ void Teb::process(EbEvent* event)
     {
       const char* svc = TransitionId::name(rdg->service());
       uint64_t    pid = rdg->pulseId();
-      unsigned    idx = Batch::index(pid);
       unsigned    ctl = rdg->control();
       size_t      sz  = sizeof(rdg) + rdg->xtc.sizeofPayload();
       unsigned    src = rdg->xtc.src.value();
@@ -457,45 +457,44 @@ void Teb::process(EbEvent* event)
              svc, idx, rdg, ctl, pid, env, sz, src, dsts, pld[0], pld[1]);
     }
 
-    _tryPost(rdg, dsts);
+    _tryPost(rdg, dsts, idx);
   }
-  else
+  else                                  // "Non-selected" TEB case
   {
-    // Flush whatever batch there is
-    if (_batchStart)
+    // Only transitions are sent to "non-selected" TEBs.
+    // "Non-selected" TEBs don't respond to any dgrams they receive, but
+    // responses prepared for dgrams they received when they were a "selected"
+    // TEB must be delivered in a timely manner, so whatever in-progress batch
+    // there is is flushed by the same logic batches on "selected" TEBs are
+    // flushed.  It's probably done by the first SlowUpdate after a TEB becomes
+    // a "non-selected" one, so this seems a bit redundant.
+    if (_batch.start)
     {
-      const EbDgram*      start   = _batchStart;
-      const EbDgram*      end     = _batchEnd;
       TransitionId::Value svc     = dgram->service();
       bool                flush   = !((svc == TransitionId::L1Accept) ||
                                       (svc == TransitionId::SlowUpdate));
-      bool                expired = _batMan.expired(pid, start->pulseId());
+      bool                expired = _batMan.expired(pid, _batch.start->pulseId());
 
       if (expired || flush)
       {
-        if (!end)  end = start;
+        if (!_batch.end)  _batch.end = _batch.start;
 
-        _post(start, end);
-        // Only transitions come through here
+        _post(_batch);                  // Flush whatever batch there is
 
-        // Start a new batch
-        _batchStart = nullptr;
-        _batchEnd   = nullptr;
-        _resultDsts = 0;
+        _batch.start = nullptr;         // Start a new batch
       }
     }
 
     if (unlikely(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
     {
       const char* svc = TransitionId::name(dgram->service());
-      unsigned    idx = Batch::index(pid);
       unsigned    ctl = dgram->control();
       size_t      sz  = sizeof(dgram) + dgram->xtc.sizeofPayload();
       unsigned    src = dgram->xtc.src.value();
       unsigned    env = dgram->env;
       printf("TEB processed %15s ACK    [%8u] @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, data %08x\n",
-             svc, idx, dgram, ctl, pid, env, sz, src, event->parameter());
+             svc, idx, dgram, ctl, pid, env, sz, src, imm);
     }
 
     // Make the transition buffer available to the contributor again
@@ -507,106 +506,79 @@ void Teb::process(EbEvent* event)
 // to flush out any in-progress batch
 void Teb::flush()
 {
-  const EbDgram* start = _batchStart;
-  const EbDgram* end   = _batchEnd;
+  //printf("TEB::flush: start %p, end %p\n", _batch.start, _batch.end);
 
-  //printf("TEB::flush: start %p, end %p\n", start, end);
-
-  if (start)
+  if (_batch.start)
   {
-    //printf("TEB::flush:    posting %014lx - %014lx\n", start->pulseId(), end->pulseId());
+    //printf("TEB::flush:    posting %014lx - %014lx\n",
+    //       _batch.start->pulseId(), _batch.end->pulseId());
 
-    _post(start, end);
+    _post(_batch);
 
-    _batchStart = nullptr;
-    _batchEnd   = nullptr;
-    _resultDsts = 0;
+    _batch.start = nullptr;             // Start a new batch
   }
 }
 
-void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts)
+void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 {
-  //printf("tryPost: pid %014lx, batchStart %014lx\n", dgram->pulseId(), _batchStart ? _batchStart->pulseId() : 0ul);
+  // On wrapping, post the batch at the end of the region, if any
+  if (dgram == _batMan.batchRegion())  flush();
 
   // The batch start is the first dgram seen
-  if (!_batchStart)  _batchStart = dgram;
+  if (!_batch.start)  _batch = {dgram, dsts, eventIdx};
 
-  const EbDgram*      start   = _batchStart;
-  const EbDgram*      end     = _batchEnd;
   TransitionId::Value svc     = dgram->service();
-  bool                flush   = !((svc == TransitionId::L1Accept) ||
-                                  (svc == TransitionId::SlowUpdate));
-  bool                expired = _batMan.expired(dgram->pulseId(), start->pulseId());
+  bool                flush   = ((svc != TransitionId::L1Accept) &&
+                                 (svc != TransitionId::SlowUpdate));
+  bool                expired = _batMan.expired(       dgram->pulseId(),
+                                                _batch.start->pulseId());
 
-  //printf("tryPost: flush %d, expired %d\n", flush, expired);
-
-  if (expired || flush)
+  if (likely(!expired && !flush))       // Most frequent case when batching
   {
-    if (expired)
-    {
-      if (!end)
-      {
-        end          = dgram;
-        _resultDsts |= dsts;
-      }
-
-      //printf("tryPost: e||f  posting %014lx - %014lx\n", start->pulseId(), end->pulseId());
-
-      _post(start, end);
-
-      // Start a new batch
-      _batchStart = end == dgram ? nullptr : dgram;
-      _batchEnd   = end == dgram ? nullptr : dgram;
-      _resultDsts = end == dgram ? 0       : dsts;
-      start       = _batchStart;
-
-      //printf("tryPost: e||f  batchStart %014lx, batchEnd %014lx\n",
-      //       _batchStart ? _batchStart->pulseId() : 0ul,
-      //       _batchEnd   ? _batchEnd->pulseId()   : 0ul);
-    }
-
-    if (flush && start)     // Post the batch + transition if it wasn't just done
-    {
-      _resultDsts |= dsts;
-
-      //printf("tryPost: f     posting %014lx - %014lx\n", start->pulseId(), dgram->pulseId());
-
-      _post(start, dgram);
-
-      // Start a new batch
-      _batchStart = nullptr;
-      _batchEnd   = nullptr;
-      _resultDsts = 0;
-    }
+    _batch.end   = dgram;               // Append dgram to batch
+    _batch.dsts |= dsts;
   }
   else
   {
-    _batchEnd    = dgram;   // The batch end is the one before the current dgram
-    _resultDsts |= dsts;
+    // Combining a flushing dgram (i.e., a non-SlowUpdate transition) into an
+    // expired batch can lead to downstream problems since the transition's
+    // pulseId may fall outside the batch duration (epoch)
+    if (expired)                        // Post just the batch
+    {
+      _post(_batch);                    // The batch end is the previous Dgram
 
-      //printf("tryPost: else  batchStart %014lx, batchEnd %014lx\n",
-      //       _batchStart ? _batchStart->pulseId() : 0ul,
-      //       _batchEnd   ? _batchEnd->pulseId()   : 0ul);
+      _batch = {dgram, dsts, eventIdx}; // Start a new batch with dgram
+    }
+
+    if (flush)                          // Post the batch + transition
+    {
+      _batch.end   = dgram;             // Append dgram to batch
+      _batch.dsts |= dsts;
+
+      _post(_batch);
+
+      _batch.start = nullptr;           // Start a new batch
+    }
   }
 }
 
-void Teb::_post(const EbDgram* start, const EbDgram* end)
+void Teb::_post(const Batch& batch)
 {
-  uint64_t pid    = start->pulseId();
-  uint32_t idx    = Batch::index(pid);
-  size_t   extent = (reinterpret_cast<const char*>(end) -
-                     reinterpret_cast<const char*>(start)) + _prms.maxResultSize;
-  unsigned offset = idx * _prms.maxResultSize;
-  uint64_t data   = ImmData::value(ImmData::Buffer, _id, idx);
-  uint64_t destns = _resultDsts; // & ~_trimmed;
+  size_t   size   = _trigger->size();
+  size_t   extent = (reinterpret_cast<const char*>(batch.end) -
+                     reinterpret_cast<const char*>(batch.start)) + size;
+  unsigned offset = batch.idx * size;
+  uint64_t data   = ImmData::value(ImmData::Buffer, _prms.id, batch.idx);
+  uint64_t destns = batch.dsts; // & ~_trimmed;
 
-  end->setEOL();                        // Terminate the batch
+  batch.end->setEOL();                  // Terminate the batch
 
   if (unlikely(_prms.verbose >= VL_BATCH))
   {
+    uint64_t pid = batch.start->pulseId();
     printf("TEB posts          %9lu result  [%8u] @ "
            "%16p,         pid %014lx,               sz %6zd, dst %016lx\n",
-           _batchCount, idx, start, pid, extent, destns);
+           _batchCount, batch.idx, batch.start, pid, extent, destns);
   }
 
   while (destns)
@@ -616,9 +588,17 @@ void Teb::_post(const EbDgram* start, const EbDgram* end)
 
     destns &= ~(1ul << dst);
 
-    if (int rc = link->post(start, extent, offset, data) < 0)
+    int rc = link->post(batch.start, extent, offset, data);
+    if (rc < 0)
     {
-      if (rc != -FI_ETIMEDOUT)  break;  // Revisit: Right thing to do?
+      uint64_t pid    = batch.start->pulseId();
+      unsigned ctl    = batch.start->control();
+      uint32_t env    = batch.start->env;
+      void*    rmtAdx = (void*)link->rmtAdx(offset);
+      logging::critical("%s:\n  Failed to post batch  [%8u]  @ "
+                        "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x, rc %d\n",
+                        __PRETTY_FUNCTION__, batch.idx, batch.start, ctl, pid, env, extent, dst, rmtAdx, data, rc);
+      abort();
 
       // If we were to trim, here's how to do it.  For now, we don't.
       //static unsigned retries = 0;
@@ -630,15 +610,6 @@ void Teb::_post(const EbDgram* start, const EbDgram* end)
   }
 
   ++_batchCount;
-
-  // Revisit: The following deallocation constitutes a race with the posts to
-  // the transport above as the batch's memory cannot be allowed to be reused
-  // for a subsequent batch before the transmit completes.  Waiting for
-  // completion here would impact performance.  Since there are many batches,
-  // and only one is active at a time, a previous batch will have completed
-  // transmitting before the next one starts (or the subsequent transmit won't
-  // start), thus making it safe to "pre-delete" it here.
-  _batMan.release(pid);
 }
 
 uint64_t Teb::_receivers(unsigned groups) const
@@ -659,7 +630,7 @@ uint64_t Teb::_receivers(unsigned groups) const
     unsigned group = __builtin_ffs(groups) - 1;
     groups &= ~(1 << group);
 
-    receivers |= _rcvrs[group];
+    receivers |= _prms.receivers[group];
   }
   return receivers;
 }
@@ -690,7 +661,7 @@ private:
   int  _configure(const json& msg);
   void _unconfigure();
   int  _parseConnectionParams(const json& msg);
-  void _printParams(const EbParams& prms, unsigned groups) const;
+  void _printParams(const EbParams& prms, unsigned groups, Trigger* trigger) const;
   void _printGroups(unsigned groups, const EbAppBase::u64arr_t& array) const;
   void _buildContract(const Document& top);
 private:
@@ -791,8 +762,6 @@ void TebApp::handleConnect(const json& msg)
     return;
   }
 
-  _teb->resetCounters();
-
   rc = _teb->connect();
   if (rc)
   {
@@ -854,7 +823,6 @@ int TebApp::_configure(const json& msg)
                    __PRETTY_FUNCTION__);
     return -1;
   }
-  _prms.maxResultSize = trigger->size();
 
   if (trigger->configure(_connectMsg, top))
   {
@@ -876,6 +844,10 @@ int TebApp::_configure(const json& msg)
   rc = _teb->configure(trigger, prescale);
   if (rc)  logging::error("%s:\n  Failed to configure TEB",
                           __PRETTY_FUNCTION__);
+
+  _printParams(_prms, _groups, trigger);
+
+  _teb->resetCounters();                // Same time as DRPs
 
   return rc;
 }
@@ -908,8 +880,6 @@ void TebApp::handlePhase1(const json& msg)
       return;
     }
 
-    _printParams(_prms, _groups);
-
     lRunning = 1;
 
     _appThread = std::thread(&Teb::run, std::ref(*_teb));
@@ -921,11 +891,7 @@ void TebApp::handlePhase1(const json& msg)
   }
   else if (key == "beginrun")
   {
-    if (_teb->beginrun())
-    {
-      _error(msg, "Phase 1 error: Failed to " + key);
-      return;
-    }
+    _teb->resetCounters();              // Same time as DRPs
   }
 
   // Reply to collection with transition status
@@ -955,12 +921,20 @@ void TebApp::handleReset(const json& msg)
 
 int TebApp::_parseConnectionParams(const json& body)
 {
+  int rc = 0;
+
   std::string id = std::to_string(getId());
   _prms.id = body["teb"][id]["teb_id"];
   if (_prms.id >= MAX_TEBS)
   {
     logging::error("TEB ID %d is out of range 0 - %u", _prms.id, MAX_TEBS - 1);
-    return 1;
+    rc = 1;
+  }
+
+  if (body.find("drp") == body.end())
+  {
+    logging::error("Missing required DRP specs");
+    rc = 1;
   }
 
   _prms.contributors = 0;
@@ -971,34 +945,61 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.receivers.fill(0);
   _groups = 0;
 
-  if (body.find("drp") == body.end())
-  {
-    logging::error("Missing required DRP specs");
-    return 1;
-  }
+  _prms.maxEntries  = MAX_ENTRIES;      // Revisit: Make configurable?
+  _prms.numBuffers  = 0;                // Only need the largest value
 
+  unsigned maxBuffers = 0;
   for (auto it : body["drp"].items())
   {
-    unsigned    drpId   = it.value()["drp_id"];
+    unsigned drpId = it.value()["drp_id"];
     if (drpId > MAX_DRPS - 1)
     {
       logging::error("DRP ID %d is out of range 0 - %u", drpId, MAX_DRPS - 1);
-      return 1;
+      rc = 1;
     }
     _prms.contributors |= 1ul << drpId;
 
     _prms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
     _prms.ports.push_back(it.value()["connect_info"]["drp_port"]);
 
-    unsigned group(it.value()["det_info"]["readout"]);
-    if (group > NUM_READOUT_GROUPS - 1)
+    unsigned rog(it.value()["det_info"]["readout"]);
+    if (rog > NUM_READOUT_GROUPS - 1)
     {
-      logging::error("Readout group %u is out of range 0 - %u", group, NUM_READOUT_GROUPS - 1);
-      return 1;
+      logging::error("Readout group %u is out of range 0 - %u", rog, NUM_READOUT_GROUPS - 1);
+      rc = 1;
     }
-    _prms.contractors[group] |= 1ul << drpId; // Possibly overridden during Configure
-    _prms.receivers[group]   |= 1ul << drpId; // All contributors receive results
-    _groups |= 1 << group;
+    _prms.contractors[rog] |= 1ul << drpId; // Possibly overridden during Configure
+    _prms.receivers[rog]   |= 1ul << drpId; // All contributors receive results
+    _groups |= 1 << rog;
+
+    // The Common RoG governs the index into the Results region.
+    // Its range must be >= that of any subsidiary RoG.
+    auto numBuffers = it.value()["connect_info"]["num_buffers"];
+    if (numBuffers > _prms.numBuffers)
+    {
+      if (rog == _prms.partition)
+        _prms.numBuffers = numBuffers;
+      else if (numBuffers > maxBuffers)
+        maxBuffers = numBuffers;
+    }
+  }
+
+  if (_prms.numBuffers & (_prms.numBuffers - 1))
+  {
+    logging::error("numBuffers (%u = 0x%08x) isn't a power of 2, as it should be",
+                   _prms.numBuffers, _prms.numBuffers);
+    rc = 1;
+  }
+
+  // Disallow non-common RoG DRPs from having more buffers than the common one
+  // because the buffer index based on the common RoG DRPs won't be able to
+  // reach the higher buffer numbers.  Can't use an index based on the largest
+  // non-common RoG DRP because it would overrun the common RoG DRPs' region.
+  if (maxBuffers > _prms.numBuffers)
+  {
+    logging::error("DRP's DMA buffer count (%u) must be <= %u",
+                   maxBuffers, _prms.numBuffers);
+    rc = 1;
   }
 
   // These buffers aren't used if there is only one TEB in the system, but...
@@ -1007,9 +1008,9 @@ int TebApp::_parseConnectionParams(const json& body)
   {
     // Adjust TEB_TMO_MS, TEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
     logging::error("Increase # of TEB transition buffers from %u to > %u "
-                   "for %u Hz of SlowUpdates and %u ms TEB timeout\n",
+                   "for %u Hz of SlowUpdates and %u ms TEB timeout",
                    TEB_TR_BUFFERS, (suRate * TEB_TMO_MS + 999) / 1000, suRate, TEB_TMO_MS);
-    return 1;
+    rc = 1;
   }
 
   auto& vec =_prms.maxTrSize;
@@ -1027,11 +1028,11 @@ int TebApp::_parseConnectionParams(const json& body)
     {
       logging::error("More monitor requestors found (%u) than supportable %u",
                      _prms.numMrqs, MAX_MRQS);
-      return 1;
+      rc = 1;
     }
   }
 
-  return 0;
+  return rc;
 }
 
 void TebApp::_printGroups(unsigned groups, const EbAppBase::u64arr_t& array) const
@@ -1046,7 +1047,7 @@ void TebApp::_printGroups(unsigned groups, const EbAppBase::u64arr_t& array) con
   printf("\n");
 }
 
-void TebApp::_printParams(const EbParams& prms, unsigned groups) const
+void TebApp::_printParams(const EbParams& prms, unsigned groups, Trigger* trigger) const
 {
   printf("Parameters of TEB ID %d (%s:%s):\n",                   prms.id,
                                                                  prms.ifAddr.c_str(), prms.ebPort.c_str());
@@ -1057,11 +1058,11 @@ void TebApp::_printParams(const EbParams& prms, unsigned groups) const
   printf("  Readout group contractors:    ");                    _printGroups(groups, prms.contractors);
   printf("  Readout group receivers:      ");                    _printGroups(groups, prms.receivers);
   printf("  Number of MEB requestors:     %u\n",                 prms.numMrqs);
-  printf("  Batch duration:               0x%014lx = %lu uS\n",  BATCH_DURATION, BATCH_DURATION);
-  printf("  Batch pool depth:             0x%08x = %u\n",        MAX_BATCHES, MAX_BATCHES);
-  printf("  Max # of entries / batch:     0x%08x = %u\n",        MAX_ENTRIES, MAX_ENTRIES);
-  printf("  # of contrib. buffers:        0x%08x = %u\n",        MAX_LATENCY, MAX_LATENCY);
-  printf("  Max result     EbDgram size:  0x%08zx = %zu\n",      prms.maxResultSize, prms.maxResultSize);
+  printf("  Batch duration:               0x%08x = %u ticks\n",  prms.maxEntries, prms.maxEntries);
+  printf("  Batch pool depth:             0x%08x = %u\n",        prms.numBuffers / prms.maxEntries, prms.numBuffers / prms.maxEntries);
+  printf("  Max # of entries / batch:     0x%08x = %u\n",        prms.maxEntries, prms.maxEntries);
+  printf("  # of contrib. buffers:        0x%08x = %u\n",        prms.numBuffers, prms.numBuffers);
+  printf("  Max result     EbDgram size:  0x%08zx = %zu\n",      trigger->size(), trigger->size());
   printf("  Max transition EbDgram size:  0x%08zx = %zu\n",      prms.maxTrSize[0], prms.maxTrSize[0]);
   printf("  # of transition buffers:      0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
   printf("\n");

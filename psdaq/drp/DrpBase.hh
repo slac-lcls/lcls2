@@ -81,7 +81,7 @@ public:
     EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
                const std::shared_ptr<Pds::MetricExporter>& exporter);
-    void process(const Pds::Eb::ResultDgram& result, const void* input) override;
+    void process(const Pds::Eb::ResultDgram& result, unsigned index) override;
 public:
     void resetCounters();
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
@@ -145,7 +145,6 @@ public:
     prometheus::Exposer* exposer() {return m_exposer.get();}
     unsigned nodeId() const {return m_nodeId;}
     const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
-    void stop() { m_tebContributor->stop(); }
     MemPool pool;
 private:
     int setupTriggerPrimitives(const nlohmann::json& body);
@@ -166,6 +165,7 @@ private:
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
     std::string m_hostname;
+    unsigned m_numTebBuffers;
 };
 
 }

@@ -81,7 +81,7 @@ namespace Pds {
       unsigned verbose;            // Level of detail to print
       uint16_t readoutGroup;       // RO group receiving trigger result data
       uint16_t contractor;         // RO group supplying trigger input  data
-      bool     batching;           // Batching enable flag
+      unsigned maxEntries;         // Set to 1 to disable batching
       kwmap_t  kwargs;             // Keyword arguments
     };
 
@@ -128,7 +128,8 @@ namespace Pds {
       vecstr_t  addrs;             // Contributor addresses
       vecstr_t  ports;             // Contributor ports
       vecsize_t maxTrSize;         // Max non-event EbDgram size for each Ctrb
-      size_t    maxResultSize;     // Max result EbDgram size
+      unsigned  maxEntries;        // Max number of entries per batch
+      unsigned  numBuffers;        // Limit of buffer index range
       unsigned  numMrqs;           // Number of Mon request servers
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
       kwmap_t   kwargs;            // Keyword arguments

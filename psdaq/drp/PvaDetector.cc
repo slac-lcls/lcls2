@@ -26,8 +26,13 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
+
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 static const XtcData::TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
                                         std::numeric_limits<unsigned>::max());
@@ -197,7 +202,7 @@ class Pgp
 public:
     Pgp(const Parameters& para, DrpBase& drp, const bool& running) :
         m_para(para), m_pool(drp.pool), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_lastComplete(0)
+        m_available(0), m_current(0), m_lastComplete(0), m_latency(0)
     {
         m_nodeId = drp.nodeId();
         uint8_t mask[DMA_MASK_SIZE];
@@ -212,6 +217,8 @@ public:
     }
 
     Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
+    const uint64_t& latency() { return m_latency; }
+    const uint64_t& nDmaRet() { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
     const Parameters& m_para;
@@ -228,6 +235,8 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint32_t m_lastData[6];
     unsigned m_nodeId;
+    uint64_t m_latency;
+    uint64_t m_nDmaRet;
 };
 
 Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
@@ -304,7 +313,13 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     m_lastTid = transitionId;
     memcpy(m_lastData, data, 24);
 
-    event->l3InpBuf = m_tebContributor.allocate(*timingHeader, (void*)((uintptr_t)current));
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    auto dt = std::chrono::duration_cast<ms_t>(now - tp).count();
+    if (dt >= 0 && dt < 100000) // Ignore garbage measurements
+        m_latency = dt;         // Revisit: Negative should be valid
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
@@ -321,6 +336,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
         auto start = std::chrono::steady_clock::now();
         while (true) {
             m_available = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+            m_nDmaRet = m_available;
             if (m_available > 0) {
                 m_pool.allocate(m_available);
                 break;
@@ -532,6 +548,11 @@ void PvaDetector::_worker()
                     [&](){return m_pvQueue.guess_size();});
 
     Pgp pgp(*m_para, m_drp, m_running);
+
+    m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.latency();});
+    m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nDmaRet();});
 
     const uint64_t msTmo = m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end()
                          ? std::stoul(m_para->kwargs["match_tmo_ms"])
@@ -805,8 +826,7 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 {
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
-    const size_t maxSize = ((dgram.service() == XtcData::TransitionId::L1Accept) ||
-                            (dgram.service() == XtcData::TransitionId::SlowUpdate))
+    const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
                          ? m_pool->pebble.bufferSize()
                          : m_para->maxTrSize;
     if (size > maxSize) {
@@ -814,18 +834,16 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
         throw "Dgram overflowed buffer";
     }
 
-    PGPEvent* event = &m_pool->pgpEvents[index];
-    if (event->l3InpBuf) { // else shutting down
-        Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
-        if (l3InpDg->isEvent()) {
-            auto tp = m_drp.triggerPrimitive();
-            if (tp) { // else this DRP doesn't provide input
-                const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tp->size();
-                tp->event(*m_pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
-            }
+    auto l3InpBuf = m_drp.tebContributor().fetch(index);
+    Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(dgram);
+    if (l3InpDg->isEvent()) {
+        auto triggerPrimitive = m_drp.triggerPrimitive();
+        if (triggerPrimitive) { // else this DRP doesn't provide input
+            const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
+            triggerPrimitive->event(*m_pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
         }
-        m_drp.tebContributor().process(l3InpDg);
     }
+    m_drp.tebContributor().process(l3InpDg);
 }
 
 
@@ -863,7 +881,8 @@ void PvaApp::_disconnect()
 
 void PvaApp::_unconfigure()
 {
-    m_drp.unconfigure();  // TebContributor must be shut down before the worker
+    m_drp.pool.shutdown();  // Release Tr buffer pool
+    m_drp.unconfigure();    // TebContributor must be shut down before the worker
     m_pvaDetector->unconfigure();
     m_unconfigure = false;
 }

@@ -29,9 +29,9 @@ namespace Pds
       virtual ~EbCtrbInBase();
     public:
       int      resetCounters();
-      int      startConnection(std::string& port, size_t resSizeGuess);
+      int      startConnection(std::string& port, size_t resSizeGuess, unsigned numBuffers);
       int      connect();
-      int      configure();
+      int      configure(unsigned numBuffers);
       void     unconfigure();
       void     disconnect();
       void     shutdown();
@@ -39,10 +39,11 @@ namespace Pds
       void     receiver(TebContributor&, std::atomic<bool>& running);
     public:
       virtual
-      void     process(const ResultDgram& result, const void* input) = 0;
+      void     process(const ResultDgram& result, unsigned index) = 0;
     private:
       int     _linksConfigure(std::vector<EbLfSvrLink*>& links,
                               unsigned                   id,
+                              unsigned                   numBuffers,
                               const char*                name);
       int     _process(TebContributor& ctrb);
       void    _matchUp(TebContributor&    ctrb,
@@ -66,6 +67,8 @@ namespace Pds
       uint64_t                      _eventCount;
       uint64_t                      _missing;
       uint64_t                      _bypassCount;
+      uint64_t                      _noProgCount;
+      uint64_t                      _prvNPCnt;
       const TebCtrbParams&          _prms;
       size_t                        _regSize;
       void*                         _region;
