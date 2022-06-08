@@ -320,7 +320,8 @@ void EventBuilder::_retire(EbEpoch* epoch, EbEvent* event)
   process(event);
 
   auto age{fast_monotonic_clock::now() - event->_t0};
-  _age = std::chrono::duration_cast<ms_t>(age).count();
+  auto dt = std::chrono::duration_cast<ms_t>(age).count();
+  if (dt >= 0)  _age = dt;
 
   EbEvent*& entry = epoch->eventLut[_evIndex(event->sequence())];
   if (entry == event)  entry = nullptr;
@@ -508,7 +509,8 @@ void EventBuilder::process(const EbDgram* ctrb,
   else      _tryFlush();     // Periodically flush when no events are completing
 
   auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-  _ebTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+  auto dt = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+  if (dt >= 0)  _ebTime = dt;
 }
 
 /*
