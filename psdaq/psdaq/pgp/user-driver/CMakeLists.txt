@@ -25,6 +25,7 @@ add_executable(status
 )
 target_link_libraries(status
     pgpdriver
+    rt
 )
 
 #add_executable(pgpread
@@ -61,6 +62,7 @@ add_executable(tdetsim
 
 target_link_libraries(tdetsim
     pgpdriver
+    rt
 )
 
 add_executable(promload
