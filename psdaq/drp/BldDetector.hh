@@ -124,6 +124,8 @@ private:
     uint32_t                                   m_lastData[6];
     unsigned                                   m_nodeId;
     uint64_t                                   m_next;
+    int64_t                                    m_latency;
+    uint64_t                                   m_nDmaRet;
 };
 
 

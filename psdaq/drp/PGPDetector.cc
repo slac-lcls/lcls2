@@ -220,7 +220,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
                   [&](){return dmaSize;});
 
-    uint64_t latency = 0L;
+    int64_t latency = 0L;
     exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
                   [&](){return latency;});
 
@@ -341,9 +341,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
                          + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
                 std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-                auto dt = std::chrono::duration_cast<ms_t>(now - tp).count();
-                if (dt >= 0 && dt < 100000) // Ignore garbage measurements
-                    latency = dt;           // Revisit: Negative should be valid
+                latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
                 // send batch to worker if batch is full or if it's a transition
                 if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||

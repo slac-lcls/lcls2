@@ -109,15 +109,13 @@ public:
     void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
     void allocate(unsigned count) { m_inUse.fetch_add(count, std::memory_order_acq_rel) ; }
     void release(unsigned count) { m_inUse.fetch_sub(count, std::memory_order_acq_rel); }
-    const uint64_t& inUse() const { m_dmaBuffersInUse = m_inUse.load(std::memory_order_relaxed);
-                                    return m_dmaBuffersInUse; }
+    const uint64_t inUse() const { return m_inUse.load(std::memory_order_relaxed); }
 private:
     unsigned m_nbuffers;
     unsigned m_dmaSize;
     int m_fd;
     SPSCQueue<void*> m_transitionBuffers;
     std::atomic<unsigned> m_inUse;
-    mutable uint64_t m_dmaBuffersInUse;
 };
 
 }

@@ -43,8 +43,8 @@ namespace Pds {
       int  pollEQ();
       int  setupMr(void* region, size_t size);
     public:
-      const uint64_t& pending() const { return *const_cast<uint64_t*>(&_pending); } // Cast away volatile
-      const uint64_t& posting() const { return *const_cast<uint64_t*>(&_posting); } // Cast away volatile
+      const uint64_t pending() const { return _pending; }
+      const uint64_t posting() const { return _posting; }
     private:
       int _poll(fi_cq_data_entry*, uint64_t flags);
     private:                              // Arranged in order of access frequency

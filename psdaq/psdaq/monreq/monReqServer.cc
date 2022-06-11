@@ -118,7 +118,7 @@ namespace Pds {
     virtual ~MyXtcMonitorServer()
     {
     }
-    const size_t& bufListCount() const
+    const size_t bufListCount() const
     {
       return _bufFreeList.count();
     }
@@ -275,7 +275,7 @@ namespace Pds {
     std::vector<EbLfCltLink*>           _mrqLinks;
     std::unique_ptr<GenericPool>        _pool;
     uint64_t                            _pidPrv;
-    uint64_t                            _latency;
+    int64_t                             _latency;
     uint64_t                            _eventCount;
     uint64_t                            _trCount;
     uint64_t                            _splitCount;
@@ -527,9 +527,7 @@ void Meb::process(EbEvent* event)
   auto dgt = std::chrono::seconds{dg->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
            + std::chrono::nanoseconds{dg->time.nanoseconds()};
   std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  auto latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-  if (latency > 0 && latency < 100000) // Ignore garbage measurements
-    _latency = latency;               // Revisit: Negative should be valid
+  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
   // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred
   if (_apps->events(dg) == XtcMonitorServer::Handled)

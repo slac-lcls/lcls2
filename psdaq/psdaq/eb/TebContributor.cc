@@ -203,9 +203,7 @@ void TebContributor::process(const EbDgram* dgram)
   auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
            + std::chrono::nanoseconds{dgram->time.nanoseconds()};
   std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  uint64_t dt = std::chrono::duration_cast<ms_t>(now - tp).count();
-  if (dt >= 0 && dt < 100000) // Ignore garbage measurements
-    _latency = dt;            // Revisit: Negative should be valid
+  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
   auto rogs       = dgram->readoutGroups();
   bool contractor = rogs & _prms.contractor; // T if providing TEB input

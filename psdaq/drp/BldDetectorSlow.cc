@@ -23,9 +23,14 @@
 #include <inttypes.h>
 #include <poll.h>
 
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
+
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 namespace Drp {
 
@@ -405,7 +410,8 @@ public:
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     m_para(para), m_drp(drp), m_det(det),
     m_config(0), m_terminate(false), m_running(false),
-    m_available(0), m_current(0), m_lastComplete(0), m_next(0)
+    m_available(0), m_current(0), m_lastComplete(0), m_next(0),
+    m_latency(0), m_nDmaRet(0)
 {
     m_nodeId = det->nodeId;
     uint8_t mask[DMA_MASK_SIZE];
@@ -492,6 +498,12 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     m_lastTid = transitionId;
     memcpy(m_lastData, data, 24);
 
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
     Pds::EbDgram* dgram = new(m_drp.pool.pebble[current]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
@@ -505,6 +517,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
     if (m_current == m_available) {
         m_current = 0;
         m_available = dmaReadBulkIndex(m_drp.pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+        m_nDmaRet = m_available;
         if (m_available == 0)
             return nullptr;
 
@@ -539,6 +552,10 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     uint64_t nmissed = 0L;
     exporter->add("bld_miss_count", labels, Pds::MetricType::Counter,
                   [&](){return nmissed;});
+    exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                  [&](){return m_latency;});
+    exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
+                  [&](){return m_nDmaRet;});
 
     //
     //  Setup the multicast receivers

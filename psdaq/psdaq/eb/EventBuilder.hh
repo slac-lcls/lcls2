@@ -45,19 +45,19 @@ namespace Pds {
       void               resetCounters();
       void               clear();
       void               dump(unsigned detail) const;
-      const uint64_t&    epochAllocCnt()  const;
-      const uint64_t&    epochFreeCnt()   const;
-      const uint64_t&    epochOccCnt()    const;
-      const uint64_t&    eventAllocCnt()  const;
-      const uint64_t&    eventFreeCnt()   const;
-      const uint64_t&    eventOccCnt()    const;
+      const uint64_t     epochAllocCnt()  const;
+      const uint64_t     epochFreeCnt()   const;
+      const uint64_t     epochOccCnt()    const;
+      const uint64_t     eventAllocCnt()  const;
+      const uint64_t     eventFreeCnt()   const;
+      const uint64_t     eventOccCnt()    const;
       const uint64_t     eventPoolDepth() const; // Right: not a ref
-      const uint64_t&    timeoutCnt()     const;
-      const uint64_t&    fixupCnt()       const;
-      const uint64_t&    missing()        const;
-      const uint64_t&    eventAge()       const;
-      const uint64_t&    ebTime()         const;
-      const uint64_t&    arrTime(unsigned src) const;
+      const uint64_t     timeoutCnt()     const;
+      const uint64_t     fixupCnt()       const;
+      const uint64_t     missing()        const;
+      const int64_t      eventAge()       const;
+      const int64_t      ebTime()         const;
+      const int64_t      arrTime(unsigned src) const;
     private:
       friend class EbEvent;
       using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
@@ -98,44 +98,43 @@ namespace Pds {
       mutable uint64_t             _missing;       // Bit list of missing contributors
       mutable uint64_t             _epochOccCnt;   // Number of epochs in use
       mutable uint64_t             _eventOccCnt;   // Number of events in use
-      mutable uint64_t             _age;           // Event age
-      mutable uint64_t             _ebTime;        // Processing time
-      std::vector<uint64_t>        _arrTime;       // Contribution arrival time
+      mutable int64_t              _age;           // Event age
+      mutable int64_t              _ebTime;        // Processing time
+      std::vector<int64_t>         _arrTime;       // Contribution arrival time
       const unsigned&              _verbose;       // Print progress info
-      static const uint64_t        _zero = 0;      // A location with 0 in it
     };
   };
 };
 
-inline const uint64_t& Pds::Eb::EventBuilder::epochAllocCnt() const
+inline const uint64_t Pds::Eb::EventBuilder::epochAllocCnt() const
 {
-  return _epochFreelist ? _epochFreelist->numberofAllocs() : _zero;
+  return _epochFreelist ? _epochFreelist->numberofAllocs() : 0;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::epochFreeCnt() const
+inline const uint64_t Pds::Eb::EventBuilder::epochFreeCnt() const
 {
-  return _epochFreelist ? _epochFreelist->numberofFrees() : _zero;
+  return _epochFreelist ? _epochFreelist->numberofFrees() : 0;
 }
 
 // Revisit: This one is not terribly interesting and mirrors eventOccCnt()
-inline const uint64_t& Pds::Eb::EventBuilder::epochOccCnt() const
+inline const uint64_t Pds::Eb::EventBuilder::epochOccCnt() const
 {
   _epochOccCnt = epochAllocCnt() - epochFreeCnt();
 
   return _epochOccCnt;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::eventAllocCnt() const
+inline const uint64_t Pds::Eb::EventBuilder::eventAllocCnt() const
 {
-  return _eventFreelist ? _eventFreelist->numberofAllocs() : _zero;
+  return _eventFreelist ? _eventFreelist->numberofAllocs() : 0;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::eventFreeCnt() const
+inline const uint64_t Pds::Eb::EventBuilder::eventFreeCnt() const
 {
-  return _eventFreelist ? _eventFreelist->numberofFrees() : _zero;
+  return _eventFreelist ? _eventFreelist->numberofFrees() : 0;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::eventOccCnt() const
+inline const uint64_t Pds::Eb::EventBuilder::eventOccCnt() const
 {
   _eventOccCnt = eventAllocCnt() - eventFreeCnt();
 
@@ -146,37 +145,37 @@ inline const uint64_t Pds::Eb::EventBuilder::eventPoolDepth() const
 {
   // Return a copy of the value instead of a reference
   // since it is nominally called only once by MetricExporter
-  return _eventFreelist ? _eventFreelist->numberofObjects() : _zero;
+  return _eventFreelist ? _eventFreelist->numberofObjects() : 0;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::timeoutCnt() const
+inline const uint64_t Pds::Eb::EventBuilder::timeoutCnt() const
 {
   return _tmoEvtCnt;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::fixupCnt() const
+inline const uint64_t Pds::Eb::EventBuilder::fixupCnt() const
 {
   return _fixupCnt;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::missing() const
+inline const uint64_t Pds::Eb::EventBuilder::missing() const
 {
   return _missing;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::eventAge() const
+inline const int64_t Pds::Eb::EventBuilder::eventAge() const
 {
   return _age;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::ebTime() const
+inline const int64_t Pds::Eb::EventBuilder::ebTime() const
 {
   return _ebTime;
 }
 
-inline const uint64_t& Pds::Eb::EventBuilder::arrTime(unsigned src) const
+inline const int64_t Pds::Eb::EventBuilder::arrTime(unsigned src) const
 {
-  return (src < _arrTime.size()) ? _arrTime[src] : _zero;
+  return (src < _arrTime.size()) ? _arrTime[src] : 0;
 }
 
 #endif

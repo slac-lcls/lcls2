@@ -27,8 +27,13 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
+
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 static const XtcData::TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
                                         std::numeric_limits<unsigned>::max());
@@ -110,7 +115,7 @@ class Pgp
 public:
     Pgp(const Parameters& para, DrpBase& drp, const bool& running) :
         m_para(para), m_pool(drp.pool), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_lastComplete(0)
+        m_available(0), m_current(0), m_lastComplete(0), m_latency(0), m_nDmaRet(0)
     {
         m_nodeId = drp.nodeId();
         uint8_t mask[DMA_MASK_SIZE];
@@ -125,6 +130,8 @@ public:
     }
 
     Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
+    const int64_t latency() { return m_latency; }
+    const uint64_t nDmaRet() { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
     const Parameters& m_para;
@@ -141,6 +148,8 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint32_t m_lastData[6];
     unsigned m_nodeId;
+    int64_t m_latency;
+    uint64_t m_nDmaRet;
 };
 
 Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
@@ -217,6 +226,12 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     m_lastTid = transitionId;
     memcpy(m_lastData, data, 24);
 
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
     Pds::EbDgram* dgram = new(m_pool.pebble[current]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
@@ -232,6 +247,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
         auto start = std::chrono::steady_clock::now();
         while (true) {
             m_available = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+            m_nDmaRet = m_available;
             if (m_available > 0) {
                 m_pool.allocate(m_available);
                 break;
@@ -569,6 +585,11 @@ void UdpEncoder::_worker()
                     [&](){return m_pvQueue.guess_size();});
 
     Pgp pgp(*m_para, m_drp, m_running);
+
+    m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.latency();});
+    m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nDmaRet();});
 
     const uint64_t msTmo = m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end()
                          ? std::stoul(m_para->kwargs["match_tmo_ms"])

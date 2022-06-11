@@ -85,8 +85,7 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
 
 MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
-    m_inUse(0),
-    m_dmaBuffersInUse(0)
+    m_inUse(0)
 {
     m_fd = open(para.device.c_str(), O_RDWR);
     if (m_fd < 0) {
@@ -514,9 +513,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
     auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
              + std::chrono::nanoseconds{dgram->time.nanoseconds()};
     std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    auto latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-    if (latency >= 0 && latency < 100000) // Ignore garbage measurements
-        m_latency = latency;             // Revisit: Negative should be valid
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
 #if 0  // For "Pause/Resume" deadtime test:
     // For this test, SlowUpdates either need to obey deadtime or be turned off.

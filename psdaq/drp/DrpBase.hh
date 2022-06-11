@@ -118,7 +118,7 @@ private:
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
     uint64_t m_evtSize;
-    uint64_t m_latency;
+    int64_t m_latency;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
     FileParameters m_fileParameters;
 };

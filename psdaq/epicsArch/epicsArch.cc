@@ -31,7 +31,7 @@ class Pgp
 public:
     Pgp(const Parameters& para, DrpBase& drp, const bool& running) :
         m_para(para), m_pool(drp.pool), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_lastComplete(0), m_latency(0)
+        m_available(0), m_current(0), m_lastComplete(0), m_latency(0), m_nDmaRet(0)
     {
         m_nodeId = drp.nodeId();
         uint8_t mask[DMA_MASK_SIZE];
@@ -46,8 +46,8 @@ public:
     }
 
     Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
-    const uint64_t& latency() { return m_latency; }
-    const uint64_t& nDmaRet() { return m_nDmaRet; }
+    const int64_t latency() { return m_latency; }
+    const uint64_t nDmaRet() { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
     const Parameters& m_para;
@@ -64,7 +64,7 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint32_t m_lastData[6];
     unsigned m_nodeId;
-    uint64_t m_latency;
+    int64_t m_latency;
     uint64_t m_nDmaRet;
 };
 
@@ -146,9 +146,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
              + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
     std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    auto dt = std::chrono::duration_cast<ms_t>(now - tp).count();
-    if (dt >= 0 && dt < 100000) // Ignore garbage measurements
-        m_latency = dt;         // Revisit: Negative should be valid
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB

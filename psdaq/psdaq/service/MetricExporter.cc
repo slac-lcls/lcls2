@@ -80,10 +80,38 @@ prometheus::MetricFamily makeMetric(const std::string& name,
     return family;
 }
 
+int Pds::MetricExporter::find(const std::string& name) const
+{
+    int i = 0;
+
+    for (auto family : m_families) {
+        if (family.name == name) {
+            return i;
+        }
+        ++i;
+    }
+    return -1;
+}
+
+void Pds::MetricExporter::_erase(unsigned index)
+{
+    m_families.erase(m_families.begin() + index);
+    m_values.  erase(m_values.  begin() + index);
+    m_histos.  erase(m_histos.  begin() + index);
+    m_type.    erase(m_type.    begin() + index);
+    m_previous.erase(m_previous.begin() + index);
+}
+
 void Pds::MetricExporter::add(const std::string& name,
                               const std::map<std::string, std::string>& labels,
-                              Pds::MetricType type, std::function<uint64_t()> value)
+                              Pds::MetricType type, std::function<int64_t()> value)
 {
+    // Avoid Collect() from processing incomplete entries
+    std::lock_guard<std::mutex> lock(m_mutex);
+    int i = find(name);
+    if (i != -1) {
+        _erase(i);
+    }
     prometheus::MetricType prometheusType;
     switch (type) {
         case Pds::MetricType::Gauge:
@@ -113,10 +141,10 @@ void Pds::MetricExporter::add(const std::string& name,
 
 void Pds::MetricExporter::constant(const std::string& name,
                                    const std::map<std::string, std::string>& labels,
-                                   uint64_t constant)
+                                   int64_t constant)
 {
     Pds::MetricType type = Pds::MetricType::Constant;
-    std::function<uint64_t()> value;    // Placeholder; not used
+    std::function<int64_t()> value;    // Placeholder; not used
 
     add(name, labels, type, value);
 
@@ -125,15 +153,17 @@ void Pds::MetricExporter::constant(const std::string& name,
 
 std::vector<prometheus::MetricFamily> Pds::MetricExporter::Collect() const
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     // std::cout<<"Collect()\n";
     for (size_t i=0; i<m_type.size(); i++) {
         //std::cout<<"Collector  "<<m_families[i].name<<'\n';
         switch (m_type[i]) {
             case Pds::MetricType::Rate: {
-                uint64_t newValue = m_values[i]();
+                int64_t newValue = m_values[i]();
                 auto now = std::chrono::steady_clock::now();
-                uint64_t previousValue = m_previous[i].value;
-                uint64_t difference = 0UL;
+                int64_t previousValue = m_previous[i].value;
+                int64_t difference = 0UL;
                 if (newValue > previousValue) {
                     difference = newValue - previousValue;
                 }
@@ -162,14 +192,14 @@ std::vector<prometheus::MetricFamily> Pds::MetricExporter::Collect() const
 
 
 Pds::PromHistogram::PromHistogram(unsigned numBins, double binWidth, double binMin) :
-  _boundaries(numBins),
-  _counts    (numBins + 1),
-  _sum       (0.0)
+  m_boundaries(numBins),
+  m_counts    (numBins + 1),
+  m_sum       (0.0)
 {
     //if (numBins)
     //    printf("PromHisto: numBins %u, binWidth %f, binMin %f\n", numBins, binWidth, binMin);
-    for (unsigned i = 0; i < _boundaries.size(); ++i) {
-        _boundaries[i] = binMin + binWidth * static_cast<double>(i);
+    for (unsigned i = 0; i < m_boundaries.size(); ++i) {
+        m_boundaries[i] = binMin + binWidth * static_cast<double>(i);
     }
 }
 
@@ -178,6 +208,11 @@ std::shared_ptr<Pds::PromHistogram>
                                    const std::map<std::string, std::string>& labels,
                                    unsigned numBins, double binWidth, double binMin)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    int i = find(name);
+    if (i != -1) {
+        _erase(i);
+    }
     Pds::MetricType type = Pds::MetricType::Histogram;
     prometheus::MetricType prometheusType = prometheus::MetricType::Histogram;
     m_families.emplace_back(makeMetric(name, labels, prometheusType));
@@ -185,6 +220,7 @@ std::shared_ptr<Pds::PromHistogram>
     m_values.push_back(nullptr);        // Placeholder; won't be called
     m_histos.push_back(std::make_shared<PromHistogram>(numBins, binWidth, binMin));
     m_type.push_back(type);
+    m_previous.push_back({});           // Placeholder: unused
 
     //for (unsigned i = 0; i < m_type.size(); ++i)
     //  printf("type[%u] %d\n", i, int(m_type[i]));
@@ -196,19 +232,19 @@ void Pds::PromHistogram::collect(prometheus::MetricFamily& family)
     auto& metric = family.metric[0];
 
     auto cumulative_count = 0ULL;
-    for (std::size_t i = 0; i < _counts.size(); i++) {
-        cumulative_count += _counts[i];
+    for (std::size_t i = 0; i < m_counts.size(); i++) {
+        cumulative_count += m_counts[i];
         auto& bucket = metric.histogram.bucket[i];
         bucket.cumulative_count = cumulative_count;
-        bucket.upper_bound = (i == _boundaries.size()
+        bucket.upper_bound = (i == m_boundaries.size()
                            ? std::numeric_limits<double>::infinity()
-                           : _boundaries[i]);
+                           : m_boundaries[i]);
         //printf("collect: i %zd, cnt %lu, ub %f\n", i, bucket.cumulative_count, bucket.upper_bound);
     }
     metric.histogram.sample_count = cumulative_count;
-    metric.histogram.sample_sum = _sum;
+    metric.histogram.sample_sum = m_sum;
 
-    //printf("collect: count %llu, sum %f\n", cumulative_count, _sum);
+    //printf("collect: count %llu, sum %f\n", cumulative_count, m_sum);
     //for (unsigned i = 0; i < metric.histogram.bucket.size(); ++i)
     //    printf("collect: bucket[%u] cnt %lu, ub %f\n",
     //           i, metric.histogram.bucket[i].cumulative_count, metric.histogram.bucket[i].upper_bound);
@@ -217,24 +253,24 @@ void Pds::PromHistogram::collect(prometheus::MetricFamily& family)
 void Pds::PromHistogram::observe(double sample)
 {
     auto bin = static_cast<std::size_t>(std::distance(
-        _boundaries.begin(),
-        std::find_if(_boundaries.begin(), _boundaries.end(),
+        m_boundaries.begin(),
+        std::find_if(m_boundaries.begin(), m_boundaries.end(),
                      [sample](double boundary) { return boundary >= sample; })));
-    if (bin >= 0 && bin < _counts.size()) {
-        _counts[bin]++;
-        _sum += sample;
+    if (bin >= 0 && bin < m_counts.size()) {
+        m_counts[bin]++;
+        m_sum += sample;
     }
     else {
       fprintf(stderr, "%s:\n  Bin number %zd is out of range [0, %zd) for sample %f ([%f - %f))\n",
-              __PRETTY_FUNCTION__, bin, _counts.size(), sample, *_boundaries.begin(), *_boundaries.end());
+              __PRETTY_FUNCTION__, bin, m_counts.size(), sample, *m_boundaries.begin(), *m_boundaries.end());
     }
     //printf("observe: sample %f, bin %zd, counts %lu, sum %f\n",
-    //       sample, bin, _counts[bin], _sum);
+    //       sample, bin, m_counts[bin], m_sum);
 }
 
 void Pds::PromHistogram::clear()
 {
-    for (unsigned i = 0; i < _counts.size(); ++i)
-        _counts[i] = 0;
-    _sum = 0.0;
+    for (unsigned i = 0; i < m_counts.size(); ++i)
+        m_counts[i] = 0;
+    m_sum = 0.0;
 }
