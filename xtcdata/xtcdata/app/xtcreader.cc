@@ -314,11 +314,11 @@ int main(int argc, char* argv[])
         if (nevent>=neventreq) break;
         nevent++;
         printf("event %d, %11s transition: time %d.%09d, env 0x%08x, "
-               "payloadSize %d extent %d\n",
+               "payloadSize %d damage 0x%x extent %d\n",
                nevent,
                TransitionId::name(dg->service()), dg->time.seconds(),
                dg->time.nanoseconds(),
-               dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
+               dg->env, dg->xtc.sizeofPayload(),dg->xtc.damage.value(),dg->xtc.extent);
         if (debugprint) dbgiter.iterate(&(dg->xtc));
     }
 
