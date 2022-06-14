@@ -81,6 +81,7 @@ class Communicators(object):
 
         self.smd_comm = self.comm.Create(self.smd_group)
         self.bd_main_comm = self.comm.Create(self.bd_main_group)
+        self._bd_only_comm = self.comm.Create(self._bd_only_group)
         
         if self.smd_comm != MPI.COMM_NULL:
             self.smd_rank = self.smd_comm.Get_rank()
@@ -110,6 +111,8 @@ class Communicators(object):
     def bd_group(self):
         return self._bd_only_group
 
+    def bd_only_comm(self):
+        return self._bd_only_comm
 
     def srv_group(self):
         return self._srv_group
