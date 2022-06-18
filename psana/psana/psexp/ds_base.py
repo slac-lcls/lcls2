@@ -256,15 +256,22 @@ class DataSourceBase(abc.ABC):
         file_info['dirname']
         /tmo/tmoc00118/xtc/
         """
-        resp = requests.get(f"https://pswww.slac.stanford.edu/ws/lgbk/lgbk/{self.exp}/ws/{runnum}/files_for_live_mode")
-        resp.raise_for_status()
-        all_xtc_files=resp.json()["value"]
-        # Only take chunk 0 xtc files (matched with *-c*0.) 
-        xtc_files = [os.path.basename(xtc_file) for xtc_file in all_xtc_files if re.search(r'-c(.+?)0\.', xtc_file)]
+        url = f"https://pswww.slac.stanford.edu/ws/lgbk/lgbk/{self.exp}/ws/{runnum}/files_for_live_mode"
+        resp = requests.get(url)
+        try:
+            resp.raise_for_status()
+            all_xtc_files=resp.json()["value"]
+        except Exception:
+            print(f'Warning: unable to connect to {url}')
+            all_xtc_files = []
+        
         file_info = {}
-        if xtc_files:
-            file_info['xtc_files'] = xtc_files
-            file_info['dirname'] = os.path.dirname(all_xtc_files[0])
+        if all_xtc_files:
+            # Only take chunk 0 xtc files (matched with *-c*0.) 
+            xtc_files = [os.path.basename(xtc_file) for xtc_file in all_xtc_files if re.search(r'-c(.+?)0\.', xtc_file)]
+            if xtc_files:
+                file_info['xtc_files'] = xtc_files
+                file_info['dirname'] = os.path.dirname(all_xtc_files[0])
         return file_info
 
     def _setup_run_files(self, runnum):
