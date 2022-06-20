@@ -104,7 +104,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication
 from PyQt5.QtGui import QBrush, QPen, QCursor, QColor
-from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer  # 13-16us
 
 from psana.graphqt.QWGraphicsRectItem import QWGraphicsRectItem
 import psana.graphqt.QWUtils as qu # print_rect
@@ -475,39 +475,9 @@ class FWView(QGraphicsView):
         #painter.fillRect(rect, QBrush(QColor(0,0,0), Qt.SolidPattern))
 
 
-    def key_usage(self):
-        return 'Keys:'\
-               '\n  ESC - exit'\
-               '\n  R - reset original size'\
-               '\n  W - change scene rect, do not change default'\
-               '\n  D - change scene rect and its default'\
-               '\n'
-
-
-    def keyPressEvent(self, e):
-        #logger.debug('keyPressEvent, key=', e.key())
-        if   e.key() == Qt.Key_Escape:
-            self.close()
-
-        elif e.key() == Qt.Key_R:
-            print('Reset original size')
-            self.reset_original_size()
-
-        elif e.key() in (Qt.Key_W, Qt.Key_D):
-            change_def = e.key()==Qt.Key_D
-            print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
-            v = ag.random_standard((4,), mu=0, sigma=20, dtype=np.int)
-            rs = QRectF(v[0], v[1], v[2]+100, v[3]+100)
-            print('Set scene rect: %s' % str(rs))
-            self.set_rect_scene(rs, set_def=change_def)
-
-        else:
-            print(self.key_usage())
-
-
 if __name__ == "__main__":
     import sys
-    sys.exit('run test > python %s/examples/ex_%s <test-number>' % tuple(sys.argv[0].rsplit('/',1)))
+    sys.exit(qu.msg_on_exit())
 
 # EOF
 
