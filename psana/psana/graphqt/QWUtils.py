@@ -31,6 +31,13 @@ from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor
 
 
+def msg_on_exit():
+    import sys
+    lst = sys.argv[0].rsplit('/',1)
+    path = '%s/examples/ex_%s' % tuple(lst) if len(lst) == 2 else 'examples/ex_%s' % lst[0]
+    return 'run test > python %s <test-number>' % path
+
+
 def select_item_from_popup_menu(lst, title=None, default=None, parent=None):
     """Shows the list as a pop-up menu and returns the selected item as a string or None"""
     w = QMenu(parent)
@@ -225,6 +232,6 @@ def layout_from_widget(w, layout=QVBoxLayout):
 
 if __name__ == "__main__":
     import sys
-    sys.exit('run test > python %s/examples/ex_%s <test-number>' % tuple(sys.argv[0].rsplit('/',1)))
+    sys.exit(msg_on_exit())
 
 #EOF
