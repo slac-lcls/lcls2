@@ -220,10 +220,6 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
 
   for (auto link : links)
   {
-    // Log a message so we can perhaps see the source of timeouts in UED,
-    // where some servers and clients run on the same machine.  Compare
-    // timestamps in /var/log/messages.
-    logging::info("Preparing link with a %3s, my ID: %2d", peer, id);
     auto   t0{std::chrono::steady_clock::now()};
     int    rc;
     size_t regEntrySize;

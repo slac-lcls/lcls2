@@ -594,7 +594,6 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-//    m_tPrms.batching   = m_para.kwargs["batching"] == "yes"; // Default to "no"
     m_tPrms.maxEntries = m_para.kwargs["batching"] == "yes" ? Pds::Eb::MAX_ENTRIES : 1; // Default to "no"
     m_tPrms.core[0]    = -1;
     m_tPrms.core[1]    = -1;
