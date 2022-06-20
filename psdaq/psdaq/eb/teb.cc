@@ -252,20 +252,17 @@ int Teb::connect()
   rc = linksConnect(_mrqTransport, _mrqLinks, "MRQ");
   if (rc)  return rc;
 
-  if (!_batMan.batchRegion())           // No need to guess again
+  // Make a guess at the size of the Result entries
+  auto maxResultSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
+  auto maxEntries         = _prms.maxEntries;
+  auto numBatches         = _prms.numBuffers / maxEntries;
+  if (numBatches * maxEntries != _prms.numBuffers)
   {
-    // Make a guess at the size of the Result entries
-    auto maxResultSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
-    auto maxEntries         = _prms.maxEntries;
-    auto numBatches         = _prms.numBuffers / maxEntries;
-    if (numBatches * maxEntries != _prms.numBuffers)
-    {
-      logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
-                        maxEntries, _prms.numBuffers);
-      abort();
-    }
-    _batMan.initialize(maxResultSizeGuess, maxEntries, numBatches); // TEB always batches
+    logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
+                      maxEntries, _prms.numBuffers);
+    abort();
   }
+  _batMan.initialize(maxResultSizeGuess, maxEntries, numBatches); // TEB always batches
 
   // This is the local Results batch region from which we'll post batches back to the DRPs
   void*  region  = _batMan.batchRegion();
