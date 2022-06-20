@@ -41,16 +41,6 @@ class TestFWHist(FWHist):
         print('test path_item is created')
 
 
-def test_histogram():
-    import psana.pyalgos.generic.NDArrGenerators as ag
-    from psana.pyalgos.generic.HBins import HBins
-    nbins = 1000
-    arr = ag.random_standard((nbins,), mu=50, sigma=10, dtype=ag.np.float64)
-    hb = HBins((0,nbins), nbins=nbins)
-    hb.set_bin_data(arr, dtype=ag.np.float64)
-    return hb
-
-
 if __name__ == "__main__":
 
   import os
