@@ -116,7 +116,7 @@ void EventBuilder::clear()
     epoch = epoch->forward();
   }
 
-  _flushBefore(_pending.reverse());
+  _flushBefore(_pending.empty());
 
   resetCounters();
 
