@@ -60,7 +60,7 @@ def ds_run_det(args):
     if xtc_path is not None:
       print('ds.n_files:', str(ds.n_files))
       print('ds.xtc_files:\n ', '\n  '.join(ds.xtc_files))
-      print('ds.xtc_ext:', str(ds.xtc_ext))
+      print('ds.xtc_ext:', str(ds.xtc_ext) if hasattr(ds,'xtc_ext') else 'N/A')
       print('ds.smd_files:\n ', '\n  '.join(ds.smd_files))
     print('ds.shmem:', str(ds.shmem))
     print('ds.smalldata_kwargs:', str(ds.smalldata_kwargs))
