@@ -1,4 +1,4 @@
-from psana.psexp import RunLegion, DataSourceBase, SmdReaderManager, TransitionId, LSmd0, LEventBuilderNode, mode
+from psana.psexp import RunLegion, DataSourceBase, SmdReaderManager, TransitionId, LSmd0, mode
 from psana.dgrammanager import DgramManager
 from psana.event import Event
 import numpy as np
@@ -45,11 +45,7 @@ class LegionDataSource(DataSourceBase):
                 found_xtc2_callback=super().found_xtc2_callback)
 
         # Legion Smd0
-        self.smd0 = LSmd0(self.eb_size, self._configs, self.smdr_man, self.dsparms)
-        # Legion Event Builder Node
-        # Big Data Point Start Offset = # of eb processors + smd0
-        offset = self.eb_size+1
-        self.eb = LEventBuilderNode(self.bd_size, offset, self._configs, self.dsparms, self.dm)
+        self.smd0 = LSmd0(self._configs, self.smdr_man, self.dsparms)
 
         # Legion Reductions
         self.reduc = False

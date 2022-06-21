@@ -13,5 +13,5 @@ from .events import Events
 from .ds_base import DataSourceBase
 from .run import Run, RunShmem, RunSingleFile, RunLegion, RunSerial
 from .node import Smd0, EventBuilderNode, BigDataNode, StepHistory, repack_for_bd, repack_with_step_dg, repack_with_mstep_dg
-from .legion_node import LSmd0, LEventBuilderNode
+from .legion_node import LSmd0
 from .step import Step
