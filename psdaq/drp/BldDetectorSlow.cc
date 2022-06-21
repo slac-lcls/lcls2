@@ -422,7 +422,9 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
             dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
         }
     }
-    dmaSetMaskBytes(m_drp.pool.fd(), mask);
+    if (dmaSetMaskBytes(m_drp.pool.fd(), mask)) {
+        logging::error("Failed to allocate lane/vc\n");
+    }
 }
 
 Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)

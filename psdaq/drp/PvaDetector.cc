@@ -213,7 +213,9 @@ public:
                 dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
             }
         }
-        dmaSetMaskBytes(drp.pool.fd(), mask);
+        if (dmaSetMaskBytes(drp.pool.fd(), mask)) {
+            logging::error("Failed to allocate lane/vc\n");
+        }
     }
 
     Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
