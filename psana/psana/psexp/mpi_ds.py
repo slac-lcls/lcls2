@@ -130,6 +130,10 @@ class MPIDataSource(DataSourceBase):
             super()._close_opened_smd_files()
         self._end_prometheus_client(mpi_rank=self.comms.psana_comm.Get_rank())
 
+    def terminate(self):
+        self.comms.terminate()
+        super().terminate()
+
     def _setup_configs(self):
         """ Creates and broadcasts configs
         only called by _setup_run()

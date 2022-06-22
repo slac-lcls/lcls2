@@ -11,6 +11,7 @@ from psana import DataSource
 import dgramCreate as dc
 from setup_input_files import setup_input_files
 from run_chunking import run_test_chunking
+from run_early_termination import run_test_early_termination
 
 
 class Test:
@@ -152,6 +153,9 @@ class Test:
     
     def test_chunking(self):
         run_test_chunking()
+
+    def test_early_termination(self):
+        run_test_early_termination()
     
 
 

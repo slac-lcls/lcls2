@@ -36,6 +36,7 @@ class DsParms:
     smd_inprogress_converted: int
     timestamps:         np.ndarray
     intg_det:           str
+    terminate_flag:     bool = False
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table, det_stream_id_table):
         self.det_classes        = det_classes
@@ -185,6 +186,19 @@ class DataSourceBase(abc.ABC):
     @abc.abstractmethod
     def is_mpi(self):
         return
+
+    def terminate(self):
+        """ Sets terminate flag
+
+        The Events iterators of all Run types check this flag
+        to see if they need to stop (raise StopIterator for
+        RunSerial, RunShmem, & RunSinglefile or skip events
+        for RunParallel (see BigDataNode implementation).
+
+        Note that mpi_ds implements this differently by adding
+        Isend prior to setting this flag.
+        """
+        self.dsparms.terminate_flag = True
 
     def unique_user_rank(self):
         """ Only applicable to MPIDataSource
@@ -611,4 +625,4 @@ class DataSourceBase(abc.ABC):
                 os.close(fd)
             logger.debug(f'ds_base: close smd fds: {self.smd_fds}')
 
-
+    
