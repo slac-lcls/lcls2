@@ -10,8 +10,6 @@ from psana import DataSource
 import os
 
 
-xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
-os.environ['PS_SMD_N_EVENTS'] = '2'
 
 def run_terminate(ds):
     for run in ds.runs():
@@ -27,6 +25,9 @@ def run_terminate(ds):
             assert cn_events == 5
 
 def run_test_early_termination():
+    xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
+    os.environ['PS_SMD_N_EVENTS'] = '2'
+    
     # Tests RunParallel and RunSerial """
     ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
     run_terminate(ds)
