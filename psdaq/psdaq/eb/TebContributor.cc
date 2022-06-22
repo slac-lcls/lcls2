@@ -151,8 +151,6 @@ int TebContributor::connect(size_t inpSizeGuess)
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
 
-  //printf("*** TC::connect: region %p, regSize %zu, inpSizeGuess %zu\n",
-  //       region, regSize, inpSizeGuess);
   for (auto link : _links)
   {
     rc = link->setupMr(region, regSize);
@@ -177,7 +175,6 @@ int TebContributor::configure()
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
 
-  //printf("*** TC::cfg: region %p, regSize %zu\n", region, regSize);
   int rc = linksConfigure(_links, _id, region, regSize, _prms.maxInputSize, "TEB");
   if (rc)  return rc;
 

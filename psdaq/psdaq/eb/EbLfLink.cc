@@ -23,8 +23,6 @@ static int checkMr(Fabric*         fabric,
                    MemoryRegion*   mr,
                    const unsigned& verbose)
 {
-  //printf("*** PE::checkMr: mr %p, start %p, region %p, len %zu, size %zu\n",
-  //       mr, mr->start(), region, mr->length(), size);
   if ((region == mr->start()) && (size <= mr->length()))
   {
     if (verbose)
@@ -55,8 +53,6 @@ int Pds::Eb::setupMr(Fabric*         fabric,
                      MemoryRegion**  memReg,
                      const unsigned& verbose)
 {
-  //printf("*** PE::setupMr: memReg %p, *memReg %p, region %p, size %zu\n",
-  //       memReg, memReg ? *memReg : 0, region, size);
   // If *memReg describes a region, check that its size is appropriate
   if (memReg && *memReg && !checkMr(fabric, region, size, *memReg, verbose))
   {
@@ -65,7 +61,6 @@ int Pds::Eb::setupMr(Fabric*         fabric,
 
   // If there's a MR for the region, check that its size is appropriate
   MemoryRegion* mr = fabric->lookup_memory(region, sizeof(uint8_t));
-  //printf("*** PE::setupMr: mr lkup %p, region %p, size %zu\n", mr, region, size);
   if (mr && !checkMr(fabric, region, size, mr, verbose))
   {
     if (memReg)  *memReg = mr;
@@ -73,7 +68,6 @@ int Pds::Eb::setupMr(Fabric*         fabric,
   }
 
   mr = fabric->register_memory(region, size);
-  //printf("*** PE::setupMr: mr new  %p, region %p, size %zu\n", mr, region, size);
   if (memReg)  *memReg = mr;            // Even on error, set *memReg
   if (!mr)
   {
@@ -286,7 +280,7 @@ int EbLfSvrLink::prepare(unsigned    id,
     return rc;
   }
 
-  // Exchange IDs and get MR size
+  // Exchange IDs
   if ( (rc = recvU32(&_id, peer, "ID")) )  return rc;
   if ( (rc = sendU32(  id, peer, "ID")) )  return rc;
 
@@ -317,9 +311,9 @@ int EbLfSvrLink::prepare(unsigned    id,
   }
 
   // Exchange IDs and get MR size
-  if ( (rc = recvU32(&_id, peer, "ID")) )       return rc;
-  if ( (rc = sendU32(  id, peer, "ID")) )       return rc;
-  if ( (rc = recvU32( &rs, peer, "MR size")) )  return rc;
+  if ( (rc = recvU32(&_id, peer, "ID")) )  return rc;
+  if ( (rc = sendU32(  id, peer, "ID")) )  return rc;
+  if ( (rc = recvU32( &rs, peer, "sz")) )  return rc;
   if (size)  *size = rs;
 
   // This method requires a call to setupMr(region, size) below
@@ -458,7 +452,7 @@ int EbLfCltLink::prepare(unsigned    id,
   // Revisit: Would like to make it const, but has issues in Endpoint.cc
   if (region)
   {
-    if ( (rc = sendU32(rmtSize, peer, "MR size")) )  return rc;
+    if ( (rc = sendU32(rmtSize, peer, "sz")) )  return rc;
 
     // Set up the MR and provide its specs to the other side
     if ( (rc = Pds::Eb::setupMr(_ep->fabric(), region, lclSize, &_mr, _verbose)) )  return rc;

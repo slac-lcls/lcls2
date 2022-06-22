@@ -83,7 +83,6 @@ int MebContributor::connect(const MebCtrbParams& prms,
   int rc = linksConnect(_transport, _links, prms.addrs, prms.ports, "MEB");
   if (rc)  return rc;
 
-  //printf("*** MC::connect: region %p, regSize %zu\n", region, regSize);
   for (auto link : _links)
   {
     rc = link->setupMr(region, regSize);
@@ -96,7 +95,6 @@ int MebContributor::connect(const MebCtrbParams& prms,
 int MebContributor::configure(void*  region,
                               size_t regSize)
 {
-  //printf("*** MC::cfg: region %p, regSize %zu\n", region, regSize);
   int rc = linksConfigure(_links, _id, region, regSize, _maxEvSize, "MEB");
   if (rc)  return rc;
 
