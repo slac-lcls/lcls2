@@ -88,13 +88,6 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
     throw "Fatal: _remaining == remaining";
   }
 
-  if (cdg->pulseId() != sequence())
-  {
-    printf("*** EbEvent::_add: pulseId mismatch: %014lx vs %014lx\n",
-           cdg->pulseId(), sequence());
-    abort();
-  }
-
   return this;
 }
 
