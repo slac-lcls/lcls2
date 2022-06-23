@@ -34,14 +34,10 @@ int BatchManager::initialize(size_t maxEntrySize, unsigned maxEntries, unsigned 
     return 1;
   }
 
-  // Allocate the region, and reallocate if the required size is larger
+  // Reallocate the region if the required size has changed
   auto regSize = numBatches * maxEntries * maxEntrySize;
-  //printf("*** BM::init: region %p, regSize %zu, regSizeGuess %zu\n",
-  //       _region, _regSize, batchRegionSize());
-  if (regSize > _regSize)
+  if (regSize != _regSize)
   {
-    //printf("*** BM::init: batchRegionSize() [%zu] > _regSize [%zu]: (re)allocating\n", batchRegionSize(), _regSize);
-
     if (_region)  free(_region);
 
     _region = static_cast<char*>(allocRegion(regSize));

@@ -168,34 +168,35 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   rc = linksConnect(_transport, _links, "DRP");
   if (rc)  return rc;
 
-  // Set up a guess at the RDMA region now to avoid spending time in Configure
+  // Assume an existing region is already appropriately sized, else make a guess
+  // at a suitable RDMA region to avoid spending time in Configure.
   // If it's too small, it will be corrected during Configure
-  for (unsigned i = 0; i < nCtrbs; ++i)
+  if (inpSizeGuess)                     // Disable by providing 0
   {
-    if (!_region[i])                    // No need to guess again
+    for (unsigned i = 0; i < nCtrbs; ++i)
     {
-      // Make a guess at the size of the Input region
-      size_t regSizeGuess = (inpSizeGuess * _maxEvBuffers * _maxEntries +
-                             roundUpSize(_maxTrBuffers * prms.maxTrSize[i]));
-      //printf("*** EAB::connect: region %p, regSize %zu, regSizeGuess %zu\n",
-      //       _region[i], _regSize[i], regSizeGuess);
-
-      _region[i] = allocRegion(regSizeGuess);
-      if (!_region[i])
+      if (!_region[i])                  // No need to guess again
       {
-        logging::error("%s:\n  "
-                       "No memory found for Input MR for %s[%d] of size %zd",
-                       __PRETTY_FUNCTION__, "DRP", i, regSizeGuess);
-        return ENOMEM;
+        // Make a guess at the size of the Input region
+        size_t regSizeGuess = (inpSizeGuess * _maxEvBuffers * _maxEntries +
+                               roundUpSize(_maxTrBuffers * prms.maxTrSize[i]));
+
+        _region[i] = allocRegion(regSizeGuess);
+        if (!_region[i])
+        {
+          logging::error("%s:\n  "
+                         "No memory found for Input MR for %s[%d] of size %zd",
+                         __PRETTY_FUNCTION__, "DRP", i, regSizeGuess);
+          return ENOMEM;
+        }
+
+        // Save the allocated size, which may be more than the required size
+        _regSize[i] = regSizeGuess;
       }
 
-      // Save the allocated size, which may be more than the required size
-      _regSize[i] = regSizeGuess;
+      rc = _transport.setupMr(_region[i], _regSize[i]);
+      if (rc)  return rc;
     }
-
-    //printf("*** EAB::connect: region %p, regSize %zu\n", _region[i], _regSize[i]);
-    rc = _transport.setupMr(_region[i], _regSize[i]);
-    if (rc)  return rc;
   }
 
   return 0;
@@ -220,10 +221,6 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
 
   for (auto link : links)
   {
-    // Log a message so we can perhaps see the source of timeouts in UED,
-    // where some servers and clients run on the same machine.  Compare
-    // timestamps in /var/log/messages.
-    logging::info("Preparing link with a %3s, my ID: %2d", peer, id);
     auto   t0{std::chrono::steady_clock::now()};
     int    rc;
     size_t regEntrySize;
@@ -242,8 +239,8 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
     _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
     regSize           += roundUpSize(_maxTrBuffers * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
 
-    // Reallocate the region if the new size is larger
-    if (regSize > _regSize[rmtId])
+    // Reallocate the region if the required size has changed
+    if (regSize != _regSize[rmtId])
     {
       if (_region[rmtId])  free(_region[rmtId]);
 
@@ -256,11 +253,9 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
         return ENOMEM;
       }
 
-      // Save the allocated size, which may be more than the required size
       _regSize[rmtId] = regSize;
     }
 
-    //printf("*** EAB::cfg: region %p, regSize %zu\n", _region[rmtId], regSize);
     if ( (rc = link->setupMr(_region[rmtId], regSize, peer)) )
     {
       logging::error("%s:\n  Failed to set up Input MR for %s ID %d, "

@@ -93,8 +93,10 @@ int main(int argc, char* argv[])
     }
     printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
 
-    dmaSetMaskBytes(fd, mask);
-
+    if (dmaSetMaskBytes(fd, mask)) {
+        printf("Failed to allocate lane/vc\n");
+        return -1;
+    }       
 
     uint64_t nevents = 0L;
     int32_t dmaRet[MAX_RET_CNT_C];

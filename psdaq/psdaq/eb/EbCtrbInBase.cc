@@ -113,7 +113,7 @@ void EbCtrbInBase::unconfigure()
 {
 }
 
-int EbCtrbInBase::startConnection(std::string& port, size_t resSizeGuess, unsigned numBuffers)
+int EbCtrbInBase::startConnection(std::string& port)
 {
   int rc = _transport.listen(_prms.ifAddr, port, MAX_TEBS);
   if (rc)
@@ -123,8 +123,20 @@ int EbCtrbInBase::startConnection(std::string& port, size_t resSizeGuess, unsign
     return rc;
   }
 
-  // Revisit: Not sure why this is here rather than in connect()
-  // Set up a guess at the RDMA region
+  return 0;
+}
+
+int EbCtrbInBase::connect(size_t resSizeGuess, unsigned numBuffers)
+{
+  unsigned numEbs = std::bitset<64>(_prms.builders).count();
+
+  _links.resize(numEbs);
+
+  int rc = linksConnect(_transport, _links, "TEB");
+  if (rc)  return rc;
+
+  // Assume an existing region is already appropriately sized, else make a guess
+  // at a suitable RDMA region to avoid spending time in Configure.
   // If it's too small, it will be corrected during Configure
   if (!_region)                         // No need to guess again
   {
@@ -135,7 +147,7 @@ int EbCtrbInBase::startConnection(std::string& port, size_t resSizeGuess, unsign
     if (!_region)
     {
       logging::error("%s:\n  "
-                     "No memory found for Input MR for %s of size %zd",
+                     "No memory found for Result MR for %s of size %zd",
                      __PRETTY_FUNCTION__, "TEB", regSizeGuess);
       return ENOMEM;
     }
@@ -146,18 +158,6 @@ int EbCtrbInBase::startConnection(std::string& port, size_t resSizeGuess, unsign
   }
 
   rc = _transport.setupMr(_region, _regSize);
-  if (rc)  return rc;
-
-  return 0;
-}
-
-int EbCtrbInBase::connect()
-{
-  unsigned numEbs = std::bitset<64>(_prms.builders).count();
-
-  _links.resize(numEbs);
-
-  int rc = linksConnect(_transport, _links, "TEB");
   if (rc)  return rc;
 
   return 0;
@@ -187,10 +187,6 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
   // Since each EB handles a specific batch, one region can be shared by all
   for (auto link : links)
   {
-    // Log a message so we can perhaps see the source of timeouts in UED,
-    // where some servers and clients run on the same machine.  Compare
-    // timestamps in /var/log/messages.
-    logging::info("Preparing link with a %3s, my ID: %2d", peer, id);
     auto   t0(std::chrono::steady_clock::now());
     int    rc;
     size_t regSize;
@@ -205,12 +201,12 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
 
     if (!size)
     {
-      // Allocate the region, and reallocate if the required size is larger.
+      // Reallocate the region if the required size has changed.
       // The Results region size must match that on the TEB since it may produce
       // results batches that contain entries not meant for this particular
       // contributor (e.g., due to its being in a slower RoG) and these will
       // take up space not taken into account by the MemPool::nbuffers() value.
-      if (regSize > _regSize)
+      if (regSize != _regSize)
       {
         if (_region)  free(_region);
 
@@ -223,7 +219,6 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
           return ENOMEM;
         }
 
-        // Save the allocated size, which may be more than the required size
         _regSize = regSize;
       }
       _maxResultSize = regSize / numTebBuffers;
@@ -231,16 +226,16 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
     }
     else if (regSize != size)
     {
-      logging::error("%s:\n  Result MR size (%zd) cannot vary between %ss "
+      logging::error("%s:\n  Results MR size (%zd) cannot vary between %ss "
                      "(%zd from Id %u)", __PRETTY_FUNCTION__, size, peer, regSize, rmtId);
       return -1;
     }
 
-    if ( (rc = link->setupMr(_region, _regSize, peer)) )
+    if ( (rc = link->setupMr(_region, regSize, peer)) )
     {
       logging::error("%s:\n  Failed to set up Result MR for %s ID %d, "
                      "%p:%p, size %zd", __PRETTY_FUNCTION__, peer, rmtId,
-                     _region, static_cast<char*>(_region) + _regSize, _regSize);
+                     _region, static_cast<char*>(_region) + regSize, regSize);
       return rc;
     }
 
@@ -320,9 +315,9 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     unsigned env     = bdg->env;
     auto&    pending = ctrb.pending();
     printf("CtrbIn  rcvd        %6lu result  [%8u] @ "
-           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, empty %c, cnt %u\n",
+           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, empty %c, cnt %u, data %08lx\n",
            _batchCount, idx, bdg, ctl, pid, env, src, pending.is_empty() ? 'Y' : 'N',
-           pending.guess_size());
+           pending.guess_size(), data);
   }
 
   _matchUp(ctrb, bdg);

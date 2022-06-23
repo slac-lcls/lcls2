@@ -156,7 +156,9 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
             dmaAddMaskBytes(mask, dest);
         }
     }
-    dmaSetMaskBytes(drp.pool.fd(), mask);
+    if (dmaSetMaskBytes(drp.pool.fd(), mask)) {
+        logging::error("Failed to allocate lane/vc");
+    }
 
     for (unsigned i=0; i<para.nworkers; i++) {
         m_workerInputQueues.emplace_back(SPSCQueue<Batch>(drp.pool.nbuffers()));

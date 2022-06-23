@@ -367,7 +367,9 @@ int Meb::connect()
   _mrqLinks.resize(_prms.addrs.size());
 
   // Make a guess at the size of the Input entries
-  size_t inpSizeGuess = 128*1024;
+  // Since the guess will almost always be wrong,
+  // disable region allocation during Connect
+  size_t inpSizeGuess = 0;
 
   int rc = EbAppBase::connect(_prms, inpSizeGuess);
   if (rc)  return rc;

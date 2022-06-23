@@ -26,6 +26,10 @@ class Events:
     def __next__(self):
         if self.smdr_man:
             # RunSerial
+
+            # Checks if users ask to exit
+            if self.dsparms.terminate_flag: raise StopIteration
+
             try:
                 evt = next(self._evt_man)
                 if not any(evt._dgrams): return self.__next__() # FIXME: MONA find better way to handle empty event.
@@ -74,6 +78,10 @@ class Events:
                 return evt
         else: 
             # RunSingleFile or RunShmem - get event from DgramManager
+            
+            # Checks if users ask to exit
+            if self.dsparms.terminate_flag: raise StopIteration
+            
             evt = next(self.dm)
 
             # TODO: MONA Update EnvStore here instead of inside DgramManager.

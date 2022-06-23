@@ -21,6 +21,9 @@ class Test:
 
         #callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
         #subprocess.check_call(['mpirun','-n','3','python',callback_based], env=env)
+
+        run_early_termination = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_early_termination.py')
+        subprocess.check_call(['mpirun','-n','3','python',run_early_termination], env=env)
         
         # Test more than 1 bigdata node
         loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')

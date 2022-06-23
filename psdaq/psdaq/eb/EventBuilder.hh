@@ -89,9 +89,10 @@ namespace Pds {
       LinkedList<EbEpoch>          _pending;       // Listhead, Epochs with events pending
       time_point_t                 _tLastFlush;    // Starting time of timeout
       uint64_t                     _mask;          // Sequence mask
-      std::vector<EbEpoch*>        _epochLut;      // LUT of allocated epochs
       std::unique_ptr<GenericPool> _epochFreelist; // Freelist for new epochs
+      std::vector<EbEpoch*>        _epochLut;      // LUT of allocated epochs
       std::unique_ptr<GenericPool> _eventFreelist; // Freelist for new events
+      std::vector<EbEvent*>        _eventLut;      // LUT of allocated events
       const ns_t                   _eventTimeout;  // Maximum event age in ms
       mutable uint64_t             _tmoEvtCnt;     // Count of timed out events
       mutable uint64_t             _fixupCnt;      // Count of flushed   events

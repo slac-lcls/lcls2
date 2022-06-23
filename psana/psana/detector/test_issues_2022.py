@@ -210,6 +210,27 @@ def issue_2022_04_06():
         print(det.raw.calib(evt))
         break
 
+def issue_2022_06_17():
+    """Default common_mode parameters
+    """
+    import psana
+    import numpy as np
+    expname = 'uedcom103'
+    runnum = 419
+    ds = psana.DataSource(exp=expname,run=runnum,detectors=['epixquad','epicsinfo'])
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    #print(det.calibconst.keys(),det.calibconst)
+    print(det.calibconst.keys())
+
+    #cmpars, meta = det.calibconst['common_mode']
+    cmpars = det.raw._common_mode()
+    print('cmpars',cmpars)
+
+    #for nevent,evt in enumerate(myrun.events()):
+    #    print(det.raw.calib(evt))
+    #    break
+
 
 def issue_2022_01_dd():
     print('template')
@@ -227,11 +248,13 @@ USAGE = '\nUsage:'\
       + '\n    7 - issue_2022_03_08 - test det.calibconst as generic access to cc'\
       + '\n    8 - issue_2022_03_16 - test calibconst for Mona'\
       + '\n    9 - issue_2022_04_06 - test epixquad cpo - constants'\
+      + '\n   10 - issue_2022_06_17 - test default common_mode parameters'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
-if   TNAME in  ('1',): issue_2022_01_21()
+if   TNAME in  ('0',): issue_2022_01_dd()
+elif TNAME in  ('1',): issue_2022_01_21()
 elif TNAME in  ('2',): issue_2022_01_26()
 elif TNAME in  ('3',): issue_2022_02_08()
 elif TNAME in  ('4',): issue_2022_02_15()
@@ -240,7 +263,7 @@ elif TNAME in  ('6',): issue_2022_03_02()
 elif TNAME in  ('7',): issue_2022_03_08()
 elif TNAME in  ('8',): issue_2022_03_16()
 elif TNAME in  ('9',): issue_2022_04_06()
-elif TNAME in  ('0',): issue_2022_01_dd()
+elif TNAME in ('10',): issue_2022_06_17()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

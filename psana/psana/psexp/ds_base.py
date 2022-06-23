@@ -4,6 +4,9 @@ import glob
 import abc
 import numpy as np
 import pathlib
+import requests
+import re
+import time
 
 from psana.dgrammanager import DgramManager
 
@@ -33,6 +36,7 @@ class DsParms:
     smd_inprogress_converted: int
     timestamps:         np.ndarray
     intg_det:           str
+    terminate_flag:     bool = False
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table, det_stream_id_table):
         self.det_classes        = det_classes
@@ -83,6 +87,7 @@ class DataSourceBase(abc.ABC):
                                      # list of user-selected timestamps
         self.dbsuffix  = ''          # calibration database name extension for private constants
         self.intg_det  = ''          # integrating detector name (contains marker ts for a batch)
+        self.current_retry_no = 0    # global counting var for no. of read attemps
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -182,6 +187,19 @@ class DataSourceBase(abc.ABC):
     def is_mpi(self):
         return
 
+    def terminate(self):
+        """ Sets terminate flag
+
+        The Events iterators of all Run types check this flag
+        to see if they need to stop (raise StopIterator for
+        RunSerial, RunShmem, & RunSinglefile or skip events
+        for RunParallel (see BigDataNode implementation).
+
+        Note that mpi_ds implements this differently by adding
+        Isend prior to setting this flag.
+        """
+        self.dsparms.terminate_flag = True
+
     def unique_user_rank(self):
         """ Only applicable to MPIDataSource
         All other types of DataSource always return True.
@@ -203,38 +221,125 @@ class DataSourceBase(abc.ABC):
     #def steps(self):
     #    retur
 
+    def _check_file_exist_with_retry(self, xtc_file):
+        """ Returns isfile flag and the true xtc file name (.xtc2 or .inprogress).
+        """
+        # Reconstruct .inprogress file name
+        dirname = os.path.dirname(xtc_file)
+        fn_only = os.path.splitext(os.path.basename(xtc_file))[0]
+        inprogress_file = os.path.join(dirname, fn_only+'.xtc2.inprogress')
+        
+        # Check if either one exists
+        file_found = os.path.isfile(xtc_file)
+        true_xtc_file = xtc_file
+        if file_found == False:
+            file_found = os.path.isfile(inprogress_file)
+            if file_found == True:
+                true_xtc_file = inprogress_file
+
+        # Retry if live mode is set
+        while self.current_retry_no < self.dsparms.max_retries:
+            file_found = os.path.isfile(xtc_file)
+            if file_found == False:
+                file_found = os.path.isfile(inprogress_file)
+                if file_found == True:
+                    true_xtc_file = inprogress_file
+            if file_found:
+                break
+            self.current_retry_no += 1
+            print(f'Waiting for {xtc_file} ...(#retry:{self.current_retry_no})')
+            time.sleep(1)
+        return file_found, true_xtc_file
+
+    def _get_file_info_from_db(self, runnum):
+        """ Returns a list of xtc2 files as shown in the db.
+
+        Note that the requested url below returns list of all files (all streams and 
+        all chunks) from the database. For psana2, we only need the first chunk (-c)
+        of each stream so the original list is filtered down.
+
+        Example of names returned by the requests:
+        /tmo/tmoc00118/xtc/tmoc00118-r0222-s000-c000.xtc2
+        /tmo/tmoc00118/xtc/tmoc00118-r0222-s000-c001.xtc2
+        /tmo/tmoc00118/xtc/tmoc00118-r0222-s002-c000.xtc2
+
+        Returns
+        file_info['xtc_files']
+        tmoc00118-r0222-s000-c000.xtc2
+        tmoc00118-r0222-s002-c000.xtc2
+        file_info['dirname']
+        /tmo/tmoc00118/xtc/
+        """
+        url = f"https://pswww.slac.stanford.edu/ws/lgbk/lgbk/{self.exp}/ws/{runnum}/files_for_live_mode"
+        resp = requests.get(url)
+        try:
+            resp.raise_for_status()
+            all_xtc_files=resp.json()["value"]
+        except Exception:
+            print(f'Warning: unable to connect to {url}')
+            all_xtc_files = []
+        
+        file_info = {}
+        if all_xtc_files:
+            # Only take chunk 0 xtc files (matched with *-c*0.) 
+            xtc_files = [os.path.basename(xtc_file) for xtc_file in all_xtc_files if re.search(r'-c(.+?)0\.', xtc_file)]
+            if xtc_files:
+                file_info['xtc_files'] = xtc_files
+                file_info['dirname'] = os.path.dirname(all_xtc_files[0])
+        return file_info
+
     def _setup_run_files(self, runnum):
         """
         Generate list of smd and xtc files given a run number.
 
         Allowed extentions include .xtc2 and .xtc2.inprogress.
         """
-        smd_dir = os.path.join(self.xtc_path, 'smalldata')
-        smd_files = sorted(glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4)))) + \
-                           glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2.inprogress'%(str(runnum).zfill(4))))
-                          )
+        file_info = self._get_file_info_from_db(runnum)
+
+        # If we get the list of stream ids from db (some test cases
+        # like xpptut15 run 1 are not registered in the db), these streams take
+        # priority over what found on disk. We support two cases:
+        #
+        # * Non-live mode: exit when expected stream is not found
+        # * Live mode    : wait for files and time out when max wait (s) is reached.
+        #
+        # If we don't get anything from the db, use what exist on disk.
+        if file_info:
+            # Builds a list of expected smd files
+            xtc_files_from_db   = file_info['xtc_files']
+            if self.xtc_path != file_info['dirname']:
+                print(f'Warning: The given dir: {self.xtc_path} does not match with {file_info["dirname"]} from db.')
+                print(f'         The given dir will be used.')
+            smd_files   = [os.path.join(self.xtc_path, 'smalldata',           
+                    os.path.splitext(xtc_file_from_db)[0]+'.smd.xtc2')             
+                    for xtc_file_from_db in xtc_files_from_db]
+
+            self.current_retry_no = 0
+            for i_smd, smd_file in enumerate(smd_files):
+                flag_found, true_xtc_file = self._check_file_exist_with_retry(smd_file)
+                if not flag_found:
+                    raise FileNotFoundError(true_xtc_file)
+                smd_files[i_smd] = true_xtc_file
+
+        else:
+            smd_dir = os.path.join(self.xtc_path, 'smalldata')
+            smd_files = sorted(glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4)))) + \
+                    glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2.inprogress'%(str(runnum).zfill(4)))))
+        
         self.n_files   = len(smd_files)
-        assert self.n_files > 0 , f"No smalldata files found from this path: {smd_dir}"
+        assert self.n_files > 0 , f"No smalldata files found from this path: {os.path.join(self.xtc_path, 'smalldata')}"
 
         # Look for matching bigdata files - MUST match all.
         # We start by looking for smd basename with .inprogress extension.
         # If this name is not found, try .xtc2. 
-        xtc_files = []
-        for smd_file in smd_files:
-            xtc_file = ""
-            base_name = os.path.basename(smd_file).split('.smd')[0]
-            try_this_name = os.path.join(self.xtc_path, base_name + ".xtc2.inprogress")
-            if os.path.isfile(try_this_name): 
-                xtc_file = try_this_name
+        xtc_files = [os.path.join(self.xtc_path, os.path.basename(smd_file).split('.smd')[0] + ".xtc2") 
+                for smd_file in smd_files]
+        for i_xtc, xtc_file in enumerate(xtc_files):
+            flag_found, true_xtc_file = self._check_file_exist_with_retry(xtc_file)
+            if not flag_found:
+                raise FileNotFoundError(true_xtc_file)
+            xtc_files[i_xtc] = true_xtc_file
             
-            if not xtc_file:
-                try_this_name = os.path.join(self.xtc_path, base_name + ".xtc2")
-                if os.path.isfile(try_this_name):
-                    xtc_file = try_this_name
-
-            assert xtc_file, f"Unable to locate bigdata file: {try_this_name}"
-            xtc_files.append(xtc_file)
-
         self.smd_files = smd_files
         self.xtc_files = xtc_files
 
@@ -520,4 +625,4 @@ class DataSourceBase(abc.ABC):
                 os.close(fd)
             logger.debug(f'ds_base: close smd fds: {self.smd_fds}')
 
-
+    

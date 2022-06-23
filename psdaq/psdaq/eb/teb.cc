@@ -252,26 +252,22 @@ int Teb::connect()
   rc = linksConnect(_mrqTransport, _mrqLinks, "MRQ");
   if (rc)  return rc;
 
-  if (!_batMan.batchRegion())           // No need to guess again
+  // Make a guess at the size of the Result entries
+  auto maxResultSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
+  auto maxEntries         = _prms.maxEntries;
+  auto numBatches         = _prms.numBuffers / maxEntries;
+  if (numBatches * maxEntries != _prms.numBuffers)
   {
-    // Make a guess at the size of the Result entries
-    auto maxResultSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
-    auto maxEntries         = _prms.maxEntries;
-    auto numBatches         = _prms.numBuffers / maxEntries;
-    if (numBatches * maxEntries != _prms.numBuffers)
-    {
-      logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
-                        maxEntries, _prms.numBuffers);
-      abort();
-    }
-    _batMan.initialize(maxResultSizeGuess, maxEntries, numBatches); // TEB always batches
+    logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
+                      maxEntries, _prms.numBuffers);
+    abort();
   }
+  _batMan.initialize(maxResultSizeGuess, maxEntries, numBatches); // TEB always batches
 
   // This is the local Results batch region from which we'll post batches back to the DRPs
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
 
-  //printf("*** TEB::connect: region %p, regSize %zu\n", region, regSize);
   for (auto link : _l3Links)
   {
     rc = link->setupMr(region, regSize);
@@ -299,11 +295,10 @@ int Teb::configure(Trigger* trigger,
   auto numBatches    = _prms.numBuffers / maxEntries;
   _batMan.initialize(maxResultSize, maxEntries, numBatches); // TEB always batches
 
-  // This is the local Results batch region from which we'll post batches back to the DRPs
+  // This is the local Results batch region
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
 
-  //printf("*** TEB::cfg: region %p, regSize %zu\n", region, regSize);
   rc = linksConfigure(_l3Links, _prms.id, region, regSize, "DRP");
   if (rc)  return rc;
   rc = linksConfigure(_mrqLinks, _prms.id, "MRQ");
@@ -577,8 +572,8 @@ void Teb::_post(const Batch& batch)
   {
     uint64_t pid = batch.start->pulseId();
     printf("TEB posts          %9lu result  [%8u] @ "
-           "%16p,         pid %014lx,               sz %6zd, dst %016lx\n",
-           _batchCount, batch.idx, batch.start, pid, extent, destns);
+           "%16p,         pid %014lx, ofs %08x, sz %6zd, dst %016lx\n",
+           _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
   }
 
   while (destns)
@@ -587,6 +582,13 @@ void Teb::_post(const Batch& batch)
     EbLfCltLink* link = _l3Links[dst];
 
     destns &= ~(1ul << dst);
+
+    if (unlikely(_prms.verbose >= VL_BATCH))
+    {
+      void* rmtAdx = (void*)link->rmtAdx(offset);
+      printf("                                      to DRP %2u @ %16p\n",
+             dst, rmtAdx);
+    }
 
     int rc = link->post(batch.start, extent, offset, data);
     if (rc < 0)

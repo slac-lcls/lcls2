@@ -23,7 +23,6 @@ namespace Pds {
     public:
       LinkedList<EbEvent> pending;    // Listhead, events pending;
       uint64_t            key;        // Epoch sequence number
-      EbEvent*            eventLut[]; // Look-up table of event pointers
     };
   };
 };

@@ -68,7 +68,8 @@ int EventBuilder::initialize(unsigned epochs,
     _epochFreelist = std::make_unique<GenericPool>(epSize, nep, CLS);
     _eventFreelist = std::make_unique<GenericPool>(evSize, nev, CLS);
 
-    _epochLut.resize(nep);
+    _epochLut.resize(nep, nullptr);
+    _eventLut.resize(nev, nullptr);
   }
 
   _arrTime.resize(sources);
@@ -107,7 +108,9 @@ void EventBuilder::clear()
 
       event->disconnect();
 
-      epoch->eventLut[_evIndex(event->sequence())] = nullptr;
+      const uint64_t key   = event->sequence();
+      unsigned       index = _evIndex(key);
+      _eventLut[index] = nullptr;
 
       delete event;
 
@@ -116,11 +119,12 @@ void EventBuilder::clear()
     epoch = epoch->forward();
   }
 
-  _flushBefore(_pending.reverse());
+  _flushBefore(_pending.empty());
 
   resetCounters();
 
   std::fill(_epochLut.begin(), _epochLut.end(), nullptr);
+  std::fill(_eventLut.begin(), _eventLut.end(), nullptr);
 }
 
 inline
@@ -132,7 +136,7 @@ unsigned EventBuilder::_epIndex(uint64_t key) const
 inline
 unsigned EventBuilder::_evIndex(uint64_t key) const
 {
-  return key & ~_mask;
+  return key % _eventLut.size();
 }
 
 EbEpoch* EventBuilder::_discard(EbEpoch* epoch)
@@ -227,7 +231,9 @@ EbEvent* EventBuilder::_event(EbEpoch*            epoch,
                                            imm,
                                            t0);
 
-    epoch->eventLut[_evIndex(ctrb->pulseId())] = event;
+    const uint64_t key   = ctrb->pulseId();
+    unsigned       index = _evIndex(key);
+    _eventLut[index] = event;
 
     return event;
   }
@@ -248,8 +254,9 @@ EbEvent* EventBuilder::_insert(EbEpoch*            epoch,
 {
   const uint64_t key = ctrb->pulseId();
 
-  EbEvent* event = epoch->eventLut[_evIndex(key)];
-  if (event)  return event->_add(ctrb);
+  unsigned index = _evIndex(key);
+  EbEvent* event = _eventLut[index];
+  if (event && (event->sequence() == key))  return event->_add(ctrb);
 
   bool                 reversed = false;
   const EbEvent* const empty    = epoch->pending.empty();
@@ -324,7 +331,9 @@ void EventBuilder::_retire(EbEpoch* epoch, EbEvent* event)
   auto age{fast_monotonic_clock::now() - event->_t0};
   _age = std::chrono::duration_cast<ms_t>(age).count();
 
-  EbEvent*& entry = epoch->eventLut[_evIndex(event->sequence())];
+  const uint64_t key   = event->sequence();
+  unsigned       index = _evIndex(key);
+  EbEvent*&      entry = _eventLut[index];
   if (entry == event)  entry = nullptr;
 
   delete event;
@@ -483,9 +492,6 @@ void EventBuilder::process(const EbDgram* ctrb,
   {
     event = _insert(epoch, ctrb, event, imm++, t0);
 
-    auto src = ctrb->xtc.src.value();
-    _arrTime[src] = std::chrono::duration_cast<ns_t>(t0 - event->_t0).count();
-
     if (!event->_remaining)  due = event;
 
     if (_verbose >= VL_EVENT)
@@ -510,7 +516,9 @@ void EventBuilder::process(const EbDgram* ctrb,
   else      _tryFlush();     // Periodically flush when no events are completing
 
   auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-  _ebTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+  auto src = ctrb->xtc.src.value();     // Same for all ctrbs in a batch
+  _arrTime[src] = std::chrono::duration_cast<ns_t>(t0 - event->_t0).count();
+  _ebTime       = std::chrono::duration_cast<ns_t>(t1 - t0).count();
 }
 
 /*

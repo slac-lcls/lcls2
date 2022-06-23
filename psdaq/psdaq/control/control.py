@@ -1326,10 +1326,8 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
-            # Revisit: This awaits deployment of new XPM firmware
-            ## Make SlowUpdate obey deadtime by ORing including bit 7
-            #if not self.pva.pv_put(pv, ControlDef.transitionId['SlowUpdate'] | (1 << 7)):
-            if not self.pva.pv_put(pv, ControlDef.transitionId['SlowUpdate']):
+#            Force SlowUpdate to respect deadtime
+            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
                 update_ok = False
                 break
 
@@ -2150,7 +2148,8 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Disable'])
+            #  Force Disable to respect deadtime but remain queued
+            self.pva.pv_put(pv, (0x180 | ControlDef.transitionId['Disable']))
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 

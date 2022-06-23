@@ -594,7 +594,6 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-//    m_tPrms.batching   = m_para.kwargs["batching"] == "yes"; // Default to "no"
     m_tPrms.maxEntries = m_para.kwargs["batching"] == "yes" ? Pds::Eb::MAX_ENTRIES : 1; // Default to "no"
     m_tPrms.core[0]    = -1;
     m_tPrms.core[1]    = -1;
@@ -642,10 +641,7 @@ json DrpBase::connectionInfo(const std::string& ip)
     m_tPrms.ifAddr = ip;
     m_tPrms.port.clear();               // Use an ephemeral port
 
-    // Make a guess at the size of the Result entries
-    size_t resSizeGuess = sizeof(Pds::EbDgram) + 2  * sizeof(uint32_t);
-
-    int rc = m_ebRecv->startConnection(m_tPrms.port, resSizeGuess, pool.nbuffers());
+    int rc = m_ebRecv->startConnection(m_tPrms.port);
     if (rc)  throw "Error starting connection";
 
     json info = {{"drp_port", m_tPrms.port},
@@ -681,7 +677,11 @@ std::string DrpBase::connect(const json& msg, size_t id)
             return std::string{"MebContributor connect failed"};
         }
     }
-    rc = m_ebRecv->connect();
+
+    // Make a guess at the size of the Result entries
+    size_t resSizeGuess = sizeof(Pds::EbDgram) + 2  * sizeof(uint32_t);
+
+    rc = m_ebRecv->connect(resSizeGuess, m_numTebBuffers);
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }

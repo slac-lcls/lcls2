@@ -589,23 +589,24 @@ class XpmApp(pr.Device):
             name         = "msgHdr",
             description  = "Message header",
             offset       =  0x70,
-            bitSize      =  8,
+            bitSize      =  9,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
             verify       = False
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "msgIns",
-            description  = "Message insert",
-            offset       =  0x71,
-            bitSize      =  1,
-            bitOffset    =  0x07,
-            base         = pr.UInt,
-            mode         = "RW",
-            verify       = False
-        ))
+        if False:
+            self.add(pr.RemoteVariable(    
+                name         = "msgIns",
+                description  = "Message insert",
+                offset       =  0x71,
+                bitSize      =  1,
+                bitOffset    =  0x07,
+                base         = pr.UInt,
+                mode         = "RW",
+                verify       = False
+            ))
 
         self.add(pr.RemoteVariable(    
             name         = "msgPayl",

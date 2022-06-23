@@ -81,6 +81,7 @@ class Communicators(object):
 
         self.smd_comm = self.comm.Create(self.smd_group)
         self.bd_main_comm = self.comm.Create(self.bd_main_group)
+        self._bd_only_comm = self.comm.Create(self._bd_only_group)
         
         if self.smd_comm != MPI.COMM_NULL:
             self.smd_rank = self.smd_comm.Get_rank()
@@ -110,15 +111,22 @@ class Communicators(object):
     def bd_group(self):
         return self._bd_only_group
 
+    def bd_only_comm(self):
+        return self._bd_only_comm
 
     def srv_group(self):
         return self._srv_group
 
-
     def node_type(self):
         return self._nodetype
 
+    def terminate(self):
+        """Tells Smd0 to terminate the loop.
 
+        Smd0 is waiting (non-blocking) on the world comm for a signal (just
+        world rank no. (so we know who requests the terimiation). 
+        """
+        self.comm.Isend(np.array([self.world_rank], dtype='i'), dest=0)
 
 class StepHistory(object):
     """ Keeps step data and their send history. """
@@ -237,16 +245,20 @@ class Smd0(object):
         self.c_sent = dsparms.prom_man.get_metric('psana_smd0_sent')
         
     def start(self):
+        # Rank 0 waits on World comm for terminating signal
+        t_rankreq = np.empty(1, dtype='i')
+        t_req = self.comms.comm.Irecv(t_rankreq, source=MPI.ANY_SOURCE)
+        
+        # Setup a non-pickled recv array and prepare bucket for storing send reqs.
         rankreq = np.empty(1, dtype='i')
         waiting_ebs = []
         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
 
-        # Indentify viewing windows. SmdReaderManager has starting index and block size
-        # that it needs to share later when data are packaged for sending to EventBuilders.
-        
         # Need this for async MPI to prevent overwriting send buffer
         repack_smds = {}
         
+        # Indentify viewing windows. SmdReaderManager has starting index and block size
+        # that it needs to share later when data are packaged for sending to EventBuilders.
         for i_chunk in self.smdr_man.chunks():
             st_req = time.monotonic()
             logger.debug(f'RANK{self.comms.world_rank} 1. SMD0GOTCHUNK {st_req}')
@@ -281,10 +293,18 @@ class Smd0(object):
             self.c_sent.labels('seconds', rankreq[0]).inc(en_req - st_req)
             logger.debug(f'node: smd0 sent {self.smdr_man.got_events} events to {rankreq[0]} (waiting for this rank took {en_req-st_req:.5f} seconds)')
             
+            # Check for terminating signal
+            t_req_test = t_req.Test()
+            if t_req_test: 
+                logger.debug(f'smd0 got terminating signal from world rank {t_rankreq[0]} (t_req_test:{t_req_test})')
+                break
+            
             found_endrun = self.smdr_man.smdr.found_endrun()
             if found_endrun: 
-                logger.debug("node: smd0 found_endrun")
+                logger.debug("smd0 found_endrun")
                 break
+            
+        
         # end for (smd_chunk, step_chunk)
         wait_for(requests)
 
@@ -558,5 +578,6 @@ class BigDataNode(object):
         events = Events(self.configs, self.dm, self.dsparms, 
                 filter_callback=self.dsparms.filter, get_smd=get_smd)
 
-        for evt in events:
+        for i_evt, evt in enumerate(events):
+            if self.dsparms.terminate_flag: continue
             yield evt
