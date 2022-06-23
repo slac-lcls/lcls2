@@ -93,7 +93,7 @@ class LegionDataSource(DataSourceBase):
     def is_mpi(self):
         return False
 
-    def analyze(self, run_fn = None, event_fn=None):
+    def analyze(self, run_fn = None, event_fn=None, step_begin_fn=None, step_end_fn=None):
         for run in self.runs():
             if run_fn is not None:
                 run_fn(run)
@@ -104,6 +104,7 @@ class LegionDataSource(DataSourceBase):
             reduc_shape = None
             reduc_fill_val = None
             reduc_rtype = None
+            run.reduc = False
             if self.reduc:
                 run.reduc = True
                 run.reduc_fn=self.reduc_fn
@@ -112,7 +113,7 @@ class LegionDataSource(DataSourceBase):
                 run.reduc_shape = self.reduc_shape
                 run.reduc_fill_val = self.reduc_fill_val
                 run.reduc_rtype = self.reduc_rtype
-            legion_node.analyze(run, event_fn, run.det)
+            legion_node.analyze(run, event_fn, run.det, step_begin_fn, step_end_fn)
             import pygion
             pygion.execution_fence(block=True)
 

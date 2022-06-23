@@ -1,6 +1,7 @@
 from psana.psexp import mode, StepHistory, repack_for_bd, repack_with_step_dg, repack_with_mstep_dg, PacketFooter
 from psana.psexp import EventBuilderManager, TransitionId, Events
 from psana.psexp.run import RunLegion
+from psana.psexp import Step
 from psana import dgram
 import numpy as np
 import time
@@ -72,7 +73,6 @@ class LSmd0(object):
             # Next update (via extend_buffers_state) will record new transition
             # history
             missing_step_views = self.step_hist.get_buffer(1)
-            # get step entries and add them to the step region
             step_views = [self.smdr_man.smdr.show(i, step_buf=True)
                           for i in range(self.smdr_man.n_files)]
             # append the new step view to the end of the buffer
@@ -90,6 +90,12 @@ class LSmd0(object):
             pack_smds[1] = self.smdr_man.smdr.repack_only_buf(eb_id)
             yield pack_smds[1], pack_steps[1]
 
+        # check final missing steps
+        missing_step_views = self.step_hist.get_buffer(1)
+        pack_steps[1] = self.smdr_man.smdr.repack_parallel(missing_step_views, 1, 1)
+        yield bytearray(), pack_steps[1]
+
+current_dgrams = 0
 def eb_debug_batches(idx, smd_batch, cnt):
     run = run_objs[idx]
     pf = PacketFooter(view=smd_batch, num_views=cnt)
@@ -109,24 +115,46 @@ def eb_debug_batches(idx, smd_batch, cnt):
 def eb_task_debug_multiple(r, idx, smd_batch, cnt):
     logger.debug(f'EB_Task_With_Multiple_Region_DEBUG: Subregion has volume %s extent %s bounds %s' % (
         r.ispace.volume, r.ispace.domain.extent, r.ispace.bounds))
-
     if smd_batch:
-        logger.debug(f'--------------L1Accept Dgrams---------------')
+        logger.debug(f'--------------L1Accept Dgrams:---------------')
         eb_debug_batches(idx, smd_batch, 1)
     if cnt:
         logger.debug(f'-------------Transition Dgrams--------------')
+        logger.debug(f'dgram_partitions = {cnt}')
         eb_debug_batches(idx, bytearray(r.x), cnt)
-
 
 def smd_batches_with_transitions(smd_batch, run, r, num_dgrams):
     eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
     batches = {}
+    # check for final transition batch
+    if smd_batch is None or len(smd_batch)==0 and len(r.x) != 0:
+        batches[0] = repack_with_mstep_dg(smd_batch, bytearray(r.x),
+                                          run.configs, num_dgrams)
+        yield batches[0]
+
     for smd_batch_dict in eb_man.smd_batches():
         smd_batch, _ = smd_batch_dict[0]
         batches[0] = repack_with_mstep_dg(smd_batch,
                                          bytearray(r.x),
                                          run.configs, num_dgrams)
         yield batches[0]
+
+def smd_batches_with_unique_transitions(smd_batch, run, r, num_dgrams, cur_dgrams):
+    eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
+    batches = {}
+    # check for final transition batch
+    if smd_batch is None or len(smd_batch)==0 and len(r.x) != 0:
+        batches[0] = repack_with_mstep_dg(smd_batch, bytearray(r.x),
+                                          run.configs, num_dgrams-cur_dgrams)
+        yield batches[0]
+
+    else:
+        for smd_batch_dict in eb_man.smd_batches():
+            smd_batch, _ = smd_batch_dict[0]
+            batches[0] = repack_with_mstep_dg(smd_batch,
+                                              bytearray(r.x),
+                                              run.configs,num_dgrams-cur_dgrams)
+            yield batches[0]
 
 def smd_batches_without_transitions(smd_batch, run):
     eb_man = EventBuilderManager(smd_batch, run.configs, run.dsparms, run)
@@ -135,18 +163,45 @@ def smd_batches_without_transitions(smd_batch, run):
         smd_batch, _ = smd_batch_dict[0]
         yield smd_batch
 
-# EB task with a region for transition datagrams
+start_timestamp = {}
+end_timestamp = {}
+
+def perform_callback(evt, run, redv):
+    global start_timestamp
+    global end_timestamp
+    if evt.service() == TransitionId.L1Accept:
+        if run.event_fn:
+            run.event_fn(evt, run.det)
+        if run.reduc:
+            run.reduc_fn(redv, evt, run.det)
+    elif evt.service() == TransitionId.BeginStep and run.step_begin_fn:
+        if evt.timestamp not in start_timestamp:
+            start_timestamp[evt.timestamp] = 1
+            run.step_begin_fn(evt, run.det)
+    elif evt.service() == TransitionId.EndStep and run.step_end_fn:
+        # make sure we don't see an end step before a begin step
+        if evt.timestamp not in end_timestamp:
+            assert len(end_timestamp) == len(start_timestamp)-1
+            end_timestamp[evt.timestamp] = 1
+            run.step_end_fn(evt, run.det)
+
+
 @task(privileges=[RO])
 def eb_task_with_multiple_region(r, smd_batch, idx, num_dgrams):
     ''' log the datagrams
     eb_task_debug_multiple(r, idx, smd_batch, num_dgrams)
     '''
-    logger.debug(f'EB_Task_With_Multiple_Region: Subregion has volume %s extent %s bounds %s' % (
-        r.ispace.volume, r.ispace.domain.extent, r.ispace.bounds))
     run = run_objs[idx]
-    for batch in smd_batches_with_transitions(smd_batch, run, r, num_dgrams):
-        for evt in batch_events(batch, run):
-            run.event_fn(evt, run.det)
+    global current_dgrams
+    # this is only processing non transition events, add unique transitions
+    for batch in smd_batches_with_unique_transitions(smd_batch, run, r, num_dgrams,
+                                                     current_dgrams):
+        for evt in batch_all_events(batch, run):
+            perform_callback(evt,run,None)
+    assert current_dgrams <= num_dgrams
+
+    if current_dgrams < num_dgrams:
+        current_dgrams = num_dgrams
 
 def eb_reduc(r, redc, smd_batch, idx, num_dgrams):
     ''' log the datagrams
@@ -157,9 +212,15 @@ def eb_reduc(r, redc, smd_batch, idx, num_dgrams):
     logger.debug(f'EB_Task_With_Multiple_Region_Reduc: Subregion Reduc has volume %s extent %s bounds %s' % (
         redc.ispace.volume, redc.ispace.domain.extent, redc.ispace.bounds))
     run = run_objs[idx]
-    for batch in smd_batches_with_transitions(smd_batch, run, r, num_dgrams):
-        for evt in batch_events(batch, run):
-            run.reduc_fn(redc.rval, evt, run.det)
+    global current_dgrams
+    for batch in smd_batches_with_unique_transitions(smd_batch, run, r, num_dgrams,
+                                                     current_dgrams):
+        for evt in batch_all_events(batch, run):
+            perform_callback(evt, run, redc.rval)
+
+    assert current_dgrams <= num_dgrams
+    if current_dgrams < num_dgrams:
+        current_dgrams = num_dgrams
 
 # EB task with a region for transition datagrams
 # and a reduction region
@@ -259,6 +320,11 @@ def perform_eb(r,p,smd_data,step_data,global_procs,pt,num_partitions,idx):
     return p, pt, num_partitions
 
 
+def perform_final_eb(p, idx, num_partitions, global_procs):
+    if global_procs > 1:
+        for i in range(global_procs-1):
+            eb_task_with_multiple_region(p[0], bytearray(), idx, num_partitions, point=i+1)
+
 def perform_eb_reduc(r,p,smd_data,step_data,global_procs,pt,num_partitions,
                      idx,reduc_region,reduc_type):
     if global_procs==1:
@@ -312,6 +378,8 @@ def run_smd0_with_region_task_multiple_psana2(idx):
     run = run_objs[idx]
     for smd_data, step_data in smd_chunks_steps(run):
         p, point, num_partitions = perform_eb(r,p,smd_data,step_data,global_procs,point,num_partitions,idx)
+    # guarantees all ranks see all the transitions
+    perform_final_eb(p, idx, num_partitions, global_procs)
     pygion.execution_fence(block=True)
 
 
@@ -366,9 +434,22 @@ def batch_events(smd_batch, run):
         if evt.service() != TransitionId.L1Accept: continue
         yield evt
 
+def batch_all_events(smd_batch, run):
+    batch_iter = iter([smd_batch, bytearray()])
+    def get_smd():
+        for this_batch in batch_iter:
+            return this_batch
+    events = Events(run.configs, run.dm, run.dsparms,
+            filter_callback=run.dsparms.filter, get_smd=get_smd)
+    for i, evt in enumerate(events):
+        logger.debug(f'evt[{i}] = {evt_kinds[evt.service()]}')
+        yield evt
+
 run_to_process = []
-def analyze(run, event_fn=None, det=None):
+def analyze(run, event_fn=None, det=None, step_begin_fn=None, step_end_fn=None):
     run.event_fn = event_fn
+    run.step_begin_fn = step_begin_fn
+    run.step_end_fn = step_end_fn
     run.det = det
     if pygion.is_script:
         num_procs = pygion.Tunable.select(pygion.Tunable.GLOBAL_PYS).get()

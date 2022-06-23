@@ -14,7 +14,7 @@ class PacketFooter(object):
         If n_packets is given, creates an empty footer with n_packets .
         If footer is given, sets footer that's available for packet size access.
         """
-
+        self.num_views=num_views
         if n_packets:
             self.n_packets = n_packets
             self.footer = bytearray((n_packets + 1) * self.n_bytes)
