@@ -1,9 +1,9 @@
 #ifndef PSALG_NDARRAY_H
 #define PSALG_NDARRAY_H
 
-//---------------------------------------------------
+//------------------------------------------
 // Created on 2018-07-06 by Mikhail Dubrovin
-//---------------------------------------------------
+//------------------------------------------
 
 /** Usage
  *
@@ -21,11 +21,11 @@
  *
  *  // set from NDArray or XtcData::Array a
  *  NDArray(a);
- *  
+ *
  *  // use internal data buffer:
  *  NDArray<float> b(sh, ndim);
  *  // or set it later
- *  b.set_data_buffer(data) 
+ *  b.set_data_buffer(data)
  *
  *  // 3: instatiate empty object and initialize it later
  *  NDArray<float> c;
@@ -59,7 +59,6 @@ using namespace std;
 
 namespace psalg {
 
-//-------------------
 
 template <typename T>
 class NDArray : public XtcData::Array<T> {
@@ -74,10 +73,9 @@ public:
 
   bool T_IS_CONST = std::is_const<T>::value;
 
-  //const static size_t MAXNDIM = 10; 
+  //const static size_t MAXNDIM = 10;
   enum {MAXNDIM = XtcData::MaxRank};
 
-//-------------------
 
   NDArray(const shape_t* sh, const size_t ndim, void *buf_ext=0) :
     base(), _buf_ext(0), _buf_own(0)
@@ -86,7 +84,6 @@ public:
      set_data_buffer(buf_ext);
   }
 
-//-------------------
 
   NDArray(const shape_t* sh, const size_t ndim, const void *buf_ext) :
     base(), _buf_ext(0), _buf_own(0)
@@ -95,15 +92,12 @@ public:
      set_const_data_buffer(buf_ext);
   }
 
-//-------------------
 
   NDArray() : base(), _buf_ext(0), _buf_own(0) {}
 
-//-------------------
 
   ~NDArray(){if(_buf_own) delete _buf_own;} // delete &_shape;}
 
-//-------------------
 
 // copy constructor from XtcData::Array<T>&
   NDArray(const base& o) :
@@ -114,7 +108,6 @@ public:
     set_data_copy(o.const_data());
   }
 
-//-------------------
 // copy constructor from NDArray<T>&
   NDArray(const NDArray<T>& o) :
     base(), _buf_ext(0), _buf_own(0)
@@ -123,12 +116,10 @@ public:
     set_data_copy(o.const_data()); // protected o._data - also works for derived class
   }
 
-//-------------------
 
   //NDArray(const NDArray<T>&) = delete;
   //NDArray<T>& operator = (const NDArray<T>&) = delete;
 
-//-------------------
 
   NDArray<T>& operator=(const NDArray<T>& o)
   {
@@ -139,7 +130,6 @@ public:
     return *this;
   }
 
-//-------------------
 
   inline void set_shape(const shape_t* shape=NULL, const size_t ndim=0) {
     //MSG(TRACE, "set_shape for ndim="<<ndim);
@@ -149,7 +139,6 @@ public:
     base::_shape = _shape;
   }
 
-//-------------------
 /// Converts string like "(5920, 388)" to array for _shape[]={5920, 388}
 
   inline void set_shape_string(const std::string& str) {
@@ -161,7 +150,7 @@ public:
     std::stringstream ss(s);
     std::string fld;
     size_t ndim(0);
-    do {ss >> fld; 
+    do {ss >> fld;
       shape_t v = (shape_t)atoi(fld.c_str());
       //cout << "   " << v << endl;
       _shape[ndim++]=v;
@@ -172,7 +161,6 @@ public:
     base::_shape = _shape;
   }
 
-//-------------------
 
   inline void reshape(const shape_t* shape, const size_t ndim) {set_shape(shape, ndim);}
 
@@ -186,22 +174,19 @@ public:
 
   inline size_t rank() const {return base::rank();}
 
-//-------------------
 // the same as uint64_t Array::num_elem()
 //  inline uint64_t size() const {return base::num_elem();}
   inline size_t size() const {
-    size_t s=1; for(size_t i=0; i<ndim(); i++) s*=shape()[i]; 
+    size_t s=1; for(size_t i=0; i<ndim(); i++) s*=shape()[i];
     return s;
   }
 
-//-------------------
 
   inline void set_ndarray(base& a) {
      set_shape(a.shape(), a.rank());
      set_data_buffer(a.data()); // (void*)a.data()
   }
 
-//-------------------
 
   inline void set_ndarray(NDArray<T>& a) {
      set_shape(a.shape(), a.rank());
@@ -209,7 +194,6 @@ public:
   }
 
 
-//-------------------
 /// CONST !!! *buf
 /// sets pointer to external data buffer
 /// WARNING shape needs to be set first, othervice size() is undefined!
@@ -227,14 +211,13 @@ public:
 
   //  T_IS_CONST
 
-//-------------------
 /// sets pointer to data
 /// WARNING shape needs to be set first, othervice size() is undefined!
 
   inline void set_data_buffer(void *buf_ext=0) { // base::_data=reinterpret_cast<T*>(buf_ext);}
     //MSG(TRACE, "In set_data_buffer *buf=" << buf_ext);
     if(_buf_own) {
-       delete _buf_own;  
+       delete _buf_own;
       _buf_own = 0;
     }
     if(buf_ext) {
@@ -246,20 +229,18 @@ public:
     }
   }
 
-//-------------------
-/// copy content of external buffer in object memory buffer 
+/// copy content of external buffer in object memory buffer
 /// WARNING shape needs to be set first, othervice size() is undefined!
 
   inline void set_data_copy(const void *buf=0) {
     //MSG(TRACE, "In set_data_copy *buf=" << buf);
-    if(_buf_own) delete _buf_own;  
+    if(_buf_own) delete _buf_own;
     _buf_own = new NON_CONST_T [size()];
     std::memcpy(_buf_own, buf, sizeof(NON_CONST_T)*size());
     base::_data = _buf_own;
     _buf_ext = 0;
   }
 
-//-------------------
 /// Reserves internal data buffer for array of requested size.
 /// For externally defined data buffer do not do anything,
 /// othervise reserves memory on heap.
@@ -268,16 +249,15 @@ public:
   inline void reserve_data_buffer(const size_t size) {
     //MSG(TRACE, "In get_data_buffer size=" << size);
     if(_buf_ext) return;
-    if(_buf_own) delete _buf_own;  
+    if(_buf_own) delete _buf_own;
     _buf_own = new NON_CONST_T [size];
     base::_data = _buf_own;
   }
 
-//-------------------
 
-  std::string string_ndarray(const size_t max_nvalues=5) 
+  std::string string_ndarray(const size_t max_nvalues=5)
   {
-    const NDArray<T>& o = *this; 
+    const NDArray<T>& o = *this;
     std::stringstream ss("");
     size_t nd = o.ndim();
     if(nd) {
@@ -294,10 +274,9 @@ public:
     return ss.str();
   }
 
-//-------------------
 
-  friend std::ostream& 
-  operator << (std::ostream& os, const NDArray<T>& o) 
+  friend std::ostream&
+  operator << (std::ostream& os, const NDArray<T>& o)
   {
     size_t nd = o.ndim();
     if(nd) {
@@ -314,7 +293,6 @@ public:
     return os;
   }
 
-//-------------------
 
 private:
   shape_t _shape[MAXNDIM];
