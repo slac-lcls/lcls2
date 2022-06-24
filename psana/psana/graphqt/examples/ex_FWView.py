@@ -86,6 +86,8 @@ def test_fwview(tname):
 
 
 if __name__ == "__main__":
+    import os
+    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(usage(tname))
