@@ -164,7 +164,7 @@ class EventManager(object):
                             current_chunk_id = self.dm.get_chunk_id(i_smd)
                             if new_chunk_id > current_chunk_id:
                                 self.new_chunk_id_array[i_evt, i_smd] = new_chunk_id
-                                self.chunkinfo[new_chunk_id] = new_filename 
+                                self.chunkinfo[(i_smd, new_chunk_id)] = new_filename 
             
             offset += smd_aux_sizes[i_smd]            
             i_smd += 1
@@ -184,7 +184,7 @@ class EventManager(object):
     def _open_new_bd_file(self, i_smd, new_chunk_id):
         os.close(self.dm.fds[i_smd])
         xtc_dir = os.path.dirname(self.dm.xtc_files[i_smd])
-        new_filename = os.path.join(xtc_dir, self.chunkinfo[new_chunk_id])
+        new_filename = os.path.join(xtc_dir, self.chunkinfo[(i_smd, new_chunk_id)])
         fd = os.open(new_filename, os.O_RDONLY)
         self.dm.fds[i_smd] = fd
         self.dm.xtc_files[i_smd] = new_filename
