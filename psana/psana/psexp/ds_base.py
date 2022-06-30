@@ -307,9 +307,6 @@ class DataSourceBase(abc.ABC):
         if file_info:
             # Builds a list of expected smd files
             xtc_files_from_db   = file_info['xtc_files']
-            if self.xtc_path != file_info['dirname']:
-                print(f'Warning: The given dir: {self.xtc_path} does not match with {file_info["dirname"]} from db.')
-                print(f'         The given dir will be used.')
             smd_files   = [os.path.join(self.xtc_path, 'smalldata',           
                     os.path.splitext(xtc_file_from_db)[0]+'.smd.xtc2')             
                     for xtc_file_from_db in xtc_files_from_db]
