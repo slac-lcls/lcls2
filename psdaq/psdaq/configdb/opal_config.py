@@ -146,7 +146,12 @@ def user_to_expert(cl, cfg, full=False):
         gate = cfg['user']['gate_ns']
         if gate > 160000:
             print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate));
-            raise ValueError('gate_ns > 160000')
+            # cpo removed this because people kept asking for it to try
+            # to find their signals or increase brightness.  this
+            # was originally added because we had an issue where
+            # we saw that opal images would intermittently go dark
+            # with gates longer than this.
+            #raise ValueError('gate_ns > 160000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=gate*0.001
 
     if (hasUser and 'black_level' in cfg['user']):
