@@ -131,6 +131,7 @@ namespace Pds {
       unsigned  maxEntries;        // Max number of entries per batch
       unsigned  numBuffers;        // Limit of buffer index range
       unsigned  numMrqs;           // Number of Mon request servers
+      unsigned  numMebEvBufs;      // Number of Mon event buffers
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
       kwmap_t   kwargs;            // Keyword arguments
       int       core[2];           // Cores to pin threads to

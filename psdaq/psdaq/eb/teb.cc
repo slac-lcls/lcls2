@@ -14,6 +14,7 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/Dl.hh"
+#include "psdaq/service/Fifo.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -34,9 +35,14 @@
 #include <sstream>
 #include <exception>
 #include <algorithm>                    // For std::fill()
+#include <chrono>
 #include <Python.h>
 
 #include "rapidjson/document.h"
+
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
 
 using namespace rapidjson;
 using namespace XtcData;
@@ -46,6 +52,7 @@ using namespace Pds::Trg;
 using json     = nlohmann::json;
 using logging  = psalg::SysLog;
 using string_t = std::string;
+using ms_t     = std::chrono::milliseconds;
 
 static const int CORE_0 = -1;           // devXXX: 18, devXX:  7, accXX:  9
 static const int CORE_1 = -1;           // devXXX: 19, devXX: 19, accXX: 21
@@ -112,30 +119,34 @@ namespace Pds {
       void     _post(const Batch& batch);
       uint64_t _receivers(unsigned rogs) const;
     private:
-      std::vector<EbLfCltLink*> _l3Links;
-      EbLfServer                _mrqTransport;
-      std::vector<EbLfSvrLink*> _mrqLinks;
-      unsigned                  _eventIdx;
-      BatchManager              _batMan;
-      Batch                     _batch;
+      std::vector<EbLfCltLink*>    _l3Links;
+      EbLfServer                   _mrqTransport;
+      std::vector<EbLfSvrLink*>    _mrqLinks;
+      unsigned                     _eventIdx;
+      BatchManager                 _batMan;
+      Batch                        _batch;
+      std::vector<Fifo<unsigned> > _monBufLists;
     private:
-      //uint64_t                  _trimmed;
-      Trigger*                  _trigger;
-      unsigned                  _prescale;
+      //uint64_t                     _trimmed;
+      Trigger*                     _trigger;
+      unsigned                     _prescale;
+      unsigned                     _iMeb;
     private:
-      unsigned                  _wrtCounter;
-      uint64_t                  _pidPrv;
+      unsigned                     _wrtCounter;
+      uint64_t                     _pidPrv;
     private:
-      uint64_t                  _eventCount;
-      uint64_t                  _trCount;
-      uint64_t                  _splitCount;
-      uint64_t                  _batchCount;
-      uint64_t                  _writeCount;
-      uint64_t                  _monitorCount;
-      uint64_t                  _prescaleCount;
+      uint64_t                     _eventCount;
+      uint64_t                     _trCount;
+      uint64_t                     _splitCount;
+      uint64_t                     _batchCount;
+      uint64_t                     _writeCount;
+      uint64_t                     _monitorCount;
+      uint64_t                     _prescaleCount;
+      int64_t                      _latency;
     private:
-      const EbParams&           _prms;
-      EbLfClient                _l3Transport;
+      const EbParams&              _prms;
+      EbLfClient                   _l3Transport;
+      const MetricExporter_t&      _exporter;
     };
   };
 };
@@ -150,6 +161,7 @@ Teb::Teb(const EbParams&         prms,
   _batch        {nullptr, 0, 0},
   //_trimmed      (0),
   _trigger      (nullptr),
+  _iMeb         (0),
   _pidPrv       (0),
   _eventCount   (0),
   _trCount      (0),
@@ -158,21 +170,24 @@ Teb::Teb(const EbParams&         prms,
   _writeCount   (0),
   _monitorCount (0),
   _prescaleCount(0),
+  _latency      (0),
   _prms         (prms),
-  _l3Transport  (prms.verbose, prms.kwargs)
+  _l3Transport  (prms.verbose, prms.kwargs),
+  _exporter     (exporter)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
                                             {"alias", prms.alias}};
-  exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
-  exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;                });
-  exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;             });
-  exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             }); // Outbound
-  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.posting();  });
-  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;             });
-  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;           });
-  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;          });
+  exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;            });
+  exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;               });
+  exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;            });
+  exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;            }); // Outbound
+  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.posting(); });
+  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;            });
+  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;          });
+  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;         });
+  exporter->add("TEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;               });
 }
 
 int Teb::resetCounters()
@@ -187,6 +202,7 @@ int Teb::resetCounters()
   _writeCount    = 0;
   //_monitorCount  = 0;  // Cleared in Configure to stay in sync with MEB
   _prescaleCount = 0;
+  _latency       = 0;
 
   return 0;
 }
@@ -208,6 +224,7 @@ void Teb::disconnect()
 
   EbAppBase::disconnect();
 
+  _monBufLists.clear();
 }
 
 void Teb::unconfigure()
@@ -240,6 +257,16 @@ int Teb::connect()
 {
   _l3Links .resize(_prms.addrs.size());
   _mrqLinks.resize(_prms.numMrqs);
+
+  for (unsigned i = 0; i < _prms.numMrqs; ++i)
+    _monBufLists.emplace_back(_prms.numMebEvBufs);
+
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.alias},
+                                            {"alias", _prms.alias}};
+  for (unsigned i = 0; i < _monBufLists.size(); ++i)
+    _exporter->add("TEB_MBufCt" + std::to_string(i), labels, MetricType::Gauge, [&, i](){ return _monBufLists[i].count(); });
 
   // Make a guess at the size of the Input entries
   size_t inpSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);
@@ -326,11 +353,20 @@ void Teb::run()
   _batch.idx   = 0;
   _eventIdx    = 0;
 
+  for (auto monBufList : _monBufLists)
+    monBufList.clear();
+
   resetCounters();
 
   int rcPrv = 0;
   while (lRunning)
   {
+    uint64_t immData;
+    while(_mrqTransport.poll(&immData) > 0)
+    {
+      _monBufLists[ImmData::src(immData)].push(unsigned(immData));
+    }
+
     rc = EbAppBase::process();
     if (rc < 0)
     {
@@ -408,7 +444,7 @@ void Teb::process(EbEvent* event)
       // Present event contributions to "user" code for building a result datagram
       _trigger->event(event->begin(), event->end(), *rdg); // Consume
 
-      unsigned line = 0;                // Revisit: For future expansion
+      unsigned line{0};                 // Revisit: For future expansion
 
       // Handle prescale
       if (!rdg->persist(line) && !_wrtCounter--)
@@ -422,13 +458,20 @@ void Teb::process(EbEvent* event)
       if (rdg->persist())  _writeCount++;
       if (rdg->monitor())
       {
-        uint64_t data;
-        int      rc = _mrqTransport.poll(&data);
-        if (rc > 0)
+        unsigned token{0};
+        for (unsigned i = 0; i < _monBufLists.size(); ++i)
+        {
+          // Round robin through Monitor Event Builders
+          unsigned iMeb = _iMeb;
+          _iMeb = (iMeb + 1) % _monBufLists.size();
+
+          if (!_monBufLists[iMeb].pop(token))  break;
+        }
+        if (token)                      // Non-zero for a valid buffer
         {
           _monitorCount++;
 
-          rdg->monBufNo(data);
+          rdg->monBufNo(token);
         }
         else
           rdg->monitor(line, false);
@@ -495,6 +538,12 @@ void Teb::process(EbEvent* event)
     // Make the transition buffer available to the contributor again
     post(event->begin(), event->end());
   }
+
+  auto now = std::chrono::system_clock::now();
+  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+  std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 }
 
 // Called by EB  on timeout when it is empty of events
@@ -1019,12 +1068,24 @@ int TebApp::_parseConnectionParams(const json& body)
   vec.resize(body["drp"].size());
   std::fill(vec.begin(), vec.end(), sizeof(EbDgram)); // Same for all contributors
 
-  _prms.numMrqs = 0;
+  _prms.numMrqs      = 0;
+  _prms.numMebEvBufs = 0;
   if (body.find("meb") != body.end())
   {
+    // Revisit: For now, we follow the DRP pattern, but we shouldn't require
+    //          the number of MEB event buffers to be the same across MEBs
     for (auto it : body["meb"].items())
     {
-      _prms.numMrqs++;
+      _prms.numMrqs++;    // Revisit: body.count("meb"); doesn't work?
+
+      unsigned mebId = it.value()["meb_id"];
+      unsigned count = it.value()["connect_info"]["max_ev_count"];
+      if (!_prms.numMebEvBufs)  _prms.numMebEvBufs = count;
+      if (count != _prms.numMebEvBufs) {
+        logging::error("numMebEvBufs (%u) must be the same for all MEBs, got %u from ID %u",
+                       _prms.numMebEvBufs, count, mebId);
+        rc = 1;
+      }
     }
     if (_prms.numMrqs > MAX_MRQS)
     {
