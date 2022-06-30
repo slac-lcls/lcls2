@@ -215,7 +215,7 @@ public:
             DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
             Data& data = shapesdata.data();
-	    printf("Found %d names\n",names.num());
+	    printf("Found %d names for namesid 0x%x\n",names.num(),namesId);
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 get_value(i, name, descdata);
@@ -313,7 +313,7 @@ int main(int argc, char* argv[])
     while ((dg = iter.next())) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("event %d, %11s transition: time %d.%09d, env 0x%08x, "
+        printf("event %d, %11s transition: time 0x%8.8x.0x%8.8x, env 0x%08x, "
                "payloadSize %d damage 0x%x extent %d\n",
                nevent,
                TransitionId::name(dg->service()), dg->time.seconds(),
