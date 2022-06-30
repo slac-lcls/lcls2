@@ -328,8 +328,8 @@ void EventBuilder::_retire(EbEpoch* epoch, EbEvent* event)
 
   process(event);
 
-  auto age{fast_monotonic_clock::now() - event->_t0};
-  _age = std::chrono::duration_cast<ms_t>(age).count();
+  auto age{fast_monotonic_clock::now(CLOCK_MONOTONIC) - event->_t0};
+  _age = std::chrono::duration_cast<ns_t>(age).count();
 
   const uint64_t key   = event->sequence();
   unsigned       index = _evIndex(key);
@@ -343,7 +343,7 @@ void EventBuilder::_flush(const EbEvent* const due)
 {
   const EbEpoch* const lastEpoch = _pending.empty();
   EbEpoch*             epoch     = _pending.forward();
-  auto                 now       = fast_monotonic_clock::now();
+  auto                 now       = fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
   _tLastFlush = now;
 
@@ -409,7 +409,7 @@ void EventBuilder::_flush()
 void EventBuilder::_tryFlush()
 {
   const ms_t tmo{100};
-  auto       now{fast_monotonic_clock::now()};
+  auto       now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
   if (now - _tLastFlush > tmo)  _flush();
 }
 

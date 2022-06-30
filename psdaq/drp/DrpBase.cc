@@ -496,6 +496,13 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 
     m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
 
+    // Measure latency before sending dgram for monitoring
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+
     if (m_mon.enabled()) {
         // L1Accept
         if (result.isEvent()) {
@@ -508,12 +515,6 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
             m_mon.post(dgram);
         }
     }
-
-    auto now = std::chrono::system_clock::now();
-    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
 #if 0  // For "Pause/Resume" deadtime test:
     // For this test, SlowUpdates either need to obey deadtime or be turned off.

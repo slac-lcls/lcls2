@@ -44,7 +44,9 @@ using namespace Pds::Eb;
 using json     = nlohmann::json;
 using logging  = psalg::SysLog;
 using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
+using tp_t     = std::chrono::system_clock::time_point;
 using ms_t     = std::chrono::milliseconds;
+using ns_t     = std::chrono::nanoseconds;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -88,17 +90,25 @@ namespace Pds {
     MyXtcMonitorServer(std::vector<EbLfCltLink*>&     links,
                        uint64_t&                      requestCount,
                        std::shared_ptr<PromHistogram> bufUseCnts,
+                       std::atomic<uint64_t>&         prcBufCount,
+                       std::vector<tp_t>&             bufT0,
+                       uint64_t&                      bufPrcTime,
+                       std::vector<tp_t>&             trgT0,
                        const MebParams&               prms) :
       XtcMonitorServer(prms.tag.c_str(),
                        prms.maxBufferSize,
                        prms.numEvBuffers,
                        prms.nevqueues),
-      _iTeb         (0),
-      _mrqLinks     (links),
-      _requestCount (requestCount),
-      _bufFreeList  (prms.numEvBuffers),
-      _bufUseCnts   (bufUseCnts),
-      _prms         (prms)
+      _iTeb        (0),
+      _mrqLinks    (links),
+      _requestCount(requestCount),
+      _bufFreeList (prms.numEvBuffers),
+      _bufUseCnts  (bufUseCnts),
+      _prcBufCount (prcBufCount),
+      _bufT0       (bufT0),
+      _bufPrcTime  (bufPrcTime),
+      _trgT0       (trgT0),
+      _prms        (prms)
     {
       for (unsigned i = 0; i < _bufFreeList.size(); ++i)
       {
@@ -182,6 +192,10 @@ namespace Pds {
           return;
         }
       }
+      // Number of buffers being processed by the MEB; incremented in Meb::process()
+      --_prcBufCount;                   // L1Accepts only
+      auto now    = std::chrono::system_clock::now();
+      _bufPrcTime = std::chrono::duration_cast<ns_t>(now - _bufT0[idx]).count();
       if (_bufFreeList.push(idx))
       {
         logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
@@ -213,8 +227,8 @@ namespace Pds {
       for (unsigned i = 0; i < _mrqLinks.size(); ++i)
       {
         // Round robin through Trigger Event Builders
-        unsigned iTeb = _iTeb++;
-        if (_iTeb == _mrqLinks.size())  _iTeb = 0;
+        unsigned iTeb = _iTeb;
+        _iTeb = (iTeb + 1) % _mrqLinks.size();
 
         rc = _mrqLinks[iTeb]->EbLfLink::post(data);
 
@@ -226,6 +240,7 @@ namespace Pds {
         {
           ++_requestCount;
           _bufUseCnts->observe(double(idx));
+          _trgT0[idx] = std::chrono::system_clock::now();
           break;            // Break if message was delivered
         }
       }
@@ -250,8 +265,12 @@ namespace Pds {
     unsigned                       _iTeb;
     std::vector<EbLfCltLink*>&     _mrqLinks;
     uint64_t&                      _requestCount;
-    FifoMT<unsigned>               _bufFreeList;
+    FifoMT<unsigned, std::mutex>   _bufFreeList;
     std::shared_ptr<PromHistogram> _bufUseCnts;
+    std::atomic<uint64_t>&         _prcBufCount;
+    std::vector<tp_t>&             _bufT0;
+    uint64_t&                      _bufPrcTime;
+    std::vector<tp_t>&             _trgT0;
     const MebParams&               _prms;
   };
 
@@ -280,6 +299,11 @@ namespace Pds {
     uint64_t                            _trCount;
     uint64_t                            _splitCount;
     uint64_t                            _requestCount;
+    uint64_t                            _bufPrcTime;
+    uint64_t                            _monTrgTime;
+    std::atomic<uint64_t>               _prcBufCount;
+    std::vector<tp_t>                   _bufT0;
+    std::vector<tp_t>                   _trgT0;
     std::shared_ptr<PromHistogram>      _bufUseCnts;
     const MebParams&                    _prms;
     EbLfClient                          _mrqTransport;
@@ -307,6 +331,11 @@ Meb::Meb(const MebParams&        prms,
   _trCount     (0),
   _splitCount  (0),
   _requestCount(0),
+  _bufPrcTime  (0),
+  _monTrgTime  (0),
+  _prcBufCount (0),
+  _bufT0       (prms.numEvBuffers),
+  _trgT0       (prms.numEvBuffers),
   _prms        (prms),
   _mrqTransport(prms.verbose, prms.kwargs),
   _inprocSend  (&context, ZMQ_PAIR)
@@ -322,6 +351,9 @@ Meb::Meb(const MebParams&        prms,
   exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
   exporter->add("MRQ_TxPdg",  labels, MetricType::Gauge,   [&](){ return _mrqTransport.posting(); });
   exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
+  exporter->add("MEB_PrcCt",  labels, MetricType::Gauge,   [&](){ return _prcBufCount.load(); });
+  exporter->add("MEB_PrcTm",  labels, MetricType::Gauge,   [&](){ return _bufPrcTime;      });
+  exporter->add("MEB_TrgTm",  labels, MetricType::Gauge,   [&](){ return _monTrgTime;      });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
   _bufUseCnts = exporter->histogram("MRQ_BufUseCnts", labels, prms.numEvBuffers);
 
@@ -395,7 +427,10 @@ int Meb::configure()
 
   // Code added here involving the links must be coordinated with the other side
 
-  _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount, _bufUseCnts, _prms);
+  _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount,
+                                               _bufUseCnts, _prcBufCount,
+                                               _bufT0, _bufPrcTime,
+                                               _trgT0, _prms);
 
   _apps->distribute(_prms.ldist);
 
@@ -526,10 +561,17 @@ void Meb::process(EbEvent* event)
   }
 
   auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dg->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dg->time.nanoseconds()};
+  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
   std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
   _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+
+  if (dg->service() == TransitionId::L1Accept)
+  {
+    ++_prcBufCount;    // Number of buffers being processed by the MEB; decremented in _deleteDatagram
+    _bufT0[idx] = now; // Event processing time t0
+    _monTrgTime = std::chrono::duration_cast<ns_t>(now - _trgT0[idx]).count();
+  }
 
   // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred
   if (_apps->events(dg) == XtcMonitorServer::Handled)
@@ -1005,11 +1047,10 @@ int main(int argc, char** argv)
     prms.numEvBuffers = NUMBEROF_XFERBUFFERS;
   if (prms.numEvBuffers < prms.nevqueues)
     prms.numEvBuffers = prms.nevqueues; // Require numEvBuffers / nevqueues > 0
-  if (prms.numEvBuffers > 255)
+  if (prms.numEvBuffers > ImmData::MaxIdx)
   {
-    // The problem is that there are only 8 bits available in the env
-    // Could use the lower 24 bits, but then we have a nonstandard env
-    logging::critical("Number of event buffers > 255 is not supported: got %u", prms.numEvBuffers);
+    logging::critical("Number of event buffers > %u is not supported: got %u",
+                      ImmData::MaxIdx, prms.numEvBuffers);
     return 1;
   }
 
