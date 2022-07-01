@@ -37,7 +37,7 @@ public:
 public:
     bool     ready      () const { return (m_position + m_payloadSize + 4) <= m_bufferSize; }
     void     clear      (uint64_t ts);
-    uint64_t next       (uint64_t ts);
+    uint64_t next       ();
     uint8_t* payload    () const { return m_payload; }
     unsigned payloadSize() const { return m_payloadSize; }
     unsigned fd         () const { return m_sockfd; }

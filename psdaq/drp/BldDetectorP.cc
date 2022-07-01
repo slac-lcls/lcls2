@@ -323,6 +323,7 @@ Bld::Bld(unsigned mcaddr,
     if (m_sockfd < 0)
         HANDLE_ERR("Open socket");
 
+    //  Yes, we do bump into full buffers.  Bigger or small buffers seem to be worse.
     { unsigned skbSize = 0x1000000;
       if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1)
           HANDLE_ERR("set so_rcvbuf");
@@ -426,60 +427,43 @@ void     Bld::clear(uint64_t ts)
     }
 }
 
-//  Read ahead searching for an exact match
-uint64_t Bld::next(uint64_t ts)
+//  Advance to the next event
+uint64_t Bld::next()
 {
-    uint64_t rval(0L);
-    while(1) {
-        uint64_t timestamp(0L);
-        uint64_t pulseId  (0L);
-        // get new multicast if buffer is empty
-        if ((m_position + m_payloadSize + 4) > m_bufferSize) {
-            ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
-            if (bytes <= 0)
-                break;
-            m_bufferSize = bytes;
-            timestamp    = headerTimestamp();
-            if (timestamp > ts) {
-                m_position = 0;
-                break;
-            }
-            pulseId      = headerPulseId  ();
-            m_payload    = &m_buffer[m_headerSize];
-            m_position   = m_headerSize + m_payloadSize;
-        }
-        else if (m_position==0) {
-            timestamp    = headerTimestamp();
-            if (timestamp > ts)
-                break;
-            pulseId      = headerPulseId  ();
-            m_payload    = &m_buffer[m_headerSize];
-            m_position   = m_headerSize + m_payloadSize;
-        }
-        else {
-            uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
-            timestamp   = headerTimestamp() + timestampOffset;
-            if (timestamp > ts)
-                break;
-            uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
-            pulseId     = headerPulseId  () + pulseIdOffset;
-            m_payload   = &m_buffer[m_position + 4];
-            m_position += 4 + m_payloadSize;
-        }
-
-        unsigned jump = pulseId - m_pulseId;
-        m_pulseId = pulseId;
-        if (jump != m_pulseIdJump) {
-            m_pulseIdJump = jump;
-            logging::warning("BLD pulseId jump %u",jump);
-        }
-
-        rval = timestamp;
-        if (timestamp == ts)
-            break;
+    uint64_t timestamp(0L);
+    uint64_t pulseId  (0L);
+    // get new multicast if buffer is empty
+    if ((m_position + m_payloadSize + 4) > m_bufferSize) {
+        ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, 0);
+        m_bufferSize = bytes;
+        timestamp    = headerTimestamp();
+        pulseId      = headerPulseId  ();
+        m_payload    = &m_buffer[m_headerSize];
+        m_position   = m_headerSize + m_payloadSize;
+    }
+    else if (m_position==0) {
+        timestamp    = headerTimestamp();
+        pulseId      = headerPulseId  ();
+        m_payload    = &m_buffer[m_headerSize];
+        m_position   = m_headerSize + m_payloadSize;
+    }
+    else {
+        uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
+        timestamp   = headerTimestamp() + timestampOffset;
+        uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
+        pulseId     = headerPulseId  () + pulseIdOffset;
+        m_payload   = &m_buffer[m_position + 4];
+        m_position += 4 + m_payloadSize;
     }
 
-    return rval;
+    unsigned jump = pulseId - m_pulseId;
+    m_pulseId = pulseId;
+    if (jump != m_pulseIdJump) {
+        m_pulseIdJump = jump;
+        logging::warning("BLD pulseId jump %u",jump);
+    }
+
+    return timestamp;
 }
 
 
@@ -507,7 +491,7 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
         }
     }
     if (dmaSetMaskBytes(m_drp.pool.fd(), mask)) {
-        logging::error("Failed to allocate lane/vc\n");
+        logging::error("Failed to allocate lane/vc");
     }
 }
 
@@ -658,6 +642,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     std::string s(m_para.detType);
     logging::debug("Parsing %s",s.c_str());
     for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
+        if (s==".") break;
         next  = s.find(',',curr+1);
         size_t pvpos = s.find('+',curr+1);
         logging::debug("(%d,%d,%d)",curr,pvpos,next);
@@ -774,11 +759,11 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             // handle pgp
             if ((skipPoll&(1<<0)) || pfd[0].revents == POLLIN) {
                 dgram = next(index, bytes);
-                /*
                 if (dgram) {
                     pfd[0].events = 0;
                     skipPoll &= ~(1<<0);
                 }
+                /*
                 else {
                     logging::warning("null dgram returned from next");
                     if (_ready())
@@ -791,6 +776,16 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 */
             }
 
+            // handle bld
+            for(unsigned i=0; i<m_config.size(); i++) {
+                if (dgram)
+                    m_config[i]->handler().clear(dgram->time.value());
+                if ((skipPoll&(2<<i)) || pfd[i+1].revents == POLLIN) {
+                    timestamp[i] = m_config[i]->handler().next();
+                    pfd[i+1].events = 0;
+                    skipPoll &= ~(2<<i);
+                }
+            }
 
             if (dgram) {
                 bool lready = true;
@@ -798,11 +793,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 // handle bld
                 for(unsigned i=0; i<m_config.size(); i++) {
                     if (timestamp[i] < ts) {
-                        if ((skipPoll&(2<<i)) || pfd[i+1].revents == POLLIN) {
-                            timestamp[i] = m_config[i]->handler().next(ts);
-                            pfd[i+1].events = 0;
-                            skipPoll &= ~(2<<i);
-                        }
                         if (m_config[i]->handler().ready())
                             skipPoll |= (2<<i);
                         else {
