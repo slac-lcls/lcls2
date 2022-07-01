@@ -35,21 +35,26 @@ public:
     static const unsigned DgramPulseIdPos   =  8; // LCLS-I style
     static const unsigned DgramHeaderSize   = 60;
 public:
-    uint64_t next       ();
+    bool     ready      () const { return (m_position + m_payloadSize + 4) <= m_bufferSize; }
+    void     clear      (uint64_t ts);
+    uint64_t next       (uint64_t ts);
     uint8_t* payload    () const { return m_payload; }
     unsigned payloadSize() const { return m_payloadSize; }
     unsigned fd         () const { return m_sockfd; }
 private:
     uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos) - m_timestampCorr;}
-    unsigned m_timestampPos;
-    unsigned m_headerSize;
-    unsigned m_payloadSize;
+    uint64_t headerPulseId    () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+PulseIdPos);}
+    int      m_timestampPos;
+    int      m_headerSize;
+    int      m_payloadSize;
     int      m_sockfd;
-    unsigned m_bufferSize;
-    unsigned m_position;
+    int      m_bufferSize;
+    int      m_position;
     std::vector<uint8_t> m_buffer;
     uint8_t* m_payload;
     uint64_t m_timestampCorr;
+    uint64_t m_pulseId;
+    unsigned m_pulseIdJump;
 };
 
 class BldPVA
@@ -99,12 +104,14 @@ public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
     Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes); // Slow case
+    //  Returns NULL if earliest received data is already later than requested data
     Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes); // Non-Slow case
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
+    bool _ready() const { return m_current < m_available; }
 private:
     enum {BldNamesIndex = NamesIndex::BASE}; // Revisit: This belongs in BldDetector
     Parameters&                                m_para;

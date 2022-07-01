@@ -19,10 +19,10 @@
 
 import pyrogue        as pr
 
-class BldControl(pr.Device):
+class BsasControl(pr.Device):
 
     def __init__(   self, 
-            name        = "BldControl", 
+            name        = "BsasControl", 
             description = "HPS BLD Application Module", 
             **kwargs):
         super().__init__(name=name, description=description, **kwargs)
