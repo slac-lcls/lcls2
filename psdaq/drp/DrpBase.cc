@@ -939,7 +939,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
 
         // Build readout group mask for ignoring other partitions' RoGs
         unsigned rog(it.value()["det_info"]["readout"]);
-        if (rog < Pds::Eb::NUM_READOUT_GROUPS - 1) {
+        if (rog < Pds::Eb::NUM_READOUT_GROUPS) {
             m_para.rogMask |= 1 << rog;
         }
         else {
