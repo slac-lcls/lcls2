@@ -64,4 +64,7 @@ class encoder_raw_0_0_1(DetectorImpl):
         # we could update the version number of the raw data and have
         # another det xface that returns all channels (leaving out the [0]
         # in the "encoderValue" and "scale" below). - cpo 09/28/21
-        return segments[0].encoderValue[0]*segments[0].scale[0]*1e-6
+        # note that the order of operations matters here: if
+        # we multiply the two numpy array values together we can overflow
+        # a uint32.  so convert to float first.
+        return (segments[0].encoderValue[0]*1e-6)*segments[0].scale[0]
