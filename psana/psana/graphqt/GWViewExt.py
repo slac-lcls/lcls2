@@ -141,6 +141,8 @@ class GWViewExt(GWView):
         self.timer.timeout.connect(self.on_timeout)
         self.signal_fast = signal_fast
 
+        self.rs_def = rscene # NEW
+
 
     def __del__(self):
         pass
@@ -173,14 +175,17 @@ class GWViewExt(GWView):
 
 
     def origin(self):
+        """returns str parameter of origin, e.g. 'UL'"""
         return self._origin
 
 
     def scale_control(self):
+        """returns int value of scale control bitword"""
         return self._scale_ctl
 
 
     def str_scale_control(self):
+        """returns str value of scale control, e.g. 'HV'"""
         return self.str_scale_ctl
 
 
@@ -207,6 +212,8 @@ class GWViewExt(GWView):
         self.rs_item.setZValue(self.sc_zvalue)
 
 
+
+
     def set_view(self, rs=None):
         """Sets rs - rect on scene to view in viewport, by default self.rs is used
         """
@@ -229,6 +236,19 @@ class GWViewExt(GWView):
         """Alias with default parameters"""
         self.set_view()
         self.emit_signal_if_scene_rect_changed() # sends signal
+
+
+
+
+
+    def set_scene_rect_default(self, rs=None, mode=Qt.KeepAspectRatio):
+        """NEW: uses/reset self.rs_def to set scene rect and fit_in_view."""
+        if rs is not None: self.rs_def = rs
+        self.scene().setSceneRect(self.rs_def)
+        self.fit_in_view(self.rs_def, mode)
+
+
+
 
 
     def mouseReleaseEvent(self, e):

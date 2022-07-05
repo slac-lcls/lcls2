@@ -14,6 +14,7 @@ class TestGWViewExt(GWViewExt):
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  R - reset original size'\
+               '\n  U - update default rect scene to QRectF(-10, -10, 30, 30)'\
                '\n  W - change scene rect, do not change default'\
                '\n  D - change scene rect and its default'\
                '\n'
@@ -26,7 +27,13 @@ class TestGWViewExt(GWViewExt):
 
         elif e.key() == Qt.Key_R:
             print('Reset original size')
-            self.reset_original_size()
+            #self.reset_original_size()
+            self.set_scene_rect_default()
+
+        elif e.key() == Qt.Key_U:
+            print('Update default rect scene')
+            #self.reset_original_size()
+            self.set_scene_rect_default(rs=QRectF(-10, -10, 30, 30))
 
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D

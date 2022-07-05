@@ -8,9 +8,9 @@ from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
 
 
 class GWView(QGraphicsView):
-    """Bare minimum to move and zoom scene rect."""
-    def __init__(self, parent=None, rscene=QRectF(0, 0, 100, 100), scale_ctl='HV', show_mode=0o0, **kwa):
+    """Bare minimum to move and zoom viewport rect."""
 
+    def __init__(self, parent=None, rscene=QRectF(0, 0, 100, 100), scale_ctl='HV', show_mode=0o0, **kwa):
         QGraphicsView.__init__(self, QGraphicsScene(rscene), parent)
         self.fit_in_view(rscene, Qt.KeepAspectRatio)
         self.set_scale_control(scale_ctl)
@@ -20,10 +20,17 @@ class GWView(QGraphicsView):
 
 
     def fit_in_view(self, rs=None, mode=Qt.KeepAspectRatio):
-        """ possible mode KeepAspectRatioByExpanding, KeepAspectRatio, IgnoreAspectRatio."""
+        """ Fits visible part of the scene in the rect rs (scene units).
+            possible mode KeepAspectRatioByExpanding, KeepAspectRatio, IgnoreAspectRatio.
+        """
         r = self.scene().sceneRect() if rs is None else rs
-        self.scene().setSceneRect(r)
+        #self.scene().setSceneRect(r)
         self.fitInView(r, mode)
+
+
+#    def set_scene_rect(self, r):
+#        """ Set scene bounding box rect."""
+#        self.scene().setSceneRect(r)
 
 
     def set_style(self, **kwa):
@@ -58,6 +65,7 @@ class GWView(QGraphicsView):
             self.click_pos = e.pos()
             self.rs_center = self.sceneRect().center()
         QGraphicsView.mousePressEvent(self, e)
+        #self.setDragMode(self.ScrollHandDrag) # ScrollHandDrag, RubberBandDrag, NoDrag DOES NOT WORK ???
 
 
     def mouseMoveEvent(self, e):
@@ -70,38 +78,35 @@ class GWView(QGraphicsView):
         dp = e.pos() - self.click_pos
         dx = dp.x() / self.transform().m11() if self._scale_ctl & 1 else 0
         dy = dp.y() / self.transform().m22() if self._scale_ctl & 2 else 0
+
         sc = self.scene()
         rs = sc.sceneRect()
         rs.moveCenter(self.rs_center - QPointF(dx, dy))
         sc.setSceneRect(rs)
+        #self.centerOn(self.rs_center - QPointF(dx, dy)) # DOES NOT WORK ???
 
 
     def mouseReleaseEvent(self, e):
         logger.debug('mouseReleaseEvent')
+        QGraphicsView.mouseReleaseEvent(self, e)
         if self.click_pos is not None:
            self.click_pos = None
-        QGraphicsView.mouseReleaseEvent(self, e)
 
 
     def wheelEvent(self, e):
-        logger.debug('wheelEvent')
+        logger.debug('wheelEvent e.angleDelta: %.3f' % e.angleDelta().y()) #+/-120 on each step
         QGraphicsView.wheelEvent(self, e)
 
         if self._scale_ctl == 0: return
 
-        #logger.debug('wheelEvent: ', e.angleDelta())
-        f = 1 + 0.4 * (1 if e.angleDelta().y()>0 else -1)
-        #logger.debug('Scale factor =', f)
-
         p = self.mapToScene(e.pos())
         px, py = p.x(), p.y()
-        #logger.debug('wheel x,y = ', e.x(), e.y(), ' on scene x,y =', p.x(), p.y())
 
         rs = self.scene().sceneRect()
         x,y,w,h = rs.x(), rs.y(), rs.width(), rs.height()
-        #logger.debug('Scene x,y,w,h:', x,y,w,h)
 
-        # zoom relative to mouse position
+        # zoom scene rect relative to mouse position
+        f = 1 + 0.3 * (1 if e.angleDelta().y()>0 else -1)
         dxc = (f-1)*(px-x)
         dyc = (f-1)*(py-y)
         dx, sx = (dxc, f*w) if self._scale_ctl & 1 else (0, w)
@@ -109,7 +114,7 @@ class GWView(QGraphicsView):
 
         rs.setRect(x-dx, y-dy, sx, sy)
         self.scene().setSceneRect(rs)
-        self.fit_in_view(rs, Qt.IgnoreAspectRatio)
+        self.fit_in_view(rs)
 
 
     def add_rect_to_scene_v1(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)):

@@ -2,7 +2,7 @@
 
 from psana.graphqt.GWView import *
 
-logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)#DEBUG)
+logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
 def test_fwview(tname):
     #print('%s:' % sys._getframe().f_code.co_name)
@@ -20,8 +20,8 @@ def test_fwview(tname):
 
 def usage(tname):
     scrname = sys.argv[0].split('/')[-1]
-    s = '\nUsage: python %s <tname [0-4]>' %scrname\
-      + '\n   where tname stands for scale_ctl=("HV", "H", "V", "")[int(tname)]'
+    s = '\nUsage: python %s <tname [0,3]>' %scrname\
+      + '\n   where tname=0/1/2/3 stands for scale_ctl "HV"/"H"/"V"/"", respectively'
     return s
 
 if __name__ == "__main__":
