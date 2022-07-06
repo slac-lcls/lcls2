@@ -66,19 +66,6 @@ target_link_libraries(drp_bld
     readline
 )
 
-#add_executable(drp_bld_fast
-#    BldDetector.cc
-#)
-
-#target_link_libraries(drp_bld_fast
-#    drpbase
-#    trigger
-#    epicstools
-#    readline
-#)
-
-
-
 add_executable(drp_pva
     PvaDetector.cc
 )
@@ -221,7 +208,6 @@ target_link_libraries(drp_groupsync
 
 install(TARGETS drp
   drp_bld
-  drp_bld_fast
   drp_pva
   drp_udpencoder
   ARCHIVE DESTINATION lib
