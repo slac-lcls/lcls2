@@ -56,8 +56,7 @@ target_link_libraries(drp
 )
 
 add_executable(drp_bld
-    BldDetectorP.cc
-#    BldDetectorSlow.cc
+    BldDetectorSlow.cc
 )
 
 target_link_libraries(drp_bld
@@ -67,16 +66,16 @@ target_link_libraries(drp_bld
     readline
 )
 
-add_executable(drp_bld_fast
-    BldDetector.cc
-)
+#add_executable(drp_bld_fast
+#    BldDetector.cc
+#)
 
-target_link_libraries(drp_bld_fast
-    drpbase
-    trigger
-    epicstools
-    readline
-)
+#target_link_libraries(drp_bld_fast
+#    drpbase
+#    trigger
+#    epicstools
+#    readline
+#)
 
 
 
