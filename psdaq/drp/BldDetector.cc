@@ -632,8 +632,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     for(unsigned i=0; i<bldPva.size(); i++)
         m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get()));
 
-    //    std::vector<XtcData::NameIndex> nameIndex(m_config.size());
-
     uint64_t nextId = -1ULL;
     uint64_t timestamp[m_config.size()];
     memset(timestamp,0,sizeof(timestamp));

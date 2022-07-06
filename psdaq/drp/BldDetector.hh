@@ -22,7 +22,8 @@ class Bld
 {
 public:
     Bld(unsigned mcaddr, unsigned port, unsigned interface,
-        unsigned timestampPos, unsigned headerSize, unsigned payloadSize,
+        unsigned timestampPos, unsigned pulseIdPos,
+        unsigned headerSize, unsigned payloadSize,
         uint64_t timestampCorr=0);
     Bld(const Bld&);
     ~Bld();
@@ -43,8 +44,9 @@ public:
     unsigned fd         () const { return m_sockfd; }
 private:
     uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos) - m_timestampCorr;}
-    uint64_t headerPulseId    () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+PulseIdPos);}
+    uint64_t headerPulseId    () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_pulseIdPos);}
     int      m_timestampPos;
+    int      m_pulseIdPos;
     int      m_headerSize;
     int      m_payloadSize;
     int      m_sockfd;
