@@ -120,7 +120,12 @@ int PvaMonitor::getVarDef(PvaDetector*     pvaDetector,
     m_pvaDetector = pvaDetector;
 
     size_t rank = m_rank;
-    if (rankHack != size_t(-1))  rank = rankHack; // Revisit: Hack!
+    if (rankHack != size_t(-1))
+    {
+      rank = rankHack; // Revisit: Hack!
+      logging::warning("%s rank overridden from %zu to %zu\n",
+                       name().c_str(), m_rank, rank);
+    }
 
     auto xtcType = xtype[m_type];
     varDef.NameVec.push_back(XtcData::Name(m_fieldName.c_str(), xtcType, rank));
