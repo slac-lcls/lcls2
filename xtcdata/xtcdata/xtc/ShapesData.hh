@@ -193,19 +193,25 @@ class NameInfo
 {
 public:
     uint32_t numArrays;
-    char     detType[MaxNameSize];
     char     detName[MaxNameSize];
+    char     detType[MaxNameSize];
     char     detId[MaxNameSize];
     Alg      alg;
     uint32_t segment;
 
     NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, uint32_t segment0, uint32_t numarr=0):alg(alg0), segment(segment0){
         numArrays = numarr;
-        strncpy(detName, detname, MaxNameSize-1);
-        strncpy(detType, dettype, MaxNameSize-1);
-        strncpy(detId,   detid,   MaxNameSize-1);
+        _strncpy(detName, detname, MaxNameSize-1);
+        _strncpy(detType, dettype, MaxNameSize-1);
+        _strncpy(detId,   detid,   MaxNameSize-1);
     }
-
+private:
+    // Avoid GCC-8 warnings that are probably legitamate but incomprehensible
+    void _strncpy(char* dst, const char* src, size_t dstLen) {
+        auto srcLen = strnlen(src, dstLen);
+        memcpy(dst, src, srcLen);
+        dst[srcLen] = '\0';
+    }
 };
 
 

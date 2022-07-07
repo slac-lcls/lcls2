@@ -96,7 +96,7 @@ public:
   NDArray() : base(), _buf_ext(0), _buf_own(0) {}
 
 
-  ~NDArray(){if(_buf_own) delete _buf_own;} // delete &_shape;}
+  ~NDArray(){if(_buf_own) delete [] _buf_own;} // delete &_shape;}
 
 
 // copy constructor from XtcData::Array<T>&
@@ -201,7 +201,7 @@ public:
   inline void set_const_data_buffer(const void *buf_ext=0) {
     //MSG(TRACE, "In set_data_buffer *buf=" << buf_ext);
     if(_buf_own) {
-       delete _buf_own;
+       delete [] _buf_own;
        _buf_own = 0;
     }
     if(buf_ext) {
@@ -217,7 +217,7 @@ public:
   inline void set_data_buffer(void *buf_ext=0) { // base::_data=reinterpret_cast<T*>(buf_ext);}
     //MSG(TRACE, "In set_data_buffer *buf=" << buf_ext);
     if(_buf_own) {
-       delete _buf_own;
+       delete [] _buf_own;
       _buf_own = 0;
     }
     if(buf_ext) {
@@ -249,7 +249,7 @@ public:
   inline void reserve_data_buffer(const size_t size) {
     //MSG(TRACE, "In get_data_buffer size=" << size);
     if(_buf_ext) return;
-    if(_buf_own) delete _buf_own;
+    if(_buf_own) delete [] _buf_own;
     _buf_own = new NON_CONST_T [size];
     base::_data = _buf_own;
   }
