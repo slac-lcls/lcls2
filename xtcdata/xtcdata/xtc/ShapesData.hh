@@ -192,6 +192,7 @@ public:
 class NameInfo
 {
 public:
+    // This order must be preserved in order to read already recorded data
     uint32_t numArrays;
     char     detType[MaxNameSize];
     char     detName[MaxNameSize];
@@ -206,7 +207,7 @@ public:
         _strncpy(detId,   detid,   MaxNameSize-1);
     }
 private:
-    // Avoid GCC-8 warnings that are probably legitamate but incomprehensible
+    // Avoid GCC-8 warnings that are probably legitimate but incomprehensible
     void _strncpy(char* dst, const char* src, size_t dstLen) {
         auto srcLen = strnlen(src, dstLen);
         memcpy(dst, src, srcLen);
