@@ -193,8 +193,8 @@ class NameInfo
 {
 public:
     uint32_t numArrays;
-    char     detName[MaxNameSize];
     char     detType[MaxNameSize];
+    char     detName[MaxNameSize];
     char     detId[MaxNameSize];
     Alg      alg;
     uint32_t segment;
