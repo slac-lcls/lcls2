@@ -35,7 +35,7 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
 
     def _cbits_config_segment(self, cob):
         """cob=det.raw._seg_configs()[<seg-ind>].config"""
-        logger.debug('XXXXX epixhr2x2._cbits_config_segment')
+        logger.debug('epixhr2x2._cbits_config_segment')
         return eb.cbits_config_epixhr2x2(cob, shape=(288, 384))
 
 
