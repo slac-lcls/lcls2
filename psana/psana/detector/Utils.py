@@ -130,4 +130,10 @@ def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0
     if not fexists: set_file_access_mode(logfname, repoman.filemode)
     logger.info('Record: %s\nSaved: %s' % (rec, logfname))
 
+
+def is_none(par, msg):
+    resp = par is None
+    if resp: logger.debug(msg)
+    return resp
+
 # EOF
