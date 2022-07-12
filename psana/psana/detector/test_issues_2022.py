@@ -232,6 +232,29 @@ def issue_2022_06_17():
     #    break
 
 
+def issue_2022_07_12():
+    """
+    """
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    ds = DataSource(exp='uedcom103',run=7, dir='/cds/data/psdm/prj/public01/xtc')
+    orun = next(ds.runs())
+    det = orun.Detector('epixquad')
+    peds, meta = det.calibconst['pedestals']
+    print('\nmetadata\n', meta)
+    print(info_ndarr(peds, '\npedestals'))
+
+    #mask = test_mask_select(tname, det)  # [0,:]
+    evt = next(orun.events())
+
+    print(info_ndarr(det.raw._mask_from_status(), 'det.raw._mask_from_status'))
+    print(info_ndarr(det.raw._mask_comb(), 'det.raw._mask_comb'))
+
+    #for nevent,evt in enumerate(orun.events()):
+    #    print('=========', info_ndarr(det.raw.calib(evt), '\nEvt %03d det.raw.calib' % nevent))
+    #    if nevent > 3: break
+
+
 def issue_2022_01_dd():
     print('template')
 
@@ -249,6 +272,7 @@ USAGE = '\nUsage:'\
       + '\n    8 - issue_2022_03_16 - test calibconst for Mona'\
       + '\n    9 - issue_2022_04_06 - test epixquad cpo - constants'\
       + '\n   10 - issue_2022_06_17 - test default common_mode parameters'\
+      + '\n   11 - issue_2022_07_12 - test det.raw.calib for refactored code for CalibConstants'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -264,6 +288,7 @@ elif TNAME in  ('7',): issue_2022_03_08()
 elif TNAME in  ('8',): issue_2022_03_16()
 elif TNAME in  ('9',): issue_2022_04_06()
 elif TNAME in ('10',): issue_2022_06_17()
+elif TNAME in ('11',): issue_2022_07_12()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
