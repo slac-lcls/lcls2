@@ -21,7 +21,7 @@ import psana.pscalib.calib.CalibConstants as CC
 DTYPE_MASK   = CC.dic_calib_type_to_dtype[CC.PIXEL_MASK]   # np.uint8
 DTYPE_STATUS = CC.dic_calib_type_to_dtype[CC.PIXEL_STATUS] # np.uint64
 
-from psana.detector.NDArrUtils import shape_nda_as_3d # shape_as_3d# info_ndarr, shape_as_3d
+from psana.detector.NDArrUtils import shape_nda_as_3d, info_ndarr  # shape_as_3d, shape_as_3d
 
 
 def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
@@ -201,7 +201,7 @@ def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
             return None
 
     from psana.detector.NDArrUtils import info_ndarr
-    print(info_ndarr(status, 'status'))
+    logger.debug(info_ndarr(status, 'status'))
     cond = (status & status_bits)>0
     return np.asarray(np.select((cond,), (0,), default=1), dtype=dtype)
 
