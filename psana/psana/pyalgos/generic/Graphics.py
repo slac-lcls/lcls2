@@ -62,6 +62,7 @@ os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
 
 import logging
 logger = logging.getLogger('Graphics')
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 import numpy as np
 from time import time, localtime, strftime
