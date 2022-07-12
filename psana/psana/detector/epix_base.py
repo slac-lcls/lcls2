@@ -134,8 +134,9 @@ class epix_base(AreaDetector):
     def _mask_from_status(self, status_bits=0xffff, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK, **kwa):
         """re-implementation of AreaDetector._mask_from_status for multi-gain detector.
         """
-        smask = AreaDetector._mask_from_status(self, status_bits=status_bits, dtype=dtype, **kwa)
-        return um.merge_mask_for_grinds(smask, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
+        logger.debug('epix_base._mask_from_status - implementation for epix10ka - merged status masks for gain ranges')
+        return AreaDetector._mask_from_status(self, status_bits=status_bits, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
+        #return um.merge_mask_for_grinds(smask, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
 
 #    def _seg_geo(**kwa):
 #        #logger.debug('epix_base._seg_geo MUST BE RE-IMPLEMENTED')
