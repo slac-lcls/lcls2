@@ -1,25 +1,29 @@
 #!/usr/bin/env python
 
+import sys
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+STRLOGLEV = sys.argv[2] if len(sys.argv)>2 else 'INFO'
+
+import logging
+INTLOGLEV = logging._nameToLevel[STRLOGLEV]
+logger = logging.getLogger(__name__)
+logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
+
 from psana.detector.calibconstants import CalibConstants
 from psana.detector.NDArrUtils import info_ndarr
 
 
-import sys
-SCRNAME = sys.argv[0].rsplit('/')[-1]
-
-def calib_constants(exp="ueddaq02", detname="epixquad", runnum=0):
+def dict_calib_constants(exp="ueddaq02", detname="epixquad", runnum=0):
     """direct access to calibration constants for run=0
     """
     from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types
-    return calib_constants_all_types(detname, exp=exp, run=runnum)
+    d = calib_constants_all_types(detname, exp=exp, run=runnum)
+    print('==== dict calibcons keys: %s' % (' '.join([k for k in d.keys()])))
+    return d
 
 
 def test_calib_constants():
-    d = calib_constants()
-    #print('\nd:',d)
-    print(50*'-')
-    print('d.keys():',d.keys())
-
+    d = dict_calib_constants()
     cc = CalibConstants(d)
     print(info_ndarr(cc.pedestals(), 'pedestals'))
     print(info_ndarr(cc.rms(), 'rms'))
@@ -46,12 +50,10 @@ USAGE = '\nUsage:'\
       + '\n  where test-name: '\
       + '\n    0 - print usage'\
       + '\n    1 - test_calib_constants'\
-      + '\n    2 - '\
-      + '\n    3 - '\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
-if   TNAME in  ('0',): test_calib_constants()
+if   TNAME in  ('0',): print(USAGE)
 elif TNAME in  ('1',): test_calib_constants()
 else:
     print(USAGE)
