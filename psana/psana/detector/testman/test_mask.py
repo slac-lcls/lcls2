@@ -13,6 +13,7 @@ from psana.detector.NDArrUtils import info_ndarr
 from psana.detector.mask import Mask
 import psana.detector.UtilsGraphics as ug
 
+
 def test_umask(det):
     import numpy as np
     mstatus = det.raw._mask_from_status() # (4, 352, 384)
@@ -129,7 +130,7 @@ def test_mask_select(tname, det):
     elif tname == '26':
         mask = test_umask(det)
 
-    print(info_ndarr(mask, '\nmask'))
+    logger.info(info_ndarr(mask, '\nmask'))
     return mask
 
 
@@ -141,16 +142,20 @@ def test_mask(tname):
     orun = next(ds.runs())
     det = orun.Detector('epixquad')
     peds, meta = det.calibconst['pedestals']
-    print('\nmetadata\n', meta)
-    print(info_ndarr(peds, '\npedestals'))
+    logger.info('\nmetadata\n', meta)
+    logger.info(info_ndarr(peds, '\npedestals'))
 
-    mask = test_mask_select(tname, det)
+    mask = test_mask_select(tname, det)  # [0,:]
 
     evt = next(orun.events())
 
     arr = mask + 1
+
+    logger.info(info_ndarr(arr, '\ntest_mask arr for image'))
+    #sys.exit('TEST EXIT')
+
     img = det.raw.image(evt, nda=arr)
-    print(info_ndarr(img, '\nimg'))
+    logger.info(info_ndarr(img, '\nimg'))
 
     flimg = ug.fleximagespec(img, arr=arr, amin=0, amax=2)
     #   else: flimg.update(img)#, arr=arr)
