@@ -69,6 +69,7 @@ class MaskAlgos:
         np.array - mask made of pixel_status calibration constants, shapeed as full detector data
         """
         status = self.cco.status()
+        logger.debug(info_ndarr(status, 'status:'))
         if is_none(status, 'pixel_status is None'): return None
 
         smask = um.status_as_mask(status, status_bits=status_bits, dtype=DTYPE_MASK, **kwa)
@@ -82,8 +83,8 @@ class MaskAlgos:
         mask = smask if grinds is None else\
                um.merge_mask_for_grinds(smask, gain_range_inds=grinds, dtype=dtype, **kwa)
 
-        logger.debug(info_ndarr(smask, 'YYYYYY in MaskAlgos.mask_from_status smask:'))
-        logger.debug(info_ndarr(mask,  'YYYYYY in MaskAlgos.mask_from_status  mask:'))
+        logger.debug(info_ndarr(smask, 'in MaskAlgos.mask_from_status smask:'))
+        logger.debug(info_ndarr(mask,  'in MaskAlgos.mask_from_status  mask:'))
         return mask
 
 
@@ -201,11 +202,6 @@ class MaskAlgos:
             mask = umask if mask is None else um.merge_masks(mask, umask, dtype=dtype)
 
         logger.debug(info_ndarr(mask, 'in mask_comb at exit:'))
-
-
-
-
-
 
         return mask
 
