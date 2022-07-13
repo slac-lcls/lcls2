@@ -23,7 +23,7 @@ Usage::
   a = o._det_geo()
   a = o._pixel_coord_indexes(pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0, **kwa)
   a = o._pixel_coords(do_tilt=True, cframe=0, **kwa)
-  a = o._cached_pixel_coord_indexes(evt, **kwa) # **kwa - the same as above
+  a = o._cached_pixel_coord_indexes(evt, **kwa)
 
   a = o._shape_as_daq()
   a = o._number_of_segments_total()
@@ -57,26 +57,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 import numpy as np
-
 from psana.detector.calibconstants import CalibConstants
-
 from psana.pscalib.geometry.SegGeometryStore import sgs
-#from psana.pscalib.geometry.GeometryAccess import GeometryAccess #, img_from_pixel_arrays
 from psana.detector.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
-from psana.detector.UtilsAreaDetector import arr3d_from_dict,\
-        img_from_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
-        img_interpolated, fill_holes
-
+from psana.detector.UtilsAreaDetector import arr3d_from_dict
+from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
+from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
 is_none = ut.is_none
 
-
-#import psana.detector.UtilsMask as um
-#DTYPE_MASK, DTYPE_STATUS = um.DTYPE_MASK, um.DTYPE_STATUS
-from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
-
-
-from amitypes import Array2d, Array3d
+#from psana.pscalib.geometry.GeometryAccess import GeometryAccess #, img_from_pixel_arrays
 
 
 class AreaDetector(DetectorImpl):
@@ -109,7 +99,7 @@ class AreaDetector(DetectorImpl):
         return arr3d_from_dict({k:v.raw for k,v in segs.items()})
 
 
-    def _segment_numbers(self,evt):
+    def _segment_numbers(self, evt):
         """ Returns dense 1-d numpy array of segment indexes.
         from dict self._segments(evt)
         """
@@ -201,63 +191,10 @@ class AreaDetector(DetectorImpl):
 
 
     def image(self, evt, nda=None, **kwa) -> Array2d:
-        """
-        Create 2-d image.
-
-        Parameters
-        ----------
-        evt: event
-            psana event object, ex. run.events().next().
-
-        mapmode: int, optional, default: 2
-            control on overlapping pixels on image map.
-            0/1/2/3/4: statistics of entries / last / max / mean pixel intensity / interpolated (TBD) - ascending data index.
-
-        fillholes: bool, optional, default: True
-            control on map bins inside the panel with 0 entries from data.
-            True/False: fill empty bin with minimal intensity of four neares neighbors/ do not fill.
-
-        vbase: float, optional, default: 0
-            value substituted for all image map bins without entry from data.
-
-        Returns
-        -------
-        image: np.array, ndim=2
-        """
-        logger.debug('in AreaDretector.image')
-
-        pix_rc = self._cached_pix_rc()
-        cco = self._calibc_
-
-        if any(v is None for v in pix_rc):
-            self._cached_pixel_coord_indexes(evt, **kwa)
-            pix_rc = cco.pix_rc()
-            if any(v is None for v in pix_rc): return None
-
-        vbase     = kwa.get('vbase',0)
-        mapmode   = kwa.get('mapmode',2)
-        fillholes = kwa.get('fillholes',True)
-
-        if mapmode==0: return self.img_entries
-
-        data = self.calib(evt) if nda is None else nda
-
-        if is_none(data, 'AreaDetector.image calib returns None'): return None
-
-        logger.debug(info_ndarr(data, 'data ', last=3))
-        rows, cols = pix_rc
-        logger.debug(info_ndarr(rows, 'rows ', last=3))
-        logger.debug(info_ndarr(cols, 'cols ', last=3))
-
-        img = img_from_pixel_arrays(rows, cols, weight=data, vbase=vbase) # mapmode==1
-        if   mapmode==2: img_multipixel_max(img, data, cco.dmulti_pix_to_img_idx)
-        elif mapmode==3: img_multipixel_mean(img, data, cco.dmulti_pix_to_img_idx, cco.dmulti_imgidx_numentries)
-
-        if mapmode<4 and fillholes: fill_holes(img, cco.hole_rows, cco.hole_cols)
-
-        return img if mapmode<4 else\
-               img_interpolated(data, self._cached_interpol_pars()) if mapmode==4 else\
-               self.img_entries
+        _nda = self.calib(evt) if nda is None else nda
+        segnums = self._segment_numbers(evt)
+        o = self._calibconstants(**kwa)
+        return None if o is None else o.image(_nda, segnums=segnums, **kwa)
 
 
     def _mask_default(self, dtype=DTYPE_MASK):

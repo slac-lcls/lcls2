@@ -47,7 +47,9 @@ from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
 
 import psana.detector.Utils as ut
-
+#import psana.pscalib.calib.CalibConstants as ccc
+from psana.detector.UtilsMask import DTYPE_MASK, DTYPE_STATUS
+#is_none = ut.is_none
 
 class CalibConstants:
 
@@ -76,8 +78,6 @@ class CalibConstants:
         self._pix_xyz = None, None, None
         self._interpol_pars = None
 
-        #self._mask = None
-
 
     def calibconst(self):
         logger.debug('calibconst')
@@ -104,10 +104,18 @@ class CalibConstants:
 
     def pedestals(self):   return self.cached_array(self._pedestals, 'pedestals')
     def rms(self):         return self.cached_array(self._rms, 'pixel_rms')
-    def status(self):      return self.cached_array(self._status, 'pixel_status')
-    def mask_calib(self):  return self.cached_array(self._mask_calib, 'pixel_mask')
     def common_mode(self): return self.cached_array(self._common_mode, 'common_mode')
     def gain(self):        return self.cached_array(self._gain, 'pixel_gain')
+
+
+    def mask_calib(self):
+        a = self.cached_array(self._mask_calib, 'pixel_mask')
+        return a if a is None else a.astype(DTYPE_MASK)
+
+
+    def status(self):
+        a = self.cached_array(self._status, 'pixel_status')
+        return a if a is None else a.astype(DTYPE_STATUS)
 
 
     def gain_factor(self):
@@ -187,7 +195,6 @@ class CalibConstants:
             cframe             = kwa.get('cframe',0))
 
 
-
     def pixel_coord_indexes(self, **kwa):
         """ returns ix, iy - two np.ndarray
         """
@@ -205,7 +212,7 @@ class CalibConstants:
     def cached_pixel_coord_indexes(self, segnums=None, **kwa):
         """
         """
-        logger.debug('AreaDetector._cached_pixel_coord_indexes')
+        logger.debug('CalibConstants.cached_pixel_coord_indexes')
 
         resp = self.pixel_coord_indexes(**kwa)
         if resp is None: return None
@@ -255,6 +262,61 @@ class CalibConstants:
                 logger.debug(s)
 
 
+    def image(self, nda, segnums=None, **kwa):
+        """
+        Create 2-d image.
+
+        Parameters
+        ----------
+        nda: np.array, ndim=3
+            array shaped as daq raw data.
+
+        segnums: list/tuple of segment (uint) indexes
+
+        mapmode: int, optional, default: 2
+            control on overlapping pixels on image map.
+            0/1/2/3/4: statistics of entries / last / max / mean pixel intensity / interpolated (TBD) - ascending data index.
+
+        fillholes: bool, optional, default: True
+            control on map bins inside the panel with 0 entries from data.
+            True/False: fill empty bin with minimal intensity of four neares neighbors/ do not fill.
+
+        vbase: float, optional, default: 0
+            value substituted for all image map bins without entry from data.
+
+        Returns
+        -------
+        image: np.array, ndim=2
+        """
+        logger.debug('in CalibConstants.image')
+
+        if any(v is None for v in self._pix_rc):
+            self.cached_pixel_coord_indexes(segnums, **kwa)
+            if any(v is None for v in self._pix_rc): return None
+
+        vbase     = kwa.get('vbase',0)
+        mapmode   = kwa.get('mapmode',2)
+        fillholes = kwa.get('fillholes',True)
+
+        if mapmode==0: return self.img_entries
+
+        if ut.is_none(nda, 'CalibConstants.image calib returns None'): return None
+
+        logger.debug(info_ndarr(nda, 'nda ', last=3))
+        rows, cols = self._pix_rc
+        logger.debug(info_ndarr(rows, 'rows ', last=3))
+        logger.debug(info_ndarr(cols, 'cols ', last=3))
+
+        img = img_from_pixel_arrays(rows, cols, weight=nda, vbase=vbase) # mapmode==1
+        if   mapmode==2: img_multipixel_max(img, nda, self.dmulti_pix_to_img_idx)
+        elif mapmode==3: img_multipixel_mean(img, nda, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries)
+
+        if mapmode<4 and fillholes: fill_holes(img, self.hole_rows, self.hole_cols)
+
+        return img if mapmode<4 else\
+               img_interpolated(nda, self._cached_interpol_pars()) if mapmode==4 else\
+               self.img_entries
+
 
     def pix_rc(self): return self._pix_rc
 
@@ -262,8 +324,7 @@ class CalibConstants:
 
     def interpol_pars(self): return self._interpol_pars
 
-
-# also used in AreaDetector.image
+# also used in CalibConstants.image
 #self.dmulti_pix_to_img_idx
 #self.dmulti_imgidx_numentries
 #self.img_holes
