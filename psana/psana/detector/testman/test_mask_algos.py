@@ -25,10 +25,10 @@ def test_umask(mo):
 
 def test_mask_select(tname, mo):
     mask = None
-    if tname == '0':
+    if tname == '9':
         import psana.pyalgos.generic.NDArrGenerators as ag
         status = mo.mask_from_status()
-        sh = status.shape # (4, 352, 384)
+        sh = status.shape  # (4, 352, 384)
         mask = ag.random_standard(shape=sh, mu=0, sigma=0.25, dtype=float)
 
     elif tname == '1':
@@ -39,20 +39,20 @@ def test_mask_select(tname, mo):
         mask = mo.mask_neighbors(msts, rad=9, ptrn='r')
 
     elif tname == '3':
-        mask = mo.mask_edges(width=0, edge_rows=10, edge_cols=5)#, dtype=DTYPE_MASK, **kwa)
+        mask = mo.mask_edges(width=0, edge_rows=10, edge_cols=5)  # dtype=DTYPE_MASK, **kwa)
 
     elif tname == '4':
-        mask = mo.mask_center(wcenter=0, center_rows=5, center_cols=3)#, dtype=DTYPE_MASK, **kwa)
+        mask = mo.mask_center(wcenter=0, center_rows=5, center_cols=3)  # dtype=DTYPE_MASK, **kwa)
 
     elif tname == '5':
-        mask = mo.mask_calib_or_default()#, dtype=DTYPE_MASK)
+        mask = mo.mask_calib_or_default()  # dtype=DTYPE_MASK)
 
     elif tname == '6':
         mask = test_umask(mo)
 
     elif tname == '7':
         mask = mo.mask_comb(\
-                            status=True, status_bits=0xffff, gain_range_inds=(0,1,2,3,4),\
+                    status=True, status_bits=0xffff, gain_range_inds=(0,1,2,3,4),\
                     neighbors=True, rad=5, ptrn='r',\
                     edges=True, width=0, edge_rows=10, edge_cols=5,\
                     center=True, wcenter=0, center_rows=5, center_cols=3,\
@@ -66,12 +66,13 @@ def test_mask_select(tname, mo):
     return mask
 
 
-def dict_calib_constants(exp='uedcom103', detname="epixquad", runnum=7):
-    """direct access to calibration constants for run=0
+def dict_calib_constants(exp='uedcom103', detname='epix10ka_000002', runnum=7):
+    """returns dict of all calibration constants using direct access DB
     """
     from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types
     d = calib_constants_all_types(detname, exp=exp, run=runnum)
-    logging.info('==== dict calibcons keys: %s' % ' '.join([k for k in d.keys()]))
+    logging.info('==== exp: %s runnum: %d detname: %s' % (exp, runnum, detname))
+    logging.info('dict calibcons keys: %s' % ' '.join([k for k in d.keys()]))
     return d
 
 
@@ -116,7 +117,7 @@ USAGE = '\nUsage:'\
       + '\n  python %s <test-name> <loglevel e.g. DEBUG or INFO>' % SCRNAME\
       + '\n  where test-name: '\
       + '\n\n Direct call to MaskAlgos.mask_*'\
-      + '\n   0 - test random image'\
+      + '\n   0 - print usage'\
       + '\n   1 - mask from status'\
       + '\n   2 - mask from status and neighbors'\
       + '\n   3 - mask edges'\
@@ -124,12 +125,13 @@ USAGE = '\nUsage:'\
       + '\n   5 - mask calib or default'\
       + '\n   6 - mask users'\
       + '\n   7 - mask combined'\
+      + '\n   9 - test random image'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
-
-if TNAME in ('0','1','2','3','4','5','6','7'):  # ,'8','9'):
+if TNAME in ('1','2','3','4','5','6','7','9'):
+    logging.info(USAGE)
     test_mask_algos(TNAME)
 else:
     logging.info(USAGE)
