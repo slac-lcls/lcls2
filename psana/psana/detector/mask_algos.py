@@ -46,12 +46,12 @@ class MaskAlgos:
 
 
     def gain_range_indexes(self, grinds, smask):
-        """returns list of gain range indexes, e.g. [0,1,2,3,4] to merge mask_from"""
+        """returns list of gain range indexes, e.g. (0,1,2,3,4) to merge mask_from"""
         if grinds is not None: return grinds
         if smask.ndim<4: return None
         ngranges = smask.shape[0]
         if ngranges>5: ngranges=5 # protection for epix10ka which have 7 gain ranges, but two of them - evaluated
-        return list(range(ngranges))
+        return tuple(range(ngranges))
 
 
     def mask_from_status(self, status_bits=0xffff, gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
@@ -68,7 +68,10 @@ class MaskAlgos:
         -------
         np.array - mask made of pixel_status calibration constants, shapeed as full detector data
         """
-        status = self.cco.status()
+        #status = self.cco.status()
+        status, meta = self.cco.cons_and_meta_for_ctype(ctype='pixel_status')
+        status = status.astype(DTYPE_STATUS)
+
         logger.debug(info_ndarr(status, 'status:'))
         if is_none(status, 'pixel_status is None'): return None
 
@@ -78,7 +81,12 @@ class MaskAlgos:
         if is_none(smask, 'status_as_mask is None'): return None
 
         grinds = self.gain_range_indexes(gain_range_inds, smask)
-        logger.debug('MaskAlgos.mask_from_status use grinds: %s' % str(grinds))
+        logger.debug('in MaskAlgos.mask_from_status'\
+                    + '\n   grinds: %s' % str(grinds)\
+                    + '\n   status_bits: %s' % hex(status_bits)\
+                    + '\n   dtype: %s' % str(dtype)\
+                    + '\n   **kwa: %s' % str(kwa)\
+                    + '\n   meta: %s' % str(meta))
 
         mask = smask if grinds is None else\
                um.merge_mask_for_grinds(smask, gain_range_inds=grinds, dtype=dtype, **kwa)
