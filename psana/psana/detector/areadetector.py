@@ -23,7 +23,6 @@ Usage::
   a = o._det_geo()
   a = o._pixel_coord_indexes(pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0, **kwa)
   a = o._pixel_coords(do_tilt=True, cframe=0, **kwa)
-  a = o._cached_pixel_coord_indexes(evt, **kwa)
 
   a = o._shape_as_daq()
   a = o._number_of_segments_total()
@@ -58,16 +57,13 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 from psana.detector.calibconstants import CalibConstants
-from psana.pscalib.geometry.SegGeometryStore import sgs
+from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
 from psana.detector.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
 from psana.detector.UtilsAreaDetector import arr3d_from_dict
 from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
 is_none = ut.is_none
-
-#from psana.pscalib.geometry.GeometryAccess import GeometryAccess #, img_from_pixel_arrays
-
 
 class AreaDetector(DetectorImpl):
 
@@ -158,20 +154,6 @@ class AreaDetector(DetectorImpl):
 
     def _number_of_segments_total(self): return self._det_calibconst('number_of_segments_total')
 
-    def _cached_pixel_coord_indexes(self, evt, **kwa):
-        """
-        """
-        logger.debug('AreaDetector._cached_pixel_coord_indexes')
-        kwa['segnums'] = self._segment_numbers(evt)
-        logger.debug('segnums: %s' % str(kwa['segnums']))
-        return self._det_calibconst_kwa('cached_pixel_coord_indexes', **kwa)
-
-    def _cached_pix_rc(self): return self._det_calibconst('pix_rc')
-
-    def _cached_pix_xyz(self): return self._det_calibconst('pix_xyz')
-
-    def _cached_interpol_pars(self): return self._det_calibconst('interpol_pars')
-
 
     def calib(self, evt, **kwa) -> Array3d:
         """
@@ -210,7 +192,7 @@ class AreaDetector(DetectorImpl):
 
 
     def _mask_from_status(self, status_bits=0xffff, gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
-        logger.info('in areadetector._mask_from_status ==== should be re-implemented for multi-gain detectors')
+        logger.debug('in AreaDetector._mask_from_status ==== should be re-implemented for multi-gain detectors')
         o = self._maskalgos()
         return None if o is None else\
                o.mask_from_status(status_bits=status_bits, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
