@@ -400,12 +400,7 @@ class DataSourceBase(abc.ABC):
 
         logger.debug('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
         self.e.set()
-    
-    @property
-    def _configs(self):
-        """Returns configs from DgramManager"""
-        return self.dm.configs
-    
+
     def _apply_detector_selection(self):
         """
         Handles two arguments
@@ -466,6 +461,116 @@ class DataSourceBase(abc.ABC):
             logger.debug(f"ds_base: close tmp smd fds:{smd_fds}")
 
         self.dsparms.set_use_smds(use_smds)
+
+    def _setup_det_class_table(self):
+        """
+        this function gets the version number for a (det, drp_class) combo
+        maps (dettype,software,version) to associated python class and
+        detector info for a det_name maps to dettype, detid tuple.
+        """
+        det_classes = {'epics': {}, 'scan': {}, 'step': {}, 'normal': {}}
+
+        xtc_info = []
+        det_info_table = {}
+
+        # collect corresponding stream id for a detector (first found)
+        det_stream_id_table = {}
+
+        # loop over the dgrams in the configuration
+        # if a detector/drp_class combo exists in two cfg dgrams
+        # it will be OK... they should give the same final Detector class
+
+        for i, cfg_dgram in enumerate(self._configs):
+            for det_name, det_dict in cfg_dgram.software.__dict__.items():
+                # go find the class of the first segment in the dict
+                # they should all be identical
+                first_key = next(iter(det_dict.keys()))
+                det = det_dict[first_key]
+
+                if det_name not in det_classes:
+                    det_class_table = det_classes['normal']
+                else:
+                    det_class_table = det_classes[det_name]
+
+
+                dettype, detid = (None, None)
+                for drp_class_name, drp_class in det.__dict__.items():
+
+                    # collect detname maps to dettype and detid
+                    if drp_class_name == 'dettype':
+                        dettype = drp_class
+                        continue
+
+                    if drp_class_name == 'detid':
+                        detid = drp_class
+                        continue
+
+                    # FIXME: we want to skip '_'-prefixed drp_classes
+                    #        but this needs to be fixed upstream
+                    if drp_class_name.startswith('_'): continue
+
+                    # use this info to look up the desired Detector class
+                    versionstring = [str(v) for v in drp_class.version]
+                    class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
+                    xtc_entry = (det_name,det.dettype,drp_class_name,'_'.join(versionstring))
+                    if xtc_entry not in xtc_info:
+                        xtc_info.append(xtc_entry)
+                    if hasattr(detectors, class_name):
+                        DetectorClass = getattr(detectors, class_name) # return the class object
+                        det_class_table[(det_name, drp_class_name)] = DetectorClass
+                    else:
+                        pass
+
+                det_info_table[det_name] = (dettype, detid)
+
+                if det_name not in det_stream_id_table:
+                    det_stream_id_table[det_name] = i
+
+        self.dsparms.set_det_class_table(det_classes, xtc_info, det_info_table, det_stream_id_table)
+
+    def _set_configinfo(self):
+        """ From configs, we generate a dictionary lookup with det_name as a key.
+        The information stored the value field contains:
+
+        - configs specific to that detector
+        - sorted_segment_ids
+          used by Detector cls for checking if an event has correct no. of segments
+        - detid_dict
+          has segment_id as a key
+        - dettype
+        - uniqueid
+        """
+        self.dsparms.configinfo_dict = {}
+
+        for detcls_name, det_class in self.dsparms.det_classes.items(): # det_class is either normal or envstore ('epics', 'scan', 'step')
+            for (det_name, _), _ in det_class.items():
+                # we lose a "one-to-one" correspondence with event dgrams.  we may have
+                # to put in None placeholders at some point? - mona and cpo
+                det_configs = [cfg for cfg in self._configs if hasattr(cfg.software, det_name)]
+                sorted_segment_ids = []
+                # a dictionary of the ids (a.k.a. serial-number) of each segment
+                detid_dict = {}
+                dettype = ""
+                uniqueid = ""
+                for config in det_configs:
+                    seg_dict = getattr(config.software, det_name)
+                    sorted_segment_ids += list(seg_dict.keys())
+                    for segment, det in seg_dict.items():
+                        detid_dict[segment] = det.detid
+                        dettype = det.dettype
+
+                sorted_segment_ids.sort()
+
+                uniqueid = dettype
+                for segid in sorted_segment_ids:
+                    uniqueid += '_'+detid_dict[segid]
+
+                self.dsparms.configinfo_dict[det_name] = type("ConfigInfo", (), {\
+                        "configs": det_configs, \
+                        "sorted_segment_ids": sorted_segment_ids, \
+                        "detid_dict": detid_dict, \
+                        "dettype": dettype, \
+                        "uniqueid": uniqueid})
 
     def _setup_run_calibconst(self):
         """

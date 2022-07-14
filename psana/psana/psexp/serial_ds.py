@@ -25,13 +25,14 @@ class SerialDataSource(DataSourceBase):
         super()._close_opened_smd_files()
         super()._end_prometheus_client()
 
-    def _get_configs(self):
+    def _setup_configs(self):
         super()._close_opened_smd_files()
         self.smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
         logger.debug(f'serial_ds: opened smd_fds: {self.smd_fds}')
         self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
-        # Reading configs (first dgram of the smd files)
-        return self.smdr_man.get_next_dgrams()
+        self._configs = self.smdr_man.get_next_dgrams()
+        super()._setup_det_class_table()
+        super()._set_configinfo()
     
     def _setup_run(self):
         if self.runnum_list_index == len(self.runnum_list):
@@ -41,10 +42,10 @@ class SerialDataSource(DataSourceBase):
         self.runnum_list_index += 1
         super()._setup_run_files(runnum)
         super()._apply_detector_selection()
-        configs = self._get_configs()
-        self.dm = DgramManager(self.xtc_files, configs=configs, config_consumers=[self.dsparms])
+        self._setup_configs()
+        self.dm = DgramManager(self.xtc_files, configs=self._configs)
         return True
-
+    
     def _setup_beginruns(self):
         """ Determines if there is a next run as
         1) New run found in the same smalldata files

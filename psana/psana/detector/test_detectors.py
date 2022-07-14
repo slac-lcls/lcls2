@@ -101,10 +101,7 @@ class andor_raw_0_0_2(DetectorImpl):
         segs = self._segments(evt)
         if segs is None:
             return None
-        if 1 in segs:
-            return segs[1].calib
-        else:
-            return segs[0].calib
+        return segs[1].calib
 class epix_raw_0_0_2(DetectorImpl):
     def __init__(self, *args):
         super(epix_raw_0_0_2, self).__init__(*args)
