@@ -42,7 +42,8 @@ def _dgSize(view):
 class DgramManager(object):
 
     def __init__(self, xtc_files, configs=[], fds=[], 
-            tag=None, run=None, max_retries=0):
+            tag=None, run=None, max_retries=0,
+            config_consumers=[]):
         """ Opens xtc_files and stores configs.
         If file descriptors (fds) is given, reuse the given file descriptors.
         """
@@ -56,6 +57,7 @@ class DgramManager(object):
         self.buffered_beginruns = []
         self.max_retries = max_retries
         self.chunk_ids = []
+        self.config_consumers = config_consumers
         
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
@@ -80,7 +82,12 @@ class DgramManager(object):
                     self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
                     view = memoryview(barray)
                     d = dgram.Dgram(view=view)
-                    self.configs += [d]
+                    #self.configs += [d]
+                    # The above line is kept to note that prior to the change below,
+                    # the configs are saved as a list. Note that only the most recent
+                    # one is used. Mona changed this to "replace" so at a time, there's
+                    # only one config.
+                    self._set_configs([d])
                 else:
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
 
@@ -97,13 +104,136 @@ class DgramManager(object):
         
         given_configs = True if len(configs) > 0 else False
         if given_configs:
-            self.configs = configs
+            self._set_configs(configs)
         elif xtc_files[0] != 'shmem':
-            self.configs = [dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds]
+            self._set_configs([dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds])
 
         self.calibconst = {} # initialize to empty dict - will be populated by run class
         self.n_files = len(self.xtc_files)
         self.set_chunk_ids()
+
+    def _set_configs(self, dgrams):
+        """Save and setup given dgrams class configs."""
+        self.configs = dgrams
+        self._setup_det_class_table()
+        self._set_configinfo()
+    
+    def _setup_det_class_table(self):
+        """
+        this function gets the version number for a (det, drp_class) combo
+        maps (dettype,software,version) to associated python class and
+        detector info for a det_name maps to dettype, detid tuple.
+        """
+        det_classes = {'epics': {}, 'scan': {}, 'step': {}, 'normal': {}}
+
+        xtc_info = []
+        det_info_table = {}
+
+        # collect corresponding stream id for a detector (first found)
+        det_stream_id_table = {}
+
+        # loop over the dgrams in the configuration
+        # if a detector/drp_class combo exists in two cfg dgrams
+        # it will be OK... they should give the same final Detector class
+        for i, cfg_dgram in enumerate(self.configs):
+            for det_name, det_dict in cfg_dgram.software.__dict__.items():
+                # go find the class of the first segment in the dict
+                # they should all be identical
+                first_key = next(iter(det_dict.keys()))
+                det = det_dict[first_key]
+
+                if det_name not in det_classes:
+                    det_class_table = det_classes['normal']
+                else:
+                    det_class_table = det_classes[det_name]
+
+
+                dettype, detid = (None, None)
+                for drp_class_name, drp_class in det.__dict__.items():
+
+                    # collect detname maps to dettype and detid
+                    if drp_class_name == 'dettype':
+                        dettype = drp_class
+                        continue
+
+                    if drp_class_name == 'detid':
+                        detid = drp_class
+                        continue
+
+                    # FIXME: we want to skip '_'-prefixed drp_classes
+                    #        but this needs to be fixed upstream
+                    if drp_class_name.startswith('_'): continue
+
+                    # use this info to look up the desired Detector class
+                    versionstring = [str(v) for v in drp_class.version]
+                    class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
+                    xtc_entry = (det_name,det.dettype,drp_class_name,'_'.join(versionstring))
+                    if xtc_entry not in xtc_info:
+                        xtc_info.append(xtc_entry)
+                    if hasattr(detectors, class_name):
+                        DetectorClass = getattr(detectors, class_name) # return the class object
+                        det_class_table[(det_name, drp_class_name)] = DetectorClass
+                    else:
+                        pass
+
+                det_info_table[det_name] = (dettype, detid)
+
+                if det_name not in det_stream_id_table:
+                    det_stream_id_table[det_name] = i
+
+        # Add products of this function to itself and the consumers
+        for config_consumer in [self]+self.config_consumers:
+            setattr(config_consumer, 'det_classes', det_classes)
+            setattr(config_consumer, 'xtc_info', xtc_info)
+            setattr(config_consumer, 'det_info_table', det_info_table)
+            setattr(config_consumer, 'det_stream_id_table', det_stream_id_table)
+
+    def _set_configinfo(self):
+        """ From configs, we generate a dictionary lookup with det_name as a key.
+        The information stored the value field contains:
+
+        - configs specific to that detector
+        - sorted_segment_ids
+          used by Detector cls for checking if an event has correct no. of segments
+        - detid_dict
+          has segment_id as a key
+        - dettype
+        - uniqueid
+        """
+        configinfo_dict = {}
+
+        for detcls_name, det_class in self.det_classes.items(): # det_class is either normal or envstore ('epics', 'scan', 'step')
+            for (det_name, _), _ in det_class.items():
+                # we lose a "one-to-one" correspondence with event dgrams.  we may have
+                # to put in None placeholders at some point? - mona and cpo
+                det_configs = [cfg for cfg in self.configs if hasattr(cfg.software, det_name)]
+                sorted_segment_ids = []
+                # a dictionary of the ids (a.k.a. serial-number) of each segment
+                detid_dict = {}
+                dettype = ""
+                uniqueid = ""
+                for config in det_configs:
+                    seg_dict = getattr(config.software, det_name)
+                    sorted_segment_ids += list(seg_dict.keys())
+                    for segment, det in seg_dict.items():
+                        detid_dict[segment] = det.detid
+                        dettype = det.dettype
+
+                sorted_segment_ids.sort()
+
+                uniqueid = dettype
+                for segid in sorted_segment_ids:
+                    uniqueid += '_'+detid_dict[segid]
+
+                configinfo_dict[det_name] = type("ConfigInfo", (), {\
+                        "configs": det_configs, \
+                        "sorted_segment_ids": sorted_segment_ids, \
+                        "detid_dict": detid_dict, \
+                        "dettype": dettype, \
+                        "uniqueid": uniqueid})
+
+        for config_consumer in [self]+self.config_consumers:
+            setattr(config_consumer, 'configinfo_dict', configinfo_dict)
 
     def set_chunk_ids(self):
         """ Generates a list of chunk ids for all stream files
@@ -200,6 +330,10 @@ class DgramManager(object):
         
         if service == TransitionId.EndRun:
             self.found_endrun = True
+
+        if service == TransitionId.Configure:
+            self._set_configs(dgrams)
+            return self.__next__()
 
         evt = Event(dgrams, run=self.get_run())
         self._timestamps += [evt.timestamp]
