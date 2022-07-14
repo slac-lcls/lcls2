@@ -24,10 +24,7 @@ class ShmemDataSource(DataSourceBase):
             return False
         
         runnum = self.runnum_list[self.runnum_list_index]
-        self.dm = DgramManager(['shmem'], tag=self.tag)
-        self._configs = self.dm.configs
-        super()._setup_det_class_table()
-        super()._set_configinfo()
+        self.dm = DgramManager(['shmem'], tag=self.tag, config_consumers=[self.dsparms])
         self.runnum_list_index += 1
         return True
     
