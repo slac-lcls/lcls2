@@ -11,7 +11,7 @@ class ShmemDataSource(DataSourceBase):
         self.tag = self.shmem
         self.runnum_list = [0] 
         self.runnum_list_index = 0
-        
+
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         self._setup_run()
         super(). _start_prometheus_client()

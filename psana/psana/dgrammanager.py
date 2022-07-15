@@ -58,29 +58,14 @@ class DgramManager(object):
         self.max_retries = max_retries
         self.chunk_ids = []
         self.config_consumers = config_consumers
+        self.tag = tag
         
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
         elif isinstance(xtc_files, (list, np.ndarray)):
             if len(xtc_files) > 0: # handles smalldata-only case
                 if xtc_files[0] == 'shmem':
-                    self.shmem_cli = PyShmemClient()
-                    #establish connection to available server - blocking
-                    status = int(self.shmem_cli.connect(tag,0))
-                    assert not status,'shmem connect failure %d' % status
-                    #wait for first configure datagram - blocking
-                    view = self.shmem_cli.get(self.shmem_kwargs)
-                    assert view
-                    # Release shmem buffer after copying Transition data
-                    # cpo: copy L1Accepts too because some shmem
-                    # applications like AMI's pickN can hold references
-                    # to dgrams for a long time, consuming the shmem buffers
-                    # and creating a deadlock situation. could revisit this
-                    # later and only deep-copy arrays inside pickN, for example
-                    # but would be more fragile.
-                    barray = bytes(view[:_dgSize(view)])
-                    self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
-                    view = memoryview(barray)
+                    view = self._connect_shmem_cli(self.tag)
                     d = dgram.Dgram(view=view)
                     #self.configs += [d]
                     # The above line is kept to note that prior to the change below,
@@ -111,6 +96,30 @@ class DgramManager(object):
         self.calibconst = {} # initialize to empty dict - will be populated by run class
         self.n_files = len(self.xtc_files)
         self.set_chunk_ids()
+
+    def _connect_shmem_cli(self, tag):
+        self.shmem_cli = PyShmemClient()
+        for retry in range(100):
+            #establish connection to available server - blocking
+            status = int(self.shmem_cli.connect(tag,0))
+            if status == 0:
+                break
+            time.sleep(0.01)
+        assert not status,'shmem connect failure %d' % status
+        #wait for first configure datagram - blocking
+        view = self.shmem_cli.get(self.shmem_kwargs)
+        assert view
+        # Release shmem buffer after copying Transition data
+        # cpo: copy L1Accepts too because some shmem
+        # applications like AMI's pickN can hold references
+        # to dgrams for a long time, consuming the shmem buffers
+        # and creating a deadlock situation. could revisit this
+        # later and only deep-copy arrays inside pickN, for example
+        # but would be more fragile.
+        barray = bytes(view[:_dgSize(view)])
+        self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
+        view = memoryview(barray)
+        return view
 
     def _set_configs(self, dgrams):
         """Save and setup given dgrams class configs."""
@@ -306,9 +315,15 @@ class DgramManager(object):
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs)-1]
                 d = dgram.Dgram(config=config,view=view)
-                dgrams = [d]
             else:
-                raise StopIteration
+                view = self._connect_shmem_cli(self.tag)
+                config = self.configs[len(self.configs)-1]
+                d = dgram.Dgram(config=config,view=view)
+                if d.service() == TransitionId.Configure:
+                    self._set_configs([d])
+                else:
+                    raise RuntimeError(f"Configure expected, got {d.service()}")
+            dgrams = [d]
         else:
             try:
                 dgrams = [dgram.Dgram(config=config, max_retries=self.max_retries) for config in self.configs]
