@@ -15,6 +15,7 @@
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Smd.hh"
+#include "DataDriver.h"
 
 #include "rapidjson/document.h"
 
@@ -125,6 +126,13 @@ MemPool::MemPool(Parameters& para) :
     for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
         m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
     }
+    m_setMaskBytesDone = false;
+}
+
+MemPool::~MemPool()
+{
+   logging::info("%s: closing file descriptor", __PRETTY_FUNCTION__);
+   close(m_fd);
 }
 
 Pds::EbDgram* MemPool::allocateTr()
@@ -140,6 +148,31 @@ Pds::EbDgram* MemPool::allocateTr()
 void MemPool::shutdown()
 {
     m_transitionBuffers.shutdown();
+}
+
+int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
+{
+    int retval = 0;
+    if (m_setMaskBytesDone) {
+        logging::info("%s: earlier setting in effect", __PRETTY_FUNCTION__);
+    } else {
+        uint8_t mask[DMA_MASK_SIZE];
+        dmaInitMaskBytes(mask);
+        for (unsigned i=0; i<PGP_MAX_LANES; i++) {
+            if (laneMask & (1 << i)) {
+                uint32_t channel = i;
+                uint32_t dest = dmaDest(channel, virtChan);
+                logging::info("setting lane  %u, dest 0x%x", i, dest);
+                dmaAddMaskBytes(mask, dest);
+            }
+        }
+        if (dmaSetMaskBytes(m_fd, mask)) {
+            retval = 1; // error
+        } else {
+            m_setMaskBytesDone = true;
+        }
+    }
+    return retval;
 }
 
 std::string Drp::FileParameters::runName()
