@@ -405,10 +405,6 @@ void PGPDetector::shutdown()
         m_workerOutputQueues[i].shutdown();
     }
 
-    uint8_t mask[DMA_MASK_SIZE];
-    dmaInitMaskBytes(mask);
-    dmaSetMaskBytes(m_pool.fd(), mask);
-
     //  Flush the DMA buffers
     int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
     dmaRetIndexes(m_pool.fd(), ret, dmaIndex);
