@@ -26,7 +26,10 @@ def dumpDict(dict,indent):
 def dumpDgram(d):
     dumpDict(d.__dict__,0)
 
+# Maximum length of filenames
 FN_L = 200
+# Maximum no. of shmem connection retries
+SHMEM_CONN_MAX_RETRIES = 100
 
 # Warning: If XtcData::Dgram ever changes, this function will likely need to change
 def _service(view):
@@ -98,8 +101,11 @@ class DgramManager(object):
         self.set_chunk_ids()
 
     def _connect_shmem_cli(self, tag):
+        # ShmemClients open a connection in connect() and close it in
+        # the destructor. By creating a new client every time, we ensure
+        # that python call the destructor in the gc routine.
         self.shmem_cli = PyShmemClient()
-        for retry in range(100):
+        for retry in range(SHMEM_CONN_MAX_RETRIES):
             #establish connection to available server - blocking
             status = int(self.shmem_cli.connect(tag,0))
             if status == 0:
