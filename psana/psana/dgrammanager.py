@@ -1,6 +1,7 @@
 import sys, os
 import time
 import getopt
+import sysv_ipc
 import pprint
 
 try:
@@ -52,6 +53,10 @@ class DgramManager(object):
         """
         self.xtc_files = []
         self.shmem_cli = None
+        self.mq_recv = None
+        self.mq_send = None
+        self.shm_recv = None
+        self.shm_send = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
         self._timestamps = [] # built when iterating
@@ -62,7 +67,7 @@ class DgramManager(object):
         self.chunk_ids = []
         self.config_consumers = config_consumers
         self.tag = tag
-        
+
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
         elif isinstance(xtc_files, (list, np.ndarray)):
@@ -75,6 +80,10 @@ class DgramManager(object):
                     # the configs are saved as a list. Note that only the most recent
                     # one is used. Mona changed this to "replace" so at a time, there's
                     # only one config.
+                    self._set_configs([d])
+                elif xtc_files[0] == 'drp':
+                    view = self._connect_drp()
+                    d = dgram.Dgram(view=view)
                     self._set_configs([d])
                 else:
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
@@ -93,12 +102,13 @@ class DgramManager(object):
         given_configs = True if len(configs) > 0 else False
         if given_configs:
             self._set_configs(configs)
-        elif xtc_files[0] != 'shmem':
+        elif xtc_files[0] != 'shmem' and xtc_files[0] != 'drp':
             self._set_configs([dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds])
 
         self.calibconst = {} # initialize to empty dict - will be populated by run class
         self.n_files = len(self.xtc_files)
         self.set_chunk_ids()
+
 
     def _connect_shmem_cli(self, tag):
         # ShmemClients open a connection in connect() and close it in
@@ -125,6 +135,25 @@ class DgramManager(object):
         barray = bytes(view[:_dgSize(view)])
         self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
         view = memoryview(barray)
+        return view
+
+    def _connect_drp(self):
+        try:
+            self.mq_recv = sysv_ipc.MessageQueue(200000)
+            self.mq_send = sysv_ipc.MessageQueue(200001)
+        except sysv_ipc.Error as exp:
+            assert(False)
+        try:
+            self.shm_recv = sysv_ipc.SharedMemory(200002, size=3000000)
+            self.shm_send = sysv_ipc.SharedMemory(200003, size=3000000)
+        except sysv_ipc.Error as exp:
+            assert(False)
+
+        self.mq_send.send(b"g")
+        message, priority = self.mq_recv.receive()
+        shm_view = memoryview(self.shm_recv)
+        barray = bytes(shm_view[:_dgSize(shm_view)])
+        view = memoryview(barray)       
         return view
 
     def _set_configs(self, dgrams):
@@ -330,6 +359,23 @@ class DgramManager(object):
                 else:
                     raise RuntimeError(f"Configure expected, got {d.service()}")
             dgrams = [d]
+        elif self.mq_recv:
+            self.mq_send.send(b"g")
+            message, priority = self.mq_recv.receive()
+            if message == b"g":
+                view = memoryview(self.shm_recv)
+                # use the most recent configure datagram
+                config = self.configs[len(self.configs)-1]
+                d = dgram.Dgram(config=self.configs[-1], view=view)
+            else:
+                view = self._connect_drp()
+                config = self.configs[len(self.configs)-1]
+                d = dgram.Dgram(config=config,view=view)
+                if d.service() == TransitionId.Configure:
+                    self._set_configs([d])
+                else:
+                    raise RuntimeError(f"Configure expected, got {d.service()}")                
+            dgrams = [d]    
         else:
             try:
                 dgrams = [dgram.Dgram(config=config, max_retries=self.max_retries) for config in self.configs]

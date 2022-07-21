@@ -95,6 +95,7 @@ class DataSourceBase(abc.ABC):
                     'dir',
                     'files',
                     'shmem',
+                    'drp',
                     'filter',
                     'batch_size',
                     'max_events',
