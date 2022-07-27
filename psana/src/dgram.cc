@@ -788,6 +788,13 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             return -1;
         }
     }
+    
+    // In case we got a renew config (second or more config dgram), we have to 
+    // clear the given config (configDgram) to allow the next routines to use
+    // self as a config and assign dictionary to it.
+    if (self->dgram->service() == TransitionId::Configure) {
+        configDgram = 0;
+    }
 
     assignDict(self, (PyDgramObject*)configDgram);
 
