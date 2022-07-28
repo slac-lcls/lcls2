@@ -79,7 +79,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         unsigned get_bufsize()
         unsigned getSize()
         unsigned getNodeId()
-        unsigned getMaxUsedNamesId()
+        unsigned getNextNamesId()
         void addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
                 unsigned nodeId, unsigned namesId, unsigned segment,
                 char* algName, uint8_t major, uint8_t minor, uint8_t micro,

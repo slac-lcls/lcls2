@@ -203,17 +203,31 @@ int XtcUpdateIter::process(Xtc* xtc)
         string sAlg(alg.name());
         _flagFilter.insert(pair<string, int>(sDet+"_"+sAlg, 0));
 
-        // Keep track of nodeId and  maximum-number used namesId.
-        // For namesId, we don't record reserved namesId (e.g. 255 for runinfo).
+        // Keep track of nodeId 
         _nodeId = names.namesId().nodeId();
-        if (names.namesId().namesId() > _maxUsedNamesId && 
-                names.namesId().namesId() != _reservedNamesId) {
-            _maxUsedNamesId = names.namesId().namesId();
+        
+        // Keep track of existing NamesId (for both lower and upper ranges)
+        int distanceToMin = names.namesId().namesId() - _maxOfMinNamesId;
+        int distanceToMax = names.namesId().namesId() - _minOfMaxNamesId;
+        // Pull to the closest range (favor lower range)
+        if (abs(distanceToMin) <= abs(distanceToMax)) {
+            if (names.namesId().namesId() > _maxOfMinNamesId) {
+                _maxOfMinNamesId = names.namesId().namesId();
+            }
+
+        } else {
+            if (names.namesId().namesId() < _minOfMaxNamesId) {
+                _minOfMaxNamesId = names.namesId().namesId();
+            }
+
         }
 
-
         if (VERBOSE > 0) {
-            cout << "[Names] detName:" << names.detName() << " alg:" << alg.name() << " nodeId:" << names.namesId().nodeId() << " namesId:" << names.namesId().namesId() << " _nodeId:" << _nodeId << " _maxUsedNamesId:" << _maxUsedNamesId << endl;
+            cout << "[Names] detName:" << names.detName() << " alg:" << alg.name() << endl;
+            cout << "        nodeId:" << names.namesId().nodeId() << endl;
+            cout << "        namesId:" << names.namesId().namesId() << endl;
+            cout << "        _maxOfMinNamesId:" << _maxOfMinNamesId << " _minOfMaxNamesId:" << _minOfMaxNamesId << endl;
+            cout << "        distance to min:" << distanceToMin << " distance to max:" << distanceToMax << endl;
         }
         break;
     }
@@ -367,8 +381,6 @@ void XtcUpdateIter::addNames(Xtc& xtc, const void* bufEnd, char* detName, char* 
     names0.add(xtc, bufEnd, datadef);
     _namesLookup[namesId0] = NameIndex(names0);
 
-    // Increments current namesId
-    _maxUsedNamesId++;
 }
 
 

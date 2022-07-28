@@ -101,8 +101,8 @@ public:
         _cfgFlag = 0;                   // tells if this dgram is a Configure
         _cfgWriteFlag = 0;              // default is not to write to _cfgbuf when iterated.
         _nodeId = 0;
-        _maxUsedNamesId = 0;
-        _reservedNamesId = 255;         // cannot be used (reserved for runinfo).
+        _maxOfMinNamesId = 0;           // stores the highest value of the lower range existing NamesIds
+        _minOfMaxNamesId = 255;         // stores the lowest value of the upper range existing NamesIds
     }
 
     ~XtcUpdateIter() {
@@ -145,8 +145,20 @@ public:
         return _nodeId;
     }
 
-    unsigned getMaxUsedNamesId(){
-        return _maxUsedNamesId;
+    unsigned getNextNamesId(){
+        // Returns the next available NamesId from the the maximum
+        // value of the minimum range. If th next value clashes with
+        // the min value of the max range, exit.
+        unsigned nextNamesId = _maxOfMinNamesId + 1;
+
+        // Update max value of the lower range
+        _maxOfMinNamesId = nextNamesId;
+        
+        if (nextNamesId == _minOfMaxNamesId) {
+            printf("*** NamesId full: next namesid %u not available\n", nextNamesId);
+            throw "unavailable namesid";
+        }
+        return nextNamesId;
     }
     
     void setCfgFlag(int cfgFlag) {
@@ -225,8 +237,8 @@ private:
 
     // When Names is iterated, we keep track of NodeId and NamesId
     unsigned _nodeId;
-    unsigned _maxUsedNamesId;
-    unsigned _reservedNamesId;
+    unsigned _maxOfMinNamesId;
+    unsigned _minOfMaxNamesId;
 
 }; // end class XtcUpdateIter
 

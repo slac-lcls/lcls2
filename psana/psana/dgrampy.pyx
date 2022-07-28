@@ -187,7 +187,7 @@ cdef class PyXtcUpdateIter():
         # for nodeId, use the current nodeId of this Configure.
         # for segment, use 0.
         if nodeId is None: nodeId = self.cptr.getNodeId()
-        if namesId is None: namesId = self.cptr.getMaxUsedNamesId() + 1
+        if namesId is None: namesId = self.cptr.getNextNamesId()
         if segment is None: segment = 0
 
         # Dereference in cython with * is not allowed. You can either use [0] index or
