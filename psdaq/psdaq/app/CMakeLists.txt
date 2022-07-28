@@ -200,6 +200,39 @@ target_include_directories(pvcam PUBLIC
     $ENV{CONDA_PREFIX}/include
 )
 
+target_link_libraries(pvcam
+   epicstools
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACLIENT_LIB}
+   ${EPICS_CA_LIB}
+   tpr
+   readline
+   dl
+   rt
+)
+
+#
+#  sim_udpencoder
+#
+add_executable(sim_udpencoder sim_udpencoder.cc)
+
+target_include_directories(sim_udpencoder PUBLIC
+    sim_udpencoder
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(sim_udpencoder
+   tpr
+   readline
+   dl
+   rt
+)
+
+#
+#  json2xtc
+#
 add_executable(json2xtc
     json2xtc.cc
 )
@@ -218,19 +251,6 @@ target_include_directories(json2xtc PUBLIC
     ${RAPIDJSON_INCLUDE_DIRS}
 )
 
-target_link_libraries(pvcam
-   epicstools
-   ${EPICS_PVACCESS_LIB}
-   ${EPICS_PVDATA_LIB}
-   ${EPICS_PVACLIENT_LIB}
-   ${EPICS_CA_LIB}
-   tpr
-   readline
-   dl
-   rt
-)
-
-
 install(TARGETS app
 		hpsBldServer
 		hpsBldClient
@@ -243,6 +263,7 @@ install(TARGETS app
 		xcasttest
                 pgpca
                 pvcam
+                sim_udpencoder
                 json2xtc
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

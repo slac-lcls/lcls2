@@ -732,11 +732,12 @@ void UdpEncoder::process()
             m_pvQueue.push(dgram);
         }
         else {
+            logging::error("%s: buffer not available, frame dropped", __PRETTY_FUNCTION__);
             ++m_nMissed;                       // Else count it as missed
             (void) _readFrame(&junk);
         }
     } else {
-        logging::debug("%s: m_running is false", __PRETTY_FUNCTION__);
+        logging::debug("%s: m_running is false, frame dropped", __PRETTY_FUNCTION__);
         (void) _readFrame(&junk);
     }
 }
