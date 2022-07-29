@@ -2,6 +2,7 @@ from libc.string    cimport memcpy
 from libc.stdlib    cimport malloc, free
 from libcpp.string  cimport string
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
+from cpython.pycapsule cimport PyCapsule_GetPointer
 from psana.dgrampy  cimport *
 from cpython cimport array
 import array
@@ -108,7 +109,11 @@ cdef class PyDgram():
     # to identify the end of the buffer in case of reading it from a file.
     cdef void* bufEnd           
 
-    # No constructor - the Dgram ptr gets assigned elsewhere.
+    def __cinit__(self, dgram):
+        self.cptr = <Dgram*>PyCapsule_GetPointer(dgram._get_dgram_ptr(),"dgram")
+        # TODO: enable bufEnd which is now disabled below
+        #self.bufEnd = <char *>(self.cptr) + dgram.size()
+        self.bufEnd = <void*>0
 
     def get_pyxtc(self):
         pyxtc = PyXtc()
