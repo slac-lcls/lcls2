@@ -46,7 +46,8 @@ static void sigHandler(int signal)
     printf("SIGUSR1: drop 1 frame\n");
     m_dropRequest = 1;
   } else if (signal == SIGUSR2) {
-    printf("SIGUSR2: ignored\n");
+    printf("SIGUSR2: drop 4 frames\n");
+    m_dropRequest = 4;
   } else {
     tpr->stop();
     ::exit(signal);
