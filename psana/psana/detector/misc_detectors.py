@@ -67,4 +67,8 @@ class encoder_raw_0_0_1(DetectorImpl):
         # note that the order of operations matters here: if
         # we multiply the two numpy array values together we can overflow
         # a uint32.  so convert to float first.
-        return (segments[0].encoderValue[0]*1e-6)*segments[0].scale[0]
+        # Version 2.0.0: if scaleDenom > 0, instead multiply by (float)scale/(float)scaleDenom.
+        if (segments[0].scaleDenom[0] > 0):
+            return segments[0].encoderValue[0]*(float(segments[0].scale[0])/float(segments[0].scaleDenom[0]))
+        else:
+            return (segments[0].encoderValue[0]*1e-6)*segments[0].scale[0]

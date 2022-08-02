@@ -52,6 +52,7 @@ public:
       frameCount,
       timing,
       scale,
+      scaleDenom,
       mode,
       error,
       majorVersion,
@@ -67,6 +68,7 @@ public:
        NameVec.push_back({"frameCount", XtcData::Name::UINT16});
        NameVec.push_back({"timing", XtcData::Name::UINT32,1});
        NameVec.push_back({"scale", XtcData::Name::UINT16,1});
+       NameVec.push_back({"scaleDenom", XtcData::Name::UINT16,1});
        NameVec.push_back({"mode", XtcData::Name::UINT8,1});
        NameVec.push_back({"error", XtcData::Name::UINT8,1});
        NameVec.push_back({"majorVersion", XtcData::Name::UINT16,1});
@@ -386,12 +388,13 @@ void UdpEncoder::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpE
         }
     }
 
-    logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  mode=%u  error=%u  version=%u.%u.%u",
+    logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  scaleDenom=%u  mode=%u  error=%u  version=%u.%u.%u",
                    __PRETTY_FUNCTION__,
                    frame.header.frameCount,
                    frame.channel[0].encoderValue,
                    frame.channel[0].timing,
                    (unsigned) frame.channel[0].scale,
+                   (unsigned) frame.channel[0].scaleDenom,
                    (unsigned) frame.channel[0].mode,
                    (unsigned) frame.channel[0].error,
                    (unsigned) frame.header.majorVersion,
@@ -452,6 +455,10 @@ void UdpEncoder::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpE
     // ...scale
     XtcData::Array<uint16_t> arrayC = raw.allocate<uint16_t>(RawDef::scale,shape);
     arrayC(0) = frame.channel[0].scale;
+
+    // ...scaleDenom
+    XtcData::Array<uint16_t> arrayJ = raw.allocate<uint16_t>(RawDef::scaleDenom,shape);
+    arrayJ(0) = frame.channel[0].scaleDenom;
 
     // ...mode
     XtcData::Array<uint8_t> arrayD = raw.allocate<uint8_t>(RawDef::mode,shape);
@@ -533,7 +540,8 @@ void UdpEncoder::_loopbackSend()
 
     pChannel->encoderValue = htonl(170000);
     pChannel->timing = htonl(54321);
-    pChannel->scale = htons(1000);
+    pChannel->scale = htons(1);
+    pChannel->scaleDenom = htons(150);
 
     int sent = sendto(m_loopbackFd, (void *)mybuf, sizeof(mybuf), 0,
                   (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
@@ -810,6 +818,7 @@ int UdpEncoder::_readFrame(encoder_frame_t *frame, bool& missing)
         frame->channel[0].encoderValue = ntohl(frame->channel[0].encoderValue);
         frame->channel[0].timing = ntohl(frame->channel[0].timing);
         frame->channel[0].scale = ntohs(frame->channel[0].scale);
+        frame->channel[0].scaleDenom = ntohs(frame->channel[0].scaleDenom);
 
         logging::debug("     frameCount    %-7u", frame->header.frameCount);
         logging::debug("     version       %u.%u.%u", frame->header.majorVersion,
@@ -821,6 +830,7 @@ int UdpEncoder::_readFrame(encoder_frame_t *frame, bool& missing)
         logging::debug("ch0  encoderValue  %7u", frame->channel[0].encoderValue);
         logging::debug("ch0  timing        %7u", frame->channel[0].timing);
         logging::debug("ch0  scale         %7u", (unsigned)frame->channel[0].scale);
+        logging::debug("ch0  scaleDenom    %7u", (unsigned)frame->channel[0].scaleDenom);
         logging::debug("ch0  error         %7u", (unsigned)frame->channel[0].error);
         logging::debug("ch0  mode          %7u", (unsigned)frame->channel[0].mode);
     }

@@ -45,7 +45,7 @@ typedef struct {
     uint8_t     channel;
     uint8_t     error;
     uint8_t     mode;
-    uint8_t     reserved2[2];
+    uint16_t    scaleDenom;         // network byte order
 } encoder_channel_t;
 
 static_assert(sizeof(encoder_channel_t) == 32, "Data structure encoder_channel_t is not size 32");
