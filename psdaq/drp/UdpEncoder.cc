@@ -274,11 +274,9 @@ UdpEncoder::UdpEncoder(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor
     m_running       (false),
     m_resetHwCount  (true),
     m_outOfOrder    (false),
+    m_missingData   (false),
     m_notifySocket{&m_context, ZMQ_PUSH}
 {
-    // allocate buffers
-    _discard = new char[DiscardBufSize];
-
     // ZMQ socket for reporting errors
     m_notifySocket.connect({"tcp://" + m_para->collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para->partition)});
 
@@ -290,7 +288,6 @@ UdpEncoder::UdpEncoder(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor
 
 UdpEncoder::~UdpEncoder()
 {
-    delete[] _discard;
     if (_dataFd > 0) {
         close(_dataFd);
     }
@@ -310,7 +307,7 @@ void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEn
   //std::string UdpEncoder::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 {
-    logging::info("UDP configure");
+    logging::debug("entered %s", __PRETTY_FUNCTION__);
 
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
@@ -364,15 +361,29 @@ unsigned UdpEncoder::unconfigure()
 void UdpEncoder::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpEvent)
 {
     encoder_frame_t frame;
+    bool missing = false;
 
     // read from the udp socket that triggered select()
-    int rv = _readFrame(&frame);
+    int rv = _readFrame(&frame, missing);
 
     // if reading frame failed, record damage and return early
     if (rv) {
         dgram.xtc.damage.increase(XtcData::Damage::UserDefined);
         logging::critical("%s: failed to read UDP frame", __PRETTY_FUNCTION__);
         return;
+    }
+
+    // if missing data reported, record damage
+    if (missing) {
+        // record damage
+        dgram.xtc.damage.increase(XtcData::Damage::MissingData);
+        // report first occurance
+        if (!getMissingData()) {
+            char errmsg[128];
+            snprintf(errmsg, sizeof(errmsg),
+                     "Missing data for frame %hu", frame.header.frameCount);
+            setMissingData(errmsg);
+        }
     }
 
     logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  mode=%u  error=%u  version=%u.%u.%u",
@@ -400,7 +411,7 @@ void UdpEncoder::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpE
     uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
 
     if (!getOutOfOrder()) {
-        char errmsg[80];
+        char errmsg[128];
         // check for out-of-order condition
         if (frame.header.frameCount == stuck16) {
             snprintf(errmsg, sizeof(errmsg),
@@ -702,6 +713,16 @@ void UdpEncoder::_udpReceiver()
     logging::info("UDP receiver thread finished");
 }
 
+void UdpEncoder::setMissingData(std::string errMsg)
+{
+    if (!m_missingData) {
+        m_missingData = true;
+        logging::critical("%s", errMsg.c_str());
+        json msg = createAsyncErrMsg(m_para->alias, errMsg);
+        m_notifySocket.send(msg.dump());
+    }
+}
+
 void UdpEncoder::setOutOfOrder(std::string errMsg)
 {
     if (!m_outOfOrder) {
@@ -714,8 +735,6 @@ void UdpEncoder::setOutOfOrder(std::string errMsg)
 
 void UdpEncoder::process()
 {
-    encoder_frame_t junk;
-
     // Protect against namesLookup not being stable before Enable
     if (m_running.load(std::memory_order_relaxed)) {
         ++m_nUpdates;
@@ -734,23 +753,55 @@ void UdpEncoder::process()
         else {
             logging::error("%s: buffer not available, frame dropped", __PRETTY_FUNCTION__);
             ++m_nMissed;                       // Else count it as missed
-            (void) _readFrame(&junk);
+            (void) _junkFrame();
         }
     } else {
         logging::debug("%s: m_running is false, frame dropped", __PRETTY_FUNCTION__);
-        (void) _readFrame(&junk);
+        (void) _junkFrame();
     }
 }
 
-int UdpEncoder::_readFrame(encoder_frame_t *frame)
+int UdpEncoder::_readFrame(encoder_frame_t *frame, bool& missing)
 {
     int rv = 0;
+    ssize_t recvlen;
+
+    // peek data
+    recvlen = recvfrom(_dataFd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT | MSG_PEEK, 0, 0);
+    // check length
+    if (recvlen != (ssize_t) sizeof(encoder_frame_t)) {
+        if (recvlen == -1) {
+            perror("recvfrom(MSG_PEEK)");
+        }
+        logging::error("received UDP length %zd, expected %zd", recvlen, sizeof(encoder_frame_t));
+        // TODO discard frame of the wrong size
+    } else {
+        // byte swap
+        frame->header.frameCount = ntohs(frame->header.frameCount);
+    }
+    if (m_resetHwCount == false) {
+        uint16_t expect16 = (uint16_t)(1 + m_count + m_countOffset);
+        if (frame->header.frameCount != expect16) {
+            // frame count doesn't match
+            logging::debug("recvfrom(MSG_PEEK) frameCount %hu (expected %hu)\n", frame->header.frameCount, expect16);
+            // trigger MissingData damage
+            missing = true;
+            // return empty frame with expected frame count
+            bzero(frame, sizeof(encoder_frame_t));
+            frame->header.frameCount = expect16;
+            frame->header.majorVersion = 1;
+            return (0);
+        }
+    }
 
     // read data
-    ssize_t recvlen = recvfrom(_dataFd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT, 0, 0);
+    recvlen = recvfrom(_dataFd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT, 0, 0);
     // check length
-    if (recvlen < (ssize_t) sizeof(encoder_frame_t)) {
-        logging::error("received UDP length %zd, expected at least %zd", recvlen, sizeof(encoder_frame_t));
+    if (recvlen != (ssize_t) sizeof(encoder_frame_t)) {
+        if (recvlen == -1) {
+            perror("recvfrom");
+        }
+        logging::error("received UDP length %zd, expected %zd", recvlen, sizeof(encoder_frame_t));
         rv = 1; // error
     } else {
         // byte swap
@@ -772,6 +823,26 @@ int UdpEncoder::_readFrame(encoder_frame_t *frame)
         logging::debug("ch0  scale         %7u", (unsigned)frame->channel[0].scale);
         logging::debug("ch0  error         %7u", (unsigned)frame->channel[0].error);
         logging::debug("ch0  mode          %7u", (unsigned)frame->channel[0].mode);
+    }
+    return (rv);
+}
+
+int UdpEncoder::_junkFrame()
+{
+    int rv = 0;
+    ssize_t recvlen;
+    encoder_frame_t junk;
+
+    // read data
+    recvlen = recvfrom(_dataFd, &junk, sizeof(junk), MSG_DONTWAIT, 0, 0);
+    // check length
+    if (recvlen != (ssize_t) sizeof(encoder_frame_t)) {
+        if (recvlen == -1) {
+            perror("recvfrom");
+        }
+        logging::error("%s: received length %zd, expected %zd",
+                       __PRETTY_FUNCTION__, recvlen, sizeof(junk));
+        rv = 1; // error
     }
     return (rv);
 }
@@ -894,13 +965,25 @@ void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
     m_drp.tebContributor().process(l3InpDg);
 }
 
-int UdpEncoder::drainFd(int fd)
+int UdpEncoder::drainDataFd()
 {
-  int rv;
+  int rv = 0;
+  unsigned count = 0;
+  encoder_frame_t junk;
 
-  while ((rv = recvfrom(fd, _discard, DiscardBufSize, MSG_DONTWAIT, 0, 0)) > 0) {
-    ;
+  if (_dataFd > 0) {
+    while ((rv = recvfrom(_dataFd, &junk, sizeof(junk), MSG_DONTWAIT, 0, 0)) > 0) {
+      if (rv == -1) {
+        perror("recvfrom");
+        break;
+      }
+      ++ count;
+    }
+    if (count > 0) {
+      logging::warning("%s: drained %u frames\n", __PRETTY_FUNCTION__, count);
+    }
   }
+
   return (rv);
 }
 
@@ -910,8 +993,7 @@ int UdpEncoder::reset()
 
   if (_dataFd > 0) {
     // drain input buffers
-    drainFd(_dataFd);
-    rv = 0;     // OK
+    rv = drainDataFd();
   }
   return (rv);
 }
@@ -1088,6 +1170,7 @@ void UdpApp::handlePhase1(const json& msg)
             logging::debug("handlePhase1 enable found chunkRequest");
             m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
         }
+        m_udpDetector->reset(); // needed?
         logging::debug("handlePhase1 enable complete");
     }
 
