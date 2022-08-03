@@ -23,12 +23,6 @@ class BatchIterator(object):
                  destination=0, 
                  timestamps=0,
                  intg_stream_id=-1):
-        self.batch_size     = batch_size
-        self.filter_fn      = filter_fn
-        self.destination    = destination
-        self.timestamps     = timestamps
-        self.run            = run 
-        self.intg_stream_id = intg_stream_id
         
         empty_view = True
         for view in views:
@@ -39,7 +33,13 @@ class BatchIterator(object):
         if empty_view:
             self.eb = None
         else:
-            self.eb = EventBuilder(views, configs)
+            self.eb = EventBuilder(views, configs, timestamps,
+                    batch_size=batch_size,
+                    intg_stream_id=intg_stream_id,
+                    filter_fn=filter_fn,
+                    destination=destination,
+                    run=run,
+                    prometheus_counter=None)
 
 
     def __iter__(self):
@@ -53,13 +53,7 @@ class BatchIterator(object):
         if not self.eb: 
             raise StopIteration
 
-        batch_dict, step_dict = self.eb.build(self.timestamps,
-                batch_size=self.batch_size, 
-                filter_fn=self.filter_fn, 
-                destination=self.destination,
-                run=self.run,
-                intg_stream_id=self.intg_stream_id,
-                )
+        batch_dict, step_dict = self.eb.build()
         if self.eb.nevents == 0 and self.eb.nsteps == 0: 
             raise StopIteration
         return batch_dict, step_dict
