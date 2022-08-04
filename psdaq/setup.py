@@ -67,17 +67,16 @@ from Cython.Build import cythonize
 
 # defaults if the build list is empty
 PACKAGES = []
-EXTS = []
 CYTHON_EXTS = []
-INSTALL_REQS = []
 PACKAGE_DATA = {}
+SCRIPTS = []
 ENTRY_POINTS = {}
 
 
 if 'PSDAQ' in BUILD_LIST :
     PACKAGES = find_packages()
     PACKAGE_DATA = {'psdaq.control_gui': ['data/icons/*.png','data/icons/*.gif']}
-    SCRIPTS = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat','psdaq/procmgr/condaProcServ'],
+    SCRIPTS = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat','psdaq/procmgr/condaProcServ']
     ENTRY_POINTS = {
         'console_scripts': [
             'control = psdaq.control.control:main',
@@ -125,17 +124,6 @@ if 'PSDAQ' in BUILD_LIST :
     }
 
 if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
-#    ext = Extension('Messages',
-#                    sources=["psdaq/trigger/Messages.pyx"],
-#                    libraries = ['xtc','service','trigger'],
-#                    include_dirs = [os.path.join(instdir, 'include')],
-#                    library_dirs = [os.path.join(instdir, 'lib')],
-#                    language="c++",
-#                    extra_compile_args = extra_cxx_compile_args,
-#                    extra_link_args = extra_link_args_rpath,
-#    )
-#    CYTHON_EXTS.append(ext)
-
     ext = Extension('EbDgram',
                     sources=["psdaq/trigger/EbDgram.pyx"],
                     libraries = ['xtc','service','trigger'],
@@ -175,10 +163,9 @@ setup(
     license = 'LCLS II',
     description = 'LCLS II DAQ package',
     version = VERSION,
-    install_requires = INSTALL_REQS,
     packages = PACKAGES,
     package_data = PACKAGE_DATA,
     scripts = SCRIPTS,
-    ext_modules = EXTS + cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR, language_level=2, annotate=True),
+    ext_modules = cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR, language_level=2, annotate=True),
     entry_points = ENTRY_POINTS,
 )
