@@ -67,8 +67,21 @@ class encoder_raw_0_0_1(DetectorImpl):
         # note that the order of operations matters here: if
         # we multiply the two numpy array values together we can overflow
         # a uint32.  so convert to float first.
-        # Version 2.0.0: if scaleDenom > 0, instead multiply by (float)scale/(float)scaleDenom.
+        return (segments[0].encoderValue[0]*1e-6)*segments[0].scale[0]
+
+class encoder_raw_2_0_0(encoder_raw_0_0_1):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def value(self,evt) -> float:
+        """
+        The Controls group has conventions of mm/urad for linear/rotary
+        motion units, so this routine returns urad for the rix mono encoder.
+        """
+        segments = self._segments(evt)
+        if segments is None: return None
+        # if scaleDenom > 0, multiply by (float)scale/(float)scaleDenom.
+        # Otherwise, inherit from the parent class.
         if (segments[0].scaleDenom[0] > 0):
             return segments[0].encoderValue[0]*(float(segments[0].scale[0])/float(segments[0].scaleDenom[0]))
         else:
-            return (segments[0].encoderValue[0]*1e-6)*segments[0].scale[0]
+            return super().value(self,evt)

@@ -297,7 +297,7 @@ UdpEncoder::~UdpEncoder()
 
 void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd)
 {
-    XtcData::Alg encoderRawAlg("raw",0,0,1);
+    XtcData::Alg encoderRawAlg("raw", UdpEncoder::MajorVersion, UdpEncoder::MinorVersion, UdpEncoder::MicroVersion);
     XtcData::NamesId rawNamesId(nodeId, segment);
     XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
                                                                  m_para->detName.c_str(), encoderRawAlg,
@@ -526,15 +526,9 @@ void UdpEncoder::_loopbackSend()
 
     ++ m_loopbackFrameCount;     // advance the simulated frame counter
     pHeader->frameCount = htons(m_loopbackFrameCount);
-    pHeader->majorVersion = htons(11);
-    pHeader->minorVersion = 22;
-    pHeader->microVersion = 33;
-#if 0
-    // error injection
-    if ((m_loopbackFrameCount > 0) && ((m_loopbackFrameCount % 50) == 0)) {
-        pHeader->frameCount = htons(666);
-    }
-#endif
+    pHeader->majorVersion = htons(UdpEncoder::MajorVersion);
+    pHeader->minorVersion = UdpEncoder::MinorVersion;
+    pHeader->microVersion = UdpEncoder::MicroVersion;
     pHeader->channelMask = 0x01;
     sprintf(pHeader->hardwareID, "%s", "LOOPBACK SIM");
 
@@ -796,8 +790,10 @@ int UdpEncoder::_readFrame(encoder_frame_t *frame, bool& missing)
             missing = true;
             // return empty frame with expected frame count
             bzero(frame, sizeof(encoder_frame_t));
-            frame->header.frameCount = expect16;
-            frame->header.majorVersion = 1;
+            frame->header.frameCount = htons(expect16);
+            frame->header.majorVersion = htons(UdpEncoder::MajorVersion);
+            frame->header.minorVersion = UdpEncoder::MinorVersion;
+            frame->header.microVersion = UdpEncoder::MicroVersion;
             return (0);
         }
     }
