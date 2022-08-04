@@ -44,7 +44,7 @@ def _dgSize(view):
 
 class DgramManager(object):
 
-    def __init__(self, xtc_files, configs=[], fds=[], 
+    def __init__(self, xtc_files, configs=[], fds=[],
             tag=None, run=None, max_retries=0,
             config_consumers=[]):
         """ Opens xtc_files and stores configs.
@@ -62,7 +62,7 @@ class DgramManager(object):
         self.chunk_ids = []
         self.config_consumers = config_consumers
         self.tag = tag
-        
+
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
         elif isinstance(xtc_files, (list, np.ndarray)):
@@ -89,7 +89,7 @@ class DgramManager(object):
         self.fds_map = {}
         for fd, xtc_file in zip(self.fds, self.xtc_files):
             self.fds_map[fd] = xtc_file
-        
+
         given_configs = True if len(configs) > 0 else False
         if given_configs:
             self._set_configs(configs)
@@ -132,7 +132,7 @@ class DgramManager(object):
         self.configs = dgrams
         self._setup_det_class_table()
         self._set_configinfo()
-    
+
     def _setup_det_class_table(self):
         """
         this function gets the version number for a (det, drp_class) combo
@@ -260,10 +260,10 @@ class DgramManager(object):
         if self.xtc_files[0] == 'shmem': return
         for xtc_file in self.xtc_files:
             filename = os.path.basename(xtc_file)
-            found = filename.find('-c')  
+            found = filename.find('-c')
             if found >= 0:
                 self.chunk_ids.append(int(filename[found+2:found+5]))
-    
+
     def get_chunk_id(self, ind):
         if not self.chunk_ids: return None
         return self.chunk_ids[ind]
@@ -286,7 +286,7 @@ class DgramManager(object):
             usec = int((self._timestamps[-1] & 0xffffffff) * 1e3 + 1)
             if beginruns:
                 self.buffered_beginruns = [dgram.Dgram(config=config,
-                        view=d, offset=0, size=d._size)      
+                        view=d, offset=0, size=d._size)
                         for d, config in zip(beginruns, self.configs)]
             fake_endruns = [dgram.Dgram(config=config, fake_endrun=1, \
                     fake_endrun_sec=sec, fake_endrun_usec=usec) \
@@ -300,7 +300,7 @@ class DgramManager(object):
         """ only support sequential read - no event building"""
         if self.buffered_beginruns:
             self.found_endrun = False
-            evt = Event(self.buffered_beginruns, run=self.run())
+            evt = Event(self.buffered_beginruns, run=self._run)
             self._timestamps += [evt.timestamp]
             self.buffered_beginruns = []
             return evt
@@ -340,7 +340,7 @@ class DgramManager(object):
                 else:
                     print(err)
                     raise StopIteration
-                
+
 
         # Check BeginRun - EndRun pairing
         service = dgrams[0].service()
@@ -348,7 +348,7 @@ class DgramManager(object):
             fake_endruns = self._check_missing_endrun(beginruns=dgrams)
             if fake_endruns:
                 dgrams = fake_endruns
-        
+
         if service == TransitionId.EndRun:
             self.found_endrun = True
 
@@ -365,10 +365,10 @@ class DgramManager(object):
             d = None
         else:
             try:
-                d = dgram.Dgram(file_descriptor=self.fds[dgram_i], 
-                    config=self.configs[dgram_i], 
-                    offset=offset, 
-                    size=size, 
+                d = dgram.Dgram(file_descriptor=self.fds[dgram_i],
+                    config=self.configs[dgram_i],
+                    offset=offset,
+                    size=size,
                     max_retries=self.max_retries)
             except StopIteration:
                 d = None
@@ -389,7 +389,7 @@ class DgramManager(object):
 
     def set_run(self, run):
         self._run = run
-    
+
     def get_run(self):
         return self._run
 
