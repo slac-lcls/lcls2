@@ -8,6 +8,7 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "AxisDriver.h"
 #include "DataDriver.h"
+#include "psdaq/eb/ResultDgram.hh"
 
 #include <fcntl.h>
 #include <Python.h>
@@ -32,6 +33,25 @@ static PyObject* check(PyObject* obj) {
 }
 
 static Drp::TimingDef TSDef;
+
+namespace Drp
+{
+
+class TrigInfoDef : public XtcData::VarDef
+{
+public:
+    enum index
+    {
+        TRIGINFO
+    };
+
+    TrigInfoDef()
+    {
+        XtcData::VarDef::NameVec.push_back({"data", XtcData::Name::UINT32});
+    }
+};
+
+};
 
 using Drp::TimingSystem;
 
@@ -150,6 +170,16 @@ unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc, cons
                                                 m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
     eventNames.add(xtc, bufEnd, TSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
+
+    // set up the names for trigger information data
+    Alg trigAlg("triginfo", 0, 0, 1);
+    XtcData::NamesId trigNamesId(nodeId, TriggerNamesIndex);
+    Names& trigNames = *new(xtc, bufEnd) Names(bufEnd,
+                                               "triginfo", trigAlg,
+                                               "triginfo", "", trigNamesId);
+    TrigInfoDef trigInfoDef;
+    trigNames.add(xtc, bufEnd, trigInfoDef);
+    m_namesLookup[trigNamesId] = NameIndex(trigNames);
     return 0;
 }
 
@@ -184,4 +214,11 @@ void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
 
     TSDef.describeData(dgram.xtc, bufEnd, m_namesLookup, m_evtNamesId,
                        (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader));
+}
+
+void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result)
+{
+    XtcData::NamesId namesId(nodeId, TriggerNamesIndex);
+    XtcData::CreateData data(dgram.xtc, bufEnd, m_namesLookup, namesId);
+    data.set_value(TrigInfoDef::TRIGINFO, result.data());
 }
