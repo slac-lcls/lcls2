@@ -144,6 +144,7 @@ namespace Pds {
       uint64_t                     _batchCount;
       uint64_t                     _writeCount;
       uint64_t                     _monitorCount;
+      uint64_t                     _nMonCount;
       uint64_t                     _mebCount[MAX_MEBS];
       uint64_t                     _prescaleCount;
       int64_t                      _latency;
@@ -175,6 +176,7 @@ Teb::Teb(const EbParams&         prms,
   _batchCount   (0),
   _writeCount   (0),
   _monitorCount (0),
+  _nMonCount    (0),
   _mebCount     {0, 0, 0, 0},
   _prescaleCount(0),
   _latency      (0),
@@ -194,6 +196,7 @@ Teb::Teb(const EbParams&         prms,
   exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.posting(); });
   exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;            });
   exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;          });
+  exporter->add("TEB_nMonCt", labels, MetricType::Counter, [&](){ return _nMonCount;             });
   exporter->add("TEB_MebCt0", labels, MetricType::Counter, [&](){ return _mebCount[0];           });
   exporter->add("TEB_MebCt1", labels, MetricType::Counter, [&](){ return _mebCount[1];           });
   exporter->add("TEB_MebCt2", labels, MetricType::Counter, [&](){ return _mebCount[2];           });
@@ -322,6 +325,7 @@ int Teb::configure(Trigger* trigger,
                    unsigned prescale)
 {
   _monitorCount = 0; // Cleared here to stay in sync with MEB
+  _nMonCount    = 0;
   for (unsigned i = 0; i < MAX_MEBS; ++ i)
     _mebCount[i] = 0;
 
@@ -405,12 +409,6 @@ void Teb::run()
   int rcPrv = 0;
   while (lRunning)
   {
-    uint64_t immData;
-    while(_mrqTransport.poll(&immData) > 0)
-    {
-      _monBufLists[ImmData::src(immData)].push(unsigned(immData));
-    }
-
     rc = EbAppBase::process();
     if (rc < 0)
     {
@@ -429,6 +427,12 @@ void Teb::run()
 
 void Teb::_monitor(ResultDgram* rdg)
 {
+  uint64_t immData;
+  while (_mrqTransport.poll(&immData) > 0)
+  {
+    _monBufLists[ImmData::src(immData)].push(unsigned(immData));
+  }
+
   auto allMebs{(1u << _prms.numMrqs) - 1};
   auto dsts{rdg->monitor() & allMebs};
   const bool roundRobin{dsts == allMebs};
@@ -454,10 +458,13 @@ void Teb::_monitor(ResultDgram* rdg)
       rdg->monBufNo(buffer);
 
       ++_monitorCount;
+      ++_mebCount[iMeb];
 
       return;
     }
   }
+
+  ++_nMonCount;                         // Count requests not monitored
 
   rdg->monitor(0);                      // Override monitor flags
 }
@@ -525,13 +532,6 @@ void Teb::process(EbEvent* event)
       _trigger->event(event->begin(), event->end(), *rdg); // Consume
       auto t1 = std::chrono::system_clock::now();
       _trgTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
-
-      auto monitor = rdg->monitor();
-      for (unsigned i = 0; i < MAX_MEBS; ++i)
-      {
-        if (monitor & 1)  ++_mebCount[i];
-        monitor >>= 1;
-      }
 
       // Handle prescale
       if (!rdg->persist() && !_wrtCounter--)
