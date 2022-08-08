@@ -36,6 +36,7 @@ class DsParms:
     smd_inprogress_converted: int
     timestamps:         np.ndarray
     intg_det:           str
+    _smd_callback:      int = 0
     terminate_flag:     bool = False
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table, det_stream_id_table):
@@ -65,6 +66,23 @@ class DsParms:
                 stream_id=self.det_stream_id_table[self.intg_det]
         return stream_id
 
+    def default_smd_callback(self, smd_ds):
+        for evt in smd_ds.events():
+            yield evt
+
+    def smd_callback(self, smd_ds):
+        # EventBuilder uses smd_callback to determine which events get yielded 
+        # (for big data fetching) and what destination to send them to. The
+        # default callback just loops and yields all events while the user-
+        # given one (_smd_callback) is expected to be a generator that yields
+        # some/none/all events.
+        if self._smd_callback == 0:
+           smd_callback = self.default_smd_callback
+        else:
+           smd_callback = self._smd_callback
+
+        for evt in smd_callback(smd_ds):
+            yield evt
 
 
 class DataSourceBase(abc.ABC):
@@ -88,6 +106,7 @@ class DataSourceBase(abc.ABC):
         self.dbsuffix  = ''          # calibration database name extension for private constants
         self.intg_det  = ''          # integrating detector name (contains marker ts for a batch)
         self.current_retry_no = 0    # global counting var for no. of read attemps
+        self.smd_callback= 0
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -108,6 +127,7 @@ class DataSourceBase(abc.ABC):
                     'timestamps',
                     'dbsuffix',
                     'intg_det',
+                    'smd_callback',
                     )
 
             for k in keywords:
@@ -147,6 +167,7 @@ class DataSourceBase(abc.ABC):
                 self.smd_inprogress_converted,
                 self.timestamps,
                 self.intg_det,
+                self.smd_callback,
                 )
 
         if 'mpi_ts' not in kwargs:
