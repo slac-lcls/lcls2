@@ -45,7 +45,7 @@ typedef struct {
     uint8_t     channel;
     uint8_t     error;
     uint8_t     mode;
-    uint8_t     reserved2[2];
+    uint16_t    scaleDenom;         // network byte order
 } encoder_channel_t;
 
 static_assert(sizeof(encoder_channel_t) == 32, "Data structure encoder_channel_t is not size 32");
@@ -95,13 +95,17 @@ public:
     unsigned unconfigure();
     void setOutOfOrder(std::string errMsg);
     bool getOutOfOrder() { return (m_outOfOrder); }
+    void setMissingData(std::string errMsg);
+    bool getMissingData() { return (m_missingData); }
     void process();
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
-    int drainFd(int fd);
+    int drainDataFd();
     int reset();
     enum { DefaultDataPort = 5006 };
+    enum { MajorVersion = 2, MinorVersion = 0, MicroVersion = 0 };
 private:
-    int _readFrame(encoder_frame_t *frame);
+    int _readFrame(encoder_frame_t *frame, bool& missing);
+    int _junkFrame();
     void _loopbackInit();
     void _loopbackFini();
     void _loopbackSend();
@@ -136,12 +140,12 @@ private:
     uint64_t m_nTooOld;
     uint64_t m_nTimedOut;
     int _dataFd;
-    char *_discard;
     // out-of-order support
     unsigned m_count;
     unsigned m_countOffset;
     bool m_resetHwCount;
     bool m_outOfOrder;
+    bool m_missingData;
     ZmqContext m_context;
     ZmqSocket m_notifySocket;
 };

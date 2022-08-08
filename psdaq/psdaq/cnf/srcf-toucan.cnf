@@ -4,11 +4,12 @@ ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PRE
 epics_env = f'EPICS_PVA_ADDR_LIST=172.21.156.77 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
 #epics_env = ld_lib_path
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
+teb_env = f'PYTHONPATH=/cds/home/c/claus/lclsii/daq/lcls2/install/lib/python3.7/site-packages'
+teb_env += f' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
 
-#collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
 
-groups = platform + ' 6' #+' 1'
+groups = platform + ' 7' + ' 6'
 hutch, user, password = ('tst', 'tstopr', 'pcds')
 auth = ' --user {:} --password {:} '.format(user,password)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
@@ -19,15 +20,17 @@ cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 #
 prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
 data_dir = f'/cds/data/drpsrcf'
+trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
 task_set = 'taskset -c 4-63'
 batching = 'batching=yes'
 directIO = 'directIO=yes'
+scripts  = f'script_path={trig_dir}'
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}'
 std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}'
 std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO}'
 
-teb_cmd  = f'{task_set} teb '+        std_opts
+teb_cmd  = f'{task_set} teb '+        std_opts + f' -k {scripts}'
 meb_cmd  = f'{task_set} monReqServer {std_opts}'
 
 drp_cmd0 = f'{task_set} drp '+   std_opts0
@@ -87,14 +90,15 @@ procmgr_config = [
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-srcf-cmp003', id:'teb0',        flags:'spux',                cmd:f'{teb_cmd}'},
+# {host: 'drp-srcf-cmp003', id:'teb0',        flags:'spux',                cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp003', id:'teb0',        flags:'spux', env:teb_env,  cmd:f'{teb_cmd}'},
 
-# {host: 'drp-srcf-cmp003', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 64 -q {ami_workers_per_node}'},
-# {host: 'drp-srcf-cmp003', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -R'},
+ {host: 'drp-srcf-cmp003', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 64 -q {ami_workers_per_node}'},
+ {host: 'drp-srcf-cmp003', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -R'},
 
  {host: 'drp-srcf-cmp001', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 
- {host: 'drp-srcf-cmp001', id:'bld_0',       flags:'spu', env:epics_env, cmd:f'{bld_cmd0} -l 0x1 -D ebeam,gmd,xgmd,pcav'},
+# {host: 'drp-srcf-cmp001', id:'bld_0',       flags:'spu', env:epics_env, cmd:f'{bld_cmd0} -l 0x1 -D ebeam,gmd,xgmd,pcav'},
 
  {host: 'drp-srcf-cmp003', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd0} -l 0x1'},
 

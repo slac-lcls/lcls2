@@ -255,8 +255,8 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
   int rc = pinThread(pthread_self(), _prms.core[1]);
   if (rc && _prms.verbose)
   {
-    logging::error("%s:\n  Error from pinThread:\n  %s",
-                   __PRETTY_FUNCTION__, strerror(rc));
+    logging::error("%s:\n  Error pinning thread to core %d:\n  %m",
+                   __PRETTY_FUNCTION__, _prms.core[1]);
   }
 
   logging::info("Receiver thread is starting");
@@ -414,8 +414,7 @@ void EbCtrbInBase::_deliverBypass(TebContributor& ctrb,
 {
   auto pid = inputs->pulseId();
   ResultDgram result(*inputs, 0);       // Bypass events are not monitorable (no buffer # received via TEB)
-  unsigned line = 0;                    // Revisit: For future expansion
-  result.persist(line, true);           // Always record bypass events
+  result.persist(true);                 // Always record bypass events
   result.setEOL();
   const ResultDgram* results = &result;
 

@@ -122,6 +122,7 @@ namespace Pds {
       unsigned  partition;         // The chosen system
       string_t  alias;             // Unique name passed on cmd line
       unsigned  id;                // EB instance identifier
+      unsigned  rogs;              // Bit list of all readout groups in use
       uint64_t  contributors;      // ID bit list of contributors
       u64arr_t  contractors;       // Ctrbs providing Inputs  per readout group
       u64arr_t  receivers;         // Ctrbs expecting Results per readout group

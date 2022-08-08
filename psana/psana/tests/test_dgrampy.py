@@ -2,6 +2,12 @@ from psana.dgrampy import DgramPy, AlgDef, DetectorDef, PyXtcFileIterator
 import os
 import numpy as np
 from psana import DataSource
+import pytest
+
+@pytest.fixture
+def output_filename(tmp_path):
+    fname = str(tmp_path / 'out-dgrampy-test.xtc2')
+    return fname
 
 def create_array(dtype):
     if dtype in (np.float32, np.float64):
@@ -12,17 +18,28 @@ def create_array(dtype):
                 np.arange(np.iinfo(dtype).max-2, np.iinfo(dtype).max+1, dtype=dtype)])
     return arr
 
-def test_output(fname):
+def check_output(fname):
     print(f"TEST OUTPUT by reading {fname} using DataSource")
     ds = DataSource(files=[fname])
     myrun = next(ds.runs())
     det = myrun.Detector('xpphsd')
+    det2 = myrun.Detector('xppcspad')
     for evt in myrun.events():
         det.fex.show(evt)
+        arrayRaw = det2.raw.raw(evt)
+        knownArrayRaw = create_array(np.float32)
+        # Convert the known array to the reformatted shape done by
+        # the detecter interface.
+        knownArrayRaw = np.reshape(knownArrayRaw, [1] + list(knownArrayRaw.shape))  
+        assert np.array_equal(arrayRaw, knownArrayRaw)
+        print(f'det2 arrayRaw: {arrayRaw}')
+        
+        # Currently only checking one field from the second detector
+        #assert np.array_equal(arrayRaw, create_array(np.float32))
 
 
-if __name__ == "__main__":
-    ifname = '/cds/data/drpsrcf/users/monarin/tmolv9418/tmolv9418-r0175-s000-c000.xtc2'
+def test_run_dgrampy(output_filename):
+    ifname = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'dgrampy-test.xtc2')
     fd = os.open(ifname, os.O_RDONLY)
     pyiter = PyXtcFileIterator(fd, 0x1000000)
     
@@ -46,10 +63,13 @@ if __name__ == "__main__":
                 "arrayFex8": (np.float32, 2),
                 "arrayFex9": (np.float64, 2),
               }
+
+    algdef2 = AlgDef("raw", 2, 3, 42)
+    detdef2 = DetectorDef("xppcspad", "cspad", "detnum1234")
+    datadef2 = {"arrayRaw": (np.float32, 2), }
     
     # Open output file for writing
-    ofname = 'out.xtc2'
-    xtc2file = open(ofname, "wb")
+    xtc2file = open(output_filename, "wb")
 
     names0 = None
     for i in range(6):
@@ -59,6 +79,7 @@ if __name__ == "__main__":
         if i == 0:
             config = DgramPy(pydg)
             det = config.Detector(detdef, algdef, datadef)
+            det2 = config.Detector(detdef2, algdef2, datadef2)
             config.save(xtc2file)
 
         # Add new Data to L1
@@ -81,6 +102,9 @@ if __name__ == "__main__":
             det.fex.arrayFex9 = create_array(np.float64)
             dgram.adddata(det.fex)
             
+            det2.raw.arrayRaw = create_array(np.float32)
+            dgram.adddata(det2.raw)
+            
             if i == 4:
                 dgram.removedata("hsd","raw") # per event removal 
             dgram.save(xtc2file)
@@ -91,5 +115,9 @@ if __name__ == "__main__":
             dgram.save(xtc2file)
 
     xtc2file.close()
+    
+    # Open the generated xtc2 file and test the value inside
+    check_output(output_filename)
 
-    test_output(ofname)
+if __name__ == "__main__":
+    test_run_dgrampy()

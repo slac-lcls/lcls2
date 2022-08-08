@@ -10,6 +10,12 @@
 #include <unordered_map>
 #include "psdaq/service/json.hpp"
 
+namespace Pds {
+  namespace Eb {
+    class ResultDgram;
+  }
+};
+
 namespace Drp {
 
 struct Parameters;
@@ -29,6 +35,7 @@ public:
     virtual unsigned disable  (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) {return 0;};
     virtual void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) { xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}}; };
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) = 0;
+    virtual void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) {};
     virtual void shutdown() {};
 
     // Scan methods.  Default is to fail.

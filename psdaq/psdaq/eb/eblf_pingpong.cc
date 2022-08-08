@@ -64,6 +64,8 @@ void usage(char *name, char *desc)
           "Number of exchanges",                  default_iters);
   fprintf(stderr, " %-20s %s (default: %d)\n",    "-c <core>",
           "CPU core to run on",                   default_core);
+  fprintf(stderr, " %-20s %s\n",                  "-E",
+          "Enables testing with EPICS by monitoring a PV");
   fprintf(stderr, " %-20s %s\n",                  "-S",
           "Start flag: one side must specify this");
   fprintf(stderr, " %-20s %s\n",                  "-v",
@@ -80,12 +82,13 @@ int main(int argc, char **argv)
   size_t      size     = default_size;
   unsigned    iters    = default_iters;
   int         core     = default_core;
+  bool        epics    = false;
   bool        start    = false;
   unsigned    verbose  = 0;
   std::string kwargs_str;
   kwmap_t     kwargs;
 
-  while ((op = getopt(argc, argv, "h?A:P:s:r:n:c:k:Sv")) != -1)
+  while ((op = getopt(argc, argv, "h?A:P:s:r:n:c:k:ESv")) != -1)
   {
     switch (op)
     {
@@ -94,6 +97,7 @@ int main(int argc, char **argv)
       case 's':  size       = atoi(optarg);                break;
       case 'n':  iters      = atoi(optarg);                break;
       case 'c':  core       = atoi(optarg);                break;
+      case 'E':  epics      = true;                        break;
       case 'S':  start      = true;                        break;
       case 'k':  kwargs_str = kwargs_str.empty()
                             ? optarg
@@ -161,6 +165,7 @@ int main(int argc, char **argv)
 
   size_t alignment = sysconf(_SC_PAGESIZE);
   size_t srcSize   = alignment * ((size + alignment - 1) / alignment);
+  size_t snkSize;
   void*  snkBuf    = nullptr;
   void*  srcBuf    = nullptr;
   rc               = posix_memalign(&srcBuf, alignment, srcSize);
@@ -170,6 +175,7 @@ int main(int argc, char **argv)
     return rc;
   }
 
+  // For testing to see if there is a conflict with EPICS:
   class PvMon : public Pds_Epics::PvMonitorBase
   {
   public:
@@ -205,7 +211,6 @@ int main(int argc, char **argv)
       fprintf(stderr, "Error connecting to client\n");
       return rc;
     }
-    size_t snkSize;
     if ( (rc = srvLinks[0]->prepare(id, &snkSize, "Srv")) < 0 )
     {
       fprintf(stderr, "Failed to prepare server's link\n");
@@ -222,7 +227,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to set up MemoryRegion\n");
       return rc;
     }
-    printf("EbLfClient (ID %d) connected\n", srvLinks[0]->id());
+    printf("EbLfClient ID %d connected to server\n", srvLinks[0]->id());
 
     clt = new EbLfClient(verbose, kwargs);
     if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, "Srv")) )
@@ -235,11 +240,12 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to prepare client's link\n");
       return rc;
     }
-    printf("EbLfServer (ID %d) connected\n", cltLinks[0]->id());
+    printf("EbLfServer ID %d connected to client\n", cltLinks[0]->id());
   }
   else
   {
-    pvMon = new PvMon("EM1K0:GMD:HPS:STR0:STREAM_SHORT2", "ca");
+    if (epics)
+      pvMon = new PvMon("EM1K0:GMD:HPS:STR0:STREAM_SHORT2", "ca");
 
     clt = new EbLfClient(verbose, kwargs);
     if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, "Clt")) )
@@ -252,7 +258,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to prepare client's link\n");
       return rc;
     }
-    printf("EbLfServer (ID %d) connected\n", cltLinks[0]->id());
+    printf("EbLfServer ID %d connected to client\n", cltLinks[0]->id());
 
     srv = new EbLfServer(verbose, kwargs);
     if ( (rc = linksStart(*srv, ifAddr, srvPort, nLinks, "Clt")) )
@@ -265,7 +271,6 @@ int main(int argc, char **argv)
       fprintf(stderr, "Error connecting to client\n");
       return rc;
     }
-    size_t snkSize;
     if ( (rc = srvLinks[0]->prepare(id, &snkSize, "Clt")) < 0)
     {
       fprintf(stderr, "Failed to prepare server's link\n");
@@ -282,7 +287,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to set up MemoryRegion\n");
       return rc;
     }
-    printf("EbLfClient (ID %d) connected\n", srvLinks[0]->id());
+    printf("EbLfClient ID %d connected to server\n", srvLinks[0]->id());
 
     if (cltLinks[0]->post(srcBuf, srcSize, 0, 0))
     {
@@ -322,9 +327,9 @@ int main(int argc, char **argv)
 
   if (rc == 0)
   {
-    double   usecs = std::chrono::duration_cast<us_t>(tEnd - tStart).count();
-    uint64_t bytes = (uint64_t)srcSize * iters * 2;
-    printf("%ld bytes in %.2f seconds = %.2f Mbit/sec\n",
+    double usecs = std::chrono::duration_cast<us_t>(tEnd - tStart).count();
+    size_t bytes = (srcSize + snkSize) * iters;
+    printf("%zd bytes in %.2f seconds = %.2f Mbit/sec\n",
            bytes, usecs / 1000000., bytes * 8. / usecs);
     printf("%d iters in %.2f seconds = %.2f usec/iter\n",
            iters, usecs / 1000000., usecs / iters);
@@ -350,6 +355,7 @@ int main(int argc, char **argv)
   if (pvMon)
   {
     printf("pvMon: name %s, connected %d\n", pvMon->name().c_str(), pvMon->connected());
+    delete pvMon;
   }
 
   return rc;

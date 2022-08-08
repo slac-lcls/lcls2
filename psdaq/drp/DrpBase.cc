@@ -190,6 +190,8 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        const std::shared_ptr<Pds::MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
+  m_det(nullptr),
+  m_tsId(-1u),
   m_mon(mon),
   m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] == "yes"),
   m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
@@ -495,6 +497,13 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
                            dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
     }
+    else { // L1Accept
+        // On just the timing system DRP, save the trigger information
+        if (m_det && (m_det->nodeId == m_tsId)) {
+            const void* bufEnd = (char*)dgram + m_pool.bufferSize();
+            m_det->event(*dgram, bufEnd, result);
+        }
+    }
 
     if (m_writing && !m_chunkRequest && (transitionId == XtcData::TransitionId::L1Accept)) {
         if (chunkSize() > DefaultChunkThresh) {
@@ -719,6 +728,9 @@ std::string DrpBase::connect(const json& msg, size_t id)
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }
+
+    // On the timing system DRP, EbReceiver needs to know its node ID
+    if (m_para.detType == "ts")  m_ebRecv->tsId(m_nodeId);
 
     return std::string{};
 }

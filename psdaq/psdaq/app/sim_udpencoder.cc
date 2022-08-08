@@ -15,6 +15,7 @@ char m_buf[sizeof(Drp::encoder_header_t) + sizeof(Drp::encoder_channel_t)];
 bool m_verbose = false;
 int m_data_port;
 int m_loopbackFd;
+int m_dropRequest;
 struct sockaddr_in m_loopbackAddr;
 uint16_t m_loopbackFrameCount;
 
@@ -40,8 +41,17 @@ Drp::encoder_frame_t  encoder_frame;
 static void sigHandler(int signal)
 {
   psignal(signal, "\nsim_udpencoder received signal");
-  tpr->stop();
-  ::exit(signal);
+
+  if (signal == SIGUSR1) {
+    printf("SIGUSR1: drop 1 frame\n");
+    m_dropRequest = 1;
+  } else if (signal == SIGUSR2) {
+    printf("SIGUSR2: drop 4 frames\n");
+    m_dropRequest = 4;
+  } else {
+    tpr->stop();
+    ::exit(signal);
+  }
 }
 
 int main(int argc, char* argv[])
@@ -96,8 +106,12 @@ int main(int argc, char* argv[])
 
   struct sigaction sa;
   sa.sa_handler = sigHandler;
-  sa.sa_flags = SA_RESETHAND;
 
+  sa.sa_flags = 0;
+  sigaction(SIGUSR1,&sa,NULL);
+  sigaction(SIGUSR2,&sa,NULL);
+
+  sa.sa_flags = SA_RESETHAND;
   sigaction(SIGINT ,&sa,NULL);
   sigaction(SIGABRT,&sa,NULL);
   sigaction(SIGKILL,&sa,NULL);
@@ -191,15 +205,23 @@ void _loopbackFini()
 
 void _loopbackSend()
 {
+    int sent = 0;
+
     if (m_verbose) printf("entered %s\n", __PRETTY_FUNCTION__);
 
-    // send frame
-    int sent = sendto(m_loopbackFd, (void *)m_buf, sizeof(m_buf), 0,
-                  (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
-
-    // increment frame counter
     Drp::encoder_header_t *pHeader = (Drp::encoder_header_t *)m_buf;
     uint16_t frameCount = ntohs(pHeader->frameCount);
+
+    if (m_dropRequest > 0) {
+        printf("%s: dropping frame #%hu\n", __PRETTY_FUNCTION__, frameCount);
+        -- m_dropRequest;
+    } else {
+        // send frame
+        sent = sendto(m_loopbackFd, (void *)m_buf, sizeof(m_buf), 0,
+                      (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
+    }
+
+    // increment frame counter
     pHeader->frameCount = htons(frameCount + 1);
 
     if (sent == -1) {
