@@ -21,6 +21,8 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/Xtc.hh"
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+
 using namespace XtcData;
 
 /*
@@ -43,7 +45,7 @@ void XtcIterator::iterate(Xtc* root, const void* bufEnd)
     int remaining = root->sizeofPayload();
 
     while (remaining > 0) {
-        if (bufEnd && (xtc > (Xtc*)bufEnd)) break; // protect against buffer overrun
+        if (bufEnd && UNLIKELY(xtc >= (Xtc*)bufEnd)) break; // protect against buffer overrun
         if (xtc->extent == 0) break; // try to skip corrupt event
         if (!process(xtc, bufEnd)) break;
         remaining -= xtc->sizeofPayload() + sizeof(Xtc);
