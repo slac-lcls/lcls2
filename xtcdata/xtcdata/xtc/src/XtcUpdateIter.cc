@@ -3,6 +3,7 @@
 #include <sys/time.h>
 
 using namespace XtcData;
+using namespace std;
 
 #define VERBOSE 0
 
@@ -172,13 +173,13 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
    For ShapesData, only those that are not filtered out are
    copied to _tmpbuf.
 */
-int XtcUpdateIter::process(Xtc* xtc)
+int XtcUpdateIter::process(Xtc* xtc, const void* bufEnd)
 {
     if (VERBOSE > 0) printf("\nXtcUpdateIter:process\n");
 
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
-        iterate(xtc);
+        iterate(xtc, bufEnd);
         break;
     }
     case (TypeId::Names): {
@@ -203,9 +204,9 @@ int XtcUpdateIter::process(Xtc* xtc)
         string sAlg(alg.name());
         _flagFilter.insert(pair<string, int>(sDet+"_"+sAlg, 0));
 
-        // Keep track of nodeId 
+        // Keep track of nodeId
         _nodeId = names.namesId().nodeId();
-        
+
         // Keep track of existing NamesId (for both lower and upper ranges)
         int distanceToMin = names.namesId().namesId() - _maxOfMinNamesId;
         int distanceToMax = names.namesId().namesId() - _minOfMaxNamesId;
@@ -268,7 +269,7 @@ int XtcUpdateIter::process(Xtc* xtc)
                 copy2cfgbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
             }
         } else {
-            // For ShapesData in non-configure dgrams, determines removed size 
+            // For ShapesData in non-configure dgrams, determines removed size
             // (if detname and alg matched with given))or copies ShapesData to tmp buffer
             string sDet(names.detName());
             string sAlg(alg.name());
@@ -276,7 +277,7 @@ int XtcUpdateIter::process(Xtc* xtc)
             int flagRemoved = 0;
 
             if (VERBOSE > 0)
-                cout << "  Check remove for det:" << sDet << " alg:" << sAlg << " "; 
+                cout << "  Check remove for det:" << sDet << " alg:" << sAlg << " ";
 
             for (itr = _flagFilter.begin(); itr != _flagFilter.end(); ++itr){
                 if (sDet+"_"+sAlg == itr->first) {
@@ -549,7 +550,7 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
 Dgram& XtcUpdateIter::createTransition(unsigned utransId,
         bool counting_timestamps,
         uint64_t timestamp_val,
-        void** bufEnd) 
+        const void** bufEnd)
 {
     TransitionId::Value transId = (TransitionId::Value) utransId;
     TypeId tid(TypeId::Parent, 0);

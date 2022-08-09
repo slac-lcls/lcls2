@@ -183,11 +183,11 @@ public:
         }
     }
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::Names): {
@@ -238,14 +238,14 @@ void save(Dgram& dg, FILE* xtcFile) {
     }
 }
 
-void show(Dgram& dg) {
+void show(Dgram& dg, const void* bufEnd) {
     printf("%s transition: time %d.%09d, env 0x%u, "
            "payloadSize %d extent %d\n",
            TransitionId::name(dg.service()), dg.time.seconds(),
            dg.time.nanoseconds(),
            dg.env, dg.xtc.sizeofPayload(),dg.xtc.extent);
     DebugIter dbgiter;
-    dbgiter.iterate(&(dg.xtc));
+    dbgiter.iterate(&(dg.xtc), bufEnd);
 }
 
 #define MAX_FNAME_LEN 256

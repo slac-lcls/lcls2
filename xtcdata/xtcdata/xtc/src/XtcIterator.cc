@@ -35,7 +35,7 @@ using namespace XtcData;
  ** --
  */
 
-void XtcIterator::iterate(Xtc* root)
+void XtcIterator::iterate(Xtc* root, const void* bufEnd)
 {
     if (root->damage.value() & (1 << Damage::Corrupted)) return;
 
@@ -43,8 +43,9 @@ void XtcIterator::iterate(Xtc* root)
     int remaining = root->sizeofPayload();
 
     while (remaining > 0) {
+        if (bufEnd && (xtc > (Xtc*)bufEnd)) break; // protect against buffer overrun
         if (xtc->extent == 0) break; // try to skip corrupt event
-        if (!process(xtc)) break;
+        if (!process(xtc, bufEnd)) break;
         remaining -= xtc->sizeofPayload() + sizeof(Xtc);
         xtc = xtc->next();
     }

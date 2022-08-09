@@ -177,11 +177,11 @@ public:
         }
     }
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::Names): {
@@ -302,15 +302,18 @@ int main(int argc, char* argv[])
 
         // Only access the first dgram (config)
         dg = cfg_iter.next();
-        
+        const void* bufEnd = ((char*)dg) + 0x4000000;
+
         // dbgiter will remember all the configs
-        if (debugprint) dbgiter.iterate(&(dg->xtc));
-        
+        if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
+
     }
 
     XtcFileIterator iter(fd, 0x4000000);
     unsigned nevent=0;
-    while ((dg = iter.next())) {
+    dg = iter.next();
+    const void* bufEnd = ((char*)dg) + 0x4000000;
+    while (dg) {
         if (nevent>=neventreq) break;
         nevent++;
         printf("event %d, %11s transition: time 0x%8.8x.0x%8.8x, env 0x%08x, "
@@ -319,12 +322,13 @@ int main(int argc, char* argv[])
                TransitionId::name(dg->service()), dg->time.seconds(),
                dg->time.nanoseconds(),
                dg->env, dg->xtc.sizeofPayload(),dg->xtc.damage.value(),dg->xtc.extent);
-        if (debugprint) dbgiter.iterate(&(dg->xtc));
+        if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
+        dg = iter.next();
     }
 
     if (cfg_fd >= 0) {
         ::close(cfg_fd);
-    } 
+    }
     ::close(fd);
     return 0;
 }

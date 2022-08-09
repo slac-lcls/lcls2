@@ -183,7 +183,7 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     if (jsonxtc.extent>m_para->maxTrSize)
         throw "**** Config json output too large for buffer\n";
 
-    XtcData::ConfigIter iter(&jsonxtc);
+    XtcData::ConfigIter iter(&jsonxtc, end);
     unsigned r = _configure(xtc,bufEnd,iter);
 
     // append the config xtc info to the dgram
@@ -224,7 +224,7 @@ Pds::TimingHeader* BEBDetector::getTimingHeader(uint32_t index) const
     return static_cast<Pds::TimingHeader*>(ebh->next());
 }
 
-std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, unsigned length) 
+std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, unsigned length)
 {
     EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)buffer, length);
     EvtBatcherSubFrameTail* ebsft = ebit.next();

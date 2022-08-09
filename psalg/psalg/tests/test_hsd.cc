@@ -40,16 +40,16 @@ class HsdIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    HsdIter(Xtc* xtc, NamesLookup& namesLookup) : XtcIterator(xtc), _namesLookup(namesLookup), eventHeader(0)
+    HsdIter(Xtc* xtc, const void* bufEnd, NamesLookup& namesLookup) : XtcIterator(xtc, bufEnd), _namesLookup(namesLookup), eventHeader(0)
     {
     }
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) {
 
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::ShapesData): {
@@ -119,12 +119,12 @@ int main (int argc, char* argv[]) {
     }
 
     XtcFileIterator iter(fd, 0x4000000);
-    Dgram* dg;
+    Dgram* dg = iter.next();
+    const void* bufEnd = ((char*)dg) + iter.size();
     //Stack stack;
     Heap stack;
 
-    dg = iter.next();
-    NamesIter namesIter(&dg->xtc);
+    NamesIter namesIter(&dg->xtc, bufEnd);
     namesIter.iterate();
 
 
@@ -145,7 +145,7 @@ int main (int argc, char* argv[]) {
             printf("Found event\n");
         }
 
-        HsdIter hsdIter(&dg->xtc, namesIter.namesLookup());
+        HsdIter hsdIter(&dg->xtc, bufEnd, namesIter.namesLookup());
         hsdIter.iterate();
 
         // Test DRP situation
