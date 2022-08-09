@@ -26,6 +26,9 @@
 #include <thread>
 #include <chrono>                       // Revisit: Temporary?
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
@@ -312,7 +315,7 @@ int EbAppBase::process()
 
   _ctrbSrc->observe(double(src));       // Revisit: For testing
 
-  if (unlikely(_verbose >= VL_BATCH))
+  if (UNLIKELY(_verbose >= VL_BATCH))
   {
     unsigned    env = idg->env;
     uint64_t    pid = idg->pulseId();
@@ -360,7 +363,7 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
     unsigned idx = (ofs - _bufRegSize[src]) / _maxTrSize[src];
     uint64_t imm = ImmData::value(ImmData::Transition, _id, idx);
 
-    if (unlikely(_verbose >= VL_EVENT))
+    if (UNLIKELY(_verbose >= VL_EVENT))
       printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",
              idx, src, imm);
 

@@ -62,7 +62,13 @@ class DgramManager(object):
         self._timestamps = [] # built when iterating
         self._run = run
         self.found_endrun = True
+
+        # We check for EndRun when we hit the end of RunSingleFile and RunShmem.
+        # If there's no EndRun, a fake one will be created. In this case,
+        # the BeginRun will be saved in the buffered_beginruns, so that
+        # reading can continue with the new but same BeginRun.
         self.buffered_beginruns = []
+
         self.max_retries = max_retries
         self.chunk_ids = []
         self.config_consumers = config_consumers

@@ -18,8 +18,6 @@
 
 #define BUFSIZE 0x4000000
 
-using namespace std;
-
 namespace XtcData
 {
 
@@ -38,28 +36,28 @@ public:
     void add(char* name, unsigned dtype, int rank){
         Name::DataType dt = (Name::DataType) dtype;
         NameVec.push_back({name, dt, rank});
-        string s(name);
-        _index.insert(pair<string, int>(s, _n_elems));
+        std::string s(name);
+        _index.insert(std::pair<std::string, int>(s, _n_elems));
         _n_elems++;
     }
 
     void show() {
         printf("List of names\n");
         for (auto i=NameVec.begin(); i!=NameVec.end(); ++i)
-            cout << i->name() << endl;
+            std::cout << i->name() << std::endl;
         printf("List of indices\n");
-        map<string, int>::iterator itr;
+        std::map<std::string, int>::iterator itr;
         for (itr = _index.begin(); itr != _index.end(); ++itr){
-            cout << '\t' << itr->first << '\t' << itr->second << '\n';
+            std::cout << '\t' << itr->first << '\t' << itr->second << '\n';
         }
     }
 
     int index(char* name) {
         // Locates name index using name in datadef
         // TODO: Add check for newIndex >= 0
-        string s(name);
+        std::string s(name);
         for (auto itr = _index.find(s); itr!=_index.end(); itr++){
-            //cout << "DataDef.index " << itr->first << '\t' << itr->second << '\n';
+            //std::cout << "DataDef.index " << itr->first << '\t' << itr->second << '\n';
             return itr->second;
         }
         return -1;
@@ -80,7 +78,7 @@ public:
     }
 
 private:
-    map<string, int> _index;
+    std::map<std::string, int> _index;
     int _n_elems;
 
 }; // end class DataDef
@@ -111,7 +109,7 @@ public:
         free(_cfgbuf);
     }
 
-    virtual int process(XtcData::Xtc* xtc);
+    virtual int process(XtcData::Xtc* xtc, const void* bufEnd);
 
     void get_value(int i, Name& name, DescData& descdata);
 
@@ -153,14 +151,14 @@ public:
 
         // Update max value of the lower range
         _maxOfMinNamesId = nextNamesId;
-        
+
         if (nextNamesId == _minOfMaxNamesId) {
             printf("*** NamesId full: next namesid %u not available\n", nextNamesId);
             throw "unavailable namesid";
         }
         return nextNamesId;
     }
-    
+
     void setCfgFlag(int cfgFlag) {
         _cfgFlag = cfgFlag;
     }
@@ -182,7 +180,7 @@ public:
     void addData(unsigned nodeId, unsigned namesId,
             unsigned* shape, char* data, DataDef& datadef, char* varname);
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
-                        uint64_t timestamp_val, void** bufEnd);
+                        uint64_t timestamp_val, const void** bufEnd);
     void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId);
     void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
     int getElementSize(unsigned nodeId, unsigned namesId,
@@ -201,7 +199,7 @@ public:
 private:
     NamesLookup _namesLookup;
     unsigned _numWords;
-    unique_ptr<CreateData> _newData;
+    std::unique_ptr<CreateData> _newData;
 
     // For L1Accept,
     // _tmpbuf is used for storing ShapesData
@@ -228,7 +226,7 @@ private:
     // Used for storing detName_algName (key) and its per-event
     // filter flag. 0 (initial values) means keeps while 1 means
     // filtered. This map gets reset to 0 when an event is saved.
-    map<string, int> _flagFilter;
+    std::map<std::string, int> _flagFilter;
 
     // Used for checking if this is a Configure dgram and allowing
     // writing to _cfgbuf when iterated.

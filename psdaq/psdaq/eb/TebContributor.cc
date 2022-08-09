@@ -24,6 +24,9 @@
 
 #include <unistd.h>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
@@ -205,7 +208,7 @@ void TebContributor::process(const EbDgram* dgram)
   auto rogs       = dgram->readoutGroups();
   bool contractor = rogs & _prms.contractor; // T if providing TEB input
 
-  if (likely(rogs & (1 << _prms.partition))) // Common RoG triggered
+  if (LIKELY(rogs & (1 << _prms.partition))) // Common RoG triggered
   {
     // On wrapping, post the batch at the end of the region, if any
     if (dgram == _batMan.batchRegion())
@@ -224,7 +227,7 @@ void TebContributor::process(const EbDgram* dgram)
     bool expired = _batMan.expired(       dgram->pulseId(),
                                    _batch.start->pulseId());
 
-    if (likely(!expired && !flush))     // Most frequent case when batching
+    if (LIKELY(!expired && !flush))     // Most frequent case when batching
     {
       _batch.end         = dgram;       // Append dgram to batch
       _batch.contractor |= contractor;
@@ -299,7 +302,7 @@ void TebContributor::_post(const Batch& batch)
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;
     uint32_t     data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
 
-    if (unlikely(_prms.verbose >= VL_BATCH))
+    if (UNLIKELY(_prms.verbose >= VL_BATCH))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
       printf("CtrbOut posts %9lu    batch[%8u]    @ "
@@ -395,7 +398,7 @@ void TebContributor::_post(const EbDgram* dgram)
       uint32_t data   = ImmData::value(ImmData::Transition |
                                        ImmData::NoResponse, _id, idx);
 
-      if (unlikely(_prms.verbose >= VL_BATCH))
+      if (UNLIKELY(_prms.verbose >= VL_BATCH))
       {
         unsigned    env    = dgram->env;
         unsigned    ctl    = dgram->control();

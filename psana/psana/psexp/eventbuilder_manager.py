@@ -10,11 +10,8 @@ class EventBuilderManager(object):
 
         pf                  = PacketFooter(view=view)
         views               = pf.split_packets()
-        self.eb             = EventBuilder(views, self.configs, dsparms.timestamps,
-                                           batch_size=dsparms.batch_size,
-                                           intg_stream_id=dsparms.intg_stream_id,
-                                           filter_fn=dsparms.filter,
-                                           destination=dsparms.destination,
+        self.eb             = EventBuilder(views, self.configs, 
+                                           dsparms=dsparms,
                                            run=run,
                                            prometheus_counter=c_filter)
 

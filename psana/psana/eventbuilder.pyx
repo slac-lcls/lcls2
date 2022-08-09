@@ -37,13 +37,10 @@ cdef class EventBuilder:
     cdef array.array dgram_timestamps
     cdef array.array event_timestamps
     cdef array.array services
+    cdef array.array evt_footer
     cdef list views
     cdef list configs
-    cdef uint64_t[:] filter_timestamps
-    cdef int batch_size
-    cdef int intg_stream_id
-    cdef PyObject* filter_fn
-    cdef PyObject* destination
+    cdef PyObject* dsparms
     cdef PyObject* run
     cdef PyObject* prometheus_counter
     cdef unsigned nevents
@@ -54,7 +51,7 @@ cdef class EventBuilder:
     cdef unsigned long max_ts
     cdef unsigned L1Accept 
 
-    def __init__(self, views, configs, uint64_t[:] filter_timestamps,
+    def __init__(self, views, configs,
             *args, **kwargs):
         self.nsmds              = len(views)
         self.offsets            = array.array('I', [0]*self.nsmds)
@@ -64,9 +61,13 @@ cdef class EventBuilder:
         self.dgram_timestamps   = array.array('L', [0]*self.nsmds)
         self.event_timestamps   = array.array('L', [0]*self.nsmds)
         self.services           = array.array('i', [0]*self.nsmds)
+        
+        # Keep size of all dgrams in an event with the last item storing no. of dgrams
+        self.evt_footer         = array.array('I', [0]*(self.nsmds+1))
+        self.evt_footer[-1]     = self.nsmds
+
         self.views              = views
         self.configs            = configs
-        self.filter_timestamps  = filter_timestamps
         self.nevents            = 0
         self.nsteps             = 0
         self.DGRAM_SIZE         = sizeof(Dgram)
@@ -75,20 +76,14 @@ cdef class EventBuilder:
     
         # Keyword args that need to be passed in once. To save some of
         # them as cpp class attributes, we need to read them in as PyObject*.
-        cdef char* kwlist[7]
-        kwlist[0] = "batch_size"
-        kwlist[1] = "intg_stream_id"                    # Overrides counting every event (got) with counting only events in this stream
-        kwlist[2] = "filter_fn"                         # A callback that takes an event and return True/False
-        kwlist[3] = "destination"                       # A callback that takes an event and return rank no.
-        kwlist[4] = "run"   
-        kwlist[5] = "prometheus_counter"
-        kwlist[6] = NULL
+        cdef char* kwlist[4]
+        kwlist[0] = "dsparms"
+        kwlist[1] = "run"   
+        kwlist[2] = "prometheus_counter"
+        kwlist[3] = NULL
 
-        if PyArg_ParseTupleAndKeywords(args, kwargs, "|iiOOOO", kwlist, 
-                &(self.batch_size),
-                &(self.intg_stream_id),
-                &(self.filter_fn),
-                &(self.destination),
+        if PyArg_ParseTupleAndKeywords(args, kwargs, "|OOO", kwlist, 
+                &(self.dsparms),
                 &(self.run),
                 &(self.prometheus_counter)) == False:
             raise RuntimeError, "Invalid kwargs for EventBuilder"
@@ -98,6 +93,27 @@ cdef class EventBuilder:
             if self.offsets[i] < self.sizes[i]:
                 return True
         return False
+
+    def events(self):
+        """ Yields an event built from the given views."""
+        pass
+
+    def gen_event_bytes(self, event_dgrams):
+        """ Generates event as bytes from the dgrams
+        This byte event is structured to be understood by PacketFooter.
+        """
+        evt_size = 0
+        evt_bytes = bytearray()
+        cdef short i = 0
+        for i in range(self.nsmds):
+            dgram = event_dgrams[i]
+            self.evt_footer[i] = 0
+            if dgram: 
+                self.evt_footer[i] = dgram.nbytes
+                evt_bytes.extend(bytearray(dgram))
+            evt_size += self.evt_footer[i]
+        evt_bytes.extend(self.evt_footer)
+        return evt_bytes, evt_size
 
     def build(self):
         """
@@ -111,11 +127,17 @@ cdef class EventBuilder:
 
         """
         # Cast PyObject* to Python object
-        filter_fn = <object> self.filter_fn
-        destination = <object> self.destination
+        dsparms = <object> self.dsparms
         run = <object> self.run
         prometheus_counter = <object> self.prometheus_counter
 
+        # Get parameters from dsparms
+        filter_timestamps = dsparms.timestamps
+        batch_size = dsparms.batch_size
+        intg_stream_id = dsparms.intg_stream_id
+        filter_fn = dsparms.filter
+        destination = dsparms.destination
+        
         cdef unsigned got       = 0
         cdef unsigned got_step  = 0
         batch_dict  = {} # keeps list of batches (w/o destination callback, only one batch is returned at index 0)
@@ -134,6 +156,7 @@ cdef class EventBuilder:
         # Setup event footer and batch footer - see above comments for the content of batch_dict
         cdef array.array int_array_template = array.array('I', [])
         cdef array.array evt_footer         = array.clone(int_array_template, self.nsmds + 1, zero=False)
+        evt_footer[-1] = self.nsmds
         cdef unsigned evt_footer_size       = sizeof(unsigned) * (self.nsmds + 1)
         cdef unsigned MAX_BATCH_SIZE        = 10000 
         cdef array.array batch_footer       = array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
@@ -164,10 +187,7 @@ cdef class EventBuilder:
         # is not given, this counts no. of events (equivalent to `got`).
         cdef cn_intg_events = 0
 
-        # Set no. of dgrams in an event 
-        evt_footer[-1] = self.nsmds
-
-        while cn_intg_events < self.batch_size and self._has_more():
+        while cn_intg_events < batch_size and self._has_more():
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
             array.zero(self.services)
@@ -193,8 +213,8 @@ cdef class EventBuilder:
                     aux_service = (d.env>>24)&0xf
                     
                     # check if user selected this timestamp (only applies to L1)
-                    if self.filter_timestamps.shape[0] > 0 and aux_service == self.L1Accept:
-                        while aux_ts not in self.filter_timestamps and aux_service == self.L1Accept:
+                    if filter_timestamps.shape[0] > 0 and aux_service == self.L1Accept:
+                        while aux_ts not in filter_timestamps and aux_service == self.L1Accept:
                             self.offsets[view_idx] += self.DGRAM_SIZE + payload
                             if self.offsets[view_idx] >= self.sizes[view_idx]:
                                 aux_ts = 0
@@ -266,16 +286,7 @@ cdef class EventBuilder:
                 PyBuffer_Release(&buf)
             
             # Generate event as bytes from the dgrams
-            evt_size = 0
-            evt_bytes = bytearray()
-            for dgram_idx in range(self.nsmds):
-                dgram = event_dgrams[dgram_idx]
-                evt_footer[dgram_idx] = 0
-                if dgram: 
-                    evt_footer[dgram_idx] = dgram.nbytes
-                    evt_bytes.extend(bytearray(dgram))
-                evt_size += evt_footer[dgram_idx]
-            evt_bytes.extend(evt_footer)
+            evt_bytes, evt_size = self.gen_event_bytes(event_dgrams)
 
             # If destination() is not specifed, use batch 0.
             dest_rank = 0
@@ -317,8 +328,8 @@ cdef class EventBuilder:
 
                 # Either counting no. of events normally or counting only
                 # events in integrating stream as set by `intg_stream_id`.
-                if self.intg_stream_id > -1:
-                    if self.event_timestamps[self.intg_stream_id] > 0:
+                if intg_stream_id > -1:
+                    if self.event_timestamps[intg_stream_id] > 0:
                         cn_intg_events += 1
                 else:
                     cn_intg_events += 1
@@ -336,7 +347,7 @@ cdef class EventBuilder:
                         print(f'Error: Transtion: {(ts >> 32) & 0xffffffff}.{ts & 0xffffffff} (service:{service}) is missing one or more dgrams (found: {cn_dgrams}/ expected: {self.nsmds})')
                         raise
 
-        # end while got < self.batch_size...
+        # end while got < batch_size...
         
         assert got <= MAX_BATCH_SIZE, f"No. of events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got})"
         assert got_step <= MAX_BATCH_SIZE, f"No. of transition events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got_step})"

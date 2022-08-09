@@ -149,7 +149,7 @@ namespace Drp {
             L2Iter() : XtcIterator() {}
 
             void get_value(int i, Name& name, DescData& descdata);
-            int process(Xtc*);
+            int process(Xtc*, const void* bufEnd);
         public:
             NamesLookup namesLookup;
             std::unordered_map<unsigned,ShapesData*> shapesdata;
@@ -664,12 +664,16 @@ unsigned TTSimL2::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Conf
 
     //  Retrieve the offline configuration for parsing the event data
     Dgram* dg;
+    void* end;
 #define FIND_CONFIG(iter,input)                                         \
-    while((dg=iter->next())) {                                          \
+    dg=iter->next();                                                    \
+    end=(char*)dg + iter->size();                                       \
+    while(dg) {                                                         \
         if (dg->service()==TransitionId::Configure) {                   \
-            input.process(&dg->xtc);                                    \
+            input.process(&dg->xtc, end);                               \
             break;                                                      \
         }                                                               \
+        dg=iter->next();                                                \
     }
 
     FIND_CONFIG(m_iter,m_input);
@@ -696,13 +700,17 @@ void TTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData:
 {
     m_filesem.take();
     Dgram* dg;
+    void* end;
 #define FIND_L1A(iter,input)                                            \
     while(1) {                                                          \
-        while((dg=iter->next())) {                                      \
+        dg=iter->next();                                                \
+        end=(char*)dg + iter->size();                                   \
+        while(dg) {                                                     \
             if (dg->service()==TransitionId::L1Accept) {                \
-                input.process(&dg->xtc);                                \
+                input.process(&dg->xtc, end);                           \
                 break;                                                  \
             }                                                           \
+            dg=iter->next();                                            \
         }                                                               \
         if (dg)                                                         \
             break;                                                      \
@@ -781,11 +789,11 @@ void _load_xtc(std::vector<uint8_t>& buffer, const char* filename)
     }
 }
 
-int Drp::Piranha::L2Iter::process(Xtc* xtc)
+int Drp::Piranha::L2Iter::process(Xtc* xtc, const void* bufEnd)
 {
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
-        iterate(xtc);
+        iterate(xtc, bufEnd);
         break;
     }
     case (TypeId::Names): {

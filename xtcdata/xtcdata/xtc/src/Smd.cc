@@ -35,11 +35,11 @@ public:
     CheckNamesIdIter(NamesId offset_namesId) : XtcIterator(),
                                                _offset_namesId(offset_namesId) {}
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::Names): {
@@ -66,7 +66,7 @@ void addNames(Xtc& parent, const void* bufEnd, NamesLookup& namesLookup, NamesId
 
     // check that our chose namesId isn't already in use
     CheckNamesIdIter checkNamesId(namesId);
-    checkNamesId.iterate(&parent);
+    checkNamesId.iterate(&parent, bufEnd);
 
     Names& offsetNames = *new(parent, bufEnd) Names(bufEnd, "smdinfo", alg, "offset", "", namesId);
     offsetNames.add(parent,bufEnd,SmdDef);

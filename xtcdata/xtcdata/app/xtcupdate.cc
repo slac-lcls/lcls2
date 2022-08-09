@@ -75,13 +75,13 @@ int main(int argc, char* argv[])
     char defName[] = "arrayFex";
     datadef.add(defName, Name::UINT8, 2);
 
-    while(dg = iter.next()) {
+    dg = iter.next();
+    const void* bufEnd = ((char*)dg) + 0x4000000;
+    while(dg) {
         if (nevent >= neventreq) break;
 
         nevent++;
         printf("event %d ", nevent);
-
-        const void* bufEnd = ((char*)dg) + 0x4000000;
 
         // add Names to configure
         if (dg->service() == TransitionId::Configure) {
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
             uiter.addNames(dg->xtc, bufEnd, detName, detType, detId,
                     nodeId, namesId, segment,
                     algName, major, minor, micro, datadef);
-            uiter.iterate(&(dg->xtc));
+            uiter.iterate(&(dg->xtc), bufEnd);
         }
 
         // add data to L1Accept
@@ -99,9 +99,10 @@ int main(int argc, char* argv[])
             uiter.createData(dg->xtc, bufEnd, nodeId, namesId);
             uint8_t data[6] = {141,142,143,144,145,146};
             uiter.addData(nodeId, namesId, shape, (char *)data, datadef, defName);
-            uiter.iterate(&(dg->xtc));
+            uiter.iterate(&(dg->xtc), bufEnd);
         }
         printf("\n");
+        dg = iter.next();
     }
 
     close(fd);

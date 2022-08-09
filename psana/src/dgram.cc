@@ -482,16 +482,16 @@ class PyConvertIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    PyConvertIter(Xtc* xtc, PyDgramObject* pyDgram, NamesLookup& namesLookup) :
-        XtcIterator(xtc), _pyDgram(pyDgram), _namesLookup(namesLookup)
+    PyConvertIter(Xtc* xtc, const void* bufEnd, PyDgramObject* pyDgram, NamesLookup& namesLookup) :
+        XtcIterator(xtc, bufEnd), _pyDgram(pyDgram), _namesLookup(namesLookup)
     {
     }
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) { //enum Type { Parent, ShapesData, Shapes, Data, Names, NumberOf };
         case (TypeId::Parent): {
-            iterate(xtc); // look inside anything that is a Parent
+            iterate(xtc, bufEnd); // look inside anything that is a Parent
             break;
         }
         case (TypeId::ShapesData): {
@@ -529,7 +529,9 @@ static void assignDict(PyDgramObject* self, PyDgramObject* configDgram) {
     if (isConfig) {
         configDgram = self; // we weren't passed a config, so we must be config
 
-        configDgram->namesIter = new NamesIter(&(configDgram->dgram->xtc));
+        auto configSize = sizeof(Dgram) + configDgram->dgram->xtc.sizeofPayload();
+        const void* configEnd = (char*)configDgram->dgram + configSize;
+        configDgram->namesIter = new NamesIter(&(configDgram->dgram->xtc), configEnd);
         configDgram->namesIter->iterate();
 
         dictAssignConfig(configDgram, configDgram->namesIter->namesLookup());
@@ -537,7 +539,9 @@ static void assignDict(PyDgramObject* self, PyDgramObject* configDgram) {
         self->namesIter = 0; // in case dgram was not created via dgram_init
     }
 
-    PyConvertIter iter(&self->dgram->xtc, self, configDgram->namesIter->namesLookup());
+    auto size = sizeof(Dgram) + self->dgram->xtc.sizeofPayload();
+    const void* bufEnd = (char*)(self->dgram) + size;
+    PyConvertIter iter(&self->dgram->xtc, bufEnd, self, configDgram->namesIter->namesLookup());
     iter.iterate();
 }
 
@@ -614,7 +618,7 @@ static int dgram_read(PyDgramObject* self, int sequential)
         off_t fOffset = (off_t)self->offset;
         readSuccess = read_with_retries(self->file_descriptor, self->dgram, self->size, fOffset, self->max_retries);
     }
-    
+
     //cout << "dgram_read offset=" << self->offset << " size=" << self->size << " readSuccess=" << readSuccess << endl;
     return readSuccess;
 }
@@ -671,7 +675,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                                      &self->offset,
                                      &self->size,
                                      &view,
-                                     &fake_endrun, 
+                                     &fake_endrun,
                                      &fake_endrun_sec,
                                      &fake_endrun_usec,
                                      &self->max_retries)) {
@@ -711,7 +715,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                 // For (1) and (3)
                 self->file_descriptor=fd;
             }
-            
+
             // We know size for 3 (already set at parsed arg) and 4
             if (fake_endrun == 1) {
                 self->size = sizeof(Dgram);
@@ -769,7 +773,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         }
         self->dgram = (Dgram*)(((char *)self->buf.buf) + self->offset);
         self->size = sizeof(Dgram) + self->dgram->xtc.sizeofPayload();
-    } // else if (!isView) 
+    } // else if (!isView)
 
     if (self->dgram == NULL) {
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
@@ -792,8 +796,8 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             return -1;
         }
     }
-    
-    // In case we got a renew config (second or more config dgram), we have to 
+
+    // In case we got a renew config (second or more config dgram), we have to
     // clear the given config (configDgram) to allow the next routines to use
     // self as a config and assign dictionary to it.
     if (self->dgram->service() == TransitionId::Configure) {

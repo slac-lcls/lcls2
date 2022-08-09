@@ -1,6 +1,7 @@
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
 from psana.psexp import *
+#from psana.psexp.smd_ds import SmdDataSource
 import os, time
 from psana import dgram
 from psana.event import Event
@@ -14,16 +15,7 @@ class BatchIterator(object):
 
     SmdReaderManager returns this object when a chunk is read.
     """
-    def __init__(self, 
-                 views, 
-                 configs, 
-                 run, 
-                 batch_size=1, 
-                 filter_fn=0, 
-                 destination=0, 
-                 timestamps=0,
-                 intg_stream_id=-1):
-        
+    def __init__(self, views, configs, run, dsparms):
         empty_view = True
         for view in views:
             if view:
@@ -33,13 +25,14 @@ class BatchIterator(object):
         if empty_view:
             self.eb = None
         else:
-            self.eb = EventBuilder(views, configs, timestamps,
-                    batch_size=batch_size,
-                    intg_stream_id=intg_stream_id,
-                    filter_fn=filter_fn,
-                    destination=destination,
+            self.eb = EventBuilder(views, configs, 
+                    dsparms=dsparms,
                     run=run,
                     prometheus_counter=None)
+            #self.smd_ds = SmdDataSource(configs, self.eb, run=run)
+            #for evt in dsparms.smd_callback(self.smd_ds):
+            #    print(f'smd evt={evt}')
+            
 
 
     def __iter__(self):
@@ -52,11 +45,15 @@ class BatchIterator(object):
         # while updating offsets of each smd memoryview
         if not self.eb: 
             raise StopIteration
-
+        
         batch_dict, step_dict = self.eb.build()
         if self.eb.nevents == 0 and self.eb.nsteps == 0: 
             raise StopIteration
         return batch_dict, step_dict
+
+        #for evt in self.dsparms.smd_callback(self.smd_ds):
+        #    batch_dict, step_dict = self.eb.pack(evt)
+        #    yield batch_dict, step_dict
 
 
 
@@ -158,12 +155,7 @@ class SmdReaderManager(object):
         
         self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=intg_stream_id)
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
-        batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, 
-                batch_size      = self.dsparms.batch_size, 
-                filter_fn       = self.dsparms.filter, 
-                destination     = self.dsparms.destination,
-                timestamps      = self.dsparms.timestamps,
-                intg_stream_id  = intg_stream_id)
+        batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, self.dsparms)
         self.got_events = self.smdr.view_size
         self.processed_events += self.got_events
         return batch_iter

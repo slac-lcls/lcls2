@@ -11,7 +11,7 @@ import numbers
 import io
 
 # Need a different name to prevent clashing with cpp class
-from psana.psexp import TransitionId as PyTransitionId 
+from psana.psexp import TransitionId as PyTransitionId
 
 
 class AlgDef:
@@ -96,6 +96,10 @@ cdef class PyDataDef:
 cdef class PyXtc():
     cdef Xtc* cptr
 
+    # Limit identifier for the dgram. We use size() from XtcFileiterator
+    # to identify the end of the buffer in case of reading it from a file.
+    cdef const void* bufEnd
+
     # No constructor - the Xtc ptr gets assigned elsewhere.
 
     def sizeofPayload(self):
@@ -107,7 +111,7 @@ cdef class PyDgram():
 
     # Limit identifier for the dgram. We use size() from XtcFileiterator
     # to identify the end of the buffer in case of reading it from a file.
-    cdef void* bufEnd           
+    cdef const void* bufEnd
 
     def __cinit__(self, dgram):
         self.cptr = <Dgram*>PyCapsule_GetPointer(dgram._get_dgram_ptr(),"dgram")
@@ -118,6 +122,7 @@ cdef class PyDgram():
     def get_pyxtc(self):
         pyxtc = PyXtc()
         pyxtc.cptr = &(self.cptr.xtc)
+        pyxtc.bufEnd = self.bufEnd
         return pyxtc
 
     def get_size(self):
@@ -140,11 +145,14 @@ cdef class PyXtcUpdateIter():
     def __cinit__(self):
         self.cptr = new XtcUpdateIter(self._numWords)
 
+    def __dealloc__(self):
+        del self.cptr
+
     def process(self, PyXtc pyxtc):
-        self.cptr.process(pyxtc.cptr)
+        self.cptr.process(pyxtc.cptr, pyxtc.bufEnd)
 
     def iterate(self, PyXtc pyxtc):
-        self.cptr.iterate(pyxtc.cptr)
+        self.cptr.iterate(pyxtc.cptr, pyxtc.bufEnd)
 
     def get_buf(self):
         cdef char[:] buf
@@ -180,14 +188,14 @@ cdef class PyXtcUpdateIter():
     def names(self, PyDgram pydg, detdef, algdef, PyDataDef pydatadef,
             nodeId, namesId, segment):
         cdef PyXtc pyxtc = pydg.get_pyxtc()
-        
+
         # Passing string to c needs utf-8 encoding
         detName = detdef.name.encode()
         detType = detdef.dettype.encode()
         detId   = detdef.detid.encode()
         algName = algdef.name.encode()
 
-        # For automatic assignment, 
+        # For automatic assignment,
         # for namesId, increment the current value by 1.
         # for nodeId, use the current nodeId of this Configure.
         # for segment, use 0.
@@ -261,7 +269,7 @@ cdef class PyXtcUpdateIter():
             timestamp_val = 0
 
         pydg = PyDgram()
-        # This returns Dgram and updates bufEnd to point to 
+        # This returns Dgram and updates bufEnd to point to
         # buffer size of the dgram (defined in XtcUpdateIter).
         pydg.cptr = &(self.cptr.createTransition(transId,
                 counting_timestamps, timestamp_val, &(pydg.bufEnd)))
@@ -272,7 +280,7 @@ cdef class PyXtcUpdateIter():
 
     def set_cfgwrite(self, int flag):
         self.cptr.setCfgWriteFlag(flag)
-    
+
     def set_cfg(self, int flag):
         self.cptr.setCfgFlag(flag)
 
@@ -299,12 +307,12 @@ class DgramPy:
     new dgram when `TransitionId` is given and allow modifications
     on the dgram.
     """
-    def __init__(self, 
-                 PyDgram pydg=None, 
+    def __init__(self,
+                 PyDgram pydg=None,
                  config=None,
                  transition_id=None,
                  ts=-1):
-        # We need to have only one PyXtcUpdateIter when working with 
+        # We need to have only one PyXtcUpdateIter when working with
         # the same xtc. This class always read in config first and
         # populates NamesLookup, which is used by other dgrams.
         if pydg:
@@ -337,17 +345,17 @@ class DgramPy:
             nodeId=None, namesId=None, segment=None):
         """Returns Names object, which represents to a detector."""
         assert self.uiter.is_config() == 1, "Expect a Configure dgram."
-        
+
         # Creates a datadef from data definition dictionary
         pydatadef = PyDataDef()
         dt = DataType()
         for key, (numpy_dtype, rank)  in datadef_dict.items():
             pydatadef.add(key, dt.to_psana2(numpy_dtype), rank)
-        
+
         det = self.uiter.names(self.pydg, detdef, algdef, pydatadef,
                 nodeId, namesId, segment)
         setattr(det, 'datadef', pydatadef)
-        
+
         class Container:
             """Make datadef available as attributes of det.alg."""
             def __init__(self):
@@ -364,26 +372,26 @@ class DgramPy:
     def adddata(self, data_container):
         cdef array.array shape = array.array('I', [0,0,0,0,0])
         cdef int i
-        
+
         det = data_container._det
         self.uiter.createdata(self.pydg, det)
-        
+
         pydatadef = det.datadef
         datadict = data_container.__dict__
         dt = DataType()
 
         for datadef_name, data in datadict.items():
             # Skips all reserved names
-            if datadef_name.startswith('_'): 
+            if datadef_name.startswith('_'):
                 continue
-            
+
             assert data is not None, f"Missing data for '{datadef_name}'."
 
             # Check rank (dimension) of data (note that string is rank 1 in psana2).
             data_rank = np.ndim(data)
-            if isinstance(data, str): 
+            if isinstance(data, str):
                 data_rank = 1
-            
+
             # Prepares error messages for incorrect ranks and types
             err_r = f"Incorrect rank for '{datadef_name}'. Expected: {pydatadef.get_rank(datadef_name)}."
             err_t = f"Incorrect type for '{datadef_name}'. Expected: {DataType.nptypes[pydatadef.get_dtype(datadef_name)]}."
@@ -402,7 +410,7 @@ class DgramPy:
                 # Handle array type
                 assert data.dtype.type != np.str_, f"Incorrect data for '{datadef_name}'. Array of string is not permitted. Use string instead (e.g. 'hello world')."
                 assert pydatadef.get_dtype(datadef_name) == dt.to_psana2(data.dtype.type), err_t
-                
+
                 array.zero(shape)
                 for i in range(len(shape)):
                     if i < len(data.shape):
@@ -416,21 +424,21 @@ class DgramPy:
         self.uiter.set_filter(det_name, alg_name)
 
     def save(self, out, offset=0):
-        """ 
+        """
         For L1Accept,
         Copies ShapesData to _tmpbuf and update
         parent dgram extent to new size (if some ShapesData
-        were removed. 
-        
+        were removed.
+
         For Configure,
-        Calls iterate after setting cfgWriteFlag to True. This 
+        Calls iterate after setting cfgWriteFlag to True. This
         does two things:
         1. Iterating Names (writing is optional because we also
-        just want to count NodeId and NamesId here). will also 
+        just want to count NodeId and NamesId here). will also
         save to _cfgbuf
-        2. Iterating ShapesData (writing is always) will save to 
-        _cfgbuf instead of _tmpbuf (for non-configure dgrams). 
-        
+        2. Iterating ShapesData (writing is always) will save to
+        _cfgbuf instead of _tmpbuf (for non-configure dgrams).
+
         The parent dgram and _tmpbuf/_cfgbuf are then
         copied to _buf as one new event.
         """
@@ -440,8 +448,8 @@ class DgramPy:
         if self.pydg.service() == PyTransitionId.Configure:
             is_config = True
             self.uiter.set_cfgwrite(True)
-        
-        # Copies Names for Configure or ShapesData for L1Accept 
+
+        # Copies Names for Configure or ShapesData for L1Accept
         # (also applies remove for ShapesData).
         self.uiter.iterate(pyxtc)
 
@@ -449,7 +457,7 @@ class DgramPy:
         cdef uint32_t removed_size = self.uiter.get_removed_size()
         if removed_size > 0:
             self.pydg.dec_extent(removed_size)
-        
+
         # Copy updated parent dgram and _tmpbuf/_cfgbuf to _buf then save.
         # We support two types of output:
         # 1. Binary file (IOBase) - copy _tmpbuf/_cfgbuf with parent dgram
