@@ -10,6 +10,9 @@
 #include <new>
 #include <chrono>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
@@ -169,7 +172,7 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
   void* buffer = _epochFreelist->alloc(sizeof(EbEpoch));
-  if (buffer)
+  if (LIKELY(buffer))
   {
     EbEpoch*  epoch = ::new(buffer) EbEpoch(key, after);
 
@@ -223,7 +226,7 @@ EbEvent* EventBuilder::_event(EbEpoch*            epoch,
                               const time_point_t& t0)
 {
   void* buffer = _eventFreelist->alloc(sizeof(EbEvent));
-  if (buffer)
+  if (LIKELY(buffer))
   {
     EbEvent* event = ::new(buffer) EbEvent(contract(ctrb),
                                            after,
@@ -492,9 +495,13 @@ void EventBuilder::process(const EbDgram* ctrb,
   {
     event = _insert(epoch, ctrb, event, imm++, t0);
 
-    if (!event->_remaining)  due = event;
+    if (!event->_remaining)
+    {
+      if (due && (event->_contract != due->_contract))  _flush(due);
+      due = event;
+    }
 
-    if (_verbose >= VL_EVENT)
+    if (UNLIKELY(_verbose >= VL_EVENT))
     {
       unsigned  env = ctrb->env;
       unsigned  ctl = ctrb->control();
