@@ -40,6 +40,9 @@
 
 #include "rapidjson/document.h"
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
@@ -474,7 +477,7 @@ void Teb::process(EbEvent* event)
   // Accumulate output datagrams (result) from the event builder into a batch
   // datagram.  When the batch completes, post it to the contributors.
 
-  if (unlikely(_prms.verbose >= VL_DETAILED))
+  if (UNLIKELY(_prms.verbose >= VL_DETAILED))
   {
     printf("Teb::process event dump:\n");
     event->dump(_eventIdx);
@@ -491,7 +494,7 @@ void Teb::process(EbEvent* event)
 
   unsigned imm = event->immData();
   uint64_t pid = dgram->pulseId();
-  if (unlikely(!(pid > _pidPrv)))
+  if (UNLIKELY(!(pid > _pidPrv)))
   {
     event->damage(Damage::OutOfOrder);
 
@@ -549,7 +552,7 @@ void Teb::process(EbEvent* event)
     // Avoid sending Results to contributors that failed to supply Input
     uint64_t dsts = _receivers(dgram->readoutGroups()) & ~event->remaining();
 
-    if (unlikely(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
+    if (UNLIKELY(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
     {
       const char* svc = TransitionId::name(rdg->service());
       uint64_t    pid = rdg->pulseId();
@@ -591,7 +594,7 @@ void Teb::process(EbEvent* event)
       }
     }
 
-    if (unlikely(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
+    if (UNLIKELY(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
     {
       const char* svc = TransitionId::name(dgram->service());
       unsigned    ctl = dgram->control();
@@ -645,7 +648,7 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
   bool                expired = _batMan.expired(       dgram->pulseId(),
                                                 _batch.start->pulseId());
 
-  if (likely(!expired && !flush))       // Most frequent case when batching
+  if (LIKELY(!expired && !flush))       // Most frequent case when batching
   {
     _batch.end   = dgram;               // Append dgram to batch
     _batch.dsts |= dsts;
@@ -685,7 +688,7 @@ void Teb::_post(const Batch& batch)
 
   batch.end->setEOL();                  // Terminate the batch
 
-  if (unlikely(_prms.verbose >= VL_BATCH))
+  if (UNLIKELY(_prms.verbose >= VL_BATCH))
   {
     uint64_t pid = batch.start->pulseId();
     printf("TEB posts          %9lu result  [%8u] @ "
@@ -700,7 +703,7 @@ void Teb::_post(const Batch& batch)
 
     destns &= ~(1ul << dst);
 
-    if (unlikely(_prms.verbose >= VL_BATCH))
+    if (UNLIKELY(_prms.verbose >= VL_BATCH))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
       printf("                                      to DRP %2u @ %16p\n",

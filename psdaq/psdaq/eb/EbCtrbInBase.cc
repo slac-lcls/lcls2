@@ -20,6 +20,9 @@
 #include <bitset>
 #include <chrono>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 
 using namespace XtcData;
 using namespace Pds;
@@ -308,7 +311,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   auto     ofs = idx * _maxResultSize;
   auto     bdg = static_cast<const ResultDgram*>(lnk->lclAdx(ofs)); // (char*)_region + ofs;
 
-  if (unlikely(_prms.verbose >= VL_BATCH))
+  if (UNLIKELY(_prms.verbose >= VL_BATCH))
   {
     auto     pid     = bdg->pulseId();
     unsigned ctl     = bdg->control();
@@ -340,7 +343,7 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
     if (!inputs && !pending.peek(inputs)) // If there are no left-over Inputs, and
       break;                              // no new Inputs batch, nothing to do
 
-    if (unlikely(!(inputs->readoutGroups() & (1 << _prms.partition))))
+    if (UNLIKELY(!(inputs->readoutGroups() & (1 << _prms.partition))))
     {                                     // Common RoG didn't trigger
       _deliverBypass(ctrb, inputs);       // Handle bypass event
       continue;
@@ -446,7 +449,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
   while (rPid <= iPid)
   {
     uint64_t rPidPrv = 0;
-    if (unlikely(!(rPid > rPidPrv)))
+    if (UNLIKELY(!(rPid > rPidPrv)))
     {
       logging::critical("%s:\n  rPid %014lx <= rPidPrv %014lx\n",
                         __PRETTY_FUNCTION__, rPid, rPidPrv);
@@ -461,7 +464,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
     // contribution that was subsequently fixed up by the TEB.  In both cases
     // there is validly no Input corresponding to the Result.
 
-    if (unlikely(_prms.verbose >= VL_EVENT))
+    if (UNLIKELY(_prms.verbose >= VL_EVENT))
     {
       auto env    = result->env;
       auto src    = result->xtc.src.value();
@@ -476,7 +479,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
     if (rPid == iPid)
     {
       static uint64_t iPidPrv = 0;
-      if (unlikely(!(iPid > iPidPrv)))
+      if (UNLIKELY(!(iPid > iPidPrv)))
       {
         logging::critical("%s:\n  iPid %014lx <= iPidPrv %014lx\n",
                           __PRETTY_FUNCTION__, iPid, iPidPrv);

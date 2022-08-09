@@ -27,6 +27,9 @@
 #include <climits>                      // For HOST_NAME_MAX
 #include <chrono>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
@@ -135,7 +138,7 @@ namespace Pds {
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf, size_t bSz)
     {
-      if (unlikely(_prms.verbose >= VL_EVENT))
+      if (UNLIKELY(_prms.verbose >= VL_EVENT))
         printf("_copyDatagram:   dg %p, ts %u.%09u to %p\n",
                dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
 
@@ -173,7 +176,7 @@ namespace Pds {
     {
       unsigned idx = dg->xtc.src.value();
 
-      if (unlikely(_prms.verbose >= VL_EVENT))
+      if (UNLIKELY(_prms.verbose >= VL_EVENT))
         printf("_deleteDatagram: dg %p, ts %u.%09u, idx %u\n",
                dg, dg->time.seconds(), dg->time.nanoseconds(), idx);
 
@@ -232,7 +235,7 @@ namespace Pds {
 
         rc = _mrqLinks[iTeb]->EbLfLink::post(data);
 
-        if (unlikely(_prms.verbose >= VL_EVENT))
+        if (UNLIKELY(_prms.verbose >= VL_EVENT))
           printf("_requestDatagram: Post %u EB[iTeb %u], value %08x, rc %d\n",
                  i, iTeb, data, rc);
 
@@ -486,7 +489,7 @@ void Meb::process(EbEvent* event)
   }
 
   uint64_t pid = dgram->pulseId();
-  if (unlikely(!(pid > _pidPrv)))
+  if (UNLIKELY(!(pid > _pidPrv)))
   {
     event->damage(Damage::OutOfOrder);
 

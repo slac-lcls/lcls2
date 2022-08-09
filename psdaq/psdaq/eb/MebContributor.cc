@@ -13,6 +13,9 @@
 #include <cstdint>
 #include <string>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 using namespace XtcData;
 using namespace Pds::Eb;
 using logging  = psalg::SysLog;
@@ -239,7 +242,7 @@ int MebContributor::post(const EbDgram* dgram)
     uint64_t offset = _bufRegSize + idx * _maxTrSize;
     uint32_t data   = ImmData::value(ImmData::Transition, _id, idx);
 
-    if (unlikely(_verbose >= VL_BATCH))
+    if (UNLIKELY(_verbose >= VL_BATCH))
     {
       printf("MebCtrb rcvd transition buffer           [%2u] @ "
              "%16p, ofs %016lx = %08zx + %2u * %08zx,     src %2u\n",
