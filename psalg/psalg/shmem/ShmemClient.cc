@@ -247,6 +247,11 @@ ShmemClient::ShmemClient() :
 
 ShmemClient::~ShmemClient()
 {
+  _shutdown();
+}
+
+void ShmemClient::_shutdown()
+{
   if (_myInputEvQueue != (mqd_t)-1)        mq_close(_myInputEvQueue);
 
   for (unsigned i = 0; i < _numberOfEvQueues; ++i)
@@ -256,10 +261,10 @@ ShmemClient::~ShmemClient()
 
   // Avoid race with server and let it unlink the mqueues
 
-  if (_handler)  delete _handler;
-  delete [] _myOutputEvQueue;
+  if (_handler)          { delete    _handler;          _handler = 0; }
+  if (_myOutputEvQueue)  { delete [] _myOutputEvQueue;  _myOutputEvQueue = nullptr; }
 
-  if (!(_myTrFd < 0))  ::close(_myTrFd);
+  if (!(_myTrFd < 0))    { ::close(_myTrFd);            _myTrFd = -1; }
 }
 
 /*
@@ -312,6 +317,9 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 
   umask(0);   // Need this to set group/other write permissions on mqueue
 
+  // In case resources are still lingering from a previous call, shut down first
+  _shutdown();
+
   XtcMonitorMsg myMsg;
   unsigned priority;
 
@@ -322,6 +330,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   _myTrFd = ::socket(AF_INET, SOCK_STREAM, 0);
   if (_myTrFd < 0) {
     perror("Opening myTrFd socket");
+    delete[] qname;
     return 1;
     }
 
@@ -331,9 +340,9 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 	error++;
 
   if (mq_receive(discoveryQueue, (char*)&myMsg, sizeof(myMsg), &priority) < 0) {
-	perror("mq_receive discoveryQ");
-        delete[] qname;
-	return ++error;
+    perror("mq_receive discoveryQ");
+    delete[] qname;
+    return ++error;
     }
 
   mq_close(discoveryQueue);
