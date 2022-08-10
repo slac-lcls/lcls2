@@ -64,7 +64,7 @@
 #define CLIENTS(i)       (0x00800080 + i*0x20)
 #define DMA_LANES(i)     (0x00800100 + i*0x20)
 
-//#define NEWTEM
+#define NEWTEM
 #ifdef NEWTEM
 #define XMA_REG(i)       (0x00C28000 + i)
 #define TEB_REG(i)       (0x00C29000 + i)

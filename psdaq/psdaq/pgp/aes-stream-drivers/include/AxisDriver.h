@@ -10,12 +10,12 @@
  * Description:
  * Defintions and inline functions for interacting with AXIS driver.
  * ----------------------------------------------------------------------------
- * This file is part of the aes_stream_drivers package. It is subject to 
- * the license terms in the LICENSE.txt file found in the top-level directory 
- * of this distribution and at: 
- *    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
- * No part of the aes_stream_drivers package, including this file, may be 
- * copied, modified, propagated, or distributed except according to the terms 
+ * This file is part of the aes_stream_drivers package. It is subject to
+ * the license terms in the LICENSE.txt file found in the top-level directory
+ * of this distribution and at:
+ *    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html.
+ * No part of the aes_stream_drivers package, including this file, may be
+ * copied, modified, propagated, or distributed except according to the terms
  * contained in the LICENSE.txt file.
  * ----------------------------------------------------------------------------
 **/
@@ -25,6 +25,7 @@
 
 // Commands
 #define AXIS_Read_Ack 0x2001
+#define AXIS_Write_ReqMissed 0x2002
 
 // Everything below is hidden during kernel module compile
 #ifndef DMA_IN_KERNEL
@@ -58,6 +59,11 @@ static inline uint32_t axisGetCont(uint32_t flags) {
 // Read ACK
 static inline void axisReadAck (int32_t fd) {
    ioctl(fd,AXIS_Read_Ack,0);
+}
+
+// Write Req Missed
+static inline void axisWriteReqMissed (int32_t fd) {
+   ioctl(fd,AXIS_Write_ReqMissed,0);
 }
 
 #endif

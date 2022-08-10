@@ -1,12 +1,11 @@
 /**
  *-----------------------------------------------------------------------------
- * Title      : AXI Version
+ * Title      : GPU Async Header
  * ----------------------------------------------------------------------------
- * File       : AxiVersion.h
- * Created    : 2017-03-17
+ * File       : GpuAsync.h
  * ----------------------------------------------------------------------------
  * Description:
- * AXI Version Record
+ * Defintions and inline functions for using GPU Async features.
  * ----------------------------------------------------------------------------
  * This file is part of the aes_stream_drivers package. It is subject to
  * the license terms in the LICENSE.txt file found in the top-level directory
@@ -17,45 +16,38 @@
  * contained in the LICENSE.txt file.
  * ----------------------------------------------------------------------------
 **/
-#ifndef __AXI_VERSION_H__
-#define __AXI_VERSION_H__
-
-#ifdef DMA_IN_KERNEL
-#include <linux/types.h>
-#else
-#include <stdint.h>
-#endif
+#ifndef __GPU_ASYNC_H__
+#define __GPU_ASYNC_H__
+#include "DmaDriver.h"
 
 // Commands
-#define AVER_Get 0x1200
+#define GPU_Add_Nvidia_Memory 0x8002
+#define GPU_Rem_Nvidia_Memory 0x8003
 
-// AXI Version Data
-struct AxiVersion {
-   uint32_t firmwareVersion;
-   uint32_t scratchPad;
-   uint32_t upTimeCount;
-   uint8_t  fdValue[8];
-   uint32_t userValues[64];
-   uint32_t deviceId;
-   uint8_t  gitHash[160];
-   uint8_t  dnaValue[16];
-   uint8_t  buildString[256];
+// NVidia Data
+struct GpuNvidiaData {
+   uint32_t   write;
+   uint64_t   address;
+   uint32_t   size;
 };
 
 // Everything below is hidden during kernel module compile
 #ifndef DMA_IN_KERNEL
-#include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <sys/signal.h>
-#include <sys/fcntl.h>
 
-// Read AXI Version
-static inline ssize_t axiVersionGet(int32_t fd, struct AxiVersion * aVer ) {
-   return(ioctl(fd,AVER_Get,aVer));
+// Add NVIDIA Memory
+static inline ssize_t gpuAddNvidiaMemory(int32_t fd, uint32_t write, uint64_t address, uint32_t size) {
+   struct GpuNvidiaData dat;
+
+   dat.write    = write;
+   dat.address  = address;
+   dat.size     = size;
+
+   return(ioctl(fd,GPU_Add_Nvidia_Memory,&dat));
+}
+
+// Rem NVIDIA Memory
+static inline ssize_t gpuRemNvidiaMemory(int32_t fd) {
+   return(ioctl(fd,GPU_Rem_Nvidia_Memory,0));
 }
 
 #endif
