@@ -16,6 +16,7 @@
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Smd.hh"
 #include "DataDriver.h"
+#include "DmaDest.h"
 
 #include "rapidjson/document.h"
 

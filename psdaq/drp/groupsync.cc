@@ -11,6 +11,7 @@
 #include <cstdio>
 #include "drp.hh"
 #include "DataDriver.h"
+#include "DmaDest.h"
 
 #define MAX_RET_CNT_C 1000
 
