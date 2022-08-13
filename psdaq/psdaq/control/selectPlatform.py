@@ -2,7 +2,8 @@
 """
 selectPlatform command
 """
-from psdaq.control.control import DaqControl, detector_name
+from psdaq.control.DaqControl import DaqControl
+from psdaq.control.control import detector_name
 import pprint
 import argparse
 
