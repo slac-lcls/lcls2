@@ -2,7 +2,7 @@ from libc.string    cimport memcpy
 from libc.stdlib    cimport malloc, free
 from libcpp.string  cimport string
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
-from cpython.pycapsule cimport PyCapsule_GetPointer
+from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
 from psana.dgrampy  cimport *
 from cpython cimport array
 import array
@@ -72,8 +72,11 @@ class DataType:
 cdef class PyDataDef:
     cdef DataDef* cptr
 
-    def __init__(self):
+    def __cinit__(self):
         self.cptr = new DataDef()
+
+    def __dealloc__(self):
+        del self.cptr
 
     def show(self):
         self.cptr.show()
@@ -93,36 +96,37 @@ cdef class PyDataDef:
             flag = True
         return flag
 
+
 cdef class PyXtc():
     cdef Xtc* cptr
+    cdef const void* bufEnd             # See bufEnd in PyDgram
 
-    # Limit identifier for the dgram. We use size() from XtcFileiterator
-    # to identify the end of the buffer in case of reading it from a file.
-    cdef const void* bufEnd
-
-    # No constructor - the Xtc ptr gets assigned elsewhere.
+    def __init__(self, pycap_xtc, pycap_bufend):
+        self.cptr = <Xtc*>PyCapsule_GetPointer(pycap_xtc,"xtc")
+        self.bufEnd = PyCapsule_GetPointer(pycap_bufend, "bufEnd")
 
     def sizeofPayload(self):
         return self.cptr.sizeofPayload()
 
 cdef class PyDgram():
-    # TODO: Set these two attributes via constructor.
     cdef Dgram* cptr
 
-    # Limit identifier for the dgram. We use size() from XtcFileiterator
-    # to identify the end of the buffer in case of reading it from a file.
+    # Limit identifier for the dgram to identify the end of the buffer. 
+    # For reading dgram from a file, this is size() of XtcFileIterator.
+    # For createTransition, this is BUFSIZE in XtcUpdateIter.
     cdef const void* bufEnd
+    
+    def __init__(self, pycap_dgram, pycap_bufend):
+        self.cptr = <Dgram*>PyCapsule_GetPointer(pycap_dgram,"dgram")
+        self.bufEnd = PyCapsule_GetPointer(pycap_bufend,"bufEnd")
 
-    def __cinit__(self, dgram):
-        self.cptr = <Dgram*>PyCapsule_GetPointer(dgram._get_dgram_ptr(),"dgram")
-        # TODO: enable bufEnd which is now disabled below
-        #self.bufEnd = <char *>(self.cptr) + dgram.size()
-        self.bufEnd = <void*>0
-
-    def get_pyxtc(self):
-        pyxtc = PyXtc()
-        pyxtc.cptr = &(self.cptr.xtc)
-        pyxtc.bufEnd = self.bufEnd
+    @property
+    def pyxtc(self):
+        # We can't pass c ptr to Python function (takes Python object).
+        # Follow Valerio's work, here we store c ptr in PyCapsule.
+        pycap_xtc = PyCapsule_New(<void *>&(self.cptr.xtc), "xtc", NULL)
+        pycap_bufend = PyCapsule_New(<void *>&(self.bufEnd), "bufEnd", NULL)
+        pyxtc = PyXtc(pycap_xtc, pycap_bufend)
         return pyxtc
 
     def get_size(self):
@@ -141,14 +145,23 @@ cdef class PyDgram():
 cdef class PyXtcUpdateIter():
     cdef XtcUpdateIter* cptr
     _numWords = 6               # no. of print-out elements for an array
+    cdef const void* bufEnd
 
     def __cinit__(self):
         self.cptr = new XtcUpdateIter(self._numWords)
 
     def __dealloc__(self):
+        # Ric added this (see cinit above for an allocation of c++ object
+        # as pointer)
         del self.cptr
 
     def process(self, PyXtc pyxtc):
+        # Note on bufEnd, this pyxtc.bufEnd comes from the PyDgram
+        # object that owns it. This is differnt from self.bufEnd which is used
+        # in createTransition(). The value of pyxtc.bufEnd comes from
+        # the externally defined value. In test_dgrampy.py example, this value
+        # is the maxDgramSize of PyXtcFileIterator (used to iterate over
+        # dgrams in the given xtc file). 
         self.cptr.process(pyxtc.cptr, pyxtc.bufEnd)
 
     def iterate(self, PyXtc pyxtc):
@@ -187,7 +200,7 @@ cdef class PyXtcUpdateIter():
 
     def names(self, PyDgram pydg, detdef, algdef, PyDataDef pydatadef,
             nodeId, namesId, segment):
-        cdef PyXtc pyxtc = pydg.get_pyxtc()
+        cdef PyXtc pyxtc = pydg.pyxtc
 
         # Passing string to c needs utf-8 encoding
         detName = detdef.name.encode()
@@ -213,7 +226,7 @@ cdef class PyXtcUpdateIter():
         return NamesDef(nodeId, namesId)
 
     def createdata(self, PyDgram pydg, namesdef):
-        cdef PyXtc pyxtc = pydg.get_pyxtc()
+        cdef PyXtc pyxtc = pydg.pyxtc
         self.cptr.createData(pyxtc.cptr[0], pydg.bufEnd, namesdef.nodeId, namesdef.namesId)
 
     def setstring(self, PyDataDef pydatadef, datadef_name, str_data):
@@ -268,11 +281,13 @@ cdef class PyXtcUpdateIter():
             counting_timestamps = 0
             timestamp_val = 0
 
-        pydg = PyDgram()
         # This returns Dgram and updates bufEnd to point to
         # buffer size of the dgram (defined in XtcUpdateIter).
-        pydg.cptr = &(self.cptr.createTransition(transId,
-                counting_timestamps, timestamp_val, &(pydg.bufEnd)))
+        cdef Dgram* dg =  &(self.cptr.createTransition(transId,
+                counting_timestamps, timestamp_val, &(self.bufEnd)))
+        pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
+        pycap_bufend = PyCapsule_New(<void *>self.bufEnd, "bufEnd", NULL)
+        pydg = PyDgram(pycap_dg, pycap_bufend)
         return pydg
 
     def get_removed_size(self):
@@ -290,16 +305,24 @@ cdef class PyXtcUpdateIter():
 
 cdef class PyXtcFileIterator():
     cdef XtcFileIterator* cptr
+    cdef const void* bufEnd
 
     def __cinit__(self, int fd, size_t maxDgramSize):
         self.cptr = new XtcFileIterator(fd, maxDgramSize)
 
+    def __dealloc__(self):
+        del self.cptr
+
     def next(self):
         cdef Dgram* dg
         dg = self.cptr.next()
-        pydg = PyDgram()
-        pydg.cptr = dg
-        pydg.bufEnd = <char *>dg + self.cptr.size()
+        # Set boundary of this Dgram to maxDgramSize
+        self.bufEnd = <char*>dg + self.cptr.size()
+        
+        # Wrap the pointers
+        pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
+        pycap_bufend = PyCapsule_New(<void *>self.bufEnd, "bufEnd", NULL)
+        pydg = PyDgram(pycap_dg, pycap_bufend)
         return pydg
 
 class DgramPy:
@@ -326,7 +349,7 @@ class DgramPy:
                 # Iterates Configure without writing to buffer to get
                 # current nodeId and namesId
                 self.uiter.set_cfgwrite(False)
-                self.uiter.iterate(pydg.get_pyxtc())
+                self.uiter.iterate(pydg.pyxtc)
 
             self.pydg = pydg
         elif transition_id:
@@ -442,7 +465,7 @@ class DgramPy:
         The parent dgram and _tmpbuf/_cfgbuf are then
         copied to _buf as one new event.
         """
-        pyxtc = self.pydg.get_pyxtc()
+        cdef PyXtc pyxtc = self.pydg.pyxtc
         is_config = False
         self.uiter.set_cfgwrite(False)
         if self.pydg.service() == PyTransitionId.Configure:

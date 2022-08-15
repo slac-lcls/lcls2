@@ -288,16 +288,20 @@ class DgramManager(object):
     def set_chunk_ids(self):
         """ Generates a list of chunk ids for all stream files
 
-        Chunk Id is extracted from data file name (e.g. xpptut15-r0001-s000-c000[.smd].xtc2).
-        This is a string of length three after -c converted to int.
+        Chunk Id is extracted from data file name:
+        New format: xpptut15-r0001-s000-c000[.smd].xtc2
+        Old format: xpptut15-r0001-s00-c00[.smd].xtc2
         """
         if len(self.xtc_files) == 0: return
         if self.xtc_files[0] == 'shmem': return
         for xtc_file in self.xtc_files:
             filename = os.path.basename(xtc_file)
-            found = filename.find('-c')
-            if found >= 0:
-                self.chunk_ids.append(int(filename[found+2:found+5]))
+            st = filename.find('-c')
+            en = filename.find('.smd.xtc2')
+            if en < 0:
+                en = filename.find('.xtc2')
+            if st >= 0 and en >= 0:
+                self.chunk_ids.append(int(filename[st+2:en]))
 
     def get_chunk_id(self, ind):
         if not self.chunk_ids: return None

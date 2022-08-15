@@ -32,6 +32,9 @@ namespace psalg {
       void free(int index, size_t size);
 
     private:
+      void _shutdown();
+
+    private:
       int           _myTrFd;
       int           _nfd = 2;
       pollfd        _pfd[2];
