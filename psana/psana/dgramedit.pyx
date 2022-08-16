@@ -324,7 +324,7 @@ cdef class PyXtcFileIterator():
         pydg = PyDgram(pycap_dg, self.cptr.size())
         return pydg
 
-class DgramPy:
+class DgramEdit:
     """ Main class that takes an existing dgram or creates
     new dgram when `TransitionId` is given and allow modifications
     on the dgram.

@@ -2,7 +2,7 @@ from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONT
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
 from libc.stdint cimport uint32_t, uint64_t
 from dgramlite cimport Xtc, Sequence, Dgram
-from psana.dgrampy import PyDgram
+from psana.dgramedit import PyDgram
 
 cdef class MyPyBuffer:
     cdef Py_buffer buf
