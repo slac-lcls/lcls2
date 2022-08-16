@@ -6,11 +6,17 @@ cdef extern from 'xtcdata/xtc/TransitionId.hh' namespace "XtcData":
     cdef cppclass TransitionId:
         enum Value: ClearReadout, Reset, Configure, Unconfigure, BeginRun, EndRun, BeginStep, EndStep, Enable, Disable, SlowUpdate, Unused_11, L1Accept = 12, NumberOf
 
+cdef extern from 'xtcdata/xtc/TimeStamp.hh' namespace "XtcData":
+    cdef cppclass TimeStamp:
+        TimeStamp() except +
+        uint64_t value()
+
 cdef extern from 'xtcdata/xtc/Dgram.hh' namespace "XtcData":
     cdef cppclass Dgram:
         Dgram() except +
         Xtc xtc
         TransitionId.Value service()
+        TimeStamp time
 
 cdef extern from 'xtcdata/xtc/Xtc.hh' namespace "XtcData":
     cdef cppclass Xtc:
