@@ -51,6 +51,13 @@ cdef class EventBuilder:
     cdef unsigned long max_ts
     cdef unsigned L1Accept 
 
+    # Every time an EventBuilder builds at event, it translates the list
+    # of dgrams and #dgrams into an event bytes. We also save the size of
+    # this bytearray in event_size property. In case, we build many events
+    # (like in a batch), only the last event is available here. 
+    cdef bytearray _evt_bytes
+    cdef uint64_t evt_size
+
     def __init__(self, views, configs,
             *args, **kwargs):
         self.nsmds              = len(views)
@@ -94,26 +101,24 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def events(self):
-        """ Yields an event built from the given views."""
-        pass
-
-    def gen_event_bytes(self, event_dgrams):
+    def set_evt_bytes(self, event_dgrams):
         """ Generates event as bytes from the dgrams
         This byte event is structured to be understood by PacketFooter.
         """
-        evt_size = 0
-        evt_bytes = bytearray()
+        self.evt_size = 0
+        self._evt_bytes = bytearray()
         cdef short i = 0
         for i in range(self.nsmds):
             dgram = event_dgrams[i]
             self.evt_footer[i] = 0
             if dgram: 
                 self.evt_footer[i] = dgram.nbytes
-                evt_bytes.extend(bytearray(dgram))
-            evt_size += self.evt_footer[i]
-        evt_bytes.extend(self.evt_footer)
-        return evt_bytes, evt_size
+                self._evt_bytes.extend(bytearray(dgram))
+            self.evt_size += self.evt_footer[i]
+        self._evt_bytes.extend(self.evt_footer)
+
+    def get_evt_bytes(self):
+        return self._evt_bytes
 
     def build(self):
         """
@@ -286,7 +291,9 @@ cdef class EventBuilder:
                 PyBuffer_Release(&buf)
             
             # Generate event as bytes from the dgrams
-            evt_bytes, evt_size = self.gen_event_bytes(event_dgrams)
+            self.set_evt_bytes(event_dgrams)
+            evt_bytes = self.get_evt_bytes()
+            evt_size = self.evt_size
 
             # If destination() is not specifed, use batch 0.
             dest_rank = 0
