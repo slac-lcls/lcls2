@@ -5,14 +5,15 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication
 from PyQt5.QtGui import QBrush, QPen, QCursor, QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
-
+import psana.graphqt.QWUtils as qu
 
 class GWView(QGraphicsView):
     """Bare minimum to move and zoom viewport rect."""
 
     def __init__(self, parent=None, rscene=QRectF(0, 0, 100, 100), scale_ctl='HV', show_mode=0o0, **kwa):
         QGraphicsView.__init__(self, QGraphicsScene(rscene), parent)
-        self.fit_in_view(rscene, Qt.KeepAspectRatio)
+        #self.scene().setSceneRect(rscene)
+        self.fit_in_view(rscene, Qt.KeepAspectRatio)  # Qt.IgnoreAspectRatio, Qt.KeepAspectRatio
         self.set_scale_control(scale_ctl)
         self.set_style(**kwa)
         self.add_test_items_to_scene(show_mode, **kwa)
@@ -24,6 +25,7 @@ class GWView(QGraphicsView):
             possible mode KeepAspectRatioByExpanding, KeepAspectRatio, IgnoreAspectRatio.
         """
         r = self.scene().sceneRect() if rs is None else rs
+        #logger.info('fit_in_view rect: %s' % qu.info_rect_xywh(r))
         #self.scene().setSceneRect(r)
         self.fitInView(r, mode)
 
@@ -57,6 +59,7 @@ class GWView(QGraphicsView):
         self._scale_ctl = 0
         if 'H' in scale_ctl: self._scale_ctl += 1
         if 'V' in scale_ctl: self._scale_ctl += 2
+        logging.info('set_scale_control to %d' % self._scale_ctl)
 
 
     def mousePressEvent(self, e):
@@ -84,6 +87,7 @@ class GWView(QGraphicsView):
         rs.moveCenter(self.rs_center - QPointF(dx, dy))
         sc.setSceneRect(rs)
         #self.centerOn(self.rs_center - QPointF(dx, dy)) # DOES NOT WORK ???
+        #self.fit_in_view(rs, Qt.IgnoreAspectRatio)  # KeepAspectRatioByExpanding KeepAspectRatio
 
 
     def mouseReleaseEvent(self, e):
@@ -114,7 +118,7 @@ class GWView(QGraphicsView):
 
         rs.setRect(x-dx, y-dy, sx, sy)
         self.scene().setSceneRect(rs)
-        self.fit_in_view(rs)
+        self.fit_in_view(rs, Qt.IgnoreAspectRatio)  # KeepAspectRatioByExpanding KeepAspectRatio
 
 
     def add_rect_to_scene_v1(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)):
