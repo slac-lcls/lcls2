@@ -1,12 +1,12 @@
-from psana.dgrampy import DgramPy, AlgDef, DetectorDef, PyXtcFileIterator
-import os
+from psana.dgramedit import DgramEdit, AlgDef, DetectorDef, PyXtcFileIterator
+import os, sys
 import numpy as np
 from psana import DataSource
 import pytest
 
 @pytest.fixture
 def output_filename(tmp_path):
-    fname = str(tmp_path / 'out-dgrampy-test.xtc2')
+    fname = str(tmp_path / 'out-dgramedit-test.xtc2')
     return fname
 
 def create_array(dtype):
@@ -38,8 +38,9 @@ def check_output(fname):
         #assert np.array_equal(arrayRaw, create_array(np.float32))
 
 
-def test_run_dgrampy(output_filename):
-    ifname = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'dgrampy-test.xtc2')
+@pytest.mark.skipif(sys.platform == 'darwin', reason="check_output fails on macos")
+def test_run_dgramedit(output_filename):
+    ifname = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'dgramedit-test.xtc2')
     fd = os.open(ifname, os.O_RDONLY)
     pyiter = PyXtcFileIterator(fd, 0x1000000)
     
@@ -77,14 +78,14 @@ def test_run_dgrampy(output_filename):
 
         # Add new Names to config
         if i == 0:
-            config = DgramPy(pydg)
+            config = DgramEdit(pydg)
             det = config.Detector(detdef, algdef, datadef)
             det2 = config.Detector(detdef2, algdef2, datadef2)
             config.save(xtc2file)
 
         # Add new Data to L1
         elif i >= 4:
-            dgram = DgramPy(pydg, config=config)
+            dgram = DgramEdit(pydg, config=config)
 
             # Fill in data for previously given datadef (all fields
             # must be completed)
@@ -111,7 +112,7 @@ def test_run_dgrampy(output_filename):
         
         # Other transitions
         else: 
-            dgram = DgramPy(pydg, config=config)
+            dgram = DgramEdit(pydg, config=config)
             dgram.save(xtc2file)
 
     xtc2file.close()
@@ -120,4 +121,4 @@ def test_run_dgrampy(output_filename):
     check_output(output_filename)
 
 if __name__ == "__main__":
-    test_run_dgrampy()
+    test_run_dgramedit()

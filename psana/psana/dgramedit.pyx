@@ -116,9 +116,10 @@ cdef class PyDgram():
     # For createTransition, this is BUFSIZE in XtcUpdateIter.
     cdef const void* bufEnd
     
-    def __init__(self, pycap_dgram, pycap_bufend):
+    def __init__(self, pycap_dgram, bufsize):
         self.cptr = <Dgram*>PyCapsule_GetPointer(pycap_dgram,"dgram")
-        self.bufEnd = PyCapsule_GetPointer(pycap_bufend,"bufEnd")
+        cdef uint64_t cbufsize = bufsize
+        self.bufEnd = <char*>self.cptr + cbufsize
 
     @property
     def pyxtc(self):
@@ -140,6 +141,9 @@ cdef class PyDgram():
 
     def service(self):
         return self.cptr.service()
+
+    def timestamp(self):
+        return self.cptr.time.value()
 
 
 cdef class PyXtcUpdateIter():
@@ -286,8 +290,7 @@ cdef class PyXtcUpdateIter():
         cdef Dgram* dg =  &(self.cptr.createTransition(transId,
                 counting_timestamps, timestamp_val, &(self.bufEnd)))
         pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
-        pycap_bufend = PyCapsule_New(<void *>self.bufEnd, "bufEnd", NULL)
-        pydg = PyDgram(pycap_dg, pycap_bufend)
+        pydg = PyDgram(pycap_dg, <char*>self.bufEnd - <char*>dg)
         return pydg
 
     def get_removed_size(self):
@@ -305,7 +308,6 @@ cdef class PyXtcUpdateIter():
 
 cdef class PyXtcFileIterator():
     cdef XtcFileIterator* cptr
-    cdef const void* bufEnd
 
     def __cinit__(self, int fd, size_t maxDgramSize):
         self.cptr = new XtcFileIterator(fd, maxDgramSize)
@@ -316,16 +318,13 @@ cdef class PyXtcFileIterator():
     def next(self):
         cdef Dgram* dg
         dg = self.cptr.next()
-        # Set boundary of this Dgram to maxDgramSize
-        self.bufEnd = <char*>dg + self.cptr.size()
         
-        # Wrap the pointers
+        # Wrap the pointers and set the bufEnd limit to maxDgarmsize
         pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
-        pycap_bufend = PyCapsule_New(<void *>self.bufEnd, "bufEnd", NULL)
-        pydg = PyDgram(pycap_dg, pycap_bufend)
+        pydg = PyDgram(pycap_dg, self.cptr.size())
         return pydg
 
-class DgramPy:
+class DgramEdit:
     """ Main class that takes an existing dgram or creates
     new dgram when `TransitionId` is given and allow modifications
     on the dgram.
