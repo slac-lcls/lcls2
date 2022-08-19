@@ -89,33 +89,33 @@ class FWRuler():
 
         if self.axside == 'D':
             if sv > 0:
-              self.p1   = r.bottomLeft()
-              self.p2   = r.bottomRight()
+              self.p1 = r.bottomLeft()
+              self.p2 = r.bottomRight()
             else:
-              self.p1   = r.topLeft()
-              self.p2   = r.topRight()
+              self.p1 = r.topLeft()
+              self.p2 = r.topRight()
             self.dt1  = QPointF(0, -sv*self.tick_fr * h)
             self.dtxt = QPointF(-0.5, -1)
             self.vort = self.p2.y()
 
         elif self.axside == 'U':
             if sv > 0:
-              self.p1   = r.topLeft()
-              self.p2   = r.topRight()
+              self.p1 = r.topLeft()
+              self.p2 = r.topRight()
             else:
-              self.p1   = r.bottomLeft()
-              self.p2   = r.bottomRight()
+              self.p1 = r.bottomLeft()
+              self.p2 = r.bottomRight()
             self.dt1  = QPointF(0, sv*self.tick_fr * h)
             self.dtxt = QPointF(-0.5, 0.1)
             self.vort = self.p1.y()
 
         elif self.axside == 'L':
             if sh > 0:
-              self.p1   = r.topLeft()
-              self.p2   = r.bottomLeft()
+              self.p1 = r.topLeft()
+              self.p2 = r.bottomLeft()
             else:
-              self.p1   = r.topRight()
-              self.p2   = r.bottomRight()
+              self.p1 = r.topRight()
+              self.p2 = r.bottomRight()
             self.dt1  = QPointF(sh*self.tick_fr * w, 0)
             self.dtxt = QPointF(0, -0.5)
             self.dtxt0 = QPointF(6, 0)
@@ -123,11 +123,11 @@ class FWRuler():
 
         elif self.axside == 'R':
             if sh > 0:
-              self.p1   = r.topRight()
-              self.p2   = r.bottomRight()
+              self.p1 = r.topRight()
+              self.p2 = r.bottomRight()
             else:
-              self.p1   = r.topLeft()
-              self.p2   = r.bottomLeft()
+              self.p1 = r.topLeft()
+              self.p2 = r.bottomLeft()
             self.dt1  = QPointF(-sh*self.tick_fr * w, 0)
             self.dtxt = QPointF(-1, -0.5)
             self.dtxt0 = QPointF(-3, 0)
@@ -192,7 +192,6 @@ class FWRuler():
 
             txtitem.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
             txtitem.setZValue(self.zvalue)
-
 
             self.lst_of_items.append(txtitem)
 
