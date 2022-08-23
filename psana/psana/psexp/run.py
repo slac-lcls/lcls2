@@ -9,7 +9,7 @@ from psana.dgrammanager import DgramManager
 from psana.detector.detector_impl import MissingDet
 from psana.event import Event
 from psana.psexp import *
-
+from psana.dgramedit import DgramEdit, PyDgram
 
 class DetectorNameError(Exception): pass
 
@@ -224,7 +224,6 @@ class Run(object):
         self.dsparms.esm = self.esm
 
 
-
 class RunShmem(Run):
     """ Yields list of events from a shared memory client (no event building routine). """
 
@@ -238,6 +237,7 @@ class RunShmem(Run):
                 filter_callback=ds.dsparms.filter)
 
     def events(self):
+
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
                 if evt.service() == TransitionId.EndRun: return
@@ -253,6 +253,55 @@ class RunShmem(Run):
             if evt.service() == TransitionId.EndRun: return
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter)
+
+
+class RunDrp(Run):
+    """ Yields list of events from drp python (no event building routine). """
+
+    def __init__(self, ds, run_evt):
+        super(RunDrp, self).__init__(ds)
+        self._evt      = run_evt
+        self._ds       = ds
+        self.beginruns = run_evt._dgrams
+        self.configs   = ds._configs
+        super()._setup_envstore()
+
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
+                filter_callback=ds.dsparms.filter)
+        self._edtbl_config = False
+
+    def events(self):
+        for evt in self._evt_iter:
+            self._ds.curr_dgramedit = DgramEdit(
+                PyDgram(evt._dgrams[0].get_dgram_ptr(), self._ds.dm.shm_size),
+                config=self._ds.config_dgramedit
+            )
+            if evt.service() != TransitionId.L1Accept:
+                if evt.service() == TransitionId.EndRun:
+                    self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+                    return
+                self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+                continue
+            st = time.time()
+            yield evt
+            en = time.time()
+            self.c_ana.labels('seconds','None').inc(en-st)
+            self.c_ana.labels('batches','None').inc()
+            self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+       
+    def steps(self):
+        for evt in self._evt_iter:
+            self._ds.curr_dgramedit = DgramEdit(
+                PyDgram(evt._dgrams[0].get_dgram_ptr(), self._ds.dm.shm_size),
+                config=self._ds.config_dgramedit
+            )
+            if evt.service() == TransitionId.EndRun:
+                self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+                return
+            if evt.service() == TransitionId.BeginStep:
+                yield Step(evt, self._evt_iter)
+            self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+                
 
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """

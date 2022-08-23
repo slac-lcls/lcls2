@@ -121,4 +121,4 @@ def test_run_dgramedit(output_filename):
     check_output(output_filename)
 
 if __name__ == "__main__":
-    test_run_dgramedit()
+    test_run_dgramedit("test_output.xtc2")

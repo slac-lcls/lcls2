@@ -631,7 +631,7 @@ static PyObject* timestamp(PyDgramObject* self) {
   return PyLong_FromLong(self->dgram->time.value());
 }
 
-static PyObject* _get_dgram_ptr(PyDgramObject* self) {
+static PyObject* get_dgram_ptr(PyDgramObject* self) {
   return PyCapsule_New((void *)self->dgram, "dgram", NULL);
 }
 
@@ -894,7 +894,7 @@ static PyMemberDef dgram_members[] = {
 static PyMethodDef dgram_methods[] = {
     {"service", (PyCFunction)service, METH_NOARGS, "service"},
     {"timestamp", (PyCFunction)timestamp, METH_NOARGS, "timestamp"},
-    {"_get_dgram_ptr", (PyCFunction)_get_dgram_ptr, METH_NOARGS, "dgram pointer"},
+    {"get_dgram_ptr", (PyCFunction)get_dgram_ptr, METH_NOARGS, "dgram pointer"},
     {NULL}  /* Sentinel */
 };
 

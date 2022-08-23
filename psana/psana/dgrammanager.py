@@ -38,7 +38,7 @@ def _service(view):
     return (np.array(view, copy=False).view(dtype=np.uint32)[iSvc] >> 24) & 0x0f
 
 # Warning: If XtcData::Dgram ever changes, this function will likely need to change
-def _dgSize(view):
+def dgSize(view):
     iExt = 5                    # Index of extent field, in units of uint32_t
     txSize = 3 * 4              # sizeof(XtcData::TransitionBase)
     return txSize + np.array(view, copy=False).view(dtype=np.uint32)[iExt]
@@ -57,6 +57,7 @@ class DgramManager(object):
         self.mq_send = None
         self.shm_recv = None
         self.shm_send = None
+        self.shm_size = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
         self._timestamps = [] # built when iterating
@@ -86,11 +87,11 @@ class DgramManager(object):
                     # the configs are saved as a list. Note that only the most recent
                     # one is used. Mona changed this to "replace" so at a time, there's
                     # only one config.
-                    self._set_configs([d])
+                    self.set_configs([d])
                 elif xtc_files[0] == 'drp':
                     view = self._connect_drp()
                     d = dgram.Dgram(view=view)
-                    self._set_configs([d])
+                    self.set_configs([d])
                 else:
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
 
@@ -107,9 +108,9 @@ class DgramManager(object):
 
         given_configs = True if len(configs) > 0 else False
         if given_configs:
-            self._set_configs(configs)
+            self.set_configs(configs)
         elif xtc_files[0] != 'shmem' and xtc_files[0] != 'drp':
-            self._set_configs([dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds])
+            self.set_configs([dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds])
 
         self.calibconst = {} # initialize to empty dict - will be populated by run class
         self.n_files = len(self.xtc_files)
@@ -138,7 +139,7 @@ class DgramManager(object):
         # and creating a deadlock situation. could revisit this
         # later and only deep-copy arrays inside pickN, for example
         # but would be more fragile.
-        barray = bytes(view[:_dgSize(view)])
+        barray = bytes(view[:dgSize(view)])
         self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
         view = memoryview(barray)
         return view
@@ -150,19 +151,20 @@ class DgramManager(object):
         except sysv_ipc.Error as exp:
             assert(False)
         try:
-            self.shm_recv = sysv_ipc.SharedMemory(200002, size=3000000)
-            self.shm_send = sysv_ipc.SharedMemory(200003, size=3000000)
+            self.shm_recv = sysv_ipc.SharedMemory(200002, size=40000000)
+            self.shm_send = sysv_ipc.SharedMemory(200003, size=40000000)
         except sysv_ipc.Error as exp:
             assert(False)
 
         self.mq_send.send(b"g")
         message, priority = self.mq_recv.receive()
         shm_view = memoryview(self.shm_recv)
-        barray = bytes(shm_view[:_dgSize(shm_view)])
-        view = memoryview(barray)       
+        barray = bytes(shm_view[:])
+        view = memoryview(barray)
+        self.shm_size = view.nbytes   
         return view
 
-    def _set_configs(self, dgrams):
+    def set_configs(self, dgrams):
         """Save and setup given dgrams class configs."""
         self.configs = dgrams
         self._setup_det_class_table()
@@ -354,7 +356,7 @@ class DgramManager(object):
                 # and creating a deadlock situation. could revisit this
                 # later and only deep-copy arrays inside pickN, for example
                 # but would be more fragile.
-                barray = bytes(view[:_dgSize(view)])
+                barray = bytes(view[:dgSize(view)])
                 self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
                 view = memoryview(barray)
                 # use the most recent configure datagram
@@ -365,7 +367,7 @@ class DgramManager(object):
                 config = self.configs[len(self.configs)-1]
                 d = dgram.Dgram(config=config,view=view)
                 if d.service() == TransitionId.Configure:
-                    self._set_configs([d])
+                    self.set_configs([d])
                 else:
                     raise RuntimeError(f"Configure expected, got {d.service()}")
             dgrams = [d]
@@ -377,12 +379,14 @@ class DgramManager(object):
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs)-1]
                 d = dgram.Dgram(config=self.configs[-1], view=view)
+                if d.service() == 10 or d.service() == 12:
+                    self.drp_edbl_config = False
             else:
                 view = self._connect_drp()
                 config = self.configs[len(self.configs)-1]
                 d = dgram.Dgram(config=config,view=view)
                 if d.service() == TransitionId.Configure:
-                    self._set_configs([d])
+                    self.set_configs([d])
                 else:
                     raise RuntimeError(f"Configure expected, got {d.service()}")                
             dgrams = [d]    
@@ -409,7 +413,7 @@ class DgramManager(object):
             self.found_endrun = True
 
         if service == TransitionId.Configure:
-            self._set_configs(dgrams)
+            self.set_configs(dgrams)
             return self.__next__()
 
         evt = Event(dgrams, run=self.get_run())
