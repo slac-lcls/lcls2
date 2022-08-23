@@ -7,13 +7,12 @@ def test_run_mypybuffer():
     size = 2643928                          # size of dgrampy-test.xtc2
     view = os.read(fd, size)
 
-    mpb = MyPyBuffer()
-    mpb.get_buffer(view)
+    mpb = MyPyBuffer(view)
     for dg in mpb.dgrams():
         print(dg.timestamp())
 
-    mpb.free_buffer()
     os.close(fd)
+    
 
 if __name__ == "__main__":
     test_run_mypybuffer()
