@@ -68,7 +68,7 @@ class FWRuler():
         self.path_item = None
         self.lst_of_items = []
 
-        r = self.rect=self.scene.sceneRect()
+        r = self.rect = self.scene.sceneRect()
         vmin = r.x() if self.horiz else r.y()
         vmax = r.x()+r.width() if self.horiz else r.y()+r.height()
         self.labels = best_label_locs(vmin, vmax, self.size_inches, density=1, steps=None)
