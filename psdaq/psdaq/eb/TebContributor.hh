@@ -69,7 +69,6 @@ namespace Pds {
       EbLfClient                _transport;
       std::vector<EbLfCltLink*> _links;
       std::vector<listU32_t >   _trBuffers;
-      size_t                    _trRegOffset;
       unsigned                  _id;
       unsigned                  _numEbs;
       BatchQueue                _pending; // Time ordered list of completed batches

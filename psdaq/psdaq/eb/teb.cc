@@ -645,7 +645,6 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 
   // The batch start is the first dgram seen
   if (!_batch.start)  _batch = {dgram, dsts, eventIdx};
-  //if (!_batch.start)  _batch.initialize(*this, dgram, dsts, event);
 
   TransitionId::Value svc     = dgram->service();
   bool                flush   = ((svc != TransitionId::L1Accept) &&
