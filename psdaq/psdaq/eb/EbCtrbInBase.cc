@@ -129,7 +129,7 @@ int EbCtrbInBase::startConnection(std::string& port)
   return 0;
 }
 
-int EbCtrbInBase::connect(size_t resSizeGuess, unsigned numBuffers)
+int EbCtrbInBase::connect(size_t resSizeGuess, unsigned numTebBuffers)
 {
   unsigned numEbs = std::bitset<64>(_prms.builders).count();
 
@@ -140,11 +140,15 @@ int EbCtrbInBase::connect(size_t resSizeGuess, unsigned numBuffers)
 
   // Assume an existing region is already appropriately sized, else make a guess
   // at a suitable RDMA region to avoid spending time in Configure.
-  // If it's too small, it will be corrected during Configure
+  // If it turns out to be too small, it will be corrected during Configure.
+  // This region must be the same size on all DRPs in the system.  Its size is
+  // given by the DRP(s) with the largest DMA buffer pool so that the region
+  // can accomodate batches of Results that include entries that are not
+  // intended for the current DRP without overlapping other Results batches.
   if (!_region)                         // No need to guess again
   {
     // Make a guess at the size of the Result region
-    size_t regSizeGuess = resSizeGuess * numBuffers;
+    size_t regSizeGuess = resSizeGuess * numTebBuffers;
 
     _region = allocRegion(regSizeGuess);
     if (!_region)
@@ -300,7 +304,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     else if (_transport.pollEQ() == -FI_ENOTCONN)
       rc = -FI_ENOTCONN;
     else
-      logging::error("%s:\n  pend() error %d (%s)\n",
+      logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;
   }
@@ -380,7 +384,7 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
       //         iIdx, inp->pulseId(), TransitionId::name(inp->service()));
       //  _dump(ctrb, results, inputs);
       //  printf("deferred:\n");
-      //  for (auto batch : _deferred)
+      //  for (const auto& batch : _deferred)
       //  {
       //    unsigned index = (reinterpret_cast<const char*>(batch) -
       //                      static_cast<const char*>(_region)) / _maxResultSize;
@@ -401,8 +405,14 @@ void EbCtrbInBase::_defer(const ResultDgram* results)
 
   for (auto it = _deferred.begin(); it != _deferred.end(); ++it)
   {
-    auto batch = *it;
-    assert(results->pulseId() != batch->pulseId());
+    const auto& batch = *it;
+    if (results->pulseId() == batch->pulseId())
+    {
+      logging::critical("%s:\n  Deferred already contains Results %014lx, %s, src %u vs %u",
+                        __PRETTY_FUNCTION__, results->pulseId(), TransitionId::name(results->service()),
+                        results->xtc.src.value(), batch->xtc.src.value());
+      abort();
+    }
     if (results->pulseId() < batch->pulseId())
     {
       _deferred.insert(it, results);    // This inserts before
@@ -451,7 +461,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
     uint64_t rPidPrv = 0;
     if (UNLIKELY(!(rPid > rPidPrv)))
     {
-      logging::critical("%s:\n  rPid %014lx <= rPidPrv %014lx\n",
+      logging::critical("%s:\n  rPid %014lx <= rPidPrv %014lx",
                         __PRETTY_FUNCTION__, rPid, rPidPrv);
       _dump(ctrb, results, inputs);
       throw "Result pulse ID didn't advance";
@@ -472,7 +482,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
       auto svc    = TransitionId::name(result->service());
       auto extent = sizeof(*result) + result->xtc.sizeofPayload();
       printf("CtrbIn  found  %15s  [%8u]    @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u, dlvr %c [%014lx], res %08x, %08x \n",
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u, dlvr %c [%014lx], res %08x, %08x\n",
              svc, idx, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid, result->data(), result->monBufNo());
     }
 
@@ -481,7 +491,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
       static uint64_t iPidPrv = 0;
       if (UNLIKELY(!(iPid > iPidPrv)))
       {
-        logging::critical("%s:\n  iPid %014lx <= iPidPrv %014lx\n",
+        logging::critical("%s:\n  iPid %014lx <= iPidPrv %014lx",
                           __PRETTY_FUNCTION__, iPid, iPidPrv);
         _dump(ctrb, results, inputs);
         throw "Input pulse ID didn't advance";

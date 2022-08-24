@@ -19,6 +19,9 @@ namespace XtcData {
 };
 
 namespace Pds {
+
+  class EbDgram;
+
   namespace Eb {
 
     class EbLfSvrLink;
@@ -80,6 +83,7 @@ namespace Pds {
       std::vector<size_t>       _regSize;
       std::vector<void*>        _region;
       uint64_t                  _contributors;
+      uint64_t                  _idxSrcs;
       unsigned                  _id;
       MetricExporter_t          _exporter;
       const std::string         _pfx;
@@ -88,6 +92,7 @@ namespace Pds {
 };
 
 
+inline
 const std::vector<size_t> Pds::Eb::EbAppBase::bufferSizes() const
 {
   std::vector<size_t> bufSizes(_bufRegSize.size());

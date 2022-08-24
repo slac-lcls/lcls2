@@ -23,7 +23,7 @@ void* Pds::Eb::allocRegion(size_t size)
 {
   size_t pageSize = sysconf(_SC_PAGESIZE);
   void*  region   = nullptr;
-  int    ret      = posix_memalign(&region, pageSize, size);
+  int    ret      = posix_memalign(&region, pageSize, roundUpSize(size));
   if (ret)
   {
     fprintf(stderr, "%s:\n  Error from posix_memalign:\n  %s\n",

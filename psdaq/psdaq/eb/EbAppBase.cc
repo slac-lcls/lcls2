@@ -140,7 +140,7 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   // Initialize the event builder
   auto duration = prms.maxEntries;
   _maxEntries   = prms.maxEntries;
-  _maxEvBuffers = prms.numBuffers / prms.maxEntries;
+  _maxEvBuffers = prms.maxBuffers / prms.maxEntries;
   _maxTrBuffers = TEB_TR_BUFFERS;
   rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
   if (rc)  return rc;
@@ -158,6 +158,7 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   _maxBufSize   .resize(nCtrbs);
   _id           = prms.id;
   _contributors = prms.contributors;
+  _idxSrcs      = prms.indexSources;
   _contract     = prms.contractors;
   _fixupSrc     = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
   _ctrbSrc      = _exporter->histogram("EB_CtrbSc", labels, nCtrbs); // Revisit: For testing
@@ -181,8 +182,8 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
       if (!_region[i])                  // No need to guess again
       {
         // Make a guess at the size of the Input region
-        size_t regSizeGuess = (inpSizeGuess * _maxEvBuffers * _maxEntries +
-                               roundUpSize(_maxTrBuffers * prms.maxTrSize[i]));
+        size_t regSizeGuess = (inpSizeGuess * prms.numBuffers[i] +
+                               _maxTrBuffers * prms.maxTrSize[i]);
 
         _region[i] = allocRegion(regSizeGuess);
         if (!_region[i])
@@ -236,11 +237,11 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
     unsigned rmtId     = link->id();
     tmpLinks[rmtId]    = link;
 
-    size_t regSize     = regEntrySize * _maxEvBuffers * _maxEntries;
+    size_t regSize     = regEntrySize * prms.numBuffers[rmtId];
     _bufRegSize[rmtId] = regSize;
     _maxBufSize[rmtId] = regEntrySize;
     _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
-    regSize           += roundUpSize(_maxTrBuffers * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
+    regSize           += _maxTrBuffers * _maxTrSize[rmtId];  // Ctrbs don't have a transition space
 
     // Reallocate the region if the required size has changed
     if (regSize != _regSize[rmtId])
@@ -296,7 +297,7 @@ int EbAppBase::process()
     else if (_transport.pollEQ() == -FI_ENOTCONN)
       rc = -FI_ENOTCONN;
     else
-      logging::error("%s:\n  pend() error %d (%s)\n",
+      logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;
   }
@@ -310,8 +311,15 @@ int EbAppBase::process()
                      : (_bufRegSize[src] + idx * _maxTrSize[src]); // Tr region for non-selected EB is after batch/buffer region
   const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));    // Or, (char*)(_region[src]) + ofs;
 
+  // "Non-selected" TEBs receive only single dgrams that are transitions needing
+  // to have their EOL flag set to avoid the EB iterating to the next buffer.
+  // This isn't done on the DRPs since these dgrams are also sent to the
+  // "selected" TEB, which must not be caused to stop iterating over its batch
+  // prematurely.
+  if (flg == (ImmData::Transition | ImmData::NoResponse))  idg->setEOL();
+
   if (src != idg->xtc.src.value())
-    logging::warning("Link src (%d) != dgram src (%d)", src, idg->xtc.src.value());
+    logging::error("Link src (%d) != dgram src (%d)", src, idg->xtc.src.value());
 
   _ctrbSrc->observe(double(src));       // Revisit: For testing
 
@@ -345,6 +353,7 @@ int EbAppBase::process()
   }
 
   // Tr space bufSize value is irrelevant since idg has EOL set in that case
+  if ((_idxSrcs & (1ul << src)) == 0)  data = 0;
   EventBuilder::process(idg, _maxBufSize[src], data);
 
   ++_bufferCnt;
@@ -414,7 +423,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 
   if (!event->creator()->isEvent())
   {
-    logging::warning("Fixup %s, %014lx, size %zu, source %d\n",
+    logging::warning("Fixup %s, %014lx, size %zu, source %d",
                      TransitionId::name(event->creator()->service()),
                      event->sequence(), event->size(), srcId);
   }

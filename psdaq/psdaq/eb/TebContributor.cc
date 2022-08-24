@@ -363,7 +363,8 @@ void TebContributor::_post(const EbDgram* dgram)
   // batch containing it.  These TEBs don't generate responses.
   if (_links.size() < 2)  return;
 
-  dgram->setEOL();                      // Terminate the "batch" of 1 entry
+  // Modifying dgram interferes with batch posted above: see comment in EbAppBase
+  //dgram->setEOL();                      // Terminate the "batch" of 1 entry
 
   uint64_t pid = dgram->pulseId();
   unsigned dst = (pid / _prms.maxEntries) % _numEbs;

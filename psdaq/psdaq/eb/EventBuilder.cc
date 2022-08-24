@@ -259,7 +259,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*            epoch,
 
   unsigned index = _evIndex(key);
   EbEvent* event = _eventLut[index];
-  if (event && (event->sequence() == key))  return event->_add(ctrb);
+  if (event && (event->sequence() == key))  return event->_add(ctrb, imm);
 
   bool                 reversed = false;
   const EbEvent* const empty    = epoch->pending.empty();
@@ -269,7 +269,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*            epoch,
   {
     const uint64_t eventKey = event->sequence();
 
-    if (key == eventKey) return event->_add(ctrb);
+    if (key == eventKey) return event->_add(ctrb, imm);
     if (key >  eventKey)
     {
       if (reversed)  break;
@@ -493,7 +493,7 @@ void EventBuilder::process(const EbDgram* ctrb,
 
   while (true)
   {
-    event = _insert(epoch, ctrb, event, imm++, t0);
+    event = _insert(epoch, ctrb, event, imm, t0);
 
     if (!event->_remaining)
     {
@@ -517,6 +517,7 @@ void EventBuilder::process(const EbDgram* ctrb,
     if (ctrb->isEOL())  break;
 
     ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
+    imm++;
   }
 
   if (due)  _flush(due);     // Attempt to flush everything up to the due event

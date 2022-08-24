@@ -6,7 +6,6 @@ import json
 import argparse
 
 from struct import unpack
-#import Messages
 import EbDgram     as edg
 import ResultDgram as rdg
 
@@ -15,7 +14,7 @@ class ArgsParser(argparse.ArgumentParser):
     def __init__(self):
         super(ArgsParser, self).__init__()
         self.add_argument('-p', type=int, choices=range(0, 8), default=0, help='partition (default 0)')
-        # More to come, probably
+        self.add_argument('-b', type=int, required=True, help='IPC key base value')
 
     def parse(self):
         self.args = self.parse_args()
@@ -37,7 +36,7 @@ class TriggerDataSource(object):
         self.args = ArgsParser().parse()
 
         # Make the base key value depend on the partition number
-        KEY_BASE = 300000 + 10000 * self.args.p
+        KEY_BASE = self.args.b
 
         try:
             self._mq_inp = sysv_ipc.MessageQueue(KEY_BASE + 0)
@@ -76,7 +75,7 @@ class TriggerDataSource(object):
                 )
                 sys.exit(1)
 
-            print(f"[Python] Setup Inputs shared memory key {shm_msg[1]}")
+            print(f"[Python] Set up Inputs shared memory key {shm_msg[1]}")
 
         else:
             print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'i'")
@@ -96,7 +95,7 @@ class TriggerDataSource(object):
                 self._shm_inp = None
                 sys.exit(1)
 
-            print(f"[Python] Setup Results shared memory key {shm_msg[1]}")
+            print(f"[Python] Set up Results shared memory key {shm_msg[1]}")
 
         #print(f'max_size: {self._mq_inp.max_size}')
 

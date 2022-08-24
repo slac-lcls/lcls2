@@ -162,7 +162,7 @@ namespace Pds {
         // Truncation goes unnoticed, so crash instead to get it fixed
         if (oSz + iExt > bSz)
         {
-          logging::critical("Buffer of size %zu (%zu in use) is too small to add Xtc of size %zu\n",
+          logging::critical("Buffer of size %zu (%zu in use) is too small to add Xtc of size %zu",
                             bSz, oSz, iExt);
           throw "Buffer too small";
         }
@@ -493,7 +493,7 @@ void Meb::process(EbEvent* event)
   {
     event->damage(Damage::OutOfOrder);
 
-    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u\n",
+    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u",
                       __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->immData(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
 
     if (event->remaining())             // I.e., this event was fixed up
@@ -502,7 +502,7 @@ void Meb::process(EbEvent* event)
       // posted earlier, so return to dismiss this counterpart and not post it
       // However, we can't know whether this is a split event or a fixed-up out-of-order event
       ++_splitCount;
-      logging::critical("%s:\n  Split event, if pid %014lx was fixed up multiple times\n",
+      logging::critical("%s:\n  Split event, if pid %014lx was fixed up multiple times",
                         __PRETTY_FUNCTION__, pid);
       // return, if we knew this PID had been fixed up before
     }
@@ -619,8 +619,7 @@ private:
   int  _configure(const json& msg);
   void _unconfigure();
   int  _parseConnectionParams(const json& msg);
-  void _printParams(const EbParams& prms, unsigned groups) const;
-  void _printGroups(unsigned groups, const u64arr_t& array) const;
+  void _printParams(const MebParams& prms, unsigned groups) const;
 private:
   MebParams&                           _prms;
   const bool                           _ebPortEph;
@@ -823,7 +822,8 @@ int MebApp::_parseConnectionParams(const json& body)
   _groups = 0;
 
   _prms.maxEntries = 1;                  // No batching: each event stands alone
-  _prms.numBuffers = _prms.numEvBuffers; // For EbAppBase
+  _prms.maxBuffers = _prms.numEvBuffers; // For EbAppBase
+  _prms.numBuffers.resize(MAX_DRPS, 0);  // Number of buffers on each DRP
 
   for (auto it : body["drp"].items())
   {
@@ -847,6 +847,8 @@ int MebApp::_parseConnectionParams(const json& body)
     _prms.contractors[group] |= 1ul << drpId;
     _prms.receivers[group]    = 0;      // Unused by MEB
     _groups |= 1 << group;
+
+    _prms.numBuffers[drpId] = _prms.maxBuffers;
 
     _prms.maxTrSize[drpId] = size_t(it.value()["connect_info"]["max_tr_size"]);
     maxTrSize             += _prms.maxTrSize[drpId];
@@ -889,7 +891,8 @@ int MebApp::_parseConnectionParams(const json& body)
   return 0;
 }
 
-void MebApp::_printGroups(unsigned groups, const u64arr_t& array) const
+static
+void _printGroups(unsigned groups, const u64arr_t& array)
 {
   while (groups)
   {
@@ -901,24 +904,26 @@ void MebApp::_printGroups(unsigned groups, const u64arr_t& array) const
   printf("\n");
 }
 
-void MebApp::_printParams(const EbParams& prms, unsigned groups) const
+void MebApp::_printParams(const MebParams& prms, unsigned groups) const
 {
-  printf("\nParameters of MEB ID %u (%s:%s):\n",               _prms.id,
-                                                               _prms.ifAddr.c_str(), _prms.ebPort.c_str());
-  printf("  Thread core numbers:        %d, %d\n",             _prms.core[0], _prms.core[1]);
-  printf("  Partition:                  %u\n",                 _prms.partition);
-  printf("  Bit list of contributors:   0x%016lx, cnt: %zu\n", _prms.contributors,
-                                                               std::bitset<64>(_prms.contributors).count());
-  printf("  Readout group contractors:  ");                    _printGroups(_groups, _prms.contractors);
-  printf("  # of TEB requestees:        %zu\n",                _prms.addrs.size());
+  printf("\nParameters of MEB ID %u (%s:%s):\n",               prms.id,
+                                                               prms.ifAddr.c_str(), prms.ebPort.c_str());
+  printf("  Thread core numbers:        %d, %d\n",             prms.core[0], prms.core[1]);
+  printf("  Instrument:                 %s\n",                 prms.instrument.c_str());
+  printf("  Partition:                  %u\n",                 prms.partition);
+  printf("  Alias:                      %s\n",                 prms.alias.c_str());
+  printf("  Bit list of contributors:   0x%016lx, cnt: %zu\n", prms.contributors,
+                                                               std::bitset<64>(prms.contributors).count());
+  printf("  Readout group contractors:  ");                    _printGroups(_groups, prms.contractors);
+  printf("  # of TEB requestees:        %zu\n",                prms.addrs.size());
   printf("  Buffer duration:            %u\n",                 prms.maxEntries);
   printf("  Max # of entries / buffer:  0x%08x = %u\n",        prms.maxEntries, prms.maxEntries);
-  printf("  # of event      buffers:    0x%08x = %u\n",        _prms.numEvBuffers, _prms.numEvBuffers);
+  printf("  # of event      buffers:    0x%08x = %u\n",        prms.numEvBuffers, prms.numEvBuffers);
   printf("  # of transition buffers:    0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
-  printf("  Max buffer size:            0x%08x = %u\n",        _prms.maxBufferSize, _prms.maxBufferSize);
-  printf("  # of event message queues:  0x%08x = %u\n",        _prms.nevqueues, _prms.nevqueues);
-  printf("  Distribute:                 %s\n",                 _prms.ldist ? "yes" : "no");
-  printf("  Tag:                        %s\n",                 _prms.tag.c_str());
+  printf("  Max buffer size:            0x%08x = %u\n",        prms.maxBufferSize, prms.maxBufferSize);
+  printf("  # of event message queues:  0x%08x = %u\n",        prms.nevqueues, prms.nevqueues);
+  printf("  Distribute:                 %s\n",                 prms.ldist ? "yes" : "no");
+  printf("  Tag:                        %s\n",                 prms.tag.c_str());
   printf("\n");
 }
 
@@ -1067,7 +1072,7 @@ int main(int argc, char** argv)
     if (kwargs.first == "ep_fabric")    continue;
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
-    logging::critical("Unrecognized kwarg '%s=%s'\n",
+    logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
   }

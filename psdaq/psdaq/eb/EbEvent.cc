@@ -34,7 +34,7 @@ EbEvent::EbEvent(uint64_t            contract,
                  const time_point_t& t0) :
   _contract(contract),
   _t0      (t0),
-  _immData (immData),
+  _immData (immData),                   // May be 0 (invalid), else valid
   _damage  (0),
   _last    (_contributions)
 {
@@ -70,8 +70,11 @@ EbEvent::EbEvent(uint64_t            contract,
 ** --
 */
 
-EbEvent* EbEvent::_add(const EbDgram* cdg)
+EbEvent* EbEvent::_add(const EbDgram* cdg, unsigned immData)
 {
+  if (immData > MAX_ENTRIES)            // Require some upper bits to be set
+    _immData = immData;                 // Don't overwrite a valid value with 0
+
   *_last++   = cdg;
 
   _size     += cdg->xtc.sizeofPayload();
