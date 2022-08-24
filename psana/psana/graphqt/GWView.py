@@ -45,7 +45,6 @@ class GWView(QGraphicsView):
         self.fit_in_view(rscene, mode=Qt.KeepAspectRatio)
         self.add_test_items_to_scene(show_mode)
         self.click_pos = None
-        #self.setMouseTracking(True)
 
 
     def scene_rect(self):
@@ -57,8 +56,8 @@ class GWView(QGraphicsView):
         if r is None: return
         self.scene().setSceneRect(r)
         #self.setSceneRect(r)  # WORKS DIFFERENTLY
-        logger.debug('GWView.set_scene_rect rect: %s transform m11: %.2f m22: %.2f'%\
-                     (qu.info_rect_xywh(r), self.transform().m11(), self.transform().m22()))
+        #logger.debug('GWView.set_scene_rect rect: %s transform m11: %.2f m22: %.2f'%\
+        #             (qu.info_rect_xywh(r), self.transform().m11(), self.transform().m22()))
 
 
     def fit_in_view(self, rs=None, mode=Qt.IgnoreAspectRatio):
@@ -68,11 +67,6 @@ class GWView(QGraphicsView):
         r = self.scene_rect() if rs is None else rs
         self.set_scene_rect(rs)
         self.fitInView(r, mode)
-        #self.update_my_scene()
-
-
-    def update_my_scene(self):
-        pass
 
 
     def set_style(self):
@@ -100,7 +94,13 @@ class GWView(QGraphicsView):
         logging.debug('set_scale_control to %d' % self._scale_ctl)
 
 
+    def update_my_scene(self):
+        """should be re-implemented in derived classes, if needed..."""
+        pass
+
+
     def resizeEvent(self, e):
+        """important method to make zoom and pan working correctly..."""
         logger.debug('FWView.resizeEvent')
         QGraphicsView.resizeEvent(self, e)
         self.fit_in_view()
@@ -130,7 +130,6 @@ class GWView(QGraphicsView):
         rs = self.scene_rect()
         rs.moveCenter(self.rs_center - QPointF(dx, dy))
         self.set_scene_rect(rs)
-        #self.fit_in_view(rs, Qt.IgnoreAspectRatio)
 
 
     def mouseReleaseEvent(self, e):
@@ -138,7 +137,6 @@ class GWView(QGraphicsView):
         QGraphicsView.mouseReleaseEvent(self, e)
         if self.click_pos is not None:
            self.click_pos = None
-        #self.fit_in_view()
 
 
     def wheelEvent(self, e):

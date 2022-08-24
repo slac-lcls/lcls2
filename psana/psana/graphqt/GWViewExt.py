@@ -61,26 +61,25 @@ class GWViewExt(GWView):
         self.signal_fast = signal_fast
 
         self.set_origin(origin)
-
         self.update_my_scene()
         self.fit_in_view()  # mode=Qt.IgnoreAspectRatio or Qt.KeepAspectRatio
         self.init_timer()
-
-
-    def set_style(self):
-        logger.debug('GWViewExt.set_style')
-        GWView.set_style(self)
-        self.brudf = QBrush()
-        self.brubx = QBrush(Qt.black, Qt.SolidPattern)
-        self.pendf = QPen()
-        self.pendf.setStyle(Qt.NoPen)
-        self.penbx = QPen(Qt.black, 6, Qt.SolidLine)
 
 
     def init_timer(self):
         self.twheel_msec = self.kwa.get('twheel_msec', 500)  # timeout for wheelEvent
         self.timer = QTimer()
         self.timer.timeout.connect(self.on_timeout)
+
+
+    def set_style(self):
+        logger.debug('GWViewExt.set_style')
+        GWView.set_style(self)  # set_background_brush
+        self.brudf = QBrush()
+        self.brubx = QBrush(Qt.black, Qt.SolidPattern)
+        self.pendf = QPen()
+        self.pendf.setStyle(Qt.NoPen)
+        self.penbx = QPen(Qt.black, 6, Qt.SolidLine)
 
 
     def set_origin(self, origin='UL'):
@@ -138,8 +137,8 @@ class GWViewExt(GWView):
 
 
     def mouseMoveEvent(self, e):
-        GWView.mouseMoveEvent(self, e)
         #logger.debug('GWViewExt.mouseMoveEvent, at point: %s' % str(e.pos()))
+        GWView.mouseMoveEvent(self, e)
         self.mouse_move_event.emit(e)
         if self.signal_fast: self.emit_signal_if_scene_rect_changed()
 
@@ -249,7 +248,7 @@ class GWViewExt(GWView):
 
 
     def update_my_scene(self):
-        logger.debug('GWViewExt.update_my_scene')
+        #logger.debug('GWViewExt.update_my_scene')
         self.set_cursor_type_rect()
 
 
