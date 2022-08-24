@@ -52,15 +52,15 @@ def test_fwview(tname):
     b="background-color:yellow; border: 0px solid green"
     app = QApplication(sys.argv)
     w = None
-    if   tname == '0': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
-    elif tname == '1': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='UL', show_mode=3, scale_ctl='HV')
-    elif tname == '2': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='UR', show_mode=3, scale_ctl='HV')
-    elif tname == '3': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='DR', show_mode=3, scale_ctl='HV')
-    elif tname == '4': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='')
-    elif tname == '5': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='H')
-    elif tname == '6': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='V')
-    elif tname == '7': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=1, scale_ctl='HV')
-    elif tname == '8': w=TestFWView(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
+    if   tname == '0': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='HV')
+    elif tname == '1': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='UL', show_mode=3, scale_ctl='HV')
+    elif tname == '2': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='UR', show_mode=3, scale_ctl='HV')
+    elif tname == '3': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='DR', show_mode=3, scale_ctl='HV')
+    elif tname == '4': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='')
+    elif tname == '5': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='H')
+    elif tname == '6': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='V')
+    elif tname == '7': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=1, scale_ctl='HV')
+    elif tname == '8': w=TestFWView(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='HV')
     else:
         print('test %s is not implemented' % tname)
         return
