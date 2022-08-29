@@ -27,6 +27,7 @@ class Event():
         self._complete()
         self._position = 0
         self._run = run
+        self._proxy_evt = None          # For smalldata-event loop
 
     def __iter__(self):
         return self

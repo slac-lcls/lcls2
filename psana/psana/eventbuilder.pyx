@@ -130,7 +130,23 @@ cdef class EventBuilder:
         for view in views:
             self.mypybufs.append(MyPyBuffer(view))
 
-    def _has_more(self):
+    def events(self):
+        """A generator that yields an smd event.
+        Note: Use either this generator or build(). They both call build()
+        , which advances the offset of MyPyBuffers' view.
+        """
+        run = <object> self.run
+        proxy_events = self.build(as_proxy_events=True)
+        for proxy_evt in proxy_events:
+            py_evt = Event._from_bytes(self.configs, proxy_evt.as_bytearray(), run=run) 
+            py_evt._complete() 
+            # Smd event created this way will have proxy event set as its attribute.
+            # This is so that SmdReaderManager can grab them and build batches/
+            # step batches.
+            py_evt._proxy_evt = proxy_evt
+            yield py_evt
+
+    def has_more(self):
         for mypybuf in self.mypybufs:
             if mypybuf.offset < mypybuf.size:
                 return True
@@ -333,7 +349,7 @@ cdef class EventBuilder:
         if accept == 1:
             proxy_evt.set_destination(dest_rank)
             # For Non L1, check that all dgrams show up
-            if proxy_evt.service != TransitionId.L1Accept:
+            if  proxy_evt.service != TransitionId.L1Accept:
                 if cn_dgrams != self.nsmds:
                     raise
         else: 
@@ -342,7 +358,17 @@ cdef class EventBuilder:
         return proxy_evt
 
 
-    def build(self):
+    def build(self, as_proxy_events=False):
+        """ Build proxy events according to batch size.
+        
+        Input: 
+        as_proxy_events: set this to skip creating event and step batches
+
+        Output:
+        proxy_events: a list of proxy events (as_proxy_events=True)
+        batch_dict, step_dict: batches of events with destination 
+                               rank id as key
+        """
         # Grab dsparms (cast PyObject* to Python object)
         dsparms = <object> self.dsparms
         
@@ -355,7 +381,7 @@ cdef class EventBuilder:
         # Keeping all built proxy event
         proxy_events = []
 
-        while cn_intg_events < dsparms.batch_size and self._has_more():
+        while cn_intg_events < dsparms.batch_size and self.has_more():
             proxy_evt = self.build_proxy_event()
             if proxy_evt is not None:
                 # Either counting no. of events normally or counting only
@@ -376,11 +402,13 @@ cdef class EventBuilder:
         assert got_step <= MAX_BATCH_SIZE, f"No. of transition events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got_step})"
         self.nevents = got
         self.nsteps = got_step
-        
-        # Generates bytearray representation in batches (grouped by destination rank id)
-        batch_dict, step_dict = self.gen_batches(proxy_events)
 
-        return batch_dict, step_dict
+        if as_proxy_events:
+            return proxy_events
+        else:
+            # Generates bytearray representation in batches (grouped by destination rank id)
+            batch_dict, step_dict = self.gen_batches(proxy_events)
+            return batch_dict, step_dict
 
     @property
     def nevents(self):
