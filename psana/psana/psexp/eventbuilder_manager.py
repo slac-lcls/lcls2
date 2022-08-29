@@ -18,8 +18,6 @@ class EventBuilderManager(object):
     def batches(self):
         while True: 
             batch_dict, step_dict = self.eb.build()
-            self.min_ts = self.eb.min_ts
-            self.max_ts = self.eb.max_ts
             if self.eb.nevents==0 and self.eb.nsteps==0: break
             yield batch_dict, step_dict
 

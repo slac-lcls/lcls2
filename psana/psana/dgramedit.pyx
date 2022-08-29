@@ -115,11 +115,12 @@ cdef class PyDgram():
     # For reading dgram from a file, this is size() of XtcFileIterator.
     # For createTransition, this is BUFSIZE in XtcUpdateIter.
     cdef const void* bufEnd
+    cdef uint64_t bufSize
     
     def __init__(self, pycap_dgram, bufsize):
         self.cptr = <Dgram*>PyCapsule_GetPointer(pycap_dgram,"dgram")
-        cdef uint64_t cbufsize = bufsize
-        self.bufEnd = <char*>self.cptr + cbufsize
+        self.bufSize = bufsize
+        self.bufEnd = <char*>self.cptr + self.bufSize
 
     @property
     def pyxtc(self):
@@ -130,20 +131,28 @@ cdef class PyDgram():
         pyxtc = PyXtc(pycap_xtc, pycap_bufend)
         return pyxtc
 
-    def get_size(self):
-        return sizeof(Dgram)
-
     def dec_extent(self, uint32_t removed_size):
         self.cptr.xtc.extent -= removed_size
+        # The minimum value of extent is the size of Xtc. 
+        err = f"Invalid extent value: {self.cptr.xtc.extent} (must be >= sizeof(Xtc): {sizeof(Xtc)})"
+        assert self.cptr.xtc.extent >= sizeof(Xtc), err
 
     def get_payload_size(self):
         return self.cptr.xtc.sizeofPayload()
+
+    def size(self):
+        return sizeof(Dgram) + self.get_payload_size()
 
     def service(self):
         return self.cptr.service()
 
     def timestamp(self):
         return self.cptr.time.value()
+
+    def as_memoryview(self):
+        cdef uint64_t dgram_size = self.size()
+        return <char [:dgram_size]><char*>self.cptr
+
 
 
 cdef class PyXtcUpdateIter():

@@ -52,7 +52,7 @@ heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
 #ami_worker_nodes = ["drp-neh-cmp013","drp-neh-cmp017","drp-neh-cmp018"]
-ami_worker_nodes = ["drp-neh-cmp017"]
+ami_worker_nodes = ["drp-neh-cmp014"]
 ami_num_workers = len(ami_worker_nodes)
 ami_manager_node = "drp-neh-cmp018"
 
@@ -82,7 +82,7 @@ procmgr_config = [
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-neh-cmp013', id:'teb0',        flags:'spu',                cmd:teb_cmd},
+ { host: 'drp-neh-cmp014', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
  { host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
@@ -98,7 +98,7 @@ procmgr_config = [
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x8 -T 4000000'},
 
- { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50, cmd:udp_cmd0+' -l 0x8'},
+ { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x8'},
 
  { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
  { host: 'drp-neh-cmp007', id:'rix_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x20'},

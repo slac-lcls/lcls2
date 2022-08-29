@@ -28,20 +28,20 @@ class TestGWViewExt(GWViewExt):
         elif e.key() == Qt.Key_R:
             print('Reset original size')
             #self.reset_original_size()
-            self.set_scene_rect_default()
+            self.reset_scene_rect()
 
         elif e.key() == Qt.Key_U:
             print('Update default rect scene')
             #self.reset_original_size()
-            self.set_scene_rect_default(rs=QRectF(-10, -10, 30, 30))
+            self.reset_scene_rect(rs=QRectF(-10, -10, 30, 30))
 
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D
-            print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
+            print('change scene rect %s' % ('set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=20, dtype=np.int)
             rs = QRectF(v[0], v[1], v[2]+100, v[3]+100)
             print('Set scene rect: %s' % str(rs))
-            self.set_rect_scene(rs, set_def=change_def)
+            self.reset_scene_rect(rs)
 
         else:
             print(self.key_usage())
@@ -59,15 +59,15 @@ def test_fwview(tname):
     b="background-color:yellow; border: 0px solid green"
     app = QApplication(sys.argv)
     w = None
-    if   tname == '0': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
-    elif tname == '1': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='UL', show_mode=3, scale_ctl='HV')
-    elif tname == '2': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='UR', show_mode=3, scale_ctl='HV')
-    elif tname == '3': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='DR', show_mode=3, scale_ctl='HV')
-    elif tname == '4': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='')
-    elif tname == '5': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='H')
-    elif tname == '6': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='V')
-    elif tname == '7': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=1, scale_ctl='HV')
-    elif tname == '8': w=TestGWViewExt(None, rscene=QRectF(0, 0, 100, 100), origin='DL', show_mode=3, scale_ctl='HV')
+    if   tname == '0': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='HV')
+    elif tname == '1': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='UL', show_mode=3, scale_ctl='HV')
+    elif tname == '2': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='UR', show_mode=3, scale_ctl='HV')
+    elif tname == '3': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='DR', show_mode=3, scale_ctl='HV')
+    elif tname == '4': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='')
+    elif tname == '5': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='H')
+    elif tname == '6': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='V')
+    elif tname == '7': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=1, scale_ctl='HV')
+    elif tname == '8': w=TestGWViewExt(None, rscene=QRectF(-10, -10, 30, 30), origin='DL', show_mode=3, scale_ctl='HV')
     else:
         print('test %s is not implemented' % tname)
         return
