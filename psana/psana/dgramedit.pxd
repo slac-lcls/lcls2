@@ -76,7 +76,7 @@ cdef extern from 'xtcdata/xtc/XtcFileIterator.hh' namespace "XtcData":
 cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
 
     cdef cppclass XtcUpdateIter:
-        XtcUpdateIter(unsigned numWords) except +
+        XtcUpdateIter(unsigned numWords, uint64_t maxBufSize) except +
         int process(Xtc* xtc, const void* bufEnd)
         void get_value(int i, Name& name, DescData& descdata)
         void iterate(Xtc* xtc, const void* bufEnd)
@@ -96,7 +96,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void addData(unsigned nodeId, unsigned namesId,
                 unsigned* shape, char* data, DataDef& datadef, char* varname)
         Dgram& createTransition(unsigned transId, unsigned counting_timestamps,
-                uint64_t timestamp_val, const void** bufEnd)
+                uint64_t timestamp_val, const void** bufEnd, uint64_t maxBufSize)
         void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId)
         void updateTimeStamp(Dgram& d, uint64_t timestamp_val)
         int  getElementSize(unsigned nodeId, unsigned namesId,
