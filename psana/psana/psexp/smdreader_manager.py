@@ -1,10 +1,9 @@
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
-from psana.psexp import *
-from psana.psexp.run_smalldata import RunSmallData
 import os, time
 from psana import dgram
 from psana.event import Event
+from .run import RunSmallData
 
 import logging
 logger = logging.getLogger(__name__)
