@@ -1,11 +1,17 @@
 from psana.psexp import TransitionId
 
-class SmdDataSource():
-
-    def __init__(self, configs, eb, run=None):
-        self.configs = configs
+class RunSmallData():
+    """ Yields list of smalldata events
+    
+    This class is created by SmdReaderManager and used exclusively by EventBuilder.
+    There's no DataSource class associated with it. This class makes step and 
+    event generator available to user in smalldata callback. It does minimal work
+    and doesn't require the Run baseclass.
+    """
+    def __init__(self, run, eb):
+        self._evt = run._evt
+        self.configs = run.configs
         self.eb = eb
-        self.run = run
         
         # SmdDataSource and BatchIterator share this list. SmdDataSource automatically
         # adds transitions to this list (skip yield and so hidden from smd_callback).
@@ -18,7 +24,4 @@ class SmdDataSource():
                 self.proxy_events.append(evt._proxy_evt)
                 continue
             yield evt
-
-
-
-
+    

@@ -21,7 +21,7 @@ def run_test_loop_callback():
         sdet = run.Detector('motor2')
         for evt in run.events():
             img = det.raw.calib(evt)
-            print('bigdata', evt.timestamp, img.shape, edet(evt), sdet(evt))
+            print('bigdata', evt.timestamp, img.shape, sdet(evt), edet(evt))
 
 
 if __name__ == "__main__":
