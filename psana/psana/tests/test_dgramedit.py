@@ -6,8 +6,7 @@ import pytest
 
 @pytest.fixture
 def output_filename(tmp_path):
-    #fname = str(tmp_path / 'out-dgramedit-test.xtc2')
-    fname = 'out-dgramedit-test.xtc2'
+    fname = str(tmp_path / 'out-dgramedit-test.xtc2')
     return fname
 
 def create_array(dtype):
