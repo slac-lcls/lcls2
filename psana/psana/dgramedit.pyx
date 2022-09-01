@@ -197,6 +197,9 @@ cdef class PyXtcUpdateIter():
     def size(self):
         return self.cptr.getSize()
 
+    def savedsize(self):
+        return self.cptr.getSavedSize()
+
     def copy(self, PyDgram pydg, is_config=False):
         self.cptr.copy(pydg.cptr, is_config)
 
@@ -521,5 +524,7 @@ class DgramEdit:
         """
         return self.uiter.size()
 
-
+    @property
+    def savedsize(self):
+        return self.uiter.savedsize()
 

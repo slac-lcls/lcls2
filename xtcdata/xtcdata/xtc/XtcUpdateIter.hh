@@ -99,6 +99,7 @@ public:
         _tmpbuf = (char *) malloc(maxBufSize);
         _cfgbufsize = 0;
         _cfgbuf = (char *) malloc(maxBufSize);
+        _savedsize = 0;
         _removed_size = 0;              // counting size of removed det/alg in bytes
         _cfgFlag = 0;                   // tells if this dgram is a Configure
         _cfgWriteFlag = 0;              // default is not to write to _cfgbuf when iterated.
@@ -135,7 +136,12 @@ public:
         return sizeof(Dgram) + bufsize;
     }
 
+    unsigned getSavedSize(){
+        return _savedsize;
+    }
+
     void clear_buf(){
+        _savedsize = _bufsize;
         _bufsize = 0;
     }
 
@@ -222,6 +228,7 @@ private:
     unsigned _bufsize;
     char* _cfgbuf;
     unsigned _cfgbufsize;
+    unsigned _savedsize;
 
     // Used for couting no. of ShapesData bytes removed per event.
     // This gets reset to 0 when the event is saved.

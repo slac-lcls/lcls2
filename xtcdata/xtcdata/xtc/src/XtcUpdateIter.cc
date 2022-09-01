@@ -348,10 +348,15 @@ void XtcUpdateIter::copy(Dgram* parent_d, int isConfig){
 void XtcUpdateIter::copyTo(Dgram* parent_d, char* out_buf, int isConfig){
     // TODO Add checks for overflown
     memcpy(out_buf, (char *) parent_d, sizeof(Dgram));
+    _bufsize += sizeof(Dgram);
     if (isConfig == 1) {
         memcpy(out_buf + sizeof(Dgram), _cfgbuf, _cfgbufsize);
+        _bufsize += _cfgbufsize;
+        _cfgbufsize = 0;
     } else {
         memcpy(out_buf + sizeof(Dgram), _tmpbuf, _tmpbufsize);
+        _bufsize += _tmpbufsize;
+        _tmpbufsize = 0;
     }
 }
 
