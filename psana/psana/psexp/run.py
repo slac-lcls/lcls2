@@ -278,17 +278,17 @@ class RunDrp(Run):
             )
             if evt.service() != TransitionId.L1Accept:
                 if evt.service() == TransitionId.EndRun:
-                    self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+                    self._ds.curr_dgramedit.save(self._ds.dm.shm_send_mv)
                     return
-                self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+                self._ds.curr_dgramedit.save(self._ds.dm.shm_send_mv)
                 continue
             st = time.time()
             yield evt
             en = time.time()
             self.c_ana.labels('seconds','None').inc(en-st)
             self.c_ana.labels('batches','None').inc()
-            self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
-       
+            self._ds.curr_dgramedit.save(self._ds.dm.shm_send_mv)
+
     def steps(self):
         for evt in self._evt_iter:
             self._ds.curr_dgramedit = DgramEdit(
@@ -296,11 +296,11 @@ class RunDrp(Run):
                 config=self._ds.config_dgramedit
             )
             if evt.service() == TransitionId.EndRun:
-                self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+                self._ds.curr_dgramedit.save(self._ds.dm.shm_send_mv)
                 return
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter)
-            self._ds.curr_dgramedit.save(self._ds.dm.shm_send)
+            self._ds.curr_dgramedit.save(self._ds.dm.shm_send_mv)
                 
 
 class RunSingleFile(Run):

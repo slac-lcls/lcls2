@@ -57,6 +57,8 @@ class DgramManager(object):
         self.mq_send = None
         self.shm_recv = None
         self.shm_send = None
+        self.shm_recv_mv = None
+        self.shm_send_mv = None
         self.shm_size = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
@@ -156,10 +158,12 @@ class DgramManager(object):
         except sysv_ipc.Error as exp:
             assert(False)
 
+        self.shm_recv_mv = memoryview(self.shm_recv)
+        self.shm_send_mv = memoryview(self.shm_send)
+
         self.mq_send.send(b"g")
         message, priority = self.mq_recv.receive()
-        shm_view = memoryview(self.shm_recv)
-        barray = bytes(shm_view[:])
+        barray = bytes(self.shm_recv_mv[:])
         view = memoryview(barray)
         self.shm_size = view.nbytes   
         return view
@@ -198,7 +202,6 @@ class DgramManager(object):
                     det_class_table = det_classes['normal']
                 else:
                     det_class_table = det_classes[det_name]
-
 
                 dettype, detid = (None, None)
                 for drp_class_name, drp_class in det.__dict__.items():
@@ -375,12 +378,9 @@ class DgramManager(object):
             self.mq_send.send(b"g")
             message, priority = self.mq_recv.receive()
             if message == b"g":
-                view = memoryview(self.shm_recv)
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs)-1]
-                d = dgram.Dgram(config=self.configs[-1], view=view)
-                if d.service() == 10 or d.service() == 12:
-                    self.drp_edbl_config = False
+                d = dgram.Dgram(config=self.configs[-1], view=self.shm_recv_mv)
             else:
                 view = self._connect_drp()
                 config = self.configs[len(self.configs)-1]
@@ -400,7 +400,6 @@ class DgramManager(object):
                 else:
                     print(err)
                     raise StopIteration
-
 
         # Check BeginRun - EndRun pairing
         service = dgrams[0].service()
