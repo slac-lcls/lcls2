@@ -55,6 +55,19 @@ class GWViewAxis(GWViewExt):
            + '\nside         : %s' % self.side
 
 
+    def set_axis_limits(self, vmin, vmax):
+        print('GWViewAxis.set_axis_limits vmin: %.1f vmax: %.1f' % (vmin, vmax))
+        r = self.scene_rect()
+        if self.side in ('U','D'):
+            r.setX(vmin)
+            r.setWidth(vmax - vmin)
+        else:
+            r.setY(vmin)
+            r.setHeight(vmax - vmin)
+        self.fit_in_view(r)
+        self.update_my_scene()
+
+
     def set_style(self):
         GWViewExt.set_style(self)
 
@@ -64,7 +77,7 @@ class GWViewAxis(GWViewExt):
         self.penax = QPen(color, 1, Qt.SolidLine)
         #self.penax.setCosmetic(True)
 
-        if self.side in ('U','D') :
+        if self.side in ('U','D'):
             self.setMinimumSize(self.wlength, 2)
             self.setFixedHeight(self.wwidth)
         else:

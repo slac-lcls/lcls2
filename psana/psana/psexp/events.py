@@ -1,4 +1,6 @@
-from psana.psexp import EventManager, TransitionId
+from . import TransitionId
+from .event_manager import EventManager
+
 import types
 
 class Events:

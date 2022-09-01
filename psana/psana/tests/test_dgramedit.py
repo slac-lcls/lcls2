@@ -1,5 +1,5 @@
 from psana.dgramedit import DgramEdit, AlgDef, DetectorDef, PyXtcFileIterator
-import os, sys
+import os, sys, io
 import numpy as np
 from psana import DataSource
 import pytest
@@ -37,9 +37,15 @@ def check_output(fname):
         # Currently only checking one field from the second detector
         #assert np.array_equal(arrayRaw, create_array(np.float32))
 
-
 @pytest.mark.skipif(sys.platform == 'darwin', reason="check_output fails on macos")
 def test_run_dgramedit(output_filename):
+    # Test with output writing to a file
+    run_dgramedit(output_filename)
+
+    # Test with output writing to a bytearray then dump that out to a file
+    run_dgramedit(output_filename, as_file=False)
+    
+def run_dgramedit(output_filename, as_file=True):
     ifname = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'dgramedit-test.xtc2')
     fd = os.open(ifname, os.O_RDONLY)
     pyiter = PyXtcFileIterator(fd, 0x1000000)
@@ -69,8 +75,14 @@ def test_run_dgramedit(output_filename):
     detdef2 = DetectorDef("xppcspad", "cspad", "detnum1234")
     datadef2 = {"arrayRaw": (np.float32, 2), }
     
-    # Open output file for writing
-    xtc2file = open(output_filename, "wb")
+    # We test both output as file and as bytearray modes
+    if as_file:
+        xtc2buf = open(output_filename, "wb")
+    else:
+        xtc2buf = bytearray(64000000)
+
+    # This offset is passed in at save() but only used in bytearray output mode
+    offset = 0
 
     names0 = None
     for i in range(6):
@@ -81,7 +93,9 @@ def test_run_dgramedit(output_filename):
             config = DgramEdit(pydg)
             det = config.Detector(detdef, algdef, datadef)
             det2 = config.Detector(detdef2, algdef2, datadef2)
-            config.save(xtc2file)
+            config.save(xtc2buf, offset=offset)
+            de_size = config.savedsize
+            offset += de_size
 
         # Add new Data to L1
         elif i >= 4:
@@ -108,14 +122,23 @@ def test_run_dgramedit(output_filename):
             
             if i == 4:
                 dgram.removedata("hsd","raw") # per event removal 
-            dgram.save(xtc2file)
+
+            dgram.save(xtc2buf, offset=offset)
+            de_size = dgram.savedsize
+            offset += de_size
         
         # Other transitions
         else: 
             dgram = DgramEdit(pydg, config=config)
-            dgram.save(xtc2file)
+            dgram.save(xtc2buf, offset=offset)
+            de_size = dgram.savedsize
+            offset += de_size
 
-    xtc2file.close()
+    if not as_file:
+        with open(output_filename, "wb") as ofile:
+            ofile.write(xtc2buf[:offset])
+    else:
+        xtc2buf.close()
     
     # Open the generated xtc2 file and test the value inside
     check_output(output_filename)

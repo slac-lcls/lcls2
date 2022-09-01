@@ -16,7 +16,7 @@
 #include <typeinfo>
 #include <memory>
 
-#define BUFSIZE 0x4000000
+#define MAXBUFSIZE 0x4000000
 
 namespace XtcData
 {
@@ -88,13 +88,18 @@ class XtcUpdateIter : public XtcData::XtcIterator
 public:
     enum {Stop, Continue};
 
-    XtcUpdateIter(unsigned numWords) : XtcData::XtcIterator(), _numWords(numWords) {
+    XtcUpdateIter(unsigned numWords, uint64_t maxBufSize) : XtcData::XtcIterator(), _numWords(numWords) {
+        // Users can pass in customized buffer's size for three buffers below
+        if (maxBufSize == 0) {
+            maxBufSize = MAXBUFSIZE;
+        }
         _bufsize = 0;
-        _buf = (char *) malloc(BUFSIZE);
+        _buf = (char *) malloc(maxBufSize);
         _tmpbufsize = 0;
-        _tmpbuf = (char *) malloc(BUFSIZE);
+        _tmpbuf = (char *) malloc(maxBufSize);
         _cfgbufsize = 0;
-        _cfgbuf = (char *) malloc(BUFSIZE);
+        _cfgbuf = (char *) malloc(maxBufSize);
+        _savedsize = 0;
         _removed_size = 0;              // counting size of removed det/alg in bytes
         _cfgFlag = 0;                   // tells if this dgram is a Configure
         _cfgWriteFlag = 0;              // default is not to write to _cfgbuf when iterated.
@@ -131,7 +136,12 @@ public:
         return sizeof(Dgram) + bufsize;
     }
 
+    unsigned getSavedSize(){
+        return _savedsize;
+    }
+
     void clear_buf(){
+        _savedsize = _bufsize;
         _bufsize = 0;
     }
 
@@ -180,7 +190,7 @@ public:
     void addData(unsigned nodeId, unsigned namesId,
             unsigned* shape, char* data, DataDef& datadef, char* varname);
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
-                        uint64_t timestamp_val, const void** bufEnd);
+                        uint64_t timestamp_val, const void** bufEnd, uint64_t maxBufSize);
     void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId);
     void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
     int getElementSize(unsigned nodeId, unsigned namesId,
@@ -218,6 +228,7 @@ private:
     unsigned _bufsize;
     char* _cfgbuf;
     unsigned _cfgbufsize;
+    unsigned _savedsize;
 
     // Used for couting no. of ShapesData bytes removed per event.
     // This gets reset to 0 when the event is saved.

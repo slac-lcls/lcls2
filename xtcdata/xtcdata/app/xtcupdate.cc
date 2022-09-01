@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
     unsigned nevent=0;
 
     // create update iterator
-    XtcUpdateIter uiter(numWords);
+    XtcUpdateIter uiter(numWords, 0x4000000);
 
     char detName[] = "xpphsd";
     char detType[] = "hsd";

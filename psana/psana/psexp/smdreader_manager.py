@@ -1,10 +1,9 @@
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
-from psana.psexp import *
-from psana.psexp.smd_ds import SmdDataSource
 import os, time
 from psana import dgram
 from psana.event import Event
+from .run import RunSmallData
 
 import logging
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ class BatchIterator(object):
                     dsparms=dsparms,
                     run=run,
                     prometheus_counter=None)
-            self.smd_ds = SmdDataSource(configs, self.eb, run=run)
+            self.run_smd = RunSmallData(run, self.eb)
 
     def __iter__(self):
         return self
@@ -48,15 +47,15 @@ class BatchIterator(object):
         # Note that we are persistently calling smd_callback until there's nothing
         # left in all views used by EventBuilder. From this while/for loops, we 
         # either gets transitions from SmdDataSource and/or L1 from the callback.
-        while self.smd_ds.proxy_events == [] and self.eb.has_more():
-            for evt in self.dsparms.smd_callback(self.smd_ds):
-                self.smd_ds.proxy_events.append(evt._proxy_evt)
+        while self.run_smd.proxy_events == [] and self.eb.has_more():
+            for evt in self.dsparms.smd_callback(self.run_smd):
+                self.run_smd.proxy_events.append(evt._proxy_evt)
         
-        if not self.smd_ds.proxy_events:
+        if not self.run_smd.proxy_events:
             raise StopIteration
 
-        batch_dict, step_dict = self.eb.gen_batches(self.smd_ds.proxy_events)
-        self.smd_ds.proxy_events = []
+        batch_dict, step_dict = self.eb.gen_batches(self.run_smd.proxy_events)
+        self.run_smd.proxy_events = []
         return batch_dict, step_dict
 
 
