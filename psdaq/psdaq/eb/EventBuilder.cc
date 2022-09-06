@@ -301,7 +301,7 @@ void EventBuilder::_fixup(EbEvent*             event,
 
     fixup(event, srcId);
 
-    remaining &= ~(1ul << srcId);
+    remaining &= ~(1ull << srcId);
   }
   while (remaining);
 

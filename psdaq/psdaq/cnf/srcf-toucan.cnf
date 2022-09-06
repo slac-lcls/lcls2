@@ -55,7 +55,7 @@ ea_cmd1 = f'{task_set} epicsArch {std_opts1} {ea_cfg}'
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-srcf-cmp003"]
+ami_worker_nodes = ["drp-srcf-cmp003","drp-srcf-cmp004"]
 ami_num_workers = len(ami_worker_nodes)
 ami_manager_node = "drp-srcf-cmp003"
 
@@ -94,8 +94,8 @@ procmgr_config = [
  {host: 'drp-srcf-cmp003', id:'teb0',        flags:'spux', env:teb_env,  cmd:f'{teb_cmd}'},
  {host: 'drp-srcf-cmp003', id:'teb1',        flags:'spux', env:teb_env,  cmd:f'{teb_cmd}'},
 
- {host: 'drp-srcf-cmp003', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 64 -q {ami_workers_per_node}'},
- {host: 'drp-srcf-cmp003', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -R'},
+# {host: 'drp-srcf-cmp003', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 64 -q {ami_workers_per_node}'},
+# {host: 'drp-srcf-cmp003', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -t -R'},
 # {host: 'drp-srcf-cmp003', id:'meb1',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb1 -d -n 64 -q {ami_workers_per_node}'},
 # {host: 'drp-srcf-cmp003', id:'shm1',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb1 -R'},
 

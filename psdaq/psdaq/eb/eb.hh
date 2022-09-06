@@ -146,7 +146,7 @@ namespace Pds {
     // Sanity checks
     static_assert((BATCH_DURATION & (BATCH_DURATION - 1)) == 0, "BATCH_DURATION must be a power of 2");
     static_assert((MAX_BATCHES & (MAX_BATCHES - 1)) == 0, "MAX_BATCHES must be a power of 2");
-    static_assert((TEB_TMO_MS <= 1000ul * MAX_LATENCY/TICK_RATE), "TEB_TMO_MS is too large");
+    static_assert((TEB_TMO_MS <= 1000ull * MAX_LATENCY/TICK_RATE), "TEB_TMO_MS is too large");
   };
 };
 

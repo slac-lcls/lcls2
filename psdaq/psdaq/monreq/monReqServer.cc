@@ -102,7 +102,6 @@ namespace Pds {
                        prms.maxBufferSize,
                        prms.numEvBuffers,
                        prms.nevqueues),
-      _iTeb        (0),
       _mrqLinks    (links),
       _requestCount(requestCount),
       _bufFreeList (prms.numEvBuffers),
@@ -207,7 +206,7 @@ namespace Pds {
           printf("Free list entry %u: %u\n", i, _bufFreeList.peek(i));
         }
       }
-      //printf("_deleteDatagram: _bufFreeList.push(): %u, count = %zd\n", idx, _bufFreeList.count());
+      //printf("_deleteDatagram: push idx %u, cnt = %zu\n", idx, _bufFreeList.count());
 
       Pool::free((void*)dg);
     }
@@ -222,37 +221,25 @@ namespace Pds {
         logging::error("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
         return;
       }
-      //printf("_requestDatagram: _bufFreeList.pop(): %u, count = %zd\n", data, _bufFreeList.count());
+      //printf("_requestDatagram: pop idx %u, cnt = %zu\n", data, _bufFreeList.count());
 
       auto data = ImmData::value(ImmData::Buffer, _prms.id, idx);
 
-      int rc = -1;
-      for (unsigned i = 0; i < _mrqLinks.size(); ++i)
+      // Split the pool of indices across all TEBs evenly
+      unsigned iTeb = idx % _mrqLinks.size();
+      int rc = _mrqLinks[iTeb]->EbLfLink::post(data);
+      if (rc == 0)
       {
-        // Round robin through Trigger Event Builders
-        unsigned iTeb = _iTeb;
-        _iTeb = (iTeb + 1) % _mrqLinks.size();
-
-        rc = _mrqLinks[iTeb]->EbLfLink::post(data);
-
-        if (UNLIKELY(_prms.verbose >= VL_EVENT))
-          printf("_requestDatagram: Post %u EB[iTeb %u], value %08x, rc %d\n",
-                 i, iTeb, data, rc);
-
-        if (rc == 0)
-        {
-          ++_requestCount;
-          _bufUseCnts->observe(double(idx));
-          _trgT0[idx] = std::chrono::system_clock::now();
-          break;            // Break if message was delivered
-        }
+        ++_requestCount;
+        _bufUseCnts->observe(double(idx));
+        _trgT0[idx] = std::chrono::system_clock::now();
       }
-      if (rc)
+      else
       {
-        logging::error("%s:\n  Unable to post request to any TEB: rc %d, idx %u (%08x)",
-                       __PRETTY_FUNCTION__, rc, idx, data);
+        logging::error("%s:\n  Unable to post request to TEB %u: rc %d, idx %u (%08x)",
+                       __PRETTY_FUNCTION__, iTeb, rc, idx, data);
 
-        // Don't leak buffers
+        // Don't leak buffers - Revisit: XtcMonServer leaks in this case
         if (_bufFreeList.push(idx))
         {
           logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
@@ -262,10 +249,13 @@ namespace Pds {
           }
         }
       }
+
+      if (UNLIKELY(_prms.verbose >= VL_EVENT))
+        printf("_requestDatagram: Post EB[iTeb %u], value %08x, rc %d\n",
+               iTeb, data, rc);
     }
 
   private:
-    unsigned                       _iTeb;
     std::vector<EbLfCltLink*>&     _mrqLinks;
     uint64_t&                      _requestCount;
     FifoMT<unsigned, std::mutex>   _bufFreeList;
@@ -399,17 +389,19 @@ void Meb::unconfigure()
 
 int Meb::connect()
 {
+  int rc;
+
   _mrqLinks.resize(_prms.addrs.size());
+
+  rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
+  if (rc)  return rc;
 
   // Make a guess at the size of the Input entries
   // Since the guess will almost always be wrong,
   // disable region allocation during Connect
   size_t inpSizeGuess = 0;
 
-  int rc = EbAppBase::connect(_prms, inpSizeGuess);
-  if (rc)  return rc;
-
-  rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, "TEB");
+  rc = EbAppBase::connect(_prms, inpSizeGuess);
   if (rc)  return rc;
 
   return 0;
@@ -422,10 +414,9 @@ int Meb::configure()
   size_t   size    = sizeof(Dgram) + entries * sizeof(Dgram*);
   _pool = std::make_unique<GenericPool>(size, 1 + _prms.numEvBuffers); // +1 for Transitions
 
-  int rc = EbAppBase::configure(_prms);
-  if (rc)  return rc;
+  // MRQ links need no configuration
 
-  rc = linksConfigure(_mrqLinks, _prms.id, "TEB");
+  int rc = EbAppBase::configure(_prms);
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -457,12 +448,20 @@ void Meb::run()
     rc = EbAppBase::process();
     if (rc < 0)
     {
-      if (rc == -FI_ENOTCONN)
+      if (rc == -FI_ETIMEDOUT)
+      {
+        rc = 0;
+      }
+      else if (rc == -FI_ENOTCONN)
       {
         logging::critical("MEB thread lost connection with a DRP");
         throw "Receiver thread lost connection with a DRP";
       }
-      if (rc == rcPrv)  throw "Repeating fatal error";
+      else if (rc == rcPrv)
+      {
+        logging::critical("MEB thread aborting on repeating fatal error");
+        throw "Repeating fatal error";
+      }
     }
     rcPrv = rc;
   }
@@ -573,7 +572,9 @@ void Meb::process(EbEvent* event)
   {
     ++_prcBufCount;    // Number of buffers being processed by the MEB; decremented in _deleteDatagram
     _bufT0[idx] = now; // Event processing time t0
-    _monTrgTime = std::chrono::duration_cast<ns_t>(now - _trgT0[idx]).count();
+    auto monTrgTime = std::chrono::duration_cast<ns_t>(now - _trgT0[idx]).count();
+    if (monTrgTime < 1000000000)
+      _monTrgTime = monTrgTime;         // Skip large startup values
   }
 
   // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred

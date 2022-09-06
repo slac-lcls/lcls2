@@ -42,7 +42,7 @@ EbEvent::EbEvent(uint64_t            contract,
 
   _size      = cdg->xtc.sizeofPayload();
 
-  _remaining = contract & ~(1ul << cdg->xtc.src.value());
+  _remaining = contract & ~(1ull << cdg->xtc.src.value());
   if (_remaining == contract)           // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %u isn't in contract %016lx "
@@ -80,7 +80,7 @@ EbEvent* EbEvent::_add(const EbDgram* cdg, unsigned immData)
   _size     += cdg->xtc.sizeofPayload();
 
   uint64_t remaining = _remaining;
-  _remaining = remaining & ~(1ul << cdg->xtc.src.value());
+  _remaining = remaining & ~(1ull << cdg->xtc.src.value());
   if (_remaining == remaining)          // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %u didn't affect remaining %016lx "
