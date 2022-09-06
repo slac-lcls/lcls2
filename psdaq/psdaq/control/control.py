@@ -1244,6 +1244,9 @@ class CollectionManager():
         if not ok:
             return False
 
+        if self.slow_update_rate:
+            self.slowupdateArmed = True
+
         self.lastTransition = 'beginrun'
         return True
 
@@ -2115,6 +2118,15 @@ class CollectionManager():
         ok = self.get_phase2_replies('enable')
         if not ok:
             return False
+
+        # For the first Enable after a BeginRun, possibly issue a Slow Update
+        # after Enable has gone through but before enabling triggers
+        if self.slowupdateArmed:
+            self.slowupdateArmed = False
+            lastTransition = self.lastTransition
+            if not self.condition_slowupdate():
+                self.lastTransition = lastTransition
+                return False
 
         # order matters: set Enable PV after others transition
         if not self.group_run(True):
