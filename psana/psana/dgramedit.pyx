@@ -127,7 +127,7 @@ cdef class PyDgram():
         # We can't pass c ptr to Python function (takes Python object).
         # Follow Valerio's work, here we store c ptr in PyCapsule.
         pycap_xtc = PyCapsule_New(<void *>&(self.cptr.xtc), "xtc", NULL)
-        pycap_bufend = PyCapsule_New(<void *>&(self.bufEnd), "bufEnd", NULL)
+        pycap_bufend = PyCapsule_New(<void *>(self.bufEnd), "bufEnd", NULL)
         pyxtc = PyXtc(pycap_xtc, pycap_bufend)
         return pyxtc
 
