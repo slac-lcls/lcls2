@@ -333,6 +333,7 @@ int Pds::Eb::linksStart(EbLfServer&        transport,
 
 int Pds::Eb::linksConnect(EbLfServer&                transport,
                           std::vector<EbLfSvrLink*>& links,
+                          unsigned                   id,
                           const char*                peer)
 {
   for (unsigned i = 0; i < links.size(); ++i)
@@ -343,47 +344,24 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
     const unsigned msTmo(14750);        // < control.py transition timeout
     if ( (rc = transport.connect(&link, links.size(),  msTmo)) )
     {
-      logging::error("%s:\n  Error connecting to a %s",
-                     __PRETTY_FUNCTION__, peer);
+      logging::error("%s:\n  Error connecting to a %s for link[%u]",
+                     __PRETTY_FUNCTION__, peer, i);
       return rc;
     }
-    links[i] = link;
-
-    auto t1 = std::chrono::steady_clock::now();
-    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Inbound  link[%u] with %s connected in %lu ms",
-                  i, peer, dT);
-  }
-
-  return 0;
-}
-
-int Pds::Eb::linksConfigure(std::vector<EbLfSvrLink*>& links,
-                            unsigned                   id,
-                            const char*                peer)
-{
-  std::vector<EbLfSvrLink*> tmpLinks(links.size());
-
-  for (auto link : links)
-  {
-    auto t0(std::chrono::steady_clock::now());
-    int  rc;
-    if ( (rc = link->prepare(id, peer)) )
+    if ( (rc = link->exchangeId(id, peer)) )
     {
-      logging::error("%s:\n  Failed to prepare link with %s ID %d",
-                     __PRETTY_FUNCTION__, peer, link->id());
+      logging::error("%s:\n  Error exchanging IDs with %s for link[%u]",
+                     __PRETTY_FUNCTION__, peer, i);
       return rc;
     }
-    unsigned rmtId  = link->id();
-    tmpLinks[rmtId] = link;
+    unsigned rmtId = link->id();
+    links[rmtId]   = link;
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Inbound   link with   %3s ID %2d configured in %4lu ms",
+    logging::info("Inbound  link with %3s ID %2d connected in %4lu ms",
                   peer, rmtId, dT);
   }
-
-  links = tmpLinks;                     // Now in remote ID sorted order
 
   return 0;
 }

@@ -134,7 +134,7 @@ int TebContributor::connect(size_t inpSizeGuess)
   _id       = _prms.id;
   _numEbs   = std::bitset<64>(_prms.builders).count();
 
-  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, "TEB");
+  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
   if (rc)  return rc;
 
   // Set up a guess at the RDMA region
@@ -178,7 +178,7 @@ int TebContributor::configure()
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
 
-  int rc = linksConfigure(_links, _id, region, regSize, _prms.maxInputSize, "TEB");
+  int rc = linksConfigure(_links, region, regSize, _prms.maxInputSize, "TEB");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -300,7 +300,8 @@ void TebContributor::_post(const Batch& batch)
     uint32_t     idx    = offset / _prms.maxInputSize;
     size_t       extent = (reinterpret_cast<const char*>(batch.end) -
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;
-    uint32_t     data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
+    uint32_t     data   = ImmData::value(ImmData::Buffer |
+                                         ImmData::Response, _id, idx);
 
     if (UNLIKELY(_prms.verbose >= VL_BATCH))
     {
@@ -308,6 +309,26 @@ void TebContributor::_post(const Batch& batch)
       printf("CtrbOut posts %9lu    batch[%8u]    @ "
              "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
              _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
+    }
+    else
+    {
+      auto dgram = batch.start;
+      auto svc   = dgram->service();
+      if (svc != XtcData::TransitionId::L1Accept) {
+        void* rmtAdx = (void*)link->rmtAdx(offset);
+        if (svc != XtcData::TransitionId::SlowUpdate) {
+          logging::info("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
+                        XtcData::TransitionId::name(svc),
+                        dgram->time.seconds(), dgram->time.nanoseconds(),
+                        dgram->pulseId(), dst, rmtAdx, 0, idx, _prms.maxInputSize);
+        }
+        else {
+          logging::debug("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
+                         XtcData::TransitionId::name(svc),
+                         dgram->time.seconds(), dgram->time.nanoseconds(),
+                         dgram->pulseId(), dst, rmtAdx, 0, idx, _prms.maxInputSize);
+        }
+      }
     }
 
     int rc = link->post(batch.start, extent, offset, data);

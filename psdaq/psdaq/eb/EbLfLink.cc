@@ -267,8 +267,8 @@ int EbLfSvrLink::_synchronizeEnd()
   return rc;
 }
 
-int EbLfSvrLink::prepare(unsigned    id,
-                         const char* peer)
+int EbLfSvrLink::exchangeId(unsigned    id,
+                            const char* peer)
 {
   int rc;
 
@@ -295,8 +295,7 @@ int EbLfSvrLink::prepare(unsigned    id,
   return 0;
 }
 
-int EbLfSvrLink::prepare(unsigned    id,
-                         size_t*     size,
+int EbLfSvrLink::prepare(size_t*     size,
                          const char* peer)
 {
   int      rc;
@@ -310,9 +309,7 @@ int EbLfSvrLink::prepare(unsigned    id,
     return rc;
   }
 
-  // Exchange IDs and get MR size
-  if ( (rc = recvU32(&_id, peer, "ID")) )  return rc;
-  if ( (rc = sendU32(  id, peer, "ID")) )  return rc;
+  // Get MR size
   if ( (rc = recvU32( &rs, peer, "sz")) )  return rc;
   if (size)  *size = rs;
 
@@ -404,7 +401,6 @@ int EbLfCltLink::_synchronizeEnd()
 
     fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
             __PRETTY_FUNCTION__, _id, imm, _SvrSync);
-    //return 1;
   }
 
   if (rc == -FI_EAGAIN)
@@ -413,27 +409,8 @@ int EbLfCltLink::_synchronizeEnd()
   return rc;
 }
 
-int EbLfCltLink::prepare(unsigned    id,
-                         const char* peer)
-{
-  return prepare(id, nullptr, 0, 0, peer);
-}
-
-int EbLfCltLink::prepare(unsigned    id,
-                         void*       region,
-                         size_t      size,
-                         const char* peer)
-{
-  return prepare(id, region, size, size, peer);
-}
-
-// Buffers to be posted using the post(buf, len, offset, immData, ctx) method,
-// below, must be covered by a memory region set up using this method.
-int EbLfCltLink::prepare(unsigned    id,
-                         void*       region,
-                         size_t      lclSize,
-                         size_t      rmtSize,
-                         const char* peer)
+int EbLfCltLink::exchangeId(unsigned    id,
+                            const char* peer)
 {
   int rc;
 
@@ -448,6 +425,41 @@ int EbLfCltLink::prepare(unsigned    id,
   // Exchange IDs and get MR size
   if ( (rc = sendU32(  id, peer, "ID")) )  return rc;
   if ( (rc = recvU32(&_id, peer, "ID")) )  return rc;
+
+  // Verify the exchanges are complete
+  if ( (rc = _synchronizeEnd()) )
+  {
+    fprintf(stderr, "%s:\n  Failed synchronize End with peer: rc %d\n",
+            __PRETTY_FUNCTION__, rc);
+    return rc;
+  }
+
+  return 0;
+}
+
+int EbLfCltLink::prepare(void*       region,
+                         size_t      size,
+                         const char* peer)
+{
+  return prepare(region, size, size, peer);
+}
+
+// Buffers to be posted using the post(buf, len, offset, immData, ctx) method,
+// below, must be covered by a memory region set up using this method.
+int EbLfCltLink::prepare(void*       region,
+                         size_t      lclSize,
+                         size_t      rmtSize,
+                         const char* peer)
+{
+  int rc;
+
+  // Wait for synchronization to complete successfully prior to any sends/recvs
+  if ( (rc = _synchronizeBegin()) )
+  {
+    fprintf(stderr, "%s:\n  Failed synchronize Begin with %s: rc %d\n",
+            __PRETTY_FUNCTION__, peer, rc);
+    return rc;
+  }
 
   // Revisit: Would like to make it const, but has issues in Endpoint.cc
   if (region)

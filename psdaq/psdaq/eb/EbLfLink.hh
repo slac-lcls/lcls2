@@ -77,10 +77,9 @@ namespace Pds {
                   volatile uint64_t& pending,
                   volatile uint64_t& posting);
     public:
-      int prepare(unsigned    id,
-                  const char* peer);
-      int prepare(unsigned    id,
-                  size_t*     size,
+      int exchangeId(unsigned    id,
+                     const char* peer);
+      int prepare(size_t*     size,
                   const char* peer);
       int setupMr(void* region, size_t size, const char* peer);
     private:
@@ -97,15 +96,13 @@ namespace Pds {
                   volatile uint64_t& pending,
                   volatile uint64_t& posting);
     public:
-      int prepare(unsigned    id,
-                  const char* peer);
-      int prepare(unsigned    id,
-                  void*       region,
+      int exchangeId(unsigned    id,
+                     const char* peer);
+      int prepare(void*       region,
                   size_t      lclSize,
                   size_t      rmtSize,
                   const char* peer);
-      int prepare(unsigned    id,
-                  void*       region,
+      int prepare(void*       region,
                   size_t      size,
                   const char* peer);
       int setupMr(void* region, size_t size);

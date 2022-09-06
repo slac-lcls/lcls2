@@ -62,7 +62,6 @@ namespace Pds {
     private:
       int              _linksConfigure(const EbParams&            prms,
                                        std::vector<EbLfSvrLink*>& links,
-                                       unsigned                   id,
                                        const char*                name);
     private:                           // Arranged in order of access frequency
       u64arr_t                  _contract;

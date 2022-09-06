@@ -169,7 +169,7 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
     _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=](){ return  arrTime(i);});
   }
 
-  rc = linksConnect(_transport, _links, "DRP");
+  rc = linksConnect(_transport, _links, _id, "DRP");
   if (rc)  return rc;
 
   // Assume an existing region is already appropriately sized, else make a guess
@@ -177,28 +177,29 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   // If it's too small, it will be corrected during Configure
   if (inpSizeGuess)                     // Disable by providing 0
   {
-    for (unsigned i = 0; i < nCtrbs; ++i)
+    for (auto link : _links)
     {
-      if (!_region[i])                  // No need to guess again
+      unsigned rmtId  = link->id();
+      if (!_region[rmtId])                  // No need to guess again
       {
         // Make a guess at the size of the Input region
-        size_t regSizeGuess = (inpSizeGuess * prms.numBuffers[i] +
-                               _maxTrBuffers * prms.maxTrSize[i]);
+        size_t regSizeGuess = (inpSizeGuess * prms.numBuffers[rmtId] +
+                               _maxTrBuffers * prms.maxTrSize[rmtId]);
 
-        _region[i] = allocRegion(regSizeGuess);
-        if (!_region[i])
+        _region[rmtId] = allocRegion(regSizeGuess);
+        if (!_region[rmtId])
         {
           logging::error("%s:\n  "
-                         "No memory found for Input MR for %s[%d] of size %zd",
-                         __PRETTY_FUNCTION__, "DRP", i, regSizeGuess);
+                         "No memory found for Input MR for %s ID %u of size %zd",
+                         __PRETTY_FUNCTION__, "DRP", rmtId, regSizeGuess);
           return ENOMEM;
         }
 
         // Save the allocated size, which may be more than the required size
-        _regSize[i] = regSizeGuess;
+        _regSize[rmtId] = regSizeGuess;
       }
 
-      rc = _transport.setupMr(_region[i], _regSize[i]);
+      rc = _transport.setupMr(_region[rmtId], _regSize[rmtId]);
       if (rc)  return rc;
     }
   }
@@ -208,7 +209,7 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
 
 int EbAppBase::configure(const EbParams& prms)
 {
-  int rc = _linksConfigure(prms, _links, _id, "DRP");
+  int rc = _linksConfigure(prms, _links, "DRP");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -218,25 +219,20 @@ int EbAppBase::configure(const EbParams& prms)
 
 int EbAppBase::_linksConfigure(const EbParams&            prms,
                                std::vector<EbLfSvrLink*>& links,
-                               unsigned                   id,
                                const char*                peer)
 {
-  std::vector<EbLfSvrLink*> tmpLinks(links.size());
-
   for (auto link : links)
   {
     auto   t0{std::chrono::steady_clock::now()};
     int    rc;
     size_t regEntrySize;
-    if ( (rc = link->prepare(id, &regEntrySize, peer)) )
+    if ( (rc = link->prepare(&regEntrySize, peer)) )
     {
       logging::error("%s:\n  Failed to prepare link with %s ID %d",
                      __PRETTY_FUNCTION__, peer, link->id());
       return rc;
     }
     unsigned rmtId     = link->id();
-    tmpLinks[rmtId]    = link;
-
     size_t regSize     = regEntrySize * prms.numBuffers[rmtId];
     _bufRegSize[rmtId] = regSize;
     _maxBufSize[rmtId] = regEntrySize;
@@ -270,11 +266,13 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
 
     auto t1{std::chrono::steady_clock::now()};
     auto dT{std::chrono::duration_cast<ms_t>(t1 - t0).count()};
-    logging::info("Inbound   link with   %3s ID %2d configured in %4lu ms",
-                  peer, rmtId, dT);
+    auto rs = _regSize[rmtId];                // Size of the whole MR
+    auto rb = _region[rmtId];                 // Batch/buffer space
+    auto rt = (char*)rb + _bufRegSize[rmtId]; // Transition space
+    auto re = (char*)rb + rs;                 // End
+    logging::info("Inbound  link with %3s ID %2d, %10p : %10p : %10p (%08zx), configured in %4lu ms",
+                  peer, rmtId, rb, rt, re, rs, dT);
   }
-
-  links = tmpLinks;                     // Now in remote ID sorted order
 
   return 0;
 }
@@ -292,7 +290,6 @@ int EbAppBase::process()
     {
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
-      rc = 0;
     }
     else if (_transport.pollEQ() == -FI_ENOTCONN)
       rc = -FI_ENOTCONN;
@@ -315,11 +312,16 @@ int EbAppBase::process()
   // to have their EOL flag set to avoid the EB iterating to the next buffer.
   // This isn't done on the DRPs since these dgrams are also sent to the
   // "selected" TEB, which must not be caused to stop iterating over its batch
-  // prematurely.
-  if (flg == (ImmData::Transition | ImmData::NoResponse))  idg->setEOL();
+  // prematurely.  MEBs receive only single dgrams that are the source data,
+  // which shouldn't be modified, so we userp the NoResponse bit (which isn't
+  // used by MEBs) to indicate it should be done here.
+  if (flg & ImmData::NoResponse)  idg->setEOL();
 
   if (src != idg->xtc.src.value())
+  {
     logging::error("Link src (%d) != dgram src (%d)", src, idg->xtc.src.value());
+    _verbose = VL_EVENT;
+  }
 
   _ctrbSrc->observe(double(src));       // Revisit: For testing
 
@@ -330,30 +332,30 @@ int EbAppBase::process()
     unsigned    ctl = idg->control();
     const char* svc = TransitionId::name(idg->service());
     printf("EbAp rcvd %9lu %15s[%8u]   @ "
-           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk %p, src %2u\n",
-           _bufferCnt, svc, idx, idg, ctl, pid, env, lnk->id(), data, lnk, src);
+           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk[%2u] %p, ID %2u\n",
+           _bufferCnt, svc, idx, idg, ctl, pid, env, idg->xtc.src.value(), data, src, lnk, lnk->id());
   }
-  else
-  {
-    auto svc = idg->service();
-    if (svc != XtcData::TransitionId::L1Accept) {
-      if (svc != XtcData::TransitionId::SlowUpdate) {
-        logging::info("EbAppBase  saw %15s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
-                      XtcData::TransitionId::name(svc),
-                      idg->time.seconds(), idg->time.nanoseconds(),
-                      idg->pulseId(), src, idg, _bufRegSize[src], idx, _maxTrSize[src]);
-      }
-      else {
-        logging::debug("EbAppBase  saw %15s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
-                       XtcData::TransitionId::name(svc),
-                       idg->time.seconds(), idg->time.nanoseconds(),
-                       idg->pulseId(), src, idg, _bufRegSize[src], idx, _maxTrSize[src]);
-      }
+
+  auto svc = idg->service();
+  if (svc != XtcData::TransitionId::L1Accept) {
+    auto base = (ImmData::buf(flg) == ImmData::Buffer) ?           0      : _bufRegSize[src];
+    auto size = (ImmData::buf(flg) == ImmData::Buffer) ? _maxBufSize[src] : _maxTrSize[src];
+    if (svc != XtcData::TransitionId::SlowUpdate) {
+      logging::info("EbAppBase  saw %15s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
+                    XtcData::TransitionId::name(svc),
+                    idg->time.seconds(), idg->time.nanoseconds(),
+                    idg->pulseId(), src, idg, base, idx, size);
+    }
+    else {
+      logging::debug("EbAppBase  saw %15s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
+                     XtcData::TransitionId::name(svc),
+                     idg->time.seconds(), idg->time.nanoseconds(),
+                     idg->pulseId(), src, idg, base, idx, size);
     }
   }
 
   // Tr space bufSize value is irrelevant since idg has EOL set in that case
-  if ((_idxSrcs & (1ul << src)) == 0)  data = 0;
+  if ((_idxSrcs & (1ull << src)) == 0)  data = 0;
   EventBuilder::process(idg, _maxBufSize[src], data);
 
   ++_bufferCnt;

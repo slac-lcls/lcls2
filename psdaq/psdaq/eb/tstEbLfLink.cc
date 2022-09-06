@@ -86,8 +86,13 @@ int server(const std::string& ifAddr,
       fprintf(stderr, "Error connecting to EbLfClient[%d]\n", i);
       return rc;
     }
+    if ( (rc = links[i]->exchangeId(id, "Server")) )
+    {
+      fprintf(stderr, "Error exchanging IDs on link[%d]\n", i);
+      return rc;
+    }
     size_t regSize;
-    if ( (rc = links[i]->prepare(id, &regSize, "Client")) < 0)
+    if ( (rc = links[i]->prepare(&regSize, "Client")) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;
@@ -183,7 +188,12 @@ int client(std::vector<std::string>& svrAddrs,
       fprintf(stderr, "Error connecting to EbLfServer[%d]\n", i);
       return rc;
     }
-    if ( (rc = links[i]->prepare(id, region, regSize, "Server")) < 0)
+    if ( (rc = links[i]->exchangeId(id, "Server")) )
+    {
+      fprintf(stderr, "Error exchanging IDs on link[%d]\n", i);
+      return rc;
+    }
+    if ( (rc = links[i]->prepare(region, regSize, "Server")) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;

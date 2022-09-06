@@ -2121,14 +2121,13 @@ ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t*
   //memset(&entry, 0xee, sizeof(entry));
 
   ssize_t rret = (timeout == 0) ? comp(&entry, 1) : comp_wait(&entry, 1, timeout);
-  if (rret == 1) {
+  if (rret > 0) {
     if ((entry.flags & flags) == flags) {
       if (entry.op_context) {
         if (*((int*) entry.op_context) == context) {
           if (data)
             *data = entry.data;
           //dump_cq_data_entry(entry); // Temporary
-          return FI_SUCCESS;
         } else {
           set_custom_error("Wrong completion: entry.op_context value is %d, expected %d", *(int*)entry.op_context, context);
           dump_cq_data_entry(entry);
@@ -2143,9 +2142,10 @@ ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t*
       fprintf(stderr, "%s:  Flags mismatch: %08lx, expected %08x\n", __PRETTY_FUNCTION__, entry.flags, flags);
       dump_cq_data_entry(entry);
     }
+    return FI_SUCCESS;
   }
 
-  return rret ? rret : -FI_EAGAIN;     // Revisit case when comp_wait returns 0
+  return rret;
 }
 
 ssize_t CompletionQueue::check_completion_noctx(unsigned flags, uint64_t* data, int timeout)
@@ -2153,17 +2153,17 @@ ssize_t CompletionQueue::check_completion_noctx(unsigned flags, uint64_t* data, 
   struct fi_cq_data_entry entry;
 
   ssize_t rret = (timeout == 0) ? comp(&entry, 1) : comp_wait(&entry, 1, timeout);
-  if (rret == 1) {
+  if (rret > 0) {
     if ((entry.flags & flags) == flags) {
       if (data)
         *data = entry.data;
-      return FI_SUCCESS;
     } else {
-      fprintf(stderr, "%s:  Warning: flags mismatch: %08lx vs %08x\n", __PRETTY_FUNCTION__, entry.flags, flags);
+      fprintf(stderr, "%s:  Flags mismatch: %08lx, expected %08x\n", __PRETTY_FUNCTION__, entry.flags, flags);
     }
+    return FI_SUCCESS;
   }
 
-  return rret ? rret : -FI_EAGAIN;     // Revisit case when comp_wait returns 0
+  return rret;
 }
 
 void CompletionQueue::dump_cq_data_entry(struct fi_cq_data_entry& comp)

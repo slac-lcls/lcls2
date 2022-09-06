@@ -83,7 +83,7 @@ int MebContributor::connect(const MebCtrbParams& prms,
   _id         = prms.id;
   _bufRegSize = _prms.maxEvents * _maxEvSize; // Needs MEB's connect_info
 
-  int rc = linksConnect(_transport, _links, prms.addrs, prms.ports, "MEB");
+  int rc = linksConnect(_transport, _links, prms.addrs, prms.ports, _id, "MEB");
   if (rc)  return rc;
 
   for (auto link : _links)
@@ -98,7 +98,7 @@ int MebContributor::connect(const MebCtrbParams& prms,
 int MebContributor::configure(void*  region,
                               size_t regSize)
 {
-  int rc = linksConfigure(_links, _id, region, regSize, _maxEvSize, "MEB");
+  int rc = linksConfigure(_links, region, regSize, _maxEvSize, "MEB");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -121,14 +121,17 @@ int MebContributor::configure(void*  region,
 
 int MebContributor::post(const EbDgram* ddg, uint32_t destination)
 {
-  ddg->setEOL();                        // Set end-of-list marker
+  // To avoid modifying the source data, we use the NoResponse bit below to get
+  // the EOL bit set by EbAppBase
+  //ddg->setEOL();                        // Set end-of-list marker
 
   unsigned     dst    = ImmData::src(destination);
   uint32_t     idx    = ImmData::idx(destination);
   size_t       sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
   unsigned     offset = idx * _maxEvSize;
   EbLfCltLink* link   = _links[dst];
-  uint32_t     data   = ImmData::value(ImmData::Buffer, _id, idx);
+  uint32_t     data   = ImmData::value(ImmData::Buffer |
+                                       ImmData::NoResponse, _id, idx);
 
   if (sz > _maxEvSize)
   {
@@ -144,7 +147,7 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     abort();
   }
 
-  if (_verbose >= VL_BATCH)
+  if (UNLIKELY(_verbose >= VL_BATCH))
   {
     uint64_t pid    = ddg->pulseId();
     unsigned ctl    = ddg->control();
@@ -153,6 +156,25 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     printf("MebCtrb posts %9lu    monEvt [%8u]  @ "
            "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
            _eventCount, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data);
+  }
+  else
+  {
+    auto svc = ddg->service();
+    if (svc != XtcData::TransitionId::L1Accept) {
+      void* rmtAdx = (void*)link->rmtAdx(offset);
+      if (svc != XtcData::TransitionId::SlowUpdate) {
+        logging::info("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08x + %u * %08zx)",
+                      XtcData::TransitionId::name(svc),
+                      ddg->time.seconds(), ddg->time.nanoseconds(),
+                      ddg->pulseId(), dst, rmtAdx, 0, idx, _maxEvSize);
+      }
+      else {
+        logging::debug("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08x + %u * %08zx)",
+                       XtcData::TransitionId::name(svc),
+                       ddg->time.seconds(), ddg->time.nanoseconds(),
+                       ddg->pulseId(), dst, rmtAdx, 0, idx, _maxEvSize);
+      }
+    }
   }
 
   int rc = link->post(ddg, sz, offset, data);
@@ -205,7 +227,9 @@ static int _getTrBufIdx(EbLfLink* lnk, MebContributor::listU32_t& lst, uint32_t&
 
 int MebContributor::post(const EbDgram* dgram)
 {
-  dgram->setEOL();                        // Set end-of-list marker
+  // To avoid modifying the source data, we use the NoResponse bit below to get
+  // the EOL bit set by EbAppBase
+  //dgram->setEOL();                        // Set end-of-list marker
 
   size_t sz  = sizeof(*dgram) + dgram->xtc.sizeofPayload();
   auto   svc = dgram->service();
@@ -240,7 +264,8 @@ int MebContributor::post(const EbDgram* dgram)
     }
 
     uint64_t offset = _bufRegSize + idx * _maxTrSize;
-    uint32_t data   = ImmData::value(ImmData::Transition, _id, idx);
+    uint32_t data   = ImmData::value(ImmData::Transition |
+                                     ImmData::NoResponse, _id, idx);
 
     if (UNLIKELY(_verbose >= VL_BATCH))
     {

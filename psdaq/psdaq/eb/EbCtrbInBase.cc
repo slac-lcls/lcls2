@@ -31,6 +31,32 @@ using logging  = psalg::SysLog;
 using ms_t     = std::chrono::milliseconds;
 
 
+struct Tbuf
+{
+  unsigned           kind;
+  const ResultDgram* results;
+  unsigned           idx;
+  uint64_t           pulseId;
+  unsigned           src;
+} _tbuf[64];
+Tbuf* const _tbStart = &_tbuf[0];
+Tbuf* const _tbEnd   = &_tbuf[64];
+Tbuf*       _tb      = _tbStart;
+
+static void _tbDump()
+{
+  auto tb = _tb;
+
+  printf("*** Trace buffer:\n");
+  for (unsigned i = 0; i < 64; ++i)
+  {
+    if (tb->results)
+      printf("*** %2ld %u Deferring res %p, %u, %014lx, src %u\n",
+             tb - _tbStart, tb->kind, tb->results, tb->idx, tb->pulseId, tb->src);
+    if (++tb == _tbEnd)  tb = _tbStart;
+  }
+}
+
 static void dumpBatch(const TebContributor& ctrb,
                       const EbDgram*        batch,
                       const size_t          size,
@@ -135,7 +161,7 @@ int EbCtrbInBase::connect(size_t resSizeGuess, unsigned numTebBuffers)
 
   _links.resize(numEbs);
 
-  int rc = linksConnect(_transport, _links, "TEB");
+  int rc = linksConnect(_transport, _links, _prms.id, "TEB");
   if (rc)  return rc;
 
   // Assume an existing region is already appropriately sized, else make a guess
@@ -177,18 +203,16 @@ int EbCtrbInBase::configure(unsigned numTebBuffers)
   _inputs = nullptr;
   _deferred.clear();
 
-  int rc = _linksConfigure(_links, _prms.id, numTebBuffers, "TEB");
+  int rc = _linksConfigure(_links, numTebBuffers, "TEB");
   if (rc)  return rc;
 
   return 0;
 }
 
 int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
-                                  unsigned                   id,
                                   unsigned                   numTebBuffers,
                                   const char*                peer)
 {
-  std::vector<EbLfSvrLink*> tmpLinks(links.size());
   size_t size = 0;
 
   // Since each EB handles a specific batch, one region can be shared by all
@@ -197,15 +221,14 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
     auto   t0(std::chrono::steady_clock::now());
     int    rc;
     size_t regSize;
-    if ( (rc = link->prepare(id, &regSize, peer)) )
+    if ( (rc = link->prepare(&regSize, peer)) )
     {
       logging::error("%s:\n  Failed to prepare link with %s ID %d",
                      __PRETTY_FUNCTION__, peer, link->id());
       return rc;
     }
-    unsigned rmtId  = link->id();
-    tmpLinks[rmtId] = link;
 
+    unsigned rmtId = link->id();
     if (!size)
     {
       // Reallocate the region if the required size has changed.
@@ -248,11 +271,12 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Inbound   link with   %3s ID %2d configured in %4lu ms",
-                  peer, rmtId, dT);
+    auto rs = _regSize;
+    auto rb = _region;
+    auto re = (char*)rb + rs;
+    logging::info("Inbound  link with %3s ID %2d, %10p : %10p (%08zx), configured in %4lu ms",
+                  peer, rmtId, rb, re, rs, dT);
   }
-
-  links = tmpLinks;                     // Now in remote ID sorted order
 
   return 0;
 }
@@ -340,6 +364,12 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
   auto& pending = ctrb.pending();
   auto  inputs  = _inputs;                // Pick up where we left off
 
+  if (results)
+  {
+    unsigned rIdx = ((char*)results - (char*)_region) / _maxResultSize;
+    *_tb++ = {1, results, rIdx, results->pulseId(), results->xtc.src.value()};
+    if (_tb == _tbEnd)  _tb = _tbStart;
+  }
   if (results)  _defer(results);          // Defer Results batch
 
   while (true)
@@ -366,7 +396,12 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
     }
     _deferred.pop_front();                // Dequeue the deferred Results batch
     if (results)                          // If not all deferred Results were consummed
+    {
+      unsigned rIdx = ((char*)results - (char*)_region) / _maxResultSize;
+      *_tb++ = {2, results, rIdx, results->pulseId(), results->xtc.src.value()};
+      if (_tb == _tbEnd)  _tb = _tbStart;
       _defer(results);                    //   defer the remainder
+    }
 
     // No progress can legitimately happen with multiple TEBs presenting events
     // out of order.  These will be deferred so that when the expected Result
@@ -411,6 +446,9 @@ void EbCtrbInBase::_defer(const ResultDgram* results)
       logging::critical("%s:\n  Deferred already contains Results %014lx, %s, src %u vs %u",
                         __PRETTY_FUNCTION__, results->pulseId(), TransitionId::name(results->service()),
                         results->xtc.src.value(), batch->xtc.src.value());
+      unsigned rIdx = ((char*)results - (char*)_region) / _maxResultSize;
+      printf("*** results %p, idx %u\n", results, rIdx);
+      _tbDump();
       abort();
     }
     if (results->pulseId() < batch->pulseId())
@@ -463,7 +501,12 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
     {
       logging::critical("%s:\n  rPid %014lx <= rPidPrv %014lx",
                         __PRETTY_FUNCTION__, rPid, rPidPrv);
+      unsigned rIdx = ((char*)result - (char*)_region) / _maxResultSize;
+      unsigned iIdx = ctrb.index(input);
+      printf("*** results %p, result %p, rIdx %u, rpid %014lx, inputs %p, input %p, iIdx %u, iPid %014lx\n",
+             results, result, rIdx, result->pulseId(), inputs, input, iIdx, input->pulseId());
       _dump(ctrb, results, inputs);
+      _tbDump();
       throw "Result pulse ID didn't advance";
     }
     rPidPrv = rPid;
@@ -493,7 +536,12 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
       {
         logging::critical("%s:\n  iPid %014lx <= iPidPrv %014lx",
                           __PRETTY_FUNCTION__, iPid, iPidPrv);
+        unsigned rIdx = ((char*)result - (char*)_region) / _maxResultSize;
+        unsigned iIdx = ctrb.index(input);
+        printf("*** results %p, result %p, rIdx %u, rpid %014lx, inputs %p, input %p, iIdx %u, iPid %014lx\n",
+               results, result, rIdx, result->pulseId(), inputs, input, iIdx, input->pulseId());
         _dump(ctrb, results, inputs);
+        _tbDump();
         throw "Input pulse ID didn't advance";
       }
       iPidPrv = iPid;
