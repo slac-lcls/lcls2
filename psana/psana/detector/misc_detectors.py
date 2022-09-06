@@ -91,4 +91,4 @@ class justafloat_simplefloat32_1_2_4(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
     def value(self,evt) -> float:
-        return 99.9
+        return self._segments(evt)[0].valfloat32
