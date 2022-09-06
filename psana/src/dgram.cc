@@ -895,7 +895,7 @@ static PyMethodDef dgram_methods[] = {
 
 static PyTypeObject dgram_DgramType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "dgram.Dgram", /* tp_name */
+    "psana.dgram.Dgram", /* tp_name */
     sizeof(PyDgramObject), /* tp_basicsize */
     0, /* tp_itemsize */
     (destructor)dgram_dealloc, /* tp_dealloc */
