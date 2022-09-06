@@ -50,8 +50,8 @@ void XtcIterator::iterate(Xtc* root, const void* bufEnd)
             printf("*** %s:%d: corrupt xtc, would overrun buffer\n",__FILE__,__LINE__);
             abort();
         }
-        if (xtc->extent == 0) {
-            printf("*** %s:%d: corrupt xtc with zero extent\n",__FILE__,__LINE__);
+        if (xtc->extent < sizeof(Xtc)) {
+            printf("*** %s:%d: corrupt xtc with too small extent: %d\n",__FILE__,__LINE__,xtc->extent);
             abort();
         }
         if (!process(xtc, bufEnd)) break;
