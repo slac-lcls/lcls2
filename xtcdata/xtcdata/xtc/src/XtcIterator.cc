@@ -45,8 +45,15 @@ void XtcIterator::iterate(Xtc* root, const void* bufEnd)
     int remaining = root->sizeofPayload();
 
     while (remaining > 0) {
-        if (bufEnd && UNLIKELY(xtc >= (Xtc*)bufEnd)) break; // protect against buffer overrun
-        if (xtc->extent == 0) break; // try to skip corrupt event
+        if (bufEnd && UNLIKELY(xtc >= (Xtc*)bufEnd)) {
+            // protect against buffer overrun
+            printf("*** %s:%d: corrupt xtc, would overrun buffer\n",__FILE__,__LINE__);
+            abort();
+        }
+        if (xtc->extent == 0) {
+            printf("*** %s:%d: corrupt xtc with zero extent\n",__FILE__,__LINE__);
+            abort();
+        }
         if (!process(xtc, bufEnd)) break;
         remaining -= xtc->sizeofPayload() + sizeof(Xtc);
         xtc = xtc->next();
