@@ -357,14 +357,16 @@ class RunSmallData(Run):
     
     def steps(self):
         for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun: return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter, proxy_events=self.proxy_events)
+            if evt.service() != TransitionId.L1Accept: 
+                self.proxy_events.append(evt._proxy_evt)
+                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.BeginStep:
+                    yield Step(evt, self._evt_iter, proxy_events=self.proxy_events)
 
     def events(self):
         for evt in self.eb.events():
             if evt.service() != TransitionId.L1Accept: 
-                if evt.service() == TransitionId.EndRun: return
                 self.proxy_events.append(evt._proxy_evt)
+                if evt.service() == TransitionId.EndRun: return
                 continue
             yield evt
