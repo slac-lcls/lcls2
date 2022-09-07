@@ -49,8 +49,8 @@ static void dumpFrame(const uint32_t* p)
   switch(mtyp) {
   case 0:
     pl = reinterpret_cast<const uint64_t*>(p+2);
-    printf("EVENT [x%x]: %16lx %16lx %16lx %16lx %16lx %c\n",
-           (p[1]>>16)&0xffff,pl[0],pl[1],pl[2],pl[3],pl[4],m);
+    printf("EVENT [x%x]: %16lx %16lx %16lx %16lx %16lx %c [%ld %09d]\n",
+           (p[1]>>16)&0xffff,pl[0],pl[1],pl[2],pl[3],pl[4],m,pl[0],pl[1]&0xffffffff);
     break;
   case 1:
     pl = reinterpret_cast<const uint64_t*>(p+1);
