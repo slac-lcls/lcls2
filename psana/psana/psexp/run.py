@@ -301,7 +301,8 @@ class RunSerial(Run):
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.EndRun: 
+                    return
                 continue
             st = time.time()
             yield evt
@@ -343,15 +344,27 @@ class RunSmallData(Run):
         self._evt = run._evt
         self.configs = run.configs
         self.eb = eb
+
+        # Converts EventBuilder generator to an iterator for steps() call. This is
+        # done so that we can pass it to Step (not sure why). Note that for 
+        # events() call, we stil use the generator.
+        self._evt_iter = iter(self.eb.events())
         
         # SmdDataSource and BatchIterator share this list. SmdDataSource automatically
         # adds transitions to this list (skip yield and so hidden from smd_callback).
         # BatchIterator adds user-selected L1Accept to the list (default is add all).
         self.proxy_events = []
+    
+    def steps(self):
+        for evt in self._evt_iter:
+            if evt.service() == TransitionId.EndRun: return
+            if evt.service() == TransitionId.BeginStep:
+                yield Step(evt, self._evt_iter, proxy_events=self.proxy_events)
 
     def events(self):
         for evt in self.eb.events():
             if evt.service() != TransitionId.L1Accept: 
+                if evt.service() == TransitionId.EndRun: return
                 self.proxy_events.append(evt._proxy_evt)
                 continue
             yield evt
