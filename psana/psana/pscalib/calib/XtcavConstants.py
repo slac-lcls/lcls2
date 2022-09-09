@@ -36,7 +36,7 @@ class ConstantsStore(object):
         '''called for every dictionary level to create a new hdf group name.
         it then looks into the dictionary to see if other groups need to
         be created'''
-        if self.cwd is '':
+        if self.cwd == '':
             self.f.create_group(name)
         self.pushdir(name)
         for k in d.keys():
