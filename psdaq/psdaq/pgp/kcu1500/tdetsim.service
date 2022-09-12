@@ -4,11 +4,14 @@ Requires=multi-user.target
 After=multi-user.target
 
 [Service]
-Type=simple
-ExecStart=/usr/local/sbin/kcuSim -s -d /dev/datadev_0
-ExecStartPost=/sbin/insmod /usr/local/sbin/datadev.ko cfgTxCount=4 cfgRxCount=32768 cfgSize=262144 cfgMode=0x2
-ExecStop=
-KillMode=process
+Type=forking
+ExecStartPre=-/sbin/rmmod datadev.ko
+ExecStart=/sbin/insmod /usr/local/sbin/datadev.ko cfgTxCount=4 cfgRxCount=1048572 cfgSize=4096 cfgMode=0x2
+ExecStartPost=/usr/local/sbin/kcuSim -s -d /dev/datadev_0
+#ExecStartPost=/usr/bin/sh -c "/usr/bin/echo 4 > /proc/irq/368/smp_affinity_list"
+ExecStartPost=/usr/bin/sh -c "/usr/bin/echo 4 > /proc/irq/369/smp_affinity_list"
+ExecStartPost=/usr/bin/sh -c "/usr/bin/echo 5 > /proc/irq/370/smp_affinity_list"
+KillMode=none
 IgnoreSIGPIPE=no
 StandardOutput=syslog
 StandardError=inherit
