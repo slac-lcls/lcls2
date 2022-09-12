@@ -8,8 +8,11 @@ from psana import dgram
 from psana.dgrammanager import DgramManager
 from psana.detector.detector_impl import MissingDet
 from psana.event import Event
-from psana.psexp import *
-
+from . import TransitionId
+from .tools import RunHelper
+from .envstore_manager import EnvStoreManager
+from .events import Events
+from .step import Step
 
 class DetectorNameError(Exception): pass
 
@@ -298,7 +301,8 @@ class RunSerial(Run):
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.EndRun: 
+                    return
                 continue
             st = time.time()
             yield evt
@@ -328,3 +332,41 @@ class RunLegion(Run):
         return legion_node.analyze(self, **kwargs)
 
 
+class RunSmallData(Run):
+    """ Yields list of smalldata events
+    
+    This class is created by SmdReaderManager and used exclusively by EventBuilder.
+    There's no DataSource class associated with it. This class makes step and 
+    event generator available to user in smalldata callback. It does minimal work
+    and doesn't require the Run baseclass.
+    """
+    def __init__(self, run, eb):
+        self._evt = run._evt
+        self.configs = run.configs
+        self.eb = eb
+
+        # Converts EventBuilder generator to an iterator for steps() call. This is
+        # done so that we can pass it to Step (not sure why). Note that for 
+        # events() call, we stil use the generator.
+        self._evt_iter = iter(self.eb.events())
+        
+        # SmdDataSource and BatchIterator share this list. SmdDataSource automatically
+        # adds transitions to this list (skip yield and so hidden from smd_callback).
+        # BatchIterator adds user-selected L1Accept to the list (default is add all).
+        self.proxy_events = []
+    
+    def steps(self):
+        for evt in self._evt_iter:
+            if evt.service() != TransitionId.L1Accept: 
+                self.proxy_events.append(evt._proxy_evt)
+                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.BeginStep:
+                    yield Step(evt, self._evt_iter, proxy_events=self.proxy_events)
+
+    def events(self):
+        for evt in self.eb.events():
+            if evt.service() != TransitionId.L1Accept: 
+                self.proxy_events.append(evt._proxy_evt)
+                if evt.service() == TransitionId.EndRun: return
+                continue
+            yield evt

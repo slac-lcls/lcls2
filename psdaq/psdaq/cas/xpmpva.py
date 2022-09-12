@@ -347,7 +347,8 @@ def intInput(layout, pv, label):
 def addUsTab(self,pvbase):
     lor = QtWidgets.QVBoxLayout()
     lor.addWidget( addTiming(self,pvbase+'Us:') )
-    lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM3', pvbase+'XTPG:ResetMmcm3', 'mmcm3') )
+#   xpmGenKcu1500 can't generate this PV???
+#    lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM3', pvbase+'XTPG:ResetMmcm3', 'mmcm3') )
 
     w = QtWidgets.QWidget()
     w.setLayout(lor)

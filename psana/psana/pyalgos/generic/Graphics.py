@@ -276,7 +276,7 @@ def add_stat_text(axhi, weights, bins):
     x = xb + (xe-xb)*0.98
     y = yb + (ye-yb)*0.95
 
-    if axhi.get_yscale() is 'log':
+    if axhi.get_yscale() == 'log':
         log_yb, log_ye = log10(yb), log10(ye)
         log_y = log_yb + (log_ye-log_yb)*0.95
         y = 10**log_y

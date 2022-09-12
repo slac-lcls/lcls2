@@ -348,10 +348,15 @@ void XtcUpdateIter::copy(Dgram* parent_d, int isConfig){
 void XtcUpdateIter::copyTo(Dgram* parent_d, char* out_buf, int isConfig){
     // TODO Add checks for overflown
     memcpy(out_buf, (char *) parent_d, sizeof(Dgram));
+    _bufsize += sizeof(Dgram);
     if (isConfig == 1) {
         memcpy(out_buf + sizeof(Dgram), _cfgbuf, _cfgbufsize);
+        _bufsize += _cfgbufsize;
+        _cfgbufsize = 0;
     } else {
         memcpy(out_buf + sizeof(Dgram), _tmpbuf, _tmpbufsize);
+        _bufsize += _tmpbufsize;
+        _tmpbufsize = 0;
     }
 }
 
@@ -550,15 +555,20 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
 Dgram& XtcUpdateIter::createTransition(unsigned utransId,
         bool counting_timestamps,
         uint64_t timestamp_val,
-        const void** bufEnd)
+        const void** bufEnd,
+        uint64_t maxBufSize)
 {
     TransitionId::Value transId = (TransitionId::Value) utransId;
     TypeId tid(TypeId::Parent, 0);
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
-    void* buf = malloc(BUFSIZE);
-    *bufEnd = ( (char*)buf ) + BUFSIZE;
+
+    if (maxBufSize == 0) {
+        maxBufSize = MAXBUFSIZE;
+    }
+    void* buf = malloc(maxBufSize);
+    *bufEnd = ( (char*)buf ) + maxBufSize;
 
     if (counting_timestamps) {
         Transition tr(Dgram::Event, transId, TimeStamp(timestamp_val), env);

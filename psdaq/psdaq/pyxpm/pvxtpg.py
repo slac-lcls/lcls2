@@ -137,7 +137,8 @@ class PVXTpg(object):
 
         self._mmcm = []
         for i in range(3,-1,-1):
-            self._mmcm.append(PVMmcm(provider, name+':XTPG', i, xpm.find(name=devs[i][0])[0], self._mmcm.copy(), cuMode=cuMode))
+            name = devs[i][0]
+            self._mmcm.append(PVMmcm(provider, name+':XTPG', i, xpm.find(name=name)[0], self._mmcm.copy(), cuMode=cuMode))
             if not cuMode:
                 break
 #        self._cuPhase = PVCuPhase(provider, name+':XTPG', xpm.CuPhase)

@@ -6,11 +6,17 @@ cdef extern from 'xtcdata/xtc/TransitionId.hh' namespace "XtcData":
     cdef cppclass TransitionId:
         enum Value: ClearReadout, Reset, Configure, Unconfigure, BeginRun, EndRun, BeginStep, EndStep, Enable, Disable, SlowUpdate, Unused_11, L1Accept = 12, NumberOf
 
+cdef extern from 'xtcdata/xtc/TimeStamp.hh' namespace "XtcData":
+    cdef cppclass TimeStamp:
+        TimeStamp() except +
+        uint64_t value()
+
 cdef extern from 'xtcdata/xtc/Dgram.hh' namespace "XtcData":
     cdef cppclass Dgram:
         Dgram() except +
         Xtc xtc
         TransitionId.Value service()
+        TimeStamp time
 
 cdef extern from 'xtcdata/xtc/Xtc.hh' namespace "XtcData":
     cdef cppclass Xtc:
@@ -70,7 +76,7 @@ cdef extern from 'xtcdata/xtc/XtcFileIterator.hh' namespace "XtcData":
 cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
 
     cdef cppclass XtcUpdateIter:
-        XtcUpdateIter(unsigned numWords) except +
+        XtcUpdateIter(unsigned numWords, uint64_t maxBufSize) except +
         int process(Xtc* xtc, const void* bufEnd)
         void get_value(int i, Name& name, DescData& descdata)
         void iterate(Xtc* xtc, const void* bufEnd)
@@ -78,6 +84,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void clear_buf()
         unsigned get_bufsize()
         unsigned getSize()
+        unsigned getSavedSize()
         unsigned getNodeId()
         unsigned getNextNamesId()
         void addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
@@ -90,7 +97,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void addData(unsigned nodeId, unsigned namesId,
                 unsigned* shape, char* data, DataDef& datadef, char* varname)
         Dgram& createTransition(unsigned transId, unsigned counting_timestamps,
-                uint64_t timestamp_val, const void** bufEnd)
+                uint64_t timestamp_val, const void** bufEnd, uint64_t maxBufSize)
         void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId)
         void updateTimeStamp(Dgram& d, uint64_t timestamp_val)
         int  getElementSize(unsigned nodeId, unsigned namesId,

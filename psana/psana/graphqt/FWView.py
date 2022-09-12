@@ -140,7 +140,6 @@ class FWView(QGraphicsView):
 
         self.set_origin(origin)           # sets self._origin_...
         self.set_scale_control(scale_ctl) # sets self._scale_ctl
-        self._set_signs_of_transform()
 
         self.set_style()
         self.set_view()
@@ -171,6 +170,8 @@ class FWView(QGraphicsView):
         self._origin_dl = self._origin_d and self._origin_l
         self._origin_dr = self._origin_d and self._origin_r
 
+        self._set_signs_of_transform()
+
 
     def set_scale_control(self, scale_ctl='HV'):
         """Sets scale control bit-word
@@ -198,13 +199,11 @@ class FWView(QGraphicsView):
 
 
     def set_style(self):
-
         self.brudf = QBrush()
         self.brubx = QBrush(Qt.black, Qt.SolidPattern)
         self.pendf = QPen()
         self.pendf.setStyle(Qt.NoPen)
         self.penbx = QPen(Qt.black, 6, Qt.SolidLine)
-
         self.set_background_brush()
 
 
@@ -415,7 +414,8 @@ class FWView(QGraphicsView):
         colfld = Qt.magenta
         colori = Qt.red
         if show_mode & 1:
-            self.rsi = self.add_rect_to_scene_v1(self.rs, pen=QPen(Qt.NoPen), brush=QBrush(colfld))
+            rs=QRectF(0, 0, 10, 10)
+            self.rsi = self.add_rect_to_scene_v1(rs, pen=QPen(Qt.NoPen), brush=QBrush(colfld))
         if show_mode & 2:
             ror=QRectF(-1, -1, 2, 2)
             self.rori = self.add_rect_to_scene_v1(ror, pen=QPen(colori, 0, Qt.SolidLine), brush=QBrush(colori))

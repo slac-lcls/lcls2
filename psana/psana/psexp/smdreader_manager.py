@@ -1,10 +1,9 @@
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
-from psana.psexp import *
-#from psana.psexp.smd_ds import SmdDataSource
 import os, time
 from psana import dgram
 from psana.event import Event
+from .run import RunSmallData
 
 import logging
 logger = logging.getLogger(__name__)
@@ -16,6 +15,9 @@ class BatchIterator(object):
     SmdReaderManager returns this object when a chunk is read.
     """
     def __init__(self, views, configs, run, dsparms):
+        self.dsparms = dsparms
+        
+        # Requires all views
         empty_view = True
         for view in views:
             if view:
@@ -29,31 +31,32 @@ class BatchIterator(object):
                     dsparms=dsparms,
                     run=run,
                     prometheus_counter=None)
-            #self.smd_ds = SmdDataSource(configs, self.eb, run=run)
-            #for evt in dsparms.smd_callback(self.smd_ds):
-            #    print(f'smd evt={evt}')
-            
-
+            self.run_smd = RunSmallData(run, self.eb)
 
     def __iter__(self):
         return self
 
-
     def __next__(self):
-        # With batch_size known, smditer returns a batch_dict,
-        # {rank:[bytearray, evt_size_list], ...} for each next 
-        # while updating offsets of each smd memoryview
+        # With batch_size known, smditer returns a batch_dict of this format:
+        # {rank:[bytearray, evt_size_list], ...} 
+        # for each next while updating offsets of each smd memoryview
         if not self.eb: 
             raise StopIteration
         
-        batch_dict, step_dict = self.eb.build()
-        if self.eb.nevents == 0 and self.eb.nsteps == 0: 
+        # Collects list of proxy events to be converted to batches.
+        # Note that we are persistently calling smd_callback until there's nothing
+        # left in all views used by EventBuilder. From this while/for loops, we 
+        # either gets transitions from SmdDataSource and/or L1 from the callback.
+        while self.run_smd.proxy_events == [] and self.eb.has_more():
+            for evt in self.dsparms.smd_callback(self.run_smd):
+                self.run_smd.proxy_events.append(evt._proxy_evt)
+        
+        if not self.run_smd.proxy_events:
             raise StopIteration
-        return batch_dict, step_dict
 
-        #for evt in self.dsparms.smd_callback(self.smd_ds):
-        #    batch_dict, step_dict = self.eb.pack(evt)
-        #    yield batch_dict, step_dict
+        batch_dict, step_dict = self.eb.gen_batches(self.run_smd.proxy_events)
+        self.run_smd.proxy_events = []
+        return batch_dict, step_dict
 
 
 
@@ -81,7 +84,6 @@ class SmdReaderManager(object):
         
         # Collecting Smd0 performance using prometheus
         self.c_read = self.dsparms.prom_man.get_metric('psana_smd0_read')
-
 
     def _get(self):
         st = time.monotonic()
@@ -152,7 +154,6 @@ class SmdReaderManager(object):
             self._get()
             if not self.smdr.is_complete():
                 raise StopIteration
-        
         self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=intg_stream_id)
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
         batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, self.dsparms)
