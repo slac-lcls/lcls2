@@ -39,7 +39,7 @@ class Board(pr.Root):
     def __init__(self,dev='/dev/datadev_0',):
         super().__init__(name='ePixHr10kT',description='ePixHrGen1 board')
         self.dmaCtrlStreams = [None]
-        self.dmaCtrlStreams[0] = rogue.hardware.axi.AxiStreamDma(dev,(0x100*0)+0,1)# Registers  
+        self.dmaCtrlStreams[0] = rogue.hardware.axi.AxiStreamDma(dev,(0x100*0)+0,1)# Registers
 
         # Create and Connect SRP to VC1 to send commands
         self._srp = rogue.protocols.srp.SrpV3()
@@ -96,7 +96,7 @@ def apply_dict(pathbase,base,cfg):
                     logging.warning('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != pathbase ):
             if False:
                 logging.info(f'NOT setting {path} to {configdb_node}')
             else:
@@ -214,7 +214,7 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
     if timebase=="119M":
         logging.info('Using timebase 119M')
-        base['clk_period'] = 1000/119. 
+        base['clk_period'] = 1000/119.
         base['msg_period'] = 238
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
     else:
@@ -275,7 +275,7 @@ def intToBool(d,types,key):
             intToBool(d[key],types[key],k)
     elif types[key]=='boolEnum':
         d[key] = False if d[key]==0 else True
-    
+
 def dictToYaml(d,types,keys,dev,path,name):
     v = {'enable':True}
     for key in keys:
@@ -414,7 +414,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
             arg[i+1] = 1
         logging.info(f'Calling fnInitAsicScript(None,None,{arg})')
         cbase.EpixHR.fnInitAsicScript(None,None,arg)
-                                      
+
     if writePixelMap:
         hasGainMode = 'gain_mode' in cfg['user']
         if (hasGainMode and cfg['user']['gain_mode']==5) or not hasGainMode:
@@ -456,7 +456,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 def reset_counters(base):
     # Reset the timing counters
     base['pci'].DevPcie.Hsio.TimingRx.TimingFrameRx.countReset()
-    
+
     # Reset the trigger counters
     base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
 
@@ -722,7 +722,7 @@ def epixhr2x2_external_trigger(base):
     pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
 
 def epixhr2x2_internal_trigger(base):
-    #  Disable frame readout 
+    #  Disable frame readout
     print('=== internal triggering with bypass {:x} ==='.format(0x3c))
     pbase = base['pci']
     pbase.DevPcie.Application.EventBuilder.Bypass.set(0x3c)

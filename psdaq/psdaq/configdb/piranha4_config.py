@@ -265,7 +265,7 @@ def config_expert(cl, cfg):
                         print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
             if 'UartPiranha4' in str(rogue_node):
                 uart._rx._clear()
             rogue_node.set(configdb_node)

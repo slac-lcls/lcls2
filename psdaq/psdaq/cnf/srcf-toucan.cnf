@@ -2,10 +2,8 @@ if not platform: platform = '0'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = f'EPICS_PVA_ADDR_LIST=172.21.156.77 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
-#epics_env = ld_lib_path
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
-teb_env  = f'PYTHONPATH=/cds/home/c/claus/lclsii/daq/lcls2/install/lib/python3.7/site-packages'
-teb_env += f' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
+teb_env = f' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
 
 collect_host = 'drp-neh-ctl001'
 

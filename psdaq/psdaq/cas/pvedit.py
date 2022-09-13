@@ -546,7 +546,7 @@ class PvCString(QtWidgets.QWidget):
     def update(self, err):
         if self.pv.isStruct:
             q = self.pv.get().value
-        else: 
+        else:
             q = self.pv.get()
         print(q)
         if err is None:
@@ -591,15 +591,15 @@ class PvMaskTab(QtWidgets.QWidget):
 
         self.cb = cb
         initPvMon(self,pvname)
-        
+
         self.chkBox = []
         layout = QtWidgets.QGridLayout()
         rows = (len(names)+3)/4
         cols = (len(names)+rows-1)/rows
         for i in range(len(names)):
-            layout.addWidget( QtWidgets.QLabel(names[i]), i/cols, 2*(i%cols) )
+            layout.addWidget( QtWidgets.QLabel(names[i]), int(i/cols), int(2*(i%cols)) )
             chkB = QtWidgets.QCheckBox()
-            layout.addWidget( chkB, i/cols, 2*(i%cols)+1 )
+            layout.addWidget( chkB, int(i/cols), int(2*(i%cols)+1) )
             chkB.clicked.connect(self.setValue)
             self.chkBox.append(chkB)
         self.setLayout(layout)
@@ -750,9 +750,9 @@ class PvDstTab(QtWidgets.QWidget):
         self.chkBox = []
         layout = QtWidgets.QGridLayout()
         for i in range(NBeamSeq):
-            layout.addWidget( QtWidgets.QLabel('D%d'%i), i/4, 2*(i%4) )
+            layout.addWidget( QtWidgets.QLabel('D%d'%i), int(i/4), int(2*(i%4)) )
             chkB = QtWidgets.QCheckBox()
-            layout.addWidget( chkB, i/4, 2*(i%4)+1 )
+            layout.addWidget( chkB, int(i/4), int(2*(i%4)+1) )
             chkB.clicked.connect(self.setValue)
             self.chkBox.append(chkB)
         self.setLayout(layout)

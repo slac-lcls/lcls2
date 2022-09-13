@@ -28,7 +28,7 @@ def dict_compare(new,curr,result):
             if resultk:
                 result[k] = resultk
         else:
-            if new[k]==curr[k]: 
+            if new[k]==curr[k]:
                 pass
             else:
                 result[k] = new[k]
@@ -195,7 +195,7 @@ def config_expert(cl, cfg):
                         print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
             rogue_node.set(configdb_node)
 
     #  Parameters like black-level need time to take affect (100ms?)
