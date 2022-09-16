@@ -26,7 +26,7 @@ procmgr_config = [
  # trigger event builder
  { host: 'daq-tst-dev03', id:'teb1', flags:'pu', cmd:f'teb -P {hutch} -M {prom_dir} -C {collect_host}'},
  # meb
- { host: 'daq-tst-dev03', id:'meb1', flags:'spu', cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
+ #{ host: 'daq-tst-dev03', id:'meb1', flags:'spu', cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
  # ...drp: loopback on port 5007
  #{ host: 'daq-tst-dev03', id:'encoder_0',              flags:'sXpu', cmd:'drp_udpencoder -o /cds/home/c/caf/data -L 5007    -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
  # ...drp:

@@ -1,8 +1,15 @@
 #include "UdpEncoder.hh"
+#include <eigen3/Eigen/Dense>
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <eigen3/Eigen/QR>
 
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
+
+#define MAX_ENC_VALUES 5
 
 #include <getopt.h>
 #include <cassert>
@@ -79,21 +86,6 @@ public:
 } RawDef;
 
 namespace Drp {
-
-static const XtcData::Name::DataType xtype[] = {
-  XtcData::Name::UINT8 , // pvBoolean
-  XtcData::Name::INT8  , // pvByte
-  XtcData::Name::INT16 , // pvShort
-  XtcData::Name::INT32 , // pvInt
-  XtcData::Name::INT64 , // pvLong
-  XtcData::Name::UINT8 , // pvUByte
-  XtcData::Name::UINT16, // pvUShort
-  XtcData::Name::UINT32, // pvUInt
-  XtcData::Name::UINT64, // pvULong
-  XtcData::Name::FLOAT , // pvFloat
-  XtcData::Name::DOUBLE, // pvDouble
-  XtcData::Name::CHARSTR, // pvString
-};
 
 bool UdpMonitor::ready(UdpEncoder* udpDetector)
 {
@@ -272,6 +264,9 @@ UdpEncoder::UdpEncoder(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor
     m_pgpQueue      (drp.pool.nbuffers()),
     m_pvQueue       (8),                  // Revisit size
     m_bufferFreelist(m_pvQueue.size()),
+    m_enc_values    (MAX_ENC_VALUES),
+    m_enc_times     (MAX_ENC_VALUES),
+    m_num_enc_values(0),
     m_terminate     (false),
     m_running       (false),
     m_resetHwCount  (true),
@@ -360,6 +355,38 @@ unsigned UdpEncoder::unconfigure()
     return 0;
 }
 
+void UdpEncoder::_polyfit(const std::vector<double> &t,
+                          const std::vector<double> &v,
+                          std::vector<double> &coeff,
+                          unsigned order)
+{
+    // Create Matrix Placeholder of size n x k, n= number of datapoints, k = order of polynomial, for exame k = 3 for cubic polynomial
+    Eigen::MatrixXd T(t.size(), order + 1);
+    Eigen::VectorXd V = Eigen::VectorXd::Map(&v.front(), v.size());
+    Eigen::VectorXd result;
+
+    // check to make sure inputs are correct
+    assert(t.size() == v.size());
+    assert(t.size() >= order + 1);
+    // Populate the matrix
+    for(size_t i = 0 ; i < t.size(); ++i)
+        {
+            for(size_t j = 0; j < order + 1; ++j)
+                {
+                    T(i, j) = pow(t.at(i), j);
+                }
+        }
+    //std::cout<<T<<std::endl;
+    
+    // Solve for linear least square fit
+    result  = T.householderQr().solve(V);
+    coeff.resize(order+1);
+    for (unsigned k = 0; k < order+1; k++)
+        {
+            coeff[k] = result[k];
+        }
+
+}
 void UdpEncoder::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpEvent)
 {
     encoder_frame_t frame;
@@ -386,6 +413,16 @@ void UdpEncoder::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpE
                      "Missing data for frame %hu", frame.header.frameCount);
             setMissingData(errmsg);
         }
+    }
+
+    m_enc_values[m_num_enc_values%MAX_ENC_VALUES]=(double)frame.channel[0].encoderValue;
+    m_enc_times[m_num_enc_values%MAX_ENC_VALUES]=(double)m_num_enc_values;
+    m_num_enc_values++;
+    std::vector<double> coeff;
+    printf("***event %d\n",m_num_enc_values);
+    if (m_num_enc_values>5) {
+        printf("***fit\n");
+        _polyfit(m_enc_times,m_enc_values, coeff, 3);
     }
 
     logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  scaleDenom=%u  mode=%u  error=%u  version=%u.%u.%u",

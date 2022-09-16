@@ -104,7 +104,12 @@ public:
     enum { DefaultDataPort = 5006 };
     enum { MajorVersion = 2, MinorVersion = 0, MicroVersion = 0 };
 private:
+    void _polyfit(const std::vector<double> &t,
+                  const std::vector<double> &v,
+                  std::vector<double> &coeff,
+                  unsigned order);
     int _readFrame(encoder_frame_t *frame, bool& missing);
+
     int _junkFrame();
     void _loopbackInit();
     void _loopbackFini();
@@ -129,6 +134,9 @@ private:
     SPSCQueue<XtcData::Dgram*> m_pvQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
     std::vector<uint8_t> m_buffer;
+    std::vector<double> m_enc_values;
+    std::vector<double> m_enc_times;
+    uint64_t m_num_enc_values;
     std::atomic<bool> m_terminate;
     std::atomic<bool> m_running;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
