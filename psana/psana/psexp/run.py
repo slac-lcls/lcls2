@@ -335,7 +335,7 @@ class RunSmallData(Run):
     def __init__(self, bd_run, eb):
         self._evt = bd_run._evt
         configs = [dgram.Dgram(view=cfg) for cfg in bd_run.configs] 
-        self.expt, self.runnum, self.timestamp = (bd_run.expt, bd_run.runnum, bd_run.timestamp)
+        self.expt, self.runnum, self.timestamp, self.dsparms = (bd_run.expt, bd_run.runnum, bd_run.timestamp, bd_run.dsparms)
         self.eb = eb
         self._dets  = {}
 
@@ -363,7 +363,7 @@ class RunSmallData(Run):
                 self.proxy_events.append(evt._proxy_evt)
                 if evt.service() == TransitionId.EndRun: return
                 if evt.service() == TransitionId.BeginStep:
-                    yield Step(evt, self._evt_iter, proxy_events=self.proxy_events)
+                    yield Step(evt, self._evt_iter, proxy_events=self.proxy_events, esm=self.esm)
 
     def events(self):
         for evt in self.eb.events():
