@@ -235,14 +235,14 @@ class Smd0(object):
     Identifies limit timestamp of the slowest detector then
     sends all smds within that timestamp.
     """
-    def __init__(self, comms, configs, smdr_man, dsparms):
-        self.comms = comms
-        self.smdr_man = smdr_man
-        self.configs = configs
+    def __init__(self, ds):
+        self.comms = ds.comms
+        self.smdr_man = ds.smdr_man
+        self.configs = ds._configs
         self.step_hist = StepHistory(self.comms.smd_size, len(self.configs))
         
         # Collecting Smd0 performance using prometheus
-        self.c_sent = dsparms.prom_man.get_metric('psana_smd0_sent')
+        self.c_sent = ds.dsparms.prom_man.get_metric('psana_smd0_sent')
         
     def start(self):
         # Rank 0 waits on World comm for terminating signal
@@ -340,14 +340,14 @@ class EventBuilderNode(object):
     Receives blocks of smds from smd_0 then assembles
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
-    def __init__(self, comms, configs, dsparms, dm):
-        self.comms      = comms
-        self.configs    = configs
-        self.dsparms    = dsparms
-        self.dm         = dm
+    def __init__(self, ds):
+        self.comms      = ds.comms
+        self.configs    = ds._configs
+        self.dsparms    = ds.dsparms
+        self.dm         = ds.dm
         self.step_hist  = StepHistory(self.comms.bd_size, len(self.configs))
         # Collecting Smd0 performance using prometheus
-        self.c_sent     = dsparms.prom_man.get_metric('psana_eb_sent')
+        self.c_sent     = ds.dsparms.prom_man.get_metric('psana_eb_sent')
         self.requests   = []
     
     def _init_requests(self):
@@ -547,11 +547,10 @@ class EventBuilderNode(object):
         wait_for(self.requests)
 
 class BigDataNode(object):
-    def __init__(self, comms, configs, dsparms, dm):
-        self.comms      = comms
-        self.configs    = configs
-        self.dsparms    = dsparms
-        self.dm         = dm
+    def __init__(self, ds, run):
+        self.ds         = ds
+        self.run        = run
+        self.comms      = ds.comms
         self.bd_wait_eb = PrometheusManager.get_metric('psana_bd_wait_eb')
 
     def start(self):
@@ -575,9 +574,8 @@ class BigDataNode(object):
             self.bd_wait_eb.labels('seconds', self.comms.world_rank).inc(en_req - st_req)
             return chunk
         
-        events = Events(self.configs, self.dm, self.dsparms, 
-                filter_callback=self.dsparms.filter, get_smd=get_smd)
+        events = Events(self.ds, self.run, get_smd=get_smd)
 
         for i_evt, evt in enumerate(events):
-            if self.dsparms.terminate_flag: continue
+            if self.ds.dsparms.terminate_flag: continue
             yield evt

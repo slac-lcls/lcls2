@@ -31,6 +31,13 @@ class RunParallel(Run):
         self.configs    = ds._configs
         
         super()._setup_envstore()
+        
+        if nodetype == 'smd0':
+            self.smd0 = Smd0(ds)
+        elif nodetype == 'eb':
+            self.eb_node = EventBuilderNode(ds)
+        elif nodetype == 'bd':
+            self.bd_node = BigDataNode(ds, self)
 
     def events(self):
         evt_iter = self.start()
@@ -52,11 +59,11 @@ class RunParallel(Run):
     def start(self):
         """ Request data for this run"""
         if nodetype == 'smd0':
-            self.ds.smd0.start()
+            self.smd0.start()
         elif nodetype == 'eb':
-            self.ds.eb_node.start()
+            self.eb_node.start()
         elif nodetype == 'bd':
-            for evt in self.ds.bd_node.start():
+            for evt in self.bd_node.start():
                 yield evt
         elif nodetype == 'srv':
             return
@@ -184,14 +191,6 @@ class MPIDataSource(DataSourceBase):
         
         configs = self._get_configs()
         self.dm = DgramManager(self.xtc_files, configs=configs, config_consumers=[self.dsparms])
-        
-        if nodetype == 'smd0':
-            self.smd0 = Smd0(self.comms, configs, self.smdr_man, self.dsparms)
-        elif nodetype == 'eb':
-            self.eb_node = EventBuilderNode(self.comms, configs, self.dsparms, self.dm)
-        elif nodetype == 'bd':
-            self.bd_node = BigDataNode(self.comms, configs, self.dsparms, self.dm)
-
         return True
 
     def _setup_beginruns(self):

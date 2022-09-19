@@ -4,21 +4,14 @@ from .event_manager import EventManager
 import types
 
 class Events:
-    """
-    Needs prom_man, configs, dm, filter_callback
-    """
-    def __init__(self, configs, dm, dsparms, filter_callback=None, get_smd=None, smdr_man=None):
-        self.dm             = dm                   
-        self.configs        = configs
-        self.dsparms        = dsparms
-        self.prom_man       = dsparms.prom_man
-        self.max_retries    = dsparms.max_retries
-        self.filter_callback= filter_callback
+    def __init__(self, ds, run, get_smd=None, smdr_man=None):
+        self.ds             = ds
+        self.run            = run
         self.get_smd        = get_smd          # RunParallel
         self.smdr_man       = smdr_man         # RunSerial
         self._evt_man       = iter([])
         self._batch_iter    = iter([])
-        self.c_read         = self.prom_man.get_metric('psana_bd_read')
+        self.c_read         = self.ds.dsparms.prom_man.get_metric('psana_bd_read')
         self.st_yield       = 0
         self.en_yield       = 0
 
@@ -30,7 +23,7 @@ class Events:
             # RunSerial
 
             # Checks if users ask to exit
-            if self.dsparms.terminate_flag: raise StopIteration
+            if self.ds.dsparms.terminate_flag: raise StopIteration
 
             try:
                 evt = next(self._evt_man)
@@ -41,13 +34,13 @@ class Events:
                 try:
                     batch_dict, _ = next(self._batch_iter)
                     self._evt_man = EventManager(batch_dict[0][0], 
-                            self.configs, 
-                            self.dm, 
-                            self.dsparms.esm,
-                            filter_fn           = self.filter_callback,
+                            self.run.configs, 
+                            self.ds.dm, 
+                            self.run.esm,
+                            filter_fn           = self.ds.dsparms.filter,
                             prometheus_counter  = self.c_read,
-                            max_retries         = self.max_retries,
-                            use_smds            = self.dsparms.use_smds,
+                            max_retries         = self.ds.dsparms.max_retries,
+                            use_smds            = self.ds.dsparms.use_smds,
                             )
                     return self.__next__()
                 except StopIteration:
@@ -66,13 +59,13 @@ class Events:
                     raise StopIteration
 
                 self._evt_man = EventManager(smd_batch, 
-                        self.configs, 
-                        self.dm, 
-                        self.dsparms.esm,
-                        filter_fn           = self.filter_callback,
+                        self.run.configs, 
+                        self.ds.dm, 
+                        self.run.esm,
+                        filter_fn           = self.ds.dsparms.filter,
                         prometheus_counter  = self.c_read,
-                        max_retries         = self.max_retries,
-                        use_smds            = self.dsparms.use_smds,
+                        max_retries         = self.ds.dsparms.max_retries,
+                        use_smds            = self.ds.dsparms.use_smds,
                         )
                 evt = next(self._evt_man)
                 if not any(evt._dgrams): return self.__next__()
@@ -82,15 +75,15 @@ class Events:
             # RunSingleFile or RunShmem - get event from DgramManager
             
             # Checks if users ask to exit
-            if self.dsparms.terminate_flag: raise StopIteration
+            if self.ds.dsparms.terminate_flag: raise StopIteration
             
-            evt = next(self.dm)
+            evt = next(self.ds.dm)
 
             # TODO: MONA Update EnvStore here instead of inside DgramManager.
             # To mirror withe RunSerial/RunParallel, consider moving update
             # into DgramManager.
             if evt.service() != TransitionId.L1Accept:
-                self.dsparms.esm.update_by_event(evt)
+                self.run.esm.update_by_event(evt)
 
             if not any(evt._dgrams): return self.__next__()
             return evt
