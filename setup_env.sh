@@ -12,6 +12,3 @@ export TESTRELDIR=$RELDIR/install
 
 # needed by Ric to get correct libfabric man pages
 export MANPATH=$CONDA_PREFIX/share/man${MANPATH:+:${MANPATH}}
-
-# root of psdm directories
-export DIR_PSDM=/cds/group/psdm
