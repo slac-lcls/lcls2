@@ -9,7 +9,7 @@ from psana.dgrammanager import DgramManager
 from psana.detector.detector_impl import MissingDet
 from psana.event import Event
 from . import TransitionId
-from .tools import RunHelper
+from .tools import RunHelper, run_from_id
 from .envstore_manager import EnvStoreManager
 from .events import Events
 from .step import Step
