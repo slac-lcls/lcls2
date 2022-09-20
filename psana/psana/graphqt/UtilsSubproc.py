@@ -19,11 +19,11 @@ import select
 import subprocess # for subprocess.Popen
 from time import time, sleep
 
-def subproc_open(command_seq, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False, executable='/bin/bash'): 
+def subproc_open(command_seq, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False, executable='/bin/bash'):
     """ if shell=False command is a str: '/bin/bash -l -c "source /reg/g/psdm/etc/psconda.sh; echo $PYTHONPATH"'
         else command is a list: ['/bin/bash', '-l', '-c', '. /reg/g/psdm/etc/psconda.sh; echo "PATH: $PATH";\
                                  echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; detnames exp=xppx44719:run=11']
-    """    
+    """
     logger.debug('executable: %s' % executable)
     logger.debug('shell: %s' % str(shell))
     logger.debug('env: %s' % str(env))
@@ -142,7 +142,7 @@ if __name__ == "__main__":
             else:
               print("---- stdout buffer is empty")
               break
- 
+
           if pstatus==0:
               print('\nALL SUBPROCESSES COMPLETED')
               break

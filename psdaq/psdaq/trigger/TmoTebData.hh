@@ -6,6 +6,7 @@ namespace Pds {
 
     struct TmoTebData
     {
+      TmoTebData(uint32_t write_, uint32_t monitor_) : write(write_), monitor(monitor_) {};
       uint32_t write;
       uint32_t monitor;
     };

@@ -35,10 +35,6 @@ namespace Pds {
       EbAppBase(const EbParams& prms,
                 const MetricExporter_t&,
                 const std::string& pfx,
-                const uint64_t duration,
-                const unsigned maxEntries,
-                const unsigned maxEvBuffers,
-                const unsigned maxTrBuffers,
                 const unsigned msTimeout);
       virtual ~EbAppBase();
     public:
@@ -55,6 +51,8 @@ namespace Pds {
       void             post(const EbDgram* const* begin,
                             const EbDgram** const end);
       void             trim(unsigned dst);
+    protected:
+      const std::vector<size_t> bufferSizes() const;
     public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contract(const Pds::EbDgram* contrib) const;
@@ -70,10 +68,11 @@ namespace Pds {
       std::vector<size_t>       _bufRegSize;
       std::vector<size_t>       _maxTrSize;
       std::vector<size_t>       _maxBufSize;
-      const unsigned            _maxEntries;
-      const unsigned            _maxEvBuffers;
-      const unsigned            _maxTrBuffers;
-      const unsigned&           _verbose;
+      unsigned                  _maxEntries;
+      unsigned                  _maxEvBuffers;
+      unsigned                  _maxTrBuffers;
+      unsigned&                 _verbose;
+      uint64_t                  _ebTime;
       uint64_t                  _bufferCnt;
       PromHisto_t               _fixupSrc;
       PromHisto_t               _ctrbSrc;
@@ -82,11 +81,21 @@ namespace Pds {
       std::vector<void*>        _region;
       uint64_t                  _contributors;
       unsigned                  _id;
-      const MetricExporter_t&   _exporter;
-      const std::string&        _pfx;
+      MetricExporter_t          _exporter;
+      const std::string         _pfx;
     };
   };
 };
 
-#endif
 
+const std::vector<size_t> Pds::Eb::EbAppBase::bufferSizes() const
+{
+  std::vector<size_t> bufSizes(_bufRegSize.size());
+
+  for (unsigned i = 0; i < _bufRegSize.size(); ++i)
+    bufSizes[i] = _bufRegSize[i] / _maxEvBuffers / _maxEntries;
+
+  return bufSizes;
+}
+
+#endif

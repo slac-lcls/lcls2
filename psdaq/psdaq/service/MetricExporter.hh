@@ -15,7 +15,7 @@ std::unique_ptr<prometheus::Exposer>
 
 struct Previous
 {
-    uint64_t value;
+    int64_t value;
     std::chrono::steady_clock::time_point time;
 };
 
@@ -31,9 +31,9 @@ public:
     void clear();
 
 private:
-    BucketBoundaries      _boundaries;
-    std::vector<uint64_t> _counts;
-    double                _sum;
+    BucketBoundaries      m_boundaries;
+    std::vector<uint64_t> m_counts;
+    double                m_sum;
 };
 
 enum class MetricType
@@ -48,20 +48,24 @@ enum class MetricType
 class MetricExporter : public prometheus::Collectable
 {
 public:
+    int find(const std::string& name) const;
     void add(const std::string& name,
              const std::map<std::string, std::string>& labels,
-             MetricType type, std::function<uint64_t()> value);
+             MetricType type, std::function<int64_t()> value);
     void constant(const std::string& name,
                   const std::map<std::string, std::string>& labels,
-                  uint64_t value);
+                  int64_t value);
     std::shared_ptr<PromHistogram>
          histogram(const std::string& name,
                    const std::map<std::string, std::string>& labels,
                    unsigned numBins, double binWidth=1.0, double binMin=0.0);
     std::vector<prometheus::MetricFamily> Collect() const override;
 private:
+    void _erase(unsigned index);
+private:
+    mutable std::mutex m_mutex;
     mutable std::vector<prometheus::MetricFamily> m_families;
-    std::vector<std::function<uint64_t()> > m_values;
+    std::vector<std::function<int64_t()> > m_values;
     mutable std::vector<std::shared_ptr<PromHistogram> > m_histos;
     std::vector<MetricType> m_type;
     mutable std::vector<Previous> m_previous;

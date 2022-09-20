@@ -20,11 +20,18 @@ namespace Pds {
     public:
       virtual ~Trigger() {}
     public:
-      virtual int  configure(const nlohmann::json&      connectMsg,
-                             const rapidjson::Document& top) = 0;
-      virtual void event(const Pds::EbDgram* const* start,
-                         const Pds::EbDgram**       end,
-                         Pds::Eb::ResultDgram&          result) = 0;
+      virtual unsigned rogReserve(unsigned rog,
+                                  unsigned meb,
+                                  size_t   nBufs) const { return 0; }
+      virtual int      configure(const nlohmann::json&      connectMsg,
+                                 const rapidjson::Document& top,
+                                 const Pds::Eb::EbParams&   prms) = 0;
+      virtual int      initialize(const std::vector<size_t>& inputsRegSizes,
+                                  size_t                     resultsRegSize) { return 0; };
+      virtual void     event(const Pds::EbDgram* const* start,
+                             const Pds::EbDgram**       end,
+                             Pds::Eb::ResultDgram&      result) = 0;
+      virtual void     shutdown() {};
     public:
       static size_t size() { return sizeof(Pds::Eb::ResultDgram); }
     };

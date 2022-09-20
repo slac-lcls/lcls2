@@ -27,6 +27,7 @@ class Event():
         self._complete()
         self._position = 0
         self._run = run
+        self._proxy_evt = None          # For smalldata-event loop
 
     def __iter__(self):
         return self
@@ -121,7 +122,7 @@ class Event():
                                 self._det_segments[class_identifier] = {}
                             segs = self._det_segments[class_identifier]
 
-                            if det_name not in ['runinfo','smdinfo'] :
+                            if det_name not in ['runinfo','smdinfo','chunkinfo'] :
                                 assert segment not in segs, f'Found duplicate segment: {segment} for {class_identifier}'
                             segs[segment] = drp_class
                             

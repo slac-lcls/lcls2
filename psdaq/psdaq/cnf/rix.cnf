@@ -4,7 +4,7 @@ ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PRE
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 manta_env = 'EPICS_PVA_ADDR_LIST=172.21.156.12 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
-andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.84  EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
@@ -52,7 +52,7 @@ heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
 #ami_worker_nodes = ["drp-neh-cmp013","drp-neh-cmp017","drp-neh-cmp018"]
-ami_worker_nodes = ["drp-neh-cmp017"]
+ami_worker_nodes = ["drp-neh-cmp014"]
 ami_num_workers = len(ami_worker_nodes)
 ami_manager_node = "drp-neh-cmp018"
 
@@ -82,7 +82,7 @@ procmgr_config = [
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-neh-cmp013', id:'teb0',        flags:'spu',                cmd:teb_cmd},
+ { host: 'drp-neh-cmp014', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
  { host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
@@ -91,7 +91,6 @@ procmgr_config = [
 # 10/3/2021 - epixhr beam test
  #{ host: 'drp-neh-cmp014', id:'epixhr_0',  flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -D epixhr2x2 -l 0x1'},
  
-# 10/10/2021 - direct andor hw has been re-connected
  { host: 'drp-neh-cmp015', id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
  { host: 'drp-neh-cmp015', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
@@ -99,16 +98,13 @@ procmgr_config = [
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x8 -T 4000000'},
 
- { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50, cmd:udp_cmd0+' -l 0x8'},
+ { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x8'},
 
-# 9/23/2021 - fim2 h/w not stable
-  { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
-  { host: 'drp-neh-cmp007', id:'rix_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x20'},
-  { host: 'drp-neh-cmp007', id:'rix_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x80'},
-# valmar and cpo removed the ttpv since it causes fex mode to give 100% deadtime
+ { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
+ { host: 'drp-neh-cmp007', id:'rix_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x20'},
+ { host: 'drp-neh-cmp007', id:'rix_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x80'},
+
  { host: 'drp-neh-cmp013', id:'atmopal_0',   flags:'spu' ,  env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=RIX:TIMETOOL:TTALL'},
-# { host: 'drp-neh-cmp013', id:'atmopal_0',   flags:'spu' ,  env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
-# { host: 'drp-neh-cmp013', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/rix/scripts/ttfeedback.py' },
 
  #     Note: '-1' specifies fuzzy timestamping
  #           '-0' specifies no timestamp matching (-0 may have problems)

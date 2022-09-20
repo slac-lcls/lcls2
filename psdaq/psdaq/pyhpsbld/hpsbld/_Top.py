@@ -117,11 +117,11 @@ class Top(pr.Device):
                 -----------------------------------------------------------------\n"\
             ))
                             
-        self.add(ti.AxiCdcm6208(     
-            memBase = self.srp,
-            offset       =  0x05000000, 
-            expand       =  False,
-        ))
+#        self.add(ti.AxiCdcm6208(     
+#            memBase = self.srp,
+#            offset       =  0x05000000, 
+#            expand       =  False,
+#        ))
 
         self.add(timing.TimingFrameRx(
             memBase = self.srp,
@@ -129,9 +129,9 @@ class Top(pr.Device):
             offset = 0x08000000,
         ))
 
-        self.add(hps.BldControl(
+        self.add(hps.AmcCarrierBsa(
             memBase = self.srp,
-            name   = 'BldControl',
+            name   = 'AmcCarrierBsa',
             offset = 0x09000000,
         ))        
 

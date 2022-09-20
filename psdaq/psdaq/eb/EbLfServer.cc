@@ -23,6 +23,7 @@ EbLfServer::EbLfServer(const unsigned& verbose) :
   _tmo    (0),                          // Start by polling
   _verbose(verbose),
   _pending(0),
+  _posting(0),
   _pep    (nullptr)
 {
 }
@@ -34,6 +35,7 @@ EbLfServer::EbLfServer(const unsigned&                           verbose,
   _tmo    (0),                          // Start by polling
   _verbose(verbose),
   _pending(0),
+  _posting(0),
   _pep    (nullptr),
   _info   (kwargs)
 {
@@ -60,8 +62,6 @@ int EbLfServer::listen(const std::string& addr,
             __PRETTY_FUNCTION__, _info.error());
     return _info.error_num();
   }
-
-  _pending = 0;
 
   const uint64_t flags = 0;               // For fi_getinfo(), e.g., FI_SOURCE
   _info.hints->tx_attr->size = 0;         // Default for the return path
@@ -152,7 +152,7 @@ int EbLfServer::connect(EbLfSvrLink** link, unsigned nLinks, int msTmo)
 
   int rxDepth = info->rx_attr->size;
   if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
-  *link = new EbLfSvrLink(ep, rxDepth, _verbose);
+  *link = new EbLfSvrLink(ep, rxDepth, _verbose, _pending, _posting);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
@@ -266,9 +266,8 @@ void EbLfServer::shutdown()
 
 int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 {
-  int                              rc;
-  fast_monotonic_clock::time_point t0;
-  bool                             first = true;
+  int  rc;
+  auto t0{fast_monotonic_clock::now()};
 
   ++_pending;
 
@@ -276,33 +275,23 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
   {
     const uint64_t flags = FI_REMOTE_WRITE | FI_REMOTE_CQ_DATA;
     rc = _poll(cqEntry, flags);
-    if (rc > 0)
-    {
-      break;
-    }
-    else if (rc == -FI_EAGAIN)
+    if (rc > 0)  break;
+
+    if (rc == -FI_EAGAIN)
     {
       if (_tmo)
       {
         rc = -FI_ETIMEDOUT;
         break;
       }
-      if (!first)
-      {
-        using ms_t = std::chrono::milliseconds;
-        auto  t1   = fast_monotonic_clock::now();
+      const ms_t tmo{msTmo};
+      auto       t1 {fast_monotonic_clock::now()};
 
-        if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
-        {
-          _tmo = msTmo;               // Switch to waiting after a timeout
-          rc = -FI_ETIMEDOUT;
-          break;
-        }
-      }
-      else
+      if (t1 - t0 > tmo)
       {
-        t0    = fast_monotonic_clock::now();
-        first = false;
+        _tmo = msTmo;               // Switch to waiting after a timeout
+        rc = -FI_ETIMEDOUT;
+        break;
       }
     }
     else
@@ -362,7 +351,7 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Inbound link[%u] with %s connected in %lu ms",
+    logging::info("Inbound  link[%u] with %s connected in %lu ms",
                   i, peer, dT);
   }
 
@@ -390,7 +379,7 @@ int Pds::Eb::linksConfigure(std::vector<EbLfSvrLink*>& links,
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Inbound link with %s ID %d configured in %lu ms",
+    logging::info("Inbound   link with   %3s ID %2d configured in %4lu ms",
                   peer, rmtId, dT);
   }
 

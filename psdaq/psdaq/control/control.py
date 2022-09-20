@@ -16,6 +16,7 @@ from psalg.utils.syslog import SysLog
 from p4p.client.thread import Context
 import epics
 from threading import Thread, Event, Condition
+from copy import deepcopy
 import dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
                                   progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
@@ -572,6 +573,7 @@ class CollectionManager():
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
+        self.history = {}   # history of drp group assignments
         self.phase1Info = {}
         self.level_keys = {'drp', 'teb', 'meb', 'control'}
 
@@ -1026,7 +1028,7 @@ class CollectionManager():
     def get_phase2_replies(self, transition):
         # get responses from the drp timing systems
         ids = self.filter_active_set(self.ids)
-        ids = self.filter_level('drp', ids)
+        ids = self.filter_level('drp', ids) | self.filter_level('meb', ids)
         # make sure all the clients respond to transition before timeout
         missing, answers, reports = self.confirm_response(self.back_pull, self.phase2_timeout, None, ids, progress_txt=transition+' phase 2')
         try:
@@ -1090,12 +1092,25 @@ class CollectionManager():
         # create group-dependent PVs
         self.pva.pvListMsgHeader = []
         self.pva.pvListXPM = []
+        self.pva.pvListL0Groups = []
         for g in range(8):
             if self.groups & (1 << g):
                 self.pva.pvListMsgHeader.append(self.pva.pv_xpm_base+":PART:"+str(g)+':MsgHeader')
                 self.pva.pvListXPM.append(self.pva.pv_xpm_base+":PART:"+str(g)+':Master')
+                self.pva.pvListL0Groups.append(self.pva.pv_xpm_base+":PART:"+str(g)+':L0Groups')
         logging.debug('pvListMsgHeader: %s' % self.pva.pvListMsgHeader)
         logging.debug('pvListXPM: %s' % self.pva.pvListXPM)
+        logging.debug('pvListL0Groups: %s' % self.pva.pvListL0Groups)
+
+        # Couple deadtime of the non-common readout groups to all groups
+        pvCommonGroup = self.pva.pv_xpm_base+":PART:"+str(self.platform)+':L0Groups'
+        for pv in self.pva.pvListL0Groups:
+            groups = self.groups if pv != pvCommonGroup else 1 << self.platform
+            logging.debug(f'condition_alloc() putting {groups} to PV {pv}')
+            if not self.pva.pv_put(pv, groups):
+                self.report_error(f'condition_alloc() failed putting {groups} to PV {pv}')
+                logging.debug('condition_alloc() returning False')
+                return False
 
         # give number to teb nodes for the event builder
         if 'teb' in active_state:
@@ -1115,8 +1130,17 @@ class CollectionManager():
 
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
 
+        # update drp group history
+        for drp in self.cmstate['drp'].values():
+            try:
+                alias = drp['proc_info']['alias']
+                readout = drp['det_info']['readout']
+                self.history['drp'][alias] = {'det_info' : {'readout' : readout}}
+            except KeyError as ex:
+                logging.error(f'condition_alloc(): KeyError: {ex}')
+
         # write to the activedet file only if the contents would change
-        dst = levels_to_activedet(self.cmstate_levels())
+        dst = {**levels_to_activedet(self.cmstate_levels()), **{'history': self.history}}
         json_from_file = self.read_json_file(self.activedetfilename)
         if dst == json_from_file:
             logging.debug('condition_alloc(): no change to activedet file %s' % self.activedetfilename)
@@ -1148,6 +1172,16 @@ class CollectionManager():
                 self.report_error('%s did not respond to dealloc' % alias)
             self.report_error('%d client did not respond to dealloc' % ret)
             dealloc_ok = False
+
+        if dealloc_ok:
+            # clear L0Groups PVs
+            for pv in self.pva.pvListL0Groups:
+                logging.debug(f'condition_dealloc() putting 0 to PV {pv}')
+                if not self.pva.pv_put(pv, 0):
+                    self.report_error(f'condition_dealloc() failed putting 0 to PV {pv}')
+                    dealloc_ok = False
+                    break
+
         if dealloc_ok:
             self.lastTransition = 'dealloc'
         logging.debug('condition_dealloc() returning %s' % dealloc_ok)
@@ -1292,7 +1326,8 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
-            if not self.pva.pv_put(pv, ControlDef.transitionId['SlowUpdate']):
+#            Force SlowUpdate to respect deadtime
+            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
                 update_ok = False
                 break
 
@@ -1322,7 +1357,7 @@ class CollectionManager():
             msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
             self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-            retlist, answers, reports = self.confirm_response(self.back_pull, 15000, msg['header']['msg_id'], ids, progress_txt='connect')
+            retlist, answers, reports = self.confirm_response(self.back_pull, 20000, msg['header']['msg_id'], ids, progress_txt='connect')
             self.process_reports(reports)
             connect_ok = (self.check_answers(answers) == 0)
             ret = len(retlist)
@@ -1539,6 +1574,15 @@ class CollectionManager():
             # determine which clients are required by reading the active detectors file
             json_data = self.read_json_file(self.activedetfilename)
             if len(json_data) > 0:
+                if 'history' in json_data.keys():
+                    logging.debug('rollcall: history found in json_data.keys()')
+                    self.history = deepcopy(json_data['history'])
+                else:
+                    logging.info('rollcall: history not found in json_data.keys()')
+
+                if 'drp' not in self.history:
+                    self.history = dict(drp = dict())
+
                 if "activedet" in json_data.keys():
                     active_set, inactive_set = self.get_active_and_inactive(json_data)
                     logging.debug(f'rollcall: active_set = {active_set}')
@@ -1593,12 +1637,19 @@ class CollectionManager():
                             self.cmstate[level][id]['active'] = 0
                             self.report_warning('rollcall: %s NOT selected for data collection' % responder)
                             if level == 'drp':
-                                if responder in inactive_set:
-                                    # use readout group from active detector file
-                                    group = json_data['activedet'][level][alias]['det_info']['readout']
-                                else:
-                                    # not yet in active detector file, use default readout group
-                                    group = self.platform
+                                try:
+                                    group = json_data['activedet']['drp'][alias]['det_info']['readout']
+                                    logging.debug(f'rollcall: {alias} found in activedet, readout group is {group}')
+                                except KeyError:
+                                    logging.debug(f'rollcall: {alias} not in activedet')
+                                    try:
+                                        group = self.history['drp'][alias]['det_info']['readout']
+                                        logging.debug(f'rollcall: {alias} found in history, readout group is {group}')
+                                    except KeyError:
+                                        logging.debug(f'rollcall: {alias} not in history')
+                                        # not yet in active detector file, use default readout group
+                                        group = self.platform
+                                        logging.debug(f'rollcall: {alias} using default readout group {group}')
                                 self.cmstate[level][id]['det_info'] = {}
                                 self.cmstate[level][id]['det_info']['readout'] = group
                                 logging.info(f"rollcall: newfound drp {responder} is in readout group {group}")
@@ -1929,7 +1980,7 @@ class CollectionManager():
     def condition_configure(self):
         logging.debug('condition_configure: phase1Info = %s' % self.phase1Info)
         # phase 1
-        ok = self.condition_common('configure', 45000,
+        ok = self.condition_common('configure', 60000,
                                    body={'config_alias': self.config_alias, 'trigger_config': self.trigger_config})
         if not ok:
             logging.error('condition_configure(): configure phase1 failed')
@@ -2097,7 +2148,8 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Disable'])
+            #  Force Disable to respect deadtime but remain queued
+            self.pva.pv_put(pv, (0x180 | ControlDef.transitionId['Disable']))
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
@@ -2205,7 +2257,9 @@ def main():
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-t', metavar='TRIGGER_CONFIG', default='tmoteb', help='trigger configuration name')
     parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, default=1, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 1)')
-    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
+#    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
+# 7.5 s seems to be too short for UED and this timeout must be larger than the EB timeouts, currently at 12 s
+    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=12500, help='phase 2 timeout msec (default 12500)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument('-V', metavar='LOGBOOK_FILE', default='/dev/null', help='run parameters file')

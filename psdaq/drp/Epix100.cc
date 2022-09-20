@@ -31,7 +31,7 @@ namespace Drp {
         //        enum index { raw, aux, numfields };
         enum index { raw, numfields };
 
-        Epix100PanelDef() { 
+        Epix100PanelDef() {
             ADD_FIELD(raw              ,UINT16,2);
             //            ADD_FIELD(aux              ,UINT16,2);
         }
@@ -50,14 +50,14 @@ namespace Drp {
     public:
         enum index { sht31Hum, sht31TempC,
                      num_fields };
-        
-        Epix100Def() { 
+
+        Epix100Def() {
             ADD_FIELD(sht31Hum         ,FLOAT,0);
             ADD_FIELD(sht31TempC       ,FLOAT,0);
         }
     } epix100Def;
 };
-            
+
 #undef ADD_FIELD
 
 using Drp::Epix100;
@@ -99,13 +99,13 @@ void Epix100::_connect(PyObject* mbytes)
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
 
-unsigned Epix100::enable(XtcData::Xtc& xtc, const nlohmann::json& info)
+unsigned Epix100::enable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
     // monStreamDisable();
     return 0;
 }
 
-unsigned Epix100::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
+unsigned Epix100::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
     // monStreamEnable();
     return 0;
@@ -123,7 +123,7 @@ json Epix100::connectionInfo()
     return BEBDetector::connectionInfo();
 }
 
-unsigned Epix100::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
+unsigned Epix100::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     // Generic panel data
@@ -134,13 +134,14 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
         logging::debug("Constructing panel eventNames src 0x%x ids %s",
                        unsigned(nid),configNames.detId());
-        Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
-                                            configNames.detType(),
-                                            configNames.detId(), 
-                                            nid,
-                                            m_para->detSegment);
-            
-        eventNames.add(xtc, epix100PanelDef);
+        Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                    configNames.detName(), alg,
+                                                    configNames.detType(),
+                                                    configNames.detId(),
+                                                    nid,
+                                                    m_para->detSegment);
+
+        eventNames.add(xtc, bufEnd, epix100PanelDef);
         m_namesLookup[nid] = NameIndex(eventNames);
     }
 
@@ -163,10 +164,10 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
 //              2:   Timing frame detailed
 //              3:   epix100
 //
-void Epix100::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
-  
+
     // data structure in lcls1's psddldata/data/epix.ddl::ElementV3
     // epix100 has 32 byte header, frame data, 2 environmental rows,
     // 2 calibration rows, and 12 bytes on the end (4 2-byte
@@ -180,21 +181,21 @@ void Epix100::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& 
     const unsigned nasicrows = nrows/2;
     const unsigned expectedsize = headersize+(nrows+nenvironmentalrows+ncalibrationrows)*ncols*sizeof(uint16_t)+trailersize;
 
-    CreateData cd(xtc, m_namesLookup, m_evtNamesId[0]);
+    CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
     shape[0] = nrows; shape[1] = ncols;
     Array<uint16_t> aframe = cd.allocate<uint16_t>(Epix100PanelDef::raw, shape);
 
     cpocount++;
     if (cpocount%100==0) {
-        printf("*** event %d subframes.size: %d\n",cpocount,subframes.size());
+        printf("*** event %d subframes.size: %zd\n",cpocount,subframes.size());
         for (unsigned i=0; i<subframes.size(); i++) {
-            printf("*** subframes[%d].num_elem(): %d\n",i,subframes[i].num_elem());
+            printf("*** subframes[%d].num_elem(): %zd\n",i,subframes[i].num_elem());
         }
     }
 
     if (subframes[3].num_elem() != expectedsize) {
-        printf("*** incorrect size %d %d\n",subframes[3].num_elem(),expectedsize);
+        printf("*** incorrect size %zd %d\n",subframes[3].num_elem(),expectedsize);
         // raise damage here
     }
 
@@ -208,9 +209,9 @@ void Epix100::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& 
     // feels like we need to unscramble environmental/calibration rows too?
 }
 
-void     Epix100::slowupdate(XtcData::Xtc& xtc)
+void     Epix100::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 {
-    this->Detector::slowupdate(xtc);
+  this->Detector::slowupdate(xtc, bufEnd);
 }
 
 bool     Epix100::scanEnabled()

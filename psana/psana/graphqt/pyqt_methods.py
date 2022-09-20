@@ -60,7 +60,7 @@ self.setStyleSheet(style.styleBkgd)
 self.lab_db_filter.setStyleSheet(style.styleLabel)
 self.lab_ctrl.setStyleSheet(style.styleLabel)
 
-self.box = QHBoxLayout() 
+self.box = QHBoxLayout()
 self.box.addWidget(self.w_fname_geo)
 self.box.addStretch(1)
 self.box.addWidget(self.w_fname_nda)

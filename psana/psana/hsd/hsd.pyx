@@ -7,6 +7,8 @@ import numpy as np
 from psana.detector.detector_impl import DetectorImpl
 from cpython cimport PyObject, Py_INCREF
 
+errprint=True
+
 # Import to use cython decorators
 cimport cython
 # Import the C-level symbols of numpy
@@ -152,11 +154,15 @@ cdef class cyhsd_base_1_2_3:
             return False
 
     def _padEvt(self):
+        global errprint
         """ Slow padding routine currently only needed by AMI"""
         if not self._pychansegs: return
         
         cdef int iseg
         for iseg, (chanNum, pychan) in self._pychansegs.items():
+            # Skip padding for empty peak segments
+            if pychan.peakList is None: continue
+
             times = []
             for start, peak in zip(pychan.startPosList, pychan.peakList):
                 times.append(np.arange(start, start+len(peak)) * 1/(6.4*1e9*13/14))
@@ -166,8 +172,15 @@ cdef class cyhsd_base_1_2_3:
             self._peakTimesDict[iseg][chanNum] = times
 
             padvalues = np.zeros(self._padLength[iseg])+self._padValue[iseg]
-            for start, peak in zip(pychan.startPosList, pychan.peakList):
-                padvalues[start:start+len(peak)]=peak
+            for ipeak, (start, peak) in enumerate(zip(pychan.startPosList, pychan.peakList)):
+                if start+len(peak)>len(padvalues):
+                    if errprint:
+                        print('*** Skipping hsd FEX peak out of range. Start:',start,'Length:',len(peak),'Array size:',len(padvalues))
+                        print('*** Suppressing duplicate error messages.')
+                        errprint = False
+                else:
+                    padvalues[start:start+len(peak)]=peak
+
             if iseg not in self._padDict:
                 self._padDict[iseg]={}
             self._padDict[iseg][chanNum] = padvalues

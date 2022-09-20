@@ -49,6 +49,7 @@ namespace Pds {
       unsigned                  _verbose;
     private:
       uint64_t                  _eventCount;
+      uint64_t                  _trCount;
     };
   };
 };

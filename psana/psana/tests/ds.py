@@ -77,26 +77,6 @@ def test_no_filter():
     if rank == 0:
         assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
-def test_no_bigdata():
-    # Usecase 2: reading smalldata w/o bigdata
-    ds = DataSource(exp='xpptut13', run=2, dir=xtc_dir)
-
-    sendbuf = np.zeros(1, dtype='i')
-    recvbuf = None
-    if rank == 0:
-        recvbuf = np.empty([size, 1], dtype='i')
-
-    for run in ds.runs():
-        # FIXME: mona how to handle epics data for smalldata-only exp?
-        for evt in run.events():
-            sendbuf += 1
-            assert evt._size == 2 # check that two dgrams are in there
-
-    comm.Gather(sendbuf, recvbuf, root=0)
-    if rank == 0:
-        assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
-
-
 def test_step():
     # Usecase 3: test looping over steps
     ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
@@ -170,7 +150,6 @@ def test_callback(batch_size):
 if __name__ == "__main__":
     test_standard()
     test_no_filter()
-    test_no_bigdata()
     test_step()
     test_select_detectors()
     if size >= 3:

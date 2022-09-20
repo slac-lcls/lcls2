@@ -26,8 +26,13 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
+
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 static const XtcData::TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
                                         std::numeric_limits<unsigned>::max());
@@ -115,7 +120,12 @@ int PvaMonitor::getVarDef(PvaDetector*     pvaDetector,
     m_pvaDetector = pvaDetector;
 
     size_t rank = m_rank;
-    if (rankHack != size_t(-1))  rank = rankHack; // Revisit: Hack!
+    if (rankHack != size_t(-1))
+    {
+      rank = rankHack; // Revisit: Hack!
+      logging::warning("%s rank overridden from %zu to %zu\n",
+                       name().c_str(), m_rank, rank);
+    }
 
     auto xtcType = xtype[m_type];
     varDef.NameVec.push_back(XtcData::Name(m_fieldName.c_str(), xtcType, rank));
@@ -197,21 +207,17 @@ class Pgp
 public:
     Pgp(const Parameters& para, DrpBase& drp, const bool& running) :
         m_para(para), m_pool(drp.pool), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_lastComplete(0)
+        m_available(0), m_current(0), m_lastComplete(0), m_latency(0), m_nDmaRet(0)
     {
         m_nodeId = drp.nodeId();
-        uint8_t mask[DMA_MASK_SIZE];
-        dmaInitMaskBytes(mask);
-        for (unsigned i=0; i<PGP_MAX_LANES; i++) {
-            if (para.laneMask & (1 << i)) {
-                logging::info("setting lane  %d", i);
-                dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
-            }
+        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+            logging::error("Failed to allocate lane/vc");
         }
-        dmaSetMaskBytes(drp.pool.fd(), mask);
     }
 
     Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
+    const int64_t latency() { return m_latency; }
+    const uint64_t nDmaRet() { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
     const Parameters& m_para;
@@ -228,6 +234,8 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint32_t m_lastData[6];
     unsigned m_nodeId;
+    int64_t m_latency;
+    uint64_t m_nDmaRet;
 };
 
 Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
@@ -304,7 +312,11 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     m_lastTid = transitionId;
     memcpy(m_lastData, data, 24);
 
-    event->l3InpBuf = m_tebContributor.allocate(*timingHeader, (void*)((uintptr_t)current));
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
@@ -321,6 +333,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
         auto start = std::chrono::steady_clock::now();
         while (true) {
             m_available = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+            m_nDmaRet = m_available;
             if (m_available > 0) {
                 m_pool.allocate(m_available);
                 break;
@@ -358,12 +371,12 @@ PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonit
         m_firstDimKw = std::stoul(firstDimKw);
 }
 
-  //std::string PvaDetector::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc)
-unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+//std::string PvaDetector::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
+unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 {
     logging::info("PVA configure");
 
-    if (XpmDetector::configure(config_alias, xtc))
+    if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
     if (m_exporter)  m_exporter.reset();
@@ -374,8 +387,9 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 
     XtcData::Alg     rawAlg("raw", 1, 0, 0);
     XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
-    XtcData::Names&  rawNames = *new(xtc) XtcData::Names(m_para->detName.c_str(), rawAlg,
-                                                         m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId);
+    XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                 m_para->detName.c_str(), rawAlg,
+                                                                 m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId);
     size_t           payloadSize;
     XtcData::VarDef  rawVarDef;
     size_t           rankHack = m_firstDimKw != 0 ? 2 : -1; // Revisit: Hack!
@@ -391,23 +405,24 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
         logging::warning("Increase Pebble buffer size from %zd to %zd to avoid truncation of %s data",
                          m_pool->pebble.bufferSize(), payloadSize, m_pvaMonitor->name().c_str());
     }
-    rawNames.add(xtc, rawVarDef);
+    rawNames.add(xtc, bufEnd, rawVarDef);
     m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
 
     XtcData::Alg     infoAlg("epicsinfo", 1, 0, 0);
     XtcData::NamesId infoNamesId(nodeId, InfoNamesIndex);
-    XtcData::Names&  infoNames = *new(xtc) XtcData::Names("epicsinfo", infoAlg,
-                                                          "epicsinfo", "detnum1234", infoNamesId);
+    XtcData::Names&  infoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                  "epicsinfo", infoAlg,
+                                                                  "epicsinfo", "detnum1234", infoNamesId);
     XtcData::VarDef  infoVarDef;
     infoVarDef.NameVec.push_back({"keys", XtcData::Name::CHARSTR, 1});
     infoVarDef.NameVec.push_back({m_para->detName.c_str(), XtcData::Name::CHARSTR, 1});
-    infoNames.add(xtc, infoVarDef);
+    infoNames.add(xtc, bufEnd, infoVarDef);
     m_namesLookup[infoNamesId] = XtcData::NameIndex(infoNames);
 
     // add dictionary of information for each epics detname above.
     // first name is required to be "keys".  keys and values
     // are delimited by ",".
-    XtcData::CreateData epicsInfo(xtc, m_namesLookup, infoNamesId);
+    XtcData::CreateData epicsInfo(xtc, bufEnd, m_namesLookup, infoNamesId);
     epicsInfo.set_string(0, "epicsname"); //  "," "provider");
     epicsInfo.set_string(1, (m_pvaMonitor->name()).c_str()); // + "," + provider).c_str());
 
@@ -444,10 +459,10 @@ unsigned PvaDetector::unconfigure()
     return 0;
 }
 
-void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
+void PvaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpEvent)
 {
     XtcData::NamesId namesId(nodeId, RawNamesIndex);
-    XtcData::DescribedData desc(dgram.xtc, m_namesLookup, namesId);
+    XtcData::DescribedData desc(dgram.xtc, bufEnd, m_namesLookup, namesId);
     auto ohSize      = (sizeof(Pds::EbDgram)      +
                         dgram.xtc.sizeofPayload() + // = the '24' in configure()
                         sizeof(XtcData::Shapes)   +
@@ -531,6 +546,11 @@ void PvaDetector::_worker()
 
     Pgp pgp(*m_para, m_drp, m_running);
 
+    m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.latency();});
+    m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nDmaRet();});
+
     const uint64_t msTmo = m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end()
                          ? std::stoul(m_para->kwargs["match_tmo_ms"])
                          : 1333; // Avoid event rate multiples and factors
@@ -572,11 +592,14 @@ void PvaDetector::_worker()
             else {
                 // Allocate a transition dgram from the pool and initialize its header
                 Pds::EbDgram* trDgram = m_pool->allocateTr();
-                memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
+                *trDgram = *dgram;
                 // copy the temporary xtc created on phase 1 of the transition
                 // into the real location
                 XtcData::Xtc& trXtc = transitionXtc();
-                memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
+                trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
                 PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
                 pgpEvent->transitionDgram = trDgram;
 
@@ -614,7 +637,8 @@ void PvaDetector::process(const XtcData::TimeStamp& timestamp)
             dgram->time = timestamp;           //   Save the PV's timestamp
             dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
 
-            event(*dgram, nullptr);            // PGPEvent not needed in this case
+            const void* bufEnd = (char*)dgram + m_pool->pebble.bufferSize();
+            event(*dgram, bufEnd, nullptr);    // PGPEvent not needed in this case
 
             m_pvQueue.push(dgram);
         }
@@ -680,7 +704,10 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
 
     XtcData::Dgram* dgram;
     if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
-        memcpy((void*)&pgpDg.xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
+        pgpDg.xtc.damage.increase(pvDg.xtc.damage.value());
+        auto bufEnd  = (char*)&pgpDg + m_pool->pebble.bufferSize();
+        auto payload = pgpDg.xtc.alloc(pvDg.xtc.sizeofPayload(), bufEnd);
+        memcpy(payload, (const void*)pvDg.xtc.payload(), pvDg.xtc.sizeofPayload());
 
         m_pvQueue.try_pop(dgram);       // Actually consume the element
         m_bufferFreelist.push(dgram);   // Return buffer to freelist
@@ -690,7 +717,7 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     else { // SlowUpdate
         // Allocate a transition dgram from the pool and initialize its header
         Pds::EbDgram* trDg = m_pool->allocateTr();
-        *trDg = pgpDg;
+        *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
         PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
         pgpEvent->transitionDgram = trDg;
 
@@ -698,10 +725,6 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
             m_pvQueue.try_pop(dgram);     // Actually consume the element
             m_bufferFreelist.push(dgram); // Return buffer to freelist
         }
-
-        // Ignore PV data on SlowUpdates and instead provide an empty XTC
-        //memcpy((void*)&trDg->xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
-        trDg->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
     }
 
     _sendToTeb(pgpDg, pgpIdx);
@@ -726,12 +749,9 @@ void PvaDetector::_handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg
     else { // SlowUpdate
         // Allocate a transition dgram from the pool and initialize its header
         Pds::EbDgram* trDg = m_pool->allocateTr();
-        *trDg = pgpDg;
+        *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
         PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
         pgpEvent->transitionDgram = trDg;
-
-        // Provide an empty XTC
-        trDg->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
     }
 
     _sendToTeb(pgpDg, pgpIdx);
@@ -790,12 +810,9 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
         else { // SlowUpdate
             // Allocate a transition dgram from the pool and initialize its header
             Pds::EbDgram* trDg = m_pool->allocateTr();
-            *trDg = dgram;
+            *trDg = dgram;              // Initialized Xtc, possibly w/ damage
             PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
             pgpEvent->transitionDgram = trDg;
-
-            // Provide an empty XTC
-            trDg->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
         }
 
         _sendToTeb(dgram, index);
@@ -806,8 +823,7 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 {
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
-    const size_t maxSize = ((dgram.service() == XtcData::TransitionId::L1Accept) ||
-                            (dgram.service() == XtcData::TransitionId::SlowUpdate))
+    const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
                          ? m_pool->pebble.bufferSize()
                          : m_para->maxTrSize;
     if (size > maxSize) {
@@ -815,16 +831,16 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
         throw "Dgram overflowed buffer";
     }
 
-    PGPEvent* event = &m_pool->pgpEvents[index];
-    if (event->l3InpBuf) { // else shutting down
-        Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
-        if (l3InpDg->isEvent()) {
-            if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
-                m_drp.triggerPrimitive()->event(*m_pool, index, dgram.xtc, l3InpDg->xtc); // Produce
-            }
+    auto l3InpBuf = m_drp.tebContributor().fetch(index);
+    Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(dgram);
+    if (l3InpDg->isEvent()) {
+        auto triggerPrimitive = m_drp.triggerPrimitive();
+        if (triggerPrimitive) { // else this DRP doesn't provide input
+            const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
+            triggerPrimitive->event(*m_pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
         }
-        m_drp.tebContributor().process(l3InpDg);
     }
+    m_drp.tebContributor().process(l3InpDg);
 }
 
 
@@ -841,11 +857,6 @@ PvaApp::PvaApp(Parameters& para, std::shared_ptr<PvaMonitor> pvaMonitor) :
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
-    }
-    if (m_para.outputDir.empty()) {
-        logging::info("output dir: n/a");
-    } else {
-        logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
 }
@@ -867,7 +878,8 @@ void PvaApp::_disconnect()
 
 void PvaApp::_unconfigure()
 {
-    m_drp.unconfigure();  // TebContributor must be shut down before the worker
+    m_drp.pool.shutdown();  // Release Tr buffer pool
+    m_drp.unconfigure();    // TebContributor must be shut down before the worker
     m_pvaDetector->unconfigure();
     m_unconfigure = false;
 }
@@ -936,11 +948,8 @@ void PvaApp::handlePhase1(const json& msg)
     logging::debug("handlePhase1 for %s in PvaDetectorApp", key.c_str());
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    xtc.src = XtcData::Src(m_det->nodeId); // set the src field for the event builders
-    xtc.damage = 0;
-    xtc.contains = tid;
-    xtc.extent = sizeof(XtcData::Xtc);
+    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    auto bufEnd = m_det->trXtcBufEnd();
 
     json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
@@ -965,7 +974,7 @@ void PvaApp::handlePhase1(const json& msg)
         }
 
         std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc);
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
             std::string errorMsg = "Failed transition phase 1";
             logging::error("%s", errorMsg.c_str());
@@ -973,8 +982,7 @@ void PvaApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_drp.runInfoSupport(xtc, m_det->namesLookup());
-        m_drp.chunkInfoSupport(xtc, m_det->namesLookup());
+        m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -988,7 +996,7 @@ void PvaApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
+            m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
     }
     else if (key == "endrun") {
@@ -1007,7 +1015,7 @@ void PvaApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         } else if (chunkRequest) {
             logging::debug("handlePhase1 enable found chunkRequest");
-            m_drp.chunkInfoData(xtc, m_det->namesLookup(), chunkInfo);
+            m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
         }
         logging::debug("handlePhase1 enable complete");
     }

@@ -1,7 +1,7 @@
-#!@PYTHON@
+
 """
 Class :py:class:`test-QGraphicsView` - test for QGraphicsView geometry
-==================================================================================
+======================================================================
 
 Usage ::
 
@@ -10,24 +10,16 @@ Usage ::
 Created on December 12, 2017 by Mikhail Dubrovin
 """
 from time import time, sleep
-
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import Qt, QPointF
 from PyQt5.QtWidgets import QGraphicsView, QApplication, QGraphicsScene
 
 DT_sec = 3
-#-----------------------------
 
-class MyQGraphicsView(QGraphicsView) :
+class MyQGraphicsView(QGraphicsView):
 
-   def __init__(self, parent=None) : 
+   def __init__(self, parent=None):
        QGraphicsView.__init__(self, parent)
-
-
-#   def paintEvent(self, e):
-#       print('XXX: paintEvent')#; sleep(DT_sec)
-#       QGraphicsView.paintEvent(self, e)
-#       print('XXX: After  paintEvent'); sleep(DT_sec)
 
 
    def mousePressEvent(self, e):
@@ -48,7 +40,7 @@ class MyQGraphicsView(QGraphicsView) :
 
    def mouseMoveEvent(self, e):
 
-       if self.p0 is None : return        
+       if self.p0 is None: return
        t0_sec = time()
 
        dp = e.pos() - self.p0
@@ -87,8 +79,8 @@ class MyQGraphicsView(QGraphicsView) :
        print('P1')#; sleep(DT_sec)
        #self.ensureVisible(rv, xMargin=0, yMargin=0)
 
-#-----------------------------
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
 
     import sys
 
@@ -100,7 +92,6 @@ if __name__ == "__main__" :
     s = QGraphicsScene(rs)
     w = MyQGraphicsView(s)
     w.setGeometry(20, 20, 500, 500)
-    #w.setGeometry(20, 20, 800, 800)
 
     # Invert x,y scales
     sx, sy = -1, -1
@@ -117,13 +108,10 @@ if __name__ == "__main__" :
     ire = s.addRect(re, pen=QtGui.QPen(Qt.black, 0, Qt.SolidLine), brush=QtGui.QBrush(Qt.green))
 
     w.setWindowTitle("My window")
-    #w.setContentsMargins(-9,-9,-9,-9)
     w.show() # opens window
     print('A after w.show()')#; sleep(DT_sec)
     app.exec_() # draws graphics
     print('E')
-    #s.clear()
-    #s.clear()
     s.removeItem(irs)
     s.removeItem(iro)
     s.removeItem(ire)
@@ -131,4 +119,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#-----------------------------
+# EOF

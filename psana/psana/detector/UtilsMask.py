@@ -1,3 +1,4 @@
+
 """
 Utilities for mask
 ==================
@@ -5,103 +6,133 @@ Utilities for mask
 Usage::
   from psana.detector.UtilsMask import *
 
-  statmgd = merge_status(status, grinds=(0,1,2,3,4), dtype=DTYPE_STATUS)
-         # merges status.shape=(7, 16, 352, 384) to statmgd.shape=(16, 352, 384) of dtype
-         # grinds list stands for gain ranges for 'FH','FM','FL','AHL-H','AML-M'
-  m = mask_neighbors(mask, allnbrs=True, dtype=DTYPE_MASK)
-  m = mask_edges(mask, mrows=1, mcols=1, dtype=DTYPE_MASK)
-  mask_merged = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK)
+  m = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK)
+  m = merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK)
+  s = merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS)
+         # merges status.shape=(7, 16, 352, 384) to s.shape=(16, 352, 384) of dtype
+         # gain_range_inds list stands for gain ranges for 'FH','FM','FL','AHL-H','AML-M'
+  m = mask_neighbors(mask, rad=5, ptrn='r')
+  m = mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK)
+  m = status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa)
 
 2021-01-25 created by Mikhail Dubrovin
 """
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 import psana.pscalib.calib.CalibConstants as CC
 DTYPE_MASK   = CC.dic_calib_type_to_dtype[CC.PIXEL_MASK]   # np.uint8
 DTYPE_STATUS = CC.dic_calib_type_to_dtype[CC.PIXEL_STATUS] # np.uint64
 
-from psana.detector.NDArrUtils import shape_nda_as_3d # shape_as_3d# info_ndarr, shape_as_3d
+from psana.detector.NDArrUtils import shape_nda_as_3d, info_ndarr  # shape_as_3d, shape_as_3d
 
-def merge_status(stnda, grinds=(0,1,2,3,4), dtype=DTYPE_STATUS): # indexes stand gain ranges for 'FH','FM','FL','AHL-H','AML-M'
+
+def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
+    """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1)
+    """
+    assert mask1.size == mask2.size, 'Mask sizes should be equal'
+
+    if mask1 is None: return mask2
+    if mask2 is None: return mask1
+
+    if mask1.shape != mask2.shape:
+        if mask1.ndim > mask2.ndim: mask2.shape = mask1.shape
+        else                      : mask1.shape = mask2.shape
+
+    cond = np.logical_and(mask1, mask2)
+    return np.asarray(np.select((cond,), (1,), default=0), dtype=dtype)
+
+
+def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK):
+    """Merges mask bits over gain range index.
+       gain_range_inds list(uint) - list of gain range inices in array mask[i,:]
+       gain_range_inds=(0,1,2,3,4) for epix10ka/quad/2m mask array mask.shape=(7, <num-segments>, 352, 384) merging to (<num-segments>, 352, 384)
+       gain_range_inds=(0,1,2) for Jungfrau mask array mask.shape=(3, <num-segments>, 512, 512) merging to (<num-segments>, 512, 512)
+    """
+    if mask.ndim < 4: return mask # ignore 3-d arrays
+    _mask = mask.astype(dtype)
+    mask1 = np.copy(_mask[gain_range_inds[0],:])
+    for i in gain_range_inds[1:]:
+        if i<mask.shape[0]:
+            cond = np.logical_and(mask1, _mask[i,:]) #, out=mask1)
+            mask1 = np.asarray(np.select((cond,), (1,), default=0), dtype=dtype)
+    return mask1
+
+
+def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS):
     """Merges status bits over gain range index.
-       Originaly intended for epix10ka(quad/2m) status array stnda.shape=(7, 16, 352, 384) merging to (16, 352, 384)
-       Also can be used with Jungfrau status array stnda.shape=(7, 8, 512, 512) merging to (8, 512, 512)
-       option "indexes" contains a list of stnda[i,:] indexes to combine status
+       Originaly intended for epix10ka(quad/2m) status array status.shape=(7, 16, 352, 384) merging to (16, 352, 384)
+       Also can be used with Jungfrau status array status.shape=(7, 8, 512, 512) merging to (8, 512, 512)
+       option "indexes" contains a list of status[i,:] indexes to combine status
     """
-    if stnda.ndim < 2: return stnda # ignore 1-d arrays
-    _stnda = stnda.astype(dtype)
-    st1 = np.copy(_stnda[grinds[0],:])
-    for i in grinds[1:]: # range(1,stnda.shape[0]):
-        if i<stnda.shape[0]: # boundary check for index
-            np.bitwise_or(st1, _stnda[i,:], out=st1)
+    if status.ndim < 2: return status # ignore 1-d arrays
+    _status = status.astype(dtype)
+    st1 = np.copy(_status[gain_range_inds[0],:])
+    for i in gain_range_inds[1:]: # range(1,status.shape[0]):
+        if i<status.shape[0]: # boundary check for index
+            np.bitwise_or(st1, _status[i,:], out=st1)
     return st1
-    #print(info_ndarr(st1,    'XXX st1   '))
-    #print(info_ndarr(_stnda, 'XXX stnda '))
 
 
-def mask_neighbors(mask, allnbrs=True, dtype=DTYPE_MASK):
-    """Return mask with masked eight neighbor pixels around each 0-bad pixel in input mask.
-       mask   : int - n-dimensional (n>1) array with input mask
-       allnbrs: bool - False/True - masks 4/8 neighbor pixels.
+def mask_neighbors(mask, rad=5, ptrn='r'):
+    """In mask array increase region of masked pixels around bad by radial paramerer rad.
+       Parameters:
+       -----------
+       - mask (np.ndarray) - input mask array ndim >=2
+       - rad (int) - radial parameter of masked region
+       - ptrn (char) - pattern of the masked region, for now ptrn='r'-rhombus, ptrn='c'-circle,
+                       othervise square [-rad,+rad] in rows and columns.
+
+       Time on psanagpu109 for img shape:(2203, 2299)
+       rad=4: 0.5s
+       rad=9: 2.5s
     """
-    shape_in = mask.shape
-    if mask.ndim < 2:
-        raise ValueError('Input mask has less then 2-d, shape = %s' % str(shape_in))
-
-    mask_out = np.copy(mask, dtype) # np.asarray(mask, dtype)
-
-    if mask.ndim == 2:
-        # mask nearest neighbors
-        mask_out[0:-1,:] = np.logical_and(mask_out[0:-1,:], mask[1:,  :])
-        mask_out[1:,  :] = np.logical_and(mask_out[1:,  :], mask[0:-1,:])
-        mask_out[:,0:-1] = np.logical_and(mask_out[:,0:-1], mask[:,1:  ])
-        mask_out[:,1:  ] = np.logical_and(mask_out[:,1:  ], mask[:,0:-1])
-        if allnbrs:
-          # mask diagonal neighbors
-          mask_out[0:-1,0:-1] = np.logical_and(mask_out[0:-1,0:-1], mask[1:  ,1:  ])
-          mask_out[1:  ,0:-1] = np.logical_and(mask_out[1:  ,0:-1], mask[0:-1,1:  ])
-          mask_out[0:-1,1:  ] = np.logical_and(mask_out[0:-1,1:  ], mask[1:  ,0:-1])
-          mask_out[1:  ,1:  ] = np.logical_and(mask_out[1:  ,1:  ], mask[0:-1,0:-1])
-
-    else: # mask.ndim > 2
-
-        mask_out.shape = mask.shape = shape_nda_as_3d(mask)
-
-        # mask nearest neighbors
-        mask_out[:, 0:-1,:] = np.logical_and(mask_out[:, 0:-1,:], mask[:, 1:,  :])
-        mask_out[:, 1:,  :] = np.logical_and(mask_out[:, 1:,  :], mask[:, 0:-1,:])
-        mask_out[:, :,0:-1] = np.logical_and(mask_out[:, :,0:-1], mask[:, :,1:  ])
-        mask_out[:, :,1:  ] = np.logical_and(mask_out[:, :,1:  ], mask[:, :,0:-1])
-        if allnbrs:
-          # mask diagonal neighbors
-          mask_out[:, 0:-1,0:-1] = np.logical_and(mask_out[:, 0:-1,0:-1], mask[:, 1:  ,1:  ])
-          mask_out[:, 1:  ,0:-1] = np.logical_and(mask_out[:, 1:  ,0:-1], mask[:, 0:-1,1:  ])
-          mask_out[:, 0:-1,1:  ] = np.logical_and(mask_out[:, 0:-1,1:  ], mask[:, 1:  ,0:-1])
-          mask_out[:, 1:  ,1:  ] = np.logical_and(mask_out[:, 1:  ,1:  ], mask[:, 0:-1,0:-1])
-
-        mask_out.shape = mask.shape = shape_in
-
-    return mask_out
+    assert isinstance(mask, np.ndarray)
+    assert mask.ndim>1
+    mmask = np.array(mask)
+    rows, cols = mask.shape[-2],mask.shape[-1]
+    for dr in range(-rad, rad+1):
+      r1b, r1e = max(dr, 0), min(rows, rows+dr)
+      r2b, r2e = max(-dr, 0), min(rows, rows-dr)
+      for dc in range(-rad, rad+1):
+        if ptrn=='r' and (abs(dr)+abs(dc) > rad): continue
+        elif ptrn=='c' and (dr*dr + dc*dc > rad*rad ): continue
+        c1b, c1e = max(dc, 0), min(cols, cols+dc)
+        c2b, c2e = max(-dc, 0), min(cols, cols-dc)
+        if mask.ndim==2:
+          mmask[r1b:r1e,c1b:c1e] = merge_masks(mmask[r1b:r1e,c1b:c1e], mask[r2b:r2e,c2b:c2e])
+        else:
+          mmask[:,r1b:r1e,c1b:c1e] = merge_masks(mmask[:,r1b:r1e,c1b:c1e], mask[:,r2b:r2e,c2b:c2e])
+    return mmask
 
 
-def mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
-    """Return mask with a requested number of row and column pixels masked - set to 0.
-       mask : int - n-dimensional (n>1) array with input mask
-       edge_rows: int - number of edge rows to mask
-       edge_cols: int - number of edge columns to mask
+def mask_edges(mask, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
+    """Returns mask with a requested number of row and column pixels masked - set to 0.
+
+       Parameters
+
+       - mask : np.ndarray, dtype=uint - n-dimensional (n>1) array with input mask
+       - width: int - width of edge for rows and colsumns to mask, if width>0 it overrides edge_rows and edge_cols
+       - edge_rows: int - number of edge rows to mask
+       - edge_cols: int - number of edge columns to mask
+
+       Returns
+
+       - np.ndarray - mask array with masked edges of all panels.
     """
 
-    assert isinstance(mask, np.ndarray), 'input mask should be numpy array'
+    #assert isinstance(mask, np.ndarray), 'input mask should be numpy array'
+    if not isinstance(mask, np.ndarray):
+            logger.debug('input mask is not np.ndarray - return None')
+            return None
 
-    erows = edge_rows
-    ecols = edge_cols
+    erows = width if width>0 else edge_rows
+    ecols = width if width>0 else edge_cols
 
     sh = mask.shape
-    if mask.ndim < 2:
-        raise ValueError('Input mask has less then 2-d, shape = %s' % str(sh))
+    assert mask.ndim>1
 
     mask_out = np.asarray(mask, dtype)
-
-    # print 'shape:', sh
 
     if mask.ndim == 2:
         rows, cols = sh
@@ -152,20 +183,27 @@ def mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
     return mask_out
 
 
-def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
-    """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1)
+def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
+    """Returns per-pixel array of mask generated from pixel_status.
+
+       Parameters
+
+       - status  : np.array - pixel_status calibration constants
+       - status_bits : bitword for mask status codes
+       - dtype : mask np.array dtype
+
+       Returns
+
+       - np.array - mask generated from calibration type pixel_status (1/0 for status 0/status_bits>0, respectively).
     """
-    assert mask1.size == mask2.size, 'Mask sizes should be equal'
+    if not isinstance(status, np.ndarray):
+            logger.debug('status is not np.ndarray - return None')
+            return None
 
-    if mask1 is None: return mask2
-    if mask2 is None: return mask1
-
-    if mask1.shape != mask2.shape:
-        if mask1.ndim > mask2.ndim: mask2.shape = mask1.shape
-        else                      : mask1.shape = mask2.shape
-
-    mask = np.logical_and(mask1, mask2)
-    return mask if dtype==np.bool else np.asarray(mask, dtype)
+    from psana.detector.NDArrUtils import info_ndarr
+    logger.debug(info_ndarr(status, 'status'))
+    cond = (status & status_bits)>0
+    return np.asarray(np.select((cond,), (0,), default=1), dtype=dtype)
 
 # EOF
 

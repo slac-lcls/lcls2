@@ -31,8 +31,8 @@ namespace Drp {
         };
         TimingDef();
 
-        static void describeData   (XtcData::Xtc&, XtcData::NamesLookup&, XtcData::NamesId, const uint8_t*);
-        static void createDataNoBSA(XtcData::Xtc&, XtcData::NamesLookup&, XtcData::NamesId, const uint8_t*);
-        static void createDataETM  (XtcData::Xtc&, XtcData::NamesLookup&, XtcData::NamesId, const uint8_t*, const uint8_t*);
+        static void describeData   (XtcData::Xtc&, const void* bufEnd, XtcData::NamesLookup&, XtcData::NamesId, const uint8_t*);
+        static void createDataNoBSA(XtcData::Xtc&, const void* bufEnd, XtcData::NamesLookup&, XtcData::NamesId, const uint8_t*);
+        static void createDataETM  (XtcData::Xtc&, const void* bufEnd, XtcData::NamesLookup&, XtcData::NamesId, const uint8_t*, const uint8_t*);
     };
 };

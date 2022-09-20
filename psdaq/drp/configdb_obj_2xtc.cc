@@ -60,7 +60,8 @@ int main(int argc, char* argv[]) {
     printf("json: %s\n",json);
 
     NamesId namesid(0,1);
-    unsigned len = Pds::translateJson2Xtc(json, config_buf, namesid, detname);
+    const void* config_end = config_buf + sizeof(config_buf);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, config_end, namesid, detname);
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(1);
@@ -99,12 +100,13 @@ int main(int argc, char* argv[]) {
     gettimeofday(&tv, NULL);
     Transition tr(Dgram::Event, TransitionId::Configure, TimeStamp(tv.tv_sec, tv.tv_usec), env);
     Dgram& dg = *new(&dgbuf) Dgram(tr, Xtc(tid));
+    const void* dgend = dgbuf + sizeof(dgbuf);
 
     // copy over the names/shapesdata xtc's (translateJson2Xtc puts
     // a Parent Xtc on the top level so we can copy over both
     // names/shapesdata at the same time)
-    memcpy((void*)dg.xtc.next(),(const void*)xtcbuf.payload(),xtcbuf.sizeofPayload());
-    dg.xtc.alloc(xtcbuf.sizeofPayload());
+    auto payload = dg.xtc.alloc(xtcbuf.sizeofPayload(), dgend);
+    memcpy(payload,(const void*)xtcbuf.payload(),xtcbuf.sizeofPayload());
 
     FILE* fp = fopen("junk.xtc2", "w+");
     if (fwrite(&dg, 1, sizeof(Dgram), fp) != sizeof(Dgram)) {

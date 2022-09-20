@@ -50,6 +50,7 @@ def main():
     parser.add_argument('-I', action='store_true', help='initialize Cu timing')
     parser.add_argument('-L', action='store_true', help='bypass AMC Locks')
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
+    parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
 
     args = parser.parse_args()
     if args.verbose:
@@ -61,7 +62,8 @@ def main():
 
     base.add(Top(
         name   = 'XPM',
-        ipAddr = args.ip
+        ipAddr = args.ip,
+        fidPrescale = args.C,
     ))
     
     # Start the system
@@ -73,17 +75,18 @@ def main():
 
     xpm = base.XPM
     app = base.XPM.XpmApp
+    axiv = base.XPM.AxiVersion
 
     # Print the AxiVersion Summary
-    xpm.AxiVersion.printStatus()
+    axiv.printStatus()
 
     provider = StaticProvider(__name__)
 
     lock = Lock()
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F)
+    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv)
 #    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
-    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=args.I)
+    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
     pvxtpg = None
 
     # process PVA transactions

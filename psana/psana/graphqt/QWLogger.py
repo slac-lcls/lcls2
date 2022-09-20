@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWLogger` - GUI for Logger
 ========================================
@@ -20,7 +20,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2017-02-18 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
-#------------------------------
 
 import os
 from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton, QComboBox,\
@@ -28,41 +27,38 @@ from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton, QComboBox,\
 from PyQt5.QtGui import QTextCursor
 from psana.graphqt.Styles import style
 
-#------------------------------
 
-class QWLogger(QWidget) :
+class QWLogger(QWidget):
     _name = 'QWLogger'
 
-    def __init__(self, log, cp, show_buttons=True) :
+    def __init__(self, log, cp, show_buttons=True):
 
         QWidget.__init__(self, parent=None)
 
         self.cp = cp
         self.log = log
         self.show_buttons = show_buttons
-        
+
         self.box_txt    = QTextEdit()
- 
-        #self.tit_title = QLabel('Logger')
         self.tit_status = QLabel('Status:')
         self.tit_level  = QLabel('Verbosity level:')
-        self.but_close  = QPushButton('&Close') 
-        self.but_save   = QPushButton('&Save log-file') 
+        self.but_close  = QPushButton('&Close')
+        self.but_save   = QPushButton('&Save log-file')
 
         self.list_of_levels = self.log.getListOfLevels()
-        self.box_level      = QComboBox(self) 
+        self.box_level      = QComboBox(self)
         self.box_level.addItems(self.list_of_levels)
         self.box_level.setCurrentIndex(self.list_of_levels.index(self.cp.log_level.value()))
-        
+
         self.hboxM = QHBoxLayout()
         self.hboxM.addWidget(self.box_txt)
 
         self.hboxB = QHBoxLayout()
         self.hboxB.addWidget(self.tit_status)
-        self.hboxB.addStretch(4)     
+        self.hboxB.addStretch(4)
         self.hboxB.addWidget(self.tit_level)
         self.hboxB.addWidget(self.box_level)
-        self.hboxB.addStretch(1)     
+        self.hboxB.addStretch(1)
         self.hboxB.addWidget(self.but_save)
         self.hboxB.addWidget(self.but_close)
 
@@ -72,7 +68,7 @@ class QWLogger(QWidget) :
         self.vbox.addLayout(self.hboxB)
         self.setLayout(self.vbox)
 
-        if self.show_buttons :
+        if self.show_buttons:
           self.but_close.clicked.connect(self.onClose)
           self.but_save.clicked.connect(self.onSave)
           self.box_level.currentIndexChanged[int].connect(self.onBox)
@@ -101,13 +97,10 @@ class QWLogger(QWidget) :
         self.tit_status.setStyleSheet(style.styleTitle)
         self.tit_level .setStyleSheet(style.styleTitle)
         self.but_close .setStyleSheet(style.styleButton)
-        self.but_save  .setStyleSheet(style.styleButton) 
-        self.box_level .setStyleSheet(style.styleButton) 
+        self.but_save  .setStyleSheet(style.styleButton)
+        self.box_level .setStyleSheet(style.styleButton)
         self.box_txt   .setReadOnly(True)
-        self.box_txt   .setStyleSheet(style.styleWhiteFixed) 
-        #self.box_txt   .ensureCursorVisible()
-        #self.tit_title.setAlignment(QtCore.Qt.AlignCenter)
-        #self.titTitle.setBold()
+        self.box_txt   .setStyleSheet(style.styleWhiteFixed)
 
         self.tit_status.setVisible(self.show_buttons)
         self.tit_level .setVisible(self.show_buttons)
@@ -115,26 +108,10 @@ class QWLogger(QWidget) :
         self.but_save  .setVisible(self.show_buttons)
         self.but_close .setVisible(self.show_buttons)
 
-        #if not self.show_buttons : 
+        #if not self.show_buttons:
         self.layout().setContentsMargins(0,0,0,0)
         self.setMinimumHeight(50)
         self.setMinimumSize(300,50)
-        #self.setBaseSize(500,200)
-
-
-    #def setParent(self,parent) :
-    #    self.parent = parent
-
-
-    #def resizeEvent(self, e):
-        #self.log.debug('resizeEvent', self._name) 
-        #pass
-
-
-    #def moveEvent(self, e):
-        #self.log.debug('moveEvent', self._name) 
-        #self.cp.posGUIMain = (self.pos().x(),self.pos().y())
-        #pass
 
 
     def closeEvent(self, e):
@@ -156,7 +133,7 @@ class QWLogger(QWidget) :
 
     def onBox(self):
         level_selected = self.box_level.currentText()
-        self.cp.log_level.setValue(level_selected) 
+        self.cp.log_level.setValue(level_selected)
         self.log.info('onBox - selected ' + self.tit_level.text() + ' ' + self.cp.log_level.value(), self._name)
         self.log.setLevel(self.cp.log_level.value())
         self.box_txt.setText(self.log.getLogContent())
@@ -169,9 +146,9 @@ class QWLogger(QWidget) :
                                                directory = self.fname_log,
                                                filter    = '*.txt'
                                                ))
-        if path == '' :
+        if path == '':
             self.log.debug('Saving is cancelled.', self._name)
-            return 
+            return
         self.log.info('Output file: ' + path, self._name)
         self.log.saveLogInFile(path)
         self.fname_log = path
@@ -192,11 +169,11 @@ class QWLogger(QWidget) :
 
         clicked = msg.exec_()
 
-        if   clicked == QMessageBox.Save :
+        if   clicked == QMessageBox.Save:
             self.log.info('Saving is requested', self._name)
-        elif clicked == QMessageBox.Discard :
+        elif clicked == QMessageBox.Discard:
             self.log.info('Discard is requested', self._name)
-        else :
+        else:
             self.log.info('Cancel is requested', self._name)
         return clicked
 
@@ -205,15 +182,15 @@ class QWLogger(QWidget) :
         self.log.info('onShow - is not implemented yet...', self._name)
 
 
-    def startGUILog(self) :
+    def startGUILog(self):
         self.fname_log = self.cp.log_file.value()
         #self.fname_log_total = self.cp.log_file_total.value()
         self.setStatus(0, 'Log-file: ' + os.path.basename(self.fname_log))
 
         self.log.setLevel(self.cp.log_level.value())
         self.box_txt.setText(self.log.getLogContent())
-        
-        self.log.setGUILogger(self) 
+
+        self.log.setGUILogger(self)
         self.log.debug('QWLogger is open', self._name)
         self.box_txt.moveCursor(QTextCursor.End)
 
@@ -225,25 +202,24 @@ class QWLogger(QWidget) :
 
     def scrollDown(self):
         #scrol_bar_v = self.box_txt.verticalScrollBar() # QScrollBar
-        #scrol_bar_v.setValue(scrol_bar_v.maximum()) 
+        #scrol_bar_v.setValue(scrol_bar_v.maximum())
         self.box_txt.moveCursor(QTextCursor.End)
         self.box_txt.repaint()
         #self.raise_()
         #self.box_txt.update()
 
-        
+
     def setStatus(self, status_index=0, msg=''):
         list_of_states = ['Good','Warning','Alarm']
-        if status_index == 0 : self.tit_status.setStyleSheet(style.styleStatusGood)
-        if status_index == 1 : self.tit_status.setStyleSheet(style.styleStatusWarning)
-        if status_index == 2 : self.tit_status.setStyleSheet(style.styleStatusAlarm)
+        if status_index == 0: self.tit_status.setStyleSheet(style.styleStatusGood)
+        if status_index == 1: self.tit_status.setStyleSheet(style.styleStatusWarning)
+        if status_index == 2: self.tit_status.setStyleSheet(style.styleStatusAlarm)
 
         #self.tit_status.setText('Status: ' + list_of_states[status_index] + msg)
         self.tit_status.setText(msg)
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
     from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
     from psana.pyalgos.generic.LoggerLight import logger as log
@@ -255,7 +231,7 @@ if __name__ == "__main__" :
     w = QWLogger(log, cp)
     w.setWindowTitle(w._name)
 
-    from psana.graphqt.QWIcons import icon # should be imported after QApplication
+    from psana.graphqt.QWIcons import icon
     icon.set_icons()
     w.setWindowIcon(icon.icon_logviewer)
 
@@ -263,4 +239,4 @@ if __name__ == "__main__" :
     app.exec_()
     sys.exit(0)
 
-#------------------------------
+# EOF

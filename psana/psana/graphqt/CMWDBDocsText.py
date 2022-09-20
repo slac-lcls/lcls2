@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`CMWDBDocsText` implementation for CMWDBDocsBase
 ===================================================================
 
@@ -14,22 +14,19 @@ See:
 
 Created on 2017-04-20 by Mikhail Dubrovin
 """
-#------------------------------
 
 from psana.graphqt.CMWDBDocsBase import *
 logger = logging.getLogger(__name__)
 
-#------------------------------
 
-class CMWDBDocsText(CMWDBDocsBase, QTextEdit) :
-    def __init__(self, text='Select collection in the DB pannel') :
+class CMWDBDocsText(CMWDBDocsBase, QTextEdit):
+    def __init__(self, text='Select collection in the DB pannel'):
         QTextEdit.__init__(self, text)
         CMWDBDocsBase.__init__(self)
         logger.debug('c-tor CMWDBDocsText')
 
-#------------------------------
 
-    def show_documents(self, dbname, colname, docs) :
+    def show_documents(self, dbname, colname, docs):
         """Re-implementation of the method in CMWDBDocsBase.show_documents
         """
         CMWDBDocsBase.show_documents(self, dbname, colname, docs)
@@ -44,4 +41,4 @@ class CMWDBDocsText(CMWDBDocsBase, QTextEdit) :
         QTextEdit.setTextInteractionFlags(self,Qt.TextBrowserInteraction)
         cp.cmwdbmain.set_hsplitter_size2(0)
 
-#------------------------------
+# EOF

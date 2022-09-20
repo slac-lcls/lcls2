@@ -18,15 +18,15 @@ namespace Drp {
         ~Digitizer();
         nlohmann::json connectionInfo() override;
         void connect(const nlohmann::json&, const std::string& collectionId) override;
-        unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
-        void event(XtcData::Dgram& dgram, PGPEvent* event) override;
+        unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
+        void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
         void shutdown() override;
 
-        unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc) override;
-        unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc) override;
+        unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
+        unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
 
     private:
-        unsigned _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId, const std::string& config_alias);
+        unsigned _addJson(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId& configNamesId, const std::string& config_alias);
     private:
         enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex};
         unsigned             m_readoutGroup;

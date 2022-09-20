@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`CMWDBMain` is a QWidget for calibman
 ===========================================================
@@ -43,17 +44,17 @@ class CMWDBMain(QWidget):
 
         # Horizontal splitter widget
         self.hspl = QSplitter(Qt.Horizontal)
-        self.hspl.addWidget(self.wtree) 
-        self.hspl.addWidget(self.wdocs) 
-        self.hspl.addWidget(self.wdoce) 
+        self.hspl.addWidget(self.wtree)
+        self.hspl.addWidget(self.wdocs)
+        self.hspl.addWidget(self.wdoce)
 
         # Vertical splitter widget
-        self.vspl = QSplitter(Qt.Vertical) # QVBoxLayout() 
+        self.vspl = QSplitter(Qt.Vertical)
         self.vspl.addWidget(self.wbuts)
         self.vspl.addWidget(self.hspl)
 
         # Main box layout
-        self.mbox = QVBoxLayout() 
+        self.mbox = QVBoxLayout()
         self.mbox.addWidget(self.vspl)
         self.setLayout(self.mbox)
 
@@ -64,9 +65,7 @@ class CMWDBMain(QWidget):
 
     def connect_signals_to_slots(self):
         pass
-        # connect button which turn on/of tabs
-        #self.wbuts.but_tabs.clicked.connect(cp.cmwmaintabs.view_hide_tabs)
-        #self.wbuts.but_tabs.clicked.connect(self.on_but_tabs_clicked_test)
+
 
     def on_but_tabs_clicked_test(self):
         logger.debug('on_but_tabs_clicked')
@@ -113,67 +112,16 @@ class CMWDBMain(QWidget):
 
 
     def set_style(self):
-        #self.setGeometry(self.main_win_pos_x .value(),\
-        #                 self.main_win_pos_y .value(),\
-        #                 self.main_win_width .value(),\
-        #                 self.main_win_height.value())
-        #w = self.main_win_width.value()
-
         self.layout().setContentsMargins(0,0,0,0)
-
         self.wtree.setMinimumWidth(100)
         self.wtree.setMaximumWidth(600)
-
         self.set_hsplitter_sizes()
-
-        #self.hspl.moveSplitter(200, self.hspl.indexOf(self.wdocs))
-
-        #logger.debug('saveState: %s' % self.hspl.saveState())
-        #self.hspl.restoreState(state)
-
-        #self.wrig.setMinimumWidth(350)
-        #self.wrig.setMaximumWidth(450)
-        #self.setFixedSize(800,500)
-        #self.setMinimumSize(500,800)
-
-        #self.wrig.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Ignored)
-        #self.hspl.moveSplitter(w*0.5,0)
-
-        #self.setStyleSheet("background-color:blue; border: 0px solid green")
-        #self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        
-        #self.        setStyleSheet(style.styleBkgd)
-        #self.butSave.setStyleSheet(style.styleButton)
-        #self.butFBrowser.setVisible(False)
-
-        #self.but1.raise_()
 
 
     def closeEvent(self, e):
         logger.debug('%s.closeEvent' % self._name)
-
-        #try: self.wspe.close()
-        #except: pass
-
         self.on_save()
-
         QWidget.closeEvent(self, e)
-
- 
-    def resizeEvent(self, e):
-        #logger.debug('resizeEvent') 
-        #logger.info('CMWDBMain.resizeEvent: %s' % str(self.size()))
-        pass
-
-
-    def moveEvent(self, e):
-        #logger.debug('moveEvent') 
-        #self.position = self.mapToGlobal(self.pos())
-        #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position))       
-        #logger.info('CMWDBMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
-        #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
-        pass
 
 
     def view_hide_tabs(self):
@@ -189,12 +137,12 @@ class CMWDBMain(QWidget):
 
     if __name__ == "__main__":
       def keyPressEvent(self, e):
-        #logger.debug('keyPressEvent, key=', e.key())       
-        logger.info('%s.keyPressEvent, key=%d' % (self._name, e.key()))         
+        #logger.debug('keyPressEvent, key=', e.key())
+        logger.info('%s.keyPressEvent, key=%d' % (self._name, e.key()))
         if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_V: 
+        elif e.key() == Qt.Key_V:
             self.view_hide_tabs()
 
         else:
@@ -202,16 +150,7 @@ class CMWDBMain(QWidget):
 
 
     def on_save(self):
-        #point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
-        #x,y,w,h = point.x(), point.y(), size.width(), size.height()
-        #msg = 'Save main window x,y,w,h: %d, %d, %d, %d' % (x,y,w,h)
-        #logger.info(msg)
-
         self.save_hsplitter_sizes()
-
-        #self.main_win_pos_y .setValue(y)
-        #self.main_win_width .setValue(w)
-        #self.main_win_height.setValue(h)
 
 
 if __name__ == "__main__":

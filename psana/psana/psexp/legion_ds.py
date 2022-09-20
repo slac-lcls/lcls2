@@ -31,22 +31,17 @@ class LegionDataSource(DataSourceBase):
     def __del__(self):
         super()._close_opened_smd_files()
         super()._end_prometheus_client()
-
-    def _setup_configs(self):
+    
+    def _get_configs(self):
         super()._close_opened_smd_files()
         self.smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
         logger.debug(f'legion_ds: opened smd_fds: {self.smd_fds}')
         self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
-        self._configs = self.smdr_man.get_next_dgrams()
-        super()._setup_det_class_table()
-        super()._set_configinfo()
-
-        self.dm = DgramManager(self.xtc_files, configs=self._configs,
-                found_xtc2_callback=super().found_xtc2_callback)
-
+        # Reading configs (first dgram of the smd files)
+        configs = self.smdr_man.get_next_dgrams()
+        self.dm = DgramManager(self.xtc_files, configs=configs, config_consumers=[self.dsparms])
         # Legion Smd0
-        self.smd0 = LSmd0(self._configs, self.smdr_man, self.dsparms)
-
+        self.smd0 = LSmd0(configs, self.smdr_man, self.dsparms)
         # Legion Reductions
         self.reduc = False
 
@@ -57,10 +52,9 @@ class LegionDataSource(DataSourceBase):
         self.runnum_list_index += 1
         super()._setup_run_files(runnum)
         super()._apply_detector_selection()
-        self._setup_configs()
-
+        self._get_configs()
         return True
-    
+
     def _setup_beginruns(self):
         """ Determines if there is a next run as
         1) New run found in the same smalldata files

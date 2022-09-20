@@ -521,14 +521,16 @@ def set_file_access_mode(fname, mode=0o777):
     os.chmod(fname, mode)
 
 
-def save_2darray_in_textfile(nda, fname, fmode, fmt):
+def save_2darray_in_textfile(nda, fname, fmode, fmt, umask=0o0):
+    os.umask(umask)
     fexists = os.path.exists(fname)
     np.savetxt(fname, nda, fmt=fmt)
     if not fexists: set_file_access_mode(fname, fmode)
     logger.info('saved:  %s' % fname)
 
 
-def save_ndarray_in_textfile(nda, fname, fmode, fmt):
+def save_ndarray_in_textfile(nda, fname, fmode, fmt, umask=0o0):
+    os.umask(umask)
     fexists = os.path.exists(fname)
     save_txt(fname=fname, arr=nda, fmt=fmt)
     if not fexists: set_file_access_mode(fname, fmode)

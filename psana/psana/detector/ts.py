@@ -124,3 +124,23 @@ class ts_ts_0_0_1(DetectorImpl):
 class ts_raw_2_0_0(ts_ts_0_0_1):
     def __init__(self, *args):
         super().__init__(*args)
+
+
+class triginfo_triginfo_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super(triginfo_triginfo_0_0_1, self).__init__(*args)
+
+    def prescale(self, evt) -> int:
+        segments = self._segments(evt)
+        if segments is None: return None
+        return (segments[0].data >> 0) & 0x1
+
+    def persist(self, evt) -> int:
+        segments = self._segments(evt)
+        if segments is None: return None
+        return (segments[0].data >> 1) & 0x1
+
+    def monitor(self, evt) -> int:
+        segments = self._segments(evt)
+        if segments is None: return None
+        return (segments[0].data >> 2) & 0xf

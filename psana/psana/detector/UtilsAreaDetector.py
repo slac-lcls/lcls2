@@ -42,12 +42,12 @@ import numpy as np
 from psana.detector.NDArrUtils import info_ndarr
 from time import time
 
-def arr_rot_n90(arr, rot_ang_n90=0) :
-    if   rot_ang_n90==  0 : return arr
-    elif rot_ang_n90== 90 : return np.flipud(arr.T)
-    elif rot_ang_n90==180 : return np.flipud(np.fliplr(arr))
-    elif rot_ang_n90==270 : return np.fliplr(arr.T)
-    else                  : return arr
+def arr_rot_n90(arr, rot_ang_n90=0):
+    if   rot_ang_n90==  0: return arr
+    elif rot_ang_n90== 90: return np.flipud(arr.T)
+    elif rot_ang_n90==180: return np.flipud(np.fliplr(arr))
+    elif rot_ang_n90==270: return np.fliplr(arr.T)
+    else                 : return arr
 
 
 def sec_nsec_from_tstamp(ts):
@@ -138,7 +138,7 @@ def img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0):
         msg = 'img_from_pixel_arrays(): input array sizes are different;' \
             + ' rows.size=%d, cols.size=%d, W.size=%d' % (rows.size, cols.size, weight.size)
         logger.debug(msg)
-        return img_default()
+        return img_default(np.ones_like(rows, dtype=dtype))
 
     img_shape = image_shape(rows, cols)
 
@@ -164,7 +164,7 @@ def img_multipixel_max(img, weight, dict_pix_to_img_idx):
 
     if logger.getEffectiveLevel()<=logging.DEBUG: #logger.level
         s = '\n  == img_multipixel_max cross-check'
-        for ia,i in dict_pix_to_img_idx.items(): 
+        for ia,i in dict_pix_to_img_idx.items():
             s += '\n  inds in img:%06d in pixarr:%06d value: %.1f' % (i, ia, weight.ravel()[ia])
         s += '\n  == img_multipixel_max result:'
         for i in sorted(set(dict_pix_to_img_idx.values())):
@@ -182,14 +182,14 @@ def img_multipixel_mean(img, weight, dict_pix_to_img_idx, dict_imgidx_numentries
 
     if logger.getEffectiveLevel()<=logging.DEBUG: #logger.level
         s = '\n  == img_multipixel_mean cross-check'
-        for ia,i in dict_pix_to_img_idx.items(): 
+        for ia,i in dict_pix_to_img_idx.items():
             s += '\n  inds in img:%06d in pixarr:%06d value: %.1f' % (i, ia, weight.ravel()[ia])
         s += '\n  == img_multipixel_mean result:'
-        for i in imgidx: 
+        for i in imgidx:
             s += '\n  inds in img:%06d mean: %.1f for %d entries' % (i, imgrav[i], dict_imgidx_numentries[i])
         logger.debug(s)
     #return img
-    
+
 
 def size_for_shape(shape): return np.empty(shape).size
 
@@ -207,7 +207,7 @@ def image_shape(rows, cols):
     """
     #rowsfl = rows.ravel()
     #colsfl = cols.ravel()
-    #nrows = int(rows.max())+1 
+    #nrows = int(rows.max())+1
     #ncols = int(cols.max())+1
     return int(rows.max())+1, int(cols.max())+1
 
@@ -309,7 +309,9 @@ def img_default(arr):
     med = np.median(arr)
     spr = np.median(np.abs(arr-med))
     amin, amax = med-1*spr, med+3*spr
-    a = np.arange(amin, amax, (amax-amin)/12, dtype=np.float32)
+    if amin == amax: amax = amin + 1
+    #logger.debug('XXXX amin:%.1f, amax::%.1f' % (amin, amax))
+    a = np.arange(amin, amax, (amax-amin)/12., dtype=np.float32)
     a.shape =(3,4)
     return a
 
@@ -328,12 +330,12 @@ def init_interpolation_parameters(rows, cols, x, y, **kwa):
 
 def img_interpolated(data, interpol_pars, **kwa):
     """Image inperpolation.
-       For each element of the uniform image matrix 
-       use the 1, x, y, x*y weights of 4 real neighbor pixels. 
+       For each element of the uniform image matrix
+       use the 1, x, y, x*y weights of 4 real neighbor pixels.
        Interpolation algorithm assumes the 4-node formula:
 
                  Term                   Weight
-       f(x,y) =  f00                    1 
+       f(x,y) =  f00                    1
               + (f10-f00)*x             x
               + (f01-f00)*y             y
               + (f11+f00-f10-f01)*x*y   x*y

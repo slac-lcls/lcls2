@@ -17,6 +17,8 @@ provider = None
 lock     = None
 countdn  = 0
 countrst = 60
+_fidPrescale = 200
+_fidPeriod   = 1400/1.3
 
 class TransitionId(object):
     Clear   = 0
@@ -32,7 +34,7 @@ class RateSel(object):
 
 def pipelinedepth_from_delay(value):
     v = value &0xffff
-    return ((v*200)&0xffff) | (v<<16)
+    return ((v*_fidPrescale)&0xffff) | (v<<16)
 
 def forceUpdate(reg):
     reg.get()
@@ -113,7 +115,7 @@ class L0DelayH(IdxRegH):
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
 
         curr = self.pvu.current()
-        curr['value'] = value*1400/1.3
+        curr['value'] = value*_fidPeriod
         self.pvu.post(curr)
         countdn = countrst
 
@@ -221,11 +223,11 @@ class CuGenCtrls(object):
             cuInput    = dbinit['XTPG']['CuInput']
             print('Read XTPG parameters CuDelay {}, CuBeamCode {}, CuInput {}'.format(cuDelay,cuBeamCode,cuInput))
         except:
-            cuDelay    = 200*800
+            cuDelay    = _fidPrescale*800
             cuBeamCode = 140
             cuInput    = 1
             print('Defaulting XTPG parameters')
-            
+
         def addPV(label, init, reg, archive):
             pvu = SharedPV(initial=NTScalar('f').wrap(init*7000./1300), 
                           handler=DefaultPVHandler())
@@ -338,7 +340,7 @@ class GroupSetup(object):
         self._pv_L0Groups   = addPV('L0Groups'  , app.l0Groups, 0, set=True)
 
         def addPV(label,reg,init=0,set=False):
-            pvu = SharedPV(initial=NTScalar('f').wrap(init*1400/1.3),
+            pvu = SharedPV(initial=NTScalar('f').wrap(init*_fidPeriod),
                            handler=DefaultPVHandler())
             provider.add(name+':'+label+'_ns',pvu)
 
@@ -487,11 +489,15 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, handle=None, db=None, cuInit=False):
+    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, handle=None, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
         global provider
         provider = p
         global lock
         lock     = m
+        global _fidPrescale
+        _fidPrescale = fidPrescale
+        global _fidPeriod
+        _fidPeriod = fidPeriod
 
         # Assign transmit link ID
         ip_comp = ip.split('.')
@@ -531,7 +537,6 @@ class PVCtrls(object):
             self._pv_amcDumpPLL.append(pv)
 
         self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init)
-        #self._cu   = None
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
@@ -547,8 +552,9 @@ class PVCtrls(object):
                                         handler=RegH(app.l0HoldReset,archive=False))
         provider.add(name+':L0HoldReset',self._pv_l0HoldReset)
 
-        self._thread = threading.Thread(target=self.notify)
-        self._thread.start()
+        if self._handle:
+            self._thread = threading.Thread(target=self.notify)
+            self._thread.start()
 
         print('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
         app.monStreamPeriod.set(125000000)

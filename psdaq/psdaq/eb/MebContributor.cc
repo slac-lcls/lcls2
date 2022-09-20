@@ -13,6 +13,9 @@
 #include <cstdint>
 #include <string>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 using namespace XtcData;
 using namespace Pds::Eb;
 using logging  = psalg::SysLog;
@@ -27,7 +30,8 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
   _id        (-1),
   _enabled   (false),
   _verbose   (prms.verbose),
-  _eventCount(0)
+  _eventCount(0),
+  _trCount   (0)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
@@ -35,12 +39,15 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
                                             {"detseg", std::to_string(prms.detSegment)},
                                             {"alias", prms.alias}};
   exporter->add("MCtbO_EvCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
-  exporter->add("MCtbO_TxPdg", labels, MetricType::Counter, [&](){ return _transport.pending(); });
+  exporter->add("MCtbO_TrCt",  labels, MetricType::Counter, [&](){ return _trCount;             });
+  exporter->add("MCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
+  exporter->add("MCtbO_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
 }
 
 int MebContributor::resetCounters()
 {
   _eventCount = 0;
+  _trCount    = 0;
 
   return 0;
 }
@@ -79,7 +86,6 @@ int MebContributor::connect(const MebCtrbParams& prms,
   int rc = linksConnect(_transport, _links, prms.addrs, prms.ports, "MEB");
   if (rc)  return rc;
 
-  //printf("*** MC::connect: region %p, regSize %zu\n", region, regSize);
   for (auto link : _links)
   {
     rc = link->setupMr(region, regSize);
@@ -92,8 +98,7 @@ int MebContributor::connect(const MebCtrbParams& prms,
 int MebContributor::configure(void*  region,
                               size_t regSize)
 {
-  //printf("*** MC::cfg: region %p, regSize %zu\n", region, regSize);
-  int rc = linksConfigure(_links, _id, region, regSize, _bufRegSize, "MEB");
+  int rc = linksConfigure(_links, _id, region, regSize, _maxEvSize, "MEB");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -150,7 +155,18 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
            _eventCount, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data);
   }
 
-  if (int rc = link->post(ddg, sz, offset, data) < 0)  return rc;
+  int rc = link->post(ddg, sz, offset, data);
+  if (rc < 0)
+  {
+    uint64_t pid    = ddg->pulseId();
+    unsigned ctl    = ddg->control();
+    uint32_t env    = ddg->env;
+    void*    rmtAdx = (void*)link->rmtAdx(offset);
+    logging::critical("%s:\n  Failed to post monEvt [%8u]  @ "
+                      "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x, rc %d\n",
+                      __PRETTY_FUNCTION__, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data, rc);
+    abort();
+  }
 
   ++_eventCount;
 
@@ -226,7 +242,7 @@ int MebContributor::post(const EbDgram* dgram)
     uint64_t offset = _bufRegSize + idx * _maxTrSize;
     uint32_t data   = ImmData::value(ImmData::Transition, _id, idx);
 
-    if (unlikely(_verbose >= VL_BATCH))
+    if (UNLIKELY(_verbose >= VL_BATCH))
     {
       printf("MebCtrb rcvd transition buffer           [%2u] @ "
              "%16p, ofs %016lx = %08zx + %2u * %08zx,     src %2u\n",
@@ -238,7 +254,7 @@ int MebContributor::post(const EbDgram* dgram)
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("MebCtrb posts %9lu %15s       @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
-             _eventCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
+             _trCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
     }
     else
     {
@@ -268,7 +284,7 @@ int MebContributor::post(const EbDgram* dgram)
     }
   }
 
-  ++_eventCount;                        // Revisit: Count these?
+  ++_trCount;
 
   return 0;
 }

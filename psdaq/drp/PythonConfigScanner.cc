@@ -35,8 +35,9 @@ static const int BUFSIZE = 4*1024*1024;
 //
 //  On Configure, save the Names for the keys that will change
 //
-unsigned PythonConfigScanner::configure(const json&  scan_keys, 
+unsigned PythonConfigScanner::configure(const json&  scan_keys,
                                         Xtc&         xtc,
+                                        const void*  bufEnd,
                                         NamesId&     namesId,
                                         NamesLookup& namesLookup)
 {
@@ -49,10 +50,11 @@ unsigned PythonConfigScanner::configure(const json&  scan_keys,
     // returns new reference
     PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "s",
                                                      scan_keys.dump().c_str()));
-     
+
     // convert json to xtc
     char* buffer = new char[BUFSIZE];
-    Xtc& jsonxtc = *new (buffer) Xtc(TypeId(TypeId::Parent, 0));  // Initialize xtc
+    const void* end = buffer + BUFSIZE;
+    Xtc& jsonxtc = *new (buffer, end) Xtc(TypeId(TypeId::Parent, 0));  // Initialize xtc
 
     //    Pds::setJsonDebug();
 
@@ -86,9 +88,9 @@ unsigned PythonConfigScanner::configure(const json&  scan_keys,
         }
 
         Value jsonv;
-        if (Pds::translateJson2XtcNames(d, &jsonxtc, namesLookup, nId, jsonv, detname, segment) < 0)
+        if (Pds::translateJson2XtcNames(d, &jsonxtc, end, namesLookup, nId, jsonv, detname, segment) < 0)
             return -1;
-        
+
         delete d;
         Py_DECREF(json_bytes);
     }
@@ -97,8 +99,8 @@ unsigned PythonConfigScanner::configure(const json&  scan_keys,
         throw "**** Config json output too large for buffer\n";
 
     // append the xtc info to the dgram
-    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
-    xtc.alloc(jsonxtc.sizeofPayload());
+    auto payload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
+    memcpy(payload,(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
 
     Py_DECREF(mybytes);
     delete[] buffer;
@@ -106,7 +108,7 @@ unsigned PythonConfigScanner::configure(const json&  scan_keys,
     return 0;
 }
 
-static int _translate( PyObject* item, Xtc* xtc, NamesLookup& namesLookup, NamesId namesID) 
+static int _translate( PyObject* item, Xtc* xtc, const void* bufEnd, NamesLookup& namesLookup, NamesId namesID)
 {
     int result = -1;
 
@@ -142,12 +144,12 @@ static int _translate( PyObject* item, Xtc* xtc, NamesLookup& namesLookup, Names
 
         unsigned extent = xtc->extent;
         logging::info("update names");
-        if (Pds::translateJson2XtcNames(d, xtc, nl, namesID, jsonv, detname, segment) < 0)
+        if (Pds::translateJson2XtcNames(d, xtc, bufEnd, nl, namesID, jsonv, detname, segment) < 0)
             break;
-    
+
         xtc->extent = extent;
         logging::info("update data");
-        if (Pds::translateJson2XtcData (d, xtc, namesLookup, namesID, jsonv) < 0)
+        if (Pds::translateJson2XtcData (d, xtc, bufEnd, namesLookup, namesID, jsonv) < 0)
             break;
 
         result = 0;
@@ -163,8 +165,9 @@ static int _translate( PyObject* item, Xtc* xtc, NamesLookup& namesLookup, Names
 //
 //  On BeginStep, save the updated configuration data (matching the keys stored on Configure)
 //
-unsigned PythonConfigScanner::step(const json&  stepInfo, 
+unsigned PythonConfigScanner::step(const json&  stepInfo,
                                    Xtc&         xtc,
+                                   const void*  bufEnd,
                                    NamesId&     namesId,
                                    NamesLookup& namesLookup)
 {
@@ -180,20 +183,21 @@ unsigned PythonConfigScanner::step(const json&  stepInfo,
     // returns new reference
     PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "s",
                                                      stepInfo.dump().c_str()));
-    
+
     char buffer[BUFSIZE];
-    Xtc* jsonxtc = new (buffer) Xtc(TypeId(TypeId::Parent, 0));
+    const void* end = buffer + BUFSIZE;
+    Xtc* jsonxtc = new (buffer, end) Xtc(TypeId(TypeId::Parent, 0));
 
     if (PyList_Check(mybytes)) {
         for(unsigned seg=0; seg<PyList_Size(mybytes); seg++) {
             logging::info("scan update seg %d",seg);
             PyObject* item = PyList_GetItem(mybytes,seg);
             NamesId nId(namesId.nodeId(),namesId.namesId()+seg);
-            if (_translate( item, jsonxtc, namesLookup, nId ))
+            if (_translate( item, jsonxtc, end, namesLookup, nId ))
                 return -1;
         }
     }
-    else if ( _translate( mybytes, jsonxtc, namesLookup, namesId) )
+    else if ( _translate( mybytes, jsonxtc, end, namesLookup, namesId) )
         return -1;
 
     if (jsonxtc->extent>BUFSIZE)
@@ -201,10 +205,10 @@ unsigned PythonConfigScanner::step(const json&  stepInfo,
 
     logging::info("Adding stepscan extent 0x%x",jsonxtc->extent);
 
-    memcpy((void*)xtc.next(),(const void*)jsonxtc->payload(),jsonxtc->sizeofPayload());
-    xtc.alloc(jsonxtc->sizeofPayload());
-  
+    auto payload = xtc.alloc(jsonxtc->sizeofPayload(), bufEnd);
+    memcpy(payload,(const void*)jsonxtc->payload(),jsonxtc->sizeofPayload());
+
     Py_DECREF(mybytes);
-  
+
     return r;
 }

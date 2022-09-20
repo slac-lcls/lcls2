@@ -32,7 +32,7 @@ TimingBEB::~TimingBEB()
 {
 }
 
-void TimingBEB::connect(const json&        connect_json, 
+void TimingBEB::connect(const json&        connect_json,
                         const std::string& collectionId)
 {
     logging::info("TimingBEB connect");
@@ -60,21 +60,21 @@ void TimingBEB::_connect(PyObject* mbytes)
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
 
-unsigned TimingBEB::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
+unsigned TimingBEB::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     Alg alg("raw", 2, 0, 0);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                        "ts", m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
-    eventNames.add(xtc, TSDef);
+    Names& eventNames = *new(xtc, bufEnd) Names(bufEnd, m_para->detName.c_str(), alg,
+                                                "ts", m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
+    eventNames.add(xtc, bufEnd, TSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;
 }
 
-void TimingBEB::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void TimingBEB::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    TSDef.createDataETM(xtc, m_namesLookup, m_evtNamesId, subframes[0].data(), subframes[subframes.size()-1].data());
+    TSDef.createDataETM(xtc, bufEnd, m_namesLookup, m_evtNamesId, subframes[0].data(), subframes[subframes.size()-1].data());
 }
 
 bool     TimingBEB::scanEnabled()

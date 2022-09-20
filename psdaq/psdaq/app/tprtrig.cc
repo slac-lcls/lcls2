@@ -28,6 +28,7 @@ static void usage(const char* p) {
   printf("          -d <clks> : delay\n");
   printf("          -w <clks> : width\n");
   printf("          -D <unit> : delay tap\n");
+  printf("          -P <0/1>  : polarity (falling/rising)\n");
   printf("          -e <code> : event code\n");
   printf("          -r <rate> : fixed rate\n");
   printf("          -p <part> : partition\n");
@@ -51,12 +52,13 @@ int main(int argc, char** argv) {
   unsigned delay   = 0;
   unsigned width   = 1;
   unsigned tap     = 0;
+  unsigned polarity = 0; // Falling
   int  clksel      = 1;
   int  modsel      = 0;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:D:w:o:t:r:e:p:zC:M:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:D:w:o:t:r:e:p:zC:M:P:h?")) != EOF ) {
     switch(c) {
     case 'C':
         clksel = strtoul(optarg,NULL,0);
@@ -110,6 +112,9 @@ int main(int argc, char** argv) {
       mode = 2;
       rate = strtoul(optarg,NULL,0);
       break;
+    case 'P':
+      polarity = strtoul(optarg,NULL,0);
+      break;
     case 'z':
       lSleep = true;
       break;
@@ -146,7 +151,7 @@ int main(int argc, char** argv) {
 
   for(unsigned i=0; output; i++) {
     if (output & (1<<i)) {
-      client.setup(i, delay, width, Client::Falling, tap);
+      client.setup(i, delay, width, polarity, tap);
       output &= ~(1<<i);
     }
   }
@@ -158,8 +163,10 @@ int main(int argc, char** argv) {
   };
 
   client.reg().base.dump();
-  usleep(1000000);
-  client.reg().base.dump();
+  for(unsigned i=0; i<4; i++) {
+      usleep(1000000);
+      client.reg().base.dump();
+  }
 
   client.release();
 

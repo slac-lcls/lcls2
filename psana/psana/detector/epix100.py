@@ -2,6 +2,7 @@
 import numpy as np
 import psana.detector.areadetector as ad
 
+import os
 import sys
 logger = ad.logging.getLogger(__name__)
 import psana.detector.UtilsEpix100 as ue100
@@ -52,6 +53,15 @@ class epix100_raw_2_0_1(ad.AreaDetector):
 
     def _common_mode_increment(self, evt, cmpars=(0,7,100,10), **kwa):
         return ue100.common_mode_increment(self, evt, cmpars=cmpars, **kwa)
+
+
+    def _det_geotxt_default(self):
+        """returns (str) default geometry constants from lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data
+        """
+        dir_detector = os.path.abspath(os.path.dirname(__file__))
+        fname = '%s/../pscalib/geometry/data/geometry-def-epix100a.data' % dir_detector
+        logger.debug('_det_geotxt_default from file: %s' % fname)
+        return ad.ut.load_textfile(fname)
 
 
     def calib(self, evt, cmpars=None, **kwa): #cmpars=(0,7,100,10)):

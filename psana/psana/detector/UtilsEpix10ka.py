@@ -122,8 +122,12 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     # Origin of ASICs in bottom-right corner, so
     # stack them in upside-down matrix and rotete it by 180 deg.
 
-    cbits = np.flipud(np.fliplr(np.vstack((np.hstack((pca[2],pca[1])),
-                                           np.hstack((pca[3],pca[0])))))) # 0.000090 sec
+    #cbits = np.flipud(np.fliplr(np.vstack((np.hstack((pca[2],pca[1])),
+    #                                       np.hstack((pca[3],pca[0])))))) # 0.000090 sec
+
+    cbits = np.vstack((np.hstack((np.flipud(np.fliplr(pca[2])),
+                                  np.flipud(np.fliplr(pca[1])))),
+                       np.hstack((pca[3],pca[0]))))
 
     #cbits = np.bitwise_and(cbits,12) # 0o14 (bin:1100) # 0.000202 sec
     np.bitwise_and(cbits,12,out=cbits) # 0o14 (bin:1100) # 0.000135 sec
@@ -462,7 +466,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
       - calibrated epix10ka data
     """
 
-    logger.debug('In calib_epix10ka_any')
+    logger.debug('in calib_epix10ka_any')
 
     t0_sec_tot = time()
 
@@ -525,15 +529,19 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     arrf = np.array(raw & det_raw._data_bit_mask, dtype=np.float32) - pedest
 
-    logger.debug('common-mode correction pars cmp: %s' % str(_cmpars))
+    logger.debug('common-mode correction parameters cmpars: %s' % str(_cmpars))
 
     if store.mask is None:
-        mbits = kwa.pop('mbits',1) # 1-mask from status, etc.
-        mask = det_raw._mask_comb(mbits=mbits, **kwa) if mbits > 0 else None
-        mask_opt = kwa.get('mask',None) # mask optional parameter in det_raw.calib(...,mask=...)
-        store.mask = mask if mask_opt is None else mask_opt if mask is None else merge_masks(mask,mask_opt)
+#        mbits = kwa.pop('mbits',1) # 1-mask from status, etc.
+#        mask = det_raw._mask_comb(mbits=mbits, **kwa) if mbits > 0 else None
+#        mask_opt = kwa.get('mask',None) # mask optional parameter in det_raw.calib(...,mask=...)
+#        store.mask = mask if mask_opt is None else mask_opt if mask is None else merge_masks(mask,mask_opt)
+        store.mask = det_raw._mask_from_status(**kwa)
 
     mask = store.mask if store.mask is not None else np.ones_like(raw, dtype=DTYPE_MASK)
+
+    #logger.debug(info_ndarr(arrf,  'arrf:'))
+    #logger.debug(info_ndarr(mask,  'mask:'))
 
     if _cmpars is not None:
       alg, mode, cormax = int(_cmpars[0]), int(_cmpars[1]), _cmpars[2]

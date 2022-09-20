@@ -4,11 +4,12 @@ ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PRE
 epics_env = f'EPICS_PVA_ADDR_LIST=172.21.156.77 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
 #epics_env = ld_lib_path
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
+teb_env = f'PYTHONPATH=/cds/home/c/claus/lclsii/daq/lcls2/install/lib/python3.7/site-packages'
+teb_env += f' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
 
-#collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
 
-groups = platform + ' 6' #+' 1'
+groups = platform + ' 7' + ' 6'
 hutch, user, password = ('tst', 'tstopr', 'pcds')
 auth = ' --user {:} --password {:} '.format(user,password)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
@@ -19,16 +20,17 @@ cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 #
 prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
 data_dir = f'/cds/data/drpsrcf'
+trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
 task_set = 'taskset -c 4-63'
-#batching = 'batching=no'
 batching = 'batching=yes'
 directIO = 'directIO=yes'
+scripts  = f'script_path={trig_dir}'
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}'
 std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}'
 std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO}'
 
-teb_cmd  = f'{task_set} teb '+        std_opts
+teb_cmd  = f'{task_set} teb '+        std_opts + f' -k {scripts}'
 meb_cmd  = f'{task_set} monReqServer {std_opts}'
 
 drp_cmd0 = f'{task_set} drp '+   std_opts0
@@ -70,45 +72,54 @@ ami_manager_node = "drp-srcf-cmp003"
 #        's'         -> stop: sends ctrl-c to process
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
+base_host = 'drp-neh-ctl002'
+
 procmgr_config = [
  {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:f'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
 # {                         id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH 0 {groups} --prod'},
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH 0 {groups}'},
  {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
 
+ { host: base_host,        id:'pvrtmon-tst', flags:'s',   env:epics_env, cmd:f'epics_exporter -H tst -M {prom_dir} -P DAQ:NEH:XPM:0 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- #{ host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
- {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
-# {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 0 -T 20000 -V {elog_cfg} -r /dev/null'},
+ {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+# {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 0 -T 20000 -V {elog_cfg}'},
+# {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-srcf-cmp002', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
+# {host: 'drp-srcf-cmp003', id:'teb0',        flags:'spux',                cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp003', id:'teb0',        flags:'spux', env:teb_env,  cmd:f'{teb_cmd}'},
 
-# {host: 'drp-srcf-cmp002', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -d -q {ami_workers_per_node}'},
+ {host: 'drp-srcf-cmp003', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 64 -q {ami_workers_per_node}'},
+ {host: 'drp-srcf-cmp003', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -R'},
 
- {host: 'drp-srcf-cmp001', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
+ {host: 'drp-srcf-cmp001', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 
 # {host: 'drp-srcf-cmp001', id:'bld_0',       flags:'spu', env:epics_env, cmd:f'{bld_cmd0} -l 0x1 -D ebeam,gmd,xgmd,pcav'},
-# {host: 'drp-srcf-cmp002', id:'bld_0',       flags:'spu', env:epics_env, cmd:f'{bld_cmd0} -l 0x1 -D ebeam,gmd,xgmd,pcav'},
 
-# {host: 'drp-srcf-cmp002', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd0} -l 0x1'},
  {host: 'drp-srcf-cmp003', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd0} -l 0x1'},
 
-# {host: 'drp-srcf-cmp001', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D fakecam -k sim_length=14'},
- {host: 'drp-srcf-cmp002', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=14'},
+ {host: 'drp-srcf-cmp007', id:'tstpiranha4_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D piranha4'},
+
+ # cmp004 QSFP 1 cage is not working
+ {host: 'drp-srcf-cmp004', id:'tst_fim0_0',  flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D wave8 -k epics_prefix=TST:FIM:W8:01'},
+
+ {host: 'drp-srcf-cmp002', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
+ {host: 'drp-srcf-cmp002', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=155'},
  {host: 'drp-srcf-cmp003', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd1} -l 0x2 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 ]
 
 hsd_epics = 'DAQ:TMO:HSD:1'
 
 procmgr_hsd = [
- {host:'drp-srcf-cmp004', id:'hsd_10', flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
- {host:'drp-srcf-cmp004', id:'hsd_11', flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
+ {host:'drp-srcf-cmp005', id:'hsd_10', flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
+ {host:'drp-srcf-cmp005', id:'hsd_11', flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
 ]
 
-#procmgr_config.extend(procmgr_hsd)
+procmgr_config.extend(procmgr_hsd)
 
 #
 # ami
@@ -124,7 +135,7 @@ procmgr_ami = [
 #
 for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({host:worker_node, id:f'ami-meb{N}', flags:'spu',
-                        cmd:f'{meb_cmd} -d -q {ami_workers_per_node}'})
+                        cmd:f'{meb_cmd} -d -n 64 -q {ami_workers_per_node}'})
     procmgr_ami.append({host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env,
                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}'})
 

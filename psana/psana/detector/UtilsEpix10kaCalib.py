@@ -27,11 +27,11 @@ from psana.detector.utils_psana import seconds
 from psana.detector.UtilsLogging import init_file_handler
 
 
-def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, logmode='INFO', tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, logmode='INFO', tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
     """Adds record on start to the log file <dirrepo>/logs/log-<procname>-<year>.txt
     """
     from psana.detector.RepoManager import RepoManager
-
+    os.umask(umask)
     repoman = RepoManager(dirrepo, dettype=None, dirmode=dirmode, filemode=filemode)
     repoman.makedir_logs()
     logfname = repoman.logname('%s_%s' % (procname, get_login()))
@@ -492,7 +492,12 @@ def pedestals_calibration(*args, **kwa):
     #=================
 
     kwa = data_source_kwargs(**kwa)
-    ds = DataSource(**kwa)
+    #ds = DataSource(**kwa)
+    try: ds = DataSource(**kwa)
+    except Exception as err:
+        logger.error('DataSource(**kwa) does not work:\n    %s' % err)
+        sys.exit('EXIT - requested DataSource does not exist or is not accessible.')
+
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
     logger.info('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))

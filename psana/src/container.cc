@@ -29,6 +29,33 @@ static int container_init(PyContainerObject* self, PyObject* args, PyObject* kwd
     return 0;
 }
 
+// trying to following this example, but with less error checking
+// https://pythonextensionpatterns.readthedocs.io/en/latest/pickle.html
+static PyObject *
+container__getstate__(PyContainerObject *self, PyObject *Py_UNUSED(ignored)) {
+    //return self->dict;
+    PyObject *ret = Py_BuildValue("{sO}", "container_dict", self->dict);
+    return ret;
+}
+
+static PyObject *
+container__setstate__(PyContainerObject *self, PyObject *state) {
+    if (!PyDict_CheckExact(state)) {
+        PyErr_SetString(PyExc_ValueError, "Pickled psana container object is not a dict.");
+        return NULL;
+    }
+    Py_DECREF(self->dict);
+    self->dict = PyDict_GetItemString(state, "container_dict"); /* Borrowed reference. */
+    if (self->dict == NULL) {
+        /* PyDict_GetItemString does not set any error state so we have to. */
+        PyErr_SetString(PyExc_KeyError, "No \"container_dict\" key in pickled dict.");
+        return NULL;
+    }
+    /* Increment the borrowed reference for our instance of it. */
+    Py_INCREF(self->dict);
+    Py_RETURN_NONE;
+}
+
 static PyMemberDef container_members[] = {
     { (char*)"__dict__",
       T_OBJECT_EX, offsetof(PyContainerObject, dict),
@@ -37,9 +64,15 @@ static PyMemberDef container_members[] = {
     { NULL }
 };
 
+static PyMethodDef container_methods[] = {
+    {"__getstate__", (PyCFunction)container__getstate__, METH_NOARGS, "pickle the container object"},
+    {"__setstate__", (PyCFunction)container__setstate__, METH_O, "unpickle the container object"},
+    {NULL}  /* Sentinel */
+};
+
 static PyTypeObject container_ContainerType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "container.Container", /* tp_name */
+    "psana.container.Container", /* tp_name */
     sizeof(PyContainerObject), /* tp_basicsize */
     0, /* tp_itemsize */
     (destructor)container_dealloc, /* tp_dealloc */
@@ -69,7 +102,7 @@ static PyTypeObject container_ContainerType = {
     0, /* tp_weaklistoffset */
     0, /* tp_iter */
     0, /* tp_iternext */
-    0, /* tp_methods */
+    container_methods, /* tp_methods */
     container_members, /* tp_members */
     0, /* tp_getset */
     0, /* tp_base */
@@ -120,10 +153,6 @@ PyMODINIT_FUNC PyInit_container(void)
     return m;
 }
 #else
-static PyMethodDef container_methods[] = {
-    {NULL}  /* Sentinel */
-};
-
 PyMODINIT_FUNC initcontainer(void) {
     PyObject *m;
     

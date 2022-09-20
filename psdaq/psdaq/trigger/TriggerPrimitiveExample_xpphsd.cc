@@ -24,7 +24,8 @@ namespace Pds {
       void   event(const Drp::MemPool& pool,
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,
-                   XtcData::Xtc&       xtc) override;
+                   XtcData::Xtc&       xtc,
+                   const void*         bufEnd) override;
       size_t size() const  { return sizeof(TriggerData_xpphsd); }
     };
   };
@@ -43,14 +44,12 @@ int Pds::Trg::TriggerPrimitiveExample_xpphsd::configure(const Document& top,
 void Pds::Trg::TriggerPrimitiveExample_xpphsd::event(const Drp::MemPool& pool,
                                                      uint32_t            idx,
                                                      const XtcData::Xtc& ctrb,
-                                                     XtcData::Xtc&       xtc)
+                                                     XtcData::Xtc&       xtc,
+                                                     const void*         bufEnd)
 {
   uint64_t nPeaks = ctrb.sizeofPayload(); // Revisit with a real value
 
-  void* buf  = xtc.alloc(sizeof(TriggerData_xpphsd));
-  auto  data = static_cast<TriggerData_xpphsd*>(buf);
-
-  data->nPeaks = nPeaks;
+  new(xtc.alloc(sizeof(TriggerData_xpphsd), bufEnd)) TriggerData_xpphsd(nPeaks);
 }
 
 // The class factory

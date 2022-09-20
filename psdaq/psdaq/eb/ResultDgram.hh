@@ -1,6 +1,8 @@
 #ifndef Pds_Eb_ResultDgram_hh
 #define Pds_Eb_ResultDgram_hh
 
+#include "eb.hh"
+
 #include "psdaq/service/EbDgram.hh"
 
 #include <cstdint>
@@ -17,23 +19,14 @@ namespace Pds {
        *       m is the mask, right justified
        *       s is the mask shifted into place
        */
-      enum { v_persist  = 0, k_persist  = 1 };
-      enum { v_monitor  = 1, k_monitor  = 1 };
-      enum { v_prescale = 2, k_prescale = 1 };
+      enum { v_prescale = 0, k_prescale = 1 };
+      enum { v_persist  = 1, k_persist  = 1 };
+      enum { v_monitor  = 2, k_monitor  = MAX_MRQS };
 
+      enum { m_prescale = ((1 << k_prescale) - 1), s_prescale = (m_prescale << v_prescale) };
       enum { m_persist  = ((1 << k_persist)  - 1), s_persist  = (m_persist  << v_persist)  };
       enum { m_monitor  = ((1 << k_monitor)  - 1), s_monitor  = (m_monitor  << v_monitor)  };
-      enum { m_prescale = ((1 << k_prescale) - 1), s_prescale = (m_prescale << v_prescale) };
 
-      enum { m_persists  =
-             ((s_persist  << 0*4) | (s_persist  << 1*4) | (s_persist  << 2*4) | (s_persist  << 3*4) |
-              (s_persist  << 4*4) | (s_persist  << 5*4) | (s_persist  << 6*4) | (s_persist  << 7*4)) };
-      enum { m_monitors  =
-             ((s_monitor  << 0*4) | (s_monitor  << 1*4) | (s_monitor  << 2*4) | (s_monitor  << 3*4) |
-              (s_monitor  << 4*4) | (s_monitor  << 5*4) | (s_monitor  << 6*4) | (s_monitor  << 7*4)) };
-      enum { m_prescales =
-             ((s_prescale << 0*4) | (s_prescale << 1*4) | (s_prescale << 2*4) | (s_prescale << 3*4) |
-              (s_prescale << 4*4) | (s_prescale << 5*4) | (s_prescale << 6*4) | (s_prescale << 7*4)) };
     public:
       ResultDgram(const Pds::EbDgram& dgram, unsigned id) :
         Pds::EbDgram(dgram, XtcData::Dgram(dgram, XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0),
@@ -41,22 +34,19 @@ namespace Pds {
         _data(0),
         _monBufNo(0)
       {
-        xtc.alloc(sizeof(ResultDgram) - sizeof(Pds::EbDgram));
+        xtc.extent += sizeof(ResultDgram) - sizeof(Pds::EbDgram);
       }
     public:
-      void     persist (unsigned line, bool value) { if (value) _data |=   s_persist  << (4 * line);
-                                                     else       _data &= ~(s_persist  << (4 * line)); }
-      void     monitor (unsigned line, bool value) { if (value) _data |=   s_monitor  << (4 * line);
-                                                     else       _data &= ~(s_monitor  << (4 * line)); }
-      void     prescale(unsigned line, bool value) { if (value) _data |=   s_prescale << (4 * line);
-                                                     else       _data &= ~(s_prescale << (4 * line)); }
-      bool     persist (unsigned line) const { return (_data >> (4 * line)) & s_persist;  }
-      bool     monitor (unsigned line) const { return (_data >> (4 * line)) & s_monitor;  }
-      bool     prescale(unsigned line) const { return (_data >> (4 * line)) & s_prescale; }
-      uint32_t persist () const { return _data & m_persists;  }
-      uint32_t monitor () const { return _data & m_monitors;  }
-      uint32_t prescale() const { return _data & m_prescales; }
-      uint32_t data()     const { return _data; }
+      void     prescale(bool     value) { _data = ((_data & ~s_prescale) |
+                                                   (value << v_prescale)); }
+      void     persist (bool     value) { _data = ((_data & ~s_persist)  |
+                                                   (value << v_persist));  }
+      void     monitor (uint32_t value) { _data = ((_data & ~s_monitor)  |
+                                                   ((value << v_monitor) & s_monitor)); }
+      bool     prescale() const { return  _data & s_prescale;              }
+      bool     persist () const { return  _data & s_persist;               }
+      uint32_t monitor () const { return (_data & s_monitor) >> v_monitor; }
+      uint32_t data()     const { return  _data; }
       void     monBufNo(uint32_t monBufNo_) { _monBufNo = monBufNo_; }
       uint32_t monBufNo() const { return _monBufNo; }
     private:

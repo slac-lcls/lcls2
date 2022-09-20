@@ -66,7 +66,8 @@ def apply_config(cfg):
             tsmask = 0
             for tsnum in range(6):
                 tsval = grp['ac']['ts'+str(tsnum)]
-                tsmask |= 1<<tsval
+                if tsval:
+                    tsmask |= 1<<tsnum
             pvdict[str(group)+':L0Select_ACTimeslot'] = tsmask
 
             # L0Select_SeqBit is one var used by all of seq.(burst/fixed/local)

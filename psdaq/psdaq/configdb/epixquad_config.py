@@ -13,6 +13,8 @@ import os
 import numpy as np
 import IPython
 from collections import deque
+import surf.protocols.batcher  as batcher  # for Start/StopRun
+import l2si_core               as l2si
 import logging
 
 base = None
@@ -57,7 +59,7 @@ def retry(cmd,val):
 #
 def apply_dict(pathbase,base,cfg):
     rogue_translate = {}
-    rogue_translate['TriggerEventBuffer0'] = f'TriggerEventBuffer[{lane}]'
+    rogue_translate['TriggerEventBuffer'] = f'TriggerEventBuffer[{lane}]'
     for i in range(16):
         rogue_translate[f'Epix10kaSaci{i}'] = f'Epix10kaSaci[{i}]'
     for i in range(3):
@@ -108,6 +110,11 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     global base
     global pv
     global lane
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+        
     logging.debug('epixquad_init')
 
     base = {}
@@ -128,6 +135,9 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         #dumpvars('pbase',pbase)
 
         pbase.__enter__()
+
+        #  Disable flow control on the PGP lane at the PCIe end
+#        getattr(pbase.DevPcie.Hsio,f'PgpMon[{lane}]').Ctrl.FlowControlDisable.set(1)
 
         # Open a new thread here
         if xpmpv is not None:
@@ -164,9 +174,14 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         base['clk_period'] = 7000/1300. # default 185.7 MHz clock
         base['msg_period'] = 200
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
+    #  To get the timing feedback link working
+    pbase.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    time.sleep(1)
+    #  Reset rx with the new reference
+    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.C_RxReset()
+    time.sleep(2)
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
 
-    time.sleep(1)
     epixquad_internal_trigger(base)
     return base
 
@@ -189,9 +204,9 @@ def epixquad_connect(base):
     if 'pci' in base:
         pbase = base['pci']
         rxId = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
-        logging.debug('RxId {:x}'.format(rxId))
+        logging.info('RxId {:x}'.format(rxId))
         txId = timTxId('epixquad')
-        logging.debug('TxId {:x}'.format(txId))
+        logging.info('TxId {:x}'.format(txId))
         pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
     else:
         rxId = 0xffffffff
@@ -228,7 +243,7 @@ def user_to_expert(base, cfg, full=False):
             logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
 
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.TriggerDelay']=triggerDelay
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
 
     if (hasUser and 'gate_ns' in cfg['user']):
         triggerWidth = int(cfg['user']['gate_ns']/10)
@@ -239,7 +254,7 @@ def user_to_expert(base, cfg, full=False):
         d[f'expert.EpixQuad.AcqCore.AsicAcqWidth']=triggerWidth
 
     if full:
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.Partition']=group
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
 
     pixel_map_changed = False
     a = None
@@ -386,10 +401,64 @@ def reset_counters(base):
     base['pci'].DevPcie.Hsio.TimingRx.TimingFrameRx.countReset()
     
     # Reset the trigger counters
-    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
+#    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
+    getattr(base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').countReset()
 
     # Reset the Epix counters
     base['cam'].RdoutStreamMonitoring.countReset()
+
+#
+#  Modified version of DevRoot.StartRun touching only our lane
+#
+def startRun(pbase):
+    logging.info('StartRun() executed')
+
+    # Get devices
+    eventBuilder = [getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder]
+    logging.info(f'startRun eventBuilder: {eventBuilder}')
+
+    trigger      = [getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]')]
+    logging.info(f'startRun trigger: {trigger}')
+
+    # Reset all counters
+    pbase.CountReset()
+
+    # Arm for data/trigger stream
+    for devPtr in eventBuilder:
+        devPtr.Blowoff.set(False)
+        devPtr.SoftRst()
+        
+    # Turn on the triggering
+    for devPtr in trigger:
+        devPtr.MasterEnable.set(True)
+
+    # Update the run state status variable
+    pbase.RunState.set(True)
+
+#
+#  Modified version of DevRoot.StopRun touching only our lane
+#
+def stopRun(pbase):
+    logging.info ('StopRun() executed')
+
+    # Get devices
+    eventBuilder = [getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder]
+    logging.info(f'stopRun eventBuilder: {eventBuilder}')
+
+    trigger      = [getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]')]
+    logging.info(f'stopRun trigger: {trigger}')
+
+    # Turn off the triggering
+    for devPtr in trigger:
+        devPtr.MasterEnable.set(False)
+
+    # Flush the downstream data/trigger pipelines
+    for devPtr in eventBuilder:
+        devPtr.Blowoff.set(True)
+
+    # Update the run state status variable
+    pbase.RunState.set(False)
+
 
 #
 #  Called on Configure
@@ -416,7 +485,8 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     config_expert(base, cfg)
 
     pbase = base['pci']
-    pbase.StartRun()
+    #pbase.StartRun()
+    startRun(pbase)
 
     #  Add some counter resets here
     reset_counters(base)
@@ -472,7 +542,8 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
 def epixquad_unconfig(base):
     pbase = base['pci']
-    pbase.StopRun()
+    #pbase.StopRun()
+    stopRun(pbase)
     return base
 
 #

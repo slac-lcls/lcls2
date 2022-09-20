@@ -199,7 +199,7 @@ class DLDProcessor :
         NUM_CHANNELS, NUM_HITS = self.tdc_ns.shape
         conds = nhits[:NUM_CHANNELS]==0 
         if conds.any() :
-            logger.warning('array number_of_hits has channels with zero hits: %s'%str(nhits))
+            #logger.warning('array number_of_hits has channels with zero hits: %s'%str(nhits))
             return False
 
         self.number_of_hits[:NUM_CHANNELS] = nhits[:NUM_CHANNELS]
@@ -218,7 +218,7 @@ class DLDProcessor :
            Here you must read in a data block from your data file
            and fill the array tdc_ns[][] and number_of_hits[]
         """
-        if evnum == self.evnum_old : return
+        #if evnum == self.evnum_old : return
         self.evnum_old = evnum
 
         if not self.set_data_arrays(nhits, pktsec) : return

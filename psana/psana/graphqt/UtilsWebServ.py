@@ -263,7 +263,7 @@ if __name__ == "__main__":
 
 
 if __name__ == "__main__":
-    
+
     logging.basicConfig(format='[%(levelname).1s] L:%(lineno)03d %(name)s %(message)s', level=logging.DEBUG)
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'

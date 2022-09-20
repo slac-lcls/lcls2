@@ -39,10 +39,10 @@ class QWList(QListView):
         self.set_tool_tips()
 
         self.model.itemChanged.connect(self.on_item_changed)
-        self.connect_item_selected_to(self.on_item_selected)
+        self.connect_item_selected(self.on_item_selected)
         self.clicked[QModelIndex].connect(self.on_click)
         self.doubleClicked[QModelIndex].connect(self.on_double_click)
- 
+
 
     def set_selection_mode(self, smode='extended'):
         logger.debug('Set selection mode: %s'%smode)
@@ -54,11 +54,11 @@ class QWList(QListView):
         self.setSelectionMode(mode)
 
 
-    def connect_item_selected_to(self, recipient):
+    def connect_item_selected(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].connect(recipient)
 
 
-    def disconnect_item_selected_from(self, recipient):
+    def disconnect_item_selected(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
 
 
@@ -94,7 +94,7 @@ class QWList(QListView):
     def on_item_selected(self, selected, deselected):
         itemsel = self.model.itemFromIndex(selected)
         if itemsel is not None:
-            msg = 'on_item_selected row:%02d selected: %s' % (selected.row(), itemsel.text()) 
+            msg = 'on_item_selected row:%02d selected: %s' % (selected.row(), itemsel.text())
             logger.info(msg)
 
 
@@ -108,7 +108,7 @@ class QWList(QListView):
         item = self.model.itemFromIndex(index)
         txt = item.text()
         txtshow = txt if len(txt)<50 else '%s...'%txt[:50]
-        msg = 'doc clicked in row%02d: %s' % (index.row(), txtshow) 
+        msg = 'doc clicked in row%02d: %s' % (index.row(), txtshow)
         logger.info(msg)
 
 
@@ -119,7 +119,7 @@ class QWList(QListView):
 
 
     def set_tool_tips(self):
-        self.setToolTip('List model') 
+        self.setToolTip('List model')
 
 
     def set_style(self):
@@ -127,17 +127,6 @@ class QWList(QListView):
         self.setWindowIcon(icon.icon_monitor)
         #self.layout().setContentsMargins(0,0,0,0)
         self.setStyleSheet("QListView::item:hover{background-color:#00FFAA;}")
-
-
-#    def resizeEvent(self, e):
-#        self.frame.setGeometry(self.rect())
-#        logger.debug('resizeEvent') 
-
-
-#    def moveEvent(self, e):
-#        logger.debug('moveEvent') 
-#        self.position = self.mapToGlobal(self.pos())
-#        self.position = self.pos()
 
 
     def closeEvent(self, e):
@@ -161,11 +150,11 @@ class QWList(QListView):
     if __name__ == "__main__":
 
       def keyPressEvent(self, e):
-        logger.info('keyPressEvent, key=%s' % e.key())       
+        logger.info('keyPressEvent, key=%s' % e.key())
         if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_S: 
+        elif e.key() == Qt.Key_S:
             self.process_selected_items()
 
         else:

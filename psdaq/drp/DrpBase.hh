@@ -43,6 +43,16 @@ class FileParameters
     unsigned m_chunkId;
 
 public:
+    FileParameters() {
+        m_outputDir = "777";
+        m_instrument = "777";
+        m_runNumber = 777;
+        m_experimentName = "777";
+        m_hostname = "777";
+        m_nodeId = 777;
+        m_chunkId = 777;
+    }
+
     FileParameters(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId) {
         m_outputDir = para.outputDir;
         m_instrument = para.instrument;
@@ -53,7 +63,7 @@ public:
         m_chunkId = 0;
     }
 
-    void advanceChunkId()           { ++ m_chunkId; }
+    bool advanceChunkId()           { ++ m_chunkId; return true; }
     // getters
     std::string outputDir()         { return m_outputDir; }
     std::string instrument()        { return m_instrument; }
@@ -71,21 +81,28 @@ public:
     EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
                const std::shared_ptr<Pds::MetricExporter>& exporter);
-    void process(const Pds::Eb::ResultDgram& result, const void* input) override;
+    void process(const Pds::Eb::ResultDgram& result, unsigned index) override;
 public:
+    void detector(Detector* det) {m_det = det;}
+    void tsId(unsigned nodeId) {m_tsId = nodeId;}
     void resetCounters();
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
-    void advanceChunkId();
+    bool advanceChunkId();
     std::string reopenFiles();
     std::string closeFiles();
     uint64_t chunkSize();
+    bool chunkPending();
+    void chunkRequestSet();
+    void chunkReset();
     bool writing();
     static const uint64_t DefaultChunkThresh = 500ull * 1024ull * 1024ull * 1024ull;    // 500 GB
-    FileParameters *fileParameters()    { return m_fileParameters; }
+    FileParameters *fileParameters()    { return &m_fileParameters; }
 private:
     void _writeDgram(XtcData::Dgram* dgram);
 private:
     MemPool& m_pool;
+    Detector* m_det;
+    unsigned m_tsId;
     Pds::Eb::MebContributor& m_mon;
     BufferedFileWriterMT m_fileWriter;
     SmdWriter m_smdWriter;
@@ -101,10 +118,13 @@ private:
     uint64_t m_offset;
     uint64_t m_chunkOffset;
     bool m_chunkRequest;
+    bool m_chunkPending;
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
+    uint64_t m_evtSize;
+    int64_t m_latency;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
-    FileParameters *m_fileParameters;
+    FileParameters m_fileParameters;
 };
 
 class DrpBase
@@ -120,16 +140,16 @@ public:
     std::string enable(const nlohmann::json& phase1Info, bool& chunkRequest, ChunkInfo& chunkInfo);
     void unconfigure();
     void disconnect();
-    void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
-    void runInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
-    void chunkInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
-    void chunkInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const ChunkInfo& chunkInfo);
+    void runInfoSupport  (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup);
+    void runInfoData     (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
+    void chunkInfoSupport(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup);
+    void chunkInfoData   (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, const ChunkInfo& chunkInfo);
     Pds::Eb::TebContributor& tebContributor() {return *m_tebContributor;}
+    EbReceiver& ebReceiver() {return *m_ebRecv;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
     unsigned nodeId() const {return m_nodeId;}
     const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
-    void stop() { m_tebContributor->stop(); }
     MemPool pool;
 private:
     int setupTriggerPrimitives(const nlohmann::json& body);
@@ -150,6 +170,7 @@ private:
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
     std::string m_hostname;
+    unsigned m_numTebBuffers;
 };
 
 }

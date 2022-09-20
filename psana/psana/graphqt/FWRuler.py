@@ -4,6 +4,7 @@ Class :py:class:`FWRuler` adds a ruller to one of the sides of the scene rectang
 ==================================================================================
 
 Usage ::
+    from psana.graphqt.FWRuler import *
 
     rs = QRectF(0, 0, 1, 1)
     s = QGraphicsScene(rs)
@@ -18,7 +19,6 @@ Usage ::
     ruler4 = FWRuler(v, 'R')
 
     ruler1.remove()
-    
     ruler4.remove()
 
 See:
@@ -61,8 +61,6 @@ class FWRuler():
         self.zvalue      = kwargs.get('zvalue',     10)
         self.fmt         = kwargs.get('fmt',      '%g')
 
-        #QPainterPath.__init__(self)
-   
         self.pen.setCosmetic(True)
         self.pen.setColor(self.color)
 
@@ -70,12 +68,10 @@ class FWRuler():
         self.path_item = None
         self.lst_of_items = []
 
-        r = self.rect=self.scene.sceneRect()
+        r = self.rect = self.scene.sceneRect()
         vmin = r.x() if self.horiz else r.y()
         vmax = r.x()+r.width() if self.horiz else r.y()+r.height()
         self.labels = best_label_locs(vmin, vmax, self.size_inches, density=1, steps=None)
-
-        #print('labels', self.labels)
 
         self.set_pars()
         self.add()
@@ -93,47 +89,47 @@ class FWRuler():
 
         if self.axside == 'D':
             if sv > 0:
-              self.p1   = r.bottomLeft()
-              self.p2   = r.bottomRight()
+              self.p1 = r.bottomLeft()
+              self.p2 = r.bottomRight()
             else:
-              self.p1   = r.topLeft()
-              self.p2   = r.topRight()
+              self.p1 = r.topLeft()
+              self.p2 = r.topRight()
             self.dt1  = QPointF(0, -sv*self.tick_fr * h)
             self.dtxt = QPointF(-0.5, -1)
             self.vort = self.p2.y()
 
         elif self.axside == 'U':
             if sv > 0:
-              self.p1   = r.topLeft()
-              self.p2   = r.topRight()
+              self.p1 = r.topLeft()
+              self.p2 = r.topRight()
             else:
-              self.p1   = r.bottomLeft()
-              self.p2   = r.bottomRight()
+              self.p1 = r.bottomLeft()
+              self.p2 = r.bottomRight()
             self.dt1  = QPointF(0, sv*self.tick_fr * h)
             self.dtxt = QPointF(-0.5, 0.1)
             self.vort = self.p1.y()
- 
+
         elif self.axside == 'L':
             if sh > 0:
-              self.p1   = r.topLeft()
-              self.p2   = r.bottomLeft()
+              self.p1 = r.topLeft()
+              self.p2 = r.bottomLeft()
             else:
-              self.p1   = r.topRight()
-              self.p2   = r.bottomRight()
+              self.p1 = r.topRight()
+              self.p2 = r.bottomRight()
             self.dt1  = QPointF(sh*self.tick_fr * w, 0)
             self.dtxt = QPointF(0, -0.5)
             self.dtxt0 = QPointF(6, 0)
             self.vort = self.p1.x()
 
-        elif self.axside == 'R': 
+        elif self.axside == 'R':
             if sh > 0:
-              self.p1   = r.topRight()
-              self.p2   = r.bottomRight()
+              self.p1 = r.topRight()
+              self.p2 = r.bottomRight()
             else:
-              self.p1   = r.topLeft()
-              self.p2   = r.bottomLeft()
+              self.p1 = r.topLeft()
+              self.p2 = r.bottomLeft()
             self.dt1  = QPointF(-sh*self.tick_fr * w, 0)
-            self.dtxt = QPointF(-1, -0.5)            
+            self.dtxt = QPointF(-1, -0.5)
             self.dtxt0 = QPointF(-3, 0)
             self.vort = self.p2.x()
 
@@ -172,7 +168,7 @@ class FWRuler():
 
         r = self.rect
         w,h = r.width(), r.height()
-        # add labels to scene 
+        # add labels to scene
         for v in self.labels:
             pv = QPointF(v, self.vort) if self.horiz else QPointF(self.vort, v)
             vstr = self.fmt%v
@@ -197,8 +193,7 @@ class FWRuler():
             txtitem.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
             txtitem.setZValue(self.zvalue)
 
-
-            self.lst_of_items.append(txtitem)       
+            self.lst_of_items.append(txtitem)
 
         #self.item_group = self.scene.createItemGroup(self.lst_of_items)
 
@@ -207,7 +202,6 @@ class FWRuler():
         for item in self.lst_of_items:
             self.scene.removeItem(item)
         self.lst_of_items=[]
-
         #self.scene.removeItem(self.path_item)
         #self.scene.destroyItemGroup(self.item_group)
 
@@ -220,45 +214,5 @@ class FWRuler():
 
     def __del__(self):
         self.remove()
-
-
-if __name__ == "__main__":
-
-    import sys
-    from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsView
-
-    app = QApplication(sys.argv)
-    rs = QRectF(0, 0, 100, 100)
-    ro = QRectF(-1, -1, 3, 2)
-    s = QGraphicsScene(rs)
-    v = QGraphicsView(s)
-    v.setGeometry(20, 20, 600, 600)
-    v._origin_u = True
-    v._origin_l = True
-
-    print('screenGeometry():', app.desktop().screenGeometry())
-    print('scene rect=', s.sceneRect())
-
-    v.fitInView(rs, Qt.KeepAspectRatio) # Qt.IgnoreAspectRatio Qt.KeepAspectRatioByExpanding Qt.KeepAspectRatio
-
-    s.addRect(rs, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(Qt.yellow))
-    s.addRect(ro, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(Qt.red))
-
-    ruler1 = FWRuler(v, 'L')
-    ruler2 = FWRuler(v, 'D')
-    ruler3 = FWRuler(v, 'U')
-    ruler4 = FWRuler(v, 'R')
-
-    v.setWindowTitle("My window")
-    v.setContentsMargins(0,0,0,0)
-    v.show()
-    app.exec_()
-
-    ruler1.remove()
-    ruler2.remove()
-    ruler3.remove()
-    ruler4.remove()
-
-    del app
 
 # EOF

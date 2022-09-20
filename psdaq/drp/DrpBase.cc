@@ -1,9 +1,13 @@
-#include <unistd.h>                     // gethostname()
+#include <unistd.h>                     // gethostname(), sysconf()
+#include <stdlib.h>                     // posix_memalign()
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <bitset>
 #include <climits>                      // HOST_NAME_MAX
+#include <chrono>
+#include <sys/types.h>
+#include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include <DmaDriver.h>
@@ -11,12 +15,18 @@
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Smd.hh"
+#include "DataDriver.h"
 
 #include "rapidjson/document.h"
+
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
 
 using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 static void local_mkdir (const char * path);
 static json createFileReportMsg(std::string path, std::string absolute_path,
@@ -58,10 +68,25 @@ static unsigned nextPowerOf2(unsigned n)
 }
 
 
+void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, size_t trBufSize)
+{
+    size_t algnSz = 16;                    // For cache boundaries
+    m_bufferSize  = algnSz * ((l1BufSize + algnSz - 1) / algnSz);
+
+    size_t pgSz   = sysconf(_SC_PAGESIZE); // For shmem/MMU
+    m_size        = nL1Buffers*m_bufferSize + nTrBuffers*trBufSize;
+    m_size        = pgSz * ((m_size + pgSz - 1) / pgSz);
+    m_buffer      = nullptr;
+    int    ret    = posix_memalign((void**)&m_buffer, pgSz, m_size);
+    if (ret) {
+        logging::critical("Pebble creation of size %zu failed: %s\n", m_size, strerror(ret));
+        throw "Pebble creation failed";
+    }
+}
+
 MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
-    m_inUse(0),
-    m_dmaBuffersInUse(0)
+    m_inUse(0)
 {
     m_fd = open(para.device.c_str(), O_RDWR);
     if (m_fd < 0) {
@@ -75,7 +100,7 @@ MemPool::MemPool(Parameters& para) :
         logging::critical("Failed to map dma buffers: %s", strerror(errno));
         throw "Error calling dmaMapDma!!";
     }
-    logging::info("dmaCount %u  dmaSize %u", dmaCount, m_dmaSize);
+    logging::info("dmaCount %u,  dmaSize %u", dmaCount, m_dmaSize);
 
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
@@ -86,15 +111,13 @@ MemPool::MemPool(Parameters& para) :
     // Also include space in the pebble for a pool of transition buffers of
     // worst case size so that they will be part of the memory region that can
     // be RDMAed from to the MEB
-    auto pebbleBufSize = para.kwargs["pebbleBufSize"];
-    if (pebbleBufSize.empty())          // Allow overriding the Pebble size
-        m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
-    else
-        m_bufferSize = std::stoul(pebbleBufSize);
+    size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
+                      ? __builtin_popcount(para.laneMask) * m_dmaSize
+                      : std::stoul(para.kwargs["pebbleBufSize"]);
     auto nTrBuffers = m_transitionBuffers.size();
-    pebble.resize(m_nbuffers, m_bufferSize, nTrBuffers, para.maxTrSize);
-    logging::info("nbuffers %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
-    logging::info("nTrBuffers %u  transition buffer size %u", nTrBuffers, para.maxTrSize);
+    pebble.create(m_nbuffers, maxL1ASize, nTrBuffers, para.maxTrSize);
+    logging::info("nL1Buffers %u,  pebble buffer size %zu", m_nbuffers, pebble.bufferSize());
+    logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, para.maxTrSize);
 
     pgpEvents.resize(m_nbuffers);
 
@@ -103,6 +126,13 @@ MemPool::MemPool(Parameters& para) :
     for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
         m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
     }
+    m_setMaskBytesDone = false;
+}
+
+MemPool::~MemPool()
+{
+   logging::info("%s: closing file descriptor", __PRETTY_FUNCTION__);
+   close(m_fd);
 }
 
 Pds::EbDgram* MemPool::allocateTr()
@@ -113,6 +143,36 @@ Pds::EbDgram* MemPool::allocateTr()
         return nullptr;
     }
     return static_cast<Pds::EbDgram*>(dgram);
+}
+
+void MemPool::shutdown()
+{
+    m_transitionBuffers.shutdown();
+}
+
+int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
+{
+    int retval = 0;
+    if (m_setMaskBytesDone) {
+        logging::info("%s: earlier setting in effect", __PRETTY_FUNCTION__);
+    } else {
+        uint8_t mask[DMA_MASK_SIZE];
+        dmaInitMaskBytes(mask);
+        for (unsigned i=0; i<PGP_MAX_LANES; i++) {
+            if (laneMask & (1 << i)) {
+                uint32_t channel = i;
+                uint32_t dest = dmaDest(channel, virtChan);
+                logging::info("setting lane  %u, dest 0x%x", i, dest);
+                dmaAddMaskBytes(mask, dest);
+            }
+        }
+        if (dmaSetMaskBytes(m_fd, mask)) {
+            retval = 1; // error
+        } else {
+            m_setMaskBytesDone = true;
+        }
+    }
+    return retval;
 }
 
 std::string Drp::FileParameters::runName()
@@ -130,6 +190,8 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        const std::shared_ptr<Pds::MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
+  m_det(nullptr),
+  m_tsId(-1u),
   m_mon(mon),
   m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] == "yes"),
   m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
@@ -139,8 +201,11 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_offset(0),
   m_chunkOffset(0),
   m_chunkRequest(false),
+  m_chunkPending(false),
   m_configureBuffer(para.maxTrSize),
-  m_damage(0)
+  m_damage(0),
+  m_evtSize(0),
+  m_latency(0)
 {
     std::map<std::string, std::string> labels
         {{"instrument", para.instrument},
@@ -156,12 +221,15 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     exporter->add("DRP_fileWriting",  labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.writing(); });
     exporter->add("DRP_bufFreeBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.freeBlocked(); });
     exporter->add("DRP_bufPendBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.pendBlocked(); });
+    exporter->add("DRP_evtSize",      labels, Pds::MetricType::Gauge,   [&](){ return m_evtSize; });
+    exporter->add("DRP_evtLatency",   labels, Pds::MetricType::Gauge,   [&](){ return m_latency; });
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)
 {
     std::string retVal = std::string{};     // return empty string on success
     if (runInfo.runNumber) {
+        m_chunkOffset = m_offset = 0;
         std::ostringstream ss;
         ss << runInfo.experimentName <<
               "-r" << std::setfill('0') << std::setw(4) << runInfo.runNumber <<
@@ -203,34 +271,41 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         if (retVal.empty()) {
             m_writing = true;
             // cache file parameters for use by reopenFiles() (data file chunking)
-            m_fileParameters = new FileParameters(para, runInfo, hostname, nodeId);
+            logging::debug("initializing m_fileParameters...");
+            new((void *)&m_fileParameters) FileParameters(para, runInfo, hostname, nodeId);
         }
     }
     return retVal;
 }
 
-void EbReceiver::advanceChunkId()
+// return true if incremented chunkId
+bool EbReceiver::advanceChunkId()
 {
-    if (m_fileParameters) {
-        m_fileParameters->advanceChunkId();
+    bool status = false;
+//  m_chunkPending_sem.take();
+    if (!m_chunkPending) {
+        logging::debug("%s: m_fileParameters.advanceChunkId()", __PRETTY_FUNCTION__);
+        m_fileParameters.advanceChunkId();
+        logging::debug("%s: m_chunkPending = true  chunkId = %u", __PRETTY_FUNCTION__, m_fileParameters.chunkId());
+        m_chunkPending = true;
+        status = true;
     }
+//  m_chunkPending_sem.give();
+    return status;
 }
 
 std::string EbReceiver::reopenFiles()
 {
-    if (m_fileParameters == NULL) {
-        logging::error("%s: m_fileParameters is NULL", __PRETTY_FUNCTION__);
-        return std::string("reopenFiles: m_fileParameters is NULL");
-    }
+    logging::debug("entered %s", __PRETTY_FUNCTION__);
     if (m_writing == false) {
         logging::error("%s: m_writing is false", __PRETTY_FUNCTION__);
         return std::string("reopenFiles: m_writing is false");
     }
-    std::string outputDir = m_fileParameters->outputDir();
-    std::string instrument = m_fileParameters->instrument();
-    std::string experimentName = m_fileParameters->experimentName();
-    unsigned runNumber = m_fileParameters->runNumber();
-    std::string hostname = m_fileParameters->hostname();
+    std::string outputDir = m_fileParameters.outputDir();
+    std::string instrument = m_fileParameters.instrument();
+    std::string experimentName = m_fileParameters.experimentName();
+    unsigned runNumber = m_fileParameters.runNumber();
+    std::string hostname = m_fileParameters.hostname();
 
     std::string retVal = std::string{};     // return empty string on success
     m_chunkRequest = false;
@@ -241,7 +316,7 @@ std::string EbReceiver::reopenFiles()
     m_fileWriter.close();
 
     // open data file (for new chunk)
-    std::string runName = m_fileParameters->runName();
+    std::string runName = m_fileParameters.runName();
     std::string exptDir = {outputDir + "/" + instrument + "/" + experimentName};
     local_mkdir(exptDir.c_str());
     std::string dataDir = {exptDir + "/xtc"};
@@ -257,6 +332,8 @@ std::string EbReceiver::reopenFiles()
         timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
         json msg = createFileReportMsg(path, absolute_path, tt, tt, runNumber, hostname);
         m_inprocSend.send(msg.dump());
+        logging::debug("%s: m_chunkPending = false", __PRETTY_FUNCTION__);
+        m_chunkPending = false;
     } else if (retVal.empty()) {
         retVal = {"Failed to open file '" + absolute_path + "'"};
     }
@@ -273,11 +350,6 @@ std::string EbReceiver::closeFiles()
         m_smdWriter.close();
         logging::debug("calling m_fileWriter.close()...");
         m_fileWriter.close();
-        if (m_fileParameters) {
-            logging::debug("deleting m_fileParameters...");
-            delete m_fileParameters;
-            m_fileParameters = NULL;
-        }
     }
     return std::string{};
 }
@@ -285,6 +357,25 @@ std::string EbReceiver::closeFiles()
 uint64_t EbReceiver::chunkSize()
 {
     return m_offset - m_chunkOffset;
+}
+
+bool EbReceiver::chunkPending()
+{
+    return m_chunkPending;
+}
+
+void EbReceiver::chunkRequestSet()
+{
+    m_chunkRequest = true;
+}
+
+void EbReceiver::chunkReset()
+{
+    // clean up the state left behind by a previous run
+    m_chunkOffset = 0;
+    m_chunkRequest = false;
+//  m_chunkPending_sem = Pds::Semaphore::FULL;
+    m_chunkPending = false;
 }
 
 bool EbReceiver::writing()
@@ -299,6 +390,7 @@ void EbReceiver::resetCounters()
     m_lastIndex = 0;
     m_damage = 0;
     m_dmgType->clear();
+    m_latency = 0;
 }
 
 void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
@@ -308,17 +400,17 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 
     // small data writing
     Smd smd;
+    const void* bufEnd = m_smdWriter.buffer + sizeof(m_smdWriter.buffer);
     XtcData::NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
-    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, chunkSize(), size,
+    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, bufEnd, chunkSize(), size,
                                             m_smdWriter.namesLookup, namesId);
     m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
     m_offset += size;
 }
 
-void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
+void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 {
     bool error = false;
-    unsigned index = (uintptr_t)appPrm;
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
         error = true;
@@ -327,8 +419,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
     uint64_t pulseId = dgram->pulseId();
     XtcData::TransitionId::Value transitionId = dgram->service();
-if (transitionId != XtcData::TransitionId::L1Accept) {
-    if (transitionId == 0) {
+    if (transitionId != XtcData::TransitionId::L1Accept) {
+        if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
         dgram = m_pool.pgpEvents[index].transitionDgram;
@@ -405,12 +497,19 @@ if (transitionId != XtcData::TransitionId::L1Accept) {
                            dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
     }
+    else { // L1Accept
+        // On just the timing system DRP, save the trigger information
+        if (m_det && (m_det->nodeId == m_tsId)) {
+            const void* bufEnd = (char*)dgram + m_pool.bufferSize();
+            m_det->event(*dgram, bufEnd, result);
+        }
+    }
 
     if (m_writing && !m_chunkRequest && (transitionId == XtcData::TransitionId::L1Accept)) {
         if (chunkSize() > DefaultChunkThresh) {
             // request chunking opportunity
-            m_chunkRequest = true;
-            logging::debug("EbReceiver chunk request (chunkSize() > DefaultChunkThresh)");
+            chunkRequestSet();
+            logging::debug("%s: sending chunk request (chunkSize() > DefaultChunkThresh)", __PRETTY_FUNCTION__);
             json msg = createChunkRequestMsg();
             m_inprocSend.send(msg.dump());
         }
@@ -437,6 +536,15 @@ if (transitionId != XtcData::TransitionId::L1Accept) {
         }
     }
 
+    m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+
+    // Measure latency before sending dgram for monitoring
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+
     if (m_mon.enabled()) {
         // L1Accept
         if (result.isEvent()) {
@@ -449,6 +557,27 @@ if (transitionId != XtcData::TransitionId::L1Accept) {
             m_mon.post(dgram);
         }
     }
+
+#if 0  // For "Pause/Resume" deadtime test:
+    // For this test, SlowUpdates either need to obey deadtime or be turned off.
+    // Also, the TEB and MEB must not time out events.
+    if (dgram->xtc.src.value() == 0) {  // Do this on only one DRP
+        static auto _t0(tp);
+        static bool _enabled(false);
+        if (transitionId == XtcData::TransitionId::Enable) {
+            _t0 = tp;
+            _enabled = true;
+        }
+        if (_enabled && (tp - _t0 > std::chrono::seconds(1 * 60))) { // Delay a bit before sleeping
+            printf("*** EbReceiver: Inducing deadtime by sleeping for 30s at PID %014lx, ts %9u.%09u\n",
+                   pulseId, dgram->time.seconds(), dgram->time.nanoseconds());
+            std::this_thread::sleep_for(std::chrono::seconds(30));
+            _t0 = tp;
+            _enabled = false;
+            printf("*** EbReceiver: Continuing after sleeping for 30s\n");
+        }
+    }
+#endif
 
     // Free the transition datagram buffer
     if (!dgram->isEvent()) {
@@ -508,12 +637,12 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_tPrms.batching   = m_para.kwargs["batching"] == "yes"; // Default to "no"
+    m_tPrms.maxEntries = m_para.kwargs["batching"] == "yes" ? Pds::Eb::MAX_ENTRIES : 1; // Default to "no"
     m_tPrms.core[0]    = -1;
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
-    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
+    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, pool.nbuffers(), m_exporter);
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition  = para.partition;
@@ -529,6 +658,18 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor, m_exporter);
 
     m_inprocSend.connect("inproc://drp");
+
+    if (para.outputDir.empty()) {
+        logging::info("output dir: n/a");
+    } else {
+        // Induce the automounter to mount in case user enables recording
+        struct stat statBuf;
+        std::string statPth = para.outputDir + "/" + para.instrument;
+        if (::stat(statPth.c_str(), &statBuf) < 0) {
+            logging::error("%s: stat(%s) error: %m", __PRETTY_FUNCTION__, statPth.c_str());
+        }
+        logging::info("output dir: %s", statPth.c_str());
+    }
 }
 
 void DrpBase::shutdown()
@@ -543,15 +684,13 @@ json DrpBase::connectionInfo(const std::string& ip)
     m_tPrms.ifAddr = ip;
     m_tPrms.port.clear();               // Use an ephemeral port
 
-    // Make a guess at the size of the Result entries
-    size_t resSizeGuess = sizeof(Pds::EbDgram) + 2  * sizeof(uint32_t);
-
-    int rc = m_ebRecv->startConnection(m_tPrms.port, resSizeGuess);
+    int rc = m_ebRecv->startConnection(m_tPrms.port);
     if (rc)  throw "Error starting connection";
 
     json info = {{"drp_port", m_tPrms.port},
-                 {"max_ev_size", m_mPrms.maxEvSize},
-                 {"max_tr_size", m_mPrms.maxTrSize}};
+                 {"num_buffers", pool.nbuffers()},
+                 {"max_ev_size", pool.bufferSize()},
+                 {"max_tr_size", m_para.maxTrSize}};
     return info;
 }
 
@@ -581,10 +720,17 @@ std::string DrpBase::connect(const json& msg, size_t id)
             return std::string{"MebContributor connect failed"};
         }
     }
-    rc = m_ebRecv->connect();
+
+    // Make a guess at the size of the Result entries
+    size_t resSizeGuess = sizeof(Pds::EbDgram) + 2  * sizeof(uint32_t);
+
+    rc = m_ebRecv->connect(resSizeGuess, m_numTebBuffers);
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }
+
+    // On the timing system DRP, EbReceiver needs to know its node ID
+    if (m_para.detType == "ts")  m_ebRecv->tsId(m_nodeId);
 
     return std::string{};
 }
@@ -609,7 +755,7 @@ std::string DrpBase::configure(const json& msg)
         }
     }
 
-    rc = m_ebRecv->configure();
+    rc = m_ebRecv->configure(m_numTebBuffers);
     if (rc) {
         return std::string{"EbReceiver configure failed"};
     }
@@ -619,6 +765,7 @@ std::string DrpBase::configure(const json& msg)
     // start eb receiver thread
     m_tebContributor->startup(*m_ebRecv);
 
+    // Same time as the TEBs and MEBs
     m_tebContributor->resetCounters();
     m_mebContributor->resetCounters();
     m_ebRecv->resetCounters();
@@ -653,48 +800,53 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
             msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname, m_nodeId);
         }
     }
+
+    // Same time as the TEBs and MEBs
     m_tebContributor->resetCounters();
     m_mebContributor->resetCounters();
     m_ebRecv->resetCounters();
+    m_ebRecv->chunkReset();
     return msg;
 }
 
-void DrpBase::runInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
+void DrpBase::runInfoSupport(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup)
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
     XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
     XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
-    XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg,
-                                                            "runinfo", "", runInfoNamesId);
+    XtcData::Names& runInfoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                    "runinfo", runInfoAlg,
+                                                                    "runinfo", "", runInfoNamesId);
     RunInfoDef myRunInfoDef;
-    runInfoNames.add(xtc, myRunInfoDef);
+    runInfoNames.add(xtc, bufEnd, myRunInfoDef);
     namesLookup[runInfoNamesId] = XtcData::NameIndex(runInfoNames);
 }
 
-void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& runInfo)
+void DrpBase::runInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, const RunInfo& runInfo)
 {
     XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
-    XtcData::CreateData runinfo(xtc, namesLookup, runInfoNamesId);
+    XtcData::CreateData runinfo(xtc, bufEnd, namesLookup, runInfoNamesId);
     runinfo.set_string(RunInfoDef::EXPT, runInfo.experimentName.c_str());
     runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
 }
 
-void DrpBase::chunkInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
+void DrpBase::chunkInfoSupport(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup)
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
     XtcData::Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
     XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
-    XtcData::Names& chunkInfoNames = *new(xtc) XtcData::Names("chunkinfo", chunkInfoAlg,
-                                                              "chunkinfo", "", chunkInfoNamesId);
+    XtcData::Names& chunkInfoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                      "chunkinfo", chunkInfoAlg,
+                                                                      "chunkinfo", "", chunkInfoNamesId);
     ChunkInfoDef myChunkInfoDef;
-    chunkInfoNames.add(xtc, myChunkInfoDef);
+    chunkInfoNames.add(xtc, bufEnd, myChunkInfoDef);
     namesLookup[chunkInfoNamesId] = XtcData::NameIndex(chunkInfoNames);
 }
 
-void DrpBase::chunkInfoData(Xtc& xtc, NamesLookup& namesLookup, const ChunkInfo& chunkInfo)
+void DrpBase::chunkInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, const ChunkInfo& chunkInfo)
 {
     XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
-    XtcData::CreateData chunkinfo(xtc, namesLookup, chunkInfoNamesId);
+    XtcData::CreateData chunkinfo(xtc, bufEnd, namesLookup, chunkInfoNamesId);
     chunkinfo.set_string(ChunkInfoDef::FILENAME, chunkInfo.filename.c_str());
     chunkinfo.set_value(ChunkInfoDef::CHUNKID, chunkInfo.chunkId);
 }
@@ -712,15 +864,17 @@ std::string DrpBase::enable(const json& phase1Info, bool& chunkRequest, ChunkInf
     chunkRequest = false;
     if (m_ebRecv->writing()) {
         logging::debug("%s: chunkSize() = %lu", __PRETTY_FUNCTION__, m_ebRecv->chunkSize());
-        if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2) {
-            // advance the chunk number
-            logging::debug("%s: calling advanceChunkId()", __PRETTY_FUNCTION__);
-            m_ebRecv->advanceChunkId();
-
-            // request new chunk after this Enable dgram is written
-            chunkRequest = true;
-            chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
-            chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
+        if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2ull) {
+            if (m_ebRecv->advanceChunkId()) {
+                logging::debug("%s: advanceChunkId() returned true", __PRETTY_FUNCTION__);
+                // request new chunk after this Enable dgram is written
+                chunkRequest = true;
+                m_ebRecv->chunkRequestSet();
+                chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
+                chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
+                logging::debug("%s: chunkInfo.filename = %s", __PRETTY_FUNCTION__, chunkInfo.filename.c_str());
+                logging::debug("%s: chunkInfo.chunkId  = %u", __PRETTY_FUNCTION__, chunkInfo.chunkId);
+            }
         }
     }
     return retval;
@@ -796,6 +950,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
 
 int DrpBase::parseConnectionParams(const json& body, size_t id)
 {
+    int rc = 0;
     std::string stringId = std::to_string(id);
     logging::debug("id %zu", id);
     m_tPrms.id = body["drp"][stringId]["drp_id"];
@@ -820,17 +975,44 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.readoutGroup = 1 << unsigned(body["drp"][stringId]["det_info"]["readout"]);
     m_tPrms.contractor = 0;             // Overridden during Configure
 
-    // Build readout group mask for ignoring other partitions' RoGs
-    // Also prepare the mask for placing the service bits at the top of Env
     m_para.rogMask = 0x00ff0000;
+    m_numTebBuffers = 0;                // Only need the largest value
+    unsigned maxBuffers = 0;
+    bool bufErr = false;
     for (auto it : body["drp"].items()) {
+        unsigned drpId = it.value()["drp_id"];
+
+        // Build readout group mask for ignoring other partitions' RoGs
         unsigned rog(it.value()["det_info"]["readout"]);
-        if (rog < Pds::Eb::NUM_READOUT_GROUPS - 1) {
+        if (rog < Pds::Eb::NUM_READOUT_GROUPS) {
             m_para.rogMask |= 1 << rog;
         }
         else {
             logging::warning("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
         }
+
+        // The Common RoG governs the index into the Results region.
+        // Its range must be >= that of any subsidary RoG.
+        auto numBuffers = it.value()["connect_info"]["num_buffers"];
+        if (numBuffers > m_numTebBuffers) {
+            if (rog == m_tPrms.partition) {
+                m_numTebBuffers = numBuffers;
+            }
+            else if (numBuffers > maxBuffers) {
+                maxBuffers = numBuffers;
+                bufErr = drpId == m_nodeId; // Report only for the current DRP
+            }
+        }
+    }
+
+    // Disallow non-common RoG DRPs from having more buffers than the common one
+    // because the buffer index based on the common RoG DRPs won't be able to
+    // reach the higher buffer numbers.  Can't use an index based on the largest
+    // non-common RoG DRP because it would overrun the common RoG DRPs' region.
+    if ((maxBuffers > m_numTebBuffers) && bufErr) {
+        logging::error("DMA buffer count (%u) must be <= %u\n",
+                       pool.nbuffers(), m_numTebBuffers);
+        rc = 1;
     }
 
     m_mPrms.addrs.clear();
@@ -849,12 +1031,12 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
             if (count != m_mPrms.maxEvents) {
                 logging::error("maxEvents (%u) must be the same for all MEBs, got %u from ID %u",
                                m_mPrms.maxEvents, count, mebId);
-                return 1;
+                rc = 1;
             }
         }
     }
 
-    return 0;
+    return rc;
 }
 
 void DrpBase::printParams() const
@@ -870,11 +1052,11 @@ void DrpBase::printParams() const
     printf("  Bit list of TEBs:             0x%016lx, cnt: %zu\n", m_tPrms.builders,
                                                                    std::bitset<64>(m_tPrms.builders).count());
     printf("  Number of MEBs:               %zu\n",                m_mPrms.addrs.size());
-    printf("  Batching state:               %s\n",                 m_tPrms.batching ? "Enabled" : "Disabled");
-    printf("  Batch duration:               0x%014lx = %lu uS\n",  BATCH_DURATION, BATCH_DURATION);
-    printf("  Batch pool depth:             0x%08x = %u\n",        MAX_BATCHES, MAX_BATCHES);
-    printf("  Max # of entries / batch:     0x%08x = %u\n",        MAX_ENTRIES, MAX_ENTRIES);
-    printf("  # of TEB contrib.   buffers:  0x%08x = %u\n",        MAX_LATENCY, MAX_LATENCY);
+    printf("  Batching state:               %s\n",                 m_tPrms.maxEntries > 1 ? "Enabled" : "Disabled");
+    printf("  Batch duration:               0x%014x = %u uS\n",    m_tPrms.maxEntries, m_tPrms.maxEntries); // Revisit: * 14/13
+    printf("  Batch pool depth:             0x%08x = %u\n",        pool.nbuffers() / m_tPrms.maxEntries, pool.nbuffers() / m_tPrms.maxEntries);
+    printf("  Max # of entries / batch:     0x%08x = %u\n",        m_tPrms.maxEntries, m_tPrms.maxEntries);
+    printf("  # of TEB contrib.   buffers:  0x%08x = %u\n",        pool.nbuffers(), pool.nbuffers());
     printf("  # of TEB transition buffers:  0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
     printf("  Max  TEB contribution  size:  0x%08zx = %zu\n",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
     printf("  Max  MEB L1Accept      size:  0x%08zx = %zu\n",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);

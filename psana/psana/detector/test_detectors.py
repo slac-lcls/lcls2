@@ -1,6 +1,9 @@
 import numpy as np
-from psana.detector.detector_impl import DetectorImpl
+from psana.detector.detector_impl import hiddenmethod, DetectorImpl
 from amitypes import Array1d, Array2d, Array3d
+        
+# For testing quadanode (this uses Cython for speed)        
+from quadanode import waveforms, times
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):
@@ -29,11 +32,45 @@ class hexanode_raw_0_0_1(DetectorImpl):
         segments = self._segments(evt)
         return segments[0].times[2:7,...]
 
+# for tmo-fex simulated data test
+class quadanode_fex_4_5_6(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def waveforms(self, evt, n_dets=1):
+        """ Returns list of fex waveforms for `segid` channel.
+        
+        List of segments/ channels:
+        MCP, X1, X2, Y1, Y2
+
+        Converts 1D waveform into a list of waveforms using lengths array
+        as delimiters.
+        """
+        return waveforms(evt, self, n_dets=n_dets, n_chans_per_det=5)
+        
+        #wf1d = self._segments(evt)[segid].waveforms
+        #lengths = self._segments(evt)[segid].lengths
+        #n_wf = len(lengths)
+        #waveforms = []
+        #for i in range(n_wf):
+        #    st = np.sum(lengths[:i])
+        #    en = st + lengths[i]
+        #    waveforms.append(wf1d[st:en])
+        #return waveforms
+
+    def times(self, evt, n_dets=1):
+        return times(evt, self, n_dets=n_dets, n_chans_per_det=5)
+        
+        #startpos = self._segments(evt)[segid].startpos
+        #return startpos
+
+# for dgrampy test
 class hsd_fex_4_5_6(DetectorImpl):
     def __init__(self, *args):
         super(hsd_fex_4_5_6, self).__init__(*args)
     def calib(self, evt) -> Array1d:
         return np.zeros((6))
+    @hiddenmethod
     def show(self, evt):
         segs = self._segments(evt)
         print(f'valFex: {segs[0].valFex}')
@@ -48,7 +85,34 @@ class hsd_fex_4_5_6(DetectorImpl):
         print(f'arrayFex7: {segs[0].arrayFex7}')
         print(f'arrayFex8: {segs[0].arrayFex8}')
         print(f'arrayFex9: {segs[0].arrayFex9}')
-        print(f'arrayString: {segs[0].arrayString}')
+        #print(f'arrayString: {segs[0].arrayString}')
+
+# for integrating detector test (1) hsd/fast (2) andor/slow 
+class hsd_raw_0_0_2(DetectorImpl):
+    def __init__(self, *args):
+        super(hsd_raw_0_0_2, self).__init__(*args)
+    def calib(self, evt):
+        segs = self._segments(evt)
+        return segs[0].calib
+class andor_raw_0_0_2(DetectorImpl):
+    def __init__(self, *args):
+        super(andor_raw_0_0_2, self).__init__(*args)
+    def calib(self, evt):
+        segs = self._segments(evt)
+        if segs is None:
+            return None
+        if 1 in segs:
+            return segs[1].calib
+        else:
+            return segs[0].calib
+class epix_raw_0_0_2(DetectorImpl):
+    def __init__(self, *args):
+        super(epix_raw_0_0_2, self).__init__(*args)
+    def calib(self, evt):
+        segs = self._segments(evt)
+        if segs is None:
+            return None
+        return segs[2].calib
 
 # for the fake cameras in the teststand
 class cspad_cspadRawAlg_1_2_3(DetectorImpl):

@@ -288,10 +288,13 @@ const EbDgram* DrpSim::generate()
     }
   }
 
+  size_t inputSize = INPUT_EXTENT * sizeof(uint32_t);
+
   ++_allocPending;
-  void* buffer = _pool->alloc(sizeof(Input));
+  void* buffer = _pool->alloc(sizeof(Input) + inputSize);
   --_allocPending;
   if (!buffer)  return (EbDgram*)buffer;
+  const void* bufEnd = ((char*)buffer) + sizeof(Input) + inputSize;
 
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -301,11 +304,9 @@ const EbDgram* DrpSim::generate()
 
   if (idg->isEvent())
   {
-    size_t inputSize = INPUT_EXTENT * sizeof(uint32_t);
-
     // Here is where trigger input information is inserted into the datagram
     {
-      uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
+      uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize, bufEnd); // Revisit: May have gotten messed up when adding bufEnd arg
       payload[WRT_IDX] = (_pid %   3) == 0 ? 0xdeadbeef : 0xabadcafe;
       payload[MON_IDX] = (_pid % 119) == 0 ? 0x12345678 : 0;
       //payload[MON_IDX] = _pid & (131072 - 1);

@@ -15,7 +15,10 @@ import psana.xtcav.Constants as cons
 import collections
 import psana.xtcav.SplittingUtils as su
 import psana.xtcav.ClusteringUtils as cu
-#import collections
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 from psana.pscalib.calib.XtcavUtils import xtcav_calib_object_from_dict, info_xtcav_object
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
@@ -589,7 +592,7 @@ def namedtuple(typename, field_names, default_values=()):
     T = collections.namedtuple(typename, field_names)
     T.__new__.__defaults__ = (None,) * len(T._fields)
 
-    if isinstance(default_values, collections.Mapping):
+    if isinstance(default_values, Mapping):
         prototype = T(**default_values)
     else:
         prototype = T(*default_values)

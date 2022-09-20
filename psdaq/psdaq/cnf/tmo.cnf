@@ -85,33 +85,33 @@ procmgr_config = [
 
  { host: 'drp-neh-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
 
-# { host: 'drp-neh-cmp001', id:'andor_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x8 TMO:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2097216'},
-
  { host: 'drp-neh-cmp010', id:'xtcav_0',     flags:'spu', env:xtcav_epics_env, cmd:pva_cmd1+' -l 0x1 OTRS:DMPS:695:RAW -k pebbleBufSize=2097300 -k match_tmo_ms=133'},
 
- { host: 'drp-neh-cmp007', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR2K4:FIM:W8:01 -l 0x2'},
- { host: 'drp-neh-cmp007', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K4:FIM:W8:01 -l 0x4'}, # QSFP # lane 0 broken?
+# June 8, 2022: cpo commented out fim's since I think they are out for maintenance
+# { host: 'drp-neh-cmp007', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR2K4:FIM:W8:01 -l 0x2'},
+# { host: 'drp-neh-cmp007', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K4:FIM:W8:01 -l 0x4'}, # QSFP # lane 0 broken?
 # { host: 'drp-neh-cmp007', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_w8_prefix=MR2K4:FIM:W8:01 -k epics_shv_prefix=MR2K4:FIM:SHV -l 0x2'},
 # { host: 'drp-neh-cmp007', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_w8_prefix=MR3K4:FIM:W8:01 -k epics_shv_prefix=MR3K4:FIM:SHV -l 0x4'}, # QSFP # lane 0 broken?
 
-#{ host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+{ host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
-#{ host: 'drp-neh-cmp012', id:'tmo_opal2_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+{ host: 'drp-neh-cmp012', id:'tmo_opal2_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
-{ host: 'drp-neh-cmp011', id:'tmo_opal3_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x4'},
+{ host: 'drp-neh-cmp012', id:'tmo_fzpopal_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x4'},
 
- { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=TMO:TIMETOOL:TTALL'},
-# { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=/tmp/ttall.txt'},
+{ host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=TMO:TIMETOOL:TTALL'},
+
 # { host: 'drp-neh-cmp005', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
 
  { host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
 # { host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q 8 -n 16'},
  { host: 'drp-neh-cmp001', id:'im2k0_0', flags:'spu', env:im2k0_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
  { host: 'drp-neh-cmp001', id:'im5k4_0', flags:'spu', env:im5k4_env, cmd:pva_cmd0+' -l 0x1 IM5K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
- { host: 'drp-neh-cmp014', id:'epix100_0',   flags:'sxpu', env:epics_env, cmd:drp_cmd0+' -D epix100 -l 0x1'},
+# { host: 'drp-neh-cmp014', id:'epix100_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D epix100 -l 0x1'},
 ]
 
 hsd_epics = 'DAQ:TMO:HSD:1'
+
 
 # 12.20.20: Swapped hsd_5 and hsd_7. hsd_5 has a problem, we need to investigate when we have more time
 # 03.26.21: Took out hsd_7 because it kept giving errors like this (looks like bit corruption):
@@ -136,11 +136,6 @@ procmgr_hsd = [
 {host:'drp-neh-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
 #{host:'drp-neh-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
 #{host:'drp-neh-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
-{host:'drp-neh-cmp021', id:'hsd_12', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:A'},
-{host:'drp-neh-cmp019', id:'hsd_13', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:B'},
-#  See PGP link problems and JESD problems here
-# {host:'drp-neh-cmp020', id:'hsd_15',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B1:B'},
-# For now{host:'drp-neh-cmp017', id:'hsd_14',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B1:A'},
 ]
 
 procmgr_config.extend(procmgr_hsd)
@@ -149,19 +144,19 @@ procmgr_ami = [
 #
 # ami
 #
- { host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
- { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+{ host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+{ host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
  {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}' },
- { host:ami_monitor_node, id:'ami-monitor', flags:'s', env:ami_monitor_env, cmd:f'ami-monitor -H {ami_manager_node} -a {ami_monitor_node} -l 8647' },
+# { host:ami_monitor_node, id:'ami-monitor', flags:'s', env:ami_monitor_env, cmd:f'ami-monitor -H {ami_manager_node} -a {ami_monitor_node} -l 8647' },
 #  Add a second AMI window for timetool feedback graph
 #{                        id:'ami-client-tt',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} -g "tt_graph" -l /cds/group/pcds/dist/pds/tmo/scripts/tt-feedback.fc' },
 #{                        id:f'ami-client_acr',  flags:'s', cmd:f'ami-client -l tmo_acr_opal_feedback.fc -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_acr -g "acr_graph"'},
-#{                        id:f'acr_server',  flags:'s', cmd:f'python tmo_acr_opal_feedback.py -P TMO:ACR'},
+{                        id:f'acr_server',  flags:'s', cmd:f'python tmo_acr_opal_feedback.py -P TMO:ACR'},
 ]
 
-#
+
 # ami workers
-#
+
 for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({ host:worker_node, id:f'meb{N}', flags:'spu',
                          cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}' })

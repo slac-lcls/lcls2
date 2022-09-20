@@ -40,6 +40,9 @@ namespace Pds {
 
     const unsigned TICK_RATE      = 928500; // System clock rate in Hz
 
+    // Keep *EB_TMO* below control.py's transition and phase 2 timeout
+    // Too low results in spurious timeouts and split events
+    // - 7 s seems to be too short for UED, so we go back to the previous value:
     const unsigned TEB_TMO_MS     = 12000;  // Must be < MAX_LATENCY/TICK_RATE
     const unsigned MEB_TMO_MS     = 12000;  // <= TEB_TMO_MS
     const unsigned TEB_TR_BUFFERS = 128;    // # of TEB transition buffers
@@ -78,7 +81,7 @@ namespace Pds {
       unsigned verbose;            // Level of detail to print
       uint16_t readoutGroup;       // RO group receiving trigger result data
       uint16_t contractor;         // RO group supplying trigger input  data
-      bool     batching;           // Batching enable flag
+      unsigned maxEntries;         // Set to 1 to disable batching
       kwmap_t  kwargs;             // Keyword arguments
     };
 
@@ -119,14 +122,17 @@ namespace Pds {
       unsigned  partition;         // The chosen system
       string_t  alias;             // Unique name passed on cmd line
       unsigned  id;                // EB instance identifier
+      unsigned  rogs;              // Bit list of all readout groups in use
       uint64_t  contributors;      // ID bit list of contributors
       u64arr_t  contractors;       // Ctrbs providing Inputs  per readout group
       u64arr_t  receivers;         // Ctrbs expecting Results per readout group
       vecstr_t  addrs;             // Contributor addresses
       vecstr_t  ports;             // Contributor ports
       vecsize_t maxTrSize;         // Max non-event EbDgram size for each Ctrb
-      size_t    maxResultSize;     // Max result EbDgram size
+      unsigned  maxEntries;        // Max number of entries per batch
+      unsigned  numBuffers;        // Limit of buffer index range
       unsigned  numMrqs;           // Number of Mon request servers
+      unsigned  numMebEvBufs;      // Number of Mon event buffers
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
       kwmap_t   kwargs;            // Keyword arguments
       int       core[2];           // Cores to pin threads to

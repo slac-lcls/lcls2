@@ -1,10 +1,10 @@
+
 """
 Class :py:class:`DragPoint` - for draggable shape item
 ========================================================
 
 Created on 2016-10-11 by Mikhail Dubrovin
 """
-#-----------------------------
 import logging
 logger = logging.getLogger(__name__)
 
@@ -14,14 +14,13 @@ from PyQt5.QtWidgets import QGraphicsPathItem # QApplication
 
 from psana.graphqt.DragBase import DragBase, FROZEN, ADD, MOVE, EDIT, DELETE, POINT #, dic_mode_type_to_name
 
-#-----------------------------
 
-class DragPoint(QGraphicsPathItem, DragBase) :
+class DragPoint(QGraphicsPathItem, DragBase):
                 # QPointF, QGraphicsItem, QGraphicsScene
     def __init__(self, point=QPointF(0,0), parent=None, scene=None,\
                  brush=QBrush(Qt.white, Qt.SolidPattern),\
                  pen=QPen(Qt.black, 2, Qt.SolidLine),\
-                 pshape='v', rsize=7) :
+                 pshape='v', rsize=7):
         """pshape (char) point shape: h-horizontal rectangular, v-rombic, r-radial (ellyptical)
         """
 
@@ -40,17 +39,11 @@ class DragPoint(QGraphicsPathItem, DragBase) :
                self.pathForPointC(point, scene, rsize) if pshape=='c' else\
                self.pathForPointR(point, scene, rsize)
 
-        #print('selected path', str(path))
-
         QGraphicsPathItem.__init__(self, path, parent)
-        if (parent is None) and (scene is not None) : scene.addItem(self)
+        if (parent is None) and (scene is not None): scene.addItem(self)
         DragBase.__init__(self, parent, brush, pen)
 
         self.setTransformOriginPoint(point)
-
-        #================
-        #self.grabMouse()
-        #================
 
         self.setAcceptHoverEvents(True)
         self.setAcceptTouchEvents(True)
@@ -62,10 +55,10 @@ class DragPoint(QGraphicsPathItem, DragBase) :
 
         #self.setBoundingRegionGranularity(0.95)
         self._drag_mode = ADD
-        #self.grabMouse() # makes available mouseMoveEvent 
+        #self.grabMouse() # makes available mouseMoveEvent
 
 
-#    def boundingRect(self) :
+#    def boundingRect(self):
 #        """Re-implements superclass method.
 #        """
 #        r = self.rsize
@@ -73,18 +66,18 @@ class DragPoint(QGraphicsPathItem, DragBase) :
 #        return QRectF(c.x()-r, c.x()+r, c.y()-r, c.y()+r)
 
 
-    def size_on_scene(self, scene, rsize) :
+    def size_on_scene(self, scene, rsize):
         t = scene.views()[0].transform()
         self.scx0, self.scy0 = t.m11(), t.m22()
         return rsize/self.scx0, rsize/self.scy0
 
 
-    def size_points_on_scene(self, scene, rsize) :
+    def size_points_on_scene(self, scene, rsize):
         rx, ry = self.size_on_scene(scene, rsize)
         return QPointF(rx,0), QPointF(0,ry)
 
 
-    def pathForPointH(self, p, scene, rsize=7) :
+    def pathForPointH(self, p, scene, rsize=7):
         """ point shape - horizantal rectangular
         """
         dx, dy = self.size_points_on_scene(scene, rsize)
@@ -96,7 +89,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         return path
 
 
-    def pathForPointV(self, p, scene, rsize=7) :
+    def pathForPointV(self, p, scene, rsize=7):
         """ rombic - shaped point
         """
         dx, dy = self.size_points_on_scene(scene, rsize)
@@ -108,7 +101,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         return path
 
 
-    def pathForPointW(self, p, scene, rsize=7) :
+    def pathForPointW(self, p, scene, rsize=7):
         """ W-shaped point
         """
         dx, dy = self.size_points_on_scene(scene, rsize)
@@ -120,7 +113,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         return path
 
 
-    def pathForPointZ(self, p, scene, rsize=7) :
+    def pathForPointZ(self, p, scene, rsize=7):
         """ Z-shaped point
         """
         dx, dy = self.size_points_on_scene(scene, rsize)
@@ -132,7 +125,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         return path
 
 
-    def pathForPointX(self, p, scene, rsize=7) :
+    def pathForPointX(self, p, scene, rsize=7):
         """ X-shaped point
         """
         dx, dy = self.size_points_on_scene(scene, rsize)
@@ -144,7 +137,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         return path
 
 
-    def pathForPointC(self, p, scene, rsize=7) :
+    def pathForPointC(self, p, scene, rsize=7):
         """ C-center point
         """
         dx, dy = self.size_points_on_scene(scene, rsize)
@@ -158,17 +151,17 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         return path
 
 
-    def pathForPointR(self, p, scene, rsize=5) :
+    def pathForPointR(self, p, scene, rsize=5):
         """ point shape - Ellipse
         """
         rx, ry = self.size_on_scene(scene, rsize)
         path = QPainterPath()
-        path.addEllipse(p, rx, ry) 
+        path.addEllipse(p, rx, ry)
         return path
 
 
-    def listOfCirclePoints(self, p, rx=5, ry=5, np=12) :
-        if self._lst_circle is None :
+    def listOfCirclePoints(self, p, rx=5, ry=5, np=12):
+        if self._lst_circle is None:
             from math import cos, sin, pi, ceil
             dphi = pi/np
             lst_sc = [(sin(i*dphi),cos(i*dphi)) for i in range(np)]
@@ -176,7 +169,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         return self._lst_circle
 
 
-    def mousePressEvent(self, e) :
+    def mousePressEvent(self, e):
         pe = e.pos()
         ps = e.scenePos()
         pc = self.path().currentPosition()
@@ -186,82 +179,76 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         #print("DragPoint is selected: ", self.isSelected())
         QGraphicsPathItem.mousePressEvent(self, e)
         parent = self.parentItem()
-        if parent is not None : parent.mousePressEvent(e)
+        if parent is not None: parent.mousePressEvent(e)
 
 
-    def mouseMoveEvent(self, e) :
+    def mouseMoveEvent(self, e):
         #logger.debug('DragPoint:mouseMoveEvent at point: (%.1f, %.1f)' % (e.pos().x(),  e.pos().y()))
                      #(str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsPathItem.mouseMoveEvent(self, e)
-        if self.parentItem() is not None : self.parentItem().mouseMoveEvent(e) 
+        if self.parentItem() is not None: self.parentItem().mouseMoveEvent(e)
 
 
-    def mouseReleaseEvent(self, e) :
+    def mouseReleaseEvent(self, e):
         pe = e.pos()
         ps = e.scenePos()
         logger.debug('DragPoint.mouseReleaseEvent at point (%6.1f, %6.1f) on scene (%6.1f, %6.1f)'%
                       (pe.x(), pe.y(), ps.x(), ps.y()))
         self.setSelected(False)
         QGraphicsPathItem.mouseReleaseEvent(self, e)
-        if self._drag_mode == ADD :
+        if self._drag_mode == ADD:
             self.set_drag_mode()
-        if self.parentItem() is not None : self.parentItem().mouseReleaseEvent(e) 
+        if self.parentItem() is not None: self.parentItem().mouseReleaseEvent(e)
 
 
-#    def wheelEvent(self, e) :
+#    def wheelEvent(self, e):
 #        QGraphicsPathItem.wheelEvent(self, e)
 #        print('%s.wheelEvent, at point: ' % self.__class__.__name__, e.pos()) #e.globalX(), e.globalY())
 
-
 #        print('%s.mouseReleaseEvent isSelected():' % self.__class__.__name__, self.isSelected())
 #            self.ungrabMouse()
-#        if self.parentItem() is not None : self.parentItem().setEnabled(True)
+#        if self.parentItem() is not None: self.parentItem().setEnabled(True)
 #        self.setSelected(False)
 #        print('mouseReleaseEvent')
 #        QGraphicsPathItem.mouseReleaseEvent(self, e)
 #        QApplication.setOverrideCursor(QCursor(self.hover_cursor))
 #        QApplication.restoreOverrideCursor()
 
-
-#    def hoverEnterEvent(self, e) :
+#    def hoverEnterEvent(self, e):
 #        print('%s.hoverEnterEvent' % self.__class__.__name__)
 #        QGraphicsPathItem.hoverEnterEvent(self, e)
 #        #QApplication.setOverrideCursor(QCursor(self.hover_cursor))
-     
-     
-#    def hoverLeaveEvent(self, e) :
+
+#    def hoverLeaveEvent(self, e):
 #        print('%s.hoverLeaveEvent' % self.__class__.__name__)
 #        QGraphicsPathItem.hoverLeaveEvent(self, e)
 #        #QApplication.setOverrideCursor(QCursor(self.hover_cursor))
 #        #QApplication.restoreOverrideCursor()
-        
-     
-#    def hoverMoveEvent(self, e) :
+
+#    def hoverMoveEvent(self, e):
 #        #print('%s.hoverMoveEvent' % self.__class__.__name__)
 #        QGraphicsPathItem.hoverMoveEvent(self, e)
 
 
-#    def mouseDoubleClickEvent(self, e) :
+#    def mouseDoubleClickEvent(self, e):
 #        QGraphicsPathItem.hoverLeaveEvent(self, e)
 #        print('%s.mouseDoubleClickEvent, at point: ' % self.__class__.__name__, e.pos() #e.globalX(), e.globalY())
 
-
-#    def focusInEvent(self, e) :
+#    def focusInEvent(self, e):
 #        """for keyboard events"""
 #        print('DragPoint.focusInEvent, at point: ', e.pos())
 
-
-#    def focusOutEvent(self, e) :
+#    def focusOutEvent(self, e):
 #        """for keyboard events"""
 #        print('DragPoint.focusOutEvent, at point: ', e.pos())
 
-
-#    def emit_signal(self, msg='click') :
+#    def emit_signal(self, msg='click'):
 #        self.emit(QtCore.SIGNAL('event_on_rect(QString)'), msg)
 #        #print(msg)
 
-#-----------------------------
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
     print('Self test is not implemented...')
     print('use > python FWViewImageShapes.py')
-#-----------------------------
+
+# EOF

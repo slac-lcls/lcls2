@@ -18,7 +18,7 @@ no_ana=0
 no_shmem=0
 build_ext_list=""
 
-while getopts ":c:p:s:b:f:dam" opt; do
+while getopts "c:p:s:b:fdam" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
@@ -37,6 +37,7 @@ while getopts ":c:p:s:b:f:dam" opt; do
     f) force_clean=1                       # Force clean is required building between rhel6&7
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
+        exit 1
     ;;
   esac
 done
@@ -94,8 +95,15 @@ pip install --no-deps --prefix=$INSTDIR $pipOptions .
 cd ..
 
 if [ $no_daq == 0 ]; then
+    # to build psdaq with setuptools
     cmake_build psdaq
     cd psdaq
+    # force build of the extensions.  do this because in some cases
+    # setup.py is unable to detect if an external header file changed
+    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
+    if [ $pyInstallStyle == "develop" ]; then
+        python setup.py build_ext -f --inplace
+    fi
     pip install --no-deps --prefix=$INSTDIR $pipOptions .
     cd ..
 fi
@@ -111,7 +119,7 @@ if [ $no_ana == 0 ]; then
     fi
     pip install --no-deps --prefix=$INSTDIR $pipOptions .
 fi
-# The removeal of site.py in setup 49.0.0 breaks "develop" installations
+# The removal of site.py in setup 49.0.0 breaks "develop" installations
 # which are outside the normal system directories: /usr, /usr/local,
 # $HOME/.local. etc. See: https://github.com/pypa/setuptools/issues/2295
 # The suggested fix, in the bug report, is the following: "I recommend

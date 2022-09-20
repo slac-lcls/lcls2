@@ -20,7 +20,12 @@ namespace Pds {
     class EbLfLink
     {
     public:
-      EbLfLink(Fabrics::Endpoint*, int depth, const unsigned& verbose);
+      EbLfLink(Fabrics::Endpoint*,
+               int                depth,
+               const unsigned&    verbose,
+               volatile uint64_t& pending,
+               volatile uint64_t& posting);
+      ~EbLfLink();
     public:
       int recvU32(uint32_t* u32, const char* peer, const char* name);
       int sendU32(uint32_t  u32, const char* peer, const char* name);
@@ -34,10 +39,12 @@ namespace Pds {
     public:
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           id()       const { return _id;  }
+      const uint64_t&    tmoCnt()   const { return _timedOut; }
     public:
       int post(const void* buf,
                size_t      len,
                uint64_t    immData);
+      int post(uint64_t    immData);
       int poll(uint64_t* data);
       int poll(uint64_t* data, int msTmo);
     public:
@@ -54,6 +61,9 @@ namespace Pds {
       Fabrics::MemoryRegion* _mr;      // Memory Region
       Fabrics::RemoteAddress _ra;      // Remote address descriptor
       const unsigned&        _verbose; // Print some stuff if set
+      uint64_t               _timedOut;
+      volatile uint64_t&     _pending; // Flag set when currently pending
+      volatile uint64_t&     _posting; // Bit list of IDs currently posting
     public:
       int                    _depth;
     };
@@ -61,7 +71,11 @@ namespace Pds {
     class EbLfSvrLink : public EbLfLink
     {
     public:
-      EbLfSvrLink(Fabrics::Endpoint*, int rxDepth, const unsigned& verbose);
+      EbLfSvrLink(Fabrics::Endpoint*,
+                  int                rxDepth,
+                  const unsigned&    verbose,
+                  volatile uint64_t& pending,
+                  volatile uint64_t& posting);
     public:
       int prepare(unsigned    id,
                   const char* peer);
@@ -77,7 +91,11 @@ namespace Pds {
     class EbLfCltLink : public EbLfLink
     {
     public:
-      EbLfCltLink(Fabrics::Endpoint*, int rxDepth, const unsigned& verbose, volatile uint64_t& pending);
+      EbLfCltLink(Fabrics::Endpoint*,
+                  int                rxDepth,
+                  const unsigned&    verbose,
+                  volatile uint64_t& pending,
+                  volatile uint64_t& posting);
     public:
       int prepare(unsigned    id,
                   const char* peer);
@@ -100,8 +118,6 @@ namespace Pds {
     private:
       int _synchronizeBegin();
       int _synchronizeEnd();
-    private:                           // Arranged in order of access frequency
-      volatile uint64_t& _pending;     // Bit list of IDs currently posting
     };
   };
 };
@@ -129,6 +145,12 @@ inline
 size_t Pds::Eb::EbLfLink::rmtOfs(uintptr_t buffer) const
 {
   return buffer - _ra.addr;
+}
+
+inline
+int Pds::Eb::EbLfLink::post(uint64_t immData)
+{
+  return post(nullptr, 0, immData);
 }
 
 inline

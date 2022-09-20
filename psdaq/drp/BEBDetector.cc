@@ -46,7 +46,8 @@ BEBDetector::BEBDetector(Parameters* para, MemPool* pool) :
     Detector      (para, pool),
     m_connect_json(""),
     m_module      (0),
-    m_configScanner (0)
+    m_configScanner (0),
+    m_debatch     (false)
 {
     virtChan = 1;
 }
@@ -54,7 +55,7 @@ BEBDetector::BEBDetector(Parameters* para, MemPool* pool) :
 BEBDetector::~BEBDetector()
 {
     delete m_configScanner;
-    Py_DECREF(m_module);
+    if (m_module)  Py_DECREF(m_module);
 }
 
 void BEBDetector::_init(const char* arg)
@@ -146,7 +147,8 @@ json BEBDetector::connectionInfo()
 }
 
 unsigned BEBDetector::configure(const std::string& config_alias,
-                                Xtc&               xtc)
+                                Xtc&               xtc,
+                                const void*        bufEnd)
 {
     PyObject* pDict = _check(PyModule_GetDict(m_module));
 
@@ -160,7 +162,8 @@ unsigned BEBDetector::configure(const std::string& config_alias,
                                                      m_para->detName.c_str(), m_para->detSegment, m_readoutGroup));
 
     char* buffer = new char[m_para->maxTrSize];
-    Xtc& jsonxtc = *new (buffer) Xtc(TypeId(TypeId::Parent, 0));
+    const void* end = buffer + m_para->maxTrSize;
+    Xtc& jsonxtc = *new (buffer, end) Xtc(TypeId(TypeId::Parent, 0));
 
     logging::debug("PyList_Check");
     if (PyList_Check(mybytes)) {
@@ -170,22 +173,22 @@ unsigned BEBDetector::configure(const std::string& config_alias,
             PyObject* item = PyList_GetItem(mybytes,seg);
             logging::debug("item %p",item);
             NamesId namesId(nodeId,ConfigNamesIndex+seg);
-            if (Pds::translateJson2Xtc( item, jsonxtc, namesId ))
+            if (Pds::translateJson2Xtc( item, jsonxtc, end, namesId ))
                 return -1;
         }
     }
-    else if ( Pds::translateJson2Xtc( mybytes, jsonxtc, NamesId(nodeId,ConfigNamesIndex) ) )
+    else if ( Pds::translateJson2Xtc( mybytes, jsonxtc, end, NamesId(nodeId,ConfigNamesIndex) ) )
         return -1;
 
     if (jsonxtc.extent>m_para->maxTrSize)
         throw "**** Config json output too large for buffer\n";
 
-    XtcData::ConfigIter iter(&jsonxtc);
-    unsigned r = _configure(xtc,iter);
-        
+    XtcData::ConfigIter iter(&jsonxtc, end);
+    unsigned r = _configure(xtc,bufEnd,iter);
+
     // append the config xtc info to the dgram
-    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
-    xtc.alloc(jsonxtc.sizeofPayload());
+    auto payload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
+    memcpy(payload,(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
 
     Py_DECREF(mybytes);
     delete[] buffer;
@@ -194,16 +197,17 @@ unsigned BEBDetector::configure(const std::string& config_alias,
 }
 
 unsigned BEBDetector::configureScan(const json& scan_keys,
-                                    Xtc&        xtc)
+                                    Xtc&        xtc,
+                                    const void* bufEnd)
 {
     NamesId namesId(nodeId,UpdateNamesIndex);
-    return m_configScanner->configure(scan_keys,xtc,namesId,m_namesLookup);
+    return m_configScanner->configure(scan_keys,xtc,bufEnd,namesId,m_namesLookup);
 }
 
-unsigned BEBDetector::stepScan(const json& stepInfo, Xtc& xtc)
+unsigned BEBDetector::stepScan(const json& stepInfo, Xtc& xtc, const void* bufEnd)
 {
     NamesId namesId(nodeId,UpdateNamesIndex);
-    return m_configScanner->step(stepInfo,xtc,namesId,m_namesLookup);
+    return m_configScanner->step(stepInfo,xtc,bufEnd,namesId,m_namesLookup);
 }
 
 void BEBDetector::connect(const json& connect_json, const std::string& collectionId)
@@ -213,22 +217,37 @@ void BEBDetector::connect(const json& connect_json, const std::string& collectio
     m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 }
 
-void BEBDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
+Pds::TimingHeader* BEBDetector::getTimingHeader(uint32_t index) const
+{
+    EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
+    if (m_debatch) ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
+    return static_cast<Pds::TimingHeader*>(ebh->next());
+}
+
+std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, unsigned length)
+{
+    EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)buffer, length);
+    EvtBatcherSubFrameTail* ebsft = ebit.next();
+    unsigned nsubs = ebsft->tdest()+1;
+    std::vector< XtcData::Array<uint8_t> > subframes(nsubs, XtcData::Array<uint8_t>(0, 0, 1) );
+    do {
+        logging::debug("Deb::event: array[%d] sz[%d]\n",ebsft->tdest(),ebsft->size());
+        subframes[ebsft->tdest()] = XtcData::Array<uint8_t>(ebsft->data(), &ebsft->size(), 1);
+    } while ((ebsft=ebit.next()));
+    return subframes;
+}
+
+void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
     int lane = __builtin_ffs(event->mask) - 1;
     uint32_t dmaIndex = event->buffers[lane].index;
     unsigned data_size = event->buffers[lane].size;
 
     try {
-        EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)m_pool->dmaBuffers[dmaIndex], data_size);
-        EvtBatcherSubFrameTail* ebsft = ebit.next();
-        unsigned nsubs = ebsft->tdest()+1;
-        std::vector< XtcData::Array<uint8_t> > subframes(nsubs, XtcData::Array<uint8_t>(0, 0, 1) );
-        do {
-            logging::debug("_event: array[%d] sz[%d]\n",ebsft->tdest(),ebsft->size());
-            subframes[ebsft->tdest()] = XtcData::Array<uint8_t>(ebsft->data(), &ebsft->size(), 1);
-        } while ((ebsft=ebit.next()));
-        _event(dgram.xtc, subframes);
+        std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
+        if (m_debatch)
+            subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
+        _event(dgram.xtc, bufEnd, subframes);
     } catch (std::runtime_error& e) {
         logging::critical("BatcherIterator error");
         const uint32_t* p = reinterpret_cast<const uint32_t*>(m_pool->dmaBuffers[dmaIndex]);
@@ -237,7 +256,7 @@ void BEBDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
                               p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
             p += 8;
         }
-    }                           
+    }
 }
 
 void BEBDetector::shutdown()

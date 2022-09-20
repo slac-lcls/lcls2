@@ -141,6 +141,7 @@ int main(int argc, char* argv[])
     para.maxTrSize = 8 * 1024 * 1024;
     try {
         Drp::PGPDetectorApp app(para);
+        app.initialize();
         app.run();
         std::cout<<"end of drp main\n";
         return 0;

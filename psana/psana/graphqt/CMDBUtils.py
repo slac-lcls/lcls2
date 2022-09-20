@@ -17,8 +17,6 @@ use parameters --webint to switch code between CMDBUtilsMongo.py and CMDBUtilsWe
 
 import logging
 logger = logging.getLogger(__name__)
-#from psana.pyalgos.generic.Logger import logger
-#import psana.graphqt.CMDBUtils as dbu
 
 from psana.graphqt.CMConfigParameters import cp
 

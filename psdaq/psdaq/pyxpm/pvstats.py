@@ -250,6 +250,18 @@ class CuStatus(object):
         updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
         updatePv(self._pv_PhCuToSC    , self._phase .phase())
 
+class NoCuStatus(object):
+    def __init__(self, name):
+
+        self._pv_timeStamp    = addPV(name+':TimeStamp'   ,'L')
+        self._pv_pulseId      = addPV(name+':PulseId'     ,'L')
+        self._pv_fiducialIntv = addPV(name+':FiducialIntv','I')
+        self._pv_fiducialErr  = addPV(name+':FiducialErr' ,'I')
+        self._pv_PhCuToSC     = addPV(name+':CuToSCPhase' ,'f')
+
+    def update(self):
+        pass
+
 class MonClkStatus(object):
     def __init__(self, name, app):
         self._app   = app
@@ -384,7 +396,7 @@ class PVMmcmPhaseLock(object):
         
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv):
         global provider
         provider = p
         global lock
@@ -409,12 +421,14 @@ class PVStats(object):
 
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming)
+
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
+
         self._monClks  = MonClkStatus(name,self._app)
         self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
 
         self.paddr   = addPV(name+':PAddr'  ,'I',self._app.paddr.get())
-        self.fwbuild = addPV(name+':FwBuild','s',self._xpm.AxiVersion.BuildStamp.get())
+        self.fwbuild = addPV(name+':FwBuild','s',axiv.BuildStamp.get())
 
 #        self._mmcm = []
 #        for i,m in enumerate(xpm.mmcms):
@@ -439,7 +453,7 @@ class PVStats(object):
             self._usTiming.update()
             self._cuTiming.update()
             self._cuGen   .update()
-            self._sfpStat .update()
+#            self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:

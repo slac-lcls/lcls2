@@ -65,7 +65,10 @@ int main()
     for (int i=0; i<nlanes; i++) {
         dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
     }
-    dmaSetMaskBytes(fd, mask);
+    if (dmaSetMaskBytes(fd, mask)) {
+        printf("Failed to allocate lane/vc\n");
+        return -1;
+    }
 
     uint32_t dmaCount, dmaSize;
     void** dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);

@@ -62,7 +62,7 @@ class CMWControlBase(QWidget):
             self.box1.addWidget(self.but_view)
             self.setLayout(self.box1)
 
-            self.wfnm.connect_path_is_changed_to_recipient(self.on_changed_fname)
+            self.wfnm.connect_path_is_changed(self.on_changed_fname)
 
             self.set_tool_tips()
             self.set_style()

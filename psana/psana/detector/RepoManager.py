@@ -34,6 +34,7 @@ class RepoManager(object):
         self.dirrepo = dirrepo.rstrip('/')
         self.dirmode     = kwa.get('dirmode',  0o777)
         self.filemode    = kwa.get('filemode', 0o666)
+        self.umask       = kwa.get('umask', 0o0)
         self.dirname_log = kwa.get('dirname_log', 'logs')
         self.year        = kwa.get('year', ut.str_tstamp(fmt='%Y'))
         self.tstamp      = kwa.get('tstamp', ut.str_tstamp(fmt='%Y-%m-%dT%H%M%S'))
@@ -44,7 +45,7 @@ class RepoManager(object):
 
     def makedir(self, d):
         """create and return directory d with mode defined in object property"""
-        ut.create_directory(d, self.dirmode)
+        ut.create_directory(d, self.dirmode, umask=self.umask)
         return d
 
 

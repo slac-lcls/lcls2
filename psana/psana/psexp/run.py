@@ -8,10 +8,24 @@ from psana import dgram
 from psana.dgrammanager import DgramManager
 from psana.detector.detector_impl import MissingDet
 from psana.event import Event
-from psana.psexp import *
-
+from . import TransitionId
+from .tools import RunHelper
+from .envstore_manager import EnvStoreManager
+from .events import Events
+from .step import Step
 
 class DetectorNameError(Exception): pass
+
+
+def _is_hidden_attr(obj, name):
+    if name.startswith('_'):
+        return True
+    else:
+        attr = getattr(obj, name)
+        if hasattr(attr, '_hidden'):
+            return attr._hidden
+        else:
+            return False
 
 
 def _enumerate_attrs(obj):
@@ -19,12 +33,11 @@ def _enumerate_attrs(obj):
     found = []
 
     def mygetattr(obj):
-        children = [attr for attr in dir(obj) if not attr.startswith('_') and attr != "dtype"]
-
+        children = [attr for attr in dir(obj) if not _is_hidden_attr(obj, attr) and attr != "dtype"]
         for child in children:
             childobj = getattr(obj,child)
 
-            if len([attr for attr in dir(childobj) if not attr.startswith('_')]) == 0:
+            if len([attr for attr in dir(childobj) if not _is_hidden_attr(childobj, attr)]) == 0:
                 found.append( '.'.join(state + [child]) )
             elif type(childobj) == property:
                 found.append( '.'.join(state + [child]) )
@@ -62,6 +75,7 @@ class Run(object):
     smd_fds = None
 
     def __init__(self, ds):
+        self.expt, self.runnum, self.timestamp = ds._get_runinfo()
         self.dsparms = ds.dsparms
         self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
         if hasattr(ds, "dm"): ds.dm.set_run(self)
@@ -195,15 +209,6 @@ class Run(object):
     def __reduce__(self):
         return (run_from_id, (self.id,))
 
-    def _get_runinfo(self):
-        if not self.beginruns : return
-
-        beginrun_dgram = self.beginruns[0]
-        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
-            self.expt = beginrun_dgram.runinfo[0].runinfo.expt
-            self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
-            self.timestamp = beginrun_dgram.timestamp()
-
     def step(self, evt):
         step_dgrams = self.esm.stores['scan'].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self)
@@ -231,7 +236,6 @@ class RunShmem(Run):
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
-        super()._get_runinfo()
         super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter)
@@ -261,7 +265,6 @@ class RunSingleFile(Run):
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
-        super()._get_runinfo()
         super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter)
@@ -291,7 +294,6 @@ class RunSerial(Run):
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
-        super()._get_runinfo()
         super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter, smdr_man=ds.smdr_man)
@@ -299,7 +301,8 @@ class RunSerial(Run):
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.EndRun: 
+                    return
                 continue
             st = time.time()
             yield evt
@@ -321,7 +324,6 @@ class RunLegion(Run):
         self.configs   = ds._configs
         self.ds = ds
         self.reduc = False
-        super()._get_runinfo()
         super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                                 filter_callback=ds.dsparms.filter,
@@ -335,3 +337,41 @@ class RunLegion(Run):
         return legion_node.analyze(self, **kwargs)
 
 
+class RunSmallData(Run):
+    """ Yields list of smalldata events
+    
+    This class is created by SmdReaderManager and used exclusively by EventBuilder.
+    There's no DataSource class associated with it. This class makes step and 
+    event generator available to user in smalldata callback. It does minimal work
+    and doesn't require the Run baseclass.
+    """
+    def __init__(self, run, eb):
+        self._evt = run._evt
+        self.configs = run.configs
+        self.eb = eb
+
+        # Converts EventBuilder generator to an iterator for steps() call. This is
+        # done so that we can pass it to Step (not sure why). Note that for 
+        # events() call, we stil use the generator.
+        self._evt_iter = iter(self.eb.events())
+        
+        # SmdDataSource and BatchIterator share this list. SmdDataSource automatically
+        # adds transitions to this list (skip yield and so hidden from smd_callback).
+        # BatchIterator adds user-selected L1Accept to the list (default is add all).
+        self.proxy_events = []
+    
+    def steps(self):
+        for evt in self._evt_iter:
+            if evt.service() != TransitionId.L1Accept: 
+                self.proxy_events.append(evt._proxy_evt)
+                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.BeginStep:
+                    yield Step(evt, self._evt_iter, proxy_events=self.proxy_events)
+
+    def events(self):
+        for evt in self.eb.events():
+            if evt.service() != TransitionId.L1Accept: 
+                self.proxy_events.append(evt._proxy_evt)
+                if evt.service() == TransitionId.EndRun: return
+                continue
+            yield evt

@@ -36,15 +36,16 @@ TimeTool::TimeTool(Parameters* para, MemPool* pool) :
     _init_feb();
 }
 
-unsigned TimeTool::_configure(XtcData::Xtc& xtc, XtcData::ConfigIter& configo)
+unsigned TimeTool::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     Alg alg("raw", 2, 0, 0);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
+    Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                m_para->detName.c_str(), alg,
+                                                m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
 
-    eventNames.add(xtc, TTDef);
+    eventNames.add(xtc, bufEnd, TTDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
 
     XtcData::DescData& descdata = configo.desc_shape();
@@ -55,9 +56,9 @@ unsigned TimeTool::_configure(XtcData::Xtc& xtc, XtcData::ConfigIter& configo)
     return 0;
 }
 
-void TimeTool::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void TimeTool::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    CreateData cd(xtc, m_namesLookup, m_evtNamesId);
+    CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId);
 
     if (subframes[2].shape()[0] != m_roiLen)
       xtc.damage.increase(XtcData::Damage::UserDefined);

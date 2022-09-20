@@ -4,7 +4,6 @@ Module :py:class:`DragTypes` defines types of draggable objects
 
 Created on 2019-03-06 by Mikhail Dubrovin
 """
-#-----------------------------
 
 UNDEF= 0
 POINT= 1
@@ -21,4 +20,4 @@ drag_names = ('UNDEF', 'POINT', 'LINE', 'RECT', 'CIRC', 'POLY', 'WEDG', 'ELLIPSE
 dic_drag_type_to_name = dict(zip(drag_types, drag_names))
 dic_drag_name_to_type = dict(zip(drag_names, drag_types))
 
-#-----------------------------
+# EOF

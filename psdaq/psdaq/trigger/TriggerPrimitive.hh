@@ -31,7 +31,8 @@ namespace Pds {
       virtual void   event(const Drp::MemPool& pool,
                            uint32_t            index,
                            const XtcData::Xtc& contribution,
-                           XtcData::Xtc&       xtc) = 0;
+                           XtcData::Xtc&       xtc,
+                           const void*         bufEnd) = 0;
       virtual size_t size() const = 0;
     };
   };

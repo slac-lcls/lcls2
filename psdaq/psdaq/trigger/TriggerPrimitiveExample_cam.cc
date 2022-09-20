@@ -24,7 +24,8 @@ namespace Pds {
       void   event(const Drp::MemPool& pool,
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,
-                   XtcData::Xtc&       xtc) override;
+                   XtcData::Xtc&       xtc,
+                   const void*         bufEnd) override;
       size_t size() const  { return sizeof(TriggerData_cam); }
     private:
       unsigned _counter;
@@ -61,7 +62,8 @@ int Pds::Trg::TriggerPrimitiveExample_cam::configure(const Document& top,
 void Pds::Trg::TriggerPrimitiveExample_cam::event(const Drp::MemPool& pool,
                                                   uint32_t            idx,
                                                   const XtcData::Xtc& ctrb,
-                                                  XtcData::Xtc&       xtc)
+                                                  XtcData::Xtc&       xtc,
+                                                  const void*         bufEnd)
 {
   uint64_t val = (_counter++ % 2 == 0) ? _persistValue : 0;
 
@@ -70,9 +72,7 @@ void Pds::Trg::TriggerPrimitiveExample_cam::event(const Drp::MemPool& pool,
 
   //printf("%s: counter %08x, val %016lx\n", __PRETTY_FUNCTION__, _counter, val);
 
-  void* buf  = xtc.alloc(sizeof(TriggerData_cam));
-  auto  data = static_cast<TriggerData_cam*>(buf);
-  data->value = val;
+  new(xtc.alloc(sizeof(TriggerData_cam), bufEnd)) TriggerData_cam(val);
 }
 
 // The class factory

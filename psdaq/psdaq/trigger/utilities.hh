@@ -38,7 +38,7 @@ namespace Pds {
 
 template <typename T>
 T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
-                                const std::string&         detName,
+                                const std::string&         docName,
                                 const std::string&         symbol)
 {
   using namespace rapidjson;
@@ -47,14 +47,23 @@ T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
   if (!top.HasMember(key.c_str()))
   {
     fprintf(stderr, "%s:\n  Key '%s' not found in Document %s\n",
-            __PRETTY_FUNCTION__, key.c_str(), detName.c_str());
+            __PRETTY_FUNCTION__, key.c_str(), docName.c_str());
     return nullptr;
   }
   std::string so(top[key.c_str()].GetString());
-  if (so.length() == 0)  return nullptr;
+  if (so.length() == 0)
+  {
+    fprintf(stderr, "%s:\n  Empty library name for key '%s'\n",
+            __PRETTY_FUNCTION__, key.c_str());
+    return nullptr;
+  }
+  printf("Loading object symbols from library '%s'\n", so.c_str());
 
   if (_object)                          // If the object exists,
+  {
     delete _object;                     // delete it before unloading the lib
+    _object = nullptr;
+  }
 
   // Lib must remain open during Unconfig transition
   _dl.close();                          // If a lib is open, close it first

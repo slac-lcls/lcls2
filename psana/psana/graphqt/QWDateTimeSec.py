@@ -99,7 +99,7 @@ class QWDateTimeSec(QGroupBox):
         self.set_date_time_fields() # current time by df
         self.set_tsec()
 
-        self.hbox = QHBoxLayout() 
+        self.hbox = QHBoxLayout()
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_year)
         self.hbox.addWidget(self.lab_month)
@@ -114,7 +114,7 @@ class QWDateTimeSec(QGroupBox):
         self.hbox.addWidget(self.but_second)
         self.hbox.addWidget(self.but_zone)
         self.hbox.addStretch(1)
-        self.hbox2 = QHBoxLayout() 
+        self.hbox2 = QHBoxLayout()
         self.hbox2.addStretch(1)
         self.hbox2.addWidget(self.lab_tsec)
         self.hbox2.addWidget(self.edi_sec_posix)
@@ -123,7 +123,7 @@ class QWDateTimeSec(QGroupBox):
         self.hbox2.addWidget(self.edi_sec_lcls2)
         self.hbox2.addStretch(1)
 
-        self.vbox = QVBoxLayout() 
+        self.vbox = QVBoxLayout()
         self.vbox.addLayout(self.hbox)
         self.vbox.addLayout(self.hbox2)
         self.vbox.addStretch(1)
@@ -133,10 +133,6 @@ class QWDateTimeSec(QGroupBox):
         self.set_tool_tips()
         self.set_style()
 
-        #self.edi_sec_posix.editingFinished.connect(self.on_edi)
-        #self.edi_sec_lcls2.editingFinished.connect(self.on_edi_sec_lcls2)
-        #self.edi_sec_posix.textChanged.connect(self.on_edi)
-        #self.edi_sec_lcls2.textChanged.connect(self.on_edi_sec_lcls2)
         self.edi_sec_posix.textEdited.connect(self.on_edi)
         self.edi_sec_lcls2.textEdited.connect(self.on_edi_sec_lcls2)
         self.but_year  .clicked.connect(self.on_but)
@@ -163,8 +159,8 @@ class QWDateTimeSec(QGroupBox):
         self.setStyleSheet(style.qgrbox_title)
 
         self.setMinimumSize(500,50)
-        self.layout().setContentsMargins(5,5,5,5) #(2,0,2,2)
-        #self.but_year  .setStyleSheet(style.styleButton)
+        self.layout().setContentsMargins(5,5,5,5)
+
         w2d = 30
         self.but_year  .setFixedWidth(50)
         self.but_month .setFixedWidth(w2d)
@@ -186,7 +182,7 @@ class QWDateTimeSec(QGroupBox):
         self.lab_tsec  .setFixedWidth(140)
         self.lab_tsec2 .setFixedWidth(100)
 
-        styleLabel = "color: rgb(100, 0, 150);" # self.styleBlue
+        styleLabel = "color: rgb(100, 0, 150);"
         self.lab_month .setStyleSheet(styleLabel)
         self.lab_day   .setStyleSheet(styleLabel)
         self.lab_hour  .setStyleSheet(styleLabel)
@@ -220,12 +216,6 @@ class QWDateTimeSec(QGroupBox):
         """Sets date and time fields for tsec - time in seconds or current time by default.
         """
         t_sec = int(time()) if tsec is None else tsec
-        #tstruct = gmtime(t_sec) #localtime
-        #logger.debug('tstruct:', tstruct)
-        #logger.debug('tstruct.tm_year:', tstruct.tm_year)
-        #logger.debug('tstruct.tm_mday:', tstruct.tm_mday)
-
-        #logger.debug('t(sec): %d' % t_sec)
 
         zone = str(self.but_zone.text())
         tstruct = gmtime(t_sec) if zone=='GMT' else localtime(t_sec)
@@ -237,7 +227,6 @@ class QWDateTimeSec(QGroupBox):
         self.but_minute.setText('%02d'%tstruct.tm_min)
         self.but_second.setText('%02d'%tstruct.tm_sec)
         self.but_zone  .setText(str(tstruct.tm_zone))
-        #self.but_isdst .setText('%02d'%tstruct.tm_isdst)
 
 
     def print_tsec_tstamp(self, tsec, zone='GMT'):
@@ -313,19 +302,13 @@ class QWDateTimeSec(QGroupBox):
 
         tsec = self.set_tsec()
         self.set_date_time_fields(tsec)
-#        if self.but_zone.hasFocus(): 
-#            txt = str(self.edi_sec_posix.displayText()).strip()
-#            self.set_date_time_fields(int(txt))
 
-#----------- TESTS ------------
 
 if __name__ == "__main__":
 
   def test_gui(tname):
     w = QWDateTimeSec(None)
     w.setWindowTitle('Convertor of date and time to sec')
-    #w.setMinimumWidth(400)
-    #w.setMinimumHeight(50)
     w.show()
     app.exec_()
 
@@ -369,10 +352,6 @@ if __name__ == "__main__":
 
     logger.debug('Input date/time : %s  time(sec) %d' % (s_tstamp, tsec))
     logger.debug('Reco ts from sec: %s' % str_tstamp(fmt, time_sec=tsec))
-
-    #exp_name = popup_select_item_from_list(None, lst)
-    #logger.debug('exp_name = %s' % exp_name)
-
 
 
 if __name__ == "__main__":

@@ -52,10 +52,10 @@ class QWTree(QTreeView):
         self.expanded.connect(self.on_item_expanded)
         self.collapsed.connect(self.on_item_collapsed)
         #self.model.itemChanged.connect(self.on_item_changed)
-        self.connect_item_selected_to(self.on_item_selected)
+        self.connect_item_selected(self.on_item_selected)
         self.clicked[QModelIndex].connect(self.on_click)
         #self.doubleClicked[QModelIndex].connect(self.on_double_click)
- 
+
 
     def set_selection_mode(self, smode='extended'):
         logger.debug('Set selection mode: %s'%smode)
@@ -63,11 +63,11 @@ class QWTree(QTreeView):
         self.setSelectionMode(mode)
 
 
-    def connect_item_selected_to(self, recipient):
+    def connect_item_selected(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].connect(recipient)
 
 
-    def disconnect_item_selected_from(self, recipient):
+    def disconnect_item_selected(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
 
 
@@ -98,7 +98,7 @@ class QWTree(QTreeView):
             for i in range(0, k):
                 item = QStandardItem('itemA %s %s'%(k,i))
                 item.setIcon(icon.icon_table)
-                item.setCheckable(True) 
+                item.setCheckable(True)
                 parentItem.appendRow(item)
                 item = QStandardItem('itemB %s %s'%(k,i))
                 item.setIcon(icon.icon_folder_closed)
@@ -108,19 +108,15 @@ class QWTree(QTreeView):
 
 
     def on_item_expanded(self, ind):
-        item = self.model.itemFromIndex(ind) # get QStandardItem
+        item = self.model.itemFromIndex(ind)
         if item.hasChildren():
            item.setIcon(icon.icon_folder_open)
-        #msg = 'on_item_expanded: %s' % item.text()
-        #logger.debug(msg)
 
 
     def on_item_collapsed(self, ind):
         item = self.model.itemFromIndex(ind)
         if item.hasChildren():
            item.setIcon(icon.icon_folder_closed)
-        #msg = 'on_item_collapsed: %s' % item.text()
-        #logger.debug(msg)
 
 
     def on_item_selected(self, selected, deselected):
@@ -130,11 +126,6 @@ class QWTree(QTreeView):
             parname = parent.text() if parent is not None else None
             msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), str(parname))
             logger.debug(str(msg))
-
-        #itemdes = self.model.itemFromIndex(deselected)
-        #if itemdes is not None:
-        #    msg = 'on_item_selected row: %d deselected %s' % (deselected.row(), itemdes.text())
-        #    logger.debug(msg)
 
 
     def on_item_changed(self, item):
@@ -172,13 +163,8 @@ class QWTree(QTreeView):
         #self.tree_view_is_expanded = False
 
 
-    #def expand_collapse(self):
-    #    if self.isExpanded(): self.collapseAll()
-    #    else                : self.expandAll()
-
-
     def show_tool_tips(self):
-        self.setToolTip('Tree model') 
+        self.setToolTip('Tree model')
 
 
     def set_style(self):
@@ -189,28 +175,9 @@ class QWTree(QTreeView):
         self.setStyleSheet("QTreeView::item:hover{background-color:#00FFAA;}")
 
 
-    #def resizeEvent(self, e):
-        #pass
-        #self.frame.setGeometry(self.rect())
-        #logger.debug('resizeEvent') 
-
-
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
-        #self.position = self.mapToGlobal(self.pos())
-        #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position), __name__)       
-        #pass
-
-
     def closeEvent(self, e):
         logger.debug('closeEvent')
         QTreeView.closeEvent(self, e)
-        #try   : self.gui_win.close()
-        #except: pass
-
-        #try   : del self.gui_win
-        #except: pass
 
 
     def on_exit(self):

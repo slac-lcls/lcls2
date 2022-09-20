@@ -103,17 +103,17 @@ def log_rec_at_start(tsfmt='%Y-%m-%dT%H:%M:%S%z', **kwa):
     """
     s_kwa = ' '.join(['%s:%s'%(k,str(v)) for k,v in kwa.items()])
     return '\n%s user:%s@%s cwd:%s %s command:%s'%\
-           (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), s_kwa, ' '.join(sys.argv))\
+           (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), s_kwa, ' '.join(sys.argv))
 
 
-def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
     """Adds record at start to the log file defined in RepoManager.
     """
     from psana.detector.RepoManager import RepoManager
-
+    os.umask(umask)
     rec = log_rec_at_start(tsfmt, **{'dirrepo':dirrepo,})
     logger.debug('Record on start: %s' % rec)
-    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode) #, dettype=dettype)
+    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=umask)
     logfname = repoman.logname_at_start(procname)
     fexists = os.path.exists(logfname)
     save_textfile(rec, logfname, mode='a')
@@ -121,12 +121,19 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, t
     logger.info('Record: %s\nSaved: %s' % (rec, logfname))
 
 
-def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
+def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
+    os.umask(umask)
     rec = log_rec_at_start(tsfmt, **{'dirrepo':repoman.dirrepo,})
     logfname = repoman.logname_at_start(procname)
     fexists = os.path.exists(logfname)
     save_textfile(rec, logfname, mode='a')
     if not fexists: set_file_access_mode(logfname, repoman.filemode)
     logger.info('Record: %s\nSaved: %s' % (rec, logfname))
+
+
+def is_none(par, msg):
+    resp = par is None
+    if resp: logger.debug(msg)
+    return resp
 
 # EOF

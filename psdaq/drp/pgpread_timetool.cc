@@ -163,7 +163,8 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     // convert to json to xtc
     unsigned nodeId = 0; //Fix me for real drp
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    unsigned len = Pds::translateJson2Xtc(json, config_buf, configNamesId, detname);
+    const void* config_end = config_buf + sizeof(config_buf);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, config_end, configNamesId, detname);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }
@@ -176,12 +177,13 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     //***********************************
     unsigned timestamp_val = 0;
     Dgram& config = createTransition(TransitionId::Configure,timestamp_val);    //what are the arguments here?
+    const void* dgram_end = dgram_buf + sizeof(dgram_buf);
 
     // append the config xtc info to the dgram
     Xtc& jsonxtc = *(Xtc*)config_buf;                                           //config buf is global
     Xtc& xtc     = config.xtc;                                                  //
-    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload()); //this line copies jsonxtc to the xtc object.
-    xtc.alloc(jsonxtc.sizeofPayload());
+    auto payload = xtc.alloc(jsonxtc.sizeofPayload(), dgram_end);
+    memcpy(payload,(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload()); //this line copies jsonxtc to the xtc object.
 
     // append the metadata; which algorithm is needed to interpret bytes, the detector type, etc...
     Alg ttAlg("ttalg", 0, 0, 1);
@@ -190,8 +192,9 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
 
 
     unsigned segment = 0;
-    Names& eventNames = *new(xtc) Names("tmott", ttAlg, "ttdet", "tt_detector_identification_placeholder", eventNamesId, segment);
-    eventNames.add(xtc, TTDef);
+    Names& eventNames = *new(xtc, dgram_end) Names(dgram_end,
+                                                   "tmott", ttAlg, "ttdet", "tt_detector_identification_placeholder", eventNamesId, segment);
+    eventNames.add(xtc, dgram_end, TTDef);
     namesLookup[eventNamesId] = NameIndex(eventNames);
 
     //***********************************
@@ -283,8 +286,10 @@ int main(int argc, char* argv[])
     }
     printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
 
-    dmaSetMaskBytes(fd, mask);
-
+    if (dmaSetMaskBytes(fd, mask)) {
+        printf("Failed to allocate lane/vc\n");
+        return -1;
+    }
 
     int32_t                 dmaRet[MAX_RET_CNT_C];
     uint32_t                dmaIndex[MAX_RET_CNT_C];
@@ -352,9 +357,10 @@ int main(int argc, char* argv[])
                 Transition tr(Dgram::Event, TransitionId::L1Accept, TimeStamp(ts.tv_sec, ts.tv_nsec), env);
                 TypeId     tid(TypeId::Parent, 0);
                 Dgram&     dgram = *new(dgram_buf) Dgram(tr, Xtc(tid));
+                const void* dgram_end = dgram_buf + sizeof(dgram_buf);
                 NamesId    eventNamesId(nodeId,EventNamesIndex);
                 //this instantiates the dgram.xtc component.  Here's the path dgram takes before it gets written.  dgram is now contained within fex
-                CreateData fex(dgram.xtc, namesLookup, eventNamesId);
+                CreateData fex(dgram.xtc, dgram_end, namesLookup, eventNamesId);
 
                 unsigned shape[MaxRank];
                 shape[0] = size;

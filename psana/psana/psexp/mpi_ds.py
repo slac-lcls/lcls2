@@ -30,7 +30,6 @@ class RunParallel(Run):
         self.beginruns  = run_evt._dgrams
         self.configs    = ds._configs
         
-        self._get_runinfo()
         super()._setup_envstore()
 
     def events(self):
@@ -131,7 +130,11 @@ class MPIDataSource(DataSourceBase):
             super()._close_opened_smd_files()
         self._end_prometheus_client(mpi_rank=self.comms.psana_comm.Get_rank())
 
-    def _setup_configs(self):
+    def terminate(self):
+        self.comms.terminate()
+        super().terminate()
+
+    def _get_configs(self):
         """ Creates and broadcasts configs
         only called by _setup_run()
         """
@@ -141,28 +144,25 @@ class MPIDataSource(DataSourceBase):
             self.smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
             logger.debug(f'mpi_ds: smd0 opened smd_fds: {self.smd_fds}')
             self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
-            self._configs = self.smdr_man.get_next_dgrams()
-            super()._setup_det_class_table()
-            super()._set_configinfo()
+            configs = self.smdr_man.get_next_dgrams()
             g_ts.labels("first_event").set(time.time())
-            nbytes = np.array([memoryview(config).shape[0] for config in self._configs], \
+            nbytes = np.array([memoryview(config).shape[0] for config in configs], \
                     dtype='i')
         else:
-            self._configs = None
+            configs = None
             nbytes = np.empty(len(self.smd_files), dtype='i')
         
         self.comms.psana_comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
         if nodetype != 'smd0':
-            self._configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
+            configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
         
-        for i in range(len(self._configs)):
-            self.comms.psana_comm.Bcast([self._configs[i], nbytes[i], MPI.BYTE], root=0)
+        for i in range(len(configs)):
+            self.comms.psana_comm.Bcast([configs[i], nbytes[i], MPI.BYTE], root=0)
         
         if nodetype != 'smd0':
-            self._configs = [dgram.Dgram(view=config, offset=0) for config in self._configs]
+            configs = [dgram.Dgram(view=config, offset=0) for config in configs]
             g_ts.labels("first_event").set(time.time())
-            self._setup_det_class_table()
-            self._set_configinfo()
+        return configs
 
     def _setup_run(self):
         if self.runnum_list_index == len(self.runnum_list):
@@ -182,16 +182,15 @@ class MPIDataSource(DataSourceBase):
         self.smd_files = self.comms.psana_comm.bcast(self.smd_files, root=0)
         self.dsparms.use_smds = self.comms.psana_comm.bcast(self.dsparms.use_smds, root=0)
         
-        self._setup_configs()
-        self.dm = DgramManager(self.xtc_files, configs=self._configs,
-                found_xtc2_callback=super().found_xtc2_callback)
+        configs = self._get_configs()
+        self.dm = DgramManager(self.xtc_files, configs=configs, config_consumers=[self.dsparms])
         
         if nodetype == 'smd0':
-            self.smd0 = Smd0(self.comms, self._configs, self.smdr_man, self.dsparms)
+            self.smd0 = Smd0(self.comms, configs, self.smdr_man, self.dsparms)
         elif nodetype == 'eb':
-            self.eb_node = EventBuilderNode(self.comms, self._configs, self.dsparms, self.dm)
+            self.eb_node = EventBuilderNode(self.comms, configs, self.dsparms, self.dm)
         elif nodetype == 'bd':
-            self.bd_node = BigDataNode(self.comms, self._configs, self.dsparms, self.dm)
+            self.bd_node = BigDataNode(self.comms, configs, self.dsparms, self.dm)
 
         return True
 

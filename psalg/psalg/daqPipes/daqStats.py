@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import requests
 import argparse
 import curses
+#from pprint import pprint
 
 
 class Debug:
@@ -70,6 +71,7 @@ class PromMetric:
 
         data = r.json()
         #print("Stats:", len(data["data"]["result"]))
+        #pprint(data)
         return data
 
     def get(self, time):
@@ -101,10 +103,13 @@ def update(metrics, time):
             labels, values = result.values()
             instance = labels['instance']
             detName = ''
-            if 'detname' in labels.keys():
-                detName = labels['detname']
-                if 'detseg' in labels.keys():
-                    detName += '_' + labels['detseg']
+            if 'alias' in labels.keys():
+                detName = labels['alias']
+            # I think is now obsolete due to having 'alias' available:
+            #elif 'detname' in labels.keys():
+            #    detName = labels['detname']
+            #    if 'detseg' in labels.keys():
+            #        detName += '_' + labels['detseg']
             if instance not in samples.keys():
                 samples[instance] = [detName, {}]
             if detName and not samples[instance][0]:
@@ -196,7 +201,7 @@ class Table:
         self.metrics = {}
         for metric, query in queries.items():
             self.metrics[metric] = PromMetric(srvurl, query, self._size_x)
-            self._size_x += self.metrics[metric].width()
+            self._size_x += self.metrics[metric].width() # Includes the column separating space
         self._showInstance = False
         self._rarrow = False
         self._darrow = False
@@ -238,7 +243,7 @@ class Table:
             cols += 1       # Instance
         tot_cols = cols + len(self.metrics)
         for metric in self.metrics.values():
-            mw = metric.width()
+            mw = metric.width() # Includes the column separating space
             if tw + mw <= scrWidth:
                 tw += mw
                 cols += 1
@@ -281,13 +286,12 @@ class Table:
             sc += 1
         for header, metric in self.metrics.items():
             x += cw
-            cw = metric.width()
+            cw = metric.width() # Includes the column separating space
             self._dbg.write('cw %d, x %d, len %d, %d %d, header "%s"\n' %
                       (cw, x, len(header), x+len(header), cw - len(header), header))
             if x - start_x + cw <= scrWidth:
                 self._dbg.write('y %d, x %d, header \'%s\'\n' % (y, x, header))
-                self._pad.addstr(y, x, header)
-                self._pad.addstr(y, x + len(header), " " * (cw - len(header)))
+                self._pad.addstr(y, x, f'%{cw}s' % header)
                 if sc < self._start_col:
                     start_x += cw
                     sc += 1
@@ -322,9 +326,11 @@ class Table:
             sx = x + cw
             for item, values in sample[1].items():      # Columns
                 x = sx + self.metrics[item].column()
-                entry, color = self.metrics[item].dpyFmt(values[1])
+                fn = self.metrics[item].dpyFmt
+                cw = self.metrics[item].width()         # Includes the column separating space
+                entry, color = fn(values[1], cw - 1)    # Exclude the column separator space
                 if x - start_x + len(entry) <= scrWidth:
-                    self._pad.addstr(y, x, entry, curses.color_pair(color))
+                    self._pad.addstr(y, x, f'%{cw}s' % entry, curses.color_pair(color))
                     if sr < self._start_row:
                         start_y += rh
                         sr += 1
@@ -472,7 +478,7 @@ def test(srvurl, args, listOfQueries, dbg):
         w = 12
         for header, metric in table.metrics.items():
             print(0, w, header)
-            w += metric.width()
+            w += metric.width() # Includes the column separating space
 
         for instance in samples:
             print(instance, ':', samples[instance])
@@ -489,111 +495,129 @@ def test(srvurl, args, listOfQueries, dbg):
 
 def daqStats(srvurl, args):
 
-    def _q(a, m, eb=None):
+    def _q(a, m, eb=None):      # Value query
         if eb is None:
             return f'{m}{{instrument="{a.inst}",partition="{a.part}"}}'
         else:
             return f'{m}{{instrument="{a.inst}",partition="{a.part}",eb="{eb}"}}'
 
-    def _fmtN(value):
-        color  = 3
-        return value, color
+    def _r(a, m, eb=None):      # Rate query
+        query = _q(a, m, eb)
+        return f'sum(irate({query}[5s])) by (alias, instance)'
 
-    def _fmtF(value):
+    def _fmtN(value, width):
         color  = 3
-        entry  = '%.1f' % (float(value))
+        entry = f'%{width}s' % value
+        if len(entry) > width:
+            entry = '*' + entry[len(entry) - width + 1:]
         return entry, color
 
-    def _fmtBool(value):
-        color  = 3 if int(value) == 0 else 4
-        return value, color
-
-    def _fmtHex(value):
+    def _fmtF(value, width):
         color  = 3
-        entry  = '%016x' % (int(value))
+        entry  = f'%{width}.1f' % (float(value))
+        if len(entry) > width:
+            entry = '*' + entry[len(entry) - width + 1:]
+        return entry, color
+
+    def _fmtBool(value, width):
+        color  = 3 if int(value) == 0 else 4
+        return f'%{width}s' % value, color
+
+    def _fmtHex(value, width):
+        color  = 3
+        entry  = f'%0{width}x' % (int(value))
         return entry, color
 
     drpQueries = {
-        'EvtRt'     : (_q(args, 'TCtbO_EvtRt'),             _fmtF,    'Event rate',                                               8),
-        'DmaInUse'  : (_q(args, 'drp_dma_in_use'),          _fmtN,    '# of DMA buffers in use',                                  8),
-        'WrkInQ'    : (_q(args, 'drp_worker_input_queue'),  _fmtN,    '# of Events on the worker Input  Queue',                   6),
-        'WrkOutQ'   : (_q(args, 'drp_worker_output_queue'), _fmtN,    '# of Events on the worker Output Queue',                   7),
-        'TO_EvtCt'  : (_q(args, 'TCtbO_EvtCt'),             _fmtN,    '# of Input  events posted   to   TEB',                     8),
-        'TI_EvtCt'  : (_q(args, 'TCtbI_EvtCt'),             _fmtN,    '# of Result events received from TEB',                     8),
-        'TO_BatCt'  : (_q(args, 'TCtbO_BatCt'),             _fmtN,    '# of Input  batches',                                      8),
-        'TI_BatCt'  : (_q(args, 'TCtbI_BatCt'),             _fmtN,    '# of Result batches',                                      8),
-        'TO_InFlt'  : (_q(args, 'TCtbO_InFlt'),             _fmtN,    '# of Events in flight from DRP Input side to EbReceiver',  8),
-        'BtAlCt'    : (_q(args, 'TCtbO_BtAlCt'),            _fmtN,    '# of Input batches allocated',                             8),
-        'BtFrCt'    : (_q(args, 'TCtbO_BtFrCt'),            _fmtN,    '# of Input batches freed',                                 8),
-        'BtInUse'   : (_q(args, 'TCtb_IUBats'),             _fmtN,    '# of Input batches in use',                                7),
-        'BtWtg'     : (_q(args, 'TCtbO_BtWtg'),             _fmtBool, 'Input batch pool exhaustion flag',                         5),
-        'InpTxPdg'  : (_q(args, 'TCtbO_TxPdg'),             _fmtHex,  'Input batch transmit-to-TEB pending list',                16),
-        'ResRxPdg'  : (_q(args, 'TCtbI_RxPdg'),             _fmtN,    'Result batch receive pending flag',                        8),
-        'BypCt'     : (_q(args, 'TCtbI_BypCt'),             _fmtN,    '# of Events bypassing the TEB',                            5),
-        'InpMisCt'  : (_q(args, 'TCtbI_MisCt'),             _fmtN,    '# of Results missing an Input event',                      8),
-        'RecDp'     : (_q(args, 'DRP_RecordDepth'),         _fmtN,    '# of Free slots on the Record Queue',                      5),
-        'FlWrB'     : (_q(args, 'DRP_fileWriting'),         _fmtBool, 'Indicates when file writing is stalled',                   6),
-        'BfFrB'     : (_q(args, 'DRP_bufFreeBlk'),          _fmtBool, 'Indicates when FileWriter is blocked for a free buffer',   6),
-        'BfPndB'    : (_q(args, 'DRP_bufPendBlk'),          _fmtBool, 'Indicates when FileWriter is blocked on a pending buffer', 6),
-        'SmdWrB'    : (_q(args, 'DRP_smdWriting'),          _fmtBool, 'Indicates when SMD file writing is stalled',               6),
-        'MO_EvCt'   : (_q(args, 'MCtbO_EvCt'),              _fmtN,    '# of Events posted to the MEB',                            7),
-        'MO_TxPdg'  : (_q(args, 'MCtbO_TxPdg'),             _fmtHex,  'Event Transmit-to-MEB pending list',                      16),
+#        'EvtCt'        : (_q(args, 'TCtbO_EvtCt'),               _fmtN,    'Event rate',                                              10),
+        'EvtRt'        : (_r(args, 'TCtbO_EvtCt'),             _fmtF,    'Event rate',                                               8),
+        'DmaInUse'     : (_q(args, 'drp_dma_in_use'),          _fmtN,    '# of DMA buffers in use',                                  8),
+        'WrkInQ'       : (_q(args, 'drp_worker_input_queue'),  _fmtN,    '# of Events on the worker Input  Queue',                   6),
+        'WrkOutQ'      : (_q(args, 'drp_worker_output_queue'), _fmtN,    '# of Events on the worker Output Queue',                   7),
+        'TO_EvtCt'     : (_q(args, 'TCtbO_EvtCt'),             _fmtN,    '# of Input  events posted   to   TEB',                    10),
+        'TI_EvtCt'     : (_q(args, 'TCtbI_EvtCt'),             _fmtN,    '# of Result events received from TEB',                    10),
+        'TO_BatCt'     : (_q(args, 'TCtbO_BatCt'),             _fmtN,    '# of Input  batches',                                     10),
+        'TI_BatCt'     : (_q(args, 'TCtbI_BatCt'),             _fmtN,    '# of Result batches',                                     10),
+        'TO_InFlt'     : (_q(args, 'TCtbO_InFlt'),             _fmtN,    '# of Events in flight from DRP Input side to EbReceiver', 10),
+#        'BtAlCt'       : (_q(args, 'TCtbO_BtAlCt'),            _fmtN,    '# of Input batches allocated',                             8),
+#        'BtFrCt'       : (_q(args, 'TCtbO_BtFrCt'),            _fmtN,    '# of Input batches freed',                                 8),
+#        'BtInUse'      : (_q(args, 'TCtb_IUBats'),             _fmtN,    '# of Input batches in use',                                7),
+#        'BtWtg'        : (_q(args, 'TCtbO_BtWtg'),             _fmtBool, 'Input batch pool exhaustion flag',                         5),
+        'TxPdg_Inp'    : (_q(args, 'TCtbO_TxPdg'),             _fmtHex,  'Input batch transmit-to-TEB pending list',                16),
+        'RxPdg_Res'    : (_q(args, 'TCtbI_RxPdg'),             _fmtN,    'Result batch receive pending flag',                       10),
+        'DefSz'        : (_q(args, 'TCtbI_DefSz'),             _fmtN,    '# of Results batches on the deferred list',                5),
+        'BypCt'        : (_q(args, 'TCtbI_BypCt'),             _fmtN,    '# of Events bypassing the TEB',                            5),
+        'NoPrgCt'      : (_q(args, 'TCtbI_NPrgCt'),            _fmtN,    '# of times EbCtrbIn didn\'t make progress',                8),
+        'InpMisCt'     : (_q(args, 'TCtbI_MisCt'),             _fmtN,    '# of Results missing an Input event',                      8),
+        'RecDp'        : (_q(args, 'DRP_RecordDepth'),         _fmtN,    '# of Free slots on the Record Queue',                      5),
+        'FlWrB'        : (_q(args, 'DRP_fileWriting'),         _fmtBool, 'Indicates when file writing is stalled',                   6),
+        'BfFrB'        : (_q(args, 'DRP_bufFreeBlk'),          _fmtBool, 'Indicates when FileWriter is blocked for a free buffer',   6),
+        'BfPndB'       : (_q(args, 'DRP_bufPendBlk'),          _fmtBool, 'Indicates when FileWriter is blocked on a pending buffer', 6),
+        'SmdWrB'       : (_q(args, 'DRP_smdWriting'),          _fmtBool, 'Indicates when SMD file writing is stalled',               6),
+        'MO_EvCt'      : (_q(args, 'MCtbO_EvCt'),              _fmtN,    '# of Events posted to the MEB',                           10),
+        'MO_TxPdg'     : (_q(args, 'MCtbO_TxPdg'),             _fmtHex,  'Event Transmit-to-MEB pending list',                      16),
+        'MO_RxPdg'     : (_q(args, 'MCtbO_RxPdg'),             _fmtN,    'Transition buffer # from MEB pending flag',                8),
     }
 
     tebQueries = {
-	      'EvtRt'        : (_q(args, 'TEB_EvtRt'),        _fmtF,   'Event rate',             8),
-	      'EvtCt'        : (_q(args, 'TEB_EvtCt'),        _fmtN,   '# of Events handled',    8),
-	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'TEB'), _fmtN,   'Receive pending flag',   5),
-	      'BfInCt'       : (_q(args, 'EB_BfInCt', 'TEB'), _fmtN,   '# of Input Batches',     8),
-	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'TEB'), _fmtN,   '# of Allocated events',  8),
-	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'TEB'), _fmtN,   '# of Freed events',      8),
-	      'FxUpCt'       : (_q(args, 'EB_FxUpCt', 'TEB'), _fmtN,   '# of Swept out events',  8),
-	      'ToEvCt'       : (_q(args, 'EB_ToEvCt', 'TEB'), _fmtN,   '# of Timed out events',  8),
-	      'CtrbMissing'  : (_q(args, 'EB_CbMsMk', 'TEB'), _fmtHex, 'Missing contributors',   16),
-	      'BatCt'        : (_q(args, 'TEB_BatCt'),        _fmtN,   '# of Result Batches',    8),
-	      'BtAlCt'       : (_q(args, 'TEB_BtAlCt'),       _fmtN,   '# of Batches Allocated', 8),
-	      'BtFrCt'       : (_q(args, 'TEB_BtFrCt'),       _fmtN,   '# of Batched freed',     8),
-        'BtInUse'      : (_q(args, 'TEB_IUBats'),       _fmtN,   '# of Input batches in use',         7),
-        'BtWtg'        : (_q(args, 'TEB_BtWtg'),       _fmtBool, 'Result batch pool exhaustion flag', 5),
-	      'TxPdg'        : (_q(args, 'TEB_TxPdg'),        _fmtHex, 'Transmit pending list',  16),
-	      'WrtCt'        : (_q(args, 'TEB_WrtCt'),        _fmtN,   '# of Record  triggers',  8),
-	      'MonCt'        : (_q(args, 'TEB_MonCt'),        _fmtN,   '# of Monitor triggers',  8),
-	      'PsclCt'       : (_q(args, 'TEB_PsclCt'),       _fmtN,   'Prescale count',         8),
-	      'SpltCt'       : (_q(args, 'TEB_SpltCt'),       _fmtN,   'Split event count',      8),
+	      'EvtRt'        : (_r(args, 'TEB_EvtCt'),        _fmtF,   'Event rate',                8),
+	      'EvtCt'        : (_q(args, 'TEB_EvtCt'),        _fmtN,   '# of Events handled',      10),
+	      'TrCt'         : (_q(args, 'TEB_TrCt'),         _fmtN,   '# of Transitions handled', 10),
+	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'TEB'), _fmtN,   'Receive pending flag',      5),
+	      'BtInCt'       : (_q(args, 'EB_BfInCt', 'TEB'), _fmtN,   '# of Input Batches',        8),
+	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'TEB'), _fmtN,   '# of Allocated events',    10),
+	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'TEB'), _fmtN,   '# of Freed events',        10),
+	      'FixUpCt'      : (_q(args, 'EB_FxUpCt', 'TEB'), _fmtN,   '# of Swept out events',     8),
+	      'TmoEvCt'      : (_q(args, 'EB_ToEvCt', 'TEB'), _fmtN,   '# of Timed out events',     8),
+	      'SpltCt'       : (_q(args, 'TEB_SpltCt'),       _fmtN,   'Split event count',         8),
+	      'CtrbMissing'  : (_q(args, 'EB_CbMsMk', 'TEB'), _fmtHex, 'Missing contributors',     16),
+	      'BtOutCt'      : (_q(args, 'TEB_BatCt'),        _fmtN,   '# of Result Batches',       8),
+#	       'BtAlCt'       : (_q(args, 'TEB_BtAlCt'),       _fmtN,   '# of Batches Allocated',    8),
+#	       'BtFrCt'       : (_q(args, 'TEB_BtFrCt'),       _fmtN,   '# of Batched freed',        8),
+#        'BtInUse'      : (_q(args, 'TEB_IUBats'),       _fmtN,   '# of Input batches in use',         7),
+#        'BtWtg'        : (_q(args, 'TEB_BtWtg'),       _fmtBool, 'Result batch pool exhaustion flag', 5),
+	      'TxPdg_Res'    : (_q(args, 'TEB_TxPdg'),        _fmtHex, 'Transmit pending list',    16),
+	      'WrtCt'        : (_q(args, 'TEB_WrtCt'),        _fmtN,   '# of Record  triggers',    10),
+	      'MonCt'        : (_q(args, 'TEB_MonCt'),        _fmtN,   '# of Monitor triggers',    10),
+	      'PsclCt'       : (_q(args, 'TEB_PsclCt'),       _fmtN,   'Prescale count',            8),
     }
 
     mebQueries = {
-	      'EvtRt'        : (_q(args, 'MEB_EvtRt'),        _fmtF,   'Event rate',                     8),
-	      'EvtCt'        : (_q(args, 'MEB_EvtCt'),        _fmtN,   '# of Events handled',            8),
+	      'EvtRt'        : (_r(args, 'MEB_EvtCt'),        _fmtF,   'Event rate',                     8),
+	      'EvtCt'        : (_q(args, 'MEB_EvtCt'),        _fmtN,   '# of Events handled',           10),
+	      'TrCt'         : (_q(args, 'MEB_TrCt'),         _fmtN,   '# of Transitions handled',      10),
 	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'MEB'), _fmtN,   'Receive pending flag',           5),
-	      'BfInCt'       : (_q(args, 'EB_BfInCt', 'MEB'), _fmtN,   '# of Input Batches',             8),
-	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'MEB'), _fmtN,   '# of Allocated events',          8),
-	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'MEB'), _fmtN,   '# of Freed events',              8),
-	      'FxUpCt'       : (_q(args, 'EB_FxUpCt', 'MEB'), _fmtN,   '# of Swept out events',          8),
-	      'ToEvCt'       : (_q(args, 'EB_ToEvCt', 'MEB'), _fmtN,   '# of Timed out events',          8),
-	      'CtrbMissing'  : (_q(args, 'EB_CbMsMk', 'MEB'), _fmtHex, 'Missing contributors',   16),
+	      'BfInCt'       : (_q(args, 'EB_BfInCt', 'MEB'), _fmtN,   '# of Input Buffers',             8),
+	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'MEB'), _fmtN,   '# of Allocated events',         10),
+	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'MEB'), _fmtN,   '# of Freed events',             10),
+	      'FixUpCt'      : (_q(args, 'EB_FxUpCt', 'MEB'), _fmtN,   '# of Swept out events',          8),
+	      'TmoEvCt'      : (_q(args, 'EB_ToEvCt', 'MEB'), _fmtN,   '# of Timed out events',          8),
+	      'SpltCt'       : (_q(args, 'MEB_SpltCt'),       _fmtN,   'Split event count',         8),
+	      'CtrbMissing'  : (_q(args, 'EB_CbMsMk', 'MEB'), _fmtHex, 'Missing contributors',          16),
         'RqBufCt'      : (_q(args, 'MRQ_BufCt'),        _fmtN,   '# of Available Request buffers', 8),
-	      'ReqRt'        : (_q(args, 'MEB_ReqRt'),        _fmtF,   'Monitor request rate ',          8),
+	      'ReqRt'        : (_r(args, 'MEB_ReqCt'),        _fmtF,   'Monitor request rate ',          8),
 	      'ReqCt'        : (_q(args, 'MEB_ReqCt'),        _fmtN,   '# of Monitor requests',          8),
+	      'TxPdg_MRQ'    : (_q(args, 'MRQ_TxPdg'),        _fmtHex, 'MRQ transmit pending list',     16),
+	      'TxPdg_TrBf'   : (_q(args, 'EB_TxPdg',  'MEB'), _fmtHex, 'TrBufNo Transmit pending list', 16),
     }
 
     #width  = 0
     #metrics  = [{}, {}, {}]
     #for metric, query in drpQueries.items():
     #    metrics[0][metric] = PromMetric(srvurl, query, width)
-    #    width += metrics[0][metric].width()
+    #    width += metrics[0][metric].width() # Includes the column separating space
     #totWidth = width
     #
     #width    = 0
     #for metric, query in tebQueries.items():
     #    metrics[1][metric] = PromMetric(srvurl, query, width)
-    #    width += metrics[1][metric].width()
+    #    width += metrics[1][metric].width() # Includes the column separating space
     #if width > totWidth:  totWidth = width
     #
     #width  = 0
     #for metric, query in mebQueries.items():
     #    metrics[2][metric] = PromMetric(srvurl, query, width)
-    #    width += metrics[2][metric].width()
+    #    width += metrics[2][metric].width() # Includes the column separating space
     #if width > totWidth:  totWidth = width
 
     queries = [drpQueries, tebQueries, mebQueries]

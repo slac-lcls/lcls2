@@ -35,7 +35,7 @@ private:
 private:
     const Parameters& m_para;
     MemPool& m_pool;
-    static const int MAX_RET_CNT_C = 1000;
+    static const int MAX_RET_CNT_C = 1024;
     int32_t dmaRet[MAX_RET_CNT_C];
     uint32_t dmaIndex[MAX_RET_CNT_C];
     uint32_t dest[MAX_RET_CNT_C];

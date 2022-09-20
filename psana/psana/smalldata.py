@@ -251,8 +251,9 @@ class Server: # (hdf5 handling)
         else:
             raise TypeError('Type: Dataset %s type %s not compatible' % (dataset_name, type(data)))
 
-        self._dsets[dataset_name] = (dtype, shape)
+        if shape==(0,): raise ValueError('Dataset %s has illegal shape (0,)' % dataset_name)
 
+        self._dsets[dataset_name] = (dtype, shape)
         dset = self.file_handle.create_dataset(dataset_name,
                                                (0,) + shape, # (0,) -> expand dim
                                                maxshape=maxshape,
@@ -336,7 +337,7 @@ class SmallData: # (client)
 
             self._comm_partition()
 
-    def setup_parms(self, filename=None, batch_size=10000, cache_size=None,
+    def setup_parms(self, filename=None, batch_size=30, cache_size=None,
                  callbacks=[]):
         """
         Parameters
@@ -551,6 +552,11 @@ class SmallData: # (client)
         """
         method that is robust to ranks that have received no data
         """
+
+        # convert float/int to array
+        if isinstance(value,int) or isinstance(value,float):
+            value = np.array([value])
+
         comm = self._client_comm
         if not isinstance(value,np.ndarray):
             arrInfo= None

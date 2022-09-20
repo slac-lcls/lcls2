@@ -16,9 +16,13 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 namespace Drp {
 
@@ -27,21 +31,17 @@ class Pgp
 public:
     Pgp(const Parameters& para, DrpBase& drp, const bool& running) :
         m_para(para), m_pool(drp.pool), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_lastComplete(0)
+        m_available(0), m_current(0), m_lastComplete(0), m_latency(0), m_nDmaRet(0)
     {
         m_nodeId = drp.nodeId();
-        uint8_t mask[DMA_MASK_SIZE];
-        dmaInitMaskBytes(mask);
-        for (unsigned i=0; i<4; i++) {
-            if (para.laneMask & (1 << i)) {
-                logging::info("setting lane  %d", i);
-                dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
-            }
+        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+            logging::error("Failed to allocate lane/vc");
         }
-        dmaSetMaskBytes(drp.pool.fd(), mask);
     }
 
     Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
+    const int64_t latency() { return m_latency; }
+    const uint64_t nDmaRet() { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
     const Parameters& m_para;
@@ -58,6 +58,8 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint32_t m_lastData[6];
     unsigned m_nodeId;
+    int64_t m_latency;
+    uint64_t m_nDmaRet;
 };
 
 Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
@@ -134,7 +136,11 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     m_lastTid = transitionId;
     memcpy(m_lastData, data, 24);
 
-    event->l3InpBuf = m_tebContributor.allocate(*timingHeader, (void*)((uintptr_t)current));
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
@@ -151,6 +157,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
         auto start = std::chrono::steady_clock::now();
         while (true) {
             m_available = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+            m_nDmaRet = m_available;
             if (m_available > 0) {
                 m_pool.allocate(m_available);
                 break;
@@ -224,11 +231,11 @@ unsigned EaDetector::disconnect()
     return 0;
 }
 
-unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 {
     logging::info("EpicsArch configure");
 
-    if (XpmDetector::configure(config_alias, xtc))
+    if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
     if (m_exporter)  m_exporter.reset();
@@ -240,7 +247,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     size_t payloadSize;
     m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
                         m_para->detSegment,
-                        xtc, m_namesLookup, nodeId, payloadSize);
+                        xtc, bufEnd, m_namesLookup, nodeId, payloadSize);
     // make sure config transition will fit in the transition buffer (where SlowUpdate goes), however this check is too late: code can unfortunately segfault in the above line -cpo
     if (sizeof(XtcData::Dgram)+xtc.sizeofPayload() > m_para->maxTrSize) {
         logging::critical("Increase Parameter::maxTrSize (%zd) to avoid truncation of configure transition (%zd)",
@@ -265,16 +272,20 @@ unsigned EaDetector::unconfigure()
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
+    m_exporter.reset();
     m_namesLookup.clear();   // erase all elements
 
     return 0;
 }
 
-void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
+void EaDetector::event(XtcData::Dgram&, const void* bufEnd, PGPEvent*)
 {
-    auto payloadSize = m_para->maxTrSize - sizeof(Pds::EbDgram);
+    // Unused
+}
 
-    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize, m_nStales);
+void EaDetector::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
+{
+    m_monitor->getData(xtc, bufEnd, m_namesLookup, nodeId, m_nStales);
 }
 
 void EaDetector::_worker()
@@ -300,6 +311,11 @@ void EaDetector::_worker()
 
     Pgp pgp(*m_para, m_drp, m_running);
 
+    m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.latency();});
+    m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nDmaRet();});
+
     m_terminate.store(false, std::memory_order_release);
 
     while (true) {
@@ -319,6 +335,7 @@ void EaDetector::_worker()
             if (service != XtcData::TransitionId::L1Accept) {
                 // Allocate a transition dgram from the pool and initialize its header
                 Pds::EbDgram* trDgram = m_pool->allocateTr();
+                const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
                 *trDgram = *dgram;
                 PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
                 pgpEvent->transitionDgram = trDgram;
@@ -326,13 +343,15 @@ void EaDetector::_worker()
                 if (service == XtcData::TransitionId::SlowUpdate) {
                     m_nUpdates++;
 
-                    event(*trDgram, pgpEvent);
+                    slowupdate(trDgram->xtc, bufEnd);
                 }
                 else {
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
                     XtcData::Xtc& trXtc = transitionXtc();
-                    memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
+                    trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                    auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
                     if (service == XtcData::TransitionId::Enable) {
                         m_running = true;
@@ -354,23 +373,23 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
     const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
-                         ? m_pool->bufferSize()
+                         ? m_pool->pebble.bufferSize()
                          : m_para->maxTrSize;
     if (size > maxSize) {
         logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
         throw "Dgram overflowed buffer";
     }
 
-    PGPEvent* event = &m_drp.pool.pgpEvents[index];
-    if (event->l3InpBuf) { // else shutting down
-        Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
-        if (l3InpDg->isEvent()) {
-            if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
-                m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
-            }
+    auto l3InpBuf = m_drp.tebContributor().fetch(index);
+    Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(dgram);
+    if (l3InpDg->isEvent()) {
+        auto triggerPrimitive = m_drp.triggerPrimitive();
+        if (triggerPrimitive) { // else this DRP doesn't provide input
+            const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
+            triggerPrimitive->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
         }
-        m_drp.tebContributor().process(l3InpDg);
     }
+    m_drp.tebContributor().process(l3InpDg);
 }
 
 
@@ -387,11 +406,6 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Fatal: Could not create Detector object";
-    }
-    if (m_para.outputDir.empty()) {
-        logging::info("output dir: n/a");
-    } else {
-        logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
 }
@@ -414,7 +428,8 @@ void EpicsArchApp::_disconnect()
 
 void EpicsArchApp::_unconfigure()
 {
-    m_drp.unconfigure();  // TebContributor must be shut down before the worker
+    m_drp.pool.shutdown();  // Release Tr buffer pool
+    m_drp.unconfigure();    // TebContributor must be shut down before the worker
     m_eaDetector->unconfigure();
     m_unconfigure = false;
 }
@@ -497,11 +512,8 @@ void EpicsArchApp::handlePhase1(const json& msg)
     logging::debug("handlePhase1 for %s in EpicsArchApp", key.c_str());
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    xtc.src = XtcData::Src(m_det->nodeId); // set the src field for the event builders
-    xtc.damage = 0;
-    xtc.contains = tid;
-    xtc.extent = sizeof(XtcData::Xtc);
+    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    auto bufEnd = m_det->trXtcBufEnd();
 
     json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
@@ -526,7 +538,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
         }
 
         std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc);
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
             std::string errorMsg = "Failed transition phase 1";
             logging::error("%s", errorMsg.c_str());
@@ -534,7 +546,8 @@ void EpicsArchApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_drp.runInfoSupport(xtc, m_det->namesLookup());
+        m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -548,7 +561,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else if (runInfo.runNumber > 0) {
-            m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
+            m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
     }
     else if (key == "endrun") {
@@ -557,6 +570,25 @@ void EpicsArchApp::handlePhase1(const json& msg)
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
+    }
+    else if (key == "enable") {
+        bool chunkRequest;
+        ChunkInfo chunkInfo;
+        std::string errorMsg = m_drp.enable(phase1Info, chunkRequest, chunkInfo);
+        if (!errorMsg.empty()) {
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        } else if (chunkRequest) {
+            logging::debug("handlePhase1 enable found chunkRequest");
+            m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
+        }
+        unsigned error = m_det->enable(xtc, bufEnd, phase1Info);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::enable()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
+        logging::debug("handlePhase1 enable complete");
     }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);

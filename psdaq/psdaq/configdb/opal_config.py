@@ -146,7 +146,12 @@ def user_to_expert(cl, cfg, full=False):
         gate = cfg['user']['gate_ns']
         if gate > 160000:
             print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate));
-            raise ValueError('gate_ns > 160000')
+            # cpo removed this because people kept asking for it to try
+            # to find their signals or increase brightness.  this
+            # was originally added because we had an issue where
+            # we saw that opal images would intermittently go dark
+            # with gates longer than this.
+            #raise ValueError('gate_ns > 160000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=gate*0.001
 
     if (hasUser and 'black_level' in cfg['user']):
@@ -214,8 +219,13 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     if(cl.ClinkPcie.Hsio.PgpMon[lane].RxRemLinkReady.get() != 1): # This is for PGP2
         raise ValueError(f'PGP Link is down' )
 
-    # drain any data in the event pipeline
-    getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(True)
+    applicationLane = getattr(cl.ClinkPcie.Application,appLane)
+
+    # weaver-recommended default for new register for cameralink_gateway 7.11
+    if hasattr(applicationLane,'XpmPauseThresh'):
+        applicationLane.XpmPauseThresh.set(0xff)
+
+    applicationLane.EventBuilder.Blowoff.set(True)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(True)
 
     #  set bool parameters
@@ -271,7 +281,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
 
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
-    getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(False)
+    applicationLane.EventBuilder.Blowoff.set(False)
 
     #  Capture the firmware version to persist in the xtc
     cfg['firmwareVersion'] = cl.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()

@@ -317,8 +317,8 @@ namespace Pds {
     private:
       bool    complete_connect(int timeout);
       ssize_t post_comp_data_recv(void* context=NULL);
-      ssize_t check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data=0);
-      ssize_t check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data=0);
+      ssize_t check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data=0, int timeout=-1);
+      ssize_t check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data=0, int timeout=-1);
       ssize_t check_connection_state();
     private:
       uint64_t        _counter;
@@ -384,8 +384,8 @@ namespace Pds {
     private:
       friend Endpoint;
       ssize_t handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd);
-      ssize_t check_completion(int context, unsigned flags, uint64_t* data=0);
-      ssize_t check_completion_noctx(unsigned flags, uint64_t* data=0);
+      ssize_t check_completion(int context, unsigned flags, uint64_t* data=0, int timeout=-1);
+      ssize_t check_completion_noctx(unsigned flags, uint64_t* data=0, int timeout=-1);
     private:
       bool           _up;
       Fabric*        _fabric;

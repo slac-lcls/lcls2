@@ -21,6 +21,8 @@ import pyrogue        as pr
 
 from ._Si5317 import *
 
+_fidPrescale = 200
+
 class XpmInhConfig(pr.Device):
 
     def __init__(   self, 
@@ -63,10 +65,14 @@ class XpmInhConfig(pr.Device):
 
 class XpmApp(pr.Device):
     def __init__(   self, 
-            name        = "XpmApp", 
-            description = "XPM Module", 
-            **kwargs):
+                    name        = "XpmApp", 
+                    description = "XPM Module", 
+                    fidPrescale = 200,
+                    **kwargs):
         super().__init__(name=name, description=description, **kwargs)
+
+        global _fidPrescale
+        _fidPrescale = fidPrescale
 
         ##############################
         # Variables
@@ -567,7 +573,7 @@ class XpmApp(pr.Device):
 
         def pipelineSet(deps):
             def pipelineSetValue(var, value, write):
-                val = ((value*200)&0xffff) | (value<<16)
+                val = ((value*_fidPrescale)&0xffff) | (value<<16)
                 print('Setting pipeline reg to 0x{:x}'.format(val))
                 deps[0].set(val,write)
             return pipelineSetValue
@@ -583,23 +589,24 @@ class XpmApp(pr.Device):
             name         = "msgHdr",
             description  = "Message header",
             offset       =  0x70,
-            bitSize      =  8,
+            bitSize      =  9,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
             verify       = False
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "msgIns",
-            description  = "Message insert",
-            offset       =  0x71,
-            bitSize      =  1,
-            bitOffset    =  0x07,
-            base         = pr.UInt,
-            mode         = "RW",
-            verify       = False
-        ))
+        if False:
+            self.add(pr.RemoteVariable(    
+                name         = "msgIns",
+                description  = "Message insert",
+                offset       =  0x71,
+                bitSize      =  1,
+                bitOffset    =  0x07,
+                base         = pr.UInt,
+                mode         = "RW",
+                verify       = False
+            ))
 
         self.add(pr.RemoteVariable(    
             name         = "msgPayl",

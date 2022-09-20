@@ -2,6 +2,8 @@
 """Test access to detector raw data.
 """
 
+from psana.pyalgos.generic.NDArrUtils import info_ndarr
+
 import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -25,10 +27,8 @@ if tname == '1':
     for orun in ds.runs():
       det = orun.Detector(detname)
       for evnum,evt in enumerate(orun.events()):
-        print('%s\nEvent %04d' % (50*'_',evnum))
         raw = det.raw.raw(evt)
-        for segment,panel in raw.items():
-            print(segment,panel.shape)
+        print(info_ndarr(raw, 'Ev:%02d raw' % evnum))
         if evnum > evtmax: break
 else:
     print('NON-RECOGNIZED TEST NAME\n%s' % usage)

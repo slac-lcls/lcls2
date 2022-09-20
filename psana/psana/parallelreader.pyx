@@ -66,7 +66,6 @@ cdef class ParallelReader:
 
         If there's some data left at the bottom of the buffer due to cutoff,
         copy this remaining data to the begining of the buffer then read to 
-        nef.num_threads         = os.e
         fill the rest of the chunk. Sets the following variables when done:
         - got = remaining (from copying) + new got (from reading)
         - ready_offset = offset of the last event that fits in the buffer

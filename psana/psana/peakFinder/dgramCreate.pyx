@@ -130,7 +130,7 @@ class parse_xtc():
 cdef extern from 'xtcdata/xtc/BlockDgram.hh' namespace "XtcData":
 
     cdef cppclass BlockDgram:
-        BlockDgram(void* buffdgram, cnp.uint64_t tstamp, unsigned transitionId)
+        BlockDgram(void* buffdgram, size_t buffSize, cnp.uint64_t tstamp, unsigned transitionId)
 
         void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems, unsigned nodeId, unsigned namesId)
         void addShapesDataBlock(cnp.uint8_t* shape_block, cnp.uint8_t* data_block,\
@@ -152,7 +152,7 @@ cdef extern from "xtcdata/xtc/DescData.hh" namespace "XtcData":
         Alg(const char* alg, cnp.uint8_t major, cnp.uint8_t minor, cnp.uint8_t micro)
         const char* name()
 
-    cdef cppclass NameInfo: 
+    cdef cppclass NameInfo:
         NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, cnp.uint32_t segment0, cnp.uint32_t numarr):alg(alg0), segment(segment0)
 
     cdef cppclass Name:
@@ -182,7 +182,7 @@ cdef class PyBlockDgram:
 
         self.buffer_size =0x4000000
         self.buffer  = <cnp.uint8_t*> malloc(self.buffer_size)
-        self.cptr = new BlockDgram(self.buffer, tstamp, transitionId)
+        self.cptr = new BlockDgram(self.buffer, self.buffer_size, tstamp, transitionId)
 
     def addNamesBlock(self, PyNameBlock pyn, nodeId, namesId):
         self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct, nodeId, namesId)
@@ -220,7 +220,7 @@ cdef class PyAlg:
     def __cinit__(self, bytes algname, major, minor, micro):
         self.cptr = new Alg(algname, major, minor, micro)
 
-    def __dealloc__(self): 
+    def __dealloc__(self):
         del self.cptr
 
     def name(self):
@@ -308,7 +308,7 @@ def parse_type(data_arr):
     nptypes = list(map(lambda x: np.dtype(x), types))
     type_dict = dict(zip(nptypes, range(len(nptypes))))
     return type_dict[dat_type]
- 
+
 class CyDgram():
     def __init__(self):
         self.write_configure = True

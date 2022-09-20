@@ -29,7 +29,7 @@ namespace Drp {
         //        enum index { raw, aux, numfields };
         enum index { raw, numfields };
 
-        EpixHRPanelDef() { 
+        EpixHRPanelDef() {
             ADD_FIELD(raw              ,UINT16,2);
             //            ADD_FIELD(aux              ,UINT16,2);
         }
@@ -62,10 +62,10 @@ namespace Drp {
                      pwrAnaCurr,
                      pwrAnaVin,
                      pwrAnaTempC,
-                     asic_temp, 
+                     asic_temp,
                      num_fields };
-        
-        EpixHRDef() { 
+
+        EpixHRDef() {
             ADD_FIELD(sht31Hum         ,FLOAT,0);
             ADD_FIELD(sht31TempC       ,FLOAT,0);
             ADD_FIELD(nctLocTempC      ,UINT16 ,0);
@@ -88,7 +88,7 @@ namespace Drp {
         }
     } epixHRDef;
 };
-            
+
 #undef ADD_FIELD
 
 using Drp::EpixHR2x2;
@@ -130,14 +130,14 @@ void EpixHR2x2::_connect(PyObject* mbytes)
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
 
-unsigned EpixHR2x2::enable(XtcData::Xtc& xtc, const nlohmann::json& info)
+unsigned EpixHR2x2::enable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
     logging::debug("EpixHR2x2 enable");
     monStreamDisable();
     return 0;
 }
 
-unsigned EpixHR2x2::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
+unsigned EpixHR2x2::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
     logging::debug("EpixHR2x2 disable");
     monStreamEnable();
@@ -153,7 +153,7 @@ json EpixHR2x2::connectionInfo()
     return BEBDetector::connectionInfo();
 }
 
-unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
+unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     // Generic panel data
@@ -164,13 +164,14 @@ unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
         logging::debug("Constructing panel eventNames src 0x%x",
                        unsigned(nid));
-        Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
-                                            configNames.detType(),
-                                            configNames.detId(), 
-                                            nid,
-                                            m_para->detSegment);
-            
-        eventNames.add(xtc, epixHRPanelDef);
+        Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                    configNames.detName(), alg,
+                                                    configNames.detType(),
+                                                    configNames.detId(),
+                                                    nid,
+                                                    m_para->detSegment);
+
+        eventNames.add(xtc, bufEnd, epixHRPanelDef);
         m_namesLookup[nid] = NameIndex(eventNames);
     }
 
@@ -187,42 +188,26 @@ unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
     return 0;
 }
 
-static float _getThermistorTemp(uint16_t x)
-{
-    float tthermk = 0.;
-    if (x) {
-        float umeas = float(x)*2.5/16383.;
-        float itherm = umeas/100000.;
-        float rtherm = (2.5-umeas)/itherm;
-        if (rtherm>0) {
-            float lnrtr25 = log(rtherm/10000.);
-            tthermk = 1.0 / (3.3538646E-03 + 2.5654090E-04 * lnrtr25 + 1.9243889E-06 * (lnrtr25*lnrtr25) + 1.0969244E-07 * (lnrtr25*lnrtr25*lnrtr25));
-            tthermk -= 273.15;
-        }
-    }
-    return 0.;
-}
-
 //
 //  Subframes:  0:   Event header
 //              2:   Timing frame detailed
 //              3-6: ASIC[0:3]
 //
-void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
-  
+
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const unsigned elemRows     = 144;
     const unsigned elemRowSize  = 192;
 
     //  The epix10kT unit cell is 2x2 ASICs
-    CreateData cd(xtc, m_namesLookup, m_evtNamesId[0]);
+    CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
     shape[0] = elemRows*2; shape[1] = elemRowSize*2;
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixHRPanelDef::raw, shape);
     memset(aframe.data(),0,4*elemRows*elemRowSize*2);
-    
+
     //
     //    A1   |   A3       (A1,A3) rotated 180deg
     // --------+--------
@@ -257,7 +242,7 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
         logging::debug("asic[%d] sz[%d] %s",q,subframes[q+3].num_elem(),dline);
         u += 6;
         for(unsigned row=0, e=0; row<elemRows; row++, e+=elemRowSize) {
-            uint16_t* dst = &aframe(row+elemRows,elemRowSize*(q>>1));  
+            uint16_t* dst = &aframe(row+elemRows,elemRowSize*(q>>1));
             for(unsigned m=0; m<elemRowSize; m++) {
                 //  special fixup for the last two columns
                 if (row > 1 && (m&0x1f) > 0x1d)
@@ -286,9 +271,9 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
     }
 }
 
-void     EpixHR2x2::slowupdate(XtcData::Xtc& xtc)
+void     EpixHR2x2::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 {
-    this->Detector::slowupdate(xtc);
+    this->Detector::slowupdate(xtc, bufEnd);
 }
 
 bool     EpixHR2x2::scanEnabled()

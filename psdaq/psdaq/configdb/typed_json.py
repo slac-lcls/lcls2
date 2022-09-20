@@ -650,7 +650,7 @@ class cdict(object):
                     if not isinstance(d, np.ndarray):
                         raise ValueError("set: trying to change type (from array to %s)" % type(d))
                     if value.dtype != d.dtype or value.shape != d.shape:
-                        raise ValueError("set: trying to change array dtype/shape")
+                        raise ValueError(f"set: trying to change array dtype/shape [{value.dtype},{d.dtype}] [{value.shape},{d.shape}]")
                 if type in self.enumdef.keys():
                     value = (type, value)
             elif isinstance(value, str):

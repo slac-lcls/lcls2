@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`CMQThreadClient` -  sub-class of QThread
 ==========================================================
@@ -6,7 +7,7 @@ Usage ::
     from psana.graphqt.CMQThreadClient import CMQThreadClient
 
     t1 = CMQThreadClient()
-    t1.connect_client_is_ready_to(receive_client_is_ready)
+    t1.connect_client_is_ready(receive_client_is_ready)
     t1.start()
 
     def receive_client_is_ready():
@@ -24,7 +25,6 @@ Created on 2018-05-30 by Mikhail Dubrovin
 from psana.graphqt.CMDBUtils import dbu # connect_client, database_names
 from PyQt5.QtCore import QThread, pyqtSignal
 
-#---
 
 class CMQThreadClient(QThread):
     client_is_ready = pyqtSignal()
@@ -43,24 +43,14 @@ class CMQThreadClient(QThread):
         """
         #logger.debug('In CMQThreadClient.run - connect client')
         self._client = dbu.connect_client(self._host, self._port)
-
-        if self._client is None:
-            #logger.warning("Can't connect to server")
-            #print("Can't connect to server")
-            pass
-        else:
-            #logger.debug('Connection to server is ready')
-            #print('Connection to server is ready')
-            pass
-            
         self.client_is_ready.emit()
 
 
-    def connect_client_is_ready_to(self, recip):
+    def connect_client_is_ready(self, recip):
         self.client_is_ready.connect(recip)
 
 
-    def disconnect_client_is_ready_from(self, recip):
+    def disconnect_client_is_ready(self, recip):
         self.client_is_ready.disconnect(recip)
 
 
@@ -85,7 +75,6 @@ class CMQThreadClient(QThread):
         return self.isFinished()
 
 
-
 if __name__ == "__main__":
 
     import sys
@@ -105,12 +94,12 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     t1 = CMQThreadClient(host='psanaphi103', port=27017)
-    t1.connect_client_is_ready_to(t1.receive_client_is_ready)
+    t1.connect_client_is_ready(t1.receive_client_is_ready)
     t1.start()
     #stat = t1.quit()
 
     t2 = CMQThreadClient(host='psanaphi105', port=27017)
-    t2.connect_client_is_ready_to(t2.receive_client_is_ready)
+    t2.connect_client_is_ready(t2.receive_client_is_ready)
     t2.start()
     #stat = t2.quit()
 

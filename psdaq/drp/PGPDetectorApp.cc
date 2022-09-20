@@ -12,6 +12,7 @@
 #include "Epix100.hh"
 #include "Opal.hh"
 #include "Wave8.hh"
+#include "Piranha4.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
@@ -23,6 +24,8 @@
 #define PY_ACQUIRE_GIL(x) PyEval_RestoreThread(x)
 //#define PY_RELEASE_GIL    0
 //#define PY_ACQUIRE_GIL(x) {}
+#define PY_RELEASE_GIL_GUARD    }
+#define PY_ACQUIRE_GIL_GUARD(x) { PyGilGuard pyGilGuard(x);
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
@@ -106,13 +109,39 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
+// Release GIL on exceptions, too
+class PyGilGuard
+{
+public:
+    PyGilGuard(PyThreadState*& pySave) : m_pySave(pySave)
+    {
+        PY_ACQUIRE_GIL(m_pySave);
+    }
+    ~PyGilGuard()
+    {
+        m_pySave = PY_RELEASE_GIL;
+    }
+private:
+    PyThreadState*& m_pySave;
+};
+
 PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
+    m_det(nullptr),
     m_unconfigure(false)
 {
     Py_Initialize(); // for use by configuration
+    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+}
+
+// This initialization is in its own method (to be called from a higher layer)
+// so that the dtor will run if it throws an exception.  This is needed to
+// ensure Py_Finalize is executed.
+void PGPDetectorApp::initialize()
+{
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
     Factory<Detector> f;
     f.register_type<AreaDetector>("fakecam");
@@ -126,20 +155,21 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     f.register_type<TimingBEB>   ("tb");
     f.register_type<TimingSystem>("ts");
     f.register_type<Wave8>       ("wave8");
+    f.register_type<Piranha4>    ("piranha4");
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
     }
-    if (m_para.outputDir.empty()) {
-        logging::info("output dir: n/a");
-    } else {
-        logging::info("output dir: %s", m_para.outputDir.c_str());
-    }
+
+    // Provide EbReceiver with the Detector interface so that additional
+    // data blocks can be formatted into the XTC, e.g. trigger information
+    m_drp.ebReceiver().detector(m_det);
+
     logging::info("Ready for transitions");
 
-    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
 PGPDetectorApp::~PGPDetectorApp()
@@ -147,6 +177,8 @@ PGPDetectorApp::~PGPDetectorApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
+
+    if (m_det)  delete m_det;
 
     try {
         PyGILState_Ensure();
@@ -161,13 +193,14 @@ PGPDetectorApp::~PGPDetectorApp()
 void PGPDetectorApp::disconnect()
 {
     m_drp.disconnect();
-    m_det->shutdown();
+    if (m_det)
+        m_det->shutdown();
 }
 
 void PGPDetectorApp::unconfigure()
 {
+    m_drp.pool.shutdown();              // Release Tr buffer pool
     if (m_pgpDetector) {
-        m_drp.stop();                   // Release allocate()
         m_pgpDetector->shutdown();
         if (m_pgpThread.joinable()) {
             m_pgpThread.join();
@@ -182,16 +215,18 @@ void PGPDetectorApp::unconfigure()
     }
     m_drp.unconfigure();
 
-    m_det->namesLookup().clear();   // erase all elements
+    if (m_det)
+        m_det->namesLookup().clear();   // erase all elements
 
     m_unconfigure = false;
 }
 
 void PGPDetectorApp::handleConnect(const json& msg)
 {
-    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
-
     json body = json({});
+
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
+
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in DrpBase::connect()");
@@ -203,7 +238,7 @@ void PGPDetectorApp::handleConnect(const json& msg)
         m_det->connect(msg, std::to_string(getId()));
     }
 
-    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -211,7 +246,7 @@ void PGPDetectorApp::handleConnect(const json& msg)
 
 void PGPDetectorApp::handleDisconnect(const json& msg)
 {
-    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
     // Carry out the queued Unconfigure, if there was one
     if (m_unconfigure) {
@@ -220,7 +255,7 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 
     disconnect();
 
-    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 
     json body = json({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -232,14 +267,14 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     logging::debug("handlePhase1 for %s in PGPDetectorApp (m_det->scanEnabled() is %s)",
                    key.c_str(), m_det->scanEnabled() ? "TRUE" : "FALSE");
 
-    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
+    json body = json({});
+
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    xtc.src = XtcData::Src(m_det->nodeId); // set the src field for the event builders
-    xtc.damage = 0;
-    xtc.contains = tid;
-    xtc.extent = sizeof(XtcData::Xtc);
+    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    auto bufEnd = m_det->trXtcBufEnd();
+
     bool has_names_block_hex = false;
     bool has_shapes_data_block_hex = false;
 
@@ -255,8 +290,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             }
         }
     }
-
-    json body = json({});
 
     if (key == "configure") {
         if (m_unconfigure) {
@@ -277,8 +310,8 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                     logging::debug("configure phase1 jsonxtc.sizeofPayload() = %u\n",
                                    jsonxtc.sizeofPayload());
                     unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-                    memcpy((void*)xtc.next(), (const void*)xtcBytes, copylen);
-                    xtc.alloc(copylen);
+                    auto payload = xtc.alloc(copylen, bufEnd);
+                    memcpy(payload, (const void*)xtcBytes, copylen);
                 }
                 delete[] xtcBytes;
             }
@@ -304,11 +337,11 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                                             std::ref(m_drp.tebContributor()));
 
             std::string config_alias = msg["body"]["config_alias"];
-            unsigned error = m_det->configure(config_alias, xtc);
+            unsigned error = m_det->configure(config_alias, xtc, bufEnd);
             if (!error) {
                 json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
                 if (!scan.empty())
-                    error = m_det->configureScan(scan, xtc);
+                    error = m_det->configureScan(scan, xtc, bufEnd);
             }
             if (error) {
                 std::string errorMsg = "Phase 1 error in Detector::configure()";
@@ -316,8 +349,8 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                 logging::error("%s", errorMsg.c_str());
             }
             else {
-                m_drp.runInfoSupport(xtc, m_det->namesLookup());
-                m_drp.chunkInfoSupport(xtc, m_det->namesLookup());
+                m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
             }
         }
     }
@@ -342,14 +375,14 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                     logging::debug("beginstep phase1 jsonxtc.sizeofPayload() = %u\n",
                                    jsonxtc.sizeofPayload());
                     unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-                    memcpy((void*)xtc.next(), (const void*)xtcBytes, copylen);
-                    xtc.alloc(copylen);
+                    auto payload = xtc.alloc(copylen, bufEnd);
+                    memcpy(payload, (const void*)xtcBytes, copylen);
                 }
                 delete[] xtcBytes;
             }
         }
 
-        unsigned error = m_det->beginstep(xtc, phase1Info);
+        unsigned error = m_det->beginstep(xtc, bufEnd, phase1Info);
         if (error) {
             logging::error("m_det->beginstep() returned error");
         } else {
@@ -357,7 +390,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             if (scan.empty()) {
                 logging::debug("scan is empty");
             } else {
-                error = m_det->stepScan(scan, xtc);
+                error = m_det->stepScan(scan, xtc, bufEnd);
                 if (error) {
                     logging::error("m_det->stepScan() returned error");
                 }
@@ -377,7 +410,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
+            m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
     }
     else if (key == "endrun") {
@@ -396,9 +429,9 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         } else if (chunkRequest) {
             logging::debug("handlePhase1 enable found chunkRequest");
-            m_drp.chunkInfoData(xtc, m_det->namesLookup(), chunkInfo);
+            m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
         }
-        unsigned error = m_det->enable(xtc, phase1Info);
+        unsigned error = m_det->enable(xtc, bufEnd, phase1Info);
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::enable()";
             body["err_info"] = errorMsg;
@@ -407,7 +440,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         logging::debug("handlePhase1 enable complete");
     }
     else if (key == "disable") {
-        unsigned error = m_det->disable(xtc, phase1Info);
+        unsigned error = m_det->disable(xtc, bufEnd, phase1Info);
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::disable()";
             body["err_info"] = errorMsg;
@@ -416,7 +449,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         logging::debug("handlePhase1 disable complete");
     }
 
-    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -426,14 +459,14 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
 void PGPDetectorApp::handleReset(const json& msg)
 {
-    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
     unconfigure();
     disconnect();
     connectionShutdown();
 
-    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
 json PGPDetectorApp::connectionInfo()

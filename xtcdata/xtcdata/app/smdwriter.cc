@@ -183,18 +183,18 @@ public:
         }
     }
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::Names): {
             Names& names = *(Names*)xtc;
             _namesLookup[names.namesId()] = NameIndex(names);
             Alg& alg = names.alg();
-        printf("*** DetName: %s, Segment %d, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
+            printf("*** DetName: %s, Segment %d, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
                    names.detName(), names.segment(), names.detType(),
                    alg.name(), alg.version());
 
@@ -238,19 +238,14 @@ void save(Dgram& dg, FILE* xtcFile) {
     }
 }
 
-void show(Dgram& dg) {
+void show(Dgram& dg, const void* bufEnd) {
     printf("%s transition: time %d.%09d, env 0x%u, "
            "payloadSize %d extent %d\n",
            TransitionId::name(dg.service()), dg.time.seconds(),
            dg.time.nanoseconds(),
            dg.env, dg.xtc.sizeofPayload(),dg.xtc.extent);
     DebugIter dbgiter;
-    dbgiter.iterate(&(dg.xtc));
-}
-
-void usage(char* progname)
-{
-  fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
+    dbgiter.iterate(&(dg.xtc), bufEnd);
 }
 
 #define MAX_FNAME_LEN 256
@@ -271,6 +266,9 @@ int main(int argc, char* argv[])
     int n_mod = 0;
     char outname[MAX_FNAME_LEN];
     strncpy(outname, "smd.xtc2", MAX_FNAME_LEN);
+    auto usage = [](const char* progname) {
+        fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
+    };
 
     while ((c = getopt(argc, argv, "ht:n:m:f:o:")) != -1) {
     switch (c) {
@@ -299,7 +297,7 @@ int main(int argc, char* argv[])
     }
 
     cout << "n_mod=" << n_mod << endl;
-    if (!xtcname) {
+    if (!xtcname || parseErr) {
     usage(argv[0]);
     exit(2);
     }
@@ -342,6 +340,7 @@ int main(int argc, char* argv[])
 
     // Writing out data
     void* buf = malloc(BUFSIZE);
+    const void* bufEnd = ((char*)buf) + BUFSIZE;
     unsigned eventId = 0;
     uint64_t nowOffset = 0;
     uint64_t nowDgramSize = 0;
@@ -355,7 +354,7 @@ int main(int argc, char* argv[])
     Dgram* dgOut;
     while ((dgIn = iter.next())) {
         nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
-        dgOut = smd.generate(dgIn, buf, nowOffset, nowDgramSize, namesLookup, namesId);
+        dgOut = smd.generate(dgIn, buf, bufEnd, nowOffset, nowDgramSize, namesLookup, namesId);
 
         save(*dgOut, xtcFile);
         eventId++;

@@ -27,7 +27,7 @@ using namespace XtcData;
 
 #include "psdaq/epicstools/PVBase.hh"
 
-static const Name::DataType xtype[] = 
+static const Name::DataType xtype[] =
   { Name::UINT8 , // pvBoolean
     Name::INT8  , // pvByte
     Name::UINT16, // pvShort
@@ -39,18 +39,18 @@ static const Name::DataType xtype[] =
     Name::UINT64, // pvULong
     Name::FLOAT , // pvFloat
     Name::DOUBLE, // pvDouble
-    Name::CHARSTR, // pvString 
+    Name::CHARSTR, // pvString
   };
 
 namespace Pds_Epics {
   class BldPV : public PVBase {
   public:
-    BldPV(const char* channelName) : 
+    BldPV(const char* channelName) :
       PVBase(channelName) {}
   public:
     unsigned getUID() const { return strtoul(_strct->getStructure()->getID().c_str(),NULL,10); }
     const pvd::StructureConstPtr structure() const { return _strct->getStructure(); }
-    XtcData::VarDef getVarDef(size_t& sz) const { 
+    XtcData::VarDef getVarDef(size_t& sz) const {
       sz = 0;
       XtcData::VarDef vd;
       const pvd::FieldConstPtrArray& fields = structure()->getFields();
@@ -68,7 +68,7 @@ namespace Pds_Epics {
           throw std::string("PV type ")+pvd::TypeFunc::name(fields[i]->getType())+
             " for field "+names[i]+" not supported";
           break;
-        }          
+        }
       }
       return vd;
     }
@@ -118,7 +118,8 @@ static void sigHandler(int signal)
 static Dgram* write_config( NameIndex&       nameIndex,
                             NamesId&         namesId,
                             VarDef&          bldDef,
-                            char*            buff )
+                            char*            buff,
+                            const void*      bufEnd)
 {
   timespec tv; clock_gettime(CLOCK_REALTIME,&tv);
   Dgram& dg = *new (buff) Dgram( Transition( Dgram::Event,
@@ -126,11 +127,12 @@ static Dgram* write_config( NameIndex&       nameIndex,
                                              TimeStamp(tv.tv_sec,tv.tv_nsec),
                                              0 ),
                                  Xtc( TypeId(TypeId::Parent, 0) ) );
-    
+
   Alg     bldAlg    ("bldAlg", 1, 2, 3);
-  Names&  bldNames = *new(dg.xtc) Names("mybld", bldAlg, "bld",
-                                        "bld1234", namesId, 0);
-  bldNames.add(dg.xtc, bldDef);
+  Names&  bldNames = *new(dg.xtc, bufEnd) Names(bufEnd,
+                                                "mybld", bldAlg, "bld",
+                                                "bld1234", namesId, 0);
+  bldNames.add(dg.xtc, bufEnd, bldDef);
 
   nameIndex = NameIndex(bldNames);
 
@@ -148,7 +150,7 @@ int main(int argc, char* argv[])
   const char* bldName = 0;
   bool lverbose = false;
   unsigned nprint = 10;
-  
+
   while ( (c=getopt( argc, argv, "f:i:N:P:v#:")) != EOF ) {
     switch(c) {
     case 'f':
@@ -200,9 +202,9 @@ int main(int argc, char* argv[])
     usleep(100000);
   }
 
-  printf("Intf/Addr/Port 0x%x/0x%x/0x%x\n", 
+  printf("Intf/Addr/Port 0x%x/0x%x/0x%x\n",
          intf,
-         pvaAddr->getScalarAs<unsigned>(), 
+         pvaAddr->getScalarAs<unsigned>(),
          pvaPort->getScalarAs<unsigned>());
   //
   //  Open the bld receiver
@@ -228,9 +230,11 @@ int main(int argc, char* argv[])
   //  Configure : determine structure of data
   //
   char* configBuff = new char[1024*1024];
+  const void* configEnd = configBuff + 1024*1024;
   FILE* fout = filename ? fopen(filename,"w") : 0;
 
   char* eventb = new char[ 8*1024 ];
+  const void* eventEnd = eventb + 8*1024;
   tpr->start(partn);
 
   unsigned _id = 0;
@@ -256,7 +260,7 @@ int main(int argc, char* argv[])
     VarDef         bldDef = pvaPayload->getVarDef(payloadSz);
 
     memset(configBuff, 0, 1024*1024);
-    Dgram& cdg = *write_config(nameIndex, namesId, bldDef, configBuff);
+    Dgram& cdg = *write_config(nameIndex, namesId, bldDef, configBuff, configEnd);
     if (fout)
       fwrite(&cdg,sizeof(cdg)+cdg.xtc.sizeofPayload(),1,fout);
 
@@ -268,9 +272,9 @@ int main(int argc, char* argv[])
                                                    TimeStamp(0,0),
                                                    0 ),
                                        Xtc( TypeId(TypeId::Parent, 0) ) );
-    
+
     Xtc&   xtc   = dgram->xtc;
-    DescribedData desc(xtc, nameIndex, namesId);
+    DescribedData desc(xtc, eventEnd, nameIndex, namesId);
     desc.set_data_length(payloadSz);
 
     uint64_t ppulseId=0;
@@ -290,7 +294,7 @@ int main(int argc, char* argv[])
         printf("bld pid 0x%lx\n", pulseId);
         nprint--;
       }
-    
+
       //  Second, fetch header (should already be waiting)
       const XtcData::Transition* tr = tpr->advance(pulseId);
       //const XtcData::Transition* tr = 0;

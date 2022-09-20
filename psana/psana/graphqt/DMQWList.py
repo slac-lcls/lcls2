@@ -81,7 +81,7 @@ class DMQWList(QWList):
             self.model.appendRow(item)
 
             #if in_fs: item.setBackground(brush_green)
-            #item.setCheckable(False) 
+            #item.setCheckable(False)
             #item.setEditable(False)
             #item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             #item.setSizeHint(QSize(-1,20))
@@ -143,11 +143,11 @@ class DMQWList(QWList):
 
 
       def keyPressEvent(self, e):
-        logger.info('keyPressEvent, key=%s' % e.key())       
+        logger.info('keyPressEvent, key=%s' % e.key())
         if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_S: 
+        elif e.key() == Qt.Key_S:
             self.process_selected_items()
 
         else:

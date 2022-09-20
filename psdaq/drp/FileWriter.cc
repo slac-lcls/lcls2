@@ -389,13 +389,13 @@ SmdWriter::SmdWriter(size_t bufferSize) : BufferedFileWriter(bufferSize)
 {
 }
 
-void SmdWriter::addNames(XtcData::Xtc& parent, unsigned nodeId)
+void SmdWriter::addNames(XtcData::Xtc& parent, const void* bufEnd, unsigned nodeId)
 {
     XtcData::Alg alg("offsetAlg", 0, 0, 0);
     XtcData::NamesId namesId(nodeId, 0);
-    XtcData::Names& offsetNames = *new(parent) XtcData::Names("info", alg, "offset", "", namesId);
+    XtcData::Names& offsetNames = *new(parent, bufEnd) XtcData::Names(bufEnd, "info", alg, "offset", "", namesId);
     SmdDef smdDef;
-    offsetNames.add(parent, smdDef);
+    offsetNames.add(parent, bufEnd, smdDef);
     namesLookup[namesId] = XtcData::NameIndex(offsetNames);
 }
 

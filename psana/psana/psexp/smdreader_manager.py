@@ -1,9 +1,9 @@
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
-from psana.psexp import *
 import os, time
 from psana import dgram
 from psana.event import Event
+from .run import RunSmallData
 
 import logging
 logger = logging.getLogger(__name__)
@@ -14,15 +14,10 @@ class BatchIterator(object):
 
     SmdReaderManager returns this object when a chunk is read.
     """
-    def __init__(self, views, configs, run, 
-            batch_size=1, filter_fn=0, 
-            destination=0, timestamps=0):
-        self.batch_size     = batch_size
-        self.filter_fn      = filter_fn
-        self.destination    = destination
-        self.timestamps     = timestamps
-        self.run            = run 
+    def __init__(self, views, configs, run, dsparms):
+        self.dsparms = dsparms
         
+        # Requires all views
         empty_view = True
         for view in views:
             if view:
@@ -32,28 +27,35 @@ class BatchIterator(object):
         if empty_view:
             self.eb = None
         else:
-            self.eb = EventBuilder(views, configs)
-
+            self.eb = EventBuilder(views, configs, 
+                    dsparms=dsparms,
+                    run=run,
+                    prometheus_counter=None)
+            self.run_smd = RunSmallData(run, self.eb)
 
     def __iter__(self):
         return self
 
-
     def __next__(self):
-        # With batch_size known, smditer returns a batch_dict,
-        # {rank:[bytearray, evt_size_list], ...} for each next 
-        # while updating offsets of each smd memoryview
+        # With batch_size known, smditer returns a batch_dict of this format:
+        # {rank:[bytearray, evt_size_list], ...} 
+        # for each next while updating offsets of each smd memoryview
         if not self.eb: 
             raise StopIteration
-
-        batch_dict, step_dict = self.eb.build(self.timestamps,
-                batch_size=self.batch_size, 
-                filter_fn=self.filter_fn, 
-                destination=self.destination,
-                run=self.run,
-                )
-        if self.eb.nevents == 0 and self.eb.nsteps == 0: 
+        
+        # Collects list of proxy events to be converted to batches.
+        # Note that we are persistently calling smd_callback until there's nothing
+        # left in all views used by EventBuilder. From this while/for loops, we 
+        # either gets transitions from SmdDataSource and/or L1 from the callback.
+        while self.run_smd.proxy_events == [] and self.eb.has_more():
+            for evt in self.dsparms.smd_callback(self.run_smd):
+                self.run_smd.proxy_events.append(evt._proxy_evt)
+        
+        if not self.run_smd.proxy_events:
             raise StopIteration
+
+        batch_dict, step_dict = self.eb.gen_batches(self.run_smd.proxy_events)
+        self.run_smd.proxy_events = []
         return batch_dict, step_dict
 
 
@@ -65,17 +67,21 @@ class SmdReaderManager(object):
         self.configs = configs
         assert self.n_files > 0
         
+        # Sets no. of events Smd0 sends to each EventBuilder core. This gets
+        # overridden by max_events set by DataSource if max_events is smaller.
         self.smd0_n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
         if self.dsparms.max_events:
             if self.dsparms.max_events < self.smd0_n_events:
                 self.smd0_n_events = self.dsparms.max_events
         
+        # Sets the memory size for smalldata buffer for each stream file.
         self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000000))
         is_legion = 0
         mode = os.environ.get('PS_PARALLEL')
         if mode and mode == 'legion':
             is_legion = 1
         self.smdr = SmdReader(smd_fds, self.chunksize, self.dsparms.max_retries, is_legion)
+
         self.processed_events = 0
         self.got_events = -1
         self._run = None
@@ -85,7 +91,7 @@ class SmdReaderManager(object):
 
     def _get(self):
         st = time.monotonic()
-        self.smdr.get(self.dsparms.found_xtc2_callback)
+        self.smdr.get(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
         logger.debug(f'read {self.smdr.got/1e6:.3f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
         self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
@@ -96,6 +102,11 @@ class SmdReaderManager(object):
             raise ValueError(msg)
 
     def get_next_dgrams(self):
+        """ Returns list of dgrams as appeared in the current offset of the smd chunks.
+
+        Currently used to retrieve Configure and BeginRun. This allows read with wait
+        for these two types of dgram.
+        """
         if self.dsparms.max_events > 0 and \
                 self.processed_events >= self.dsparms.max_events:
             logger.debug(f'max_events={self.dsparms.max_events} reached')
@@ -106,6 +117,9 @@ class SmdReaderManager(object):
             self._get()
          
         if self.smdr.is_complete():
+            # Get chunks with only one dgram each. There's no need to set
+            # integrating stream id here since Configure and BeginRun
+            # must exist in this stream too. 
             self.smdr.view(batch_size=1)
 
             # For configs, we need to copy data from smdreader's buffers
@@ -115,6 +129,7 @@ class SmdReaderManager(object):
             if self.configs is None:
                 dgrams = [dgram.Dgram(view=ba_buf, offset=0) for ba_buf in bytearray_bufs]
                 self.configs = dgrams
+                self.smdr.set_configs(self.configs)
             else:
                 dgrams = [dgram.Dgram(view=ba_buf, config=config, offset=0) for ba_buf, config in zip(bytearray_bufs, self.configs)]
         return dgrams
@@ -134,6 +149,8 @@ class SmdReaderManager(object):
         The iterator stops reading under two conditions. Either there's
         no more data or max_events reached.
         """
+        intg_stream_id = self.dsparms.intg_stream_id
+        
         if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
             raise StopIteration
         
@@ -141,17 +158,11 @@ class SmdReaderManager(object):
             self._get()
             if not self.smdr.is_complete():
                 raise StopIteration
-        
-        self.smdr.view(batch_size=self.smd0_n_events)
+        self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=intg_stream_id)
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
-        batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, 
-                batch_size  = self.dsparms.batch_size, 
-                filter_fn   = self.dsparms.filter, 
-                destination = self.dsparms.destination,
-                timestamps  = self.dsparms.timestamps)
+        batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, self.dsparms)
         self.got_events = self.smdr.view_size
         self.processed_events += self.got_events
-
         return batch_iter
         
 
@@ -171,9 +182,9 @@ class SmdReaderManager(object):
 
                 st_view = time.monotonic()
 
-                #mmrv_bufs, mmrv_step_bufs = self.smdr.view(batch_size=self.smd0_n_events)
-                # internally updates the buffeer step/start/blocksize
-                self.smdr.view(batch_size=self.smd0_n_events)
+                # Gets the next batch of already read-in data. 
+                self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id)
+
                 self.got_events = self.smdr.view_size
                 got_events = self.got_events
                 self.processed_events += self.got_events

@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstring>
 #include <iostream>
+#include <stdio.h>
 
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/Array.hh"
@@ -164,14 +165,14 @@ class AutoParentAlloc : public Xtc
 public:
     AutoParentAlloc(TypeId typeId) : Xtc(typeId) {}
     AutoParentAlloc(TypeId typeId, const NamesId& namesId) : Xtc(typeId,namesId) {}
-    void* alloc(uint32_t size, Xtc& parent) {
-        parent.alloc(size);
-        return Xtc::alloc(size);
+    void* alloc(uint32_t size, Xtc& parent, const void* bufEnd) {
+        parent.alloc(size, bufEnd);
+        return Xtc::alloc(size, bufEnd);
     }
-    void* alloc(uint32_t size, Xtc& parent, Xtc& superparent) {
-        superparent.alloc(size);
-        parent.alloc(size);
-        return Xtc::alloc(size);
+    void* alloc(uint32_t size, Xtc& parent, Xtc& superparent, const void* bufEnd) {
+        superparent.alloc(size, bufEnd);
+        parent.alloc(size, bufEnd);
+        return Xtc::alloc(size, bufEnd);
     }
 };
 
@@ -191,6 +192,7 @@ public:
 class NameInfo
 {
 public:
+    // This order must be preserved in order to read already recorded data
     uint32_t numArrays;
     char     detType[MaxNameSize];
     char     detName[MaxNameSize];
@@ -200,11 +202,17 @@ public:
 
     NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, uint32_t segment0, uint32_t numarr=0):alg(alg0), segment(segment0){
         numArrays = numarr;
-        strncpy(detName, detname, MaxNameSize-1);
-        strncpy(detType, dettype, MaxNameSize-1);
-        strncpy(detId,   detid,   MaxNameSize-1);
+        _strncpy(detName, detname, MaxNameSize-1);
+        _strncpy(detType, dettype, MaxNameSize-1);
+        _strncpy(detId,   detid,   MaxNameSize-1);
     }
-
+private:
+    // Avoid GCC-8 warnings that are probably legitimate but incomprehensible
+    void _strncpy(char* dst, const char* src, size_t dstLen) {
+        auto srcLen = strnlen(src, dstLen);
+        memcpy(dst, src, srcLen);
+        dst[srcLen] = '\0';
+    }
 };
 
 
@@ -212,13 +220,12 @@ class Names : public AutoParentAlloc
 {
 public:
 
-
-    Names(const char* detName, Alg& alg, const char* detType, const char* detId, const NamesId& namesId, unsigned segment=0) :
+    Names(const void* bufEnd, const char* detName, Alg& alg, const char* detType, const char* detId, const NamesId& namesId, unsigned segment=0) :
         AutoParentAlloc(TypeId(TypeId::Names,0),namesId),
         _NameInfo(detName, alg, detType, detId, segment)
     {
         // allocate space for our private data
-        Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
+        Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc), bufEnd);
         _checkname();
     }
 
@@ -248,15 +255,15 @@ public:
     }
 
 
-    void add(Xtc& parent, VarDef& V)
+    void add(Xtc& parent, const void* bufEnd, VarDef& V)
     {
-      for(auto const & elem: V.NameVec)
-          {
-              void* ptr = alloc(sizeof(Name), parent);
-              new (ptr) Name(elem);
+        for(auto const & elem: V.NameVec)
+        {
+            void* ptr = alloc(sizeof(Name), parent, bufEnd);
+            new (ptr) Name(elem);
 
-              if(Name(elem).rank() > 0){_NameInfo.numArrays++;};
-          };
+            if(Name(elem).rank() > 0){_NameInfo.numArrays++;};
+        };
     }
 private:
     void _checkname() {
@@ -278,29 +285,28 @@ private:
     NameInfo _NameInfo;
 };
 
-#include <stdio.h>
 class Data : public AutoParentAlloc
 {
 public:
-    Data(Xtc& superparent) :
+    Data(Xtc& superparent, const void* bufEnd) :
         AutoParentAlloc(TypeId(TypeId::Data,0))
     {
         // go two levels up to "auto-alloc" Data Xtc header size
-        superparent.alloc(sizeof(*this));
+        superparent.alloc(sizeof(*this), bufEnd);
     }
 };
 
 class Shapes : public AutoParentAlloc
 {
 public:
-    Shapes(Xtc& superparent) :
+    Shapes(Xtc& superparent, const void* bufEnd) :
         AutoParentAlloc(TypeId(TypeId::Shapes,0))
     {
         // allocate space for our private data
         // not strictly necessary since we currently have no private data.
-        Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc));
+        Xtc::alloc(sizeof(*this)-sizeof(AutoParentAlloc), bufEnd);
         // go two levels up to "auto-alloc" Shapes size
-        superparent.alloc(sizeof(*this));
+        superparent.alloc(sizeof(*this), bufEnd);
     }
 
     Shape& get(unsigned index)

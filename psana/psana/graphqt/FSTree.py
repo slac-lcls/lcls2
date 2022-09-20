@@ -40,8 +40,6 @@ def full_path_for_item(item, path=''):
 class FSTree(QWTree):
     """GUI for file system tree
     """
-    #db_and_collection_selected = pyqtSignal('QString','QString')
-
     def __init__(self, **kwa):
         logger.debug('FSTree.__init__')
         self.kwa = kwa
@@ -91,8 +89,6 @@ class FSTree(QWTree):
         logger.info('tree-model filling time %.3f sec' % (time()-t0_sec))
 
         self.expandAll()
-        #index = self.model.indexFromItem(self.item_top)
-        #self.expand(index)
 
 
     def add_item(self, pitem, name, iconimg=None, **kwa):

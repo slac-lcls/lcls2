@@ -19,9 +19,9 @@ namespace Pds {
 
         static constexpr bool is_steady = true;
 
-        static time_point now() noexcept;
+        static time_point now(clockid_t clkId = clock_id()) noexcept;
 
-        static duration get_resolution() noexcept;
+        static duration get_resolution(clockid_t clkId = clock_id()) noexcept;
 
     private:
         static clockid_t clock_id();
@@ -40,25 +40,24 @@ inline clockid_t Pds::fast_monotonic_clock::test_coarse_clock() {
 }
 
 inline clockid_t Pds::fast_monotonic_clock::clock_id() {
-    //static clockid_t the_clock = test_coarse_clock();
-    //return the_clock;
-    return CLOCK_MONOTONIC_COARSE;
+    static clockid_t the_clock = test_coarse_clock();
+    return the_clock;
 }
 
 inline auto Pds::fast_monotonic_clock::convert(const timespec& t) -> duration {
     return std::chrono::seconds(t.tv_sec) + std::chrono::nanoseconds(t.tv_nsec);
 }
 
-inline auto Pds::fast_monotonic_clock::now() noexcept -> time_point {
+inline auto Pds::fast_monotonic_clock::now(clockid_t clkId) noexcept -> time_point {
     struct timespec t;
-    MAYBE_UNUSED const auto result = clock_gettime(clock_id(), &t);
+    MAYBE_UNUSED const auto result = clock_gettime(clkId, &t);
     assert(result == 0);
     return time_point{convert(t)};
 }
 
-inline auto Pds::fast_monotonic_clock::get_resolution() noexcept -> duration {
+inline auto Pds::fast_monotonic_clock::get_resolution(clockid_t clkId) noexcept -> duration {
     struct timespec t;
-    MAYBE_UNUSED const auto result = clock_getres(clock_id(), &t);
+    MAYBE_UNUSED const auto result = clock_getres(clkId, &t);
     assert(result == 0);
     return convert(t);
 }
