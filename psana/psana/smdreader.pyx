@@ -180,6 +180,19 @@ cdef class SmdReader:
         self.winner = -1
 
     @cython.boundscheck(False)
+    def set_winner(self, int intg_stream_id=-1):
+        # Find the winning buffer (slowest detector)- skip when no new read.
+        cdef uint64_t limit_ts=0
+        if intg_stream_id > -1:
+            self.winner = intg_stream_id
+        else:
+            if self.winner == -1:
+                for i in range(self.prl_reader.nfiles):
+                    if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
+                        self.winner = i
+                        limit_ts = self.prl_reader.bufs[self.winner].timestamp
+
+    @cython.boundscheck(False)
     def view(self, int batch_size=1000, int intg_stream_id=-1):
         """ Returns memoryview of the data and step buffers.
 
@@ -196,14 +209,10 @@ cdef class SmdReader:
 
         # Find the winning buffer (slowest detector)- skip when no new read.
         cdef uint64_t limit_ts=0
-        if intg_stream_id > -1:
-            self.winner = intg_stream_id
+        if self.is_legion:
+            batch_size = self.batch_non_transitions(batch_size)
         else:
-            if self.winner == -1:
-                for i in range(self.prl_reader.nfiles):
-                    if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
-                        self.winner = i
-                        limit_ts = self.prl_reader.bufs[self.winner].timestamp
+            self.set_winner(intg_stream_id)
         limit_ts = self.prl_reader.bufs[self.winner].timestamp
 
         # No. of events available in the viewing window
@@ -352,6 +361,72 @@ cdef class SmdReader:
             return self._fakebuf[:self._fakebuf_size]
         else:
             return memoryview(bytearray())
+
+    @cython.boundscheck(False)
+    def batch_non_transitions(self, int batch_size=1000, int intg_stream_id=-1):
+        """ Returns batch_size updated to reflect transition events. The batch_size
+        returned = batch_size of non transition events + size of transition events
+        included in batch_size
+        This function is called by SmdReaderManager only when is_complete is True (
+        all buffers have at least one event). It returns events of batch_size if
+        possible or as many as it has for the buffer.
+        """
+        # Find the winning buffer
+        cdef int i=0
+        cdef uint64_t limit_ts=0
+        cdef int winner=0
+        # get the file with the smallest timestamp
+        self.set_winner(intg_stream_id)
+        limit_ts = self.prl_reader.bufs[self.winner].timestamp
+
+        cdef int step_entries = 0
+        cdef int total_step_entries = 0
+        cdef int n_view_events = 0
+        cdef int done = 0
+        cdef uint64_t[:] i_stepbuf_starts   = self.i_stepbuf_starts
+        cdef uint64_t i_stepbuf_ends = 0
+        cdef Buffer* buf
+        cdef int all_batch_size = batch_size
+
+        while done == 0:
+            # Apply batch_size
+            # Find the boundary or limit ts of the winning buffer
+            # this is either the nth or the batch_size event.
+            n_view_events = self.prl_reader.bufs[self.winner].n_ready_events - \
+                            self.prl_reader.bufs[self.winner].n_seen_events
+            if n_view_events > all_batch_size:
+                limit_ts = self.prl_reader.bufs[self.winner].ts_arr[\
+                                                                    self.prl_reader.bufs[self.winner].n_seen_events - 1 + all_batch_size]
+                n_view_events = all_batch_size
+                # find number of transition events in this window, need to check only 1 file since transition timestamps are always the same
+                i = 0
+                buf = &(self.prl_reader.step_bufs[i])
+                # Find boundary using limit_ts
+                # (omit check for exact match here because it's unlikely
+                # for transition buffers.
+                step_entries=0
+                i_stepbuf_ends = i_stepbuf_starts[i]
+                if i_stepbuf_ends <  buf.n_ready_events \
+                   and buf.ts_arr[i_stepbuf_ends] <= limit_ts:
+                    while buf.ts_arr[i_stepbuf_ends + 1] <= limit_ts \
+                          and i_stepbuf_ends < buf.n_ready_events - 1:
+                        i_stepbuf_ends += 1
+                        step_entries = step_entries+1
+                    # no change from previous iter?
+                    if step_entries == total_step_entries:
+                        done = 1
+                        # else we have found more step entries
+                    else:
+                        total_step_entries = step_entries
+                        all_batch_size = batch_size+step_entries
+                else:
+                    done = 1
+            else:
+                all_batch_size = n_view_events
+                done = 1
+
+        # if done return all_batchsize which equals batch_size non transition events
+        return all_batch_size
 
     def show(self, int i_buf, step_buf=False):
         """ Returns memoryview of buffer i_buf at the current viewing
