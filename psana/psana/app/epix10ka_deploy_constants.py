@@ -6,7 +6,7 @@ from time import time
 from psana.detector.Utils import info_parser_arguments
 from psana.detector.UtilsEpix10kaCalib import deploy_constants
 from psana.detector.UtilsEpix10ka import GAIN_MODES_IN
-from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA
+from psana.detector.UtilsEpix import DIR_REPO_EPIX10KA
 from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def argument_parser():
     d_runs    = None # 1021
     d_tstamp  = None # 20180910111049
     d_dirxtc  = None # '/reg/d/psdm/mfx/mfxx32516/scratch/gabriel/pulser/xtc/combined'
-    d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo'
+    d_dirrepo = DIR_REPO_EPIX10KA
     d_deploy  = False
     d_logmode = 'INFO'
     d_proc    = 'psrg'
