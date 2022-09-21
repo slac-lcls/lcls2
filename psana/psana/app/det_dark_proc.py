@@ -4,6 +4,7 @@ import sys
 from time import time
 from psana.detector.Utils import info_parser_arguments
 from psana.detector.UtilsCalib import pedestals_calibration
+from psana.detector.dir_root import DIR_REPO_DARK_PROC
 from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
 logger = logging.getLogger(__name__)
 
@@ -50,14 +51,14 @@ def do_main():
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_fname   = None # '/cds/data/psdm/tmo/tmoc00118/xtc/tmoc00118-r0123-s000-c000.xtc2'
+    d_fname   = None # '<DIR_INS>/tmo/tmoc00118/xtc/tmoc00118-r0123-s000-c000.xtc2'
     d_exp     = None # 'tmoc00118'
     d_det     = None # 'tmoopal'
     d_runs    = None # 123 or 123,125-126
     d_nrecs   = 1000 # number of records to collect and process
     d_nrecs1  = 100  # number of records to process at 1st stage
-    d_dirxtc  = None # '/cds/data/psdm/tmo/tmoc00118/xtc'
-    d_dirrepo = '/cds/group/psdm/detector/calib2'
+    d_dirxtc  = None # '<DIR_INS>/tmo/tmoc00118/xtc'
+    d_dirrepo = DIR_REPO_DARK_PROC  # '<DIR_ROOT>/detector/calib2'
     d_usesmd  = True
     d_logmode = 'INFO'
     d_errskip = True
