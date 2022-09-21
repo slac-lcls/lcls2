@@ -18,7 +18,8 @@ Created on 2022-01-20 by Mikhail Dubrovin
 """
 import os
 import psana.detector.Utils as ut
-DIR_LOG_AT_START = '/cds/group/psdm/logs/atstart'
+from psana.detector.dir_root import DIR_LOG_AT_START
+# DIR_LOG_AT_START = DIR_ROOT + '/detector/logs/atstart'
 
 
 class RepoManager(object):
@@ -26,8 +27,8 @@ class RepoManager(object):
        <dirrepo>/<panel_id>/<constant_type>/<files-with-constants>
        <dirrepo>/logs/<year>/<log-files>
        <dirrepo>/logs/log-<fname>-<year>.txt # file with log_rec_at_start()
-       e.g.: dirrepo = '/reg/g/psdm/detector/gains/epix10k/panels'
-       DIR_LOG_AT_START/<year>/<year>_logrec_<procname>.txt
+       e.g.: dirrepo = DIR_ROOT + '/detector/gains/epix10k/panels'
+       DIR_LOG_AT_START/<year>/<year>_lcls2_<procname>.txt
     """
 
     def __init__(self, dirrepo, **kwa):
@@ -39,6 +40,7 @@ class RepoManager(object):
         self.year        = kwa.get('year', ut.str_tstamp(fmt='%Y'))
         self.tstamp      = kwa.get('tstamp', ut.str_tstamp(fmt='%Y-%m-%dT%H%M%S'))
         self.dettype     = kwa.get('dettype', None)
+        self.addname     = kwa.get('addname', 'lcls2')  # 'logrec'
         if self.dettype is not None: self.dirrepo += '/%s' % self.dettype
         self.dir_log_at_start = kwa.get('dir_log_at_start', DIR_LOG_AT_START)
 
@@ -152,7 +154,8 @@ class RepoManager(object):
 
 
     def logname_at_start(self, procname):
-        return '%s/%s_logrec_%s.txt' % (self.makedir_log_at_start_year(), self.year, procname)
+        """ex.: <DIR_ROOT>/detector/logs/atstart/2022/2022_lcls2_calibman.txt"""
+        return '%s/%s_%s_%s.txt' % (self.makedir_log_at_start_year(), self.year, self.addname, procname)
 
 
     def save_record_at_start(self, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
