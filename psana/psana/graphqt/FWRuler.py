@@ -39,7 +39,7 @@ from PyQt5.QtGui import QFont, QPen, QBrush, QColor, QPainterPath
 from PyQt5.QtCore import Qt, QPointF, QPoint, QRectF
 
 from psana.graphqt.AxisLabeling import best_label_locs
-
+import sip
 
 class FWRuler():
 
@@ -199,7 +199,8 @@ class FWRuler():
 
 
     def remove(self):
-        for item in self.lst_of_items:
+        if not sip.isdeleted(self.scene):
+          for item in self.lst_of_items:
             self.scene.removeItem(item)
         self.lst_of_items=[]
         #self.scene.removeItem(self.path_item)
