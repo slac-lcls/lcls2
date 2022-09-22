@@ -193,7 +193,7 @@ cdef class SmdReader:
                         limit_ts = self.prl_reader.bufs[self.winner].timestamp
 
     @cython.boundscheck(False)
-    def view(self, int batch_size=1000, int intg_stream_id=-1):
+    def view(self, int batch_size=1000, int intg_stream_id=-1, exclude_transitions=1):
         """ Returns memoryview of the data and step buffers.
 
         This function is called by SmdReaderManager only when is_complete is True (
@@ -209,7 +209,7 @@ cdef class SmdReader:
 
         # Find the winning buffer (slowest detector)- skip when no new read.
         cdef uint64_t limit_ts=0
-        if self.is_legion:
+        if self.is_legion and exclude_transitions==1:
             batch_size = self.batch_non_transitions(batch_size)
         else:
             self.set_winner(intg_stream_id)
@@ -302,10 +302,10 @@ cdef class SmdReader:
             i_stepbuf_ends[i] = i_stepbuf_starts[i] 
             if i_stepbuf_ends[i] <  buf.n_ready_events \
                     and buf.ts_arr[i_stepbuf_ends[i]] <= limit_ts: 
-                while buf.ts_arr[i_stepbuf_ends[i] + 1] <= limit_ts \
+                while buf.ts_arr[i_stepbuf_ends[i]] <= limit_ts \
                         and i_stepbuf_ends[i] < buf.n_ready_events - 1:
                     i_stepbuf_ends[i] += 1
-                
+
                 block_sizes[i] = buf.en_offset_arr[i_stepbuf_ends[i]] - buf.st_offset_arr[i_stepbuf_starts[i]]
                 
                 i_st_stepbufs[i] = i_stepbuf_starts[i]
@@ -408,7 +408,8 @@ cdef class SmdReader:
                 i_stepbuf_ends = i_stepbuf_starts[i]
                 if i_stepbuf_ends <  buf.n_ready_events \
                    and buf.ts_arr[i_stepbuf_ends] <= limit_ts:
-                    while buf.ts_arr[i_stepbuf_ends + 1] <= limit_ts \
+
+                    while buf.ts_arr[i_stepbuf_ends] <= limit_ts \
                           and i_stepbuf_ends < buf.n_ready_events - 1:
                         i_stepbuf_ends += 1
                         step_entries = step_entries+1

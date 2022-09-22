@@ -120,8 +120,7 @@ class SmdReaderManager(object):
             # Get chunks with only one dgram each. There's no need to set
             # integrating stream id here since Configure and BeginRun
             # must exist in this stream too. 
-            self.smdr.view(batch_size=1)
-
+            self.smdr.view(batch_size=1, intg_stream_id=-1, exclude_transitions=0)
             # For configs, we need to copy data from smdreader's buffers
             # This prevents it from getting overwritten by other dgrams.
             bytearray_bufs = [bytearray(self.smdr.show(i)) for i in range(self.n_files)]
