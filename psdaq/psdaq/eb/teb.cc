@@ -596,12 +596,12 @@ void Teb::process(EbEvent* event)
       _trgTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
 
       // Handle prescale
-      if (!rdg->persist() && !_wrtCounter--)
+      rdg->prescale(!rdg->persist() && !_wrtCounter--);
+      if (rdg->prescale())
       {
-        _prescaleCount++;
+        _wrtCounter = _prescale;        // Rearm
 
-        rdg->prescale(true);
-        _wrtCounter = _prescale;
+        _prescaleCount++;
       }
 
       if (rdg->persist())  _writeCount++;
