@@ -1,17 +1,17 @@
 if not platform: platform = '0'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
+#epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
+epics_env = ld_lib_path
 im2k0_env = 'EPICS_PVA_ADDR_LIST=172.21.156.96 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 im5k4_env = 'EPICS_PVA_ADDR_LIST=172.21.156.113 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.89 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 xtcav_epics_env = 'EPICS_PVA_ADDR_LIST=192.168.0.1 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 ami_monitor_env = 'BOKEH_ALLOW_WS_ORIGIN=pswww.slac.stanford.edu'+' '+ld_lib_path
-teb_env  = 'PYTHONPATH=/cds/home/c/claus/lclsii/daq/lcls2/install/lib/python3.7/site-packages'
-teb_env += ' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
+teb_env = ' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
 
-collect_host = 'drp-neh-ctl001'
+collect_host = 'drp-srcf-cmp004'
 
 groups = platform+' 1'
 #hutch, user, password = ('tmo', 'tmoopr', 'pcds')
@@ -33,8 +33,8 @@ directIO = 'directIO=yes'
 scripts  = f'script_path={trig_dir}'
 
 std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir
-std_opts0 = std_opts+' -o '+data_dir+' -d /dev/datadev_%d'%0+f' -k {batching},{directIO}'
-std_opts1 = std_opts+' -o '+data_dir+' -d /dev/datadev_%d'%1+f' -k {batching},{directIO}'
+std_opts0 = std_opts+' -o '+data_dir+' -d /dev/datadev_0'+' -k '+batching+','+directIO
+std_opts1 = std_opts+' -o '+data_dir+' -d /dev/datadev_1'+' -k '+batching+','+directIO
 
 teb_cmd  = task_set+' teb '         +std_opts+' -k '+scripts
 meb_cmd  = task_set+' monReqServer '+std_opts
@@ -78,15 +78,15 @@ ami_monitor_node = "drp-srcf-cmp024"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-# {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
-# {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
+# {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:2 DAQ:NEH:XPM:4 DAQ:NEH:XPM:6'},
+# {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 2 '+groups+' --prod'},
   {                         id:'procstat',    flags:'p',                  cmd:'procstat '+CONFIGDIR+'/p'+platform+'.cnf.last' },
 
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000 -V {elog_cfg}'},
 # { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000'},
+ { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000 -V {elog_cfg}'},
  {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  { host: 'drp-srcf-cmp013', id:'teb0',        flags:'spu', env:teb_env,   cmd:teb_cmd},
@@ -106,10 +106,10 @@ procmgr_config = [
  { host: 'drp-srcf-cmp010', id:'xtcav_0',     flags:'spu', env:xtcav_epics_env, cmd:pva_cmd1+' -l 0x1 OTRS:DMPS:695:RAW -k pebbleBufSize=2097300 -k match_tmo_ms=133'},
 
 # June 8, 2022: cpo commented out fim's since I think they are out for maintenance
-# { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR2K4:FIM:W8:01 -l 0x2'},
-# { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K4:FIM:W8:01 -l 0x4'}, # QSFP # lane 0 broken?
-# { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_w8_prefix=MR2K4:FIM:W8:01 -k epics_shv_prefix=MR2K4:FIM:SHV -l 0x2'},
-# { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_w8_prefix=MR3K4:FIM:W8:01 -k epics_shv_prefix=MR3K4:FIM:SHV -l 0x4'}, # QSFP # lane 0 broken?
+# { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x2 -D wave8 -k epics_prefix=MR2K4:FIM:W8:01'},
+# { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x4 -D wave8 -k epics_prefix=MR3K4:FIM:W8:01'}, # QSFP # lane 0 broken?
+# { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x2 -D wave8 -k epics_w8_prefix=MR2K4:FIM:W8:01 -k epics_shv_prefix=MR2K4:FIM:SHV'},
+# { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x4 -D wave8 -k epics_w8_prefix=MR3K4:FIM:W8:01 -k epics_shv_prefix=MR3K4:FIM:SHV'}, # QSFP # lane 0 broken?
 
  { host: 'drp-srcf-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
@@ -146,19 +146,19 @@ peppex_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.132.150 EPICS_AUTO_PVA_ADDR_LIST=
 procmgr_hsd = [
  #Razib did this{host:'drp-srcf-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
  #{host:'drp-srcf-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
-{host:'drp-srcf-cmp020', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
-{host:'drp-srcf-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
-# For now{host:'drp-srcf-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
-# {host:'drp-srcf-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
-{host:'drp-srcf-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
-{host:'drp-srcf-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
-{host:'drp-srcf-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
-{host:'drp-srcf-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
-#{host:'drp-srcf-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
-#{host:'drp-srcf-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
-# june 8, 2022: cpo commented out peppex hsd since David Cesar not using it yet
-#{host:'drp-srcf-cmp024', id:'hsd_peppex_0', flags:'spu', env:peppex_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_peppex_epics}_41:A'},
-#{host:'drp-srcf-cmp024', id:'hsd_peppex_1', flags:'spu', env:peppex_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_
+ {host:'drp-srcf-cmp017', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
+ {host:'drp-srcf-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
+ # For now{host:'drp-srcf-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
+ # {host:'drp-srcf-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
+ {host:'drp-srcf-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
+ {host:'drp-srcf-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
+ {host:'drp-srcf-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
+ {host:'drp-srcf-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
+ {host:'drp-srcf-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
+ {host:'drp-srcf-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
+ # june 8, 2022: cpo commented out peppex hsd since David Cesar not using it yet
+ #{host:'drp-srcf-cmp024', id:'hsd_peppex_0', flags:'spu', env:peppex_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_peppex_epics}_41:A'},
+ #{host:'drp-srcf-cmp024', id:'hsd_peppex_1', flags:'spu', env:peppex_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_
 ]
 
 procmgr_config.extend(procmgr_hsd)
