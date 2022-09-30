@@ -28,7 +28,7 @@ class QWDirNameV2(QWFileNameV2):
     """Widget for directory name input
     """
     def __init__(self, parent=None, label='Dir:',\
-                 path='/cds/group/psdm',\
+                 path='DIR_ROOT,\
                  mode='r',\
                  fltr=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,\
                  dirs=[os.path.expanduser('~'), './calib'],\
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = QWDirNameV2(None, label='Dir:', path='/cds/group/psdm/Select')
+    w = QWDirNameV2(None, label='Dir:', path=DIR_ROOT + '/Select')
     w.setGeometry(100, 50, 400, 80)
     w.connect_path_is_changed(w.test_signal_reception)
     w.show()

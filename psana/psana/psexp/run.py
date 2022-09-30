@@ -215,15 +215,11 @@ class Run(object):
     def _setup_envstore(self):
         assert hasattr(self, 'configs')
         assert hasattr(self, '_evt') # BeginRun
-        self.esm = EnvStoreManager(self.configs)
+        self.esm = EnvStoreManager(self.configs, run=self)
         # Special case for BeginRun - normally EnvStore gets updated
         # by EventManager but we get BeginRun w/o EventManager
         # so we need to update the EnvStore here.
         self.esm.update_by_event(self._evt)
-
-        # EnvStore will be passed around so bigdata nodes can
-        # query SlowUpdate chunk ID
-        self.dsparms.esm = self.esm
 
 
 class RunShmem(Run):
@@ -235,8 +231,7 @@ class RunShmem(Run):
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
         super()._setup_envstore()
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
-                filter_callback=ds.dsparms.filter)
+        self._evt_iter = Events(ds, self)
 
     def events(self):
 
@@ -314,8 +309,7 @@ class RunSingleFile(Run):
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
         super()._setup_envstore()
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
-                filter_callback=ds.dsparms.filter)
+        self._evt_iter = Events(ds, self)
 
     def events(self):
         for evt in self._evt_iter:
@@ -343,13 +337,13 @@ class RunSerial(Run):
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
         super()._setup_envstore()
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
-                filter_callback=ds.dsparms.filter, smdr_man=ds.smdr_man)
+        self._evt_iter = Events(ds, self, smdr_man=ds.smdr_man)
 
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.EndRun: 
+                    return
                 continue
             st = time.time()
             yield evt
@@ -383,23 +377,48 @@ class RunSmallData(Run):
     """ Yields list of smalldata events
     
     This class is created by SmdReaderManager and used exclusively by EventBuilder.
-    There's no DataSource class associated with it. This class makes step and 
-    event generator available to user in smalldata callback. It does minimal work
-    and doesn't require the Run baseclass.
+    There's no DataSource class associated with it a "bigdata" run is passed in
+    so that we can propagate some values (w/o the ds). This class makes step and 
+    event generator available to user in smalldata callback. 
     """
-    def __init__(self, run, eb):
-        self._evt = run._evt
-        self.configs = run.configs
+    def __init__(self, bd_run, eb):
+        self._evt = bd_run._evt
+        configs = [dgram.Dgram(view=cfg) for cfg in bd_run.configs] 
+        self.expt, self.runnum, self.timestamp, self.dsparms = (bd_run.expt, bd_run.runnum, bd_run.timestamp, bd_run.dsparms)
         self.eb = eb
+        self._dets  = {}
+
+        # Setup EnvStore - this is also done differently from other Run types. 
+        # since RunSmallData doesn't user EventManager (updates EnvStore), it'll
+        # need to take care of updating transition events in the step and
+        # event generators.
+        self.esm = EnvStoreManager(configs, run=self)
+        self.esm.update_by_event(self._evt)
+
+        # Converts EventBuilder generator to an iterator for steps() call. This is
+        # done so that we can pass it to Step (not sure why). Note that for 
+        # events() call, we stil use the generator.
+        self._evt_iter = iter(self.eb.events())
         
         # SmdDataSource and BatchIterator share this list. SmdDataSource automatically
         # adds transitions to this list (skip yield and so hidden from smd_callback).
         # BatchIterator adds user-selected L1Accept to the list (default is add all).
         self.proxy_events = []
+    
+    def steps(self):
+        for evt in self._evt_iter:
+            if evt.service() != TransitionId.L1Accept: 
+                self.esm.update_by_event(evt)
+                self.proxy_events.append(evt._proxy_evt)
+                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.BeginStep:
+                    yield Step(evt, self._evt_iter, proxy_events=self.proxy_events, esm=self.esm)
 
     def events(self):
         for evt in self.eb.events():
             if evt.service() != TransitionId.L1Accept: 
+                self.esm.update_by_event(evt)
                 self.proxy_events.append(evt._proxy_evt)
+                if evt.service() == TransitionId.EndRun: return
                 continue
             yield evt

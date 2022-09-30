@@ -19,7 +19,7 @@ import numpy as np
 
 import json
 from psana import DataSource
-from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
+from psana.detector.UtilsEpix import DIR_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
 from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
@@ -444,7 +444,7 @@ def pedestals_calibration(*args, **kwa):
     evskip     = kwa.get('evskip', 0)
     events     = kwa.get('events', 1000)
     dirxtc     = kwa.get('dirxtc', None)
-    dirrepo    = kwa.get('dirrepo', CALIB_REPO_EPIX10KA)
+    dirrepo    = kwa.get('dirrepo', DIR_REPO_EPIX10KA)
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
@@ -917,7 +917,7 @@ def deploy_constants(*args, **kwa):
     runs       = kwa.get('runs', None)
     tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
     dirxtc     = kwa.get('dirxtc', None)
-    dirrepo    = kwa.get('dirrepo', CALIB_REPO_EPIX10KA)
+    dirrepo    = kwa.get('dirrepo', DIR_REPO_EPIX10KA)
     deploy     = kwa.get('deploy', False)
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_gain   = kwa.get('fmt_gain', '%.6f')

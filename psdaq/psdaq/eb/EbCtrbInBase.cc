@@ -466,14 +466,15 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
 
     if (UNLIKELY(_prms.verbose >= VL_EVENT))
     {
+      auto rTs    = result->time.value();
       auto env    = result->env;
       auto src    = result->xtc.src.value();
       auto ctl    = result->control();
       auto svc    = TransitionId::name(result->service());
       auto extent = sizeof(*result) + result->xtc.sizeofPayload();
       printf("CtrbIn  found  %15s  [%8u]    @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u, dlvr %c [%014lx], res %08x, %08x \n",
-             svc, idx, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid, result->data(), result->monBufNo());
+             "%16p, ctl %02x, ts %016lx, pid %014lx, env %08x, sz %6zd, TEB %2u, dlvr %c [%014lx], res %08x, %08x \n",
+             svc, idx, result, ctl, rTs, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid, result->data(), result->monBufNo());
     }
 
     if (rPid == iPid)

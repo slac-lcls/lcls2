@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 import os
 
 from psana.detector.Utils import save_textfile, load_textfile
-
-CALIB_REPO_EPIX10KA = '/cds/group/psdm/detector/gains2/epix10ka/panels'
+from psana.detector.dir_root import DIR_REPO_EPIX10KA  # DIR_ROOT, DIR_LOG_AT_START, HOSTNAME
+#DIR_REPO_EPIX10KA = DIR_ROOT + '/detector/gains2/epix10ka/panels'
 FNAME_PANEL_ID_ALIASES = '.aliases.txt'
 
 def alias_for_id(panel_id, fname=FNAME_PANEL_ID_ALIASES):

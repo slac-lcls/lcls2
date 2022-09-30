@@ -3,7 +3,7 @@
 import sys
 from time import time
 from psana.detector.Utils import info_parser_arguments
-from psana.detector.UtilsEpix10kaCalib import pedestals_calibration, CALIB_REPO_EPIX10KA
+from psana.detector.UtilsEpix10kaCalib import pedestals_calibration, DIR_REPO_EPIX10KA
 from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def argument_parser():
     d_nrecs1  = 200  # number of records to process at 1st stage
     d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
-    d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo'
+    d_dirrepo = DIR_REPO_EPIX10KA
     d_usesmd  = True
     d_logmode = 'INFO'
     d_errskip = True

@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import pyqtSignal, Qt
+from psana.detector.dir_root import DIR_DATA_TEST
 
 class QWFileNameV2(QWidget):
     """Widget for file name input
@@ -36,7 +37,7 @@ class QWFileNameV2(QWidget):
     path_is_changed = pyqtSignal('QString')
 
     def __init__(self, parent=None, label='File:',\
-                 path='/cds/group/psdm/detector/data2_test/npy/Select',\
+                 path=DIR_DATA_TEST + '/npy/Select',\
                  mode='r',\
                  fltr='*.txt *.data *.png *.gif *.jpg *.jpeg\n *',\
                  but_style_on_start = 'background-color: rgb(100, 255, 100); color: rgb(0, 0, 0);',\
@@ -150,7 +151,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = QWFileNameV2(None, label='Path:', path='/cds/group/psdm/detector/data2_test/npy/Select')
+    w = QWFileNameV2(None, label='Path:', path=DIR_DATA_TEST + '/npy/Select')
     w.setGeometry(100, 50, 350, 80)
     w.connect_path_is_changed(w.test_signal_reception)
     w.show()

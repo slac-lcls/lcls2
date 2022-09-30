@@ -58,6 +58,9 @@ class DetectorImpl(object):
                 seg_configs.update(getattr(dgram,self._det_name))
         return seg_configs
 
+    def config(self, evt):
+        return self._seg_configs()
+
     def _segments(self,evt):
         """
         Look in the event to find all the dgrams for our detector/drp_class

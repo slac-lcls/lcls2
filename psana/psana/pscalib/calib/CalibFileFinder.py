@@ -368,7 +368,7 @@ class CalibFileFinder :
         for path in files : 
            fname = os.path.basename(path)
 
-           if fname is 'HISTORY' : continue
+           if fname == 'HISTORY' : continue
            if os.path.splitext(fname)[1] != '.data' : continue
 
            cf = CalibFile(path)

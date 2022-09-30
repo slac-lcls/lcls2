@@ -43,8 +43,8 @@ def batch_events(smd_batch, run):
         for this_batch in batch_iter:
             return this_batch
 
-    events = Events(run.configs, run.dm, run.dsparms, 
-            filter_callback=run.dsparms.filter, get_smd=get_smd)
+    # FIXME: ds needs to be here
+    events = Events(ds, run, get_smd=get_smd)
     for evt in events:
         if evt.service() != TransitionId.L1Accept: continue
         yield evt

@@ -15,15 +15,18 @@ class EnvStoreManager(object):
     det = run.Detector("tmoopal")
     val = det.cfgscan.user.black_level(evt)
     """
-    stores = {}
     
-    def __init__(self, configs):
+    def __init__(self, configs, run=None):
         self.configs    = configs
         envstore_names  = ['epics', 'scan']
+        # This was defined outside init. This caused self.store in previously
+        # defined EnvStoreManager to point to a new one when the new EnvStoreManager
+        # is created.
+        self.stores     = {}
 
         for envstore_name in envstore_names:
             self.stores[envstore_name] = EnvStore(configs, envstore_name)
-    
+
     def _update_config(self, objori, objupd):
         for key, _ in objupd.__dict__.items():
             if hasattr(getattr(objupd, key), "__dict__"):

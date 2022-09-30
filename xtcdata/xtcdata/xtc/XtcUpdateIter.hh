@@ -93,14 +93,9 @@ public:
         if (maxBufSize == 0) {
             maxBufSize = MAXBUFSIZE;
         }
-        _bufsize = 0;
-        _buf = (char *) malloc(maxBufSize);
-        _tmpbufsize = 0;
-        _tmpbuf = (char *) malloc(maxBufSize);
-        _cfgbufsize = 0;
-        _cfgbuf = (char *) malloc(maxBufSize);
-        _savedsize = 0;
-        _removed_size = 0;              // counting size of removed det/alg in bytes
+        _bufSize = 0;
+        _payloadSize = 0;
+        _removedSize = 0;              // counting size of removed det/alg in bytes
         _cfgFlag = 0;                   // tells if this dgram is a Configure
         _cfgWriteFlag = 0;              // default is not to write to _cfgbuf when iterated.
         _nodeId = 0;
@@ -109,44 +104,18 @@ public:
     }
 
     ~XtcUpdateIter() {
-        free(_buf);
-        free(_tmpbuf);
-        free(_cfgbuf);
     }
 
     virtual int process(XtcData::Xtc* xtc, const void* bufEnd);
 
     void get_value(int i, Name& name, DescData& descdata);
 
-    char* get_buf(){
-        return _buf;
-    }
-
-    unsigned get_bufsize(){
-        return _bufsize;
-    }
-
     unsigned getSize(){
-        unsigned bufsize=0;
-        if (isConfig()) {
-            bufsize = _cfgbufsize;
-        }else{
-            bufsize = _tmpbufsize;
-        }
-        return sizeof(Dgram) + bufsize;
+        return _bufSize;
     }
 
-    unsigned getSavedSize(){
-        return _savedsize;
-    }
-
-    void clear_buf(){
-        _savedsize = _bufsize;
-        _bufsize = 0;
-    }
-
-    uint32_t get_removed_size(){
-        return _removed_size;
+    uint32_t getRemovedSize(){
+        return _removedSize;
     }
 
     unsigned getNodeId(){
@@ -175,6 +144,9 @@ public:
     void setCfgWriteFlag(int cfgWriteFlag) {
         _cfgWriteFlag = cfgWriteFlag;
     }
+    void setOutput(char* outbuf) {
+        _outbuf = outbuf;
+    }
 
     int isConfig(){
         return _cfgFlag;
@@ -195,44 +167,32 @@ public:
     void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
     int getElementSize(unsigned nodeId, unsigned namesId,
             DataDef& datadef, char* varname);
-    void copy(Dgram* parent_d, int isConfig);
-    void copyTo(Dgram* parent_d, char* out_buf, int isConfig);
-    void copy2buf(char* in_buf, unsigned in_size);
-    void copy2tmpbuf(char* in_buf, unsigned in_size);
-    void copy2cfgbuf(char* in_buf, unsigned in_size);
+    void copyParent(Dgram* parent_d);
+    void copyPayload(char* in_buf, unsigned in_size);
     void setFilter(char* detName, char* algName);
     void clearFilter();
-    void resetRemovedSize(){
-        _removed_size = 0;
-    }
 
 private:
     NamesLookup _namesLookup;
     unsigned _numWords;
     std::unique_ptr<CreateData> _newData;
 
-    // For L1Accept,
-    // _tmpbuf is used for storing ShapesData
+    // The _outbuf is used for storing Names and ShapesData
     // while they are being iterated (copy if no filter matched).
-    // buf* are the main buffer that has both parent dgram
-    // and ShapesData. It aslo has infinite lifetime
-    // until it gets cleared manually.
-    // For Configure,
-    // _cfgbuf is used for storing Names.
-    // Configure is first iterated to get NodeId and (next) NamesId
+    // Note that Names and ShapesData are copied to _outbuf after
+    // sizeof(Dgram) offset. This gap is reserved for the parent
+    // dgram that will get copied when save() is called and the
+    // new extent has been calculated (if data were removed).
+    // For Configure, it's first iterated to get NodeId and (next) NamesId
     // then iterated again after all Names have been added for writing
-    // to _cfgbuf. Caller has to set _cfgWriteFlag for writing.
-    char* _tmpbuf;
-    unsigned _tmpbufsize;
-    char* _buf;
-    unsigned _bufsize;
-    char* _cfgbuf;
-    unsigned _cfgbufsize;
-    unsigned _savedsize;
+    // to _outbuf. Caller has to set _cfgWriteFlag for writing.
+    unsigned _payloadSize;
+    unsigned _bufSize;
+    char* _outbuf;
 
     // Used for couting no. of ShapesData bytes removed per event.
     // This gets reset to 0 when the event is saved.
-    uint32_t _removed_size;
+    uint32_t _removedSize;
 
     // Used for storing detName_algName (key) and its per-event
     // filter flag. 0 (initial values) means keeps while 1 means

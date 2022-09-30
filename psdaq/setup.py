@@ -111,6 +111,7 @@ if 'PSDAQ' in BUILD_LIST :
             'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
             'wave8pvs = psdaq.cas.wave8pvs:main',
             'pyxpm = psdaq.pyxpm.pyxpm:main',
+            'pykcuxpm = psdaq.pyxpm.pykcuxpm:main',
             'amccpromload = psdaq.pyxpm.amccpromload:main',
             'pykcu = psdaq.pykcu.pykcu:main',
             'control_gui = psdaq.control_gui.app.control_gui:control_gui',

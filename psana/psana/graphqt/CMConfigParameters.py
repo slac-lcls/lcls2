@@ -30,7 +30,7 @@ from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
 from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
 import psana.pscalib.calib.CalibConstants as cc
 import psana.pyalgos.generic.PSUtils as psu # dir_calib, dir_exp
-
+from psana.detector.dir_root import DIR_ROOT
 
 class CMConfigParameters(PSConfigParameters):
     """A storage of configuration parameters for LCLS-2 Calibration Manager (CM)
@@ -104,7 +104,7 @@ class CMConfigParameters(PSConfigParameters):
 
         #self.log_file - DEPRICATED
         self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='cm-log.txt', type='str')
-        self.log_prefix = self.declareParameter(name='LOG_FILE_PREFIX', val_def='/cds/group/psdm/logs/calibman/lcls2', type='str')
+        self.log_prefix = self.declareParameter(name='LOG_FILE_PREFIX', val_def=DIR_ROOT + '/detector/logs/calibman/lcls2', type='str')
         self.save_log_at_exit = self.declareParameter(name='SAVE_LOG_AT_EXIT', val_def=True,  type='bool')
 
         self.main_win_pos_x  = self.declareParameter(name='MAIN_WIN_POS_X',  val_def=5,    type='int')

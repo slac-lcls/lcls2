@@ -80,11 +80,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         int process(Xtc* xtc, const void* bufEnd)
         void get_value(int i, Name& name, DescData& descdata)
         void iterate(Xtc* xtc, const void* bufEnd)
-        char* get_buf()
-        void clear_buf()
-        unsigned get_bufsize()
         unsigned getSize()
-        unsigned getSavedSize()
         unsigned getNodeId()
         unsigned getNextNamesId()
         void addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
@@ -94,6 +90,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void setString(char* data, DataDef& datadef, char* varname)
         void setValue(unsigned nodeId, unsigned namesId,
                 char* data, DataDef& datadef, char* varname)
+        void setOutput(char* outbuf)
         void addData(unsigned nodeId, unsigned namesId,
                 unsigned* shape, char* data, DataDef& datadef, char* varname)
         Dgram& createTransition(unsigned transId, unsigned counting_timestamps,
@@ -102,12 +99,9 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void updateTimeStamp(Dgram& d, uint64_t timestamp_val)
         int  getElementSize(unsigned nodeId, unsigned namesId,
                 DataDef& datadef, char* varname)
-        cnp.uint32_t get_removed_size()
-        void copy(Dgram* parent_d, int isConfig)
-        void copyTo(Dgram* parent_d, char* outbuf, int isConfig)
+        cnp.uint32_t getRemovedSize()
+        void copyParent(Dgram* parent_d)
         void setFilter(char* detName, char* algName)
-        void clearFilter()
-        void resetRemovedSize()
         void setCfgFlag(int cfgFlag)
         void setCfgWriteFlag(int cfgWriteFalg)
         int isConfig()

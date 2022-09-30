@@ -2,12 +2,12 @@
 """
 Created on 2018-02-26 by Mikhail Dubrovin
 """
-
 import os
 os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' # get rid of libGL error: unable to load driver: swrast_dri.so
 
 import sys
 from psana.graphqt.CMWMain import calibman, logging
+from psana.detector.dir_root import DIR_LOG_CALIBMAN
 
 LEVEL_NAMES = ', '.join(list(logging._levelToName.values()))
 
@@ -50,7 +50,7 @@ class Constants:
     d_experiment = 'exp12345'
     d_detector   = 'detector_1234'
     d_loglevel   = 'INFO'
-    d_logdir     = '/cds/group/psdm/logs/calibman/lcls2' # None # './cm-logger'
+    d_logdir     = DIR_LOG_CALIBMAN
     d_webint     = True
     d_savecfg    = False
 
