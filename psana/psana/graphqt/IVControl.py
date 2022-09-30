@@ -17,6 +17,7 @@ from psana.graphqt.IVControlSpec import IVControlSpec
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr, np
 import psana.graphqt.QWUtils as qu
+from psana.detector.dir_root import DIR_DATA_TEST
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class IVControl(CMWControlBase):
 
     def __init__(self, **kwa):
 
-        d = '/cds/group/psdm/detector/data2_test/misc/'
+        d = DIR_DATA_TEST + '/misc/'
         fname_geo = d + 'Select'
         kwa.setdefault('parent', None)
         kwa.setdefault('path', d + 'Select')

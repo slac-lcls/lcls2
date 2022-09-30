@@ -291,7 +291,7 @@ if 'DGRAM' in BUILD_LIST :
                     extra_link_args = extra_link_args_rpath,
     )
     CYTHON_EXTS.append(ext)
-    
+
     ext = Extension("quadanode",
                     sources=["psana/quadanode.pyx"],
                     include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
@@ -301,7 +301,7 @@ if 'DGRAM' in BUILD_LIST :
                     extra_link_args = extra_link_args_rpath,
     )
     CYTHON_EXTS.append(ext)
-    
+
     ext = Extension("psana.dgramlite",
                     sources=["psana/dgramlite.pyx"],
                     libraries = ['xtc'],
@@ -312,7 +312,7 @@ if 'DGRAM' in BUILD_LIST :
                     extra_link_args = extra_link_args_rpath,
     )
     CYTHON_EXTS.append(ext)
-    
+
     ext = Extension("psana.mypybuffer",
                     sources=["psana/mypybuffer.pyx"],
                     libraries = ['xtc'],

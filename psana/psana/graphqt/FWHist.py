@@ -28,6 +28,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2020-11-02 by Mikhail Dubrovin
 """
 
+import sip
 from PyQt5.QtGui import QPen, QBrush, QColor, QPainterPath
 from PyQt5.QtCore import Qt, QPointF
 
@@ -58,7 +59,8 @@ class FWHist():
 
 
     def remove(self):
-        for item in self.lst_of_items:
+        if not sip.isdeleted(self.scene):
+          for item in self.lst_of_items:
             self.scene.removeItem(item)
         self.lst_of_items=[]
         #self.scene.removeItem(self.path_item)

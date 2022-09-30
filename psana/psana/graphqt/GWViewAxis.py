@@ -28,6 +28,7 @@ from psana.graphqt.GWViewExt import * # FWView, QtGui, QtCore, Qt
 from psana.graphqt.FWRuler import FWRuler
 from PyQt5.QtGui import QColor, QFont
 
+logger = logging.getLogger(__name__)
 
 class GWViewAxis(GWViewExt):
 
@@ -56,7 +57,7 @@ class GWViewAxis(GWViewExt):
 
 
     def set_axis_limits(self, vmin, vmax):
-        print('GWViewAxis.set_axis_limits vmin: %.1f vmax: %.1f' % (vmin, vmax))
+        logger.debug('GWViewAxis.set_axis_limits vmin: %.1f vmax: %.1f' % (vmin, vmax))
         r = self.scene_rect()
         if self.side in ('U','D'):
             r.setX(vmin)

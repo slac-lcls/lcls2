@@ -159,6 +159,7 @@ cdef class PyXtcUpdateIter():
     cdef XtcUpdateIter* cptr
     _numWords = 6               # no. of print-out elements for an array
     cdef const void* bufEnd
+    cdef Py_buffer oPybuf
 
     def __cinit__(self, uint64_t maxBufSize):
         self.cptr = new XtcUpdateIter(self._numWords, maxBufSize)
@@ -180,36 +181,21 @@ cdef class PyXtcUpdateIter():
     def iterate(self, PyXtc pyxtc):
         self.cptr.iterate(pyxtc.cptr, pyxtc.bufEnd)
 
-    def get_buf(self):
-        cdef char[:] buf
-        cdef uint64_t bufsize=0
-
-        bufsize = self.cptr.get_bufsize()
-        if bufsize > 0:
-            buf = <char [:bufsize]>self.cptr.get_buf()
-            return buf
-        else:
-            return memoryview(bytearray())
-
-    def clear_buf(self):
-        self.cptr.clear_buf()
-
-    def size(self):
+    def get_size(self):
         return self.cptr.getSize()
 
-    def savedsize(self):
-        return self.cptr.getSavedSize()
+    def copy_parent(self, PyDgram pydg):
+        self.cptr.copyParent(pydg.cptr)
 
-    def copy(self, PyDgram pydg, is_config=False):
-        self.cptr.copy(pydg.cptr, is_config)
-
-    def copy_to(self, PyDgram pydg, outbuf, uint64_t offset, is_config=False):
+    def set_outbuf(self, outbuf):
         cdef char* o_ptr
-        cdef Py_buffer o_pybuf
-        PyObject_GetBuffer(outbuf, &o_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
-        o_ptr = <char *>o_pybuf.buf + offset
-        self.cptr.copyTo(pydg.cptr, o_ptr, is_config)
-        PyBuffer_Release(&o_pybuf)
+        PyObject_GetBuffer(outbuf, &(self.oPybuf), PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+        o_ptr = <char *>self.oPybuf.buf
+        self.cptr.setOutput(o_ptr)
+    
+    def free_outbuf(self):
+        # TODO: Find way toProtect when PyObject_GetBuffer is not called.
+        PyBuffer_Release(&(self.oPybuf))
 
     def updatetimestamp(self, PyDgram pydg, timestamp_val):
         self.cptr.updateTimeStamp(pydg.cptr[0], timestamp_val)
@@ -287,10 +273,6 @@ cdef class PyXtcUpdateIter():
     def set_filter(self, det_name, alg_name):
         self.cptr.setFilter(det_name.encode(), alg_name.encode())
 
-    def clear_filter(self):
-        self.cptr.clearFilter()
-        self.cptr.resetRemovedSize()
-
     def createTransition(self, transId, timestamp_val, bufsize):
         counting_timestamps = 1
         if timestamp_val == -1:
@@ -306,7 +288,7 @@ cdef class PyXtcUpdateIter():
         return pydg
 
     def get_removed_size(self):
-        return self.cptr.get_removed_size()
+        return self.cptr.getRemovedSize()
 
     def set_cfgwrite(self, int flag):
         self.cptr.setCfgWriteFlag(flag)
@@ -460,10 +442,10 @@ class DgramEdit:
     def removedata(self, det_name, alg_name):
         self.uiter.set_filter(det_name, alg_name)
 
-    def save(self, out, offset=0):
+    def save(self, out):
         """
         For L1Accept,
-        Copies ShapesData to _tmpbuf and update
+        Copies ShapesData to _outbuf and update
         parent dgram extent to new size (if some ShapesData
         were removed.
 
@@ -472,12 +454,9 @@ class DgramEdit:
         does two things:
         1. Iterating Names (writing is optional because we also
         just want to count NodeId and NamesId here). will also
-        save to _cfgbuf
+        save to _outbuf
         2. Iterating ShapesData (writing is always) will save to
-        _cfgbuf instead of _tmpbuf (for non-configure dgrams).
-
-        The parent dgram and _tmpbuf/_cfgbuf are then
-        copied to _buf as one new event.
+        _outbuf (for non-configure dgrams).
         """
         cdef PyXtc pyxtc = self.pydg.pyxtc
         is_config = False
@@ -485,6 +464,9 @@ class DgramEdit:
         if self.pydg.service() == PyTransitionId.Configure:
             is_config = True
             self.uiter.set_cfgwrite(True)
+        
+        # Set main output buffer to point to external buffer given by users
+        self.uiter.set_outbuf(out)
 
         # Copies Names for Configure or ShapesData for L1Accept
         # (also applies remove for ShapesData).
@@ -495,36 +477,16 @@ class DgramEdit:
         if removed_size > 0:
             self.pydg.dec_extent(removed_size)
 
-        # Copy updated parent dgram and _tmpbuf/_cfgbuf to _buf then save.
-        # We support two types of output:
-        # 1. Binary file (IOBase) - copy _tmpbuf/_cfgbuf with parent dgram
-        # to _buf and write data in _buf out the binary file (two copies).
-        # 2. Object with buffer interface - copy _tmpbuf/_cfgbuf with
-        # parent dgram directly to the given object at the given offset.
-        if isinstance(out, io.IOBase):
-            self.uiter.copy(self.pydg, is_config=is_config)
-            out.write(self.uiter.get_buf())
-        else:
-            self.uiter.copy_to(self.pydg, out, offset, is_config=is_config)
+        # Copy updated parent dgram (with new extent) to the begining of outbuf.
+        self.uiter.copy_parent(self.pydg)
 
-        self.uiter.clear_buf()
-
-        # Clear filter flags and reset removed size for the next event
-        self.uiter.clear_filter()
+        # Release PyBuffer object
+        self.uiter.free_outbuf()
 
     def updatetimestamp(self, timestamp_val):
         self.uiter.updatetimestamp(self.pydg, timestamp_val)
 
     @property
     def size(self):
-        """Returns current size of the dgram.
-
-        This is calculated from size of the parent dgram plus the size
-        of _tmpbuf or _cfgbuf depending on the type of the dgram.
-        """
-        return self.uiter.size()
-
-    @property
-    def savedsize(self):
-        return self.uiter.savedsize()
+        return self.uiter.get_size()
 

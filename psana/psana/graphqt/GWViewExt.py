@@ -14,7 +14,7 @@ Usage ::
     from psana.graphqt.GWViewExt import *
 
 See:
-    - graphqt/examples/ex_FWViewExt.py
+    - graphqt/examples/ex_GWViewExt.py
     - :class:`GWView`
     - :class:`GWViewExt`
     - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.

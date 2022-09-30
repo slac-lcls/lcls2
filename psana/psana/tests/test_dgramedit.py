@@ -39,13 +39,9 @@ def check_output(fname):
 
 @pytest.mark.skipif(sys.platform == 'darwin', reason="check_output fails on macos")
 def test_run_dgramedit(output_filename):
-    # Test with output writing to a file
     run_dgramedit(output_filename)
-
-    # Test with output writing to a bytearray then dump that out to a file
-    run_dgramedit(output_filename, as_file=False)
     
-def run_dgramedit(output_filename, as_file=True):
+def run_dgramedit(output_filename):
     ifname = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'dgramedit-test.xtc2')
     fd = os.open(ifname, os.O_RDONLY)
     pyiter = PyXtcFileIterator(fd, 0x1000000)
@@ -75,14 +71,12 @@ def run_dgramedit(output_filename, as_file=True):
     detdef2 = DetectorDef("xppcspad", "cspad", "detnum1234")
     datadef2 = {"arrayRaw": (np.float32, 2), }
     
-    # We test both output as file and as bytearray modes
-    if as_file:
-        xtc2buf = open(output_filename, "wb")
-    else:
-        xtc2buf = bytearray(64000000)
+    # Creates external output buffer for DgramEdit. Note that 
+    # a new dgram is always saved from the beginning of this buffer.
+    xtc2buf = bytearray(64000000)
 
-    # This offset is passed in at save() but only used in bytearray output mode
-    offset = 0
+    # Writing out each dgram to the output file
+    ofile = open(output_filename, "wb")
 
     names0 = None
     for i in range(6):
@@ -93,9 +87,8 @@ def run_dgramedit(output_filename, as_file=True):
             config = DgramEdit(pydg)
             det = config.Detector(detdef, algdef, datadef)
             det2 = config.Detector(detdef2, algdef2, datadef2)
-            config.save(xtc2buf, offset=offset)
-            de_size = config.savedsize
-            offset += de_size
+            config.save(xtc2buf)
+            ofile.write(xtc2buf[:config.size])
 
         # Add new Data to L1
         elif i >= 4:
@@ -123,23 +116,18 @@ def run_dgramedit(output_filename, as_file=True):
             if i == 4:
                 dgram.removedata("hsd","raw") # per event removal 
 
-            dgram.save(xtc2buf, offset=offset)
-            de_size = dgram.savedsize
-            offset += de_size
+            dgram.save(xtc2buf)
+            ofile.write(xtc2buf[:dgram.size])
         
         # Other transitions
         else: 
             dgram = DgramEdit(pydg, config=config)
-            dgram.save(xtc2buf, offset=offset)
-            de_size = dgram.savedsize
-            offset += de_size
+            dgram.save(xtc2buf)
+            ofile.write(xtc2buf[:dgram.size])
 
-    if not as_file:
-        with open(output_filename, "wb") as ofile:
-            ofile.write(xtc2buf[:offset])
-    else:
-        xtc2buf.close()
     
+    ofile.close()
+
     # Open the generated xtc2 file and test the value inside
     check_output(output_filename)
 
