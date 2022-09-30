@@ -274,6 +274,7 @@ class Smd0(object):
         # Indentify viewing windows. SmdReaderManager has starting index and block size
         # that it needs to share later when data are packaged for sending to EventBuilders.
         for i_chunk in self.smdr_man.chunks():
+            st = time.monotonic()
             self._request_rank(rankreq)
             
             # Check missing steps for the current client
@@ -298,7 +299,8 @@ class Smd0(object):
             self.c_sent.labels('evts', rankreq[0]).inc(self.smdr_man.got_events)
             self.c_sent.labels('batches', rankreq[0]).inc()
             self.c_sent.labels('MB', rankreq[0]).inc(memoryview(repack_smds[rankreq[0]]).nbytes/1e6)
-            logger.debug(f'node: smd0 sent {self.smdr_man.got_events} events to {rankreq[0]}')
+            en = time.monotonic()
+            logger.debug(f'node: smd0 sent {self.smdr_man.got_events} events to {rankreq[0]} rate: {(self.smdr_man.got_events/(en-st))*1e-3} kHz')
             
             # Check for terminating signal
             t_req_test = t_req.Test()
