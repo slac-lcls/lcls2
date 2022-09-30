@@ -3,16 +3,22 @@ import requests
 
 class Bos(object):
 
-    def __init__(self, urlBase, user="admin", password="pxc***"):
+    def __init__(self, urlBase, user="admin", password="pxc***", verbose=False):
         self._session = requests.Session()
         self._urlBase = urlBase
         self._auth    = (user, password)
+        self._verbose = verbose
 
-    def _handle_response(self, response):
+    def _handle_response(self, response, result=False):
+        if not result:
+            result = self._verbose
         if response.status_code == 200:
-            return None
+            return response.json() if result else None
         print(f"BOS returned error {response.status_code}")
-        if response.status_code == 404:
+        if response.status_code == 401:
+            print("Unauthorized")
+            return
+        elif response.status_code == 404:
             print("Not found")
             return
         return response.json()
@@ -38,14 +44,14 @@ class Bos(object):
         url = self._urlBase + 'crossconnects/'
         params = [('id', 'list')]
         response = self._session.get(url, auth=self._auth, params=params)
-        return self._handle_response(response)
+        return self._handle_response(response, True)
 
     def detail(self, conn):
         url = self._urlBase + 'crossconnects/'
         params = [('id',   'detail'),
                   ('conn', conn)]
         response = self._session.get(url, auth=self._auth, params=params)
-        return self._handle_response(response)
+        return self._handle_response(response, True)
 
     def activate(self, conn):
         url = self._urlBase + 'crossconnects/'
@@ -65,14 +71,14 @@ class Bos(object):
         url = self._urlBase + 'ports/'
         params = [('id', 'summary')]
         response = self._session.get(url, auth=self._auth, params=params)
-        return self._handle_response(response)
+        return self._handle_response(response, True)
 
     def portDetail(self, port):
         url = self._urlBase + 'ports/'
         params = [('id',   'detail'),
                   ('port', port)]
         response = self._session.get(url, auth=self._auth, params=params)
-        return self._handle_response(response)
+        return self._handle_response(response, True)
 
     def alarms(self, type_, class_):
         url = self._urlBase + 'alarms/'
@@ -82,7 +88,7 @@ class Bos(object):
         if class_ is not None:
             params += [('class', class_),]
         response = self._session.get(url, auth=self._auth, params=params)
-        return self._handle_response(response)
+        return self._handle_response(response, True)
 
     def backup(self):
         url = self._urlBase + 'node/'
@@ -141,6 +147,9 @@ def main():
     parser = argparse.ArgumentParser(description='Big Optical Switch CLI')
     parser.add_argument('--url', default='http://osw-daq-calients320.pcdsn/rest/',
                         help='Big Optical Switch connection')
+    parser.add_argument('--user', help='user for BOS authentication', type=str, default='admin')
+    parser.add_argument('--password', help='password for BOS authentication', type=str, default='pxc***')
+    parser.add_argument('--verbose', help='Be verbose', action='store_true')
     subparsers = parser.add_subparsers()
 
     # create the parser for the "add" command
@@ -198,7 +207,7 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    bos = Bos(args.url)
+    bos = Bos(args.url, user=args.user, password=args.password, verbose=args.verbose)
     response = subcommand(bos, args)
     if response is not None:
         pprint.pprint(response)
