@@ -3,7 +3,8 @@ if not platform: platform = '0'
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = f'{ld_lib_path}'
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
-hsd_env = f'EPICS_PVA_ADDR_LIST=172.21.156.77 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
+#hsd_env = f'EPICS_PVA_ADDR_LIST=172.21.156.77 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
+hsd_env = f'{ld_lib_path}'
 teb_env = f' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
 
 collect_host = 'drp-srcf-cmp004'  #'drp-neh-ctl001'
@@ -107,7 +108,7 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp007', id:'tstpiranha4_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D piranha4'},
 
  # cmp004 QSFP 1 cage is not working
-# {host: 'drp-srcf-cmp004', id:'tst_fim0_0',  flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D wave8 -k epics_prefix=TST:FIM:W8:01'},
+ {host: 'drp-srcf-cmp004', id:'tst_fim0_0',  flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D wave8 -k epics_prefix=TST:FIM:W8:01'},
 
 # {host: 'drp-srcf-cmp002', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp002', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=155'},
