@@ -373,6 +373,25 @@ import sys
 import argparse
 import pprint
 
+# Determine whether a device name includes "_<segment>"
+def hasSegment(xx):
+    return (xx.rfind('_') > 0) and (xx.rfind('_') > xx.rfind('/'))
+
+# Parse a device name into 3 elements.
+# Input format: <hutch>/<alias>/<device>
+# Returns: hutch, alias, device, segment
+# On error raises NameError.
+def _parse_device3(name):
+    error_txt = 'Name \'%s\' does not match <hutch>/<alias>/<device>' % name
+    try:
+        split1 = name.split('/')
+    except Exception:
+        raise NameError(error_txt)
+    if len(split1) != 3:
+        raise NameError(error_txt)
+
+    return split1
+
 # Parse a device name into 4 elements.
 # Input format: <hutch>/<alias>/<device>_<segment>
 # Returns: hutch, alias, device, segment
@@ -395,18 +414,29 @@ def _parse_device4(name):
     return (split2[0], split2[1], split2[2], segment)
 
 def _cat(args):
-    try:
-        hutch, alias, dev, seg = _parse_device4(args.src)
-    except NameError as ex:
-        print('%s' % ex) 
-        sys.exit(1)
+    if hasSegment(args.src):
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            print('%s' % ex) 
+            sys.exit(1)
+    else:
+        seg = None
+        try:
+            hutch, alias, dev = _parse_device3(args.src)
+        except NameError as ex:
+            print('%s' % ex) 
+            sys.exit(1)
 
     # authentication is not required, adjust url accordingly
     url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
 
     # get configuration and pretty print it
     mycdb = configdb(url, hutch, root=args.root)
-    xx = mycdb.get_configuration(alias, '%s_%d' % (dev, seg), hutch)
+    if seg is not None:
+        xx = mycdb.get_configuration(alias, '%s_%d' % (dev, seg), hutch)
+    else:
+        xx = mycdb.get_configuration(alias, f'{dev}', hutch)
     if len(xx) > 0:
         pprint.pprint(xx)
 
@@ -481,7 +511,7 @@ def main():
 
     # create the parser for the "cat" command
     parser_cat = subparsers.add_parser('cat', help='print a configuration')
-    parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
+    parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/<alias>/<xpm>')
     parser_cat.set_defaults(func=_cat)
 
     # create the parser for the "cp" command
