@@ -70,7 +70,7 @@ class configdb(object):
         return resp.json()
 
     # Retrieve the configuration of the device with the specified alias.
-    # This returns a dictionary where the keys are the collection names and the 
+    # This returns a dictionary where the keys are the collection names and the
     # values are typed JSON objects representing the device configuration(s).
     # On error return an empty dictionary.
     def get_configuration(self, alias, device, hutch=None):
@@ -92,7 +92,7 @@ class configdb(object):
         else:
             return xx['value']
 
-    # Get the history of the device configuration for the variables 
+    # Get the history of the device configuration for the variables
     # in plist.  The variables are dot-separated names with the first
     # component being the the device configuration name.
     def get_history(self, alias, device, plist, hutch=None):
@@ -355,7 +355,7 @@ class configdb(object):
                 return 0
 
             # set detName
-            read_val['detName:RO'] = newdevice 
+            read_val['detName:RO'] = newdevice
 
             # write configuration to new location
             write_val = self.modify_device(newalias, read_val, hutch=self.hutch)
@@ -373,9 +373,9 @@ import sys
 import argparse
 import pprint
 
-# Determine whether a device name includes "_<segment>"
-def hasSegment(xx):
-    return (xx.rfind('_') > 0) and (xx.rfind('_') > xx.rfind('/'))
+# Determine whether a device is an XPM
+def isXpm(xx):
+    return xx.find('/') != xx.rfind('/') and xx.split('/')[1] == 'XPM'
 
 # Parse a device name into 3 elements.
 # Input format: <hutch>/<alias>/<device>
@@ -414,38 +414,41 @@ def _parse_device4(name):
     return (split2[0], split2[1], split2[2], segment)
 
 def _cat(args):
-    if hasSegment(args.src):
-        try:
-            hutch, alias, dev, seg = _parse_device4(args.src)
-        except NameError as ex:
-            print('%s' % ex) 
-            sys.exit(1)
-    else:
+    if isXpm(args.src):
         seg = None
         try:
             hutch, alias, dev = _parse_device3(args.src)
         except NameError as ex:
-            print('%s' % ex) 
-            sys.exit(1)
+            sys.exit(ex)
+    else:
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            sys.exit(ex)
 
     # authentication is not required, adjust url accordingly
     url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
 
     # get configuration and pretty print it
     mycdb = configdb(url, hutch, root=args.root)
-    if seg is not None:
-        xx = mycdb.get_configuration(alias, '%s_%d' % (dev, seg), hutch)
-    else:
+    if seg is None:
         xx = mycdb.get_configuration(alias, f'{dev}', hutch)
+    else:
+        xx = mycdb.get_configuration(alias, f'{dev}_{seg}', hutch)
     if len(xx) > 0:
         pprint.pprint(xx)
 
 def _cp(args):
     try:
-        oldhutch, oldalias, olddev, oldseg = _parse_device4(args.src)
-        newhutch, newalias, newdev, newseg = _parse_device4(args.dst)
+        if isXpm(args.src) and isXpm(args.dst):
+            oldseg = newseg = None
+            oldhutch, oldalias, olddev = _parse_device3(args.src)
+            newhutch, newalias, newdev = _parse_device3(args.dst)
+        else:
+            oldhutch, oldalias, olddev, oldseg = _parse_device4(args.src)
+            newhutch, newalias, newdev, newseg = _parse_device4(args.dst)
     except NameError as ex:
-        print('%s' % ex) 
+        print('%s' % ex)
         sys.exit(1)
 
     # transfer configuration
@@ -453,8 +456,12 @@ def _cp(args):
                      user=args.user, password=args.password)
     if args.create:
         mycdb.add_alias(newalias)
-    retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
-                                   newalias, '%s_%d' % (newdev, newseg))
+
+    if isXpm(args.src) and isXpm(args.dst):
+        retval = mycdb.transfer_config(oldhutch, oldalias, olddev, newalias, newdev)
+    else:
+        retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
+                                       newalias, '%s_%d' % (newdev, newseg))
     if retval == 0:
         print('failed to transfer configuration')
         sys.exit(1)
@@ -511,13 +518,13 @@ def main():
 
     # create the parser for the "cat" command
     parser_cat = subparsers.add_parser('cat', help='print a configuration')
-    parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/<alias>/<xpm>')
+    parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cat.set_defaults(func=_cat)
 
     # create the parser for the "cp" command
     parser_cp = subparsers.add_parser('cp', help='copy a configuration')
-    parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
-    parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment>')
+    parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cp.add_argument('--user', default='tstopr', help='default: tstopr')
     parser_cp.add_argument('--password', default='pcds', help='default: pcds')
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
@@ -535,7 +542,10 @@ def main():
     except Exception:
         parser.print_help(sys.stderr)
         sys.exit(1)
-    subcommand(args)
+    try:
+        subcommand(args)
+    except Exception as ex:
+        sys.exit(ex)
 
 if __name__ == '__main__':
     main()
