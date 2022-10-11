@@ -1244,8 +1244,7 @@ class CollectionManager():
         if not ok:
             return False
 
-        if self.slow_update_rate:
-            self.slowupdateArmed = True
+        self.slowupdateArmed = self.slow_update_rate != 0
 
         self.lastTransition = 'beginrun'
         return True
