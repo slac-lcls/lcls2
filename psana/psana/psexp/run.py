@@ -262,9 +262,7 @@ class RunDrp(Run):
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
         super()._setup_envstore()
-
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
-                filter_callback=ds.dsparms.filter)
+        self._evt_iter = Events(self._ds, self)
         self._edtbl_config = False
 
     def events(self):
