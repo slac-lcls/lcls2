@@ -1,8 +1,12 @@
 source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
 conda deactivate
 
-conda activate ps-4.5.16
-RELDIR="/cds/home/opr/rixopr/git/lcls2_080522"
+conda activate ps-4.5.17
+RELDIR="/cds/home/opr/rixopr/git/lcls2_100422"
+
+# Before the move to SRCF
+#conda activate ps-4.5.16
+#RELDIR="/cds/home/opr/rixopr/git/lcls2_080522"
 
 # in use until August 5, 2022
 #conda activate ps-4.5.16

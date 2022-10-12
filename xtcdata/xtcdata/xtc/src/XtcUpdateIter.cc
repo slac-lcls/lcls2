@@ -5,7 +5,7 @@
 using namespace XtcData;
 using namespace std;
 
-#define VERBOSE 1
+#define VERBOSE 0
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
