@@ -43,7 +43,7 @@ class BatchIterator(object):
         if not self.eb: 
             raise StopIteration
         
-        # Collects list of proxy events to be converted to batches.
+        # Collects list of proxy events to be converted to bigdata batches (batch_size).
         # Note that we are persistently calling smd_callback until there's nothing
         # left in all views used by EventBuilder. From this while/for loops, we 
         # either gets transitions from SmdDataSource and/or L1 from the callback.
@@ -54,7 +54,11 @@ class BatchIterator(object):
         if not self.run_smd.proxy_events:
             raise StopIteration
 
-        batch_dict, step_dict = self.eb.gen_batches(self.run_smd.proxy_events)
+        # Generate a bytearray representation of all the proxy events.
+        # Note that setting run_serial=True allow EventBuilder to combine
+        # L1Accept and transitions into one batch (key=0). Here, step_dict
+        # is always an empty bytearray.
+        batch_dict, step_dict = self.eb.gen_bytearray_batch(self.run_smd.proxy_events, run_serial=True)
         self.run_smd.proxy_events = []
         return batch_dict, step_dict
 

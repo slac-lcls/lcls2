@@ -15,6 +15,7 @@ from psana.event import Event
 from psana.mypybuffer import MyPyBuffer
 from psana.psexp import TransitionId
 import time
+import numpy as np
 
 MAX_BATCH_SIZE = 10000
 
@@ -136,6 +137,7 @@ cdef class EventBuilder:
         , which advances the offset of MyPyBuffers' view.
         """
         run = <object> self.run
+        # Builds proxy events according to batch_size
         proxy_events = self.build(as_proxy_events=True)
         for proxy_evt in proxy_events:
             py_evt = Event._from_bytes(self.configs, proxy_evt.as_bytearray(), run=run) 
@@ -152,7 +154,7 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def gen_batches(self, proxy_events):
+    def gen_bytearray_batch(self, proxy_events, run_serial=False):
         """ Creates and returs batch_dict and step_batch_dict.
         The key of this batch is the destination (rank no.), which is default to 0
         (any rank). Each contain byte representation of event batch understood by
@@ -162,42 +164,59 @@ cdef class EventBuilder:
         | ---------- evt 0 --------| |------------evt 1 --------| batch_footer |
         batch_footer:  [sizeof(evt0) | sizeof(evt1) | 2] (for 2 evts in 1 batch)
         """
-        # keeps list of batches (w/o destination callback, only one batch is returned at index 0)
-        batch_dict  = {} 
-        step_dict   = {}
-
         # Setup event footer and batch footer - see above comments for the content of batch_dict
         cdef array.array int_array_template = array.array('I', [])
         cdef array.array batch_footer       = array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
         cdef array.array step_batch_footer  = array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
+    
+        # Bytearray batch and step batch generation depends on the
+        # run types and whether the user has the destination set.
+        #
+        # RunSerial:
+        # Returns batch_dict of all events converted to a bytearray
+        # with key 0. No step batch. Destination is irrelevant.
+        #
+        # RunParallel:
+        # By default, bytearray (all events) is generated with key 0
+        # for both batch (L1 + transitions) and step batch (transitions only).
+        # If destination is set, these events are divided
+        # into differnt bytearrays with key = destination number. Step batch
+        # for each destination is the same.
 
-        for proxy_evt in proxy_events:
-            # Check if batches have been created for this destination
-            if batch_dict:
-                if proxy_evt.destination not in batch_dict:
-                    batch_dict[proxy_evt.destination] = (bytearray(), []) # (events as bytearray, event sizes)
-            else:
-                batch_dict[proxy_evt.destination] = (bytearray(), [])
-            batch, evt_sizes = batch_dict[proxy_evt.destination]
+        # Get list of all the destinations. If not all 0, then remove 0 key
+        # because the 0 key represents the transitions (destination can not be
+        # set by users).
+        destinations = np.unique([proxy_evt.destination for proxy_evt in proxy_events])
+        flag_dest = any(destinations)
+        if flag_dest:
+            destinations = destinations[destinations != 0]
 
-            if step_dict:
-                if proxy_evt.destination not in step_dict:
-                    step_dict[proxy_evt.destination] = (bytearray(), [])
-            else:
-                step_dict[proxy_evt.destination] = (bytearray(), [])
-            step_batch, step_sizes = step_dict[proxy_evt.destination] 
-
-            # Extend this batch bytearray to include this event and collect
-            # the size of this event for batch footer.
-            evt_bytearray = proxy_evt.as_bytearray()
-            batch.extend(evt_bytearray)
-            evt_sizes.append(memoryview(evt_bytearray).nbytes)
-
-            # Add step
-            if proxy_evt.service != TransitionId.L1Accept:
-                step_batch.extend(evt_bytearray)
-                step_sizes.append(memoryview(evt_bytearray).nbytes)
+        if run_serial:
+            batch_dict = {0: (bytearray(), [])}
+            step_dict = {}
+        else:
+            batch_dict  = {dest: (bytearray(), []) for dest in destinations} 
+            step_dict  = {dest: (bytearray(), []) for dest in destinations} 
         
+        for proxy_evt in proxy_events:
+            evt_bytearray = proxy_evt.as_bytearray()
+            if run_serial:
+                batch, evt_sizes = batch_dict[0]
+                batch.extend(evt_bytearray)
+                evt_sizes.append(memoryview(evt_bytearray).nbytes)
+            else:
+                if proxy_evt.service != TransitionId.L1Accept:
+                    for dest, (step_batch, step_sizes) in step_dict.items():
+                        step_batch.extend(evt_bytearray)
+                        step_sizes.append(memoryview(evt_bytearray).nbytes)
+                    for dest, (batch, evt_sizes) in batch_dict.items():
+                        batch.extend(evt_bytearray)
+                        evt_sizes.append(memoryview(evt_bytearray).nbytes)
+                else:
+                    batch, evt_sizes = batch_dict[proxy_evt.destination]
+                    batch.extend(evt_bytearray)
+                    evt_sizes.append(memoryview(evt_bytearray).nbytes)
+
         # Add packet_footer for all events in each batch
         cdef int evt_idx = 0
         for _, val in batch_dict.items():
@@ -407,7 +426,7 @@ cdef class EventBuilder:
             return proxy_events
         else:
             # Generates bytearray representation in batches (grouped by destination rank id)
-            batch_dict, step_dict = self.gen_batches(proxy_events)
+            batch_dict, step_dict = self.gen_bytearray_batch(proxy_events)
             return batch_dict, step_dict
 
     @property
