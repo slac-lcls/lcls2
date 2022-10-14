@@ -174,3 +174,13 @@ class Event():
         usec = (self.timestamp&0xffffffff)/1000
         delta_t = datetime.timedelta(seconds=sec,microseconds=usec)
         return epoch + delta_t
+
+    def set_destination(self, dest):
+        """ Sets destination (bigdata core rank no.) where this event
+        should be sent to. 
+
+        Destination only works in parallel mode with only one EvenBuilder core
+        (PS_EB_NODES=1). The valid range of destination is from 1 to the number
+        of available bigdata cores.
+        """
+        self._proxy_evt.set_destination(dest)
