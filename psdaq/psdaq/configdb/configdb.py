@@ -98,11 +98,11 @@ class configdb(object):
     def get_history(self, alias, device, plist, hutch=None):
         if hutch is None:
             hutch = self.hutch
-        value = JSONEncoder().encode(plist)
+        #value = JSONEncoder().encode(plist)
         try:
             xx = self._get_response('get_history/' + hutch + '/' +
                                     alias + '/' + device + '/',
-                                    json=value)
+                                    json=plist)
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             xx = []
