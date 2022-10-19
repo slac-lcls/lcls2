@@ -1,6 +1,9 @@
 source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
 conda deactivate
 
+#conda activate ps-4.5.19
+#RELDIR="/cds/home/opr/tmoopr/git/lcls2_101222"
+
 conda activate ps-4.5.17
 RELDIR="/cds/home/opr/tmoopr/git/lcls2_100422"
 

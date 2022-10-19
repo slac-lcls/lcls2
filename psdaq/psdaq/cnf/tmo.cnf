@@ -59,10 +59,10 @@ ea_cmd1 = task_set+' epicsArch '+std_opts1+' '+ea_cfg
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-srcf-cmp003"]
+ami_worker_nodes = ["drp-srcf-cmp028"]
 ami_num_workers = len(ami_worker_nodes)
-ami_manager_node = "drp-srcf-cmp003"
-ami_monitor_node = "drp-srcf-cmp024"
+ami_manager_node = "drp-srcf-cmp028"
+ami_monitor_node = "drp-srcf-cmp028"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -91,10 +91,9 @@ procmgr_config = [
  {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  { host: 'drp-srcf-cmp013', id:'teb0',        flags:'spu', env:teb_env,   cmd:teb_cmd},
- { host: 'drp-srcf-cmp013', id:'teb1',        flags:'spu', env:teb_env,   cmd:teb_cmd},
+# { host: 'drp-srcf-cmp013', id:'teb1',        flags:'spu', env:teb_env,   cmd:teb_cmd},
 
- { host: 'drp-srcf-mon001', id:'meb1',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb1 -d -n 64 -q {ami_workers_per_node}'},
-# { host: 'drp-srcf-mon001', id:'meb1',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb1 -d -n 64 -q 8'},
+ { host: 'drp-srcf-cmp030', id:'meb1',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb1 -d -n 64 -q {ami_workers_per_node}'},
 
  { host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
@@ -112,14 +111,11 @@ procmgr_config = [
 
  { host: 'drp-srcf-cmp012', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
-# CPO disconnected on 10/3/22:
-# { host: 'drp-srcf-cmp012', id:'tmo_opal2_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
-
  { host: 'drp-srcf-cmp011', id:'tmo_fzpopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
- { host: 'drp-srcf-cmp006', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=TMO:TIMETOOL:TTALL'},
+ { host: 'drp-srcf-cmp026', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=TMO:TIMETOOL:TTALL'},
 
-# { host: 'drp-srcf-cmp006', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
+# { host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
 
  { host: 'drp-srcf-cmp007', id:'tmo_piranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
@@ -145,19 +141,19 @@ peppex_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.132.150 EPICS_AUTO_PVA_ADDR_LIST=
 procmgr_hsd = [
  #Razib did this{host:'drp-srcf-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
  #{host:'drp-srcf-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
- {host:'drp-srcf-cmp020', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
- {host:'drp-srcf-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
+ {host:'drp-srcf-cmp020', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
+ {host:'drp-srcf-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
  # For now{host:'drp-srcf-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
 #  {host:'drp-srcf-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
- {host:'drp-srcf-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
- {host:'drp-srcf-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
- {host:'drp-srcf-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
- {host:'drp-srcf-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
- {host:'drp-srcf-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
- {host:'drp-srcf-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
+ {host:'drp-srcf-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
+ {host:'drp-srcf-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
+ {host:'drp-srcf-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
+ {host:'drp-srcf-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
+ {host:'drp-srcf-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
+ {host:'drp-srcf-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
  # june 8, 2022: cpo commented out peppex hsd since David Cesar not using it yet
- #{host:'drp-srcf-cmp024', id:'hsd_peppex_0', flags:'spu', env:peppex_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_peppex_epics}_41:A'},
- #{host:'drp-srcf-cmp024', id:'hsd_peppex_1', flags:'spu', env:peppex_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_
+ {host:'drp-srcf-cmp023', id:'hsd_peppex_0', flags:'spu', env:peppex_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_peppex_epics}_41:A'},
+ {host:'drp-srcf-cmp023', id:'hsd_peppex_1', flags:'spu', env:peppex_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_peppex_epics}_41:B'},
 ]
 
 procmgr_config.extend(procmgr_hsd)
