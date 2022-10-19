@@ -3,7 +3,6 @@
 
 from cpython cimport array
 import array
-from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from cpython.object cimport PyObject
 from cpython.getargs cimport PyArg_ParseTupleAndKeywords
 
@@ -13,7 +12,8 @@ from libc.stdint cimport uint32_t, uint64_t
 
 from psana.event import Event
 from psana.mypybuffer import MyPyBuffer
-from psana.psexp import TransitionId
+from psana.psexp import PacketFooter, TransitionId
+from psana import dgram
 import time
 import numpy as np
 
@@ -79,6 +79,16 @@ cdef class ProxyEvent:
             evt_bytearray.extend(bytearray(pydg.as_memoryview()))
         evt_bytearray.extend(evt_footer)
         return evt_bytearray
+    
+    def as_dgrams(self, configs):
+        """ Returns a list of converted PyDgram objects (as dgram.Dgram)."""
+        cdef int i
+        dgrams = [None]*self.nsmds
+        for i, pydg in enumerate(self.pydgrams):
+            if pydg == 0: continue
+            # FIXME: potentially makes dgram.cc view read-only with PyBUF_CONTIG_RO (currently PyBUF_SIMPLE)
+            dgrams[i] = dgram.Dgram(config=configs[i], view=bytearray(pydg.as_memoryview()))
+        return dgrams
 
 
 cdef class EventBuilder:
@@ -140,8 +150,7 @@ cdef class EventBuilder:
         # Builds proxy events according to batch_size
         proxy_events = self.build(as_proxy_events=True)
         for proxy_evt in proxy_events:
-            py_evt = Event._from_bytes(self.configs, proxy_evt.as_bytearray(), run=run) 
-            py_evt._complete() 
+            py_evt = Event(proxy_evt.as_dgrams(self.configs), run=run)
             # Smd event created this way will have proxy event set as its attribute.
             # This is so that SmdReaderManager can grab them and build batches/
             # step batches.
@@ -350,8 +359,7 @@ cdef class EventBuilder:
         # If destination() is not specifed, use batch 0.
         cdef dest_rank = 0
         if (filter_fn or destination) and proxy_evt.service == TransitionId.L1Accept:
-            py_evt = Event._from_bytes(self.configs, proxy_evt.as_bytearray(), run=run) 
-            py_evt._complete() 
+            py_evt = Event(proxy_evt.as_dgrams(self.configs), run=run)
 
             if filter_fn:
                 st_filter = time.time()

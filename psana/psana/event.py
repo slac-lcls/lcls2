@@ -59,24 +59,6 @@ class Event():
 
         return event_bytes
 
-    @classmethod
-    def _from_bytes(cls, configs, event_bytes, run=None):
-        dgrams = []
-        if event_bytes:
-            pf = PacketFooter(view=event_bytes)
-            views = pf.split_packets()
-            
-            assert len(configs) == pf.n_packets
-            
-            dgrams = [None]*pf.n_packets # make sure that dgrams are arranged 
-                                         # according to the smd files.
-            for i in range(pf.n_packets):
-                if views[i].shape[0] > 0: # do not include any missing dgram
-                    dgrams[i] = dgram.Dgram(config=configs[i], view=views[i])
-        
-        evt = cls(dgrams, run=run)
-        return evt
-    
     @property
     def _seconds(self):
         _high = (self.timestamp >> 32) & 0xffffffff
