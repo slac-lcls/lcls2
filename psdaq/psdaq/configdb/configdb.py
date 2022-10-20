@@ -74,6 +74,7 @@ class configdb(object):
     # values are typed JSON objects representing the device configuration(s).
     # On error return an empty dictionary.
     def get_configuration(self, alias, device, hutch=None):
+        alias=str(alias)
         if hutch is None:
             hutch = self.hutch
         try:

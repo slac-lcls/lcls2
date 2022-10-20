@@ -67,7 +67,10 @@ def main(user, password, hutch, alias, device, key, write_to_database):
         cd = cdict(config)
         print(f"Configuration for hutch: {hutch}, alias: {alias}, device: {device}, key: {key}")
         print(f"Adding configuration to database as latest for hutch: {hutch}, alias: {alias}, device: {device}")
-        mycdb.modify_device(alias, cd)
+        try:
+            mycdb.modify_device(alias, cd)
+        except Exception as exc:
+            print(f"Failed to add configuration to the database: {exc}")
     else:
         print("---")
         print(f"Configuration for hutch: {hutch}, alias: {alias}, device: {device}, key: {key}")
