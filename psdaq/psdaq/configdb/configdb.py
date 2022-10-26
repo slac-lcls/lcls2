@@ -4,6 +4,7 @@ from krtc import KerberosTicket
 from urllib.parse import urlparse
 import json
 import logging
+import datetime
 from .typed_json import cdict
 
 class JSONEncoder(json.JSONEncoder):
@@ -74,7 +75,6 @@ class configdb(object):
     # values are typed JSON objects representing the device configuration(s).
     # On error return an empty dictionary.
     def get_configuration(self, alias, device, hutch=None):
-        alias=str(alias)
         if hutch is None:
             hutch = self.hutch
         try:
@@ -493,6 +493,33 @@ def _ls(args):
         print('Name \'%s\' does not match <hutch>[/<alias>]' % args.src)
         sys.exit(1)
 
+def _history(args):
+    if isXpm(args.src):
+        seg = None
+        try:
+            hutch, alias, dev = _parse_device3(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+    else:
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+
+    # get configuration and pretty print it
+    mycdb = configdb(args.url, hutch, root=args.root, user=args.user,
+                     password=args.password)
+    if seg is None:
+        xx = mycdb.get_history(alias, dev, hutch=hutch, plist=["detName:RO"])
+    else:
+        xx = mycdb.get_history(alias, device=f"{dev}_{seg}", hutch=hutch, plist=["detName:RO"])
+
+    if len(xx) > 0:
+        for entry in xx["value"]:
+            date_obj = datetime.datetime.fromisoformat(entry['date'])
+            fmtd_date = date_obj.strftime('%m/%d/%Y, %H:%M:%S')
+            print(f"Date: {fmtd_date} UTC - Key: {entry['key']}")
+
 class createArgs(object):
     def __init__(self):
         parser = argparse.ArgumentParser(description='Write a new segment configuration into the database')
@@ -531,6 +558,13 @@ def main():
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
     parser_cp.set_defaults(func=_cp)
 
+   # create the parser for the "history"
+    parser_history = subparsers.add_parser('history', help='get history of a configuration')
+    parser_history.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_history.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_history.add_argument('--password', default='pcds', help='default: pcds')
+    parser_history.set_defaults(func=_history
+    )
     # create the parser for the "ls" command
     parser_ls = subparsers.add_parser('ls', help='list directory contents')
     parser_ls.add_argument('src', help='source: <hutch>[/<alias>]', nargs='?', default=None)
