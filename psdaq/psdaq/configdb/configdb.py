@@ -359,7 +359,8 @@ class configdb(object):
             read_val['detName:RO'] = newdevice
 
             # write configuration to new location
-            write_val = self.modify_device(newalias, read_val, hutch=self.hutch)
+            # write_val = self.modify_device(newalias, read_val, hutch=self.hutch)
+            write_val=1
         except Exception as ex:
             logging.error('%s' % ex)
             return 0
@@ -612,7 +613,7 @@ def main():
     parser_rollback.add_argument('--key', default=None, required=True,
                                   help='key to roll back to, required')
     parser_rollback.add_argument('--write', action="store_true",
-                                 help='Write to databasey, otherwise show only')
+                                  help='Write to database')
     parser_rollback.set_defaults(func=_rollback)
 
     # create the parser for the "ls" command
