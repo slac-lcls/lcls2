@@ -359,8 +359,7 @@ class configdb(object):
             read_val['detName:RO'] = newdevice
 
             # write configuration to new location
-            # write_val = self.modify_device(newalias, read_val, hutch=self.hutch)
-            write_val=1
+            write_val = self.modify_device(newalias, read_val, hutch=self.hutch)
         except Exception as ex:
             logging.error('%s' % ex)
             return 0
@@ -459,14 +458,18 @@ def _cp(args):
     if args.create:
         mycdb.add_alias(newalias)
 
-    if isXpm(args.src) and isXpm(args.dst):
-        retval = mycdb.transfer_config(oldhutch, oldalias, olddev, newalias, newdev)
+    if args.write:
+        if isXpm(args.src) and isXpm(args.dst):
+            retval = mycdb.transfer_config(oldhutch, oldalias, olddev, newalias, newdev)
+        else:
+            retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
+                                        newalias, '%s_%d' % (newdev, newseg))
+        if retval == 0:
+            print('failed to transfer configuration')
+            sys.exit(1)
     else:
-        retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
-                                       newalias, '%s_%d' % (newdev, newseg))
-    if retval == 0:
-        print('failed to transfer configuration')
-        sys.exit(1)
+        print("")
+        print("WARNING: Not written to database (use the --write option)")
 
 def _ls(args):
     # authentication is not required, adjust url accordingly
@@ -596,6 +599,7 @@ def main():
     parser_cp.add_argument('--user', default='tstopr', help='default: tstopr')
     parser_cp.add_argument('--password', default='pcds', help='default: pcds')
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
+    parser_cp.add_argument('--write', action="store_true", help='Write to database')
     parser_cp.set_defaults(func=_cp)
 
     # create the parser for the "history"
@@ -610,10 +614,8 @@ def main():
     parser_rollback.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/<alias>/<xpm>')
     parser_rollback.add_argument('--user', default='tstopr', help='default: tstopr')
     parser_rollback.add_argument('--password', default='pcds', help='default: pcds')
-    parser_rollback.add_argument('--key', default=None, required=True,
-                                  help='key to roll back to, required')
-    parser_rollback.add_argument('--write', action="store_true",
-                                  help='Write to database')
+    parser_rollback.add_argument('--key', default=None, required=True, help='key to roll back to, required')
+    parser_rollback.add_argument('--write', action="store_true", help='Write to database')
     parser_rollback.set_defaults(func=_rollback)
 
     # create the parser for the "ls" command
