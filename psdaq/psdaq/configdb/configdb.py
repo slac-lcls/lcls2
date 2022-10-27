@@ -512,13 +512,52 @@ def _history(args):
     if seg is None:
         xx = mycdb.get_history(alias, dev, hutch=hutch, plist=["detName:RO"])
     else:
-        xx = mycdb.get_history(alias, device=f"{dev}_{seg}", hutch=hutch, plist=["detName:RO"])
+        xx = mycdb.get_history(alias, device=f"{dev}_{seg}",
+                                hutch=hutch, plist=["detName:RO"])
 
     if len(xx) > 0:
         for entry in xx["value"]:
             date_obj = datetime.datetime.fromisoformat(entry['date'])
             fmtd_date = date_obj.strftime('%m/%d/%Y, %H:%M:%S')
             print(f"Date: {fmtd_date} UTC - Key: {entry['key']}")
+
+def _rollback(args):
+    if isXpm(args.src):
+        seg = None
+        try:
+            hutch, alias, dev = _parse_device3(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+    else:
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+
+    # get configuration and pretty print it
+    mycdb = configdb(args.url, hutch, root=args.root, user=args.user,
+                     password=args.password)
+    if seg is None:
+        config = mycdb.get_configuration(alias=args.key, device=dev, hutch=hutch)
+    else:
+        config = mycdb.get_configuration(alias=args.key, device=f"{dev}_{seg}",
+                                         hutch=hutch)
+
+    pprint.pprint(config)
+    if args.write:
+        cd = cdict(config)
+        print("")
+        if seg is None:
+            print("Adding configuration to database as latest for "
+                  f"hutch: {hutch}, alias: {alias}, device: {dev}")
+        else:
+            print("Adding configuration to database as latest for "
+                  f"hutch: {hutch}, alias: {alias}, device: {dev}_{seg}")
+        mycdb.modify_device(alias, cd)
+    else:
+        print("")
+        print("WARNING: Not written to database (use the --write option)")
+
 
 class createArgs(object):
     def __init__(self):
@@ -558,13 +597,24 @@ def main():
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
     parser_cp.set_defaults(func=_cp)
 
-   # create the parser for the "history"
+    # create the parser for the "history"
     parser_history = subparsers.add_parser('history', help='get history of a configuration')
     parser_history.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_history.add_argument('--user', default='tstopr', help='default: tstopr')
     parser_history.add_argument('--password', default='pcds', help='default: pcds')
-    parser_history.set_defaults(func=_history
-    )
+    parser_history.set_defaults(func=_history)
+
+    # create the parser for the "rollback"
+    parser_rollback = subparsers.add_parser('rollback', help='rollback configuration to a specific key')
+    parser_rollback.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/<alias>/<xpm>')
+    parser_rollback.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_rollback.add_argument('--password', default='pcds', help='default: pcds')
+    parser_rollback.add_argument('--key', default=None, required=True,
+                                  help='key to roll back to, required')
+    parser_rollback.add_argument('--write', action="store_true",
+                                 help='Write to databasey, otherwise show only')
+    parser_rollback.set_defaults(func=_rollback)
+
     # create the parser for the "ls" command
     parser_ls = subparsers.add_parser('ls', help='list directory contents')
     parser_ls.add_argument('src', help='source: <hutch>[/<alias>]', nargs='?', default=None)
