@@ -25,7 +25,7 @@ class EventBuilderManager(object):
             # for smd events, evt.complete() (slow) is called. 
             # Note: use _smd_callback for checking if user set any callback
             # through DataSource.
-            if self.dsparms._smd_callback == 0:
+            if self.dsparms.smd_callback == 0:
                 batch_dict, step_dict = self.eb.build()
                 if self.eb.nevents==0 and self.eb.nsteps==0: break
             else:

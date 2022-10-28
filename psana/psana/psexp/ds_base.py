@@ -36,7 +36,7 @@ class DsParms:
     smd_inprogress_converted: int
     timestamps:         np.ndarray
     intg_det:           str
-    _smd_callback:      int = 0
+    smd_callback:       int = 0
     terminate_flag:     bool = False
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table, det_stream_id_table):
@@ -65,24 +65,6 @@ class DsParms:
             if self.intg_det in self.det_stream_id_table:
                 stream_id=self.det_stream_id_table[self.intg_det]
         return stream_id
-
-    def default_smd_callback(self, smd_ds):
-        for evt in smd_ds.events():
-            yield evt
-
-    def smd_callback(self, smd_ds):
-        # EventBuilder uses smd_callback to determine which events get yielded 
-        # (for big data fetching) and what destination to send them to. The
-        # default callback just loops and yields all events while the user-
-        # given one (_smd_callback) is expected to be a generator that yields
-        # some/none/all events.
-        if self._smd_callback == 0:
-           smd_callback = self.default_smd_callback
-        else:
-           smd_callback = self._smd_callback
-
-        for evt in smd_callback(smd_ds):
-            yield evt
 
 
 class DataSourceBase(abc.ABC):
