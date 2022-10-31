@@ -967,8 +967,6 @@ class ProcMgr:
                     export_dict[ppp[0].strip()] = ppp[1].strip()
                 else:
                     print(f'*** ERR: Missing "=" in PROCMGR_EXPORT value "{vvv}"')
-        else:
-            print(f'PROCMGR_EXPORT not set in environment')
 
         # create a dictionary mapping hosts to a set of start commands
         startdict = dict()
