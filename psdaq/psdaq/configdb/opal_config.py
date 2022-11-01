@@ -70,7 +70,7 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
         #  to get the timing feedback link to lock
         #  cpo: switch this to XpmMini which recovers from more issues?
         cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-        time.sleep(0.1)
+        time.sleep(1.0)
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
         time.sleep(0.1)
 
