@@ -2,7 +2,7 @@ unset LD_LIBRARY_PATH
 unset PYTHONPATH
 source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
 conda deactivate
-conda activate ps-4.5.16
+conda activate ps-4.5.17
 RELDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export PATH=$RELDIR/install/bin:${PATH}
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
