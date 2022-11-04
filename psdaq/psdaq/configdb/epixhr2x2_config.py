@@ -459,8 +459,8 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 #        cbase.EpixHR.fnInitAsic(None,None,arg)
 
 #       Fixup the PacketRegisters0 disable register (lane 0 is broken?)
-#        lanes = cbase.EpixHR.PacketRegisters0.DisableLane.get();
-#        cbase.EpixHR.PacketRegisters0.DisableLane.set(lanes | 1);
+        lanes = cbase.EpixHR.PacketRegisters0.DisableLane.get();
+        cbase.EpixHR.PacketRegisters0.DisableLane.set(lanes | 0x33);
 
     if writePixelMap:
         hasGainMode = 'gain_mode' in cfg['user']
