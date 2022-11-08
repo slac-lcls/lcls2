@@ -16,8 +16,6 @@
 #include <typeinfo>
 #include <memory>
 
-#define MAXBUFSIZE 0x4000000
-
 namespace XtcData
 {
 
@@ -88,11 +86,7 @@ class XtcUpdateIter : public XtcData::XtcIterator
 public:
     enum {Stop, Continue};
 
-    XtcUpdateIter(unsigned numWords, uint64_t maxBufSize) : XtcData::XtcIterator(), _numWords(numWords) {
-        // Users can pass in customized buffer's size for three buffers below
-        if (maxBufSize == 0) {
-            maxBufSize = MAXBUFSIZE;
-        }
+    XtcUpdateIter(unsigned numWords) : XtcData::XtcIterator(), _numWords(numWords) {
         _bufSize = 0;
         _payloadSize = 0;
         _removedSize = 0;              // counting size of removed det/alg in bytes
@@ -162,7 +156,7 @@ public:
     void addData(unsigned nodeId, unsigned namesId,
             unsigned* shape, char* data, DataDef& datadef, char* varname);
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
-                        uint64_t timestamp_val, const void** bufEnd, uint64_t maxBufSize);
+                        uint64_t timestamp_val, char* buf);
     void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId);
     void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
     int getElementSize(unsigned nodeId, unsigned namesId,

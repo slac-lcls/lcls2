@@ -10,6 +10,8 @@ import numpy as np
 import numbers
 import io
 
+MAXBUFSIZE=64000000
+
 # Need a different name to prevent clashing with cpp class
 from psana.psexp import TransitionId as PyTransitionId
 
@@ -161,8 +163,8 @@ cdef class PyXtcUpdateIter():
     cdef const void* bufEnd
     cdef Py_buffer oPybuf
 
-    def __cinit__(self, uint64_t maxBufSize):
-        self.cptr = new XtcUpdateIter(self._numWords, maxBufSize)
+    def __cinit__(self):
+        self.cptr = new XtcUpdateIter(self._numWords)
 
     def __dealloc__(self):
         # Ric added this (see cinit above for an allocation of c++ object
@@ -273,16 +275,21 @@ cdef class PyXtcUpdateIter():
     def set_filter(self, det_name, alg_name):
         self.cptr.setFilter(det_name.encode(), alg_name.encode())
 
-    def createTransition(self, transId, timestamp_val, bufsize):
+    def createTransition(self, transId, timestamp_val, pycap_buf, bufsize):
         counting_timestamps = 1
         if timestamp_val == -1:
             counting_timestamps = 0
             timestamp_val = 0
 
+        # Extract buffer ptr and set bufEnd
+        cdef char* buf = <char *>PyCapsule_GetPointer(pycap_buf, "buf")
+        cdef uint64_t bufSize = bufsize
+        self.bufEnd = buf + bufSize
+        
         # This returns Dgram and updates bufEnd to point to
         # buffer size of the dgram (defined in XtcUpdateIter).
         cdef Dgram* dg =  &(self.cptr.createTransition(transId,
-                counting_timestamps, timestamp_val, &(self.bufEnd), bufsize))
+                counting_timestamps, timestamp_val, buf))
         pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
         pydg = PyDgram(pycap_dg, <char*>self.bufEnd - <char*>dg)
         return pydg
@@ -318,7 +325,10 @@ cdef class PyXtcFileIterator():
         pydg = PyDgram(pycap_dg, self.cptr.size())
         return pydg
 
-class DgramEdit:
+cdef class DgramEdit:
+    cdef char* buf
+    cdef PyXtcUpdateIter uiter
+    cdef PyDgram pydg
     """ Main class that takes an existing dgram or creates
     new dgram when `TransitionId` is given and allow modifications
     on the dgram.
@@ -328,19 +338,20 @@ class DgramEdit:
                  config=None,
                  transition_id=None,
                  ts=-1,
-                 bufsize=0):
+                 bufsize=MAXBUFSIZE):
         # We need to have only one PyXtcUpdateIter when working with
         # the same xtc. This class always read in config first and
         # populates NamesLookup, which is used by other dgrams.
         # Note that PyXtCUpdateIter takes bufsize. If this value is 0,
         # then the default bufsize (defined in XtcUpdateIter) is used.
+        self.buf = NULL
         if pydg:
             if config:
                 self.uiter = config.uiter
                 self.uiter.set_cfg(False)
             else:
                 # Assumes this is a config so we create new XtcUpdateIter here.
-                self.uiter = PyXtcUpdateIter(bufsize)
+                self.uiter = PyXtcUpdateIter()
                 self.uiter.set_cfg(True)
                 # Iterates Configure without writing to buffer to get
                 # current nodeId and namesId
@@ -350,15 +361,21 @@ class DgramEdit:
             self.pydg = pydg
         elif transition_id:
             if transition_id == PyTransitionId.Configure:
-                self.uiter = PyXtcUpdateIter(bufsize)
+                self.uiter = PyXtcUpdateIter()
                 self.uiter.set_cfg(True)
             else:
                 assert config, "Missing config dgram"
                 self.uiter = config.uiter
                 self.uiter.set_cfg(False)
-            self.pydg = self.uiter.createTransition(transition_id, ts, bufsize)
+            self.buf = <char *>malloc(bufsize)
+            pycap_buf = PyCapsule_New(<char *>self.buf, "buf", NULL)
+            self.pydg = self.uiter.createTransition(transition_id, ts, pycap_buf, bufsize)
         else:
             raise IOError, "Unsupported input arguments"
+    
+    def __dealloc__(self):
+        if self.buf != NULL:
+            free(self.buf)
 
     def Detector(self, detdef, algdef, datadef_dict,
             nodeId=None, namesId=None, segment=None):
@@ -489,4 +506,8 @@ class DgramEdit:
     @property
     def size(self):
         return self.uiter.get_size()
+
+    @property
+    def uiter(self):
+        return self.uiter
 
