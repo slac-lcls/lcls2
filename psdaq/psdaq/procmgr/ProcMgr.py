@@ -1344,6 +1344,7 @@ class ProcMgr:
             else:
                 if verbose:
                     if response.count(b"Restarting"):
+                        rv = 1
                         print('FAILED')
                     else:
                         print('done')
