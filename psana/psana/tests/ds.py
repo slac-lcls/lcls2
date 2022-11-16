@@ -107,7 +107,7 @@ def test_step():
 
 def test_select_detectors():
     # Usecase 4 : selecting only xppcspad
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, detectors=['xppcspad'])
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, detectors=['xppcspad'], xdetectors=['epicsinfo'])
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -118,7 +118,25 @@ def test_select_detectors():
         det = run.Detector('xppcspad')
         for evt in run.events():
             sendbuf += 1
-            assert evt._size == 2 # both test files have xppcspad
+            assert evt._size == 1 # only s02 has xppcspad and no epicsinfo
+
+    comm.Gather(sendbuf, recvbuf, root=0)
+    if rank == 0:
+        assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
+
+def test_replace_with_smd():
+    # Usecase 4 : selecting only xppcspad
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, small_xtc=['epicsinfo'])
+
+    sendbuf = np.zeros(1, dtype='i')
+    recvbuf = None
+    if rank == 0:
+        recvbuf = np.empty([size, 1], dtype='i')
+
+    for run in ds.runs():
+        det = run.Detector('xppcspad')
+        for evt in run.events():
+            sendbuf += 1
 
     comm.Gather(sendbuf, recvbuf, root=0)
     if rank == 0:
@@ -151,6 +169,7 @@ if __name__ == "__main__":
     test_no_filter()
     test_step()
     test_select_detectors()
+    test_replace_with_smd()
     if size >= 3:
         test_callback(1)
-        test_callback(5)
+    #    test_callback(5)

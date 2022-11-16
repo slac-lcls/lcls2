@@ -74,6 +74,7 @@ class DataSourceBase(abc.ABC):
         self.batch_size  = 1000      # no. of events per batch sent to a bigdata core
         self.max_events  = 0         # no. of maximum events
         self.detectors   = []        # user-selected detector names
+        self.xdetectors  = []        # user-selected excluded detector names
         self.exp         = None      # experiment id (e.g. xpptut13)
         self.runnum      = None      # run no.
         self.live        = False     # turns live mode on/off
@@ -100,6 +101,7 @@ class DataSourceBase(abc.ABC):
                     'batch_size',
                     'max_events',
                     'detectors',
+                    'xdetectors',
                     'det_name',
                     'destination',
                     'live',
@@ -414,11 +416,13 @@ class DataSourceBase(abc.ABC):
         Handles two arguments
         1) detectors=[detname,]
             Reduce no. of smd/xtc files to only those with selectec detectors
-        2) small_xtc=[detname,]
+        2) xdetectors=[detname,]
+            Reduce no. of smd/xtc files to only *NOT* in this list.
+        3) small_xtc=[detname,]
             Swap out smd files with these given detectors with bigdata files
         """
         use_smds = [False] * len(self.smd_files)
-        if self.detectors or self.small_xtc:
+        if self.detectors or self.small_xtc or self.xdetectors:
             # Get tmp configs using SmdReader
             # this smd_fds, configs, and SmdReader will not be used later
             smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
@@ -429,21 +433,30 @@ class DataSourceBase(abc.ABC):
             xtc_files = []
             smd_files = []
             configs = []
-            if self.detectors:
-                s1 = set(self.detectors)
+            if self.detectors or self.xdetectors:
+                include_set = set(self.detectors)
+                exclude_set = set(self.xdetectors)
+                print(f'Applying detector selection/exclusion')
+                print(f'  Included: {include_set}')
+                print(f'  Excluded: {exclude_set}')
+
                 for i, config in enumerate(all_configs):
-                    if s1.intersection(set(config.software.__dict__.keys())):
+                    flag_keep = True
+                    exist_set = set(config.software.__dict__.keys())
+                    print(f'  Stream:{i} detectors:{exist_set}')
+                    if self.detectors:
+                        if not include_set.intersection(exist_set):
+                            flag_keep = False
+                            print(f'  |-- Discarded, not macthed given detectors')
+                    if self.xdetectors:
+                        if exclude_set.intersection(exist_set):
+                            flag_keep = False
+                            print(f'  |-- Discarded, macthed with excluded detectors')
+                    if flag_keep:
                         if self.xtc_files: xtc_files.append(self.xtc_files[i])
                         if self.smd_files: smd_files.append(self.smd_files[i])
-                        configs.append(config)
-                msg = f"""ds_base: applying detector selection
-    selected detectors: {self.detectors}
-    smd_files n_selected/n_total: {len(smd_files)}/{len(self.smd_files)}
-    {','.join([os.path.basename(smd_file) for smd_file in smd_files])}
-    xtc_files n_selected/n_total: {len(xtc_files)}/{len(self.xtc_files)}
-    {','.join([os.path.basename(xtc_file) for xtc_file in xtc_files])}
-    """
-                logger.debug(msg)
+                        configs.append(config) 
+                        print(f'  |-- Kept')
             else:
                 xtc_files = self.xtc_files[:]
                 smd_files = self.smd_files[:]
@@ -452,17 +465,20 @@ class DataSourceBase(abc.ABC):
             use_smds = [False] * len(smd_files)
             if self.small_xtc:
                 s1 = set(self.small_xtc)
-                msg = f"""ds_base: applying smd files swap
-    selected detectors: {self.small_xtc}\n"""
+                print(f'Applying smalldata replacement')
+                print(f'  Smalldata: {self.small_xtc}')
                 for i, config in enumerate(configs):
-                    if s1.intersection(set(config.software.__dict__.keys())):
+                    exist_set = set(config.software.__dict__.keys())
+                    print(f' Stream:{i} detectors:{exist_set}')
+                    if s1.intersection(exist_set):
                         smd_files[i] = xtc_files[i]
                         use_smds[i] = True
-                    msg += f'   smd_files[{i}]={os.path.basename(smd_files[i])} use_smds[{i}]={use_smds[i]}\n'
-                logger.debug(msg)
+                        print(f'  |-- Replaced with smalldata')
+                    else:
+                        print(f'  |-- Kept with bigdata')
 
             self.xtc_files = xtc_files
-            self.smd_files = smd_files
+            self.smd_files = smd_files  
 
             for smd_fd in smd_fds:
                 os.close(smd_fd)
