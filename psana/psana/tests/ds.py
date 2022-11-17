@@ -107,7 +107,9 @@ def test_step():
 
 def test_select_detectors():
     # Usecase 4 : selecting only xppcspad
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, detectors=['xppcspad'], xdetectors=['epicsinfo'])
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, 
+            detectors=['xppcspad:2'], 
+            xdetectors=['epicsinfo'])
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -126,7 +128,7 @@ def test_select_detectors():
 
 def test_replace_with_smd():
     # Usecase 4 : selecting only xppcspad
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, small_xtc=['epicsinfo'])
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, detectors=['epicsinfo'], small_xtc=['epicsinfo'])
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -172,4 +174,4 @@ if __name__ == "__main__":
     test_replace_with_smd()
     if size >= 3:
         test_callback(1)
-    #    test_callback(5)
+        test_callback(5)

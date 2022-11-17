@@ -414,14 +414,16 @@ class DataSourceBase(abc.ABC):
     def _apply_detector_selection(self):
         """
         Handles two arguments
-        1) detectors=[detname,]
-            Reduce no. of smd/xtc files to only those with selectec detectors
-        2) xdetectors=[detname,]
+        1) detectors=['detname', 'detname:0']
+            Reduce no. of smd/xtc files to only those with given 'detname' or 
+            'detname:segment_id'.
+        2) xdetectors=['detname', 'detname:0']
             Reduce no. of smd/xtc files to only *NOT* in this list.
-        3) small_xtc=[detname,]
+        3) small_xtc=['detname', 'detname:0']
             Swap out smd files with these given detectors with bigdata files
         """
-        use_smds = [False] * len(self.smd_files)
+        n_smds = len(self.smd_files)
+        use_smds = [False] * n_smds
         if self.detectors or self.small_xtc or self.xdetectors:
             # Get tmp configs using SmdReader
             # this smd_fds, configs, and SmdReader will not be used later
@@ -430,9 +432,24 @@ class DataSourceBase(abc.ABC):
             smdr_man = SmdReaderManager(smd_fds, self.dsparms)
             all_configs = smdr_man.get_next_dgrams()
 
+            # Keeps list of selected files and configs
             xtc_files = []
             smd_files = []
             configs = []
+            det_dict = {}
+
+            # Get list of detectors from all configs in the format of detname
+            # and detname:segment_id
+            all_det_dict = {i: [] for i in range(n_smds)}
+            for i, config in enumerate(all_configs):
+                det_list = all_det_dict[i]
+                for detname, seg_dict in config.software.__dict__.items():
+                    det_list.append(detname)
+                    for seg_id, _ in seg_dict.items():
+                        det_list.append(f'{detname}:{seg_id}')
+                print(f'Stream:{i} detectors:{all_det_dict[i]}')
+
+            # Apply detector selection exclusion
             if self.detectors or self.xdetectors:
                 include_set = set(self.detectors)
                 exclude_set = set(self.xdetectors)
@@ -440,36 +457,41 @@ class DataSourceBase(abc.ABC):
                 print(f'  Included: {include_set}')
                 print(f'  Excluded: {exclude_set}')
 
-                for i, config in enumerate(all_configs):
+                # This will become 'key' to the new det_dict
+                cn_keeps = 0
+                for i in range(n_smds):
                     flag_keep = True
-                    exist_set = set(config.software.__dict__.keys())
-                    print(f'  Stream:{i} detectors:{exist_set}')
+                    exist_set = set(all_det_dict[i])
+                    print(f'  Stream:{i}')
                     if self.detectors:
                         if not include_set.intersection(exist_set):
                             flag_keep = False
-                            print(f'  |-- Discarded, not macthed given detectors')
-                    if self.xdetectors:
+                            print(f'  |-- Discarded, not matched given detectors')
+                    if self.xdetectors and flag_keep:
                         if exclude_set.intersection(exist_set):
                             flag_keep = False
-                            print(f'  |-- Discarded, macthed with excluded detectors')
+                            print(f'  |-- Discarded, matched with excluded detectors')
                     if flag_keep:
                         if self.xtc_files: xtc_files.append(self.xtc_files[i])
                         if self.smd_files: smd_files.append(self.smd_files[i])
                         configs.append(config) 
+                        det_dict[cn_keeps] = all_det_dict[i]
+                        cn_keeps += 1
                         print(f'  |-- Kept')
             else:
                 xtc_files = self.xtc_files[:]
                 smd_files = self.smd_files[:]
                 configs = all_configs
+                det_dict = all_det_dict
 
             use_smds = [False] * len(smd_files)
             if self.small_xtc:
                 s1 = set(self.small_xtc)
                 print(f'Applying smalldata replacement')
                 print(f'  Smalldata: {self.small_xtc}')
-                for i, config in enumerate(configs):
-                    exist_set = set(config.software.__dict__.keys())
-                    print(f' Stream:{i} detectors:{exist_set}')
+                for i in range(len(smd_files)):
+                    exist_set = set(det_dict[i])
+                    print(f' Stream:{i}')
                     if s1.intersection(exist_set):
                         smd_files[i] = xtc_files[i]
                         use_smds[i] = True
