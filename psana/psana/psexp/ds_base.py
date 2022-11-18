@@ -414,12 +414,12 @@ class DataSourceBase(abc.ABC):
     def _apply_detector_selection(self):
         """
         Handles two arguments
-        1) detectors=['detname', 'detname:0']
+        1) detectors=['detname', 'detname_0']
             Reduce no. of smd/xtc files to only those with given 'detname' or 
             'detname:segment_id'.
-        2) xdetectors=['detname', 'detname:0']
+        2) xdetectors=['detname', 'detname_0']
             Reduce no. of smd/xtc files to only *NOT* in this list.
-        3) small_xtc=['detname', 'detname:0']
+        3) small_xtc=['detname', 'detname_0']
             Swap out smd files with these given detectors with bigdata files
         """
         n_smds = len(self.smd_files)
@@ -446,7 +446,7 @@ class DataSourceBase(abc.ABC):
                 for detname, seg_dict in config.software.__dict__.items():
                     det_list.append(detname)
                     for seg_id, _ in seg_dict.items():
-                        det_list.append(f'{detname}:{seg_id}')
+                        det_list.append(f'{detname}_{seg_id}')
                 print(f'Stream:{i} detectors:{all_det_dict[i]}')
 
             # Apply detector selection exclusion
