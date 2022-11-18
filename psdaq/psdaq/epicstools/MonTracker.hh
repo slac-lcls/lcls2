@@ -46,8 +46,7 @@ private:
   pvd::Thread _worker;
 };
 
-class MonTracker : public pvac::ClientChannel::ConnectCallback,
-                   public pvac::ClientChannel::MonitorCallback,
+class MonTracker : public pvac::ClientChannel::MonitorCallback,
                    public Worker,
                    public std::tr1::enable_shared_from_this<MonTracker>,
                    public PVMonitorCb
@@ -66,19 +65,19 @@ public:
   const std::string name() const { return _channel.name(); }
   bool connected() const { return _connected; }
 
-  virtual void connectEvent (const pvac::ConnectEvent &evt) OVERRIDE FINAL;
   virtual void monitorEvent(const pvac::MonitorEvent& evt) OVERRIDE FINAL;
   virtual void process(const pvac::MonitorEvent& evt) OVERRIDE FINAL;
 protected:
-  void disconnect();
-  void reconnect();
+  // These 2 are obsolete but remain defined in case somebody is calling them
+  void disconnect() {};
+  void reconnect() {};
 private:
   static WorkQueue _monwork;            // Static to start only one WorkQueue
 protected:
   pvd::PVStructure::const_shared_pointer _strct;
+  pvd::PVStructure::shared_pointer _request;
   pvac::ClientChannel _channel;
   pvac::Monitor _mon;
-  std::string _request;
   bool _connected;
 };
 

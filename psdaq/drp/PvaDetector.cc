@@ -148,13 +148,6 @@ void PvaMonitor::onConnect()
 void PvaMonitor::onDisconnect()
 {
     logging::info("%s disconnected", name().c_str());
-
-    // Try to bring the connection up again
-    printf("*** Calling disconnect()\n");
-    disconnect();
-    m_state = NotReady;
-    printf("*** Calling reconnect()\n");
-    reconnect();
 }
 
 void PvaMonitor::updated()
