@@ -109,9 +109,9 @@ int EbLfClient::connect(EbLfCltLink** link,
   if ((ep->error_num() != FI_SUCCESS) || (msTmo && (dT > msTmo)))
   {
     int rc = ep->error_num();
-    fprintf(stderr, "%s:\n  %s connecting to %s:%s: %s\n",
+    fprintf(stderr, "%s:\n  %s connecting to %s:%s after %lu ms: %s\n",
             __PRETTY_FUNCTION__, (dT <= msTmo) ? "Error" : "Timed out",
-            peer, port, ep->error());
+            peer, port, dT, ep->error());
     delete ep;
     return (dT <= msTmo) ? rc : -FI_ETIMEDOUT;
   }
@@ -164,20 +164,24 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
                           unsigned                        id,
                           const char*                     peer)
 {
+  std::vector<EbLfCltLink*> tmpLinks(links.size());
   for (unsigned i = 0; i < addrs.size(); ++i)
   {
-    auto           t0(std::chrono::steady_clock::now());
     int            rc;
     const char*    addr = addrs[i].c_str();
     const char*    port = ports[i].c_str();
-    EbLfCltLink*   link;
     const unsigned msTmo(14750);        // < control.py transition timeout
-    if ( (rc = transport.connect(&link, addr, port, msTmo)) )
+    if ( (rc = transport.connect(&tmpLinks[i], addr, port, msTmo)) )
     {
       logging::error("%s:\n  Error connecting to %s at %s:%s for link[%u]",
                      __PRETTY_FUNCTION__, peer, addr, port, i);
       return rc;
     }
+  }
+  for (unsigned i = 0; i < addrs.size(); ++i)
+  {
+    int  rc;
+    auto link = tmpLinks[i];
     if ( (rc = link->exchangeId(id, peer)) )
     {
       logging::error("%s:\n  Error exchanging IDs with %s for link[%u]",
@@ -187,10 +191,8 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
     unsigned rmtId = link->id();
     links[rmtId]   = link;
 
-    auto t1 = std::chrono::steady_clock::now();
-    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Outbound link with %3s ID %2d at %s:%s connected in %4lu ms",
-                  peer, rmtId, addr, port, dT);
+    logging::info("Outbound link with %3s ID %2d at %s:%s connected", // in %4lu ms",
+                  peer, rmtId, addrs[i].c_str(), ports[i].c_str());
   }
 
   return 0;

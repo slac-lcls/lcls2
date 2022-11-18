@@ -336,18 +336,22 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
                           unsigned                   id,
                           const char*                peer)
 {
+  std::vector<EbLfSvrLink*> tmpLinks(links.size());
   for (unsigned i = 0; i < links.size(); ++i)
   {
-    auto           t0(std::chrono::steady_clock::now());
     int            rc;
-    EbLfSvrLink*   link;
     const unsigned msTmo(14750);        // < control.py transition timeout
-    if ( (rc = transport.connect(&link, links.size(),  msTmo)) )
+    if ( (rc = transport.connect(&tmpLinks[i], links.size(),  msTmo)) )
     {
       logging::error("%s:\n  Error connecting to a %s for link[%u]",
                      __PRETTY_FUNCTION__, peer, i);
       return rc;
     }
+  }
+  for (unsigned i = 0; i < links.size(); ++i)
+  {
+    int  rc;
+    auto link = tmpLinks[i];
     if ( (rc = link->exchangeId(id, peer)) )
     {
       logging::error("%s:\n  Error exchanging IDs with %s for link[%u]",
@@ -357,10 +361,8 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
     unsigned rmtId = link->id();
     links[rmtId]   = link;
 
-    auto t1 = std::chrono::steady_clock::now();
-    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Inbound  link with %3s ID %2d connected in %4lu ms",
-                  peer, rmtId, dT);
+    logging::info("Inbound  link with %3s ID %2d connected", // in %4lu ms",
+                  peer, rmtId);
   }
 
   return 0;

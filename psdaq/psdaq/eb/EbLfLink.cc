@@ -67,20 +67,21 @@ int Pds::Eb::setupMr(Fabric*         fabric,
     return 0;
   }
 
+  auto t0(std::chrono::steady_clock::now());
   mr = fabric->register_memory(region, size);
+  auto t1 = std::chrono::steady_clock::now();
+  auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
   if (memReg)  *memReg = mr;            // Even on error, set *memReg
   if (!mr)
   {
-    fprintf(stderr, "%s:\n  Failed to register MR @ %p, size %zu: %s\n",
-            __PRETTY_FUNCTION__, region, size, fabric->error());
+    fprintf(stderr, "%s:\n  Failed to register MR @ %p, size %zu  (%lu ms): %s\n",
+            __PRETTY_FUNCTION__, region, size, dT, fabric->error());
     return fabric->error_num();
   }
-  if (verbose)
-  {
-    printf("Registered     MR: %10p : %10p, size 0x%08zx = %zu\n",
-           mr->start(), (char*)(mr->start()) + mr->length(),
-           mr->length(), mr->length());
-  }
+
+  printf("Registered     MR: %10p : %10p, size 0x%08zx = %zu  (%lu ms)\n",
+         mr->start(), (char*)(mr->start()) + mr->length(),
+         mr->length(), mr->length(), dT);
 
   return 0;
 }
@@ -88,7 +89,7 @@ int Pds::Eb::setupMr(Fabric*         fabric,
 // ---
 
 EbLfLink::EbLfLink(Endpoint*          ep,
-                   int                depth,
+                   const unsigned     depth,
                    const unsigned&    verbose,
                    volatile uint64_t& pending,
                    volatile uint64_t& posting) :
@@ -99,18 +100,23 @@ EbLfLink::EbLfLink(Endpoint*          ep,
   _timedOut(0ull),
   _pending (pending),
   _posting (posting),
-  _depth   (depth)
+  _depth   (depth),
+  _credits (0)
 {
   _pending = 0;
   _posting = 0;
 
-  postCompRecv(depth);
+  postCompRecv(0);
 }
 
 EbLfLink::~EbLfLink()
 {
   _pending = 0;
   _posting = 0;
+
+  if (_credits != _depth)
+    fprintf(stderr, "%s:\n  *** _credits (%u) != _depth (%u)\n",
+            __PRETTY_FUNCTION__, _credits, _depth);
 }
 
 int EbLfLink::recvU32(uint32_t*   u32,
@@ -213,7 +219,7 @@ int EbLfLink::sendMr(MemoryRegion* mr,
 // ---
 
 EbLfSvrLink::EbLfSvrLink(Endpoint*          ep,
-                         int                depth,
+                         const unsigned     depth,
                          const unsigned&    verbose,
                          volatile uint64_t& pending,
                          volatile uint64_t& posting) :
@@ -258,7 +264,6 @@ int EbLfSvrLink::_synchronizeEnd()
 
     fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
             __PRETTY_FUNCTION__, _id, imm, _CltSync);
-    //return 1;
   }
 
   if (rc == -FI_EAGAIN)
@@ -343,7 +348,7 @@ int EbLfSvrLink::setupMr(void*       region,
 // ---
 
 EbLfCltLink::EbLfCltLink(Endpoint*          ep,
-                         int                depth,
+                         const unsigned     depth,
                          const unsigned&    verbose,
                          volatile uint64_t& pending,
                          volatile uint64_t& posting) :
@@ -568,21 +573,17 @@ int EbLfLink::poll(uint64_t* data)      // Sample only, don't wait
 {
   int              rc;
   fi_cq_data_entry cqEntry;
-  const unsigned   nEntries = 1;
 
-  rc = _ep->rxcq()->comp(&cqEntry, nEntries);
+  rc = _ep->rxcq()->comp(&cqEntry, 1);
+  if (postCompRecv(rc > 0 ? rc : 0))
+  {
+    fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
+            __PRETTY_FUNCTION__, rc);
+  }
+
   if (rc > 0)
   {
-    if (postCompRecv(nEntries))
-    {
-      fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
-              __PRETTY_FUNCTION__, nEntries);
-    }
-
     *data = cqEntry.data;
-
-    //printf("%s: From ID %d, received imm %08lx, rc %d\n",
-    //       __PRETTY_FUNCTION__, _id, cqEntry.data, rc);
 
     return 0;
   }
@@ -614,20 +615,16 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
   do
   {
     fi_cq_data_entry cqEntry;
-    const unsigned   nEntries = 1;
-    rc = cq->comp_wait(&cqEntry, nEntries, msTmo);
+    rc = cq->comp_wait(&cqEntry, 1, msTmo);
+    if (postCompRecv(rc > 0 ? rc : 0))
+    {
+      fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
+              __PRETTY_FUNCTION__, rc);
+    }
+
     if (rc > 0)
     {
-      if (postCompRecv(nEntries))
-      {
-        fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
-                __PRETTY_FUNCTION__, nEntries);
-      }
-
       *data = cqEntry.data;
-
-      //printf("%s:  From ID %d, received imm %08lx, rc %d\n",
-      //       __PRETTY_FUNCTION__, _id, cqEntry.data, rc);
 
       return 0;
     }
@@ -649,20 +646,35 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
   return rc;
 }
 
-// postCompRecv() is meant to be called after an immediate data message has been
-// received (via EbLfServer::pend(), poll(), etc., or EbLfLink::poll()) to
-// replenish the completion receive buffers
-ssize_t EbLfLink::postCompRecv()
+ssize_t Pds::Eb::EbLfLink::postCompRecv(unsigned count)
 {
   ssize_t rc = 0;
-  if ((rc = _ep->recv_comp_data(this)) < 0)
+
+  // Subtract the number of credits consummed (count)
+  if (count <= _credits)  _credits -= count;
+  else
   {
-    if (rc != -FI_EAGAIN)
-      fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
-              __PRETTY_FUNCTION__, _id, _ep->error());
-    else
-      rc = 0;
+    fprintf(stderr, "%s:\n  Error: _credits (%u) - count (%u) < 0\n",
+            __PRETTY_FUNCTION__, _credits, count);
+    _credits = 0;
   }
 
-  return rc;
+  // Replenish credits
+  for (unsigned i = _credits; i < _depth; ++i)
+  {
+    if ((rc = _ep->recv_comp_data(this)) < 0)
+    {
+      if (rc != -FI_EAGAIN)
+        fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
+                __PRETTY_FUNCTION__, _id, _ep->error());
+      break;
+    }
+    ++_credits;
+  }
+
+  if (_credits == 0)
+    fprintf(stderr, "%s:\n  Error: _credits is %u, count = %u\n",
+            __PRETTY_FUNCTION__, _credits, count);
+
+  return rc != -FI_EAGAIN ? rc : 0;
 }

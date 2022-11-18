@@ -120,7 +120,7 @@ int server(const std::string& ifAddr,
   {
     uint64_t  data;
     const int tmo = 5000;               // milliseconds
-    if (svr->pend(&data, tmo) < 0)  continue;
+    if ((rc = svr->pend(&data, tmo)) < 0)  continue;
 
     unsigned     flg = ImmData::flg(data);
     unsigned     src = ImmData::src(data);
@@ -129,7 +129,7 @@ int server(const std::string& ifAddr,
     size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
                      ? trSize + idx * bufSize[src]
                      : trOffset[idx];
-    if ( (rc = links[src]->postCompRecv()) )
+    if ( (rc = links[src]->postCompRecv(rc)) )
     {
       fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
     }

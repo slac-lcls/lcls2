@@ -324,6 +324,10 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     {
       _matchUp(ctrb, nullptr);         // Try to sweep out any deferred Results
       rc = 0;
+
+      // This does something only if errors prevented replenishment in pend/poll
+      for (auto link : _links)
+        link->postCompRecv(0);
     }
     else if (_transport.pollEQ() == -FI_ENOTCONN)
       rc = -FI_ENOTCONN;

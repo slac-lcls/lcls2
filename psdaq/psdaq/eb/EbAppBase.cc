@@ -290,6 +290,10 @@ int EbAppBase::process()
     {
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
+
+      // This does something only if errors prevented replenishment in pend/poll
+      for (auto link : _links)
+        link->postCompRecv(0);
     }
     else if (_transport.pollEQ() == -FI_ENOTCONN)
       rc = -FI_ENOTCONN;
