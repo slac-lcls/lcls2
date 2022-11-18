@@ -18,20 +18,22 @@ def piranha4_cdict():
     #ID point to the actuall Mongo DB collection and document
 
     top = cdict()
-    top.setAlg('config', [2,0,0])
+    top.setAlg('config', [2,0,1])
 
     top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     top.set("firmwareVersion:RO",   0, 'UINT32')
 
     help_str  = "-- user interface --"
-    help_str += "\nstart_ns : nanoseconds from fiducial to exposure start"
-    help_str += "\ngate_ns  : nanoseconds of exposure; rounded up to 10 microseconds"
+    help_str += "\nstart_ns     : nanoseconds from fiducial to exposure start"
+    help_str += "\ngate_ns      : nanoseconds of exposure; 25 ns resolution"
+    help_str += "\nblack_level  : contrast offset; range is dependent on pixel format"
+    help_str += "\nvertical_bin : single pixel or binning of 2 pixels"
     top.set("help:RO", help_str, 'CHARSTR')
 
     top.define_enum('clmEnum',   {'Base':0, 'Med':1, 'Full':2})
     top.define_enum('clsEnum',   {'85MHz':0, '66MHz':1})
     top.define_enum('dstEnum',   {'Line':0, 'Area':1})
-    top.define_enum('binEnum',   {'1':1, '2':2})
+    top.define_enum('binEnum',   {'1_pixel':1, '2_pixels':2})
     top.define_enum('dirEnum',   {'Fwd':0, 'Rev':1, 'Ext':2})
     top.define_enum('expEnum',   {'Int':0, 'Ext':1})
     top.define_enum('offOnEnum', {'Off':0, 'On':1})
@@ -41,7 +43,7 @@ def piranha4_cdict():
     #Create a user interface that is an abstraction of the common inputs
     top.set("user.start_ns", 110000, 'UINT32')
     top.set("user.gate_ns" ,   4000, 'UINT32')
-    top.set("user.black_level",   0, 'UINT32')
+    top.set("user.black_level",   0,  'INT32')
     top.set("user.vertical_bin",  1, 'binEnum')
 
     # timing system
@@ -73,8 +75,8 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.DataMode"    ,      3,'UINT32')   # 12-bit: Requires Base or Medium LinkMode
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.FrameMode"    ,     1,'UINT32')   # Line
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.TapCount"    ,      4,'UINT32')   #
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.DataEn"    ,        1,'UINT8')   # rogue wants 'bool'
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.Blowoff"    ,       0,'UINT8')   # rogue wants 'bool'
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.DataEn"    ,        1,'UINT8')    # rogue wants 'bool'
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.Blowoff"    ,       0,'UINT8')    # rogue wants 'bool'
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.BaudRate"      , 9600,'UINT32')   # bps
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SerThrottle"   ,30000,'UINT32')
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SwControlValue",    0,'UINT32')   # Frame
@@ -84,7 +86,7 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLM",        1,'clmEnum')   # Camera Link Mode <0:Base 1:Med 2:Full>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLS",        0,'clsEnum')   # Camera Link Speed  <0 - 85MHz, 1 - 66MHz>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.DST",        0,'dstEnum')   # Device Scan Type <0 - Line Scan, 1 - Area Scan>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB",        0, 'UINT32')   # Contrast Offset <DN>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB",        0,  'INT32')   # Contrast Offset <DN>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSG", '0 f1.0','CHARSTR')   # Gain <0:System 1:Bottom Line 2:Top Line>  f<gain>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBV",        1,'binEnum')   # Vertical Binning <1|2> pixels
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBH",        1,'binEnum')   # Horizontal Binning <1|2> pixels
@@ -93,8 +95,7 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",        2,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SVM",        0,'tpEnum')    # Test Pattern <0-1>
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSF",        1, 'UINT32')   # Internal Line Rate <Hz>; Requires 'STM 0'
-    # External trigger: 'STM 1'. Warning: we see corrupt DAQ piranha images when switching between internal/external
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",        1,'offOnEnum') # Trigger Mode <0:Int 1:Ext>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",        1,'expEnum')   # Trigger Mode <0:Int 1:Ext>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET",     4000, 'UINT32')   # Exposure Time <ns>; Min value is 4 us; Requires 'SEM 0'
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",        1,'expEnum')   # Exposure Mode <0:Int 1:Ext>; Last as it slows commanding down
 
