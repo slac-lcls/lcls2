@@ -402,9 +402,12 @@ def wave8_update(update):
 def wave8_unconfig(base):
 
     epics_prefix = base['prefix']
-    names_cfg = [epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:Partition',
-                 epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
-    values = [1,0]
+    # cpo removed setting Partition=1 (aka readout group) here
+    # because this is called in init() and writes fail before the timing
+    # the timing system is initialized.  Then subsequent writes start
+    # silently failing as well resulting in lost configure phase2.
+    names_cfg = [epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
+    values = [0]
     ctxt_put(names_cfg, values)
 
     #  Leaving DAQ control.  Put back into LCLS1 mode in LCLS hutches

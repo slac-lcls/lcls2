@@ -313,17 +313,6 @@ if 'DGRAM' in BUILD_LIST :
     )
     CYTHON_EXTS.append(ext)
 
-    ext = Extension("psana.mypybuffer",
-                    sources=["psana/mypybuffer.pyx"],
-                    libraries = ['xtc'],
-                    include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args_rpath,
-    )
-    CYTHON_EXTS.append(ext)
-
 
 if 'HSD' in BUILD_LIST :
     ext = Extension("hsd",

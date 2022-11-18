@@ -120,8 +120,9 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     else:
         #  Empirically found that we need to cycle to LCLS1 timing
         #  to get the timing feedback link to lock
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
-        time.sleep(0.1)
+        #  cpo: switch this to XpmMini which recovers from more issues?
+        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+        time.sleep(1.0)
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
         time.sleep(0.1)
 
@@ -323,7 +324,7 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     uart._rx._await()
     #print('Voltage: ', uart._rx._resp[-1])
 
-    cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
+    cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(False)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
     applicationLane.EventBuilder.Blowoff.set(False)
 

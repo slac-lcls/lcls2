@@ -93,7 +93,8 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",        2,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SVM",        0,'tpEnum')    # Test Pattern <0-1>
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSF",        1, 'UINT32')   # Internal Line Rate <Hz>; Requires 'STM 0'
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",        0,'expEnum')   # Trigger Mode <0:Int 1:Ext>
+    # External trigger: 'STM 1'. Warning: we see corrupt DAQ piranha images when switching between internal/external
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",        1,'offOnEnum') # Trigger Mode <0:Int 1:Ext>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET",     4000, 'UINT32')   # Exposure Time <ns>; Min value is 4 us; Requires 'SEM 0'
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",        1,'expEnum')   # Exposure Mode <0:Int 1:Ext>; Last as it slows commanding down
 

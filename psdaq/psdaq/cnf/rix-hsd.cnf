@@ -22,9 +22,9 @@ for hsd in hsd_ids:
     iport += 1
 
 #  Map of HSD connections
-#  hsd_0  1B:A   drp-srcf-cmp023:0   OK
-#  hsd_1  1B:B   drp-srcf-cmp023:4   OK
-#  hsd_2  1A:A   drp-srcf-cmp009:0   OK
-#  hsd_3  1A:B   drp-srcf-cmp009:4   OK
+#  hsd_0  1A:A   drp-srcf-cmp023:0   OK
+#  hsd_1  1A:B   drp-srcf-cmp023:4   OK
+#  hsd_2  1B:A   drp-srcf-cmp005:0   OK
+#  hsd_3  1B:B   drp-srcf-cmp005:4   OK
 #
 # hsdpva DAQ:RIX:HSD:1_1B:A DAQ:RIX:HSD:1_1B:B DAQ:RIX:HSD:1_1A:A DAQ:RIX:HSD:1_1A:B

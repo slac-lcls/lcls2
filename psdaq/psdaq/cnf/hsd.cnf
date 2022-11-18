@@ -34,16 +34,16 @@ procmgr_config.append({host:peppex_node, id:'hsdioc_tmo_{:}'.format(peppex_hsd),
 iport += 1
 
 #  Map of HSD connections
-#  hsd_0  1B:A   drp-neh-cmp020:0   OK
-#  hsd_1  1B:B   drp-neh-cmp020:4   no conn  [RxPwr at DRP OK] [3 lanes OK]
-#  hsd_2  1A:A   drp-neh-cmp017:0   OK
-#  hsd_3  1A:B   drp-neh-cmp017:4   OK [PGP lane 1 intermittent error]
-#  hsd_4  3E:A   drp-neh-cmp019:4   OK
+#  hsd_0  1B:A   drp-srcf-cmp020:0   OK
+#  hsd_1  1B:B   drp-srcf-cmp020:4   no conn  [RxPwr at DRP OK] [3 lanes OK]
+#  hsd_2  1A:A   drp-srcf-cmp020:0   OK
+#  hsd_3  1A:B   drp-srcf-cmp017:4   OK [PGP lane 1 intermittent error]
+#  hsd_4  3E:A   drp-srcf-cmp019:4   OK
 #  hsd_7  3E:B   drp-srcf-cmp018:0   OK (??)
-#  hsd_6  3D:A   drp-neh-cmp021:4   OK
+#  hsd_6  3D:A   drp-srcf-cmp021:4   OK
 #  hsd_5  3D:B   drp-srcf-cmp018:4   OK
-#  hsd_8  5E:A   drp-neh-cmp022:0   OK
-#  hsd_9  5E:B   drp-neh-cmp022:4   OK
+#  hsd_8  5E:A   drp-srcf-cmp022:0   OK
+#  hsd_9  5E:B   drp-srcf-cmp022:4   OK
 #  hsd_10 DA:B   drp-srcf-cmp024:4   OK
 #  hsd_11 DA:A   drp-srcf-cmp024:0   OK
 #  hsd_12 B2:A   drp-neh-cmp021:0   OK

@@ -1,8 +1,15 @@
 source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
 conda deactivate
 
-conda activate ps-4.5.16
-RELDIR="/cds/home/opr/tmoopr/git/lcls2_072122"
+#conda activate ps-4.5.19
+#RELDIR="/cds/home/opr/tmoopr/git/lcls2_101222"
+
+conda activate ps-4.5.17
+RELDIR="/cds/home/opr/tmoopr/git/lcls2_100422"
+
+# Before the move to SRCF
+#conda activate ps-4.5.16
+#RELDIR="/cds/home/opr/tmoopr/git/lcls2_072122"
 
 # official running until July 21, 2022
 #conda activate ps-4.5.16

@@ -6,16 +6,18 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/configdb/ws/,configDB,tmo,XPM -P DAQ:NEH:XPM:%d'
 #pyxpm_optsdb = '-P DAQ:NEH:XPM:%d'
 
-base_host = 'drp-neh-ctl002'
+base_host = 'drp-srcf-cmp004'
 prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
 
 procmgr_config = [
  { host: base_host, id:'pyxpm-0' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.102 '+pyxpm_optsdb%0}, # XTPG
  { host: base_host, id:'pyxpm-3' , port:'29452', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.2.103 '+pyxpm_optsdb%3}, # RIX XPM
+ { host: base_host, id:'pyxpm-5' , port:'29456', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.104 '+pyxpm_optsdb%5}, # RIX XPM
  { host: base_host, id:'pyxpm-2' , port:'29453', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.3.102 '+pyxpm_optsdb%2}, # TMO XPM
  { host: base_host, id:'pyxpm-4' , port:'29454', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.3.103 '+pyxpm_optsdb%4}, # TMO XPM
+ { host: base_host, id:'pyxpm-6' , port:'29455', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.105 '+pyxpm_optsdb%6}, # TMO XPM
 ## EPICS PV exporter
- { host: base_host, id:'pvrtmon',  port:'29460', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo -M {prom_dir} -P DAQ:NEH:XPM:0 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+ { host: base_host, id:'pvrtmon',  port:'29460', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo -M {prom_dir} -P DAQ:NEH:XPM:2 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
  { host: base_host, id:'pvrtmon-rix',  port:'29461', flags:'s', env:epics_env, cmd:f'epics_exporter -H rix -M {prom_dir} -P DAQ:NEH:XPM:3 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
 ]
 

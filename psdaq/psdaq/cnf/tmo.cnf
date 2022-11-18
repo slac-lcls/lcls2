@@ -1,18 +1,22 @@
 if not platform: platform = '0'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
-im2k0_env = 'EPICS_PVA_ADDR_LIST=172.21.156.96 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
-im5k4_env = 'EPICS_PVA_ADDR_LIST=172.21.156.113 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.25 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+#im2k0_env = 'EPICS_PVA_ADDR_LIST=172.21.156.96 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+#im5k4_env = 'EPICS_PVA_ADDR_LIST=172.21.156.113 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+im2k0_env = ld_lib_path
+im5k4_env = ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
-andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.89 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
-xtcav_epics_env = 'EPICS_PVA_ADDR_LIST=192.168.0.1 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+#xtcav_epics_env = 'EPICS_PVA_ADDR_LIST=192.168.0.1 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+xtcav_epics_env = ld_lib_path
 ami_monitor_env = 'BOKEH_ALLOW_WS_ORIGIN=pswww.slac.stanford.edu'+' '+ld_lib_path
-#collect_host = os.uname()[1]
-collect_host = 'drp-neh-ctl001'
+teb_env = ' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
+
+collect_host = 'drp-srcf-cmp004'
 
 groups = platform+' 1'
 hutch, user, password = ('tmo', 'tmoopr', 'pcds')
+#hutch, user, password = ('tst', 'tstopr', 'pcds')
 auth = ' --user {:} --password {:} '.format(user,password)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
@@ -21,24 +25,33 @@ cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 #  drp variables
 #
 prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
-data_dir = '/drpneh/data'
-#data_dir = '/drpneh/data'
+data_dir = '/cds/data/drpsrcf'
+trig_dir = '/cds/home/opr/tmoopr/daq/trigger'
 
-task_set = 'taskset 0xffbfeffbfe '
-std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
+task_set = 'taskset -c 4-63'
+batching = 'batching=yes'
+directIO = 'directIO=yes'
+scripts  = f'script_path={trig_dir}'
 
-drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no '
-drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no '
-pva_cmd0 = task_set+'drp_pva '  +(std_opts%0)+' -k batching=no '
-pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
-bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=eno1 '
-bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
+std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir
+std_opts0 = std_opts+' -o '+data_dir+' -d /dev/datadev_0'+' -k '+batching+','+directIO
+std_opts1 = std_opts+' -o '+data_dir+' -d /dev/datadev_1'+' -k '+batching+','+directIO
+
+teb_cmd  = task_set+' teb '         +std_opts+' -k '+scripts
+meb_cmd  = task_set+' monReqServer '+std_opts
+
+drp_cmd0 = task_set+' drp '    +std_opts0
+drp_cmd1 = task_set+' drp '    +std_opts1
+pva_cmd0 = task_set+' drp_pva '+std_opts0
+pva_cmd1 = task_set+' drp_pva '+std_opts1
+bld_cmd0 = task_set+' drp_bld '+std_opts0+' -k interface=eno1'
+bld_cmd1 = task_set+' drp_bld '+std_opts1+' -k interface=eno1'
 
 elog_cfg = '/cds/group/pcds/dist/pds/tmo/misc/elog_tmo.txt'
 
 ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
-ea_cmd0 = task_set+'epicsArch '+(std_opts%0)+' -k batching=no '+ea_cfg
-ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+ea_cmd0 = task_set+' epicsArch '+std_opts0+' '+ea_cfg
+ea_cmd1 = task_set+' epicsArch '+std_opts1+' '+ea_cfg
 
 #
 #  ami variables
@@ -46,10 +59,10 @@ ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-neh-cmp003"]
+ami_worker_nodes = ["drp-srcf-cmp028"]
 ami_num_workers = len(ami_worker_nodes)
-ami_manager_node = "drp-neh-cmp003"
-ami_monitor_node = "drp-neh-cmp024"
+ami_manager_node = "drp-srcf-cmp028"
+ami_monitor_node = "drp-srcf-cmp028"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -66,52 +79,54 @@ ami_monitor_node = "drp-neh-cmp024"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-# {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
-# {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
-  {                         id:'procstat',    flags:'p',   cmd:'procstat '+CONFIGDIR+'/p'+platform+'.cnf.last' },
+ {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:2 DAQ:NEH:XPM:4 DAQ:NEH:XPM:6'},
+ {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 2 '+groups}, #+' --prod'},
+ {                          id:'procstat',    flags:'p',                  cmd:'procstat '+CONFIGDIR+'/p'+platform+'.cnf.last' },
 
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000 -V {elog_cfg}'},
-# { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000'},
- {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
+# { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000'},
+ { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000 -V {elog_cfg}'},
+ {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-neh-cmp016', id:'teb0',        flags:'spu',                cmd:task_set+'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir},
+ { host: 'drp-srcf-cmp013', id:'teb0',        flags:'spu', env:teb_env,   cmd:teb_cmd},
+# { host: 'drp-srcf-cmp013', id:'teb1',        flags:'spu', env:teb_env,   cmd:teb_cmd},
 
- { host: 'drp-neh-cmp001', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
+ { host: 'drp-srcf-cmp030', id:'meb1',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb1 -d -n 64 -q {ami_workers_per_node}'},
 
- { host: 'drp-neh-cmp001', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd,pcav'},
+ { host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
- { host: 'drp-neh-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
+ { host: 'drp-srcf-cmp003', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd,pcav'},
 
- { host: 'drp-neh-cmp010', id:'xtcav_0',     flags:'spu', env:xtcav_epics_env, cmd:pva_cmd1+' -l 0x1 OTRS:DMPS:695:RAW -k pebbleBufSize=2097300 -k match_tmo_ms=133'},
+ { host: 'drp-srcf-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
+
+# { host: 'drp-srcf-cmp001', id:'xtcav_0',     flags:'spu', env:xtcav_epics_env, cmd:pva_cmd1+' -l 0x1 OTRS:DMPS:695:RAW -k pebbleBufSize=2097300 -k match_tmo_ms=133'},
 
 # June 8, 2022: cpo commented out fim's since I think they are out for maintenance
-# { host: 'drp-neh-cmp007', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR2K4:FIM:W8:01 -l 0x2'},
-# { host: 'drp-neh-cmp007', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K4:FIM:W8:01 -l 0x4'}, # QSFP # lane 0 broken?
-# { host: 'drp-neh-cmp007', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_w8_prefix=MR2K4:FIM:W8:01 -k epics_shv_prefix=MR2K4:FIM:SHV -l 0x2'},
-# { host: 'drp-neh-cmp007', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_w8_prefix=MR3K4:FIM:W8:01 -k epics_shv_prefix=MR3K4:FIM:SHV -l 0x4'}, # QSFP # lane 0 broken?
+# { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x2 -D wave8 -k epics_prefix=MR2K4:FIM:W8:01'},
+# { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x4 -D wave8 -k epics_prefix=MR3K4:FIM:W8:01'}, # QSFP # lane 0 broken?
+# { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x2 -D wave8 -k epics_w8_prefix=MR2K4:FIM:W8:01 -k epics_shv_prefix=MR2K4:FIM:SHV'},
+# { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x4 -D wave8 -k epics_w8_prefix=MR3K4:FIM:W8:01 -k epics_shv_prefix=MR3K4:FIM:SHV'}, # QSFP # lane 0 broken?
 
-{ host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+ { host: 'drp-srcf-cmp012', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
-{ host: 'drp-neh-cmp012', id:'tmo_opal2_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+ { host: 'drp-srcf-cmp011', id:'tmo_fzpopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
-{ host: 'drp-neh-cmp012', id:'tmo_fzpopal_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x4'},
+ { host: 'drp-srcf-cmp026', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=TMO:TIMETOOL:TTALL'},
 
-{ host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=TMO:TIMETOOL:TTALL'},
+# { host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
 
-# { host: 'drp-neh-cmp005', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
+ { host: 'drp-srcf-cmp007', id:'tmo_piranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
- { host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
-# { host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q 8 -n 16'},
- { host: 'drp-neh-cmp001', id:'im2k0_0', flags:'spu', env:im2k0_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
- { host: 'drp-neh-cmp001', id:'im5k4_0', flags:'spu', env:im5k4_env, cmd:pva_cmd0+' -l 0x1 IM5K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
-# { host: 'drp-neh-cmp014', id:'epix100_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D epix100 -l 0x1'},
+ { host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spu', env:im2k0_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+ { host: 'drp-srcf-cmp001', id:'im5k4_0',     flags:'spu', env:im5k4_env, cmd:pva_cmd0+' -l 0x2 IM5K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+# { host: 'drp-srcf-cmp014', id:'epix100_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epix100'},
 ]
 
 hsd_epics = 'DAQ:TMO:HSD:1'
-
+hsd_peppex_epics = 'DAQ:TMO:HSD:2'
+peppex_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.132.150 EPICS_AUTO_PVA_ADDR_LIST=NO'+' '+ld_lib_path
 
 # 12.20.20: Swapped hsd_5 and hsd_7. hsd_5 has a problem, we need to investigate when we have more time
 # 03.26.21: Took out hsd_7 because it kept giving errors like this (looks like bit corruption):
@@ -120,22 +135,25 @@ hsd_epics = 'DAQ:TMO:HSD:1'
 #       this looks like a problem in the wiring from pc820 to alpha data card
 # hsd_2 was also commented out.  it seems to work, but L1 rate fluctuates in grafana down to 100Hz and up to 127Hz.
 #       this looks like it is the drp node (cmp017)
-#       moved to cmp020, now see low-rate PGP errors 
+#       moved to cmp020, now see low-rate PGP errors
 # hsd_0 commented out.  100% deadtime after 3 hsdioc_1b restarts. traced down to enabling fex.  05/04/21 - cpo
 #  Map (host,hsd_segm,datadev,epicsPV)
 procmgr_hsd = [
- #Razib did this{host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
- #{host:'drp-neh-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
-{host:'drp-neh-cmp020', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
-{host:'drp-neh-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
-# For now{host:'drp-neh-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
-# {host:'drp-neh-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
-{host:'drp-neh-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
-{host:'drp-neh-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
-{host:'drp-neh-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
-{host:'drp-neh-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
-#{host:'drp-neh-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
-#{host:'drp-neh-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
+ #Razib did this{host:'drp-srcf-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
+ #{host:'drp-srcf-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
+ {host:'drp-srcf-cmp020', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
+ {host:'drp-srcf-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
+ # For now{host:'drp-srcf-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
+#  {host:'drp-srcf-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
+ {host:'drp-srcf-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
+ {host:'drp-srcf-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
+ {host:'drp-srcf-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
+ {host:'drp-srcf-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
+ {host:'drp-srcf-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
+ {host:'drp-srcf-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
+ # june 8, 2022: cpo commented out peppex hsd since David Cesar not using it yet
+ {host:'drp-srcf-cmp023', id:'hsd_peppex_0', flags:'spu', env:peppex_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_peppex_epics}_41:A'},
+ {host:'drp-srcf-cmp023', id:'hsd_peppex_1', flags:'spu', env:peppex_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_peppex_epics}_41:B'},
 ]
 
 procmgr_config.extend(procmgr_hsd)
@@ -144,22 +162,22 @@ procmgr_ami = [
 #
 # ami
 #
-{ host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
-{ host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+ { host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+ { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
  {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}' },
 # { host:ami_monitor_node, id:'ami-monitor', flags:'s', env:ami_monitor_env, cmd:f'ami-monitor -H {ami_manager_node} -a {ami_monitor_node} -l 8647' },
 #  Add a second AMI window for timetool feedback graph
 #{                        id:'ami-client-tt',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} -g "tt_graph" -l /cds/group/pcds/dist/pds/tmo/scripts/tt-feedback.fc' },
 #{                        id:f'ami-client_acr',  flags:'s', cmd:f'ami-client -l tmo_acr_opal_feedback.fc -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_acr -g "acr_graph"'},
-{                        id:f'acr_server',  flags:'s', cmd:f'python tmo_acr_opal_feedback.py -P TMO:ACR'},
+ {                        id:f'acr_server',  flags:'s', cmd:f'python tmo_acr_opal_feedback.py -P TMO:ACR'},
 ]
 
 
 # ami workers
 
 for N, worker_node in enumerate(ami_worker_nodes):
-    procmgr_ami.append({ host:worker_node, id:f'meb{N}', flags:'spu',
-                         cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}' })
+    procmgr_ami.append({ host:worker_node, id:f'ami-meb{N}', flags:'spu',
+                         cmd:f'{meb_cmd} -d -n 64 -q {ami_workers_per_node}' })
     procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env,
                          cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
 
@@ -180,8 +198,8 @@ procmgr_config.extend(procmgr_ami)
 #     # ami workers
 #     #
 #     for N, worker_node in enumerate(ami_worker_nodes):
-#         procmgr_ami.append({ host:worker_node, id:f'meb{N}_{instance}', flags:'spu',
-#                              cmd:f'{task_set} monReqServer -P {hutch}{instance} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}' })
+#         procmgr_ami.append({ host:worker_node, id:f'ami-meb{N}_{instance}', flags:'spu',
+#                              cmd:f'{meb_cmd} -d -n 64 -q {ami_workers_per_node}' })
 #         procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}_{instance}', flags:'s', env:epics_env,
 #                              cmd:f'ami-node -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}{instance}' })
 

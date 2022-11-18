@@ -27,14 +27,18 @@ comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
 
-def filter_fn(evt):
-    return True
-
 xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
+
+def smd_callback(run):
+    n_bd_nodes = size - 2
+    for i_evt, evt in enumerate(run.events()):
+        dest = (evt.timestamp % n_bd_nodes) + 1
+        evt._proxy_evt.set_destination(dest)
+        yield evt
 
 def test_standard():
     # Usecase 1a : two iterators with filter function
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn, batch_size=1)
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, batch_size=1)
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -79,7 +83,7 @@ def test_no_filter():
 
 def test_step():
     # Usecase 3: test looping over steps
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -103,7 +107,9 @@ def test_step():
 
 def test_select_detectors():
     # Usecase 4 : selecting only xppcspad
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, detectors=['xppcspad'])
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, 
+            detectors=['xppcspad:2'], 
+            xdetectors=['epicsinfo'])
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -114,19 +120,32 @@ def test_select_detectors():
         det = run.Detector('xppcspad')
         for evt in run.events():
             sendbuf += 1
-            assert evt._size == 2 # both test files have xppcspad
+            assert evt._size == 1 # only s02 has xppcspad and no epicsinfo
 
     comm.Gather(sendbuf, recvbuf, root=0)
     if rank == 0:
         assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
-def destination(evt):
-    n_bd_nodes = size - 2 
-    dest = (evt.timestamp % n_bd_nodes) + 1
-    return dest 
+def test_replace_with_smd():
+    # Usecase 4 : selecting only xppcspad
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, detectors=['epicsinfo'], small_xtc=['epicsinfo'])
+
+    sendbuf = np.zeros(1, dtype='i')
+    recvbuf = None
+    if rank == 0:
+        recvbuf = np.empty([size, 1], dtype='i')
+
+    for run in ds.runs():
+        det = run.Detector('xppcspad')
+        for evt in run.events():
+            sendbuf += 1
+
+    comm.Gather(sendbuf, recvbuf, root=0)
+    if rank == 0:
+        assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
 def test_callback(batch_size):
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn, destination=destination, batch_size=batch_size)
+    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, smd_callback=smd_callback , batch_size=batch_size)
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -152,6 +171,7 @@ if __name__ == "__main__":
     test_no_filter()
     test_step()
     test_select_detectors()
+    test_replace_with_smd()
     if size >= 3:
         test_callback(1)
         test_callback(5)

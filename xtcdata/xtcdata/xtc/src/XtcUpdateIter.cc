@@ -520,20 +520,13 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
 Dgram& XtcUpdateIter::createTransition(unsigned utransId,
         bool counting_timestamps,
         uint64_t timestamp_val,
-        const void** bufEnd,
-        uint64_t maxBufSize)
+        char* buf)
 {
     TransitionId::Value transId = (TransitionId::Value) utransId;
     TypeId tid(TypeId::Parent, 0);
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
-
-    if (maxBufSize == 0) {
-        maxBufSize = MAXBUFSIZE;
-    }
-    void* buf = malloc(maxBufSize);
-    *bufEnd = ( (char*)buf ) + maxBufSize;
 
     if (counting_timestamps) {
         Transition tr(Dgram::Event, transId, TimeStamp(timestamp_val), env);
