@@ -18,7 +18,7 @@ def piranha4_cdict():
     #ID point to the actuall Mongo DB collection and document
 
     top = cdict()
-    top.setAlg('config', [2,0,1])
+    top.setAlg('config', [2,1,0])
 
     top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     top.set("firmwareVersion:RO",   0, 'UINT32')
