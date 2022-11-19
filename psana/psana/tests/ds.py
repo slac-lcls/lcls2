@@ -108,7 +108,7 @@ def test_step():
 def test_select_detectors():
     # Usecase 4 : selecting only xppcspad
     ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, 
-            detectors=['xppcspad:2'], 
+            detectors=['xppcspad_2'], 
             xdetectors=['epicsinfo'])
 
     sendbuf = np.zeros(1, dtype='i')
