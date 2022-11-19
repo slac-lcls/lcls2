@@ -39,6 +39,7 @@ def piranha4_cdict():
     top.define_enum('offOnEnum', {'Off':0, 'On':1})
     top.define_enum('pixEnum',   {'8_bits':0, '10_bits':1, '12_bits':2})
     top.define_enum('tpEnum',    {'Sensor_Video':0, 'Ramp':1})
+    top.define_enum('tdiEnum',   {'Single_line':1, 'TDI':2})
 
     #Create a user interface that is an abstraction of the common inputs
     top.set("user.start_ns", 110000, 'UINT32')
@@ -95,6 +96,7 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",        2,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SVM",        0,'tpEnum')    # Test Pattern <0-1>
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSF",        1, 'UINT32')   # Internal Line Rate <Hz>; Requires 'STM 0'
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STG",        1,'tdiEnum')   # Set TDI Stages <1:Single line 2:TDI>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",        1,'expEnum')   # Trigger Mode <0:Int 1:Ext>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET",     4000, 'UINT32')   # Exposure Time <ns>; Min value is 4 us; Requires 'SEM 0'
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",        1,'expEnum')   # Exposure Mode <0:Int 1:Ext>; Last as it slows commanding down

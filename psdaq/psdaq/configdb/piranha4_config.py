@@ -220,7 +220,7 @@ def user_to_expert(cl, cfg, full=False):
             raise ValueError('gate_ns < 4000')
         if gate > 160000:
             print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate))
-            raise ValueError('gate_ns > 160000')
+            #raise ValueError('gate_ns > 160000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=1.0 #gate*0.001
         d['expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET']=gate
 
