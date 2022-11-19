@@ -122,9 +122,9 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         #  to get the timing feedback link to lock
         #  cpo: switch this to XpmMini which recovers from more issues?
         cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-        time.sleep(2.0)
+        time.sleep(2.5)
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(1.0)
+        time.sleep(2.5)
 
     return cl
 
@@ -266,7 +266,7 @@ def config_expert(cl, cfg):
                         print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
             if 'UartPiranha4' in str(rogue_node):
                 uart._rx._clear()
             rogue_node.set(configdb_node)

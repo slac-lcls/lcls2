@@ -1329,7 +1329,9 @@ class CollectionManager():
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
 #            Force SlowUpdate to respect deadtime
-            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
+            #if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
+            # hack to try to get same SlowUpdates in all streams
+            if not self.pva.pv_put(pv, (ControlDef.transitionId['SlowUpdate'])):
                 update_ok = False
                 break
 
