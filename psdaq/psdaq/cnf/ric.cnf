@@ -4,8 +4,6 @@ ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PRE
 epics_env = f'{ld_lib_path}'
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
 hsd_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
-lf_env = f' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
-epics_env = epics_env + lf_env
 
 collect_host = 'drp-srcf-cmp004'
 
@@ -91,8 +89,8 @@ procmgr_config = [
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-srcf-cmp007', id:'teb0',        flags:'spux', env:lf_env,   cmd:f'{teb_cmd}'},
-# {host: 'drp-srcf-cmp003', id:'teb1',        flags:'spux', env:lf_env,   cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp007', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
+# {host: 'drp-srcf-cmp003', id:'teb1',        flags:'spux',               cmd:f'{teb_cmd}'},
 
  {host: 'drp-srcf-cmp007', id:'meb0',        flags:'spux',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 64 -q {ami_workers_per_node}'},
 # {host: 'drp-srcf-cmp003', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -t -R'},
@@ -114,14 +112,14 @@ procmgr_config = [
  # cmp004 QSFP 1 cage is not working
 # {host: 'drp-srcf-cmp004', id:'tst_fim0_0',  flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D wave8 -k epics_prefix=TST:FIM:W8:01'},
 
- {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux', env:lf_env,   cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
+ {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp002', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=155'},
 
- {host: 'drp-srcf-cmp028', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd1} -l 0x2 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+# {host: 'drp-srcf-cmp028', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd1} -l 0x2 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
 # {host: 'drp-srcf-cmp011', id:'tst_fzpopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
-# {host: 'drp-srcf-cmp028', id:'tst_pv_0',    flags:'spux', env:epics_env, cmd:f'{pva_cmd1} -l 0x2 demo:claus:pv:image'},
+ {host: 'drp-srcf-cmp028', id:'tst_pv_0',    flags:'spux', env:epics_env, cmd:f'{pva_cmd1} -l 0x2 demo:claus:pv:image'},
 ]
 
 # HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)
