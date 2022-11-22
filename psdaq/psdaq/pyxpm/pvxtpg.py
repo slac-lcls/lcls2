@@ -9,6 +9,8 @@ lock     = None
 
 class PVMmcm(PVHandler):
     def __init__(self, provider, name, idx, dev, chd, cuMode=False):
+        print(f'Initializing PVmmcm {idx}')
+
         self._dev = dev
         self._chd = chd
         self._cuMode = cuMode
@@ -16,25 +18,30 @@ class PVMmcm(PVHandler):
         pv = SharedPV(initial=NTScalar('aI').wrap([0*2049]), handler=DefaultPVHandler())
         provider.add(name+':MMCM%d'%idx, pv)
         self._pv = pv
+        print(f'Added {name}:MMCM{idx}')
 
         pv = SharedPV(initial=NTScalar('aI').wrap([0*2049]), handler=DefaultPVHandler())
         provider.add(name+':IMMCM%d'%idx, pv)
         self._ipv = pv
+        print(f'Added {name}:IMMCM{idx}')
 
 #        self.update()
 
         pv = SharedPV(initial=NTScalar('I').wrap(0), handler=PVHandler(self.set))
         provider.add(name+':SetMmcm%d'%idx, pv)
         self._set = pv
+        print(f'Added {name}:SetMmcm{idx}')
 
         pv = SharedPV(initial=NTScalar('I').wrap(0), handler=self)
         provider.add(name+':ResetMmcm%d'%idx, pv)
         self._reset = pv
+        print(f'Added {name}:ResetMmcm{idx}')
 
     def update(self,timev):
         while self._dev.nready.get()==1 and self._cuMode:
             print('Waiting for phase lock: {}',self._dev)
             time.sleep(1)
+        print(f'Locked: {self._dev}')
 
         v = []
         w = []
@@ -85,7 +92,7 @@ class PVMmcm(PVHandler):
         print('external lock {}'.format(self._dev.externalLock.get()))
         print('nready        {}'.format(self._dev.nready.get()))
         print('status        {:x}'.format(self._dev.status.get()))
-
+        self._dev.dump()
 
 class PVCuPhase(object):
 
@@ -127,6 +134,7 @@ class PVXTpg(object):
                 logging.error("UsTiming not locked")
                 #raise RuntimeError("UsTiming not locked")
             else:
+                time.sleep(1)
                 xpm.UsTiming.Dump()
 
         if bypassLock:
@@ -137,8 +145,8 @@ class PVXTpg(object):
 
         self._mmcm = []
         for i in range(3,-1,-1):
-            name = devs[i][0]
-            self._mmcm.append(PVMmcm(provider, name+':XTPG', i, xpm.find(name=name)[0], self._mmcm.copy(), cuMode=cuMode))
+            mmcmname = devs[i][0]
+            self._mmcm.append(PVMmcm(provider, name+':XTPG', i, xpm.find(name=mmcmname)[0], self._mmcm.copy(), cuMode=cuMode))
             if not cuMode:
                 break
 #        self._cuPhase = PVCuPhase(provider, name+':XTPG', xpm.CuPhase)

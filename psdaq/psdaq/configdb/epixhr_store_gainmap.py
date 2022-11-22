@@ -52,25 +52,30 @@ def epixhr_readmap(fname,gains):
     vgain1 = gain_dict[gains[1]]['value']
 
     e = np.genfromtxt(fname,dtype=np.uint8)
-    e = e*vgain1 + (vgain0-vgain1)
-    e = np.vsplit(e,4)
+    print(f'genfromtxt {e.size}')
+    e = e*(vgain1-vgain0) + vgain0
     
     #  break the elements into asics
-    pca = []
-    for i in e:
-        a = []
-        for j in np.vsplit(i,2):
-            a.extend(np.hsplit(j,2))
-        #pca.extend([np.asarray(a[3],dtype=np.uint8),
-        #            np.flipud(np.fliplr(a[0])),
-        #            np.flipud(np.fliplr(a[1])),
-        #            np.asarray(a[2],dtype=np.uint8)])
-        pca.extend([np.asarray(a[3],dtype=np.uint8),
-                    np.flipud(np.fliplr(a[1])),
-                    np.flipud(np.fliplr(a[0])),
-                    np.asarray(a[2],dtype=np.uint8)])
-
-    d['user'] = {'pixel_map':np.asarray(np.pad(pca,((0,0),(0,2),(0,0))),dtype=np.uint8).ravel().tolist()}
+    if False:
+        e = np.vsplit(e,4)
+        print(f'vsplit {len(e)} {e[0].size*4}')
+        pca = []
+        for i in e:
+            a = []
+            for j in np.vsplit(i,2):
+                a.extend(np.hsplit(j,2))
+            #pca.extend([np.asarray(a[3],dtype=np.uint8),
+            #            np.flipud(np.fliplr(a[0])),
+            #            np.flipud(np.fliplr(a[1])),
+            #            np.asarray(a[2],dtype=np.uint8)])
+            pca.extend([np.asarray(a[3],dtype=np.uint8),
+                        np.flipud(np.fliplr(a[1])),
+                        np.flipud(np.fliplr(a[0])),
+                        np.asarray(a[2],dtype=np.uint8)])
+        d['user'] = {'pixel_map':np.asarray(np.pad(pca,((0,0),(0,2),(0,0))),dtype=np.uint8).ravel().tolist()}
+    else:
+        d['user'] = {'pixel_map':e.ravel().tolist()}
+    print('pixel_map {}'.format(len(d['user']['pixel_map'])))
     return d
 
 if __name__ == "__main__":

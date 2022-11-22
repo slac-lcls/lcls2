@@ -49,6 +49,7 @@ def main():
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
     parser.add_argument('-I', action='store_true', help='initialize Cu timing')
     parser.add_argument('-L', action='store_true', help='bypass AMC Locks')
+    parser.add_argument('-T', action='store_true', help='test mode')
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
 
@@ -91,7 +92,8 @@ def main():
 
     # process PVA transactions
     updatePeriod = 1.0
-    cycle = 0
+    # test mode skips xtpg and pvseq
+    cycle = 0 if not args.T else 20
     with Server(providers=[provider]):
         try:
             if pvxtpg is not None:
