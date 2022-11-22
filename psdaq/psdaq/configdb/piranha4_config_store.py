@@ -129,4 +129,7 @@ if __name__ == "__main__":
     top = piranha4_cdict()
     top.setInfo('piranha4', args.name, args.segm, args.id, 'No comment')
 
-    mycdb.modify_device(args.alias, top)
+    retval = mycdb.modify_device(args.alias, top)
+    if retval == 0:
+        print('Failed to store configuration')
+        sys.exit(1)
