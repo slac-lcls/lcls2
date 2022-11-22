@@ -256,7 +256,7 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDa
             }
             else if (subframes[q/2+3].num_elem()!=2*(56076+timHdrSize)) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                               subframes[q+3].num_elem()/2,56076+timHdrSize,q);
+                               subframes[q/2+3].num_elem()/2,56076+timHdrSize,q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }

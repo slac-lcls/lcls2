@@ -61,6 +61,14 @@ def mode(a):
     modeIdx = uniqueCounts.index(max(uniqueCounts))
     return uniqueValues[modeIdx]
 
+def setSaci(reg,field,di):
+    if field in di:
+        v = di[field]
+        reg.set(v)
+        print(f'Updated {field} to {v}')
+    else:
+        print(f'Not updating {field}')
+
 def dumpvars(prefix,c):
     print(prefix)
     for key,val in c.nodes.items():
@@ -304,6 +312,7 @@ def dictToYaml(d,types,keys,dev,path,name):
     f.write(yaml)
     f.close()
     setattr(dev,'filename'+name,fn)
+    print(f'Wrote {fn}')
 
     #  Need to remove the enable field else Json2Xtc fails
     for key in keys:
@@ -446,7 +455,8 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
             dictToYaml(epixHR,epixHRTypes,['Hr10kTAsic{}'.format(i)],cbase.EpixHR,path,'ASIC{}'.format(i))
         # remove non-e xistent field
         for i in range(4):
-            del epixHR[f'PacketRegisters{i}']['gainBitRemapped']
+            if 'gainBitRemapped' in epixHR[f'PacketRegisters{i}']:
+                del epixHR[f'PacketRegisters{i}']['gainBitRemapped']
         dictToYaml(epixHR,epixHRTypes,['PacketRegisters{}'.format(i) for i in range(4)],cbase.EpixHR,path,'PacketReg')
         dictToYaml(epixHR,epixHRTypes,['TriggerRegisters'],cbase.EpixHR,path,'TriggerReg')
 
@@ -459,8 +469,8 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 #        cbase.EpixHR.fnInitAsic(None,None,arg)
 
 #       Fixup the PacketRegisters0 disable register (lane 0 is broken?)
-        lanes = cbase.EpixHR.PacketRegisters0.DisableLane.get();
-        cbase.EpixHR.PacketRegisters0.DisableLane.set(lanes | 0x33);
+#        lanes = cbase.EpixHR.PacketRegisters0.DisableLane.get();
+#        cbase.EpixHR.PacketRegisters0.DisableLane.set(lanes | 0x33);
 
     if writePixelMap:
         hasGainMode = 'gain_mode' in cfg['user']
@@ -473,10 +483,25 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 
             for i in asics:
                 #  Write a csv file then pass to rogue
+                path = '/tmp/epixhr'
                 fn = path+'PixelMap{}.csv'.format(i)
                 np.savetxt(fn, pixelConfigMap[i], fmt='%d', delimiter=',', newline='\n')
                 print('Setting pixel bit map from {}'.format(fn))
-                getattr(cbase.EpixHR,'Hr10kTAsic{}'.format(i)).fnSetPixelBitmap(None,None,fn)
+                asicName = f'Hr10kTAsic{i}'
+                saci = getattr(cbase.EpixHR,asicName)
+                saci.enable.set(True)
+                saci.fnSetPixelBitmap(None,None,fn)
+
+                #  Don't forget about the trbit and charge injection
+                #  Program these one-by-one since the second call of fnInitAsicScript breaks
+                if epixHR is not None and asicName in epixHR:
+                    di = epixHR[asicName]
+                    setSaci(saci.atest,'atest',di)
+                    setSaci(saci.test,'test',di)
+                    setSaci(saci.trbit,'trbit',di)
+                    setSaci(saci.Pulser,'Pulser',di)
+                    
+                saci.enable.set(False)
 
             logging.warning('SetAsicsMatrix complete')
         else:
@@ -584,10 +609,13 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  User pixel map is assumed to be 288x384 in standard element orientation
     gain_mode = cfg['user']['gain_mode']
     if gain_mode==5:
-        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
     else:
-        mapv,trbit = gain_mode_map(gain_mode)
+        mapv,trbit0 = gain_mode_map(gain_mode)
+        trbit = [trbit0 for i in range(4)]
         pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+
+    print(f'pixelConfigUsr shape {pixelConfigUsr.shape}  trbit {trbit}')
     pixelConfigMap = user_to_rogue(pixelConfigUsr)
 
     for seg in range(1):
@@ -606,7 +634,7 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
         top.setAlg('config', [2,0,0])
         top.setInfo(detType='epixhr2x2', detName=topname[0], detSegm=seg+int(topname[1]), detId=id, doc='No comment')
         top.set('asicPixelConfig', pixelConfigUsr)
-        top.set('trbit'          , [trbit for i in range(4)], 'UINT8')
+        top.set('trbit'          , trbit, 'UINT8')
         scfg[seg+1] = top.typed_json()
 
     result = []
@@ -653,7 +681,7 @@ def epixhr2x2_scan_keys(update):
     if pixelMapChanged:
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==5:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
         else:
             mapv,trbit = gain_mode_map(gain_mode)
             pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
@@ -727,7 +755,7 @@ def epixhr2x2_update(update):
     if writePixelMap:
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==5:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
         else:
             mapv,trbit = gain_mode_map(gain_mode)
             pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv

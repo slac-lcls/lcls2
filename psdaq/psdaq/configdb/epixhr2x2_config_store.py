@@ -339,8 +339,8 @@ def epixhr2x2_cdict():
 
 if __name__ == "__main__":
     create = True
-#    dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
-    dbname = 'configdb'     #this is the name of the database running on the server.  Only client care about this name.
+    dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
+#    dbname = 'configdb'     #this is the name of the database running on the server.  Only client care about this name.
 
     args = cdb.createArgs().args
 
