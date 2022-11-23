@@ -109,14 +109,15 @@ if __name__ == "__main__":
 
     args = cdb.createArgs().args
 
-    args.name = 'tstpiranha4'
-    args.segm = 0
-    args.id = 'piranha4_serial1235'
-    args.alias = 'BEAM'
-    args.prod = True
-    args.inst = 'tst'
-    args.user = 'tstopr'
-    args.password = 'pcds'
+    # These override the command line arguments, so left commented out
+    #args.name = 'tstpiranha4'
+    #args.segm = 0
+    #args.id = 'piranha4_serial1235'
+    #args.alias = 'BEAM'
+    #args.prod = True
+    #args.inst = 'tst'
+    #args.user = 'tstopr'
+    #args.password = 'pcds'
 
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'

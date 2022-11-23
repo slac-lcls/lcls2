@@ -32,9 +32,9 @@ def opal_cdict():
 
     #Create a user interface that is an abstraction of the common inputs
     top.set("user.start_ns",  92000, 'UINT32')
-    top.set("user.gate_ns" ,  10000, 'UINT32')  
-    top.set("user.black_level",  32, 'UINT32')  
-    top.set("user.vertical_bin",  0, 'binEnum')  
+    top.set("user.gate_ns" ,  10000, 'UINT32')
+    top.set("user.black_level",  32, 'UINT32')
+    top.set("user.vertical_bin",  0, 'binEnum')
 
     # timing system
     top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.PauseThreshold',16,'UINT32')
@@ -64,11 +64,11 @@ def opal_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.LinkMode"    ,      1,'UINT32')   # Base mode
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.DataMode"    ,      3,'UINT32')   # 12-bit
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.FrameMode"    ,     2,'UINT32')   # Frame
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.TapCount"    ,      2,'UINT32')   # 
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.TapCount"    ,      2,'UINT32')   #
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.DataEn"    ,        1,'UINT8')   # rogue wants 'bool'
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.Blowoff"    ,       0,'UINT8')   # rogue wants 'bool'
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.BaudRate"      ,57600,'UINT32')   # bps
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SerThrottle"   ,10000,'UINT32')   
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SerThrottle"   ,10000,'UINT32')
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SwControlValue",    0,'UINT32')   # Frame
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SwControlEn"   ,    0,'UINT32')   # Frame
 
@@ -82,7 +82,7 @@ def opal_cdict():
 #    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.OLUTE",  0,'UINT32')  # output lookup table enable on/off (not implemented)
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.DPE"  ,  0,'UINT32')  # defect pixel correction on/off
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.OVL"  ,  1,'UINT32')  # overlay frame counter and integration time
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.OFS"  ,  1,'UINT32')  # color cameras only      
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.OFS"  ,  1,'UINT32')  # color cameras only
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.Red"  ,100,'UINT32')  # red gain
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.Green",100,'UINT32')  # green gain
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.Blue" ,100,'UINT32')  # blue gain
@@ -95,14 +95,15 @@ if __name__ == "__main__":
 
     args = cdb.createArgs().args
 
-    args.name = 'tmoopal2'
-    args.segm = 0
-    args.id = 'opal_serial1235'
-    args.alias = 'BEAM'
-    args.prod = True
-    args.inst = 'tmo'
-    args.user = 'tmoopr'
-    args.password = 'pcds'
+    # These override the command line arguments, so left commented out
+    #args.name = 'tmoopal2'
+    #args.segm = 0
+    #args.id = 'opal_serial1235'
+    #args.alias = 'BEAM'
+    #args.prod = True
+    #args.inst = 'tmo'
+    #args.user = 'tmoopr'
+    #args.password = 'pcds'
 
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
