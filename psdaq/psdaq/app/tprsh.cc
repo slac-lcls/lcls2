@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <time.h>
+#include <pthread.h>
 
 #include <string>
 #include <vector>
