@@ -28,8 +28,8 @@ Usage::
     rec   = gu.log_rec_on_start()
     fmode = gu.file_mode(fname)
 
-    gu.create_directory(dir, mode=0o777)
-    exists = gu.create_path(path, depth=6, mode=0o777)
+    gu.create_directory(dir, mode=0o2775)
+    exists = gu.create_path(path, depth=6, mode=0o2775)
 
     flist = gu.get_list_of_files_in_dir(dirname)
     flist = gu.get_list_of_files_in_dir_for_ext(dir, ext='.xtc')
@@ -38,11 +38,12 @@ Usage::
     mode  = gu.get_path_mode(path)
     tmpf  = gu.get_tempfile(mode='r+b',suffix='.txt')
 
+    s = gu.str_parsed_path(path)
     gu.print_parsed_path(path)
 
     arr  = gu.load_textfile(path)
     gu.save_textfile(text, path, mode='w') # mode: 'w'-write, 'a'-append
-    gu.set_file_access_mode(fname, mode=0o777)
+    gu.set_file_access_mode(fname, mode=0o664)
 
     jo = gu.load_json(fname)
     gu.save_json(jo, fname)
@@ -70,6 +71,8 @@ Usage::
 
     s = gu.do_print(nev) # returns true for sparcified event numbers.
     ch = gu.input_single_char('Next event? [y/n]')
+
+    gu.change_file_ownership(fname, user=None, group='ps-users')
 
     os_system(cmd)
     os_command(cmd)
@@ -140,14 +143,12 @@ def time_sec_from_stamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_stamp='1970-01-01T00:00:
 
 
 def get_enviroment(env='USER'):
-    """Returns the value of specified by string name environment variable
-    """
+    """Returns the value of specified by string name environment variable"""
     return os.environ.get(env, None)
 
 
 def get_hostname():
-    """Returns login name
-    """
+    """Returns login name"""
     #return os.uname()[1]
     return socket.gethostname()
 
@@ -159,14 +160,12 @@ def get_cwd():
 
 
 def get_pid():
-    """Returns pid - process id
-    """
+    """Returns pid - process id"""
     return os.getpid()
 
 
 def get_login():
-    """Returns login name
-    """
+    """Returns login name"""
     #return os.getlogin()
     return getpass.getuser()
 
@@ -179,36 +178,33 @@ def shell_command_is_available(cmd='mongorestore', verb=True):
 
 
 def file_mode(fname):
-    """Returns file mode, e.g. 0o40377
-    """
+    """Returns file mode, e.g. 0o40377"""
     from stat import ST_MODE
     return os.stat(fname)[ST_MODE]
 
 
 def log_rec_on_start(tsfmt='%Y-%m-%dT%H:%M:%S%z'):
-    """Returns (str) record containing timestamp, login, host, cwd, and command line
-    """
+    """Returns (str) record containing timestamp, login, host, cwd, and command line"""
     return '\n%s user:%s@%s cwd:%s command:%s'%\
            (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), ' '.join(sys.argv))
 
 
-def create_directory(d, mode=0o777, umask=0o0):
-    """Creates directory and sets its mode
-    """
+def create_directory(d, mode=0o2775, umask=0o0, user=None, group='ps-users'):
+    """Creates directory and sets its mode"""
     os.umask(umask)
     if os.path.exists(d):
         logger.debug('Directory exists: %s' % d)
     else:
         try: os.makedirs(d, mode) #, exist_ok=True)
         except Exception as err:
-           logger.debug('exception in os.makedirs("%s") err: %s' % (d,err))
+           logger.debug('exception in os.makedirs("%s") err: %s' % (d, err))
            return
-        #os.makedirs(d, mode, exist_ok=True)
         os.chmod(d, mode)
-        logger.debug('Directory created: %s, mode(oct)=%s' % (d, oct(mode)))
+        change_file_ownership(d, user=user, group=group)
+        logger.debug('Directory created: %s mode(oct)=%s' % (d, oct(mode)))
 
 
-def create_path(path, depth=6, mode=0o777):
+def create_path(path, depth=6, mode=0o2775):
     """Creates missing path of specified depth from the beginning
        e.g. for '/reg/g/psdm/logs/calibman/2016/07/log-file-name.txt'
        or '/reg/d/psdm/cxi/cxi11216/calib/Jungfrau::CalibV1/CxiEndstation.0:Jungfrau.0/pedestals/9-end.data'
@@ -217,7 +213,6 @@ def create_path(path, depth=6, mode=0o777):
     """
     logger.debug('create_path: %s' % path)
 
-    #subdirs = path.strip('/').split('/')
     subdirs = path.split('/')
     cpath = subdirs[0]
     for i,sd in enumerate(subdirs[:-1]):
@@ -263,12 +258,20 @@ def get_list_of_files_in_dir_for_part_fname(dir, pattern='-r0022'):
 def get_path_owner(path):
     import pwd
     stat = os.stat(path)
-    #print(' stat =', stat)
     pwuid = pwd.getpwuid(stat.st_uid)
-    #print(' pwuid =', pwuid)
     user_name  = pwuid.pw_name
-    #print(' uid = %s   user_name  = %s' % (uid, user_name))
+    logger.debug('stat = %s   uid = %s   user_name = %s' % (stat, uid, user_name))
     return user_name
+
+
+def change_file_ownership(fname, user=None, group='ps-users'):
+    """change file ownership. The same as Detector.UtilsCalib"""
+    import grp
+    import pwd
+    gid = os.getgid() if group is None else grp.getgrnam(group).gr_gid
+    uid = os.getuid() if user is None else pwd.getpwnam(user).pw_uid
+    logger.debug('change_file_ownership uid:%d gid:%d' % (uid, gid)) # uid:5269 gid:10000
+    os.chown(fname, uid, gid) # for non-default user - OSError: [Errno 1] Operation not permitted
 
 
 def get_path_mode(path):
@@ -281,25 +284,29 @@ def get_tempfile(mode='r+b',suffix='.txt'):
     return tf # .name
 
 
-def print_parsed_path(path):                       # Output for path:
-    print('print_parsed_path(path): path:',)        # path/reg/d/psdm/XCS/xcsi0112/xtc/e167-r0015-s00-c00.xtc
-    print('exists(path)  =', os.path.exists(path))  # True
-    print('splitext(path)=', os.path.splitext(path))# ('/reg/d/psdm/XCS/xcsi0112/xtc/e167-r0015-s00-c00', '.xtc')
-    print('basename(path)=', os.path.basename(path))# e167-r0015-s00-c00.xtc
-    print('dirname(path) =', os.path.dirname(path)) # /reg/d/psdm/XCS/xcsi0112/xtc
-    print('lexists(path) =', os.path.lexists(path)) # True
-    print('isfile(path)  =', os.path.isfile(path))  # True
-    print('isdir(path)   =', os.path.isdir(path))   # False
-    print('split(path)   =', os.path.split(path))   # ('/reg/d/psdm/XCS/xcsi0112/xtc', 'e167-r0015-s00-c00.xtc')
+def str_parsed_path(path):
+    """Output for path like path/reg/d/psdm/XCS/xcsi0112/xtc/e167-r0015-s00-c00.xtc"""
+    s  = 'exists(path)     = %s' % os.path.exists(path)         # True
+    s += '\nsplitext(path) = %s' % str(os.path.splitext(path))  # ('/reg/d/psdm/XCS/xcsi0112/xtc/e167-r0015-s00-c00', '.xtc')
+    s += '\nbasename(path) = %s' % os.path.basename(path)       # e167-r0015-s00-c00.xtc
+    s += '\ndirname(path)  = %s' % os.path.dirname(path)        # /reg/d/psdm/XCS/xcsi0112/xtc
+    s += '\nlexists(path)  = %s' % os.path.lexists(path)        # True
+    s += '\nisfile(path)   = %s' % os.path.isfile(path)         # True
+    s += '\nisdir(path)    = %s' % os.path.isdir(path)          # False
+    s += '\nsplit(path)    = %s' % str(os.path.split(path))     # ('/reg/d/psdm/XCS/xcsi0112/xtc', 'e167-r0015-s00-c00.xtc')
+    return s
 
 
-def set_file_access_mode(fname, mode=0o777):
+def print_parsed_path(path):
+    print('print_parsed_path(path): path:', str_parsed_path(path))
+
+
+def set_file_access_mode(fname, mode=0o2775):
     os.chmod(fname, mode)
 
 
 def save_textfile(text, path, mode='w', verb=False):
-    """Saves text in file specified by path. mode: 'w'-write, 'a'-append
-    """
+    """Saves text in file specified by path. mode: 'w'-write, 'a'-append"""
     msg = 'save_textfile %s' % path
     if verb: print(msg)
     logger.debug(msg)
@@ -310,12 +317,10 @@ def save_textfile(text, path, mode='w', verb=False):
 
 
 def load_textfile(path, verb=False):
-    """Returns text file as a str object
-    """
+    """Returns text file as a str object"""
     msg = 'load_textfile %s' % path
     if verb: print(msg)
     logger.debug(msg)
-
     f=open(path, 'r')
     recs = f.read() # f.readlines()
     f.close()
@@ -323,43 +328,35 @@ def load_textfile(path, verb=False):
 
 
 def load_json(fname):
-    """Load json object from file.
-    """
+    """Load json object from file."""
     logger.debug('load_json %s' % fname)
     import json
     return json.load(open(fname,'rb'))
-    # or
-    #with open(fname) as f: jo = json.load(f)
-    #return jo
 
 
 def save_json(jo, fname, mode='w'):
-    """Saves json object in file.
-    """
+    """Saves json object in file."""
     logger.debug('save_json %s' % fname)
     import json
     with open(fname, mode) as f: json.dump(jo, f)
 
 
 def load_pickle(fname, mode='rb'):
-    """Returns object from packed in file.
-    """
+    """Returns object from packed in file."""
     logger.debug('load_pickle %s' % fname)
     import pickle
     return pickle.load(open(fname, mode))
 
 
 def save_pickle(o, fname, mode='wb'):
-    """Saves object in the pickle file.
-    """
+    """Saves object in the pickle file."""
     logger.debug('save_pickle %s' % fname)
     import pickle
     with open(fname, mode) as f: pickle.dump(o, f)
 
 
 def save_image_tiff(image, fname='image.tiff', verb=False):
-    """Saves image in 16-bit tiff file
-    """
+    """Saves image in 16-bit tiff file"""
     import Image
     msg = 'save_image_tiff %s' % fname
     if verb: print(msg)
@@ -414,14 +411,12 @@ def print_command_line_parameters(parser):
 
 
 def list_of_int_from_list_of_str(list_str):
-    """Converts  ['0001', '0202', '0203', '0204',...] to [1, 202, 203, 204,...]
-    """
+    """Converts  ['0001', '0202', '0203', '0204',...] to [1, 202, 203, 204,...]"""
     return [int(s) for s in list_str]
 
 
 def list_of_str_from_list_of_int(list_int, fmt='%04d'):
-    """Converts [1, 202, 203, 204,...] to ['0001', '0202', '0203', '0204',...]
-    """
+    """Converts [1, 202, 203, 204,...] to ['0001', '0202', '0203', '0204',...]"""
     return [fmt % i for i in list_int]
 
 
@@ -443,19 +438,13 @@ def _parse_token(token):
         pos_beg = line.find('[Expire')
         if pos_beg == -1: continue
         pos_end = line.find(']', pos_beg)
-        #print(line)
         timestamp = line[pos_beg+9:pos_end]
-
-        #date_object = datetime.strptime('Jun 1 2005  1:33PM', '%b %d %Y %I:%M%p')
-        #date_object = datetime.strptime(timestamp, '%b %d %H:%M')
-        #print('date_object', str(date_object))
-
     return timestamp
 
 
 def check_token(do_print=False):
     token = getoutput('tokens')
-    #if do_print(: print(token)
+    #if do_print: print(token)
     status = True if 'Expire' in token else False
     timestamp = _parse_token(token) if status else ''
     msg = 'Your AFS token %s %s' % ({True:'IS valid until', False:'IS NOT valid'}[status], timestamp)
@@ -503,11 +492,6 @@ def str_attributes(o, cmt='\nattributes:', fmt='\n  %s'):
     return cmt + ''.join([fmt % str(v) for v in dir(o)])
 
 
-#def str_attributes(o, cmt='\nattributes:', fmt='\n%20s: %s'):
-#    return  str(dir(o))
-    #return cmt + ''.join([fmt % (k,str(v)) for k,v in dir(o) if len(k)>2 and k[:2] != '__'])
-
-
 def print_parser(parser):
     """Prints input parameters"""
     popts, pargs = parser.parse_args()
@@ -526,17 +510,14 @@ def is_in_command_line(ptrn1=None, ptrn2=None):
     if len(sys.argv) < 2: return False
     for p in sys.argv[1:]:
         if ptrn1 is not None and (ptrn1 in p[:2]):
-            #logger.debug('option "%s" is found in CL' % ptrn1)
             return True
         if ptrn2 is not None and (ptrn2 in p):
-            #logger.debug('option "%s" is found in CL' % ptrn2)
             return True
     return False
 
 
 def do_print(nev):
-    """Returns true for sparcified event numbers.
-    """
+    """Returns true for sparcified event numbers."""
     return nev<10\
        or (nev<50 and (not nev%10))\
        or (nev<500 and (not nev%100))\
@@ -557,12 +538,6 @@ def input_single_char(prompt='input? >'):
     return ch
 
 
-#def get_grpnames(user='root'):
-#    """Returns tuple of group names"""
-#    from grp import getgrnam
-#    return getgrnam(user)
-
-
 def os_system(cmd):
     assert isinstance(cmd,str), 'command should be str'
     os.system(cmd)
@@ -571,7 +546,6 @@ def os_system(cmd):
 
 def os_command(cmd):
     assert isinstance(cmd,str), 'command should be str'
-    #_cmd = cmd.split() if isinstance(cmd,str) else cmd
     _cmd = cmd
     stream = os.popen(_cmd)
     resp = stream.read()
@@ -616,9 +590,6 @@ if __name__ == "__main__":
 
 
   def test_01():
-    #logger.debug('debug msg')  # will print a message to the console
-    #logger.warning('Watch out!')  # will print a message to the console
-    #logger.info('I told you so')  # will not print anything
 
     print('get_enviroment("PWD"): %s' % get_enviroment(env='PWD'))
     print('get_hostname()       : %s' % get_hostname())
@@ -629,7 +600,6 @@ if __name__ == "__main__":
     create_directory('./work', mode=0o377)
     print('file_mode("work")    : %s' % oct(file_mode('work')))
     print('log_rec_on_start()   :%s' % log_rec_on_start())
-    #print('get_grpnames()       :%s' % str(get_grpnames('root')))
     print('list_of_hosts        :%s' % list_of_hosts())
 
 
@@ -637,7 +607,6 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
                         datefmt='%Y-%m-%dT%H:%M:%S',\
                         level=logging.DEBUG)
-                        #filename='example.log', filemode='w'
     test_01()
     test_datetime()
     test_input_single_char()
