@@ -77,27 +77,16 @@ def proc_block(block, **kwa):
     detname    = kwa.get('det', None)
     int_lo     = kwa.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
     int_hi     = kwa.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
-    #intnlo     = kwa.get('intnlo', 6.0)     # intensity ditribution number-of-sigmas low
-    #intnhi     = kwa.get('intnhi', 6.0)     # intensity ditribution number-of-sigmas high
-    #rms_lo     = kwa.get('rms_lo', 0.001)   # rms ditribution low
-    #rms_hi     = kwa.get('rms_hi', 16000)   # rms ditribution high
-    #rmsnlo     = kwa.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
-    #rmsnhi     = kwa.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
-    #fraclm     = kwa.get('fraclm', 0.1)     # allowed fraction limit
     fraclo     = kwa.get('fraclo', 0.05)    # fraction of statistics below low gate limit
     frachi     = kwa.get('frachi', 0.95)    # fraction of statistics below high gate limit
     frac05     = 0.5
-    #nrecs1     = kwa.get('nrecs1', None)    # number of records for the 1st stage processing
 
     logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
     logger.info(info_ndarr(block, 'begin processing of the data block', first=100, last=105))
 
     t0_sec = time()
-
-    #nrecs1, ny, nx = block.shape[0]
     nrecs1= block.shape[0]
     shape = block.shape[1:] #(ny, nx)
-    #if nrecs1 is None or nrecs1>nrecs: nrecs1 = nrecs
 
     arr1_u16 = np.ones(shape, dtype=np.uint16)
     arr1     = np.ones(shape, dtype=np.uint64)
@@ -114,11 +103,6 @@ def proc_block(block, **kwa):
       to get better interpolation for median and quantile values
     - use nrecs1 (< nrecs) due to memory and time consumption
     """
-    #blockf64 = np.random.random(block.shape) - 0.5 + block
-    #logger.debug(info_ndarr(blockf64, '1-st stage conversion uint16 to float64,'\
-    #                                 +' add random [0,1)-0.5 time = %.3f sec'%\
-    #                                  (time()-t1_sec), first=100, last=105))
-
     blockf64 = block
     #arr_med = np.median(block, axis=0)
     arr_med = np.quantile(blockf64, frac05, axis=0, interpolation='linear')
@@ -156,20 +140,17 @@ def proc_block(block, **kwa):
                 +info_ndarr(arr_abs_dev, '\n    abs_dev[100:105]', first=100, last=105)\
                 +info_ndarr(gate_lo,     '\n    gate_lo[100:105]', first=100, last=105)\
                 +info_ndarr(gate_hi,     '\n    gate_hi[100:105]', first=100, last=105))
-                #+info_ndarr(arr_qlo,     '\n    arr_qlo[100:105]', first=100, last=105)\
-                #+info_ndarr(arr_qhi,     '\n    arr_qhi[100:105]', first=100, last=105)\
 
     return gate_lo, gate_hi, arr_med, arr_abs_dev
 
 
 class DarkProc():
-    """dark data accumulation and processing
-    """
+    """dark data accumulation and processing"""
     def __init__(self, **kwa):
 
         self.nrecs  = kwa.get('nrecs',1000)
         self.nrecs1 = kwa.get('nrecs1',100)
-        self.plotim = kwa.get('plotim', 1)
+        self.plotim = kwa.get('plotim', 0o1)
         self.savebw = kwa.get('savebw', 0xffff)
         self.fraclm = kwa.get('fraclm', 0.1)
         self.int_lo = kwa.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
@@ -180,7 +161,7 @@ class DarkProc():
         self.rms_hi = kwa.get('rms_hi', 16000)   # rms ditribution high
         self.rmsnlo = kwa.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
         self.rmsnhi = kwa.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
-        self.doplot = kwa.get('doplot', False)   # plot image of pedestals
+        self.datbits= kwa.get('datbits', 0x3fff) # data bits 0x3fff is 14-bit mask for epix10ka and Jungfrau
 
         self.status = 0 # 0/1/2 stage
         self.kwa    = kwa
@@ -189,7 +170,7 @@ class DarkProc():
 
 
     def accumulate_block(self, raw):
-        self.block[self.irec,:] = raw # & M14 - already done
+        self.block[self.irec,:] = raw # & M14 is not applied
 
 
     def proc_block(self):
@@ -252,16 +233,14 @@ class DarkProc():
         rms_lo  = self.rms_lo
         rmsnhi  = self.rmsnhi
         rmsnlo  = self.rmsnlo
+        plotim  = self.plotim
 
         fraclm  = self.fraclm
         counter = self.irec
-        doplot  = self.doplot
+        nevlm = int(fraclm * counter)
 
         arr_av1 = divide_protected(self.arr_sum1, self.arr_sum0)
         arr_av2 = divide_protected(self.arr_sum2, self.arr_sum0)
-
-        frac_int_lo = np.array(self.sta_int_lo/counter, dtype=np.float32)
-        frac_int_hi = np.array(self.sta_int_hi/counter, dtype=np.float32)
 
         arr_rms = np.sqrt(arr_av2 - np.square(arr_av1))
 
@@ -271,18 +250,20 @@ class DarkProc():
         rms_min, rms_max = evaluate_limits(arr_rms, rmsnlo, rmsnhi, rms_lo, rms_hi, cmt='RMS')
         ave_min, ave_max = evaluate_limits(arr_av1, intnlo, intnhi, int_lo, int_hi, cmt='AVE')
 
-        arr_sta_rms_hi = np.select((arr_rms>rms_max,),    (self.arr1,), 0)
-        arr_sta_rms_lo = np.select((arr_rms<rms_min,),    (self.arr1,), 0)
-        arr_sta_int_hi = np.select((frac_int_hi>fraclm,), (self.arr1,), 0)
-        arr_sta_int_lo = np.select((frac_int_lo>fraclm,), (self.arr1,), 0)
-        arr_sta_ave_hi = np.select((arr_av1>ave_max,),    (self.arr1,), 0)
-        arr_sta_ave_lo = np.select((arr_av1<ave_min,),    (self.arr1,), 0)
+        arr_sta_rms_hi = np.select((arr_rms>rms_max,),       (self.arr1,), 0)
+        arr_sta_rms_lo = np.select((arr_rms<rms_min,),       (self.arr1,), 0)
+        arr_sta_int_hi = np.select((self.sta_int_hi>nevlm,), (self.arr1,), 0)
+        arr_sta_int_lo = np.select((self.sta_int_lo>nevlm,), (self.arr1,), 0)
+        arr_sta_ave_hi = np.select((arr_av1>ave_max,),       (self.arr1,), 0)
+        arr_sta_ave_lo = np.select((arr_av1<ave_min,),       (self.arr1,), 0)
 
         logger.info('bad pixel status:'\
                +'\n  status  1: %8d pixel rms       > %.3f' % (arr_sta_rms_hi.sum(), rms_max)\
                +'\n  status  2: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min)\
-               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction of events' % (arr_sta_int_hi.sum(), int_hi, fraclm)\
-               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction of events' % (arr_sta_int_lo.sum(), int_lo, fraclm)\
+               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction (%d/%d) of non-empty events'%\
+                     (arr_sta_int_hi.sum(), int_hi, fraclm, nevlm, counter)\
+               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction (%d/%d) of non-empty events'%\
+                     (arr_sta_int_lo.sum(), int_lo, fraclm, nevlm, counter)\
                +'\n  status 16: %8d pixel average   > %g'   % (arr_sta_ave_hi.sum(), ave_max)\
                +'\n  status 32: %8d pixel average   < %g'   % (arr_sta_ave_lo.sum(), ave_min)\
                )
@@ -304,7 +285,7 @@ class DarkProc():
         self.arr_msk = np.select((arr_sta>0,), (self.arr0,), 1)
 
         logger.debug(self.info_results())
-        if doplot: self.plot_images(titpref='')
+        if plotim: self.plot_images(titpref='')
 
         self.block = None
         self.irec = -1
@@ -313,23 +294,22 @@ class DarkProc():
 
     def add_event(self, raw, irec):
         logger.debug(info_ndarr(raw, 'add_event %3d raw' % irec))
-        #raw = raw & M14
+        _raw = raw & self.datbits # use data bits only (14 for jungfrau and epix10ka)
+        _raw_f64 = _raw.astype(np.float64)
 
-        cond_lo = raw<self.gate_lo
-        cond_hi = raw>self.gate_hi
+        cond_lo = _raw<self.gate_lo
+        cond_hi = _raw>self.gate_hi
         condlist = (np.logical_not(np.logical_or(cond_lo, cond_hi)),)
 
-        raw_f64 = raw.astype(np.float64)
-
         self.arr_sum0   += np.select(condlist, (self.arr1u64,), 0)
-        self.arr_sum1   += np.select(condlist, (raw_f64,), 0)
-        self.arr_sum2   += np.select(condlist, (np.square(raw_f64),), 0)
+        self.arr_sum1   += np.select(condlist, (_raw_f64,), 0)
+        self.arr_sum2   += np.select(condlist, (np.square(_raw_f64),), 0)
 
-        self.sta_int_lo += np.select((cond_lo,), (self.arr1u64,), 0)
-        self.sta_int_hi += np.select((cond_hi,), (self.arr1u64,), 0)
+        self.sta_int_lo += np.select((_raw<self.int_lo,), (self.arr1u64,), 0)
+        self.sta_int_hi += np.select((_raw>self.int_hi,), (self.arr1u64,), 0)
 
-        np.maximum(self.arr_max, raw, out=self.arr_max)
-        np.minimum(self.arr_min, raw, out=self.arr_min)
+        np.maximum(self.arr_max, _raw, out=self.arr_max)
+        np.minimum(self.arr_min, _raw, out=self.arr_min)
 
 
     def add_block(self):
@@ -405,8 +385,7 @@ class DarkProc():
 
 
 def plot_image(nda, tit=''):
-    """Plots averaged image
-    """
+    """Plots averaged image"""
     from psana.detector.UtilsGraphics import gr
 
     #img = det.image(evt, nda)
@@ -437,6 +416,7 @@ def add_metadata_kwargs(orun, odet, **kwa):
     ivalid_run = tstamp if use_external_run else orun.runnum\
                   if not use_external_ts else 0
 
+    kwa['exp']        = orun.expt
     kwa['experiment'] = orun.expt
     kwa['detector']   = odet.raw._uniqueid
     kwa['detname']    = odet.raw._det_name
@@ -471,8 +451,9 @@ def deploy_constants(dic_consts, **kwa):
     dettype  = kwa.get('dettype', None)
     deploy   = kwa.get('deploy', False)
     dirrepo  = kwa.get('dirrepo', './work')
-    dirmode  = kwa.get('dirmode',  0o777)
-    filemode = kwa.get('filemode', 0o666)
+    dirmode  = kwa.get('dirmode',  0o2775)
+    filemode = kwa.get('filemode', 0o664)
+    group    = kwa.get('group', 'ps-users')
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
@@ -488,7 +469,7 @@ def deploy_constants(dic_consts, **kwa):
     #create_directory(dirrepo, dirmode)
     #fprefix = fname_prefix(detname, tsshort, expname, runnum, dirrepo)
 
-    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, dettype=dettype)
+    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
     dircons = repoman.makedir_constants(dname='constants')
     fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
 
@@ -530,26 +511,28 @@ def deploy_constants(dic_consts, **kwa):
 
 def pedestals_calibration(**kwa):
 
+  import psana.detector.utils_psana as up
+
   logger.info('command line: %s' % info_command_line())
   logger.info('input parameters: %s' % info_dict(kwa, fmt='%s: %s', sep=' '))
 
+  dsname  = kwa.get('dsname', None)
   dirrepo = kwa.get('dirrepo', './work')
   detname = kwa.get('det', None)
-  expname = kwa.get('exp', None)
   nrecs   = kwa.get('nrecs', 100)
   stepnum = kwa.get('stepnum', None)
   stepmax = kwa.get('stepmax', 1)
   evskip  = kwa.get('evskip', 0)
   events  = kwa.get('events', 1000)
-  dirmode = kwa.get('dirmode', 0o777)
-  filemode= kwa.get('filemode', 0o666)
+  dirmode = kwa.get('dirmode', 0o2775)
+  filemode= kwa.get('filemode', 0o664)
+  group   = kwa.get('group', 'ps-users')
   logmode = kwa.get('logmode', 'INFO')
-
-  #procname = sys._getframe().f_code.co_name # pedestals_calibration
   procname = sys.argv[0].rsplit('/')[-1]
-  #save_log_record_at_start(dirrepo, procname, dirmode, filemode, tsfmt='%Y-%m-%dT%H:%M:%S%z')
 
-  ds = DataSource(**datasource_kwargs(**kwa))
+  dskwargs = up.datasource_kwargs_from_string(dsname)
+  logger.info('DataSource kwargs: %s' % str(dskwargs))
+  ds = DataSource(**dskwargs)
 
   t0_sec = time()
   tdt = t0_sec
@@ -560,18 +543,26 @@ def pedestals_calibration(**kwa):
   break_loop = False
   dettype = None
 
+  expname = dskwargs.get('exp', None)
+  runnum  = dskwargs.get('run', None)
+
   for irun,orun in enumerate(ds.runs()):
+
+    if expname is None: expname = orun.expt
+    if runnum is None: runnum = orun.runnum
+
     nevrun = 0
-    logger.info('\n==== %02d run: %d exp: %s' % (irun, orun.runnum, orun.expt))
+    logger.info('\n==== %02d run: %d exp: %s' % (irun, runnum, expname))
     logger.info(info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
 
     odet = orun.Detector(detname)
     if dettype is None:
         dettype = odet.raw._dettype
-        repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, dettype=dettype)
+        repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
+        dircons = repoman.makedir_constants(dname='constants')
         logfname = repoman.logname('%s_%s' % (procname, get_login()))
-        init_file_handler(logmode, logfname, filemode=0o664)
-        repoman.save_record_at_start(procname) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
+        init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
+        repoman.save_record_at_start(procname, adddict={'logfile':logfname}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
     logger.info('created %s detector object' % detname)
     logger.info(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
@@ -599,13 +590,11 @@ def pedestals_calibration(**kwa):
               break_loop = True
               break
 
-
       if dpo is None:
          dpo = DarkProc(**kwa)
          dpo.runnum = orun.runnum
          dpo.exp = expname
          dpo.ts_run, dpo.ts_now = ts_run, ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FORMAT)
-
 
       for ievt,evt in enumerate(step.events()):
         print('Event %04d' % ievt, end='\r')
@@ -617,7 +606,6 @@ def pedestals_calibration(**kwa):
             continue
         elif evskip>0 and (ievt == evskip):
             s = 'Events < --evskip=%d are skipped' % evskip
-            #print(s)
             logger.info(s)
 
         if ievt > events-1:
@@ -626,7 +614,7 @@ def pedestals_calibration(**kwa):
             break_loop = True
             break
 
-        raw  = odet.raw.raw(evt)
+        raw = odet.raw.raw(evt)
 
         if raw is None:
             logger.info('==== Ev:%04d raw is None' % (ievt))
@@ -638,11 +626,9 @@ def pedestals_calibration(**kwa):
         dt   = tsec - tdt
         tdt  = tsec
         if selected_record(ievt+1, events):
-            #print()
             ss = 'run[%d] %d  step %d  events total/run/step/selected: %4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
                  (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, time()-t0_sec, dt)
             logger.info(ss)
-
 
         status = dpo.event(raw,ievt)
         if status == 2:
@@ -651,10 +637,8 @@ def pedestals_calibration(**kwa):
             break
         # End of event-loop
 
-
       if ievt < events: logger.info('==== Ev:%04d end of events in run %d step %d'%\
                                      (ievt, orun.runnum, istep))
-
       if True:
           dpo.summary()
           ctypes = ('pedestals', 'pixel_rms', 'pixel_status')
@@ -691,7 +675,7 @@ if __name__ == "__main__":
         'det'     : 'tmoopal',\
         'nrecs1'  : 100,\
         'nrecs'   : 200,\
-        'doplot'  : True,\
+        'plotim'  : 0o17777,\
     }
 
     pedestals_calibration(**kwa)
