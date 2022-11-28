@@ -1,6 +1,6 @@
 
 """Class :py:class:`UtilsFS` is a Image Viewer QWidget with control fields
-==========================================================================================
+==========================================================================
 
 Usage ::
 
@@ -42,7 +42,7 @@ def list_of_files_in_dir(dirname):
 def list_of_files_in_dir_for_ext(dir, ext='.xtc2'):
     """Returns the list of files in the directory for specified extension or None if directory is None."""
     if dir is None: return []
-    if not os.path.exists(dir): return [] 
+    if not os.path.exists(dir): return []
     return sorted([f for f in safe_listdir(dir) if os.path.splitext(f)[1] == ext])
 
 
@@ -58,7 +58,7 @@ def list_of_files_in_dir_for_pattern(dir, pattern='-r0022'):
     return sorted([os.path.join(dir,f) for f in safe_listdir(dir) if pattern in f])
 
 
-def load_ndarray_from_file(path):        
+def load_ndarray_from_file(path):
     ext = os.path.splitext(path)[1]
     if ext in ('.npy', ):
         import numpy as np
