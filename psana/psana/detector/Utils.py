@@ -25,8 +25,8 @@ import sys
 import numpy as np
 
 import psana.pyalgos.generic.Utils as gu
-time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile, set_file_access_mode, time_sec_from_stamp, create_directory, file_mode\
-= gu.time, gu.str_tstamp, gu.get_login, gu.get_hostname, gu.get_cwd, gu.save_textfile, gu.load_textfile, gu.set_file_access_mode, gu.time_sec_from_stamp, gu.create_directory, gu.file_mode
+time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile, set_file_access_mode, time_sec_from_stamp, create_directory, file_mode, change_file_ownership\
+= gu.time, gu.str_tstamp, gu.get_login, gu.get_hostname, gu.get_cwd, gu.save_textfile, gu.load_textfile, gu.set_file_access_mode, gu.time_sec_from_stamp, gu.create_directory, gu.file_mode, gu.change_file_ownership
 
 #log_rec_at_start = gu.log_rec_on_start
 #create_directory = gu.create_directory
@@ -121,14 +121,18 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, t
     logger.info('Record: %s\nSaved: %s' % (rec, logfname))
 
 
-def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
-    os.umask(umask)
-    rec = log_rec_at_start(tsfmt, **{'dirrepo':repoman.dirrepo,})
-    logfname = repoman.logname_at_start(procname)
-    fexists = os.path.exists(logfname)
-    save_textfile(rec, logfname, mode='a')
-    if not fexists: set_file_access_mode(logfname, repoman.filemode)
-    logger.info('Record: %s\nSaved: %s' % (rec, logfname))
+def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', adddict={}):
+    os.umask(repoman.umask)
+    logname = repoman.logname_at_start(procname)
+    fexists = os.path.exists(logname)
+    d = {'dirrepo':repoman.dirrepo, 'logfile':logname}
+    if adddict: d.update(adddict)
+    rec = log_rec_at_start(tsfmt, **d)
+    save_textfile(rec, logname, mode='a')
+    if not fexists:
+        set_file_access_mode(logname, repoman.filemode)
+        change_file_ownership(logname, user=None, group=repoman.group)
+    logger.info('Record: %s\nSaved: %s' % (rec, logname))
 
 
 def is_none(par, msg):
