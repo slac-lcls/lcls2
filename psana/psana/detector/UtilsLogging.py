@@ -31,7 +31,7 @@ def init_stream_handler(loglevel='DEBUG'):
     strh.setFormatter(formatter)
     logger.addHandler(strh)
 
-def init_file_handler(loglevel='DEBUG', logfname=None, filemode=0o664):
+def init_file_handler(loglevel='DEBUG', logfname=None, filemode=0o664, group='ps-users'):
     if logfname is None: return
     logger, formatter, int_loglevel = logger_formatter_int_loglevel(loglevel)
     filh = logging.FileHandler(logfname)
@@ -39,6 +39,8 @@ def init_file_handler(loglevel='DEBUG', logfname=None, filemode=0o664):
     filh.setFormatter(formatter)
     logger.addHandler(filh)
     os.chmod(logfname, filemode)
+    import psana.pyalgos.generic.Utils as gu
+    gu.change_file_ownership(logfname, user=None, group='ps-users')
 
 def init_logger(loglevel='DEBUG', logfname=None, filemode=0o664):
     init_stream_handler(loglevel)
