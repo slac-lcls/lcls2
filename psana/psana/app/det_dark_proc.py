@@ -11,15 +11,18 @@ logger = logging.getLogger(__name__)
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 USAGE = 'Usage:'\
-      + '\n  %s -x <xtc-directory> -d <detector> [-o <output-result-directory>] [-L <logging-mode>] [...]'\
+      + '\n  %s -k <datasource-kwargs> -d <detector> [-o <output-result-directory>] [-L <logging-mode>] [...]'\
       + '\nExamples:'\
-      + '\n  %s -x exp=tmox49720,run=209 -d epix100 -D -o ./work -L DEBUG' % SCRNAME\
-      + '\n  %s -x exp=tmoc00318,run=10,dir=/a/b/c/xtc -d epix100 -D -o ./work -L DEBUG' % SCRNAME\
-      + '\n  %s -x "{\'exp\':\'abcd01234\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\', ' % SCRNAME\
-      + '\'detectors\':[\'epicsinfo\', \'tmo_opal1\', \'ebeam\']}" -d tmo_opal1 -D -o ./work -L DEBUG'\
+      + '\n  %s -k exp=tmox49720,run=209 -d epix100 -D' % SCRNAME\
+      + '\n  %s -k exp=tmoc00318,run=10,dir=/a/b/c/xtc -d epix100 -D' % SCRNAME\
+      + '\n  %s -k "{\'exp\':\'abcd01234\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\', ' % SCRNAME\
+      + '\'detectors\':[\'epicsinfo\', \'tmo_opal1\', \'ebeam\']}" -d tmo_opal1 -D'\
       + '\n\nTest:'\
-      + '\n  %s -x "{\'exp\':\'tmoc00318\', \'run\':10}" -d epix100 -o ./work' % SCRNAME\
-      + '\n  %s -x exp=tmoc00118,run=123 -d tmoopal -o ./work' % SCRNAME\
+      + '\n  %s -k "{\'exp\':\'tmoc00118\', \'run\':123}" -d tmoopal -o ./work' % SCRNAME\
+      + '\n  %s -k exp=tmoc00118,run=123 -d tmoopal -o ./work' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00318-r0010-s000-c000.xtc2 -d epix100 -o ./work' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00118-r0222-s006-c000.xtc2 -d tmo_atmopal -o ./work' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/rixl1013320-r0093-s006-c000.xtc2 -d atmopal -o ./work' % SCRNAME\
       + '\n\nHelp:\n  %s -h' % SCRNAME
 
 
@@ -34,7 +37,7 @@ def do_main():
 
     if len(sys.argv)<3: exit('\n%s\n' % USAGE)
 
-    assert args.dsname is not None, 'WARNING: option "-x <datasource-name>" MUST be specified.'
+    assert args.dsname is not None, 'WARNING: option "-k <datasource-name>" MUST be specified.'
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 
     init_stream_handler(loglevel=args.logmode)
@@ -121,7 +124,7 @@ def argument_parser():
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
 
     parser = ArgumentParser(usage=USAGE, description='%s - proceses dark run xtc raw data fro specified detector' % SCRNAME)
-    parser.add_argument('-x', '--dsname',  default=d_dsname,     type=str,   help=h_dsname)
+    parser.add_argument('-k', '--dsname',  default=d_dsname,     type=str,   help=h_dsname)
     parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
     parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)

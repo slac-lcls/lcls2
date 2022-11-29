@@ -17,11 +17,11 @@ Created on 2022-01-18 by Mikhail Dubrovin
 
 import logging
 logger = logging.getLogger(__name__)
-import os
+#import os
 import sys
 import numpy as np
 
-from psana.detector.utils_psana import datasource_kwargs, info_run, info_detector, seconds
+from psana.detector.utils_psana import info_run, info_detector, seconds    # datasource_kwargs
 from psana import DataSource
 from psana.detector.Utils import str_tstamp, time, get_login, info_command_line, info_dict
 import psana.pscalib.calib.CalibConstants as cc
@@ -445,9 +445,9 @@ def deploy_constants(dic_consts, **kwa):
     from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
 
     CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
-
-    expname  = kwa.get('exp',None)
-    detname  = kwa.get('det',None)
+    repoman  = kwa.get('repoman', None)
+    expname  = kwa.get('exp', None)
+    detname  = kwa.get('det', None)
     dettype  = kwa.get('dettype', None)
     deploy   = kwa.get('deploy', False)
     dirrepo  = kwa.get('dirrepo', './work')
@@ -466,18 +466,14 @@ def deploy_constants(dic_consts, **kwa):
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status}
 
-    #create_directory(dirrepo, dirmode)
-    #fprefix = fname_prefix(detname, tsshort, expname, runnum, dirrepo)
-
-    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
+    if repoman is None:
+       repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
     dircons = repoman.makedir_constants(dname='constants')
     fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
 
     for ctype, nda in dic_consts.items():
         fname = '%s-%s.txt' % (fprefix, ctype)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
-        #logger.info(info_ndarr(nda, 'constants for %s ' % ctype))
-        #logger.info(info_ndarr(nda, 'constants'))
         save_ndarray_in_textfile(nda, fname, filemode, fmt)
         #save_2darray_in_textfile(nda, fname, filemode, fmt)
 
@@ -486,7 +482,6 @@ def deploy_constants(dic_consts, **kwa):
         kwa['ctype'] = ctype
         kwa['dtype'] = dtype
         kwa['extpars'] = {'content':'extended parameters dict->json->str',}
-        #kwa['extpars'] = {'content':'other script parameters', 'script_parameters':kwa}
         _ = kwa.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
         _ = kwa.pop('det',None)
 
@@ -505,7 +500,7 @@ def deploy_constants(dic_consts, **kwa):
                 logger.info('constants are not deployed')
                 exit()
         else:
-            logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D')
+            logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
 
 
@@ -514,7 +509,7 @@ def pedestals_calibration(**kwa):
   import psana.detector.utils_psana as up
 
   logger.info('command line: %s' % info_command_line())
-  logger.info('input parameters: %s' % info_dict(kwa, fmt='%s: %s', sep=' '))
+  #logger.info('input parameters: %s' % info_dict(kwa, fmt='%s: %s', sep=' '))
 
   dsname  = kwa.get('dsname', None)
   dirrepo = kwa.get('dirrepo', './work')
@@ -559,7 +554,7 @@ def pedestals_calibration(**kwa):
     if dettype is None:
         dettype = odet.raw._dettype
         repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
-        dircons = repoman.makedir_constants(dname='constants')
+        #dircons = repoman.makedir_constants(dname='constants')
         logfname = repoman.logname('%s_%s' % (procname, get_login()))
         init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
         repoman.save_record_at_start(procname, adddict={'logfile':logfname}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
@@ -645,6 +640,7 @@ def pedestals_calibration(**kwa):
           consts = arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
           dic_consts = dict(zip(ctypes, consts))
           kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+          kwa_depl['repoman'] = repoman
           deploy_constants(dic_consts, **kwa_depl)
           del(dpo)
           dpo=None
@@ -663,8 +659,7 @@ def pedestals_calibration(**kwa):
 if __name__ == "__main__":
 
     print(80*'_')
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.INFO)
-    #logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.INFO)
 
     SCRNAME = sys.argv[0].rsplit('/')[-1]
 
