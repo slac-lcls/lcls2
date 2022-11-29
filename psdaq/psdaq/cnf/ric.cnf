@@ -119,7 +119,7 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp011', id:'tst_fzpopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
- {host: 'drp-srcf-cmp028', id:'tst_pv_0',    flags:'spux', env:epics_env, cmd:f'{pva_cmd1} -l 0x2 demo:claus:pv:image'},
+# {host: 'drp-srcf-cmp028', id:'tst_pv_0',    flags:'spux', env:epics_env, cmd:f'{pva_cmd1} -l 0x2 demo:claus:pv:image'},
 ]
 
 # HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)
