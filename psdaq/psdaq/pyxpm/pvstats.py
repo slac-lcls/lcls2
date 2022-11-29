@@ -80,8 +80,8 @@ class SFPStatus(object):
             self._value['ModuleAbsent'][self._link] = (mod>>j)&1
             if ((mod>>j)&1)==0:
                 amc.I2cMux.set(j|(1<<3))
-                (self._value['TxPower'][self._link],
-                 self._value['RxPower'][self._link]) = amc.SfpI2c.get_pwr()
+                self._value['TxPower'][self._link] = amc.SfpI2c.TxPower.get()
+                self._value['RxPower'][self._link] = amc.SfpI2c.RxPower.get()
 
         self._link += 1
         if self._link==14:
