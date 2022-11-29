@@ -92,7 +92,14 @@ def info_parser_arguments(parser):
     s = 'Optional parameters:\n'\
         '    <key>      <value>              <default>\n'
     for k,v in opts.items():
-        s += '    %s %s %s\n' % (k.ljust(10), str(v).ljust(20), str(defs[k]).ljust(20))
+        _v, _d = v, defs[k]
+        if k in ('dirmode', 'filemode'):
+           _v, _d = oct(_v), oct(_d)
+        elif k == 'datbits':
+           _v, _d = hex(_v), hex(_d)
+        else:
+           _v, _d = str(_v), str(_d)
+        s += '    %s %s %s\n' % (k.ljust(10), _v.ljust(20), _d.ljust(20))
     return s
 
 info_command_line_arguments = info_parser_arguments
