@@ -509,13 +509,17 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
     if gmaps is None: return None
 
-    factor = np.select(gmaps,\
-                       (gfac[0,:], gfac[1,:], gfac[2,:], gfac[3,:],\
-                        gfac[4,:], gfac[5,:], gfac[6,:]), default=1) # 2msec
+#    factor = np.select(gmaps,\
+#                       (gfac[0,:], gfac[1,:], gfac[2,:], gfac[3,:],\
+#                        gfac[4,:], gfac[5,:], gfac[6,:]), default=1) # 2msec
 
-    pedest = np.select(gmaps,\
-                       (peds[0,:], peds[1,:], peds[2,:], peds[3,:],\
-                        peds[4,:], peds[5,:], peds[6,:]), default=0)
+#    pedest = np.select(gmaps,\
+#                       (peds[0,:], peds[1,:], peds[2,:], peds[3,:],\
+#                        peds[4,:], peds[5,:], peds[6,:]), default=0)
+
+    factor = event_constants_for_gmaps(gmaps, gfac, default=1) # 2msec
+
+    pedest = event_constants_for_gmaps(gmaps, peds, default=0)
 
     #factor, pedest = test_event_constants_for_gmaps(det_raw, evt, gfac, peds) # 6msec
     #factor, pedest = test_event_constants_for_grinds(det_raw, evt, gfac, peds) # 12msec
