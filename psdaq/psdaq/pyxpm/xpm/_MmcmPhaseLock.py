@@ -61,19 +61,19 @@ class MmcmPhaseLock(pr.Device):
         ))
 
         def _delayValue(var,read):
-            return (var.dependencies[0].get(read)>> 0)&0x7ff
+            return (var.dependencies[0].get()>> 0)&0x7ff
 
         def _delayEnd(var,read):
-            return (var.dependencies[0].get(read)>>16)&0x7ff
+            return (var.dependencies[0].get()>>16)&0x7ff
 
         def _externalLock(var,read):
-            return (var.dependencies[0].get(read)>>29)&1
+            return (var.dependencies[0].get()>>29)&1
 
         def _nready(var,read):
-            return (var.dependencies[0].get(read)>>30)&1
+            return (var.dependencies[0].get()>>30)&1
 
         def _internalLock(var,read):
-            return (var.dependencies[0].get(read)>>31)&1
+            return (var.dependencies[0].get()>>31)&1
 
         self.add(pr.LinkVariable(    
             name         = "delayValue",
@@ -221,3 +221,11 @@ class MmcmPhaseLock(pr.Device):
             self.ramAddr.set(i)
             w[i] = self.ramData.get()
         return w
+
+    def dump(self):
+        print(f'{self.name}:')
+        print(f'bypassLock: {self.bypassLock.get()}')
+        print(f'status    : {self.status.get()}')
+        print(f'nready    : {self.nready.get()}')
+        print(f'externalL : {self.externalLock.get()}')
+        print(f'internalL : {self.internalLock.get()}')

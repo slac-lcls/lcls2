@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 import os
 
-from PyQt5.QtGui import QPalette, QColor 
+from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QProgressBar
                             # QSizePolicy, QCheckBox, QFrame
@@ -51,7 +51,7 @@ class QWProgressBar(QWidget) :
         QWidget.__init__(self, parent)
         if win_title is not None : self.setWindowTitle(win_title)
 
-        self.timer = None 
+        self.timer = None
 
         self.hbox = QHBoxLayout()
 
@@ -74,7 +74,7 @@ class QWProgressBar(QWidget) :
         #self.set_icons()
         self.set_tool_tips()
 
-#-----------------------------  
+#-----------------------------
 
     def set_tool_tips(self):
         self.setToolTip('Progress bar')
@@ -86,7 +86,7 @@ class QWProgressBar(QWidget) :
 
         self.pbar.setTextVisible(True)
         #self.plab.setAlignment(Qt.AlignCenter)
-        if self.plab is not None : 
+        if self.plab is not None :
             self.plab.setStyleSheet('text-align: center;')
             self.plab.setFixedWidth(60)
 
@@ -114,7 +114,7 @@ class QWProgressBar(QWidget) :
         self.pbar.setRange(vmin,vmax)
 
     def set_value(self, value):
-        self.pbar.setValue(value)
+        self.pbar.setValue(int(value))
 
     def set_label(self, s):
         self.plab.setText(s)
@@ -127,12 +127,12 @@ class QWProgressBar(QWidget) :
           #self.but_cancel.setIcon(icon.icon_button_cancel)
           #self.but_apply .setIcon(icon.icon_button_ok)
         except : pass
- 
+
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent') 
+        #logger.debug('resizeEvent')
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
+        #logger.debug('moveEvent')
 
     #def event(self, event):
         #logger.debug('Event happens...: %s' % str(event))

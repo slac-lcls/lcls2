@@ -243,20 +243,10 @@ void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
     uint32_t dmaIndex = event->buffers[lane].index;
     unsigned data_size = event->buffers[lane].size;
 
-    try {
-        std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
-        if (m_debatch)
-            subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
-        _event(dgram.xtc, bufEnd, subframes);
-    } catch (std::runtime_error& e) {
-        logging::critical("BatcherIterator error");
-        const uint32_t* p = reinterpret_cast<const uint32_t*>(m_pool->dmaBuffers[dmaIndex]);
-        for(unsigned j=0; j<data_size; j+= 32) {
-            logging::critical("%08x %08x %08x %08x %08x %08x %08x %08x",
-                              p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
-            p += 8;
-        }
-    }
+    std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
+    if (m_debatch)
+        subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
+    _event(dgram.xtc, bufEnd, subframes);
 }
 
 void BEBDetector::shutdown()

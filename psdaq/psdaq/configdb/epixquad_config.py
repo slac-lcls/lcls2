@@ -78,7 +78,7 @@ def apply_dict(pathbase,base,cfg):
                     logging.warning('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != pathbase ):
 #            if False:
             if (('Saci' in path and 'PixelDummy' in path) or
                 ('Saci3' in path and 'CompEn' in path) or
@@ -114,7 +114,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         logging.getLogger().setLevel(logging.DEBUG)
     else:
         logging.getLogger().setLevel(logging.INFO)
-        
+
     logging.debug('epixquad_init')
 
     base = {}
@@ -166,7 +166,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
     if timebase=="119M":
         logging.info('Using timebase 119M')
-        base['clk_period'] = 1000/119. 
+        base['clk_period'] = 1000/119.
         base['msg_period'] = 238
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
     else:
@@ -399,7 +399,7 @@ def config_expert(base, cfg, writePixelMap=True):
 def reset_counters(base):
     # Reset the timing counters
     base['pci'].DevPcie.Hsio.TimingRx.TimingFrameRx.countReset()
-    
+
     # Reset the trigger counters
 #    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
     getattr(base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').countReset()
@@ -427,7 +427,7 @@ def startRun(pbase):
     for devPtr in eventBuilder:
         devPtr.Blowoff.set(False)
         devPtr.SoftRst()
-        
+
     # Turn on the triggering
     for devPtr in trigger:
         devPtr.MasterEnable.set(True)

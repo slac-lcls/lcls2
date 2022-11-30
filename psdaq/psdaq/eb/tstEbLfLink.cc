@@ -86,8 +86,13 @@ int server(const std::string& ifAddr,
       fprintf(stderr, "Error connecting to EbLfClient[%d]\n", i);
       return rc;
     }
+    if ( (rc = links[i]->exchangeId(id, "Server")) )
+    {
+      fprintf(stderr, "Error exchanging IDs on link[%d]\n", i);
+      return rc;
+    }
     size_t regSize;
-    if ( (rc = links[i]->prepare(id, &regSize, "Client")) < 0)
+    if ( (rc = links[i]->prepare(&regSize, "Client")) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;
@@ -115,7 +120,7 @@ int server(const std::string& ifAddr,
   {
     uint64_t  data;
     const int tmo = 5000;               // milliseconds
-    if (svr->pend(&data, tmo) < 0)  continue;
+    if ((rc = svr->pend(&data, tmo)) < 0)  continue;
 
     unsigned     flg = ImmData::flg(data);
     unsigned     src = ImmData::src(data);
@@ -124,7 +129,7 @@ int server(const std::string& ifAddr,
     size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
                      ? trSize + idx * bufSize[src]
                      : trOffset[idx];
-    if ( (rc = links[src]->postCompRecv()) )
+    if ( (rc = links[src]->postCompRecv(rc)) )
     {
       fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
     }
@@ -183,7 +188,12 @@ int client(std::vector<std::string>& svrAddrs,
       fprintf(stderr, "Error connecting to EbLfServer[%d]\n", i);
       return rc;
     }
-    if ( (rc = links[i]->prepare(id, region, regSize, "Server")) < 0)
+    if ( (rc = links[i]->exchangeId(id, "Server")) )
+    {
+      fprintf(stderr, "Error exchanging IDs on link[%d]\n", i);
+      return rc;
+    }
+    if ( (rc = links[i]->prepare(region, regSize, "Server")) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;

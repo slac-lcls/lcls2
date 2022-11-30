@@ -34,12 +34,17 @@ def epixhr2x2_cdict():
     top.set("user.asic_enable"  , 0xf, 'UINT32')
 
     # timing system
-    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.PauseThreshold',16,'UINT32')
-    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay',42,'UINT32')
-    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition',0,'UINT32')
+    # run trigger
+    top.set('expert.EpixHR.TriggerEventManager.TriggerEventBuffer0.PauseThreshold',16,'UINT32')
+    top.set('expert.EpixHR.TriggerEventManager.TriggerEventBuffer0.TriggerDelay',42,'UINT32')
+    top.set('expert.EpixHR.TriggerEventManager.TriggerEventBuffer0.Partition',0,'UINT32')
+    # daq trigger
+    top.set('expert.EpixHR.TriggerEventManager.TriggerEventBuffer1.PauseThreshold',16,'UINT32')
+    top.set('expert.EpixHR.TriggerEventManager.TriggerEventBuffer1.TriggerDelay',42,'UINT32')
+    top.set('expert.EpixHR.TriggerEventManager.TriggerEventBuffer1.Partition',0,'UINT32')
 
     top.define_enum('rateEnum', {'929kHz':0, '71kHz':1, '10kHz':2, '1kHz':3, '100Hz':4, '10Hz':5, '1Hz':6})
-    top.set('expert.DevPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
+    top.set('expert.EpixHR.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
 
     top.define_enum('boolEnum', {'False':0, 'True':1})
 
@@ -335,6 +340,7 @@ def epixhr2x2_cdict():
 if __name__ == "__main__":
     create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
+#    dbname = 'configdb'     #this is the name of the database running on the server.  Only client care about this name.
 
     args = cdb.createArgs().args
 

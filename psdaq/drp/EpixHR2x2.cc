@@ -146,10 +146,6 @@ unsigned EpixHR2x2::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohman
 
 json EpixHR2x2::connectionInfo()
 {
-    // Exclude connection info until lcls2-epix-hr-pcie timingTxLink is fixed
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
-
     return BEBDetector::connectionInfo();
 }
 
@@ -189,17 +185,48 @@ unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::C
 }
 
 //
-//  Subframes:  0:   Event header
-//              2:   Timing frame detailed
-//              3-6: ASIC[0:3]
+//  The timing header is in each ASIC pair batch
+//
+
+Pds::TimingHeader* EpixHR2x2::getTimingHeader(uint32_t index) const
+{
+    EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
+    ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
+    //  This may get called multiple times, so we can't overwrite input we need
+    uint32_t* p = reinterpret_cast<uint32_t*>(ebh->next());
+    // for(unsigned i=0; i<64; i++)
+    //     printf(" %08x%c",p[i],(i&7)==7?'\n':' ');
+
+    //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
+    if (p[2]==0 && p[3]==0) {
+        // A zero timestamp means the data has not been rearranged.
+        for(unsigned i=1; i<5; i++) {
+            p[2*i+0] = p[4*i+0];
+            p[2*i+1] = p[4*i+1];
+        }
+    }
+    return reinterpret_cast<Pds::TimingHeader*>(p);
+}
+
+//
+//  Subframes:  3:   ASIC0/1
+//                   0:  Timing
+//                   1:  ASIC0/1 2B interleaved
+//              4:   ASIC2/3
+//                   0:  Timing
+//                   1:  ASIC2/3 2B interleaved
 //
 void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
+    //    printf("subframes %zu  %p  %p\n", subframes.size(), &subframes[0], &subframes[1]);
+    //    printf("_event  [3: %zu]\n", subframes[3].num_elem());
+
     unsigned shape[MaxRank] = {0,0,0,0,0};
 
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const unsigned elemRows     = 144;
     const unsigned elemRowSize  = 192;
+    const unsigned timHdrSize   =  60; // timing header prepended to every ASIC segment
 
     //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
@@ -208,64 +235,93 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDa
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixHRPanelDef::raw, shape);
     memset(aframe.data(),0,4*elemRows*elemRowSize*2);
 
+    logging::debug("m_asics[%d] subframes.num_elem[%d]",m_asics,subframes.size());
+
+    //  Validate timing headers
+
     //
     //    A1   |   A3       (A1,A3) rotated 180deg
     // --------+--------
     //    A0   |   A2
     //
 
+    //  Check which ASICs are in the streams
     unsigned q_asics = m_asics;
     for(unsigned q=0; q<4; q++) {
         if (q_asics & (1<<q)) {
-            if (subframes.size()<(q+4)) {
+            if (subframes.size()<(q/2+4)) {
                 logging::error("Missing data from asic %d\n",q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
-            else if (subframes[q+3].num_elem()!=56076) {
+            else if (subframes[q/2+3].num_elem()!=2*(56076+timHdrSize)) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                               subframes[q+3].num_elem(),56076,q);
+                               subframes[q/2+3].num_elem()/2,56076+timHdrSize,q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
         }
     }
 
-    char dline[280];
-    for(unsigned q=0; q<4; q+=2) {
+    char dline[5*128+32];
+    //  Copy A0,A1 into the 2x2 buffer
+    for(unsigned iq=0; iq<2; iq++) {
+        unsigned q = iq;
         if ((q_asics & (1<<q))==0)
             continue;
-        logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
-        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+3].data());
-        for(unsigned i=0; i<32; i++)
-            sprintf(&dline[i*5]," %04x", u[i+19200]);
-        logging::debug("asic[%d] sz[%d] %s",q,subframes[q+3].num_elem(),dline);
-        u += 6;
-        for(unsigned row=0, e=0; row<elemRows; row++, e+=elemRowSize) {
+        logging::debug("asic[%d] nelem[%d]",q,subframes[q/2+3].num_elem()/2);
+        {
+            const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
+            { for(unsigned i=0; i<128; i++)
+                    sprintf(&dline[i*5]," %04x", u[i]);
+                logging::debug("asic[%d] sz[%d] [0:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
+            u += 192*144+timHdrSize;
+            { for(unsigned i=0; i<128; i++)
+                    sprintf(&dline[i*5]," %04x", u[i]);
+                logging::debug("asic[%d] sz[%d] [next:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
+        }
+        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
+        u += timHdrSize;
+        u += 6*(iq&1);
+        for(unsigned row=0, e=0; row<elemRows; row++, e+=2*elemRowSize) {
             uint16_t* dst = &aframe(row+elemRows,elemRowSize*(q>>1));
             for(unsigned m=0; m<elemRowSize; m++) {
                 //  special fixup for the last two columns
                 if (row > 1 && (m&0x1f) > 0x1d)
-                    dst[m] = u[e+6*(m&0x1f)+(m>>5)-elemRowSize];
+                    dst[m] = u[e+12*(m&0x1f)+(m>>5)-2*elemRowSize];
                 else
-                    dst[m] = u[e+6*(m&0x1f)+(m>>5)];
+                    dst[m] = u[e+12*(m&0x1f)+(m>>5)];
             }
         }
     }
-    for(unsigned q=1; q<4; q+=2) {
+    //  Copy A2,A3 into the 2x2 buffer (rotated 180)
+    for(unsigned iq=0; iq<2; iq++) {
+        unsigned q = iq+2;
         if ((q_asics & (1<<q))==0)
             continue;
-        logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
-        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+3].data());
-        u += 6;
-        for(unsigned row=0, e=0; row<elemRows; row++, e+=elemRowSize) {
+        logging::debug("asic[%d] nelem[%d]",q,subframes[q/2+3].num_elem()/2);
+        {
+            const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
+            { for(unsigned i=0; i<128; i++)
+                    sprintf(&dline[i*5]," %04x", u[i]);
+                logging::debug("asic[%d] sz[%d] [0:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
+            u += 192*144+timHdrSize;
+            { for(unsigned i=0; i<128; i++)
+                    sprintf(&dline[i*5]," %04x", u[i]);
+                logging::debug("asic[%d] sz[%d] [next:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
+        }
+        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
+        u += timHdrSize;
+        u += 12;
+        u += 6*(iq&1);
+        for(unsigned row=0, e=0; row<elemRows; row++, e+=2*elemRowSize) {
             uint16_t* dst = &aframe(elemRows-1-row,elemRowSize*(1-(q>>1)));
             for(unsigned m=0; m<elemRowSize; m++) {
                 //  special fixup for the last two columns
                 if (row > 1 && (m&0x1f) > 0x1d)
-                    dst[elemRowSize-1-m] = u[e+6*(m&0x1f)+(m>>5)-elemRowSize];
+                    dst[elemRowSize-1-m] = u[e+12*(m&0x1f)+(m>>5)-2*elemRowSize];
                 else
-                    dst[elemRowSize-1-m] = u[e+6*(m&0x1f)+(m>>5)];
+                    dst[elemRowSize-1-m] = u[e+12*(m&0x1f)+(m>>5)];
             }
         }
     }

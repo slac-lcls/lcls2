@@ -23,6 +23,9 @@ from ._Si5317 import *
 
 _fidPrescale = 200
 
+def _get(o,read):
+    return o.get()
+
 class XpmInhConfig(pr.Device):
 
     def __init__(   self, 
@@ -280,7 +283,7 @@ class XpmApp(pr.Device):
         ))
 
         def _rxErrCnt(var,read):
-            return var.dependencies[0].get(read)&0xffff
+            return _get(var.dependencies[0],read)&0xffff
 
         self.add(pr.LinkVariable(    
             name         = "rxErrCnt",
@@ -290,7 +293,7 @@ class XpmApp(pr.Device):
         ))
 
         def _txResetDone(var,read):
-            return (var.dependencies[0].get(read)>>16)&1
+            return (_get(var.dependencies[0],read)>>16)&1
 
         self.add(pr.LinkVariable(    
             name         = "txResetDone",
@@ -300,7 +303,7 @@ class XpmApp(pr.Device):
         ))
 
         def _txReady(var,read):
-            return (var.dependencies[0].get(read)>>17)&1
+            return (_get(var.dependencies[0],read)>>17)&1
 
         self.add(pr.LinkVariable(    
             name         = "txReady",
@@ -310,7 +313,7 @@ class XpmApp(pr.Device):
         ))
 
         def _rxResetDone(var,read):
-            return (var.dependencies[0].get(read)>>18)&1
+            return (_get(var.dependencies[0],read)>>18)&1
 
         self.add(pr.LinkVariable(    
             name         = "rxResetDone",
@@ -320,7 +323,7 @@ class XpmApp(pr.Device):
         ))
 
         def _rxReady(var,read):
-            return (var.dependencies[0].get(read)>>19)&1
+            return (_get(var.dependencies[0],read)>>19)&1
 
         self.add(pr.LinkVariable(    
             name         = "rxReady",
@@ -330,7 +333,7 @@ class XpmApp(pr.Device):
         ))
 
         def _rxIsXpm(var,read):
-            return (var.dependencies[0].get(read)>>20)&1
+            return (_get(var.dependencies[0],read)>>20)&1
 
         self.add(pr.LinkVariable(    
             name         = "rxIsXpm",
@@ -568,7 +571,7 @@ class XpmApp(pr.Device):
         ))
 
         def pipelineGet(var,read):
-            value = var.dependencies[0].get(read)
+            value = _get(var.dependencies[0],read)
             return value>>16
 
         def pipelineSet(deps):

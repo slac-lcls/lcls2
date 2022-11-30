@@ -121,6 +121,7 @@ if 'PSDAQ' in BUILD_LIST :
             'epics_exporter = psdaq.cas.epics_exporter:main',
             'seqplot = psdaq.seq.seqplot:main',
             'seqprogram = psdaq.seq.seqprogram:main',
+            'bos = psdaq.bos.bos:main',
         ]
     }
 

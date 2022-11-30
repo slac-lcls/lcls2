@@ -122,9 +122,9 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         #  to get the timing feedback link to lock
         #  cpo: switch this to XpmMini which recovers from more issues?
         cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-        time.sleep(1.0)
+        time.sleep(2.5)
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(0.1)
+        time.sleep(2.5)
 
     return cl
 
@@ -203,7 +203,7 @@ def user_to_expert(cl, cfg, full=False):
         partitionDelay = getattr(cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
         triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
-        print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+        print('group {:}  partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(group,partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
@@ -220,7 +220,7 @@ def user_to_expert(cl, cfg, full=False):
             raise ValueError('gate_ns < 4000')
         if gate > 160000:
             print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate))
-            raise ValueError('gate_ns > 160000')
+            #raise ValueError('gate_ns > 160000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=1.0 #gate*0.001
         d['expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET']=gate
 
@@ -266,7 +266,7 @@ def config_expert(cl, cfg):
                         print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
             if 'UartPiranha4' in str(rogue_node):
                 uart._rx._clear()
             rogue_node.set(configdb_node)

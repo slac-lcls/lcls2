@@ -9,12 +9,11 @@
 #-----------------------------------------------------------------------------
 
 import pyrogue              as pr
+import cameralink_gateway # to get surf
 import surf.axi             as axi
 import surf.devices.micron  as micron
 import surf.devices.nxp     as nxp
 import surf.xilinx          as xil
-
-import surf.devices.transceivers as xceiver
 
 import xpm
 import kcu

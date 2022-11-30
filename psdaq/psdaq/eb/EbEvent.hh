@@ -49,7 +49,7 @@ namespace Pds {
     private:
       friend class EventBuilder;
     private:
-      EbEvent* _add(const Pds::EbDgram*);
+      EbEvent* _add(const Pds::EbDgram*, unsigned immData);
       void     _insert(const Pds::EbDgram*);
     private:
       size_t               _size;            // Total contribution size (in bytes)

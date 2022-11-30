@@ -14,6 +14,7 @@
 #include <poll.h>
 
 #include "DataDriver.h"
+#include "DmaDest.h"
 
 using namespace std;
 
