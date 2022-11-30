@@ -5,10 +5,10 @@ import sys
 from time import time
 import json
 
-from psana.detector.Utils import info_dict, info_command_line, info_namespace
+from psana.detector.Utils import info_dict, info_command_line, info_namespace, info_parser_arguments
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import datasource_arguments, info_run, info_detnames, info_detector
+from psana.detector.utils_psana import datasource_kwargs_from_string, info_run, info_detnames_for_dskwargs, info_detector
 from psana import DataSource
 
 import logging
@@ -19,21 +19,21 @@ STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 #SCRNAME = sys.argv[0].rsplit('/')[-1]
 SCRNAME = os.path.basename(sys.argv[0])
 
-USAGE = '\n  %s -d <detector> -e <experiment> -r <run-number(s)> [kwargs]' % SCRNAME\
+USAGE = '\n  %s -d <detector> -k <datasource-kwargs> [kwargs]' % SCRNAME\
       + '\nCOMMAND EXAMPLES:'\
-      + '\n  %s -d epixquad -e ueddaq02 -r 27 -td -L DEBUG' % SCRNAME\
-      + '\n  %s -d epixquad -e ueddaq02 -r 30-82 <--- DOES NOT WORK - missconfigured' % SCRNAME\
-      + '\n  %s -d epixquad -e ueddaq02 -r 83 <--- dark' % SCRNAME\
-      + '\n  %s -d epixquad -e ueddaq02 -r 84 <--- PARTLY WORKS charge injection' % SCRNAME\
-      + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2' % SCRNAME\
-      + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
-      + '\n  %s -d tmoopal -e tmoc00118 -r 123 -td' % SCRNAME\
-      + '\n  %s -e tmoc00318 -r 8 -d epix100hw' % SCRNAME\
-      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/rixx45619-r0121-s001-c000.xtc2 -d epixhr' % SCRNAME\
-      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/tmoc00318-r0010-s000-c000.xtc2 -d epix100' % SCRNAME\
-      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/tmoc00118-r0222-s006-c000.xtc2 -d tmo_atmopal' % SCRNAME\
-      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/uedcom103-r0007-s002-c000.xtc2 -d epixquad' % SCRNAME\
-      + '\n  %s -f /cds/data/psdm/prj/public01/xtc/ueddaq02-r0569-s001-c000.xtc2  -d epixquad' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=27 -td -L DEBUG' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=30 <--- DOES NOT WORK - missconfigured' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=83 <--- dark' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=84 <--- PARTLY WORKS charge injection' % SCRNAME\
+      + '\n  %s -d epixquad -k /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2' % SCRNAME\
+      + '\n  %s -d epixquad -k /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
+      + '\n  %s -d tmoopal  -k exp=tmoc00118,run=123 -td' % SCRNAME\
+      + '\n  %s -k exp=tmoc00318,run=8 -d epix100hw' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/rixx45619-r0121-s001-c000.xtc2 -d epixhr' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00318-r0010-s000-c000.xtc2 -d epix100' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00118-r0222-s006-c000.xtc2 -d tmo_atmopal' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/uedcom103-r0007-s002-c000.xtc2 -d epixquad' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/ueddaq02-r0569-s001-c000.xtc2  -d epixquad' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
 
 def ds_run_det(args):
@@ -42,7 +42,7 @@ def ds_run_det(args):
         print('detector information is not requested by -td option - skip it')
         return
 
-    ds_kwa = datasource_arguments(args)
+    ds_kwa = datasource_kwargs_from_string(args.dskwargs)  # datasource_arguments(args)
     print('DataSource kwargs:%s' % info_dict(ds_kwa, fmt='%s: %s', sep=' '))
     try:
       ds = DataSource(**ds_kwa)
@@ -74,13 +74,12 @@ def ds_run_det(args):
 
     expname = run.expt if run.expt is not None else args.expname # 'mfxc00318'
 
-    print('fname:', args.fname)
-    #print('expname:', expname)
-    #print('runnum :', run.runnum)
+    print('dskwargs:', args.dskwargs)
     #print('run.timestamp :', run.timestamp)
 
     print(info_run(run, cmt='run info\n    ', sep='\n    '))
-    print(info_detnames(run, cmt='\ncommand: '))
+    #print(info_detnames(run, cmt='\ncommand: '))
+    print(info_detnames_for_dskwargs(args.dskwargs, cmt='\ncommand: '))
 
     if det is None:
         print('detector object is None for detname %s' % args.detname)
@@ -93,11 +92,6 @@ def ds_run_det(args):
     print('det.raw._segment_ids    :', det.raw._segment_ids() if '_segment_ids' in det_raw_attrs else 'MISSING')
     print('det.raw._segment_indices:', det.raw._segment_indices() if '_segment_indices' in det_raw_attrs else 'MISSING')
 
-    #print('_config_object  :', str(det.raw._config_object()))
-    #print('_config_object2 :', str(ue.config_object_det(det)))
-    #print('_config_object3 :', str(ue.config_object_det_raw(det.raw)))
-
-
     if '_config_object' in det_raw_attrs:
       dcfg = det.raw._config_object()
       for k,v in dcfg.items():
@@ -108,15 +102,11 @@ def ds_run_det(args):
     print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
     print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
 
-    #sys.exit('TEST EXIT')
-
 
 def selected_record(nrec):
     return nrec<5\
        or (nrec<50 and not nrec%10)\
        or (not nrec%100)
-       #or (nrec<500 and not nrec%100)\
-       #or (not nrec%1000)
 
 
 def info_det_evt(det, evt, ievt):
@@ -136,7 +126,7 @@ def loop_run_step_evt(args):
   #from psana import DataSource
   #ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc', max_events=1000)
 
-  ds = DataSource(**datasource_arguments(args))
+  ds = DataSource(**datasource_kwargs_from_string(args.dskwargs))
 
   if do_loopruns:
     for irun,run in enumerate(ds.runs()):
@@ -203,6 +193,7 @@ def do_main():
     parser = argument_parser()
     args = parser.parse_args()
     opts = vars(args)
+
     #?????defs = vars(parser.parse_args([])) # dict of defaults only
 
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
@@ -211,7 +202,9 @@ def do_main():
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
 
     print('command line: %s' % info_command_line())
-    print('input parameters: %s' % info_dict(opts, fmt='%s: %s', sep=', '))
+    logger.info(info_parser_arguments(parser))
+
+    #print('input parameters: %s' % info_dict(opts, fmt='%s: %s', sep=', '))
     #pedestals_calibration(*args, **opts)
     #pedestals_calibration(**opts)
     ds_run_det(args)
@@ -225,30 +218,22 @@ def argument_parser():
     from argparse import ArgumentParser
 
     d_detname = None # 'epixquad'
-    d_expname = None # 'ueddaq02'
-    d_runs    = None # '66' # 1021 or 1021,1022-1025
-    d_fname   = None # '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
+    d_dskwargs = None
     d_evtmax  = 0 # maximal number of events
-    d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
     d_logmode = 'INFO'
     d_typeinfo= 'DRSE'
 
+    h_dskwargs= 'str of comma-separated (no spaces) simple parameters for DataSource(**kwargs), ex: file=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
+                'or pythonic dict of generic kwargs, e.g.: \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_detname = 'detector name, e.g. %s' % d_detname
-    h_fname   = 'input xtc file name, default = %s' % d_fname
-    h_expname = 'experiment name, e.g. %s' % d_expname
-    h_runs    = 'run number or list of runs e.g. 12,14,18 or 12, default = %s' % str(d_runs)
     h_evtmax  = 'number of events to print, default = %s' % str(d_evtmax)
-    h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_typeinfo= 'type of information for output D-detector, R-run-loop, S-step-loop, E-event-loop, default = %s' % d_typeinfo
 
-    parser = ArgumentParser(description='Print info about experiment detector and run')
+    parser = ArgumentParser(usage=USAGE, description='Print info about experiment detector and run')
     parser.add_argument('-d', '--detname', default=d_detname, type=str, help=h_detname)
-    parser.add_argument('-e', '--expname', type=str, help=h_expname)
-    parser.add_argument('-r', '--runs',    type=str, help=h_runs)
-    parser.add_argument('-f', '--fname', default=d_fname, type=str, help=h_fname)
+    parser.add_argument('-k', '--dskwargs', type=str, help=h_dskwargs)
     parser.add_argument('-n', '--evtmax', default=d_evtmax, type=int, help=h_evtmax)
-    parser.add_argument('-x', '--dirxtc', default=d_dirxtc, type=str, help=h_dirxtc)
     parser.add_argument('-L', '--logmode', default=d_logmode, type=str, help=h_logmode)
     parser.add_argument('-t', '--typeinfo', default=d_typeinfo, type=str, help=h_typeinfo)
 
