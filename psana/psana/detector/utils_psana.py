@@ -143,13 +143,19 @@ def info_detnames(run, cmt='command: '):
     #out = str(p.stdout.read())
     #return fmt%(cmt, cmd, out)
     from subprocess import getoutput
-    cmd = 'detnames -r exp=%s,run=%d' % (run.expt, run.runnum)
+    cmd = 'detnames exp=%s,run=%d -r' % (run.expt, run.runnum)
+    return cmt + cmd + '\n' + getoutput(cmd)
+
+
+def info_detnames_for_dskwargs(str_kwa, cmt='command: '):
+    from subprocess import getoutput
+    cmd = 'detnames %s -r' % (str_kwa)
     return cmt + cmd + '\n' + getoutput(cmd)
 
 
 def print_detnames(run, cmt='command: '):
     import os
-    cmd = 'detnames -r exp=%s,run=%d' % (run.expt, run.runnum)
+    cmd = 'detnames exp=%s,run=%d -r' % (run.expt, run.runnum)
     print(cmt + cmd)
     os.system(cmd)
 
