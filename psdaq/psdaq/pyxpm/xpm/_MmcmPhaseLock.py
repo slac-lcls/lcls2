@@ -51,63 +51,53 @@ class MmcmPhaseLock(pr.Device):
         ))
 
         self.add(pr.RemoteVariable(
-            name         = "status",
-            description  = "Lock status",
+            name         = "delayValue",
+            description  = "delayValue",
             offset       =  0x04,
-            bitSize      =  32,
+            bitSize      =  11,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RO",
         ))
 
-        def _delayValue(var,read):
-            return (var.dependencies[0].get()>> 0)&0x7ff
-
-        def _delayEnd(var,read):
-            return (var.dependencies[0].get()>>16)&0x7ff
-
-        def _externalLock(var,read):
-            return (var.dependencies[0].get()>>29)&1
-
-        def _nready(var,read):
-            return (var.dependencies[0].get()>>30)&1
-
-        def _internalLock(var,read):
-            return (var.dependencies[0].get()>>31)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "delayValue",
-            description  = "Delay value from scan",
-            linkedGet    = _delayValue,
-            dependencies = [self.status]
-        ))
-
-        self.add(pr.LinkVariable(    
+        self.add(pr.RemoteVariable(
             name         = "delayEnd",
-            description  = "Delay value scan range",
-            linkedGet    = _delayEnd,
-            dependencies = [self.status]
+            description  = "delayEnd",
+            offset       =  0x08,
+            bitSize      =  11,
+            bitOffset    =  0x10,
+            base         = pr.UInt,
+            mode         = "RO",
         ))
 
-        self.add(pr.LinkVariable(    
+        self.add(pr.RemoteVariable(
             name         = "externalLock",
-            description  = "External lock status",
-            linkedGet    = _externalLock,
-            dependencies = [self.status]
+            description  = "externalLock",
+            offset       =  0x07,
+            bitSize      =  1,
+            bitOffset    =  0x05,
+            base         = pr.UInt,
+            mode         = "RO",
         ))
 
-        self.add(pr.LinkVariable(    
+        self.add(pr.RemoteVariable(
             name         = "nready",
-            description  = "Reset status",
-            linkedGet    = _nready,
-            dependencies = [self.status]
+            description  = "nready",
+            offset       =  0x07,
+            bitSize      =  1,
+            bitOffset    =  0x06,
+            base         = pr.UInt,
+            mode         = "RO",
         ))
 
-        self.add(pr.LinkVariable(    
+        self.add(pr.RemoteVariable(
             name         = "internalLock",
-            description  = "Internal lock status",
-            linkedGet    = _internalLock,
-            dependencies = [self.status]
+            description  = "internalLock",
+            offset       =  0x07,
+            bitSize      =  1,
+            bitOffset    =  0x07,
+            base         = pr.UInt,
+            mode         = "RO",
         ))
 
         self.add(pr.RemoteVariable(    
@@ -225,7 +215,7 @@ class MmcmPhaseLock(pr.Device):
     def dump(self):
         print(f'{self.name}:')
         print(f'bypassLock: {self.bypassLock.get()}')
-        print(f'status    : {self.status.get()}')
+#        print(f'status    : {self.status.get()}')
         print(f'nready    : {self.nready.get()}')
         print(f'externalL : {self.externalLock.get()}')
         print(f'internalL : {self.internalLock.get()}')
