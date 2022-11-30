@@ -45,7 +45,9 @@ class PVMmcm(PVHandler):
 
         v = []
         w = []
-        v.append(self._dev.status.get())
+        r = self._dev
+        status = (r.delayValue.get()<< 0) | (r.delayEnd    .get()<<16) | (r.externalLock.get()<<29) | (r.nready      .get()<<30) | (r.internalLock.get()<<31)
+        v.append(status)
         w.append(self._dev.sumPeriod.get())
         vlen = self._dev.delayEnd.get()
         for i in range(vlen):
@@ -91,7 +93,7 @@ class PVMmcm(PVHandler):
         print('delay end     {}'.format(self._dev.delayEnd  .get()))
         print('external lock {}'.format(self._dev.externalLock.get()))
         print('nready        {}'.format(self._dev.nready.get()))
-        print('status        {:x}'.format(self._dev.status.get()))
+#        print('status        {:x}'.format(self._dev.status.get()))
         self._dev.dump()
 
 class PVCuPhase(object):
