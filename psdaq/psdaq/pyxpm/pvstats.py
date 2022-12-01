@@ -16,7 +16,7 @@ def addPV(name,ctype,init=0):
     pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=DefaultPVHandler())
     provider.add(name, pv)
     return pv
-                                
+
 def toTable(t):
     table = []
     for v in t.items():
@@ -149,6 +149,8 @@ class TimingStatus(object):
         self._sofCount        = device.sofCount.get()
         self._eofCount        = device.eofCount.get()
 
+        self._vLast = 0
+
         def addPVF(label):
             return addPV(name+':'+label,'f')
 
@@ -164,7 +166,7 @@ class TimingStatus(object):
         self._pv_fids        = addPVF('FIDs')
         self._pv_sofs        = addPVF('SOFs')
         self._pv_eofs        = addPVF('EOFs')
-        self._pv_rxAlign     = addPV(name+':RxAlign', 'aI', [0]*65) 
+        self._pv_rxAlign     = addPV(name+':RxAlign', 'aI', [0]*65)
 
     def update(self):
 
@@ -174,6 +176,8 @@ class TimingStatus(object):
                 value['value'] = (nv-ov)&((1<<nb)-1)
                 value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
                 pv.post(value)
+                if type(verbose) is type("") and nv != ov:
+                    print(f'*** {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
                 return nv
             else:
                 return ov
@@ -185,8 +189,8 @@ class TimingStatus(object):
         self._txClkCount      = updatePv(self._pv_txClkCount, self._device.TxClkCount.get()<<4, self._txClkCount)
         self._rxRstCount      = updatePv(self._pv_rxRstCount, self._device.RxRstCount.get(), self._rxRstCount)
         self._crcErrCount     = updatePv(self._pv_crcErrCount, self._device.CrcErrCount.get(), self._crcErrCount)
-        self._rxDecErrCount   = updatePv(self._pv_rxDecErrs, self._device.RxDecErrCount.get(), self._rxDecErrCount)
-        self._rxDspErrCount   = updatePv(self._pv_rxDspErrs, self._device.RxDspErrCount.get(), self._rxDspErrCount)
+        self._rxDecErrCount   = updatePv(self._pv_rxDecErrs, self._device.RxDecErrCount.get(), self._rxDecErrCount, "RxDecErrs")
+        self._rxDspErrCount   = updatePv(self._pv_rxDspErrs, self._device.RxDspErrCount.get(), self._rxDspErrCount, "RxDspErrs")
         self._bypassRstCount  = updatePv(self._pv_bypassRsts, self._device.BypassResetCount.get(), self._bypassRstCount)
         self._bypassDoneCount = updatePv(self._pv_bypassDones, self._device.BypassDoneCount.get(), self._bypassDoneCount)
         self._fidCount        = updatePv(self._pv_fids, self._device.FidCount.get(), self._fidCount)
@@ -199,6 +203,9 @@ class TimingStatus(object):
             value['value'] = v
             value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
             self._pv_rxLinkUp.post(value)
+            if v != self._vLast:
+                print(f'*** {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
+                self._vLast = v
 
 class AmcPLLStatus(object):
     def __init__(self, name, app, idx):
@@ -395,7 +402,7 @@ class PVMmcmPhaseLock(object):
         v.append( mmcm.delayValue.get() )
         v.append( mmcm.waveform.get() )
         self.pv   = addPV(name,'ai',v)
-        
+
 
 class PVStats(object):
     def __init__(self, p, m, name, xpm, fiducialPeriod, axiv):
@@ -408,7 +415,7 @@ class PVStats(object):
 
         self._xpm  = xpm
         self._app  = xpm.XpmApp
-        
+
         self._links = []
         for i in range(32):
             self._links.append(LinkStatus(name,self._app,i))
