@@ -55,9 +55,9 @@ Usage::
     winds_bkgd = [(s, 10, 100, 270, 370) for s in (4,12,20,28)] # use part of segments 4,12,20, and 28 to subtract bkgd
     nda = subtract_bkgd(nda_data, nda_bkgd, mask=nda_mask, winds=winds_bkgd, pbits=0)
 
-    gu.set_file_access_mode(fname, mode=0o777)
-    gu.save_2darray_in_textfile(nda, fname, fmode, fmt)
-    gu.save_ndarray_in_textfile(nda, fname, fmode, fmt)
+    gu.set_file_access_mode(fname, mode=0o664)
+    gu.save_2darray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users')
+    gu.save_ndarray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users')
 
 See:
     - :py:class:`Utils`
@@ -517,23 +517,37 @@ def locxymax(nda, order=1, mode='clip'):
     return msk_ext_rows * msk_ext_cols
 
 
-def set_file_access_mode(fname, mode=0o777):
+def set_file_access_mode(fname, mode=0o664):
     os.chmod(fname, mode)
 
 
-def save_2darray_in_textfile(nda, fname, fmode, fmt, umask=0o0):
+def change_file_ownership(fname, user=None, group='ps-users'):
+    """change file ownership"""
+    import grp
+    import pwd
+    gid = os.getgid() if group is None else grp.getgrnam(group).gr_gid
+    uid = os.getuid() if user is None else pwd.getpwnam(user).pw_uid
+    logger.debug('change_file_ownership uid:%d gid:%d' % (uid, gid)) # uid:5269 gid:10000
+    os.chown(fname, uid, gid) # for non-default user - OSError: [Errno 1] Operation not permitted
+
+
+def save_2darray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users'):
     os.umask(umask)
     fexists = os.path.exists(fname)
     np.savetxt(fname, nda, fmt=fmt)
-    if not fexists: set_file_access_mode(fname, fmode)
+    if not fexists:
+        set_file_access_mode(fname, fmode)
+        change_file_ownership(fname, user=None, group=group)
     logger.info('saved:  %s' % fname)
 
 
-def save_ndarray_in_textfile(nda, fname, fmode, fmt, umask=0o0):
+def save_ndarray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users'):
     os.umask(umask)
     fexists = os.path.exists(fname)
     save_txt(fname=fname, arr=nda, fmt=fmt)
-    if not fexists: set_file_access_mode(fname, fmode)
+    if not fexists:
+        set_file_access_mode(fname, fmode)
+        change_file_ownership(fname, user=None, group=group)
     logger.debug('saved: %s fmode: %s fmt: %s' % (fname, oct(fmode), fmt))
 
 
