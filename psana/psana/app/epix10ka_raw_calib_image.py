@@ -10,9 +10,11 @@ t0_sec = time()
 import numpy as np
 print('np import consumed time (sec) = %.6f' % (time()-t0_sec))
 
+from psana.detector.Utils import info_parser_arguments
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana import DataSource
 from psana.detector.UtilsMask import CC, DTYPE_MASK
+from psana.detector.utils_psana import datasource_kwargs_from_string
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -90,11 +92,13 @@ def datasource_run_det(**kwa):
 
 def ds_run_det(args):
 
-    logger.info('ds_run_det input file:\n  %s' % args.fname)
+    logger.info('ds_run_det dskwargs (str):\n  %s' % args.dskwargs)
 
-    kwa = {'files':args.fname,} if args.fname is not None else\
-          {'exp':args.expname,'run':int(args.runs.split(',')[0])}
-    if args.dirxtc is not None: kwa['dir'] = args.dirxtc
+    kwa = datasource_kwargs_from_string(args.dskwargs)
+
+    #kwa = {'files':args.fname,} if args.fname is not None else\
+    #      {'exp':args.expname,'run':int(args.runs.split(',')[0])}
+    #if args.dirxtc is not None: kwa['dir'] = args.dirxtc
 
     #ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc')
     ds = DataSource(**kwa)
@@ -111,7 +115,7 @@ def ds_run_det(args):
 
     oraw = det.raw
     detnameid = oraw._uniqueid
-    expname = orun.expt if orun.expt is not None else args.expname # 'mfxc00318'
+    expname = orun.expt  # 'mfxc00318'
     runnum = orun.runnum
 
     print('run.detnames : ', orun.detnames) # {'epixquad'}
@@ -119,8 +123,8 @@ def ds_run_det(args):
     print('run.id       : ', orun.id)       # 0
     print('run.timestamp: ', orun.timestamp)# 4190613356186573936 (int)
 
-    print('fname:', args.fname)
-    print('expname:', expname)
+    #print('fname:', args.fname)
+    #print('expname:', expname)
     print('runnum :', runnum)
     print('detname:', det._det_name)
     print('split detnameid:', '\n'.join(detnameid.split('_')))
@@ -352,7 +356,7 @@ def test_image(args):
         logger.info(info_ndarr(arr, 'arr '))
         if img is None: continue
 
-        title = '%s %s run:%s step:%d ev:%d' % (args.detname, args.expname, args.runs, stepnum, evnum)
+        title = '%s %s run:%s step:%d ev:%d' % (args.detname, run.expt, run.runnum, stepnum, evnum)
 
         if 'i' in dograph:
             if flimg is None:
@@ -485,36 +489,35 @@ def do_main():
       + '\n    [image] - test_image WITH GRAPHICS - optional default'\
       + '\n    mask, peds, rms, status, gain, z/y/xcoords - test_single_image WITH GRAPHICS'\
       + '\n ==== '\
-      + '\n    %s raw -e ueddaq02 -d epixquad -r66 # raw' % SCRNAME\
-      + '\n    %s calib -e ueddaq02 -d epixquad -r66 # calib' % SCRNAME\
-      + '\n    %s mask  -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r66 -N1000 # image' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r108 -N1 -S grind' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r211 -N1 -M0 -Speds -g0 # - plot pedestals for gain group 0/FH' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r211 -N100 -Sraw-peds -M2 -g2 # - plot calib[step=2] - pedestals[gain group 2]' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Sraw' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Speds -g0' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin -100 --gramax 100 -Sraw-peds -g0' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r119 -Scalib' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r119 -Sones' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -N10000 -J200 --gramin 0 --gramax 10 -Sgrind' % SCRNAME\
-      + '\n    %s mask -e rixx45619 -d epixhr -r119' % SCRNAME\
-      + '\n    %s peds -e rixx45619 -d epixhr -r119 -g1' % SCRNAME\
-      + '\n    %s gains -e rixx45619 -d epixhr -r119 -g1' % SCRNAME\
-      + '\n    %s xcoords -e rixx45619 -d epixhr -r119 --cframe=1' % SCRNAME\
+      + '\n    %s raw   -k exp=ueddaq02,run=66 -d epixquad # raw' % SCRNAME\
+      + '\n    %s calib -k exp=ueddaq02,run=66 -d epixquad # calib' % SCRNAME\
+      + '\n    %s mask  -k exp=ueddaq02,run=66 -d epixquad # mask' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=66  -d epixquad -N1000 # image' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=108 -d epixquad -N1 -S grind' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=140 -d epixquad -N100 -M2 -S calibcm8' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=140 -d epixquad -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=211 -d epixquad -N1 -M0 -Speds -g0 # - plot pedestals for gain group 0/FH' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=211 -d epixquad -N100 -Sraw-peds -M2 -g2 # - plot calib[step=2] - pedestals[gain group 2]' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr --gramin 1 --gramax 32000 -Sraw' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr --gramin 1 --gramax 32000 -Speds -g0' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr --gramin -100 --gramax 100 -Sraw-peds -g0' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr -Scalib' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr -Sones' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr -N10000 -J200 --gramin 0 --gramax 10 -Sgrind' % SCRNAME\
+      + '\nTest:'\
+      + '\n    %s mask -k exp=rixx45619,run=121 -d epixhr' % SCRNAME\
+      + '\n    %s peds -k exp=rixx45619,run=121 -d epixhr -g1' % SCRNAME\
+      + '\n    %s gains -k exp=rixx45619,run=121 -d epixhr -g1' % SCRNAME\
+      + '\n    %s xcoords -k exp=rixx45619,run=121 -d epixhr --cframe=1' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr -Scalib' % SCRNAME\
 
+    d_dskwargs = None
     d_loglev  = 'INFO'
-    d_fname   = None
     d_pattrs  = False
     d_dograph = 'c' # 'ihc'
     d_cumulat = False
     d_show    = 'calibcm'
     d_detname = 'epixquad'
-    d_expname = 'ueddaq02'
-    d_runs    = '1'
-    d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
     d_ofname  = None
     d_mapmode = 1
     d_events  = 1000
@@ -536,30 +539,31 @@ def do_main():
     d_figwid  = 14
     d_fighig  = 12
 
+    h_dskwargs = 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
+                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
+                 ' or <fname.xtc> or files=<fname.xtc>'\
+                 ' or pythonic dict of generic kwargs, e.g.:'\
+                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
     h_show = 'select image correction from raw/calib/calibcm/calibcm8/grind/rawbm/raw-peds/raw-peds-med/peds/ones, def=%s' % d_show
-    h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
-    import argparse
 
+    import argparse
     parser = argparse.ArgumentParser(usage=usage, description='%s - test epix10ka data'%SCRNAME)
     #parser.add_argument('posargs', nargs='*', type=str, help='test name and other positional arguments')
+    parser.add_argument('-k', '--dskwargs', type=str, help=h_dskwargs)
     parser.add_argument('tname', nargs='?', type=str, help='test name and other positional arguments')
-    parser.add_argument('-f', '--fname',   default=d_fname,   type=str, help='xtc file name, def=%s' % d_fname)
     parser.add_argument('-l', '--loglev',  default=d_loglev,  type=str, help=h_loglev)
     parser.add_argument('-d', '--detname', default=d_detname, type=str, help='detector name, def=%s' % d_detname)
-    parser.add_argument('-e', '--expname', default=d_expname, type=str, help='experiment name, def=%s' % d_expname)
-    parser.add_argument('-r', '--runs',    default=d_runs,    type=str, help='run or comma separated list of runs, def=%s' % d_runs)
-    parser.add_argument('-x', '--dirxtc',  default=d_dirxtc,  type=str, help=h_dirxtc)
     parser.add_argument('-P', '--pattrs',  default=d_pattrs,  action='store_true',  help='print objects attrubutes, def=%s' % d_pattrs)
     parser.add_argument('-G', '--dograph', default=d_dograph, type=str, help='plot i/h/c=image/hist/comb, def=%s' % d_dograph)
     parser.add_argument('-C', '--cumulat', default=d_cumulat, action='store_true', help='plot cumulative image, def=%s' % d_cumulat)
-    parser.add_argument('-S', '--show',    default=d_show,    type=str, help=h_show)
-    parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
-    parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
-    parser.add_argument('-N', '--events',  default=d_events,  type=int, help='maximal number of events, def=%s' % d_events)
-    parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
-    parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
+    parser.add_argument('-S', '--show',    default=d_show,    type=str,   help=h_show)
+    parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str,   help='output image file name, def=%s' % d_ofname)
+    parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int,   help=h_mapmode)
+    parser.add_argument('-N', '--events',  default=d_events,  type=int,   help='maximal number of events, def=%s' % d_events)
+    parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int,   help='number of events to skip in the beginning of run, def=%s' % d_evskip)
+    parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int,   help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int,   help='bitmask for raw MDBITS=16383/0x7fff=32767, def=%s' % hex(d_bitmask))
     parser.add_argument('-M', '--stepnum', default=d_stepnum, type=int,   help='step selected to show or None for all, def=%s' % d_stepnum)
     parser.add_argument('-g', '--grindex', default=d_grindex, type=int,   help='gain range index [0,6] for peds, def=%s' % str(d_grindex))
@@ -572,14 +576,15 @@ def do_main():
     parser.add_argument('--grnpos',        default=d_grnpos,  type=float, help='number of mean deviations of intensity negative limit for grphics, def=%s' % str(d_grnpos))
     parser.add_argument('--grfrlo',        default=d_grfrlo,  type=float, help='fraqction of statistics [0,1] below low  limit for grphics, def=%s' % str(d_grfrlo))
     parser.add_argument('--grfrhi',        default=d_grfrhi,  type=float, help='fraqction of statistics [0,1] below high limit for grphics, def=%s' % str(d_grfrhi))
-    parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
+    parser.add_argument('--cframe',        default=d_cframe,  type=int,   help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
     parser.add_argument('--figwid',        default=d_figwid,  type=float, help='figure width, inch, def=%f' % d_figwid)
     parser.add_argument('--fighig',        default=d_fighig,  type=float, help='figure width, inch, def=%f' % d_fighig)
 
     args = parser.parse_args()
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(name)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
-    logger.debug('parser.parse_args: %s' % str(args))
+    #logger.debug('parser.parse_args: %s' % str(args))
+    logger.info(info_parser_arguments(parser))
 
     kwa = vars(args)
     s = '\nArguments:'
