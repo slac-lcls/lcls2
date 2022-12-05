@@ -130,16 +130,17 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, t
 
 def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', adddict={}):
     os.umask(repoman.umask)
-    logname = repoman.logname_at_start(procname)
-    fexists = os.path.exists(logname)
-    d = {'dirrepo':repoman.dirrepo, 'logfile':logname}
+
+    logatstart = repoman.logname_at_start(procname)
+    fexists = os.path.exists(logatstart)
+    d = {'dirrepo':repoman.dirrepo, 'logfile':repoman.logname(procname)}
     if adddict: d.update(adddict)
     rec = log_rec_at_start(tsfmt, **d)
-    save_textfile(rec, logname, mode='a')
+    save_textfile(rec, logatstart, mode='a')
     if not fexists:
-        set_file_access_mode(logname, repoman.filemode)
-        change_file_ownership(logname, user=None, group=repoman.group)
-    logger.info('Record: %s\nSaved: %s' % (rec, logname))
+        set_file_access_mode(logatstart, repoman.filemode)
+        change_file_ownership(logatstart, user=None, group=repoman.group)
+    logger.info('Record: %s\nSaved: %s' % (rec, logatstart))
 
 
 def is_none(par, msg):
