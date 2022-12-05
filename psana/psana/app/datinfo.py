@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os
+#import os
 import sys
 from time import time
 import json
@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 DICT_NAME_TO_LEVEL = logging._nameToLevel
 STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 
-#SCRNAME = sys.argv[0].rsplit('/')[-1]
-SCRNAME = os.path.basename(sys.argv[0])
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+#SCRNAME = os.path.basename(sys.argv[0])
 
 USAGE = '\n  %s -d <detector> -k <datasource-kwargs> [kwargs]' % SCRNAME\
       + '\nCOMMAND EXAMPLES:'\
@@ -42,10 +42,10 @@ def ds_run_det(args):
         print('detector information is not requested by -td option - skip it')
         return
 
-    ds_kwa = datasource_kwargs_from_string(args.dskwargs)  # datasource_arguments(args)
-    print('DataSource kwargs:%s' % info_dict(ds_kwa, fmt='%s: %s', sep=' '))
+    dskwargs = datasource_kwargs_from_string(args.dskwargs)  # datasource_arguments(args)
+    print('DataSource kwargs:%s' % info_dict(dskwargs, fmt='%s: %s', sep=' '))
     try:
-      ds = DataSource(**ds_kwa)
+      ds = DataSource(**dskwargs)
     except:
       print('Can not open DataSource\nCheck if xtc2 file is available')
       sys.exit()
@@ -217,22 +217,25 @@ def do_main():
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_detname = None # 'epixquad'
     d_dskwargs = None
+    d_detname = None # 'epixquad'
     d_evtmax  = 0 # maximal number of events
     d_logmode = 'INFO'
     d_typeinfo= 'DRSE'
 
-    h_dskwargs= 'str of comma-separated (no spaces) simple parameters for DataSource(**kwargs), ex: file=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
-                'or pythonic dict of generic kwargs, e.g.: \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
+    h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
+                ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
+                ' or <fname.xtc> or files=<fname.xtc>'\
+                ' or pythonic dict of generic kwargs, e.g.:'\
+                ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_detname = 'detector name, e.g. %s' % d_detname
     h_evtmax  = 'number of events to print, default = %s' % str(d_evtmax)
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_typeinfo= 'type of information for output D-detector, R-run-loop, S-step-loop, E-event-loop, default = %s' % d_typeinfo
 
     parser = ArgumentParser(usage=USAGE, description='Print info about experiment detector and run')
-    parser.add_argument('-d', '--detname', default=d_detname, type=str, help=h_detname)
     parser.add_argument('-k', '--dskwargs', type=str, help=h_dskwargs)
+    parser.add_argument('-d', '--detname', default=d_detname, type=str, help=h_detname)
     parser.add_argument('-n', '--evtmax', default=d_evtmax, type=int, help=h_evtmax)
     parser.add_argument('-L', '--logmode', default=d_logmode, type=str, help=h_logmode)
     parser.add_argument('-t', '--typeinfo', default=d_typeinfo, type=str, help=h_typeinfo)
