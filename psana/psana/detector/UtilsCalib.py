@@ -511,7 +511,7 @@ def pedestals_calibration(**kwa):
   logger.info('command line: %s' % info_command_line())
   #logger.info('input parameters: %s' % info_dict(kwa, fmt='%s: %s', sep=' '))
 
-  dsname  = kwa.get('dsname', None)
+  str_dskwargs = kwa.get('dskwargs', None)
   dirrepo = kwa.get('dirrepo', './work')
   detname = kwa.get('det', None)
   nrecs   = kwa.get('nrecs', 100)
@@ -525,7 +525,7 @@ def pedestals_calibration(**kwa):
   logmode = kwa.get('logmode', 'INFO')
   procname = sys.argv[0].rsplit('/')[-1]
 
-  dskwargs = up.datasource_kwargs_from_string(dsname)
+  dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
   logger.info('DataSource kwargs: %s' % str(dskwargs))
   ds = DataSource(**dskwargs)
 
