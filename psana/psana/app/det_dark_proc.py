@@ -2,8 +2,6 @@
 
 import sys
 from time import time
-from psana.detector.Utils import info_parser_arguments
-from psana.detector.UtilsCalib import pedestals_calibration
 from psana.detector.dir_root import DIR_REPO_DARK_PROC
 from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
 logger = logging.getLogger(__name__)
@@ -11,7 +9,7 @@ logger = logging.getLogger(__name__)
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 USAGE = 'Usage:'\
-      + '\n  %s -k <datasource-kwargs> -d <detector> [-o <output-result-directory>] [-L <logging-mode>] [...]'\
+      + '\n  %s -k <DataSource-kwargs> -d <detector> [-o <output-result-directory>] [-L <logging-mode>] [...]'\
       + '\nExamples:'\
       + '\n  %s -k exp=tmox49720,run=209 -d epix100 -D' % SCRNAME\
       + '\n  %s -k exp=tmoc00318,run=10,dir=/a/b/c/xtc -d epix100 -D' % SCRNAME\
@@ -37,25 +35,26 @@ def do_main():
 
     if len(sys.argv)<3: exit('\n%s\n' % USAGE)
 
-    assert args.dsname is not None, 'WARNING: option "-k <datasource-name>" MUST be specified.'
+    assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 
     init_stream_handler(loglevel=args.logmode)
 
-    logger.debug('%s\nIn %s' % ((50*'_'), SCRNAME))
-    logger.debug('Command line:%s' % ' '.join(sys.argv))
+    logger.debug('%s\nCommand line:%s' % ((50*'_'), ' '.join(sys.argv)))
+
+    from psana.detector.Utils import info_parser_arguments
     logger.info(info_parser_arguments(parser))
 
+    from psana.detector.UtilsCalib import pedestals_calibration
     pedestals_calibration(**kwa)
 
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
 
 
-
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_dsname  = None    # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
+    d_dskwargs  = None    # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
     d_det     = None    # 'tmoopal'
     d_nrecs   = 1000    # number of records to collect and process
     d_nrecs1  = 100     # number of records to process at 1st stage
@@ -88,8 +87,11 @@ def argument_parser():
     d_comment = 'no comment'
     d_plotim  = 0
 
-    h_dsname  = 'str of comma-separated (no spaces) simple parameters for DataSource(**kwargs), ex: file=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
-                'or pythonic dict of generic kwargs, e.g.: \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dsname
+    h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
+                ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
+                ' or <fname.xtc> or files=<fname.xtc>'\
+                ' or pythonic dict of generic kwargs, e.g.:'\
+                ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_det     = 'detector name, default = %s' % d_det
     h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
     h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
@@ -124,7 +126,7 @@ def argument_parser():
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
 
     parser = ArgumentParser(usage=USAGE, description='%s - proceses dark run xtc raw data fro specified detector' % SCRNAME)
-    parser.add_argument('-k', '--dsname',  default=d_dsname,     type=str,   help=h_dsname)
+    parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
     parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)
