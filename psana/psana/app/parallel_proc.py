@@ -55,7 +55,7 @@ def do_main():
     dirrepo = './'
     procname = 'parallel_proc'
     from psana.detector.Utils import save_log_record_at_start
-    save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0)
+    save_log_record_at_start(dirrepo, procname, dirmode=0o2775, filemode=0o664, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0)
 
     print('Usage:%s\n' % USAGE)
 
