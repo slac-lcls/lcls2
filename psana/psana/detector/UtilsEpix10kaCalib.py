@@ -821,7 +821,7 @@ def deploy_constants(*args, **kwa):
     fmt_status = kwa.get('fmt_status', '%4i')
     logmode    = kwa.get('logmode', 'DEBUG')
     dirmode    = kwa.get('dirmode',  0o2775)
-    filemode   = kwa.get('filemode', 0o665)
+    filemode   = kwa.get('filemode', 0o664)
     group      = kwa.get('group', 'ps-users')
     high       = kwa.get('high',   16.40) # ADU/keV
     medium     = kwa.get('medium', 5.466) # ADU/keV
