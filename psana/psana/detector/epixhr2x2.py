@@ -8,7 +8,14 @@ from amitypes import Array2d
 #from psana.detector.detector_impl import DetectorImpl
 import psana.detector.epix_base as eb
 import logging
+from psana.detector.detector_impl import DetectorImpl
 logger = logging.getLogger(__name__)
+
+# make an empty detector interface for Matt's hardware
+# configuration object so that config_dump works
+class epixhr2x2hw_config_2_0_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super(epixhr2x2hw_config_2_0_0, self).__init__(*args)
 
 class epixhr2x2_raw_2_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
