@@ -12,7 +12,7 @@ from psana.detector.detector_impl import DetectorImpl
 logger = logging.getLogger(__name__)
 
 # make an empty detector interface for Matt's hardware
-# configuration object so that config_dump works
+# configuration object so that config_dump works - cpo
 class epixhr2x2hw_config_2_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super(epixhr2x2hw_config_2_0_0, self).__init__(*args)
