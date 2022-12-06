@@ -65,7 +65,7 @@ def argument_parser():
     d_stepmax = 5
     d_evskip  = 100     # number of events to skip in the beginning of each step
     d_events  = 1000    # last event number in the step to process
-    d_dirmode = 0o774
+    d_dirmode = 0o2775
     d_filemode= 0o664
     d_group   = 'ps-users'
     d_int_lo  = 1       # lowest  intensity accepted for dark evaluation
