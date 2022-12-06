@@ -6,7 +6,7 @@ source /cds/sw/ds/ana/conda2-v2/inst/etc/profile.d/conda.sh
 export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
 conda activate ps-4.5.23
 
-RELDIR="$( cd "$( dirname "${readlink -f BASH_SOURCE[0]}" )" && pwd )"
+RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]}") )" && pwd )"
 export PATH=$RELDIR/install/bin:${PATH}
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
