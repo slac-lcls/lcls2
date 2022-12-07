@@ -122,6 +122,7 @@ if 'PSANA' in BUILD_LIST :
             'xtcavDisplay        = psana.xtcav.app.xtcavDisplay:__main__',
             'shmemClientSimple   = psana.app.shmemClientSimple:main',
             'epix10ka_pedestals_calibration = psana.app.epix10ka_pedestals_calibration:do_main',
+            'epix10ka_charge_injection = psana.app.epix10ka_charge_injection:do_main',
             'epix10ka_deploy_constants = psana.app.epix10ka_deploy_constants:do_main',
             'epix10ka_raw_calib_image = psana.app.epix10ka_raw_calib_image:do_main',
             'epix10ka_calib_components = psana.app.epix10ka_calib_components:__main__',
