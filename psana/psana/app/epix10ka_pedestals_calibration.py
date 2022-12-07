@@ -5,7 +5,6 @@ from time import time
 from psana.detector.UtilsEpix10kaCalib import pedestals_calibration, DIR_REPO_EPIX10KA
 from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
 
-import logging
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
