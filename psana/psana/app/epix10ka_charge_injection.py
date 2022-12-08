@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-#from Detector.GlobalUtils import info_command_line_parameters
 #from Detector.UtilsEpix10kaCalib import offset_calibration, CALIB_REPO_EPIX10KA, DIR_LOG_AT_START
-#import Detector.UtilsLogging as ul
-#logger = ul.logging.getLogger(__name__)
 
 import sys
 from time import time
@@ -33,7 +30,8 @@ def do_main():
     from psana.detector.Utils import info_parser_arguments
     logger.info(info_parser_arguments(parser))
 
-    ##### offset_calibration(**kwa)
+    import psana.detector.UtilsEpix10kaChargeInjection as uci
+    uci.charge_injection(**kwa)
 
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
 
@@ -42,15 +40,15 @@ USAGE = 'Usage:'\
       + '\n  %s -e <experiment> [-d <detector>] [-r <run-number>]' % SCRNAME\
       + '\n       [-i <panel-index>] [-n <nspace>] [-x <dsname-or-extension>] [-o <output-result-directory>] [-L <logging-mode>] [-p]'\
       + '\nTEST COMMAND FOR GRAPHICS:'\
-      + '\n  %s -e detdaq18 -k exp=ascdaq18,run=171 -d epixhr -o ./work -i0    # plot all' % SCRNAME\
-#      + '\n  %s -e detdaq18 -d DetLab.0:Epix10ka2M.0 -r52 -i0 -o ./work        # plot all' % SCRNAME\
-#      + '\n  %s -e detdaq18 -d DetLab.0:Epix10ka2M.0 -r52 -i0 -o ./work -P     # skip pedestal calib-cycles' % SCRNAME\
-#      + '\n  %s -e detdaq18 -d DetLab.0:Epix10ka2M.0 -r52 -i0 -o ./work -O     # skip offset calib-cycles' % SCRNAME\
-#      + '\n  %s -e detdaq18 -d DetLab.0:Epix10ka2M.0 -r52 -i0 -o ./work -s 60  # skip first 60 calib-cycles' % SCRNAME\
+      + '\n  %s -k exp=ascdaq18,run=171 -d epixhr -o ./work -i0    # plot all' % SCRNAME\
+#      + '\n  %s ... -i0 -o ./work        # plot all' % SCRNAME\
+#      + '\n  %s ... -i0 -o ./work -P     # skip pedestal calib-cycles' % SCRNAME\
+#      + '\n  %s ... -i0 -o ./work -O     # skip offset calib-cycles' % SCRNAME\
+#      + '\n  %s ... -i0 -o ./work -s 60  # skip first 60 calib-cycles' % SCRNAME\
 #      + '\nDEBUGGING AND REGULAR COMMAND FOR DATA PROCESSING:'\
-#      + '\n  %s -e detdaq18 -d DetLab.0:Epix10ka2M.0 -r92 -i0 -o ./work -p' % SCRNAME\
-#      + '\n  %s -e detdaq18 -d DetLab.0:Epix10ka2M.0 -r52 -i0 -o ./work -p' % SCRNAME\
-#      + '\n  %s -e detdaq18 -d DetLab.0:Epix10ka2M.0 -r52 -i5 -p &> 2020-06-01-r52-offset-log05.txt&' % SCRNAME
+#      + '\n  %s ... -i0 -o ./work -p' % SCRNAME\
+#      + '\n  %s ... -i0 -o ./work -p' % SCRNAME\
+#      + '\n  %s ... -i5 -p &> 2020-06-01-r52-offset-log05.txt&' % SCRNAME
 
 
 def argument_parser() :
@@ -62,7 +60,7 @@ def argument_parser() :
     d_idx      = None  # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_nbs      = 4600  # number of frames
     d_nspace   = 5     # space between charge injected pisels
-    d_dirrepo  = './myrepo' #CALIB_REPO_EPIX10KA # './myrepo'
+    d_dirrepo  = './work' #CALIB_REPO_EPIX10KA # './myrepo'
     d_display  = True
     d_logmode  = 'INFO'
     d_dopeds   = True
