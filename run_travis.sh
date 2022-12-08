@@ -18,6 +18,21 @@ if [[ $OS == linux ]]; then
   ./build_all.sh -p install
   pytest psana/psana/tests
   pytest psdaq/psdaq/tests
+  cd ..
+  git clone https://github.com/slac-lcls/ami.git
+  sudo apt-get install -y xvfb \
+                  libxkbcommon-x11-0 \
+                  libxcb-icccm4 \
+                  libxcb-image0 \
+                  libxcb-keysyms1 \
+                  libxcb-randr0 \
+                  libxcb-render-util0 \
+                  libxcb-xinerama0 \
+                  libxcb-xinput0 \
+                  libxcb-xfixes0
+  cd ami
+  ./build_all.sh
+  xvfb-run pytest
 elif [[ $OS == osx ]]; then
   # add conda to the path
   source "$HOME/miniconda/etc/profile.d/conda.sh"
