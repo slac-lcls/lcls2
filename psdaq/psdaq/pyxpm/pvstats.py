@@ -232,10 +232,10 @@ class AmcPLLStatus(object):
     def handle(self, msg, offset, timev):
         w = struct.unpack_from('<B',msg,offset)
         offset += 1
-        updatePv(self._pv_lolCnt,(w[0]>>0)&7, timev)
-        updatePv(self._pv_lol   ,(w[0]>>3)&1, timev)
-        updatePv(self._pv_losCnt,(w[0]>>4)&7, timev)
-        updatePv(self._pv_los   ,(w[0]>>7)&1, timev)
+        updatePv(self._pv_los   ,(w[0]>>0)&1, timev)
+        updatePv(self._pv_losCnt,(w[0]>>1)&7, timev)
+        updatePv(self._pv_lol   ,(w[0]>>4)&1, timev)
+        updatePv(self._pv_lolCnt,(w[0]>>5)&7, timev)
         return offset
 
 class CuStatus(object):

@@ -132,22 +132,6 @@ class CmdH(PVHandler):
         if value:
             retry(self.cmd,pv,value) 
             
-class IdxCmdH(PVHandler):
-
-    def __init__(self, cmd, idxcmd, idx):
-        super(IdxCmdH,self).__init__(self.handle)
-        self._cmd      = cmd
-        self._idxcmd   = idxcmd
-        self._idx      = idx
-
-    def cmd(self,pv,value):
-        self._idxcmd.set(self._idx)
-        self._cmd()
-
-    def handle(self, pv, value):
-        if value:
-            retry_wlock(self._idxcmd,pv,value)
-            
 class RegArrayH(PVHandler):
 
     def __init__(self, valreg, archive=False):
@@ -530,11 +514,6 @@ class PVCtrls(object):
         app = xpm.XpmApp
 
         self._pv_amcDumpPLL = []
-        for i in range(2):
-            pv = SharedPV(initial=NTScalar('I').wrap(0), 
-                          handler=IdxCmdH(app.amcPLL.Dump,app.amc,i))
-            provider.add(name+':DumpPll%d'%i,pv)
-            self._pv_amcDumpPLL.append(pv)
 
         self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init)
 

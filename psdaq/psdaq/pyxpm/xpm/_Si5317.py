@@ -140,23 +140,24 @@ class Si5317(pr.Device):
             mode        = 'RW',
         ))        
 
-        @self.command(name='Dump',description='dump all csr')
-        def _Dump(self):
-            def get(name):
-                return self.find(name=name).get()
+#        @self.command(name='Dump',description='dump all csr')
 
-            lmh = ['L', 'H', 'M', 'm']
-            yn = ['N','Y']
-            print("  "),
-            print("FrqTbl %c  ", lmh[get('frqTbl')]),
-            print("FrqSel %c%c%c%c  ",
-                  lmh[get('frqSel3')],
-                  lmh[get('frqSel2')],
-                  lmh[get('frqSel1')],
-                  lmh[get('frqSel0')]),
-            print("BwSel %c%c  ", lmh[get('bwSel1')], lmh[get('bwSel0')]),
-            print("Rate %c%c  ", lmh[get('rate1')], lmh[get('rate0')]),
-            print("LOLCnt %u  ", get('lolCnt')),
-            print("LOL %c  ", yn[get('lol')]),
-            print("LOSCnt %u  ", get('losCnt')),
-            print("LOL %c  ", yn[get('los')])
+    def _Dump(self):
+        def get(name):
+            return self.find(name=name)[0].get()
+
+        lmh = ['L', 'H', 'M', 'm']
+        yn = ['N','Y']
+        print("  "),
+        print("FrqTbl {}  ".format(lmh[get('frqTbl')]))
+        print("FrqSel {}{}{}{}  ".format(
+              lmh[get('frqSel3')],
+              lmh[get('frqSel2')],
+              lmh[get('frqSel1')],
+              lmh[get('frqSel0')]))
+        print("BwSel {}{}".format(lmh[get('bwSel1')], lmh[get('bwSel0')]))
+        print("Rate {}{} ".format(lmh[get('rate1')], lmh[get('rate0')]))
+        print("LOLCnt {}  ".format(get('lolCnt')))
+        print("LOL {}  ".format(yn[get('lol')]))
+        print("LOSCnt {}  ".format(get('losCnt')))
+        print("LOS {}  ".format(yn[get('los')]))
