@@ -146,7 +146,7 @@ class IdxCmdH(PVHandler):
 
     def handle(self, pv, value):
         if value:
-            retry_wlock(self.idxcmd,pv,value)
+            retry_wlock(self._idxcmd,pv,value)
             
 class RegArrayH(PVHandler):
 

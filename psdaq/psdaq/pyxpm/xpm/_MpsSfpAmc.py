@@ -47,7 +47,7 @@ class MpsSfpAmc(pr.Device):
             mode        = "RW",
         ))
 
-        self.add(xpm.Sfp(
+        self.add(Sfp(
 #            memBase = self.srp,
             name    = 'SfpI2c',
             offset  = 0x800,

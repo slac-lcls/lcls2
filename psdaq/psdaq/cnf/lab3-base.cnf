@@ -10,7 +10,7 @@ drp_nodes = []
 pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,tst,PROD -P DAQ:LAB2:XPM:%d'
 pyxpm_opts = '-P DAQ:LAB2:XPM:%d'
 
-base_host = 'daq-tst-dev01'
+base_host = 'daq-tst-dev02'
 prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
 
 # procmgr FLAGS: <port number> static port number to keep executable

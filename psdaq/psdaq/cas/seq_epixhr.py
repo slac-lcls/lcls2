@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     instrset = []
     # 60Hz x timeslots 1,4
-    instrset.append(ACRateSync((1<<0)|(1<<3),0,1))
+    instrset.append(ACRateSync((1<<0)|(1<<3),4,1))
     instrset.append(ControlRequest(0x7))
 
     #  Set three bits: one at the initial 120 Hz, 
@@ -27,19 +27,19 @@ if __name__ == '__main__':
     i_4k = 233
     while (n_5k>0 and n_4k>0):
         if i_5k < i_4k:
-            instrset.append(FixedRateSync(marker=0,occ=i_5k))
+            instrset.append(FixedRateSync(marker=6,occ=i_5k))
             instrset.append(ControlRequest(0x4))
             n_5k -= 1
             i_4k -= i_5k
             i_5k  = 186
         elif i_4k < i_5k:
-            instrset.append(FixedRateSync(marker=0,occ=i_4k))
+            instrset.append(FixedRateSync(marker=6,occ=i_4k))
             instrset.append(ControlRequest(0x2))
             n_4k -= 1
             i_5k -= i_4k
             i_4k  = 233
         else:
-            instrset.append(FixedRateSync(marker=0,occ=i_4k))
+            instrset.append(FixedRateSync(marker=6,occ=i_4k))
             instrset.append(ControlRequest(0x6))
             n_4k -= 1
             n_5k -= 1

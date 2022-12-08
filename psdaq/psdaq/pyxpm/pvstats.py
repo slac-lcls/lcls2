@@ -68,6 +68,12 @@ class SFPStatus(object):
         self._value = toDict(sfpStatus)
         self._link  = 0
 
+        amc = self._xpm.amcs[0]
+        mod = amc.SfpSummary.modabs.get()
+        print(f'SFPStatus mod {mod:x}')
+        amc.I2cMux.set(1<<3)
+        print(f'Vendor name {amc.SfpI2c.VendorName.get()}')
+
     def update(self):
 
         amc = self._xpm.amcs[int(self._link/7)]
@@ -405,7 +411,7 @@ class PVMmcmPhaseLock(object):
 
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True):
         global provider
         provider = p
         global lock
@@ -434,7 +440,10 @@ class PVStats(object):
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
 
         self._monClks  = MonClkStatus(name,self._app)
-        self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
+        if hasSfp:
+            self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
+        else:
+            self._sfpStat  = None
 
         self.paddr   = addPV(name+':PAddr'  ,'I',self._app.paddr.get())
         self.fwbuild = addPV(name+':FwBuild','s',axiv.BuildStamp.get())
@@ -462,7 +471,8 @@ class PVStats(object):
             self._usTiming.update()
             self._cuTiming.update()
             self._cuGen   .update()
-            self._sfpStat .update()
+            if self._sfpStat:
+                self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:

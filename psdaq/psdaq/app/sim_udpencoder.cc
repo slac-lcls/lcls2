@@ -26,7 +26,7 @@ void _loopbackSend();
 
 static void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
-  printf("Options: -r <rate> (0:929kHz,1:71kHz,..)\n");
+  printf("Options: -r <rate> (0:1Hz,1:10Hz,..)\n");
   printf("         -e <evcode>\n");
   printf("         -p <partition>\n");
   printf("         -d <data port>  (default %d)\n", Drp::UdpEncoder::DefaultDataPort);

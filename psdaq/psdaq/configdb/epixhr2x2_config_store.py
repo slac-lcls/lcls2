@@ -1,4 +1,5 @@
 from psdaq.configdb.typed_json import cdict
+from psdaq.configdb.tsdef import *
 import psdaq.configdb.configdb as cdb
 import pyrogue as pr
 import numpy as np
@@ -43,7 +44,7 @@ def epixhr2x2_cdict():
     top.set('expert.EpixHR.TriggerEventManager.TriggerEventBuffer1.TriggerDelay',42,'UINT32')
     top.set('expert.EpixHR.TriggerEventManager.TriggerEventBuffer1.Partition',0,'UINT32')
 
-    top.define_enum('rateEnum', {'929kHz':0, '71kHz':1, '10kHz':2, '1kHz':3, '100Hz':4, '10Hz':5, '1Hz':6})
+    top.define_enum('rateEnum', fixedRateHzToMarker)
     top.set('expert.EpixHR.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
 
     top.define_enum('boolEnum', {'False':0, 'True':1})

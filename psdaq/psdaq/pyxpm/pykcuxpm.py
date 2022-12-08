@@ -75,7 +75,7 @@ def main():
 
     lock = Lock()
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv)
+    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False)
     base.handle(pvstats.handle)
 
     pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9)
