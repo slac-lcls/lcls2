@@ -428,7 +428,7 @@ class DataSourceBase(abc.ABC):
             # Get tmp configs using SmdReader
             # this smd_fds, configs, and SmdReader will not be used later
             smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
-            logger.debug(f'ds_base: smd0 opened tmp smd_fds: {smd_fds}')
+            logger.debug(f'smd0 opened tmp smd_fds for detection selection: {smd_fds}')
             smdr_man = SmdReaderManager(smd_fds, self.dsparms)
             all_configs = smdr_man.get_next_dgrams()
 
@@ -447,37 +447,43 @@ class DataSourceBase(abc.ABC):
                     det_list.append(detname)
                     for seg_id, _ in seg_dict.items():
                         det_list.append(f'{detname}_{seg_id}')
-                print(f'Stream:{i} detectors:{all_det_dict[i]}')
+                logger.debug(f'Stream:{i} detectors:{all_det_dict[i]}')
 
             # Apply detector selection exclusion
             if self.detectors or self.xdetectors:
                 include_set = set(self.detectors)
                 exclude_set = set(self.xdetectors)
-                print(f'Applying detector selection/exclusion')
-                print(f'  Included: {include_set}')
-                print(f'  Excluded: {exclude_set}')
+                logger.debug(f'Applying detector selection/exclusion')
+                logger.debug(f'  Included: {include_set}')
+                logger.debug(f'  Excluded: {exclude_set}')
 
                 # This will become 'key' to the new det_dict
                 cn_keeps = 0
                 for i in range(n_smds):
                     flag_keep = True
                     exist_set = set(all_det_dict[i])
-                    print(f'  Stream:{i}')
+                    logger.debug(f'  Stream:{i}')
                     if self.detectors:
                         if not include_set.intersection(exist_set):
                             flag_keep = False
-                            print(f'  |-- Discarded, not matched given detectors')
+                            logger.debug(f'  |-- Discarded, not matched given detectors')
                     if self.xdetectors and flag_keep:
-                        if exclude_set.intersection(exist_set):
+                        matched_set = exclude_set.intersection(exist_set)
+                        if matched_set:
                             flag_keep = False
-                            print(f'  |-- Discarded, matched with excluded detectors')
+                            logger.debug(f'  |-- Discarded, matched with excluded detectors')
+                            # We only warn users in the case where we exclude a detector
+                            # and there're more than one detectors in the file.
+                            if len(exist_set) > len(matched_set):
+                                print(f'Warning: Stream-{i} has one or more detectors matched with the excluded set. All detectors in this stream will be excluded.')
+                             
                     if flag_keep:
                         if self.xtc_files: xtc_files.append(self.xtc_files[i])
                         if self.smd_files: smd_files.append(self.smd_files[i])
                         configs.append(config) 
                         det_dict[cn_keeps] = all_det_dict[i]
                         cn_keeps += 1
-                        print(f'  |-- Kept')
+                        logger.debug(f'  |-- Kept')
             else:
                 xtc_files = self.xtc_files[:]
                 smd_files = self.smd_files[:]
@@ -487,17 +493,17 @@ class DataSourceBase(abc.ABC):
             use_smds = [False] * len(smd_files)
             if self.small_xtc:
                 s1 = set(self.small_xtc)
-                print(f'Applying smalldata replacement')
-                print(f'  Smalldata: {self.small_xtc}')
+                logger.debug(f'Applying smalldata replacement')
+                logger.debug(f'  Smalldata: {self.small_xtc}')
                 for i in range(len(smd_files)):
                     exist_set = set(det_dict[i])
-                    print(f' Stream:{i}')
+                    logger.debug(f' Stream:{i}')
                     if s1.intersection(exist_set):
                         smd_files[i] = xtc_files[i]
                         use_smds[i] = True
-                        print(f'  |-- Replaced with smalldata')
+                        logger.debug(f'  |-- Replaced with smalldata')
                     else:
-                        print(f'  |-- Kept with bigdata')
+                        logger.debug(f'  |-- Kept with bigdata')
 
             self.xtc_files = xtc_files
             self.smd_files = smd_files  
