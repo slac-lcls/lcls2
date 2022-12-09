@@ -20,7 +20,7 @@ import numpy as np
 import json
 from psana import DataSource
 from psana.detector.UtilsEpix import DIR_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
-from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login
+from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
 from psana.detector.utils_psana import seconds, datasource_kwargs_from_string
@@ -647,7 +647,7 @@ def get_config_info_for_dataset_detname(**kwargs):
     ds = DataSource(**data_source_kwargs(**kwargs))
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
-    logger.info('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
+    logger.debug('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
 
     #for orun in ds.runs():
     orun = next(ds.runs())
