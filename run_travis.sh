@@ -14,25 +14,13 @@ if [[ $OS == linux ]]; then
 
   PYVER=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
   export PYTHONPATH="$PWD/install/lib/python$PYVER/site-packages"
+  export TESTRELDIR="$PWD/install"
 
   ./build_all.sh -p install
   pytest psana/psana/tests
   pytest psdaq/psdaq/tests
   cd ..
   git clone https://github.com/slac-lcls/ami.git
-  # which is missing in the container and this somehow breaks xvfb-run (???)
-  yum install -y which
-  ## dan - this was needed for the base ubuntu in github actions - not needed when using a rhel7 docker??
-  #apt-get install -y xvfb \
-  #                libxkbcommon-x11-0 \
-  #                libxcb-icccm4 \
-  #                libxcb-image0 \
-  #                libxcb-keysyms1 \
-  #                libxcb-randr0 \
-  #                libxcb-render-util0 \
-  #                libxcb-xinerama0 \
-  #                libxcb-xinput0 \
-  #                libxcb-xfixes0
   cd ami
   ./build_all.sh
   xvfb-run pytest
