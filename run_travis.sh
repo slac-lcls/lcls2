@@ -20,6 +20,7 @@ if [[ $OS == linux ]]; then
   pytest psdaq/psdaq/tests
   cd ..
   git clone https://github.com/slac-lcls/ami.git
+  yum install xorg-x11-server-Xvfb
   ## dan - this was needed for the base ubuntu in github actions - not needed when using a rhel7 docker??
   #apt-get install -y xvfb \
   #                libxkbcommon-x11-0 \
