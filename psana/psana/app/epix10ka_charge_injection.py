@@ -20,10 +20,11 @@ def do_main():
     kwa = vars(args)
     #defs = vars(parser.parse_args([])) # dict of defaults only
 
-    if len(sys.argv) < 3: print('\n%s\n' % USAGE)
+    if len(sys.argv) < 4: print('\n%s\n' % USAGE)
 
     if args.dskwargs is None : raise IOError('WARNING: option "-k <kwargs-for-DataSource>" MUST be specified.')
     if args.det      is None : raise IOError('WARNING: option "-d <detector-name>" MUST be specified.')
+    if args.idx      is None : raise IOError('WARNING: option "-i <panel index (0-15/3 for epix10ka2m/quad)>" MUST be specified.')
 
     init_stream_handler(loglevel=args.logmode)
 
@@ -40,7 +41,7 @@ USAGE = 'Usage:'\
       + '\n  %s -e <experiment> [-d <detector>] [-r <run-number>]' % SCRNAME\
       + '\n       [-i <panel-index>] [-n <nspace>] [-x <dsname-or-extension>] [-o <output-result-directory>] [-L <logging-mode>] [-p]'\
       + '\nTEST COMMAND FOR GRAPHICS:'\
-      + '\n  %s -k exp=ascdaq18,run=171 -d epixhr -o ./work -i0    # plot all' % SCRNAME\
+      + '\n  %s -k exp=ascdaq18,run=171 -d epixhr -i0 -o ./work    # plot all' % SCRNAME\
 #      + '\n  %s ... -i0 -o ./work        # plot all' % SCRNAME\
 #      + '\n  %s ... -i0 -o ./work -P     # skip pedestal calib-cycles' % SCRNAME\
 #      + '\n  %s ... -i0 -o ./work -O     # skip offset calib-cycles' % SCRNAME\
