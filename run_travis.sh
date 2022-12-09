@@ -20,16 +20,17 @@ if [[ $OS == linux ]]; then
   pytest psdaq/psdaq/tests
   cd ..
   git clone https://github.com/slac-lcls/ami.git
-  apt-get install -y xvfb \
-                  libxkbcommon-x11-0 \
-                  libxcb-icccm4 \
-                  libxcb-image0 \
-                  libxcb-keysyms1 \
-                  libxcb-randr0 \
-                  libxcb-render-util0 \
-                  libxcb-xinerama0 \
-                  libxcb-xinput0 \
-                  libxcb-xfixes0
+  ## dan - this was needed for the base ubuntu in github actions - not needed when using a rhel7 docker??
+  #apt-get install -y xvfb \
+  #                libxkbcommon-x11-0 \
+  #                libxcb-icccm4 \
+  #                libxcb-image0 \
+  #                libxcb-keysyms1 \
+  #                libxcb-randr0 \
+  #                libxcb-render-util0 \
+  #                libxcb-xinerama0 \
+  #                libxcb-xinput0 \
+  #                libxcb-xfixes0
   cd ami
   ./build_all.sh
   xvfb-run pytest
