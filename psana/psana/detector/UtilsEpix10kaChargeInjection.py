@@ -1,12 +1,71 @@
 #!/usr/bin/env python
 
 import sys
-
+import psana.pyalgos.generic.Graphics as gr
 from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL  # , init_stream_handler
 import psana.detector.UtilsEpix10kaCalib as uec
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
+
+create_directory = uec.create_directory
+
+
+def get_panel_id(panel_ids, idx=0):
+    panel_id = panel_ids[idx] if panel_ids is not None and idx is not None else None
+    assert panel_id is not None, 'get_panel_id: panel_id is None for idx=%s' % str(idx)
+    return panel_id
+
+
+def dir_names(dirrepo, panel_id):
+    """Defines structure of subdirectories in calibration repository.
+    """
+    dir_panel  = '%s/%s' % (dirrepo, panel_id)
+    dir_offset = '%s/offset'    % dir_panel
+    dir_peds   = '%s/pedestals' % dir_panel
+    dir_plots  = '%s/plots'     % dir_panel
+    dir_work   = '%s/work'      % dir_panel
+    dir_gain   = '%s/gain'      % dir_panel
+    dir_rms    = '%s/rms'       % dir_panel
+    dir_status = '%s/status'    % dir_panel
+    return dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status
+
+
+def file_name_prefix(panel_id, tstamp, exp, irun):
+    logger.info('FNAME_PANEL_ID_ALIASES % s' % uec.FNAME_PANEL_ID_ALIASES)
+    panel_alias = uec.alias_for_id(panel_id, fname=uec.FNAME_PANEL_ID_ALIASES)
+    return 'epix10ka_%s_%s_%s_r%04d' % (panel_alias, tstamp, exp, irun), panel_alias
+
+
+def path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_rms, dir_status):
+    prefix_offset= '%s/%s' % (dir_offset, fname_prefix)
+    prefix_peds  = '%s/%s' % (dir_peds,   fname_prefix)
+    prefix_plots = '%s/%s' % (dir_plots,  fname_prefix)
+    prefix_gain  = '%s/%s' % (dir_gain,   fname_prefix)
+    prefix_rms   = '%s/%s' % (dir_rms,    fname_prefix)
+    prefix_status= '%s/%s' % (dir_status, fname_prefix)
+    return prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status
+
+
+def file_name_npz(dir_work, fname_prefix, nspace):
+    return '%s/%s_sp%02d_df.npz' % (dir_work, fname_prefix, nspace)
+
+
+
+#def dir_merge(dirrepo):
+#    return '%s/merge_tmp' % dirrepo
+
+
+#def fname_prefix_merge(dmerge, detname, tstamp, exp, irun):
+#    return '%s/%s-%s-%s-r%04d' % (dmerge, detname, tstamp, exp, irun)
+
+
+
+
+
+
+
+
 
 
 def charge_injection(**kwa):
@@ -62,36 +121,29 @@ def charge_injection(**kwa):
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
     xtc_files = getattr(ds, 'xtc_files', None)
-    logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
-
-
-    sys.exit('TEST EXIT')
-
-
-
-
-
-
+    logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(xtc_files)))
 
     #irun = int(run.split(',',1)[0].split('-',1)[0]) # int first run number from str of run(s)
-
     #dsname = str_dsname(exp, run, dsnamex)
-
     #_name = sys._getframe().f_code.co_name
+    #cpdic = get_config_info_for_dataset_detname(dsname, detname, idx)
 
-    #save_log_record_at_start(dirrepo, _name, dirmode, filemode)
+    cpdic = uec.get_config_info_for_dataset_detname(**kwa)
 
-    cpdic = get_config_info_for_dataset_detname(dsname, detname, idx)
-    tstamp      = cpdic.get('tstamp', None)
-    panel_ids   = cpdic.get('panel_ids', None)
-    expnum      = cpdic.get('expnum', None)
-    shape       = cpdic.get('shape', None)
-    ny,nx = shape
+    logger.info('config_info:%s' % uec.info_dict(cpdic))  # fmt=fmt, sep=sep+sepnext)
+
+    tstamp    = cpdic.get('tstamp', None)
+    panel_ids = cpdic.get('panel_ids', None)
+    #expnum    = cpdic.get('expnum', None)
+    shape     = cpdic.get('shape', None)
+    irun      = cpdic.get('runnum', None)
+    dsname    = dskwargs
+    ny,nx     = shape
 
     if display:
-        fig2, axim2, axcb2 = fig_img_cbar_axes()
-        move_fig(fig2, 500, 10)
-        plt.ion() # do not hold control on plt.show()
+        fig2, axim2, axcb2 = gr.fig_img_cbar_axes()
+        gr.move_fig(fig2, 500, 10)
+        gr.plt.ion() # do not hold control on plt.show()
 
     selpix = None
     pixrow, pixcol = None, None
@@ -103,13 +155,14 @@ def charge_injection(**kwa):
         logger.error('vaiable pixrc="%s" can not be converted to pixel row,col' % str(pixrc))
         sys.exit()
 
+
     panel_id = get_panel_id(panel_ids, idx)
 
     dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = dir_names(dirrepo, panel_id)
     fname_prefix, panel_alias = file_name_prefix(panel_id, tstamp, exp, irun)
     prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status =\
             path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_rms, dir_status)
-    fname_work = file_name_npz(dir_work, fname_prefix, expnum, nspace)
+    fname_work = file_name_npz(dir_work, fname_prefix, nspace)
 
     create_directory(dir_panel,  mode=dirmode, group=group)
     create_directory(dir_offset, mode=dirmode, group=group)
@@ -119,6 +172,22 @@ def charge_injection(**kwa):
     create_directory(dir_gain,   mode=dirmode, group=group)
     create_directory(dir_rms,    mode=dirmode, group=group)
     create_directory(dir_status, mode=dirmode, group=group)
+
+
+
+
+
+
+
+    sys.exit('TEST EXIT')
+
+
+
+
+
+
+
+
 
     chi2_ml=np.zeros((ny,nx,2))
     chi2_hl=np.zeros((ny,nx,2))
