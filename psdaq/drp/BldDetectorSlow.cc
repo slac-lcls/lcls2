@@ -177,7 +177,7 @@ BldFactory::BldFactory(const char* name,
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, 
+    _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
                                      Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
                                      Bld::DgramHeaderSize, payloadSize,
                                      tscorr);
@@ -216,7 +216,7 @@ BldFactory::BldFactory(const BldPVA& pva) :
     else {
         throw std::string("BLD type ")+_detType+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface, 
+    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface,
                                      Bld::TimestampPos, Bld::PulseIdPos,
                                      Bld::HeaderSize, payloadSize);
 }
@@ -318,7 +318,7 @@ Bld::Bld(unsigned mcaddr,
          unsigned headerSize,
          unsigned payloadSize,
          uint64_t timestampCorr) :
-  m_timestampPos(timestampPos), m_pulseIdPos(pulseIdPos), 
+  m_timestampPos(timestampPos), m_pulseIdPos(pulseIdPos),
   m_headerSize(headerSize), m_payloadSize(payloadSize),
   m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
   m_timestampCorr(timestampCorr), m_pulseId(0), m_pulseIdJump(0)
@@ -510,7 +510,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     const unsigned bufferMask = m_drp.pool.nbuffers() - 1;
     current = evtCounter & (m_drp.pool.nbuffers() - 1);
     PGPEvent* event = &m_drp.pool.pgpEvents[current];
-    
+
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
     buffer->index = index;
@@ -683,7 +683,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             tmo = strtoul(it->second.c_str(),NULL,0);
     }
 
-    bool lRunning = false;
+    //bool lRunning = false;
     bool lDoPoll = true;    // make the system call
     unsigned skipPoll = 0;  // bit mask of contributors with data waiting
 
@@ -719,7 +719,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 
         if (dgram==0 && pfd[0].events==0 && (skipPoll&1)==0)
             logging::critical("not waiting for dgram");
-            
+
         if (rval < 0) {  // error
         }
         else {
@@ -784,10 +784,10 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
                         }
                     }
-                    else if (dgram->service() == XtcData::TransitionId::Enable)
-                        lRunning = true;
-                    else if (dgram->service() == XtcData::TransitionId::Disable)
-                        lRunning = false;
+                    //else if (dgram->service() == XtcData::TransitionId::Enable)
+                    //    lRunning = true;
+                    //else if (dgram->service() == XtcData::TransitionId::Disable)
+                    //    lRunning = false;
 
                     _sendToTeb(*dgram, index);
                     nevents++;

@@ -33,9 +33,9 @@ static void frame_rates        (TprReg&, bool lcls2, int n=1);
 static void frame_capture      (TprReg&, char, bool lcls2, unsigned frames);
 static void dump_frame         (const uint32_t*);
 static bool parse_frame        (const uint32_t*, uint64_t&, uint64_t&, uint16_t&);
-static bool parse_bsa_event    (const uint32_t*, uint64_t&, uint64_t&, 
+static bool parse_bsa_event    (const uint32_t*, uint64_t&, uint64_t&,
                                 uint64_t&, uint64_t&, uint64_t&);
-static bool parse_bsa_control  (const uint32_t*, uint64_t&, uint64_t&, 
+static bool parse_bsa_control  (const uint32_t*, uint64_t&, uint64_t&,
                                 uint64_t&, uint64_t&, uint64_t&);
 static void generate_triggers  (TprReg&, bool lcls2);
 
@@ -94,9 +94,9 @@ int main(int argc, char** argv) {
     case 'D':
       triggerWidth = 1;
       triggerDelay = strtoul(optarg,&endptr,0);
-      if (endptr[0]==',') 
+      if (endptr[0]==',')
         triggerWidth = strtoul(endptr+1,&endptr,0);
-      if (endptr[0]==',') 
+      if (endptr[0]==',')
         triggerPolarity = strtoul(endptr+1,&endptr,0);
       break;
     case 'L':
@@ -240,12 +240,12 @@ void link_test(TprReg& reg, bool lcls2, int mode, int n, bool lring)
       unsigned decErrs = reg.tpr.RxDecErrs;
       unsigned dspErrs = reg.tpr.RxDspErrs;
       double rxClkFreq = double(rxclks1-rxclks0)*16.e-6;
-      printf("RxRecClkFreq: %7.2f  %s\n", 
+      printf("RxRecClkFreq: %7.2f  %s\n",
              rxClkFreq,
              (rxClkFreq > ClkMin[ilcls] &&
               rxClkFreq < ClkMax[ilcls]) ? "PASS":"FAIL");
       double txClkFreq = double(txclks1-txclks0)*16.e-6;
-      printf("TxRefClkFreq: %7.2f  %s\n", 
+      printf("TxRefClkFreq: %7.2f  %s\n",
              txClkFreq,
              (txClkFreq > ClkMin[ilcls] &&
               txClkFreq < ClkMax[ilcls]) ? "PASS":"FAIL");
@@ -335,8 +335,8 @@ void frame_rates(TprReg& reg, bool lcls2, int n)
           unsigned rate = rates[i];
           unsigned ridx = lRevMarkers ? 6-i+ilcls : i+ilcls;
           printf("FixedRate[%i]: %7u  %s\n",
-                 i, rate, 
-                 (rate > rateMin[ridx] && 
+                 i, rate,
+                 (rate > rateMin[ridx] &&
                   rate < rateMax[ridx]) ? "PASS":"FAIL");
       }
   } while (--n);
@@ -380,15 +380,15 @@ void* file_monitor_thread(void* a)
   }
 
   int64_t allrp = q.allwp[idx];
-  int64_t bsarp = q.bsawp;
+  //int64_t bsarp = q.bsawp;
 
   //  read(fd, buff, 32);
 
   do {
-    printf("idx %x  allrp %" PRIx64 "  q.allwp %" PRIx64 "  q.allrp.idx %" PRIx64 "\n",
+    printf("idx %x  allrp %" PRIx64 "  q.allwp %l" PRIx64 "  q.allrp.idx %l" PRIx64 "\n",
            idx, allrp, q.allwp[idx], q.allrp[idx].idx[allrp &(MAX_TPR_ALLQ-1)]);
     allrp = q.allwp[idx];
-    bsarp = q.bsawp;
+    //bsarp = q.bsawp;
     usleep(1000000);
     //    read(fd, buff, 32);
   } while(1);
@@ -410,7 +410,7 @@ void* frame_capture_thread(void* a)
   char* buff = new char[32];
 
   int64_t allrp = q.allwp[idx];
-  int64_t bsarp = q.bsawp;
+  //int64_t bsarp = q.bsawp;
 
   read(fd, buff, 32);
   //  usleep(lcls2 ? 20 : 100000);
@@ -430,7 +430,7 @@ void* frame_capture_thread(void* a)
       const uint32_t* p = reinterpret_cast<const uint32_t*>
         (&q.allq[q.allrp[idx].idx[allrp &(MAX_TPR_ALLQ-1)] &(MAX_TPR_ALLQ-1) ].word[0]);
       if (verbose) {
-          printf("allrp %" PRIx64 "  q.allwp %" PRIx64 "  q.allrp.idx %" PRIx64 "\n",
+          printf("allrp %" PRIx64 "  q.allwp %l" PRIx64 "  q.allrp.idx %l" PRIx64 "\n",
                  allrp, q.allwp[idx], q.allrp[idx].idx[allrp &(MAX_TPR_ALLQ-1)]);
         dump_frame(p);
       }
@@ -441,24 +441,24 @@ void* frame_capture_thread(void* a)
           uint64_t pulseIdN = pulseIdP+1;
           if (!lcls2) pulseIdN = (pulseId&~0x1ffffULL) | (pulseIdN&0x1ffffULL);
           if (frames) {
-              printf(" 0x%04x  0x%016llx %9u.%09u %s\n", 
+              printf(" 0x%04x  0x%016llx %9u.%09u %s\n",
                      p[0],
-                     (unsigned long long)pulseId, 
-                     unsigned(timeStamp>>32), 
+                     (unsigned long long)pulseId,
+                     unsigned(timeStamp>>32),
                      unsigned(timeStamp&0xffffffff),
                      (pulseId==pulseIdN) ? "PASS":"FAIL");
           }
           else if (pulseId!=pulseIdN && ((markers&0x400)==0)) {  // 60Hz marker makes TS jump
-              printf(" 0x%016llx %9u.%09u %" PRId64 "\n", 
-                     (unsigned long long)pulseId, 
-                     unsigned(timeStamp>>32), 
+              printf(" 0x%016llx %9u.%09u %" PRId64 "\n",
+                     (unsigned long long)pulseId,
+                     unsigned(timeStamp>>32),
                      unsigned(timeStamp&0xffffffff),
                      (pulseId-pulseIdN));
           }
           else if ((markers&_1HzM)==_1HzM) {
-              printf(" 0x%016llx %9u.%09u -\n", 
-                     (unsigned long long)pulseId, 
-                     unsigned(timeStamp>>32), 
+              printf(" 0x%016llx %9u.%09u -\n",
+                     (unsigned long long)pulseId,
+                     unsigned(timeStamp>>32),
                      unsigned(timeStamp&0xffffffff));
           }
           nframes++;
@@ -467,7 +467,7 @@ void* frame_capture_thread(void* a)
       }
       allrp++;
     }
-    if (nframes>=frames && frames!=0) 
+    if (nframes>=frames && frames!=0)
       break;
     usleep(10000);
     read(fd, buff, 32);
@@ -478,7 +478,7 @@ void* frame_capture_thread(void* a)
 
 void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
 {
-  int idx=13;
+  unsigned idx=13;
   char dev[16];
   sprintf(dev,"/dev/tpr%c%x",tprid,idx);
 
@@ -538,7 +538,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
 
   char* buff = new char[32];
 
-  int64_t allrp = q.allwp[idx];
+  //int64_t allrp = q.allwp[idx];
   int64_t bsarp = q.bsawp;
 
   read(fdbsa, buff, 32);
@@ -547,9 +547,9 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
   //  disable channel 0
   //  reg.base.channel[_channel].control = ucontrol;
 
-  uint64_t pulseIdP=0;
+  //uint64_t pulseIdP=0;
   uint64_t pulseId, timeStamp;
-  uint16_t markers;
+  //uint16_t markers;
   unsigned nframes=0;
 
   printf("BSA frames\n");
@@ -562,8 +562,8 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
         (&q.bsaq[bsarp &(MAX_TPR_BSAQ-1)].word[0]);
       if (parse_bsa_control(p, pulseId, timeStamp, init, minor, major)) {
         printf(" 0x%016llx %9u.%09u I%016llx m%016llx M%016llx\n",
-               (unsigned long long)pulseId, 
-               unsigned(timeStamp>>32), 
+               (unsigned long long)pulseId,
+               unsigned(timeStamp>>32),
                unsigned(timeStamp&0xffffffff),
                (unsigned long long)init,
                (unsigned long long)minor,
@@ -571,8 +571,8 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
       }
       if (parse_bsa_event(p, pulseId, timeStamp, active, avgdn, update)) {
         printf(" 0x%016llx %9u.%09u A%016llx D%016llx U%016llx\n",
-               (unsigned long long)pulseId, 
-               unsigned(timeStamp>>32), 
+               (unsigned long long)pulseId,
+               unsigned(timeStamp>>32),
                unsigned(timeStamp&0xffffffff),
                (unsigned long long)active,
                (unsigned long long)avgdn,
@@ -581,7 +581,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
       }
       bsarp++;
     }
-    if (nframes>=frames) 
+    if (nframes>=frames)
       break;
     usleep(10000);
     read(fdbsa, buff, 32);
@@ -604,7 +604,7 @@ void dump_frame(const uint32_t* p)
            (p[0]>>0)&0xffff,p[1],m,pl[0],pl[1]);
     for(unsigned i=6; i<20; i++)
       printf(" %08x",p[i]);
-    printf("\n"); 
+    printf("\n");
   }
 }
 
@@ -623,7 +623,7 @@ bool parse_frame(const uint32_t* p,
 }
 
 bool parse_bsa_event(const uint32_t* p,
-                     uint64_t& pulseId, uint64_t& timeStamp, 
+                     uint64_t& pulseId, uint64_t& timeStamp,
                      uint64_t& active, uint64_t& avgdone, uint64_t& update)
 {
   if (((p[0]>>16)&0xf)==2) { // BSAEVNT_TAG
@@ -638,7 +638,7 @@ bool parse_bsa_event(const uint32_t* p,
 }
 
 bool parse_bsa_control(const uint32_t* p,
-                       uint64_t& pulseId, uint64_t& timeStamp, 
+                       uint64_t& pulseId, uint64_t& timeStamp,
                        uint64_t& init, uint64_t& minor, uint64_t& major)
 {
   if (((p[0]>>16)&0xf)==1) { // BSACNTL_TAG
@@ -657,7 +657,7 @@ void generate_triggers(TprReg& reg, bool lcls2)
 {
   unsigned _channel = 0;
   reg.base.setupTrigger(0,_channel,triggerPolarity,0,triggerWidth);
-  for(unsigned i=1; i<12; i++) 
+  for(unsigned i=1; i<12; i++)
     reg.base.setupTrigger(i,
                           _channel,
                           triggerPolarity, triggerDelay, triggerWidth+i, 0); // polarity, delay, width, tap
