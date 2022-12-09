@@ -20,7 +20,7 @@ def logger_formatter_int_loglevel(loglevel='DEBUG'):
     logger = logging.getLogger()
     logger.setLevel(int_loglevel) # logging.DEBUG
     fmt = '[%(levelname).1s] %(filename)s L%(lineno)04d %(message)s' if int_loglevel==logging.DEBUG else\
-          '[%(levelname).1s] L%(lineno)04d %(message)s' # %(asctime)s
+          '[%(levelname).1s] %(filename)s L%(lineno)04d %(message)s' # %(asctime)s
     formatter = logging.Formatter(fmt)
     return logger, logging.Formatter(fmt), int_loglevel
 
