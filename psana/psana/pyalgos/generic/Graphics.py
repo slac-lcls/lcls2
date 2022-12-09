@@ -97,7 +97,7 @@ def figure(**kwa):
     kwa.setdefault('tight_layout', False)
     kwa.setdefault('constrained_layout', False)
     kwa_f = dict_subset(kwa, ('num', 'figsize', 'dpi', 'facecolor', 'edgecolor', 'frameon', 'FigureClass', 'clear',\
-               'linewidth', 'subplotpars', 'tight_layout', 'constrained_layout'))
+               'linewidth', 'subplotpars', 'tight_layout'))  #, 'constrained_layout'))
     fig = plt.figure(**kwa_f)
     title = kwa.get('title', 'Image')
     move  = kwa.get('move', None)
