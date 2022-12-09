@@ -20,7 +20,7 @@ if [[ $OS == linux ]]; then
   pytest psdaq/psdaq/tests
   cd ..
   git clone https://github.com/slac-lcls/ami.git
-  sudo apt-get install -y xvfb \
+  apt-get install -y xvfb \
                   libxkbcommon-x11-0 \
                   libxcb-icccm4 \
                   libxcb-image0 \
