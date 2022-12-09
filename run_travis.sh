@@ -21,7 +21,7 @@ if [[ $OS == linux ]]; then
   cd ..
   git clone https://github.com/slac-lcls/ami.git
   # which is missing in the container and this somehow breaks xvfb-run (???)
-  yum install which
+  yum install -y which
   ## dan - this was needed for the base ubuntu in github actions - not needed when using a rhel7 docker??
   #apt-get install -y xvfb \
   #                libxkbcommon-x11-0 \
