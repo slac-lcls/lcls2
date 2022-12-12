@@ -125,7 +125,7 @@ class Event():
             if d:
                 service = d.service()
                 break
-        assert service
+        assert service >= 0, f"number >= 0 expected, got: {service}"
 
         return service
 
