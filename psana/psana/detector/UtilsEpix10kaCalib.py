@@ -112,7 +112,7 @@ def path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_r
 
 
 def file_name_prefix(dirrepo, dettype, panel_id, tstamp, exp, irun):
-    panel_alias = alias_for_id(panel_id, fname=os.path.join(dirrepo, FNAME_PANEL_ID_ALIASES))
+    panel_alias = alias_for_id(panel_id, fname=os.path.join(dirrepo, FNAME_PANEL_ID_ALIASES), exp=exp, run=irun)
     return '%s_%s_%s_%s_r%04d' % (dettype, panel_alias, tstamp, exp, irun), panel_alias
 
 
