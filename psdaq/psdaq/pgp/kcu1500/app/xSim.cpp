@@ -553,14 +553,13 @@ int main(int argc, char* argv[])
         unsigned v = get_reg32( 0x00c00020);
         /*
         ** PLL reset can hang the timing link
-        **
+        */
         v |= 0x80;
         set_reg32( 0x00c00020, v);
         usleep(10);
         v &= ~0x80;
         set_reg32( 0x00c00020, v);
         usleep(100);
-        */
         v |= 0x8;
         set_reg32( 0x00c00020, v);
         usleep(10);
