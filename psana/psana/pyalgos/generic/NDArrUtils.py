@@ -372,6 +372,7 @@ def mask_3darr_edges(shape=(32,185,388), width=2):
 def divide_protected(num, den, vsub_zero=0):
     """Returns result of devision of numpy arrays num/den with substitution of value vsub_zero for zero den elements.
     """
+    if num is None or den is None: return None
     pro_num = np.select((den!=0,), (num,), default=vsub_zero)
     pro_den = np.select((den!=0,), (den,), default=1)
     return pro_num / pro_den
