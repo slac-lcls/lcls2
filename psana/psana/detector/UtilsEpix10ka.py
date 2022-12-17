@@ -197,7 +197,7 @@ def cbits_config_epixhr2x2(cob, shape=(288, 384)):
     return cbits
 
 
-def cbits_config_and_data_detector(det_raw, evt=None):
+def cbits_config_and_data_detector_alg(data, cbits, data_gain_bit, gain_bit_shift):
     """Returns array of control bits shape=(<number-of-segments>, 352(or 288), 384)
     from any config object and data array.
 
@@ -210,22 +210,29 @@ def cbits_config_and_data_detector(det_raw, evt=None):
     add data bit
     100000 = 1<<5 = 32 - data bit 14/15 for epix10ka/epixhr2x2 panel
     """
-    data = det_raw.raw(evt)
-    cbits = det_raw._cbits_config_detector()
+
     #logger.info(info_ndarr(cbits, 'cbits', first=0, last=5))
     if cbits is None: return None
 
     if data is not None:
         #logger.debug(info_ndarr(data, 'data', first, last))
         # get array of data bit 15 and add it as a bit 5 to cbits
-        datagainbit = np.bitwise_and(data, det_raw._data_gain_bit)
-        databit05 = np.right_shift(datagainbit, det_raw._gain_bit_shift) # 0o100000 -> 0o40
+        datagainbit = np.bitwise_and(data, data_gain_bit)
+        databit05 = np.right_shift(datagainbit, gain_bit_shift) # 0o100000 -> 0o40
         np.bitwise_or(cbits, databit05, out=cbits) # 109us
 
     return cbits
 
 
-def gain_maps_epix10ka_any(det_raw, evt=None):
+def cbits_config_and_data_detector(det_raw, evt=None):
+    return cbits_config_and_data_detector_alg(\
+             det_raw.raw(evt),\
+             det_raw._cbits_config_detector(),\
+             det_raw._data_gain_bit,\
+             det_raw._gain_bit_shift)
+
+
+def gain_maps_epix10ka_any_alg(cbits):
     """Returns maps of gain groups shape=(<number-of-segments>, <2-d-panel-shape>)
        works for both epix10ka (352, 384) and epixhr2x2 (288, 384)
 
@@ -252,7 +259,6 @@ def gain_maps_epix10ka_any(det_raw, evt=None):
       001100 =12 - cbitsM12 - mask
     """
 
-    cbits = det_raw._cbits_config_and_data_detector(evt)
     if cbits is None: return None
 
     cbitsM60 = cbits & 60 # control bits masked by configuration 3-bit-mask
@@ -268,6 +274,10 @@ def gain_maps_epix10ka_any(det_raw, evt=None):
            (cbitsM60 ==  0),\
            (cbitsM60 == 48),\
            (cbitsM60 == 32)
+
+
+def gain_maps_epix10ka_any(det_raw, evt=None):
+    return gain_maps_epix10ka_any_alg(det_raw._cbits_config_and_data_detector(evt))
 
 
 def info_gain_mode_arrays(gmaps, first=0, last=5):
