@@ -1121,6 +1121,22 @@ class CollectionManager():
             logging.debug('condition_alloc() returning False')
             return False
 
+        # primary/common readout group must be used
+        pFound = False
+        for drp in self.cmstate['drp'].values():
+            try:
+                readout = drp['det_info']['readout']
+            except KeyError as ex:
+                logging.error(f'condition_alloc(): KeyError: {ex}')
+            else:
+                if readout == self.platform:
+                    pFound = True
+                    break
+        if pFound == False:
+            self.report_error(f'at least one DRP must use readout group {self.platform}')
+            logging.debug('condition_alloc() returning False')
+            return False
+
         # give number to meb nodes for the event builder
         if 'meb' in active_state:
             for i, node in enumerate(active_state['meb']):
