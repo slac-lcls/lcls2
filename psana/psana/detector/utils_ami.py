@@ -13,14 +13,15 @@ import psana.detector.utils_ami as ua
         cc = self.cc
 
         ctypes = cc.calib_types()
-        metadata = cc.calib_metadata('pedestals')
         npanels  = cc.number_of_panels()
         peds     = cc.pedestals()    # OR cc.calib_constants('pedestals')
         gain     = cc.gain()         # ADU/keV
         gfactor  = cc.gain_factor()  # keV/ADU
+        status   = cc.status()
+        comode   = cc.common_mode()
         trbit_p0 = cc.trbit_for_panel(0)
         ascfg_p0 = cc.asicPixelConfig_for_panel(0)
-        status   = cc.status()
+        mask_st  = cc.mask_from_status(status_bits=0xffff, gain_range_inds=None)
         mask     = cc.mask(status=True)
         dettype  = cc.dettype()
         cbitscfg = cc.cbits_config_detector()
@@ -28,24 +29,29 @@ import psana.detector.utils_ami as ua
         gmap     = cc.gain_maps_epix10ka_any(raw)
         peds_ev  = cc.event_pedestals(raw)
         gfac_ev  = cc.event_gain_factor(raw)
+        calib    = cc.calib(raw, cmpars=None)  # **kwa
 
         print('== Event %04d ==' % self.counter)
         print('calib_types', ctypes)
-        print('calib_metadata', metadata)
+        print('calib_metadata', cc.calib_metadata('pedestals'))
         print(ua.info_ndarr(peds, 'pedestals'))
         print(ua.info_ndarr(cc.gain(), 'gain'))
         print(ua.info_ndarr(gfactor, 'gain_factor'))
+        print(ua.info_ndarr(status, 'status'))
+        print('common_mode from caliconst', str(comode))
         print('number_of_panels', npanels)
         print('trbit_for_panel(0)', trbit_p0)
         print(ua.info_ndarr(ascfg_p0, 'asicPixelConfig_for_panel(0)'))
         print(ua.info_ndarr(raw, 'raw'))
-        print(ua.info_ndarr(status, 'status'))
+        print(ua.info_ndarr(mask_st, 'mask from status'))
+        print(ua.info_ndarr(mask, 'mask'))
         print('dettype', dettype)
         print(ua.info_ndarr(cbitscfg, 'cbitscfg'))
         print(ua.info_ndarr(cbitstot, 'cbitstot'))
         print(ua.info_ndarr(gmap, 'gmap'))
         print(ua.info_ndarr(peds_ev, 'peds_ev'))
         print(ua.info_ndarr(gfac_ev, 'gfac_ev'))
+        print(ua.info_ndarr(calib, 'calib'))
 
         return raw
 
@@ -68,7 +74,7 @@ class calib_components():
 
     def __init__(self, calibconst, config):
         self.calibconst = calibconst
-        self.config = config
+        self.config = config   # config={0: <psana.container.Container...>, 1:...}
         self._gfactor = None
         self.omask = None
         self._dettype = None
@@ -132,6 +138,10 @@ class calib_components():
         """returns list of asicPixelConfig per panel, array shape:(4, 176, 192) for 4 ASICs per panel"""
         return self.config[i].config.asicPixelConfig
 
+    def mask_from_status(self, status_bits=0xffff, gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
+        if self.omask is None: self.omask = MaskAlgos(self.calibconst, **kwa)
+        return self.omask.mask_from_status(status_bits, gain_range_inds, dtype, **kwa)
+
     def mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
         if self.omask is None: self.omask = MaskAlgos(self.calibconst, **kwa)
         return self.omask.mask(status=status, neighbors=neighbors, edges=edges, center=center, calib=calib, umask=umask, dtype=dtype, **kwa)
@@ -165,8 +175,9 @@ class calib_components():
     def cbits_config_and_data_detector(self, raw, cbits):
         """analog of UtilsEpix10ka method cbits_config_and_data_detector"""
         dettype = self.dettype()
-        data_gain_bit = {'epix10ka':ue.B14, 'epixhr':ue.B15}[dettype]
-        gain_bit_shift = {'epix10ka':9, 'epixhr':10}[dettype]
+        assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detect types only'
+        data_gain_bit = {'epix10ka':ue.B14, 'epixhr':ue.B15}.get(dettype, None)
+        gain_bit_shift = {'epix10ka':9, 'epixhr':10}.get(dettype, None)
         return ue.cbits_config_and_data_detector_alg(raw, cbits, data_gain_bit, gain_bit_shift)
 
     def gain_maps_epix10ka_any(self, raw):
@@ -186,5 +197,44 @@ class calib_components():
     def event_gain(self, raw):
         """returns per-event gain, shape=(<number-of-panels>, <2-d-panel-shape>)"""
         return ue.event_constants_for_gmaps(self.gain_maps_epix10ka_any(raw), self.gain(), default=1)
+
+
+    def calib(self, raw, cmpars=None, **kwa):
+        if raw is None:
+            logger.debug('in calib raw is None - return None')
+            return None
+
+        pedest = self.event_pedestals(raw)  # 3d pedestals
+        if pedest is None:
+            logger.debug('in calib pedest is None - return None')
+            return None
+
+        dettype = self.dettype()
+        assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detect types only'
+        #if dettype is None:
+        #    logger.debug('in calib dettype is None (expected epix10ka or epixhr) - return None')
+        #    return None
+        data_bit_mask = {'epix10ka':ue.M14, 'epixhr':ue.M15}.get(dettype, None)
+
+        arrf = np.array(raw & data_bit_mask, dtype=np.float32) - pedest
+
+        factor = self.event_gain_factor(raw)  # 3d gain factors  (<nsegs>, 352, 384)
+        if factor is None:
+            logger.debug('in calib factor is None - return raw-peds')
+            return arrf
+
+        _cmpars  = self.common_mode() if cmpars is None else cmpars
+
+        if _cmpars is None:
+            logger.debug('in calib cmpars is None - not applied')
+        else:
+            logger.debug('in calib TODO common mode correction')
+            mask_status = self.mask_from_status(**kwa)
+
+        mask = self.mask(**kwa)
+        if mask is None:
+            logger.debug('in calib mask is None - not applied')
+
+        return arrf * factor if mask is None else arrf * factor * mask
 
 # EOF
