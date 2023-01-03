@@ -573,8 +573,9 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
         logger.debug(info_ndarr(gmask, 'gmask')\
                      + '\n  per panel statistics of cm-corrected pixels: %s' % str(np.sum(gmask, axis=(1,2), dtype=np.uint32)))
 
-        #sh = (nsegs, 352, 384)
-        hrows = 176 # int(352/2)
+        #sh = (nsegs, 288, 384)
+        #sh = (nsegs, 352, 384) # epix10ka
+        hrows = int(arrf.shape[1]/2) # 176 for epix10ka or 144 for epixhr # int(352/2)
         for s in range(arrf.shape[0]):
 
           if mode & 4: # in banks: (352/2,384/8)=(176,48) pixels
