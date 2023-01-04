@@ -7,6 +7,8 @@
 # that would be a lot of work for the tid-air people - cpo.
 import sys
 import os
+from cameralink_gateway.surf import *
+
 # extra wrinkle: pick up the pyxpm's version of the packages to avoid
 # duplication (currently pyxpm/pykcu can use the same version of surf)
 sys.path.insert(0,os.path.join(os.path.dirname(os.path.realpath(__file__)),'../pyxpm'))
