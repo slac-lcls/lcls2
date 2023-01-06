@@ -21,10 +21,10 @@ class FixedRateSync(Instruction):
     def __init__(self, marker, occ):
         if occ > 0xfff:
             raise ValueError('FixedRateSync called with occ={}'.format(occ))
-        if marker in self.FixedIntvsDict:
+        if marker in FixedIntvsDict:
             mk     = marker
-            marker = self.FixedIntvsDict[mk]['marker']
-            self.intv = self.FixedIntvsDict[mk]['intv']
+            marker = FixedIntvsDict[mk]['marker']
+            self.intv = FixedIntvsDict[mk]['intv']
         else:
             self.intv = FixedIntvs[marker]
         super(FixedRateSync, self).__init__( (self.opcode, marker, occ) )
