@@ -7,45 +7,9 @@ from p4p.nt import NTTable
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvhandler import *
 
-provider = None
 lock     = None
 
 fidPeriod   = 1400e-6/1300.
-
-def addPV(name,ctype,init=0):
-    pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=DefaultPVHandler())
-    provider.add(name, pv)
-    return pv
-
-def toTable(t):
-    table = []
-    for v in t.items():
-        table.append((v[0],v[1][0][1:]))
-        n = len(v[1][1])
-    return table,n
-
-def toDict(t):
-    d = {}
-    for v in t.items():
-        d[v[0]] = v[1][1]
-    return d
-
-def toDictList(t,n):
-    l = []
-    for i in range(n):
-        d = {}
-        for v in t.items():
-            d[v[0]] = v[1][1][i]
-        l.append(d)
-    return l
-
-def addPVT(name,t):
-    table,n = toTable(t)
-    init    = toDictList(t,n)
-    pv = SharedPV(initial=NTTable(table).wrap(init),
-                  handler=DefaultPVHandler())
-    provider.add(name,pv)
-    return pv
 
 def updatePv(pv,v,timev):
     if v is not None:
@@ -412,8 +376,7 @@ class PVMmcmPhaseLock(object):
 
 class PVStats(object):
     def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True):
-        global provider
-        provider = p
+        setProvider(p)
         global lock
         lock     = m
         global fidPeriod
@@ -465,12 +428,15 @@ class PVStats(object):
         for i in range(2):
             offset = self._amcPll[i].handle(msg,offset,timev)
         offset = self._monClks.handle(msg,offset,timev)
+        return offset
 
-    def update(self, cycle):
+    def update(self, cycle, cuMode=False):
         try:
-            self._usTiming.update()
-            self._cuTiming.update()
-            self._cuGen   .update()
+            if cuMode:
+                self._cuTiming.update()
+                self._cuGen   .update()
+            else:
+                self._usTiming.update()
             if self._sfpStat:
                 self._sfpStat .update()
         except:
