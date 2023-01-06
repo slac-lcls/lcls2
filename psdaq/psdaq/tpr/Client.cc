@@ -112,6 +112,12 @@ void Client::setup(unsigned output, unsigned delay, unsigned width, unsigned pol
   _dev->base.setupTrigger(output, _channel, polarity, delay, width, delaytap);
 }
 
+// Setup the transmit source
+void Client::loopOut(bool enable)
+{
+    _dev->xbar.setTpr(enable ? XBar::LoopOut : XBar::StraightOut);
+}
+
   //  Enable the trigger
 void Client::start(TprBase::Partition partn)
 {

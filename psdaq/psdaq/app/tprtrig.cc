@@ -34,6 +34,7 @@ static void usage(const char* p) {
   printf("          -p <part> : partition\n");
   printf("          -C        : clksel (0=LCLS1,1=LCLS2[default]\n");
   printf("          -M        : modsel (0=clksel[default],1=LCLS1,2=LCLS2\n");
+  printf("          -L        : loopout (0=false, 1=true)\n");
   printf("          -z        : wait for key before exit\n");
 }
 
@@ -55,13 +56,17 @@ int main(int argc, char** argv) {
   unsigned polarity = 0; // Falling
   int  clksel      = 1;
   int  modsel      = 0;
+  int  loopout     = -1;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:D:w:o:t:r:e:p:zC:M:P:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:D:w:o:t:r:e:p:zC:L:M:P:h?")) != EOF ) {
     switch(c) {
     case 'C':
         clksel = strtoul(optarg,NULL,0);
+        break;
+    case 'L':
+        loopout = strtoul(optarg,NULL,0);
         break;
     case 'M':
         modsel = strtoul(optarg,NULL,0);
@@ -146,6 +151,11 @@ int main(int argc, char** argv) {
          channel, output, names[mode], rate);
 
   Client client(evrdev,channel,clksel>0,(Client::ModeSel)modsel);
+  client.stop();  // Is this enough to clear the trigger fifo?
+  usleep(1000000);
+
+  if (loopout>=0)
+      client.loopOut(loopout>0);
 
   client.reg().tpr.dump();
 

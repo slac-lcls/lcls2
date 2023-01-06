@@ -23,6 +23,8 @@ namespace Pds {
       //  Setup the trigger channel
       enum Polarity { Falling=0, Rising=1 };
       void setup(unsigned output, unsigned delay, unsigned width, unsigned polarity=Rising, unsigned delaytap=0);
+      //  Setup the transmit source
+      void loopOut(bool enable);
       //  Enable the trigger
       void start(TprBase::FixedRate rate=TprBase::FixedRate::_1M);
       void start(TprBase::ACRate    rate, unsigned timeSlotMask);
