@@ -73,6 +73,7 @@ class AreaDetector(DetectorImpl):
 
         self._calibc_ = None
         self._maskalgos_ = None
+        self._store_ = None  # detector dependent storage of cached parameters for method calib
 
 
     def raw(self,evt) -> Array3d:
