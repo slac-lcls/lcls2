@@ -29,7 +29,8 @@ import psana.detector.utils_ami as ua
         gmap     = cc.gain_maps_epix10ka_any(raw)
         peds_ev  = cc.event_pedestals(raw)
         gfac_ev  = cc.event_gain_factor(raw)
-        calib    = cc.calib(raw, cmpars=None)  # **kwa
+        calib    = cc.calib(raw, cmpars=None)  # **kwa - for non-default mask parameters
+        cmdiff   = cc.common_mode_correction(raw, cmpars=None)  # **kwa
 
         print('== Event %04d ==' % self.counter)
         print('calib_types', ctypes)
@@ -52,6 +53,7 @@ import psana.detector.utils_ami as ua
         print(ua.info_ndarr(peds_ev, 'peds_ev'))
         print(ua.info_ndarr(gfac_ev, 'gfac_ev'))
         print(ua.info_ndarr(calib, 'calib'))
+        print(ua.info_ndarr(cmdiff, 'cmdiff'))
 
         return raw
 
@@ -70,6 +72,13 @@ from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 gain_maps_epix10ka_any, event_constants_for_gmaps, cbits_config_epix10ka, cbits_config_epixhr2x2 =\
 ue.gain_maps_epix10ka_any, ue.event_constants_for_gmaps, ue.cbits_config_epix10ka, ue.cbits_config_epixhr2x2
 
+
+def is_none(val, msg):
+    s = val is None
+    if s: logger.debug(msg)
+    return s
+
+
 class calib_components():
 
     def __init__(self, calibconst, config):
@@ -79,6 +88,8 @@ class calib_components():
         self.omask = None
         self._dettype = None
         self.cbits_cfg = None
+        self._store_ = None
+        self._data_bit_mask = None
 
     def calib_types(self):
         """returns list of available calib types, e.g.
@@ -152,7 +163,16 @@ class calib_components():
             metad = self.calib_metadata(ctype='pedestals')
             if metad is None: return None
             self._dettype = metad.get('dettype', None)
+            if 'epixhr' in self._dettype: self._dettype = 'epixhr'  # trancates epixhr2x2
         return self._dettype
+
+    def data_bit_mask(self):
+        """returns cached _data_bit_mask"""
+        if self._data_bit_mask is None:
+            dettype = self.dettype()
+            assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detect types only'
+            self._data_bit_mask = {'epix10ka':ue.M14, 'epixhr':ue.M15}.get(dettype, None)
+        return self._data_bit_mask
 
     def cbits_config_segment(self, cob):
         """analog of epix_base._cbits_config_segment, where cob is self.config[<segment-number>].config """
@@ -175,7 +195,7 @@ class calib_components():
     def cbits_config_and_data_detector(self, raw, cbits):
         """analog of UtilsEpix10ka method cbits_config_and_data_detector"""
         dettype = self.dettype()
-        assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detect types only'
+        assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detector types only, unknown type %s' % str(dettype)
         data_gain_bit = {'epix10ka':ue.B14, 'epixhr':ue.B15}.get(dettype, None)
         gain_bit_shift = {'epix10ka':9, 'epixhr':10}.get(dettype, None)
         return ue.cbits_config_and_data_detector_alg(raw, cbits, data_gain_bit, gain_bit_shift)
@@ -185,6 +205,9 @@ class calib_components():
         cbitscfg = self.cbits_config_detector()
         cbitstot = self.cbits_config_and_data_detector(raw, cbitscfg)
         return ue.gain_maps_epix10ka_any_alg(cbitstot)
+
+    def event_constants_for_gmaps(gmaps, cons, default=0):
+        return ue.event_constants_for_gmaps(gmaps, cons, default)
 
     def event_pedestals(self, raw):
         """ returns per-event  pedestals, shape=(<number-of-panels>, <2-d-panel-shape>)"""
@@ -200,41 +223,93 @@ class calib_components():
 
 
     def calib(self, raw, cmpars=None, **kwa):
-        if raw is None:
-            logger.debug('in calib raw is None - return None')
-            return None
+        """equivalent of the UtilsEpix10ka.py method calib_epix10ka_any"""
 
-        pedest = self.event_pedestals(raw)  # 3d pedestals
-        if pedest is None:
-            logger.debug('in calib pedest is None - return None')
-            return None
+        if is_none(raw, 'in calib raw is None - return None'): return None
 
-        dettype = self.dettype()
-        assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detect types only'
-        #if dettype is None:
-        #    logger.debug('in calib dettype is None (expected epix10ka or epixhr) - return None')
-        #    return None
-        data_bit_mask = {'epix10ka':ue.M14, 'epixhr':ue.M15}.get(dettype, None)
+        gmaps = self.gain_maps_epix10ka_any(raw)
+        if is_none(gmaps, 'in calib gmaps is None - return None'): return None
 
-        arrf = np.array(raw & data_bit_mask, dtype=np.float32) - pedest
+        store = Storage(self, cmpars, **kwa) if self._store_ is None else self._store_
+        mask = store.mask
+        factor = ue.event_constants_for_gmaps(gmaps, store.gfac, default=1)  # 3d gain factors
+        pedest = ue.event_constants_for_gmaps(gmaps, store.peds, default=0)  # 3d pedestals
 
-        factor = self.event_gain_factor(raw)  # 3d gain factors  (<nsegs>, 352, 384)
-        if factor is None:
-            logger.debug('in calib factor is None - return raw-peds')
-            return arrf
+        store.counter += 1
+        if not store.counter%100: ue.print_gmaps_info(gmaps)
 
-        _cmpars  = self.common_mode() if cmpars is None else cmpars
+        if is_none(pedest, 'in calib pedest is None - return None'): return None
+        if is_none(factor, 'in calib factor is None - return None'): return None
 
-        if _cmpars is None:
-            logger.debug('in calib cmpars is None - not applied')
-        else:
-            logger.debug('in calib TODO common mode correction')
-            mask_status = self.mask_from_status(**kwa)
+        arrf = np.array(raw & self.data_bit_mask(), dtype=np.float32) - pedest
 
-        mask = self.mask(**kwa)
-        if mask is None:
-            logger.debug('in calib mask is None - not applied')
+        if store.cmpars is not None:
+            ue.common_mode_epix_multigain_apply(arrf, gmaps, store)
+
+        is_none(mask, 'in calib mask is None - not applied')
 
         return arrf * factor if mask is None else arrf * factor * mask
+
+
+    def common_mode_correction(self, raw, cmpars=None, **kwa):
+        """ Returns common mode correction for the raw-peds.
+        """
+        if is_none(raw, 'in calib raw is None - return None'): return None
+
+        gmaps = self.gain_maps_epix10ka_any(raw)
+        if is_none(gmaps, 'in calib gmaps is None - return None'): return None
+
+        store = Storage(self, cmpars, **kwa) if self._store_ is None else self._store_
+
+        pedest = ue.event_constants_for_gmaps(gmaps, store.peds, default=0)  # 3d pedestals
+
+        arrf = np.array(raw & self.data_bit_mask(), dtype=np.float32) - pedest
+        arrf0 = arrf.copy()
+
+        if store.cmpars is not None:
+            ue.common_mode_epix_multigain_apply(arrf, gmaps, store)
+
+        return (arrf - arrf0) * store.mask
+
+
+class Storage:
+    def __init__(self, calibcomps, cmpars=None, **kwa):
+        """analogy of UtilsEpix10ka.py class Storage
+        Holds cached parameters for common mode correction of the epix multi-gain getectors.
+
+        Parameters
+        ----------
+        - counter (int) - event counter
+        - gain (ndarray (7, <nsegs>, 352, 384)) - gains from calibration constants
+        - peds (ndarray (7, <nsegs>, 352, 384)) - pedestals from calibration constants
+        - shape_as_daq (tuple) - shape (<nsegs>, 352, 384) from calibration constants
+        - mask - (ndarray (<nsegs>, 352, 384)) - mask retreived from calibration constants
+        - arr1 - (ndarray (<nsegs>, 352, 384)) - ones with shape_as_daq
+        - cmpars (int or tuple) - user defined or from calibration constants if None, 0 - cm correction is turrned off
+        """
+
+        logger.info('create store with cached parameters')
+
+        calibcomps._store_ = self  # self preservation
+        self.counter = -1
+
+        self.gain = calibcomps.gain()      # - 4d gains  (7, <nsegs>, 352, 384)
+        self.peds = calibcomps.pedestals() # - 4d pedestals
+        self.shape_as_daq = self.peds.shape[1:]
+        self.gfac = divide_protected(np.ones_like(self.gain), self.gain)
+        self.arr1 = np.ones(self.shape_as_daq, dtype=np.int8)
+
+        self.mask = calibcomps.mask(**kwa)
+        if self.mask is None: self.mask = calibcomps._mask_from_status(**kwa)
+        if self.mask is None: self.mask = np.ones(self.shape_as_daq, dtype=DTYPE_MASK)
+
+        self.cmpars = calibcomps.common_mode() if cmpars is None else cmpars
+
+        logger.info('\n  shape_as_daq %s' % str(self.shape_as_daq)\
+                    +info_ndarr(self.gain, '\n  gain')\
+                    +info_ndarr(self.peds, '\n  peds')\
+                    +info_ndarr(self.gfac, '\n  gfac')\
+                    +info_ndarr(self.mask, '\n  mask')\
+                    +'\n  common-mode correction parameters cmpars: %s' % str(self.cmpars))
 
 # EOF
