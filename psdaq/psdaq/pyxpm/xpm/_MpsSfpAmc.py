@@ -31,7 +31,6 @@ class MpsSfpAmc(pr.Device):
         super().__init__(name=name, description=description, **kwargs)
 
         self.add(xpm.SfpSummary(
-#            memBase = self.srp,
             name        = 'SfpSummary',
             description = 'PCA9506',
             offset      = 0,
@@ -47,8 +46,7 @@ class MpsSfpAmc(pr.Device):
             mode        = "RW",
         ))
 
-        self.add(Sfp(
-#            memBase = self.srp,
+        self.add(xpm.SfpI2c(
             name    = 'SfpI2c',
             offset  = 0x800,
         ))
