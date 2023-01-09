@@ -13,6 +13,7 @@ target_include_directories(hpsBldServer PUBLIC
     ${PYTHON_INCLUDE_DIRS}
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(hpsBldServer
@@ -20,7 +21,7 @@ target_link_libraries(hpsBldServer
    bld
    epicstools
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
    ${PYTHON_LIBRARIES}
@@ -31,6 +32,7 @@ add_executable(hpsBldClient hpsBldClient.cc)
 target_include_directories(hpsBldClient PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(hpsBldClient
@@ -40,7 +42,7 @@ target_link_libraries(hpsBldClient
    epicstools
    xtcdata::xtc
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -50,6 +52,7 @@ add_executable(hpsBldCopy hpsBldCopy.cc)
 target_include_directories(hpsBldCopy PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(hpsBldCopy
@@ -58,7 +61,7 @@ target_link_libraries(hpsBldCopy
    epicstools
    xtcdata::xtc
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -68,13 +71,14 @@ add_executable(lclsBldServer lclsBldServer.cc)
 target_include_directories(lclsBldServer PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(lclsBldServer
    app
    tpr
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -90,7 +94,7 @@ target_link_libraries(tprtrig
    app
    tpr
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -103,6 +107,7 @@ add_executable(tprioc tprca.cc)
 target_include_directories(tprioc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(tprioc
@@ -110,7 +115,7 @@ target_link_libraries(tprioc
    tpr
    app
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -123,13 +128,14 @@ add_executable(tprsh tprsh.cc)
 target_include_directories(tprsh PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(tprsh
    epicstools
    app
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -142,12 +148,13 @@ add_executable(tprutil tprutil.cc)
 target_include_directories(tprutil PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(tprutil
    tpr
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -160,12 +167,13 @@ add_executable(xcasttest xcasttest.cc)
 target_include_directories(xcasttest PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(xcasttest
    app
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -178,13 +186,14 @@ add_executable(pgpca pgpca.cc)
 target_include_directories(pgpca PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(pgpca
    service
    epicstools
    dl
-   readline
+   ${Readline_LIBRARY}
    Threads::Threads
    rt
 )
@@ -197,7 +206,7 @@ add_executable(pvcam pvcam.cc)
 target_include_directories(pvcam PUBLIC
     pvcam
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $ENV{CONDA_PREFIX}/include
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(pvcam
@@ -207,7 +216,7 @@ target_link_libraries(pvcam
    ${EPICS_PVACLIENT_LIB}
    ${EPICS_CA_LIB}
    tpr
-   readline
+   ${READLINE_LIBRARY}
    dl
    rt
 )
@@ -220,12 +229,13 @@ add_executable(sim_udpencoder sim_udpencoder.cc)
 target_include_directories(sim_udpencoder PUBLIC
     sim_udpencoder
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $ENV{CONDA_PREFIX}/include
+    ${ZeroMQ_INCLUDE_DIRS}
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(sim_udpencoder
    tpr
-   readline
+   ${Readline_LIBRARY}
    dl
    rt
 )
@@ -240,7 +250,7 @@ add_executable(json2xtc
 target_link_libraries(json2xtc
     xtcdata::xtc
     service
-    readline
+    ${Readline_LIBRARY}
     Threads::Threads
     rt
 )
@@ -249,6 +259,7 @@ target_include_directories(json2xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${RAPIDJSON_INCLUDE_DIRS}
+    ${Readline_INCLUDE_DIR}
 )
 
 install(TARGETS app

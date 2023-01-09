@@ -43,6 +43,7 @@ target_link_libraries(collection
 target_include_directories(collection PUBLIC
      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
      $<INSTALL_INTERFACE:include>
+     ${ZeroMQ_INCLUDE_DIRS}
 )
 
 add_library(exporter SHARED
