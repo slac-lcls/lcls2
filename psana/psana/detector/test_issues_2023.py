@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+"""./lcls2/psana/psana/detector/test_issues_2023.py 1
+"""
 
 import sys
 import logging
@@ -13,13 +15,18 @@ def issue_2023_01_03():
     """epixhr calib method with common mode correction using standard detector interface
        datinfo -k exp=rixx45619,run=119 -d epixhr
     """
+    import psana.pyalgos.generic.PSUtils as psu
     from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
     from time import time
 
-    ds = DataSource(exp='rixx45619',run=121)
+    #ds = DataSource(exp='rixx45619',run=121, dir='/cds/data/psdm/prj/public01/xtc')
+    #orun = next(ds.runs())
+    #det = orun.Detector('epixhr')
+
+    ds = DataSource(exp='ueddaq02',run=569, dir='/cds/data/psdm/prj/public01/xtc')
     orun = next(ds.runs())
-    det = orun.Detector('epixhr')
+    det = orun.Detector('epixquad')
 
     print('common mode parameters from DB', det.raw._common_mode())
 
@@ -39,7 +46,8 @@ def issue_2023_01_03():
 
         #print(info_ndarr(arr,'arr:'))
         #sh = img.shape # shape:(1, 288, 384)
-        img = arr[0,144:,:192] # cut off a single ASIC with meaningfull data
+        #img = arr[0,144:,:192] # cut off a single ASIC with meaningfull data
+        img = psu.table_nxn_epix10ka_from_ndarr(arr)
         print(info_ndarr(img,'img:'))
 
         if flimg is None:
@@ -59,9 +67,13 @@ def issue_2023_01_06():
     from time import time
     import numpy as np
 
-    ds = DataSource(exp='rixx45619',run=121)
+    #ds = DataSource(exp='rixx45619',run=121, dir='/cds/data/psdm/prj/public01/xtc')
+    #orun = next(ds.runs())
+    #det = orun.Detector('epixhr')
+
+    ds = DataSource(exp='ueddaq02',run=569, dir='/cds/data/psdm/prj/public01/xtc')
     orun = next(ds.runs())
-    det = orun.Detector('epixhr')
+    det = orun.Detector('epixquad')
 
     config = det.raw._config_object()
     calibc = det.raw._calibconst
@@ -83,8 +95,10 @@ def issue_2023_01_06():
         pedest  = cc.event_pedestals(raw)
 
         #arr = np.array(raw & cc.data_bit_mask(), dtype=np.float32) - pedest
-        #arr = cc.calib(raw, cmpars=(0,7,300,10))  # **kwa
+        calib = cc.calib(raw, cmpars=(0,7,300,10))  # **kwa
         arr = cc.common_mode_correction(raw, cmpars=(0,7,300,10))  # **kwa
+        print(info_ndarr(calib,'calib:'))
+        print(info_ndarr(arr,'cmcorr:'))
 
         logger.info('time consumption to make 3-d array for imaging = %.6f sec' % (time()-t0_sec_tot))
 
@@ -93,7 +107,8 @@ def issue_2023_01_06():
 
         #print(info_ndarr(arr,'arr:'))
         #sh = img.shape # shape:(1, 288, 384)
-        img = arr[0,144:,:192] # cut off a single ASIC with meaningfull data
+        #img = arr[0,144:,:192] # cut off a single ASIC with meaningfull data
+        img = ua.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
         print(info_ndarr(img,'img:'))
 
         if flimg is None:
