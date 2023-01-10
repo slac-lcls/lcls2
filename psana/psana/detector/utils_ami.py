@@ -12,7 +12,7 @@ import psana.detector.utils_ami as ua
             self.cc = ua.calib_components(calibconst, config)
         cc = self.cc
 
-        ctypes = cc.calib_types()
+        ctypes   = cc.calib_types()
         npanels  = cc.number_of_panels()
         peds     = cc.pedestals()    # OR cc.calib_constants('pedestals')
         gain     = cc.gain()         # ADU/keV
@@ -29,12 +29,12 @@ import psana.detector.utils_ami as ua
         gmap     = cc.gain_maps_epix10ka_any(raw)
         peds_ev  = cc.event_pedestals(raw)
         gfac_ev  = cc.event_gain_factor(raw)
-        calib    = cc.calib(raw, cmpars=None)  # **kwa - for non-default mask parameters
-        cmdiff   = cc.common_mode_correction(raw, cmpars=None)  # **kwa
+        calib    = cc.calib(raw, cmpars=(0, 7, 300, 10))  # **kwa - for non-default mask parameters
+        cmcorr   = cc.common_mode_correction(raw, cmpars=(0, 7, 300, 10))  # **kwa
 
         print('== Event %04d ==' % self.counter)
         print('calib_types', ctypes)
-        print('calib_metadata', cc.calib_metadata('pedestals'))
+        # print('calib_metadata', cc.calib_metadata('pedestals'))
         print(ua.info_ndarr(peds, 'pedestals'))
         print(ua.info_ndarr(cc.gain(), 'gain'))
         print(ua.info_ndarr(gfactor, 'gain_factor'))
@@ -53,13 +53,17 @@ import psana.detector.utils_ami as ua
         print(ua.info_ndarr(peds_ev, 'peds_ev'))
         print(ua.info_ndarr(gfac_ev, 'gfac_ev'))
         print(ua.info_ndarr(calib, 'calib'))
-        print(ua.info_ndarr(cmdiff, 'cmdiff'))
+        print(ua.info_ndarr(cmcorr, 'cmcorr'))
+        # img = cmcorr[0, 144:, :192]
+        img = ua.psu.table_nxn_epix10ka_from_ndarr(cmcorr)
+        print(ua.info_ndarr(img, 'img'))
+        return img
 
-        return raw
-
-
+# for epixquad
 ami-local -b 1 -f interval=1 psana://exp=ueddaq02,run=569,dir=/cds/data/psdm/prj/public01/xtc
 
+# for epixhr:
+ami-local -b 1 -f interval=1 psana://exp=rixx45619,run=121,dir=/cds/data/psdm/prj/public01/xtc
 """
 import logging
 logger = logging.getLogger(__name__)
@@ -68,6 +72,7 @@ import numpy as np
 from psana.detector.NDArrUtils import divide_protected, info_ndarr
 import psana.detector.UtilsEpix10ka as ue
 from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
+import psana.pyalgos.generic.PSUtils as psu
 
 gain_maps_epix10ka_any, event_constants_for_gmaps, cbits_config_epix10ka, cbits_config_epixhr2x2 =\
 ue.gain_maps_epix10ka_any, ue.event_constants_for_gmaps, ue.cbits_config_epix10ka, ue.cbits_config_epixhr2x2
