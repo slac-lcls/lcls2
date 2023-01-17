@@ -554,7 +554,7 @@ def common_mode_epix_multigain_apply(arrf, gmaps, store):
     """Apply common mode correction to arrf
     """
     cmpars, mask = store.cmpars, store.mask
-    logger.info('in common_mode_epix_multigain_apply for cmpars=%s' % str(cmpars))
+    logger.debug('in common_mode_epix_multigain_apply for cmpars=%s' % str(cmpars))
     alg, mode, cormax = int(cmpars[0]), int(cmpars[1]), cmpars[2]
     npixmin = cmpars[3] if len(cmpars)>3 else 10
     if mode>0:
