@@ -78,6 +78,12 @@ gain_maps_epix10ka_any, event_constants_for_gmaps, cbits_config_epix10ka, cbits_
 ue.gain_maps_epix10ka_any, ue.event_constants_for_gmaps, ue.cbits_config_epix10ka, ue.cbits_config_epixhr2x2
 
 
+def event_constants_for_gmaps(gmaps, cons, default=0):
+    return ue.event_constants_for_gmaps(gmaps, cons, default)
+
+def map_gain_range_index_for_gmaps(gmaps, default=10):
+    return ue.map_gain_range_index_for_gmaps(gmaps, default)
+
 def is_none(val, msg):
     s = val is None
     if s: logger.debug(msg)
@@ -210,9 +216,6 @@ class calib_components():
         cbitscfg = self.cbits_config_detector()
         cbitstot = self.cbits_config_and_data_detector(raw, cbitscfg)
         return ue.gain_maps_epix10ka_any_alg(cbitstot)
-
-    def event_constants_for_gmaps(gmaps, cons, default=0):
-        return ue.event_constants_for_gmaps(gmaps, cons, default)
 
     def event_pedestals(self, raw):
         """ returns per-event  pedestals, shape=(<number-of-panels>, <2-d-panel-shape>)"""
