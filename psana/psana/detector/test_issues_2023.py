@@ -119,6 +119,86 @@ def issue_2023_01_06():
     gr.show()
 
 
+def issue_2023_01_10():
+    """test for of the 1st charge injection for epixhr
+       datinfo -k exp=ascdaq18,run=170 -d epixhr  # 'scantype': 'pedestal'
+       datinfo -k exp=ascdaq18,run=171 -d epixhr  # 'scantype': 'chargeinj'
+    """
+    import psana.detector.utils_ami as ua
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from time import time
+    import numpy as np
+    # dir='/cds/data/psdm/asc/ascdaq18/xtc/' # default
+    # dir='/cds/data/psdm/prj/public01/xtc') # preserved
+    #ds = DataSource(exp='ascdaq18',run=170)
+    ds = DataSource(exp='ascdaq18',run=171)
+    orun = next(ds.runs())
+    det = orun.Detector('epixhr')
+
+    config = det.raw._config_object()
+    calibc = det.raw._calibconst
+
+    logger.debug('calibc: %s' % str(calibc))
+
+    cc = ua.calib_components(calibc, config)
+    data_bit_mask = cc.data_bit_mask()
+    pedestals = cc.pedestals()
+
+    ones = np.ones_like(pedestals, dtype=np.float32)
+
+    print('calib_types: ', cc.calib_types())
+    print('config - number of panels: ', cc.number_of_panels())
+    print('dettype: ', cc.dettype())
+    print('calib_metadata: ', cc.calib_metadata(ctype='pedestals'))
+    print(info_ndarr(pedestals,'pedestals:'))
+    print('data_bit_mask:', oct(data_bit_mask))
+
+    #sys.exit('TEST EXIT')
+
+    from psana.detector.UtilsGraphics import gr, fleximage, arr_median_limits
+    flimg = None
+    for nstep,step in enumerate(orun.steps()):
+      if nstep>5: break
+      for nevt,evt in enumerate(step.events()):
+        #if nevt>1000: break
+        if nevt%100: continue
+
+        print('== Step %02d Event %03d ==' % (nstep,nevt))
+
+        #t0_sec_tot = time()
+        raw = det.raw.raw(evt)
+        if raw is None: continue
+
+        #peds = cc.event_pedestals(raw)
+        #arr = None
+        #arr2 = np.array(raw & data_bit_mask, dtype=np.float32) - peds
+
+        gmaps = cc.gain_maps_epix10ka_any(raw)
+        #arr = ua.event_constants_for_gmaps(gmaps, ones, default=0)
+        #arr = ua.event_constants_for_gmaps(gmaps, ones, default=0)
+        arr = ua.map_gain_range_index_for_gmaps(gmaps, default=10)
+
+        print(info_ndarr(arr,'arr:'))
+
+        #logger.info('time consumption to make 3-d array for imaging = %.6f sec' % (time()-t0_sec_tot))
+
+        #img = cc.pedestals()[1,0,:150,:200]
+        #img = arr[0,144:,:192] # cut off a single ASIC with meaningfull data
+        #img = arr[0,:143,:192] # cut off a single ASIC with meaningfull data
+        img = arr[0,:150,:200] # cut off a single ASIC with meaningfull data
+        #img = arr[0,:,:] # cut off a single ASIC with meaningfull data
+        #img = ua.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
+        #print(info_ndarr(img,'img:'))
+
+        if flimg is None:
+           flimg = fleximage(img, arr=None, h_in=8, w_in=11, nneg=1, npos=3)
+        gr.set_win_title(flimg.fig, titwin='Step %02d Event %d' % (nstep,nevt))
+        flimg.update(img, arr=None)
+        gr.show(mode='DO NOT HOLD')
+    gr.show()
+
+
 def issue_2023_01_dd():
     print('template')
 
@@ -128,13 +208,14 @@ USAGE = '\nUsage:'\
       + '\n    0 - print usage'\
       + '\n    1 - issue_2023_01_03 - test epixhr, calib and common mode correction'\
       + '\n    2 - issue_2023_01_06 - test utils_ami.py'\
-
+      + '\n    3 - issue_2023_01_10 - test for of the 1st charge injection for epixhr'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
 if   TNAME in  ('0',): issue_2023_01_dd()
 elif TNAME in  ('1',): issue_2023_01_03()
 elif TNAME in  ('2',): issue_2023_01_06()
+elif TNAME in  ('3',): issue_2023_01_10()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
