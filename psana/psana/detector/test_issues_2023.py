@@ -59,9 +59,9 @@ def issue_2023_01_03():
 
 
 def issue_2023_01_06():
-    """test utils_ami.py with direct acces to _calibconst and _config_object in the calib method
+    """test utils_calib_components.py with direct acces to _calibconst and _config_object in the calib method
     """
-    import psana.detector.utils_ami as ua
+    import psana.detector.utils_calib_components as ucc
     from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
     from time import time
@@ -80,7 +80,7 @@ def issue_2023_01_06():
 
     logger.debug('calibc: %s' % str(calibc))
 
-    cc = ua.calib_components(calibc, config)
+    cc = ucc.calib_components_epix(calibc, config)
 
     print('calib_types: ', cc.calib_types())
     print('config - number of panels: ', cc.number_of_panels())
@@ -108,7 +108,7 @@ def issue_2023_01_06():
         #print(info_ndarr(arr,'arr:'))
         #sh = img.shape # shape:(1, 288, 384)
         #img = arr[0,144:,:192] # cut off a single ASIC with meaningfull data
-        img = ua.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
+        img = ucc.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
         print(info_ndarr(img,'img:'))
 
         if flimg is None:
@@ -124,7 +124,7 @@ def issue_2023_01_10():
        datinfo -k exp=ascdaq18,run=170 -d epixhr  # 'scantype': 'pedestal'
        datinfo -k exp=ascdaq18,run=171 -d epixhr  # 'scantype': 'chargeinj'
     """
-    import psana.detector.utils_ami as ua
+    import psana.detector.utils_calib_components as ucc
     from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
     from time import time
@@ -141,7 +141,7 @@ def issue_2023_01_10():
 
     logger.debug('calibc: %s' % str(calibc))
 
-    cc = ua.calib_components(calibc, config)
+    cc = ucc.calib_components_epix(calibc, config)
     data_bit_mask = cc.data_bit_mask()
     pedestals = cc.pedestals()
 
@@ -174,10 +174,10 @@ def issue_2023_01_10():
         #arr = None
         #arr2 = np.array(raw & data_bit_mask, dtype=np.float32) - peds
 
-        gmaps = cc.gain_maps_epix10ka_any(raw)
-        #arr = ua.event_constants_for_gmaps(gmaps, ones, default=0)
-        #arr = ua.event_constants_for_gmaps(gmaps, ones, default=0)
-        arr = ua.map_gain_range_index_for_gmaps(gmaps, default=10)
+        gmaps = cc.gain_maps_epix(raw)
+        #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
+        #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
+        arr = ucc.map_gain_range_index_for_gmaps(gmaps, default=10)
 
         print(info_ndarr(arr,'arr:'))
 
@@ -188,7 +188,7 @@ def issue_2023_01_10():
         #img = arr[0,:143,:192] # cut off a single ASIC with meaningfull data
         img = arr[0,:150,:200] # cut off a single ASIC with meaningfull data
         #img = arr[0,:,:] # cut off a single ASIC with meaningfull data
-        #img = ua.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
+        #img = ucc.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
         #print(info_ndarr(img,'img:'))
 
         if flimg is None:
@@ -207,7 +207,7 @@ USAGE = '\nUsage:'\
       + '\n  where test-name: '\
       + '\n    0 - print usage'\
       + '\n    1 - issue_2023_01_03 - test epixhr, calib and common mode correction'\
-      + '\n    2 - issue_2023_01_06 - test utils_ami.py'\
+      + '\n    2 - issue_2023_01_06 - test utils_calib_components.py'\
       + '\n    3 - issue_2023_01_10 - test for of the 1st charge injection for epixhr'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
