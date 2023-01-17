@@ -589,6 +589,12 @@ def common_mode_epix_multigain_apply(arrf, gmaps, store):
       #logger.debug('TIME common-mode correction = %.6f sec for cmpars=%s' % (time()-t0_sec_cm, str(cmpars)))
 
 
+def map_gain_range_index_for_gmaps(gmaps, default=10):
+    if gmaps is None: return None
+    #gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
+    return np.select(gmaps, (0, 1, 2, 3, 4, 5, 6), default=default)  # .astype(np.uint16) # int64 -> uint16
+
+
 def map_gain_range_index(det_raw, evt, **kwa):
     """Returns array of epix10ka per pixel gain range indices [0:6] shaped as raw (<nsegs>, 352, 384) dtype:uint16
     """
@@ -597,9 +603,7 @@ def map_gain_range_index(det_raw, evt, **kwa):
     if raw is None: return None
 
     gmaps = gain_maps_epix10ka_any(det_raw, evt)
-    if gmaps is None: return None
-    #gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
-    return np.select(gmaps, (0, 1, 2, 3, 4, 5, 6), default=10)#.astype(np.uint16) # int64 -> uint16
+    return map_gain_range_index_for_gmaps(gmaps)
 
 
 calib_epix10ka = calib_epix10ka_any
