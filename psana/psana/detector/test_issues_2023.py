@@ -11,22 +11,24 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
 
 
+def ds_run_det(exp='ascdaq18', run=171, detname='epixhr', **kwa):
+    from psana import DataSource
+    ds = DataSource(exp=exp, run=run, **kwa)
+    orun = next(ds.runs())
+    det = orun.Detector(detname)
+    return ds, orun, det
+
+
 def issue_2023_01_03():
     """epixhr calib method with common mode correction using standard detector interface
        datinfo -k exp=rixx45619,run=119 -d epixhr
     """
     import psana.pyalgos.generic.PSUtils as psu
     from psana.detector.NDArrUtils import info_ndarr
-    from psana import DataSource
     from time import time
 
-    #ds = DataSource(exp='rixx45619',run=121, dir='/cds/data/psdm/prj/public01/xtc')
-    #orun = next(ds.runs())
-    #det = orun.Detector('epixhr')
-
-    ds = DataSource(exp='ueddaq02',run=569, dir='/cds/data/psdm/prj/public01/xtc')
-    orun = next(ds.runs())
-    det = orun.Detector('epixquad')
+    #ds, orun, det = ds_run_det(exp='rixx45619',run=121, detname='epixhr', dir='/cds/data/psdm/prj/public01/xtc')
+    ds, orun, det = ds_run_det(exp='ueddaq02',run=569, detname='epixquad', dir='/cds/data/psdm/prj/public01/xtc')
 
     print('common mode parameters from DB', det.raw._common_mode())
 
@@ -63,17 +65,11 @@ def issue_2023_01_06():
     """
     import psana.detector.utils_calib_components as ucc
     from psana.detector.NDArrUtils import info_ndarr
-    from psana import DataSource
     from time import time
     import numpy as np
 
-    #ds = DataSource(exp='rixx45619',run=121, dir='/cds/data/psdm/prj/public01/xtc')
-    #orun = next(ds.runs())
-    #det = orun.Detector('epixhr')
-
-    ds = DataSource(exp='ueddaq02',run=569, dir='/cds/data/psdm/prj/public01/xtc')
-    orun = next(ds.runs())
-    det = orun.Detector('epixquad')
+    # ds, orun, det = ds_run_det(exp='rixx45619', run=121, detname='epixhr', dir='/cds/data/psdm/prj/public01/xtc')
+    ds, orun, det = ds_run_det(exp='ueddaq02', run=569, detname='epixquad', dir='/cds/data/psdm/prj/public01/xtc')
 
     config = det.raw._config_object()
     calibc = det.raw._calibconst
@@ -126,15 +122,11 @@ def issue_2023_01_10():
     """
     import psana.detector.utils_calib_components as ucc
     from psana.detector.NDArrUtils import info_ndarr
-    from psana import DataSource
     from time import time
     import numpy as np
     # dir='/cds/data/psdm/asc/ascdaq18/xtc/' # default
     # dir='/cds/data/psdm/prj/public01/xtc') # preserved
-    #ds = DataSource(exp='ascdaq18',run=170)
-    ds = DataSource(exp='ascdaq18',run=171)
-    orun = next(ds.runs())
-    det = orun.Detector('epixhr')
+    ds, orun, det = ds_run_det(exp='ascdaq18', run=171, detname='epixhr', dir='/cds/data/psdm/asc/ascdaq18/xtc/')
 
     config = det.raw._config_object()
     calibc = det.raw._calibconst
@@ -142,7 +134,7 @@ def issue_2023_01_10():
     logger.debug('calibc: %s' % str(calibc))
 
     cc = ucc.calib_components_epix(calibc, config)
-    data_bit_mask = cc.data_bit_mask()
+    data_bit_mask = cc.data_bit_mask() # 0o77777 for epixhr
     pedestals = cc.pedestals()
 
     ones = np.ones_like(pedestals, dtype=np.float32)
@@ -170,14 +162,14 @@ def issue_2023_01_10():
         raw = det.raw.raw(evt)
         if raw is None: continue
 
-        #peds = cc.event_pedestals(raw)
-        #arr = None
-        #arr2 = np.array(raw & data_bit_mask, dtype=np.float32) - peds
+        peds = cc.event_pedestals(raw)
+        #arr = peds
+        arr = np.array(raw & data_bit_mask, dtype=np.float32) - peds
 
-        gmaps = cc.gain_maps_epix(raw)
+        #gmaps = cc.gain_maps_epix(raw)
         #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
-        #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
-        arr = ucc.map_gain_range_index_for_gmaps(gmaps, default=10)
+        #arr = ucc.map_gain_range_index_for_gmaps(gmaps, default=10) # stack bits...
+        #arr = np.array(raw & 0o100000, dtype=np.int) # 0o77777 # behaves ok
 
         print(info_ndarr(arr,'arr:'))
 
@@ -199,7 +191,7 @@ def issue_2023_01_10():
     gr.show()
 
 
-def issue_2023_01_dd():
+def issue_2023_mm_dd():
     print('template')
 
 USAGE = '\nUsage:'\
@@ -212,7 +204,7 @@ USAGE = '\nUsage:'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
-if   TNAME in  ('0',): issue_2023_01_dd()
+if   TNAME in  ('0',): issue_2023_mm_dd()
 elif TNAME in  ('1',): issue_2023_01_03()
 elif TNAME in  ('2',): issue_2023_01_06()
 elif TNAME in  ('3',): issue_2023_01_10()
