@@ -263,7 +263,7 @@ def cbits_config_and_data_detector_alg(data, cbits, data_gain_bit, gain_bit_shif
         # get array of data bit 15 and add it as a bit 5 to cbits
         datagainbit = np.bitwise_and(data, data_gain_bit)
         databit05 = np.right_shift(datagainbit, gain_bit_shift) # 0o100000 -> 0o40
-        np.bitwise_or(cbits, databit05, out=cbits) # 109us
+        return np.bitwise_or(cbits, databit05) # create copy, DO NOT OVERRIDE cbits !!!
 
     return cbits
 
