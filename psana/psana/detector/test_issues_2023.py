@@ -176,9 +176,8 @@ def issue_2023_01_10():
         #logger.info('time consumption to make 3-d array for imaging = %.6f sec' % (time()-t0_sec_tot))
 
         #img = cc.pedestals()[1,0,:150,:200]
-        #img = arr[0,144:,:192] # cut off a single ASIC with meaningfull data
-        #img = arr[0,:143,:192] # cut off a single ASIC with meaningfull data
         img = arr[0,:150,:200] # cut off a single ASIC with meaningfull data
+        #img = arr[0,0:20,100:120] # cut off a single ASIC with meaningfull data
         #img = arr[0,:,:] # cut off a single ASIC with meaningfull data
         #img = ucc.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
         #print(info_ndarr(img,'img:'))
