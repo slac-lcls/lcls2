@@ -1,8 +1,19 @@
-"""define DIR_ROOT for repositories and logfiles through the environment variable:
-   /reg/g/psdm  # lcls
-   /cds/group/psdm  # lcls2
-   /sdf/group/psdm/etc  # s3df
+"""
+   see on psana
+   /cds/sw/ds/ana/conda1/manage/bin/psconda.sh  # lcls1
+   /cds/sw/ds/ana/conda2/manage/bin/psconda.sh  # lcls2
+   see on s3df
+   /sdf/group/lcls/ds/ana/sw/conda1/manage/bin/psconda.sh # lcls1
+   /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh # lcls2
 
+   DIR_ROOT for repositories and logfiles through the environment variable:
+   /reg/g/psdm      # lcls
+   /cds/group/psdm  # lcls2
+   /sdf/group/psdm  # s3df ???
+
+   DIR_PSDM
+   /cds/group/psdm # on psana lcls2
+   /cds/group/psdm # on sdflogin lcls2
 
 from psana.detector.dir_root import DIR_REPO_EPIX10KA, DIR_LOG_AT_START, HOSTNAME, ...
 from psana.detector.dir_root import DIR_ROOT
