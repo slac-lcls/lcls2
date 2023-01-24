@@ -136,7 +136,7 @@ def step_counter(metadata, nstep_tot, nstep_run, stype='pedestal', nspace=None):
     assert isinstance(metadata, dict), 'UNEXPECTED non-dict DATA TYPE FOR METADATA: %s'%str(type(metadata))
 
     scantype = metadata['scantype']
-    stepnum = metadata['step']
+    stepnum = int(metadata['step'])
 
     if scantype != stype:
         logger.warning('UNEXPECTED SCAN TYPE %s' % scantype)
