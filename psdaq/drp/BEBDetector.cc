@@ -27,7 +27,8 @@ namespace Drp {
 PyObject* BEBDetector::_check(PyObject* obj) {
     if (!obj) {
         PyErr_Print();
-        throw "**** python error";
+        logging::critical("**** python error");
+        abort();
     }
     return obj;
 }
@@ -83,7 +84,7 @@ void BEBDetector::_init(const char* arg)
                                             m_para->device.c_str(),
                                             m_para->laneMask,
                                             xpmpv,
-					    timebase,
+                                            timebase,
                                             m_para->verbose));
 
       // check if m_root has "virtChan" member and set accordingly
@@ -260,9 +261,13 @@ void BEBDetector::shutdown()
     PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
 
     // returns new reference
-    PyObject* val = _check(PyObject_CallFunction(pFunc,"O",m_root));
+    PyObject* val = PyObject_CallFunction(pFunc,"O",m_root);
 
-    Py_DECREF(val);
+    if (val)
+        Py_DECREF(val);
+    else
+        PyErr_Print();
+
 }
 
 }

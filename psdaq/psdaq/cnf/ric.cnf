@@ -109,11 +109,11 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav'},
- {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
+# {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
 
 # {host: 'drp-srcf-cmp028', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
 
-# {host: 'drp-srcf-cmp007', id:'tmo_atmopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=TMO:TIMETOOL:TTALL'},
+ {host: 'drp-srcf-cmp007', id:'tst_atmopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=TMO:TIMETOOL:TTALL'},
 # {host: 'drp-srcf-cmp007', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py'},
 
 # {host: 'drp-srcf-cmp026', id:'tmo_piranha_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D piranha4'},

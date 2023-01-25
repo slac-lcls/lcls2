@@ -9,6 +9,7 @@ import json
 import IPython
 from collections import deque
 import logging
+import weakref
 
 cl = None
 pv = None
@@ -58,7 +59,8 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     # in older versions we didn't have to use the "with" statement
     # but now the register accesses don't seem to work without it -cpo
     cl = cameralink_gateway.ClinkDevRoot(**myargs)
-    cl.__enter__()
+    weakref.finalize(cl, cl.stop)
+    cl.start()
 
     # Open a new thread here
     if xpmpv is not None:
@@ -90,6 +92,8 @@ def opal_init_feb(slane=None,schan=None):
 def opal_connect(cl):
     global lane
     global chan
+
+    print('opal_connect')
 
     txId = timTxId('opal')
 
@@ -207,6 +211,9 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     global group
     global lane
     global chan
+
+    print('opal_config')
+
     group = grp
 
     appLane  = 'AppLane[%d]'%lane
@@ -335,6 +342,8 @@ def opal_update(update):
     return json.dumps(cfg)
 
 def opal_unconfig(cl):
+    print('opal_unconfig')
+
     cl.StopRun()
 
     return cl

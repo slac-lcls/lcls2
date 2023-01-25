@@ -109,8 +109,9 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     uart._rx = MyUartPiranha4Rx(uart._rx._path)
     pr.streamConnect(cl.dmaStreams[lane][2],uart._rx)
 
-    # Get ClinkDevRoot.start() called
-    cl.__enter__()
+    # Get ClinkDevRoot.start() and stop() called
+    weakref.finalize(cl, cl.stop)
+    cl.start()
 
     # Open a new thread here
     if xpmpv is not None:
@@ -137,6 +138,8 @@ def piranha4_init_feb(slane=None,schan=None):
 def piranha4_connect(cl):
     global lane
     global chan
+
+    print('piranha4_connect')
 
     txId = timTxId('piranha4')
 
@@ -280,6 +283,9 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     global group
     global lane
     global chan
+
+    print('piranha4_config')
+
     group = grp
 
     appLane  = 'AppLane[%d]'%lane
@@ -395,6 +401,8 @@ def piranha4_update(update):
     return json.dumps(cfg)
 
 def piranha4_unconfig(cl):
+    print('piranha4_unconfig')
+
     cl.StopRun()
 
     return cl
