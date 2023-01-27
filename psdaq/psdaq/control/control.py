@@ -1102,13 +1102,11 @@ class CollectionManager():
         logging.debug('pvListXPM: %s' % self.pva.pvListXPM)
         logging.debug('pvListL0Groups: %s' % self.pva.pvListL0Groups)
 
-        # Couple deadtime of the non-common readout groups to all groups
-        pvCommonGroup = self.pva.pv_xpm_base+":PART:"+str(self.platform)+':L0Groups'
+        # Couple deadtime of all readout groups
         for pv in self.pva.pvListL0Groups:
-            groups = self.groups if pv != pvCommonGroup else 1 << self.platform
-            logging.debug(f'condition_alloc() putting {groups} to PV {pv}')
-            if not self.pva.pv_put(pv, groups):
-                self.report_error(f'condition_alloc() failed putting {groups} to PV {pv}')
+            logging.debug(f'condition_alloc() putting {self.groups} to PV {pv}')
+            if not self.pva.pv_put(pv, self.groups):
+                self.report_error(f'condition_alloc() failed putting {self.groups} to PV {pv}')
                 logging.debug('condition_alloc() returning False')
                 return False
 
@@ -1344,10 +1342,8 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
-#            Force SlowUpdate to respect deadtime
-            #if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
-            # hack to try to get same SlowUpdates in all streams
-            if not self.pva.pv_put(pv, (ControlDef.transitionId['SlowUpdate'])):
+            # Force SlowUpdate to respect deadtime
+            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
                 update_ok = False
                 break
 
