@@ -740,4 +740,7 @@ class XpmApp(pr.Device):
         
     def numL0Acc(self, l0Stats):
         return (l0Stats>>256)&((1<<64)-1)
-        
+
+    def l0Delay(self, group):
+        self.partition.set(group)
+        return self.pipelineDepth.get()>>16

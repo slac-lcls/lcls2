@@ -23,7 +23,8 @@ _fidPeriod   = 1400/1.3
 NCODES = 16
 seqCodes = {'EventCode'   : ('ai',[i for i in range(272,288)]),
             'Description' : ('as',['']*NCODES),
-            'Rate'        : ('ai',[0]*NCODES)}
+            'Rate'        : ('ai',[0]*NCODES),
+            'Enabled'     : ('ab',[False]*NCODES)}
 
 class TransitionId(object):
     Clear   = 0
@@ -552,7 +553,7 @@ class PVCtrls(object):
         elif cycle == 10:
             self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
             self._seq_codes_val = toDict(seqCodes)
-            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0)) for i in range(4)]
+            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(4)]
 
         global countdn
         # check for config save
@@ -575,8 +576,7 @@ class PVCtrls(object):
                 top.set('XTPG.CuInput'   , self._xpm.AxiSy56040.OutputConfig[0].get(), 'UINT8')
                 v = []
                 for i in range(8):
-                    self._xpm.XpmApp.partition.set(i)
-                    v.append( self._xpm.XpmApp.l0Delay.get() )
+                    v.append( self._xpm.XpmApp.l0Delay(i) )
                 top.set('PART.L0Delay', v, 'UINT32')
                 lock.release()
 
