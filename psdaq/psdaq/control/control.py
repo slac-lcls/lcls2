@@ -1102,13 +1102,11 @@ class CollectionManager():
         logging.debug('pvListXPM: %s' % self.pva.pvListXPM)
         logging.debug('pvListL0Groups: %s' % self.pva.pvListL0Groups)
 
-        # Couple deadtime of the non-common readout groups to all groups
-        pvCommonGroup = self.pva.pv_xpm_base+":PART:"+str(self.platform)+':L0Groups'
+        # Couple deadtime of all readout groups
         for pv in self.pva.pvListL0Groups:
-            groups = self.groups if pv != pvCommonGroup else 1 << self.platform
-            logging.debug(f'condition_alloc() putting {groups} to PV {pv}')
-            if not self.pva.pv_put(pv, groups):
-                self.report_error(f'condition_alloc() failed putting {groups} to PV {pv}')
+            logging.debug(f'condition_alloc() putting {self.groups} to PV {pv}')
+            if not self.pva.pv_put(pv, self.groups):
+                self.report_error(f'condition_alloc() failed putting {self.groups} to PV {pv}')
                 logging.debug('condition_alloc() returning False')
                 return False
 
@@ -1118,6 +1116,22 @@ class CollectionManager():
                 self.cmstate['teb'][node]['teb_id'] = i
         else:
             self.report_error('at least one TEB is required')
+            logging.debug('condition_alloc() returning False')
+            return False
+
+        # primary/common readout group must be used
+        pFound = False
+        for drp in self.cmstate['drp'].values():
+            try:
+                readout = drp['det_info']['readout']
+            except KeyError as ex:
+                logging.error(f'condition_alloc(): KeyError: {ex}')
+            else:
+                if readout == self.platform:
+                    pFound = True
+                    break
+        if pFound == False:
+            self.report_error(f'at least one DRP must use readout group {self.platform}')
             logging.debug('condition_alloc() returning False')
             return False
 
@@ -1244,6 +1258,8 @@ class CollectionManager():
         if not ok:
             return False
 
+        self.slowupdateArmed = self.slow_update_rate != 0
+
         self.lastTransition = 'beginrun'
         return True
 
@@ -1326,7 +1342,7 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
-#            Force SlowUpdate to respect deadtime
+            # Force SlowUpdate to respect deadtime
             if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
                 update_ok = False
                 break
@@ -2115,6 +2131,15 @@ class CollectionManager():
         ok = self.get_phase2_replies('enable')
         if not ok:
             return False
+
+        # For the first Enable after a BeginRun, possibly issue a Slow Update
+        # after Enable has gone through but before enabling triggers
+        if self.slowupdateArmed:
+            self.slowupdateArmed = False
+            lastTransition = self.lastTransition
+            if not self.condition_slowupdate():
+                self.lastTransition = lastTransition
+                return False
 
         # order matters: set Enable PV after others transition
         if not self.group_run(True):

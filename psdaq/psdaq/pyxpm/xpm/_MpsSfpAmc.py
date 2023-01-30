@@ -19,7 +19,8 @@
 
 import pyrogue                 as pr
 import psdaq.pyxpm.xpm         as xpm
-from surf.devices.transceivers import Sff8472
+import cameralink_gateway  # to get surf
+from surf.devices.transceivers import Sfp
 
 class MpsSfpAmc(pr.Device):
 
@@ -30,7 +31,6 @@ class MpsSfpAmc(pr.Device):
         super().__init__(name=name, description=description, **kwargs)
 
         self.add(xpm.SfpSummary(
-#            memBase = self.srp,
             name        = 'SfpSummary',
             description = 'PCA9506',
             offset      = 0,
@@ -47,7 +47,6 @@ class MpsSfpAmc(pr.Device):
         ))
 
         self.add(xpm.SfpI2c(
-#            memBase = self.srp,
             name    = 'SfpI2c',
             offset  = 0x800,
         ))

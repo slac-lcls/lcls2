@@ -89,7 +89,7 @@ static Pds::Trg::TebPyTrig* _tebPyTrigger = nullptr;
 
 static void cleanupOnSignal(int signum)
 {
-  logging::info("[C++] Cleaning up on receiving signal (%d)\n", signum);
+  logging::info("[C++] Cleaning up on receiving signal (%d)", signum);
 
   if (_tebPyTrigger)  _tebPyTrigger->shutdown();
 
@@ -184,7 +184,7 @@ int Pds::Trg::TebPyTrig::configure(const json&              connectMsg,
   _pythonScript = scriptPath + "/" + _pythonScript;
   _partition    = prms.partition;
 
-  _keyBase  = KEY_BASE + 10000 * prms.partition;
+  _keyBase  = KEY_BASE + 1000 * prms.id + 100 * prms.partition;
   _inpMqId  = 0;
   _resMqId  = 0;
   _inpShmId = 0;
@@ -266,6 +266,7 @@ int Pds::Trg::TebPyTrig::_startPython(pid_t& pyPid)
                     "-u",
                     _pythonScript.c_str(),
                     ("-p " + std::to_string(_partition)).c_str(),
+                    ("-b " + std::to_string(_keyBase)).c_str(),
                     nullptr);
     logging::error("Error on exec 'python -u %s': %m", _pythonScript);
     return rc;
@@ -280,13 +281,13 @@ int Pds::Trg::TebPyTrig::_setupMsgQueue(key_t       key,
   mqId = msgget(key, IPC_CREAT | 0666);
   if (mqId == -1)
   {
-    logging::error("[C++] Error in creating '%s' message queue with key %u: %m",
+    logging::error("[C++] Error in creating %s message queue with key %u: %m",
                    name, key);
     cleanup();
     return -1;
   }
 
-  logging::info("[C++] '%s' message queues created", name);
+  logging::info("[C++] %s message queues created", name);
 
   return 0;
 }
@@ -300,7 +301,7 @@ int Pds::Trg::TebPyTrig::_setupShMem(key_t       key,
   shmId = shmget(key, size, IPC_CREAT | 0666); // IPC_EXCL
   if (shmId == -1)
   {
-    logging::error("[C++] Error in creating '%s' shared memory for key %u: %m",
+    logging::error("[C++] Error in creating %s shared memory for key %u: %m",
                    name, key);
     cleanup();
     return -1;
@@ -309,13 +310,13 @@ int Pds::Trg::TebPyTrig::_setupShMem(key_t       key,
   data = shmat(shmId, nullptr, 0);
   if (data == (void *)-1)
   {
-    logging::error("[C++] Error attaching '%s' shared memory for key %u: %m",
+    logging::error("[C++] Error attaching %s shared memory for key %u: %m",
                    name, key);
     cleanup();
     return -1;
   }
 
-  logging::info("[C++] '%s' shared memory created for key %u", name, key);
+  logging::info("[C++] %s shared memory created for key %u", name, key);
 
   return 0;
 }

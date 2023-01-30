@@ -27,7 +27,8 @@ namespace Drp {
 PyObject* BEBDetector::_check(PyObject* obj) {
     if (!obj) {
         PyErr_Print();
-        throw "**** python error";
+        logging::critical("**** python error");
+        abort();
     }
     return obj;
 }
@@ -83,7 +84,7 @@ void BEBDetector::_init(const char* arg)
                                             m_para->device.c_str(),
                                             m_para->laneMask,
                                             xpmpv,
-					    timebase,
+                                            timebase,
                                             m_para->verbose));
 
       // check if m_root has "virtChan" member and set accordingly
@@ -243,20 +244,10 @@ void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
     uint32_t dmaIndex = event->buffers[lane].index;
     unsigned data_size = event->buffers[lane].size;
 
-    try {
-        std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
-        if (m_debatch)
-            subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
-        _event(dgram.xtc, bufEnd, subframes);
-    } catch (std::runtime_error& e) {
-        logging::critical("BatcherIterator error");
-        const uint32_t* p = reinterpret_cast<const uint32_t*>(m_pool->dmaBuffers[dmaIndex]);
-        for(unsigned j=0; j<data_size; j+= 32) {
-            logging::critical("%08x %08x %08x %08x %08x %08x %08x %08x",
-                              p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
-            p += 8;
-        }
-    }
+    std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
+    if (m_debatch)
+        subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
+    _event(dgram.xtc, bufEnd, subframes);
 }
 
 void BEBDetector::shutdown()
@@ -270,9 +261,13 @@ void BEBDetector::shutdown()
     PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
 
     // returns new reference
-    PyObject* val = _check(PyObject_CallFunction(pFunc,"O",m_root));
+    PyObject* val = PyObject_CallFunction(pFunc,"O",m_root);
 
-    Py_DECREF(val);
+    if (val)
+        Py_DECREF(val);
+    else
+        PyErr_Print();
+
 }
 
 }

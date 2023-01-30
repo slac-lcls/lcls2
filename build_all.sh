@@ -67,6 +67,7 @@ fi
 
 function cmake_build() {
     cd $1
+    shift
     mkdir -p build
     cd build
     cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..

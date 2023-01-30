@@ -9,6 +9,7 @@ import json
 import IPython
 from collections import deque
 import logging
+import weakref
 
 cl = None
 pv = None
@@ -28,7 +29,7 @@ def dict_compare(new,curr,result):
             if resultk:
                 result[k] = resultk
         else:
-            if new[k]==curr[k]: 
+            if new[k]==curr[k]:
                 pass
             else:
                 result[k] = new[k]
@@ -58,7 +59,8 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     # in older versions we didn't have to use the "with" statement
     # but now the register accesses don't seem to work without it -cpo
     cl = cameralink_gateway.ClinkDevRoot(**myargs)
-    cl.__enter__()
+    weakref.finalize(cl, cl.stop)
+    cl.start()
 
     # Open a new thread here
     if xpmpv is not None:
@@ -68,10 +70,11 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     else:
         #  Empirically found that we need to cycle to LCLS1 timing
         #  to get the timing feedback link to lock
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
-        time.sleep(0.1)
+        #  cpo: switch this to XpmMini which recovers from more issues?
+        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+        time.sleep(2.5)
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(0.1)
+        time.sleep(2.5)
 
     # the opal seems to intermittently lose lock back to the XPM
     # and empirically this fixes it.  not sure if we need the sleep - cpo
@@ -89,6 +92,8 @@ def opal_init_feb(slane=None,schan=None):
 def opal_connect(cl):
     global lane
     global chan
+
+    print('opal_connect')
 
     txId = timTxId('opal')
 
@@ -132,7 +137,7 @@ def user_to_expert(cl, cfg, full=False):
         partitionDelay = getattr(cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
         triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
-        print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+        print('group {:}  partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(group,partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
@@ -195,7 +200,7 @@ def config_expert(cl, cfg):
                         print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
             rogue_node.set(configdb_node)
 
     #  Parameters like black-level need time to take affect (100ms?)
@@ -206,6 +211,9 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     global group
     global lane
     global chan
+
+    print('opal_config')
+
     group = grp
 
     appLane  = 'AppLane[%d]'%lane
@@ -279,7 +287,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
 
     config_expert(cl,cfg['expert'])
 
-    cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
+    cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(False)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
     applicationLane.EventBuilder.Blowoff.set(False)
 
@@ -334,6 +342,8 @@ def opal_update(update):
     return json.dumps(cfg)
 
 def opal_unconfig(cl):
+    print('opal_unconfig')
+
     cl.StopRun()
 
     return cl

@@ -1,5 +1,6 @@
 #include "Client.hh"
 #include "DataDriver.h"
+#include "DmaDest.h"
 #include "psdaq/service/EbDgram.hh"
 using XtcData::Transition;
 

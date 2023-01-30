@@ -219,14 +219,16 @@ class Engine(object):
                     print('[{:08x}] {:08x}'.format(key+j,self._ram[key+j].get()))
 
 class PVSeq(object):
-    def __init__(self, provider, name, ip, engine):
+    def __init__(self, provider, name, ip, engine, pv_enabled):
         self._eng = engine
         self._seq = []
+        self._pv_enabled = pv_enabled
 
         def addPV(label,ctype='I',init=0):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
                           handler=DefaultPVHandler())
             provider.add(name+':'+label,pv)
+            print(name+':'+label)
             return pv
 
         self._pv_DescInstrs    = addPV('DESCINSTRS','s','')
@@ -251,6 +253,10 @@ class PVSeq(object):
         self._pv_Ins           = addPV('INS'       , 'I',        0, self.ins)
         self._pv_SchedReset    = addPV('SCHEDRESET', 'I',        0, self.schedReset)
         self._pv_ForceReset    = addPV('FORCERESET', 'I',        0, self.forceReset)
+        self._pv_Enable        = addPV('ENABLE'    , 'I',        0, self.enable)
+
+        if engine._reg.seqEn.get()&(1<<engine._id):
+            self.enable(None,1)
 
     def instrs(self, pv, val):
         pvUpdate(self._pv_InstrCnt,self._eng.cacheSeq(val))
@@ -272,7 +278,7 @@ class PVSeq(object):
             idx = self._pv_RunIdx.current()['value']
             print('Scheduling index {}',idx)
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
-            self._eng.enable(True)
+            self.enable(None,1)
             self._eng.setAddress(idx,0,1)
             self._eng.reset()
 
@@ -281,9 +287,14 @@ class PVSeq(object):
             idx = self._pv_RunIdx.current()['value']
             print('Starting index {}',idx)
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
-            self._eng.enable(True)
+            self.enable(None,1)
             self._eng.setAddress(idx,0,0)
             self._eng.reset()
+
+    def enable(self, pv, val):
+        id = self._eng._id
+        self._pv_enabled['Enabled'][4*id:4*id+4] = [(val!=0)]*4
+        self._eng.enable(val)
 
     def checkPoint(self,addr):
         pvUpdate(self._pv_Running,0)

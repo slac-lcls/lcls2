@@ -355,6 +355,7 @@ void     Opal::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 void     Opal::shutdown()
 {
     if (m_tt) m_tt->shutdown();
+    this->BEBDetector::shutdown();
 }
 
 OpalTT::OpalTT(Opal& d, Parameters* para) :

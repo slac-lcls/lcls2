@@ -38,14 +38,16 @@ connect_info = json.loads(ds.connect_json)
 
 # Identify the available MEBs, if any
 ami_meb = ALL_MEBS
-usr_meb = ALL_MEBS
+usr_meb = 0
 mebs = dict()
 if 'meb' in connect_info['body'].keys():
     for nodes in connect_info['body']['meb'].values():
         if   nodes['proc_info']['alias'] == 'ami-meb0':
-            ami_meb = 1 << nodes['meb_id']
-        elif nodes['proc_info']['alias'] == 'meb0':
-            usr_meb = 1 << nodes['meb_id']
+            ami_meb  = 1 << nodes['meb_id']
+        else:
+            usr_meb |= 1 << nodes['meb_id']
+if usr_meb == 0:
+    usr_meb = ALL_MEBS
 
 # Check for 'slow' readout groups
 slowRogs = 0

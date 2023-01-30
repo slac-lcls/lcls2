@@ -112,6 +112,7 @@ namespace Pds {
       using string_t  = std::string;
       using vecstr_t  = std::vector<std::string>;
       using vecsize_t = std::vector<size_t>;
+      using vecuint_t = std::vector<unsigned>;
       using u64arr_t  = std::array<uint64_t, NUM_READOUT_GROUPS>;
       using kwmap_t   = std::map<std::string,std::string>;
 
@@ -124,13 +125,15 @@ namespace Pds {
       unsigned  id;                // EB instance identifier
       unsigned  rogs;              // Bit list of all readout groups in use
       uint64_t  contributors;      // ID bit list of contributors
+      uint64_t  indexSources;      // Sources providing buffer index for Results
       u64arr_t  contractors;       // Ctrbs providing Inputs  per readout group
       u64arr_t  receivers;         // Ctrbs expecting Results per readout group
       vecstr_t  addrs;             // Contributor addresses
       vecstr_t  ports;             // Contributor ports
       vecsize_t maxTrSize;         // Max non-event EbDgram size for each Ctrb
       unsigned  maxEntries;        // Max number of entries per batch
-      unsigned  numBuffers;        // Limit of buffer index range
+      unsigned  maxBuffers;        // Limit of Results buffer index range
+      vecuint_t numBuffers;        // Number of Inputs buffers for each DRP
       unsigned  numMrqs;           // Number of Mon request servers
       unsigned  numMebEvBufs;      // Number of Mon event buffers
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
@@ -143,7 +146,7 @@ namespace Pds {
     // Sanity checks
     static_assert((BATCH_DURATION & (BATCH_DURATION - 1)) == 0, "BATCH_DURATION must be a power of 2");
     static_assert((MAX_BATCHES & (MAX_BATCHES - 1)) == 0, "MAX_BATCHES must be a power of 2");
-    static_assert((TEB_TMO_MS <= 1000ul * MAX_LATENCY/TICK_RATE), "TEB_TMO_MS is too large");
+    static_assert((TEB_TMO_MS <= 1000ull * MAX_LATENCY/TICK_RATE), "TEB_TMO_MS is too large");
   };
 };
 

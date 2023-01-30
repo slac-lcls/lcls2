@@ -99,7 +99,7 @@ BldFactory::BldFactory(const char* name,
     unsigned payloadSize = 0;
     unsigned mcaddr = 0;
     unsigned mcport = 10148; // 12148, eventually
-    uint64_t tscorr = 0x259e9d80ULL << 32;
+    uint64_t tscorr = 0x259e9d80UL << 32;
     //
     //  Make static configuration of BLD  :(
     //
@@ -176,7 +176,9 @@ BldFactory::BldFactory(const char* name,
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramTimestampPos, Bld::DgramHeaderSize, payloadSize,
+    _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
+                                     Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
+                                     Bld::DgramHeaderSize, payloadSize,
                                      tscorr);
 }
 
@@ -213,10 +215,12 @@ BldFactory::BldFactory(const BldPVA& pva) :
     else {
         throw std::string("BLD type ")+_detType+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface, Bld::TimestampPos, Bld::HeaderSize, payloadSize);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface,
+                                     Bld::TimestampPos, Bld::PulseIdPos,
+                                     Bld::HeaderSize, payloadSize);
 }
 
-  BldFactory::BldFactory(const BldFactory& o) :
+BldFactory::BldFactory(const BldFactory& o) :
     _detName    (o._detName),
     _detType    (o._detType),
     _detId      (o._detId),
@@ -309,12 +313,14 @@ Bld::Bld(unsigned mcaddr,
          unsigned port,
          unsigned interface,
          unsigned timestampPos,
+         unsigned pulseIdPos,
          unsigned headerSize,
          unsigned payloadSize,
          uint64_t timestampCorr) :
-  m_timestampPos(timestampPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
+  m_timestampPos(timestampPos), m_pulseIdPos(pulseIdPos),
+  m_headerSize(headerSize), m_payloadSize(payloadSize),
   m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
-  m_timestampCorr(timestampCorr)
+  m_timestampCorr(timestampCorr), m_pulseId(0), m_pulseIdJump(0)
 {
     logging::info("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
 
@@ -322,6 +328,7 @@ Bld::Bld(unsigned mcaddr,
     if (m_sockfd < 0)
         HANDLE_ERR("Open socket");
 
+    //  Yes, we do bump into full buffers.  Bigger or small buffers seem to be worse.
     { unsigned skbSize = 0x1000000;
       if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1)
           HANDLE_ERR("set so_rcvbuf");
@@ -350,6 +357,7 @@ Bld::Bld(unsigned mcaddr,
 
 Bld::Bld(const Bld& o) :
     m_timestampPos(o.m_timestampPos),
+    m_pulseIdPos  (o.m_pulseIdPos),
     m_headerSize  (o.m_headerSize),
     m_payloadSize (o.m_payloadSize),
     m_sockfd      (o.m_sockfd)
@@ -376,23 +384,99 @@ uint8_t payload[]
 
 */
 
+//  Read ahead and clear events older than ts (approximate)
+void     Bld::clear(uint64_t ts)
+{
+    uint64_t timestamp(0L);
+    uint64_t pulseId  (0L);
+    while(1) {
+        // get new multicast if buffer is empty
+        if ((m_position + m_payloadSize + 4) > m_bufferSize) {
+            ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
+            if (bytes <= 0)
+                break;
+            //printf("*** 1 pos %u,  pay %u, bufSz %d, bytes %zd\n", m_position, m_payloadSize, m_bufferSize, bytes);
+            m_bufferSize = bytes;
+            timestamp    = headerTimestamp();
+            if (timestamp >= ts) {
+                m_position = 0;
+                break;
+            }
+            pulseId      = headerPulseId  ();
+            m_payload    = &m_buffer[m_headerSize];
+            m_position   = m_headerSize + m_payloadSize;
+            //printf("*** 1 pid %014lx\n", pulseId);
+        }
+        else if (m_position==0) {
+            timestamp    = headerTimestamp();
+            if (timestamp >= ts)
+                break;
+            pulseId      = headerPulseId  ();
+            m_payload    = &m_buffer[m_headerSize];
+            m_position   = m_headerSize + m_payloadSize;
+        }
+        else {
+            uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
+            timestamp   = headerTimestamp() + timestampOffset;
+            if (timestamp >= ts)
+                break;
+            uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
+            pulseId     = headerPulseId  () + pulseIdOffset;
+            m_payload   = &m_buffer[m_position + 4];
+            m_position += 4 + m_payloadSize;
+        }
+
+        unsigned jump = pulseId - m_pulseId;
+        m_pulseId = pulseId;
+        if (jump != m_pulseIdJump) {
+            m_pulseIdJump = jump;
+            logging::warning("BLD pulseId jump %u",jump);
+        }
+    }
+}
+
+//  Advance to the next event
 uint64_t Bld::next()
 {
     uint64_t timestamp(0L);
+    uint64_t pulseId  (0L);
     // get new multicast if buffer is empty
     if ((m_position + m_payloadSize + 4) > m_bufferSize) {
-        m_bufferSize = recv(m_sockfd, m_buffer.data(), Bld::MTU, 0);
+        ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
+        if (bytes <= 0)
+            return timestamp; // Check only for EWOULDBLOCK and EAGAIN?
+        //printf("*** 2 pos %u,  pay %u, bufSz %d, bytes %zd\n", m_position, m_payloadSize, m_bufferSize, bytes);
+        // To do: Handle partial reads?
+        m_bufferSize = bytes;
         timestamp    = headerTimestamp();
+        pulseId      = headerPulseId  ();
         m_payload    = &m_buffer[m_headerSize];
         m_position   = m_headerSize + m_payloadSize;
+        //printf("*** 2a pid %014lx\n", pulseId);
+    }
+    else if (m_position==0) {
+        timestamp    = headerTimestamp();
+        pulseId      = headerPulseId  ();
+        m_payload    = &m_buffer[m_headerSize];
+        m_position   = m_headerSize + m_payloadSize;
+        //printf("*** 2b pid %014lx\n", pulseId);
     }
     else {
         uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
         timestamp   = headerTimestamp() + timestampOffset;
+        uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
+        pulseId     = headerPulseId  () + pulseIdOffset;
         m_payload   = &m_buffer[m_position + 4];
         m_position += 4 + m_payloadSize;
+        //printf("*** 2c pid %014lx, pidOs %u\n", pulseId, pulseIdOffset);
     }
-    logging::debug("BLD timestamp %16llx",timestamp);
+
+    unsigned jump = pulseId - m_pulseId;
+    m_pulseId = pulseId;
+    if (jump != m_pulseIdJump) {
+        m_pulseIdJump = jump;
+        logging::warning("BLD pulseId jump %u",jump);
+    }
 
     return timestamp;
 }
@@ -508,8 +592,8 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
 static const unsigned _skip_intv = 10000000; // ns
 Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes)
 {
-    //  Fast forward to _next timestamp
-    if (timestamp < m_next)
+    //  Fast forward to _next timestamp only when there is a BLD timestamp
+    if (timestamp && (timestamp < m_next))
         return nullptr;
 
     // get new buffers
@@ -553,6 +637,14 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes)
         Pds::EbDgram* dgram = _handle(evtIndex, bytes);
         dgram->xtc.damage.increase(XtcData::Damage::MissingData);
         m_current++;
+        return dgram;
+    }
+    // No BLD data yet so mark event as damaged
+    else if (!timestamp) {
+        Pds::EbDgram* dgram = _handle(evtIndex, bytes);
+        dgram->xtc.damage.increase(XtcData::Damage::MissingData);
+        m_current++;
+        m_next = timingHeader->time.value();
         return dgram;
     }
 
@@ -602,6 +694,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     std::string s(m_para.detType);
     logging::debug("Parsing %s",s.c_str());
     for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
+        if (s==".") break;
         next  = s.find(',',curr+1);
         size_t pvpos = s.find('+',curr+1);
         logging::debug("(%d,%d,%d)",curr,pvpos,next);
@@ -624,10 +717,10 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     for(unsigned i=0; i<bldPva.size(); i++)
         m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get()));
 
-    uint64_t nextId = -1ULL;
+    uint64_t nextId = -1UL;
     uint64_t timestamp[m_config.size()];
     memset(timestamp,0,sizeof(timestamp));
-    
+
     for(unsigned i=0; i<m_config.size(); i++) {
         timestamp[i] = m_config[i]->handler().next();
         if (timestamp[i] < nextId)
@@ -647,15 +740,18 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         uint32_t index;
         Pds::EbDgram* dgram = next(nextId, index, bytes);
         bool lHold(false);
+        //printf("dgram %p, lHold %d\n", dgram, lHold);
         if (dgram) {
+            //printf("pgp %016lx  bld %016lx  pid %014lx\n",
+            //       dgram->time.value(), nextId, dgram->pulseId());
             if (dgram->xtc.damage.value()) {
                 ++nmissed;
                 if (dgram->time.value() < nextId)
                     lHold=true;
                 if (!lMissing) {
                     lMissing = true;
-                    logging::debug("Missed next bld: pgp %016lx  bld %016lx",
-                                   dgram->time.value(), nextId);
+                    logging::debug("Missed next bld: pgp %016lx  bld %016lx  pid %014lx",
+                                   dgram->time.value(), nextId, dgram->pulseId());
                 }
             }
             else {
@@ -674,18 +770,19 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                         else {
                             lMissed = true;
                             if (!lMissing)
-                                logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
-                                               i, nextId, timestamp[i]);
+                                logging::warning("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
+                                                 i, nextId, timestamp[i], dgram->pulseId());
                         }
                     }
                     if (lMissed) {
                         lMissing = true;
-                        nmissed++;
                         dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+                        nmissed++;
                     }
-                    else if (lMissing) {
+                    else {
+                        if (lMissing)
+                            logging::warning("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
                         lMissing = false;
-                        logging::debug("Missing ends: pgp %016lx", nextId);
                     }
                 }
                 else {
@@ -736,11 +833,13 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         if (!lHold) {
             nextId++;
             for(unsigned i=0; i<m_config.size(); i++) {
+                if (dgram)
+                    m_config[i]->handler().clear(dgram->time.value());
                 if (timestamp[i] < nextId)
                     timestamp[i] = m_config[i]->handler().next();
             }
 
-            nextId = -1ULL;
+            nextId = -1UL;
             for(unsigned i=0; i<m_config.size(); i++) {
                 if (timestamp[i] < nextId)
                     nextId = timestamp[i];

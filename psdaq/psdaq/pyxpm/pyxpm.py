@@ -49,6 +49,7 @@ def main():
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
     parser.add_argument('-I', action='store_true', help='initialize Cu timing')
     parser.add_argument('-L', action='store_true', help='bypass AMC Locks')
+    parser.add_argument('-T', action='store_true', help='test mode')
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
 
@@ -87,11 +88,14 @@ def main():
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv)
 #    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
+
+    cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
     pvxtpg = None
 
     # process PVA transactions
     updatePeriod = 1.0
-    cycle = 0
+    # test mode skips xtpg and pvseq
+    cycle = 0 if not args.T else 20
     with Server(providers=[provider]):
         try:
             if pvxtpg is not None:
@@ -99,11 +103,11 @@ def main():
             pvstats.init()
             while True:
                 prev = time.perf_counter()
-                pvstats.update(cycle)
+                pvstats.update(cycle,cuMode)
                 pvctrls.update(cycle)
                 #  We have to delay the startup of some classes
                 if cycle == 5:
-                    pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode='xtpg' in xpm.AxiVersion.ImageName.get(), bypassLock=args.L)
+                    pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode, bypassLock=args.L)
                     pvxtpg.init()
                 elif cycle < 5:
                     print('pvxtpg in %d'%(5-cycle))

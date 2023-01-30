@@ -36,7 +36,7 @@ class DsParms:
     smd_inprogress_converted: int
     timestamps:         np.ndarray
     intg_det:           str
-    _smd_callback:      int = 0
+    smd_callback:       int = 0
     terminate_flag:     bool = False
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table, det_stream_id_table):
@@ -66,24 +66,6 @@ class DsParms:
                 stream_id=self.det_stream_id_table[self.intg_det]
         return stream_id
 
-    def default_smd_callback(self, smd_ds):
-        for evt in smd_ds.events():
-            yield evt
-
-    def smd_callback(self, smd_ds):
-        # EventBuilder uses smd_callback to determine which events get yielded 
-        # (for big data fetching) and what destination to send them to. The
-        # default callback just loops and yields all events while the user-
-        # given one (_smd_callback) is expected to be a generator that yields
-        # some/none/all events.
-        if self._smd_callback == 0:
-           smd_callback = self.default_smd_callback
-        else:
-           smd_callback = self._smd_callback
-
-        for evt in smd_callback(smd_ds):
-            yield evt
-
 
 class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):
@@ -92,6 +74,7 @@ class DataSourceBase(abc.ABC):
         self.batch_size  = 1000      # no. of events per batch sent to a bigdata core
         self.max_events  = 0         # no. of maximum events
         self.detectors   = []        # user-selected detector names
+        self.xdetectors  = []        # user-selected excluded detector names
         self.exp         = None      # experiment id (e.g. xpptut13)
         self.runnum      = None      # run no.
         self.live        = False     # turns live mode on/off
@@ -119,6 +102,7 @@ class DataSourceBase(abc.ABC):
                     'batch_size',
                     'max_events',
                     'detectors',
+                    'xdetectors',
                     'det_name',
                     'destination',
                     'live',
@@ -431,57 +415,99 @@ class DataSourceBase(abc.ABC):
     def _apply_detector_selection(self):
         """
         Handles two arguments
-        1) detectors=[detname,]
-            Reduce no. of smd/xtc files to only those with selectec detectors
-        2) small_xtc=[detname,]
+        1) detectors=['detname', 'detname_0']
+            Reduce no. of smd/xtc files to only those with given 'detname' or 
+            'detname:segment_id'.
+        2) xdetectors=['detname', 'detname_0']
+            Reduce no. of smd/xtc files to only *NOT* in this list.
+        3) small_xtc=['detname', 'detname_0']
             Swap out smd files with these given detectors with bigdata files
         """
-        use_smds = [False] * len(self.smd_files)
-        if self.detectors or self.small_xtc:
+        n_smds = len(self.smd_files)
+        use_smds = [False] * n_smds
+        if self.detectors or self.small_xtc or self.xdetectors:
             # Get tmp configs using SmdReader
             # this smd_fds, configs, and SmdReader will not be used later
             smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
-            logger.debug(f'ds_base: smd0 opened tmp smd_fds: {smd_fds}')
+            logger.debug(f'smd0 opened tmp smd_fds for detection selection: {smd_fds}')
             smdr_man = SmdReaderManager(smd_fds, self.dsparms)
             all_configs = smdr_man.get_next_dgrams()
 
+            # Keeps list of selected files and configs
             xtc_files = []
             smd_files = []
             configs = []
-            if self.detectors:
-                s1 = set(self.detectors)
-                for i, config in enumerate(all_configs):
-                    if s1.intersection(set(config.software.__dict__.keys())):
+            det_dict = {}
+
+            # Get list of detectors from all configs in the format of detname
+            # and detname:segment_id
+            all_det_dict = {i: [] for i in range(n_smds)}
+            for i, config in enumerate(all_configs):
+                det_list = all_det_dict[i]
+                for detname, seg_dict in config.software.__dict__.items():
+                    det_list.append(detname)
+                    for seg_id, _ in seg_dict.items():
+                        det_list.append(f'{detname}_{seg_id}')
+                logger.debug(f'Stream:{i} detectors:{all_det_dict[i]}')
+
+            # Apply detector selection exclusion
+            if self.detectors or self.xdetectors:
+                include_set = set(self.detectors)
+                exclude_set = set(self.xdetectors)
+                logger.debug(f'Applying detector selection/exclusion')
+                logger.debug(f'  Included: {include_set}')
+                logger.debug(f'  Excluded: {exclude_set}')
+
+                # This will become 'key' to the new det_dict
+                cn_keeps = 0
+                for i in range(n_smds):
+                    flag_keep = True
+                    exist_set = set(all_det_dict[i])
+                    logger.debug(f'  Stream:{i}')
+                    if self.detectors:
+                        if not include_set.intersection(exist_set):
+                            flag_keep = False
+                            logger.debug(f'  |-- Discarded, not matched given detectors')
+                    if self.xdetectors and flag_keep:
+                        matched_set = exclude_set.intersection(exist_set)
+                        if matched_set:
+                            flag_keep = False
+                            logger.debug(f'  |-- Discarded, matched with excluded detectors')
+                            # We only warn users in the case where we exclude a detector
+                            # and there're more than one detectors in the file.
+                            if len(exist_set) > len(matched_set):
+                                print(f'Warning: Stream-{i} has one or more detectors matched with the excluded set. All detectors in this stream will be excluded.')
+                             
+                    if flag_keep:
                         if self.xtc_files: xtc_files.append(self.xtc_files[i])
                         if self.smd_files: smd_files.append(self.smd_files[i])
-                        configs.append(config)
-                msg = f"""ds_base: applying detector selection
-    selected detectors: {self.detectors}
-    smd_files n_selected/n_total: {len(smd_files)}/{len(self.smd_files)}
-    {','.join([os.path.basename(smd_file) for smd_file in smd_files])}
-    xtc_files n_selected/n_total: {len(xtc_files)}/{len(self.xtc_files)}
-    {','.join([os.path.basename(xtc_file) for xtc_file in xtc_files])}
-    """
-                logger.debug(msg)
+                        configs.append(config) 
+                        det_dict[cn_keeps] = all_det_dict[i]
+                        cn_keeps += 1
+                        logger.debug(f'  |-- Kept')
             else:
                 xtc_files = self.xtc_files[:]
                 smd_files = self.smd_files[:]
                 configs = all_configs
+                det_dict = all_det_dict
 
             use_smds = [False] * len(smd_files)
             if self.small_xtc:
                 s1 = set(self.small_xtc)
-                msg = f"""ds_base: applying smd files swap
-    selected detectors: {self.small_xtc}\n"""
-                for i, config in enumerate(configs):
-                    if s1.intersection(set(config.software.__dict__.keys())):
+                logger.debug(f'Applying smalldata replacement')
+                logger.debug(f'  Smalldata: {self.small_xtc}')
+                for i in range(len(smd_files)):
+                    exist_set = set(det_dict[i])
+                    logger.debug(f' Stream:{i}')
+                    if s1.intersection(exist_set):
                         smd_files[i] = xtc_files[i]
                         use_smds[i] = True
-                    msg += f'   smd_files[{i}]={os.path.basename(smd_files[i])} use_smds[{i}]={use_smds[i]}\n'
-                logger.debug(msg)
+                        logger.debug(f'  |-- Replaced with smalldata')
+                    else:
+                        logger.debug(f'  |-- Kept with bigdata')
 
             self.xtc_files = xtc_files
-            self.smd_files = smd_files
+            self.smd_files = smd_files  
 
             for smd_fd in smd_fds:
                 os.close(smd_fd)

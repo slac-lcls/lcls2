@@ -131,7 +131,11 @@ int main(int argc, char* argv[]) {
   while(1)
     {
     MyShmemClient myClient(rate,verbose);
-    myClient.connect(partitionTag,index);
+    int rc;
+    if ((rc = myClient.connect(partitionTag,index)))
+      break;
+    events = 0;
+    bytes = 0;
     while(1)
       {
       int ev_index;
@@ -154,27 +158,30 @@ int main(int argc, char* argv[]) {
         }
       myClient.free(ev_index,buf_size);
       }
-    if(timing || !reconnect)
+
+    if(timing)
+      clock_gettime(CLOCK_REALTIME, &tv);
+
+    printf("shmemClient received %d L1 dgrams %d payload bytes",events,bytes);
+
+    if(timing)
+      {
+      timespec df = tsdiff(ptv,tv);
+      double dt = df.tv_sec+(1.e-9*df.tv_nsec);
+      double revents = double(events)/dt;
+      double rbytes  = double(bytes)/dt;
+      printrate(" at:\n ", "Hz", revents);
+      printrate("\t ", "B/s", rbytes);
+      }
+
+    printf("\n");
+
+    if(!reconnect)
       break;
+    sleep(1);                        // Give the other side a chance to restart
     printf("shmemClient's server appears to have disconnected"
            " - attempting to reconnect\n");
     }
-  if(timing)
-    clock_gettime(CLOCK_REALTIME, &tv);
-
-  printf("shmemClient received %d L1 dgrams %d payload bytes",events,bytes);
-
-  if(timing)
-    {
-    timespec df = tsdiff(ptv,tv);
-    double dt = df.tv_sec+(1.e-9*df.tv_nsec);
-    double revents = double(events)/dt;
-    double rbytes  = double(bytes)/dt;
-    printrate(" at:\n ", "Hz", revents);
-    printrate("\t ", "B/s", rbytes);
-    }
-
-  printf("\n");
 
   return 0;
 }

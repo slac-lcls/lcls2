@@ -206,12 +206,12 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to initialize EbLfServer\n");
       return rc;
     }
-    if ( (rc = linksConnect(*srv, srvLinks, "Srv")) )
+    if ( (rc = linksConnect(*srv, srvLinks, id, "Srv")) )
     {
       fprintf(stderr, "Error connecting to client\n");
       return rc;
     }
-    if ( (rc = srvLinks[0]->prepare(id, &snkSize, "Srv")) < 0 )
+    if ( (rc = srvLinks[0]->prepare( &snkSize, "Srv")) < 0 )
     {
       fprintf(stderr, "Failed to prepare server's link\n");
       return rc;
@@ -230,12 +230,12 @@ int main(int argc, char **argv)
     printf("EbLfClient ID %d connected to server\n", srvLinks[0]->id());
 
     clt = new EbLfClient(verbose, kwargs);
-    if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, "Srv")) )
+    if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, id, "Srv")) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
     }
-    if ( (rc = linksConfigure(cltLinks, id, srcBuf, srcSize, "Srv")) < 0)
+    if ( (rc = linksConfigure(cltLinks, srcBuf, srcSize, "Srv")) < 0)
     {
       fprintf(stderr, "Failed to prepare client's link\n");
       return rc;
@@ -248,12 +248,12 @@ int main(int argc, char **argv)
       pvMon = new PvMon("EM1K0:GMD:HPS:STR0:STREAM_SHORT2", "ca");
 
     clt = new EbLfClient(verbose, kwargs);
-    if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, "Clt")) )
+    if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, id, "Clt")) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
     }
-    if ( (rc = linksConfigure(cltLinks, id, srcBuf, srcSize, "Clt")) < 0)
+    if ( (rc = linksConfigure(cltLinks, srcBuf, srcSize, "Clt")) < 0)
     {
       fprintf(stderr, "Failed to prepare client's link\n");
       return rc;
@@ -266,12 +266,12 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to initialize EbLfServer\n");
       return rc;
     }
-    if ( (rc = linksConnect(*srv, srvLinks, "Clt")) )
+    if ( (rc = linksConnect(*srv, srvLinks, id, "Clt")) )
     {
       fprintf(stderr, "Error connecting to client\n");
       return rc;
     }
-    if ( (rc = srvLinks[0]->prepare(id, &snkSize, "Clt")) < 0)
+    if ( (rc = srvLinks[0]->prepare(&snkSize, "Clt")) < 0)
     {
       fprintf(stderr, "Failed to prepare server's link\n");
       return rc;

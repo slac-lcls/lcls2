@@ -16,8 +16,8 @@ using logging = psalg::SysLog;
 static void dmaReadRegister (int, uint32_t*, uint32_t*);
 static void dmaWriteRegister(int, uint32_t*, uint32_t);
 
-typedef Pds::Mmhw::TriggerEventManager TEM;
-//typedef Pds::Mmhw::TriggerEventManager2 TEM;
+//typedef Pds::Mmhw::TriggerEventManager TEM;
+typedef Pds::Mmhw::TriggerEventManager2 TEM;
 
 namespace Drp {
 
@@ -57,15 +57,16 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       Si570 rclk(fd,0x00E00800);
       rclk.program(index);
 
-      logging::info("Reset timing PLL\n");
       unsigned v;
       dmaReadRegister(fd, 0x00C00020, &v);
-      v |= 0x80;
-      dmaWriteRegister(fd, 0x00C00020, v);
-      usleep(10);
-      v &= ~0x80;
-      dmaWriteRegister(fd, 0x00C00020, v);
-      usleep(100);
+      logging::info("Skip reset timing PLL\n");
+      // v |= 0x80;
+      // dmaWriteRegister(fd, 0x00C00020, v);
+      // usleep(10);
+      // v &= ~0x80;
+      // dmaWriteRegister(fd, 0x00C00020, v);
+      // usleep(100);
+      logging::info("Reset timing data path\n");
       v |= 0x8;
       dmaWriteRegister(fd, 0x00C00020, v);
       usleep(10);

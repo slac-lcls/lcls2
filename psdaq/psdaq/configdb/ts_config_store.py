@@ -1,4 +1,5 @@
 from psdaq.configdb.typed_json import cdict
+from psdaq.configdb.tsdef import *
 import psdaq.configdb.configdb as cdb
 
 # these are the current default values, but I put them here to be explicit
@@ -29,10 +30,8 @@ top.set("firmwareVersion:RO",   0, 'UINT32')
 
 top.define_enum('trigModeEnum', {key:val for val,key in enumerate(
     ['FixedRate', 'ACRate', 'EventCode', 'Sequence'])})
-top.define_enum('fixedRateEnum', {key:val for val,key in enumerate(
-    ['929kHz', '71_4kHz', '10_2kHz', '1_02kHz', '102Hz', '10_2Hz', '1_02Hz'])})
-top.define_enum('acRateEnum', {key:val for val,key in enumerate(
-    ['60Hz', '30Hz', '10Hz', '5Hz', '1Hz'])})
+top.define_enum('fixedRateEnum', fixedRateHzToMarker)
+top.define_enum('acRateEnum', acRateHzToMarker)
 top.define_enum('boolEnum', {'False':0, 'True':1})
 top.define_enum('seqEnum', {'Bursts': 15, '10KRates': 16, 'Local': 17})
 

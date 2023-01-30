@@ -1,7 +1,5 @@
+from psdaq.configdb.tsdef import *
 import time
-
-fixedRates = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
-acRates    = ['60Hz','30Hz','10Hz','5Hz','1Hz','0.5Hz']
 
 class Instruction(object):
 

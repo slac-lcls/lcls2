@@ -47,8 +47,9 @@ public:
     }
 };
 
-static PyObject* check(PyObject* obj) {
+static PyObject* check(PyObject* obj, const char* err) {
     if (!obj) {
+        logging::critical("Python error: '%s'", err);
         PyErr_Print();
         throw "**** python error";
     }
@@ -120,16 +121,16 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
         char func_name[64];
 
         // returns new reference
-        m_module = check(PyImport_ImportModule(module_name));
+        m_module = check(PyImport_ImportModule(module_name), "ImportModule");
 
-        PyObject* pDict = check(PyModule_GetDict(m_module));
+        PyObject* pDict = check(PyModule_GetDict(m_module), "GetDict 1");
         {
             sprintf(func_name,"hsd_connect");
-            PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)func_name));
+            PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)func_name), "hsd_connect");
 
             // returns new reference
-            PyObject* mbytes = PyObject_CallFunction(pFunc,"s",
-                                                     m_epics_name.c_str());
+            PyObject* mbytes = check(PyObject_CallFunction(pFunc,"s",
+                                                           m_epics_name.c_str()), "hsd_connect()");
 
             m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
 
@@ -181,9 +182,9 @@ unsigned Digitizer::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesI
 
 
     // returns borrowed reference
-    PyObject* pDict = check(PyModule_GetDict(m_module));
+    PyObject* pDict = check(PyModule_GetDict(m_module), "GetDict 2");
     // returns borrowed reference
-    PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)"hsd_config"));
+    PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)"hsd_config"), "hsd_config");
 
     CHECK_TIME(PyDict_Get);
 
@@ -194,12 +195,12 @@ unsigned Digitizer::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesI
                                                     config_alias.c_str(),
                                                     m_para->detName.c_str(),
                                                     m_para->detSegment,
-                                                    m_readoutGroup));
+                                                    m_readoutGroup), "hsd_config()");
 
     CHECK_TIME(PyObj_Call);
 
     // returns new reference
-    PyObject * json_bytes = check(PyUnicode_AsASCIIString(mybytes));
+    PyObject * json_bytes = check(PyUnicode_AsASCIIString(mybytes), "AsASCIIString");
     char* json = (char*)PyBytes_AsString(json_bytes);
     printf("json: %s\n",json);
 
@@ -338,9 +339,9 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
 void Digitizer::shutdown()
 {
     // returns borrowed reference
-    PyObject* pDict = check(PyModule_GetDict(m_module));
+    PyObject* pDict = check(PyModule_GetDict(m_module), "GetDict 3");
     // returns borrowed reference
-    PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)"hsd_unconfig"));
+    PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)"hsd_unconfig"), "hsd_unconfig");
 
     // returns new reference
     PyObject_CallFunction(pFunc,"s",

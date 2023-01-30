@@ -100,6 +100,9 @@ class NoMmcmPhaseLock(pr.Device):
         self.add(pr.LocalVariable(name = 'ramAddr', mode='RW', value=0))
         self.add(pr.LocalVariable(name = 'delayEnd', mode='RO', value=32))
 
+    def dump(self):
+        pass
+
 class DevPcie(pr.Device):
 
     mmcmParms = [ ['MmcmPL119', 0x08900000],

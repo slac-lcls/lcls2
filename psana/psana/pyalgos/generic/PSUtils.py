@@ -264,8 +264,8 @@ def table_nxm_cspad2x1_from_ndarr(nda):
 
 
 def table_nxm_jungfrau_from_ndarr(nda):
-    """returns table of epix10ka panels shaped as (nxn)
-       generated from epix10ka array shaped as (N, 352, 384) in data.
+    """returns table of jungfrau panels shaped as (nxn)
+       generated from jungfrau array shaped as (N, 512, 1024) in data.
     """
     segsize = 512*1024
     a = np.array(nda) # make a copy
@@ -289,40 +289,42 @@ def table_nxm_jungfrau_from_ndarr(nda):
        return reshape_to_2d(a)
 
 
-def table_nxn_epix10ka_from_ndarr(nda):
-    """returns table of epix10ka panels shaped as (nxn)
-       generated from epix10ka array shaped as (N, 352, 384) in data.
+def table_nxn_epix10ka_from_ndarr(nda, gapv=20):
+    """returns table of epix10ka/epixhr panels shaped as (nxn)
+       generated from epix10ka/epixhr array shaped as (N, 352, 384)/(N, 288, 384) in data.
     """
-    gapv = 20
-    segsize = 352*384
+    pcols = nda.shape[-1]  # 384
+    prows = nda.shape[-2]  # 352 or 288
+
+    segsize = prows*pcols
     a = np.array(nda) # make a copy
 
     if a.size == segsize:
-       a.shape = (352,384)
+       a.shape = (prows, pcols)
        return a
 
     elif a.size == 4*segsize:
        logger.warning('quad panels are stacked as [(3,2),(1,0)]')
-       sh = a.shape = (4,352,384)
+       sh = a.shape = (4, prows, pcols)
        return np.vstack([np.hstack([a[3],a[2]]), np.hstack([a[1],a[0]])])
-       #sh = a.shape = (2,2*352,384)
+       #sh = a.shape = (2,2*prows,pcols)
        #return np.hstack([a[q,:] for q in range(sh[0])])
 
     elif a.size == 16*segsize:
-       sh = a.shape = (4,4*352,384)
+       sh = a.shape = (4, 4*prows, pcols)
        return np.hstack([a[q,:] for q in range(sh[0])])
 
     elif a.size == 7*4*segsize:
        logger.warning('quad panels are stacked as [(3,2),(1,0)]')
-       agap = np.zeros((gapv,2*384))
-       sh = a.shape = (7,4,352,384)
+       agap = np.zeros((gapv, 2*pcols))
+       sh = a.shape = (7, 4, prows, pcols)
        return np.vstack([np.vstack([np.hstack([a[g,3],a[g,2]]), np.hstack([a[g,1],a[g,0]]), agap]) for g in range(7)])
-       #sh = a.shape = (7,2,2*352,384)
+       #sh = a.shape = (7,2,2*prows,pcols)
        #return np.vstack([np.vstack([np.hstack([a[g,q,:] for q in range(2)]), agap]) for g in range(7)])
 
     elif a.size == 7*16*segsize:
-       agap = np.zeros((gapv,4*384))
-       sh = a.shape = (7,4,4*352,384)
+       agap = np.zeros((gapv, 4*pcols))
+       sh = a.shape = (7, 4, 4*prows, pcols)
        return np.vstack([np.vstack([np.hstack([a[g,q,:] for q in range(4)]), agap]) for g in range(7)])
 
     else:

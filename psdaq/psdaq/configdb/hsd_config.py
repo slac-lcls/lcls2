@@ -47,6 +47,10 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     # fetch the current configuration for defaults not specified in the configuration
     values = ctxt.get(epics_prefix+':CONFIG')
 
+    monTiming = ctxt.get(epics_prefix+':MONTIMING')
+    print(epics_prefix+':MONTIMING')
+    print(monTiming)
+
     # fetch the xpm delay
     partitionDelay = ctxt.get(epics_prefix+':MONTIMING').msgdelayset
     print('partitionDelay {:}'.format(partitionDelay))

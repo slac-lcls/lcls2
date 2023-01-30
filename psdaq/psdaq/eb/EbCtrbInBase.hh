@@ -42,7 +42,6 @@ namespace Pds
       void     process(const ResultDgram& result, unsigned index) = 0;
     private:
       int     _linksConfigure(std::vector<EbLfSvrLink*>& links,
-                              unsigned                   id,
                               unsigned                   numBuffers,
                               const char*                name);
       int     _process(TebContributor& ctrb);

@@ -1,10 +1,7 @@
+from psdaq.configdb.tsdef import *
+
 verbose = False
 #verbose = True
-
-fixedRates = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
-acRates    = ['60Hz','30Hz','10Hz','5Hz','1Hz','0.5Hz']
-FixedIntvs = [1, 13, 91, 910, 9100, 91000, 910000]
-ACIntvs    = [1, 2, 6, 12, 60, 120]
 
 class Instruction(object):
 
@@ -21,21 +18,13 @@ class FixedRateSync(Instruction):
 
     opcode = 0
 
-    FixedIntvsDict = {"1H"   :{"intv":910000,"marker":6}, 
-                      "10H"  :{"intv":91000 ,"marker":5}, 
-                      "100H" :{"intv":9100  ,"marker":4}, 
-                      "1kH"  :{"intv":910   ,"marker":3}, 
-                      "10kH" :{"intv":91    ,"marker":2}, 
-                      "70kH" :{"intv":13    ,"marker":1}, 
-                      "910kH":{"intv":1     ,"marker":0}}
-
     def __init__(self, marker, occ):
         if occ > 0xfff:
             raise ValueError('FixedRateSync called with occ={}'.format(occ))
-        if marker in self.FixedIntvsDict:
+        if marker in FixedIntvsDict:
             mk     = marker
-            marker = self.FixedIntvsDict[mk]['marker']
-            self.intv = self.FixedIntvsDict[mk]['intv']
+            marker = FixedIntvsDict[mk]['marker']
+            self.intv = FixedIntvsDict[mk]['intv']
         else:
             self.intv = FixedIntvs[marker]
         super(FixedRateSync, self).__init__( (self.opcode, marker, occ) )

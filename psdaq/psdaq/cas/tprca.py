@@ -3,6 +3,7 @@ import logging
 import argparse
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import Pv
+from psdaq.configdb.tsdef import *
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +19,6 @@ modesTTL   = ['Disable','Trigger']
 polarities = ['Neg','Pos']
 dstsel     = ['Any','Exclude','Include']
 evtsel     = ['Fixed Rate','AC Rate','Sequence','Partition']
-fixedRates = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
-acRates    = ['60Hz','30Hz','10Hz','5Hz','1Hz']
-acTS       = ['TS%u'%(i+1) for i in range(6)]
 seqIdxs    = ['s%u'%i for i in range(18)]
 seqBits    = ['b%u'%i for i in range(16)]
 partitions = ['P%u'%i for i in range(8)]

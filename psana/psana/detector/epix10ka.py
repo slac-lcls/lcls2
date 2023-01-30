@@ -4,8 +4,16 @@
 import numpy as np
 from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
+from psana.detector.detector_impl import DetectorImpl
 import logging
 logger = logging.getLogger(__name__)
+
+# make an empty detector interface for Matt's hardware
+# configuration object so that config_dump works - cpo
+class epix10kaquad_config_2_0_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super(epix10kaquad_config_2_0_0, self).__init__(*args)
+
 
 class epix10k_raw_0_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):

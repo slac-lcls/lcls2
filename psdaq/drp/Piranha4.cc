@@ -361,6 +361,7 @@ void     Piranha4::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 void     Piranha4::shutdown()
 {
     if (m_tt) m_tt->shutdown();
+    this->BEBDetector::shutdown();
 }
 
 TT::TT(Piranha4& d, Parameters* para) :

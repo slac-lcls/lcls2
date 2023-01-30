@@ -15,7 +15,7 @@ jobs:
       - name: setup python on macos
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7
+          python-version: 3.9
       - name: conda installation
         run: ./install_travis.sh "$TRAVIS_OS_NAME"
       - name: tests on macos
@@ -23,7 +23,7 @@ jobs:
   run-tests-linux:
     runs-on: ubuntu-latest
     container:
-      image: slaclcls/travis:centos7-py3.7
+      image: slaclcls/travis:centos7-py3.9
       env:
         CONDA_ENV: myrel
         TRAVIS_OS_NAME: linux

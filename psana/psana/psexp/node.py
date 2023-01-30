@@ -256,7 +256,7 @@ class Smd0(object):
         req.Wait()
         en_req = time.monotonic()
         logger.debug(f'RANK{self.comms.world_rank} 2. SMD0GOTEB{rankreq[0]} {en_req}')
-        logger.debug("node: smd0 got eb%d (request took %.5f seconds)"%(rankreq[0], (en_req-st_req)))
+        logger.debug(f'WAITTIME: {en_req-st_req:.5f}s. smd0 for eb{rankreq[0]}') 
         
     def start(self):
         # Rank 0 waits on World comm for terminating signal
@@ -392,7 +392,7 @@ class EventBuilderNode(object):
         req = self.comms.bd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
         req.Wait()
         en_req = time.monotonic()
-        logger.debug("node: eb%d got bd %d (request took %.5f seconds)"%(self.comms.smd_rank, rankreq[0], (en_req-st_req)))
+        logger.debug(f'WAITTIME: {en_req-st_req:.5f}s. eb{self.comms.smd_rank} for bd{rankreq[0]}') 
 
     @s_eb_wait_smd0.time()
     def _request_data(self, smd_comm):
@@ -408,7 +408,7 @@ class EventBuilderNode(object):
         req.Wait()
         en = time.monotonic()
         logger.debug(f'RANK{self.comms.world_rank} 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}')
-        logger.debug(f"node: eb{self.comms.smd_rank} received {count/1e6:.5f} MB from smd0 in {en-st:.5f} seconds")
+        logger.debug(f'WAITTIME: {en-st:.5f}s. eb{self.comms.smd_rank} for smd0 ({count/1e3:.5f}KB)') 
         return smd_chunk
 
     def start(self):
@@ -582,7 +582,7 @@ class BigDataNode(object):
             req.Wait()
             logger.debug(f'RANK{self.comms.world_rank} 15. BD{self.comms.world_rank}RECVDATA {time.monotonic()}')
             en_req = time.monotonic()
-            logger.debug(f'node: bd{self.comms.world_rank} waited {en_req-st_req:.5f} seconds for eb')
+            logger.debug(f'WAITTIME: {en_req-st_req:.5f}s. bd{bd_rank} for eb{self.comms.smd_rank}') 
             return chunk
         
         events = Events(self.ds, self.run, get_smd=get_smd)
