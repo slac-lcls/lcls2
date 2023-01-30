@@ -4,7 +4,7 @@ unset PYTHONPATH
 # these three lines should be customized for the site
 source /cds/sw/ds/ana/conda2-v2/inst/etc/profile.d/conda.sh
 export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
-conda activate ps-4.5.24
+conda activate ps-4.5.26
 
 RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]}") )" && pwd )"
 export PATH=$RELDIR/install/bin:${PATH}

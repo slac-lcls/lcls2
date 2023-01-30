@@ -5,12 +5,12 @@ epics_env = f'{ld_lib_path}'
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
 hsd_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 
-collect_host = 'drp-srcf-cmp004'
+collect_host = 'drp-srcf-mon001'
 
 xtpg = 2                    # TMO
 #xtpg = 3                    # RIX
 #xtpg = 10                   # FEE
-groups = platform + ' 7' + ' 6'
+groups = platform # + ' 7' + ' 6'
 hutch, user, password = ('tst', 'tstopr', 'pcds')
 auth = ' --user {:} --password {:} '.format(user,password)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
@@ -124,7 +124,8 @@ procmgr_config = [
 
  {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
-# {host: 'drp-srcf-cmp002', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=155'},
+ {host: 'drp-srcf-cmp028', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
+# {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
 
 # {host: 'drp-srcf-cmp028', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd1} -l 0x2 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
