@@ -121,6 +121,8 @@ def issue_2023_01_10():
        datinfo -k exp=ascdaq18,run=171 -d epixhr  # 'scantype': 'chargeinj'
     """
     import psana.detector.utils_calib_components as ucc
+    import psana.detector.UtilsEpix10kaChargeInjection as ueci
+
     from psana.detector.NDArrUtils import info_ndarr
     from time import time
     import numpy as np
@@ -150,13 +152,27 @@ def issue_2023_01_10():
 
     from psana.detector.UtilsGraphics import gr, fleximage, arr_median_limits
     flimg = None
-    for nstep,step in enumerate(orun.steps()):
-      if nstep>5: break
+
+    nstep_sel = 2
+    space = 5
+    databitw = 0o037777
+
+    for nstep, step in enumerate(orun.steps()):
+      #if nstep<nstep_sel: continue
+      #elif nstep>nstep_sel: break
+      if nstep>10: break
+
+      irow, icol = ueci.injection_row_col(nstep, space)
+
+      s = '== Step %02d irow %03d icol %03d ==' % (nstep, irow, icol)
+      print(s)
+
+
       for nevt,evt in enumerate(step.events()):
         #if nevt>1000: break
         if nevt%100: continue
 
-        print('== Step %02d Event %03d ==' % (nstep,nevt))
+        #print('== Step %02d Event %03d irow %03d icol %03d ==' % (nstep, nevt, irow, icol))
 
         #t0_sec_tot = time()
         raw = det.raw.raw(evt)
@@ -170,13 +186,15 @@ def issue_2023_01_10():
         #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
         #arr = ucc.map_gain_range_index_for_gmaps(gmaps, default=10) # stack bits...
         #arr = np.array(raw & 0o100000, dtype=np.int) # 0o77777 # behaves ok
-
-        print(info_ndarr(arr,'arr:'))
+        arr1 = np.array(arr[0,irow,100:120], dtype=np.int16) & databitw
+        print(info_ndarr(arr1,'%s  arr1:' % s, first=0, last=10), '  v[col]=%5d' % arr1[icol])
 
         #logger.info('time consumption to make 3-d array for imaging = %.6f sec' % (time()-t0_sec_tot))
-
+        #pedestals: shape:(7, 1, 288, 384)
         #img = cc.pedestals()[1,0,:150,:200]
-        img = arr[0,:150,:200] # cut off a single ASIC with meaningfull data
+        #img = arr[0,:150,:200] # cut off a single ASIC with meaningfull data
+        img = arr[0,:144,:192] # cut off a single ASIC with meaningfull data
+        #img = arr[0,60:144,110:192] # cut off a single ASIC with meaningfull data
         #img = arr[0,0:20,100:120] # cut off a single ASIC with meaningfull data
         #img = arr[0,:,:] # cut off a single ASIC with meaningfull data
         #img = ucc.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
@@ -185,7 +203,7 @@ def issue_2023_01_10():
         if flimg is None:
            flimg = fleximage(img, arr=None, h_in=8, w_in=11, nneg=1, npos=3)
         gr.set_win_title(flimg.fig, titwin='Step %02d Event %d' % (nstep,nevt))
-        flimg.update(img, arr=None)
+        flimg.update(img, arr=None, amin=0, amax=databitw)
         gr.show(mode='DO NOT HOLD')
     gr.show()
 
