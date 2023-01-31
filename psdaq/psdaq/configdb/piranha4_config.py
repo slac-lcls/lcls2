@@ -9,6 +9,7 @@ import json
 import IPython
 from collections import deque
 import logging
+import weakref
 
 import pyrogue as pr
 import surf.protocols.clink as clink
