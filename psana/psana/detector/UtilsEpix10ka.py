@@ -64,6 +64,15 @@ M14 =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
 B15 = 0o100000 # 32768 or 1<<15 (16-th bit starting from 1)
 M15 =  0x7fff  # 32767 or (1<<15)-1 - 15-bit mask
 
+def gain_bitshift(dettype):
+    return {'epix10ka':9, 'epixhr':10, 'epixhr2x2':10}.get(dettype, None)
+
+def gain_bitword(dettype):
+    return {'epix10ka':B14, 'epixhr':B15, 'epixhr2x2':B15}.get(dettype, None)
+
+def data_bitword(dettype):
+    return {'epix10ka':M14, 'epixhr':M15, 'epixhr2x2':M15}.get(dettype, None)
+
 
 class Storage:
     def __init__(self, det_raw, cmpars=None, **kwa):
