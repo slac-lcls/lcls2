@@ -81,13 +81,19 @@ def epics_get(d):
                 out[key] = pvname
     return out
 
-def config_timing(epics_prefix, lcls2=False, timebase='186M'):
+def config_timing(epics_prefix, timebase='186M'):
+    # cpo found on 01/30/23 that when we toggle between LCLS1/LCLS2 timing
+    # using ModeSel that we generate junk into the KCU giving these errors:
+    # PGPReader: Jump in complete l1Count 0 -> 2 | difference 2, tid ClearReadout
+    # We used to go to LCLS1 timing on disconnect (which called
+    # this routine) to be friendly to the controls group.  Since we're now
+    # in the LCLS2 era, keep this always hardwired to ModeSel=1 (i.e. LCLS2 timing).
     names = [epics_prefix+':Top:SystemRegs:timingUseMiniTpg',
              epics_prefix+':Top:TimingFrameRx:ModeSelEn',
              epics_prefix+':Top:TimingFrameRx:ModeSel',
              epics_prefix+':Top:TimingFrameRx:ClkSel',
              epics_prefix+':Top:TimingFrameRx:RxPllReset']
-    values = [0, 1, 1 if lcls2 else 0, 1 if timebase=='186M' else 0, 1]
+    values = [0, 1, 1, 1 if timebase=='186M' else 0, 1]
     ctxt_put(names,values)
 
     time.sleep(1.0)
@@ -150,7 +156,7 @@ def wave8_connect(base):
     #  Switch to LCLS2 Timing
     #    Need this to properly receive RxId
     #    Controls is no longer in-control
-    config_timing(epics_prefix,lcls2=True,timebase=base['timebase'])
+    config_timing(epics_prefix,timebase=base['timebase'])
 
     #  This fails with the current IOC, but hopefully it will be fixed.  It works directly via pgp.
     txId = timTxId('wave8')
@@ -412,6 +418,6 @@ def wave8_unconfig(base):
 
     #  Leaving DAQ control.  Put back into LCLS1 mode in LCLS hutches
     if base['timebase']=='186M':
-        config_timing(epics_prefix, lcls2=False)
+        config_timing(epics_prefix)
 
     return None;
