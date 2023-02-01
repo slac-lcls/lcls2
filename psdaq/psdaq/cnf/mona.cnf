@@ -1,9 +1,9 @@
-if not platform: platform = '6'
+if not platform: platform = '7'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = f'{ld_lib_path}'
 
-collect_host = 'drp-srcf-cmp004'
+collect_host = 'drp-srcf-mon001'
 
 groups = platform
 hutch, user, password = ('tst', 'tstopr', 'pcds')
@@ -73,7 +73,7 @@ base_host = 'drp-srcf-cmp004'  # drp-srcf-mon001
 procmgr_config = [
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:f'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2 DAQ:NEH:XPM:4 DAQ:NEH:XPM:6'},
 # {                         id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH 2 {groups}'},
- {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:f'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:3 DAQ:NEH:XPM:5'},
+# {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:f'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:3 DAQ:NEH:XPM:5'},
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH 3 {groups}'},
  {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
 
@@ -81,14 +81,29 @@ procmgr_config = [
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
- {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 0 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  {host: 'drp-srcf-cmp019', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
 
  {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
+ {host: 'drp-srcf-cmp029', id:'tstcam5_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp029', id:'tstcam6_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x4 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp029', id:'tstcam7_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D fakecam -k sim_length=1160'},
 
- {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
+ {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp029', id:'tstcam3_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp029', id:'tstcam4_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D fakecam -k sim_length=1160'},
+ 
+ #{host: 'drp-srcf-cmp010', id:'tstcam8_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp010', id:'tstcam9_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp010', id:'tstcam10_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp010', id:'tstcam11_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp010', id:'tstcam12_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp010', id:'tstcam13_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp010', id:'tstcam14_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x4 -D fakecam -k sim_length=1160'},
+ #{host: 'drp-srcf-cmp010', id:'tstcam15_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D fakecam -k sim_length=1160'},
 ]
 
 #
