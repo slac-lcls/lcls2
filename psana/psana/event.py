@@ -124,9 +124,10 @@ class Event():
         for d in self._dgrams:
             if d:
                 service = d.service()
+                if not service:
+                    print(f'expected value between 1-13, got: {service}')
+                    raise
                 break
-        assert service >= 0, f"number >= 0 expected, got: {service}"
-
         return service
 
     def get_offsets_and_sizes(self):
