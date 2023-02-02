@@ -123,10 +123,28 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         #  Empirically found that we need to cycle to LCLS1 timing
         #  to get the timing feedback link to lock
         #  cpo: switch this to XpmMini which recovers from more issues?
-        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-        time.sleep(2.5)
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(2.5)
+        # check to see if timing is stuck
+        nbad = 0
+        while 1:
+            # check to see if timing is stuck
+            sof1 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+            time.sleep(0.1)
+            sof2 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+            if sof1!=sof2: break
+            nbad+=1
+            print('*** Timing link stuck:',sof1,sof2,'resetting. Iteration:', nbad)
+            #  Empirically found that we need to cycle to LCLS1 timing
+            #  to get the timing feedback link to lock
+            #  cpo: switch this to XpmMini which recovers from more issues?
+            cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+            time.sleep(3.5)
+            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+            time.sleep(3.5)
+
+    # camlink timing seems to intermittently lose lock back to the XPM
+    # and empirically this fixes it.  not sure if we need the sleep - cpo
+    cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+    time.sleep(0.1)
 
     return cl
 
