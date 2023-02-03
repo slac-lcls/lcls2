@@ -67,7 +67,7 @@ def argument_parser() :
     d_dopeds   = False
     d_dooffs   = True
     d_nperiods = False
-    d_ixoff    = 10
+    d_npoioff  = 10
     d_ccnum    = None
     d_ccmax    = 2 * d_nspace**2
     d_skipncc  = 0
@@ -93,7 +93,7 @@ def argument_parser() :
     h_dopeds  = 'do pedestals evaluation, default = %s' % d_dopeds
     h_dooffs  = 'do offset evaluation, default = %s' % d_dooffs
     h_nperiods= 'use all found saw periods of the pulser, default = %s' % d_nperiods
-    h_ixoff   = 'discard in fit number of events around switching point, default = %s' % str(d_ixoff)
+    h_npoioff = 'discard in fit number of events around switching point, default = %s' % str(d_npoioff)
     h_ccnum   = 'calibcycle number to process [0,102] or all by default, default = %s' % str(d_ccnum)
     h_ccmax   = 'maximal number of calib-cycles to process, default = %s' % str(d_ccmax)
     h_skipncc = 'skip number of first consecutive calibcycles for debugging, default = %s' % str(d_skipncc)
@@ -113,7 +113,7 @@ def argument_parser() :
     parser.add_argument('-n', '--nspace',   default=d_nspace,   type=int,             help=h_nspace)
     parser.add_argument('-o', '--dirrepo',  default=d_dirrepo,  type=str,             help=h_dirrepo)
     parser.add_argument('-L', '--logmode',  default=d_logmode,  type=str,             help=h_logmode)
-    parser.add_argument('-X', '--ixoff',    default=d_ixoff,    type=int,             help=h_ixoff)
+    parser.add_argument('-X', '--npoioff',  default=d_npoioff,  type=int,             help=h_npoioff)
     parser.add_argument('-c', '--ccnum',    default=d_ccnum,    type=int,             help=h_ccnum)
     parser.add_argument('-m', '--ccmax',    default=d_ccmax,    type=int,             help=h_ccmax)
     parser.add_argument('-s', '--skipncc',  default=d_skipncc,  type=int,             help=h_skipncc)
