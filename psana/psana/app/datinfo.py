@@ -144,6 +144,11 @@ def loop_run_step_evt(args):
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
       print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
 
+      timing = run.Detector('timing')
+      timing.raw._add_fields()
+      tsec_old = 0
+      pulseid_old = 0
+
       dcfg = det.raw._config_object() if '_config_object' in dir(det.raw) else None
       if dcfg is None: print('det.raw._config_object is MISSING')
 
@@ -162,15 +167,21 @@ def loop_run_step_evt(args):
         print('  metadata: %s' % str(metadic))
 
         if not do_loopevts: continue
-        ievt,evt,segs = None,None,None
-        for ievt,evt in enumerate(step.events()):
+        ievt, evt, segs = None, None, None
+        for ievt, evt in enumerate(step.events()):
           #if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
           if not selected_record(ievt): continue
           if segs is None:
              segs = det.raw._segment_numbers(evt) if det is not None else None
-             tstamp = evt.timestamp   # like 4193682596073796843 relative to 1990-01-01
-             t_sec = seconds(tstamp)
-             print('  Event %05d t=%.6fsec %s     ' % (ievt, t_sec, info_ndarr(segs,'segments')))
+             #tstamp = evt.timestamp   # like 4193682596073796843 relative to 1990-01-01
+             tsec = seconds(evt.timestamp)
+             pulseid = timing.raw.pulseId(evt) # evt.get(EventId).fiducials()
+             tsec_diff = tsec-tsec_old
+             tsec_old = tsec
+             pulseid_diff = pulseid-pulseid_old
+             pulseid_old = pulseid
+             print('  Event %05d t=%.6fsec dt=%.6fsec/record pulseId=%d diff=%d/record  %s '%\
+                   (ievt, tsec, tsec_diff, pulseid, pulseid_diff, info_ndarr(segs,'segments')))
              raw = det.raw.raw(evt)
              print(info_ndarr(raw,'    det.raw.raw(evt)'))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
