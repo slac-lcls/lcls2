@@ -537,7 +537,7 @@ class CollectionManager():
         else:
             # default active detectors file
             homedir = os.path.expanduser('~')
-            self.activedetfilename = '%s/.psdaq/p%d.activedet.json' % (homedir, self.platform)
+            self.activedetfilename = '%s/.psdaq/x%d_p%d.activedet.json' % (homedir, self.xpm_master, self.platform)
 
         if self.activedetfilename == '/dev/null':
             # active detectors file bypassed
@@ -2292,7 +2292,7 @@ def main():
     parser.add_argument("--password", default="pcds", help='HTTP authentication password')
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
-    defaultActiveDetFile = "~/.psdaq/p<platform>.activedet.json"
+    defaultActiveDetFile = "~/.psdaq/x<XPM>_p<platform>.activedet.json"
     parser.add_argument('-r', metavar='ACTIVEDETFILE', help="active detectors file. Defaults to " + defaultActiveDetFile)
     args = parser.parse_args()
 
