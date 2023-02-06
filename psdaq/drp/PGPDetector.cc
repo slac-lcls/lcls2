@@ -303,8 +303,10 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                     //  Sometimes we have genuine frame errors
                     if (transitionId != XtcData::TransitionId::L1Accept ||
                         (timingHeader->time.asDouble()-lastTime)>1. ||
-                        (timingHeader->time.asDouble()-lastTime)<0.)
-                        throw "Jump in event counter";
+                        (timingHeader->time.asDouble()-lastTime)<0.) {
+                        logging::critical("Jump in event counter");
+                        abort();
+                    }
 
                     for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
                         PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
