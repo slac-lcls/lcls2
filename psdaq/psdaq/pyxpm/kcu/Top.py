@@ -14,6 +14,7 @@ import pyrogue.protocols
 import time
 import xpm
 import kcu
+import LclsTimingCore as timing
 from _AxiLiteRingBuffer import AxiLiteRingBuffer
 
 class Top(pr.Device):
@@ -54,6 +55,12 @@ class Top(pr.Device):
             offset = 0x00820000,
         ))
 
+        self.add(timing.TpgMiniCore(
+            memBase = memBase,
+            name   = 'TpgMini',
+            offset = 0x00830000,
+        ))
+
 #        self.add(xpm.CuPhase(
 #            memBase = memBase,
 #            name = 'CuPhase',
@@ -83,3 +90,4 @@ class Top(pr.Device):
             time.sleep(0.01)
             self.XpmApp.rxPllReset.set(0)
         self.XpmApp.link.set(0)
+

@@ -11,22 +11,24 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
 
 
+def ds_run_det(exp='ascdaq18', run=171, detname='epixhr', **kwa):
+    from psana import DataSource
+    ds = DataSource(exp=exp, run=run, **kwa)
+    orun = next(ds.runs())
+    det = orun.Detector(detname)
+    return ds, orun, det
+
+
 def issue_2023_01_03():
     """epixhr calib method with common mode correction using standard detector interface
        datinfo -k exp=rixx45619,run=119 -d epixhr
     """
     import psana.pyalgos.generic.PSUtils as psu
     from psana.detector.NDArrUtils import info_ndarr
-    from psana import DataSource
     from time import time
 
-    #ds = DataSource(exp='rixx45619',run=121, dir='/cds/data/psdm/prj/public01/xtc')
-    #orun = next(ds.runs())
-    #det = orun.Detector('epixhr')
-
-    ds = DataSource(exp='ueddaq02',run=569, dir='/cds/data/psdm/prj/public01/xtc')
-    orun = next(ds.runs())
-    det = orun.Detector('epixquad')
+    #ds, orun, det = ds_run_det(exp='rixx45619',run=121, detname='epixhr', dir='/cds/data/psdm/prj/public01/xtc')
+    ds, orun, det = ds_run_det(exp='ueddaq02',run=569, detname='epixquad', dir='/cds/data/psdm/prj/public01/xtc')
 
     print('common mode parameters from DB', det.raw._common_mode())
 
@@ -63,17 +65,11 @@ def issue_2023_01_06():
     """
     import psana.detector.utils_calib_components as ucc
     from psana.detector.NDArrUtils import info_ndarr
-    from psana import DataSource
     from time import time
     import numpy as np
 
-    #ds = DataSource(exp='rixx45619',run=121, dir='/cds/data/psdm/prj/public01/xtc')
-    #orun = next(ds.runs())
-    #det = orun.Detector('epixhr')
-
-    ds = DataSource(exp='ueddaq02',run=569, dir='/cds/data/psdm/prj/public01/xtc')
-    orun = next(ds.runs())
-    det = orun.Detector('epixquad')
+    # ds, orun, det = ds_run_det(exp='rixx45619', run=121, detname='epixhr', dir='/cds/data/psdm/prj/public01/xtc')
+    ds, orun, det = ds_run_det(exp='ueddaq02', run=569, detname='epixquad', dir='/cds/data/psdm/prj/public01/xtc')
 
     config = det.raw._config_object()
     calibc = det.raw._calibconst
@@ -125,16 +121,14 @@ def issue_2023_01_10():
        datinfo -k exp=ascdaq18,run=171 -d epixhr  # 'scantype': 'chargeinj'
     """
     import psana.detector.utils_calib_components as ucc
+    import psana.detector.UtilsEpix10kaChargeInjection as ueci
+
     from psana.detector.NDArrUtils import info_ndarr
-    from psana import DataSource
     from time import time
     import numpy as np
     # dir='/cds/data/psdm/asc/ascdaq18/xtc/' # default
     # dir='/cds/data/psdm/prj/public01/xtc') # preserved
-    #ds = DataSource(exp='ascdaq18',run=170)
-    ds = DataSource(exp='ascdaq18',run=171)
-    orun = next(ds.runs())
-    det = orun.Detector('epixhr')
+    ds, orun, det = ds_run_det(exp='ascdaq18', run=171, detname='epixhr', dir='/cds/data/psdm/asc/ascdaq18/xtc/')
 
     config = det.raw._config_object()
     calibc = det.raw._calibconst
@@ -142,7 +136,7 @@ def issue_2023_01_10():
     logger.debug('calibc: %s' % str(calibc))
 
     cc = ucc.calib_components_epix(calibc, config)
-    data_bit_mask = cc.data_bit_mask()
+    data_bit_mask = cc.data_bit_mask() # 0o77777 for epixhr
     pedestals = cc.pedestals()
 
     ones = np.ones_like(pedestals, dtype=np.float32)
@@ -158,35 +152,50 @@ def issue_2023_01_10():
 
     from psana.detector.UtilsGraphics import gr, fleximage, arr_median_limits
     flimg = None
-    for nstep,step in enumerate(orun.steps()):
-      if nstep>5: break
+
+    nstep_sel = 2
+    space = 5
+    databitw = 0o037777
+
+    for nstep, step in enumerate(orun.steps()):
+      #if nstep<nstep_sel: continue
+      #elif nstep>nstep_sel: break
+      if nstep>10: break
+
+      irow, icol = ueci.injection_row_col(nstep, space)
+
+      s = '== Step %02d irow %03d icol %03d ==' % (nstep, irow, icol)
+      print(s)
+
+
       for nevt,evt in enumerate(step.events()):
         #if nevt>1000: break
         if nevt%100: continue
 
-        print('== Step %02d Event %03d ==' % (nstep,nevt))
+        #print('== Step %02d Event %03d irow %03d icol %03d ==' % (nstep, nevt, irow, icol))
 
         #t0_sec_tot = time()
         raw = det.raw.raw(evt)
         if raw is None: continue
 
-        #peds = cc.event_pedestals(raw)
-        #arr = None
-        #arr2 = np.array(raw & data_bit_mask, dtype=np.float32) - peds
+        peds = cc.event_pedestals(raw)
+        #arr = peds
+        arr = np.array(raw & data_bit_mask, dtype=np.float32) - peds
 
-        gmaps = cc.gain_maps_epix(raw)
+        #gmaps = cc.gain_maps_epix(raw)
         #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
-        #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
-        arr = ucc.map_gain_range_index_for_gmaps(gmaps, default=10)
-
-        print(info_ndarr(arr,'arr:'))
+        #arr = ucc.map_gain_range_index_for_gmaps(gmaps, default=10) # stack bits...
+        #arr = np.array(raw & 0o100000, dtype=np.int) # 0o77777 # behaves ok
+        arr1 = np.array(arr[0,irow,100:120], dtype=np.int16) & databitw
+        print(info_ndarr(arr1,'%s  arr1:' % s, first=0, last=10), '  v[col]=%5d' % arr1[icol])
 
         #logger.info('time consumption to make 3-d array for imaging = %.6f sec' % (time()-t0_sec_tot))
-
+        #pedestals: shape:(7, 1, 288, 384)
         #img = cc.pedestals()[1,0,:150,:200]
-        #img = arr[0,144:,:192] # cut off a single ASIC with meaningfull data
-        #img = arr[0,:143,:192] # cut off a single ASIC with meaningfull data
-        img = arr[0,:150,:200] # cut off a single ASIC with meaningfull data
+        #img = arr[0,:150,:200] # cut off a single ASIC with meaningfull data
+        img = arr[0,:144,:192] # cut off a single ASIC with meaningfull data
+        #img = arr[0,60:144,110:192] # cut off a single ASIC with meaningfull data
+        #img = arr[0,0:20,100:120] # cut off a single ASIC with meaningfull data
         #img = arr[0,:,:] # cut off a single ASIC with meaningfull data
         #img = ucc.psu.table_nxn_epix10ka_from_ndarr(arr, gapv=0)
         #print(info_ndarr(img,'img:'))
@@ -194,12 +203,12 @@ def issue_2023_01_10():
         if flimg is None:
            flimg = fleximage(img, arr=None, h_in=8, w_in=11, nneg=1, npos=3)
         gr.set_win_title(flimg.fig, titwin='Step %02d Event %d' % (nstep,nevt))
-        flimg.update(img, arr=None)
+        flimg.update(img, arr=None, amin=0, amax=databitw)
         gr.show(mode='DO NOT HOLD')
     gr.show()
 
 
-def issue_2023_01_dd():
+def issue_2023_mm_dd():
     print('template')
 
 USAGE = '\nUsage:'\
@@ -212,7 +221,7 @@ USAGE = '\nUsage:'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
-if   TNAME in  ('0',): issue_2023_01_dd()
+if   TNAME in  ('0',): issue_2023_mm_dd()
 elif TNAME in  ('1',): issue_2023_01_03()
 elif TNAME in  ('2',): issue_2023_01_06()
 elif TNAME in  ('3',): issue_2023_01_10()

@@ -8,7 +8,7 @@ import json
 from psana.detector.Utils import info_dict, info_command_line, info_namespace, info_parser_arguments
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import datasource_kwargs_from_string, info_run, info_detnames_for_dskwargs, info_detector
+from psana.detector.utils_psana import datasource_kwargs_from_string, info_run, info_detnames_for_dskwargs, info_detector, seconds
 from psana import DataSource
 
 import logging
@@ -168,7 +168,9 @@ def loop_run_step_evt(args):
           if not selected_record(ievt): continue
           if segs is None:
              segs = det.raw._segment_numbers(evt) if det is not None else None
-             print('  Event %05d %s     ' % (ievt, info_ndarr(segs,'segments')))
+             tstamp = evt.timestamp   # like 4193682596073796843 relative to 1990-01-01
+             t_sec = seconds(tstamp)
+             print('  Event %05d t=%.6fsec %s     ' % (ievt, t_sec, info_ndarr(segs,'segments')))
              raw = det.raw.raw(evt)
              print(info_ndarr(raw,'    det.raw.raw(evt)'))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))

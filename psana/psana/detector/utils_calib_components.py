@@ -223,7 +223,7 @@ class calib_components_epix():
         if self._data_bit_mask is None:
             dettype = self.dettype()
             assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detect types only'
-            self._data_bit_mask = {'epix10ka':ue.M14, 'epixhr':ue.M15}.get(dettype, None)
+            self._data_bit_mask = ue.data_bitword(dettype) # {'epix10ka':ue.M14, 'epixhr':ue.M15}.get(dettype, None)
         return self._data_bit_mask
 
     def cbits_config_segment(self, cob):
@@ -248,8 +248,8 @@ class calib_components_epix():
         """analog of UtilsEpix10ka method cbits_config_and_data_detector"""
         dettype = self.dettype()
         assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detector types only, unknown type %s' % str(dettype)
-        data_gain_bit = {'epix10ka':ue.B14, 'epixhr':ue.B15}.get(dettype, None)
-        gain_bit_shift = {'epix10ka':9, 'epixhr':10}.get(dettype, None)
+        data_gain_bit = ue.gain_bitword(dettype)  # {'epix10ka':ue.B14, 'epixhr':ue.B15}.get(dettype, None)
+        gain_bit_shift = ue.gain_bitshift(dettype)  # {'epix10ka':9, 'epixhr':10}.get(dettype, None)
         return ue.cbits_config_and_data_detector_alg(raw, cbits, data_gain_bit, gain_bit_shift)
 
     def gain_maps_epix(self, raw):

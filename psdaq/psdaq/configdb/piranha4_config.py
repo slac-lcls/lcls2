@@ -9,6 +9,7 @@ import json
 import IPython
 from collections import deque
 import logging
+import weakref
 
 import pyrogue as pr
 import surf.protocols.clink as clink
@@ -44,7 +45,7 @@ class MyUartPiranha4Rx(clink.ClinkSerialRx):
             time.sleep(0.01)          # Wait for the Prompt to show up
             if self._check() and len(self._resp):
                 return
-        print('*** await: prompt not seen: len', len(self._resp), ', resp:', self._resp)
+        raise Exception('*** await: prompt not seen: len %d, resp: %s' % (len(self._resp), self._resp))
 
     def _acceptFrame(self,frame):
         ba = bytearray(frame.getPayload())
@@ -122,10 +123,28 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         #  Empirically found that we need to cycle to LCLS1 timing
         #  to get the timing feedback link to lock
         #  cpo: switch this to XpmMini which recovers from more issues?
-        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-        time.sleep(2.5)
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(2.5)
+        # check to see if timing is stuck
+        nbad = 0
+        while 1:
+            # check to see if timing is stuck
+            sof1 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+            time.sleep(0.1)
+            sof2 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+            if sof1!=sof2: break
+            nbad+=1
+            print('*** Timing link stuck:',sof1,sof2,'resetting. Iteration:', nbad)
+            #  Empirically found that we need to cycle to LCLS1 timing
+            #  to get the timing feedback link to lock
+            #  cpo: switch this to XpmMini which recovers from more issues?
+            cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+            time.sleep(3.5)
+            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+            time.sleep(3.5)
+
+    # camlink timing seems to intermittently lose lock back to the XPM
+    # and empirically this fixes it.  not sure if we need the sleep - cpo
+    cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+    time.sleep(0.1)
 
     return cl
 
@@ -155,13 +174,22 @@ def piranha4_connect(cl):
     # Startup's GCP returns 'Model  P4_CM_0xKxxD_00_R' and 'Serial #  xxxxxxxx', etc.
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).UartPiranha4
 
-    if len(uart._rx._resp) == 0 or not uart._rx._resp[-1].startswith('CPA'):
-        uart._rx._clear()
-        uart.SEM.set('0') # Set internal exposure mode for quicker commanding (?!)
-        uart._rx._await()
-        uart._rx._clear()
-        uart.GCP()
-        uart._rx._await()
+    uart._rx._await()           # Wait for camera to be sitting at a prompt
+
+    uart._rx._clear()
+    uart.SEM.set('0') # Set internal exposure mode for quicker commanding (?!)
+    uart._rx._await()
+    uart._rx._clear()
+    uart.GCP()
+    uart._rx._await()
+
+    t0 = time.time()
+    while len(uart._rx._resp) == 0 or not uart._rx._resp[-1].startswith('CPA'):
+        time.sleep(.01)
+        if time.time() - t0 > 5.0:
+            print("Last response:")
+            print(uart._rx._resp)
+            raise Exception("Response to 'GCP' not seen")
 
     model = ''
     serno = ''

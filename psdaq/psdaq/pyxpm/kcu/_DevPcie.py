@@ -14,6 +14,7 @@ import pyrogue.protocols
 import time
 import xpm
 import kcu
+import LclsTimingCore as timing
 from _AxiLiteRingBuffer import AxiLiteRingBuffer
 
 class DevReset(pr.Device):
@@ -167,6 +168,12 @@ class DevPcie(pr.Device):
             offset = 0x00820000,
         ))
 
+        self.add(timing.TPGMiniCore(
+            memBase = memBase,
+            name   = 'TpgMini',
+            offset = 0x00830000,
+        ))
+
         self.add(DevReset(
             memBase = memBase,
             name   = 'DevReset',
@@ -186,6 +193,7 @@ class DevPcie(pr.Device):
         ))
 
     def start(self):
+        print('---DevPcie.start---')
         self.DevReset.clearTimingPhyReset.set(0)
         #  Reprogram the reference clock
         self.AxiPcieCore.I2cMux.set(1<<2)
@@ -203,3 +211,17 @@ class DevPcie(pr.Device):
             self.XpmApp.rxPllReset.set(0)
         self.XpmApp.link.set(0)
         self.DevReset.clearTimingPhyReset.set(1)
+
+        print(f'FixedRateDiv0 f{self.TpgMini.FixedRateDiv[0].get()}')
+
+        #  Set the fixed rate markers
+        self.TpgMini.FixedRateDiv[0].set(910000)
+        self.TpgMini.FixedRateDiv[1].set( 91000)
+        self.TpgMini.FixedRateDiv[2].set(  9100)
+        self.TpgMini.FixedRateDiv[3].set(   910)
+        self.TpgMini.FixedRateDiv[4].set(    91)
+        self.TpgMini.FixedRateDiv[5].set(    13)
+        self.TpgMini.FixedRateDiv[6].set(     1)
+        self.TpgMini.RateReload.set(1)
+
+        print(f'FixedRateDiv0 f{self.TpgMini.FixedRateDiv[0].get()}')
