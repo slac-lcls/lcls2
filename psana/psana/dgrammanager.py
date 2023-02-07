@@ -147,14 +147,16 @@ class DgramManager(object):
         return view
 
     def _connect_drp(self):
+        key_base = int(self.tag.split(',')[0])
+        mem_size = int(self.tag.split(',')[1])
         try:
-            self.mq_recv = sysv_ipc.MessageQueue(200000)
-            self.mq_send = sysv_ipc.MessageQueue(200001)
+            self.mq_recv = sysv_ipc.MessageQueue(key_base)
+            self.mq_send = sysv_ipc.MessageQueue(key_base+1)
         except sysv_ipc.Error as exp:
             assert(False)
         try:
-            self.shm_recv = sysv_ipc.SharedMemory(200002, size=40000000)
-            self.shm_send = sysv_ipc.SharedMemory(200003, size=40000000)
+            self.shm_recv = sysv_ipc.SharedMemory(key_base+2, size=mem_size)
+            self.shm_send = sysv_ipc.SharedMemory(key_base+3, size=mem_size)
         except sysv_ipc.Error as exp:
             assert(False)
 
