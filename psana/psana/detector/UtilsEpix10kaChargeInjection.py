@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-"""
-   import psana.detector.UtilsEpix10kaChargeInjection as ueci
+""" import psana.detector.UtilsEpix10kaChargeInjection as ueci
 """
 import os
 import sys
-from time import time
+from time import time, sleep
 import psana.pyalgos.generic.Graphics as gr
 from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL  # , init_stream_handler
 import psana.detector.UtilsEpix10kaCalib as uec
@@ -14,8 +13,6 @@ from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
-
-ASAT = 16000 # 16384 or 1<<14 (15-th bit starting from 1)
 
 create_directory = uec.create_directory
 
@@ -63,17 +60,19 @@ def pixel_row_col_from_str(pixrc):
 
 
 def injection_row_col(nstep, space=5):
-    """Charge injection point  vs step number."""
+    """Charge injection point vs step number."""
     irow = space - (nstep // space) + 1
     irow = irow % space
     icol = space - (nstep % space) - 1
     return irow, icol
 
 
-def selected_pixel(pixrow, pixcol, jr, jc, nr, nc, nspace):
+def selected_pixel(pixrc, jr, jc, nr, nc, nspace):
     """if pixel with panel indexes is in current block, returns tuple of its panel and block indexes,
        None oterwice.
     """
+    pixrow, pixcol = pixel_row_col_from_str(pixrc)  # '11,15' > (11,15)
+
     blkrows = range(jr,nr,nspace)
     blkcols = range(jc,nc,nspace)
     if pixrow not in blkrows\
@@ -81,8 +80,7 @@ def selected_pixel(pixrow, pixcol, jr, jc, nr, nc, nspace):
         return None
     ibr = blkrows.index(pixrow)
     ibc = blkcols.index(pixcol)
-    msg = 'pixel panel r:%d c:%d    block r:%d c:%d' % (pixrow,pixcol,ibr,ibc)
-    logger.info(msg)
+    logger.info('pixel on panel r:%d c:%d shape:(%d, %d)    in block r:%d c:%d' % (pixrow, pixcol, nr, nc, ibr, ibc))
     return pixrow, pixcol, ibr, ibc # tuple of panel and block indexes
 
 
@@ -102,32 +100,31 @@ def plot_fit_results(ifig, fitres, fnameout, filemode, gm, titles):
         if not fexists: os.chmod(fnameout, filemode)
 
 
-def saw_edges(trace, evnums, gainbitw, gap=50, do_debug=True):
-    """
-        2021-06-11 privious version neds at least two saw-tooth full cycles to find edgese...
+def saw_edges(trace, evnums, gainbitw, gap=10, do_debug=True):
+    """ 2021-06-11 privious version needs at least two saw-tooth full cycles to find edges...
         Returns list of triplet indexes [(ibegin, iswitch, iend), ...]
         in the arrays trace and evnums for found full periods of the charge injection pulser.
     """
-    traceB14 = trace & gainbitw # trace & ue.B14,   np.bitwise_and(trace, B14)
-    indsB14 = np.flatnonzero(traceB14) #shape:(604,) size:604 dtype:int64 [155 156 157 158 159...]
-    evnumsB14 = evnums[indsB14]
-    ixoff = np.where(np.diff(evnumsB14)>gap)[0]+1
+    trace_gbit = trace & gainbitw # trace & ue.B14,   np.bitwise_and(trace, B14)
+    inds_gbit = np.flatnonzero(trace_gbit) #shape:(604,) size:604 dtype:int64 [155 156 157 158 159...]
+    evnums_gbit = evnums[inds_gbit]
+    noff = np.where(np.diff(evnums_gbit)>gap)[0]+1
 
     if do_debug:
         logger.debug(info_ndarr(trace, 'trace', last=10))
-        logger.debug(info_ndarr(traceB14, 'trace & B14', last=10))
-        logger.debug(info_ndarr(indsB14, 'indsB14'))
-        logger.debug(info_ndarr(evnumsB14, 'evnumsB14'))
-        logger.debug(info_ndarr(ixoff, 'ixoff', last=15))
+        logger.debug(info_ndarr(trace_gbit, 'trace & gainbit', last=10))
+        logger.debug(info_ndarr(inds_gbit, 'inds_gbit'))
+        logger.debug(info_ndarr(evnums_gbit, 'evnums_gbit'))
+        logger.debug(info_ndarr(noff, 'noff', last=15))
 
-    if len(ixoff)<1: return []
+    if len(noff)<1: return []
 
-    grinds = np.split(indsB14, ixoff)
-    edges_sw = [(g[0],g[-1]) for g in grinds]  #[(678, 991), (1702, 2015), (2725, 3039), (3751, 4063)]
+    grinds = np.split(inds_gbit, noff)
+    edges_sw = [(g[0], g[-1]) for g in grinds]  #[(678, 991), (1702, 2015), (2725, 3039), (3751, 4063)]
     #print('XXX edges_sw:', str(edges_sw))
 
     edges = [] if len(edges_sw)<2 else\
-            [((g0[1]+1,) + g1) for g0,g1 in zip(edges_sw[:-1],edges_sw[1:])]
+            [((g0[1]+1,) + g1) for g0,g1 in zip(edges_sw[:-1], edges_sw[1:])]
 
     #print('XXX saw_edges:', str(edges))
     #np.save('trace.npy', trace)
@@ -139,28 +136,39 @@ def saw_edges(trace, evnums, gainbitw, gap=50, do_debug=True):
 
 def plot_fit_figaxis():
     if not hasattr(STORE, 'plot_fit_figax'):
-        fig=gr.plt.figure(100,facecolor='w')
-        ax=fig.add_subplot(111)
-        STORE.plot_fit_figax = fig, ax
+        fig = gr.plt.figure(100,facecolor='w')
+        ax  = fig.add_subplot(3, 1, (2, 3))
+        axr = fig.add_subplot(311)
+        STORE.plot_fit_figax = fig, ax, axr
     return STORE.plot_fit_figax
 
 
-def plot_fit(x, y, pf0, pf1, fname):
+def plot_fit(x, y, pf0, pf1, fname, databitw):
     print('plot_fit %s' % fname)
-    fig, ax = plot_fit_figaxis()
+    fig, ax, axr = plot_fit_figaxis()
 
+    xmin, xmax, xtick = 0, 1100, 200
+    ymin, ymax = -500, 500  # -int(databitw/64), int(databitw/64)
     #fig.clf()
     ax.cla()
-    ax.set_xlim(0, 1100)
-    ax.set_ylim(0, 16384)
-    ax.set_xticks(np.arange(0, 1100, 200))
-    ax.set_yticks(np.arange(0, 16385, 2048))
-
+    ax.set_ylim(0, databitw)
+    ax.set_xticks(np.arange(xmin, xmax, xtick))
+    ax.set_yticks(np.arange(0, databitw, 5000))
     ax.plot(x, y, 'ko', markersize=1)
     ax.plot(x, np.polyval(pf0, x), 'b-', linewidth=1)
     ax.plot(x, np.polyval(pf1, x), 'r-', linewidth=1)
+    ax.set_ylabel('data and fit')
 
-    ax.set_title(fname.rstrip('.png').rsplit('/',1)[-1], fontsize=6)#, color=color, fontsize=fstit, **kwargs)
+    axr.cla()
+    axr.set_ylim(ymin, ymax)
+    axr.set_xticks(np.arange(xmin, xmax, xtick))
+    axr.set_yticks(np.arange(ymin, ymax, int(ymax/2)))
+    axr.plot((x[0],x[-1]), (0,0), 'k-', linewidth=1)
+    axr.plot(x, y - np.polyval(pf0, x), 'b-', linewidth=1)
+    axr.plot(x, y - np.polyval(pf1, x), 'r-', linewidth=1)
+    axr.set_ylabel('residuals')
+
+    axr.set_title(fname.rstrip('.png').rsplit('/',1)[-1], fontsize=6)#, color=color, fontsize=fstit, **kwargs)
     fig.canvas.manager.set_window_title(fname)
     gr.move_fig(fig, 10, 10)
     #plt.plot()
@@ -184,14 +192,15 @@ def plot_avsi_figaxis():
     return STORE.plot_avsi_figax
 
 
-def plot_avsi(x, y, fname, gainbitw, databitw):
+def plot_avsi(x, y, fname, gainbitw, databitw, tsec_show=10):
 
     fig, ax = plot_avsi_figaxis()
     gbit = np.bitwise_and(y, gainbitw) /8
     _y = y & databitw
     ax.cla()
-    if _y.max()>2048: ax.set_ylim(0, 16384)
-    ax.set_yticks(np.arange(0, 16385, 2048))
+    ax.set_ylim(-1000, gainbitw)
+    #if _y.max()>2048: ax.set_ylim(0, 16384)
+    ax.set_yticks(np.arange(0, gainbitw, 5000)) #  2048
     line0,=ax.plot(x, _y, 'b-', linewidth=1)
     line1,=ax.plot(x, gbit, 'r-', linewidth=1)
     ax.set_title(fname.rstrip('.png').rsplit('/',1)[-1], fontsize=6)#, color=color, fontsize=fstit, **kwargs)
@@ -200,7 +209,7 @@ def plot_avsi(x, y, fname, gainbitw, databitw):
     gr.move_fig(fig, 650, 200)
     #gr.plt.plot()
     fig.canvas.draw()
-    gr.plt.pause(3)
+    gr.plt.pause(tsec_show)
 
     fig.savefig(fname)
     logger.info('saved: %s' % fname)
@@ -208,81 +217,94 @@ def plot_avsi(x, y, fname, gainbitw, databitw):
     gr.plt.show()
     #gr.plt.ion()
 
+    #sys.exit('TEST EXIT')
 
-def plot_data_block(block, evnums, prefix, gainbitw, databitw, selpix=None):
+
+def selected_to_show(ir, ic, selpix=None, irb_def=2, icb_def=21):
+    """ returns True for selected pixel to plot trace and fit, othervice False"""
+    #return (ir*mc+ic)%256==255 if selpix is None\
+    #return (ir<rows_max and ic<cols_max) if selpix is None\
+    return (ir==irb_def and ic==icb_def) if selpix is None\
+           else (ir==selpix[2] and ic==selpix[3])
+
+
+def plot_data_block(block, evnums, prefix, gainbitw, databitw, selpix=None, tsec_show=10):
     ts = str_tstamp(fmt='%Y%m%dT%H%M%S', time_sec=time())
-    mf,mr,mc=block.shape
+    mf, mr, mc=block.shape
     print('block shape:', mf, mr, mc)
     trace=block[:, 0, 0]
-    x = np.arange(mf)
-    print(info_ndarr(x, 'x'))
-    print(info_ndarr(trace, 'trace'))
+    logger.info(info_ndarr(trace, 'trace'))
 
-    for iy in range(mr):
-        for ix in range(mc):
-            selected = (iy*mc+ix)%256==255 if selpix is None\
-                       else (iy==selpix[2] and ix==selpix[3])
+    for ir in range(mr):
+        for ic in range(mc):
+            if selected_to_show(ir, ic, selpix):  # display a subset of plots for traces
 
-            if selected:  #display a subset of plots
+                trace=block[:,ir,ic]
+                logger.info('==== saw_edge for %s-proc-ibr%02d-ibc%02d:' % (prefix, ir, ic))
+                logger.info(' saw_edges: %s' % str(saw_edges(trace, evnums, gainbitw, gap=10, do_debug=True)))
 
-                trace=block[:,iy,ix]
-                logger.info('==== saw_edge for %s-proc-ibr%02d-ibc%02d:' % (prefix, iy, ix))
-                logger.info(' saw_edges: %s' % str(saw_edges(trace, evnums, gainbitw, gap=50, do_debug=True)))
-
-                fname = '%s-dat-ibr%02d-ibc%02d.png' % (prefix, iy, ix) if selpix is None else\
-                        '%s-dat-r%03d-c%03d-ibr%02d-ibc%02d.png' % (prefix, selpix[0], selpix[1], iy, ix)
-                plot_avsi(evnums, trace, fname, gainbitw, databitw)
+                fname = '%s-dat-ibr%02d-ibc%02d.png' % (prefix, ir, ic) if selpix is None else\
+                        '%s-dat-r%03d-c%03d-ibr%02d-ibc%02d.png' % (prefix, selpix[0], selpix[1], ir, ic)
+                plot_avsi(evnums, trace, fname, gainbitw, databitw, tsec_show)
 
 
-def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', ixoff=10, nperiods=False, savechi2=False, selpix=None, npmin=5):
+def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', npoff=10,\
+        nperiods=False, savechi2=False, selpix=None, npmin=5, tsec_show=5):
 
-    mf, mr, mc=block.shape
+    mf, mr, mc = block.shape
     fits = np.zeros((mr, mc, 2, 2))
     chi2 = np.zeros((mr, mc, 2))
     nsp = np.zeros((mr, mc), dtype=np.int16)
     msg = ' fit '
 
-    logger.info('fit selpix:' + str(selpix)) #selpix=(20, 97, 2, 13)
+    logger.info('block.shape: %s fit selpix: %s' % (str(block.shape), str(selpix)))  # selpix=(20, 97, 2, 13)
     logger.debug(info_ndarr(evnum, 'in fit evnum:'))
     logger.debug(info_ndarr(block, 'in fit block:'))
     #ts = str_tstamp(fmt='%Y%m%dT%H%M%S', time_sec=time())
 
     if display:
-        plot_data_block(block, evnum, prefix, gainbitw, databitw, selpix)
+        plot_data_block(block, evnum, prefix, gainbitw, databitw, selpix, tsec_show)
 
-    for iy in range(mr):
-        for ix in range(mc):
-            selected = (iy*mc+ix)%256==255 if selpix is None\
-                       else (iy==selpix[2] and ix==selpix[3])
+    #sys.exit('TEST EXIT')
+    msgnum = 0
+    msgmax = 10
 
-            trace=block[:, iy, ix]
+    for ir in range(mr):
+        for ic in range(mc):
+            trace=block[:, ir, ic]
 
-            edges = saw_edges(trace, evnum, gainbitw, do_debug=(logger.level==logging.DEBUG))
+            edges = saw_edges(trace, evnum, gainbitw, gap=10, do_debug=(logger.level==logging.DEBUG))
             if len(edges)==0:
-                 logger.warning('pulser saw edges are not found, skip processing for ix%02d-iy%02d:' % (ix, iy))
-                 continue
+                msgnum += 1
+                if msgnum > msgmax:
+                    pass
+                elif msgnum == msgmax:
+                    logger.warning('pulser saw edges are not found, skip repeating messages')
+                else:
+                    logger.warning('pulser saw edges are not found, skip processing for ic%02d-ir%02d:' % (ic, ir))
+                continue
 
-            ixb, ixs, ixe = edges[0]
-            nsp[iy,ix]=ixs
+            ibeg, iswt, iend = edges[0]
+            nsp[ir,ic] = iswt
             tracem = trace & databitw
 
-            x0 =  evnum[ixb:ixs-ixoff]-evnum[ixb]
-            y0 = tracem[ixb:ixs-ixoff]
+            x0 =  evnum[ibeg:iswt-npoff] - evnum[ibeg]
+            y0 = tracem[ibeg:iswt-npoff]
             # 2021-067-11 protection against overflow
-            nonsaturated = np.where(y0<ASAT)[0] # [0] because where returns tuple of arrays - for dims?
+            nonsaturated = np.where(y0 < databitw)[0] # [0] because where returns tuple of arrays - for dims?
             if nonsaturated.size != y0.size:
                 x0 = x0[nonsaturated]
                 y0 = y0[nonsaturated]
 
-            x1 =  evnum[ixs+ixoff:ixe]-evnum[ixb]
-            y1 = tracem[ixs+ixoff:ixe]
+            x1 =  evnum[iswt+npoff:iend] - evnum[ibeg]
+            y1 = tracem[iswt+npoff:iend]
 
             if nperiods:
-               for ixb,ixs,ixe in edges[1:]:
-                 x0 = np.hstack((x0,  evnum[ixb:ixs-ixoff]-evnum[ixb]))
-                 y0 = np.hstack((y0, tracem[ixb:ixs-ixoff]))
-                 x1 = np.hstack((x1,  evnum[ixs+ixoff:ixe]-evnum[ixb]))
-                 y1 = np.hstack((y1, tracem[ixs+ixoff:ixe]))
+               for ibeg, iswt, iend in edges[1:]:
+                 x0 = np.hstack((x0,  evnum[ibeg:iswt-npoff] - evnum[ibeg]))
+                 y0 = np.hstack((y0, tracem[ibeg:iswt-npoff]))
+                 x1 = np.hstack((x1,  evnum[iswt+npoff:iend] - evnum[ibeg]))
+                 y1 = np.hstack((y1, tracem[iswt+npoff:iend]))
 
             if x0.size<npmin:
                  logger.warning(info_ndarr(x0, '\n    too short array x0', last=10))
@@ -300,15 +322,15 @@ def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', ixoff=
 
                 chisq0 = res0 / (x0.size - 3)
                 chisq1 = res1 / (x1.size - 3)
-                chi2[iy,ix,:] = (chisq0, chisq1)
+                chi2[ir,ic,:] = (chisq0, chisq1)
 
-            fits[iy,ix,:] = (pf0, pf1)
+            fits[ir,ic,:] = (pf0, pf1)
 
-            if selected: # for selected ix, iy
-                s = '==== ibr%02d-ibc%02d:' % (iy, ix)
+            if selected_to_show(ir, ic, selpix):  # display a subset of plots
+                s = '==== ibr%02d-ibc%02d:' % (ir, ic)
                 if selpix is not None: s+=' === selected pixel panel r:%03d c:%03d' % (selpix[0], selpix[1])
-                for ixb, ixs, ixe in edges:
-                    s += '\n  saw edges begin: %4d switch: %4d end: %4d period: %4d' % (ixb, ixs, ixe, ixe-ixb+1)
+                for ibeg, iswt, iend in edges:
+                    s += '\n  saw edges begin: %4d switch: %4d end: %4d period: %4d' % (ibeg, iswt, iend, iend-ibeg+1)
                     s += info_ndarr(tracem, '\n    tracem', last=10)
                     s += info_ndarr(x0,     '\n    x0',  last=10)
                     s += info_ndarr(y0,     '\n    y0',  last=10)
@@ -325,8 +347,8 @@ def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', ixoff=
 
                 msg+='.'
                 if display:
-                    fname = '%s-fit-ibr%02d-ibc%02d.png' % (prefix, iy, ix) if selpix is None else\
-                            '%s-fit-r%03d-c%03d-ibr%02d-ibc%02d.png' % (prefix, selpix[0], selpix[1], iy, ix)
+                    fname = '%s-fit-ibr%02d-ibc%02d.png' % (prefix, ir, ic) if selpix is None else\
+                            '%s-fit-r%03d-c%03d-ibr%02d-ibc%02d.png' % (prefix, selpix[0], selpix[1], ir, ic)
 
                     x = np.hstack((x0, x1))
                     y = np.hstack((y0, y1))
@@ -334,9 +356,117 @@ def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', ixoff=
                                + info_ndarr(y, '\n    y'))
 
                     #gr.plt.ioff() # hold control on plt.show()
-                    plot_fit(x, y, pf0, pf1, fname)
+                    plot_fit(x, y, pf0, pf1, fname, databitw)
 
     return fits, nsp, msg, chi2
+
+
+def wait_and_exit(tsec=5):
+    sleep(tsec)
+    sys.exit('EXIT after %d sec timout' % tsec)
+
+
+
+
+
+def event_loop_and_fit(det, timing, orun, step, istep, nstep,\
+                       idx, nspace, pixrc, nbs, nr, nc, dfid_med, msg, fig2, axim2, axcb2,\
+                       figprefix, gainbitw, databitw, display, npoff, nperiods, savechi2,\
+                       npmin, tsec_show):
+
+    nbs_half = int(nbs/2)
+    dfid_spr = int(dfid_med/10)
+
+    jr, jc = injection_row_col(istep, nspace)
+    logger.info('==== charge injection point minimal indices jr:%d jc:%d separation space:%d' % (jr, jc, nspace))
+
+    selpix = None
+    if pixrc is not None:
+        selpix = selected_pixel(pixrc, jr, jc, nr, nc, nspace)
+        if selpix is None:
+            logger.info(msg + ' skip, due to pixrc=%s'%pixrc)
+            return None  # continue steps
+        else:
+            logger.info(msg + ' process selected pixel:%s' % str(selpix))
+
+    fid_old = None
+    dfid = 0
+    #tsec_old = 0
+    #pulse_old = 0
+    block = np.zeros((nbs, nr, nc), dtype=np.int16)
+    evnum = np.zeros((nbs,), dtype=np.int16)
+
+    nrec = -1
+    nevt = 0
+
+    for nevt, evt in enumerate(step.events()):   #read all frames
+        raw = det.raw.raw(evt)
+        if raw is None:
+            logger.warning('Ev:%04d rec:%04d panel:%02d AML raw=None' % (nevt, nrec, idx))
+            msg += 'None'
+            continue
+        if nrec>nbs-2:
+            break
+        else:
+            #---- 2021-06-10: check fiducial for consecutive events
+            #tstamp = evt.timestamp  # 4193682596073796843 relative to 1990-01-01
+            #pulse = timing.raw.pulseId(evt)
+            #print('dir(timing)', dir(timing))
+            #print('dir(timing.raw)', dir(timing.raw))
+            #print('timing.raw.pulseId(evt)', pulse)
+            #print('dir(evt)', dir(evt))
+            #print('evt.datetime()', evt.datetime())
+            #tsec = seconds(evt.timestamp)
+            #print('ev %03d diff(seconds(evt.timestamp)): %.6f' % (nevt, tsec-tsec_old))
+            #tsec_old = tsec
+            #pulse_old = pulse
+            #if nevt>100: sys.exit('TEST EXIT')
+
+            fid = timing.raw.pulseId(evt) # evt.get(EventId).fiducials() at lcls1
+            if fid_old is not None:
+                dfid = fid-fid_old
+                logger.debug('EVENT FIDUCIAL CHECK |dfid-%d|<%d: Ev:%04d rec:%04d panel:%02d AML raw=None dfid:%d'%\
+                              (dfid_med, dfid_spr, nevt, nrec, idx, dfid))
+                if not (abs(dfid-dfid_med)<dfid_spr):  # dfid_med=7761
+                    logger.warning('FAILED EVENT FIDUCIAL CHECK dfid<%d: Ev:%04d rec:%04d panel:%02d AML raw=None fiducials:%d dfid:%d'%\
+                                (dfid_med, nevt, nrec, idx, fid, dfid))
+                    if nrec < nbs_half:
+                       logger.info('reset statistics in block and keep accumulation')
+                       nrec = -1
+                    else:
+                       logger.info('terminate event loop and process block data')
+                       break
+            fid_old = fid
+
+            #----
+
+            nrec += 1
+            if raw.ndim > 2: raw=raw[idx,:]
+            if selected_record(nevt):
+               logger.info(info_ndarr(raw, 'Ev:%04d dfid:%04d rec:%04d panel:%02d AML raw' % (nevt, dfid, nrec, idx)))
+            block[nrec] = raw
+            evnum[nrec] = nevt
+            if nevt%200==0: msg += '.'
+
+    if display:
+        #imsh, cbar = gr.imshow_cbar(fig2, axim2, axcb2, block[nrec][:144,:192], amin=None, amax=None, extent=None,\
+        imsh, cbar = gr.imshow_cbar(fig2, axim2, axcb2, block[nrec], amin=None, amax=None, extent=None,\
+                                 interpolation='nearest', aspect='auto', origin='upper',\
+                                 orientation='vertical', cmap='inferno')
+        fig2.canvas.manager.set_window_title('Run:%d step:%d events:%d' % (orun.runnum, nstep, evnum[nrec])) #, **kwargs)
+        fname = '%s-img-charge' % figprefix
+        axim2.set_title(fname.rsplit('/',1)[-1], fontsize=6)
+        fig2.savefig(fname + '.png')
+        logger.info('saved: %s' % fname+'.png')
+
+    print_statistics(nevt, nrec)
+
+    block = block[:nrec, jr:nr:nspace, jc:nc:nspace]        # only pulsed pixels
+    evnum = evnum[:nrec]                                    # list of non-empty events
+    fits0, nsp0, msgf, chi2 = fit(block, evnum, gainbitw, databitw, display, figprefix, npoff,\
+                                  nperiods, savechi2, selpix, npmin, tsec_show) # fit offset, gain
+
+    return fits0, nsp0, msgf, chi2, jr, jc
 
 
 def charge_injection(**kwa):
@@ -360,19 +490,21 @@ def charge_injection(**kwa):
     dirmode    = kwa.get('dirmode', 0o2775)
     filemode   = kwa.get('filemode', 0o664)
     group      = kwa.get('group', 'ps-users')
-    ixoff      = kwa.get('ixoff', 10)
+    npoff      = kwa.get('npoff', 10)
     nperiods   = kwa.get('nperiods', True)
     ccnum      = kwa.get('ccnum', None)
     ccmax      = kwa.get('ccmax', 103)
-    skipncc    = kwa.get('skipncc', 0)
+    ccskip     = kwa.get('ccskip', 0)
     logmode    = kwa.get('logmode', 'DEBUG')
     errskip    = kwa.get('errskip', False)
     pixrc      = kwa.get('pixrc', None) # ex.: '23,123'
-    nbs_half   = int(nbs/2)
     irun       = None
     exp        = None
+    npmin      = 5
+    tsec_show  = 2
     nstep_peds = 0
     step_docstring = None
+    dfid_med = 7761 # THIS VALUE DEPENDS ON EVENT RATE -> SHOULD BE AUTOMATED
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
     uec.save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
@@ -407,15 +539,10 @@ def charge_injection(**kwa):
     assert gainbitw is not None, 'gainbitw has to be defined for dettype %s' % str(dettype)
     assert databitw is not None, 'databitw has to be defined for dettype %s' % str(dettype)
 
-    ASAT = databitw - 100
-
     if display:
         fig2, axim2, axcb2 = gr.fig_img_cbar_axes()
         gr.move_fig(fig2, 500, 10)
         gr.plt.ion() # do not hold control on plt.show()
-
-    selpix = None
-    pixrow, pixcol = pixel_row_col_from_str(pixrc)  # converts str like '11,15' to the list of int (11,15)
 
     panel_id = get_panel_id(panel_ids, idx)
     logger.info('panel_id: %s' % panel_id)
@@ -454,7 +581,7 @@ def charge_injection(**kwa):
         logger.info('Charge-injection data loaded from file:'\
                     '\n  %s\nSKIP CALIBRATION CYCLES' % fname_work)
 
-        darks   = npz['darks']
+        #darks   = npz['darks']
         fits_ml = npz['fits_ml']
         fits_hl = npz['fits_hl']
 
@@ -473,8 +600,10 @@ def charge_injection(**kwa):
           print('==== run:', orun.runnum)
 
           det = orun.Detector(detname)
+          timing = orun.Detector('timing')
+          timing.raw._add_fields()
 
-          #cdet = orun.Detector('ControlData') # in lcls
+          #Cdet = orun.Detector('ControlData') # in lcls
           try: step_docstring = orun.Detector('step_docstring')
           except Exception as err:
             logger.error('run.Detector("step_docstring") does not work:\n    %s' % err)
@@ -489,22 +618,24 @@ def charge_injection(**kwa):
             nstep = uec.step_counter(metadic, nstep_tot, nstep_run, stype='chargeinj')
             if nstep is None: continue
 
-            if nstep_tot<skipncc:
-                logger.info('skip %d consecutive steps' % skipncc)
+            if nstep_tot<ccskip:
+                logger.info('skip %d consecutive steps' % ccskip)
                 continue
 
             elif nstep_tot>=ccmax:
                 logger.info('total number of steps %d exceeds ccmax %d' % (nstep_tot, ccmax))
-                break
+                wait_and_exit(tsec_show)
+                #break
 
             elif ccnum is not None:
                 # process step ccnum ONLY if ccnum is specified
                 if nstep < ccnum:
-                    logger.info('step number %d is below selected ccnum %d - continue' % (nstep, ccnum))
+                    logger.info('step number %d < selected ccnum %d - continue' % (nstep, ccnum))
                     continue
                 elif nstep > ccnum:
-                    logger.info('step number %d exceeds selected ccnum %d - break' % (nstep, ccnum))
-                    break
+                    logger.info('step number %d > selected ccnum %d - break' % (nstep, ccnum))
+                    wait_and_exit(tsec_show)
+                    #break
 
             mode = find_gain_mode(det.raw, evt=None).upper()
             logger.info('gain mode %s' % str(mode))
@@ -528,52 +659,11 @@ def charge_injection(**kwa):
             figprefix = '%s-%s-seg%02d-cc%03d-%s'%\
                         (prefix_plots, detname.replace(':','-').replace('.','-'), idx, nstep, mode)
 
-            nrec,nevt = -1,0
             #First nstep_peds (5?) steps correspond to darks:
             if dopeds and nstep<nstep_peds:
                 msg = 'DARK step %d ' % nstep
                 logger.warning('skip %s' % msg)
 
-#                block=np.zeros((nbs,nr,nc),dtype=np.int16)
-
-#                for nevt,evt in enumerate(step.events()):
-#                    raw = det.raw.raw(evt)
-#                    if raw is None: #skip empty frames
-#                        logger.warning('Ev:%04d rec:%04d panel:%02d raw=None, t(sec)=%.6f' % (nevt, nrec, idx, evt._seconfs))
-#                        msg += 'none'
-#                        continue
-#                    if nrec>nbs-2:
-#                        break
-#                    else:
-#                        nrec += 1
-#                        if raw.ndim > 2: raw=raw[idx,:]
-#                        if selected_record(nevt):
-#                           logger.info(info_ndarr(raw & databitw, 'Ev:%04d rec:%04d panel:%02d raw & databitw' % (nevt, nrec, idx)))
-#                        if display and nevt<3:
-#                            imsh, cbar = gr.imshow_cbar(fig2, axim2, axcb2, raw, amin=None, amax=None, extent=None,\
-#                                                     interpolation='nearest', aspect='auto', origin='upper',\
-#                                                     orientation='vertical', cmap='inferno')
-#                            fig2.canvas.manager.set_window_title('Run:%d step:%d mode:%s panel:%02d' % (orun.runnum, nstep, mode, idx))
-#                            fname = '%s-ev%02d-img-dark' % (figprefix, nevt)
-#                            axim2.set_title(fname.rsplit('/',1)[-1], fontsize=6)
-#                            fig2.savefig(fname+'.png')
-#                            logger.info('saved: %s' % fname+'.png')
-
-#                        block[nrec]=raw & databitw
-#                        if nrec%200==0: msg += '.%s' % find_gain_mode(det, raw)
-
-#                print_statistics(nevt, nrec)
-
-#                darks[nstep,:,:], nda_rms, nda_status = proc_dark_block(block[:nrec,:,:], **kwa)
-#                logger.debug(msg)
-
-#                fname = '%s_rms_%s.dat' % (prefix_rms, GAIN_MODES[nstep])
-#                save_2darray_in_textfile(nda_rms, fname, filemode, fmt_rms, umask=0o0, group=group)
-
-#                fname = '%s_status_%s.dat' % (prefix_status, GAIN_MODES[nstep])
-#                save_2darray_in_textfile(nda_status, fname, filemode, fmt_status, umask=0o0, group=group)
-
-            ####################
             elif not dooffs:
                 #logger.debug(info_ndarr(darks, 'darks'))
                 if nstep>nstep_peds-1:
@@ -581,80 +671,20 @@ def charge_injection(**kwa):
                     break
                 logger.info('dooffs is %s - continue' % str(dooffs))
                 continue
-            ####################
 
-            #Next nspace**2 steps correspond to pulsing in Auto Medium-to-Low
+            # Next nspace**2 steps correspond to pulsing in AML - Auto Medium-to-Low
             elif nstep>nstep_peds-1 and nstep<nstep_peds+nspace**2:
                 msg = ' AML %2d/%2d '%(nstep-nstep_peds+1, nspace**2)
-
                 istep = nstep - nstep_peds
-                #jr = istep // nspace
-                #jc = istep % nspace
 
-                jr, jc = injection_row_col(istep, nspace)
+                resp = event_loop_and_fit(det, timing, orun, step, istep, nstep,\
+                    idx, nspace, pixrc, nbs, nr, nc, dfid_med, msg, fig2, axim2, axcb2,\
+                    figprefix, gainbitw, databitw, display, npoff, nperiods, savechi2,\
+                    npmin, tsec_show)
 
-                if pixrc is not None:
-                    selpix = selected_pixel(pixrow, pixcol, jr, jc, nr, nc, nspace)
-                    if selpix is None:
-                        logger.info(msg + ' skip, due to pixrc=%s'%pixrc)
-                        continue
-                    else:
-                        logger.info(msg + ' process selected pixel:%s' % str(selpix))
+                if resp is None: continue  # steps
+                fits0, nsp0, chi2, msgf, jr, jc = resp
 
-                fid_old = None
-                block = np.zeros((nbs, nr, nc), dtype=np.int16)
-                evnum = np.zeros((nbs,), dtype=np.int16)
-                for nevt, evt in enumerate(step.events()):   #read all frames
-                    raw = det.raw.raw(evt)
-                    if raw is None:
-                        logger.warning('Ev:%04d rec:%04d panel:%02d AML raw=None' % (nevt, nrec, idx))
-                        msg += 'none'
-                        continue
-                    if nrec>nbs-2:
-                        break
-                    else:
-                        #---- 2021-06-10: check fiducial for consecutive events
-                        tstamp = evt.timestamp    # 4193682596073796843 relative to 1990-01-01
-                        fid = seconds(tstamp) # evt.get(EventId).fiducials()
-                        if fid_old is not None:
-                            dfid = fid-fid_old
-                            if not (dfid < 0.009):  # dfid:0.008389     != 3:
-                                logger.warning('TIME SYSTEM FAULT dfid!=3: Ev:%04d rec:%04d panel:%02d AML raw=None fiducials:%.6f dfid:%.6f'%\
-                                            (nevt, nrec, idx, fid, dfid))
-                                if nrec < nbs_half:
-                                   logger.info('reset statistics in block and keep accumulation')
-                                   nrec = -1
-                                else:
-                                   logger.info('terminate event loop and process block data')
-                                   break
-                        fid_old = fid
-                        #print('nevt, nrec, fid: %04d %04d %d ' % (nevt, nrec, evt.get(EventId).fiducials()))
-                        #----
-
-                        nrec += 1
-                        if raw.ndim > 2: raw=raw[idx,:]
-                        if selected_record(nevt):
-                           logger.info(info_ndarr(raw, 'Ev:%04d rec:%04d panel:%02d AML raw' % (nevt, nrec, idx)))
-                        block[nrec] = raw
-                        evnum[nrec] = nevt
-                        if nevt%200==0: msg += '.'
-
-                if display:
-                    #imsh, cbar = gr.imshow_cbar(fig2, axim2, axcb2, block[nrec][:100,:100], amin=None, amax=None, extent=None,\
-                    imsh, cbar = gr.imshow_cbar(fig2, axim2, axcb2, block[nrec], amin=None, amax=None, extent=None,\
-                                             interpolation='nearest', aspect='auto', origin='upper',\
-                                             orientation='vertical', cmap='inferno')
-                    fig2.canvas.manager.set_window_title('Run:%d step:%d events:%d' % (orun.runnum, nstep, evnum[nrec])) #, **kwargs)
-                    fname = '%s-img-charge' % figprefix
-                    axim2.set_title(fname.rsplit('/',1)[-1], fontsize=6)
-                    fig2.savefig(fname + '.png')
-                    logger.info('saved: %s' % fname+'.png')
-
-                print_statistics(nevt, nrec)
-
-                block = block[:nrec, jr:nr:nspace, jc:nc:nspace]        # select only pulsed pixels
-                evnum = evnum[:nrec]                                    # list of non-empty events
-                fits0, nsp0, msgf, chi2 = fit(block, evnum, gainbitw, databitw, display, figprefix, ixoff, nperiods, savechi2, selpix) # fit offset, gain
                 fits_ml[jr:nr:nspace, jc:nc:nspace] = fits0             # collect results
                 nsp_ml[jr:nr:nspace, jc:nc:nspace] = nsp0               # collect switching points
                 if savechi2: chi2_ml[jr:nr:nspace, jc:nc:nspace] = chi2 # collect chi2/dof
@@ -664,86 +694,30 @@ def charge_injection(**kwa):
                   + info_ndarr(fits0[:,:,0,1],'\n  M offset', last=5)\
                   + info_ndarr(fits0[:,:,1,1],'\n  L offset', last=5)
 
-                logger.info(msg + msgf + s)
+                logger.info(msg + str(msgf) + s)
 
-            #Next nspace**2 Steps correspond to pulsing in Auto High-to-Low
+            # Next nspace**2 Steps correspond to pulsing in AHL - Auto High-to-Low
             elif nstep>nstep_peds-1+nspace**2 and nstep<nstep_peds+2*nspace**2:
                 msg = ' AHL %2d/%2d '%(nstep-nstep_peds-nspace**2+1, nspace**2)
-
                 istep = nstep-nstep_peds-nspace**2
-                #jr = istep // nspace
-                #jc = istep % nspace
-                jr, jc = injection_row_col(istep, nspace)
 
-                if pixrc is not None:
-                    selpix = selected_pixel(pixrow, pixcol, jr, jc, nr, nc, nspace)
-                    if selpix is None:
-                        logger.info(msg + ' skip, due to pixrc=%s'%pixrc)
-                        continue
+                resp = event_loop_and_fit(det, timing, orun, step, istep, nstep,\
+                    idx, nspace, pixrc, nbs, nr, nc, dfid_med, msg, fig2, axim2, axcb2,\
+                    figprefix, gainbitw, databitw, display, npoff, nperiods, savechi2,\
+                    npmin, tsec_show)
 
-                fid_old = None
-                block = np.zeros((nbs, nr, nc), dtype=np.int16)
-                evnum = np.zeros((nbs,), dtype=np.int16)
-                for nevt, evt in enumerate(step.events()):   #read all frames
-                    raw = det.raw.raw(evt)
-                    if raw is None:
-                        logger.warning('Ev:%04d rec:%04d panel:%02d AHL raw=None' % (nevt, nrec, idx))
-                        msg += 'None'
-                        continue
-                    if nrec>nbs-2:
-                        break
-                    else:
-                        #---- 2021-06-10: check fiducial for consecutive events
-                        tstamp = evt.timestamp    # 4193682596073796843 relative to 1990-01-01
-                        fid = seconds(tstamp) # evt.get(EventId).fiducials()
-                        if fid_old is not None:
-                            dfid = fid-fid_old
-                            if not (dfid < 0.009):  # dfid:0.008389
-                                logger.warning('TIME SYSTEM FAULT dfid!=3: Ev:%04d rec:%04d panel:%02d AML raw=None fiducials:%.6f dfid:%.6f'%\
-                                            (nevt, nrec, idx, fid, dfid))
-                                if nrec < nbs_half:
-                                   logger.info('reset statistics in block and keep accumulation')
-                                   nrec = -1
-                                else:
-                                   logger.info('terminate event loop and process block data')
-                                   break
-                        fid_old = fid
-                        #print('nevt, nrec, fid: %04d %04d %d ' % (nevt, nrec, evt.get(EventId).fiducials()))
-                        #----
+                if resp is None: continue  # steps
+                fits0, nsp0, chi2, msgf, jr, jc = resp
 
-                        nrec += 1
-                        if raw.ndim > 2: raw = raw[idx,:]
-                        if selected_record(nevt):
-                           logger.info(info_ndarr(raw, 'Ev:%04d rec:%04d panel:%02d AHL raw' % (nevt, nrec, idx)))
-                        block[nrec] = raw
-                        evnum[nrec] = nevt
-                        if nevt%200 == 0: msg += '.'
-
-                if display:
-                    #imsh, cbar = gr.imshow_cbar(fig2, axim2, axcb2, block[nrec][:100,:100], amin=None, amax=None, extent=None,\
-                    imsh, cbar = gr.imshow_cbar(fig2, axim2, axcb2, block[nrec], amin=None, amax=None, extent=None,\
-                                             interpolation='nearest', aspect='auto', origin='upper',\
-                                             orientation='vertical', cmap='inferno')
-                    fig2.canvas.manager.set_window_title('Run:%d step:%d events:%d' % (orun.runnum, nstep, evnum[nrec])) #, **kwargs)
-                    fname = '%s-img-charge' % figprefix
-                    axim2.set_title(fname.rsplit('/',1)[-1], fontsize=6)
-                    fig2.savefig(fname+'.png')
-                    logger.info('saved: %s' % fname+'.png')
-
-                print_statistics(nevt, nrec)
-
-                block = block[:nrec, jr:nr:nspace, jc:nc:nspace]        # select only pulsed pixels
-                evnum = evnum[:nrec]                                    # list of non-empty events
-                fits0, nsp0, msgf, chi2=fit(block, evnum, gainbitw, databitw, display, figprefix, ixoff, nperiods, savechi2, selpix) # fit offset, gain
                 fits_hl[jr:nr:nspace, jc:nc:nspace] = fits0             # collect results
-                nsp_hl[jr:nr:nspace, jc:nc:nspace] = nsp0
+                nsp_hl[jr:nr:nspace, jc:nc:nspace] = nsp0               # collect switching points
                 if savechi2: chi2_hl[jr:nr:nspace, jc:nc:nspace] = chi2 # collect chi2/dof
                 s = '\n  block fit results AHL'\
                   + info_ndarr(fits0[:,:,0,0],'\n  H gain',   last=5)\
                   + info_ndarr(fits0[:,:,1,0],'\n  L gain',   last=5)\
                   + info_ndarr(fits0[:,:,0,1],'\n  H offset', last=5)\
                   + info_ndarr(fits0[:,:,1,1],'\n  L offset', last=5)
-                logger.info(msg + msgf + s)
+                logger.info(msg + str(msgf) + s)
 
             elif nstep>=nstep_peds+2*nspace**2:
                 break
@@ -752,7 +726,7 @@ def charge_injection(**kwa):
 
         logger.debug(info_ndarr(fits_ml, '  fits_ml', last=10)) # shape:(352, 384, 2, 2)
         logger.debug(info_ndarr(fits_hl, '  fits_hl', last=10)) # shape:(352, 384, 2, 2)
-        logger.debug(info_ndarr(darks,   '  darks',   last=10)) # shape:(352, 384, 7)
+        #logger.debug(info_ndarr(darks,   '  darks',   last=10)) # shape:(352, 384, 7)
 
         #darks[6,:,:]=darks[4,:,:]-fits_ml[:,:,1,1] # 2020-06-19 M.D. - commented out, it is done later
         #darks[5,:,:]=darks[3,:,:]-fits_hl[:,:,1,1] # 2020-06-19 M.D. - commented out, it is done later
@@ -760,7 +734,8 @@ def charge_injection(**kwa):
         #Save diagnostics data, can be commented out:
         #save fitting results
         fexists = os.path.exists(fname_work)
-        np.savez_compressed(fname_work, darks=darks, fits_hl=fits_hl, fits_ml=fits_ml, nsp_hl=nsp_hl, nsp_ml=nsp_ml)
+        #np.savez_compressed(fname_work, darks=darks, fits_hl=fits_hl, fits_ml=fits_ml, nsp_hl=nsp_hl, nsp_ml=nsp_ml)
+        np.savez_compressed(fname_work, fits_hl=fits_hl, fits_ml=fits_ml, nsp_hl=nsp_hl, nsp_ml=nsp_ml)
         if not fexists: os.chmod(fname_work, filemode)
         logger.info('Saved:  %s' % fname_work)
 
@@ -853,6 +828,5 @@ def charge_injection(**kwa):
         plot_fit_results(1, fits_hl, fnameout, filemode, gm, titles)
 
         gr.plt.pause(5)
-
 
 # EOF
