@@ -111,6 +111,8 @@ int main(int argc, char* argv[])
         if (kwargs.first == "ep_fabric")         continue;  // PGPDetectorApp
         if (kwargs.first == "ep_domain")         continue;  // PGPDetectorApp
         if (kwargs.first == "ep_provider")       continue;  // PGPDetectorApp
+        if (kwargs.first == "drp")               continue;  // PGPDetectorApp
+        if (kwargs.first == "pythonScript")      continue;  // PGPDetectorApp
         if (kwargs.first == "sim_length")        continue;  // XpmDetector
         if (kwargs.first == "timebase")          continue;  // XpmDetector
         if (kwargs.first == "xpmpv")             continue;  // BEBDetector
