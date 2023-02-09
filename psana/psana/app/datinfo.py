@@ -5,10 +5,10 @@ import sys
 from time import time
 import json
 
-from psana.detector.Utils import info_dict, info_command_line, info_namespace, info_parser_arguments
+from psana.detector.Utils import info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import datasource_kwargs_from_string, info_run, info_detnames_for_dskwargs, info_detector, seconds
+from psana.detector.utils_psana import datasource_kwargs_from_string, info_run, info_detnames_for_dskwargs, info_detector, seconds, timestamp_run
 from psana import DataSource
 
 import logging
@@ -129,9 +129,9 @@ def loop_run_step_evt(args):
   ds = DataSource(**datasource_kwargs_from_string(args.dskwargs))
 
   if do_loopruns:
-    for irun,run in enumerate(ds.runs()):
+    for irun, run in enumerate(ds.runs()):
       print('\n==== %02d run: %d exp: %s detnames: %s' % (irun, run.runnum, run.expt, ','.join(run.detnames)))
-
+      print('run.timestamp LCLS2 int: %d > epoch unix sec: %.6f > %s' % (run.timestamp, seconds(run.timestamp), timestamp_run(run)))
       if not do_loopsteps: continue
       print('%s detector object' % args.detname)
       det = None if args.detname is None else run.Detector(args.detname)
@@ -144,15 +144,15 @@ def loop_run_step_evt(args):
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
       print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
 
-      timing = run.Detector('timing')
-      timing.raw._add_fields()
+      timing = run.Detector('timing') if 'timing' in run.detnames else None
+      if timing is not None: timing.raw._add_fields()
       tsec_old = 0
       pulseid_old = 0
 
       dcfg = det.raw._config_object() if '_config_object' in dir(det.raw) else None
       if dcfg is None: print('det.raw._config_object is MISSING')
 
-      for istep,step in enumerate(run.steps()):
+      for istep, step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
 
         if step_docstring is not None:
@@ -175,13 +175,17 @@ def loop_run_step_evt(args):
              segs = det.raw._segment_numbers(evt) if det is not None else None
              #tstamp = evt.timestamp   # like 4193682596073796843 relative to 1990-01-01
              tsec = seconds(evt.timestamp)
-             pulseid = timing.raw.pulseId(evt) # evt.get(EventId).fiducials()
              tsec_diff = tsec-tsec_old
              tsec_old = tsec
-             pulseid_diff = pulseid-pulseid_old
-             pulseid_old = pulseid
-             print('  Event %05d t=%.6fsec dt=%.6fsec/record pulseId=%d diff=%d/record  %s '%\
-                   (ievt, tsec, tsec_diff, pulseid, pulseid_diff, info_ndarr(segs,'segments')))
+             print('  Event %05d t=%.6fsec dt=%.6fsec/record %s '%\
+                   (ievt, tsec, tsec_diff, info_ndarr(segs,'segments')), end='')
+             if timing is not None:
+                 pulseid = timing.raw.pulseId(evt) # evt.get(EventId).fiducials()
+                 pulseid_diff = pulseid-pulseid_old
+                 pulseid_old = pulseid
+                 print('  pulseId=%d diff=%d/record' % (pulseid, pulseid_diff))
+             else:
+                 print(' timing is None, pulseId is N/A')
              raw = det.raw.raw(evt)
              print(info_ndarr(raw,'    det.raw.raw(evt)'))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
