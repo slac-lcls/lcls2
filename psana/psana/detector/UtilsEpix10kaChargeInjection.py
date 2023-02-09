@@ -524,6 +524,8 @@ def charge_injection(**kwa):
     cpdic = uec.get_config_info_for_dataset_detname(**kwa)
     logger.info('config_info:%s' % uec.info_dict(cpdic))  # fmt=fmt, sep=sep+sepnext)
 
+    #sys.exit('TEST EXIT')
+
     tstamp    = cpdic.get('tstamp', None)
     panel_ids = cpdic.get('panel_ids', None)
     exp       = cpdic.get('expname', None)
@@ -567,6 +569,8 @@ def charge_injection(**kwa):
 
     #sys.exit('TEST EXIT')
 
+    darks   = np.zeros((7,nr,nc))
+
     chi2_ml = np.zeros((nr,nc,2))
     chi2_hl = np.zeros((nr,nc,2))
     nsp_ml  = np.zeros((nr,nc),dtype=np.int16)
@@ -591,7 +595,6 @@ def charge_injection(**kwa):
         logger.info('DOES NOT EXIST charge-injection data file:'\
                     '\n  %s\nBEGIN CALIBRATION CYCLES' % fname_work)
 
-        darks   = np.zeros((7,nr,nc))
         fits_ml = np.zeros((nr,nc,2,2))
         fits_hl = np.zeros((nr,nc,2,2))
 
@@ -796,10 +799,42 @@ def charge_injection(**kwa):
     save_2darray_in_textfile(offset_ahl, fname_offset_AHL, filemode, fmt_offset, umask=0o0, group=group)
     save_2darray_in_textfile(offset_aml, fname_offset_AML, filemode, fmt_offset, umask=0o0, group=group)
 
+
+    #Find and load darks:
+    #dir_peds = prefix_peds.rsplit('/',1)[0]
+    logger.info('== Find and load dark arrays with earlier timestamp in the directory:\n  %s' %  dir_peds)
+      # prefix_peds = <path>/<panelid>/pedestals/epixhr2x2_0001_19900121012401_ascdaq18_r0171
+    #pattern = 'pedestals_AHL-H'
+    #for i in range(5):
+    #    pattern = 'pedestals_%s' % GAIN_MODES[i]
+    #    msg = '  for pattern: %s tstamp: %s' % (pattern, tstamp)
+    #    fname_dark = uec.find_file_for_timestamp(dir_peds, pattern, tstamp)
+    #    logger.debug('%s\n    found: %s' % (msg, fname_dark))
+
+    ped_fh   = uec.load_panel_constants(dir_peds, 'pedestals_FH', tstamp)
+    ped_fm   = uec.load_panel_constants(dir_peds, 'pedestals_FM', tstamp)
+    ped_fl   = uec.load_panel_constants(dir_peds, 'pedestals_FL', tstamp)
+    ped_hl_h = uec.load_panel_constants(dir_peds, 'pedestals_AHL-H', tstamp)
+    ped_ml_m = uec.load_panel_constants(dir_peds, 'pedestals_AML-M', tstamp)
+
+    darks[0,:,:] = ped_fh
+    darks[1,:,:] = ped_fm
+    darks[2,:,:] = ped_fl
+    darks[3,:,:] = ped_hl_h
+    darks[4,:,:] = ped_ml_m
+
+    #ped_hl_h = dark #[3,:,:]
+    #darks = np.stack([ped_fh, ped_fm, ped_fl, ped_hl_h, ped_ml_m])
+
+    logger.info(info_ndarr(ped_fh, '  ped_fh', last=10))
+    logger.info(info_ndarr(darks, '  darks', last=10))
+
+    #for i in range(5): sys.exit('TEST EXIT')
+
     #Save darks accounting offset whenever appropriate:
     for i in range(5):  #looping through darks measured in Jack's order
         fname = '%s_pedestals_%s.dat' % (prefix_peds, GAIN_MODES[i])
-        save_2darray_in_textfile(darks[i,:,:], fname, filemode, fmt_peds, umask=0o0, group=group)
+        #save_2darray_in_textfile(darks[i,:,:], fname, filemode, fmt_peds, umask=0o0, group=group)
 
         if i==3:    # evaluate AHL_L from AHL_H
             ped_hl_h = darks[i,:,:]
