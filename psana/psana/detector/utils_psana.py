@@ -25,10 +25,9 @@ Created on 2021-02-16 by Mikhail Dubrovin
 from psana.detector.Utils import str_tstamp
 from psana.detector.Utils import info_dict #, info_namespace, info_command_line
 
-
 def seconds(ts, epoch_offset_sec=631152000) -> float:
     """
-    Converts LCLS2 timestamp to unix epoch time.
+    Converts LCLS2 (int) timestamp to unix epoch time.
     The epoch used is 1-Jan-1990 rather than 1970. -Matt
 
     Receives  ts = orun.timestamp  # 4193682596073796843 relative to 1990-01-01
@@ -36,7 +35,10 @@ def seconds(ts, epoch_offset_sec=631152000) -> float:
 
     import datetime
     epoch_offset_sec=(datetime.datetime(1990, 1, 1)-datetime.datetime(1970, 1, 1)) / datetime.timedelta(seconds=1)
+
+    see lcls2/psana/psana/event.py
     """
+    assert isinstance(ts, int)
     return float(ts>>32) + float(ts&0xffffffff)*1.e-9 + epoch_offset_sec
 
 
