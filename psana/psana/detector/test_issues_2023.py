@@ -208,6 +208,15 @@ def issue_2023_01_10():
     gr.show()
 
 
+def issue_2023_02_07():
+    #ds, orun, det = ds_run_det(exp='ascdaq18', run=171, detname='epixhr', dir='/cds/data/psdm/asc/ascdaq18/xtc/')
+    from psana import DataSource
+    for runnum in (170, 171):
+      ds = DataSource(exp='ascdaq18', run=runnum)  # , dir='/cds/data/psdm/asc/ascdaq18/xtc/')
+      orun = next(ds.runs())
+      print('runnum: %d timestamp: %d' % (orun.runnum, orun.timestamp))
+
+
 def issue_2023_mm_dd():
     print('template')
 
@@ -218,6 +227,7 @@ USAGE = '\nUsage:'\
       + '\n    1 - issue_2023_01_03 - test epixhr, calib and common mode correction'\
       + '\n    2 - issue_2023_01_06 - test utils_calib_components.py'\
       + '\n    3 - issue_2023_01_10 - test for of the 1st charge injection for epixhr'\
+      + '\n    4 - issue_2023_02_07 - test timestamp for exp=ascdaq18,run=170/1 for epixhr'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -225,6 +235,7 @@ if   TNAME in  ('0',): issue_2023_mm_dd()
 elif TNAME in  ('1',): issue_2023_01_03()
 elif TNAME in  ('2',): issue_2023_01_06()
 elif TNAME in  ('3',): issue_2023_01_10()
+elif TNAME in  ('4',): issue_2023_02_07()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
