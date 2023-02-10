@@ -17,7 +17,7 @@ TESTNDA = '<ndarray-shaped-as-data-fname>'
 TGFNAME = '<geometry-fname>'
 TGFNAME1 = '/cds/group/psdm/detector/data_test/geometry/geo-epix10ka2m-16-segment.data'
 
-USAGE = '\n\nExamples:\n'\
+USAGE = '\n'\
       + '\n1) Construct 2-d image (or mask-of-segments) from ndarray with image shaped as data using appropriate geometry file'\
       + '\n         %s 1 -g <geometry-file> [-a (input)%s] [-i <image-(output)file>] [-c <control-bitword>]' % (SCRNAME, TESTNDA)\
       + '\n  ex1:   %s 1 -g %s' % (SCRNAME, TGFNAME)\
@@ -64,7 +64,7 @@ def argument_parser():
     h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
     h_kwargs = 'str python code evaluated to dict and passed to geo.get_pixel_coord_indexes(**kwargs), default = %s' % d_kwargs
 
-    parser = argparse.ArgumentParser(description='Deploy calibration files from repository to DB.', usage=USAGE)
+    parser = argparse.ArgumentParser(description='Conversion between 2-d and 3-d masks.', usage=USAGE)
     #parser.add_argument('args', nargs='*', default=d_proc, help=h_proc)
     parser.add_argument('args', nargs='?', default=d_proc, help=h_proc) # '?' - no list, just a single str parameter
     parser.add_argument('-g', '--gfname', default=d_gfname, type=str, help=h_gfname)
