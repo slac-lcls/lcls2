@@ -5,9 +5,7 @@
 This software was developed for the lcls2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-@author Mikhail Dubrovin
-
-Adopted from lcls1 CalibManager/app/roicon
+2023-02-10 adopted from lcls1 CalibManager/app/roicon by Mikhail Dubrovin
 """
 
 from psana.detector.UtilsLogging import sys, logging, DICT_NAME_TO_LEVEL, init_stream_handler
@@ -25,7 +23,7 @@ USAGE = '\n\nExamples:\n'\
       + '\n  ex1:   %s 1 -g %s' % (SCRNAME, TGFNAME)\
       + '\n  ex2:   %s 1 -g %s -a %s' % (SCRNAME, TGFNAME, TESTNDA)\
       + '\n  test:  %s 1 -g %s -i test-2d-mask.npy -t' % (SCRNAME, TGFNAME1)\
-      + '\n\n2) Create ROI mask using mask editor "med" (DO NOT FORGET to save mask in file!)'\
+      + '\n\n2) (TBD) Create ROI mask using mask editor "med" (DO NOT FORGET to save mask in file!)'\
       + '\n         %s 2 [-i <image-(input)file>] [-m <roi-mask-(output)file>]' % SCRNAME\
       + '\n  ex1,2: %s 2' % SCRNAME\
       + '\n  ex3:   %s 2 -i image.npy -m roi-mask.npy' % SCRNAME\
@@ -47,8 +45,10 @@ def argument_parser():
     d_cbits  = 0xffff
     d_verb   = False
     d_dotest = False
+    d_save   = False
     d_dirrepo = DIR_REPO
     d_logmode = 'INFO'
+    d_kwargs = '{}'
 
     h_proc   = 'process number: 1-construct image, 2-run mask editor on image, 3-convert image mask to ndarray; default = %s' % d_proc
     h_gfname = 'geometry file name, default = %s' % d_gfname
@@ -59,8 +59,10 @@ def argument_parser():
     h_cbits  = 'mask control bits, =0-none, +1-edges, +2-middle, etc..., default = %d' % d_cbits
     h_verb   = 'verbosity, default = %s' % str(d_verb)
     h_dotest = 'add a couple of rings to the 2-d mask for test purpose, default = %s' % str(d_dotest)
+    h_save   = 'save plots, default = %s' % str(d_save)
     h_dirrepo = 'repository for logs and output files, default = %s' % d_dirrepo
     h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
+    h_kwargs = 'str python code evaluated to dict and passed to geo.get_pixel_coord_indexes(**kwargs), default = %s' % d_kwargs
 
     parser = argparse.ArgumentParser(description='Deploy calibration files from repository to DB.', usage=USAGE)
     #parser.add_argument('args', nargs='*', default=d_proc, help=h_proc)
@@ -73,8 +75,10 @@ def argument_parser():
     parser.add_argument('-c', '--cbits',  default=d_cbits,  type=int, help=h_cbits)
     parser.add_argument('-v', '--verb',   action='store_true', help=h_verb)
     parser.add_argument('-t', '--dotest',  action='store_true', help=h_dotest)
+    parser.add_argument('-S', '--save',    action='store_true', help=h_save)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo, type=str, help=h_dirrepo)
     parser.add_argument('-L', '--logmode', default=d_logmode, type=str, help=h_logmode)
+    parser.add_argument('-k', '--kwargs', default=d_kwargs, type=str, help=h_kwargs)
     return parser
 
 
@@ -104,6 +108,6 @@ def run_parser_do_main():
     sys.exit('End of %s' % SCRNAME)
 
 #if __name__ == "__main__":
-run_parser_do_main()
+run_parser_do_main() # to run it as __main__ from setup.py
 
 # EOF
