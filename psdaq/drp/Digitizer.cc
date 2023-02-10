@@ -133,6 +133,7 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
                                                            m_epics_name.c_str()), "hsd_connect()");
 
             m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
+            printf("*** BebDetector: paddr is %08x = %u\n", m_paddr, m_paddr);
 
             // there is currently a failure mode where the register reads
             // back as zero or 0xffffffff (incorrectly). This is not the best
@@ -140,7 +141,8 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
             // difficulty is that Matt says this register has to work
             // so that an automated software solution would know which
             // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-            if (!m_paddr || m_paddr==0xffffffff) {
+            // Also, register is corrupted when port number > 15 - Ric
+            if (!m_paddr || m_paddr==0xffffffff || (m_paddr & 0xff) > 15) {
                 logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
                 abort();
             }

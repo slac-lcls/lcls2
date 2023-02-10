@@ -122,6 +122,7 @@ json XpmDetector::connectionInfo()
     //  Retrieve the timing link ID
     uint32_t reg;
     dmaReadRegister(fd, &tem->xma().rxId, &reg);
+    printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
 
     // there is currently a failure mode where the register reads
     // back as zero or 0xffffffff (incorrectly). This is not the best
@@ -129,7 +130,8 @@ json XpmDetector::connectionInfo()
     // difficulty is that Matt says this register has to work
     // so that an automated software solution would know which
     // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-    if (!reg || reg==0xffffffff) {
+    // Also, register is corrupted when port number > 15 - Ric
+    if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
         logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",reg);
         abort();
     }
