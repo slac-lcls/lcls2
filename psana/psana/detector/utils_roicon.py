@@ -27,8 +27,8 @@ def image_of_sensors(gfname, afname=None, ofname='mask.txt', mbits=0xffff, dotes
     """
     print('Geometry file: %s' % gfname)
 
-    geometry = GeometryAccess(gfname, 0)
-    ix, iy = geometry.get_pixel_coord_indexes(**kwargs)
+    geo = GeometryAccess(gfname, 0)
+    ix, iy = geo.get_pixel_coord_indexes(**kwargs)
     reshape_to_3d(ix)
     reshape_to_3d(iy)
 
@@ -48,7 +48,7 @@ def image_of_sensors(gfname, afname=None, ofname='mask.txt', mbits=0xffff, dotes
         print('Input array mean=%f   std=%f' % (mean, std))
         amp_range=[mean-2*std, mean+2*std]
 
-    mask = geometry.get_pixel_mask(mbits=mbits)
+    mask = geo.get_pixel_mask(mbits=mbits)
     mask.shape = ix.shape
 
     if mbits: arr *= mask
@@ -102,7 +102,7 @@ def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mb
     reshape_to_3d(iy)
     print('3. Check shapes of pixel image-index arrays ix, iy:', ix.shape, iy.shape)
 
-    print('4. Plot image of the mask')
+    print('4. Plot image of the mask', info_ndarr(mask_roi, 'mask_roi'))
     axim = gr.plotImageLarge(mask_roi,amp_range=[0,1], title='Image of the mask')
     gr.save(fname='img-mask2d.png', do_save=save_plots)
     gr.move(400,10)
