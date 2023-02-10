@@ -78,7 +78,7 @@ def argument_parser():
     return parser
 
 
-if __name__ == "__main__":
+def run_parser_do_main():
 
     if len(sys.argv)==1:
         sys.exit('Try command: %s -h' % SCRNAME)
@@ -102,5 +102,8 @@ if __name__ == "__main__":
     do_main(parser)
 
     sys.exit('End of %s' % SCRNAME)
+
+#if __name__ == "__main__":
+run_parser_do_main()
 
 # EOF
