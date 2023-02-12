@@ -83,17 +83,23 @@ Client::Client(const char* devname,
 
 }
 
-Client::~Client() { release(); }
-
-void Client::release() {
+Client::~Client()
+{
   if (_fdsh >= 0) {
     close(_fdsh);
     if (_queues)  munmap(_queues, sizeof(Pds::Tpr::Queues));
+    _queues = nullptr;
   }
   _fdsh = -1;
+
+  release();
+}
+
+void Client::release() {
   if (_fd>=0) {
     close(_fd);
     if (_dev)  munmap(_dev,sizeof(Pds::Tpr::TprReg));
+    _dev = nullptr;
   }
   _fd=-1;
 }
