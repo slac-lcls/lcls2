@@ -1,7 +1,8 @@
 """ Utils for psana/detector/app/roicon.py
     import psana.detector.utils_roicon as urc
 """
-
+import logging
+logger = logging.getLogger(__name__)
 import os
 import numpy as np
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
@@ -22,7 +23,7 @@ def mask_test_ring(shape):
     return np.select([a>5,], [0,], default=1).astype(um.DTYPE_MASK)
 
 
-def image_of_sensors(gfname, afname=None, ofname='mask.txt', mbits=0xffff, dotest=False, save_plots=False, **kwargs):
+def image_of_sensors(gfname, afname=None, ofname='mask.txt', mbits=0xffff, dotest=False, figprefix=None, **kwargs):
     """ Makes and plot an image or mask of sensors for geometry file
     """
     logger.info('Geometry file: %s' % gfname)
@@ -60,8 +61,10 @@ def image_of_sensors(gfname, afname=None, ofname='mask.txt', mbits=0xffff, dotes
       mask_rings = mask_test_ring(img.shape)
       img *= mask_rings
 
-    axim = gr.plotImageLarge(img,amp_range=amp_range)
-    gr.save(fname='img-mask2d.png', do_save=save_plots)
+    axim = gr.plotImageLarge(img, amp_range=amp_range)
+    do_save = (figprefix is not None)
+    fname = '%s-img-test-mask2d.png' % figprefix if do_save else ''
+    gr.save(fname, do_save=do_save)
     gr.move(500,10)
     gr.show()
 
@@ -83,7 +86,7 @@ def roi_mask_editor(ifname='image.txt', mfname='mask', mbits=0xffff):
     #logger.info('%s' % output)
 
 
-def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mbits=0xffff, save_plots=False, **kwargs):
+def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mbits=0xffff, figprefix=None, **kwargs):
     """ Makes and plot the mask of sensors for image generated from geometry file
         Mask ndarray is created by the list of comprehension
         [mask_roi[r,c] for r,c in zip(ix, iy)]
@@ -100,11 +103,13 @@ def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mb
     ix, iy = geo.get_pixel_coord_indexes(**kwargs)
     reshape_to_3d(ix)
     reshape_to_3d(iy)
-    logger.info('3. Check shapes of pixel image-index arrays ix: %s iy: %s' %  str(ix.shape), str(iy.shape)))
+    logger.info('3. Check shapes of pixel image-index arrays ix: %s iy: %s' %  (str(ix.shape), str(iy.shape)))
 
     logger.info('4. Plot image of the mask %s' % info_ndarr(mask_roi, 'mask_roi'))
     axim = gr.plotImageLarge(mask_roi,amp_range=[0,1], title='Image of the mask')
-    gr.save(fname='img-mask2d.png', do_save=save_plots)
+    do_save = (figprefix is not None)
+    fname = '%s-img-mask2d.png' % figprefix if do_save else ''
+    gr.save(fname, do_save=do_save)
     gr.move(400,10)
     gr.show()
 
@@ -134,13 +139,15 @@ def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mb
     mask_nda.shape = [ix.size//ix.shape[-1], ix.shape[-1]]
     logger.info(info_ndarr(mask_nda, 'reshape for 2-d image of panels'))
     axim = gr.plotImageLarge(mask_nda, amp_range=[0,1], figsize=(6,12), title='mask as ndarray')
-    gr.save(fname='img-mask-ndarr.png', do_save=save_plots)
+    fname = '%s-img-mask-ndarr.png' % figprefix if do_save else ''
+    gr.save(fname, do_save=do_save)
     gr.move(400,10)
 
     mask_nda.shape = ix.shape
     img = img_from_pixel_arrays(ix, iy, W=mask_nda)
     axim = gr.plotImageLarge(img, amp_range=[0,1], title='mask generated from ndarray')
-    gr.save(fname='img-mask-from-ndarr.png', do_save=save_plots)
+    fname = '%s-img-mask-from-ndarr.png' % figprefix if do_save else ''
+    gr.save(fname, do_save=do_save)
     gr.move(500,50)
     gr.show()
 
@@ -148,9 +155,12 @@ def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mb
 def do_main(parser):
     nspace = parser.parse_args()
     proc = nspace.args # [0]
-    if   proc == '1': image_of_sensors   (nspace.gfname, nspace.afname, nspace.ifname, nspace.cbits, nspace.dotest, nspace.save, **eval(nspace.kwargs))
+
+    figprefix = ('%s/%s' % (parser.repoman.dir_in_repo('figs'), nspace.figprefix)) if nspace.figprefix != 'None' else None
+
+    if   proc == '1': image_of_sensors   (nspace.gfname, nspace.afname, nspace.ifname, nspace.cbits, nspace.dotest, figprefix, **eval(nspace.kwargs))
     elif proc == '2': roi_mask_editor    (nspace.ifname, nspace.mfname)
-    elif proc == '3': roi_mask_to_ndarray(nspace.gfname, nspace.mfname, nspace.nfname, nspace.cbits, nspace.save, **eval(nspace.kwargs))
+    elif proc == '3': roi_mask_to_ndarray(nspace.gfname, nspace.mfname, nspace.nfname, nspace.cbits, figprefix, **eval(nspace.kwargs))
     else: logger.info('Non-recognized process number "%s"; implemented options: 1, 2, or 3' % proc)
 
 # EOF
