@@ -8,11 +8,11 @@ If you use all or part of it, please give an appropriate acknowledgment.
 2023-02-10 adopted from lcls1 CalibManager/app/roicon by Mikhail Dubrovin
 """
 
-from psana.detector.UtilsLogging import sys, logging, DICT_NAME_TO_LEVEL, init_stream_handler
+from psana.detector.UtilsLogging import sys, logging, DICT_NAME_TO_LEVEL, init_stream_handler, init_file_handler
 
 logger = logging.getLogger(__name__)
 SCRNAME = sys.argv[0].rsplit('/')[-1]
-DIR_REPO = './work'
+DIR_REPO = './work-roicon'
 TESTNDA = '<ndarray-shaped-as-data-fname>'
 TGFNAME = '<geometry-fname>'
 TGFNAME1 = '/cds/group/psdm/detector/data_test/geometry/geo-epix10ka2m-16-segment.data'
@@ -93,6 +93,20 @@ def run_parser_do_main():
     defs = vars(parser.parse_args([])) # dict of defaults only
 
     init_stream_handler(loglevel=nspace.logmode)
+    dirrepo  = nspace.dirrepo
+    logmode  = nspace.logmode
+    dirmode  = kwargs.get('dirmode', 0o2775)
+    filemode = kwargs.get('filemode', 0o664)
+    group    = kwargs.get('group', 'ps-users')
+
+    #from psana.detector.Utils import save_log_record_at_start
+    from psana.detector.RepoManager import RepoManager
+    save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
+    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=0o0, group=group)
+    logfname = repoman.logname('%s_%s' % (procname, get_login()))
+    logger.info('Logfile: %s' % logfname)
+    repoman.save_record_at_start(procname, adddict={'logfile':logfname}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
+    #init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
 
     s = '\ncommand: %s' % ' '.join(sys.argv)\
       + '\nkwargs : %s' % str(kwargs)\
