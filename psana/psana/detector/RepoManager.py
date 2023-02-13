@@ -6,7 +6,7 @@
 Usage::
 
       from psana.detector.UtilsCalib import RepoManager
-      repoman = RepoManager(dirrepo, dirmode=0o777, filemode=0o666)
+      repoman = RepoManager(dirrepo, dirmode=0o2775, filemode=0o664, group='ps-users')
       d = repoman.dir_logs()
       d = repoman.makedir_logs()
       f = repoman.logname_at_start(fname)
@@ -139,7 +139,7 @@ class RepoManager(object):
 
 
     def dir_constants(self, dname='constants'):
-        """returns path to the directory like <dirrepo>/<logs>/<year>/<constants>"""
+        """returns path to the directory like <dirrepo>/<constants>"""
         return os.path.join(self.dirrepo, dname)
 
 
