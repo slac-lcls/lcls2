@@ -45,7 +45,7 @@ def argument_parser():
     d_cbits  = 0xffff
     d_verb   = False
     d_dotest = False
-    d_save   = False
+    d_figprefix = 'fig'
     d_dirrepo = DIR_REPO
     d_logmode = 'INFO'
     d_kwargs = '{}'
@@ -59,7 +59,7 @@ def argument_parser():
     h_cbits  = 'mask control bits, =0-none, +1-edges, +2-middle, etc..., default = %d' % d_cbits
     h_verb   = 'verbosity, default = %s' % str(d_verb)
     h_dotest = 'add a couple of rings to the 2-d mask for test purpose, default = %s' % str(d_dotest)
-    h_save   = 'save plots, default = %s' % str(d_save)
+    h_figprefix = 'figure file name prefix under <dirrepo>/figs, None - do not save, default = %s' % d_figprefix
     h_dirrepo = 'repository for logs and output files, default = %s' % d_dirrepo
     h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
     h_kwargs = 'str python code evaluated to dict and passed to geo.get_pixel_coord_indexes(**kwargs), default = %s' % d_kwargs
@@ -75,7 +75,7 @@ def argument_parser():
     parser.add_argument('-c', '--cbits',  default=d_cbits,  type=int, help=h_cbits)
     parser.add_argument('-v', '--verb',   action='store_true', help=h_verb)
     parser.add_argument('-t', '--dotest',  action='store_true', help=h_dotest)
-    parser.add_argument('-S', '--save',    action='store_true', help=h_save)
+    parser.add_argument('-F', '--figprefix', default=d_figprefix, type=str, help=h_figprefix)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo, type=str, help=h_dirrepo)
     parser.add_argument('-L', '--logmode', default=d_logmode, type=str, help=h_logmode)
     parser.add_argument('-k', '--kwargs', default=d_kwargs, type=str, help=h_kwargs)
@@ -98,15 +98,19 @@ def run_parser_do_main():
     dirmode  = kwargs.get('dirmode', 0o2775)
     filemode = kwargs.get('filemode', 0o664)
     group    = kwargs.get('group', 'ps-users')
+    umask    = kwargs.get('umask', 0o0)
+    procname = SCRNAME
 
     #from psana.detector.Utils import save_log_record_at_start
-    from psana.detector.RepoManager import RepoManager
-    save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
-    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=0o0, group=group)
-    logfname = repoman.logname('%s_%s' % (procname, get_login()))
+    #save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
+    #from psana.detector.RepoManager import RepoManager
+    import psana.detector.RepoManager as rm
+    repoman = rm.RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=umask, group=group)
+    logfname = repoman.logname('%s_%s' % (procname, rm.ut.get_login()))
     logger.info('Logfile: %s' % logfname)
     repoman.save_record_at_start(procname, adddict={'logfile':logfname}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
-    #init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
+    init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
+    repoman.makedir_in_repo('figs')
 
     s = '\ncommand: %s' % ' '.join(sys.argv)\
       + '\nkwargs : %s' % str(kwargs)\
@@ -117,6 +121,7 @@ def run_parser_do_main():
     logger.info(s)
 
     from psana.detector.utils_roicon import do_main
+    parser.repoman = repoman
     do_main(parser)
 
     sys.exit('End of %s' % SCRNAME)
