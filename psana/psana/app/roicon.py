@@ -108,9 +108,9 @@ def run_parser_do_main():
     repoman = rm.RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=umask, group=group)
     logfname = repoman.logname('%s_%s' % (procname, rm.ut.get_login()))
     logger.info('Logfile: %s' % logfname)
-    repoman.save_record_at_start(procname, adddict={'logfile':logfname}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
     init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
     repoman.makedir_in_repo('figs')
+    repoman.save_record_at_start(procname, adddict={'logfile':logfname}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
     s = '\ncommand: %s' % ' '.join(sys.argv)\
       + '\nkwargs : %s' % str(kwargs)\
