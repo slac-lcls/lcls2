@@ -16,7 +16,7 @@ def mask_test_ring(shape):
     rows, cols = shape
     rc, cc = int(0.48*rows), int(0.51*cols)
     r1, r2 = int(0.42*rows), int(0.20*rows)
-    s1, s2 = int(0.04*r1), int(0.06*r2)
+    s1, s2 = int(0.04*r1), int(0.03*r2)
     a = np.ones(shape)
     ag.add_ring(a, amp=10, row=rc, col=cc, rad=r1, sigma=s1)
     ag.add_ring(a, amp=10, row=rc, col=cc, rad=r2, sigma=s2)
@@ -29,18 +29,18 @@ def image_of_sensors(gfname, afname=None, ofname='mask.txt', mbits=0xffff, dotes
     logger.info('Geometry file: %s' % gfname)
 
     geo = GeometryAccess(gfname, 0)
-    ix, iy = geo.get_pixel_coord_indexes(**kwargs)
-    reshape_to_3d(ix)
-    reshape_to_3d(iy)
+    ir, ic = geo.get_pixel_coord_indexes(**kwargs)
+    reshape_to_3d(ir)
+    reshape_to_3d(ic)
 
     afext = '' if afname is None else os.path.splitext(afname)[1]
     ofext = '' if ofname is None else os.path.splitext(ofname)[1]
 
-    arr = np.ones(ix.shape, dtype=np.uint16) if afname is None else \
+    arr = np.ones(ir.shape, dtype=np.uint16) if afname is None else \
           np.load(afname) if afext == '.npy' else \
           np.loadtxt(afname) #, dtype=np.uint16)
 
-    arr.shape = ix.shape
+    arr.shape = ir.shape
 
     amp_range=[-1,2]
     if afname is not None:
@@ -50,12 +50,12 @@ def image_of_sensors(gfname, afname=None, ofname='mask.txt', mbits=0xffff, dotes
         amp_range=[mean-2*std, mean+2*std]
 
     mask = geo.get_pixel_mask(mbits=mbits)
-    mask.shape = ix.shape
+    mask.shape = ir.shape
 
     if mbits: arr *= mask
-    logger.info('shape ix: %s  iy: %s  W: %s' % (str(ix.shape), str(iy.shape), str(arr.shape)))
+    logger.info('shape ir: %s  ic: %s  W: %s' % (str(ir.shape), str(ic.shape), str(arr.shape)))
 
-    img = img_from_pixel_arrays(ix, iy, W=arr)
+    img = img_from_pixel_arrays(ir, ic, W=arr)
 
     if dotest:
       mask_rings = mask_test_ring(img.shape)
@@ -89,8 +89,8 @@ def roi_mask_editor(ifname='image.txt', mfname='mask', mbits=0xffff):
 def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mbits=0xffff, figprefix=None, **kwargs):
     """ Makes and plot the mask of sensors for image generated from geometry file
         Mask ndarray is created by the list of comprehension
-        [mask_roi[r,c] for r,c in zip(ix, iy)]
-        The same timing gives mapping: map(value_of_mask, ix, iy)
+        [mask_roi[r,c] for r,c in zip(ir, ic)]
+        The same timing gives mapping: map(value_of_mask, ir, ic)
     """
     ifext = os.path.splitext(ifname)[1]
     ofext = os.path.splitext(ofname)[1]
@@ -100,10 +100,10 @@ def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mb
 
     logger.info('2. Define geometry from file: %s' % gfname)
     geo = GeometryAccess(gfname, 0)
-    ix, iy = geo.get_pixel_coord_indexes(**kwargs)
-    reshape_to_3d(ix)
-    reshape_to_3d(iy)
-    logger.info('3. Check shapes of pixel image-index arrays ix: %s iy: %s' %  (str(ix.shape), str(iy.shape)))
+    ir, ic = geo.get_pixel_coord_indexes(**kwargs)
+    reshape_to_3d(ir)
+    reshape_to_3d(ic)
+    logger.info('3. Check shapes of pixel image-index arrays ir: %s ic: %s' %  (str(ir.shape), str(ic.shape)))
 
     logger.info('4. Plot image of the mask %s' % info_ndarr(mask_roi, 'mask_roi'))
     axim = gr.plotImageLarge(mask_roi,amp_range=[0,1], title='Image of the mask')
@@ -114,38 +114,41 @@ def roi_mask_to_ndarray(gfname, ifname='roi-mask.txt', ofname='mask-nda.txt', mb
     gr.show()
 
     logger.info('5. Evaluate ndarray with mask')
-    mask_nda = um.convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask_roi, ix, iy)
+    mask_nda = um.convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask_roi, ir, ic)
     #mask_nda = um.convert_mask2d_to_ndarray_using_geo(mask_roi, geo, **kwargs)  # for test only
     #mask_nda = um.convert_mask2d_to_ndarray_using_geometry_file(mask_roi, gfname, **kwargs)  # for test only
-    #mask_nda = np.array([mask_roi[r,c] for r,c in zip(ix, iy)], dtype=um.DTYPE_MASK)  # original algorithm
+    #mask_nda = np.array([mask_roi[r,c] for r,c in zip(ir, ic)], dtype=um.DTYPE_MASK)  # original algorithm
 
     if mbits:
         mask_geo = geo.get_pixel_mask(mbits=mbits)
         reshape_to_3d(mask_geo)
         mask_nda *= mask_geo
 
-    logger.info('6. Cross-checks: shape of mask_nda: %s, mask_nda.size=%d, ix.size=%d ' % \
-          (mask_nda.shape, mask_nda.size, ix.size))
+    logger.info('6. Cross-checks: shape of mask_nda: %s, mask_nda.size=%d, ir.size=%d ' % \
+          (mask_nda.shape, mask_nda.size, ir.size))
 
     logger.info('7. Save mask for ndarray in the file %s' % ofname)
     if ofext == '.npy': np.save(ofname, mask_nda)
     else              :
-        mask_nda.shape = [ix.size//ix.shape[-1],ix.shape[-1]]
+        mask_nda.shape = [ir.size//ir.shape[-1],ir.shape[-1]]
         logger.info('7a. Re-shape for saving in txt to 2-d: %s' % str(mask_nda.shape))
         np.savetxt(ofname, mask_nda, fmt='%d', delimiter=' ')
 
     logger.info('8. Test new mask-ndarray to generate image (CLOSE image to continue)')
     logger.info(info_ndarr(mask_nda, 'mask_nda'))
-    mask_nda.shape = [ix.size//ix.shape[-1], ix.shape[-1]]
-    logger.info(info_ndarr(mask_nda, 'reshape for 2-d image of panels'))
-    axim = gr.plotImageLarge(mask_nda, amp_range=[0,1], figsize=(6,12), title='mask as ndarray')
+    #mask_nda.shape = [ir.size//ir.shape[-1], ir.shape[-1]]
+
+    from psana.pyalgos.generic.PSUtils import table_nxn_epix10ka_from_ndarr
+    mask_table = table_nxn_epix10ka_from_ndarr(mask_nda)
+    logger.info(info_ndarr(mask_table, 'convert mask_nda to table of segments for viewable image'))
+    axim = gr.plotImageLarge(mask_table, amp_range=[0,1], title='mask as ndarray')  # figsize=(13,12)
     fname = '%s-img-mask-ndarr.png' % figprefix if do_save else ''
     gr.save(fname, do_save=do_save)
     gr.move(400,10)
 
-    mask_nda.shape = ix.shape
-    img = img_from_pixel_arrays(ix, iy, W=mask_nda)
-    axim = gr.plotImageLarge(img, amp_range=[0,1], title='mask generated from ndarray')
+    mask_nda.shape = ir.shape
+    img = img_from_pixel_arrays(ir, ic, W=mask_nda)
+    axim = gr.plotImageLarge(img, amp_range=[0,1], title='mask re-generated from ndarray for cross-check')
     fname = '%s-img-mask-from-ndarr.png' % figprefix if do_save else ''
     gr.save(fname, do_save=do_save)
     gr.move(500,50)
