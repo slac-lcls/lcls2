@@ -210,17 +210,13 @@ def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
     return np.asarray(np.select((cond,), (0,), default=1), dtype=dtype)
 
 
-def convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ix, iy):
+def convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, rows, cols):
     """Converts 2-d (np.ndarray) image-like mask2d to
-       (np.ndarray) shaped as input pixel index arrays ix and iy.
-       NOTE: arrays ix and iy should be exactly the same as used to construct mask2d as image.
+       (np.ndarray) shaped as input pixel index arrays rows and cols.
+       NOTE: arrays rows and cols should be exactly the same as used to construct mask2d as image.
     """
-    assert isinstance(mask2d, np.ndarray)
-    assert mask2d.ndim == 2
-    assert isinstance(ix, np.ndarray)
-    assert isinstance(iy, np.ndarray)
-    assert iy.shape == ix.shape
-    return np.array([mask2d[r,c] for r,c in zip(ix, iy)], dtype=DTYPE_MASK)
+    from psana.pscalib.geometry.GeometryAccess import convert_mask2d_to_ndarray
+    return convert_mask2d_to_ndarray(mask2d, rows, cols, dtype=DTYPE_MASK)
 
 
 def convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs):
@@ -230,12 +226,12 @@ def convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs):
     """
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess
     assert isinstance(geo, GeometryAccess)
-    ix, iy = geo.get_pixel_coord_indexes(**kwargs)
-    reshape_to_3d(ix)
-    reshape_to_3d(iy)
-    assert ix.shape[0]>1, 'number of segments should be more than one, ix.shape=%s' % str(ix.shape)
-    assert iy.shape[0]>1, 'number of segments should be more than one, iy.shape=%s' % str(iy.shape)
-    return convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ix, iy)
+    ir, ic = geo.get_pixel_coord_indexes(**kwargs)
+    reshape_to_3d(ir)
+    reshape_to_3d(ic)
+    assert ir.shape[0]>1, 'number of segments should be more than one, ir.shape=%s' % str(ir.shape)
+    assert ic.shape[0]>1, 'number of segments should be more than one, ic.shape=%s' % str(ic.shape)
+    return convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ir, ic)
 
 
 def convert_mask2d_to_ndarray_using_geometry_file(mask2d, gfname, **kwargs):
