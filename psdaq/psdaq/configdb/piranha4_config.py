@@ -237,6 +237,7 @@ def user_to_expert(cl, cfg, full=False):
         print('group {:}  partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(group,partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+            print('Raise start_ns >= {:}'.format(partitionDelay*200*7000/1300))
             raise ValueError('triggerDelay computes to < 0')
 
         d['expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
