@@ -254,7 +254,7 @@ def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', npoff=
     mf, mr, mc = block.shape
     fits = np.zeros((mr, mc, 2, 2))
     chi2 = np.zeros((mr, mc, 2))
-    nsp = np.zeros((mr, mc), dtype=np.int16)
+    neg = np.zeros((mr, mc), dtype=np.int16)  # number of found edge groups / saw periods
     msg = ' fit '
 
     logger.info('block.shape: %s fit selpix: %s' % (str(block.shape), str(selpix)))  # selpix=(20, 97, 2, 13)
@@ -266,8 +266,8 @@ def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', npoff=
         plot_data_block(block, evnum, prefix, gainbitw, databitw, selpix, tsec_show)
 
     #sys.exit('TEST EXIT')
-    msgnum = 0
-    msgmax = 10
+    msgmax = 10  # max number of repeatyed messages
+    msgnum = 0  # counter of repeatyed messages
 
     for ir in range(mr):
         for ic in range(mc):
@@ -285,7 +285,8 @@ def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', npoff=
                 continue
 
             ibeg, iswt, iend = edges[0]
-            nsp[ir,ic] = iswt
+            #nsp[ir,ic] = iswt
+            neg[ir,ic] = len(edges)
             tracem = trace & databitw
 
             x0 =  evnum[ibeg:iswt-npoff] - evnum[ibeg]
@@ -358,15 +359,12 @@ def fit(block, evnum, gainbitw, databitw, display=True, prefix='fig-fit', npoff=
                     #gr.plt.ioff() # hold control on plt.show()
                     plot_fit(x, y, pf0, pf1, fname, databitw)
 
-    return fits, nsp, msg, chi2
+    return fits, neg, msg, chi2
 
 
 def wait_and_exit(tsec=5):
     sleep(tsec)
     sys.exit('EXIT after %d sec timout' % tsec)
-
-
-
 
 
 def event_loop_and_fit(det, timing, orun, step, istep, nstep,\
@@ -463,10 +461,10 @@ def event_loop_and_fit(det, timing, orun, step, istep, nstep,\
 
     block = block[:nrec, jr:nr:nspace, jc:nc:nspace]        # only pulsed pixels
     evnum = evnum[:nrec]                                    # list of non-empty events
-    fits0, nsp0, msgf, chi2 = fit(block, evnum, gainbitw, databitw, display, figprefix, npoff,\
+    fits0, neg0, msgf, chi2 = fit(block, evnum, gainbitw, databitw, display, figprefix, npoff,\
                                   nperiods, savechi2, selpix, npmin, tsec_show) # fit offset, gain
 
-    return fits0, nsp0, msgf, chi2, jr, jc
+    return fits0, neg0, msgf, chi2, jr, jc
 
 
 def charge_injection(**kwa):
@@ -571,10 +569,10 @@ def charge_injection(**kwa):
 
     darks   = np.zeros((7,nr,nc))
 
-    chi2_ml = np.zeros((nr,nc,2))
-    chi2_hl = np.zeros((nr,nc,2))
-    nsp_ml  = np.zeros((nr,nc),dtype=np.int16)
-    nsp_hl  = np.zeros((nr,nc),dtype=np.int16)
+    chi2_ml = np.zeros((nr, nc, 2))
+    chi2_hl = np.zeros((nr, nc, 2))
+    neg_ml  = np.zeros((nr, nc), dtype=np.int16)
+    neg_hl  = np.zeros((nr, nc), dtype=np.int16)
 
     #try:
     if os.path.exists(fname_work):
@@ -588,6 +586,10 @@ def charge_injection(**kwa):
         #darks   = npz['darks']
         fits_ml = npz['fits_ml']
         fits_hl = npz['fits_hl']
+        neg_ml  = npz['neg_ml']
+        neg_hl  = npz['neg_hl']
+        chi2_ml = npz['chi2_ml']
+        chi2_hl = npz['chi2_hl']
 
     #except IOError:
     else:
@@ -686,10 +688,10 @@ def charge_injection(**kwa):
                     npmin, tsec_show)
 
                 if resp is None: continue  # steps
-                fits0, nsp0, chi2, msgf, jr, jc = resp
+                fits0, neg0, msgf, chi2, jr, jc = resp
 
                 fits_ml[jr:nr:nspace, jc:nc:nspace] = fits0             # collect results
-                nsp_ml[jr:nr:nspace, jc:nc:nspace] = nsp0               # collect switching points
+                neg_ml[jr:nr:nspace, jc:nc:nspace] = neg0               # collect switching points
                 if savechi2: chi2_ml[jr:nr:nspace, jc:nc:nspace] = chi2 # collect chi2/dof
                 s = '\n  block fit results AML'\
                   + info_ndarr(fits0[:,:,0,0],'\n  M gain',   last=5)\
@@ -710,10 +712,10 @@ def charge_injection(**kwa):
                     npmin, tsec_show)
 
                 if resp is None: continue  # steps
-                fits0, nsp0, chi2, msgf, jr, jc = resp
+                fits0, neg0, msgf, chi2, jr, jc = resp
 
                 fits_hl[jr:nr:nspace, jc:nc:nspace] = fits0             # collect results
-                nsp_hl[jr:nr:nspace, jc:nc:nspace] = nsp0               # collect switching points
+                neg_hl[jr:nr:nspace, jc:nc:nspace] = neg0               # collect switching points
                 if savechi2: chi2_hl[jr:nr:nspace, jc:nc:nspace] = chi2 # collect chi2/dof
                 s = '\n  block fit results AHL'\
                   + info_ndarr(fits0[:,:,0,0],'\n  H gain',   last=5)\
@@ -737,10 +739,27 @@ def charge_injection(**kwa):
         #Save diagnostics data, can be commented out:
         #save fitting results
         fexists = os.path.exists(fname_work)
-        #np.savez_compressed(fname_work, darks=darks, fits_hl=fits_hl, fits_ml=fits_ml, nsp_hl=nsp_hl, nsp_ml=nsp_ml)
-        np.savez_compressed(fname_work, fits_hl=fits_hl, fits_ml=fits_ml, nsp_hl=nsp_hl, nsp_ml=nsp_ml)
+        #np.savez_compressed(fname_work, darks=darks, fits_hl=fits_hl, fits_ml=fits_ml, neg_hl=neg_hl, neg_ml=neg_ml)
+        np.savez_compressed(fname_work, fits_hl=fits_hl, fits_ml=fits_ml, neg_hl=neg_hl, neg_ml=neg_ml,\
+                            chi2_hl=chi2_hl, chi2_ml=chi2_ml)
         if not fexists: os.chmod(fname_work, filemode)
         logger.info('Saved:  %s' % fname_work)
+
+
+    if savechi2:
+        #Save chi2s:
+        chi2_ml_m = chi2_ml[:,:,0]
+        chi2_ml_l = chi2_ml[:,:,1]
+        chi2_hl_h = chi2_hl[:,:,0]
+        chi2_hl_l = chi2_hl[:,:,1]
+        fname_chi2_AML_M = '%s_chi2ci_AML-M.dat' % prefix_gain
+        fname_chi2_AML_L = '%s_chi2ci_AML-L.dat' % prefix_gain
+        fname_chi2_AHL_H = '%s_chi2ci_AHL-H.dat' % prefix_gain
+        fname_chi2_AHL_L = '%s_chi2ci_AHL-L.dat' % prefix_gain
+        save_2darray_in_textfile(chi2_ml_m, fname_chi2_AML_M, filemode, fmt_chi2, umask=0o0, group=group)
+        save_2darray_in_textfile(chi2_ml_l, fname_chi2_AML_L, filemode, fmt_chi2, umask=0o0, group=group)
+        save_2darray_in_textfile(chi2_hl_h, fname_chi2_AHL_H, filemode, fmt_chi2, umask=0o0, group=group)
+        save_2darray_in_textfile(chi2_hl_l, fname_chi2_AHL_L, filemode, fmt_chi2, umask=0o0, group=group)
 
     #Save gains:
     gain_ml_m = fits_ml[:,:,0,0]
@@ -762,21 +781,6 @@ def charge_injection(**kwa):
     #save_2darray_in_textfile(divide_protected(gain_hl_h, gain_hl_l), fname_gain_RHL, filemode, fmt_gain, umask=0o0, group=group)
     #save_2darray_in_textfile(divide_protected(gain_ml_m, gain_ml_l), fname_gain_RML, filemode, fmt_gain, umask=0o0, group=group)
 
-    if savechi2:
-        #Save chi2s:
-        chi2_ml_m = chi2_ml[:,:,0]
-        chi2_ml_l = chi2_ml[:,:,1]
-        chi2_hl_h = chi2_hl[:,:,0]
-        chi2_hl_l = chi2_hl[:,:,1]
-        fname_chi2_AML_M = '%s_chi2ci_AML-M.dat' % prefix_gain
-        fname_chi2_AML_L = '%s_chi2ci_AML-L.dat' % prefix_gain
-        fname_chi2_AHL_H = '%s_chi2ci_AHL-H.dat' % prefix_gain
-        fname_chi2_AHL_L = '%s_chi2ci_AHL-L.dat' % prefix_gain
-        save_2darray_in_textfile(chi2_ml_m, fname_chi2_AML_M, filemode, fmt_chi2, umask=0o0, group=group)
-        save_2darray_in_textfile(chi2_ml_l, fname_chi2_AML_L, filemode, fmt_chi2, umask=0o0, group=group)
-        save_2darray_in_textfile(chi2_hl_h, fname_chi2_AHL_H, filemode, fmt_chi2, umask=0o0, group=group)
-        save_2darray_in_textfile(chi2_hl_l, fname_chi2_AHL_L, filemode, fmt_chi2, umask=0o0, group=group)
-
     #Save offsets:
     offset_ml_m = fits_ml[:,:,0,1]
     offset_ml_l = fits_ml[:,:,1,1]
@@ -791,13 +795,14 @@ def charge_injection(**kwa):
     save_2darray_in_textfile(offset_hl_h, fname_offset_AHL_H, filemode, fmt_offset, umask=0o0, group=group)
     save_2darray_in_textfile(offset_hl_l, fname_offset_AHL_L, filemode, fmt_offset, umask=0o0, group=group)
 
-    #Save offsets:
-    offset_ahl = offset_hl_h - offset_hl_l # 2020-06-19 M.D. - difference at 0 is taken as offset for peds
-    offset_aml = offset_ml_m - offset_ml_l # 2020-06-19 M.D. - difference at 0 is taken as offset for peds
-    fname_offset_AHL = '%s_offset_AHL.dat' % prefix_offset
-    fname_offset_AML = '%s_offset_AML.dat' % prefix_offset
-    save_2darray_in_textfile(offset_ahl, fname_offset_AHL, filemode, fmt_offset, umask=0o0, group=group)
-    save_2darray_in_textfile(offset_aml, fname_offset_AML, filemode, fmt_offset, umask=0o0, group=group)
+    if False: # 2023-02-13 for now do not save any evaluated offset values
+        #Save offsets:
+        offset_ahl = offset_hl_h - offset_hl_l # 2020-06-19 M.D. - difference at 0 is taken as offset for peds
+        offset_aml = offset_ml_m - offset_ml_l # 2020-06-19 M.D. - difference at 0 is taken as offset for peds
+        fname_offset_AHL = '%s_offset_AHL.dat' % prefix_offset
+        fname_offset_AML = '%s_offset_AML.dat' % prefix_offset
+        save_2darray_in_textfile(offset_ahl, fname_offset_AHL, filemode, fmt_offset, umask=0o0, group=group)
+        save_2darray_in_textfile(offset_aml, fname_offset_AML, filemode, fmt_offset, umask=0o0, group=group)
 
 
     #Find and load darks:
@@ -863,5 +868,213 @@ def charge_injection(**kwa):
         plot_fit_results(1, fits_hl, fnameout, filemode, gm, titles)
 
         gr.plt.pause(5)
+
+    if True: # evaluate pixel status
+
+        pstatus = ci_pixel_status(
+          offset_ml_m,
+          offset_ml_l,
+          offset_hl_h,
+          offset_hl_l,
+          gain_ml_m,
+          gain_ml_l,
+          gain_hl_h,
+          gain_hl_l,
+          chi2_ml_m,
+          chi2_ml_l,
+          chi2_hl_h,
+          chi2_hl_l,
+          neg_ml,
+          neg_hl,
+          myslice = np.s_[0:int(nr/2), 0:int(nc/2)],
+          databitw = databitw
+        )
+
+def ci_pixel_status(
+          offset_ml_m,
+          offset_ml_l,
+          offset_hl_h,
+          offset_hl_l,
+          gain_ml_m,
+          gain_ml_l,
+          gain_hl_h,
+          gain_hl_l,
+          chi2_ml_m,
+          chi2_ml_l,
+          chi2_hl_h,
+          chi2_hl_l,
+          neg_ml,
+          neg_hl,
+          myslice = np.s_[0:, 0:],
+          databitw = 1<<16,
+        ):
+
+    logger.info('in ci_pixel_status for slice: %s' % str(myslice))
+    nvals = 4
+    logger.info(info_ndarr(neg_ml,      '  neg_ml', last=nvals))
+    logger.info(info_ndarr(neg_hl,      '  neg_hl', last=nvals))
+    logger.info(info_ndarr(offset_ml_m, '  offset_ml_m', last=nvals))
+    logger.info(info_ndarr(gain_ml_m,   '  gain_ml_m', last=nvals))
+    logger.info(info_ndarr(chi2_ml_m,   '  chi2_ml_m', last=nvals))
+
+    shape = offset_ml_m.shape
+
+    neg_min = 1
+    neg_max = 3
+    offset_min = 0
+    offset_max = databitw
+    gain_min = 0.0
+    gain_max = databitw/10
+    chi2_min = 0.0
+    chi2_max = 1e8
+    arr1 = np.ones(shape, dtype=np.uint64)
+
+    stus_neg_ml_lo = np.select((neg_ml < neg_min,), (arr1,), 0)[myslice]
+    stus_neg_hl_lo = np.select((neg_hl < neg_min,), (arr1,), 0)[myslice]
+    stus_neg_ml_hi = np.select((neg_ml > neg_max,), (arr1,), 0)[myslice]
+    stus_neg_hl_hi = np.select((neg_hl > neg_max,), (arr1,), 0)[myslice]
+    stus_offset_ml_m_lo = np.select((offset_ml_m <= offset_min,), (arr1,), 0)[myslice]
+    stus_offset_hl_h_lo = np.select((offset_hl_h <= offset_min,), (arr1,), 0)[myslice]
+    stus_offset_ml_l_lo = np.select((offset_ml_l <= offset_min,), (arr1,), 0)[myslice]
+    stus_offset_hl_l_lo = np.select((offset_hl_l <= offset_min,), (arr1,), 0)[myslice]
+    stus_offset_ml_m_hi = np.select((offset_ml_m >= offset_max,), (arr1,), 0)[myslice]
+    stus_offset_hl_h_hi = np.select((offset_hl_h >= offset_max,), (arr1,), 0)[myslice]
+    stus_offset_ml_l_hi = np.select((offset_ml_l >= offset_max,), (arr1,), 0)[myslice]
+    stus_offset_hl_l_hi = np.select((offset_hl_l >= offset_max,), (arr1,), 0)[myslice]
+    stus_gain_ml_m_lo = np.select((gain_ml_m <= gain_min,), (arr1,), 0)[myslice]
+    stus_gain_hl_h_lo = np.select((gain_hl_h <= gain_min,), (arr1,), 0)[myslice]
+    stus_gain_ml_l_lo = np.select((gain_ml_l <= gain_min,), (arr1,), 0)[myslice]
+    stus_gain_hl_l_lo = np.select((gain_hl_l <= gain_min,), (arr1,), 0)[myslice]
+    stus_gain_ml_m_hi = np.select((gain_ml_m >= gain_max,), (arr1,), 0)[myslice]
+    stus_gain_hl_h_hi = np.select((gain_hl_h >= gain_max,), (arr1,), 0)[myslice]
+    stus_gain_ml_l_hi = np.select((gain_ml_l >= gain_max,), (arr1,), 0)[myslice]
+    stus_gain_hl_l_hi = np.select((gain_hl_l >= gain_max,), (arr1,), 0)[myslice]
+    stus_chi2_ml_m_lo = np.select((chi2_ml_m <= chi2_min,), (arr1,), 0)[myslice]
+    stus_chi2_hl_h_lo = np.select((chi2_hl_h <= chi2_min,), (arr1,), 0)[myslice]
+    stus_chi2_ml_l_lo = np.select((chi2_ml_l <= chi2_min,), (arr1,), 0)[myslice]
+    stus_chi2_hl_l_lo = np.select((chi2_hl_l <= chi2_min,), (arr1,), 0)[myslice]
+    stus_chi2_ml_m_hi = np.select((chi2_ml_m >= chi2_max,), (arr1,), 0)[myslice]
+    stus_chi2_hl_h_hi = np.select((chi2_hl_h >= chi2_max,), (arr1,), 0)[myslice]
+    stus_chi2_ml_l_hi = np.select((chi2_ml_l >= chi2_max,), (arr1,), 0)[myslice]
+    stus_chi2_hl_l_hi = np.select((chi2_hl_l >= chi2_max,), (arr1,), 0)[myslice]
+
+    sum_neg_ml_lo = stus_neg_ml_lo.sum()
+    sum_neg_hl_lo = stus_neg_hl_lo.sum()
+    sum_neg_ml_hi = stus_neg_ml_hi.sum()
+    sum_neg_hl_hi = stus_neg_hl_hi.sum()
+    sum_offset_ml_m_lo = stus_offset_ml_m_lo.sum()
+    sum_offset_hl_h_lo = stus_offset_hl_h_lo.sum()
+    sum_offset_ml_l_lo = stus_offset_ml_l_lo.sum()
+    sum_offset_hl_l_lo = stus_offset_hl_l_lo.sum()
+    sum_offset_ml_m_hi = stus_offset_ml_m_hi.sum()
+    sum_offset_hl_h_hi = stus_offset_hl_h_hi.sum()
+    sum_offset_ml_l_hi = stus_offset_ml_l_hi.sum()
+    sum_offset_hl_l_hi = stus_offset_hl_l_hi.sum()
+    sum_gain_ml_m_lo = stus_gain_ml_m_lo.sum()
+    sum_gain_hl_h_lo = stus_gain_hl_h_lo.sum()
+    sum_gain_ml_l_lo = stus_gain_ml_l_lo.sum()
+    sum_gain_hl_l_lo = stus_gain_hl_l_lo.sum()
+    sum_gain_ml_m_hi = stus_gain_ml_m_hi.sum()
+    sum_gain_hl_h_hi = stus_gain_hl_h_hi.sum()
+    sum_gain_ml_l_hi = stus_gain_ml_l_hi.sum()
+    sum_gain_hl_l_hi = stus_gain_hl_l_hi.sum()
+    sum_chi2_ml_m_lo = stus_chi2_ml_m_lo.sum()
+    sum_chi2_hl_h_lo = stus_chi2_hl_h_lo.sum()
+    sum_chi2_ml_l_lo = stus_chi2_ml_l_lo.sum()
+    sum_chi2_hl_l_lo = stus_chi2_hl_l_lo.sum()
+    sum_chi2_ml_m_hi = stus_chi2_ml_m_hi.sum()
+    sum_chi2_hl_h_hi = stus_chi2_hl_h_hi.sum()
+    sum_chi2_ml_l_hi = stus_chi2_ml_l_hi.sum()
+    sum_chi2_hl_l_hi = stus_chi2_hl_l_hi.sum()
+
+    slsize = stus_neg_ml_lo.size
+    logger.info('Bad pixel status bits for total %d pixels:' % slsize\
+               +'\n   o0000000000001: %8d (%6.3f%%) pixels AML number of CI pulser periods < %d' % (sum_neg_ml_lo, 100*sum_neg_ml_lo/slsize, neg_min)\
+               +'\n   o0000000000002: %8d (%6.3f%%) pixels AHL number of CI pulser periods < %d' % (sum_neg_hl_lo, 100*sum_neg_hl_lo/slsize, neg_min)\
+               +'\n   o0000000000004: %8d (%6.3f%%) pixels AML number of CI pulser periods > %d' % (sum_neg_ml_hi, 100*sum_neg_ml_hi/slsize, neg_max)\
+               +'\n   o0000000000010: %8d (%6.3f%%) pixels AHL number of CI pulser periods > %d' % (sum_neg_hl_hi, 100*sum_neg_hl_hi/slsize, neg_max)\
+               +'\n   o0000000000020: %8d (%6.3f%%) pixels AML-M offset <= %d' % (sum_offset_ml_m_lo, 100*sum_offset_ml_m_lo/slsize, offset_min)\
+               +'\n   o0000000000040: %8d (%6.3f%%) pixels AHL-H offset <= %d' % (sum_offset_hl_h_lo, 100*sum_offset_hl_h_lo/slsize, offset_min)\
+               +'\n   o0000000000100: %8d (%6.3f%%) pixels AML-L offset <= %d' % (sum_offset_ml_l_lo, 100*sum_offset_ml_l_lo/slsize, offset_min)\
+               +'\n   o0000000000200: %8d (%6.3f%%) pixels AHL-L offset <= %d' % (sum_offset_hl_l_lo, 100*sum_offset_hl_l_lo/slsize, offset_min)\
+               +'\n   o0000000000400: %8d (%6.3f%%) pixels AML-M offset >= %d' % (sum_offset_ml_m_hi, 100*sum_offset_ml_m_hi/slsize, offset_max)\
+               +'\n   o0000000001000: %8d (%6.3f%%) pixels AHL-H offset >= %d' % (sum_offset_hl_h_hi, 100*sum_offset_hl_h_hi/slsize, offset_max)\
+               +'\n   o0000000002000: %8d (%6.3f%%) pixels AML-L offset >= %d' % (sum_offset_ml_l_hi, 100*sum_offset_ml_l_hi/slsize, offset_max)\
+               +'\n   o0000000004000: %8d (%6.3f%%) pixels AHL-L offset >= %d' % (sum_offset_hl_l_hi, 100*sum_offset_hl_l_hi/slsize, offset_max)\
+               +'\n   o0000000010000: %8d (%6.3f%%) pixels AML-M gain <= %.2f' % (sum_gain_ml_m_lo, 100*sum_gain_ml_m_lo/slsize, gain_min)\
+               +'\n   o0000000020000: %8d (%6.3f%%) pixels AHL-H gain <= %.2f' % (sum_gain_hl_h_lo, 100*sum_gain_hl_h_lo/slsize, gain_min)\
+               +'\n   o0000000040000: %8d (%6.3f%%) pixels AML-L gain <= %.2f' % (sum_gain_ml_l_lo, 100*sum_gain_ml_l_lo/slsize, gain_min)\
+               +'\n   o0000000100000: %8d (%6.3f%%) pixels AHL-L gain <= %.2f' % (sum_gain_hl_l_lo, 100*sum_gain_hl_l_lo/slsize, gain_min)\
+               +'\n   o0000000200000: %8d (%6.3f%%) pixels AML-M gain >= %.2f' % (sum_gain_ml_m_hi, 100*sum_gain_ml_m_hi/slsize, gain_max)\
+               +'\n   o0000000400000: %8d (%6.3f%%) pixels AHL-H gain >= %.2f' % (sum_gain_hl_h_hi, 100*sum_gain_hl_h_hi/slsize, gain_max)\
+               +'\n   o0000001000000: %8d (%6.3f%%) pixels AML-L gain >= %.2f' % (sum_gain_ml_l_hi, 100*sum_gain_ml_l_hi/slsize, gain_max)\
+               +'\n   o0000002000000: %8d (%6.3f%%) pixels AHL-L gain >= %.2f' % (sum_gain_hl_l_hi, 100*sum_gain_hl_l_hi/slsize, gain_max)\
+               +'\n   o0000004000000: %8d (%6.3f%%) pixels AML-M chi2 <= %.2f' % (sum_chi2_ml_m_lo, 100*sum_chi2_ml_m_lo/slsize, chi2_min)\
+               +'\n   o0000010000000: %8d (%6.3f%%) pixels AHL-H chi2 <= %.2f' % (sum_chi2_hl_h_lo, 100*sum_chi2_hl_h_lo/slsize, chi2_min)\
+               +'\n   o0000020000000: %8d (%6.3f%%) pixels AML-L chi2 <= %.2f' % (sum_chi2_ml_l_lo, 100*sum_chi2_ml_l_lo/slsize, chi2_min)\
+               +'\n   o0000040000000: %8d (%6.3f%%) pixels AHL-L chi2 <= %.2f' % (sum_chi2_hl_l_lo, 100*sum_chi2_hl_l_lo/slsize, chi2_min)\
+               +'\n   o0000100000000: %8d (%6.3f%%) pixels AML-M chi2 >= %.2f' % (sum_chi2_ml_m_hi, 100*sum_chi2_ml_m_hi/slsize, chi2_max)\
+               +'\n   o0000200000000: %8d (%6.3f%%) pixels AHL-H chi2 >= %.2f' % (sum_chi2_hl_h_hi, 100*sum_chi2_hl_h_hi/slsize, chi2_max)\
+               +'\n   o0000400000000: %8d (%6.3f%%) pixels AML-L chi2 >= %.2f' % (sum_chi2_ml_l_hi, 100*sum_chi2_ml_l_hi/slsize, chi2_max)\
+               +'\n   o0001000000000: %8d (%6.3f%%) pixels AHL-L chi2 >= %.2f' % (sum_chi2_hl_l_hi, 100*sum_chi2_hl_l_hi/slsize, chi2_max)\
+    )
+
+    evaluate_pixel_status(offset_ml_m[myslice], title='offset_ml_m', vmin=offset_min, vmax=offset_max)
+    evaluate_pixel_status(offset_ml_l[myslice], title='offset_ml_l', vmin=offset_min, vmax=offset_max)
+    evaluate_pixel_status(offset_hl_h[myslice], title='offset_hl_h', vmin=offset_min, vmax=offset_max)
+    evaluate_pixel_status(offset_hl_l[myslice], title='offset_hl_l', vmin=offset_min, vmax=offset_max)
+
+
+#    logger.info('Bad pixel status:'\
+#               +'\n  status  1: %8d pixel AML number of pulser periods < %d' % (arr_sta_rms_hi.sum(), rms_max)\
+#               +'\n  status  2: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min)\
+#               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction (%d/%d) of non-empty events'%\
+#                     (arr_sta_int_hi.sum(), int_hi, fraclm, nevlm, nrecs)\
+#               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction (%d/%d) of non-empty events'%\
+#                     (arr_sta_int_lo.sum(), int_lo, fraclm, nevlm, nrecs)\
+#               +'\n  status 16: %8d pixel average   > %g'   % (arr_sta_ave_hi.sum(), ave_max)\
+#               +'\n  status 32: %8d pixel average   < %g'   % (arr_sta_ave_lo.sum(), ave_min)\
+#               )
+
+    #0/1/2/4/8/16/32 for good/hot-rms/saturated/cold/cold-rms/average above limit/average below limit,
+    #0/1/2/4/8/16/32 for good/
+
+    arr_sta = np.zeros(shape, dtype=np.uint64)[myslice]
+    arr_sta += stus_neg_ml_lo      #  AML number of pulser periods < %d
+    arr_sta += stus_neg_hl_lo*2    #  AHL number of pulser periods < %d
+    arr_sta += stus_neg_ml_hi*4    #
+    arr_sta += stus_neg_ml_hi*8    #
+
+
+def evaluate_pixel_status(arr, title='', fraclo=0.01, frachi=0.99, vmin=None, vmax=None):
+    """vmin/vmax - absolutly allowed min/max of the value
+    """
+    arr0 = np.zeros_like(arr, dtype=np.uint64)
+    arr1 = np.ones_like(arr, dtype=np.uint64)
+
+    bad_lo = arr <= vmin
+    bad_hi = arr >= vmax
+    arr_lo = arr0 if vmin is None else np.select((bad_lo,), (arr1,), 0)
+    arr_hi = arr0 if vmax is None else np.select((bad_hi,), (arr1,), 0)
+
+    sum_arr_lo = arr_lo.sum()
+    sum_arr_hi = arr_hi.sum()
+
+    size = arr.size
+    logger.info('%s Bad pixel status for total %d pixels:' % (title, size)\
+               +'\n   %8d (%6.3f%%) pixels %s <= %d' % (sum_arr_lo, 100*sum_arr_lo/size, title, vmin)\
+               +'\n   %8d (%6.3f%%) pixels %s >= %d' % (sum_arr_hi, 100*sum_arr_hi/size, title, vmax)\
+               )
+
+    arr_sel = arr[np.logical_not(np.logical_or(bad_lo, bad_hi))]
+    logger.info('subset of good pixels in range (vmin, vmax): %s' % info_ndarr(arr_sel, title, last=4))
+
+    frac05 = 0.5
+    s = info_ndarr(arr_sel, 'selected array: %s' % title, last=4)
+    med = np.quantile(arr_sel, frac05, interpolation='linear') # axis=0
+    qlo = np.quantile(arr_sel, fraclo, interpolation='linear')
+    qhi = np.quantile(arr_sel, frachi, interpolation='linear')
+    s += '\n  med: %.3f frac(%.3f): %.3f frac(%.3f): %.3f' % (med, fraclo, qlo, frachi, qhi)
+    logger.info(s)
 
 # EOF
