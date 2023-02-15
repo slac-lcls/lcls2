@@ -193,6 +193,7 @@ def user_to_expert(prefix, cfg, full=False):
             triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
             print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
             if triggerDelay < 0:
+                print('Raise delta_ns >= {:}'.format((partitionDelay*200 - lcls1Delay*1300/(7*119)) * 7000/1300))
                 raise ValueError('triggerDelay computes to < 0')
 
             ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
@@ -244,8 +245,11 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
 
     names_cfg = [epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
-                 epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
-    values = [group,16,1]
+                 epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',
+                 epics_prefix+'RawBuffers:FifoPauseThreshold',
+                 epics_prefix+'Integrators:ProcFifoPauseThreshold',
+                 epics_prefix+'Integrators:IntFifoPauseThreshold']
+    values = [group,16,1,127,127,127]
     ctxt_put(names_cfg, values)
 
     time.sleep(0.2)
