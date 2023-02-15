@@ -72,7 +72,7 @@ def argument_parser() :
     d_ccmax    = 2 * d_nspace**2
     d_ccskip   = 0
     d_errskip  = False
-    d_savechi2 = False
+    d_savechi2 = True
     d_pixrc    = None
     d_dirmode  = 0o2775
     d_filemode = 0o664
@@ -126,7 +126,7 @@ def argument_parser() :
     parser.add_argument('-O', '--dooffs',   default=d_dooffs,   action='store_false', help=h_dooffs)
     parser.add_argument('-N', '--nperiods', default=d_nperiods, action='store_false', help=h_nperiods)
     parser.add_argument('-E', '--errskip',  default=d_errskip,  action='store_true',  help=h_errskip)
-    parser.add_argument('-C', '--savechi2', default=d_savechi2, action='store_true',  help=h_savechi2)
+    parser.add_argument('-C', '--savechi2', default=d_savechi2, action='store_false', help=h_savechi2)
 
     return parser
 
