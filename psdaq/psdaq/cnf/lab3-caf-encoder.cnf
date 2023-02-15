@@ -32,11 +32,11 @@ procmgr_config = [
  # FakeCam
  { host: 'drp-tst-acc01', id:'cam_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_0 -P {hutch} -C {collect_host}'},
  # ...drp: loopback on port 5007
- { host: 'drp-tst-acc01', id:'encoder_0',              flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
+#{ host: 'drp-tst-acc01', id:'encoder_0',              flags:'spu', cmd:f'drp_udpencoder -v -o /cds/home/c/caf/data -L 5007 -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
  # ...drp: -k {network}
-#{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
- # ...sim:
-#{ host: 'drp-tst-acc01', id:'sim_udpencoder', flags:'sp', cmd:'sim_udpencoder -v'},
+ { host: 'drp-tst-acc01', id:'encoder_0', flags:'suxp', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
+ # ...sim: 172.21.148.201 = drp-tst-acc01
+ { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s', cmd:'sim_udpencoder -a 172.21.148.201 -p 5'},
  #  ...drp: loopback on port 5007 AND verbose
 #{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'}
 ]

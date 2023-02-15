@@ -18,6 +18,7 @@ int m_loopbackFd;
 int m_dropRequest;
 struct sockaddr_in m_loopbackAddr;
 uint16_t m_loopbackFrameCount;
+static char *m_addr = "127.0.0.1";
 
 // forward declarations
 void _loopbackInit();
@@ -29,6 +30,7 @@ static void usage(const char* p) {
   printf("Options: -r <rate> (0:1Hz,1:10Hz,..)\n");
   printf("         -e <evcode>\n");
   printf("         -p <partition>\n");
+  printf("         -a <dest addr>  (default %s)\n", m_addr);
   printf("         -d <data port>  (default %d)\n", Drp::UdpEncoder::DefaultDataPort);
   printf("         -v (verbose)\n");
   printf("Either -r or -e or -p is required\n");
@@ -64,7 +66,7 @@ int main(int argc, char* argv[])
   int partition = -1;
   m_data_port = Drp::UdpEncoder::DefaultDataPort;
 
-  while ( (c=getopt( argc, argv, "e:r:p:d:vh"))!=EOF) {
+  while ( (c=getopt( argc, argv, "e:r:p:d:a:vh"))!=EOF) {
     switch(c) {
     case 'e':
       evcode = strtol(optarg,NULL,0);
@@ -77,6 +79,9 @@ int main(int argc, char* argv[])
       break;
     case 'd':
       m_data_port = strtol(optarg,NULL,0);
+      break;
+    case 'a':
+      m_addr = optarg;
       break;
     case 'v':
       m_verbose = true;
@@ -169,7 +174,7 @@ void _loopbackInit()
 
         bzero(&m_loopbackAddr, sizeof(m_loopbackAddr));
         m_loopbackAddr.sin_family = AF_INET;
-        m_loopbackAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        m_loopbackAddr.sin_addr.s_addr = inet_addr(m_addr);
         m_loopbackAddr.sin_port = htons(m_data_port);
     } else {
         printf("Error: m_data_port = %d in %s\n", m_data_port, __PRETTY_FUNCTION__);
@@ -210,12 +215,15 @@ void _loopbackSend()
     if (m_verbose) printf("entered %s\n", __PRETTY_FUNCTION__);
 
     Drp::encoder_header_t *pHeader = (Drp::encoder_header_t *)m_buf;
+    Drp::encoder_channel_t *pChannel = (Drp::encoder_channel_t *)(pHeader + 1);
     uint16_t frameCount = ntohs(pHeader->frameCount);
 
     if (m_dropRequest > 0) {
         printf("%s: dropping frame #%hu\n", __PRETTY_FUNCTION__, frameCount);
         -- m_dropRequest;
     } else {
+        // channel 0 sawtooth: 1 to 100
+        pChannel->encoderValue = htonl( 1 + (frameCount % 100));
         // send frame
         sent = sendto(m_loopbackFd, (void *)m_buf, sizeof(m_buf), 0,
                       (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
