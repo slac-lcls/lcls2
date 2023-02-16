@@ -496,6 +496,7 @@ def charge_injection(**kwa):
     logmode    = kwa.get('logmode', 'DEBUG')
     errskip    = kwa.get('errskip', False)
     pixrc      = kwa.get('pixrc', None) # ex.: '23,123'
+    nsigm      = kwa.get('nsigm', 8)
     irun       = None
     exp        = None
     npmin      = 5
@@ -887,7 +888,8 @@ def charge_injection(**kwa):
           neg_ml,
           neg_hl,
           myslice = np.s_[0:int(nr/2), 0:int(nc/2)],
-          databitw = databitw
+          databitw = databitw,
+          nsigm=nsigm
         )
 
 def ci_pixel_status(
@@ -907,6 +909,7 @@ def ci_pixel_status(
           neg_hl,
           myslice = np.s_[0:, 0:],
           databitw = 1<<16,
+          nsigm=8
         ):
 
     logger.info('in ci_pixel_status for slice: %s' % str(myslice))
@@ -933,111 +936,11 @@ def ci_pixel_status(
     stus_neg_hl_lo = np.select((neg_hl < neg_min,), (arr1,), 0)[myslice]
     stus_neg_ml_hi = np.select((neg_ml > neg_max,), (arr1,), 0)[myslice]
     stus_neg_hl_hi = np.select((neg_hl > neg_max,), (arr1,), 0)[myslice]
-    stus_offset_ml_m_lo = np.select((offset_ml_m <= offset_min,), (arr1,), 0)[myslice]
-    stus_offset_hl_h_lo = np.select((offset_hl_h <= offset_min,), (arr1,), 0)[myslice]
-    stus_offset_ml_l_lo = np.select((offset_ml_l <= offset_min,), (arr1,), 0)[myslice]
-    stus_offset_hl_l_lo = np.select((offset_hl_l <= offset_min,), (arr1,), 0)[myslice]
-    stus_offset_ml_m_hi = np.select((offset_ml_m >= offset_max,), (arr1,), 0)[myslice]
-    stus_offset_hl_h_hi = np.select((offset_hl_h >= offset_max,), (arr1,), 0)[myslice]
-    stus_offset_ml_l_hi = np.select((offset_ml_l >= offset_max,), (arr1,), 0)[myslice]
-    stus_offset_hl_l_hi = np.select((offset_hl_l >= offset_max,), (arr1,), 0)[myslice]
-    stus_gain_ml_m_lo = np.select((gain_ml_m <= gain_min,), (arr1,), 0)[myslice]
-    stus_gain_hl_h_lo = np.select((gain_hl_h <= gain_min,), (arr1,), 0)[myslice]
-    stus_gain_ml_l_lo = np.select((gain_ml_l <= gain_min,), (arr1,), 0)[myslice]
-    stus_gain_hl_l_lo = np.select((gain_hl_l <= gain_min,), (arr1,), 0)[myslice]
-    stus_gain_ml_m_hi = np.select((gain_ml_m >= gain_max,), (arr1,), 0)[myslice]
-    stus_gain_hl_h_hi = np.select((gain_hl_h >= gain_max,), (arr1,), 0)[myslice]
-    stus_gain_ml_l_hi = np.select((gain_ml_l >= gain_max,), (arr1,), 0)[myslice]
-    stus_gain_hl_l_hi = np.select((gain_hl_l >= gain_max,), (arr1,), 0)[myslice]
-    stus_chi2_ml_m_lo = np.select((chi2_ml_m <= chi2_min,), (arr1,), 0)[myslice]
-    stus_chi2_hl_h_lo = np.select((chi2_hl_h <= chi2_min,), (arr1,), 0)[myslice]
-    stus_chi2_ml_l_lo = np.select((chi2_ml_l <= chi2_min,), (arr1,), 0)[myslice]
-    stus_chi2_hl_l_lo = np.select((chi2_hl_l <= chi2_min,), (arr1,), 0)[myslice]
-    stus_chi2_ml_m_hi = np.select((chi2_ml_m >= chi2_max,), (arr1,), 0)[myslice]
-    stus_chi2_hl_h_hi = np.select((chi2_hl_h >= chi2_max,), (arr1,), 0)[myslice]
-    stus_chi2_ml_l_hi = np.select((chi2_ml_l >= chi2_max,), (arr1,), 0)[myslice]
-    stus_chi2_hl_l_hi = np.select((chi2_hl_l >= chi2_max,), (arr1,), 0)[myslice]
 
     sum_neg_ml_lo = stus_neg_ml_lo.sum()
     sum_neg_hl_lo = stus_neg_hl_lo.sum()
     sum_neg_ml_hi = stus_neg_ml_hi.sum()
     sum_neg_hl_hi = stus_neg_hl_hi.sum()
-    sum_offset_ml_m_lo = stus_offset_ml_m_lo.sum()
-    sum_offset_hl_h_lo = stus_offset_hl_h_lo.sum()
-    sum_offset_ml_l_lo = stus_offset_ml_l_lo.sum()
-    sum_offset_hl_l_lo = stus_offset_hl_l_lo.sum()
-    sum_offset_ml_m_hi = stus_offset_ml_m_hi.sum()
-    sum_offset_hl_h_hi = stus_offset_hl_h_hi.sum()
-    sum_offset_ml_l_hi = stus_offset_ml_l_hi.sum()
-    sum_offset_hl_l_hi = stus_offset_hl_l_hi.sum()
-    sum_gain_ml_m_lo = stus_gain_ml_m_lo.sum()
-    sum_gain_hl_h_lo = stus_gain_hl_h_lo.sum()
-    sum_gain_ml_l_lo = stus_gain_ml_l_lo.sum()
-    sum_gain_hl_l_lo = stus_gain_hl_l_lo.sum()
-    sum_gain_ml_m_hi = stus_gain_ml_m_hi.sum()
-    sum_gain_hl_h_hi = stus_gain_hl_h_hi.sum()
-    sum_gain_ml_l_hi = stus_gain_ml_l_hi.sum()
-    sum_gain_hl_l_hi = stus_gain_hl_l_hi.sum()
-    sum_chi2_ml_m_lo = stus_chi2_ml_m_lo.sum()
-    sum_chi2_hl_h_lo = stus_chi2_hl_h_lo.sum()
-    sum_chi2_ml_l_lo = stus_chi2_ml_l_lo.sum()
-    sum_chi2_hl_l_lo = stus_chi2_hl_l_lo.sum()
-    sum_chi2_ml_m_hi = stus_chi2_ml_m_hi.sum()
-    sum_chi2_hl_h_hi = stus_chi2_hl_h_hi.sum()
-    sum_chi2_ml_l_hi = stus_chi2_ml_l_hi.sum()
-    sum_chi2_hl_l_hi = stus_chi2_hl_l_hi.sum()
-
-    slsize = stus_neg_ml_lo.size
-    logger.info('Bad pixel status bits for total %d pixels:' % slsize\
-               +'\n   o0000000000001: %8d (%6.3f%%) pixels AML number of CI pulser periods < %d' % (sum_neg_ml_lo, 100*sum_neg_ml_lo/slsize, neg_min)\
-               +'\n   o0000000000002: %8d (%6.3f%%) pixels AHL number of CI pulser periods < %d' % (sum_neg_hl_lo, 100*sum_neg_hl_lo/slsize, neg_min)\
-               +'\n   o0000000000004: %8d (%6.3f%%) pixels AML number of CI pulser periods > %d' % (sum_neg_ml_hi, 100*sum_neg_ml_hi/slsize, neg_max)\
-               +'\n   o0000000000010: %8d (%6.3f%%) pixels AHL number of CI pulser periods > %d' % (sum_neg_hl_hi, 100*sum_neg_hl_hi/slsize, neg_max)\
-               +'\n   o0000000000020: %8d (%6.3f%%) pixels AML-M offset <= %d' % (sum_offset_ml_m_lo, 100*sum_offset_ml_m_lo/slsize, offset_min)\
-               +'\n   o0000000000040: %8d (%6.3f%%) pixels AHL-H offset <= %d' % (sum_offset_hl_h_lo, 100*sum_offset_hl_h_lo/slsize, offset_min)\
-               +'\n   o0000000000100: %8d (%6.3f%%) pixels AML-L offset <= %d' % (sum_offset_ml_l_lo, 100*sum_offset_ml_l_lo/slsize, offset_min)\
-               +'\n   o0000000000200: %8d (%6.3f%%) pixels AHL-L offset <= %d' % (sum_offset_hl_l_lo, 100*sum_offset_hl_l_lo/slsize, offset_min)\
-               +'\n   o0000000000400: %8d (%6.3f%%) pixels AML-M offset >= %d' % (sum_offset_ml_m_hi, 100*sum_offset_ml_m_hi/slsize, offset_max)\
-               +'\n   o0000000001000: %8d (%6.3f%%) pixels AHL-H offset >= %d' % (sum_offset_hl_h_hi, 100*sum_offset_hl_h_hi/slsize, offset_max)\
-               +'\n   o0000000002000: %8d (%6.3f%%) pixels AML-L offset >= %d' % (sum_offset_ml_l_hi, 100*sum_offset_ml_l_hi/slsize, offset_max)\
-               +'\n   o0000000004000: %8d (%6.3f%%) pixels AHL-L offset >= %d' % (sum_offset_hl_l_hi, 100*sum_offset_hl_l_hi/slsize, offset_max)\
-               +'\n   o0000000010000: %8d (%6.3f%%) pixels AML-M gain <= %.2f' % (sum_gain_ml_m_lo, 100*sum_gain_ml_m_lo/slsize, gain_min)\
-               +'\n   o0000000020000: %8d (%6.3f%%) pixels AHL-H gain <= %.2f' % (sum_gain_hl_h_lo, 100*sum_gain_hl_h_lo/slsize, gain_min)\
-               +'\n   o0000000040000: %8d (%6.3f%%) pixels AML-L gain <= %.2f' % (sum_gain_ml_l_lo, 100*sum_gain_ml_l_lo/slsize, gain_min)\
-               +'\n   o0000000100000: %8d (%6.3f%%) pixels AHL-L gain <= %.2f' % (sum_gain_hl_l_lo, 100*sum_gain_hl_l_lo/slsize, gain_min)\
-               +'\n   o0000000200000: %8d (%6.3f%%) pixels AML-M gain >= %.2f' % (sum_gain_ml_m_hi, 100*sum_gain_ml_m_hi/slsize, gain_max)\
-               +'\n   o0000000400000: %8d (%6.3f%%) pixels AHL-H gain >= %.2f' % (sum_gain_hl_h_hi, 100*sum_gain_hl_h_hi/slsize, gain_max)\
-               +'\n   o0000001000000: %8d (%6.3f%%) pixels AML-L gain >= %.2f' % (sum_gain_ml_l_hi, 100*sum_gain_ml_l_hi/slsize, gain_max)\
-               +'\n   o0000002000000: %8d (%6.3f%%) pixels AHL-L gain >= %.2f' % (sum_gain_hl_l_hi, 100*sum_gain_hl_l_hi/slsize, gain_max)\
-               +'\n   o0000004000000: %8d (%6.3f%%) pixels AML-M chi2 <= %.2f' % (sum_chi2_ml_m_lo, 100*sum_chi2_ml_m_lo/slsize, chi2_min)\
-               +'\n   o0000010000000: %8d (%6.3f%%) pixels AHL-H chi2 <= %.2f' % (sum_chi2_hl_h_lo, 100*sum_chi2_hl_h_lo/slsize, chi2_min)\
-               +'\n   o0000020000000: %8d (%6.3f%%) pixels AML-L chi2 <= %.2f' % (sum_chi2_ml_l_lo, 100*sum_chi2_ml_l_lo/slsize, chi2_min)\
-               +'\n   o0000040000000: %8d (%6.3f%%) pixels AHL-L chi2 <= %.2f' % (sum_chi2_hl_l_lo, 100*sum_chi2_hl_l_lo/slsize, chi2_min)\
-               +'\n   o0000100000000: %8d (%6.3f%%) pixels AML-M chi2 >= %.2f' % (sum_chi2_ml_m_hi, 100*sum_chi2_ml_m_hi/slsize, chi2_max)\
-               +'\n   o0000200000000: %8d (%6.3f%%) pixels AHL-H chi2 >= %.2f' % (sum_chi2_hl_h_hi, 100*sum_chi2_hl_h_hi/slsize, chi2_max)\
-               +'\n   o0000400000000: %8d (%6.3f%%) pixels AML-L chi2 >= %.2f' % (sum_chi2_ml_l_hi, 100*sum_chi2_ml_l_hi/slsize, chi2_max)\
-               +'\n   o0001000000000: %8d (%6.3f%%) pixels AHL-L chi2 >= %.2f' % (sum_chi2_hl_l_hi, 100*sum_chi2_hl_l_hi/slsize, chi2_max)\
-    )
-
-    evaluate_pixel_status(offset_ml_m[myslice], title='offset_ml_m', vmin=offset_min, vmax=offset_max)
-    evaluate_pixel_status(offset_ml_l[myslice], title='offset_ml_l', vmin=offset_min, vmax=offset_max)
-    evaluate_pixel_status(offset_hl_h[myslice], title='offset_hl_h', vmin=offset_min, vmax=offset_max)
-    evaluate_pixel_status(offset_hl_l[myslice], title='offset_hl_l', vmin=offset_min, vmax=offset_max)
-
-
-#    logger.info('Bad pixel status:'\
-#               +'\n  status  1: %8d pixel AML number of pulser periods < %d' % (arr_sta_rms_hi.sum(), rms_max)\
-#               +'\n  status  2: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min)\
-#               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction (%d/%d) of non-empty events'%\
-#                     (arr_sta_int_hi.sum(), int_hi, fraclm, nevlm, nrecs)\
-#               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction (%d/%d) of non-empty events'%\
-#                     (arr_sta_int_lo.sum(), int_lo, fraclm, nevlm, nrecs)\
-#               +'\n  status 16: %8d pixel average   > %g'   % (arr_sta_ave_hi.sum(), ave_max)\
-#               +'\n  status 32: %8d pixel average   < %g'   % (arr_sta_ave_lo.sum(), ave_min)\
-#               )
-
-    #0/1/2/4/8/16/32 for good/hot-rms/saturated/cold/cold-rms/average above limit/average below limit,
-    #0/1/2/4/8/16/32 for good/
 
     arr_sta = np.zeros(shape, dtype=np.uint64)[myslice]
     arr_sta += stus_neg_ml_lo      #  AML number of pulser periods < %d
@@ -1045,36 +948,85 @@ def ci_pixel_status(
     arr_sta += stus_neg_ml_hi*4    #
     arr_sta += stus_neg_ml_hi*8    #
 
+    slsize = arr_sta.size # stus_neg_ml_lo.size
 
-def evaluate_pixel_status(arr, title='', fraclo=0.01, frachi=0.99, vmin=None, vmax=None):
+    f = '\n  %s\n  %s'
+    s = info_ndarr(arr_sta, '\nBad pixel status bit array', last=0)\
+      + '\n  %20s: %8d / %d (%6.3f%%) pixels AML number of CI pulser periods < %d' % (oct(1<<0), sum_neg_ml_lo, slsize, 100*sum_neg_ml_lo/slsize, neg_min)\
+      + '\n  %20s: %8d / %d (%6.3f%%) pixels AML number of CI pulser periods > %d' % (oct(1<<1), sum_neg_ml_hi, slsize, 100*sum_neg_ml_hi/slsize, neg_max)\
+      + '\n  %20s: %8d / %d (%6.3f%%) pixels AHL number of CI pulser periods < %d' % (oct(1<<2), sum_neg_hl_lo, slsize, 100*sum_neg_hl_lo/slsize, neg_min)\
+      + '\n  %20s: %8d / %d (%6.3f%%) pixels AHL number of CI pulser periods > %d' % (oct(1<<3), sum_neg_hl_hi, slsize, 100*sum_neg_hl_hi/slsize, neg_max)
+
+    s += f % set_pixel_status_bits(arr_sta, offset_ml_m[myslice], title='offset_ml_m', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<4, bit_hi=1<<5)
+    s += f % set_pixel_status_bits(arr_sta, offset_ml_l[myslice], title='offset_ml_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<6, bit_hi=1<<7)
+    s += f % set_pixel_status_bits(arr_sta, offset_hl_h[myslice], title='offset_hl_h', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<8, bit_hi=1<<9)
+    s += f % set_pixel_status_bits(arr_sta, offset_hl_l[myslice], title='offset_hl_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<10, bit_hi=1<<11)
+
+    s += f % set_pixel_status_bits(arr_sta, gain_ml_m[myslice], title='gain_ml_m', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<12, bit_hi=1<<13)
+    s += f % set_pixel_status_bits(arr_sta, gain_ml_l[myslice], title='gain_ml_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<14, bit_hi=1<<15)
+    s += f % set_pixel_status_bits(arr_sta, gain_hl_h[myslice], title='gain_hl_h', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<16, bit_hi=1<<17)
+    s += f % set_pixel_status_bits(arr_sta, gain_hl_l[myslice], title='gain_hl_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<18, bit_hi=1<<18)
+
+    s += f % set_pixel_status_bits(arr_sta, chi2_ml_m[myslice], title='chi2_ml_m', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<20, bit_hi=1<<21)
+    s += f % set_pixel_status_bits(arr_sta, chi2_ml_l[myslice], title='chi2_ml_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<22, bit_hi=1<<23)
+    s += f % set_pixel_status_bits(arr_sta, chi2_hl_h[myslice], title='chi2_hl_h', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<24, bit_hi=1<<25)
+    s += f % set_pixel_status_bits(arr_sta, chi2_hl_l[myslice], title='chi2_hl_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<26, bit_hi=1<<27)
+
+    stus_bad_total = np.select((arr_sta>0,), (arr1[myslice],), 0)
+    num_bad_pixels = stus_bad_total.sum()
+
+    s += '\n Any bad status pixels: %8d / %d (%6.3f%%)' % (num_bad_pixels, slsize, 100*num_bad_pixels/slsize)
+
+    logger.info(s)
+
+
+def find_outliers(arr, title='', vmin=None, vmax=None):
+    size = arr.size
+    arr0 = np.zeros_like(arr, dtype=bool)
+    arr1 = np.ones_like(arr, dtype=np.uint64)
+    bad_lo = arr0 if vmin is None else arr <= vmin
+    bad_hi = arr0 if vmax is None else arr >= vmax
+    arr1_lo = np.select((bad_lo,), (arr1,), 0)
+    arr1_hi = np.select((bad_hi,), (arr1,), 0)
+    sum_lo = arr1_lo.sum()
+    sum_hi = arr1_hi.sum()
+    s_lo = '%8d / %d (%6.3f%%) pixels %s <= %d' % (sum_lo, size, 100*sum_lo/size, title, vmin)
+    s_hi = '%8d / %d (%6.3f%%) pixels %s >= %d' % (sum_hi, size, 100*sum_hi/size, title, vmax)
+    return bad_lo, bad_hi, arr1_lo, arr1_hi, s_lo, s_hi
+
+
+def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, nsigm=8):
     """vmin/vmax - absolutly allowed min/max of the value
     """
-    arr0 = np.zeros_like(arr, dtype=np.uint64)
-    arr1 = np.ones_like(arr, dtype=np.uint64)
-
-    bad_lo = arr <= vmin
-    bad_hi = arr >= vmax
-    arr_lo = arr0 if vmin is None else np.select((bad_lo,), (arr1,), 0)
-    arr_hi = arr0 if vmax is None else np.select((bad_hi,), (arr1,), 0)
-
-    sum_arr_lo = arr_lo.sum()
-    sum_arr_hi = arr_hi.sum()
-
-    size = arr.size
-    logger.info('%s Bad pixel status for total %d pixels:' % (title, size)\
-               +'\n   %8d (%6.3f%%) pixels %s <= %d' % (sum_arr_lo, 100*sum_arr_lo/size, title, vmin)\
-               +'\n   %8d (%6.3f%%) pixels %s >= %d' % (sum_arr_hi, 100*sum_arr_hi/size, title, vmax)\
-               )
+    bad_lo, bad_hi, arr1_lo, arr1_hi, s_lo, s_hi = find_outliers(arr, title=title, vmin=vmin, vmax=vmax)
 
     arr_sel = arr[np.logical_not(np.logical_or(bad_lo, bad_hi))]
-    logger.info('subset of good pixels in range (vmin, vmax): %s' % info_ndarr(arr_sel, title, last=4))
+    med = np.median(arr_sel)
+    spr = np.median(np.absolute(arr_sel-med))  # axis=None, out=None, overwrite_input=False, keepdims=False
 
-    frac05 = 0.5
-    s = info_ndarr(arr_sel, 'selected array: %s' % title, last=4)
-    med = np.quantile(arr_sel, frac05, interpolation='linear') # axis=0
-    qlo = np.quantile(arr_sel, fraclo, interpolation='linear')
-    qhi = np.quantile(arr_sel, frachi, interpolation='linear')
-    s += '\n  med: %.3f frac(%.3f): %.3f frac(%.3f): %.3f' % (med, fraclo, qlo, frachi, qhi)
-    logger.info(s)
+    _vmin = med - nsigm*spr if vmin is None else max(med - nsigm*spr, vmin)
+    _vmax = med + nsigm*spr if vmax is None else min(med + nsigm*spr, vmax)
+
+    s_sel = '%s selected %d of %d pixels in' % (title, arr_sel.size, arr.size)\
+          + ' range (%s, %s)' % (str(vmin), str(vmax))\
+          + ' med: %.3f spr: %.3f nsigm: %.3f' % (med, spr, nsigm)
+
+    s_range = u're-defined range med \u00B1 %.1f*spr: (%.3f, %.3f)' % (nsigm, vmin, vmax)
+    _, _, _arr1_lo, _arr1_hi, _s_lo, _s_hi = find_outliers(arr, title=title, vmin=_vmin, vmax=_vmax)
+
+    gap = 13*' '
+    logger.info('%s %s\n  %s\n  %s\n%s%s\n%s%s\n  %s\n  %s' %\
+        (10*'=', info_ndarr(arr, title, last=0), s_lo, s_hi, gap, s_sel, gap, s_range, _s_lo, _s_hi))
+
+    return _arr1_lo, _arr1_hi, _s_lo, _s_hi
+
+
+def set_pixel_status_bits(status, arr, title='', vmin=None, vmax=None, nsigm=8, bit_lo=1<<0, bit_hi=1<<1):
+    arr1_lo, arr1_hi, s_lo, s_hi = evaluate_pixel_status(arr, title=title, vmin=vmin, vmax=vmax, nsigm=nsigm)
+    status += arr1_lo * bit_lo
+    status += arr1_hi * bit_hi
+    s_lo = '%20s: %s' % (oct(bit_lo), s_lo)
+    s_hi = '%20s: %s' % (oct(bit_hi), s_hi)
+    return s_lo, s_hi
 
 # EOF
