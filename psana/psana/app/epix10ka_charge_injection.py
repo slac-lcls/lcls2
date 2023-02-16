@@ -64,7 +64,6 @@ def argument_parser() :
     d_dirrepo  = './work' #CALIB_REPO_EPIX10KA # './myrepo'
     d_display  = True
     d_logmode  = 'INFO'
-    d_dopeds   = False
     d_dooffs   = True
     d_nperiods = True
     d_npoff    = 10
@@ -90,7 +89,6 @@ def argument_parser() :
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
     h_display = 'turn off graphical display, default = %s' % d_display
     h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
-    h_dopeds  = 'do pedestals evaluation, default = %s' % d_dopeds
     h_dooffs  = 'do offset evaluation, default = %s' % d_dooffs
     h_nperiods= 'use all found saw periods of the pulser, default = %s' % d_nperiods
     h_npoff   = 'discard in fit number of points on trace around switching point, default = %s' % str(d_npoff)
@@ -122,7 +120,6 @@ def argument_parser() :
     parser.add_argument('--filemode',       default=d_filemode, type=int,             help=h_filemode)
     parser.add_argument('--group',          default=d_group,    type=str,             help=h_group)
     parser.add_argument('-p', '--display',  default=d_display,  action='store_false', help=h_display)
-    parser.add_argument('-P', '--dopeds',   default=d_dopeds,   action='store_false', help=h_dopeds)
     parser.add_argument('-O', '--dooffs',   default=d_dooffs,   action='store_false', help=h_dooffs)
     parser.add_argument('-N', '--nperiods', default=d_nperiods, action='store_false', help=h_nperiods)
     parser.add_argument('-E', '--errskip',  default=d_errskip,  action='store_true',  help=h_errskip)
