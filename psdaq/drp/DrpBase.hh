@@ -125,6 +125,7 @@ private:
     int64_t m_latency;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
     FileParameters m_fileParameters;
+    unsigned m_partition;
 };
 
 class DrpBase

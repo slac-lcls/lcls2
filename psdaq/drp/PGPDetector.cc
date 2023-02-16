@@ -343,7 +343,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                      (transitionId != XtcData::TransitionId::SlowUpdate))) {
                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                     worker++;
-                    m_batch.start = evtCounter + 1;
+                    m_batch.start = (evtCounter + 1) & 0xffffff;
                     m_batch.size = 0;
                     batchId = timingHeader->pulseId();
                 }
