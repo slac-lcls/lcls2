@@ -106,7 +106,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
                 // Initialize the transition dgram's header
-                Pds::EbDgram* trDgram = event->transitionDgram;
+                Pds::EbDgram* trDgram = pool.transitionDgrams[index];
                 const void*   bufEnd  = (char*)trDgram + para.maxTrSize;
                 if (!trDgram)  continue; // Can occur when shutting down
                 memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
@@ -128,9 +128,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                       XtcData::TransitionId::name(transitionId), para.maxTrSize, size);
                     throw "Buffer too small";
                 }
-                if (event->transitionDgram->pulseId() != dgram->pulseId()) {
+                if (trDgram->pulseId() != dgram->pulseId()) {
                     logging::critical("%s: pulseId (%014lx) doesn't match dgram's (%014lx)",
-                                      XtcData::TransitionId::name(transitionId), event->transitionDgram->pulseId(), dgram->pulseId());
+                                      XtcData::TransitionId::name(transitionId), trDgram->pulseId(), dgram->pulseId());
                 }
 
                 auto l3InpBuf = tebContributor.fetch(index);
@@ -327,8 +327,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 // SPSCQueue is used (not an SPMC queue), this can be done here,
                 // but not in the workers or there will be concurrency issues.
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    event->transitionDgram = m_pool.allocateTr();
-                    if (!event->transitionDgram)  break; // Can happen during shutdown
+                    m_pool.transitionDgrams[current] = m_pool.allocateTr();
+                    if (!m_pool.transitionDgrams[current])  break; // Can happen during shutdown
                 }
 
                 auto now = std::chrono::system_clock::now();

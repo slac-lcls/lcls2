@@ -337,8 +337,7 @@ void EaDetector::_worker()
                 Pds::EbDgram* trDgram = m_pool->allocateTr();
                 const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
                 *trDgram = *dgram;
-                PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
-                pgpEvent->transitionDgram = trDgram;
+                m_pool->transitionDgrams[index] = trDgram;
 
                 if (service == XtcData::TransitionId::SlowUpdate) {
                     m_nUpdates++;

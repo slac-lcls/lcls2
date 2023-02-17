@@ -121,6 +121,7 @@ MemPool::MemPool(Parameters& para) :
     logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, para.maxTrSize);
 
     pgpEvents.resize(m_nbuffers);
+    transitionDgrams.resize(m_nbuffers);
 
     // Put the transition buffer pool at the end of the pebble buffers
     uint8_t* buffer = pebble[m_nbuffers];
@@ -425,7 +426,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
-        dgram = m_pool.pgpEvents[index].transitionDgram;
+        dgram = m_pool.transitionDgrams[index];
         if (pulseId != dgram->pulseId()) {
             logging::error("pulseId mismatch: pebble %014lx, trDgram %014lx, xor %014lx, diff %ld",
                            pulseId, dgram->pulseId(), pulseId ^ dgram->pulseId(), pulseId - dgram->pulseId());
