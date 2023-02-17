@@ -72,6 +72,7 @@ def argument_parser() :
     d_ccskip   = 0
     d_errskip  = False
     d_savechi2 = True
+    d_nsigm    = 8
     d_pixrc    = None
     d_dirmode  = 0o2775
     d_filemode = 0o664
@@ -97,6 +98,7 @@ def argument_parser() :
     h_ccskip  = 'skip number of first consecutive calibcycles for debugging, default = %s' % str(d_ccskip)
     h_errskip = 'flag to skip errors and keep processing (stop otherwise), default = %s' % d_errskip
     h_savechi2= 'save chi2 files, default = %s' % d_savechi2
+    h_nsigm   = 'number of sigmas/spreads to discard outlaiers for pixel_status, default = %s' % d_savechi2
     h_pixrc   = 'selected pixel for graphics: comma separated pixel row and colon, ex. 23,234, default = %s' % d_pixrc
     h_dirmode = 'mode for all mkdir, default = %s' % oct(d_dirmode)
     h_filemode= 'mode for all saved files, default = %s' % oct(d_filemode)
@@ -124,6 +126,7 @@ def argument_parser() :
     parser.add_argument('-N', '--nperiods', default=d_nperiods, action='store_false', help=h_nperiods)
     parser.add_argument('-E', '--errskip',  default=d_errskip,  action='store_true',  help=h_errskip)
     parser.add_argument('-C', '--savechi2', default=d_savechi2, action='store_false', help=h_savechi2)
+    parser.add_argument('--nsigm',          default=d_nsigm,    type=float,           help=h_nsigm)
 
     return parser
 
