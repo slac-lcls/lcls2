@@ -84,20 +84,32 @@ def selected_pixel(pixrc, jr, jc, nr, nc, nspace):
     return pixrow, pixcol, ibr, ibc # tuple of panel and block indexes
 
 
+def plot_array(arr, title='', vmin=None, vmax=None, prefix='', filemode=0o664):
+    flimg = ug.fleximagespec(arr, arr=None, amin=vmin, amax=vmax)
+    flimg.fig.canvas.manager.set_window_title(title)
+    ug.gr.show(mode='DO NOT HOLD')
+
+    fname='%s_plot_%s.png' % (prefix, title)
+    fexists = os.path.exists(fname)
+    flimg.fig.savefig(fname)
+    logger.info('saved: %s' % fname)
+    if not fexists: os.chmod(fname, filemode)
+
+
 def plot_fit_results(ifig, fitres, fnameout, filemode, gm, titles):
-        fig = gr.plt.figure(ifig, facecolor='w', figsize=(11,8.5), dpi=72.27); gr.plt.clf()
-        gr.plt.suptitle(gm)
-        for i in range(4):
-            gr.plt.subplot(2,2,i+1)
-            test=fitres[:,:,i//2,i%2]; testm=np.median(test); tests=3*np.std(test)
-            gr.plt.imshow(test, interpolation='nearest', cmap='Spectral', vmin=testm-tests, vmax=testm+tests)
-            gr.plt.colorbar()
-            gr.plt.title(gm+': '+titles[i])
-        gr.plt.pause(0.1)
-        fexists = os.path.exists(fnameout)
-        fig.savefig(fnameout)
-        logger.info('saved: %s' % fnameout)
-        if not fexists: os.chmod(fnameout, filemode)
+    fig = gr.plt.figure(ifig, facecolor='w', figsize=(11,8.5), dpi=72.27); gr.plt.clf()
+    gr.plt.suptitle(gm)
+    for i in range(4):
+        gr.plt.subplot(2,2,i+1)
+        test=fitres[:,:,i//2,i%2]; testm=np.median(test); tests=3*np.std(test)
+        gr.plt.imshow(test, interpolation='nearest', cmap='Spectral', vmin=testm-tests, vmax=testm+tests)
+        gr.plt.colorbar()
+        gr.plt.title(gm+': '+titles[i])
+    gr.plt.pause(0.1)
+    fexists = os.path.exists(fnameout)
+    fig.savefig(fnameout)
+    logger.info('saved: %s' % fnameout)
+    if not fexists: os.chmod(fnameout, filemode)
 
 
 def saw_edges(trace, evnums, gainbitw, gap=10, do_debug=True):
@@ -479,7 +491,7 @@ def charge_injection(**kwa):
     fmt_offset = kwa.get('fmt_offset', '%.6f')
     fmt_peds   = kwa.get('fmt_peds',   '%.3f')
     fmt_rms    = kwa.get('fmt_rms',    '%.3f')
-    fmt_status = kwa.get('fmt_status', '%4i')
+    fmt_status = kwa.get('fmt_status', '%d')
     fmt_gain   = kwa.get('fmt_gain',   '%.6f')
     fmt_chi2   = kwa.get('fmt_chi2',   '%.3f')
     savechi2   = kwa.get('savechi2', False)
@@ -544,6 +556,8 @@ def charge_injection(**kwa):
         fig2, axim2, axcb2 = gr.fig_img_cbar_axes()
         gr.move_fig(fig2, 500, 10)
         gr.plt.ion() # do not hold control on plt.show()
+    else:
+        fig2, axim2, axcb2 = None, None, None
 
     panel_id = get_panel_id(panel_ids, idx)
     logger.info('panel_id: %s' % panel_id)
@@ -566,8 +580,6 @@ def charge_injection(**kwa):
     s = '\n    '.join([d for d in (dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status)])
     logger.info('created or existing directories:\n    %s' % s)
 
-    #sys.exit('TEST EXIT')
-
     darks   = np.zeros((7,nr,nc))
 
     chi2_ml = np.zeros((nr, nc, 2))
@@ -575,7 +587,6 @@ def charge_injection(**kwa):
     neg_ml  = np.zeros((nr, nc), dtype=np.int16)
     neg_hl  = np.zeros((nr, nc), dtype=np.int16)
 
-    #try:
     if os.path.exists(fname_work):
 
         logger.info('file %s\n  exists, begin to load charge injection results from file' % fname_work)
@@ -592,7 +603,6 @@ def charge_injection(**kwa):
         chi2_ml = npz['chi2_ml']
         chi2_hl = npz['chi2_hl']
 
-    #except IOError:
     else:
 
         logger.info('DOES NOT EXIST charge-injection data file:'\
@@ -859,6 +869,9 @@ def charge_injection(**kwa):
             save_2darray_in_textfile(ped_ml_l, fname, filemode, fmt_peds, umask=0o0, group=group)
 
     if display:
+        import psana.detector.UtilsGraphics as ug
+        global ug
+
         gr.plt.close("all")
         fnameout='%s_plot_AML.png' % prefix_plots
         gm='AML'; titles=['M Gain','M Pedestal', 'L Gain', 'M-L Offset']
@@ -868,11 +881,12 @@ def charge_injection(**kwa):
         gm='AHL'; titles=['H Gain','H Pedestal', 'L Gain', 'H-L Offset']
         plot_fit_results(1, fits_hl, fnameout, filemode, gm, titles)
 
-        gr.plt.pause(5)
+        #gr.plt.pause(5)
+
 
     if True: # evaluate pixel status
 
-        pstatus = ci_pixel_status(
+        status = ci_pixel_status(
           offset_ml_m,
           offset_ml_l,
           offset_hl_h,
@@ -887,10 +901,20 @@ def charge_injection(**kwa):
           chi2_hl_l,
           neg_ml,
           neg_hl,
-          myslice = np.s_[0:int(nr/2), 0:int(nc/2)],
+          myslice = np.s_[0:, 0:],
           databitw = databitw,
-          nsigm=nsigm
+          nsigm=nsigm,
+          prefix=prefix_plots if display else ''
         )
+        #  myslice = np.s_[0:int(nr/2), 0:int(nc/2)], ASIC0 for 1-st epixhr debugging OR regular np.s_[0:, 0:]
+
+        fname = '%s_pixel_status_ci.dat' % prefix_status
+        save_2darray_in_textfile(status, fname, filemode, fmt_status, umask=0o0, group=group)
+
+    if display:
+        #gr.plt.pause(5)
+        gr.show()  # mode='DO NOT HOLD'
+
 
 def ci_pixel_status(
           offset_ml_m,
@@ -909,7 +933,8 @@ def ci_pixel_status(
           neg_hl,
           myslice = np.s_[0:, 0:],
           databitw = 1<<16,
-          nsigm=8
+          nsigm=8,
+          prefix=''
         ):
 
     logger.info('in ci_pixel_status for slice: %s' % str(myslice))
@@ -929,7 +954,7 @@ def ci_pixel_status(
     gain_min = 0.0
     gain_max = databitw/10
     chi2_min = 0.0
-    chi2_max = 1e8
+    chi2_max = None
     arr1 = np.ones(shape, dtype=np.uint64)
 
     stus_neg_ml_lo = np.select((neg_ml < neg_min,), (arr1,), 0)[myslice]
@@ -951,33 +976,35 @@ def ci_pixel_status(
     slsize = arr_sta.size # stus_neg_ml_lo.size
 
     f = '\n  %s\n  %s'
-    s = info_ndarr(arr_sta, '\nBad pixel status bit array', last=0)\
+    s = info_ndarr(arr_sta, '\nSummary of the bad pixel status evaluation, pixel_status array', last=0)\
       + '\n  %20s: %8d / %d (%6.3f%%) pixels AML number of CI pulser periods < %d' % (oct(1<<0), sum_neg_ml_lo, slsize, 100*sum_neg_ml_lo/slsize, neg_min)\
       + '\n  %20s: %8d / %d (%6.3f%%) pixels AML number of CI pulser periods > %d' % (oct(1<<1), sum_neg_ml_hi, slsize, 100*sum_neg_ml_hi/slsize, neg_max)\
       + '\n  %20s: %8d / %d (%6.3f%%) pixels AHL number of CI pulser periods < %d' % (oct(1<<2), sum_neg_hl_lo, slsize, 100*sum_neg_hl_lo/slsize, neg_min)\
       + '\n  %20s: %8d / %d (%6.3f%%) pixels AHL number of CI pulser periods > %d' % (oct(1<<3), sum_neg_hl_hi, slsize, 100*sum_neg_hl_hi/slsize, neg_max)
 
-    s += f % set_pixel_status_bits(arr_sta, offset_ml_m[myslice], title='offset_ml_m', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<4, bit_hi=1<<5)
-    s += f % set_pixel_status_bits(arr_sta, offset_ml_l[myslice], title='offset_ml_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<6, bit_hi=1<<7)
-    s += f % set_pixel_status_bits(arr_sta, offset_hl_h[myslice], title='offset_hl_h', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<8, bit_hi=1<<9)
-    s += f % set_pixel_status_bits(arr_sta, offset_hl_l[myslice], title='offset_hl_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<10, bit_hi=1<<11)
+    s += f % set_pixel_status_bits(arr_sta, offset_ml_m[myslice], title='offset_ml_m', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<4, bit_hi=1<<5, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, offset_ml_l[myslice], title='offset_ml_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<6, bit_hi=1<<7, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, offset_hl_h[myslice], title='offset_hl_h', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<8, bit_hi=1<<9, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, offset_hl_l[myslice], title='offset_hl_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<10, bit_hi=1<<11, prefix=prefix)
 
-    s += f % set_pixel_status_bits(arr_sta, gain_ml_m[myslice], title='gain_ml_m', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<12, bit_hi=1<<13)
-    s += f % set_pixel_status_bits(arr_sta, gain_ml_l[myslice], title='gain_ml_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<14, bit_hi=1<<15)
-    s += f % set_pixel_status_bits(arr_sta, gain_hl_h[myslice], title='gain_hl_h', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<16, bit_hi=1<<17)
-    s += f % set_pixel_status_bits(arr_sta, gain_hl_l[myslice], title='gain_hl_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<18, bit_hi=1<<18)
+    s += f % set_pixel_status_bits(arr_sta, gain_ml_m[myslice], title='gain_ml_m', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<12, bit_hi=1<<13, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, gain_ml_l[myslice], title='gain_ml_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<14, bit_hi=1<<15, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, gain_hl_h[myslice], title='gain_hl_h', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<16, bit_hi=1<<17, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, gain_hl_l[myslice], title='gain_hl_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<18, bit_hi=1<<18, prefix=prefix)
 
-    s += f % set_pixel_status_bits(arr_sta, chi2_ml_m[myslice], title='chi2_ml_m', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<20, bit_hi=1<<21)
-    s += f % set_pixel_status_bits(arr_sta, chi2_ml_l[myslice], title='chi2_ml_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<22, bit_hi=1<<23)
-    s += f % set_pixel_status_bits(arr_sta, chi2_hl_h[myslice], title='chi2_hl_h', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<24, bit_hi=1<<25)
-    s += f % set_pixel_status_bits(arr_sta, chi2_hl_l[myslice], title='chi2_hl_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<26, bit_hi=1<<27)
+    s += f % set_pixel_status_bits(arr_sta, chi2_ml_m[myslice], title='chi2_ml_m', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<20, bit_hi=1<<21, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, chi2_ml_l[myslice], title='chi2_ml_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<22, bit_hi=1<<23, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, chi2_hl_h[myslice], title='chi2_hl_h', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<24, bit_hi=1<<25, prefix=prefix)
+    s += f % set_pixel_status_bits(arr_sta, chi2_hl_l[myslice], title='chi2_hl_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<26, bit_hi=1<<27, prefix=prefix)
 
     stus_bad_total = np.select((arr_sta>0,), (arr1[myslice],), 0)
     num_bad_pixels = stus_bad_total.sum()
 
-    s += '\n Any bad status pixels: %8d / %d (%6.3f%%)' % (num_bad_pixels, slsize, 100*num_bad_pixels/slsize)
+    s += '\n    Any bad status bit: %8d / %d (%6.3f%%) pixels' % (num_bad_pixels, slsize, 100*num_bad_pixels/slsize)
 
     logger.info(s)
+
+    return arr_sta
 
 
 def find_outliers(arr, title='', vmin=None, vmax=None):
@@ -990,12 +1017,14 @@ def find_outliers(arr, title='', vmin=None, vmax=None):
     arr1_hi = np.select((bad_hi,), (arr1,), 0)
     sum_lo = arr1_lo.sum()
     sum_hi = arr1_hi.sum()
-    s_lo = '%8d / %d (%6.3f%%) pixels %s <= %d' % (sum_lo, size, 100*sum_lo/size, title, vmin)
-    s_hi = '%8d / %d (%6.3f%%) pixels %s >= %d' % (sum_hi, size, 100*sum_hi/size, title, vmax)
+    s_lo = '%8d / %d (%6.3f%%) pixels %s <= %s'%\
+            (sum_lo, size, 100*sum_lo/size, title, 'unlimited' if vmin is None else '%.3f' % vmin)
+    s_hi = '%8d / %d (%6.3f%%) pixels %s >= %s'%\
+            (sum_hi, size, 100*sum_hi/size, title, 'unlimited' if vmax is None else '%.3f' % vmax)
     return bad_lo, bad_hi, arr1_lo, arr1_hi, s_lo, s_hi
 
 
-def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, nsigm=8):
+def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, nsigm=8, prefix=''):
     """vmin/vmax - absolutly allowed min/max of the value
     """
     bad_lo, bad_hi, arr1_lo, arr1_hi, s_lo, s_hi = find_outliers(arr, title=title, vmin=vmin, vmax=vmax)
@@ -1007,22 +1036,24 @@ def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, nsigm=8):
     _vmin = med - nsigm*spr if vmin is None else max(med - nsigm*spr, vmin)
     _vmax = med + nsigm*spr if vmax is None else min(med + nsigm*spr, vmax)
 
+    if prefix: plot_array(arr, title=title, vmin=_vmin, vmax=_vmax, prefix=prefix)
+
     s_sel = '%s selected %d of %d pixels in' % (title, arr_sel.size, arr.size)\
           + ' range (%s, %s)' % (str(vmin), str(vmax))\
-          + ' med: %.3f spr: %.3f nsigm: %.3f' % (med, spr, nsigm)
+          + ' med: %.3f spr: %.3f' % (med, spr)
 
-    s_range = u're-defined range med \u00B1 %.1f*spr: (%.3f, %.3f)' % (nsigm, vmin, vmax)
+    s_range = u're-defined range for med \u00B1 %.1f*spr: (%.3f, %.3f)' % (nsigm, _vmin, _vmax)
     _, _, _arr1_lo, _arr1_hi, _s_lo, _s_hi = find_outliers(arr, title=title, vmin=_vmin, vmax=_vmax)
 
     gap = 13*' '
-    logger.info('%s %s\n  %s\n  %s\n%s%s\n%s%s\n  %s\n  %s' %\
-        (10*'=', info_ndarr(arr, title, last=0), s_lo, s_hi, gap, s_sel, gap, s_range, _s_lo, _s_hi))
+    logger.info('%s\n    %s\n  %s\n  %s\n%s%s\n%s%s\n  %s\n  %s' %\
+        (20*'=', info_ndarr(arr, title, last=0), s_lo, s_hi, gap, s_sel, gap, s_range, _s_lo, _s_hi))
 
     return _arr1_lo, _arr1_hi, _s_lo, _s_hi
 
 
-def set_pixel_status_bits(status, arr, title='', vmin=None, vmax=None, nsigm=8, bit_lo=1<<0, bit_hi=1<<1):
-    arr1_lo, arr1_hi, s_lo, s_hi = evaluate_pixel_status(arr, title=title, vmin=vmin, vmax=vmax, nsigm=nsigm)
+def set_pixel_status_bits(status, arr, title='', vmin=None, vmax=None, nsigm=8, bit_lo=1<<0, bit_hi=1<<1, prefix=''):
+    arr1_lo, arr1_hi, s_lo, s_hi = evaluate_pixel_status(arr, title=title, vmin=vmin, vmax=vmax, nsigm=nsigm, prefix=prefix)
     status += arr1_lo * bit_lo
     status += arr1_hi * bit_hi
     s_lo = '%20s: %s' % (oct(bit_lo), s_lo)
