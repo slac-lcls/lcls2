@@ -496,14 +496,13 @@ def charge_injection(**kwa):
     fmt_chi2   = kwa.get('fmt_chi2',   '%.3f')
     savechi2   = kwa.get('savechi2', False)
     dopeds     = kwa.get('dopeds', False)
-    dooffs     = kwa.get('dooffs', True)
     dirmode    = kwa.get('dirmode', 0o2775)
     filemode   = kwa.get('filemode', 0o664)
     group      = kwa.get('group', 'ps-users')
     npoff      = kwa.get('npoff', 10)
     nperiods   = kwa.get('nperiods', True)
     ccnum      = kwa.get('ccnum', None)
-    ccmax      = kwa.get('ccmax', 103)
+    ccmax      = kwa.get('ccmax', 50)
     ccskip     = kwa.get('ccskip', 0)
     logmode    = kwa.get('logmode', 'DEBUG')
     errskip    = kwa.get('errskip', False)
@@ -512,8 +511,9 @@ def charge_injection(**kwa):
     irun       = None
     exp        = None
     npmin      = 5
-    tsec_show  = 2
     nstep_peds = 0
+    tsec_show  = 2
+    tsec_show_end = 60
     step_docstring = None
     dfid_med = 7761 # THIS VALUE DEPENDS ON EVENT RATE -> SHOULD BE AUTOMATED
 
@@ -534,8 +534,6 @@ def charge_injection(**kwa):
 
     cpdic = uec.get_config_info_for_dataset_detname(**kwa)
     logger.info('config_info:%s' % uec.info_dict(cpdic))  # fmt=fmt, sep=sep+sepnext)
-
-    #sys.exit('TEST EXIT')
 
     tstamp    = cpdic.get('tstamp', None)
     panel_ids = cpdic.get('panel_ids', None)
@@ -679,14 +677,6 @@ def charge_injection(**kwa):
             if dopeds and nstep<nstep_peds:
                 msg = 'DARK step %d ' % nstep
                 logger.warning('skip %s' % msg)
-
-            elif not dooffs:
-                #logger.debug(info_ndarr(darks, 'darks'))
-                if nstep>nstep_peds-1:
-                    logger.info('nstep %d > %d (nstep_peds-1) - break' % (nstep, nstep_peds-1))
-                    break
-                logger.info('dooffs is %s - continue' % str(dooffs))
-                continue
 
             # Next nspace**2 steps correspond to pulsing in AML - Auto Medium-to-Low
             elif nstep>nstep_peds-1 and nstep<nstep_peds+nspace**2:
@@ -908,12 +898,13 @@ def charge_injection(**kwa):
         )
         #  myslice = np.s_[0:int(nr/2), 0:int(nc/2)], ASIC0 for 1-st epixhr debugging OR regular np.s_[0:, 0:]
 
-        fname = '%s_pixel_status_ci.dat' % prefix_status
+        fname = '%s_pixel_status.dat' % prefix_status
         save_2darray_in_textfile(status, fname, filemode, fmt_status, umask=0o0, group=group)
 
     if display:
-        #gr.plt.pause(5)
-        gr.show()  # mode='DO NOT HOLD'
+        print('TO EXIT - close all graphical windows or wait for %d sec' % tsec_show_end)
+        gr.plt.pause(tsec_show_end)
+        #gr.show()  # mode='DO NOT HOLD'
 
 
 def ci_pixel_status(
