@@ -40,6 +40,7 @@ def do_main():
 USAGE = 'TEST EXAMPLE'\
       + '\n  %s -k exp=ascdaq18,run=171 -d epixhr -i0 -o ./work     # with graphics' % SCRNAME\
       + '\n  %s -k exp=ascdaq18,run=171 -d epixhr -i0 -o ./work -D  # without graphics' % SCRNAME\
+      + '\n  %s -k exp=ascdaq18,run=171 -d epixhr -i0 -o ./work --slice "0:144,0:192"  # select part of the panel to evaluate pixel status and plot' % SCRNAME\
 
 
 def argument_parser() :
@@ -63,6 +64,8 @@ def argument_parser() :
     d_dirmode  = 0o2775
     d_filemode = 0o664
     d_group    = 'ps-users'
+    d_slice    = '0:,0:'
+
 
     h_dskwargs= 'Data source parameters; string of comma-separated (no spaces) parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -88,6 +91,7 @@ def argument_parser() :
     h_dirmode = 'directory mode for all created directories, default = %s' % oct(d_dirmode)
     h_filemode= 'file mode for all saved files, default = %s' % oct(d_filemode)
     h_group   = 'group ownership for all saved files, default = %s' % d_group
+    h_slice   = '(str) slice of the panel image 2-d array selected for plots and pixel status, FOR DEBUGGING ONLY, ex. "0:144,0:192", default = %s' % d_slice
 
     from argparse import ArgumentParser
     parser = ArgumentParser(usage=USAGE, description='Process charge injection data for epixhr/epix10ka')
@@ -111,6 +115,7 @@ def argument_parser() :
     parser.add_argument('--dirmode',        default=d_dirmode,  type=int,             help=h_dirmode)
     parser.add_argument('--filemode',       default=d_filemode, type=int,             help=h_filemode)
     parser.add_argument('--group',          default=d_group,    type=str,             help=h_group)
+    parser.add_argument('--slice',          default=d_slice,    type=str,             help=h_slice)
 
     return parser
 
