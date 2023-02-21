@@ -96,12 +96,12 @@ def plot_array(arr, title='', vmin=None, vmax=None, prefix='', filemode=0o664):
     if not fexists: os.chmod(fname, filemode)
 
 
-def plot_fit_results(ifig, fitres, fnameout, filemode, gm, titles):
+def plot_fit_results(ifig, fitres, fnameout, filemode, gm, titles, rcslices):
     fig = gr.plt.figure(ifig, facecolor='w', figsize=(11,8.5), dpi=72.27); gr.plt.clf()
     gr.plt.suptitle(gm)
     for i in range(4):
         gr.plt.subplot(2,2,i+1)
-        test=fitres[:,:,i//2,i%2]; testm=np.median(test); tests=3*np.std(test)
+        test=fitres[rcslices[0],rcslices[1],i//2,i%2]; testm=np.median(test); tests=3*np.std(test)
         gr.plt.imshow(test, interpolation='nearest', cmap='Spectral', vmin=testm-tests, vmax=testm+tests)
         gr.plt.colorbar()
         gr.plt.title(gm+': '+titles[i])
@@ -508,6 +508,7 @@ def charge_injection(**kwa):
     errskip    = kwa.get('errskip', False)
     pixrc      = kwa.get('pixrc', None) # ex.: '23,123'
     nsigm      = kwa.get('nsigm', 8)
+    sslice     = kwa.get('slice', '0:,0:')
     irun       = None
     exp        = None
     npmin      = 5
@@ -861,20 +862,34 @@ def charge_injection(**kwa):
     if display:
         import psana.detector.UtilsGraphics as ug
         global ug
-
+        rcslices = [eval('np.s_[%s]' % s) for s in sslice.split(',')]  # sslice="0:,0:" > list of slices for rows and cols
         gr.plt.close("all")
         fnameout='%s_plot_AML.png' % prefix_plots
         gm='AML'; titles=['M Gain','M Pedestal', 'L Gain', 'M-L Offset']
-        plot_fit_results(0, fits_ml, fnameout, filemode, gm, titles)
+        plot_fit_results(0, fits_ml, fnameout, filemode, gm, titles, rcslices)
 
         fnameout='%s_plot_AHL.png' % prefix_plots
         gm='AHL'; titles=['H Gain','H Pedestal', 'L Gain', 'H-L Offset']
-        plot_fit_results(1, fits_hl, fnameout, filemode, gm, titles)
+        plot_fit_results(1, fits_hl, fnameout, filemode, gm, titles, rcslices)
 
         #gr.plt.pause(5)
 
 
     if True: # evaluate pixel status
+
+        kwa = {'myslice'   : eval('np.s_[%s]' % sslice),
+               'databitw'  : databitw,
+               'nsigm'     : nsigm,
+               'prefix'    : prefix_plots if display else '',
+               'neg_min'   : 1,
+               'neg_max'   : 3,
+               'offset_min': 0,
+               'offset_max': databitw,
+               'gain_min'  : 0.0,
+               'gain_max'  : databitw/10,
+               'chi2_min'  : 0.0,
+               'chi2_max'  : None
+              }
 
         status = ci_pixel_status(
           offset_ml_m,
@@ -891,14 +906,11 @@ def charge_injection(**kwa):
           chi2_hl_l,
           neg_ml,
           neg_hl,
-          myslice = np.s_[0:, 0:],
-          databitw = databitw,
-          nsigm=nsigm,
-          prefix=prefix_plots if display else ''
+          **kwa
         )
         #  myslice = np.s_[0:int(nr/2), 0:int(nc/2)], ASIC0 for 1-st epixhr debugging OR regular np.s_[0:, 0:]
 
-        fname = '%s_pixel_status.dat' % prefix_status
+        fname = '%s_pixel_status_ci.dat' % prefix_status
         save_2darray_in_textfile(status, fname, filemode, fmt_status, umask=0o0, group=group)
 
     if display:
@@ -922,11 +934,21 @@ def ci_pixel_status(
           chi2_hl_l,
           neg_ml,
           neg_hl,
-          myslice = np.s_[0:, 0:],
-          databitw = 1<<16,
-          nsigm=8,
-          prefix=''
+          **kwargs
         ):
+
+    prefix     = kwargs.get('prefix', '')
+    myslice    = kwargs.get('myslice', np.s_[0:, 0:])
+    databitw   = kwargs.get('databitw', (1<<16)-1)
+    neg_min    = kwargs.get('neg_min', 1)
+    neg_max    = kwargs.get('neg_max', 3)
+    offset_min = kwargs.get('offset_min', 0)
+    offset_max = kwargs.get('offset_max', databitw)
+    gain_min   = kwargs.get('gain_min', 0.0)
+    gain_max   = kwargs.get('gain_max', databitw/10)
+    chi2_min   = kwargs.get('chi2_min', 0.0)
+    chi2_max   = kwargs.get('chi2_max', None)
+    nsigm      = kwargs.get('nsigm', 8)
 
     logger.info('in ci_pixel_status for slice: %s' % str(myslice))
     nvals = 4
@@ -938,14 +960,6 @@ def ci_pixel_status(
 
     shape = offset_ml_m.shape
 
-    neg_min = 1
-    neg_max = 3
-    offset_min = 0
-    offset_max = databitw
-    gain_min = 0.0
-    gain_max = databitw/10
-    chi2_min = 0.0
-    chi2_max = None
     arr1 = np.ones(shape, dtype=np.uint64)
 
     stus_neg_ml_lo = np.select((neg_ml < neg_min,), (arr1,), 0)[myslice]
