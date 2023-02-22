@@ -45,7 +45,7 @@ def setCuMode(v):
 def getCuMode():
     return xtpg
 
-class Pv:
+class Pv(object):
     def __init__(self, pvname, callback=None, isStruct=False):
         self.pvname = pvname
         self.__value__ = None
@@ -53,15 +53,15 @@ class Pv:
         if callback:
             logger.info("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
-                if self.isStruct:
-                    self.__value__ = newval
-                else:
-                    self.__value__ = newval.raw.value
-                logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
-#                try:
+                try:
+                    if self.isStruct or getattr(newval,'raw') is None:
+                        self.__value__ = newval
+                    else:
+                        self.__value__ = newval.raw.value
+                    logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
+                except Exception as e:
+                    logger.error(f'Exception in monitor_cb for {self.pvname} {e} [{newval}]')
                 callback(err=None)
-#                except Exception as e:
-#                    logger.error("Exception in callback for %s"%self.pvname)
             try:
                 self.subscription = pvactx.monitor(self.pvname, monitor_cb)
                 self.__value__ = None
@@ -283,6 +283,40 @@ class PvComboDisplay(QtWidgets.QComboBox):
 
     def setValue(self,value):
         self.setCurrentIndex(value)
+
+class PvTableDisplay(QtWidgets.QWidget):
+
+    def __init__(self, pvname, rowNames=None):
+        super(PvTableDisplay, self).__init__()
+        self.ready = False
+        initPvMon(self,pvname,isStruct=True)
+
+        v = self.pv.get()
+        print(f'get {v}')
+
+        grid = QtWidgets.QGridLayout()
+        for j,r in enumerate(rowNames):
+            grid.addWidget(QtWidgets.QLabel(r),j+1,0)
+        for j,r in enumerate(v.labels):
+            grid.addWidget(QtWidgets.QLabel(r),0,j+1)
+            w = [QtWidgets.QLabel('-') for i in range(len(rowNames))]
+            setattr(self,r,w)
+            for i in range(len(rowNames)):
+                grid.addWidget(w[i],i+1,j+1)
+
+        self.setLayout(grid)
+        self.ready = True
+
+    def update(self,err):
+        if not self.ready:
+            return
+        print(f'PvTD update __value__ {self.pv.__value__}')
+        v = self.pv.__value__
+        for j,r in enumerate(v.labels):
+            w = getattr(self,r)
+            q = getattr(v.value,r)
+            for i,qv in enumerate(q):
+                w[i].setText(str(qv))
 
 class PvEditTxt(PvTextDisplay):
 
