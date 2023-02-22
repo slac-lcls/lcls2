@@ -107,6 +107,7 @@ class DevRoot(pr.Root):
                  dataDebug      = False,
                  enableConfig   = False,
                  enVcMask       = 0x3, # Enable lane mask
+                 isXpmGen       = True,
                  **kwargs):
 
         print(f'DevRoot dataDebug {dataDebug}')
@@ -139,6 +140,7 @@ class DevRoot(pr.Root):
         self.add(kcu.DevPcie(
             name        = 'XPM',
             memBase     = self.memMap,
+            isXpmGen    = isXpmGen,
         ))
 
         # Create empty list

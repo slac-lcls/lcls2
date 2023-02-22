@@ -142,7 +142,8 @@ class TimingStatus(object):
         def updatePv(pv,nv,ov,verbose=False,nb=32):
             if nv is not None:
                 value = pv.current()
-                value['value'] = (nv-ov)&((1<<nb)-1)
+                mask = (1<<nb)-1
+                value['value'] = (nv-ov)&mask if (nv!=ov or (nv&mask)!=((-1)&mask)) else -1.
                 value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
                 pv.post(value)
                 if type(verbose) is type("") and nv != ov:
@@ -248,11 +249,13 @@ class MonClkStatus(object):
         self._pv_fbClk  = addPV(name+':FbClk' ,'f')
         self._pv_recClk = addPV(name+':RecClk','f')
 
-        print('MonClkStatus: refClk {:} MHz  recClk {:} MHz'.format(self._app.monClk_1.get()*1.e-6,
-                                                                    self._app.monClk_2.get()*1.e-6))
+        print('MonClkStatus clkRates {:} {:} {:} {:} MHz'.format(app.monClk_0.get(),
+                                                                 app.monClk_1.get(),
+                                                                 app.monClk_2.get(),
+                                                                 app.monClk_3.get()) )
 
     def handle(self, msg, offset, timev):
-        w = struct.unpack_from('<LLL',msg,offset)
+        w = struct.unpack_from('<LLLL',msg,offset)
         offset += 16
         updatePv(self._pv_bpClk , w[0]&0xfffffff, timev)
         updatePv(self._pv_fbClk , w[1]&0xfffffff, timev)
