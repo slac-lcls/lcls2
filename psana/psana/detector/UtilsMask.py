@@ -6,6 +6,8 @@ Utilities for mask
 Usage::
   from psana.detector.UtilsMask import *
 
+  # Test: python <path>/lcls2/psana/psana/detector/testman/test_UtilsMask.py <test-number>
+
   m = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK)
   m = merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK)
   s = merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS)
@@ -19,6 +21,15 @@ Usage::
   m = convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ix, iy)
   m = convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs) # kwargs passed to geo.get_pixel_coord_indexes(**kwargs)
   m = convert_mask2d_to_ndarray_using_geometry_file(mask2d, gfname, **kwargs) # kwargs passed to geo.get_pixel_coord_indexes(**kwargs)
+
+  # 2023-02-23 add methods to generate masks for shape parameters
+  r = cart2r(x, y)  # converts numpy arrays for carthesian x,y to r
+  m = mask_circle(shape, center_row, center_col, radius, dtype=DTYPE_MASK)
+  m = mask_ring(shape, center_row, center_col, radius_min, radius_max, dtype=DTYPE_MASK)
+  m = mask_rectangle(shape, cmin, rmin, cols, rows, dtype=DTYPE_MASK)
+  m = mask_poly(shape, colrows, dtype=DTYPE_MASK)
+  m = mask_halfplane(shape, r1, c1, r2, c2, rm, cm, dtype=DTYPE_MASK)
+  m = mask_arc(shape, cx, cy, ro, ri, ao, ai, dtype=DTYPE_MASK)
 
 2021-01-25 created by Mikhail Dubrovin
 """
@@ -244,6 +255,81 @@ def convert_mask2d_to_ndarray_using_geometry_file(mask2d, gfname, **kwargs):
     assert os.path.exists(gfname)
     geo = GeometryAccess(gfname)
     return convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs)
+
+
+def cart2r(x, y):
+    return np.sqrt(x*x + y*y)
+
+
+def mask_circle(shape, center_row, center_col, radius, dtype=DTYPE_MASK):
+    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    rad = cart2r(r-center_row, c-center_col)
+    return np.select([rad>radius,], [0,], default=1).astype(dtype)
+
+
+def mask_ring(shape, center_row, center_col, radius_min, radius_max, dtype=DTYPE_MASK):
+    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    rad = cart2r(r-center_row, c-center_col)
+    return np.select([rad<radius_min, rad>radius_max,], [0, 0,], default=1).astype(dtype)
+
+
+def mask_rectangle(shape, cmin, rmin, cols, rows, dtype=DTYPE_MASK):
+    """cmin, rmin (int) - minimal coordinates of the rectangle corner
+       cols, rows (int) - width and height of the rectangle
+    """
+    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    return np.select([c<cmin, c>cmin+cols, r<rmin, r>rmin+rows], [False, False, False, False], default=True).astype(dtype)
+
+
+def mask_poly(shape, colrows, dtype=DTYPE_MASK):
+    """colrows (list) - list of vertex coordinate pairs as (row,col)
+    """
+    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    cr = list(zip(c.ravel(), r.ravel())) # or np.vstack((x,y)).T
+    from matplotlib.path import Path
+    mask = np.array(Path(colrows).contains_points(cr), dtype=dtype)
+    mask.shape = shape
+    return mask
+
+
+def mask_halfplane(shape, r1, c1, r2, c2, rm, cm, dtype=DTYPE_MASK):
+    """Half-plane contains the boarder line through the points (r1, c1) and (r2, c2)
+       Off-line point (rm, cm) picks the half-plane marked with ones.
+    """
+    f = 0 if c1 == c2 else (r2-r1)/(c2-c1)
+    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    cond = (r > r1 if rm < r1 else r < r1) if r1 == r2 else\
+           (c > c1 if cm < c1 else c < c1) if c1 == c2 else\
+           (r > r1+f*(c-c1))
+    if not cond[rm, cm]: cond = ~cond
+    return np.select([cond,], [0,], default=1).astype(dtype)
+
+
+def mask_arc(shape, cx, cy, ro, ri, ao, ai, dtype=DTYPE_MASK):
+    """Returns arc mask for ami2 ArcROI set of parameters. Ones in the arc zeroes outside.
+       Carthesian (x,y) emulated by (col, shape[0]-row) as in ami.
+       cx, cy - arc center (col, row)
+       ro, ri - radii of the outer and inner arc corner points
+       ao, ai - angles of the outer and inner arc corner points
+    """
+    import math #math.radians(a); math.sin(a), math.cos(a)
+    from math import radians, sin, cos  # floor, ceil
+    assert ro>ri, 'outer radius %d shold be greater than inner %d' % (ro, ri)
+    assert ai>ao, 'inner arc corner angle %.2f deg shold be greater than outer %.2f deg' % (ai, ao)
+    mring = mask_ring(shape, cy, cx, ri, ro, dtype=dtype)
+    r1, c1 = shape[0]-cy, cx
+    ao_rad = -radians(ao)
+    ai_rad = -radians(ai)
+    delta = 0.1 # radian
+    r2, c2 = r1 + ro * sin(ao_rad),       c1 + ro * cos(ao_rad)
+    rm, cm = r1 + ro * sin(ao_rad+delta), c1 + ro * cos(ao_rad+delta)
+    mhpo = mask_halfplane(shape, r1, c1, int(r2), int(c2), int(rm), int(cm), dtype=dtype)
+    r2, c2 = r1 + ri * sin(ai_rad),       c1 + ri * cos(ai_rad)
+    rm, cm = r1 + ri * sin(ai_rad-delta), c1 + ri * cos(ai_rad-delta)
+    mhpi = mask_halfplane(shape, r1, c1, int(r2), int(c2), int(rm), int(cm), dtype=dtype)
+    mhro = merge_masks(mask1=mring, mask2=mhpo, dtype=dtype)
+    mhri = merge_masks(mask1=mring, mask2=mhpi, dtype=dtype)
+    return np.bitwise_and(mhro, mhri) if ai-ao<180 else np.bitwise_or(mhro, mhri)
 
 # EOF
 
