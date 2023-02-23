@@ -17,7 +17,6 @@ except NameError:
     # Python 3
     QChar = chr
 
-NDsLinks    = 7
 NAmcs       = 2
 NGroups     = 16
 Masks       = ['None','0','1','2','3','4','5','6','7','All']
@@ -65,7 +64,7 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
     def __init__(self, pvname, label):
         super(PvPushButtonX, self).__init__(label)
-        self.setMaximumWidth(70)
+#        self.setMaximumWidth(70)
 
         self.clicked.connect(self.buttonClicked)
 
@@ -82,7 +81,7 @@ class PvEditIntX(PvEditInt):
 
     def __init__(self, pv, label):
         super(PvEditIntX, self).__init__(pv, label)
-        self.setMaximumWidth(70)
+#        self.setMaximumWidth(70)
 
 class PvCmb(PvEditCmb):
 
@@ -167,23 +166,22 @@ class PvLinkIdG:
         layout.addWidget(self.pvlink.linkType,row,col)
         layout.addWidget(self.pvlink.linkSrc ,row,col+1)
 
-def FrontPanelAMC(pvbase,iamc):
+def FrontPanelAMC(pvbase,nDsLinks,start):
         dsbox = QtWidgets.QWidget()
         dslo = QtWidgets.QVBoxLayout()
-        PvInput(PvLinkIdV, dslo, pvbase, "RemoteLinkId", NDsLinks, start=iamc*NDsLinks)
-        LblPushButtonX(dslo, pvbase, "TxLinkReset",    NDsLinks, start=iamc*NDsLinks)
-        LblPushButtonX(dslo, pvbase, "RxLinkReset",    NDsLinks, start=iamc*NDsLinks)
-        LblPushButtonX(dslo, pvbase, "RxLinkDump" ,    NDsLinks, start=iamc*NDsLinks)
-        LblGroupMask  (dslo, pvbase, "LinkGroupMask",  NDsLinks, start=iamc*NDsLinks, enable=True)
-        LblCheckBox   (dslo, pvbase, "LinkRxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkRxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkTxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkTxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkIsXpm",      NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkLoopback",   NDsLinks, start=iamc*NDsLinks)
-#        LblCheckBox  (dslo, pvbase, "LinkRxErr",      NAmcs * NDsLinks, enable=False)
-        LblEditIntX   (dslo, pvbase, "LinkRxErr",      NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblEditIntX   (dslo, pvbase, "LinkRxRcv",      NDsLinks, start=iamc*NDsLinks, enable=False)
+        PvInput(PvLinkIdV, dslo, pvbase, "RemoteLinkId", nDsLinks, start=start)
+        LblPushButtonX(dslo, pvbase, "TxLinkReset",    nDsLinks, start=start)
+        LblPushButtonX(dslo, pvbase, "RxLinkReset",    nDsLinks, start=start)
+        LblPushButtonX(dslo, pvbase, "RxLinkDump" ,    nDsLinks, start=start)
+        LblGroupMask  (dslo, pvbase, "LinkGroupMask",  nDsLinks, start=start, enable=True)
+        LblCheckBox   (dslo, pvbase, "LinkRxResetDone", nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkRxReady",    nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkTxResetDone", nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkTxReady",    nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkIsXpm",      nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkLoopback",   nDsLinks, start=start)
+        LblEditIntX   (dslo, pvbase, "LinkRxErr",      nDsLinks, start=start, enable=False)
+        LblEditIntX   (dslo, pvbase, "LinkRxRcv",      nDsLinks, start=start, enable=False)
         dslo.addStretch()
         dsbox.setLayout(dslo)
         return dsbox
@@ -421,38 +419,48 @@ class Ui_MainWindow(object):
             else:
                 tw.addTab( addUsTab (self,pvbase), "UsTiming")
 
-            tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
-            tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")
+            if 'Kcu' in v:
+                amcTitle = 'QSFP'
+                nDsLinks = (4,4) # if 'Gen' in v else (3,4)
+            else:
+                amcTitle = 'AMC'
+                nDsLinks = (7,7)
 
-            bpbox  = QtWidgets.QWidget()
-            bplo   = QtWidgets.QVBoxLayout()
-            LblPushButtonX(bplo, pvbase, "TxLinkReset16",    1, 16, 0)
-            LblCheckBox   (bplo, pvbase, "LinkTxReady16",    1, 16, 0, enable=False)
+            tw.addTab(FrontPanelAMC(pvbase,nDsLinks[0],          0),f'{amcTitle}0')
+            tw.addTab(FrontPanelAMC(pvbase,nDsLinks[1],nDsLinks[0]),f'{amcTitle}1')
 
-            #LblPushButtonX(bplo, pvbase, "TxLinkReset",    5, 17, 3)
-            LblPushButtonX(bplo, pvbase, "RxLinkReset",    5, 17, 3)
-            #LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
-            LblCheckBox   (bplo, pvbase, "LinkRxReady",    5, 17, 3, enable=False)
-            #LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
-            #LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
-            #LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
-            LblEditIntX   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
-            LblEditIntX   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
-            bplo.addStretch()
-            bpbox.setLayout(bplo)
-            tw.addTab(bpbox,"Bp")
+            if 'Kcu' not in v:
+                bpbox  = QtWidgets.QWidget()
+                bplo   = QtWidgets.QVBoxLayout()
+                LblPushButtonX(bplo, pvbase, "TxLinkReset16",    1, 16, 0)
+                LblCheckBox   (bplo, pvbase, "LinkTxReady16",    1, 16, 0, enable=False)
 
-            pllbox  = QtWidgets.QWidget()
-            pllvbox = QtWidgets.QVBoxLayout()
-            LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
-            LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
-            LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
-            LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
-            pllvbox.addStretch()
-            pllbox.setLayout(pllvbox)
-            tw.addTab(pllbox,"PLLs")
+                #LblPushButtonX(bplo, pvbase, "TxLinkReset",    5, 17, 3)
+                LblPushButtonX(bplo, pvbase, "RxLinkReset",    5, 17, 3)
+                #LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
+                LblCheckBox   (bplo, pvbase, "LinkRxReady",    5, 17, 3, enable=False)
+                #LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
+                #LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
+                #LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
+                LblEditIntX   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
+                LblEditIntX   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
+                bplo.addStretch()
+                bpbox.setLayout(bplo)
+                tw.addTab(bpbox,"Bp")
+
+                pllbox  = QtWidgets.QWidget()
+                pllvbox = QtWidgets.QVBoxLayout()
+                LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
+                LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
+                LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
+                LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
+                pllvbox.addStretch()
+                pllbox.setLayout(pllvbox)
+                tw.addTab(pllbox,"PLLs")
 
             tw.addTab(DeadTime(pvbase,self),"DeadTime")
+
+#            tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
 
             stack.addWidget(tw)
 

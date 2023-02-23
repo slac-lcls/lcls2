@@ -15,6 +15,11 @@ Usage::
   m = mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK)
   m = status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa)
 
+  # 2023-02-10 add converters from mask2d to mask3d
+  m = convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ix, iy)
+  m = convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs) # kwargs passed to geo.get_pixel_coord_indexes(**kwargs)
+  m = convert_mask2d_to_ndarray_using_geometry_file(mask2d, gfname, **kwargs) # kwargs passed to geo.get_pixel_coord_indexes(**kwargs)
+
 2021-01-25 created by Mikhail Dubrovin
 """
 import logging
@@ -23,8 +28,7 @@ import numpy as np
 import psana.pscalib.calib.CalibConstants as CC
 DTYPE_MASK   = CC.dic_calib_type_to_dtype[CC.PIXEL_MASK]   # np.uint8
 DTYPE_STATUS = CC.dic_calib_type_to_dtype[CC.PIXEL_STATUS] # np.uint64
-
-from psana.detector.NDArrUtils import shape_nda_as_3d, info_ndarr  # shape_as_3d, shape_as_3d
+from psana.detector.NDArrUtils import info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
 
 def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
@@ -204,6 +208,42 @@ def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
     logger.debug(info_ndarr(status, 'status'))
     cond = (status & status_bits)>0
     return np.asarray(np.select((cond,), (0,), default=1), dtype=dtype)
+
+
+def convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, rows, cols):
+    """Converts 2-d (np.ndarray) image-like mask2d to
+       (np.ndarray) shaped as input pixel index arrays rows and cols.
+       NOTE: arrays rows and cols should be exactly the same as used to construct mask2d as image.
+    """
+    from psana.pscalib.geometry.GeometryAccess import convert_mask2d_to_ndarray
+    return convert_mask2d_to_ndarray(mask2d, rows, cols, dtype=DTYPE_MASK)
+
+
+def convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs):
+    """Converts 2-d (np.ndarray) image-like mask2d to 3-d (np.ndarray) shaped as raw data.
+       geo (GeometryAccess) is a geometry object.
+       **kwargs - keyword arguments passed to geo.get_pixel_coord_indexes().
+    """
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess
+    assert isinstance(geo, GeometryAccess)
+    ir, ic = geo.get_pixel_coord_indexes(**kwargs)
+    reshape_to_3d(ir)
+    reshape_to_3d(ic)
+    assert ir.shape[0]>1, 'number of segments should be more than one, ir.shape=%s' % str(ir.shape)
+    assert ic.shape[0]>1, 'number of segments should be more than one, ic.shape=%s' % str(ic.shape)
+    return convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ir, ic)
+
+
+def convert_mask2d_to_ndarray_using_geometry_file(mask2d, gfname, **kwargs):
+    """Converts 2-d (np.ndarray) image-like mask2d to 3-d (np.ndarray) shaped as raw data.
+       gfname (str) is a geometry file name.
+       **kwargs - keyword arguments passed to geo.get_pixel_coord_indexes().
+    """
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess
+    assert isinstance(gfname, str)
+    assert os.path.exists(gfname)
+    geo = GeometryAccess(gfname)
+    return convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs)
 
 # EOF
 

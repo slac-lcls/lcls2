@@ -121,6 +121,7 @@ MemPool::MemPool(Parameters& para) :
     logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, para.maxTrSize);
 
     pgpEvents.resize(m_nbuffers);
+    transitionDgrams.resize(m_nbuffers);
 
     // Put the transition buffer pool at the end of the pebble buffers
     uint8_t* buffer = pebble[m_nbuffers];
@@ -206,7 +207,8 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_configureBuffer(para.maxTrSize),
   m_damage(0),
   m_evtSize(0),
-  m_latency(0)
+  m_latency(0),
+  m_partition(para.partition)
 {
     std::map<std::string, std::string> labels
         {{"instrument", para.instrument},
@@ -424,7 +426,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
-        dgram = m_pool.pgpEvents[index].transitionDgram;
+        dgram = m_pool.transitionDgrams[index];
         if (pulseId != dgram->pulseId()) {
             logging::error("pulseId mismatch: pebble %014lx, trDgram %014lx, xor %014lx, diff %ld",
                            pulseId, dgram->pulseId(), pulseId ^ dgram->pulseId(), pulseId - dgram->pulseId());
@@ -515,46 +517,50 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         }
     }
 
-    if (m_writing) {                    // Won't ever be true for Configure
-        // write event to file if it passes event builder or if it's a transition
-        if (result.persist() || result.prescale()) {
-            _writeDgram(dgram);
-        }
-        else if (transitionId != XtcData::TransitionId::L1Accept) {
-            if (transitionId == XtcData::TransitionId::BeginRun) {
-                m_offset = 0; // reset offset when writing out a new file
-                _writeDgram(reinterpret_cast<XtcData::Dgram*>(m_configureBuffer.data()));
+    // To write/monitor event, require the primary readout group to have triggered
+    // Events for which the primary RoG didn't trigger are counted as bypass events
+    if (dgram->readoutGroups() & (1 << m_partition)) {
+        if (m_writing) {                    // Won't ever be true for Configure
+            // write event to file if it passes event builder or if it's a transition
+            if (result.persist() || result.prescale()) {
+                _writeDgram(dgram);
             }
-            _writeDgram(dgram);
-            if ((transitionId == XtcData::TransitionId::Enable) && m_chunkRequest) {
-                logging::debug("%s calling reopenFiles()", __PRETTY_FUNCTION__);
-                reopenFiles();
-            } else if (transitionId == XtcData::TransitionId::EndRun) {
-                logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
-                closeFiles();
-            }
-        }
-    }
-
-    m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-
-    // Measure latency before sending dgram for monitoring
-    auto now = std::chrono::system_clock::now();
-    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-
-    if (m_mon.enabled()) {
-        // L1Accept
-        if (result.isEvent()) {
-            if (result.monitor()) {
-                m_mon.post(dgram, result.monBufNo());
+            else if (transitionId != XtcData::TransitionId::L1Accept) {
+                if (transitionId == XtcData::TransitionId::BeginRun) {
+                    m_offset = 0; // reset offset when writing out a new file
+                    _writeDgram(reinterpret_cast<XtcData::Dgram*>(m_configureBuffer.data()));
+                }
+                _writeDgram(dgram);
+                if ((transitionId == XtcData::TransitionId::Enable) && m_chunkRequest) {
+                    logging::debug("%s calling reopenFiles()", __PRETTY_FUNCTION__);
+                    reopenFiles();
+                } else if (transitionId == XtcData::TransitionId::EndRun) {
+                    logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
+                    closeFiles();
+                }
             }
         }
-        // Other Transition
-        else {
-            m_mon.post(dgram);
+
+        m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+
+        // Measure latency before sending dgram for monitoring
+        auto now = std::chrono::system_clock::now();
+        auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+                 + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+        std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+        m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+
+        if (m_mon.enabled()) {
+            // L1Accept
+            if (result.isEvent()) {
+                if (result.monitor()) {
+                    m_mon.post(dgram, result.monBufNo());
+                }
+            }
+            // Other Transition
+            else {
+                m_mon.post(dgram);
+            }
         }
     }
 

@@ -299,7 +299,7 @@ class TimingFrameRx(pr.Device):
         for k in vars(self):
             v = getattr(self,k)
             if hasattr(v,'_block'):
-                print('{:} : {:}'.format(k,v.get()))
+                print('{:} : 0x{:x}'.format(k,v.get()))
 
     def addField(self,node):
         setattr(self,node._name,node)

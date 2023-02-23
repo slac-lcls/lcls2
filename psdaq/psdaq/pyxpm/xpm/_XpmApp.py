@@ -71,6 +71,7 @@ class XpmApp(pr.Device):
                     name        = "XpmApp", 
                     description = "XPM Module", 
                     fidPrescale = 200,
+                    removeMonReg = False,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
 
@@ -272,30 +273,31 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "dsLinkStatus",
-            description  = "link status summary",
-            offset       =  0x0c,
-            bitSize      =  32,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
+        if not removeMonReg:
+            self.add(pr.RemoteVariable(    
+                name         = "dsLinkStatus",
+                description  = "link status summary",
+                offset       =  0x0c,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "dsLinkRxCnt",
-            description  = "Rx message count",
-            offset       =  0x10,
-            bitSize      =  32,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
+            self.add(pr.RemoteVariable(    
+                name         = "dsLinkRxCnt",
+                description  = "Rx message count",
+                offset       =  0x10,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
 
-        self.add(Si5317(    
-            name         = "amcPLL",
-            offset       =  0x14,
-        ))
+            self.add(Si5317(    
+                name         = "amcPLL",
+                offset       =  0x14,
+            ))
 
         self.add(pr.RemoteVariable(    
             name         = "l0Reset",
@@ -367,17 +369,18 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
-        self.add(pr.RemoteVariable(
-            name         = "l0Stats",
-            description  = "L0 Statistics",
-            offset       =  0x20,
-            bitSize      =  320,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            minimum      =  0.,
-            maximum      =  1.,
-            mode         = "RO",
-        ))
+        if not removeMonReg:
+            self.add(pr.RemoteVariable(
+                name         = "l0Stats",
+                description  = "L0 Statistics",
+                offset       =  0x20,
+                bitSize      =  320,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                minimum      =  0.,
+                maximum      =  1.,
+                mode         = "RO",
+            ))
 
         self.add(pr.RemoteVariable(    
             name         = "numL1Acc",
@@ -543,15 +546,16 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "remId",
-            description  = "Remote link ID",
-            offset       =  0x78,
-            bitSize      =  32,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
+        if not removeMonReg:
+            self.add(pr.RemoteVariable(    
+                name         = "remId",
+                description  = "Remote link ID",
+                offset       =  0x78,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
 
         for i in range(4):
             self.add(XpmInhConfig(    
@@ -559,28 +563,29 @@ class XpmApp(pr.Device):
                 offset       =  0x80+4*i,
             ))
 
-        self.add(pr.RemoteVariable(
-            name         = "inhEvCnt",
-            description  = "Inhibit event counts by link",
-            offset       =  0x90,
-            bitSize      =  1024,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            minimum      =  0.,
-            maximum      =  1.,
-            mode         = "RO",
-        ))
-
-        for i in range(4):
-            self.add(pr.RemoteVariable(    
-                name         = "monClk_%d"%i,
-                description  = "Monitor clock rate",
-                offset       =  0x110+4*i,
-                bitSize      =  29,
+        if not removeMonReg:
+            self.add(pr.RemoteVariable(
+                name         = "inhEvCnt",
+                description  = "Inhibit event counts by link",
+                offset       =  0x90,
+                bitSize      =  1024,
                 bitOffset    =  0x00,
                 base         = pr.UInt,
+                minimum      =  0.,
+                maximum      =  1.,
                 mode         = "RO",
             ))
+
+            for i in range(4):
+                self.add(pr.RemoteVariable(    
+                    name         = "monClk_%d"%i,
+                    description  = "Monitor clock rate",
+                    offset       =  0x110+4*i,
+                    bitSize      =  29,
+                    bitOffset    =  0x00,
+                    base         = pr.UInt,
+                    mode         = "RO",
+                ))
 
         self.add(pr.RemoteVariable(    
             name         = "inhTmCnt",

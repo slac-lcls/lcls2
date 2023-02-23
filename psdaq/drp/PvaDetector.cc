@@ -593,8 +593,7 @@ void PvaDetector::_worker()
                 trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
                 auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
                 memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-                PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
-                pgpEvent->transitionDgram = trDgram;
+                m_pool->transitionDgrams[index] = trDgram;
 
                 if (service == XtcData::TransitionId::Enable) {
                     m_running = true;
@@ -711,8 +710,7 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
         // Allocate a transition dgram from the pool and initialize its header
         Pds::EbDgram* trDg = m_pool->allocateTr();
         *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
-        PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
-        pgpEvent->transitionDgram = trDg;
+        m_pool->transitionDgrams[pgpIdx] = trDg;
 
         if (tsMatchDegree == 2) {         // Keep PV for the next L1A
             m_pvQueue.try_pop(dgram);     // Actually consume the element
@@ -743,8 +741,7 @@ void PvaDetector::_handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg
         // Allocate a transition dgram from the pool and initialize its header
         Pds::EbDgram* trDg = m_pool->allocateTr();
         *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
-        PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
-        pgpEvent->transitionDgram = trDg;
+        m_pool->transitionDgrams[pgpIdx] = trDg;
     }
 
     _sendToTeb(pgpDg, pgpIdx);
@@ -804,8 +801,7 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
             // Allocate a transition dgram from the pool and initialize its header
             Pds::EbDgram* trDg = m_pool->allocateTr();
             *trDg = dgram;              // Initialized Xtc, possibly w/ damage
-            PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
-            pgpEvent->transitionDgram = trDg;
+            m_pool->transitionDgrams[index] = trDg;
         }
 
         _sendToTeb(dgram, index);

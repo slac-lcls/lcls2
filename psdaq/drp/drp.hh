@@ -25,20 +25,6 @@ enum NamesIndex
    RUNINFO      = 255,
 };
 
-struct DmaBuffer
-{
-    int32_t size;
-    uint32_t index;
-};
-
-struct PGPEvent
-{
-    DmaBuffer buffers[PGP_MAX_LANES];
-    uint8_t mask = 0;
-    void* l3InpBuf;
-    Pds::EbDgram* transitionDgram;
-};
-
 struct Parameters
 {
     Parameters() :
@@ -68,6 +54,18 @@ struct Parameters
     int loopbackPort;
     unsigned verbose;
     size_t maxTrSize;
+};
+
+struct DmaBuffer
+{
+    int32_t size;
+    uint32_t index;
+};
+
+struct PGPEvent
+{
+    DmaBuffer buffers[PGP_MAX_LANES];
+    uint8_t mask = 0;
 };
 
 class Pebble
@@ -100,13 +98,14 @@ public:
     ~MemPool();
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
+    std::vector<Pds::EbDgram*> transitionDgrams;
     void** dmaBuffers;
     unsigned nbuffers() const {return m_nbuffers;}
     size_t bufferSize() const {return pebble.bufferSize();}
     unsigned dmaSize() const {return m_dmaSize;}
     int fd () const {return m_fd;}
-    Pds::EbDgram* allocateTr();
     void shutdown();
+    Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
     void allocate(unsigned count) { m_inUse.fetch_add(count, std::memory_order_acq_rel) ; }
     void release(unsigned count) { m_inUse.fetch_sub(count, std::memory_order_acq_rel); }

@@ -105,47 +105,6 @@ int checkDrpPy(pid_t pid, bool wait = false)
   return 0;
 }
 
-
-// void drainDrpPipe(int pipe, unsigned threadNum)
-// {
-
-//   char read_buffer[1024];
-//   int nbytes;
-
-//   int flags = fcntl(pipe, F_GETFL);
-//   flags |= O_NONBLOCK;
-//   int ret_val = fcntl(pipe, F_SETFL, flags);
-//   if (ret_val < 0)
-//   {
-//     logging::error("[Thread %u] fcntl failed: %m", threadNum);
-//     return;
-//   }
-
-//   while (true)
-//   {
-//     nbytes = read(pipe, read_buffer, sizeof(read_buffer));
-//     if (nbytes > 0)
-//     {
-//       read_buffer[nbytes] = '\0';
-//       logging::info("[Python, Thread %u] <<< %s >>>", threadNum, read_buffer);
-//     }
-//     else if (nbytes == 0)
-//     {
-//       return;
-//     }
-//     else if (nbytes < 0 && (errno == EWOULDBLOCK || errno == EAGAIN))
-//     {
-//       return;
-//     }
-//     else
-//     {
-//       logging::error("[Thread %u] Error reading from pipe: %s: %m", threadNum, read_buffer);
-//       logging::error("[Thread %u] Exit error %d: %m", threadNum, nbytes);
-//       return;
-//     }
-//   }
-// }
-
 void cleanupDrpPython(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
                       unsigned threadNum)
 {
@@ -466,7 +425,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
                 // Initialize the transition dgram's header
-                Pds::EbDgram* trDgram = event->transitionDgram;
+                Pds::EbDgram* trDgram = pool.transitionDgrams[index];
                 const void*   bufEnd  = (char*)trDgram + para.maxTrSize;
                 if (!trDgram)  continue; // Can occur when shutting down
                 memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
@@ -478,9 +437,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                       threadNum, XtcData::TransitionId::name(transitionId), para.maxTrSize, size);
                     throw "Buffer too small";
                 }
-                if (event->transitionDgram->pulseId() != dgram->pulseId()) {
-                    logging::critical("[Thread %u] %s: pulseId (%014lx) doesn't match dgram's (%014lx)",
-                                      threadNum, XtcData::TransitionId::name(transitionId), event->transitionDgram->pulseId(), dgram->pulseId());
+
+                if (trDgram->pulseId() != dgram->pulseId()) {
+                    logging::critical("%s: pulseId (%014lx) doesn't match dgram's (%014lx)",
+                                      XtcData::TransitionId::name(transitionId), trDgram->pulseId(), dgram->pulseId());
                 }
 
                 if ( pythonDrp == true) {
@@ -755,8 +715,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 // SPSCQueue is used (not an SPMC queue), this can be done here,
                 // but not in the workers or there will be concurrency issues.
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    event->transitionDgram = m_pool.allocateTr();
-                    if (!event->transitionDgram)  break; // Can happen during shutdown
+                    m_pool.transitionDgrams[current] = m_pool.allocateTr();
+                    if (!m_pool.transitionDgrams[current])  break; // Can happen during shutdown
                 }
 
                 auto now = std::chrono::system_clock::now();
@@ -777,10 +737,9 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                         }
                         index = m_batch.start & bufferMask;
                         Pds::EbDgram* dgram = new(m_pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), m_para.rogMask);
-                        PGPEvent* event = &m_pool.pgpEvents[index];
 
                         // Initialize the transition dgram's header
-                        Pds::EbDgram* trDgram = event->transitionDgram;
+                        Pds::EbDgram* trDgram = m_pool.transitionDgrams[index];
                         const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
                         memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                         
@@ -795,14 +754,14 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                         size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
                         if (size > m_para.maxTrSize) {
                             logging::critical("%s: buffer size (%zd) too small for Dgram (%zd)",
-                                              XtcData::TransitionId::name(transitionId), m_para.maxTrSize, size);
+                                            XtcData::TransitionId::name(transitionId), m_para.maxTrSize, size);
                             throw "Buffer too small";
                         }
-                        if (event->transitionDgram->pulseId() != dgram->pulseId()) {
+                        if (trDgram->pulseId() != dgram->pulseId()) {
                             logging::critical("%s: pulseId (%014lx) doesn't match dgram's (%014lx)",
-                                              XtcData::TransitionId::name(transitionId), event->transitionDgram->pulseId(), dgram->pulseId());
+                                            XtcData::TransitionId::name(transitionId), trDgram->pulseId(), dgram->pulseId());
                         }
-                        
+
                         // set thread counter and broadcast transition
                         threadCount.store(m_para.nworkers);
                         for (unsigned w=0; w < m_para.nworkers; w++) {
@@ -812,7 +771,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                         m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                         worker++;
                     }
-                    m_batch.start = evtCounter + 1;
+                    m_batch.start = (evtCounter + 1) & 0xffffff;
                     m_batch.size = 0;
                     batchId = timingHeader->pulseId();
                 }

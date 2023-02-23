@@ -63,9 +63,11 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     # raw_start register is 14 bits
     if raw_start < 0:
         print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.format(partitionDelay,raw['start_ns'],raw_start))
+        print('Raise raw_start >= {:}'.format(partitionDelay*200 * 7000/1300))
         raise ValueError('raw_start is too small by {:} ns'.format(-raw_start/0.16*14./13))
     if raw_start > 0x3fff:
         print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.format(partitionDelay,raw['start_ns'],raw_start))
+        print('Lower raw_start < {:}'.format((0x3fff * 160/200 + partitionDelay*200) * 7000/1300))
         raise ValueError('start_ns is too large by {:} ns'.format((raw_start-0x3fff)/0.16*14./13))
 
     raw_gate     = int(raw['gate_ns']*0.160*13/14) # in "160" MHz clks
@@ -84,6 +86,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     fex_start      = int((fex['start_ns']*1300/7000 - partitionDelay*200)*160/200) # in "160MHz"(*13/14) clks
     if fex_start < 0:
         print('partitionDelay {:}  fex_start_ns {:}  fex_start {:}'.format(partitionDelay,fex['start_ns'],fex_start))
+        print('Raise fex_start >= {:}'.format(partitionDelay*200 * 7000/1300))
         raise ValueError('fex_start computes to < 0')
 
     fex_gate     = int(fex['gate_ns']*0.160*13/14) # in "160" MHz clks
@@ -92,7 +95,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
         raise ValueError('fex_gate computes to < 0')
     # Place no constraint on upper bound.  Assumes sparsification will reduce to < 160000 recorded samples
 
-    # hsd_thr_ilv_native_fine firmware expects xpre,xpost in # of super samples (4 samples) 
+    # hsd_thr_ilv_native_fine firmware expects xpre,xpost in # of super samples (4 samples)
     fex_xpre       = int((fex['xpre' ]+3)/4)
     fex_xpost      = int((fex['xpost']+3)/4)
 
@@ -120,7 +123,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     cfg['firmwareBuild'  ] = fwbld
     print(f'fwver: {fwver}')
     print(f'fwbld: {fwbld}')
-    
+
     ctxt.close()
 
     ocfg = cfg

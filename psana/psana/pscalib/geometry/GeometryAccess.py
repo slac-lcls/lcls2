@@ -66,7 +66,10 @@ Usage::
     irow, icol = geometry.point_coord_indexes(p_um=(0,0), 'QUAD:V1', 1, pix_scale_size_um=None, xy0_off_pix=(1000,1000), do_tilt=True, cframe=0, fract=False)
 
     # get 2-d image from index arrays
-    img = img_from_pixel_arrays(rows,cols,W=arr)
+    img = img_from_pixel_arrays(rows, cols, W=arr)
+
+    # conversion of image-like 2-d mask to raw data-like ndarray
+    mask_nda = convert_mask2d_to_ndarray(mask2d, rows, cols)
 
     # Get specified object of the class GeometryObject, all objects are kept in the list self.list_of_geos
     geo = geometry.get_geo('QUAD:V1', 1)
@@ -720,8 +723,21 @@ def img_from_pixel_arrays(rows, cols, W=None, dtype=np.float32, vbase=0):
 
     weight = W.flatten() if W is not None else np.ones_like(rowsfl)
     img = vbase*np.ones((rsize,csize), dtype=dtype)
-    img[rowsfl,colsfl] = weight # Fill image array with data
+    img[rowsfl, colsfl] = weight # Fill image array with data
     return img
+
+
+def convert_mask2d_to_ndarray(mask2d, rows, cols, dtype=np.uint8):
+    """Converts 2-d (np.ndarray) image-like mask2d to
+       (np.ndarray) shaped as input pixel index arrays ix and iy.
+       NOTE: arrays rows and cols should be exactly the same as used to construct mask2d as image.
+    """
+    assert isinstance(mask2d, np.ndarray)
+    assert mask2d.ndim == 2
+    assert isinstance(rows, np.ndarray)
+    assert isinstance(cols, np.ndarray)
+    assert cols.shape == rows.shape
+    return np.array([mask2d[r,c] for r,c in zip(rows, cols)], dtype=dtype)
 
 # EOF
 

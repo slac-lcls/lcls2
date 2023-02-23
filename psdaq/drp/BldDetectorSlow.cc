@@ -773,8 +773,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
                     auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
                     memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-                    PGPEvent* pgpEvent = &m_drp.pool.pgpEvents[index];
-                    pgpEvent->transitionDgram = trDgram;
+                    m_drp.pool.transitionDgrams[index] = trDgram;
 
                     if (dgram->service() == XtcData::TransitionId::Configure) {
                         logging::info("BLD configure");
