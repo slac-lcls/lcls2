@@ -24,6 +24,7 @@ Usage::
 
   # 2023-02-23 add methods to generate masks for shape parameters
   r = cart2r(x, y)  # converts numpy arrays for carthesian x,y to r
+  rows, cols = meshgrids(shape)
   m = mask_circle(shape, center_row, center_col, radius, dtype=DTYPE_MASK)
   m = mask_ring(shape, center_row, center_col, radius_min, radius_max, dtype=DTYPE_MASK)
   m = mask_rectangle(shape, cmin, rmin, cols, rows, dtype=DTYPE_MASK)
@@ -261,14 +262,20 @@ def cart2r(x, y):
     return np.sqrt(x*x + y*y)
 
 
+def meshgrids(shape):
+    """returns np.meshgrid arrays of cols, rows for specified shape"""
+    assert len(shape)==2
+    return np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+
+
 def mask_circle(shape, center_row, center_col, radius, dtype=DTYPE_MASK):
-    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    c, r = meshgrids(shape)
     rad = cart2r(r-center_row, c-center_col)
     return np.select([rad>radius,], [0,], default=1).astype(dtype)
 
 
 def mask_ring(shape, center_row, center_col, radius_min, radius_max, dtype=DTYPE_MASK):
-    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    c, r = meshgrids(shape)
     rad = cart2r(r-center_row, c-center_col)
     return np.select([rad<radius_min, rad>radius_max,], [0, 0,], default=1).astype(dtype)
 
@@ -277,14 +284,14 @@ def mask_rectangle(shape, cmin, rmin, cols, rows, dtype=DTYPE_MASK):
     """cmin, rmin (int) - minimal coordinates of the rectangle corner
        cols, rows (int) - width and height of the rectangle
     """
-    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    c, r = meshgrids(shape)
     return np.select([c<cmin, c>cmin+cols, r<rmin, r>rmin+rows], [False, False, False, False], default=True).astype(dtype)
 
 
 def mask_poly(shape, colrows, dtype=DTYPE_MASK):
     """colrows (list) - list of vertex coordinate pairs as (row,col)
     """
-    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    c, r = meshgrids(shape)
     cr = list(zip(c.ravel(), r.ravel())) # or np.vstack((x,y)).T
     from matplotlib.path import Path
     mask = np.array(Path(colrows).contains_points(cr), dtype=dtype)
@@ -297,7 +304,7 @@ def mask_halfplane(shape, r1, c1, r2, c2, rm, cm, dtype=DTYPE_MASK):
        Off-line point (rm, cm) picks the half-plane marked with ones.
     """
     f = 0 if c1 == c2 else (r2-r1)/(c2-c1)
-    c, r = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+    c, r = meshgrids(shape)
     cond = (r > r1 if rm < r1 else r < r1) if r1 == r2 else\
            (c > c1 if cm < c1 else c < c1) if c1 == c2 else\
            (r > r1+f*(c-c1))
