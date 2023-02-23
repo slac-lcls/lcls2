@@ -1,4 +1,5 @@
 #include <iostream>
+#include <atomic>
 #include <limits.h>
 #include <fcntl.h>
 #include <sys/ipc.h>
@@ -65,29 +66,16 @@ clockid_t test_coarse_clock() {
     }
 }
 
-int startDrpPython(pid_t& pyPid, int *pipefd_stdout, int *pipefd_stderr, unsigned threadNum,
+int startDrpPython(pid_t& pyPid, unsigned threadNum,
                    std::string pythonScript, unsigned keyBase, long shmemSize)
 {
-  // Set up pipes for communication with sub processes
-  if (pipe(pipefd_stdout) == -1 || pipe(pipefd_stderr) == -1)
-  {
-    logging::error("[Thread %u]: Error creating stdout and stderr pipes", threadNum);
-    return -1;
-  }
+
 
   // Fork
   pyPid = fork();
 
   if (pyPid == pid_t(0))
   {
-    // Set up pipes in child process
-    dup2(pipefd_stdout[1], 1);
-    dup2(pipefd_stderr[1], 2);
-    close(pipefd_stdout[0]);
-    close(pipefd_stdout[1]);
-    close(pipefd_stderr[0]);
-    close(pipefd_stderr[1]);
-
     logging::info("[Thread %u] Running 'python -u %s'", threadNum, pythonScript.c_str());
 
     // Executing external code 
@@ -103,9 +91,6 @@ int startDrpPython(pid_t& pyPid, int *pipefd_stdout, int *pipefd_stderr, unsigne
                    threadNum, pythonScript, std::to_string(threadNum));
     return rc;
   } else {
-    // Set up pipes in parent process
-    close(pipefd_stdout[1]);
-    close(pipefd_stderr[1]);
     return 0;
   }
 }
@@ -121,48 +106,48 @@ int checkDrpPy(pid_t pid, bool wait = false)
 }
 
 
-void drainDrpPipe(int pipe, unsigned threadNum)
-{
+// void drainDrpPipe(int pipe, unsigned threadNum)
+// {
 
-  char read_buffer[1024];
-  int nbytes;
+//   char read_buffer[1024];
+//   int nbytes;
 
-  int flags = fcntl(pipe, F_GETFL);
-  flags |= O_NONBLOCK;
-  int ret_val = fcntl(pipe, F_SETFL, flags);
-  if (ret_val < 0)
-  {
-    logging::error("[Thread %u] fcntl failed: %m", threadNum);
-    return;
-  }
+//   int flags = fcntl(pipe, F_GETFL);
+//   flags |= O_NONBLOCK;
+//   int ret_val = fcntl(pipe, F_SETFL, flags);
+//   if (ret_val < 0)
+//   {
+//     logging::error("[Thread %u] fcntl failed: %m", threadNum);
+//     return;
+//   }
 
-  while (true)
-  {
-    nbytes = read(pipe, read_buffer, sizeof(read_buffer));
-    if (nbytes > 0)
-    {
-      read_buffer[nbytes] = '\0';
-      logging::info("[Python, Thread %u] <<< %s >>>", threadNum, read_buffer);
-    }
-    else if (nbytes == 0)
-    {
-      return;
-    }
-    else if (nbytes < 0 && (errno == EWOULDBLOCK || errno == EAGAIN))
-    {
-      return;
-    }
-    else
-    {
-      logging::error("[Thread %u] Error reading from pipe: %s: %m", threadNum, read_buffer);
-      logging::error("[Thread %u] Exit error %d: %m", threadNum, nbytes);
-      return;
-    }
-  }
-}
+//   while (true)
+//   {
+//     nbytes = read(pipe, read_buffer, sizeof(read_buffer));
+//     if (nbytes > 0)
+//     {
+//       read_buffer[nbytes] = '\0';
+//       logging::info("[Python, Thread %u] <<< %s >>>", threadNum, read_buffer);
+//     }
+//     else if (nbytes == 0)
+//     {
+//       return;
+//     }
+//     else if (nbytes < 0 && (errno == EWOULDBLOCK || errno == EAGAIN))
+//     {
+//       return;
+//     }
+//     else
+//     {
+//       logging::error("[Thread %u] Error reading from pipe: %s: %m", threadNum, read_buffer);
+//       logging::error("[Thread %u] Exit error %d: %m", threadNum, nbytes);
+//       return;
+//     }
+//   }
+// }
 
-void cleanupDrpPython(int &inpMqId, int resMqId, int& inpShmId, int& resShmId, void*& inpData, void*& resData,
-                      int pipefd_stdout[], int pipefd_stderr[], unsigned threadNum)
+void cleanupDrpPython(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
+                      unsigned threadNum)
 {
     if (inpMqId) {
         msgctl(inpMqId, IPC_RMID, NULL);
@@ -188,8 +173,6 @@ void cleanupDrpPython(int &inpMqId, int resMqId, int& inpShmId, int& resShmId, v
         shmctl(resShmId, IPC_RMID, NULL); 
         resShmId = 0;
     }
-    drainDrpPipe(pipefd_stdout[0], threadNum);
-    drainDrpPipe(pipefd_stderr[0], threadNum);
 }
 
 int setupDrpShMem(key_t key, size_t size, const char* name, int& shmId, void*& data, unsigned threadNum)
@@ -276,9 +259,42 @@ int recv(int mqId, Message_t& msg, unsigned msTmo, clockid_t clockType, unsigned
     return 0;
 }
 
+void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
+                    pid_t pyPid, clockid_t clockType, unsigned threadNum)
+{
+    Message_t msg;
+    msg.mtype = 1;
+    msg.mtext[0] = 'g';
+
+    logging::info("[Thread %u] sending data to drp python", threadNum);
+
+    int rc = send(inpMqId, msg, 1, threadNum);
+    if (rc) {
+        logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+        rc = checkDrpPy(pyPid);
+        if (rc) {
+            logging::critical("[Thread %u] drp python not running", threadNum);
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData,
+            threadNum);
+        }
+        abort();
+    }
+
+    rc = recv(resMqId, msg, 10000, clockType, threadNum);
+    if (rc) {
+        logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+        rc = checkDrpPy(pyPid);
+        if (rc) {
+            logging::critical("[Thread %u] drp python not running", threadNum);
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
+        }
+        abort();
+    }
+}
+
 void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 SPSCQueue<Batch>& inputQueue, SPSCQueue<Batch>& outputQueue,
-                unsigned threadNum)
+                unsigned threadNum, std::atomic<int>& threadCount)
 {
     Batch batch;
     MemPool& pool = drp.pool;
@@ -295,18 +311,18 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     int resShmId = 0;
     void* inpData = nullptr;
     void* resData = nullptr;
-    int pipefd_stdout[2];
-    int pipefd_stderr[2];
     Message_t msg;
-
+    bool transition;
 
     clockid_t clockType = test_coarse_clock();
 
     auto kwargs_it = para.kwargs.find("drp");
-   
-    if (kwargs_it != para.kwargs.end() && kwargs_it->second == "python") {
 
+    if (kwargs_it != para.kwargs.end() && kwargs_it->second == "python") {
         pythonDrp = true;
+    }
+
+    if (pythonDrp == true) {       
 
         kwargs_it = para.kwargs.find("pythonScript");
 
@@ -326,13 +342,13 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
         int rc = setupDrpMsgQueue(keyBase+0, "Inputs", inpMqId, threadNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pipefd_stdout, pipefd_stdout, threadNum);
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             logging::critical("[Thread %u] error setting up Drp message queues", threadNum);
             abort();
         }
         rc = setupDrpMsgQueue(keyBase+1, "Results", resMqId, threadNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId,  inpData, resData, pipefd_stdout, pipefd_stdout, threadNum);
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId,  inpData, resData, threadNum);
             logging::critical("[Thread %u] error setting up Drp message queues", threadNum);
             abort();
         }
@@ -352,47 +368,39 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
         rc = setupDrpShMem(keyBase+2, shmemSize, "Inputs", inpShmId, inpData, threadNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pipefd_stdout, pipefd_stdout, threadNum);
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             logging::critical("[Thread %u] error setting up Drp shared memory buffers", threadNum);
             abort();
         }
 
         rc = setupDrpShMem(keyBase+3, shmemSize, "Results", resShmId, resData, threadNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pipefd_stdout, pipefd_stdout, threadNum);
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             logging::critical("[Thread %u] error setting up Drp shared memory buffers", threadNum);
             abort();
         }
 
         // Fork
         logging::info("[Thread %u] Starting Drp Python process", threadNum);
-        rc = startDrpPython(pyPid, pipefd_stdout, pipefd_stderr, threadNum, pythonScript, keyBase, shmemSize);
+        rc = startDrpPython(pyPid, threadNum, pythonScript, keyBase, shmemSize);
         if (rc || (pyPid == pid_t(0))) {
             logging::critical("[Thread %u] error starting Drp python process", threadNum);
             abort();
         }
 
-        drainDrpPipe(pipefd_stdout[0], threadNum);
-        drainDrpPipe(pipefd_stderr[0], threadNum);
-
         logging::info("[Thread %u] Waiting for python process to start", threadNum);
+
         // Wait for python process to be up
         rc = recv(resMqId, msg, 10000, clockType, threadNum);
         if (rc) {
             logging::critical("[Thread %u] Message from Drp python not received", threadNum);
             rc = checkDrpPy(pyPid);
-            drainDrpPipe(pipefd_stdout[0], threadNum);
-            drainDrpPipe(pipefd_stderr[0], threadNum);
             if (rc) {
                 logging::critical("[Thread %u] drp python not running", threadNum);
-                drainDrpPipe(pipefd_stdout[0], threadNum);
-                drainDrpPipe(pipefd_stderr[0], threadNum);
-                cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pipefd_stdout, pipefd_stdout, threadNum);
+                cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             }
             abort();
         }
-        drainDrpPipe(pipefd_stdout[0], threadNum);
-        drainDrpPipe(pipefd_stderr[0], threadNum);
         logging::info("[Thread %u] Python process started", threadNum);
     }
 
@@ -400,8 +408,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         if (!inputQueue.pop(batch)) {
             break;
         }
-
+        transition=false;
         for (unsigned i=0; i<batch.size; i++) {
+
             unsigned index = (batch.start + i) & bufferMask;
             PGPEvent* event = &pool.pgpEvents[index];
             if (event->mask == 0)
@@ -413,76 +422,16 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             uint32_t dmaIndex = event->buffers[lane].index;
             const Pds::TimingHeader* timingHeader = det->getTimingHeader(dmaIndex);
 
-            // make new dgram in the pebble
-            // It must be an EbDgram in order to be able to send it to the MEB
-            Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), para.rogMask);
-
-            XtcData::TransitionId::Value transitionId = dgram->service();
+            XtcData::TransitionId::Value transitionId = timingHeader->service();
 
             logging::info("[Thread %u] DEBUG: Event coming through: %d", threadNum, transitionId);
 
-            if ( pythonDrp == true) {
-
-                memcpy(inpData, pool.pebble[index]+8, pool.pebble.bufferSize());
-                msg.mtext[0] = 'g';
-
-                logging::info("[Thread %u] sending data to drp python", threadNum);
-
-                int rc = send(inpMqId, msg, 1, threadNum);
-                if (rc) {
-                    logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-                    rc = checkDrpPy(pyPid);
-                    drainDrpPipe(pipefd_stdout[0], threadNum);
-                    drainDrpPipe(pipefd_stderr[0], threadNum);
-                    if (rc) {
-                        drainDrpPipe(pipefd_stdout[0], threadNum);
-                        drainDrpPipe(pipefd_stderr[0], threadNum);
-                        logging::critical("[Thread %u] drp python not running", threadNum);
-                        cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pipefd_stdout, pipefd_stdout, threadNum);
-                    }
-                    abort();
-                }
-                drainDrpPipe(pipefd_stdout[0], threadNum);
-                drainDrpPipe(pipefd_stderr[0], threadNum);
-
-                logging::info("[Thread %u] DEBUG data sent", threadNum);
-
-                drainDrpPipe(pipefd_stdout[0], threadNum);
-                drainDrpPipe(pipefd_stderr[0], threadNum);
-
-                logging::info("[Thread %u] DEBUG: After 1st drainDrpPipe: %d", threadNum);
-
-                rc = recv(resMqId, msg, 10000, clockType, threadNum);
-
-                logging::info("[Thread %u] DEBUG: After 2nd drainDrpPipe: %d", threadNum);
-
-                drainDrpPipe(pipefd_stdout[0], threadNum);
-                drainDrpPipe(pipefd_stderr[0], threadNum);
-
-
-
-                logging::info("[Thread %u] DEBUG received message from Drp python: %s", threadNum, msg.mtext);
-                if (rc) {
-                    logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-                    rc = checkDrpPy(pyPid);
-                    drainDrpPipe(pipefd_stdout[0], threadNum);
-                    drainDrpPipe(pipefd_stderr[0], threadNum);
-                    if (rc) {
-                        drainDrpPipe(pipefd_stdout[0], threadNum);
-                        drainDrpPipe(pipefd_stderr[0], threadNum);
-                        logging::critical("[Thread %u] drp python not running", threadNum);
-                        cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pipefd_stdout, pipefd_stdout, threadNum);
-                    }
-                    abort();
-                }
-
-                drainDrpPipe(pipefd_stdout[0], threadNum);
-                drainDrpPipe(pipefd_stderr[0], threadNum);
-            }
-
-
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {
+                // make new dgram in the pebble
+                // It must be an EbDgram in order to be able to send it to the MEB
+                Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), para.rogMask);
+      
                 const void* bufEnd = (char*)dgram + pool.bufferSize();
                 det->event(*dgram, bufEnd, event);
 
@@ -492,8 +441,14 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                     throw "Buffer too small";
                 }
 
+                if ( pythonDrp == true) {
+                    memcpy(inpData, (pool.pebble[index])+8, pool.pebble.bufferSize());
+                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pyPid, clockType, threadNum);
+                }    
+
                 auto l3InpBuf = tebContributor.fetch(index);
                 Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(*dgram);
+                
                 if (triggerPrimitive) { // else this DRP doesn't provide input
                     const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
                     triggerPrimitive->event(pool, index, dgram->xtc, l3InpDg->xtc, l3BufEnd);
@@ -503,9 +458,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                         throw "Input Dgram overflowed buffer";
                     }
                 }
-            }
-            // transitions
-            else {
+            // slow data
+            } else if (transitionId == XtcData::TransitionId::SlowUpdate) {
+                Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), para.rogMask);
                 logging::debug("[Thread %u] PGPDetector saw %s @ %u.%09u (%014lx)",
                                threadNum,
                                XtcData::TransitionId::name(transitionId),
@@ -515,17 +470,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 const void*   bufEnd  = (char*)trDgram + para.maxTrSize;
                 if (!trDgram)  continue; // Can occur when shutting down
                 memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
-                if (transitionId != XtcData::TransitionId::SlowUpdate) {
-                    // copy the temporary xtc created on phase 1 of the transition
-                    // into the real location
-                    XtcData::Xtc& trXtc = det->transitionXtc();
-                    trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
-                    auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
-                    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-                }
-                else {
-                    det->slowupdate(trDgram->xtc, bufEnd);
-                }
+                det->slowupdate(trDgram->xtc, bufEnd);
                 // make sure the detector hasn't made the transition too big
                 size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
                 if (size > para.maxTrSize) {
@@ -538,15 +483,41 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                       threadNum, XtcData::TransitionId::name(transitionId), event->transitionDgram->pulseId(), dgram->pulseId());
                 }
 
+                if ( pythonDrp == true) {
+                    memcpy(inpData, (pool.pebble[index])+8, pool.pebble.bufferSize());
+                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pyPid, clockType, threadNum);
+                }    
+
                 auto l3InpBuf = tebContributor.fetch(index);
                 new(l3InpBuf) Pds::EbDgram(*dgram);
+
+            // transitions
+            } else {
+                transition = true;
+                Pds::EbDgram* dgram = reinterpret_cast<Pds::EbDgram*>(pool.pebble[index]);
+                logging::debug("[Thread %u] PGPDetector saw %s @ %u.%09u (%014lx)",
+                               threadNum,
+                               XtcData::TransitionId::name(transitionId),
+                               dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
+ 
+                if ( pythonDrp == true) {
+                    memcpy(inpData, (pool.pebble[index])+8, pool.pebble.bufferSize());
+                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pyPid, clockType, threadNum);
+                }    
+ 
+                auto l3InpBuf = tebContributor.fetch(index);
+                if (threadNum == 0) {
+                    new(l3InpBuf) Pds::EbDgram(*dgram);
+                } else {
+                    Pds::EbDgram* dgram = reinterpret_cast<Pds::EbDgram*>(l3InpBuf);
+                }
             }
         }
 
+        // only one thread sends a batch with content (size > 0) to the collector
+        if (transition == true && threadCount.fetch_sub(1)!= 1) batch.size = 0;
         outputQueue.push(batch);
     }
-
-    logging::info("[Thread %u] Out of while", threadNum);
         
 
     // if (pythonDrp == true) {
@@ -589,11 +560,13 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     //         logging::info("[Thread %u] Drp python stopped", threadNum);
     //     }
     // }       
-}
+    }
+
 
 PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     m_para(para), m_pool(drp.pool), m_terminate(false)
 {
+    threadCount.store(0);
     m_nodeId = det->nodeId;
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
         logging::error("Failed to allocate lane/vc");
@@ -612,7 +585,8 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
                                      det,
                                      std::ref(m_workerInputQueues[i]),
                                      std::ref(m_workerOutputQueues[i]),
-                                     i);
+                                     i,
+                                     std::ref(threadCount));
     }
 }
 
@@ -674,6 +648,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     uint32_t lastData[6];
     memset(lastData,0,sizeof(lastData));
     resetEventCounter();
+
+
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -722,9 +698,11 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                                flag, err);
 
             if (event->mask == m_para.laneMask) {
+                bool stateTransition = false;
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
                     if (transitionId!=XtcData::TransitionId::SlowUpdate) {
+                        stateTransition = true;
                         logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
                                       XtcData::TransitionId::name(transitionId),
                                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
@@ -788,11 +766,52 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
                 // send batch to worker if batch is full or if it's a transition
-                if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||
-                    ((transitionId != XtcData::TransitionId::L1Accept) &&
-                     (transitionId != XtcData::TransitionId::SlowUpdate))) {
-                    m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
-                    worker++;
+                if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) || stateTransition == true ) {
+                    if (stateTransition == true) {
+                        if (m_batch.size > 1) {
+                            m_batch.size--;
+                            m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+                            worker++;
+                            m_batch.start = (m_batch.start + m_batch.size) & 0xffffff;
+                            m_batch.size = 1;
+                        }
+                        index = m_batch.start & bufferMask;
+                        Pds::EbDgram* dgram = new(m_pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), m_para.rogMask);
+                        PGPEvent* event = &m_pool.pgpEvents[index];
+
+                        // Initialize the transition dgram's header
+                        Pds::EbDgram* trDgram = event->transitionDgram;
+                        const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
+                        memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                        
+                        // copy the temporary xtc created on phase 1 of the transition
+                        // into the real location
+                        XtcData::Xtc& trXtc = det->transitionXtc();
+                        trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                        auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                        memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
+                        
+                        // make sure the detector hasn't made the transition too big
+                        size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
+                        if (size > m_para.maxTrSize) {
+                            logging::critical("%s: buffer size (%zd) too small for Dgram (%zd)",
+                                              XtcData::TransitionId::name(transitionId), m_para.maxTrSize, size);
+                            throw "Buffer too small";
+                        }
+                        if (event->transitionDgram->pulseId() != dgram->pulseId()) {
+                            logging::critical("%s: pulseId (%014lx) doesn't match dgram's (%014lx)",
+                                              XtcData::TransitionId::name(transitionId), event->transitionDgram->pulseId(), dgram->pulseId());
+                        }
+                        
+                        // set thread counter and broadcast transition
+                        threadCount.store(m_para.nworkers);
+                        for (unsigned w=0; w < m_para.nworkers; w++) {
+                            m_workerInputQueues[w].push(m_batch);
+                        }
+                    } else {
+                        m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+                        worker++;
+                    }
                     m_batch.start = evtCounter + 1;
                     m_batch.size = 0;
                     batchId = timingHeader->pulseId();

@@ -48,6 +48,7 @@ private:
     Batch m_batch;
     uint32_t m_lastComplete;
     unsigned m_nodeId;
+    std::atomic<int> threadCount;
 };
 
 }
