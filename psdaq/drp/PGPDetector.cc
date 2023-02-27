@@ -83,6 +83,7 @@ int startDrpPython(pid_t& pyPid, unsigned threadNum,
                     "python",
                     "-u",
                     pythonScript.c_str(),
+                    std::to_string(threadNum).c_str(),
                     std::to_string(keyBase).c_str(),
                     std::to_string(shmemSize).c_str(),
                     nullptr);

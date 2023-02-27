@@ -147,8 +147,9 @@ class DgramManager(object):
         return view
 
     def _connect_drp(self):
-        key_base = int(self.tag.split(',')[0])
-        mem_size = int(self.tag.split(',')[1])
+        self.thread = int(self.tag.split(',')[0])
+        key_base = int(self.tag.split(',')[1])
+        mem_size = int(self.tag.split(',')[2])
         try:
             self.mq_inp = sysv_ipc.MessageQueue(key_base)
             self.mq_res = sysv_ipc.MessageQueue(key_base+1)
@@ -164,6 +165,7 @@ class DgramManager(object):
         self.shm_send_mv = memoryview(self.shm_res)
 
         self.mq_res.send(b"g")
+        print(f"[Thread {self.thread}] DEBUG: Sent connection message")
         message, priority = self.mq_inp.receive()
         barray = bytes(self.shm_recv_mv[:])
         view = memoryview(barray)
