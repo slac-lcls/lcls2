@@ -53,10 +53,10 @@ class DgramManager(object):
         """
         self.xtc_files = []
         self.shmem_cli = None
-        self.mq_recv = None
-        self.mq_send = None
-        self.shm_recv = None
-        self.shm_send = None
+        self.mq_inp = None
+        self.mq_res = None
+        self.shm_inp = None
+        self.shm_res = None
         self.shm_recv_mv = None
         self.shm_send_mv = None
         self.shm_size = None
@@ -150,21 +150,21 @@ class DgramManager(object):
         key_base = int(self.tag.split(',')[0])
         mem_size = int(self.tag.split(',')[1])
         try:
-            self.mq_recv = sysv_ipc.MessageQueue(key_base)
-            self.mq_send = sysv_ipc.MessageQueue(key_base+1)
+            self.mq_inp = sysv_ipc.MessageQueue(key_base)
+            self.mq_res = sysv_ipc.MessageQueue(key_base+1)
         except sysv_ipc.Error as exp:
             assert(False)
         try:
-            self.shm_recv = sysv_ipc.SharedMemory(key_base+2, size=mem_size)
-            self.shm_send = sysv_ipc.SharedMemory(key_base+3, size=mem_size)
+            self.shm_inp = sysv_ipc.SharedMemory(key_base+2, size=mem_size)
+            self.shm_res = sysv_ipc.SharedMemory(key_base+3, size=mem_size)
         except sysv_ipc.Error as exp:
             assert(False)
 
-        self.shm_recv_mv = memoryview(self.shm_recv)
-        self.shm_send_mv = memoryview(self.shm_send)
+        self.shm_recv_mv = memoryview(self.shm_inp)
+        self.shm_send_mv = memoryview(self.shm_res)
 
-        self.mq_send.send(b"g")
-        message, priority = self.mq_recv.receive()
+        self.mq_res.send(b"g")
+        message, priority = self.mq_inp.receive()
         barray = bytes(self.shm_recv_mv[:])
         view = memoryview(barray)
         self.shm_size = view.nbytes   
@@ -376,9 +376,9 @@ class DgramManager(object):
                 else:
                     raise RuntimeError(f"Configure expected, got {d.service()}")
             dgrams = [d]
-        elif self.mq_recv:
-            self.mq_send.send(b"g")
-            message, priority = self.mq_recv.receive()
+        elif self.mq_inp:
+            self.mq_res.send(b"g")
+            message, priority = self.mq_inp.receive()
             if message == b"g":
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs)-1]
