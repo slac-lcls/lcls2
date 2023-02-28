@@ -55,8 +55,11 @@ def test_mask_select(tname):
         mask = um.mask_halfplane(shape, r1, c1, r2, c2, rm, cm, dtype=dtype)
 
     elif tname == '9':
-        shape = (1000, 1200)
-        cx, cy, ro, ri, ao, ai = 500, 500, 250, 200, -30, 280
+        #shape = (1000, 1200)
+        #cx, cy, ro, ri, ao, ai = 500, 500, 250, 200, -30, 280
+        shape = (1024, 1024)
+        cx, cy, ro, ri, ao, ai = 200., 200., 442., 153., 13., 107.
+        #cx, cy, ro, ri, ao, ai = 200, 200, 442, 153, 13, 107
         mask = um.mask_arc(shape, cx, cy, ro, ri, ao, ai, dtype=dtype)
 
     else:
