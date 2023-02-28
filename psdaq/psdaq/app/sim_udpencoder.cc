@@ -222,8 +222,8 @@ void _loopbackSend()
         printf("%s: dropping frame #%hu\n", __PRETTY_FUNCTION__, frameCount);
         -- m_dropRequest;
     } else {
-        // channel 0 sawtooth: 1 to 100
-        pChannel->encoderValue = htonl( 1 + (frameCount % 100));
+        // channel 0 sawtooth: 10 to 1000
+        pChannel->encoderValue = htonl( 10 * (1 + (frameCount % 100)));
         // send frame
         sent = sendto(m_loopbackFd, (void *)m_buf, sizeof(m_buf), 0,
                       (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
