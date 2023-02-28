@@ -36,7 +36,7 @@ procmgr_config = [
  # ...drp: -k {network}
  { host: 'drp-tst-acc01', id:'encoder_0', flags:'suxp', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
  # ...sim: 172.21.148.201 = drp-tst-acc01
- { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s', cmd:'sim_udpencoder -a 172.21.148.201 -p 5'},
+ { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s', cmd:'sim_udpencoder -a 172.21.148.201 -p 1'},
  #  ...drp: loopback on port 5007 AND verbose
 #{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'}
 ]
