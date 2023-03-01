@@ -325,7 +325,7 @@ def mask_arc(shape, cx, cy, ro, ri, ao, ai, dtype=DTYPE_MASK):
     from math import radians, sin, cos  # floor, ceil
     assert ro>ri, 'outer radius %d shold be greater than inner %d' % (ro, ri)
     assert ai>0, 'arc span angle %.2f deg > 0' % ai
-    assert ao>0, 'outer arc corner angle %.2f deg > 0' % ao
+    #assert ao>0, 'outer arc corner angle %.2f deg > 0' % ao
     row1, col1 = cy, cx
     mring = mask_ring(shape, row1, col1, ri, ro, dtype=dtype)
     ao_rad = radians(ao)
