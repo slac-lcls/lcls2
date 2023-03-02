@@ -125,6 +125,12 @@ class ts_raw_2_0_0(ts_ts_0_0_1):
     def __init__(self, *args):
         super().__init__(*args)
 
+class ts_raw_2_1_0(ts_raw_2_0_0):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def inhibitCounts(self,evt) -> amitypes.Array1d:
+        return self._info(evt).inhibitCounts
 
 class triginfo_triginfo_0_0_1(DetectorImpl):
     def __init__(self, *args):

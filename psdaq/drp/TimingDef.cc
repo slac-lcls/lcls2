@@ -8,6 +8,27 @@ using namespace XtcData;
 
 namespace Drp {
 
+#define COPYARRAY(T,N,P) {                                              \
+        shape[0] = N;                                                   \
+        Array<T> arrayT = cd.allocate<T>(index++, shape);               \
+        for(unsigned i=0; i<N; i++, P += sizeof(T))                     \
+            arrayT.data()[i] = *reinterpret_cast<const T*>(P);          \
+    }
+
+#define ZEROARRAY(T,N) {                                        \
+        shape[0] = N;                                           \
+        Array<T> arrayT = cd.allocate<T>(index++, shape);       \
+        memset(arrayT.data(), 0, N*sizeof(T));                  \
+    }
+
+#define BYTEFROMBIT(V,N,SH0) {                                          \
+        shape[0] = N;                                                   \
+        Array<uint8_t> arrayT = cd.allocate<uint8_t>(index++, shape);   \
+        for(unsigned i=0; i<N; i++)                                     \
+            arrayT.data()[N-1-i] = (V>>(SH0+i))&1;                      \
+    }
+
+
     TimingDef::TimingDef()
     {
         NameVec.push_back({"pulseId"       , Name::UINT64, 0});
@@ -25,6 +46,7 @@ namespace Drp {
         NameVec.push_back({"mpsLimits"     , Name::UINT8 , 1});
         NameVec.push_back({"mpsPowerClass" , Name::UINT8 , 1});
         NameVec.push_back({"sequenceValues", Name::UINT16, 1});
+        NameVec.push_back({"inhibitCounts" , Name::UINT32, 1});
     }
 
     void TimingDef::describeData(XtcData::Xtc&         xtc,
@@ -35,7 +57,6 @@ namespace Drp {
     {
         DescribedData ts(xtc, bufEnd, namesLookup, namesId);
 
-        unsigned data_size = 968/8;
         memcpy(ts.data(), data, data_size);
         ts.set_data_length(data_size);
 
@@ -46,6 +67,7 @@ namespace Drp {
         ts.set_array_shape(TimingDef::mpsLimits     ,(const unsigned[MaxRank]){16});
         ts.set_array_shape(TimingDef::mpsPowerClass ,(const unsigned[MaxRank]){16});
         ts.set_array_shape(TimingDef::sequenceValues,(const unsigned[MaxRank]){18});
+        ts.set_array_shape(TimingDef::inhibitCounts ,(const unsigned[MaxRank]){ 8});
     }
 
     void TimingDef::createDataNoBSA(XtcData::Xtc&         xtc,
@@ -57,20 +79,6 @@ namespace Drp {
         CreateData cd(xtc, bufEnd, namesLookup, namesId);
         unsigned index = 0;
         unsigned shape[MaxRank];
-
-#define BYTEFROMBIT(V,N,SH0) {                                          \
-            shape[0] = N;                                               \
-            Array<uint8_t> arrayT = cd.allocate<uint8_t>(index++, shape); \
-            for(unsigned i=0; i<N; i++)                                 \
-                arrayT.data()[N-1-i] = (V>>(SH0+i))&1;                  \
-        }
-
-#define COPYARRAY(T,N) {                                        \
-            shape[0] = N;                                       \
-            Array<T> arrayT = cd.allocate<T>(index++, shape);   \
-            for(unsigned i=0; i<N; i++, p += sizeof(T))                 \
-                arrayT.data()[i] = *reinterpret_cast<const T*>(p);      \
-        }
 
         cd.set_value(index++, *reinterpret_cast<const uint64_t*>(p)); p += sizeof(uint64_t);  // pulseId
         cd.set_value(index++, *reinterpret_cast<const uint64_t*>(p)); p += sizeof(uint64_t);  // timeStamp
@@ -85,8 +93,8 @@ namespace Drp {
         p++;
         cd.set_value(index++, *reinterpret_cast<const uint16_t*>(p)); // ebeamCharge
         p += sizeof(uint16_t);
-        COPYARRAY(uint16_t, 4);   // ebeamEnergy
-        COPYARRAY(uint16_t, 2);   // xWavelength
+        COPYARRAY(uint16_t, 4, p);   // ebeamEnergy
+        COPYARRAY(uint16_t, 2, p);   // xWavelength
         cd.set_value(index++, *reinterpret_cast<const uint16_t*>(p)); // dmod5
         p += sizeof(uint16_t);
         BYTEFROMBIT((*reinterpret_cast<const uint16_t*>(p)),16, 0); // mpsLimits
@@ -98,9 +106,8 @@ namespace Drp {
                 arrayT.data()[i+1] = *reinterpret_cast<const uint8_t*>(p)>>4;
             }
         }
-        COPYARRAY(uint16_t, 18);  // sequenceValues
-#undef COPYARRAY
-#undef BYTEFROMBIT
+        COPYARRAY(uint16_t, 18, p);  // sequenceValues
+        COPYARRAY(uint32_t,  8, p);  // inhibitCounts
     }
 
     void TimingDef::createDataETM(XtcData::Xtc&         xtc,
@@ -113,25 +120,6 @@ namespace Drp {
         CreateData cd(xtc, bufEnd, namesLookup, namesId);
         unsigned index = 0;
         unsigned shape[MaxRank];
-
-#define BYTEFROMBIT(V,N,SH0) {                                          \
-            shape[0] = N;                                               \
-            Array<uint8_t> arrayT = cd.allocate<uint8_t>(index++, shape); \
-            for(unsigned i=0; i<N; i++)                                 \
-                arrayT.data()[N-1-i] = (V>>(SH0+i))&1;                  \
-        }
-
-#define COPYARRAY(T,N) {                                                \
-            shape[0] = N;                                               \
-            Array<T> arrayT = cd.allocate<T>(index++, shape);           \
-            for(unsigned i=0; i<N; i++, pEtm += sizeof(T))              \
-                arrayT.data()[i] = *reinterpret_cast<const T*>(pEtm);   \
-        }
-#define ZEROARRAY(T,N) {                                        \
-            shape[0] = N;                                       \
-            Array<T> arrayT = cd.allocate<T>(index++, shape);   \
-            memset(arrayT.data(), 0, N*sizeof(T));              \
-    }
 
         cd.set_value(index++, *reinterpret_cast<const uint64_t*>(pHdr));   // pulseId
         pHdr += sizeof(uint64_t);
@@ -152,8 +140,10 @@ namespace Drp {
         cd.set_value(index++, uint16_t(0)); //dmod5
         ZEROARRAY(uint8_t, 16);  // mpsLimits
         ZEROARRAY(uint8_t, 16);  // mpsPowerClasses
-        COPYARRAY(uint16_t, 18);  // sequenceValues
+        COPYARRAY(uint16_t, 18, pEtm);  // sequenceValues
+        ZEROARRAY(uint32_t,  8);  // inhibitCounts
     }
+
 #undef ZEROARRAY
 #undef COPYARRAY
 #undef BYTEFROMBIT
