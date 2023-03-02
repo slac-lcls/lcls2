@@ -75,6 +75,9 @@ int EventBuilder::initialize(unsigned epochs,
     _eventLut.resize(nev, nullptr);
   }
 
+  printf("*** EB Epoch list size %zu\n", _epochLut.size());
+  printf("*** EB Event list size %zu\n", _eventLut.size());
+
   _arrTime.resize(sources);
 
   return 0;
@@ -188,7 +191,8 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
   printf(" epochFreelist:\n");
   _epochFreelist->dump();
   dump(1);
-  throw "Unable to allocate epoch";
+  while(1);                             // Hang so we can inspect
+  abort();
 }
 
 EbEpoch* EventBuilder::_match(uint64_t inKey)
@@ -246,7 +250,8 @@ EbEvent* EventBuilder::_event(EbEpoch*            epoch,
   printf("  eventFreelist:\n");
   _eventFreelist->dump();
   dump(1);
-  throw "Unable to allocate event";
+  while(1);                             // Hang so we can inspect
+  abort();
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*            epoch,

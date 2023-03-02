@@ -125,7 +125,7 @@ private:
     std::shared_ptr<UdpMonitor> m_udpMonitor;
     std::thread m_workerThread;
     std::thread m_udpReceiverThread;
-    SPSCQueue<uint32_t> m_pgpQueue;
+    SPSCQueue<uint32_t> m_evtQueue;
     SPSCQueue<XtcData::Dgram*> m_pvQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
     std::vector<uint8_t> m_buffer;

@@ -19,7 +19,7 @@ class PvaDetector;
 class PvaMonitor : public Pds_Epics::PvMonitorBase
 {
 public:
-    PvaMonitor(const Parameters&  para,
+    PvaMonitor(Parameters&        para,
                const std::string& pvName,
                const std::string& provider,
                const std::string& request,
@@ -43,6 +43,7 @@ private:
     size_t                          m_rank;
     State                           m_state;
     PvaDetector*                    m_pvaDetector;
+    uint64_t                        m_epochOffset;
 };
 
 
@@ -68,7 +69,7 @@ private:
     DrpBase& m_drp;
     std::shared_ptr<PvaMonitor> m_pvaMonitor;
     std::thread m_workerThread;
-    SPSCQueue<uint32_t> m_pgpQueue;
+    SPSCQueue<uint32_t> m_evtQueue;
     SPSCQueue<XtcData::Dgram*> m_pvQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
     std::vector<uint8_t> m_buffer;

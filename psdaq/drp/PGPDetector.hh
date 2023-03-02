@@ -22,7 +22,7 @@ struct Batch
 
 class DrpBase;
 
-class PGPDetector
+class PGPDetector : public PgpReader
 {
 public:
     PGPDetector(const Parameters& para, DrpBase& drp, Detector* det);
@@ -31,22 +31,12 @@ public:
     void collector(Pds::Eb::TebContributor& tebContributor);
     void shutdown();
 private:
-    void resetEventCounter();
-private:
-    const Parameters& m_para;
-    MemPool& m_pool;
-    static const int MAX_RET_CNT_C = 1024;
-    int32_t dmaRet[MAX_RET_CNT_C];
-    uint32_t dmaIndex[MAX_RET_CNT_C];
-    uint32_t dest[MAX_RET_CNT_C];
-    uint32_t dmaFlags [MAX_RET_CNT_C];
-    uint32_t dmaErrors[MAX_RET_CNT_C];
+    static const int MAX_RET_CNT_C = 1000;
     std::vector<SPSCQueue<Batch> > m_workerInputQueues;
     std::vector<SPSCQueue<Batch> > m_workerOutputQueues;
     std::vector<std::thread> m_workerThreads;
     std::atomic<bool> m_terminate;
     Batch m_batch;
-    uint32_t m_lastComplete;
     unsigned m_nodeId;
 };
 

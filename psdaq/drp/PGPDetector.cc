@@ -20,37 +20,13 @@ using ms_t = std::chrono::milliseconds;
 
 using namespace Drp;
 
-bool checkPulseIds(const Detector* det, PGPEvent* event)
-{
-    uint64_t pulseId = 0;
-    for (int i=0; i<PGP_MAX_LANES; i++) {
-        if (event->mask & (1 << i)) {
-            uint32_t index = event->buffers[i].index;
-            const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
-            if (pulseId == 0) {
-                pulseId = timingHeader->pulseId();
-            }
-            else {
-                if (pulseId != timingHeader->pulseId()) {
-                    logging::error("Wrong pulse id! expected %014lx but got %014lx instead",
-                                   pulseId, timingHeader->pulseId());
-                    return false;
-                }
-            }
-            if (timingHeader->error()) {
-                logging::error("Timing header error bit is set");
-            }
-        }
-    }
-    return true;
-}
-
 void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 SPSCQueue<Batch>& inputQueue, SPSCQueue<Batch>& outputQueue)
 {
     Batch batch;
     MemPool& pool = drp.pool;
-    const unsigned bufferMask = pool.nbuffers() - 1;
+    const unsigned dmaBufferMask = pool.nDmaBuffers() - 1;
+    const unsigned pebbleBufferMask = pool.nbuffers() - 1;
     auto& tebContributor = drp.tebContributor();
     auto triggerPrimitive = drp.triggerPrimitive();
     auto& tebPrms = drp.tebPrms();
@@ -61,11 +37,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         }
 
         for (unsigned i=0; i<batch.size; i++) {
-            unsigned index = (batch.start + i) & bufferMask;
-            PGPEvent* event = &pool.pgpEvents[index];
-            if (event->mask == 0)
-                continue;               // Skip broken event
-            checkPulseIds(det, event);
+            unsigned evtCounter = batch.start + i;
+            PGPEvent* event = &pool.pgpEvents[evtCounter & dmaBufferMask];
 
             // get transitionId from the first lane in the event
             int lane = __builtin_ffs(event->mask) - 1;
@@ -74,6 +47,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
             // make new dgram in the pebble
             // It must be an EbDgram in order to be able to send it to the MEB
+            unsigned index = evtCounter & pebbleBufferMask;
             Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), para.rogMask);
             XtcData::TransitionId::Value transitionId = dgram->service();
 
@@ -88,6 +62,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                     throw "Buffer too small";
                 }
 
+                // Prepare the trigger primitive with whatever input is needed for the TEB to meke trigger decisions
                 auto l3InpBuf = tebContributor.fetch(index);
                 Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(*dgram);
                 if (triggerPrimitive) { // else this DRP doesn't provide input
@@ -104,8 +79,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             else {
                 logging::debug("PGPDetector saw %s @ %u.%09u (%014lx)",
                                XtcData::TransitionId::name(transitionId),
-                               dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
-                // Initialize the transition dgram's header
+                               dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+                // Find the transition dgram in the pool and initialize its header
                 Pds::EbDgram* trDgram = pool.transitionDgrams[index];
                 const void*   bufEnd  = (char*)trDgram + para.maxTrSize;
                 if (!trDgram)  continue; // Can occur when shutting down
@@ -133,6 +108,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                       XtcData::TransitionId::name(transitionId), trDgram->pulseId(), dgram->pulseId());
                 }
 
+                // Prepare the trigger primitive with whatever input is needed for the TEB to meke trigger decisions
                 auto l3InpBuf = tebContributor.fetch(index);
                 new(l3InpBuf) Pds::EbDgram(*dgram);
             }
@@ -143,7 +119,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 }
 
 PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
-    m_para(para), m_pool(drp.pool), m_terminate(false)
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false)
 {
     m_nodeId = det->nodeId;
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
@@ -178,16 +154,12 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
 {
     // setup monitoring
     uint64_t nevents = 0L;
-    uint64_t bytes = 0L;
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
                                               {"partition", std::to_string(m_para.partition)},
                                               {"detname", m_para.detName},
                                               {"alias", m_para.alias}};
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
-
-    exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
-                  [&](){return bytes;});
 
     auto queueLength = [](std::vector<SPSCQueue<Batch> >& vec) {
         size_t sum = 0;
@@ -208,145 +180,43 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     uint64_t nDmaRet = 0L;
     exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
                   [&](){return nDmaRet;});
-    uint64_t dmaSize = 0L;
+    exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
+                  [&](){return dmaBytes();});
     exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
-                  [&](){return dmaSize;});
-
-    int64_t latency = 0L;
+                  [&](){return dmaSize();});
     exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
-                  [&](){return latency;});
+                  [&](){return latency();});
 
     int64_t worker = 0L;
     uint64_t batchId = 0L;
-    const unsigned bufferMask = m_pool.nbuffers() - 1;
-    XtcData::TransitionId::Value lastTid = XtcData::TransitionId::Reset;
-    double lastTime = 0;
-    uint32_t lastData[6];
-    memset(lastData,0,sizeof(lastData));
+    m_batch.start = 0;
+    m_batch.size = 0;
     resetEventCounter();
+
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
         }
-        int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, dmaFlags, dmaErrors, dest);
+        int32_t ret = read();
         nDmaRet = ret;
         for (int b=0; b < ret; b++) {
-            uint32_t size = dmaRet[b];
-            uint32_t index = dmaIndex[b];
-            uint32_t lane = (dest[b] >> 8) & 7;
-            dmaSize = size;
-            bytes += size;
-            if (size > m_pool.dmaSize()) {
-                logging::critical("DMA overflowed buffer: %u vs %u", size, m_pool.dmaSize());
-                throw "DMA overflowed buffer";
-            }
+            unsigned evtCounter;
+            const Pds::TimingHeader* timingHeader = handle(det, b, evtCounter);
+            if (!timingHeader)  continue;
 
-            uint32_t flag = dmaFlags[b];
-            uint32_t err  = dmaErrors[b];
-            if (err) {
-                logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
-                //  How do I return this buffer?
-                dmaRetIndex(m_pool.fd(), index);
-                nevents++;
-                continue;
-            }
+            nevents++;
+            m_batch.size++;
 
-            const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
-            uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
-            uint32_t current = evtCounter & bufferMask;
-            PGPEvent* event = &m_pool.pgpEvents[current];
-
-            DmaBuffer* buffer = &event->buffers[lane];
-            buffer->size = size;
-            buffer->index = index;
-            event->mask |= (1 << lane);
-            m_pool.allocate(1);
-
-            const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
-            if (m_para.verbose < 2)
-                logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
-                               lane, size,
-                               reinterpret_cast<const uint64_t*>(data)[0],
-                               reinterpret_cast<const uint64_t*>(data)[1],
-                               reinterpret_cast<const uint32_t*>(data)[4],
-                               flag, err);
-
-            if (event->mask == m_para.laneMask) {
-                XtcData::TransitionId::Value transitionId = timingHeader->service();
-                if (transitionId != XtcData::TransitionId::L1Accept) {
-                    if (transitionId!=XtcData::TransitionId::SlowUpdate) {
-                        logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
-                                      XtcData::TransitionId::name(transitionId),
-                                      timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                                      timingHeader->pulseId());
-                    } else {
-                        logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
-                                       XtcData::TransitionId::name(transitionId),
-                                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                                       timingHeader->pulseId());
-                    }
-                    if (transitionId == XtcData::TransitionId::BeginRun) {
-                        resetEventCounter();
-                    }
-                }
-                if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-                    logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-                                      RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
-                    logging::critical("data: %08x %08x %08x %08x %08x %08x service: 0x%x",
-                                      data[0], data[1], data[2], data[3], data[4], data[5], timingHeader->service());
-
-                    logging::critical("lastTid %s", XtcData::TransitionId::name(lastTid));
-                    logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
-                                      lastData[0], lastData[1], lastData[2], lastData[3], lastData[4], lastData[5]);
-
-                    //  Do we still need to throw an exception?
-                    //  Sometimes we have genuine frame errors
-                    if (transitionId != XtcData::TransitionId::L1Accept ||
-                        (timingHeader->time.asDouble()-lastTime)>1. ||
-                        (timingHeader->time.asDouble()-lastTime)<0.) {
-                        logging::critical("Jump in event counter");
-                        abort();
-                    }
-
-                    for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
-                        PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
-                        logging::error("broken event:  %08x", brokenEvent->mask);
-                        brokenEvent->mask = 0;
-                        m_batch.size++; // Broken events are included in the batch
-                    }
-                }
-                m_lastComplete = evtCounter;
-                lastTime = timingHeader->time.asDouble();
-                lastTid = transitionId;
-                memcpy(lastData, data, 24);
-
-                nevents++;
-                m_batch.size++;
-
-                // Allocate a transition datagram from the pool.  Since a
-                // SPSCQueue is used (not an SPMC queue), this can be done here,
-                // but not in the workers or there will be concurrency issues.
-                if (transitionId != XtcData::TransitionId::L1Accept) {
-                    m_pool.transitionDgrams[current] = m_pool.allocateTr();
-                    if (!m_pool.transitionDgrams[current])  break; // Can happen during shutdown
-                }
-
-                auto now = std::chrono::system_clock::now();
-                auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-                         + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
-                std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-                latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-
-                // send batch to worker if batch is full or if it's a transition
-                if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||
-                    ((transitionId != XtcData::TransitionId::L1Accept) &&
-                     (transitionId != XtcData::TransitionId::SlowUpdate))) {
-                    m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
-                    worker++;
-                    m_batch.start = (evtCounter + 1) & 0xffffff;
-                    m_batch.size = 0;
-                    batchId = timingHeader->pulseId();
-                }
+            // send batch to worker if batch is full or if it's a transition
+            XtcData::TransitionId::Value transitionId = timingHeader->service();
+            if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||
+                ((transitionId != XtcData::TransitionId::L1Accept) &&
+                 (transitionId != XtcData::TransitionId::SlowUpdate))) {
+                m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+                worker++;
+                m_batch.start = evtCounter + 1;
+                m_batch.size = 0;
+                batchId = timingHeader->pulseId();
             }
         }
     }
@@ -357,27 +227,21 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
 {
     int64_t worker = 0L;
     Batch batch;
-    const unsigned bufferMask = m_pool.nbuffers() - 1;
+    const unsigned dmaBufferMask = m_pool.nDmaBuffers() - 1;
+    const unsigned pebbleBufferMask = m_pool.nbuffers() - 1;
     while (true) {
         if (!m_workerOutputQueues[worker % m_para.nworkers].pop(batch)) {
             break;
         }
         for (unsigned i=0; i<batch.size; i++) {
-            unsigned index = (batch.start + i) & bufferMask;
-            PGPEvent* event = &m_pool.pgpEvents[index];
-            if (event->mask == 0)
-                continue;               // Skip broken event
-            tebContributor.process(index);
+            unsigned evtCounter = batch.start + i;
+            PGPEvent* event = &m_pool.pgpEvents[evtCounter & dmaBufferMask];
+            freeDma(event);
+            tebContributor.process(evtCounter & pebbleBufferMask);
         }
         worker++;
     }
-}
-
-void PGPDetector::resetEventCounter()
-{
-    m_lastComplete = 0;
-    m_batch.start = 1;
-    m_batch.size = 0;
+    logging::info("PGPCollector is exiting");
 }
 
 void PGPDetector::shutdown()
@@ -397,7 +261,6 @@ void PGPDetector::shutdown()
         m_workerOutputQueues[i].shutdown();
     }
 
-    //  Flush the DMA buffers
-    int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
-    dmaRetIndexes(m_pool.fd(), ret, dmaIndex);
+    // Flush the DMA buffers
+    flush();
 }
