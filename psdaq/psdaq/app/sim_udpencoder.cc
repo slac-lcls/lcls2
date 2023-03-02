@@ -18,7 +18,7 @@ int m_loopbackFd;
 int m_dropRequest;
 struct sockaddr_in m_loopbackAddr;
 uint16_t m_loopbackFrameCount;
-static char *m_addr = "127.0.0.1";
+static const char *m_addr = "127.0.0.1";
 
 // forward declarations
 void _loopbackInit();
