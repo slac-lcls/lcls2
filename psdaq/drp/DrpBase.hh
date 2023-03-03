@@ -141,9 +141,14 @@ public:
     const Pds::TimingHeader* handle(Detector* det, unsigned current, uint32_t& evtCounter);
     void freeDma(PGPEvent* event);
     void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
-    const uint64_t dmaBytes() { return m_dmaBytes; }
-    const uint64_t dmaSize() { return m_dmaSize; }
-    const int64_t latency() { return m_latency; }
+    const uint64_t dmaBytes()     const { return m_dmaBytes; }
+    const uint64_t dmaSize()      const { return m_dmaSize; }
+    const int64_t  latency()      const { return m_latency; }
+    const uint64_t nDmaErrors()   const { return m_nDmaErrors; }
+    const uint64_t nNoComRoG()    const { return m_nNoComRoG; }
+    const uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
+    const uint64_t nPgpJumps()    const { return m_nPgpJumps; }
+    const uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
 protected:
     const Parameters& m_para;
     MemPool& m_pool;
@@ -161,6 +166,11 @@ protected:
     uint64_t m_dmaBytes;
     uint64_t m_dmaSize;
     int64_t m_latency;
+    uint64_t m_nDmaErrors;
+    uint64_t m_nNoComRoG;
+    uint64_t m_nTmgHdrError;
+    uint64_t m_nPgpJumps;
+    uint64_t m_nNoTrDgrams;
 };
 
 class DrpBase

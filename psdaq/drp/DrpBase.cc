@@ -246,7 +246,12 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_count       (0),
     m_dmaBytes    (0),
     m_dmaSize     (0),
-    m_latency     (0)
+    m_latency     (0),
+    m_nDmaErrors  (0),
+    m_nNoComRoG   (0),
+    m_nTmgHdrError(0),
+    m_nPgpJumps   (0),
+    m_nNoTrDgrams (0)
 {
     pool.resetCounters();
 }
@@ -281,19 +286,20 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
         //  How do I return this buffer?
         ++m_lastComplete;
         dmaRetIndex(m_pool.fd(), index);
+        ++m_nDmaErrors;
         return nullptr;
     }
 
     const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
     if ((timingHeader->readoutGroups() & (1 << m_para.partition)) == 0) {
         XtcData::TransitionId::Value transitionId = timingHeader->service();
-        logging::error("%s @ %u.%09u (%014lx) without primary readout group (%u) in env 0x%08x",
+        logging::error("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);
-        // Count these?
         ++m_lastComplete;
         dmaRetIndex(m_pool.fd(), index);
+        ++m_nNoComRoG;
         return nullptr;
     }
 
@@ -317,6 +323,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
 
     if (timingHeader->error()) {
         logging::error("Timing header error bit is set");
+        ++m_nTmgHdrError;
     }
     if (event->mask == m_para.laneMask) {
         XtcData::TransitionId::Value transitionId = timingHeader->service();
@@ -338,14 +345,15 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
             }
         }
         if (l1Count != ((m_lastComplete + 1) & 0xffffff)) {
-            logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-                              RED_ON, m_lastComplete, l1Count, l1Count - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
-            logging::critical("data: %08x %08x %08x %08x %08x %08x",
-                              data[0], data[1], data[2], data[3], data[4], data[5]);
+            logging::error("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
+                           RED_ON, m_lastComplete, l1Count, l1Count - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
+            logging::error("data: %08x %08x %08x %08x %08x %08x",
+                           data[0], data[1], data[2], data[3], data[4], data[5]);
 
-            logging::critical("lastTid %s", XtcData::TransitionId::name(m_lastTid));
-            logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
+            logging::error("lastTid %s", XtcData::TransitionId::name(m_lastTid));
+            logging::error("lastData: %08x %08x %08x %08x %08x %08x",
                               m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
+            m_nPgpJumps += l1Count - m_lastComplete;
         }
         m_lastComplete = l1Count;
         m_lastTime = timingHeader->time.asDouble();
@@ -358,7 +366,10 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
         if (transitionId != XtcData::TransitionId::L1Accept) {
             uint32_t evtIndex = evtCounter & (m_pool.nbuffers() - 1);
             m_pool.transitionDgrams[evtIndex] = m_pool.allocateTr();
-            if (!m_pool.transitionDgrams[evtIndex])  return nullptr; // Can happen during shutdown
+            if (!m_pool.transitionDgrams[evtIndex]) {
+                ++m_nNoTrDgrams;
+                return nullptr; // Can happen during shutdown
+            }
         }
     }
 

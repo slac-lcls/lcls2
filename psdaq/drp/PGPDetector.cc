@@ -186,6 +186,16 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                   [&](){return dmaSize();});
     exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
                   [&](){return latency();});
+    exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
+                  [&](){return nDmaErrors();});
+    exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
+                  [&](){return nNoComRoG();});
+    exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
+                  [&](){return nTmgHdrError();});
+    exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
+                  [&](){return nPgpJumps();});
+    exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
+                  [&](){return nNoTrDgrams();});
 
     int64_t worker = 0L;
     uint64_t batchId = 0L;
