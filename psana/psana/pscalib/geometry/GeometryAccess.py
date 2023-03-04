@@ -78,6 +78,7 @@ Usage::
     # Get bottom GeometryObject - the object describing a single segment
     #      (assumes that detector consists of the same type segments, e.g. 'SENS2X1:V1')
     geo = geometry.get_seg_geo()
+    shape = geometry.shape3d()  # returns shape as (<number-of-segments>, <rows>, <cols>)
 
     # modify currect geometry objects' parameters
     geometry.set_geo_pars('QUAD:V1', 1, x0, y0, z0, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x)
@@ -389,6 +390,17 @@ class GeometryAccess:
         for geo in self.list_of_geos:
             if geo.algo is not None: return geo
         return None
+
+
+    def shape3d(self):
+        """ Returns 3d shape of the arrays as (<number-of-segments>, <rows>, <cols>)
+        """
+        sg = self.get_seg_geo().algo
+        sshape = sg.shape()
+        ssize = sg.size()
+        x,_,_ = self.get_pixel_coords()
+        dsize = x.size
+        return (int(dsize/ssize), sshape[0], sshape[1])
 
 
     def coords_psana_to_lab_frame(self, x, y, z):
@@ -732,12 +744,17 @@ def convert_mask2d_to_ndarray(mask2d, rows, cols, dtype=np.uint8):
        (np.ndarray) shaped as input pixel index arrays ix and iy.
        NOTE: arrays rows and cols should be exactly the same as used to construct mask2d as image.
     """
+    from psana.detector.NDArrUtils import info_ndarr
     assert isinstance(mask2d, np.ndarray)
     assert mask2d.ndim == 2
     assert isinstance(rows, np.ndarray)
     assert isinstance(cols, np.ndarray)
     assert cols.shape == rows.shape
-    return np.array([mask2d[r,c] for r,c in zip(rows, cols)], dtype=dtype)
+    logger.debug('\n  %s\n  %s\n  %s' %
+                (info_ndarr(rows,   'rows:'),
+                 info_ndarr(cols,   'cols:'),
+                 info_ndarr(mask2d, 'mask2d:')))
+    return np.array([mask2d[r,c] for r,c in zip(rows.ravel(), cols.ravel())], dtype=dtype)
 
 # EOF
 

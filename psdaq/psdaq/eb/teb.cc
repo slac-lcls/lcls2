@@ -561,7 +561,7 @@ void Teb::process(EbEvent* event)
                         __PRETTY_FUNCTION__, pid);
       // return, if we could know this PID had been fixed up before
     }
-    throw "Pulse ID did not advance";   // Can't recover from non-spit events
+    abort();                            // Can't recover from non-split events
   }
   _pidPrv = pid;
 

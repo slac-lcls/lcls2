@@ -119,6 +119,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "feb_lane")          continue;  // BEBDetector
         if (kwargs.first == "feb_channel")       continue;  // BEBDetector
         if (kwargs.first == "pebbleBufSize")     continue;  // DrpBase
+        if (kwargs.first == "pebbleBufCount")    continue;  // DrpBase
         if (kwargs.first == "batching")          continue;  // DrpBase
         if (kwargs.first == "directIO")          continue;  // DrpBase
         if (para.detType == "opal") {

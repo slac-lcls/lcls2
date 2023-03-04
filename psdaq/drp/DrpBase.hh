@@ -13,6 +13,11 @@
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
+#include "xtcdata/xtc/TransitionId.hh"
+
+namespace Pds {
+    class TimingHeader;
+};
 
 namespace Drp {
 
@@ -85,7 +90,7 @@ public:
 public:
     void detector(Detector* det) {m_det = det;}
     void tsId(unsigned nodeId) {m_tsId = nodeId;}
-    void resetCounters();
+    void resetCounters(bool all);
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
     bool advanceChunkId();
     std::string reopenFiles();
@@ -108,9 +113,6 @@ private:
     SmdWriter m_smdWriter;
     bool m_writing;
     ZmqSocket& m_inprocSend;
-    static const int m_size = 100;
-    uint32_t m_indices[m_size];
-    int m_count;
     uint32_t m_lastIndex;
     uint32_t m_lastEvtCounter;
     uint64_t m_lastPid;
@@ -126,6 +128,49 @@ private:
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
     FileParameters m_fileParameters;
     unsigned m_partition;
+};
+
+class Detector;
+
+class PgpReader
+{
+public:
+  PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt);
+    int32_t read();
+    void flush();
+    const Pds::TimingHeader* handle(Detector* det, unsigned current, uint32_t& evtCounter);
+    void freeDma(PGPEvent* event);
+    void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
+    const uint64_t dmaBytes()     const { return m_dmaBytes; }
+    const uint64_t dmaSize()      const { return m_dmaSize; }
+    const int64_t  latency()      const { return m_latency; }
+    const uint64_t nDmaErrors()   const { return m_nDmaErrors; }
+    const uint64_t nNoComRoG()    const { return m_nNoComRoG; }
+    const uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
+    const uint64_t nPgpJumps()    const { return m_nPgpJumps; }
+    const uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
+protected:
+    const Parameters& m_para;
+    MemPool& m_pool;
+    std::vector<int32_t> dmaRet;
+    std::vector<uint32_t> dmaIndex;
+    std::vector<uint32_t> dest;
+    std::vector<uint32_t> dmaFlags;
+    std::vector<uint32_t> dmaErrors;
+    uint32_t m_lastComplete;
+    XtcData::TransitionId::Value m_lastTid;
+    double m_lastTime;
+    uint32_t m_lastData[6];
+    std::vector<uint32_t> m_dmaIndices;
+    unsigned m_count;
+    uint64_t m_dmaBytes;
+    uint64_t m_dmaSize;
+    int64_t m_latency;
+    uint64_t m_nDmaErrors;
+    uint64_t m_nNoComRoG;
+    uint64_t m_nTmgHdrError;
+    uint64_t m_nPgpJumps;
+    uint64_t m_nNoTrDgrams;
 };
 
 class DrpBase

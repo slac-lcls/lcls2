@@ -100,18 +100,18 @@ private:
 };
 
 
-class Pgp
+class Pgp : public PgpReader
 {
 public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
-    Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes); // Slow case
+    Pds::EbDgram* next(uint32_t& evtIndex); // Slow case
     //  Returns NULL if earliest received data is already later than requested data
-    Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes); // Non-Slow case
+    Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex); // Non-Slow case
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
-    Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
+    Pds::EbDgram* _handle(uint32_t& evtIndex);
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
     bool _ready() const { return m_current < m_available; }
 private:
@@ -120,20 +120,13 @@ private:
     DrpBase&                                   m_drp;
     Detector*                                  m_det;
     static const int MAX_RET_CNT_C = 100;
-    int32_t                                    dmaRet[MAX_RET_CNT_C];
-    uint32_t                                   dmaIndex[MAX_RET_CNT_C];
-    uint32_t                                   dest[MAX_RET_CNT_C];
     std::vector<std::shared_ptr<BldFactory> >  m_config;
     std::atomic<bool>                          m_terminate;
     bool                                       m_running;
     int32_t                                    m_available;
     int32_t                                    m_current;
-    uint32_t                                   m_lastComplete;
-    XtcData::TransitionId::Value               m_lastTid;
-    uint32_t                                   m_lastData[6];
     unsigned                                   m_nodeId;
     uint64_t                                   m_next;
-    int64_t                                    m_latency;
     uint64_t                                   m_nDmaRet;
 };
 

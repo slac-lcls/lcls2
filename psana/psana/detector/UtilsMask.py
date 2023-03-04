@@ -305,38 +305,41 @@ def mask_halfplane(shape, r1, c1, r2, c2, rm, cm, dtype=DTYPE_MASK):
     """
     f = 0 if c1 == c2 else (r2-r1)/(c2-c1)
     c, r = meshgrids(shape)
+    signgt = rm > r1+f*(cm-c1)
     cond = (r > r1 if rm < r1 else r < r1) if r1 == r2 else\
            (c > c1 if cm < c1 else c < c1) if c1 == c2 else\
-           (r > r1+f*(c-c1))
-    if not cond[rm, cm]: cond = ~cond
+           ((r > r1+f*(c-c1)) if signgt else (r < r1+f*(c-c1)))
+    #rm, cm = int(rm), int(cm)
+    #if not cond[rm, cm]: cond = ~cond
     return np.select([cond,], [0,], default=1).astype(dtype)
 
 
 def mask_arc(shape, cx, cy, ro, ri, ao, ai, dtype=DTYPE_MASK):
     """Returns arc mask for ami2 ArcROI set of parameters. Ones in the arc zeroes outside.
-       Carthesian (x,y) emulated by (col, shape[0]-row) as in ami.
+       Carthesian (x,y) emulated by returned *.T as in ami.
        cx, cy - arc center (col, row)
        ro, ri - radii of the outer and inner arc corner points
-       ao, ai - angles of the outer and inner arc corner points
+       ao, ai - angles of the outer and arc angular size from outer to inner corner points
     """
-    import math #math.radians(a); math.sin(a), math.cos(a)
+    logger.debug('shape:%s  cx:%.2f  cy:%.2f  ro:%.2f  ri:%.2f  ao:%.2f  ai:%.2f' % (str(shape), cx, cy, ro, ri, ao, ai))
     from math import radians, sin, cos  # floor, ceil
     assert ro>ri, 'outer radius %d shold be greater than inner %d' % (ro, ri)
-    assert ai>ao, 'inner arc corner angle %.2f deg shold be greater than outer %.2f deg' % (ai, ao)
-    mring = mask_ring(shape, cy, cx, ri, ro, dtype=dtype)
-    r1, c1 = shape[0]-cy, cx
-    ao_rad = -radians(ao)
-    ai_rad = -radians(ai)
-    delta = 0.1 # radian
-    r2, c2 = r1 + ro * sin(ao_rad),       c1 + ro * cos(ao_rad)
-    rm, cm = r1 + ro * sin(ao_rad+delta), c1 + ro * cos(ao_rad+delta)
-    mhpo = mask_halfplane(shape, r1, c1, int(r2), int(c2), int(rm), int(cm), dtype=dtype)
-    r2, c2 = r1 + ri * sin(ai_rad),       c1 + ri * cos(ai_rad)
-    rm, cm = r1 + ri * sin(ai_rad-delta), c1 + ri * cos(ai_rad-delta)
-    mhpi = mask_halfplane(shape, r1, c1, int(r2), int(c2), int(rm), int(cm), dtype=dtype)
+    assert ai>0, 'arc span angle %.2f deg > 0' % ai
+    #assert ao>0, 'outer arc corner angle %.2f deg > 0' % ao
+    row1, col1 = cy, cx
+    mring = mask_ring(shape, row1, col1, ri, ro, dtype=dtype)
+    ao_rad = radians(ao)
+    ai_rad = radians(ao + ai)
+    delta = -0.1 # radian
+    row2, col2 = row1 + ro * sin(ao_rad), col1 + ro * cos(ao_rad)
+    rm, cm = row1 + ro * sin(ao_rad+delta), col1 + ro * cos(ao_rad+delta)
+    mhpo = mask_halfplane(shape, row1, col1, row2, col2, rm, cm, dtype=dtype)
+    row2, col2 = row1 + ri * sin(ai_rad), col1 + ri * cos(ai_rad)
+    rm, cm = row1 + ri * sin(ai_rad-delta), col1 + ri * cos(ai_rad-delta)
+    mhpi = mask_halfplane(shape, row1, col1, row2, col2, rm, cm, dtype=dtype)
     mhro = merge_masks(mask1=mring, mask2=mhpo, dtype=dtype)
     mhri = merge_masks(mask1=mring, mask2=mhpi, dtype=dtype)
-    return np.bitwise_and(mhro, mhri) if ai-ao<180 else np.bitwise_or(mhro, mhri)
+    return (np.bitwise_and(mhro, mhri) if ai<180 else np.bitwise_or(mhro, mhri)).T
 
 # EOF
 
