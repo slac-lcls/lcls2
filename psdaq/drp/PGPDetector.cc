@@ -440,7 +440,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 }
 
                 if ( pythonDrp == true) {
-                    memcpy(inpData, ((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
+                    memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
                     sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pyPid, clockType, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
                     memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram) + resDgram->xtc.extent);
@@ -458,10 +458,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 logging::debug("[Thread %u] PGPDetector saw %s @ %u.%09u (%014lx)",
                                threadNum,
                                XtcData::TransitionId::name(transitionId),
-                               dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
+                               dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
  
                 if ( pythonDrp == true) {
-                    memcpy(inpData, ((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
+                    memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
                     sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pyPid, clockType, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
                     memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram)+resDgram->xtc.extent);
@@ -628,10 +628,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
             // send batch to worker if batch is full or if it's a transition
             XtcData::TransitionId::Value transitionId = timingHeader->service();
 
-            bool stateTransition = false;
-            if (transitionId != XtcData::TransitionId::L1Accept && transitionId!=XtcData::TransitionId::SlowUpdate) {
-                stateTransition = true;  
-            } 
+            bool stateTransition = transitionId != XtcData::TransitionId::L1Accept && transitionId!=XtcData::TransitionId::SlowUpdate; 
 
             // send batch to worker if batch is full or if it's a transition
             if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) || stateTransition == true ) {
@@ -640,22 +637,22 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                         m_batch.size--;
                         m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                         worker++;
-                        m_batch.start = (m_batch.start + m_batch.size) & 0xffffff;
+                        m_batch.start = (m_batch.start + m_batch.size);
                         m_batch.size = 1;
                     }
-                    batchId = timingHeader->pulseId();
                     unsigned index = m_batch.start & pebbleBufferMask;
                     Pds::EbDgram* dgram = new(m_pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), m_para.rogMask);
 
                     // Initialize the transition dgram's header
                     Pds::EbDgram* trDgram = m_pool.transitionDgrams[index];
-                    const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
+                    if (!trDgram)  continue; // Can occur when shutting down
                     memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                     
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
                     XtcData::Xtc& trXtc = det->transitionXtc();
                     trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                    const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
                     auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
                     memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
                     
@@ -680,7 +677,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                     worker++;
                 }
-                m_batch.start = (evtCounter + 1) & 0xffffff;
+                m_batch.start = (evtCounter + 1);
                 m_batch.size = 0;
                 batchId = timingHeader->pulseId();
             }
