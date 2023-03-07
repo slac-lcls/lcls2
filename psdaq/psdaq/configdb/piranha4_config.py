@@ -363,6 +363,9 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
     applicationLane.EventBuilder.Blowoff.set(False)
 
+    # enable all channels in the rogue BatcherEventBuilder
+    applicationLane.EventBuilder.Bypass.set(0x0)
+
     #  Capture the firmware version to persist in the xtc
     cfg['firmwareVersion'] = cl.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
     cfg['firmwareBuild'  ] = cl.ClinkPcie.AxiPcieCore.AxiVersion.BuildStamp.get()
