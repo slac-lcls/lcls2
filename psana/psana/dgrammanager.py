@@ -165,7 +165,6 @@ class DgramManager(object):
         self.shm_send_mv = memoryview(self.shm_res)
 
         self.mq_res.send(b"g")
-        print(f"[Thread {self.thread}] DEBUG: Sent connection message")
         message, priority = self.mq_inp.receive()
         barray = bytes(self.shm_recv_mv[:])
         view = memoryview(barray)
