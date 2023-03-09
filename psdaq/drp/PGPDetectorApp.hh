@@ -34,6 +34,7 @@ private:
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     bool m_unconfigure;
     PyThreadState*    m_pysave;
+    std::vector<pid_t> m_drpPids;
 };
 
 }

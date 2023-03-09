@@ -44,7 +44,7 @@ class DrpDataSource(DataSourceBase):
                 PyDgram(evt._dgrams[0].get_dgram_ptr(), self.dm.shm_size),
                 config=self.config_dgramedit
             )
-            self.curr_dgramedit.save(self.dm.shm_send_mv)
+            self.curr_dgramedit.save(self.dm.shm_res_mv)
             if evt.service() == TransitionId.BeginRun:
                 self.beginruns = evt._dgrams
                 return True
@@ -63,7 +63,7 @@ class DrpDataSource(DataSourceBase):
 
     def runs(self):
         self._edtbl_config = False
-        self.curr_dgramedit.save(self.dm.shm_send_mv)
+        self.curr_dgramedit.save(self.dm.shm_res_mv)
         self.config_dgramedit = self.curr_dgramedit
         while self._start_run():
             run = RunDrp(self, Event(dgrams=self.beginruns))

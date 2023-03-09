@@ -57,8 +57,8 @@ class DgramManager(object):
         self.mq_res = None
         self.shm_inp = None
         self.shm_res = None
-        self.shm_recv_mv = None
-        self.shm_send_mv = None
+        self.shm_inp_mv = None
+        self.shm_res_mv = None
         self.shm_size = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
@@ -147,26 +147,14 @@ class DgramManager(object):
         return view
 
     def _connect_drp(self):
-        self.thread = int(self.tag.split(',')[0])
-        key_base = int(self.tag.split(',')[1])
-        mem_size = int(self.tag.split(',')[2])
-        try:
-            self.mq_inp = sysv_ipc.MessageQueue(key_base)
-            self.mq_res = sysv_ipc.MessageQueue(key_base+1)
-        except sysv_ipc.Error as exp:
-            assert(False)
-        try:
-            self.shm_inp = sysv_ipc.SharedMemory(key_base+2, size=mem_size)
-            self.shm_res = sysv_ipc.SharedMemory(key_base+3, size=mem_size)
-        except sysv_ipc.Error as exp:
-            assert(False)
-
-        self.shm_recv_mv = memoryview(self.shm_inp)
-        self.shm_send_mv = memoryview(self.shm_res)
-
+        # TODO: Add docstring
+        self.shm_inp_mv = memoryview(self.tag.shm_inp)
+        self.shm_res_mv = memoryview(self.tag.shm_res)
+        self.mq_inp = self.tag.mq_inp
+        self.mq_res = self.tag.mq_res
         self.mq_res.send(b"g")
         message, priority = self.mq_inp.receive()
-        barray = bytes(self.shm_recv_mv[:])
+        barray = bytes(self.shm_inp_mv[:])
         view = memoryview(barray)
         self.shm_size = view.nbytes   
         return view
@@ -383,7 +371,7 @@ class DgramManager(object):
             if message == b"g":
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs)-1]
-                d = dgram.Dgram(config=self.configs[-1], view=self.shm_recv_mv)
+                d = dgram.Dgram(config=self.configs[-1], view=self.shm_inp_mv)
             else:
                 view = self._connect_drp()
                 config = self.configs[len(self.configs)-1]

@@ -66,43 +66,17 @@ clockid_t test_coarse_clock() {
     }
 }
 
-int startDrpPython(pid_t& pyPid, unsigned threadNum,
-                   std::string pythonScript, unsigned keyBase, long shmemSize)
-{
 
 
-  // Fork
-  pyPid = fork();
-
-  if (pyPid == pid_t(0))
-  {
-    // Executing external code 
-    int rc = execlp("python",
-                    "python",
-                    "-u",
-                    pythonScript.c_str(),
-                    std::to_string(threadNum).c_str(),
-                    std::to_string(keyBase).c_str(),
-                    std::to_string(shmemSize).c_str(),
-                    nullptr);
-    // Execlp returns only on error                    
-    logging::error("[Thread %u] Error on exec 'python -u %s %s ': %m",
-                   threadNum, pythonScript, std::to_string(threadNum));
-    return rc;
-  } else {
-    return 0;
-  }
-}
-
-int checkDrpPy(pid_t pid, bool wait = false)
-{
-  pid_t child_status = waitpid(pid, NULL, wait ? 0 : WNOHANG);
-  if (child_status != 0)
-  {
-    return -1;
-  }
-  return 0;
-}
+// int checkDrpPy(pid_t pid, bool wait = false)
+// {
+//   pid_t child_status = waitpid(pid, NULL, wait ? 0 : WNOHANG);
+//   if (child_status != 0)
+//   {
+//     return -1;
+//   }
+//   return 0;
+// }
 
 void cleanupDrpPython(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
                       unsigned threadNum)
@@ -213,7 +187,7 @@ int recv(int mqId, Message_t& msg, unsigned msTmo, clockid_t clockType, unsigned
 }
 
 void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
-                    pid_t pyPid, clockid_t clockType, XtcData::TransitionId::Value transitionId, unsigned threadNum)
+                    clockid_t clockType, XtcData::TransitionId::Value transitionId, unsigned threadNum)
 {
     Message_t msg;
     msg.mtype = 1;
@@ -229,23 +203,14 @@ void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*
     int rc = send(inpMqId, msg, 1, threadNum);
     if (rc) {
         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-        rc = checkDrpPy(pyPid);
-        if (rc) {
-            logging::critical("[Thread %u] drp python not running", threadNum);
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData,
-            threadNum);
-        }
+        cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum); 
         abort();
     }
 
     rc = recv(resMqId, msg, 10000, clockType, threadNum);
     if (rc) {
         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-        rc = checkDrpPy(pyPid);
-        if (rc) {
-            logging::critical("[Thread %u] drp python not running", threadNum);
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-        }
+        cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
         abort();
     }
 }
@@ -264,7 +229,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     auto triggerPrimitive = drp.triggerPrimitive();
     auto& tebPrms = drp.tebPrms();
     bool pythonDrp = false;
-    pid_t pyPid = 0;
     int inpMqId = 0;
     int resMqId = 0;
     int inpShmId = 0;
@@ -277,7 +241,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     clockid_t clockType = test_coarse_clock();
 
     auto kwargs_it = para.kwargs.find("drp");
-
     if (kwargs_it != para.kwargs.end() && kwargs_it->second == "python") {
         pythonDrp = true;
     }
@@ -294,7 +257,11 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             abort();
         }
 
-        pythonDrp = true;
+        if (pythonScript.length() > 511) {
+            logging::critical("[Thread %u] Path to python script too long (max 511 chars)" , threadNum);
+            abort();
+        } 
+
         unsigned keyBase  =  KEY_BASE + 1000 * threadNum + 100 * para.partition;
 
         // Creating message queues
@@ -312,12 +279,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         }
 
         // Creating shared memory
-
-        // Calculate the size of the Inputs data block
-        // WARNING: the -8 at the end is the size of the pulseID
-        // If the size of the pulseid changes, this number will
-        // need to be changed
-
         size_t shmemSize = pool.pebble.bufferSize();
         if (para.maxTrSize > shmemSize) shmemSize=para.maxTrSize;
         
@@ -339,12 +300,16 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             abort();
         }
 
-        logging::info("[Thread %u] IPC set up. Starting python process", threadNum);
+        logging::info("[Thread %u] IPC set up.", threadNum);
 
-        // Fork
-        rc = startDrpPython(pyPid, threadNum, pythonScript, keyBase, shmemSize);
-        if (rc || (pyPid == pid_t(0))) {
-            logging::critical("[Thread %u] error starting Drp python process", threadNum);
+        Message_t scriptmsg; 
+        scriptmsg.mtype = 1;
+        strncpy(scriptmsg.mtext, pythonScript.c_str(), pythonScript.length());
+
+        rc = send(inpMqId, scriptmsg, pythonScript.length(), threadNum);
+        if (rc) {
+            logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             abort();
         }
 
@@ -352,14 +317,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         rc = recv(resMqId, msg, 15000, clockType, threadNum);
         if (rc) {
             logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-            rc = checkDrpPy(pyPid);
-            if (rc) {
-                logging::critical("[Thread %u] drp python not running", threadNum);
-                cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-            }
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             abort();
         }
-        logging::info("[Thread %u] Python process started", threadNum);
+        logging::info("[Thread %u] Starting events", threadNum);
     }
 
     while (true) {
@@ -396,7 +357,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 if ( pythonDrp == true) {
                     memcpy(inpData, (pool.pebble[index])+sizeof(Pds::PulseId), pool.pebble.bufferSize()-sizeof(Pds::PulseId));
-                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pyPid, clockType, transitionId, threadNum);
+                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
                     memcpy((pool.pebble[index])+sizeof(Pds::PulseId), resData, pool.pebble.bufferSize()-sizeof(Pds::PulseId));
                 }    
 
@@ -441,7 +402,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 if ( pythonDrp == true) {
                     memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
-                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pyPid, clockType, transitionId, threadNum);
+                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
                     memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram) + resDgram->xtc.extent);
                 }    
@@ -462,7 +423,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
  
                 if ( pythonDrp == true) {
                     memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
-                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, pyPid, clockType, transitionId, threadNum);
+                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
                     memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram)+resDgram->xtc.extent);
                 }
@@ -483,42 +444,42 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     }
         
 
-    if (pythonDrp == true) {
+    // if (pythonDrp == true) {
 
-        logging::info("[Thread %u] Shutting down Drp python", threadNum);
+    //     logging::info("[Thread %u] Shutting down Drp python", threadNum);
 
-        msg.mtype = 1;
-        msg.mtext[0] = 's';
-        int rc = send(inpMqId, msg, 1, threadNum);
-        if (rc) {
-            logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-            rc = checkDrpPy(pyPid);
-            if (rc) {
-                logging::critical("[Thread %u] drp python not running", threadNum);
-                cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-            }
-            abort();
-        }
+    //     msg.mtype = 1;
+    //     msg.mtext[0] = 's';
+    //     int rc = send(inpMqId, msg, 1, threadNum);
+    //     if (rc) {
+    //         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+    //         rc = checkDrpPy(pyPid);
+    //         if (rc) {
+    //             logging::critical("[Thread %u] drp python not running", threadNum);
+    //             cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
+    //         }
+    //         abort();
+    //     }
 
-        rc = recv(resMqId, msg, 5000, clockType, threadNum);
-        if (rc) {
-            logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-            rc = checkDrpPy(pyPid);
-            if (rc) {
-                logging::critical("[Thread %u] drp python not running", threadNum);
-                cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-            }
-            abort();
-        }
+    //     rc = recv(resMqId, msg, 5000, clockType, threadNum);
+    //     if (rc) {
+    //         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+    //         rc = checkDrpPy(pyPid);
+    //         if (rc) {
+    //             logging::critical("[Thread %u] drp python not running", threadNum);
+    //             cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
+    //         }
+    //         abort();
+    //     }
 
-        rc = checkDrpPy(pyPid);
-        if (!rc) {
-            logging::critical("[Thread %u] drp python failed to stop", threadNum);
-            abort();
-        } else {
-            logging::info("[Thread %u] Drp python stopped", threadNum);
-        }
-    }       
+    //     rc = checkDrpPy(pyPid);
+    //     if (!rc) {
+    //         logging::critical("[Thread %u] drp python failed to stop", threadNum);
+    //         abort();
+    //     } else {
+    //         logging::info("[Thread %u] Drp python stopped", threadNum);
+    //     }
+    // }       
 }
 
 

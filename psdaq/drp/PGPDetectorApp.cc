@@ -109,6 +109,54 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
+int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shmemSize)
+{
+  // Fork
+  pyPid = fork();
+
+  if (pyPid == pid_t(0))
+  {
+    // Executing external code 
+    int rc = execlp("python",
+                    "python",
+                    "-u",
+                    "/cds/home/v/valmar/Projects/DrpPython/cnf/drp_python.py",
+                    std::to_string(workerNum).c_str(),
+                    std::to_string(keyBase).c_str(),
+                    std::to_string(shmemSize).c_str(),
+                    nullptr);
+    // Execlp returns only on error                    
+    logging::error("Error on 'execlp python' for worker %d ': %m", workerNum);
+    return rc;
+  } else {
+    return 0;
+  }
+}
+
+
+void setupDrpPython(Parameters& para, DrpBase& drp, std::vector<pid_t>& drpPids){
+    const unsigned KEY_BASE = 40000;
+
+    size_t shmemSize = drp.pool.pebble.bufferSize();
+    if (para.maxTrSize > shmemSize) shmemSize=para.maxTrSize;
+
+    // Round up to an integral number of pages
+    long pageSize = sysconf(_SC_PAGESIZE);
+    shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
+
+    for (unsigned workerNum=0; workerNum<para.nworkers; workerNum++) {
+        unsigned keyBase  =  KEY_BASE + 1000 * workerNum + 100 * para.partition;
+        pid_t pyPid;
+        int rc = startDrpPython(pyPid, workerNum, keyBase, shmemSize);
+        if (rc || (pyPid == pid_t(0))) {
+            logging::critical("Error starting Drp python process for worker %d", workerNum);
+            abort();
+        }
+        drpPids.push_back(pyPid);
+    }
+}
+
+
 // Release GIL on exceptions, too
 class PyGilGuard
 {
@@ -166,6 +214,12 @@ void PGPDetectorApp::initialize()
     // Provide EbReceiver with the Detector interface so that additional
     // data blocks can be formatted into the XTC, e.g. trigger information
     m_drp.ebReceiver().detector(m_det);
+
+    auto kwargs_it = m_para.kwargs.find("drp");
+    if (kwargs_it != m_para.kwargs.end() && kwargs_it->second == "python") {
+        logging::info("Starting DrpPython");
+        setupDrpPython(m_para, m_drp, m_drpPids);
+    }
 
     logging::info("Ready for transitions");
 
