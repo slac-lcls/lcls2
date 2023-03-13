@@ -56,9 +56,11 @@ namespace Pds {
       unsigned    index(const Pds::EbDgram* datagram) const;
       void*       fetch(unsigned index);
       void        process(unsigned index);
+      void        timeout();
     public:
       BatchQueue& pending()  { return _pending; }
     private:
+      void       _flush();
       void       _post(const Pds::EbDgram* nonEvent);
       void       _post(const Batch& batch);
     public:

@@ -87,7 +87,6 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
 
 MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
-    m_dmaAllocs(0),
     m_dmaFrees(0),
     m_allocs(0),
     m_frees(0)
@@ -150,16 +149,17 @@ MemPool::~MemPool()
 
 unsigned MemPool::allocate()
 {
-    m_dmaAllocs.fetch_add(1, std::memory_order_acq_rel);
-
-    // Block when there are no available pebble buffers
     auto allocs = m_allocs.fetch_add(1, std::memory_order_acq_rel);
     asm volatile("mfence" ::: "memory");
     auto frees  = m_frees.load(std::memory_order_acquire);
+
+    // Block when there are no available pebble buffers
     if (allocs - frees == m_nbuffers - 1) {
         std::unique_lock<std::mutex> lock(m_lock);
-        m_condition.wait(lock, [this] { return (m_allocs.load(std::memory_order_acquire) -
-                                                m_frees.load(std::memory_order_acquire)) != m_nbuffers; });
+        m_condition.wait(lock, [this] {
+            return (m_allocs.load(std::memory_order_acquire) -
+                    m_frees.load(std::memory_order_acquire)) != m_nbuffers;
+        });
     }
 
     return allocs;
@@ -177,6 +177,8 @@ void MemPool::freePebble()
     auto frees  = m_frees.fetch_add(1, std::memory_order_acq_rel);
     asm volatile("mfence" ::: "memory");
     auto allocs = m_allocs.load(std::memory_order_acquire);
+
+    // Release when all pebble buffers were in use but now one is free
     if (allocs - frees == m_nbuffers) {
         std::unique_lock<std::mutex> lock(m_lock);
         m_condition.notify_one();
@@ -195,7 +197,6 @@ Pds::EbDgram* MemPool::allocateTr()
 
 void MemPool::resetCounters()
 {
-    m_dmaAllocs.store(0);
     m_dmaFrees .store(0);
     m_allocs   .store(0);
     m_frees    .store(0);
@@ -264,7 +265,7 @@ int32_t PgpReader::read()
 void PgpReader::flush()
 {
   int32_t ret = read();
-  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+  if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
 }
 
 const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint32_t& evtCounter)
@@ -293,7 +294,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
     const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
     if ((timingHeader->readoutGroups() & (1 << m_para.partition)) == 0) {
         XtcData::TransitionId::Value transitionId = timingHeader->service();
-        logging::error("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
+        logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);

@@ -140,7 +140,7 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   // Initialize the event builder
   auto duration = prms.maxEntries;
   _maxEntries   = prms.maxEntries;
-  _maxEvBuffers = prms.maxBuffers / prms.maxEntries;
+  _maxEvBuffers = (TEB_TMO_MS / 1000) * (prms.maxBuffers / prms.maxEntries);
   _maxTrBuffers = TEB_TR_BUFFERS;
   rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
   if (rc)  return rc;
@@ -199,6 +199,7 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
         _regSize[rmtId] = regSizeGuess;
       }
 
+      printf("ID %2u: ", rmtId);
       rc = _transport.setupMr(_region[rmtId], _regSize[rmtId]);
       if (rc)  return rc;
     }
@@ -256,6 +257,7 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
       _regSize[rmtId] = regSize;
     }
 
+    printf("ID %2u: ", rmtId);
     if ( (rc = link->setupMr(_region[rmtId], regSize, peer)) )
     {
       logging::error("%s:\n  Failed to set up Input MR for %s ID %d, "
@@ -286,7 +288,7 @@ int EbAppBase::process()
   const int msTmo = 100;
   if ( (rc = _transport.pend(&data, msTmo)) < 0)
   {
-    if (rc == -FI_ETIMEDOUT)
+    if (rc == -FI_EAGAIN)
     {
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events

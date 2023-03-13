@@ -25,12 +25,9 @@ static int checkMr(Fabric*         fabric,
 {
   if ((region == mr->start()) && (size <= mr->length()))
   {
-    if (verbose)
-    {
-      printf("Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
-             mr->start(), (char*)(mr->start()) + mr->length(),
-             mr->length(), mr->length());
-    }
+    printf("Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
+           mr->start(), (char*)(mr->start()) + mr->length(),
+           mr->length(), mr->length());
     return 0;
   }
   if (!fabric->deregister_memory(mr))
@@ -60,7 +57,7 @@ int Pds::Eb::setupMr(Fabric*         fabric,
   }
 
   // If there's a MR for the region, check that its size is appropriate
-  MemoryRegion* mr = fabric->lookup_memory(region, sizeof(uint8_t));
+  MemoryRegion* mr = fabric->lookup_memory(region, size);
   if (mr && !checkMr(fabric, region, size, mr, verbose))
   {
     if (memReg)  *memReg = mr;
@@ -148,7 +145,7 @@ int EbLfLink::sendU32(uint32_t    u32,
   uint64_t imm = u32;
   if ((rc = post(imm)))
   {
-    const char* errMsg = rc == -FI_ETIMEDOUT ? "Timed out" : _ep->error();
+    const char* errMsg = rc == -FI_EAGAIN ? "Timed out" : _ep->error();
     fprintf(stderr, "%s:\n  Failed to send %s to %s: %s\n",
             __PRETTY_FUNCTION__, name, peer, errMsg);
     return rc;
@@ -200,7 +197,7 @@ int EbLfLink::sendMr(MemoryRegion* mr,
     uint64_t imm = *ptr++;
     if ((rc = post(imm)) < 0)
     {
-      const char* errMsg = rc == -FI_ETIMEDOUT ? "Timed out" : _ep->error();
+      const char* errMsg = rc == -FI_EAGAIN ? "Timed out" : _ep->error();
       fprintf(stderr, "%s:\n  Failed to send %s to %s ID %d: %s\n",
               __PRETTY_FUNCTION__, "local memory specs", peer, _id, errMsg);
       return rc;
@@ -520,7 +517,6 @@ int EbLfCltLink::post(const void* buf,
     if (t1 - t0 > tmo)
     {
       ++_timedOut;
-      rc = -FI_ETIMEDOUT;
       break;
     }
   }
@@ -559,7 +555,6 @@ int EbLfLink::post(const void* buf,
     if (t1 - t0 > tmo)
     {
       ++_timedOut;
-      rc = -FI_ETIMEDOUT;
       break;
     }
   }

@@ -156,6 +156,7 @@ int TebContributor::connect(size_t inpSizeGuess)
 
   for (auto link : _links)
   {
+    printf("ID %2u: ", link->id());
     rc = link->setupMr(region, regSize);
     if (rc)  return rc;
   }
@@ -197,6 +198,22 @@ int TebContributor::configure()
   return 0;
 }
 
+void TebContributor::_flush()
+{
+  if (_batch.start)
+  {
+    _post(_batch);
+    _batch.start = nullptr;             // Start a new batch
+  }
+}
+
+// NB: timeout() must not be called concurrently with process()
+void TebContributor::timeout()
+{
+  _flush();
+}
+
+// NB: process() must not be called concurrently with timeout()
 void TebContributor::process(const EbDgram* dgram)
 {
   auto now = std::chrono::system_clock::now();
@@ -211,23 +228,18 @@ void TebContributor::process(const EbDgram* dgram)
   if (LIKELY(rogs & (1 << _prms.partition))) // Common RoG triggered
   {
     // On wrapping, post the batch at the end of the region, if any
-    if (dgram == _batMan.batchRegion())
-    {
-      if (_batch.start)  _post(_batch);
-
-      _batch.start = nullptr;           // Start a new batch
-    }
+    if (dgram == _batMan.batchRegion())  _flush();
 
     // Initiailize a new batch with the first dgram seen
     if (!_batch.start)  _batch = {dgram, contractor};
 
     auto svc     = dgram->service();
-    bool flush   = ((svc != TransitionId::L1Accept) &&
+    bool doFlush = ((svc != TransitionId::L1Accept) &&
                     (svc != TransitionId::SlowUpdate));
     bool expired = _batMan.expired(       dgram->pulseId(),
                                    _batch.start->pulseId());
 
-    if (LIKELY(!expired && !flush))     // Most frequent case when batching
+    if (LIKELY(!expired && !doFlush))   // Most frequent case when batching
     {
       _batch.end         = dgram;       // Append dgram to batch
       _batch.contractor |= contractor;
@@ -244,7 +256,7 @@ void TebContributor::process(const EbDgram* dgram)
         _batch = {dgram, contractor};   // Start a new batch with dgram
       }
 
-      if (flush)                        // Post the batch + transition
+      if (doFlush)                      // Post the batch + transition
       {
         _batch.end         = dgram;     // Append dgram to batch
         _batch.contractor |= contractor;
@@ -254,10 +266,18 @@ void TebContributor::process(const EbDgram* dgram)
         _batch.start = nullptr;         // Start a new batch
       }
     }
+
+    // Keep non-selected TEBs synchronized by forwarding transitions to them.  In
+    // particular, the Disable transition flushes out whatever Results batch they
+    // currently have in-progress.
+    if (!dgram->isEvent())           // Also capture the most recent SlowUpdate
+    {
+      if (contractor)  _post(dgram); // Post, if contributor is providing trigger input
+    }
   }
-  else                        // Common RoG didn't trigger: bypass the TEB
+  else                        // Common RoG didn't trigger: bypass the TEB(s)
   {
-    if (_batch.start)  _post(_batch);
+    _flush();
 
     dgram->setEOL();          // Terminate for clarity and dump-ability
     _pending.push(dgram);
@@ -266,19 +286,9 @@ void TebContributor::process(const EbDgram* dgram)
       logging::critical("%s: _pending queue overflow", __PRETTY_FUNCTION__);
       abort();
     }
-
-    _batch.start = nullptr;             // Start a new batch
   }
 
   ++_eventCount;                        // Only count events handled
-
-  // Keep non-selected TEBs synchronized by forwarding transitions to them.  In
-  // particular, the Disable transition flushes out whatever Results batch they
-  // currently have in-progress.
-  if (!dgram->isEvent())             // Also capture the most recent SlowUpdate
-  {
-    if (contractor)  _post(dgram); // Post, if contributor is providing trigger input
-  }
 }
 
 void TebContributor::_post(const Batch& batch)

@@ -38,6 +38,7 @@ private:
     std::atomic<bool> m_terminate;
     Batch m_batch;
     unsigned m_nodeId;
+    unsigned m_flushTmo;
 };
 
 }
