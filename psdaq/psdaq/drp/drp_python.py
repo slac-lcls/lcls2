@@ -26,9 +26,10 @@ ipc = IPC(key_base, mem_size)
 print(f"[Worker {worker_num}]: DRP Python started. Waiting for script to run")
 
 while True:
+    print(f"[Worker: {worker_num}] Waiting for new script to run")
     message, priority = ipc.mq_inp.receive()
     if message == "stop":
         exit(0)
     with open(message, "r") as fh:
-       code = compile(fh.read(), message, 'exec')
-       exec(code, globals(), locals())
+        code = compile(fh.read(), message, 'exec')
+        exec(code, globals(), locals())

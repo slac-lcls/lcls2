@@ -93,10 +93,12 @@ class DgramManager(object):
                 elif xtc_files[0] == 'drp':
                     view = self._connect_drp()
                     d = dgram.Dgram(view=view)
-                    self.set_configs([d])
+                    if d.service() == TransitionId.Configure:
+                        self.set_configs([d])
+                    else:
+                        raise RuntimeError(f"Configure expected, got {d.service()}")
                 else:
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
-
 
         self.given_fds = True if len(fds) > 0 else False
         if self.given_fds:
@@ -370,17 +372,12 @@ class DgramManager(object):
             message, priority = self.mq_inp.receive()
             if message == b"g":
                 # use the most recent configure datagram
-                config = self.configs[len(self.configs)-1]
                 d = dgram.Dgram(config=self.configs[-1], view=self.shm_inp_mv)
+                dgrams = [d]
             else:
-                view = self._connect_drp()
-                config = self.configs[len(self.configs)-1]
-                d = dgram.Dgram(config=config,view=view)
-                if d.service() == TransitionId.Configure:
-                    self.set_configs([d])
-                else:
-                    raise RuntimeError(f"Configure expected, got {d.service()}")                
-            dgrams = [d]    
+                self.shm_res_mv[:] = self.shm_inp_mv[:]
+                self.mq_res.send(b"g")
+                raise StopIteration
         else:
             try:
                 dgrams = [dgram.Dgram(config=config, max_retries=self.max_retries) for config in self.configs]

@@ -324,6 +324,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     }
 
     while (true) {
+        
         if (!inputQueue.pop(batch)) {
             break;
         }
@@ -441,47 +442,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         // only one thread sends a batch with content (size > 0) to the collector
         if (transition == true && threadCount.fetch_sub(1)!= 1) batch.size = 0;
         outputQueue.push(batch);
-    }
-        
-
-    // if (pythonDrp == true) {
-
-    //     logging::info("[Thread %u] Shutting down Drp python", threadNum);
-
-    //     msg.mtype = 1;
-    //     msg.mtext[0] = 's';
-    //     int rc = send(inpMqId, msg, 1, threadNum);
-    //     if (rc) {
-    //         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-    //         rc = checkDrpPy(pyPid);
-    //         if (rc) {
-    //             logging::critical("[Thread %u] drp python not running", threadNum);
-    //             cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-    //         }
-    //         abort();
-    //     }
-
-    //     rc = recv(resMqId, msg, 5000, clockType, threadNum);
-    //     if (rc) {
-    //         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-    //         rc = checkDrpPy(pyPid);
-    //         if (rc) {
-    //             logging::critical("[Thread %u] drp python not running", threadNum);
-    //             cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-    //         }
-    //         abort();
-    //     }
-
-    //     rc = checkDrpPy(pyPid);
-    //     if (!rc) {
-    //         logging::critical("[Thread %u] drp python failed to stop", threadNum);
-    //         abort();
-    //     } else {
-    //         logging::info("[Thread %u] Drp python stopped", threadNum);
-    //     }
-    // }       
+    }   
 }
-
 
 PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false)
