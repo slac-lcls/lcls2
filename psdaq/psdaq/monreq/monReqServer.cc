@@ -448,7 +448,7 @@ void Meb::run()
     rc = EbAppBase::process();
     if (rc < 0)
     {
-      if (rc == -FI_ETIMEDOUT)
+      if (rc == -FI_EAGAIN)
       {
         rc = 0;
       }

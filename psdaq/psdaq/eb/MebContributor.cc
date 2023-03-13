@@ -88,6 +88,7 @@ int MebContributor::connect(const MebCtrbParams& prms,
 
   for (auto link : _links)
   {
+    printf("ID %2u: ", link->id());
     rc = link->setupMr(region, regSize);
     if (rc)  return rc;
   }

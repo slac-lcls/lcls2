@@ -43,6 +43,7 @@ private:
     int* m_inpShmId;
     int* m_resShmId;
     std::atomic<int> threadCount;
+    unsigned m_flushTmo;
 };
 
 }

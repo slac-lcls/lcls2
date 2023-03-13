@@ -38,7 +38,7 @@ namespace Pds {
     //   minimum number of transition buffers needed by the MEB.  This number
     //   does not need to be a power of 2.  MEB transition buffers are large.
 
-    const unsigned TICK_RATE      = 928500; // System clock rate in Hz
+    const unsigned TICK_RATE      = 1000000 * 13/14; // System clock rate in Hz
 
     // Keep *EB_TMO* below control.py's transition and phase 2 timeout
     // Too low results in spurious timeouts and split events

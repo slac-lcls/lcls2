@@ -261,6 +261,7 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
       return -1;
     }
 
+    printf("ID %2u: ", rmtId);
     if ( (rc = link->setupMr(_region, regSize, peer)) )
     {
       logging::error("%s:\n  Failed to set up Result MR for %s ID %d, "
@@ -320,7 +321,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   const int tmo = 100;                  // milliseconds
   if ( (rc = _transport.pend(&data, tmo)) < 0)
   {
-    if (rc == -FI_ETIMEDOUT)
+    if (rc == -FI_EAGAIN)
     {
       _matchUp(ctrb, nullptr);         // Try to sweep out any deferred Results
       rc = 0;

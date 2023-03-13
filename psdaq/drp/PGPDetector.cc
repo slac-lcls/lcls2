@@ -11,6 +11,7 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/eb/TebContributor.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
@@ -305,8 +306,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     }   
 }
 
-PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det, int* inpMqId, int* resMqId, int* inpShmId, int* resShmId) :
-    PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false)
+PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det  int* inpMqId, int* resMqId, int* inpShmId, int* resShmId)) :
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false),
+    m_flushTmo(1.1 * drp.tebPrms().maxEntries * 14/13)
 {
     threadCount.store(0);
     m_nodeId = det->nodeId;
@@ -402,13 +404,41 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     m_batch.size = 0;
     resetEventCounter();
 
+    enum TmoState { None, Started, Finished };
+    TmoState tmoState(TmoState::None);
+    const std::chrono::microseconds tmo(m_flushTmo);
+    auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+
     while (1) {
          if (m_terminate.load(std::memory_order_relaxed)) {
             break;
         }
         int32_t ret = read();
         nDmaRet = ret;
+        if (ret == 0) {
+            if (tmoState == TmoState::None) {
+                tmoState = TmoState::Started;
+                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+            } else {
+                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+                    if (m_batch.size != 0) {
+                        m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+                        worker++;
+                        m_batch.start += m_batch.size;
+                        m_batch.size = 0;
+                        batchId += m_para.batchSize;
+                    } else {
+                        if (tmoState != TmoState::Finished) {
+                            m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+                            worker++;
+                            tmoState = TmoState::Finished;
+                        }
+                    }
+                }
+            }
+        }
         for (int b=0; b < ret; b++) {
+            tmoState = TmoState::None;
             unsigned evtCounter;
             const Pds::TimingHeader* timingHeader = handle(det, b, evtCounter);
             if (!timingHeader)  continue;
@@ -492,6 +522,9 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
             PGPEvent* event = &m_pool.pgpEvents[evtCounter & dmaBufferMask];
             freeDma(event);
             tebContributor.process(evtCounter & pebbleBufferMask);
+        }
+        if (batch.size == 0) {
+            tebContributor.timeout();
         }
         worker++;
     }

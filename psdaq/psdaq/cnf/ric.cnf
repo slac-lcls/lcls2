@@ -133,7 +133,7 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp011', id:'tmo_fzpopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
- { host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000,unixEpoch=0'},
+# {host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000,unixEpoch=0'},
 
 # {host: 'drp-srcf-cmp028', id:'tst_pv_0',    flags:'spux', env:epics_env, cmd:f'{pva_cmd1} -l 0x2 demo:claus:pv:image'},
 ]

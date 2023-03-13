@@ -18,6 +18,7 @@
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include <getopt.h>
 #include <Python.h>
 #include <inttypes.h>
@@ -532,7 +533,7 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
     // get new buffers
     if (m_current == m_available) {
         m_current = 0;
-        auto start = std::chrono::steady_clock::now();
+        auto start = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
         while (true) {
             m_available = read();
             m_nDmaRet = m_available;
@@ -542,7 +543,7 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
             //            return nullptr;
 
             // wait for a total of 10 ms otherwise timeout
-            auto now = std::chrono::steady_clock::now();
+            auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
             if (elapsed > 10) {
                 m_next = timestamp + _skip_intv;
@@ -673,6 +674,11 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     bool lMissing = false;
     XtcData::NamesLookup& namesLookup = m_det->namesLookup();
 
+    enum TmoState { None, Started, Finished };
+    TmoState tmoState(TmoState::None);
+    const std::chrono::microseconds tmo(int(1.1 * m_drp.tebPrms().maxEntries * 14/13));
+    auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+
     m_terminate.store(false, std::memory_order_release);
 
     while (true) {
@@ -684,6 +690,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         bool lHold(false);
         //printf("dgram %p, lHold %d\n", dgram, lHold);
         if (dgram) {
+            tmoState = TmoState::None;
             //printf("pgp %016lx  bld %016lx  pid %014lx\n",
             //       dgram->time.value(), nextId, dgram->pulseId());
             if (dgram->xtc.damage.value()) {
@@ -769,6 +776,19 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             }
             _sendToTeb(*dgram, index);
             nevents++;
+        }
+        else {
+            if (tmoState == TmoState::None) {
+                tmoState = TmoState::Started;
+                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+            } else {
+                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+                    if (tmoState != TmoState::Finished) {
+                        m_drp.tebContributor().timeout();
+                        tmoState = TmoState::Finished;
+                    }
+                }
+            }
         }
 
         if (!lHold) {

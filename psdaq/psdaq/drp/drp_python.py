@@ -12,6 +12,9 @@ detector_name = sys.argv[5]
 detector_segment = sys.argv[6]
 worker_num = int(sys.argv[7])
 
+print(f"[Worker {worker_num} - Python] DEBUG Keybase: {key_base}, Pebble bufsize: {pebble_bufsize}, "
+      f"Transition bufsize: {transition_bufsize}, Shmem size: {shm_mem_size}, "
+      f"Detecter name: {detector_name}, Detector segment: {detector_segment}")
 
 class IPCInfo:
     def __init__(self, key_base, shm_mem_size):

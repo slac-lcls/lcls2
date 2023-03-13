@@ -25,6 +25,7 @@
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
@@ -250,19 +251,10 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
     // get new buffers
     if (m_current == m_available) {
         m_current = 0;
-        auto start = std::chrono::steady_clock::now();
-        while (true) {
-            m_available = read();
-            m_nDmaRet = m_available;
-            if (m_available > 0)  break;
-
-            // wait for a total of 10 ms otherwise timeout
-            auto now = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-            if (elapsed > 10) {
-                //if (m_running)  logging::debug("pgp timeout");
-                return nullptr;
-            }
+        m_available = read();
+        m_nDmaRet = m_available;
+        if (m_available == 0) {
+            return nullptr;
         }
     }
 
@@ -482,6 +474,11 @@ void PvaDetector::_worker()
                          ? std::stoul(m_para->kwargs["match_tmo_ms"])
                          : 1333; // Avoid event rate multiples and factors
 
+    enum TmoState { None, Started, Finished };
+    TmoState tmoState(TmoState::None);
+    const std::chrono::microseconds tmo(int(1.1 * m_drp.tebPrms().maxEntries * 14/13));
+    auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -490,6 +487,7 @@ void PvaDetector::_worker()
         uint32_t index;
         Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
+            tmoState = TmoState::None;
             m_nEvents++;
 
             XtcData::TransitionId::Value service = dgram->service();
@@ -539,6 +537,19 @@ void PvaDetector::_worker()
                 }
 
                 _sendToTeb(*dgram, index);
+            }
+        }
+        else {
+            if (tmoState == TmoState::None) {
+                tmoState = TmoState::Started;
+                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+            } else {
+                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+                    if (tmoState != TmoState::Finished) {
+                        m_drp.tebContributor().timeout();
+                        tmoState = TmoState::Finished;
+                    }
+                }
             }
         }
     }

@@ -113,7 +113,7 @@ int EbLfClient::connect(EbLfCltLink** link,
             __PRETTY_FUNCTION__, (dT <= msTmo) ? "Error" : "Timed out",
             peer, port, dT, ep->error());
     delete ep;
-    return (dT <= msTmo) ? rc : -FI_ETIMEDOUT;
+    return (dT <= msTmo) ? rc : -FI_EAGAIN;
   }
   if (_verbose > 1)  printf("EbLfClient: connect() took %lu ms\n", dT);
 

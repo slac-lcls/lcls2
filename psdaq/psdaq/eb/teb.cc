@@ -350,6 +350,7 @@ int Teb::connect()
 
   for (auto link : _l3Links)
   {
+    printf("ID %2u: ", link->id());
     rc = link->setupMr(region, regSize);
     if (rc)  return rc;
   }
@@ -456,7 +457,7 @@ void Teb::run()
     rc = EbAppBase::process();
     if (rc < 0)
     {
-      if (rc == -FI_ETIMEDOUT)
+      if (rc == -FI_EAGAIN)
       {
         if (_trCount > 1)  _queueMrqBuffers(); // Avoid polling too early
 
