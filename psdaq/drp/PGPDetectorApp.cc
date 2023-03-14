@@ -1,5 +1,8 @@
 #include <iostream>
 #include <iomanip>
+#include <string>
+#include <future>
+#include <thread>
 #include "drp.hh"
 #include "Detector.hh"
 #include "TimingBEB.hh"
@@ -18,7 +21,6 @@
 #include "psalg/utils/SysLog.hh"
 #include "RunInfoDef.hh"
 
-#include <string>
 
 #define PY_RELEASE_GIL    PyEval_SaveThread()
 #define PY_ACQUIRE_GIL(x) PyEval_RestoreThread(x)
@@ -109,28 +111,28 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
-int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shmemSize)
+int startDrpPython (unsigned workerNum, unsigned keyBase, long shmemSize)
 {
   // Fork
-  pyPid = fork();
+  pid_t pyPid = fork();
 
   if (pyPid == pid_t(0))
   {
     // Executing external code 
-    int rc = execlp("python",
-                    "python",
-                    "-u",
-                    "-m",
-                    "psdaq.drp.drp_python",
-                    std::to_string(workerNum).c_str(),
-                    std::to_string(keyBase).c_str(),
-                    std::to_string(shmemSize).c_str(),
-                    nullptr);
+    execlp("python",
+           "python",
+           "-u",
+           "-m",
+           "psdaq.drp.drp_python",
+           std::to_string(workerNum).c_str(),
+           std::to_string(keyBase).c_str(),
+           std::to_string(shmemSize).c_str(),
+           nullptr);
     // Execlp returns only on error                    
     logging::error("Error on 'execlp python' for worker %d ': %m", workerNum);
-    return rc;
+    return -1;
   } else {
-    return 0;
+    return pyPid;
   }
 }
 
@@ -145,16 +147,18 @@ void setupDrpPython(Parameters& para, DrpBase& drp, std::vector<pid_t>& drpPids)
     long pageSize = sysconf(_SC_PAGESIZE);
     shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
 
+    std::vector<std::future<int>> drpPythonFutures;
+
     for (unsigned workerNum=0; workerNum<para.nworkers; workerNum++) {
         unsigned keyBase  =  KEY_BASE + 1000 * workerNum + 100 * para.partition;
-        pid_t pyPid;
-        int rc = startDrpPython(pyPid, workerNum, keyBase, shmemSize);
-        if (rc || (pyPid == pid_t(0))) {
-            logging::critical("Error starting Drp python process for worker %d", workerNum);
-            abort();
-        }
-        drpPids.push_back(pyPid);
+        drpPythonFutures.push_back(std::async(std::launch::async, startDrpPython, workerNum, keyBase, shmemSize));
     }
+
+    for (std::vector<std::future<int>>::iterator futIter =drpPythonFutures.begin();
+         futIter != drpPythonFutures.end(); futIter++) {
+        int pyPid = futIter->get();
+        drpPids.push_back(pyPid);
+    }     
 }
 
 
