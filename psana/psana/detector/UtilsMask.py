@@ -15,7 +15,7 @@ Usage::
          # gain_range_inds list stands for gain ranges for 'FH','FM','FL','AHL-H','AML-M'
   m = mask_neighbors(mask, rad=5, ptrn='r')
   m = mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK)
-  m = status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa)
+  m = status_as_mask(status, status_bits=(1<<64)-1, dtype=DTYPE_MASK, **kwa)
 
   # 2023-02-10 add converters from mask2d to mask3d
   m = convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ix, iy)
@@ -199,18 +199,18 @@ def mask_edges(mask, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
     return mask_out
 
 
-def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
+def status_as_mask(status, status_bits=(1<<64)-1, dtype=DTYPE_MASK, **kwa):
     """Returns per-pixel array of mask generated from pixel_status.
 
        Parameters
 
-       - status  : np.array - pixel_status calibration constants
+       - status  : np.array - pixel_status/status_extra/etc calibration constants
        - status_bits : bitword for mask status codes
        - dtype : mask np.array dtype
 
        Returns
 
-       - np.array - mask generated from calibration type pixel_status (1/0 for status 0/status_bits>0, respectively).
+       - np.array - mask generated from calibration type pixel_status/status_extra (1/0 for status 0/status_bits>0, respectively).
     """
     if not isinstance(status, np.ndarray):
             logger.debug('status is not np.ndarray - return None')
