@@ -834,9 +834,8 @@ void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     }
     else { // SlowUpdate
         // Allocate a transition dgram from the pool and initialize its header
-        Pds::EbDgram* trDg = m_pool->allocateTr();
+        Pds::EbDgram* trDg = m_pool->transitionDgrams[evtIdx];
         *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
-        m_pool->transitionDgrams[evtIdx] = trDg;
 
         if (tsMatchDegree == 2) {       // Keep PV for the next L1A
           m_pvQueue.try_pop(dgram);     // Actually consume the element
@@ -882,9 +881,8 @@ void UdpEncoder::_timeout(const XtcData::TimeStamp& timestamp)
         }
         else { // SlowUpdate
             // Allocate a transition dgram from the pool and initialize its header
-            Pds::EbDgram* trDg = m_pool->allocateTr();
+            Pds::EbDgram* trDg = m_pool->transitionDgrams[index];
             *trDg = dgram;              // Initialized Xtc, possibly w/ damage
-            m_pool->transitionDgrams[index] = trDg;
         }
 
         _sendToTeb(dgram, index);
