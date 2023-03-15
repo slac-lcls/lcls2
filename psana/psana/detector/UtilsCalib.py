@@ -37,7 +37,7 @@ def selected_record(i, events):
        or i>events-5
 
 
-def info_pixel_status(status, bits=0xffff):
+def info_pixel_status(status, bits=(1<<64)-1):
     arr1 = np.ones_like(status, dtype=np.int32)
     statist_bits = np.select((status & bits,), (arr1,), 0)
     statist_tot = np.select((status>0,), (arr1,), 0)
