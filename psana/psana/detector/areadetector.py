@@ -30,12 +30,14 @@ Usage::
   a = o._mask_default(dtype=DTYPE_MASK)
   a = o._mask_calib()
   a = o._mask_calib_or_default(dtype=DTYPE_MASK)
-  a = o._mask_from_status(status_bits=0xffff, dtype=DTYPE_MASK, **kwa) # gain_range_inds=(0,1,2,3,4) - gain ranges to merge for apropriate detectors
+  a = o._mask_from_status(status_bits=(1<<64)-1,\
+                          stextra_bits=(1<<64)-1,\
+                          stci_bits=(1<<64)-1, dtype=DTYPE_MASK, **kwa) # gain_range_inds=(0,1,2,3,4)
   a = o._mask_neighbors(mask, rad=9, ptrn='r')
   a = o._mask_edges(width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa)
   a = o._mask_center(wcenter=0, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa)
   a = o._mask_comb(**kwa) # the same as _mask but w/o caching
-  a = o._mask(status=True, status_bits=0xffff, gain_range_inds=(0,1,2,3,4),\
+  a = o._mask(status=True, status_bits=0xffff, stextra_bits=(1<<64)-1, stci_bits=(1<<64)-1, gain_range_inds=(0,1,2,3,4),\
               neighbors=False, rad=3, ptrn='r',\
               edges=True, width=0, edge_rows=10, edge_cols=5,\
               center=True, wcenter=0, center_rows=5, center_cols=3,\
@@ -192,11 +194,11 @@ class AreaDetector(DetectorImpl):
                o.mask_calib_or_default(dtype=dtype)
 
 
-    def _mask_from_status(self, status_bits=0xffff, gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
+    def _mask_from_status(self, status_bits=0xffff, stextra_bits=(1<<64)-1, stci_bits=(1<<64)-1, gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
         logger.debug('in AreaDetector._mask_from_status ==== should be re-implemented for multi-gain detectors')
         o = self._maskalgos()
         return None if o is None else\
-               o.mask_from_status(status_bits=status_bits, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
+               o.mask_from_status(status_bits=status_bits, stextra_bits=stextra_bits, stci_bits=stci_bits, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
 
 
     def _mask_neighbors(self, mask, rad=9, ptrn='r', **kwa):
@@ -222,10 +224,12 @@ class AreaDetector(DetectorImpl):
            Parameters
            ----------
            - status   : bool : True  - mask from pixel_status constants,
-                                       kwa: status_bits=0xffff - status bits to use in mask.
+                                       kwa: status_bits=0xffff - status bits for calib-type pixel_status to use in mask,
+                                       kwa: stextra_bits=(1<<64)-1 - status bits for calib-type status_extra to use in mask.
+                                       kwa: stci_bits=(1<<64)-1 - status bits for calib-type status_ci to use in mask.
                                        Status bits show why pixel is considered as bad.
                                        Content of the bitword depends on detector and code version.
-                                       It is wise to exclude pixels with any bad status by setting status_bits=0xffff.
+                                       It is wise to exclude pixels with any bad status by setting status_bits=(1<<64)-1.
                                        kwa: gain_range_inds=(0,1,2,3,4) - list of gain range indexes to merge for epix10ka or jungfrau
            - neighbor : bool : False - mask of neighbors of all bad pixels,
                                        kwa: rad=5 - radial parameter of masked region
