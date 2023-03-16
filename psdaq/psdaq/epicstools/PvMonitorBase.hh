@@ -18,7 +18,7 @@ public:
                   const std::string& request   = "field()",
                   const std::string& fieldName = "value") :
       MonTracker(provider, pvName, request),
-      m_epochDiff(provider == "pva" ? 0 : POSIX_TIME_AT_EPICS_EPOCH),
+      m_pvaProvider(provider == "pva"),
       m_fieldName(fieldName)
     {
     }
@@ -26,10 +26,18 @@ public:
 public:
     int printStructure() const;
     int getParams(pvd::ScalarType& type, size_t& size, size_t& rank);
+    bool isPva() { return  m_pvaProvider; }
+    bool isCa()  { return !m_pvaProvider; }
     void getTimestamp(int64_t& seconds, int32_t& nanoseconds) {
-        seconds     = _strct->getSubField<pvd::PVScalar>("timeStamp.secondsPastEpoch")->getAs<long>();
         nanoseconds = _strct->getSubField<pvd::PVScalar>("timeStamp.nanoseconds")->getAs<int>();
-        seconds    -= m_epochDiff;
+        seconds     = _strct->getSubField<pvd::PVScalar>("timeStamp.secondsPastEpoch")->getAs<long>();
+    }
+    void getTimestampPosix(int64_t& seconds, int32_t& nanoseconds) {
+        getTimestamp(seconds, nanoseconds);
+    }
+    void getTimestampEpics(int64_t& seconds, int32_t& nanoseconds) {
+        getTimestampPosix(seconds, nanoseconds);
+        seconds -= POSIX_TIME_AT_EPICS_EPOCH;
     }
 public:
     enum { MaxRank = XtcData::MaxRank };
@@ -72,8 +80,8 @@ private:
         return sz;
     }
 protected:
-    const unsigned long m_epochDiff;
-    const std::string   m_fieldName;
+    const bool        m_pvaProvider;
+    const std::string m_fieldName;
 };
 
 }
