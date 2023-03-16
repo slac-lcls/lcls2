@@ -27,10 +27,6 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
-#ifndef POSIX_TIME_AT_EPICS_EPOCH
-#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
-#endif
-
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
@@ -94,11 +90,8 @@ PvaMonitor::PvaMonitor(Parameters&        para,
     Pds_Epics::PvMonitorBase(pvName, provider, request, field),
     m_para                  (para),
     m_state                 (NotReady),
-    m_pvaDetector           (nullptr),
-    m_epochOffset           (0)
+    m_pvaDetector           (nullptr)
 {
-  if ((para.kwargs.find("unixEpoch") != para.kwargs.end()) && (para.kwargs["unixEpoch"] != "0"))
-        m_epochOffset = POSIX_TIME_AT_EPICS_EPOCH;
 }
 
 void PvaMonitor::clear()
@@ -159,8 +152,8 @@ void PvaMonitor::updated()
     if (m_state == Ready) {
         int64_t seconds;
         int32_t nanoseconds;
-        getTimestamp(seconds, nanoseconds);
-        XtcData::TimeStamp timestamp(seconds - m_epochOffset, nanoseconds);
+        getTimestampEpics(seconds, nanoseconds);
+        XtcData::TimeStamp timestamp(seconds, nanoseconds);
         //static XtcData::TimeStamp ts_prv(0, 0);
         //
         //if (timestamp > ts_prv) {
@@ -1102,7 +1095,6 @@ int main(int argc, char* argv[])
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
             if (kwargs.first == "firstdim")       continue;
-            if (kwargs.first == "unixEpoch")      continue;
             if (kwargs.first == "match_tmo_ms")   continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());

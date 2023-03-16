@@ -43,7 +43,6 @@ private:
     size_t                          m_rank;
     State                           m_state;
     PvaDetector*                    m_pvaDetector;
-    uint64_t                        m_epochOffset;
 };
 
 
