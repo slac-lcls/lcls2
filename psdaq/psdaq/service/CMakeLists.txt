@@ -14,6 +14,7 @@ add_library(service SHARED
     Histogram.cc
     Dl.cc
     Json2Xtc.cc
+    IpcUtils.cc
 )
 
 target_include_directories(service PUBLIC

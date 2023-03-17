@@ -20,6 +20,7 @@
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
 #include "RunInfoDef.hh"
+#include "psdaq/service/IpcUtils.hh"
 
 
 #define PY_RELEASE_GIL    PyEval_SaveThread()
@@ -32,6 +33,7 @@
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using std::string;
+using namespace Pds::Ipc;
 
 // _dehex - convert a hex std::string to an array of chars
 //
@@ -136,12 +138,11 @@ int startDrpPython (unsigned workerNum, unsigned keyBase, long shmemSize)
   }
 }
 
-
-void setupDrpPython(Parameters& para, DrpBase& drp, std::vector<pid_t>& drpPids){
+void PGPDetectorApp::setupDrpPython() {
     const unsigned KEY_BASE = 40000;
 
-    size_t shmemSize = drp.pool.pebble.bufferSize();
-    if (para.maxTrSize > shmemSize) shmemSize=para.maxTrSize;
+    size_t shmemSize = m_drp.pool.pebble.bufferSize();
+    if (m_para.maxTrSize > shmemSize) shmemSize=m_para.maxTrSize;
 
     // Round up to an integral number of pages
     long pageSize = sysconf(_SC_PAGESIZE);
@@ -149,18 +150,66 @@ void setupDrpPython(Parameters& para, DrpBase& drp, std::vector<pid_t>& drpPids)
 
     std::vector<std::future<int>> drpPythonFutures;
 
-    for (unsigned workerNum=0; workerNum<para.nworkers; workerNum++) {
-        unsigned keyBase  =  KEY_BASE + 1000 * workerNum + 100 * para.partition;
+    inpMqId = new int[m_para.nworkers]();
+    resMqId = new int[m_para.nworkers]();
+    inpShmId = new int[m_para.nworkers]();
+    resShmId = new int[m_para.nworkers]();
+
+    logging::info("DEBUG just allocated inMqId: %d m_resMqId: %d inpShmId: %d resShmId: %d", inpMqId[0], resMqId[0], inpShmId[0], resShmId[0]);
+    
+    for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
+
+        unsigned keyBase  =  KEY_BASE + 1000 * workerNum + 100 * m_para.partition;
+
+        // Creating message queues
+        int rc = setupDrpMsgQueue(keyBase+0, "Inputs", inpMqId[workerNum], workerNum);
+        if (rc) {
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, m_para.nworkers);
+            logging::critical("[Thread %u] error setting up Drp message queues", workerNum);
+            abort();
+        }
+        rc = setupDrpMsgQueue(keyBase+1, "Results", resMqId[workerNum], workerNum);
+        if (rc) {
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, m_para.nworkers);
+            logging::critical("[Thread %u] error setting up Drp message queues", workerNum);
+            abort();
+        }
+
+        // Creating shared memory
+        size_t shmemSize = m_drp.pool.pebble.bufferSize();
+        if (m_para.maxTrSize > shmemSize) shmemSize=m_para.maxTrSize;
+        
+        // Round up to an integral number of pages
+        long pageSize = sysconf(_SC_PAGESIZE);
+        shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
+
+        rc = setupDrpShMem(keyBase+2, shmemSize, "Inputs", inpShmId[workerNum], workerNum);
+        if (rc) {
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, m_para.nworkers);
+            logging::critical("[Thread %u] error setting up Drp shared memory buffers", workerNum);
+            abort();
+        }
+
+        rc = setupDrpShMem(keyBase+3, shmemSize, "Results", resShmId[workerNum], workerNum);
+        if (rc) {
+            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, m_para.nworkers);
+            logging::critical("[Thread %u] error setting up Drp shared memory buffers", workerNum);
+            abort();
+        }
+
+        logging::info("IPC set up for worker %d", workerNum);
+
         drpPythonFutures.push_back(std::async(std::launch::async, startDrpPython, workerNum, keyBase, shmemSize));
     }
 
     for (std::vector<std::future<int>>::iterator futIter =drpPythonFutures.begin();
-         futIter != drpPythonFutures.end(); futIter++) {
+        futIter != drpPythonFutures.end(); futIter++) {
         int pyPid = futIter->get();
-        drpPids.push_back(pyPid);
+        m_drpPids.push_back(pyPid);
     }     
-}
 
+    logging::info("Drp python processes started");
+}
 
 // Release GIL on exceptions, too
 class PyGilGuard
@@ -187,6 +236,7 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
 {
     Py_Initialize(); // for use by configuration
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
+
 }
 
 // This initialization is in its own method (to be called from a higher layer)
@@ -223,7 +273,7 @@ void PGPDetectorApp::initialize()
     auto kwargs_it = m_para.kwargs.find("drp");
     if (kwargs_it != m_para.kwargs.end() && kwargs_it->second == "python") {
         logging::info("Starting DrpPython");
-        setupDrpPython(m_para, m_drp, m_drpPids);
+        setupDrpPython();
     }
 
     logging::info("Ready for transitions");
@@ -383,8 +433,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det);
-
+            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, inpMqId, resMqId, inpShmId, resShmId);
             m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
                 m_drp.exposer()->RegisterCollectable(m_exporter);

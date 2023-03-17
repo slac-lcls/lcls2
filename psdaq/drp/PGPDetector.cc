@@ -2,8 +2,6 @@
 #include <atomic>
 #include <limits.h>
 #include <fcntl.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
 #include "DataDriver.h"
@@ -16,15 +14,17 @@
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
+#include "psdaq/service/IpcUtils.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
 
 using logging = psalg::SysLog;
-using ms_t = std::chrono::milliseconds;
+
 
 using namespace Drp;
+using namespace Pds::Ipc;
 
 bool checkPulseIds(const Detector* det, PGPEvent* event)
 {
@@ -51,12 +51,6 @@ bool checkPulseIds(const Detector* det, PGPEvent* event)
     return true;
 }
 
-struct Message_t
-{
-    long mtype;                       // message type
-    char mtext[512];                  // message text
-};
-
 clockid_t test_coarse_clock() {
     struct timespec t;
     if (clock_gettime(CLOCK_MONOTONIC_COARSE, &t) == 0) {
@@ -78,113 +72,6 @@ clockid_t test_coarse_clock() {
 //   return 0;
 // }
 
-void cleanupDrpPython(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
-                      unsigned threadNum)
-{
-    if (inpMqId) {
-        msgctl(inpMqId, IPC_RMID, NULL);
-        inpMqId  = 0;
-    }
-    if (resMqId)   {
-        msgctl(resMqId, IPC_RMID, NULL); 
-        resMqId  = 0;
-    }
-    if (inpData) {
-        shmdt(inpData);
-        inpData = nullptr;
-    }
-    if (inpShmId) {
-        shmctl(inpShmId, IPC_RMID, NULL);
-        inpShmId = 0;
-    }
-    if (resData) {
-        shmdt (resData);
-        resData  = nullptr;
-    }
-    if (resShmId) {
-        shmctl(resShmId, IPC_RMID, NULL); 
-        resShmId = 0;
-    }
-}
-
-int setupDrpShMem(key_t key, size_t size, const char* name, int& shmId, void*& data, unsigned threadNum)
-{
-
-    shmId = shmget(key, size, IPC_CREAT | 0666); // IPC_EXCL
-    if (shmId == -1)
-    {
-        logging::error("[Thread %u] Error in creating Drp %s shared memory for key %u: %m",
-                        threadNum, name, key);
-        return -1;
-    }
-
-    data = shmat(shmId, nullptr, 0);
-    if (data == (void *)-1)
-    {
-        logging::error("[Thread %u] Error attaching Drp %s shared memory for key %u: %m",
-                       threadNum, name, key);
-        return -1;
-    }
-    return 0;
-}
-
-int setupDrpMsgQueue(key_t key, const char* name, int& mqId, unsigned threadNum)
-{
-    mqId = msgget(key, IPC_CREAT | 0666);
-    if (mqId == -1)
-    {
-        logging::error("[Thread %u] Error in creating Drp %s message queue with key %u: %m",
-                       threadNum, name, key);
-        return -1;
-    }
-    return 0;
-}
-
-int send(int mqId, const Message_t& msg, size_t size, unsigned threadNum)
-{
-    int rc = msgsnd(mqId, (void *)&msg, size, 0);
-    if (rc == -1)
-    {
-        logging::error("[Thread %u] Error sending message '%c' to Drp python: %m",
-                       threadNum, msg.mtext[0]);
-        return -1;
-    }
-    return 0;
-}
-
-int recv(int mqId, Message_t& msg, unsigned msTmo, clockid_t clockType, unsigned threadNum)
-{
-
-    struct timespec t;
-    [[maybe_unused]] auto result = clock_gettime(clockType, &t);
-    assert(result == 0);
-    auto tp = std::chrono::seconds(t.tv_sec) + std::chrono::nanoseconds(t.tv_nsec);
-
-    while (true)
-    {
-        auto rc = msgrcv(mqId, &msg, sizeof(msg.mtext), 0, IPC_NOWAIT);
-        if (rc != -1)  break;
-
-        if (errno != ENOMSG)
-        {
-            logging::error("[Thread %u] Error receiving message from Drp python: %m", threadNum);
-            return -1;
-        }
-
-        result = clock_gettime(clockType, &t);
-        assert(result == 0);
-        auto now = std::chrono::seconds(t.tv_sec) + std::chrono::nanoseconds(t.tv_nsec);
-        
-        auto dt  = std::chrono::duration_cast<ms_t>(now - tp).count();
-        
-        if (dt > msTmo)
-        {
-            logging::error("[Thread %u] Message receiving timed out", threadNum);
-            return -1;
-        }
-    }
-    return 0;
-}
 
 void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
                     clockid_t clockType, XtcData::TransitionId::Value transitionId, unsigned threadNum)
@@ -203,14 +90,14 @@ void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*
     int rc = send(inpMqId, msg, 1, threadNum);
     if (rc) {
         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-        cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum); 
+        // cleanupIpcPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum); 
         abort();
     }
 
     rc = recv(resMqId, msg, 10000, clockType, threadNum);
     if (rc) {
         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-        cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
+        // cleanupIpcPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
         abort();
     }
 }
@@ -218,6 +105,7 @@ void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*
 
 void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 SPSCQueue<Batch>& inputQueue, SPSCQueue<Batch>& outputQueue,
+                int inpMqId, int resMqId, int inpShmId, int resShmId,
                 unsigned threadNum, std::atomic<int>& threadCount)
 {
     Batch batch;
@@ -229,10 +117,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     auto triggerPrimitive = drp.triggerPrimitive();
     auto& tebPrms = drp.tebPrms();
     bool pythonDrp = false;
-    int inpMqId = 0;
-    int resMqId = 0;
-    int inpShmId = 0;
-    int resShmId = 0;
     void* inpData = nullptr;
     void* resData = nullptr;
     Message_t msg;
@@ -264,43 +148,19 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
         unsigned keyBase  =  KEY_BASE + 1000 * threadNum + 100 * para.partition;
 
-        // Creating message queues
-        int rc = setupDrpMsgQueue(keyBase+0, "Inputs", inpMqId, threadNum);
+        int rc = attachDrpShMem(keyBase+2, "Inputs", inpShmId, inpData, threadNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-            logging::critical("[Thread %u] error setting up Drp message queues", threadNum);
-            abort();
-        }
-        rc = setupDrpMsgQueue(keyBase+1, "Results", resMqId, threadNum);
-        if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId,  inpData, resData, threadNum);
-            logging::critical("[Thread %u] error setting up Drp message queues", threadNum);
-            abort();
-        }
-
-        // Creating shared memory
-        size_t shmemSize = pool.pebble.bufferSize();
-        if (para.maxTrSize > shmemSize) shmemSize=para.maxTrSize;
-        
-        // Round up to an integral number of pages
-        long pageSize = sysconf(_SC_PAGESIZE);
-        shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
-
-        rc = setupDrpShMem(keyBase+2, shmemSize, "Inputs", inpShmId, inpData, threadNum);
-        if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
+            // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             logging::critical("[Thread %u] error setting up Drp shared memory buffers", threadNum);
             abort();
         }
 
-        rc = setupDrpShMem(keyBase+3, shmemSize, "Results", resShmId, resData, threadNum);
+        rc = attachDrpShMem(keyBase+3, "Results", resShmId, resData, threadNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
+            // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             logging::critical("[Thread %u] error setting up Drp shared memory buffers", threadNum);
             abort();
         }
-
-        logging::info("[Thread %u] IPC set up.", threadNum);
 
         Message_t scriptmsg; 
         scriptmsg.mtype = 1;
@@ -309,7 +169,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         rc = send(inpMqId, scriptmsg, pythonScript.length(), threadNum);
         if (rc) {
             logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
+            // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             abort();
         }
 
@@ -317,7 +177,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         rc = recv(resMqId, msg, 15000, clockType, threadNum);
         if (rc) {
             logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
+            // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             abort();
         }
         logging::info("[Thread %u] Starting events", threadNum);
@@ -445,11 +305,16 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     }   
 }
 
-PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
+PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det, int* inpMqId, int* resMqId, int* inpShmId, int* resShmId) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false)
 {
     threadCount.store(0);
     m_nodeId = det->nodeId;
+    int* m_inpMqId = inpMqId;
+    int* m_resMqId = resMqId;
+    int* m_inpShmId = inpShmId;
+    int* m_resShmId = resShmId;
+
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
         logging::error("Failed to allocate lane/vc");
     }
@@ -459,7 +324,6 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
         m_workerOutputQueues.emplace_back(SPSCQueue<Batch>(drp.pool.nbuffers()));
     }
 
-
     for (unsigned i = 0; i < para.nworkers; i++) {
         m_workerThreads.emplace_back(workerFunc,
                                      std::ref(para),
@@ -467,6 +331,10 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
                                      det,
                                      std::ref(m_workerInputQueues[i]),
                                      std::ref(m_workerOutputQueues[i]),
+                                     m_inpMqId[i],
+                                     m_resMqId[i],
+                                     m_inpShmId[i],
+                                     m_resShmId[i],
                                      i,
                                      std::ref(threadCount));
     }
