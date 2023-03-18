@@ -24,7 +24,8 @@ EbLfServer::EbLfServer(const unsigned& verbose) :
   _verbose(verbose),
   _pending(0),
   _posting(0),
-  _pep    (nullptr)
+  _pep    (nullptr),
+  _mr     (nullptr)
 {
 }
 
@@ -37,6 +38,7 @@ EbLfServer::EbLfServer(const unsigned&                           verbose,
   _pending(0),
   _posting(0),
   _pep    (nullptr),
+  _mr     (nullptr),
   _info   (kwargs)
 {
 }
@@ -167,7 +169,7 @@ int EbLfServer::connect(EbLfSvrLink** link, unsigned nLinks, int msTmo)
 int EbLfServer::setupMr(void* region, size_t size)
 {
   if (_pep)
-    return Pds::Eb::setupMr(_pep->fabric(), region, size, nullptr, _verbose);
+    return Pds::Eb::setupMr(_pep->fabric(), region, size, &_mr, _verbose);
   else
     return -1;
 }

@@ -137,30 +137,6 @@ int TebContributor::connect(size_t inpSizeGuess)
   int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
   if (rc)  return rc;
 
-  // Set up a guess at the RDMA region
-  // If it's too small, it will be corrected during Configure
-  if (!_batMan.batchRegion())           // No need to guess again
-  {
-    auto numBatches = _pending.size() / _prms.maxEntries;
-    if (numBatches * _prms.maxEntries != _pending.size())
-    {
-      logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
-                        _prms.maxEntries, _pending.size());
-      abort();
-    }
-    _batMan.initialize(inpSizeGuess, _prms.maxEntries, numBatches);
-  }
-
-  void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
-  size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
-
-  for (auto link : _links)
-  {
-    printf("ID %2u: ", link->id());
-    rc = link->setupMr(region, regSize);
-    if (rc)  return rc;
-  }
-
   return 0;
 }
 
@@ -174,6 +150,12 @@ int TebContributor::configure()
 
   // maxInputSize becomes known during Configure, so reinitialize BatchManager now
   auto numBatches = _pending.size() / _prms.maxEntries;
+  if (numBatches * _prms.maxEntries != _pending.size())
+  {
+    logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
+                      _prms.maxEntries, _pending.size());
+    abort();
+  }
   _batMan.initialize(_prms.maxInputSize, _prms.maxEntries, numBatches);
 
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region

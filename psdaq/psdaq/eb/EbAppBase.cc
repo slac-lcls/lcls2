@@ -172,38 +172,40 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   rc = linksConnect(_transport, _links, _id, "DRP");
   if (rc)  return rc;
 
-  // Assume an existing region is already appropriately sized, else make a guess
-  // at a suitable RDMA region to avoid spending time in Configure.
-  // If it's too small, it will be corrected during Configure
-  if (inpSizeGuess)                     // Disable by providing 0
-  {
-    for (auto link : _links)
-    {
-      unsigned rmtId  = link->id();
-      if (!_region[rmtId])                  // No need to guess again
-      {
-        // Make a guess at the size of the Input region
-        size_t regSizeGuess = (inpSizeGuess * prms.numBuffers[rmtId] +
-                               _maxTrBuffers * prms.maxTrSize[rmtId]);
-
-        _region[rmtId] = allocRegion(regSizeGuess);
-        if (!_region[rmtId])
-        {
-          logging::error("%s:\n  "
-                         "No memory found for Input MR for %s ID %u of size %zd",
-                         __PRETTY_FUNCTION__, "DRP", rmtId, regSizeGuess);
-          return ENOMEM;
-        }
-
-        // Save the allocated size, which may be more than the required size
-        _regSize[rmtId] = regSizeGuess;
-      }
-
-      printf("ID %2u: ", rmtId);
-      rc = _transport.setupMr(_region[rmtId], _regSize[rmtId]);
-      if (rc)  return rc;
-    }
-  }
+  // @todo: Some of this may be useful for when MebContributor is changed
+  //        to memcpy from the pebble to an intermediate buffer, which
+  //        should be set up during Connect
+  //// Assume an existing region is already appropriately sized, else make a guess
+  //// at a suitable RDMA region to avoid spending time in Configure.
+  //// If it's too small, it will be corrected during Configure
+  //if (inpSizeGuess)                     // Disable by providing 0
+  //{
+  //  for (auto link : _links)
+  //  {
+  //    unsigned rmtId  = link->id();
+  //    if (!_region[rmtId])                  // No need to guess again
+  //    {
+  //      // Make a guess at the size of the Input region
+  //      size_t regSizeGuess = (inpSizeGuess * prms.numBuffers[rmtId] +
+  //                             _maxTrBuffers * prms.maxTrSize[rmtId]);
+  //
+  //      _region[rmtId] = allocRegion(regSizeGuess);
+  //      if (!_region[rmtId])
+  //      {
+  //        logging::error("%s:\n  "
+  //                       "No memory found for Input MR for %s ID %u of size %zd",
+  //                       __PRETTY_FUNCTION__, "DRP", rmtId, regSizeGuess);
+  //        return ENOMEM;
+  //      }
+  //
+  //      // Save the allocated size, which may be more than the required size
+  //      _regSize[rmtId] = regSizeGuess;
+  //    }
+  //
+  //    rc = _transport.setupMr(_region[rmtId], _regSize[rmtId]);
+  //    if (rc)  return rc;
+  //  }
+  //}
 
   return 0;
 }
@@ -257,7 +259,6 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
       _regSize[rmtId] = regSize;
     }
 
-    printf("ID %2u: ", rmtId);
     if ( (rc = link->setupMr(_region[rmtId], regSize, peer)) )
     {
       logging::error("%s:\n  Failed to set up Input MR for %s ID %d, "
