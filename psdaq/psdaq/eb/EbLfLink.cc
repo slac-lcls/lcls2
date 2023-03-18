@@ -23,13 +23,23 @@ static int checkMr(Fabric*         fabric,
                    MemoryRegion*   mr,
                    const unsigned& verbose)
 {
-  if ((region == mr->start()) && (size <= mr->length()))
+  // If the region (with any size) is already registered as mr...
+  if (mr == fabric->lookup_memory(region, sizeof(uint8_t)))
   {
-    printf("Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
-           mr->start(), (char*)(mr->start()) + mr->length(),
-           mr->length(), mr->length());
-    return 0;
+    // and if its size fits, mr can be reused
+    if ((region == mr->start()) && (size <= mr->length()))
+    {
+      if (verbose)
+      {
+        printf("Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
+               mr->start(), (char*)(mr->start()) + mr->length(),
+               mr->length(), mr->length());
+      }
+      return 0;
+    }
   }
+  // If region has been assigned to a different MR, or it doesn't fit,
+  // deregister mr so that it can be updated
   if (!fabric->deregister_memory(mr))
   {
     fprintf(stderr, "%s:\n  Failed to deregister MR %p (%p, %zu)\n",
@@ -51,24 +61,16 @@ int Pds::Eb::setupMr(Fabric*         fabric,
                      const unsigned& verbose)
 {
   // If *memReg describes a region, check that its size is appropriate
-  if (memReg && *memReg && !checkMr(fabric, region, size, *memReg, verbose))
+  if (*memReg && !checkMr(fabric, region, size, *memReg, verbose))
   {
-    return 0;
-  }
-
-  // If there's a MR for the region, check that its size is appropriate
-  MemoryRegion* mr = fabric->lookup_memory(region, size);
-  if (mr && !checkMr(fabric, region, size, mr, verbose))
-  {
-    if (memReg)  *memReg = mr;
     return 0;
   }
 
   auto t0(std::chrono::steady_clock::now());
-  mr = fabric->register_memory(region, size);
+  auto mr = fabric->register_memory(region, size);
   auto t1 = std::chrono::steady_clock::now();
   auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-  if (memReg)  *memReg = mr;            // Even on error, set *memReg
+  *memReg = mr;                         // Even on error, set *memReg
   if (!mr)
   {
     fprintf(stderr, "%s:\n  Failed to register MR @ %p, size %zu  (%lu ms): %s\n",
@@ -76,9 +78,12 @@ int Pds::Eb::setupMr(Fabric*         fabric,
     return fabric->error_num();
   }
 
-  printf("Registered     MR: %10p : %10p, size 0x%08zx = %zu  (%lu ms)\n",
-         mr->start(), (char*)(mr->start()) + mr->length(),
-         mr->length(), mr->length(), dT);
+  if (verbose)
+  {
+    printf("Registered     MR: %10p : %10p, size 0x%08zx = %zu  (%lu ms)\n",
+           mr->start(), (char*)(mr->start()) + mr->length(),
+           mr->length(), mr->length(), dT);
+  }
 
   return 0;
 }
@@ -356,7 +361,7 @@ EbLfCltLink::EbLfCltLink(Endpoint*          ep,
 int EbLfCltLink::setupMr(void* region, size_t size)
 {
   if (_ep)
-    return Pds::Eb::setupMr(_ep->fabric(), region, size, nullptr, _verbose);
+    return Pds::Eb::setupMr(_ep->fabric(), region, size, &_mr, _verbose);
 
   return -1;
 }

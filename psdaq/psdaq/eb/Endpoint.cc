@@ -792,6 +792,19 @@ bool Fabric::deregister_memory(MemoryRegion* mr)
   return false;
 }
 
+void Fabric::list_memory() const
+{
+  printf("List of MRs for fabric %p\n", this);
+  for (unsigned i=0; i<_mem_regions.size(); i++) {
+    printf("%2u: mr %p", i, _mem_regions[i]);
+    if (_mem_regions[i]) {
+      printf("  start %12p  length %08zx = %zu",
+             _mem_regions[i]->start(), _mem_regions[i]->length(), _mem_regions[i]->length());
+    }
+    printf("\n");
+  }
+}
+
 MemoryRegion* Fabric::lookup_memory(const void* start, size_t len) const
 {
   for (unsigned i=0; i<_mem_regions.size(); i++) {

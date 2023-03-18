@@ -324,36 +324,13 @@ int Teb::connect()
   if (rc)  return rc;
 
   // Make a guess at the size of the Input entries
-  size_t inpSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);
+  size_t inpSizeGuess = 0; //sizeof(EbDgram) + 2  * sizeof(uint32_t);
 
   rc = EbAppBase::connect(_prms, inpSizeGuess);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
   if (rc)  return rc;
-
-  // Make a guess at the size of the Result entries
-  auto maxResultSizeGuess = sizeof(ResultDgram);
-  auto maxEntries         = _prms.maxEntries;
-  auto numBatches         = _prms.maxBuffers / maxEntries;
-  if (numBatches * maxEntries != _prms.maxBuffers)
-  {
-    logging::critical("%s:\n  maxEntries (%u) must divide evenly into maxBuffers (%u)",
-                      maxEntries, _prms.maxBuffers);
-    abort();
-  }
-  _batMan.initialize(maxResultSizeGuess, maxEntries, numBatches); // TEB always batches
-
-  // This is the local Results batch region from which we'll post batches back to the DRPs
-  void*  region  = _batMan.batchRegion();
-  size_t regSize = _batMan.batchRegionSize();
-
-  for (auto link : _l3Links)
-  {
-    printf("ID %2u: ", link->id());
-    rc = link->setupMr(region, regSize);
-    if (rc)  return rc;
-  }
 
   return 0;
 }
@@ -375,13 +352,19 @@ int Teb::configure(Trigger* trigger,
   int rc = EbAppBase::configure(_prms);
   if (rc)  return rc;
 
-  // maxResultSize becomes known during Configure, so reinitialize BatchManager now
+  // maxResultSize becomes known during Configure
   auto maxResultSize = _trigger->size();
   auto maxEntries    = _prms.maxEntries;
   auto numBatches    = _prms.maxBuffers / maxEntries;
+  if (numBatches * maxEntries != _prms.maxBuffers)
+  {
+    logging::critical("%s:\n  maxEntries (%u) must divide evenly into maxBuffers (%u)",
+                      maxEntries, _prms.maxBuffers);
+    abort();
+  }
   _batMan.initialize(maxResultSize, maxEntries, numBatches); // TEB always batches
 
-  // This is the local Results batch region
+  // This is the local Results batch region from which we'll post batches back to the DRPs
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
 

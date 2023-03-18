@@ -86,9 +86,12 @@ int MebContributor::connect(const MebCtrbParams& prms,
   int rc = linksConnect(_transport, _links, prms.addrs, prms.ports, _id, "MEB");
   if (rc)  return rc;
 
+  // @todo: For when we will memcpy from the Pebble to these intermediate buffers:
+  //_regSize = roundUpSize(_maxEvSize > _maxTrSize ? _maxEvSize : _maxTrSize);
+  //_region  = allocRegion(regSize);
+
   for (auto link : _links)
   {
-    printf("ID %2u: ", link->id());
     rc = link->setupMr(region, regSize);
     if (rc)  return rc;
   }

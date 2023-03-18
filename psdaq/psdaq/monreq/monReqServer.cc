@@ -396,6 +396,9 @@ int Meb::connect()
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
   if (rc)  return rc;
 
+  // @todo: For when we will memcpy from the Pebble to intermediate buffers:
+  //rc = EbAppBase::connect(_prms, _prms.maxBufferSize);
+
   // Make a guess at the size of the Input entries
   // Since the guess will almost always be wrong,
   // disable region allocation during Connect

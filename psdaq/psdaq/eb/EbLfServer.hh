@@ -57,6 +57,7 @@ namespace Pds {
       volatile uint64_t         _posting; // Bit list of IDs currently posting
     private:
       Fabrics::PassiveEndpoint* _pep;     // EP for establishing connections
+      Fabrics::MemoryRegion*    _mr;      // Keep track of the MR
       LinkMap                   _linkByEp;// Map to retrieve link given raw EP
       Fabrics::Info             _info;    // Connection options
     };

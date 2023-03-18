@@ -164,35 +164,6 @@ int EbCtrbInBase::connect(size_t resSizeGuess, unsigned numTebBuffers)
   int rc = linksConnect(_transport, _links, _prms.id, "TEB");
   if (rc)  return rc;
 
-  // Assume an existing region is already appropriately sized, else make a guess
-  // at a suitable RDMA region to avoid spending time in Configure.
-  // If it turns out to be too small, it will be corrected during Configure.
-  // This region must be the same size on all DRPs in the system.  Its size is
-  // given by the DRP(s) with the largest DMA buffer pool so that the region
-  // can accomodate batches of Results that include entries that are not
-  // intended for the current DRP without overlapping other Results batches.
-  if (!_region)                         // No need to guess again
-  {
-    // Make a guess at the size of the Result region
-    size_t regSizeGuess = resSizeGuess * numTebBuffers;
-
-    _region = allocRegion(regSizeGuess);
-    if (!_region)
-    {
-      logging::error("%s:\n  "
-                     "No memory found for Result MR for %s of size %zd",
-                     __PRETTY_FUNCTION__, "TEB", regSizeGuess);
-      return ENOMEM;
-    }
-
-    // Save the allocated size, which may be more than the required size
-    _regSize       = regSizeGuess;
-    _maxResultSize = resSizeGuess;
-  }
-
-  rc = _transport.setupMr(_region, _regSize);
-  if (rc)  return rc;
-
   return 0;
 }
 
@@ -261,7 +232,6 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
       return -1;
     }
 
-    printf("ID %2u: ", rmtId);
     if ( (rc = link->setupMr(_region, regSize, peer)) )
     {
       logging::error("%s:\n  Failed to set up Result MR for %s ID %d, "
