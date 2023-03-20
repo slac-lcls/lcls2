@@ -910,7 +910,7 @@ def charge_injection(**kwa):
         )
         #  myslice = np.s_[0:int(nr/2), 0:int(nc/2)], ASIC0 for 1-st epixhr debugging OR regular np.s_[0:, 0:]
 
-        fname = '%s_pixel_status_ci.dat' % prefix_status
+        fname = '%s_status_ci.dat' % prefix_status
         save_2darray_in_textfile(status, fname, filemode, fmt_status, umask=0o0, group=group)
 
     if display:
@@ -973,34 +973,34 @@ def ci_pixel_status(
     sum_neg_hl_hi = stus_neg_hl_hi.sum()
 
     arr_sta = np.zeros(shape, dtype=np.uint64)[myslice]
-    arr_sta += stus_neg_ml_lo      #  AML number of pulser periods < %d
-    arr_sta += stus_neg_hl_lo*2    #  AHL number of pulser periods < %d
-    arr_sta += stus_neg_ml_hi*4    #
-    arr_sta += stus_neg_ml_hi*8    #
+    arr_sta += stus_neg_ml_lo*(1<<16)  #  AML number of pulser periods < %d
+    arr_sta += stus_neg_hl_lo*(1<<17)  #  AHL number of pulser periods < %d
+    arr_sta += stus_neg_ml_hi*(1<<18)
+    arr_sta += stus_neg_ml_hi*(1<<19)
 
     slsize = arr_sta.size # stus_neg_ml_lo.size
 
     f = '\n  %s\n  %s'
     s = info_ndarr(arr_sta, '\nSummary of the bad pixel status evaluation, pixel_status array', last=0)\
-      + '\n  %20s: %8d / %d (%6.3f%%) pixels AML number of CI pulser periods < %d' % (oct(1<<0), sum_neg_ml_lo, slsize, 100*sum_neg_ml_lo/slsize, neg_min)\
-      + '\n  %20s: %8d / %d (%6.3f%%) pixels AML number of CI pulser periods > %d' % (oct(1<<1), sum_neg_ml_hi, slsize, 100*sum_neg_ml_hi/slsize, neg_max)\
-      + '\n  %20s: %8d / %d (%6.3f%%) pixels AHL number of CI pulser periods < %d' % (oct(1<<2), sum_neg_hl_lo, slsize, 100*sum_neg_hl_lo/slsize, neg_min)\
-      + '\n  %20s: %8d / %d (%6.3f%%) pixels AHL number of CI pulser periods > %d' % (oct(1<<3), sum_neg_hl_hi, slsize, 100*sum_neg_hl_hi/slsize, neg_max)
+      + '\n  %20s: %8d / %d (%6.3f%%) pixels AML number of CI pulser periods < %d' % (oct(1<<16), sum_neg_ml_lo, slsize, 100*sum_neg_ml_lo/slsize, neg_min)\
+      + '\n  %20s: %8d / %d (%6.3f%%) pixels AML number of CI pulser periods > %d' % (oct(1<<17), sum_neg_ml_hi, slsize, 100*sum_neg_ml_hi/slsize, neg_max)\
+      + '\n  %20s: %8d / %d (%6.3f%%) pixels AHL number of CI pulser periods < %d' % (oct(1<<18), sum_neg_hl_lo, slsize, 100*sum_neg_hl_lo/slsize, neg_min)\
+      + '\n  %20s: %8d / %d (%6.3f%%) pixels AHL number of CI pulser periods > %d' % (oct(1<<19), sum_neg_hl_hi, slsize, 100*sum_neg_hl_hi/slsize, neg_max)
 
-    s += f % set_pixel_status_bits(arr_sta, offset_ml_m[myslice], title='offset_ml_m', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<4, bit_hi=1<<5, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, offset_ml_l[myslice], title='offset_ml_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<6, bit_hi=1<<7, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, offset_hl_h[myslice], title='offset_hl_h', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<8, bit_hi=1<<9, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, offset_hl_l[myslice], title='offset_hl_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<10, bit_hi=1<<11, prefix=prefix)
+    s += f % set_status_bits(arr_sta, offset_ml_m[myslice], title='offset_ml_m', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<20, bit_hi=1<<21, prefix=prefix)
+    s += f % set_status_bits(arr_sta, offset_ml_l[myslice], title='offset_ml_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<22, bit_hi=1<<23, prefix=prefix)
+    s += f % set_status_bits(arr_sta, offset_hl_h[myslice], title='offset_hl_h', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<24, bit_hi=1<<25, prefix=prefix)
+    s += f % set_status_bits(arr_sta, offset_hl_l[myslice], title='offset_hl_l', vmin=offset_min, vmax=offset_max, nsigm=nsigm, bit_lo=1<<26, bit_hi=1<<27, prefix=prefix)
 
-    s += f % set_pixel_status_bits(arr_sta, gain_ml_m[myslice], title='gain_ml_m', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<12, bit_hi=1<<13, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, gain_ml_l[myslice], title='gain_ml_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<14, bit_hi=1<<15, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, gain_hl_h[myslice], title='gain_hl_h', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<16, bit_hi=1<<17, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, gain_hl_l[myslice], title='gain_hl_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<18, bit_hi=1<<18, prefix=prefix)
+    s += f % set_status_bits(arr_sta, gain_ml_m[myslice], title='gain_ml_m', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<28, bit_hi=1<<29, prefix=prefix)
+    s += f % set_status_bits(arr_sta, gain_ml_l[myslice], title='gain_ml_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<30, bit_hi=1<<31, prefix=prefix)
+    s += f % set_status_bits(arr_sta, gain_hl_h[myslice], title='gain_hl_h', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<32, bit_hi=1<<33, prefix=prefix)
+    s += f % set_status_bits(arr_sta, gain_hl_l[myslice], title='gain_hl_l', vmin=gain_min, vmax=gain_max, nsigm=nsigm, bit_lo=1<<34, bit_hi=1<<35, prefix=prefix)
 
-    s += f % set_pixel_status_bits(arr_sta, chi2_ml_m[myslice], title='chi2_ml_m', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<20, bit_hi=1<<21, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, chi2_ml_l[myslice], title='chi2_ml_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<22, bit_hi=1<<23, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, chi2_hl_h[myslice], title='chi2_hl_h', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<24, bit_hi=1<<25, prefix=prefix)
-    s += f % set_pixel_status_bits(arr_sta, chi2_hl_l[myslice], title='chi2_hl_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<26, bit_hi=1<<27, prefix=prefix)
+    s += f % set_status_bits(arr_sta, chi2_ml_m[myslice], title='chi2_ml_m', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<38, bit_hi=1<<39, prefix=prefix)
+    s += f % set_status_bits(arr_sta, chi2_ml_l[myslice], title='chi2_ml_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<40, bit_hi=1<<41, prefix=prefix)
+    s += f % set_status_bits(arr_sta, chi2_hl_h[myslice], title='chi2_hl_h', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<42, bit_hi=1<<43, prefix=prefix)
+    s += f % set_status_bits(arr_sta, chi2_hl_l[myslice], title='chi2_hl_l', vmin=chi2_min, vmax=chi2_max, nsigm=nsigm, bit_lo=1<<44, bit_hi=1<<45, prefix=prefix)
 
     stus_bad_total = np.select((arr_sta>0,), (arr1[myslice],), 0)
     num_bad_pixels = stus_bad_total.sum()
@@ -1057,7 +1057,7 @@ def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, nsigm=8, prefix='
     return _arr1_lo, _arr1_hi, _s_lo, _s_hi
 
 
-def set_pixel_status_bits(status, arr, title='', vmin=None, vmax=None, nsigm=8, bit_lo=1<<0, bit_hi=1<<1, prefix=''):
+def set_status_bits(status, arr, title='', vmin=None, vmax=None, nsigm=8, bit_lo=1<<0, bit_hi=1<<1, prefix=''):
     arr1_lo, arr1_hi, s_lo, s_hi = evaluate_pixel_status(arr, title=title, vmin=vmin, vmax=vmax, nsigm=nsigm, prefix=prefix)
     status += arr1_lo * bit_lo
     status += arr1_hi * bit_hi
