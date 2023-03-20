@@ -72,7 +72,7 @@ PIXEL_DATAST  = 9
 CODE_GEOMETRY = 10
 LASINGOFFREFERENCE = 11
 USERS_MASK    = 12
-CI_STATUS     = 13
+STATUS_EXTRA  = 13
 
 ctype_tuple = (
     (PEDESTALS,      'pedestals',     np.float32),
@@ -87,7 +87,7 @@ ctype_tuple = (
     (PIXEL_DATAST,   'pixel_datast',  np.uint16 ),
     (CODE_GEOMETRY,  'code_geometry', str       ),
     (USERS_MASK,     'users_mask',    np.uint8  ),
-    (CI_STATUS,      'ci_status',     np.uint64 ),
+    (STATUS_EXTRA,   'status_extra',  np.uint64 ),
     (LASINGOFFREFERENCE, 'lasingoffreference', 'hdf5')
 )
 
