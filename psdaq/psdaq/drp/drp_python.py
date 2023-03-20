@@ -2,30 +2,43 @@ import sys
 import sysv_ipc
 import importlib
 
-worker_num = int(sys.argv[1])
-key_base =int( sys.argv[2])
-mem_size = int(sys.argv[3])
+key_base = int(sys.argv[1])
+pebble_bufsize = int(sys.argv[2])
+transition_bufsize = int(sys.argv[3])
+shm_mem_size = int(sys.argv[4])
+detector_name = sys.argv[5]
+detector_segment = sys.argv[6]
+worker_num = int(sys.argv[7])
 
-class IPC:
-
-    def __init__(self, key_base, mem_size):
+class IPCInfo:
+    def __init__(self, key_base, shm_mem_size):
         try:
             self.mq_inp = sysv_ipc.MessageQueue(key_base) # sysv_ipc.IPC_CREAT)
             self.mq_res = sysv_ipc.MessageQueue(key_base+1) # sysv_ipc.IPC_CREAT)
         except sysv_ipc.Error as exp:
             assert(False)
         try:
-            self.shm_inp = sysv_ipc.SharedMemory(key_base+2) #, size=mem_size, flags=sysv_ipc.IPC_CREAT)
-            self.shm_res = sysv_ipc.SharedMemory(key_base+3) # , size=mem_size, flags=sysv_ipc.IPC_CREAT)
+            self.shm_inp = sysv_ipc.SharedMemory(key_base+2, size=shm_mem_size) #, flags=sysv_ipc.IPC_CREAT)
+            self.shm_res = sysv_ipc.SharedMemory(key_base+3, size=shm_mem_size) #, flags=sysv_ipc.IPC_CREAT)
         except sysv_ipc.Error as exp:
             assert(False)
 
 
-ipc = IPC(key_base, mem_size)
+class DrpInfo:
+    def __init__(self, detector_name, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info):
+        self.det_name = detector_name
+        self.det_segment = detector_segment
+        self.worker_num = worker_num
+        self.pebble_bufsize = pebble_bufsize
+        self.transition_bufsize = transition_bufsize
+        self.ipc_info = ipc_info
+
+ipc_info = IPCInfo(key_base, shm_mem_size)
+drp_info = DrpInfo(detector_name, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info)
 
 while True:
     print(f"[Worker: {worker_num} - Python] Python process waiting for new script to run")
-    message, priority = ipc.mq_inp.receive()
+    message, priority = ipc_info.mq_inp.receive()
     if message == "stop":
         exit(0)
     with open(message, "r") as fh:

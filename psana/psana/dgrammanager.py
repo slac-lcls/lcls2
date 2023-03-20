@@ -91,6 +91,12 @@ class DgramManager(object):
                     # only one config.
                     self.set_configs([d])
                 elif xtc_files[0] == 'drp':
+                    self.det_name = self.tag.det_name
+                    self.det_segment = self.tag.det_segment
+                    self.worker_num = self.tag.worker_num
+                    self.pebble_bufsize = self.tag.pebble_bufsize
+                    self.transition_bufsize = self.tag.transition_bufsize
+                    self.ipc = self.tag.ipc_info
                     view = self._connect_drp()
                     d = dgram.Dgram(view=view)
                     if d.service() == TransitionId.Configure:
@@ -150,10 +156,10 @@ class DgramManager(object):
 
     def _connect_drp(self):
         # TODO: Add docstring
-        self.shm_inp_mv = memoryview(self.tag.shm_inp)
-        self.shm_res_mv = memoryview(self.tag.shm_res)
-        self.mq_inp = self.tag.mq_inp
-        self.mq_res = self.tag.mq_res
+        self.shm_inp_mv = memoryview(self.ipc.shm_inp)
+        self.shm_res_mv = memoryview(self.ipc.shm_res)
+        self.mq_inp = self.ipc.mq_inp
+        self.mq_res = self.ipc.mq_res
         self.mq_res.send(b"g")
         message, priority = self.mq_inp.receive()
         barray = bytes(self.shm_inp_mv[:])

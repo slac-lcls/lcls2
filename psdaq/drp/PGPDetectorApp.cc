@@ -113,7 +113,8 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
-int startDrpPython (unsigned workerNum, unsigned keyBase, long shmemSize)
+int startDrpPython(unsigned workerNum, unsigned keyBase, long shmemSize, size_t pebbleBufferSize,
+                   size_t transitionBufferSize, std::string detectorName, unsigned int detectorSegment)
 {
   // Fork
   pid_t pyPid = fork();
@@ -126,9 +127,13 @@ int startDrpPython (unsigned workerNum, unsigned keyBase, long shmemSize)
            "-u",
            "-m",
            "psdaq.drp.drp_python",
-           std::to_string(workerNum).c_str(),
            std::to_string(keyBase).c_str(),
+           std::to_string(pebbleBufferSize).c_str(),
+           std::to_string(transitionBufferSize).c_str(),
            std::to_string(shmemSize).c_str(),
+           detectorName.c_str(),
+           std::to_string(detectorSegment).c_str(),
+           std::to_string(workerNum).c_str(),
            nullptr);
     // Execlp returns only on error                    
     logging::error("Error on 'execlp python' for worker %d ': %m", workerNum);
@@ -199,7 +204,12 @@ void PGPDetectorApp::setupDrpPython() {
 
         logging::info("IPC set up for worker %d", workerNum);
 
-        drpPythonFutures.push_back(std::async(std::launch::async, startDrpPython, workerNum, keyBase, shmemSize));
+        drpPythonFutures.push_back(std::async(std::launch::async,
+                                   startDrpPython, workerNum, keyBase, shmemSize,
+                                   m_drp.pool.pebble.bufferSize(),
+                                   m_para.maxTrSize,
+                                   m_para.detName,
+                                   m_para.detSegment));
     }
 
     for (std::vector<std::future<int>>::iterator futIter =drpPythonFutures.begin();
