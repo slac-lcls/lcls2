@@ -13,7 +13,8 @@ Usage::
   v = o.cached_array(p, ctype='pedestals')
   v = o.pedestals()
   v = o.rms()
-  v = o.status()
+  v = o.status(ctype='pixel_status') # for ctype pixel_status or specified
+  v = o.status_extra()               # for ctype status_extra
   v = o.mask_calib()
   v = o.common_mode()
   v = o.gain()
@@ -71,6 +72,7 @@ class CalibConstants:
         self._gain_factor = None # keV/ADU
         self._rms = None
         self._status = None
+        self._status_extra = None
         self._common_mode = None
         self._mask_calib = None
 
@@ -103,8 +105,11 @@ class CalibConstants:
 
 
     def pedestals(self):   return self.cached_array(self._pedestals, 'pedestals')
+
     def rms(self):         return self.cached_array(self._rms, 'pixel_rms')
+
     def common_mode(self): return self.cached_array(self._common_mode, 'common_mode')
+
     def gain(self):        return self.cached_array(self._gain, 'pixel_gain')
 
 
@@ -113,8 +118,20 @@ class CalibConstants:
         return a if a is None else a.astype(DTYPE_MASK)
 
 
-    def status(self):
-        a = self.cached_array(self._status, 'pixel_status')
+    def status(self, ctype='pixel_status'):
+        """for ctype pixel_status"""
+        cach ={'pixel_status': self._status,
+               'status_extra': self._status_extra}.get(ctype, None)
+        if cach is None:
+            logger.warning('cached array is not reserved for ctype: %s' % ctype\
+                           +'  known ctypes: %s' % str(cach.keys())
+        a = self.cached_array(cach, ctype)
+        return a if a is None else a.astype(DTYPE_STATUS)
+
+
+    def status_extra(self):
+        """for ctype status_extra"""
+        a = self.cached_array(self._status_extra, 'status_extra')
         return a if a is None else a.astype(DTYPE_STATUS)
 
 
