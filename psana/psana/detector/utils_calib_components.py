@@ -38,7 +38,8 @@ class EventProcessor():
         peds     = cc.pedestals() # OR cc.calib_constants('pedestals')
         gain     = cc.gain()      # OR cc.calib_constants('pixel_gain') # ADU/keV
         gfactor  = cc.gain_factor() # keV/ADU
-        status   = cc.status() # 4-d array of pixel_status constants
+        status   = cc.status(ctype='pixel_status') # 4-d array of pixel_status/status_extra constants
+        status_ex= cc.status_extra() # 4-d array of status_extra constants
         comode   = cc.common_mode()  # tuple of common mode correction parameters
         trbit_p0 = cc.trbit_for_panel(0)  # list of per-ASIC trbit for panel 0
         ascfg_p0 = cc.asicPixelConfig_for_panel(0) # matrix of asicPixelConfig for panel 0
@@ -145,7 +146,7 @@ class calib_components_epix():
 
     def calib_types(self):
         """returns list of available calib types, e.g.
-        ['pixel_rms', 'geometry', 'pedestals', 'pixel_status', 'pixel_gain']"""
+        ['pixel_rms', 'geometry', 'pedestals', 'pixel_status', 'status_extra', 'pixel_gain']"""
         if isinstance(self.calibconst, dict): return self.calibconst.keys()
         else:
             logger.debug('calibconst IS NOT DICT: %s' % (str(self.calibconst)))
@@ -179,9 +180,13 @@ class calib_components_epix():
         """ADU/keV, array shape=(7, <number-of-panels>, 352, 384)"""
         return self.calib_constants('pixel_gain')
 
-    def status(self):
+    def status(self, ctype='pixel_status'):
         """array shape=(7, <number-of-panels>, 352, 384)"""
-        return self.calib_constants('pixel_status')
+        return self.calib_constants(ctype)
+
+    def status_extra(self):
+        """array shape=(7, <number-of-panels>, 352, 384)"""
+        return self.calib_constants('status_extra')
 
     def gain_factor(self):
         """keV/ADU, array shape=(7, <number-of-panels>, 352, 384)"""
