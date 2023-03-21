@@ -155,7 +155,7 @@ int EbCtrbInBase::startConnection(std::string& port)
   return 0;
 }
 
-int EbCtrbInBase::connect(size_t resSizeGuess, unsigned numTebBuffers)
+int EbCtrbInBase::connect()
 {
   unsigned numEbs = std::bitset<64>(_prms.builders).count();
 

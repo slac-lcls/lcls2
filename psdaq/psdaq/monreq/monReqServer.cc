@@ -317,7 +317,7 @@ static json createPulseIdMsg(uint64_t pulseId)
 Meb::Meb(const MebParams&        prms,
          ZmqContext&             context,
          const MetricExporter_t& exporter) :
-  EbAppBase    (prms, exporter, "MEB", MEB_TMO_MS),
+  EbAppBase    (prms, exporter, "MEB", EB_TMO_MS),
   _pidPrv      (0),
   _latency     (0),
   _eventCount  (0),
@@ -396,15 +396,7 @@ int Meb::connect()
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
   if (rc)  return rc;
 
-  // @todo: For when we will memcpy from the Pebble to intermediate buffers:
-  //rc = EbAppBase::connect(_prms, _prms.maxBufferSize);
-
-  // Make a guess at the size of the Input entries
-  // Since the guess will almost always be wrong,
-  // disable region allocation during Connect
-  size_t inpSizeGuess = 0;
-
-  rc = EbAppBase::connect(_prms, inpSizeGuess);
+  rc = EbAppBase::connect(_prms, MEB_TR_BUFFERS);
   if (rc)  return rc;
 
   return 0;
@@ -862,12 +854,12 @@ int MebApp::_parseConnectionParams(const json& body)
   _prms.maxBufferSize = maxBufferSize > maxTrSize ? maxBufferSize : maxTrSize;
 
   unsigned suRate(body["control"]["0"]["control_info"]["slow_update_rate"]);
-  if (1000 * MEB_TR_BUFFERS < suRate * MEB_TMO_MS)
+  if (1000 * MEB_TR_BUFFERS < suRate * EB_TMO_MS)
   {
-    // Adjust MEB_TMO_MS, MEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
+    // Adjust EB_TMO_MS, MEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
     logging::error("Increase # of MEB transition buffers from %u to > %u "
-                   "for %u Hz of SlowUpdates and %u ms MEB timeout\n",
-                   MEB_TR_BUFFERS, (suRate * MEB_TMO_MS + 999) / 1000, suRate, MEB_TMO_MS);
+                   "for %u Hz of SlowUpdates and %u ms EB timeout\n",
+                   MEB_TR_BUFFERS, (suRate * EB_TMO_MS + 999) / 1000, suRate, EB_TMO_MS);
     return 1;
   }
 

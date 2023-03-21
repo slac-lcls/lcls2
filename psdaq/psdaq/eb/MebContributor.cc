@@ -19,6 +19,7 @@
 using namespace XtcData;
 using namespace Pds::Eb;
 using logging  = psalg::SysLog;
+using ms_t     = std::chrono::milliseconds;
 
 
 MebContributor::MebContributor(const MebCtrbParams&            prms,
@@ -74,35 +75,24 @@ void MebContributor::unconfigure()
   _enabled = false;
 }
 
-int MebContributor::connect(const MebCtrbParams& prms,
-                            void*                region,
-                            size_t               regSize)
+int MebContributor::connect()
 {
-  _links      .resize(prms.addrs.size());
+  _links      .resize(_prms.addrs.size());
+  _region     .resize(_links.size());
+  _regSize    .resize(_links.size());
+  _bufRegSize .resize(_links.size());
   _trBuffers  .resize(_links.size());
-  _id         = prms.id;
-  _bufRegSize = _prms.maxEvents * _maxEvSize; // Needs MEB's connect_info
+  _id         = _prms.id;
 
-  int rc = linksConnect(_transport, _links, prms.addrs, prms.ports, _id, "MEB");
+  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "MEB");
   if (rc)  return rc;
-
-  // @todo: For when we will memcpy from the Pebble to these intermediate buffers:
-  //_regSize = roundUpSize(_maxEvSize > _maxTrSize ? _maxEvSize : _maxTrSize);
-  //_region  = allocRegion(regSize);
-
-  for (auto link : _links)
-  {
-    rc = link->setupMr(region, regSize);
-    if (rc)  return rc;
-  }
 
   return 0;
 }
 
-int MebContributor::configure(void*  region,
-                              size_t regSize)
+int MebContributor::configure()
 {
-  int rc = linksConfigure(_links, region, regSize, _maxEvSize, "MEB");
+  int rc = _linksConfigure(_prms, _links, "MEB");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -119,6 +109,58 @@ int MebContributor::configure(void*  region,
   }
 
   _enabled = true;
+
+  return 0;
+}
+
+int MebContributor::_linksConfigure(const MebCtrbParams&       prms,
+                                    std::vector<EbLfCltLink*>& links,
+                                    const char*                peer)
+{
+  // @todo: This could be done during Connect
+
+  // Set up one region per MEB
+  for (auto link : links)
+  {
+    auto     t0{std::chrono::steady_clock::now()};
+    unsigned rmtId = link->id();
+
+    size_t regSize = prms.maxEvents[rmtId] * _maxEvSize; // Needs MEB's connect_info
+    _bufRegSize[rmtId] = regSize;
+    regSize += MEB_TR_BUFFERS * _maxTrSize;
+
+    // Reallocate the region if the required size has changed
+    if (regSize != _regSize[rmtId])
+    {
+      if (_region[rmtId])  free(_region[rmtId]);
+
+      _region[rmtId] = allocRegion(regSize);
+      if (!_region[rmtId])
+      {
+        logging::error("%s:\n  "
+                       "No memory found for Input MR for %s ID %d of size %zd",
+                       __PRETTY_FUNCTION__, peer, rmtId, regSize);
+        return ENOMEM;
+      }
+
+      _regSize[rmtId] = regSize;
+    }
+
+    int rc = link->prepare(_region[rmtId], _regSize[rmtId], _maxEvSize, "MEB");
+    if (rc)
+    {
+      logging::error("%s:\n  Failed to prepare link with %s ID %d",
+                     __PRETTY_FUNCTION__, peer, link->id());
+      return rc;
+    }
+
+    auto t1 = std::chrono::steady_clock::now();
+    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    auto rb = _region[rmtId];
+    auto re = (char*)rb + _regSize[rmtId];
+    logging::info("Outbound link with %3s ID %2d, %10p : %10p (%08zx), configured in %4lu ms",
+                  peer, link->id(), rb, re, _regSize[rmtId], dT);
+  }
 
   return 0;
 }
@@ -181,7 +223,11 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     }
   }
 
-  int rc = link->post(ddg, sz, offset, data);
+  // Copy the datagram into the intermediate buffer
+  void* buffer = (char*)(_region[dst]) + offset;
+  memcpy(buffer, ddg, sz);
+
+  int rc = link->post(buffer, sz, offset, data);
   if (rc < 0)
   {
     uint64_t pid    = ddg->pulseId();
@@ -267,7 +313,7 @@ int MebContributor::post(const EbDgram* dgram)
       abort();
     }
 
-    uint64_t offset = _bufRegSize + idx * _maxTrSize;
+    uint64_t offset = _bufRegSize[src] + idx * _maxTrSize;
     uint32_t data   = ImmData::value(ImmData::Transition |
                                      ImmData::NoResponse, _id, idx);
 
@@ -275,7 +321,7 @@ int MebContributor::post(const EbDgram* dgram)
     {
       printf("MebCtrb rcvd transition buffer           [%2u] @ "
              "%16p, ofs %016lx = %08zx + %2u * %08zx,     src %2u\n",
-             idx, (void*)link->rmtAdx(0), offset, _bufRegSize, idx, _maxTrSize, src);
+             idx, (void*)link->rmtAdx(0), offset, _bufRegSize[src], idx, _maxTrSize, src);
 
       uint64_t pid    = dgram->pulseId();
       unsigned ctl    = dgram->control();
@@ -294,18 +340,22 @@ int MebContributor::post(const EbDgram* dgram)
           logging::info("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08zx + %u * %08zx)",
                         XtcData::TransitionId::name(svc),
                         dgram->time.seconds(), dgram->time.nanoseconds(),
-                        dgram->pulseId(), src, rmtAdx, _bufRegSize, idx, _maxTrSize);
+                        dgram->pulseId(), src, rmtAdx, _bufRegSize[src], idx, _maxTrSize);
         }
         else {
           logging::debug("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08zx + %u * %08zx)",
                          XtcData::TransitionId::name(svc),
                          dgram->time.seconds(), dgram->time.nanoseconds(),
-                         dgram->pulseId(), src, rmtAdx, _bufRegSize, idx, _maxTrSize);
+                         dgram->pulseId(), src, rmtAdx, _bufRegSize[src], idx, _maxTrSize);
         }
       }
     }
 
-    rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
+    // Copy the datagram into the intermediate buffer
+    void* buffer = (char*)(_region[src]) + offset;
+    memcpy(buffer, dgram, sz);
+
+    rc = link->post(buffer, sz, offset, data); // Not a batch; Continue on error
     if (rc)
     {
       logging::error("%s:\n  Failed to post buffer number to MEB ID %u: rc %d, data %08x",

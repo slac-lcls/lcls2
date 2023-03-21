@@ -127,7 +127,7 @@ void TebContributor::unconfigure()
   }
 }
 
-int TebContributor::connect(size_t inpSizeGuess)
+int TebContributor::connect()
 {
   _links    .resize(_prms.addrs.size());
   _trBuffers.resize(_links.size());

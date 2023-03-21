@@ -193,7 +193,7 @@ using namespace Pds::Eb;
 
 Teb::Teb(const EbParams&         prms,
          const MetricExporter_t& exporter) :
-  EbAppBase     (prms, exporter, "TEB", TEB_TMO_MS),
+  EbAppBase     (prms, exporter, "TEB", EB_TMO_MS),
   _mrqTransport (prms.verbose, prms.kwargs),
   _batch        {nullptr, 0, 0},
   //_trimmed      (0),
@@ -311,7 +311,7 @@ int Teb::connect()
   _mrqLinks.resize(_prms.numMrqs);
 
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
-    _monBufLists.emplace_back(_prms.numMebEvBufs);
+    _monBufLists.emplace_back(_prms.numMebEvBufs[i]);
 
   std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
                                             {"partition", std::to_string(_prms.partition)},
@@ -323,10 +323,7 @@ int Teb::connect()
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
-  // Make a guess at the size of the Input entries
-  size_t inpSizeGuess = 0; //sizeof(EbDgram) + 2  * sizeof(uint32_t);
-
-  rc = EbAppBase::connect(_prms, inpSizeGuess);
+  rc = EbAppBase::connect(_prms, TEB_TR_BUFFERS);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
@@ -390,7 +387,7 @@ int Teb::configure(Trigger* trigger,
     {
       unsigned rog = __builtin_ffs(rogs) - 1;
       rogs &= ~(1 << rog);
-      _rogReserved[iMeb] += _trigger->rogReserve(rog, iMeb, _prms.numMebEvBufs);
+      _rogReserved[iMeb] += _trigger->rogReserve(rog, iMeb, _prms.numMebEvBufs[iMeb]);
     }
   }
 
@@ -1184,12 +1181,12 @@ int TebApp::_parseConnectionParams(const json& body)
 
   // These buffers aren't used if there is only one TEB in the system, but...
   unsigned suRate(body["control"]["0"]["control_info"]["slow_update_rate"]);
-  if (1000 * TEB_TR_BUFFERS < suRate * TEB_TMO_MS)
+  if (1000 * TEB_TR_BUFFERS < suRate * EB_TMO_MS)
   {
-    // Adjust TEB_TMO_MS, TEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
+    // Adjust EB_TMO_MS, TEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
     logging::error("Increase # of TEB transition buffers from %u to > %u "
-                   "for %u Hz of SlowUpdates and %u ms TEB timeout",
-                   TEB_TR_BUFFERS, (suRate * TEB_TMO_MS + 999) / 1000, suRate, TEB_TMO_MS);
+                   "for %u Hz of SlowUpdates and %u ms EB timeout",
+                   TEB_TR_BUFFERS, (suRate * EB_TMO_MS + 999) / 1000, suRate, EB_TMO_MS);
     rc = 1;
   }
 
@@ -1198,31 +1195,19 @@ int TebApp::_parseConnectionParams(const json& body)
   std::fill(vec.begin(), vec.end(), sizeof(EbDgram)); // Same for all contributors
 
   _prms.numMrqs      = 0;
-  _prms.numMebEvBufs = 0;
+  _prms.numMebEvBufs.clear();
   if (body.find("meb") != body.end())
   {
-    // Revisit: For now, we follow the DRP pattern, but we shouldn't require
-    //          the number of MEB event buffers to be the same across MEBs
     for (auto it : body["meb"].items())
     {
       _prms.numMrqs++;    // Revisit: body.count("meb"); doesn't work?
-
+    }
+    _prms.numMebEvBufs.resize(_prms.numMrqs);
+    for (auto it : body["meb"].items())
+    {
       unsigned mebId = it.value()["meb_id"];
       unsigned count = it.value()["connect_info"]["max_ev_count"];
-      if (_prms.numMebEvBufs == 0)
-        _prms.numMebEvBufs = count;
-      else if (count != _prms.numMebEvBufs)
-      {
-        logging::error("numMebEvBufs (%u) must be the same for all MEBs, got %u from ID %u",
-                       _prms.numMebEvBufs, count, mebId);
-        rc = 1;
-      }
-    }
-    if (_prms.numMrqs > MAX_MRQS)
-    {
-      logging::error("More monitor requestors found (%u) than supportable %u",
-                     _prms.numMrqs, MAX_MRQS);
-      rc = 1;
+      _prms.numMebEvBufs[mebId] = count;
     }
   }
 
@@ -1260,7 +1245,9 @@ void TebApp::_printParams(const EbParams& prms, Trigger* trigger) const
   printf("  # of contrib. buffers:        0x%08x = %u\n",        prms.maxBuffers, prms.maxBuffers);
   printf("  Max result     EbDgram size:  0x%08zx = %zu\n",      trigger->size(), trigger->size());
   printf("  Max transition EbDgram size:  0x%08zx = %zu\n",      prms.maxTrSize[0], prms.maxTrSize[0]);
-  printf("  # of transition buffers:      0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
+  for (unsigned i = 0; i < _prms.numMebEvBufs.size(); ++i)
+    printf("  # of MEB %u event buffers:     0x%08x = %u\n",      i, _prms.numMebEvBufs[i], _prms.numMebEvBufs[i]);
+  printf("  # of transition  buffers:     0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
   printf("\n");
 }
 
