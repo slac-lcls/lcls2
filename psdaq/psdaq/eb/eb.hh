@@ -22,7 +22,7 @@ namespace Pds {
     // On picking the following constants:
     // - Determine the contribution arrival time skew that needs to be
     //   accomodated by the TEBs and MEBs.  This determines the event timeout
-    //   times TEB_TMO_MS and MEB_TMO_MS.
+    //   time EB_TMO_MS.
     // - The TEB event timeout time divided by the pulse ID resolution
     //   (1/TICK_RATE) gives the amount of TEB buffering needed in units of
     //   events.  MAX_LATENCY is this value rounded up to a power of 2.
@@ -43,16 +43,15 @@ namespace Pds {
     // Keep *EB_TMO* below control.py's transition and phase 2 timeout
     // Too low results in spurious timeouts and split events
     // - 7 s seems to be too short for UED, so we go back to the previous value:
-    const unsigned TEB_TMO_MS     = 12000;  // Must be < MAX_LATENCY/TICK_RATE
-    const unsigned MEB_TMO_MS     = 12000;  // <= TEB_TMO_MS
+    const unsigned EB_TMO_MS      = 12000;  // Must be < MAX_LATENCY/TICK_RATE
     const unsigned TEB_TR_BUFFERS = 128;    // # of TEB transition buffers
-                                            // > TEB_TMO * SlowUpdate rate
+                                            // > EB_TMO * SlowUpdate rate
     const unsigned MEB_TR_BUFFERS = 24;     // # of MEB transition buffers
-                                            // > MEB_TMO * SlowUpdate rate
+                                            // > EB_TMO * SlowUpdate rate
 
     const unsigned MAX_ENTRIES    = 64;                        // <= BATCH_DURATION
     const uint64_t BATCH_DURATION = MAX_ENTRIES;               // >= MAX_ENTRIES; power of 2; beam pulse ticks (1 uS)
-    //const unsigned MAX_LATENCY    = nextPwrOf2(TEB_TMO_MS * TICK_RATE / 1000);
+    //const unsigned MAX_LATENCY    = nextPwrOf2(EB_TMO_MS * TICK_RATE / 1000);
     const unsigned MAX_LATENCY    = 16 * 1024 * 1024;          // In beam pulse ticks (1 uS)
     const unsigned MAX_BATCHES    = MAX_LATENCY / MAX_ENTRIES; // Max # of batches in circulation
 
@@ -87,24 +86,25 @@ namespace Pds {
 
     struct MebCtrbParams           // Used by MEB contributors (DRPs)
     {
-      using vecstr_t = std::vector<std::string>;
-      using string_t = std::string;
-      using kwmap_t  = std::map<std::string,std::string>;
+      using string_t  = std::string;
+      using vecstr_t  = std::vector<std::string>;
+      using vecuint_t = std::vector<unsigned>;
+      using kwmap_t   = std::map<std::string,std::string>;
 
-      vecstr_t addrs;              // MEB addresses
-      vecstr_t ports;              // MEB ports
-      string_t instrument;         // Instrument name for monitoring
-      unsigned partition;          // The chosen system
-      string_t alias;              // Unique name passed on cmd line
-      string_t detName;            // The detector name
-      unsigned detSegment;         // The detector segment
-      unsigned id;                 // Contributor instance identifier
-      unsigned maxEvents;          // Max # of events to provide for
-      size_t   maxEvSize;          // Max event size
-      size_t   maxTrSize;          // Max non-event size
+      vecstr_t  addrs;             // MEB addresses
+      vecstr_t  ports;             // MEB ports
+      string_t  instrument;        // Instrument name for monitoring
+      unsigned  partition;         // The chosen system
+      string_t  alias;             // Unique name passed on cmd line
+      string_t  detName;           // The detector name
+      unsigned  detSegment;        // The detector segment
+      unsigned  id;                // Contributor instance identifier
+      vecuint_t maxEvents;         // Max # of events to provide for
+      size_t    maxEvSize;         // Max event size
+      size_t    maxTrSize;         // Max non-event size
       mutable
-      unsigned verbose;            // Level of detail to print
-      kwmap_t  kwargs;             // Keyword arguments
+      unsigned  verbose;           // Level of detail to print
+      kwmap_t   kwargs;            // Keyword arguments
     };
 
     struct EbParams                // Used with both TEBs and MEBs
@@ -135,7 +135,7 @@ namespace Pds {
       unsigned  maxBuffers;        // Limit of Results buffer index range
       vecuint_t numBuffers;        // Number of Inputs buffers for each DRP
       unsigned  numMrqs;           // Number of Mon request servers
-      unsigned  numMebEvBufs;      // Number of Mon event buffers
+      vecuint_t numMebEvBufs;      // Number of Mon event buffers for each MEB
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
       kwmap_t   kwargs;            // Keyword arguments
       int       core[2];           // Cores to pin threads to
@@ -146,7 +146,7 @@ namespace Pds {
     // Sanity checks
     static_assert((BATCH_DURATION & (BATCH_DURATION - 1)) == 0, "BATCH_DURATION must be a power of 2");
     static_assert((MAX_BATCHES & (MAX_BATCHES - 1)) == 0, "MAX_BATCHES must be a power of 2");
-    static_assert((TEB_TMO_MS <= 1000ull * MAX_LATENCY/TICK_RATE), "TEB_TMO_MS is too large");
+    static_assert((EB_TMO_MS <= 1000ull * MAX_LATENCY/TICK_RATE), "EB_TMO_MS is too large");
   };
 };
 

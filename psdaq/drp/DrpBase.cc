@@ -923,26 +923,18 @@ std::string DrpBase::connect(const json& msg, size_t id)
         return std::string{"Connection parameters error - see log"};
     }
 
-    // Make a guess at the size of the Input entries
-    size_t inpSizeGuess = sizeof(Pds::EbDgram) + 2 * sizeof(uint32_t);
-
-    rc = m_tebContributor->connect(inpSizeGuess);
+    rc = m_tebContributor->connect();
     if (rc) {
         return std::string{"TebContributor connect failed"};
     }
     if (m_mPrms.addrs.size() != 0) {
-        void* poolBase = (void*)pool.pebble[0];
-        size_t poolSize = pool.pebble.size();
-        rc = m_mebContributor->connect(m_mPrms, poolBase, poolSize);
+        rc = m_mebContributor->connect();
         if (rc) {
             return std::string{"MebContributor connect failed"};
         }
     }
 
-    // Make a guess at the size of the Result entries
-    size_t resSizeGuess = sizeof(Pds::Eb::ResultDgram);
-
-    rc = m_ebRecv->connect(resSizeGuess, m_numTebBuffers);
+    rc = m_ebRecv->connect();
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }
@@ -965,9 +957,7 @@ std::string DrpBase::configure(const json& msg)
     }
 
     if (m_mPrms.addrs.size() != 0) {
-        void* poolBase = (void*)pool.pebble[0];
-        size_t poolSize = pool.pebble.size();
-        rc = m_mebContributor->configure(poolBase, poolSize);
+        rc = m_mebContributor->configure();
         if (rc) {
             return std::string{"MebContributor configure failed"};
         }
@@ -1235,7 +1225,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
 
     m_mPrms.addrs.clear();
     m_mPrms.ports.clear();
-    m_mPrms.maxEvents = 0;
+    m_mPrms.maxEvents.clear();
     if (body.find("meb") != body.end()) {
         for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];
@@ -1244,13 +1234,12 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
             logging::debug("MEB: %u  %s:%s", mebId, address.c_str(), port.c_str());
             m_mPrms.addrs.push_back(address);
             m_mPrms.ports.push_back(port);
+        }
+        m_mPrms.maxEvents.resize(m_mPrms.addrs.size());
+        for (auto it : body["meb"].items()) {
+            unsigned mebId = it.value()["meb_id"];
             unsigned count = it.value()["connect_info"]["max_ev_count"];
-            if (!m_mPrms.maxEvents)  m_mPrms.maxEvents = count;
-            if (count != m_mPrms.maxEvents) {
-                logging::error("maxEvents (%u) must be the same for all MEBs, got %u from ID %u",
-                               m_mPrms.maxEvents, count, mebId);
-                rc = 1;
-            }
+            m_mPrms.maxEvents[mebId] = count;
         }
     }
 
@@ -1281,7 +1270,8 @@ void DrpBase::printParams() const
     printf("  Max  TEB contribution  size:  0x%08zx = %zu\n",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
     printf("  Max  MEB L1Accept      size:  0x%08zx = %zu\n",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);
     printf("  Max  MEB transition    size:  0x%08zx = %zu\n",      m_mPrms.maxTrSize, m_mPrms.maxTrSize);
-    printf("  # of MEB contrib.   buffers:  0x%08x = %u\n",        m_mPrms.maxEvents, m_mPrms.maxEvents);
+    for (unsigned i = 0; i < m_mPrms.maxEvents.size(); ++i)
+      printf("  # of MEB %u contrib. buffers:  0x%08x = %u\n",      i, m_mPrms.maxEvents[i], m_mPrms.maxEvents[i]);
     printf("  # of MEB transition buffers:  0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
     printf("\n");
 }

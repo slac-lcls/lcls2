@@ -45,7 +45,7 @@ namespace Pds {
       ~TebContributor();
     public:
       int         resetCounters();
-      int         connect(size_t inpSizeGuess);
+      int         connect();
       int         configure();
       void        unconfigure();
       void        disconnect();
