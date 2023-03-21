@@ -23,7 +23,7 @@ jobs:
   run-tests-linux:
     runs-on: ubuntu-latest
     container:
-      image: slaclcls/travis:centos7-py3.9
+      image: scr.svc.stanford.edu/slaclcls/lcls2_docker/lcls2:centos7-py3.9
       env:
         CONDA_ENV: myrel
         TRAVIS_OS_NAME: linux
