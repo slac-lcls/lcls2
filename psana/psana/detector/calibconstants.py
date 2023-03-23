@@ -124,7 +124,7 @@ class CalibConstants:
                'status_extra': self._status_extra}.get(ctype, None)
         if cach is None:
             logger.warning('cached array is not reserved for ctype: %s' % ctype\
-                           +'  known ctypes: %s' % str(cach.keys())
+                           +'  known ctypes: %s' % str(cach.keys()))
         a = self.cached_array(cach, ctype)
         return a if a is None else a.astype(DTYPE_STATUS)
 
