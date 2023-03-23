@@ -71,20 +71,17 @@ class MaskAlgos:
         np.array - mask made of pixel_status calibration constants, shapeed as full detector data
         """
         smask = None
-        for ctype, sbits in
-            (('pixel_status', status_bits),
-             ('status_extra', stextra_bits),
-            )
+        for ctype, sbits in (('pixel_status', status_bits),
+                             ('status_extra', stextra_bits),):
             #status = self.cco.status()
             status, meta = self.cco.cons_and_meta_for_ctype(ctype=ctype)
-            status = status.astype(DTYPE_STATUS)
-
-            logger.debug(info_ndarr(status, ctype))
             if is_none(status, 'array for ctype: %s is None' % ctype): continue # return None
+            status = status.astype(DTYPE_STATUS)
+            logger.debug(info_ndarr(status, ctype))
 
             _smask = um.status_as_mask(status, status_bits=sbits, dtype=DTYPE_MASK, **kwa)
             # smask shape can be e.g.: (!!!7, 4, 352, 384)
-            smask = _smask if smask is None else
+            smask = _smask if smask is None else\
                     um.merge_masks(smask, _smask, dtype=dtype)
 
         if is_none(smask, 'status_as_mask is None'): return None
