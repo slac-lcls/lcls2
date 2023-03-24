@@ -114,11 +114,6 @@ int main(int argc, char **argv)
       return -1;
     }
 
-    if (::bind(fd, (sockaddr*)&address[0], sizeof(sockaddr_in)) < 0) {
-      perror("bind");
-      return -1;
-    }
-    
     if ((uaddr[0]>>28) == 0xe) {
 
       if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&y, sizeof(y)) == -1) {
@@ -126,6 +121,11 @@ int main(int argc, char **argv)
 	return -1;
       }
 
+      if (::bind(fd, (sockaddr*)&address[0], sizeof(sockaddr_in)) < 0) {
+          perror("rbind");
+          return -1;
+      }
+      
       struct ip_mreq ipMreq;
       bzero ((char*)&ipMreq, sizeof(ipMreq));
       ipMreq.imr_multiaddr.s_addr = htonl(uaddr[0]);
@@ -138,6 +138,12 @@ int main(int argc, char **argv)
       }
       else
 	printf("Joined %x on if %x\n", uaddr[0], interface);
+    }
+    else {
+        if (::bind(fd, (sockaddr*)&address[0], sizeof(sockaddr_in)) < 0) {
+            perror("bind");
+            return -1;
+        }
     }
   }
   else {
