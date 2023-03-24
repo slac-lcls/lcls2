@@ -89,6 +89,7 @@ class SeqJump(pr.Device):
             hidden       = True,
         )
 
+    #  Syncs start to fixed rate marker 'sync'
     def setManSync(self,sync):
         r = self.reg[15].get()
         r = r & ~0xffff0000
