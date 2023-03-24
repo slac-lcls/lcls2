@@ -155,11 +155,6 @@ void PGPDetectorApp::setupDrpPython() {
 
     std::vector<std::future<int>> drpPythonFutures;
 
-    inpMqId = new int[m_para.nworkers]();
-    resMqId = new int[m_para.nworkers]();
-    inpShmId = new int[m_para.nworkers]();
-    resShmId = new int[m_para.nworkers]();
-
     logging::info("DEBUG just allocated inMqId: %d m_resMqId: %d inpShmId: %d resShmId: %d", inpMqId[0], resMqId[0], inpShmId[0], resShmId[0]);
     
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
@@ -247,6 +242,12 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     Py_Initialize(); // for use by configuration
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
+    // Initialize these to zeros. They will store the file descriptors if
+    // Dpr Python is used
+    inpMqId = new int[m_para.nworkers]();
+    resMqId = new int[m_para.nworkers]();
+    inpShmId = new int[m_para.nworkers]();
+    resShmId = new int[m_para.nworkers]();
 }
 
 // This initialization is in its own method (to be called from a higher layer)
@@ -269,6 +270,7 @@ void PGPDetectorApp::initialize()
     f.register_type<TimingSystem>("ts");
     f.register_type<Wave8>       ("wave8");
     f.register_type<Piranha4>    ("piranha4");
+
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
