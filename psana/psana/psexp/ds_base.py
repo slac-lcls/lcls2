@@ -97,6 +97,7 @@ class DataSourceBase(abc.ABC):
                     'dir',
                     'files',
                     'shmem',
+                    'drp',
                     'filter',
                     'batch_size',
                     'max_events',
@@ -119,7 +120,13 @@ class DataSourceBase(abc.ABC):
                     if k == 'timestamps':
                         msg = 'Numpy array or .npy filename is required for timestamps argument'
                         assert isinstance(kwargs[k], (np.ndarray, str)), msg
-                    setattr(self, k, kwargs[k])
+                        # For numpy array, format timestamps to uint64 (for correct search result)
+                        if isinstance(kwargs[k], (np.ndarray,)):
+                            setattr(self, k, np.asarray(kwargs[k], dtype=np.uint64))
+                        else:
+                            setattr(self, k, kwargs[k])
+                    else:
+                        setattr(self, k, kwargs[k])
 
             if self.destination != 0:
                 self.batch_size = 1 # reset batch_size to prevent L1 transmitted before BeginRun (FIXME?: Mona)
