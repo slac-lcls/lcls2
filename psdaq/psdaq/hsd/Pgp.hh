@@ -20,6 +20,8 @@ namespace Pds {
       virtual double   rxClkFreqMHz () const = 0;
       virtual unsigned txCount      () const = 0;
       virtual unsigned txErrCount   () const = 0;
+      virtual unsigned rxCount      () const = 0;
+      virtual unsigned rxErrCount   () const = 0;
       virtual unsigned rxOpCodeCount() const = 0;
       virtual uint64_t rxOpCodeLast () const = 0;
       virtual unsigned remPause     () const = 0;
