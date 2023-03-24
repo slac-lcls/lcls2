@@ -423,12 +423,16 @@ cdef class EventBuilder:
         # timestamp.
         cdef int i, ia, ib
         if filter_timestamps.shape[0]:
-            timestamps = [proxy_evt.timestamp for proxy_evt in proxy_events]
+            timestamps = np.asarray([proxy_evt.timestamp for proxy_evt in proxy_events], dtype=np.uint64)
             # Find best position to insert filter_timestamps into timestamps
             insert_indices = np.searchsorted(timestamps, filter_timestamps)
             # The insert positions should have the same timestamp value
-            found_indices = [ib for ia, ib in enumerate(insert_indices[insert_indices!=got]) \
-                if timestamps[ib] == filter_timestamps[ia]]
+            found_indices = []
+            for ia, ib in enumerate(insert_indices):
+                # Skip if not found (returned index is the size of the array)
+                if ib == got: continue
+                if timestamps[ib] - filter_timestamps[ia] == 0:
+                    found_indices.append(ib)
             _proxy_events = [proxy_events[i] for i in sorted(list(found_indices)+non_L1_indices)]
             proxy_events = _proxy_events
 
