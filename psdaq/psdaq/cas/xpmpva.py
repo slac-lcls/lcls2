@@ -24,6 +24,7 @@ Masks       = ['None','0','1','2','3','4','5','6','7','All']
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
+ATCAWidget  = None
 
 class PvPAddr(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name):
@@ -64,7 +65,8 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
     def __init__(self, pvname, label):
         super(PvPushButtonX, self).__init__(label)
-#        self.setMaximumWidth(70)
+        if ATCAWidget:
+            self.setMaximumWidth(70)
 
         self.clicked.connect(self.buttonClicked)
 
@@ -81,7 +83,8 @@ class PvEditIntX(PvEditInt):
 
     def __init__(self, pv, label):
         super(PvEditIntX, self).__init__(pv, label)
-#        self.setMaximumWidth(70)
+        if ATCAWidget:
+            self.setMaximumWidth(70)
 
 class PvCmb(PvEditCmb):
 
@@ -169,6 +172,7 @@ class PvLinkIdG:
 def FrontPanelAMC(pvbase,nDsLinks,start):
         dsbox = QtWidgets.QWidget()
         dslo = QtWidgets.QVBoxLayout()
+        width=70 if nDsLinks>4 else None
         PvInput(PvLinkIdV, dslo, pvbase, "RemoteLinkId", nDsLinks, start=start)
         LblPushButtonX(dslo, pvbase, "TxLinkReset",    nDsLinks, start=start)
         LblPushButtonX(dslo, pvbase, "RxLinkReset",    nDsLinks, start=start)
@@ -376,6 +380,7 @@ def addCuTab(self,pvbase):
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, titles):
+        global ATCAWidget
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
@@ -388,6 +393,16 @@ class Ui_MainWindow(object):
 
         for title in titles:
             pvbase = title + ':'
+            pv = Pv(pvbase+'FwBuild')
+            v = pv.get()
+            if 'Kcu' in v:
+                amcTitle = 'QSFP'
+                nDsLinks = (4,4) # if 'Gen' in v else (3,4)
+                ATCAWidget = False
+            else:
+                amcTitle = 'AMC'
+                nDsLinks = (7,7)
+                ATCAWidget = True
 
             tw  = QtWidgets.QTabWidget()
 
@@ -412,19 +427,10 @@ class Ui_MainWindow(object):
             tb.setLayout(hl)
             tw.addTab(tb,"Global")
 
-            pv = Pv(pvbase+'FwBuild')
-            v = pv.get()
             if 'xtpg' in v:
                 tw.addTab( addCuTab (self,pvbase), "CuTiming")
             else:
                 tw.addTab( addUsTab (self,pvbase), "UsTiming")
-
-            if 'Kcu' in v:
-                amcTitle = 'QSFP'
-                nDsLinks = (4,4) # if 'Gen' in v else (3,4)
-            else:
-                amcTitle = 'AMC'
-                nDsLinks = (7,7)
 
             tw.addTab(FrontPanelAMC(pvbase,nDsLinks[0],          0),f'{amcTitle}0')
             tw.addTab(FrontPanelAMC(pvbase,nDsLinks[1],nDsLinks[0]),f'{amcTitle}1')
