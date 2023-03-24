@@ -115,12 +115,14 @@ def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
     parser.add_argument('--engine', type=int, default=0, help="sequence engine")
     parser.add_argument("seq", help="sequence script")
-    parser.add_argument("pv" , help="sequence engine pv; e.g. NEH:DAQ:XPM:0")
+    parser.add_argument("pv" , help="sequence engine pv; e.g. DAQ:NEH:XPM:0")
     args = parser.parse_args()
 
     config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None}
 
-    exec(compile(open(args.seq).read(), args.seq, 'exec'), {}, config)
+    seq = 'from psdaq.seq.seq import *\n'
+    seq += open(args.seq).read()
+    exec(compile(seq, args.seq, 'exec'), {}, config)
 
     print(f'descset  {config["descset"]}')
     print(f'instrset {config["instrset"]}')
