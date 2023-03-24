@@ -842,7 +842,7 @@ class PvEditTS(PvEditCmb):
     def __init__(self, pvname, idx):
         super(PvEditTS, self).__init__(pvname, ['%u'%i for i in range(16)])
 
-def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True):
+def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True, width=None):
     pvname = pvbase+name
     print(pvname)
 
@@ -856,11 +856,15 @@ def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=Tru
     #layout.addStretch
     if count == 1:
         w = widget(pvname, '')
+        if width:
+            w.setMaximumWidth(width)
         w.setEnabled(enable)
         layout.addWidget(w)
     else:
         for i in range(count):
             w = widget(pvname+'%d'%(i+start), QString(i+istart))
+            if width:
+                w.setMaximumWidth(width)
             w.setEnabled(enable)
             layout.addWidget(w)
     #layout.addStretch
