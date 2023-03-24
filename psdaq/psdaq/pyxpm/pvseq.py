@@ -279,7 +279,7 @@ class PVSeq(object):
             print('Scheduling index {}',idx)
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
-            self._eng.setAddress(idx,0,1)
+            self._eng.setAddress(idx,0,0)  # syncs start to marker 0 (1Hz)
             self._eng.reset()
 
     def forceReset(self, pv, val):
@@ -288,7 +288,7 @@ class PVSeq(object):
             print('Starting index {}',idx)
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
-            self._eng.setAddress(idx,0,0)
+            self._eng.setAddress(idx,0,6)  # syncs start to marker 6 (MHz)
             self._eng.reset()
 
     def enable(self, pv, val):

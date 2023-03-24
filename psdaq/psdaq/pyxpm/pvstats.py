@@ -2,6 +2,7 @@ import sys
 import time
 import traceback
 import struct
+from datetime import datetime
 from p4p.nt import NTScalar
 from p4p.nt import NTTable
 from p4p.server.thread import SharedPV
@@ -147,7 +148,7 @@ class TimingStatus(object):
                 value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
                 pv.post(value)
                 if type(verbose) is type("") and nv != ov:
-                    print(f'*** {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
+                    print(f'*** {datetime.now()} {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
                 return nv
             else:
                 return ov
@@ -174,7 +175,7 @@ class TimingStatus(object):
             value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
             self._pv_rxLinkUp.post(value)
             if v != self._vLast:
-                print(f'*** {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
+                print(f'*** {datetime.now()} {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
                 self._vLast = v
 
 class AmcPLLStatus(object):
