@@ -154,7 +154,13 @@ class ControlRequest(Instruction):
     opcode = 5
     
     def __init__(self, word):
-        super(ControlRequest, self).__init__((self.opcode, word))
+        if isinstance(word,list):
+            v = 0
+            for w in word:
+                v |= (1<<w)
+        else:
+            v = word
+        super(ControlRequest, self).__init__((self.opcode, v))
  
     def _word(self):
         return int((4<<29) | self.args[1])
