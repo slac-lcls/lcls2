@@ -130,6 +130,8 @@ namespace Pds {
         usleep(10000);
         tpr.resetCounts();
       }
+      loopback   (fmc,PVGET(pgploopback)!=0);
+      disablefull(fmc,PVGET(pgpnofull)!=0);
       if (PVGET(jesdclear)) {
         printf("--jesdclear\n");
         for(unsigned j=0; j<8; j++) 
@@ -153,10 +155,23 @@ namespace Pds {
         _m.i2c_unlock();
       }
     }
-    void PV134Ctrls::loopback(bool v) {
+    void PV134Ctrls::loopback(unsigned fmc, bool v) {
       std::vector<Pgp*> pgp = _m.pgp();
-      for(unsigned i=0; i<pgp.size(); i++)
+      for(unsigned i=4*fmc; i<4*(fmc+1); i++)
         pgp[i]->loopback(v);
+
+      usleep(1000);
+
+      for(unsigned i=4*fmc; i<4*(fmc+1); i++)
+        pgp[i]->resetCounts();
+    }
+    void PV134Ctrls::disablefull(unsigned fmc, bool v) {
+      unsigned r = _m.optfmc().qsfp;
+      if (v)
+        r |= 0x100<<fmc;
+      else
+        r &= ~(0x100<<fmc);
+      _m.optfmc().qsfp = r;
     }
   };
 };

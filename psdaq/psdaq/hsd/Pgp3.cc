@@ -15,6 +15,8 @@ double   Pgp3::txClkFreqMHz () const { return _axi.txClkFreq*1.e-6; }
 double   Pgp3::rxClkFreqMHz () const { return _axi.rxClkFreq*1.e-6; }
 unsigned Pgp3::txCount      () const { return _axi.txFrameCnt; }
 unsigned Pgp3::txErrCount   () const { return _axi.txFrameErrCnt; }
+unsigned Pgp3::rxCount      () const { return _axi.rxFrameCnt; }
+unsigned Pgp3::rxErrCount   () const { return _axi.rxFrameErrCnt; }
 unsigned Pgp3::rxOpCodeCount() const { return (_axi.rxOpCodeCnt>>24); }
 uint64_t Pgp3::rxOpCodeLast () const 
 {

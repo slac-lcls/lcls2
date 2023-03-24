@@ -148,7 +148,10 @@ namespace Pds {
             v.txcntsum   [j] = pgp.txCount();
             v.txcnt      [j] = v.txcntsum[j] - _v_monPgp[i].txcntsum[j];
             v.txerrcntsum[j] = pgp.txErrCount();
-            v.rxcnt      [j] = pgp.rxOpCodeCount();
+            v.rxcntsum   [j] = pgp.rxCount();
+            v.rxcnt      [j] = v.rxcntsum[j] - _v_monPgp[i].rxcntsum[j];
+            v.rxerrcntsum[j] = pgp.rxErrCount();
+            //            v.rxcnt      [j] = pgp.rxOpCodeCount();
             v.rxlast     [j] = pgp.rxOpCodeLast() & 0xff;
             v.rempause   [j] = pgp.remPause();
             v.remlinkid  [j] = pgp.remoteLinkId();
