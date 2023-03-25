@@ -517,7 +517,7 @@ class DataSourceBase(abc.ABC):
 
     def _setup_run_calibconst(self):
         """
-        note: calibconst is set differently in RunParallel (see node.py: BigDataNode)
+        note: calibconst is set differently in MPIDataSource and DrpDataSource 
         """
         runinfo = self._get_runinfo()
         if not runinfo:

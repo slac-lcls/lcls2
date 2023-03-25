@@ -5,6 +5,13 @@ from psana.event import Event
 from psana.smalldata import SmallData
 from psana.dgramedit import DgramEdit, PyDgram
 from psana import dgram
+from psdaq.configdb.pub_server import pub_send
+from psdaq.configdb.sub_client import sub_recv
+
+import sys
+worker_num = int(sys.argv[7])
+is_publisher = True if worker_num == 0 else False
+
 class DrpDataSource(DataSourceBase):
 
     def __init__(self, *args, **kwargs):
@@ -49,15 +56,23 @@ class DrpDataSource(DataSourceBase):
                 self.beginruns = evt._dgrams
                 return True
         return False
+    
+    def _setup_run_calibconst(self):
+        if is_publisher:
+            super()._setup_run_calibconst()
+            pub_send(self.dsparms.calibconst)
+        else: 
+            self.dsparms.calibconst = sub_recv()
+        print(f"[Python - Thread {worker_num} done broadcast {self.dsparms.calibconst}]")
 
     def _start_run(self):
         found_next_run = False
         if self._setup_beginruns():   # try to get next run from the current file 
-            super()._setup_run_calibconst()
+            self._setup_run_calibconst()
             found_next_run = True
         elif self._setup_run():       # try to get next run from next files 
             if self._setup_beginruns():
-                super()._setup_run_calibconst()
+                self._setup_run_calibconst()
                 found_next_run = True
         return found_next_run
 

@@ -1,6 +1,8 @@
 import sys
 import sysv_ipc
 import importlib
+from psdaq.configdb.pub_server import pub_bind
+from psdaq.configdb.sub_client import sub_connect
 
 key_base = int(sys.argv[1])
 pebble_bufsize = int(sys.argv[2])
@@ -9,6 +11,7 @@ shm_mem_size = int(sys.argv[4])
 detector_name = sys.argv[5]
 detector_segment = sys.argv[6]
 worker_num = int(sys.argv[7])
+
 
 class IPCInfo:
     def __init__(self, key_base, shm_mem_size):
@@ -35,6 +38,15 @@ class DrpInfo:
 
 ipc_info = IPCInfo(key_base, shm_mem_size)
 drp_info = DrpInfo(detector_name, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info)
+
+# Setup socket for calibration constant broadcast
+is_publisher = True if worker_num == 0 else False
+socket_name = detector_name + "_" + detector_segment
+if is_publisher:
+    pub_socket = pub_bind(socket_name)
+else:
+    sub_socket = sub_connect(socket_name)
+print(f"[Python - Thread {worker_num}] {is_publisher=} setup socket]")
 
 while True:
     print(f"[Worker: {worker_num} - Python] Python process waiting for new script to run")
