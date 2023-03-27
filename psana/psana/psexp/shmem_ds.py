@@ -3,6 +3,8 @@ from psana.dgrammanager import DgramManager
 from psana.psexp import Events, TransitionId
 from psana.event import Event
 from psana.smalldata import SmallData
+from psdaq.configdb.pub_server import pub_bind, pub_send
+from psdaq.configdb.sub_client import sub_connect, sub_recv
 
 class ShmemDataSource(DataSourceBase):
 
@@ -11,7 +13,19 @@ class ShmemDataSource(DataSourceBase):
         self.tag = self.shmem
         self.runnum_list = [0] 
         self.runnum_list_index = 0
-
+        
+        # Setup socket for calibration constant broadcast if supervisor
+        # is set (1=I am supervisor, 0=I am not supervisor).
+        self.supervisor = -1
+        if 'supervisor' in kwargs:
+            self.supervisor = kwargs['supervisor']
+            port_number = 5557
+            socket_name = f"tcp://{kwargs['supervisor_ip_addr']}:{port_number}"
+            if self.supervisor == 1:
+                pub_socket = pub_bind(socket_name)
+            else:
+                sub_socket = sub_connect(socket_name)
+       
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         self._setup_run()
         super(). _start_prometheus_client()
@@ -35,14 +49,23 @@ class ShmemDataSource(DataSourceBase):
                 return True
         return False
 
+    def _setup_run_calibconst(self):
+        if self.supervisor:
+            super()._setup_run_calibconst()
+            if self.supervisor == 1:
+                pub_send(self.dsparms.calibconst)
+                
+        else: 
+            self.dsparms.calibconst = sub_recv()
+
     def _start_run(self):
         found_next_run = False
         if self._setup_beginruns():   # try to get next run from the current file
-            super()._setup_run_calibconst()
+            self._setup_run_calibconst()
             found_next_run = True
         elif self._setup_run():       # try to get next run from next files 
             if self._setup_beginruns():
-                super()._setup_run_calibconst()
+                self._setup_run_calibconst()
                 found_next_run = True
         return found_next_run
 
