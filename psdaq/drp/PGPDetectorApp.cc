@@ -113,34 +113,38 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
-int startDrpPython(unsigned workerNum, unsigned keyBase, long shmemSize, size_t pebbleBufferSize,
-                   size_t transitionBufferSize, std::string detectorName, unsigned int detectorSegment)
+int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shmemSize, const Parameters& para, DrpBase& drp)
 {
-  // Fork
-  pid_t pyPid = fork();
+    // Fork
+    pyPid = fork();
 
-  if (pyPid == pid_t(0))
-  {
-    // Executing external code 
-    execlp("python",
-           "python",
-           "-u",
-           "-m",
-           "psdaq.drp.drp_python",
-           std::to_string(keyBase).c_str(),
-           std::to_string(pebbleBufferSize).c_str(),
-           std::to_string(transitionBufferSize).c_str(),
-           std::to_string(shmemSize).c_str(),
-           detectorName.c_str(),
-           std::to_string(detectorSegment).c_str(),
-           std::to_string(workerNum).c_str(),
-           nullptr);
-    // Execlp returns only on error                    
-    logging::error("Error on 'execlp python' for worker %d ': %m", workerNum);
-    return -1;
-  } else {
-    return pyPid;
-  }
+    if (pyPid == pid_t(0))
+    {
+        time_t my_time = time(NULL);
+    
+        std::cout << "DEBUG: Thread " << workerNum << "%u]" << ctime(&my_time) << " - Thread num: %s" << std::this_thread::get_id() << std::endl;
+
+        // Executing external code 
+        execlp("python",
+               "python",
+               "-u",
+               "-m",
+               "psdaq.drp.drp_python",
+               std::to_string(keyBase).c_str(),
+               std::to_string(drp.pool.pebble.bufferSize()).c_str(),
+               std::to_string(para.maxTrSize).c_str(),
+               std::to_string(shmemSize).c_str(),
+               para.detName.c_str(),
+               std::to_string(para.detSegment).c_str(),
+               std::to_string(workerNum).c_str(),
+               nullptr);
+
+        // Execlp returns only on error                    
+        logging::critical("Error on 'execlp python' for worker %d ': %m", workerNum);
+        abort();
+    } else {
+        return 0;
+    }
 }
 
 void PGPDetectorApp::setupDrpPython() {
@@ -153,24 +157,22 @@ void PGPDetectorApp::setupDrpPython() {
     long pageSize = sysconf(_SC_PAGESIZE);
     shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
 
-    std::vector<std::future<int>> drpPythonFutures;
+    std::vector<std::thread> drpPythonThreads;
 
-    logging::info("DEBUG just allocated inMqId: %d m_resMqId: %d inpShmId: %d resShmId: %d", inpMqId[0], resMqId[0], inpShmId[0], resShmId[0]);
-    
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
 
         unsigned keyBase  =  KEY_BASE + 1000 * workerNum + 100 * m_para.partition;
 
         // Creating message queues
-        int rc = setupDrpMsgQueue(keyBase+0, "Inputs", inpMqId[workerNum], workerNum);
+        int rc = setupDrpMsgQueue(keyBase+0, "Inputs", m_inpMqId[workerNum], workerNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, m_para.nworkers);
+            cleanupDrpPython(m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             logging::critical("[Thread %u] error setting up Drp message queues", workerNum);
             abort();
         }
-        rc = setupDrpMsgQueue(keyBase+1, "Results", resMqId[workerNum], workerNum);
+        rc = setupDrpMsgQueue(keyBase+1, "Results", m_resMqId[workerNum], workerNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, m_para.nworkers);
+            cleanupDrpPython(m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             logging::critical("[Thread %u] error setting up Drp message queues", workerNum);
             abort();
         }
@@ -183,34 +185,37 @@ void PGPDetectorApp::setupDrpPython() {
         long pageSize = sysconf(_SC_PAGESIZE);
         shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
 
-        rc = setupDrpShMem(keyBase+2, shmemSize, "Inputs", inpShmId[workerNum], workerNum);
+        rc = setupDrpShMem(keyBase+2, shmemSize, "Inputs", m_inpShmId[workerNum], workerNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, m_para.nworkers);
+            cleanupDrpPython(m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             logging::critical("[Thread %u] error setting up Drp shared memory buffers", workerNum);
             abort();
         }
 
-        rc = setupDrpShMem(keyBase+3, shmemSize, "Results", resShmId[workerNum], workerNum);
+        rc = setupDrpShMem(keyBase+3, shmemSize, "Results", m_resShmId[workerNum], workerNum);
         if (rc) {
-            cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, m_para.nworkers);
+            cleanupDrpPython(m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             logging::critical("[Thread %u] error setting up Drp shared memory buffers", workerNum);
             abort();
         }
 
         logging::info("IPC set up for worker %d", workerNum);
 
-        drpPythonFutures.push_back(std::async(std::launch::async,
-                                   startDrpPython, workerNum, keyBase, shmemSize,
-                                   m_drp.pool.pebble.bufferSize(),
-                                   m_para.maxTrSize,
-                                   m_para.detName,
-                                   m_para.detSegment));
+        drpPythonThreads.emplace_back(startDrpPython,
+                                      std::ref(m_drpPids[workerNum]),
+                                      workerNum,
+                                      keyBase,
+                                      shmemSize,
+                                      std::ref(m_para),
+                                      std::ref(m_drp));
     }
 
-    for (std::vector<std::future<int>>::iterator futIter =drpPythonFutures.begin();
-        futIter != drpPythonFutures.end(); futIter++) {
-        int pyPid = futIter->get();
-        m_drpPids.push_back(pyPid);
+
+    for (std::vector<std::thread>::iterator thrIter =drpPythonThreads.begin();
+        thrIter != drpPythonThreads.end(); thrIter++) {
+        if (thrIter->joinable()) {
+            thrIter->join();
+        }
     }     
 
     logging::info("Drp python processes started");
@@ -242,12 +247,6 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     Py_Initialize(); // for use by configuration
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
-    // Initialize these to zeros. They will store the file descriptors if
-    // Dpr Python is used
-    inpMqId = new int[m_para.nworkers]();
-    resMqId = new int[m_para.nworkers]();
-    inpShmId = new int[m_para.nworkers]();
-    resShmId = new int[m_para.nworkers]();
 }
 
 // This initialization is in its own method (to be called from a higher layer)
@@ -282,6 +281,14 @@ void PGPDetectorApp::initialize()
     // data blocks can be formatted into the XTC, e.g. trigger information
     m_drp.ebReceiver().detector(m_det);
 
+    // Initialize these to zeros. They will store the file descriptors and
+    // process numbers if Drp Python is used or be just zeros if it is not.
+    m_inpMqId = new int[m_para.nworkers]();
+    m_resMqId = new int[m_para.nworkers]();
+    m_inpShmId = new int[m_para.nworkers]();
+    m_resShmId = new int[m_para.nworkers]();
+    m_drpPids = new pid_t[m_para.nworkers]();
+
     auto kwargs_it = m_para.kwargs.find("drp");
     if (kwargs_it != m_para.kwargs.end() && kwargs_it->second == "python") {
         logging::info("Starting DrpPython");
@@ -313,7 +320,7 @@ PGPDetectorApp::~PGPDetectorApp()
 
 void PGPDetectorApp::disconnect()
 {
-    m_drp.disconnect();
+    m_drp.disconnect();  
     if (m_det)
         m_det->shutdown();
 }
@@ -445,7 +452,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, inpMqId, resMqId, inpShmId, resShmId);
+            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId);
             m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
                 m_drp.exposer()->RegisterCollectable(m_exporter);

@@ -35,11 +35,11 @@ private:
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     bool m_unconfigure;
     PyThreadState*    m_pysave;
-    int* inpMqId;
-    int* resMqId;
-    int* inpShmId;
-    int* resShmId;
-    std::vector<pid_t> m_drpPids;
+    int* m_inpMqId;
+    int* m_resMqId;
+    int* m_inpShmId;
+    int* m_resShmId;
+    pid_t* m_drpPids;
 };
 
 }
