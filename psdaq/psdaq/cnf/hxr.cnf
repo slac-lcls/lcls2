@@ -1,4 +1,4 @@
-if not platform: platform = '2'
+if not platform: platform = '4'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = ld_lib_path
@@ -6,13 +6,11 @@ manta_env = 'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.255'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
-collect_host = 'drp-srcf-cmp004'
+collect_host = 'drp-srcf-cmp032'
 
 # readout group 4 is for epixhr (L0Delay change)
 # readout group 5 is for manta
-groups = f'1 {platform} 5'
-hutch, station, user, password = ('rix', 2, 'rixopr', 'pcds')
-#hutch, station, user, password = ('tst', 2, 'tstopr', 'pcds')
+hutch, station, user, password = ('tst', 2, 'tstopr', 'pcds')
 auth = ' --user {:} --password {:} '.format(user,password)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
@@ -57,9 +55,9 @@ ea_cmd1 = task_set+' epicsArch '+std_opts1+' '+ea_cfg
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-srcf-cmp029"]
+ami_worker_nodes = ["drp-srcf-cmp032"]
 ami_num_workers = len(ami_worker_nodes)
-ami_manager_node = "drp-srcf-cmp029"
+ami_manager_node = "drp-srcf-cmp032"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -76,77 +74,24 @@ ami_manager_node = "drp-srcf-cmp029"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-# {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:3 DAQ:NEH:XPM:5'},
-# {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 '+groups},
  {                          id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
-# { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
- { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 7 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-neh-ctl002',  id:'tprtrig',     flags:'sp',                 cmd:'tprtrig -t a -c 0 -o 1 -d 2 -w 10 -z'},
+ { host: 'drp-srcf-cmp032', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
- { host: 'drp-srcf-cmp013', id:'teb0',        flags:'spu',                cmd:teb_cmd},
+ { host: 'drp-srcf-cmp032', id:'mebuser0',    flags:'spu',                cmd:meb_cmd+f' -t {hutch}_mebuser0 -d -n 64 -q {ami_workers_per_node}'},
 
- { host: 'drp-srcf-cmp008', id:'mebuser0',    flags:'spu',                cmd:meb_cmd+f' -t {hutch}_mebuser0 -d -n 64 -q {ami_workers_per_node}'},
+ { host: 'drp-srcf-cmp032', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
- { host: 'drp-srcf-cmp010', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
-
-# { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
-
-# 11/9/2022 - gmd waveform test (smoeller, espov) - moved from cmp015 to cmp025 (weaver)
- { host: 'drp-srcf-cmp025', id:'gmdstr0_0',   flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT0'},  # Electron waveforms
- { host: 'drp-srcf-cmp025', id:'gmdstr2_0',   flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x1 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT2'},  # Ion waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr1_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x4 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT1'}, # Electron 2 waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr2_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x8 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT2'}, # Ion waveforms
+# { host: 'drp-srcf-cmp032', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
 
 # 10/3/2021 - epixhr beam test
 # {                          id:'groupca6',    flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 6'},
 # { host: 'drp-srcf-cmp014', id:'epixhr_0',  flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixhr2x2'},
 
-# { host: 'drp-srcf-cmp002', id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
-
-# { host: 'drp-srcf-cmp002', id:'andor_norm_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 RIX:NORM:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
-
-# { host: 'drp-srcf-cmp002', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
-
- # make transition buffer size large to accomodate a non-timestamped camera
- { host: 'drp-srcf-cmp002', id:'epics_0',     flags:'spu', env:epics_env,  cmd:ea_cmd1+' -l 0x8 -T 4000000'},
-
- { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x8'},
-
-# This node is shared with TMO, so need to take care not to over-allocate lanes
- { host: 'drp-srcf-cmp004', id:'rix_fim2_0',  flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D wave8 -k epics_prefix=RIX:FIM:W8:03'},
- { host: 'drp-srcf-cmp004', id:'rix_fim1_0',  flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D wave8 -k epics_prefix=MR4K2:FIM:W8:02'},
- { host: 'drp-srcf-cmp004', id:'rix_fim0_0',  flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x4 -D wave8 -k epics_prefix=MR3K2:FIM:W8:01'},
-
- { host: 'drp-srcf-cmp027', id:'atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=RIX:TIMETOOL:TTALL'},
- { host: 'drp-srcf-cmp012', id:'piranha_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D piranha4'},
-
-# Temporarily borrow cmp012 from TMO (Opal1) to allow RIX atmopal and piranha to run at the same time
-# { host: 'drp-srcf-cmp012', id:'piranha_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
-
- #     Note: '-1' specifies fuzzy timestamping
- #           '-0' specifies no timestamp matching (-0 may have problems)
- #           ''   specifies precise timestamp matching
- # pebbleBufSize was 8388672
- { host: 'drp-srcf-cmp025', id:'manta_0',     flags:'spu', env:manta_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
- # 9MPixel G-917C manta untimestamped image @1Hz (hence the "-0" flag)
- # set the pebbleBufSize smaller since filewriter only supports 8388688 currently
-# { host: 'drp-srcf-cmp002', id:'mr2k1_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
 ]
-
-hsd_epics = 'DAQ:RIX:HSD:1'
-
-procmgr_hsd = [
- {host:'drp-srcf-cmp009', id:'hsd_0',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
- {host:'drp-srcf-cmp009', id:'hsd_1',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
- {host:'drp-srcf-cmp005', id:'hsd_2',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
- {host:'drp-srcf-cmp005', id:'hsd_3',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
-]
-
-procmgr_config.extend(procmgr_hsd)
 
 # cpo: this formula should be base_port=5555+50*platform+10*instance
 # to minimize port conflicts for both platform/instance

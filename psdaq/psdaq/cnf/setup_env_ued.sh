@@ -1,4 +1,7 @@
-source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
+# dec. 5, 2022: keep ued with the old psconda.sh
+# until their next release update when they should
+# start using the new setup_env.sh - cpo
+source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh.old
 
 conda activate ps-4.5.10
 RELDIR="/cds/home/opr/uedopr/git/lcls2_220502"
