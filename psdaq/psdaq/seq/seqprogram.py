@@ -125,8 +125,11 @@ def main():
     exec(compile(seq, args.seq, 'exec'), {}, config)
 
     print(f'descset  {config["descset"]}')
-    print(f'instrset {config["instrset"]}')
     print(f'seqcodes {config["seqcodes"]}')
+#    print(f'instrset {config["instrset"]}')
+    print('instrset:')
+    for i in config["instrset"]:
+        print(i)
 
     seq = SeqUser(f'{args.pv}:SEQENG:{args.engine}')
     seq.execute(config['title'],config['instrset'],config['descset'])

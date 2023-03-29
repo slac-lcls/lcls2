@@ -14,6 +14,9 @@ class Instruction(object):
         args[1:len(self.args)+1] = self.args
         return args
 
+    def __str__(self):
+        return self.print_()
+
 class FixedRateSync(Instruction):
 
     opcode = 0
@@ -83,7 +86,7 @@ class Branch(Instruction):
     def _word(self, a):
         w = a & 0x7ff
         if len(self.args)>2:
-            w = ((self.args[2]&0x3)<<27) | (1<<24) | ((self.args[3]&0xff)<<16) | w
+            w = ((self.args[2]&0x3)<<27) | (1<<24) | ((self.args[3]&0xfff)<<12) | w
         return int(w)
 
     @classmethod

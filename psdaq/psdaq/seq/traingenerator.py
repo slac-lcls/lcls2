@@ -17,13 +17,13 @@ class TrainGenerator(object):
     def __init__(self, start_bucket=0, 
                  train_spacing=TPGSEC, trains_per_second=1, 
                  bunch_spacing=1, bunches_per_train=1, 
-                 charge=0, repeat=False):
+                 charge=0, repeat=0):
         self.start_bucket      = start_bucket
         self.train_spacing     = train_spacing
         self.trains_per_second = trains_per_second
         self.bunch_spacing     = bunch_spacing
         self.bunches_per_train = bunches_per_train
-        self.charge            = charge
+        self.request           = 'ControlRequest([0])' if charge is None else 'BeamRequest({})'.format(charge)
         self.repeat            = repeat
         self.async_start       = None if repeat else 0
 # Need to add self.reqs[i] as an argument for ControlRequest({})
@@ -37,22 +37,14 @@ class TrainGenerator(object):
         nb   = self.bunches_per_train
         w    = 0
         self.instr.append('#   {} bunches / _train'.format(nb))
-        if (self.charge is not None):
-            self.instr.append('instrset.append(BeamRequest({}))'.format(self.charge))
-        else:
-            #self.instr.append('instrset.append(ControlRequest({}))'.format(self.reqs[i])) 
-            self.instr.append('instrset.append(ControlRequest({}))'.format(1)) # Need to change to the above code later on
+        self.instr.append('instrset.append({})'.format(self.request))
+
         rb = nb-1
         if rb:
             if rb > 0xfff:
                 self.instr.append('iinstr=len(instrset)')
                 self._wait(intb)
-                if (self.charge is not None):
-                    self.instr.append('instrset.append(BeamRequest({}))'.format(self.charge)) 
-                else:
-                    #self.instr.append('instrset.append(ControlRequest({}))'.format(self.reqs[i])) 
-                    self.instr.append('instrset.append(ControlRequest({}))'.format(1)) # Need to change to the above code later on
-                #self.instr.append('instrset.append(BeamRequest({}))'.format(self.charge))
+                self.instr.append('instrset.append({})'.format(self.request))
                 self.instr.append('instrset.append(Branch.conditional(line=iinstr,counter={},value={}))'.format(cc[0],0xfff))
                 self.instr.append('instrset.append(Branch.conditional(line=iinstr,counter={},value={}))'.format(cc[1],(rb//0x1000) -1))
                 rb = rb & 0xfff
@@ -60,12 +52,7 @@ class TrainGenerator(object):
             if rb:
                 self.instr.append('iinstr=len(instrset)')
                 self._wait(intb)
-                if (self.charge is not None):
-                    self.instr.append('instrset.append(BeamRequest({}))'.format(self.charge)) 
-                else:
-                    #self.instr.append('instrset.append(ControlRequest({}))'.format(self.reqs[i])) 
-                    self.instr.append('instrset.append(ControlRequest({}))'.format(1)) # Need to change to the above code later on
-                #self.instr.append('instrset.append(BeamRequest({}))'.format(self.charge))
+                self.instr.append('instrset.append({})'.format(self.request))
                 if rb > 1:
                     self.instr.append('instrset.append(Branch.conditional(line=iinstr,counter={},value={}))'.format(cc[0],rb-1))
             w = intb*(nb-1)
@@ -95,11 +82,11 @@ class TrainGenerator(object):
         if nint==0:
             nint = TPGSEC/intv
 
-        if nint>1:
-            sys.stderr.write('Generating {} _trains with {} _train spacing\n'.
+        if nint>0:
+            sys.stderr.write('#Generating {} _trains with {} _train spacing\n'.
                   format(nint,intv))
         if self.bunches_per_train>1: 
-            sys.stderr.write('\tcontaining {} bunches with {} spacing\n'.
+            sys.stderr.write('#\tcontaining {} bunches with {} spacing\n'.
                   format(self.bunches_per_train,
                          self.bunch_spacing))
 
@@ -110,6 +97,8 @@ class TrainGenerator(object):
         if self.start_bucket>0:
             self.instr.append('# start at bucket {}'.format(self.start_bucket))
             self._wait(self.start_bucket)
+
+        self.instr.append('start = len(instrset)')
 
         rint = nint % 256
         if rint:
@@ -145,13 +134,21 @@ class TrainGenerator(object):
             self.instr.append('# end loop C')
             nint = nint - rint*256*256
 
-        if self.repeat:
-            #  Unconditional branch (opcode 2) to instruction 0 (1Hz sync)
-            self.instr.append('instrset.append( Branch.unconditional(0) )')
-        else:
+        if self.repeat==0:
             #  Unconditional branch to here
             self.instr.append('last = len(instrset)')
             self.instr.append('instrset.append( Branch.unconditional(last) )')
+        elif self.repeat<0:
+            #  Unconditional branch (opcode 2) to instruction 0 (1Hz sync)
+            self.instr.append('instrset.append( Branch.unconditional(start) )')
+        else:
+            #  Conditional branch (opcode 2) to instruction 0 (1Hz sync)
+            self.instr.append('instrset.append( Branch.conditional(line=start, counter=0, value={}) )'.format(self.repeat-1))
+            self.instr.append('last=len(instrset)')
+            self.instr.append('instrset.append(Branch.unconditional(last))')
+
+            
+            
 
 
 def main():
@@ -161,8 +158,8 @@ def main():
     parser.add_argument("-b", "--bunch_spacing"     , required=True , type=int, help="buckets between bunches within _train")
     parser.add_argument("-n", "--bunches_per_train" , required=True , type=int, help="number of bunches in each _train")
     parser.add_argument("-s", "--start_bucket"      , default=0     , type=int, help="starting bucket for first _train")
-    parser.add_argument("-q", "--charge"            , default=0     , type=int, help="bunch charge, pC")
-    parser.add_argument("-r", "--repeat"            , default=False , help="repeat sequence each second")
+    parser.add_argument("-q", "--charge"            , default=None  , type=int, help="bunch charge, pC")
+    parser.add_argument("-r", "--repeat"            , default=0     , type=int, help="number of times to repeat")
     parser.add_argument("-d", "--description"       , required=True , type=str, help="description for event code")
     args = parser.parse_args()
     print('# traingenerator args {}'.format(args))
