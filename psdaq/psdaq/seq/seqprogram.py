@@ -96,9 +96,9 @@ class SeqUser:
 
     def begin(self, wait=False):
         self.idxrun.put(self._idx)
-        self.start .put(0)
-        self.reset .put(1)
         self.reset .put(0)
+        self.start .put(1)
+        self.start .put(0)
         if wait:
             self.lock= Lock()
             self.lock.acquire()
