@@ -4,6 +4,8 @@ import sys, os
 from psana import DataSource
 import numpy as np
 import vals
+import zmq
+
 
 known_epics_pedestals = np.array([[11.,12.,13.,14.,15.,16.],
      [21.,22.,23.,24.,25.,26.],
@@ -14,8 +16,18 @@ def launch_client(pid, supervisor=-1):
     if supervisor == -1:
         ds = DataSource(shmem='shmem_test_'+pid)
     else:
-        supervisor_ip_addr = "127.0.0.1"
-        ds = DataSource(shmem='shmem_test_'+pid, supervisor=supervisor, supervisor_ip_addr=supervisor_ip_addr)
+        # Setup socket (required) outside datasource for pubsub broadcast
+        context = zmq.Context()
+        socket_name = f"tcp://127.0.0.1:6008"
+        if supervisor:
+            socket = context.socket(zmq.PUB)
+            socket.bind(socket_name)
+        else:
+            socket = context.socket(zmq.SUB)
+            socket.connect(socket_name)
+            topicfilter = ""
+            socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
+        ds = DataSource(shmem='shmem_test_'+pid, socket=socket)
 
     run = next(ds.runs())
     

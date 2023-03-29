@@ -3,8 +3,8 @@ from psana.dgrammanager import DgramManager
 from psana.psexp import Events, TransitionId
 from psana.event import Event
 from psana.smalldata import SmallData
-from psdaq.configdb.pub_server import pub_bind, pub_send
-from psdaq.configdb.sub_client import sub_connect, sub_recv
+import zmq
+from psana.psexp.zmq_utils import send_zipped_pickle, recv_zipped_pickle
 
 class ShmemDataSource(DataSourceBase):
 
@@ -14,17 +14,12 @@ class ShmemDataSource(DataSourceBase):
         self.runnum_list = [0] 
         self.runnum_list_index = 0
         
-        # Setup socket for calibration constant broadcast if supervisor
-        # is set (1=I am supervisor, 0=I am not supervisor).
+        # Determine the type of calibration constant broadcasting.
+        # (1=I am supervisor, 0=I am not supervisor, -1=Not participating).
         self.supervisor = -1
-        if 'supervisor' in kwargs:
-            self.supervisor = kwargs['supervisor']
-            port_number = 5557
-            socket_name = f"tcp://{kwargs['supervisor_ip_addr']}:{port_number}"
-            if self.supervisor == 1:
-                pub_socket = pub_bind(socket_name)
-            else:
-                sub_socket = sub_connect(socket_name)
+        if 'socket' in kwargs:
+            self.socket = kwargs['socket']
+            self.supervisor = 1 if self.socket.get(zmq.TYPE) == zmq.PUB else 0
        
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         self._setup_run()
@@ -53,10 +48,10 @@ class ShmemDataSource(DataSourceBase):
         if self.supervisor:
             super()._setup_run_calibconst()
             if self.supervisor == 1:
-                pub_send(self.dsparms.calibconst)
+                send_zipped_pickle(self.socket, self.dsparms.calibconst)
                 
         else: 
-            self.dsparms.calibconst = sub_recv()
+            self.dsparms.calibconst = recv_zipped_pickle(self.socket)
 
     def _start_run(self):
         found_next_run = False
