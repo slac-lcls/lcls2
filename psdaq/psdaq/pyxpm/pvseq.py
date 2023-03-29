@@ -1,6 +1,6 @@
 import time
 
-from psdaq.cas.seq import *
+from psdaq.seq.seq import *
 from psdaq.pyxpm.pvhandler import *
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
@@ -273,14 +273,15 @@ class PVSeq(object):
             rval = self._eng.insertSeq()
             pvUpdate(self._pv_Seq00Idx,rval)
 
-    def schedReset(self, pv, val):
+    def schedReset(self, pv, val, reset=True):
         if val:
             idx = self._pv_RunIdx.current()['value']
             print('Scheduling index {}',idx)
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
             self._eng.setAddress(idx,0,0)  # syncs start to marker 0 (1Hz)
-            self._eng.reset()
+            if reset:
+                self._eng.reset()
 
     def forceReset(self, pv, val):
         if val:
