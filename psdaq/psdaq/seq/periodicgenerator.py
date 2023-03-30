@@ -6,6 +6,7 @@ import numpy
 from itertools import chain
 from functools import reduce
 import operator
+from psdaq.seq.globals import *
 
 verbose = False
 
@@ -32,13 +33,13 @@ def myunion(s0,s1):
 
 class PeriodicGenerator(object):
     #  Beam Requests
-    def __init__(self, period, start, charge, marker='\"910kH\"'):
+    def __init__(self, period, start, charge, marker='\"910kH\"', repeat=-1):
         self.charge = charge
         self.async_start       = None
-        self.__init__(period, start, marker)
+        self.__init__(period, start, marker, repeat)
 
     #  Control Requests
-    def __init__(self, period, start, marker='\"910kH\"'):
+    def __init__(self, period, start, marker='\"910kH\"', repeat=-1):
         if isinstance(period,list):
             self.period    = period
             self.start     = start
@@ -46,6 +47,7 @@ class PeriodicGenerator(object):
             self.period    = [period]
             self.start     = [start]
         self.marker = marker
+        self.repeat = repeat
 
         if not numpy.less(start,period).all():
             raise ValueError('start must be less than period')
@@ -159,8 +161,17 @@ class PeriodicGenerator(object):
         #  Step to the end of the common period and repeat
         if rem > 0:
             self._wait(rem)
-        self.instr.append('instrset.append( Branch.unconditional(0) )')
-        self.ninstr += 1
+
+        if self.repeat<0:
+            self.instr.append('instrset.append( Branch.unconditional(0) )')
+            self.ninstr += 1
+        else:
+            repeat = (self.repeat+1)*TPGSEC//period
+            self.instr.append('instrset.append( Branch.conditional(0,1,{}) )'.format(repeat-1))
+            self.instr.append('last = len(instrset)')
+            self.instr.append('instrset.append( Branch.unconditional(last) )')
+            self.ninstr += 2
+
 
 def main():
     parser = argparse.ArgumentParser(description='Periodic sequence generator')
@@ -170,9 +181,11 @@ def main():
                         help="starting bucket for first train")
     parser.add_argument("-d", "--description"       , required=True , nargs='+', type=str,
                         help="description for each event code")
+    parser.add_argument("-r", "--repeat"            , default=-1 , type=int,
+                        help="number of times to repeat 1 second sequence (default: indefinite)")
     args = parser.parse_args()
     print('# periodicgenerator args {}'.format(args))
-    gen = PeriodicGenerator(args.period, args.start_bucket)
+    gen = PeriodicGenerator(period=args.period, start=args.start_bucket, repeat=args.repeat)
     if (gen.ninstr > 1000):
         sys.stderr.write('*** Sequence has {} instructions.  May be too large to load. ***\n'.format(gen.ninstr))
     print('# {} instructions'.format(gen.ninstr))

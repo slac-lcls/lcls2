@@ -134,16 +134,12 @@ class TrainGenerator(object):
             self.instr.append('# end loop C')
             nint = nint - rint*256*256
 
-        if self.repeat==0:
-            #  Unconditional branch to here
-            self.instr.append('last = len(instrset)')
-            self.instr.append('instrset.append( Branch.unconditional(last) )')
-        elif self.repeat<0:
+        if self.repeat<0:
             #  Unconditional branch (opcode 2) to instruction 0 (1Hz sync)
             self.instr.append('instrset.append( Branch.unconditional(start) )')
         else:
             #  Conditional branch (opcode 2) to instruction 0 (1Hz sync)
-            self.instr.append('instrset.append( Branch.conditional(line=start, counter=0, value={}) )'.format(self.repeat-1))
+            self.instr.append('instrset.append( Branch.conditional(line=start, counter=0, value={}) )'.format(self.repeat))
             self.instr.append('last=len(instrset)')
             self.instr.append('instrset.append(Branch.unconditional(last))')
 

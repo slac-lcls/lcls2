@@ -273,20 +273,20 @@ class PVSeq(object):
             rval = self._eng.insertSeq()
             pvUpdate(self._pv_Seq00Idx,rval)
 
-    def schedReset(self, pv, val, reset=True):
-        if val:
+    def schedReset(self, pv, val):
+        if val>0:
             idx = self._pv_RunIdx.current()['value']
-            print('Scheduling index {}',idx)
+            print(f'Scheduling index {idx}')
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
             self._eng.setAddress(idx,0,0)  # syncs start to marker 0 (1Hz)
-            if reset:
+            if val==1:
                 self._eng.reset()
 
     def forceReset(self, pv, val):
         if val:
             idx = self._pv_RunIdx.current()['value']
-            print('Starting index {}',idx)
+            print(f'Starting index {idx}')
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
             self._eng.setAddress(idx,0,6)  # syncs start to marker 6 (MHz)

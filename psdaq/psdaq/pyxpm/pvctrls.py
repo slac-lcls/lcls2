@@ -538,6 +538,10 @@ class PVCtrls(object):
                                         handler=RegH(app.l0HoldReset,archive=False))
         provider.add(name+':L0HoldReset',self._pv_l0HoldReset)
 
+        self._pv_seqReset   = SharedPV(initial=NTScalar('I').wrap(0),
+                                        handler=RegH(xpm.SeqEng_0.seqRestart,archive=False))
+        provider.add(name+':SeqReset',self._pv_seqReset)
+
         if self._handle:
             self._thread = threading.Thread(target=self.notify)
             self._thread.start()

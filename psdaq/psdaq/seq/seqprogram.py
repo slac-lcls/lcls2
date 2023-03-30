@@ -41,6 +41,7 @@ class SeqUser:
         print( 'Remove %d'%ridx)
         if ridx < 0:
             idx = self.idxseq.get()
+            print(f'idx {idx}')
             while (idx>0):
                 print( 'Removing seq %d'%idx)
                 self.idxseqr.put(idx)
@@ -103,44 +104,66 @@ class SeqUser:
             self.lock= Lock()
             self.lock.acquire()
 
-    def execute(self, title, instrset, descset=None):
+    def sync(self):
+        self.idxrun.put(self._idx)
+        self.reset .put(0)
+        self.start .put(2)
+        self.start .put(0)
+
+    def execute(self, title, instrset, descset=None, sync=False):
         self.insert.put(0)
         self.stop ()
         self.clean()
         self.load (title,instrset,descset)
-        self.begin()
+        if sync:
+            self.sync()
+        else:
+            self.begin()
 
 
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
-    parser.add_argument('--engine', type=int, default=0, help="sequence engine")
-    parser.add_argument("seq", help="sequence script")
-    parser.add_argument("pv" , help="sequence engine pv; e.g. DAQ:NEH:XPM:0")
+    parser.add_argument('--pv', type=str, required=True, help="sequence engine pv; e.g. DAQ:NEH:XPM:0")
+    parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
+    parser.add_argument("--start", action='store_true', help="start the sequences")
+    parser.add_argument("--verbose", action='store_true', help="verbose output")
     args = parser.parse_args()
 
-    config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None}
-
-    seq = 'from psdaq.seq.seq import *\n'
-    seq += open(args.seq).read()
-    exec(compile(seq, args.seq, 'exec'), {}, config)
-
-    print(f'descset  {config["descset"]}')
-    print(f'seqcodes {config["seqcodes"]}')
-#    print(f'instrset {config["instrset"]}')
-    print('instrset:')
-    for i in config["instrset"]:
-        print(i)
-
-    seq = SeqUser(f'{args.pv}:SEQENG:{args.engine}')
-    seq.execute(config['title'],config['instrset'],config['descset'])
+    files = []
+    engineMask = 0
 
     seqcodes_pv = Pv(f'{args.pv}:SEQCODES',isStruct=True)
     seqcodes = seqcodes_pv.get()
-
     desc = seqcodes.value.Description
-    for e,d in config['seqcodes'].items():
-        desc[4*args.engine+e] = d
-    print(f'desc {desc}')
+
+    for s in args.seq:
+        sengine,fname = s.split(':',1)
+        engine = int(sengine)
+        print(f'** engine {engine} fname {fname} **')
+
+        config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None}
+        seq = 'from psdaq.seq.seq import *\n'
+        seq += open(fname).read()
+        exec(compile(seq, fname, 'exec'), {}, config)
+        
+        print(f'descset  {config["descset"]}')
+        print(f'seqcodes {config["seqcodes"]}')
+        if args.verbose:
+            print('instrset:')
+            for i in config["instrset"]:
+                print(i)
+
+        seq = SeqUser(f'{args.pv}:SEQENG:{engine}')
+        seq.execute(config['title'],config['instrset'],config['descset'],sync=True)
+        del seq
+
+        engineMask |= (1<<engine)
+
+        for e in range(4*engine,4*engine+4):
+            desc[e] = ''
+        for e,d in config['seqcodes'].items():
+            desc[4*engine+e] = d
+        print(f'desc {desc}')
 
     v = seqcodes.value
     v.Description = desc
@@ -148,6 +171,11 @@ def main():
 
     print(f'seqcodes_pv {seqcodes}')
     seqcodes_pv.put(seqcodes)
+
+    if args.start:
+        pvSeqReset = Pv(f'{args.pv}:SeqReset')
+        pvSeqReset.put(engineMask)
+        
 
 if __name__ == '__main__':
     main()
