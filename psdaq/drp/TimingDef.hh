@@ -9,6 +9,7 @@ namespace XtcData {
 };
 
 namespace Drp {
+#pragma pack(push,1)
     class TimingData {
     public:
         enum FixedRates { _1Hz, _10Hz, _100Hz, _1kHz, _10kHz, _71kHz, _1MHz };
@@ -32,6 +33,7 @@ namespace Drp {
         uint16_t sequenceValues[18];
         uint32_t inhibitCounts[8];
     };
+#pragma pack(pop)
 
     class TimingDef : public XtcData::VarDef
     {
