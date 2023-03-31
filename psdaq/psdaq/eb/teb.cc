@@ -378,7 +378,7 @@ int Teb::configure(Trigger* trigger,
   // avoid giving emphasis to any slow RoG, set rogReserved to 0.  To prevent
   // one slow RoG from starving another, rogReserved is a sum over all RoGs of
   // the requirement for each RoG.
-  for (unsigned iMeb = 0; iMeb < MAX_MEBS; ++iMeb)
+  for (unsigned iMeb = 0; iMeb < _prms.numMrqs; ++iMeb)
   {
     _rogReserved[iMeb] = 0;
 
