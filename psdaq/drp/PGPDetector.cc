@@ -306,7 +306,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     }   
 }
 
-PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det  int* inpMqId, int* resMqId, int* inpShmId, int* resShmId)) :
+PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
+                         int* inpMqId, int* resMqId, int* inpShmId, int* resShmId) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false),
     m_flushTmo(1.1 * drp.tebPrms().maxEntries * 14/13)
 {

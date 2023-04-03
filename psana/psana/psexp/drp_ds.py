@@ -40,15 +40,21 @@ class DrpDataSource(DataSourceBase):
         runnum = self.runnum_list[self.runnum_list_index]
         self.dm = DgramManager(['drp'], tag=self.tag, config_consumers=[self.dsparms])
         self.curr_dgramedit = DgramEdit(
-            PyDgram(self._configs[-1].get_dgram_ptr(), self.dm.shm_size)
+            PyDgram(self._configs[-1].get_dgram_ptr(), self.dm.transition_bufsize)
         )
         self.runnum_list_index += 1
         return True
     
     def _setup_beginruns(self):
         for evt in self.dm:
+            if evt.service() == TransitionId.L1Accept:
+                buffer_size = self.dm.pebble_bufsize
+            else:
+                buffer_size = self.dm.transition_bufsize
+            
+            print(f"[Thread {self.dm.worker_num} - Python] - DEBUG: Before event edit in setupbeginruns {evt.service()}")
             self.curr_dgramedit = DgramEdit(
-                PyDgram(evt._dgrams[0].get_dgram_ptr(), self.dm.shm_size),
+                PyDgram(evt._dgrams[0].get_dgram_ptr(), buffer_size),
                 config=self.config_dgramedit
             )
             self.curr_dgramedit.save(self.dm.shm_res_mv)

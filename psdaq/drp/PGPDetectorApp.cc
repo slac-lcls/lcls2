@@ -122,9 +122,9 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shme
     {
         time_t my_time = time(NULL);
     
-        std::cout << "DEBUG: Thread " << workerNum << "%u]" << ctime(&my_time) << " - Thread num: %s" << std::this_thread::get_id() << std::endl;
-
-        // Executing external code 
+        std::cout << "DEBUG: [Thread " << workerNum << "] DEBUG: Time " << ctime(&my_time) << std::endl;
+       
+        //Executing external code 
         execlp("python",
                "python",
                "-u",
@@ -142,6 +142,7 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shme
         // Execlp returns only on error                    
         logging::critical("Error on 'execlp python' for worker %d ': %m", workerNum);
         abort();
+        return 1;
     } else {
         return 0;
     }
