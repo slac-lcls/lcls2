@@ -36,12 +36,12 @@ class DrpDataSource(DataSourceBase):
     def _setup_run(self):
         if self.runnum_list_index == len(self.runnum_list):
             return False
-        
         runnum = self.runnum_list[self.runnum_list_index]
         self.dm = DgramManager(['drp'], tag=self.tag, config_consumers=[self.dsparms])
-        self.curr_dgramedit = DgramEdit(
+        self.config_dgramedit = DgramEdit(
             PyDgram(self._configs[-1].get_dgram_ptr(), self.dm.transition_bufsize)
         )
+        self.curr_dgramedit = self.config_dgramedit
         self.runnum_list_index += 1
         return True
     
@@ -51,8 +51,6 @@ class DrpDataSource(DataSourceBase):
                 buffer_size = self.dm.pebble_bufsize
             else:
                 buffer_size = self.dm.transition_bufsize
-            
-            print(f"[Thread {self.dm.worker_num} - Python] - DEBUG: Before event edit in setupbeginruns {evt.service()}")
             self.curr_dgramedit = DgramEdit(
                 PyDgram(evt._dgrams[0].get_dgram_ptr(), buffer_size),
                 config=self.config_dgramedit
@@ -85,7 +83,6 @@ class DrpDataSource(DataSourceBase):
     def runs(self):
         self._edtbl_config = False
         self.curr_dgramedit.save(self.dm.shm_res_mv)
-        self.config_dgramedit = self.curr_dgramedit
         while self._start_run():
             run = RunDrp(self, Event(dgrams=self.beginruns))
             yield run

@@ -116,14 +116,10 @@ namespace Drp {
 int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shmemSize, const Parameters& para, DrpBase& drp)
 {
     // Fork
-    pyPid = fork();
+    pyPid = vfork();
 
     if (pyPid == pid_t(0))
     {
-        time_t my_time = time(NULL);
-    
-        std::cout << "DEBUG: [Thread " << workerNum << "] DEBUG: Time " << ctime(&my_time) << std::endl;
-       
         //Executing external code 
         execlp("python",
                "python",
@@ -162,7 +158,7 @@ void PGPDetectorApp::setupDrpPython() {
 
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
 
-        unsigned keyBase  =  KEY_BASE + 1000 * workerNum + 100 * m_para.partition;
+        unsigned keyBase  =  KEY_BASE + 100 * workerNum + 10 * m_para.partition;
 
         // Creating message queues
         int rc = setupDrpMsgQueue(keyBase+0, "Inputs", m_inpMqId[workerNum], workerNum);

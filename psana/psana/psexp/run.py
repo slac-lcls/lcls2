@@ -271,7 +271,6 @@ class RunDrp(Run):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
-            print(f"[Thread {self._ds.dm.worker_num} - Python] - DEBUG: Before event edit {evt.service()}")
             self._ds.curr_dgramedit = DgramEdit(
                 PyDgram(evt._dgrams[0].get_dgram_ptr(), buffer_size),
                 config=self._ds.config_dgramedit
@@ -289,13 +288,7 @@ class RunDrp(Run):
             self.c_ana.labels('seconds','None').inc(en-st)
             self.c_ana.labels('batches','None').inc()
             self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
-            # DEBUG
-            b = bytes(self._ds.dm.shm_res_mv[:])
-            v = memoryview(b)
-            c = self._ds.dm.configs[len(self._ds.dm.configs)-1]
-            d = dgram.Dgram(config=c,view=v)
-            print(f"[Thread {self._ds.dm.worker_num} - Python] - DEBUG: After event edit {d.service()}")
-
+            
 
     def steps(self):
         for evt in self._evt_iter:

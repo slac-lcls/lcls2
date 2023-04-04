@@ -147,7 +147,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             abort();
         } 
 
-        unsigned keyBase  =  KEY_BASE + 1000 * threadNum + 100 * para.partition;
+        unsigned keyBase  =  KEY_BASE + 100 * threadNum + 10 * para.partition;
 
         int rc = attachDrpShMem(keyBase+2, "Inputs", inpShmId, inpData, threadNum);
         if (rc) {
@@ -282,14 +282,12 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                threadNum,
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
- 
                 if ( pythonDrp == true) {
                     memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
                     sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
                     memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram)+resDgram->xtc.extent);
                 }
- 
                 auto l3InpBuf = tebContributor.fetch(index);
                 if (threadNum == 0) {
                     new(l3InpBuf) Pds::EbDgram(*dgram);

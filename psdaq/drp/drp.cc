@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    para.nworkers = 10;
+    para.nworkers = 1;
     para.batchSize = 32; // Must be a power of 2
     para.maxTrSize = 8 * 1024 * 1024;
     try {
