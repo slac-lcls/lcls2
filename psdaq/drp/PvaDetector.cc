@@ -463,25 +463,25 @@ void PvaDetector::_worker()
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
     m_nUpdates = 0;
-    m_exporter->add("pva_update_rate", labels, Pds::MetricType::Rate,
+    m_exporter->add("drp_update_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nUpdates;});
     m_nMatch = 0;
-    m_exporter->add("pva_match_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_match_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nMatch;});
     m_nEmpty = 0;
-    m_exporter->add("pva_empty_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_empty_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nEmpty;});
     m_nMissed = 0;
-    m_exporter->add("pva_miss_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_miss_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nMissed;});
     m_nTooOld = 0;
-    m_exporter->add("pva_tooOld_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_tooOld_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nTooOld;});
     m_nTimedOut = 0;
-    m_exporter->add("pva_timeout_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_timeout_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nTimedOut;});
     m_timeDiff = 0;
-    m_exporter->add("pva_time_diff", labels, Pds::MetricType::Gauge,
+    m_exporter->add("drp_time_diff", labels, Pds::MetricType::Gauge,
                     [&](){return m_timeDiff;});
 
     m_exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
@@ -974,6 +974,7 @@ void PvaApp::handlePhase1(const json& msg)
         }
 
         m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed

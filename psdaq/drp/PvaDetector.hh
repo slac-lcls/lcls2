@@ -49,8 +49,7 @@ private:
 class PvaDetector : public XpmDetector
 {
 public:
-    PvaDetector(PvaParameters& para,
-                DrpBase&       drp);
+    PvaDetector(PvaParameters& para, DrpBase& drp);
     unsigned connect(std::string& msg);
     unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
@@ -109,7 +108,6 @@ private:
 private:
     DrpBase m_drp;
     PvaParameters& m_para;
-    std::shared_ptr<PvaMonitor> pvaMonitor;
     std::unique_ptr<PvaDetector> m_pvaDetector;
     Detector* m_det;
     bool m_unconfigure;

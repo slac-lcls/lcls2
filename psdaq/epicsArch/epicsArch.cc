@@ -214,10 +214,10 @@ void EaDetector::_worker()
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
     m_nUpdates = 0;
-    m_exporter->add("ea_update_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_update_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nUpdates;});
     m_nStales = 0;
-    m_exporter->add("ea_stale_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_stale_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nStales;});
 
     Pgp pgp(*m_para, m_drp, this, m_running);
