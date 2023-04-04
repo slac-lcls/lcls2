@@ -216,7 +216,9 @@ class Engine(object):
         for key,entry in self._caches.items():
             if entry.index == i:
                 for j in range(entry.size):
-                    print('[{:08x}] {:08x}'.format(key+j,self._ram[key+j].get()))
+                    ram = self._ram[key+j].get()
+                    print('[{:08x}] {:08x} {:}'.format(key+j,ram,decodeInstr(ram)))
+
 
 class PVSeq(object):
     def __init__(self, provider, name, ip, engine, pv_enabled):
@@ -254,9 +256,12 @@ class PVSeq(object):
         self._pv_SchedReset    = addPV('SCHEDRESET', 'I',        0, self.schedReset)
         self._pv_ForceReset    = addPV('FORCERESET', 'I',        0, self.forceReset)
         self._pv_Enable        = addPV('ENABLE'    , 'I',        0, self.enable)
+        self._pv_Dump          = addPV('DUMP'      , 'I',        0, self.dump)
 
         if engine._reg.seqEn.get()&(1<<engine._id):
             self.enable(None,1)
+
+#        self.updateInstr()
 
     def instrs(self, pv, val):
         pvUpdate(self._pv_InstrCnt,self._eng.cacheSeq(val))
@@ -300,3 +305,5 @@ class PVSeq(object):
     def checkPoint(self,addr):
         pvUpdate(self._pv_Running,0)
 
+    def dump(self, pv, val):
+        self._eng.dump()

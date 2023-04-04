@@ -169,9 +169,36 @@ class ControlRequest(Instruction):
         return int((4<<29) | self.args[1])
 
     def print_(self):
-        return 'ControlRequest word 0x{:x}'.format(self.args[1])
+        codes = []
+        w = self.args[1]
+        code = 0
+        while w:
+            if w&1:
+                codes.append(code)
+            w >>= 1
+            code += 1
+
+        return f'ControlRequest word 0x{self.args[1]:x} {codes}'
 
     def execute(self,engine):
         engine.request = self.args[1]
         engine.instr += 1
+
+def decodeInstr(w):
+    idw = w>>29
+    instr = Instruction([])
+    if idw == 0:  # Branch
+        if w&(1<<24):
+            instr = Branch.conditional(line=w&0x7ff,counter=(w>>27)&3,value=(w>>12)&0xfff)
+        else:
+            instr = Branch.unconditional(line=w&0x7ff)
+    elif idw == 1: # Checkpoint
+        instr = CheckPoint()
+    elif idw == 2: # FixedRateSync
+        instr = FixedRateSync(marker=(w>>16)&0xf,occ=w&0xfff)
+    elif idw == 3: # ACRateSync
+        instr = ACRateSync(timeslotm=(w>>23)&0x3f,marker=(w>>16)&0xf,occ=w&0xfff)
+    elif idw == 4: # Request (assume ControlRequest)
+        instr = ControlRequest(word = w&0xffff)
+    return instr
 

@@ -32,14 +32,13 @@ def myunion(s0,s1):
     return set(s0) | set(s1)
 
 class PeriodicGenerator(object):
-    #  Beam Requests
-    def __init__(self, period, start, charge, marker='\"910kH\"', repeat=-1):
+    def __init__(self, period, start, charge=None, repeat=-1, marker='\"910kH\"'):
         self.charge = charge
-        self.async_start       = None
-        self.__init__(period, start, marker, repeat)
+        self.init(period, start, marker, repeat)
 
-    #  Control Requests
-    def __init__(self, period, start, marker='\"910kH\"', repeat=-1):
+    def init(self, period, start, marker='\"910kH\"', repeat=-1):
+        self.async_start       = 0
+
         if isinstance(period,list):
             self.period    = period
             self.start     = start
@@ -81,6 +80,11 @@ class PeriodicGenerator(object):
         #  Common period (subharmonic)
         period = numpy.lcm.reduce(self.period)
         #period = reduce(lcm,self.period)
+
+        self.repeat *= TPGSEC//period
+        if ((TPGSEC % period) and self.repeat > 0):
+            raise ValueError(f'TPGSEC ({TPGSEC}) is not a multiple of common period {period}')
+
         #  Brute force it to see how far we get (when will it fail?)
         print('# period {}  args.period {}'.format(period,self.period))
         reps   = [period // p for p in self.period]
@@ -142,7 +146,7 @@ class PeriodicGenerator(object):
                 self.instr.append('start = len(instrset)')
                 if bsteps[i]>0:
                     self._wait(bsteps[i])
-                if hasattr(self,'charge'):
+                if self.charge is not None:
                     self.instr.append('instrset.append( BeamRequest({}) )'.format(self.charge))
                 else:
                     self.instr.append('instrset.append( ControlRequest({}) )'.format(reqs[i]))
@@ -152,7 +156,7 @@ class PeriodicGenerator(object):
             else:
                 if bsteps[i]>0:
                     self._wait(bsteps[i])
-                if hasattr(self,'charge'):
+                if self.charge is not None:
                     self.instr.append('instrset.append( BeamRequest({}) )'.format(self.charge))
                 else:
                     self.instr.append('instrset.append( ControlRequest({}) )'.format(reqs[i]))
@@ -162,13 +166,17 @@ class PeriodicGenerator(object):
         if rem > 0:
             self._wait(rem)
 
-        if self.repeat<0:
+        if self.repeat < 0:
             self.instr.append('instrset.append( Branch.unconditional(0) )')
             self.ninstr += 1
         else:
-            repeat = (self.repeat+1)*TPGSEC//period
-            self.instr.append('instrset.append( Branch.conditional(0,1,{}) )'.format(repeat-1))
+            if self.repeat > 0:
+                #  Conditional branch (opcode 2) to instruction 0 (1Hz sync)
+                self.instr.append('instrset.append( Branch.conditional(0, 2, {}) )'.format(self.repeat))
+                self.ninstr += 1
+
             self.instr.append('last = len(instrset)')
+            self.instr.append('instrset.append( FixedRateSync(marker="1H",occ=1) )')
             self.instr.append('instrset.append( Branch.unconditional(last) )')
             self.ninstr += 2
 

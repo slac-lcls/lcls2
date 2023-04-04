@@ -479,7 +479,7 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, handle=None, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
+    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, handle=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
         global provider
         provider = p
         global lock
@@ -542,7 +542,7 @@ class PVCtrls(object):
                                         handler=RegH(xpm.SeqEng_0.seqRestart,archive=False))
         provider.add(name+':SeqReset',self._pv_seqReset)
 
-        if self._handle:
+        if notify:
             self._thread = threading.Thread(target=self.notify)
             self._thread.start()
 
@@ -601,9 +601,13 @@ class PVCtrls(object):
         
         while True:
             msg = client.recv(4096)
+            self.handle(msg)
+
+    def handle(self,msg):
             s = struct.Struct('H')
             siter = s.iter_unpack(msg)
             src = next(siter)[0]
+
             if src==0:   # sequence notify message
                 mask = next(siter)[0]
                 i=0

@@ -14,6 +14,9 @@ from psdaq.seq.globals import *
 #     repeat            : repeat pattern or run only once
 #
 class TrainGenerator(object):
+#    COUNT_RANGE=256
+    COUNT_RANGE=1024
+
     def __init__(self, start_bucket=0, 
                  train_spacing=TPGSEC, trains_per_second=1, 
                  bunch_spacing=1, bunches_per_train=1, 
@@ -98,9 +101,9 @@ class TrainGenerator(object):
             self.instr.append('# start at bucket {}'.format(self.start_bucket))
             self._wait(self.start_bucket)
 
-        self.instr.append('start = len(instrset)')
+        self.instr.append('first = len(instrset)')
 
-        rint = nint % 256
+        rint = nint % self.COUNT_RANGE
         if rint:
             self.instr.append('# loop A: {} _trains'.format(rint))
             self.instr.append('startreq = len(instrset)')
@@ -110,38 +113,41 @@ class TrainGenerator(object):
             self.instr.append('# end loop A')
             nint = nint - rint
 
-        rint = (nint/256) % 256
+        rint = (nint/self.COUNT_RANGE) % self.COUNT_RANGE
         if rint:
-            self.instr.append('# loop B: {} _trains'.format(rint*256))
+            self.instr.append('# loop B: {} _trains'.format(rint*self.COUNT_RANGE))
             self.instr.append('startreq = len(instrset)')
-            self._wait(intv-self._train([1]))  # don't need 2 counters because trains_per_bunch>4096 can't have trains_per_second>256
-            self.instr.append('instrset.append( Branch.conditional(startreq, 0, 255) )')
+            self._wait(intv-self._train([1]))  # don't need 2 counters because trains_per_bunch>4096 can't have trains_per_second>self.COUNT_RANGE
+            self.instr.append('instrset.append( Branch.conditional(startreq, 0, COUNT_RANGE-1) )')
             if rint > 1:
                 self.instr.append('instrset.append( Branch.conditional(startreq, 2, {}) )'.format(rint-1))
             self.instr.append('# end loop B')
-            nint = nint - rint*256
+            nint = nint - rint*self.COUNT_RANGE
 
-        rint = (nint / (256*256)) % 256
+        rint = (nint / (self.COUNT_RANGE*self.COUNT_RANGE)) % self.COUNT_RANGE
         if rint:
-            self.instr.append('# loop C: {} _trains'.format(rint*256*256))
-            self.instr.append('# loop (n_trains / 256)')
+            self.instr.append('# loop C: {} _trains'.format(rint*self.COUNT_RANGE*self.COUNT_RANGE))
+            self.instr.append('# loop (n_trains / self.COUNT_RANGE)')
             self.instr.append('startreq = len(instrset)')
             self._wait(intv-self._train([3]))  # can use counter 3 here because no delay can be greater than 4096 (actually 3554)
-            self.instr.append('instrset.append( Branch.conditional(startreq, 0, 255) )')
-            self.instr.append('instrset.append( Branch.conditional(startreq, 1, 255) )')
+            self.instr.append('instrset.append( Branch.conditional(line=startreq, counter=2, value=COUNT_RANGE-1) )')
+            self.instr.append('instrset.append( Branch.conditional(line=startreq, counter=1, value=COUNT_RANGE-1) )')
             if rint > 1:
-                self.instr.append('instrset.append( Branch.conditional(startreq, 2, {}) )'.format(rint-1))
+                self.instr.append('instrset.append( Branch.conditional(line=startreq, counter=0, value={}) )'.format(rint-1))
             self.instr.append('# end loop C')
-            nint = nint - rint*256*256
+            nint = nint - rint*self.COUNT_RANGE*self.COUNT_RANGE
 
         if self.repeat<0:
             #  Unconditional branch (opcode 2) to instruction 0 (1Hz sync)
-            self.instr.append('instrset.append( Branch.unconditional(start) )')
+            self.instr.append('instrset.append( Branch.unconditional(first) )')
         else:
-            #  Conditional branch (opcode 2) to instruction 0 (1Hz sync)
-            self.instr.append('instrset.append( Branch.conditional(line=start, counter=0, value={}) )'.format(self.repeat))
-            self.instr.append('last=len(instrset)')
-            self.instr.append('instrset.append(Branch.unconditional(last))')
+            if self.repeat > 0:
+                #  Conditional branch (opcode 2) to instruction 0 (1Hz sync)
+                self.instr.append('instrset.append( Branch.conditional(line=first, counter=0, value={}) )'.format(self.repeat))
+            #  Unconditional branch to here
+            self.instr.append('last = len(instrset)')
+            self.instr.append('instrset.append( FixedRateSync(marker="1H",occ=1) )')
+            self.instr.append('instrset.append( Branch.unconditional(last) )')
 
             
             
