@@ -22,6 +22,7 @@ parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=36, help='bit 
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
 parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
+parser.add_argument('--seqctl' , default=None, type=str, nargs=2, help="sequence control (e.g. DAQ:NEH:XPM:0 4)")
 parser.add_argument('--record', action='store_true', help='enable recording of data')
 parser.add_argument('-v', action='store_true', help='be verbose')
 args = parser.parse_args()
@@ -80,10 +81,14 @@ from bluesky.plans import scan
 mydaq = BlueskyScan(control, daqState=daqState)
 dets = [mydaq]   # just one in this case, but it could be more than one
 
+seq_ctl = None
+if args.seqctl is not None:
+    seq_ctl = (args.seqctl[0],int(args.seqctl[1]))
+
 # configure BlueskyScan object with a set of motors
-mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.record, detname=args.detname, scantype=args.scantype)
+mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.record, detname=args.detname, scantype=args.scantype, seq_ctl=seq_ctl)
 
 # Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.
-RE(scan(dets, motor1, -10, 10, 15))
+RE(scan(dets, motor1, -10, 10, 5))
 
