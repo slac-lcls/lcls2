@@ -60,57 +60,75 @@ typedef struct {
 static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_frame_t is not size 64");
 class UdpEncoder;
 
-class UdpMonitor
+class UdpReceiver
 {
 public:
-    UdpMonitor(Parameters& para) :
-      m_para                  (para),
-      m_udpDetector           (nullptr)
-    {
-    }
+    UdpReceiver(const Parameters&           para,
+                SPSCQueue<XtcData::Dgram*>& pvQueue,
+                SPSCQueue<XtcData::Dgram*>& bufferFreeList);
+    ~UdpReceiver();
 public:
-    void onConnect();
-    void onDisconnect();
     const std::string name() const { return "encoder"; }    // FIXME
-    bool connected() const { return _connected; }
 public:
-    bool ready(UdpEncoder* udpDetector);
-    void clear() { m_udpDetector = nullptr; }
-protected:
-    bool                _connected;
+    void start();
+    void stop();
+    void setOutOfOrder(std::string errMsg);
+    bool getOutOfOrder() { return (m_outOfOrder); }
+    void setMissingData(std::string errMsg);
+    bool getMissingData() { return (m_missingData); }
+    void process();
+    void loopbackSend();
+    int drainDataFd();
+    int reset();
+    uint64_t nUpdates() { return m_nUpdates; }
+    uint64_t nMissed() { return m_nMissed; }
 private:
-    Parameters&         m_para;
-    UdpEncoder*        m_udpDetector;
+    void _read(XtcData::Dgram& dgram);
+    int _readFrame(encoder_frame_t *frame, bool& missing);
+    int _junkFrame();
+    void _loopbackInit();
+    void _loopbackFini();
+    void _udpReceiver();
+private:
+    const Parameters&           m_para;
+    SPSCQueue<XtcData::Dgram*>& m_pvQueue;
+    SPSCQueue<XtcData::Dgram*>& m_bufferFreelist;
+    std::atomic<bool>           m_terminate;
+    std::thread                 m_udpReceiverThread;
+    int                         m_loopbackFd;
+    struct sockaddr_in          m_loopbackAddr;
+    uint16_t                    m_loopbackFrameCount;
+    int                          _dataFd;
+    // out-of-order support
+    unsigned                    m_count;
+    unsigned                    m_countOffset;
+    bool                        m_resetHwCount;
+    bool                        m_outOfOrder;
+    bool                        m_missingData;
+    ZmqContext                  m_context;
+    ZmqSocket                   m_notifySocket;
+    uint64_t                    m_nUpdates;
+    uint64_t                    m_nMissed;
 };
 
 
 class UdpEncoder : public XpmDetector
 {
 public:
-    UdpEncoder(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor, DrpBase& drp);
-    ~UdpEncoder();
+    UdpEncoder(Parameters& para, DrpBase& drp);
+    unsigned connect(std::string& msg);
+    unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ }
     unsigned unconfigure();
-    void setOutOfOrder(std::string errMsg);
-    bool getOutOfOrder() { return (m_outOfOrder); }
-    void setMissingData(std::string errMsg);
-    bool getMissingData() { return (m_missingData); }
-    void process();
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
-    int drainDataFd();
-    int reset();
+    int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
     enum { DefaultDataPort = 5006 };
     enum { MajorVersion = 2, MinorVersion = 0, MicroVersion = 0 };
 private:
-    int _readFrame(encoder_frame_t *frame, bool& missing);
-    int _junkFrame();
-    void _loopbackInit();
-    void _loopbackFini();
-    void _loopbackSend();
+    void _event(XtcData::Dgram& dgram, const void* const bufEnd, encoder_frame_t& frame);
     void _worker();
-    void _udpReceiver();
     void _timeout(const XtcData::TimeStamp& timestamp);
     void _matchUp();
     void _handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
@@ -118,13 +136,9 @@ private:
 private:
     enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
     enum { DiscardBufSize = 10000 };
-    int m_loopbackFd;
-    struct sockaddr_in m_loopbackAddr;
-    uint16_t m_loopbackFrameCount;
     DrpBase& m_drp;
-    std::shared_ptr<UdpMonitor> m_udpMonitor;
+    std::shared_ptr<UdpReceiver> m_udpReceiver;
     std::thread m_workerThread;
-    std::thread m_udpReceiverThread;
     SPSCQueue<uint32_t> m_evtQueue;
     SPSCQueue<XtcData::Dgram*> m_pvQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
@@ -133,28 +147,17 @@ private:
     std::atomic<bool> m_running;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     uint64_t m_nEvents;
-    uint64_t m_nUpdates;
-    uint64_t m_nMissed;
     uint64_t m_nMatch;
     uint64_t m_nEmpty;
     uint64_t m_nTooOld;
     uint64_t m_nTimedOut;
-    int _dataFd;
-    // out-of-order support
-    unsigned m_count;
-    unsigned m_countOffset;
-    bool m_resetHwCount;
-    bool m_outOfOrder;
-    bool m_missingData;
-    ZmqContext m_context;
-    ZmqSocket m_notifySocket;
 };
 
 
 class UdpApp : public CollectionApp
 {
 public:
-    UdpApp(Parameters& para, std::shared_ptr<UdpMonitor> udpMonitor);
+    UdpApp(Parameters& para);
     ~UdpApp();
     void handleReset(const nlohmann::json& msg) override;
 private:
