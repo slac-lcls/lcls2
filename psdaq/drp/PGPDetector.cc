@@ -107,7 +107,7 @@ void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*
 void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 SPSCQueue<Batch>& inputQueue, SPSCQueue<Batch>& outputQueue,
                 int inpMqId, int resMqId, int inpShmId, int resShmId,
-                unsigned threadNum, std::atomic<int>& threadCount)
+                unsigned threadNum, std::atomic<int>& threadCountPush, std::atomic<int>& threadCountWrite)
 {
     Batch batch;
     MemPool& pool = drp.pool;
@@ -272,7 +272,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 // Prepare the trigger primitive with whatever input is needed for the TEB to meke trigger decisions
                 auto l3InpBuf = tebContributor.fetch(index);
                 new(l3InpBuf) Pds::EbDgram(*dgram);
-
             // transitions
             } else {
                 transition = true;
@@ -282,12 +281,16 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                threadNum,
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+
                 if ( pythonDrp == true) {
                     memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
                     sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
-                    memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram)+resDgram->xtc.extent);
+                    if (threadCountWrite.fetch_sub(1)!= 1) {
+                        memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram)+resDgram->xtc.extent);
+                    }
                 }
+
                 auto l3InpBuf = tebContributor.fetch(index);
                 if (threadNum == 0) {
                     new(l3InpBuf) Pds::EbDgram(*dgram);
@@ -299,7 +302,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         }
 
         // only one thread sends a batch with content (size > 0) to the collector
-        if (transition == true && threadCount.fetch_sub(1)!= 1) batch.size = 0;
+        if (transition == true && threadCountPush.fetch_sub(1)!= 1) batch.size = 0;
         outputQueue.push(batch);
     }   
 }
@@ -309,7 +312,8 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
     PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false),
     m_flushTmo(1.1 * drp.tebPrms().maxEntries * 14/13)
 {
-    threadCount.store(0);
+    threadCountPush.store(0);
+    threadCountWrite.store(0);
     m_nodeId = det->nodeId;
     int* m_inpMqId = inpMqId;
     int* m_resMqId = resMqId;
@@ -337,7 +341,8 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
                                      m_inpShmId[i],
                                      m_resShmId[i],
                                      i,
-                                     std::ref(threadCount));
+                                     std::ref(threadCountPush),
+                                     std::ref(threadCountWrite));
     }
 }
 
@@ -489,7 +494,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                     }
 
                     // set thread counter and broadcast transition
-                    threadCount.store(m_para.nworkers);
+                    threadCountWrite.store(m_para.nworkers);
+                    threadCountPush.store(m_para.nworkers);
                     for (unsigned w=0; w < m_para.nworkers; w++) {
                         m_workerInputQueues[w].push(m_batch);
                     }

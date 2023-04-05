@@ -42,7 +42,8 @@ private:
     int* m_resMqId;
     int* m_inpShmId;
     int* m_resShmId;
-    std::atomic<int> threadCount;
+    std::atomic<int> threadCountWrite;
+    std::atomic<int> threadCountPush;
     unsigned m_flushTmo;
 };
 
