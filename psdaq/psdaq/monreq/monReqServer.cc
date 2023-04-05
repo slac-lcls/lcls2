@@ -845,6 +845,7 @@ int MebApp::_parseConnectionParams(const json& body)
     _groups |= 1 << group;
 
     _prms.numBuffers[drpId] = _prms.maxBuffers;
+    _prms.indexSources      = -1ul;     // All DRPs provide an index in immData
 
     _prms.maxTrSize[drpId] = size_t(it.value()["connect_info"]["max_tr_size"]);
     maxTrSize             += _prms.maxTrSize[drpId];

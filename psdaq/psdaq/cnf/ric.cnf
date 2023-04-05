@@ -116,8 +116,9 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp028', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
 
- { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4 -L 5007'},
- { host: 'drp-neh-ctl002',  id:'sim_udpencoder', flags:'sp',               cmd:'sim_udpencoder -a 172.21.152.23'},
+# { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4 -L 5007'},  # Loopback
+ { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4'},
+ { host: 'drp-neh-ctl002',  id:'sim_udpencoder', flags:'sp',               cmd:'sim_udpencoder -a 172.21.152.23 -d 5008'},
 
 # {host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D wave8 -k epics_prefix=TST:FIM:W8:01'},
 
