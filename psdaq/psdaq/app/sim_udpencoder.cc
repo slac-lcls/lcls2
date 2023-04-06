@@ -186,7 +186,7 @@ void _loopbackInit()
     // initialize header
     Drp::encoder_header_t *pHeader = (Drp::encoder_header_t *)m_buf;
     pHeader->frameCount = htons(0);
-    pHeader->majorVersion = htons(1);
+    pHeader->majorVersion = htons(2);
     pHeader->minorVersion = pHeader->microVersion = 0;
     snprintf(pHeader->hardwareID, 16, "sim_updencoder");
     pHeader->channelMask = pHeader->errorMask = pHeader->mode = 0;
@@ -195,6 +195,7 @@ void _loopbackInit()
     Drp::encoder_channel_t *pChannel = (Drp::encoder_channel_t *)(pHeader + 1);
     snprintf(pChannel->hardwareID, 16, "sim_updencoder");
     pChannel->encoderValue = htonl(42);
+    pChannel->scale = pChannel->scaleDenom = htons(1);
 }
 
 void _loopbackFini()
