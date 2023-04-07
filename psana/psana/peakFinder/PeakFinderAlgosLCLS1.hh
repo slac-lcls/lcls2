@@ -1,15 +1,12 @@
 #ifndef PSALGOS_PEAKFINDERALGOSLCLS1_H
 #define PSALGOS_PEAKFINDERALGOSLCLS1_H
 
-//-----------------------------
 // PeakFinderAlgos.h 2017-08-07
 //-----------------------------
 
 /* 2020-02-26 conversion to lcls2 by M.D.
  * copied from psalgos/include/PeakFinderAlgos.h and renamed as PeakFinderAlgosLCLS1.hh
  * namespace psalgos -> renamed to psalg1
- *
- *
  */
 
 #include <string>
@@ -26,24 +23,18 @@
 #include "Types.hh"
 #include "LocalExtrema.hh"
 
-//-----------------------------
-
 using namespace std;
-
-//-----------------------------
 
 namespace psalg1 {
 
-//-----------------------------
 typedef types::mask_t      mask_t;
 typedef types::extrim_t    extrim_t;
 typedef types::conmap_t    conmap_t;
 typedef types::TwoIndexes  TwoIndexes;
-//-----------------------------
 
 /**
  * @brief Peak parameters
- */ 
+ */
 //class Peak{
 //public:
 
@@ -55,7 +46,7 @@ struct Peak{
   float npos;
   float amp_max;
   float amp_tot;
-  float row_cgrav; 
+  float row_cgrav;
   float col_cgrav;
   float row_sigma;
   float col_sigma;
@@ -69,7 +60,7 @@ struct Peak{
 
   Peak(){} // do not fill out member by default
   /*
-  Peak(const float& _seg      =0, 
+  Peak(const float& _seg      =0,
        const float& _row      =0,
        const float& _col      =0,
        const float& _npix     =0,
@@ -89,7 +80,7 @@ struct Peak{
        const float& _son      =0) :
        seg      (_seg      ),
        row      (_row      ),
-       col      (_col      ), 
+       col      (_col      ),
        npix     (_npix     ),
        npos     (_npos     ),
        amp_max  (_amp_max  ),
@@ -106,7 +97,7 @@ struct Peak{
        noise    (_noise    ),
        son      (_son      ){ }
   */
- 
+
   //copy constructor http://en.cppreference.com/w/cpp/language/copy_constructor
   Peak(const Peak& o)
     : seg      (o.seg      )
@@ -153,20 +144,19 @@ struct Peak{
 };
 
 /// Stream insertion operator,
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, const Peak& p);
 
-//-----------------------------
 /**
  * @brief Structure to hold background algorithm results
- */ 
+ */
 
 struct RingAvgRms {
   double   avg; // average intensity in the ring
   double   rms; // rms in the ring
   unsigned npx; // number of pixels used
 
-  RingAvgRms(const double& av=0, 
+  RingAvgRms(const double& av=0,
              const double& rm=0,
              const unsigned& np=0) :
     avg(av), rms(rm), npx(np) {}
@@ -182,18 +172,15 @@ struct RingAvgRms {
   }
 };
 
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, const RingAvgRms& b);
-
-//-----------------------------
-//-----------------------------
 
 /**
  *  @ingroup psalgos
  *
  *  @brief PeakFinderAlgos - class contains collection of methods for peak finding algorithms of 2-d image.
  *
- *  This software was developed for the LCLS project.  
+ *  This software was developed for the LCLS project.
  *  If you use all or part of it, please give an appropriate acknowledgment.
  *
  *  @author Mikhail Dubrovin
@@ -203,7 +190,7 @@ operator<<(std::ostream& os, const RingAvgRms& b);
  *  @anchor interface
  *  @par<interface> Interface Description
  *
- * 
+ *
  *  @li  Includes and typedefs
  *  @code
  *  #include <cstddef>  // for size_t
@@ -231,7 +218,7 @@ operator<<(std::ostream& os, const RingAvgRms& b);
  *    const float amax_thr=0;
  *    const float atot_thr=0;
  *    const float son_min=0;
- *    
+ *
  *    const size_t seg=0;
  *    const unsigned& pbits=0 # Types.h:  NONE=0, DEBUG=1, INFO=2, WARNING=4, ERROR=8, CRITICAL=16
  *    PeakFinderAlgos* alg = new PeakFinderAlgos(cseg, pbits);
@@ -245,34 +232,28 @@ operator<<(std::ostream& os, const RingAvgRms& b);
  *  alg.printVectorOfRingIndexes();
  *  alg.setPeakSelectionPars(npix_min, npix_max, amax_thr, atot_thr, son_min);
  *  alg.printSelectionPars();
- *  
+ *
  *  alg.peakFinderV3r3<T>(data, mask, rows, cols, rank, r0, dr, nsigm);
- *  
+ *
  *  const Peak& p = alg.peak(i)
  *  const Peak& p = alg.peakSelected(i)
  *  const std::vector<Peak> peaks = alg.vectorOfPeaks();
  *  const std::vector<Peak> peaks = alg.vectorOfPeaksSelected();
- *  
+ *
  *  alg.localMaxima(arr2d, rows, cols);
  *  alg.localMinima(arr2d, rows, cols);
  *  alg.connectedPixels(arr2d, rows, cols);
- *  
- *  
- *  
- *  
- *  
- *  
+ *
  *  @endcode
  */
 
-//-----------------------------
 
 class PeakFinderAlgos {
 public:
 
   /**
-   * @brief Class constructor is used for initialization of all paramaters. 
-   * 
+   * @brief Class constructor is used for initialization of all paramaters.
+   *
    * @param[in] seg    - ROI segment index in the ndarray
    * @param[in] pbits  - print control bit-word; =0-print nothing, =1 debug, =2 info, ...
    */
@@ -332,24 +313,24 @@ public:
 
   /// Fills-out (returns) array of local maxima
   void localMaxima(extrim_t *map, const size_t& rows, const size_t& cols) {
-    std::memcpy(map, m_local_maxima, rows*cols*sizeof(extrim_t)); 
+    std::memcpy(map, m_local_maxima, rows*cols*sizeof(extrim_t));
   }
 
   /// Fills-out (returns) array of local minima
   void localMinima(extrim_t *map, const size_t& rows, const size_t& cols) {
-    std::memcpy(map, m_local_minima, rows*cols*sizeof(extrim_t)); 
+    std::memcpy(map, m_local_minima, rows*cols*sizeof(extrim_t));
   }
 
   /// Fills-out (returns) array of m_conmap
   void connectedPixels(conmap_t *map, const size_t& rows, const size_t& cols) {
-    std::memcpy(map, m_conmap, rows*cols*sizeof(conmap_t)); 
+    std::memcpy(map, m_conmap, rows*cols*sizeof(conmap_t));
   }
 
 private:
   size_t m_seg;      // segment index (for list of images)
   unsigned m_pbits;  // pirnt control bit-word
   float  m_r0;       // radial parameter of the ring for S/N evaluation algorithm
-  float  m_dr;       // ring width for S/N evaluation algorithm 
+  float  m_dr;       // ring width for S/N evaluation algorithm
   size_t m_rows;     // number of rows
   size_t m_cols;     // number of cols
   size_t m_rank;     // rank of maximum for peakFinderV3
@@ -390,11 +371,8 @@ private:
 
   RingAvgRms m_bkgd;
 
-//-----------------------------
-
 public:
 
-//--------------------
   /**
    * @brief peakFinderV3r3 - "Ranker" - further development of ImgAlgos.peakFinderV3r2.
    * Changes:
@@ -444,11 +422,11 @@ peakFinderV3r3(const T *data
   // TEST OF numberOfExtrema and vectorOfExtremeIndexes
   //m_npksmax = localextrema::numberOfExtrema(m_local_maxima, rows, cols, 7);
 
-  //std::cout << "XXX: nminima   =  " << m_nminima << '\n'; 
-  //std::cout << "XXX: m_npksmax =  " << m_npksmax << '\n'; 
+  //std::cout << "XXX: nminima   =  " << m_nminima << '\n';
+  //std::cout << "XXX: m_npksmax =  " << m_npksmax << '\n';
 
   //std::vector<TwoIndexes> v = localextrema::vectorOfExtremeIndexes(m_local_maxima, rows, cols, 7, m_npksmax);
-  //std::cout << "vector<TwoIndexes> size: " << v.size() << '\n'; 
+  //std::cout << "vector<TwoIndexes> size: " << v.size() << '\n';
   //-------
 
   _initMapsAndVectors();
@@ -461,20 +439,19 @@ peakFinderV3r3(const T *data
       std::cout << "  number of found peaks    = " << v_peaks.size() << '\n';
       std::cout << "  number of selected peaks = " << v_peaks_sel.size() << '\n';
   }
-  //return v_peaks_sel; 
+  //return v_peaks_sel;
 }
 
-//-----------------------------
   /**
    * @brief full peak processing in a right order
    *          1. estimate background
    *          2. finds connected pixels
    *          3. fills vector of peaks
-   * 
+   *
    * @param[in]  data - pointer to 2-d array with calibrated intensities
    */
 template <typename T>
-void 
+void
 _makeMapOfConnectedPixelsForLocalMaximums(const T *data)
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in _makeMapOfConnectedPixelsForLocalMaximums/n";
@@ -494,13 +471,13 @@ _makeMapOfConnectedPixelsForLocalMaximums(const T *data)
         RingAvgRms bkgd = _evaluateRingAvgRmsV1<T>(data, r, c);
         m_reg_thr = bkgd.avg + m_nsigm * bkgd.rms; // <<=====
 	//if (m_pbits & LOG::DEBUG)
-	//  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r 
-        //                                            << " c=" << std::setw(4) << std::setprecision(0) << c 
+	//  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r
+        //                                            << " c=" << std::setw(4) << std::setprecision(0) << c
         //                                            << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
 
-        _findConnectedPixelsForLocalMaximumV2<T>(data, r, c); // <<===== 
+        _findConnectedPixelsForLocalMaximumV2<T>(data, r, c); // <<=====
 	//std::cout << "XXX: number of connected pixels = " << v_ind_pixgrp.size() << '\n';
-	
+
         if(v_ind_pixgrp.empty()) {
 	  //std::cout << "XXX peakFinderV3r3 WARNING: v_ind_pixgrp is empty...\n";
           --m_numreg; continue;
@@ -512,17 +489,15 @@ _makeMapOfConnectedPixelsForLocalMaximums(const T *data)
     }
 }
 
-//-----------------------------
-
   /**
    * @brief Evaluate background average and rms in the ring around pixel using data, mask, and map of local intensity extremes.
    * development of ImgAlgos.Alg.imgProc._evaluateBkgdAvgRmsV3
    * _evaluateRingAvgRmsV1 news: get rid of ndarray, mask, m_r0, m_dr etc are passed as member data, RingAvgRms is created at return.
-   * 
-   * Background average and rms are evaluated for any pixel specified by the (row,col).  
+   *
+   * Background average and rms are evaluated for any pixel specified by the (row,col).
    * Uses mask. Good non-extreme pixels are used.
    * This algorithm uses pixels in the ring m_r0, m_dr.
-   * 
+   *
    * @param[in]  data - pointer to 2-d array with calibrated intensities
    * @param[in]  row  - pixel row
    * @param[in]  col  - pixel column
@@ -575,7 +550,6 @@ _evaluateRingAvgRmsV1(const T *data
   return RingAvgRms(sum1, sum2, sum0); // returns avg, rms, npx
 }
 
-//-----------------------------
   /** The same as _evaluateRingAvgRmsV1, but selection of pixel is for Droplet
    */
 
@@ -626,17 +600,16 @@ _evaluateRingAvgRmsForDroplet(const T *data
   return RingAvgRms(sum1, sum2, sum0); // returns avg, rms, npx
 }
 
-//-----------------------------
   /**
    * @brief _findConnectedPixelsForLocalMaximumV2 - apply flood filling algorithms to find a group of connected pixels
-   * around r0,c0 in constrained by rad region. 
+   * around r0,c0 in constrained by rad region.
    *   - check that r0,c0 is absolute maximum, returns false if not found
-   *   - apply flood filling and make vector of connected pixels in rad constrained by region. 
+   *   - apply flood filling and make vector of connected pixels in rad constrained by region.
    * V2 news: mask and rank are passed as member data
-   * 
+   *
    * @param[in]  data - pointer to 2-d array with calibrated intensities
-   * @param[in]  r0 - droplet central pixel row-coordinate 
-   * @param[in]  c0 - droplet central pixel column-coordinate   
+   * @param[in]  r0 - droplet central pixel row-coordinate
+   * @param[in]  c0 - droplet central pixel column-coordinate
    */
 
 template <typename T>
@@ -656,7 +629,7 @@ _findConnectedPixelsForLocalMaximumV2(const T* data
   for(int r=m_reg_rmin; r<m_reg_rmax; r++)
     for(int c=m_reg_cmin; c<m_reg_cmax; c++) m_conmap[r*m_cols+c] = 0;
 
-  //if(m_pbits & LOG::DEBUG) std::cout << "in _findConnectedPixelsForLocalMaximum, seg=" << m_seg 
+  //if(m_pbits & LOG::DEBUG) std::cout << "in _findConnectedPixelsForLocalMaximum, seg=" << m_seg
   //                          << " rank=" << m_rank  << " r0=" << r0 << " c0=" << c0 << '\n';
   //std::cout << "ZZZ _findConnectedPixelsForLocalMaximum : rank=" << rank  << " r0=" << r0 << " c0=" << c0 << '\n';
   //std::cout << "ZZZ: m_reg_rmin: " << m_reg_rmin << "  m_reg_rmax: " << m_reg_rmax
@@ -666,19 +639,18 @@ _findConnectedPixelsForLocalMaximumV2(const T* data
   _findConnectedPixelsInRegionV3<T>(data, r0, c0); // begin recursion
 }
 
-//-----------------------------
 // Templated recursive method finging connected pixels for lacalMaximums
 
 template <typename T>
 void
 _findConnectedPixelsInRegionV3(const T* data, const int& r, const int& c)
 {
-  //if(m_pbits & LOG::DEBUG) 
+  //if(m_pbits & LOG::DEBUG)
   //std::cout << "in _findConnectedPixelsInRegionV3, r=" << r << " c=" << c << '\n';
   int irc = r*m_cols+c;
   if(! m_mask[irc]) return; // - masked
   if(m_conmap[irc]) return; // - pixel is already used // ????????? double-counting or symmetry?
-  if(data[irc] < (T)m_reg_thr) return; // discard pixel below threshold if m_reg_thr != 0 
+  if(data[irc] < (T)m_reg_thr) return; // discard pixel below threshold if m_reg_thr != 0
 
   m_conmap[irc] = m_numreg; // mark pixel on map
 
@@ -689,18 +661,16 @@ _findConnectedPixelsInRegionV3(const T* data, const int& r, const int& c)
   if(  r+1 < m_reg_rmax)  _findConnectedPixelsInRegionV3<T>(data, r+1, c);
   if(  c+1 < m_reg_cmax)  _findConnectedPixelsInRegionV3<T>(data, r, c+1);
   if(!(r-1 < m_reg_rmin)) _findConnectedPixelsInRegionV3<T>(data, r-1, c);
-  if(!(c-1 < m_reg_cmin)) _findConnectedPixelsInRegionV3<T>(data, r, c-1);  
+  if(!(c-1 < m_reg_cmin)) _findConnectedPixelsInRegionV3<T>(data, r, c-1);
 }
-
-//-----------------------------
 
   /**
    * @brief _procPixGroupV1 - process a pixel group for peakFinderV3r3
    * further development of ImgAlgos::AlgImgProc::_procPixGroup
-   * V1 news: get rid of ndarray, 
-   *          use member data to pass parameters, 
+   * V1 news: get rid of ndarray,
+   *          use member data to pass parameters,
    *          subtract base level brfore processing
-   * 
+   *
    * @param[in] data  - pointer to data array with calibrated intensities
    * @param[in] bkgd  - structure of base level ave, rms, npix
    * @param[in] vinds - vector of connected pixel indexes
@@ -762,6 +732,7 @@ _procPixGroupV1(const T* data
   peak.row     = r0;
   peak.col     = c0;
   peak.npix    = npix;
+  peak.npos    = 0;
   peak.amp_max = a0; // - bkgd.avg;
   peak.amp_tot = samp; // - bkgd.avg * npix;
 
@@ -785,7 +756,7 @@ _procPixGroupV1(const T* data
   peak.row_min   = rmin;
   peak.row_max   = rmax;
   peak.col_min   = cmin;
-  peak.col_max   = cmax;  
+  peak.col_max   = cmax;
   peak.bkgd      = bkgd.avg;
   peak.noise     = bkgd.rms;
   //peak.bkgnpx   = bkgd.npx;
@@ -795,10 +766,6 @@ _procPixGroupV1(const T* data
   v_peaks.push_back(peak);
 }
 
-//-----------------------------
-//-----------------------------
-//-----------------------------
-//-----------------------------
   /**
    * @brief peakFinderV4r3 - further development of ImgAlgos.peakFinderV4r2.
    * Changes:
@@ -842,8 +809,8 @@ peakFinderV4r3(const T *data
   //m_nminima = localextrema::mapOfLocalMinimums<T>(data, mask, rows, cols, rank, m_local_minima);
   m_npksmax = localextrema::mapOfThresholdMaximums<T>(data ,mask, rows, cols, rank, thr_low, thr_high, m_local_maxima);
 
-  //std::cout << "XXX: nminima   =  " << m_nminima << '\n'; 
-  //std::cout << "XXX: m_npksmax =  " << m_npksmax << '\n'; 
+  //std::cout << "XXX: nminima   =  " << m_nminima << '\n';
+  //std::cout << "XXX: m_npksmax =  " << m_npksmax << '\n';
 
   _initMapsAndVectors();
   _makeMapOfConnectedPixelsForDroplets<T>(data);
@@ -852,18 +819,16 @@ peakFinderV4r3(const T *data
 
 }
 
-//-----------------------------
-//-----------------------------
   /**
    * @brief full peak processing in a right order
    *          1. estimate background
    *          2. finds connected pixels
    *          3. fills vector of peaks
-   * 
+   *
    * @param[in]  data - pointer to 2-d array with calibrated intensities
    */
 template <typename T>
-void 
+void
 _makeMapOfConnectedPixelsForDroplets(const T *data)
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in _makeMapOfConnectedPixelsForDroplets/n";
@@ -883,13 +848,13 @@ _makeMapOfConnectedPixelsForDroplets(const T *data)
         RingAvgRms bkgd = _evaluateRingAvgRmsForDroplet<T>(data, r, c);
         m_reg_thr = m_thr_low; // bkgd.avg + m_nsigm * bkgd.rms; // <<=====
 	//if (m_pbits & LOG::DEBUG)
-	//  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r 
-        //                                            << " c=" << std::setw(4) << std::setprecision(0) << c 
+	//  std::cout << "XXX: m_numreg=" << m_numreg << " r=" << std::setw(4) << std::setprecision(0) << r
+        //                                            << " c=" << std::setw(4) << std::setprecision(0) << c
         //                                            << " bkgd:" << bkgd << " thr:" << m_reg_thr << '\n';
 
-        _findConnectedPixelsForDroplet(r, c); // <<===== 
+        _findConnectedPixelsForDroplet(r, c); // <<=====
 	//std::cout << "XXX A: number of connected pixels = " << v_ind_pixgrp.size() << '\n';
-	
+
         if(v_ind_pixgrp.empty()) {
 	  //std::cout << "XXX peakFinderV3r3 WARNING: v_ind_pixgrp is empty...\n";
           --m_numreg; continue;
@@ -901,13 +866,12 @@ _makeMapOfConnectedPixelsForDroplets(const T *data)
     }
 }
 
-//-----------------------------
   /**
    * @brief _findConnectedPixelsForDroplet - apply flood filling algorithms to find a group of connected pixels
    * news: rank is passed as member data
-   * 
-   * @param[in]  r0 - droplet central pixel row-coordinate 
-   * @param[in]  c0 - droplet central pixel column-coordinate   
+   *
+   * @param[in]  r0 - droplet central pixel row-coordinate
+   * @param[in]  c0 - droplet central pixel column-coordinate
    */
 
 //template <typename T>
@@ -925,20 +889,19 @@ _findConnectedPixelsForDroplet(const int& r0
   for(int r=m_reg_rmin; r<m_reg_rmax; r++)
     for(int c=m_reg_cmin; c<m_reg_cmax; c++) m_conmap[r*m_cols+c] = 0;
 
-  //if(m_pbits & LOG::DEBUG) std::cout << "in _findConnectedPixelsForLocalMaximum, seg=" << m_seg 
+  //if(m_pbits & LOG::DEBUG) std::cout << "in _findConnectedPixelsForLocalMaximum, seg=" << m_seg
   //                                   << " rank=" << m_rank  << " r0=" << r0 << " c0=" << c0 << '\n';
 
   v_ind_pixgrp.clear();
   _findConnectedPixelsInDroplet(r0, c0); // begin recursion
 }
 
-//-----------------------------
 // Recursive method finging connected pixels for Droplet
 
 void
 _findConnectedPixelsInDroplet(const int& r, const int& c)
 {
-  //if(m_pbits & LOG::DEBUG) 
+  //if(m_pbits & LOG::DEBUG)
   //std::cout << "in _findConnectedPixelsInDroplet, r=" << r << " c=" << c << '\n';
   int irc = r*m_cols+c;
   if(m_local_maxima[irc]<2) return; // 0: masked, 1: <thr_low
@@ -951,16 +914,11 @@ _findConnectedPixelsInDroplet(const int& r, const int& c)
   if(  r+1 < m_reg_rmax)  _findConnectedPixelsInDroplet(r+1, c);
   if(  c+1 < m_reg_cmax)  _findConnectedPixelsInDroplet(r, c+1);
   if(!(r-1 < m_reg_rmin)) _findConnectedPixelsInDroplet(r-1, c);
-  if(!(c-1 < m_reg_cmin)) _findConnectedPixelsInDroplet(r, c-1);  
+  if(!(c-1 < m_reg_cmin)) _findConnectedPixelsInDroplet(r, c-1);
 }
 
-//-----------------------------
-//-----------------------------
-//-----------------------------
-//-----------------------------
 }; // class PeakFinderAlgos
-//-----------------------------
 } // namespace psalg1
-//-----------------------------
+
 #endif // PSALGOS_PEAKFINDERALGOSLCLS1_H
-//-----------------------------
+
