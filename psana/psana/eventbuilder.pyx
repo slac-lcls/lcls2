@@ -19,7 +19,7 @@ from psana.dgramedit import PyDgram
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 
-MAX_BATCH_SIZE = 10000
+MAX_BATCH_SIZE = 1000000
 
 cdef class ProxyEvent:
     """ EventBuilder uses this class to store event-related info
