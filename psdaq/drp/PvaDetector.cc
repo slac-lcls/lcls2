@@ -110,9 +110,7 @@ void PvaMonitor::clear()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    disconnect();
     m_state = NotReady;
-    reconnect();
 }
 
 int PvaMonitor::getVarDef(XtcData::VarDef& varDef,
@@ -120,14 +118,22 @@ int PvaMonitor::getVarDef(XtcData::VarDef& varDef,
                           size_t           rankHack)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
-    const std::chrono::seconds tmo(3);
-    m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
+
     if (m_state != Ready) {
-        auto msg("Failed to connect with "+ name());
-        logging::error("getVarDef: %s", msg.c_str());
-        json jmsg = createAsyncErrMsg(m_para.alias, msg);
-        m_notifySocket.send(jmsg.dump());
-        return 1;
+        if (getParams(m_type, m_nelem, m_rank))  {
+            const std::chrono::seconds tmo(3);
+            m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
+            if (m_state != Ready) {
+                auto msg("Failed to get parameters for PV "+ name());
+                logging::error("getVardef: %s", msg.c_str());
+                json jmsg = createAsyncErrMsg(m_para.alias, msg);
+                m_notifySocket.send(jmsg.dump());
+                return 1;
+            }
+        }
+        else {
+            m_state = Ready;
+        }
     }
 
     size_t rank = m_rank;
@@ -153,16 +159,6 @@ void PvaMonitor::onConnect()
     if (m_para.verbose) {
         if (printStructure())
             logging::error("onConnect: printStructure() failed");
-    }
-
-    if (getParams(m_type, m_nelem, m_rank))  {
-        auto msg("PV "+ name() + " is uninitialized");
-        logging::error("onConnect: %s", msg.c_str());
-        json jmsg = createAsyncErrMsg(m_para.alias, msg);
-        m_notifySocket.send(jmsg.dump());
-    }
-    else {
-        m_state = Ready;
     }
 }
 
@@ -208,11 +204,7 @@ void PvaMonitor::updated()
     else {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (getParams(m_type, m_nelem, m_rank))  {
-            logging::critical("updated: getParams() failed");
-            abort();
-        }
-        else {
+        if (!getParams(m_type, m_nelem, m_rank))  {
             m_state = Ready;
         }
         m_condition.notify_one();
