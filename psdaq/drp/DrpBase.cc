@@ -211,7 +211,7 @@ int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 {
     int retval = 0;
     if (m_setMaskBytesDone) {
-        logging::info("%s: earlier setting in effect", __PRETTY_FUNCTION__);
+        logging::debug("%s: earlier setting in effect", __PRETTY_FUNCTION__);
     } else {
         uint8_t mask[DMA_MASK_SIZE];
         dmaInitMaskBytes(mask);

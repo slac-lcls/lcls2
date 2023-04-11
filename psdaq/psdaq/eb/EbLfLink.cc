@@ -242,8 +242,9 @@ int EbLfSvrLink::_synchronizeBegin()
   {
     if (imm == _EndSync)  break;        // Break on synchronization message
 
-    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, _id, imm, _EndSync);
+    if (_verbose)
+      fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+              __PRETTY_FUNCTION__, _id, imm, _EndSync);
   }
 
   if (rc == -FI_EAGAIN)
@@ -264,8 +265,9 @@ int EbLfSvrLink::_synchronizeEnd()
   {
     if (imm == _CltSync)  break;
 
-    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, _id, imm, _CltSync);
+    if (_verbose)
+      fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+              __PRETTY_FUNCTION__, _id, imm, _CltSync);
   }
 
   if (rc == -FI_EAGAIN)
@@ -378,8 +380,9 @@ int EbLfCltLink::_synchronizeBegin()
   {
     if (imm == _BegSync)  break;        // Break on synchronization message
 
-    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, _id, imm, _BegSync);
+    if (_verbose)
+      fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+              __PRETTY_FUNCTION__, _id, imm, _BegSync);
   }
 
   if (rc == -FI_EAGAIN)
@@ -406,8 +409,9 @@ int EbLfCltLink::_synchronizeEnd()
   {
     if (imm == _SvrSync)  break;
 
-    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, _id, imm, _SvrSync);
+    if (_verbose)
+      fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+              __PRETTY_FUNCTION__, _id, imm, _SvrSync);
   }
 
   if (rc == -FI_EAGAIN)
