@@ -176,15 +176,20 @@ cdef class SmdReader:
 
         # Find the winning buffer (slowest detector)- skip when no new read.
         cdef uint64_t limit_ts=0
+        for i in range(self.prl_reader.nfiles):
+            if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
+                self.winner = i
+                limit_ts = self.prl_reader.bufs[self.winner].timestamp
+
+        # With integrating detector specified, limit_ts is from the integrating
+        # detector where the last ts of the winner can be inserted in front of or at.
+        cdef int i_found=0
         if intg_stream_id > -1:
-            self.winner = intg_stream_id
-        else:
-            if self.winner == -1:
-                for i in range(self.prl_reader.nfiles):
-                    if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
-                        self.winner = i
-                        limit_ts = self.prl_reader.bufs[self.winner].timestamp
-        limit_ts = self.prl_reader.bufs[self.winner].timestamp
+            i_found = np.searchsorted(np.asarray(self.prl_reader.bufs[intg_stream_id].ts_arr)[:self.prl_reader.bufs[intg_stream_id].n_ready_events], 
+                    limit_ts)
+            if i_found < self.prl_reader.bufs[intg_stream_id].n_ready_events:
+                limit_ts = self.prl_reader.bufs[intg_stream_id].ts_arr[i_found]
+                self.winner = intg_stream_id
 
         # No. of events available in the viewing window
         self.n_view_events = self.prl_reader.bufs[self.winner].n_ready_events - \
@@ -198,6 +203,8 @@ cdef class SmdReader:
             i_eob               = self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size
             limit_ts            = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
             self.n_view_events  = batch_size
+
+
         
         # Save timestamp and transition id of the last event in batch
         self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_eob]      
