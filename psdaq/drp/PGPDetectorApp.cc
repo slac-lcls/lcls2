@@ -158,7 +158,7 @@ void PGPDetectorApp::setupDrpPython() {
 
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
 
-        unsigned keyBase  =  KEY_BASE + 100 * workerNum + 10 * m_para.partition;
+        unsigned keyBase  =  KEY_BASE + 1000 * workerNum + 100 * m_para.partition;
 
         // Creating message queues
         int rc = setupDrpMsgQueue(keyBase+0, "Inputs", m_inpMqId[workerNum], workerNum);

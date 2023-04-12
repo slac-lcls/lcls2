@@ -147,7 +147,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             abort();
         } 
 
-        unsigned keyBase  =  KEY_BASE + 100 * threadNum + 10 * para.partition;
+        unsigned keyBase  =  KEY_BASE + 1000 * threadNum + 100 * para.partition;
 
         int rc = attachDrpShMem(keyBase+2, "Inputs", inpShmId, inpData, threadNum);
         if (rc) {
@@ -286,7 +286,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                     memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
                     sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
-                    if (threadCountWrite.fetch_sub(1)!= 1) {
+                    if (threadCountWrite.fetch_sub(1) == 1) {
                         memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram)+resDgram->xtc.extent);
                     }
                 }
