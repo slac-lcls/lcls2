@@ -22,7 +22,7 @@ parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=36, help='bit 
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
 parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
-parser.add_argument('--seqctl' , default=None, type=str, nargs=2, help="sequence control (e.g. DAQ:NEH:XPM:0 4)")
+parser.add_argument('--seqctl' , default=None, type=str, nargs='+', help="sequence control (e.g. DAQ:NEH:XPM:0:SeqReset 4 [DAQ:NEH:XPM:0:SeqDone])")
 parser.add_argument('--record', action='store_true', help='enable recording of data')
 parser.add_argument('-v', action='store_true', help='be verbose')
 args = parser.parse_args()
@@ -33,6 +33,9 @@ if args.g is not None:
 
 if args.c < 1:
     parser.error('readout count (-c) must be >= 1')
+
+if args.seqctl is not None and (len(args.seqctl)<2 or len(args.seqctl)>3):
+    parser.error('seqctl must have 2 or 3 argments')
 
 # instantiate DaqControl object
 control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
@@ -83,7 +86,11 @@ dets = [mydaq]   # just one in this case, but it could be more than one
 
 seq_ctl = None
 if args.seqctl is not None:
-    seq_ctl = (args.seqctl[0],int(args.seqctl[1]))
+    if len(args.seqctl)==2:
+        seq_ctl = (args.seqctl[0],int(args.seqctl[1]))
+    else:
+        args.c  = 0  # required for seqDone PV use
+        seq_ctl = (args.seqctl[0],int(args.seqctl[1]),args.seqctl[2])
 
 # configure BlueskyScan object with a set of motors
 mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.record, detname=args.detname, scantype=args.scantype, seq_ctl=seq_ctl)

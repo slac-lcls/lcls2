@@ -34,8 +34,6 @@ class BlueskyScan:
         self.alg_version=[1,0,0]                # set in configure()
         self.daqState = daqState
         self.daqState_cv = threading.Condition()
-        self.stepDone_cv = threading.Condition()
-        self.stepDone = 0
         self.comm_thread.start()
         self.mon_thread.start()
         self.step_done = threading.Event()
@@ -104,7 +102,7 @@ class BlueskyScan:
 
                 # record step_value and step_docstring
                 my_data.update({'step_value': self.step_value})
-                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {self.step_value}}}'
+                docstring = f'{{"detname": "scan", "scantype": "{self.scantype}", "step": {self.step_value}}}'
                 my_data.update({'step_docstring': docstring})
 
                 # record motor positions
@@ -116,7 +114,7 @@ class BlueskyScan:
                 data = {
                   "motors":           my_data,
                   "timestamp":        0,
-                  "detname":          self.detname,
+                  "detname":          "scan",
                   "dettype":          "scan",
                   "scantype":         self.scantype,
                   "serial_number":    "1234",
@@ -134,6 +132,9 @@ class BlueskyScan:
                 if self.seq_ctl is not None:
                     enable_dict['seqpv_name'] = self.seq_ctl[0]
                     enable_dict['seqpv_val' ] = self.seq_ctl[1]
+                    if len(self.seq_ctl) > 2:
+                        enable_dict['seqpv_done'] = self.seq_ctl[2]
+                        
 
                 errMsg = self.control.setState('running',
                     {'configure':   {'NamesBlockHex':configureBlock},
@@ -287,6 +288,8 @@ class BlueskyScan:
                 raise TypeError('seq_ctl[0] must be of type str')
             if not isinstance(seq_ctl[1],int):
                 raise TypeError('seq_ctl[1] must be of type int')
+            if len(seq_ctl)>2 and not isinstance(seq_ctl[2],str):
+                raise TypeError('seq_ctl[2] must be of type str')
             self.seq_ctl = seq_ctl
 
         platform = self.control.getPlatform()

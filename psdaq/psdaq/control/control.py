@@ -450,6 +450,10 @@ class DaqPVA():
         logging.debug("DaqPVA.setup_step(mask=%d)" % mask)
         return self.pv_put(f'{pv_base}:StepGroups', mask)
 
+    def setup_seq(self, seqpv):
+        self.pvStepDone = seqpv
+        return 0
+
     #
     # DaqPVA.pv_get -
     #
@@ -2097,9 +2101,16 @@ class CollectionManager():
         try:
             seqpv_name = self.phase1Info['enable']['seqpv_name']
             seqpv_val  = self.phase1Info['enable']['seqpv_val']
-            logging.debug(f'condition_enable(): seqpv {seqpv_name} {seqpv_val}')
         except KeyError:
             seqpv_name = None
+
+        try:
+            seqpv_done = self.phase1Info['enable']['seqpv_done']
+        except KeyError:
+            seqpv_done = None
+
+        if seqpv_name:
+            logging.debug(f'condition_enable(): seqpv {seqpv_name} {seqpv_val} {seqpv_done}')
 
         # phase 1
         ok = self.condition_common('enable', 6000)
@@ -2108,17 +2119,24 @@ class CollectionManager():
             return False
 
         # phase 2
+        start_step_thread = False
         if (readout_count > 0):
             # set EPICS PVs.
             # StepEnd is a cumulative count.
             self.readoutCumulative[step_group] += readout_count
             self.pva.setup_step(step_group,group_mask,self.readoutCumulative[step_group])
+            start_step_thread = True
+        elif seqpv_done is not None:
+            self.pva.setup_seq(seqpv_done)
+            start_step_thread = True
+        else:
+            self.step_groups_clear()    # default is no scanning
+
+        if start_step_thread:
             # initialize stepdone thread
             self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
             # start step done thread
             self.step_done_thread.start()
-        else:
-            self.step_groups_clear()    # default is no scanning
 
         for pv in self.pva.pvListMsgHeader:
             self.pva.pv_put(pv, ControlDef.transitionId['Enable'])
