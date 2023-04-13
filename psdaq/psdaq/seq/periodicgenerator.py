@@ -6,7 +6,7 @@ import numpy
 from itertools import chain
 from functools import reduce
 import operator
-from psdaq.seq.globals import *
+from .globals import *
 
 verbose = False
 
@@ -32,13 +32,12 @@ def myunion(s0,s1):
     return set(s0) | set(s1)
 
 class PeriodicGenerator(object):
-    def __init__(self, period, start, charge=None, repeat=-1, marker='\"910kH\"'):
+    def __init__(self, period, start, charge=None, repeat=-1, notify=False, marker='\"910kH\"'):
         self.charge = charge
-        self.init(period, start, marker, repeat)
+        self.init(period, start, marker, repeat, notify)
 
-    def init(self, period, start, marker='\"910kH\"', repeat=-1):
+    def init(self, period, start, marker='\"910kH\"', repeat=-1, notify=False):
         self.async_start       = 0
-
         if isinstance(period,list):
             self.period    = period
             self.start     = start
@@ -47,6 +46,7 @@ class PeriodicGenerator(object):
             self.start     = [start]
         self.marker = marker
         self.repeat = repeat
+        self.notify = notify
 
         if not numpy.less(start,period).all():
             raise ValueError('start must be less than period')
@@ -175,11 +175,15 @@ class PeriodicGenerator(object):
                 self.instr.append('instrset.append( Branch.conditional(0, 2, {}) )'.format(self.repeat))
                 self.ninstr += 1
 
+            if self.notify:
+                self.instr.append('instrset.append( FixedRateSync(marker="10kH",occ=2))')
+                self.instr.append('instrset.append( CheckPoint() )')
+                self.ninstr += 2
+
             self.instr.append('last = len(instrset)')
             self.instr.append('instrset.append( FixedRateSync(marker="1H",occ=1) )')
             self.instr.append('instrset.append( Branch.unconditional(last) )')
             self.ninstr += 2
-
 
 def main():
     parser = argparse.ArgumentParser(description='Periodic sequence generator')
@@ -191,9 +195,11 @@ def main():
                         help="description for each event code")
     parser.add_argument("-r", "--repeat"            , default=-1 , type=int,
                         help="number of times to repeat 1 second sequence (default: indefinite)")
+    parser.add_argument("-n", "--notify"            , action='store_true',
+                        help="assert SeqDone PV when repeats are finished")
     args = parser.parse_args()
     print('# periodicgenerator args {}'.format(args))
-    gen = PeriodicGenerator(period=args.period, start=args.start_bucket, repeat=args.repeat)
+    gen = PeriodicGenerator(period=args.period, start=args.start_bucket, repeat=args.repeat, notify=args.notify)
     if (gen.ninstr > 1000):
         sys.stderr.write('*** Sequence has {} instructions.  May be too large to load. ***\n'.format(gen.ninstr))
     print('# {} instructions'.format(gen.ninstr))
