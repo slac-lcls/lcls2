@@ -542,6 +542,8 @@ class PVCtrls(object):
                                         handler=RegH(xpm.SeqEng_0.seqRestart,archive=False))
         provider.add(name+':SeqReset',self._pv_seqReset)
 
+        self._pv_seqDone   = addPV(name+':SeqDone','I')
+
         if notify:
             self._thread = threading.Thread(target=self.notify)
             self._thread.start()
@@ -616,7 +618,7 @@ class PVCtrls(object):
                         addr = next(siter)[0]
                         print('addr[{}] {:x}'.format(i,addr))
                         if i<1:
-                            self._seq.checkPoint(addr)
+                            pvUpdate(self._pv_seqDone,1)
                     i += 1
                     mask = mask>>1
             elif src==1: # step end message

@@ -61,7 +61,7 @@ class Engine(object):
                     else:
                         seq.append(Branch.conditional(args[1],args[2],args[3]))
                 elif instr == CheckPoint.opcode:
-                    seq.append(CheckPoint(0))
+                    seq.append(CheckPoint())
                 elif instr == ControlRequest.opcode:
                     seq.append(ControlRequest(args[1]))
         except StopIteration:
