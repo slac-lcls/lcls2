@@ -275,7 +275,10 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
     uint32_t lane = (dest[current] >> 8) & 7;
     m_dmaSize = size;
     m_dmaBytes += size;
-    if (size > m_pool.dmaSize()) {
+    // dmaReadBulkIndex() returns a maximum size of m_pool.dmaSize(), never larger.
+    // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
+    // which thus won't have the expected header.  Take the exact match as an oveflow indicator.
+    if (size == m_pool.dmaSize()) {
         logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
         abort();
     }
