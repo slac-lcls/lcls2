@@ -106,7 +106,8 @@ info_command_line_arguments = info_parser_arguments
 
 
 def log_rec_at_start(tsfmt='%Y-%m-%dT%H:%M:%S%z', **kwa):
-    """Returns (str) record containing timestamp, login, host, cwd, and command line
+    """DEPRECATED - moved to detector.RepoManager.py
+       Returns (str) record containing timestamp, login, host, cwd, and command line
     """
     s_kwa = ' '.join(['%s:%s'%(k,str(v)) for k,v in kwa.items()])
     return '\n%s user:%s@%s cwd:%s %s command:%s'%\
@@ -121,7 +122,7 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o2775, filemode=0o664, 
     os.umask(umask)
     rec = log_rec_at_start(tsfmt, **{'dirrepo':dirrepo,})
     logger.debug('Record at start: %s' % rec)
-    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=umask, group=group)
+    repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, umask=umask, group=group)
     logatstart = repoman.logname_at_start(procname)
     fexists = os.path.exists(logatstart)
     save_textfile(rec, logatstart, mode='a')
@@ -134,6 +135,7 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o2775, filemode=0o664, 
 
 
 def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', adddict={}):
+    """DEPRECATED - moved to detector.RepoManager.py"""
     os.umask(repoman.umask)
 
     logatstart = repoman.logname_at_start(procname)
