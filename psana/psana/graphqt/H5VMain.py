@@ -26,6 +26,7 @@ from psana.graphqt.CMConfigParameters import cp
 from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line
 from psana.detector.RepoManager import RepoManager
 
+SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 class H5VMain(QWidget):
 
@@ -60,8 +61,7 @@ class H5VMain(QWidget):
         self.set_tool_tips()
 
         if kwargs.get('rec_at_start', False):
-            RepoManager(logdir, dettype=None).\
-            save_record_at_start(sys.argv[0].rsplit('/')[-1])
+            RepoManager(dirrepo=logdir).save_record_at_start(SCRNAME)
 
         #self.connect_signals_to_slots()
 
