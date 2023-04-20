@@ -5,11 +5,12 @@ import os
 import sys
 from time import time, sleep
 import psana.pyalgos.generic.Graphics as gr
-from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL  # , init_stream_handler
+from psana.detector.UtilsLogging import logging  # DICT_NAME_TO_LEVEL, init_stream_handler
 import psana.detector.UtilsEpix10kaCalib as uec
 from psana.detector.utils_psana import seconds, str_tstamp  # info_run, info_detector
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 #from psana.detector.Utils import info_ndarr
+from psana.detector.RepoManager import init_repoman_and_logger
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
@@ -479,7 +480,11 @@ def event_loop_and_fit(det, timing, orun, step, istep, nstep,\
     return fits0, neg0, msgf, chi2, jr, jc
 
 
-def charge_injection(**kwa):
+def charge_injection(parser):
+
+    args = parser.parse_args()
+    kwa = vars(args)
+    repoman = init_repoman_and_logger(parser=parser, **kwa)
 
     str_dskwargs = kwa.get('dskwargs', None)
     detname    = kwa.get('det', None)
@@ -518,10 +523,6 @@ def charge_injection(**kwa):
     step_docstring = None
     dfid_med = 7761 # THIS VALUE DEPENDS ON EVENT RATE -> SHOULD BE AUTOMATED
 
-    logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
-    uec.save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
-    logger.info('\n  SCRNAME : %s\n  dskwargs: %s\n  detector: %s' % (SCRNAME, str_dskwargs, detname))
-
     dskwargs = uec.datasource_kwargs_from_string(str_dskwargs)
     try: ds = uec.DataSource(**dskwargs)
     except Exception as err:
@@ -545,6 +546,8 @@ def charge_injection(**kwa):
     dsname    = dskwargs
     nr,nc     = shape
 
+    repoman.set_dettype(dettype)
+
     gainbitw = ue.gain_bitword(dettype)  # 0o100000
     databitw = ue.data_bitword(dettype)  # 0o077777
     logger.info('gainbitw %s databitw %s' % (oct(gainbitw), oct(databitw)))
@@ -561,7 +564,7 @@ def charge_injection(**kwa):
     panel_id = get_panel_id(panel_ids, idx)
     logger.info('panel_id: %s' % panel_id)
 
-    dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = uec.dir_names(dirrepo, panel_id)
+    dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = uec.dir_names(repoman, panel_id)
     fname_prefix, panel_alias = uec.file_name_prefix(dirrepo, dettype, panel_id, tstamp, exp, irun)
     prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status =\
         uec.path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_rms, dir_status)
@@ -617,6 +620,10 @@ def charge_injection(**kwa):
           det = orun.Detector(detname)
           timing = orun.Detector('timing')
           timing.raw._add_fields()
+
+          #if dettype is None:
+          #   dettype = odet.raw._dettype
+          #   repoman.set_dettype(dettype)
 
           #Cdet = orun.Detector('ControlData') # in lcls
           try: step_docstring = orun.Detector('step_docstring')
@@ -917,6 +924,8 @@ def charge_injection(**kwa):
         print('TO EXIT - close all graphical windows or wait for %d sec' % tsec_show_end)
         gr.plt.pause(tsec_show_end)
         #gr.show()  # mode='DO NOT HOLD'
+
+    repoman.logfile_save()
 
 
 def ci_pixel_status(
