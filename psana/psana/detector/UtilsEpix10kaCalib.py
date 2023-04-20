@@ -3,41 +3,28 @@ Created on Fri May 11 18:25:48 2018
 CALIBRATION - TEST PULSES
 @author: Gabriel Blaj
 
-2020-12-03 - Mikhail Dubrovin - begin conversion to LCLS2
+2020-12-03 - Mikhail Dubrovin - begin transition to LCLS2
 """
 import os
 import sys
 from time import time
-import logging
+from psana.detector.RepoManager import init_repoman_and_logger
+from psana.detector.UtilsLogging import logging  # DICT_NAME_TO_LEVEL, STR_LEVEL_NAMES
 logger = logging.getLogger(__name__)
-DICT_NAME_TO_LEVEL = logging._nameToLevel
-#print('DICT_NAME_TO_LEVEL:',DICT_NAME_TO_LEVEL)
-#{'CRITICAL': 50, 'FATAL': 50, 'ERROR': 40, 'WARN': 30, 'WARNING': 30, 'INFO': 20, 'DEBUG': 10, 'NOTSET': 0}
+
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 import numpy as np
 
 import json
 from psana import DataSource
-from psana.detector.UtilsEpix import DIR_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
+from psana.detector.dir_root import DIR_REPO_EPIX10KA
+from psana.detector.UtilsEpix import FNAME_PANEL_ID_ALIASES, alias_for_id
 from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
 from psana.detector.utils_psana import seconds, datasource_kwargs_from_string
 from psana.detector.UtilsLogging import init_file_handler
-
-
-def save_log_record_at_start(dirrepo, procname, dirmode=0o2775, filemode=0o664, logmode='INFO', group='ps-users',\
-                             tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
-    """Adds record at start to the log file <dirrepo>/logs/log-<procname>-<year>.txt"""
-    from psana.detector.RepoManager import RepoManager
-    os.umask(umask)
-    repoman = RepoManager(dirrepo, dettype=None, dirmode=dirmode, filemode=filemode, umask=umask, group=group)
-    repoman.makedir_logs()
-    logfname = repoman.logname('%s_%s' % (procname, get_login()))
-    init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
-    logger.info('Begin logfile: %s' % logfname)
-    repoman.save_record_at_start(SCRNAME, tsfmt=tsfmt, adddict={'logfile':logfname})
 
 
 def find_file_for_timestamp(dirname, pattern, tstamp):
@@ -88,17 +75,22 @@ def fname_prefix_merge(dmerge, detname, tstamp, exp, irun):
     return '%s/%s-%s-%s-r%04d' % (dmerge, detname, tstamp, exp, irun)
 
 
-def dir_names(dirrepo, panel_id):
+#def dir_names(dirrepo, panel_id):
+#    dir_panel  = '%s/%s' % (dirrepo, panel_id)
+#    dir_offset = '%s/offset'    % dir_panel
+#    dir_peds   = '%s/pedestals' % dir_panel
+#    dir_plots  = '%s/plots'     % dir_panel
+#    dir_work   = '%s/work'      % dir_panel
+#    dir_gain   = '%s/gain'      % dir_panel
+#    dir_rms    = '%s/rms'       % dir_panel
+#    dir_status = '%s/status'    % dir_panel
+#    return dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status
+
+
+def dir_names(repoman, panel_id):
     """Defines structure of subdirectories in calibration repository."""
-    dir_panel  = '%s/%s' % (dirrepo, panel_id)
-    dir_offset = '%s/offset'    % dir_panel
-    dir_peds   = '%s/pedestals' % dir_panel
-    dir_plots  = '%s/plots'     % dir_panel
-    dir_work   = '%s/work'      % dir_panel
-    dir_gain   = '%s/gain'      % dir_panel
-    dir_rms    = '%s/rms'       % dir_panel
-    dir_status = '%s/status'    % dir_panel
-    return dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status
+    dir_panel  = repoman.makedir_panel(panel_id)
+    return (dir_panel,) + tuple(repoman.makedir_ctypes(panel_id, ctypes=('offset', 'pedestals', 'plots', 'work', 'gain', 'rms', 'status')))
 
 
 def path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_rms, dir_status):
@@ -112,7 +104,8 @@ def path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_r
 
 
 def file_name_prefix(dirrepo, dettype, panel_id, tstamp, exp, irun):
-    panel_alias = alias_for_id(panel_id, fname=os.path.join(dirrepo, FNAME_PANEL_ID_ALIASES), exp=exp, run=irun)
+    assert dettype is not None
+    panel_alias = alias_for_id(panel_id, fname=os.path.join(dirrepo, dettype, FNAME_PANEL_ID_ALIASES), exp=exp, run=irun)
     return '%s_%s_%s_%s_r%04d' % (dettype, panel_alias, tstamp, exp, irun), panel_alias
 
 
@@ -378,12 +371,16 @@ def data_source_kwargs(**kwa):
     return datasource_kwargs_from_string(kwa.get('dskwargs', None))
 
 
-def pedestals_calibration(*args, **kwa):
+def pedestals_calibration(parser):
     """NEWS significant ACCELERATION is acheived:
        - accumulate data for entire epix10kam_2m/quad array
        - use MPI
        all-panel or selected-panel one-step (gain range) or all steps calibration of pedestals
     """
+    args = parser.parse_args()
+    kwa = vars(args)
+    repoman = init_repoman_and_logger(parser=parser, **kwa)
+
     str_dskwargs = kwa.get('dskwargs', None)
     detname    = kwa.get('det', None)
     nrecs      = kwa.get('nrecs', 1000)
@@ -403,13 +400,7 @@ def pedestals_calibration(*args, **kwa):
     errskip    = kwa.get('errskip', False)
     irun       = None
     exp        = None
-
-    logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
-
-    logger.info('In %s\n  dskwargs: %s\n  detector: %s' % (SCRNAME, str_dskwargs, detname))
-    save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
-
-    #read input xtc file and accumulate block of data
+    dettype    = None
 
     dskwargs = data_source_kwargs(**kwa)
     try: ds = DataSource(**dskwargs)
@@ -445,7 +436,12 @@ def pedestals_calibration(*args, **kwa):
       logger.debug('  run unix epoch time %06f sec' % trun_sec)
       logger.debug('  run tstamp: %s' % tstamp_run)
       logger.debug('  now tstamp: %s' % tstamp_now)
-      det = orun.Detector(detname)
+      odet = orun.Detector(detname)
+
+      if dettype is None:
+        dettype = odet.raw._dettype
+        repoman.set_dettype(dettype)
+
       #step_value = orun.Detector('step_value')
       try: step_docstring = orun.Detector('step_docstring')
       except Exception as err:
@@ -453,24 +449,24 @@ def pedestals_calibration(*args, **kwa):
         sys.exit('Exit processing due to missing info about dark data step.')
       #cd = orun.Detector('ControlData') #LCLS1
 
-      logger.debug('--- det.raw._det_name: %s' % det.raw._det_name) # epixquad
-      logger.debug('    det.raw._dettype : %s' % det.raw._dettype)  # epix
-      logger.debug('    det.raw._calibconst.keys(): %s' % str(det.raw._calibconst.keys())) # dict_keys(['geometry'])
+      logger.debug('--- det.raw._det_name: %s' % odet.raw._det_name) # epixquad
+      logger.debug('    det.raw._dettype : %s' % odet.raw._dettype)  # epix
+      logger.debug('    det.raw._calibconst.keys(): %s' % str(odet.raw._calibconst.keys())) # dict_keys(['geometry'])
       #logger.debug('    det.raw._uniqueid: %s' % det.raw._uniqueid)
-      #logger.debug('    det.raw._sorted_segment_ids: %s' % str(det.raw._sorted_segment_ids))
-      #logger.debug('    det.raw._fullname: %s' % det.raw._fullname())
+      #logger.debug('    det.raw._sorted_segment_ids: %s' % str(odet.raw._sorted_segment_ids))
+      #logger.debug('    det.raw._fullname: %s' % odet.raw._fullname())
 
-      segment_ids = det.raw._segment_ids() #ue.segment_ids_det(det)
-      segment_inds = det.raw._segment_indices() #ue.segment_indices_det(det)
+      segment_ids = odet.raw._segment_ids() #ue.segment_ids_det(odet)
+      segment_inds = odet.raw._segment_indices() #ue.segment_indices_det(odet)
       s = 'segment inds and ids in the detector'
       for i,id in zip(segment_inds,segment_ids):
           s += '\n  seg:%02d id:%s' % (i,id)
       logger.info(s)
 
-      BIT_MASK = det.raw._data_bit_mask
-      logger.info('    det.raw._data_bit_mask BIT_MASK: %s' % oct(BIT_MASK))
+      BIT_MASK = odet.raw._data_bit_mask
+      logger.info('    odet.raw._data_bit_mask BIT_MASK: %s' % oct(BIT_MASK))
 
-      dcfg = det.raw._config_object() #ue.config_object_det(det)
+      dcfg = odet.raw._config_object() #ue.config_object_det(odet)
 
       for nstep_run, step in enumerate(orun.steps()): #(loop through calyb cycles, using only the first):
         nstep_tot += 1
@@ -494,15 +490,15 @@ def pedestals_calibration(*args, **kwa):
                 logger.info('==== Step:%02d loop is terminated, --stepnum=%d' % (nstep, stepnum))
                 break
 
-        #for k,v in det.raw._seg_configs().items(): # cpo's pattern DOES NOT WORK
+        #for k,v in odet.raw._seg_configs().items(): # cpo's pattern DOES NOT WORK
         for k,v in dcfg.items():
             scob = v.config
             logger.info(info_ndarr(scob.asicPixelConfig, 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(scob.trbit))))
             #logger.info(info_ndarr(scob.asicPixelConfig[:,:-2,:], 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(scob.trbit))))
 
-        gmaps = ue.gain_maps_epix10ka_any(det.raw, evt=None) #dcfg, data=None)
+        gmaps = ue.gain_maps_epix10ka_any(odet.raw, evt=None) #dcfg, data=None)
         logger.debug('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
-        logger.debug(ue.info_pixel_gain_mode_fractions(det.raw, evt=None, msg='gain mode fractions :'))
+        logger.debug(ue.info_pixel_gain_mode_fractions(odet.raw, evt=None, msg='gain mode fractions :'))
 
         logger.debug('gain maps'\
           + info_ndarr(gmaps[0],'\n    FH  ')\
@@ -512,7 +508,7 @@ def pedestals_calibration(*args, **kwa):
           + info_ndarr(gmaps[4],'\n    AML ')\
         )
 
-        mode = ue.find_gain_mode(det.raw, evt=None).upper()   #dcfg, data=None).upper()
+        mode = ue.find_gain_mode(odet.raw, evt=None).upper()   #dcfg, data=None).upper()
 
         if mode in ue.GAIN_MODES_IN:
             mode_in_step = ue.GAIN_MODES_IN[nstep]
@@ -537,7 +533,7 @@ def pedestals_calibration(*args, **kwa):
 
         ss = None
         for nevt,evt in enumerate(step.events()):
-            raw = det.raw.raw(evt)
+            raw = odet.raw.raw(evt)
             do_print = selected_record(nevt)
             if raw is None:
                 logger.info('==== Ev:%04d rec:%04d raw is None' % (nevt,nrec))
@@ -579,10 +575,10 @@ def pedestals_calibration(*args, **kwa):
 
             logger.info('\n%s\nprocess panel:%02d id:%s' % (96*'=', idx, panel_id))
 
-            dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = dir_names(dirrepo, panel_id)
+            dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = dir_names(repoman, panel_id)
             #print('XXXX panel_id, tstamp, exp, irun', panel_id, tstamp, exp, irun)
 
-            fname_prefix, panel_alias = file_name_prefix(dirrepo, det.raw._dettype, panel_id, tstamp, exp, irun)
+            fname_prefix, panel_alias = file_name_prefix(dirrepo, odet.raw._dettype, panel_id, tstamp, exp, irun)
             logger.debug('\n  fname_prefix:%s\n  panel_alias :%s' % (fname_prefix, panel_alias))
 
             prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status =\
@@ -637,6 +633,7 @@ def pedestals_calibration(*args, **kwa):
                     fname = '%s_pedestals_AML-L.dat' % prefix_peds
                     save_2darray_in_textfile(ped_ml_l, fname, filemode, fmt_peds)
     #logger.info('==== Completed pedestal calibration for rank %d ==== ' % rank)
+    repoman.logfile_save()
 
 
 def get_config_info_for_dataset_detname(**kwargs):
@@ -666,25 +663,25 @@ def get_config_info_for_dataset_detname(**kwargs):
       logger.debug('  run tstamp: %s' % tstamp_run)
       logger.debug('  now tstamp: %s' % tstamp_now)
 
-      det = orun.Detector(detname)
+      odet = orun.Detector(detname)
 
-      #co = det.raw._config_object()
+      #co = odet.raw._config_object()
 
       cpdic = {}
       cpdic['expname']    = orun.expt   # experiment name
       cpdic['strsrc']     = None
-      cpdic['shape']      = det.raw._seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2
-      cpdic['gain_mode']  = ue.find_gain_mode(det.raw, evt=None) #data=raw: distinguish 5-modes w/o data
-      cpdic['panel_ids']  = det.raw._segment_ids() #ue.segment_ids_det(det)
-      cpdic['panel_inds'] = det.raw._segment_indices() #ue.segment_indices_det(det)
-      cpdic['longname']   = det.raw._fullname() #ue.fullname_det(det) #det.raw._uniqueid
-      cpdic['det_name']   = det._det_name # det.raw._det_name epixquad
-      cpdic['dettype']    = det._dettype # epix
+      cpdic['shape']      = odet.raw._seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2
+      cpdic['gain_mode']  = ue.find_gain_mode(odet.raw, evt=None) #data=raw: distinguish 5-modes w/o data
+      cpdic['panel_ids']  = odet.raw._segment_ids() #ue.segment_ids_det(odet)
+      cpdic['panel_inds'] = odet.raw._segment_indices() #ue.segment_indices_det(odet)
+      cpdic['longname']   = odet.raw._fullname() #ue.fullname_det(odet) #odet.raw._uniqueid
+      cpdic['det_name']   = odet._det_name # odet.raw._det_name epixquad
+      cpdic['dettype']    = odet._dettype # epix
       cpdic['tstamp']     = tstamp_run # (str) 20201209191018
       cpdic['tstamp_now'] = tstamp_now # (str) 20201217140026
       cpdic['trun_sec']   = int(trun_sec) # 1607569818.532117 sec
       cpdic['tsrun_dark'] = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
-      cpdic['gains_def']  = det.raw._gains_def # e.g. for epix10ka (16.4, 5.466, 0.164) ADU/keV
+      cpdic['gains_def']  = odet.raw._gains_def # e.g. for epix10ka (16.4, 5.466, 0.164) ADU/keV
       cpdic['runnum']     = orun.runnum   # run number
       return cpdic
 
@@ -804,12 +801,16 @@ def add_links_for_gainci_fixed_modes(dir_gain, fname_prefix):
     return
 
 
-def deploy_constants(*args, **kwa):
+def deploy_constants(parser):
 
     from psana.pscalib.calib.NDArrIO import save_txt; global save_txt
     import psana.pscalib.calib.MDBUtils as mu
     import psana.pscalib.calib.MDBWebUtils as wu
     cc = wu.cc # import psana.pscalib.calib.CalibConstants as cc
+
+    args = parser.parse_args()
+    kwa = vars(args)
+    repoman = init_repoman_and_logger(parser=parser, **kwa)
 
     detname    = kwa.get('det', None)
     tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
@@ -833,10 +834,6 @@ def deploy_constants(*args, **kwa):
     comment    = kwa.get('comment', 'no comment')
     dbsuffix   = kwa.get('dbsuffix', '')
 
-    logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
-
-    save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
-
     cpdic = get_config_info_for_dataset_detname(**kwa)
     tstamp_run  = cpdic.get('tstamp',    None) # str
     expnum      = cpdic.get('expnum',    None)
@@ -850,6 +847,8 @@ def deploy_constants(*args, **kwa):
     gains_def   = cpdic.get('gains_def', None)
     irun        = cpdic.get('runnum',    None)
     exp         = cpdic.get('expname',   None)
+
+    repoman.set_dettype(dettype)
 
     req_inds = None if paninds is None else [int(i) for i in paninds.split(',')] # conv str '0,1,2,3' to list [0,1,2,3]
     logger.info('In %s\n      detector: "%s" \n      requested_inds: %s' % (SCRNAME, detname, str(req_inds)))
@@ -887,7 +886,7 @@ def deploy_constants(*args, **kwa):
 
         logger.info('%s\nmerge constants for panel:%02d id: %s' % (98*'_', ind, panel_id))
 
-        dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = dir_names(dirrepo, panel_id)
+        dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = dir_names(repoman, panel_id)
         fname_prefix, panel_alias = file_name_prefix(dirrepo, dettype, panel_id, _tstamp, exp, irun)
 
         prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status =\
@@ -978,51 +977,26 @@ def deploy_constants(*args, **kwa):
           else:
             logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D')
 
+    repoman.logfile_save()
+
 
 if __name__ == "__main__":
 
   def test_pedestals_calibration_epix10ka(tname):
-    #print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
-    #  fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2',\
-    #  fname = '/reg/d/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2',\
-    pedestals_calibration(
-      fname = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2',\
-      det     = 'epixquad',\
-      exp     = 'ueddaq02',\
-      runs    = [27,],\
-      nrecs   = 1024,\
-      errskip = True,\
-      idx     = None,\
-      )
-      #stepnum = 1,\
-      #mode    = 'AML-M',\
-      #dirrepo = './work',
-      #dirxtc  = DIR_XTC_TEST,\
-      #stepnum = 2,\
-
+    print("""DEPRECATED - use script epix10ka_pedestals_calibration""")
 
   def test_offset_calibration_epix10ka(tname):
-    print('TBD')
-
+    print('N/A')
 
   def test_deploy_constants_epix10ka(tname):
-    deploy_constants(
-      exp     = 'ueddaq02',\
-      det     = 'epixquad',\
-      runs    = 27,\
-      tstamp  = 20201216000000,\
-       deploy  = False)
-      #dirrepo = './work',\
-    print('TBD')
+    print("""DEPRECATED - use script epix10ka_deploy_constants""")
 
-
-  USAGE = 'python %s <test-name>' % SCRNAME\
+  USAGE = 'DEPRECATED: python %s <test-name>' % SCRNAME\
         + '\n  where <test-name>'\
         + '\n  1: test_offset_calibration_epix10ka - TBD'\
         + '\n  2: test_pedestals_calibration_epix10ka'\
         + '\n  3: test_deploy_constants_epix10ka - TBD'\
         + '\n'
-
 
 if __name__ == "__main__":
     print(80*'_')
