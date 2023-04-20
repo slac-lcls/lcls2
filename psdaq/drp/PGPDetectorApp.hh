@@ -40,6 +40,7 @@ private:
     int* m_inpShmId;
     int* m_resShmId;
     pid_t* m_drpPids;
+    size_t shmemSize;
 };
 
 }

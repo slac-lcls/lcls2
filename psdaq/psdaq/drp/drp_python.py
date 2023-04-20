@@ -1,10 +1,9 @@
 import sys
-import sysv_ipc
-import importlib
+import posix_ipc
 from psdaq.configdb.pub_server import pub_bind
 from psdaq.configdb.sub_client import sub_connect
 
-key_base = int(sys.argv[1])
+partition = int(sys.argv[1])
 pebble_bufsize = int(sys.argv[2])
 transition_bufsize = int(sys.argv[3])
 shm_mem_size = int(sys.argv[4])
@@ -12,21 +11,21 @@ detector_name = sys.argv[5]
 detector_segment = sys.argv[6]
 worker_num = int(sys.argv[7])
 
-print(f"[Worker {worker_num} - Python] DEBUG Keybase: {key_base}, Pebble bufsize: {pebble_bufsize}, "
-      f"Transition bufsize: {transition_bufsize}, Shmem size: {shm_mem_size}, "
-      f"Detecter name: {detector_name}, Detector segment: {detector_segment}")
 
 class IPCInfo:
-    def __init__(self, key_base, shm_mem_size):
+    def __init__(self, partition, detector_name, detector_segment, worker_num, shm_mem_size):
+
+        keybase = f"p{partition}_{detector_name}_{detector_segment}"; 
+
         try:
-            self.mq_inp = sysv_ipc.MessageQueue(key_base) # sysv_ipc.IPC_CREAT)
-            self.mq_res = sysv_ipc.MessageQueue(key_base+1) # sysv_ipc.IPC_CREAT)
-        except sysv_ipc.Error as exp:
+            self.mq_inp = posix_ipc.MessageQueue(f"/mqinp_{keybase}_{worker_num}", read=True, write=False) 
+            self.mq_res = posix_ipc.MessageQueue(f"/mqres_{keybase}_{worker_num}", read=False, write=True)
+        except posix_ipc.Error as exp:
             assert(False)
         try:
-            self.shm_inp = sysv_ipc.SharedMemory(key_base+2, size=shm_mem_size) #, flags=sysv_ipc.IPC_CREAT)
-            self.shm_res = sysv_ipc.SharedMemory(key_base+3, size=shm_mem_size) #, flags=sysv_ipc.IPC_CREAT)
-        except sysv_ipc.Error as exp:
+            self.shm_inp = posix_ipc.SharedMemory(f"/shminp_{keybase}_{worker_num}")
+            self.shm_res = posix_ipc.SharedMemory(f"/shmres_{keybase}_{worker_num}")
+        except posix_ipc.Error as exp:
             assert(False)
 
 
@@ -39,7 +38,7 @@ class DrpInfo:
         self.transition_bufsize = transition_bufsize
         self.ipc_info = ipc_info
 
-ipc_info = IPCInfo(key_base, shm_mem_size)
+ipc_info = IPCInfo(partition, detector_name, detector_segment, worker_num, shm_mem_size)
 drp_info = DrpInfo(detector_name, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info)
 
 # Setup socket for calibration constant broadcast

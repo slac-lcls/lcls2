@@ -1,7 +1,7 @@
 import sys, os
 import time
 import getopt
-import sysv_ipc
+import mmap
 import pprint
 
 try:
@@ -156,11 +156,11 @@ class DgramManager(object):
 
     def _connect_drp(self):
         # TODO: Add docstring
-        self.shm_inp_mv = memoryview(self.ipc.shm_inp)
-        self.shm_res_mv = memoryview(self.ipc.shm_res)
+        self.shm_inp_mv = mmap.mmap(self.ipc.shm_inp.fd, self.ipc.shm_inp.size)
+        self.shm_res_mv = mmap.mmap(self.ipc.shm_res.fd, self.ipc.shm_res.size)
         self.mq_inp = self.ipc.mq_inp
         self.mq_res = self.ipc.mq_res
-        self.mq_res.send(b"g")
+        self.mq_res.send(b"r\n")
         message, priority = self.mq_inp.receive()
         barray = bytes(self.shm_inp_mv[:])
         view = memoryview(barray)
@@ -374,7 +374,7 @@ class DgramManager(object):
                     raise RuntimeError(f"Configure expected, got {d.service()}")
             dgrams = [d]
         elif self.mq_inp:
-            self.mq_res.send(b"g")
+            self.mq_res.send(b"g\n")
             message, priority = self.mq_inp.receive()
             if message == b"g":
                 # use the most recent configure datagram
@@ -382,7 +382,7 @@ class DgramManager(object):
                 dgrams = [d]
             else:
                 self.shm_res_mv[:] = self.shm_inp_mv[:]
-                self.mq_res.send(b"g")
+                self.mq_res.send(b"g\n")
                 raise StopIteration
         else:
             try:

@@ -7,20 +7,12 @@ namespace Pds {
 
 namespace Ipc {
 
-
-struct Message_t
-{
-    long mtype;                       // message type
-    char mtext[512];                  // message text
-};
-
-void cleanupDrpPython(int* inpMqId, int* resMqId, int* inpShmId, int* resShmId, int numWorkers);
-int setupDrpShMem(key_t key, size_t size, const char* name, int& shmId, unsigned workerNum);
-int attachDrpShMem(key_t key, const char* name, int& shmId, void*& data, unsigned workerNum);
-int setupDrpShMem(key_t key, size_t size, const char* name, int& shmId, void*& data, unsigned workerNum);
-int setupDrpMsgQueue(key_t key, const char* name, int& mqId, unsigned workerNum);
-int send(int mqId, const Message_t& msg, size_t size, unsigned workerNum);
-int recv(int mqId, Message_t& msg, unsigned msTmo, clockid_t clockType, unsigned workerNum);
+void cleanupDrpPython(std::string keyBase, int* inpMqId, int* resMqId, unsigned numWorkers);
+int setupDrpShMem(std::string key, size_t size, const char* name, int& shmId, unsigned workerNum);
+int attachDrpShMem(std::string key, const char* name, int& shmId, size_t size, void*& data, bool write, unsigned workerNum);
+int setupDrpMsgQueue(std::string key, size_t size, const char* name, int& mqId, bool write, unsigned workerNum);
+int drpSend(int mqId, const char *msg, size_t msgsize, unsigned workerNum);
+int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo, unsigned workerNum);
 
 }
 

@@ -25,7 +25,8 @@ class DrpBase;
 class PGPDetector : public PgpReader
 {
 public:
-    PGPDetector(const Parameters& para, DrpBase& drp, Detector* det, int* inpMqId, int* resMqId, int* inpShmId, int* resShmId);
+    PGPDetector(const Parameters& para, DrpBase& drp, Detector* det, int* inpMqId, int* resMqId,
+                int* inpShmId, int* resShmId, size_t shemeSize);
     ~PGPDetector();
     void reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
     void collector(Pds::Eb::TebContributor& tebContributor);
@@ -45,6 +46,7 @@ private:
     std::atomic<int> threadCountWrite;
     std::atomic<int> threadCountPush;
     unsigned m_flushTmo;
+    size_t m_shmemSize;
 };
 
 }

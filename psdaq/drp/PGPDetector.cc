@@ -74,28 +74,27 @@ clockid_t test_coarse_clock() {
 // }
 
 
-void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
-                    clockid_t clockType, XtcData::TransitionId::Value transitionId, unsigned threadNum)
+void  drpSendReceive(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
+                    XtcData::TransitionId::Value transitionId, unsigned threadNum)
 {
-    Message_t msg;
-    msg.mtype = 1;
-    msg.mtext[0] = 'g';
+
+    char msg[520];
 
     if (transitionId == XtcData::TransitionId::Unconfigure) {
         logging::critical("[Thread %u] Unconfigure transition. Send stop message to Drp Python", threadNum);
-        msg.mtext[0] = 's';
+        sprintf(msg, "%s", "s");
     } else {
-        msg.mtext[0] = 'g';
+        sprintf(msg, "%s", "g");
     }
 
-    int rc = send(inpMqId, msg, 1, threadNum);
+    int rc = drpSend(inpMqId, msg, 1, threadNum);
     if (rc) {
-        logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+        logging::critical("[Thread %u] Message from Drp python not sent", threadNum);
         // cleanupIpcPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum); 
         abort();
     }
 
-    rc = recv(resMqId, msg, 10000, clockType, threadNum);
+    rc = drpRecv(resMqId, msg, 520, 10000, threadNum);
     if (rc) {
         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
         // cleanupIpcPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
@@ -106,12 +105,11 @@ void  sendReceiveDrp(int inpMqId, int resMqId, int inpShmId, int resShmId, void*
 
 void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 SPSCQueue<Batch>& inputQueue, SPSCQueue<Batch>& outputQueue,
-                int inpMqId, int resMqId, int inpShmId, int resShmId,
+                int inpMqId, int resMqId, int inpShmId, int resShmId, size_t shmemSize,
                 unsigned threadNum, std::atomic<int>& threadCountPush, std::atomic<int>& threadCountWrite)
 {
     Batch batch;
     MemPool& pool = drp.pool;
-    const unsigned KEY_BASE = 40000;
     const unsigned dmaBufferMask = pool.nDmaBuffers() - 1;
     const unsigned pebbleBufferMask = pool.nbuffers() - 1;
     auto& tebContributor = drp.tebContributor();
@@ -120,10 +118,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     bool pythonDrp = false;
     void* inpData = nullptr;
     void* resData = nullptr;
-    Message_t msg;
+    char msg[520];
     bool transition;
-
-    clockid_t clockType = test_coarse_clock();
 
     auto kwargs_it = para.kwargs.find("drp");
     if (kwargs_it != para.kwargs.end() && kwargs_it->second == "python") {
@@ -147,40 +143,39 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             abort();
         } 
 
-        unsigned keyBase  =  KEY_BASE + 1000 * threadNum + 100 * para.partition;
+        std::string keyBase = "p" + std::to_string(para.partition) + "_" + para.detName + "_" + std::to_string(para.detSegment); 
 
-        int rc = attachDrpShMem(keyBase+2, "Inputs", inpShmId, inpData, threadNum);
+        int rc = attachDrpShMem("/shminp_" + keyBase + "_" + std::to_string(threadNum), "Inputs", inpShmId, shmemSize, inpData, true, threadNum);
         if (rc) {
             // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-            logging::critical("[Thread %u] error setting up Drp shared memory buffers", threadNum);
+            logging::critical("[Thread %u] error attaching to Drp shared memory buffers", threadNum);
             abort();
         }
 
-        rc = attachDrpShMem(keyBase+3, "Results", resShmId, resData, threadNum);
+        rc = attachDrpShMem("/shmres_" + keyBase + "_" + std::to_string(threadNum), "Results", resShmId, shmemSize, resData, false, threadNum);
         if (rc) {
             // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-            logging::critical("[Thread %u] error setting up Drp shared memory buffers", threadNum);
+            logging::critical("[Thread %u] error attaching to Drp shared memory buffers", threadNum);
             abort();
         }
 
-        Message_t scriptmsg; 
-        scriptmsg.mtype = 1;
-        strncpy(scriptmsg.mtext, pythonScript.c_str(), pythonScript.length());
+        sprintf(msg, "%s",  pythonScript.c_str());
 
-        rc = send(inpMqId, scriptmsg, pythonScript.length(), threadNum);
+        rc = drpSend(inpMqId, msg, pythonScript.length(), threadNum);
         if (rc) {
-            logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+            logging::critical("[Thread %u] Message from Drp python not sent", threadNum);
             // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             abort();
         }
 
         // Wait for python process to be up
-        rc = recv(resMqId, msg, 15000, clockType, threadNum);
+        rc = drpRecv(resMqId, msg, 520, 15000, threadNum);
         if (rc) {
             logging::critical("[Thread %u] Message from Drp python not received", threadNum);
             // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             abort();
         }
+
         logging::info("[Thread %u] Starting events", threadNum);
     }
 
@@ -190,6 +185,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             break;
         }
         transition=false;
+
         for (unsigned i=0; i<batch.size; i++) {
             unsigned evtCounter = batch.start + i;
             PGPEvent* event = &pool.pgpEvents[evtCounter & dmaBufferMask];
@@ -200,6 +196,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             const Pds::TimingHeader* timingHeader = det->getTimingHeader(dmaIndex);
 
             XtcData::TransitionId::Value transitionId = timingHeader->service();
+
             unsigned index = evtCounter & pebbleBufferMask;
 
             // Event
@@ -219,7 +216,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 if ( pythonDrp == true) {
                     memcpy(inpData, (pool.pebble[index])+sizeof(Pds::PulseId), pool.pebble.bufferSize()-sizeof(Pds::PulseId));
-                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
+                    drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
                     memcpy((pool.pebble[index])+sizeof(Pds::PulseId), resData, pool.pebble.bufferSize()-sizeof(Pds::PulseId));
                 }    
 
@@ -264,7 +261,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 if ( pythonDrp == true) {
                     memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
-                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
+                    drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
                     memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram) + resDgram->xtc.extent);
                 }    
@@ -281,10 +278,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                threadNum,
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
-
+                
                 if ( pythonDrp == true) {
                     memcpy(inpData, ((char*)trDgram)+sizeof(Pds::PulseId), sizeof(XtcData::Dgram)+trDgram->xtc.extent);
-                    sendReceiveDrp(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, clockType, transitionId, threadNum);
+                    drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
                     XtcData::Dgram* resDgram = (XtcData::Dgram*)(resData);
                     if (threadCountWrite.fetch_sub(1) == 1) {
                         memcpy(((char*)pool.transitionDgrams[index])+sizeof(Pds::PulseId), resData, sizeof(XtcData::Dgram)+resDgram->xtc.extent);
@@ -308,9 +305,11 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 }
 
 PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
-                         int* inpMqId, int* resMqId, int* inpShmId, int* resShmId) :
+                         int* inpMqId, int* resMqId, int* inpShmId, int* resShmId,
+                         size_t shmemSize) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false),
-    m_flushTmo(1.1 * drp.tebPrms().maxEntries * 14/13)
+    m_flushTmo(1.1 * drp.tebPrms().maxEntries * 14/13),
+    m_shmemSize(shmemSize)
 {
     threadCountPush.store(0);
     threadCountWrite.store(0);
@@ -340,6 +339,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
                                      m_resMqId[i],
                                      m_inpShmId[i],
                                      m_resShmId[i],
+                                     m_shmemSize,
                                      i,
                                      std::ref(threadCountPush),
                                      std::ref(threadCountWrite));
@@ -419,28 +419,28 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
         }
         int32_t ret = read();
         nDmaRet = ret;
-        if (ret == 0) {
-            if (tmoState == TmoState::None) {
-                tmoState = TmoState::Started;
-                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-            } else {
-                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-                    if (m_batch.size != 0) {
-                        m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
-                        worker++;
-                        m_batch.start += m_batch.size;
-                        m_batch.size = 0;
-                        batchId += m_para.batchSize;
-                    } else {
-                        if (tmoState != TmoState::Finished) {
-                            m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
-                            worker++;
-                            tmoState = TmoState::Finished;
-                        }
-                    }
-                }
-            }
-        }
+        // if (ret == 0) {
+        //     if (tmoState == TmoState::None) {
+        //         tmoState = TmoState::Started;
+        //         tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+        //     } else {
+        //         if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+        //             if (m_batch.size != 0) {
+        //                 m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+        //                 worker++;
+        //                 m_batch.start += m_batch.size;
+        //                 m_batch.size = 0;
+        //                 batchId += m_para.batchSize;
+        //             } else {
+        //                 if (tmoState != TmoState::Finished) {
+        //                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+        //                     worker++;
+        //                     tmoState = TmoState::Finished;
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
         for (int b=0; b < ret; b++) {
             tmoState = TmoState::None;
             unsigned evtCounter;

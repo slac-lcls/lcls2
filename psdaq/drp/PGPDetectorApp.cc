@@ -3,6 +3,7 @@
 #include <string>
 #include <future>
 #include <thread>
+#include <cstdio>
 #include "drp.hh"
 #include "Detector.hh"
 #include "TimingBEB.hh"
@@ -113,7 +114,7 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
-int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shmemSize, const Parameters& para, DrpBase& drp)
+int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Parameters& para, DrpBase& drp)
 {
     // Fork
     pyPid = vfork();
@@ -126,7 +127,7 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shme
                "-u",
                "-m",
                "psdaq.drp.drp_python",
-               std::to_string(keyBase).c_str(),
+               std::to_string(para.partition).c_str(),
                std::to_string(drp.pool.pebble.bufferSize()).c_str(),
                std::to_string(para.maxTrSize).c_str(),
                std::to_string(shmemSize).c_str(),
@@ -145,31 +146,37 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, unsigned keyBase, long shme
 }
 
 void PGPDetectorApp::setupDrpPython() {
-    const unsigned KEY_BASE = 40000;
 
-    size_t shmemSize = m_drp.pool.pebble.bufferSize();
+    shmemSize = m_drp.pool.pebble.bufferSize();
     if (m_para.maxTrSize > shmemSize) shmemSize=m_para.maxTrSize;
 
     // Round up to an integral number of pages
     long pageSize = sysconf(_SC_PAGESIZE);
     shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
 
+    string keyBase = "p" + std::to_string(m_para.partition) + "_" + m_para.detName + "_" + std::to_string(m_para.detSegment); 
     std::vector<std::thread> drpPythonThreads;
 
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
 
-        unsigned keyBase  =  KEY_BASE + 1000 * workerNum + 100 * m_para.partition;
+        unsigned mqSize = 512;
 
+        // Temporary solution to start from clean msg queues and shared memory
+        std::remove(("/dev/mqueue/mqinp_" + keyBase + "_" + std::to_string(workerNum)).c_str());
+        std::remove(("/dev/mqueue/mqres_" + keyBase + "_" + std::to_string(workerNum)).c_str());
+        std::remove(("/dev/shm/shminp_" + keyBase + "_" + std::to_string(workerNum)).c_str());
+        std::remove(("/dev/shm/shmres_" + keyBase + "_" + std::to_string(workerNum)).c_str());
+        
         // Creating message queues
-        int rc = setupDrpMsgQueue(keyBase+0, "Inputs", m_inpMqId[workerNum], workerNum);
+        int rc = setupDrpMsgQueue("/mqinp_" + keyBase + "_" + std::to_string(workerNum), mqSize, "Inputs", m_inpMqId[workerNum], true, workerNum);
         if (rc) {
-            cleanupDrpPython(m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
+            cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
             logging::critical("[Thread %u] error setting up Drp message queues", workerNum);
             abort();
         }
-        rc = setupDrpMsgQueue(keyBase+1, "Results", m_resMqId[workerNum], workerNum);
+        rc = setupDrpMsgQueue("/mqres_" + keyBase + "_" + std::to_string(workerNum), mqSize, "Results", m_resMqId[workerNum], false, workerNum);
         if (rc) {
-            cleanupDrpPython(m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
+            cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
             logging::critical("[Thread %u] error setting up Drp message queues", workerNum);
             abort();
         }
@@ -182,16 +189,16 @@ void PGPDetectorApp::setupDrpPython() {
         long pageSize = sysconf(_SC_PAGESIZE);
         shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
 
-        rc = setupDrpShMem(keyBase+2, shmemSize, "Inputs", m_inpShmId[workerNum], workerNum);
+        rc = setupDrpShMem("/shminp_" + keyBase + "_" + std::to_string(workerNum), shmemSize, "Inputs", m_inpShmId[workerNum], workerNum);
         if (rc) {
-            cleanupDrpPython(m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
+            cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
             logging::critical("[Thread %u] error setting up Drp shared memory buffers", workerNum);
             abort();
         }
 
-        rc = setupDrpShMem(keyBase+3, shmemSize, "Results", m_resShmId[workerNum], workerNum);
+        rc = setupDrpShMem("/shmres_" + keyBase  + "_" + std::to_string(workerNum), shmemSize, "Results", m_resShmId[workerNum], workerNum);
         if (rc) {
-            cleanupDrpPython(m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
+            cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
             logging::critical("[Thread %u] error setting up Drp shared memory buffers", workerNum);
             abort();
         }
@@ -201,7 +208,6 @@ void PGPDetectorApp::setupDrpPython() {
         drpPythonThreads.emplace_back(startDrpPython,
                                       std::ref(m_drpPids[workerNum]),
                                       workerNum,
-                                      keyBase,
                                       shmemSize,
                                       std::ref(m_para),
                                       std::ref(m_drp));
@@ -239,7 +245,8 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     m_drp(para, context()),
     m_para(para),
     m_det(nullptr),
-    m_unconfigure(false)
+    m_unconfigure(false),
+    shmemSize(0)
 {
     Py_Initialize(); // for use by configuration
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
@@ -449,7 +456,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId);
+            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, shmemSize);
             m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
                 m_drp.exposer()->RegisterCollectable(m_exporter);
