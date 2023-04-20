@@ -1,41 +1,11 @@
 #!/usr/bin/env python
 
 import sys
-from time import time
-
-from psana.detector.UtilsEpix import DIR_REPO_EPIX10KA
-from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
+from psana.detector.dir_root import DIR_REPO_EPIX10KA
+from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
-
-def do_main():
-
-    t0_sec = time()
-
-    parser = argument_parser()
-
-    args = parser.parse_args()
-    opts = vars(args)
-    #defs = vars(parser.parse_args([])) # dict of defaults only
-
-    if len(sys.argv)<3: exit('\n%s\n' % USAGE)
-
-    assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
-    assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
-
-    init_stream_handler(loglevel=args.logmode)
-
-    logger.debug('%s\nCommand line:%s' % ((50*'_'),' '.join(sys.argv)))
-
-    from psana.detector.Utils import info_parser_arguments
-    logger.info(info_parser_arguments(parser))
-
-    from psana.detector.UtilsEpix10kaCalib import deploy_constants
-    deploy_constants(**opts)
-
-    logger.info('is completed, consumed time %.3f sec' % (time() - t0_sec))
-
 
 USAGE = 'Usage:'\
       + '\n%s -k <kwargs-for-DataSource> -d <detector-name>  [-L <logging-mode>] [-D] [...]' % SCRNAME\
@@ -55,6 +25,22 @@ USAGE = 'Usage:'\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
+def do_main():
+
+    parser = argument_parser()
+    args = parser.parse_args()
+    #opts = vars(args)
+    if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
+    assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
+    assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
+
+    from time import time
+    from psana.detector.UtilsEpix10kaCalib import deploy_constants
+    t0_sec = time()
+    deploy_constants(parser)
+    logger.info('is completed, consumed time %.3f sec' % (time() - t0_sec))
+
+
 def argument_parser():
     from argparse import ArgumentParser
 
@@ -69,7 +55,7 @@ def argument_parser():
     d_high    = None #16.40 for epix10ka
     d_medium  = None #5.466
     d_low     = None #0.164
-    d_version = 'V2022-12-02'
+    d_version = 'V2023-04-20'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_dbsuffix= ''
@@ -84,7 +70,7 @@ def argument_parser():
                 'By default run time is used, default = %s' % str(d_tstamp)
     h_dirrepo = 'non-default repository of calibration results, default = %s' % d_dirrepo
     h_deploy  = 'deploy constants to the calib dir, default = %s' % d_deploy
-    h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
+    h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_high    = 'default high   gain ADU/keV, default = %s' % str(d_high)
     h_medium  = 'default medium gain ADU/keV, default = %s' % str(d_medium)
     h_low     = 'default low    gain ADU/keV, default = %s' % str(d_low)

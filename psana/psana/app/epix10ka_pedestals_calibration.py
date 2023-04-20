@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
 import sys
-from time import time
-from psana.detector.UtilsEpix10kaCalib import pedestals_calibration, DIR_REPO_EPIX10KA
-from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
-
+from psana.detector.dir_root import DIR_REPO_EPIX10KA
+from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
@@ -16,36 +14,25 @@ USAGE = 'Usage:'\
       + '\n  %s -k exp=rixx45619,run=121 -d epixhr -o ./work' % SCRNAME\
       + '\n  %s -k exp=ueddaq02,run=27 -d epixquad -i15 -o ./work -L DEBUG' % SCRNAME\
       + '\n  %s -k exp=ueddaq02,run=83 -d epixquad -o ./work' % SCRNAME\
-      + '\n  ??? mpirun -n 5 %s -k exp=ueddaq02,run=27 -d epixquad -i15 -o ./work -L DEBUG' % SCRNAME\
       + '\nTests:'\
       + '\n  %s -k exp=rixx45619,run=121 -d epixhr -o ./work' % SCRNAME\
       + '\n  %s -k \"{\'exp\':\'rixx45619\', \'run\':121}\" -d epixhr -o ./work' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
+      #+ '\n  ??? mpirun -n 5 %s -k exp=ueddaq02,run=27 -d epixquad -i15 -o ./work -L DEBUG' % SCRNAME\
 
 
 def do_main():
 
-    t0_sec = time()
-
     parser = argument_parser()
     args = parser.parse_args()
-    kwa = vars(args)
-    #defs = vars(parser.parse_args([])) # dict of defaults only
-
-    if len(sys.argv)<3: exit('\n%s\n' % USAGE)
-
+    if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 
-    init_stream_handler(loglevel=args.logmode)
-
-    logger.debug('%s\nCommand line:%s' % ((50*'_'), ' '.join(sys.argv)))
-
-    from psana.detector.Utils import info_parser_arguments
-    logger.info(info_parser_arguments(parser))
-
-    pedestals_calibration(**kwa)
-
+    from psana.detector.UtilsEpix10kaCalib import pedestals_calibration
+    from time import time
+    t0_sec = time()
+    pedestals_calibration(parser)
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
 
 
@@ -78,6 +65,7 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
+    d_version = 'V2023-04-20'
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -89,7 +77,7 @@ def argument_parser():
     h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
     h_idx     = 'segment index (0-15 for epix10ka2m, 0-3 for quad) or all by default for processing, default = %s' % str(d_idx)
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
-    h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
+    h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
     h_stepnum = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax = 'maximum number of steps to process, default = %s' % str(d_stepmax)
@@ -108,6 +96,7 @@ def argument_parser():
     h_fraclm  = 'fraction of statistics [0,1] below low or above high gate limit to assign pixel bad status, default = %f' % d_fraclm
     h_fraclo  = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
     h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
+    h_version = 'constants version, default = %s' % str(d_version)
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
@@ -135,6 +124,7 @@ def argument_parser():
     parser.add_argument('--fraclm',        default=d_fraclm,     type=float, help=h_fraclm)
     parser.add_argument('--fraclo',        default=d_fraclo,     type=float, help=h_fraclo)
     parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
+    parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
 
     return parser
 

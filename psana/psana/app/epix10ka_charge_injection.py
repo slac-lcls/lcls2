@@ -1,39 +1,28 @@
 #!/usr/bin/env python
 
-#from Detector.UtilsEpix10kaCalib import offset_calibration, CALIB_REPO_EPIX10KA, DIR_LOG_AT_START
-
 import sys
-from time import time
-#from psana.detector.UtilsEpix10kaCalib import pedestals_calibration, DIR_REPO_EPIX10KA
-from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
-
+from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
+from psana.detector.dir_root import DIR_REPO_EPIX10KA
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].split('/')[-1]
 
 def do_main():
 
-    t0_sec = time()
-
     parser = argument_parser()
     args = parser.parse_args()
-    kwa = vars(args)
-    #defs = vars(parser.parse_args([])) # dict of defaults only
+    #kwa = vars(args)
 
-    if len(sys.argv) < 4: print('\n%s\n' % USAGE)
+    if len(sys.argv) < 4: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
 
     if args.dskwargs is None : raise IOError('WARNING: option "-k <kwargs-for-DataSource>" MUST be specified.')
     if args.det      is None : raise IOError('WARNING: option "-d <detector-name>" MUST be specified.')
     if args.idx      is None : raise IOError('WARNING: option "-i <panel index (0-3/15 for quad/epix10ka2m etc.)>" MUST be specified.')
 
-    init_stream_handler(loglevel=args.logmode)
-
-    from psana.detector.Utils import info_parser_arguments
-    logger.info(info_parser_arguments(parser))
-
-    import psana.detector.UtilsEpix10kaChargeInjection as uci
-    uci.charge_injection(**kwa)
-
+    from time import time
+    from psana.detector.UtilsEpix10kaChargeInjection import charge_injection
+    t0_sec = time()
+    charge_injection(parser)
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
 
 
@@ -49,7 +38,7 @@ def argument_parser() :
     d_idx      = None  # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_nbs      = 4600  # number of frames
     d_nspace   = 5     # space between charge injected picsels
-    d_dirrepo  = './work' #CALIB_REPO_EPIX10KA # './myrepo'
+    d_dirrepo  = DIR_REPO_EPIX10KA # './work'
     d_display  = True
     d_logmode  = 'INFO'
     d_nperiods = True
@@ -65,7 +54,7 @@ def argument_parser() :
     d_filemode = 0o664
     d_group    = 'ps-users'
     d_slice    = '0:,0:'
-
+    d_version  = 'V2023-04-20'
 
     h_dskwargs= 'Data source parameters; string of comma-separated (no spaces) parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -78,7 +67,7 @@ def argument_parser() :
     h_nspace  = 'space between calibrated pixels - TO BE AUTOMATED, default = %s' % str(d_nspace)
     h_dirrepo = 'repository for results, default = %s' % d_dirrepo
     h_display = 'turn off graphical display, default = %s' % d_display
-    h_logmode = 'logging mode, one of %s, default = %s' % (', '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
+    h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_nperiods= 'use all found saw periods of the pulser, default = %s' % d_nperiods
     h_npoff   = 'discard in fit number of points on trace around switching point, default = %s' % str(d_npoff)
     h_ccnum   = 'step number to process (from 0 to %d) for debugging or all by default, default = %s' % ((d_ccmax-1), str(d_ccnum))
@@ -92,6 +81,7 @@ def argument_parser() :
     h_filemode= 'file mode for all saved files, default = %s' % oct(d_filemode)
     h_group   = 'group ownership for all saved files, default = %s' % d_group
     h_slice   = '(str) slice of the panel image 2-d array selected for plots and pixel status, FOR DEBUGGING ONLY, ex. "0:144,0:192", default = %s' % d_slice
+    h_version = 'constants version, default = %s' % str(d_version)
 
     from argparse import ArgumentParser
     parser = ArgumentParser(usage=USAGE, description='Process charge injection data for epixhr/epix10ka')
@@ -116,6 +106,7 @@ def argument_parser() :
     parser.add_argument('--filemode',       default=d_filemode, type=int,             help=h_filemode)
     parser.add_argument('--group',          default=d_group,    type=str,             help=h_group)
     parser.add_argument('--slice',          default=d_slice,    type=str,             help=h_slice)
+    parser.add_argument('-v', '--version',  default=d_version,  type=str,             help=h_version)
 
     return parser
 
