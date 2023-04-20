@@ -22,7 +22,7 @@ export HDF5_USE_FILE_LOCKING=FALSE
 export RDMAV_FORK_SAFE=1
 export RDMAV_HUGEPAGES_SAFE=1
 # Mikhail: root of psdm directories
-#export DIR_PSDM=/cds/group/psdm
+export DIR_PSDM=/cds/group/psdm
 
 # cpo: workaround a qt bug which may no longer be there (dec 5, 2022)
 if [ ! -d /usr/share/X11/xkb ]; then
