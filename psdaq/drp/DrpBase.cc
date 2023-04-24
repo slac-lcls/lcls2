@@ -87,6 +87,7 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
 
 MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
+    m_dmaAllocs(0),
     m_dmaFrees(0),
     m_allocs(0),
     m_frees(0)
@@ -147,6 +148,13 @@ MemPool::~MemPool()
    close(m_fd);
 }
 
+unsigned MemPool::countDma()
+{
+    auto allocs = m_dmaAllocs.fetch_add(1, std::memory_order_acq_rel);
+
+    return allocs;
+}
+
 unsigned MemPool::allocate()
 {
     auto allocs = m_allocs.fetch_add(1, std::memory_order_acq_rel);
@@ -197,6 +205,7 @@ Pds::EbDgram* MemPool::allocateTr()
 
 void MemPool::resetCounters()
 {
+    m_dmaAllocs.store(0);
     m_dmaFrees .store(0);
     m_allocs   .store(0);
     m_frees    .store(0);
@@ -242,7 +251,6 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     dmaErrors     (maxRetCnt),
     m_lastComplete(0),
     m_lastTid     (XtcData::TransitionId::Reset),
-    m_lastTime    (0),
     m_dmaIndices  (dmaFreeCnt),
     m_count       (0),
     m_dmaBytes    (0),
@@ -268,7 +276,7 @@ void PgpReader::flush()
   if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
 }
 
-const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint32_t& evtCounter)
+const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 {
     uint32_t size = dmaRet[current];
     uint32_t index = dmaIndex[current];
@@ -277,11 +285,17 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
     m_dmaBytes += size;
     // dmaReadBulkIndex() returns a maximum size of m_pool.dmaSize(), never larger.
     // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
-    // which thus won't have the expected header.  Take the exact match as an oveflow indicator.
+    // which thus won't have the expected header.  Take the exact match as an overflow indicator.
     if (size == m_pool.dmaSize()) {
         logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
         abort();
     }
+
+    const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
+    uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
+    uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
+    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
+    m_pool.countDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
     uint32_t flag = dmaFlags[current];
     uint32_t err  = dmaErrors[current];
@@ -289,12 +303,16 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
         logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
         //  How do I return this buffer?
         ++m_lastComplete;
-        dmaRetIndex(m_pool.fd(), index);
+        handleBrokenEvent(*event);
+        freeDma(event);                 // Leaves event mask = 0
         ++m_nDmaErrors;
         return nullptr;
     }
 
-    const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
+    if (timingHeader->error()) {
+        logging::error("Timing header error bit is set");
+        ++m_nTmgHdrError;
+    }
     if ((timingHeader->readoutGroups() & (1 << m_para.partition)) == 0) {
         XtcData::TransitionId::Value transitionId = timingHeader->service();
         logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
@@ -302,21 +320,17 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);
         ++m_lastComplete;
-        dmaRetIndex(m_pool.fd(), index);
+        handleBrokenEvent(*event);
+        freeDma(event);                 // Leaves event mask = 0
         ++m_nNoComRoG;
         return nullptr;
     }
-
-    evtCounter = m_pool.allocate();     // This can block
-    uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
-    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
 
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
     buffer->index = index;
     event->mask |= (1 << lane);
 
-    uint32_t l1Count = timingHeader->evtCounter & 0xffffff;
     const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
     logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
                    lane, size,
@@ -325,11 +339,11 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
                    reinterpret_cast<const uint32_t*>(data)[4], // env
                    flag, err);
 
-    if (timingHeader->error()) {
-        logging::error("Timing header error bit is set");
-        ++m_nTmgHdrError;
-    }
     if (event->mask == m_para.laneMask) {
+        // Allocate a pebble buffer once the event is built
+        auto counter = m_pool.allocate(); // This can block
+        event->pebbleIndex = counter & (m_pool.nbuffers() - 1);
+
         XtcData::TransitionId::Value transitionId = timingHeader->service();
         if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId != XtcData::TransitionId::SlowUpdate) {
@@ -348,19 +362,23 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
                 resetEventCounter();
             }
         }
-        if (l1Count != ((m_lastComplete + 1) & 0xffffff)) {
-            logging::error("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-                           RED_ON, m_lastComplete, l1Count, l1Count - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
-            logging::error("data: %08x %08x %08x %08x %08x %08x",
-                           data[0], data[1], data[2], data[3], data[4], data[5]);
+        if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
+            logging::error("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d%s",
+                           RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, RED_OFF);
+            logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
+                           data[0], data[1], data[2], data[3], data[4], data[5], XtcData::TransitionId::name(transitionId));
+            logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
+                           m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], XtcData::TransitionId::name(m_lastTid));
+            m_nPgpJumps += evtCounter - m_lastComplete;
 
-            logging::error("lastTid %s", XtcData::TransitionId::name(m_lastTid));
-            logging::error("lastData: %08x %08x %08x %08x %08x %08x",
-                              m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
-            m_nPgpJumps += l1Count - m_lastComplete;
+            for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
+                PGPEvent* brokenEvent = &m_pool.pgpEvents[e & (m_pool.nDmaBuffers() - 1)];
+                logging::error("broken event:  %08x", brokenEvent->mask);
+                handleBrokenEvent(*brokenEvent);
+                freeDma(brokenEvent);   // Leaves event mask = 0
+            }
         }
-        m_lastComplete = l1Count;
-        m_lastTime = timingHeader->time.asDouble();
+        m_lastComplete = evtCounter;
         m_lastTid = transitionId;
         memcpy(m_lastData, data, 24);
 
@@ -368,13 +386,17 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current, uint
         // SPSCQueue is used (not an SPMC queue), this can be done here,
         // but not in the workers or there will be concurrency issues.
         if (transitionId != XtcData::TransitionId::L1Accept) {
-            uint32_t evtIndex = evtCounter & (m_pool.nbuffers() - 1);
+            uint32_t evtIndex = event->pebbleIndex;
             m_pool.transitionDgrams[evtIndex] = m_pool.allocateTr();
             if (!m_pool.transitionDgrams[evtIndex]) {
                 ++m_nNoTrDgrams;
-                return nullptr; // Can happen during shutdown
+                freeDma(event);         // Leaves event mask = 0
+                return nullptr;         // Can happen during shutdown
             }
         }
+    }
+    else {
+        return nullptr;                 // Event is still incomplete
     }
 
     auto now = std::chrono::system_clock::now();

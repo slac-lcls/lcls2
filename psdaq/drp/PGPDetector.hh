@@ -26,9 +26,11 @@ class PGPDetector : public PgpReader
 {
 public:
     PGPDetector(const Parameters& para, DrpBase& drp, Detector* det);
-    ~PGPDetector();
+    virtual ~PGPDetector();
     void reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
     void collector(Pds::Eb::TebContributor& tebContributor);
+    virtual void handleBrokenEvent(const PGPEvent& event) override;
+    virtual void resetEventCounter() override;
     void shutdown();
 private:
     static const int MAX_RET_CNT_C = 1000;

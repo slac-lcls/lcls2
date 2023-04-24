@@ -26,8 +26,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 {
     Batch batch;
     MemPool& pool = drp.pool;
-    const unsigned dmaBufferMask = pool.nDmaBuffers() - 1;
-    const unsigned pebbleBufferMask = pool.nbuffers() - 1;
+    const unsigned bufferMask = pool.nDmaBuffers() - 1;
     auto& tebContributor = drp.tebContributor();
     auto triggerPrimitive = drp.triggerPrimitive();
     auto& tebPrms = drp.tebPrms();
@@ -38,8 +37,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         }
 
         for (unsigned i=0; i<batch.size; i++) {
-            unsigned evtCounter = batch.start + i;
-            PGPEvent* event = &pool.pgpEvents[evtCounter & dmaBufferMask];
+            unsigned index = (batch.start + i) & bufferMask;
+            PGPEvent* event = &pool.pgpEvents[index];
+            if (event->mask == 0)
+                continue;               // Skip broken event
 
             // get transitionId from the first lane in the event
             int lane = __builtin_ffs(event->mask) - 1;
@@ -48,8 +49,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
             // make new dgram in the pebble
             // It must be an EbDgram in order to be able to send it to the MEB
-            unsigned index = evtCounter & pebbleBufferMask;
-            Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), para.rogMask);
+            unsigned pebbleIndex = event->pebbleIndex;
+            XtcData::Src src = det->nodeId;
+            Pds::EbDgram* dgram = new(pool.pebble[pebbleIndex]) Pds::EbDgram(*timingHeader, src, para.rogMask);
             XtcData::TransitionId::Value transitionId = dgram->service();
 
             // Event
@@ -59,16 +61,17 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 // make sure the detector hasn't made the event too big
                 if (dgram->xtc.extent > pool.bufferSize()) {
-                    logging::critical("L1Accept: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
+                    logging::critical("L1Accept: buffer size (%d) too small for requested extent (%d)",
+                                      pool.bufferSize(), dgram->xtc.extent);
                     throw "Buffer too small";
                 }
 
                 // Prepare the trigger primitive with whatever input is needed for the TEB to meke trigger decisions
-                auto l3InpBuf = tebContributor.fetch(index);
+                auto l3InpBuf = tebContributor.fetch(pebbleIndex);
                 Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(*dgram);
                 if (triggerPrimitive) { // else this DRP doesn't provide input
                     const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
-                    triggerPrimitive->event(pool, index, dgram->xtc, l3InpDg->xtc, l3BufEnd);
+                    triggerPrimitive->event(pool, pebbleIndex, dgram->xtc, l3InpDg->xtc, l3BufEnd);
                     size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
                     if (size > tebPrms.maxInputSize) {
                         logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, tebPrms.maxInputSize);
@@ -82,7 +85,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
                 // Find the transition dgram in the pool and initialize its header
-                Pds::EbDgram* trDgram = pool.transitionDgrams[index];
+                Pds::EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];
                 const void*   bufEnd  = (char*)trDgram + para.maxTrSize;
                 if (!trDgram)  continue; // Can occur when shutting down
                 memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
@@ -110,7 +113,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 }
 
                 // Prepare the trigger primitive with whatever input is needed for the TEB to meke trigger decisions
-                auto l3InpBuf = tebContributor.fetch(index);
+                auto l3InpBuf = tebContributor.fetch(pebbleIndex);
                 new(l3InpBuf) Pds::EbDgram(*dgram);
             }
         }
@@ -201,8 +204,6 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
 
     int64_t worker = 0L;
     uint64_t batchId = 0L;
-    m_batch.start = 0;
-    m_batch.size = 0;
     resetEventCounter();
 
     enum TmoState { None, Started, Finished };
@@ -240,8 +241,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
         }
         for (int b=0; b < ret; b++) {
             tmoState = TmoState::None;
-            unsigned evtCounter;
-            const Pds::TimingHeader* timingHeader = handle(det, b, evtCounter);
+            const Pds::TimingHeader* timingHeader = handle(det, b);
             if (!timingHeader)  continue;
 
             nevents++;
@@ -254,7 +254,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                  (transitionId != XtcData::TransitionId::SlowUpdate))) {
                 m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                 worker++;
-                m_batch.start = evtCounter + 1;
+                m_batch.start = timingHeader->evtCounter + 1;
                 m_batch.size = 0;
                 batchId = timingHeader->pulseId();
             }
@@ -267,17 +267,19 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
 {
     int64_t worker = 0L;
     Batch batch;
-    const unsigned dmaBufferMask = m_pool.nDmaBuffers() - 1;
-    const unsigned pebbleBufferMask = m_pool.nbuffers() - 1;
+    const unsigned bufferMask = m_pool.nDmaBuffers() - 1;
     while (true) {
         if (!m_workerOutputQueues[worker % m_para.nworkers].pop(batch)) {
             break;
         }
         for (unsigned i=0; i<batch.size; i++) {
-            unsigned evtCounter = batch.start + i;
-            PGPEvent* event = &m_pool.pgpEvents[evtCounter & dmaBufferMask];
+            unsigned index = (batch.start + i) & bufferMask;
+            PGPEvent* event = &m_pool.pgpEvents[index];
+            if (event->mask == 0)
+                continue;               // Skip broken event
+            unsigned pebbleIndex = event->pebbleIndex;
             freeDma(event);
-            tebContributor.process(evtCounter & pebbleBufferMask);
+            tebContributor.process(pebbleIndex);
         }
         if (batch.size == 0) {
             tebContributor.timeout();
@@ -285,6 +287,18 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
         worker++;
     }
     logging::info("PGPCollector is exiting");
+}
+
+void PGPDetector::handleBrokenEvent(const PGPEvent& event)
+{
+    ++m_batch.size; // Broken events must be included in the batch since f/w advanced evtCounter
+}
+
+void PGPDetector::resetEventCounter()
+{
+    PgpReader::resetEventCounter();
+    m_batch.start = 1;
+    m_batch.size = 0;
 }
 
 void PGPDetector::shutdown()

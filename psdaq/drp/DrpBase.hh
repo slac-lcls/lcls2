@@ -135,12 +135,14 @@ class Detector;
 class PgpReader
 {
 public:
-  PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt);
+    PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt);
+    virtual ~PgpReader() {};
     int32_t read();
     void flush();
-    const Pds::TimingHeader* handle(Detector* det, unsigned current, uint32_t& evtCounter);
+    const Pds::TimingHeader* handle(Detector* det, unsigned current);
     void freeDma(PGPEvent* event);
-    void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
+    virtual void handleBrokenEvent(const PGPEvent& event) {}
+    virtual void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
     const uint64_t dmaBytes()     const { return m_dmaBytes; }
     const uint64_t dmaSize()      const { return m_dmaSize; }
     const int64_t  latency()      const { return m_latency; }
@@ -159,7 +161,6 @@ protected:
     std::vector<uint32_t> dmaErrors;
     uint32_t m_lastComplete;
     XtcData::TransitionId::Value m_lastTid;
-    double m_lastTime;
     uint32_t m_lastData[6];
     std::vector<uint32_t> m_dmaIndices;
     unsigned m_count;
