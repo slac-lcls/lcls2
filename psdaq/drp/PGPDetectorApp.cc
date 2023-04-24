@@ -9,6 +9,7 @@
 #include "Digitizer.hh"
 #include "EpixQuad.hh"
 #include "EpixHR2x2.hh"
+#include "EpixHRemu.hh"
 #include "Epix100.hh"
 #include "Opal.hh"
 #include "Wave8.hh"
@@ -149,6 +150,7 @@ void PGPDetectorApp::initialize()
     f.register_type<Digitizer>   ("hsd");
     f.register_type<EpixQuad>    ("epixquad");
     f.register_type<EpixHR2x2>   ("epixhr2x2");
+    f.register_type<EpixHRemu>   ("epixhremu");
     f.register_type<Epix100>     ("epix100");
     f.register_type<Opal>        ("opal");
     f.register_type<TimeTool>    ("tt");
