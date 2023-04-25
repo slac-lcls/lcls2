@@ -386,9 +386,9 @@ class epixhremu_raw_0_0_1(DetectorImpl):
     def raw(self, evt) -> Array3d:
         # an example of how to handle multiple segments
         segs = self._segments(evt)
-        return np.stack([segs[i].raw for i in range(len(segs))])
+        return np.stack([segs[i].raw for i in sorted(segs.keys())])
     def calib(self, evt) -> Array3d:
         return self.raw(evt)
     def image(self, evt) -> Array2d:
         segs = self._segments(evt)
-        return np.vstack([segs[i].raw for i in range(len(segs))])
+        return np.vstack([segs[i].raw for i in sorted(segs.keys())])

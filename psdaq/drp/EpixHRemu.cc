@@ -143,8 +143,9 @@ EpixHRemu::EpixHRemu(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool)
 {
     // Cobble up a serial number
-    const char* const serNo = "00deadbeef-0000000000-0000000000-0000000000-0000000000-0000000000-0000000000";
-    para->serNo = serNo;
+    char serNo[16];
+    snprintf(serNo, sizeof(serNo), "%010x", 0xcafe0000 + para->detSegment);
+    para->serNo = std::string(serNo) + "-0000000000-0000000000-0000000000-0000000000-0000000000-0000000000";
 
     if (para->kwargs.find("xtcfile") != para->kwargs.end()) {
         int fd = open(para->kwargs["xtcfile"].c_str(), O_RDONLY);
