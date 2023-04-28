@@ -9,8 +9,8 @@ andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=NO
 
 collect_host = 'drp-srcf-mon001'
 
-xtpg = 2                    # TMO
-#xtpg = 3                    # RIX
+#xtpg = 2                    # TMO
+xtpg = 3                    # RIX
 #xtpg = 0                    # TXI
 #xtpg = 10                   # FEE
 groups = platform + ' 6' # + ' 7' + ' 6'
@@ -110,8 +110,8 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp003', id:'meb1',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb1 -d -n 64 -q {ami_workers_per_node}'},
 # {host: 'drp-srcf-cmp003', id:'shm1',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb1 -R'},
 
- {host: 'drp-srcf-cmp028', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
-# {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
+# {host: 'drp-srcf-cmp028', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
+ {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp043', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
@@ -125,7 +125,7 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D wave8 -k epics_prefix=TST:FIM:W8:01'},
 
-# {host: 'drp-srcf-cmp011', id:'tmo_atmpiranha_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x2 -D piranha4'},
+ {host: 'drp-srcf-cmp012', id:'tst_atmpiranha_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x2 -D piranha4'},
 
 # {host: 'drp-srcf-cmp007', id:'tmo_piranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
@@ -133,8 +133,8 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py'},
 # {host: 'drp-srcf-cmp026', id:'tmo_peppexopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x4 -D opal'},
 
- {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k pebbleBufCount=1048576 -k sim_length=145'},
-# {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
+# {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
+ {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp036', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp028', id:'tstcam2_0',   flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
@@ -143,9 +143,9 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp011', id:'tmo_fzpopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
- {host: 'drp-srcf-cmp028', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x4 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+# {host: 'drp-srcf-cmp028', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x4 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
- {host: 'drp-srcf-cmp028', id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+# {host: 'drp-srcf-cmp028', id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
 # {host: 'drp-srcf-cmp028', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms
 

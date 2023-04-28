@@ -102,7 +102,6 @@ Piranha4TTFex::~Piranha4TTFex()
 void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
                               unsigned      columns,
                               unsigned      rows) {
-
   m_columns = columns;
   m_rows    = rows;
 
@@ -168,7 +167,12 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
     m_##a##_##b = descdata.get_value<unsigned>("fex." #a "." #b);       \
       printf("m_" #a "_" #b " = %u\n", m_##a##_##b);                    \
   }
-  GET_ENUM(project,axis,axisEnum);
+  if (m_rows != 1) {
+      GET_ENUM(project,axis,axisEnum);
+  }
+  else {
+      m_project_axis = 0; // There is only one axis
+  }
   GET_VALUE(project,minvalue);
   GET_VALUE(prescale,image);
   GET_VALUE(prescale,projections);
@@ -183,7 +187,7 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
   GET_VALUE(ref,convergence,1.);
   GET_VALUE(sb ,convergence,1.);
 #undef GET_VALUE
-  m_pedestal = descdata.get_value<unsigned>("user.black_level");
+  m_pedestal = descdata.get_value<int>("user.black_level");
   if (nameMap.find("fex.pedestal_adj") != nameMap.end()) {
     m_pedestal -= descdata.get_value<int>("fex.pedestal_adj");
     printf("m_pedestal adjusted to subtract %d\n",m_pedestal);
@@ -588,10 +592,10 @@ void Piranha4TTFex::_monitor_ref_sig (std::vector<double>& ref)
 */
 void read_roi(Roi& roi, DescData& descdata, const char* name, unsigned columns, unsigned rows)
 {
-  roi.x0 = descdata.get_value<unsigned>((std::string(name)+=".x0").c_str());
-  roi.y0 = descdata.get_value<unsigned>((std::string(name)+=".y0").c_str());
-  roi.x1 = descdata.get_value<unsigned>((std::string(name)+=".x1").c_str());
-  roi.y1 = descdata.get_value<unsigned>((std::string(name)+=".y1").c_str());
+  roi.x0 =                 descdata.get_value<unsigned>((std::string(name)+=".x0").c_str());
+  roi.y0 = rows == 1 ? 0 : descdata.get_value<unsigned>((std::string(name)+=".y0").c_str());
+  roi.x1 =                 descdata.get_value<unsigned>((std::string(name)+=".x1").c_str());
+  roi.y1 = rows == 1 ? 0 : descdata.get_value<unsigned>((std::string(name)+=".y1").c_str());
 
   std::string msg;
 

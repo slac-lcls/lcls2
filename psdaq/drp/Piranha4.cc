@@ -278,10 +278,10 @@ void Piranha4::_fatal_error(std::string errMsg)
 void Piranha4::_connect(PyObject* mbytes)
 {
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
-#define MODEL(num,rows,cols) case num: m_rows = rows; m_columns = cols; break
+#define MODEL(num,cols,rows) case num: m_columns = cols; m_rows = rows; break
     switch(modelnum) {
-        MODEL(2,2048,1);                // Revisit: cols = 1 if Line, 2 if Area
-        MODEL(4,4096,1);                // Revisit: cols = 1 if Line, 2 if Area
+        MODEL(2,2048,1);                // Revisit: rows = 1 if Line, 2 if Area
+        MODEL(4,4096,1);                // Revisit: rows = 1 if Line, 2 if Area
 #undef MODEL
     default:
         _fatal_error("Piranha4 camera model " + std::to_string(modelnum) +
@@ -345,8 +345,8 @@ void Piranha4::write_image(XtcData::Xtc& xtc, const void* bufEnd, std::vector< X
     CreateData cd(xtc, bufEnd, m_namesLookup, namesId);
 
     unsigned shape[MaxRank];
-    shape[0] = m_rows;
-    shape[1] = m_columns;
+    shape[0] = m_columns;
+    shape[1] = m_rows;
     Array<uint16_t> arrayT = cd.allocate<uint16_t>(Piranha::RawDef::image, shape);
     memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
 }
@@ -521,8 +521,8 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
                 unsigned index=0;
                 if (m_fex.write_ref_image()) {
                     unsigned shape[MaxRank];
-                    shape[0] = m_det.m_rows;
-                    shape[1] = m_det.m_columns;
+                    shape[0] = m_det.m_columns;
+                    shape[1] = m_det.m_rows;
                     Array<uint16_t> arrayT = cd.allocate<uint16_t>(index++, shape);
                     memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
                 }
@@ -546,8 +546,8 @@ TTSimL1::TTSimL1(const char* evtxtc, Piranha4& d, Parameters* para) :
     m_det         (d),
     m_para        (para),
     m_simNamesId  (0,0),
-    m_framebuffer  (2*1024*1024),
-    m_evtindex     (0)
+    m_framebuffer (4*1024),
+    m_evtindex    (0)
 
 {
     _load_xtc(m_evtbuffer, evtxtc);
@@ -626,7 +626,7 @@ TTSimL2::TTSimL2(const char* evtxtc, const char* timxtc, Piranha4& d, Parameters
     m_det         (d),
     m_para        (para),
     m_simNamesId  (0,0),
-    m_framebuffer (2*1024*1024),
+    m_framebuffer (4*1024),
     m_filesem     (Pds::Semaphore::FULL)
 {
     int fd = open(evtxtc, O_RDONLY);

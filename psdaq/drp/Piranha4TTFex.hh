@@ -117,7 +117,7 @@ private:
     std::vector<int>    m_sig;     // signal region projection
     std::vector<int>    m_sb;      // sideband region
     std::vector<int>    m_ref;     // reference region projection
-    unsigned m_pedestal; // from Piranha4 camera configuration
+    int m_pedestal; // from Piranha4 camera configuration
 
     double m_flt_position;
     double m_flt_position_ps;
