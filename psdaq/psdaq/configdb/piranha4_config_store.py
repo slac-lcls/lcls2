@@ -46,10 +46,10 @@ def piranha4_cdict():
     top.define_enum('ffmEnum',   {'Disable':0, 'Enable':1, 'Reset':2, 'Scan':3})
 
     #Create a user interface that is an abstraction of the common inputs
-    top.set("user.start_ns",  87250, 'UINT32')
-    top.set("user.gate_ns" , 100000, 'UINT32')
-    top.set("user.black_level",  16,  'INT32')
-    top.set("user.vertical_bin",  2, 'binEnum')
+    top.set("user.start_ns", 110000, 'UINT32')
+    top.set("user.gate_ns" ,   4000, 'UINT32')
+    top.set("user.black_level",   0,  'INT32')
+    top.set("user.vertical_bin",  1, 'binEnum')
 
     # timing system
     top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.PauseThreshold',16,'UINT32')
@@ -99,14 +99,14 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SVM",        0,'tpEnum')    # Test Pattern <0:Off, 1:Ramp, 3-6>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SCD",        0,'dirEnum')   # Direction <0:Fwd, 1:Rev 2:Ext>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STG",        1,'tdiEnum')   # Set TDI Stages <1:Single line, 2:TDI>       [Must preceed DST command]
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.DST",        0,'dstEnum')   # Device Scan Type <0:Line Scan, 1:Area Scan> [Must preceed SBV command]
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBV",        1,'binEnum')   # Vertical Binning <1|2> pixels
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBH",        1,'binEnum')   # Horizontal Binning <1|2> pixels
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.FFM",        0,'ffmEnum')   # Flat Field Mode <0:Disable, 1:Enable, 2:Reset, 3:Scan>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB",        0,  'INT32')   # Contrast Offset <DN>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSG", '0 f1.0','CHARSTR')   # Gain <0:System, 1:Bottom Line, 2:Top Line>  f<gain>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSG", '0 f1.0','CHARSTR')   # Gain <0:System Gain, 1:Bottom Line, 2:Top Line>  f<gain>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SMM",        0,'offOnEnum') # Mirroring <0:Off 1:On>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SAM",        0,'offOnEnum') # AOI Mode <0:Off/Disable 1:Active/Enable>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.DST",        0,'dstEnum')   # Device Scan Type <0:Line Scan, 1:Area Scan> [Must preceed SBV command]
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLS",        0,'clsEnum')   # Camera Link Speed  <0:85MHz, 1:66MHz>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLM",        1,'clmEnum')   # Camera Link Mode <0:Base 1:Med 2:Full>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",        2,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
