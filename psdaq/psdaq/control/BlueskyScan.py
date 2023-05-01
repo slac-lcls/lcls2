@@ -112,32 +112,37 @@ class BlueskyScan:
                     my_data.update({motor.name: motor.position})
 
                 data = {
-                  "motors":           my_data,
-                  "timestamp":        0,
-                  "detname":          "scan",
-                  "dettype":          "scan",
-                  "scantype":         self.scantype,
-                  "serial_number":    "1234",
-                  "alg_name":         "raw",
-                  "alg_version":      [1,0,0]
+                    "motors":           my_data,
+                    "timestamp":        0,
+                    "detname":          "scan",
+                    "dettype":          "scan",
+                    "scantype":         self.scantype,
+                    "serial_number":    "1234",
+                    "alg_name":         "raw",
+                    "alg_version":      [1,0,0],
                 }
 
                 configureBlock = self.getBlock(transition="Configure", data=data)
                 beginStepBlock = self.getBlock(transition="BeginStep", data=data)
 
+                configure_dict = {"NamesBlockHex": configureBlock,
+                                  "readout_count": self.events,
+                                  "group_mask"   : self.group_mask,
+                                  "step_group"   : self.group }
+
+                if self.seq_ctl is not None:
+                    configure_dict['seqpv_name'] = self.seq_ctl[0]
+                    configure_dict['seqpv_val' ] = self.seq_ctl[1]
+                    if len(self.seq_ctl) > 2:
+                        configure_dict['seqpv_done'] = self.seq_ctl[2]
+
                 # set DAQ state
                 enable_dict = {'readout_count':self.events, 
                                'group_mask':self.group_mask, 
                                'step_group':self.group}
-                if self.seq_ctl is not None:
-                    enable_dict['seqpv_name'] = self.seq_ctl[0]
-                    enable_dict['seqpv_val' ] = self.seq_ctl[1]
-                    if len(self.seq_ctl) > 2:
-                        enable_dict['seqpv_done'] = self.seq_ctl[2]
-                        
 
                 errMsg = self.control.setState('running',
-                    {'configure':   {'NamesBlockHex':configureBlock},
+                    {'configure':   configure_dict,
                      'beginstep':   {'ShapesDataBlockHex':beginStepBlock},
                      'enable':      enable_dict})
                 if errMsg is not None:

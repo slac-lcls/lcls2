@@ -1993,6 +1993,37 @@ class CollectionManager():
 
     def condition_configure(self):
         logging.debug('condition_configure: phase1Info = %s' % self.phase1Info)
+
+        # readout_count and group_mask are optional
+        try:
+            self.group_mask    = self.phase1Info['configure']['group_mask']
+            self.readout_count = self.phase1Info['configure']['readout_count']
+        except KeyError:
+            self.group_mask    = 1 << self.platform
+            self.readout_count = 0
+
+        # step_group is optional
+        try:
+            self.step_group    = self.phase1Info['configure']['step_group']
+        except KeyError:
+            self.step_group    = self.platform
+
+        logging.debug(f'condition_configure(): readout_count {self.readout_count}  group_mask {self.group_mask}  step_group {self.step_group}')
+
+        try:
+            self.seqpv_name = self.phase1Info['configure']['seqpv_name']
+            self.seqpv_val  = self.phase1Info['configure']['seqpv_val']
+        except KeyError:
+            self.seqpv_name = None
+
+        try:
+            seqpv_done = self.phase1Info['configure']['seqpv_done']
+        except KeyError:
+            seqpv_done = None
+
+        if self.seqpv_name:
+            logging.debug(f'condition_configure(): seqpv {self.seqpv_name} {self.seqpv_val} {seqpv_done}')
+
         # phase 1
         ok = self.condition_common('configure', 60000,
                                    body={'config_alias': self.config_alias, 'trigger_config': self.trigger_config})
@@ -2016,6 +2047,23 @@ class CollectionManager():
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
         self.step_groups_clear()    # default is no scanning
+
+        start_step_thread = False
+        if (self.readout_count > 0):
+            start_step_thread = True
+            self.pva.setup_step(self.step_group,self.group_mask,1)
+        elif seqpv_done is not None:
+            self.pva.setup_seq(seqpv_done)
+            start_step_thread = True
+        else:
+            self.step_groups_clear()    # default is no scanning
+
+        if start_step_thread:
+            # initialize stepdone thread
+            self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
+            # start step done thread
+            self.step_done_thread.start()
+
 
         ok = self.get_phase2_replies('configure')
         if not ok:
@@ -2088,29 +2136,14 @@ class CollectionManager():
 
     def condition_enable(self):
         # readout_count and group_mask are optional
-        readout_count = 0
-        group_mask    = 1 << self.platform
+        group_mask    = self.group_mask
         try:
             group_mask    = self.phase1Info['enable']['group_mask']
             readout_count = self.phase1Info['enable']['readout_count']
-            step_group    = self.phase1Info['enable']['step_group']
         except KeyError:
-            step_group    = self.platform
-        logging.debug(f'condition_enable(): readout_count={readout_count} group_mask={group_mask} step_group {step_group}')
+            readout_count = 0
 
-        try:
-            seqpv_name = self.phase1Info['enable']['seqpv_name']
-            seqpv_val  = self.phase1Info['enable']['seqpv_val']
-        except KeyError:
-            seqpv_name = None
-
-        try:
-            seqpv_done = self.phase1Info['enable']['seqpv_done']
-        except KeyError:
-            seqpv_done = None
-
-        if seqpv_name:
-            logging.debug(f'condition_enable(): seqpv {seqpv_name} {seqpv_val} {seqpv_done}')
+        logging.debug(f'condition_enable(): readout_count={readout_count} group_mask={group_mask} step_group {self.step_group}')
 
         # phase 1
         ok = self.condition_common('enable', 6000)
@@ -2118,26 +2151,13 @@ class CollectionManager():
             logging.error('condition_enable(): enable phase1 failed')
             return False
 
-        # phase 2
-        start_step_thread = False
-        if (readout_count > 0):
+        if (self.readout_count > 0):
             # set EPICS PVs.
             # StepEnd is a cumulative count.
-            self.readoutCumulative[step_group] += readout_count
-            self.pva.setup_step(step_group,group_mask,self.readoutCumulative[step_group])
-            start_step_thread = True
-        elif seqpv_done is not None:
-            self.pva.setup_seq(seqpv_done)
-            start_step_thread = True
-        else:
-            self.step_groups_clear()    # default is no scanning
+            self.readoutCumulative[self.step_group] += self.readout_count
+            self.pva.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
 
-        if start_step_thread:
-            # initialize stepdone thread
-            self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
-            # start step done thread
-            self.step_done_thread.start()
-
+        # phase 2
         for pv in self.pva.pvListMsgHeader:
             self.pva.pv_put(pv, ControlDef.transitionId['Enable'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
@@ -2162,8 +2182,8 @@ class CollectionManager():
             return False
 
         # optionally enable a sequence
-        if seqpv_name:
-            self.pva.pv_put(seqpv_name, seqpv_val)
+        if self.seqpv_name:
+            self.pva.pv_put(self.seqpv_name, self.seqpv_val)
 
         self.lastTransition = 'enable'
         return True
@@ -2282,8 +2302,6 @@ class CollectionManager():
                 logging.debug('stepDone event received')
                 # publish the stepDone event with zmq
                 self.step_pub.send_json(step_msg(1))
-                # exit thread
-                break
 
         # stop monitoring the StepDone PV
         sub.close()
