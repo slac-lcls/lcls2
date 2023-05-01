@@ -69,17 +69,17 @@ class LinkStatus(object):
         self._rxRcv = self._app.dsLinkRxCnt.get()
         self._rxErr = self._app.dsLinkStatus.get()&0xffff
 
-        def addPVI(label):
+        def _addPVI(label):
             return addPV(name+':'+label+'%d'%i,'I')
 
-        self._pv_txReady      = addPVI('LinkTxReady')
-        self._pv_rxReady      = addPVI('LinkRxReady')
-        self._pv_txResetDone  = addPVI('LinkTxResetDone')
-        self._pv_rxResetDone  = addPVI('LinkRxResetDone')
-        self._pv_rxRcv        = addPVI('LinkRxRcv')
-        self._pv_rxErr        = addPVI('LinkRxErr')
-        self._pv_rxIsXpm      = addPVI('LinkRxIsXpm')
-        self._pv_remoteLinkId = addPVI('RemoteLinkId')
+        self._pv_txReady      = _addPVI('LinkTxReady')
+        self._pv_rxReady      = _addPVI('LinkRxReady')
+        self._pv_txResetDone  = _addPVI('LinkTxResetDone')
+        self._pv_rxResetDone  = _addPVI('LinkRxResetDone')
+        self._pv_rxRcv        = _addPVI('LinkRxRcv')
+        self._pv_rxErr        = _addPVI('LinkRxErr')
+        self._pv_rxIsXpm      = _addPVI('LinkRxIsXpm')
+        self._pv_remoteLinkId = _addPVI('RemoteLinkId')
 
     def handle(self,msg,offset,timev):
         w = struct.unpack_from('<LLL',msg,offset)
@@ -121,21 +121,21 @@ class TimingStatus(object):
 
         self._vLast = 0
 
-        def addPVF(label):
+        def _addPVF(label):
             return addPV(name+':'+label,'f')
 
-        self._pv_rxClkCount  = addPVF('RxClks')
-        self._pv_txClkCount  = addPVF('TxClks')
-        self._pv_rxRstCount  = addPVF('RxRsts')
-        self._pv_crcErrCount = addPVF('CrcErrs')
-        self._pv_rxDecErrs   = addPVF('RxDecErrs')
-        self._pv_rxDspErrs   = addPVF('RxDspErrs')
-        self._pv_bypassRsts  = addPVF('BypassRsts')
-        self._pv_bypassDones = addPVF('BypassDones')
-        self._pv_rxLinkUp    = addPVF('RxLinkUp')
-        self._pv_fids        = addPVF('FIDs')
-        self._pv_sofs        = addPVF('SOFs')
-        self._pv_eofs        = addPVF('EOFs')
+        self._pv_rxClkCount  = _addPVF('RxClks')
+        self._pv_txClkCount  = _addPVF('TxClks')
+        self._pv_rxRstCount  = _addPVF('RxRsts')
+        self._pv_crcErrCount = _addPVF('CrcErrs')
+        self._pv_rxDecErrs   = _addPVF('RxDecErrs')
+        self._pv_rxDspErrs   = _addPVF('RxDspErrs')
+        self._pv_bypassRsts  = _addPVF('BypassRsts')
+        self._pv_bypassDones = _addPVF('BypassDones')
+        self._pv_rxLinkUp    = _addPVF('RxLinkUp')
+        self._pv_fids        = _addPVF('FIDs')
+        self._pv_sofs        = _addPVF('SOFs')
+        self._pv_eofs        = _addPVF('EOFs')
         self._pv_rxAlign     = addPV(name+':RxAlign', 'aI', [0]*65)
 
     def update(self):
@@ -184,13 +184,13 @@ class AmcPLLStatus(object):
         self._idxreg = app.amc
         self._device = app.amcPLL
 
-        def addPVI(label):
+        def _addPVI(label):
             return addPV(name+':'+label+'%d'%idx,'I')
 
-        self._pv_lol    = addPVI('PLL_LOL')
-        self._pv_lolCnt = addPVI('PLL_LOLCNT')
-        self._pv_los    = addPVI('PLL_LOS')
-        self._pv_losCnt = addPVI('PLL_LOSCNT')
+        self._pv_lol    = _addPVI('PLL_LOL')
+        self._pv_lolCnt = _addPVI('PLL_LOLCNT')
+        self._pv_los    = _addPVI('PLL_LOS')
+        self._pv_losCnt = _addPVI('PLL_LOSCNT')
 
         print(f'amcPLL{idx} {app.amcPLL.rstn.get()} {app.amcPLL.bypass.get()}')
 
@@ -279,20 +279,20 @@ class GroupStats(object):
         self._linkInhEv = None
         self._linkInhTm = None
 
-        def addPVF(label):
+        def _addPVF(label):
             return addPV(name+':'+label,'f')
 
-        self._pv_runTime   = addPVF('RunTime')
-#        self._pv_msgDelay  = addPVF('MsgDelay')
-        self._pv_l0InpRate = addPVF('L0InpRate')
-        self._pv_l0AccRate = addPVF('L0AccRate')
-        self._pv_l1Rate    = addPVF('L1Rate')
-        self._pv_numL0Inp  = addPVF('NumL0Inp')
-        self._pv_numL0Inh  = addPVF('NumL0Inh')
-        self._pv_numL0Acc  = addPVF('NumL0Acc')
-        self._pv_numL1     = addPVF('NumL1')
-        self._pv_deadFrac  = addPVF('DeadFrac')
-        self._pv_deadTime  = addPVF('DeadTime')
+        self._pv_runTime   = _addPVF('RunTime')
+#        self._pv_msgDelay  = _addPVF('MsgDelay')
+        self._pv_l0InpRate = _addPVF('L0InpRate')
+        self._pv_l0AccRate = _addPVF('L0AccRate')
+        self._pv_l1Rate    = _addPVF('L1Rate')
+        self._pv_numL0Inp  = _addPVF('NumL0Inp')
+        self._pv_numL0Inh  = _addPVF('NumL0Inh')
+        self._pv_numL0Acc  = _addPVF('NumL0Acc')
+        self._pv_numL1     = _addPVF('NumL1')
+        self._pv_deadFrac  = _addPVF('DeadFrac')
+        self._pv_deadTime  = _addPVF('DeadTime')
 
         self._pv_deadFLink = addPV(name+':DeadFLnk','af',[0.]*32)
 
