@@ -43,7 +43,7 @@ public:
     Piranha4TTFex(Parameters*);
     ~Piranha4TTFex();
  public:
-    void configure  (XtcData::ConfigIter&,unsigned,unsigned);
+    void configure  (XtcData::ConfigIter&,unsigned);
     void reset      ();
     void unconfigure();
     enum TTResult { VALID, NOBEAM, NOLASER, INVALID };
@@ -51,12 +51,12 @@ public:
                          std::vector<double>& sigout,
                          std::vector<double>& refout);
  public:
-    bool   write_image          () const { return m_prescale_image; }
-    bool   write_projections    () const { return m_prescale_projections; }
-    bool   write_ref_image      () const { return m_record_ref_image; }
-    bool   write_ref_projection () const { return m_record_ref_projection; }
-    bool   write_evt_image      ();
-    bool   write_evt_projections();
+    bool   write_image       () const { return m_prescale_image; }
+    bool   write_averages    () const { return m_prescale_averages; }
+    bool   write_ref_image   () const { return m_record_ref_image; }
+    bool   write_ref_average () const { return m_record_ref_average; }
+    bool   write_evt_image   ();
+    bool   write_evt_averages();
  public:
     bool   damaged          () const { return !(m_flt_fwhm>0); }
     double filtered_position() const { return m_flt_position; }
@@ -65,8 +65,8 @@ public:
     double amplitude        () const { return m_amplitude; }
     double next_amplitude   () const { return m_nxt_amplitude; }
     double ref_amplitude    () const { return m_ref_amplitude; }
-    std::vector<double>& sig_projection() { return m_sig_avg; }
-    std::vector<double>& ref_projection() { return m_ref_avg; }
+    std::vector<double>& sig_average() { return m_sig_avg; }
+    std::vector<double>& ref_average() { return m_ref_avg; }
  public:
   virtual void _monitor_raw_sig (std::vector<double>&);
   virtual void _monitor_ref_sig (std::vector<double>&);
@@ -75,34 +75,29 @@ public:
 private:
     std::string m_fname;
 
-    unsigned m_columns;
-    unsigned m_rows;
+    unsigned m_pixels;
 
     std::vector<uint8_t> m_eventcodes_beam_incl;
     std::vector<uint8_t> m_eventcodes_beam_excl;
     std::vector<uint8_t> m_eventcodes_laser_incl;
     std::vector<uint8_t> m_eventcodes_laser_excl;
 
-    unsigned m_project_axis    ;  // project image onto Y axis
-    int      m_project_minvalue;  // valid projection must be at least this large
+    int      m_signal_minvalue;  // valid signal must be at least this large
 
     //    int      m_subtractAndNormalize;
 
-    unsigned m_use_ref_roi;
-    unsigned m_use_sb_roi;
-    Roi m_sig_roi, m_sb_roi, m_ref_roi;
+    Roi m_sig_roi;
 
     unsigned m_prescale_image;
-    unsigned m_prescale_projections;
+    unsigned m_prescale_averages;
     unsigned m_prescale_image_counter;
-    unsigned m_prescale_projections_counter;
+    unsigned m_prescale_averages_counter;
 
     bool     m_record_ref_image;
-    bool     m_record_ref_projection;
+    bool     m_record_ref_average;
 
     double   m_sig_convergence;
     double   m_ref_convergence;
-    double   m_sb_convergence;
 
     std::vector<double> m_fir_weights;
     std::vector<double> m_calib_poly;
@@ -112,11 +107,7 @@ private:
     std::vector<double> m_sig_avg; // accumulated signal
     Pds::Semaphore m_ref_avg_sem;
     std::vector<double> m_ref_avg; // accumulated reference
-    Pds::Semaphore m_sb_avg_sem;
-    std::vector<double> m_sb_avg;  // averaged sideband region
-    std::vector<int>    m_sig;     // signal region projection
-    std::vector<int>    m_sb;      // sideband region
-    std::vector<int>    m_ref;     // reference region projection
+    std::vector<int>    m_sig;     // signal region
     int m_pedestal; // from Piranha4 camera configuration
 
     double m_flt_position;

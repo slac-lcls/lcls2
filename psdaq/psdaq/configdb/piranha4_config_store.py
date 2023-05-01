@@ -57,7 +57,7 @@ def piranha4_cdict():
     top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition:RO',0,'UINT32')
 
     top.define_enum('rateEnum', fixedRateHzToMarker)
-    top.set('expert.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
+    top.set('expert.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',0,'rateEnum')
 
     # Feb[0] refers to pgp lane, Ch[0],[1] refers to camera link channel from Feb (these should be abstracted)
     # UartPiranha4 is camType; sets serial registers

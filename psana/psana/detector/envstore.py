@@ -7,7 +7,7 @@ class InvalidInputEnvStore(Exception): pass
 class EnvImpl(DetectorImpl):
     def __init__(self, *args):
         super(EnvImpl, self).__init__(*args)
-    
+
     def __call__(self, events):
         if self._env_store is None:
             err_msg = f"Function call is not available for this detector."
@@ -23,7 +23,7 @@ class EnvImpl(DetectorImpl):
             return env_values[0]
         err_msg = f"Calling detector only accept Event or Step. Invalid type: {type(events)} given."
         raise InvalidInputEnvStore(err_msg)
-    
+
     @property
     def dtype(self):
         return self._env_store.dtype(self._var_name)
@@ -41,6 +41,10 @@ class epics_raw_2_0_0(EnvImpl):
         super().__init__(*args)
 
 class epics_opaltt_2_0_0(EnvImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+class epics_piranha4tt_1_0_0(EnvImpl):
     def __init__(self, *args):
         super().__init__(*args)
 

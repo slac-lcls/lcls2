@@ -17,34 +17,33 @@ using namespace XtcData;
 using psalg::NDArray;
 using logging = psalg::SysLog;
 
-enum Cuts { _NCALLS, _NOLASER, _FRAMESIZE, _PROJCUT,
+enum Cuts { _NCALLS, _NOLASER, _FRAMESIZE, _ROICUT,
             _NOBEAM, _NOREF, _NOFITS, _NCUTS };
 static const char* cuts[] = {"NCalls",
                              "NoLaser",
                              "FrameSize",
-                             "ProjCut",
+                             "RoiCut",
                              "NoBeam",
                              "NoRef",
                              "NoFits",
                              NULL };
 
 //static ndarray<double,1> load_reference(unsigned key, unsigned sz);
-static void              read_roi(Roi& roi, DescData& descdata, const char* name,
-                                  unsigned columns, unsigned rows);
+static void                read_roi(Roi& roi, DescData& descdata, const char* name,
+                                    unsigned pixels);
 // formerly psalg functions
-static std::vector<int>    project_x(NDArray<uint16_t>&, Roi&, unsigned);
-static std::vector<int>    project_y(NDArray<uint16_t>&, Roi&, unsigned);
-static void            rolling_average(std::vector<int>& a,
-                                       std::vector<double>& avg,
-                                       double fraction);
-static void            rolling_average(std::vector<double>& a,
-                                       std::vector<double>& avg,
-                                       double fraction);
-//static void            rolling_average(NDArray<double>& a,
-//                                       NDArray<double>& avg,
-//                                       double fraction);
+static std::vector<int>    extract_roi(NDArray<uint16_t>&, Roi&, unsigned);
+//static void                rolling_average(std::vector<int>& a,
+//                                           std::vector<double>& avg,
+//                                           double fraction);
+static void                rolling_average(std::vector<double>& a,
+                                           std::vector<double>& avg,
+                                           double fraction);
+//static void                rolling_average(NDArray<double>& a,
+//                                           NDArray<double>& avg,
+//                                           double fraction);
 static std::vector<double> finite_impulse_response(std::vector<double>& filter,
-                                               std::vector<double>& sample);
+                                                   std::vector<double>& sample);
 static std::list<unsigned> find_peaks(std::vector<double>&, double, unsigned);
 static std::vector<double> parab_fit(double* input, unsigned len);
 static std::vector<double> parab_fit(double* qwf, unsigned ix, unsigned len, double nxta);
@@ -59,8 +58,7 @@ Piranha4TTFex::Piranha4TTFex(Parameters* para) :
   m_eventcodes_laser_incl(0),
   m_eventcodes_laser_excl(0),
   m_sig_avg_sem          (Pds::Semaphore::FULL),
-  m_ref_avg_sem          (Pds::Semaphore::FULL),
-  m_sb_avg_sem           (Pds::Semaphore::FULL)
+  m_ref_avg_sem          (Pds::Semaphore::FULL)
 {
   std::string fname = MLOOKUP(para->kwargs,"ttreffile",
                               para->detName+".ttref");
@@ -96,14 +94,11 @@ Piranha4TTFex::~Piranha4TTFex()
       fclose(f);
       logging::info("Piranha4TTFex saved reference to %s",m_fname.c_str());
   }
-
 }
 
 void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
-                              unsigned      columns,
-                              unsigned      rows) {
-  m_columns = columns;
-  m_rows    = rows;
+                              unsigned             pixels) {
+  m_pixels = pixels;
 
   XtcData::Names& names = detector::configNames(configo);
   XtcData::DescData& descdata = configo.desc_shape();
@@ -167,15 +162,9 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
     m_##a##_##b = descdata.get_value<unsigned>("fex." #a "." #b);       \
       printf("m_" #a "_" #b " = %u\n", m_##a##_##b);                    \
   }
-  if (m_rows != 1) {
-      GET_ENUM(project,axis,axisEnum);
-  }
-  else {
-      m_project_axis = 0; // There is only one axis
-  }
-  GET_VALUE(project,minvalue);
+  GET_VALUE(signal,minvalue);
   GET_VALUE(prescale,image);
-  GET_VALUE(prescale,projections);
+  GET_VALUE(prescale,averages);
 #undef GET_VALUE
 #define GET_VALUE(a,b,v) {                                      \
     if (nameMap.find("fex." #a "." #b) != nameMap.end()) {      \
@@ -185,7 +174,6 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
   }
   GET_VALUE(sig,convergence,1.);
   GET_VALUE(ref,convergence,1.);
-  GET_VALUE(sb ,convergence,1.);
 #undef GET_VALUE
   m_pedestal = descdata.get_value<int>("user.black_level");
   if (nameMap.find("fex.pedestal_adj") != nameMap.end()) {
@@ -193,24 +181,20 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
     printf("m_pedestal adjusted to subtract %d\n",m_pedestal);
   }
 
-  m_use_ref_roi = descdata.get_value<uint8_t>("fex.ref.enable");
-  m_use_sb_roi  = descdata.get_value<uint8_t>("fex.sb.enable");
-  read_roi(m_sig_roi, descdata, "fex.sig.roi", m_columns, m_rows);
-  read_roi(m_ref_roi, descdata, "fex.ref.roi", m_columns, m_rows);
-  read_roi(m_sb_roi , descdata, "fex.sb.roi" , m_columns, m_rows);
+  read_roi(m_sig_roi, descdata, "fex.sig.roi", m_pixels);
 
   int32_t m_ref_record;
   GET_ENUM(ref,record,recordEnum);
   switch(m_ref_record) {
-  case 0: m_record_ref_image=false; m_record_ref_projection=false; break;
-  case 1: m_record_ref_image=false; m_record_ref_projection= true; break;
-  case 2: m_record_ref_image=true ; m_record_ref_projection=false; break;
+  case 0: m_record_ref_image=false; m_record_ref_average=false; break;
+  case 1: m_record_ref_image=false; m_record_ref_average= true; break;
+  case 2: m_record_ref_image=true ; m_record_ref_average=false; break;
   default: break;
   }
-  printf("fex.ref.record %u m_record_ref_image %c  m_record_ref_projection %c\n",
+  printf("fex.ref.record %u m_record_ref_image %c  m_record_ref_average %c\n",
          descdata.get_value<int32_t>("fex.ref.record:recordEnum"),
          m_record_ref_image ? 'T':'F',
-         m_record_ref_projection ? 'T':'F');
+         m_record_ref_average ? 'T':'F');
 #undef GET_ENUM
 #define GET_ENUM(a,b) {                                                 \
       m_##a = descdata.get_value<int32_t>("fex." #a ":" #b);            \
@@ -218,14 +202,13 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
   }
   //  GET_ENUM(subtractAndNormalize,boolEnum);
 
-  m_sb_avg.resize(0);
 //  m_ref_avg.resize(0); // reset reference
 
   m_cut.clear();
   m_cut.resize(_NCUTS,0);
 
   m_prescale_image_counter = 0;
-  m_prescale_projections_counter = 0;
+  m_prescale_averages_counter = 0;
 
 #ifdef DBUG
   printf("incl_beam size %zd  excl_beam size %zd\n",
@@ -302,18 +285,15 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
       return NOLASER;
   }
 
-  unsigned shape[2];
-  shape[0] = m_columns;
-  shape[1] = m_rows;
-  NDArray<uint16_t> f(shape, 2, subframes[2].data());
+  unsigned shape[MaxRank];
+  shape[0] = m_pixels;
+  NDArray<uint16_t> f(shape, 1, subframes[2].data());
 
 #ifdef DBUG2
   { const uint16_t* p = reinterpret_cast<const uint16_t*>(subframes[2].data());
-    for(unsigned i=0; i<m_rows; i+= 16) {
-      for(unsigned j=0; j<m_columns; j+= 16)
-        printf(" %04x",p[i*m_columns+j]);
-      printf("\n");
-    }
+    for(unsigned j=0; j<m_pixels; j+= 16)
+      printf(" %04x",p[j]);
+    printf("\n");
   }
 #endif
 
@@ -328,24 +308,11 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
   m_prescale_image_counter++;
 
   //
-  //  Project signal ROI
+  //  Extract signal ROI
   //
-  if (m_project_axis==0) {
-      m_sig = project_x(f, m_sig_roi, m_pedestal);
-      if (m_use_ref_roi)
-          m_ref = project_x(f, m_ref_roi, m_pedestal);
-      if (m_use_sb_roi)
-          m_sb  = project_x(f, m_sb_roi , m_pedestal);
-  }
-  else {
-      m_sig = project_y(f, m_sig_roi, m_pedestal);
-      if (m_use_ref_roi)
-          m_ref = project_y(f, m_ref_roi, m_pedestal);
-      if (m_use_sb_roi)
-          m_sb  = project_y(f, m_sb_roi , m_pedestal);
-  }
+  m_sig = extract_roi(f, m_sig_roi, m_pedestal);
 
-  m_prescale_projections_counter++;
+  m_prescale_averages_counter++;
 
   sigd.resize(m_sig.size());
   std::vector<double> refd(m_sig.size());
@@ -360,77 +327,21 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
       m_ref_avg_sem.give();
   }
 
-  // Checking that the projections of the ROIs are
-  // consistent
-  if (m_use_ref_roi) {
-     if (sigd.size() != m_ref.size()) {
-         logging::critical(
-           "The size of the reference ROI and of the "
-           "signal ROI are inconsistent with each other."
-         );
-         throw(
-           "The size of the reference ROI and of the "
-           "signal ROI are inconsistent with each other."
-         );
-      }
-  }
-  if (m_use_sb_roi) {
-      if (sigd.size() != m_sb.size()) {
-         logging::critical(
-           "The size of the side band ROI and of the "
-           "signal ROI are inconsistent with each other."
-         );
-         throw(
-           "The size of the side band ROI and of the "
-           "signal ROI are inconsistent with each other."
-         );
-      }
-  }
+  for(unsigned i=0; i<m_sig.size(); i++)
+      sigd[i] = double(m_sig[i]);
+
+  refd = sigd;
 
   //
-  //  Correct projection for common mode found in sideband
-  //
-  if (m_use_sb_roi) {
-      m_sb_avg_sem.take();
-      rolling_average(m_sb, m_sb_avg, m_sb_convergence);
-
-      //    ndarray<const double,1> sbc = commonModeLROE(m_sb, m_sb_avg);
-      std::vector<double>& sbc = m_sb_avg;
-      m_sb_avg_sem.give();
-
-      if (m_use_ref_roi)
-          for(unsigned i=0; i<m_sig.size(); i++) {
-              sigd[i] = double(m_sig[i])-sbc[i];
-              refd[i] = double(m_ref[i])-sbc[i];
-          }
-      else
-          for(unsigned i=0; i<m_sig.size(); i++)
-              sigd[i] = double(m_sig[i])-sbc[i];
-  }
-  else {
-      if (m_use_ref_roi)
-          for(unsigned i=0; i<m_sig.size(); i++) {
-              sigd[i] = double(m_sig[i]);
-              refd[i] = double(m_ref[i]);
-          }
-      else
-          for(unsigned i=0; i<m_sig.size(); i++)
-              sigd[i] = double(m_sig[i]);
-  }
-
-  if (!m_use_ref_roi)
-      refd = sigd;
-
-  //
-  //  Require projection has a minimum amplitude (else no laser)
+  //  Require ROI to have a minimum amplitude (else no laser)
   //
   bool lcut=true;
   for(unsigned i=0; i<sigd.size(); i++)
-      if (sigd[i]>m_project_minvalue)
+      if (sigd[i]>m_signal_minvalue)
           lcut=false;
 
   if (lcut) {
-      m_cut[_PROJCUT]++;
+      m_cut[_ROICUT]++;
 #ifdef DBUG
       printf("-->INVALID2\n");
 #endif
@@ -439,8 +350,7 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
 
   if (nobeam) {
 
-      // There is always a reference: either the ROI is used
-      // or, if no ROI is used, the signal when NOBEAM is used
+      // For the reference, the signal when NOBEAM is used
       _monitor_ref_sig( refd );
       m_ref_avg_sem.take();
       rolling_average(refd, m_ref_avg, m_ref_convergence);
@@ -458,12 +368,6 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
       printf("-->NOBEAM\n");
 #endif
       return NOBEAM;
-  }
-  else if (m_use_ref_roi) {
-      _monitor_ref_sig( refd );
-      m_ref_avg_sem.take();
-      rolling_average(refd, m_ref_avg, m_ref_convergence);
-      m_ref_avg_sem.give();
   }
 
   _monitor_raw_sig( sigd );
@@ -521,7 +425,7 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
     unsigned ix = *peaks.begin();
     std::vector<double> pFit0 = parab_fit(qwf.data(),ix,qwf.size(),0.8);
     if (pFit0[2]>0) {
-      double   xflt = pFit0[1]+(m_project_axis==0 ? m_sig_roi.x0 : m_sig_roi.y0);
+      double   xflt = pFit0[1]+m_sig_roi.x0;
 
       double  xfltc = 0;
       for(unsigned i=m_calib_poly.size(); i!=0; )
@@ -590,30 +494,20 @@ void Piranha4TTFex::_monitor_ref_sig (std::vector<double>& ref)
   }
 }
 */
-void read_roi(Roi& roi, DescData& descdata, const char* name, unsigned columns, unsigned rows)
+void read_roi(Roi& roi, DescData& descdata, const char* name, unsigned pixels)
 {
-  roi.x0 =                 descdata.get_value<unsigned>((std::string(name)+=".x0").c_str());
-  roi.y0 = rows == 1 ? 0 : descdata.get_value<unsigned>((std::string(name)+=".y0").c_str());
-  roi.x1 =                 descdata.get_value<unsigned>((std::string(name)+=".x1").c_str());
-  roi.y1 = rows == 1 ? 0 : descdata.get_value<unsigned>((std::string(name)+=".y1").c_str());
+  roi.x0 = descdata.get_value<unsigned>((std::string(name)+=".x0").c_str());
+  roi.x1 = descdata.get_value<unsigned>((std::string(name)+=".x1").c_str());
 
   std::string msg;
 
-  if (roi.x1 >= columns) {
+  if (roi.x1 >= pixels) {
     std::stringstream s;
     s << "Timetool: " << name << ".roi.x1[" << roi.x1
-      << "] exceeds frame columns [" << columns
+      << "] exceeds frame pixels [" << pixels
       << "].  Truncating.";
     msg += s.str();
-    roi.x1 = columns-1;
-  }
-  if (roi.y1 >= rows) {
-    std::stringstream s;
-    s << "Timetool: " << name << " roi.y1[" << roi.y1
-      << "] exceeds frame rows [" << rows
-      << "].  Truncating.";
-    msg += s.str();
-    roi.y1 = rows-1;
+    roi.x1 = pixels-1;
   }
 
   if (!msg.empty())
@@ -621,34 +515,18 @@ void read_roi(Roi& roi, DescData& descdata, const char* name, unsigned columns, 
 }
 
 
-std::vector<int> project_x(NDArray<uint16_t>& f,
-                           Roi& roi,
-                           unsigned ped)
+std::vector<int> extract_roi(NDArray<uint16_t>& f,
+                             Roi& roi,
+                             unsigned ped)
 {
 #ifdef DBUG2
-  printf("proj_x roi [%u,%u],[%u,%u]\n",
-         roi.x0,roi.x1,roi.y0,roi.y1);
+  printf("extract roi [%u,%u]\n",
+         roi.x0,roi.x1);
 #endif
   std::vector<int> result(roi.x1-roi.x0+1);
-  for(unsigned i=0; i<result.size(); i++) result[i]=-ped*(roi.y1-roi.y0+1);
-  for(unsigned i=roi.y0; i<=roi.y1; i++) {
-    for(unsigned j=roi.x0, k=0; j<=roi.x1; j++,k++)
-      result[k] += f(i,j);
-  }
-  return result;
-}
-
-std::vector<int> project_y(NDArray<uint16_t>& f,
-                           Roi& roi,
-                           unsigned ped)
-{
-  std::vector<int> result(roi.y1-roi.y0+1);
-  for(unsigned i=roi.y0,k=0; i<=roi.y1; i++,k++) {
-    int sum=0;
-    for(unsigned j=roi.x0; j<=roi.x1; j++)
-      sum += f(i,j);
-    result[k] = sum - ped*(roi.x1-roi.x0+1);
-  }
+  for(unsigned i=0; i<result.size(); i++) result[i]=-ped;
+  for(unsigned j=roi.x0, k=0; j<=roi.x1; j++,k++)
+    result[k] += f(j);
   return result;
 }
 
@@ -912,12 +790,10 @@ bool   Piranha4TTFex::write_evt_image      ()
     m_prescale_image_counter = 0;
   return r;
 }
-bool   Piranha4TTFex::write_evt_projections()
+bool   Piranha4TTFex::write_evt_averages()
 {
-  bool r = m_prescale_projections_counter>=m_prescale_projections;
-  if (m_prescale_projections_counter >= m_prescale_projections)
-    m_prescale_projections_counter = 0;
+  bool r = m_prescale_averages_counter>=m_prescale_averages;
+  if (m_prescale_averages_counter >= m_prescale_averages)
+    m_prescale_averages_counter = 0;
   return r;
 }
-
-

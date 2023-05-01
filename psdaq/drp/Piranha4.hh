@@ -33,8 +33,7 @@ protected:
     friend class Piranha::TTSimL2;
 
     XtcData::NamesId  m_evtNamesId;
-    unsigned          m_rows;
-    unsigned          m_columns;
+    unsigned          m_pixels;
 
     Piranha::TT*      m_tt;
     Piranha::TTSim*   m_sim;
