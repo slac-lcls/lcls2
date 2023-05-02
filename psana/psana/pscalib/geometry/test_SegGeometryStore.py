@@ -24,7 +24,7 @@ def test_mask(sg, width=6, wcenter=4):
     sh = sg.shape()
     h_in = 9.
     w_in = h_in*sh[0]/sh[1]*1.2
-    gg.plotImageLarge(img, amp_range=(-1, 2), figsize=(w_in, h_in))
+    gg.plotImageLarge(img, amp_range=(-1, 2), figsize=(w_in, h_in), window=(0.15, 0.04, 0.76, 0.94))
     gg.show()
 
 def test_segname(segname):
@@ -48,7 +48,8 @@ def usage(tname='0'):
     if tname in ('0','7'): s+='\n 7 - MTRX:512:512:54:54'
     if tname in ('0','8'): s+='\n 8 - MTRX:V2:512:512:54:54'
     if tname in ('0','9'): s+='\n 9 - EPIXHR2X2:V1'
-    if tname in ('0','10'):s+='\n10 - ABRACADABRA:V1'
+    if tname in ('0','10'):s+='\n10 - EPIXHR1X4:V1'
+    if tname in ('0','11'):s+='\n11 - ABRACADABRA:V1'
     return s
 
 tname = sys.argv[1] if len(sys.argv) > 1 else '0'
@@ -62,7 +63,8 @@ elif(tname=='6'): sg = test_segname('JUNGFRAU:V2')
 elif(tname=='7'): sg = test_segname('MTRX:512:512:54:54')
 elif(tname=='8'): sg = test_segname('MTRX:V2:512:512:54:54')
 elif(tname=='9'): sg = test_segname('EPIXHR2X2:V1')
-elif(tname=='10'):
+elif(tname=='10'):sg = test_segname('EPIXHR1X4:V1')
+elif(tname=='11'):
     sg = sgs.Create(segname='ABRACADABRA:V1')
     logger.info('Return for non-existent segment name: %s' % sg)
 else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
