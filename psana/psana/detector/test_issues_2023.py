@@ -217,6 +217,55 @@ def issue_2023_02_07():
       print('runnum: %d timestamp: %d' % (orun.runnum, orun.timestamp))
 
 
+def issue_2023_04_27():
+    from psana.detector.NDArrUtils import print_ndarr, info_ndarr
+    #from psana import DataSource
+    #ds, detname = DataSource(exp='tstx00417', run=277, dir='/cds/data/drpsrcf/tst/tstx00417/xtc'), 'epixhr_emu'
+    ##ds, detname = DataSource(exp='ascdaq18', run=171, dir='/cds/data/psdm/asc/ascdaq18/xtc/'), 'epixhr'
+    #orun = next(ds.runs())
+    #odet = orun.Detector(detname)
+
+    #ds, orun, odet = ds_run_det(exp='tstx00417',run=277, detname='epixhr_emu', dir='/cds/data/drpsrcf/tst/tstx00417/xtc')
+    ds, orun, odet = ds_run_det(exp='ascdaq18',run=171, detname='epixhr', dir='/cds/data/psdm/asc/ascdaq18/xtc/')
+
+    print('run.runnum: %d detnames: %s expt: %s' % (orun.runnum, str(orun.detnames), orun.expt))
+    print('odet.raw._det_name: %s' % odet.raw._det_name) # epixquad
+    print('odet.raw._dettype : %s' % odet.raw._dettype)  # epix
+
+    for nstep, step in enumerate(orun.steps()):
+        print('\n==== step:%02d' %nstep)
+        if nstep>4: break
+        for k,v in odet.raw._seg_configs().items():
+            cob = v.config
+            print_ndarr(cob.asicPixelConfig, 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(cob.trbit)))
+
+        for nev, evt in enumerate(step.events()):
+            if nev>5: break
+            raw = odet.raw.raw(evt)
+            print(info_ndarr(raw, 'Event:%02d raw:'%nev))
+
+
+def issue_2023_04_28():
+    """epixhremu default geometry implementation
+    """
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess
+    from psana.detector.NDArrUtils import info_ndarr
+    ds, orun, det = ds_run_det(exp='tstx00417',run=277, detname='epixhr_emu', dir='/cds/data/drpsrcf/tst/tstx00417/xtc')
+    #ds, orun, det = ds_run_det(exp='ascdaq18',run=171, detname='epixhr', dir='/cds/data/psdm/asc/ascdaq18/xtc/')
+
+    x,y,z = det.raw._pixel_coords()
+    print(info_ndarr(x,'det.raw.pixel_coords x:'))
+
+#    for nevt,evt in enumerate(orun.events()):
+#        geotxt = det.raw._det_geotxt_default()
+#        print('_det_geotxt_default:\n%s' % geotxt)
+#        o = GeometryAccess()
+#        o.load_pars_from_str(geotxt)
+#        x,y,z = o.get_pixel_coords()
+#        print(info_ndarr(x,'x:'))
+#        if det.raw.image(evt) is not None: break
+
+
 def issue_2023_mm_dd():
     print('template')
 
@@ -228,6 +277,8 @@ USAGE = '\nUsage:'\
       + '\n    2 - issue_2023_01_06 - test utils_calib_components.py'\
       + '\n    3 - issue_2023_01_10 - test for of the 1st charge injection for epixhr'\
       + '\n    4 - issue_2023_02_07 - test timestamp for exp=ascdaq18,run=170/1 for epixhr'\
+      + '\n    5 - issue_2023_04_27 - test configuration for Ric generated epixhremu exp=tstx00417,run=277'\
+      + '\n    6 - issue_2023_04_28 - test epixhremu - load default geometry'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -236,6 +287,8 @@ elif TNAME in  ('1',): issue_2023_01_03()
 elif TNAME in  ('2',): issue_2023_01_06()
 elif TNAME in  ('3',): issue_2023_01_10()
 elif TNAME in  ('4',): issue_2023_02_07()
+elif TNAME in  ('5',): issue_2023_04_27()
+elif TNAME in  ('6',): issue_2023_04_28()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
