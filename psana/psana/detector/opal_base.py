@@ -30,6 +30,7 @@ class opal_base(AreaDetector):
         logger.debug('opal_base.__init__')
         AreaDetector.__init__(self, *args, **kwa)
         self._seg_geo = None
+        self.path_geo_default = 'pscalib/geometry/data/geometry-def-TBD.data'
 
 
     def raw(self,evt) -> Array3d:
