@@ -57,15 +57,23 @@ from psana.detector.detector_impl import DetectorImpl
 import logging
 logger = logging.getLogger(__name__)
 
+import os
 import numpy as np
 from psana.detector.calibconstants import CalibConstants
 from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
+from psana.pscalib.geometry.GeometryAccess import GeometryAccess
 from psana.detector.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
 from psana.detector.UtilsAreaDetector import arr3d_from_dict
 from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
-is_none = ut.is_none
+
+
+def is_none(par, msg, logger_method=logger.debug):
+    resp = par is None
+    if resp: logger_method(msg)
+    return resp
+
 
 class AreaDetector(DetectorImpl):
 
@@ -76,6 +84,7 @@ class AreaDetector(DetectorImpl):
         self._calibc_ = None
         self._maskalgos_ = None
         self._store_ = None  # detector dependent storage of cached parameters for method calib
+        self._geo = None
 
 
     def raw(self,evt) -> Array3d:
@@ -146,14 +155,71 @@ class AreaDetector(DetectorImpl):
     def _gain_factor(self): return self._det_calibconst('gain_factor')
 
     def _det_geotxt_and_meta(self): return self._det_calibconst('geotxt_and_meta')
-    def _det_geotxt_default(self):  return self._det_calibconst('geotxt_default')
-    def _det_geo(self):             return self._det_calibconst('geo')
 
-    def _pixel_coord_indexes(self, **kwa): return self._det_calibconst_kwa('pixel_coord_indexes', **kwa)
+#    def _det_geotxt_default(self):
+#        # self._det_calibconst('geotxt_default')
+#        logger.warning('AreaDetector._det_geotxt_default should be re-implemented for each detector')
+#        return None
 
-    def _pixel_coords(self, **kwa): return self._det_calibconst_kwa('pixel_coords', **kwa)
+
+    def _fname_geotxt_default(self):
+        """returns (str) file name for default geometry constants lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data"""
+        dir_detector = os.path.abspath(os.path.dirname(__file__))
+        return '%s/../%s' % (dir_detector, self.path_geo_default)
+
+
+    def _det_geotxt_default(self):
+        """returns (str) default geometry constants from lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data"""
+        fname = self._fname_geotxt_default()
+        logger.debug('_det_geotxt_default - load default geometry from file: %s' % fname)
+        return ut.load_textfile(fname)
+
+
+    def _det_geo(self):
+        self._geo = self._det_calibconst('geo')
+        if self._geo is None:
+            geotxt = self._det_geotxt_default()
+            self._geo = GeometryAccess()
+            self._geo.load_pars_from_str(geotxt)
+            logger.warning('AreaDetector._det_geo DEFAULT GEOMETRY IS LOADED from file %s' % self._fname_geotxt_default())
+        return self._geo
+
+
+    def _pixel_coord_indexes(self, **kwa):
+        logger.debug('_pixel_coord_indexes')
+        geo = self._det_geo()
+        if is_none(geo, 'geo is None'): return None
+
+        return geo.get_pixel_coord_indexes(\
+            pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
+            xy0_off_pix       = kwa.get('xy0_off_pix',None),\
+            do_tilt           = kwa.get('do_tilt',True),\
+            cframe            = kwa.get('cframe',0))
+
+
+    def _pixel_coords(self, **kwa):
+        logger.debug('_pixel_coords')
+        geo = self._det_geo()
+        if is_none(geo, 'geo is None'): return None
+        return geo.get_pixel_coords(\
+            do_tilt = kwa.get('do_tilt',True),\
+            cframe = kwa.get('cframe',0))
+
+
+    def _pixel_xy_at_z(self, **kwa):
+        logger.debug('_pixel_xy_at_z')
+        geo = self._det_geo()
+        if is_none(geo, 'geo is None'): return None
+        return geo.get_pixel_xy_at_z(\
+             zplane = kwa.get('zplane', None),\
+             oname  = kwa.get('oname', None),
+             oindex = kwa.get('oindex', 0),\
+             do_tilt= kwa.get('do_tilt', True),\
+             cframe = kwa.get('cframe', 0))
+
 
     def _shape_as_daq(self): return self._det_calibconst('shape_as_daq')
+
 
     def _number_of_segments_total(self): return self._det_calibconst('number_of_segments_total')
 
@@ -179,7 +245,9 @@ class AreaDetector(DetectorImpl):
         _nda = self.calib(evt) if nda is None else nda
         segnums = self._segment_numbers(evt)
         o = self._calibconstants(**kwa)
-        return None if o is None else o.image(_nda, segnums=segnums, **kwa)
+        if is_none(o, 'det.raw._calibconstants(evt) is None'): return None
+        if o.geo() is None: o._geo  = self._det_geo()
+        return o.image(_nda, segnums=segnums, **kwa)
 
 
     def _mask_default(self, dtype=DTYPE_MASK):
