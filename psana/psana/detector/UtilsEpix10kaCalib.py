@@ -670,7 +670,7 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic = {}
       cpdic['expname']    = orun.expt   # experiment name
       cpdic['strsrc']     = None
-      cpdic['shape']      = odet.raw._seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2
+      cpdic['shape']      = odet.raw._seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2 or (144,768) for epixhremu
       cpdic['gain_mode']  = ue.find_gain_mode(odet.raw, evt=None) #data=raw: distinguish 5-modes w/o data
       cpdic['panel_ids']  = odet.raw._segment_ids() #ue.segment_ids_det(odet)
       cpdic['panel_inds'] = odet.raw._segment_indices() #ue.segment_indices_det(odet)
