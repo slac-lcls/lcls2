@@ -36,7 +36,7 @@ Usage::
 
 import logging
 logger = logging.getLogger(__name__)
-
+import sys
 import numpy as np
 
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_3d  # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
@@ -47,10 +47,17 @@ from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
 
-import psana.detector.Utils as ut
 #import psana.pscalib.calib.CalibConstants as ccc
 from psana.detector.UtilsMask import DTYPE_MASK, DTYPE_STATUS
+
+#import psana.detector.Utils as ut
 #is_none = ut.is_none
+
+def is_none(par, msg, logger_method=logger.debug):
+    resp = par is None
+    if resp: logger_method(msg)
+    return resp
+
 
 class CalibConstants:
 
@@ -84,7 +91,7 @@ class CalibConstants:
     def calibconst(self):
         logger.debug('calibconst')
         cc = self._calibconst
-        if ut.is_none(cc, 'self._calibconst is None'): return None
+        if is_none(cc, 'self._calibconst is None'): return None
         return cc
 
 
@@ -93,13 +100,12 @@ class CalibConstants:
         cc = self.calibconst()
         if cc is None: return None
         cons_and_meta = cc.get(ctype, None)
-        if ut.is_none(cons_and_meta, 'calibconst["%s"] is None'%ctype): return None, None
+        if is_none(cons_and_meta, 'calibconst["%s"] is None'%ctype, logger_method=logger.warning): return None, None
         return cons_and_meta
 
 
     def cached_array(self, p, ctype='pedestals'):
-        """returns cached array of constants for ctype
-        """
+        """returns cached array of constants for ctype"""
         if p is None: p = self.cons_and_meta_for_ctype(ctype)[0] # 0-data/1-metadata
         return p
 
@@ -120,11 +126,12 @@ class CalibConstants:
 
     def status(self, ctype='pixel_status'):
         """for ctype pixel_status"""
-        cach ={'pixel_status': self._status,
-               'status_extra': self._status_extra}.get(ctype, None)
+        d = {'pixel_status': self._status,
+             'status_extra': self._status_extra}
+        cach = d.get(ctype, None)
         if cach is None:
             logger.warning('cached array is not reserved for ctype: %s' % ctype\
-                           +'  known ctypes: %s' % str(cach.keys()))
+                           +'  known ctypes: %s' % str(d.keys()))
         a = self.cached_array(cach, ctype)
         return a if a is None else a.astype(DTYPE_STATUS)
 
@@ -145,7 +152,7 @@ class CalibConstants:
 
     def shape_as_daq(self):
         peds = self.pedestals()
-        if ut.is_none(peds, 'shape_as_daq - pedestals is None, can not define daq data shape - returns None'): return None
+        if is_none(peds, 'shape_as_daq - pedestals is None, can not define daq data shape - returns None'): return None
         return peds.shape if peds.ndim<4 else peds.shape[-3:]
 
 
@@ -155,9 +162,9 @@ class CalibConstants:
 
 
     def segment_numbers_total(self):
-        """returns total list list of segment numbers."""
+        """returns total list of segment numbers."""
         nsegs = self.number_of_segments_total()
-        segnums = None if ut.is_none(nsegs, 'number_of_segments_total is None') else\
+        segnums = None if is_none(nsegs, 'number_of_segments_total is None') else\
                   list(range(nsegs))
                   #tuple(np.arange(nsegs, dtype=np.uint16))
         logger.debug('segnums: %s' % str(segnums))
@@ -169,13 +176,13 @@ class CalibConstants:
         cc = self.calibconst()
         if cc is None: return None
         geotxt_and_meta = cc.get('geometry', None)
-        if ut.is_none(geotxt_and_meta, 'calibconst[geometry] is None'): return None, None
+        if is_none(geotxt_and_meta, 'calibconst["geometry"] is None', logger_method=logger.warning): return None, None
         return geotxt_and_meta
 
 
-    def geotxt_default(self):
-        logger.debug('geotxt_default should be re-implemented in specific detector subclass, othervise returns None')
-        return None
+#    def geotxt_default(self):
+#        logger.debug('geotxt_default should be re-implemented in specific detector subclass, othervise returns None')
+#        return None
 
 
     def geo(self):
@@ -184,27 +191,26 @@ class CalibConstants:
         if self._geo is None:
             geotxt, meta = self.geotxt_and_meta()
             if geotxt is None:
-                geotxt = self.geotxt_default()
-                if ut.is_none(geotxt, 'geo geotxt is None'): return None
+                if is_none(geotxt, 'geometry constants for this detector are missing in DB > return None'): return None
             self._geo = GeometryAccess()
             self._geo.load_pars_from_str(geotxt)
         return self._geo
 
 
     def seg_geo(self):
-        logger.debug('pixel_coords')
+        logger.debug('seg_geo')
         geo = self.geo()
-        if ut.is_none(geo, 'geo is None'): return None
-        return None if ut.is_none(geo, 'geo is None') else\
-               geo.get_seg_geo().algo
+        if is_none(geo, 'geo is None', logger_method=logger.warning): return None
+        return geo.get_seg_geo().algo
 
 
     def pixel_coords(self, **kwa):
-        """ returns x, y, z - three np.ndarray
+        """DEPRECATED - can't load detector-dependent default geometry here...
+           returns x, y, z - three np.ndarray
         """
         logger.debug('pixel_coords')
         geo = self.geo()
-        if ut.is_none(geo, 'geo is None'): return None
+        if is_none(geo, 'geo is None'): return None
 
         #return geo.get_pixel_xy_at_z(self, zplane=None, oname=None, oindex=0, do_tilt=True, cframe=0)
         return geo.get_pixel_coords(\
@@ -213,11 +219,12 @@ class CalibConstants:
 
 
     def pixel_coord_indexes(self, **kwa):
-        """ returns ix, iy - two np.ndarray
+        """DEPRECATED - can't load detector-dependent default geometry here...
+           returns ix, iy - two np.ndarray
         """
         logger.debug('pixel_coord_indexes')
         geo = self.geo()
-        if ut.is_none(geo, 'geo is None'): return None
+        if is_none(geo, 'geo is None'): return None
 
         return geo.get_pixel_coord_indexes(\
             pix_scale_size_um  = kwa.get('pix_scale_size_um',None),\
@@ -239,6 +246,12 @@ class CalibConstants:
             segnums = self.segment_numbers_total()
 
         logger.info(info_ndarr(segnums, 'preserve pixel indices for segments '))
+
+        logger.info(info_ndarr(resp[0], 'self.pixel_coord_indexes '))
+
+        #nsegs = resp[0].shape[-3]
+        #sys.exit('TEST EXIT nsegs=%d' % nsegs)
+        #segnums = 0
 
         rows, cols = self._pix_rc = [reshape_to_3d(a)[segnums,:,:] for a in resp]
         #self._pix_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
@@ -317,7 +330,7 @@ class CalibConstants:
 
         if mapmode==0: return self.img_entries
 
-        if ut.is_none(nda, 'CalibConstants.image calib returns None'): return None
+        if is_none(nda, 'CalibConstants.image calib returns None'): return None
 
         logger.debug(info_ndarr(nda, 'nda ', last=3))
         rows, cols = self._pix_rc
