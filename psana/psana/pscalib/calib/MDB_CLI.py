@@ -7,6 +7,9 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 
+from psana.detector.RepoManager import init_repoman_and_logger
+#from psana.pyalgos.generic.logger import config_logger
+
 import psana.pyalgos.generic.Utils as gu # print_kwargs, print_parser, is_in_command_line, etc
 import psana.pscalib.calib.MDBUtils as mu # insert_constants, time_and_timestamp
 from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
@@ -18,6 +21,12 @@ class MDB_CLI:
 
     def __init__(self, parser):
         self.unpack(parser)
+        kwa = {'logmode': self.strloglev,\
+               'fmt': '[%(levelname).1s] %(name)s %(lineno)d: %(message)s',\
+               'savelogfile': False}
+        self.repoman = init_repoman_and_logger(**kwa)  # parser=parser
+        #config_logger(self.strloglev, fmt=fmt)
+
         self.dispatcher()
 
 
@@ -37,6 +46,7 @@ class MDB_CLI:
           -  comment
           -  dbname
           -  dbsuffix
+          -  loglevel
         """
         (popts, pargs) = parser.parse_args()
         #args = pargs
@@ -53,14 +63,13 @@ class MDB_CLI:
 
         self.kwargs = kwargs
         self.defs = vars(parser.get_default_values())
-        self.strloglev = kwargs.get('strloglev','DEBUG').upper()
+        self.strloglev = kwargs.get('loglevel','DEBUG').upper()
 
         if self.strloglev == 'DEBUG':
             #from psana.pyalgos.generic.Utils import print_kwargs, print_parser
             print(40*'_')
             gu.print_parser(parser)
             gu.print_kwargs(kwargs)
-            fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
 
 
     def client(self):
@@ -89,8 +98,7 @@ class MDB_CLI:
 
 
     def convert(self):
-        """Converts LCLS experiment calib directory to LCLS2 calibration database.
-        """
+        """Converts LCLS experiment calib directory to LCLS2 calibration database."""
         import psana.pscalib.calib.MDBConvertLCLS1 as cu
         kwargs = self.kwargs
         exp = kwargs.get('experiment', None)
@@ -98,8 +106,7 @@ class MDB_CLI:
 
 
     def delall(self):
-        """FOR DEVELOPMENT: Deletes all databases with prefix in the name.
-        """
+        """FOR DEVELOPMENT: Deletes all databases with prefix in the name."""
         mode, kwargs = self.mode, self.kwargs
         client = self.client()
         prefix = mu.db_prefixed_name('')
@@ -120,8 +127,7 @@ class MDB_CLI:
 
 
     def deldb(self):
-        """Deletes specified database.
-        """
+        """Deletes specified database."""
         mode, kwargs = self.mode, self.kwargs
         dbname = mu.get_dbname(**kwargs)
         client = self.client()
@@ -137,8 +143,7 @@ class MDB_CLI:
 
 
     def delcol(self):
-        """Deletes specified collection in the database.
-        """
+        """Deletes specified collection in the database."""
         mode, kwargs = self.mode, self.kwargs
         dbname  = mu.get_dbname(**self.kwargs)
         client = self.client()
@@ -169,8 +174,7 @@ class MDB_CLI:
 
 
     def deldoc(self):
-        """Deletes specified document in the database.
-        """
+        """Deletes specified document in the database."""
         mode, kwargs = self.mode, self.kwargs
         dbname  = mu.get_dbname(**kwargs)
         client = self.client()
@@ -226,8 +230,7 @@ class MDB_CLI:
 
 
     def add(self):
-        """Adds calibration constants to database from file.
-        """
+        """Adds calibration constants to database from file."""
         kwa = self.kwargs
         fname = kwa.get('iofname', 'None')
         ctype = kwa.get('ctype', 'None')
@@ -239,8 +242,7 @@ class MDB_CLI:
 
 
     def get(self):
-        """Gets constans from DB and saves them in file.
-        """
+        """Gets constans from DB and saves them in file."""
         mode, kwargs = self.mode, self.kwargs
         defs   = self.defs
         host   = kwargs.get('host', None)
@@ -349,8 +351,7 @@ class MDB_CLI:
 
 
 def cdb(parser):
-    """Calibration Data Base Command Line Interface
-    """
+    """Calibration Data Base Command Line Interface"""
     MDB_CLI(parser)
 
 
