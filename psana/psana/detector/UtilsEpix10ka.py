@@ -65,13 +65,13 @@ B15 = 0o100000 # 32768 or 1<<15 (16-th bit starting from 1)
 M15 =  0x7fff  # 32767 or (1<<15)-1 - 15-bit mask
 
 def gain_bitshift(dettype):
-    return {'epix10ka':9, 'epixhr':10, 'epixhr2x2':10}.get(dettype, None)
+    return {'epix10ka':9, 'epixhr':10, 'epixhr2x2':10, 'epixhremu':10}.get(dettype, None)
 
 def gain_bitword(dettype):
-    return {'epix10ka':B14, 'epixhr':B15, 'epixhr2x2':B15}.get(dettype, None)
+    return {'epix10ka':B14, 'epixhr':B15, 'epixhr2x2':B15, 'epixhremu':B15}.get(dettype, None)
 
 def data_bitword(dettype):
-    return {'epix10ka':M14, 'epixhr':M15, 'epixhr2x2':M15}.get(dettype, None)
+    return {'epix10ka':M14, 'epixhr':M15, 'epixhr2x2':M15, 'epixhremu':M15}.get(dettype, None)
 
 
 class Storage:
@@ -199,6 +199,42 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     return cbits
 
 
+def cbits_config_epixhr1x4(cob, shape=(144, 768)):
+    """ see cbits_config_epixhr2x2
+
+      ASIC map of epixhr1x4
+      A0 | A1 | A2 | A3 ???
+    Returns
+    -------
+    xxxx: np.array, dtype:uint8, ndim=2, shape=(144, 768)
+    """
+    trbits = cob.trbit # [1 1 1 1]
+    pca = cob.asicPixelConfig # shape:(110592,)
+    rows, colsa = shape[0], int(shape[1]/4) # should be 144, 192 for epixhr1x4
+    logger.debug(info_ndarr(cob.asicPixelConfig, 'shape: %s trbits: %s asicPixelConfig:'%(str(shape), str(trbits))))
+
+    cbits = np.bitwise_and(pca,12,out=None) # copy and mask non-essential bits 0o14 (bin:1100)
+    cbits.shape = shape
+
+    if all(trbits): cbits = np.bitwise_or(cbits, B04) # add trbit for all pixels (144, 768)
+    elif not any(trbits): return cbits
+
+    else: # set trbit per ASIC
+        if trbits[0]: np.bitwise_or(cbits[:,colsa*0:colsa*1], B04, out=cbits[:,colsa*0:colsa*1])
+        if trbits[1]: np.bitwise_or(cbits[:,colsa*1:colsa*2], B04, out=cbits[:,colsa*1:colsa*2])
+        if trbits[2]: np.bitwise_or(cbits[:,colsa*2:colsa*3], B04, out=cbits[:,colsa*2:colsa*3])
+        if trbits[3]: np.bitwise_or(cbits[:,colsa*3:colsa*4], B04, out=cbits[:,colsa*3:colsa*4])
+
+    #logger.info('TIME2 in cbits_config_epixhr2x2 = %.6f sec' % (time()-t0_sec))
+    return cbits
+
+
+
+
+
+
+
+
 def cbits_config_epixhr2x2(cob, shape=(288, 384)):
     """Creates array of the segment control bits for epixhr2x2 shape=(288, 384)
     from cob=det.raw._seg_configs()[<seg-ind>].config object.
@@ -265,7 +301,9 @@ def cbits_config_and_data_detector_alg(data, cbits, data_gain_bit, gain_bit_shif
     """
 
     #logger.info(info_ndarr(cbits, 'cbits', first=0, last=5))
-    if cbits is None: return None
+    if cbits is None:
+       logger.debug('cbits is None')
+       return None
 
     if data is not None:
         #logger.debug(info_ndarr(data, 'data', first, last))
@@ -312,7 +350,9 @@ def gain_maps_epix10ka_any_alg(cbits):
       001100 =12 - cbitsM12 - mask
     """
 
-    if cbits is None: return None
+    if cbits is None:
+        logger.debug('cbits is None')
+        return None
 
     cbitsM60 = cbits & 60 # control bits masked by configuration 3-bit-mask
     cbitsM28 = cbits & 28 # control bits masked by configuration 3-bit-mask
@@ -360,7 +400,9 @@ def info_pixel_gain_mode_statistics_for_raw(det_raw, evt=None, msg='pixel gain m
        returns (str) with statistics of pixels in defferent gain modes in raw data
     """
     gmaps = gain_maps_epix10ka_any(det_raw, evt)
-    if gmaps is None: return None
+    if gmaps is None:
+        logger.debug('gmaps is None')
+        return None
     return '%s%s' % (msg, info_pixel_gain_mode_statistics(gmaps))
 
 
@@ -368,7 +410,9 @@ def pixel_gain_mode_fractions(det_raw, evt=None):
     """returns fraction of pixels in defferent gain modes in gain maps
     """
     gmaps = gain_maps_epix10ka_any(det_raw, evt)
-    if gmaps is None: return None
+    if gmaps is None:
+        logger.debug('gmaps is None')
+        return None
     pix_stat = pixel_gain_mode_statistics(gmaps)
     f = 1.0/gmaps[0].size
     return [npix*f for npix in pix_stat]
@@ -410,7 +454,9 @@ def find_gain_mode(det_raw, evt=None):
     """
     grp_prob = pixel_gain_mode_fractions(det_raw, evt)
     ind = gain_mode_index_from_fractions(grp_prob)
-    if ind is None: return None
+    if ind is None: 
+        logger.debug('ind is None')
+        return None
     return gain_mode_name_for_index(ind)
     #return GAIN_MODES[ind] if ind<len(grp_prob) else None
 
@@ -427,13 +473,22 @@ def event_constants_for_gmaps(gmaps, cons, default=0):
     -------
     np.ndarray (<nsegs>, 352, 384) - per event constants
     """
+    #assert cons is not None
+    if gmaps is None:
+        logger.debug('gmaps is None')
+        return None
+    if cons is None:
+        logger.debug('cons is None')
+        return None
     return np.select(gmaps, (cons[0,:], cons[1,:], cons[2,:], cons[3,:],\
                              cons[4,:], cons[5,:], cons[6,:]), default=default)
 
 
 def event_constants(det_raw, evt, cons, default=0):
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
-    if gmaps is None: return None
+    if gmaps is None:
+        logger.debug('gmaps is None')
+        return None
     return event_constants_for_gmaps(gmaps, cons, default=default)
 
 
@@ -489,7 +544,9 @@ def test_event_constants_for_gmaps(det_raw, evt, gfac, peds):
     """
     t0_sec = time()
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
-    if gmaps is None: return None
+    if gmaps is None:
+        logger.debug('gmaps is None')
+        return None
     factor = event_constants_for_gmaps(gmaps, gfac, default=1)
     pedest = event_constants_for_gmaps(gmaps, peds, default=0) # 6 msec total versus 5.5 using select directly
     print('XXX test_event_constants_for_gmaps consumed time = %.6f sec' % (time()-t0_sec)) # 6msec for epixquad ueddaq02 r557
@@ -536,10 +593,14 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     nda_raw = kwa.get('nda_raw', None)
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
-    if raw is None: return None
+    if raw is None:
+        logger.debug('raw is None')
+        return None
 
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
-    if gmaps is None: return None
+    if gmaps is None:
+        logger.debug('gmaps is None')
+        return None
 
     store = Storage(det_raw, cmpars, **kwa) if det_raw._store_ is None else det_raw._store_
     mask = store.mask
@@ -549,12 +610,16 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     store.counter += 1
     if not store.counter%100: print_gmaps_info(gmaps)
 
-    arrf = np.array(raw & det_raw._data_bit_mask, dtype=np.float32) - pedest
+    arrf = np.array(raw & det_raw._data_bit_mask, dtype=np.float32)
+    if pedest is not None: arrf -= pedest
 
     if store.cmpars is not None:
         common_mode_epix_multigain_apply(arrf, gmaps, store)
 
-    #logger.info(info_ndarr(arrf,  'arrf:')
+    logger.info(info_ndarr(arrf,  'arrf:'))
+    if factor is None:
+        logger.warning('gain factor is None - substitute with 1')
+        factor = 1
 
     return arrf * factor if mask is None else arrf * factor * mask # gain correction
 
@@ -599,7 +664,9 @@ def common_mode_epix_multigain_apply(arrf, gmaps, store):
 
 
 def map_gain_range_index_for_gmaps(gmaps, default=10):
-    if gmaps is None: return None
+    if gmaps is None:
+        logger.debug('gmaps is None')
+        return None
     #gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
     return np.select(gmaps, (0, 1, 2, 3, 4, 5, 6), default=default)  # .astype(np.uint16) # int64 -> uint16
 
@@ -609,7 +676,9 @@ def map_gain_range_index(det_raw, evt, **kwa):
     """
     nda_raw = kwa.get('nda_raw', None)
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw
-    if raw is None: return None
+    if raw is None:
+        logger.debug('raw is None')
+        return None
 
     gmaps = gain_maps_epix10ka_any(det_raw, evt)
     return map_gain_range_index_for_gmaps(gmaps)
