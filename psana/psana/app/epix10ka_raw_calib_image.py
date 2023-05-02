@@ -14,7 +14,7 @@ from psana.detector.Utils import info_parser_arguments
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana import DataSource
 from psana.detector.UtilsMask import CC, DTYPE_MASK
-from psana.detector.utils_psana import datasource_kwargs_from_string
+from psana.detector.utils_psana import datasource_kwargs_from_string, timestamp_run
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -62,8 +62,9 @@ def det_calib_constants(det, ctype):
     #ctype = 'pixel_rms', 'pixel_status', 'pedestals', 'pixel_gain', 'geometry'
     calib_const = det.calibconst if hasattr(det,'calibconst') else None
     if calib_const is not None:
-      logger.info('det.calibconst.keys(): ' + str(calib_const.keys()))
-      cdata, cmeta = calib_const[ctype]
+      keys = calib_const.keys()
+      logger.info('det.calibconst.keys(): ' + str(keys))
+      cdata, cmeta = calib_const[ctype] if ctype in keys else (None, None)
       logger.info('%s meta: %s' % (ctype, str(cmeta)))
       logger.info(info_ndarr(cdata, '%s data'%ctype))
       return cdata, cmeta
@@ -121,7 +122,7 @@ def ds_run_det(args):
     print('run.detnames : ', orun.detnames) # {'epixquad'}
     print('run.expt     : ', orun.expt)     # tstx00117
     print('run.id       : ', orun.id)       # 0
-    print('run.timestamp: ', orun.timestamp)# 4190613356186573936 (int)
+    print('run.timestamp: ', orun.timestamp, ' >', timestamp_run(orun, fmt='%Y-%m-%dT%H:%M:%S'))# 4190613356186573936 (int)
 
     #print('fname:', args.fname)
     #print('expname:', expname)
@@ -252,6 +253,8 @@ def test_image(args):
     dcfg = ue.config_object_det(det) if is_epix10ka else None
 
     geo = det.raw._det_geo()
+    print('geo:', geo)
+
     pscsize = geo.get_pixel_scale_size()
     #print('pscsize', pscsize)
 
@@ -378,7 +381,7 @@ def test_image(args):
 
         if 'c' in dograph:
             if flims is None:
-                flims = fleximagespec(img, arr=arr, bins=100, color='lightgreen',\
+                flims = fleximagespec(img, arr=arr, bins=100, color='lightgreen', figsize=(16,12),\
                                       amin=args.gramin,   amax=args.gramax,\
                                       nneg=args.grnneg,   npos=args.grnpos,\
                                       fraclo=args.grfrlo, frachi=args.grfrhi,\
