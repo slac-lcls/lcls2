@@ -97,6 +97,7 @@ namespace Pds {
                        std::vector<tp_t>&             bufT0,
                        uint64_t&                      bufPrcTime,
                        std::vector<tp_t>&             trgT0,
+                       uint64_t&                      appPrcTime,
                        const MebParams&               prms) :
       XtcMonitorServer(prms.tag.c_str(),
                        prms.maxBufferSize,
@@ -110,6 +111,8 @@ namespace Pds {
       _bufT0       (bufT0),
       _bufPrcTime  (bufPrcTime),
       _trgT0       (trgT0),
+      _appT0       (prms.numEvBuffers),
+      _appPrcTime  (appPrcTime),
       _prms        (prms)
     {
       for (unsigned i = 0; i < _bufFreeList.size(); ++i)
@@ -181,7 +184,8 @@ namespace Pds {
 
       if (idx >= _bufFreeList.size())
       {
-        logging::warning("deleteDatagram: Unexpected index %08x", idx);
+        logging::warning("deleteDatagram: Out of bounds index %08x, max %08x",
+                         idx, _bufFreeList.size() - 1);
       }
 
       for (unsigned i = 0; i < _bufFreeList.count(); ++i)
@@ -197,7 +201,10 @@ namespace Pds {
       // Number of buffers being processed by the MEB; incremented in Meb::process()
       --_prcBufCount;                   // L1Accepts only
       auto now    = std::chrono::system_clock::now();
-      _bufPrcTime = std::chrono::duration_cast<ns_t>(now - _bufT0[idx]).count();
+      _appT0[idx] = now;                // Application processing time t0
+      auto bufPrcTime = std::chrono::duration_cast<ns_t>(now - _bufT0[idx]).count();
+      if (bufPrcTime < 1000000000)
+          _bufPrcTime = bufPrcTime;     // Skip large startup values
       if (_bufFreeList.push(idx))
       {
         logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
@@ -232,7 +239,11 @@ namespace Pds {
       {
         ++_requestCount;
         _bufUseCnts->observe(double(idx));
-        _trgT0[idx] = std::chrono::system_clock::now();
+        auto now    = std::chrono::system_clock::now();
+        _trgT0[idx] = now;
+        auto appPrcTime = std::chrono::duration_cast<ns_t>(now - _appT0[idx]).count();
+        if (appPrcTime < 1000000000)
+          _appPrcTime = appPrcTime;     // Skip large startup values
       }
       else
       {
@@ -264,6 +275,8 @@ namespace Pds {
     std::vector<tp_t>&             _bufT0;
     uint64_t&                      _bufPrcTime;
     std::vector<tp_t>&             _trgT0;
+    std::vector<tp_t>              _appT0;
+    uint64_t&                      _appPrcTime;
     const MebParams&               _prms;
   };
 
@@ -294,6 +307,7 @@ namespace Pds {
     uint64_t                            _requestCount;
     uint64_t                            _bufPrcTime;
     uint64_t                            _monTrgTime;
+    uint64_t                            _appPrcTime;
     std::atomic<uint64_t>               _prcBufCount;
     std::vector<tp_t>                   _bufT0;
     std::vector<tp_t>                   _trgT0;
@@ -326,6 +340,7 @@ Meb::Meb(const MebParams&        prms,
   _requestCount(0),
   _bufPrcTime  (0),
   _monTrgTime  (0),
+  _appPrcTime  (0),
   _prcBufCount (0),
   _bufT0       (prms.numEvBuffers),
   _trgT0       (prms.numEvBuffers),
@@ -347,6 +362,7 @@ Meb::Meb(const MebParams&        prms,
   exporter->add("MEB_PrcCt",  labels, MetricType::Gauge,   [&](){ return _prcBufCount.load(); });
   exporter->add("MEB_PrcTm",  labels, MetricType::Gauge,   [&](){ return _bufPrcTime;      });
   exporter->add("MEB_TrgTm",  labels, MetricType::Gauge,   [&](){ return _monTrgTime;      });
+  exporter->add("MEB_AppTm",  labels, MetricType::Gauge,   [&](){ return _appPrcTime;      });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
   _bufUseCnts = exporter->histogram("MRQ_BufUseCnts", labels, prms.numEvBuffers);
 
@@ -419,7 +435,7 @@ int Meb::configure()
   _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount,
                                                _bufUseCnts, _prcBufCount,
                                                _bufT0, _bufPrcTime,
-                                               _trgT0, _prms);
+                                               _trgT0, _appPrcTime, _prms);
 
   _apps->distribute(_prms.ldist);
 
