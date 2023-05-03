@@ -288,6 +288,7 @@ def addTiming(self,pvbase):
     PvLabel(self,lor, pvbase, "SOFs"       )
     PvLabel(self,lor, pvbase, "EOFs"       )
     LblPushButtonX( lor, pvbase, "RxReset" )
+    LblPushButtonX( lor, pvbase, "RxCountReset" )
     lor.addWidget( PvRxAlign(pvbase+'RxAlign','RxAlign') )
     lor.addStretch()
     w = QtWidgets.QWidget()
@@ -378,6 +379,103 @@ def addCuTab(self,pvbase):
     w.setLayout(lor)
     return w
 
+class XpmGroups(object):
+    # monitor PAddr recursively
+    # monitor PART:[0..7].Master,L0InpRate
+    def __init__(self,pvbase):
+        self.name    = pvbase[-6:]
+        self.parent  = None
+        paddr = Pv(pvbase+'PAddr').get()
+        if paddr!=0xffffffff:
+            name = xpmLinkId(paddr)[0]
+            if name[:3]=='XPM':
+                self.parent = XpmGroups(pvbase[:-6]+name+':')
+
+        self.vals = {'master':{i:Pv(pvbase+f'PART:{i}:Master'   ,self.update) for i in range(8)},
+                    'l0rate':{i:Pv(pvbase+f'PART:{i}:L0InpRate' ,self.update) for i in range(8)},
+                     'codes' : Pv(pvbase+f'SEQCODES'            ,self.update, isStruct=True) }
+
+    def update(self,err):
+        pass
+
+    def _update(self):
+        if self.parent:
+            vals = self.parent._update()
+        else:
+            vals = {'master':{i:'-' for i in range(8)},
+                    'l0rate':{i:'-' for i in range(8)},
+                    'codes' :{i:{'master':'-',
+                                 'desc'  :'-',
+                                 'rate'  :'-'} for i in range(12)}}
+        for i in range(8):
+            if self.vals['master'][i].__value__ == 1:
+                vals['master'][i] = self.name
+                vals['l0rate'][i] = str(self.vals['l0rate'][i].__value__)
+
+        codesv = self.vals['codes'].__value__
+        if codesv:
+            codes = codesv.todict()['value']
+            for i in range(12):
+                if codes['Enabled'][i]:
+                    vals['codes'][i] = {'master':self.name,
+                                        'desc'  :codes['Description'][i],
+                                        'rate'  :str(codes['Rate'][i])}
+        return vals
+
+class GroupsTab(QtWidgets.QWidget):
+    def __init__(self, pvbase):
+        super(GroupsTab,self).__init__()
+
+        l = QtWidgets.QHBoxLayout()
+        grid1 = QtWidgets.QGridLayout()
+        grid1.addWidget( QtWidgets.QLabel('Group')    , 0, 0 )
+        grid1.addWidget( QtWidgets.QLabel('Master')   , 0, 1 )
+        grid1.addWidget( QtWidgets.QLabel('L0InpRate'), 0, 2 )
+        self.masterText = {}
+        self.l0RateText = {}
+        for i in range(8):
+            grid1.addWidget( QtWidgets.QLabel(str(i)), i+1, 0 )
+            self.masterText[i] = QtWidgets.QLabel('None')
+            grid1.addWidget( self.masterText[i], i+1, 1)
+            self.l0RateText[i] = QtWidgets.QLabel('-')
+            grid1.addWidget( self.l0RateText[i], i+1, 2)
+        l.addLayout(grid1)
+        l.addStretch()
+
+        grid2 = QtWidgets.QGridLayout()
+        grid2.addWidget( QtWidgets.QLabel('EventCode')  , 0, 0 )
+        grid2.addWidget( QtWidgets.QLabel('Master')     , 0, 1 )
+        grid2.addWidget( QtWidgets.QLabel('Description'), 0, 2 )
+        grid2.addWidget( QtWidgets.QLabel('Rate'       ), 0, 3 )
+        self.codesText = {'master':{},
+                          'desc'  :{},
+                          'rate'  :{}}
+        for i in range(12):
+            grid2.addWidget( QtWidgets.QLabel(str(i+272)), i+1, 0 )
+            self.codesText['master'][i] = QtWidgets.QLabel('None')
+            grid2.addWidget( self.codesText['master'][i], i+1, 1 )
+            self.codesText['desc'][i] = QtWidgets.QLabel('-')
+            grid2.addWidget( self.codesText['desc'][i], i+1, 2 )
+            self.codesText['rate'][i] = QtWidgets.QLabel('-')
+            grid2.addWidget( self.codesText['rate'][i], i+1, 3 )
+        l.addLayout(grid2)
+
+        self.setLayout(l)
+
+        self.xpm = XpmGroups(pvbase)
+
+        initPvMon(self,pvbase+'SEQCODES',isStruct=True)
+
+    def update(self,err):
+        vals = self.xpm._update()
+        for i in range(8):
+            self.masterText[i].setText(vals['master'][i])
+            self.l0RateText[i].setText(vals['l0rate'][i])
+        for i in range(12):
+            self.codesText['master'][i].setText(vals['codes'][i]['master'])
+            self.codesText['desc'  ][i].setText(vals['codes'][i]['desc'  ])
+            self.codesText['rate'  ][i].setText(vals['codes'][i]['rate'  ])
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, titles):
         global ATCAWidget
@@ -466,7 +564,9 @@ class Ui_MainWindow(object):
 
             tw.addTab(DeadTime(pvbase,self),"DeadTime")
 
-#            tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
+            tw.addTab(GroupsTab(pvbase),"Groups/EventCodes")
+
+            tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
 
             stack.addWidget(tw)
 

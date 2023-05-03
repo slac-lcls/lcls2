@@ -53,14 +53,8 @@ class Pv(object):
         if callback:
             logger.info("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
-                try:
-                    if self.isStruct or getattr(newval,'raw') is None:
-                        self.__value__ = newval
-                    else:
-                        self.__value__ = newval.raw.value
-                    logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
-                except Exception as e:
-                    logger.error(f'Exception in monitor_cb for {self.pvname} {e} [{newval}]')
+                self.__value__ = self.to_value(newval)
+                logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
                 callback(err=None)
             try:
                 self.subscription = pvactx.monitor(self.pvname, monitor_cb)
@@ -71,11 +65,21 @@ class Pv(object):
             self.__value__ = None
             logger.debug("PV %s created without a callback", self.pvname) # Call get explictly for an sync get or use for put
 
+    def to_value(self,newval):
+        result = None
+        try:
+            if self.isStruct:
+                result = newval
+            elif hasattr(newval,"value"):
+                result = newval.value
+            else:
+                result = newval.raw.value
+        except Exception as e:
+            logger.error(f'Exception in monitor_cb for {self.pvname} {e} [{newval}]')
+        return result
+
     def get(self, useCached=True):
-        if self.isStruct:
-            self.__value__ = pvactx.get(self.pvname)
-        else:
-            self.__value__ = pvactx.get(self.pvname).raw.value
+        self.__value__ = self.to_value(pvactx.get(self.pvname))
         logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 
@@ -292,7 +296,6 @@ class PvTableDisplay(QtWidgets.QWidget):
         initPvMon(self,pvname,isStruct=True)
 
         v = self.pv.get()
-        print(f'get {v}')
 
         grid = QtWidgets.QGridLayout()
         for j,r in enumerate(rowNames):
@@ -310,7 +313,6 @@ class PvTableDisplay(QtWidgets.QWidget):
     def update(self,err):
         if not self.ready:
             return
-        print(f'PvTD update __value__ {self.pv.__value__}')
         v = self.pv.__value__
         for j,r in enumerate(v.labels):
             w = getattr(self,r)
