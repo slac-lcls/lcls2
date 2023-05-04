@@ -73,8 +73,8 @@ class GWViewExt(GWView):
 
 
     def set_style(self):
-        logger.debug('GWViewExt.set_style')
         GWView.set_style(self)  # set_background_brush
+        logger.debug('GWViewExt.set_style')
         self.brudf = QBrush()
         self.brubx = QBrush(Qt.black, Qt.SolidPattern)
         self.pendf = QPen()
