@@ -10,15 +10,13 @@ import numpy as np
 
 class TestGWViewExt(GWViewExt):
 
-    def key_usage(self):
-        return 'Keys:'\
-               '\n  ESC - exit'\
-               '\n  R - reset original size'\
-               '\n  U - update default rect scene to QRectF(-10, -10, 30, 30)'\
-               '\n  W - change scene rect, do not change default'\
-               '\n  D - change scene rect and its default'\
-               '\n'
-
+    KEY_USAGE = 'Keys:'\
+            '\n  ESC - exit'\
+            '\n  R - reset original size'\
+            '\n  U - update default rect scene to QRectF(-10, -10, 30, 30)'\
+            '\n  W - change scene rect, do not change default'\
+            '\n  D - change scene rect and its default'\
+            '\n'
 
     def keyPressEvent(self, e):
         #logger.debug('keyPressEvent, key=', e.key())
@@ -38,20 +36,19 @@ class TestGWViewExt(GWViewExt):
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D
             print('change scene rect %s' % ('set new default' if change_def else ''))
-            v = ag.random_standard((4,), mu=0, sigma=20, dtype=np.int)
-            rs = QRectF(v[0], v[1], v[2]+100, v[3]+100)
+            v = ag.random_standard((4,), mu=0, sigma=3, dtype=np.int)
+            rs = QRectF(v[0]-5, v[1]-5, v[2]+20, v[3]+20)
             print('Set scene rect: %s' % str(rs))
             self.reset_scene_rect(rs)
 
         else:
-            print(self.key_usage())
+            print(self.KEY_USAGE)
 
 
-def usage(tname):
-    scrname = sys.argv[0].split('/')[-1]
-    s = '\nUsage: python %s <tname [0-8]>' %scrname\
+SCRNAME = sys.argv[0].split('/')[-1]
+
+USAGE = '\nUsage: python %s <tname [0-8]>' %SCRNAME\
       + ' # then activate graphics window and use keyboad keys R/W/D/<Esc>'
-    return s
 
 
 def test_fwview(tname):
@@ -97,10 +94,9 @@ if __name__ == "__main__":
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print(usage(tname))
     print(50*'_', '\nTest %s' % tname)
     test_fwview(tname)
-    print(usage(tname))
+    print(USAGE)
     sys.exit('End of Test %s' % tname)
 
 # EOF
