@@ -184,9 +184,10 @@ cdef class SmdReader:
         # With integrating detector specified, limit_ts is from the integrating
         # detector where the last ts of the winner can be inserted in front of or at.
         cdef int i_found=0
+        cdef uint64_t[:] buf_ts_arr
         if intg_stream_id > -1:
-            i_found = np.searchsorted(np.asarray(self.prl_reader.bufs[intg_stream_id].ts_arr)[:self.prl_reader.bufs[intg_stream_id].n_ready_events], 
-                    limit_ts)
+            buf_ts_arr = <uint64_t [: self.prl_reader.bufs[intg_stream_id].n_ready_events]>self.prl_reader.bufs[intg_stream_id].ts_arr
+            i_found = np.searchsorted(buf_ts_arr, limit_ts)
             if i_found < self.prl_reader.bufs[intg_stream_id].n_ready_events:
                 limit_ts = self.prl_reader.bufs[intg_stream_id].ts_arr[i_found]
                 self.winner = intg_stream_id
