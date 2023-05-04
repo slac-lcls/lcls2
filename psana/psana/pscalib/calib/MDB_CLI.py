@@ -3,6 +3,7 @@
 Created on 2018-02-23 by Mikhail Dubrovin
 """
 
+import sys
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
@@ -20,56 +21,28 @@ MODES = ('print', 'convert', 'deldoc', 'delcol', 'deldb', 'delall', 'add', 'get'
 class MDB_CLI:
 
     def __init__(self, parser):
-        self.unpack(parser)
+        self._unpack(parser)
         kwa = {'logmode': self.strloglev,\
                'fmt': '[%(levelname).1s] %(name)s %(lineno)d: %(message)s',\
                'savelogfile': False}
-        self.repoman = init_repoman_and_logger(**kwa)  # parser=parser
+        self.repoman = init_repoman_and_logger(parser=parser, **kwa)  # parser=parser
         #config_logger(self.strloglev, fmt=fmt)
 
         self.dispatcher()
 
 
-    def unpack(self, parser):
-        """parser parameters:
-          -  host
-          -  port
-          -  experiment
-          -  detector
-          -  ctype
-          -  run
-          -  run_end
-          -  time_stamp
-          -  time_sec
-          -  version
-          -  iofname
-          -  comment
-          -  dbname
-          -  dbsuffix
-          -  loglevel
-        """
-        (popts, pargs) = parser.parse_args()
-        #args = pargs
-        #defs = vars(parser.get_default_values())
-
-        self.mode = mode = pargs[0] if len(pargs)>0 else 'print'
-
-        kwargs = vars(popts)
+    def _unpack(self, parser):
+        """unpack parser parameters"""
+        self.args = args = parser.parse_args()  # Namespace
+        self.kwargs = kwargs = vars(args)       # dict
+        self.defs = vars(parser.parse_args([]))  #  vars(parser.get_default_values())
+        self.mode = args.mode  # [0]
+        self.strloglev = kwargs.get('loglevel','DEBUG').upper()
 
         time_sec, time_stamp = mu.time_and_timestamp(**kwargs)
         kwargs['time_sec']   = int(time_sec)
         kwargs['time_stamp'] = time_stamp
-        kwargs['cli_mode']   = mode
-
-        self.kwargs = kwargs
-        self.defs = vars(parser.get_default_values())
-        self.strloglev = kwargs.get('loglevel','DEBUG').upper()
-
-        if self.strloglev == 'DEBUG':
-            #from psana.pyalgos.generic.Utils import print_kwargs, print_parser
-            print(40*'_')
-            gu.print_parser(parser)
-            gu.print_kwargs(kwargs)
+        kwargs['cli_mode']   = args.mode
 
 
     def client(self):
@@ -356,7 +329,6 @@ def cdb(parser):
 
 
 if __name__ == "__main__":
-    import sys
     sys.exit('See example in app/cdb.py')
 
 # EOF
