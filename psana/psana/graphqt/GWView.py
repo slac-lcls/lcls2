@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`GWView` for interactively scaleable and moveble view
 =====================================================================
@@ -8,14 +9,13 @@ Usage ::
     from psana.graphqt.GWView import *
 
 See:
-    - graphqt/examples/ex_FWView.py
+    - graphqt/examples/ex_GWView.py
     - :class:`GWView`
-    - :class:`FWViewImage`
+    - :class:`GWViewImage`
     - `lcls2 on github <https://github.com/slac-lcls/lcls2>`_.
 
 This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
-
 
 Created as FWView on 2017-01-03 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
@@ -43,21 +43,17 @@ class GWView(QGraphicsView):
         self.set_scale_control(scale_ctl)
         self.set_style()
         self.fit_in_view(rscene, mode=Qt.KeepAspectRatio)
-        self.add_test_items_to_scene(show_mode)
         self.click_pos = None
+        if show_mode > 0: self.add_test_items_to_scene(show_mode)
 
 
     def scene_rect(self):
         return self.scene().sceneRect()
-        #return self.sceneRect()  # SAME AS ABOVE?
 
 
     def set_scene_rect(self, r):
-        if r is None: return
-        self.scene().setSceneRect(r)
-        #self.setSceneRect(r)  # WORKS DIFFERENTLY
-        #logger.debug('GWView.set_scene_rect rect: %s transform m11: %.2f m22: %.2f'%\
-        #             (qu.info_rect_xywh(r), self.transform().m11(), self.transform().m22()))
+        if r is not None:
+            self.scene().setSceneRect(r)  # self.setSceneRect(r)  # WORKS DIFFERENTLY!
 
 
     def fit_in_view(self, rs=None, mode=Qt.IgnoreAspectRatio):
@@ -101,25 +97,24 @@ class GWView(QGraphicsView):
 
     def resizeEvent(self, e):
         """important method to make zoom and pan working correctly..."""
-        logger.debug('FWView.resizeEvent')
+        logger.debug('GWView.resizeEvent')
         QGraphicsView.resizeEvent(self, e)
         self.fit_in_view()
         self.update_my_scene()
 
 
     def mousePressEvent(self, e):
-        logger.debug('FWView.mousePressEvent')
+        logger.debug('GWView.mousePressEvent')
         if e.button() == Qt.LeftButton:  # and e.modifiers() & Qt.ControlModifier
             #self.click_pos = self.mapToScene(e.pos())
             self.click_pos = e.pos()
             self.rs_center = self.scene_rect().center()
         QGraphicsView.mousePressEvent(self, e)
-        #self.setDragMode(self.ScrollHandDrag) # ScrollHandDrag, RubberBandDrag, NoDrag DOES NOT WORK ???
 
 
     def mouseMoveEvent(self, e):
-        """Move rect CENTER.
-        """
+        """Move rect CENTER."""
+        #logger.debug('mouseMoveEvent')
         QGraphicsView.mouseMoveEvent(self, e)
         if self._scale_ctl == 0: return
         if self.click_pos is None: return
@@ -140,7 +135,7 @@ class GWView(QGraphicsView):
 
 
     def wheelEvent(self, e):
-        #logger.debug('wheelEvent e.angleDelta: %.3f' % e.angleDelta().y()) #+/-120 on each step
+        logger.debug('wheelEvent e.angleDelta: %.6f' % e.angleDelta().x()) #+/-120 on each step
         QGraphicsView.wheelEvent(self, e)
 
         if self._scale_ctl == 0: return
@@ -152,14 +147,13 @@ class GWView(QGraphicsView):
         x,y,w,h = rs.x(), rs.y(), rs.width(), rs.height()
 
         # zoom scene rect relative to mouse position
-        f = 1 + 0.3 * (1 if e.angleDelta().y()>0 else -1)
+        f = 1 + 0.3 * (1 if e.angleDelta().x()>0 else -1)
         dxc = (f-1)*(px-x)
         dyc = (f-1)*(py-y)
         dx, sx = (dxc, f*w) if self._scale_ctl & 1 else (0, w)
         dy, sy = (dyc, f*h) if self._scale_ctl & 2 else (0, h)
 
         rs.setRect(x-dx, y-dy, sx, sy)
-        #self.set_scene_rect(rs)
         self.fit_in_view(rs, Qt.IgnoreAspectRatio)
 
 
