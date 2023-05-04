@@ -25,7 +25,7 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
         self._data_gain_bit = eb.B15
         self._gain_bit_shift = 10
         self._gains_def = (41.0, 13.7, 0.512) # epixhr2x2 ADU/keV H:M:L = 1 : 1/3 : 1/80
-        self.path_geo_default = 'pscalib/geometry/data/geometry-def-epixhr2x2.data'
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixhr2x2.data'
 
 
     def _array(self, evt) -> Array2d:

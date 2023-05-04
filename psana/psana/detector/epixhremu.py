@@ -20,8 +20,8 @@ class epixhremu_raw_0_0_1(eb.epix_base):
         self._data_gain_bit = eb.B15
         self._gain_bit_shift = 10
         self._gains_def = (41.0, 13.7, 0.512) # epixhremu ADU/keV H:M:L = 1 : 1/3 : 1/80
-        #self.path_geo_default = 'pscalib/geometry/data/geometry-def-epixhremu.data'
-        self.path_geo_default = 'pscalib/geometry/data/geometry-def-epixhr1x4-20.data'
+        #self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixhremu.data'
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixhr1x4-20.data'
 
 
     def _array(self, evt) -> Array2d:

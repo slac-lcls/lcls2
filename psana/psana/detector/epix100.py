@@ -13,7 +13,7 @@ class epix100hw_raw_2_0_1(ad.AreaDetector):
     def __init__(self, *args, **kwa):
         ad.AreaDetector.__init__(self, *args, **kwa)
         self._seg_geo = ad.sgs.Create(segname='EPIX100:V1')
-        self.path_geo_default = 'pscalib/geometry/data/geometry-def-epix100a.data'
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix100a.data'
 
     def image(self,evt):
         """substitution for real image."""
@@ -29,7 +29,7 @@ class epix100_raw_2_0_1(ad.AreaDetector):
         self._data_bit_mask = 0xffff
         self._gain_ = None # ADU/eV
         self._gain_factor_ = None # keV/ADU
-        self.path_geo_default = 'pscalib/geometry/data/geometry-def-epix100a.data'
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix100a.data'
 
 
     def _gain(self):
