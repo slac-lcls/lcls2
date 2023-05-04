@@ -10,9 +10,11 @@ collect_host = 'drp-srcf-cmp032'
 
 # readout group 4 is for epixhr (L0Delay change)
 # readout group 5 is for manta
-hutch, station, user, password = ('tst', 2, 'tstopr', 'pcds')
-auth = ' --user {:} --password {:} '.format(user,password)
-url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+groups = platform
+hutch, station, user, password = ('tst', 4, 'tstopr', 'pcds')
+# use the dev logbook to get the tst expts for epixhr running -cpo
+#auth = ' --user {:} --password {:} '.format(user,password)
+#url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 
 #
@@ -76,20 +78,19 @@ ami_manager_node = "drp-srcf-cmp032"
 procmgr_config = [
  {                          id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
- { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 7 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
- {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
+ #{ host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 7 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ #{                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
+ { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 7 -C BEAM -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert --loglevel WARNING'},
 
  { host: 'drp-srcf-cmp032', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
- { host: 'drp-srcf-cmp032', id:'mebuser0',    flags:'spu',                cmd:meb_cmd+f' -t {hutch}_mebuser0 -d -n 64 -q {ami_workers_per_node}'},
+ { host: 'drp-srcf-cmp032', id:'timing_1',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
- { host: 'drp-srcf-cmp032', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
+ { host: 'drp-srcf-cmp032', id:'bld_0',       flags:'spux', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D xppsb2beammon'},
 
-# { host: 'drp-srcf-cmp032', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
-
-# 10/3/2021 - epixhr beam test
-# {                          id:'groupca6',    flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 6'},
-# { host: 'drp-srcf-cmp014', id:'epixhr_0',  flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixhr2x2'},
+ {                          id:'groupca',    flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 7 '+groups},
+ { host: 'drp-srcf-cmp014', id:'epixhr_0',  flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixhr2x2'},
 
 ]
 
