@@ -60,7 +60,7 @@ class FWRuler():
         self.size_inches = kwargs.get('size_inches', 3)
         self.zvalue      = kwargs.get('zvalue',     10)
         self.fmt         = kwargs.get('fmt',      '%g')
-        self.label_rot   = kwargs.get('label_rot',  10)
+        self.label_rot   = kwargs.get('label_rot',   0)
 
         self.pen.setCosmetic(True)
         self.pen.setColor(self.color)
@@ -175,7 +175,7 @@ class FWRuler():
             vstr = self.fmt%v
             txtitem = self.scene.addText(vstr, self.font)
             #print('XXXXX txtitem', dir(txtitem))
-            txtitem.setRotation(self.label_rot)
+            if self.label_rot != 0: txtitem.setRotation(self.label_rot)
             txtitem.setDefaultTextColor(self.color)
 
             pp = self.view.mapFromScene(pv)
