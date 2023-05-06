@@ -24,6 +24,7 @@ cdef class ParallelReader:
         self.chunk_overflown    = 0                         # set to dgram size if it's too big
         self.max_events         = int(self.chunksize / 70)  # guess no. of smd events in one chunk
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
+        self.gots               = array.array('l', [0]*self.nfiles)
         self._init_buffers(self.bufs)
         self._init_buffers(self.step_bufs)
 
@@ -49,6 +50,7 @@ cdef class ParallelReader:
             buf.sv_arr     = <unsigned *>malloc(sizeof(unsigned) * self.max_events)
             buf.st_offset_arr = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
             buf.en_offset_arr = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
+            buf.result_stat= <struct_stat *>malloc(sizeof(struct_stat))
 
     cdef void _free_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
@@ -61,6 +63,7 @@ cdef class ParallelReader:
                 free(buf.sv_arr)
                 free(buf.st_offset_arr)
                 free(buf.en_offset_arr)
+                free(buf.result_stat)
             free(bufs)
 
     @cython.boundscheck(False)
@@ -77,13 +80,16 @@ cdef class ParallelReader:
 
         """
         cdef Py_ssize_t i       = 0
-        cdef int64_t got       = 0
-        cdef int64_t gots[1000]
-        cdef uint64_t offset    = 0
+        cdef int64_t got        = 0
+        cdef int64_t[:] gots    = self.gots
         cdef Dgram* d
         cdef Buffer* buf
         cdef Buffer* step_buf
         cdef uint64_t payload   = 0
+        cdef int fstat_err      = 0
+        cdef uint64_t cur_offset= 0
+        cdef uint64_t file_size = 0
+        cdef uint64_t read_size = 0
         self.got                = 0
         
         for i in prange(self.nfiles, nogil=True, num_threads=self.num_threads):
@@ -99,8 +105,13 @@ cdef class ParallelReader:
                 memcpy(buf.chunk, buf.chunk + buf.ready_offset, buf.got - buf.ready_offset)
             
             # read more data to fill up the buffer
-            gots[i] = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.ready_offset), \
-                    self.chunksize - (buf.got - buf.ready_offset) )
+            fstat_err = fstat(self.file_descriptors[i], buf.result_stat)
+            file_size = buf.result_stat.st_size
+            cur_offset= lseek(self.file_descriptors[i], 0, SEEK_CUR)
+            read_size = self.chunksize - (buf.got - buf.ready_offset) 
+            if file_size - cur_offset < read_size:
+                read_size = file_size - cur_offset
+            gots[i] = read(self.file_descriptors[i], buf.chunk+(buf.got-buf.ready_offset), read_size)
 
             # summing the size of all the new reads
             self.got += gots[i]
