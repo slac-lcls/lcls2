@@ -9,7 +9,7 @@ Usage::
   o = AreaDetector(*args, **kwa) # inherits from DetectorImpl(*args, **kwa)
 
   a = o.raw(evt)
-  a = o._segment_numbers(evt)
+  a = o._segment_numbers  # alias of o._sorted_segment_ids, where ids is misleading
   a = o._det_calibconst()
 
   a = o._pedestals()
@@ -85,6 +85,7 @@ class AreaDetector(DetectorImpl):
         self._maskalgos_ = None
         self._store_ = None  # detector dependent storage of cached parameters for method calib
         self._geo = None
+        self._segment_numbers = self._sorted_segment_ids  # [0, 1, 2,... 17, 18, 19]
 
 
     def raw(self,evt) -> Array3d:
@@ -105,15 +106,6 @@ class AreaDetector(DetectorImpl):
         segs = self._segments(evt)
         if is_none(segs, 'self._segments(evt) is None'): return None
         return arr3d_from_dict({k:v.raw for k,v in segs.items()})
-
-
-    def _segment_numbers(self, evt):
-        """ Returns dense 1-d numpy array of segment indexes.
-        from dict self._segments(evt)
-        """
-        segs = self._segments(evt)
-        if is_none(segs, 'self._segments(evt) is None'): return None
-        return np.array(sorted(segs.keys()), dtype=np.uint16)
 
 
     def _maskalgos(self, **kwa):
@@ -243,7 +235,7 @@ class AreaDetector(DetectorImpl):
 
     def image(self, evt, nda=None, **kwa) -> Array2d:
         _nda = self.calib(evt) if nda is None else nda
-        segnums = self._segment_numbers(evt)
+        segnums = self._segment_numbers
         o = self._calibconstants(**kwa)
         if is_none(o, 'det.raw._calibconstants(evt) is None'): return None
         if o.geo() is None: o._geo  = self._det_geo()
