@@ -1365,21 +1365,25 @@ def _doc_detector_name(detname, dettype, detnum):
 
 
 def _short_for_partial_name(detname, ldocs):
-    """Returns full from partial detector name (e.g. <dettype>_<single-panal-id> or None if not found."""
+    """Returns full from partial detector name or None if not found.
+       Parameters:
+       - detname (str) - partial or full detector name, e.g. <dettype>_<panalN-id>_<panalM-id>_...
+       - ldocs (list of dict) - list of documents returning after submitting quiery to cdb_detnames DB
+    """
     logger.debug('detname: %s\nlist of docs: %s'%(detname, str(ldocs)))
-    name_fields = detname.split('_', 1)
+    name_fields = detname.split('_')
     if len(name_fields)<2:
         logger.warning('Partial detname %s does not cantain enough fields to find long name.' %  detname)
         return None
-    dettype, pnames = name_fields  # [1:]
+    #dettype = name_fields[0]
+    pnames = name_fields[1:]
 
     for doc in ldocs:
         longname = doc.get('long', None)
         if longname is None: continue
-        #print('XXX doc longname:', long)
         if all([name in longname for name in pnames]):
             shortname = doc.get('short', None)
-            logger.debug('associated detector names\n  long: %s\n  short: %s'%(longname, shortname))
+            logger.debug('found associated detector names\n  long: %s\n  short: %s'%(longname, shortname))
             return shortname # longname
     return None
 
