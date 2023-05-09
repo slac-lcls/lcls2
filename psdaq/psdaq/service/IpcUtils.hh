@@ -7,12 +7,13 @@ namespace Pds {
 
 namespace Ipc {
 
-void cleanupDrpPython(std::string keyBase, int* inpMqId, int* resMqId, unsigned numWorkers);
-int setupDrpShMem(std::string key, size_t size, const char* name, int& shmId, unsigned workerNum);
-int attachDrpShMem(std::string key, const char* name, int& shmId, size_t size, void*& data, bool write, unsigned workerNum);
-int setupDrpMsgQueue(std::string key, size_t size, const char* name, int& mqId, bool write, unsigned workerNum);
-int drpSend(int mqId, const char *msg, size_t msgsize, unsigned workerNum);
-int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo, unsigned workerNum);
+void cleanupDrpShmMem(std::string key);
+void cleanupDrpMq(std::string key, int MqId);
+int setupDrpShMem(std::string key, size_t size, int& shmId);
+int attachDrpShMem(std::string key, int& shmId, size_t size, void*& data, bool write);
+int setupDrpMsgQueue(std::string key, size_t mqSize, int& mqId, bool write);
+int drpSend(int mqId, const char *msg, size_t msgsize);
+int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo);
 
 }
 

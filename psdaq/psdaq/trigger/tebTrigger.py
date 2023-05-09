@@ -1,6 +1,7 @@
 import sys
 import numpy
-import sysv_ipc
+import posix_ipc
+import mmap
 import logging
 import json
 import argparse
@@ -14,7 +15,7 @@ class ArgsParser(argparse.ArgumentParser):
     def __init__(self):
         super(ArgsParser, self).__init__()
         self.add_argument('-p', type=int, choices=range(0, 8), default=0, help='partition (default 0)')
-        self.add_argument('-b', type=int, required=True, help='IPC key base value')
+        self.add_argument('-b', type=str, required=True, help='IPC key base value')
 
     def parse(self):
         self.args = self.parse_args()
@@ -36,19 +37,19 @@ class TriggerDataSource(object):
         self.args = ArgsParser().parse()
 
         # Make the base key value depend on the partition number
-        KEY_BASE = self.args.b
+        key_base = self.args.b[1:]
 
         try:
-            self._mq_inp = sysv_ipc.MessageQueue(KEY_BASE + 0)
-        except sysv_ipc.Error as exp:
+            self._mq_inp = posix_ipc.MessageQueue("/mqtebinp_" + key_base, read=True, write=False)
+        except posix_ipc.Error as exp:
             print(
                 f"[Python] Error connecting to 'Inputs' message queue - Error: {exp}"
             )
             sys.exit(1)
 
         try:
-            self._mq_res = sysv_ipc.MessageQueue(KEY_BASE + 1)
-        except sysv_ipc.Error as exp:
+            self._mq_res = posix_ipc.MessageQueue("/mqtebres_" + key_base, read=False, write=True)
+        except posix_ipc.Error as exp:
             print(
                 f"[Python] Error connecting to 'Results' message queue - Error: {exp}"
             )
@@ -56,46 +57,56 @@ class TriggerDataSource(object):
 
         print(f"[Python] Connected to message queues")
 
-        message, priority = self._mq_inp.receive()
-        print(f"[Python] Received message '{message}', prio '{priority}'")
+        while True: # Synch up when there's cruft in the pipe
+            message, priority = self._mq_inp.receive()
+            print(f"[Python] Received message '{message}', prio '{priority}'")
 
-        if chr(message[0]) == 'i':
-            try:
-                shm_msg = message.decode().split(',')
-                self._shm_inp = sysv_ipc.SharedMemory(int(shm_msg[1]), size=int(shm_msg[2]))
-                inputsSize = 0
-                self._shm_inp_bufSizes = []
-                for ctrbSize in shm_msg[3:]:
+            if chr(message[0]) != 'i':
+                print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'i'")
+            else:
+                try:
+                    shm_msg = message.decode().split(',')
+                    self._shm_inp = posix_ipc.SharedMemory(shm_msg[1], size=int(shm_msg[2]))
+                    inputsSize = 0
+                    self._shm_inp_bufSizes = []
+                    for ctrbSize in shm_msg[3:]:
+                        self._shm_inp_bufSizes.append(inputsSize)
+                        inputsSize += int(ctrbSize)
                     self._shm_inp_bufSizes.append(inputsSize)
-                    inputsSize += int(ctrbSize)
-                self._shm_inp_bufSizes.append(inputsSize)
-            except sysv_ipc.Error as exp:
-                print(
-                    f"[Python] Error connecting to 'Inputs' shared memory - Error: {exp}"
-                )
-                sys.exit(1)
+                    self._shm_inp_mmap = mmap.mmap(self._shm_inp.fd, self._shm_inp.size)
 
-            print(f"[Python] Set up Inputs shared memory key {shm_msg[1]}")
+                except posix_ipc.Error as exp:
+                    print(
+                        f"[Python] Error connecting to 'Inputs' shared memory - Error: {exp}"
+                    )
+                    sys.exit(1)
 
-        else:
-            print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'i'")
+                print(f"[Python] Set up Inputs shared memory key {shm_msg[1]}")
+                break
 
-        message, priority = self._mq_inp.receive()
-        print(f"[Python] Received message '{message}', prio '{priority}'")
+        self._mq_res.send(b"g")
 
-        if chr(message[0]) == 'r':
-            try:
-                shm_msg = message.decode().split(',')
-                self._shm_res = sysv_ipc.SharedMemory(int(shm_msg[1]), size=int(shm_msg[2]))
-            except sysv_ipc.Error as exp:
-                print(
-                    f"[Python] Error connecting to 'Results' shared memory - Error: {exp}"
-                )
-                self._shm_inp.detach()
-                self._shm_inp = None
-                sys.exit(1)
+        while True: # Synch up when there's cruft in the pipe
+            message, priority = self._mq_inp.receive()
+            print(f"[Python] Received message '{message}', prio '{priority}'")
 
-            print(f"[Python] Set up Results shared memory key {shm_msg[1]}")
+            if chr(message[0]) != 'r':
+                print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'r'")
+            else:
+                try:
+                    shm_msg = message.decode().split(',')
+                    self._shm_res = posix_ipc.SharedMemory(shm_msg[1], size=int(shm_msg[2]))
+                    self._shm_res_mmap = mmap.mmap(self._shm_res.fd, self._shm_res.size)
+                except posix_ipc.Error as exp:
+                    print(
+                        f"[Python] Error connecting to 'Results' shared memory - Error: {exp}"
+                    )
+                    self._shm_inp.unlink()
+                    self._shm_inp = None
+                    sys.exit(1)
+
+                print(f"[Python] Set up Results shared memory key {shm_msg[1]}")
+                break
 
         #print(f'max_size: {self._mq_inp.max_size}')
 
@@ -106,15 +117,15 @@ class TriggerDataSource(object):
 
             if   chr(message[0]) in ('c', 'd'):
                 size        = int((message.decode())[2:])
-                connectMsg += self._shm_inp.read(size).decode()
+                connectMsg += self._shm_inp_mmap[0:size].decode()
                 if chr(message[0]) == 'd':
                     print(f"[Python] Received connect message '{connectMsg[:40]}...'")
                     self.connect_json = connectMsg
                     break
 
             else:
-                print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'r'")
-                break
+                print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'c' or 'd'")
+                continue
 
             self._mq_res.send(b"c")
 
@@ -122,10 +133,10 @@ class TriggerDataSource(object):
 
     def __del__(self):
         if self._shm_inp is not None:
-            self._shm_inp.detach()
+            self._shm_inp.unlink()
             self._shm_inp = None
         if self._shm_res is not None:
-            self._shm_res.detach()
+            self._shm_res.unlink()
             self._shm_res = None
 
     def events(self):
@@ -136,7 +147,7 @@ class TriggerDataSource(object):
             #print(f"[Python] Received msg '{message}', prio '{priority}'")
 
             if chr(message[0]) == 'g':
-                event = Event(self._shm_inp, self._shm_inp_bufSizes)
+                event = Event(self._shm_inp_mmap, self._shm_inp_bufSizes)
                 yield event
             elif chr(message[0]) == 's':
                 break
@@ -144,8 +155,8 @@ class TriggerDataSource(object):
                 print(f"[Python] Unrecognized message '{chr(message[0])}' received")
 
     def result(self, persist, monitor):
-        view = memoryview(self._shm_res)
-        result = rdg.ResultDgram(view, persist, monitor)
+
+        result = rdg.ResultDgram(self._shm_res_mmap, persist, monitor)
 
         self._mq_res.send(b"g")
 
@@ -156,8 +167,8 @@ class TriggerDataSource(object):
 
 # Revisit: Move this into a .pyx?
 class Event(object):
-    def __init__(self, shm_inp, shm_bufSizes):
-        self._shm_inp      = shm_inp
+    def __init__(self, shm_inp_mmap, shm_bufSizes):
+        self._shm_inp_mmap      = shm_inp_mmap
         self._shm_bufSizes = shm_bufSizes
         self._idx = 0
         self._pid = 0
@@ -166,13 +177,13 @@ class Event(object):
         return self
 
     def __next__(self):
+        print("DEBUG: In Next")
         if self._idx == len(self._shm_bufSizes) - 1:
             raise StopIteration
 
-        view = memoryview(self._shm_inp)
         beg = self._shm_bufSizes[self._idx]
         end = self._shm_bufSizes[self._idx + 1]
-        datagram = edg.EbDgram(view=view[beg:end])
+        datagram = edg.EbDgram(view=self._shm_inp_mmap[beg:end])
         if datagram.pulseId() == 0:
             raise StopIteration
 

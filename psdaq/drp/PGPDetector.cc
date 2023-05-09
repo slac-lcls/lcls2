@@ -62,39 +62,29 @@ clockid_t test_coarse_clock() {
 }
 
 
-
-// int checkDrpPy(pid_t pid, bool wait = false)
-// {
-//   pid_t child_status = waitpid(pid, NULL, wait ? 0 : WNOHANG);
-//   if (child_status != 0)
-//   {
-//     return -1;
-//   }
-//   return 0;
-// }
-
-
 void  drpSendReceive(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
                     XtcData::TransitionId::Value transitionId, unsigned threadNum)
 {
 
-    char msg[520];
+    char msg[512];
+    char recvmsg[520];
 
     if (transitionId == XtcData::TransitionId::Unconfigure) {
         logging::critical("[Thread %u] Unconfigure transition. Send stop message to Drp Python", threadNum);
-        sprintf(msg, "%s", "s");
+        snprintf(msg, sizeof(msg), "%s", "s");
     } else {
-        sprintf(msg, "%s", "g");
+        snprintf(msg, sizeof(msg), "%s", "g");
     }
 
-    int rc = drpSend(inpMqId, msg, 1, threadNum);
+    int rc = drpSend(inpMqId, msg, 1);
     if (rc) {
-        logging::critical("[Thread %u] Message from Drp python not sent", threadNum);
+        logging::critical("[Thread %u] Error sending message %s to Drp python: %m",
+                          threadNum, msg);
         // cleanupIpcPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum); 
         abort();
     }
 
-    rc = drpRecv(resMqId, msg, 520, 10000, threadNum);
+    rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 10000);
     if (rc) {
         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
         // cleanupIpcPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
@@ -118,7 +108,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     bool pythonDrp = false;
     void* inpData = nullptr;
     void* resData = nullptr;
-    char msg[520];
+    char msg[512];
+    char recvmsg[520];
     bool transition;
 
     auto kwargs_it = para.kwargs.find("drp");
@@ -144,32 +135,37 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         } 
 
         std::string keyBase = "p" + std::to_string(para.partition) + "_" + para.detName + "_" + std::to_string(para.detSegment); 
+        std::string key = "/shminp_" + keyBase + "_" + std::to_string(threadNum);
 
-        int rc = attachDrpShMem("/shminp_" + keyBase + "_" + std::to_string(threadNum), "Inputs", inpShmId, shmemSize, inpData, true, threadNum);
+        int rc = attachDrpShMem(key, inpShmId, shmemSize, inpData, true);
         if (rc) {
             // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-            logging::critical("[Thread %u] error attaching to Drp shared memory buffers", threadNum);
+            logging::critical("[Thread %u] error attaching to Drp shared memory buffer %s for key %u: %m",
+                               threadNum, "Inputs", key);
             abort();
         }
 
-        rc = attachDrpShMem("/shmres_" + keyBase + "_" + std::to_string(threadNum), "Results", resShmId, shmemSize, resData, false, threadNum);
+        key = "/shmres_" + keyBase + "_" + std::to_string(threadNum);
+        rc = attachDrpShMem(key, resShmId, shmemSize, resData, false);
         if (rc) {
+
+            logging::critical("[Thread %u] error attaching to Drp shared memory buffer %s for key %u: %m",
+                               threadNum, "Results", key);
             // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
-            logging::critical("[Thread %u] error attaching to Drp shared memory buffers", threadNum);
             abort();
         }
 
-        sprintf(msg, "%s",  pythonScript.c_str());
+        snprintf(msg, sizeof(msg), "%s",  pythonScript.c_str());
 
-        rc = drpSend(inpMqId, msg, pythonScript.length(), threadNum);
+        rc = drpSend(inpMqId, msg, pythonScript.length());
         if (rc) {
-            logging::critical("[Thread %u] Message from Drp python not sent", threadNum);
+            logging::critical("[Thread %u] Message %s from Drp python not sent", msg, threadNum);
             // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
             abort();
         }
 
         // Wait for python process to be up
-        rc = drpRecv(resMqId, msg, 520, 15000, threadNum);
+        rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 15000);
         if (rc) {
             logging::critical("[Thread %u] Message from Drp python not received", threadNum);
             // cleanupDrpPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);

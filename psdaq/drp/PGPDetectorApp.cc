@@ -114,6 +114,16 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
+void cleanupDrpPython(std::string keyBase, int* inpMqId, int* resMqId, unsigned numWorkers)
+{
+    for (unsigned workerNum=0; workerNum<numWorkers; workerNum++) {
+        cleanupDrpShmMem("/shminp_" + keyBase + std::to_string(workerNum));
+        cleanupDrpShmMem("/shmres_" + keyBase + std::to_string(workerNum));
+        cleanupDrpMq("/mqinp_" + keyBase + std::to_string(workerNum), inpMqId[workerNum]);
+        cleanupDrpMq("/mqres_" + keyBase + std::to_string(workerNum), resMqId[workerNum]);
+    }
+}
+
 int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Parameters& para, DrpBase& drp)
 {
     // Fork
@@ -168,18 +178,22 @@ void PGPDetectorApp::setupDrpPython() {
         std::remove(("/dev/shm/shmres_" + keyBase + "_" + std::to_string(workerNum)).c_str());
         
         // Creating message queues
-        int rc = setupDrpMsgQueue("/mqinp_" + keyBase + "_" + std::to_string(workerNum), mqSize, "Inputs", m_inpMqId[workerNum], true, workerNum);
+        std::string key = "/mqinp_" + keyBase + "_" + std::to_string(workerNum);
+        int rc = setupDrpMsgQueue(key, mqSize, m_inpMqId[workerNum], true);
         if (rc) {
+            logging::critical("[Thread %u] Error in creating Drp %s message queue with key %u: %m", workerNum, "Inputs", key.c_str());
             cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
-            logging::critical("[Thread %u] error setting up Drp message queues", workerNum);
             abort();
         }
-        rc = setupDrpMsgQueue("/mqres_" + keyBase + "_" + std::to_string(workerNum), mqSize, "Results", m_resMqId[workerNum], false, workerNum);
+        logging::info("[Thread %u] Created Drp msg queue %s for key %u", workerNum, "Inputs", key);
+        key = "/mqres_" + keyBase + "_" + std::to_string(workerNum);
+        rc = setupDrpMsgQueue(key, mqSize, m_resMqId[workerNum], false);
         if (rc) {
+            logging::critical("[Thread %u] Error in creating Drp %s message queue with key %u: %m", workerNum, "Inputs", key.c_str());
             cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
-            logging::critical("[Thread %u] error setting up Drp message queues", workerNum);
             abort();
         }
+        logging::info("[Thread %u] Created Drp msg queue %s for key %u", workerNum, "Results", key);
 
         // Creating shared memory
         size_t shmemSize = m_drp.pool.pebble.bufferSize();
@@ -189,19 +203,25 @@ void PGPDetectorApp::setupDrpPython() {
         long pageSize = sysconf(_SC_PAGESIZE);
         shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
 
-        rc = setupDrpShMem("/shminp_" + keyBase + "_" + std::to_string(workerNum), shmemSize, "Inputs", m_inpShmId[workerNum], workerNum);
+        key = "/shminp_" + keyBase + "_" + std::to_string(workerNum);
+        rc = setupDrpShMem(key, shmemSize, m_inpShmId[workerNum]);
         if (rc) {
+            logging::critical("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
+                              workerNum, "Inputs", key.c_str());
             cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
-            logging::critical("[Thread %u] error setting up Drp shared memory buffers", workerNum);
             abort();
         }
+        logging::info("[Thread %u] Created Drp shared memory %s for key %u", workerNum, "Inputs", key);
 
-        rc = setupDrpShMem("/shmres_" + keyBase  + "_" + std::to_string(workerNum), shmemSize, "Results", m_resShmId[workerNum], workerNum);
+        key = "/shmres_" + keyBase  + "_" + std::to_string(workerNum);
+        rc = setupDrpShMem(key, shmemSize, m_resShmId[workerNum]);
         if (rc) {
+            logging::critical("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
+                              workerNum, "Results", key.c_str());
             cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
-            logging::critical("[Thread %u] error setting up Drp shared memory buffers", workerNum);
             abort();
         }
+        logging::info("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Results", key);
 
         logging::info("IPC set up for worker %d", workerNum);
 

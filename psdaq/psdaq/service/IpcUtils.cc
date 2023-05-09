@@ -16,43 +16,29 @@ using ms_t = std::chrono::milliseconds;
 
 namespace Pds::Ipc {
 
-void cleanupIpc(std::string keyBase, int inpMqId, int resMqId, unsigned workerNum)
+void cleanupDrpShmMem(std::string key)
 {
-    shm_unlink(("/tmp/shminp_" + keyBase + std::to_string(workerNum)).c_str());
-    shm_unlink(("/tmp/shmres_" + keyBase + std::to_string(workerNum)).c_str());
-    mq_unlink(("/tmp/mqinp_" + keyBase + std::to_string(workerNum)).c_str());
-    mq_close(inpMqId);
-    mq_unlink(("/tmp/mqres_" + keyBase + std::to_string(workerNum)).c_str());
-    mq_close(resMqId);
+    shm_unlink(key.c_str());
 }
 
-void cleanupDrpPython(std::string keyBase, int* inpMqId, int* resMqId, unsigned numWorkers)
+void cleanupDrpMq(std::string key, int MqId)
 {
-    for (unsigned workerNum=0; workerNum<numWorkers; workerNum++) {
-        cleanupIpc(keyBase, inpMqId[workerNum], resMqId[workerNum], workerNum);
-    }
+    mq_unlink(key.c_str());
+    mq_close(MqId);
 }
 
-int setupDrpShMem(std::string key, size_t size, const char* name, int& shmId, unsigned workerNum)
+int setupDrpShMem(std::string key, size_t size, int& shmId)
 {
     shmId = shm_open(key.c_str(), O_RDWR | O_CREAT, 0666);
     if (shmId == -1) {
-        logging::error("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
-                        workerNum, name, key.c_str());
         return -1;
     }
 
     int ret = ftruncate(shmId, size);
-    if (ret == -1) {
-        logging::error("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (ftruncate step)",
-                        workerNum, name, key.c_str());
-        return -1;
-    }
-
-    return 0;
+    return ret;
 }
 
-int attachDrpShMem(std::string key, const char* name, int& shmId, size_t size, void*& data, bool write, unsigned workerNum)
+int attachDrpShMem(std::string key, int& shmId, size_t size, void*& data, bool write)
 {
 
     int prot;
@@ -65,14 +51,12 @@ int attachDrpShMem(std::string key, const char* name, int& shmId, size_t size, v
     data = mmap(NULL, size, prot, MAP_SHARED, shmId, 0);
     if (data == (void *)-1)
     {
-        logging::error("[Thread %u] Error attaching Drp %s shared memory for key %u: %m",
-                       workerNum, name, key);
         return -1;
     }
     return 0;
 }
 
-int setupDrpMsgQueue(std::string key, size_t mqSize, const char* name, int& mqId, bool write, unsigned workerNum)
+int setupDrpMsgQueue(std::string key, size_t mqSize, int& mqId, bool write)
 {
 
     mq_attr mqattr;
@@ -91,28 +75,18 @@ int setupDrpMsgQueue(std::string key, size_t mqSize, const char* name, int& mqId
     mqId = mq_open(key.c_str(), oflag, 0666, &mqattr);
     if (mqId == -1)
     {
-        logging::error("[Thread %u] Error in creating Drp %s message queue with key %u: %m",
-                       workerNum, name, key);
         return -1;
     }
     return 0;
 }
 
-int drpSend(int mqId, const char *msg, size_t msgsize, unsigned workerNum)
+int drpSend(int mqId, const char *msg, size_t msgsize)
 {
-
     auto rc = mq_send(mqId, msg, msgsize, 31);
-    if (rc == -1)
-    {
-        logging::error("[Thread %u] Error sending message %s to Drp python: %m",
-                       workerNum, msg);
-        return -1;
-    }
-
-    return 0;
+    return rc;
 }
 
-int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo, unsigned workerNum)
+int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo)
 {
     struct timespec t;
     [[maybe_unused]] auto result = clock_gettime(CLOCK_REALTIME, &t);
@@ -128,14 +102,12 @@ int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo, unsigned worker
     if (rc == -1) {
         if (errno == ETIMEDOUT)
         {
-            logging::error("[Thread %u] Message receiving timed out", workerNum);
+            logging::critical("Message receiving timed out");
             return -1;
         } else {
-            logging::error("[Thread %u] Error receiving message from Drp python: %m", workerNum);
             return -1;
         }
     }
- 
     return 0;
 }
 
