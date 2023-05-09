@@ -612,7 +612,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     if store.cmpars is not None:
         common_mode_epix_multigain_apply(arrf, gmaps, store)
 
-    logger.info(info_ndarr(arrf,  'arrf:'))
+    logger.debug(info_ndarr(arrf,  'arrf:'))
 
     if factor is None:
         logger.warning('gain factor is None - substitute with 1')
