@@ -356,7 +356,7 @@ def test_image(args):
         print('image composition time = %.6f sec ' % (time()-t0_sec))
 
         logger.info(info_ndarr(img, 'img '))
-        logger.info(info_ndarr(arr, 'arr '))
+        #logger.info(info_ndarr(arr, 'arr '))
         if img is None: continue
 
         title = '%s %s run:%s step:%d ev:%d' % (args.detname, run.expt, run.runnum, stepnum, evnum)
