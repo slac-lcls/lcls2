@@ -12,22 +12,22 @@ Usage::
   a = o._segment_numbers  # alias of o._sorted_segment_ids, where ids is misleading
   a = o._det_calibconst()
 
-  a = o._pedestals()
-  a = o._gain()
-  a = o._rms()
-  a = o._status()
-  a = o._mask_calib()
+  a = o._pedestals(all_segs=False)
+  a = o._gain(all_segs=False)
+  a = o._rms(all_segs=False)
+  a = o._status(all_segs=False)
+  a = o._mask_calib(all_segs=False)
   a = o._common_mode()
   a = o._det_geotxt_and_meta()
   a = o._det_geotxt_default()
   a = o._det_geo()
-  a = o._pixel_coord_indexes(pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0, **kwa)
-  a = o._pixel_coords(do_tilt=True, cframe=0, **kwa)
+  a = o._pixel_coord_indexes(pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0, all_segs=False, **kwa)
+  a = o._pixel_coords(do_tilt=True, cframe=0, all_segs=False, **kwa)
 
   a = o._shape_as_daq()
   a = o._number_of_segments_total()
 
-  a = o._mask_default(dtype=DTYPE_MASK)
+  a = o._mask_default(dtype=DTYPE_MASK, all_segs=False)
   a = o._mask_calib()
   a = o._mask_calib_or_default(dtype=DTYPE_MASK)
   a = o._mask_from_status(status_bits=(1<<64)-1,\
@@ -43,11 +43,12 @@ Usage::
               center=True, wcenter=0, center_rows=5, center_cols=3,\
               calib=False,\
               umask=None,\
-              force_update=False)
+              force_update=False,\
+              all_segs=False)
 
   a = o.calib(evt, cmpars=(7,2,100,10), *kwargs)
   a = o.calib(evt, **kwa)
-  a = o.image(self, evt, nda=None, **kwa)
+  a = o.image(self, evt, nda=None, value_for_missing_segments=None, **kwa)
 
 2020-11-06 created by Mikhail Dubrovin
 """
@@ -88,7 +89,7 @@ class AreaDetector(DetectorImpl):
         self._segment_numbers = self._sorted_segment_ids  # [0, 1, 2,... 17, 18, 19]
 
 
-    def raw(self,evt) -> Array3d:
+    def raw(self, evt) -> Array3d:
         """
         Returns dense 3-d numpy array of segment data
         from dict self._segments(evt)
@@ -103,39 +104,36 @@ class AreaDetector(DetectorImpl):
         raw data: np.array, ndim=3, shape: as data
         """
         if evt is None: return None
-        segs = self._segments(evt)
-        #print('XXX self._segment_numbers:', self._segment_numbers)
+        segs = self._segments(evt)    # dict = {seg_index: seg_obj}
         if is_none(segs, 'self._segments(evt) is None'): return None
-        raw = np.stack([segs[k].raw for k in self._segment_numbers])
-        #raw = arr3d_from_dict({k:v.raw for k,v in segs.items()})
-        #print(info_ndarr(raw, 'XXX1 raw'))
-        #print(info_ndarr(self._shape_as_daq(), 'XXX1 self._shape_as_daq():'))
-        return raw
+        return np.stack([segs[k].raw for k in self._segment_numbers])
 
 
     def _maskalgos(self, **kwa):
         if self._maskalgos_ is None:
             logger.debug('AreaDetector._maskalgos - make MaskAlgos')
-            cc = self._calibconst
+            cc = self._calibconst   # defined in DetectorImpl from detector_impl.py
             if is_none(cc, 'self._calibconst is None'): return None
             self._maskalgos_ = MaskAlgos(cc, **kwa)
         return self._maskalgos_
 
 
     def _calibconstants(self, **kwa):
+        """Returns cached object of CalibConstants derived from DetectorImpl._calibconst - dict from DB."""
         if self._calibc_ is None:
             logger.debug('AreaDetector._calibconstants - make CalibConstants')
-            cc = self._calibconst
+            cc = self._calibconst   # defined in DetectorImpl
             if is_none(cc, 'self._calibconst is None'): return None
             self._calibc_ = CalibConstants(cc, **kwa)
         return self._calibc_
 
 
-    def _arr_for_daq_segments(self, arr_all, **kwa):
+    def _arr_for_daq_segments(self, arr, **kwa):
+        """Returns unchanged arr if all_segs=True, othervise returns sub-array for presented in daq segments."""
         all_segs = kwa.get('all_segs', False)
         logger.debug('AreaDetector._arr_for_segments - all_segs: %s' % str(all_segs))
-        return arr_all if (all_segs or not isinstance(arr_all, np.ndarray)) else\
-               np.take(arr_all, self._segment_numbers, axis=-3)
+        return arr if (all_segs or not isinstance(arr, np.ndarray)) else\
+               np.take(arr, self._segment_numbers, axis=-3)
 
 
     def _det_calibconst(self, metname, **kwa):
@@ -144,9 +142,9 @@ class AreaDetector(DetectorImpl):
         o = self._calibconstants(**kwa)
         if is_none(o, 'self._calibconstants is None', logger_method=logger.debug):
             return None
-        cc_ctype_all = getattr(o, metname)(**kwa)
-        #print(info_ndarr(cc_ctype_all, 'XXX cc_ctype_all for %s' % metname))
-        return self._arr_for_daq_segments(cc_ctype_all, **kwa)
+        cc_for_ctype = getattr(o, metname)(**kwa)
+        return cc_for_ctype if not isinstance(cc_for_ctype, np.ndarray) else\
+               self._arr_for_daq_segments(cc_for_ctype, **kwa)
 
 
     def _pedestals(self, **kwa):   return self._det_calibconst('pedestals', **kwa)
@@ -158,11 +156,6 @@ class AreaDetector(DetectorImpl):
     def _gain_factor(self, **kwa): return self._det_calibconst('gain_factor', **kwa)
 
     def _det_geotxt_and_meta(self): return self._det_calibconst('geotxt_and_meta')
-
-#    def _det_geotxt_default(self):
-#        # self._det_calibconst('geotxt_default')
-#        logger.warning('AreaDetector._det_geotxt_default should be re-implemented for each detector')
-#        return None
 
 
     def _fname_geotxt_default(self):
@@ -179,6 +172,7 @@ class AreaDetector(DetectorImpl):
 
 
     def _det_geo(self):
+        """Returns cached object self._geo of GeometryAccess() from CalibConstants, loads it from default file if missing in CalibConstants."""
         self._geo = self._det_calibconst('geo')
         if self._geo is None:
             geotxt = self._det_geotxt_default()
@@ -243,7 +237,8 @@ class AreaDetector(DetectorImpl):
 
 
     def calib(self, evt, **kwa) -> Array3d:
-        """
+        """Returns calibrated array of data shaped as daq: calib = (raw - peds) * gfac.
+           Should be overridden for more complicated cases.
         """
         logger.debug('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
                       +'\n  If needed more, it needs to be re-implemented for this detector type.')
@@ -255,16 +250,35 @@ class AreaDetector(DetectorImpl):
 
         arr = raw - peds
         gfac = self._gain_factor()
-
         return arr*gfac if gfac != 1 else arr
 
 
-    def image(self, evt, nda=None, **kwa) -> Array2d:
+    def _substitute_value_for_missing_segments(self, nda_daq, value) -> Array3d:
+        nsegs_tot = self._number_of_segments_total()
+        nsegs_daq = self._number_of_segments_daq()
+        if nsegs_daq == nsegs_tot:
+            return nda_daq
+        arr = value * np.ones(self._shape_total(), dtype=nda_daq.dtype)
+        for itot,idaq in zip(self._segment_numbers, tuple(range(nsegs_daq))):
+            arr[itot,:] = nda_daq[idaq,:]
+        return arr
+
+
+    def image(self, evt, nda=None, value_for_missing_segments=None, **kwa) -> Array2d:
+        #value = kwa.get('value_for_missing_segments', None)
+        value = value_for_missing_segments
+
         _nda = self.calib(evt) if nda is None else nda
         segnums = self._segment_numbers
+
+        if value is not None:
+            _nda = self._substitute_value_for_missing_segments(_nda, value)
+            segnums = None
+
         o = self._calibconstants(**kwa)
-        if is_none(o, 'det.raw._calibconstants(evt) is None'): return None
-        if o.geo() is None: o._geo  = self._det_geo()
+        if is_none(o, 'det.raw._calibconstants(...) is None'): return None
+        if o.geo() is None: o._geo = self._det_geo()
+
         return o.image(_nda, segnums=segnums, **kwa)
 
 
@@ -345,8 +359,7 @@ class AreaDetector(DetectorImpl):
 
 
     def _mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
-        """returns cached mask.
-        """
+        """Returns cached mask."""
         o = self._maskalgos()
         if o is None: return None
         m = o.mask(status=status, neighbors=neighbors, edges=edges, center=center, calib=calib, umask=umask, force_update=force_update, dtype=dtype, **kwa)
