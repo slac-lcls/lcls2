@@ -50,13 +50,13 @@ class epixhremu_raw_0_0_1(eb.epix_base):
 #        return eb.ut.load_textfile(fname)
 
 
-    def _segment_numbers(self, evt):
-        """OVERRIDE THIS METHOD TO  FIX ISSUE in exp=tstx00417,run=277, which returns [3,]"""
-        segnums = eb.epix_base._segment_numbers(self, evt)
-        if segnums is not None and len(segnums)==1 and segnums[0]==3:
-           logger.warning('OWERRIDED epixhremu._segment_numbers fixes %s to [0]' % str(segnums))
-           segnums=[0]
-        return segnums
+#    def _segment_numbers(self, evt):
+#        """OVERRIDE THIS METHOD TO FIX ISSUE in exp=tstx00417,run=277, which returns [3,]"""
+#        segnums = eb.epix_base._segment_numbers(self, evt)
+#        if segnums is not None and len(segnums)==1 and segnums[0]==3:
+#           logger.warning('OWERRIDED epixhremu._segment_numbers fixes %s to [0]' % str(segnums))
+#           segnums=[0]
+#        return segnums
 
 
     def _config_object(self):

@@ -105,7 +105,7 @@ class CalibConstants:
 
 
     def cached_array(self, p, ctype='pedestals'):
-        """returns cached array of constants for ctype"""
+        """Returns cached array of constants for ctype."""
         if p is None: p = self.cons_and_meta_for_ctype(ctype)[0] # 0-data/1-metadata
         return p
 
@@ -143,7 +143,7 @@ class CalibConstants:
 
 
     def gain_factor(self):
-        """Evaluate and return gain factor as 1/gain if gain is available in calib constants else 1."""
+        """Evaluates and returns gain factor as 1/gain if gain is available in calib constants else 1."""
         if self._gain_factor is None:
             g = self.gain()
             self._gain_factor = divide_protected(np.ones_like(g), g) if isinstance(g, np.ndarray) else 1
@@ -162,7 +162,7 @@ class CalibConstants:
 
 
     def segment_numbers_total(self):
-        """returns total list of segment numbers."""
+        """Returns total list of segment numbers."""
         nsegs = self.number_of_segments_total()
         segnums = None if is_none(nsegs, 'number_of_segments_total is None') else\
                   list(range(nsegs))
@@ -186,8 +186,7 @@ class CalibConstants:
 
 
     def geo(self):
-        """ return GeometryAccess() object
-        """
+        """Return GeometryAccess() object."""
         if self._geo is None:
             geotxt, meta = self.geotxt_and_meta()
             if geotxt is None:
@@ -234,8 +233,6 @@ class CalibConstants:
 
 
     def cached_pixel_coord_indexes(self, segnums=None, **kwa):
-        """
-        """
         logger.debug('CalibConstants.cached_pixel_coord_indexes')
 
         resp = self.pixel_coord_indexes(**kwa)

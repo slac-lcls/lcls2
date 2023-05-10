@@ -173,7 +173,7 @@ def loop_run_step_evt(args):
           #if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
           if not selected_record(ievt): continue
           if segs is None:
-             segs = det.raw._segment_numbers(evt) if det is not None else None
+             segs = det.raw._segment_numbers if det is not None else None
              #tstamp = evt.timestamp   # like 4193682596073796843 relative to 1990-01-01
              tsec = seconds(evt.timestamp)
              tsec_diff = tsec-tsec_old

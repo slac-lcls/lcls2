@@ -155,9 +155,9 @@ def test_raw(args):
         if evnum>args.events: sys.exit('exit by number of events limit %d' % args.events)
         if not selected_record(evnum): continue
         print('%s\nEvent %04d' % (50*'_',evnum))
-        segs = det.raw._segment_numbers(evt)
+        segnums = det.raw._segment_numbers
         raw  = det.raw.raw(evt)
-        logger.info(info_ndarr(segs, 'segs '))
+        logger.info(info_ndarr(segnums, 'segnums '))
         logger.info(info_ndarr(raw,  'raw  '))
     print(50*'-')
 
@@ -356,7 +356,7 @@ def test_image(args):
         print('image composition time = %.6f sec ' % (time()-t0_sec))
 
         logger.info(info_ndarr(img, 'img '))
-        logger.info(info_ndarr(arr, 'arr '))
+        #logger.info(info_ndarr(arr, 'arr '))
         if img is None: continue
 
         title = '%s %s run:%s step:%d ev:%d' % (args.detname, run.expt, run.runnum, stepnum, evnum)

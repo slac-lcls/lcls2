@@ -389,8 +389,7 @@ def pixel_gain_mode_statistics(gmaps):
 
 
 def info_pixel_gain_mode_statistics(gmaps):
-    """returns (str) with statistics of pixels in defferent gain modes in gain maps
-    """
+    """returns (str) with statistics of pixels in defferent gain modes in gain maps."""
     grp_stat = pixel_gain_mode_statistics(gmaps)
     return ', '.join(['%7d' % npix for npix in grp_stat])
 
@@ -407,8 +406,7 @@ def info_pixel_gain_mode_statistics_for_raw(det_raw, evt=None, msg='pixel gain m
 
 
 def pixel_gain_mode_fractions(det_raw, evt=None):
-    """returns fraction of pixels in defferent gain modes in gain maps
-    """
+    """returns fraction of pixels in defferent gain modes in gain maps."""
     gmaps = gain_maps_epix10ka_any(det_raw, evt)
     if gmaps is None:
         logger.debug('gmaps is None')
@@ -423,8 +421,7 @@ def info_pixel_gain_mode_for_fractions(grp_prob, msg='pixel gain mode fractions:
 
 
 def info_pixel_gain_mode_fractions(det_raw, evt=None, msg='pixel gain mode fractions: '):
-    """returns (str) with fraction of pixels in defferent gain modes in gain maps
-    """
+    """returns (str) with fraction of pixels in defferent gain modes in gain maps."""
     grp_prob = pixel_gain_mode_fractions(det_raw, evt)
     return info_pixel_gain_mode_for_fractions(grp_prob, msg=msg)
 
@@ -443,8 +440,7 @@ def find_gain_mode_index(det_raw, evt=None):
 
 
 def gain_mode_name_for_index(ind):
-    """Returns str gain mode name for int index in the list GAIN_MODES or None.
-    """
+    """Returns str gain mode name for int index in the list GAIN_MODES or None."""
     return GAIN_MODES[ind] if ind<len(GAIN_MODES) else None
 
 
@@ -454,7 +450,7 @@ def find_gain_mode(det_raw, evt=None):
     """
     grp_prob = pixel_gain_mode_fractions(det_raw, evt)
     ind = gain_mode_index_from_fractions(grp_prob)
-    if ind is None: 
+    if ind is None:
         logger.debug('ind is None')
         return None
     return gain_mode_name_for_index(ind)
@@ -616,7 +612,8 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     if store.cmpars is not None:
         common_mode_epix_multigain_apply(arrf, gmaps, store)
 
-    logger.info(info_ndarr(arrf,  'arrf:'))
+    logger.debug(info_ndarr(arrf,  'arrf:'))
+
     if factor is None:
         logger.warning('gain factor is None - substitute with 1')
         factor = 1
@@ -625,8 +622,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
 
 def common_mode_epix_multigain_apply(arrf, gmaps, store):
-    """Apply common mode correction to arrf
-    """
+    """Apply common mode correction to arrf."""
     cmpars, mask = store.cmpars, store.mask
     logger.debug('in common_mode_epix_multigain_apply for cmpars=%s' % str(cmpars))
     alg, mode, cormax = int(cmpars[0]), int(cmpars[1]), cmpars[2]

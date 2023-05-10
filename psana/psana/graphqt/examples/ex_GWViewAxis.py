@@ -1,7 +1,8 @@
+#!/usr/bin/env python
 
 from psana.graphqt.GWViewAxis import *
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='[%(levelname).1s] %(name)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 
 import sys
 import psana.pyalgos.generic.NDArrGenerators as ag

@@ -1,10 +1,10 @@
 
 """
-Class :py:class:`FWRuler` adds a ruller to one of the sides of the scene rectangle
+Class :py:class:`GWRuler` adds a ruller to one of the sides of the scene rectangle
 ==================================================================================
 
 Usage ::
-    from psana.graphqt.FWRuler import *
+    from psana.graphqt.GWRuler import *
 
     rs = QRectF(0, 0, 1, 1)
     s = QGraphicsScene(rs)
@@ -13,10 +13,10 @@ Usage ::
 
     v.fitInView(rs, Qt.IgnoreAspectRatio) # Qt.IgnoreAspectRatio Qt.KeepAspectRatioByExpanding Qt.KeepAspectRatio
 
-    ruler1 = FWRuler(v, 'L')
-    ruler2 = FWRuler(v, 'D')
-    ruler3 = FWRuler(v, 'U')
-    ruler4 = FWRuler(v, 'R')
+    ruler1 = GWRuler(v, 'L')
+    ruler2 = GWRuler(v, 'D')
+    ruler3 = GWRuler(v, 'U')
+    ruler4 = GWRuler(v, 'R')
 
     ruler1.remove()
     ruler4.remove()
@@ -41,7 +41,7 @@ from PyQt5.QtCore import Qt, QPointF, QPoint, QRectF
 from psana.graphqt.AxisLabeling import best_label_locs
 import sip
 
-class FWRuler():
+class GWRuler():
 
     def __init__(self, view, side='U', **kwargs):
 
@@ -60,7 +60,7 @@ class FWRuler():
         self.size_inches = kwargs.get('size_inches', 3)
         self.zvalue      = kwargs.get('zvalue',     10)
         self.fmt         = kwargs.get('fmt',      '%g')
-        self.label_rot   = kwargs.get('label_rot',   0)
+        self.label_rot   = kwargs.get('label_rot',  10)
 
         self.pen.setCosmetic(True)
         self.pen.setColor(self.color)
@@ -85,8 +85,6 @@ class FWRuler():
         sv = 1 if v._origin_u else -1
         sh = 1 if v._origin_l else -1
         self.dtxt0 = QPointF(0, 0)
-
-        #print('Scales sv, sh=', sv, sh)
 
         if self.axside == 'D':
             if sv > 0:
@@ -145,12 +143,8 @@ class FWRuler():
         if self.path_item is not None: self.scene.removeItem(self.path_item)
 
         self.path = QPainterPath(self.p1)
-        #self.path.closeSubpath()
         self.path.moveTo(self.p1)
         self.path.lineTo(self.p2)
-
-        #print('self.p1', self.p1)
-        #print('self.p2', self.p2)
 
         for v in self.labels:
             pv = QPointF(v, self.vort) if self.horiz else QPointF(self.vort, v)
@@ -158,14 +152,11 @@ class FWRuler():
             self.path.lineTo(pv+self.dt1)
 
         # add path with ruler lines to scene
-
         self.lst_of_items=[]
 
         self.path_item = self.scene.addPath(self.path, self.pen, self.brush)
         self.path_item.setZValue(self.zvalue)
         self.lst_of_items.append(self.path_item)
-
-        #print('path_item is created')
 
         r = self.rect
         w,h = r.width(), r.height()
@@ -174,18 +165,12 @@ class FWRuler():
             pv = QPointF(v, self.vort) if self.horiz else QPointF(self.vort, v)
             vstr = self.fmt%v
             txtitem = self.scene.addText(vstr, self.font)
-            #print('XXXXX txtitem', dir(txtitem))
-            if self.label_rot != 0: txtitem.setRotation(self.label_rot)
+            txtitem.setRotation(self.label_rot)
             txtitem.setDefaultTextColor(self.color)
 
             pp = self.view.mapFromScene(pv)
             wtxt = txtitem.boundingRect().width()
             htxt = txtitem.boundingRect().height()
-
-            #print('XXX: str(%s), bbox=' % (vstr), '  bbox=', txtitem.boundingRect(), '  pp=', pp, wtxt, htxt)
-
-            #pt = pv + self.dtxt + QPointF(self.hoff*len(vstr),0)\
-            #     + QPointF(self.txtoff_hfr*h, self.txtoff_vfr*h)
 
             of0 = self.dtxt0
             off = self.dtxt
@@ -198,16 +183,12 @@ class FWRuler():
 
             self.lst_of_items.append(txtitem)
 
-        #self.item_group = self.scene.createItemGroup(self.lst_of_items)
-
 
     def remove(self):
         if not sip.isdeleted(self.scene):
           for item in self.lst_of_items:
             self.scene.removeItem(item)
         self.lst_of_items=[]
-        #self.scene.removeItem(self.path_item)
-        #self.scene.destroyItemGroup(self.item_group)
 
 
     def update(self):

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 from psana.graphqt.GWViewImage import *
 

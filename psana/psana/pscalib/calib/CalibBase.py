@@ -1,8 +1,8 @@
 #### !/usr/bin/env python
-#------------------------------
+
 """
-:py:class:`CalibBase` - abstract class with interface description
-=======================================================================
+:py:class:`CalibBase` - abstract class with interface methods
+=============================================================
 
 Usage::
 
@@ -44,14 +44,12 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2018-02-02 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger('CalibBase')
 
 from psana.pscalib.calib.CalibConstants import *
 
-#------------------------------
 
 class CalibBase() :
 
@@ -64,7 +62,7 @@ class CalibBase() :
 
     def put(self, data, **kwargs) :
         self._show_warning('put(data)')
-        
+
     def get(self, **kwargs) :
         self._show_warning('get()')
         return None
@@ -73,10 +71,8 @@ class CalibBase() :
         self._show_warning('delete()')
         return None
 
-#------------------------------
 
 if __name__ == "__main__" :
-    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
     logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s: %(message)s',\
                         datefmt='%Y-%m-%dT%H:%M:%S',\
                         level=logging.DEBUG) #filename='example.log', filemode='w'
@@ -84,4 +80,4 @@ if __name__ == "__main__" :
     o.put(None)
     data = o.get()
 
-#------------------------------
+# EOF

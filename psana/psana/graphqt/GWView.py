@@ -44,6 +44,7 @@ class GWView(QGraphicsView):
         self.set_style()
         self.fit_in_view(rscene, mode=Qt.KeepAspectRatio)
         self.click_pos = None
+        self.ang_wheel_old = None
         if show_mode > 0: self.add_test_items_to_scene(show_mode)
 
 
@@ -135,7 +136,10 @@ class GWView(QGraphicsView):
 
 
     def wheelEvent(self, e):
-        logger.debug('wheelEvent e.angleDelta: %.6f' % e.angleDelta().x()) #+/-120 on each step
+        ang = e.angleDelta().x()
+        if ang != self.ang_wheel_old:
+           logger.debug('wheelEvent new direction of e.angleDelta().x(): %.6f' % ang) #+/-120 on each step
+           self.ang_wheel_old = ang
         QGraphicsView.wheelEvent(self, e)
 
         if self._scale_ctl == 0: return
@@ -147,7 +151,7 @@ class GWView(QGraphicsView):
         x,y,w,h = rs.x(), rs.y(), rs.width(), rs.height()
 
         # zoom scene rect relative to mouse position
-        f = 1 + 0.3 * (1 if e.angleDelta().x()>0 else -1)
+        f = 1 + 0.3 * (1 if ang>0 else -1)
         dxc = (f-1)*(px-x)
         dyc = (f-1)*(py-y)
         dx, sx = (dxc, f*w) if self._scale_ctl & 1 else (0, w)
