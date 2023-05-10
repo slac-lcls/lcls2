@@ -55,7 +55,7 @@ namespace Pds {
                             const EbDgram** const end);
       void             trim(unsigned dst);
     protected:
-      const std::vector<size_t> bufferSizes() const;
+      const std::vector<size_t>& bufferSizes() const;
     public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contract(const Pds::EbDgram* contrib) const;
@@ -92,14 +92,9 @@ namespace Pds {
 
 
 inline
-const std::vector<size_t> Pds::Eb::EbAppBase::bufferSizes() const
+const std::vector<size_t>& Pds::Eb::EbAppBase::bufferSizes() const
 {
-  std::vector<size_t> bufSizes(_bufRegSize.size());
-
-  for (unsigned i = 0; i < _bufRegSize.size(); ++i)
-    bufSizes[i] = _bufRegSize[i] / _maxEvBuffers / _maxEntries;
-
-  return bufSizes;
+  return _maxBufSize;
 }
 
 #endif
