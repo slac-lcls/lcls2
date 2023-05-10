@@ -56,46 +56,53 @@ class TriggerDataSource(object):
 
         print(f"[Python] Connected to message queues")
 
-        message, priority = self._mq_inp.receive()
-        print(f"[Python] Received message '{message}', prio '{priority}'")
+        while True:             # Synch up when there's cruft in the pipe
+            message, priority = self._mq_inp.receive()
+            print(f"[Python] Received message '{message}', prio '{priority}'")
 
-        if chr(message[0]) == 'i':
-            try:
-                shm_msg = message.decode().split(',')
-                self._shm_inp = sysv_ipc.SharedMemory(int(shm_msg[1]), size=int(shm_msg[2]))
-                inputsSize = 0
-                self._shm_inp_bufSizes = []
-                for ctrbSize in shm_msg[3:]:
+            if chr(message[0]) != 'i':
+                print(f"[Python] Ignoring unrecognized message '{chr(message[0])}'; expected 'i'")
+            else:
+                try:
+                    shm_msg = message.decode().split(',')
+                    print(f'P** inp shm_msg: {shm_msg[1]}, {shm_msg[2]}')
+                    self._shm_inp = sysv_ipc.SharedMemory(int(shm_msg[1]), size=int(shm_msg[2]))
+                    inputsSize = 0
+                    self._shm_inp_bufSizes = []
+                    for ctrbSize in shm_msg[3:]:
+                        self._shm_inp_bufSizes.append(inputsSize)
+                        inputsSize += int(ctrbSize)
                     self._shm_inp_bufSizes.append(inputsSize)
-                    inputsSize += int(ctrbSize)
-                self._shm_inp_bufSizes.append(inputsSize)
-            except sysv_ipc.Error as exp:
-                print(
-                    f"[Python] Error connecting to 'Inputs' shared memory - Error: {exp}"
-                )
-                sys.exit(1)
+                except sysv_ipc.Error as exp:
+                    print(
+                        f"[Python] Error connecting to 'Inputs' shared memory - Error: {exp}"
+                    )
+                    sys.exit(1)
 
-            print(f"[Python] Set up Inputs shared memory key {shm_msg[1]}")
+                print(f"[Python] Set up Inputs shared memory key {shm_msg[1]}")
+                break
 
-        else:
-            print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'i'")
+        while True:             # Synch up when there's cruft in the pipe
+            message, priority = self._mq_inp.receive()
+            print(f"[Python] Received message '{message}', prio '{priority}'")
 
-        message, priority = self._mq_inp.receive()
-        print(f"[Python] Received message '{message}', prio '{priority}'")
+            if chr(message[0]) != 'r':
+                print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'r'")
+            else:
+                try:
+                    shm_msg = message.decode().split(',')
+                    self._shm_res = sysv_ipc.SharedMemory(int(shm_msg[1]), size=int(shm_msg[2]))
+                    print(f'P** res shm_msg: {shm_msg[1]}, {shm_msg[2]}')
+                except sysv_ipc.Error as exp:
+                    print(
+                        f"[Python] Error connecting to 'Results' shared memory - Error: {exp}"
+                    )
+                    self._shm_inp.detach()
+                    self._shm_inp = None
+                    sys.exit(1)
 
-        if chr(message[0]) == 'r':
-            try:
-                shm_msg = message.decode().split(',')
-                self._shm_res = sysv_ipc.SharedMemory(int(shm_msg[1]), size=int(shm_msg[2]))
-            except sysv_ipc.Error as exp:
-                print(
-                    f"[Python] Error connecting to 'Results' shared memory - Error: {exp}"
-                )
-                self._shm_inp.detach()
-                self._shm_inp = None
-                sys.exit(1)
-
-            print(f"[Python] Set up Results shared memory key {shm_msg[1]}")
+                print(f"[Python] Set up Results shared memory key {shm_msg[1]}")
+                break
 
         #print(f'max_size: {self._mq_inp.max_size}')
 
@@ -113,8 +120,8 @@ class TriggerDataSource(object):
                     break
 
             else:
-                print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'r'")
-                break
+                print(f"[Python] Unrecognized message '{chr(message[0])}'; expected 'c' or 'd'")
+                continue
 
             self._mq_res.send(b"c")
 

@@ -91,6 +91,8 @@ cdef class EbDgram():
 
     def pulseId(self):
         the_pulseId = <dgram.PulseId*>(self.cptr)
+        #print "*** EbDgram.pyx: &pulseId {0:x}".format(<unsigned long>the_pulseId)
+        #print "*** EbDgram.pyx:  pulseId {0:x}".format(<unsigned long>the_pulseId.pulseId())
         return the_pulseId.pulseId()
 
     @property
