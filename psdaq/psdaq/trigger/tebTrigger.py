@@ -65,7 +65,6 @@ class TriggerDataSource(object):
             else:
                 try:
                     shm_msg = message.decode().split(',')
-                    print(f'P** inp shm_msg: {shm_msg[1]}, {shm_msg[2]}')
                     self._shm_inp = sysv_ipc.SharedMemory(int(shm_msg[1]), size=int(shm_msg[2]))
                     inputsSize = 0
                     self._shm_inp_bufSizes = []
@@ -92,7 +91,6 @@ class TriggerDataSource(object):
                 try:
                     shm_msg = message.decode().split(',')
                     self._shm_res = sysv_ipc.SharedMemory(int(shm_msg[1]), size=int(shm_msg[2]))
-                    print(f'P** res shm_msg: {shm_msg[1]}, {shm_msg[2]}')
                 except sysv_ipc.Error as exp:
                     print(
                         f"[Python] Error connecting to 'Results' shared memory - Error: {exp}"
