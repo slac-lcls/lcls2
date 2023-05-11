@@ -2,9 +2,10 @@
 
 from psana.graphqt.GWViewExt import *
 
-logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', level=logging.DEBUG)
 
 import sys
+import inspect
 import psana.pyalgos.generic.NDArrGenerators as ag
 import numpy as np
 
@@ -48,11 +49,8 @@ class TestGWViewExt(GWViewExt):
 
 SCRNAME = sys.argv[0].split('/')[-1]
 
-USAGE = '\nUsage: python %s <tname [0-8]>' %SCRNAME\
-      + ' # then activate graphics window and use keyboad keys R/W/D/<Esc>'
 
-
-def test_fwview(tname):
+def test_fwviewext(tname):
     print('%s:' % sys._getframe().f_code.co_name)
     b="background-color:yellow; border: 0px solid green"
     app = QApplication(sys.argv)
@@ -74,7 +72,7 @@ def test_fwview(tname):
     w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
     w.connect_mouse_press_event(w.test_mouse_press_event_reception)
 
-    w.setWindowTitle("TestGWViewExt")
+    w.setWindowTitle("test_fwviewext")
     w.setGeometry(20, 20, 600, 600)
     w.show()
 
@@ -90,13 +88,16 @@ def test_fwview(tname):
     del app
 
 
+USAGE = '\nUsage: python %s <tname [0-8]>' % SCRNAME\
+      + '\n'.join([s for s in inspect.getsource(test_fwviewext).split('\n') if "tname ==" in s]) \
+      + '\n then activate graphics window and use keyboad keys R/W/D/<Esc>'
+
 if __name__ == "__main__":
     import os
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
-
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s' % tname)
-    test_fwview(tname)
+    test_fwviewext(tname)
     print(USAGE)
     sys.exit('End of Test %s' % tname)
 

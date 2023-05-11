@@ -2,6 +2,10 @@
 
 from psana.graphqt.GWViewImage import *
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+
+import inspect
 import sys
 sys.path.append('..') # use relative path from parent dir
 import psana.pyalgos.generic.NDArrGenerators as ag
@@ -27,40 +31,40 @@ class TestGWViewImage(GWViewImage):
 
 
     def keyPressEvent(self, e):
-        #print('keyPressEvent, key=', e.key())
+        logger.info('keyPressEvent, key = %s' % e.key())
         if e.key() == Qt.Key_Escape:
-            print('Close app')
+            logger.info('Close app')
             self.close()
 
         elif e.key() == Qt.Key_R:
-            print('Reset original size')
+            logger.info('Reset original size')
             self.reset_scene_rect()
 
         elif e.key() == Qt.Key_N:
-            print('Set new pixel map')
+            logger.info('Set new pixel map')
             s = self.pmi.pixmap().size()
             img = image_with_random_peaks((s.height(), s.width()))
             self.set_pixmap_from_arr(img, set_def=False)
 
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D
-            print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
+            logger.info('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int)
             rs = QRectF(v[0], v[1], v[2]+1000, v[3]+1000)
-            print('Set scene rect: %s' % str(rs))
+            logger.info('Set scene rect: %s' % str(rs))
             img = image_with_random_peaks((int(rs.height()), int(rs.width())))
             self.set_pixmap_from_arr(img, set_def=change_def)
 
         else:
-            print(self.KEY_USAGE)
+            logger.info(self.KEY_USAGE)
 
 
 def image_with_random_peaks(shape=(500, 500)):
-    from psana.pyalgos.generic.NDArrUtils import print_ndarr
+    from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
-    print('image_with_random_peaks shape:', shape)
+    logger.info('image_with_random_peaks shape: %s' % str(shape))
     img = ag.random_standard(shape, mu=0, sigma=10)
-    print_ndarr(img, 'image_with_random_peaks  ag.random_standard')
+    logger.info(info_ndarr(img, 'image_with_random_peaks  ag.random_standard'))
 
     peaks = ag.add_random_peaks(img, npeaks=50, amean=100, arms=50, wmean=1.5, wrms=0.3)
     ag.add_ring(img, amp=20, row=500, col=500, rad=300, sigma=50)
@@ -68,7 +72,7 @@ def image_with_random_peaks(shape=(500, 500)):
 
 
 def test_gfviewimage(tname):
-    print('%s:' % sys._getframe().f_code.co_name)
+    logger.info(sys._getframe().f_code.co_name)
     #arr = np.random.random((1000, 1000))
     arr = image_with_random_peaks((1000, 1000))
     #ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
@@ -101,7 +105,7 @@ def test_gfviewimage(tname):
         a = np.arange(15).reshape((5, 3))
         w = TestGWViewImage(None, a, coltab=ctab, origin='UL', scale_ctl='HV')
     else:
-        print('test %s is not implemented' % tname)
+        logger.info('test %s IS NOT IMPLEMENTED' % tname)
         return
 
     w.connect_mouse_press_event(w.test_mouse_press_event_reception)
@@ -116,10 +120,16 @@ def test_gfviewimage(tname):
     del app
 
 
+USAGE = '\nUsage: %s <tname>\n' % sys.argv[0].split('/')[-1]\
+      + '\n'.join([s for s in inspect.getsource(test_gfviewimage).split('\n') \
+                   if "tname ==" in s or 'GWViewImage' in s])  # s[9:]
+
+
 if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print(50*'_', '\nTest %s' % tname)
+    logger.info(50*'_' + '\nTest %s' % tname)
     test_gfviewimage(tname)
+    print(USAGE)
     sys.exit('End of Test %s' % tname)
 
 # EOF

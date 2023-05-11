@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import inspect
 from psana.graphqt.GWViewColorBar import *
 
 
@@ -10,12 +11,6 @@ class TestGWViewColorBar(GWViewColorBar):
             '\n  R - reset color table 0'\
             '\n  N - set next color table'\
             '\n'
-
-    def test_new_color_table_reception(self):
-        print('  GWViewColorBar.test_new_color_table_reception: %s' % str(self._ctab[:5]))
-
-    def test_new_color_table_index_is_selected_reception(self, ind):
-        print('  GWViewColorBar.test_new_color_table_index_is_selected_reception: %s' % str(self._ctab_ind))
 
     def keyPressEvent(self, e):
         #print('keyPressEvent, key=', e.key())
@@ -41,8 +36,7 @@ if __name__ == "__main__":
 
   import os
   import sys
-  logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG)
-
+  logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', level=logging.DEBUG)
   os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
 
   def test_gfviewcolorbar(tname):
@@ -66,6 +60,7 @@ if __name__ == "__main__":
     w.connect_mouse_move_event(w.test_mouse_move_event_reception)
     w.connect_new_color_table_index_is_selected(w.test_new_color_table_index_is_selected_reception)
     w.connect_new_color_table(w.test_new_color_table_reception)
+    w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
 
     w.show()
     app.exec_()
@@ -74,10 +69,15 @@ if __name__ == "__main__":
     del app
 
 
+USAGE = '\nUsage: %s <tname>\n' % sys.argv[0].split('/')[-1]\
+      + '\n'.join([s for s in inspect.getsource(test_gfviewcolorbar).split('\n') if "tname ==" in s])
+
+
 if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s' % tname)
     test_gfviewcolorbar(tname)
+    print(USAGE)
     sys.exit('End of Test %s' % tname)
 
 # EOF
