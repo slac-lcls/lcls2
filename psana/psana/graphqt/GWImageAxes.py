@@ -15,7 +15,7 @@ Created on 2021-06-22 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.graphqt.GWViewImage import GWViewImage
+from psana.graphqt.GWViewImage import *
 from psana.graphqt.GWViewAxis import GWViewAxis
 import psana.graphqt.ColorTable as ct
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QTextEdit
@@ -31,7 +31,8 @@ class GWImageAxes(QWidget):
     def __init__(self, **kwargs):
 
         parent = kwargs.get('parent', None)
-        image = kwargs.get('image', test_image(shape=(16,16)))
+        #image = kwargs.get('image', test_image(shape=(16,16)))
+        image = kwargs.get('image', test_image(shape=(256,256)))
         ctab = kwargs.get('ctab', ct.color_table_interpolated())
         signal_fast = kwargs.get('signal_fast', False)
 
@@ -98,18 +99,12 @@ class GWImageAxes(QWidget):
 
     def on_but_reset(self):
         logger.debug('on_but_reset')
-        #self.wimg.reset_original_size()
-        #self.wax.reset_original_size()
-        #self.way.reset_original_size()
         self.wimg.reset_scene_rect()
         self.wax.reset_scene_rect()
         self.way.reset_scene_rect()
 
 
     def on_wimg_scene_rect_changed(self, r):
-        #logger.debug('on_wimg_scene_rect_changed: %s'%str(r))
-        #self.wax.set_view(rs=QRectF(r.x(), 0, r.width(), 1))
-        #self.way.set_view(rs=QRectF(0, r.y(), 1, r.height()))
         self.wax.fit_in_view(QRectF(r.x(), 0, r.width(), 1))
         self.way.fit_in_view(QRectF(0, r.y(), 1, r.height()))
         self.emit_signal_if_image_scene_rect_changed()
@@ -187,20 +182,7 @@ class GWImageAxes(QWidget):
 
 
 if __name__ == "__main__":
-    import os
     import sys
-    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
-    from PyQt5.QtWidgets import QApplication
-
-    logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', level=logging.DEBUG)
-
-    app = QApplication(sys.argv)
-    w = GWImageAxes()
-    w.setGeometry(100, 50, 800, 800)
-    w.setWindowTitle('Image with two axes')
-    w.show()
-    app.exec_()
-    del w
-    del app
+    sys.exit(qu.msg_on_exit())
 
 # EOF
