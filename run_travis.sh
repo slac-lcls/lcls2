@@ -21,7 +21,7 @@ if [[ $OS == linux ]]; then
   export TESTRELDIR="$PWD/install"
 
   ./build_all.sh -d -p install
-  pytest psana/psana/tests
+  pytest -s psana/psana/tests
 elif [[ $OS == osx ]]; then
   echo "ignore macos"
 else

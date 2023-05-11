@@ -134,14 +134,19 @@ class Test:
 
     def test_step_det(self):
         xtc_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data-w-step.xtc2')
+        print('*** before datasource')
         ds = DataSource(files=xtc_file)
+        print('*** before runs()')
         myrun = next(ds.runs())
         det = myrun.scaninfo
         expected_det = {('step_value', 'raw'): 'raw', ('step_docstring', 'raw'): 'raw'}
         assert det == expected_det
+        print('*** before Detector1')
         step_v = myrun.Detector('step_value')
+        print('*** before Detector2')
         step_s = myrun.Detector('step_docstring')
         for nstep,step in enumerate(myrun.steps()):
+            print('*** step',nstep)
             if nstep == 0:
                 assert step_v(step) == 0
                 assert step_s(step) == '{"detname": "epixquad_0", "scantype": "pedestal", "step": 0}'
@@ -149,6 +154,7 @@ class Test:
                 assert step_v(step) == 1
                 assert step_s(step) == '{"detname": "epixquad_0", "scantype": "pedestal", "step": 1}'
             for nevt,evt in enumerate(step.events()):
+                print('*** evt',nevt)
                 pass
     
     def test_chunking(self):
