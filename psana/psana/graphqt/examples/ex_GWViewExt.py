@@ -47,9 +47,6 @@ class TestGWViewExt(GWViewExt):
             print(self.KEY_USAGE)
 
 
-SCRNAME = sys.argv[0].split('/')[-1]
-
-
 def test_fwviewext(tname):
     print('%s:' % sys._getframe().f_code.co_name)
     b="background-color:yellow; border: 0px solid green"
@@ -87,6 +84,7 @@ def test_fwviewext(tname):
     del w
     del app
 
+SCRNAME = sys.argv[0].split('/')[-1]
 
 USAGE = '\nUsage: python %s <tname [0-8]>' % SCRNAME\
       + '\n'.join([s for s in inspect.getsource(test_fwviewext).split('\n') if "tname ==" in s]) \
