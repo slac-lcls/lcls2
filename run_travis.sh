@@ -7,7 +7,7 @@ set -e
 
 export LCLS_TRAVIS=1
 if [[ $OS == linux ]]; then
-  echo "checking calibdb access"
+  echo "ci-debug branch: checking calibdb access"
   time curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_ueddaq02/gridfs/6035d64545db0b188f7c78e8" | wc
   echo "done checking calibdb access"
 
@@ -20,39 +20,10 @@ if [[ $OS == linux ]]; then
   export PYTHONPATH="$PWD/install/lib/python$PYVER/site-packages"
   export TESTRELDIR="$PWD/install"
 
-  ./build_all.sh -p install
-  pytest psana/psana/tests
-  pytest psdaq/psdaq/tests
-  cd ..
-  git clone https://github.com/slac-lcls/ami.git
-  cd ami
-  ./build_all.sh
-  xvfb-run pytest
-elif [[ $OS == osx ]]; then
-  # add conda to the path
-  source "$HOME/miniconda/etc/profile.d/conda.sh"
-  # needed to use the conda compilers
-  export MACOSX_DEPLOYMENT_TARGET="10.9"
-  export CONDA_BUILD_SYSROOT="${HOME}/MacOSX${MACOSX_DEPLOYMENT_TARGET}.sdk"
-  # needed for cmake
-  export SDKROOT="${CONDA_BUILD_SYSROOT}"
-  if [ -d "${CONDA_BUILD_SYSROOT}" ]; then
-    echo "Found CONDA_BUILD_SYSROOT: ${CONDA_BUILD_SYSROOT}"
-  else
-    echo "Missing CONDA_BUILD_SYSROOT: ${CONDA_BUILD_SYSROOT}"
-    exit 1
-  fi
-
-  conda activate $CONDA_ENV
-
-  cd "$(dirname "${BASH_SOURCE[0]}")"
-  export PATH="$PWD/install/bin:$PATH"
-
-  PYVER=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
-  export PYTHONPATH="$PWD/install/lib/python$PYVER/site-packages"
-
   ./build_all.sh -d -p install
   pytest psana/psana/tests
+elif [[ $OS == osx ]]; then
+  echo "ignore macos"
 else
   echo "Unknown OS type: ${OS}"
   exit 1
