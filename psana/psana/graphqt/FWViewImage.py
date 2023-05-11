@@ -169,7 +169,6 @@ class FWViewImage(FWView):
 
 
 if __name__ == "__main__":
-    import sys
     sys.exit(qu.msg_on_exit())
 
 # EOF
