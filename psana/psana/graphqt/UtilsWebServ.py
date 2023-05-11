@@ -56,7 +56,8 @@ def value_from_responce(r):
 
 def value_for_request(ws_url, params={}):
     logger.debug('ws_url: %s' % ws_url)
-    r = requests.get(ws_url, headers=kerberos_headers(), params=params)
+    # cpo: add timeout here to debug intermittent hang in github actions
+    r = requests.get(ws_url, headers=kerberos_headers(), params=params, timeout=180)
     return value_from_responce(r)
 
 
@@ -66,7 +67,8 @@ def json_runs(expname, location='SLAC'):
     assert len(expname) in (8,9)
     ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/files_for_live_mode_at_location?location=%s"%\
              (expname, location)
-    r = requests.get(ws_url, headers=kerberos_headers())
+    # cpo: add timeout here to debug intermittent hang in github actions
+    r = requests.get(ws_url, headers=kerberos_headers(), timeout=180)
     return value_from_responce(r)
 
 
@@ -228,7 +230,8 @@ if __name__ == "__main__":
   def test_run_table_data_resp(expname):
     ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/run_table_data" % expname
     krbheaders = kerberos_headers()
-    r = requests.get(ws_url, headers=krbheaders, params={"tableName": "Scan Table"})
+    # cpo: add timeout here to debug intermittent hang in github actions
+    r = requests.get(ws_url, headers=krbheaders, params={"tableName": "Scan Table"}, timeout=180)
     print(r)
 
 
