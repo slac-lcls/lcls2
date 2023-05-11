@@ -72,11 +72,11 @@ class GWViewImage(GWViewExt):
 
     def __init__(self, parent=None, arr=None,\
                  coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20),\
-                 origin='UL', scale_ctl='HV', show_mode=0, signal_fast=True):
+                 origin='UL', scale_ctl='HV', show_mode=0, signal_fast=False):
 
         h, w = arr.shape
         rscene = QRectF(0, 0, w, h)
-        GWViewExt.__init__(self, parent, rscene, origin, scale_ctl, show_mode, signal_fast)
+        GWViewExt.__init__(self, parent, rscene, origin, scale_ctl, show_mode, wheel_fast=signal_fast, move_fast=signal_fast)
         self._name = self.__class__.__name__
         self.set_coltab(coltab)
         self.pmi = None

@@ -22,6 +22,8 @@ Adopted for LCLS2 on 2018-02-16
 Refactored/split FWView to GWView and GWViewExt on 2022-07-12
 """
 
+import sys  # used in subclasses
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,8 @@ class GWView(QGraphicsView):
     def set_scene_rect(self, r):
         if r is not None:
             self.scene().setSceneRect(r)  # self.setSceneRect(r)  # WORKS DIFFERENTLY!
+            #logger.debug('set_scene_rect:  %s' % qu.info_rect_xywh(r))
+            print('GWView.set_scene_rect:  %s' % qu.info_rect_xywh(r), end='\r')
 
 
     def fit_in_view(self, rs=None, mode=Qt.IgnoreAspectRatio):
@@ -98,28 +102,23 @@ class GWView(QGraphicsView):
 
     def resizeEvent(self, e):
         """important method to make zoom and pan working correctly..."""
-        logger.debug('GWView.resizeEvent')
         QGraphicsView.resizeEvent(self, e)
+        logger.debug(sys._getframe().f_code.co_name)
         self.fit_in_view()
         self.update_my_scene()
 
 
     def mousePressEvent(self, e):
-        logger.debug('GWView.mousePressEvent')
         if e.button() == Qt.LeftButton:  # and e.modifiers() & Qt.ControlModifier
+            logger.debug('GWView.mousePressEvent on LeftButton')
             #self.click_pos = self.mapToScene(e.pos())
             self.click_pos = e.pos()
             self.rs_center = self.scene_rect().center()
         QGraphicsView.mousePressEvent(self, e)
 
 
-    def mouseMoveEvent(self, e):
-        """Move rect CENTER."""
-        #logger.debug('mouseMoveEvent')
-        QGraphicsView.mouseMoveEvent(self, e)
-        if self._scale_ctl == 0: return
-        if self.click_pos is None: return
-
+    def _move_scene_rect_by_mouse(self, e):
+        logger.debug('_move_scene_rect_by_mouse')
         dp = e.pos() - self.click_pos
         dx = dp.x() / self.transform().m11() if self._scale_ctl & 1 else 0
         dy = dp.y() / self.transform().m22() if self._scale_ctl & 2 else 0
@@ -128,11 +127,20 @@ class GWView(QGraphicsView):
         self.set_scene_rect(rs)
 
 
+    def mouseMoveEvent(self, e):
+        """Move rect CENTER."""
+        QGraphicsView.mouseMoveEvent(self, e)
+        if self._scale_ctl == 0: return
+        if self.click_pos is None: return
+        logger.debug('mouseMoveEvent at valid click_pos and _scale_ctl')
+        self._move_scene_rect_by_mouse(e)
+
+
     def mouseReleaseEvent(self, e):
-        logger.debug('mouseReleaseEvent')
         QGraphicsView.mouseReleaseEvent(self, e)
-        if self.click_pos is not None:
-           self.click_pos = None
+        logger.debug('mouseReleaseEvent')
+        self._move_scene_rect_by_mouse(e)
+        self.click_pos = None
 
 
     def wheelEvent(self, e):
@@ -179,7 +187,6 @@ class GWView(QGraphicsView):
 
 
 if __name__ == "__main__":
-    import sys
     import psana.graphqt.QWUtils as qu # print_rect
     sys.exit(qu.msg_on_exit())
 

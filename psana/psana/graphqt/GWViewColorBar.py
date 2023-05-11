@@ -135,22 +135,21 @@ class GWViewColorBar(GWViewImage):
 
     def connect_new_color_table_index_is_selected(self, recip):
         self.new_color_table_index_is_selected['int'].connect(recip)
-        #self.connect(self, QtCore.SIGNAL('new_color_table_index_is_selected(int)'), recip)
-
 
     def disconnect_new_color_table_index_is_selected(self, recip):
         self.new_color_table_index_is_selected['int'].disconnect(recip)
-        #self.disconnect(self, QtCore.SIGNAL('new_color_table_index_is_selected(int)'), recip)
 
+    def test_new_color_table_index_is_selected_reception(self, ind):
+        logger.info(sys._getframe().f_code.co_name + ' color table index %s' % str(self._ctab_ind))
 
     def connect_new_color_table(self, recip):
         self.new_color_table_index_is_selected.connect(recip)
-        #self.connect(self, QtCore.SIGNAL('new_color_table()'), recip)
-
 
     def disconnect_new_color_table(self, recip):
         self.new_color_table_index_is_selected.disconnect(recip)
-        #self.disconnect(self, QtCore.SIGNAL('new_color_table()'), recip)
+
+    def test_new_color_table_reception(self):
+        logger.info(sys._getframe().f_code.co_name + ': %s' % str(self._ctab[:5]))
 
 
     def closeEvent(self, e):
