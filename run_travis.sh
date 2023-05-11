@@ -10,7 +10,6 @@ if [[ $OS == linux ]]; then
   echo "ci-debug branch: checking calibdb access"
   time curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_ueddaq02/gridfs/6035d64545db0b188f7c78e8" | wc
   echo "done checking calibdb access"
-  pip install pytest-timeout
 
   source activate $CONDA_ENV
 
@@ -21,6 +20,7 @@ if [[ $OS == linux ]]; then
   export PYTHONPATH="$PWD/install/lib/python$PYVER/site-packages"
   export TESTRELDIR="$PWD/install"
 
+  pip install pytest-timeout
   ./build_all.sh -d -p install
   pytest -s --capture=no --timeout=180 psana/psana/tests
 elif [[ $OS == osx ]]; then
