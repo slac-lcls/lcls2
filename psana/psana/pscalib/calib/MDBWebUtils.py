@@ -82,7 +82,7 @@ def query_id_pro(query):
 
 def request(url, query=None):
     #t0_sec = time()
-    r = get(url, query)
+    r = get(url, query, timeout=180)
     #dt = time()-t0_sec # ~30msec
     #logger.debug('CONSUMED TIME by request %.3f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
     if r.ok: return r
@@ -705,7 +705,7 @@ def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
         logger.warning('BEFORE RUNNING THIS SCRIPT TRY COMMAND: kinit')
         return False
 
-    r = get(ws_url, headers=krbh_test)
+    r = get(ws_url, headers=krbh_test, timeout=180)
 
     logger.debug('get url: %s response status: %s status_code: %s reason: %s'%\
             (ws_url, r.ok, r.status_code, r.reason))
