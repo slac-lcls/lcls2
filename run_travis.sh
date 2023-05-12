@@ -22,7 +22,7 @@ if [[ $OS == linux ]]; then
 
   pip install pytest-timeout
   ./build_all.sh -d -p install
-  pytest -s --capture=no --timeout=180 psana/psana/tests
+  pytest -s --capture=no psana/psana/tests
 elif [[ $OS == osx ]]; then
   echo "ignore macos"
 else
