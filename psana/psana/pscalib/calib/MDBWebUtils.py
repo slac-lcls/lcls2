@@ -53,6 +53,7 @@ import io
 
 import psana.pscalib.calib.CalibConstants as cc
 from requests import get, post, delete #put
+import requests
 
 from time import time
 from numpy import fromstring
@@ -82,7 +83,12 @@ def query_id_pro(query):
 
 def request(url, query=None):
     #t0_sec = time()
-    r = get(url, query)
+    try:
+        r = get(url, query, timeout=120)
+    except requests.exceptions.Timeout:
+        print(f'*** Request timed out {url} {query}')
+    except requests.exceptions.RequestException as e:
+        print(f'*** Request failed {e}')
     #dt = time()-t0_sec # ~30msec
     #logger.debug('CONSUMED TIME by request %.3f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
     if r.ok: return r
