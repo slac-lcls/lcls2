@@ -85,10 +85,8 @@ def request(url, query=None):
     #t0_sec = time()
     try:
         r = get(url, query, timeout=120)
-    except requests.exceptions.ConnectTimeout:
+    except:
         print(f'*** Request timed out {url} {query}')
-    except requests.exceptions.RequestException as e:
-        print(f'*** Request failed {e}')
     #dt = time()-t0_sec # ~30msec
     #logger.debug('CONSUMED TIME by request %.3f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
     if r.ok: return r
