@@ -1,3 +1,5 @@
+import os
+
 from psdaq.configdb.epixquad_cdict import epixquad_cdict
 import psdaq.configdb.configdb as cdb
 import matplotlib.pyplot as plt
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument('--segm', help='detector segment', type=int, default=0)
     parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
     parser.add_argument('--user', help='user for HTTP authentication', type=str, default='tstopr')
-    parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
+    parser.add_argument('--password', help='password for HTTP authentication', type=str, default=os.getenv('CONFIGDB_AUTH'))
     args = parser.parse_args()
 
     create = False
