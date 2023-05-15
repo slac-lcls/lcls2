@@ -8,11 +8,11 @@ ued_epics_env = 'EPICS_CA_SERVER_PORT=5058 EPICS_CA_ADDR_LIST=172.27.99.255'+' '
 collect_host = 'drp-ued-cmp002'
 
 groups = platform
-hutch, user, password = ('ued', 'uedopr', 'pcds')
-#hutch, user, password = ('tst', 'tstopr', 'pcds')
+hutch, user = ('ued', 'uedopr')
+#hutch, user = ('tst', 'tstopr')
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
-auth = ' --user {:} --password {:} '.format(user,password)
+auth = ' --user {:} '.format(user)
 
 #
 #  drp variables

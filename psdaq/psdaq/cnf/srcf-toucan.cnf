@@ -10,8 +10,8 @@ teb_env = f' RDMAV_FORK_SAFE=1 RDMAV_HUGEPAGES_SAFE=1' # See fi_verbs man page
 collect_host = 'drp-srcf-cmp004'  #'drp-neh-ctl001'
 
 groups = platform + ' 7' + ' 6'
-hutch, user, password = ('tst', 'tstopr', 'pcds')
-auth = ' --user {:} --password {:} '.format(user,password)
+hutch, user = ('tst', 'tstopr')
+auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 
