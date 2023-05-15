@@ -15,6 +15,7 @@ import shutil
 uniqueid_maxlen = 30
 rcFileDefault = '/etc/procmgrd.conf'
 
+
 #
 # printError
 #
@@ -39,8 +40,9 @@ def printError(errorCode, args):
         print("*** ERR: failed to run '%s' (CONDA_PREFIX not defined in environment)" % args)
     elif (errorCode != 0):
         print("*** ERR: failed to run '%s' (procServ returned %d)" % \
-            (args, errorCode))
+              (args, errorCode))
     return
+
 
 #
 # getConfigFileNames
@@ -53,17 +55,17 @@ def printError(errorCode, args):
 # RETURNS: Two values: running config filename, last config filename
 #
 def getConfigFileNames(argconfig, partition):
-
     dirname = os.path.dirname(argconfig)
     if len(dirname) > 0:
-        run_name  = dirname + '/' + 'p%d.cnf.running' % partition
+        run_name = dirname + '/' + 'p%d.cnf.running' % partition
         last_name = dirname + '/' + 'p%d.cnf.last' % partition
     else:
-        run_name  = 'p%d.cnf.running' % partition
+        run_name = 'p%d.cnf.running' % partition
         last_name = 'p%d.cnf.last' % partition
 
     # return filenames
     return (run_name, last_name)
+
 
 #
 # getUser
@@ -72,6 +74,7 @@ def getConfigFileNames(argconfig, partition):
 #
 def getUser():
     return getuser(), node()
+
 
 #
 # name2uniqueid - translate procServ name to uniqueid
@@ -82,12 +85,13 @@ def getUser():
 def name2uniqueid(name):
     rv = name
     try:
-      if name.endswith(b".log"):
-        rv = name[0:-4].split(b":")[-1]
+        if name.endswith(b".log"):
+            rv = name[0:-4].split(b":")[-1]
     except:
-      rv = name
+        rv = name
 
     return (rv)
+
 
 #
 # progressMessage
@@ -96,6 +100,7 @@ def progressMessage(msg):
     print('%-60s ...' % msg, end=' ')
     sys.stdout.flush()
     return
+
 
 #
 # The ProcMgr class maintains a dictionary with keys of
@@ -108,18 +113,21 @@ def progressMessage(msg):
 #
 def makekey(host, uniqueid):
     return (host + ':' + uniqueid)
-    
+
+
 #
 # key2host - given a dictionary key, get <host>
 #
 def key2host(key):
     return (key.split(':')[0])
-    
+
+
 #
 # key2uniqueid - given a dictionary key, get <uniqueid>
 #
 def key2uniqueid(key):
     return (key.split(':')[1])
+
 
 #
 # mkdir_p - emulate mkdir -p
@@ -131,10 +139,12 @@ def mkdir_p(path):
     except OSError as exc:
         if exc.errno == errno.EEXIST:
             pass
-        else: raise
+        else:
+            raise
     else:
         rv = 0
     return rv
+
 
 #
 # idFoundInList - look for match between ID and list of substrings
@@ -144,10 +154,11 @@ def mkdir_p(path):
 def idFoundInList(id, substrings):
     found = False
     for item in substrings:
-      if (id.find(item) != -1) or (item.strip() == '.'):
-        found = True
-        break
+        if (id.find(item) != -1) or (item.strip() == '.'):
+            found = True
+            break
     return found
+
 
 #
 # deduce_platform - deduce platform (-p) from contents of config file
@@ -155,19 +166,20 @@ def idFoundInList(id, substrings):
 # Returns: non-negative platform number, or -1 on error.
 #
 def deduce_platform(configfilename):
-    rv = -1   # return -1 on error
+    rv = -1  # return -1 on error
     cc = {'platform': None, 'procmgr_config': None, 'TESTRELDIR': None, 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
           'CONFIGDIR': '',
-          'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', '__file__':configfilename,
-          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}}
+          'id': 'id', 'cmd': 'cmd', 'flags': 'flags', 'port': 'port', 'host': 'host', '__file__': configfilename,
+          'rtprio': 'rtprio', 'env': 'env', 'evr': 'evr', 'conda': 'conda', 'procmgr_macro': {}}
     try:
-      exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
-      if type(cc['platform']) == type('') and cc['platform'].isdigit():
-        rv = int(cc['platform'])
+        exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
+        if type(cc['platform']) == type('') and cc['platform'].isdigit():
+            rv = int(cc['platform'])
     except:
-      print('deduce_platform Error:', sys.exc_info()[1])
+        print('deduce_platform Error:', sys.exc_info()[1])
 
     return rv
+
 
 #
 # deduce_platform2 - deduce platform (-p) and macros and TESTRELDIR
@@ -175,115 +187,118 @@ def deduce_platform(configfilename):
 # RETURNS: Three values: platform number (or -1 on error), macros, and TESTRELDIR
 #
 def deduce_platform2(configfilename, platform=None):
-    platform_rv = -1   # return -1 on error
+    platform_rv = -1  # return -1 on error
     macro_rv = {}
     testreldir_rv = ''
     cc = {'platform': platform, 'procmgr_config': None, 'TESTRELDIR': '', 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
           'CONFIGDIR': '',
-          'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', '__file__':configfilename,
-          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}}
+          'id': 'id', 'cmd': 'cmd', 'flags': 'flags', 'port': 'port', 'host': 'host', '__file__': configfilename,
+          'rtprio': 'rtprio', 'env': 'env', 'evr': 'evr', 'conda': 'conda', 'procmgr_macro': {}}
     try:
-      exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
-      macro_rv = cc['procmgr_macro']
-      if type(cc['platform']) == type('') and cc['platform'].isdigit():
-        platform_rv = int(cc['platform'])
+        exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
+        macro_rv = cc['procmgr_macro']
+        if type(cc['platform']) == type('') and cc['platform'].isdigit():
+            platform_rv = int(cc['platform'])
     except:
-      print('deduce_platform2 Error:', sys.exc_info()[1])
+        print('deduce_platform2 Error:', sys.exc_info()[1])
 
     # TESTRELDIR can be defined in cnf file and in environment.
     # The cnf file setting takes precedence.
     if 'TESTRELDIR' in cc and len(cc['TESTRELDIR']) > 0:
-      testreldir_rv = cc['TESTRELDIR']
+        testreldir_rv = cc['TESTRELDIR']
     elif 'TESTRELDIR' in os.environ:
-      testreldir_rv = os.environ['TESTRELDIR']
+        testreldir_rv = os.environ['TESTRELDIR']
 
     return platform_rv, macro_rv, testreldir_rv
+
 
 #
 # add_macro_config
 #
 def add_macro_config(procmgr_macro, oldfilename, newfilename, platform):
-
-  #
-  # read old file into memory
-  #
-  try:
-    oldfile = open(oldfilename, 'r')
-    oldfilecontents = oldfile.read()
-    oldfile.close()
-  except IOError:
-    print('%s: i/o error occurred while reading from \'%s\'' % (sys.argv[0], oldfilename))
-  except:
-    print('%s: error occurred while reading from \'%s\': %r' % (sys.argv[0], oldfilename, sys.exc_info()[1]))
-  else:
-  #
-  # create temporary file (in memory)
-  #
+    #
+    # read old file into memory
+    #
     try:
-      tmpfile = io.StringIO()
-      tmpfile.write('# --- automatically generated file - DO NOT EDIT -----------------------------\n')
-      tmpfile.write('# COMMAND:')
-      for aa in sys.argv:
-        tmpfile.write(' %s' % aa)
-      tmpfile.write('\n# DATE: %s\n' % strftime('%c'))
-      for key in sorted(procmgr_macro.keys()):
-        tmpfile.write('procmgr_macro[\'%s\'] = \'%s\'\n' % (key, procmgr_macro[key]))
-      tmpfile.write('platform = \'%d\'\n' % platform)
-      tmpfile.write('# ----------------------------------------------------------------------------\n')
-      tmpfile.write(oldfilecontents)
+        oldfile = open(oldfilename, 'r')
+        oldfilecontents = oldfile.read()
+        oldfile.close()
     except IOError:
-      print('%s: i/o error occurred while creating temporary file' % (sys.argv[0]))
+        print('%s: i/o error occurred while reading from \'%s\'' % (sys.argv[0], oldfilename))
     except:
-      print('%s: error occurred while creating temporary file: %r' % (sys.argv[0], sys.exc_info()[1]))
-      raise
+        print('%s: error occurred while reading from \'%s\': %r' % (sys.argv[0], oldfilename, sys.exc_info()[1]))
     else:
-  #
-  # copy temporary file to new file
-  #
-      try:
-        tmpfilecontents = tmpfile.getvalue()
-        tmpfile.close()
-        newfile = open(newfilename, 'w')
-        newfile.write(tmpfilecontents)
-        newfile.close()
-      except IOError:
-        print('%s: i/o error occurred while updating \'%s\'' % (sys.argv[0], newfilename))
-      except:
-        print('%s: error occurred while updating \'%s\': %r' % (sys.argv[0], newfilename, sys.exc_info()[1]))
+        #
+        # create temporary file (in memory)
+        #
+        try:
+            tmpfile = io.StringIO()
+            tmpfile.write('# --- automatically generated file - DO NOT EDIT -----------------------------\n')
+            tmpfile.write('# COMMAND:')
+            for aa in sys.argv:
+                tmpfile.write(' %s' % aa)
+            tmpfile.write('\n# DATE: %s\n' % strftime('%c'))
+            for key in sorted(procmgr_macro.keys()):
+                tmpfile.write('procmgr_macro[\'%s\'] = \'%s\'\n' % (key, procmgr_macro[key]))
+            tmpfile.write('platform = \'%d\'\n' % platform)
+            tmpfile.write('# ----------------------------------------------------------------------------\n')
+            tmpfile.write(oldfilecontents)
+        except IOError:
+            print('%s: i/o error occurred while creating temporary file' % (sys.argv[0]))
+        except:
+            print('%s: error occurred while creating temporary file: %r' % (sys.argv[0], sys.exc_info()[1]))
+            raise
+        else:
+            #
+            # copy temporary file to new file
+            #
+            try:
+                tmpfilecontents = tmpfile.getvalue()
+                tmpfile.close()
+                newfile = open(newfilename, 'w')
+                newfile.write(tmpfilecontents)
+                newfile.close()
+            except IOError:
+                print('%s: i/o error occurred while updating \'%s\'' % (sys.argv[0], newfilename))
+            except:
+                print('%s: error occurred while updating \'%s\': %r' % (sys.argv[0], newfilename, sys.exc_info()[1]))
 
-  return
+    return
+
 
 #
 # findOnPath - find executable on PATH environment variable
 # 
 def findOnPath(cmd, env):
-  retval = cmd
-  if env is not None:
-    path = None
-    for entry in env.split():
-      if entry.startswith('PATH='):
-        path = entry.split('=')[1]
-        break
-    if path is not None:
-      found = shutil.which(cmd, path=path)
-      if found is not None:
-        retval = found
-  return retval
+    retval = cmd
+    if env is not None:
+        path = None
+        for entry in env.split():
+            if entry.startswith('PATH='):
+                path = entry.split('=')[1]
+                break
+        if path is not None:
+            found = shutil.which(cmd, path=path)
+            if found is not None:
+                retval = found
+    return retval
+
 
 #
 # ConfigFileError - this exception is raised to report configuration file errors
 # 
 class ConfigFileError(Exception):
-  def __init__(self, value):
-    self.value = value
-  def __str__(self):
-    return repr(self.value)
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
 
 #
 # ProcMgr
 #
 class ProcMgr:
-
     # index into arrays managed by this class
     DICT_STATUS = 0
     DICT_PID = 1
@@ -315,10 +330,10 @@ class ProcMgr:
     MSG_BANNER_END = b"server started at"
     MSG_ISSHUTDOWN = b"is SHUT DOWN"
     MSG_ISSHUTTING = b"is shutting down"
-    MSG_KILLED     = b"process was killed"
-    MSG_RESTART    = b"new child"
-    MSG_PROMPT     = b"\x0d\x0a> "
-    MSG_SPAWN      = b"procServ: spawning daemon"
+    MSG_KILLED = b"process was killed"
+    MSG_RESTART = b"new child"
+    MSG_PROMPT = b"\x0d\x0a> "
+    MSG_SPAWN = b"procServ: spawning daemon"
 
     # procmgr control port initialized in __init__
     EXECMGRCTRL = -1
@@ -326,7 +341,7 @@ class ProcMgr:
     # platform initialized in __init__
     PLATFORM = -1
 
-    valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p'] 
+    valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p']
 
     def __init__(self, configfilename, platform, Xterm_list=[], xterm_list=[], procmgr_macro={}, baseport=29000):
         self.pid = self.STRING_NOPID
@@ -338,21 +353,21 @@ class ProcMgr:
         self.procmgr_macro = procmgr_macro
         self.git_describe = None
         if 'TESTRELDIR' in os.environ:
-          errMsg = None
-          try:
-            cc = run(["git", "-C", os.environ['TESTRELDIR'], "describe", "--dirty", "--tag"], capture_output=True)
-          except Exception as ex:
-            errMsg = ex
-          else:
-            if not cc.returncode:
-              # success
-              self.git_describe = str(cc.stdout.strip(), 'utf-8')
+            errMsg = None
+            try:
+                cc = run(["git", "-C", os.environ['TESTRELDIR'], "describe", "--dirty", "--tag"], capture_output=True)
+            except Exception as ex:
+                errMsg = ex
             else:
-              # failure
-              errMsg = str(cc.stderr.strip(), 'utf-8')
+                if not cc.returncode:
+                    # success
+                    self.git_describe = str(cc.stdout.strip(), 'utf-8')
+                else:
+                    # failure
+                    errMsg = str(cc.stderr.strip(), 'utf-8')
 
-          if errMsg:
-            print("*** ERR: running 'git describe' failed: %s" % errMsg)
+            if errMsg:
+                print("*** ERR: running 'git describe' failed: %s" % errMsg)
 
         # configure the default socket timeout in seconds
         socket.setdefaulttimeout(2.5)
@@ -398,236 +413,239 @@ class ProcMgr:
         localPorts = set()
         remotePorts = set()
 
-        configlist = []         # start out with empty list
+        configlist = []  # start out with empty list
 
-        config = {'platform': repr(self.PLATFORM), 'procmgr_config': None, 'TESTRELDIR': None, 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
+        config = {'platform': repr(self.PLATFORM), 'procmgr_config': None, 'TESTRELDIR': None,
+                  'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
                   'CONFIGDIR': os.path.dirname(os.path.abspath(configfilename)),
-                  'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', '__file__':configfilename,
-                  'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': procmgr_macro}
+                  'id': 'id', 'cmd': 'cmd', 'flags': 'flags', 'port': 'port', 'host': 'host',
+                  '__file__': configfilename,
+                  'rtprio': 'rtprio', 'env': 'env', 'evr': 'evr', 'conda': 'conda', 'procmgr_macro': procmgr_macro}
         try:
-          exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, config)
+            exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, config)
         except:
-          print('Error parsing configuration file:', sys.exc_info()[1])
+            print('Error parsing configuration file:', sys.exc_info()[1])
 
         if type(config['procmgr_config']) == type([]):
-          for dd in config['procmgr_config']:
-            if type(dd) == type({}):
-              if 'port' in dd:
-                # static port assignments at the beginning of the list
-                configlist.insert(0, dd)
-              else:
-                # dynamic port assignments at the end of the list
-                configlist.append(dd)
-            else:
-              print('Error: procmgr_config entry not key:value:', dd)
+            for dd in config['procmgr_config']:
+                if type(dd) == type({}):
+                    if 'port' in dd:
+                        # static port assignments at the beginning of the list
+                        configlist.insert(0, dd)
+                    else:
+                        # dynamic port assignments at the end of the list
+                        configlist.append(dd)
+                else:
+                    print('Error: procmgr_config entry not key:value:', dd)
         else:
-          print('Error: procmgr_config not a list', config['procmgr_config'])
+            print('Error: procmgr_config not a list', config['procmgr_config'])
 
         # for each entry in the list...
         for entry in configlist:
-          # ...process the fields
+            # ...process the fields
 
-          # --- real-time priority (optional) ---
-          self.rtprio = "''"
-          tmpsum = 0
-          if 'rtprio' in entry:
+            # --- real-time priority (optional) ---
+            self.rtprio = "''"
+            tmpsum = 0
+            if 'rtprio' in entry:
+                try:
+                    tmpsum = int(entry['rtprio'])
+                except:
+                    raise ConfigFileError('malformed rtprio value: %s' % entry)
+                if tmpsum:
+                    # check if rtprio is in valid range
+                    if (tmpsum < 1) or (tmpsum > 99):
+                        raise ConfigFileError('rtprio not in range 1-99: %s' % entry)
+                    else:
+                        self.rtprio = tmpsum
+
+            # --- environment (optional) ---
+            self.env = "''"
+            if 'env' in entry:
+                if '=' in entry['env']:
+                    self.env = "'%s'" % entry['env']
+                else:
+                    raise ConfigFileError("env value is missing '=': %s" % entry)
+
+            # --- evr (optional) ---
+            self.evr = None
+            if 'evr' in entry:
+                match = re.match('^(\d)\,(\d)(\d)?$', entry['evr'])
+                if match:
+                    self.evr = match.group()
+                else:
+                    raise ConfigFileError("evr value does not match '<digit>,<digit>[<digit>]': %s" % entry)
+
+            # --- conda (optional) ---
+            if 'conda' in entry:
+                self.conda = entry['conda']
+            elif 'CONDA_DEFAULT_ENV' in os.environ:
+                self.conda = os.environ['CONDA_DEFAULT_ENV']
+            else:
+                # empty quotes
+                self.conda = "''"
+
             try:
-              tmpsum = int(entry['rtprio'])
-            except:
-              raise ConfigFileError('malformed rtprio value: %s' % entry)
+                # TESTRELDIR not being set indicates "production"
+                if (entry['conda'] != os.environ['CONDA_DEFAULT_ENV']) and ('TESTRELDIR' in os.environ):
+                    raise ConfigFileError("'conda' key (%s) does not match $CONDA_DEFAULT_ENV (%s)" %
+                                          (entry['conda'], os.environ['CONDA_DEFAULT_ENV']))
+            except KeyError:
+                pass
+
+            # --- cmd (required) ---
+            if 'cmd' in entry:
+
+                # use os.path.realpath() to resolve any symbolic links
+                cmdSplit = entry['cmd'].split(None, 1)
+                cmdZero = os.path.expanduser(cmdSplit[0])
+                self.cmd = entry['cmd']
+            else:
+                raise ConfigFileError("procmgr_config entry %s missing cmd" % entry)
+                self.cmd = 'error'
+
+            # --- id (required) ---
+            if 'id' in entry:
+                tmpid = entry['id']
+                if len(tmpid) > uniqueid_maxlen:
+                    raise ConfigFileError("ID '%s' exceeds %d characters" % (tmpid, uniqueid_maxlen))
+                if tmpid in dup_list:
+                    raise ConfigFileError("ID '%s' appears in multiple procmgr_config entries" % tmpid)
+                else:
+                    dup_list.append(tmpid)
+                    self.uniqueid = tmpid
+            else:
+                raise ConfigFileError("procmgr_config entry %s missing id" % entry)
+                self.uniqueid = 'error'
+
+            # --- host (optional) ---
+            if 'host' in entry:
+                self.host = entry['host']
+            else:
+                self.host = 'localhost'
+
+            # --- flags (optional) ---
+            if 'flags' in entry:
+                self.flags = entry['flags']
+                # evr keyword forces p flag
+                if self.evr:
+                    self.flags += 'p'
+                for nextflag in self.flags:
+                    if (nextflag not in self.valid_flag_list):
+                        print('*** ERR: invalid flag:', nextflag)
+            else:
+                self.flags = '-'
+
+            # append '-u <UniqueId>' to command if 'u' flag is set
+            if 'u' in self.flags:
+                self.cmd += (' -u ' + self.uniqueid)
+
+            # append '-p <platform>[<mod>,<chan>]' to command if 'p' flag is set
+            if 'p' in self.flags:
+                if self.evr:
+                    self.cmd += (' -p ' + repr(self.PLATFORM) + ',' + self.evr)
+                else:
+                    self.cmd += (' -p ' + repr(self.PLATFORM))
+
+            # update flags to reflect -x or -X on command line
+            # ...order matters: X flag takes priority over x flag
+            if idFoundInList(self.uniqueid, Xterm_list):
+                self.flags += 'X'
+            elif idFoundInList(self.uniqueid, xterm_list):
+                self.flags += 'x'
+
+            # initialize dictionaries used for port assignments
+            if not self.host in nextCtrlPort:
+                # on each host, two ports are reserved for a master server: ctrl and log
+                nextCtrlPort[self.host] = self.EXECMGRCTRL + 2
+                staticPorts[self.host] = set()
+
+            # --- port (optional) ---
+            tmpsum = 0
+            if 'port' in entry:
+                try:
+                    tmpsum = int(entry['port'])
+                except:
+                    print('Error: malformed port value:', entry)
+
             if tmpsum:
-              # check if rtprio is in valid range
-              if (tmpsum < 1) or (tmpsum > 99):
-                raise ConfigFileError('rtprio not in range 1-99: %s' % entry)
-              else:
-                self.rtprio = tmpsum
-
-          # --- environment (optional) ---
-          self.env = "''"
-          if 'env' in entry:
-            if '=' in entry['env']:
-              self.env = "'%s'" % entry['env']
+                # assign the port statically
+                if tmpsum in staticPorts[self.host]:
+                    print('*** ERR: port #%d duplicated in the config file' % tmpsum)
+                else:
+                    # avoid dup: update the set of statically assigned ports
+                    staticPorts[self.host].add(tmpsum)
+                self.ctrlport = str(tmpsum)  # string
+                self.flags += 'k'
             else:
-              raise ConfigFileError("env value is missing '=': %s" % entry)
+                # assign port dynamically
+                tmpport = nextCtrlPort[self.host]
+                # avoid dup: check the set of statically assigned ports
+                if (self.host == 'localhost'):
+                    while (tmpport in staticPorts[self.host]) or (tmpport in remotePorts):
+                        tmpport += 1
+                else:
+                    while (tmpport in staticPorts[self.host]) or (tmpport in localPorts):
+                        tmpport += 1
 
-          # --- evr (optional) ---
-          self.evr = None
-          if 'evr' in entry:
-            match = re.match('^(\d)\,(\d)(\d)?$', entry['evr'])
-            if match:
-              self.evr = match.group()
-            else:
-              raise ConfigFileError("evr value does not match '<digit>,<digit>[<digit>]': %s" % entry)
+                self.ctrlport = str(tmpport)  # string
+                nextCtrlPort[self.host] = tmpport + 1  # integer
 
-          # --- conda (optional) ---
-          if 'conda' in entry:
-            self.conda = entry['conda']
-          elif 'CONDA_DEFAULT_ENV' in os.environ:
-            self.conda = os.environ['CONDA_DEFAULT_ENV']
-          else:
-            # empty quotes
-            self.conda = "''"
+                # update set of local or remote ports to avoid conflict
+                if (self.host == 'localhost'):
+                    localPorts.add(tmpport)
+                else:
+                    remotePorts.add(tmpport)
 
-          try:
-            # TESTRELDIR not being set indicates "production"
-            if (entry['conda'] != os.environ['CONDA_DEFAULT_ENV']) and ('TESTRELDIR' in os.environ):
-              raise ConfigFileError("'conda' key (%s) does not match $CONDA_DEFAULT_ENV (%s)" %
-                                    (entry['conda'], os.environ['CONDA_DEFAULT_ENV']))
-          except KeyError:
-            pass
-
-          # --- cmd (required) ---
-          if 'cmd' in entry:
-
-            # use os.path.realpath() to resolve any symbolic links
-            cmdSplit = entry['cmd'].split(None, 1)
-            cmdZero = os.path.expanduser(cmdSplit[0])
-            self.cmd = entry['cmd']
-          else:
-            raise ConfigFileError("procmgr_config entry %s missing cmd" % entry)
-            self.cmd = 'error'
-
-          # --- id (required) ---
-          if 'id' in entry:
-            tmpid = entry['id']
-            if len(tmpid) > uniqueid_maxlen:
-              raise ConfigFileError("ID '%s' exceeds %d characters" % (tmpid, uniqueid_maxlen))
-            if tmpid in dup_list:
-              raise ConfigFileError("ID '%s' appears in multiple procmgr_config entries" % tmpid)
-            else:
-              dup_list.append(tmpid)
-              self.uniqueid = tmpid
-          else:
-            raise ConfigFileError("procmgr_config entry %s missing id" % entry)
-            self.uniqueid = 'error'
-
-          # --- host (optional) ---
-          if 'host' in entry:
-            self.host = entry['host']
-          else:
-            self.host = 'localhost'
-
-          # --- flags (optional) ---
-          if 'flags' in entry:
-            self.flags = entry['flags']
-            # evr keyword forces p flag
-            if self.evr:
-              self.flags += 'p'
-            for nextflag in self.flags:
-              if (nextflag not in self.valid_flag_list):
-                print('*** ERR: invalid flag:', nextflag)
-          else:
-            self.flags = '-'
-
-          # append '-u <UniqueId>' to command if 'u' flag is set
-          if 'u' in self.flags:
-            self.cmd += (' -u ' + self.uniqueid)
-
-          # append '-p <platform>[<mod>,<chan>]' to command if 'p' flag is set
-          if 'p' in self.flags:
-            if self.evr:
-              self.cmd += (' -p ' + repr(self.PLATFORM) + ',' + self.evr)
-            else:
-              self.cmd += (' -p ' + repr(self.PLATFORM))
-
-          # update flags to reflect -x or -X on command line
-          # ...order matters: X flag takes priority over x flag
-          if idFoundInList(self.uniqueid, Xterm_list):
-            self.flags += 'X'
-          elif idFoundInList(self.uniqueid, xterm_list):
-            self.flags += 'x'
-
-          # initialize dictionaries used for port assignments
-          if not self.host in nextCtrlPort:
-              # on each host, two ports are reserved for a master server: ctrl and log
-              nextCtrlPort[self.host] = self.EXECMGRCTRL + 2
-              staticPorts[self.host] = set()
-
-          # --- port (optional) ---
-          tmpsum = 0
-          if 'port' in entry:
+            self.pid = b"-"
+            self.ppid = b"-"
+            self.getid = b"-"
+            # open a connection to the control port (procServ)
+            telnethost = self.host
+            if telnethost == 'localhost':
+                telnethost = self.procmgr_macro.get('HOST', 'localhost')
             try:
-              tmpsum = int(entry['port'])
+                self.telnet.open(telnethost, self.ctrlport)
             except:
-              print('Error: malformed port value:', entry)
-
-          if tmpsum:
-            # assign the port statically
-            if tmpsum in staticPorts[self.host]:
-                print('*** ERR: port #%d duplicated in the config file' % tmpsum)
+                # telnet failed
+                self.tmpstatus = self.STATUS_NOCONNECT
+                # TODO ping each host first, as telnet could fail due to an error
             else:
-                # avoid dup: update the set of statically assigned ports
-                staticPorts[self.host].add(tmpsum)
-            self.ctrlport = str(tmpsum)                             # string
-            self.flags += 'k'
-          else:
-              # assign port dynamically
-              tmpport = nextCtrlPort[self.host]
-              # avoid dup: check the set of statically assigned ports
-              if (self.host == 'localhost'):
-                  while (tmpport in staticPorts[self.host]) or (tmpport in remotePorts):
-                      tmpport += 1
-              else:
-                  while (tmpport in staticPorts[self.host]) or (tmpport in localPorts):
-                      tmpport += 1
-
-              self.ctrlport = str(tmpport)                            # string
-              nextCtrlPort[self.host] = tmpport + 1                   # integer
-
-              # update set of local or remote ports to avoid conflict
-              if (self.host == 'localhost'):
-                  localPorts.add(tmpport)
-              else:
-                  remotePorts.add(tmpport)
-
-          self.pid = b"-"
-          self.ppid = b"-"
-          self.getid = b"-"
-          # open a connection to the control port (procServ)
-          telnethost = self.host
-          if telnethost == 'localhost':
-              telnethost = self.procmgr_macro.get('HOST', 'localhost')
-          try:
-              self.telnet.open(telnethost, self.ctrlport)
-          except:
-              # telnet failed
-              self.tmpstatus = self.STATUS_NOCONNECT
-              # TODO ping each host first, as telnet could fail due to an error
-          else:
-              # telnet succeeded: gather status from procServ banner
-              try: 
-                ok = self.readLogPortBanner()
-              except EOFError:
-                print('EOFError in readLogPortBanner') 
-                ok = False
-              except:
-                ok = False
-              if not ok:
-                  # reading procServ banner failed
-                  print("*** ERR: failed to read procServ banner for \'%s\' on host %s" \
+                # telnet succeeded: gather status from procServ banner
+                try:
+                    ok = self.readLogPortBanner()
+                except EOFError:
+                    print('EOFError in readLogPortBanner')
+                    ok = False
+                except:
+                    ok = False
+                if not ok:
+                    # reading procServ banner failed
+                    print("*** ERR: failed to read procServ banner for \'%s\' on host %s" \
                           % (self.uniqueid, self.host))
-              # close connection to the logging port (procServ)
-              self.telnet.close()
+                # close connection to the logging port (procServ)
+                self.telnet.close()
 
-          if self.getid.endswith(b".log"):
-            # '/reg/lab2/home/caf/2012/03/29_16:27:22_localhost:helloX.log' -> 'helloX'
-            gotid = self.getid[0:-4].split(b":")[-1]
-          else:
-            gotid = self.getid
+            if self.getid.endswith(b".log"):
+                # '/reg/lab2/home/caf/2012/03/29_16:27:22_localhost:helloX.log' -> 'helloX'
+                gotid = self.getid[0:-4].split(b":")[-1]
+            else:
+                gotid = self.getid
 
-          if ((self.tmpstatus != self.STATUS_NOCONNECT) and \
-              (self.tmpstatus != self.STATUS_ERROR) and \
-              (gotid != bytes(self.uniqueid, 'utf-8')) and \
-              (not gotid.endswith(bytes(self.uniqueid+".log", 'utf-8')))):
-              print("*** ERR: found %r, expected %r on host %s port %s" % \
-                  (gotid.decode(), self.uniqueid, self.host, self.ctrlport))
-              self.uniqueid = gotid.decode()
-              self.cmd = 'error'
+            if ((self.tmpstatus != self.STATUS_NOCONNECT) and \
+                    (self.tmpstatus != self.STATUS_ERROR) and \
+                    (gotid != bytes(self.uniqueid, 'utf-8')) and \
+                    (not gotid.endswith(bytes(self.uniqueid + ".log", 'utf-8')))):
+                print("*** ERR: found %r, expected %r on host %s port %s" % \
+                      (gotid.decode(), self.uniqueid, self.host, self.ctrlport))
+                self.uniqueid = gotid.decode()
+                self.cmd = 'error'
 
-          # add an entry to the dictionary
-          key = makekey(self.host, self.uniqueid)
-          self.d[key] = \
-            [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda, self.env, self.rtprio]
+            # add an entry to the dictionary
+            key = makekey(self.host, self.uniqueid)
+            self.d[key] = \
+                [self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda,
+                 self.env, self.rtprio]
             # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID DICT_CONDA DICT_ENV DICT_RTPRIO
 
     def spawnXterm(self, name, host, port, large=False):
@@ -640,7 +658,7 @@ class ProcMgr:
         return
 
     def spawnConsole(self, uniqueid, large=False):
-        rv = 1      # return value (0=OK, 1=ERR)
+        rv = 1  # return value (0=OK, 1=ERR)
         found = False
         for key in self.d.keys():
             if key2uniqueid(key) == uniqueid:
@@ -655,7 +673,7 @@ class ProcMgr:
                 host = key2host(key)
                 port = self.d[key][self.DICT_CTRL]
                 logfile = self.d[key][self.DICT_GETID]
-                cmd  = self.PATH_TELNET + " " + host + " " + port
+                cmd = self.PATH_TELNET + " " + host + " " + port
                 if os.path.exists(logfile):
                     cmd = self.PATH_CAT + " " + logfile + ";" + cmd
                 if large:
@@ -672,9 +690,8 @@ class ProcMgr:
             print('spawnConsole: process \'%s\' neither RUNNING nor SHUTDOWN' % uniqueid)
         return rv
 
-
     def spawnLogfile(self, uniqueid, large=False):
-        rv = 1      # return value (0=OK, 1=ERR)
+        rv = 1  # return value (0=OK, 1=ERR)
         logfile = ''
         found = False
         for key in self.d.keys():
@@ -692,7 +709,7 @@ class ProcMgr:
                 name = uniqueid
                 if large:
                     args = [self.PATH_XTERM, "-bg", "midnightblue", "-fg", "white", "-fa", "18", "-T", name, \
-                           "-e", self.PATH_LESS, "+F", logfile]
+                            "-e", self.PATH_LESS, "+F", logfile]
                 else:
                     args = [self.PATH_XTERM, "-T", name, "-e", self.PATH_LESS, "+F", logfile]
                 Popen(args)
@@ -707,7 +724,7 @@ class ProcMgr:
     def readLogPortBanner(self):
         response = self.telnet.read_until(self.MSG_BANNER_END, 1)
         if not response.count(self.MSG_BANNER_END):
-            print('readLogPortBanner: banner not found in response: '+response)
+            print('readLogPortBanner: banner not found in response: ' + response)
             self.tmpstatus = self.STATUS_ERROR
             # when reading banner fails, set the ID so the error output includes name instead of '-'
             self.getid = self.uniqueid
@@ -756,9 +773,9 @@ class ProcMgr:
                 continue
 
             if (nonePrinted == 1):
-              # print heading, once
-              print("Host           UniqueID     Status     PID     PORT   Command+Args")
-              nonePrinted = 0
+                # print heading, once
+                print("Host           UniqueID     Status     PID     PORT   Command+Args")
+                nonePrinted = 0
 
             if (self.d[key][self.DICT_STATUS] == self.STATUS_NOCONNECT):
                 showId = key2uniqueid(key)  # string
@@ -770,11 +787,11 @@ class ProcMgr:
                 showhost = self.procmgr_macro.get('HOST', 'localhost')
 
             print("%-14s %-12s %-10s %-6s  %-5s  %s" % \
-                    (showhost, showId, \
-                    self.d[key][self.DICT_STATUS], \
-                    self.d[key][self.DICT_PID].decode(), \
-                    self.d[key][self.DICT_CTRL], \
-                    self.d[key][self.DICT_CMD]))
+                  (showhost, showId, \
+                   self.d[key][self.DICT_STATUS], \
+                   self.d[key][self.DICT_PID].decode(), \
+                   self.d[key][self.DICT_CTRL], \
+                   self.d[key][self.DICT_CMD]))
 
             if (self.d[key][self.DICT_STATUS] == self.STATUS_RUNNING):
                 if idFoundInList(showId, self.Xterm_list):
@@ -794,9 +811,9 @@ class ProcMgr:
             if verbose:
                 if self.d[key][self.DICT_GETID].endswith(b".log"):
                     print("  Logfile:", self.procmgr_macro.get('LOGPATH', '.') + \
-                                        '/' + self.d[key][self.DICT_GETID].decode())
+                          '/' + self.d[key][self.DICT_GETID].decode())
         if (nonePrinted == 1):
-          print("(none found)")
+            print("(none found)")
 
         # done
         return 1
@@ -809,35 +826,35 @@ class ProcMgr:
         resultlist = list()
 
         if self.isEmpty():
-          if verbose:
-            print("(configuration is empty)")
+            if verbose:
+                print("(configuration is empty)")
         else:
-          # get contents of dictionary (sorted by key)
-          for key in sorted(self.d.keys()):
-            # start with empty dictionary
-            statusdict = dict()
+            # get contents of dictionary (sorted by key)
+            for key in sorted(self.d.keys()):
+                # start with empty dictionary
+                statusdict = dict()
 
-            if len(id_list) > 0:
-              # if id_list is nonempty and UniqueID is not in it,
-              # skip this entry
-              if key2uniqueid(key) not in id_list:
-                continue
+                if len(id_list) > 0:
+                    # if id_list is nonempty and UniqueID is not in it,
+                    # skip this entry
+                    if key2uniqueid(key) not in id_list:
+                        continue
 
-            if only_static and ('k' not in self.d[key][self.DICT_FLAGS]):
-              # only_static flag was passed in and this entry does not 
-              # have the 'k' flag set: skip this entry
-              continue
-                
-            if (self.d[key][self.DICT_STATUS] == self.STATUS_NOCONNECT):
-              statusdict['showId'] = key2uniqueid(key)
-            else:
-              statusdict['showId'] = name2uniqueid(self.d[key][self.DICT_GETID])
+                if only_static and ('k' not in self.d[key][self.DICT_FLAGS]):
+                    # only_static flag was passed in and this entry does not
+                    # have the 'k' flag set: skip this entry
+                    continue
 
-            statusdict['status'] = self.d[key][self.DICT_STATUS]
-            statusdict['host'] = key2host(key)
-            # add dictionary to list
-            resultlist.append(statusdict)
-              
+                if (self.d[key][self.DICT_STATUS] == self.STATUS_NOCONNECT):
+                    statusdict['showId'] = key2uniqueid(key)
+                else:
+                    statusdict['showId'] = name2uniqueid(self.d[key][self.DICT_GETID])
+
+                statusdict['status'] = self.d[key][self.DICT_STATUS]
+                statusdict['host'] = key2host(key)
+                # add dictionary to list
+                resultlist.append(statusdict)
+
         # done
         return resultlist
 
@@ -909,7 +926,7 @@ class ProcMgr:
             self.telnet.close()
         else:
             print('*** ERR: restart() telnet to %s port %s failed' % \
-                (host, value[self.DICT_CTRL]))
+                  (host, value[self.DICT_CTRL]))
 
         return started
 
@@ -926,8 +943,8 @@ class ProcMgr:
     #
     def start(self, id_list, verbose=0, logpathbase=None, coresize='0', rcFile=rcFileDefault):
 
-        rv = 1                  # return value
-        started_count = 0       # count successful start commands
+        rv = 1  # return value
+        started_count = 0  # count successful start commands
 
         # create sets of entries with X or x flag enabled (empty for now)
         xlist = list()
@@ -961,7 +978,6 @@ class ProcMgr:
             # for log file names
             logpath = '%s/%s' % (logpathbase, time.strftime('%Y/%m'))
             time_string = time.strftime('%d_%H:%M:%S')
-
 
         if 'TESTRELDIR' in os.environ:
             export_dict['TESTRELDIR'] = os.environ['TESTRELDIR']
@@ -1010,20 +1026,20 @@ class ProcMgr:
                     #  <logpath>/2009/08/21_10:35_atca01:opal1k.log
                     #
                     try:
-                      mkdir_p(logpath)
+                        mkdir_p(logpath)
                     except:
-                      # mkdir
-                      print('*** ERR: mkdir <%s> failed' % logpath)
+                        # mkdir
+                        print('*** ERR: mkdir <%s> failed' % logpath)
                     else:
-                      loghost = key2host(key)
-                      localFlag = False
-                      if loghost == 'localhost':
-                          localFlag = True
-                          loghost = self.procmgr_macro.get('HOST', 'localhost')
-                      logkey = loghost+':'+key2uniqueid(key)
-                      logfile = '%s/%s_%s.log' % (logpath, time_string, logkey)
-                      if verbose:
-                          print('log file: <%s>' % logfile)
+                        loghost = key2host(key)
+                        localFlag = False
+                        if loghost == 'localhost':
+                            localFlag = True
+                            loghost = self.procmgr_macro.get('HOST', 'localhost')
+                        logkey = loghost + ':' + key2uniqueid(key)
+                        logfile = '%s/%s_%s.log' % (logpath, time_string, logkey)
+                        if verbose:
+                            print('log file: <%s>' % logfile)
 
                     pbits = (stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
                     try:
@@ -1033,68 +1049,69 @@ class ProcMgr:
                         logfile = ''
                     else:
                         if (statmode & pbits) != pbits:
-                          try:
-                            # make log path readable/writable/searchable by all
-                            os.chmod(logpath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-                          except:
-                            print('*** ERR: chmod %s failed' % logpath)
-                            logfile = ''
+                            try:
+                                # make log path readable/writable/searchable by all
+                                os.chmod(logpath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+                            except:
+                                print('*** ERR: chmod %s failed' % logpath)
+                                logfile = ''
 
                 # encode logfile path as part of procServ name
                 if (len(logfile) > 1):
-                  name = logfile.replace(logpathbase+'/', '', 1)
-                  if not os.path.exists(logfile):
-                    try:
-                      outfile = open(logfile, 'w')
-                      outfile.write("# ID:      %s\n" % key2uniqueid(key))
-                      outfile.write("# PLATFORM:%s\n" % self.PLATFORM)
-                      outfile.write("# HOST:    %s\n" % loghost)
-                      outfile.write("# CMDLINE: %s\n" % value[self.DICT_CMD])
-
-                      # obfuscating the password in the log
-                      clear_password = export_dict['CONFIGDB_AUTH']
-                      export_dict["CONFIGDB_AUTH"] = "*****"
-                      for key2, val2 in export_dict.items():
-                        outfile.write(f"# {key2}:{val2}\n")
-                      export_dict["CONFIGDB_AUTH"] = clear_password
-
-                      if 'TESTRELDIR' in export_dict:
-                        if len(value[self.DICT_CONDA]) > 2:
-                          outfile.write("# CONDA_REL:%s\n" % value[self.DICT_CONDA])
-                        if self.git_describe:
-                          outfile.write("# GIT_DESCRIBE:%s\n" % self.git_describe)
-                      outfile.close()
-                    except:
-                      print("*** ERR: writing log file '%s' failed" % logfile)
-                    else:
-                      pbits = (stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
-                      if (os.stat(logfile).st_mode & pbits) != pbits:
+                    name = logfile.replace(logpathbase + '/', '', 1)
+                    if not os.path.exists(logfile):
                         try:
-                          # make log file readable/writable by all
-                          os.chmod(logfile, pbits)
+                            outfile = open(logfile, 'w')
+                            outfile.write("# ID:      %s\n" % key2uniqueid(key))
+                            outfile.write("# PLATFORM:%s\n" % self.PLATFORM)
+                            outfile.write("# HOST:    %s\n" % loghost)
+                            outfile.write("# CMDLINE: %s\n" % value[self.DICT_CMD])
+
+                            # obfuscating the password in the log
+                            clear_auth = export_dict['CONFIGDB_AUTH']
+                            export_dict["CONFIGDB_AUTH"] = "*****"
+                            for key2, val2 in export_dict.items():
+                                outfile.write(f"# {key2}:{val2}\n")
+                            export_dict["CONFIGDB_AUTH"] = clear_auth
+
+                            if 'TESTRELDIR' in export_dict:
+                                if len(value[self.DICT_CONDA]) > 2:
+                                    outfile.write("# CONDA_REL:%s\n" % value[self.DICT_CONDA])
+                                if self.git_describe:
+                                    outfile.write("# GIT_DESCRIBE:%s\n" % self.git_describe)
+                            outfile.close()
                         except:
-                          print('*** ERR: chmod %s failed' % logfile)
+                            print("*** ERR: writing log file '%s' failed" % logfile)
+                        else:
+                            pbits = (
+                                        stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
+                            if (os.stat(logfile).st_mode & pbits) != pbits:
+                                try:
+                                    # make log file readable/writable by all
+                                    os.chmod(logfile, pbits)
+                                except:
+                                    print('*** ERR: chmod %s failed' % logfile)
                 else:
-                  name = key2uniqueid(key)
+                    name = key2uniqueid(key)
 
                 # look for condaProcServ in the same directory as this file
                 condaProcServCmd = shutil.which('condaProcServ')
                 if not condaProcServCmd:
-                  print('*** ERR: %s/condaProcServ not found' % prefix)
-                  continue
+                    print('*** ERR: %s/condaProcServ not found' % prefix)
+                    continue
 
-                startcmd = condaProcServCmd+' %s %s %s %s %s %s %s %s %s %s %s' % \
-                       (rcFile, \
-                        value[self.DICT_CONDA], \
-                        value[self.DICT_ENV], \
-                        value[self.DICT_RTPRIO], \
-                        name, \
-                        waitflag, \
-                        logfile, \
-                        coresize, \
-                        value[self.DICT_CTRL], \
-                        python_version(), \
-                        value[self.DICT_CMD])
+                startcmd = condaProcServCmd + ' %s %s %s %s %s %s %s %s %s %s %s' % \
+                           (rcFile, \
+                            value[self.DICT_CONDA], \
+                            value[self.DICT_ENV], \
+                            value[self.DICT_RTPRIO], \
+                            name, \
+                            waitflag, \
+                            logfile, \
+                            coresize, \
+                            value[self.DICT_CTRL], \
+                            python_version(), \
+                            value[self.DICT_CMD])
                 # is this host already in the dictionary?
                 if starthost in startdict:
                     # yes: add to set of start commands
@@ -1134,7 +1151,7 @@ class ProcMgr:
                 except:
                     # telnet failed
                     print('*** ERR: telnet to procmgr (%s port %d) failed' % \
-                            (host, self.EXECMGRCTRL))
+                          (host, self.EXECMGRCTRL))
                     print('>>> Please start the procServ process on host %s!' % host)
                 else:
                     # telnet succeeded
@@ -1149,7 +1166,7 @@ class ProcMgr:
                         response = ""
                     if not response.count(self.MSG_PROMPT):
                         print('*** NOTE: no prompt 10 sec after sending ^U at %s port %s' % \
-                            (key2host(key), self.EXECMGRCTRL))
+                              (key2host(key), self.EXECMGRCTRL))
 
                     # process list of commands
                     while len(value) > 0:
@@ -1170,9 +1187,9 @@ class ProcMgr:
                         self.telnet.write(bytes('%s\n' % nextcmd, 'utf-8'))
                         # wait for prompt
                         try:
-                          response = self.telnet.read_until(self.MSG_PROMPT, 10)
+                            response = self.telnet.read_until(self.MSG_PROMPT, 10)
                         except EOFError:
-                          response = b""
+                            response = b""
                         # search for error code after "return="
                         m = re.search(b'(?<=return=)\d+', response)
                         if m is not None:
@@ -1180,7 +1197,7 @@ class ProcMgr:
 
                         if not response.count(self.MSG_PROMPT):
                             print('*** NOTE: no prompt 10 sec after sending command at %s port %s' % \
-                                (host, self.EXECMGRCTRL))
+                                  (host, self.EXECMGRCTRL))
                         else:
                             #
                             # If X flag is set, procServ --wait is used so
@@ -1194,28 +1211,28 @@ class ProcMgr:
                     self.telnet.close()
 
         if len(xlist) > 0 or len(Xlist) > 0:
-          # is xterm available?
-          if not os.path.exists(self.PATH_XTERM):
-            print('*** ERR: %s not available' % self.PATH_XTERM)
-          else:
-            # order matters: start large xterms last so they will be on top
+            # is xterm available?
+            if not os.path.exists(self.PATH_XTERM):
+                print('*** ERR: %s not available' % self.PATH_XTERM)
+            else:
+                # order matters: start large xterms last so they will be on top
 
-            # small xterm support
-            for item in xlist:
-              # spawn small xterm
-              self.spawnXterm(item[0], key2host(item[0]), item[1][self.DICT_CTRL])
-            for item in xlist:
-              if self.restart(item[0], item[1], verbose):
-                started_count += 1
-                            
-            # large xterm support
-            for item in Xlist:
-              # spawn large xterm
-              self.spawnXterm(item[0], key2host(item[0]), item[1][self.DICT_CTRL], True)
-            for item in Xlist:
-              if self.restart(item[0], item[1], verbose):
-                started_count += 1
-                        
+                # small xterm support
+                for item in xlist:
+                    # spawn small xterm
+                    self.spawnXterm(item[0], key2host(item[0]), item[1][self.DICT_CTRL])
+                for item in xlist:
+                    if self.restart(item[0], item[1], verbose):
+                        started_count += 1
+
+                # large xterm support
+                for item in Xlist:
+                    # spawn large xterm
+                    self.spawnXterm(item[0], key2host(item[0]), item[1][self.DICT_CTRL], True)
+                for item in Xlist:
+                    if self.restart(item[0], item[1], verbose):
+                        started_count += 1
+
         # done
         # cleanup
 
@@ -1234,7 +1251,7 @@ class ProcMgr:
     # stopDictionary
     #
     def stopDictionary(self, stopdict, verbose, sigdelay):
-        rv = 0      # return value
+        rv = 0  # return value
         stopcount = 0
 
         telnetdict = dict()
@@ -1304,7 +1321,7 @@ class ProcMgr:
                     print('FAILED')
                 print('*** ERR: Exception while reading %r client: %r' % (key, sys.exc_info()[1]))
             else:
-                if response.count(self.MSG_ISSHUTTING)  or response.count(self.MSG_ISSHUTDOWN):
+                if response.count(self.MSG_ISSHUTTING) or response.count(self.MSG_ISSHUTDOWN):
                     if verbose:
                         print('%r is SHUTDOWN' % key)
                     # change status to SHUTDOWN
@@ -1314,7 +1331,7 @@ class ProcMgr:
         retrylist = []
         for key, connection in telnetdict.items():
             if (self.d[key][self.DICT_STATUS] == self.STATUS_SHUTDOWN):
-                continue    # skip
+                continue  # skip
             if verbose:
                 progressMessage('sending ^X to %r (%s port %s)' % (key, key2host(key), stopdict[key][self.DICT_CTRL]))
             try:
@@ -1340,7 +1357,8 @@ class ProcMgr:
         # Retry: send ^X to connections for which first attempt failed
         for key in retrylist:
             if verbose:
-                progressMessage('retry sending ^X to %r (%s port %s)' % (key, key2host(key), stopdict[key][self.DICT_CTRL]))
+                progressMessage(
+                    'retry sending ^X to %r (%s port %s)' % (key, key2host(key), stopdict[key][self.DICT_CTRL]))
             try:
                 # 0x18 = ^X
                 telnetdict[key].write(b"\x18");
@@ -1392,7 +1410,7 @@ class ProcMgr:
     # stop
     #
     def stop(self, id_list, verbose=0, sigdelay=1, only_static=0):
-        rv = 0      # return value
+        rv = 0  # return value
 
         if self.isEmpty():
             # configuration is empty -- nothing to disconnect
@@ -1413,14 +1431,14 @@ class ProcMgr:
                     if 'k' in value[self.DICT_FLAGS]:
                         if verbose and value[self.DICT_STATUS] != self.STATUS_NOCONNECT:
                             print('\'%s\' not stopped: this is a static task' % \
-                                key2uniqueid(key))
+                                  key2uniqueid(key))
                         continue
 
                 if only_static and ('k' not in self.d[key][self.DICT_FLAGS]):
                     # only_static flag was passed in and this entry does not 
                     # have the 'k' flag set: skip this entry
                     continue
-                    
+
                 # if process is not NOCONNECT, add it to dictionary
                 if value[self.DICT_STATUS] != self.STATUS_NOCONNECT:
                     stopdict[key] = value
@@ -1486,6 +1504,7 @@ class ProcMgr:
                 return 1
 
         return 0
+
 
 #
 # main
