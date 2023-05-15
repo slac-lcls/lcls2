@@ -932,10 +932,20 @@ class ProcMgr:
         # create sets of entries with X or x flag enabled (empty for now)
         xlist = list()
         Xlist = list()
+        # create a dictionary of environment variables to be exported
+        export_dict = dict()
 
         if not 'CONDA_PREFIX' in os.environ:
             print('CONDA_PREFIX not defined in environment')
             return 1
+        else:
+            export_dict['CONDA_PREFIX'] = os.environ['CONDA_PREFIX']
+
+        if not 'CONFIGDB_AUTH' in os.environ:
+            print('CONFIGDB_AUTH not defined in environment')
+            return 1
+        else:
+            export_dict['CONFIGDB_AUTH'] = os.environ['CONFIGDB_AUTH']
 
         if self.isEmpty():
             # configuration is empty -- nothing to start
@@ -952,10 +962,7 @@ class ProcMgr:
             logpath = '%s/%s' % (logpathbase, time.strftime('%Y/%m'))
             time_string = time.strftime('%d_%H:%M:%S')
 
-        # create a dictionary of environment variables to be exported
-        export_dict = dict()
-        if 'CONDA_PREFIX' in os.environ:
-            export_dict['CONDA_PREFIX'] = os.environ['CONDA_PREFIX']
+
         if 'TESTRELDIR' in os.environ:
             export_dict['TESTRELDIR'] = os.environ['TESTRELDIR']
 
@@ -1044,8 +1051,12 @@ class ProcMgr:
                       outfile.write("# HOST:    %s\n" % loghost)
                       outfile.write("# CMDLINE: %s\n" % value[self.DICT_CMD])
 
+                      # obfuscating the password in the log
+                      clear_password = export_dict['CONFIGDB_AUTH']
+                      export_dict["CONFIGDB_AUTH"] = "*****"
                       for key2, val2 in export_dict.items():
                         outfile.write(f"# {key2}:{val2}\n")
+                      export_dict["CONFIGDB_AUTH"] = clear_password
 
                       if 'TESTRELDIR' in export_dict:
                         if len(value[self.DICT_CONDA]) > 2:
