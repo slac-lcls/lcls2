@@ -2329,7 +2329,7 @@ def main():
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument('-V', metavar='LOGBOOK_FILE', default='/dev/null', help='run parameters file')
     parser.add_argument("--user", default="tstopr", help='HTTP authentication user')
-    parser.add_argument("--password", default="pcds", help='HTTP authentication password')
+    parser.add_argument("--password", default=os.getenv("CONFIGDB_AUTH"), help='HTTP authentication password')
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
     defaultActiveDetFile = "~/.psdaq/x<XPM>_p<platform>.activedet.json"
