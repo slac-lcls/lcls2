@@ -56,6 +56,7 @@ from requests import get, post, delete #put
 import requests
 
 from time import time
+from time import sleep as mysleep
 from numpy import fromstring
 import psana.pscalib.calib.MDBUtils as mu
 import psana.pyalgos.generic.Utils as gu
@@ -85,7 +86,7 @@ def request(url, query=None):
     #t0_sec = time()
     try:
         r = get(url, query, timeout=120)
-        time.sleep(1) # cpo hack for testing
+        mysleep(1) # cpo hack for testing
     except:
         print(f'*** Request timed out {url} {query}')
     #dt = time()-t0_sec # ~30msec
