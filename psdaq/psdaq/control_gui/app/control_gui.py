@@ -2,6 +2,7 @@
 """
 Created on 2019-01-25 by Mikhail Dubrovin
 """
+import os
 #------------------------------
 
 import sys
@@ -57,7 +58,7 @@ def input_option_parser() :
     d_uris       = URI_CONFIGDB # 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/'
     d_expert     = False  
     d_user       = 'tmoopr'
-    d_password   = 'pcds'
+    d_password   = os.getenv('CONFIGDB_AUTH')
 
     h_platform   = 'platform in range [0,7], default = %s' % d_platform
     h_host       = 'control host, default = %s' % d_host
@@ -68,7 +69,7 @@ def input_option_parser() :
     h_uris       = 'configuration DB URI suffix, default = %s' % d_uris
     h_expert     = 'force start gui in expert mode, default = %s' % d_expert
     h_user       = 'user login name, default = %s' % d_user
-    h_password   = 'password for interaction with configuration DB, default = %s' % d_password
+    h_password   = 'password for interaction with configuration DB, default = *****'
 
     parser = OptionParser(description='DAQ Control GUI', usage=usage())
 
