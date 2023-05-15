@@ -85,6 +85,7 @@ def request(url, query=None):
     #t0_sec = time()
     try:
         r = get(url, query, timeout=120)
+        time.sleep(1) # cpo hack for testing
     except:
         print(f'*** Request timed out {url} {query}')
     #dt = time()-t0_sec # ~30msec
