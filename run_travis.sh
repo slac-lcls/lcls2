@@ -16,6 +16,8 @@ if [[ $OS == linux ]]; then
 
   source activate $CONDA_ENV
 
+  conda list
+
   cd "$(dirname "${BASH_SOURCE[0]}")"
   export PATH="$PWD/install/bin:$PATH"
 
