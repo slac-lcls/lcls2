@@ -5,13 +5,8 @@ on:
       - ci-debug
 jobs:
   run-tests-linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
-    container:
-      image: scr.svc.stanford.edu/slaclcls/lcls2_docker/lcls2:centos7-py3.9
-      env:
-        CONDA_ENV: myrel
-        TRAVIS_OS_NAME: linux
     steps:
       - name: checkout
         uses: actions/checkout@v3
