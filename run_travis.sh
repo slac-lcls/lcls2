@@ -13,8 +13,8 @@ if [[ $OS == linux ]]; then
   #  time curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_ueddaq02/gridfs/6035d64545db0b188f7c78e8" | wc
   #  echo "done checking calibdb access"
   #done
-  sudo apt install pip
-  pip install requests
+  #sudo apt install pip
+  #pip install requests
   python -u -c "import requests; print('*** requests version:',requests.__version__)"
   python -u -c "import urllib.request; print('*** urllib version:',urllib.request.__version__)"
   python -u -c "import requests; print(requests)"
