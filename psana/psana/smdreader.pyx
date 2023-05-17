@@ -150,7 +150,7 @@ cdef class SmdReader:
                 if all(flag_founds): break
 
                 time.sleep(self.sleep_secs)
-                print(f'waiting for an event...retry#{cn_retries+1} (max_retries={self.max_retries}, use PS_R_MAX_RETRIES for different value)')
+                print(f'smd0 waiting for an event...retry#{cn_retries+1} of {self.max_retries} (use PS_R_MAX_RETRIES for different value)')
                 self.prl_reader.just_read()
                 cn_retries += 1
                 if cn_retries >= self.max_retries:
