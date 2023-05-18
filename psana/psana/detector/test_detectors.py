@@ -1,8 +1,8 @@
 import numpy as np
 from psana.detector.detector_impl import hiddenmethod, DetectorImpl
 from amitypes import Array1d, Array2d, Array3d
-        
-# For testing quadanode (this uses Cython for speed)        
+
+# For testing quadanode (this uses Cython for speed)
 from quadanode import waveforms, times
 
 class hsd_raw_0_0_0(DetectorImpl):
@@ -39,7 +39,7 @@ class quadanode_fex_4_5_6(DetectorImpl):
 
     def waveforms(self, evt, n_dets=1):
         """ Returns list of fex waveforms for `segid` channel.
-        
+
         List of segments/ channels:
         MCP, X1, X2, Y1, Y2
 
@@ -47,7 +47,7 @@ class quadanode_fex_4_5_6(DetectorImpl):
         as delimiters.
         """
         return waveforms(evt, self, n_dets=n_dets, n_chans_per_det=5)
-        
+
         #wf1d = self._segments(evt)[segid].waveforms
         #lengths = self._segments(evt)[segid].lengths
         #n_wf = len(lengths)
@@ -60,7 +60,7 @@ class quadanode_fex_4_5_6(DetectorImpl):
 
     def times(self, evt, n_dets=1):
         return times(evt, self, n_dets=n_dets, n_chans_per_det=5)
-        
+
         #startpos = self._segments(evt)[segid].startpos
         #return startpos
 
@@ -87,7 +87,7 @@ class hsd_fex_4_5_6(DetectorImpl):
         print(f'arrayFex9: {segs[0].arrayFex9}')
         #print(f'arrayString: {segs[0].arrayString}')
 
-# for integrating detector test (1) hsd/fast (2) andor/slow 
+# for integrating detector test (1) hsd/fast (2) andor/slow
 class hsd_raw_0_0_2(DetectorImpl):
     def __init__(self, *args):
         super(hsd_raw_0_0_2, self).__init__(*args)
@@ -351,7 +351,7 @@ class sfx_raw_1_2_3(DetectorImpl):
     def photon_energy(self, evt):
         segs = self._segments(evt)
         return segs[0].photon_energy
-    
+
     ## peak finder
     def npeaks(self,evt):
         segs = self._segments(evt)
@@ -375,4 +375,20 @@ class sfx_raw_1_2_3(DetectorImpl):
         segs = self._segments(evt)
         return segs[0].atot
 
-
+class epixhremu_raw_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    #def raw(self, evt) -> Array2d:
+    #    segs = self._segments(evt)
+    #    if segs is None: return None
+    #    if segs[0] is None: return None
+    #    return segs[0].raw
+    def raw(self, evt) -> Array3d:
+        # an example of how to handle multiple segments
+        segs = self._segments(evt)
+        return np.stack([segs[i].raw for i in sorted(segs.keys())])
+    def calib(self, evt) -> Array3d:
+        return self.raw(evt)
+    def image(self, evt) -> Array2d:
+        segs = self._segments(evt)
+        return np.vstack([segs[i].raw for i in sorted(segs.keys())])

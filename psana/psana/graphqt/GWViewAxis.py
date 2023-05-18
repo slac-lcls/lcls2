@@ -24,7 +24,7 @@ Adopted as FWViewAxis for LCLS2 on 2018-02-20
 Refactored to GWViewAxis on 2022-08-18
 """
 
-from psana.graphqt.GWViewExt import * # FWView, QtGui, QtCore, Qt
+from psana.graphqt.GWViewExt import * # GWView, QtGui, QtCore, Qt
 from psana.graphqt.FWRuler import FWRuler
 from PyQt5.QtGui import QColor, QFont
 

@@ -5,7 +5,6 @@
 import os
 import numpy as np
 from amitypes import Array2d
-#from psana.detector.detector_impl import DetectorImpl
 import psana.detector.epix_base as eb
 import logging
 from psana.detector.detector_impl import DetectorImpl
@@ -26,6 +25,7 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
         self._data_gain_bit = eb.B15
         self._gain_bit_shift = 10
         self._gains_def = (41.0, 13.7, 0.512) # epixhr2x2 ADU/keV H:M:L = 1 : 1/3 : 1/80
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixhr2x2.data'
 
 
     def _array(self, evt) -> Array2d:
@@ -36,7 +36,7 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
         else:
             nx = segs[0].raw.shape[1]
             ny = segs[0].raw.shape[0]
-            f = segs[0].raw & 0x7fff
+            f = segs[0].raw & self._data_bit_mask # 0x7fff
         return f
 
 
@@ -44,14 +44,5 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
         """cob=det.raw._seg_configs()[<seg-ind>].config"""
         logger.debug('epixhr2x2._cbits_config_segment')
         return eb.cbits_config_epixhr2x2(cob, shape=(288, 384))
-
-
-    def _det_geotxt_default(self):
-        """returns (str) default geometry constants from lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data
-        """
-        dir_detector = os.path.abspath(os.path.dirname(__file__))
-        fname = '%s/../pscalib/geometry/data/geometry-def-epixhr2x2.data' % dir_detector
-        logger.debug('_det_geotxt_default from file: %s' % fname)
-        return eb.ut.load_textfile(fname)
 
 # EOF

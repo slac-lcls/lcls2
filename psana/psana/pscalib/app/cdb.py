@@ -60,10 +60,10 @@ USAGE = '\nCommand: cdb <mode> [options]'\
     '  cdb print --host=psanagpu115 --port=27017 --stout=1000'
 
 
-def input_option_parser():
+def argument_parser():
+    from argparse import ArgumentParser
 
-    from optparse import OptionParser
-
+    d_mode       = 'print'
     d_host       = cc.HOST
     d_port       = cc.PORT
     d_user       = cc.USERNAME
@@ -85,11 +85,12 @@ def input_option_parser():
     d_confirm    = False
     d_iofname    = None # './fname.txt'
     d_comment    = 'no comment'
-    d_strloglev  = 'INFO'
+    d_loglevel   = 'INFO'
     d_webcli     = True
     d_cdbonly    = True
     d_dbsuffix   = ''
 
+    h_mode       = 'Mode of DB access, one of %s, default = %s' % (str(MODES), d_mode)
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
     h_user       = 'username to access DB, default = %s' % d_user
@@ -111,67 +112,53 @@ def input_option_parser():
     h_confirm    = 'confirmation of the action, default = %s' % d_confirm
     h_iofname    = 'output file prefix, default = %s' % d_iofname
     h_comment    = 'comment to the document, default = %s' % d_comment
-    h_strloglev  = 'logging level from list (%s), default = %s' % (STR_LEVEL_NAMES, d_strloglev)
+    h_loglevel   = 'logging level from list (%s), default = %s' % (STR_LEVEL_NAMES, d_loglevel)
     h_webcli     = 'use web-based CLI, default = %s' % d_webcli
     h_cdbonly    = 'command valid for CDB only, ignores other DBs, default = %s' % d_cdbonly
     h_dbsuffix   = 'suffix of the PRIVATE DETECTOR-DB to deploy constants, default = %s' % str(d_dbsuffix)
 
-    parser = OptionParser(description='Command line interface to LCLS2 calibration data base', usage=USAGE)
+    parser = ArgumentParser(description='CLI for LCLS2 calibration data base', usage=USAGE)
 
-    parser.add_option('--host',             default=d_host,       action='store', type='string', help=h_host)
-    parser.add_option('--port',             default=d_port,       action='store', type='string', help=h_port)
-    parser.add_option('-u', '--user',       default=d_user,       action='store', type='string', help=h_user)
-    parser.add_option('-p', '--upwd',       default=d_upwd,       action='store', type='string', help=h_upwd)
-    parser.add_option('--ctout',            default=d_ctout,      action='store', type='int',    help=h_ctout)
-    parser.add_option('--stout',            default=d_stout,      action='store', type='int',    help=h_stout)
-    parser.add_option('--dbname',           default=d_dbname,     action='store', type='string', help=h_dbname)
-    parser.add_option('--colname',          default=d_colname,    action='store', type='string', help=h_colname)
-    parser.add_option('--docid',            default=d_docid,      action='store', type='string', help=h_docid)
-    parser.add_option('-d', '--detector',   default=d_detector,   action='store', type='string', help=h_detector)
-    parser.add_option('-e', '--experiment', default=d_experiment, action='store', type='string', help=h_experiment)
-    parser.add_option('-t', '--time_stamp', default=d_time_stamp, action='store', type='string', help=h_time_stamp)
-    parser.add_option('-s', '--time_sec',   default=d_time_sec,   action='store', type='int',    help=h_time_sec)
-    parser.add_option('-c', '--ctype',      default=d_ctype,      action='store', type='string', help=h_ctype)
-    parser.add_option('-i', '--dtype',      default=d_dtype,      action='store', type='string', help=h_dtype)
-    parser.add_option('-r', '--run',        default=d_run,        action='store', type='int',    help=h_run)
-    parser.add_option('-R', '--run_end',    default=d_run_end,    action='store', type='string', help=h_run_end)
-    parser.add_option('-v', '--version',    default=d_version,    action='store', type='string', help=h_version)
-    parser.add_option('-C', '--confirm',    default=d_confirm,    action='store_true',           help=h_confirm)
-    parser.add_option('-f', '--iofname',    default=d_iofname,    action='store', type='string', help=h_iofname)
-    parser.add_option('-m', '--comment',    default=d_comment,    action='store', type='string', help=h_comment)
-    parser.add_option('-l', '--strloglev',  default=d_strloglev,  action='store', type='string', help=h_strloglev)
-    parser.add_option('-w', '--webcli',     default=d_webcli,     action='store_false',          help=h_webcli)
-    parser.add_option('--cdbonly',          default=d_cdbonly,    action='store_false',          help=h_cdbonly)
-    parser.add_option('-S', '--dbsuffix',   default=d_dbsuffix,   action='store', type='string', help=h_dbsuffix)
+    parser.add_argument('mode', nargs='?',    default=d_mode,       type=str, help=h_mode)
+    parser.add_argument('--host',             default=d_host,       type=str, help=h_host)
+    parser.add_argument('--port',             default=d_port,       type=str, help=h_port)
+    parser.add_argument('-u', '--user',       default=d_user,       type=str, help=h_user)
+    parser.add_argument('-p', '--upwd',       default=d_upwd,       type=str, help=h_upwd)
+    parser.add_argument('--ctout',            default=d_ctout,      type=int, help=h_ctout)
+    parser.add_argument('--stout',            default=d_stout,      type=int, help=h_stout)
+    parser.add_argument('--dbname',           default=d_dbname,     type=str, help=h_dbname)
+    parser.add_argument('--colname',          default=d_colname,    type=str, help=h_colname)
+    parser.add_argument('--docid',            default=d_docid,      type=str, help=h_docid)
+    parser.add_argument('-d', '--detector',   default=d_detector,   type=str, help=h_detector)
+    parser.add_argument('-e', '--experiment', default=d_experiment, type=str, help=h_experiment)
+    parser.add_argument('-t', '--time_stamp', default=d_time_stamp, type=str, help=h_time_stamp)
+    parser.add_argument('-s', '--time_sec',   default=d_time_sec,   type=int, help=h_time_sec)
+    parser.add_argument('-c', '--ctype',      default=d_ctype,      type=str, help=h_ctype)
+    parser.add_argument('-i', '--dtype',      default=d_dtype,      type=str, help=h_dtype)
+    parser.add_argument('-r', '--run',        default=d_run,        type=int, help=h_run)
+    parser.add_argument('-R', '--run_end',    default=d_run_end,    type=str, help=h_run_end)
+    parser.add_argument('-v', '--version',    default=d_version,    type=str, help=h_version)
+    parser.add_argument('-f', '--iofname',    default=d_iofname,    type=str, help=h_iofname)
+    parser.add_argument('-m', '--comment',    default=d_comment,    type=str, help=h_comment)
+    parser.add_argument('-l', '--loglevel',   default=d_loglevel,   type=str, help=h_loglevel)
+    parser.add_argument('-S', '--dbsuffix',   default=d_dbsuffix,   type=str, help=h_dbsuffix)
+    parser.add_argument('-C', '--confirm',    action='store_true',  help=h_confirm)
+    parser.add_argument('-w', '--webcli',     action='store_false', help=h_webcli)
+    parser.add_argument('--cdbonly',          action='store_false', help=h_cdbonly)
 
     return parser
 
 
 def cdb_cli():
-    """Calibration Data Base Command Line Interface
-    """
-    parser = input_option_parser()
+    """CLI for Calibration Data Base"""
+    if len(sys.argv) < 2: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
 
-    if len(sys.argv) == 1:
-        print(80*'_')
-        parser.print_help()
-        print(80*'_')
-        parser.print_usage()
-        print(80*'_')
-        sys.exit('COMMAND WITHOUT PARAMETERS')
+    parser = argument_parser()
+    args = parser.parse_args()  # Namespace
+    #kwargs = vars(args)        # dict
 
-    (popts, pargs) = parser.parse_args()
-    #args = pargs
-    #defs = vars(parser.get_default_values())
-    kwargs = vars(popts)
-
-    webcli = kwargs['webcli']
-    strloglev = kwargs.get('strloglev','DEBUG').upper()
-    fmt='[%(levelname).1s] %(asctime)s %(name)s %(lineno)d: %(message)s'
-    config_logger(strloglev, fmt=fmt)
-
-    if kwargs['webcli']: cdb_web(parser)
-    else:                cdb(parser)
+    if args.webcli: cdb_web(parser)
+    else:           cdb(parser)
 
 
 if __name__ == "__main__":

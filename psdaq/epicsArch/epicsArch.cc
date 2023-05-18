@@ -58,18 +58,19 @@ private:
 
 Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
-    uint32_t evtCounter;
-    const Pds::TimingHeader* timingHeader = handle(m_det, m_current, evtCounter);
+    const Pds::TimingHeader* timingHeader = handle(m_det, m_current);
     if (!timingHeader)  return nullptr;
+
+    uint32_t pgpIndex = timingHeader->evtCounter & (m_pool.nDmaBuffers() - 1);
+    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
-    evtIndex = evtCounter & (m_pool.nbuffers() - 1);
-    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
+    evtIndex = event->pebbleIndex;
+    XtcData::Src src = m_det->nodeId;
+    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, src, m_para.rogMask);
 
     // Collect indices of DMA buffers that can be recycled and reset event
-    uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
-    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
     freeDma(event);
 
     return dgram;
@@ -214,10 +215,10 @@ void EaDetector::_worker()
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
     m_nUpdates = 0;
-    m_exporter->add("ea_update_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_update_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nUpdates;});
     m_nStales = 0;
-    m_exporter->add("ea_stale_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_stale_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nStales;});
 
     Pgp pgp(*m_para, m_drp, this, m_running);

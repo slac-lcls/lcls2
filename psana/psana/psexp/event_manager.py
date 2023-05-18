@@ -189,7 +189,16 @@ class EventManager(object):
         self.dm.fds[i_smd] = fd
         self.dm.xtc_files[i_smd] = new_filename
         self.dm.set_chunk_id(i_smd, new_chunk_id)
-    
+
+    def _stat_and_read(self, fd, size, offset):
+        # Circumventing zeroed read bytes problem by checking
+        # the size of the file prior to reading.
+        stat_result = os.fstat(fd)
+        while stat_result.st_size < offset + size:
+            time.sleep(1)
+            stat_result = os.fstat(fd)
+        return os.pread(fd, size, offset)
+
     @s_bd_just_read.time()
     def _read(self, fd, size, offset):
         st = time.monotonic()
@@ -197,7 +206,7 @@ class EventManager(object):
         
         request_size = size
         for i_retry in range(self.max_retries+1):
-            new_read = os.pread(fd, size, offset)
+            new_read = self._stat_and_read(fd, size, offset)
             chunk.extend(new_read)
             got = memoryview(new_read).nbytes
             if memoryview(chunk).nbytes == request_size:

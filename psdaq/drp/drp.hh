@@ -68,6 +68,7 @@ struct PGPEvent
 {
     DmaBuffer buffers[PGP_MAX_LANES];
     uint8_t mask = 0;
+    unsigned pebbleIndex;
 };
 
 class Pebble
@@ -110,13 +111,14 @@ public:
     void shutdown();
     Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
+    unsigned countDma();
     unsigned allocate();
     void freeDma(std::vector<uint32_t>& indices, unsigned count);
     void freePebble();
-    const uint64_t dmaInUse() const { return m_allocs.load(std::memory_order_relaxed) -
-                                             m_dmaFrees.load(std::memory_order_relaxed); }
-    const uint64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -
-                                          m_frees.load(std::memory_order_relaxed); }
+    const int64_t dmaInUse() const { return m_dmaAllocs.load(std::memory_order_relaxed) -
+                                            m_dmaFrees.load(std::memory_order_relaxed); }
+    const int64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -
+                                         m_frees.load(std::memory_order_relaxed); }
     void resetCounters();
     int setMaskBytes(uint8_t laneMask, unsigned virtChan);
 private:
@@ -126,6 +128,7 @@ private:
     int m_fd;
     bool m_setMaskBytesDone;
     SPSCQueue<void*> m_transitionBuffers;
+    std::atomic<unsigned> m_dmaAllocs;
     std::atomic<unsigned> m_dmaFrees;
     std::atomic<unsigned> m_allocs;
     std::atomic<unsigned> m_frees;

@@ -33,7 +33,7 @@ namespace Drp {
         {
         public:
             enum index { image };
-            RawDef() { NameVec.push_back({"image", Name::UINT16, 2}); }
+            RawDef() { NameVec.push_back({"image", Name::UINT16, 1}); }
         } rawDef;
 
         class FexDef : public VarDef
@@ -54,17 +54,17 @@ namespace Drp {
             }
         };
 
-        class ProjDef : public VarDef
+        class AvgDef : public VarDef
         {
         public:
             enum index {
-                proj_sig, proj_ref
+                avg_sig, avg_ref
             };
 
-            ProjDef()
+            AvgDef()
             {
-                NameVec.push_back({"proj_sig"   , Name::DOUBLE, 1});
-                NameVec.push_back({"proj_ref"   , Name::DOUBLE, 1});
+                NameVec.push_back({"avg_sig"   , Name::DOUBLE, 1});
+                NameVec.push_back({"avg_ref"   , Name::DOUBLE, 1});
             }
         };
 
@@ -76,17 +76,17 @@ namespace Drp {
         //
         class RefDef : public VarDef {
         public:
-            //        enum index { image, projection };
+            //        enum index { image, average };
             RefDef(const char* detname, const char* dettype,
                    bool write_image,
-                   bool write_projection) {
+                   bool write_average) {
                 char buff[128];
                 if (write_image) {
                     sprintf(buff,"%s_%s_image",detname,dettype);
-                    NameVec.push_back({buff, Name::UINT16, 2});
+                    NameVec.push_back({buff, Name::UINT16, 1});
                 }
-                if (write_projection) {
-                    sprintf(buff,"%s_%s_projection",detname,dettype);
+                if (write_average) {
+                    sprintf(buff,"%s_%s_average",detname,dettype);
                     NameVec.push_back({buff, Name::DOUBLE, 1});
                 }
             }
@@ -106,7 +106,7 @@ namespace Drp {
             Piranha4&             m_det;
             Parameters*           m_para;
             XtcData::NamesId      m_fexNamesId;
-            XtcData::NamesId      m_projNamesId;
+            XtcData::NamesId      m_avgNamesId;
             XtcData::NamesId      m_refNamesId;
             Pds::Semaphore        m_background_sem;
             std::atomic<bool>     m_background_empty; // cache image for slow update transition
@@ -193,12 +193,11 @@ namespace PdsL1 {
     class FrameV1 {
     public:
         uint16_t*   data() { return reinterpret_cast<uint16_t*>(this+1); }
-        uint16_t&   operator()(unsigned row, unsigned col) { return data()[row*_width+col]; }
-        uint32_t	_width;	/**< Number of pixels in a row. */
-        uint32_t	_height;	/**< Number of pixels in a column. */
+        uint16_t&   operator()(unsigned pix) { return data()[pix]; }
+        uint32_t	_pixels;	/**< Number of pixels. */
         uint32_t	_depth;	/**< Number of bits per pixel. */
         uint32_t	_offset;	/**< Fixed offset/pedestal value of pixel data. */
-        //uint8_t	_pixel_data[this->_width*this->_height*((this->_depth+7)/8)];
+        //uint8_t	_pixel_data[this->_pixels*((this->_depth+7)/8)];
     };
     class FIFOEvent {
     public:
@@ -222,8 +221,7 @@ namespace PdsL1 {
         double	_position_fwhm;	/**< Full-width half maximum of filtered edge (in pixels) */
         double	_nxt_amplitude;	/**< Amplitude of the next largest edge */
         double	_ref_amplitude;	/**< Amplitude of reference at the edge */
-        //int32_t	_projected_signal[cfg.signal_projection_size()];
-        //int32_t	_projected_sideband[cfg.sideband_projection_size()];
+        //int32_t	_average_signal[cfg.signal_average_size()];
     };
 };
 
@@ -278,10 +276,10 @@ void Piranha4::_fatal_error(std::string errMsg)
 void Piranha4::_connect(PyObject* mbytes)
 {
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
-#define MODEL(num,rows,cols) case num: m_rows = rows; m_columns = cols; break
+#define MODEL(num,pixels) case num: m_pixels = pixels; break
     switch(modelnum) {
-        MODEL(2,2048,1);                // Revisit: cols = 1 if Line, 2 if Area
-        MODEL(4,4096,1);                // Revisit: cols = 1 if Line, 2 if Area
+        MODEL(2,2048);
+        MODEL(4,4096);
 #undef MODEL
     default:
         _fatal_error("Piranha4 camera model " + std::to_string(modelnum) +
@@ -311,7 +309,7 @@ unsigned Piranha4::_configure(XtcData::Xtc&        xtc,
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
-    Alg alg("raw", 2, 0, 0);
+    Alg alg("raw", 2, 1, 0);
     Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
                                                 m_para->detName.c_str(), alg,
                                                 m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
@@ -345,8 +343,7 @@ void Piranha4::write_image(XtcData::Xtc& xtc, const void* bufEnd, std::vector< X
     CreateData cd(xtc, bufEnd, m_namesLookup, namesId);
 
     unsigned shape[MaxRank];
-    shape[0] = m_rows;
-    shape[1] = m_columns;
+    shape[0] = m_pixels;
     Array<uint16_t> arrayT = cd.allocate<uint16_t>(Piranha::RawDef::image, shape);
     memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
 }
@@ -420,11 +417,11 @@ void     TT::shutdown() { m_fex.unconfigure(); }
 
 unsigned TT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& cfg)
 {
-    m_fex.configure(cfg, m_det.m_columns, m_det.m_rows);
+    m_fex.configure(cfg, m_det.m_pixels);
 
     // set up the names for L1Accept data
     { m_fexNamesId = NamesId(m_det.nodeId, EventNamesIndex+1);
-        Alg alg("ttfex", 2, 1, 0);
+        Alg alg("ttfex", 1, 0, 0);
         Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
                                                   m_para->detName.c_str(), alg,
                                                   m_para->detType.c_str(), m_para->serNo.c_str(), m_fexNamesId, m_para->detSegment);
@@ -433,22 +430,22 @@ unsigned TT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIte
         m_det.namesLookup()[m_fexNamesId] = NameIndex(fexNames);
     }
 
-    // and the conditional projections
-    { m_projNamesId = NamesId(m_det.nodeId, EventNamesIndex+2);
-        Alg alg("ttproj", 2, 0, 0);
+    // and the conditional averages
+    { m_avgNamesId = NamesId(m_det.nodeId, EventNamesIndex+2);
+        Alg alg("ttavg", 1, 0, 0);
         Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
                                                   m_para->detName.c_str(), alg,
-                                                  m_para->detType.c_str(), m_para->serNo.c_str(), m_projNamesId, m_para->detSegment);
-        ProjDef fexDef;
+                                                  m_para->detType.c_str(), m_para->serNo.c_str(), m_avgNamesId, m_para->detSegment);
+        AvgDef fexDef;
         fexNames.add(xtc, bufEnd, fexDef);
-        m_det.namesLookup()[m_projNamesId] = NameIndex(fexNames);
+        m_det.namesLookup()[m_avgNamesId] = NameIndex(fexNames);
     }
 
     // set up the data for slow update
     if (m_fex.write_ref_image() ||
-        m_fex.write_ref_projection()) {
+        m_fex.write_ref_average()) {
         m_refNamesId = NamesId(m_det.nodeId, EventNamesIndex+3);
-        Alg alg("piranha4tt", 2, 0, 0);
+        Alg alg("piranha4tt", 1, 0, 0);
         // cpo: rename this away from "epics" for now because the
         // segment number can conflict with epicsarch.
         Names& bkgNames = *new(xtc, bufEnd) Names(bufEnd,
@@ -456,7 +453,7 @@ unsigned TT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIte
                                                   "epics_dontuse", m_para->serNo.c_str(), m_refNamesId, m_para->detSegment);
         RefDef refDef(m_para->detName.c_str(),"piranhatt",
                       m_fex.write_ref_image(),
-                      m_fex.write_ref_projection());
+                      m_fex.write_ref_average());
         bkgNames.add(xtc, bufEnd, refDef);
         m_det.namesLookup()[m_refNamesId] = NameIndex(bkgNames);
     }
@@ -496,19 +493,19 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
         cd.set_value(FexDef::nxtampl   , m_fex.next_amplitude());
         cd.set_value(FexDef::refampl   , m_fex.ref_amplitude());
 
-#define copy_projection(atype, src, index) {                            \
+#define copy_average(atype, src, index) {                               \
             unsigned shape[1];                                          \
             shape[0] = src.size();                                      \
             Array<atype> a = cdp.allocate<atype>(index,shape);          \
             memcpy(a.data(), src.data(), src.size()*sizeof(atype)); }
 
-        if (m_fex.write_evt_projections()) {
+        if (m_fex.write_evt_averages()) {
 #ifdef DBUG
-            printf("writing projections sized %zu %zu\n",sig.size(),ref.size());
+            printf("writing averages sized %zu %zu\n",sig.size(),ref.size());
 #endif
-            CreateData cdp(xtc, bufEnd, m_det.namesLookup(), m_projNamesId);
-            copy_projection(double, sig, ProjDef::proj_sig);
-            copy_projection(double, ref, ProjDef::proj_ref);
+            CreateData cdp(xtc, bufEnd, m_det.namesLookup(), m_avgNamesId);
+            copy_average(double, sig, AvgDef::avg_sig);
+            copy_average(double, ref, AvgDef::avg_ref);
         }
     }
     else if (result == Piranha4TTFex::NOBEAM) {
@@ -516,21 +513,20 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
         // Only do this once per SlowUpdate
         if (m_background_empty) {
             m_det.transitionXtc().extent = sizeof(Xtc);
-            if (m_fex.write_ref_image() || m_fex.write_ref_projection()) {
+            if (m_fex.write_ref_image() || m_fex.write_ref_average()) {
                 CreateData cd(m_det.transitionXtc(), m_det.trXtcBufEnd(), m_det.m_namesLookup, m_refNamesId);
                 unsigned index=0;
                 if (m_fex.write_ref_image()) {
                     unsigned shape[MaxRank];
-                    shape[0] = m_det.m_rows;
-                    shape[1] = m_det.m_columns;
+                    shape[0] = m_det.m_pixels;
                     Array<uint16_t> arrayT = cd.allocate<uint16_t>(index++, shape);
                     memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
                 }
-                if (m_fex.write_ref_projection()) {
+                if (m_fex.write_ref_average()) {
                     unsigned shape[MaxRank];
-                    shape[0] = m_fex.ref_projection().size();
+                    shape[0] = m_fex.ref_average().size();
                     Array<double> arrayT = cd.allocate<double>(index++, shape);
-                    memcpy(arrayT.data(), m_fex.ref_projection().data(), shape[0]*sizeof(double));
+                    memcpy(arrayT.data(), m_fex.ref_average().data(), shape[0]*sizeof(double));
                 }
             }
             m_background_empty = false;
@@ -546,8 +542,8 @@ TTSimL1::TTSimL1(const char* evtxtc, Piranha4& d, Parameters* para) :
     m_det         (d),
     m_para        (para),
     m_simNamesId  (0,0),
-    m_framebuffer  (2*1024*1024),
-    m_evtindex     (0)
+    m_framebuffer (4*1024),
+    m_evtindex    (0)
 
 {
     _load_xtc(m_evtbuffer, evtxtc);
@@ -561,7 +557,7 @@ unsigned TTSimL1::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Conf
 {
     //  Add results into the dgram
     m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+4);
-    Alg alg("simfex", 2, 1, 0);
+    Alg alg("simfex", 1, 0, 0);
     Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
                                               m_para->detName.c_str(), alg,
                                               m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);
@@ -599,17 +595,14 @@ void TTSimL1::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData:
 
     //  Copy the ROI into a full image
     unsigned shape[2];
-    shape[0] = m_det.m_columns;
-    shape[1] = m_det.m_rows;
-    for(unsigned i=0; i<f._height; i++)
-        memcpy(m_framebuffer.data()+i*m_det.m_columns,&f(i,0),f._width*sizeof(uint16_t));
+    shape[0] = m_det.m_pixels;
+    memcpy(m_framebuffer.data(),&f(0),f._pixels*sizeof(uint16_t));
 
-    shape[0] = m_det.m_rows*m_det.m_columns*sizeof(uint16_t);
+    shape[0] = m_det.m_pixels*sizeof(uint16_t);
     subframes[2] = Array<uint8_t>(m_framebuffer.data(), shape, 1);
 
 #ifdef DBUG
-    printf("Copied %d/%d rows x %d/%d cols into subframes\n",
-           f._height, shape[1], f._width, shape[0]);
+    printf("Copied %d pixels into subframes\n", f._pixels);
 #endif
 
     // transfer event codes into EventInfo
@@ -626,7 +619,7 @@ TTSimL2::TTSimL2(const char* evtxtc, const char* timxtc, Piranha4& d, Parameters
     m_det         (d),
     m_para        (para),
     m_simNamesId  (0,0),
-    m_framebuffer (2*1024*1024),
+    m_framebuffer (4*1024),
     m_filesem     (Pds::Semaphore::FULL)
 {
     int fd = open(evtxtc, O_RDONLY);
@@ -654,7 +647,7 @@ unsigned TTSimL2::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Conf
 {
     //  Add results into the dgram
     m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+4);
-    Alg alg("simfex", 2, 1, 0);
+    Alg alg("simfex", 1, 0, 0);
     Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
                                               m_para->detName.c_str(), alg,
                                               m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);

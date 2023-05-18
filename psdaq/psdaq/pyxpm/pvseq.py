@@ -1,6 +1,6 @@
 import time
 
-from psdaq.cas.seq import *
+from psdaq.seq.seq import *
 from psdaq.pyxpm.pvhandler import *
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
@@ -61,7 +61,7 @@ class Engine(object):
                     else:
                         seq.append(Branch.conditional(args[1],args[2],args[3]))
                 elif instr == CheckPoint.opcode:
-                    seq.append(CheckPoint(0))
+                    seq.append(CheckPoint())
                 elif instr == ControlRequest.opcode:
                     seq.append(ControlRequest(args[1]))
         except StopIteration:
@@ -216,7 +216,9 @@ class Engine(object):
         for key,entry in self._caches.items():
             if entry.index == i:
                 for j in range(entry.size):
-                    print('[{:08x}] {:08x}'.format(key+j,self._ram[key+j].get()))
+                    ram = self._ram[key+j].get()
+                    print('[{:08x}] {:08x} {:}'.format(key+j,ram,decodeInstr(ram)))
+
 
 class PVSeq(object):
     def __init__(self, provider, name, ip, engine, pv_enabled):
@@ -224,39 +226,42 @@ class PVSeq(object):
         self._seq = []
         self._pv_enabled = pv_enabled
 
-        def addPV(label,ctype='I',init=0):
+        def _addPV(label,ctype='I',init=0):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
                           handler=DefaultPVHandler())
             provider.add(name+':'+label,pv)
             print(name+':'+label)
             return pv
 
-        self._pv_DescInstrs    = addPV('DESCINSTRS','s','')
-        self._pv_InstrCnt      = addPV('INSTRCNT')
-        self._pv_SeqIdx        = addPV('SEQIDX'    ,'aI',[0]*NSubSeq)
-        self._pv_SeqDesc       = addPV('SEQDESC'   ,'as',['']*NSubSeq)
-        self._pv_Seq00Idx      = addPV('SEQ00IDX')
-        self._pv_Seq00Desc     = addPV('SEQ00DESC' ,'s','')
-        self._pv_Seq00BDesc    = addPV('SEQ00BDESC','as',['']*NSubSeq)
-        self._pv_RmvIdx        = addPV('RMVIDX')
-        self._pv_RunIdx        = addPV('RUNIDX')
-        self._pv_Running       = addPV('RUNNING')
+        self._pv_DescInstrs    = _addPV('DESCINSTRS','s','')
+        self._pv_InstrCnt      = _addPV('INSTRCNT')
+        self._pv_SeqIdx        = _addPV('SEQIDX'    ,'aI',[0]*NSubSeq)
+        self._pv_SeqDesc       = _addPV('SEQDESC'   ,'as',['']*NSubSeq)
+        self._pv_Seq00Idx      = _addPV('SEQ00IDX')
+        self._pv_Seq00Desc     = _addPV('SEQ00DESC' ,'s','')
+        self._pv_Seq00BDesc    = _addPV('SEQ00BDESC','as',['']*NSubSeq)
+        self._pv_RmvIdx        = _addPV('RMVIDX')
+        self._pv_RunIdx        = _addPV('RUNIDX')
+        self._pv_Running       = _addPV('RUNNING')
 
-        def addPV(label,ctype,init,cmd):
+        def _addPV(label,ctype,init,cmd):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
                           handler=PVHandler(cmd))
             provider.add(name+':'+label,pv)
             return pv
 
-        self._pv_Instrs        = addPV('INSTRS'    ,'aI',[0]*16384, self.instrs)
-        self._pv_RmvSeq        = addPV('RMVSEQ'    , 'I',        0, self.rmvseq)
-        self._pv_Ins           = addPV('INS'       , 'I',        0, self.ins)
-        self._pv_SchedReset    = addPV('SCHEDRESET', 'I',        0, self.schedReset)
-        self._pv_ForceReset    = addPV('FORCERESET', 'I',        0, self.forceReset)
-        self._pv_Enable        = addPV('ENABLE'    , 'I',        0, self.enable)
+        self._pv_Instrs        = _addPV('INSTRS'    ,'aI',[0]*16384, self.instrs)
+        self._pv_RmvSeq        = _addPV('RMVSEQ'    , 'I',        0, self.rmvseq)
+        self._pv_Ins           = _addPV('INS'       , 'I',        0, self.ins)
+        self._pv_SchedReset    = _addPV('SCHEDRESET', 'I',        0, self.schedReset)
+        self._pv_ForceReset    = _addPV('FORCERESET', 'I',        0, self.forceReset)
+        self._pv_Enable        = _addPV('ENABLE'    , 'I',        0, self.enable)
+        self._pv_Dump          = _addPV('DUMP'      , 'I',        0, self.dump)
 
         if engine._reg.seqEn.get()&(1<<engine._id):
             self.enable(None,1)
+
+#        self.updateInstr()
 
     def instrs(self, pv, val):
         pvUpdate(self._pv_InstrCnt,self._eng.cacheSeq(val))
@@ -274,18 +279,19 @@ class PVSeq(object):
             pvUpdate(self._pv_Seq00Idx,rval)
 
     def schedReset(self, pv, val):
-        if val:
+        if val>0:
             idx = self._pv_RunIdx.current()['value']
-            print('Scheduling index {}',idx)
+            print(f'Scheduling index {idx}')
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
             self._eng.setAddress(idx,0,0)  # syncs start to marker 0 (1Hz)
-            self._eng.reset()
+            if val==1:
+                self._eng.reset()
 
     def forceReset(self, pv, val):
         if val:
             idx = self._pv_RunIdx.current()['value']
-            print('Starting index {}',idx)
+            print(f'Starting index {idx}')
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
             self._eng.setAddress(idx,0,6)  # syncs start to marker 6 (MHz)
@@ -299,3 +305,5 @@ class PVSeq(object):
     def checkPoint(self,addr):
         pvUpdate(self._pv_Running,0)
 
+    def dump(self, pv, val):
+        self._eng.dump()

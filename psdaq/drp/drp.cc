@@ -123,17 +123,21 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")          continue;  // DrpBase
         if (kwargs.first == "directIO")          continue;  // DrpBase
         if (para.detType == "opal") {
-          if (kwargs.first == "simxtc")            continue;  // Opal
-          if (kwargs.first == "simxtc2")           continue;  // Opal
-          if (kwargs.first == "simtime")           continue;  // Opal
-          if (kwargs.first == "ttpv")              continue;  // Opal
+            if (kwargs.first == "simxtc")            continue;  // Opal
+            if (kwargs.first == "simxtc2")           continue;  // Opal
+            if (kwargs.first == "simtime")           continue;  // Opal
+            if (kwargs.first == "ttpv")              continue;  // Opal
         }
         if (para.detType == "tt")
-          if (kwargs.first == "ttreffile")         continue;  // OpalTTFex
+            if (kwargs.first == "ttreffile")         continue;  // OpalTTFex
         if (para.detType == "hsd")
-          if (kwargs.first == "hsd_epics_prefix")  continue;  // Digitizer
+            if (kwargs.first == "hsd_epics_prefix")  continue;  // Digitizer
         if (para.detType == "wave8")
-          if (kwargs.first == "epics_prefix")      continue;  // Wave8
+            if (kwargs.first == "epics_prefix")      continue;  // Wave8
+        if (para.detType == "epixhremu") {
+            if (kwargs.first == "xtcfile")           continue;  // EpixHRemu
+            if (kwargs.first == "l1aOffset")         continue;  // EpixHRemu
+        }
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;

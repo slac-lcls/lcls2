@@ -19,33 +19,20 @@ cdef class ParallelReader:
         self.L1Accept           = TransitionId.L1Accept
         self.EndRun             = TransitionId.EndRun
         self.bufs               = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
-        self.step_bufs          = <Buffer *>malloc(sizeof(Buffer)*self.nfiles)
+        self.step_bufs          = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self.got                = 0
-        self.chunk_overflown    = 0     # set to dgram size if it's too big
-        self._init_buffers()
+        self.chunk_overflown    = 0                         # set to dgram size if it's too big
+        self.max_events         = int(self.chunksize / 70)  # guess no. of smd events in one chunk
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
-
+        self.gots               = array.array('l', [0]*self.nfiles)
+        self._init_buffers(self.bufs)
+        self._init_buffers(self.step_bufs)
 
     def __dealloc__(self):
-        if self.bufs:
-            for i in range(self.nfiles):
-                free(self.bufs[i].chunk)
-            free(self.bufs)
+        self._free_buffers(self.bufs)
+        self._free_buffers(self.step_bufs)
 
-        if self.step_bufs:
-            for i in range(self.nfiles):
-                free(self.step_bufs[i].chunk)
-            free(self.step_bufs)
-
-    cdef void _init_buffers(self):
-        cdef Py_ssize_t i
-        self._reset_buffers(self.bufs)
-        self._reset_buffers(self.step_bufs)
-        for i in range(self.nfiles):
-            self.bufs[i].chunk      = <char *>malloc(self.chunksize)
-            self.step_bufs[i].chunk = <char *>malloc(self.chunksize)
-    
-    cdef void _reset_buffers(self, Buffer* bufs):
+    cdef void _init_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
         cdef Buffer* buf
         for i in range(self.nfiles):
@@ -58,7 +45,27 @@ cdef class ParallelReader:
             buf.timestamp       = 0       
             buf.found_endrun    = 0
             buf.endrun_ts       = 0
-    
+            buf.chunk      = <char *>malloc(self.chunksize)
+            buf.ts_arr     = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
+            buf.sv_arr     = <unsigned *>malloc(sizeof(unsigned) * self.max_events)
+            buf.st_offset_arr = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
+            buf.en_offset_arr = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
+            buf.result_stat= <struct_stat *>malloc(sizeof(struct_stat))
+
+    cdef void _free_buffers(self, Buffer* bufs):
+        cdef Py_ssize_t i
+        cdef Buffer* buf
+        if bufs:
+            for i in range(self.nfiles):
+                buf = &(bufs[i])
+                free(buf.chunk)
+                free(buf.ts_arr)
+                free(buf.sv_arr)
+                free(buf.st_offset_arr)
+                free(buf.en_offset_arr)
+                free(buf.result_stat)
+            free(bufs)
+
     @cython.boundscheck(False)
     cdef void just_read(self):
         """
@@ -73,13 +80,16 @@ cdef class ParallelReader:
 
         """
         cdef Py_ssize_t i       = 0
-        cdef int64_t got       = 0
-        cdef int64_t gots[1000]
-        cdef uint64_t offset    = 0
+        cdef int64_t got        = 0
+        cdef int64_t[:] gots    = self.gots
         cdef Dgram* d
         cdef Buffer* buf
         cdef Buffer* step_buf
         cdef uint64_t payload   = 0
+        cdef int fstat_err      = 0
+        cdef uint64_t cur_offset= 0
+        cdef uint64_t file_size = 0
+        cdef uint64_t read_size = 0
         self.got                = 0
         
         for i in prange(self.nfiles, nogil=True, num_threads=self.num_threads):
@@ -95,8 +105,13 @@ cdef class ParallelReader:
                 memcpy(buf.chunk, buf.chunk + buf.ready_offset, buf.got - buf.ready_offset)
             
             # read more data to fill up the buffer
-            gots[i] = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.ready_offset), \
-                    self.chunksize - (buf.got - buf.ready_offset) )
+            fstat_err = fstat(self.file_descriptors[i], buf.result_stat)
+            file_size = buf.result_stat.st_size
+            cur_offset= lseek(self.file_descriptors[i], 0, SEEK_CUR)
+            read_size = self.chunksize - (buf.got - buf.ready_offset) 
+            if file_size - cur_offset < read_size:
+                read_size = file_size - cur_offset
+            gots[i] = read(self.file_descriptors[i], buf.chunk+(buf.got-buf.ready_offset), read_size)
 
             # summing the size of all the new reads
             self.got += gots[i]
@@ -113,7 +128,7 @@ cdef class ParallelReader:
             step_buf.seen_offset    = 0
             step_buf.n_seen_events  = 0
             
-            while buf.ready_offset < buf.got:
+            while buf.ready_offset < buf.got and buf.n_ready_events < self.max_events:
                 if buf.got - buf.ready_offset >= sizeof(Dgram):
                     d = <Dgram *>(buf.chunk + buf.ready_offset)
                     payload = d.xtc.extent - sizeof(Xtc)

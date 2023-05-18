@@ -19,7 +19,7 @@ def piranha4_cdict():
     #ID point to the actuall Mongo DB collection and document
 
     top = cdict()
-    top.setAlg('config', [2,1,0])
+    top.setAlg('config', [2,2,0])
 
     top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     top.set("firmwareVersion:RO",   0, 'UINT32')
@@ -31,16 +31,19 @@ def piranha4_cdict():
     help_str += "\nvertical_bin : single pixel or binning of 2 pixels"
     top.set("help:RO", help_str, 'CHARSTR')
 
-    top.define_enum('clmEnum',   {'Base':0, 'Med':1, 'Full':2})
+    top.define_enum('clmEnum',   {'Base':0, 'Medium':1, 'Full':2})
     top.define_enum('clsEnum',   {'85MHz':0, '66MHz':1})
     top.define_enum('dstEnum',   {'Line':0, 'Area':1})
     top.define_enum('binEnum',   {'1_pixel':1, '2_pixels':2})
-    top.define_enum('dirEnum',   {'Fwd':0, 'Rev':1, 'Ext':2})
-    top.define_enum('expEnum',   {'Int':0, 'Ext':1})
+    top.define_enum('dirEnum',   {'Forward':0, 'Reverse':1, 'External':2})
+    top.define_enum('expEnum',   {'Internal':0, 'External':1})
     top.define_enum('offOnEnum', {'Off':0, 'On':1})
     top.define_enum('pixEnum',   {'8_bits':0, '10_bits':1, '12_bits':2})
-    top.define_enum('tpEnum',    {'Sensor_Video':0, 'Ramp':1})
+    top.define_enum('tpEnum',    {'Sensor_Video':0, 'Ramp':1, 'A5':3, 'Each_tap_fixed':4, 'All_1365':5, 'All_1':6})
     top.define_enum('tdiEnum',   {'Single_line':1, 'TDI':2})
+    top.define_enum('sesEnum',   {'All':0, 'Bottom':1, 'Top':2})
+    top.define_enum('usdEnum',   {'Factory':0})
+    top.define_enum('ffmEnum',   {'Disable':0, 'Enable':1, 'Reset':2, 'Scan':3})
 
     #Create a user interface that is an abstraction of the common inputs
     top.set("user.start_ns", 110000, 'UINT32')
@@ -54,7 +57,7 @@ def piranha4_cdict():
     top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition:RO',0,'UINT32')
 
     top.define_enum('rateEnum', fixedRateHzToMarker)
-    top.set('expert.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
+    top.set('expert.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',0,'rateEnum')
 
     # Feb[0] refers to pgp lane, Ch[0],[1] refers to camera link channel from Feb (these should be abstracted)
     # UartPiranha4 is camType; sets serial registers
@@ -84,23 +87,32 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SwControlValue",    0,'UINT32')   # Frame
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.SwControlEn"   ,    0,'UINT32')   # Frame
 
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",        0,'expEnum')   # Internal Exposure Mode for quick commanding (?!)
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLM",        1,'clmEnum')   # Camera Link Mode <0:Base 1:Med 2:Full>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLS",        0,'clsEnum')   # Camera Link Speed  <0 - 85MHz, 1 - 66MHz>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.DST",        0,'dstEnum')   # Device Scan Type <0 - Line Scan, 1 - Area Scan>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB",        0,  'INT32')   # Contrast Offset <DN>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSG", '0 f1.0','CHARSTR')   # Gain <0:System 1:Bottom Line 2:Top Line>  f<gain>
+    # The following are mostly in the order of the GCP dump
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",        0,'expEnum')   # Internal Exposure Mode for quicker commanding (?!)
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.USD",        0,'usdEnum')   # Default User Set <0:Factory>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",        1,'expEnum')   # Trigger Mode <0:Int 1:Ext>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSF",        1, 'UINT32')   # Internal Line Rate <Hz>; Requires 'STM 0'
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SES",        0,'sesEnum')   # Exposure Selector <0:All, 1:Bottom 2:Top>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SME",        0,'offOnEnum') # Multi-Exposure <0:Off, 1:On>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET",     4000, 'UINT32')   # Exposure Time <ns>; Min value is 4 us; Requires 'SEM 0'
+
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SVM",        0,'tpEnum')    # Test Pattern <0:Off, 1:Ramp, 3-6>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SCD",        0,'dirEnum')   # Direction <0:Fwd, 1:Rev 2:Ext>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STG",        1,'tdiEnum')   # Set TDI Stages <1:Single line, 2:TDI>       [Must preceed DST command]
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.DST",        0,'dstEnum')   # Device Scan Type <0:Line Scan, 1:Area Scan> [Must preceed SBV command]
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBV",        1,'binEnum')   # Vertical Binning <1|2> pixels
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBH",        1,'binEnum')   # Horizontal Binning <1|2> pixels
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SCD",        0,'dirEnum')   # Direction <0:Fwd, 1:Rev 2:Ext>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.FFM",        0,'ffmEnum')   # Flat Field Mode <0:Disable, 1:Enable, 2:Reset, 3:Scan>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB",        0,  'INT32')   # Contrast Offset <DN>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSG", '0 f1.0','CHARSTR')   # Gain <0:System Gain, 1:Bottom Line, 2:Top Line>  f<gain>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SMM",        0,'offOnEnum') # Mirroring <0:Off 1:On>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SAM",        0,'offOnEnum') # AOI Mode <0:Off/Disable 1:Active/Enable>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLS",        0,'clsEnum')   # Camera Link Speed  <0:85MHz, 1:66MHz>
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLM",        1,'clmEnum')   # Camera Link Mode <0:Base 1:Med 2:Full>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",        2,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
-    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SVM",        0,'tpEnum')    # Test Pattern <0-1>
-    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSF",        1, 'UINT32')   # Internal Line Rate <Hz>; Requires 'STM 0'
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STG",        1,'tdiEnum')   # Set TDI Stages <1:Single line 2:TDI>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.STM",        1,'expEnum')   # Trigger Mode <0:Int 1:Ext>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET",     4000, 'UINT32')   # Exposure Time <ns>; Min value is 4 us; Requires 'SEM 0'
-    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SEM",        1,'expEnum')   # Exposure Mode <0:Int 1:Ext>; Last as it slows commanding down
+    # This is broken or I'm not doing it right:
+    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.ROI[0]",     1, 'UINT32')   # Flat field ROI first pixel <An int in range [1-2048], 1st < 2nd>
+    #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.ROI[1]",  2048, 'UINT32')   # Flat field ROI last  pixel <An int in range [1-2048], 2nd > 1st>
 
     return top
 

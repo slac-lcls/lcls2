@@ -190,8 +190,9 @@ def user_to_expert(prefix, cfg, full=False):
         #  This is not so good; using timebase to distinguish LCLS from UED
         if timebase=='186M':
             lcls1Delay = 0.9e-3*119e6
+            print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}'.format(lcls1Delay,partitionDelay,delta))
             triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
-            print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
+            print('triggerDelay {:}'.format(triggerDelay))
             if triggerDelay < 0:
                 print('Raise delta_ns >= {:}'.format((partitionDelay*200 - lcls1Delay*1300/(7*119)) * 7000/1300))
                 raise ValueError('triggerDelay computes to < 0')

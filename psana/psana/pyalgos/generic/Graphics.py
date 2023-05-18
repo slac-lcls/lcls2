@@ -73,6 +73,7 @@ import matplotlib.pyplot  as plt
 import matplotlib.lines   as lines
 import matplotlib.patches as patches
 
+#logging.getLogger('matplotlib').setLevel(logging.WARNING)
 plt.rcParams.update({'figure.max_open_warning': 0}) #get rid of warning: More than 20 figures have been opened.
 
 
@@ -113,7 +114,7 @@ def set_win_title(fig, titwin='Image', **kwa):
 def move_fig(fig, x0=200, y0=100):
     #fig.canvas.manager.window.geometry('+%d+%d' % (x0, y0)) # in previous version of matplotlib
     backend = matplotlib.get_backend()
-    logger.debug('matplotlib.get_backend(): %s' % backend)
+    #logger.debug('matplotlib.get_backend(): %s' % backend)
     if backend == 'TkAgg': # this is our case
         fig.canvas.manager.window.wm_geometry("+%d+%d" % (x0, y0))
     elif backend == 'WXAgg':

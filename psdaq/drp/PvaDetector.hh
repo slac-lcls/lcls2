@@ -14,23 +14,21 @@
 
 namespace Drp {
 
-class PvaDetector;
+struct PvaParameters;
+class  PvaDetector;
 
 class PvaMonitor : public Pds_Epics::PvMonitorBase
 {
 public:
-    PvaMonitor(Parameters&        para,
-               const std::string& pvName,
-               const std::string& provider,
-               const std::string& request,
-               const std::string& fieldName);
+    PvaMonitor(const PvaParameters& para,
+               PvaDetector&         pvaDetector);
 public:
     void onConnect()    override;
     void onDisconnect() override;
     void updated()      override;
 public:
     void clear();
-    int  getVarDef(PvaDetector* pvaDetector, XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: rankHack!
+    int  getVarDef(XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: rankHack!
     size_t rank() {return m_rank;}
 private:
     enum State { NotReady, Ready };
@@ -42,14 +40,18 @@ private:
     size_t                          m_nelem;
     size_t                          m_rank;
     State                           m_state;
-    PvaDetector*                    m_pvaDetector;
+    PvaDetector&                    m_pvaDetector;
+    ZmqContext                      m_context;
+    ZmqSocket                       m_notifySocket;
 };
 
 
 class PvaDetector : public XpmDetector
 {
 public:
-    PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonitor, DrpBase& drp);
+    PvaDetector(PvaParameters& para, DrpBase& drp);
+    unsigned connect(std::string& msg);
+    unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
@@ -65,6 +67,7 @@ private:
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
     enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
+    const PvaParameters& m_para;
     DrpBase& m_drp;
     std::shared_ptr<PvaMonitor> m_pvaMonitor;
     std::thread m_workerThread;
@@ -90,7 +93,7 @@ private:
 class PvaApp : public CollectionApp
 {
 public:
-    PvaApp(Parameters& para, std::shared_ptr<PvaMonitor> pvaMonitor);
+    PvaApp(PvaParameters& para);
     ~PvaApp();
     void handleReset(const nlohmann::json& msg) override;
 private:
@@ -104,7 +107,7 @@ private:
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:
     DrpBase m_drp;
-    Parameters& m_para;
+    PvaParameters& m_para;
     std::unique_ptr<PvaDetector> m_pvaDetector;
     Detector* m_det;
     bool m_unconfigure;

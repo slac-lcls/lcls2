@@ -84,7 +84,16 @@ class encoder_raw_2_0_0(encoder_raw_0_0_1):
         if (segments[0].scaleDenom[0] > 0):
             return segments[0].encoderValue[0]*(float(segments[0].scale[0])/float(segments[0].scaleDenom[0]))
         else:
-            return super().value(self,evt)
+            return super().value(evt)
+
+class encoder_raw_2_1_0(encoder_raw_2_0_0):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def value(self,evt) -> float:
+        """
+        Version 2.1.0 adds innerCount field.  The return value is unaffected.
+        """
+        return super().value(evt)
 
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):

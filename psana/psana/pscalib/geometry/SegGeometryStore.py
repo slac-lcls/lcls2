@@ -14,6 +14,7 @@ Usage::
     sg = sgs.Create(segname='EPIX100:V1')
     sg = sgs.Create(segname='EPIX10KA:V1')
     sg = sgs.Create(segname='EPIXHR2X2:V1')
+    sg = sgs.Create(segname='EPIXHR1X4:V1')
     sg = sgs.Create(segname='PNCCD:V1')
     sg = sgs.Create(segname='JUNGFRAU:V1')
     sg = sgs.Create(segname='JUNGFRAU:V2')
@@ -45,6 +46,7 @@ See:
  * :py:class:`SegGeometryEpix100V1`,
  * :py:class:`SegGeometryEpix10kaV1`,
  * :py:class:`SegGeometryEpixHR2x2V1`
+ * :py:class:`SegGeometryEpixHR1x4V1`
  * :py:class:`SegGeometryJungfrauV1`,
  * :py:class:`SegGeometryMatrixV1`,
  * :py:class:`SegGeometryStore`
@@ -73,6 +75,9 @@ def segment_geometry(**kwa):
     elif segname=='EPIXHR2X2:V1':
         from psana.pscalib.geometry.SegGeometryEpixHR2x2V1 import epixhr2x2_one, epixhr2x2_wpc
         return epixhr2x2_wpc if wpc else epixhr2x2_one
+    elif segname=='EPIXHR1X4:V1':
+        from psana.pscalib.geometry.SegGeometryEpixHR1x4V1 import epixhr1x4_one, epixhr1x4_wpc
+        return epixhr1x4_wpc if wpc else epixhr1x4_one
     elif segname[:7]=='MTRX:V2':
         from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
         rows, cols, psize_row, psize_col = matrix_pars_v2(segname)

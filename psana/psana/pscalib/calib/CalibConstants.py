@@ -173,15 +173,14 @@ dic_det_name_to_type = dict(zip(list_det_names, list_det_types))
 
 
 if __name__ == "__main__":
-  def test_constants() :
-    print('URL_ENV  : %s' % str(URL_ENV ))
-    print('URL      : %s' % str(URL     ))
-    print('URL_KRB  : %s' % str(URL_KRB ))
-    print('HOST     : %s' % str(HOST    ))
-    print('PORT     : %s' % str(PORT    ))
-    print('USERNAME : %s' % str(USERNAME))
-    print('USERPW   : %s' % str(USERPW  ))
-
+  def test_constants():
+    print('URL_ENV  : %s' % str(URL_ENV )\
+      + '\nURL      : %s' % str(URL     )\
+      + '\nURL_KRB  : %s' % str(URL_KRB )\
+      + '\nHOST     : %s' % str(HOST    )\
+      + '\nPORT     : %s' % str(PORT    )\
+      + '\nUSERNAME : %s' % str(USERNAME)\
+      + '\nUSERPW   : %s' % str(USERPW  ))
 
 if __name__ == "__main__":
 

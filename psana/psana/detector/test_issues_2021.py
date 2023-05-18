@@ -202,7 +202,7 @@ def issue_2021_02_03():
         if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
 
         print('%s\nEvent %04d' % (80*'_',ievt))
-        segs = det.raw._segment_numbers(evt)
+        segs = det.raw._segment_numbers
         raw  = det.raw.raw(evt)
 
         print(info_ndarr(segs, 'segsments '))

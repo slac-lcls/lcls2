@@ -85,7 +85,7 @@ class SmdReaderManager(object):
                 self.smd0_n_events = self.dsparms.max_events
         
         # Sets the memory size for smalldata buffer for each stream file.
-        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000000))
+        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x10000000))
 
         self.smdr = SmdReader(smd_fds, self.chunksize, self.dsparms.max_retries)
         self.processed_events = 0

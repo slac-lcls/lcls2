@@ -55,6 +55,7 @@ ami_workers_per_node = 4
 ami_worker_nodes = ["drp-srcf-cmp019"]
 ami_num_workers = len(ami_worker_nodes)
 ami_manager_node = "drp-srcf-cmp019"
+ami_monitor_node = "drp-srcf-cmp019"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -80,6 +81,7 @@ procmgr_config = [
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
+# mona: -x sets XPM# (see confluence page eg. 3 is rix timing)
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 0 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
@@ -87,23 +89,8 @@ procmgr_config = [
  {host: 'drp-srcf-cmp019', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
 
  {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
- {host: 'drp-srcf-cmp029', id:'tstcam5_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp029', id:'tstcam6_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x4 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp029', id:'tstcam7_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D fakecam -k sim_length=1160'},
-
- {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp029', id:'tstcam3_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp029', id:'tstcam4_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D fakecam -k sim_length=1160'},
- 
- #{host: 'drp-srcf-cmp010', id:'tstcam8_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp010', id:'tstcam9_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp010', id:'tstcam10_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp010', id:'tstcam11_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp010', id:'tstcam12_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp010', id:'tstcam13_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D fakecam -k sim_length=1160'},
- {host: 'drp-srcf-cmp010', id:'tstcam14_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x4 -D fakecam -k sim_length=1160'},
- #{host: 'drp-srcf-cmp010', id:'tstcam15_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D fakecam -k sim_length=1160'},
+ {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
+ {host: 'drp-srcf-cmp004', id:'txi_fim1_0',  flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x20 -D wave8 -k epics_prefix=TXI:RP:W8:01'},
 ]
 
 #
@@ -124,4 +111,4 @@ for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env,
                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}'})
 
-procmgr_config.extend(procmgr_ami)
+#procmgr_config.extend(procmgr_ami)

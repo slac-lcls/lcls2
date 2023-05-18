@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
   os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
 
-  def test_wfviewcolorbar(tname):
+  def test_fwviewcolorbar(tname):
     print('%s:' % sys._getframe().f_code.co_name)
     arr = np.random.random((1000, 100))
     #arr = image_with_random_peaks((1000, 1000))
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s' % tname)
-    test_wfviewcolorbar(tname)
+    test_fwviewcolorbar(tname)
     sys.exit('End of Test %s' % tname)
 
 # EOF

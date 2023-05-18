@@ -4,6 +4,7 @@ import sys, os
 from psana import DataSource
 import numpy as np
 import vals
+import zmq
 
 known_epics_pedestals = np.array([[11.,12.,13.,14.,15.,16.],
      [21.,22.,23.,24.,25.,26.],

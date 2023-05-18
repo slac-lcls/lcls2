@@ -115,8 +115,8 @@ import psana.detector.UtilsEpix10ka as ue
 from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 import psana.pyalgos.generic.PSUtils as psu
 
-gain_maps_epix10ka_any_alg, event_constants_for_gmaps, cbits_config_epix10ka, cbits_config_epixhr2x2 =\
-ue.gain_maps_epix10ka_any_alg, ue.event_constants_for_gmaps, ue.cbits_config_epix10ka, ue.cbits_config_epixhr2x2
+gain_maps_epix10ka_any_alg, event_constants_for_gmaps, cbits_config_epix10ka, cbits_config_epixhr2x2, cbits_config_epixhr1x4 =\
+ue.gain_maps_epix10ka_any_alg, ue.event_constants_for_gmaps, ue.cbits_config_epix10ka, ue.cbits_config_epixhr2x2, ue.cbits_config_epixhr1x4
 
 
 def event_constants_for_gmaps(gmaps, cons, default=0):
@@ -220,7 +220,7 @@ class calib_components_epix():
             metad = self.calib_metadata(ctype='pedestals')
             if metad is None: return None
             self._dettype = metad.get('dettype', None)
-            if 'epixhr' in self._dettype: self._dettype = 'epixhr'  # trancates epixhr2x2
+            if 'epixhr' in self._dettype: self._dettype = 'epixhr'  # trancates epixhr2x2, epixhremu
         return self._dettype
 
     def data_bit_mask(self):
@@ -235,7 +235,8 @@ class calib_components_epix():
         """analog of epix_base._cbits_config_segment, where cob is self.config[<segment-number>].config """
         dettype = self.dettype()
         return cbits_config_epixhr2x2(cob, shape=(288, 384)) if dettype == 'epixhr' else\
-               cbits_config_epix10ka(cob, shape=(352, 384)) if dettype == 'epix10ka' else\
+               cbits_config_epixhr1x4(cob, shape=(144, 768)) if dettype == 'epixhremu' else\
+               cbits_config_epix10ka(cob, shape=(352, 384))  if dettype == 'epix10ka' else\
                None
 
     def cbits_config_detector_alg(self):

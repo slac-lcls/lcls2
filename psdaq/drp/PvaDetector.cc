@@ -31,6 +31,18 @@ using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
 
+namespace Drp {
+
+struct PvaParameters : public Parameters
+{
+    std::string pvName;
+    std::string provider;
+    std::string request;
+    std::string field;
+};
+
+};
+
 static const XtcData::TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
                                         std::numeric_limits<unsigned>::max());
 static unsigned tsMatchDegree = 2;
@@ -82,39 +94,47 @@ static const XtcData::Name::DataType xtype[] = {
   XtcData::Name::CHARSTR, // pvString
 };
 
-PvaMonitor::PvaMonitor(Parameters&        para,
-                       const std::string& pvName,
-                       const std::string& provider,
-                       const std::string& request,
-                       const std::string& field) :
-    Pds_Epics::PvMonitorBase(pvName, provider, request, field),
+PvaMonitor::PvaMonitor(const PvaParameters& para,
+                       PvaDetector&         pvaDetector) :
+    Pds_Epics::PvMonitorBase(para.pvName, para.provider, para.request, para.field),
     m_para                  (para),
     m_state                 (NotReady),
-    m_pvaDetector           (nullptr)
+    m_pvaDetector           (pvaDetector),
+    m_notifySocket          {&m_context, ZMQ_PUSH}
 {
+    // ZMQ socket for reporting errors
+    m_notifySocket.connect({"tcp://" + m_para.collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para.partition)});
 }
 
 void PvaMonitor::clear()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    disconnect();
-    m_pvaDetector = nullptr;
     m_state = NotReady;
-    reconnect();
 }
 
-int PvaMonitor::getVarDef(PvaDetector*     pvaDetector,
-                          XtcData::VarDef& varDef,
+int PvaMonitor::getVarDef(XtcData::VarDef& varDef,
                           size_t&          payloadSize,
                           size_t           rankHack)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
-    const std::chrono::seconds tmo(3);
-    m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
-    if (m_state != Ready)  return 1;
 
-    m_pvaDetector = pvaDetector;
+    if (m_state != Ready) {
+        if (getParams(m_type, m_nelem, m_rank))  {
+            const std::chrono::seconds tmo(3);
+            m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
+            if (m_state != Ready) {
+                auto msg("Failed to get parameters for PV "+ name());
+                logging::error("getVardef: %s", msg.c_str());
+                json jmsg = createAsyncErrMsg(m_para.alias, msg);
+                m_notifySocket.send(jmsg.dump());
+                return 1;
+            }
+        }
+        else {
+            m_state = Ready;
+        }
+    }
 
     size_t rank = m_rank;
     if (rankHack != size_t(-1))
@@ -134,7 +154,7 @@ int PvaMonitor::getVarDef(PvaDetector*     pvaDetector,
 
 void PvaMonitor::onConnect()
 {
-    logging::info("%s connected", name().c_str());
+    logging::info("PV %s connected", name().c_str());
 
     if (m_para.verbose) {
         if (printStructure())
@@ -144,7 +164,10 @@ void PvaMonitor::onConnect()
 
 void PvaMonitor::onDisconnect()
 {
-    logging::info("%s disconnected", name().c_str());
+    auto msg("PV "+ name() + " disconnected");
+    logging::error("%s", msg.c_str());
+    json jmsg = createAsyncErrMsg(m_para.alias, msg);
+    m_notifySocket.send(jmsg.dump());
 }
 
 void PvaMonitor::updated()
@@ -157,7 +180,7 @@ void PvaMonitor::updated()
         //static XtcData::TimeStamp ts_prv(0, 0);
         //
         //if (timestamp > ts_prv) {
-        if (m_pvaDetector)  m_pvaDetector->process(timestamp);
+        m_pvaDetector.process(timestamp);
         //}
         //else {
         //  printf("Updated: ts didn't advance: new %016lx  prv %016lx  d %ld\n",
@@ -181,10 +204,7 @@ void PvaMonitor::updated()
     else {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (getParams(m_type, m_nelem, m_rank))  {
-            logging::error("updated: getParams() failed");
-        }
-        else {
+        if (!getParams(m_type, m_nelem, m_rank))  {
             m_state = Ready;
         }
         m_condition.notify_one();
@@ -222,18 +242,19 @@ private:
 
 Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
-    uint32_t evtCounter;
-    const Pds::TimingHeader* timingHeader = handle(m_det, m_current, evtCounter);
+    const Pds::TimingHeader* timingHeader = handle(m_det, m_current);
     if (!timingHeader)  return nullptr;
+
+    uint32_t pgpIndex = timingHeader->evtCounter & (m_pool.nDmaBuffers() - 1);
+    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
-    evtIndex = evtCounter & (m_pool.nbuffers() - 1);
-    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
+    evtIndex = event->pebbleIndex;
+    XtcData::Src src = m_det->nodeId;
+    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, src, m_para.rogMask);
 
     // Collect indices of DMA buffers that can be recycled and reset event
-    uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
-    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
     freeDma(event);
 
     return dgram;
@@ -257,10 +278,11 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 }
 
 
-PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonitor, DrpBase& drp) :
+PvaDetector::PvaDetector(PvaParameters& para,
+                         DrpBase&       drp) :
     XpmDetector     (&para, &drp.pool),
+    m_para          (para),
     m_drp           (drp),
-    m_pvaMonitor    (pvaMonitor),
     m_evtQueue      (drp.pool.nbuffers()),
     m_pvQueue       (drp.pool.nbuffers()),
     m_bufferFreelist(m_pvQueue.size()),
@@ -270,6 +292,28 @@ PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonit
 {
     if (para.kwargs.find("firstdim") != para.kwargs.end())
         m_firstDimKw = std::stoul(para.kwargs["firstdim"]);
+}
+
+unsigned PvaDetector::connect(std::string& msg)
+{
+    try {
+        m_pvaMonitor = std::make_shared<Drp::PvaMonitor>(m_para, *this);
+    }
+    catch(std::string& error) {
+        logging::error("Failed to create PvaMonitor( %s ): %s",
+                       m_para.pvName.c_str(), error.c_str());
+        m_pvaMonitor.reset();
+        msg = error;
+        return 1;
+    }
+
+    return 0;
+}
+
+unsigned PvaDetector::disconnect()
+{
+    m_pvaMonitor.reset();
+    return 0;
 }
 
 //std::string PvaDetector::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
@@ -289,13 +333,12 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     XtcData::Alg     rawAlg("raw", 1, 0, 0);
     XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
     XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                 m_para->detName.c_str(), rawAlg,
-                                                                 m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId);
+                                                                 m_para.detName.c_str(), rawAlg,
+                                                                 m_para.detType.c_str(), m_para.serNo.c_str(), rawNamesId);
     size_t           payloadSize;
     XtcData::VarDef  rawVarDef;
     size_t           rankHack = m_firstDimKw != 0 ? 2 : -1; // Revisit: Hack!
-    if (m_pvaMonitor->getVarDef(this, rawVarDef, payloadSize, rankHack)) {
-        logging::error("Failed to connect with %s", m_pvaMonitor->name().c_str());
+    if (m_pvaMonitor->getVarDef(rawVarDef, payloadSize, rankHack)) {
         return 1;
     }
     payloadSize += (sizeof(Pds::EbDgram)    + // An EbDgram is needed by the MEB
@@ -316,7 +359,7 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
                                                                   "epicsinfo", "detnum1234", infoNamesId);
     XtcData::VarDef  infoVarDef;
     infoVarDef.NameVec.push_back({"keys", XtcData::Name::CHARSTR, 1});
-    infoVarDef.NameVec.push_back({m_para->detName.c_str(), XtcData::Name::CHARSTR, 1});
+    infoVarDef.NameVec.push_back({m_para.detName.c_str(), XtcData::Name::CHARSTR, 1});
     infoNames.add(xtc, bufEnd, infoVarDef);
     m_namesLookup[infoNamesId] = XtcData::NameIndex(infoNames);
 
@@ -354,7 +397,7 @@ unsigned PvaDetector::unconfigure()
     m_pvQueue.shutdown();
     m_evtQueue.shutdown();
     m_bufferFreelist.shutdown();
-    m_pvaMonitor->clear();   // Start afresh
+    if (m_pvaMonitor)  m_pvaMonitor->clear();   // Start afresh
     m_namesLookup.clear();   // erase all elements
 
     return 0;
@@ -404,34 +447,34 @@ void PvaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgp
 void PvaDetector::_worker()
 {
     // setup monitoring
-    std::map<std::string, std::string> labels{{"instrument", m_para->instrument},
-                                              {"partition", std::to_string(m_para->partition)},
-                                              {"detname", m_para->detName},
-                                              {"detseg", std::to_string(m_para->detSegment)},
-                                              {"alias", m_para->alias}};
+    std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
+                                              {"partition", std::to_string(m_para.partition)},
+                                              {"detname", m_para.detName},
+                                              {"detseg", std::to_string(m_para.detSegment)},
+                                              {"alias", m_para.alias}};
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
     m_nUpdates = 0;
-    m_exporter->add("pva_update_rate", labels, Pds::MetricType::Rate,
+    m_exporter->add("drp_update_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nUpdates;});
     m_nMatch = 0;
-    m_exporter->add("pva_match_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_match_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nMatch;});
     m_nEmpty = 0;
-    m_exporter->add("pva_empty_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_empty_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nEmpty;});
     m_nMissed = 0;
-    m_exporter->add("pva_miss_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_miss_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nMissed;});
     m_nTooOld = 0;
-    m_exporter->add("pva_tooOld_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_tooOld_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nTooOld;});
     m_nTimedOut = 0;
-    m_exporter->add("pva_timeout_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_timeout_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nTimedOut;});
     m_timeDiff = 0;
-    m_exporter->add("pva_time_diff", labels, Pds::MetricType::Gauge,
+    m_exporter->add("drp_time_diff", labels, Pds::MetricType::Gauge,
                     [&](){return m_timeDiff;});
 
     m_exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
@@ -442,7 +485,7 @@ void PvaDetector::_worker()
     m_exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
                     [&](){return m_pvQueue.guess_size();});
 
-    Pgp pgp(*m_para, m_drp, this, m_running);
+    Pgp pgp(m_para, m_drp, this, m_running);
 
     m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nDmaRet();});
@@ -463,8 +506,8 @@ void PvaDetector::_worker()
     m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nNoTrDgrams();});
 
-    const uint64_t msTmo = m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end()
-                         ? std::stoul(m_para->kwargs["match_tmo_ms"])
+    const uint64_t msTmo = m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end()
+                         ? std::stoul(Detector::m_para->kwargs["match_tmo_ms"])
                          : 1333; // Avoid event rate multiples and factors
 
     enum TmoState { None, Started, Finished };
@@ -510,7 +553,7 @@ void PvaDetector::_worker()
             else {
                 // Find the transition dgram in the pool and initialize its header
                 Pds::EbDgram* trDgram = m_pool->transitionDgrams[index];
-                const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
+                const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
                 if (!trDgram)  continue; // Can happen during shutdown
                 *trDgram = *dgram;
                 // copy the temporary xtc created on phase 1 of the transition
@@ -751,7 +794,7 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
     const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
                          ? m_pool->pebble.bufferSize()
-                         : m_para->maxTrSize;
+                         : m_para.maxTrSize;
     if (size > maxSize) {
         logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
         throw "Dgram overflowed buffer";
@@ -770,11 +813,11 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 }
 
 
-PvaApp::PvaApp(Parameters& para, std::shared_ptr<PvaMonitor> pvaMonitor) :
+PvaApp::PvaApp(PvaParameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_pvaDetector(std::make_unique<PvaDetector>(m_para, pvaMonitor, m_drp)),
+    m_pvaDetector(std::make_unique<PvaDetector>(para, m_drp)),
     m_det(m_pvaDetector.get()),
     m_unconfigure(false)
 {
@@ -800,6 +843,7 @@ void PvaApp::_disconnect()
 {
     m_drp.disconnect();
     m_det->shutdown();
+    m_pvaDetector->disconnect();
 }
 
 void PvaApp::_unconfigure()
@@ -839,15 +883,29 @@ void PvaApp::_error(const std::string& which, const nlohmann::json& msg, const s
 
 void PvaApp::handleConnect(const nlohmann::json& msg)
 {
-    m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
-    m_det->connect(msg, std::to_string(getId()));
-
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in DrpBase::connect");
         logging::error("%s", errorMsg.c_str());
         _error("connect", msg, errorMsg);
         return;
+    }
+
+    m_det->nodeId = m_drp.nodeId();
+    m_det->connect(msg, std::to_string(getId()));
+
+    unsigned rc = m_pvaDetector->connect(errorMsg);
+    if (!errorMsg.empty()) {
+        if (!rc) {
+            logging::warning(("PvaDetector::connect: " + errorMsg).c_str());
+            json warning = createAsyncWarnMsg(m_para.alias, errorMsg);
+            reply(warning);
+        }
+        else {
+            logging::error(("PvaDetector::connect: " + errorMsg).c_str());
+            _error("connect", msg, errorMsg);
+            return;
+        }
     }
 
     json body = json({});
@@ -909,6 +967,7 @@ void PvaApp::handlePhase1(const json& msg)
         }
 
         m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -963,7 +1022,7 @@ void PvaApp::handleReset(const nlohmann::json& msg)
 
 int main(int argc, char* argv[])
 {
-    Drp::Parameters para;
+    Drp::PvaParameters para;
     std::string kwargs_str;
     int c;
     while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:01v")) != EOF) {
@@ -1062,10 +1121,9 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     // Provider is "pva" (default) or "ca"
-    std::string pv;                     // [<provider>/]<PV name>[.<field>]
-    if (optind < argc)
+    if (optind < argc)                  // [<provider>/]<PV name>[.<field>]
     {
-        pv = argv[optind++];
+        para.pvName = argv[optind++];
 
         if (optind < argc)
         {
@@ -1101,22 +1159,22 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-        std::string provider = "pva";
-        std::string field    = "value";
-        auto pos = pv.find("/", 0);
+        para.provider = "pva";
+        para.field    = "value";
+        auto pos = para.pvName.find("/", 0);
         if (pos != std::string::npos) { // Parse provider
-            provider = pv.substr(0, pos);
-            pv       = pv.substr(pos+1);
+            para.provider = para.pvName.substr(0, pos);
+            para.pvName   = para.pvName.substr(pos+1);
         }
-        pos = pv.find(".", 0);
-        if (pos != std::string::npos) { // Parse field
-            field = pv.substr(pos+1);
-            pv    = pv.substr(0, pos);
+        pos = para.pvName.find(".", 0);
+        if (pos != std::string::npos) { // Parse field name
+            para.field  = para.pvName.substr(pos+1);
+            para.pvName = para.pvName.substr(0, pos);
         }
-        auto request(provider == "pva" ? "field(value,timeStamp,dimension)"
-                                       : "field(value,timeStamp)");
-        auto pvaMonitor(std::make_shared<Drp::PvaMonitor>(para, pv, provider, request, field));
-        Drp::PvaApp(para, pvaMonitor).run();
+        para.request = para.provider == "pva" ? "field(value,timeStamp,dimension)"
+                                              : "field(value,timeStamp)";
+
+        Drp::PvaApp(para).run();
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }

@@ -105,7 +105,7 @@ def run_parser_do_main():
     #save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
     #from psana.detector.RepoManager import RepoManager
     import psana.detector.RepoManager as rm
-    repoman = rm.RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=umask, group=group)
+    repoman = rm.RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, umask=umask, group=group)
     logfname = repoman.logname('%s_%s' % (procname, rm.ut.get_login()))
     logger.info('Logfile: %s' % logfname)
     init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)

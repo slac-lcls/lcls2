@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`logger` - set of utilities for standard python logging facility
 ==========================================================================
@@ -31,17 +31,8 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2018-03-15 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
-
-#LOGLEVELS = {'info'    : logging.INFO, 
-#             'debug'   : logging.DEBUG,
-#             'warning' : logging.WARNING,
-#             'warn'    : logging.WARN,
-#             'error'   : logging.ERROR,
-#             'critical': logging.CRITICAL,
-#             'notset'  : logging.NOTSET}
 
 DICT_LEVEL_TO_NAME = logging._levelToName # {0: 'NOTSET', 50: 'CRITICAL',...
 DICT_NAME_TO_LEVEL = logging._nameToLevel # {'INFO': 20, 'WARNING': 30, 'WARN': 30,...
@@ -49,14 +40,12 @@ LEVEL_NAMES = list(logging._levelToName.values())
 STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 TSFORMAT = '%Y-%m-%dT%H:%M:%S' #%z'
 
-#------------------------------
 
 def init_logger(loglev_name='DEBUG', fmt='[%(levelname).1s] L%(lineno)04d : %(message)s', datefmt=TSFORMAT) :
     #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
     logging.basicConfig(format=fmt, datefmt=datefmt, level=DICT_NAME_TO_LEVEL[loglev_name])
     logging.debug('Logger is initialized for level %s' % loglev_name)
 
-#------------------------------
 
 def config_logger(loglevel='DEBUG',\
                   fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s',\
@@ -76,7 +65,6 @@ def config_logger(loglevel='DEBUG',\
     #print('XXX: handler:', dir(logging._handlerList[0]))
     #print('XXX: dir(logging.Formatter()):', dir(logging.Formatter()))
 
-#------------------------------
 
 class MyLogFilter(logging.Filter):
     """Can be used to intercept all messages.
@@ -96,7 +84,6 @@ class MyLogFilter(logging.Filter):
 
         return True
 
-#------------------------------
 
 if __name__ == "__main__" :
   def test_logger(level) :
@@ -108,10 +95,10 @@ if __name__ == "__main__" :
     logger = logging.getLogger(__name__)
     logger.addFilter(MyLogFilter())
 
-    logger.debug    ('Test message logger.debug   ')
-    logger.info     ('Test message logger.info    ')
-    logger.warning  ('Test message logger.warning ')
-    logger.error    ('Test message logger.error   ')
+    logger.debug    ('Test message logger.debug')
+    logger.info     ('Test message logger.info')
+    logger.warning  ('Test message logger.warning')
+    logger.error    ('Test message logger.error')
     logger.critical ('Test message logger.critical')
     logger.exception('Test message logger.exception')
     logger.log(logging.DEBUG, 'This is a test message logger.log(logging.DEBUG,msg)')
@@ -119,7 +106,6 @@ if __name__ == "__main__" :
     #print('XXX: dir(logger):', dir(logger))
     #print('XXX: list of handlers: ', logger.handlers)
 
-#------------------------------
 
 if __name__ == "__main__" :
     import sys
@@ -127,4 +113,4 @@ if __name__ == "__main__" :
     test_logger(level)
     sys.exit('End of test')
 
-#------------------------------
+# EOF

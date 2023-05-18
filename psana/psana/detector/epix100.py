@@ -13,6 +13,7 @@ class epix100hw_raw_2_0_1(ad.AreaDetector):
     def __init__(self, *args, **kwa):
         ad.AreaDetector.__init__(self, *args, **kwa)
         self._seg_geo = ad.sgs.Create(segname='EPIX100:V1')
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix100a.data'
 
     def image(self,evt):
         """substitution for real image."""
@@ -28,6 +29,7 @@ class epix100_raw_2_0_1(ad.AreaDetector):
         self._data_bit_mask = 0xffff
         self._gain_ = None # ADU/eV
         self._gain_factor_ = None # keV/ADU
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix100a.data'
 
 
     def _gain(self):
@@ -55,15 +57,6 @@ class epix100_raw_2_0_1(ad.AreaDetector):
 
     def _common_mode_increment(self, evt, cmpars=(0,7,100,10), **kwa):
         return ue100.common_mode_increment(self, evt, cmpars=cmpars, **kwa)
-
-
-    def _det_geotxt_default(self):
-        """returns (str) default geometry constants from lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data
-        """
-        dir_detector = os.path.abspath(os.path.dirname(__file__))
-        fname = '%s/../pscalib/geometry/data/geometry-def-epix100a.data' % dir_detector
-        logger.debug('_det_geotxt_default from file: %s' % fname)
-        return ad.ut.load_textfile(fname)
 
 
     def calib(self, evt, cmpars=None, **kwa): #cmpars=(0,7,100,10)):

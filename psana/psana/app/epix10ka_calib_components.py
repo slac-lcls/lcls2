@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 DICT_NAME_TO_LEVEL = logging._nameToLevel # {'INFO': 20, 'WARNING': 30, 'WARN': 30,...
 
 from psana.detector.Utils import info_parser_arguments
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
+from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d
 from psana import DataSource
 from psana.detector.UtilsGraphics import gr, fleximagespec#, fleximage, flexhist
 from psana.detector.utils_psana import datasource_kwargs_from_string
@@ -29,7 +29,6 @@ from psana.detector.utils_psana import datasource_kwargs_from_string
 from psana.detector.UtilsEpix10ka  import event_constants
 import argparse
 
-#      + '\n    %s -k exp=ueddaq02,run=554 -d epixquad -t1' % SCRNAME\
 USAGE = '\n    %s -h' % SCRNAME\
       + '\n    %s -r554 -t1' % SCRNAME\
       + '\n    %s -k /cds/data/psdm/prj/public01/xtc/ueddaq02-r0569-s001-c000.xtc2 -d epixquad -t1' % SCRNAME\
@@ -48,7 +47,8 @@ USAGE = '\n    %s -h' % SCRNAME\
       + '\n     ----'\
       + '\n     21 - run 401 two-threshold selection issue'\
       + '\n     22 - (raw-peds)/gain, keV hot - specific isuue test'\
-      + '\n     23 - (raw-peds)/gain, keV cold - specific isuue test'
+      + '\n     23 - (raw-peds)/gain, keV cold - specific isuue test'\
+      + '\n'
 
 d_dskwargs = None
 d_detname = 'epixquad'
@@ -84,7 +84,7 @@ parser.add_argument('--amax',          default=d_amax,    type=float, help='spec
 parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
 
 args = parser.parse_args()
-print('*** parser.parse_args: %s' % str(args))
+logger.info('*** parser.parse_args: %s' % str(args))
 
 logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
@@ -116,17 +116,19 @@ det = orun.Detector(args.detname)
 MDB = det.raw._data_bit_mask # M14 if det.raw._dettype == 'epix10ka' else M15
 prefix = 'ims-%s-r%04d' % (orun.expt, orun.runnum)
 
+keys = det.raw._calibconst.keys()
+
 print('*** det.raw._data_bit_mask_: %s' % oct(MDB))
-print('*** det.raw._calibconst.keys:', det.raw._calibconst.keys())
-print('*** pedestal metadata:', det.raw._calibconst['pedestals'][1])
-print('*** gain metadata:', det.raw._calibconst['pixel_gain'][1])
+print('*** det.raw._calibconst.keys:', keys)
+print('*** pedestal metadata:', det.raw._calibconst['pedestals'][1] if 'pedestals' in keys else None)
+print('*** gain metadata:', det.raw._calibconst['pixel_gain'][1] if 'pixel_gain' in keys else None)
 #print('*** rms metadata:', det.raw._calibconst['pixel_rms'][1])
 #print('*** status metadata:', det.raw._calibconst['pixel_status'][1])
 
-peds   = det.raw._calibconst['pedestals'][0]
-gain   = det.raw._calibconst['pixel_gain'][0]
-rms    = det.raw._calibconst['pixel_rms'][0]
-status = det.raw._calibconst['pixel_status'][0]
+peds   = det.raw._calibconst['pedestals'][0]    if 'pedestals'    in keys else None
+gain   = det.raw._calibconst['pixel_gain'][0]   if 'pixel_gain'   in keys else None
+rms    = det.raw._calibconst['pixel_rms'][0]    if 'pixel_rms'    in keys else None
+status = det.raw._calibconst['pixel_status'][0] if 'pixel_status' in keys else None
 print(info_ndarr(peds,'pedestals'))
 print(info_ndarr(rms,'rms'))
 print(info_ndarr(gain,'gain, ADU/keV'))
@@ -202,16 +204,25 @@ for nstep,step in enumerate(orun.steps()):
     elif tname=='6':
         suffix = 'raw-%s' % step_evt
         arr = det.raw.raw(evt) & MDB
-        AMIN, AMAX = amin_amax(args, amin_def=2000, amax_def=4000)
+        AMIN, AMAX = None, None # amin_amax(args, amin_def=2000, amax_def=4000)
+        ofname = suffix + '.npy'
+        logger.info('saved file %s' % ofname)
+        np.save(ofname, arr)
 
     elif tname=='7':
         suffix = 'raw-peds-%s' % step_evt
-        arr = (det.raw.raw(evt) & MDB) - evt_peds
+        arr = (det.raw.raw(evt) & MDB)
+        if evt_peds is None: logger.warning('evt_peds is None - DO NOT SUBTRACT')
+        else: arr = arr.astype(evt_peds.dtype) - evt_peds
         AMIN, AMAX = amin_amax(args, amin_def=-40, amax_def=40)
 
     elif tname=='8':
         suffix = 'raw-peds-x-gain-%s' % step_evt
-        arr = ((det.raw.raw(evt) & MDB) - evt_peds)*evt_gfac
+        arr = (det.raw.raw(evt) & MDB)
+        if evt_peds is None: logger.warning('evt_peds is None - DO NOT SUBTRACT')
+        else: arr = arr.astype(evt_peds.dtype) - evt_peds
+        if evt_gfac is None: logger.warning('evt_gfac is None - DO NOT MULTIPLY')
+        else: arr *= evt_gfac
         AMIN, AMAX = amin_amax(args, amin_def=-5, amax_def=5)
 
     elif tname=='9':
@@ -251,9 +262,15 @@ for nstep,step in enumerate(orun.steps()):
         arr = det.raw.calib(evt)
         AMIN, AMAX = amin_amax(args, amin_def=-100, amax_def=100)
 
-    print(info_ndarr(arr,'Event %d det.raw.calib'%nevt))
+    logger.info(info_ndarr(arr,'Event %d: %s' % (nevt, suffix)))
 
     img = det.raw.image(evt, nda=arr, vbase=-1, cframe=args.cframe)
+
+    if img is None and arr is not None:
+       logger.warning('image is None, but arr is not... > convert to 2d')
+       #from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
+       img = reshape_to_2d(arr)
+
 
     if CROP1_IMG:
         img0 = np.zeros_like(img)
@@ -267,10 +284,15 @@ for nstep,step in enumerate(orun.steps()):
         img = img0
         arr = img[:352,:192]
 
-    print(info_ndarr(img,'  img'))
+    logger.info(info_ndarr(img,'  img'))
 
     if flims is None:
-        flims = fleximagespec(img, arr=arr, bins=100, w_in=11, h_in=8, amin=AMIN, amax=AMAX) #fraclo=0.01, frachi=0.99
+        if img is None:
+           sys.exit('EXIT - image is None - NOTHING TO DRAW')
+        sh = img.shape
+        h = 6
+        w = min(sh[1]/sh[0]*h, 20)
+        flims = fleximagespec(img, arr=arr, bins=100, w_in=w, h_in=h, amin=AMIN, amax=AMAX) #fraclo=0.01, frachi=0.99
         flims.move(10,20)
     else:
         fname = '%s-%s.png' % (prefix, suffix)

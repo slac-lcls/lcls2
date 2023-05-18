@@ -186,8 +186,9 @@ void _loopbackInit()
     // initialize header
     Drp::encoder_header_t *pHeader = (Drp::encoder_header_t *)m_buf;
     pHeader->frameCount = htons(0);
-    pHeader->majorVersion = htons(1);
-    pHeader->minorVersion = pHeader->microVersion = 0;
+    pHeader->majorVersion = htons(Drp::UdpEncoder::MajorVersion);
+    pHeader->minorVersion = Drp::UdpEncoder::MinorVersion;
+    pHeader->microVersion = Drp::UdpEncoder::MicroVersion;
     snprintf(pHeader->hardwareID, 16, "sim_updencoder");
     pHeader->channelMask = pHeader->errorMask = pHeader->mode = 0;
 
@@ -195,6 +196,7 @@ void _loopbackInit()
     Drp::encoder_channel_t *pChannel = (Drp::encoder_channel_t *)(pHeader + 1);
     snprintf(pChannel->hardwareID, 16, "sim_updencoder");
     pChannel->encoderValue = htonl(42);
+    pChannel->scale = pChannel->scaleDenom = htons(1);
 }
 
 void _loopbackFini()
@@ -222,8 +224,8 @@ void _loopbackSend()
         printf("%s: dropping frame #%hu\n", __PRETTY_FUNCTION__, frameCount);
         -- m_dropRequest;
     } else {
-        // channel 0 sawtooth: 10 to 1000
-        pChannel->encoderValue = htonl( 10 * (1 + (frameCount % 100)));
+        // channel 0 test pattern: 100, 200, 100, 200, 100, ...
+        pChannel->encoderValue = htonl((frameCount & 1) ? 200 : 100);
         // send frame
         sent = sendto(m_loopbackFd, (void *)m_buf, sizeof(m_buf), 0,
                       (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));

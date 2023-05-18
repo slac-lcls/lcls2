@@ -65,6 +65,11 @@ def dict_from_arr3d(a):
     return {k:a[k,:,:] for k in range(a.shape[0])}
 
 
+def arr3d_from_list(lst):
+    assert isinstance(lst, list)
+    return np.stack(lst)
+
+
 def arr3d_from_dict(d, keys=None):
     """Converts dict {k[0:n0-1] : nd.array.shape(n1,n2)} to 3d array of shape=(n0,n1,n2)
        Consumes 7ms for epix10ka2m array shape:(16, 352, 384) size:2162688 dtype:float32

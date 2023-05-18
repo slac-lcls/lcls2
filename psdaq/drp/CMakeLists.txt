@@ -27,6 +27,7 @@ add_executable(drp
     AreaDetector.cc
     Digitizer.cc
     EpixHR2x2.cc
+    EpixHRemu.cc
     Epix100.cc
     EpixQuad.cc
     TimingDef.cc

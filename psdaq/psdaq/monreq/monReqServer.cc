@@ -13,6 +13,7 @@
 #include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include "psalg/utils/SysLog.hh"
 
 #include <signal.h>
@@ -26,6 +27,7 @@
 #include <atomic>
 #include <climits>                      // For HOST_NAME_MAX
 #include <chrono>
+#include <mutex>
 
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
@@ -88,15 +90,73 @@ namespace Pds {
   };
 
 
+  class MyMetric
+  {
+  public:
+    MyMetric(unsigned num) :
+      _cnt(0ull),
+      _t0(num),
+      _dt(0ull),
+      _minT(ULLONG_MAX),
+      _maxT(0ull),
+      _tBeg(0ull),
+      _cBeg(0ull)
+    {}
+#define LCK std::lock_guard<std::mutex> lk(_lock)
+    void start(unsigned idx)
+    {
+      LCK;
+      _t0[idx] = fast_monotonic_clock::now(CLOCK_MONOTONIC);
+    }
+    void accumulate(unsigned idx)
+    {
+      if (_t0[idx] != _EPOCH)           // Avoid large startup values
+      {
+        LCK;
+        ++_cnt;
+        auto     now = fast_monotonic_clock::now(CLOCK_MONOTONIC);
+        uint64_t dt  = std::chrono::duration_cast<ns_t>(now - _t0[idx]).count();
+        _dt    = dt;
+        _accT += dt;
+        if (dt < _minT)  _minT = dt;
+        if (dt > _maxT)  _maxT = dt;
+      }
+    }
+    uint64_t count()   { return _cnt; }
+    uint64_t sample()  { return _dt; }
+    uint64_t minimum() { LCK; auto minT = _minT;  _minT = ULLONG_MAX;  return minT; }
+    uint64_t maximum() { LCK; auto maxT = _maxT;  _maxT = 0ull;        return maxT; }
+    uint64_t average()
+    {
+      LCK;
+      auto dt = _accT - _tBeg;  _tBeg = _accT;
+      auto dc = _cnt  - _cBeg;  _cBeg = _cnt;
+      return dc ? (dt / dc) : 0ull;
+    }
+#undef LCK
+  private:
+    using tp_t = std::chrono::time_point<fast_monotonic_clock>;
+    const tp_t         _EPOCH;
+    mutable std::mutex _lock;
+    uint64_t           _cnt;
+    std::vector<tp_t>  _t0;
+    uint64_t           _dt;
+    uint64_t           _accT;
+    uint64_t           _minT;
+    uint64_t           _maxT;
+    uint64_t           _tBeg;
+    uint64_t           _cBeg;
+  };
+
   class MyXtcMonitorServer : public XtcMonitorServer {
   public:
     MyXtcMonitorServer(std::vector<EbLfCltLink*>&     links,
                        uint64_t&                      requestCount,
                        std::shared_ptr<PromHistogram> bufUseCnts,
                        std::atomic<uint64_t>&         prcBufCount,
-                       std::vector<tp_t>&             bufT0,
-                       uint64_t&                      bufPrcTime,
-                       std::vector<tp_t>&             trgT0,
+                       MyMetric&                      bufPrcMetric,
+                       MyMetric&                      monTrgMetric,
+                       MyMetric&                      appPrcMetric,
                        const MebParams&               prms) :
       XtcMonitorServer(prms.tag.c_str(),
                        prms.maxBufferSize,
@@ -107,9 +167,9 @@ namespace Pds {
       _bufFreeList (prms.numEvBuffers),
       _bufUseCnts  (bufUseCnts),
       _prcBufCount (prcBufCount),
-      _bufT0       (bufT0),
-      _bufPrcTime  (bufPrcTime),
-      _trgT0       (trgT0),
+      _bufPrcMetric(bufPrcMetric),
+      _monTrgMetric(monTrgMetric),
+      _appPrcMetric(appPrcMetric),
       _prms        (prms)
     {
       for (unsigned i = 0; i < _bufFreeList.size(); ++i)
@@ -181,7 +241,8 @@ namespace Pds {
 
       if (idx >= _bufFreeList.size())
       {
-        logging::warning("deleteDatagram: Unexpected index %08x", idx);
+        logging::warning("deleteDatagram: Out of bounds index %08x, max %08x",
+                         idx, _bufFreeList.size() - 1);
       }
 
       for (unsigned i = 0; i < _bufFreeList.count(); ++i)
@@ -196,8 +257,9 @@ namespace Pds {
       }
       // Number of buffers being processed by the MEB; incremented in Meb::process()
       --_prcBufCount;                   // L1Accepts only
-      auto now    = std::chrono::system_clock::now();
-      _bufPrcTime = std::chrono::duration_cast<ns_t>(now - _bufT0[idx]).count();
+      _appPrcMetric.start(idx);
+      _bufPrcMetric.accumulate(idx);
+
       if (_bufFreeList.push(idx))
       {
         logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
@@ -232,7 +294,8 @@ namespace Pds {
       {
         ++_requestCount;
         _bufUseCnts->observe(double(idx));
-        _trgT0[idx] = std::chrono::system_clock::now();
+        _monTrgMetric.start(idx);
+        _appPrcMetric.accumulate(idx);
       }
       else
       {
@@ -261,9 +324,9 @@ namespace Pds {
     FifoMT<unsigned, std::mutex>   _bufFreeList;
     std::shared_ptr<PromHistogram> _bufUseCnts;
     std::atomic<uint64_t>&         _prcBufCount;
-    std::vector<tp_t>&             _bufT0;
-    uint64_t&                      _bufPrcTime;
-    std::vector<tp_t>&             _trgT0;
+    MyMetric&                      _bufPrcMetric;
+    MyMetric&                      _monTrgMetric;
+    MyMetric&                      _appPrcMetric;
     const MebParams&               _prms;
   };
 
@@ -292,12 +355,13 @@ namespace Pds {
     uint64_t                            _trCount;
     uint64_t                            _splitCount;
     uint64_t                            _requestCount;
-    uint64_t                            _bufPrcTime;
-    uint64_t                            _monTrgTime;
     std::atomic<uint64_t>               _prcBufCount;
-    std::vector<tp_t>                   _bufT0;
-    std::vector<tp_t>                   _trgT0;
     std::shared_ptr<PromHistogram>      _bufUseCnts;
+    MyMetric                            _bufPrcMetric;
+    MyMetric                            _monTrgMetric;
+    MyMetric                            _appPrcMetric;
+    uint64_t                            _scrapeCount;
+    std::vector<uint64_t>               _rogCount;
     const MebParams&                    _prms;
     EbLfClient                          _mrqTransport;
     ZmqSocket                           _inprocSend;
@@ -324,11 +388,12 @@ Meb::Meb(const MebParams&        prms,
   _trCount     (0),
   _splitCount  (0),
   _requestCount(0),
-  _bufPrcTime  (0),
-  _monTrgTime  (0),
   _prcBufCount (0),
-  _bufT0       (prms.numEvBuffers),
-  _trgT0       (prms.numEvBuffers),
+  _bufPrcMetric(prms.numEvBuffers),
+  _monTrgMetric(prms.numEvBuffers),
+  _appPrcMetric(prms.numEvBuffers),
+  _scrapeCount (0),
+  _rogCount    (NUM_READOUT_GROUPS, 0),
   _prms        (prms),
   _mrqTransport(prms.verbose, prms.kwargs),
   _inprocSend  (&context, ZMQ_PAIR)
@@ -345,8 +410,30 @@ Meb::Meb(const MebParams&        prms,
   exporter->add("MRQ_TxPdg",  labels, MetricType::Gauge,   [&](){ return _mrqTransport.posting(); });
   exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
   exporter->add("MEB_PrcCt",  labels, MetricType::Gauge,   [&](){ return _prcBufCount.load(); });
-  exporter->add("MEB_PrcTm",  labels, MetricType::Gauge,   [&](){ return _bufPrcTime;      });
-  exporter->add("MEB_TrgTm",  labels, MetricType::Gauge,   [&](){ return _monTrgTime;      });
+  exporter->add("MEB_PrcTmC", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.count();   });
+  exporter->add("MEB_PrcTm",  labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.sample();  });
+  exporter->add("MEB_PrcTmm", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.minimum(); });
+  exporter->add("MEB_PrcTmM", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.maximum(); });
+  exporter->add("MEB_PrcTmA", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.average(); });
+  exporter->add("MEB_TrgTmC", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.count();   });
+  exporter->add("MEB_TrgTm",  labels, MetricType::Gauge,   [&](){ return _monTrgMetric.sample();  });
+  exporter->add("MEB_TrgTmm", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.minimum(); });
+  exporter->add("MEB_TrgTmM", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.maximum(); });
+  exporter->add("MEB_TrgTmA", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.average(); });
+  exporter->add("MEB_AppTmC", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.count();   });
+  exporter->add("MEB_AppTm",  labels, MetricType::Gauge,   [&](){ return _appPrcMetric.sample();  });
+  exporter->add("MEB_AppTmm", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.minimum(); });
+  exporter->add("MEB_AppTmM", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.maximum(); });
+  exporter->add("MEB_AppTmA", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.average(); });
+  exporter->add("MEB_ScrpCt", labels, MetricType::Counter, [&](){ return _scrapeCount++;  });
+  exporter->add("MEB_RogCt0", labels, MetricType::Counter, [&](){ return _rogCount[0];    });
+  exporter->add("MEB_RogCt1", labels, MetricType::Counter, [&](){ return _rogCount[1];    });
+  exporter->add("MEB_RogCt2", labels, MetricType::Counter, [&](){ return _rogCount[2];    });
+  exporter->add("MEB_RogCt3", labels, MetricType::Counter, [&](){ return _rogCount[3];    });
+  exporter->add("MEB_RogCt4", labels, MetricType::Counter, [&](){ return _rogCount[4];    });
+  exporter->add("MEB_RogCt5", labels, MetricType::Counter, [&](){ return _rogCount[5];    });
+  exporter->add("MEB_RogCt6", labels, MetricType::Counter, [&](){ return _rogCount[6];    });
+  exporter->add("MEB_RogCt7", labels, MetricType::Counter, [&](){ return _rogCount[7];    });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
   _bufUseCnts = exporter->histogram("MRQ_BufUseCnts", labels, prms.numEvBuffers);
 
@@ -418,8 +505,8 @@ int Meb::configure()
 
   _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount,
                                                _bufUseCnts, _prcBufCount,
-                                               _bufT0, _bufPrcTime,
-                                               _trgT0, _prms);
+                                               _bufPrcMetric, _monTrgMetric, _appPrcMetric,
+                                               _prms);
 
   _apps->distribute(_prms.ldist);
 
@@ -560,16 +647,22 @@ void Meb::process(EbEvent* event)
   auto now = std::chrono::system_clock::now();
   auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
            + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+  tp_t tp   {std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
   _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
   if (dg->service() == TransitionId::L1Accept)
   {
     ++_prcBufCount;    // Number of buffers being processed by the MEB; decremented in _deleteDatagram
-    _bufT0[idx] = now; // Event processing time t0
-    auto monTrgTime = std::chrono::duration_cast<ns_t>(now - _trgT0[idx]).count();
-    if (monTrgTime < 1000000000)
-      _monTrgTime = monTrgTime;         // Skip large startup values
+    _bufPrcMetric.start(idx);
+    _monTrgMetric.accumulate(idx);
+
+    int env = dg->env & _prms.rogs;
+    while (env)
+    {
+      auto rog = __builtin_ffs(env) - 1;
+      env &= ~(1 << rog);
+      ++_rogCount[rog];
+    }
   }
 
   // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred
@@ -615,7 +708,7 @@ private:
   int  _configure(const json& msg);
   void _unconfigure();
   int  _parseConnectionParams(const json& msg);
-  void _printParams(const MebParams& prms, unsigned groups) const;
+  void _printParams(const MebParams& prms) const;
 private:
   MebParams&                           _prms;
   const bool                           _ebPortEph;
@@ -623,7 +716,6 @@ private:
   std::shared_ptr<MetricExporter>      _exporter;
   std::unique_ptr<Meb>                 _meb;
   std::thread                          _appThread;
-  uint16_t                             _groups;
   bool                                 _unconfigFlag;
 };
 
@@ -717,7 +809,7 @@ int MebApp::_configure(const json &msg)
   if (rc)  logging::error("%s:\n  Failed to configure MEB",
                           __PRETTY_FUNCTION__);
 
-  _printParams(_prms, _groups);
+  _printParams(_prms);
 
   _meb->resetCounters();                // Same time as DRPs
 
@@ -813,9 +905,9 @@ int MebApp::_parseConnectionParams(const json& body)
   _prms.maxBufferSize  = 0;
   _prms.maxTrSize.resize(body["drp"].size());
 
+  _prms.rogs = 0;
   _prms.contractors.fill(0);
   _prms.receivers.fill(0);
-  _groups = 0;
 
   _prms.maxEntries = 1;                  // No batching: each event stands alone
   _prms.maxBuffers = _prms.numEvBuffers; // For EbAppBase
@@ -834,17 +926,18 @@ int MebApp::_parseConnectionParams(const json& body)
     _prms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
     _prms.ports.push_back(it.value()["connect_info"]["drp_port"]);
 
-    unsigned group = it.value()["det_info"]["readout"];
-    if (group > NUM_READOUT_GROUPS - 1)
+    unsigned rog = it.value()["det_info"]["readout"];
+    if (rog > NUM_READOUT_GROUPS - 1)
     {
-      logging::error("Readout group %u is out of range 0 - %u", group, NUM_READOUT_GROUPS - 1);
+      logging::error("Readout group %u is out of range 0 - %u", rog, NUM_READOUT_GROUPS - 1);
       return 1;
     }
-    _prms.contractors[group] |= 1ul << drpId;
-    _prms.receivers[group]    = 0;      // Unused by MEB
-    _groups |= 1 << group;
+    _prms.rogs             |= 1 << rog;
+    _prms.contractors[rog] |= 1ul << drpId;
+    _prms.receivers[rog]    = 0;      // Unused by MEB
 
     _prms.numBuffers[drpId] = _prms.maxBuffers;
+    _prms.indexSources      = ULLONG_MAX; // All DRPs provide an index in immData
 
     _prms.maxTrSize[drpId] = size_t(it.value()["connect_info"]["max_tr_size"]);
     maxTrSize             += _prms.maxTrSize[drpId];
@@ -900,7 +993,7 @@ void _printGroups(unsigned groups, const u64arr_t& array)
   printf("\n");
 }
 
-void MebApp::_printParams(const MebParams& prms, unsigned groups) const
+void MebApp::_printParams(const MebParams& prms) const
 {
   printf("\nParameters of MEB ID %u (%s:%s):\n",               prms.id,
                                                                prms.ifAddr.c_str(), prms.ebPort.c_str());
@@ -910,7 +1003,7 @@ void MebApp::_printParams(const MebParams& prms, unsigned groups) const
   printf("  Alias:                      %s\n",                 prms.alias.c_str());
   printf("  Bit list of contributors:   0x%016lx, cnt: %zu\n", prms.contributors,
                                                                std::bitset<64>(prms.contributors).count());
-  printf("  Readout group contractors:  ");                    _printGroups(_groups, prms.contractors);
+  printf("  Readout group contractors:  ");                    _printGroups(prms.rogs, prms.contractors);
   printf("  # of TEB requestees:        %zu\n",                prms.addrs.size());
   printf("  Buffer duration:            %u\n",                 prms.maxEntries);
   printf("  Max # of entries / buffer:  0x%08x = %u\n",        prms.maxEntries, prms.maxEntries);

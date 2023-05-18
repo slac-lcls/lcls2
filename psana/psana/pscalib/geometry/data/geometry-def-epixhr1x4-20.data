@@ -1,0 +1,52 @@
+# TITLE      Geometry parameters of epixhremu, raw data:  shape:(144, 768), where 768=192*4
+# DATE_TIME  2024-04-26 11:00:00 PDT
+# METROLOGY  N/A use manual settings in this file
+# AUTHOR     dubrovin
+# EXPERIMENT exp=tstx00417:run=277
+# DETECTOR   epixhremu
+# CALIB_TYPE geometry
+# COMMENT:00 COPIED from geometry-def-epixhr2x2.data 2021-10-03 13:32:00 PDT
+# COMMENT:01 Table contains the list of geometry parameters for Epix10ka alignment relative to IP
+# COMMENT:02 This file was created manually. Detector position and orientation can be changed if needed
+# COMMENT:03 All translation and rotation pars of the object are defined w.r.t. parent object Cartesian frame
+# PARAM:01 PARENT     - name and version of the parent object
+# PARAM:02 PARENT_IND - index of the parent object
+# PARAM:03 OBJECT     - name and version of the object
+# PARAM:04 OBJECT_IND - index of the new object
+# PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+
+# HDR PARENT IND        OBJECT IND     X0[um]   Y0[um]   Z0[um]   ROT-Z ROT-Y ROT-X     TILT-Z   TILT-Y   TILT-X
+
+DETECTOR        0    EPIXHR1X4:V1  0     40000    15000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1  1     40000    30000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1  2     40000    45000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1  3     40000    60000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1  4     40000    75000       0       0     0     0    0.00000  0.00000  0.00000
+
+DETECTOR        0    EPIXHR1X4:V1  5     40000   -15000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1  6     40000   -30000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1  7     40000   -45000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1  8     40000   -60000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1  9     40000   -75000       0       0     0     0    0.00000  0.00000  0.00000
+
+DETECTOR        0    EPIXHR1X4:V1 10    -40000    15000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1 11    -40000    30000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1 12    -40000    45000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1 13    -40000    60000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1 14    -40000    75000       0       0     0     0    0.00000  0.00000  0.00000
+
+DETECTOR        0    EPIXHR1X4:V1 15    -40000   -15000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1 16    -40000   -30000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1 17    -40000   -45000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1 18    -40000   -60000       0       0     0     0    0.00000  0.00000  0.00000
+DETECTOR        0    EPIXHR1X4:V1 19    -40000   -75000       0       0     0     0    0.00000  0.00000  0.00000
+
+IP              0    DETECTOR      0         0        0    10000      90     0     0    0.00000  0.00000  0.00000

@@ -88,6 +88,7 @@ def ds_run_det(args):
     det_raw_attrs = dir(det.raw)
     print('\ndir(det.raw):', det_raw_attrs)
 
+    print('det.raw._uniqueid       :', det.raw._uniqueid if '_uniqueid' in det_raw_attrs else 'MISSING')
     print('det.raw._fullname       :', det.raw._fullname() if '_fullname' in det_raw_attrs else 'MISSING')
     print('det.raw._segment_ids    :', det.raw._segment_ids() if '_segment_ids' in det_raw_attrs else 'MISSING')
     print('det.raw._segment_indices:', det.raw._segment_indices() if '_segment_indices' in det_raw_attrs else 'MISSING')
@@ -172,7 +173,7 @@ def loop_run_step_evt(args):
           #if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
           if not selected_record(ievt): continue
           if segs is None:
-             segs = det.raw._segment_numbers(evt) if det is not None else None
+             segs = det.raw._segment_numbers if det is not None else None
              #tstamp = evt.timestamp   # like 4193682596073796843 relative to 1990-01-01
              tsec = seconds(evt.timestamp)
              tsec_diff = tsec-tsec_old
