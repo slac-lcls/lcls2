@@ -208,10 +208,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 if ( pythonDrp) {
                     XtcData::Dgram* inpDg = dgram;
-                    memcpy(inpData, (char*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
+                    memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
                     drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
                     XtcData::Dgram* resDg = (XtcData::Dgram*)resData;
-                    memcpy((char*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
+                    memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
 
                 // Prepare the trigger primitive with whatever input is needed for the TEB to make trigger decisions
@@ -240,10 +240,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 if (pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
-                    memcpy(inpData, (char*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
+                    memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
                     drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
                     XtcData::Dgram* resDg = (XtcData::Dgram*)(resData);
-                    memcpy((char*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
+                    memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
 
                 // Prepare the trigger primitive with whatever input is needed for the TEB to meke trigger decisions
@@ -257,11 +257,12 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
                 if ( pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
-                    memcpy(inpData, (char*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
+                    memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
                     drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
+                    // TODO: Add comment explaining how this works
                     if (threadCountWrite.fetch_sub(1) == 1) {
                         XtcData::Dgram* resDg = (XtcData::Dgram*)(resData);
-                        memcpy((char*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
+                        memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                     }
                 }
             }
@@ -401,28 +402,29 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
         }
         int32_t ret = read();
         nDmaRet = ret;
-        // if (ret == 0) {
-        //     if (tmoState == TmoState::None) {
-        //         tmoState = TmoState::Started;
-        //         tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-        //     } else {
-        //         if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-        //             if (m_batch.size != 0) {
-        //                 m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
-        //                 worker++;
-        //                 m_batch.start += m_batch.size;
-        //                 m_batch.size = 0;
-        //                 batchId += m_para.batchSize;
-        //             } else {
-        //                 if (tmoState != TmoState::Finished) {
-        //                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
-        //                     // worker++;
-        //                     tmoState = TmoState::Finished;
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+        if (ret == 0) {
+            if (tmoState == TmoState::None) {
+                tmoState = TmoState::Started;
+                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+            } else {
+                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+                    if (m_batch.size != 0) {
+                        m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+                        worker++;
+                        m_batch.start += m_batch.size;
+                        m_batch.size = 0;
+                        batchId += m_para.batchSize;
+                    } else {
+                        if (tmoState != TmoState::Finished) {
+                            m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+                            worker++;
+                            tmoState = TmoState::Finished;
+                        }
+                    }
+                }
+            }
+        }
+
         for (int b=0; b < ret; b++) {
             tmoState = TmoState::None;
             const Pds::TimingHeader* timingHeader = handle(det, b);
@@ -488,10 +490,12 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                     unsigned numWorkers = pythonDrp ? m_para.nworkers : 1;
 
                     for (unsigned w=0; w < numWorkers; w++) {
-                        m_workerInputQueues[(worker+w) % m_para.nworkers].push(m_batch);
+                        logging::info("DEBUG: Sending transition at %d", worker % m_para.nworkers);
+                        m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
+                        worker++;
                     }
-
                 } else {
+                    logging::info("DEBUG: Sending transition %d at %d", transitionId, worker % m_para.nworkers);
                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                     worker++;
                 }
@@ -511,10 +515,12 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
     Batch batch;
     const unsigned bufferMask = m_pool.nDmaBuffers() - 1;
     while (true) {
+        logging::info("DEBUG: Listening at %d", worker % m_para.nworkers);
         if (!m_workerOutputQueues[worker % m_para.nworkers].pop(batch)) {
             break;
         }
         for (unsigned i=0; i<batch.size; i++) {
+            logging::info("DEBUG: Retrieving at %d", worker % m_para.nworkers);
             unsigned index = (batch.start + i) & bufferMask;
             PGPEvent* event = &m_pool.pgpEvents[index];
             if (event->mask == 0)
