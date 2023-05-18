@@ -130,7 +130,7 @@ if __name__ == "__main__":
     #args.prod = True
     #args.inst = 'tst'
     #args.user = 'tstopr'
-    #args.password = 'pcds'
+    #args.password = '*****'
 
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'

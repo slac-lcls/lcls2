@@ -14,8 +14,8 @@ xtpg = 2                    # TMO
 #xtpg = 0                    # TXI
 #xtpg = 10                   # FEE
 groups = platform + ' 6' # + ' 7' + ' 6'
-hutch, user, password = ('tst', 'tstopr', 'pcds')
-auth = ' --user {:} --password {:} '.format(user,password)
+hutch, user = ('tst', 'tstopr')
+auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 

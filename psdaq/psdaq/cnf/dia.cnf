@@ -8,8 +8,8 @@ andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.89 EPICS_PVA_AUTO_ADDR_LIST=NO
 collect_host = 'drp-neh-ctl001'
 
 groups = platform
-hutch, user, password = ('tmo', 'tmoopr', 'pcds')
-auth = ' --user {:} --password {:} '.format(user,password)
+hutch, user = ('tmo', 'tmoopr')
+auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 

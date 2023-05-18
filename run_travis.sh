@@ -7,10 +7,6 @@ set -e
 
 export LCLS_TRAVIS=1
 if [[ $OS == linux ]]; then
-  echo "checking calibdb access"
-  time curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_ueddaq02/gridfs/6035d64545db0b188f7c78e8" | wc
-  echo "done checking calibdb access"
-
   source activate $CONDA_ENV
 
   cd "$(dirname "${BASH_SOURCE[0]}")"

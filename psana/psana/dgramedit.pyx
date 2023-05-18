@@ -99,6 +99,16 @@ cdef class PyDataDef:
         return flag
 
 
+cdef class PyCapsuleDgram():
+    cdef Py_buffer oPybuf
+    def __init__(self, buf):
+        """ Wraps pointer of a buffer object"""
+        PyObject_GetBuffer(buf, &(self.oPybuf), PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+
+    def get(self):
+        return PyCapsule_New(<char *>self.oPybuf.buf, "dgram", NULL)
+
+
 cdef class PyXtc():
     cdef Xtc* cptr
     cdef const void* bufEnd             # See bufEnd in PyDgram

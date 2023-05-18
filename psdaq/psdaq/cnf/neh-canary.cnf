@@ -7,7 +7,7 @@ conda_rel = 'ps-3.1.12'
 collect_host = 'drp-neh-cmp001'
 
 groups = '0'
-hutch, user, password = ('tst', 'tstopr', 'pcds')
+hutch, user = ('tst', 'tstopr')
 drp_cmd  = 'drp -P '+hutch+' -d /dev/datadev_1 -C '+collect_host+' -o /u1'
 
 # procmgr FLAGS: <port number> static port number to keep executable

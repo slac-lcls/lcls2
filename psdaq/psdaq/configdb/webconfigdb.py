@@ -1,3 +1,5 @@
+import os
+
 import requests
 from requests.auth import HTTPBasicAuth
 import json
@@ -22,7 +24,7 @@ class configdb(object):
     #     root   - Database name, usually "configDB"
     #     user   - User for HTTP authentication
     #     password - Password for HTTP authentication
-    def __init__(self, url, hutch, create=False, root="NONE", user="xppopr", password="pcds"):
+    def __init__(self, url, hutch, create=False, root="NONE", user="xppopr", password=os.getenv("CONFIGDB_AUTH")):
         if root == "NONE":
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch

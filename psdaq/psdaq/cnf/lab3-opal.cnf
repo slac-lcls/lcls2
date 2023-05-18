@@ -24,8 +24,8 @@ meb_cmd = task_set+'monReqServer -P '+hutch+'P0 -C '+collect_host+' -M '+prom_di
 procmgr_config = [
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 
- { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+hutch+'opr --password pcds'},
-# { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 0 -S 1 -P '+hutch+' --user '+hutch+'opr --password pcds'},
+ { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+hutch+'opr '},
+# { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 0 -S 1 -P '+hutch+' --user '+hutch+'opr '},
  {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
  # TimeTool
  { host: 'drp-tst-dev012', id:'tmott_0',     flags:'sxpu',  conda:conda_rel, cmd:drp_cmd+' -D tt -k feb_lane=0 -k feb_chan=0'},

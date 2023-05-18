@@ -24,6 +24,8 @@ cdef class ParallelReader:
         self.chunk_overflown    = 0                         # set to dgram size if it's too big
         self.max_events         = int(self.chunksize / 70)  # guess no. of smd events in one chunk
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
+        self.zeroedbug_wait_sec = int(os.environ.get('PS_ZEROEDBUG_WAIT_SEC', '3'))
+        self.max_retries        = int(os.environ.get('PS_R_MAX_RETRIES', '0'))
         self.gots               = array.array('l', [0]*self.nfiles)
         self._init_buffers(self.bufs)
         self._init_buffers(self.step_bufs)
@@ -86,10 +88,8 @@ cdef class ParallelReader:
         cdef Buffer* buf
         cdef Buffer* step_buf
         cdef uint64_t payload   = 0
+        cdef int err_thread_id  = -1
         cdef int fstat_err      = 0
-        cdef uint64_t cur_offset= 0
-        cdef uint64_t file_size = 0
-        cdef uint64_t read_size = 0
         self.got                = 0
         
         for i in prange(self.nfiles, nogil=True, num_threads=self.num_threads):
@@ -104,14 +104,17 @@ cdef class ParallelReader:
             if buf.got - buf.ready_offset > 0 and buf.ready_offset > 0:
                 memcpy(buf.chunk, buf.chunk + buf.ready_offset, buf.got - buf.ready_offset)
             
+            # temporary fix for zeroed bug filesystem problem (live-mode only)
+            if self.max_retries > 0:
+                fstat_err = fstat(self.file_descriptors[i], buf.result_stat)
+                gettimeofday(&(buf.t_now), NULL)
+                buf.t_delta = (buf.t_now.tv_sec + buf.t_now.tv_usec * 10e-9) - buf.result_stat.st_mtime
+                if buf.t_delta > 0 and buf.t_delta < self.zeroedbug_wait_sec:
+                    sleep(self.zeroedbug_wait_sec)
+
             # read more data to fill up the buffer
-            fstat_err = fstat(self.file_descriptors[i], buf.result_stat)
-            file_size = buf.result_stat.st_size
-            cur_offset= lseek(self.file_descriptors[i], 0, SEEK_CUR)
-            read_size = self.chunksize - (buf.got - buf.ready_offset) 
-            if file_size - cur_offset < read_size:
-                read_size = file_size - cur_offset
-            gots[i] = read(self.file_descriptors[i], buf.chunk+(buf.got-buf.ready_offset), read_size)
+            gots[i] = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.ready_offset), \
+                                        self.chunksize - (buf.got - buf.ready_offset) )
 
             # summing the size of all the new reads
             self.got += gots[i]
@@ -131,6 +134,11 @@ cdef class ParallelReader:
             while buf.ready_offset < buf.got and buf.n_ready_events < self.max_events:
                 if buf.got - buf.ready_offset >= sizeof(Dgram):
                     d = <Dgram *>(buf.chunk + buf.ready_offset)
+
+                    if d.xtc.extent == 0:
+                        err_thread_id = i
+                        break
+
                     payload = d.xtc.extent - sizeof(Xtc)
 
                     # check if this dgram is too big to fit in the chunk
@@ -168,5 +176,10 @@ cdef class ParallelReader:
                     break
             
             # end while buf.ready_offset < buf.got:
+        
+        # end for i 
+        if err_thread_id >= 0: 
+            print(f'Error: found 0 extent in stream {err_thread_id}')
+            raise
 
 

@@ -11,9 +11,9 @@ collect_host = 'drp-srcf-cmp032'
 # readout group 4 is for epixhr (L0Delay change)
 # readout group 5 is for manta
 groups = platform
-hutch, station, user, password = ('tst', 4, 'tstopr', 'pcds')
+hutch, station, user = ('tst', 4, 'tstopr')
 # use the dev logbook to get the tst expts for epixhr running -cpo
-#auth = ' --user {:} --password {:} '.format(user,password)
+#auth = ' --user {:} '.format(user)
 #url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 

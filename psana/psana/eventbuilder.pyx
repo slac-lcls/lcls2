@@ -265,7 +265,7 @@ cdef class EventBuilder:
 
     def build_proxy_event(self):
         """ Builds and returns a proxy event (None if filterred)"""
-        t0 = time.perf_counter()
+        #t0 = time.perf_counter()
         proxy_evt = ProxyEvent(self.nsmds)
         
         # Use typed variables for performance

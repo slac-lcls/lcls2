@@ -5,6 +5,7 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from posix.unistd cimport read, sleep, lseek, SEEK_CUR
 from posix.stat cimport struct_stat, fstat
+from posix.time cimport *
 from libc.errno cimport errno
 from libc.stdint cimport uint32_t, uint64_t, int64_t
 from cpython cimport array
@@ -25,6 +26,8 @@ cdef struct Buffer:
     int      found_endrun
     uint64_t endrun_ts
     struct_stat* result_stat
+    timeval t_now
+    double t_delta
 
 cdef class ParallelReader:
     cdef int[:]     file_descriptors
@@ -42,6 +45,8 @@ cdef class ParallelReader:
     cdef int        num_threads
     cdef int        max_events
     cdef array.array gots
+    cdef int        zeroedbug_wait_sec
+    cdef int        max_retries
 
     cdef void _init_buffers(self, Buffer* bufs)
     cdef void _free_buffers(self, Buffer* bufs)
