@@ -574,7 +574,7 @@ class PVCtrls(object):
                 # save config
                 print('Updating {}'.format(self._db))
                 db_url, db_name, db_instrument, db_alias = self._db.split(',',4)
-                mycdb = cdb.configdb(db_url, db_instrument, True, db_name, user=db_instrument+'opr', password='pcds')
+                mycdb = cdb.configdb(db_url, db_instrument, True, db_name, user=db_instrument+'opr')
                 mycdb.add_device_config('xpm')
 
                 top = cdict()

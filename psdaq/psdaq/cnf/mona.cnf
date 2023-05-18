@@ -6,8 +6,8 @@ epics_env = f'{ld_lib_path}'
 collect_host = 'drp-srcf-mon001'
 
 groups = platform
-hutch, user, password = ('tst', 'tstopr', 'pcds')
-auth = ' --user {:} --password {:} '.format(user,password)
+hutch, user = ('tst', 'tstopr')
+auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 

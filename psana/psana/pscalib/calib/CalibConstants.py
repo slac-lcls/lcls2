@@ -44,7 +44,7 @@ USERPW = 'pw-should-be-provided-somehow'
 DBNAME_PREFIX = 'cdb_'
 DETNAMESDB = '%sdetnames' % DBNAME_PREFIX
 MAX_DETNAME_SIZE = 55
-OPER = 'pcds'
+OPER = os.getenv('CONFIGDB_AUTH')
 
 try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHeaders()
 #except kerberos.GSSError as e:

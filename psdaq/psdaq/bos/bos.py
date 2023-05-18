@@ -1,9 +1,11 @@
+import os
+
 import requests
 
 
 class Bos(object):
 
-    def __init__(self, urlBase, user="admin", password="pxc***", verbose=False):
+    def __init__(self, urlBase, user="admin", password=os.getenv("BOS_AUTH"), verbose=False):
         self._session = requests.Session()
         self._urlBase = urlBase
         self._auth    = (user, password)
@@ -148,7 +150,7 @@ def main():
     parser.add_argument('--url', default='http://osw-daq-calients320.pcdsn/rest/',
                         help='Big Optical Switch connection')
     parser.add_argument('--user', help='user for BOS authentication', type=str, default='admin')
-    parser.add_argument('--password', help='password for BOS authentication', type=str, default='pxc***')
+    parser.add_argument('--password', help='password for BOS authentication', type=str, default=os.getenv('BOS_AUTH'))
     parser.add_argument('--verbose', help='Be verbose', action='store_true')
     subparsers = parser.add_subparsers()
 

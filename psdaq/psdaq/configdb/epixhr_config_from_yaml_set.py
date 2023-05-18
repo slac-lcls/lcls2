@@ -1,3 +1,5 @@
+import os
+
 from psdaq.configdb.typed_json import cdict
 import psdaq.configdb.configdb as cdb
 import pyrogue as pr
@@ -41,7 +43,7 @@ args.prod = False
 args.name = 'epixhr'
 args.segm = 0
 args.user = 'detopr'
-args.password = 'pcds'
+args.password = os.getenv('CONFIGDB_AUTH')
 
 db = 'configdb' if args.prod else 'devconfigdb'
 mycdb = cdb.configdb(f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/', args.inst, create,

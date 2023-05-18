@@ -1,10 +1,10 @@
 if not platform: platform = '4'
-hutch, user, password = ('tmo', 'tmoopr', 'pcds')
+hutch, user = ('tmo', 'tmoopr')
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'+' '+ld_lib_path
 #epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.77 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
-auth = ' --user {:} --password {:} '.format(user,password)
+auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 
@@ -34,7 +34,7 @@ drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no '
 procmgr_config = [
  {                        id:'groupca',flags:'s', env:epics_env, cmd:'groupca DAQ:NEH 0 '+platform},
  {                        id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
- { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:f'control -v -C BEAM {url} -t trigger -P {hutch} -B DAQ:NEH -x 0 -d {cdb}/configDB --user '+user+' --password '+password},
+ { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:f'control -v -C BEAM {url} -t trigger -P {hutch} -B DAQ:NEH -x 0 -d {cdb}/configDB --user '+user},
  {                        flags:'p', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING --uris {cdb} --expert {auth} -H '+collect_host},
  { host: 'drp-neh-cmp014', id:'teb0', flags:'pu', cmd:'teb -P '+hutch+' -C '+collect_host},
  { host: 'drp-neh-cmp014', id:'epix100_0',   flags:'sxpu', env:epics_env, cmd:drp_cmd0+' -D epix100 -l 0x1'},

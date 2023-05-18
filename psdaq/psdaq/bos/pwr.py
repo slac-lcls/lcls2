@@ -29,7 +29,7 @@ f = open('calient_power_data.csv', 'a+')
 try:
   print('getting connection data for %s every %s minutes from %s to %s  (use ctrl-c to quit)'%(conn, interval_minutes, ip, f.name), flush=True)
 
-  userAndPass = b64encode(b'admin:pxc***').decode('ascii')
+  userAndPass = "YWRtaW46cHhjKioq" # b64encode(b'admin:******').decode('ascii')
   headers = { 'Authorization' : 'Basic %s'%(userAndPass), 'Accept' : 'application/json' }
 
   f.write('Time,ConnectionID,InputPower,OutputPower,Loss\r\n')

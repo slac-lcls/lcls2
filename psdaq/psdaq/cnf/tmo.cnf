@@ -15,9 +15,9 @@ ami_monitor_env = 'BOKEH_ALLOW_WS_ORIGIN=pswww.slac.stanford.edu'+' '+ld_lib_pat
 collect_host = 'drp-srcf-mon001'
 
 groups = platform+' 1'
-hutch, user, password = ('tmo', 'tmoopr', 'pcds')
-#hutch, user, password = ('tst', 'tstopr', 'pcds')
-auth = ' --user {:} --password {:} '.format(user,password)
+hutch, user = ('tmo', 'tmoopr')
+#hutch, user = ('tst', 'tstopr')
+auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 
