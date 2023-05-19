@@ -265,6 +265,18 @@ def issue_2023_04_28():
 #        print(info_ndarr(x,'x:'))
 #        if det.raw.image(evt) is not None: break
 
+def issue_2023_05_19():
+    """
+    """
+    from psana import DataSource
+    ds = DataSource(exp='tmoc00118', run=222, dir='/cds/data/psdm/prj/public01/xtc')
+    for run in ds.runs():
+      opal = run.Detector('tmo_opal1')
+      for nev,evt in enumerate(run.events()):
+        if nev>5: break
+        img = opal.raw.image(evt)
+        print('ev:%04d  evt.timestamp: %d image.shape: %s' % (nev, evt.timestamp, str(img.shape)))
+
 
 def issue_2023_mm_dd():
     print('template')
@@ -279,6 +291,7 @@ USAGE = '\nUsage:'\
       + '\n    4 - issue_2023_02_07 - test timestamp for exp=ascdaq18,run=170/1 for epixhr'\
       + '\n    5 - issue_2023_04_27 - test configuration for Ric generated epixhremu exp=tstx00417,run=277'\
       + '\n    6 - issue_2023_04_28 - test epixhremu - load default geometry'\
+      + '\n    7 - issue_2023_05_19 - test opal.raw.image for Mona'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -289,6 +302,7 @@ elif TNAME in  ('3',): issue_2023_01_10()
 elif TNAME in  ('4',): issue_2023_02_07()
 elif TNAME in  ('5',): issue_2023_04_27()
 elif TNAME in  ('6',): issue_2023_04_28()
+elif TNAME in  ('7',): issue_2023_05_19()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
