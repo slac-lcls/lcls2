@@ -131,8 +131,8 @@ class AreaDetector(DetectorImpl):
     def _arr_for_daq_segments(self, arr, **kwa):
         """Returns unchanged arr if all_segs=True, othervise returns sub-array for presented in daq segments."""
         all_segs = kwa.get('all_segs', False)
-        logger.debug('AreaDetector._arr_for_segments - all_segs: %s' % str(all_segs))
-        return arr if (all_segs or not isinstance(arr, np.ndarray)) else\
+        logger.debug('AreaDetector._arr_for_segments - all_segs: %s\n    %s' % (str(all_segs), info_ndarr(arr, 'arr:')))
+        return arr if (all_segs or not isinstance(arr, np.ndarray) or arr.ndim==2) else\
                np.take(arr, self._segment_numbers, axis=-3)
 
 
