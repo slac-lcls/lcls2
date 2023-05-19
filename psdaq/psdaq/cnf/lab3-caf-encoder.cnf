@@ -1,5 +1,5 @@
 if not platform: platform = '1'
-hutch, user = ('tst', 'tstopr')
+hutch, user, password = ('tst', 'tstopr', 'pcds')
 prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
@@ -35,21 +35,26 @@ meb_cmd  = f'monReqServer -P {hutch} -M {prom_dir} -C {collect_host} -k {network
 procmgr_config = [
  {                        id:'groupca',flags:'s', env:epics_env, cmd:'groupca DAQ:LAB2 2 1 5'},
  {                        id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
- { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:'control -S 0 -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user},
+ # slow updates OFF
+ { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:'control -v -S 0 -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
+ # slow updates ON
+#{ host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:'control      -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
  {                        flags:'sp', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING -H {collect_host} --user {user}'},
  # trigger event builder
  { host: collect_host, id:'teb1', flags:'pu', cmd:f'teb -P {hutch} -M {prom_dir} -C {collect_host} -k {network}'},
  # meb
  { host: 'drp-tst-acc01', id:'meb1', flags:'spu', cmd:f'monReqServer -P {hutch} -d -q 4 -C {collect_host} -k {network}'},
+ # Timing
+ { host: 'drp-tst-acc01', id:'timing_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x8 -D ts -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
  # FakeCam
  { host: 'drp-tst-acc01', id:'cam_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_0 -P {hutch} -C {collect_host}'},
- # ...drp: loopback on port 5007
-#{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -v -o /cds/home/c/caf/data -L 5007 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
- # ...drp:
- { host: 'drp-tst-acc01', id:'encoder_0', flags:'sup', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
+ { host: 'drp-tst-acc01', id:'cam_1', flags:'spu', cmd:f'drp -o ~caf/data -l 0x4 -D fakecam -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
+ # ...drp: verbose
+ { host: 'drp-tst-acc01', id:'encoder_0', flags:'sup', cmd:f'drp_udpencoder    -o /cds/home/c/caf/data -M {prom_dir} -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
  # ...sim: 172.21.148.201 = drp-tst-acc01, 5008 = interpolate port
-#{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -a 172.21.148.201 -p 5 -d 5008'},
- { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'sp', cmd:'sim_udpencoder -a 172.21.148.201'},
+#{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -v -a 172.21.148.201 -p 5 -d 5008'},  # 5008 -> interpolate
+ { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder    -a 172.21.148.201 -p 5 -d 5008'},  # 5006 -> data
+#{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'sp', cmd:'sim_udpencoder    -a 172.21.148.201'},
  #  ...drp: loopback on port 5007 AND verbose
 #{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'}
 ]

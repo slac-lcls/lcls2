@@ -20,7 +20,7 @@ namespace Drp {
 // encoder header: 32 bytes
 typedef struct {
     uint16_t    frameCount;         // network byte order
-    uint8_t     reserved1[2];
+    uint16_t    innerCount;         // network byte order
     uint16_t    majorVersion;       // network byte order
     uint8_t     minorVersion;
     uint8_t     microVersion;
@@ -65,7 +65,8 @@ class UdpReceiver
 public:
     UdpReceiver(const Parameters&           para,
                 SPSCQueue<XtcData::Dgram*>& pvQueue,
-                SPSCQueue<XtcData::Dgram*>& bufferFreeList);
+                SPSCQueue<XtcData::Dgram*>& bufferFreeList,
+                const bool& firstReadout);
     ~UdpReceiver();
 public:
     const std::string name() const { return "encoder"; }    // FIXME
@@ -77,28 +78,37 @@ public:
     void setMissingData(std::string errMsg);
     bool getMissingData() { return (m_missingData); }
     void process();
+    void interpolate();
     void loopbackSend();
-    int drainDataFd();
+    int drainFd(int fd);
     int reset();
     uint64_t nUpdates() { return m_nUpdates; }
     uint64_t nMissed() { return m_nMissed; }
 private:
+    uint32_t m_encoderValT1, m_encoderValT2;
     void _read(XtcData::Dgram& dgram);
-    int _readFrame(encoder_frame_t *frame, bool& missing);
-    int _junkFrame();
+    int _readFrame(int fd, encoder_frame_t *frame, bool& missing);
+    int _junkFrame(int fd);
     void _loopbackInit();
     void _loopbackFini();
     void _udpReceiver();
+    void _polyfit(const std::vector<double> &t,
+                  const std::vector<double> &v,
+                  std::vector<double> &coeff,
+                  unsigned order);
 private:
     const Parameters&           m_para;
     SPSCQueue<XtcData::Dgram*>& m_pvQueue;
     SPSCQueue<XtcData::Dgram*>& m_bufferFreelist;
+    std::atomic<bool>           m_firstReadout;
     std::atomic<bool>           m_terminate;
     std::thread                 m_udpReceiverThread;
     int                         m_loopbackFd;
     struct sockaddr_in          m_loopbackAddr;
     uint16_t                    m_loopbackFrameCount;
     int                          _dataFd;
+    int                          _interpolateFd;
+    char                        m_hardwareIDBuf[16];
     // out-of-order support
     unsigned                    m_count;
     unsigned                    m_countOffset;
@@ -109,6 +119,12 @@ private:
     ZmqSocket                   m_notifySocket;
     uint64_t                    m_nUpdates;
     uint64_t                    m_nMissed;
+    // FIT
+    std::vector<double>         m_enc_values;
+    std::vector<double>         m_enc_times;
+    uint64_t                    m_num_enc_values;
+    enum { TriggerRatio = 100      };       // FIXME hardcoded
+    enum { Order = 1               };       // FIXME hardcoded
 };
 
 
@@ -125,7 +141,10 @@ public:
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
     int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
     enum { DefaultDataPort = 5006 };
-    enum { MajorVersion = 2, MinorVersion = 0, MicroVersion = 0 };
+    enum { DefaultLoopbackPort = 5007 };
+    enum { MajorVersion = 2, MinorVersion = 1, MicroVersion = 0 };
+    enum { DefaultInterpolatePort = 5008 };
+    enum { TriggerReadoutGroup = 5 };       // FIXME hardcoded
 private:
     void _event(XtcData::Dgram& dgram, const void* const bufEnd, encoder_frame_t& frame);
     void _worker();
@@ -145,6 +164,9 @@ private:
     std::vector<uint8_t> m_buffer;
     std::atomic<bool> m_terminate;
     std::atomic<bool> m_running;
+    std::atomic<bool> m_preInterpolation;
+    std::atomic<bool> m_firstReadout;
+    uint32_t m_encoderValT1, m_encoderValT2;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     uint64_t m_nEvents;
     uint64_t m_nMatch;

@@ -1,8 +1,15 @@
 #include "UdpEncoder.hh"
+#include <eigen3/Eigen/Dense>
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <eigen3/Eigen/QR>
 
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
+
+#define MAX_ENC_VALUES 2
 
 #include <getopt.h>
 #include <cassert>
@@ -15,6 +22,8 @@
 #include <limits>
 #include <thread>
 #include <Python.h>
+#include <sys/param.h>
+#include <sys/select.h>
 #include <arpa/inet.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
@@ -58,7 +67,8 @@ public:
       majorVersion,
       minorVersion,
       microVersion,
-      hardwareID
+      hardwareID,
+      innerCount
     };
 
   RawDef()
@@ -75,52 +85,51 @@ public:
        NameVec.push_back({"minorVersion", XtcData::Name::UINT8,1});
        NameVec.push_back({"microVersion", XtcData::Name::UINT8,1});
        NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
+       NameVec.push_back({"innerCount", XtcData::Name::UINT16});
    }
 } RawDef;
 
 namespace Drp {
 
-static const XtcData::Name::DataType xtype[] = {
-  XtcData::Name::UINT8 , // pvBoolean
-  XtcData::Name::INT8  , // pvByte
-  XtcData::Name::INT16 , // pvShort
-  XtcData::Name::INT32 , // pvInt
-  XtcData::Name::INT64 , // pvLong
-  XtcData::Name::UINT8 , // pvUByte
-  XtcData::Name::UINT16, // pvUShort
-  XtcData::Name::UINT32, // pvUInt
-  XtcData::Name::UINT64, // pvULong
-  XtcData::Name::FLOAT , // pvFloat
-  XtcData::Name::DOUBLE, // pvDouble
-  XtcData::Name::CHARSTR, // pvString
-};
-
 UdpReceiver::UdpReceiver(const Parameters&           para,
                          SPSCQueue<XtcData::Dgram*>& pvQueue,
-                         SPSCQueue<XtcData::Dgram*>& bufferFreelist) :
+                         SPSCQueue<XtcData::Dgram*>& bufferFreelist,
+                         const bool& firstReadout):
     m_para          (para),
     m_pvQueue       (pvQueue),
     m_bufferFreelist(bufferFreelist),
+    m_firstReadout(firstReadout),
+    m_enc_values    (MAX_ENC_VALUES),
+    m_enc_times     (MAX_ENC_VALUES),
+    m_num_enc_values(0),
     m_terminate     (false),
     m_outOfOrder    (false),
     m_missingData   (false),
     m_notifySocket  {&m_context, ZMQ_PUSH},
     m_nUpdates      (0),
+    m_encoderValT1  (0),
+    m_encoderValT2  (0),
     m_nMissed       (0)
 {
     // ZMQ socket for reporting errors
     m_notifySocket.connect({"tcp://" + m_para.collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para.partition)});
 
-    // UDP socket for receiving data
-    int dataPort = (m_para.loopbackPort) ? m_para.loopbackPort : UdpEncoder::DefaultDataPort;
-    _dataFd = createUdpSocket(dataPort);
-    logging::debug("createUdpSocket(%d) returned %d", dataPort, _dataFd);
+    // UDP socket for receiving data from DATA PORT after interpolation
+    _dataFd = createUdpSocket(UdpEncoder::DefaultDataPort);
+    logging::debug("createUdpSocket(%d) returned %d (data fd)", UdpEncoder::DefaultDataPort, _dataFd);
+
+    // UDP socket for receiving data from INTERPOLATE PORT before interpolation
+    _interpolateFd = createUdpSocket(UdpEncoder::DefaultInterpolatePort);
+    logging::debug("createUdpSocket(%d) returned %d (interpolate fd)", UdpEncoder::DefaultInterpolatePort, _interpolateFd);
 }
 
 UdpReceiver::~UdpReceiver()
 {
     if (_dataFd > 0) {
         close(_dataFd);
+    }
+    if (_interpolateFd > 0) {
+        close(_interpolateFd);
     }
 }
 
@@ -132,9 +141,7 @@ void UdpReceiver::start()
 
     m_udpReceiverThread = std::thread{&UdpReceiver::_udpReceiver, this};
 
-    if (m_para.loopbackPort) {
-        _loopbackInit();        // LOOPBACK TEST
-    }
+    _loopbackInit();
 
     logging::info("%s started", name().c_str());
 }
@@ -154,16 +161,17 @@ void UdpReceiver::_loopbackInit()
 {
     logging::debug("%s (port = %d)", __PRETTY_FUNCTION__, m_para.loopbackPort);
 
-    if (m_para.loopbackPort > 0) {
+    if (true) {
         m_loopbackFd = socket(AF_INET,SOCK_DGRAM, 0);
         if (m_loopbackFd == -1) {
             perror("socket");
             logging::error("failed to create loopback socket");
         }
 
+        // bind the socket to any valid IP address and a specific port */
         bzero(&m_loopbackAddr, sizeof(m_loopbackAddr));
         m_loopbackAddr.sin_family = AF_INET;
-        m_loopbackAddr.sin_addr.s_addr=inet_addr("127.0.0.1");
+        m_loopbackAddr.sin_addr.s_addr = htonl(INADDR_ANY);
         m_loopbackAddr.sin_port=htons(m_para.loopbackPort);
 
         m_loopbackFrameCount = 0;
@@ -181,6 +189,7 @@ void UdpReceiver::_loopbackFini()
     }
 }
 
+#if 0
 void UdpReceiver::loopbackSend()
 {
     char mybuf[sizeof(encoder_header_t) + sizeof(encoder_channel_t)];
@@ -207,21 +216,25 @@ void UdpReceiver::loopbackSend()
 
     if (sent == -1) {
         perror("sendto");
-        logging::error("failed to send to loopback socket");
+        logging::error("%s: failed to send to loopback socket %d", __PRETTY_FUNCTION__, m_loopbackFd);
     } else {
         logging::debug("%s: sent = %d", __PRETTY_FUNCTION__, sent);
     }
 }
+#endif
 
 void UdpReceiver::_udpReceiver()
 {
-    logging::info("UDP receiver thread started");
+    logging::info("%s: thread started", __PRETTY_FUNCTION__);
 
     fd_set readfds, masterfds;
     struct timeval timeout;
 
     FD_ZERO(&masterfds);
     FD_SET(_dataFd, &masterfds);
+    FD_SET(_interpolateFd, &masterfds);
+    int nfds = MAX(_dataFd, _interpolateFd) + 1;
+    logging::debug("%s: nfds = %d", __PRETTY_FUNCTION__, nfds);
 
     m_nUpdates = 0;
     m_nMissed  = 0;
@@ -235,7 +248,7 @@ void UdpReceiver::_udpReceiver()
         memcpy(&readfds, &masterfds, sizeof(fd_set));
         timeout.tv_sec = 10;
         timeout.tv_usec = 0;
-        if (select(_dataFd+1, &readfds, NULL, NULL, &timeout) < 0) {
+        if (select(nfds, &readfds, NULL, NULL, &timeout) < 0) {
             logging::error("select: error");
             break;
         }
@@ -243,12 +256,17 @@ void UdpReceiver::_udpReceiver()
             // shutting down
             break;
         }
+        logging::debug("%s check read FDs", __PRETTY_FUNCTION__);
+        if (FD_ISSET(_interpolateFd, &readfds)) {
+            logging::debug("%s interpolate read FD is set", __PRETTY_FUNCTION__);
+            interpolate();
+        }
         if (FD_ISSET(_dataFd, &readfds)) {
-            logging::debug("%s read FD is set", __PRETTY_FUNCTION__);
+            logging::debug("%s data read FD is set", __PRETTY_FUNCTION__);
             process();
         }
     }
-    logging::info("UDP receiver thread finished");
+    logging::info("%s: thread finished", __PRETTY_FUNCTION__);
 }
 
 void UdpReceiver::setMissingData(std::string errMsg)
@@ -278,7 +296,7 @@ void UdpReceiver::_read(XtcData::Dgram& dgram)
     bool missing = false;
 
     // read from the udp socket that triggered select()
-    int rv = _readFrame(frame, missing);
+    int rv = _readFrame(_dataFd, frame, missing);
 
     // if reading frame failed, record damage and return early
     if (rv) {
@@ -300,9 +318,21 @@ void UdpReceiver::_read(XtcData::Dgram& dgram)
         }
     }
 
-    logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  scaleDenom=%u  mode=%u  error=%u  version=%u.%u.%u",
+    logging::debug("%s: frame=%hu  inner=%hu  encoderValue=%u  timing=%u  scale=%u  scaleDenom=%u  mode=%u  error=%u  version=%u.%u.%u",
                    __PRETTY_FUNCTION__,
+#if 0
+                   ntohs(frame->header.frameCount),
+                   ntohs(frame->header.innerCount),
+                   ntohl(frame->channel[0].encoderValue),
+                   ntohl(frame->channel[0].timing),
+                   (unsigned) ntohs(frame->channel[0].scale),
+                   (unsigned) ntohs(frame->channel[0].scaleDenom),
+                   (unsigned) frame->channel[0].mode,
+                   (unsigned) frame->channel[0].error,
+                   (unsigned) ntohs(frame->header.majorVersion),
+#else
                    frame->header.frameCount,
+                   frame->header.innerCount,
                    frame->channel[0].encoderValue,
                    frame->channel[0].timing,
                    (unsigned) frame->channel[0].scale,
@@ -310,6 +340,7 @@ void UdpReceiver::_read(XtcData::Dgram& dgram)
                    (unsigned) frame->channel[0].mode,
                    (unsigned) frame->channel[0].error,
                    (unsigned) frame->header.majorVersion,
+#endif
                    (unsigned) frame->header.minorVersion,
                    (unsigned) frame->header.microVersion);
 
@@ -320,24 +351,26 @@ void UdpReceiver::_read(XtcData::Dgram& dgram)
         m_resetHwCount = false;
     }
 
-    // update frame counter
-    uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
-    ++m_count;
-    uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
+    if (frame->header.innerCount == 0) {
+        // update frame counter
+        uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
+        ++m_count;
+        uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
 
-    if (!getOutOfOrder()) {
-        char errmsg[128];
-        // check for out-of-order condition
-        if (frame->header.frameCount == stuck16) {
-            snprintf(errmsg, sizeof(errmsg),
-                     "Out-of-order: frame count %hu repeated in consecutive frames", stuck16);
-            setOutOfOrder(errmsg);
+        if (!getOutOfOrder()) {
+            char errmsg[128];
+            // check for out-of-order condition
+            if (frame->header.frameCount == stuck16) {
+                snprintf(errmsg, sizeof(errmsg),
+                          "Out-of-order: frame count %hu repeated in consecutive frames", stuck16);
+                setOutOfOrder(errmsg);
 
-        } else if (frame->header.frameCount != sum16) {
-            snprintf(errmsg, sizeof(errmsg),
-                     "Out-of-order: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)",
-                     frame->header.frameCount, m_count, m_countOffset, sum16);
-            setOutOfOrder(errmsg);
+            } else if (frame->header.frameCount != sum16) {
+                snprintf(errmsg, sizeof(errmsg),
+                         "Out-of-order: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)",
+                         frame->header.frameCount, m_count, m_countOffset, sum16);
+                setOutOfOrder(errmsg);
+            }
         }
     }
 
@@ -351,6 +384,7 @@ void UdpReceiver::process()
 {
     ++m_nUpdates;
     logging::debug("%s process", name().c_str());
+//  logging::debug("%s: m_preInterpolation = %s", __PRETTY_FUNCTION__, m_preInterpolation ? "true" : "false");
 
     XtcData::Dgram* dgram;
     if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
@@ -364,17 +398,130 @@ void UdpReceiver::process()
     else {
         logging::error("%s: buffer not available, frame dropped", __PRETTY_FUNCTION__);
         ++m_nMissed;                       // Else count it as missed
-        (void) _junkFrame();
+        (void) _junkFrame(_dataFd);
     }
 }
 
-int UdpReceiver::_readFrame(encoder_frame_t *frame, bool& missing)
+void UdpReceiver::interpolate() {
+    logging::debug("%s: m_loopbackFd = %d, _interpolateFd = %d", __PRETTY_FUNCTION__, m_loopbackFd, _interpolateFd);
+    static encoder_frame_t newFrame, oldFrame;
+    std::vector<double> coeff;
+    bool coeff_ready = false;
+
+    if (! m_firstReadout) {
+        oldFrame = newFrame;
+    }
+    // read from the udp socket that triggered select()
+    ssize_t recvlen = recvfrom(_interpolateFd, &newFrame, sizeof(encoder_frame_t), MSG_DONTWAIT, 0, 0);
+    // check length
+    if (recvlen != (ssize_t) sizeof(encoder_frame_t)) {
+        // length is wrong
+        if (recvlen == -1) {
+            perror("recvfrom");
+        }
+        logging::error("received UDP length %zd, expected %zd", recvlen, sizeof(encoder_frame_t));
+    } else {
+        // length is OK
+        logging::debug("%s: recvfrom() length %zd is OK", __PRETTY_FUNCTION__, recvlen);
+
+        if (m_firstReadout) {
+            m_encoderValT2 = ntohl(newFrame.channel[0].encoderValue);
+            logging::debug("%s: first sample: m_encoderValT2 = %7u", __PRETTY_FUNCTION__, m_encoderValT2);
+        } else {
+
+// ---------------------------------------- FIT ---------------------------------------------------------
+
+            m_enc_values[m_num_enc_values%MAX_ENC_VALUES] = (double)ntohl(newFrame.channel[0].encoderValue);
+
+            for (unsigned uu = 0; uu <= Order; uu++) {
+                m_enc_times[(m_num_enc_values - uu) % MAX_ENC_VALUES] = (Order - uu) * TriggerRatio;
+            }
+
+            m_num_enc_values++;
+
+            logging::debug("***m_enc_times:  %6.3f %6.3f", m_enc_times[0], m_enc_times[1]);
+            logging::debug("***m_enc_values: %6.3f %6.3f", m_enc_values[0], m_enc_values[1]);
+            logging::debug("***event %d", m_num_enc_values);
+            if (m_num_enc_values > Order) {
+                logging::debug("***fit");
+                _polyfit(m_enc_times, m_enc_values, coeff, Order);
+                logging::debug("***coeff:        %6.3f %6.3f", coeff[0], coeff[1]);
+                coeff_ready = true;
+            }
+        }
+
+// ------------------------------------------------------------------------------------------------------
+
+        if (coeff_ready) {
+            // interpolate
+            for (uint16_t ii = 1; ii < TriggerRatio; ii++) {
+                // set innercount
+                oldFrame.header.innerCount = htons(ii);
+
+                // set interpolated encoder value
+                double q = (double) ii / (TriggerRatio * Order);
+                double vfitted = coeff[0];
+                for (unsigned ord = 1; ord <= Order; ord++) {
+                    vfitted += (coeff[ord] * pow(q, ord) * TriggerRatio);
+                }
+                logging::debug("***vfitted: %6.3f  (q=%6.3f)", vfitted, q);
+                oldFrame.channel[0].encoderValue = htonl(round(vfitted));
+
+                // copy hardware ID
+                memcpy(oldFrame.header.hardwareID, newFrame.header.hardwareID, 15);
+                oldFrame.header.hardwareID[15] = '\0';
+
+                // copy version
+                oldFrame.header.majorVersion = newFrame.header.majorVersion;
+                oldFrame.header.minorVersion = newFrame.header.minorVersion;
+                oldFrame.header.microVersion = newFrame.header.microVersion;
+
+                // send interpolated frame
+                int sent = sendto(m_loopbackFd, (void *)&oldFrame, sizeof(oldFrame), 0,
+                              (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
+
+                if (sent == -1) {
+                    perror("sendto");
+                    logging::error("%s: failed to send to loopback socket %d", __PRETTY_FUNCTION__, m_loopbackFd);
+                } else {
+                    if (sent != sizeof(encoder_frame_t)) {
+                        logging::error("%s: sendto() returned %d", __PRETTY_FUNCTION__, sent);
+                    }
+                    logging::debug("%s: %2c frameCount=%-5u innerCount=%-5u encoderValue=%-5u", __PRETTY_FUNCTION__,
+                                   (ntohs(oldFrame.header.innerCount) == 0) ? '*' : ' ',
+                                   ntohs(oldFrame.header.frameCount),
+                                   ntohs(oldFrame.header.innerCount),
+                                   ntohl(oldFrame.channel[0].encoderValue));
+                }
+            }
+        }
+
+        // send the original UDP frame (with innerCount=0)
+        newFrame.header.innerCount = htons(0);
+        int sent = sendto(m_loopbackFd, (void *)&newFrame, sizeof(newFrame), 0,
+                      (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
+
+        if (sent == -1) {
+            perror("sendto");
+            logging::error("%s: failed to send to loopback socket %d", __PRETTY_FUNCTION__, m_loopbackFd);
+        } else {
+            logging::debug("%s: %2c frameCount=%-5u innerCount=%-5u encoderValue=%-5u sendto()=%d", __PRETTY_FUNCTION__,
+                           (ntohs(newFrame.header.innerCount) == 0) ? '*' : ' ',
+                           ntohs(newFrame.header.frameCount),
+                           ntohs(newFrame.header.innerCount),
+                           ntohl(newFrame.channel[0].encoderValue), sent);
+        }
+    }
+}
+
+int UdpReceiver::_readFrame(int fd, encoder_frame_t *frame, bool& missing)
 {
+    logging::debug("entered %s", __PRETTY_FUNCTION__);
     int rv = 0;
     ssize_t recvlen;
 
     // peek data
-    recvlen = recvfrom(_dataFd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT | MSG_PEEK, 0, 0);
+    recvlen = recvfrom(fd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT | MSG_PEEK, 0, 0);
     // check length
     if (recvlen != (ssize_t) sizeof(encoder_frame_t)) {
         if (recvlen == -1) {
@@ -383,19 +530,24 @@ int UdpReceiver::_readFrame(encoder_frame_t *frame, bool& missing)
         logging::error("received UDP length %zd, expected %zd", recvlen, sizeof(encoder_frame_t));
         // TODO discard frame of the wrong size
     } else {
+        // length is OK
+        logging::debug("%s: recvfrom() length %zd is OK", __PRETTY_FUNCTION__, recvlen);
+
         // byte swap
         frame->header.frameCount = ntohs(frame->header.frameCount);
+        frame->header.innerCount = ntohs(frame->header.innerCount);
+        frame->header.majorVersion = ntohs(frame->header.majorVersion);
     }
-    if (m_resetHwCount == false) {
+    if ((frame->header.innerCount == 0) && (m_resetHwCount == false)) {
         uint16_t expect16 = (uint16_t)(1 + m_count + m_countOffset);
         if (frame->header.frameCount != expect16) {
             // frame count doesn't match
-            logging::debug("recvfrom(MSG_PEEK) frameCount %hu (expected %hu)\n", frame->header.frameCount, expect16);
+            logging::error("recvfrom(MSG_PEEK) frameCount %hu (expected %hu)\n", frame->header.frameCount, expect16);
             // trigger MissingData damage
             missing = true;
             // return empty frame with expected frame count
             bzero(frame, sizeof(encoder_frame_t));
-            frame->header.frameCount = htons(expect16);
+            frame->header.frameCount = expect16;
             frame->header.majorVersion = htons(UdpEncoder::MajorVersion);
             frame->header.minorVersion = UdpEncoder::MinorVersion;
             frame->header.microVersion = UdpEncoder::MicroVersion;
@@ -404,7 +556,7 @@ int UdpReceiver::_readFrame(encoder_frame_t *frame, bool& missing)
     }
 
     // read data
-    recvlen = recvfrom(_dataFd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT, 0, 0);
+    recvlen = recvfrom(fd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT, 0, 0);
     // check length
     if (recvlen != (ssize_t) sizeof(encoder_frame_t)) {
         if (recvlen == -1) {
@@ -415,18 +567,25 @@ int UdpReceiver::_readFrame(encoder_frame_t *frame, bool& missing)
     } else {
         // byte swap
         frame->header.frameCount = ntohs(frame->header.frameCount);
+        frame->header.innerCount = ntohs(frame->header.innerCount);
         frame->header.majorVersion = ntohs(frame->header.majorVersion);
+        if (frame->header.majorVersion != UdpEncoder::MajorVersion) {
+            logging::error("%s: found majorVersion %u, expected %d", __PRETTY_FUNCTION__,
+            frame->header.majorVersion, UdpEncoder::MajorVersion);
+        }
         frame->channel[0].encoderValue = ntohl(frame->channel[0].encoderValue);
         frame->channel[0].timing = ntohl(frame->channel[0].timing);
         frame->channel[0].scale = ntohs(frame->channel[0].scale);
         frame->channel[0].scaleDenom = ntohs(frame->channel[0].scaleDenom);
 
         logging::debug("     frameCount    %-7u", frame->header.frameCount);
+        logging::debug("     innerCount    %-7u", frame->header.innerCount);
         logging::debug("     version       %u.%u.%u", frame->header.majorVersion,
                                                       frame->header.minorVersion,
                                                       frame->header.microVersion);
         char buf[16];
         snprintf(buf, sizeof(buf), "%s", frame->header.hardwareID);
+        buf[15] = 0;
         logging::debug("     hardwareID    \"%s\"",  buf);
         logging::debug("ch0  encoderValue  %7u", frame->channel[0].encoderValue);
         logging::debug("ch0  timing        %7u", frame->channel[0].timing);
@@ -438,14 +597,14 @@ int UdpReceiver::_readFrame(encoder_frame_t *frame, bool& missing)
     return (rv);
 }
 
-int UdpReceiver::_junkFrame()
+int UdpReceiver::_junkFrame(int fd)
 {
     int rv = 0;
     ssize_t recvlen;
     encoder_frame_t junk;
 
     // read data
-    recvlen = recvfrom(_dataFd, &junk, sizeof(junk), MSG_DONTWAIT, 0, 0);
+    recvlen = recvfrom(fd, &junk, sizeof(junk), MSG_DONTWAIT, 0, 0);
     // check length
     if (recvlen != (ssize_t) sizeof(encoder_frame_t)) {
         if (recvlen == -1) {
@@ -458,14 +617,14 @@ int UdpReceiver::_junkFrame()
     return (rv);
 }
 
-int UdpReceiver::drainDataFd()
+int UdpReceiver::drainFd(int fd)
 {
   int rv = 0;
   unsigned count = 0;
   encoder_frame_t junk;
 
-  if (_dataFd > 0) {
-    while ((rv = recvfrom(_dataFd, &junk, sizeof(junk), MSG_DONTWAIT, 0, 0)) > 0) {
+  if (fd > 0) {
+    while ((rv = recvfrom(fd, &junk, sizeof(junk), MSG_DONTWAIT, 0, 0)) > 0) {
       if (rv == -1) {
         perror("recvfrom");
         break;
@@ -473,7 +632,7 @@ int UdpReceiver::drainDataFd()
       ++ count;
     }
     if (count > 0) {
-      logging::warning("%s: drained %u frames\n", __PRETTY_FUNCTION__, count);
+      logging::debug("%s: drained %u frames\n", __PRETTY_FUNCTION__, count);
     }
   }
 
@@ -482,21 +641,26 @@ int UdpReceiver::drainDataFd()
 
 int UdpReceiver::reset()
 {
-  int rv = -1;  // ERROR
+  int rv1 = -1;
+  int rv2 = -1;
 
   if (_dataFd > 0) {
     // drain input buffers
-    rv = drainDataFd();
+    rv1 = drainFd(_dataFd);
   }
-  return (rv);
+  if (_interpolateFd > 0) {
+    // drain interpolation buffers
+    rv2 = drainFd(_interpolateFd);
+  }
+  return ((rv1 == 0) && (rv2 == 0)) ? 0 : -1;
 }
 
 class Pgp : public PgpReader
 {
 public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
+    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running, const bool& preInterpolation) :
         PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
-        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
+        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running), m_preInterpolation(preInterpolation),
         m_available(0), m_current(0), m_nDmaRet(0)
     {
         m_nodeId = drp.nodeId();
@@ -513,6 +677,7 @@ private:
     Pds::Eb::TebContributor& m_tebContributor;
     static const int MAX_RET_CNT_C = 100;
     const bool& m_running;
+    const bool& m_preInterpolation;
     int32_t m_available;
     int32_t m_current;
     unsigned m_nodeId;
@@ -561,17 +726,18 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
     m_evtQueue      (drp.pool.nbuffers()),
-    m_pvQueue       (8),                  // Revisit size
+    m_pvQueue       (128),                // Formerly 8
     m_bufferFreelist(m_pvQueue.size()),
     m_terminate     (false),
-    m_running       (false)
+    m_running       (false),
+    m_preInterpolation (true)
 {
 }
 
 unsigned UdpEncoder::connect(std::string& msg)
 {
     try {
-        m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_pvQueue, m_bufferFreelist);
+        m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_pvQueue, m_bufferFreelist, m_firstReadout);
     }
     catch(std::string& error) {
         logging::error("Failed to create UdpReceiver: %s", error.c_str());
@@ -679,7 +845,7 @@ void UdpEncoder::_worker()
     m_exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
                     [&](){return m_pvQueue.guess_size();});
 
-    Pgp pgp(*m_para, m_drp, this, m_running);
+    Pgp pgp(*m_para, m_drp, this, m_running, m_preInterpolation);
 
     m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nDmaRet();});
@@ -724,13 +890,13 @@ void UdpEncoder::_worker()
             logging::debug("Worker thread: m_nEvents = %d", m_nEvents);
 
             XtcData::TransitionId::Value service = dgram->service();
-
+#if 0
             if (service == XtcData::TransitionId::L1Accept) {
                 if (m_para->loopbackPort) {
                     m_udpReceiver->loopbackSend();        // LOOPBACK TEST
                 }
             }
-
+#endif
             // Also queue SlowUpdates to keep things in time order
             if ((service == XtcData::TransitionId::L1Accept) ||
                 (service == XtcData::TransitionId::SlowUpdate)) {
@@ -764,6 +930,7 @@ void UdpEncoder::_worker()
 
                 if (service == XtcData::TransitionId::Enable) {
                     m_running = true;
+                    m_preInterpolation = m_firstReadout = true;
                 }
                 else if (service == XtcData::TransitionId::Disable) { // Sweep out L1As
                     m_running = false;
@@ -809,6 +976,36 @@ void UdpEncoder::_matchUp()
         Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[evtIdx]);
 
         _handleMatch  (*pvDg, *pgpDg);
+    }
+}
+
+void UdpReceiver::_polyfit(const std::vector<double> &t,
+                          const std::vector<double> &v,
+                          std::vector<double> &coeff,
+                          unsigned order)
+{
+    // Create Matrix Placeholder of size n x k, n= number of datapoints, k = order of polynomial, for exame k = 3 for cubic polynomial
+    Eigen::MatrixXd T(t.size(), order + 1);
+    Eigen::VectorXd V = Eigen::VectorXd::Map(&v.front(), v.size());
+    Eigen::VectorXd result;
+
+    // check to make sure inputs are correct
+    assert(t.size() == v.size());
+    assert(t.size() >= order + 1);
+
+    // Populate the matrix
+    for (size_t i = 0 ; i < t.size(); ++i) {
+        for (size_t j = 0; j < order + 1; ++j) {
+            T(i, j) = pow(t.at(i), j);
+        }
+    }
+    //std::cout<<T<<std::endl;
+
+    // Solve for linear least square fit
+    result  = T.householderQr().solve(V);
+    coeff.resize(order+1);
+    for (unsigned k = 0; k < order+1; k++) {
+        coeff[k] = result[k];
     }
 }
 
@@ -864,10 +1061,21 @@ void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, encoder
     char buf[16];
     snprintf(buf, sizeof(buf), "%s", frame.header.hardwareID);
     raw.set_string(RawDef::hardwareID, buf);
+
+    // ...innerCount
+    raw.set_value(RawDef::innerCount, frame.header.innerCount);
 }
 
 void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
 {
+    logging::debug("%s: pgpDg rogs = %04hx", __PRETTY_FUNCTION__,
+                   pgpDg.readoutGroups());
+
+    if (m_preInterpolation && (pgpDg.readoutGroups() & (1 << TriggerReadoutGroup))) {
+        logging::info("%s: rogs p5 first MATCH!", __PRETTY_FUNCTION__);
+        m_preInterpolation = false;
+    }
+
     uint32_t evtIdx;
     m_evtQueue.try_pop(evtIdx);         // Actually consume the element
 
@@ -875,18 +1083,16 @@ void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
         pgpDg.xtc.damage.increase(pvDg.xtc.damage.value());
         auto bufEnd  = (char*)&pgpDg + m_pool->pebble.bufferSize();
-
+        if (m_preInterpolation) {
+            pgpDg.xtc.damage.increase(XtcData::Damage::MissingData);
+            logging::info("%s: pre-interpolation MissingData damage", __PRETTY_FUNCTION__);
+        }
         _event(pgpDg, bufEnd, *(encoder_frame_t*)(pvDg.xtc.payload()));
 
         m_pvQueue.try_pop(dgram);       // Actually consume the element
         m_bufferFreelist.push(dgram);   // Return buffer to freelist
 
         ++m_nMatch;
-    }
-    else { // SlowUpdate
-        // Allocate a transition dgram from the pool and initialize its header
-        Pds::EbDgram* trDg = m_pool->transitionDgrams[evtIdx];
-        *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
     }
 
     _sendToTeb(pgpDg, evtIdx);
@@ -1208,6 +1414,8 @@ int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     std::string kwargs_str;
+    para.loopbackPort = 5006;   // UdpEncoder::DefaultDataPort
+
     int c;
     while((c = getopt(argc, argv, "p:L:o:l:D:S:C:d:u:k:P:M:v")) != EOF) {
         switch(c) {
