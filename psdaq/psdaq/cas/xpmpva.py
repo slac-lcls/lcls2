@@ -406,7 +406,7 @@ class XpmGroups(object):
                     'l0rate':{i:'-' for i in range(8)},
                     'codes' :{i:{'master':'-',
                                  'desc'  :'-',
-                                 'rate'  :'-'} for i in range(12)}}
+                                 'rate'  :'-'} for i in range(16)}}
         for i in range(8):
             if self.vals['master'][i].__value__ == 1:
                 vals['master'][i] = self.name
@@ -415,7 +415,7 @@ class XpmGroups(object):
         codesv = self.vals['codes'].__value__
         if codesv:
             codes = codesv.todict()['value']
-            for i in range(12):
+            for i in range(16):
                 if codes['Enabled'][i]:
                     vals['codes'][i] = {'master':self.name,
                                         'desc'  :codes['Description'][i],
@@ -450,7 +450,7 @@ class GroupsTab(QtWidgets.QWidget):
         self.codesText = {'master':{},
                           'desc'  :{},
                           'rate'  :{}}
-        for i in range(12):
+        for i in range(16):
             grid2.addWidget( QtWidgets.QLabel(str(i+272)), i+1, 0 )
             self.codesText['master'][i] = QtWidgets.QLabel('None')
             grid2.addWidget( self.codesText['master'][i], i+1, 1 )
@@ -471,7 +471,7 @@ class GroupsTab(QtWidgets.QWidget):
         for i in range(8):
             self.masterText[i].setText(vals['master'][i])
             self.l0RateText[i].setText(vals['l0rate'][i])
-        for i in range(12):
+        for i in range(16):
             self.codesText['master'][i].setText(vals['codes'][i]['master'])
             self.codesText['desc'  ][i].setText(vals['codes'][i]['desc'  ])
             self.codesText['rate'  ][i].setText(vals['codes'][i]['rate'  ])
@@ -510,7 +510,8 @@ class Ui_MainWindow(object):
             #            PvLabel  (hl, pvbase, "PAddr"       , isInt=True)
             PvPAddr  (hl, pvbase, "PAddr"       )
             PvCString(hl, pvbase, "FwBuild"     )
-
+            LblCheckBox(hl, pvbase, "UsRxEnable", enable=False)
+            LblCheckBox(hl, pvbase, "CuRxEnable", enable=False)
             LblPushButtonX(hl, pvbase, "ModuleInit"      )
             LblPushButtonX(hl, pvbase, "DumpPll",        NAmcs)
             LblPushButtonX(hl, pvbase, "DumpTiming",     2)
@@ -566,7 +567,8 @@ class Ui_MainWindow(object):
 
             tw.addTab(GroupsTab(pvbase),"Groups/EventCodes")
 
-            tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
+            if 'Kcu' not in v:
+                tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
 
             stack.addWidget(tw)
 

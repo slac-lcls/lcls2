@@ -48,8 +48,8 @@ class PeriodicGenerator(object):
         self.repeat = repeat
         self.notify = notify
 
-        if not numpy.less(start,period).all():
-            raise ValueError('start must be less than period')
+#        if not numpy.less(start,period).all():
+#            raise ValueError('start must be less than period')
 
         self.desc = 'Periodic: period[{}] start[{}]'.format(period,start)
         self.instr = ['instrset = []']
@@ -81,9 +81,9 @@ class PeriodicGenerator(object):
         period = numpy.lcm.reduce(self.period)
         #period = reduce(lcm,self.period)
 
-        self.repeat *= TPGSEC//period
-        if ((TPGSEC % period) and self.repeat > 0):
-            raise ValueError(f'TPGSEC ({TPGSEC}) is not a multiple of common period {period}')
+#        self.repeat *= TPGSEC//period
+#        if ((TPGSEC % period) and self.repeat > 0):
+#            raise ValueError(f'TPGSEC ({TPGSEC}) is not a multiple of common period {period}')
 
         #  Brute force it to see how far we get (when will it fail?)
         print('# period {}  args.period {}'.format(period,self.period))
@@ -176,9 +176,8 @@ class PeriodicGenerator(object):
                 self.ninstr += 1
 
             if self.notify:
-                self.instr.append('instrset.append( FixedRateSync(marker="10kH",occ=2))')
                 self.instr.append('instrset.append( CheckPoint() )')
-                self.ninstr += 2
+                self.ninstr += 1
 
             self.instr.append('last = len(instrset)')
             self.instr.append('instrset.append( FixedRateSync(marker="1H",occ=1) )')
