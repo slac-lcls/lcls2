@@ -34,14 +34,12 @@ class DmaHandle(rogue.interfaces.stream.Slave):
 
     def _acceptFrame(self, frame):
 
-        fidPeriod   = 1400e-6/1300.
-    
         with frame.lock():
             size = frame.getPayload()
 
             msg = bytearray(size)
             frame.read(msg,0)
-            
+
             if self._handle:
                 self._handle(msg)
 
