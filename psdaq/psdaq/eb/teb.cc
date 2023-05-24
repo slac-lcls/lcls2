@@ -323,7 +323,7 @@ int Teb::connect()
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
-  rc = EbAppBase::connect(_prms, TEB_TR_BUFFERS);
+  rc = EbAppBase::connect(TEB_TR_BUFFERS);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
@@ -346,7 +346,7 @@ int Teb::configure(Trigger* trigger,
 
   // MRQ links need no configuration
 
-  int rc = EbAppBase::configure(_prms);
+  int rc = EbAppBase::configure();
   if (rc)  return rc;
 
   // maxResultSize becomes known during Configure
@@ -1117,6 +1117,7 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.maxBuffers   = 0;               // Save the largest value
   _prms.indexSources = 0ull;            // DRP(s) with the largest DMA index range
   _prms.numBuffers.resize(MAX_DRPS, 0); // Number of buffers on each DRP
+  _prms.drps.resize(MAX_DRPS);          // DRP aliases
 
   unsigned maxBuffers = 0;
   for (auto it : body["drp"].items())
@@ -1128,6 +1129,7 @@ int TebApp::_parseConnectionParams(const json& body)
       rc = 1;
     }
     _prms.contributors |= 1ull << drpId;
+    _prms.drps[drpId]   = it.value()["proc_info"]["alias"];
 
     _prms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
     _prms.ports.push_back(it.value()["connect_info"]["drp_port"]);
@@ -1160,6 +1162,7 @@ int TebApp::_parseConnectionParams(const json& body)
       if (rog == _prms.partition) // Disallow non-common RoG DRPs in indexSources
         _prms.indexSources |= 1ull << drpId;
   }
+  _prms.drps.shrink_to_fit();
 
   if (_prms.maxBuffers & (_prms.maxBuffers - 1))
   {

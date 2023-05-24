@@ -137,6 +137,7 @@ namespace Pds {
       unsigned  numMrqs;           // Number of Mon request servers
       vecuint_t numMebEvBufs;      // Number of Mon event buffers for each MEB
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
+      vecstr_t  drps;              // Unique DRP names from cnf id field
       kwmap_t   kwargs;            // Keyword arguments
       int       core[2];           // Cores to pin threads to
       mutable
