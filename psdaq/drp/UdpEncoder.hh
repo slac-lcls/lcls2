@@ -111,6 +111,7 @@ private:
     char                        m_hardwareIDBuf[16];
     // out-of-order support
     unsigned                    m_count;
+    uint16_t                    m_prev_innerCount;
     unsigned                    m_countOffset;
     bool                        m_resetHwCount;
     bool                        m_outOfOrder;

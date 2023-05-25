@@ -294,6 +294,7 @@ void UdpReceiver::_read(XtcData::Dgram& dgram)
     const void* bufEnd = dgram.xtc.payload() + sizeof(encoder_frame_t);
     encoder_frame_t* frame = (encoder_frame_t*)dgram.xtc.alloc(sizeof(encoder_frame_t), bufEnd);
     bool missing = false;
+    char errmsg[128];
 
     // read from the udp socket that triggered select()
     int rv = _readFrame(_dataFd, frame, missing);
@@ -311,7 +312,6 @@ void UdpReceiver::_read(XtcData::Dgram& dgram)
         dgram.xtc.damage.increase(XtcData::Damage::MissingData);
         // report first occurance
         if (!getMissingData()) {
-            char errmsg[128];
             snprintf(errmsg, sizeof(errmsg),
                      "Missing data for frame %hu", frame->header.frameCount);
             setMissingData(errmsg);
@@ -347,18 +347,18 @@ void UdpReceiver::_read(XtcData::Dgram& dgram)
     // reset frame counter
     if (m_resetHwCount) {
         m_count = 0;
+        m_prev_innerCount = 0;
         m_countOffset = frame->header.frameCount - 1;
         m_resetHwCount = false;
     }
 
+    uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
     if (frame->header.innerCount == 0) {
         // update frame counter
-        uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
         ++m_count;
         uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
 
         if (!getOutOfOrder()) {
-            char errmsg[128];
             // check for out-of-order condition
             if (frame->header.frameCount == stuck16) {
                 snprintf(errmsg, sizeof(errmsg),
@@ -372,10 +372,16 @@ void UdpReceiver::_read(XtcData::Dgram& dgram)
                 setOutOfOrder(errmsg);
             }
         }
+    } else {
+        // innerCount != 0
+        logging::debug("m_prev_innerCount        = %hu", m_prev_innerCount);
+        logging::debug("frame->header.frameCount = %hu", frame->header.frameCount);
+        logging::debug("frame->header.innerCount = %hu", frame->header.innerCount);
+        m_prev_innerCount = frame->header.innerCount;
     }
 
     // record damage
-    if (m_outOfOrder) {
+    if (getOutOfOrder()) {
         dgram.xtc.damage.increase(XtcData::Damage::OutOfOrder);
     }
 }
