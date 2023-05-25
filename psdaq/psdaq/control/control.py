@@ -183,9 +183,9 @@ class RunParams:
         valueList = self.pva.pv_get(nameList)
         for name, value in zip(nameList, valueList):
             if isinstance(value, TimeoutError):
-                self.collection.report_error(f"failed to read PVA PV {name}")
+                self.collection.report_warning(f"failed to read PVA PV {name}")
             elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_error(f"PVA PV {name} not recorded in logbook (nan)")
+                self.collection.report_warning(f"PVA PV {name} not recorded in logbook (nan)")
             else:
                 params[name] = value
 
@@ -196,9 +196,9 @@ class RunParams:
         valueList = epics.caget_many(nameList)
         for name, value in zip(nameList, valueList):
             if value is None:
-                self.collection.report_error(f"failed to read CA PV {name}")
+                self.collection.report_warning(f"failed to read CA PV {name}")
             elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_error(f"CA PV {name} not recorded in logbook (nan)")
+                self.collection.report_warning(f"CA PV {name} not recorded in logbook (nan)")
             else:
                 params[name] = value
 
