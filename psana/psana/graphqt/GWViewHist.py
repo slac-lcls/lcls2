@@ -26,7 +26,7 @@ Refactored to GWViewHist on 2022-08-30
 """
 
 from psana.graphqt.GWViewExt import * # GWViewExt, QtGui, QtCore, Qt
-from psana.graphqt.FWHist import FWHist, test_histogram
+from psana.graphqt.GWHist import GWHist, test_histogram
 from PyQt5.QtGui import QColor, QFont
 
 from psana.pyalgos.generic.HBins import HBins, np
@@ -42,22 +42,23 @@ class GWViewHist(GWViewExt):
         self.bgcolor_def = 'black'
 
         self.kwargs = kwargs
-        #self.wlength   = kwargs.get('wlength', 400)
-        #self.wwidth    = kwargs.get('wwidth',   60)
         self.fgcolor   = kwargs.get('fgcolor', 'blue')
         self.bgcolor   = kwargs.get('bgcolor', self.bgcolor_def)
         self.hbins     = kwargs.get('hbins', test_histogram())
+        self.auto_limits = kwargs.get('auto_limits', '')
         scale_ctl      = kwargs.get('scale_ctl', 'H')
         signal_fast    = kwargs.get('signal_fast', True)
-        #self.kwargs    = kwargs
+        #self.wlength   = kwargs.get('wlength', 400)
+        #self.wwidth    = kwargs.get('wwidth',   60)
 
         self.hist = None
         #self.side = 'D'
         self.arr_old = None
-        GWViewExt.__init__(self, parent, rscene, origin, scale_ctl=scale_ctl, signal_fast=signal_fast)
+        GWViewExt.__init__(self, parent, rscene, origin, scale_ctl=scale_ctl, move_fast=signal_fast, wheel_fast=signal_fast)
 
         #self.set_style() # called in GWViewExt
         self.update_my_scene(self.hbins)
+        #self.rs_old = rscene
 
 
     def print_attributes(self):
@@ -73,6 +74,38 @@ class GWViewHist(GWViewExt):
         GWViewExt.set_style(self)
         self.colhi = QColor(self.fgcolor)
         self.penhi = QPen(self.colhi, 1, Qt.SolidLine)
+
+
+    def set_auto_limits(self, frac=0.01):
+        #qu.info_rect_xywh(r)
+        print('\nTBD IN set_auto_limits - auto_limits: %s orientation: %s scale_ctl: %s'%\
+               (self.auto_limits, self.hist.orient, self.str_scale_ctl))  # , end='\n')
+        r = self.scene_rect()
+        x, y, w, h = r.x(), r.y(), r.width(), r.height()
+        hb = self.hbins
+        orient = self.hist.orient  # HV
+        amin, amax = hb.limits()
+        print('XXXX hb.limits: %.3f %.3f' % (amin, amax))
+        arr = hb.bin_data()
+        print('XXXX hb.data min/max: %.3f / %.3f' % (arr.min(), arr.max()))
+        #lim_lo = arr.min()
+        #lim_hi = arr.max()
+        lim_lo = np.quantile(arr, frac, axis=0)
+        lim_hi = np.quantile(arr, 1-frac, axis=0)
+        gap = lim_hi - lim_lo
+        lim_hi += gap * 0.5
+        lim_lo -= gap * 0.1
+        print('XXXX limits low/hight: %.3f / %.3f' % (lim_lo, lim_hi))
+
+        rpars = ((amin, y, amax-amin, h) if self.auto_limits == 'H' else\
+                 (x, lim_lo, w, lim_hi-lim_lo) if self.auto_limits == 'V' else\
+                 (amin, lim_lo, amax-amin, lim_hi-lim_lo))\
+              if orient == 'H' else\
+                ((x, amin, w, amax-amin) if self.auto_limits == 'V' else\
+                 (lim_lo, y, lim_hi-lim_lo, h) if self.auto_limits == 'H' else\
+                 (lim_lo, amin, lim_hi-lim_lo, amax-amin))
+
+        self.set_scene_rect(QRectF(*rpars))
 
 
     def update_my_scene(self, hbins=None):
@@ -91,17 +124,14 @@ class GWViewHist(GWViewExt):
         orient = self.kwargs.get('orient', 'H')  # histogram orientation H or V
         zvalue = self.kwargs.get('zvalue', 10)  # z value for visibility
 
-        self.hist = FWHist(view, hbins=hbins, color=self.colhi, brush=QBrush(), orient=orient, zvalue=zvalue)
+        self.hist = GWHist(view, hbins=hbins, color=self.colhi, brush=QBrush(), orient=orient, zvalue=zvalue)
+        self.hbins = hbins
 
+        if self.auto_limits:
+            self.set_auto_limits()
 
-    def reset_original_image_size(self):
-         # def in GWViewExt.py with overloaded update_my_scene()
-         self.reset_original_size()
+        self.reset_scene_rect_default()
 
-#    def reset_original_image_size(self):
-#        self.set_view()
-#        self.update_my_scene()
-#        self.check_axes_limits_changed()
 
     def mouseReleaseEvent(self, e):
         logger.debug('GWViewHist.mouseReleaseEvent')
@@ -115,7 +145,8 @@ class GWViewHist(GWViewExt):
         #logger.debug('GWViewHist.closeEvent')
 
 
-    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0, update_hblimits=True):
+    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None,\
+                               frmin=0.001, frmax=0.999, edgemode=0, update_hblimits=True):
         #if np.array_equal(arr, self.arr_old): return
         if arr is self.arr_old: return
         self.arr_old = arr
@@ -142,13 +173,14 @@ class GWViewHist(GWViewExt):
         #             (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
         hgap = 0.05*(hmax-hmin)
 
-        rs0 = self.scene().sceneRect()
+        #rs0 = self.scene().sceneRect()
+        rs0 = self.scene_rect()
         rsy, rsh = (hb.vmin(), hb.vmax()-hb.vmin()) if update_hblimits else (rs0.y(), rs0.height())
         rs = QRectF(hmin-hgap, rsy, hmax-hmin+2*hgap, rsh)
-        self.set_rect_scene(rs, set_def=update_hblimits)
+        self.set_scene_rect(rs)
 
         self.update_my_scene(hbins=hb)
-        self.hbins = hb
+        #self.hbins = hb
 
 
 if __name__ == "__main__":

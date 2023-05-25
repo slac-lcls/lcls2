@@ -25,7 +25,7 @@ Refactored to GWViewAxis on 2022-08-18
 """
 
 from psana.graphqt.GWViewExt import * # GWView, QtGui, QtCore, Qt
-from psana.graphqt.FWRuler import FWRuler
+from psana.graphqt.GWRuler import GWRuler
 from PyQt5.QtGui import QColor, QFont
 
 logger = logging.getLogger(__name__)
@@ -35,18 +35,21 @@ class GWViewAxis(GWViewExt):
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10), origin='UL', side='U', **kwargs):
 
         self.bgcolor_def = 'black'
+        self.kwargs    = kwargs
         self.scale_ctl = kwargs.get('scale_ctl', True)
         self.wlength   = kwargs.get('wlength',   400)
         self.wwidth    = kwargs.get('wwidth',    60)
         self.bgcolor   = kwargs.get('bgcolor',   self.bgcolor_def)
         self.fgcolor   = kwargs.get('fgcolor',  'yellow')
-        signal_fast    = kwargs.get('signal_fast', True)
+        move_fast      = kwargs.get('move_fast', True)
+        wheel_fast     = kwargs.get('wheel_fast', True)
+        #label_rot      = kwargs.get('label_rot', 0)
 
         self.side  = side.upper()
         self.ruler = None
 
         scctl = ('H' if self.side.upper() in ('U','D') else 'V') if self.scale_ctl else ''
-        GWViewExt.__init__(self, parent, rscene, origin, scale_ctl=scctl, signal_fast=signal_fast)
+        GWViewExt.__init__(self, parent, rscene, origin, scale_ctl=scctl, move_fast=move_fast, wheel_fast=wheel_fast)
         self.update_my_scene()
 
 
@@ -87,19 +90,21 @@ class GWViewAxis(GWViewExt):
 
 
     def update_ruler(self):
+        #logging.info('GWViewAxis.update_ruler')
         if self.bgcolor != self.bgcolor_def:
             s = self.scene()
             r = s.sceneRect()
             s.addRect(r, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(QColor(self.bgcolor)))
         if self.ruler is not None: self.ruler.remove()
         view = self
-        self.ruler = FWRuler(view, side=self.side, color=self.colax, pen=self.penax, font=self.fonax)
+        label_rot = self.kwargs.get('label_rot', 0)
+        self.ruler = GWRuler(view, side=self.side, color=self.colax, pen=self.penax, font=self.fonax, label_rot=label_rot)
 
 
     def update_my_scene(self):
         """Re-implementation of GWViewExt.update_my_scene.
            Auto-called when the scene rect is changed."""
-        #logger.debug('GWViewAxis.update_my_scene')
+        #logger.info('GWViewAxis.update_my_scene')
         GWViewExt.update_my_scene(self)  # which is GWViewExt.set_cursor_type_rect(self)
         self.update_ruler()
 

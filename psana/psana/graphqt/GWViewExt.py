@@ -159,7 +159,8 @@ class GWViewExt(GWView):
 
     def mouseMoveEvent(self, e):
         if not self.is_clicked: return
-        print('GWViewExt.' + sys._getframe().f_code.co_name + ' with is_clicked at point: %s' % str(e.pos()), end='\r')
+
+        #print('GWViewExt.' + sys._getframe().f_code.co_name + ' with is_clicked at point: %s' % str(e.pos()), end='\r')
         self.mouse_move_event.emit(e)
 
         if self.move_fast or self.move_time_is_expired:
@@ -232,7 +233,7 @@ class GWViewExt(GWView):
         self.scene_rect_changed.disconnect(recip)
 
     def test_scene_rect_changed_reception(self, r):
-        #logger.info(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r))
+        #if logging.root.level == logging.DEBUG:
         print(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r), end='\r')
 
     def connect_mouse_press_event(self, recip):
@@ -250,6 +251,10 @@ class GWViewExt(GWView):
         if rs is not None: self.rs_def = rs
         self.set_scene_rect(self.rs_def)
         self.fit_in_view(self.rs_def, mode)
+
+
+    def reset_scene_rect_default(self):
+        self.rs_def = self.scene_rect()
 
 
     def _add_cursor_type_rect_to_scene(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)):

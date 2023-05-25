@@ -57,8 +57,8 @@ class GWView(QGraphicsView):
     def set_scene_rect(self, r):
         if r is not None:
             self.scene().setSceneRect(r)  # self.setSceneRect(r)  # WORKS DIFFERENTLY!
-            #logger.debug('set_scene_rect:  %s' % qu.info_rect_xywh(r))
-            print('GWView.set_scene_rect:  %s' % qu.info_rect_xywh(r), end='\r')
+            if logging.root.level == logging.DEBUG:
+                print('GWView.set_scene_rect:  %s' % qu.info_rect_xywh(r), end='\r')
 
 
     def fit_in_view(self, rs=None, mode=Qt.IgnoreAspectRatio):

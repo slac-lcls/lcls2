@@ -63,7 +63,7 @@ class GWViewColorBar(GWViewImage):
 
     def __init__(self, parent=None,\
                  coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20),\
-                 orient='H', wlength=200, wwidth=50, change_mode=0o3, scale_ctl=''):
+                 orient='H', wlength=200, wwidth=50, change_mode=0o3, scale_ctl='', **kwa):
         self.orient = orient
         #print('XXX GWViewColorBar.orient: %s' % self.orient)
         arrct = ct.array_for_color_bar(coltab, orient)
@@ -72,7 +72,8 @@ class GWViewColorBar(GWViewImage):
         self.wlength = wlength
         self.wwidth  = wwidth
         self.change_mode = change_mode
-        GWViewImage.__init__(self, parent, arrct, coltab=None, origin='UL', scale_ctl=scale_ctl)
+        signal_fast  = kwa.get('signal_fast', True)
+        GWViewImage.__init__(self, parent, arrct, coltab=None, origin='UL', scale_ctl=scale_ctl, signal_fast=signal_fast)
         self._name  = self.__class__.__name__
 
 

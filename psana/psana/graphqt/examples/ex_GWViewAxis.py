@@ -36,7 +36,7 @@ def test_GWViewAxis(tname):
     app = QApplication(sys.argv)
     w = None
     rs=QRectF(0, 0, 1000, 100)
-    if   tname ==  '0': w=TestGWViewAxis(None, rs, side='D', origin='UL')
+    if   tname ==  '0': w=TestGWViewAxis(None, rs, side='D', origin='UL', label_rot=-30)
     elif tname ==  '1': w=TestGWViewAxis(None, rs, side='U', origin='UL')
     elif tname ==  '2': w=TestGWViewAxis(None, rs, side='L', origin='UL')
     elif tname ==  '3': w=TestGWViewAxis(None, rs, side='R', origin='UL')

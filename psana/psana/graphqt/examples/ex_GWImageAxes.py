@@ -21,7 +21,7 @@ if __name__ == "__main__":
     import os
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     app = QApplication(sys.argv)
-    w = GWImageAxes()
+    w = GWImageAxes(signal_fast=False) # True)
     w.setGeometry(100, 50, 800, 800)
     w.setWindowTitle('Image with two axes')
     w.show()
