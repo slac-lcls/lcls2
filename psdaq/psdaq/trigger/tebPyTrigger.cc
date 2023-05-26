@@ -314,6 +314,12 @@ int Pds::Trg::TebPyTrig::initialize(const std::vector<size_t>& inputsSizes,
   // Creating message queues
   logging::info("[C++] Creating message queues");
 
+  // Temporary solution to start from clean msg queues and shared memory
+  std::remove(("/dev/mqueue/mqtebinp_" + _keyBase).c_str());
+  std::remove(("/dev/mqueue/mqtebres_" + _keyBase).c_str());
+  std::remove(("/dev/shm/shmtehinp_" + _keyBase).c_str());
+  std::remove(("/dev/shm/shmtebres_" + _keyBase).c_str());
+
   rc = _setupMsgQueue("/mqtebinp_" + _keyBase, "Inputs", _inpMqId, true);
   if (rc)  return rc;
 
