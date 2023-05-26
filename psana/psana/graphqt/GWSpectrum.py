@@ -20,7 +20,7 @@ from psana.graphqt.GWViewColorBar import GWViewColorBar
 import psana.graphqt.ColorTable as ct
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QTextEdit
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF
-from psana.pyalgos.generic.NDArrGenerators import test_image
+from psana.pyalgos.generic.NDArrGenerators import np, test_image, random_standard
 from psana.graphqt.CMConfigParameters import cp
 
 
@@ -43,6 +43,7 @@ class GWSpectrum(QWidget):
 
         QWidget.__init__(self, parent)
 
+        self.nreset = 0
         cp.ivspectrum = self
 
         self.whi = GWViewHist(parent=self, rscene=None, origin='DR', scale_ctl='V',\
@@ -57,8 +58,8 @@ class GWSpectrum(QWidget):
         rscx = QRectF(r.x(), 0, r.width(), 1)
         rscy = QRectF(0, r.y(), 1, r.height())
 
-        self.wax = GWViewAxis(None, rscx, side='U', origin='UR', scale_ctl=True, wwidth=30, wlength=200, signal_fast=signal_fast, label_rot=20)
-        self.way = GWViewAxis(None, rscy, side='L', origin='DL', scale_ctl=True, wwidth=60, wlength=200, signal_fast=signal_fast, label_rot=-70)
+        self.wax = GWViewAxis(None, rscx, side='U', origin='UR', scale_ctl=True, wwidth=30, wlength=200, signal_fast=signal_fast) #, label_rot=20)
+        self.way = GWViewAxis(None, rscy, side='L', origin='DL', scale_ctl=True, wwidth=60, wlength=200, signal_fast=signal_fast) #, label_rot=-70)
 
         self.but_reset = QPushButton('Reset')
         self.edi_info = QTextEdit('Info')
@@ -80,6 +81,7 @@ class GWSpectrum(QWidget):
 
         self.connect_scene_rect_changed()
         self.but_reset.clicked.connect(self.on_but_reset)
+        self.update_info_panel()
 
 
     def set_signal_fast(self, is_fast=True):
@@ -101,17 +103,20 @@ class GWSpectrum(QWidget):
 
 
     def on_but_reset(self):
-        logger.debug('on_but_reset whi.scene_rect: %s' % qu.info_rect_xywh(self.whi.scene_rect()))
-        self.wax.reset_scene_rect()
-        self.way.reset_scene_rect()
+        self.nreset += 1
         self.whi.reset_scene_rect()
+        r = self.whi.scene_rect()
+        logger.debug('on_but_reset:%04d whi.scene_rect: %s' % (self.nreset, qu.info_rect_xywh(r)))
+        self.on_whi_scene_rect_changed(r)
+        #self.wax.reset_scene_rect()
+        #self.way.reset_scene_rect()
 
 
     def on_whi_scene_rect_changed(self, r):
         logger.debug('on_whi_scene_rect_changed: %s' % qu.info_rect_xywh(r))
         self.wax.set_axis_limits(r.x(), r.x()+r.width())   # fit_in_view(QRectF(r.x(), 0, r.width(), 1))
         self.way.set_axis_limits(r.y(), r.y()+r.height())  # fit_in_view(QRectF(0, r.y(), 1, r.height()))
-        self.update_info()
+        self.update_info_panel()
         self.emit_signal_if_histogram_scene_rect_changed()
 
 
@@ -126,8 +131,8 @@ class GWSpectrum(QWidget):
         #logger.debug('on_way_scene_rect_changed: %s' % qu.info_rect_xywh(r))
         rs = self.whi.scene_rect()  # scene().sceneRect()
         self.whi.fit_in_view(QRectF(rs.x(), r.y(), rs.width(), r.height()))
-        self.update_info()
         self.emit_signal_if_histogram_scene_rect_changed()
+        self.update_info_panel()
 
 
     def emit_signal_if_histogram_scene_rect_changed(self):
@@ -146,7 +151,11 @@ class GWSpectrum(QWidget):
         self.histogram_scene_rect_changed.disconnect(recip)
 
 
-    def update_info(self):
+    def test_histogram_scene_rect_changed(self, r):
+        print(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r), end='\r')
+
+
+    def update_info_panel(self):
         """update text information in stat box."""
         hb = self.whi.hbins
         r = self.whi.scene_rect()  # scene().sceneRect()
@@ -179,14 +188,17 @@ class GWSpectrum(QWidget):
 
     def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.0001, frmax=0.9999, edgemode=0, update_hblimits=True):
         """shotcut"""
-        logger.info('set_spectrum_from_arr')
+        #logger.info('set_spectrum_from_arr')
         self.whi.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)
+        self.update_info_panel()
+        self.on_but_reset()
 
 
     def reset_original_size(self):
         """Shortcut to whi.reset_original_size."""
-        #logger.debug('reset_original_size')
-        self.whi.reset_original_size()
+        logger.debug('reset_original_size')
+        #self.whi.reset_original_size()
+        self.on_but_reset()
 
 
     def closeEvent(self, e):
@@ -195,50 +207,8 @@ class GWSpectrum(QWidget):
         cp.ivspectrum = None
 
 
-    if __name__ == "__main__":
-
-      def key_usage(self):
-        return 'Keys:'\
-               '\n  ESC - exit'\
-               '\n  R - reset original size'\
-               '\n  N - set new spectrum'\
-               '\n'
-
-
-      def keyPressEvent(self, e):
-        print('keyPressEvent key=%s' % e.key())
-        if   e.key() == Qt.Key_Escape:
-            print('Close app')
-            self.close()
-
-        elif e.key() == Qt.Key_R:
-            print('Reset original size')
-            self.on_but_reset()
-
-        elif e.key() == Qt.Key_N:
-            print('Set new histogram')
-            a = test_image(shape=(500,500))
-            self.set_spectrum_from_arr(a)
-
-        else:
-            print(self.key_usage())
-
-
 if __name__ == "__main__":
-    import os
     import sys
-    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
-    from PyQt5.QtWidgets import QApplication
-
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(name)s : %(message)s', level=logging.INFO)
-
-    app = QApplication(sys.argv)
-    w = GWSpectrum()
-    w.setGeometry(100, 50, 300, 800)
-    w.setWindowTitle('Image with two axes')
-    w.show()
-    app.exec_()
-    del w
-    del app
+    sys.exit(qu.msg_on_exit())
 
 # EOF
