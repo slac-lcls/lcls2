@@ -182,7 +182,7 @@ class GWViewExt(GWView):
 
 
     def closeEvent(self, e):
-        logger.debug('closeEvent')
+        logger.debug('GWViewExt.closeEvent > sc.removeItem > GWView.closeEvent')
         sc = self.scene()
         for item in sc.items():
             sc.removeItem(item)
@@ -275,6 +275,7 @@ class GWViewExt(GWView):
         - curs_hover (QCursor) - cursor type at mouse hovering on scene rect
         - curs_grab  (QCursor) - cursor type at mouse click on scene rect
         """
+        #logger.debug('GWViewExt.set_cursor_type_rect')
         sc = self.scene()
         rs = sc.sceneRect()
         if self.rs_item is not None: sc.removeItem(self.rs_item)
@@ -285,29 +286,22 @@ class GWViewExt(GWView):
 
 
     def update_my_scene(self):
-        #logger.debug('GWViewExt.update_my_scene')
+        logger.debug('GWViewExt.update_my_scene > set_cursor_type_rect > _add_cursor_type_rect_to_scene')
         self.set_cursor_type_rect()
 
 
-class OtherDeprecated:
+#    def enterEvent(self, e):
+#        logger.debug('enterEvent')
+#        GWView.enterEvent(self, e)
+#        #QApplication.setOverrideCursor(QCursor(Qt.CrossCursor))
 
-    def __del__(self):
-        pass
+#    def leaveEvent(self, e):
+#        logger.debug('leaveEvent')
+#        GWView.leaveEvent(self, e)
+#        #QApplication.restoreOverrideCursor()
 
-    def reset_original_size(self):
-        """Alias with default parameters"""
-        self.fit_in_view()
-        self.emit_signal_if_scene_rect_changed() # sends signal
-
-    def enterEvent(self, e):
-        logger.debug('enterEvent')
-        GWView.enterEvent(self, e)
-        #QApplication.setOverrideCursor(QCursor(Qt.CrossCursor))
-
-    def leaveEvent(self, e):
-        logger.debug('leaveEvent')
-        GWView.leaveEvent(self, e)
-        #QApplication.restoreOverrideCursor()
+#    def __del__(self):
+#        pass
 
 
 if __name__ == "__main__":
