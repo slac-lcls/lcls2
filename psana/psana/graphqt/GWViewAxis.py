@@ -43,10 +43,15 @@ class GWViewAxis(GWViewExt):
         self.fgcolor   = kwargs.get('fgcolor',  'yellow')
         move_fast      = kwargs.get('move_fast', True)
         wheel_fast     = kwargs.get('wheel_fast', True)
+        signal_fast    = kwargs.get('signal_fast', None)
+        if signal_fast is not None:
+            move_fast = signal_fast
+            wheel_fast = signal_fast
         #label_rot      = kwargs.get('label_rot', 0)
 
         self.side  = side.upper()
         self.ruler = None
+        self.item_rs_bg = None
 
         scctl = ('H' if self.side.upper() in ('U','D') else 'V') if self.scale_ctl else ''
         GWViewExt.__init__(self, parent, rscene, origin, scale_ctl=scctl, move_fast=move_fast, wheel_fast=wheel_fast)
@@ -90,26 +95,30 @@ class GWViewAxis(GWViewExt):
 
 
     def update_ruler(self):
-        #logging.info('GWViewAxis.update_ruler')
+        logging.debug('GWViewAxis.update_ruler for side: %s' % self.side)
         if self.bgcolor != self.bgcolor_def:
             s = self.scene()
             r = s.sceneRect()
-            s.addRect(r, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(QColor(self.bgcolor)))
-        if self.ruler is not None: self.ruler.remove()
+            if self.item_rs_bg:
+               s.removeItem(self.item_rs_bg)
+            self.item_rs_bg = s.addRect(r, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(QColor(self.bgcolor)))
+        if self.ruler is not None:
+            self.ruler.remove()
         view = self
-        label_rot = self.kwargs.get('label_rot', 0)
-        self.ruler = GWRuler(view, side=self.side, color=self.colax, pen=self.penax, font=self.fonax, label_rot=label_rot)
+        self.ruler = GWRuler(view, side=self.side, color=self.colax, pen=self.penax, font=self.fonax,\
+                             label_rot=self.kwargs.get('label_rot', 0))
 
 
     def update_my_scene(self):
         """Re-implementation of GWViewExt.update_my_scene.
            Auto-called when the scene rect is changed."""
-        #logger.info('GWViewAxis.update_my_scene')
         GWViewExt.update_my_scene(self)  # which is GWViewExt.set_cursor_type_rect(self)
+        logger.debug('GWViewAxis.update_my_scene')
         self.update_ruler()
 
 
     def mouseReleaseEvent(self, e):
+        logger.debug('GWViewAxis.mouseReleaseEvent')
         self.update_my_scene()
         GWViewExt.mouseReleaseEvent(self, e)
 
@@ -117,7 +126,7 @@ class GWViewAxis(GWViewExt):
     def closeEvent(self, e):
         self.ruler.remove()
         GWViewExt.closeEvent(self, e)
-        logging.debug('GWViewAxis.closeEvent')
+        logger.debug('GWViewAxis.closeEvent')
 
 
 #    def reset_original_image_size(self):
