@@ -10,9 +10,9 @@ Usage::
 
     # Methods
 
-    nda = ag.random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float)
-    nda = ag.random_exponential(shape=(40,60), a0=100, dtype=np.float)
-    nda = ag.random_one(shape=(40,60), dtype=np.float)
+    nda = ag.random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float64)
+    nda = ag.random_exponential(shape=(40,60), a0=100, dtype=np.float64)
+    nda = ag.random_one(shape=(40,60), dtype=np.float64)
     nda = ag.random_256(shape=(40,60), dtype=np.uint8)
     nda = ag.random_xffffffff(shape=(40,60), dtype=np.uint32, add=0xff000000)
     nda = ag.aranged_array(shape=(40,60), dtype=np.uint32)
@@ -46,19 +46,19 @@ def set_random_state(seed=1234567):
     np.random.seed(seed)
 
 
-def random_standard(shape=(40,60), mu=200, sigma=25, dtype=float):
+def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float32):
     """Returns numpy array of requested shape and type filled with normal distribution for mu and sigma."""
     a = mu + sigma*np.random.standard_normal(size=shape)
     return a.astype(dtype)
 
 
-def random_exponential(shape=(40,60), a0=100, dtype=float):
+def random_exponential(shape=(40,60), a0=100, dtype=np.float32):
     """Returns numpy array of requested shape and type filled with exponential distribution for width a0."""
     a = a0*np.random.standard_exponential(size=shape)
     return a.astype(dtype)
 
 
-def random_one(shape=(40,60), dtype=float):
+def random_one(shape=(40,60), dtype=np.float32):
     """Returns numpy array of requested shape and type filled with random numbers in the range [0,1]."""
     a = np.random.random(shape)
     return a.astype(dtype)
@@ -103,6 +103,7 @@ def ring_intensity(r, r0, sigma):
        r0: float - radius of the ring
        sigma: float - width of the ring
     """
+    assert sigma>0
     factor = 1/ (math.sqrt(2) * sigma)
     rr = factor*(r-r0)
     return np.exp(-rr*rr)
@@ -124,8 +125,8 @@ def add_ring(arr2d, amp=100, row=4.3, col=5.8, rad=100, sigma=3):
     cmin = max(int(math.floor(col - rad - nsigma*sigma)), 0)
     rmax = min(int(math.floor(row + rad + nsigma*sigma)), arr2d.shape[0])
     cmax = min(int(math.floor(col + rad + nsigma*sigma)), arr2d.shape[1])
-    r = np.arange(rmin, rmax, 1, dtype = np.float32) - row
-    c = np.arange(cmin, cmax, 1, dtype = np.float32) - col
+    r = np.arange(rmin, rmax, 1, dtype=np.float32) - row
+    c = np.arange(cmin, cmax, 1, dtype=np.float32) - col
     CG, RG = np.meshgrid(c, r)
     R = np.sqrt(RG*RG+CG*CG)
     arr2d[rmin:rmax,cmin:cmax] += amp * ring_intensity(R, rad, sigma)
@@ -134,19 +135,15 @@ def add_ring(arr2d, amp=100, row=4.3, col=5.8, rad=100, sigma=3):
 def add_random_peaks(arr2d, npeaks=10, amean=100, arms=50, wmean=2, wrms=0.1):
     """Returns 2-d array with peaks."""
     shape=arr2d.shape
-
     rand_uni = random_1(shape=(2, npeaks))
     r0 = rand_uni[0,:]*shape[0]
     c0 = rand_uni[1,:]*shape[1]
     rand_std = random_standard(shape=(4,npeaks), mu=0, sigma=1)
     a0    = amean + arms*rand_std[0,:]
     sigma = wmean + wrms*rand_std[0,:]
-
     peaks = zip(r0, c0, a0, sigma)
-
     for r0, c0, a0, sigma in peaks:
         add_ring(arr2d, amp=a0, row=r0, col=c0, rad=0, sigma=sigma)
-
     return peaks
 
 
@@ -171,25 +168,23 @@ def cspad_ndarr(n2x1=32, dtype=np.float32):
 
 
 def test_image(**kwa):
+    """Returns 2-d array of specified shape filled with normal-distributed values for mu and sigma."""
     tname = kwa.get('tname', 'standard')
     if tname == 'standard':
         return random_standard(kwa.get('shape', (100,100)), mu=kwa.get('mu', 0), sigma=kwa.get('sigma', 10))
 
 
 if __name__ == '__main__':
-
     from psana.pyalgos.generic.NDArrUtils import print_ndarr
-
     set_random_state()
-
     print_ndarr(random_exponential(), 'random_exponential')
     print_ndarr(random_standard(), 'random_standard')
-    print_ndarr(random_1(), 'random_1', last=10)
-    print_ndarr(random_256(), 'random_256', last=10)
+    print_ndarr(random_1(), 'random_1', last=5)
+    print_ndarr(random_256(), 'random_256', last=5)
     print_ndarr(random_xffffffff(), 'random_xffffffff')
     print_ndarr(random_standard(), 'random_standard')
     print_ndarr(aranged_array(), 'aranged_array')
-    #print_ndarr(, '')
+    print_ndarr(test_image(), 'test_image')
     print('Test is completed')
 
 # EOF
