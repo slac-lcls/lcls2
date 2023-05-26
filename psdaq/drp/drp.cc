@@ -120,6 +120,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pebbleBufCount")    continue;  // DrpBase
         if (kwargs.first == "batching")          continue;  // DrpBase
         if (kwargs.first == "directIO")          continue;  // DrpBase
+        if (kwargs.first == "xpmPfx")            continue;  // DrpBase
         if (para.detType == "opal") {
             if (kwargs.first == "simxtc")            continue;  // Opal
             if (kwargs.first == "simxtc2")           continue;  // Opal
