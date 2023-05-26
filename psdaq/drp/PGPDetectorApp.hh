@@ -26,6 +26,7 @@ private:
     void setupDrpPython();
     void unconfigure();
     void disconnect();
+    void drainDrpMessageQueues();
     DrpBase m_drp;
     Parameters& m_para;
     std::thread m_pgpThread;
@@ -39,8 +40,10 @@ private:
     int* m_resMqId;
     int* m_inpShmId;
     int* m_resShmId;
+    std::string keyBase;
     pid_t* m_drpPids;
-    size_t shmemSize;
+    size_t m_shmemSize;
+    bool m_pythonDrp;
 };
 
 }

@@ -16,17 +16,6 @@ using ms_t = std::chrono::milliseconds;
 
 namespace Pds::Ipc {
 
-void cleanupDrpShmMem(std::string key)
-{
-    shm_unlink(key.c_str());
-}
-
-void cleanupDrpMq(std::string key, int MqId)
-{
-    mq_unlink(key.c_str());
-    mq_close(MqId);
-}
-
 int setupDrpShMem(std::string key, size_t size, int& shmId)
 {
     shmId = shm_open(key.c_str(), O_RDWR | O_CREAT, 0666);
@@ -56,6 +45,12 @@ int attachDrpShMem(std::string key, int& shmId, size_t size, void*& data, bool w
     return 0;
 }
 
+int detachDrpShMem(void*& data, int size)
+{
+    int rc = munmap(data, size);
+    return rc;
+}
+
 int setupDrpMsgQueue(std::string key, size_t mqSize, int& mqId, bool write)
 {
 
@@ -78,6 +73,12 @@ int setupDrpMsgQueue(std::string key, size_t mqSize, int& mqId, bool write)
         return -1;
     }
     return 0;
+}
+
+int detachDrpMq(std::string key)
+{
+    int rc = mq_unlink(key.c_str());
+    return rc;
 }
 
 int drpSend(int mqId, const char *msg, size_t msgsize)
@@ -109,6 +110,22 @@ int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo)
         }
     }
     return 0;
+}
+
+int cleanupDrpShmMem(std::string key)
+{
+    int rc = shm_unlink(key.c_str());
+    return rc;
+}
+
+int cleanupDrpMq(std::string key, int MqId)
+{
+    int rc = mq_unlink(key.c_str());
+    if (rc) {
+        return -1;
+    }
+    rc = mq_close(MqId);
+    return rc;
 }
 
 }

@@ -8,10 +8,6 @@ from psana import dgram
 from psdaq.configdb.pub_server import pub_send
 from psdaq.configdb.sub_client import sub_recv
 
-import sys
-worker_num = int(sys.argv[7])
-is_publisher = True if worker_num == 0 else False
-
 class DrpDataSource(DataSourceBase):
 
     def __init__(self, *args, **kwargs):
@@ -25,6 +21,9 @@ class DrpDataSource(DataSourceBase):
         self._ed_detectors_handles = {}
         self._edtbl_config = True
         self._config_ts = None
+
+        self.worker_num = kwargs["drp"].worker_num
+        self._is_publisher = True if self.worker_num == 0 else False
 
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         self._setup_run()
@@ -62,12 +61,12 @@ class DrpDataSource(DataSourceBase):
         return False
     
     def _setup_run_calibconst(self):
-        if is_publisher:
+        if self._is_publisher:
             super()._setup_run_calibconst()
             pub_send(self.dsparms.calibconst)
         else: 
             self.dsparms.calibconst = sub_recv()
-        print(f"[Python - Thread {worker_num} done broadcast {self.dsparms.calibconst}]")
+        print(f"[Python - Worker {self.worker_num}] Done broadcast {self.dsparms.calibconst}]")
 
     def _start_run(self):
         found_next_run = False
@@ -95,7 +94,8 @@ class DrpDataSource(DataSourceBase):
             return self.curr_dgramedit.Detector(detdef, algdef, datadef)
         else:
             raise RuntimeError(
-                "Cannot edit the configuration after starting iteration over events"
+                "[Python - Worker {self.worker_num}] Cannot edit the configuration "
+                "after starting iteration over events"
             )
 
     def adddata(self, data):
@@ -103,7 +103,8 @@ class DrpDataSource(DataSourceBase):
             return self.curr_dgramedit.adddata(data)
         else:
             raise RuntimeError(
-                "Cannot add data to events before starting iteration over events"
+                "[Python - Worker {self.worker_num}] Cannot add data to events "
+                "before starting iteration over events"
             )
 
     def removedata(self, det_name, alg):
@@ -111,5 +112,6 @@ class DrpDataSource(DataSourceBase):
             return self.curr_dgramedit.removedata(det_name, alg)
         else:
             raise RuntimeError(
-                "Cannot remove data from events before starting iteration over events"
+                "[Python - Worker {self.worker_num}] Cannot remove data from events "
+                "before starting iteration over events"
             )

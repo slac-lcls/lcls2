@@ -115,13 +115,41 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
-void cleanupDrpPython(std::string keyBase, int* inpMqId, int* resMqId, unsigned numWorkers)
+void cleanupDrpPython(std::string keyBase, int* inpMqId, int* resMqId, int* inpShmId, int* resShmId,
+                      unsigned numWorkers)
 {
     for (unsigned workerNum=0; workerNum<numWorkers; workerNum++) {
-        cleanupDrpShmMem("/shminp_" + keyBase + std::to_string(workerNum));
-        cleanupDrpShmMem("/shmres_" + keyBase + std::to_string(workerNum));
-        cleanupDrpMq("/mqinp_" + keyBase + std::to_string(workerNum), inpMqId[workerNum]);
-        cleanupDrpMq("/mqres_" + keyBase + std::to_string(workerNum), resMqId[workerNum]);
+        int rc;
+        if (inpShmId[workerNum]) {
+            rc = cleanupDrpShmMem("/shminp_" + keyBase + "_" + std::to_string(workerNum));
+            if (rc) {
+                logging::critical("Error cleaning up Inputs Shared Memory for worker %d: %m", workerNum);
+                abort();
+            }
+        }
+        if (resShmId[workerNum]) {
+            rc = cleanupDrpShmMem("/shmres_" + keyBase + "_" + std::to_string(workerNum));
+            if (rc) {
+                logging::critical("Error cleaning up Results Shared Memory for worker %d: %m", workerNum);
+                abort();
+            }
+        }
+
+        if (inpMqId[workerNum]) {
+            rc = cleanupDrpMq("/mqinp_" + keyBase  + "_" + std::to_string(workerNum), inpMqId[workerNum]);
+            if (rc) {
+                logging::critical("Error cleaning up Inputs Message Queue for worker %d: %m", workerNum);
+                abort();
+            }
+        }
+
+        if (resMqId[workerNum]) {
+            rc = cleanupDrpMq("/mqres_" + keyBase  + "_" + std::to_string(workerNum), resMqId[workerNum]);
+            if (rc) {
+                logging::critical("Error cleaning up Results Message Queue for worker %d: %m", workerNum);
+                abort();
+            }
+        }
     }
 }
 
@@ -158,14 +186,14 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Param
 
 void PGPDetectorApp::setupDrpPython() {
 
-    shmemSize = m_drp.pool.pebble.bufferSize();
-    if (m_para.maxTrSize > shmemSize) shmemSize=m_para.maxTrSize;
+    m_shmemSize = m_drp.pool.pebble.bufferSize();
+    if (m_para.maxTrSize > m_shmemSize) m_shmemSize=m_para.maxTrSize;
 
     // Round up to an integral number of pages
     long pageSize = sysconf(_SC_PAGESIZE);
-    shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
+    m_shmemSize = (m_shmemSize + pageSize - 1) & ~(pageSize - 1);
 
-    string keyBase = "p" + std::to_string(m_para.partition) + "_" + m_para.detName + "_" + std::to_string(m_para.detSegment); 
+    keyBase = "p" + std::to_string(m_para.partition) + "_" + m_para.detName + "_" + std::to_string(m_para.detSegment); 
     std::vector<std::thread> drpPythonThreads;
 
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
@@ -183,7 +211,7 @@ void PGPDetectorApp::setupDrpPython() {
         int rc = setupDrpMsgQueue(key, mqSize, m_inpMqId[workerNum], true);
         if (rc) {
             logging::critical("[Thread %u] Error in creating Drp %s message queue with key %u: %m", workerNum, "Inputs", key.c_str());
-            cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
+            cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             abort();
         }
         logging::info("[Thread %u] Created Drp msg queue %s for key %u", workerNum, "Inputs", key);
@@ -191,7 +219,7 @@ void PGPDetectorApp::setupDrpPython() {
         rc = setupDrpMsgQueue(key, mqSize, m_resMqId[workerNum], false);
         if (rc) {
             logging::critical("[Thread %u] Error in creating Drp %s message queue with key %u: %m", workerNum, "Inputs", key.c_str());
-            cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
+            cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             abort();
         }
         logging::info("[Thread %u] Created Drp msg queue %s for key %u", workerNum, "Results", key);
@@ -209,7 +237,7 @@ void PGPDetectorApp::setupDrpPython() {
         if (rc) {
             logging::critical("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
                               workerNum, "Inputs", key.c_str());
-            cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
+            cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             abort();
         }
         logging::info("[Thread %u] Created Drp shared memory %s for key %u", workerNum, "Inputs", key);
@@ -219,7 +247,7 @@ void PGPDetectorApp::setupDrpPython() {
         if (rc) {
             logging::critical("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
                               workerNum, "Results", key.c_str());
-            cleanupDrpPython(keyBase, m_inpShmId, m_resShmId, m_para.nworkers);
+            cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             abort();
         }
         logging::info("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Results", key);
@@ -266,8 +294,7 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     m_drp(para, context()),
     m_para(para),
     m_det(nullptr),
-    m_unconfigure(false),
-    shmemSize(0)
+    m_unconfigure(false)
 {
     Py_Initialize(); // for use by configuration
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
@@ -315,8 +342,15 @@ void PGPDetectorApp::initialize()
     m_resShmId = new int[m_para.nworkers]();
     m_drpPids = new pid_t[m_para.nworkers]();
 
+    keyBase = "";
+    m_shmemSize = 0;
+
     auto kwargs_it = m_para.kwargs.find("drp");
     if (kwargs_it != m_para.kwargs.end() && kwargs_it->second == "python") {
+        m_pythonDrp = true;
+    }
+
+    if (m_pythonDrp) {
         logging::info("Starting DrpPython");
         setupDrpPython();
     }
@@ -331,6 +365,11 @@ PGPDetectorApp::~PGPDetectorApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
+
+    if (m_pythonDrp) {
+        logging::info("Cleaning up DrpPython");
+        cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
+    }
 
     if (m_det)  delete m_det;
 
@@ -478,7 +517,8 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, shmemSize);
+            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, m_pythonDrp, m_inpMqId,
+                                                          m_resMqId, m_inpShmId, m_resShmId, m_shmemSize);
             m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
                 m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -619,6 +659,10 @@ void PGPDetectorApp::handleReset(const json& msg)
     disconnect();
     connectionShutdown();
 
+    if (m_pythonDrp) {
+        drainDrpMessageQueues();
+    }
+    
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
@@ -643,4 +687,24 @@ void PGPDetectorApp::connectionShutdown()
         m_exporter.reset();
     }
 }
+
+void PGPDetectorApp::drainDrpMessageQueues()
+{
+    // Drains the message queues to make sure that no
+    // undelivered message is in them.
+    char recvmsg[420];
+
+    for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
+        if (m_inpMqId[workerNum]) {
+            [[maybe_unused]] int rc = drpRecv(m_inpMqId[workerNum], recvmsg, sizeof(recvmsg), 0);
+        }
+    }
+
+    for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
+        if (m_resMqId[workerNum]) {
+            [[maybe_unused]] int rc = drpRecv(m_resMqId[workerNum], recvmsg, sizeof(recvmsg), 0);
+        }
+    }
+}
+
 }

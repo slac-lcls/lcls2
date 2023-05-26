@@ -100,9 +100,9 @@ class DgramManager(object):
                     view = self._connect_drp()
                     d = dgram.Dgram(view=view)
                     if d.service() == TransitionId.Configure:
-                        self.set_configs([d])
+                         self.set_configs([d])
                     else:
-                        raise RuntimeError(f"Configure expected, got {d.service()}")
+                        raise RuntimeError(f"Drp expected Configure, got {d.service()}")
                 else:
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
 
@@ -162,6 +162,9 @@ class DgramManager(object):
         self.mq_res = self.ipc.mq_res
         self.mq_res.send(b"r\n")
         message, priority = self.mq_inp.receive()
+        if message != b"g":
+            raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' message, "
+                               f"got: {message}")
         barray = bytes(self.shm_inp_mv[:])
         view = memoryview(barray)
         self.shm_size = view.nbytes   
@@ -380,10 +383,13 @@ class DgramManager(object):
                 # use the most recent configure datagram
                 d = dgram.Dgram(config=self.configs[-1], view=self.shm_inp_mv)
                 dgrams = [d]
-            else:
+            elif message == b"s":
                 self.shm_res_mv[:] = self.shm_inp_mv[:]
                 self.mq_res.send(b"g\n")
                 raise StopIteration
+            else:
+                raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' or "
+                                  f"'s' message, got: {message}")
         else:
             try:
                 dgrams = [dgram.Dgram(config=config, max_retries=self.max_retries) for config in self.configs]

@@ -51,7 +51,7 @@ else:
 print(f"[Python - Thread {worker_num}] {is_publisher=} setup socket]")
 
 while True:
-    print(f"[Worker: {worker_num} - Python] Python process waiting for new script to run")
+    print(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
     message, priority = ipc_info.mq_inp.receive()
     if message == "stop":
         exit(0)
