@@ -52,6 +52,7 @@ class GWViewHist(GWViewExt):
         #self.wwidth    = kwargs.get('wwidth',   60)
 
         self.hist = None
+        self.item_rs_bg = None
         #self.side = 'D'
         self.arr_old = None
         GWViewExt.__init__(self, parent, rscene, origin, scale_ctl=scale_ctl, move_fast=signal_fast, wheel_fast=signal_fast)
@@ -118,8 +119,10 @@ class GWViewHist(GWViewExt):
         view = self
         if self.bgcolor != self.bgcolor_def:
             s = self.scene()
+            if self.item_rs_bg:
+               s.removeItem(self.item_rs_bg)
             r = s.sceneRect()
-            s.addRect(r, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(QColor(self.bgcolor)))
+            self.item_rs_bg = s.addRect(r, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(QColor(self.bgcolor)))
 
         orient = self.kwargs.get('orient', 'H')  # histogram orientation H or V
         zvalue = self.kwargs.get('zvalue', 10)  # z value for visibility
