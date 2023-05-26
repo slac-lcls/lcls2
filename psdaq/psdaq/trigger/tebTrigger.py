@@ -177,7 +177,6 @@ class Event(object):
         return self
 
     def __next__(self):
-        print("DEBUG: In Next")
         if self._idx == len(self._shm_bufSizes) - 1:
             raise StopIteration
 

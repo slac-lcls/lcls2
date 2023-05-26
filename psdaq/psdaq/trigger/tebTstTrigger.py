@@ -34,8 +34,6 @@ detsegm = 0
 
 ds = tebTrigger.TriggerDataSource()
 
-print(f"DEBUG:",ds.connect_json) # DEBUG
-
 connect_info = json.loads(ds.connect_json)
 
 # Identify the available MEBs, if any
