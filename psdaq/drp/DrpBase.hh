@@ -19,10 +19,6 @@ namespace Pds {
     class TimingHeader;
 };
 
-namespace Pds_Epics {
-    class EpicsPVA;
-};
-
 namespace Drp {
 
 static const char* const RED_ON  = "\033[0;31m";
@@ -178,6 +174,8 @@ protected:
     uint64_t m_nNoTrDgrams;
 };
 
+class PV;
+
 class DrpBase
 {
 public:
@@ -222,9 +220,8 @@ private:
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
     std::string m_hostname;
     unsigned m_numTebBuffers;
-    unsigned m_xpmId;
     unsigned m_xpmPort;
-    std::shared_ptr<Pds_Epics::EpicsPVA> m_deadtimePv;
+    std::shared_ptr<PV> m_deadtimePv;
 };
 
 }

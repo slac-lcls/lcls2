@@ -5,7 +5,7 @@ epics_env = f'{ld_lib_path}'
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
 hsd_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 im2k0_env = ld_lib_path
-andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
 
 collect_host = 'drp-srcf-mon001'
 
@@ -29,13 +29,12 @@ trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 task_set = 'taskset -c 4-63'
 batching = 'batching=yes'
 directIO = 'directIO=yes'
-xpmPfx   = 'xpmPfx=DAQ:NEH:XPM'
 scripts  = f'script_path={trig_dir}'
 #network  = 'ep_provider=sockets,ep_domain=eno1'
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
-std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO},{xpmPfx}'
-std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO},{xpmPfx}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO}'
 
 teb_cmd  = task_set+' teb '            +std_opts + f' -k {scripts}'
 meb_cmd  = task_set+' monReqServer '   +std_opts
@@ -111,7 +110,7 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp003', id:'shm1',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb1 -R'},
 
 # {host: 'drp-srcf-cmp028', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
- {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576'},
+ {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp043', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},

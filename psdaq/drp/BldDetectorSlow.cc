@@ -1199,7 +1199,6 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
-        if (kwargs.first == "xpmPfx")         continue;  // DrpBase
         if (kwargs.first == "interface")      continue;
         if (kwargs.first == "timeout")        continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",

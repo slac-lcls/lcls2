@@ -17,7 +17,7 @@
 #include "xtcdata/xtc/Smd.hh"
 #include "DataDriver.h"
 #include "DmaDest.h"
-#include "psdaq/epicstools/EpicsPVA.hh"
+#include "psdaq/epicstools/PVBase.hh"
 
 #include "rapidjson/document.h"
 
@@ -843,13 +843,21 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 }
 
 
-static bool _pvVectElem(const std::shared_ptr<Pds_Epics::EpicsPVA>& pv, unsigned element, double& value)
+class PV : public Pds_Epics::PVBase
 {
-  if (!pv)  return false;
+public:
+  PV(const char* pvName) : PVBase(pvName) {}
+  virtual ~PV() {}
+public:
+  void updated() {}
+  bool ready()   { return getComplete(); }
+};
+
+static bool _pvVectElem(const std::shared_ptr<PV>& pv, unsigned element, double& value)
+{
+  if (!pv || !pv->ready())  return false;
 
   value = pv->getVectorElemAt<double>(element);
-
-  //printf("*** %s[%u] %f\n", pv->name().c_str(), element, value);
 
   return true;
 }
@@ -888,7 +896,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_exporter->constant("drp_pebble_in_use_max", labels, pool.nbuffers());
 
     m_exporter->addFloat("drp_deadtime", labels,
-                         [&](double& value){return _pvVectElem(m_deadtimePv, 4 + m_xpmPort, value);}); // Revisit: 4?
+                         [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition  = para.partition;
@@ -981,14 +989,6 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
     // On the timing system DRP, EbReceiver needs to know its node ID
     if (m_para.detType == "ts")  m_ebRecv->tsId(m_nodeId);
-
-    // Connect to an XPM PV to give Prometheus access to our deadtime
-    if (m_para.kwargs.find("xpmPfx") != m_para.kwargs.end()) {
-        char pv[64];
-        snprintf(pv, sizeof(pv), "%s:%d:PART:%d:DeadFLnk",
-                 m_para.kwargs["xpmPfx"].c_str(), m_xpmId, m_para.partition);
-        m_deadtimePv = std::make_shared<Pds_Epics::EpicsPVA>(pv);
-    }
 
     return std::string{};
 }
@@ -1212,8 +1212,17 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.id = body["drp"][stringId]["drp_id"];
     m_mPrms.id = m_tPrms.id;
     m_nodeId = body["drp"][stringId]["drp_id"];
-    m_xpmId = body["drp"][stringId]["connect_info"]["xpm_id"];
-    m_xpmPort = body["drp"][stringId]["connect_info"]["xpm_port"];
+
+    // Connect to an XPM PV to give Prometheus access to our deadtime
+    std::string pv_base = body["control"]["0"]["control_info"]["pv_base"];
+    unsigned    xpm_id  = body["drp"][stringId]["connect_info"]["xpm_id"];
+    unsigned    rog     = body["drp"][stringId]["det_info"]["readout"];
+    std::string pv(pv_base  +
+                   ":XPM:"  + std::to_string(xpm_id) +
+                   ":PART:" + std::to_string(rog) +
+                   ":DeadFLnk");
+    m_deadtimePv = std::make_shared<PV>(pv.c_str());
+    m_xpmPort    = body["drp"][stringId]["connect_info"]["xpm_port"];
 
     uint64_t builders = 0;
     m_tPrms.addrs.clear();
