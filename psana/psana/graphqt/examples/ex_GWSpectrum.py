@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
 from psana.graphqt.GWSpectrum import *
+
 class TestGWSpectrum(GWSpectrum):
+
+      def __init__(self, **kwa):
+          GWSpectrum.__init__(self, **kwa)
+          print(self.key_usage())
 
       def key_usage(self):
         return 'Keys:'\
@@ -34,9 +39,7 @@ class TestGWSpectrum(GWSpectrum):
 
 if __name__ == "__main__":
     import os
-    import sys
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
-    from PyQt5.QtWidgets import QApplication
 
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(name)s : %(message)s', level=logging.INFO)
 
