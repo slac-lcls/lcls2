@@ -21,7 +21,7 @@ import psana.graphqt.ColorTable as ct
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QTextEdit
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF
 from psana.pyalgos.generic.NDArrGenerators import np, test_image, random_standard
-from psana.graphqt.CMConfigParameters import cp
+#from psana.graphqt.CMConfigParameters import cp
 
 
 class GWSpectrum(QWidget):
@@ -44,7 +44,7 @@ class GWSpectrum(QWidget):
         QWidget.__init__(self, parent)
 
         self.nreset = 0
-        cp.ivspectrum = self
+        #cp.gwspectrum = self
 
         self.whi = GWViewHist(parent=self, rscene=None, origin='DR', scale_ctl='V',\
                               fgcolor='yellow', bgcolor='dark', orient='V', signal_fast=signal_fast, hbins=None)
@@ -204,7 +204,7 @@ class GWSpectrum(QWidget):
     def closeEvent(self, e):
         logger.debug('closeEvent')
         QWidget.closeEvent(self, e)
-        cp.ivspectrum = None
+        #cp.gwspectrum = None
 
 
 if __name__ == "__main__":
