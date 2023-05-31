@@ -532,9 +532,11 @@ class PVCtrls(object):
             provider.add(name+':'+label,pv)
             return pv
 
-        self._pv_usRxReset      = _addPV('Us:RxReset',xpm.UsTiming.RxReset)
+        self._pv_usRxReset      = _addPV('Us:RxReset'     ,xpm.UsTiming.RxReset)
+        self._pv_usRxPllReset   = _addPV('Us:RxPllReset'  ,xpm.UsTiming.RxPllReset)
         self._pv_usRxCountReset = _addPV('Us:RxCountReset',xpm.UsTiming.RxCountReset)
-        self._pv_cuRxReset      = _addPV('Cu:RxReset',xpm.CuTiming.RxReset)
+        self._pv_cuRxReset      = _addPV('Cu:RxReset'     ,xpm.CuTiming.RxReset)
+        self._pv_cuRxPllReset   = _addPV('Cu:RxPllReset'  ,xpm.CuTiming.RxPllReset)
         self._pv_cuRxCountReset = _addPV('Cu:RxCountReset',xpm.CuTiming.RxCountReset)
 
         self._pv_l0HoldReset = SharedPV(initial=NTScalar('I').wrap(0),
@@ -542,12 +544,16 @@ class PVCtrls(object):
         provider.add(name+':L0HoldReset',self._pv_l0HoldReset)
 
         self._pv_seqReset   = SharedPV(initial=NTScalar('I').wrap(0),
-                                        handler=RegH(xpm.SeqEng_0.seqRestart,archive=False))
+#                                        handler=RegH(xpm.SeqEng_0.seqRestart,archive=False))
+                                        handler=PVHandler(self.seqReset))
         provider.add(name+':SeqReset',self._pv_seqReset)
 
         self._pv_seqDone   = SharedPV(initial=NTScalar('I').wrap(0),
                                       handler=DefaultPVHandler())
         provider.add(name+':SeqDone',self._pv_seqDone)
+
+        self._usLinkUp = stats._usTiming._linkUpdate
+        stats._usTiming._linkUpdate = self.usLinkUp
 
         if notify:
             self._thread = threading.Thread(target=self.notify)
@@ -556,6 +562,18 @@ class PVCtrls(object):
         print('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
         app.monStreamPeriod.set(125000000)
         app.monStreamEnable.set(1)
+
+    def usLinkUp(self):
+        if self._usLinkUp is not None:
+            self._usLinkUp()
+        for s in self._seq:
+            s.refresh()
+
+    def seqReset(self,pv,val):
+        self._xpm.SeqEng_0.seqRestart.set(val)
+        for s in self._seq:
+            if (1<<s._id)&val:
+                s.seqResetDone(val)
 
     def update(self,cycle):
         #  The following section will throw an exception if the CuInput PV is not set properly

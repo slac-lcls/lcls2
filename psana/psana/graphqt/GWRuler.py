@@ -60,7 +60,7 @@ class GWRuler():
         self.size_inches = kwargs.get('size_inches', 3)
         self.zvalue      = kwargs.get('zvalue',     10)
         self.fmt         = kwargs.get('fmt',      '%g')
-        self.label_rot   = kwargs.get('label_rot',  10)
+        self.label_rot   = kwargs.get('label_rot',  -10)
 
         self.pen.setCosmetic(True)
         self.pen.setColor(self.color)

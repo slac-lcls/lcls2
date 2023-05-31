@@ -45,8 +45,8 @@ namespace Pds {
       int              startConnection(const std::string& ifAddr,
                                        std::string&       port,
                                        unsigned           nLinks);
-      int              connect(const EbParams& prms, unsigned maxTrBuffers);
-      int              configure(const EbParams& prms);
+      int              connect(unsigned maxTrBuffers);
+      int              configure();
       void             unconfigure();
       void             disconnect();
       void             shutdown();
@@ -86,6 +86,7 @@ namespace Pds {
       unsigned                  _id;
       MetricExporter_t          _exporter;
       const std::string         _pfx;
+      const EbParams&           _prms;
     };
   };
 };

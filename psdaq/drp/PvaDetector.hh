@@ -61,6 +61,7 @@ private:
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
     void _matchUp();
+    void _handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg);
     void _handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
     void _handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
     void _handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);

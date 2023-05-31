@@ -24,7 +24,7 @@ HOSTNAME = os.getenv('HOSTNAME', None)  # ex: pslogin02
 if HOSTNAME is None:
     import socket
     HOSTNAME = socket.gethostname()
-print('TEST dir_root.HOSTNAME %s' % HOSTNAME)
+#print('TEST dir_root.HOSTNAME %s' % HOSTNAME)
 
 DIR_ROOT = os.getenv('DIR_PSDM')  # /cds/group/psdm
 DIR_LOG_AT_START    = os.path.join(DIR_ROOT, 'detector/logs/atstart/')          # /cds/group/psdm/detector/logs/atstart

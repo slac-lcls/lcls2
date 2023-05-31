@@ -83,6 +83,9 @@ class CMConfigParameters(PSConfigParameters):
         self.ivimageaxes = None
         self.wlog        = None
 
+        self.gwimageaxes = None
+        self.gwspectrum = None
+
         self.last_selection = None
         self.user = cc.USERNAME
         self.upwd = None

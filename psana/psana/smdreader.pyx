@@ -180,7 +180,6 @@ cdef class SmdReader:
             if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
                 self.winner = i
                 limit_ts = self.prl_reader.bufs[self.winner].timestamp
-
         # With integrating detector specified, limit_ts is from the integrating
         # detector where the last ts of the winner can be inserted in front of or at.
         cdef int i_found=0
@@ -204,7 +203,6 @@ cdef class SmdReader:
             i_eob               = self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size
             limit_ts            = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
             self.n_view_events  = batch_size
-
 
         
         # Save timestamp and transition id of the last event in batch
@@ -235,9 +233,15 @@ cdef class SmdReader:
         
         # Find the boundary of each buffer using limit_ts
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
-            buf = &(self.prl_reader.bufs[i])
+            # Reset buffer index and size for both normal and step buffers.
+            # They will get set to the boundary value if the current timestamp 
+            # does not exceed limiting timestamp.
             i_st_bufs[i] = 0
             block_size_bufs[i] = 0
+            i_st_stepbufs[i] = 0
+            block_size_stepbufs[i] = 0
+            
+            buf = &(self.prl_reader.bufs[i])
             
             if buf.ts_arr[i_starts[i]] > limit_ts: continue
 
@@ -273,8 +277,6 @@ cdef class SmdReader:
             
             # Handle step buffers the same way
             buf = &(self.prl_reader.step_bufs[i])
-            i_st_stepbufs[i] = 0
-            block_size_stepbufs[i] = 0
             
             # Find boundary using limit_ts (omit check for exact match here because it's unlikely
             # for transition buffers.

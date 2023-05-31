@@ -483,7 +483,7 @@ int Meb::connect()
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
   if (rc)  return rc;
 
-  rc = EbAppBase::connect(_prms, MEB_TR_BUFFERS);
+  rc = EbAppBase::connect(MEB_TR_BUFFERS);
   if (rc)  return rc;
 
   return 0;
@@ -498,7 +498,7 @@ int Meb::configure()
 
   // MRQ links need no configuration
 
-  int rc = EbAppBase::configure(_prms);
+  int rc = EbAppBase::configure();
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -912,6 +912,7 @@ int MebApp::_parseConnectionParams(const json& body)
   _prms.maxEntries = 1;                  // No batching: each event stands alone
   _prms.maxBuffers = _prms.numEvBuffers; // For EbAppBase
   _prms.numBuffers.resize(MAX_DRPS, 0);  // Number of buffers on each DRP
+  _prms.drps.resize(MAX_DRPS);           // DRP aliases
 
   for (auto it : body["drp"].items())
   {
@@ -922,6 +923,7 @@ int MebApp::_parseConnectionParams(const json& body)
       return 1;
     }
     _prms.contributors |= 1ul << drpId;
+    _prms.drps[drpId]   = it.value()["proc_info"]["alias"];
 
     _prms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
     _prms.ports.push_back(it.value()["connect_info"]["drp_port"]);
@@ -943,6 +945,8 @@ int MebApp::_parseConnectionParams(const json& body)
     maxTrSize             += _prms.maxTrSize[drpId];
     maxBufferSize         += size_t(it.value()["connect_info"]["max_ev_size"]);
   }
+  _prms.drps.shrink_to_fit();
+
   // shmem buffers must fit both built events and transitions of worst case size
   _prms.maxBufferSize = maxBufferSize > maxTrSize ? maxBufferSize : maxTrSize;
 

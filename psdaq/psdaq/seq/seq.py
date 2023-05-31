@@ -1,3 +1,8 @@
+#
+#  This code needs validation checks:
+#  1.  arguments do not exceed the bit depth of the implementation
+#  2.  consistent use of the branch counters (same counter isn't used within a nested loop)
+#
 from psdaq.configdb.tsdef import *
 
 verbose = False
@@ -52,6 +57,10 @@ class ACRateSync(Instruction):
     opcode = 1
 
     def __init__(self, timeslotm, marker, occ):
+        if occ > 0xfff:
+            raise ValueError('ACRateSync called with occ={}'.format(occ))
+        if timeslotm > 0x3f:
+            raise ValueError('ACRateSync called with timeslotm={}'.format(timeslotm))
         super(ACRateSync, self).__init__( (self.opcode, timeslotm, marker, occ) )
 
     def _word(self):
@@ -81,6 +90,11 @@ class Branch(Instruction):
     opcode = 2
 
     def __init__(self, args):
+        if len(args)>2:
+            if args[2] > 0x3:
+                raise ValueError('Branch called with ctr={}'.format(args[2]))
+            if args[3] > 0xfff:
+                raise ValueError('Branch called with occ={}'.format(args[3]))
         super(Branch, self).__init__(args)
 
     def _word(self, a):
@@ -201,4 +215,29 @@ def decodeInstr(w):
     elif idw == 4: # Request (assume ControlRequest)
         instr = ControlRequest(word = w&0xffff)
     return instr
+
+#  validate the conditional counters in a list of instructions
+def validate(filename):
+    config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None, 'repeat':False}
+    seq = 'from psdaq.seq.seq import *\n'
+    seq += open(filename).read()
+    exec(compile(seq, filename, 'exec'), {}, config)
+    l = config['instrset']
+
+    #  accumulate the branch statement source and targets
+    d = {cc:[] for cc in range(4)}
+    for line,instr in enumerate(l):
+        if instr.args[0]==Branch.opcode and len(instr.args)>2:
+            cc   = instr.args[2]
+            addr = instr.args[3]
+            d[cc].append([addr,line])
+
+    #  check none of them overlap for a given conditional counter
+    for cc in range(4):
+        for r in d[cc]:
+            addr = r[0]
+            for s in d[cc]:
+                if addr>s[0] and addr<s[1]:
+                    raise ValueError(f'{filename}: CC {cc} found in overlapping loops {r} {s}')
+
 

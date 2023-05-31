@@ -57,8 +57,8 @@ class GWView(QGraphicsView):
     def set_scene_rect(self, r):
         if r is not None:
             self.scene().setSceneRect(r)  # self.setSceneRect(r)  # WORKS DIFFERENTLY!
-            #logger.debug('set_scene_rect:  %s' % qu.info_rect_xywh(r))
-            print('GWView.set_scene_rect:  %s' % qu.info_rect_xywh(r), end='\r')
+            if logging.root.level == logging.DEBUG:
+                print('GWView.set_scene_rect:  %s' % qu.info_rect_xywh(r), end='\r')
 
 
     def fit_in_view(self, rs=None, mode=Qt.IgnoreAspectRatio):
@@ -118,7 +118,7 @@ class GWView(QGraphicsView):
 
 
     def _move_scene_rect_by_mouse(self, e):
-        logger.debug('_move_scene_rect_by_mouse')
+        #logger.debug('_move_scene_rect_by_mouse')
         dp = e.pos() - self.click_pos
         dx = dp.x() / self.transform().m11() if self._scale_ctl & 1 else 0
         dy = dp.y() / self.transform().m22() if self._scale_ctl & 2 else 0
@@ -132,7 +132,7 @@ class GWView(QGraphicsView):
         QGraphicsView.mouseMoveEvent(self, e)
         if self._scale_ctl == 0: return
         if self.click_pos is None: return
-        logger.debug('mouseMoveEvent at valid click_pos and _scale_ctl')
+        #logger.debug('mouseMoveEvent at valid click_pos and _scale_ctl')
         self._move_scene_rect_by_mouse(e)
 
 

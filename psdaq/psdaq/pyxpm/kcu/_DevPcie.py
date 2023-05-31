@@ -43,7 +43,7 @@ class NoTimingFrameRx(pr.Device):
         super().__init__(name=name, description=description, **kwargs)
         v = ['sofCount','eofCount','FidCount','CrcErrCount','RxClkCount','RxRstCount',
              'RxDecErrCount','RxDspErrCount','BypassResetCount','BypassDoneCount','TxClkCount',
-             'RxLinkUp']
+             'RxLinkUp','RxReset','RxPllReset','RxCountReset']
         for i in v:
             self.add(pr.LocalVariable(name = i, mode = 'RO', value=0))
 

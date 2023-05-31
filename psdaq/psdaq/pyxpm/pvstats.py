@@ -103,10 +103,11 @@ class LinkStatus(object):
         return offset
 
 class TimingStatus(object):
-    def __init__(self, name, device):
+    def __init__(self, name, device, linkUpdate=None):
         self._name = name
         self._device = device
         self._device.update()
+        self._linkUpdate = linkUpdate
         self._rxClkCount      = device.RxClkCount.get()<<4
         self._txClkCount      = device.TxClkCount.get()<<4
         self._rxRstCount      = device.RxRstCount.get()
@@ -174,9 +175,20 @@ class TimingStatus(object):
             value['value'] = v
             value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
             self._pv_rxLinkUp.post(value)
+
             if v != self._vLast:
                 print(f'*** {datetime.now()} {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
                 self._vLast = v
+#                if v and self._linkUpdate:
+#                    self._linkUpdate()
+
+            #  Link was down but now is up
+            if v and self._device.RxDown.get():
+                print(f'*** {datetime.now()} {self._name}:RxDown latched and linkUp')
+                self._device.RxDownCTL.put(0)
+                if self._linkUpdate:
+                    self._linkUpdate()
+            
 
 class AmcPLLStatus(object):
     def __init__(self, name, app, idx):
@@ -388,6 +400,11 @@ class PVStats(object):
         self._xpm  = xpm
         self._app  = xpm.XpmApp
 
+        self.paddr   = addPV(name+':PAddr'  ,'I',self._app.paddr.get())
+        self.fwbuild = addPV(name+':FwBuild','s',axiv.BuildStamp.get())
+        self.usRxEn  = addPV(name+':UsRxEnable','I',self._app.usRxEnable.get())
+        self.cuRxEn  = addPV(name+':CuRxEnable','I',self._app.cuRxEnable.get())
+
         self._links = []
         for i in range(32):
             self._links.append(LinkStatus(name,self._app,i))
@@ -400,8 +417,8 @@ class PVStats(object):
         for i in range(8):
             self._groups.append(GroupStats(name+':PART:%d'%i,self._app,i))
 
-        self._usTiming = TimingStatus(name+':Us',xpm.UsTiming)
-        self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming)
+        self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp)
+        self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp)
 
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
 
@@ -411,15 +428,23 @@ class PVStats(object):
         else:
             self._sfpStat  = None
 
-        self.paddr   = addPV(name+':PAddr'  ,'I',self._app.paddr.get())
-        self.fwbuild = addPV(name+':FwBuild','s',axiv.BuildStamp.get())
-
 #        self._mmcm = []
 #        for i,m in enumerate(xpm.mmcms):
 #            self._mmcm.append(PVMmcmPhaseLock(name+':XTPG:MMCM%d'%i,m))
 
     def init(self):
         pass
+
+    def cuLinkUp(self):
+        pass
+
+    def usLinkUp(self):
+        self.updatePaddr()
+
+    def updatePaddr(self):
+        v = self._app.paddr.get()
+        print(f'-- updating PADDR to {v}')
+        pvUpdate(self.paddr,v)
 
     def handle(self, msg):
         timev = divmod(float(time.time_ns()), 1.0e9)
@@ -442,6 +467,8 @@ class PVStats(object):
                 self._usTiming.update()
             if self._sfpStat:
                 self._sfpStat .update()
+
+#            self.updatePaddr()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:
