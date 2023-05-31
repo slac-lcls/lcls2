@@ -95,30 +95,30 @@ class SeqUser:
 
         self._idx = idx
 
-    def begin(self, wait=False):
+    def begin(self, wait=False, refresh=False):
         self.idxrun.put(self._idx)
         self.reset .put(0)
-        self.start .put(1)
+        self.start .put(1 if not refresh else 3)
         self.start .put(0)
         if wait:
             self.lock= Lock()
             self.lock.acquire()
 
-    def sync(self):
+    def sync(self,refresh=False):
         self.idxrun.put(self._idx)
         self.reset .put(0)
-        self.start .put(2)
+        self.start .put(2 if not refresh else 4)
         self.start .put(0)
 
-    def execute(self, title, instrset, descset=None, sync=False):
+    def execute(self, title, instrset, descset=None, sync=False, refresh=False):
         self.insert.put(0)
         self.stop ()
         self.clean()
         self.load (title,instrset,descset)
         if sync:
-            self.sync()
+            self.sync(refresh)
         else:
-            self.begin()
+            self.begin(refresh)
 
 
 def main():
@@ -141,20 +141,23 @@ def main():
         engine = int(sengine)
         print(f'** engine {engine} fname {fname} **')
 
-        config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None}
+        config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None, 'repeat':False}
         seq = 'from psdaq.seq.seq import *\n'
         seq += open(fname).read()
         exec(compile(seq, fname, 'exec'), {}, config)
         
         print(f'descset  {config["descset"]}')
         print(f'seqcodes {config["seqcodes"]}')
+        if 'refresh' not in config:
+            config['refresh']=False
+        print(f'refresh  {config["refresh"]}')
         if args.verbose:
             print('instrset:')
             for i in config["instrset"]:
                 print(i)
 
         seq = SeqUser(f'{args.pv}:SEQENG:{engine}')
-        seq.execute(config['title'],config['instrset'],config['descset'],sync=True)
+        seq.execute(config['title'],config['instrset'],config['descset'],sync=True,refresh=config['refresh'])
         del seq
 
         engineMask |= (1<<engine)

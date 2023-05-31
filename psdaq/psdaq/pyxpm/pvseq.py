@@ -189,6 +189,11 @@ class Engine(object):
     def reset(self):
         v = 1<<self._id
         self._reg.seqRestart.set(v)
+        self.resetDone()
+
+    def resetDone(self):
+        if self._refresh==1:
+            self._refresh=2
 
     def dump(self):
         print('seqAddrLen %d'%self._reg.seqAddrLen.get())
@@ -225,6 +230,7 @@ class PVSeq(object):
         self._eng = engine
         self._seq = []
         self._pv_enabled = pv_enabled
+        self._refresh = 0  #  Track sequences that can be reset on 1Hz marker repeatedly
 
         def _addPV(label,ctype='I',init=0):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
@@ -285,8 +291,16 @@ class PVSeq(object):
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
             self._eng.setAddress(idx,0,0)  # syncs start to marker 0 (1Hz)
+            self._refresh = 0
             if val==1:
                 self._eng.reset()
+            elif val==2:
+                pass  # No reset
+            elif val==3:
+                self._eng.reset()
+                self._refresh = 2
+            elif val==4:
+                self._refresh = 1
 
     def forceReset(self, pv, val):
         if val:
@@ -307,3 +321,7 @@ class PVSeq(object):
 
     def dump(self, pv, val):
         self._eng.dump()
+
+    def refresh(self):
+        if self._refresh > 1:
+            self._eng.reset()

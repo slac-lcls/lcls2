@@ -21,6 +21,7 @@ target_link_libraries(drpbase
     exporter
     collection
     xtcdata::xtc
+    epicstools
 )
 
 add_executable(drp
@@ -52,7 +53,6 @@ target_link_libraries(drp
     xtcdata::xtc
     Threads::Threads
     drpbase
-    epicstools
     trigger
 )
 
@@ -64,7 +64,6 @@ add_executable(drp_bld
 target_link_libraries(drp_bld
     drpbase
     trigger
-    epicstools
     readline
 )
 
@@ -75,7 +74,6 @@ add_executable(drp_pva
 target_link_libraries(drp_pva
     drpbase
     trigger
-    epicstools
     readline
 )
 

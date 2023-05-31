@@ -49,7 +49,8 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   _contributors(0),
   _id          (-1),
   _exporter    (exporter),
-  _pfx         (pfx)
+  _pfx         (pfx),
+  _prms        (prms)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
@@ -132,23 +133,23 @@ int EbAppBase::startConnection(const std::string& ifAddr,
   return 0;
 }
 
-int EbAppBase::connect(const EbParams& prms, unsigned maxTrBuffers)
+int EbAppBase::connect(unsigned maxTrBuffers)
 {
   int      rc;
-  unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
+  unsigned nCtrbs = std::bitset<64>(_prms.contributors).count();
 
   // Initialize the event builder
-  auto duration = prms.maxEntries;
-  _maxEntries   = prms.maxEntries;
-  _maxEvBuffers = (EB_TMO_MS / 1000) * (prms.maxBuffers / prms.maxEntries);
+  auto duration = _prms.maxEntries;
+  _maxEntries   = _prms.maxEntries;
+  _maxEvBuffers = (EB_TMO_MS / 1000) * (_prms.maxBuffers / _prms.maxEntries);
   _maxTrBuffers = maxTrBuffers;
   rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
   if (rc)  return rc;
 
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias},
-                                            {"alias", prms.alias},
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.alias},
+                                            {"alias", _prms.alias},
                                             {"eb", _pfx}};
   _links        .resize(nCtrbs);
   _region       .resize(nCtrbs);
@@ -156,10 +157,10 @@ int EbAppBase::connect(const EbParams& prms, unsigned maxTrBuffers)
   _bufRegSize   .resize(nCtrbs);
   _maxTrSize    .resize(nCtrbs);
   _maxBufSize   .resize(nCtrbs);
-  _id           = prms.id;
-  _contributors = prms.contributors;
-  _idxSrcs      = prms.indexSources;
-  _contract     = prms.contractors;
+  _id           = _prms.id;
+  _contributors = _prms.contributors;
+  _idxSrcs      = _prms.indexSources;
+  _contract     = _prms.contractors;
   _fixupSrc     = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
   _ctrbSrc      = _exporter->histogram("EB_CtrbSc", labels, nCtrbs); // Revisit: For testing
 
@@ -175,9 +176,9 @@ int EbAppBase::connect(const EbParams& prms, unsigned maxTrBuffers)
   return 0;
 }
 
-int EbAppBase::configure(const EbParams& prms)
+int EbAppBase::configure()
 {
-  int rc = _linksConfigure(prms, _links, "DRP");
+  int rc = _linksConfigure(_prms, _links, "DRP");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -396,11 +397,12 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   event->damage(Damage::DroppedContribution);
 
-  if (!event->creator()->isEvent())
+  //if (!event->creator()->isEvent())
   {
-    logging::warning("Fixup %s, %014lx, size %zu, source %d",
+    logging::warning("Fixup %s, %014lx, size %zu, source %d (%s)",
                      TransitionId::name(event->creator()->service()),
-                     event->sequence(), event->size(), srcId);
+                     event->sequence(), event->size(),
+                     srcId, _prms.drps[srcId].c_str());
   }
 
   _fixupSrc->observe(double(srcId));

@@ -17,6 +17,7 @@
 #include "xtcdata/xtc/Smd.hh"
 #include "DataDriver.h"
 #include "DmaDest.h"
+#include "psdaq/epicstools/PVBase.hh"
 
 #include "rapidjson/document.h"
 
@@ -840,6 +841,25 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 }
 
 
+class PV : public Pds_Epics::PVBase
+{
+public:
+  PV(const char* pvName) : PVBase(pvName) {}
+  virtual ~PV() {}
+public:
+  void updated() {}
+  bool ready()   { return getComplete(); }
+};
+
+static bool _pvVectElem(const std::shared_ptr<PV>& pv, unsigned element, double& value)
+{
+  if (!pv || !pv->ready())  return false;
+
+  value = pv->getVectorElemAt<double>(element);
+
+  return true;
+}
+
 DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
@@ -872,6 +892,9 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_exporter->add("drp_pebble_in_use", labels, Pds::MetricType::Gauge,
                     [&](){return pool.inUse();});
     m_exporter->constant("drp_pebble_in_use_max", labels, pool.nbuffers());
+
+    m_exporter->addFloat("drp_deadtime", labels,
+                         [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition  = para.partition;
@@ -1187,6 +1210,17 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.id = body["drp"][stringId]["drp_id"];
     m_mPrms.id = m_tPrms.id;
     m_nodeId = body["drp"][stringId]["drp_id"];
+
+    // Connect to an XPM PV to give Prometheus access to our deadtime
+    std::string pv_base = body["control"]["0"]["control_info"]["pv_base"];
+    unsigned    xpm_id  = body["drp"][stringId]["connect_info"]["xpm_id"];
+    unsigned    rog     = body["drp"][stringId]["det_info"]["readout"];
+    std::string pv(pv_base  +
+                   ":XPM:"  + std::to_string(xpm_id) +
+                   ":PART:" + std::to_string(rog) +
+                   ":DeadFLnk");
+    m_deadtimePv = std::make_shared<PV>(pv.c_str());
+    m_xpmPort    = body["drp"][stringId]["connect_info"]["xpm_port"];
 
     uint64_t builders = 0;
     m_tPrms.addrs.clear();

@@ -174,6 +174,8 @@ protected:
     uint64_t m_nNoTrDgrams;
 };
 
+class PV;
+
 class DrpBase
 {
 public:
@@ -218,6 +220,8 @@ private:
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
     std::string m_hostname;
     unsigned m_numTebBuffers;
+    unsigned m_xpmPort;
+    std::shared_ptr<PV> m_deadtimePv;
 };
 
 }
