@@ -277,7 +277,7 @@ class RunDrp(Run):
             )
 
             if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun:
+                if evt.service() == TransitionId.EndRun or evt.service() == TransitionId.Reset:
                     self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                     return
                 self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)

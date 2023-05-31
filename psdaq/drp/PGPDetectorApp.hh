@@ -27,6 +27,7 @@ private:
     void unconfigure();
     void disconnect();
     void drainDrpMessageQueues();
+    void resetDrpPython();
     DrpBase m_drp;
     Parameters& m_para;
     std::thread m_pgpThread;

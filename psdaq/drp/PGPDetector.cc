@@ -80,14 +80,12 @@ void  drpSendReceive(int inpMqId, int resMqId, int inpShmId, int resShmId, void*
     if (rc) {
         logging::critical("[Thread %u] Error sending message %s to Drp python: %m",
                           threadNum, msg);
-        // cleanupIpcPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
         abort();
     }
 
     rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 10000);
     if (rc) {
         logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-        // cleanupIpcPython(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, threadNum);
         abort();
     }
 }

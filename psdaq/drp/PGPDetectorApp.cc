@@ -661,6 +661,7 @@ void PGPDetectorApp::handleReset(const json& msg)
 
     if (m_pythonDrp) {
         drainDrpMessageQueues();
+        resetDrpPython();
     }
     
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
@@ -703,6 +704,22 @@ void PGPDetectorApp::drainDrpMessageQueues()
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
         if (m_resMqId[workerNum]) {
             [[maybe_unused]] int rc = drpRecv(m_resMqId[workerNum], recvmsg, sizeof(recvmsg), 0);
+        }
+    }
+}
+
+void PGPDetectorApp::resetDrpPython()
+{
+    char recvmsg[520];
+    char msg[512];
+    snprintf(msg, sizeof(msg), "%s", "s");
+
+    for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
+        int rc = drpSend(m_inpMqId[workerNum], msg, 1);
+        if (rc) {
+            logging::critical("Error sending reset message to Drp python worker %u: %m",
+                              workerNum);
+            abort();
         }
     }
 }

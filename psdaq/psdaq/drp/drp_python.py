@@ -53,8 +53,8 @@ print(f"[Python - Thread {worker_num}] {is_publisher=} setup socket]")
 while True:
     print(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
     message, priority = ipc_info.mq_inp.receive()
-    if message == "stop":
-        exit(0)
+    if message == b"s":
+        continue
     with open(message, "r") as fh:
         code = compile(fh.read(), message, 'exec')
         exec(code, globals(), locals())
