@@ -78,6 +78,8 @@ class Events:
             if self.ds.dsparms.terminate_flag: raise StopIteration
             
             evt = next(self.ds.dm)
+            if not evt:
+                return
 
             # TODO: MONA Update EnvStore here instead of inside DgramManager.
             # To mirror withe RunSerial/RunParallel, consider moving update

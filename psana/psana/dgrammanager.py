@@ -384,9 +384,7 @@ class DgramManager(object):
                 d = dgram.Dgram(config=self.configs[-1], view=self.shm_inp_mv)
                 dgrams = [d]
             elif message == b"s":
-                self.shm_res_mv[:] = self.shm_inp_mv[:]
-                self.mq_res.send(b"g\n")
-                raise StopIteration
+                 return
             else:
                 raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' or "
                                   f"'s' message, got: {message}")

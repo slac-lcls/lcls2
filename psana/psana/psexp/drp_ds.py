@@ -46,6 +46,8 @@ class DrpDataSource(DataSourceBase):
     
     def _setup_beginruns(self):
         for evt in self.dm:
+            if not evt:
+                return None
             if evt.service() == TransitionId.L1Accept:
                 buffer_size = self.dm.pebble_bufsize
             else:
@@ -85,6 +87,8 @@ class DrpDataSource(DataSourceBase):
         while self._start_run():
             run = RunDrp(self, Event(dgrams=self.beginruns))
             yield run
+            if run.stop_drp == True:
+                break
 
     def is_mpi(self):
         return False
