@@ -61,7 +61,7 @@ Created on 2016-09-09 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
 from math import floor, ceil
-from psana.graphqt import ColorTable as ct
+import psana.graphqt.ColorTable as ct
 from psana.graphqt.GWViewExt import *
 from PyQt5.QtGui import QImage, QPixmap
 
@@ -82,6 +82,7 @@ class GWViewImage(GWViewExt):
         self.pmi = None
         self.arr_limits_old = None
         self.arr_in_rect = None
+        self.mask = None
         self.set_pixmap_from_arr(arr)
         #self.connect_mouse_move_event(self.on_mouse_move_event)
 
@@ -103,16 +104,17 @@ class GWViewImage(GWViewExt):
         else               : self.pmi.setPixmap(pixmap)
 
 
-    def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.01, frmax=0.99):
+    def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
         """Input array is scailed by color table. If color table is None arr set as is."""
         self.arr = arr
         anorm = arr if self.coltab is None else\
                 ct.apply_color_table(arr, ctable=self.coltab, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
+        if self.mask is not None: anorm &= self.mask
         h, w = arr.shape
 
-        image = QImage(anorm, w, h, QImage.Format_ARGB32)
-        pixmap = QPixmap.fromImage(image)
-        self.add_pixmap_to_scene(pixmap)
+        self.qimage = QImage(anorm, w, h, QImage.Format_ARGB32)
+        self.qpixmap = QPixmap.fromImage(self.qimage)
+        self.add_pixmap_to_scene(self.qpixmap)
 
         if set_def:
             rs = QRectF(0, 0, w, h)
