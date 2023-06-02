@@ -36,8 +36,8 @@ class GWSpectrum(QWidget):
         nbins = kwargs.get('nbins', 1000)
         amin  = kwargs.get('amin', None)
         amax  = kwargs.get('amax', None)
-        frmin = kwargs.get('frmin', 0.0001)
-        frmax = kwargs.get('frmax', 0.9999)
+        frmin = kwargs.get('frmin', 0.00001)
+        frmax = kwargs.get('frmax', 0.99999)
         edgemode = kwargs.get('edgemode', 0)
         signal_fast = kwargs.get('signal_fast', True)
 
@@ -186,7 +186,7 @@ class GWSpectrum(QWidget):
         self.edi_info.setMaximumHeight(80)
 
 
-    def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.0001, frmax=0.9999, edgemode=0, update_hblimits=True):
+    def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.00001, frmax=0.99999, edgemode=0, update_hblimits=True):
         """shotcut"""
         #logger.info('set_spectrum_from_arr')
         self.whi.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)

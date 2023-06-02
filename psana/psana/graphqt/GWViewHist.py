@@ -149,7 +149,7 @@ class GWViewHist(GWViewExt):
 
 
     def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None,\
-                               frmin=0.001, frmax=0.999, edgemode=0, update_hblimits=True):
+                               frmin=0.00001, frmax=0.99999, edgemode=0, update_hblimits=True):
         #if np.array_equal(arr, self.arr_old): return
         if arr is self.arr_old: return
         self.arr_old = arr
@@ -168,7 +168,12 @@ class GWViewHist(GWViewExt):
                np.quantile(aravel, frmax, axis=0, interpolation='higher')
           if not vmin<vmax: vmax=vmin+1
 
-        hb = HBins((vmin,vmax), nbins=nbins)
+        _nbins = int(vmax) - int(vmin)
+        if _nbins < nbins: _nbins = nbins
+        #arrsize = arr.size
+        #print('XXX arrsize: %d vmin: %.3f vmax: %.3f nbins:%d' % (arrsize, vmin, vmax, _nbins))
+
+        hb = HBins((vmin,vmax), nbins=_nbins)
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
 
         hmin, hmax = 0, hb.bin_data_max()
