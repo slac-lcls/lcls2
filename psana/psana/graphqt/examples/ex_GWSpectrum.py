@@ -29,7 +29,7 @@ class TestGWSpectrum(GWSpectrum):
         elif e.key() == Qt.Key_N:
             shran = np.maximum(random_standard(shape=(2,), mu=500, sigma=500, dtype=np.int), (100,100))
             mu, sigma = random_standard(shape=(2,), mu=500, sigma=200, dtype=np.float64)
-            print('\nSet new histogram for img shape: %s mu: %.3f sigma: %.3f' % (str(shran), mu, sigma))
+            print('\nset new histogram for img shape: %s mu: %.3f sigma: %.3f' % (str(shran), mu, sigma))
             a = test_image(shape=shran, mu=mu, sigma=sigma)
             self.set_spectrum_from_arr(a)
 
