@@ -42,7 +42,7 @@ class TestGWImageAxes(GWImageAxes):
             #self.reset_scene_rect()  # it does not reset axes
 
         elif e.key() == Qt.Key_N:
-            shran = np.maximum(random_standard(shape=(2,), mu=500, sigma=500, dtype=np.int), (100,100))
+            shran = np.maximum(random_standard(shape=(2,), mu=500, sigma=500, dtype=np.int32), (100,100))
             mu, sigma = random_standard(shape=(2,), mu=500, sigma=200, dtype=np.float64)
             print('Set new image for random shape: %s mu: %.3f sigma: %.3f' % (str(shran), mu, sigma))
             a = test_image(shape=shran, mu=mu, sigma=sigma)
