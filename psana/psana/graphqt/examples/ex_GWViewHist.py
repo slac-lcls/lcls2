@@ -5,7 +5,7 @@ import inspect
 from psana.graphqt.GWViewHist import *
 import psana.pyalgos.generic.NDArrGenerators as ag
 
-logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
 class TestGWViewHist(GWViewHist):
 
@@ -65,6 +65,7 @@ def test_gwviewhist(tname):
         logger.info('test %s is not implemented' % tname)
         return
 
+    w.setWindowTitle('ex_GWViewHist')
     w.print_attributes()
     w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
     w.connect_mouse_move_event(w.test_mouse_move_event_reception)

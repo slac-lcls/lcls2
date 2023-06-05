@@ -3,6 +3,7 @@
 import inspect
 from psana.graphqt.GWViewColorBar import *
 
+SCRNAME = sys.argv[0].split('/')[-1]
 
 class TestGWViewColorBar(GWViewColorBar):
 
@@ -55,7 +56,9 @@ if __name__ == "__main__":
         print('test %s is not implemented' % tname)
         return
 
-    w.setWindowTitle(w._name)
+    #w.setWindowTitle(w._name)
+    w.setWindowTitle(SCRNAME)
+    w.setGeometry(100, 20, 600, 600)
 
     w.connect_mouse_move_event(w.test_mouse_move_event_reception)
     w.connect_new_color_table_index_is_selected(w.test_new_color_table_index_is_selected_reception)
@@ -68,8 +71,7 @@ if __name__ == "__main__":
     del w
     del app
 
-
-USAGE = '\nUsage: %s <tname>\n' % sys.argv[0].split('/')[-1]\
+USAGE = '\nUsage: %s <tname>\n' % SCRNAME\
       + '\n'.join([s for s in inspect.getsource(test_gfviewcolorbar).split('\n') if "tname ==" in s])
 
 

@@ -46,7 +46,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = TestGWSpectrum(signal_fast=True)
     w.setGeometry(100, 50, 300, 800)
-    w.setWindowTitle('Image with two axes')
+    w.setWindowTitle('ex_GWSpectrum')
 
     w.connect_histogram_scene_rect_changed(w.test_histogram_scene_rect_changed)
     w.wcbar.connect_new_color_table(w.wcbar.test_new_color_table_reception)

@@ -15,7 +15,7 @@ def test_gwview(tname):
     w=GWView(rscene=QRectF(-10, -10, 30, 30),\
              scale_ctl=('HV', 'H', 'V', '')[int(tname)],\
              show_mode=0o377)
-    w.setWindowTitle("TestGWView")
+    w.setWindowTitle('ex_GWView')
     w.setGeometry(20, 20, 600, 600)
     w.show()
     app.exec_()

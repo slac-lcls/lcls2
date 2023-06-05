@@ -69,7 +69,7 @@ def test_fwviewext(tname):
     w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
     w.connect_mouse_press_event(w.test_mouse_press_event_reception)
 
-    w.setWindowTitle("test_fwviewext")
+    w.setWindowTitle('ex_GWViewExt')
     w.setGeometry(20, 20, 600, 600)
     w.show()
 

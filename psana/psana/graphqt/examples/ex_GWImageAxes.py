@@ -59,7 +59,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = TestGWImageAxes(signal_fast=False) # True)
     w.setGeometry(100, 50, 800, 800)
-    w.setWindowTitle('Image with two axes')
+    w.setWindowTitle('ex_GWImageAxes')
     w.show()
     app.exec_()
     del w

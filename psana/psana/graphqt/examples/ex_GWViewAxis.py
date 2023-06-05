@@ -2,7 +2,7 @@
 
 from psana.graphqt.GWViewAxis import *
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
 import sys
 import inspect
@@ -64,6 +64,7 @@ def test_GWViewAxis(tname):
         print('test %s is not implemented' % tname)
         return
 
+    w.setWindowTitle('ex_GWViewAxis')
     print(w.info_attributes())
     w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
     #w.disconnect_axes_limits_changed(w.test_axes_limits_changed_reception)

@@ -3,7 +3,7 @@
 from psana.graphqt.GWViewImage import *
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
 import inspect
 import sys
@@ -112,6 +112,7 @@ def test_gfviewimage(tname):
     w.connect_mouse_move_event(w.test_mouse_move_event_reception)
     w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
 
+    w.setWindowTitle('ex_GWViewImage')
     w.setGeometry(20, 20, 600, 600)
     w.show()
     app.exec_()
