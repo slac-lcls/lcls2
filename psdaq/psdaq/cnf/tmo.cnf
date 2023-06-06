@@ -1,7 +1,7 @@
 if not platform: platform = '0'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.78 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.78 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
 #im2k0_env = 'EPICS_PVA_ADDR_LIST=172.21.156.96 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 #im5k4_env = 'EPICS_PVA_ADDR_LIST=172.21.156.113 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 im2k0_env = ld_lib_path
@@ -105,21 +105,18 @@ procmgr_config = [
 
 # June 8, 2022: cpo commented out fim's since I think they are out for maintenance
 # This node is shared with RIX, so need to take care not to over-allocate lanes
- { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x8 -D wave8 -k epics_prefix=MR2K4:FIM:W8:01'},
- { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x10 -D wave8 -k epics_prefix=MR3K4:FIM:W8:01'},
+ { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',   flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x8  -D wave8 -k epics_prefix=MR2K4:FIM:W8:01'},
+ { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',   flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x10 -D wave8 -k epics_prefix=MR3K4:FIM:W8:01'},
+ { host: 'drp-srcf-cmp004', id:'laser_wav8_0', flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x40 -D wave8 -k epics_prefix=LM1K4:W8:04'},
+
 # { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x8 -D wave8 -k epics_w8_prefix=MR2K4:FIM:W8:01 -k epics_shv_prefix=MR2K4:FIM:SHV'},
 # { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x20 -D wave8 -k epics_w8_prefix=MR3K4:FIM:W8:01 -k epics_shv_prefix=MR3K4:FIM:SHV'},
 
-#melchior 01/23/2023 introducing second piranha in tmo
-# This moves to cmp006 when it becomes available
- { host: 'drp-srcf-cmp011', id:'tmo_atmpiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x2 -D piranha4'},
+ { host: 'drp-srcf-cmp013', id:'tmo_atmpiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
  { host: 'drp-srcf-cmp007', id:'tmo_fzppiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
-# Temporarily borrow cmp012 for the RIX Piranha
-# { host: 'drp-srcf-cmp012', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
-
-# { host: 'drp-srcf-cmp011', id:'tmo_fzpopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
+ { host: 'drp-srcf-cmp011', id:'tmo_fzpopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
  { host: 'drp-srcf-cmp026', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=TMO:TIMETOOL:TTALL'},
 # { host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
@@ -155,8 +152,8 @@ procmgr_hsd = [
 #  {host:'drp-srcf-cmp018', id:'hsd_7',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
  {host:'drp-srcf-cmp021', id:'hsd_6',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
  {host:'drp-srcf-cmp018', id:'hsd_5',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
- {host:'drp-srcf-cmp022', id:'hsd_8',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
- {host:'drp-srcf-cmp022', id:'hsd_9',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
+# {host:'drp-srcf-cmp022', id:'hsd_8',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
+# {host:'drp-srcf-cmp022', id:'hsd_9',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
  {host:'drp-srcf-cmp024', id:'hsd_10', flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
  {host:'drp-srcf-cmp024', id:'hsd_11', flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
  # june 8, 2022: cpo commented out peppex hsd since David Cesar not using it yet

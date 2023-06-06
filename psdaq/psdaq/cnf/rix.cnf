@@ -4,7 +4,7 @@ ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PRE
 epics_env = ld_lib_path
 manta_env = 'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.255'+' '+ld_lib_path
-andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
 
 collect_host = 'drp-srcf-cmp004'
 
@@ -105,11 +105,11 @@ procmgr_config = [
 # {                          id:'groupca6',    flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 6'},
 # { host: 'drp-srcf-cmp014', id:'epixhr_0',  flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixhr2x2'},
 
-# { host: 'drp-srcf-cmp002', id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ { host: 'drp-srcf-cmp002', id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
-# { host: 'drp-srcf-cmp002', id:'andor_norm_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 RIX:NORM:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ { host: 'drp-srcf-cmp002', id:'andor_norm_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 RIX:NORM:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
-# { host: 'drp-srcf-cmp002', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ { host: 'drp-srcf-cmp002', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-srcf-cmp002', id:'epics_0',     flags:'spu', env:epics_env,  cmd:ea_cmd1+' -l 0x8 -T 4000000'},
@@ -142,8 +142,8 @@ hsd_epics = 'DAQ:RIX:HSD:1'
 procmgr_hsd = [
  {host:'drp-srcf-cmp009', id:'hsd_0',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
  {host:'drp-srcf-cmp009', id:'hsd_1',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
- {host:'drp-srcf-cmp005', id:'hsd_2',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
- {host:'drp-srcf-cmp005', id:'hsd_3',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
+ {host:'drp-srcf-cmp005', id:'hsd_2',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
+ {host:'drp-srcf-cmp005', id:'hsd_3',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
 ]
 
 procmgr_config.extend(procmgr_hsd)
