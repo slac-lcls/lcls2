@@ -1,7 +1,6 @@
 import sys
 import posix_ipc
-from psdaq.configdb.pub_server import pub_bind
-from psdaq.configdb.sub_client import sub_connect
+from psana.psexp.zmq_utils import pub_bind, sub_connect
 
 partition = int(sys.argv[1])
 pebble_bufsize = int(sys.argv[2])
@@ -43,12 +42,12 @@ drp_info = DrpInfo(detector_name, detector_segment, worker_num, pebble_bufsize, 
 
 # Setup socket for calibration constant broadcast
 is_publisher = True if worker_num == 0 else False
-socket_name = detector_name + "_" + detector_segment
+socket_name = f"ipc:///tmp/{detector_name}_{detector_segment}.pipe"
 if is_publisher:
     pub_socket = pub_bind(socket_name)
 else:
     sub_socket = sub_connect(socket_name)
-print(f"[Python - Thread {worker_num}] {is_publisher=} setup socket]")
+print(f"[Python - Thread {worker_num}] {is_publisher=} setup socket {socket_name}]")
 
 while True:
     print(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")

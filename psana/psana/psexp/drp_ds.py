@@ -5,8 +5,7 @@ from psana.event import Event
 from psana.smalldata import SmallData
 from psana.dgramedit import DgramEdit, PyDgram
 from psana import dgram
-from psdaq.configdb.pub_server import pub_send
-from psdaq.configdb.sub_client import sub_recv
+from psana.psexp.zmq_utils import pub_send, sub_recv
 
 class DrpDataSource(DataSourceBase):
 

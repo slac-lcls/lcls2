@@ -3,8 +3,7 @@ from psana.dgrammanager import DgramManager
 from psana.psexp import Events, TransitionId
 from psana.event import Event
 from psana.smalldata import SmallData
-from psdaq.configdb.pub_server import pub_bind, pub_send
-from psdaq.configdb.sub_client import sub_connect, sub_recv
+from psana.psexp.zmq_utils import pub_bind, pub_send, sub_connect, sub_recv
 
 class ShmemDataSource(DataSourceBase):
 
