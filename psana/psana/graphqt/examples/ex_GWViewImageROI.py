@@ -3,7 +3,7 @@
 from psana.graphqt.GWViewImageROI import *
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
 import inspect
 import sys
@@ -20,6 +20,7 @@ class TestGWViewImageROI(GWViewImageROI):
                '\n  N - set new pixmap'\
                '\n  W - set new pixmap of random shape, do not change default scene rect'\
                '\n  D - set new pixmap of random shape and change default scene rect'\
+               '\n  S - On/Off scale control'\
                '\n'
 
 
@@ -27,7 +28,7 @@ class TestGWViewImageROI(GWViewImageROI):
                  coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20),\
                  origin='UL', scale_ctl='HV', show_mode=0, signal_fast=True):
         GWViewImageROI.__init__(self, parent, arr, coltab, origin, scale_ctl, show_mode, signal_fast)
-
+        print(self.KEY_USAGE)
 
     def test_mouse_move_event_reception(self, e):
         """Overrides method from GWView"""
@@ -39,23 +40,26 @@ class TestGWViewImageROI(GWViewImageROI):
 
     def keyPressEvent(self, e):
         GWViewImageROI.keyPressEvent(self, e)
-        logger.info('keyPressEvent, key = %s' % e.key())
-        if e.key() == Qt.Key_Escape:
+
+        key = e.key()
+
+        logger.info('keyPressEvent, key = %s' % key)
+        if key == Qt.Key_Escape:
             logger.info('Close app')
             self.close()
 
-        elif e.key() == Qt.Key_R:
+        elif key == Qt.Key_R:
             logger.info('Reset original size')
             self.reset_scene_rect()
 
-        elif e.key() == Qt.Key_N:
+        elif key == Qt.Key_N:
             logger.info('Set new pixel map')
             s = self.pmi.pixmap().size()
             img = image_with_random_peaks((s.height(), s.width()))
             self.set_pixmap_from_arr(img, set_def=False)
 
-        elif e.key() in (Qt.Key_W, Qt.Key_D):
-            change_def = e.key()==Qt.Key_D
+        elif key in (Qt.Key_W, Qt.Key_D):
+            change_def = key==Qt.Key_D
             logger.info('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int)
             rs = QRectF(v[0], v[1], v[2]+1000, v[3]+1000)
@@ -63,6 +67,13 @@ class TestGWViewImageROI(GWViewImageROI):
             img = image_with_random_peaks((int(rs.height()), int(rs.width())))
             self.mask = ct.test_mask(img)
             self.set_pixmap_from_arr(img, set_def=change_def)
+
+        elif key == Qt.Key_S:
+            sc = '' if self.scale_control() else 'HV'
+            logger.info('On/Off scale control, is set to "%s"' % sc)
+            self.set_scale_control(scale_ctl=sc)
+            self.add_ROI = self.scale_control() == 0
+            print('self.add_ROI', self.add_ROI)
 
         else:
             logger.info(self.KEY_USAGE)
@@ -121,6 +132,7 @@ def test_gfviewimageroi(tname):
     w.connect_mouse_move_event(w.test_mouse_move_event_reception)
     w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
 
+    w.setWindowTitle('ex_GWViewImageROI')
     w.setGeometry(20, 20, 600, 600)
     w.show()
     app.exec_()
