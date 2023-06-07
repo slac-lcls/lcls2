@@ -267,9 +267,6 @@ class RunDrp(Run):
 
     def events(self):
         for evt in self._evt_iter:
-            if not evt:
-                self.stop_drp = True
-                return
             if evt.service() == TransitionId.L1Accept:
                 buffer_size = self._ds.dm.pebble_bufsize
             else:

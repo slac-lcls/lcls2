@@ -59,7 +59,6 @@ class DrpDataSource(DataSourceBase):
             if evt.service() == TransitionId.BeginRun:
                 self.beginruns = evt._dgrams
                 return True
-        return False
     
     def _setup_run_calibconst(self):
         if self._is_publisher:
@@ -86,8 +85,6 @@ class DrpDataSource(DataSourceBase):
         while self._start_run():
             run = RunDrp(self, Event(dgrams=self.beginruns))
             yield run
-            if run.stop_drp == True:
-                break
 
     def is_mpi(self):
         return False

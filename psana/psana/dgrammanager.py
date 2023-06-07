@@ -168,6 +168,7 @@ class DgramManager(object):
         barray = bytes(self.shm_inp_mv[:])
         view = memoryview(barray)
         self.shm_size = view.nbytes   
+        self._stop_iteration = False
         return view
 
     def set_configs(self, dgrams):
@@ -377,6 +378,8 @@ class DgramManager(object):
                     raise RuntimeError(f"Configure expected, got {d.service()}")
             dgrams = [d]
         elif self.mq_inp:
+            if self._stop_iteration:
+                raise StopIteration
             self.mq_res.send(b"g\n")
             message, priority = self.mq_inp.receive()
             if message == b"g":
@@ -384,7 +387,8 @@ class DgramManager(object):
                 d = dgram.Dgram(config=self.configs[-1], view=self.shm_inp_mv)
                 dgrams = [d]
             elif message == b"s":
-                 return
+                self._stop_iteration = True
+                raise StopIteration
             else:
                 raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' or "
                                   f"'s' message, got: {message}")
