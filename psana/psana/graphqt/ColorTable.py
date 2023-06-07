@@ -173,6 +173,14 @@ def array_for_color_bar(ctab=color_table_monochr256(), orient='V', width=2):
     return npa
 
 
+def qpixmap_from_arr(arr, ctable=next_color_table(3), amin=None, amax=None, frmin=0.00001, frmax=0.99999):
+    """Returns QPixmap for input array scailed by color table."""
+    anorm = apply_color_table(arr, ctable=ctable, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
+    h, w = arr.shape
+    qimage = QtGui.QImage(anorm, w, h, QtGui.QImage.Format_ARGB32)
+    return QtGui.QPixmap.fromImage(qimage)
+
+
 def image_to_arrcolors(image, channels=4):
     """Converts QImage to array of color channels, e.g. (1000, 1000, 4) where  4 stays for ARGB."""
     h,w = image.height(), image.width()
