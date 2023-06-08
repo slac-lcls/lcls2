@@ -57,7 +57,7 @@ bool HpsEventIterator::next()
   v.pulseId  += ((_next[0]>>20)&0xfff);
   v.beam      = _next[1];
   memcpy(&v+1, &_next[2], _nch*sizeof(uint32_t));
-  v.sevr      = uint64_t(_next[2+_nch])<<32;
+  v.sevr      = uint64_t(_next[3+_nch])<<32;
   v.sevr     |= _next[2+_nch];
   _next      += 4+_nch;
 
