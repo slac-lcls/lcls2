@@ -479,7 +479,7 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, handle=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
+    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, usTiming=None, handle=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
         global provider
         provider = p
         global lock
@@ -552,8 +552,8 @@ class PVCtrls(object):
                                       handler=DefaultPVHandler())
         provider.add(name+':SeqDone',self._pv_seqDone)
 
-        self._usLinkUp = stats._usTiming._linkUpdate
-        stats._usTiming._linkUpdate = self.usLinkUp
+        self._usLinkUp = usTiming._linkUpdate
+        usTiming._linkUpdate = self.usLinkUp
 
         if notify:
             self._thread = threading.Thread(target=self.notify)

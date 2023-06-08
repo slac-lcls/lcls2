@@ -87,7 +87,7 @@ def main():
 
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv)
 #    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
-    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
+    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=stats._usTiming, handle=pvstats.handle, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
 
     cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
     pvxtpg = None
