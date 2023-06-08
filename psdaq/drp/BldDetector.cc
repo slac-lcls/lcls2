@@ -1,6 +1,7 @@
 #define __STDC_FORMAT_MACROS 1
 
 #include "BldDetector.hh"
+#include "BldNames.hh"
 
 #include <bitset>
 #include <chrono>
@@ -22,11 +23,11 @@
 #include <getopt.h>
 #include <Python.h>
 #include <inttypes.h>
+#include <time.h>
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
-
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
@@ -49,6 +50,19 @@ static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::CHARSTR, // pvString
 };
 
+
+    //
+    //  Until a PVA gateway can be started on the electron-side
+    //
+
+static unsigned getVarDefSize(XtcData::VarDef& vd) {
+    unsigned sz = 0;
+    for(unsigned i=0; i<vd.NameVec.size(); i++) {
+        sz += XtcData::Name::get_element_size(vd.NameVec[i].type()); // assumes rank=0
+    }
+    return sz;
+}
+
 BldPVA::BldPVA(std::string det,
                unsigned    interface) : _interface(interface)
 {
@@ -67,6 +81,8 @@ BldPVA::BldPVA(std::string det,
     _detId   = det.substr(p2+1).c_str();
 
     std::string sname(_detId);
+    // _pvaAddr    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":ADDR"   ).c_str());
+    // _pvaPort    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":PORT"   ).c_str());
     _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":ADDR"   ).c_str());
     _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":PORT"   ).c_str());
     _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":PAYLOAD").c_str());
@@ -77,6 +93,33 @@ BldPVA::BldPVA(std::string det,
 
 BldPVA::~BldPVA()
 {
+}
+
+bool BldPVA::ready() const
+{
+    return (_pvaAddr   ->ready() &&
+            _pvaPort   ->ready() &&
+            _pvaPayload->ready());
+}
+
+unsigned BldPVA::addr() const
+{
+    unsigned ip = 0;
+    in_addr inp;
+    if (inet_aton(_pvaAddr->getScalarAs<std::string>().c_str(), &inp)) {
+        ip = ntohl(inp.s_addr);
+    }
+    return ip;
+}
+
+unsigned BldPVA::port() const
+{
+    return _pvaPort->getScalarAs<unsigned>();
+}
+
+XtcData::VarDef BldPVA::varDef(unsigned& sz) const
+{
+    return _pvaPayload->get(sz);
 }
 
   //
@@ -95,9 +138,6 @@ BldFactory::BldFactory(const char* name,
     _detType = std::string(name);
     _detId   = std::string(name);
 
-    _pvaPayload = 0;
-
-    unsigned payloadSize = 0;
     unsigned mcaddr = 0;
     unsigned mcport = 10148; // 12148, eventually
     uint64_t tscorr = 0x259e9d80UL << 32;
@@ -113,28 +153,7 @@ BldFactory::BldFactory(const char* name,
         }
         tscorr = 0;
         _alg    = XtcData::Alg("raw", 2, 0, 0);
-        _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamL3Energy"    , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUPosX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUPosY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLUTAngX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUAngY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPkCurrBC2"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamEnergyBC2"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPkCurrBC1"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamEnergyBC1"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndPosX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndPosY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndAngX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndAngY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamXTCAVAmpl"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamXTCAVPhase"  , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamDumpCharge"  , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPhotonEnergy", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTU250"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTU450"      , XtcData::Name::DOUBLE));
-        payloadSize = 164;
+        _varDef.NameVec = BldNames::EBeamDataV7().NameVec;
     }
     else if (strncmp("pcav",name,4)==0) {
         if (name[4]=='h') {
@@ -144,39 +163,22 @@ BldFactory::BldFactory(const char* name,
             mcaddr = 0xefff1901;
         }
         _alg    = XtcData::Alg("raw", 2, 0, 0);
-        _varDef.NameVec.push_back(XtcData::Name("fitTime1"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("fitTime2"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("charge1"       , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("charge2"       , XtcData::Name::DOUBLE));
-        payloadSize = 32;
+        _varDef.NameVec = BldNames::PCav().NameVec;
     }
     else if (strncmp("gmd",name,3)==0) {
         mcaddr = 0xefff1902;
         _alg    = XtcData::Alg("raw", 2, 1, 0);
-        _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("rmsElectronSum", XtcData::Name::INT64));
-        _varDef.NameVec.push_back(XtcData::Name("electron1BkgNoiseAvg", XtcData::Name::INT16));
-        _varDef.NameVec.push_back(XtcData::Name("electron2BkgNoiseAvg", XtcData::Name::INT16));
-        payloadSize = 44;
+        _varDef.NameVec = BldNames::GmdV1().NameVec;
     }
     else if (strcmp("xgmd",name)==0) {
         mcaddr = 0xefff1903;
         _alg    = XtcData::Alg("raw", 2, 1, 0);
-        _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("rmsElectronSum", XtcData::Name::INT64));
-        _varDef.NameVec.push_back(XtcData::Name("electron1BkgNoiseAvg", XtcData::Name::INT16));
-        _varDef.NameVec.push_back(XtcData::Name("electron2BkgNoiseAvg", XtcData::Name::INT16));
-        payloadSize = 44;
+        _varDef.NameVec = BldNames::GmdV1().NameVec;
     }
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
+    unsigned payloadSize = getVarDefSize(_varDef);
     _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
                                      Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
                                      Bld::DgramHeaderSize, payloadSize,
@@ -187,36 +189,24 @@ BldFactory::BldFactory(const char* name,
   //  LCLS-II Style
   //
 BldFactory::BldFactory(const BldPVA& pva) :
-    _detName    (pva._detName),
-    _detType    (pva._detType),
-    _detId      (pva._detId),
-    _alg        ("raw", 2, 0, 0),
-    _pvaPayload (pva._pvaPayload)
+    _detName    (pva.detName()),
+    _detType    (pva.detType()),
+    _detId      (pva.detId  ()),
+    _alg        ("raw", 1, 0, 0)
 {
     while(1) {
-        if (pva._pvaAddr   ->ready() &&
-            pva._pvaPort   ->ready() &&
-            pva._pvaPayload->ready())
+        if (pva.ready())
             break;
         usleep(10000);
     }
 
-    unsigned mcaddr = pva._pvaAddr->getScalarAs<unsigned>();
-    unsigned mcport = pva._pvaPort->getScalarAs<unsigned>();
+    unsigned mcaddr = pva.addr();
+    unsigned mcport = pva.port();
 
     unsigned payloadSize = 0;
-    _varDef = pva._pvaPayload->get(payloadSize);
+    _varDef = pva.varDef(payloadSize);
 
-    if (_detType == "hpsex" ||
-        _detType == "hpscp" ||
-        _detType == "hpscpb") {
-        _alg = XtcData::Alg("raw", 2, 0, 0);
-        //  validate _varDef against version here
-    }
-    else {
-        throw std::string("BLD type ")+_detType+" not recognized";
-    }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface,
+    _handler = std::make_shared<Bld>(mcaddr, mcport, pva.interface(), 
                                      Bld::TimestampPos, Bld::PulseIdPos,
                                      Bld::HeaderSize, payloadSize);
 }
@@ -225,8 +215,7 @@ BldFactory::BldFactory(const BldFactory& o) :
     _detName    (o._detName),
     _detType    (o._detType),
     _detId      (o._detId),
-    _alg        (o._alg),
-    _pvaPayload (o._pvaPayload)
+    _alg        (o._alg)
 {
     logging::error("BldFactory copy ctor called");
 }
@@ -280,6 +269,11 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
 
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
+    logging::debug("BldDescriptor::get found %u/%u fields", names.size(), fields.size());
+
+    vd.NameVec.push_back(XtcData::Name("severity",XtcData::Name::UINT64));
+    payloadSize += 8;
+
     for (unsigned i=0; i<fields.size(); i++) {
         switch (fields[i]->getType()) {
             case pvd::scalar: {
@@ -376,18 +370,26 @@ memory layout for bld packet
 header:
 uint64_t pulseId
 uint64_t timeStamp
-uint32_t id;
-uint8_t payload[]
+uint32_t id
+uint64_t severity
+uint8_t  payload[]
 
 following events []
 uint32_t pulseIdOffset
-uint8_t payload[]
+uint64_t severity
+uint8_t  payload[]
 
 */
 
 //  Read ahead and clear events older than ts (approximate)
 void     Bld::clear(uint64_t ts)
 {
+    {
+        timespec ts;
+        clock_gettime(CLOCK_REALTIME,&ts);
+        logging::debug("Bld::clear [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, ts);
+    }
+
     uint64_t timestamp(0L);
     uint64_t pulseId  (0L);
     while(1) {
@@ -407,6 +409,9 @@ void     Bld::clear(uint64_t ts)
             m_payload    = &m_buffer[m_headerSize];
             m_position   = m_headerSize + m_payloadSize;
             //printf("*** 1 pid %014lx\n", pulseId);
+            timespec ts;
+            clock_gettime(CLOCK_REALTIME,&ts);
+            logging::debug("Bld::clear [%u.%09d] new ts %016llx", ts.tv_sec, ts.tv_nsec, timestamp);
         }
         else if (m_position==0) {
             timestamp    = headerTimestamp();
@@ -431,7 +436,7 @@ void     Bld::clear(uint64_t ts)
         m_pulseId = pulseId;
         if (jump != m_pulseIdJump) {
             m_pulseIdJump = jump;
-            logging::warning("BLD pulseId jump %u",jump);
+            logging::warning("BLD pulseId jump %u [%u]",jump,pulseId);
         }
     }
 }
@@ -453,7 +458,9 @@ uint64_t Bld::next()
         pulseId      = headerPulseId  ();
         m_payload    = &m_buffer[m_headerSize];
         m_position   = m_headerSize + m_payloadSize;
-        //printf("*** 2a pid %014lx\n", pulseId);
+        timespec ts;
+        clock_gettime(CLOCK_REALTIME,&ts);
+        logging::debug("Bld::next [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, timestamp);
     }
     else if (m_position==0) {
         timestamp    = headerTimestamp();
@@ -472,11 +479,13 @@ uint64_t Bld::next()
         //printf("*** 2c pid %014lx, pidOs %u\n", pulseId, pulseIdOffset);
     }
 
+    logging::debug("Bld::next timestamp %016llx  pulseId %016llx", timestamp, pulseId);
+
     unsigned jump = pulseId - m_pulseId;
     m_pulseId = pulseId;
     if (jump != m_pulseIdJump) {
         m_pulseIdJump = jump;
-        logging::warning("BLD pulseId jump %u",jump);
+        logging::warning("BLD pulseId jump %u [%u]",jump, pulseId);
     }
 
     return timestamp;
@@ -523,10 +532,15 @@ Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
     return dgram;
 }
 
-//static const unsigned _skip_intv = 10000;  // pulseIds
-static const unsigned _skip_intv = 10000000; // ns
+// measured 11 ms latency for gmd at low rates
+static const unsigned _skip_intv = 20000000; // ns
+static const unsigned TMO_MS = 20; 
+static const std::chrono::microseconds TMO_US(25000);
+
 Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
 {
+    logging::debug("Pgp::next ts %016llx  m_next %016llx  tmo %c", timestamp, m_next, m_tmoState==Finished?'T':'F');
+
     //  Fast forward to _next timestamp only when there is a BLD timestamp
     if (timestamp && (timestamp < m_next))
         return nullptr;
@@ -546,41 +560,52 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
             // wait for a total of 10 ms otherwise timeout
             auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-            if (elapsed > 10) {
+            if (elapsed > TMO_MS) {
                 m_next = timestamp + _skip_intv;
-                //if (m_running)  logging::debug("pgp timeout");
+                if (m_running)  logging::debug("pgp timeout");
                 return nullptr;
             }
         }
     }
 
     const Pds::TimingHeader* timingHeader = m_det->getTimingHeader(dmaIndex[m_current]);
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME,&ts);
+    logging::debug("Pgp::next [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, timingHeader->time.value());
+
+    Pds::EbDgram* dgram = nullptr;
 
     // return dgram if bld timestamp matches pgp timestamp or if it's a transition
     if ((timestamp == timingHeader->time.value()) || (timingHeader->service() != XtcData::TransitionId::L1Accept)) {
-        Pds::EbDgram* dgram = _handle(evtIndex);
+        dgram = _handle(evtIndex);
         m_current++;
         m_next = timingHeader->time.value();
-        return dgram;
     }
     // Missed BLD data so mark event as damaged
-    else if (timestamp > timingHeader->time.value()) {
-      //printf("ts %016lx, th %016lx, d %ld\n", timestamp, timingHeader->time.value(), timestamp - timingHeader->time.value());
-        Pds::EbDgram* dgram = _handle(evtIndex);
-        dgram->xtc.damage.increase(XtcData::Damage::MissingData);
-        m_current++;
-        return dgram;
-    }
-    // No BLD data yet so mark event as damaged
-    else if (!timestamp) {
-        Pds::EbDgram* dgram = _handle(evtIndex);
+    else if (timestamp > timingHeader->time.value() || m_tmoState==Finished) {
+        dgram = _handle(evtIndex);
         dgram->xtc.damage.increase(XtcData::Damage::MissingData);
         m_current++;
         m_next = timingHeader->time.value();
-        return dgram;
+    }
+    else {
+        if (m_tmoState == TmoState::None) {
+            m_tmoState = TmoState::Started;
+            m_tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+        } else {
+            if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - m_tInitial > TMO_US) {
+                // if (m_tmoState != TmoState::Finished) {
+                //     m_drp.tebContributor().timeout();
+                // }
+                m_tmoState = TmoState::Finished;
+            }
+        }
     }
 
-    return nullptr;
+    if (dgram)
+        m_tmoState = TmoState::None;
+
+    return dgram;
 }
 
 void Pgp::shutdown()
@@ -675,10 +700,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     bool lMissing = false;
     XtcData::NamesLookup& namesLookup = m_det->namesLookup();
 
-    enum TmoState { None, Started, Finished };
-    TmoState tmoState(TmoState::None);
-    const std::chrono::microseconds tmo(int(1.1 * m_drp.tebPrms().maxEntries * 14/13));
-    auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+    m_tmoState = TmoState::None;
+    m_tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
     m_terminate.store(false, std::memory_order_release);
 
@@ -691,9 +714,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         bool lHold(false);
         //printf("dgram %p, lHold %d\n", dgram, lHold);
         if (dgram) {
-            tmoState = TmoState::None;
-            //printf("pgp %016lx  bld %016lx  pid %014lx\n",
-            //       dgram->time.value(), nextId, dgram->pulseId());
+            logging::debug("pgp %016lx  bld %016lx  pid %014lx\n",
+                           dgram->time.value(), nextId, dgram->pulseId());
             if (dgram->xtc.damage.value()) {
                 ++nmissed;
                 if (dgram->time.value() < nextId)
@@ -720,7 +742,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                         else {
                             lMissed = true;
                             if (!lMissing)
-                                logging::warning("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
+                                logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
                                                  i, nextId, timestamp[i], dgram->pulseId());
                         }
                     }
@@ -731,7 +753,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     }
                     else {
                         if (lMissing)
-                            logging::warning("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
+                            logging::debug("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
                         lMissing = false;
                     }
                 }
@@ -777,19 +799,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             }
             _sendToTeb(*dgram, index);
             nevents++;
-        }
-        else {
-            if (tmoState == TmoState::None) {
-                tmoState = TmoState::Started;
-                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-            } else {
-                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-                    if (tmoState != TmoState::Finished) {
-                        m_drp.tebContributor().timeout();
-                        tmoState = TmoState::Finished;
-                    }
-                }
-            }
         }
 
         if (!lHold) {
