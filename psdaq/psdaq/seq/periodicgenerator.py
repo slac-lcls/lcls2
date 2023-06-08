@@ -6,10 +6,6 @@ import numpy
 from itertools import chain
 from functools import reduce
 import operator
-<<<<<<< HEAD
-=======
-from .globals import *
->>>>>>> master
 
 verbose = False
 
