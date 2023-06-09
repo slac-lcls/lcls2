@@ -160,7 +160,7 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Param
 
     if (pyPid == pid_t(0))
     {
-        //Executing external code 
+        //Executing external code
         execlp("python",
                "python",
                "-u",
@@ -175,7 +175,7 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Param
                std::to_string(workerNum).c_str(),
                nullptr);
 
-        // Execlp returns only on error                    
+        // Execlp returns only on error
         logging::critical("Error on 'execlp python' for worker %d ': %m", workerNum);
         abort();
         return 1;
@@ -193,7 +193,7 @@ void PGPDetectorApp::setupDrpPython() {
     long pageSize = sysconf(_SC_PAGESIZE);
     m_shmemSize = (m_shmemSize + pageSize - 1) & ~(pageSize - 1);
 
-    keyBase = "p" + std::to_string(m_para.partition) + "_" + m_para.detName + "_" + std::to_string(m_para.detSegment); 
+    keyBase = "p" + std::to_string(m_para.partition) + "_" + m_para.detName + "_" + std::to_string(m_para.detSegment);
     std::vector<std::thread> drpPythonThreads;
 
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
@@ -205,7 +205,7 @@ void PGPDetectorApp::setupDrpPython() {
         std::remove(("/dev/mqueue/mqres_" + keyBase + "_" + std::to_string(workerNum)).c_str());
         std::remove(("/dev/shm/shminp_" + keyBase + "_" + std::to_string(workerNum)).c_str());
         std::remove(("/dev/shm/shmres_" + keyBase + "_" + std::to_string(workerNum)).c_str());
-        
+
         // Creating message queues
         std::string key = "/mqinp_" + keyBase + "_" + std::to_string(workerNum);
         int rc = setupDrpMsgQueue(key, mqSize, m_inpMqId[workerNum], true);
@@ -227,7 +227,7 @@ void PGPDetectorApp::setupDrpPython() {
         // Creating shared memory
         size_t shmemSize = m_drp.pool.pebble.bufferSize();
         if (m_para.maxTrSize > shmemSize) shmemSize=m_para.maxTrSize;
-        
+
         // Round up to an integral number of pages
         long pageSize = sysconf(_SC_PAGESIZE);
         shmemSize = (shmemSize + pageSize - 1) & ~(pageSize - 1);
@@ -268,7 +268,7 @@ void PGPDetectorApp::setupDrpPython() {
         if (thrIter->joinable()) {
             thrIter->join();
         }
-    }     
+    }
 
     logging::info("Drp python processes started");
 }
@@ -385,7 +385,7 @@ PGPDetectorApp::~PGPDetectorApp()
 
 void PGPDetectorApp::disconnect()
 {
-    m_drp.disconnect();  
+    m_drp.disconnect();
     if (m_det)
         m_det->shutdown();
 }
@@ -663,7 +663,7 @@ void PGPDetectorApp::handleReset(const json& msg)
         drainDrpMessageQueues();
         resetDrpPython();
     }
-    
+
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
@@ -710,7 +710,6 @@ void PGPDetectorApp::drainDrpMessageQueues()
 
 void PGPDetectorApp::resetDrpPython()
 {
-    char recvmsg[520];
     char msg[512];
     snprintf(msg, sizeof(msg), "%s", "s");
 
