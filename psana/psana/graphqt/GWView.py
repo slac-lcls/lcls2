@@ -139,7 +139,8 @@ class GWView(QGraphicsView):
     def mouseReleaseEvent(self, e):
         QGraphicsView.mouseReleaseEvent(self, e)
         logger.debug('mouseReleaseEvent')
-        self._move_scene_rect_by_mouse(e)
+        if self.click_pos is not None:
+           self._move_scene_rect_by_mouse(e)
         self.click_pos = None
 
 
