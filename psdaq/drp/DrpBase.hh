@@ -148,6 +148,7 @@ public:
     const int64_t  latency()      const { return m_latency; }
     const uint64_t nDmaErrors()   const { return m_nDmaErrors; }
     const uint64_t nNoComRoG()    const { return m_nNoComRoG; }
+    const uint64_t nMissingRoGs() const { return m_nMissingRoGs; }
     const uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
     const uint64_t nPgpJumps()    const { return m_nPgpJumps; }
     const uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
@@ -169,6 +170,7 @@ protected:
     int64_t m_latency;
     uint64_t m_nDmaErrors;
     uint64_t m_nNoComRoG;
+    uint64_t m_nMissingRoGs;
     uint64_t m_nTmgHdrError;
     uint64_t m_nPgpJumps;
     uint64_t m_nNoTrDgrams;

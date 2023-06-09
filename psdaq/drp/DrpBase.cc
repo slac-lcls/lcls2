@@ -257,6 +257,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_latency     (0),
     m_nDmaErrors  (0),
     m_nNoComRoG   (0),
+    m_nMissingRoGs(0),
     m_nTmgHdrError(0),
     m_nPgpJumps   (0),
     m_nNoTrDgrams (0)
@@ -294,6 +295,11 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
     uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
     PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
+    DmaBuffer* buffer = &event->buffers[lane];
+    buffer->size = size;
+    buffer->index = index;
+    event->mask |= (1 << lane);
+
     m_pool.countDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
     uint32_t flag = dmaFlags[current];
@@ -312,8 +318,9 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         logging::error("Timing header error bit is set");
         ++m_nTmgHdrError;
     }
-    if ((timingHeader->readoutGroups() & (1 << m_para.partition)) == 0) {
-        XtcData::TransitionId::Value transitionId = timingHeader->service();
+    XtcData::TransitionId::Value transitionId = timingHeader->service();
+    auto rogs = timingHeader->readoutGroups();
+    if ((rogs & (1 << m_para.partition)) == 0) {
         logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
@@ -324,11 +331,20 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         ++m_nNoComRoG;
         return nullptr;
     }
-
-    DmaBuffer* buffer = &event->buffers[lane];
-    buffer->size = size;
-    buffer->index = index;
-    event->mask |= (1 << lane);
+    if (transitionId == XtcData::TransitionId::SlowUpdate) {
+        uint16_t missingRogs = m_para.rogMask & ~rogs;
+        if (missingRogs) {
+            logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
+                           XtcData::TransitionId::name(transitionId),
+                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                           timingHeader->pulseId(), missingRogs, timingHeader->env);
+            ++m_lastComplete;
+            handleBrokenEvent(*event);
+            freeDma(event);             // Leaves event mask = 0
+            ++m_nMissingRoGs;
+            return nullptr;
+        }
+    }
 
     const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
     logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
@@ -343,7 +359,6 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         auto counter = m_pool.allocate(); // This can block
         event->pebbleIndex = counter & (m_pool.nbuffers() - 1);
 
-        XtcData::TransitionId::Value transitionId = timingHeader->service();
         if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId != XtcData::TransitionId::SlowUpdate) {
                 logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",

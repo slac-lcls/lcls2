@@ -389,6 +389,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                   [&](){return nDmaErrors();});
     exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
                   [&](){return nNoComRoG();});
+    exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
+                  [&](){return nMissingRoGs();});
     exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
                   [&](){return nTmgHdrError();});
     exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,

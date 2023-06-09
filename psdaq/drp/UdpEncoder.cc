@@ -693,6 +693,8 @@ void UdpEncoder::_worker()
                     [&](){return pgp.nDmaErrors();});
     m_exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nNoComRoG();});
+    m_exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nMissingRoGs();});
     m_exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nTmgHdrError();});
     m_exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,

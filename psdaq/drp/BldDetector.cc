@@ -206,7 +206,7 @@ BldFactory::BldFactory(const BldPVA& pva) :
     unsigned payloadSize = 0;
     _varDef = pva.varDef(payloadSize);
 
-    _handler = std::make_shared<Bld>(mcaddr, mcport, pva.interface(), 
+    _handler = std::make_shared<Bld>(mcaddr, mcport, pva.interface(),
                                      Bld::TimestampPos, Bld::PulseIdPos,
                                      Bld::HeaderSize, payloadSize);
 }
@@ -534,7 +534,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 
 // measured 11 ms latency for gmd at low rates
 static const unsigned _skip_intv = 20000000; // ns
-static const unsigned TMO_MS = 20; 
+static const unsigned TMO_MS = 20;
 static const std::chrono::microseconds TMO_US(25000);
 
 Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
@@ -641,6 +641,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                   [&](){return nDmaErrors();});
     exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
                   [&](){return nNoComRoG();});
+    exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
+                  [&](){return nMissingRoGs();});
     exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
                   [&](){return nTmgHdrError();});
     exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
