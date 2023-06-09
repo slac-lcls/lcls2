@@ -217,10 +217,11 @@ int main(int argc, char **argv)
   if (lreceiver) {
       sockaddr_in src;
       socklen_t len = sizeof(src);
-      ::recvfrom(fd, buff, sz, 0, (sockaddr*)&src, &len);
+      int nb = ::recvfrom(fd, buff, sz, 0, (sockaddr*)&src, &len);
       unsigned srcip = ntohl(src.sin_addr.s_addr);
       unsigned sport = ntohs(src.sin_port);
-      printf("received from %u.%u.%u.%u:%u\n",
+      printf("received %d bytes from %u.%u.%u.%u:%u\n",
+             nb,
              (srcip>>24)&0xff,
              (srcip>>16)&0xff,
              (srcip>> 8)&0xff,
