@@ -133,18 +133,19 @@ int main(int argc, char* argv[])
   if (m_verbose)
     printf("%s: tpr->start() done.\n", __PRETTY_FUNCTION__);
 
-  tpr->release();
+  //  tpr->release();
 
   while(1) {
     const Pds::Tpr::Frame* frame = tpr->advance();
-
-    _loopbackSend();    // send frame and increment frame counter
 
     if (m_verbose)
       printf("Timestamp %lu.%09u  evc [15:0] 0x%x  evc[47:40] 0x%x\n",
              frame->timeStamp>>32,unsigned(frame->timeStamp&0xffffffff),
              (frame->control[0]>>0)&0xffff,
              (frame->control[2]>>8)&0xff);
+
+    _loopbackSend();    // send frame and increment frame counter
+
   }
 
   _loopbackFini();
