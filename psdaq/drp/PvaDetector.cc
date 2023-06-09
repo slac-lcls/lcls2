@@ -560,10 +560,10 @@ void PvaDetector::_worker()
                 tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
             } else {
                 if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-                    if (tmoState != TmoState::Finished) {
+                  //if (tmoState != TmoState::Finished) {
                         m_drp.tebContributor().timeout();
-                        tmoState = TmoState::Finished;
-                    }
+                  //      tmoState = TmoState::Finished;
+                  //}
                 }
             }
         }
@@ -674,7 +674,6 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pebbleD
     uint32_t pebbleIdx;
     m_evtQueue.try_pop(pebbleIdx);      // Actually consume the element
 
-    XtcData::Dgram* dgram;
     pebbleDg.xtc.damage.increase(pvDg.xtc.damage.value());
     auto bufEnd  = (char*)&pebbleDg + m_pool->pebble.bufferSize();
     auto payload = pebbleDg.xtc.alloc(pvDg.xtc.sizeofPayload(), bufEnd);
@@ -688,6 +687,7 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pebbleD
 
     _sendToTeb(pebbleDg, pebbleIdx);
 
+    XtcData::Dgram* dgram;
     m_pvQueue.try_pop(dgram);       // Actually consume the element
     m_bufferFreelist.push(dgram);   // Return buffer to freelist
 }
