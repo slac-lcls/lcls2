@@ -178,7 +178,7 @@ class GWViewExt(GWView):
     def resizeEvent(self, e):
         GWView.resizeEvent(self, e)
         r = self.scene_rect()
-        self._add_cursor_type_rect_to_scene(r, self.brudf, self.pendf)
+        #self._add_cursor_type_rect_to_scene(r, self.brudf, self.pendf)
 
 
     def closeEvent(self, e):
@@ -243,7 +243,7 @@ class GWViewExt(GWView):
         self.mouse_press_event.disconnect(recip)
 
     def test_mouse_press_event_reception(self, e):
-        logger.info(sys._getframe().f_code.co_name + ' QMouseEvent point: x=%d y=%d' % (e.x(), e.y()))
+        logger.debug(sys._getframe().f_code.co_name + ' QMouseEvent point: x=%d y=%d' % (e.x(), e.y()))
 
 
     def reset_scene_rect(self, rs=None, mode=Qt.IgnoreAspectRatio):
