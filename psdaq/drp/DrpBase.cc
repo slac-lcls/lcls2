@@ -88,6 +88,7 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
 
 MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
+    m_dmaAllocs(0),
     m_dmaFrees(0),
     m_allocs(0),
     m_frees(0)
@@ -205,6 +206,7 @@ Pds::EbDgram* MemPool::allocateTr()
 
 void MemPool::resetCounters()
 {
+    m_dmaAllocs.store(0);
     m_dmaFrees .store(0);
     m_allocs   .store(0);
     m_frees    .store(0);
