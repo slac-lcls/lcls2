@@ -130,6 +130,10 @@ def print_rect(r, cmt=''):
     logger.debug('%s %s %s'% (cmt, info_rect_xywh(r), info_rect_lbrt(r)))
 
 
+def info_point(p, cmt='', fmt='%sx=%.2f y=%.2f'):
+    return fmt % (cmt, p.x(), p.y())
+
+
 def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
 
     path, fext = QFileDialog.getSaveFileName(parent,
