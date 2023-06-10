@@ -14,21 +14,22 @@ import numpy as np
 
 class TestGWViewImageROI(GWViewImageROI):
 
-    KEY_USAGE = 'Keys:'\
+    def KEY_USAGE(self): return 'Keys:'\
                '\n  ESC - exit'\
                '\n  R - reset original size'\
                '\n  N - set new pixmap'\
                '\n  W - set new pixmap of random shape, do not change default scene rect'\
-               '\n  D - set new pixmap of random shape and change default scene rect'\
-               '\n  S - On/Off scale control'\
+               '\n  H - set new pixmap of random shape and change default scene rect'\
+               '\n  ROI = %s select from %s' % (str(self.roi_name), ', '.join(['%s-%s'%(k,n) for t,n,k in roiu.roi_tuple])) + \
+               '\n  MODE = %s select from %s' % (str(self.mode_name), ', '.join(['%s-%s'%(k,n) for t,n,k in roiu.mode_tuple])) + \
                '\n'
-
 
     def __init__(self, parent=None, arr=None,\
                  coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20),\
                  origin='UL', scale_ctl='HV', show_mode=0, signal_fast=True):
         GWViewImageROI.__init__(self, parent, arr, coltab, origin, scale_ctl, show_mode, signal_fast)
-        print(self.KEY_USAGE)
+        print(self.KEY_USAGE())
+
 
     def test_mouse_move_event_reception(self, e):
         """Overrides method from GWView"""
@@ -42,8 +43,9 @@ class TestGWViewImageROI(GWViewImageROI):
         GWViewImageROI.keyPressEvent(self, e)
 
         key = e.key()
+        ckey = chr(key)
 
-        logger.info('keyPressEvent, key = %s' % key)
+        logger.info('keyPressEvent, key = %s' % ckey)
         if key == Qt.Key_Escape:
             logger.info('Close app')
             self.close()
@@ -58,8 +60,8 @@ class TestGWViewImageROI(GWViewImageROI):
             img = image_with_random_peaks((s.height(), s.width()))
             self.set_pixmap_from_arr(img, set_def=False)
 
-        elif key in (Qt.Key_W, Qt.Key_D):
-            change_def = key==Qt.Key_D
+        elif key in (Qt.Key_W, Qt.Key_H):
+            change_def = key==Qt.Key_H
             logger.info('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
             v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int)
             rs = QRectF(v[0], v[1], v[2]+1000, v[3]+1000)
@@ -68,15 +70,22 @@ class TestGWViewImageROI(GWViewImageROI):
             self.mask = ct.test_mask(img)
             self.set_pixmap_from_arr(img, set_def=change_def)
 
-        elif key == Qt.Key_S:
-            sc = '' if self.scale_control() else 'HV'
-            logger.info('On/Off scale control, is set to "%s"' % sc)
-            self.set_scale_control(scale_ctl=sc)
-            self.add_ROI = self.scale_control() == 0
-            print('self.add_ROI', self.add_ROI)
+        if ckey in roiu.roi_keys:
+            i = roiu.roi_keys.index(ckey)
+            self.roi_type = roiu.roi_types[i]
+            self.roi_name = roiu.roi_names[i]
+            logger.info('set roi_type: %d roi_name: %s' % (self.roi_type, self.roi_name))
 
-        else:
-            logger.info(self.KEY_USAGE)
+        if ckey in roiu.mode_keys:
+            i = roiu.mode_keys.index(ckey)
+            self.mode_type = roiu.mode_types[i]
+            self.mode_name = roiu.mode_names[i]
+            logger.info('set mode_type: %d roi_name: %s' % (self.mode_type, self.mode_name))
+
+            sc = '' if self.mode_type > roiu.VISIBLE else 'HV'
+            self.set_scale_control(scale_ctl=sc)
+
+        logger.info(self.KEY_USAGE())
 
 
 def image_with_random_peaks(shape=(500, 500)):
@@ -117,7 +126,8 @@ def test_gfviewimageroi(tname):
         #ctab= ct.color_table_rainbow(ncolors=1000, hang1=0, hang2=360)
         #ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
         #ctab = ct.color_table_monochr256()
-        ctab = ct.color_table_interpolated()
+        #ctab = ct.color_table_interpolated()
+        ctab = next_color_table(ict=7)
         arrct = ct.array_for_color_bar(ctab, orient='H')
         w = TestGWViewImageROI(None, arrct, coltab=None, origin='UL', scale_ctl='H')
         w.setGeometry(50, 50, 500, 40)
