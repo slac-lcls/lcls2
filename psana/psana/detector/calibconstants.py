@@ -100,7 +100,7 @@ class CalibConstants:
         cc = self.calibconst()
         if cc is None: return None
         cons_and_meta = cc.get(ctype, None)
-        if is_none(cons_and_meta, 'calibconst["%s"] is None'%ctype, logger_method=logger.warning): return None, None
+        if is_none(cons_and_meta, 'calibconst["%s"] is None'%ctype, logger_method=logger.debug): return None, None
         return cons_and_meta
 
 
@@ -177,7 +177,7 @@ class CalibConstants:
         cc = self.calibconst()
         if cc is None: return None
         geotxt_and_meta = cc.get('geometry', None)
-        if is_none(geotxt_and_meta, 'calibconst["geometry"] is None', logger_method=logger.warning): return None, None
+        if is_none(geotxt_and_meta, 'calibconst["geometry"] is None', logger_method=logger.debug): return None, None
         return geotxt_and_meta
 
 
@@ -200,7 +200,7 @@ class CalibConstants:
     def seg_geo(self):
         logger.debug('seg_geo')
         geo = self.geo()
-        if is_none(geo, 'geo is None', logger_method=logger.warning): return None
+        if is_none(geo, 'geo is None', logger_method=logger.debug): return None
         return geo.get_seg_geo().algo
 
 
