@@ -90,7 +90,7 @@ TRANSLATE = 4
 ROTATE    = 8
 SCALE     = 16
 MENU      = 32
-SHAPE     = 64
+OTHER     = 64
 handle_tuple = (
   (NONE,      'NONE'),
   (ORIGIN,    'ORIGIN'),
@@ -99,7 +99,7 @@ handle_tuple = (
   (ROTATE,    'ROTATE'),
   (SCALE,     'SCALE'),
   (MENU,      'MENU'),
-  (SHAPE,     'SHAPE'),
+  (OTHER,     'OTHER'),
 )
 handle_types = [t for t,n in handle_tuple]
 handle_names = [n for t,n in handle_tuple]
@@ -142,6 +142,9 @@ class ROIBase():
             item.setBrush(self.brush if brush is None else brush)
         self.scene().addItem(item)
 
+    def move_at_add(self, pos):
+        logging.warning('ROIBase.move_at_add must be re-implemented in subclasses')
+
 
 def items_at_point(scene, point):
     items = scene.items(point)
@@ -183,13 +186,10 @@ class ROILine(ROIBase):
 
 
     def move_at_add(self, pos):
-        print('ROILine.move_at_add')
-
-
-
-
-
-
+        logger.debug('ROILine.move_at_add')
+        line = self.scitem.line()
+        line.setP2(pos)
+        self.scitem.setLine(line)
 
 
 class ROIRect(ROIBase):
@@ -205,12 +205,31 @@ class ROIRect(ROIBase):
         if angle_deg != 0: item.setRotation(angle_deg)
         ROIBase.add_to_scene(self, pen, brush)
 
+    def move_at_add(self, pos):
+        logger.debug('ROIRect.move_at_add')
+        rect = self.scitem.rect()
+        rect.setBottomRight(pos)
+        self.scitem.setRect(rect)
+
+
+def rect_to_square(rect, pos):
+    dp = pos - rect.topLeft()
+    w,h = dp.x(), dp.y()
+    v = max(abs(w), abs(h))
+    w,h = math.copysign(v,w), math.copysign(v,h)
+    rect.setSize(QSizeF(w,h))
+    return rect
+
 
 class ROISquare(ROIRect):
     def __init__(self, **kwa):
         self.roi_type = SQUARE
         ROIRect.__init__(self, **kwa)
         self.aspect_1x1 = True
+
+    def move_at_add(self, pos):
+        logger.debug('ROISquare.move_at_add')
+        self.scitem.setRect(rect_to_square(self.scitem.rect(), pos))
 
 
 class ROIPolygon(ROIBase):
@@ -224,6 +243,9 @@ class ROIPolygon(ROIBase):
         self.scitem = QGraphicsPolygonItem(QPolygonF(poly))
         ROIBase.add_to_scene(self, pen, brush)
         #self.scitem = self.scene().addPolygon(QPolygonF(poly), pen, brush)
+
+    def move_at_add(self, pos):
+        logger.warning('TBD ROIPolygon.move_at_add')
 
 
 class ROIPolyreg(ROIPolygon):
@@ -251,12 +273,22 @@ class ROIEllipse(ROIBase):
         ROIBase.add_to_scene(self, pen, brush)
         #self.scitem = self.scene().addEllipse(QRectF(rect), pen, brush)
 
+    def move_at_add(self, pos):
+        logger.debug('ROIEllipse.move_at_add')
+        rect = self.scitem.rect()
+        rect.setBottomRight(pos)
+        self.scitem.setRect(rect)
+
 
 class ROICircle(ROIEllipse):
     def __init__(self, **kwa):
         self.roi_type = CIRCLE
         ROIEllipse.__init__(self, **kwa)
         self.aspect_1x1 = True
+
+    def move_at_add(self, pos):
+        logger.debug('ROICircle.move_at_add')
+        self.scitem.setRect(rect_to_square(self.scitem.rect(), pos))
 
 
 class ROIArch(ROIBase):
@@ -442,14 +474,14 @@ class HandleMenu(HandleBase):
         return path
 
 
-class HandleShape(HandleBase):
+class HandleOther(HandleBase):
     def __init__(self, **kwa):
-        self.handle_type = SHAPE
+        self.handle_type = OTHER
         self.shhand = kwa.get('shhand', 1)
         HandleBase.__init__(self, **kwa)
 
     def path(self):
-        """Returns QPainterPath for HandleShape in scene coordinates around self.pos"""
+        """Returns QPainterPath for HandleOther in scene coordinates around self.pos"""
         p, view, rsize = self.pos, self.view, self.rsize
         dx, dy = size_points_on_scene(view, rsize)
         path = None
@@ -485,7 +517,7 @@ def select_handle(handle_type, roi=None, pos=QPointF(1,1), **kwa):
         HandleRotate   (roi=roi, pos=pos, **kwa) if handle_type == ROTATE else\
         HandleScale    (roi=roi, pos=pos, **kwa) if handle_type == SCALE else\
         HandleMenu     (roi=roi, pos=pos, **kwa) if handle_type == MENU else\
-        HandleShape    (roi=roi, pos=pos, **kwa) if handle_type == SHAPE else\
+        HandleOther    (roi=roi, pos=pos, **kwa) if handle_type == OTHER else\
         None
 
     handle_name = dict_handle_type_name[handle_type]

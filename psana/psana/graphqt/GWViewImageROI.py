@@ -121,6 +121,7 @@ class GWViewImageROI(GWViewImage):
              self.add_roi(scpos)
 
 
+
     def mouseMoveEvent(self, e):
         GWViewImage.mouseMoveEvent(self, e)
         if self.mode_type < roiu.ADD: return
@@ -132,6 +133,7 @@ class GWViewImageROI(GWViewImage):
 
         if pos == self._pos_old: return
         self._pos_old = pos
+
 
         if self.mode_type == roiu.ADD:
           if self.roi_type == roiu.PIXEL: self.add_roi_pixel(pos)
@@ -146,16 +148,10 @@ class GWViewImageROI(GWViewImage):
         self.roi_active = None
 
 
-
     def move_at_add(self, pos):
         o = self.roi_active
         print('move_at_add roi %s to scene pos %s' % (o.roi_name, gu.info_point(pos)))
         o.move_at_add(pos)
-
-
-
-
-
 
 
     def add_roi(self, pos):
@@ -169,6 +165,9 @@ class GWViewImageROI(GWViewImage):
         self.list_of_rois.append(o)
         self.roi_active = o
 
+
+
+
     def add_roi_pixel(self, pos):
         """add ROIPixel on mouthPressEvent - special treatment for pixels...On/Off at mouthMoveEvent"""
         for o in self.list_of_rois:
@@ -181,6 +180,9 @@ class GWViewImageROI(GWViewImage):
         o.add_to_scene(pos)
         self.list_of_rois.append(o)
         self.roi_active = o
+
+
+
 
 
     def draw_something(self):
@@ -227,9 +229,9 @@ class GWViewImageROI(GWViewImage):
         ithr = roiu.select_handle(roiu.ROTATE,    view=self, roi=None, pos=QPointF(140,20)).add_to_scene()
         iths = roiu.select_handle(roiu.SCALE,     view=self, roi=None, pos=QPointF(170,20)).add_to_scene()
         ithm = roiu.select_handle(roiu.MENU,      view=self, roi=None, pos=QPointF(200,20)).add_to_scene()
-        ith1 = roiu.select_handle(roiu.SHAPE,     view=self, roi=None, pos=QPointF(230,20), shhand=1).add_to_scene()
-        ith2 = roiu.select_handle(roiu.SHAPE,     view=self, roi=None, pos=QPointF(260,20), shhand=2).add_to_scene()
-        ith3 = roiu.select_handle(roiu.SHAPE,     view=self, roi=None, pos=QPointF(290,20), shhand=3).add_to_scene()
+        ith1 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(230,20), shhand=1).add_to_scene()
+        ith2 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(260,20), shhand=2).add_to_scene()
+        ith3 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(290,20), shhand=3).add_to_scene()
 
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
