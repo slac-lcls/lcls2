@@ -115,7 +115,7 @@ class Run(object):
         if name not in self.dsparms.configinfo_dict and mapped_env_var_name is None:
             if not accept_missing:
                 err_msg = f"No available detector class matched with {name}. If this is a new detector/version, make sure to add new class in detector folder."
-                raise DetectorNameError(err_msg)
+                raise KeyError(err_msg)
             else:
                 return MissingDet()
 
