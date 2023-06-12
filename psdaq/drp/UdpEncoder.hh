@@ -78,8 +78,8 @@ public:
     void setMissingData(std::string errMsg);
     bool getMissingData() { return (m_missingData); }
     void process();
-    void interpolate();
     void loopbackSend();
+    void interpolate();
     int drainFd(int fd);
     int reset();
     uint64_t nUpdates() { return m_nUpdates; }
@@ -92,22 +92,24 @@ private:
     void _loopbackInit();
     void _loopbackFini();
     void _udpReceiver();
+    void _queueReceiver();
     void _polyfit(const std::vector<double> &t,
                   const std::vector<double> &v,
                   std::vector<double> &coeff,
                   unsigned order);
+    SPSCQueue<encoder_frame_t>  m_interpolateQueue;
 private:
     const Parameters&           m_para;
     SPSCQueue<XtcData::Dgram*>& m_pvQueue;
     SPSCQueue<XtcData::Dgram*>& m_bufferFreelist;
     std::atomic<bool>           m_firstReadout;
     std::atomic<bool>           m_terminate;
-    std::thread                 m_udpReceiverThread;
+    std::thread                 m_slowThread;
+    std::thread                 m_fastThread;
     int                         m_loopbackFd;
     struct sockaddr_in          m_loopbackAddr;
     uint16_t                    m_loopbackFrameCount;
-    int                          _dataFd;
-    int                          _interpolateFd;
+    int                         m_udpFd;
     char                        m_hardwareIDBuf[16];
     // out-of-order support
     unsigned                    m_count;
@@ -124,7 +126,7 @@ private:
     std::vector<double>         m_enc_values;
     std::vector<double>         m_enc_times;
     uint64_t                    m_num_enc_values;
-    enum { TriggerRatio = 100      };       // FIXME hardcoded
+    enum { TriggerRatio = 10       };       // FIXME hardcoded
     enum { Order = 1               };       // FIXME hardcoded
 };
 
@@ -141,10 +143,8 @@ public:
     unsigned unconfigure();
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
     int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
-    enum { DefaultDataPort = 5006 };
-    enum { DefaultLoopbackPort = 5007 };
     enum { MajorVersion = 2, MinorVersion = 1, MicroVersion = 0 };
-    enum { DefaultInterpolatePort = 5008 };
+    enum { DefaultUdpPort = 5006 };
     enum { TriggerReadoutGroup = 5 };       // FIXME hardcoded
 private:
     void _event(XtcData::Dgram& dgram, const void* const bufEnd, encoder_frame_t& frame);

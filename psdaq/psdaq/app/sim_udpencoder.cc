@@ -31,7 +31,7 @@ static void usage(const char* p) {
   printf("         -e <evcode>\n");
   printf("         -p <partition>\n");
   printf("         -a <dest addr>  (default %s)\n", m_addr);
-  printf("         -d <data port>  (default %d)\n", Drp::UdpEncoder::DefaultDataPort);
+  printf("         -d <data port>  (default %d)\n", Drp::UdpEncoder::DefaultUdpPort);
   printf("         -v (verbose)\n");
   printf("Either -r or -e or -p is required\n");
 }
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
   int rate   = -1;
   int evcode = -1;
   int partition = -1;
-  m_data_port = Drp::UdpEncoder::DefaultDataPort;
+  m_data_port = Drp::UdpEncoder::DefaultUdpPort;
 
   while ( (c=getopt( argc, argv, "e:r:p:d:a:vh"))!=EOF) {
     switch(c) {
@@ -97,6 +97,10 @@ int main(int argc, char* argv[])
       // Either -r or -e or -p is required
       usage(argv[0]);
       return 0;
+  }
+
+  if (m_verbose) {
+    printf("dest addr: %s\n", m_addr);
   }
 
   // create the socket
