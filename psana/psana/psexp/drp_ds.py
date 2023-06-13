@@ -3,7 +3,7 @@ from psana.dgrammanager import DgramManager, dgSize
 from psana.psexp import Events, TransitionId
 from psana.event import Event
 from psana.smalldata import SmallData
-from psana.dgramedit import DgramEdit, PyDgram
+from psana.dgramedit import DgramEdit
 from psana import dgram
 from psana.psexp.zmq_utils import pub_send, sub_recv
 
@@ -36,9 +36,10 @@ class DrpDataSource(DataSourceBase):
             return False
         runnum = self.runnum_list[self.runnum_list_index]
         self.dm = DgramManager(['drp'], tag=self.tag, config_consumers=[self.dsparms])
-        self.config_dgramedit = DgramEdit(
-            PyDgram(self._configs[-1].get_dgram_ptr(), self.dm.transition_bufsize)
-        )
+        #self.config_dgramedit = DgramEdit(
+        #    PyDgram(self._configs[-1].get_dgram_ptr(), self.dm.transition_bufsize)
+        #)
+        self.config_dgramedit = DgramEdit(self._configs[-1], bufsize=self.dm.transition_bufsize)
         self.curr_dgramedit = self.config_dgramedit
         self.runnum_list_index += 1
         return True
@@ -51,9 +52,14 @@ class DrpDataSource(DataSourceBase):
                 buffer_size = self.dm.pebble_bufsize
             else:
                 buffer_size = self.dm.transition_bufsize
+            #self.curr_dgramedit = DgramEdit(
+            #    PyDgram(evt._dgrams[0].get_dgram_ptr(), buffer_size),
+            #    config=self.config_dgramedit
+            #)
             self.curr_dgramedit = DgramEdit(
-                PyDgram(evt._dgrams[0].get_dgram_ptr(), buffer_size),
-                config=self.config_dgramedit
+                 evt._dgrams[0], 
+                 config_dgramedit=self.config_dgramedit, 
+                 bufsize=buffer_size
             )
             self.curr_dgramedit.save(self.dm.shm_res_mv)
             if evt.service() == TransitionId.BeginRun:

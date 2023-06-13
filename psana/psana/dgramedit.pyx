@@ -9,6 +9,7 @@ import array
 import numpy as np
 import numbers
 import io
+from psana import dgram
 
 MAXBUFSIZE=64000000
 
@@ -128,11 +129,16 @@ cdef class PyDgram():
     # For createTransition, this is BUFSIZE in XtcUpdateIter.
     cdef const void* bufEnd
     cdef uint64_t bufSize
+    cdef PyDgram config_pydgram
     
-    def __init__(self, pycap_dgram, bufsize):
+    def __init__(self, pycap_dgram, bufsize, config_pydgram=None):
         self.cptr = <Dgram*>PyCapsule_GetPointer(pycap_dgram,"dgram")
         self.bufSize = bufsize
         self.bufEnd = <char*>self.cptr + self.bufSize
+        # All dgram types except config will have config_pydgram passed in.
+        # This is done so that when we export PyDgram as dgram.Dgram,
+        # we can use the config from its own class. 
+        self.config_pydgram = config_pydgram
 
     @property
     def pyxtc(self):
@@ -165,6 +171,16 @@ cdef class PyDgram():
         cdef uint64_t dgram_size = self.size()
         return <char [:dgram_size]><char*>self.cptr
 
+    def get(self):
+        """Returns dgram.Dgram representation of this dgram"""
+        if self.config_pydgram is None:
+            # This is the config
+            view = self.as_memoryview()
+            print(f'here')
+            dg = dgram.Dgram(view=self.as_memoryview(), offset=0)
+        else:
+            dg = dgram.Dgram(view=self.as_memoryview(), config=self.config_pydgram.get(), offset=0)
+        return dg
 
 
 cdef class PyXtcUpdateIter():
@@ -285,7 +301,7 @@ cdef class PyXtcUpdateIter():
     def set_filter(self, det_name, alg_name):
         self.cptr.setFilter(det_name.encode(), alg_name.encode())
 
-    def createTransition(self, transId, timestamp_val, pycap_buf, bufsize):
+    def createTransition(self, transId, timestamp_val, pycap_buf, bufsize, config_pydgram=None):
         counting_timestamps = 1
         if timestamp_val == -1:
             counting_timestamps = 0
@@ -301,7 +317,7 @@ cdef class PyXtcUpdateIter():
         cdef Dgram* dg =  &(self.cptr.createTransition(transId,
                 counting_timestamps, timestamp_val, buf))
         pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
-        pydg = PyDgram(pycap_dg, <char*>self.bufEnd - <char*>dg)
+        pydg = PyDgram(pycap_dg, <char*>self.bufEnd - <char*>dg, config_pydgram=config_pydgram)
         return pydg
 
     def get_removed_size(self):
@@ -319,9 +335,12 @@ cdef class PyXtcUpdateIter():
 
 cdef class PyXtcFileIterator():
     cdef XtcFileIterator* cptr
+    cdef PyDgram config
+    cdef int isConfig
 
     def __cinit__(self, int fd, size_t maxDgramSize):
         self.cptr = new XtcFileIterator(fd, maxDgramSize)
+        self.isConfig = 1
 
     def __dealloc__(self):
         del self.cptr
@@ -332,7 +351,16 @@ cdef class PyXtcFileIterator():
         
         # Wrap the pointers and set the bufEnd limit to maxDgarmsize
         pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
-        pydg = PyDgram(pycap_dg, self.cptr.size())
+
+        # If this is the first dgram, this must be a config
+        if self.isConfig == 1:
+            pydg = PyDgram(pycap_dg, self.cptr.size())
+            self.config = pydg
+            # Set all other dgrams after the first one to non-config
+            self.isConfig = 0       
+        else:
+            pydg = PyDgram(pycap_dg, self.cptr.size(), config_pydgram=self.config)
+
         return pydg
 
 cdef class DgramEdit:
@@ -344,42 +372,43 @@ cdef class DgramEdit:
     on the dgram.
     """
     def __init__(self,
-                 PyDgram pydg=None,
-                 config=None,
+                 dg=None,
+                 config_dgramedit=None,
                  transition_id=None,
                  ts=-1,
                  bufsize=MAXBUFSIZE):
         # We need to have only one PyXtcUpdateIter when working with
-        # the same xtc. This class always read in config first and
+        # the same xtc. This class always read in config dgram first and
         # populates NamesLookup, which is used by other dgrams.
         # Note that PyXtCUpdateIter takes bufsize. If this value is 0,
         # then the default bufsize (defined in XtcUpdateIter) is used.
         self.buf = NULL
-        if pydg:
-            if config:
-                self.uiter = config.uiter
+        if dg:
+            config_pydgram = config_dgramedit.get_pydgram() if config_dgramedit is not None else None
+            self.pydg = PyDgram(dg.get_dgram_ptr(), bufsize, config_pydgram=config_pydgram) 
+            if config_dgramedit:
+                self.uiter = config_dgramedit.uiter
                 self.uiter.set_cfg(False)
             else:
-                # Assumes this is a config so we create new XtcUpdateIter here.
+                # Assumes this is a config dgram so we create new XtcUpdateIter here.
                 self.uiter = PyXtcUpdateIter()
                 self.uiter.set_cfg(True)
                 # Iterates Configure without writing to buffer to get
                 # current nodeId and namesId
                 self.uiter.set_cfgwrite(False)
-                self.uiter.iterate(pydg.pyxtc)
+                self.uiter.iterate(self.pydg.pyxtc)
 
-            self.pydg = pydg
         elif transition_id:
             if transition_id == PyTransitionId.Configure:
                 self.uiter = PyXtcUpdateIter()
                 self.uiter.set_cfg(True)
             else:
-                assert config, "Missing config dgram"
-                self.uiter = config.uiter
+                assert config_dgramedit, "Missing config_dgramedit"
+                self.uiter = config_dgramedit.uiter
                 self.uiter.set_cfg(False)
             self.buf = <char *>malloc(bufsize)
             pycap_buf = PyCapsule_New(<char *>self.buf, "buf", NULL)
-            self.pydg = self.uiter.createTransition(transition_id, ts, pycap_buf, bufsize)
+            self.pydg = self.uiter.createTransition(transition_id, ts, pycap_buf, bufsize, config_pydgram=config_dgramedit.pydg)
         else:
             raise IOError, "Unsupported input arguments"
     
@@ -520,4 +549,12 @@ cdef class DgramEdit:
     @property
     def uiter(self):
         return self.uiter
+
+    def get_dgram(self):
+        """ Returns dgram.Dgram representation of pydg"""
+        return self.pydg.get()
+
+    def get_pydgram(self):
+        return self.pydg
+
 

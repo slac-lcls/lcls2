@@ -8,7 +8,7 @@ from psana import dgram
 from psana.dgrammanager import DgramManager
 from psana.detector.detector_impl import MissingDet
 from psana.event import Event
-from psana.dgramedit import DgramEdit, PyDgram
+from psana.dgramedit import DgramEdit
 from . import TransitionId
 from .tools import RunHelper
 from .envstore_manager import EnvStoreManager
@@ -271,9 +271,11 @@ class RunDrp(Run):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
+            
             self._ds.curr_dgramedit = DgramEdit(
-                PyDgram(evt._dgrams[0].get_dgram_ptr(), buffer_size),
-                config=self._ds.config_dgramedit
+                evt._dgrams[0], 
+                config_dgramedit=self._ds.config_dgramedit,
+                bufsize=buffer_size
             )
 
             if evt.service() != TransitionId.L1Accept:
@@ -296,10 +298,13 @@ class RunDrp(Run):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
+            
             self._ds.curr_dgramedit = DgramEdit(
-                PyDgram(evt._dgrams[0].get_dgram_ptr(), buffer_size),
-                config=self._ds.config_dgramedit
+                evt._dgrams[0],
+                config_dgramedit=self._ds.config_dgramedit,
+                bufsize=buffer_size
             )
+            
             if evt.service() == TransitionId.EndRun:
                 self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                 return

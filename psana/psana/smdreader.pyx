@@ -335,7 +335,7 @@ cdef class SmdReader:
                                    ]
                 fake_ts = self.get_next_fake_ts()
                 for i_fake, fake_transition in enumerate(fake_transitions):
-                    fake_dgram = DgramEdit(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
+                    fake_dgram = DgramEdit(transition_id=fake_transition, config_dgramedit=fake_config, ts=fake_ts+i_fake)
                     fake_dgram.save(self._fakebuf, offset=out_offset)
                     out_offset += fake_dgram.size 
                 self._fakebuf_size = out_offset
