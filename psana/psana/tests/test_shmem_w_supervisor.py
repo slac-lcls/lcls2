@@ -4,6 +4,7 @@ import os, shutil
 import subprocess
 import sys, os
 import pytest
+import socket
 from psana import DataSource
 
 client_count = 4  # number of clients in test (1 supervisor, 3 clients)
@@ -17,14 +18,14 @@ class Test:
         cmd_args = ['shmemServer','-c',str(client_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000']
         return subprocess.Popen(cmd_args)
 
-    def launch_supervisor(self,pid):
+    def launch_supervisor(self,pid,supervisor_ip_addr):
         shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
-        cmd_args = ['python',shmem_file,pid,'1']
+        cmd_args = ['python',shmem_file,pid,'1',supervisor_ip_addr]
         return subprocess.Popen(cmd_args)
     
-    def launch_client(self,pid):
+    def launch_client(self,pid,supervisor_ip_addr):
         shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
-        cmd_args = ['python',shmem_file,pid,'0']
+        cmd_args = ['python',shmem_file,pid,'0',supervisor_ip_addr]
         return subprocess.Popen(cmd_args)
                 
     @staticmethod
@@ -41,12 +42,24 @@ class Test:
         tmp_file = self.setup_input_files(tmp_path)
         srv = self.launch_server(tmp_file,pid)
         assert srv != None,"server launch failure"
+        
+        # shmem_ds uses host addr and port determined externally for
+        # calibration constant broadcasting. In this test, we simulate
+        # such a situation by acquiring an available port using a socket
+        # then closing it immediately so that this port can be used later.
+        IPAddr = socket.gethostbyname(socket.gethostname())
+        sock = socket.socket()
+        sock.bind(('', 0))
+        port_no = sock.getsockname()[1]
+        sock.close()
+        supervisor_ip_addr = f'{IPAddr}:{port_no}'
+
         try:
             for i in range(client_count):
               if i == 0: 
-                  cli.append(self.launch_supervisor(pid))
+                  cli.append(self.launch_supervisor(pid, supervisor_ip_addr))
               else:
-                  cli.append(self.launch_client(pid))
+                  cli.append(self.launch_client(pid, supervisor_ip_addr))
               assert cli[i] != None,"client "+str(i)+ " launch failure"
         except:
             srv.kill()

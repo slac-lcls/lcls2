@@ -18,8 +18,7 @@ class ShmemDataSource(DataSourceBase):
         self.supervisor = -1
         if 'supervisor' in kwargs:
             self.supervisor = kwargs['supervisor']
-            port_number = 5557
-            socket_name = f"tcp://{kwargs['supervisor_ip_addr']}:{port_number}"
+            socket_name = f"tcp://{kwargs['supervisor_ip_addr']}"
             if self.supervisor == 1:
                 pub_socket = pub_bind(socket_name)
             else:
