@@ -128,10 +128,10 @@ private:
     int m_fd;
     bool m_setMaskBytesDone;
     SPSCQueue<void*> m_transitionBuffers;
-    std::atomic<unsigned> m_dmaAllocs;
-    std::atomic<unsigned> m_dmaFrees;
-    std::atomic<unsigned> m_allocs;
-    std::atomic<unsigned> m_frees;
+    std::atomic<uint64_t> m_dmaAllocs;
+    std::atomic<uint64_t> m_dmaFrees;
+    std::atomic<uint64_t> m_allocs;
+    std::atomic<uint64_t> m_frees;
     std::mutex m_lock;
     std::condition_variable m_condition;
 };
