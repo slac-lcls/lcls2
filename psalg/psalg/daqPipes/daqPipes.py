@@ -128,18 +128,26 @@ def showHelp(stdscr, args, metrics):
     # Loop where k is the last character pressed
     k = -1
 
-    while (k == -1):
+    start_row = 0
+
+    while (True):
 
         # Initialization
         stdscr.erase()
         height, width = stdscr.getmaxyx()
 
-        y = 0
+        y = 0;  r = 0
         x = 0
 
         line = f'DAQ blockages monitor for partition {args.part}, instrument "{args.inst}"'
-        stdscr.addstr(y, x, line, curses.color_pair(1))
-        y += 2
+        if r >= start_row:
+            stdscr.addstr(y, x, line, curses.color_pair(1))
+            y += 1
+        r += 1
+
+        if r >= start_row:
+            y += 1              # Blank line
+        r += 1
 
         line = 'Available keystrokes:'
         keys = [('Arrow keys', 'Scroll by column or row'),
@@ -152,28 +160,57 @@ def showHelp(stdscr, args, metrics):
                 ('h/?', 'Help'),
                 ('q', 'Quit'),]
 
-        stdscr.addstr(y, x, line, curses.color_pair(1))
-        y += 1
+        if r >= start_row:
+            stdscr.addstr(y, x, line, curses.color_pair(1))
+            y += 1
+        r += 1
         for key in keys:
-            stdscr.addstr(y, 2+x,    key[0], curses.color_pair(1))
-            stdscr.addstr(y, 2+x+14, key[1], curses.color_pair(1))
-            y += 1
+            if r >= start_row:
+                stdscr.addstr(y, 2+x,    key[0], curses.color_pair(1))
+                stdscr.addstr(y, 2+x+14, key[1], curses.color_pair(1))
+                y += 1
+            r += 1
 
-        y += 1
+        if r >= start_row:
+            y += 1              # Blank line
+        r += 1
         line = 'Column header descriptions:'
-        stdscr.addstr(y, x, line, curses.color_pair(1))
-        y += 1
-        for column, metric in metrics.items():
-            stdscr.addstr(y, 2+x,    column,         curses.color_pair(1))
-            stdscr.addstr(y, 2+x+14, metric.descr(), curses.color_pair(1))
+        if r >= start_row:
+            stdscr.addstr(y, x, line, curses.color_pair(1))
             y += 1
-            if y > height - 1:  break
+        r += 1
+        last_row = r
+        for column, metric in metrics.items():
+            if r >= start_row:
+                stdscr.addstr(y, 2+x,    column,         curses.color_pair(1))
+                stdscr.addstr(y, 2+x+14, metric.descr(), curses.color_pair(1))
+                y += 1
+            r += 1
+            if y > height - 2:  break
+
+        last_row += len(metrics.items())
+        last_row -= height - 1
 
         y = height - 1
-        stdscr.addstr(y, x, "Hit any character to continue", curses.color_pair(1))
+        stdscr.addstr(y, x, "Scroll or hit any character to continue", curses.color_pair(1))
 
         # Wait for next input
         k = stdscr.getch()
+
+        if   k == curses.KEY_DOWN:
+            if start_row < last_row:  start_row += 1
+            if start_row > last_row:  start_row  = last_row
+        elif k == curses.KEY_UP:
+            if start_row > 0:         start_row -= 1
+            if start_row < 0:         start_row  = 0
+        elif k == curses.KEY_NPAGE:
+            if start_row < last_row:  start_row += height
+            if start_row > last_row:  start_row  = last_row
+        elif k == curses.KEY_PPAGE:
+            if start_row > 0:         start_row -= height
+            if start_row < 0:         start_row  = 0
+        elif k != -1:
+            break
 
     # Attempt to turn off the cursor
     curses.curs_set(False)
@@ -231,38 +268,7 @@ def draw(stdscr, args, metrics, size_x):
                 stdscr.erase()
             height, width = stdscr.getmaxyx()
             dbg.write('height %d, width %d\n' % (height, width))
-
-            if   k == curses.KEY_DOWN:
-                start_row += 1
-            elif k == curses.KEY_UP:
-                start_row -= 1
-            elif k == curses.KEY_RIGHT:
-                start_col += 1
-            elif k == curses.KEY_LEFT:
-                start_col -= 1
-            elif k == curses.KEY_NPAGE:
-                start_col += height
-            elif k == curses.KEY_PPAGE:
-                start_col -= height
-            elif (k == ord('n') or k == ord(' ')) and time is not None:
-                time += step
-            elif (k == ord('p')) and time is not None:
-                time -= step
-            elif k == ord('+') and time is not None:
-                step += 1
-            elif k == ord('-') and time is not None:
-                if step > 1:  step -= 1
-            elif k == ord('t') and time is not None:
-                time = None
-            elif k == ord('t') and time is None:
-                if args.start is not None:
-                    time = datetime.fromisoformat(args.start).timestamp()
-            elif k == ord('i'):
-                showInstance = not showInstance
-                new_x_size += 20 if showInstance else -20
-            elif k == ord('h') or k == ord('?'):
-                showHelp(stdscr, args, metrics)
-                k = 0
+            ht = height - 1 if time is not None else height
 
             # Sample the metrics
             samples = update(metrics, time)
@@ -276,7 +282,7 @@ def draw(stdscr, args, metrics, size_x):
 
                 dbg.write('size_y, size_x: %d, %d\n' % (size_y, size_x))
 
-                pad = curses.newpad(size_y, size_x)
+                pad = curses.newpad(max(height, size_y), max(width, size_x))
 
             pad.erase()
 
@@ -285,11 +291,11 @@ def draw(stdscr, args, metrics, size_x):
 
             # Establish bounds
             tot_rows = 1 + len(samples) # 1 for the header bar
-            rows = min(height, tot_rows)
+            rows = min(ht, tot_rows)
 
-            start_row = max(0, start_row)
+            start_row = max(0,               start_row)
             start_row = min(tot_rows - rows, start_row)
-            start_row = max(0, start_row)
+            start_row = max(0,               start_row)
 
             tw = 12
             cols = 1            # DetName
@@ -303,9 +309,9 @@ def draw(stdscr, args, metrics, size_x):
                     tw += mw
                     cols += 1
 
-            start_col = max(0, start_col)
+            start_col = max(0,               start_col)
             start_col = min(tot_cols - cols, start_col)
-            start_col = max(0, start_col)
+            start_col = max(0,               start_col)
 
             dbg.write('start_row, max: %d, %d\n' % (start_row,
                                                     max(0, tot_rows - rows)))
@@ -384,8 +390,8 @@ def draw(stdscr, args, metrics, size_x):
                             sr += 1
             dbg.write('sr %d, start_y %d\n' % (sr, start_y))
 
-            dbg.write('start_y %d, height %d, size_y %d\n' % (start_y, height, size_y))
-            dbg.write('start_x %d, width  %d, size_x %d\n' % (start_x, width,  size_x))
+            dbg.write('start_y %d, height %d, size_y %d\n' % (start_y, ht,    size_y))
+            dbg.write('start_x %d, width  %d, size_x %d\n' % (start_x, width, size_x))
 
             if tot_cols > cols and start_col < tot_cols - cols:
                 pad.addch(start_y, min(size_x - 1, start_x + width - 1), curses.ACS_RARROW, curses.A_STANDOUT)
@@ -399,7 +405,7 @@ def draw(stdscr, args, metrics, size_x):
             if time is not None:
                 entry = str(datetime.fromtimestamp(time))
                 entry = entry + ',  step = ' + str(step) + ' s'
-                pad.addstr(size_y - 1, 0, entry, curses.color_pair(2))
+                pad.addstr(start_y + height - 1, 0, entry, curses.color_pair(2))
 
             # Refresh the screen
             stdscr.refresh()
@@ -407,6 +413,44 @@ def draw(stdscr, args, metrics, size_x):
 
             # Wait for next input
             k = stdscr.getch()
+
+            if   k == curses.KEY_DOWN:
+                if start_row < size_y - height:  start_row += 1
+                if start_row > size_y - height:  start_row  = size_y - height
+            elif k == curses.KEY_UP:
+                if start_row > 0:                start_row -= 1
+                if start_row < 0:                start_row  = 0
+            elif k == curses.KEY_RIGHT:
+                if start_col < size_x - width:   start_col += 1
+                if start_col > size_x - width:   start_col  = size_x - width
+            elif k == curses.KEY_LEFT:
+                if start_col > 0:                start_col -= 1
+                if start_col < 0:                start_col  = 0
+            elif k == curses.KEY_NPAGE:
+                if start_row < size_y - height:  start_row += size_y - height
+                if start_row > size_y - height:  start_row  = size_y - height
+            elif k == curses.KEY_PPAGE:
+                if start_row > 0:                start_row -= size_y - height
+                if start_row < 0:                start_row  = 0
+            elif (k == ord('n') or k == ord(' ')) and time is not None:
+                time += step
+            elif (k == ord('p')) and time is not None:
+                time -= step
+            elif k == ord('+') and time is not None:
+                step += 1
+            elif k == ord('-') and time is not None:
+                if step > 1:  step -= 1
+            elif k == ord('t') and time is not None:
+                time = None
+            elif k == ord('t') and time is None:
+                if args.start is not None:
+                    time = datetime.fromisoformat(args.start).timestamp()
+            elif k == ord('i'):
+                showInstance = not showInstance
+                new_x_size += 20 if showInstance else -20
+            elif k == ord('h') or k == ord('?'):
+                showHelp(stdscr, args, metrics)
+                k = 0
     except:
         dbg.done()
         raise
