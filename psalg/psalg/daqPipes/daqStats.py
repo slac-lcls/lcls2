@@ -465,6 +465,9 @@ def draw(stdscr, srvurl, args, listOfQueries, dbg):
                 entry = entry + ',  step = ' + str(step) + ' s'
                 #entry = entry + ',  step = ' + str(step) + ' s' + ' s %d, l %d, h %d, r %d, y %d'%(start_row, last_row, height, rows, y)
                 stdscr.addstr(height - 1, 0, entry, curses.color_pair(2))
+                if last_row > height:
+                    entry = 'Vertical scrolling doesn\'t work; expand screen'
+                    stdscr.addstr(height - 1, 40, entry, curses.color_pair(4))
 
             # Refresh the screen
             curses.doupdate() #refresh()
