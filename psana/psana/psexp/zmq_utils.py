@@ -7,7 +7,6 @@ def pub_bind(socket_name):
     context = zmq.Context()
     global calibconst_socket
     calibconst_socket = context.socket(zmq.PUB)
-    #calibconst_socket.bind(f"ipc:///tmp/{socket_name}.pipe")
     calibconst_socket.bind(socket_name)
     return calibconst_socket
 
@@ -21,11 +20,9 @@ def send_zipped_pickle(zmq_socket, obj, flags=0, protocol=-1):
     zmq_socket.send(z, flags=flags)
 
 def sub_connect(socket_name):
-    # Socket to talk to server
     context = zmq.Context()
     global calibconst_socket
     calibconst_socket = context.socket(zmq.SUB)
-    #calibconst_socket.connect(f"ipc:///tmp/{socket_name}.pipe")
     calibconst_socket.connect(socket_name)
 
     # Subscribe to all
