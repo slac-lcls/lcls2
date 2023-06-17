@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 #include <string>
+#include <cstdint>
 
 namespace Pds {
   namespace Tpr {

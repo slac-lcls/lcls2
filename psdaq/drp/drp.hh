@@ -7,7 +7,7 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
-
+#include <string>
 #include "spscqueue.hh"
 
 #define PGP_MAX_LANES 8
