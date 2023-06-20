@@ -19,6 +19,7 @@ parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                     help='timeout msec (default 10000)')
 parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=120, help='# of events to aquire at each step (default 120)')
 parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=36, help='bit mask of readout groups (default 36)')
+parser.add_argument('--groups', type=int, nargs='+', metavar='GROUP_LIST', default=[], help='list of readout groups (overrides -g)')
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
 parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
@@ -26,6 +27,12 @@ parser.add_argument('--seqctl' , default=None, type=str, nargs='+', help="sequen
 parser.add_argument('--record', action='store_true', help='enable recording of data')
 parser.add_argument('-v', action='store_true', help='be verbose')
 args = parser.parse_args()
+
+if len(args.groups) > 0:
+    g = 0
+    for i in args.groups:
+        g += 1<<i
+    args.g = g
 
 if args.g is not None:
     if args.g < 1 or args.g > 255:

@@ -519,6 +519,7 @@ class CollectionManager():
         self.fast_reply_rate = 10           # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.threads_exit = Event()
+        self.step_exit = Event()
         self.phase2_timeout = args.T
         self.user = args.user
         self.password = args.password
@@ -2059,6 +2060,7 @@ class CollectionManager():
             self.step_groups_clear()    # default is no scanning
 
         if start_step_thread:
+            self.step_exit.clear()
             # initialize stepdone thread
             self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
             # start step done thread
@@ -2093,6 +2095,8 @@ class CollectionManager():
         ok = self.get_phase2_replies('unconfigure')
         if not ok:
             return False
+
+        self.step_exit.set()
 
         logging.debug('condition_unconfigure() returning %s' % ok)
 
@@ -2236,6 +2240,9 @@ class CollectionManager():
         # disable slowupdate timer
         self.set_slow_update_enabled(False)
 
+        # stop step_done thread
+        self.step_exit.set()
+
         msg = create_msg('reset')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
         self.lastTransition = 'reset'
@@ -2295,7 +2302,7 @@ class CollectionManager():
         # start monitoring the StepDone PV
         sub = self.pva.monitor_StepDone(callback=callback)
 
-        while not self.threads_exit.is_set():
+        while not self.step_exit.is_set():
             if self.step_done.wait(0.5):
                 self.step_done.clear()
                 # stepDone event received
