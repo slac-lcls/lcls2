@@ -171,15 +171,14 @@ cdef class PyDgram():
         cdef uint64_t dgram_size = self.size()
         return <char [:dgram_size]><char*>self.cptr
 
-    def get(self):
+    def get(self, view=None):
         """Returns dgram.Dgram representation of this dgram"""
         if self.config_pydgram is None:
-            # This is the config
-            view = self.as_memoryview()
-            print(f'here')
-            dg = dgram.Dgram(view=self.as_memoryview(), offset=0)
+            another_copy = bytearray(self.as_memoryview())
+            dg = dgram.Dgram(view=another_copy, offset=0)
         else:
-            dg = dgram.Dgram(view=self.as_memoryview(), config=self.config_pydgram.get(), offset=0)
+            assert view, "Exporting non-configure Dgram needs save() buffer due to remove operation"
+            dg = dgram.Dgram(view=view, config=self.config_pydgram.get(), offset=0)
         return dg
 
 
@@ -538,7 +537,7 @@ cdef class DgramEdit:
 
         # Release PyBuffer object
         self.uiter.free_outbuf()
-
+        
     def updatetimestamp(self, timestamp_val):
         self.uiter.updatetimestamp(self.pydg, timestamp_val)
 
@@ -550,11 +549,9 @@ cdef class DgramEdit:
     def uiter(self):
         return self.uiter
 
-    def get_dgram(self):
-        """ Returns dgram.Dgram representation of pydg"""
-        return self.pydg.get()
-
     def get_pydgram(self):
         return self.pydg
-
+    
+    def get_dgram(self, view=None):
+        return self.pydg.get(view=view)
 

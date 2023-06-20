@@ -93,8 +93,10 @@ def run_dgramedit(output_filename):
     config_edit.save(xtc2buf)
     ofile.write(xtc2buf[:config_edit.size])
 
-    # Check if the new config is correct
-    #new_config = config_edit.get_dgram()
+    # Check if the new config is correct by looking inside
+    # .software (detector names shown at root are those with ShapesData).
+    new_config = config_edit.get_dgram()
+    assert hasattr(new_config.software, 'xpphsd')
 
     # Write out BeginRun using DgramEdit (no modification)
     beginrun_edit = DgramEdit(run.beginruns[0], config_dgramedit=config_edit, bufsize=run.beginruns[0]._size)
@@ -132,8 +134,14 @@ def run_dgramedit(output_filename):
 
         dgram_edit.save(xtc2buf)
         ofile.write(xtc2buf[:dgram_edit.size])
+        
+        # For non-configure dgram, you can retreive Dgram back by
+        # passing in the output buffer where the Dgram was written to.
+        new_dgram = dgram_edit.get_dgram(view=xtc2buf)
+        assert new_dgram.xpphsd[0].fex.strFex=='hello string'
 
         if i_evt == 4:
+            assert hasattr(new_dgram, "hsd") == False
             break
         
 
