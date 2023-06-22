@@ -6,7 +6,10 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
 collect_host = 'drp-tst-acc01'
 
-network =     'ep_fabric="172.21.148.0/22",ep_domain=eno1'
+network = 'ep_fabric="172.21.148.0/22",ep_domain=eno1'
+
+pebbleEncoder = 'pebbleBufCount=524288,pebbleBufSize=4096'
+pebbleFakeCam = 'pebbleBufCount=65536,pebbleBufSize=65536'
 
 #
 #  ami variables
@@ -47,17 +50,13 @@ procmgr_config = [
  # Timing
  { host: 'drp-tst-acc01', id:'timing_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x8 -D ts -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
  # FakeCam
- { host: 'drp-tst-acc01', id:'cam_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_0 -P {hutch} -C {collect_host}'},
+ { host: 'drp-tst-acc01', id:'cam_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_0 -P {hutch} -C {collect_host} -k {pebbleFakeCam}'},
  { host: 'drp-tst-acc01', id:'cam_1', flags:'spu', cmd:f'drp -o ~caf/data -l 0x4 -D fakecam -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
- # ...drp: verbose
-#{ host: 'drp-tst-acc01', id:'encoder_0', flags:'sup', cmd:f'drp_udpencoder -v -o /cds/home/c/caf/data -M {prom_dir} -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
  # ...sim: 172.21.148.201 = drp-tst-acc01
 #{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -v -a 172.21.148.201 -p 5 -d 5006'}, # 5006 -> interpolate
- { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'sx', cmd:'sim_udpencoder    -a 172.21.148.201 -p 1 -d 5006'}, # 5006 -> interpolate
+ { host: 'daq-tst-dev03', id:'sim_udpencoder',            cmd:'sim_udpencoder    -a 172.21.148.201 -p 1 -d 5006'}, # 5006 -> interpolate
  #  ...drp:
- { host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data            -P {hutch} -d /dev/datadev_1 -M {prom_dir} -C {collect_host} -k {network}'},
- #  ...drp: verbose
-#{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data         -v -P {hutch} -d /dev/datadek_1 -M {prom_dir} -C {collect_host} -k {network}'},
+ { host: 'drp-tst-acc01', id:'encoder_0', flags:'spux', rtprio:'50', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -P {hutch} -d /dev/datadev_1 -M {prom_dir} -C {collect_host} -k {network},{pebbleEncoder}'},
  #  ...drp: loopback on port 5007 AND verbose
 #{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P {hutch} -d /dev/datadev_1 -M {prom_dir} -C {collect_host} -k {network}'}
 ]

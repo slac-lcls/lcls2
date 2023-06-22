@@ -66,6 +66,7 @@ public:
     UdpReceiver(const Parameters&           para,
                 SPSCQueue<XtcData::Dgram*>& pvQueue,
                 SPSCQueue<XtcData::Dgram*>& bufferFreeList,
+                SPSCQueue<encoder_frame_t>& interpolateQueue,
                 const bool& firstReadout);
     ~UdpReceiver();
 public:
@@ -97,11 +98,11 @@ private:
                   const std::vector<double> &v,
                   std::vector<double> &coeff,
                   unsigned order);
-    SPSCQueue<encoder_frame_t>  m_interpolateQueue;
 private:
     const Parameters&           m_para;
     SPSCQueue<XtcData::Dgram*>& m_pvQueue;
     SPSCQueue<XtcData::Dgram*>& m_bufferFreelist;
+    SPSCQueue<encoder_frame_t>& m_interpolateQueue;
     std::atomic<bool>           m_firstReadout;
     std::atomic<bool>           m_terminate;
     std::thread                 m_slowThread;
@@ -162,6 +163,7 @@ private:
     SPSCQueue<uint32_t> m_evtQueue;
     SPSCQueue<XtcData::Dgram*> m_pvQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
+    SPSCQueue<encoder_frame_t> m_interpolateQueue;
     std::vector<uint8_t> m_buffer;
     std::atomic<bool> m_terminate;
     std::atomic<bool> m_running;

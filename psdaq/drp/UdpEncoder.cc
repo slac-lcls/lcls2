@@ -94,10 +94,12 @@ namespace Drp {
 UdpReceiver::UdpReceiver(const Parameters&           para,
                          SPSCQueue<XtcData::Dgram*>& pvQueue,
                          SPSCQueue<XtcData::Dgram*>& bufferFreelist,
+                         SPSCQueue<encoder_frame_t>& interpolateQueue,
                          const bool& firstReadout):
     m_para          (para),
     m_pvQueue       (pvQueue),
     m_bufferFreelist(bufferFreelist),
+    m_interpolateQueue(interpolateQueue),
     m_firstReadout(firstReadout),
     m_enc_values    (MAX_ENC_VALUES),
     m_enc_times     (MAX_ENC_VALUES),
@@ -105,7 +107,6 @@ UdpReceiver::UdpReceiver(const Parameters&           para,
     m_terminate     (false),
     m_outOfOrder    (false),
     m_missingData   (false),
-    m_interpolateQueue (512),
     m_notifySocket  {&m_context, ZMQ_PUSH},
     m_nUpdates      (0),
     m_encoderValT1  (0),
@@ -119,8 +120,6 @@ UdpReceiver::UdpReceiver(const Parameters&           para,
     int dataPort = (m_para.loopbackPort) ? m_para.loopbackPort : UdpEncoder::DefaultUdpPort;
     m_udpFd = createUdpSocket(dataPort);
     logging::debug("createUdpSocket(%d) returned %d (UDP fd)", dataPort, m_udpFd);
-
-    m_interpolateQueue.startup();   // FIXME should this been done at configure instead?
 }
 
 UdpReceiver::~UdpReceiver()
@@ -128,8 +127,6 @@ UdpReceiver::~UdpReceiver()
     if (m_udpFd > 0) {
         close(m_udpFd);
     }
-
-    m_interpolateQueue.shutdown();  // FIXME should this been done at unconfigure instead?
 }
 
 void UdpReceiver::start()
@@ -310,22 +307,29 @@ void UdpReceiver::process()
     logging::debug("%s process", name().c_str());
 
     XtcData::Dgram* dgram;
+    logging::debug("XXP process()->m_bufferFreelist.try_pop(dgram) at line %d", __LINE__ + 1);
     if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
 
         dgram->xtc = {{XtcData::TypeId::Parent, 0}, {0}};
 
         // read from msgQueue into dgram
-        if (! m_interpolateQueue.try_pop(*(encoder_frame_t*)(dgram->xtc.payload()))) {
-            logging::error("%s: try_pop() returned false, interpolation queue empty", __PRETTY_FUNCTION__);
-        }
+        encoder_frame_t *pFrame = (encoder_frame_t *)(dgram->xtc.payload());
+        if (! m_interpolateQueue.try_pop(*pFrame)) {
+            logging::error("XXP %s: try_pop() returned false, interpolation queue empty", __PRETTY_FUNCTION__);
+        } else {
+            logging::debug("XXP popped %c frameCount=%-5u innerCount=%-5u encoderValue=%-5u",
+                           (pFrame->header.innerCount == 0) ? '*' : ' ',
+                           pFrame->header.frameCount,
+                           pFrame->header.innerCount,
+                           pFrame->channel[0].encoderValue);
 
-        m_pvQueue.push(dgram);
+            m_pvQueue.push(dgram);
+            logging::debug("XXP process()->m_pvQueue.push(dgram) at line %d", __LINE__ - 1);
+        }
     }
     else {
         ++m_nMissed;                       // Else count it as missed
-        logging::error("%s: buffer not available, frame dropped", __PRETTY_FUNCTION__);
-
-        // FIXME read from msgQueue into bit bucket
+        setMissingData("XXP UdpReceiver::process(): buffer not available, frame dropped");
     }
 }
 
@@ -339,19 +343,19 @@ void UdpReceiver::interpolate() {
     if (! m_firstReadout) {
         oldFrame = newFrame;
     }
-    // read from the udp socket that triggered select()
+    // read+byteswap frame from the udp socket that triggered select()
     _readFrame(m_udpFd, &newFrame, missing);
     if (missing) {
-        logging::error("missing data");
+        setMissingData("UdpReceiver::interpolate(): missing data");
     } else {
         if (m_firstReadout) {
-            m_encoderValT2 = ntohl(newFrame.channel[0].encoderValue);
+            m_encoderValT2 = newFrame.channel[0].encoderValue;
             logging::debug("%s: first sample: m_encoderValT2 = %7u", __PRETTY_FUNCTION__, m_encoderValT2);
         } else {
 
 // ---------------------------------------- FIT ---------------------------------------------------------
 
-            m_enc_values[m_num_enc_values%MAX_ENC_VALUES] = (double)ntohl(newFrame.channel[0].encoderValue);
+            m_enc_values[m_num_enc_values%MAX_ENC_VALUES] = (double)newFrame.channel[0].encoderValue;
 
             for (unsigned uu = 0; uu <= Order; uu++) {
                 m_enc_times[(m_num_enc_values - uu) % MAX_ENC_VALUES] = (Order - uu) * TriggerRatio;
@@ -365,7 +369,7 @@ void UdpReceiver::interpolate() {
             if (m_num_enc_values > Order) {
                 logging::debug("***fit");
                 _polyfit(m_enc_times, m_enc_values, coeff, Order);
-                logging::debug("***coeff:        %6.3f %6.3f", coeff[0], coeff[1]);
+                logging::debug("XXI coeff:        %6.3f %6.3f", coeff[0], coeff[1]);
                 coeff_ready = true;
             }
         }
@@ -376,7 +380,7 @@ void UdpReceiver::interpolate() {
             // interpolate
             for (uint16_t ii = 1; ii < TriggerRatio; ii++) {
                 // set innercount
-                oldFrame.header.innerCount = htons(ii);
+                oldFrame.header.innerCount = ii;
 
                 // set interpolated encoder value
                 double q = (double) ii / (TriggerRatio * Order);
@@ -384,8 +388,8 @@ void UdpReceiver::interpolate() {
                 for (unsigned ord = 1; ord <= Order; ord++) {
                     vfitted += (coeff[ord] * pow(q, ord) * TriggerRatio);
                 }
-                logging::debug("***vfitted: %6.3f  (q=%6.3f)", vfitted, q);
-                oldFrame.channel[0].encoderValue = htonl(round(vfitted));
+                logging::debug("XXI vfitted: %6.3f  (q=%6.3f)", vfitted, q);
+                oldFrame.channel[0].encoderValue = round(vfitted);
 
                 // copy hardware ID
                 memcpy(oldFrame.header.hardwareID, newFrame.header.hardwareID, 15);
@@ -401,24 +405,24 @@ void UdpReceiver::interpolate() {
                 // use message queue to communicate with fast thread
                 m_interpolateQueue.push(oldFrame);
 
-                logging::debug("%s: %2c frameCount=%-5u innerCount=%-5u encoderValue=%-5u", __PRETTY_FUNCTION__,
-                               (ntohs(oldFrame.header.innerCount) == 0) ? '*' : ' ',
-                               ntohs(oldFrame.header.frameCount),
-                               ntohs(oldFrame.header.innerCount),
-                               ntohl(oldFrame.channel[0].encoderValue));
+                logging::debug("XXI pushed %c frameCount=%-5u innerCount=%-5u encoderValue=%-5u",
+                               (oldFrame.header.innerCount == 0) ? '*' : ' ',
+                               oldFrame.header.frameCount,
+                               oldFrame.header.innerCount,
+                               oldFrame.channel[0].encoderValue);
             }
         } 
         // send the original UDP frame (with innerCount=0)
-        newFrame.header.innerCount = htons(0);
+        newFrame.header.innerCount = 0;
 
         // use message queue to communicate with fast thread
         m_interpolateQueue.push(newFrame);
 
-        logging::debug("%s: %2c frameCount=%-5u innerCount=%-5u encoderValue=%-5u", __PRETTY_FUNCTION__,
-                       (ntohs(newFrame.header.innerCount) == 0) ? '*' : ' ',
-                       ntohs(newFrame.header.frameCount),
-                       ntohs(newFrame.header.innerCount),
-                       ntohl(newFrame.channel[0].encoderValue));
+        logging::debug("XXI pushed %c frameCount=%-5u innerCount=%-5u encoderValue=%-5u",
+                       (newFrame.header.innerCount == 0) ? '*' : ' ',
+                       newFrame.header.frameCount,
+                       newFrame.header.innerCount,
+                       newFrame.channel[0].encoderValue);
     }
 }
 
@@ -630,8 +634,10 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
     m_evtQueue      (drp.pool.nbuffers()),
-    m_pvQueue       (128),                // Formerly 8
+//  m_pvQueue       (4096),                 // Formerly 8
+    m_pvQueue       (65536),
     m_bufferFreelist(m_pvQueue.size()),
+    m_interpolateQueue(m_pvQueue.size()),
     m_terminate     (false),
     m_running       (false),
     m_preInterpolation (true)
@@ -641,7 +647,7 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
 unsigned UdpEncoder::connect(std::string& msg)
 {
     try {
-        m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_pvQueue, m_bufferFreelist, m_firstReadout);
+        m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_pvQueue, m_bufferFreelist, m_interpolateQueue, m_firstReadout);
     }
     catch(std::string& error) {
         logging::error("Failed to create UdpReceiver: %s", error.c_str());
@@ -690,9 +696,11 @@ unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xt
     m_pvQueue.startup();
     m_evtQueue.startup();
     m_bufferFreelist.startup();
+    m_interpolateQueue.startup();
     size_t bufSize = sizeof(XtcData::Dgram) + sizeof(encoder_frame_t);
     m_buffer.resize(m_pvQueue.size() * bufSize);
     for(unsigned i = 0; i < m_pvQueue.size(); ++i) {
+        logging::debug("XXC configure()->m_bufferFreelist.push(...m_buffer...) at line %d", __LINE__ + 1);
         m_bufferFreelist.push(reinterpret_cast<XtcData::Dgram*>(&m_buffer[i * bufSize]));
     }
 
@@ -712,6 +720,7 @@ unsigned UdpEncoder::unconfigure()
     m_pvQueue.shutdown();
     m_evtQueue.shutdown();
     m_bufferFreelist.shutdown();
+    m_interpolateQueue.shutdown();
     m_namesLookup.clear();   // erase all elements
 
     return 0;
@@ -878,6 +887,8 @@ void UdpEncoder::_matchUp()
         uint32_t evtIdx;
         if (!m_evtQueue.peek(evtIdx))  break;
 
+        m_pvQueue.peek(pvDg);             // Proceed with most recent entry
+
         Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[evtIdx]);
 
         _handleMatch  (*pvDg, *pgpDg);
@@ -995,6 +1006,8 @@ void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
         _event(pgpDg, bufEnd, *(encoder_frame_t*)(pvDg.xtc.payload()));
 
         m_pvQueue.try_pop(dgram);       // Actually consume the element
+
+        logging::debug("XXHM _handleMatch()->m_bufferFreelist.push(dgram) at line %d", __LINE__ + 1);
         m_bufferFreelist.push(dgram);   // Return buffer to freelist
 
         ++m_nMatch;
