@@ -60,6 +60,9 @@ typedef struct {
 static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_frame_t is not size 64");
 class UdpEncoder;
 
+unsigned m_slowRatio;   // shared by UdpReceiver and UdpDetector classes
+unsigned m_slowGroup;   // shared by UdpReceiver and UdpDetector classes
+
 class UdpReceiver
 {
 public:
@@ -127,7 +130,6 @@ private:
     std::vector<double>         m_enc_values;
     std::vector<double>         m_enc_times;
     uint64_t                    m_num_enc_values;
-    enum { TriggerRatio = 10       };       // FIXME hardcoded
     enum { Order = 1               };       // FIXME hardcoded
 };
 
@@ -146,7 +148,6 @@ public:
     int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
     enum { MajorVersion = 2, MinorVersion = 1, MicroVersion = 0 };
     enum { DefaultUdpPort = 5006 };
-    enum { TriggerReadoutGroup = 5 };       // FIXME hardcoded
 private:
     void _event(XtcData::Dgram& dgram, const void* const bufEnd, encoder_frame_t& frame);
     void _worker();

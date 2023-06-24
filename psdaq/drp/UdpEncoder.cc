@@ -358,7 +358,7 @@ void UdpReceiver::interpolate() {
             m_enc_values[m_num_enc_values%MAX_ENC_VALUES] = (double)newFrame.channel[0].encoderValue;
 
             for (unsigned uu = 0; uu <= Order; uu++) {
-                m_enc_times[(m_num_enc_values - uu) % MAX_ENC_VALUES] = (Order - uu) * TriggerRatio;
+                m_enc_times[(m_num_enc_values - uu) % MAX_ENC_VALUES] = (Order - uu) * Drp::m_slowRatio;
             }
 
             m_num_enc_values++;
@@ -378,15 +378,15 @@ void UdpReceiver::interpolate() {
 
         if (coeff_ready) {
             // interpolate
-            for (uint16_t ii = 1; ii < TriggerRatio; ii++) {
+            for (uint16_t ii = 1; ii < Drp::m_slowRatio; ii++) {
                 // set innercount
                 oldFrame.header.innerCount = ii;
 
                 // set interpolated encoder value
-                double q = (double) ii / (TriggerRatio * Order);
+                double q = (double) ii / (Drp::m_slowRatio * Order);
                 double vfitted = coeff[0];
                 for (unsigned ord = 1; ord <= Order; ord++) {
-                    vfitted += (coeff[ord] * pow(q, ord) * TriggerRatio);
+                    vfitted += (coeff[ord] * pow(q, ord) * Drp::m_slowRatio);
                 }
                 logging::debug("XXI vfitted: %6.3f  (q=%6.3f)", vfitted, q);
                 oldFrame.channel[0].encoderValue = round(vfitted);
@@ -629,7 +629,6 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
     return dgram;
 }
 
-
 UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
@@ -642,6 +641,17 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     m_running       (false),
     m_preInterpolation (true)
 {
+    if (para.kwargs.find("slowRatio") != para.kwargs.end())
+        Drp::m_slowRatio = std::stoul(para.kwargs["slowRatio"]);
+    else
+        Drp::m_slowRatio = 1;    // default: no interpolation
+
+    if (para.kwargs.find("slowGroup") != para.kwargs.end())
+        Drp::m_slowGroup = std::stoul(para.kwargs["slowGroup"]);
+    else
+        Drp::m_slowGroup = 5;    // default: readout group 5
+
+    logging::info("%s: slowRatio = %u  slowGroup = %u", __PRETTY_FUNCTION__, Drp::m_slowRatio, Drp::m_slowGroup);
 }
 
 unsigned UdpEncoder::connect(std::string& msg)
@@ -782,7 +792,6 @@ void UdpEncoder::_worker()
     const uint64_t msTmo = m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end()
                          ? std::stoul(m_para->kwargs["match_tmo_ms"])
                          : 100;
-
     enum TmoState { None, Started, Finished };
     TmoState tmoState(TmoState::None);
     const std::chrono::microseconds tmo(int(1.1 * m_drp.tebPrms().maxEntries * 14/13));
@@ -987,8 +996,8 @@ void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     logging::debug("%s: pgpDg rogs = %04hx", __PRETTY_FUNCTION__,
                    pgpDg.readoutGroups());
 
-    if (m_preInterpolation && (pgpDg.readoutGroups() & (1 << TriggerReadoutGroup))) {
-        logging::info("%s: rogs p5 first MATCH!", __PRETTY_FUNCTION__);
+    if (m_preInterpolation && (pgpDg.readoutGroups() & (1 << Drp::m_slowGroup))) {
+        logging::info("%s: rogs p%u first MATCH!", __PRETTY_FUNCTION__, Drp::m_slowGroup);
         m_preInterpolation = false;
     }
 
@@ -1446,6 +1455,8 @@ int main(int argc, char* argv[])
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
             if (kwargs.first == "match_tmo_ms")   continue;
+            if (kwargs.first == "slowRatio")      continue;
+            if (kwargs.first == "slowGroup")      continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;

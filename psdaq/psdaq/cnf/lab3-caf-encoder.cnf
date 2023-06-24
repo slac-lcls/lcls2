@@ -8,7 +8,7 @@ collect_host = 'drp-tst-acc01'
 
 network = 'ep_fabric="172.21.148.0/22",ep_domain=eno1'
 
-pebbleEncoder = 'pebbleBufCount=524288,pebbleBufSize=4096'
+kwargsEncoder = 'pebbleBufCount=524288,pebbleBufSize=4096,slowRatio=1,slowGroup=5'
 pebbleFakeCam = 'pebbleBufCount=65536,pebbleBufSize=65536'
 
 #
@@ -56,7 +56,7 @@ procmgr_config = [
 #{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -v -a 172.21.148.201 -p 5 -d 5006'}, # 5006 -> interpolate
  { host: 'daq-tst-dev03', id:'sim_udpencoder',            cmd:'sim_udpencoder    -a 172.21.148.201 -p 1 -d 5006'}, # 5006 -> interpolate
  #  ...drp:
- { host: 'drp-tst-acc01', id:'encoder_0', flags:'spux', rtprio:'50', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -P {hutch} -d /dev/datadev_1 -M {prom_dir} -C {collect_host} -k {network},{pebbleEncoder}'},
+ { host: 'drp-tst-acc01', id:'encoder_0', flags:'spux', rtprio:'50', cmd:f'drp_udpencoder    -o /cds/home/c/caf/data -P {hutch} -d /dev/datadev_1 -M {prom_dir} -C {collect_host} -k {network},{kwargsEncoder}'},
  #  ...drp: loopback on port 5007 AND verbose
 #{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P {hutch} -d /dev/datadev_1 -M {prom_dir} -C {collect_host} -k {network}'}
 ]
