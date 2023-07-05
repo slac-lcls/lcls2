@@ -1,4 +1,5 @@
 #include <iostream>
+#include <map>
 #include <sys/stat.h>
 #include "MetricExporter.hh"
 #include "psalg/utils/SysLog.hh"
