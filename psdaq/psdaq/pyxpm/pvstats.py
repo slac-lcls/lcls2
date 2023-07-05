@@ -185,7 +185,7 @@ class TimingStatus(object):
             #  Link was down but now is up
             if v and self._device.RxDown.get():
                 print(f'*** {datetime.now()} {self._name}:RxDown latched and linkUp')
-                self._device.RxDownCTL.put(0)
+                self._device.RxDownCTL.set(0)
                 if self._linkUpdate:
                     self._linkUpdate()
             
