@@ -117,7 +117,6 @@ class ROIBase():
         self.scaleable  = kwa.get('scaleable', False)
         self.rotateable = kwa.get('rotateable', False)
         self.scitem     = None
-        self.aspect_1x1 = False
         self.set_color_pen_brush(**kwa)
         assert isinstance(self.view, QGraphicsView)
         assert isinstance(self.pos, (QPoint, QPointF))
@@ -144,6 +143,9 @@ class ROIBase():
 
     def move_at_add(self, pos):
         logging.warning('ROIBase.move_at_add must be re-implemented in subclasses')
+
+    def click_at_add(self, pos):
+        logging.warning('ROIBase.click_at_add must be re-implemented in SOME of subclasses')
 
 
 def items_at_point(scene, point):
@@ -225,7 +227,6 @@ class ROISquare(ROIRect):
     def __init__(self, **kwa):
         self.roi_type = SQUARE
         ROIRect.__init__(self, **kwa)
-        self.aspect_1x1 = True
 
     def move_at_add(self, pos):
         logger.debug('ROISquare.move_at_add')
@@ -239,20 +240,28 @@ class ROIPolygon(ROIBase):
 
     def add_to_scene(self, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
         """Adds/returns QGraphicsPolygonItem to scene"""
-        if poly is None: poly = QPolygonF((self.pos, self.pos+QPointF(10,0), self.pos+QPointF(0,10)))
+        if poly is None: poly = QPolygonF((self.pos,)) # self.pos+QPointF(10,0), self.pos+QPointF(0,10)))
         self.scitem = QGraphicsPolygonItem(QPolygonF(poly))
         ROIBase.add_to_scene(self, pen, brush)
         #self.scitem = self.scene().addPolygon(QPolygonF(poly), pen, brush)
 
     def move_at_add(self, pos):
         logger.warning('TBD ROIPolygon.move_at_add')
+        poly = self.scitem.polygon()
+        i = poly.size()
+        print('polygon size: %d' % i)
+        if i==1: poly.append(pos)
+        else:    poly.replace(i-1, pos)
+        self.scitem.setPolygon(poly)
+
+#    def click_at_add(self, pos):
+
 
 
 class ROIPolyreg(ROIPolygon):
     def __init__(self, **kwa):
         self.roi_type = POLYREG
         ROIPolygon.__init__(self, **kwa)
-        self.aspect_1x1 = True
 
 
 class ROIEllipse(ROIBase):
@@ -284,7 +293,7 @@ class ROICircle(ROIEllipse):
     def __init__(self, **kwa):
         self.roi_type = CIRCLE
         ROIEllipse.__init__(self, **kwa)
-        self.aspect_1x1 = True
+
 
     def move_at_add(self, pos):
         logger.debug('ROICircle.move_at_add')
