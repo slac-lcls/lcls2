@@ -97,7 +97,6 @@ class GWViewImageROI(GWViewImage):
         self.mode_name = roiu.dict_mode_type_name[mode_type]
 
 
-
     def mousePressEvent(self, e):
         GWViewImage.mousePressEvent(self, e)
 
@@ -108,18 +107,12 @@ class GWViewImageROI(GWViewImage):
             return
 
         scpos = self.mapToScene(e.pos())
-        pos = QPoint(int(scpos.x()), int(scpos.y()))
-        self._pos_old = pos
 
-        logger.debug('XXX GWViewImageROI.mousePressEvent but=%d (1/2/4 = L/R/M) %s scene x=%.1f y=%.1f'%\
-                     (e.button(), str(e.pos()), int(scpos.x()), int(scpos.y())))
+        logger.debug('XXX GWViewImageROI.mousePressEvent but=%d (1/2/4 = L/R/M) scene x=%.1f y=%.1f'%\
+                     (e.button(), int(scpos.x()), int(scpos.y())))
 
         if self.mode_type == roiu.ADD:
-          if self.roi_type == roiu.PIXEL:
-             self.add_roi_pixel(pos)
-          else:
-             self.add_roi(scpos)
-
+          self.add_roi(scpos)
 
 
     def mouseMoveEvent(self, e):
@@ -133,7 +126,6 @@ class GWViewImageROI(GWViewImage):
 
         if pos == self._pos_old: return
         self._pos_old = pos
-
 
         if self.mode_type == roiu.ADD:
           if self.roi_type == roiu.PIXEL: self.add_roi_pixel(pos)
@@ -154,32 +146,41 @@ class GWViewImageROI(GWViewImage):
         o.move_at_add(pos)
 
 
-    def add_roi(self, pos):
+    def add_roi(self, scpos):
         """add ROI on mouthPressEvent"""
 
-        #print('TBD add_roi %s in pos %s' % (self.roi_name, pos))
-        #o = roiu.ROIPixel(view=self)
-        o = roiu.select_roi(self.roi_type, view=self, pos=pos)
+        if self.roi_type == roiu.PIXEL:
+             self.add_roi_pixel(scpos)
+             return
+        self.add_roi_to_scene(scpos)
+
+
+    def add_roi_pixel(self, scpos):
+        """add ROIPixel on mouthPressEvent - special treatment for pixels...On/Off at mouthMoveEvent"""
+        pos = QPoint(int(scpos.x()), int(scpos.y()))
+        self._pos_old = pos
+        for o in self.list_of_rois:
+            if pos == o.pos:
+                self.scene().removeItem(o.scitem)
+                self.list_of_rois.remove(o)
+                return
+        self.add_roi_to_scene(pos)
+
+        ##o = roiu.ROIPixel(view=self)
+        ##o.add_to_scene(pos)
+        #o = roiu.select_roi(self.roi_type, view=self, pos=pos)
+        #o.add_to_scene()
+        #self.list_of_rois.append(o)
+        #self.roi_active = o
+
+
+    def add_roi_to_scene(self, scpos):
+        o = roiu.select_roi(self.roi_type, view=self, pos=scpos)
         if o is None: return
         o.add_to_scene()
         self.list_of_rois.append(o)
         self.roi_active = o
 
-
-
-
-    def add_roi_pixel(self, pos):
-        """add ROIPixel on mouthPressEvent - special treatment for pixels...On/Off at mouthMoveEvent"""
-        for o in self.list_of_rois:
-            if pos == o.pos:
-                self.scene().removeItem(o.scitem)
-                self.list_of_rois.remove(o)
-                is_removed = True
-                return
-        o = roiu.ROIPixel(view=self)
-        o.add_to_scene(pos)
-        self.list_of_rois.append(o)
-        self.roi_active = o
 
 
 
