@@ -43,14 +43,16 @@ class TestGWViewImageROI(GWViewImageROI):
         GWViewImageROI.keyPressEvent(self, e)
 
         key = e.key()
-        ckey = chr(key)
 
-        logger.info('keyPressEvent, key = %s' % ckey)
         if key == Qt.Key_Escape:
             logger.info('Close app')
             self.close()
+            return
 
-        elif key == Qt.Key_R:
+        ckey = chr(key)
+        logger.info('keyPressEvent, key = %s' % ckey)
+
+        if key == Qt.Key_R:
             logger.info('Reset original size')
             self.reset_scene_rect()
 
