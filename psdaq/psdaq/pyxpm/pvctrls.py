@@ -552,8 +552,11 @@ class PVCtrls(object):
                                       handler=DefaultPVHandler())
         provider.add(name+':SeqDone',self._pv_seqDone)
 
-        self._usLinkUp = usTiming._linkUpdate
-        usTiming._linkUpdate = self.usLinkUp
+        if usTiming:
+            self._usLinkUp = usTiming._linkUpdate
+            usTiming._linkUpdate = self.usLinkUp
+        else:
+            self._usLinkUp = None
 
         if notify:
             self._thread = threading.Thread(target=self.notify)
