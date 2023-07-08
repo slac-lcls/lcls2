@@ -16,7 +16,7 @@ class TestGWViewImageROI(GWViewImageROI):
 
     def KEY_USAGE(self): return 'Keys:'\
                '\n  ESC - exit'\
-               '\n  R - reset original size'\
+               '\n  O - reset original size'\
                '\n  N - set new pixmap'\
                '\n  W - set new pixmap of random shape, do not change default scene rect'\
                '\n  H - set new pixmap of random shape and change default scene rect'\
@@ -52,7 +52,7 @@ class TestGWViewImageROI(GWViewImageROI):
         ckey = chr(key)
         logger.info('keyPressEvent, key = %s' % ckey)
 
-        if key == Qt.Key_R:
+        if key == Qt.Key_O:
             logger.info('Reset original size')
             self.reset_scene_rect()
 
