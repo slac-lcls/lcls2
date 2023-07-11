@@ -395,6 +395,7 @@ void PGPDetectorApp::unconfigure()
     m_drp.pool.shutdown();              // Release Tr buffer pool
     if (m_pgpDetector) {
         m_pgpDetector->shutdown();
+        if (m_exporter)  m_exporter.reset();
         if (m_pgpThread.joinable()) {
             m_pgpThread.join();
             logging::info("PGPReader thread finished");
@@ -403,7 +404,6 @@ void PGPDetectorApp::unconfigure()
             m_collectorThread.join();
             logging::info("Collector thread finished");
         }
-        m_exporter.reset();
         m_pgpDetector.reset();
     }
     m_drp.unconfigure();
