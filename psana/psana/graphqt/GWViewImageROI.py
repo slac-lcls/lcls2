@@ -116,26 +116,34 @@ class GWViewImageROI(GWViewImage):
 
         if self.mode_type & roiu.ADD:
             self.clicknum += 1
+            scpos = self.mapToScene(e.pos())
 
             if self.roi_active is None: #  1st click
                 self.add_roi(e)
-                self.scpos_first = self.mapToScene(e.pos())
+                self.scpos_first = scpos
 
             else: # other clicks
-                #if self.roi_type == roiu.PIXEL:
                 if self.roi_type == roiu.POLYGON:
-                    scpos = self.mapToScene(e.pos())
                     #poly = self.roi_active.scitem.polygon()
                     #d = (scpos - poly.first()).manhattanLength()
+                    #if poly.size() < 2 or d > self.roi_active.tolerance:
                     d = (scpos - self.scpos_first).manhattanLength()
                     logging.info('POLYGON manhattanLength(last-first): %.1f closeng distance: %.1f'%\
                             (d, self.roi_active.tolerance))
-                    #if poly.size() < 2 or d > self.roi_active.tolerance:
                     if self.clicknum < 2 or d > self.roi_active.tolerance:
                         self.roi_active.click_at_add(scpos)
                     else:
                         self.roi_active.set_poly() # set poly at lasty non-closing click
                         self.roi_active = None
+
+                elif self.roi_type == roiu.POLYREG:
+                    if self.clicknum == 2:
+                        self.roi_active.set_radius_and_angle(scpos)
+                    elif self.clicknum > 2:
+                        self.roi_active.set_nverts(scpos)
+                        self.roi_active = None
+                        self.clicknum = 0
+
                 else:
                     self.roi_active = None
 
@@ -175,6 +183,9 @@ class GWViewImageROI(GWViewImage):
             and self.roi_active is not None:
                 return
 
+            elif self.roi_type == roiu.POLYREG:
+                return
+
             elif self.roi_type == roiu.PIXEL:
                 self.roi_active = None
                 self.clicknum = 0
@@ -185,7 +196,7 @@ class GWViewImageROI(GWViewImage):
 
             else:
                 d = (self.mapToScene(e.pos()) - self.scpos_first).manhattanLength()
-                if d > self.roi_active.tolerance: # count as click-drag-release input
+                if self.roi_active and d > self.roi_active.tolerance: # count as click-drag-release input
                     self.roi_active = None
                     self.clicknum = 0
 
