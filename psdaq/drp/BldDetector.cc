@@ -554,6 +554,9 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
             m_nDmaRet = m_available;
             if (m_available > 0)  break;
 
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
+
             //  Timing data should arrive long before BLD - no need to wait
             //            return nullptr;
 
@@ -594,9 +597,6 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
             m_tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
         } else {
             if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - m_tInitial > TMO_US) {
-                // if (m_tmoState != TmoState::Finished) {
-                //     m_drp.tebContributor().timeout();
-                // }
                 m_tmoState = TmoState::Finished;
             }
         }
@@ -891,11 +891,12 @@ void BldApp::_unconfigure()
     m_drp.pool.shutdown();  // Release Tr buffer pool
     m_drp.unconfigure();    // TebContributor must be shut down before the worker
     if (m_pgp) {
+        if (m_exporter)  m_exporter.reset();
         m_pgp->shutdown();
-         if (m_workerThread.joinable()) {
-             m_workerThread.join();
-         }
-         m_pgp.reset();
+        if (m_workerThread.joinable()) {
+            m_workerThread.join();
+        }
+        m_pgp.reset();
     }
     m_unconfigure = false;
 }
@@ -1011,7 +1012,6 @@ void BldApp::handlePhase1(const json& msg)
 
         m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
 
-        if (m_exporter)  m_exporter.reset();
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);

@@ -340,7 +340,6 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
-    if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -406,6 +405,8 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 
 unsigned PvaDetector::unconfigure()
 {
+    if (m_exporter)  m_exporter.reset();
+
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
@@ -528,11 +529,6 @@ void PvaDetector::_worker()
                             std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
                             1500) * 1000000;
 
-    enum TmoState { None, Started, Finished };
-    TmoState tmoState(TmoState::None);
-    const std::chrono::microseconds tmo(int(1.1 * m_drp.tebPrms().maxEntries * 14/13));
-    auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -540,7 +536,6 @@ void PvaDetector::_worker()
 
         uint32_t index;
         if (pgp.next(index)) {
-            tmoState = TmoState::None;
             m_nEvents++;
 
             m_evtQueue.push(index);
@@ -552,22 +547,13 @@ void PvaDetector::_worker()
             // up with any PV updates that may have arrived
             _matchUp();
 
-            // Generate a timestamp in the past
+            // Generate a timestamp in the past for timing out PVs and PGP events
             XtcData::TimeStamp timestamp(0, nsTmo);
             auto ns = _deltaT<ns_t>(timestamp);
             _timeout(timestamp.from_ns(ns));
 
-            if (tmoState == TmoState::None) {
-                tmoState = TmoState::Started;
-                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-            } else {
-                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-                  //if (tmoState != TmoState::Finished) {
-                        m_drp.tebContributor().timeout();
-                  //      tmoState = TmoState::Finished;
-                  //}
-                }
-            }
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
         }
     }
 
@@ -731,7 +717,7 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
     // Time out older PV updates
     XtcData::Dgram* pvDg;
     if (m_pvQueue.peek(pvDg)) {
-      if (!(pvDg->time > timestamp)) {   // pvDg is newer than the timeout timestamp
+        if (!(pvDg->time > timestamp)) { // pvDg is newer than the timeout timestamp
             m_pvQueue.try_pop(pvDg);     // Actually consume the element
             m_bufferFreelist.push(pvDg); // Return buffer to freelist
         }

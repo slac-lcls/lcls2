@@ -153,7 +153,6 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
-    if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -183,6 +182,8 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 
 unsigned EaDetector::unconfigure()
 {
+    if (m_exporter)  m_exporter.reset();
+
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
@@ -246,11 +247,6 @@ void EaDetector::_worker()
 
     m_terminate.store(false, std::memory_order_release);
 
-    enum TmoState { None, Started, Finished };
-    TmoState tmoState(TmoState::None);
-    const std::chrono::microseconds tmo(int(1.1 * m_drp.tebPrms().maxEntries * 14/13));
-    auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -259,7 +255,6 @@ void EaDetector::_worker()
         uint32_t index;
         Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
-            tmoState = TmoState::None;
             m_nEvents++;
 
             XtcData::TransitionId::Value service = dgram->service();
@@ -298,17 +293,8 @@ void EaDetector::_worker()
             _sendToTeb(*dgram, index);
         }
         else {
-            if (tmoState == TmoState::None) {
-                tmoState = TmoState::Started;
-                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-            } else {
-                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-                    if (tmoState != TmoState::Finished) {
-                        m_drp.tebContributor().timeout();
-                        tmoState = TmoState::Finished;
-                    }
-                }
-            }
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
         }
     }
 

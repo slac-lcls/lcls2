@@ -67,6 +67,8 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   exporter->add("TCtbO_InFlt", labels, MetricType::Gauge,   [&](){ _pendingSize = _pending.guess_size();
                                                                    return _pendingSize; });
   exporter->add("TCtbO_Lat",   labels, MetricType::Gauge,   [&](){ return _latency;             });
+  exporter->add("TCtbO_BtAge", labels, MetricType::Gauge,   [&](){ return _age;                 });
+  exporter->add("TCtbO_BtEnt", labels, MetricType::Gauge,   [&](){ return _entries;             });
 }
 
 TebContributor::~TebContributor()
@@ -180,6 +182,15 @@ int TebContributor::configure()
   return 0;
 }
 
+Batch::Batch(const Pds::EbDgram* dgram, bool contractor_) :
+  entries   (0),
+  tStart    (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)),
+  start     (dgram),
+  end       (dgram),
+  contractor(contractor_)
+{
+}
+
 void TebContributor::_flush()
 {
   if (_batch.start)
@@ -190,9 +201,14 @@ void TebContributor::_flush()
 }
 
 // NB: timeout() must not be called concurrently with process()
-void TebContributor::timeout()
+bool TebContributor::timeout()
 {
+  auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+
+  if (now - _batch.tStart < BATCH_TIMEOUT)  return false;
+
   _flush();
+  return true;
 }
 
 // NB: process() must not be called concurrently with timeout()
@@ -225,6 +241,7 @@ void TebContributor::process(const EbDgram* dgram)
     {
       _batch.end         = dgram;       // Append dgram to batch
       _batch.contractor |= contractor;
+      _batch.entries++;
     }
     else
     {
@@ -242,6 +259,7 @@ void TebContributor::process(const EbDgram* dgram)
       {
         _batch.end         = dgram;     // Append dgram to batch
         _batch.contractor |= contractor;
+        _batch.entries++;
 
         _post(_batch);
 
@@ -275,6 +293,11 @@ void TebContributor::process(const EbDgram* dgram)
 
 void TebContributor::_post(const Batch& batch)
 {
+  using ns_t = std::chrono::nanoseconds;
+  auto age   = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - batch.tStart;
+  _age       = std::chrono::duration_cast<ns_t>(age).count();
+  _entries   = batch.entries;
+
   batch.end->setEOL();        // Avoid race: terminate before adding batch to pending list
   _pending.push(batch.start); // Get the batch on the queue before any corresponding result can show up
   if (!(size_t(_pending.guess_size()) < _pending.size()))

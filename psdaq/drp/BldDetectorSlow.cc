@@ -823,6 +823,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                         }
                     }
                 }
+                // Time out batches for the TEB
+                m_drp.tebContributor().timeout();
             }
         }
     }
@@ -898,6 +900,7 @@ void BldApp::_unconfigure()
     m_drp.pool.shutdown();  // Release Tr buffer pool
     m_drp.unconfigure();    // TebContributor must be shut down before the worker
     if (m_pgp) {
+        if (m_exporter)  m_exporter.reset();
         m_pgp->shutdown();
          if (m_workerThread.joinable()) {
              m_workerThread.join();
@@ -1018,7 +1021,6 @@ void BldApp::handlePhase1(const json& msg)
 
         m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
 
-        if (m_exporter)  m_exporter.reset();
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);

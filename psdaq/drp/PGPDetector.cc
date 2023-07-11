@@ -214,7 +214,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 // make new dgram in the pebble
                 // It must be an EbDgram in order to be able to send it to the MEB
 
-              
+
                 Pds::EbDgram* dgram = new(pool.pebble[pebbleIndex]) Pds::EbDgram(*timingHeader, src, para.rogMask);
                 logging::debug("[Thread %u] PGPDetector saw %s @ %u.%09u (%014lx)",
                                threadNum,
@@ -419,18 +419,13 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
             } else {
                 if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+                    // Time out partial DRP batches
                     if (m_batch.size != 0) {
                         m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                         worker++;
                         m_batch.start += m_batch.size;
                         m_batch.size = 0;
                         batchId += m_para.batchSize;
-                    } else {
-                        if (tmoState != TmoState::Finished) {
-                            m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
-                            worker++;
-                            tmoState = TmoState::Finished;
-                        }
                     }
                 }
             }
@@ -523,10 +518,8 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
     int64_t worker = 0L;
     Batch batch;
     const unsigned bufferMask = m_pool.nDmaBuffers() - 1;
-    while (true) {
-        if (!m_workerOutputQueues[worker % m_para.nworkers].pop(batch)) {
-            break;
-        }
+    bool rc = m_workerOutputQueues[worker % m_para.nworkers].pop(batch);
+    while (rc) {
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) & bufferMask;
             PGPEvent* event = &m_pool.pgpEvents[index];
@@ -536,10 +529,15 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
             freeDma(event);
             tebContributor.process(pebbleIndex);
         }
-        if (batch.size == 0) {
-            tebContributor.timeout();
-        }
         worker++;
+
+        // Time out batches for the TEB
+        while (!m_workerOutputQueues[worker % m_para.nworkers].try_pop(batch)) { // Poll
+            if (tebContributor.timeout()) {                                      // After batch is timed out
+                rc = m_workerOutputQueues[worker % m_para.nworkers].popW(batch); // pend
+                break;
+            }
+        }
     }
     logging::info("PGPCollector is exiting");
 }

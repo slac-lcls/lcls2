@@ -608,7 +608,6 @@ unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xt
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
-    if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -635,6 +634,8 @@ unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xt
 
 unsigned UdpEncoder::unconfigure()
 {
+    if (m_exporter)  m_exporter.reset();
+
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
@@ -706,11 +707,6 @@ void UdpEncoder::_worker()
                          ? std::stoul(m_para->kwargs["match_tmo_ms"])
                          : 100;
 
-    enum TmoState { None, Started, Finished };
-    TmoState tmoState(TmoState::None);
-    const std::chrono::microseconds tmo(int(1.1 * m_drp.tebPrms().maxEntries * 14/13));
-    auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-
     m_udpReceiver->start();
 
     while (true) {
@@ -721,7 +717,6 @@ void UdpEncoder::_worker()
         uint32_t index;
         Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
-            tmoState = TmoState::None;
             m_nEvents++;
             logging::debug("Worker thread: m_nEvents = %d", m_nEvents);
 
@@ -777,17 +772,8 @@ void UdpEncoder::_worker()
             }
         }
         else {
-            if (tmoState == TmoState::None) {
-                tmoState = TmoState::Started;
-                tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-            } else {
-                if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-                    if (tmoState != TmoState::Finished) {
-                        m_drp.tebContributor().timeout();
-                        tmoState = TmoState::Finished;
-                    }
-                }
-            }
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
         }
     }
 
