@@ -244,7 +244,6 @@ class ROIPolygon(ROIBase):
         self.roi_type = POLYGON
         ROIBase.__init__(self, **kwa)
 
-
     def add_to_scene(self, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
         """Adds/returns QGraphicsPolygonItem to scene"""
         if poly is None: poly = QPolygonF((self.pos,)) # self.pos+QPointF(10,0), self.pos+QPointF(0,10)))
@@ -277,10 +276,49 @@ class ROIPolygon(ROIBase):
         self.scitem.setPolygon(self.poly_selected if poly==None else poly)
 
 
-class ROIPolyreg(ROIPolygon):
+class ROIPolyreg(ROIBase): #ROIPolygon):
     def __init__(self, **kwa):
         self.roi_type = POLYREG
         ROIPolygon.__init__(self, **kwa)
+        self.scpos_rad = None
+        self.radius = None
+        self.angle = None
+        self.nverts = 3
+
+    def add_to_scene(self, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
+        """Adds/returns QGraphicsPolygonItem to scene"""
+        t = self.tolerance
+        poly = QPolygonF(regular_polygon(self.pos, rx=t, ry=t, npoints=self.nverts)) # astart=0, aspan=360
+        self.scitem = QGraphicsPolygonItem(poly)
+        ROIBase.add_to_scene(self, pen, brush)
+
+    def polyreg_dxy(self, pos):
+        d = pos - self.pos
+        x, y = d.x(), d.y()
+        return d, x, y
+
+    def move_at_add(self, scpos):
+        logger.debug('ROILine.move_at_add')
+        d, x, y = self.polyreg_dxy(scpos)
+        angle = math.degrees(math.atan2(y, x)) if self.angle is None else self.angle
+        r = math.sqrt(x*x + y*y) if self.radius is None else self.radius
+        if self.scpos_rad is not None:
+            d = (scpos-self.scpos_rad).manhattanLength()
+            self.nverts = 3 + int(16*d/self.radius)
+        poly = QPolygonF(regular_polygon(self.pos, rx=r, ry=r, npoints=self.nverts, astart=angle)) # aspan=360
+        self.scitem.setPolygon(poly)
+
+    def set_radius_and_angle(self, scpos):
+        self.scpos_rad = scpos
+        d, x, y = self.polyreg_dxy(scpos)
+        self.radius = math.sqrt(x*x + y*y)
+        self.angle = math.degrees(math.atan2(y, x))
+
+    def set_nverts(self, scpos):
+        pass
+        #d = (scpos-self.scpos_rad).manhattanLength()
+        #self.nverts = 7
+        #self.move_at_add(scpos)
 
 
 class ROIEllipse(ROIBase):
@@ -294,19 +332,25 @@ class ROIEllipse(ROIBase):
         """Adds/returns QGraphicsEllipseItem to scene."""
         if rect is None:
             t = self.tolerance
-            rect = QRectF(self.pos, QSizeF(t,t))
+            rect = QRectF(self.pos-QPointF(t/2,t/2), QSizeF(t,t))
+            rect.moveCenter(self.pos)
         item = self.scitem = QGraphicsEllipseItem(QRectF(rect))
         item.setStartAngle(start_angle*16)
         item.setSpanAngle(span_angle*16)
-        item.setTransformOriginPoint(item.rect().center())
+        item.setTransformOriginPoint(self.pos) # item.rect().center())
         item.setRotation(angle_deg)
         ROIBase.add_to_scene(self, pen, brush)
         #self.scitem = self.scene().addEllipse(QRectF(rect), pen, brush)
 
     def move_at_add(self, pos):
         logger.debug('ROIEllipse.move_at_add')
-        rect = self.scitem.rect()
-        rect.setBottomRight(pos)
+        center = self.pos
+        dp = pos-center # rect.center()
+        #rect = self.scitem.rect()
+        #rect.setSize(QSizeF(2*dp.x(), 2*dp.y()))
+        #rect.setBottomRight(pos)
+        #rect.setTopLeft(pos-2*dp)
+        rect = QRectF(center-dp, center+dp)
         self.scitem.setRect(rect)
 
 
@@ -314,7 +358,6 @@ class ROICircle(ROIEllipse):
     def __init__(self, **kwa):
         self.roi_type = CIRCLE
         ROIEllipse.__init__(self, **kwa)
-
 
     def move_at_add(self, pos):
         logger.debug('ROICircle.move_at_add')
@@ -356,9 +399,9 @@ def select_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
     return o
 
 
-def circle_pointe(p, rx=5, ry=5, npoints=8, astart=0, aspan=360):
+def regular_polygon(p, rx=5, ry=5, npoints=8, astart=0, aspan=360):
     start, span = math.radians(astart), math.radians(aspan)
-    angs = np.linspace(start, start+span, num=npoints, endpoint=True)
+    angs = np.linspace(start, start+span, num=npoints, endpoint=False)
     return [QPointF(p.x()+rx*c, p.y()+ry*s)\
             for s,c in zip(tuple(np.sin(angs)), tuple(np.cos(angs)))]
 
@@ -460,7 +503,7 @@ class HandleRotate(HandleBase):
         dx, dy = size_points_on_scene(view, rsize)
         path = QPainterPath() #Circle/Ellipse - shape
         #path.addEllipse(p, dx.x(), dx.x())
-        path.addPolygon(QPolygonF(circle_pointe(p, rx=dx.x(), ry=dx.x(), npoints=16))) # astart=0, aspan=360
+        path.addPolygon(QPolygonF(regular_polygon(p, rx=dx.x(), ry=dx.x(), npoints=16))) # astart=0, aspan=360
         path.closeSubpath()
         return path
 
