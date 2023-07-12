@@ -18,6 +18,12 @@ class SeqUser:
         self.seqr     = Pv(prefix+':RMVSEQ')
         self.insert   = Pv(prefix+':INS')
         self.idxrun   = Pv(prefix+':RUNIDX')
+        #  SCHEDRESET values are:
+        #  0 = no reset
+        #  1 = schedule reset once
+        #  2 = don't schedule reset, but queue to reset on next linkUp
+        #  3 = schedule reset once, and queue to reset on next linkUp
+        #  4 = dont schedule reset, but next force reset also queues reset on linkUp
         self.start    = Pv(prefix+':SCHEDRESET')
         self.reset    = Pv(prefix+':FORCERESET')
         self.running  = Pv(prefix+':RUNNING', self.changed)
