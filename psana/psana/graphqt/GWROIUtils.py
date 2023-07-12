@@ -68,14 +68,16 @@ UNVISIBLE = 1
 VISIBLE   = 2
 ADD       = 4
 REMOVE    = 8
-EDIT      = 16
-TERMINATE = 32
+SELECT    = 16
+EDIT      = 32
+TERMINATE = 64
 mode_tuple = (
   (NONE,      'NONE',      'X'),
   (UNVISIBLE, 'UNVISIBLE', 'U'),
   (VISIBLE,   'VISIBLE',   'V'),
   (ADD,       'ADD',       'A'),
   (REMOVE,    'REMOVE',    'R'),
+  (SELECT,    'SELECT',    'S'),
   (EDIT,      'EDIT',      'E'),
   (TERMINATE, 'TERMINATE', 'T'),
 )
@@ -104,6 +106,27 @@ handle_tuple = (
 handle_types = [t for t,n in handle_tuple]
 handle_names = [n for t,n in handle_tuple]
 dict_handle_type_name = {t:n for t,n in handle_tuple}
+
+
+def regular_polygon(p, rx=5, ry=5, npoints=8, astart=0, aspan=360, endpoint=False):
+    start, span = math.radians(astart), math.radians(aspan)
+    angs = np.linspace(start, start+span, num=npoints, endpoint=endpoint)
+    return [QPointF(p.x()+rx*c, p.y()+ry*s)\
+            for s,c in zip(tuple(np.sin(angs)), tuple(np.cos(angs)))]
+
+
+def size_points_on_scene(view, rsize):
+    t = view.transform()
+    rx, ry = rsize/t.m11(), rsize/t.m22()
+    return QPointF(rx,0), QPointF(0,ry)
+
+
+def items_at_point(scene, point):
+    items = scene.items(point)
+    logging.debug('sc.itemsAt(%s): %s' % (str(point), str(items)))
+    return items
+
+
 
 
 class ROIBase():
@@ -151,12 +174,6 @@ class ROIBase():
         logging.warning('ROIBase.click_at_add must be re-implemented in SOME of subclasses')
 
 
-def items_at_point(scene, point):
-    items = scene.items(point)
-    logging.debug('sc.itemsAt(%s): %s' % (str(point), str(items)))
-    return items
-
-
 class ROIPixel(ROIBase):
     def __init__(self, **kwa):
         self.roi_type = PIXEL
@@ -183,7 +200,7 @@ class ROILine(ROIBase):
         ROIBase.__init__(self, **kwa)
 
     def add_to_scene(self, line=None, pen=None):
-        """Adds/returns QGraphicsLineItem to scene"""
+        """Adds QGraphicsLineItem to scene"""
         if line is None:
             t = self.tolerance
             line = QLineF(self.pos, self.pos+QPointF(t,t))
@@ -204,7 +221,7 @@ class ROIRect(ROIBase):
         ROIBase.__init__(self, **kwa)
 
     def add_to_scene(self, rect=None, pen=None, brush=None, angle_deg=0):
-        """Adds/returns QGraphicsRectItem to scene"""
+        """Adds QGraphicsRectItem to scene"""
         if rect is None:
             t = self.tolerance
             rect = QRectF(self.pos, QSizeF(t,t))
@@ -245,7 +262,7 @@ class ROIPolygon(ROIBase):
         ROIBase.__init__(self, **kwa)
 
     def add_to_scene(self, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
-        """Adds/returns QGraphicsPolygonItem to scene"""
+        """Adds QGraphicsPolygonItem to scene"""
         if poly is None: poly = QPolygonF((self.pos,)) # self.pos+QPointF(10,0), self.pos+QPointF(0,10)))
         self.scitem = QGraphicsPolygonItem(QPolygonF(poly))
         ROIBase.add_to_scene(self, pen, brush)
@@ -286,7 +303,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         self.nverts = 3
 
     def add_to_scene(self, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
-        """Adds/returns QGraphicsPolygonItem to scene"""
+        """Adds QGraphicsPolygonItem to scene"""
         t = self.tolerance
         poly = QPolygonF(regular_polygon(self.pos, rx=t, ry=t, npoints=self.nverts)) # astart=0, aspan=360
         self.scitem = QGraphicsPolygonItem(poly)
@@ -315,10 +332,13 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         self.angle = math.degrees(math.atan2(y, x))
 
     def set_nverts(self, scpos):
+        """self.nverts already set in move_at_add"""
         pass
-        #d = (scpos-self.scpos_rad).manhattanLength()
-        #self.nverts = 7
-        #self.move_at_add(scpos)
+
+    def set_point(self, p, clicknum):
+        self.clicknum = clicknum
+        if   clicknum == 2: self.set_radius_and_angle(p)
+        elif clicknum == 3: self.set_nverts(p)
 
 
 class ROIEllipse(ROIBase):
@@ -329,7 +349,7 @@ class ROIEllipse(ROIBase):
 
     def add_to_scene(self, rect=None, pen=QPEN_DEF, brush=QBRUSH_DEF,\
                      angle_deg=0, start_angle=0, span_angle=360):
-        """Adds/returns QGraphicsEllipseItem to scene."""
+        """Adds QGraphicsEllipseItem to scene."""
         if rect is None:
             t = self.tolerance
             rect = QRectF(self.pos-QPointF(t/2,t/2), QSizeF(t,t))
@@ -344,14 +364,10 @@ class ROIEllipse(ROIBase):
 
     def move_at_add(self, pos):
         logger.debug('ROIEllipse.move_at_add')
-        center = self.pos
-        dp = pos-center # rect.center()
+        c = self.pos
         #rect = self.scitem.rect()
-        #rect.setSize(QSizeF(2*dp.x(), 2*dp.y()))
-        #rect.setBottomRight(pos)
-        #rect.setTopLeft(pos-2*dp)
-        rect = QRectF(center-dp, center+dp)
-        self.scitem.setRect(rect)
+        dp = pos-c # rect.center()
+        self.scitem.setRect(QRectF(c-dp, c+dp))
 
 
 class ROICircle(ROIEllipse):
@@ -359,23 +375,79 @@ class ROICircle(ROIEllipse):
         self.roi_type = CIRCLE
         ROIEllipse.__init__(self, **kwa)
 
+
     def move_at_add(self, pos):
-        logger.debug('ROICircle.move_at_add')
-        self.scitem.setRect(rect_to_square(self.scitem.rect(), pos))
+        logger.debug('ROIEllipse.move_at_add')
+        c = self.pos # center
+        d = pos-c
+        d = max(d.x(), d.y())
+        dp = QPointF(d,d)
+        self.scitem.setRect(QRectF(c-dp, c+dp))
 
 
 class ROIArch(ROIBase):
     def __init__(self, **kwa):
         self.roi_type = ARCH
         ROIBase.__init__(self, **kwa)
+        self.npoints  = kwa.get('npoints', 32)
 
     def add_to_scene(self, rect=None, pen=QPEN_DEF, brush=QBRUSH_DEF,\
                      angle_deg=0, start_angle=0, span_angle=360):
-        """Adds/returns QGraphicsEllipseItem to scene."""
-        if rect is None:
-            t = self.tolerance
-            rect = QRectF(self.pos, QSizeF(t,t))
-        print('WARNING TBD ROIArch')
+        """Adds QGraphicsPathItem to scene."""
+        logger.info('ROIArch.add_to_scene on 1-st click center: %s' % str(self.pos))
+        self.clicknum = 1
+        t = self.tolerance
+        self.set_p1(self.pos + QPointF(t, t))
+        self.set_p2(self.pos + QPointF(t, 0))
+        self.scitem = QGraphicsPathItem(self.path())
+        print('TBD ROIArch')
+        ROIBase.add_to_scene(self, pen, brush)
+
+    def point_vraxy(self, p):
+        v = p - self.pos # defines v relative center
+        x, y = v.x(), v.y()
+        r = math.sqrt(x*x + y*y)
+        a = math.degrees(math.atan2(y, x))
+        return v, r, a, x, y
+
+    def set_point(self, p, clicknum):
+        self.clicknum = clicknum
+        if   clicknum == 2: self.set_p1(p)
+        elif clicknum == 3: self.set_p2(p)
+
+    def set_p1(self, p):
+        self.v1, self.r1, self.a1, self.x1, self.y1 = self.point_vraxy(p)
+
+    def set_p2(self, p):
+        self.v2, self.r2, self.a2, self.x2, self.y2 = self.point_vraxy(p)
+
+    def path(self):
+        """Returns QPainterPath for ROIArch in scene coordinates around self.pos"""
+        p0, r1, r2, a1, a2 = self.pos, self.r1, self.r2, self.a1, self.a2
+        x1, x2, y1, y2 = self.x1, self.x2, self.y1, self.y2
+        span = math.degrees(math.atan2(x1*y2 - y1*x2, x1*x2 + y1*y2))
+        if span<0: span += 360
+        print('XXX  span', span)
+        path = QPainterPath()
+        nverts = int(self.npoints * (abs(span)//90+1))
+        regpoly1 = regular_polygon(p0, rx=r1, ry=r1, npoints=nverts, astart=a1, aspan=span, endpoint=True)
+        regpoly2 = regular_polygon(p0, rx=r2, ry=r2, npoints=nverts, astart=a1, aspan=span, endpoint=True)
+        path.addPolygon(QPolygonF(regpoly1))
+        path.moveTo(regpoly1[-1])
+        path.lineTo(regpoly2[-1])
+        path.moveTo(regpoly2[0])
+        path.addPolygon(QPolygonF(regpoly2))
+        path.moveTo(regpoly2[0])
+        path.lineTo(regpoly1[0])
+        #path.closeSubpath()
+        return path
+
+    def move_at_add(self, p):
+        logger.debug('ROIArch.move_at_add')
+        if (p-self.pos).manhattanLength() < self.tolerance: return
+        if   self.clicknum == 1: self.set_p1(p)
+        elif self.clicknum == 2: self.set_p2(p)
+        self.scitem.setPath(self.path())
 
 
 def select_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
@@ -399,18 +471,6 @@ def select_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
     return o
 
 
-def regular_polygon(p, rx=5, ry=5, npoints=8, astart=0, aspan=360):
-    start, span = math.radians(astart), math.radians(aspan)
-    angs = np.linspace(start, start+span, num=npoints, endpoint=False)
-    return [QPointF(p.x()+rx*c, p.y()+ry*s)\
-            for s,c in zip(tuple(np.sin(angs)), tuple(np.cos(angs)))]
-
-
-def size_points_on_scene(view, rsize):
-    t = view.transform()
-    rx, ry = rsize/t.m11(), rsize/t.m22()
-    return QPointF(rx,0), QPointF(0,ry)
-
 
 class HandleBase(QGraphicsPathItem):
     """See: DragPoint.py"""
@@ -428,7 +488,7 @@ class HandleBase(QGraphicsPathItem):
         return QGraphicsPathItem.path(self)
 
     def add_to_scene(self, pen=QPEN_DEF, brush=QBRUSH_DEF):
-        """Adds/returns QGraphicsPathItem to scene"""
+        """Adds QGraphicsPathItem to scene"""
         #self.scitem = QGraphicsPathItem(path)
         ROIBase.add_to_scene(self, pen, brush)
 
