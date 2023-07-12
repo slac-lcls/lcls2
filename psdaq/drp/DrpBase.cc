@@ -1298,7 +1298,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     // reach the higher buffer numbers.  Can't use an index based on the largest
     // non-common RoG DRP because it would overrun the common RoG DRPs' region.
     if ((maxBuffers > m_numTebBuffers) && bufErr) {
-        logging::error("Pebble buffer count (%u) must be <= %u\n",
+        logging::error("Pebble buffer count (%u) must be <= the common RoG's (%u)\n",
                        pool.nbuffers(), m_numTebBuffers);
         rc = 1;
     }
