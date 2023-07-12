@@ -111,6 +111,9 @@ class GWViewImageROI(GWViewImage):
         logger.debug('XXX GWViewImageROI.mousePressEvent but=%d (1/2/4 = L/R/M) screen x=%.1f y=%.1f'%\
                      (e.button(), e.pos().x(), e.pos().y()))
 
+        if self.mode_type & roiu.SELECT:
+            self.select_roi(e)
+
         if self.mode_type & roiu.REMOVE:
             self.remove_roi(e)
 
@@ -124,26 +127,20 @@ class GWViewImageROI(GWViewImage):
 
             else: # other clicks
                 if self.roi_type == roiu.POLYGON:
-                    #poly = self.roi_active.scitem.polygon()
-                    #d = (scpos - poly.first()).manhattanLength()
-                    #if poly.size() < 2 or d > self.roi_active.tolerance:
                     d = (scpos - self.scpos_first).manhattanLength()
                     logging.info('POLYGON manhattanLength(last-first): %.1f closeng distance: %.1f'%\
                             (d, self.roi_active.tolerance))
                     if self.clicknum < 2 or d > self.roi_active.tolerance:
                         self.roi_active.click_at_add(scpos)
                     else:
-                        self.roi_active.set_poly() # set poly at lasty non-closing click
+                        self.roi_active.set_poly() # set poly at last non-closing click
                         self.roi_active = None
 
-                elif self.roi_type == roiu.POLYREG:
-                    if self.clicknum == 2:
-                        self.roi_active.set_radius_and_angle(scpos)
-                    elif self.clicknum > 2:
-                        self.roi_active.set_nverts(scpos)
+                elif self.roi_type in (roiu.POLYREG, roiu.ARCH): # 3-click input
+                    self.roi_active.set_point(scpos, self.clicknum)
+                    if self.clicknum > 2:
                         self.roi_active = None
                         self.clicknum = 0
-
                 else:
                     self.roi_active = None
 
@@ -190,6 +187,9 @@ class GWViewImageROI(GWViewImage):
                 self.roi_active = None
                 self.clicknum = 0
 
+            elif self.roi_type == roiu.ARCH:
+                return
+
             elif self.clicknum > 1: # number of clicks > 1
                 self.roi_active = None
                 self.clicknum = 0
@@ -200,6 +200,14 @@ class GWViewImageROI(GWViewImage):
                     self.roi_active = None
                     self.clicknum = 0
 
+    def select_roi(self, e):
+        """select ROI on mouthPressEvent"""
+        logger.warning('TBD - GWViewImageROI.select_roi')
+        p = self.mapToScene(e.pos())
+        items = self.scene().items(p)
+        print('XXX select_roi item', items)
+        #if items is None: return
+        #self.scene().setFocusItem(item)
 
 
     def remove_roi(self, e):
@@ -209,6 +217,16 @@ class GWViewImageROI(GWViewImage):
             self.remove_roi_pixel(e)
         else:
             logger.warning('TBD - GWViewImageROI.remove_roi for non-PIXEL types')
+
+
+    def remove_roi_pixel(self, e):
+        scpos = self.mapToScene(e.pos())
+        iscpos = QPoint(int(scpos.x()), int(scpos.y()))
+        self._iscpos_old = iscpos
+        for o in self.list_of_rois:
+            if iscpos == o.pos:
+                self.scene().removeItem(o.scitem)
+                self.list_of_rois.remove(o)
 
 
     def add_roi(self, e):
@@ -221,16 +239,6 @@ class GWViewImageROI(GWViewImage):
              self.add_roi_pixel(scpos)
         else:
              self.add_roi_to_scene(scpos)
-
-
-    def remove_roi_pixel(self, e):
-        scpos = self.mapToScene(e.pos())
-        iscpos = QPoint(int(scpos.x()), int(scpos.y()))
-        self._iscpos_old = iscpos
-        for o in self.list_of_rois:
-            if iscpos == o.pos:
-                self.scene().removeItem(o.scitem)
-                self.list_of_rois.remove(o)
 
 
     def add_roi_pixel(self, scpos):
