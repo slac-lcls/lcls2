@@ -5,6 +5,8 @@
 #include <chrono>
 #include <functional>
 #include <prometheus/exposer.h>
+#include <prometheus/metric_type.h>
+#include <prometheus/metric_family.h>
 
 namespace Pds
 {
