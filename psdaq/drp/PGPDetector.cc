@@ -62,8 +62,7 @@ clockid_t test_coarse_clock() {
 }
 
 
-void  drpSendReceive(int inpMqId, int resMqId, int inpShmId, int resShmId, void*& inpData, void*& resData,
-                    XtcData::TransitionId::Value transitionId, unsigned threadNum)
+static void drpSendReceive(int inpMqId, int resMqId, XtcData::TransitionId::Value transitionId, unsigned threadNum)
 {
 
     char msg[512];
@@ -196,7 +195,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 if ( pythonDrp) {
                     XtcData::Dgram* inpDg = dgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
-                    drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
+                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
                     XtcData::Dgram* resDg = (XtcData::Dgram*)resData;
                     memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
@@ -230,7 +229,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 if (pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
-                    drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
+                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
                     XtcData::Dgram* resDg = (XtcData::Dgram*)(resData);
                     memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
@@ -247,7 +246,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 if ( pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
-                    drpSendReceive(inpMqId, resMqId, inpShmId, resShmId, inpData, resData, transitionId, threadNum);
+                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
                     // TODO: Add comment explaining how this works
                     if (threadCountWrite.fetch_sub(1) == 1) {
                         XtcData::Dgram* resDg = (XtcData::Dgram*)(resData);
