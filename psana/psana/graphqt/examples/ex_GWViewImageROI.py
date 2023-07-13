@@ -213,8 +213,8 @@ def test_gfviewimageroi(tname):
 
     p = QCursor().pos()
     print('XXX cursor position', p)
-    w.setGeometry(p.x(), p.y(), 600, 600)
-    #w.setGeometry(20, 20, 600, 600)
+    w.setGeometry(20, 20, 600, 600)
+    w.move(p)
     w.show()
     app.exec_()
 
