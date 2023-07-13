@@ -711,6 +711,7 @@ void PGPDetectorApp::drainDrpMessageQueues()
 void PGPDetectorApp::resetDrpPython()
 {
     char msg[512];
+    char recvmsg[520];
     snprintf(msg, sizeof(msg), "%s", "s");
 
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
@@ -720,6 +721,13 @@ void PGPDetectorApp::resetDrpPython()
                               workerNum);
             abort();
         }
+        rc = drpRecv(m_resMqId[workerNum], recvmsg, sizeof(recvmsg), 10000);
+        if (rc) {
+            logging::critical("Error receiving reset message from Drp python worker %u: %m",
+                              workerNum);
+            abort();
+        }
+
     }
 }
 

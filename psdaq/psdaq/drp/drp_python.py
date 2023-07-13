@@ -54,6 +54,7 @@ try:
         print(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
         message, priority = ipc_info.mq_inp.receive()
         if message == b"s":
+            ipc_info.mq_res.send(b"s\n")
             continue
         with open(message, "r") as fh:
             code = compile(fh.read(), message, 'exec')

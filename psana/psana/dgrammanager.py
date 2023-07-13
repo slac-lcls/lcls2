@@ -13,6 +13,7 @@ from psana import dgram
 from psana.event import Event
 from psana.detector import detectors
 from psana.psexp.event_manager import TransitionId
+from psana.dgramedit import DgramEdit
 import numpy as np
 
 def dumpDict(dict,indent):
@@ -388,6 +389,8 @@ class DgramManager(object):
                 dgrams = [d]
             elif message == b"s":
                 self._stop_iteration = True
+                self.shm_res_mv[:] = self.shm_inp_mv[:]
+                self.mq_res.send(b"s\n")                
                 raise StopIteration
             else:
                 raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' or "
