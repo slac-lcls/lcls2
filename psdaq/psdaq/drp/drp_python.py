@@ -14,10 +14,10 @@ worker_num = int(sys.argv[7])
 class IPCInfo:
     def __init__(self, partition, detector_name, detector_segment, worker_num, shm_mem_size):
 
-        keybase = f"p{partition}_{detector_name}_{detector_segment}"; 
+        keybase = f"p{partition}_{detector_name}_{detector_segment}";
 
         try:
-            self.mq_inp = posix_ipc.MessageQueue(f"/mqinp_{keybase}_{worker_num}", read=True, write=False) 
+            self.mq_inp = posix_ipc.MessageQueue(f"/mqinp_{keybase}_{worker_num}", read=True, write=False)
             self.mq_res = posix_ipc.MessageQueue(f"/mqres_{keybase}_{worker_num}", read=False, write=True)
         except posix_ipc.Error as exp:
             assert(False)
@@ -49,11 +49,14 @@ else:
     sub_socket = sub_connect(socket_name)
 print(f"[Python - Thread {worker_num}] {is_publisher=} setup socket {socket_name}]")
 
-while True:
-    print(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
-    message, priority = ipc_info.mq_inp.receive()
-    if message == b"s":
-        continue
-    with open(message, "r") as fh:
-        code = compile(fh.read(), message, 'exec')
-        exec(code, globals(), locals())
+try:
+    while True:
+        print(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
+        message, priority = ipc_info.mq_inp.receive()
+        if message == b"s":
+            continue
+        with open(message, "r") as fh:
+            code = compile(fh.read(), message, 'exec')
+            exec(code, globals(), locals())
+except KeyboardInterrupt:
+    print(f"[Python - Worker: {worker_num}] KeyboardInterrupt received - drp_python process exiting")
