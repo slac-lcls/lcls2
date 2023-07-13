@@ -310,8 +310,9 @@ class FWView(QGraphicsView):
 
         if self._scale_ctl==0: return
 
+        ang = e.angleDelta().x() + e.angleDelta().y()
         #logger.debug('wheelEvent: ', e.angleDelta())
-        f = 1 + 0.4 * (1 if e.angleDelta().x()>0 else -1)
+        f = 1 + 0.4 * (1 if ang>0 else -1)
         #logger.debug('Scale factor =', f)
 
         p = self.mapToScene(e.pos())

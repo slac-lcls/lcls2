@@ -575,8 +575,8 @@ class PVCtrls(object):
     def seqReset(self,pv,val):
         self._xpm.SeqEng_0.seqRestart.set(val)
         for s in self._seq:
-            if (1<<s._id)&val:
-                s.seqResetDone(val)
+            if (1<<s._eng._id)&val:
+                s._eng.resetDone()
 
     def update(self,cycle):
         #  The following section will throw an exception if the CuInput PV is not set properly

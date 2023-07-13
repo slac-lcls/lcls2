@@ -145,9 +145,10 @@ class GWView(QGraphicsView):
 
 
     def wheelEvent(self, e):
-        ang = e.angleDelta().x()
+        ang = e.angleDelta().x() + e.angleDelta().y()
+
         if ang != self.ang_wheel_old:
-           logger.debug('wheelEvent new direction of e.angleDelta().x(): %.6f' % ang) #+/-120 on each step
+           logger.debug('wheelEvent new direction of e.angleDelta().x()+y(): %.6f' % ang) #+/-120 on each step
            self.ang_wheel_old = ang
         QGraphicsView.wheelEvent(self, e)
 
