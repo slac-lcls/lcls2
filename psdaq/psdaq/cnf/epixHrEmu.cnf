@@ -31,7 +31,10 @@ batching = 'batching=yes'
 directIO = 'directIO=yes'
 scripts  = f'script_path={trig_dir}'
 #network  = 'ep_provider=sockets,ep_domain=eno1'
-epixData = '/cds/data/drpsrcf/temp/claus/xtc/rixx1003721-r0106-s010-c000.xtc2'
+epixData   = '/cds/data/drpsrcf/temp/claus/xtc/rixx1003721-r0106-s010-c000.xtc2'
+epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/test_drp.py'
+#epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/pydrp_sz.py'
+epixKwargs = f'sim_length=110584,xtcfile={epixData},l1aOffset=1000,drp=python,pythonScript={epixScript}'
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
 std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}'
@@ -108,30 +111,30 @@ procmgr_config = [
  {host: 'drp-srcf-cmp043', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  # EPIX-HR has 2 MP on 20 panels, 4 ASICs/panel, 144 x 192 pixels/ASIC, 2 B/pixel = 221184 B/segment = 2 + 4 * sim_length => sim_length ~= 55294 per panel
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp036', id:'epixhr_emu_2',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp036', id:'epixhr_emu_3',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp043', id:'epixhr_emu_4',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp043', id:'epixhr_emu_5',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- #{host: 'drp-srcf-cmp044', id:'epixhr_emu_6',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- #{host: 'drp-srcf-cmp044', id:'epixhr_emu_7',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp036', id:'epixhr_emu_2',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_3',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_4',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_5',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
+# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_6',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_7',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
+#
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_8',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_9',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_10', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_11', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_12', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_13', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_14', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_15', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+#
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_16', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_17', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_18', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_19', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
 
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_8',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_9',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp036', id:'epixhr_emu_10', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp036', id:'epixhr_emu_11', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp043', id:'epixhr_emu_12', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp043', id:'epixhr_emu_13', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- #{host: 'drp-srcf-cmp044', id:'epixhr_emu_14', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- #{host: 'drp-srcf-cmp044', id:'epixhr_emu_15', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
-
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_16', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp036', id:'epixhr_emu_17', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- {host: 'drp-srcf-cmp043', id:'epixhr_emu_18', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
- #{host: 'drp-srcf-cmp044', id:'epixhr_emu_19', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k sim_length=110584,xtcfile={epixData},l1aOffset=1000'},
-
-# {host: 'drp-srcf-cmp034', id:'epixhr_emu_4', flags:'spux',               cmd:f'{drp_cmd0} -l 0x3 -D epixhremu -k sim_length=110584,xtcfile={epixData}'},
+# {host: 'drp-srcf-cmp034', id:'epixhr_emu_4', flags:'spux',               cmd:f'{drp_cmd0} -l 0x3 -D epixhremu -k {epixKwargs}'},
 ]
 
 #
@@ -153,4 +156,4 @@ for N, worker_node in enumerate(ami_worker_nodes):
                         #cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}'})
                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level debug worker -b {heartbeat_period} psana://shmem={hutch}'})
 
-procmgr_config.extend(procmgr_ami)
+#procmgr_config.extend(procmgr_ami)
