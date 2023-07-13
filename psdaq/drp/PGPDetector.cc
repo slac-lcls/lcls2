@@ -70,7 +70,7 @@ void  drpSendReceive(int inpMqId, int resMqId, int inpShmId, int resShmId, void*
     char recvmsg[520];
 
     if (transitionId == XtcData::TransitionId::Unconfigure) {
-        logging::critical("[Thread %u] Unconfigure transition. Send stop message to Drp Python", threadNum);
+        logging::info("[Thread %u] Unconfigure transition. Send stop message to Drp Python", threadNum);
         snprintf(msg, sizeof(msg), "%s", "s");
     } else {
         snprintf(msg, sizeof(msg), "%s", "g");
@@ -129,16 +129,16 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
         int rc = attachDrpShMem(key, inpShmId, shmemSize, inpData, true);
         if (rc) {
-            logging::critical("[Thread %u] error attaching to Drp shared memory buffer %s for key %u: %m",
-                               threadNum, "Inputs", key);
+            logging::critical("[Thread %u] error attaching to Drp shared memory buffer %s for key %s: %m",
+                              threadNum, "Inputs", key.c_str());
             abort();
         }
 
         key = "/shmres_" + keyBase + "_" + std::to_string(threadNum);
         rc = attachDrpShMem(key, resShmId, shmemSize, resData, false);
         if (rc) {
-            logging::critical("[Thread %u] error attaching to Drp shared memory buffer %s for key %u: %m",
-                               threadNum, "Results", key);
+            logging::critical("[Thread %u] error attaching to Drp shared memory buffer %s for key %s: %m",
+                              threadNum, "Results", key.c_str());
             abort();
         }
 
@@ -235,7 +235,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                     memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
 
-
                 // Prepare the trigger primitive with whatever input is needed for the TEB to meke trigger decisions
                 auto l3InpBuf = tebContributor.fetch(pebbleIndex);
                 new(l3InpBuf) Pds::EbDgram(*dgram);
@@ -277,16 +276,16 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         std::string key = "/shminp_" + keyBase + "_" + std::to_string(threadNum);
         int rc = detachDrpShMem(inpData, shmemSize);
         if (rc) {
-            logging::critical("[Thread %u] error detaching from Drp shared memory buffer %s for key %u: %m",
-                                threadNum, "Inputs", key);
+            logging::critical("[Thread %u] error detaching from Drp shared memory buffer %s for key %s: %m",
+                              threadNum, "Inputs", key.c_str());
             abort();
         }
 
         key = "/shmres_" + keyBase + "_" + std::to_string(threadNum);
         rc = detachDrpShMem(resData, shmemSize);
         if (rc) {
-            logging::critical("[Thread %u] error detaching from Drp shared memory buffer %s for key %u: %m",
-                                threadNum, "Results", key);
+            logging::critical("[Thread %u] error detaching from Drp shared memory buffer %s for key %s: %m",
+                              threadNum, "Results", key.c_str());
             abort();
         }
 
