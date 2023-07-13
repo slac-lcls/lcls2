@@ -702,7 +702,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
             error = true;
         }
         if (transitionId != dgram->service()) {
-            logging:critical("tid mismatch: pebble %u, trDgram %u", transitionId, dgram->service());
+            logging::critical("tid mismatch: pebble %u, trDgram %u", transitionId, dgram->service());
             error = true;
         }
     }
