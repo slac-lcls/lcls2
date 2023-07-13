@@ -68,6 +68,7 @@ from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLin
 import psana.graphqt.QWUtils as gu
 import psana.graphqt.GWROIUtils as roiu
 QPEN_DEF, QBRUSH_DEF, QCOLOR_DEF  = roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QCOLOR_DEF
+QCOLOR_SEL = QColor('#ffeeaaee') #  Qt.magenta
 
 class GWViewImageROI(GWViewImage):
 
@@ -86,6 +87,17 @@ class GWViewImageROI(GWViewImage):
         self.roi_active = None
         self.scpos_first = None
         self.clicknum = 0
+        #self.set_style_focus()
+
+    def set_style_focus(self):
+        #    QGraphicsView::item:focus {
+        self.style = """
+            QGraphicsRectItem:focus {
+                background: red;
+                selection-background-color: green;
+                border: 1px solid gray;}
+            QGraphicsRectItem:focus {border-color: blue;}"""
+        self.setStyleSheet(self.style)
 
 #    def paintEvent(self, e):
 #        print('XXX in paintEvent') # , dir(e))
@@ -176,19 +188,12 @@ class GWViewImageROI(GWViewImage):
 
         if self.mode_type & roiu.ADD:
 
-            if self.roi_type == roiu.POLYGON\
-            and self.roi_active is not None:
-                return
-
-            elif self.roi_type == roiu.POLYREG:
+            if self.roi_type in (roiu.POLYGON, roiu.POLYREG, roiu.ARCH):
                 return
 
             elif self.roi_type == roiu.PIXEL:
                 self.roi_active = None
                 self.clicknum = 0
-
-            elif self.roi_type == roiu.ARCH:
-                return
 
             elif self.clicknum > 1: # number of clicks > 1
                 self.roi_active = None
@@ -200,23 +205,40 @@ class GWViewImageROI(GWViewImage):
                     self.roi_active = None
                     self.clicknum = 0
 
+
     def select_roi(self, e):
         """select ROI on mouthPressEvent"""
-        logger.warning('TBD - GWViewImageROI.select_roi')
-        p = self.mapToScene(e.pos())
-        items = self.scene().items(p)
-        print('XXX select_roi item', items)
-        #if items is None: return
-        #self.scene().setFocusItem(item)
+        logger.debug('GWViewImageROI.select_roi')
+        items = self.scene().items(self.mapToScene(e.pos()))
+        #logger.debug('select_roi list of scene items at point: %s' % str(items))
+        roisel = [o for o in self.list_of_rois if o.scitem in items]
+        logger.debug('select_roi list of ROIs at point: %s' % str(roisel))
+        for o in roisel:
+             color = QCOLOR_DEF if o.scitem.pen().color() == QCOLOR_SEL else QCOLOR_SEL
+             o.scitem.setPen(QPen(color, 1, Qt.SolidLine))
 
 
     def remove_roi(self, e):
         """remove ROI on mouthPressEvent"""
-        logger.warning('TBD - GWViewImageROI.remove_roi')
+        logger.debug('GWViewImageROI.remove_roi')
         if self.roi_type == roiu.PIXEL:
             self.remove_roi_pixel(e)
         else:
-            logger.warning('TBD - GWViewImageROI.remove_roi for non-PIXEL types')
+            logger.debug('GWViewImageROI.remove_roi for non-PIXEL types')
+            items = self.scene().items(self.mapToScene(e.pos()))
+            roisel = [o for o in self.list_of_rois if o.scitem in items]
+            logger.debug('remove_roi list of ROIs at point: %s' % str(roisel))
+            for o in roisel:
+                self.scene().removeItem(o.scitem)
+                self.list_of_rois.remove(o)
+
+
+    def delete_selected_roi(self):
+        roisel = [o for o in self.list_of_rois if o.scitem.pen().color() == QCOLOR_SEL]
+        logger.debug('delete_selected_roi: %s' % str(roisel))
+        for o in roisel:
+            self.scene().removeItem(o.scitem)
+            self.list_of_rois.remove(o)
 
 
     def remove_roi_pixel(self, e):
@@ -261,65 +283,11 @@ class GWViewImageROI(GWViewImage):
         self.roi_active = o
 
 
-
-
-
-
-    def draw_something(self):
-        for i in range(100):
-            roiu.ROIPixel(view=self).add_to_scene(QPoint(1+i, 2+i))
-
-        # Pixel
-        pi = QPointF(300, 100)
-        itpi = roiu.ROIPixel(view=self).add_to_scene(pi)
-
-        # Line
-        l0 = QLineF(QPointF(300, 600), QPointF(600, 300))
-        itl0 = roiu.ROILine(view=self).add_to_scene(l0)
-
-        # Rect
-        r0 = QRectF(100, 200, 200, 100)
-        itr0 = roiu.ROIRect(view=self).add_to_scene(r0)
-        itr1 = roiu.ROIRect(view=self).add_to_scene(r0, angle_deg=30)
-
-        # Polygone
-        p0 = QPolygonF([QPointF(500, 600), QPointF(700, 600), QPointF(700, 500), QPointF(650, 650)])
-        itp0 = roiu.ROIPolygon(view=self).add_to_scene(p0)
-
-        # Ellipse
-        r0 = QRectF(300, 400, 200, 100)
-        itp0 = roiu.ROIEllipse(view=self).add_to_scene(r0)
-        itp1 = roiu.ROIEllipse(view=self).add_to_scene(r0, angle_deg=-30, start_angle=-20, span_angle=300)
-
-        # Test ROI*
-        itroi1 = roiu.select_roi(roiu.PIXEL,   view=self, pen=roiu.QPEN_DEF).add_to_scene(pos=QPointF(20, 40))
-        itroi2 = roiu.select_roi(roiu.LINE,    view=self, pos=QPointF(20, 60)).add_to_scene()
-        itroi3 = roiu.select_roi(roiu.RECT,    view=self, pos=QPointF(20, 80)).add_to_scene()
-        itroi4 = roiu.select_roi(roiu.SQUARE , view=self, pos=QPointF(20, 100)).add_to_scene()
-        itroi5 = roiu.select_roi(roiu.POLYGON, view=self, pos=QPointF(20, 120)).add_to_scene()
-        itroi6 = roiu.select_roi(roiu.POLYREG, view=self, pos=QPointF(20, 140)).add_to_scene()
-        itroi7 = roiu.select_roi(roiu.ELLIPSE, view=self, pos=QPointF(20, 160)).add_to_scene()
-        itroi8 = roiu.select_roi(roiu.CIRCLE,  view=self, pos=QPointF(20, 180)).add_to_scene()
-        itroi9 = roiu.select_roi(roiu.ARCH,    view=self, pos=QPointF(20, 200)).add_to_scene()
-
-        # Test Handle*
-        ithc = roiu.select_handle(roiu.CENTER,    view=self, roi=None, pos=QPointF(50,20)).add_to_scene()
-        itho = roiu.select_handle(roiu.ORIGIN,    view=self, roi=None, pos=QPointF(80,20)).add_to_scene()
-        itht = roiu.select_handle(roiu.TRANSLATE, view=self, roi=None, pos=QPointF(110,20)).add_to_scene()
-        ithr = roiu.select_handle(roiu.ROTATE,    view=self, roi=None, pos=QPointF(140,20)).add_to_scene()
-        iths = roiu.select_handle(roiu.SCALE,     view=self, roi=None, pos=QPointF(170,20)).add_to_scene()
-        ithm = roiu.select_handle(roiu.MENU,      view=self, roi=None, pos=QPointF(200,20)).add_to_scene()
-        ith1 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(230,20), shhand=1).add_to_scene()
-        ith2 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(260,20), shhand=2).add_to_scene()
-        ith3 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(290,20), shhand=3).add_to_scene()
-
-
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
         """Input array is scailed by color table. If color table is None arr set as is."""
 
         GWViewImage.set_pixmap_from_arr(self, arr, set_def, amin, amax, frmin, frmax)
 
-        self.draw_something()
         image = self.qimage # QImage
         pixmap = self.qpixmap # QPixmap
 
