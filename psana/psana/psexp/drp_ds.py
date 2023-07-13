@@ -12,7 +12,7 @@ class DrpDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
         super(DrpDataSource, self).__init__(**kwargs)
         self.tag = self.drp
-        self.runnum_list = [0] 
+        self.runnum_list = [0]
         self.runnum_list_index = 0
         self.curr_dgramedit = None
         self.config_dgramedit = None
@@ -43,7 +43,7 @@ class DrpDataSource(DataSourceBase):
         self.curr_dgramedit = self.config_dgramedit
         self.runnum_list_index += 1
         return True
-    
+
     def _setup_beginruns(self):
         for evt in self.dm:
             if not evt:
@@ -57,29 +57,29 @@ class DrpDataSource(DataSourceBase):
             #    config=self.config_dgramedit
             #)
             self.curr_dgramedit = DgramEdit(
-                 evt._dgrams[0], 
-                 config_dgramedit=self.config_dgramedit, 
+                 evt._dgrams[0],
+                 config_dgramedit=self.config_dgramedit,
                  bufsize=buffer_size
             )
             self.curr_dgramedit.save(self.dm.shm_res_mv)
             if evt.service() == TransitionId.BeginRun:
                 self.beginruns = evt._dgrams
                 return True
-    
+
     def _setup_run_calibconst(self):
         if self._is_publisher:
             super()._setup_run_calibconst()
             pub_send(self.dsparms.calibconst)
-        else: 
+        else:
             self.dsparms.calibconst = sub_recv()
-        print(f"[Python - Worker {self.worker_num}] Done broadcast {self.dsparms.calibconst}]")
+        # Verbose print: print(f"[Python - Worker {self.worker_num}] Done broadcast {self.dsparms.calibconst}]")
 
     def _start_run(self):
         found_next_run = False
-        if self._setup_beginruns():   # try to get next run from the current file 
+        if self._setup_beginruns():   # try to get next run from the current file
             self._setup_run_calibconst()
             found_next_run = True
-        elif self._setup_run():       # try to get next run from next files 
+        elif self._setup_run():       # try to get next run from next files
             if self._setup_beginruns():
                 self._setup_run_calibconst()
                 found_next_run = True
