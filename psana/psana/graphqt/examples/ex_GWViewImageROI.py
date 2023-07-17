@@ -22,7 +22,9 @@ class TestGWViewImageROI(GWViewImageROI):
                '\n  H - set new pixmap of random shape and change default scene rect'\
                '\n  K - draw test shapes'\
                '\n  D - delete SELECTED ROIs'\
-               '\n  ROI = %s select from %s' % (str(self.roi_name), ', '.join(['%s-%s'%(k,n) for t,n,k in roiu.roi_tuple])) + \
+               '\n  C - cancel add_roi command and remove currently drawn roi'\
+               '\n  F - finish add_roi command and keep currently drawn roi (for polynom)'\
+               '\n  ROI  = %s select from %s' % (str(self.roi_name),  ', '.join(['%s-%s'%(k,n) for t,n,k in roiu.roi_tuple])) + \
                '\n  MODE = %s select from %s' % (str(self.mode_name), ', '.join(['%s-%s'%(k,n) for t,n,k in roiu.mode_tuple])) + \
                '\n'
 
@@ -137,6 +139,12 @@ class TestGWViewImageROI(GWViewImageROI):
         elif key == Qt.Key_D:
             self.delete_selected_roi()
 
+        elif key == Qt.Key_C:
+            self.cancel_add_roi()
+
+        elif key == Qt.Key_F:
+            self.finish()
+
         if ckey in roiu.roi_keys:
             i = roiu.roi_keys.index(ckey)
             self.roi_type = roiu.roi_types[i]
@@ -211,10 +219,8 @@ def test_gfviewimageroi(tname):
 
     w.setWindowTitle('ex_GWViewImageROI')
 
-    p = QCursor().pos()
-    print('XXX cursor position', p)
     w.setGeometry(20, 20, 600, 600)
-    w.move(p)
+    #w.move(QCursor().pos())
     w.show()
     app.exec_()
 
