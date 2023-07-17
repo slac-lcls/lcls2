@@ -33,8 +33,10 @@ from PyQt5.QtGui import  QPen, QPainter, QColor, QBrush, QCursor, QTransform, QP
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLineF # , pyqtSignal
 
 QPEN_DEF   = QPen(Qt.yellow, 1, Qt.SolidLine)  # Qt.DashLine
-QBRUSH_DEF = QBrush()  # Qt.red
+QBRUSH_DEF = QBrush()
 QCOLOR_DEF = QColor(Qt.yellow)
+QCOLOR_SEL = QColor('#ffeeaaee')
+QCOLOR_EDI = QColor(Qt.magenta)
 
 NONE    = 0
 
@@ -70,7 +72,6 @@ ADD       = 4
 REMOVE    = 8
 SELECT    = 16
 EDIT      = 32
-TERMINATE = 64
 mode_tuple = (
   (NONE,      'NONE',      'X'),
   (UNVISIBLE, 'UNVISIBLE', 'U'),
@@ -79,7 +80,6 @@ mode_tuple = (
   (REMOVE,    'REMOVE',    'R'),
   (SELECT,    'SELECT',    'S'),
   (EDIT,      'EDIT',      'E'),
-  (TERMINATE, 'TERMINATE', 'T'),
 )
 mode_types = [t for t,n,k in mode_tuple]
 mode_names = [n for t,n,k in mode_tuple]
@@ -127,8 +127,6 @@ def items_at_point(scene, point):
     return items
 
 
-
-
 class ROIBase():
     def __init__(self, **kwa):
         #self.roi_type   = kwa.get('roi_type', NONE)
@@ -172,6 +170,12 @@ class ROIBase():
 
     def click_at_add(self, pos):
         logging.warning('ROIBase.click_at_add must be re-implemented in SOME of subclasses')
+
+    def show_handles(self):
+        logging.info('ROIBase.show_handles for ROI %s' % self.roi_name)
+
+    def hide_handles(self):
+        logging.info('ROIBase.hide_handles for ROI %s' % self.roi_name)
 
 
 class ROIPixel(ROIBase):
