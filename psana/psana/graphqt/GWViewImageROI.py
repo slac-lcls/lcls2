@@ -67,8 +67,9 @@ from PyQt5.QtGui import  QPen, QPainter, QColor, QBrush, QTransform, QPolygonF
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLineF
 import psana.graphqt.QWUtils as gu
 import psana.graphqt.GWROIUtils as roiu
-QPEN_DEF, QBRUSH_DEF, QCOLOR_DEF  = roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QCOLOR_DEF
-QCOLOR_SEL = QColor('#ffeeaaee') #  Qt.magenta
+QPEN_DEF, QBRUSH_DEF, QCOLOR_DEF, QCOLOR_SEL, QCOLOR_EDI =\
+roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QCOLOR_DEF, roiu.QCOLOR_SEL, roiu.QCOLOR_EDI
+
 
 class GWViewImageROI(GWViewImage):
 
@@ -89,15 +90,15 @@ class GWViewImageROI(GWViewImage):
         self.clicknum = 0
         #self.set_style_focus()
 
-    def set_style_focus(self):
-        #    QGraphicsView::item:focus {
-        self.style = """
-            QGraphicsRectItem:focus {
-                background: red;
-                selection-background-color: green;
-                border: 1px solid gray;}
-            QGraphicsRectItem:focus {border-color: blue;}"""
-        self.setStyleSheet(self.style)
+#    def set_style_focus(self):
+#        #    QGraphicsView::item:focus {
+#        self.style = """
+#            QGraphicsRectItem:focus {
+#                background: red;
+#                selection-background-color: green;
+#                border: 1px solid gray;}
+#            QGraphicsRectItem:focus {border-color: blue;}"""
+#        self.setStyleSheet(self.style)
 
 #    def paintEvent(self, e):
 #        print('XXX in paintEvent') # , dir(e))
@@ -129,6 +130,9 @@ class GWViewImageROI(GWViewImage):
         if self.mode_type & roiu.REMOVE:
             self.remove_roi(e)
 
+        if self.mode_type & roiu.EDIT:
+            self.edit_roi(e)
+
         if self.mode_type & roiu.ADD:
             self.clicknum += 1
             scpos = self.mapToScene(e.pos())
@@ -145,8 +149,7 @@ class GWViewImageROI(GWViewImage):
                     if self.clicknum < 2 or d > self.roi_active.tolerance:
                         self.roi_active.click_at_add(scpos)
                     else:
-                        self.roi_active.set_poly() # set poly at last non-closing click
-                        self.roi_active = None
+                        self.finish_add_roi()
 
                 elif self.roi_type in (roiu.POLYREG, roiu.ARCH): # 3-click input
                     self.roi_active.set_point(scpos, self.clicknum)
@@ -162,7 +165,7 @@ class GWViewImageROI(GWViewImage):
         if self.mode_type < roiu.ADD: return
         #if not self.left_is_pressed: return
 
-        scpos = self.mapToScene(e.pos())
+        scpos = self.scene_pos(e)
         iscpos = QPoint(int(scpos.x()), int(scpos.y()))
 
         if iscpos == self._iscpos_old: return
@@ -200,32 +203,90 @@ class GWViewImageROI(GWViewImage):
                 self.clicknum = 0
 
             else:
-                d = (self.mapToScene(e.pos()) - self.scpos_first).manhattanLength()
+                d = (self.scene_pos(e) - self.scpos_first).manhattanLength()
                 if self.roi_active and d > self.roi_active.tolerance: # count as click-drag-release input
                     self.roi_active = None
                     self.clicknum = 0
 
 
-    def select_roi(self, e):
-        """select ROI on mouthPressEvent"""
-        logger.debug('GWViewImageROI.select_roi')
-        items = self.scene().items(self.mapToScene(e.pos()))
-        #logger.debug('select_roi list of scene items at point: %s' % str(items))
+    def set_roi_color(self, roi=None, color=QCOLOR_DEF):
+        """sets roi color, by default for self.roi_active sets QCOLOR_DEF"""
+        o = self.roi_active if roi is None else roi
+        if o is not None:
+            pen = o.scitem.pen()  # QPen(color, 1, Qt.SolidLine)
+            pen.setColor(color)     # pen.setCosmetic(True)
+            o.scitem.setPen(pen)
+
+
+    def finish(self):
+        if self.mode_type & roiu.ADD:
+            self.finish_add_roi()
+        if self.mode_type & roiu.EDIT:
+            self.finish_edit_roi()
+
+
+    def finish_add_roi(self):
+        """finish add_roi action on or in stead of last click, set poly at last non-closing click"""
+        if self.roi_type == roiu.POLYGON\
+        and self.roi_active is not None:
+            self.roi_active.set_poly()
+        self.roi_active = None
+        self.clicknum = 0
+
+
+    def finish_edit_roi(self):
+        self.set_roi_color() # self.roi_active, QCOLOR_DEF
+        self.roi_active = None
+
+
+    def rois_at_point(self, p):
+        """retiurns list of ROI object found at QPointF p"""
+        items = self.scene().items(p)
         roisel = [o for o in self.list_of_rois if o.scitem in items]
         logger.debug('select_roi list of ROIs at point: %s' % str(roisel))
-        for o in roisel:
-             color = QCOLOR_DEF if o.scitem.pen().color() == QCOLOR_SEL else QCOLOR_SEL
-             o.scitem.setPen(QPen(color, 1, Qt.SolidLine))
+        return roisel
+
+
+    def scene_pos(self, e):
+        """scene position for mouse event"""
+        return self.mapToScene(e.pos())
+
+
+    def select_roi(self, e, color_sel=QCOLOR_SEL):
+        """select ROI on mouthPressEvent"""
+        logger.debug('GWViewImageROI.select_roi at scene pos: %s' % str(self.scene_pos(e)))
+        for o in self.rois_at_point(self.scene_pos(e)):
+             color = QCOLOR_DEF if o.scitem.pen().color() == color_sel else color_sel
+             self.set_roi_color(o, color)
+
+
+    def select_roi_edit(self, e, color_edi=QCOLOR_EDI):
+        rois = self.rois_at_point(self.scene_pos(e))
+        self.roi_active = None if rois == [] else rois[0]
+
+
+    def edit_roi(self, e, color_edi=QCOLOR_EDI):
+        self.select_roi_edit(e, color_edi)
+        if self.roi_active is None:
+            logger.warning('ROI FOR EDIT IS NOT FOUND near scene point %s' % str(self.scene_pos(e)))
+            return
+        for o in self.list_of_rois:
+            if o.scitem.pen().color() == QCOLOR_EDI:
+                o.hide_handles()
+            if o.scitem.pen().color() != QCOLOR_DEF:
+                self.set_roi_color(o, QCOLOR_DEF)
+        self.set_roi_color(self.roi_active, QCOLOR_EDI)
+        self.roi_active.show_handles()
 
 
     def remove_roi(self, e):
-        """remove ROI on mouthPressEvent"""
+        """remove ROI on mouthPressEvent - a few ROIs might be removed"""
         logger.debug('GWViewImageROI.remove_roi')
         if self.roi_type == roiu.PIXEL:
             self.remove_roi_pixel(e)
         else:
             logger.debug('GWViewImageROI.remove_roi for non-PIXEL types')
-            items = self.scene().items(self.mapToScene(e.pos()))
+            items = self.scene().items(self.scene_pos(e))
             roisel = [o for o in self.list_of_rois if o.scitem in items]
             logger.debug('remove_roi list of ROIs at point: %s' % str(roisel))
             for o in roisel:
@@ -234,6 +295,7 @@ class GWViewImageROI(GWViewImage):
 
 
     def delete_selected_roi(self):
+        """delete all ROIs selected/marked by QCOLOR_SEL"""
         roisel = [o for o in self.list_of_rois if o.scitem.pen().color() == QCOLOR_SEL]
         logger.debug('delete_selected_roi: %s' % str(roisel))
         for o in roisel:
@@ -242,7 +304,7 @@ class GWViewImageROI(GWViewImage):
 
 
     def remove_roi_pixel(self, e):
-        scpos = self.mapToScene(e.pos())
+        scpos = self.scene_pos(e)
         iscpos = QPoint(int(scpos.x()), int(scpos.y()))
         self._iscpos_old = iscpos
         for o in self.list_of_rois:
@@ -251,10 +313,22 @@ class GWViewImageROI(GWViewImage):
                 self.list_of_rois.remove(o)
 
 
+    def cancel_add_roi(self):
+        """cancel of adding item to scene"""
+        o = self.roi_active
+        if o is None:
+            logger.debug('GWViewImageROI.cancel_add_roi roi_active is None - nothing to cancel...')
+            return
+        self.scene().removeItem(o.scitem)
+        self.list_of_rois.remove(o)
+        self.roi_active = None
+        self.clicknum = 0
+
+
     def add_roi(self, e):
         """add ROI on mouthPressEvent"""
 
-        scpos = self.mapToScene(e.pos())
+        scpos = self.scene_pos(e)
         logger.debug('GWViewImageROI.add_roi scene x=%.1f y=%.1f'%(int(scpos.x()), int(scpos.y())))
 
         if self.roi_type == roiu.PIXEL:
