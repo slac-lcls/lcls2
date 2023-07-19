@@ -697,12 +697,12 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         }
         dgram = m_pool.transitionDgrams[index];
         if (pulseId != dgram->pulseId()) {
-            logging::error("pulseId mismatch: pebble %014lx, trDgram %014lx, xor %014lx, diff %ld",
-                           pulseId, dgram->pulseId(), pulseId ^ dgram->pulseId(), pulseId - dgram->pulseId());
+            logging::critical("pulseId mismatch: pebble %014lx, trDgram %014lx, xor %014lx, diff %ld",
+                              pulseId, dgram->pulseId(), pulseId ^ dgram->pulseId(), pulseId - dgram->pulseId());
             error = true;
         }
         if (transitionId != dgram->service()) {
-            logging::error("tid mismatch: pebble %u, trDgram %u", transitionId, dgram->service());
+            logging::critical("tid mismatch: pebble %u, trDgram %u", transitionId, dgram->service());
             error = true;
         }
     }
@@ -717,7 +717,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         error = true;
     }
     if (transitionId != result.service()) {
-        logging::error("tid mismatch: pebble %u, result %u", transitionId, result.service());
+        logging::critical("tid mismatch: pebble %u, result %u", transitionId, result.service());
         error = true;
     }
 
@@ -1298,7 +1298,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     // reach the higher buffer numbers.  Can't use an index based on the largest
     // non-common RoG DRP because it would overrun the common RoG DRPs' region.
     if ((maxBuffers > m_numTebBuffers) && bufErr) {
-        logging::error("Pebble buffer count (%u) must be <= %u\n",
+        logging::error("Pebble buffer count (%u) must be <= the common RoG's (%u)\n",
                        pool.nbuffers(), m_numTebBuffers);
         rc = 1;
     }

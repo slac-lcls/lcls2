@@ -1166,7 +1166,7 @@ int TebApp::_parseConnectionParams(const json& body)
 
   if (_prms.maxBuffers & (_prms.maxBuffers - 1))
   {
-    logging::error("maxBuffers (%u = 0x%08x) isn't a power of 2, as it should be",
+    logging::error("maxBuffers (%u = 0x%08x) must be a power of 2",
                    _prms.maxBuffers, _prms.maxBuffers);
     rc = 1;
   }
@@ -1177,8 +1177,8 @@ int TebApp::_parseConnectionParams(const json& body)
   // non-common RoG DRP because it would overrun the common RoG DRPs' region.
   if (maxBuffers > _prms.maxBuffers)
   {
-    logging::error("DRP's DMA buffer count (%u) must be <= %u",
-                   maxBuffers, _prms.maxBuffers);
+    logging::error("One or more DRPs have pebble buffer count > the common RoG's (%u)",
+                   _prms.maxBuffers);
     rc = 1;
   }
 

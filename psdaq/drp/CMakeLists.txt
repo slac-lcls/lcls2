@@ -22,6 +22,7 @@ target_link_libraries(drpbase
     collection
     xtcdata::xtc
     epicstools
+    Threads::Threads
 )
 
 add_executable(drp
@@ -51,7 +52,6 @@ target_link_libraries(drp
     psalg::digitizer
     psalg::detector
     xtcdata::xtc
-    Threads::Threads
     drpbase
     trigger
 )

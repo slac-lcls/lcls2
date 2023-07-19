@@ -1,5 +1,6 @@
 #include <iostream>
 #include <map>
+#include <algorithm>    // std::find_if
 #include <sys/stat.h>
 #include "MetricExporter.hh"
 #include "psalg/utils/SysLog.hh"
@@ -8,7 +9,6 @@ static const unsigned PROM_PORT_BASE = 9200;       // Prometheus montitoring por
 static const unsigned MAX_PROM_PORTS = 100;
 
 using logging = psalg::SysLog;
-
 
 std::unique_ptr<prometheus::Exposer>
     Pds::createExposer(const std::string& prometheusDir,
@@ -21,7 +21,9 @@ std::unique_ptr<prometheus::Exposer>
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
         try {
             port = PROM_PORT_BASE + i;
-            exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+            // If prometheus_cpp_version is 0.9.0:
+            //exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+            exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), 1);
             if (!prometheusDir.empty()) {
                 std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
                 struct stat buf;

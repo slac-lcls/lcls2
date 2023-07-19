@@ -210,19 +210,19 @@ void PGPDetectorApp::setupDrpPython() {
         std::string key = "/mqinp_" + keyBase + "_" + std::to_string(workerNum);
         int rc = setupDrpMsgQueue(key, mqSize, m_inpMqId[workerNum], true);
         if (rc) {
-            logging::critical("[Thread %u] Error in creating Drp %s message queue with key %u: %m", workerNum, "Inputs", key.c_str());
+            logging::critical("[Thread %u] Error in creating Drp %s message queue with key %s: %m", workerNum, "Inputs", key.c_str());
             cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             abort();
         }
-        logging::info("[Thread %u] Created Drp msg queue %s for key %u", workerNum, "Inputs", key);
+        logging::info("[Thread %u] Created Drp msg queue %s for key %s", workerNum, "Inputs", key.c_str());
         key = "/mqres_" + keyBase + "_" + std::to_string(workerNum);
         rc = setupDrpMsgQueue(key, mqSize, m_resMqId[workerNum], false);
         if (rc) {
-            logging::critical("[Thread %u] Error in creating Drp %s message queue with key %u: %m", workerNum, "Inputs", key.c_str());
+            logging::critical("[Thread %u] Error in creating Drp %s message queue with key %s: %m", workerNum, "Inputs", key.c_str());
             cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             abort();
         }
-        logging::info("[Thread %u] Created Drp msg queue %s for key %u", workerNum, "Results", key);
+        logging::info("[Thread %u] Created Drp msg queue %s for key %s", workerNum, "Results", key.c_str());
 
         // Creating shared memory
         size_t shmemSize = m_drp.pool.pebble.bufferSize();
@@ -240,7 +240,7 @@ void PGPDetectorApp::setupDrpPython() {
             cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             abort();
         }
-        logging::info("[Thread %u] Created Drp shared memory %s for key %u", workerNum, "Inputs", key);
+        logging::info("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Inputs", key.c_str());
 
         key = "/shmres_" + keyBase  + "_" + std::to_string(workerNum);
         rc = setupDrpShMem(key, shmemSize, m_resShmId[workerNum]);
@@ -250,7 +250,7 @@ void PGPDetectorApp::setupDrpPython() {
             cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
             abort();
         }
-        logging::info("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Results", key);
+        logging::info("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Results", key.c_str());
 
         logging::info("IPC set up for worker %d", workerNum);
 
