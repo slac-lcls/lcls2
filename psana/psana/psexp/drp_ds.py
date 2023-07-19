@@ -88,9 +88,11 @@ class DrpDataSource(DataSourceBase):
     def is_mpi(self):
         return False
 
-    def add_detector(self, detdef, algdef, datadef):
+    def add_detector(self, detdef, algdef, datadef,
+                     nodeId=None, namesId=None, segment=None):
         if self._edtbl_config:
-            return self.curr_dgramedit.Detector(detdef, algdef, datadef)
+            return self.curr_dgramedit.Detector(detdef, algdef, datadef,
+                                                nodeId, namesId, segment)
         else:
             raise RuntimeError(
                 "[Python - Worker {self.worker_num}] Cannot edit the configuration "
@@ -98,7 +100,7 @@ class DrpDataSource(DataSourceBase):
             )
 
     def adddata(self, data):
-        if not self._edtbl_config:
+        if True:  #not self._edtbl_config:
             return self.curr_dgramedit.adddata(data)
         else:
             raise RuntimeError(

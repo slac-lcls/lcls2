@@ -77,4 +77,51 @@ class _fake_seg_config:
 
 fake_seg_config = _fake_seg_config()
 
+
+import libpressio as lp
+from psana.dgramedit import DataType
+
+comp_config = None
+
+class epixhremu_config_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+        cfgs = self._seg_configs()
+        comp_config = json.loads(cfgs[0].config.compressor_json)
+
+class epixhremu_fex_0_0_1(epixhremu_raw_0_0_1):
+    def __init__(self, *args, **kwargs):
+        epixhremu_raw_0_0_1.__init__(self, *args, **kwargs)
+
+        ## Define compressor configuration:
+        #lpjson = {
+        #    "compressor_id": "sz", #the compression algo.
+        #    "compressor_config": {
+        #        #"sz:data_type"           : lp.pressio_uint16_dtype,
+        #        #"sz:data_type"           : np.dtype('uint16'),
+        #        "sz:error_bound_mode_str": "abs",
+        #        "sz:abs_err_bound"       : 10, # max error
+        #        "sz:metric"              : "size"
+        #    },
+        #}
+        if comp_config is None:
+            logging.error("epixhremu comp_config json object not found")
+            return
+
+        self._dec = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.uint16))
+
+        self._compressor = lp.PressioCompressor.from_config(comp_config)
+
+    def _array(self, evt) -> Array2d:
+        f = None
+        segs = self._segments(evt)
+        if segs is None:
+            pass
+        else:
+            raw = self._compressor.decode(segs[0].fex, self._dec)
+            print(f'*** raw is a {type(raw)} of len {len(raw)}, dtype {raw.dtype}, shape {raw.shape}, ndim {raw.ndim}, size {raw.size}')
+            f = raw & self._data_bit_mask # 0x7fff
+
+        return f
+
 # EOF

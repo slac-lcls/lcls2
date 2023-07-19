@@ -7,8 +7,10 @@ pebble_bufsize = int(sys.argv[2])
 transition_bufsize = int(sys.argv[3])
 shm_mem_size = int(sys.argv[4])
 detector_name = sys.argv[5]
-detector_segment = sys.argv[6]
-worker_num = int(sys.argv[7])
+detector_type = sys.argv[6]
+detector_id = sys.argv[7]
+detector_segment = int(sys.argv[8])
+worker_num = int(sys.argv[9])
 
 
 class IPCInfo:
@@ -29,8 +31,10 @@ class IPCInfo:
 
 
 class DrpInfo:
-    def __init__(self, detector_name, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info):
+    def __init__(self, detector_name, detector_type, detector_id, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info):
         self.det_name = detector_name
+        self.det_type = detector_type
+        self.det_id = detector_id
         self.det_segment = detector_segment
         self.worker_num = worker_num
         self.pebble_bufsize = pebble_bufsize
@@ -38,7 +42,7 @@ class DrpInfo:
         self.ipc_info = ipc_info
 
 ipc_info = IPCInfo(partition, detector_name, detector_segment, worker_num, shm_mem_size)
-drp_info = DrpInfo(detector_name, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info)
+drp_info = DrpInfo(detector_name, detector_type, detector_id, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info)
 
 # Setup socket for calibration constant broadcast
 is_publisher = True if worker_num == 0 else False

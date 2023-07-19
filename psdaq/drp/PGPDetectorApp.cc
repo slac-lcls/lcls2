@@ -171,6 +171,8 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Param
                std::to_string(para.maxTrSize).c_str(),
                std::to_string(shmemSize).c_str(),
                para.detName.c_str(),
+               para.detType.c_str(),
+               para.serNo.c_str(),
                std::to_string(para.detSegment).c_str(),
                std::to_string(workerNum).c_str(),
                nullptr);
