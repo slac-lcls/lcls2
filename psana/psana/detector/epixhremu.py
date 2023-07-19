@@ -79,49 +79,32 @@ fake_seg_config = _fake_seg_config()
 
 
 import libpressio as lp
-from psana.dgramedit import DataType
+import json
 
-comp_config = None
-
-class epixhremu_config_0_0_1(DetectorImpl):
-    def __init__(self, *args):
-        super().__init__(*args)
-        cfgs = self._seg_configs()
-        comp_config = json.loads(cfgs[0].config.compressor_json)
-
-class epixhremu_fex_0_0_1(epixhremu_raw_0_0_1):
+class epixhremu_fex_0_0_1(DetectorImpl):
     def __init__(self, *args, **kwargs):
-        epixhremu_raw_0_0_1.__init__(self, *args, **kwargs)
+        super(epixhremu_fex_0_0_1, self).__init__(*args)
 
-        ## Define compressor configuration:
-        #lpjson = {
-        #    "compressor_id": "sz", #the compression algo.
-        #    "compressor_config": {
-        #        #"sz:data_type"           : lp.pressio_uint16_dtype,
-        #        #"sz:data_type"           : np.dtype('uint16'),
-        #        "sz:error_bound_mode_str": "abs",
-        #        "sz:abs_err_bound"       : 10, # max error
-        #        "sz:metric"              : "size"
-        #    },
-        #}
-        if comp_config is None:
-            logging.error("epixhremu comp_config json object not found")
-            return
+        # Expect config to be the same for all segments, so pick first one
+        for config in epixhr.raw._seg_configs().values():  break
+        comp_config = json.loads(config.config.compressor_json)
 
-        self._dec = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.uint16))
-
+        # Instantiate the compressor/decompressor
         self._compressor = lp.PressioCompressor.from_config(comp_config)
 
-    def _array(self, evt) -> Array2d:
-        f = None
+        # Hard code shape and data type because they're properies of the detector
+        self._decompressed = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.uint16))
+
+    def _calib(self, evt) -> Array2d:
+        calib = None
         segs = self._segments(evt)
         if segs is None:
             pass
         else:
-            raw = self._compressor.decode(segs[0].fex, self._dec)
-            print(f'*** raw is a {type(raw)} of len {len(raw)}, dtype {raw.dtype}, shape {raw.shape}, ndim {raw.ndim}, size {raw.size}')
-            f = raw & self._data_bit_mask # 0x7fff
+            for data in segs.values():  break # Is there only 1?  What if there are more?
+            calib = self._compressor.decode(data.fex, self._decompressed)
+            print(f'*** calib is a {type(calib)} of len {len(calib)}, dtype {calib.dtype}, shape {calib.shape}, ndim {calib.ndim}, size {calib.size}')
 
-        return f
+        return calib
 
 # EOF
