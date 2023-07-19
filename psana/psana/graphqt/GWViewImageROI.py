@@ -134,30 +134,20 @@ class GWViewImageROI(GWViewImage):
             self.edit_roi(e)
 
         if self.mode_type & roiu.ADD:
-            self.clicknum += 1
             scpos = self.mapToScene(e.pos())
 
             if self.roi_active is None: #  1st click
+                self.clicknum = 1
                 self.add_roi(e)
                 self.scpos_first = scpos
+                if self.roi_active and self.roi_active.is_last_point(scpos, self.clicknum):
+                    self.finish_add_roi()
 
             else: # other clicks
-                if self.roi_type == roiu.POLYGON:
-                    d = (scpos - self.scpos_first).manhattanLength()
-                    logging.info('POLYGON manhattanLength(last-first): %.1f closeng distance: %.1f'%\
-                            (d, self.roi_active.tolerance))
-                    if self.clicknum < 2 or d > self.roi_active.tolerance:
-                        self.roi_active.click_at_add(scpos)
-                    else:
-                        self.finish_add_roi()
-
-                elif self.roi_type in (roiu.POLYREG, roiu.ARCH): # 3-click input
-                    self.roi_active.set_point(scpos, self.clicknum)
-                    if self.clicknum > 2:
-                        self.roi_active = None
-                        self.clicknum = 0
-                else:
-                    self.roi_active = None
+                self.clicknum += 1
+                self.roi_active.set_point_at_add(scpos, self.clicknum)
+                if self.roi_active.is_last_point(scpos, self.clicknum):
+                    self.finish_add_roi()
 
 
     def mouseMoveEvent(self, e):
@@ -166,7 +156,7 @@ class GWViewImageROI(GWViewImage):
         #if not self.left_is_pressed: return
 
         scpos = self.scene_pos(e)
-        iscpos = QPoint(int(scpos.x()), int(scpos.y()))
+        iscpos = roiu.int_scpos(scpos) # QPoint(int(scpos.x()), int(scpos.y()))
 
         if iscpos == self._iscpos_old: return
         self._iscpos_old = iscpos
@@ -176,11 +166,11 @@ class GWViewImageROI(GWViewImage):
               if self.left_is_pressed:
                   self.add_roi_pixel(iscpos)
           elif self.roi_active is not None:
-              self.roi_active.move_at_add(scpos)
+              self.roi_active.move_at_add(scpos, self.left_is_pressed)
 
         if self.mode_type & roiu.REMOVE:
-          if self.roi_type == roiu.PIXEL and self.left_is_pressed:
-             self.remove_roi_pixel(e)
+          if self.left_is_pressed:
+             self.remove_roi(e)
 
 
     def mouseReleaseEvent(self, e):
@@ -188,25 +178,6 @@ class GWViewImageROI(GWViewImage):
         logger.debug('mouseReleaseEvent but=%d %s' % (e.button(), str(e.pos())))
 
         self.left_is_pressed = False
-
-        if self.mode_type & roiu.ADD:
-
-            if self.roi_type in (roiu.POLYGON, roiu.POLYREG, roiu.ARCH):
-                return
-
-            elif self.roi_type == roiu.PIXEL:
-                self.roi_active = None
-                self.clicknum = 0
-
-            elif self.clicknum > 1: # number of clicks > 1
-                self.roi_active = None
-                self.clicknum = 0
-
-            else:
-                d = (self.scene_pos(e) - self.scpos_first).manhattanLength()
-                if self.roi_active and d > self.roi_active.tolerance: # count as click-drag-release input
-                    self.roi_active = None
-                    self.clicknum = 0
 
 
     def set_roi_color(self, roi=None, color=QCOLOR_DEF):
@@ -216,6 +187,10 @@ class GWViewImageROI(GWViewImage):
             pen = o.scitem.pen()  # QPen(color, 1, Qt.SolidLine)
             pen.setColor(color)     # pen.setCosmetic(True)
             o.scitem.setPen(pen)
+            if self.roi_type in (roiu.PIXEL, roiu.PIXGROUP):
+                brush = o.scitem.brush()
+                brush.setColor(color)
+                o.scitem.setBrush(brush)
 
 
     def finish(self):
@@ -227,11 +202,9 @@ class GWViewImageROI(GWViewImage):
 
     def finish_add_roi(self):
         """finish add_roi action on or in stead of last click, set poly at last non-closing click"""
-        if self.roi_type == roiu.POLYGON\
-        and self.roi_active is not None:
-            self.roi_active.set_poly()
+        if self.roi_active is not None:
+           self.roi_active.finish_add_roi() # used in ROIPolygon
         self.roi_active = None
-        self.clicknum = 0
 
 
     def finish_edit_roi(self):
@@ -281,15 +254,27 @@ class GWViewImageROI(GWViewImage):
 
     def remove_roi(self, e):
         """remove ROI on mouthPressEvent - a few ROIs might be removed"""
-        logger.debug('GWViewImageROI.remove_roi')
-        if self.roi_type == roiu.PIXEL:
-            self.remove_roi_pixel(e)
-        else:
+        #logger.debug('GWViewImageROI.remove_roi')
+        #if self.roi_type == roiu.PIXEL:
+        #    self.remove_roi_pixel(e)
+        #else:
+        if True:
             logger.debug('GWViewImageROI.remove_roi for non-PIXEL types')
             items = self.scene().items(self.scene_pos(e))
             roisel = [o for o in self.list_of_rois if o.scitem in items]
             logger.debug('remove_roi list of ROIs at point: %s' % str(roisel))
             for o in roisel:
+                self.scene().removeItem(o.scitem)
+                self.list_of_rois.remove(o)
+
+
+    def remove_roi_pixel(self, e):
+        """DEPRECATED"""
+        scpos = self.scene_pos(e)
+        iscpos = roiu.int_scpos(scpos) # QPoint(int(scpos.x()), int(scpos.y()))
+        self._iscpos_old = iscpos
+        for o in self.list_of_rois:
+            if iscpos == o.pos:
                 self.scene().removeItem(o.scitem)
                 self.list_of_rois.remove(o)
 
@@ -303,16 +288,6 @@ class GWViewImageROI(GWViewImage):
             self.list_of_rois.remove(o)
 
 
-    def remove_roi_pixel(self, e):
-        scpos = self.scene_pos(e)
-        iscpos = QPoint(int(scpos.x()), int(scpos.y()))
-        self._iscpos_old = iscpos
-        for o in self.list_of_rois:
-            if iscpos == o.pos:
-                self.scene().removeItem(o.scitem)
-                self.list_of_rois.remove(o)
-
-
     def cancel_add_roi(self):
         """cancel of adding item to scene"""
         o = self.roi_active
@@ -322,14 +297,13 @@ class GWViewImageROI(GWViewImage):
         self.scene().removeItem(o.scitem)
         self.list_of_rois.remove(o)
         self.roi_active = None
-        self.clicknum = 0
 
 
     def add_roi(self, e):
         """add ROI on mouthPressEvent"""
 
         scpos = self.scene_pos(e)
-        logger.debug('GWViewImageROI.add_roi scene x=%.1f y=%.1f'%(int(scpos.x()), int(scpos.y())))
+        logger.info('GWViewImageROI.add_roi scene x=%.1f y=%.1f'%(int(scpos.x()), int(scpos.y())))
 
         if self.roi_type == roiu.PIXEL:
              self.add_roi_pixel(scpos)
@@ -339,7 +313,7 @@ class GWViewImageROI(GWViewImage):
 
     def add_roi_pixel(self, scpos):
         """add ROIPixel on mouthPressEvent - special treatment for pixels...On/Off at mouthMoveEvent"""
-        iscpos = QPoint(int(scpos.x()), int(scpos.y()))
+        iscpos = roiu.int_scpos(scpos) # QPoint(int(scpos.x()), int(scpos.y()))
         self._iscpos_old = iscpos
         for o in self.list_of_rois:
             if iscpos == o.pos:
@@ -348,11 +322,11 @@ class GWViewImageROI(GWViewImage):
 
 
     def add_roi_to_scene(self, scpos):
-        o = roiu.select_roi(self.roi_type, view=self, pos=scpos)
+        o = roiu.create_roi(self.roi_type, view=self, pos=scpos)
         if o is None:
             logger.warning('ROI of type %d is undefined' % self.roi_type) # roiu.dict_roi_type_name[self.roi_type])
             return
-        o.add_to_scene()
+        o.add_to_scene(pos=scpos)
         self.list_of_rois.append(o)
         self.roi_active = o
 
@@ -366,14 +340,14 @@ class GWViewImageROI(GWViewImage):
         pixmap = self.qpixmap # QPixmap
 
         arr = ct.image_to_arrcolors(self.qimage, channels=4)
-        print(info_ndarr(arr, 'XXXX image_to_arrcolors:'))
+#        print(info_ndarr(arr, 'XXXX image_to_arrcolors:'))
 
 #        arrB = ct.pixmap_channel(self.qpixmap, channel=0)
 #        arrG = ct.pixmap_channel(self.qpixmap, channel=1)
 #        arrR = ct.pixmap_channel(self.qpixmap, channel=2)
         arrA = ct.pixmap_channel(self.qpixmap, channel=3)
 
-        print(info_ndarr(arrA, 'XXXX alpha channel'))
+#        print(info_ndarr(arrA, 'XXXX alpha channel'))
 
         #mask = pixmap.createMaskFromColor()
         #arr = pixmap_to_arrcolors(pixmap, channels=4)
