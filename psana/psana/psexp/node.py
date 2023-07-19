@@ -143,7 +143,7 @@ class StepHistory(object):
         # [[offset_update0, offset_update1, ], [offset_update0, offset_update1, ], ...]
         # [ -----------client 0------------- ,  ----------- client 1------------ ,
         for i in range(1, client_size):
-            self.send_history.append(np.zeros(self.n_smds, dtype=np.int))
+            self.send_history.append(np.zeros(self.n_smds, dtype=int))
 
 
     def extend_buffers(self, views, client_id, as_event=False):
@@ -196,7 +196,7 @@ def repack_for_bd(smd_batch, step_views, configs, client=-1):
         # Create bytearray containing a list of events from step_views 
         steps = bytearray()
         n_smds = len(step_views)
-        offsets = np.zeros(n_smds, dtype=np.int) 
+        offsets = np.zeros(n_smds, dtype=int) 
         n_steps = 0
         step_sizes = []
         while offsets[0] < memoryview(step_views[0]).nbytes:
