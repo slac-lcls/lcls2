@@ -100,13 +100,7 @@ class DrpDataSource(DataSourceBase):
             )
 
     def adddata(self, data):
-        if True:  #not self._edtbl_config:
-            return self.curr_dgramedit.adddata(data)
-        else:
-            raise RuntimeError(
-                "[Python - Worker {self.worker_num}] Cannot add data to events "
-                "before starting iteration over events"
-            )
+        return self.curr_dgramedit.adddata(data)
 
     def removedata(self, det_name, alg):
         if not self._edtbl_config:
