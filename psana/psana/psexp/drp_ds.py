@@ -99,10 +99,10 @@ class DrpDataSource(DataSourceBase):
                 "after starting iteration over events"
             )
 
-    def adddata(self, data):
+    def add_data(self, data):
         return self.curr_dgramedit.adddata(data)
 
-    def removedata(self, det_name, alg):
+    def remove_data(self, det_name, alg):
         if not self._edtbl_config:
             return self.curr_dgramedit.removedata(det_name, alg)
         else:
