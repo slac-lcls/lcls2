@@ -104,8 +104,9 @@ def config_timing(epics_prefix, timebase='186M'):
 
     time.sleep(1.0)
 
-    names = [epics_prefix+':Top:TimingFrameRx:RxDown']
-    values = [0]
+    names = [epics_prefix+':Top:TimingFrameRx:RxDown',
+             epics_prefix+':Timing:TriggerSource']  # 0=XPM/DAQ, 1=EVR
+    values = [0,0]
     ctxt_put(names,values)
 
 def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
@@ -421,7 +422,7 @@ def wave8_unconfig(base):
     values = [0]
     ctxt_put(names_cfg, values)
 
-    #  Leaving DAQ control.  Put back into LCLS1 mode in LCLS hutches
+    #  Leaving DAQ control.  
     if base['timebase']=='186M':
         config_timing(epics_prefix)
 
