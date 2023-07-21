@@ -40,7 +40,7 @@ det = ds.add_detector(detDef, fexAlg, fexDef, nodeId, namesId, drp_info.det_segm
 
 cfg.config.compressor_json = json.dumps(lpjson)
 
-ds.adddata(cfg.config)
+ds.add_data(cfg.config)
 
 # configure
 compressor = PressioCompressor.from_config(lpjson)
@@ -52,7 +52,7 @@ for myrun in ds.runs():
         #print(f'*** raw is a {type(raw)} of len {len(raw)}')
         det.fex.fex = compressor.encode(raw)
         #print(f'*** det.fex.fex is a {type(det.fex.fex)} of len {len(det.fex.fex)}, dtype {det.fex.fex.dtype}, shape {det.fex.fex.shape}, ndim {det.fex.fex.ndim}, size {det.fex.fex.size}')
-        ds.adddata(det.fex)
-        if nevt%1000!=0: ds.removedata('epixhr_emu','raw')
+        ds.add_data(det.fex)
+        if nevt%1000!=0: ds.remove_data('epixhr_emu','raw')
 
 print(f"*** [Thread {thread_num}] runs loop exited")
