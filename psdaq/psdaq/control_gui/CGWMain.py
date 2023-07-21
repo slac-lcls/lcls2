@@ -432,7 +432,7 @@ def proc_control_gui(parser=None):
 
     cp.qapplication = app
     w = CGWMain(parser)
-    w.move(QCursor.pos())
+    w.move(QCursor.pos().x(), 0)
     w.show()
     print('In CGWMain:proc_control_gui after w.show() - ERRORS FROM libGL IS A KNOWN ISSUE')
 
