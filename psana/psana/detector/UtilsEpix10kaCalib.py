@@ -473,6 +473,11 @@ def pedestals_calibration(parser):
         logger.info('\n=============== step %2d ===============' % nstep_tot)
         logger.debug('    step.evt._seconds: %d' % step.evt._seconds)
 
+
+        #print('XXX', step_docstring(step))
+        #sys.exit('TEST EXIT')
+
+
         metadic = json.loads(step_docstring(step))
         nstep = step_counter(metadic, nstep_tot, nstep_run, stype='pedestal')
 
