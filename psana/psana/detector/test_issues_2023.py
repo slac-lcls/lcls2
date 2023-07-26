@@ -277,6 +277,22 @@ def issue_2023_05_19():
         img = opal.raw.image(evt)
         print('ev:%04d  evt.timestamp: %d image.shape: %s' % (nev, evt.timestamp, str(img.shape)))
 
+def issue_2023_07_25():
+    """datinfo -k exp=tstx00417,run=286,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc/ -d epixhr_emu
+    """
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    ds = DataSource(exp='tstx00417', run=286, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc')
+    for run in ds.runs():
+      det = run.Detector('epixhr_emu')
+      for nev,evt in enumerate(run.events()):
+        if nev>10: break
+        img = det.raw.raw(evt)
+        #img = det.raw.image(evt)
+        #img = det.fex.fex(evt)
+        #img = det.fex.raw(evt)
+        #img = det.fex.calib(evt)
+        print(info_ndarr(img, 'ev:%04d  evt.timestamp: %d image arr:' % (nev, evt.timestamp)))
 
 def issue_2023_mm_dd():
     print('template')
@@ -292,6 +308,7 @@ USAGE = '\nUsage:'\
       + '\n    5 - issue_2023_04_27 - test configuration for Ric generated epixhremu exp=tstx00417,run=277'\
       + '\n    6 - issue_2023_04_28 - test epixhremu - load default geometry'\
       + '\n    7 - issue_2023_05_19 - test opal.raw.image for Mona'\
+      + '\n    8 - issue_2023_07_25 - test epixhremu.fex.image for Ric'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -303,6 +320,7 @@ elif TNAME in  ('4',): issue_2023_02_07()
 elif TNAME in  ('5',): issue_2023_04_27()
 elif TNAME in  ('6',): issue_2023_04_28()
 elif TNAME in  ('7',): issue_2023_05_19()
+elif TNAME in  ('8',): issue_2023_07_25()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
