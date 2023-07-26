@@ -30,9 +30,10 @@ class epixhremu_raw_0_0_1(eb.epix_base):
         if segs is None:
             pass
         else:
-            nx = segs[0].raw.shape[1]
-            ny = segs[0].raw.shape[0]
-            f = segs[0].raw & self._data_bit_mask # 0x7fff
+            first_key = next(iter(segs))
+            nx = segs[first_key].raw.shape[1]
+            ny = segs[first_key].raw.shape[0]
+            f = segs[first_key].raw & self._data_bit_mask # 0x7fff
         return f
 
 
@@ -86,7 +87,7 @@ class epixhremu_fex_0_0_1(DetectorImpl):
         super(epixhremu_fex_0_0_1, self).__init__(*args)
 
         # Expect config to be the same for all segments, so pick first one
-        for config in epixhr.raw._seg_configs().values():  break
+        for config in self._seg_configs().values():  break
         comp_config = json.loads(config.config.compressor_json)
 
         # Instantiate the compressor/decompressor
