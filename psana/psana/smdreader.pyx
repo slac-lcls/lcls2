@@ -150,7 +150,7 @@ cdef class SmdReader:
                 if all(flag_founds): break
 
                 time.sleep(self.sleep_secs)
-                print(f'waiting for an event...retry#{cn_retries+1} (max_retries={self.max_retries}, use PS_R_MAX_RETRIES for different value)')
+                print(f'smd0 waiting for an event...retry#{cn_retries+1} of {self.max_retries} (use PS_R_MAX_RETRIES for different value)')
                 self.prl_reader.just_read()
                 cn_retries += 1
                 if cn_retries >= self.max_retries:
@@ -176,15 +176,20 @@ cdef class SmdReader:
 
         # Find the winning buffer (slowest detector)- skip when no new read.
         cdef uint64_t limit_ts=0
+        for i in range(self.prl_reader.nfiles):
+            if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
+                self.winner = i
+                limit_ts = self.prl_reader.bufs[self.winner].timestamp
+        # With integrating detector specified, limit_ts is from the integrating
+        # detector where the last ts of the winner can be inserted in front of or at.
+        cdef int i_found=0
+        cdef uint64_t[:] buf_ts_arr
         if intg_stream_id > -1:
-            self.winner = intg_stream_id
-        else:
-            if self.winner == -1:
-                for i in range(self.prl_reader.nfiles):
-                    if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
-                        self.winner = i
-                        limit_ts = self.prl_reader.bufs[self.winner].timestamp
-        limit_ts = self.prl_reader.bufs[self.winner].timestamp
+            buf_ts_arr = <uint64_t [: self.prl_reader.bufs[intg_stream_id].n_ready_events]>self.prl_reader.bufs[intg_stream_id].ts_arr
+            i_found = np.searchsorted(buf_ts_arr, limit_ts)
+            if i_found < self.prl_reader.bufs[intg_stream_id].n_ready_events:
+                limit_ts = self.prl_reader.bufs[intg_stream_id].ts_arr[i_found]
+                self.winner = intg_stream_id
 
         # No. of events available in the viewing window
         self.n_view_events = self.prl_reader.bufs[self.winner].n_ready_events - \
@@ -198,6 +203,7 @@ cdef class SmdReader:
             i_eob               = self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size
             limit_ts            = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
             self.n_view_events  = batch_size
+
         
         # Save timestamp and transition id of the last event in batch
         self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_eob]      
@@ -227,9 +233,15 @@ cdef class SmdReader:
         
         # Find the boundary of each buffer using limit_ts
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
-            buf = &(self.prl_reader.bufs[i])
+            # Reset buffer index and size for both normal and step buffers.
+            # They will get set to the boundary value if the current timestamp 
+            # does not exceed limiting timestamp.
             i_st_bufs[i] = 0
             block_size_bufs[i] = 0
+            i_st_stepbufs[i] = 0
+            block_size_stepbufs[i] = 0
+            
+            buf = &(self.prl_reader.bufs[i])
             
             if buf.ts_arr[i_starts[i]] > limit_ts: continue
 
@@ -265,8 +277,6 @@ cdef class SmdReader:
             
             # Handle step buffers the same way
             buf = &(self.prl_reader.step_bufs[i])
-            i_st_stepbufs[i] = 0
-            block_size_stepbufs[i] = 0
             
             # Find boundary using limit_ts (omit check for exact match here because it's unlikely
             # for transition buffers.
@@ -325,7 +335,7 @@ cdef class SmdReader:
                                    ]
                 fake_ts = self.get_next_fake_ts()
                 for i_fake, fake_transition in enumerate(fake_transitions):
-                    fake_dgram = DgramEdit(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
+                    fake_dgram = DgramEdit(transition_id=fake_transition, config_dgramedit=fake_config, ts=fake_ts+i_fake)
                     fake_dgram.save(self._fakebuf, offset=out_offset)
                     out_offset += fake_dgram.size 
                 self._fakebuf_size = out_offset

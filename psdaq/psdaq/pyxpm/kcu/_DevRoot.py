@@ -34,68 +34,14 @@ class DmaHandle(rogue.interfaces.stream.Slave):
 
     def _acceptFrame(self, frame):
 
-        fidPeriod   = 1400e-6/1300.
-    
         with frame.lock():
             size = frame.getPayload()
 
             msg = bytearray(size)
             frame.read(msg,0)
-            
+
             if self._handle:
                 self._handle(msg)
-            else:
-                offset = 4
-                # LinkStatus
-                linkS = []
-                for i in range(14):
-                    if i<8:
-                        w = struct.unpack_from('<LLL',msg,offset)
-                        u = (w[2]<<64) + (w[1]<<32) + w[0]
-                        d = {'Lane':i,'txDone':((u>>0)&1),'txRdy ':((u>>1)&1),'rxDone':((u>>2)&1),'rxRdy ':((u>>3)&1)}
-
-                        v = (u>>5)&0xffff
-                        d['rxErr '] = v-self._rxErr[i]
-                        self._rxErr[i] = v
-                    
-                        v = (u>>21)&0xffffffff
-                        d['rxRcv '] = v-self._rxRcv[i]
-                        self._rxRcv[i] = v
-
-                        d['remId '] = (u>>54)&0xffffffff
-                        print(d)
-                    offset += 12
-
-                # GroupStatus
-
-                def bytes2Int(msg,offset):
-                    b = struct.unpack_from('<BBBBB',msg,offset)
-                    offset += 5
-                    w = 0
-                    for i,v in enumerate(b):
-                        w += v<<(8*i)
-                    return (w,offset)
-
-                for i in range(8):
-                    for k in range(32):
-                        offset += 8
-                    (l0Ena   ,offset) = bytes2Int(msg,offset)
-                    (l0Inh   ,offset) = bytes2Int(msg,offset)
-                    (numL0   ,offset) = bytes2Int(msg,offset)
-                    (numL0Inh,offset) = bytes2Int(msg,offset)
-                    (numL0Acc,offset) = bytes2Int(msg,offset)
-                    offset += 1
-                    rT = l0Ena*fidPeriod
-                    d = {'Group':i,'L0Ena':l0Ena,'L0Inh':l0Inh,'NumL0':numL0,'rTim':rT}
-                    print(d)
-
-                for i in range(2):
-                    offset += 1
-
-                w = struct.unpack_from('<LLLL',msg,offset)
-                offset += 16
-                d = {'bpClk ':w[0]&0xfffffff,'fbClk ':w[1]&0xfffffff,'recClk':w[2]&0xfffffff,'phyClk':w[3]&0xfffffff}
-                print(d)
 
                 
 class DevRoot(pr.Root):
@@ -107,6 +53,7 @@ class DevRoot(pr.Root):
                  dataDebug      = False,
                  enableConfig   = False,
                  enVcMask       = 0x3, # Enable lane mask
+                 isXpmGen       = True,
                  **kwargs):
 
         print(f'DevRoot dataDebug {dataDebug}')
@@ -139,6 +86,7 @@ class DevRoot(pr.Root):
         self.add(kcu.DevPcie(
             name        = 'XPM',
             memBase     = self.memMap,
+            isXpmGen    = isXpmGen,
         ))
 
         # Create empty list

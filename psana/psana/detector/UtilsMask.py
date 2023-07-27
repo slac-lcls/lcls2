@@ -6,6 +6,8 @@ Utilities for mask
 Usage::
   from psana.detector.UtilsMask import *
 
+  # Test: python <path>/lcls2/psana/psana/detector/testman/test_UtilsMask.py <test-number>
+
   m = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK)
   m = merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK)
   s = merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS)
@@ -13,7 +15,22 @@ Usage::
          # gain_range_inds list stands for gain ranges for 'FH','FM','FL','AHL-H','AML-M'
   m = mask_neighbors(mask, rad=5, ptrn='r')
   m = mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK)
-  m = status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa)
+  m = status_as_mask(status, status_bits=(1<<64)-1, dtype=DTYPE_MASK, **kwa)
+
+  # 2023-02-10 add converters from mask2d to mask3d
+  m = convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ix, iy)
+  m = convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs) # kwargs passed to geo.get_pixel_coord_indexes(**kwargs)
+  m = convert_mask2d_to_ndarray_using_geometry_file(mask2d, gfname, **kwargs) # kwargs passed to geo.get_pixel_coord_indexes(**kwargs)
+
+  # 2023-02-23 add methods to generate masks for shape parameters
+  r = cart2r(x, y)  # converts numpy arrays for carthesian x,y to r
+  rows, cols = meshgrids(shape)
+  m = mask_circle(shape, center_row, center_col, radius, dtype=DTYPE_MASK)
+  m = mask_ring(shape, center_row, center_col, radius_min, radius_max, dtype=DTYPE_MASK)
+  m = mask_rectangle(shape, cmin, rmin, cols, rows, dtype=DTYPE_MASK)
+  m = mask_poly(shape, colrows, dtype=DTYPE_MASK)
+  m = mask_halfplane(shape, r1, c1, r2, c2, rm, cm, dtype=DTYPE_MASK)
+  m = mask_arc(shape, cx, cy, ro, ri, ao, ai, dtype=DTYPE_MASK)
 
 2021-01-25 created by Mikhail Dubrovin
 """
@@ -23,8 +40,7 @@ import numpy as np
 import psana.pscalib.calib.CalibConstants as CC
 DTYPE_MASK   = CC.dic_calib_type_to_dtype[CC.PIXEL_MASK]   # np.uint8
 DTYPE_STATUS = CC.dic_calib_type_to_dtype[CC.PIXEL_STATUS] # np.uint64
-
-from psana.detector.NDArrUtils import shape_nda_as_3d, info_ndarr  # shape_as_3d, shape_as_3d
+from psana.detector.NDArrUtils import info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
 
 def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
@@ -183,18 +199,18 @@ def mask_edges(mask, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
     return mask_out
 
 
-def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
+def status_as_mask(status, status_bits=(1<<64)-1, dtype=DTYPE_MASK, **kwa):
     """Returns per-pixel array of mask generated from pixel_status.
 
        Parameters
 
-       - status  : np.array - pixel_status calibration constants
+       - status  : np.array - pixel_status/status_extra/etc calibration constants
        - status_bits : bitword for mask status codes
        - dtype : mask np.array dtype
 
        Returns
 
-       - np.array - mask generated from calibration type pixel_status (1/0 for status 0/status_bits>0, respectively).
+       - np.array - mask generated from calibration type pixel_status/status_extra (1/0 for status 0/status_bits>0, respectively).
     """
     if not isinstance(status, np.ndarray):
             logger.debug('status is not np.ndarray - return None')
@@ -204,6 +220,126 @@ def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
     logger.debug(info_ndarr(status, 'status'))
     cond = (status & status_bits)>0
     return np.asarray(np.select((cond,), (0,), default=1), dtype=dtype)
+
+
+def convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, rows, cols):
+    """Converts 2-d (np.ndarray) image-like mask2d to
+       (np.ndarray) shaped as input pixel index arrays rows and cols.
+       NOTE: arrays rows and cols should be exactly the same as used to construct mask2d as image.
+    """
+    from psana.pscalib.geometry.GeometryAccess import convert_mask2d_to_ndarray
+    return convert_mask2d_to_ndarray(mask2d, rows, cols, dtype=DTYPE_MASK)
+
+
+def convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs):
+    """Converts 2-d (np.ndarray) image-like mask2d to 3-d (np.ndarray) shaped as raw data.
+       geo (GeometryAccess) is a geometry object.
+       **kwargs - keyword arguments passed to geo.get_pixel_coord_indexes().
+    """
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess
+    assert isinstance(geo, GeometryAccess)
+    ir, ic = geo.get_pixel_coord_indexes(**kwargs)
+    reshape_to_3d(ir)
+    reshape_to_3d(ic)
+    assert ir.shape[0]>1, 'number of segments should be more than one, ir.shape=%s' % str(ir.shape)
+    assert ic.shape[0]>1, 'number of segments should be more than one, ic.shape=%s' % str(ic.shape)
+    return convert_mask2d_to_ndarray_using_pixel_coord_indexes(mask2d, ir, ic)
+
+
+def convert_mask2d_to_ndarray_using_geometry_file(mask2d, gfname, **kwargs):
+    """Converts 2-d (np.ndarray) image-like mask2d to 3-d (np.ndarray) shaped as raw data.
+       gfname (str) is a geometry file name.
+       **kwargs - keyword arguments passed to geo.get_pixel_coord_indexes().
+    """
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess
+    assert isinstance(gfname, str)
+    assert os.path.exists(gfname)
+    geo = GeometryAccess(gfname)
+    return convert_mask2d_to_ndarray_using_geo(mask2d, geo, **kwargs)
+
+
+def cart2r(x, y):
+    return np.sqrt(x*x + y*y)
+
+
+def meshgrids(shape):
+    """returns np.meshgrid arrays of cols, rows for specified shape"""
+    assert len(shape)==2
+    return np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+
+
+def mask_circle(shape, center_row, center_col, radius, dtype=DTYPE_MASK):
+    c, r = meshgrids(shape)
+    rad = cart2r(r-center_row, c-center_col)
+    return np.select([rad>radius,], [0,], default=1).astype(dtype)
+
+
+def mask_ring(shape, center_row, center_col, radius_min, radius_max, dtype=DTYPE_MASK):
+    c, r = meshgrids(shape)
+    rad = cart2r(r-center_row, c-center_col)
+    return np.select([rad<radius_min, rad>radius_max,], [0, 0,], default=1).astype(dtype)
+
+
+def mask_rectangle(shape, cmin, rmin, cols, rows, dtype=DTYPE_MASK):
+    """cmin, rmin (int) - minimal coordinates of the rectangle corner
+       cols, rows (int) - width and height of the rectangle
+    """
+    c, r = meshgrids(shape)
+    return np.select([c<cmin, c>cmin+cols, r<rmin, r>rmin+rows], [False, False, False, False], default=True).astype(dtype)
+
+
+def mask_poly(shape, colrows, dtype=DTYPE_MASK):
+    """colrows (list) - list of vertex coordinate pairs as (row,col)
+    """
+    c, r = meshgrids(shape)
+    cr = list(zip(c.ravel(), r.ravel())) # or np.vstack((x,y)).T
+    from matplotlib.path import Path
+    mask = np.array(Path(colrows).contains_points(cr), dtype=dtype)
+    mask.shape = shape
+    return mask
+
+
+def mask_halfplane(shape, r1, c1, r2, c2, rm, cm, dtype=DTYPE_MASK):
+    """Half-plane contains the boarder line through the points (r1, c1) and (r2, c2)
+       Off-line point (rm, cm) picks the half-plane marked with ones.
+    """
+    f = 0 if c1 == c2 else (r2-r1)/(c2-c1)
+    c, r = meshgrids(shape)
+    signgt = rm > r1+f*(cm-c1)
+    cond = (r > r1 if rm < r1 else r < r1) if r1 == r2 else\
+           (c > c1 if cm < c1 else c < c1) if c1 == c2 else\
+           ((r > r1+f*(c-c1)) if signgt else (r < r1+f*(c-c1)))
+    #rm, cm = int(rm), int(cm)
+    #if not cond[rm, cm]: cond = ~cond
+    return np.select([cond,], [0,], default=1).astype(dtype)
+
+
+def mask_arc(shape, cx, cy, ro, ri, ao, ai, dtype=DTYPE_MASK):
+    """Returns arc mask for ami2 ArcROI set of parameters. Ones in the arc zeroes outside.
+       Carthesian (x,y) emulated by returned *.T as in ami.
+       cx, cy - arc center (col, row)
+       ro, ri - radii of the outer and inner arc corner points
+       ao, ai - angles of the outer and arc angular size from outer to inner corner points
+    """
+    logger.debug('shape:%s  cx:%.2f  cy:%.2f  ro:%.2f  ri:%.2f  ao:%.2f  ai:%.2f' % (str(shape), cx, cy, ro, ri, ao, ai))
+    from math import radians, sin, cos  # floor, ceil
+    assert ro>ri, 'outer radius %d shold be greater than inner %d' % (ro, ri)
+    assert ai>0, 'arc span angle %.2f deg > 0' % ai
+    #assert ao>0, 'outer arc corner angle %.2f deg > 0' % ao
+    row1, col1 = cy, cx
+    mring = mask_ring(shape, row1, col1, ri, ro, dtype=dtype)
+    ao_rad = radians(ao)
+    ai_rad = radians(ao + ai)
+    delta = -0.1 # radian
+    row2, col2 = row1 + ro * sin(ao_rad), col1 + ro * cos(ao_rad)
+    rm, cm = row1 + ro * sin(ao_rad+delta), col1 + ro * cos(ao_rad+delta)
+    mhpo = mask_halfplane(shape, row1, col1, row2, col2, rm, cm, dtype=dtype)
+    row2, col2 = row1 + ri * sin(ai_rad), col1 + ri * cos(ai_rad)
+    rm, cm = row1 + ri * sin(ai_rad-delta), col1 + ri * cos(ai_rad-delta)
+    mhpi = mask_halfplane(shape, row1, col1, row2, col2, rm, cm, dtype=dtype)
+    mhro = merge_masks(mask1=mring, mask2=mhpo, dtype=dtype)
+    mhri = merge_masks(mask1=mring, mask2=mhpi, dtype=dtype)
+    return (np.bitwise_and(mhro, mhri) if ai<180 else np.bitwise_or(mhro, mhri)).T
 
 # EOF
 

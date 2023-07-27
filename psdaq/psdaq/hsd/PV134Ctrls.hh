@@ -18,7 +18,9 @@ namespace Pds {
     public:
       void reset     (unsigned);
       void configure (unsigned);
-      void loopback  (bool);
+      void loopback  (bool) {}
+      void loopback  (unsigned,bool);
+      void disablefull(unsigned,bool);
     private:
       void _allocate();
       int  _nchips  () { return 2; }

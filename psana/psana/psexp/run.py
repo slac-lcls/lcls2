@@ -8,13 +8,12 @@ from psana import dgram
 from psana.dgrammanager import DgramManager
 from psana.detector.detector_impl import MissingDet
 from psana.event import Event
+from psana.dgramedit import DgramEdit
 from . import TransitionId
 from .tools import RunHelper
 from .envstore_manager import EnvStoreManager
 from .events import Events
 from .step import Step
-
-class DetectorNameError(Exception): pass
 
 
 def _is_hidden_attr(obj, name):
@@ -116,7 +115,7 @@ class Run(object):
         if name not in self.dsparms.configinfo_dict and mapped_env_var_name is None:
             if not accept_missing:
                 err_msg = f"No available detector class matched with {name}. If this is a new detector/version, make sure to add new class in detector folder."
-                raise DetectorNameError(err_msg)
+                raise KeyError(err_msg)
             else:
                 return MissingDet()
 
@@ -235,6 +234,7 @@ class RunShmem(Run):
         self._evt_iter = Events(ds, self)
 
     def events(self):
+
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
                 if evt.service() == TransitionId.EndRun: return
@@ -250,6 +250,68 @@ class RunShmem(Run):
             if evt.service() == TransitionId.EndRun: return
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter)
+
+
+class RunDrp(Run):
+    """ Yields list of events from drp python (no event building routine). """
+
+    def __init__(self, ds, run_evt):
+        super(RunDrp, self).__init__(ds)
+        self._evt      = run_evt
+        self._ds       = ds
+        self.beginruns = run_evt._dgrams
+        self.configs   = ds._configs
+        super()._setup_envstore()
+        self._evt_iter = Events(self._ds, self)
+        self._edtbl_config = False
+
+    def events(self):
+        for evt in self._evt_iter:
+            if evt.service() == TransitionId.L1Accept:
+                buffer_size = self._ds.dm.pebble_bufsize
+            else:
+                buffer_size = self._ds.dm.transition_bufsize
+            
+            self._ds.curr_dgramedit = DgramEdit(
+                evt._dgrams[0], 
+                config_dgramedit=self._ds.config_dgramedit,
+                bufsize=buffer_size
+            )
+
+            if evt.service() != TransitionId.L1Accept:
+                if evt.service() == TransitionId.EndRun :
+                    self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+                    return
+                self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+                continue
+            st = time.time()
+            yield evt
+            en = time.time()
+            self.c_ana.labels('seconds','None').inc(en-st)
+            self.c_ana.labels('batches','None').inc()
+            self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+            
+
+    def steps(self):
+        for evt in self._evt_iter:
+            if evt.service() == TransitionId.L1Accept:
+                buffer_size = self._ds.dm.pebble_bufsize
+            else:
+                buffer_size = self._ds.dm.transition_bufsize
+            
+            self._ds.curr_dgramedit = DgramEdit(
+                evt._dgrams[0],
+                config_dgramedit=self._ds.config_dgramedit,
+                bufsize=buffer_size
+            )
+            
+            if evt.service() == TransitionId.EndRun:
+                self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+                return
+            if evt.service() == TransitionId.BeginStep:
+                yield Step(evt, self._evt_iter)
+            self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+                
 
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """

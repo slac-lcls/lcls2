@@ -11,7 +11,6 @@ def hiddenmethod(obj):
     return obj
 
 
-
 class Container(object):
     def __init__(self):
         pass
@@ -32,7 +31,7 @@ class MissingDet:
         return None
 
 
-class DetectorImpl(object):
+class DetectorImpl():
     def __init__(self, det_name, drp_class_name, configinfo, calibconst,
             env_store   = None,
             var_name    = None):

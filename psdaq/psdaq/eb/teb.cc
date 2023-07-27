@@ -193,7 +193,7 @@ using namespace Pds::Eb;
 
 Teb::Teb(const EbParams&         prms,
          const MetricExporter_t& exporter) :
-  EbAppBase     (prms, exporter, "TEB", TEB_TMO_MS),
+  EbAppBase     (prms, exporter, "TEB", EB_TMO_MS),
   _mrqTransport (prms.verbose, prms.kwargs),
   _batch        {nullptr, 0, 0},
   //_trimmed      (0),
@@ -311,7 +311,7 @@ int Teb::connect()
   _mrqLinks.resize(_prms.numMrqs);
 
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
-    _monBufLists.emplace_back(_prms.numMebEvBufs);
+    _monBufLists.emplace_back(_prms.numMebEvBufs[i]);
 
   std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
                                             {"partition", std::to_string(_prms.partition)},
@@ -323,36 +323,11 @@ int Teb::connect()
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
-  // Make a guess at the size of the Input entries
-  size_t inpSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);
-
-  rc = EbAppBase::connect(_prms, inpSizeGuess);
+  rc = EbAppBase::connect(TEB_TR_BUFFERS);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
   if (rc)  return rc;
-
-  // Make a guess at the size of the Result entries
-  auto maxResultSizeGuess = sizeof(ResultDgram);
-  auto maxEntries         = _prms.maxEntries;
-  auto numBatches         = _prms.maxBuffers / maxEntries;
-  if (numBatches * maxEntries != _prms.maxBuffers)
-  {
-    logging::critical("%s:\n  maxEntries (%u) must divide evenly into maxBuffers (%u)",
-                      maxEntries, _prms.maxBuffers);
-    abort();
-  }
-  _batMan.initialize(maxResultSizeGuess, maxEntries, numBatches); // TEB always batches
-
-  // This is the local Results batch region from which we'll post batches back to the DRPs
-  void*  region  = _batMan.batchRegion();
-  size_t regSize = _batMan.batchRegionSize();
-
-  for (auto link : _l3Links)
-  {
-    rc = link->setupMr(region, regSize);
-    if (rc)  return rc;
-  }
 
   return 0;
 }
@@ -371,16 +346,22 @@ int Teb::configure(Trigger* trigger,
 
   // MRQ links need no configuration
 
-  int rc = EbAppBase::configure(_prms);
+  int rc = EbAppBase::configure();
   if (rc)  return rc;
 
-  // maxResultSize becomes known during Configure, so reinitialize BatchManager now
+  // maxResultSize becomes known during Configure
   auto maxResultSize = _trigger->size();
   auto maxEntries    = _prms.maxEntries;
   auto numBatches    = _prms.maxBuffers / maxEntries;
+  if (numBatches * maxEntries != _prms.maxBuffers)
+  {
+    logging::critical("%s:\n  maxEntries (%u) must divide evenly into maxBuffers (%u)",
+                      maxEntries, _prms.maxBuffers);
+    abort();
+  }
   _batMan.initialize(maxResultSize, maxEntries, numBatches); // TEB always batches
 
-  // This is the local Results batch region
+  // This is the local Results batch region from which we'll post batches back to the DRPs
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
 
@@ -397,7 +378,7 @@ int Teb::configure(Trigger* trigger,
   // avoid giving emphasis to any slow RoG, set rogReserved to 0.  To prevent
   // one slow RoG from starving another, rogReserved is a sum over all RoGs of
   // the requirement for each RoG.
-  for (unsigned iMeb = 0; iMeb < MAX_MEBS; ++iMeb)
+  for (unsigned iMeb = 0; iMeb < _prms.numMrqs; ++iMeb)
   {
     _rogReserved[iMeb] = 0;
 
@@ -406,7 +387,7 @@ int Teb::configure(Trigger* trigger,
     {
       unsigned rog = __builtin_ffs(rogs) - 1;
       rogs &= ~(1 << rog);
-      _rogReserved[iMeb] += _trigger->rogReserve(rog, iMeb, _prms.numMebEvBufs);
+      _rogReserved[iMeb] += _trigger->rogReserve(rog, iMeb, _prms.numMebEvBufs[iMeb]);
     }
   }
 
@@ -456,7 +437,7 @@ void Teb::run()
     rc = EbAppBase::process();
     if (rc < 0)
     {
-      if (rc == -FI_ETIMEDOUT)
+      if (rc == -FI_EAGAIN)
       {
         if (_trCount > 1)  _queueMrqBuffers(); // Avoid polling too early
 
@@ -561,7 +542,7 @@ void Teb::process(EbEvent* event)
                         __PRETTY_FUNCTION__, pid);
       // return, if we could know this PID had been fixed up before
     }
-    throw "Pulse ID did not advance";   // Can't recover from non-spit events
+    abort();                            // Can't recover from non-split events
   }
   _pidPrv = pid;
 
@@ -1136,6 +1117,7 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.maxBuffers   = 0;               // Save the largest value
   _prms.indexSources = 0ull;            // DRP(s) with the largest DMA index range
   _prms.numBuffers.resize(MAX_DRPS, 0); // Number of buffers on each DRP
+  _prms.drps.resize(MAX_DRPS);          // DRP aliases
 
   unsigned maxBuffers = 0;
   for (auto it : body["drp"].items())
@@ -1147,6 +1129,7 @@ int TebApp::_parseConnectionParams(const json& body)
       rc = 1;
     }
     _prms.contributors |= 1ull << drpId;
+    _prms.drps[drpId]   = it.value()["proc_info"]["alias"];
 
     _prms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
     _prms.ports.push_back(it.value()["connect_info"]["drp_port"]);
@@ -1179,10 +1162,11 @@ int TebApp::_parseConnectionParams(const json& body)
       if (rog == _prms.partition) // Disallow non-common RoG DRPs in indexSources
         _prms.indexSources |= 1ull << drpId;
   }
+  _prms.drps.shrink_to_fit();
 
   if (_prms.maxBuffers & (_prms.maxBuffers - 1))
   {
-    logging::error("maxBuffers (%u = 0x%08x) isn't a power of 2, as it should be",
+    logging::error("maxBuffers (%u = 0x%08x) must be a power of 2",
                    _prms.maxBuffers, _prms.maxBuffers);
     rc = 1;
   }
@@ -1193,19 +1177,19 @@ int TebApp::_parseConnectionParams(const json& body)
   // non-common RoG DRP because it would overrun the common RoG DRPs' region.
   if (maxBuffers > _prms.maxBuffers)
   {
-    logging::error("DRP's DMA buffer count (%u) must be <= %u",
-                   maxBuffers, _prms.maxBuffers);
+    logging::error("One or more DRPs have pebble buffer count > the common RoG's (%u)",
+                   _prms.maxBuffers);
     rc = 1;
   }
 
   // These buffers aren't used if there is only one TEB in the system, but...
   unsigned suRate(body["control"]["0"]["control_info"]["slow_update_rate"]);
-  if (1000 * TEB_TR_BUFFERS < suRate * TEB_TMO_MS)
+  if (1000 * TEB_TR_BUFFERS < suRate * EB_TMO_MS)
   {
-    // Adjust TEB_TMO_MS, TEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
+    // Adjust EB_TMO_MS, TEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
     logging::error("Increase # of TEB transition buffers from %u to > %u "
-                   "for %u Hz of SlowUpdates and %u ms TEB timeout",
-                   TEB_TR_BUFFERS, (suRate * TEB_TMO_MS + 999) / 1000, suRate, TEB_TMO_MS);
+                   "for %u Hz of SlowUpdates and %u ms EB timeout",
+                   TEB_TR_BUFFERS, (suRate * EB_TMO_MS + 999) / 1000, suRate, EB_TMO_MS);
     rc = 1;
   }
 
@@ -1214,31 +1198,19 @@ int TebApp::_parseConnectionParams(const json& body)
   std::fill(vec.begin(), vec.end(), sizeof(EbDgram)); // Same for all contributors
 
   _prms.numMrqs      = 0;
-  _prms.numMebEvBufs = 0;
+  _prms.numMebEvBufs.clear();
   if (body.find("meb") != body.end())
   {
-    // Revisit: For now, we follow the DRP pattern, but we shouldn't require
-    //          the number of MEB event buffers to be the same across MEBs
     for (auto it : body["meb"].items())
     {
       _prms.numMrqs++;    // Revisit: body.count("meb"); doesn't work?
-
+    }
+    _prms.numMebEvBufs.resize(_prms.numMrqs);
+    for (auto it : body["meb"].items())
+    {
       unsigned mebId = it.value()["meb_id"];
       unsigned count = it.value()["connect_info"]["max_ev_count"];
-      if (_prms.numMebEvBufs == 0)
-        _prms.numMebEvBufs = count;
-      else if (count != _prms.numMebEvBufs)
-      {
-        logging::error("numMebEvBufs (%u) must be the same for all MEBs, got %u from ID %u",
-                       _prms.numMebEvBufs, count, mebId);
-        rc = 1;
-      }
-    }
-    if (_prms.numMrqs > MAX_MRQS)
-    {
-      logging::error("More monitor requestors found (%u) than supportable %u",
-                     _prms.numMrqs, MAX_MRQS);
-      rc = 1;
+      _prms.numMebEvBufs[mebId] = count;
     }
   }
 
@@ -1276,7 +1248,9 @@ void TebApp::_printParams(const EbParams& prms, Trigger* trigger) const
   printf("  # of contrib. buffers:        0x%08x = %u\n",        prms.maxBuffers, prms.maxBuffers);
   printf("  Max result     EbDgram size:  0x%08zx = %zu\n",      trigger->size(), trigger->size());
   printf("  Max transition EbDgram size:  0x%08zx = %zu\n",      prms.maxTrSize[0], prms.maxTrSize[0]);
-  printf("  # of transition buffers:      0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
+  for (unsigned i = 0; i < _prms.numMebEvBufs.size(); ++i)
+    printf("  # of MEB %u event buffers:     0x%08x = %u\n",      i, _prms.numMebEvBufs[i], _prms.numMebEvBufs[i]);
+  printf("  # of transition  buffers:     0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
   printf("\n");
 }
 

@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <map>
 #include <atomic>
-
+#include <mutex>
+#include <condition_variable>
+#include <string>
 #include "spscqueue.hh"
 
 #define PGP_MAX_LANES 8
@@ -23,20 +25,6 @@ enum NamesIndex
    STEPINFO     = 253,
    OFFSETINFO   = 254,
    RUNINFO      = 255,
-};
-
-struct DmaBuffer
-{
-    int32_t size;
-    uint32_t index;
-};
-
-struct PGPEvent
-{
-    DmaBuffer buffers[PGP_MAX_LANES];
-    uint8_t mask = 0;
-    void* l3InpBuf;
-    Pds::EbDgram* transitionDgram;
 };
 
 struct Parameters
@@ -70,6 +58,19 @@ struct Parameters
     size_t maxTrSize;
 };
 
+struct DmaBuffer
+{
+    int32_t size;
+    uint32_t index;
+};
+
+struct PGPEvent
+{
+    DmaBuffer buffers[PGP_MAX_LANES];
+    uint8_t mask = 0;
+    unsigned pebbleIndex;
+};
+
 class Pebble
 {
 public:
@@ -100,25 +101,39 @@ public:
     ~MemPool();
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
+    std::vector<Pds::EbDgram*> transitionDgrams;
     void** dmaBuffers;
+    unsigned nDmaBuffers() const {return m_nDmaBuffers;}
+    unsigned dmaSize() const {return m_dmaSize;}
     unsigned nbuffers() const {return m_nbuffers;}
     size_t bufferSize() const {return pebble.bufferSize();}
-    unsigned dmaSize() const {return m_dmaSize;}
-    int fd () const {return m_fd;}
-    Pds::EbDgram* allocateTr();
+    int fd() const {return m_fd;}
     void shutdown();
+    Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
-    void allocate(unsigned count) { m_inUse.fetch_add(count, std::memory_order_acq_rel) ; }
-    void release(unsigned count) { m_inUse.fetch_sub(count, std::memory_order_acq_rel); }
-    const uint64_t inUse() const { return m_inUse.load(std::memory_order_relaxed); }
+    unsigned countDma();
+    unsigned allocate();
+    void freeDma(std::vector<uint32_t>& indices, unsigned count);
+    void freePebble();
+    const int64_t dmaInUse() const { return m_dmaAllocs.load(std::memory_order_relaxed) -
+                                            m_dmaFrees.load(std::memory_order_relaxed); }
+    const int64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -
+                                         m_frees.load(std::memory_order_relaxed); }
+    void resetCounters();
     int setMaskBytes(uint8_t laneMask, unsigned virtChan);
 private:
+    unsigned m_nDmaBuffers;
     unsigned m_nbuffers;
     unsigned m_dmaSize;
     int m_fd;
     bool m_setMaskBytesDone;
     SPSCQueue<void*> m_transitionBuffers;
-    std::atomic<unsigned> m_inUse;
+    std::atomic<uint64_t> m_dmaAllocs;
+    std::atomic<uint64_t> m_dmaFrees;
+    std::atomic<uint64_t> m_allocs;
+    std::atomic<uint64_t> m_frees;
+    std::mutex m_lock;
+    std::condition_variable m_condition;
 };
 
 }

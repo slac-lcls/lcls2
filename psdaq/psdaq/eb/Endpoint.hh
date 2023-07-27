@@ -200,6 +200,7 @@ namespace Pds {
       MemoryRegion* register_memory(void* start, size_t len);
       MemoryRegion* register_memory(LocalAddress* laddr);
       bool deregister_memory(MemoryRegion* mr);
+      void list_memory() const;
       MemoryRegion* lookup_memory(const void* start, size_t len) const;
       MemoryRegion* lookup_memory(LocalAddress* laddr) const;
       bool lookup_memory_iovec(LocalIOVec* iov) const;

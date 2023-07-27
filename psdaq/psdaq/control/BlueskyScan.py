@@ -34,8 +34,6 @@ class BlueskyScan:
         self.alg_version=[1,0,0]                # set in configure()
         self.daqState = daqState
         self.daqState_cv = threading.Condition()
-        self.stepDone_cv = threading.Condition()
-        self.stepDone = 0
         self.comm_thread.start()
         self.mon_thread.start()
         self.step_done = threading.Event()
@@ -104,7 +102,7 @@ class BlueskyScan:
 
                 # record step_value and step_docstring
                 my_data.update({'step_value': self.step_value})
-                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {self.step_value}}}'
+                docstring = f'{{"detname": "scan", "scantype": "{self.scantype}", "step": {self.step_value}}}'
                 my_data.update({'step_docstring': docstring})
 
                 # record motor positions
@@ -114,24 +112,39 @@ class BlueskyScan:
                     my_data.update({motor.name: motor.position})
 
                 data = {
-                  "motors":           my_data,
-                  "timestamp":        0,
-                  "detname":          self.detname,
-                  "dettype":          "scan",
-                  "scantype":         self.scantype,
-                  "serial_number":    "1234",
-                  "alg_name":         "raw",
-                  "alg_version":      [1,0,0]
+                    "motors":           my_data,
+                    "timestamp":        0,
+                    "detname":          "scan",
+                    "dettype":          "scan",
+                    "scantype":         self.scantype,
+                    "serial_number":    "1234",
+                    "alg_name":         "raw",
+                    "alg_version":      [1,0,0],
                 }
 
                 configureBlock = self.getBlock(transition="Configure", data=data)
                 beginStepBlock = self.getBlock(transition="BeginStep", data=data)
 
+                configure_dict = {"NamesBlockHex": configureBlock,
+                                  "readout_count": self.events,
+                                  "group_mask"   : self.group_mask,
+                                  "step_group"   : self.group }
+
+                if self.seq_ctl is not None:
+                    configure_dict['seqpv_name'] = self.seq_ctl[0]
+                    configure_dict['seqpv_val' ] = self.seq_ctl[1]
+                    if len(self.seq_ctl) > 2:
+                        configure_dict['seqpv_done'] = self.seq_ctl[2]
+
                 # set DAQ state
+                enable_dict = {'readout_count':self.events, 
+                               'group_mask':self.group_mask, 
+                               'step_group':self.group}
+
                 errMsg = self.control.setState('running',
-                    {'configure':   {'NamesBlockHex':configureBlock},
+                    {'configure':   configure_dict,
                      'beginstep':   {'ShapesDataBlockHex':beginStepBlock},
-                     'enable':      {'readout_count':self.events, 'group_mask':self.group_mask}})
+                     'enable':      enable_dict})
                 if errMsg is not None:
                     logging.error('%s' % errMsg)
                     continue
@@ -200,7 +213,7 @@ class BlueskyScan:
         # the metadata for read_configuration()
         return {}
 
-    def configure(self, *, motors=None, group_mask=None, events=None, record=None, detname=None, scantype=None, serial_number=None, alg_name=None, alg_version=None):
+    def configure(self, *, motors=None, group_mask=None, events=None, record=None, detname=None, scantype=None, serial_number=None, alg_name=None, alg_version=None, seq_ctl=None):
         """Set parameters for scan.
 
         Keyword arguments:
@@ -222,6 +235,8 @@ class BlueskyScan:
             Algorithm name
         alg_version -- list of 3 version numbers, optional
             Algorithm version
+        seq_ctl -- tuple of PV name and value to be set after each enable
+            Sequence PV reset control
         """
         logging.debug("*** here in configure")
 
@@ -271,6 +286,29 @@ class BlueskyScan:
                 self.alg_version = alg_version
             else:
                 raise TypeError('alg_version must be of type list')
+
+        self.seq_ctl = None
+        if seq_ctl is not None:
+            if not isinstance(seq_ctl[0],str):
+                raise TypeError('seq_ctl[0] must be of type str')
+            if not isinstance(seq_ctl[1],int):
+                raise TypeError('seq_ctl[1] must be of type int')
+            if len(seq_ctl)>2 and not isinstance(seq_ctl[2],str):
+                raise TypeError('seq_ctl[2] must be of type str')
+            self.seq_ctl = seq_ctl
+
+        platform = self.control.getPlatform()
+        self.group = None
+        for v in platform['drp'].values():
+            if (v['active'] == 1 and v['proc_info']['alias'] == detname):
+                self.group = v['det_info']['readout']
+                break
+
+        if self.group is None:
+            self.group = self.control.platform
+            logging.warning(f'Readout group not found for {detname}.  Defaulting to platform')
+        else:
+            logging.info(f'Found readout group {self.group} for {detname}.')
 
         return (self.read_configuration(),self.read_configuration())
 

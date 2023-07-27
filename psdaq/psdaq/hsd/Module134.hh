@@ -57,7 +57,8 @@ namespace Pds {
       void     setup_timing();
       void     setup_jesd  (bool lAbortOnErr,
                             std::string& calib_adc0,
-                            std::string& calib_adc1);
+                            std::string& calib_adc1,
+                            bool lInternalTiming=false);
       void     write_calib (const char*);
       void     board_status();
 

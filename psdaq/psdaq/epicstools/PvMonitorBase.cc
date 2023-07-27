@@ -267,9 +267,12 @@ int PvMonitorBase::getParams(pvd::ScalarType& type,
         case pvd::union_: {
             const auto& pvUnion       = _strct->getSubField<pvd::PVUnion>(offset);
             if        (!pvUnion)        { logging::error("pvUnion is NULL");                return 1; }
-            const auto& union_        = pvUnion->getUnion();
-            if        (!union_)         { logging::error("union is NULL");                  return 1; }
-            const auto& ufield        = pvUnion->get()->getField();
+            //const auto& union_        = pvUnion->getUnion();
+            //if        (!union_)         { logging::error("union is NULL");                  return 1; }
+            const auto& pvField       = pvUnion->get();
+            if        (!pvField)        { logging::error("pvField is NULL");                return 1; }
+            const auto& ufield        = pvField->getField();
+            if        (!ufield)         { logging::error("ufield is NULL");                 return 1; }
             switch (ufield->getType()) {
                 //case pvd::scalar: {     // Place holder
                 //    break;

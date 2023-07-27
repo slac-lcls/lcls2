@@ -97,6 +97,7 @@ class DataSourceBase(abc.ABC):
                     'dir',
                     'files',
                     'shmem',
+                    'drp',
                     'filter',
                     'batch_size',
                     'max_events',
@@ -119,7 +120,13 @@ class DataSourceBase(abc.ABC):
                     if k == 'timestamps':
                         msg = 'Numpy array or .npy filename is required for timestamps argument'
                         assert isinstance(kwargs[k], (np.ndarray, str)), msg
-                    setattr(self, k, kwargs[k])
+                        # For numpy array, format timestamps to uint64 (for correct search result)
+                        if isinstance(kwargs[k], (np.ndarray,)):
+                            setattr(self, k, np.asarray(kwargs[k], dtype=np.uint64))
+                        else:
+                            setattr(self, k, kwargs[k])
+                    else:
+                        setattr(self, k, kwargs[k])
 
             if self.destination != 0:
                 self.batch_size = 1 # reset batch_size to prevent L1 transmitted before BeginRun (FIXME?: Mona)
@@ -137,6 +144,8 @@ class DataSourceBase(abc.ABC):
             max_retries = 0
             if self.live:
                 max_retries = int(os.environ.get('PS_R_MAX_RETRIES', '60'))
+            else:
+                os.environ['PS_R_MAX_RETRIES'] = '0'
 
         assert self.batch_size > 0
 
@@ -516,7 +525,7 @@ class DataSourceBase(abc.ABC):
 
     def _setup_run_calibconst(self):
         """
-        note: calibconst is set differently in RunParallel (see node.py: BigDataNode)
+        note: calibconst is set differently in MPIDataSource and DrpDataSource 
         """
         runinfo = self._get_runinfo()
         if not runinfo:

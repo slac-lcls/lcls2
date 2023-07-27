@@ -55,71 +55,65 @@ public:
 
     ~DescData() {}
 
+    static void incorrectType(const char* file, unsigned line, Name& name) {
+            printf("*** %s:%d: incorrect type %d for %s\n",file,line,name.type(),name.name());
+            abort();
+    }
+
     static void checkType(uint8_t val, Name& name) {
         if (Name::UINT8!=name.type()) {
-            printf("*** %s:%d: incorrect type %d for %s\n",__FILE__,__LINE__,name.type(),name.name());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(uint16_t val, Name& name) {
         if (Name::UINT16!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(uint32_t val, Name& name) {
         if (Name::UINT32!=name.type() && Name::ENUMVAL!=name.type() && Name::ENUMDICT!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(uint64_t val, Name& name) {
         if (Name::UINT64!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(int8_t val, Name& name) {
         if (Name::INT8!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(int16_t val, Name& name) {
         if (Name::INT16!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(int32_t val, Name& name) {
         if (Name::INT32!=name.type() && Name::ENUMVAL!=name.type() &&
             Name::ENUMDICT!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(int64_t val, Name& name) {
         if (Name::INT64!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(float val, Name& name) {
         if (Name::FLOAT!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(double val, Name& name) {
         if (Name::DOUBLE!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
     static void checkType(char val, Name& name) {
         if (Name::CHARSTR!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
-            abort();
+            incorrectType(__FILE__,__LINE__,name);
         }
     }
 

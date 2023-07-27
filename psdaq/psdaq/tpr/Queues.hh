@@ -16,6 +16,7 @@ namespace Pds {
     class TprEntry {
     public:
       uint32_t word[MSG_SIZE];
+      uint64_t fifo_tsc;
     };
 
     class TprQIndex {

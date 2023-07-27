@@ -9,6 +9,14 @@ import numpy as np
 
 class TestFWViewImage(FWViewImage):
 
+    KEY_USAGE = 'Keys:'\
+               '\n  ESC - exit'\
+               '\n  R - reset original size'\
+               '\n  N - set new pixmap'\
+               '\n  W - set new pixmap of random shape, do not change default scene rect'\
+               '\n  D - set new pixmap of random shape and change default scene rect'\
+               '\n'
+
     def test_mouse_move_event_reception(self, e):
         """Overrides method from FWView"""
         p = self.mapToScene(e.pos())
@@ -17,19 +25,9 @@ class TestFWViewImage(FWViewImage):
         self.setWindowTitle('TestFWViewImage x=%d y=%d v=%s%s' % (ix, iy, '%.1f'%fv, 25*' '))
 
 
-    def key_usage(self):
-        return 'Keys:'\
-               '\n  ESC - exit'\
-               '\n  R - reset original size'\
-               '\n  N - set new pixmap'\
-               '\n  W - set new pixmap of random shape, do not change default scene rect'\
-               '\n  D - set new pixmap of random shape and change default scene rect'\
-               '\n'
-
-
     def keyPressEvent(self, e):
         #print('keyPressEvent, key=', e.key())
-        if   e.key() == Qt.Key_Escape:
+        if e.key() == Qt.Key_Escape:
             print('Close app')
             self.close()
 
@@ -54,7 +52,7 @@ class TestFWViewImage(FWViewImage):
             self.set_pixmap_from_arr(img, set_def=change_def)
 
         else:
-            print(self.key_usage())
+            print(self.KEY_USAGE)
 
 
 def image_with_random_peaks(shape=(500, 500)):

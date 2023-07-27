@@ -149,10 +149,10 @@ class TimingFrameRx(pr.Device):
             pollInterval = 1,
         ))
 
-        self.addField(TimingBitField(    
+        self.add(pr.RemoteVariable(
             name         = "RxCountReset",
             description  = "Reset receive counters",
-            offset       =  0x20,
+            offset       =  0x120,
             bitSize      =  1,
             bitOffset    =  0x00,
             mode         = "WO",
@@ -178,10 +178,10 @@ class TimingFrameRx(pr.Device):
             mode         = "RW",
         ))
 
-        self.addField(TimingBitField(    
+        self.add(pr.RemoteVariable(    
             name         = "RxReset",
             description  = "Reset receive link",
-            offset       =  0x20,
+            offset       =  0x120,
             bitSize      =  1,
             bitOffset    =  0x03,
             mode         = "WO",
@@ -206,6 +206,15 @@ class TimingFrameRx(pr.Device):
             verify       = False,
         ))
 
+        self.add(pr.RemoteVariable(
+            name         = "RxDownCTL",
+            description  = "Rx down latch control",
+            offset       =  0x120,
+            bitSize      =  1,
+            bitOffset    =  0x05,
+            mode         = "WO",
+        ))
+
         self.addField(TimingBitField(    
             name         = "BypassRst",
             description  = "Buffer bypass reset status",
@@ -215,10 +224,10 @@ class TimingFrameRx(pr.Device):
             mode         = "RW",
         ))
 
-        self.addField(TimingBitField(
+        self.add(pr.RemoteVariable(
             name         = "RxPllReset",
             description  = "Reset RX PLL",
-            offset       = 0x20,
+            offset       = 0x120,
             bitSize      = 1,
             bitOffset    = 0x07,
             mode         = "WO",
@@ -275,10 +284,9 @@ class TimingFrameRx(pr.Device):
 
         @self.command(name="ClearRxCounters", description="Clear the Rx status counters",)
         def ClearRxCounters():
-            #self.RxCountReset.set(1)
-            #time.sleep(0.001)
-            #self.RxCountReset.set(0)                         
-            print('ClearRxCounters not implemented')
+            self.RxCountReset.set(1)
+            time.sleep(0.001)
+            self.RxCountReset.set(0)                         
 
     def Dump(self):
         print(self._name)
@@ -299,7 +307,7 @@ class TimingFrameRx(pr.Device):
         for k in vars(self):
             v = getattr(self,k)
             if hasattr(v,'_block'):
-                print('{:} : {:}'.format(k,v.get()))
+                print('{:} : 0x{:x}'.format(k,v.get()))
 
     def addField(self,node):
         setattr(self,node._name,node)

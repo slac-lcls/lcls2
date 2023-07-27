@@ -83,6 +83,9 @@ class CMConfigParameters(PSConfigParameters):
         self.ivimageaxes = None
         self.wlog        = None
 
+        self.gwimageaxes = None
+        self.gwspectrum = None
+
         self.last_selection = None
         self.user = cc.USERNAME
         self.upwd = None
@@ -104,7 +107,7 @@ class CMConfigParameters(PSConfigParameters):
 
         #self.log_file - DEPRICATED
         self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='cm-log.txt', type='str')
-        self.log_prefix = self.declareParameter(name='LOG_FILE_PREFIX', val_def=DIR_ROOT + '/detector/logs/calibman/lcls2', type='str')
+        self.log_prefix = self.declareParameter(name='LOG_FILE_PREFIX', val_def=DIR_ROOT + '/detector/calib2/constants/logs/', type='str')
         self.save_log_at_exit = self.declareParameter(name='SAVE_LOG_AT_EXIT', val_def=True,  type='bool')
 
         self.main_win_pos_x  = self.declareParameter(name='MAIN_WIN_POS_X',  val_def=5,    type='int')

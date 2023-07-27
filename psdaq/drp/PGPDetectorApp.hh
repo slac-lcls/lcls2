@@ -23,8 +23,11 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
+    void setupDrpPython();
     void unconfigure();
     void disconnect();
+    void drainDrpMessageQueues();
+    void resetDrpPython();
     DrpBase m_drp;
     Parameters& m_para;
     std::thread m_pgpThread;
@@ -34,6 +37,14 @@ private:
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     bool m_unconfigure;
     PyThreadState*    m_pysave;
+    int* m_inpMqId;
+    int* m_resMqId;
+    int* m_inpShmId;
+    int* m_resShmId;
+    std::string keyBase;
+    pid_t* m_drpPids;
+    size_t m_shmemSize;
+    bool m_pythonDrp;
 };
 
 }

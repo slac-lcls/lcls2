@@ -1,4 +1,6 @@
 #include <iostream>
+#include <map>
+#include <algorithm>    // std::find_if
 #include <sys/stat.h>
 #include "MetricExporter.hh"
 #include "psalg/utils/SysLog.hh"
@@ -7,7 +9,6 @@ static const unsigned PROM_PORT_BASE = 9200;       // Prometheus montitoring por
 static const unsigned MAX_PROM_PORTS = 100;
 
 using logging = psalg::SysLog;
-
 
 std::unique_ptr<prometheus::Exposer>
     Pds::createExposer(const std::string& prometheusDir,
@@ -20,7 +21,9 @@ std::unique_ptr<prometheus::Exposer>
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
         try {
             port = PROM_PORT_BASE + i;
-            exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+            // If prometheus_cpp_version is 0.9.0:
+            //exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+            exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), 1);
             if (!prometheusDir.empty()) {
                 std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
                 struct stat buf;
@@ -97,6 +100,7 @@ void Pds::MetricExporter::_erase(unsigned index)
 {
     m_families.erase(m_families.begin() + index);
     m_values.  erase(m_values.  begin() + index);
+    m_floats.  erase(m_floats.  begin() + index);
     m_histos.  erase(m_histos.  begin() + index);
     m_type.    erase(m_type.    begin() + index);
     m_previous.erase(m_previous.begin() + index);
@@ -129,6 +133,7 @@ void Pds::MetricExporter::add(const std::string& name,
     }
     m_families.emplace_back(makeMetric(name, labels, prometheusType));
     m_values.push_back(value);
+    m_floats.push_back(nullptr);
     m_histos.push_back(nullptr);        // Placeholder; not used
     m_type.push_back(type);
     Pds::Previous previous;
@@ -136,6 +141,26 @@ void Pds::MetricExporter::add(const std::string& name,
         previous.value = value();
         previous.time = std::chrono::steady_clock::now();
     }
+    m_previous.push_back(previous);
+}
+
+void Pds::MetricExporter::addFloat(const std::string& name,
+                                   const std::map<std::string, std::string>& labels,
+                                   std::function<bool(double&)> value)
+{
+    // Avoid Collect() from processing incomplete entries
+    std::lock_guard<std::mutex> lock(m_mutex);
+    int i = find(name);
+    if (i != -1) {
+        _erase(i);
+    }
+    prometheus::MetricType prometheusType = prometheus::MetricType::Gauge;
+    m_families.emplace_back(makeMetric(name, labels, prometheusType));
+    m_values.push_back(nullptr);
+    m_floats.push_back(value);
+    m_histos.push_back(nullptr);        // Placeholder; not used
+    m_type.push_back(Pds::MetricType::Float);
+    Pds::Previous previous;
     m_previous.push_back(previous);
 }
 
@@ -179,7 +204,14 @@ std::vector<prometheus::MetricFamily> Pds::MetricExporter::Collect() const
                 break;
             }
             case Pds::MetricType::Constant: {
-                break;                  // Nothing to do
+                break;                    // Nothing to do
+            }
+            case Pds::MetricType::Float: {
+                double value;
+                if (m_floats[i](value)) { // Update only when valid
+                    setValue(m_families[i], value);
+                }
+                break;
             }
             default: {
                 setValue(m_families[i], m_values[i]());

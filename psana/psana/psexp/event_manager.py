@@ -12,6 +12,11 @@ s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
 s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')
 s_bd_gen_evt = PrometheusManager.get_metric('psana_bd_gen_evt')
 
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+
 class ExitId:
     NoError = 0
     BdReadFail = 1
@@ -46,7 +51,11 @@ class EventManager(object):
         self.smd_view = view
         self.i_evt = 0
         self.exit_id = ExitId.NoError
-        self.chunkinfo = {}  # store chunkid and chunk filename 
+        
+        # Store chunkid and chunk filename 
+        self.chunkinfo = {}  
+        
+        self.zeroedbug_wait_sec = int(os.environ.get('PS_ZEROEDBUG_WAIT_SEC', '3'))
 
         # Each chunk must fit in BD_CHUNKSIZE and we only fill bd buffers
         # when bd_offset reaches the size of buffer.
@@ -189,7 +198,16 @@ class EventManager(object):
         self.dm.fds[i_smd] = fd
         self.dm.xtc_files[i_smd] = new_filename
         self.dm.set_chunk_id(i_smd, new_chunk_id)
-    
+
+    def _stat_and_read(self, fd, size, offset):
+        stat_result = os.fstat(fd)
+        t_delta = time.time() - stat_result.st_mtime
+        if t_delta > 0 and t_delta < self.zeroedbug_wait_sec:
+            print(f'Warning: bigdata waiting {self.zeroedbug_wait_sec}s ... (file is only {t_delta:.2f}s old).')
+            time.sleep(self.zeroedbug_wait_sec)
+        
+        return os.pread(fd, size, offset)
+
     @s_bd_just_read.time()
     def _read(self, fd, size, offset):
         st = time.monotonic()
@@ -197,7 +215,12 @@ class EventManager(object):
         
         request_size = size
         for i_retry in range(self.max_retries+1):
-            new_read = os.pread(fd, size, offset)
+            # In live mode, we circumvent zeroed read bytes problem by checking
+            # that modified time of the file is old enough. 
+            if self.max_retries > 0:
+                new_read = self._stat_and_read(fd, size, offset)
+            else:
+                new_read = os.pread(fd, size, offset)
             chunk.extend(new_read)
             got = memoryview(new_read).nbytes
             if memoryview(chunk).nbytes == request_size:

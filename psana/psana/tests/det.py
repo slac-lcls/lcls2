@@ -2,12 +2,21 @@ import sys
 from psana import DataSource
 import numpy as np
 import vals
+import unittest
 
 def det(files):
     ds = DataSource(files=files)
     for run in ds.runs(): # Detector is created based on per-run config. 
         hsd = run.Detector('xpphsd')
         cspad = run.Detector('xppcspad')
+        
+        # Test KeyError when incorrect detector's name is used
+        check_invalid_detname_passed = False
+        try:
+            dummy_det = run.Detector('dummy')
+        except KeyError:
+            pass
+
         for evt in run.events():
             assert(hsd.raw.calib(evt).shape==(5,))
             assert(hsd.fex.calib(evt).shape==(6,))
@@ -67,6 +76,7 @@ def det_container(xtc_file):
     for config in det.raw._configs:
         for e in config.__dict__['bogusdet'].items(): 
             pass 
+
 
 if __name__ == '__main__':
     det()

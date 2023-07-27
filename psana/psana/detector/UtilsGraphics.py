@@ -24,7 +24,7 @@ import numpy as np
 import psana.pyalgos.generic.Graphics as gr
 #from psana.detector.NDArrUtils import info_ndarr
 
-def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.05, frachi=0.95):
+def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.01, frachi=0.99):
     """ returns tuple of intensity limits (amin, amax) evaluated from arr or passed directly.
     """
     if not(None in (amin, amax)): return amin, amax
@@ -101,8 +101,8 @@ class flexbase:
         self.amax   = kwa.get('amax', None)
         self.nneg   = kwa.get('nneg', None)
         self.npos   = kwa.get('npos', None)
-        self.fraclo = kwa.get('fraclo', 0.05)
-        self.frachi = kwa.get('frachi', 0.95)
+        self.fraclo = kwa.get('fraclo', 0.001)
+        self.frachi = kwa.get('frachi', 0.999)
 
 
     def _intensity_limits(self, a, **kwa):
@@ -232,6 +232,9 @@ class fleximagespec(flexbase):
         kwa.setdefault('amax', amax)
         self.imsh, self.cbar = gr_imshow_cbar(self.fig, self.axim, self.axcb, img, **kwa)
 
+        self.axim.tick_params(axis='y', rotation=kwa.get('img_ylabel_rot_deg', 70))
+        self.axcb.tick_params(axis='y', rotation=kwa.get('cbar_ylabel_rot_deg', 70))
+
         self.update_his(arr, **kwa)
         gr.draw_fig(self.fig)
 
@@ -246,6 +249,7 @@ class fleximagespec(flexbase):
         self.axhi.set_ylim(amp_range)
         self.axhi.set_yticklabels([]) # removes axes labels, not ticks
         self.axhi.tick_params(axis='y', direction='in')
+        self.axhi.tick_params(axis='x', rotation=kwa.get('his_xlabel_rot_deg', -20))
         self.axhi.set_ylim(amp_range)
         #self.axhi.set_ylabel('V')
         #self.axhi.get_yaxis().set_visible(False) # hides axes labels and ticks

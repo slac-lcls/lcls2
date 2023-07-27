@@ -32,6 +32,11 @@ class Test:
         cli = []
         pid = str(os.getpid())
         tmp_file = self.setup_input_files(tmp_path)
+
+        # cpo and mona deided that for the test, we will use ephemeral port for 
+        # the server and clients communication. This is not bulletproof because
+        # there's a small time window between when the port no. is obtained and
+        # when it's opened. 
         srv = self.launch_server(tmp_file,pid)
         assert srv != None,"server launch failure"
         try:

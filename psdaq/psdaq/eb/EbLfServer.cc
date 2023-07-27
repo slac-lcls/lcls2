@@ -24,7 +24,8 @@ EbLfServer::EbLfServer(const unsigned& verbose) :
   _verbose(verbose),
   _pending(0),
   _posting(0),
-  _pep    (nullptr)
+  _pep    (nullptr),
+  _mr     (nullptr)
 {
 }
 
@@ -37,6 +38,7 @@ EbLfServer::EbLfServer(const unsigned&                           verbose,
   _pending(0),
   _posting(0),
   _pep    (nullptr),
+  _mr     (nullptr),
   _info   (kwargs)
 {
 }
@@ -167,7 +169,7 @@ int EbLfServer::connect(EbLfSvrLink** link, unsigned nLinks, int msTmo)
 int EbLfServer::setupMr(void* region, size_t size)
 {
   if (_pep)
-    return Pds::Eb::setupMr(_pep->fabric(), region, size, nullptr, _verbose);
+    return Pds::Eb::setupMr(_pep->fabric(), region, size, &_mr, _verbose);
   else
     return -1;
 }
@@ -279,18 +281,14 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 
     if (rc == -FI_EAGAIN)
     {
-      if (_tmo)
-      {
-        rc = -FI_ETIMEDOUT;
-        break;
-      }
+      if (_tmo)  break;
+
       const ms_t tmo{msTmo};
       auto       t1 {fast_monotonic_clock::now()};
 
       if (t1 - t0 > tmo)
       {
         _tmo = msTmo;               // Switch to waiting after a timeout
-        rc = -FI_ETIMEDOUT;
         break;
       }
     }

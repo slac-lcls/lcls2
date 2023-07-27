@@ -60,20 +60,19 @@ int EventBuilder::initialize(unsigned epochs,
   auto nep = 2 * epochs;
   auto nev = 2 * epochs * entries;
 
-  if (!_epochFreelist || (int(nep) != _epochFreelist->numberofObjects()) ||
-      !_eventFreelist || (int(nev) != _eventFreelist->numberofObjects()))
-  {
-    // In the following, the freelist sizes are double what may seem like the right
-    // value so that the skew in DRP contribution arrivals creating new events can
-    // be accomodated, especially during "pause/resume" tests, etc.
-    auto epSize = sizeof(EbEpoch) + entries * sizeof(EbEvent*);
-    auto evSize = sizeof(EbEvent) + sources * sizeof(EbDgram*);
-    _epochFreelist = std::make_unique<GenericPool>(epSize, nep, CLS);
-    _eventFreelist = std::make_unique<GenericPool>(evSize, nev, CLS);
+  // In the following, the freelist sizes are double what may seem like the right
+  // value so that the skew in DRP contribution arrivals creating new events can
+  // be accomodated, especially during "pause/resume" tests, etc.
+  auto epSize = sizeof(EbEpoch) + entries * sizeof(EbEvent*);
+  auto evSize = sizeof(EbEvent) + sources * sizeof(EbDgram*);
+  _epochFreelist = std::make_unique<GenericPool>(epSize, nep, CLS);
+  _eventFreelist = std::make_unique<GenericPool>(evSize, nev, CLS);
 
-    _epochLut.resize(nep, nullptr);
-    _eventLut.resize(nev, nullptr);
-  }
+  _epochLut.resize(nep, nullptr);
+  _eventLut.resize(nev, nullptr);
+
+  printf("*** EB Epoch list size %zu\n", _epochLut.size());
+  printf("*** EB Event list size %zu\n", _eventLut.size());
 
   _arrTime.resize(sources);
 
@@ -188,7 +187,8 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
   printf(" epochFreelist:\n");
   _epochFreelist->dump();
   dump(1);
-  throw "Unable to allocate epoch";
+  while(1);                             // Hang so we can inspect
+  abort();
 }
 
 EbEpoch* EventBuilder::_match(uint64_t inKey)
@@ -246,7 +246,8 @@ EbEvent* EventBuilder::_event(EbEpoch*            epoch,
   printf("  eventFreelist:\n");
   _eventFreelist->dump();
   dump(1);
-  throw "Unable to allocate event";
+  while(1);                             // Hang so we can inspect
+  abort();
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*            epoch,

@@ -17,7 +17,6 @@ except NameError:
     # Python 3
     QChar = chr
 
-NDsLinks    = 7
 NAmcs       = 2
 NGroups     = 16
 Masks       = ['None','0','1','2','3','4','5','6','7','All']
@@ -25,6 +24,7 @@ Masks       = ['None','0','1','2','3','4','5','6','7','All']
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
+ATCAWidget  = None
 
 class PvPAddr(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name):
@@ -65,7 +65,8 @@ class PvPushButtonX(QtWidgets.QPushButton):
 
     def __init__(self, pvname, label):
         super(PvPushButtonX, self).__init__(label)
-        self.setMaximumWidth(70)
+        if ATCAWidget:
+            self.setMaximumWidth(70)
 
         self.clicked.connect(self.buttonClicked)
 
@@ -82,7 +83,8 @@ class PvEditIntX(PvEditInt):
 
     def __init__(self, pv, label):
         super(PvEditIntX, self).__init__(pv, label)
-        self.setMaximumWidth(70)
+        if ATCAWidget:
+            self.setMaximumWidth(70)
 
 class PvCmb(PvEditCmb):
 
@@ -167,23 +169,23 @@ class PvLinkIdG:
         layout.addWidget(self.pvlink.linkType,row,col)
         layout.addWidget(self.pvlink.linkSrc ,row,col+1)
 
-def FrontPanelAMC(pvbase,iamc):
+def FrontPanelAMC(pvbase,nDsLinks,start):
         dsbox = QtWidgets.QWidget()
         dslo = QtWidgets.QVBoxLayout()
-        PvInput(PvLinkIdV, dslo, pvbase, "RemoteLinkId", NDsLinks, start=iamc*NDsLinks)
-        LblPushButtonX(dslo, pvbase, "TxLinkReset",    NDsLinks, start=iamc*NDsLinks)
-        LblPushButtonX(dslo, pvbase, "RxLinkReset",    NDsLinks, start=iamc*NDsLinks)
-        LblPushButtonX(dslo, pvbase, "RxLinkDump" ,    NDsLinks, start=iamc*NDsLinks)
-        LblGroupMask  (dslo, pvbase, "LinkGroupMask",  NDsLinks, start=iamc*NDsLinks, enable=True)
-        LblCheckBox   (dslo, pvbase, "LinkRxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkRxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkTxResetDone", NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkTxReady",    NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkIsXpm",      NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkLoopback",   NDsLinks, start=iamc*NDsLinks)
-#        LblCheckBox  (dslo, pvbase, "LinkRxErr",      NAmcs * NDsLinks, enable=False)
-        LblEditIntX   (dslo, pvbase, "LinkRxErr",      NDsLinks, start=iamc*NDsLinks, enable=False)
-        LblEditIntX   (dslo, pvbase, "LinkRxRcv",      NDsLinks, start=iamc*NDsLinks, enable=False)
+        width=70 if nDsLinks>4 else None
+        PvInput(PvLinkIdV, dslo, pvbase, "RemoteLinkId", nDsLinks, start=start)
+        LblPushButtonX(dslo, pvbase, "TxLinkReset",    nDsLinks, start=start)
+        LblPushButtonX(dslo, pvbase, "RxLinkReset",    nDsLinks, start=start)
+        LblPushButtonX(dslo, pvbase, "RxLinkDump" ,    nDsLinks, start=start)
+        LblGroupMask  (dslo, pvbase, "LinkGroupMask",  nDsLinks, start=start, enable=True)
+        LblCheckBox   (dslo, pvbase, "LinkRxResetDone", nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkRxReady",    nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkTxResetDone", nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkTxReady",    nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkIsXpm",      nDsLinks, start=start, enable=False)
+        LblCheckBox   (dslo, pvbase, "LinkLoopback",   nDsLinks, start=start)
+        LblEditIntX   (dslo, pvbase, "LinkRxErr",      nDsLinks, start=start, enable=False)
+        LblEditIntX   (dslo, pvbase, "LinkRxRcv",      nDsLinks, start=start, enable=False)
         dslo.addStretch()
         dsbox.setLayout(dslo)
         return dsbox
@@ -286,6 +288,7 @@ def addTiming(self,pvbase):
     PvLabel(self,lor, pvbase, "SOFs"       )
     PvLabel(self,lor, pvbase, "EOFs"       )
     LblPushButtonX( lor, pvbase, "RxReset" )
+    LblPushButtonX( lor, pvbase, "RxCountReset" )
     lor.addWidget( PvRxAlign(pvbase+'RxAlign','RxAlign') )
     lor.addStretch()
     w = QtWidgets.QWidget()
@@ -376,8 +379,106 @@ def addCuTab(self,pvbase):
     w.setLayout(lor)
     return w
 
+class XpmGroups(object):
+    # monitor PAddr recursively
+    # monitor PART:[0..7].Master,L0InpRate
+    def __init__(self,pvbase):
+        self.name    = pvbase[-6:]
+        self.parent  = None
+        paddr = Pv(pvbase+'PAddr').get()
+        if paddr!=0xffffffff:
+            name = xpmLinkId(paddr)[0]
+            if name[:3]=='XPM':
+                self.parent = XpmGroups(pvbase[:-6]+name+':')
+
+        self.vals = {'master':{i:Pv(pvbase+f'PART:{i}:Master'   ,self.update) for i in range(8)},
+                    'l0rate':{i:Pv(pvbase+f'PART:{i}:L0InpRate' ,self.update) for i in range(8)},
+                     'codes' : Pv(pvbase+f'SEQCODES'            ,self.update, isStruct=True) }
+
+    def update(self,err):
+        pass
+
+    def _update(self):
+        if self.parent:
+            vals = self.parent._update()
+        else:
+            vals = {'master':{i:'-' for i in range(8)},
+                    'l0rate':{i:'-' for i in range(8)},
+                    'codes' :{i:{'master':'-',
+                                 'desc'  :'-',
+                                 'rate'  :'-'} for i in range(16)}}
+        for i in range(8):
+            if self.vals['master'][i].__value__ == 1:
+                vals['master'][i] = self.name
+                vals['l0rate'][i] = str(self.vals['l0rate'][i].__value__)
+
+        codesv = self.vals['codes'].__value__
+        if codesv:
+            codes = codesv.todict()['value']
+            for i in range(16):
+                if codes['Enabled'][i]:
+                    vals['codes'][i] = {'master':self.name,
+                                        'desc'  :codes['Description'][i],
+                                        'rate'  :str(codes['Rate'][i])}
+        return vals
+
+class GroupsTab(QtWidgets.QWidget):
+    def __init__(self, pvbase):
+        super(GroupsTab,self).__init__()
+
+        l = QtWidgets.QHBoxLayout()
+        grid1 = QtWidgets.QGridLayout()
+        grid1.addWidget( QtWidgets.QLabel('Group')    , 0, 0 )
+        grid1.addWidget( QtWidgets.QLabel('Master')   , 0, 1 )
+        grid1.addWidget( QtWidgets.QLabel('L0InpRate'), 0, 2 )
+        self.masterText = {}
+        self.l0RateText = {}
+        for i in range(8):
+            grid1.addWidget( QtWidgets.QLabel(str(i)), i+1, 0 )
+            self.masterText[i] = QtWidgets.QLabel('None')
+            grid1.addWidget( self.masterText[i], i+1, 1)
+            self.l0RateText[i] = QtWidgets.QLabel('-')
+            grid1.addWidget( self.l0RateText[i], i+1, 2)
+        l.addLayout(grid1)
+        l.addStretch()
+
+        grid2 = QtWidgets.QGridLayout()
+        grid2.addWidget( QtWidgets.QLabel('EventCode')  , 0, 0 )
+        grid2.addWidget( QtWidgets.QLabel('Master')     , 0, 1 )
+        grid2.addWidget( QtWidgets.QLabel('Description'), 0, 2 )
+        grid2.addWidget( QtWidgets.QLabel('Rate'       ), 0, 3 )
+        self.codesText = {'master':{},
+                          'desc'  :{},
+                          'rate'  :{}}
+        for i in range(16):
+            grid2.addWidget( QtWidgets.QLabel(str(i+272)), i+1, 0 )
+            self.codesText['master'][i] = QtWidgets.QLabel('None')
+            grid2.addWidget( self.codesText['master'][i], i+1, 1 )
+            self.codesText['desc'][i] = QtWidgets.QLabel('-')
+            grid2.addWidget( self.codesText['desc'][i], i+1, 2 )
+            self.codesText['rate'][i] = QtWidgets.QLabel('-')
+            grid2.addWidget( self.codesText['rate'][i], i+1, 3 )
+        l.addLayout(grid2)
+
+        self.setLayout(l)
+
+        self.xpm = XpmGroups(pvbase)
+
+        initPvMon(self,pvbase+'SEQCODES',isStruct=True)
+
+    def update(self,err):
+        vals = self.xpm._update()
+        for i in range(8):
+            self.masterText[i].setText(vals['master'][i])
+            self.l0RateText[i].setText(vals['l0rate'][i])
+        for i in range(16):
+            self.codesText['master'][i].setText(vals['codes'][i]['master'])
+            self.codesText['desc'  ][i].setText(vals['codes'][i]['desc'  ])
+            self.codesText['rate'  ][i].setText(vals['codes'][i]['rate'  ])
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, titles):
+        global ATCAWidget
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
@@ -390,6 +491,16 @@ class Ui_MainWindow(object):
 
         for title in titles:
             pvbase = title + ':'
+            pv = Pv(pvbase+'FwBuild')
+            v = pv.get()
+            if 'Kcu' in v:
+                amcTitle = 'QSFP'
+                nDsLinks = (4,4) # if 'Gen' in v else (3,4)
+                ATCAWidget = False
+            else:
+                amcTitle = 'AMC'
+                nDsLinks = (7,7)
+                ATCAWidget = True
 
             tw  = QtWidgets.QTabWidget()
 
@@ -399,7 +510,8 @@ class Ui_MainWindow(object):
             #            PvLabel  (hl, pvbase, "PAddr"       , isInt=True)
             PvPAddr  (hl, pvbase, "PAddr"       )
             PvCString(hl, pvbase, "FwBuild"     )
-
+            LblCheckBox(hl, pvbase, "UsRxEnable", enable=False)
+            LblCheckBox(hl, pvbase, "CuRxEnable", enable=False)
             LblPushButtonX(hl, pvbase, "ModuleInit"      )
             LblPushButtonX(hl, pvbase, "DumpPll",        NAmcs)
             LblPushButtonX(hl, pvbase, "DumpTiming",     2)
@@ -414,45 +526,49 @@ class Ui_MainWindow(object):
             tb.setLayout(hl)
             tw.addTab(tb,"Global")
 
-            pv = Pv(pvbase+'FwBuild')
-            v = pv.get()
             if 'xtpg' in v:
                 tw.addTab( addCuTab (self,pvbase), "CuTiming")
             else:
                 tw.addTab( addUsTab (self,pvbase), "UsTiming")
 
-            tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
-            tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")
+            tw.addTab(FrontPanelAMC(pvbase,nDsLinks[0],          0),f'{amcTitle}0')
+            tw.addTab(FrontPanelAMC(pvbase,nDsLinks[1],nDsLinks[0]),f'{amcTitle}1')
 
-            bpbox  = QtWidgets.QWidget()
-            bplo   = QtWidgets.QVBoxLayout()
-            LblPushButtonX(bplo, pvbase, "TxLinkReset16",    1, 16, 0)
-            LblCheckBox   (bplo, pvbase, "LinkTxReady16",    1, 16, 0, enable=False)
+            if 'Kcu' not in v:
+                bpbox  = QtWidgets.QWidget()
+                bplo   = QtWidgets.QVBoxLayout()
+                LblPushButtonX(bplo, pvbase, "TxLinkReset16",    1, 16, 0)
+                LblCheckBox   (bplo, pvbase, "LinkTxReady16",    1, 16, 0, enable=False)
 
-            #LblPushButtonX(bplo, pvbase, "TxLinkReset",    5, 17, 3)
-            LblPushButtonX(bplo, pvbase, "RxLinkReset",    5, 17, 3)
-            #LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
-            LblCheckBox   (bplo, pvbase, "LinkRxReady",    5, 17, 3, enable=False)
-            #LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
-            #LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
-            #LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
-            LblEditIntX   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
-            LblEditIntX   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
-            bplo.addStretch()
-            bpbox.setLayout(bplo)
-            tw.addTab(bpbox,"Bp")
+                #LblPushButtonX(bplo, pvbase, "TxLinkReset",    5, 17, 3)
+                LblPushButtonX(bplo, pvbase, "RxLinkReset",    5, 17, 3)
+                #LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
+                LblCheckBox   (bplo, pvbase, "LinkRxReady",    5, 17, 3, enable=False)
+                #LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
+                #LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
+                #LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
+                LblEditIntX   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
+                LblEditIntX   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
+                bplo.addStretch()
+                bpbox.setLayout(bplo)
+                tw.addTab(bpbox,"Bp")
 
-            pllbox  = QtWidgets.QWidget()
-            pllvbox = QtWidgets.QVBoxLayout()
-            LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
-            LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
-            LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
-            LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
-            pllvbox.addStretch()
-            pllbox.setLayout(pllvbox)
-            tw.addTab(pllbox,"PLLs")
+                pllbox  = QtWidgets.QWidget()
+                pllvbox = QtWidgets.QVBoxLayout()
+                LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
+                LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
+                LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
+                LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
+                pllvbox.addStretch()
+                pllbox.setLayout(pllvbox)
+                tw.addTab(pllbox,"PLLs")
 
             tw.addTab(DeadTime(pvbase,self),"DeadTime")
+
+            tw.addTab(GroupsTab(pvbase),"Groups/EventCodes")
+
+            if 'Kcu' not in v:
+                tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
 
             stack.addWidget(tw)
 

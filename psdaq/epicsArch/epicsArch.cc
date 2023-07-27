@@ -15,6 +15,7 @@
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
@@ -26,12 +27,13 @@ using ms_t = std::chrono::milliseconds;
 
 namespace Drp {
 
-class Pgp
+class Pgp : public PgpReader
 {
 public:
-    Pgp(const Parameters& para, DrpBase& drp, const bool& running) :
-        m_para(para), m_pool(drp.pool), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_lastComplete(0), m_latency(0), m_nDmaRet(0)
+    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
+        PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
+        m_available(0), m_current(0), m_nDmaRet(0)
     {
         m_nodeId = drp.nodeId();
         if (drp.pool.setMaskBytes(para.laneMask, 0)) {
@@ -39,141 +41,54 @@ public:
         }
     }
 
-    Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
-    const int64_t latency() { return m_latency; }
+    Pds::EbDgram* next(uint32_t& evtIndex);
     const uint64_t nDmaRet() { return m_nDmaRet; }
 private:
-    Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
-    const Parameters& m_para;
-    MemPool& m_pool;
+    Pds::EbDgram* _handle(uint32_t& evtIndex);
+    Detector* m_det;
     Pds::Eb::TebContributor& m_tebContributor;
     static const int MAX_RET_CNT_C = 100;
-    int32_t dmaRet[MAX_RET_CNT_C];
-    uint32_t dmaIndex[MAX_RET_CNT_C];
-    uint32_t dest[MAX_RET_CNT_C];
     const bool& m_running;
     int32_t m_available;
     int32_t m_current;
-    uint32_t m_lastComplete;
-    XtcData::TransitionId::Value m_lastTid;
-    uint32_t m_lastData[6];
     unsigned m_nodeId;
-    int64_t m_latency;
     uint64_t m_nDmaRet;
+
 };
 
-Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
+Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
-    uint32_t size = dmaRet[m_current];
-    uint32_t index = dmaIndex[m_current];
-    uint32_t lane = (dest[m_current] >> 8) & 7;
-    bytes += size;
-    if (size > m_pool.dmaSize()) {
-        logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
-        throw "DMA overflowed buffer";
-    }
+    const Pds::TimingHeader* timingHeader = handle(m_det, m_current);
+    if (!timingHeader)  return nullptr;
 
-    const uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
-    uint32_t evtCounter = data[5] & 0xffffff;
-    const unsigned bufferMask = m_pool.nbuffers() - 1;
-    current = evtCounter & bufferMask;
-    PGPEvent* event = &m_pool.pgpEvents[current];
-    // Revisit: Doesn't always work?  assert(event->mask == 0);
-
-    DmaBuffer* buffer = &event->buffers[lane];
-    buffer->size = size;
-    buffer->index = index;
-    event->mask |= (1 << lane);
-
-    logging::debug("PGPReader  lane %d  size %d  hdr %016lx.%016lx.%08x",
-                   lane, size,
-                   reinterpret_cast<const uint64_t*>(data)[0],
-                   reinterpret_cast<const uint64_t*>(data)[1],
-                   reinterpret_cast<const uint32_t*>(data)[4]);
-
-    const Pds::TimingHeader* timingHeader = reinterpret_cast<const Pds::TimingHeader*>(data);
-    if (timingHeader->error()) {
-        logging::error("Timing header error bit is set");
-    }
-    XtcData::TransitionId::Value transitionId = timingHeader->service();
-    if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
-            logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
-                          XtcData::TransitionId::name(transitionId),
-                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                          timingHeader->pulseId());
-        }
-        else {
-            logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
-                           XtcData::TransitionId::name(transitionId),
-                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                           timingHeader->pulseId());
-        }
-        if (transitionId == XtcData::TransitionId::BeginRun) {
-            m_lastComplete = 0;  // EvtCounter reset
-        }
-    }
-    if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-        logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-                          RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
-        logging::critical("data: %08x %08x %08x %08x %08x %08x",
-                          data[0], data[1], data[2], data[3], data[4], data[5]);
-
-        logging::critical("lastTid %s", XtcData::TransitionId::name(m_lastTid));
-        logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
-                          m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
-
-        throw "Jump in event counter";
-
-        for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
-            PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
-            logging::error("broken event:  %08x", brokenEvent->mask);
-            brokenEvent->mask = 0;
-
-        }
-    }
-    m_lastComplete = evtCounter;
-    m_lastTid = transitionId;
-    memcpy(m_lastData, data, 24);
-
-    auto now = std::chrono::system_clock::now();
-    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+    uint32_t pgpIndex = timingHeader->evtCounter & (m_pool.nDmaBuffers() - 1);
+    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
-    Pds::EbDgram* dgram = new(m_pool.pebble[current]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
+    evtIndex = event->pebbleIndex;
+    XtcData::Src src = m_det->nodeId;
+    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, src, m_para.rogMask);
+
+    // Collect indices of DMA buffers that can be recycled and reset event
+    freeDma(event);
 
     return dgram;
 }
 
-Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
+Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 {
     // get new buffers
     if (m_current == m_available) {
         m_current = 0;
-        auto start = std::chrono::steady_clock::now();
-        while (true) {
-            m_available = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
-            m_nDmaRet = m_available;
-            if (m_available > 0) {
-                m_pool.allocate(m_available);
-                break;
-            }
-
-            // wait for a total of 10 ms otherwise timeout
-            auto now = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-            if (elapsed > 10) {
-                //if (m_running)  logging::debug("pgp timeout");
-                return nullptr;
-            }
+        m_available = read();
+        m_nDmaRet = m_available;
+        if (m_available == 0) {
+            return nullptr;
         }
     }
 
-    Pds::EbDgram* dgram = _handle(evtIndex, bytes);
+    Pds::EbDgram* dgram = _handle(evtIndex);
     m_current++;
     return dgram;
 }
@@ -238,7 +153,6 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
-    if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -268,6 +182,8 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 
 unsigned EaDetector::unconfigure()
 {
+    if (m_exporter)  m_exporter.reset();
+
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
@@ -299,22 +215,35 @@ void EaDetector::_worker()
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
-    uint64_t bytes = 0L;
-    m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
-                    [&](){return bytes;});
     m_nUpdates = 0;
-    m_exporter->add("ea_update_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_update_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nUpdates;});
     m_nStales = 0;
-    m_exporter->add("ea_stale_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_stale_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nStales;});
 
-    Pgp pgp(*m_para, m_drp, m_running);
+    Pgp pgp(*m_para, m_drp, this, m_running);
 
-    m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.latency();});
     m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nDmaRet();});
+    m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
+                    [&](){return pgp.dmaBytes();});
+    m_exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.dmaSize();});
+    m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.latency();});
+    m_exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nDmaErrors();});
+    m_exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nNoComRoG();});
+    m_exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nMissingRoGs();});
+    m_exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nTmgHdrError();});
+    m_exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nPgpJumps();});
+    m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nNoTrDgrams();});
 
     m_terminate.store(false, std::memory_order_release);
 
@@ -324,7 +253,7 @@ void EaDetector::_worker()
         }
 
         uint32_t index;
-        Pds::EbDgram* dgram = pgp.next(index, bytes);
+        Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
             m_nEvents++;
 
@@ -333,12 +262,11 @@ void EaDetector::_worker()
                            XtcData::TransitionId::name(service),
                            dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
             if (service != XtcData::TransitionId::L1Accept) {
-                // Allocate a transition dgram from the pool and initialize its header
-                Pds::EbDgram* trDgram = m_pool->allocateTr();
+                // Find the transition dgram in the pool and initialize its header
+                Pds::EbDgram* trDgram = m_pool->transitionDgrams[index];
                 const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
+                if (!trDgram)  continue; // Can happen during shutdown
                 *trDgram = *dgram;
-                PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
-                pgpEvent->transitionDgram = trDgram;
 
                 if (service == XtcData::TransitionId::SlowUpdate) {
                     m_nUpdates++;
@@ -364,7 +292,15 @@ void EaDetector::_worker()
 
             _sendToTeb(*dgram, index);
         }
+        else {
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
+        }
     }
+
+    // Flush the DMA buffers
+    pgp.flush();
+
     logging::info("Worker thread finished");
 }
 
@@ -764,6 +700,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "sim_length")        continue;  // XpmDetector
             if (kwargs.first == "timebase")          continue;  // XpmDetector
             if (kwargs.first == "pebbleBufSize")     continue;  // DrpBase
+            if (kwargs.first == "pebbleBufCount")    continue;  // DrpBase
             if (kwargs.first == "batching")          continue;  // DrpBase
             if (kwargs.first == "directIO")          continue;  // DrpBase
             logging::critical("Unrecognized kwarg '%s=%s'\n",

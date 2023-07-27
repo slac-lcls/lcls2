@@ -12,7 +12,7 @@ Usage::
   s = info_command_line(sep=' ')
   s = info_command_line_parameters(parser) # for OptionParser
   s = info_parser_arguments(parser) # for ArgumentParser
-  save_log_record_at_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT%H:%M:%S%z')
+  save_log_record_at_start(dirrepo, procname, fac_mode=0o664, tsfmt='%Y-%m-%dT%H:%M:%S%z')
 
 2020-11-06 created by Mikhail Dubrovin
 """
@@ -106,29 +106,36 @@ info_command_line_arguments = info_parser_arguments
 
 
 def log_rec_at_start(tsfmt='%Y-%m-%dT%H:%M:%S%z', **kwa):
-    """Returns (str) record containing timestamp, login, host, cwd, and command line
+    """DEPRECATED - moved to detector.RepoManager.py
+       Returns (str) record containing timestamp, login, host, cwd, and command line
     """
     s_kwa = ' '.join(['%s:%s'%(k,str(v)) for k,v in kwa.items()])
     return '\n%s user:%s@%s cwd:%s %s command:%s'%\
            (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), s_kwa, ' '.join(sys.argv))
 
 
-def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
-    """Adds record at start to the log file defined in RepoManager.
+def save_log_record_at_start(dirrepo, procname, dirmode=0o2775, filemode=0o664, logmode='INFO', group='ps-users',\
+                             tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
+    """Adds record at start to the log file <dirrepo>/logs/log-<procname>-<year>.txt.
     """
     from psana.detector.RepoManager import RepoManager
     os.umask(umask)
     rec = log_rec_at_start(tsfmt, **{'dirrepo':dirrepo,})
-    logger.debug('Record on start: %s' % rec)
-    repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, umask=umask)
-    logfname = repoman.logname_at_start(procname)
-    fexists = os.path.exists(logfname)
-    save_textfile(rec, logfname, mode='a')
-    if not fexists: set_file_access_mode(logfname, filemode)
-    logger.info('Record: %s\nSaved: %s' % (rec, logfname))
+    logger.debug('Record at start: %s' % rec)
+    repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, umask=umask, group=group)
+    logatstart = repoman.logname_at_start(procname)
+    fexists = os.path.exists(logatstart)
+    save_textfile(rec, logatstart, mode='a')
+    if not fexists: set_file_access_mode(logatstart, filemode)
+    logger.info('Record: %s\nSaved: %s' % (rec, logatstart))
+    #--
+    #logfname = repoman.logname('%s_%s' % (procname, get_login()))
+    #repoman.save_record_at_start(procname, tsfmt=tsfmt, adddict={'logfile':logfname})
+    #return repoman
 
 
 def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', adddict={}):
+    """DEPRECATED - moved to detector.RepoManager.py"""
     os.umask(repoman.umask)
 
     logatstart = repoman.logname_at_start(procname)
@@ -143,9 +150,9 @@ def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', adddict
     logger.info('Record: %s\nSaved: %s' % (rec, logatstart))
 
 
-def is_none(par, msg):
+def is_none(par, msg, logger_method=logger.debug):
     resp = par is None
-    if resp: logger.debug(msg)
+    if resp: logger_method(msg)
     return resp
 
 # EOF

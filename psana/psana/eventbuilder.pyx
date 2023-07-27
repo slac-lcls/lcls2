@@ -19,7 +19,7 @@ from psana.dgramedit import PyDgram
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 
-MAX_BATCH_SIZE = 10000
+MAX_BATCH_SIZE = 1000000
 
 cdef class ProxyEvent:
     """ EventBuilder uses this class to store event-related info
@@ -265,7 +265,7 @@ cdef class EventBuilder:
 
     def build_proxy_event(self):
         """ Builds and returns a proxy event (None if filterred)"""
-        t0 = time.perf_counter()
+        #t0 = time.perf_counter()
         proxy_evt = ProxyEvent(self.nsmds)
         
         # Use typed variables for performance
@@ -423,12 +423,16 @@ cdef class EventBuilder:
         # timestamp.
         cdef int i, ia, ib
         if filter_timestamps.shape[0]:
-            timestamps = [proxy_evt.timestamp for proxy_evt in proxy_events]
+            timestamps = np.asarray([proxy_evt.timestamp for proxy_evt in proxy_events], dtype=np.uint64)
             # Find best position to insert filter_timestamps into timestamps
             insert_indices = np.searchsorted(timestamps, filter_timestamps)
             # The insert positions should have the same timestamp value
-            found_indices = [ib for ia, ib in enumerate(insert_indices[insert_indices!=got]) \
-                if timestamps[ib] == filter_timestamps[ia]]
+            found_indices = []
+            for ia, ib in enumerate(insert_indices):
+                # Skip if not found (returned index is the size of the array)
+                if ib == got: continue
+                if timestamps[ib] - filter_timestamps[ia] == 0:
+                    found_indices.append(ib)
             _proxy_events = [proxy_events[i] for i in sorted(list(found_indices)+non_L1_indices)]
             proxy_events = _proxy_events
 

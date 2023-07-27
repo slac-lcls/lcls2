@@ -71,3 +71,35 @@ class xgmd_raw_2_1_0(DetectorImpl):
     def __init__(self, *args):
         super(xgmd_raw_2_1_0, self).__init__(*args)
         self._add_fields()
+
+class scbld_raw_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(scbld_raw_1_0_0, self).__init__(*args)
+        self._add_fields_and_severity()
+
+    def _add_fields_and_severity(self):
+        for config in self._configs:
+            if not hasattr(config,'software'): continue
+
+            seg      = getattr(config.software,self._det_name)
+            seg_dict = getattr(seg[0],self._drp_class_name)
+            attrs    = [attr for attr in vars(seg_dict) if not (attr=='software' or attr=='version' or attr=='severity')]
+            for i,field in enumerate(attrs):
+                fd = getattr(seg_dict,field)
+                # fd._type, fd._rank
+                def func(evt, field=field) -> self._return_types(fd._type,fd._rank):
+                    info = self._info(evt)
+                    if info is None:
+                        return None
+                    else:
+                        return getattr(info,field)
+                setattr(self, field, func)
+
+                def func(evt, field=field, i=i) -> int:
+                    info = self._info(evt)
+                    if info is None:
+                        return None
+                    else:
+                        return (getattr(info,'severity')>>(i*2))&3
+                setattr(self, f'{field}_sevr', func)
+

@@ -96,6 +96,20 @@ namespace Drp
     if (_bDebug)
       if (printStructure())
         logging::error("onConnect: printStructure() failed");
+
+    if (getParams(_type, _nelem, _rank) == 0)
+    {
+      _pData.resize(_nelem * XtcData::Name::get_element_size(xtype[_type]));
+      _size     = getData(_pData.data(), _pData.size(), _shape);
+      _state    = Ready;
+      _bUpdated = false;
+    }
+    else
+    {
+      auto msg("PV "+ name() + " is uninitialized");
+      logging::warning("onConnect: %s", msg.c_str());
+      _bDisabled = true;
+    }
   }
 
   void EpicsMonitorPv::onDisconnect()
@@ -105,8 +119,6 @@ namespace Drp
 
   void EpicsMonitorPv::updated()
   {
-    //logging::debug("EpicsMonitorPv::updated(): Called for '%s'", name().c_str());
-
     std::lock_guard<std::mutex> lock(_mutex);
 
     // Place data in a temporary buffer because the Xtc buffer may not exist yet
@@ -125,7 +137,11 @@ namespace Drp
         _bUpdated = false;
       }
       else
+      {
+        if (!_bDisabled)
+          logging::critical("updated: getParams() failed for %s", name().c_str());
         _bDisabled = true;
+      }
 
       _condition.notify_one();
     }

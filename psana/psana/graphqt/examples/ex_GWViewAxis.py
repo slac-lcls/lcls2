@@ -1,9 +1,11 @@
+#!/usr/bin/env python
 
 from psana.graphqt.GWViewAxis import *
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
 import sys
+import inspect
 import psana.pyalgos.generic.NDArrGenerators as ag
 
 class TestGWViewAxis(GWViewAxis):
@@ -15,7 +17,7 @@ class TestGWViewAxis(GWViewAxis):
                '\n'
 
     def keyPressEvent(self, e):
-        #logger.debug('keyPressEvent, key=', e.key())
+        logger.debug('keyPressEvent, key=', e.key())
         if   e.key() == Qt.Key_Escape:
             self.close()
 
@@ -34,7 +36,7 @@ def test_GWViewAxis(tname):
     app = QApplication(sys.argv)
     w = None
     rs=QRectF(0, 0, 1000, 100)
-    if   tname ==  '0': w=TestGWViewAxis(None, rs, side='D', origin='UL')
+    if   tname ==  '0': w=TestGWViewAxis(None, rs, side='D', origin='UL', label_rot=-30)
     elif tname ==  '1': w=TestGWViewAxis(None, rs, side='U', origin='UL')
     elif tname ==  '2': w=TestGWViewAxis(None, rs, side='L', origin='UL')
     elif tname ==  '3': w=TestGWViewAxis(None, rs, side='R', origin='UL')
@@ -62,8 +64,9 @@ def test_GWViewAxis(tname):
         print('test %s is not implemented' % tname)
         return
 
+    w.setWindowTitle('ex_GWViewAxis')
     print(w.info_attributes())
-    #w.connect_axes_limits_changed(w.test_axes_limits_changed_reception)
+    w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
     #w.disconnect_axes_limits_changed(w.test_axes_limits_changed_reception)
     w.show()
     app.exec_()
@@ -72,12 +75,17 @@ def test_GWViewAxis(tname):
     del app
 
 
+USAGE = '\nUsage: %s <tname>\n' % sys.argv[0].split('/')[-1]\
+      + '\n'.join([s for s in inspect.getsource(test_GWViewAxis).split('\n') if "tname ==" in s])  # s[9:]
+
+
 if __name__ == "__main__":
     import os
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s' % tname)
     test_GWViewAxis(tname)
+    print(USAGE)
     sys.exit('End of Test %s' % tname)
 
 # EOF

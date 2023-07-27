@@ -1,6 +1,7 @@
 #define __STDC_FORMAT_MACROS 1
 
 #include "BldDetector.hh"
+#include "BldNames.hh"
 
 #include <bitset>
 #include <chrono>
@@ -18,14 +19,15 @@
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include <getopt.h>
 #include <Python.h>
 #include <inttypes.h>
+#include <time.h>
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
-
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
@@ -48,8 +50,21 @@ static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::CHARSTR, // pvString
 };
 
+
+    //
+    //  Until a PVA gateway can be started on the electron-side
+    //
+
+static unsigned getVarDefSize(XtcData::VarDef& vd) {
+    unsigned sz = 0;
+    for(unsigned i=0; i<vd.NameVec.size(); i++) {
+        sz += XtcData::Name::get_element_size(vd.NameVec[i].type()); // assumes rank=0
+    }
+    return sz;
+}
+
 BldPVA::BldPVA(std::string det,
-               unsigned    interface) : _interface(interface)
+               unsigned    interface) : _alg("raw",0,0,0), _interface(interface)
 {
     //
     //  Parse '+' separated list of detName, detType, detId
@@ -60,12 +75,17 @@ BldPVA::BldPVA(std::string det,
     size_t p2 = det.find('+',p1+1);
     if (p2 == std::string::npos) {
     }
+    size_t p3 = det.find('+',p2+1);
 
     _detName = det.substr(   0,     p1).c_str();
     _detType = det.substr(p1+1,p2-p1-1).c_str();
-    _detId   = det.substr(p2+1).c_str();
+    _detId   = det.substr(p2+1,p3-p2-1).c_str();
+    unsigned vsn = strtoul(det.substr(p3+1).c_str(),NULL,16);
+    _alg     = XtcData::Alg("raw",(vsn>>8)&0xf,(vsn>>4)&0xf,(vsn>>0)&0xf);
 
     std::string sname(_detId);
+    // _pvaAddr    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":ADDR"   ).c_str());
+    // _pvaPort    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":PORT"   ).c_str());
     _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":ADDR"   ).c_str());
     _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":PORT"   ).c_str());
     _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":PAYLOAD").c_str());
@@ -76,6 +96,33 @@ BldPVA::BldPVA(std::string det,
 
 BldPVA::~BldPVA()
 {
+}
+
+bool BldPVA::ready() const
+{
+    return (_pvaAddr   ->ready() &&
+            _pvaPort   ->ready() &&
+            _pvaPayload->ready());
+}
+
+unsigned BldPVA::addr() const
+{
+    unsigned ip = 0;
+    in_addr inp;
+    if (inet_aton(_pvaAddr->getScalarAs<std::string>().c_str(), &inp)) {
+        ip = ntohl(inp.s_addr);
+    }
+    return ip;
+}
+
+unsigned BldPVA::port() const
+{
+    return _pvaPort->getScalarAs<unsigned>();
+}
+
+XtcData::VarDef BldPVA::varDef(unsigned& sz) const
+{
+    return _pvaPayload->get(sz);
 }
 
   //
@@ -94,12 +141,9 @@ BldFactory::BldFactory(const char* name,
     _detType = std::string(name);
     _detId   = std::string(name);
 
-    _pvaPayload = 0;
-
-    unsigned payloadSize = 0;
     unsigned mcaddr = 0;
     unsigned mcport = 10148; // 12148, eventually
-    uint64_t tscorr = 0x259e9d80ULL << 32;
+    uint64_t tscorr = 0x259e9d80UL << 32;
     //
     //  Make static configuration of BLD  :(
     //
@@ -112,28 +156,7 @@ BldFactory::BldFactory(const char* name,
         }
         tscorr = 0;
         _alg    = XtcData::Alg("raw", 2, 0, 0);
-        _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamL3Energy"    , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUPosX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUPosY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLUTAngX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUAngY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPkCurrBC2"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamEnergyBC2"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPkCurrBC1"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamEnergyBC1"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndPosX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndPosY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndAngX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndAngY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamXTCAVAmpl"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamXTCAVPhase"  , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamDumpCharge"  , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPhotonEnergy", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTU250"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTU450"      , XtcData::Name::DOUBLE));
-        payloadSize = 164;
+        _varDef.NameVec = BldNames::EBeamDataV7().NameVec;
     }
     else if (strncmp("pcav",name,4)==0) {
         if (name[4]=='h') {
@@ -143,40 +166,25 @@ BldFactory::BldFactory(const char* name,
             mcaddr = 0xefff1901;
         }
         _alg    = XtcData::Alg("raw", 2, 0, 0);
-        _varDef.NameVec.push_back(XtcData::Name("fitTime1"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("fitTime2"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("charge1"       , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("charge2"       , XtcData::Name::DOUBLE));
-        payloadSize = 32;
+        _varDef.NameVec = BldNames::PCav().NameVec;
     }
     else if (strncmp("gmd",name,3)==0) {
         mcaddr = 0xefff1902;
         _alg    = XtcData::Alg("raw", 2, 1, 0);
-        _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("rmsElectronSum", XtcData::Name::INT64));
-        _varDef.NameVec.push_back(XtcData::Name("electron1BkgNoiseAvg", XtcData::Name::INT16));
-        _varDef.NameVec.push_back(XtcData::Name("electron2BkgNoiseAvg", XtcData::Name::INT16));
-        payloadSize = 44;
+        _varDef.NameVec = BldNames::GmdV1().NameVec;
     }
     else if (strcmp("xgmd",name)==0) {
         mcaddr = 0xefff1903;
         _alg    = XtcData::Alg("raw", 2, 1, 0);
-        _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("rmsElectronSum", XtcData::Name::INT64));
-        _varDef.NameVec.push_back(XtcData::Name("electron1BkgNoiseAvg", XtcData::Name::INT16));
-        _varDef.NameVec.push_back(XtcData::Name("electron2BkgNoiseAvg", XtcData::Name::INT16));
-        payloadSize = 44;
+        _varDef.NameVec = BldNames::GmdV1().NameVec;
     }
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramTimestampPos, Bld::DgramHeaderSize, payloadSize,
+    unsigned payloadSize = getVarDefSize(_varDef);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
+                                     Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
+                                     Bld::DgramHeaderSize, payloadSize,
                                      tscorr);
 }
 
@@ -184,44 +192,33 @@ BldFactory::BldFactory(const char* name,
   //  LCLS-II Style
   //
 BldFactory::BldFactory(const BldPVA& pva) :
-    _detName    (pva._detName),
-    _detType    (pva._detType),
-    _detId      (pva._detId),
-    _alg        ("raw", 2, 0, 0),
-    _pvaPayload (pva._pvaPayload)
+    _detName    (pva.detName()),
+    _detType    (pva.detType()),
+    _detId      (pva.detId  ()),
+    _alg        (pva.alg    ())
 {
     while(1) {
-        if (pva._pvaAddr   ->ready() &&
-            pva._pvaPort   ->ready() &&
-            pva._pvaPayload->ready())
+        if (pva.ready())
             break;
         usleep(10000);
     }
 
-    unsigned mcaddr = pva._pvaAddr->getScalarAs<unsigned>();
-    unsigned mcport = pva._pvaPort->getScalarAs<unsigned>();
+    unsigned mcaddr = pva.addr();
+    unsigned mcport = pva.port();
 
     unsigned payloadSize = 0;
-    _varDef = pva._pvaPayload->get(payloadSize);
+    _varDef = pva.varDef(payloadSize);
 
-    if (_detType == "hpsex" ||
-        _detType == "hpscp" ||
-        _detType == "hpscpb") {
-        _alg = XtcData::Alg("raw", 2, 0, 0);
-        //  validate _varDef against version here
-    }
-    else {
-        throw std::string("BLD type ")+_detType+" not recognized";
-    }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface, Bld::TimestampPos, Bld::HeaderSize, payloadSize);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, pva.interface(),
+                                     Bld::TimestampPos, Bld::PulseIdPos,
+                                     Bld::HeaderSize, payloadSize);
 }
 
-  BldFactory::BldFactory(const BldFactory& o) :
+BldFactory::BldFactory(const BldFactory& o) :
     _detName    (o._detName),
     _detType    (o._detType),
     _detId      (o._detId),
-    _alg        (o._alg),
-    _pvaPayload (o._pvaPayload)
+    _alg        (o._alg)
 {
     logging::error("BldFactory copy ctor called");
 }
@@ -275,6 +272,11 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
 
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
+    logging::debug("BldDescriptor::get found %u/%u fields", names.size(), fields.size());
+
+    vd.NameVec.push_back(XtcData::Name("severity",XtcData::Name::UINT64));
+    payloadSize += 8;
+
     for (unsigned i=0; i<fields.size(); i++) {
         switch (fields[i]->getType()) {
             case pvd::scalar: {
@@ -309,12 +311,14 @@ Bld::Bld(unsigned mcaddr,
          unsigned port,
          unsigned interface,
          unsigned timestampPos,
+         unsigned pulseIdPos,
          unsigned headerSize,
          unsigned payloadSize,
          uint64_t timestampCorr) :
-  m_timestampPos(timestampPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
+  m_timestampPos(timestampPos), m_pulseIdPos(pulseIdPos),
+  m_headerSize(headerSize), m_payloadSize(payloadSize),
   m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
-  m_timestampCorr(timestampCorr)
+  m_timestampCorr(timestampCorr), m_pulseId(0), m_pulseIdJump(0)
 {
     logging::info("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
 
@@ -322,6 +326,7 @@ Bld::Bld(unsigned mcaddr,
     if (m_sockfd < 0)
         HANDLE_ERR("Open socket");
 
+    //  Yes, we do bump into full buffers.  Bigger or small buffers seem to be worse.
     { unsigned skbSize = 0x1000000;
       if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1)
           HANDLE_ERR("set so_rcvbuf");
@@ -350,6 +355,7 @@ Bld::Bld(unsigned mcaddr,
 
 Bld::Bld(const Bld& o) :
     m_timestampPos(o.m_timestampPos),
+    m_pulseIdPos  (o.m_pulseIdPos),
     m_headerSize  (o.m_headerSize),
     m_payloadSize (o.m_payloadSize),
     m_sockfd      (o.m_sockfd)
@@ -367,32 +373,123 @@ memory layout for bld packet
 header:
 uint64_t pulseId
 uint64_t timeStamp
-uint32_t id;
-uint8_t payload[]
+uint32_t id
+uint64_t severity
+uint8_t  payload[]
 
 following events []
 uint32_t pulseIdOffset
-uint8_t payload[]
+uint64_t severity
+uint8_t  payload[]
 
 */
 
+//  Read ahead and clear events older than ts (approximate)
+void     Bld::clear(uint64_t ts)
+{
+    {
+        timespec ts;
+        clock_gettime(CLOCK_REALTIME,&ts);
+        logging::debug("Bld::clear [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, ts);
+    }
+
+    uint64_t timestamp(0L);
+    uint64_t pulseId  (0L);
+    while(1) {
+        // get new multicast if buffer is empty
+        if ((m_position + m_payloadSize + 4) > m_bufferSize) {
+            ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
+            if (bytes <= 0)
+                break;
+            //printf("*** 1 pos %u,  pay %u, bufSz %d, bytes %zd\n", m_position, m_payloadSize, m_bufferSize, bytes);
+            m_bufferSize = bytes;
+            timestamp    = headerTimestamp();
+            if (timestamp >= ts) {
+                m_position = 0;
+                break;
+            }
+            pulseId      = headerPulseId  ();
+            m_payload    = &m_buffer[m_headerSize];
+            m_position   = m_headerSize + m_payloadSize;
+            //printf("*** 1 pid %014lx\n", pulseId);
+            timespec ts;
+            clock_gettime(CLOCK_REALTIME,&ts);
+            logging::debug("Bld::clear [%u.%09d] new ts %016llx", ts.tv_sec, ts.tv_nsec, timestamp);
+        }
+        else if (m_position==0) {
+            timestamp    = headerTimestamp();
+            if (timestamp >= ts)
+                break;
+            pulseId      = headerPulseId  ();
+            m_payload    = &m_buffer[m_headerSize];
+            m_position   = m_headerSize + m_payloadSize;
+        }
+        else {
+            uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
+            timestamp   = headerTimestamp() + timestampOffset;
+            if (timestamp >= ts)
+                break;
+            uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
+            pulseId     = headerPulseId  () + pulseIdOffset;
+            m_payload   = &m_buffer[m_position + 4];
+            m_position += 4 + m_payloadSize;
+        }
+
+        unsigned jump = pulseId - m_pulseId;
+        m_pulseId = pulseId;
+        if (jump != m_pulseIdJump) {
+            m_pulseIdJump = jump;
+            logging::warning("BLD pulseId jump %u [%u]",jump,pulseId);
+        }
+    }
+}
+
+//  Advance to the next event
 uint64_t Bld::next()
 {
     uint64_t timestamp(0L);
+    uint64_t pulseId  (0L);
     // get new multicast if buffer is empty
     if ((m_position + m_payloadSize + 4) > m_bufferSize) {
-        m_bufferSize = recv(m_sockfd, m_buffer.data(), Bld::MTU, 0);
+        ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
+        if (bytes <= 0)
+            return timestamp; // Check only for EWOULDBLOCK and EAGAIN?
+        //printf("*** 2 pos %u,  pay %u, bufSz %d, bytes %zd\n", m_position, m_payloadSize, m_bufferSize, bytes);
+        // To do: Handle partial reads?
+        m_bufferSize = bytes;
         timestamp    = headerTimestamp();
+        pulseId      = headerPulseId  ();
         m_payload    = &m_buffer[m_headerSize];
         m_position   = m_headerSize + m_payloadSize;
+        timespec ts;
+        clock_gettime(CLOCK_REALTIME,&ts);
+        logging::debug("Bld::next [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, timestamp);
+    }
+    else if (m_position==0) {
+        timestamp    = headerTimestamp();
+        pulseId      = headerPulseId  ();
+        m_payload    = &m_buffer[m_headerSize];
+        m_position   = m_headerSize + m_payloadSize;
+        //printf("*** 2b pid %014lx\n", pulseId);
     }
     else {
         uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
         timestamp   = headerTimestamp() + timestampOffset;
+        uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
+        pulseId     = headerPulseId  () + pulseIdOffset;
         m_payload   = &m_buffer[m_position + 4];
         m_position += 4 + m_payloadSize;
+        //printf("*** 2c pid %014lx, pidOs %u\n", pulseId, pulseIdOffset);
     }
-    logging::debug("BLD timestamp %16llx",timestamp);
+
+    logging::debug("Bld::next timestamp %016llx  pulseId %016llx", timestamp, pulseId);
+
+    unsigned jump = pulseId - m_pulseId;
+    m_pulseId = pulseId;
+    if (jump != m_pulseIdJump) {
+        m_pulseIdJump = jump;
+        logging::warning("BLD pulseId jump %u [%u]",jump, pulseId);
+    }
 
     return timestamp;
 }
@@ -407,10 +504,10 @@ public:
 
 
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
     m_para(para), m_drp(drp), m_det(det),
     m_config(0), m_terminate(false), m_running(false),
-    m_available(0), m_current(0), m_lastComplete(0), m_next(0),
-    m_latency(0), m_nDmaRet(0)
+    m_available(0), m_current(0), m_next(0), m_nDmaRet(0)
 {
     m_nodeId = det->nodeId;
     if (drp.pool.setMaskBytes(para.laneMask, 0)) {
@@ -418,145 +515,100 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     }
 }
 
-Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
+Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
-    int32_t size = dmaRet[m_current];
-    uint32_t index = dmaIndex[m_current];
-    uint32_t lane = (dest[m_current] >> 8) & 7;
-    bytes += size;
-    if (unsigned(size) > m_drp.pool.dmaSize()) {
-        logging::critical("DMA overflowed buffer: %d vs %d", size, m_drp.pool.dmaSize());
-        throw "DMA overflowed buffer";
-    }
+    const Pds::TimingHeader* timingHeader = handle(m_det, m_current);
+    if (!timingHeader)  return nullptr;
 
-    const uint32_t* data = (uint32_t*)m_drp.pool.dmaBuffers[index];
-    uint32_t evtCounter = data[5] & 0xffffff;
-    const unsigned bufferMask = m_drp.pool.nbuffers() - 1;
-    current = evtCounter & (m_drp.pool.nbuffers() - 1);
-    PGPEvent* event = &m_drp.pool.pgpEvents[current];
-
-    DmaBuffer* buffer = &event->buffers[lane];
-    buffer->size = size;
-    buffer->index = index;
-    event->mask |= (1 << lane);
-
-    logging::debug("PGPReader  lane %d  size %d  hdr %016lx.%016lx.%08x",
-                   lane, size,
-                   reinterpret_cast<const uint64_t*>(data)[0],
-                   reinterpret_cast<const uint64_t*>(data)[1],
-                   reinterpret_cast<const uint32_t*>(data)[4]);
-
-    const Pds::TimingHeader* timingHeader = reinterpret_cast<const Pds::TimingHeader*>(data);
-    if (timingHeader->error()) {
-        logging::error("Timing header error bit is set");
-    }
-    XtcData::TransitionId::Value transitionId = timingHeader->service();
-    if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
-            logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
-                          XtcData::TransitionId::name(transitionId),
-                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                          timingHeader->pulseId());
-        }
-        else {
-            logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
-                           XtcData::TransitionId::name(transitionId),
-                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                           timingHeader->pulseId());
-        }
-        if (transitionId == XtcData::TransitionId::BeginRun) {
-            m_lastComplete = 0;  // EvtCounter reset
-        }
-    }
-    if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-        logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-                          RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
-        logging::critical("data: %08x %08x %08x %08x %08x %08x",
-                          data[0], data[1], data[2], data[3], data[4], data[5]);
-
-        logging::critical("lastTid %s", XtcData::TransitionId::name(m_lastTid));
-        logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
-                          m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
-
-        throw "Jump in event counter";
-
-        for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
-            PGPEvent* brokenEvent = &m_drp.pool.pgpEvents[e & bufferMask];
-            logging::error("broken event:  %08x", brokenEvent->mask);
-            brokenEvent->mask = 0;
-
-        }
-    }
-    m_lastComplete = evtCounter;
-    m_lastTid = transitionId;
-    memcpy(m_lastData, data, 24);
-
-    auto now = std::chrono::system_clock::now();
-    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+    uint32_t pgpIndex = timingHeader->evtCounter & (m_pool.nDmaBuffers() - 1);
+    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
-    Pds::EbDgram* dgram = new(m_drp.pool.pebble[current]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
+    evtIndex = event->pebbleIndex;
+    XtcData::Src src = m_det->nodeId;
+    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, src, m_para.rogMask);
+
+    // Collect indices of DMA buffers that can be recycled and reset event
+    freeDma(event);
 
     return dgram;
 }
 
-//static const unsigned _skip_intv = 10000;  // pulseIds
-static const unsigned _skip_intv = 10000000; // ns
-Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes)
+// measured 11 ms latency for gmd at low rates
+static const unsigned _skip_intv = 20000000; // ns
+static const unsigned TMO_MS = 20;
+static const std::chrono::microseconds TMO_US(25000);
+
+Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
 {
-    //  Fast forward to _next timestamp
-    if (timestamp < m_next)
+    logging::debug("Pgp::next ts %016llx  m_next %016llx  tmo %c", timestamp, m_next, m_tmoState==Finished?'T':'F');
+
+    //  Fast forward to _next timestamp only when there is a BLD timestamp
+    if (timestamp && (timestamp < m_next))
         return nullptr;
 
     // get new buffers
     if (m_current == m_available) {
         m_current = 0;
-        auto start = std::chrono::steady_clock::now();
+        auto start = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
         while (true) {
-            m_available = dmaReadBulkIndex(m_drp.pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+            m_available = read();
             m_nDmaRet = m_available;
-            if (m_available > 0) {
-                m_drp.pool.allocate(m_available);
-                break;
-            }
+            if (m_available > 0)  break;
+
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
 
             //  Timing data should arrive long before BLD - no need to wait
             //            return nullptr;
 
             // wait for a total of 10 ms otherwise timeout
-            auto now = std::chrono::steady_clock::now();
+            auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-            if (elapsed > 10) {
+            if (elapsed > TMO_MS) {
                 m_next = timestamp + _skip_intv;
-                //if (m_running)  logging::debug("pgp timeout");
+                if (m_running)  logging::debug("pgp timeout");
                 return nullptr;
             }
         }
     }
 
-    const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(m_drp.pool.dmaBuffers[dmaIndex[m_current]]);
+    const Pds::TimingHeader* timingHeader = m_det->getTimingHeader(dmaIndex[m_current]);
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME,&ts);
+    logging::debug("Pgp::next [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, timingHeader->time.value());
+
+    Pds::EbDgram* dgram = nullptr;
 
     // return dgram if bld timestamp matches pgp timestamp or if it's a transition
     if ((timestamp == timingHeader->time.value()) || (timingHeader->service() != XtcData::TransitionId::L1Accept)) {
-        Pds::EbDgram* dgram = _handle(evtIndex, bytes);
+        dgram = _handle(evtIndex);
         m_current++;
         m_next = timingHeader->time.value();
-        return dgram;
     }
     // Missed BLD data so mark event as damaged
-    else if (timestamp > timingHeader->time.value()) {
-      //printf("ts %016lx, th %016lx, d %ld\n", timestamp, timingHeader->time.value(), timestamp - timingHeader->time.value());
-        Pds::EbDgram* dgram = _handle(evtIndex, bytes);
+    else if (timestamp > timingHeader->time.value() || m_tmoState==Finished) {
+        dgram = _handle(evtIndex);
         dgram->xtc.damage.increase(XtcData::Damage::MissingData);
         m_current++;
-        return dgram;
+        m_next = timingHeader->time.value();
+    }
+    else {
+        if (m_tmoState == TmoState::None) {
+            m_tmoState = TmoState::Started;
+            m_tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+        } else {
+            if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - m_tInitial > TMO_US) {
+                m_tmoState = TmoState::Finished;
+            }
+        }
     }
 
-    return nullptr;
+    if (dgram)
+        m_tmoState = TmoState::None;
+
+    return dgram;
 }
 
 void Pgp::shutdown()
@@ -568,24 +620,38 @@ void Pgp::shutdown()
 void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 {
     // setup monitoring
-    uint64_t nevents = 0L;
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
                                               {"partition", std::to_string(m_para.partition)},
                                               {"detname", m_para.detName},
                                               {"detseg", std::to_string(m_para.detSegment)},
                                               {"alias", m_para.alias}};
+    uint64_t nevents = 0L;
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
-    uint64_t bytes = 0L;
-    exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
-                  [&](){return bytes;});
     uint64_t nmissed = 0L;
     exporter->add("bld_miss_count", labels, Pds::MetricType::Counter,
                   [&](){return nmissed;});
-    exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
-                  [&](){return m_latency;});
+
     exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
                   [&](){return m_nDmaRet;});
+    exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
+                  [&](){return dmaBytes();});
+    exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
+                  [&](){return dmaSize();});
+    exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                  [&](){return latency();});
+    exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
+                  [&](){return nDmaErrors();});
+    exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
+                  [&](){return nNoComRoG();});
+    exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
+                  [&](){return nMissingRoGs();});
+    exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
+                  [&](){return nTmgHdrError();});
+    exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
+                  [&](){return nPgpJumps();});
+    exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
+                  [&](){return nNoTrDgrams();});
 
     //
     //  Setup the multicast receivers
@@ -602,6 +668,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     std::string s(m_para.detType);
     logging::debug("Parsing %s",s.c_str());
     for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
+        if (s==".") break;
         next  = s.find(',',curr+1);
         size_t pvpos = s.find('+',curr+1);
         logging::debug("(%d,%d,%d)",curr,pvpos,next);
@@ -624,10 +691,10 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     for(unsigned i=0; i<bldPva.size(); i++)
         m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get()));
 
-    uint64_t nextId = -1ULL;
+    uint64_t nextId = -1UL;
     uint64_t timestamp[m_config.size()];
     memset(timestamp,0,sizeof(timestamp));
-    
+
     for(unsigned i=0; i<m_config.size(); i++) {
         timestamp[i] = m_config[i]->handler().next();
         if (timestamp[i] < nextId)
@@ -638,6 +705,9 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     bool lMissing = false;
     XtcData::NamesLookup& namesLookup = m_det->namesLookup();
 
+    m_tmoState = TmoState::None;
+    m_tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+
     m_terminate.store(false, std::memory_order_release);
 
     while (true) {
@@ -645,17 +715,20 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             break;
         }
         uint32_t index;
-        Pds::EbDgram* dgram = next(nextId, index, bytes);
+        Pds::EbDgram* dgram = next(nextId, index);
         bool lHold(false);
+        //printf("dgram %p, lHold %d\n", dgram, lHold);
         if (dgram) {
+            logging::debug("pgp %016lx  bld %016lx  pid %014lx\n",
+                           dgram->time.value(), nextId, dgram->pulseId());
             if (dgram->xtc.damage.value()) {
                 ++nmissed;
                 if (dgram->time.value() < nextId)
                     lHold=true;
                 if (!lMissing) {
                     lMissing = true;
-                    logging::debug("Missed next bld: pgp %016lx  bld %016lx",
-                                   dgram->time.value(), nextId);
+                    logging::debug("Missed next bld: pgp %016lx  bld %016lx  pid %014lx",
+                                   dgram->time.value(), nextId, dgram->pulseId());
                 }
             }
             else {
@@ -674,26 +747,28 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                         else {
                             lMissed = true;
                             if (!lMissing)
-                                logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
-                                               i, nextId, timestamp[i]);
+                                logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
+                                                 i, nextId, timestamp[i], dgram->pulseId());
                         }
                     }
                     if (lMissed) {
                         lMissing = true;
-                        nmissed++;
                         dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+                        nmissed++;
                     }
-                    else if (lMissing) {
+                    else {
+                        if (lMissing)
+                            logging::debug("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
                         lMissing = false;
-                        logging::debug("Missing ends: pgp %016lx", nextId);
                     }
                 }
                 else {
                     lHold=true;         // Hold off BLD for all transitions
 
-                    // Allocate a transition dgram from the pool and initialize its header
-                    Pds::EbDgram* trDgram = m_drp.pool.allocateTr();
+                    // Find the transition dgram in the pool and initialize its header
+                    Pds::EbDgram* trDgram = m_drp.pool.transitionDgrams[index];
                     const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
+                    if (!trDgram)  continue; // Can happen during shutdown
                     memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
@@ -701,8 +776,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
                     auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
                     memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-                    PGPEvent* pgpEvent = &m_drp.pool.pgpEvents[index];
-                    pgpEvent->transitionDgram = trDgram;
 
                     switch (dgram->service()) {
                         case XtcData::TransitionId::Configure: {
@@ -736,17 +809,23 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         if (!lHold) {
             nextId++;
             for(unsigned i=0; i<m_config.size(); i++) {
+                if (dgram)
+                    m_config[i]->handler().clear(dgram->time.value());
                 if (timestamp[i] < nextId)
                     timestamp[i] = m_config[i]->handler().next();
             }
 
-            nextId = -1ULL;
+            nextId = -1UL;
             for(unsigned i=0; i<m_config.size(); i++) {
                 if (timestamp[i] < nextId)
                     nextId = timestamp[i];
             }
         }
     }
+
+    // Flush the DMA buffers
+    flush();
+
     logging::info("Worker thread finished");
 }
 
@@ -815,11 +894,12 @@ void BldApp::_unconfigure()
     m_drp.pool.shutdown();  // Release Tr buffer pool
     m_drp.unconfigure();    // TebContributor must be shut down before the worker
     if (m_pgp) {
+        if (m_exporter)  m_exporter.reset();
         m_pgp->shutdown();
-         if (m_workerThread.joinable()) {
-             m_workerThread.join();
-         }
-         m_pgp.reset();
+        if (m_workerThread.joinable()) {
+            m_workerThread.join();
+        }
+        m_pgp.reset();
     }
     m_unconfigure = false;
 }
@@ -935,7 +1015,6 @@ void BldApp::handlePhase1(const json& msg)
 
         m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
 
-        if (m_exporter)  m_exporter.reset();
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -1108,16 +1187,17 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
     get_kwargs(kwargs_str, para.kwargs);
     for (const auto& kwargs : para.kwargs) {
-        if (kwargs.first == "forceEnet")     continue;
-        if (kwargs.first == "ep_fabric")     continue;
-        if (kwargs.first == "ep_domain")     continue;
-        if (kwargs.first == "ep_provider")   continue;
-        if (kwargs.first == "sim_length")    continue;  // XpmDetector
-        if (kwargs.first == "timebase")      continue;  // XpmDetector
-        if (kwargs.first == "pebbleBufSize") continue;  // DrpBase
-        if (kwargs.first == "batching")      continue;  // DrpBase
-        if (kwargs.first == "directIO")      continue;  // DrpBase
-        if (kwargs.first == "interface")     continue;
+        if (kwargs.first == "forceEnet")      continue;
+        if (kwargs.first == "ep_fabric")      continue;
+        if (kwargs.first == "ep_domain")      continue;
+        if (kwargs.first == "ep_provider")    continue;
+        if (kwargs.first == "sim_length")     continue;  // XpmDetector
+        if (kwargs.first == "timebase")       continue;  // XpmDetector
+        if (kwargs.first == "pebbleBufSize")  continue;  // DrpBase
+        if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
+        if (kwargs.first == "batching")       continue;  // DrpBase
+        if (kwargs.first == "directIO")       continue;  // DrpBase
+        if (kwargs.first == "interface")      continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;

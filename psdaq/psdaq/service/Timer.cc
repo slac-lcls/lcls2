@@ -14,6 +14,7 @@
 
 #include <errno.h>
 #include <sys/time.h>
+#include <cstdio>
 
 #include "Timer.hh"
 #include "TaskWait.hh"

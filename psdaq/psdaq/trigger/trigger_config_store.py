@@ -11,7 +11,7 @@ parser.add_argument('--name', help='detector name', type=str, default='trigger')
 parser.add_argument('--segm', help='detector segment', type=int, default=0)
 parser.add_argument('--id', help='device id/serial num', type=str, default='No serial number')
 parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
-parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
+parser.add_argument('--password', help='password for HTTP authentication', type=str, default=os.getenv('CONFIGDB_AUTH'))
 args = parser.parse_args()
 
 # these are the current default values, but put them here to be explicit

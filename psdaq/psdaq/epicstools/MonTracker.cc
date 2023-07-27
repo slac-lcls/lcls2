@@ -144,6 +144,7 @@ void MonTracker::process(const pvac::MonitorEvent& evt)
         if (!_connected) {
           _connected = true;
           onConnect();
+          continue;                  // Call updated() only when PV is updating
         }
         updated();
       }

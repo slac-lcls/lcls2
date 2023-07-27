@@ -49,6 +49,7 @@ def main():
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
+    parser.add_argument('-G', action='store_true', help='is generator')
 
     args = parser.parse_args()
     if args.verbose:
@@ -58,7 +59,8 @@ def main():
     base = kcu.DevRoot(
         dev       = args.dev,
         dataDebug = True,
-        enVcMask  = 0xF
+        enVcMask  = 0xF,
+        isXpmGen  = args.G,
     )
 
     # Start the system
@@ -76,9 +78,10 @@ def main():
     lock = Lock()
 
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False)
-    base.handle(pvstats.handle)
+#    base.handle(pvstats.handle)
 
-    pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9)
+    pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, notify=False, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9)
+    base.handle(pvctrls.handle)
 
     pvxtpg = None
 

@@ -27,7 +27,8 @@ namespace Drp {
 PyObject* BEBDetector::_check(PyObject* obj) {
     if (!obj) {
         PyErr_Print();
-        throw "**** python error";
+        logging::critical("**** python error");
+        abort();
     }
     return obj;
 }
@@ -83,7 +84,7 @@ void BEBDetector::_init(const char* arg)
                                             m_para->device.c_str(),
                                             m_para->laneMask,
                                             xpmpv,
-					    timebase,
+                                            timebase,
                                             m_para->verbose));
 
       // check if m_root has "virtChan" member and set accordingly
@@ -102,6 +103,7 @@ void BEBDetector::_init(const char* arg)
       PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"O",m_root));
 
       m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
+      printf("*** BebDetector: paddr is %08x = %u\n", m_paddr, m_paddr);
 
       // there is currently a failure mode where the register reads
       // back as zero or 0xffffffff (incorrectly). This is not the best
@@ -109,7 +111,8 @@ void BEBDetector::_init(const char* arg)
       // difficulty is that Matt says this register has to work
       // so that an automated software solution would know which
       // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-      if (!m_paddr || m_paddr==0xffffffff) {
+      // Also, register is corrupted when port number > 15 - Ric
+      if (!m_paddr || m_paddr==0xffffffff || (m_paddr & 0xff) > 15) {
           logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
           abort();
       }
@@ -260,9 +263,13 @@ void BEBDetector::shutdown()
     PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
 
     // returns new reference
-    PyObject* val = _check(PyObject_CallFunction(pFunc,"O",m_root));
+    PyObject* val = PyObject_CallFunction(pFunc,"O",m_root);
 
-    Py_DECREF(val);
+    if (val)
+        Py_DECREF(val);
+    else
+        PyErr_Print();
+
 }
 
 }

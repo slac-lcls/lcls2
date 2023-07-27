@@ -2,11 +2,11 @@ if not platform: platform = '6'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 #epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
-epics_env = 'EPICS_PVA_ADDR_LIST=10.0.2.255'+' '+ld_lib_path
+epics_env = 'EPICS_PVA_ADDR_LIST=10.0.15.255'+' '+ld_lib_path
 hsd_epics_env = ld_lib_path
 
 ioc_node = 'daq-rix-hsd-01'
-pva_node = 'drp-srcf-cmp004'
+pva_node = 'drp-srcf-mon001'
 hsd_epics = 'DAQ:RIX:HSD:1'
 hsd_ids = ['1b','1a']
 
@@ -18,7 +18,7 @@ for hsd in hsd_ids:
         iport += 1
 
 for hsd in hsd_ids:
-    procmgr_config.append({host:ioc_node, id:'hsdioc_rix_{:}'.format(hsd), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(hsd_epics,hsd.upper(),hsd)})
+    procmgr_config.append({host:ioc_node, id:'hsdioc_rix_{:}'.format(hsd), port:'%d'%iport, flags:'s', env:epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(hsd_epics,hsd.upper(),hsd)})
     iport += 1
 
 #  Map of HSD connections

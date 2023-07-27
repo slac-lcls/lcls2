@@ -67,6 +67,8 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   exporter->add("TCtbO_InFlt", labels, MetricType::Gauge,   [&](){ _pendingSize = _pending.guess_size();
                                                                    return _pendingSize; });
   exporter->add("TCtbO_Lat",   labels, MetricType::Gauge,   [&](){ return _latency;             });
+  exporter->add("TCtbO_BtAge", labels, MetricType::Gauge,   [&](){ return _age;                 });
+  exporter->add("TCtbO_BtEnt", labels, MetricType::Gauge,   [&](){ return _entries;             });
 }
 
 TebContributor::~TebContributor()
@@ -127,7 +129,7 @@ void TebContributor::unconfigure()
   }
 }
 
-int TebContributor::connect(size_t inpSizeGuess)
+int TebContributor::connect()
 {
   _links    .resize(_prms.addrs.size());
   _trBuffers.resize(_links.size());
@@ -136,29 +138,6 @@ int TebContributor::connect(size_t inpSizeGuess)
 
   int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
   if (rc)  return rc;
-
-  // Set up a guess at the RDMA region
-  // If it's too small, it will be corrected during Configure
-  if (!_batMan.batchRegion())           // No need to guess again
-  {
-    auto numBatches = _pending.size() / _prms.maxEntries;
-    if (numBatches * _prms.maxEntries != _pending.size())
-    {
-      logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
-                        _prms.maxEntries, _pending.size());
-      abort();
-    }
-    _batMan.initialize(inpSizeGuess, _prms.maxEntries, numBatches);
-  }
-
-  void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
-  size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
-
-  for (auto link : _links)
-  {
-    rc = link->setupMr(region, regSize);
-    if (rc)  return rc;
-  }
 
   return 0;
 }
@@ -173,6 +152,12 @@ int TebContributor::configure()
 
   // maxInputSize becomes known during Configure, so reinitialize BatchManager now
   auto numBatches = _pending.size() / _prms.maxEntries;
+  if (numBatches * _prms.maxEntries != _pending.size())
+  {
+    logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
+                      _prms.maxEntries, _pending.size());
+    abort();
+  }
   _batMan.initialize(_prms.maxInputSize, _prms.maxEntries, numBatches);
 
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
@@ -197,6 +182,36 @@ int TebContributor::configure()
   return 0;
 }
 
+Batch::Batch(const Pds::EbDgram* dgram, bool contractor_) :
+  entries   (0),
+  tStart    (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)),
+  start     (dgram),
+  end       (dgram),
+  contractor(contractor_)
+{
+}
+
+void TebContributor::_flush()
+{
+  if (_batch.start)
+  {
+    _post(_batch);
+    _batch.start = nullptr;             // Start a new batch
+  }
+}
+
+// NB: timeout() must not be called concurrently with process()
+bool TebContributor::timeout()
+{
+  auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+
+  if (now - _batch.tStart < BATCH_TIMEOUT)  return false;
+
+  _flush();
+  return true;
+}
+
+// NB: process() must not be called concurrently with timeout()
 void TebContributor::process(const EbDgram* dgram)
 {
   auto now = std::chrono::system_clock::now();
@@ -211,26 +226,22 @@ void TebContributor::process(const EbDgram* dgram)
   if (LIKELY(rogs & (1 << _prms.partition))) // Common RoG triggered
   {
     // On wrapping, post the batch at the end of the region, if any
-    if (dgram == _batMan.batchRegion())
-    {
-      if (_batch.start)  _post(_batch);
-
-      _batch.start = nullptr;           // Start a new batch
-    }
+    if (dgram == _batMan.batchRegion())  _flush();
 
     // Initiailize a new batch with the first dgram seen
     if (!_batch.start)  _batch = {dgram, contractor};
 
     auto svc     = dgram->service();
-    bool flush   = ((svc != TransitionId::L1Accept) &&
+    bool doFlush = ((svc != TransitionId::L1Accept) &&
                     (svc != TransitionId::SlowUpdate));
     bool expired = _batMan.expired(       dgram->pulseId(),
                                    _batch.start->pulseId());
 
-    if (LIKELY(!expired && !flush))     // Most frequent case when batching
+    if (LIKELY(!expired && !doFlush))   // Most frequent case when batching
     {
       _batch.end         = dgram;       // Append dgram to batch
       _batch.contractor |= contractor;
+      _batch.entries++;
     }
     else
     {
@@ -244,20 +255,29 @@ void TebContributor::process(const EbDgram* dgram)
         _batch = {dgram, contractor};   // Start a new batch with dgram
       }
 
-      if (flush)                        // Post the batch + transition
+      if (doFlush)                      // Post the batch + transition
       {
         _batch.end         = dgram;     // Append dgram to batch
         _batch.contractor |= contractor;
+        _batch.entries++;
 
         _post(_batch);
 
         _batch.start = nullptr;         // Start a new batch
       }
     }
+
+    // Keep non-selected TEBs synchronized by forwarding transitions to them.  In
+    // particular, the Disable transition flushes out whatever Results batch they
+    // currently have in-progress.
+    if (!dgram->isEvent())           // Also capture the most recent SlowUpdate
+    {
+      if (contractor)  _post(dgram); // Post, if contributor is providing trigger input
+    }
   }
-  else                        // Common RoG didn't trigger: bypass the TEB
+  else                        // Common RoG didn't trigger: bypass the TEB(s)
   {
-    if (_batch.start)  _post(_batch);
+    _flush();
 
     dgram->setEOL();          // Terminate for clarity and dump-ability
     _pending.push(dgram);
@@ -266,23 +286,18 @@ void TebContributor::process(const EbDgram* dgram)
       logging::critical("%s: _pending queue overflow", __PRETTY_FUNCTION__);
       abort();
     }
-
-    _batch.start = nullptr;             // Start a new batch
   }
 
   ++_eventCount;                        // Only count events handled
-
-  // Keep non-selected TEBs synchronized by forwarding transitions to them.  In
-  // particular, the Disable transition flushes out whatever Results batch they
-  // currently have in-progress.
-  if (!dgram->isEvent())             // Also capture the most recent SlowUpdate
-  {
-    if (contractor)  _post(dgram); // Post, if contributor is providing trigger input
-  }
 }
 
 void TebContributor::_post(const Batch& batch)
 {
+  using ns_t = std::chrono::nanoseconds;
+  auto age   = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - batch.tStart;
+  _age       = std::chrono::duration_cast<ns_t>(age).count();
+  _entries   = batch.entries;
+
   batch.end->setEOL();        // Avoid race: terminate before adding batch to pending list
   _pending.push(batch.start); // Get the batch on the queue before any corresponding result can show up
   if (!(size_t(_pending.guess_size()) < _pending.size()))

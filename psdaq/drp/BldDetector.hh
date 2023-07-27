@@ -6,14 +6,17 @@
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include "psdaq/epicstools/PVBase.hh"
+
+#include <chrono>
 
 namespace Drp {
 
 class BldDescriptor : public Pds_Epics::PVBase
 {
 public:
-    BldDescriptor(const char* channelName) : Pds_Epics::PVBase(channelName) {}
+    BldDescriptor(const char* channelName) : Pds_Epics::PVBase("pva",channelName) {}
     ~BldDescriptor();
     XtcData::VarDef get(unsigned& payloadSize);
 };
@@ -29,8 +32,8 @@ public:
     ~Bld();
 public:
     static const unsigned MTU = 9000;
-    static const unsigned PulseIdPos        =  0; // LCLS-II style
-    static const unsigned TimestampPos      =  8; // LCLS-II style
+    static const unsigned TimestampPos      =  0; // LCLS-II style
+    static const unsigned PulseIdPos        =  8; // LCLS-II style
     static const unsigned HeaderSize        = 20;
     static const unsigned DgramTimestampPos =  0; // LCLS-I style
     static const unsigned DgramPulseIdPos   =  8; // LCLS-I style
@@ -66,9 +69,20 @@ public:
            unsigned    interface);
     ~BldPVA();
 public:
+    std::string     detName() const { return _detName; }
+    std::string     detType() const { return _detType; }
+    std::string     detId  () const { return _detId; }
+    XtcData::Alg    alg    () const { return _alg; }
+    unsigned        interface() const { return _interface; }
+    bool            ready() const;
+    unsigned        addr() const;
+    unsigned        port() const;
+    XtcData::VarDef varDef(unsigned& sz) const;
+private:
     std::string                        _detName;
     std::string                        _detType;
     std::string                        _detId;
+    XtcData::Alg                       _alg;
     unsigned                           _interface;
     std::shared_ptr<Pds_Epics::PVBase> _pvaAddr;
     std::shared_ptr<Pds_Epics::PVBase> _pvaPort;
@@ -100,18 +114,18 @@ private:
 };
 
 
-class Pgp
+class Pgp : public PgpReader
 {
 public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
-    Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes); // Slow case
+    Pds::EbDgram* next(uint32_t& evtIndex); // Slow case
     //  Returns NULL if earliest received data is already later than requested data
-    Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes); // Non-Slow case
+    Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex); // Non-Slow case
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
-    Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
+    Pds::EbDgram* _handle(uint32_t& evtIndex);
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
     bool _ready() const { return m_current < m_available; }
 private:
@@ -120,21 +134,17 @@ private:
     DrpBase&                                   m_drp;
     Detector*                                  m_det;
     static const int MAX_RET_CNT_C = 100;
-    int32_t                                    dmaRet[MAX_RET_CNT_C];
-    uint32_t                                   dmaIndex[MAX_RET_CNT_C];
-    uint32_t                                   dest[MAX_RET_CNT_C];
     std::vector<std::shared_ptr<BldFactory> >  m_config;
     std::atomic<bool>                          m_terminate;
     bool                                       m_running;
     int32_t                                    m_available;
     int32_t                                    m_current;
-    uint32_t                                   m_lastComplete;
-    XtcData::TransitionId::Value               m_lastTid;
-    uint32_t                                   m_lastData[6];
     unsigned                                   m_nodeId;
     uint64_t                                   m_next;
-    int64_t                                    m_latency;
     uint64_t                                   m_nDmaRet;
+    enum TmoState { None, Started, Finished };
+    TmoState                                   m_tmoState;
+    std::chrono::time_point<Pds::fast_monotonic_clock> m_tInitial;
 };
 
 

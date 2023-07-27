@@ -1,3 +1,8 @@
+#
+#  This code needs validation checks:
+#  1.  arguments do not exceed the bit depth of the implementation
+#  2.  consistent use of the branch counters (same counter isn't used within a nested loop)
+#
 from psdaq.configdb.tsdef import *
 
 verbose = False
@@ -13,6 +18,9 @@ class Instruction(object):
         args[0] = len(self.args)-1
         args[1:len(self.args)+1] = self.args
         return args
+
+    def __str__(self):
+        return self.print_()
 
 class FixedRateSync(Instruction):
 
@@ -49,6 +57,10 @@ class ACRateSync(Instruction):
     opcode = 1
 
     def __init__(self, timeslotm, marker, occ):
+        if occ > 0xfff:
+            raise ValueError('ACRateSync called with occ={}'.format(occ))
+        if timeslotm > 0x3f:
+            raise ValueError('ACRateSync called with timeslotm={}'.format(timeslotm))
         super(ACRateSync, self).__init__( (self.opcode, timeslotm, marker, occ) )
 
     def _word(self):
@@ -78,12 +90,17 @@ class Branch(Instruction):
     opcode = 2
 
     def __init__(self, args):
+        if len(args)>2:
+            if args[2] > 0x3:
+                raise ValueError('Branch called with ctr={}'.format(args[2]))
+            if args[3] > 0xfff:
+                raise ValueError('Branch called with occ={}'.format(args[3]))
         super(Branch, self).__init__(args)
 
     def _word(self, a):
         w = a & 0x7ff
         if len(self.args)>2:
-            w = ((self.args[2]&0x3)<<27) | (1<<24) | ((self.args[3]&0xff)<<16) | w
+            w = ((self.args[2]&0x3)<<27) | (1<<24) | ((self.args[3]&0xfff)<<12) | w
         return int(w)
 
     @classmethod
@@ -154,15 +171,73 @@ class ControlRequest(Instruction):
     opcode = 5
     
     def __init__(self, word):
-        super(ControlRequest, self).__init__((self.opcode, word))
+        if isinstance(word,list):
+            v = 0
+            for w in word:
+                v |= (1<<w)
+        else:
+            v = word
+        super(ControlRequest, self).__init__((self.opcode, v))
  
     def _word(self):
         return int((4<<29) | self.args[1])
 
     def print_(self):
-        return 'ControlRequest word 0x{:x}'.format(self.args[1])
+        codes = []
+        w = self.args[1]
+        code = 0
+        while w:
+            if w&1:
+                codes.append(code)
+            w >>= 1
+            code += 1
+
+        return f'ControlRequest word 0x{self.args[1]:x} {codes}'
 
     def execute(self,engine):
         engine.request = self.args[1]
         engine.instr += 1
+
+def decodeInstr(w):
+    idw = w>>29
+    instr = Instruction([])
+    if idw == 0:  # Branch
+        if w&(1<<24):
+            instr = Branch.conditional(line=w&0x7ff,counter=(w>>27)&3,value=(w>>12)&0xfff)
+        else:
+            instr = Branch.unconditional(line=w&0x7ff)
+    elif idw == 1: # Checkpoint
+        instr = CheckPoint()
+    elif idw == 2: # FixedRateSync
+        instr = FixedRateSync(marker=(w>>16)&0xf,occ=w&0xfff)
+    elif idw == 3: # ACRateSync
+        instr = ACRateSync(timeslotm=(w>>23)&0x3f,marker=(w>>16)&0xf,occ=w&0xfff)
+    elif idw == 4: # Request (assume ControlRequest)
+        instr = ControlRequest(word = w&0xffff)
+    return instr
+
+#  validate the conditional counters in a list of instructions
+def validate(filename):
+    config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None, 'repeat':False}
+    seq = 'from psdaq.seq.seq import *\n'
+    seq += open(filename).read()
+    exec(compile(seq, filename, 'exec'), {}, config)
+    l = config['instrset']
+
+    #  accumulate the branch statement source and targets
+    d = {cc:[] for cc in range(4)}
+    for line,instr in enumerate(l):
+        if instr.args[0]==Branch.opcode and len(instr.args)>2:
+            cc   = instr.args[2]
+            addr = instr.args[3]
+            d[cc].append([addr,line])
+
+    #  check none of them overlap for a given conditional counter
+    for cc in range(4):
+        for r in d[cc]:
+            addr = r[0]
+            for s in d[cc]:
+                if addr>s[0] and addr<s[1]:
+                    raise ValueError(f'{filename}: CC {cc} found in overlapping loops {r} {s}')
+
 

@@ -17,17 +17,18 @@ Created on 2022-01-18 by Mikhail Dubrovin
 
 import logging
 logger = logging.getLogger(__name__)
-#import os
 import sys
 import numpy as np
 
-from psana.detector.utils_psana import info_run, info_detector, seconds    # datasource_kwargs
+import psana.detector.utils_psana as up
 from psana import DataSource
-from psana.detector.Utils import str_tstamp, time, get_login, info_command_line, info_dict
+from psana.detector.Utils import str_tstamp, time, get_login, info_dict  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
-from psana.detector.RepoManager import RepoManager
-from psana.detector.UtilsLogging import init_file_handler
+from psana.detector.RepoManager import RepoManager, init_repoman_and_logger
+
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+
 
 def selected_record(i, events):
     return i<5\
@@ -37,7 +38,7 @@ def selected_record(i, events):
        or i>events-5
 
 
-def info_pixel_status(status, bits=0xffff):
+def info_pixel_status(status, bits=(1<<64)-1):
     arr1 = np.ones_like(status, dtype=np.int32)
     statist_bits = np.select((status & bits,), (arr1,), 0)
     statist_tot = np.select((status>0,), (arr1,), 0)
@@ -341,7 +342,7 @@ class DarkProc():
             self.proc_block()
             self.init_proc()
             self.add_block()
-            print('1st stage event block processing is completed')
+            sys.stdout.write('1st stage event block processing is completed\n')
             self.add_event(raw, self.irec)
 
         if self.irec > self.nrecs-2:
@@ -391,7 +392,7 @@ def plot_image(nda, tit=''):
     #img = det.image(evt, nda)
     img = reshape_to_2d(nda)
     if img is None:
-        print('plot_image - image "%s" is not available.'%tit)
+        sys.stdout.write('plot_image - image "%s" is not available.\n'%tit)
         return
 
     logger.info(info_ndarr(img, 'plot_image of %s' % tit))
@@ -402,10 +403,9 @@ def plot_image(nda, tit=''):
     gr.show()
 
 
-
 def add_metadata_kwargs(orun, odet, **kwa):
 
-    trun_sec = seconds(orun.timestamp) # 1607569818.532117 sec
+    trun_sec = up.seconds(orun.timestamp) # 1607569818.532117 sec
 
     # check opt "-t" if constants need to be deployed with diffiernt time stamp or run number
     tstamp = kwa.get('tstamp', None)
@@ -419,9 +419,10 @@ def add_metadata_kwargs(orun, odet, **kwa):
     kwa['exp']        = orun.expt
     kwa['experiment'] = orun.expt
     kwa['detector']   = odet.raw._uniqueid
+    kwa['longname']   = odet.raw._uniqueid
+    kwa['uniqueid']   = odet.raw._uniqueid
     kwa['detname']    = odet.raw._det_name
     kwa['dettype']    = odet.raw._dettype
-    kwa['longname']   = odet.raw._uniqueid
     kwa['time_sec']   = tvalid_sec
     kwa['time_stamp'] = str_tstamp(fmt=cc.TSFORMAT, time_sec=int(tvalid_sec))
     kwa['tsshort']    = str_tstamp(fmt=cc.TSFORMAT_SHORT, time_sec=int(tvalid_sec))
@@ -457,6 +458,7 @@ def deploy_constants(dic_consts, **kwa):
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
+    uniqueid = kwa.get('uniqueid', 'not-def-id')
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -464,14 +466,22 @@ def deploy_constants(dic_consts, **kwa):
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
-                 'pixel_status': fmt_status}
+                 'pixel_status': fmt_status,
+                 'status_extra': fmt_status}
 
     if repoman is None:
-       repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
-    dircons = repoman.makedir_constants(dname='constants')
-    fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
+       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
+    #dircons = repoman.makedir_constants(dname='constants')
+    #fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
+
+    panelid = uniqueid.split('_',1)[-1]
+    logger.info('use panelid: %s' % panelid)
 
     for ctype, nda in dic_consts.items():
+
+        dir_ct = repoman.makedir_ctype(panelid, ctype)
+        fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
+
         fname = '%s-%s.txt' % (fprefix, ctype)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
         save_ndarray_in_textfile(nda, fname, filemode, fmt)
@@ -504,26 +514,20 @@ def deploy_constants(dic_consts, **kwa):
 
 
 
-def pedestals_calibration(**kwa):
+def pedestals_calibration(parser):
 
-  import psana.detector.utils_psana as up
+  args = parser.parse_args()
+  kwa = vars(args)
 
-  logger.info('command line: %s' % info_command_line())
-  #logger.info('input parameters: %s' % info_dict(kwa, fmt='%s: %s', sep=' '))
+  repoman = init_repoman_and_logger(parser=parser, **kwa)
 
   str_dskwargs = kwa.get('dskwargs', None)
-  dirrepo = kwa.get('dirrepo', './work')
   detname = kwa.get('det', None)
   nrecs   = kwa.get('nrecs', 100)
   stepnum = kwa.get('stepnum', None)
   stepmax = kwa.get('stepmax', 1)
   evskip  = kwa.get('evskip', 0)
   events  = kwa.get('events', 1000)
-  dirmode = kwa.get('dirmode', 0o2775)
-  filemode= kwa.get('filemode', 0o664)
-  group   = kwa.get('group', 'ps-users')
-  logmode = kwa.get('logmode', 'INFO')
-  procname = sys.argv[0].rsplit('/')[-1]
 
   dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
   logger.info('DataSource kwargs: %s' % str(dskwargs))
@@ -548,22 +552,18 @@ def pedestals_calibration(**kwa):
 
     nevrun = 0
     logger.info('\n==== %02d run: %d exp: %s' % (irun, runnum, expname))
-    logger.info(info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
+    logger.info(up.info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
 
     odet = orun.Detector(detname)
     if dettype is None:
         dettype = odet.raw._dettype
-        repoman = RepoManager(dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
-        #dircons = repoman.makedir_constants(dname='constants')
-        logfname = repoman.logname('%s_%s' % (procname, get_login()))
-        init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
-        repoman.save_record_at_start(procname, adddict={'logfile':logfname}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
+        repoman.set_dettype(dettype)
 
     logger.info('created %s detector object' % detname)
-    logger.info(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
+    logger.info(up.info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
 
     runtstamp = orun.timestamp    # 4193682596073796843 relative to 1990-01-01
-    trun_sec = seconds(runtstamp) # 1607569818.532117 sec
+    trun_sec = up.seconds(runtstamp) # 1607569818.532117 sec
     ts_run, ts_now = tstamps_run_and_now(trun_sec)
 
     for istep,step in enumerate(orun.steps()):
@@ -592,7 +592,8 @@ def pedestals_calibration(**kwa):
          dpo.ts_run, dpo.ts_now = ts_run, ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FORMAT)
 
       for ievt,evt in enumerate(step.events()):
-        print('Event %04d' % ievt, end='\r')
+        #print('Event %04d' % ievt, end='\r')
+        sys.stdout.write('Event %04d\r' % ievt)
         nevrun += 1
         nevtot += 1
 
@@ -636,7 +637,7 @@ def pedestals_calibration(**kwa):
                                      (ievt, orun.runnum, istep))
       if True:
           dpo.summary()
-          ctypes = ('pedestals', 'pixel_rms', 'pixel_status')
+          ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
           consts = arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
           dic_consts = dict(zip(ctypes, consts))
           kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
@@ -654,14 +655,13 @@ def pedestals_calibration(**kwa):
       break # break run loop
 
   logger.debug('run/step/event loop is completed')
+  repoman.logfile_save()
 
 
 if __name__ == "__main__":
 
-    print(80*'_')
+    sys.stdout.write(80*'_', '\n')
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.INFO)
-
-    SCRNAME = sys.argv[0].rsplit('/')[-1]
 
     kwa = {\
         'fname'   : None,\

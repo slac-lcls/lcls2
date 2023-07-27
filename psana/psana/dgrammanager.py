@@ -1,6 +1,7 @@
 import sys, os
 import time
 import getopt
+import mmap
 import pprint
 
 try:
@@ -12,6 +13,7 @@ from psana import dgram
 from psana.event import Event
 from psana.detector import detectors
 from psana.psexp.event_manager import TransitionId
+from psana.dgramedit import DgramEdit
 import numpy as np
 
 def dumpDict(dict,indent):
@@ -37,7 +39,7 @@ def _service(view):
     return (np.array(view, copy=False).view(dtype=np.uint32)[iSvc] >> 24) & 0x0f
 
 # Warning: If XtcData::Dgram ever changes, this function will likely need to change
-def _dgSize(view):
+def dgSize(view):
     iExt = 5                    # Index of extent field, in units of uint32_t
     txSize = 3 * 4              # sizeof(XtcData::TransitionBase)
     return txSize + np.array(view, copy=False).view(dtype=np.uint32)[iExt]
@@ -52,6 +54,13 @@ class DgramManager(object):
         """
         self.xtc_files = []
         self.shmem_cli = None
+        self.mq_inp = None
+        self.mq_res = None
+        self.shm_inp = None
+        self.shm_res = None
+        self.shm_inp_mv = None
+        self.shm_res_mv = None
+        self.shm_size = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
         self._timestamps = [] # built when iterating
@@ -81,10 +90,22 @@ class DgramManager(object):
                     # the configs are saved as a list. Note that only the most recent
                     # one is used. Mona changed this to "replace" so at a time, there's
                     # only one config.
-                    self._set_configs([d])
+                    self.set_configs([d])
+                elif xtc_files[0] == 'drp':
+                    self.det_name = self.tag.det_name
+                    self.det_segment = self.tag.det_segment
+                    self.worker_num = self.tag.worker_num
+                    self.pebble_bufsize = self.tag.pebble_bufsize
+                    self.transition_bufsize = self.tag.transition_bufsize
+                    self.ipc = self.tag.ipc_info
+                    view = self._connect_drp()
+                    d = dgram.Dgram(view=view)
+                    if d.service() == TransitionId.Configure:
+                         self.set_configs([d])
+                    else:
+                        raise RuntimeError(f"Drp expected Configure, got {d.service()}")
                 else:
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
-
 
         self.given_fds = True if len(fds) > 0 else False
         if self.given_fds:
@@ -98,13 +119,14 @@ class DgramManager(object):
 
         given_configs = True if len(configs) > 0 else False
         if given_configs:
-            self._set_configs(configs)
-        elif xtc_files[0] != 'shmem':
-            self._set_configs([dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds])
+            self.set_configs(configs)
+        elif xtc_files[0] != 'shmem' and xtc_files[0] != 'drp':
+            self.set_configs([dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds])
 
         self.calibconst = {} # initialize to empty dict - will be populated by run class
         self.n_files = len(self.xtc_files)
         self.set_chunk_ids()
+
 
     def _connect_shmem_cli(self, tag):
         # ShmemClients open a connection in connect() and close it in
@@ -128,12 +150,29 @@ class DgramManager(object):
         # and creating a deadlock situation. could revisit this
         # later and only deep-copy arrays inside pickN, for example
         # but would be more fragile.
-        barray = bytes(view[:_dgSize(view)])
+        barray = bytes(view[:dgSize(view)])
         self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
         view = memoryview(barray)
         return view
 
-    def _set_configs(self, dgrams):
+    def _connect_drp(self):
+        # TODO: Add docstring
+        self.shm_inp_mv = mmap.mmap(self.ipc.shm_inp.fd, self.ipc.shm_inp.size)
+        self.shm_res_mv = mmap.mmap(self.ipc.shm_res.fd, self.ipc.shm_res.size)
+        self.mq_inp = self.ipc.mq_inp
+        self.mq_res = self.ipc.mq_res
+        self.mq_res.send(b"r\n")
+        message, priority = self.mq_inp.receive()
+        if message != b"g":
+            raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' message, "
+                               f"got: {message}")
+        barray = bytes(self.shm_inp_mv[:])
+        view = memoryview(barray)
+        self.shm_size = view.nbytes   
+        self._stop_iteration = False
+        return view
+
+    def set_configs(self, dgrams):
         """Save and setup given dgrams class configs."""
         self.configs = dgrams
         self._setup_det_class_table()
@@ -167,7 +206,6 @@ class DgramManager(object):
                     det_class_table = det_classes['normal']
                 else:
                     det_class_table = det_classes[det_name]
-
 
                 dettype, detid = (None, None)
                 for drp_class_name, drp_class in det.__dict__.items():
@@ -325,7 +363,7 @@ class DgramManager(object):
                 # and creating a deadlock situation. could revisit this
                 # later and only deep-copy arrays inside pickN, for example
                 # but would be more fragile.
-                barray = bytes(view[:_dgSize(view)])
+                barray = bytes(view[:dgSize(view)])
                 self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
                 view = memoryview(barray)
                 # use the most recent configure datagram
@@ -336,10 +374,27 @@ class DgramManager(object):
                 config = self.configs[len(self.configs)-1]
                 d = dgram.Dgram(config=config,view=view)
                 if d.service() == TransitionId.Configure:
-                    self._set_configs([d])
+                    self.set_configs([d])
                 else:
                     raise RuntimeError(f"Configure expected, got {d.service()}")
             dgrams = [d]
+        elif self.mq_inp:
+            if self._stop_iteration:
+                raise StopIteration
+            self.mq_res.send(b"g\n")
+            message, priority = self.mq_inp.receive()
+            if message == b"g":
+                # use the most recent configure datagram
+                d = dgram.Dgram(config=self.configs[-1], view=self.shm_inp_mv)
+                dgrams = [d]
+            elif message == b"s":
+                self._stop_iteration = True
+                self.shm_res_mv[:] = self.shm_inp_mv[:]
+                self.mq_res.send(b"s\n")                
+                raise StopIteration
+            else:
+                raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' or "
+                                  f"'s' message, got: {message}")
         else:
             try:
                 dgrams = [dgram.Dgram(config=config, max_retries=self.max_retries) for config in self.configs]
@@ -350,7 +405,6 @@ class DgramManager(object):
                 else:
                     print(err)
                     raise StopIteration
-
 
         # Check BeginRun - EndRun pairing
         service = dgrams[0].service()
@@ -363,7 +417,7 @@ class DgramManager(object):
             self.found_endrun = True
 
         if service == TransitionId.Configure:
-            self._set_configs(dgrams)
+            self.set_configs(dgrams)
             return self.__next__()
 
         evt = Event(dgrams, run=self.get_run())

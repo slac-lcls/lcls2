@@ -6,8 +6,8 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 collect_host = 'drp-neh-ctl002'
 
 groups = platform
-hutch, user, password = ('tst', 'tstopr', 'pcds')
-auth = f' --user {user} --password {password} '
+hutch, user = ('tst', 'tstopr')
+auth = f' --user {user} '
 
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 

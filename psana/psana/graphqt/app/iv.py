@@ -8,7 +8,7 @@ os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' # get rid of libGL error: unable to lo
 
 import sys
 from psana.graphqt.IVMain import do_main, logging
-from psana.detector.dir_root import DIR_DATA_TEST
+from psana.detector.dir_root import DIR_DATA_TEST, DIR_REPO
 
 SCRNAME = sys.argv[0]#.rsplit('/')[-1]
 LEVEL_NAMES = ', '.join(list(logging._levelToName.values()))
@@ -38,8 +38,6 @@ def image_viewer():
         parser.print_usage()
         print(80*'_')
 
-    kwargs['rec_at_start'] = True
-
     do_main(**kwargs)
 
 
@@ -47,10 +45,14 @@ class Constants:
     d_posargs  = None
     d_fname    = None
     d_loglevel = 'INFO'
+    d_repodir  = DIR_REPO  # './work'DIR_REPO
+    d_rec_at_start = True
 
     h_posargs  = 'list of positional arguments, default = %s' % d_posargs
     h_fname    = 'file name for input array, default = %s' % d_fname
     h_loglevel = 'logging level from the list (%s), default = %s' % (LEVEL_NAMES, d_loglevel)
+    h_repodir  = 'repository for files if any..., default = %s' % str(d_repodir)
+    h_rec_at_start = 'save log record at start, default = %s' % str(d_rec_at_start)
 
 
 def input_argument_parser():
@@ -60,6 +62,8 @@ def input_argument_parser():
     parser.add_argument('posargs', default=c.d_posargs, type=str, help=c.h_posargs, nargs='*')
     parser.add_argument('-f', '--fname', default=c.d_fname, type=str, help=c.h_fname)
     parser.add_argument('-l', '--loglevel', default=c.d_loglevel, type=str, help=c.h_loglevel)
+    parser.add_argument('-o', '--repodir', default=c.d_repodir, type=str, help=c.h_repodir)
+    parser.add_argument('--rec_at_start', default=c.d_rec_at_start, action='store_false', help=c.h_rec_at_start)
     return parser
 
 

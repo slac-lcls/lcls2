@@ -30,7 +30,7 @@ namespace Pds
     public:
       int      resetCounters();
       int      startConnection(std::string& port);
-      int      connect(size_t resSizeGuess, unsigned numBuffers);
+      int      connect();
       int      configure(unsigned numBuffers);
       void     unconfigure();
       void     disconnect();

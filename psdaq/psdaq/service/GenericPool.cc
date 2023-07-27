@@ -1,4 +1,5 @@
 #include "GenericPool.hh"
+#include <cstdio>
 
 using namespace Pds;
 

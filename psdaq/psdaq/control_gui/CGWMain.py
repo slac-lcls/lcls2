@@ -28,8 +28,9 @@ logger = logging.getLogger(__name__)
 import zmq.utils.jsonapi as json
 from time import time
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit, QSizePolicy, QApplication
 from PyQt5.QtCore import Qt, QSize, QPoint
+from PyQt5.QtGui import QCursor
 
 from psdaq.control_gui.CGConfigParameters   import cp
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
@@ -426,13 +427,12 @@ def proc_control_gui(parser=None):
     import sys
     #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
 
-    from PyQt5.QtWidgets import QApplication
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
 
     cp.qapplication = app
     w = CGWMain(parser)
-
+    w.move(QCursor.pos().x(), 0)
     w.show()
     print('In CGWMain:proc_control_gui after w.show() - ERRORS FROM libGL IS A KNOWN ISSUE')
 

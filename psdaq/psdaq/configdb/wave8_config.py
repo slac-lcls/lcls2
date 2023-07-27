@@ -81,13 +81,19 @@ def epics_get(d):
                 out[key] = pvname
     return out
 
-def config_timing(epics_prefix, lcls2=False, timebase='186M'):
+def config_timing(epics_prefix, timebase='186M'):
+    # cpo found on 01/30/23 that when we toggle between LCLS1/LCLS2 timing
+    # using ModeSel that we generate junk into the KCU giving these errors:
+    # PGPReader: Jump in complete l1Count 0 -> 2 | difference 2, tid ClearReadout
+    # We used to go to LCLS1 timing on disconnect (which called
+    # this routine) to be friendly to the controls group.  Since we're now
+    # in the LCLS2 era, keep this always hardwired to ModeSel=1 (i.e. LCLS2 timing).
     names = [epics_prefix+':Top:SystemRegs:timingUseMiniTpg',
              epics_prefix+':Top:TimingFrameRx:ModeSelEn',
              epics_prefix+':Top:TimingFrameRx:ModeSel',
              epics_prefix+':Top:TimingFrameRx:ClkSel',
              epics_prefix+':Top:TimingFrameRx:RxPllReset']
-    values = [0, 1, 1 if lcls2 else 0, 1 if timebase=='186M' else 0, 1]
+    values = [0, 1, 1, 1 if timebase=='186M' else 0, 1]
     ctxt_put(names,values)
 
     time.sleep(1.0)
@@ -98,8 +104,9 @@ def config_timing(epics_prefix, lcls2=False, timebase='186M'):
 
     time.sleep(1.0)
 
-    names = [epics_prefix+':Top:TimingFrameRx:RxDown']
-    values = [0]
+    names = [epics_prefix+':Top:TimingFrameRx:RxDown',
+             epics_prefix+':Timing:TriggerSource']  # 0=XPM/DAQ, 1=EVR
+    values = [0,0]
     ctxt_put(names,values)
 
 def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
@@ -150,7 +157,7 @@ def wave8_connect(base):
     #  Switch to LCLS2 Timing
     #    Need this to properly receive RxId
     #    Controls is no longer in-control
-    config_timing(epics_prefix,lcls2=True,timebase=base['timebase'])
+    config_timing(epics_prefix,timebase=base['timebase'])
 
     #  This fails with the current IOC, but hopefully it will be fixed.  It works directly via pgp.
     txId = timTxId('wave8')
@@ -184,9 +191,11 @@ def user_to_expert(prefix, cfg, full=False):
         #  This is not so good; using timebase to distinguish LCLS from UED
         if timebase=='186M':
             lcls1Delay = 0.9e-3*119e6
+            print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}'.format(lcls1Delay,partitionDelay,delta))
             triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
-            print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
+            print('triggerDelay {:}'.format(triggerDelay))
             if triggerDelay < 0:
+                print('Raise delta_ns >= {:}'.format((partitionDelay*200 - lcls1Delay*1300/(7*119)) * 7000/1300))
                 raise ValueError('triggerDelay computes to < 0')
 
             ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
@@ -238,8 +247,11 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
 
     names_cfg = [epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
-                 epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
-    values = [group,16,1]
+                 epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',
+                 epics_prefix+'RawBuffers:FifoPauseThreshold',
+                 epics_prefix+'Integrators:ProcFifoPauseThreshold',
+                 epics_prefix+'Integrators:IntFifoPauseThreshold']
+    values = [group,16,1,127,127,127]
     ctxt_put(names_cfg, values)
 
     time.sleep(0.2)
@@ -410,8 +422,8 @@ def wave8_unconfig(base):
     values = [0]
     ctxt_put(names_cfg, values)
 
-    #  Leaving DAQ control.  Put back into LCLS1 mode in LCLS hutches
+    #  Leaving DAQ control.  
     if base['timebase']=='186M':
-        config_timing(epics_prefix, lcls2=False)
+        config_timing(epics_prefix)
 
     return None;

@@ -14,6 +14,7 @@ import pyrogue.protocols
 import time
 import xpm
 import kcu
+import LclsTimingCore as timing
 from _AxiLiteRingBuffer import AxiLiteRingBuffer
 
 class DevReset(pr.Device):
@@ -42,7 +43,7 @@ class NoTimingFrameRx(pr.Device):
         super().__init__(name=name, description=description, **kwargs)
         v = ['sofCount','eofCount','FidCount','CrcErrCount','RxClkCount','RxRstCount',
              'RxDecErrCount','RxDspErrCount','BypassResetCount','BypassDoneCount','TxClkCount',
-             'RxLinkUp']
+             'RxLinkUp','RxReset','RxPllReset','RxCountReset']
         for i in v:
             self.add(pr.LocalVariable(name = i, mode = 'RO', value=0))
 
@@ -111,12 +112,14 @@ class DevPcie(pr.Device):
                   ['MmcmPL186', 0x80040000] ]
 
     def __init__(   self,       
-            name        = "DevPcie",
-            description = "Container for XPM",
-            memBase     = 0,
-            **kwargs):
+                    name        = "DevPcie",
+                    description = "Container for XPM",
+                    memBase     = 0,
+                    isXpmGen    = True,
+                    **kwargs):
         super().__init__(name=name, description=description, **kwargs)
-        
+        self.isXpmGen = isXpmGen
+
         ######################################################################
         
         # Add devices
@@ -125,10 +128,6 @@ class DevPcie(pr.Device):
             memBase = memBase,
             offset  = 0x00000000, 
             expand  = False,
-        ))
-
-        self.add(NoTimingFrameRx(
-            name = 'UsTiming',
         ))
 
         self.add(NoTimingFrameRx(
@@ -167,6 +166,12 @@ class DevPcie(pr.Device):
             offset = 0x00820000,
         ))
 
+        self.add(timing.TPGMiniCore(
+            memBase = memBase,
+            name   = 'TpgMini',
+            offset = 0x00830000,
+        ))
+
         self.add(DevReset(
             memBase = memBase,
             name   = 'DevReset',
@@ -185,7 +190,20 @@ class DevPcie(pr.Device):
             offset = 0x00850000,
         ))
 
+        self.add(timing.GthRxAlignCheck(
+            memBase = memBase,
+            name    = 'GthRx',
+            offset  = 0x00880000,
+        ))
+
+        self.add(xpm.TimingFrameRx(
+            memBase = memBase,
+            name    = 'UsTiming',
+            offset  = 0x008C0000,
+        ))
+
     def start(self):
+        print('---DevPcie.start---')
         self.DevReset.clearTimingPhyReset.set(0)
         #  Reprogram the reference clock
         self.AxiPcieCore.I2cMux.set(1<<2)
@@ -203,3 +221,32 @@ class DevPcie(pr.Device):
             self.XpmApp.rxPllReset.set(0)
         self.XpmApp.link.set(0)
         self.DevReset.clearTimingPhyReset.set(1)
+
+        if self.isXpmGen:
+            #  Set the fixed rate markers
+            self.TpgMini.FixedRateDiv[0].set(910000)
+            self.TpgMini.FixedRateDiv[1].set( 91000)
+            self.TpgMini.FixedRateDiv[2].set(  9100)
+            self.TpgMini.FixedRateDiv[3].set(   910)
+            self.TpgMini.FixedRateDiv[4].set(    91)
+            self.TpgMini.FixedRateDiv[5].set(    13)
+            self.TpgMini.FixedRateDiv[6].set(     1)
+            self.TpgMini.RateReload.set(1)
+
+        #  Reset to realign the rate markers
+        self.DevReset.clearTimingPhyReset.set(0)
+        time.sleep(0.001)
+        self.DevReset.clearTimingPhyReset.set(1)
+
+        self.UsTiming.update()
+        self.UsTiming.Dump()
+
+        print('--GthRx--')
+        print(f'phaseTarget {self.GthRx.PhaseTarget.get()}')
+        print(f'TxClkFreqRaw {self.GthRx.TxClkFreqRaw.get()}')
+        print(f'RxClkFreqRaw {self.GthRx.RxClkFreqRaw.get()}')
+
+        self.AxiPcieCore.I2cMux.set(1<<4)
+        print(f'QSFP0: {self.AxiPcieCore.QSFP.getRxPwr()}')
+        self.AxiPcieCore.I2cMux.set(1<<1)
+        print(f'QSFP1: {self.AxiPcieCore.QSFP.getRxPwr()}')

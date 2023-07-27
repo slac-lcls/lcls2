@@ -9,6 +9,7 @@ import json
 import IPython
 from collections import deque
 import logging
+import weakref
 
 cl = None
 pv = None
@@ -58,7 +59,8 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     # in older versions we didn't have to use the "with" statement
     # but now the register accesses don't seem to work without it -cpo
     cl = cameralink_gateway.ClinkDevRoot(**myargs)
-    cl.__enter__()
+    weakref.finalize(cl, cl.stop)
+    cl.start()
 
     # Open a new thread here
     if xpmpv is not None:
@@ -66,15 +68,24 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
         pv = PVCtrls(xpmpv,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
         pv.start()
     else:
-        #  Empirically found that we need to cycle to LCLS1 timing
-        #  to get the timing feedback link to lock
-        #  cpo: switch this to XpmMini which recovers from more issues?
-        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-        time.sleep(2.5)
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(2.5)
+        nbad = 0
+        while 1:
+            # check to see if timing is stuck
+            sof1 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+            time.sleep(0.1)
+            sof2 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+            if sof1!=sof2: break
+            nbad+=1
+            print('*** Timing link stuck:',sof1,sof2,'resetting. Iteration:', nbad)
+            #  Empirically found that we need to cycle to LCLS1 timing
+            #  to get the timing feedback link to lock
+            #  cpo: switch this to XpmMini which recovers from more issues?
+            cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+            time.sleep(3.5)
+            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+            time.sleep(3.5)
 
-    # the opal seems to intermittently lose lock back to the XPM
+    # camlink timing seems to intermittently lose lock back to the XPM
     # and empirically this fixes it.  not sure if we need the sleep - cpo
     cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
     time.sleep(0.1)
@@ -90,6 +101,8 @@ def opal_init_feb(slane=None,schan=None):
 def opal_connect(cl):
     global lane
     global chan
+
+    print('opal_connect')
 
     txId = timTxId('opal')
 
@@ -136,6 +149,7 @@ def user_to_expert(cl, cfg, full=False):
         print('group {:}  partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(group,partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+            print('Raise start_ns >= {:}'.format(partitionDelay*200*7000/1300))
             raise ValueError('triggerDelay computes to < 0')
 
         d['expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
@@ -207,6 +221,9 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     global group
     global lane
     global chan
+
+    print('opal_config')
+
     group = grp
 
     appLane  = 'AppLane[%d]'%lane
@@ -284,6 +301,9 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
     applicationLane.EventBuilder.Blowoff.set(False)
 
+    # enable all channels in the rogue BatcherEventBuilder
+    applicationLane.EventBuilder.Bypass.set(0x0)
+
     #  Capture the firmware version to persist in the xtc
     cfg['firmwareVersion'] = cl.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
     cfg['firmwareBuild'  ] = cl.ClinkPcie.AxiPcieCore.AxiVersion.BuildStamp.get()
@@ -335,6 +355,8 @@ def opal_update(update):
     return json.dumps(cfg)
 
 def opal_unconfig(cl):
+    print('opal_unconfig')
+
     cl.StopRun()
 
     return cl

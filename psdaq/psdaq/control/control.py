@@ -183,9 +183,9 @@ class RunParams:
         valueList = self.pva.pv_get(nameList)
         for name, value in zip(nameList, valueList):
             if isinstance(value, TimeoutError):
-                self.collection.report_error(f"failed to read PVA PV {name}")
+                self.collection.report_warning(f"failed to read PVA PV {name}")
             elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_error(f"PVA PV {name} not recorded in logbook (nan)")
+                self.collection.report_warning(f"PVA PV {name} not recorded in logbook (nan)")
             else:
                 params[name] = value
 
@@ -196,9 +196,9 @@ class RunParams:
         valueList = epics.caget_many(nameList)
         for name, value in zip(nameList, valueList):
             if value is None:
-                self.collection.report_error(f"failed to read CA PV {name}")
+                self.collection.report_warning(f"failed to read CA PV {name}")
             elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_error(f"CA PV {name} not recorded in logbook (nan)")
+                self.collection.report_warning(f"CA PV {name} not recorded in logbook (nan)")
             else:
                 params[name] = value
 
@@ -422,7 +422,6 @@ class DaqPVA():
         self.platform         = platform
         self.xpm_master       = xpm_master
         self.pv_xpm_base      = pv_base + ':XPM:%d'         % xpm_master
-        self.pv_xpm_part_base = pv_base + ':XPM:%d:PART:%d' % (xpm_master, platform)
         self.report_error     = report_error
 
         # name PVs
@@ -432,9 +431,6 @@ class DaqPVA():
         self.pvGroupL0Disable = self.pv_xpm_base+':GroupL0Disable'
         self.pvGroupMsgInsert = self.pv_xpm_base+':GroupMsgInsert'
         self.pvGroupL0Reset   = self.pv_xpm_base+':GroupL0Reset'
-        self.pvStepGroups     = self.pv_xpm_part_base+':StepGroups'
-        self.pvStepDone       = self.pv_xpm_part_base+':StepDone'
-        self.pvStepEnd        = self.pv_xpm_part_base+':StepEnd'
 
         # initialize EPICS context
         self.ctxt = Context('pva', nt=None)
@@ -444,9 +440,19 @@ class DaqPVA():
     #
     # If you don't want steps, set StepGroups = 0.
     #
-    def step_groups(self, *, mask):
-        logging.debug("DaqPVA.step_groups(mask=%d)" % mask)
-        return self.pv_put(self.pvStepGroups, mask)
+    def setup_step(self, group, mask, readout):
+        pv_base = f'{self.pv_xpm_base}:PART:{group}'
+        self.pv_put(f'{pv_base}:StepEnd', readout)
+
+        self.pvStepDone = f'{pv_base}:StepDone'
+        self.pv_put(self.pvStepDone, 0)
+
+        logging.debug("DaqPVA.setup_step(mask=%d)" % mask)
+        return self.pv_put(f'{pv_base}:StepGroups', mask)
+
+    def setup_seq(self, seqpv):
+        self.pvStepDone = seqpv
+        return 0
 
     #
     # DaqPVA.pv_get -
@@ -513,6 +519,7 @@ class CollectionManager():
         self.fast_reply_rate = 10           # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.threads_exit = Event()
+        self.step_exit = Event()
         self.phase2_timeout = args.T
         self.user = args.user
         self.password = args.password
@@ -523,7 +530,6 @@ class CollectionManager():
         self.bypass_activedet = False
         self.cydgram = dc.CyDgram()
         self.step_done = Event()
-        self.readoutCumulative = 0
 
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, report_error=self.report_error)
@@ -537,7 +543,7 @@ class CollectionManager():
         else:
             # default active detectors file
             homedir = os.path.expanduser('~')
-            self.activedetfilename = '%s/.psdaq/p%d.activedet.json' % (homedir, self.platform)
+            self.activedetfilename = '%s/.psdaq/x%d_p%d.activedet.json' % (homedir, self.xpm_master, self.platform)
 
         if self.activedetfilename == '/dev/null':
             # active detectors file bypassed
@@ -555,9 +561,6 @@ class CollectionManager():
             self.slow_update_thread = Thread(target=self.slow_update_func, name='slowupdate')
         else:
             self.slow_update_thread = None
-
-        # initialize stepdone thread
-        self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
 
         # initialize poll set
         self.poller = zmq.Poller()
@@ -658,9 +661,6 @@ class CollectionManager():
 
         # start fast reply thread
         self.fast_reply_thread.start()
-
-        # start step done thread
-        self.step_done_thread.start()
 
         # start main loop
         self.run()
@@ -1085,7 +1085,7 @@ class CollectionManager():
             return False
 
         # if you don't want steps, set StepGroups = 0 for each group in partition
-        if not self.step_groups_clear(self.groups):
+        if not self.step_groups_clear():
             logging.error('condition_alloc(): step_groups_clear() failed')
             return False
 
@@ -1102,13 +1102,11 @@ class CollectionManager():
         logging.debug('pvListXPM: %s' % self.pva.pvListXPM)
         logging.debug('pvListL0Groups: %s' % self.pva.pvListL0Groups)
 
-        # Couple deadtime of the non-common readout groups to all groups
-        pvCommonGroup = self.pva.pv_xpm_base+":PART:"+str(self.platform)+':L0Groups'
+        # Couple deadtime of all readout groups
         for pv in self.pva.pvListL0Groups:
-            groups = self.groups if pv != pvCommonGroup else 1 << self.platform
-            logging.debug(f'condition_alloc() putting {groups} to PV {pv}')
-            if not self.pva.pv_put(pv, groups):
-                self.report_error(f'condition_alloc() failed putting {groups} to PV {pv}')
+            logging.debug(f'condition_alloc() putting {self.groups} to PV {pv}')
+            if not self.pva.pv_put(pv, self.groups):
+                self.report_error(f'condition_alloc() failed putting {self.groups} to PV {pv}')
                 logging.debug('condition_alloc() returning False')
                 return False
 
@@ -1254,7 +1252,7 @@ class CollectionManager():
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
-        self.readoutCumulative = 0
+        self.readoutCumulative = [0 for i in range(8)]
 
         ok = self.get_phase2_replies('beginrun')
         if not ok:
@@ -1283,7 +1281,6 @@ class CollectionManager():
             self.pva.pv_put(pv, ControlDef.transitionId['EndRun'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-        self.step_groups(mask=0)    # default is no scanning
 
         ok = self.get_phase2_replies('endrun')
         if not ok:
@@ -1344,10 +1341,8 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
-#            Force SlowUpdate to respect deadtime
-            #if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
-            # hack to try to get same SlowUpdates in all streams
-            if not self.pva.pv_put(pv, (ControlDef.transitionId['SlowUpdate'])):
+            # Force SlowUpdate to respect deadtime
+            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
                 update_ok = False
                 break
 
@@ -1999,6 +1994,37 @@ class CollectionManager():
 
     def condition_configure(self):
         logging.debug('condition_configure: phase1Info = %s' % self.phase1Info)
+
+        # readout_count and group_mask are optional
+        try:
+            self.group_mask    = self.phase1Info['configure']['group_mask']
+            self.readout_count = self.phase1Info['configure']['readout_count']
+        except KeyError:
+            self.group_mask    = 1 << self.platform
+            self.readout_count = 0
+
+        # step_group is optional
+        try:
+            self.step_group    = self.phase1Info['configure']['step_group']
+        except KeyError:
+            self.step_group    = self.platform
+
+        logging.debug(f'condition_configure(): readout_count {self.readout_count}  group_mask {self.group_mask}  step_group {self.step_group}')
+
+        try:
+            self.seqpv_name = self.phase1Info['configure']['seqpv_name']
+            self.seqpv_val  = self.phase1Info['configure']['seqpv_val']
+        except KeyError:
+            self.seqpv_name = None
+
+        try:
+            seqpv_done = self.phase1Info['configure']['seqpv_done']
+        except KeyError:
+            seqpv_done = None
+
+        if self.seqpv_name:
+            logging.debug(f'condition_configure(): seqpv {self.seqpv_name} {self.seqpv_val} {seqpv_done}')
+
         # phase 1
         ok = self.condition_common('configure', 60000,
                                    body={'config_alias': self.config_alias, 'trigger_config': self.trigger_config})
@@ -2021,9 +2047,25 @@ class CollectionManager():
             self.pva.pv_put(pv, ControlDef.transitionId['Configure'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-        self.step_groups(mask=0)    # default is no scanning
+        self.step_groups_clear()    # default is no scanning
 
-        self.readoutCumulative = 0
+        start_step_thread = False
+        if (self.readout_count > 0):
+            start_step_thread = True
+            self.pva.setup_step(self.step_group,self.group_mask,1)
+        elif seqpv_done is not None:
+            self.pva.setup_seq(seqpv_done)
+            start_step_thread = True
+        else:
+            self.step_groups_clear()    # default is no scanning
+
+        if start_step_thread:
+            self.step_exit.clear()
+            # initialize stepdone thread
+            self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
+            # start step done thread
+            self.step_done_thread.start()
+
 
         ok = self.get_phase2_replies('configure')
         if not ok:
@@ -2054,6 +2096,8 @@ class CollectionManager():
         if not ok:
             return False
 
+        self.step_exit.set()
+
         logging.debug('condition_unconfigure() returning %s' % ok)
 
         self.lastTransition = 'unconfigure'
@@ -2068,11 +2112,11 @@ class CollectionManager():
 
     # step_groups_clear - clear all StepGroups PVs included in mask
     # Returns False on error
-    def step_groups_clear(self, groups):
+    def step_groups_clear(self):
         logging.debug("step_groups_clear()")
         retval = True
         for g in range(8):
-            if groups & (1 << g):
+            if self.groups & (1 << g):
                 pv = self.pva.pv_xpm_base + f':PART:{g}:StepGroups'
                 logging.debug(f'step_groups_clear(): clearing {pv}')
                 if not self.pva.pv_put(pv, 0):
@@ -2080,12 +2124,6 @@ class CollectionManager():
                     retval = False
 
         return retval
-
-    # step_groups -
-    # Returns False on error
-    def step_groups(self, *, mask):
-        logging.debug("step_groups(mask=%d)" % mask)
-        return self.pva.pv_put(self.pva.pvStepGroups, mask)
 
     # set slow_update_enabled to True or False
     def set_slow_update_enabled(self, enabled):
@@ -2102,13 +2140,14 @@ class CollectionManager():
 
     def condition_enable(self):
         # readout_count and group_mask are optional
+        group_mask    = self.group_mask
         try:
+            group_mask    = self.phase1Info['enable']['group_mask']
             readout_count = self.phase1Info['enable']['readout_count']
-            group_mask = self.phase1Info['enable']['group_mask']
         except KeyError:
             readout_count = 0
-            group_mask = 1 << self.platform
-        logging.debug(f'condition_enable(): readout_count={readout_count} group_mask={group_mask}')
+
+        logging.debug(f'condition_enable(): readout_count={readout_count} group_mask={group_mask} step_group {self.step_group}')
 
         # phase 1
         ok = self.condition_common('enable', 6000)
@@ -2116,17 +2155,13 @@ class CollectionManager():
             logging.error('condition_enable(): enable phase1 failed')
             return False
 
-        # phase 2
-        if (readout_count > 0):
+        if (self.readout_count > 0):
             # set EPICS PVs.
             # StepEnd is a cumulative count.
-            self.readoutCumulative += readout_count
-            self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
-            self.pva.step_groups(mask=group_mask)
-            self.pva.pv_put(self.pva.pvStepDone, 0)
-        else:
-            self.step_groups(mask=0)    # default is no scanning
+            self.readoutCumulative[self.step_group] += self.readout_count
+            self.pva.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
 
+        # phase 2
         for pv in self.pva.pvListMsgHeader:
             self.pva.pv_put(pv, ControlDef.transitionId['Enable'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
@@ -2149,6 +2184,10 @@ class CollectionManager():
         if not self.group_run(True):
             logging.error('condition_enable(): group_run(True) failed')
             return False
+
+        # optionally enable a sequence
+        if self.seqpv_name:
+            self.pva.pv_put(self.seqpv_name, self.seqpv_val)
 
         self.lastTransition = 'enable'
         return True
@@ -2200,6 +2239,9 @@ class CollectionManager():
 
         # disable slowupdate timer
         self.set_slow_update_enabled(False)
+
+        # stop step_done thread
+        self.step_exit.set()
 
         msg = create_msg('reset')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
@@ -2260,7 +2302,7 @@ class CollectionManager():
         # start monitoring the StepDone PV
         sub = self.pva.monitor_StepDone(callback=callback)
 
-        while not self.threads_exit.is_set():
+        while not self.step_exit.is_set():
             if self.step_done.wait(0.5):
                 self.step_done.clear()
                 # stepDone event received
@@ -2290,13 +2332,14 @@ def main():
 # 7.5 s seems to be too short for UED and this timeout must be larger than the EB timeouts, currently at 12 s
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=12500, help='phase 2 timeout msec (default 12500)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
+    parser.add_argument('-s', metavar='STEP_GROUP', default=None, type=int, help='Readout group for scan step counts')
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument('-V', metavar='LOGBOOK_FILE', default='/dev/null', help='run parameters file')
     parser.add_argument("--user", default="tstopr", help='HTTP authentication user')
-    parser.add_argument("--password", default="pcds", help='HTTP authentication password')
+    parser.add_argument("--password", default=os.getenv("CONFIGDB_AUTH"), help='HTTP authentication password')
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
-    defaultActiveDetFile = "~/.psdaq/p<platform>.activedet.json"
+    defaultActiveDetFile = "~/.psdaq/x<XPM>_p<platform>.activedet.json"
     parser.add_argument('-r', metavar='ACTIVEDETFILE', help="active detectors file. Defaults to " + defaultActiveDetFile)
     args = parser.parse_args()
 

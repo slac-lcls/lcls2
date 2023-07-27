@@ -4,11 +4,24 @@ import sys, os
 from psana import DataSource
 import numpy as np
 import vals
+import zmq
 
-def launch_client(pid):
+known_epics_pedestals = np.array([[11.,12.,13.,14.,15.,16.],
+     [21.,22.,23.,24.,25.,26.],
+     [31.,32.,33.,34.,35.,36.]])
+
+def launch_client(pid, supervisor=-1, supervisor_ip_addr=None):
     dg_count = 0
-    ds = DataSource(shmem='shmem_test_'+pid)
+    if supervisor == -1:
+        ds = DataSource(shmem='shmem_test_'+pid)
+    else:
+        ds = DataSource(shmem='shmem_test_'+pid, supervisor=supervisor, supervisor_ip_addr=supervisor_ip_addr)
+
     run = next(ds.runs())
+    
+    # Check calibration constant
+    assert np.array_equal(ds.dsparms.calibconst['epics']['pedestals'][0], known_epics_pedestals)
+
     cspad = run.Detector('xppcspad')
     hsd = run.Detector('xpphsd')
     for evt in run.events():
@@ -23,7 +36,12 @@ def launch_client(pid):
 #------------------------------
 
 def main() :
-    sys.exit(launch_client(sys.argv[1]))
+    if len(sys.argv)==2:
+        # No pubsub broadcast
+        sys.exit(launch_client(sys.argv[1]))
+    elif len(sys.argv)==4:
+        # Launch in pubsub mode
+        sys.exit(launch_client(sys.argv[1], supervisor=int(sys.argv[2]), supervisor_ip_addr=sys.argv[3]))
 
 #------------------------------
 

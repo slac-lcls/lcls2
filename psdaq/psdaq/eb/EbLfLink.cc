@@ -23,16 +23,23 @@ static int checkMr(Fabric*         fabric,
                    MemoryRegion*   mr,
                    const unsigned& verbose)
 {
-  if ((region == mr->start()) && (size <= mr->length()))
+  // If the region (with any size) is already registered as mr...
+  if (mr == fabric->lookup_memory(region, sizeof(uint8_t)))
   {
-    if (verbose)
+    // and if its size fits, mr can be reused
+    if ((region == mr->start()) && (size <= mr->length()))
     {
-      printf("Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
-             mr->start(), (char*)(mr->start()) + mr->length(),
-             mr->length(), mr->length());
+      if (verbose)
+      {
+        printf("Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
+               mr->start(), (char*)(mr->start()) + mr->length(),
+               mr->length(), mr->length());
+      }
+      return 0;
     }
-    return 0;
   }
+  // If region has been assigned to a different MR, or it doesn't fit,
+  // deregister mr so that it can be updated
   if (!fabric->deregister_memory(mr))
   {
     fprintf(stderr, "%s:\n  Failed to deregister MR %p (%p, %zu)\n",
@@ -54,24 +61,16 @@ int Pds::Eb::setupMr(Fabric*         fabric,
                      const unsigned& verbose)
 {
   // If *memReg describes a region, check that its size is appropriate
-  if (memReg && *memReg && !checkMr(fabric, region, size, *memReg, verbose))
+  if (*memReg && !checkMr(fabric, region, size, *memReg, verbose))
   {
-    return 0;
-  }
-
-  // If there's a MR for the region, check that its size is appropriate
-  MemoryRegion* mr = fabric->lookup_memory(region, sizeof(uint8_t));
-  if (mr && !checkMr(fabric, region, size, mr, verbose))
-  {
-    if (memReg)  *memReg = mr;
     return 0;
   }
 
   auto t0(std::chrono::steady_clock::now());
-  mr = fabric->register_memory(region, size);
+  auto mr = fabric->register_memory(region, size);
   auto t1 = std::chrono::steady_clock::now();
   auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-  if (memReg)  *memReg = mr;            // Even on error, set *memReg
+  *memReg = mr;                         // Even on error, set *memReg
   if (!mr)
   {
     fprintf(stderr, "%s:\n  Failed to register MR @ %p, size %zu  (%lu ms): %s\n",
@@ -79,9 +78,12 @@ int Pds::Eb::setupMr(Fabric*         fabric,
     return fabric->error_num();
   }
 
-  printf("Registered     MR: %10p : %10p, size 0x%08zx = %zu  (%lu ms)\n",
-         mr->start(), (char*)(mr->start()) + mr->length(),
-         mr->length(), mr->length(), dT);
+  if (verbose)
+  {
+    printf("Registered     MR: %10p : %10p, size 0x%08zx = %zu  (%lu ms)\n",
+           mr->start(), (char*)(mr->start()) + mr->length(),
+           mr->length(), mr->length(), dT);
+  }
 
   return 0;
 }
@@ -148,7 +150,7 @@ int EbLfLink::sendU32(uint32_t    u32,
   uint64_t imm = u32;
   if ((rc = post(imm)))
   {
-    const char* errMsg = rc == -FI_ETIMEDOUT ? "Timed out" : _ep->error();
+    const char* errMsg = rc == -FI_EAGAIN ? "Timed out" : _ep->error();
     fprintf(stderr, "%s:\n  Failed to send %s to %s: %s\n",
             __PRETTY_FUNCTION__, name, peer, errMsg);
     return rc;
@@ -200,7 +202,7 @@ int EbLfLink::sendMr(MemoryRegion* mr,
     uint64_t imm = *ptr++;
     if ((rc = post(imm)) < 0)
     {
-      const char* errMsg = rc == -FI_ETIMEDOUT ? "Timed out" : _ep->error();
+      const char* errMsg = rc == -FI_EAGAIN ? "Timed out" : _ep->error();
       fprintf(stderr, "%s:\n  Failed to send %s to %s ID %d: %s\n",
               __PRETTY_FUNCTION__, "local memory specs", peer, _id, errMsg);
       return rc;
@@ -240,8 +242,9 @@ int EbLfSvrLink::_synchronizeBegin()
   {
     if (imm == _EndSync)  break;        // Break on synchronization message
 
-    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, _id, imm, _EndSync);
+    if (_verbose)
+      fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+              __PRETTY_FUNCTION__, _id, imm, _EndSync);
   }
 
   if (rc == -FI_EAGAIN)
@@ -262,8 +265,9 @@ int EbLfSvrLink::_synchronizeEnd()
   {
     if (imm == _CltSync)  break;
 
-    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, _id, imm, _CltSync);
+    if (_verbose)
+      fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+              __PRETTY_FUNCTION__, _id, imm, _CltSync);
   }
 
   if (rc == -FI_EAGAIN)
@@ -359,7 +363,7 @@ EbLfCltLink::EbLfCltLink(Endpoint*          ep,
 int EbLfCltLink::setupMr(void* region, size_t size)
 {
   if (_ep)
-    return Pds::Eb::setupMr(_ep->fabric(), region, size, nullptr, _verbose);
+    return Pds::Eb::setupMr(_ep->fabric(), region, size, &_mr, _verbose);
 
   return -1;
 }
@@ -376,8 +380,9 @@ int EbLfCltLink::_synchronizeBegin()
   {
     if (imm == _BegSync)  break;        // Break on synchronization message
 
-    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, _id, imm, _BegSync);
+    if (_verbose)
+      fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+              __PRETTY_FUNCTION__, _id, imm, _BegSync);
   }
 
   if (rc == -FI_EAGAIN)
@@ -404,8 +409,9 @@ int EbLfCltLink::_synchronizeEnd()
   {
     if (imm == _SvrSync)  break;
 
-    fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
-            __PRETTY_FUNCTION__, _id, imm, _SvrSync);
+    if (_verbose)
+      fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
+              __PRETTY_FUNCTION__, _id, imm, _SvrSync);
   }
 
   if (rc == -FI_EAGAIN)
@@ -520,7 +526,6 @@ int EbLfCltLink::post(const void* buf,
     if (t1 - t0 > tmo)
     {
       ++_timedOut;
-      rc = -FI_ETIMEDOUT;
       break;
     }
   }
@@ -559,7 +564,6 @@ int EbLfLink::post(const void* buf,
     if (t1 - t0 > tmo)
     {
       ++_timedOut;
-      rc = -FI_ETIMEDOUT;
       break;
     }
   }

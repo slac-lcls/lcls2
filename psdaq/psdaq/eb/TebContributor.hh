@@ -8,6 +8,7 @@
 #include "BatchManager.hh"
 #include "EbLfClient.hh"
 #include "drp/spscqueue.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 #include <cstdint>
 #include <memory>
@@ -24,13 +25,16 @@ namespace Pds {
   namespace Eb {
 
     using BatchQueue = SPSCQueue<const Pds::EbDgram*>;
+    using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
 
     class EbCtrbInBase;
     struct Batch
     {
-      Batch(const Pds::EbDgram* dgram, bool contractor_) :
-        start(dgram), end(dgram), contractor(contractor_) {}
+      Batch(const Pds::EbDgram* dgram, bool contractor_);
 
+    public:
+      unsigned            entries;
+      time_point_t        tStart;
       const Pds::EbDgram* start;
       const Pds::EbDgram* end;
       bool                contractor;
@@ -45,7 +49,7 @@ namespace Pds {
       ~TebContributor();
     public:
       int         resetCounters();
-      int         connect(size_t inpSizeGuess);
+      int         connect();
       int         configure();
       void        unconfigure();
       void        disconnect();
@@ -56,11 +60,16 @@ namespace Pds {
       unsigned    index(const Pds::EbDgram* datagram) const;
       void*       fetch(unsigned index);
       void        process(unsigned index);
+      bool        timeout();
     public:
       BatchQueue& pending()  { return _pending; }
     private:
+      void       _flush();
       void       _post(const Pds::EbDgram* nonEvent);
       void       _post(const Batch& batch);
+    public:
+      // Time out the current batch 1 batch period after the current one ends
+      const std::chrono::microseconds BATCH_TIMEOUT{int(1.1 * MAX_ENTRIES * 14/13)};
     public:
       using listU32_t = std::list<uint32_t>;
     private:
@@ -79,6 +88,8 @@ namespace Pds {
       mutable uint64_t          _batchCount;
       mutable uint64_t          _pendingSize;
       mutable int64_t           _latency;
+      mutable uint64_t          _age;
+      mutable uint64_t          _entries;
     private:
       std::atomic<bool>         _running;
       std::thread               _rcvrThread;

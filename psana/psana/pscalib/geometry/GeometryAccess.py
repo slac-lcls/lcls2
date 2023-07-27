@@ -66,7 +66,10 @@ Usage::
     irow, icol = geometry.point_coord_indexes(p_um=(0,0), 'QUAD:V1', 1, pix_scale_size_um=None, xy0_off_pix=(1000,1000), do_tilt=True, cframe=0, fract=False)
 
     # get 2-d image from index arrays
-    img = img_from_pixel_arrays(rows,cols,W=arr)
+    img = img_from_pixel_arrays(rows, cols, W=arr)
+
+    # conversion of image-like 2-d mask to raw data-like ndarray
+    mask_nda = convert_mask2d_to_ndarray(mask2d, rows, cols)
 
     # Get specified object of the class GeometryObject, all objects are kept in the list self.list_of_geos
     geo = geometry.get_geo('QUAD:V1', 1)
@@ -75,6 +78,7 @@ Usage::
     # Get bottom GeometryObject - the object describing a single segment
     #      (assumes that detector consists of the same type segments, e.g. 'SENS2X1:V1')
     geo = geometry.get_seg_geo()
+    shape = geometry.shape3d()  # returns shape as (<number-of-segments>, <rows>, <cols>)
 
     # modify currect geometry objects' parameters
     geometry.set_geo_pars('QUAD:V1', 1, x0, y0, z0, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x)
@@ -386,6 +390,17 @@ class GeometryAccess:
         for geo in self.list_of_geos:
             if geo.algo is not None: return geo
         return None
+
+
+    def shape3d(self):
+        """ Returns 3d shape of the arrays as (<number-of-segments>, <rows>, <cols>)
+        """
+        sg = self.get_seg_geo().algo
+        sshape = sg.shape()
+        ssize = sg.size()
+        x,_,_ = self.get_pixel_coords()
+        dsize = x.size
+        return (int(dsize/ssize), sshape[0], sshape[1])
 
 
     def coords_psana_to_lab_frame(self, x, y, z):
@@ -720,8 +735,26 @@ def img_from_pixel_arrays(rows, cols, W=None, dtype=np.float32, vbase=0):
 
     weight = W.flatten() if W is not None else np.ones_like(rowsfl)
     img = vbase*np.ones((rsize,csize), dtype=dtype)
-    img[rowsfl,colsfl] = weight # Fill image array with data
+    img[rowsfl, colsfl] = weight # Fill image array with data
     return img
+
+
+def convert_mask2d_to_ndarray(mask2d, rows, cols, dtype=np.uint8):
+    """Converts 2-d (np.ndarray) image-like mask2d to
+       (np.ndarray) shaped as input pixel index arrays ix and iy.
+       NOTE: arrays rows and cols should be exactly the same as used to construct mask2d as image.
+    """
+    from psana.detector.NDArrUtils import info_ndarr
+    assert isinstance(mask2d, np.ndarray)
+    assert mask2d.ndim == 2
+    assert isinstance(rows, np.ndarray)
+    assert isinstance(cols, np.ndarray)
+    assert cols.shape == rows.shape
+    logger.debug('\n  %s\n  %s\n  %s' %
+                (info_ndarr(rows,   'rows:'),
+                 info_ndarr(cols,   'cols:'),
+                 info_ndarr(mask2d, 'mask2d:')))
+    return np.array([mask2d[r,c] for r,c in zip(rows.ravel(), cols.ravel())], dtype=dtype)
 
 # EOF
 

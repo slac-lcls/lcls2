@@ -15,6 +15,7 @@ using logging = psalg::SysLog;
 
 static void dmaReadRegister (int, uint32_t*, uint32_t*);
 static void dmaWriteRegister(int, uint32_t*, uint32_t);
+static void resetTimingPll  (int);
 
 //typedef Pds::Mmhw::TriggerEventManager TEM;
 typedef Pds::Mmhw::TriggerEventManager2 TEM;
@@ -122,6 +123,7 @@ json XpmDetector::connectionInfo()
     //  Retrieve the timing link ID
     uint32_t reg;
     dmaReadRegister(fd, &tem->xma().rxId, &reg);
+    printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
 
     // there is currently a failure mode where the register reads
     // back as zero or 0xffffffff (incorrectly). This is not the best
@@ -129,9 +131,18 @@ json XpmDetector::connectionInfo()
     // difficulty is that Matt says this register has to work
     // so that an automated software solution would know which
     // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-    if (!reg || reg==0xffffffff) {
-        logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",reg);
-        abort();
+    // Also, register is corrupted when port number > 15 - Ric
+    if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
+        logging::critical("XPM Remote link id register illegal value: 0x%x. Trying RxPllReset.",reg);
+        resetTimingPll(fd);
+
+        dmaReadRegister(fd, &tem->xma().rxId, &reg);
+        printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
+
+        if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
+            logging::critical("XPM Remote link id register illegal value: 0x%x. Aborting. Try XPM TxLink reset.",reg);
+            abort();
+        }
     }
     int xpm  = (reg >> 20) & 0x0F;
     int port = (reg >>  0) & 0xFF;
@@ -214,4 +225,23 @@ void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
   uintptr_t addri = (uintptr_t)addr;
   dmaWriteRegister(fd, addri&0xffffffff, val);
   logging::debug("[%08lx] %08x\n",addri,val);
+}
+
+void resetTimingPll(int fd)
+{
+  uint32_t v;
+  dmaReadRegister(fd, 0x00c0020, &v);
+
+  v |= 0x80;
+  dmaWriteRegister(fd, 0x00c00020, v);
+  usleep(10);
+  v &= ~0x80;
+  dmaWriteRegister(fd, 0x00c00020, v);
+  usleep(100);
+  v |= 0x8;
+  dmaWriteRegister(fd, 0x00c00020, v);
+  usleep(10);
+  v &= ~0x8;
+  dmaWriteRegister(fd, 0x00c00020, v);
+  usleep(100000);
 }

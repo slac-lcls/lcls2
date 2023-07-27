@@ -6,11 +6,11 @@ After=multi-user.target
 [Service]
 Type=forking
 ExecStartPre=-/sbin/rmmod datadev.ko
-ExecStart=/sbin/insmod /usr/local/sbin/datadev.ko cfgTxCount=4 cfgRxCount=1048572 cfgSize=8192 cfgMode=0x2
-ExecStartPost=/usr/local/sbin/kcuStatus -I
-ExecStartPost=/usr/bin/sh -c "/usr/bin/echo 4 > /proc/irq/368/smp_affinity_list"
-#ExecStartPost=/usr/bin/sh -c "/usr/bin/echo 4 > /proc/irq/369/smp_affinity_list"
-#ExecStartPost=/usr/bin/sh -c "/usr/bin/echo 5 > /proc/irq/370/smp_affinity_list"
+ExecStart=/sbin/insmod /usr/local/sbin/datadev.ko cfgTxCount=4 cfgRxCount=8188 cfgSize=1048576 cfgMode=0x2
+ExecStartPost=/usr/local/sbin/kcuStatus -I -d /dev/datadev_1
+# To do: The irqbalance service will defeat the following unless it is disabled or the IRQs are banned in /etc/sysconfig/irqbalance
+ExecStartPost=-/usr/bin/sh -c "/usr/bin/echo 4 > /proc/irq/`grep datadev_0 /proc/interrupts | /usr/bin/cut -d : -f 1 | /usr/bin/tr -cd [:digit:]`/smp_affinity_list"
+ExecStartPost=-/usr/bin/sh -c "/usr/bin/echo 5 > /proc/irq/`grep datadev_1 /proc/interrupts | /usr/bin/cut -d : -f 1 | /usr/bin/tr -cd [:digit:]`/smp_affinity_list"
 KillMode=none
 IgnoreSIGPIPE=no
 StandardOutput=syslog

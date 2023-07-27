@@ -1,8 +1,10 @@
 from psana.dgramedit import DgramEdit, AlgDef, DetectorDef, PyXtcFileIterator
 import os, sys, io
 import numpy as np
-from psana import DataSource
+from psana import DataSource, dgram
 import pytest
+
+BUFSIZE = 64000000
 
 @pytest.fixture
 def output_filename(tmp_path):
@@ -43,8 +45,9 @@ def test_run_dgramedit(output_filename):
     
 def run_dgramedit(output_filename):
     ifname = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'dgramedit-test.xtc2')
-    fd = os.open(ifname, os.O_RDONLY)
-    pyiter = PyXtcFileIterator(fd, 0x1000000)
+
+    ds = DataSource(files=ifname)
+    run = next(ds.runs())
     
     # Defines detector and alg.
     # Below example settings become hsd_fex_4_5_6 for its detector interface.
@@ -73,58 +76,80 @@ def run_dgramedit(output_filename):
     
     # Creates external output buffer for DgramEdit. Note that 
     # a new dgram is always saved from the beginning of this buffer.
-    xtc2buf = bytearray(64000000)
+    xtc2buf = bytearray(BUFSIZE)
 
     # Writing out each dgram to the output file
     ofile = open(output_filename, "wb")
 
-    names0 = None
-    for i in range(6):
-        pydg = pyiter.next()
+    # Allocating space for editable config
+    config_buf = bytearray(BUFSIZE)
+    config_buf[:run.configs[0]._size] = run.configs[0]
+    config_editable = dgram.Dgram(view=memoryview(config_buf), offset=0) 
 
-        # Add new Names to config
-        if i == 0:
-            config = DgramEdit(pydg)
-            det = config.Detector(detdef, algdef, datadef)
-            det2 = config.Detector(detdef2, algdef2, datadef2)
-            config.save(xtc2buf)
-            ofile.write(xtc2buf[:config.size])
+    # Add new Names to config
+    config_edit = DgramEdit(config_editable, bufsize=BUFSIZE)
+    det = config_edit.Detector(detdef, algdef, datadef)
+    det2 = config_edit.Detector(detdef2, algdef2, datadef2)
+    config_edit.save(xtc2buf)
+    ofile.write(xtc2buf[:config_edit.size])
 
-        # Add new Data to L1
-        elif i >= 4:
-            dgram = DgramEdit(pydg, config=config)
+    # Check if the new config is correct by looking inside
+    # .software (detector names shown at root are those with ShapesData).
+    new_config = config_edit.get_dgram()
+    assert hasattr(new_config.software, 'xpphsd')
 
-            # Fill in data for previously given datadef (all fields
-            # must be completed)
-            det.fex.valFex = 1600.1234
-            det.fex.strFex = "hello string"
-            det.fex.arrayFex0 = create_array(np.uint8)
-            det.fex.arrayFex1 = create_array(np.uint16)
-            det.fex.arrayFex2 = create_array(np.uint32)
-            det.fex.arrayFex3 = create_array(np.uint64)
-            det.fex.arrayFex4 = create_array(np.int8)
-            det.fex.arrayFex5 = create_array(np.int16)
-            det.fex.arrayFex6 = create_array(np.int32)
-            det.fex.arrayFex7 = create_array(np.int64)
-            det.fex.arrayFex8 = create_array(np.float32)
-            det.fex.arrayFex9 = create_array(np.float64)
-            dgram.adddata(det.fex)
-            
-            det2.raw.arrayRaw = create_array(np.float32)
-            dgram.adddata(det2.raw)
-            
-            if i == 4:
-                dgram.removedata("hsd","raw") # per event removal 
+    # Write out BeginRun using DgramEdit (no modification)
+    beginrun_edit = DgramEdit(run.beginruns[0], config_dgramedit=config_edit, bufsize=run.beginruns[0]._size)
+    beginrun_edit.save(xtc2buf)
+    ofile.write(xtc2buf[:beginrun_edit.size])
 
-            dgram.save(xtc2buf)
-            ofile.write(xtc2buf[:dgram.size])
+    # Allocating space for editable L1Accept
+    dgram_buf = bytearray(BUFSIZE)
+    for i_evt, evt in enumerate(run.events()):
+        dgram_buf[:evt._dgrams[0]._size] = evt._dgrams[0]
+        dgram_editable = dgram.Dgram(config=run.configs[0], view=memoryview(dgram_buf), offset=0)
+        dgram_edit = DgramEdit(dgram_editable, config_dgramedit=config_edit, bufsize=BUFSIZE)
+
+        # Fill in data for previously given datadef (all fields
+        # must be completed)
+        det.fex.valFex = 1600.1234
+        det.fex.strFex = "hello string"
+        det.fex.arrayFex0 = create_array(np.uint8)
+        det.fex.arrayFex1 = create_array(np.uint16)
+        det.fex.arrayFex2 = create_array(np.uint32)
+        det.fex.arrayFex3 = create_array(np.uint64)
+        det.fex.arrayFex4 = create_array(np.int8)
+        det.fex.arrayFex5 = create_array(np.int16)
+        det.fex.arrayFex6 = create_array(np.int32)
+        det.fex.arrayFex7 = create_array(np.int64)
+        det.fex.arrayFex8 = create_array(np.float32)
+        det.fex.arrayFex9 = create_array(np.float64)
+        dgram_edit.adddata(det.fex)
         
-        # Other transitions
-        else: 
-            dgram = DgramEdit(pydg, config=config)
-            dgram.save(xtc2buf)
-            ofile.write(xtc2buf[:dgram.size])
+        det2.raw.arrayRaw = create_array(np.float32)
+        dgram_edit.adddata(det2.raw)
+        
+        if i_evt == 4:
+            dgram_edit.removedata("hsd","raw") # per event removal 
 
+        dgram_edit.save(xtc2buf)
+        ofile.write(xtc2buf[:dgram_edit.size])
+        
+        # For non-configure dgram, you can retreive Dgram back by
+        # passing in the output buffer where the Dgram was written to.
+        new_dgram = dgram_edit.get_dgram(view=xtc2buf)
+        assert new_dgram.xpphsd[0].fex.strFex=='hello string'
+
+        if i_evt == 4:
+            assert hasattr(new_dgram, "hsd") == False
+            break
+        
+
+    # Other transitions FIXME: Mona makes other transitions 
+    # available through psana2 interface.
+    #dgram = DgramEdit(pydg, config_dgramedit=config)
+    #dgram.save(xtc2buf)
+    #ofile.write(xtc2buf[:dgram.size])
     
     ofile.close()
 
@@ -132,4 +157,4 @@ def run_dgramedit(output_filename):
     check_output(output_filename)
 
 if __name__ == "__main__":
-    test_run_dgramedit()
+    test_run_dgramedit("test_output.xtc2")

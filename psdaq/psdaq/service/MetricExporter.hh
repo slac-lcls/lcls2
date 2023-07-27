@@ -5,6 +5,8 @@
 #include <chrono>
 #include <functional>
 #include <prometheus/exposer.h>
+#include <prometheus/metric_type.h>
+#include <prometheus/metric_family.h>
 
 namespace Pds
 {
@@ -42,7 +44,8 @@ enum class MetricType
     Counter,
     Rate,
     Constant,                           // To be used only by addConst()
-    Histogram
+    Histogram,
+    Float
 };
 
 class MetricExporter : public prometheus::Collectable
@@ -52,6 +55,9 @@ public:
     void add(const std::string& name,
              const std::map<std::string, std::string>& labels,
              MetricType type, std::function<int64_t()> value);
+    void addFloat(const std::string& name,
+                  const std::map<std::string, std::string>& labels,
+                  std::function<bool(double&)> value);
     void constant(const std::string& name,
                   const std::map<std::string, std::string>& labels,
                   int64_t value);
@@ -66,6 +72,7 @@ private:
     mutable std::mutex m_mutex;
     mutable std::vector<prometheus::MetricFamily> m_families;
     std::vector<std::function<int64_t()> > m_values;
+    std::vector<std::function<bool(double&)> > m_floats;
     mutable std::vector<std::shared_ptr<PromHistogram> > m_histos;
     std::vector<MetricType> m_type;
     mutable std::vector<Previous> m_previous;

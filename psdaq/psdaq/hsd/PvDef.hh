@@ -46,6 +46,8 @@ namespace Pds {
       uint32_t txcntsum   [4];
       uint32_t txerrcntsum[4];
       uint32_t rxcnt      [4];
+      uint32_t rxcntsum   [4];
+      uint32_t rxerrcntsum[4];
       uint32_t rxlast     [4];
       uint32_t rempause   [4];
       uint32_t remlinkid  [4];
@@ -122,7 +124,7 @@ namespace Pds {
     };
 
     static const unsigned _sz_monTiming[] = {0};
-    static const unsigned _sz_monPgp   [] = {4,4,4,4,4,4,4,4,4,4,4,};
+    static const unsigned _sz_monPgp   [] = {4,4,4,4,4,4,4,4,4,4,4,4,4,};
     static const unsigned _sz_monRawBuf[] = {0};
     static const unsigned _sz_monFexBuf[] = {0};
     static const unsigned _sz_monRawDet[] = {16,16,16,16,};

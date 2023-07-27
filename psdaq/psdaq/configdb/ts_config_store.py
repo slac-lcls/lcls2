@@ -61,6 +61,7 @@ help_str += "\ntrigger is a combination of rate and destn selection"
 help_str += "\nfixed.rate   : fixed period trigger rate"
 help_str += "\nac.rate      : AC power syncd trigger rate per timeslot"
 help_str += "\nac.ts[6]     : include timeslot in trigger rate"
+help_str += "\neventcode    : trigger eventcode"
 help_str += "\nseq.mode     : choice of event sequencer"
 help_str += "\nseq.channel  : choice channel within sequencer"
 help_str += "\ndestn.select : qualifier for following destn masks"
@@ -87,6 +88,8 @@ for group in range(8):
     top.set(grp_prefix+'ac.rate', 0, 'acRateEnum')
     for tsnum in range(6):
         top.set(grp_prefix+'ac.ts'+str(tsnum), 0, 'boolEnum')
+
+    top.set(grp_prefix+'eventcode', 272, 'UINT32')
 
     top.set(grp_prefix+'seq.mode'      ,15, 'seqEnum')
     top.set(grp_prefix+'seq.burst.mode', 0, 'seqBurstEnum')

@@ -1,3 +1,5 @@
+import os
+
 import requests
 from requests.auth import HTTPBasicAuth
 from krtc import KerberosTicket
@@ -25,7 +27,7 @@ class configdb(object):
     #     root   - Database name, usually "configDB"
     #     user   - User for HTTP authentication
     #     password - Password for HTTP authentication
-    def __init__(self, url, hutch, create=False, root="NONE", user="tstopr", password="pcds"):
+    def __init__(self, url, hutch, create=False, root="NONE", user="tstopr", password=os.getenv("CONFIGDB_AUTH")):
         if root == "NONE":
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch
@@ -573,7 +575,7 @@ class createArgs(object):
         parser.add_argument('--segm', help='detector segment', type=int, default=0)
         parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
         parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
-        parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
+        parser.add_argument('--password', help='password for HTTP authentication', type=str, default=os.getenv('CONFIGDB_AUTH'))
         parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=None)
         self.args = parser.parse_args()
 
@@ -597,7 +599,7 @@ def main():
     parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cp.add_argument('--user', default='tstopr', help='default: tstopr')
-    parser_cp.add_argument('--password', default='pcds', help='default: pcds')
+    parser_cp.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
     parser_cp.add_argument('--write', action="store_true", help='Write to database')
     parser_cp.set_defaults(func=_cp)
@@ -606,14 +608,14 @@ def main():
     parser_history = subparsers.add_parser('history', help='get history of a configuration')
     parser_history.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_history.add_argument('--user', default='tstopr', help='default: tstopr')
-    parser_history.add_argument('--password', default='pcds', help='default: pcds')
+    parser_history.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
     parser_history.set_defaults(func=_history)
 
     # create the parser for the "rollback"
     parser_rollback = subparsers.add_parser('rollback', help='rollback configuration to a specific key')
     parser_rollback.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/<alias>/<xpm>')
     parser_rollback.add_argument('--user', default='tstopr', help='default: tstopr')
-    parser_rollback.add_argument('--password', default='pcds', help='default: pcds')
+    parser_rollback.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
     parser_rollback.add_argument('--key', default=None, required=True, help='key to roll back to, required')
     parser_rollback.add_argument('--write', action="store_true", help='Write to database')
     parser_rollback.set_defaults(func=_rollback)

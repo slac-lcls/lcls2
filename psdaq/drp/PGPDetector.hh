@@ -22,32 +22,34 @@ struct Batch
 
 class DrpBase;
 
-class PGPDetector
+class PGPDetector : public PgpReader
 {
 public:
-    PGPDetector(const Parameters& para, DrpBase& drp, Detector* det);
-    ~PGPDetector();
+    PGPDetector(const Parameters& para, DrpBase& drp, Detector* det, bool pythonDrp,
+                int* inpMqId, int* resMqId, int* inpShmId, int* resShmId, size_t shemeSize);
+    virtual ~PGPDetector();
     void reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
     void collector(Pds::Eb::TebContributor& tebContributor);
+    virtual void handleBrokenEvent(const PGPEvent& event) override;
+    virtual void resetEventCounter() override;
     void shutdown();
 private:
-    void resetEventCounter();
-private:
-    const Parameters& m_para;
-    MemPool& m_pool;
-    static const int MAX_RET_CNT_C = 1024;
-    int32_t dmaRet[MAX_RET_CNT_C];
-    uint32_t dmaIndex[MAX_RET_CNT_C];
-    uint32_t dest[MAX_RET_CNT_C];
-    uint32_t dmaFlags [MAX_RET_CNT_C];
-    uint32_t dmaErrors[MAX_RET_CNT_C];
+    static const int MAX_RET_CNT_C = 1000;
     std::vector<SPSCQueue<Batch> > m_workerInputQueues;
     std::vector<SPSCQueue<Batch> > m_workerOutputQueues;
     std::vector<std::thread> m_workerThreads;
     std::atomic<bool> m_terminate;
     Batch m_batch;
-    uint32_t m_lastComplete;
     unsigned m_nodeId;
+    int* m_inpMqId;
+    int* m_resMqId;
+    int* m_inpShmId;
+    int* m_resShmId;
+    std::atomic<int> threadCountWrite;
+    std::atomic<int> threadCountPush;
+    unsigned m_flushTmo;
+    size_t m_shmemSize;
+    bool pythonDrp;
 };
 
 }

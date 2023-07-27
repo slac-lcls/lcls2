@@ -7,7 +7,7 @@ namespace Pds {
   namespace Bld {
     class Header {
     public:
-      enum { sizeofFirst = 20, sizeofNext = 4 };
+      enum { sizeofFirst = 28, sizeofNext = 12 };
       enum { MTU = 8192 };
       Header() {}
       Header(uint64_t pulseId, uint64_t timeStamp, unsigned src)
@@ -31,7 +31,7 @@ namespace Pds {
       }
       uint64_t pulseId() const
       {
-        return reinterpret_cast<const uint64_t*>(this)[0];
+        return reinterpret_cast<const uint64_t*>(this)[1];
       }
       unsigned id() const
       {

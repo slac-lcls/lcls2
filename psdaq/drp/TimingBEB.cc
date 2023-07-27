@@ -64,7 +64,7 @@ unsigned TimingBEB::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::C
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
-    Alg alg("raw", 2, 0, 0);
+    Alg alg("raw", 2, 1, 0);
     Names& eventNames = *new(xtc, bufEnd) Names(bufEnd, m_para->detName.c_str(), alg,
                                                 "ts", m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
     eventNames.add(xtc, bufEnd, TSDef);

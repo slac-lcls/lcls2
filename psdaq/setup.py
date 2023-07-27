@@ -136,6 +136,7 @@ if 'PSDAQ' in BUILD_LIST :
             'tprcas = psdaq.cas.tprcas:main',
             'xpmioc = psdaq.cas.xpmioc:main',
             'bldcas = psdaq.cas.bldcas:main',
+            'bldgmd = psdaq.cas.bldgmd:main',
             'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
             'wave8pvs = psdaq.cas.wave8pvs:main',
             'pyxpm = psdaq.pyxpm.pyxpm:main',
@@ -149,6 +150,8 @@ if 'PSDAQ' in BUILD_LIST :
             'epics_exporter = psdaq.cas.epics_exporter:main',
             'seqplot = psdaq.seq.seqplot:main',
             'seqprogram = psdaq.seq.seqprogram:main',
+            'traingenerator = psdaq.seq.traingenerator:main',
+            'periodicgenerator = psdaq.seq.periodicgenerator:main',
             'bos = psdaq.bos.bos:main',
         ]
     }

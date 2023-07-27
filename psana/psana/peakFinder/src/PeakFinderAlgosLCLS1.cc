@@ -1,22 +1,15 @@
-//-----------------------------
 
 #include "../PeakFinderAlgosLCLS1.hh"
 #include <sstream>   // for stringstream
 #include <cmath>     // floor, ceil
 #include <iomanip>   // for std::typedef
 
-//-----------------------------
-
 //setw psalgos::types::TwoIndexes TwoIndexes;
 //typedef psalgos::localextrema::TwoIndexes TwoIndexes;
 
 using namespace std;
 
-//-----------------------------
-
 namespace psalg1 {
-
-//-----------------------------
 
 PeakFinderAlgos::PeakFinderAlgos(const size_t& seg, const unsigned& pbits)
   : m_seg(seg)
@@ -34,9 +27,7 @@ PeakFinderAlgos::PeakFinderAlgos(const size_t& seg, const unsigned& pbits)
   //if(m_pbits & LOG::INFO) printParameters();
 }
 
-//-----------------------------
-
-PeakFinderAlgos::~PeakFinderAlgos() 
+PeakFinderAlgos::~PeakFinderAlgos()
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in d-tor ~PeakFinderAlgos\n";
   if (m_local_maxima) delete[] m_local_maxima;
@@ -44,12 +35,10 @@ PeakFinderAlgos::~PeakFinderAlgos()
   if (m_conmap)       delete[] m_conmap;
 }
 
-//-----------------------------
-
 void
 PeakFinderAlgos::printParameters()
 {
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "PeakFinderAlgos::printParameters\n";
   ss << "seg   " << m_seg << '\n';
   ss << "pbits " << m_pbits << '\n';
@@ -64,9 +53,7 @@ PeakFinderAlgos::printParameters()
   cout << ss.str();
 }
 
-//-----------------------------
-
-void 
+void
 PeakFinderAlgos::_initMapsAndVectors()
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in _initMapsAndVectors/n";
@@ -85,9 +72,7 @@ PeakFinderAlgos::_initMapsAndVectors()
   _evaluateRingIndexes();
 }
 
-//-----------------------------
-
-void 
+void
 PeakFinderAlgos::_evaluateRingIndexes()
 {
   if(m_pbits & LOG::DEBUG) std::cout << "in _evaluateRingIndexes, r0=" << m_r0 << " dr=" << m_dr << '\n';
@@ -112,15 +97,13 @@ PeakFinderAlgos::_evaluateRingIndexes()
   }
 }
 
-//-----------------------------
-
-void 
+void
 PeakFinderAlgos::printMatrixOfRingIndexes()
 {
   int indmax = (int)std::ceil(m_r0 + m_dr);
   int indmin = -indmax;
   unsigned counter = 0;
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "printMatrixOfRingIndexes(), r0=" << m_r0 << "  dr=" << m_dr << '\n';
 
   for (int i = indmin; i <= indmax; ++ i) {
@@ -137,31 +120,27 @@ PeakFinderAlgos::printMatrixOfRingIndexes()
   cout << ss.str();
 }
 
-//-----------------------------
-
-void 
+void
 PeakFinderAlgos::printVectorOfRingIndexes()
 {
   if(v_indexes.empty()) _evaluateRingIndexes();
 
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "In printVectorOfRingIndexes:\n Vector size: " << v_indexes.size() << '\n';
   int counter_in_line=0;
   for(vector<TwoIndexes>::const_iterator ij  = v_indexes.begin();
                                           ij != v_indexes.end(); ij++) {
     ss << " (" << ij->i << "," << ij->j << ')';
     if (++counter_in_line > 9) {ss << '\n'; counter_in_line=0;}
-  }   
+  }
   cout << ss.str() << '\n';
   //MsgLog(_name(), info, ss.str());
 }
 
-//-----------------------------
-
 void
 PeakFinderAlgos::printSelectionPars()
 {
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "PeakFinderAlgos::printSelectionPars(), seg=" << m_seg << '\n';
   ss << "  npix_min" << m_peak_npix_min << '\n';
   ss << "  npix_max" << m_peak_npix_max << '\n';
@@ -170,8 +149,6 @@ PeakFinderAlgos::printSelectionPars()
   ss << "  son_min " << m_peak_son_min  << '\n';
   cout << ss.str();
 }
-
-//-----------------------------
 
 void
 PeakFinderAlgos::setPeakSelectionPars(const float& npix_min, const float& npix_max,
@@ -185,8 +162,6 @@ PeakFinderAlgos::setPeakSelectionPars(const float& npix_min, const float& npix_m
   m_peak_son_min  = son_min;
 }
 
-//-----------------------------
-
 bool
 PeakFinderAlgos::_peakIsSelected(const Peak& peak)
 {
@@ -198,34 +173,28 @@ PeakFinderAlgos::_peakIsSelected(const Peak& peak)
   return true;
 }
 
-//-----------------------------
-
 void
 PeakFinderAlgos::_makeVectorOfSelectedPeaks()
 {
   if(v_peaks_sel.capacity() < m_npksmax) v_peaks_sel.reserve(m_npksmax);
      v_peaks_sel.clear();
 
-  for(std::vector<Peak>::iterator it=v_peaks.begin(); it!=v_peaks.end(); ++it) { 
+  for(std::vector<Peak>::iterator it=v_peaks.begin(); it!=v_peaks.end(); ++it) {
     Peak& peak = (*it);
     if(_peakIsSelected(peak)) v_peaks_sel.push_back(peak);
   }
-  if(m_pbits & LOG::INFO) std::cout << "_makeVectorOfSelectedPeaks, seg=" << m_seg 
-                                    << "  #peaks raw=" << v_peaks.size() 
+  if(m_pbits & LOG::INFO) std::cout << "_makeVectorOfSelectedPeaks, seg=" << m_seg
+                                    << "  #peaks raw=" << v_peaks.size()
 				    << "  sel=" << v_peaks_sel.size() << '\n';
 }
 
-//-----------------------------
-
 void
 PeakFinderAlgos::_printVectorOfPeaks(const std::vector<Peak>& v) {
-  std::cout << "PeakFinderAlgos::_printVectorOfPeaks\n"; 
-  for(std::vector<Peak>::const_iterator it=v.begin(); it!=v.end(); ++it) 
+  std::cout << "PeakFinderAlgos::_printVectorOfPeaks\n";
+  for(std::vector<Peak>::const_iterator it=v.begin(); it!=v.end(); ++it)
     //const Peak& peak = (*it);
-    std::cout << "  " << (*it) << '\n'; 
+    std::cout << "  " << (*it) << '\n';
 }
-
-//-----------------------------
 
 // DOES NOT WORK WITH PYTHON.... moved to *.h
 
@@ -238,12 +207,12 @@ template <typename T>
 void
 PeakFinderAlgos::_findConnectedPixelsInRegionVX(const T* data, const int& r, const int& c)
 {
-  //if(m_pbits & 512) 
+  //if(m_pbits & 512)
   cout << "in _findConnectedPixelsInRegionVX, r=" << r << " c=" << c << '\n';
   int irc = r*m_cols+c;
   if(! m_mask[irc]) return; // - masked
   if(m_conmap[irc]) return; // - pixel is already used
-  if(data[irc] < (T)m_reg_thr) return; // discard pixel below threshold if m_reg_thr != 0 
+  if(data[irc] < (T)m_reg_thr) return; // discard pixel below threshold if m_reg_thr != 0
 
   m_conmap[irc] = m_numreg; // mark pixel on map
 
@@ -252,42 +221,38 @@ PeakFinderAlgos::_findConnectedPixelsInRegionVX(const T* data, const int& r, con
   if(  r+1 < m_reg_rmax)  _findConnectedPixelsInRegionVX<T>(data, r+1, c);
   if(  c+1 < m_reg_cmax)  _findConnectedPixelsInRegionVX<T>(data, r, c+1);
   if(!(r-1 < m_reg_rmin)) _findConnectedPixelsInRegionVX<T>(data, r-1, c);
-  if(!(c-1 < m_reg_cmin)) _findConnectedPixelsInRegionVX<T>(data, r, c-1);  
+  if(!(c-1 < m_reg_cmin)) _findConnectedPixelsInRegionVX<T>(data, r, c-1);
 }
 */
 
-//-----------------------------
 //-- NON-CLASS METHODS
-//-----------------------------
 
-  std::ostream& 
-  operator<<(std::ostream& os, const Peak& p) 
+  std::ostream&
+  operator<<(std::ostream& os, const Peak& p)
   {
     os << fixed
        << "Seg:"      << std::setw(3) << std::setprecision(0) << p.seg
-       << " Row:"     << std::setw(4) << std::setprecision(0) << p.row 	     
-       << " Col:"     << std::setw(4) << std::setprecision(0) << p.col 	      
-       << " Npix:"    << std::setw(3) << std::setprecision(0) << p.npix    
-       << " Imax:"    << std::setw(7) << std::setprecision(1) << p.amp_max     	      
-       << " Itot:"    << std::setw(7) << std::setprecision(1) << p.amp_tot    	      
-       << " CGrav r:" << std::setw(6) << std::setprecision(1) << p.row_cgrav 	      
-       << " c:"       << std::setw(6) << std::setprecision(1) << p.col_cgrav   	      
-       << " Sigma r:" << std::setw(5) << std::setprecision(2) << p.row_sigma  	      
-       << " c:"       << std::setw(5) << std::setprecision(2) << p.col_sigma  	      
-       << " Rows["    << std::setw(4) << std::setprecision(0) << p.row_min    	      
-       << ":"         << std::setw(4) << std::setprecision(0) << p.row_max    	      
-       << "] Cols["   << std::setw(4) << std::setprecision(0) << p.col_min    	      
-       << ":"         << std::setw(4) << std::setprecision(0) << p.col_max    	     
-       << "] B:"      << std::setw(5) << std::setprecision(1) << p.bkgd       	      
-       << " N:"       << std::setw(5) << std::setprecision(1) << p.noise      	     
+       << " Row:"     << std::setw(4) << std::setprecision(0) << p.row
+       << " Col:"     << std::setw(4) << std::setprecision(0) << p.col
+       << " Npix:"    << std::setw(3) << std::setprecision(0) << p.npix
+       << " Imax:"    << std::setw(7) << std::setprecision(1) << p.amp_max
+       << " Itot:"    << std::setw(7) << std::setprecision(1) << p.amp_tot
+       << " CGrav r:" << std::setw(6) << std::setprecision(1) << p.row_cgrav
+       << " c:"       << std::setw(6) << std::setprecision(1) << p.col_cgrav
+       << " Sigma r:" << std::setw(5) << std::setprecision(2) << p.row_sigma
+       << " c:"       << std::setw(5) << std::setprecision(2) << p.col_sigma
+       << " Rows["    << std::setw(4) << std::setprecision(0) << p.row_min
+       << ":"         << std::setw(4) << std::setprecision(0) << p.row_max
+       << "] Cols["   << std::setw(4) << std::setprecision(0) << p.col_min
+       << ":"         << std::setw(4) << std::setprecision(0) << p.col_max
+       << "] B:"      << std::setw(5) << std::setprecision(1) << p.bkgd
+       << " N:"       << std::setw(5) << std::setprecision(1) << p.noise
        << " S/N:"     << std::setw(5) << std::setprecision(1) << p.son;
     return os;
   }
 
-//-----------------------------
-
-  std::ostream& 
-  operator<<(std::ostream& os, const RingAvgRms& o) 
+  std::ostream&
+  operator<<(std::ostream& os, const RingAvgRms& o)
   {
     os << fixed
        << " Bkgd avg:" << std::setw(7) << std::setprecision(1) << o.avg
@@ -296,14 +261,11 @@ PeakFinderAlgos::_findConnectedPixelsInRegionVX(const T* data, const int& r, con
     return os;
   }
 
-//-----------------------------
-
 //template void PeakFinderAlgos::_findConnectedPixelsInRegionVX<float>(const float*, const int&, const int&);
 //template void PeakFinderAlgos::_findConnectedPixelsInRegionVX<double>(const double*, const int&, const int&);
 //template void PeakFinderAlgos::_findConnectedPixelsInRegionVX<int>(const int*, const int&, const int&);
 //template void PeakFinderAlgos::_findConnectedPixelsInRegionVX<int16_t>(const int16_t*, const int&, const int&);
 //template void PeakFinderAlgos::_findConnectedPixelsInRegionVX<uint16_t>(const uint16_t*, const int&, const int&);
 
-//-----------------------------
 } // namespace psalg1
-//-----------------------------
+

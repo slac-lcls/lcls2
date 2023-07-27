@@ -49,19 +49,14 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   _contributors(0),
   _id          (-1),
   _exporter    (exporter),
-  _pfx         (pfx)
+  _pfx         (pfx),
+  _prms        (prms)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
                                             {"alias", prms.alias},
                                             {"eb", pfx}};
-  exporter->constant("EB_EvPlDp", labels, eventPoolDepth());
-
-  exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();     });
-  exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();      });
-  exporter->add("EB_EvOcCt", labels, MetricType::Gauge,   [&](){ return  eventOccCnt();       });
-  exporter->add("EB_EpOcCt", labels, MetricType::Gauge,   [&](){ return  epochOccCnt();       });
   exporter->add("EB_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add("EB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
   exporter->add("EB_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
@@ -132,84 +127,59 @@ int EbAppBase::startConnection(const std::string& ifAddr,
   return 0;
 }
 
-int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
+int EbAppBase::connect(unsigned maxTrBuffers)
 {
   int      rc;
-  unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
-
-  // Initialize the event builder
-  auto duration = prms.maxEntries;
-  _maxEntries   = prms.maxEntries;
-  _maxEvBuffers = prms.maxBuffers / prms.maxEntries;
-  _maxTrBuffers = TEB_TR_BUFFERS;
-  rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
-  if (rc)  return rc;
-
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias},
-                                            {"alias", prms.alias},
-                                            {"eb", _pfx}};
+  unsigned nCtrbs = std::bitset<64>(_prms.contributors).count();
   _links        .resize(nCtrbs);
   _region       .resize(nCtrbs);
   _regSize      .resize(nCtrbs);
   _bufRegSize   .resize(nCtrbs);
   _maxTrSize    .resize(nCtrbs);
   _maxBufSize   .resize(nCtrbs);
-  _id           = prms.id;
-  _contributors = prms.contributors;
-  _idxSrcs      = prms.indexSources;
-  _contract     = prms.contractors;
-  _fixupSrc     = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
-  _ctrbSrc      = _exporter->histogram("EB_CtrbSc", labels, nCtrbs); // Revisit: For testing
+  _id           = _prms.id;
+  _contributors = _prms.contributors;
+  _idxSrcs      = _prms.indexSources;
+  _contract     = _prms.contractors;
+
+  // Initialize the event builder
+  auto duration = _prms.maxEntries;
+  _maxEntries   = _prms.maxEntries;
+  _maxEvBuffers = (EB_TMO_MS / 1000) * (_prms.maxBuffers / _prms.maxEntries);
+  _maxTrBuffers = maxTrBuffers;
+  rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
+  if (rc)  return rc;
+
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.alias},
+                                            {"alias", _prms.alias},
+                                            {"eb", _pfx}};
+  _exporter->constant("EB_EvPlDp", labels, eventPoolDepth());
+
+  _exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return eventAllocCnt(); });
+  _exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return eventFreeCnt();  });
+  _exporter->add("EB_EvOcCt", labels, MetricType::Gauge,   [&](){ return eventOccCnt();   });
+  _exporter->add("EB_EpOcCt", labels, MetricType::Gauge,   [&](){ return epochOccCnt();   });
 
   for (auto i = 0u; i < nCtrbs; ++i)
   {
     // Pass loop index by value or it will be out of scope when lambda runs
-    _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=](){ return  arrTime(i);});
+    _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=](){ return arrTime(i); });
   }
+
+  _fixupSrc = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
+  _ctrbSrc  = _exporter->histogram("EB_CtrbSc", labels, nCtrbs); // Revisit: For testing
 
   rc = linksConnect(_transport, _links, _id, "DRP");
   if (rc)  return rc;
 
-  // Assume an existing region is already appropriately sized, else make a guess
-  // at a suitable RDMA region to avoid spending time in Configure.
-  // If it's too small, it will be corrected during Configure
-  if (inpSizeGuess)                     // Disable by providing 0
-  {
-    for (auto link : _links)
-    {
-      unsigned rmtId  = link->id();
-      if (!_region[rmtId])                  // No need to guess again
-      {
-        // Make a guess at the size of the Input region
-        size_t regSizeGuess = (inpSizeGuess * prms.numBuffers[rmtId] +
-                               _maxTrBuffers * prms.maxTrSize[rmtId]);
-
-        _region[rmtId] = allocRegion(regSizeGuess);
-        if (!_region[rmtId])
-        {
-          logging::error("%s:\n  "
-                         "No memory found for Input MR for %s ID %u of size %zd",
-                         __PRETTY_FUNCTION__, "DRP", rmtId, regSizeGuess);
-          return ENOMEM;
-        }
-
-        // Save the allocated size, which may be more than the required size
-        _regSize[rmtId] = regSizeGuess;
-      }
-
-      rc = _transport.setupMr(_region[rmtId], _regSize[rmtId]);
-      if (rc)  return rc;
-    }
-  }
-
   return 0;
 }
 
-int EbAppBase::configure(const EbParams& prms)
+int EbAppBase::configure()
 {
-  int rc = _linksConfigure(prms, _links, "DRP");
+  int rc = _linksConfigure(_prms, _links, "DRP");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -225,13 +195,14 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
   {
     auto   t0{std::chrono::steady_clock::now()};
     int    rc;
-    size_t regEntrySize;
+    size_t regEntrySize; // Trigger data size on TEB, max_ev_size[drpId] on MEB
     if ( (rc = link->prepare(&regEntrySize, peer)) )
     {
       logging::error("%s:\n  Failed to prepare link with %s ID %d",
                      __PRETTY_FUNCTION__, peer, link->id());
       return rc;
     }
+
     unsigned rmtId     = link->id();
     size_t regSize     = regEntrySize * prms.numBuffers[rmtId];
     _bufRegSize[rmtId] = regSize;
@@ -286,7 +257,7 @@ int EbAppBase::process()
   const int msTmo = 100;
   if ( (rc = _transport.pend(&data, msTmo)) < 0)
   {
-    if (rc == -FI_ETIMEDOUT)
+    if (rc == -FI_EAGAIN)
     {
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
@@ -427,11 +398,12 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   event->damage(Damage::DroppedContribution);
 
-  if (!event->creator()->isEvent())
+  //if (!event->creator()->isEvent())
   {
-    logging::warning("Fixup %s, %014lx, size %zu, source %d",
+    logging::warning("Fixup %s, %014lx, size %zu, source %d (%s)",
                      TransitionId::name(event->creator()->service()),
-                     event->sequence(), event->size(), srcId);
+                     event->sequence(), event->size(),
+                     srcId, _prms.drps[srcId].c_str());
   }
 
   _fixupSrc->observe(double(srcId));

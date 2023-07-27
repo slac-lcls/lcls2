@@ -45,7 +45,7 @@ def setCuMode(v):
 def getCuMode():
     return xtpg
 
-class Pv:
+class Pv(object):
     def __init__(self, pvname, callback=None, isStruct=False):
         self.pvname = pvname
         self.__value__ = None
@@ -53,15 +53,9 @@ class Pv:
         if callback:
             logger.info("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
-                if self.isStruct:
-                    self.__value__ = newval
-                else:
-                    self.__value__ = newval.raw.value
+                self.__value__ = self.to_value(newval)
                 logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
-#                try:
                 callback(err=None)
-#                except Exception as e:
-#                    logger.error("Exception in callback for %s"%self.pvname)
             try:
                 self.subscription = pvactx.monitor(self.pvname, monitor_cb)
                 self.__value__ = None
@@ -71,11 +65,21 @@ class Pv:
             self.__value__ = None
             logger.debug("PV %s created without a callback", self.pvname) # Call get explictly for an sync get or use for put
 
+    def to_value(self,newval):
+        result = None
+        try:
+            if self.isStruct:
+                result = newval
+            elif hasattr(newval,"value"):
+                result = newval.value
+            else:
+                result = newval.raw.value
+        except Exception as e:
+            logger.error(f'Exception in monitor_cb for {self.pvname} {e} [{newval}]')
+        return result
+
     def get(self, useCached=True):
-        if self.isStruct:
-            self.__value__ = pvactx.get(self.pvname)
-        else:
-            self.__value__ = pvactx.get(self.pvname).raw.value
+        self.__value__ = self.to_value(pvactx.get(self.pvname))
         logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 
@@ -283,6 +287,38 @@ class PvComboDisplay(QtWidgets.QComboBox):
 
     def setValue(self,value):
         self.setCurrentIndex(value)
+
+class PvTableDisplay(QtWidgets.QWidget):
+
+    def __init__(self, pvname, rowNames=None):
+        super(PvTableDisplay, self).__init__()
+        self.ready = False
+        initPvMon(self,pvname,isStruct=True)
+
+        v = self.pv.get()
+
+        grid = QtWidgets.QGridLayout()
+        for j,r in enumerate(rowNames):
+            grid.addWidget(QtWidgets.QLabel(r),j+1,0)
+        for j,r in enumerate(v.labels):
+            grid.addWidget(QtWidgets.QLabel(r),0,j+1)
+            w = [QtWidgets.QLabel('-') for i in range(len(rowNames))]
+            setattr(self,r,w)
+            for i in range(len(rowNames)):
+                grid.addWidget(w[i],i+1,j+1)
+
+        self.setLayout(grid)
+        self.ready = True
+
+    def update(self,err):
+        if not self.ready:
+            return
+        v = self.pv.__value__
+        for j,r in enumerate(v.labels):
+            w = getattr(self,r)
+            q = getattr(v.value,r)
+            for i,qv in enumerate(q):
+                w[i].setText(str(qv))
 
 class PvEditTxt(PvTextDisplay):
 
@@ -808,7 +844,7 @@ class PvEditTS(PvEditCmb):
     def __init__(self, pvname, idx):
         super(PvEditTS, self).__init__(pvname, ['%u'%i for i in range(16)])
 
-def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True):
+def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True, width=None):
     pvname = pvbase+name
     print(pvname)
 
@@ -822,11 +858,15 @@ def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=Tru
     #layout.addStretch
     if count == 1:
         w = widget(pvname, '')
+        if width:
+            w.setMaximumWidth(width)
         w.setEnabled(enable)
         layout.addWidget(w)
     else:
         for i in range(count):
             w = widget(pvname+'%d'%(i+start), QString(i+istart))
+            if width:
+                w.setMaximumWidth(width)
             w.setEnabled(enable)
             layout.addWidget(w)
     #layout.addStretch

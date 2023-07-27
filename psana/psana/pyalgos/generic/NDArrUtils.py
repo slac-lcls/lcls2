@@ -93,23 +93,16 @@ def info_ndarr(nda, name='', first=0, last=5):
     elif isinstance(nda, tuple): s += info_ndarr(np.array(nda), 'ndarray from tuple: %s' % name)
     elif isinstance(nda, list):  s += info_ndarr(np.array(nda), 'ndarray from list: %s' % name)
     elif not isinstance(nda, np.ndarray):
-                     s = '%s%s' % (_name, type(nda))
-    else: s = '%sshape:%s size:%d dtype:%s%s%s%s'%\
-               (_name, str(nda.shape), nda.size, nda.dtype, gap, str(nda.ravel()[first:last]).rstrip(']'),\
-                ('...]' if nda.size>last else ']'))
+        s = '%s%s' % (_name, type(nda))
+    else:
+        a = '' if last == 0 else\
+            '%s%s' % (str(nda.ravel()[first:last]).rstrip(']'), '...]' if nda.size>last else ']')
+        s = '%sshape:%s size:%d dtype:%s%s%s' % (_name, str(nda.shape), nda.size, nda.dtype, gap, a)
     return s
 
 
 def print_ndarr(nda, name=' ', first=0, last=5):
     print(info_ndarr(nda, name, first, last))
-
-#    if nda is None: print('%s: %s', name, nda)
-#    elif isinstance(nda, tuple): print_ndarr(np.array(nda), 'ndarray from tuple: %s' % name)
-#    elif isinstance(nda, list) : print_ndarr(np.array(nda), 'ndarray from list: %s' % name)
-#    elif not isinstance(nda, np.ndarray):
-#                     print('%s: %s' % (name, type(nda)))
-#    else          : print('%s:  shape:%s  size:%d  dtype:%s %s...'%\
-#                           (name, str(nda.shape), nda.size, nda.dtype, nda.flatten()[first:last]))
 
 
 def size_from_shape(shape):

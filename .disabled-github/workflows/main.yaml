@@ -11,7 +11,7 @@ jobs:
         TRAVIS_OS_NAME: osx
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: setup python on macos
         uses: actions/setup-python@v2
         with:
@@ -22,13 +22,14 @@ jobs:
         run: ./run_travis.sh "$TRAVIS_OS_NAME"
   run-tests-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     container:
-      image: slaclcls/travis:centos7-py3.9
+      image: scr.svc.stanford.edu/slaclcls/lcls2_docker/lcls2:centos7-py3.9
       env:
         CONDA_ENV: myrel
         TRAVIS_OS_NAME: linux
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: tests on centos7
-        run: bash -l ./run_travis.sh "$TRAVIS_OS_NAME" 
+        run: bash -l ./run_travis.sh "$TRAVIS_OS_NAME"

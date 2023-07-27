@@ -1,10 +1,24 @@
 if not platform: platform = '1'
-hutch, user, password = ('tst', 'tstopr', 'pcds')
+hutch, user = ('tst', 'tstopr')
 prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
-collect_host = 'daq-tst-dev03'
+collect_host = 'drp-tst-acc01'
+
+network =     'ep_fabric="172.21.148.0/22",ep_domain=eno1'
+
+#
+#  ami variables
+#
+heartbeat_period = 1000 # units are ms
+
+ami_workers_per_node = 4
+ami_worker_nodes = ["drp-tst-acc05"]
+ami_num_workers = len(ami_worker_nodes)
+ami_manager_node = "drp-tst-acc01"
+
+meb_cmd  = f'monReqServer -P {hutch} -M {prom_dir} -C {collect_host} -k {network}'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -19,20 +33,43 @@ collect_host = 'daq-tst-dev03'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                        id:'groupca',flags:'s', env:epics_env, cmd:'groupca DAQ:LAB2 2 1'},
+ {                        id:'groupca',flags:'s', env:epics_env, cmd:'groupca DAQ:LAB2 2 1 5'},
  {                        id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
- { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:'control -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
- {                        flags:'p', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING -H {collect_host} --user {user}'},
+ { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:'control -S 0 -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user},
+ {                        flags:'sp', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING -H {collect_host} --user {user}'},
  # trigger event builder
- { host: 'daq-tst-dev03', id:'teb1', flags:'pu', cmd:f'teb -P {hutch} -M {prom_dir} -C {collect_host}'},
+ { host: collect_host, id:'teb1', flags:'pu', cmd:f'teb -P {hutch} -M {prom_dir} -C {collect_host} -k {network}'},
  # meb
- { host: 'daq-tst-dev03', id:'meb1', flags:'spu', cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
+ { host: 'drp-tst-acc01', id:'meb1', flags:'spu', cmd:f'monReqServer -P {hutch} -d -q 4 -C {collect_host} -k {network}'},
+ # FakeCam
+ { host: 'drp-tst-acc01', id:'cam_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_0 -P {hutch} -C {collect_host}'},
  # ...drp: loopback on port 5007
- #{ host: 'daq-tst-dev03', id:'encoder_0',              flags:'sXpu', cmd:'drp_udpencoder -o /cds/home/c/caf/data -L 5007    -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
+#{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -v -o /cds/home/c/caf/data -L 5007 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
  # ...drp:
- { host: 'daq-tst-dev03', id:'encoder_0', flags:'sxpu', cmd:f'drp_udpencoder    -o /cds/home/c/caf/data -M {prom_dir} -P tst -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
- # ...sim:
- { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'sxp', cmd:'sim_udpencoder'},
+ { host: 'drp-tst-acc01', id:'encoder_0', flags:'sup', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
+ # ...sim: 172.21.148.201 = drp-tst-acc01, 5008 = interpolate port
+#{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -a 172.21.148.201 -p 5 -d 5008'},
+ { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'sp', cmd:'sim_udpencoder -a 172.21.148.201'},
  #  ...drp: loopback on port 5007 AND verbose
- #{ host: 'daq-tst-dev03', id:'encoder_0', flags:'sxpu', cmd:'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
+#{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'}
 ]
+
+#
+# ami
+#
+procmgr_ami = [
+  { host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+  { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+  {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}' },
+]
+#
+# ami workers
+#
+
+for N, worker_node in enumerate(ami_worker_nodes):
+    procmgr_ami.append({ host:worker_node, id:f'ami-meb{N}', flags:'spu',
+                         cmd:f'{meb_cmd} -d -q {ami_workers_per_node}' })
+    procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s',
+                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
+
+procmgr_config.extend(procmgr_ami)

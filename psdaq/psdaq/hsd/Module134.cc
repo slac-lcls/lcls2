@@ -156,15 +156,17 @@ void Module134::_jesd_init(unsigned mode)
 
 void Module134::setup_jesd(bool lAbortOnErr,
                            std::string& adc0,
-                           std::string& adc1)
+                           std::string& adc1,
+                           bool lInternalTiming)
 {
   i2c_lock(I2cSwitch::PrimaryFmc);
   Fmc134Cpld* cpld = &i2c().fmc_cpld;
   Fmc134Ctrl* ctrl = &p->fmc_ctrl;
   vuint32_t* jesd0  = &p->surf_jesd0[0];
   vuint32_t* jesd1  = &p->surf_jesd1[0];
-  //  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL))
-  while (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL)) {
+  while (cpld->default_clocktree_init(lInternalTiming ? 
+                                      Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL :
+                                      Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL)) {
     if (lAbortOnErr)
       abort();
     usleep(1000);

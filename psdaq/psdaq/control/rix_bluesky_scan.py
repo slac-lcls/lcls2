@@ -19,12 +19,20 @@ parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                     help='timeout msec (default 10000)')
 parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=120, help='# of events to aquire at each step (default 120)')
 parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=36, help='bit mask of readout groups (default 36)')
+parser.add_argument('--groups', type=int, nargs='+', metavar='GROUP_LIST', default=[], help='list of readout groups (overrides -g)')
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
 parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
+parser.add_argument('--seqctl' , default=None, type=str, nargs='+', help="sequence control (e.g. DAQ:NEH:XPM:0:SeqReset 4 [DAQ:NEH:XPM:0:SeqDone])")
 parser.add_argument('--record', action='store_true', help='enable recording of data')
 parser.add_argument('-v', action='store_true', help='be verbose')
 args = parser.parse_args()
+
+if len(args.groups) > 0:
+    g = 0
+    for i in args.groups:
+        g += 1<<i
+    args.g = g
 
 if args.g is not None:
     if args.g < 1 or args.g > 255:
@@ -32,6 +40,9 @@ if args.g is not None:
 
 if args.c < 1:
     parser.error('readout count (-c) must be >= 1')
+
+if args.seqctl is not None and (len(args.seqctl)<2 or len(args.seqctl)>3):
+    parser.error('seqctl must have 2 or 3 argments')
 
 # instantiate DaqControl object
 control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
@@ -80,10 +91,18 @@ from bluesky.plans import scan
 mydaq = BlueskyScan(control, daqState=daqState)
 dets = [mydaq]   # just one in this case, but it could be more than one
 
+seq_ctl = None
+if args.seqctl is not None:
+    if len(args.seqctl)==2:
+        seq_ctl = (args.seqctl[0],int(args.seqctl[1]))
+    else:
+        args.c  = 0  # required for seqDone PV use
+        seq_ctl = (args.seqctl[0],int(args.seqctl[1]),args.seqctl[2])
+
 # configure BlueskyScan object with a set of motors
-mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.record, detname=args.detname, scantype=args.scantype)
+mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.record, detname=args.detname, scantype=args.scantype, seq_ctl=seq_ctl)
 
 # Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.
-RE(scan(dets, motor1, -10, 10, 15))
+RE(scan(dets, motor1, -10, 10, 5))
 

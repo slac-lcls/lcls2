@@ -28,7 +28,7 @@ from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWLoggerStd import QWLoggerStd
 
 print_kwargs, is_in_command_line = gu.print_kwargs, gu.is_in_command_line
-
+SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 class CMWMain(QWidget):
 
@@ -36,13 +36,17 @@ class CMWMain(QWidget):
         QWidget.__init__(self, parent=None, flags=Qt.WindowStaysOnTopHint)
 
         cp.cmwmain = self
+
+        repoman = RepoManager(dirrepo=kwargs['repodir'])  # dettype=SCRNAME
+        logfname = repoman.logname(SCRNAME)
+        #print('log file name: %s' % logfname)
+
         self.set_input_pars(**kwargs)
 
         from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER set_input_pars !!!!\
-        self.wlog = cp.wlog = QWLoggerStd(cp, show_buttons=False)
+        self.wlog = cp.wlog = QWLoggerStd(cp, show_buttons=False, logfname=logfname)
 
-        repoman = RepoManager(kwargs['logdir'], dettype=None)
-        repoman.save_record_at_start(sys.argv[0].rsplit('/')[-1])
+        repoman.save_record_at_start(SCRNAME)
 
         self.wtab = CMWMainTabs()
 
@@ -84,17 +88,22 @@ class CMWMain(QWidget):
         cp.upwd    = kwa.get('upwd', None)
         exp        = kwa.get('experiment', None)
         det        = kwa.get('detector', None)
-        logdir     = kwa.get('logdir', None)
+        repodir    = kwa.get('repodir', None)
         loglevel   = kwa.get('loglevel', 'DEBUG').upper()
         savecfg    = kwa.get('savecfg', False)
+        savelog    = kwa.get('savelog', False)
         if isinstance(loglevel,str): loglevel = loglevel.upper()
+
+        cp.save_log_at_exit.setValue(savelog)
+        cp.log_level.setValue(loglevel)
+        cp.log_prefix.setValue(repodir)
 
         if is_in_command_line(None, '--host')      : cp.cdb_host.setValue(host)
         if is_in_command_line(None, '--port')      : cp.cdb_port.setValue(port)
         if is_in_command_line('-e', '--experiment'): cp.exp_name.setValue(exp)
         if is_in_command_line('-d', '--detector')  : cp.data_source.setValue(det)
-        if is_in_command_line('-l', '--loglevel')  : cp.log_level.setValue(loglevel)
-        if is_in_command_line('-L', '--logdir')    : cp.log_prefix.setValue(logdir)
+        #if is_in_command_line('-l', '--loglevel')  : cp.log_level.setValue(loglevel)
+        #if is_in_command_line('-o', '--repodir')   : cp.log_prefix.setValue(repodir)
 
         cp.save_cp_at_exit.setValue(savecfg)
 

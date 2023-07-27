@@ -25,6 +25,7 @@ DTYPE_MASK, DTYPE_STATUS = um.DTYPE_MASK, um.DTYPE_STATUS
 from psana.detector.Utils import is_none
 from psana.detector.NDArrUtils import info_ndarr
 
+
 class MaskAlgos:
 
     def __init__(self, calibconst, **kwa):
@@ -54,39 +55,45 @@ class MaskAlgos:
         return tuple(range(ngranges))
 
 
-    def mask_from_status(self, status_bits=0xffff, gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
+    def mask_from_status(self, status_bits=(1<<64)-1, stextra_bits=(1<<64)-1, gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
         """
         Mask made of pixel_status calibration constants.
 
         Parameters **kwa
         ----------------
 
-        - status_bits : uint - bitword for mask status codes.
+        - status_bits  : uint - bitword for calib-type pixel_status codes to mask
+        - stextra_bits : uint - bitword for calib-type sataus_extra codes to mask
         - dtype : numpy.dtype - mask np.array dtype
 
         Returns
         -------
         np.array - mask made of pixel_status calibration constants, shapeed as full detector data
         """
-        #status = self.cco.status()
-        status, meta = self.cco.cons_and_meta_for_ctype(ctype='pixel_status')
-        status = status.astype(DTYPE_STATUS)
+        smask = None
+        for ctype, sbits in (('pixel_status', status_bits),
+                             ('status_extra', stextra_bits),):
+            #status = self.cco.status()
+            status, meta = self.cco.cons_and_meta_for_ctype(ctype=ctype)
+            if is_none(status, 'array for ctype: %s is None' % ctype): continue # return None
+            status = status.astype(DTYPE_STATUS)
+            logger.debug(info_ndarr(status, ctype))
 
-        logger.debug(info_ndarr(status, 'status:'))
-        if is_none(status, 'pixel_status is None'): return None
-
-        smask = um.status_as_mask(status, status_bits=status_bits, dtype=DTYPE_MASK, **kwa)
-        # smask shape can be e.g.: (!!!7, 4, 352, 384)
+            _smask = um.status_as_mask(status, status_bits=sbits, dtype=DTYPE_MASK, **kwa)
+            # smask shape can be e.g.: (!!!7, 4, 352, 384)
+            smask = _smask if smask is None else\
+                    um.merge_masks(smask, _smask, dtype=dtype)
 
         if is_none(smask, 'status_as_mask is None'): return None
 
         grinds = self.gain_range_indexes(gain_range_inds, smask)
         logger.debug('in MaskAlgos.mask_from_status'\
-                    + '\n   grinds: %s' % str(grinds)\
-                    + '\n   status_bits: %s' % hex(status_bits)\
-                    + '\n   dtype: %s' % str(dtype)\
-                    + '\n   **kwa: %s' % str(kwa)\
-                    + '\n   meta: %s' % str(meta))
+                + '\n   grinds: %s' % str(grinds)\
+                + '\n   status_bits: %s' % hex(status_bits)\
+                + '\n   stextra_bits: %s' % hex(stextra_bits)\
+                + '\n   dtype: %s' % str(dtype)\
+                + '\n   **kwa: %s' % str(kwa)\
+                + '\n   the last in loop meta: %s' % str(meta))
 
         mask = smask if grinds is None else\
                um.merge_mask_for_grinds(smask, gain_range_inds=grinds, dtype=dtype, **kwa)
@@ -144,10 +151,11 @@ class MaskAlgos:
            Parameters
            ----------
            - status   : bool : True  - mask from pixel_status constants,
-                                       kwa: status_bits=0xffff - status bits to use in mask.
+                                       kwa: status_bits=0xffff - status bits for calib-type pixel_status to use in mask.
+                                       kwa: stextra_bits=(1<<64)-1 - status bits for calib-type status_extra to use in mask.
                                        Status bits show why pixel is considered as bad.
                                        Content of the bitword depends on detector and code version.
-                                       It is wise to exclude pixels with any bad status by setting status_bits=0xffff.
+                                       It is wise to exclude pixels with any bad status by setting status_bits=(1<<64)-1.
                                        kwa: gain_range_inds=(0,1,2,3,4) - list of gain range indexes to merge for epix10ka or jungfrau
            - neighbor : bool : False - mask of neighbors of all bad pixels,
                                        kwa: rad=5 - radial parameter of masked region
@@ -170,9 +178,10 @@ class MaskAlgos:
 
         mask = None
         if status:
-            status_bits = kwa.get('status_bits', 0xffff)
+            status_bits  = kwa.get('status_bits', (1<<64)-1)
+            stextra_bits = kwa.get('stextra_bits', (1<<64)-1)
             gain_range_inds = kwa.get('gain_range_inds', None) # (0,1,2,3,4) works for epix10ka
-            mask = self.mask_from_status(status_bits=status_bits, gain_range_inds=gain_range_inds, dtype=dtype)
+            mask = self.mask_from_status(status_bits=status_bits, stextra_bits=stextra_bits, gain_range_inds=gain_range_inds, dtype=dtype)
             logger.debug(info_ndarr(mask, 'in mask_comb after mask_from_status'))
 
 #        if unbond and (self.is_cspad2x2() or self.is_cspad()):

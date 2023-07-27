@@ -134,18 +134,30 @@ def showHelp(stdscr, args, listOfQueries, dbg):
     # Loop where k is the last character pressed
     k = -1
 
-    while (k == -1):
+    start_row = 0
+
+    query_rows = 0
+    for queries in listOfQueries:
+        query_rows += len(queries.items())
+
+    while (True):
 
         # Initialization
         stdscr.erase()
         height, width = stdscr.getmaxyx()
 
-        y = 0
-        x = 0
+        y = 0;  r = 0
+        x = 0;
 
         line = f'DAQ blockages monitor for partition {args.part}, instrument "{args.inst}"'
-        stdscr.addstr(y, x, line, curses.color_pair(1))
-        y += 2
+        if r >= start_row:
+            stdscr.addstr(y, x, line, curses.color_pair(1))
+            y += 1
+        r += 1
+
+        if r >= start_row:
+            y += 1              # Blank line
+        r += 1
 
         line = 'Available keystrokes:'
         keys = [('Arrow keys', 'Scroll by column or row'),
@@ -158,31 +170,57 @@ def showHelp(stdscr, args, listOfQueries, dbg):
                 ('h/?', 'Help'),
                 ('q', 'Quit'),]
 
-        stdscr.addstr(y, x, line, curses.color_pair(1))
-        y += 1
-        for key in keys:
-            stdscr.addstr(y, 2+x,    key[0], curses.color_pair(1))
-            stdscr.addstr(y, 2+x+14, key[1], curses.color_pair(1))
+        if r >= start_row:
+            stdscr.addstr(y, x, line, curses.color_pair(1))
             y += 1
+        r += 1
+        for key in keys:
+            if r >= start_row:
+                stdscr.addstr(y, 2+x,    key[0], curses.color_pair(1))
+                stdscr.addstr(y, 2+x+14, key[1], curses.color_pair(1))
+                y += 1
+            r += 1
 
-        y += 1
+        if r >= start_row:
+            y += 1              # Blank line
+        r += 1
         line = 'Column header descriptions:'
-        stdscr.addstr(y, x, line, curses.color_pair(1))
-        y += 1
+        if r >= start_row:
+            stdscr.addstr(y, x, line, curses.color_pair(1))
+            y += 1
+        r += 1
+        last_row = r + query_rows - (height - 1)
         for queries in listOfQueries:
             for metric, query in queries.items():
-                dbg.write('y, x: %d, %d, metric \'%s\', descr \'%s\'\n' % (y, x, metric, query[2]))
-                stdscr.addstr(y, 2+x,    metric,   curses.color_pair(1))
-                stdscr.addstr(y, 2+x+14, query[2], curses.color_pair(1))
-                y += 1
-                if y > height - 1:  break
-            if y > height - 1:  break
+                if r >= start_row:
+                    dbg.write('y, x: %d, %d, metric \'%s\', descr \'%s\'\n' % (y, x, metric, query[2]))
+                    stdscr.addstr(y, 2+x,    metric,   curses.color_pair(1))
+                    stdscr.addstr(y, 2+x+14, query[2], curses.color_pair(1))
+                    y += 1
+                r += 1
+                if y > height - 2:  break
+            if y > height - 2:  break
 
         y = height - 1
-        stdscr.addstr(y, x, "Hit any character to continue", curses.color_pair(1))
+        stdscr.addstr(y, x, "Scroll or hit any character to continue", curses.color_pair(1))
 
         # Wait for next input
         k = stdscr.getch()
+
+        if   k == curses.KEY_DOWN:
+            if start_row < last_row:  start_row += 1
+            if start_row > last_row:  start_row  = last_row
+        elif k == curses.KEY_UP:
+            if start_row > 0:         start_row -= 1
+            if start_row < 0:         start_row  = 0
+        elif k == curses.KEY_NPAGE:
+            if start_row < last_row:  start_row += height
+            if start_row > last_row:  start_row  = last_row
+        elif k == curses.KEY_PPAGE:
+            if start_row > 0:         start_row -= height
+            if start_row < 0:         start_row  = 0
+        elif k != -1:
+            break
 
     # Attempt to turn off the cursor
     curses.curs_set(False)
@@ -206,29 +244,30 @@ class Table:
         self._rarrow = False
         self._darrow = False
 
-    def update(self, rows, start_row, start_col, showInstance, scrWidth):
-        width  = 12 + self._size_x + 1 # Add space for detName column
-        height = 1 + rows              # One row for the header
+    def update(self, rows, start_row, start_col, showInstance, height, width):
+        size_x = 12 + self._size_x + 1 # Add space for detName column
+        size_y = 1 + rows              # One row for the header
 
         if showInstance != self._showInstance:
             self._showInstance = showInstance
-            width += 20 if showInstance else -20
+            size_x += 20 if showInstance else -20
 
         # Set up a sub-window that fits the whole Table
-        if height > self._size_y or width != self._size_x:
-            self._size_y = height
-            self._size_x  = width
+        if size_y > self._size_y or size_x != self._size_x:
+            self._size_y = size_y
+            self._size_x = size_x
 
-            self._dbg.write('pad height, width: %d, %d\n' % (height, width))
+            self._dbg.write('pad size_y, size_x: %d, %d\n' % (size_y, size_x))
 
-            self._pad = curses.newpad(height, width)
-            self._pad.erase()
+            self._pad = curses.newpad(max(height, size_y), max(width, size_x))
 
-        self._dbg.write('rows         %d, height %d\n' % (rows, height))
-        self._dbg.write('len(metrics) %d, width  %d\n' % (len(self.metrics), width))
+        self._pad.erase()
+
+        self._dbg.write('rows         %d, size_y %d\n' % (rows, size_y))
+        self._dbg.write('len(metrics) %d, size_x  %d\n' % (len(self.metrics), size_x))
 
         # Establish bounds
-        tot_rows = height       # 1 for the header bar
+        tot_rows = size_y
         rows = min(height, tot_rows)
 
         start_row = max(0,               start_row)
@@ -244,7 +283,7 @@ class Table:
         tot_cols = cols + len(self.metrics)
         for metric in self.metrics.values():
             mw = metric.width() # Includes the column separating space
-            if tw + mw <= scrWidth:
+            if tw + mw <= width:
                 tw += mw
                 cols += 1
 
@@ -260,7 +299,7 @@ class Table:
         self._rarrow = tot_cols > cols and start_col < tot_cols - cols
         self._darrow = tot_rows > rows and start_row < tot_rows - rows
 
-    def _header(self, scrWidth):
+    def _header(self, width):
         self._pad.attron(curses.color_pair(2))
         sc = 0
         start_y = 0
@@ -289,7 +328,7 @@ class Table:
             cw = metric.width() # Includes the column separating space
             self._dbg.write('cw %d, x %d, len %d, %d %d, header "%s"\n' %
                       (cw, x, len(header), x+len(header), cw - len(header), header))
-            if x - start_x + cw <= scrWidth:
+            if x - start_x + cw <= width:
                 self._dbg.write('y %d, x %d, header \'%s\'\n' % (y, x, header))
                 self._pad.addstr(y, x, f'%{cw}s' % header)
                 if sc < self._start_col:
@@ -300,14 +339,14 @@ class Table:
 
         return start_x
 
-    def _rows(self, samples, start_x, scrWidth):
+    def _rows(self, samples, start_x, width):
         rh = 1                  # Revisit: For now row height is 1 line
         sr = 0
         start_y = 0
         cw = 0
         for nInstance, instance in enumerate(samples): # Rows
             self._dbg.write('nInstance: %d, instance %s\n' % (nInstance, instance))
-            y = 1 + nInstance
+            y = 1 + nInstance  # !+ to skip over header
             x = 0
             if self._showInstance:
                 cw = 20
@@ -329,12 +368,13 @@ class Table:
                 fn = self.metrics[item].dpyFmt
                 cw = self.metrics[item].width()         # Includes the column separating space
                 entry, color = fn(values[1], cw - 1)    # Exclude the column separator space
-                if x - start_x + len(entry) <= scrWidth:
+                if x - start_x + len(entry) <= width:
                     self._pad.addstr(y, x, f'%{cw}s' % entry, curses.color_pair(color))
                     if sr < self._start_row:
                         start_y += rh
                         sr += 1
         self._dbg.write('sr %d, start_y %d\n' % (sr, start_y))
+
         return start_y
 
     def draw(self, samples, height, width, y):
@@ -356,7 +396,13 @@ class Table:
         if self._darrow:
             self._pad.addch(min(self._size_y - 1, start_y + height - 1), min(self._size_x - 1, start_x + width - 1), curses.ACS_DARROW, curses.A_STANDOUT)
 
-        self._pad.noutrefresh( start_y,start_x, y,0, height-1,width-1 )
+        #rows = min(self._size_y, height) - y
+        #if rows > 0:
+        #    self._pad.noutrefresh( start_y,start_x, y,0, rows,width-1 )
+        #return rows
+
+        if y < height:
+            self._pad.noutrefresh( start_y,start_x, y,0, height-1,width-1 )
         return self._size_y
 
 def draw(stdscr, srvurl, args, listOfQueries, dbg):
@@ -400,19 +446,55 @@ def draw(stdscr, srvurl, args, listOfQueries, dbg):
             #stdscr.erase()
             height, width = stdscr.getmaxyx()
             dbg.write('height %d, width %d\n' % (height, width))
+            ht = height - 1 if time is not None else height
 
+            y = 0
+            last_row = 0
+            for table in tables:
+                samples = update(table.metrics, time)
+                last_row += 1 + len(samples) + 1 # +1 for header, +1 for trailing blank line
+                table.update(len(samples), start_row, start_col, showInstance, ht, width)
+                rows = table.draw(samples, ht, width, y)
+                y += rows + 1
+                #if y < height - (2 if time is None else 3):
+                #    stdscr.addstr(y-1, 0, ' ' * width) # Clear line between tables
+                #break # Temporary for debugging
+
+            if time is not None:
+                entry = str(datetime.fromtimestamp(time))
+                entry = entry + ',  step = ' + str(step) + ' s'
+                #entry = entry + ',  step = ' + str(step) + ' s' + ' s %d, l %d, h %d, r %d, y %d'%(start_row, last_row, height, rows, y)
+                stdscr.addstr(height - 1, 0, entry, curses.color_pair(2))
+                if last_row > height:
+                    entry = 'Vertical scrolling doesn\'t work; expand screen'
+                    stdscr.addstr(height - 1, 40, entry, curses.color_pair(4))
+
+            # Refresh the screen
+            curses.doupdate() #refresh()
+
+            # Wait for next input
+            k = stdscr.getch()
+
+            # @todo: Scrolling past the first table doesn't work yet
             if   k == curses.KEY_DOWN:
-                start_row += 1
+                if start_row < last_row - height:  start_row += 1
+                if start_row > last_row - height:  start_row  = last_row - height
             elif k == curses.KEY_UP:
-                start_row -= 1
+                if start_row > 0:                  start_row -= 1
+                if start_row < 0:                  start_row  = 0
             elif k == curses.KEY_RIGHT:
                 start_col += 1
+                #if start_col < size_x - width:     start_col += 1
+                #if start_col > size_x - width:     start_col  = size_x - width
             elif k == curses.KEY_LEFT:
-                start_col -= 1
+                if start_col > 0:                  start_col -= 1
+                if start_col < 0:                  start_col  = 0
             elif k == curses.KEY_NPAGE:
-                start_col += height
+                if start_row < last_row - height:  start_row += last_row - height
+                if start_row > last_row - height:  start_row  = last_row - height
             elif k == curses.KEY_PPAGE:
-                start_col -= height
+                if start_row > 0:                  start_row -= last_row - height
+                if start_row < 0:                  start_row  = 0
             elif (k == ord('n') or k == ord(' ')) and time is not None:
                 time += step
             elif (k == ord('p')) and time is not None:
@@ -433,25 +515,6 @@ def draw(stdscr, srvurl, args, listOfQueries, dbg):
                 k = 0
             elif k == ord('\f'): # ^l
                 stdscr.clear()
-
-            y = 0
-            for table in tables:
-                samples = update(table.metrics, time)
-                table.update(len(samples), start_row, start_col, showInstance, width)
-                rows = table.draw(samples, height, width, y)
-                y += rows + 1
-                stdscr.addstr(y-1, 0, ' ' * width) # Clear line between tables
-
-            if time is not None:
-                entry = str(datetime.fromtimestamp(time))
-                entry = entry + ',  step = ' + str(step) + ' s'
-                stdscr.addstr(height - 1, 0, entry, curses.color_pair(2))
-
-            # Refresh the screen
-            curses.doupdate() #refresh()
-
-            # Wait for next input
-            k = stdscr.getch()
     except:
         dbg.done()
         raise
@@ -529,76 +592,87 @@ def daqStats(srvurl, args):
         return entry, color
 
     drpQueries = {
-#        'EvtCt'        : (_q(args, 'TCtbO_EvtCt'),               _fmtN,    'Event rate',                                              10),
-        'EvtRt'        : (_r(args, 'TCtbO_EvtCt'),             _fmtF,    'Event rate',                                               8),
-        'DmaInUse'     : (_q(args, 'drp_dma_in_use'),          _fmtN,    '# of DMA buffers in use',                                  8),
-        'WrkInQ'       : (_q(args, 'drp_worker_input_queue'),  _fmtN,    '# of Events on the worker Input  Queue',                   6),
-        'WrkOutQ'      : (_q(args, 'drp_worker_output_queue'), _fmtN,    '# of Events on the worker Output Queue',                   7),
-        'TO_EvtCt'     : (_q(args, 'TCtbO_EvtCt'),             _fmtN,    '# of Input  events posted   to   TEB',                    10),
-        'TI_EvtCt'     : (_q(args, 'TCtbI_EvtCt'),             _fmtN,    '# of Result events received from TEB',                    10),
-        'TO_BatCt'     : (_q(args, 'TCtbO_BatCt'),             _fmtN,    '# of Input  batches',                                     10),
-        'TI_BatCt'     : (_q(args, 'TCtbI_BatCt'),             _fmtN,    '# of Result batches',                                     10),
-        'TO_InFlt'     : (_q(args, 'TCtbO_InFlt'),             _fmtN,    '# of Events in flight from DRP Input side to EbReceiver', 10),
-#        'BtAlCt'       : (_q(args, 'TCtbO_BtAlCt'),            _fmtN,    '# of Input batches allocated',                             8),
-#        'BtFrCt'       : (_q(args, 'TCtbO_BtFrCt'),            _fmtN,    '# of Input batches freed',                                 8),
-#        'BtInUse'      : (_q(args, 'TCtb_IUBats'),             _fmtN,    '# of Input batches in use',                                7),
-#        'BtWtg'        : (_q(args, 'TCtbO_BtWtg'),             _fmtBool, 'Input batch pool exhaustion flag',                         5),
-        'TxPdg_Inp'    : (_q(args, 'TCtbO_TxPdg'),             _fmtHex,  'Input batch transmit-to-TEB pending list',                16),
-        'RxPdg_Res'    : (_q(args, 'TCtbI_RxPdg'),             _fmtN,    'Result batch receive pending flag',                       10),
-        'DefSz'        : (_q(args, 'TCtbI_DefSz'),             _fmtN,    '# of Results batches on the deferred list',                5),
-        'BypCt'        : (_q(args, 'TCtbI_BypCt'),             _fmtN,    '# of Events bypassing the TEB',                            5),
-        'NoPrgCt'      : (_q(args, 'TCtbI_NPrgCt'),            _fmtN,    '# of times EbCtrbIn didn\'t make progress',                8),
-        'InpMisCt'     : (_q(args, 'TCtbI_MisCt'),             _fmtN,    '# of Results missing an Input event',                      8),
-        'RecDp'        : (_q(args, 'DRP_RecordDepth'),         _fmtN,    '# of Free slots on the Record Queue',                      5),
-        'FlWrB'        : (_q(args, 'DRP_fileWriting'),         _fmtBool, 'Indicates when file writing is stalled',                   6),
-        'BfFrB'        : (_q(args, 'DRP_bufFreeBlk'),          _fmtBool, 'Indicates when FileWriter is blocked for a free buffer',   6),
-        'BfPndB'       : (_q(args, 'DRP_bufPendBlk'),          _fmtBool, 'Indicates when FileWriter is blocked on a pending buffer', 6),
-        'SmdWrB'       : (_q(args, 'DRP_smdWriting'),          _fmtBool, 'Indicates when SMD file writing is stalled',               6),
-        'MO_EvCt'      : (_q(args, 'MCtbO_EvCt'),              _fmtN,    '# of Events posted to the MEB',                           10),
-        'MO_TxPdg'     : (_q(args, 'MCtbO_TxPdg'),             _fmtHex,  'Event Transmit-to-MEB pending list',                      16),
-        'MO_RxPdg'     : (_q(args, 'MCtbO_RxPdg'),             _fmtN,    'Transition buffer # from MEB pending flag',                8),
+#        'EvtCt'        : (_q(args, 'TCtbO_EvtCt'),               _fmtN,    'DRP: Event rate',                                              10),
+        'EvtRt'        : (_r(args, 'TCtbO_EvtCt'),             _fmtF,    'DRP: Event rate',                                               8),
+        'DmaInUse'     : (_q(args, 'drp_dma_in_use'),          _fmtN,    'DRP: # of DMA buffers in use',                                  8),
+        'PblInUse'     : (_q(args, 'drp_pebble_in_use'),       _fmtN,    'DRP: # of Pebble buffers in use',                                  8),
+        'WrkInQ'       : (_q(args, 'drp_worker_input_queue'),  _fmtN,    'DRP: # of Events on the worker Input  Queue',                   6),
+        'WrkOutQ'      : (_q(args, 'drp_worker_output_queue'), _fmtN,    'DRP: # of Events on the worker Output Queue',                   7),
+        'TO_EvtCt'     : (_q(args, 'TCtbO_EvtCt'),             _fmtN,    'DRP: # of Input  events posted   to   TEB',                    10),
+        'TI_EvtCt'     : (_q(args, 'TCtbI_EvtCt'),             _fmtN,    'DRP: # of Result events received from TEB',                    10),
+        'TO_BatCt'     : (_q(args, 'TCtbO_BatCt'),             _fmtN,    'DRP: # of Input  batches',                                     10),
+        'TI_BatCt'     : (_q(args, 'TCtbI_BatCt'),             _fmtN,    'DRP: # of Result batches',                                     10),
+        'TO_InFlt'     : (_q(args, 'TCtbO_InFlt'),             _fmtN,    'DRP: # of Events in flight from DRP Input side to EbReceiver', 10),
+#        'BtAlCt'       : (_q(args, 'TCtbO_BtAlCt'),            _fmtN,    'DRP: # of Input batches allocated',                             8),
+#        'BtFrCt'       : (_q(args, 'TCtbO_BtFrCt'),            _fmtN,    'DRP: # of Input batches freed',                                 8),
+#        'BtInUse'      : (_q(args, 'TCtb_IUBats'),             _fmtN,    'DRP: # of Input batches in use',                                7),
+#        'BtWtg'        : (_q(args, 'TCtbO_BtWtg'),             _fmtBool, 'DRP: Input batch pool exhaustion flag',                         5),
+        'TxPdg_Inp'    : (_q(args, 'TCtbO_TxPdg'),             _fmtHex,  'DRP: Input batch transmit-to-TEB pending list',                16),
+        'RxPdg_Res'    : (_q(args, 'TCtbI_RxPdg'),             _fmtN,    'DRP: Result batch receive pending flag',                       10),
+        'DefSz'        : (_q(args, 'TCtbI_DefSz'),             _fmtN,    'DRP: # of Results batches on the deferred list',                5),
+#        'BypCt'        : (_q(args, 'TCtbI_BypCt'),             _fmtN,    'DRP: # of Events bypassing the TEB',                            5),
+        'DmaErr'       : (_q(args, 'drp_num_dma_errors'),      _fmtN,    'DRP: # of DMAs with errors',                                    6),
+        'NoComRoG'     : (_q(args, 'drp_num_no_common_rog'),   _fmtN,    'DRP: # of TimingHeaders w/o common RoG trigger',                8),
+        'MissRoGs'     : (_q(args, 'drp_num_missing_rogs'),    _fmtN,    'DRP: # of SlowUpdates missing one or more RoGs',                8),
+        'TH_Err'       : (_q(args, 'drp_num_th_error'),        _fmtN,    'DRP: # of TimingHeaders with error bit set',                    6),
+        'PgpJmp'       : (_q(args, 'drp_num_pgp_jump'),        _fmtN,    'DRP: # of jumps in complete l1Count',                           6),
+        'NoTrDg'       : (_q(args, 'drp_num_no_tr_dgram'),     _fmtN,    'DRP: # of times Tr pool was empty',                             6),
+        'NoPrgCt'      : (_q(args, 'TCtbI_NPrgCt'),            _fmtN,    'DRP: # of times EbCtrbIn didn\'t make progress',                8),
+        'InpMisCt'     : (_q(args, 'TCtbI_MisCt'),             _fmtN,    'DRP: # of Results missing an Input event',                      8),
+        'RecDp'        : (_q(args, 'DRP_RecordDepth'),         _fmtN,    'DRP: # of Free slots on the Record Queue',                      5),
+        'FlWrB'        : (_q(args, 'DRP_fileWriting'),         _fmtBool, 'DRP: Indicates when file writing is stalled',                   6),
+        'BfFrB'        : (_q(args, 'DRP_bufFreeBlk'),          _fmtBool, 'DRP: Indicates when FileWriter is blocked for a free buffer',   6),
+        'BfPndB'       : (_q(args, 'DRP_bufPendBlk'),          _fmtBool, 'DRP: Indicates when FileWriter is blocked on a pending buffer', 6),
+        'SmdWrB'       : (_q(args, 'DRP_smdWriting'),          _fmtBool, 'DRP: Indicates when SMD file writing is stalled',               6),
+        'MO_EvCt'      : (_q(args, 'MCtbO_EvCt'),              _fmtN,    'DRP: # of Events posted to the MEB',                           10),
+        'MO_TxPdg'     : (_q(args, 'MCtbO_TxPdg'),             _fmtHex,  'DRP: Event Transmit-to-MEB pending list',                      16),
+        'MO_RxPdg'     : (_q(args, 'MCtbO_RxPdg'),             _fmtN,    'DRP: Transition buffer # from MEB pending flag',                8),
     }
 
     tebQueries = {
-	      'EvtRt'        : (_r(args, 'TEB_EvtCt'),        _fmtF,   'Event rate',                8),
-	      'EvtCt'        : (_q(args, 'TEB_EvtCt'),        _fmtN,   '# of Events handled',      10),
-	      'TrCt'         : (_q(args, 'TEB_TrCt'),         _fmtN,   '# of Transitions handled', 10),
-	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'TEB'), _fmtN,   'Receive pending flag',      5),
-	      'BtInCt'       : (_q(args, 'EB_BfInCt', 'TEB'), _fmtN,   '# of Input Batches',        8),
-	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'TEB'), _fmtN,   '# of Allocated events',    10),
-	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'TEB'), _fmtN,   '# of Freed events',        10),
-	      'FixUpCt'      : (_q(args, 'EB_FxUpCt', 'TEB'), _fmtN,   '# of Swept out events',     8),
-	      'TmoEvCt'      : (_q(args, 'EB_ToEvCt', 'TEB'), _fmtN,   '# of Timed out events',     8),
-	      'SpltCt'       : (_q(args, 'TEB_SpltCt'),       _fmtN,   'Split event count',         8),
-	      'CtrbMissing'  : (_q(args, 'EB_CbMsMk', 'TEB'), _fmtHex, 'Missing contributors',     16),
-	      'BtOutCt'      : (_q(args, 'TEB_BatCt'),        _fmtN,   '# of Result Batches',       8),
-#	       'BtAlCt'       : (_q(args, 'TEB_BtAlCt'),       _fmtN,   '# of Batches Allocated',    8),
-#	       'BtFrCt'       : (_q(args, 'TEB_BtFrCt'),       _fmtN,   '# of Batched freed',        8),
-#        'BtInUse'      : (_q(args, 'TEB_IUBats'),       _fmtN,   '# of Input batches in use',         7),
-#        'BtWtg'        : (_q(args, 'TEB_BtWtg'),       _fmtBool, 'Result batch pool exhaustion flag', 5),
-	      'TxPdg_Res'    : (_q(args, 'TEB_TxPdg'),        _fmtHex, 'Transmit pending list',    16),
-	      'WrtCt'        : (_q(args, 'TEB_WrtCt'),        _fmtN,   '# of Record  triggers',    10),
-	      'MonCt'        : (_q(args, 'TEB_MonCt'),        _fmtN,   '# of Monitor triggers',    10),
-	      'PsclCt'       : (_q(args, 'TEB_PsclCt'),       _fmtN,   'Prescale count',            8),
+	      'EvtRt'        : (_r(args, 'TEB_EvtCt'),        _fmtF,   'TEB: Event rate',                8),
+	      'EvtCt'        : (_q(args, 'TEB_EvtCt'),        _fmtN,   'TEB: # of Events handled',      10),
+	      'TrCt'         : (_q(args, 'TEB_TrCt'),         _fmtN,   'TEB: # of Transitions handled', 10),
+	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'TEB'), _fmtN,   'TEB: Receive pending flag',      5),
+	      'BtInCt'       : (_q(args, 'EB_BfInCt', 'TEB'), _fmtN,   'TEB: # of Input Batches',        8),
+	      'EpOcCt'       : (_q(args, 'EB_EpOcCt', 'TEB'), _fmtN,   'TEB: Epoch pool occupancy',     10),
+	      'EvOcCt'       : (_q(args, 'EB_EvOcCt', 'TEB'), _fmtN,   'TEB: Event pool occupancy',     10),
+	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'TEB'), _fmtN,   'TEB: # of Allocated events',    10),
+	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'TEB'), _fmtN,   'TEB: # of Freed events',        10),
+	      'FixUpCt'      : (_q(args, 'EB_FxUpCt', 'TEB'), _fmtN,   'TEB: # of Swept out events',     8),
+	      'TmoEvCt'      : (_q(args, 'EB_ToEvCt', 'TEB'), _fmtN,   'TEB: # of Timed out events',     8),
+	      'SpltCt'       : (_q(args, 'TEB_SpltCt'),       _fmtN,   'TEB: Split event count',         8),
+	      'CtrbMissing'  : (_q(args, 'EB_CbMsMk', 'TEB'), _fmtHex, 'TEB: Missing contributors',     16),
+	      'BtOutCt'      : (_q(args, 'TEB_BatCt'),        _fmtN,   'TEB: # of Result Batches',       8),
+#	       'BtAlCt'       : (_q(args, 'TEB_BtAlCt'),       _fmtN,   'TEB: # of Batches Allocated',    8),
+#	       'BtFrCt'       : (_q(args, 'TEB_BtFrCt'),       _fmtN,   'TEB: # of Batched freed',        8),
+#        'BtInUse'      : (_q(args, 'TEB_IUBats'),       _fmtN,   'TEB: # of Input batches in use',         7),
+#        'BtWtg'        : (_q(args, 'TEB_BtWtg'),       _fmtBool, 'TEB: Result batch pool exhaustion flag', 5),
+	      'TxPdg_Res'    : (_q(args, 'TEB_TxPdg'),        _fmtHex, 'TEB: Transmit pending list',    16),
+	      'WrtCt'        : (_q(args, 'TEB_WrtCt'),        _fmtN,   'TEB: # of Record  triggers',    10),
+	      'MonCt'        : (_q(args, 'TEB_MonCt'),        _fmtN,   'TEB: # of Monitor triggers',    10),
+	      'PsclCt'       : (_q(args, 'TEB_PsclCt'),       _fmtN,   'TEB: Prescale count',            8),
     }
 
     mebQueries = {
-	      'EvtRt'        : (_r(args, 'MEB_EvtCt'),        _fmtF,   'Event rate',                     8),
-	      'EvtCt'        : (_q(args, 'MEB_EvtCt'),        _fmtN,   '# of Events handled',           10),
-	      'TrCt'         : (_q(args, 'MEB_TrCt'),         _fmtN,   '# of Transitions handled',      10),
-	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'MEB'), _fmtN,   'Receive pending flag',           5),
-	      'BfInCt'       : (_q(args, 'EB_BfInCt', 'MEB'), _fmtN,   '# of Input Buffers',             8),
-	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'MEB'), _fmtN,   '# of Allocated events',         10),
-	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'MEB'), _fmtN,   '# of Freed events',             10),
-	      'FixUpCt'      : (_q(args, 'EB_FxUpCt', 'MEB'), _fmtN,   '# of Swept out events',          8),
-	      'TmoEvCt'      : (_q(args, 'EB_ToEvCt', 'MEB'), _fmtN,   '# of Timed out events',          8),
-	      'SpltCt'       : (_q(args, 'MEB_SpltCt'),       _fmtN,   'Split event count',         8),
-	      'CtrbMissing'  : (_q(args, 'EB_CbMsMk', 'MEB'), _fmtHex, 'Missing contributors',          16),
-        'RqBufCt'      : (_q(args, 'MRQ_BufCt'),        _fmtN,   '# of Available Request buffers', 8),
-	      'ReqRt'        : (_r(args, 'MEB_ReqCt'),        _fmtF,   'Monitor request rate ',          8),
-	      'ReqCt'        : (_q(args, 'MEB_ReqCt'),        _fmtN,   '# of Monitor requests',          8),
-	      'TxPdg_MRQ'    : (_q(args, 'MRQ_TxPdg'),        _fmtHex, 'MRQ transmit pending list',     16),
-	      'TxPdg_TrBf'   : (_q(args, 'EB_TxPdg',  'MEB'), _fmtHex, 'TrBufNo Transmit pending list', 16),
+	      'EvtRt'        : (_r(args, 'MEB_EvtCt'),        _fmtF,   'MEB: Event rate',                     8),
+	      'EvtCt'        : (_q(args, 'MEB_EvtCt'),        _fmtN,   'MEB: # of Events handled',           10),
+	      'TrCt'         : (_q(args, 'MEB_TrCt'),         _fmtN,   'MEB: # of Transitions handled',      10),
+	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'MEB'), _fmtN,   'MEB: Receive pending flag',           5),
+	      'BfInCt'       : (_q(args, 'EB_BfInCt', 'MEB'), _fmtN,   'MEB: # of Input Buffers',             8),
+	      'EpOcCt'       : (_q(args, 'EB_EpOcCt', 'MEB'), _fmtN,   'MEB: Epoch pool occupancy',          10),
+	      'EvOcCt'       : (_q(args, 'EB_EvOcCt', 'MEB'), _fmtN,   'MEB: Event pool occupancy',          10),
+	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'MEB'), _fmtN,   'MEB: # of Allocated events',         10),
+	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'MEB'), _fmtN,   'MEB: # of Freed events',             10),
+	      'FixUpCt'      : (_q(args, 'EB_FxUpCt', 'MEB'), _fmtN,   'MEB: # of Swept out events',          8),
+	      'TmoEvCt'      : (_q(args, 'EB_ToEvCt', 'MEB'), _fmtN,   'MEB: # of Timed out events',          8),
+	      'SpltCt'       : (_q(args, 'MEB_SpltCt'),       _fmtN,   'MEB: Split event count',              8),
+	      'CtrbMissing'  : (_q(args, 'EB_CbMsMk', 'MEB'), _fmtHex, 'MEB: Missing contributors',          16),
+        'RqBufCt'      : (_q(args, 'MRQ_BufCt'),        _fmtN,   'MEB: # of Available Request buffers', 8),
+	      'ReqRt'        : (_r(args, 'MEB_ReqCt'),        _fmtF,   'MEB: Monitor request rate ',          8),
+	      'ReqCt'        : (_q(args, 'MEB_ReqCt'),        _fmtN,   'MEB: # of Monitor requests',          8),
+	      'TxPdg_MRQ'    : (_q(args, 'MRQ_TxPdg'),        _fmtHex, 'MEB: MRQ transmit pending list',     16),
+	      'TxPdg_TrBf'   : (_q(args, 'EB_TxPdg',  'MEB'), _fmtHex, 'MEB: TrBufNo Transmit pending list', 16),
     }
 
     #width  = 0

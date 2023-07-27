@@ -47,10 +47,10 @@ namespace Pds {
       void               dump(unsigned detail) const;
       const uint64_t     epochAllocCnt()  const;
       const uint64_t     epochFreeCnt()   const;
-      const uint64_t     epochOccCnt()    const;
+      const int64_t      epochOccCnt()    const;
       const uint64_t     eventAllocCnt()  const;
       const uint64_t     eventFreeCnt()   const;
-      const uint64_t     eventOccCnt()    const;
+      const int64_t      eventOccCnt()    const;
       const uint64_t     eventPoolDepth() const; // Right: not a ref
       const uint64_t     timeoutCnt()     const;
       const uint64_t     fixupCnt()       const;
@@ -98,8 +98,8 @@ namespace Pds {
       mutable uint64_t             _tmoEvtCnt;     // Count of timed out events
       mutable uint64_t             _fixupCnt;      // Count of flushed   events
       mutable uint64_t             _missing;       // Bit list of missing contributors
-      mutable uint64_t             _epochOccCnt;   // Number of epochs in use
-      mutable uint64_t             _eventOccCnt;   // Number of events in use
+      mutable int64_t              _epochOccCnt;   // Number of epochs in use
+      mutable int64_t              _eventOccCnt;   // Number of events in use
       mutable int64_t              _age;           // Event age
       mutable int64_t              _ebTime;        // Processing time
       std::vector<int64_t>         _arrTime;       // Contribution arrival time
@@ -119,7 +119,7 @@ inline const uint64_t Pds::Eb::EventBuilder::epochFreeCnt() const
 }
 
 // Revisit: This one is not terribly interesting and mirrors eventOccCnt()
-inline const uint64_t Pds::Eb::EventBuilder::epochOccCnt() const
+inline const int64_t Pds::Eb::EventBuilder::epochOccCnt() const
 {
   _epochOccCnt = epochAllocCnt() - epochFreeCnt();
 
@@ -136,7 +136,7 @@ inline const uint64_t Pds::Eb::EventBuilder::eventFreeCnt() const
   return _eventFreelist ? _eventFreelist->numberofFrees() : 0;
 }
 
-inline const uint64_t Pds::Eb::EventBuilder::eventOccCnt() const
+inline const int64_t Pds::Eb::EventBuilder::eventOccCnt() const
 {
   _eventOccCnt = eventAllocCnt() - eventFreeCnt();
 

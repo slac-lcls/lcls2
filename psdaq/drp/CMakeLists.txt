@@ -22,12 +22,15 @@ target_link_libraries(drpbase
     exporter
     collection
     xtcdata::xtc
+    epicstools
+    Threads::Threads
 )
 
 add_executable(drp
     AreaDetector.cc
     Digitizer.cc
     EpixHR2x2.cc
+    EpixHRemu.cc
     Epix100.cc
     EpixQuad.cc
     TimingDef.cc
@@ -50,14 +53,14 @@ target_link_libraries(drp
     psalg::digitizer
     psalg::detector
     xtcdata::xtc
-    Threads::Threads
     drpbase
-    epicstools
     trigger
 )
 
 add_executable(drp_bld
-    BldDetectorSlow.cc
+#    BldDetectorSlow.cc
+    BldDetector.cc
+    BldNames.cc
 )
 
 target_include_directories(drp_bld PUBLIC

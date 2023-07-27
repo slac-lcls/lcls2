@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
 import sys
-from time import time
-from psana.detector.dir_root import DIR_REPO_DARK_PROC
-from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, init_stream_handler
+from psana.detector.dir_root import DIR_REPO # _DARK_PROC
+from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 USAGE = 'Usage:'\
-      + '\n  %s -k <DataSource-kwargs> -d <detector> [-o <output-result-directory>] [-L <logging-mode>] [...]'\
+      + '\n  %s -k <DataSource-kwargs> -d <detector> [-o <output-directory-for-results>] [-L <logging-mode>] [...]' % SCRNAME\
       + '\nExamples:'\
       + '\n  %s -k exp=tmox49720,run=209 -d epix100 -D' % SCRNAME\
       + '\n  %s -k exp=tmoc00318,run=10,dir=/a/b/c/xtc -d epix100 -D' % SCRNAME\
@@ -26,39 +25,27 @@ USAGE = 'Usage:'\
 
 def do_main():
 
-    t0_sec = time()
-
     parser = argument_parser()
     args = parser.parse_args()
-    kwa = vars(args)
-    #defs = vars(parser.parse_args([])) # dict of defaults only
-
-    if len(sys.argv)<3: exit('\n%s\n' % USAGE)
-
+    if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 
-    init_stream_handler(loglevel=args.logmode)
-
-    logger.debug('%s\nCommand line:%s' % ((50*'_'), ' '.join(sys.argv)))
-
-    from psana.detector.Utils import info_parser_arguments
-    logger.info(info_parser_arguments(parser))
-
+    from time import time
     from psana.detector.UtilsCalib import pedestals_calibration
-    pedestals_calibration(**kwa)
-
+    t0_sec = time()
+    pedestals_calibration(parser)
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
 
 
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_dskwargs  = None    # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
+    d_dskwargs= None    # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
     d_det     = None    # 'tmoopal'
     d_nrecs   = 1000    # number of records to collect and process
     d_nrecs1  = 100     # number of records to process at 1st stage
-    d_dirrepo = DIR_REPO_DARK_PROC  # '<DIR_ROOT>/detector/calib2'
+    d_dirrepo = DIR_REPO  # '<DIR_ROOT>/detector/calib2'
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
@@ -82,7 +69,7 @@ def argument_parser():
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
     d_deploy  = False
     d_tstamp  = None    # 20180910111049 or run number <10000
-    d_version = 'V2022-11-22'
+    d_version = 'V2023-04-20'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_plotim  = 0
@@ -96,7 +83,7 @@ def argument_parser():
     h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
     h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
-    h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
+    h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
     h_stepnum = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax = 'maximum number of steps to process, default = %s' % str(d_stepmax)
@@ -164,6 +151,6 @@ def argument_parser():
 
 if __name__ == "__main__":
     do_main()
-    exit('End of %s'%SCRNAME)
+    sys.exit('End of %s'%SCRNAME)
 
 # EOF

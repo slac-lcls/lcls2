@@ -25,6 +25,8 @@ from psana.graphqt.FWViewImage import FWViewImage, ct
 from psana.graphqt.IVImageAxes import IVImageAxes, test_image
 from psana.graphqt.IVSpectrum import IVSpectrum
 
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+
 class IVMain(QWidget):
 
     def __init__(self, **kwargs):
@@ -93,14 +95,14 @@ class IVMain(QWidget):
 
 
 def image_viewer(**kwargs):
+    repodir = kwargs.get('repodir', './work')
     loglevel = kwargs.get('loglevel', 'DEBUG').upper()
     intlevel = logging._nameToLevel[loglevel]
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=intlevel)
 
-    if kwargs.get('rec_at_start', False):
+    if kwargs.get('rec_at_start', True):
         from psana.detector.RepoManager import RepoManager
-        RepoManager('log-file', dettype=None).\
-        save_record_at_start(sys.argv[0].rsplit('/')[-1])
+        RepoManager(dirrepo=repodir).save_record_at_start(SCRNAME)
 
     a = QApplication(sys.argv)
     w = IVMain(**kwargs)
