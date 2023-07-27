@@ -84,7 +84,7 @@ static void drpSendReceive(int inpMqId, int resMqId, XtcData::TransitionId::Valu
 
     rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 10000);
     if (rc) {
-        logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+        logging::critical("[Thread %u] Response message from Drp python not received: %m", threadNum);
         abort();
     }
 }
@@ -152,7 +152,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         // Wait for python process to be up
         rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 15000);
         if (rc) {
-            logging::critical("[Thread %u] Message from Drp python not received", threadNum);
+            logging::critical("[Thread %u] 'Ready' message from Drp python not received", threadNum);
             abort();
         }
 
