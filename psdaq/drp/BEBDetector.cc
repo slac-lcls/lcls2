@@ -183,7 +183,7 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     if (jsonxtc.extent>m_para->maxTrSize)
         throw "**** Config json output too large for buffer\n";
 
-    XtcData::ConfigIter iter(&jsonxtc);
+    XtcData::ConfigIter iter(&jsonxtc, end);
     unsigned r = _configure(xtc,bufEnd,iter);
 
     // append the config xtc info to the dgram
@@ -224,7 +224,7 @@ Pds::TimingHeader* BEBDetector::getTimingHeader(uint32_t index) const
     return static_cast<Pds::TimingHeader*>(ebh->next());
 }
 
-std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, unsigned length) 
+std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, unsigned length)
 {
     EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)buffer, length);
     EvtBatcherSubFrameTail* ebsft = ebit.next();
@@ -243,20 +243,10 @@ void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
     uint32_t dmaIndex = event->buffers[lane].index;
     unsigned data_size = event->buffers[lane].size;
 
-    try {
-        std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
-        if (m_debatch)
-            subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
-        _event(dgram.xtc, bufEnd, subframes);
-    } catch (std::runtime_error& e) {
-        logging::critical("BatcherIterator error");
-        const uint32_t* p = reinterpret_cast<const uint32_t*>(m_pool->dmaBuffers[dmaIndex]);
-        for(unsigned j=0; j<data_size; j+= 32) {
-            logging::critical("%08x %08x %08x %08x %08x %08x %08x %08x",
-                              p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
-            p += 8;
-        }
-    }
+    std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
+    if (m_debatch)
+        subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
+    _event(dgram.xtc, bufEnd, subframes);
 }
 
 void BEBDetector::shutdown()

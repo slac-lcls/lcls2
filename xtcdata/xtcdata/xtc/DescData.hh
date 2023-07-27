@@ -317,7 +317,8 @@ public:
         // can have any length
         bytes = ((bytes-1)/4)*4+4;
         // protect against being passed an un-terminated string
-        const unsigned MaxStrLen = 2048;
+        auto MaxStrLen = (reinterpret_cast<const char *>(_bufEnd) -
+                          reinterpret_cast<char *>(_shapesdata.data().next()));
         if (bytes>MaxStrLen) bytes = MaxStrLen;
         unsigned charStrShape[MaxRank];
         charStrShape[0] = bytes;

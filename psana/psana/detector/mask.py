@@ -1,7 +1,7 @@
 
 """
-:py:class:`Mask` - sets areadetector property AreaDetector._mask_
-=======================================================================
+:py:class:`Mask` - alternative access to AreaDetector det.raw._mask_* methods
+=============================================================================
 
 Usage::
 
@@ -23,7 +23,6 @@ Usage::
     mask = o.mask_edges(width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa)
     mask = o.mask_center(wcenter=0, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa)
     mask = o.mask_neighbors(mask, rad=9, ptrn='r')
-
 
 2022-03-29 created by Mikhail Dubrovin
 """

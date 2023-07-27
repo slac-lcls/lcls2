@@ -3,20 +3,6 @@
 # xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/test"
 # >bsub -n 64 -q psfehq -o log.txt mpirun python user_loops.py
 
-# cpo found this on the web as a way to get mpirun to exit when
-# one of the ranks has an exception
-import sys
-# Global error handler
-def global_except_hook(exctype, value, traceback):
-    sys.stderr.write("except_hook. Calling MPI_Abort().\n")
-    # NOTE: mpi4py must be imported inside exception handler, not globally.
-    # In chainermn, mpi4py import is carefully delayed, because
-    # mpi4py automatically call MPI_Init() and cause a crash on Infiniband environment.
-    import mpi4py.MPI
-    mpi4py.MPI.COMM_WORLD.Abort(1)
-    sys.__excepthook__(exctype, value, traceback)
-sys.excepthook = global_except_hook
-
 #import logging
 #logger = logging.getLogger('psana.psexp.node')
 #logger.setLevel(logging.DEBUG)

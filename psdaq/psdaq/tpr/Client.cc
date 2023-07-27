@@ -12,7 +12,9 @@ Client::Client(const char* devname,
                unsigned    channel,
                bool        clksel,
                ModeSel     modsel) :
-  _channel(channel)
+  _channel(channel),
+  _dev    (nullptr),
+  _queues (nullptr)
 {
   _fd = ::open(devname, O_RDWR);
   if (_fd<0) {
@@ -54,7 +56,7 @@ Client::Client(const char* devname,
 
   _dev->xbar.setTpr( XBar::StraightIn );
   _dev->xbar.setTpr( XBar::StraightOut);
-  
+
   { Pds::Tpr::RingB& ring = _dev->ring0;
     ring.clear();
     ring.enable(true);
@@ -64,7 +66,7 @@ Client::Client(const char* devname,
 
   char dev[16];
   sprintf(dev,"%s%x",devname,_channel);
-  
+
   _fdsh = open(dev, O_RDWR);
   if (_fdsh < 0) {
     perror("Could not open sh");
@@ -83,15 +85,20 @@ Client::Client(const char* devname,
 
 Client::~Client() { release(); }
 
-void Client::release() { 
-  if (_fd>=0) {
-    close(_fd); 
-    munmap(_dev,sizeof(Pds::Tpr::TprReg));
+void Client::release() {
+  if (_fdsh >= 0) {
+    close(_fdsh);
+    if (_queues)  munmap(_queues, sizeof(Pds::Tpr::Queues));
   }
-  _fd=-1; 
+  _fdsh = -1;
+  if (_fd>=0) {
+    close(_fd);
+    if (_dev)  munmap(_dev,sizeof(Pds::Tpr::TprReg));
+  }
+  _fd=-1;
 }
 
-void Client::_dump() const 
+void Client::_dump() const
 {
   printf("TprBase::channel[%u] evtsel %08x control %x\n",
          _channel,
@@ -103,6 +110,12 @@ void Client::_dump() const
 void Client::setup(unsigned output, unsigned delay, unsigned width, unsigned polarity, unsigned delaytap)
 {
   _dev->base.setupTrigger(output, _channel, polarity, delay, width, delaytap);
+}
+
+// Setup the transmit source
+void Client::loopOut(bool enable)
+{
+    _dev->xbar.setTpr(enable ? XBar::LoopOut : XBar::StraightOut);
 }
 
   //  Enable the trigger

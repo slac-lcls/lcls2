@@ -14,10 +14,16 @@ if [[ $OS == linux ]]; then
 
   PYVER=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
   export PYTHONPATH="$PWD/install/lib/python$PYVER/site-packages"
+  export TESTRELDIR="$PWD/install"
 
   ./build_all.sh -p install
   pytest psana/psana/tests
   pytest psdaq/psdaq/tests
+  cd ..
+  git clone https://github.com/slac-lcls/ami.git
+  cd ami
+  ./build_all.sh
+  xvfb-run pytest
 elif [[ $OS == osx ]]; then
   # add conda to the path
   source "$HOME/miniconda/etc/profile.d/conda.sh"

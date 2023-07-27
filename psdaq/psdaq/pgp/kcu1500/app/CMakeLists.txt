@@ -11,6 +11,7 @@ add_library(kcu SHARED
 target_include_directories(kcu PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../../aes-stream-drivers/include
 )
 
@@ -29,6 +30,7 @@ add_library(staticKcu STATIC
 target_include_directories(staticKcu PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../../aes-stream-drivers/include
 )
 
@@ -43,7 +45,7 @@ target_link_libraries(staticKcu
 add_executable(kcuStatus xStatus.cpp)
 
 target_include_directories(kcuStatus PUBLIC
-    ../../aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 # kcuStatus needs to be runnable at boot time without the standard environment
@@ -54,7 +56,7 @@ target_link_libraries(kcuStatus
 add_executable(kcuPgpStatus xPgpStatus.cpp)
 
 target_include_directories(kcuPgpStatus PUBLIC
-    ../../aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 target_link_libraries(kcuPgpStatus
@@ -64,13 +66,13 @@ target_link_libraries(kcuPgpStatus
 add_executable(kcuHist xHist.cpp)
 
 target_include_directories(kcuHist PUBLIC
-    ../../aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 add_executable(kcuSim xSim.cpp)
 
 target_include_directories(kcuSim PUBLIC
-    ../../aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 #add_executable(kcuSimProxy xSimProxy.cpp)
@@ -82,24 +84,26 @@ target_include_directories(kcuSim PUBLIC
 add_executable(kcuSimValid xSimValid.cpp)
 
 target_include_directories(kcuSimValid PUBLIC
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../../aes-stream-drivers/include
 )
 
 add_executable(kcuLoopTest xLoopTest.cpp)
 
 target_include_directories(kcuLoopTest PUBLIC
-    ../../aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 add_executable(kcuReg xReg.cpp)
 
 target_include_directories(kcuReg PUBLIC
-    ../../aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 add_executable(kcuRead xRead.cpp)
 
 target_include_directories(kcuRead PUBLIC
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../../aes-stream-drivers/include
 )
 
@@ -111,6 +115,7 @@ target_link_libraries(kcuRead
 add_executable(kcuReadBulk xReadBulk.cpp)
 
 target_include_directories(kcuReadBulk PUBLIC
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../../aes-stream-drivers/include
 )
 
@@ -122,6 +127,7 @@ target_link_libraries(kcuReadBulk
 add_executable(kcuWrite xWrite.cpp)
 
 target_include_directories(kcuWrite PUBLIC
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../../aes-stream-drivers/include
 )
 
@@ -133,13 +139,13 @@ target_link_libraries(kcuWrite
 add_executable(kcuDmaStatus xDmaStatus.cpp)
 
 target_include_directories(kcuDmaStatus PUBLIC
-    ../../aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 add_executable(kcuMargin xMargin.cpp)
 
 target_include_directories(kcuMargin PUBLIC
-    ../../aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 target_link_libraries(kcuMargin

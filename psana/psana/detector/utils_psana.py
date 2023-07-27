@@ -46,6 +46,34 @@ def timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S'):
     return str_tstamp(fmt=fmt, time_sec=seconds(run.timestamp))
 
 
+def datasource_kwargs_from_string(s):
+    """ Parses string parameters like "exp=<exp-name>,run=<comma-separated-run-numbers>,dir=<xtc-files-directory>,max_events=<number-of-events>"
+        to dict keyward arguments.
+    See: https://confluence.slac.stanford.edu/display/LCLSIIData/psana
+
+    files: str - xtc2 file name
+    exp: str - experiment name
+    run: int run number or str with comma-separated run numbers, list of runs ???? THIS WOULD NOT WORK
+    dir: str - xtc2 directory name
+    max_events: int - maximal number of events to process
+    live: True
+    timestamp = np.array([4194783241933859761,4194783249723600225,4194783254218190609,4194783258712780993], dtype=np.uint64)??? list of ints?
+    intg_det = 'andor'
+    batch_size = 1
+    detectors = ['epicsinfo', 'tmo_opal1', 'ebeam'] - only reads these detectors (faster)  ???? THIS WOULD NOT WORK
+    smd_callback= smd_callback,                     - smalldata callback (see notes above)
+    small_xtc   = ['tmo_opal1'],                    - detectors to be used in smalldata callback ???? THIS WOULD NOT WORK
+    shmem='tmo' or 'rix',...
+
+    Returns
+    -------
+    kwargs for DataSource
+    """
+    from psana.psexp.utils import datasource_kwargs_from_string  # DataSourceFromString
+
+    return datasource_kwargs_from_string(s)
+
+
 def datasource_arguments(args):
     """
     Parameters
@@ -115,13 +143,19 @@ def info_detnames(run, cmt='command: '):
     #out = str(p.stdout.read())
     #return fmt%(cmt, cmd, out)
     from subprocess import getoutput
-    cmd = 'detnames -r exp=%s,run=%d' % (run.expt, run.runnum)
+    cmd = 'detnames exp=%s,run=%d -r' % (run.expt, run.runnum)
+    return cmt + cmd + '\n' + getoutput(cmd)
+
+
+def info_detnames_for_dskwargs(str_kwa, cmt='command: '):
+    from subprocess import getoutput
+    cmd = 'detnames %s -r' % (str_kwa)
     return cmt + cmd + '\n' + getoutput(cmd)
 
 
 def print_detnames(run, cmt='command: '):
     import os
-    cmd = 'detnames -r exp=%s,run=%d' % (run.expt, run.runnum)
+    cmd = 'detnames exp=%s,run=%d -r' % (run.expt, run.runnum)
     print(cmt + cmd)
     os.system(cmd)
 

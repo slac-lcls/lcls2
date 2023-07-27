@@ -137,10 +137,11 @@ def do_python_threads(**kwargs):
 
 
 if __name__ == "__main__":
+    from psana.detector.dir_root import DIR_DATA_TEST
     import os
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     kwargs = {\
-      'fname':'/cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy',\
+      'fname': DIR_DATA_TEST + '/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy',\
       'loglevel':'DEBUG',\
     }
 

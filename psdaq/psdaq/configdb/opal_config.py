@@ -28,7 +28,7 @@ def dict_compare(new,curr,result):
             if resultk:
                 result[k] = resultk
         else:
-            if new[k]==curr[k]: 
+            if new[k]==curr[k]:
                 pass
             else:
                 result[k] = new[k]
@@ -68,10 +68,11 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     else:
         #  Empirically found that we need to cycle to LCLS1 timing
         #  to get the timing feedback link to lock
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
-        time.sleep(0.1)
+        #  cpo: switch this to XpmMini which recovers from more issues?
+        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+        time.sleep(2.5)
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(0.1)
+        time.sleep(2.5)
 
     # the opal seems to intermittently lose lock back to the XPM
     # and empirically this fixes it.  not sure if we need the sleep - cpo
@@ -132,7 +133,7 @@ def user_to_expert(cl, cfg, full=False):
         partitionDelay = getattr(cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
         triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
-        print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+        print('group {:}  partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(group,partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
@@ -146,7 +147,12 @@ def user_to_expert(cl, cfg, full=False):
         gate = cfg['user']['gate_ns']
         if gate > 160000:
             print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate));
-            raise ValueError('gate_ns > 160000')
+            # cpo removed this because people kept asking for it to try
+            # to find their signals or increase brightness.  this
+            # was originally added because we had an issue where
+            # we saw that opal images would intermittently go dark
+            # with gates longer than this.
+            #raise ValueError('gate_ns > 160000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=gate*0.001
 
     if (hasUser and 'black_level' in cfg['user']):
@@ -190,7 +196,7 @@ def config_expert(cl, cfg):
                         print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
             rogue_node.set(configdb_node)
 
     #  Parameters like black-level need time to take affect (100ms?)
@@ -274,7 +280,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
 
     config_expert(cl,cfg['expert'])
 
-    cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
+    cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(False)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
     applicationLane.EventBuilder.Blowoff.set(False)
 

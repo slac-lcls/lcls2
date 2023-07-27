@@ -19,9 +19,6 @@ NBeamSeq = 16
 dstsel     = ['Include','DontCare']
 bmsel      = ['D%u'%i for i in range(NBeamSeq)]
 evtsel      = ['Fixed Rate','AC Rate','Sequence']
-fixedRates  = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
-acRates     = ['60Hz','30Hz','10Hz','5Hz','1Hz']
-acTS        = ['TS%u'%(i+1) for i in range(6)]
 seqIdxs     = ['s%u'%i for i in range(18)]
 seqBits     = ['b%u'%i for i in range(32)]
 

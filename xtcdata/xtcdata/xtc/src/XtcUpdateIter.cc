@@ -3,6 +3,7 @@
 #include <sys/time.h>
 
 using namespace XtcData;
+using namespace std;
 
 #define VERBOSE 0
 
@@ -172,13 +173,13 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
    For ShapesData, only those that are not filtered out are
    copied to _tmpbuf.
 */
-int XtcUpdateIter::process(Xtc* xtc)
+int XtcUpdateIter::process(Xtc* xtc, const void* bufEnd)
 {
     if (VERBOSE > 0) printf("\nXtcUpdateIter:process\n");
 
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
-        iterate(xtc);
+        iterate(xtc, bufEnd);
         break;
     }
     case (TypeId::Names): {
@@ -193,9 +194,9 @@ int XtcUpdateIter::process(Xtc* xtc)
         unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name));
 
 
-        // Copy Names to _cfgbuf if flag is set
+        // Copy Names to _tmpbuf if flag is set
         if (_cfgWriteFlag == 1) {
-            copy2cfgbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+            copyPayload((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
         }
 
         // Initialize filter flag
@@ -203,17 +204,31 @@ int XtcUpdateIter::process(Xtc* xtc)
         string sAlg(alg.name());
         _flagFilter.insert(pair<string, int>(sDet+"_"+sAlg, 0));
 
-        // Keep track of nodeId and  maximum-number used namesId.
-        // For namesId, we don't record reserved namesId (e.g. 255 for runinfo).
+        // Keep track of nodeId
         _nodeId = names.namesId().nodeId();
-        if (names.namesId().namesId() > _maxUsedNamesId && 
-                names.namesId().namesId() != _reservedNamesId) {
-            _maxUsedNamesId = names.namesId().namesId();
+
+        // Keep track of existing NamesId (for both lower and upper ranges)
+        int distanceToMin = names.namesId().namesId() - _maxOfMinNamesId;
+        int distanceToMax = names.namesId().namesId() - _minOfMaxNamesId;
+        // Pull to the closest range (favor lower range)
+        if (abs(distanceToMin) <= abs(distanceToMax)) {
+            if (names.namesId().namesId() > _maxOfMinNamesId) {
+                _maxOfMinNamesId = names.namesId().namesId();
+            }
+
+        } else {
+            if (names.namesId().namesId() < _minOfMaxNamesId) {
+                _minOfMaxNamesId = names.namesId().namesId();
+            }
+
         }
 
-
         if (VERBOSE > 0) {
-            cout << "[Names] detName:" << names.detName() << " alg:" << alg.name() << " nodeId:" << names.namesId().nodeId() << " namesId:" << names.namesId().namesId() << " _nodeId:" << _nodeId << " _maxUsedNamesId:" << _maxUsedNamesId << endl;
+            cout << "[Names] detName:" << names.detName() << " alg:" << alg.name() << endl;
+            cout << "        nodeId:" << names.namesId().nodeId() << endl;
+            cout << "        namesId:" << names.namesId().namesId() << endl;
+            cout << "        _maxOfMinNamesId:" << _maxOfMinNamesId << " _minOfMaxNamesId:" << _minOfMaxNamesId << endl;
+            cout << "        distance to min:" << distanceToMin << " distance to max:" << distanceToMax << endl;
         }
         break;
     }
@@ -251,10 +266,10 @@ int XtcUpdateIter::process(Xtc* xtc)
         // Note that dgrampy sets this to False for all non-configure dgrams.
         if (_cfgFlag == 1) {
             if (_cfgWriteFlag == 1) {
-                copy2cfgbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+                copyPayload((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
             }
         } else {
-            // For ShapesData in non-configure dgrams, determines removed size 
+            // For ShapesData in non-configure dgrams, determines removed size
             // (if detname and alg matched with given))or copies ShapesData to tmp buffer
             string sDet(names.detName());
             string sAlg(alg.name());
@@ -262,15 +277,15 @@ int XtcUpdateIter::process(Xtc* xtc)
             int flagRemoved = 0;
 
             if (VERBOSE > 0)
-                cout << "  Check remove for det:" << sDet << " alg:" << sAlg << " "; 
+                cout << "  Check remove for det:" << sDet << " alg:" << sAlg << " ";
 
             for (itr = _flagFilter.begin(); itr != _flagFilter.end(); ++itr){
                 if (sDet+"_"+sAlg == itr->first) {
                     if (itr->second == 1) {
-                        _removed_size += sizeof(Xtc) + xtc->sizeofPayload();
+                        _removedSize += sizeof(Xtc) + xtc->sizeofPayload();
                         flagRemoved = 1;
                         if (VERBOSE > 0)
-                            cout << "--> Removed size:" << _removed_size << endl;
+                            cout << "--> Removed size:" << _removedSize << endl;
                     }
                     break;
                 }
@@ -278,7 +293,7 @@ int XtcUpdateIter::process(Xtc* xtc)
             if (flagRemoved == 0) {
                 if (VERBOSE > 0)
                     cout << "--> Keep" << endl;
-                copy2tmpbuf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+                copyPayload((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
             }
         }
         break;
@@ -290,54 +305,24 @@ int XtcUpdateIter::process(Xtc* xtc)
 }
 
 
-void XtcUpdateIter::copy2tmpbuf(char* in_buf, unsigned in_size){
-    memcpy(_tmpbuf + _tmpbufsize, in_buf, in_size);
-    _tmpbufsize += in_size;
+void XtcUpdateIter::copyPayload(char* in_buf, unsigned in_size){
+    memcpy(_outbuf + _payloadSize + sizeof(Dgram), in_buf, in_size);
+    _payloadSize += in_size;
 }
 
 
-void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
-    memcpy(_buf + _bufsize, in_buf, in_size);
-    _bufsize += in_size;
-}
-
-
-void XtcUpdateIter::copy2cfgbuf(char* in_buf, unsigned in_size){
-    memcpy(_cfgbuf + _cfgbufsize, in_buf, in_size);
-    _cfgbufsize += in_size;
-}
-
-
-/* Performs atomic copy that results in all necessary parts of
-   an event being copied to the main output buffer _buf. This
-   requires `parent_d`, which can be updated after Names and
-   ShapesData were copied to _tmpbuf. The `parent_d` is first
-   copied followed by _tmpbuf (Names & ShapesData). The _tmpbuf
-   is then cleared for next event.
+/* Copies the parent dgram to the begining of the buffer and
+   updates/resets size parameters.
 */
-void XtcUpdateIter::copy(Dgram* parent_d, int isConfig){
-    copy2buf((char*) parent_d, sizeof(Dgram));
-    if (isConfig == 1) {
-        copy2buf(_cfgbuf, _cfgbufsize);
-        _cfgbufsize = 0;
-    } else {
-        copy2buf(_tmpbuf, _tmpbufsize);
-        _tmpbufsize = 0;
-    }
-}
-
-
-/* Performs atomic copy (see detail from copy()) but the output
-   is copied to the given buffer (and not the main _buf).
-*/
-void XtcUpdateIter::copyTo(Dgram* parent_d, char* out_buf, int isConfig){
+void XtcUpdateIter::copyParent(Dgram* parent_d){
     // TODO Add checks for overflown
-    memcpy(out_buf, (char *) parent_d, sizeof(Dgram));
-    if (isConfig == 1) {
-        memcpy(out_buf + sizeof(Dgram), _cfgbuf, _cfgbufsize);
-    } else {
-        memcpy(out_buf + sizeof(Dgram), _tmpbuf, _tmpbufsize);
-    }
+    memcpy(_outbuf, (char *) parent_d, sizeof(Dgram));
+    _bufSize = sizeof(Dgram) + _payloadSize;
+    _payloadSize = 0;
+    _removedSize = 0;
+
+    // Resets flag for all detectors to 0
+    clearFilter();
 }
 
 
@@ -367,8 +352,6 @@ void XtcUpdateIter::addNames(Xtc& xtc, const void* bufEnd, char* detName, char* 
     names0.add(xtc, bufEnd, datadef);
     _namesLookup[namesId0] = NameIndex(names0);
 
-    // Increments current namesId
-    _maxUsedNamesId++;
 }
 
 
@@ -537,15 +520,13 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
 Dgram& XtcUpdateIter::createTransition(unsigned utransId,
         bool counting_timestamps,
         uint64_t timestamp_val,
-        void** bufEnd) 
+        char* buf)
 {
     TransitionId::Value transId = (TransitionId::Value) utransId;
     TypeId tid(TypeId::Parent, 0);
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
-    void* buf = malloc(BUFSIZE);
-    *bufEnd = ( (char*)buf ) + BUFSIZE;
 
     if (counting_timestamps) {
         Transition tr(Dgram::Event, transId, TimeStamp(timestamp_val), env);

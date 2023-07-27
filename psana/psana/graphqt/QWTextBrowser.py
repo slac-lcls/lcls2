@@ -25,7 +25,7 @@ class QWTextBrowser(CMWControlBase):
     def __init__(self, **kwa):
 
         kwa.setdefault('parent', None)
-        kwa.setdefault('path', '/cds/group/psdm/detector/data2_test/misc/Select') #test.txt'
+        kwa.setdefault('path', DIR_DATA_TEST + '/misc/Select') #test.txt'
         kwa.setdefault('label', 'File:')
         kwa.setdefault('fltr', '*.txt *.text *.dat *.data *.meta\n*')
         kwa.setdefault('dirs', dirs_to_search())

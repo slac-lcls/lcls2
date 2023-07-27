@@ -232,6 +232,57 @@ def issue_2022_06_17():
     #    break
 
 
+def issue_2022_07_12():
+    """
+    """
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    ds = DataSource(exp='uedcom103',run=7, dir='/cds/data/psdm/prj/public01/xtc')
+    orun = next(ds.runs())
+    det = orun.Detector('epixquad')
+    peds, meta = det.calibconst['pedestals']
+    print('\nmetadata\n', meta)
+    print(info_ndarr(peds, '\npedestals'))
+
+    #mask = test_mask_select(tname, det)  # [0,:]
+    evt = next(orun.events())
+
+    print(info_ndarr(det.raw._mask_from_status(), 'det.raw._mask_from_status'))
+    print(info_ndarr(det.raw._mask_comb(), 'det.raw._mask_comb'))
+
+    #for nevent,evt in enumerate(orun.events()):
+    #    print('=========', info_ndarr(det.raw.calib(evt), '\nEvt %03d det.raw.calib' % nevent))
+    #    if nevent > 3: break
+
+
+def issue_2022_11_17():
+    """O'Grady, Paul Christopher <cpo@slac.stanford.edu>
+    Dubrovin, Mikhail, Ulmer, Anatoli
+    Hi Mikhail,
+    Anatoli (cc'd) noticed that det.raw.image() for LCLS2 epix100 seems to be broken.
+    It breaks for me in both the production release (4.4.11) and our latest development release.
+    I believe it works in 4.4.10.
+    My quick guess is that this is perhaps caused by the changes that have been made
+    to make psana2 work at S3DF?
+    Would you be able to have a look? Thanks! chris
+    """
+    import psana as ps
+    ds = ps.DataSource(exp='tmolv1720', run=[180], detectors=['epix100', 'hsd', 'timing'])
+    ds_run = next(ds.runs())
+    epix_det = ds_run.Detector('epix100')
+    evt = next(ds_run.events())
+    raw = epix_det.raw.raw(evt)
+    image = epix_det.raw.image(evt, nda=raw)
+
+    from psana.detector.NDArrUtils import info_ndarr
+    print(info_ndarr(raw,   'raw  '))
+    print(info_ndarr(image, 'image'))
+
+    calib = epix_det.raw.calib(evt)
+    print(info_ndarr(calib, 'calib'))
+
+
+
 def issue_2022_01_dd():
     print('template')
 
@@ -249,6 +300,8 @@ USAGE = '\nUsage:'\
       + '\n    8 - issue_2022_03_16 - test calibconst for Mona'\
       + '\n    9 - issue_2022_04_06 - test epixquad cpo - constants'\
       + '\n   10 - issue_2022_06_17 - test default common_mode parameters'\
+      + '\n   11 - issue_2022_07_12 - test det.raw.calib for refactored code for CalibConstants'\
+      + '\n   12 - issue_2022_11_17 - test det.raw.calib epix100 object has no attribute _gain_factor_'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -264,6 +317,8 @@ elif TNAME in  ('7',): issue_2022_03_08()
 elif TNAME in  ('8',): issue_2022_03_16()
 elif TNAME in  ('9',): issue_2022_04_06()
 elif TNAME in ('10',): issue_2022_06_17()
+elif TNAME in ('11',): issue_2022_07_12()
+elif TNAME in ('12',): issue_2022_11_17()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

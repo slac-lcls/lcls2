@@ -228,7 +228,7 @@ class DebugIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    DebugIter(Xtc* xtc, NamesLookup& namesLookup) : XtcIterator(xtc), _namesLookup(namesLookup)
+    DebugIter(Xtc* xtc, const void* bufEnd, NamesLookup& namesLookup) : XtcIterator(xtc, bufEnd), _namesLookup(namesLookup)
     {
     }
 
@@ -381,7 +381,7 @@ public:
 
     }
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         // printf("found typeid %s\n",XtcData::TypeId::name(xtc->contains.id()));
         switch (xtc->contains.id()) {
@@ -391,7 +391,7 @@ public:
             break;
         }
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::ShapesData): {
@@ -807,7 +807,7 @@ int main(int argc, char* argv[])
 
     save(config,xtcFile);
 
-    DebugIter iter(&config.xtc, namesLookup);
+    DebugIter iter(&config.xtc, bufEnd, namesLookup);
     iter.iterate();
 
     Dgram& beginRunTr = createTransition(TransitionId::BeginRun,
@@ -895,7 +895,7 @@ int main(int argc, char* argv[])
             for (unsigned iseg=0; iseg<nSegments; iseg++) {
                 addData(dgram.xtc, bufEnd, namesLookup, nodeid1, iseg+starting_segment);
             }
-            DebugIter iter(&dgram.xtc, namesLookup);
+            DebugIter iter(&dgram.xtc, bufEnd, namesLookup);
             iter.iterate();
             save(dgram,xtcFile);
 

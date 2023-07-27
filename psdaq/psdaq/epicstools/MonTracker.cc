@@ -76,43 +76,33 @@ Pds_Epics::WorkQueue MonTracker::_monwork;
 
 MonTracker::MonTracker(const std::string& name,
                        const std::string& request) :
+  _request(pvd::createRequest(request)),
   _channel(EpicsProviders::pva().connect(name)),
-  _request(request),
+  _mon(_channel.monitor(this, _request)),
   _connected(false)
 {
-  _channel.addConnectListener(this);
 }
 
 MonTracker::MonTracker(const std::string& provider,
                        const std::string& name,
                        const std::string& request) :
+  _request(pvd::createRequest(request)),
   _channel(provider == "ca" ?
            EpicsProviders::ca ().connect(name) :
            EpicsProviders::pva().connect(name)),
-  _request(request),
+  _mon(_channel.monitor(this, _request)),
   _connected(false)
 {
-  _channel.addConnectListener(this);
 }
 
 MonTracker::~MonTracker()
 {
   _mon.cancel();
-
-  disconnect();
 }
 
 void MonTracker::close()
 {
   _monwork.close();
-}
-
-void MonTracker::connectEvent(const pvac::ConnectEvent &evt)
-{
-  _connected = evt.connected;
-  if (_connected) {
-    _mon = _channel.monitor(this, pvd::createRequest(_request));
-  }
 }
 
 void MonTracker::monitorEvent(const pvac::MonitorEvent& evt)
@@ -123,22 +113,6 @@ void MonTracker::monitorEvent(const pvac::MonitorEvent& evt)
   // minimize work here.
   // TODO: bound queue size
   _monwork.push(shared_from_this(), evt);
-}
-
-void MonTracker::disconnect()
-{
-  if (_connected) {
-    _channel.removeConnectListener(this);
-    _mon.cancel();
-    _connected = false;
-  }
-}
-
-void MonTracker::reconnect()
-{
-  if (!_connected) {
-    _channel.addConnectListener(this);
-  }
 }
 
 void MonTracker::process(const pvac::MonitorEvent& evt)
@@ -153,6 +127,7 @@ void MonTracker::process(const pvac::MonitorEvent& evt)
       break;
     case pvac::MonitorEvent::Disconnect:
       std::cout<<"Disconnect "<<name()<<"\n";
+      _connected = false;
       onDisconnect();
       break;
     case pvac::MonitorEvent::Data:
@@ -165,9 +140,11 @@ void MonTracker::process(const pvac::MonitorEvent& evt)
         //std::cout<<"Event "<<name()<<" "<<fld
         //         <<" Changed:"<<_mon.changed
         //         <<" overrun:"<<_mon.overrun<<"\n";
-        auto strct = _strct;
         _strct = _mon.root;
-        if (!strct && _strct)  onConnect();
+        if (!_connected) {
+          _connected = true;
+          onConnect();
+        }
         updated();
       }
       if(n==2) {

@@ -24,6 +24,9 @@
 
 #include <unistd.h>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
@@ -131,7 +134,7 @@ int TebContributor::connect(size_t inpSizeGuess)
   _id       = _prms.id;
   _numEbs   = std::bitset<64>(_prms.builders).count();
 
-  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, "TEB");
+  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
   if (rc)  return rc;
 
   // Set up a guess at the RDMA region
@@ -175,7 +178,7 @@ int TebContributor::configure()
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
 
-  int rc = linksConfigure(_links, _id, region, regSize, _prms.maxInputSize, "TEB");
+  int rc = linksConfigure(_links, region, regSize, _prms.maxInputSize, "TEB");
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
@@ -205,7 +208,7 @@ void TebContributor::process(const EbDgram* dgram)
   auto rogs       = dgram->readoutGroups();
   bool contractor = rogs & _prms.contractor; // T if providing TEB input
 
-  if (likely(rogs & (1 << _prms.partition))) // Common RoG triggered
+  if (LIKELY(rogs & (1 << _prms.partition))) // Common RoG triggered
   {
     // On wrapping, post the batch at the end of the region, if any
     if (dgram == _batMan.batchRegion())
@@ -224,7 +227,7 @@ void TebContributor::process(const EbDgram* dgram)
     bool expired = _batMan.expired(       dgram->pulseId(),
                                    _batch.start->pulseId());
 
-    if (likely(!expired && !flush))     // Most frequent case when batching
+    if (LIKELY(!expired && !flush))     // Most frequent case when batching
     {
       _batch.end         = dgram;       // Append dgram to batch
       _batch.contractor |= contractor;
@@ -297,14 +300,35 @@ void TebContributor::_post(const Batch& batch)
     uint32_t     idx    = offset / _prms.maxInputSize;
     size_t       extent = (reinterpret_cast<const char*>(batch.end) -
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;
-    uint32_t     data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
+    uint32_t     data   = ImmData::value(ImmData::Buffer |
+                                         ImmData::Response, _id, idx);
 
-    if (unlikely(_prms.verbose >= VL_BATCH))
+    if (UNLIKELY(_prms.verbose >= VL_BATCH))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
       printf("CtrbOut posts %9lu    batch[%8u]    @ "
              "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
              _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
+    }
+    else
+    {
+      auto dgram = batch.start;
+      auto svc   = dgram->service();
+      if (svc != XtcData::TransitionId::L1Accept) {
+        void* rmtAdx = (void*)link->rmtAdx(offset);
+        if (svc != XtcData::TransitionId::SlowUpdate) {
+          logging::info("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
+                        XtcData::TransitionId::name(svc),
+                        dgram->time.seconds(), dgram->time.nanoseconds(),
+                        dgram->pulseId(), dst, rmtAdx, 0, idx, _prms.maxInputSize);
+        }
+        else {
+          logging::debug("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
+                         XtcData::TransitionId::name(svc),
+                         dgram->time.seconds(), dgram->time.nanoseconds(),
+                         dgram->pulseId(), dst, rmtAdx, 0, idx, _prms.maxInputSize);
+        }
+      }
     }
 
     int rc = link->post(batch.start, extent, offset, data);
@@ -360,7 +384,8 @@ void TebContributor::_post(const EbDgram* dgram)
   // batch containing it.  These TEBs don't generate responses.
   if (_links.size() < 2)  return;
 
-  dgram->setEOL();                      // Terminate the "batch" of 1 entry
+  // Modifying dgram interferes with batch posted above: see comment in EbAppBase
+  //dgram->setEOL();                      // Terminate the "batch" of 1 entry
 
   uint64_t pid = dgram->pulseId();
   unsigned dst = (pid / _prms.maxEntries) % _numEbs;
@@ -395,7 +420,7 @@ void TebContributor::_post(const EbDgram* dgram)
       uint32_t data   = ImmData::value(ImmData::Transition |
                                        ImmData::NoResponse, _id, idx);
 
-      if (unlikely(_prms.verbose >= VL_BATCH))
+      if (UNLIKELY(_prms.verbose >= VL_BATCH))
       {
         unsigned    env    = dgram->env;
         unsigned    ctl    = dgram->control();

@@ -27,6 +27,9 @@
 #include <climits>                      // For HOST_NAME_MAX
 #include <chrono>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
@@ -44,7 +47,9 @@ using namespace Pds::Eb;
 using json     = nlohmann::json;
 using logging  = psalg::SysLog;
 using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
+using tp_t     = std::chrono::system_clock::time_point;
 using ms_t     = std::chrono::milliseconds;
+using ns_t     = std::chrono::nanoseconds;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -88,17 +93,24 @@ namespace Pds {
     MyXtcMonitorServer(std::vector<EbLfCltLink*>&     links,
                        uint64_t&                      requestCount,
                        std::shared_ptr<PromHistogram> bufUseCnts,
+                       std::atomic<uint64_t>&         prcBufCount,
+                       std::vector<tp_t>&             bufT0,
+                       uint64_t&                      bufPrcTime,
+                       std::vector<tp_t>&             trgT0,
                        const MebParams&               prms) :
       XtcMonitorServer(prms.tag.c_str(),
                        prms.maxBufferSize,
                        prms.numEvBuffers,
                        prms.nevqueues),
-      _iTeb         (0),
-      _mrqLinks     (links),
-      _requestCount (requestCount),
-      _bufFreeList  (prms.numEvBuffers),
-      _bufUseCnts   (bufUseCnts),
-      _prms         (prms)
+      _mrqLinks    (links),
+      _requestCount(requestCount),
+      _bufFreeList (prms.numEvBuffers),
+      _bufUseCnts  (bufUseCnts),
+      _prcBufCount (prcBufCount),
+      _bufT0       (bufT0),
+      _bufPrcTime  (bufPrcTime),
+      _trgT0       (trgT0),
+      _prms        (prms)
     {
       for (unsigned i = 0; i < _bufFreeList.size(); ++i)
       {
@@ -125,7 +137,7 @@ namespace Pds {
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf, size_t bSz)
     {
-      if (unlikely(_prms.verbose >= VL_EVENT))
+      if (UNLIKELY(_prms.verbose >= VL_EVENT))
         printf("_copyDatagram:   dg %p, ts %u.%09u to %p\n",
                dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
 
@@ -149,7 +161,7 @@ namespace Pds {
         // Truncation goes unnoticed, so crash instead to get it fixed
         if (oSz + iExt > bSz)
         {
-          logging::critical("Buffer of size %zu (%zu in use) is too small to add Xtc of size %zu\n",
+          logging::critical("Buffer of size %zu (%zu in use) is too small to add Xtc of size %zu",
                             bSz, oSz, iExt);
           throw "Buffer too small";
         }
@@ -163,7 +175,7 @@ namespace Pds {
     {
       unsigned idx = dg->xtc.src.value();
 
-      if (unlikely(_prms.verbose >= VL_EVENT))
+      if (UNLIKELY(_prms.verbose >= VL_EVENT))
         printf("_deleteDatagram: dg %p, ts %u.%09u, idx %u\n",
                dg, dg->time.seconds(), dg->time.nanoseconds(), idx);
 
@@ -182,6 +194,10 @@ namespace Pds {
           return;
         }
       }
+      // Number of buffers being processed by the MEB; incremented in Meb::process()
+      --_prcBufCount;                   // L1Accepts only
+      auto now    = std::chrono::system_clock::now();
+      _bufPrcTime = std::chrono::duration_cast<ns_t>(now - _bufT0[idx]).count();
       if (_bufFreeList.push(idx))
       {
         logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
@@ -190,7 +206,7 @@ namespace Pds {
           printf("Free list entry %u: %u\n", i, _bufFreeList.peek(i));
         }
       }
-      //printf("_deleteDatagram: _bufFreeList.push(): %u, count = %zd\n", idx, _bufFreeList.count());
+      //printf("_deleteDatagram: push idx %u, cnt = %zu\n", idx, _bufFreeList.count());
 
       Pool::free((void*)dg);
     }
@@ -205,36 +221,25 @@ namespace Pds {
         logging::error("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
         return;
       }
-      //printf("_requestDatagram: _bufFreeList.pop(): %u, count = %zd\n", data, _bufFreeList.count());
+      //printf("_requestDatagram: pop idx %u, cnt = %zu\n", data, _bufFreeList.count());
 
       auto data = ImmData::value(ImmData::Buffer, _prms.id, idx);
 
-      int rc = -1;
-      for (unsigned i = 0; i < _mrqLinks.size(); ++i)
+      // Split the pool of indices across all TEBs evenly
+      unsigned iTeb = idx % _mrqLinks.size();
+      int rc = _mrqLinks[iTeb]->EbLfLink::post(data);
+      if (rc == 0)
       {
-        // Round robin through Trigger Event Builders
-        unsigned iTeb = _iTeb++;
-        if (_iTeb == _mrqLinks.size())  _iTeb = 0;
-
-        rc = _mrqLinks[iTeb]->EbLfLink::post(data);
-
-        if (unlikely(_prms.verbose >= VL_EVENT))
-          printf("_requestDatagram: Post %u EB[iTeb %u], value %08x, rc %d\n",
-                 i, iTeb, data, rc);
-
-        if (rc == 0)
-        {
-          ++_requestCount;
-          _bufUseCnts->observe(double(idx));
-          break;            // Break if message was delivered
-        }
+        ++_requestCount;
+        _bufUseCnts->observe(double(idx));
+        _trgT0[idx] = std::chrono::system_clock::now();
       }
-      if (rc)
+      else
       {
-        logging::error("%s:\n  Unable to post request to any TEB: rc %d, idx %u (%08x)",
-                       __PRETTY_FUNCTION__, rc, idx, data);
+        logging::error("%s:\n  Unable to post request to TEB %u: rc %d, idx %u (%08x)",
+                       __PRETTY_FUNCTION__, iTeb, rc, idx, data);
 
-        // Don't leak buffers
+        // Don't leak buffers - Revisit: XtcMonServer leaks in this case
         if (_bufFreeList.push(idx))
         {
           logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
@@ -244,14 +249,21 @@ namespace Pds {
           }
         }
       }
+
+      if (UNLIKELY(_prms.verbose >= VL_EVENT))
+        printf("_requestDatagram: Post EB[iTeb %u], value %08x, rc %d\n",
+               iTeb, data, rc);
     }
 
   private:
-    unsigned                       _iTeb;
     std::vector<EbLfCltLink*>&     _mrqLinks;
     uint64_t&                      _requestCount;
-    FifoMT<unsigned>               _bufFreeList;
+    FifoMT<unsigned, std::mutex>   _bufFreeList;
     std::shared_ptr<PromHistogram> _bufUseCnts;
+    std::atomic<uint64_t>&         _prcBufCount;
+    std::vector<tp_t>&             _bufT0;
+    uint64_t&                      _bufPrcTime;
+    std::vector<tp_t>&             _trgT0;
     const MebParams&               _prms;
   };
 
@@ -280,6 +292,11 @@ namespace Pds {
     uint64_t                            _trCount;
     uint64_t                            _splitCount;
     uint64_t                            _requestCount;
+    uint64_t                            _bufPrcTime;
+    uint64_t                            _monTrgTime;
+    std::atomic<uint64_t>               _prcBufCount;
+    std::vector<tp_t>                   _bufT0;
+    std::vector<tp_t>                   _trgT0;
     std::shared_ptr<PromHistogram>      _bufUseCnts;
     const MebParams&                    _prms;
     EbLfClient                          _mrqTransport;
@@ -307,6 +324,11 @@ Meb::Meb(const MebParams&        prms,
   _trCount     (0),
   _splitCount  (0),
   _requestCount(0),
+  _bufPrcTime  (0),
+  _monTrgTime  (0),
+  _prcBufCount (0),
+  _bufT0       (prms.numEvBuffers),
+  _trgT0       (prms.numEvBuffers),
   _prms        (prms),
   _mrqTransport(prms.verbose, prms.kwargs),
   _inprocSend  (&context, ZMQ_PAIR)
@@ -322,6 +344,9 @@ Meb::Meb(const MebParams&        prms,
   exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
   exporter->add("MRQ_TxPdg",  labels, MetricType::Gauge,   [&](){ return _mrqTransport.posting(); });
   exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
+  exporter->add("MEB_PrcCt",  labels, MetricType::Gauge,   [&](){ return _prcBufCount.load(); });
+  exporter->add("MEB_PrcTm",  labels, MetricType::Gauge,   [&](){ return _bufPrcTime;      });
+  exporter->add("MEB_TrgTm",  labels, MetricType::Gauge,   [&](){ return _monTrgTime;      });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
   _bufUseCnts = exporter->histogram("MRQ_BufUseCnts", labels, prms.numEvBuffers);
 
@@ -364,17 +389,19 @@ void Meb::unconfigure()
 
 int Meb::connect()
 {
+  int rc;
+
   _mrqLinks.resize(_prms.addrs.size());
+
+  rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
+  if (rc)  return rc;
 
   // Make a guess at the size of the Input entries
   // Since the guess will almost always be wrong,
   // disable region allocation during Connect
   size_t inpSizeGuess = 0;
 
-  int rc = EbAppBase::connect(_prms, inpSizeGuess);
-  if (rc)  return rc;
-
-  rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, "TEB");
+  rc = EbAppBase::connect(_prms, inpSizeGuess);
   if (rc)  return rc;
 
   return 0;
@@ -387,15 +414,17 @@ int Meb::configure()
   size_t   size    = sizeof(Dgram) + entries * sizeof(Dgram*);
   _pool = std::make_unique<GenericPool>(size, 1 + _prms.numEvBuffers); // +1 for Transitions
 
-  int rc = EbAppBase::configure(_prms);
-  if (rc)  return rc;
+  // MRQ links need no configuration
 
-  rc = linksConfigure(_mrqLinks, _prms.id, "TEB");
+  int rc = EbAppBase::configure(_prms);
   if (rc)  return rc;
 
   // Code added here involving the links must be coordinated with the other side
 
-  _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount, _bufUseCnts, _prms);
+  _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount,
+                                               _bufUseCnts, _prcBufCount,
+                                               _bufT0, _bufPrcTime,
+                                               _trgT0, _prms);
 
   _apps->distribute(_prms.ldist);
 
@@ -419,12 +448,20 @@ void Meb::run()
     rc = EbAppBase::process();
     if (rc < 0)
     {
-      if (rc == -FI_ENOTCONN)
+      if (rc == -FI_ETIMEDOUT)
+      {
+        rc = 0;
+      }
+      else if (rc == -FI_ENOTCONN)
       {
         logging::critical("MEB thread lost connection with a DRP");
         throw "Receiver thread lost connection with a DRP";
       }
-      if (rc == rcPrv)  throw "Repeating fatal error";
+      else if (rc == rcPrv)
+      {
+        logging::critical("MEB thread aborting on repeating fatal error");
+        throw "Repeating fatal error";
+      }
     }
     rcPrv = rc;
   }
@@ -451,11 +488,11 @@ void Meb::process(EbEvent* event)
   }
 
   uint64_t pid = dgram->pulseId();
-  if (unlikely(!(pid > _pidPrv)))
+  if (UNLIKELY(!(pid > _pidPrv)))
   {
     event->damage(Damage::OutOfOrder);
 
-    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u\n",
+    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u",
                       __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->immData(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
 
     if (event->remaining())             // I.e., this event was fixed up
@@ -464,7 +501,7 @@ void Meb::process(EbEvent* event)
       // posted earlier, so return to dismiss this counterpart and not post it
       // However, we can't know whether this is a split event or a fixed-up out-of-order event
       ++_splitCount;
-      logging::critical("%s:\n  Split event, if pid %014lx was fixed up multiple times\n",
+      logging::critical("%s:\n  Split event, if pid %014lx was fixed up multiple times",
                         __PRETTY_FUNCTION__, pid);
       // return, if we knew this PID had been fixed up before
     }
@@ -526,10 +563,19 @@ void Meb::process(EbEvent* event)
   }
 
   auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dg->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dg->time.nanoseconds()};
+  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
   std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
   _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+
+  if (dg->service() == TransitionId::L1Accept)
+  {
+    ++_prcBufCount;    // Number of buffers being processed by the MEB; decremented in _deleteDatagram
+    _bufT0[idx] = now; // Event processing time t0
+    auto monTrgTime = std::chrono::duration_cast<ns_t>(now - _trgT0[idx]).count();
+    if (monTrgTime < 1000000000)
+      _monTrgTime = monTrgTime;         // Skip large startup values
+  }
 
   // Transitions, including SlowUpdates, return Handled, L1Accepts return Deferred
   if (_apps->events(dg) == XtcMonitorServer::Handled)
@@ -574,8 +620,7 @@ private:
   int  _configure(const json& msg);
   void _unconfigure();
   int  _parseConnectionParams(const json& msg);
-  void _printParams(const EbParams& prms, unsigned groups) const;
-  void _printGroups(unsigned groups, const u64arr_t& array) const;
+  void _printParams(const MebParams& prms, unsigned groups) const;
 private:
   MebParams&                           _prms;
   const bool                           _ebPortEph;
@@ -778,7 +823,8 @@ int MebApp::_parseConnectionParams(const json& body)
   _groups = 0;
 
   _prms.maxEntries = 1;                  // No batching: each event stands alone
-  _prms.numBuffers = _prms.numEvBuffers; // For EbAppBase
+  _prms.maxBuffers = _prms.numEvBuffers; // For EbAppBase
+  _prms.numBuffers.resize(MAX_DRPS, 0);  // Number of buffers on each DRP
 
   for (auto it : body["drp"].items())
   {
@@ -802,6 +848,8 @@ int MebApp::_parseConnectionParams(const json& body)
     _prms.contractors[group] |= 1ul << drpId;
     _prms.receivers[group]    = 0;      // Unused by MEB
     _groups |= 1 << group;
+
+    _prms.numBuffers[drpId] = _prms.maxBuffers;
 
     _prms.maxTrSize[drpId] = size_t(it.value()["connect_info"]["max_tr_size"]);
     maxTrSize             += _prms.maxTrSize[drpId];
@@ -844,7 +892,8 @@ int MebApp::_parseConnectionParams(const json& body)
   return 0;
 }
 
-void MebApp::_printGroups(unsigned groups, const u64arr_t& array) const
+static
+void _printGroups(unsigned groups, const u64arr_t& array)
 {
   while (groups)
   {
@@ -856,24 +905,26 @@ void MebApp::_printGroups(unsigned groups, const u64arr_t& array) const
   printf("\n");
 }
 
-void MebApp::_printParams(const EbParams& prms, unsigned groups) const
+void MebApp::_printParams(const MebParams& prms, unsigned groups) const
 {
-  printf("\nParameters of MEB ID %u (%s:%s):\n",               _prms.id,
-                                                               _prms.ifAddr.c_str(), _prms.ebPort.c_str());
-  printf("  Thread core numbers:        %d, %d\n",             _prms.core[0], _prms.core[1]);
-  printf("  Partition:                  %u\n",                 _prms.partition);
-  printf("  Bit list of contributors:   0x%016lx, cnt: %zu\n", _prms.contributors,
-                                                               std::bitset<64>(_prms.contributors).count());
-  printf("  Readout group contractors:  ");                    _printGroups(_groups, _prms.contractors);
-  printf("  # of TEB requestees:        %zu\n",                _prms.addrs.size());
+  printf("\nParameters of MEB ID %u (%s:%s):\n",               prms.id,
+                                                               prms.ifAddr.c_str(), prms.ebPort.c_str());
+  printf("  Thread core numbers:        %d, %d\n",             prms.core[0], prms.core[1]);
+  printf("  Instrument:                 %s\n",                 prms.instrument.c_str());
+  printf("  Partition:                  %u\n",                 prms.partition);
+  printf("  Alias:                      %s\n",                 prms.alias.c_str());
+  printf("  Bit list of contributors:   0x%016lx, cnt: %zu\n", prms.contributors,
+                                                               std::bitset<64>(prms.contributors).count());
+  printf("  Readout group contractors:  ");                    _printGroups(_groups, prms.contractors);
+  printf("  # of TEB requestees:        %zu\n",                prms.addrs.size());
   printf("  Buffer duration:            %u\n",                 prms.maxEntries);
   printf("  Max # of entries / buffer:  0x%08x = %u\n",        prms.maxEntries, prms.maxEntries);
-  printf("  # of event      buffers:    0x%08x = %u\n",        _prms.numEvBuffers, _prms.numEvBuffers);
+  printf("  # of event      buffers:    0x%08x = %u\n",        prms.numEvBuffers, prms.numEvBuffers);
   printf("  # of transition buffers:    0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
-  printf("  Max buffer size:            0x%08x = %u\n",        _prms.maxBufferSize, _prms.maxBufferSize);
-  printf("  # of event message queues:  0x%08x = %u\n",        _prms.nevqueues, _prms.nevqueues);
-  printf("  Distribute:                 %s\n",                 _prms.ldist ? "yes" : "no");
-  printf("  Tag:                        %s\n",                 _prms.tag.c_str());
+  printf("  Max buffer size:            0x%08x = %u\n",        prms.maxBufferSize, prms.maxBufferSize);
+  printf("  # of event message queues:  0x%08x = %u\n",        prms.nevqueues, prms.nevqueues);
+  printf("  Distribute:                 %s\n",                 prms.ldist ? "yes" : "no");
+  printf("  Tag:                        %s\n",                 prms.tag.c_str());
   printf("\n");
 }
 
@@ -1005,11 +1056,10 @@ int main(int argc, char** argv)
     prms.numEvBuffers = NUMBEROF_XFERBUFFERS;
   if (prms.numEvBuffers < prms.nevqueues)
     prms.numEvBuffers = prms.nevqueues; // Require numEvBuffers / nevqueues > 0
-  if (prms.numEvBuffers > 255)
+  if (prms.numEvBuffers > ImmData::MaxIdx)
   {
-    // The problem is that there are only 8 bits available in the env
-    // Could use the lower 24 bits, but then we have a nonstandard env
-    logging::critical("Number of event buffers > 255 is not supported: got %u", prms.numEvBuffers);
+    logging::critical("Number of event buffers > %u is not supported: got %u",
+                      ImmData::MaxIdx, prms.numEvBuffers);
     return 1;
   }
 
@@ -1023,7 +1073,7 @@ int main(int argc, char** argv)
     if (kwargs.first == "ep_fabric")    continue;
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
-    logging::critical("Unrecognized kwarg '%s=%s'\n",
+    logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
   }

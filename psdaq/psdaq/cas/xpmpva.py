@@ -91,7 +91,7 @@ class PvCmb(PvEditCmb):
         self.setEnabled(False)
 
 class PvGroupMask(PvComboDisplay):
-    
+
     def __init__(self, pvname, label):
         super(PvGroupMask, self).__init__(Masks)
         self.connect_signal()
@@ -107,7 +107,7 @@ class PvGroupMask(PvComboDisplay):
             value = 1<<(ivalue-1)
         if self.pv.__value__ != value:
             self.pv.put(value)
-            
+
     def update(self,err):
         q = self.pv.__value__
         if err is None:
@@ -121,7 +121,7 @@ class PvGroupMask(PvComboDisplay):
             self.setCurrentIndex(idx)
         else:
             print(err)
-                
+
 def LblPushButtonX(parent, pvbase, name, count=1, start=0, istart=0):
     return PvInput(PvPushButtonX, parent, pvbase, name, count, start, istart)
 
@@ -258,7 +258,7 @@ class PvRxAlign(QtWidgets.QWidget):
                 max = v[i+1]
 
         for i in range(64):
-            q = 16*v[i+1]/max
+            q = int(16*v[i+1]/max)
             painter.drawLine(i,15-q,i,15)
 
         painter.setBrush(QtGui.QColor(255,0,0))   # red
@@ -306,7 +306,7 @@ class PvMmcm(QtWidgets.QWidget):
         inum    = (v0>>16)&0x1fff
         ibusy   = (v0>>30)&1
         ilocked = (v0>>31)&1
-        
+
         label = title+'\n'+str(iedge)
         if ilocked==1:
             label += '*'
@@ -347,7 +347,8 @@ def intInput(layout, pv, label):
 def addUsTab(self,pvbase):
     lor = QtWidgets.QVBoxLayout()
     lor.addWidget( addTiming(self,pvbase+'Us:') )
-    lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM3', pvbase+'XTPG:ResetMmcm3', 'mmcm3') )
+#   xpmGenKcu1500 can't generate this PV???
+#    lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM3', pvbase+'XTPG:ResetMmcm3', 'mmcm3') )
 
     w = QtWidgets.QWidget()
     w.setLayout(lor)
@@ -374,7 +375,7 @@ def addCuTab(self,pvbase):
     w = QtWidgets.QWidget()
     w.setLayout(lor)
     return w
-    
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, titles):
         MainWindow.setObjectName("MainWindow")
@@ -442,7 +443,7 @@ class Ui_MainWindow(object):
             tw.addTab(bpbox,"Bp")
 
             pllbox  = QtWidgets.QWidget()
-            pllvbox = QtWidgets.QVBoxLayout() 
+            pllvbox = QtWidgets.QVBoxLayout()
             LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
             LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
             LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)

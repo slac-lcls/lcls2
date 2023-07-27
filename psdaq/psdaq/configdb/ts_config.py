@@ -13,6 +13,7 @@ def ts_config(connect_json,cfgtype,detname,detsegm):
     global pv_prefix
     global readout_groups
 
+
     cfg = get_config(connect_json,cfgtype,detname,detsegm)
     ocfg = cfg
     connect_info = json.loads(connect_json)
@@ -58,7 +59,7 @@ def apply_config(cfg):
             pvdict[str(group)+':L0Select'          ] = grp['trigMode']
             pvdict[str(group)+':L0Select_FixedRate'] = grp['fixed']['rate']
             pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
-            pvdict[str(group)+':L0Select_EventCode'] = 0  # not an option
+            pvdict[str(group)+':L0Select_EventCode'] = grp['eventcode']
             pvdict[str(group)+':L0Select_Sequence' ] = grp['seq']['mode']
             pvdict[str(group)+':DstSelect'         ] = grp['destination']['select']
 

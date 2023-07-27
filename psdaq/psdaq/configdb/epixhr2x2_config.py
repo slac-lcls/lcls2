@@ -9,6 +9,7 @@ import lcls2_epix_hr_pcie
 import epix_hr_single_10k
 import epix_hr_core as epixHr
 import ePixFpga as fpga
+import surf.protocols.batcher       as batcher
 import time
 import json
 import os
@@ -30,23 +31,27 @@ elemRowsC = 146
 elemRowsD = 144
 elemCols  = 192
 
+RTP = 6   # run trigger partition
+
 def gain_mode_map(gain_mode):
     mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
     trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
     return (mapv,trbit)
 
 class Board(pr.Root):
-    def __init__(self,dev='/dev/datadev_0',):
+    def __init__(self,dev='/dev/datadev_0',lanes=4):
         super().__init__(name='ePixHr10kT',description='ePixHrGen1 board')
         self.dmaCtrlStreams = [None]
-        self.dmaCtrlStreams[0] = rogue.hardware.axi.AxiStreamDma(dev,(0x100*0)+0,1)# Registers  
+        self.dmaCtrlStreams[0] = rogue.hardware.axi.AxiStreamDma(dev,(0x100*0)+0,1)# Registers
 
         # Create and Connect SRP to VC1 to send commands
         self._srp = rogue.protocols.srp.SrpV3()
         pr.streamConnectBiDir(self.dmaCtrlStreams[0],self._srp)
 
-        self.add(epixHr.SysReg  (name='Core'  , memBase=self._srp, offset=0x00000000, sim=False, expand=False, pgpVersion=4,))
+        self.add(epixHr.SysReg  (name='Core'  , memBase=self._srp, offset=0x00000000, sim=False, expand=False, pgpVersion=4, numberOfLanes=lanes,))
         self.add(fpga.EpixHR10kT(name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
+        #  Allow ePixFpga to find the yaml files for fnInitAsic()
+        self.top_level = '/tmp'
 
 def mode(a):
     uniqueValues = np.unique(a).tolist()
@@ -55,6 +60,14 @@ def mode(a):
 
     modeIdx = uniqueCounts.index(max(uniqueCounts))
     return uniqueValues[modeIdx]
+
+def setSaci(reg,field,di):
+    if field in di:
+        v = di[field]
+        reg.set(v)
+        print(f'Updated {field} to {v}')
+    else:
+        print(f'Not updating {field}')
 
 def dumpvars(prefix,c):
     print(prefix)
@@ -81,7 +94,8 @@ def retry(cmd,val):
 #
 def apply_dict(pathbase,base,cfg):
     rogue_translate = {}
-    rogue_translate['TriggerEventBuffer'] = f'TriggerEventBuffer[0]'
+    rogue_translate['TriggerEventBuffer0'] = 'TriggerEventBuffer[0]'
+    rogue_translate['TriggerEventBuffer1'] = 'TriggerEventBuffer[1]'
 
     depth = 0
     my_queue  =  deque([[pathbase,depth,base,cfg]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
@@ -93,14 +107,15 @@ def apply_dict(pathbase,base,cfg):
                 try:
                     my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[k],configdb_node[i]])
                 except KeyError:
-                    logging.warning('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
+                    logging.info('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != pathbase ):
             if False:
                 logging.info(f'NOT setting {path} to {configdb_node}')
             else:
-                logging.info(f'Setting {path} to {configdb_node}')
+                print(f'Setting {path} to {configdb_node}')
+                #logging.info(f'Setting {path} to {configdb_node}')
                 retry(rogue_node.set,configdb_node)
 
 def _dict_compare(d1,d2,path):
@@ -154,42 +169,31 @@ def user_to_rogue(a):
 def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
     global base
     global pv
-#    logging.getLogger().setLevel(40-10*verbosity)
-    logging.debug('epixhr2x2_init')
+#    logging.getLogger().setLevel(40-10*verbosity) # way too much from rogue
+    logging.getLogger().setLevel(30)
+    logging.warning('epixhr2x2_init')
 
     base = {}
-
     #  Configure the PCIe card first (timing, datavctap)
-    if True:
-        pbase = lcls2_epix_hr_pcie.DevRoot(dev           =dev,
-                                           enLclsI       =False,
-                                           enLclsII      =True,
-                                           yamlFileLclsI =None,
-                                           yamlFileLclsII=None,
-                                           startupMode   =True,
-                                           standAloneMode=xpmpv is not None,
-                                           pgp4          =True,
-                                           #dataVc        =0,
-                                           pollEn        =False,
-                                           initRead      =False,
-                                           #numLanes      =4,
-                                           pcieBoardType = 'Kcu1500')
-        #dumpvars('pbase',pbase)
-
-        pbase.__enter__()
-
-        # Open a new thread here
-#        if xpmpv is not None:
-#            pv = PVCtrls(xpmpv,pbase.DevPcie.Hsio.TimingRx.XpmMiniWrapper)
-#            pv.start()
-#        else:
-#            time.sleep(0.1)
-        base['pci'] = pbase
+    pbase = lcls2_epix_hr_pcie.DevRoot(dev           =dev,
+                                       enLclsI       =False,
+                                       enLclsII      =False,
+                                       yamlFileLclsI =None,
+                                       yamlFileLclsII=None,
+                                       startupMode   =True,
+                                       standAloneMode=xpmpv is not None,
+                                       pgp4          =True,
+                                       #dataVc        =0,
+                                       pollEn        =False,
+                                       initRead      =False,
+                                       #numLanes      =4,
+                                       pcieBoardType = 'Kcu1500')
+    pbase.__enter__()
+    base['pci'] = pbase
 
     #  Connect to the camera
-#    cbase = epix_hr_single_10k.ePixFpga.EpixHR10kT(dev=dev,hwType='datadev',lane=lane,pollEn=False,
-#                                                   enVcMask=0x2,enWriter=False,enPrbs=False)
-    cbase = Board(dev=dev)
+    elanes = 4 if timebase=="119M" else 2
+    cbase = Board(dev=dev,lanes=elanes)
     cbase.__enter__()
     base['cam'] = cbase
 
@@ -200,35 +204,43 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     print(f'buildStamp      [{buildStamp}]')
     print(f'gitHash         [{gitHash:x}]')
 
-    base['bypass'] = 0x3f
-
     #  Enable the environmental monitoring
     cbase.EpixHR.SlowAdcRegisters.enable.set(1)
     cbase.EpixHR.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
     cbase.EpixHR.SlowAdcRegisters.StreamEn.set(1)
     cbase.EpixHR.SlowAdcRegisters.enable.set(0)
 
-    logging.info('epixhr2x2_unconfig')
-    epixhr2x2_unconfig(base)
-
-    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
-    if timebase=="119M":
-        logging.info('Using timebase 119M')
+   # configure timing
+    if timebase=="119M":  # UED
+        logging.warning('Using timebase 119M')
+        base['bypass'] = 0x3f
         base['clk_period'] = 1000/119. 
         base['msg_period'] = 238
+        base['pcie_timing'] = True
+
+        logging.warning('epixhr2x2_unconfig')
+        epixhr2x2_unconfig(base)
+
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
     else:
-        logging.info('Using timebase 186M')
+        logging.warning('Using timebase 186M')
+        base['bypass'] = 0x3b  # Need the first lanes for transitions
         base['clk_period'] = 7000/1300. # default 185.7 MHz clock
         base['msg_period'] = 200
-        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
-    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
+        base['pcie_timing'] = False
+
+        logging.warning('epixhr2x2_unconfig')
+        epixhr2x2_unconfig(base)
+
+        cbase.EpixHR.ConfigLclsTimingV2()
 
     # configure internal ADC
 #    cbase.InitHSADC()
 
     time.sleep(1)
-    epixhr2x2_internal_trigger(base)
+#    epixhr2x2_internal_trigger(base)
     return base
 
 #
@@ -247,16 +259,23 @@ def epixhr2x2_init_feb(slane=None,schan=None):
 #
 def epixhr2x2_connect(base):
 
-    if 'pci' in base:
+#
+#  To do:  get the IDs from the detector and not the timing link
+#
+    txId = timTxId('epixhr2x2')
+    logging.warning('TxId {:x}'.format(txId))
+
+    if base['pcie_timing'] and 'pci' in base:
         pbase = base['pci']
         rxId = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
-        logging.debug('RxId {:x}'.format(rxId))
-        txId = timTxId('epixhr2x2')
-        logging.debug('TxId {:x}'.format(txId))
         pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+    elif not base['pcie_timing'] and 'cam' in base:
+        cbase = base['cam']
+        rxId = cbase.EpixHR.TriggerEventManager.XpmMessageAligner.RxId.get()
+        logging.warning('RxId {:x}'.format(rxId))
+        cbase.EpixHR.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
     else:
         rxId = 0xffffffff
-
 
     epixhrid = '-'
 
@@ -275,7 +294,7 @@ def intToBool(d,types,key):
             intToBool(d[key],types[key],k)
     elif types[key]=='boolEnum':
         d[key] = False if d[key]==0 else True
-    
+
 def dictToYaml(d,types,keys,dev,path,name):
     v = {'enable':True}
     for key in keys:
@@ -293,6 +312,7 @@ def dictToYaml(d,types,keys,dev,path,name):
     f.write(yaml)
     f.close()
     setattr(dev,'filename'+name,fn)
+    print(f'Wrote {fn}')
 
     #  Need to remove the enable field else Json2Xtc fails
     for key in keys:
@@ -309,23 +329,37 @@ def user_to_expert(base, cfg, full=False):
     global group
     global lane
 
-    pbase = base['pci']
-
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
-        partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
-        rawStart       = cfg['user']['start_ns']
-        triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
-        logging.debug('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-        if triggerDelay < 0:
-            logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-            raise ValueError('triggerDelay computes to < 0')
+        if base['pcie_timing']:
+            pbase = base['pci']
+            partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+            rawStart       = cfg['user']['start_ns']
+            triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
+            logging.warning('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+            if triggerDelay < 0:
+                logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+                raise ValueError('triggerDelay computes to < 0')
+            d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.TriggerDelay']=triggerDelay
+            if full:
+                d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.Partition']=group
+        else:
+            cbase = base['cam']
+            for i,p in enumerate([RTP,group]):
+                partitionDelay = getattr(cbase.EpixHR.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
+                rawStart       = cfg['user']['start_ns']
+                triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
+                logging.warning(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
+                if triggerDelay < 0:
+                    logging.error(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
+                    raise ValueError('triggerDelay computes to < 0')
 
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
+                d[f'expert.EpixHR.TriggerEventManager.TriggerEventBuffer{i}.TriggerDelay']=triggerDelay
 
-    if full:
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
+            if full:
+                d[f'expert.EpixHR.TriggerEventManager.TriggerEventBuffer0.Partition']=RTP
+                d[f'expert.EpixHR.TriggerEventManager.TriggerEventBuffer1.Partition']=group
 
     pixel_map_changed = False
     a = None
@@ -335,7 +369,7 @@ def user_to_expert(base, cfg, full=False):
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==5:  # user map
             a  = cfg['user']['pixel_map']
-            logging.debug('pixel_map len {}'.format(len(a)))
+            logging.warning('pixel_map len {}'.format(len(a)))
             d['user.pixel_map'] = a
             # what about associated trbit?
         else:
@@ -353,16 +387,18 @@ def user_to_expert(base, cfg, full=False):
 #
 def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 
-    pbase = base['pci']
-
     #  Disable internal triggers during configuration
     epixhr2x2_external_trigger(base)
 
-    # overwrite the low-level configuration parameters with calculations from the user configuration
-    if ('expert' in cfg and 'DevPcie' in cfg['expert']):
-        apply_dict('pbase.DevPcie',pbase.DevPcie,cfg['expert']['DevPcie'])
-
+    pbase = base['pci']
     cbase = base['cam']
+
+    # overwrite the low-level configuration parameters with calculations from the user configuration
+    if 'expert' in cfg:
+        if 'DevPcie' in cfg['expert']:
+            apply_dict('pbase.DevPcie',pbase.DevPcie,cfg['expert']['DevPcie'])
+        if not base['pcie_timing']:
+            apply_dict('cbase.EpixHR.TriggerEventManager',cbase.EpixHR.TriggerEventManager,cfg['expert']['EpixHR']['TriggerEventManager'])
 
     epixHR = None
     if ('expert' in cfg and 'EpixHR' in cfg['expert']):
@@ -381,16 +417,27 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         asics = [i for i in range(4)]
 
     #  Set the application event builder for the set of enabled asics
-    m=3
-    for i in asics:
-        m = m | (4<<i)
+    if base['pcie_timing']:
+        m=3
+        for i in asics:
+            m = m | (4<<i)
+    else:
+        m=0
+        for i in asics:
+            m = m | (4<<int(i/2))
     base['bypass'] = 0x3f^m
+    base['batchers'] = m>>2
     print('=== configure bypass {:x} ==='.format(base['bypass']))
     pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
     #  Without a timeout, dropped contributions create an off-by-one between contributors
     pbase.DevPcie.Application.EventBuilder.Timeout.set(int(0.4e-3*156.25e6)) # 400 us
+    if not base['pcie_timing']:
+        eventBuilder = cbase.find(typ=batcher.AxiStreamBatcherEventBuilder)
+        for eb in eventBuilder:
+            eb.Timeout.set(int(0.4e-3*156.25e6))
+            eb.Blowoff.set(True)
 
     #
     #  For some unknown reason, performing this part of the configuration on BeginStep
@@ -406,15 +453,25 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         dictToYaml(epixHR,epixHRTypes,['RegisterControl'],cbase.EpixHR,path,'RegisterControl')
         for i in asics:
             dictToYaml(epixHR,epixHRTypes,['Hr10kTAsic{}'.format(i)],cbase.EpixHR,path,'ASIC{}'.format(i))
+        # remove non-e xistent field
+        for i in range(4):
+            if 'gainBitRemapped' in epixHR[f'PacketRegisters{i}']:
+                del epixHR[f'PacketRegisters{i}']['gainBitRemapped']
         dictToYaml(epixHR,epixHRTypes,['PacketRegisters{}'.format(i) for i in range(4)],cbase.EpixHR,path,'PacketReg')
         dictToYaml(epixHR,epixHRTypes,['TriggerRegisters'],cbase.EpixHR,path,'TriggerReg')
 
         arg = [1,0,0,0,0]
         for i in asics:
             arg[i+1] = 1
-        logging.info(f'Calling fnInitAsicScript(None,None,{arg})')
-        cbase.EpixHR.fnInitAsicScript(None,None,arg)
-                                      
+        logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
+        cbase.EpixHR.fnInitAsicScript(None,None,arg) 
+#        logging.warning(f'Calling fnInitAsic(None,None,{arg})')
+#        cbase.EpixHR.fnInitAsic(None,None,arg)
+
+#       Fixup the PacketRegisters0 disable register (lane 0 is broken?)
+#        lanes = cbase.EpixHR.PacketRegisters0.DisableLane.get();
+#        cbase.EpixHR.PacketRegisters0.DisableLane.set(lanes | 0x33);
+
     if writePixelMap:
         hasGainMode = 'gain_mode' in cfg['user']
         if (hasGainMode and cfg['user']['gain_mode']==5) or not hasGainMode:
@@ -426,12 +483,27 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 
             for i in asics:
                 #  Write a csv file then pass to rogue
+                path = '/tmp/epixhr'
                 fn = path+'PixelMap{}.csv'.format(i)
                 np.savetxt(fn, pixelConfigMap[i], fmt='%d', delimiter=',', newline='\n')
                 print('Setting pixel bit map from {}'.format(fn))
-                getattr(cbase.EpixHR,'Hr10kTAsic{}'.format(i)).fnSetPixelBitmap(None,None,fn)
+                asicName = f'Hr10kTAsic{i}'
+                saci = getattr(cbase.EpixHR,asicName)
+                saci.enable.set(True)
+                saci.fnSetPixelBitmap(None,None,fn)
 
-            logging.debug('SetAsicsMatrix complete')
+                #  Don't forget about the trbit and charge injection
+                #  Program these one-by-one since the second call of fnInitAsicScript breaks
+                if epixHR is not None and asicName in epixHR:
+                    di = epixHR[asicName]
+                    setSaci(saci.atest,'atest',di)
+                    setSaci(saci.test,'test',di)
+                    setSaci(saci.trbit,'trbit',di)
+                    setSaci(saci.Pulser,'Pulser',di)
+                    
+                saci.enable.set(False)
+
+            logging.warning('SetAsicsMatrix complete')
         else:
             #
             #  Write a uniform pixel map
@@ -451,17 +523,14 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
                 saci.trbit.set(trbit)
                 saci.enable.set(False)
 
-    logging.debug('config_expert complete')
+    logging.warning('config_expert complete')
 
 def reset_counters(base):
     # Reset the timing counters
     base['pci'].DevPcie.Hsio.TimingRx.TimingFrameRx.countReset()
-    
-    # Reset the trigger counters
-    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
 
-    # Reset the Epix counters
-#    base['cam'].RdoutStreamMonitoring.countReset()
+    # Reset the trigger counters
+    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[1].countReset()
 
 #
 #  Called on Configure
@@ -479,6 +548,20 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Retrieve the full configuration from the configDB
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
+
+    if not base['pcie_timing']:
+        if 'TriggerEventManager' not in cfg['expert']['EpixHR']:
+            #  Add missing fields
+            f = {'Partition':'UINT32','PauseThreshold':'UINT32','TriggerDelay':'UINT32'}
+            cfg[':types:']['expert']['EpixHR']['TriggerEventManager'] = {'TriggerEventBuffer0':f.copy(),
+                                                                         'TriggerEventBuffer1':f.copy()}
+            f = cfg['expert']['DevPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
+            cfg['expert']['EpixHR']['TriggerEventManager'] = {'TriggerEventBuffer0':f.copy(),
+                                                              'TriggerEventBuffer1':f.copy()}
+            #  Remove the old ones
+            del cfg[':types:']['expert']['DevPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
+            del cfg['expert']['DevPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
+
     ocfg = cfg
 
     #  Translate user settings to the expert fields
@@ -486,19 +569,21 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     #  Apply the expert settings to the device
     pbase = base['pci']
+    cbase = base['cam']
+    cbase.EpixHR.StopRun()
     pbase.StopRun()
     time.sleep(0.01)
 
     config_expert(base, cfg, writePixelMap)
 
     time.sleep(0.01)
-    pbase.StartRun()
+    epixhr2x2_start(base)
 
     #  Add some counter resets here
     reset_counters(base)
 
     #  Enable triggers to continue monitoring
-    epixhr2x2_internal_trigger(base)
+#    epixhr2x2_internal_trigger(base)
 
     #  Capture the firmware version to persist in the xtc
     cbase = base['cam']
@@ -524,10 +609,13 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  User pixel map is assumed to be 288x384 in standard element orientation
     gain_mode = cfg['user']['gain_mode']
     if gain_mode==5:
-        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
     else:
-        mapv,trbit = gain_mode_map(gain_mode)
+        mapv,trbit0 = gain_mode_map(gain_mode)
+        trbit = [trbit0 for i in range(4)]
         pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+
+    print(f'pixelConfigUsr shape {pixelConfigUsr.shape}  trbit {trbit}')
     pixelConfigMap = user_to_rogue(pixelConfigUsr)
 
     for seg in range(1):
@@ -546,18 +634,20 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
         top.setAlg('config', [2,0,0])
         top.setInfo(detType='epixhr2x2', detName=topname[0], detSegm=seg+int(topname[1]), detId=id, doc='No comment')
         top.set('asicPixelConfig', pixelConfigUsr)
-        top.set('trbit'          , [trbit for i in range(4)], 'UINT8')
+        top.set('trbit'          , trbit, 'UINT8')
         scfg[seg+1] = top.typed_json()
 
     result = []
     for i in seglist:
-        logging.debug('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
+        logging.warning('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
         result.append( json.dumps(scfg[i]) )
 
     return result
 
 def epixhr2x2_unconfig(base):
     pbase = base['pci']
+    cbase = base['cam']
+    cbase.EpixHR.StopRun()
     pbase.StopRun()
     return base
 
@@ -566,7 +656,7 @@ def epixhr2x2_unconfig(base):
 #  in response to the scan parameters
 #
 def epixhr2x2_scan_keys(update):
-    logging.debug('epixhr2x2_scan_keys')
+    logging.warning('epixhr2x2_scan_keys')
     global ocfg
     global base
     global segids
@@ -591,7 +681,7 @@ def epixhr2x2_scan_keys(update):
     if pixelMapChanged:
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==5:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
         else:
             mapv,trbit = gain_mode_map(gain_mode)
             pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
@@ -619,7 +709,7 @@ def epixhr2x2_scan_keys(update):
 #  Return the set of configuration updates for a scan step
 #
 def epixhr2x2_update(update):
-    logging.debug('epixhr2x2_update')
+    logging.warning('epixhr2x2_update')
     global ocfg
     global base
     ##
@@ -639,17 +729,13 @@ def epixhr2x2_update(update):
     ncfg = ocfg.copy()
     update_config_entry(ncfg,ocfg,json.loads(update))
     _writePixelMap = user_to_expert(base,ncfg,full=True)
-##  This kills the asic readout
-    pbase = base['pci']
-    pbase.StopRun()
-    time.sleep(0.01)
+
     config_expert(base, ncfg, _writePixelMap, secondPass=True)
-    time.sleep(0.01)
-    pbase.StartRun()
-    ##  End of Try full
+
+    epixhr2x2_start(base)
 
     #  Enable triggers to continue monitoring
-    epixhr2x2_internal_trigger(base)
+#    epixhr2x2_internal_trigger(base)
 
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
@@ -669,7 +755,7 @@ def epixhr2x2_update(update):
     if writePixelMap:
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==5:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
         else:
             mapv,trbit = gain_mode_map(gain_mode)
             pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
@@ -695,7 +781,7 @@ def epixhr2x2_update(update):
     for i in range(len(scfg)):
         result.append( json.dumps(scfg[i]) )
 
-    logging.debug('update complete')
+    logging.warning('update complete')
 
     return result
 
@@ -709,36 +795,20 @@ def epixhr2x2_external_trigger(base):
     #  Switch to external triggering
     print('=== external triggering with bypass {:x} ==='.format(base['bypass']))
     cbase = base['cam'].EpixHR
-    cbase.TriggerRegisters.enable.set(1)
-    cbase.TriggerRegisters.AutoRunEn.set(0)
-    cbase.TriggerRegisters.AutoDaqEn.set(0)
-    cbase.TriggerRegisters.PgpTrigEn.set(1)
-    cbase.TriggerRegisters.DaqTriggerEnable.set(1)
-    cbase.TriggerRegisters.RunTriggerEnable.set(1)
-    cbase.TriggerRegisters.enable.set(0)
-    #  Enable frame readout
-    time.sleep(0.01)  # make sure all auto triggers are done
-    pbase = base['pci']
-    pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
+    cbase.TriggerRegisters.SetTimingTrigger(1)
 
 def epixhr2x2_internal_trigger(base):
     #  Disable frame readout 
-    print('=== internal triggering with bypass {:x} ==='.format(0x3c))
+    mask = 0x3f if base['pcie_timing'] else 0x3b
+    print('=== internal triggering with bypass {:x} ==='.format(mask))
     pbase = base['pci']
-    pbase.DevPcie.Application.EventBuilder.Bypass.set(0x3c)
+    pbase.DevPcie.Application.EventBuilder.Bypass.set(mask)
     return
 
     #  Switch to internal triggering
     print('=== internal triggering ===')
     cbase = base['cam'].EpixHR
-    cbase.TriggerRegisters.enable.set(1)
-    cbase.TriggerRegisters.PgpTrigEn.set(0)
-    cbase.TriggerRegisters.DaqTriggerEnable.set(1)
-    cbase.TriggerRegisters.RunTriggerEnable.set(1)
-    cbase.TriggerRegisters.AutoTrigPeriod.set(1000000)  # 100Hz
-    cbase.TriggerRegisters.AutoDaqEn.set(1)
-    cbase.TriggerRegisters.AutoRunEn.set(1)
-    cbase.TriggerRegisters.enable.set(0)
+    cbase.TriggerRegisters.SetAutoTrigger(1)
 
 def epixhr2x2_enable(base):
     print('epixhr2x2_enable')
@@ -746,7 +816,21 @@ def epixhr2x2_enable(base):
 
 def epixhr2x2_disable(base):
     print('epixhr2x2_disable')
-    epixhr2x2_internal_trigger(base)
+#    epixhr2x2_internal_trigger(base)
+
+def epixhr2x2_start(base):
+    pbase = base['pci']
+    pbase.StartRun()
+    cbase = base['cam']
+    cbase.EpixHR.StartRun()
+    m = base['batchers']
+    cbase.EpixHR.BatcherEventBuilder0.Bypass.set(0)
+    cbase.EpixHR.BatcherEventBuilder1.Bypass.set(0)
+    cbase.EpixHR.BatcherEventBuilder2.Bypass.set(0)
+    cbase.EpixHR.BatcherEventBuilder0.Blowoff.set((m&1)==0)
+    cbase.EpixHR.BatcherEventBuilder1.Blowoff.set((m&2)==0)
+    cbase.EpixHR.BatcherEventBuilder2.Blowoff.set((m&4)==0)
+    print(f'Blowoff BatcherEventBuilders {m^0x7:x}')
 
 #
 #  Test standalone

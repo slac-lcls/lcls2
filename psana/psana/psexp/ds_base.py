@@ -36,6 +36,7 @@ class DsParms:
     smd_inprogress_converted: int
     timestamps:         np.ndarray
     intg_det:           str
+    smd_callback:       int = 0
     terminate_flag:     bool = False
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table, det_stream_id_table):
@@ -66,7 +67,6 @@ class DsParms:
         return stream_id
 
 
-
 class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):
         """Initializes datasource base"""
@@ -74,6 +74,7 @@ class DataSourceBase(abc.ABC):
         self.batch_size  = 1000      # no. of events per batch sent to a bigdata core
         self.max_events  = 0         # no. of maximum events
         self.detectors   = []        # user-selected detector names
+        self.xdetectors  = []        # user-selected excluded detector names
         self.exp         = None      # experiment id (e.g. xpptut13)
         self.runnum      = None      # run no.
         self.live        = False     # turns live mode on/off
@@ -88,6 +89,7 @@ class DataSourceBase(abc.ABC):
         self.dbsuffix  = ''          # calibration database name extension for private constants
         self.intg_det  = ''          # integrating detector name (contains marker ts for a batch)
         self.current_retry_no = 0    # global counting var for no. of read attemps
+        self.smd_callback= 0
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -99,6 +101,7 @@ class DataSourceBase(abc.ABC):
                     'batch_size',
                     'max_events',
                     'detectors',
+                    'xdetectors',
                     'det_name',
                     'destination',
                     'live',
@@ -108,6 +111,7 @@ class DataSourceBase(abc.ABC):
                     'timestamps',
                     'dbsuffix',
                     'intg_det',
+                    'smd_callback',
                     )
 
             for k in keywords:
@@ -147,6 +151,7 @@ class DataSourceBase(abc.ABC):
                 self.smd_inprogress_converted,
                 self.timestamps,
                 self.intg_det,
+                self.smd_callback,
                 )
 
         if 'mpi_ts' not in kwargs:
@@ -307,9 +312,6 @@ class DataSourceBase(abc.ABC):
         if file_info:
             # Builds a list of expected smd files
             xtc_files_from_db   = file_info['xtc_files']
-            if self.xtc_path != file_info['dirname']:
-                print(f'Warning: The given dir: {self.xtc_path} does not match with {file_info["dirname"]} from db.')
-                print(f'         The given dir will be used.')
             smd_files   = [os.path.join(self.xtc_path, 'smalldata',           
                     os.path.splitext(xtc_file_from_db)[0]+'.smd.xtc2')             
                     for xtc_file_from_db in xtc_files_from_db]
@@ -403,177 +405,114 @@ class DataSourceBase(abc.ABC):
 
         logger.debug('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
         self.e.set()
-
+    
+    @property
+    def _configs(self):
+        """Returns configs from DgramManager"""
+        return self.dm.configs
+    
     def _apply_detector_selection(self):
         """
         Handles two arguments
-        1) detectors=[detname,]
-            Reduce no. of smd/xtc files to only those with selectec detectors
-        2) small_xtc=[detname,]
+        1) detectors=['detname', 'detname_0']
+            Reduce no. of smd/xtc files to only those with given 'detname' or 
+            'detname:segment_id'.
+        2) xdetectors=['detname', 'detname_0']
+            Reduce no. of smd/xtc files to only *NOT* in this list.
+        3) small_xtc=['detname', 'detname_0']
             Swap out smd files with these given detectors with bigdata files
         """
-        use_smds = [False] * len(self.smd_files)
-        if self.detectors or self.small_xtc:
+        n_smds = len(self.smd_files)
+        use_smds = [False] * n_smds
+        if self.detectors or self.small_xtc or self.xdetectors:
             # Get tmp configs using SmdReader
             # this smd_fds, configs, and SmdReader will not be used later
             smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
-            logger.debug(f'ds_base: smd0 opened tmp smd_fds: {smd_fds}')
+            logger.debug(f'smd0 opened tmp smd_fds for detection selection: {smd_fds}')
             smdr_man = SmdReaderManager(smd_fds, self.dsparms)
             all_configs = smdr_man.get_next_dgrams()
 
+            # Keeps list of selected files and configs
             xtc_files = []
             smd_files = []
             configs = []
-            if self.detectors:
-                s1 = set(self.detectors)
-                for i, config in enumerate(all_configs):
-                    if s1.intersection(set(config.software.__dict__.keys())):
+            det_dict = {}
+
+            # Get list of detectors from all configs in the format of detname
+            # and detname:segment_id
+            all_det_dict = {i: [] for i in range(n_smds)}
+            for i, config in enumerate(all_configs):
+                det_list = all_det_dict[i]
+                for detname, seg_dict in config.software.__dict__.items():
+                    det_list.append(detname)
+                    for seg_id, _ in seg_dict.items():
+                        det_list.append(f'{detname}_{seg_id}')
+                logger.debug(f'Stream:{i} detectors:{all_det_dict[i]}')
+
+            # Apply detector selection exclusion
+            if self.detectors or self.xdetectors:
+                include_set = set(self.detectors)
+                exclude_set = set(self.xdetectors)
+                logger.debug(f'Applying detector selection/exclusion')
+                logger.debug(f'  Included: {include_set}')
+                logger.debug(f'  Excluded: {exclude_set}')
+
+                # This will become 'key' to the new det_dict
+                cn_keeps = 0
+                for i in range(n_smds):
+                    flag_keep = True
+                    exist_set = set(all_det_dict[i])
+                    logger.debug(f'  Stream:{i}')
+                    if self.detectors:
+                        if not include_set.intersection(exist_set):
+                            flag_keep = False
+                            logger.debug(f'  |-- Discarded, not matched given detectors')
+                    if self.xdetectors and flag_keep:
+                        matched_set = exclude_set.intersection(exist_set)
+                        if matched_set:
+                            flag_keep = False
+                            logger.debug(f'  |-- Discarded, matched with excluded detectors')
+                            # We only warn users in the case where we exclude a detector
+                            # and there're more than one detectors in the file.
+                            if len(exist_set) > len(matched_set):
+                                print(f'Warning: Stream-{i} has one or more detectors matched with the excluded set. All detectors in this stream will be excluded.')
+                             
+                    if flag_keep:
                         if self.xtc_files: xtc_files.append(self.xtc_files[i])
                         if self.smd_files: smd_files.append(self.smd_files[i])
-                        configs.append(config)
-                msg = f"""ds_base: applying detector selection
-    selected detectors: {self.detectors}
-    smd_files n_selected/n_total: {len(smd_files)}/{len(self.smd_files)}
-    {','.join([os.path.basename(smd_file) for smd_file in smd_files])}
-    xtc_files n_selected/n_total: {len(xtc_files)}/{len(self.xtc_files)}
-    {','.join([os.path.basename(xtc_file) for xtc_file in xtc_files])}
-    """
-                logger.debug(msg)
+                        configs.append(config) 
+                        det_dict[cn_keeps] = all_det_dict[i]
+                        cn_keeps += 1
+                        logger.debug(f'  |-- Kept')
             else:
                 xtc_files = self.xtc_files[:]
                 smd_files = self.smd_files[:]
                 configs = all_configs
+                det_dict = all_det_dict
 
             use_smds = [False] * len(smd_files)
             if self.small_xtc:
                 s1 = set(self.small_xtc)
-                msg = f"""ds_base: applying smd files swap
-    selected detectors: {self.small_xtc}\n"""
-                for i, config in enumerate(configs):
-                    if s1.intersection(set(config.software.__dict__.keys())):
+                logger.debug(f'Applying smalldata replacement')
+                logger.debug(f'  Smalldata: {self.small_xtc}')
+                for i in range(len(smd_files)):
+                    exist_set = set(det_dict[i])
+                    logger.debug(f' Stream:{i}')
+                    if s1.intersection(exist_set):
                         smd_files[i] = xtc_files[i]
                         use_smds[i] = True
-                    msg += f'   smd_files[{i}]={os.path.basename(smd_files[i])} use_smds[{i}]={use_smds[i]}\n'
-                logger.debug(msg)
+                        logger.debug(f'  |-- Replaced with smalldata')
+                    else:
+                        logger.debug(f'  |-- Kept with bigdata')
 
             self.xtc_files = xtc_files
-            self.smd_files = smd_files
+            self.smd_files = smd_files  
 
             for smd_fd in smd_fds:
                 os.close(smd_fd)
             logger.debug(f"ds_base: close tmp smd fds:{smd_fds}")
 
         self.dsparms.set_use_smds(use_smds)
-
-    def _setup_det_class_table(self):
-        """
-        this function gets the version number for a (det, drp_class) combo
-        maps (dettype,software,version) to associated python class and
-        detector info for a det_name maps to dettype, detid tuple.
-        """
-        det_classes = {'epics': {}, 'scan': {}, 'step': {}, 'normal': {}}
-
-        xtc_info = []
-        det_info_table = {}
-
-        # collect corresponding stream id for a detector (first found)
-        det_stream_id_table = {}
-
-        # loop over the dgrams in the configuration
-        # if a detector/drp_class combo exists in two cfg dgrams
-        # it will be OK... they should give the same final Detector class
-
-        for i, cfg_dgram in enumerate(self._configs):
-            for det_name, det_dict in cfg_dgram.software.__dict__.items():
-                # go find the class of the first segment in the dict
-                # they should all be identical
-                first_key = next(iter(det_dict.keys()))
-                det = det_dict[first_key]
-
-                if det_name not in det_classes:
-                    det_class_table = det_classes['normal']
-                else:
-                    det_class_table = det_classes[det_name]
-
-
-                dettype, detid = (None, None)
-                for drp_class_name, drp_class in det.__dict__.items():
-
-                    # collect detname maps to dettype and detid
-                    if drp_class_name == 'dettype':
-                        dettype = drp_class
-                        continue
-
-                    if drp_class_name == 'detid':
-                        detid = drp_class
-                        continue
-
-                    # FIXME: we want to skip '_'-prefixed drp_classes
-                    #        but this needs to be fixed upstream
-                    if drp_class_name.startswith('_'): continue
-
-                    # use this info to look up the desired Detector class
-                    versionstring = [str(v) for v in drp_class.version]
-                    class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
-                    xtc_entry = (det_name,det.dettype,drp_class_name,'_'.join(versionstring))
-                    if xtc_entry not in xtc_info:
-                        xtc_info.append(xtc_entry)
-                    if hasattr(detectors, class_name):
-                        DetectorClass = getattr(detectors, class_name) # return the class object
-                        det_class_table[(det_name, drp_class_name)] = DetectorClass
-                    else:
-                        pass
-
-                det_info_table[det_name] = (dettype, detid)
-
-                if det_name not in det_stream_id_table:
-                    det_stream_id_table[det_name] = i
-
-        self.dsparms.set_det_class_table(det_classes, xtc_info, det_info_table, det_stream_id_table)
-
-    def _set_configinfo(self):
-        """ From configs, we generate a dictionary lookup with det_name as a key.
-        The information stored the value field contains:
-
-        - configs specific to that detector
-        - sorted_segment_ids
-          used by Detector cls for checking if an event has correct no. of segments
-        - detid_dict
-          has segment_id as a key
-        - dettype
-        - uniqueid
-        """
-        self.dsparms.configinfo_dict = {}
-
-        for detcls_name, det_class in self.dsparms.det_classes.items(): # det_class is either normal or envstore ('epics', 'scan', 'step')
-            for (det_name, _), _ in det_class.items():
-                # we lose a "one-to-one" correspondence with event dgrams.  we may have
-                # to put in None placeholders at some point? - mona and cpo
-                det_configs = [cfg for cfg in self._configs if hasattr(cfg.software, det_name)]
-                sorted_segment_ids = []
-                # a dictionary of the ids (a.k.a. serial-number) of each segment
-                detid_dict = {}
-                dettype = ""
-                uniqueid = ""
-                for config in det_configs:
-                    seg_dict = getattr(config.software, det_name)
-                    sorted_segment_ids += list(seg_dict.keys())
-                    for segment, det in seg_dict.items():
-                        detid_dict[segment] = det.detid
-                        dettype = det.dettype
-
-                sorted_segment_ids.sort()
-
-                uniqueid = dettype
-                for segid in sorted_segment_ids:
-                    uniqueid += '_'+detid_dict[segid]
-
-                self.dsparms.configinfo_dict[det_name] = type("ConfigInfo", (), {\
-                        "configs": det_configs, \
-                        "sorted_segment_ids": sorted_segment_ids, \
-                        "detid_dict": detid_dict, \
-                        "dettype": dettype, \
-                        "uniqueid": uniqueid})
 
     def _setup_run_calibconst(self):
         """

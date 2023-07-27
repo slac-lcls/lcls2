@@ -23,6 +23,9 @@ from ._Si5317 import *
 
 _fidPrescale = 200
 
+def _get(o,read):
+    return o.get()
+
 class XpmInhConfig(pr.Device):
 
     def __init__(   self, 
@@ -279,66 +282,6 @@ class XpmApp(pr.Device):
             mode         = "RO",
         ))
 
-        def _rxErrCnt(var,read):
-            return var.dependencies[0].get(read)&0xffff
-
-        self.add(pr.LinkVariable(    
-            name         = "rxErrCnt",
-            description  = "Receive error counts",
-            linkedGet    = _rxErrCnt,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _txResetDone(var,read):
-            return (var.dependencies[0].get(read)>>16)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "txResetDone",
-            description  = "Tx reset done",
-            linkedGet    = _txResetDone,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _txReady(var,read):
-            return (var.dependencies[0].get(read)>>17)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "txReady",
-            description  = "Tx ready",
-            linkedGet    = _txReady,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _rxResetDone(var,read):
-            return (var.dependencies[0].get(read)>>18)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "rxResetDone",
-            description  = "Rx reset done",
-            linkedGet    = _rxResetDone,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _rxReady(var,read):
-            return (var.dependencies[0].get(read)>>19)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "rxReady",
-            description  = "Rx ready",
-            linkedGet    = _rxReady,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _rxIsXpm(var,read):
-            return (var.dependencies[0].get(read)>>20)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "rxIsXpm",
-            description  = "Remote link partner is XPM",
-            linkedGet    = _rxIsXpm,
-            dependencies = [self.dsLinkStatus]
-        ))
-
         self.add(pr.RemoteVariable(    
             name         = "dsLinkRxCnt",
             description  = "Rx message count",
@@ -565,24 +508,6 @@ class XpmApp(pr.Device):
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
-        ))
-
-        def pipelineGet(var,read):
-            value = var.dependencies[0].get(read)
-            return value>>16
-
-        def pipelineSet(deps):
-            def pipelineSetValue(var, value, write):
-                val = ((value*_fidPrescale)&0xffff) | (value<<16)
-                print('Setting pipeline reg to 0x{:x}'.format(val))
-                deps[0].set(val,write)
-            return pipelineSetValue
-
-        self.add(pr.LinkVariable(
-            name         = "l0Delay",
-            linkedGet    = pipelineGet,
-            linkedSet    = pipelineSet([self.pipelineDepth]),
-            dependencies = [self.pipelineDepth]
         ))
 
         self.add(pr.RemoteVariable(    

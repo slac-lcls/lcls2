@@ -25,8 +25,8 @@ import sys
 import numpy as np
 
 import psana.pyalgos.generic.Utils as gu
-time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile, set_file_access_mode, time_sec_from_stamp, create_directory, file_mode\
-= gu.time, gu.str_tstamp, gu.get_login, gu.get_hostname, gu.get_cwd, gu.save_textfile, gu.load_textfile, gu.set_file_access_mode, gu.time_sec_from_stamp, gu.create_directory, gu.file_mode
+time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile, set_file_access_mode, time_sec_from_stamp, create_directory, file_mode, change_file_ownership\
+= gu.time, gu.str_tstamp, gu.get_login, gu.get_hostname, gu.get_cwd, gu.save_textfile, gu.load_textfile, gu.set_file_access_mode, gu.time_sec_from_stamp, gu.create_directory, gu.file_mode, gu.change_file_ownership
 
 #log_rec_at_start = gu.log_rec_on_start
 #create_directory = gu.create_directory
@@ -92,7 +92,14 @@ def info_parser_arguments(parser):
     s = 'Optional parameters:\n'\
         '    <key>      <value>              <default>\n'
     for k,v in opts.items():
-        s += '    %s %s %s\n' % (k.ljust(10), str(v).ljust(20), str(defs[k]).ljust(20))
+        _v, _d = v, defs[k]
+        if k in ('dirmode', 'filemode'):
+           _v, _d = oct(_v), oct(_d)
+        elif k == 'datbits':
+           _v, _d = hex(_v), hex(_d)
+        else:
+           _v, _d = str(_v), str(_d)
+        s += '    %s %s %s\n' % (k.ljust(10), _v.ljust(20), _d.ljust(20))
     return s
 
 info_command_line_arguments = info_parser_arguments
@@ -121,13 +128,24 @@ def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, t
     logger.info('Record: %s\nSaved: %s' % (rec, logfname))
 
 
-def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
-    os.umask(umask)
-    rec = log_rec_at_start(tsfmt, **{'dirrepo':repoman.dirrepo,})
-    logfname = repoman.logname_at_start(procname)
-    fexists = os.path.exists(logfname)
-    save_textfile(rec, logfname, mode='a')
-    if not fexists: set_file_access_mode(logfname, repoman.filemode)
-    logger.info('Record: %s\nSaved: %s' % (rec, logfname))
+def save_record_at_start(repoman, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', adddict={}):
+    os.umask(repoman.umask)
+
+    logatstart = repoman.logname_at_start(procname)
+    fexists = os.path.exists(logatstart)
+    d = {'dirrepo':repoman.dirrepo, 'logfile':repoman.logname(procname)}
+    if adddict: d.update(adddict)
+    rec = log_rec_at_start(tsfmt, **d)
+    save_textfile(rec, logatstart, mode='a')
+    if not fexists:
+        set_file_access_mode(logatstart, repoman.filemode)
+        change_file_ownership(logatstart, user=None, group=repoman.group)
+    logger.info('Record: %s\nSaved: %s' % (rec, logatstart))
+
+
+def is_none(par, msg):
+    resp = par is None
+    if resp: logger.debug(msg)
+    return resp
 
 # EOF

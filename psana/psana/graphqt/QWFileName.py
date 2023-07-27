@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import pyqtSignal
-
+from psana.detector.dir_root import DIR_DATA_TEST
 
 class QWFileName(QWidget):
     """Widget for file name input
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = QWFileName(None, butname='Select', label='Path:',\
-                   path='/cds/group/psdm/detector/data2_test/npy/nda-mfxc00118-r0224-silver-behenate-max.txt', show_frame=True)
+                   path=DIR_DATA_TEST+'/npy/nda-mfxc00118-r0224-silver-behenate-max.txt', show_frame=True)
     w.setGeometry(100, 50, 400, 80)
     w.connect_path_is_changed(w.test_signal_reception)
     w.show()

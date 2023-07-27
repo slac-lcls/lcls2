@@ -7,11 +7,15 @@ add_executable(epicsArch
     epicsArch.cc
 )
 
+target_include_directories(epicsArch PUBLIC
+    ${Readline_INCLUDE_DIR}
+)
+
 target_link_libraries(epicsArch
     drpbase
     trigger
     epicstools
-    readline
+    ${Readline_LIBRARY}
 )
 
 add_executable(epicsArchVerify

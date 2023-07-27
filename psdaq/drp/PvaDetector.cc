@@ -120,7 +120,12 @@ int PvaMonitor::getVarDef(PvaDetector*     pvaDetector,
     m_pvaDetector = pvaDetector;
 
     size_t rank = m_rank;
-    if (rankHack != size_t(-1))  rank = rankHack; // Revisit: Hack!
+    if (rankHack != size_t(-1))
+    {
+      rank = rankHack; // Revisit: Hack!
+      logging::warning("%s rank overridden from %zu to %zu\n",
+                       name().c_str(), m_rank, rank);
+    }
 
     auto xtcType = xtype[m_type];
     varDef.NameVec.push_back(XtcData::Name(m_fieldName.c_str(), xtcType, rank));
@@ -143,13 +148,6 @@ void PvaMonitor::onConnect()
 void PvaMonitor::onDisconnect()
 {
     logging::info("%s disconnected", name().c_str());
-
-    // Try to bring the connection up again
-    printf("*** Calling disconnect()\n");
-    disconnect();
-    m_state = NotReady;
-    printf("*** Calling reconnect()\n");
-    reconnect();
 }
 
 void PvaMonitor::updated()
@@ -205,16 +203,8 @@ public:
         m_available(0), m_current(0), m_lastComplete(0), m_latency(0), m_nDmaRet(0)
     {
         m_nodeId = drp.nodeId();
-        uint8_t mask[DMA_MASK_SIZE];
-        dmaInitMaskBytes(mask);
-        for (unsigned i=0; i<PGP_MAX_LANES; i++) {
-            if (para.laneMask & (1 << i)) {
-                logging::info("setting lane  %d", i);
-                dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
-            }
-        }
-        if (dmaSetMaskBytes(drp.pool.fd(), mask)) {
-            logging::error("Failed to allocate lane/vc\n");
+        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+            logging::error("Failed to allocate lane/vc");
         }
     }
 

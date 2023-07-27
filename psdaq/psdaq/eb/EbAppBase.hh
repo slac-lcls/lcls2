@@ -19,6 +19,9 @@ namespace XtcData {
 };
 
 namespace Pds {
+
+  class EbDgram;
+
   namespace Eb {
 
     class EbLfSvrLink;
@@ -51,13 +54,14 @@ namespace Pds {
       void             post(const EbDgram* const* begin,
                             const EbDgram** const end);
       void             trim(unsigned dst);
+    protected:
+      const std::vector<size_t> bufferSizes() const;
     public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contract(const Pds::EbDgram* contrib) const;
     private:
       int              _linksConfigure(const EbParams&            prms,
                                        std::vector<EbLfSvrLink*>& links,
-                                       unsigned                   id,
                                        const char*                name);
     private:                           // Arranged in order of access frequency
       u64arr_t                  _contract;
@@ -78,6 +82,7 @@ namespace Pds {
       std::vector<size_t>       _regSize;
       std::vector<void*>        _region;
       uint64_t                  _contributors;
+      uint64_t                  _idxSrcs;
       unsigned                  _id;
       MetricExporter_t          _exporter;
       const std::string         _pfx;
@@ -85,5 +90,16 @@ namespace Pds {
   };
 };
 
-#endif
 
+inline
+const std::vector<size_t> Pds::Eb::EbAppBase::bufferSizes() const
+{
+  std::vector<size_t> bufSizes(_bufRegSize.size());
+
+  for (unsigned i = 0; i < _bufRegSize.size(); ++i)
+    bufSizes[i] = _bufRegSize[i] / _maxEvBuffers / _maxEntries;
+
+  return bufSizes;
+}
+
+#endif

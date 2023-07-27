@@ -16,6 +16,7 @@ find_package(prometheus-cpp REQUIRED)
 find_package(ZeroMQ REQUIRED)
 find_package(epics REQUIRED)
 find_package(RapidJSON REQUIRED)
+find_package(Readline REQUIRED)
 
 find_library(YAML_CPP_LIB yaml-cpp)
 
@@ -24,6 +25,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+find_path(AES_STREAM_DRIVER_HEADER_PATH NAMES "DataDriver.h" PATH_SUFFIXES include REQUIRED)
+#include_directories(${AES_STREAM_DRIVER_HEADER_PATH})
 
 # This is a temporary fix to pick up the new lib libstdc++ from conda
 link_directories(${CMAKE_PREFIX_PATH}/lib)

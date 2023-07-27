@@ -2,11 +2,11 @@
 
 using namespace XtcData;
 
-int NamesIter::process(Xtc* xtc)
+int NamesIter::process(Xtc* xtc, const void* bufEnd)
 {
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
-        iterate(xtc); // look inside anything that is a Parent
+        iterate(xtc, bufEnd); // look inside anything that is a Parent
         break;
     }
     case (TypeId::Names): {

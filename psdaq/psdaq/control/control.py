@@ -1121,6 +1121,22 @@ class CollectionManager():
             logging.debug('condition_alloc() returning False')
             return False
 
+        # primary/common readout group must be used
+        pFound = False
+        for drp in self.cmstate['drp'].values():
+            try:
+                readout = drp['det_info']['readout']
+            except KeyError as ex:
+                logging.error(f'condition_alloc(): KeyError: {ex}')
+            else:
+                if readout == self.platform:
+                    pFound = True
+                    break
+        if pFound == False:
+            self.report_error(f'at least one DRP must use readout group {self.platform}')
+            logging.debug('condition_alloc() returning False')
+            return False
+
         # give number to meb nodes for the event builder
         if 'meb' in active_state:
             for i, node in enumerate(active_state['meb']):
@@ -1244,6 +1260,8 @@ class CollectionManager():
         if not ok:
             return False
 
+        self.slowupdateArmed = self.slow_update_rate != 0
+
         self.lastTransition = 'beginrun'
         return True
 
@@ -1327,7 +1345,9 @@ class CollectionManager():
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
 #            Force SlowUpdate to respect deadtime
-            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
+            #if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
+            # hack to try to get same SlowUpdates in all streams
+            if not self.pva.pv_put(pv, (ControlDef.transitionId['SlowUpdate'])):
                 update_ok = False
                 break
 
@@ -2115,6 +2135,15 @@ class CollectionManager():
         ok = self.get_phase2_replies('enable')
         if not ok:
             return False
+
+        # For the first Enable after a BeginRun, possibly issue a Slow Update
+        # after Enable has gone through but before enabling triggers
+        if self.slowupdateArmed:
+            self.slowupdateArmed = False
+            lastTransition = self.lastTransition
+            if not self.condition_slowupdate():
+                self.lastTransition = lastTransition
+                return False
 
         # order matters: set Enable PV after others transition
         if not self.group_run(True):

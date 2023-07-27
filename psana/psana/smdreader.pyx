@@ -11,7 +11,7 @@ from psana.psexp import TransitionId
 import numpy as np
 from cython.parallel import prange
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
-from psana.dgrampy import DgramPy
+from psana.dgramedit import DgramEdit
 
 
 cdef class SmdReader:
@@ -114,7 +114,7 @@ cdef class SmdReader:
     def set_configs(self, configs):
         # SmdReaderManager calls view (with batch_size=1)  at the beginning
         # to read config dgrams. It passes the configs to SmdReader for
-        # creating any fake dgrams using DgramPy.
+        # creating any fake dgrams using DgramEdit.
         self.configs = configs
 
     def get(self, smd_inprogress_converted):
@@ -317,7 +317,7 @@ cdef class SmdReader:
         if self.fakestep_flag == 1 and self.winner_last_sv in (TransitionId.L1Accept, TransitionId.SlowUpdate):
             # Only need to create once since fake transition set is the same for all streams.
             if self._fakebuf_size == 0:
-                fake_config = DgramPy(transition_id=TransitionId.Configure, ts=0)
+                fake_config = DgramEdit(transition_id=TransitionId.Configure, ts=0)
                 fake_transitions = [TransitionId.Disable, 
                                     TransitionId.EndStep,
                                     TransitionId.BeginStep,
@@ -325,7 +325,7 @@ cdef class SmdReader:
                                    ]
                 fake_ts = self.get_next_fake_ts()
                 for i_fake, fake_transition in enumerate(fake_transitions):
-                    fake_dgram = DgramPy(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
+                    fake_dgram = DgramEdit(transition_id=fake_transition, config=fake_config, ts=fake_ts+i_fake)
                     fake_dgram.save(self._fakebuf, offset=out_offset)
                     out_offset += fake_dgram.size 
                 self._fakebuf_size = out_offset

@@ -18,7 +18,8 @@ Created on 2022-01-20 by Mikhail Dubrovin
 """
 import os
 import psana.detector.Utils as ut
-DIR_LOG_AT_START = '/cds/group/psdm/logs/atstart'
+from psana.detector.dir_root import DIR_LOG_AT_START
+# DIR_LOG_AT_START = DIR_ROOT + '/detector/logs/atstart'
 
 
 class RepoManager(object):
@@ -26,27 +27,37 @@ class RepoManager(object):
        <dirrepo>/<panel_id>/<constant_type>/<files-with-constants>
        <dirrepo>/logs/<year>/<log-files>
        <dirrepo>/logs/log-<fname>-<year>.txt # file with log_rec_at_start()
-       e.g.: dirrepo = '/reg/g/psdm/detector/gains/epix10k/panels'
-       DIR_LOG_AT_START/<year>/<year>_logrec_<procname>.txt
+       e.g.: dirrepo = DIR_ROOT + '/detector/gains/epix10k/panels'
+       DIR_LOG_AT_START/<year>/<year>_lcls2_<procname>.txt
     """
 
     def __init__(self, dirrepo, **kwa):
-        self.dirrepo = dirrepo.rstrip('/')
-        self.dirmode     = kwa.get('dirmode',  0o777)
-        self.filemode    = kwa.get('filemode', 0o666)
+        self._dirrepo = dirrepo.rstrip('/')
+        self.dirmode     = kwa.get('dirmode',  0o2775)
+        self.filemode    = kwa.get('filemode', 0o664)
         self.umask       = kwa.get('umask', 0o0)
+        self.group       = kwa.get('group', 'ps-users')
         self.dirname_log = kwa.get('dirname_log', 'logs')
         self.year        = kwa.get('year', ut.str_tstamp(fmt='%Y'))
         self.tstamp      = kwa.get('tstamp', ut.str_tstamp(fmt='%Y-%m-%dT%H%M%S'))
         self.dettype     = kwa.get('dettype', None)
-        if self.dettype is not None: self.dirrepo += '/%s' % self.dettype
+        self.addname     = kwa.get('addname', 'lcls2')  # 'logrec'
+        self.dirrepo     = self._dirrepo if self.dettype is None else\
+                           os.path.join(self._dirrepo, self.dettype)
         self.dir_log_at_start = kwa.get('dir_log_at_start', DIR_LOG_AT_START)
+
+        d = self.makedir(self._dirrepo)
 
 
     def makedir(self, d):
         """create and return directory d with mode defined in object property"""
-        ut.create_directory(d, self.dirmode, umask=self.umask)
+        #print('XXX makedir: %s mode: %s group: %s' % (d, oct(self.dirmode), self.group))
+        ut.create_directory(d, mode=self.dirmode, umask=self.umask, group=self.group)
         return d
+
+
+    def makedir_repo(self):
+        return self.makedir(self.dirrepo)
 
 
     def dir_in_repo(self, name):
@@ -56,7 +67,7 @@ class RepoManager(object):
 
     def makedir_in_repo(self, name):
         """create and return directory <dirrepo>/<name>"""
-        d = self.makedir(self.dirrepo)
+        d = self.makedir_repo()
         return self.makedir(self.dir_in_repo(name))
 
 
@@ -83,7 +94,7 @@ class RepoManager(object):
 
 
     def dir_merge(self, dname='merge_tmp'):
-        d = self.makedir(self.dirrepo)
+        d = self.makedir_repo()
         return self.dir_in_repo(dname)
 
 
@@ -98,7 +109,7 @@ class RepoManager(object):
 
     def makedir_panel(self, panel_id):
         """create and returns path to panel directory like <dirrepo>/<panel_id>"""
-        d = self.makedir(self.dirrepo)
+        d = self.makedir_repo()
         return self.makedir(self.dir_panel(panel_id))
 
 
@@ -133,7 +144,7 @@ class RepoManager(object):
 
 
     def makedir_constants(self, dname='constants'):
-        d = self.makedir(self.dirrepo)
+        d = self.makedir_repo()
         return self.makedir(self.dir_constants(dname))
 
 
@@ -152,18 +163,20 @@ class RepoManager(object):
 
 
     def logname_at_start(self, procname):
-        return '%s/%s_logrec_%s.txt' % (self.makedir_log_at_start_year(), self.year, procname)
+        """ex.: <DIR_ROOT>/detector/logs/atstart/2022/2022_lcls2_calibman.txt"""
+        return '%s/%s_%s_%s.txt' % (self.makedir_log_at_start_year(), self.year, self.addname, procname)
 
 
-    def save_record_at_start(self, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
-        ut.save_record_at_start(self, procname, tsfmt=tsfmt)
+    def save_record_at_start(self, procname, tsfmt='%Y-%m-%dT%H:%M:%S%z', adddict={}):
+        repoman = self
+        ut.save_record_at_start(repoman, procname, tsfmt=tsfmt, adddict=adddict)
 
 
 if __name__ == "__main__":
     dirrepo = './work'
     fname = 'testfname'
     procname = 'testproc-%s' % ut.get_login()
-    repoman = RepoManager(dirrepo, dirmode=0o777, filemode=0o666)
+    repoman = RepoManager(dirrepo, dirmode=0o2775, filemode=0o664, group='ps-users')
     print('makedir_logs %s' % repoman.makedir_logs())
     print('logname %s' % repoman.logname(procname))
     print('makedir_constants %s' % repoman.makedir_constants())

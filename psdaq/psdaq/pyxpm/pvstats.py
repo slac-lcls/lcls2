@@ -7,45 +7,9 @@ from p4p.nt import NTTable
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvhandler import *
 
-provider = None
 lock     = None
 
 fidPeriod   = 1400e-6/1300.
-
-def addPV(name,ctype,init=0):
-    pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=DefaultPVHandler())
-    provider.add(name, pv)
-    return pv
-                                
-def toTable(t):
-    table = []
-    for v in t.items():
-        table.append((v[0],v[1][0][1:]))
-        n = len(v[1][1])
-    return table,n
-
-def toDict(t):
-    d = {}
-    for v in t.items():
-        d[v[0]] = v[1][1]
-    return d
-
-def toDictList(t,n):
-    l = []
-    for i in range(n):
-        d = {}
-        for v in t.items():
-            d[v[0]] = v[1][1][i]
-        l.append(d)
-    return l
-
-def addPVT(name,t):
-    table,n = toTable(t)
-    init    = toDictList(t,n)
-    pv = SharedPV(initial=NTTable(table).wrap(init),
-                  handler=DefaultPVHandler())
-    provider.add(name,pv)
-    return pv
 
 def updatePv(pv,v,timev):
     if v is not None:
@@ -68,6 +32,12 @@ class SFPStatus(object):
         self._value = toDict(sfpStatus)
         self._link  = 0
 
+        amc = self._xpm.amcs[0]
+        mod = amc.SfpSummary.modabs.get()
+        print(f'SFPStatus mod {mod:x}')
+        amc.I2cMux.set(1<<3)
+        print(f'Vendor name {amc.SfpI2c.VendorName.get()}')
+
     def update(self):
 
         amc = self._xpm.amcs[int(self._link/7)]
@@ -80,8 +50,8 @@ class SFPStatus(object):
             self._value['ModuleAbsent'][self._link] = (mod>>j)&1
             if ((mod>>j)&1)==0:
                 amc.I2cMux.set(j|(1<<3))
-                (self._value['TxPower'][self._link],
-                 self._value['RxPower'][self._link]) = amc.SfpI2c.get_pwr()
+                self._value['TxPower'][self._link] = amc.SfpI2c.TxPower.get()
+                self._value['RxPower'][self._link] = amc.SfpI2c.RxPower.get()
 
         self._link += 1
         if self._link==14:
@@ -149,6 +119,8 @@ class TimingStatus(object):
         self._sofCount        = device.sofCount.get()
         self._eofCount        = device.eofCount.get()
 
+        self._vLast = 0
+
         def addPVF(label):
             return addPV(name+':'+label,'f')
 
@@ -164,7 +136,7 @@ class TimingStatus(object):
         self._pv_fids        = addPVF('FIDs')
         self._pv_sofs        = addPVF('SOFs')
         self._pv_eofs        = addPVF('EOFs')
-        self._pv_rxAlign     = addPV(name+':RxAlign', 'aI', [0]*65) 
+        self._pv_rxAlign     = addPV(name+':RxAlign', 'aI', [0]*65)
 
     def update(self):
 
@@ -174,6 +146,8 @@ class TimingStatus(object):
                 value['value'] = (nv-ov)&((1<<nb)-1)
                 value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
                 pv.post(value)
+                if type(verbose) is type("") and nv != ov:
+                    print(f'*** {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
                 return nv
             else:
                 return ov
@@ -185,8 +159,8 @@ class TimingStatus(object):
         self._txClkCount      = updatePv(self._pv_txClkCount, self._device.TxClkCount.get()<<4, self._txClkCount)
         self._rxRstCount      = updatePv(self._pv_rxRstCount, self._device.RxRstCount.get(), self._rxRstCount)
         self._crcErrCount     = updatePv(self._pv_crcErrCount, self._device.CrcErrCount.get(), self._crcErrCount)
-        self._rxDecErrCount   = updatePv(self._pv_rxDecErrs, self._device.RxDecErrCount.get(), self._rxDecErrCount)
-        self._rxDspErrCount   = updatePv(self._pv_rxDspErrs, self._device.RxDspErrCount.get(), self._rxDspErrCount)
+        self._rxDecErrCount   = updatePv(self._pv_rxDecErrs, self._device.RxDecErrCount.get(), self._rxDecErrCount, "RxDecErrs")
+        self._rxDspErrCount   = updatePv(self._pv_rxDspErrs, self._device.RxDspErrCount.get(), self._rxDspErrCount, "RxDspErrs")
         self._bypassRstCount  = updatePv(self._pv_bypassRsts, self._device.BypassResetCount.get(), self._bypassRstCount)
         self._bypassDoneCount = updatePv(self._pv_bypassDones, self._device.BypassDoneCount.get(), self._bypassDoneCount)
         self._fidCount        = updatePv(self._pv_fids, self._device.FidCount.get(), self._fidCount)
@@ -199,6 +173,9 @@ class TimingStatus(object):
             value['value'] = v
             value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
             self._pv_rxLinkUp.post(value)
+            if v != self._vLast:
+                print(f'*** {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
+                self._vLast = v
 
 class AmcPLLStatus(object):
     def __init__(self, name, app, idx):
@@ -214,13 +191,15 @@ class AmcPLLStatus(object):
         self._pv_los    = addPVI('PLL_LOS')
         self._pv_losCnt = addPVI('PLL_LOSCNT')
 
+        print(f'amcPLL{idx} {app.amcPLL.rstn.get()} {app.amcPLL.bypass.get()}')
+
     def handle(self, msg, offset, timev):
         w = struct.unpack_from('<B',msg,offset)
         offset += 1
-        updatePv(self._pv_lolCnt,(w[0]>>0)&7, timev)
-        updatePv(self._pv_lol   ,(w[0]>>3)&1, timev)
-        updatePv(self._pv_losCnt,(w[0]>>4)&7, timev)
-        updatePv(self._pv_los   ,(w[0]>>7)&1, timev)
+        updatePv(self._pv_los   ,(w[0]>>0)&1, timev)
+        updatePv(self._pv_losCnt,(w[0]>>1)&7, timev)
+        updatePv(self._pv_lol   ,(w[0]>>4)&1, timev)
+        updatePv(self._pv_lolCnt,(w[0]>>5)&7, timev)
         return offset
 
 class CuStatus(object):
@@ -249,6 +228,18 @@ class CuStatus(object):
         updatePv(self._pv_fiducialIntv, self._device.cuFiducialIntv   .get())
         updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
         updatePv(self._pv_PhCuToSC    , self._phase .phase())
+
+class NoCuStatus(object):
+    def __init__(self, name):
+
+        self._pv_timeStamp    = addPV(name+':TimeStamp'   ,'L')
+        self._pv_pulseId      = addPV(name+':PulseId'     ,'L')
+        self._pv_fiducialIntv = addPV(name+':FiducialIntv','I')
+        self._pv_fiducialErr  = addPV(name+':FiducialErr' ,'I')
+        self._pv_PhCuToSC     = addPV(name+':CuToSCPhase' ,'f')
+
+    def update(self):
+        pass
 
 class MonClkStatus(object):
     def __init__(self, name, app):
@@ -381,12 +372,11 @@ class PVMmcmPhaseLock(object):
         v.append( mmcm.delayValue.get() )
         v.append( mmcm.waveform.get() )
         self.pv   = addPV(name,'ai',v)
-        
+
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod):
-        global provider
-        provider = p
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True):
+        setProvider(p)
         global lock
         lock     = m
         global fidPeriod
@@ -394,7 +384,7 @@ class PVStats(object):
 
         self._xpm  = xpm
         self._app  = xpm.XpmApp
-        
+
         self._links = []
         for i in range(32):
             self._links.append(LinkStatus(name,self._app,i))
@@ -409,12 +399,17 @@ class PVStats(object):
 
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming)
+
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
+
         self._monClks  = MonClkStatus(name,self._app)
-        self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
+        if hasSfp:
+            self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
+        else:
+            self._sfpStat  = None
 
         self.paddr   = addPV(name+':PAddr'  ,'I',self._app.paddr.get())
-        self.fwbuild = addPV(name+':FwBuild','s',self._xpm.AxiVersion.BuildStamp.get())
+        self.fwbuild = addPV(name+':FwBuild','s',axiv.BuildStamp.get())
 
 #        self._mmcm = []
 #        for i,m in enumerate(xpm.mmcms):
@@ -433,13 +428,17 @@ class PVStats(object):
         for i in range(2):
             offset = self._amcPll[i].handle(msg,offset,timev)
         offset = self._monClks.handle(msg,offset,timev)
+        return offset
 
-    def update(self, cycle):
+    def update(self, cycle, cuMode=False):
         try:
-            self._usTiming.update()
-            self._cuTiming.update()
-            self._cuGen   .update()
-#            self._sfpStat .update()
+            if cuMode:
+                self._cuTiming.update()
+                self._cuGen   .update()
+            else:
+                self._usTiming.update()
+            if self._sfpStat:
+                self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:

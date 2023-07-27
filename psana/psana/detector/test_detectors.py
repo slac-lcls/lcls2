@@ -101,7 +101,10 @@ class andor_raw_0_0_2(DetectorImpl):
         segs = self._segments(evt)
         if segs is None:
             return None
-        return segs[1].calib
+        if 1 in segs:
+            return segs[1].calib
+        else:
+            return segs[0].calib
 class epix_raw_0_0_2(DetectorImpl):
     def __init__(self, *args):
         super(epix_raw_0_0_2, self).__init__(*args)
@@ -337,4 +340,39 @@ class cspad_raw_1_2_3(DetectorImpl):
             geometry_access = GeometryAccess()
             geometry_access.load_pars_from_str(geometry_string)
         return geometry_access
+
+class sfx_raw_1_2_3(DetectorImpl):
+    """Test detector produced by dgrampy"""
+    def __init__(self, *args):
+        super(sfx_raw_1_2_3, self).__init__(*args)
+    def calib(self, evt) -> Array3d:
+        segs = self._segments(evt)
+        return segs[0].calib
+    def photon_energy(self, evt):
+        segs = self._segments(evt)
+        return segs[0].photon_energy
+    
+    ## peak finder
+    def npeaks(self,evt):
+        segs = self._segments(evt)
+        return segs[0].npeaks
+    def seg(self,evt):
+        segs = self._segments(evt)
+        return segs[0].seg
+    def row(self,evt):
+        segs = self._segments(evt)
+        return segs[0].row
+    def col(self,evt):
+        segs = self._segments(evt)
+        return segs[0].col
+    def npix(self,evt):
+        segs = self._segments(evt)
+        return segs[0].npix
+    def amax(self,evt):
+        segs = self._segments(evt)
+        return segs[0].amax
+    def atot(self,evt):
+        segs = self._segments(evt)
+        return segs[0].atot
+
 

@@ -3,13 +3,13 @@
 // make
 // == Then run
 // psalg/test_AreaDetector
-// 
+//
 // Build in lcls2/install/bin/
 // see .../lcls2/psalg/psalg/CMakeLists.txt
 // cd .../lcls2
 // ./build_all.sh
 
-// Then run it (from lcls2/install/bin/datareader) as 
+// Then run it (from lcls2/install/bin/datareader) as
 // test_AreaDetector
 
 #include <fcntl.h> // O_RDONLY
@@ -18,7 +18,7 @@
 #include <unistd.h> // close
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
-#include <bitset>   
+#include <bitset>
 
 //#include "xtcdata/xtc/ShapesData.hh"
 //#include "xtcdata/xtc/DescData.hh"
@@ -39,7 +39,7 @@
 using namespace calib;
 using namespace detector;
 
-using namespace std; 
+using namespace std;
 using namespace XtcData;
 
 //-------------------
@@ -135,7 +135,8 @@ void test_AreaDetector_base(int argc, char* argv[]) {
 
   // get configuration out of the 1-st datagram
   Dgram* dg = xfi.next();
-  ConfigIter ci(&(dg->xtc));
+  const void* bufEnd = ((char*)dg) + xfi.size();
+  ConfigIter ci(&(dg->xtc), bufEnd);
 
   //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", ci);
   AreaDetector& det = *getAreaDetector("jungfrau", ci);
@@ -151,8 +152,8 @@ void test_AreaDetector_base(int argc, char* argv[]) {
       printf("evt:%04d\n", nevent);
       print_dg_info(dg);
 
-      DataIter di(&(dg->xtc));
- 
+      DataIter di(&(dg->xtc), bufEnd);
+
       det.AreaDetector::process_data(di);
       //det.process_data(di);
 
@@ -171,7 +172,8 @@ void test_AreaDetector_mix(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter ci(&(dg->xtc));
+  const void* bufEnd = ((char*)dg) + xfi.size();
+  ConfigIter ci(&(dg->xtc), bufEnd);
 
   //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", ci);
   AreaDetector& det = *getAreaDetector("jungfrau", ci);
@@ -203,14 +205,14 @@ void test_AreaDetector_mix(int argc, char* argv[]) {
       printf("evt:%04d\n", nevent);
       print_dg_info(dg);
 
-      DataIter di(&(dg->xtc));
- 
+      DataIter di(&(dg->xtc), bufEnd);
+
       //DESC_VALUE(desc_data, di, namesLookup);
       //DescData& desc_data = di.desc_value(namesLookup);
       //dump("Data values", desc_data);
 
       //det.AreaDetector::process_data(di);
-      det.process_data(di); // <- prints data details 
+      det.process_data(di); // <- prints data details
 
       raw_t* data;
       det.raw<raw_t>(di, data, "frame");
@@ -234,7 +236,8 @@ void test_AreaDetector(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter ci(&(dg->xtc));
+  const void* bufEnd = ((char*)dg) + xfi.size();
+  ConfigIter ci(&(dg->xtc), bufEnd);
 
   //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", ci);
   AreaDetector& det = *getAreaDetector("jungfrau", ci);
@@ -250,7 +253,7 @@ void test_AreaDetector(int argc, char* argv[]) {
 
       printf("evt:%04d %s", nevent, str_dg_info(dg).c_str());
 
-      DataIter di(&(dg->xtc));
+      DataIter di(&(dg->xtc), bufEnd);
 
       raw_t* d;
       det.raw<raw_t>(di, d, "frame");
@@ -276,7 +279,8 @@ void test_AreaDetectorJungfrau(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter ci(&(dg->xtc));
+  const void* bufEnd = ((char*)dg) + xfi.size();
+  ConfigIter ci(&(dg->xtc), bufEnd);
 
   AreaDetectorJungfrau det("jungfrau", ci);
   //det.process_config();
@@ -291,7 +295,7 @@ void test_AreaDetectorJungfrau(int argc, char* argv[]) {
       printf("evt:%04d\n", nevent);
       //print_dg_info(dg);
 
-      DataIter di(&(dg->xtc));
+      DataIter di(&(dg->xtc), bufEnd);
       NDArray<raw_jungfrau_t>& nda1 = det.raw(di);
       std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
 
@@ -316,7 +320,8 @@ void test_AreaDetectorCspad(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter ci(&(dg->xtc));
+  const void* bufEnd = ((char*)dg) + xfi.size();
+  ConfigIter ci(&(dg->xtc), bufEnd);
 
   AreaDetectorJungfrau det("jungfrau", ci);
   //AreaDetectorCspad det("jungfrau", ci);
@@ -333,7 +338,7 @@ void test_AreaDetectorCspad(int argc, char* argv[]) {
       printf("evt:%04d\n", nevent);
       //print_dg_info(dg);
 
-      DataIter di(&(dg->xtc));
+      DataIter di(&(dg->xtc), bufEnd);
       NDArray<raw_jungfrau_t>& nda1 = det.raw(di);
       std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
 
@@ -358,7 +363,8 @@ void test_AreaDetectorPnccd(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter ci(&(dg->xtc));
+  const void* bufEnd = ((char*)dg) + xfi.size();
+  ConfigIter ci(&(dg->xtc), bufEnd);
 
   AreaDetectorPnccd det("pnccd_0001", ci);
   det._class_msg("some string");
@@ -391,7 +397,7 @@ void test_AreaDetectorPnccd(int argc, char* argv[]) {
 
       print_dg_info(dg);
 
-      DataIter di(&(dg->xtc));
+      DataIter di(&(dg->xtc), bufEnd);
 
       if(first_entrance) {
         first_entrance = false;
@@ -425,7 +431,8 @@ void test_AreaDetectorOpal(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter ci(&(dg->xtc));
+  const void* bufEnd = ((char*)dg) + xfi.size();
+  ConfigIter ci(&(dg->xtc), bufEnd);
 
   AreaDetectorOpal det("opal_0001", ci);
   det._class_msg("XXXX just a test string");
@@ -462,7 +469,7 @@ void test_AreaDetectorOpal(int argc, char* argv[]) {
 
       print_dg_info(dg);
 
-      DataIter di(&(dg->xtc));
+      DataIter di(&(dg->xtc), bufEnd);
 
       if(first_entrance) {
         first_entrance = false;
@@ -504,12 +511,12 @@ void test_misc(int argc, char* argv[]) {
 
   std::cout << "raw content: " << '\n';
   unsigned i=25; char* p=&buf[i];
-  for(; i<55; i++, p++) 
+  for(; i<55; i++, p++)
       std::cout << i << " p:" << (void*) p << " v:" << std::bitset<8>(*p) << '\n';
 
   ::close(fd);
 
-  
+
   std::cout << "sizeof(float)        : " << sizeof(float) << '\n';
   std::cout << "sizeof(double)       : " << sizeof(double) << '\n';
   std::cout << "sizeof(int)          : " << sizeof(int) << '\n';
@@ -549,10 +556,10 @@ int main(int argc, char **argv) {
   //LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
   LOGGER.setLogger(LL::INFO, "%H:%M:%S.%f");           // set level and time format
 
-  cout << usage(); 
+  cout << usage();
   print_hline(80,'_');
   std::string tname((argc>1) ? argv[1] : "0");
-  cout << usage(tname); 
+  cout << usage(tname);
 
   if      (tname=="0") test_AreaDetector(argc, argv);
   else if (tname=="1") test_AreaDetector_base(argc, argv);

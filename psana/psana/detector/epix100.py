@@ -26,6 +26,8 @@ class epix100_raw_2_0_1(ad.AreaDetector):
         ad.AreaDetector.__init__(self, *args, **kwa)
         self._seg_geo = ad.sgs.Create(segname='EPIX100:V1')
         self._data_bit_mask = 0xffff
+        self._gain_ = None # ADU/eV
+        self._gain_factor_ = None # keV/ADU
 
 
     def _gain(self):

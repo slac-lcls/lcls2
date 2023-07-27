@@ -25,7 +25,7 @@
 
 //using namespace psalgos;
 //using namespace psalg;
-using namespace std; 
+using namespace std;
 
 using namespace XtcData;
 //using std::string;
@@ -40,27 +40,27 @@ class TestXtcIterator : public XtcData::XtcIterator
 {
 public:
     enum {Stop, Continue};
-    TestXtcIterator(XtcData::Xtc* xtc) : XtcData::XtcIterator(xtc) {} // {iterate();}
+    TestXtcIterator(XtcData::Xtc* xtc, const void* bufEnd) : XtcData::XtcIterator(xtc, bufEnd) {} // {iterate();}
     TestXtcIterator() : XtcData::XtcIterator() {}
 
-    int process(XtcData::Xtc* xtc) {
-        TypeId::Type type = xtc->contains.id(); 
-	printf("    TestXtcIterator TypeId::%-12s id: %-4d Xtc* pointer: %p\n", TypeId::name(type), type, xtc);
+    int process(XtcData::Xtc* xtc, const void* bufEnd) {
+        TypeId::Type type = xtc->contains.id();
+        printf("    TestXtcIterator TypeId::%-12s id: %-4d Xtc* pointer: %p\n", TypeId::name(type), type, xtc);
 
-	switch (xtc->contains.id()) {
-	case (TypeId::Parent): {iterate(xtc); break;}
-	case (TypeId::Names): {break;}
-        case (TypeId::ShapesData): {iterate(xtc); break;}
-        case (TypeId::Data): {break;}
-        case (TypeId::Shapes): {break;}
-	default: {
-	    printf("    WARNING: UNKNOWN DATA TYPE !!! \n");
-	    break;
-	    }
-	}
+        switch (xtc->contains.id()) {
+            case (TypeId::Parent): {iterate(xtc, bufEnd); break;}
+            case (TypeId::Names): {break;}
+            case (TypeId::ShapesData): {iterate(xtc, bufEnd); break;}
+            case (TypeId::Data): {break;}
+            case (TypeId::Shapes): {break;}
+            default: {
+                printf("    WARNING: UNKNOWN DATA TYPE !!! \n");
+                break;
+            }
+        }
 
         //==============
-	// iterate(xtc);
+        // iterate(xtc, bufEnd);
         //==============
 
         return Continue;
@@ -71,7 +71,7 @@ public:
 
 // void dump(const char* transition, Names& names, DescData& descdata) {
 void dump(const char* comment, DescData& descdata) {
- 
+
     static const char* _names[] = {"Configuration", "Data"};
 
   //NameIndex& nameIndex   = descdata.nameindex();
@@ -177,17 +177,18 @@ int test_xtc_content(const char* fname="data-xpptut15-r0430-e000010-jungfrau.xtc
 
     int fd = file_descriptor(fname);
     XtcFileIterator it_fdg(fd, 0x4000000);
-    //Dgram* dg = it_fdg.next();
-    Dgram* dg;
+    Dgram* dg = it_fdg.next();
+    const void* bufEnd = ((char*)dg) + it_fdg.size();
 
     unsigned ndgreq=1000000;
     unsigned ndg=0;
-    while ((dg = it_fdg.next())) {
+    while (dg) {
         ndg++;
 	printf("%04d ---- datagram ----\n", ndg);
         if (ndg>=ndgreq) break;
-        TestXtcIterator iter(&(dg->xtc));
+        TestXtcIterator iter(&(dg->xtc), bufEnd);
         iter.iterate();
+        dg = it_fdg.next();
     }
     return 0;
 }
@@ -201,8 +202,9 @@ int test_all(const char* fname="data-xpptut15-r0430-e000010-jungfrau.xtc2") {
 
     // get data out of the 1-st datagram configure transition
     Dgram* dg = xfi.next();
+    const void* bufEnd = ((char*)dg) + xfi.size();
 
-    ConfigIter configo(&(dg->xtc));
+    ConfigIter configo(&(dg->xtc), bufEnd);
     NamesLookup& namesLookup = configo.namesLookup();
 
     //DESC_SHAPE(desc_shape, configo, namesLookup);
@@ -224,7 +226,7 @@ int test_all(const char* fname="data-xpptut15-r0430-e000010-jungfrau.xtc2") {
         if (nevent>=neventreq) break;
         nevent++;
 
-        DataIter datao(&(dg->xtc));
+        DataIter datao(&(dg->xtc), bufEnd);
 
         printf("evt:%04d ==== transition: %s of type: %d time %d.%09d, env %ux, "
                "payloadSize %d extent %d\n", nevent,
@@ -258,10 +260,10 @@ std::string usage(const std::string& tname="")
 
   if (tname == "" || tname=="30") ss << "\n  30 - test_xtc_content(opal1k)    - demo of ...";
   if (tname == "" || tname=="31") ss << "\n  31 - test_all(opal1k)            - demo of ...";
-					      
+
   if (tname == "" || tname=="40") ss << "\n  40 - test_xtc_content(opal4k)    - demo of ...";
   if (tname == "" || tname=="41") ss << "\n  41 - test_all(opal4k)            - demo of ...";
-					      
+
   if (tname == "" || tname=="50") ss << "\n  50 - test_xtc_content(opal8k)    - demo of ...";
   if (tname == "" || tname=="51") ss << "\n  51 - test_all(opal8k)            - demo of ...";
   ss << '\n';
@@ -278,7 +280,7 @@ int main(int argc, char **argv) {
 
   print_hline(80,'_');
   std::string tname((argc>1) ? argv[1] : "0");
-  cout << usage(tname); 
+  cout << usage(tname);
 
   if      (tname== "0") test_xtc_content("data-xpptut15-r0430-e000010-jungfrau.xtc2");
   else if (tname== "1") test_all();
@@ -301,7 +303,7 @@ int main(int argc, char **argv) {
   else printf("WARNING: Undefined test name: %s", tname.c_str());
 
   print_hline(80,'_');
-  cout << usage(); 
+  cout << usage();
   return EXIT_SUCCESS;
 }
 

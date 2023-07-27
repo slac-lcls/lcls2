@@ -25,3 +25,19 @@ install(TARGETS epicstools
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
 )
+
+add_executable(monExample
+    monExample.cc
+)
+
+target_link_libraries(monExample
+    epicstools
+)
+
+add_executable(tstPvMon
+    tstPvMon.cc
+)
+
+target_link_libraries(tstPvMon
+    epicstools
+)

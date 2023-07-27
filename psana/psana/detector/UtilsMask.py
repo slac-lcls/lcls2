@@ -1,3 +1,4 @@
+
 """
 Utilities for mask
 ==================
@@ -5,12 +6,14 @@ Utilities for mask
 Usage::
   from psana.detector.UtilsMask import *
 
-  statmgd = merge_status(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS)
-         # merges status.shape=(7, 16, 352, 384) to statmgd.shape=(16, 352, 384) of dtype
+  m = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK)
+  m = merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK)
+  s = merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS)
+         # merges status.shape=(7, 16, 352, 384) to s.shape=(16, 352, 384) of dtype
          # gain_range_inds list stands for gain ranges for 'FH','FM','FL','AHL-H','AML-M'
-  m = mask_neighbors(mask, allnbrs=True, dtype=DTYPE_MASK)
+  m = mask_neighbors(mask, rad=5, ptrn='r')
   m = mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK)
-  mask_merged = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK)
+  m = status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa)
 
 2021-01-25 created by Mikhail Dubrovin
 """
@@ -21,7 +24,7 @@ import psana.pscalib.calib.CalibConstants as CC
 DTYPE_MASK   = CC.dic_calib_type_to_dtype[CC.PIXEL_MASK]   # np.uint8
 DTYPE_STATUS = CC.dic_calib_type_to_dtype[CC.PIXEL_STATUS] # np.uint64
 
-from psana.detector.NDArrUtils import shape_nda_as_3d # shape_as_3d# info_ndarr, shape_as_3d
+from psana.detector.NDArrUtils import shape_nda_as_3d, info_ndarr  # shape_as_3d, shape_as_3d
 
 
 def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
@@ -38,7 +41,6 @@ def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
 
     cond = np.logical_and(mask1, mask2)
     return np.asarray(np.select((cond,), (1,), default=0), dtype=dtype)
-    #return mask if dtype==np.bool else np.asarray(mask, dtype)
 
 
 def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK):
@@ -85,7 +87,6 @@ def mask_neighbors(mask, rad=5, ptrn='r'):
        rad=4: 0.5s
        rad=9: 2.5s
     """
-    #t0_sec = time()
     assert isinstance(mask, np.ndarray)
     assert mask.ndim>1
     mmask = np.array(mask)
@@ -102,7 +103,6 @@ def mask_neighbors(mask, rad=5, ptrn='r'):
           mmask[r1b:r1e,c1b:c1e] = merge_masks(mmask[r1b:r1e,c1b:c1e], mask[r2b:r2e,c2b:c2e])
         else:
           mmask[:,r1b:r1e,c1b:c1e] = merge_masks(mmask[:,r1b:r1e,c1b:c1e], mask[:,r2b:r2e,c2b:c2e])
-    #logger.info('mask_neighbors(rad=%d) time = %.3f sec' % (rad, time()-t0_sec))
     return mmask
 
 
@@ -194,14 +194,14 @@ def status_as_mask(status, status_bits=0xffff, dtype=DTYPE_MASK, **kwa):
 
        Returns
 
-       - np.array - mask generated from calibration type pixel_status (1/0 for status 0/>0, respectively).
+       - np.array - mask generated from calibration type pixel_status (1/0 for status 0/status_bits>0, respectively).
     """
     if not isinstance(status, np.ndarray):
             logger.debug('status is not np.ndarray - return None')
             return None
 
     from psana.detector.NDArrUtils import info_ndarr
-    print(info_ndarr(status, 'status'))
+    logger.debug(info_ndarr(status, 'status'))
     cond = (status & status_bits)>0
     return np.asarray(np.select((cond,), (0,), default=1), dtype=dtype)
 

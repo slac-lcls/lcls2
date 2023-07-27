@@ -146,17 +146,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     m_para(para), m_pool(drp.pool), m_terminate(false)
 {
     m_nodeId = det->nodeId;
-    uint8_t mask[DMA_MASK_SIZE];
-    dmaInitMaskBytes(mask);
-    for (int i=0; i<PGP_MAX_LANES; i++) {
-        if (para.laneMask & (1 << i)) {
-            uint32_t channel = i;
-            uint32_t dest = dmaDest(channel, det->virtChan);
-            logging::info("setting lane  %d, dest 0x%x", i, dest);
-            dmaAddMaskBytes(mask, dest);
-        }
-    }
-    if (dmaSetMaskBytes(drp.pool.fd(), mask)) {
+    if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
         logging::error("Failed to allocate lane/vc");
     }
 
@@ -404,10 +394,6 @@ void PGPDetector::shutdown()
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerOutputQueues[i].shutdown();
     }
-
-    uint8_t mask[DMA_MASK_SIZE];
-    dmaInitMaskBytes(mask);
-    dmaSetMaskBytes(m_pool.fd(), mask);
 
     //  Flush the DMA buffers
     int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);

@@ -72,6 +72,9 @@ Usage::
     geo = geometry.get_geo('QUAD:V1', 1)
     # Get top GeometryObject - the object which includes all other geometry objects
     geo = geometry.get_top_geo()
+    # Get bottom GeometryObject - the object describing a single segment
+    #      (assumes that detector consists of the same type segments, e.g. 'SENS2X1:V1')
+    geo = geometry.get_seg_geo()
 
     # modify currect geometry objects' parameters
     geometry.set_geo_pars('QUAD:V1', 1, x0, y0, z0, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x)
@@ -142,7 +145,7 @@ class GeometryAccess:
         self.valid = False
 
         if self.path is None or not os.path.exists(self.path):
-            logger.debug('%s: geometry file "%s" does not exist' % (self.__class__.__name__, self.path))
+            logger.debug('%s: geometry file "%s" does not exist - str geometry must be loaded later.' % (self.__class__.__name__, self.path))
             return
 
         self.load_pars_from_file()
@@ -372,6 +375,17 @@ class GeometryAccess:
         """
         if not self.valid: return None
         return self.list_of_geos[-1]
+
+
+    def get_seg_geo(self):
+        """Returns segment geometry object GeometryObject. SegGeometry is GeometryObject.algo
+        """
+        if not self.valid: return None
+        geo = self.list_of_geos[0]
+        if geo.algo is not None: return geo
+        for geo in self.list_of_geos:
+            if geo.algo is not None: return geo
+        return None
 
 
     def coords_psana_to_lab_frame(self, x, y, z):

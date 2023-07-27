@@ -124,16 +124,18 @@ class SeqMem(pr.Device):
 
 class XpmSequenceEngine(pr.Device):
     def __init__(   self, 
-            name        = "XpmSequenceEngine", 
-            description = "XPM Sequence Engine module", 
-            **kwargs):
+                    name        = "XpmSequenceEngine", 
+                    description = "XPM Sequence Engine module", 
+                    nseq        = 4,
+                    alen        = 11,
+                    **kwargs):
         super().__init__(name=name, description=description, **kwargs)
 
         self.add(pr.RemoteVariable(    
             name         = "seqAddrLen",
             description  = "Sequence address length",
             offset       =  0x00,
-            bitSize      =  12,
+            bitSize      =  4,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RO",
@@ -163,7 +165,7 @@ class XpmSequenceEngine(pr.Device):
             name         = "seqEn",
             description  = "Sequence enable",
             offset       =  0x04,
-            bitSize      =  32,
+            bitSize      =  nseq,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
@@ -173,7 +175,7 @@ class XpmSequenceEngine(pr.Device):
             name         = "seqRestart",
             description  = "Sequence restart",
             offset       =  0x08,
-            bitSize      =  32,
+            bitSize      =  nseq,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
@@ -192,9 +194,9 @@ class XpmSequenceEngine(pr.Device):
                 offset   = 0x4000+i*0x40,
             ))
 
-        for i in range(2):
+        for i in range(nseq):
             self.add(SeqMem(
-                name     = 'SeqMem_%d'%i,
-                offset   = 0x8000+i*0x2000,
+                name     = f'SeqMem_{i}',
+                offset   = 0x8000+i*(1<<(alen+2)),
             ))
 

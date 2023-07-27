@@ -952,6 +952,22 @@ class ProcMgr:
             logpath = '%s/%s' % (logpathbase, time.strftime('%Y/%m'))
             time_string = time.strftime('%d_%H:%M:%S')
 
+        # create a dictionary of environment variables to be exported
+        export_dict = dict()
+        if 'CONDA_PREFIX' in os.environ:
+            export_dict['CONDA_PREFIX'] = os.environ['CONDA_PREFIX']
+        if 'TESTRELDIR' in os.environ:
+            export_dict['TESTRELDIR'] = os.environ['TESTRELDIR']
+
+        if 'PROCMGR_EXPORT' in os.environ:
+            ccc = os.environ['PROCMGR_EXPORT'].split(',')
+            for vvv in ccc:
+                if '=' in vvv:
+                    ppp = vvv.split('=')
+                    export_dict[ppp[0].strip()] = ppp[1].strip()
+                else:
+                    print(f'*** ERR: Missing "=" in PROCMGR_EXPORT value "{vvv}"')
+
         # create a dictionary mapping hosts to a set of start commands
         startdict = dict()
         for key, value in self.d.items():
@@ -1027,10 +1043,11 @@ class ProcMgr:
                       outfile.write("# PLATFORM:%s\n" % self.PLATFORM)
                       outfile.write("# HOST:    %s\n" % loghost)
                       outfile.write("# CMDLINE: %s\n" % value[self.DICT_CMD])
-                      if 'CONDA_PREFIX' in os.environ:
-                        outfile.write("# CONDA_PREFIX:%s\n" % os.environ['CONDA_PREFIX'])
-                      if 'TESTRELDIR' in os.environ:
-                        outfile.write("# TESTRELDIR:%s\n" % os.environ['TESTRELDIR'])
+
+                      for key2, val2 in export_dict.items():
+                        outfile.write(f"# {key2}:{val2}\n")
+
+                      if 'TESTRELDIR' in export_dict:
                         if len(value[self.DICT_CONDA]) > 2:
                           outfile.write("# CONDA_REL:%s\n" % value[self.DICT_CONDA])
                         if self.git_describe:
@@ -1132,13 +1149,11 @@ class ProcMgr:
                         if verbose:
                             print('Run on %s: %s' % (host, nextcmd))
 
-                        if 'TESTRELDIR' in os.environ:
-                          # set env var on remote host using subshell
-                          nextcmd = '(setenv CONDA_PREFIX %s; setenv TESTRELDIR %s; %s; echo "[return=$?]")' % \
-                                     (os.environ['CONDA_PREFIX'], os.environ['TESTRELDIR'], nextcmd)
-                        else:
-                          nextcmd = '(setenv CONDA_PREFIX %s; %s; echo "[return=$?]")' % \
-                                     (os.environ['CONDA_PREFIX'], nextcmd)
+                        setenv_str = ""
+                        for key3, val3 in export_dict.items():
+                            setenv_str += f"setenv {key3} {val3}; "
+
+                        nextcmd = f'({setenv_str} {nextcmd}; echo "[return=$?]")'
 
                         # send command
                         self.telnet.write(bytes('%s\n' % nextcmd, 'utf-8'))
@@ -1329,6 +1344,7 @@ class ProcMgr:
             else:
                 if verbose:
                     if response.count(b"Restarting"):
+                        rv = 1
                         print('FAILED')
                     else:
                         print('done')

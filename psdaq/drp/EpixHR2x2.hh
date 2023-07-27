@@ -17,11 +17,16 @@ public:
     bool scanEnabled() override;
     void shutdown() override;
     void write_image(XtcData::Xtc&, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
+
+    Pds::TimingHeader* getTimingHeader(uint32_t index) const override;
 protected:
     void           _connect  (PyObject*) override;
     unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
     void           _event    (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&) override;
+private:
+    void           __event   (XtcData::Xtc&, const void* bufEnd,
+                              std::vector< XtcData::Array<uint8_t> >&);
 public:
     void           monStreamEnable ();
     void           monStreamDisable();

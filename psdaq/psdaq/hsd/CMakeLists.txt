@@ -42,6 +42,7 @@ target_include_directories(hsd PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(hsd
@@ -49,7 +50,7 @@ target_link_libraries(hsd
     xtcdata::xtc
     service
     mmhw
-    readline
+    ${Readline_LIBRARY}
     rt
 )
 

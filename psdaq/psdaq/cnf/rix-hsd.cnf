@@ -1,12 +1,12 @@
 if not platform: platform = '6'
 
-ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 #epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 epics_env = 'EPICS_PVA_ADDR_LIST=10.0.2.255'+' '+ld_lib_path
 hsd_epics_env = ld_lib_path
 
 ioc_node = 'daq-rix-hsd-01'
-pva_node = 'drp-neh-ctl002'
+pva_node = 'drp-srcf-cmp004'
 hsd_epics = 'DAQ:RIX:HSD:1'
 hsd_ids = ['1b','1a']
 
@@ -14,17 +14,17 @@ procmgr_config = []
 iport = 28071
 for hsd in hsd_ids:
     for ch in ['a','b']:
-        procmgr_config.append({host:pva_node, id:'hsdpvs_{:}_{:}'.format(hsd,ch), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(hsd_epics,hsd.upper(),ch.upper())})
+        procmgr_config.append({host:pva_node, id:'hsdpvs_rix_{:}_{:}'.format(hsd,ch), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(hsd_epics,hsd.upper(),ch.upper())})
         iport += 1
 
 for hsd in hsd_ids:
-    procmgr_config.append({host:ioc_node, id:'hsdioc_{:}'.format(hsd), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(hsd_epics,hsd.upper(),hsd)})
+    procmgr_config.append({host:ioc_node, id:'hsdioc_rix_{:}'.format(hsd), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(hsd_epics,hsd.upper(),hsd)})
     iport += 1
 
 #  Map of HSD connections
-#  hsd_0  1B:A   drp-neh-cmp023:0   OK
-#  hsd_1  1B:B   drp-neh-cmp023:4   OK
-#  hsd_2  1A:A   drp-neh-cmp023:0   OK
-#  hsd_3  1A:B   drp-neh-cmp023:4   OK
-#  
+#  hsd_0  1A:A   drp-srcf-cmp023:0   OK
+#  hsd_1  1A:B   drp-srcf-cmp023:4   OK
+#  hsd_2  1B:A   drp-srcf-cmp005:0   OK
+#  hsd_3  1B:B   drp-srcf-cmp005:4   OK
+#
 # hsdpva DAQ:RIX:HSD:1_1B:A DAQ:RIX:HSD:1_1B:B DAQ:RIX:HSD:1_1A:A DAQ:RIX:HSD:1_1A:B

@@ -97,6 +97,7 @@ class MemPool
 {
 public:
     MemPool(Parameters& para);
+    ~MemPool();
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
     void** dmaBuffers;
@@ -110,10 +111,12 @@ public:
     void allocate(unsigned count) { m_inUse.fetch_add(count, std::memory_order_acq_rel) ; }
     void release(unsigned count) { m_inUse.fetch_sub(count, std::memory_order_acq_rel); }
     const uint64_t inUse() const { return m_inUse.load(std::memory_order_relaxed); }
+    int setMaskBytes(uint8_t laneMask, unsigned virtChan);
 private:
     unsigned m_nbuffers;
     unsigned m_dmaSize;
     int m_fd;
+    bool m_setMaskBytesDone;
     SPSCQueue<void*> m_transitionBuffers;
     std::atomic<unsigned> m_inUse;
 };

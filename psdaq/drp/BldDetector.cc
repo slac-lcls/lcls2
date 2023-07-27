@@ -316,7 +316,7 @@ Bld::Bld(unsigned mcaddr,
   m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
   m_timestampCorr(timestampCorr)
 {
-    logging::debug("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
+    logging::info("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
 
     m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (m_sockfd < 0)
@@ -413,17 +413,8 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     m_latency(0), m_nDmaRet(0)
 {
     m_nodeId = det->nodeId;
-    uint8_t mask[DMA_MASK_SIZE];
-    dmaInitMaskBytes(mask);
-    for (unsigned i=0; i<PGP_MAX_LANES; i++) {
-        if (para.laneMask & (1 << i)) {
-            logging::info("setting lane  %d", i);
-            dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
-        }
-    }
-    if (dmaSetMaskBytes(m_drp.pool.fd(), mask)) {
-        printf("Failed to allocate lane/vc\n");
-        return -1;
+    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+        logging::error("Failed to allocate lane/vc");
     }
 }
 
@@ -633,10 +624,10 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     for(unsigned i=0; i<bldPva.size(); i++)
         m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get()));
 
-    //    std::vector<XtcData::NameIndex> nameIndex(m_config.size());
-
     uint64_t nextId = -1ULL;
-    std::vector<uint64_t> timestamp(m_config.size());
+    uint64_t timestamp[m_config.size()];
+    memset(timestamp,0,sizeof(timestamp));
+    
     for(unsigned i=0; i<m_config.size(); i++) {
         timestamp[i] = m_config[i]->handler().next();
         if (timestamp[i] < nextId)

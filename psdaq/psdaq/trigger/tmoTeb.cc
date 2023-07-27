@@ -16,11 +16,12 @@ namespace Pds {
     class TmoTeb : public Trigger
     {
     public:
-      int  configure(const json&     connectMsg,
-                     const Document& top) override;
+      int  configure(const json&              connectMsg,
+                     const Document&          top,
+                     const Pds::Eb::EbParams& prms) override;
       void event(const Pds::EbDgram* const* start,
                  const Pds::EbDgram**       end,
-                 Pds::Eb::ResultDgram&          result) override;
+                 Pds::Eb::ResultDgram&      result) override;
     private:
       uint32_t _wrtValue;
       uint32_t _monValue;
@@ -29,8 +30,9 @@ namespace Pds {
 };
 
 
-int Pds::Trg::TmoTeb::configure(const json&     connectMsg,
-                                const Document& top)
+int Pds::Trg::TmoTeb::configure(const json& connectMsg,
+                                const Document& top,
+                                const Pds::Eb::EbParams& prms)
 {
   int rc = 0;
 
@@ -49,11 +51,11 @@ int Pds::Trg::TmoTeb::configure(const json&     connectMsg,
 
 void Pds::Trg::TmoTeb::event(const Pds::EbDgram* const* start,
                              const Pds::EbDgram**       end,
-                             Pds::Eb::ResultDgram&          result)
+                             Pds::Eb::ResultDgram&      result)
 {
   const Pds::EbDgram* const* ctrb = start;
-  bool                           wrt  = 0;
-  bool                           mon  = 0;
+  bool                       wrt  = false;
+  bool                       mon  = false;
 
   // Accumulate each contribution's input into some sort of overall summary
   do
@@ -69,9 +71,8 @@ void Pds::Trg::TmoTeb::event(const Pds::EbDgram* const* start,
   while (++ctrb != end);
 
   // Insert the trigger values into a Result EbDgram
-  unsigned line = 0;                    // Revisit: For future expansion
-  result.persist(line, wrt);
-  result.monitor(line, mon);
+  result.persist(wrt);
+  result.monitor(mon ? -1 : 0);         // All MEBs
 }
 
 

@@ -322,11 +322,11 @@ long long option_8(const std::vector<uint64_t>& data,
 
 int main(int argc, char* argv[])
 {
-    size_t minRecSz = 8 * MB;  // 1 * kB
+//    size_t minRecSz = 8 * MB;  // 1 * kB
     size_t maxRecSz = 8 * MB;  // 8 * GB
     unsigned repeat = 1;
     unsigned durationS = 30;
-    unsigned count = 1;
+//    unsigned count = 1;
     std::string base("/u1/claus/opt");
     unsigned verbose = 0;
 
@@ -336,10 +336,10 @@ int main(int argc, char* argv[])
         switch(c)
         {
           case 'B':  base      = optarg;                  break;
-          case 'n':  count     = std::stoi(optarg);       break;
+//          case 'n':  count     = std::stoi(optarg);       break;
           case 'r':  repeat    = std::stoi(optarg);       break;
           case 't':  durationS = std::stoi(optarg);       break;
-          case 'm':  minRecSz  = std::stoi(optarg) * MB;  break;
+//          case 'm':  minRecSz  = std::stoi(optarg) * MB;  break;
           case 'b':  maxRecSz  = std::stoi(optarg) * MB;  break;
           case 'v':  ++verbose;                           break;
           default:
