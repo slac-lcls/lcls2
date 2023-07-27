@@ -24,7 +24,6 @@ message(STATUS "psalg/CMakeLists: CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURC
 message(STATUS "psalg/CMakeLists: CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "psalg/CMakeLists: CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
 message(STATUS "psalg/CMakeLists: CURL_LIBRARY=${CURL_LIBRARY}")
-message(STATUS "psalg/CMakeLists: CONDA_PREFIX=$ENV{CONDA_PREFIX}")
 
 # this is necessary only on RHEL6 where we need to pick up clock_gettime
 if(APPLE)

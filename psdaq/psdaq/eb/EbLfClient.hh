@@ -37,17 +37,13 @@ namespace Pds {
                      std::vector<EbLfCltLink*>&      links,
                      const std::vector<std::string>& addrs,
                      const std::vector<std::string>& ports,
+                     unsigned                        id,
                      const char*                     name);
     int linksConfigure(std::vector<EbLfCltLink*>& links,
-                       unsigned                   id,
-                       const char*                name);
-    int linksConfigure(std::vector<EbLfCltLink*>& links,
-                       unsigned                   id,
                        void*                      region,
                        size_t                     regSize,
                        const char*                name);
     int linksConfigure(std::vector<EbLfCltLink*>& links,
-                       unsigned                   id,
                        void*                      region,
                        size_t                     lclSize,
                        size_t                     rmtSize,

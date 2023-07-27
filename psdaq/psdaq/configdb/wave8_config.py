@@ -64,10 +64,10 @@ def epics_get(d):
     out = {}
     for key,val in d.items():
         #  Skip these that have no PVs yet
-        if ('AdcPatternTester' in key or 
+        if ('AdcPatternTester' in key or
             'CorrCoefficient' in key):
             continue
-        
+
         pvname = rogue_translate[key] if key in rogue_translate else key
         if isinstance(val,dict):
             r = epics_get(val)
@@ -101,7 +101,7 @@ def config_timing(epics_prefix, lcls2=False, timebase='186M'):
     names = [epics_prefix+':Top:TimingFrameRx:RxDown']
     values = [0]
     ctxt_put(names,values)
-        
+
 def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
     global prefix
     global lane
@@ -160,7 +160,7 @@ def wave8_connect(base):
     # Retrieve connection information from EPICS
     # May need to wait for other processes here, so poll
     for i in range(50):
-        values = ctxt_get(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId')
+        values = int(ctxt_get(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId'))
         if values!=0:
             break
         print('{:} is zero, retry'.format(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId'))
@@ -188,7 +188,7 @@ def user_to_expert(prefix, cfg, full=False):
             print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
             if triggerDelay < 0:
                 raise ValueError('triggerDelay computes to < 0')
-        
+
             ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
 
         else:
@@ -200,9 +200,9 @@ def user_to_expert(prefix, cfg, full=False):
         pass
 
 #    try:
-#        prescale = cfg['user']['raw_prescale'] 
+#        prescale = cfg['user']['raw_prescale']
 #        # Firmware needs a value one less
-#        if prescale>0:  
+#        if prescale>0:
 #           prescale -= 1
 #        d['expert.RawBuffers.TrigPrescale'] = prescale
 #    except KeyError:
@@ -226,7 +226,7 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
 
     #  Apply the user configs
     epics_prefix = prefix + ':Top:'
-    user_to_expert(epics_prefix, cfg, full=True) 
+    user_to_expert(epics_prefix, cfg, full=True)
 
     #  Assert clears
     names_clr = [epics_prefix+'BatcherEventBuilder:Blowoff',
@@ -402,9 +402,12 @@ def wave8_update(update):
 def wave8_unconfig(base):
 
     epics_prefix = base['prefix']
-    names_cfg = [epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:Partition',
-                 epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
-    values = [1,0]
+    # cpo removed setting Partition=1 (aka readout group) here
+    # because this is called in init() and writes fail before the timing
+    # the timing system is initialized.  Then subsequent writes start
+    # silently failing as well resulting in lost configure phase2.
+    names_cfg = [epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
+    values = [0]
     ctxt_put(names_cfg, values)
 
     #  Leaving DAQ control.  Put back into LCLS1 mode in LCLS hutches

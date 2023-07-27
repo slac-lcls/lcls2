@@ -4,6 +4,7 @@ from psdaq.cas.pvedit import *
 from threading import Lock
 import argparse
 
+
 class SeqUser:
     def __init__(self, base):
         prefix = base
@@ -109,21 +110,40 @@ class SeqUser:
         self.load (title,instrset,descset)
         self.begin()
 
+
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
+    parser.add_argument('--engine', type=int, default=0, help="sequence engine")
     parser.add_argument("seq", help="sequence script")
-    parser.add_argument("pv" , help="sequence engine pv; e.g. XPM:0:SEQENG:0")
+    parser.add_argument("pv" , help="sequence engine pv; e.g. NEH:DAQ:XPM:0")
     args = parser.parse_args()
-    
-    config = {'title':'TITLE', 'descset':None, 'instrset':None}
+
+    config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None}
 
     exec(compile(open(args.seq).read(), args.seq, 'exec'), {}, config)
 
     print(f'descset  {config["descset"]}')
     print(f'instrset {config["instrset"]}')
+    print(f'seqcodes {config["seqcodes"]}')
 
-    seq = SeqUser(args.pv)
+    seq = SeqUser(f'{args.pv}:SEQENG:{args.engine}')
     seq.execute(config['title'],config['instrset'],config['descset'])
 
-if __name__ == 'main':
+    seqcodes_pv = Pv(f'{args.pv}:SEQCODES',isStruct=True)
+    seqcodes = seqcodes_pv.get()
+
+    desc = seqcodes.value.Description
+    for e,d in config['seqcodes'].items():
+        desc[4*args.engine+e] = d
+    print(f'desc {desc}')
+
+    v = seqcodes.value
+    v.Description = desc
+    seqcodes.value = v
+
+    print(f'seqcodes_pv {seqcodes}')
+    seqcodes_pv.put(seqcodes)
+
+if __name__ == '__main__':
     main()
+

@@ -21,11 +21,11 @@ public:
     {
     }
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::Names): {
@@ -118,14 +118,15 @@ int main(int argc, char* argv[])
     Dgram* bigdg = (Dgram*)malloc(bigdgBufferSize);
 
     XtcFileIterator iter(smallfd, 0x4000000);
-    Dgram* smalldg;
+    Dgram* smalldg = iter.next();
+    const void* bufEnd = ((char*)smalldg) + iter.size();
     unsigned nevent=0;
     SmdIter smditer;
-    while ((smalldg = iter.next())) {
+    while (smalldg) {
         if (nevent>=neventreq) break;
         nevent++;
         smditer.reset();
-        smditer.iterate(&(smalldg->xtc));
+        smditer.iterate(&(smalldg->xtc), bufEnd);
         printf("Small event %d, %s transition: time %d.%09d, "
                "extent %d offset 0x%llx\n",
                nevent,
@@ -156,6 +157,7 @@ int main(int argc, char* argv[])
                nevent,
                TransitionId::name(bigdg->service()), bigdg->time.seconds(),
                bigdg->time.nanoseconds(), bigdg->xtc.extent);
+        smalldg = iter.next();
     }
 
     ::close(smallfd);

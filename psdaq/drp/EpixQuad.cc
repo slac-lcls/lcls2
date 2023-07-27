@@ -183,6 +183,7 @@ unsigned EpixQuad::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     return 0;
 }
 
+#ifdef INCLUDE_ENV
 static float _getThermistorTemp(uint16_t x)
 {
     float tthermk = 0.;
@@ -198,6 +199,7 @@ static float _getThermistorTemp(uint16_t x)
     }
     return 0.;
 }
+#endif
 
 void EpixQuad::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {

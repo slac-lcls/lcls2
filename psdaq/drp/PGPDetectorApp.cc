@@ -162,6 +162,11 @@ void PGPDetectorApp::initialize()
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
     }
+
+    // Provide EbReceiver with the Detector interface so that additional
+    // data blocks can be formatted into the XTC, e.g. trigger information
+    m_drp.ebReceiver().detector(m_det);
+
     logging::info("Ready for transitions");
 
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS

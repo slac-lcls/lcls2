@@ -18,16 +18,16 @@ class MyXtcIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    MyXtcIter(Xtc* xtc) :
-        XtcIterator(xtc)
+    MyXtcIter(Xtc* xtc, const void* bufEnd) :
+        XtcIterator(xtc, bufEnd)
     {
     }
 
-    int process(Xtc* xtc)
+  int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::ShapesData): {
@@ -114,13 +114,14 @@ int main(int argc, char* argv[])
 
     XtcFileIterator iter_fdg(fd, 0x4000000);
     Dgram* cfg = iter_fdg.next();
+    const char* bufEnd = ((char*) cfg) + iter_fdg.size();
 
-    NamesIter& namesIter = *new NamesIter(&(cfg->xtc));
+    NamesIter& namesIter = *new NamesIter(&(cfg->xtc), bufEnd);
     namesIter.iterate();
     NamesLookup& namesLookup = namesIter.namesLookup();
 
     // get data out of the configure transition
-    MyXtcIter cfgiter(&(cfg->xtc));
+    MyXtcIter cfgiter(&(cfg->xtc), bufEnd);
     cfgiter.iterate();
     NamesId& namesId = cfgiter.shape().namesId();
     printf("*** namesid %d\n",namesId.namesId());
@@ -132,7 +133,7 @@ int main(int argc, char* argv[])
     while ((dg = iter_fdg.next())) {
         if (nevent>=neventreq) break;
         nevent++;
-        MyXtcIter iter(&(dg->xtc));
+        MyXtcIter iter(&(dg->xtc), bufEnd);
         iter.iterate();
         NamesId& namesId = iter.value().namesId();
         printf("*** namesid %d\n",namesId.namesId());

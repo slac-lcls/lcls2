@@ -85,16 +85,20 @@ public:
         return (const Xtc*)((char*)this + extent);
     }
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+
     void* alloc(size_t size, const void* end)
     {
         void* buffer = next();
-        if (end && ((char*)buffer + size > end)){
+        if (end && UNLIKELY((char*)buffer + size > end)){
             printf("*** %s:%d: Insufficient space for %zu bytes\n",__FILE__,__LINE__,size);
             abort(); // Set gdb breakpoint to reported file:line to see how it got here
         }
         extent += size;
         return buffer;
     }
+
+#undef UNLIKELY
 
     Src      src;
     Damage   damage;

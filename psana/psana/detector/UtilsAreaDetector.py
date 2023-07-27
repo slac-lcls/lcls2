@@ -309,7 +309,9 @@ def img_default(arr):
     med = np.median(arr)
     spr = np.median(np.abs(arr-med))
     amin, amax = med-1*spr, med+3*spr
-    a = np.arange(amin, amax, (amax-amin)/12, dtype=np.float32)
+    if amin == amax: amax = amin + 1
+    #logger.debug('XXXX amin:%.1f, amax::%.1f' % (amin, amax))
+    a = np.arange(amin, amax, (amax-amin)/12., dtype=np.float32)
     a.shape =(3,4)
     return a
 

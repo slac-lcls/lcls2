@@ -13,6 +13,7 @@ add_library(drpbase
 )
 
 target_include_directories(drpbase PUBLIC
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../psdaq/pgp/aes-stream-drivers/include
 )
 
@@ -56,36 +57,47 @@ target_link_libraries(drp
 )
 
 add_executable(drp_bld
-#    BldDetector.cc
     BldDetectorSlow.cc
+)
+
+target_include_directories(drp_bld PUBLIC
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(drp_bld
     drpbase
     trigger
     epicstools
-    readline
+    ${Readline_LIBRARY}
 )
 
 add_executable(drp_pva
     PvaDetector.cc
 )
 
+target_include_directories(drp_pva PUBLIC
+    ${Readline_INCLUDE_DIR}
+)
+
 target_link_libraries(drp_pva
     drpbase
     trigger
     epicstools
-    readline
+    ${Readline_LIBRARY}
 )
 
 add_executable(drp_udpencoder
     UdpEncoder.cc
 )
 
+target_include_directories(drp_udpencoder PUBLIC
+    ${Readline_INCLUDE_DIR}
+)
+
 target_link_libraries(drp_udpencoder
     drpbase
     trigger
-    readline
+    ${Readline_LIBRARY}
 )
 
 add_executable(configdb_obj_2xtc
@@ -123,7 +135,7 @@ add_executable(pgpread
 )
 target_include_directories(pgpread PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    ../psdaq/pgp/aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(pgpread
     xtcdata::xtc
@@ -137,7 +149,7 @@ add_executable(pgpread_timetool
 target_include_directories(pgpread_timetool PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    ../psdaq/pgp/aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ${PYTHON_INCLUDE_DIRS}
 )
 target_link_libraries(pgpread_timetool
@@ -154,7 +166,7 @@ add_executable(AxiBatcherParserTest
 )
 target_include_directories(AxiBatcherParserTest PUBLIC
 
-    ../psdaq/pgp/aes-stream-drivers/include
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../psdaq/drp
     ${PYTHON_INCLUDE_DIRS}
 )
@@ -169,6 +181,7 @@ add_executable(drp_validate
 )
 target_include_directories(drp_validate PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../psdaq/pgp/aes-stream-drivers/include
 )
 target_link_libraries(drp_validate
@@ -193,6 +206,7 @@ add_executable(fileWriteTest
 
 target_link_libraries(fileWriteTest
     drpbase
+    Threads::Threads
 )
 
 add_executable(drp_groupsync
@@ -200,6 +214,7 @@ add_executable(drp_groupsync
 )
 target_include_directories(drp_groupsync PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../psdaq/pgp/aes-stream-drivers/include
 )
 target_link_libraries(drp_groupsync

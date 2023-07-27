@@ -146,7 +146,7 @@ namespace Drp {
         L2Iter() : XtcIterator() {}
 
         void get_value(int i, Name& name, DescData& descdata);
-        int process(Xtc*);
+        int process(Xtc*, const void* bufEnd);
     public:
         NamesLookup namesLookup;
         std::unordered_map<unsigned,ShapesData*> shapesdata;
@@ -472,12 +472,12 @@ bool OpalTT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::
         //  Live feedback
 	m_vec = new double[6];
         pvd::shared_vector<const double> ttvec(m_vec,0,6);
-        m_vec[0] = m_fex.amplitude();
-        m_vec[1] = m_fex.filtered_position();
-        m_vec[2] = m_fex.filtered_pos_ps();
-        m_vec[3] = m_fex.filtered_fwhm();
-        m_vec[4] = m_fex.next_amplitude();
-        m_vec[5] = m_fex.ref_amplitude();
+        m_vec[0] = m_fex.filtered_position();
+        m_vec[1] = m_fex.filtered_pos_ps();
+        m_vec[2] = m_fex.amplitude();
+        m_vec[3] = m_fex.next_amplitude();
+        m_vec[4] = m_fex.ref_amplitude();
+        m_vec[5] = m_fex.filtered_fwhm();
         if (m_ttpv) {
             m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
         }
@@ -659,12 +659,16 @@ unsigned OpalTTSimL2::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::
 
     //  Retrieve the offline configuration for parsing the event data
     Dgram* dg;
+    void* end;
 #define FIND_CONFIG(iter,input)                                         \
-    while((dg=iter->next())) {                                          \
+    dg=iter->next();                                                    \
+    end=(char*)dg + iter->size();                                       \
+    while(dg) {                                                         \
         if (dg->service()==TransitionId::Configure) {                   \
-            input.process(&dg->xtc);                                    \
+            input.process(&dg->xtc, end);                               \
             break;                                                      \
         }                                                               \
+        dg=iter->next();                                                \
     }
 
     FIND_CONFIG(m_iter,m_input);
@@ -691,13 +695,17 @@ void OpalTTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcD
 {
     m_filesem.take();
     Dgram* dg;
+    void* end;
 #define FIND_L1A(iter,input)                                            \
     while(1) {                                                          \
-        while((dg=iter->next())) {                                      \
+        dg=iter->next();                                                \
+        end=(char*)dg + iter->size();                                   \
+        while(dg) {                                                     \
             if (dg->service()==TransitionId::L1Accept) {                \
-                input.process(&dg->xtc);                                \
+                input.process(&dg->xtc, end);                           \
                 break;                                                  \
             }                                                           \
+            dg=iter->next();                                            \
         }                                                               \
         if (dg)                                                         \
             break;                                                      \
@@ -776,11 +784,11 @@ void _load_xtc(std::vector<uint8_t>& buffer, const char* filename)
     }
 }
 
-int Drp::L2Iter::process(Xtc* xtc)
+int Drp::L2Iter::process(Xtc* xtc, const void* bufEnd)
 {
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
-        iterate(xtc);
+        iterate(xtc, bufEnd);
         break;
     }
     case (TypeId::Names): {

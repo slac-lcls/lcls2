@@ -19,38 +19,25 @@ import numpy as np
 
 import json
 from psana import DataSource
-from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
-from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login
+from psana.detector.UtilsEpix import DIR_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
+from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import seconds
+from psana.detector.utils_psana import seconds, datasource_kwargs_from_string
 from psana.detector.UtilsLogging import init_file_handler
 
 
-def save_log_record_at_start(dirrepo, procname, dirmode=0o777, filemode=0o666, logmode='INFO', tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
-    """Adds record on start to the log file <dirrepo>/logs/log-<procname>-<year>.txt
-    """
+def save_log_record_at_start(dirrepo, procname, dirmode=0o2775, filemode=0o664, logmode='INFO', group='ps-users',\
+                             tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
+    """Adds record at start to the log file <dirrepo>/logs/log-<procname>-<year>.txt"""
     from psana.detector.RepoManager import RepoManager
     os.umask(umask)
-    repoman = RepoManager(dirrepo, dettype=None, dirmode=dirmode, filemode=filemode)
+    repoman = RepoManager(dirrepo, dettype=None, dirmode=dirmode, filemode=filemode, group=group)
     repoman.makedir_logs()
     logfname = repoman.logname('%s_%s' % (procname, get_login()))
-    init_file_handler(logmode, logfname, filemode=0o664)
+    init_file_handler(loglevel=logmode, logfname=logfname, filemode=filemode, group=group)
     logger.info('Begin logfile: %s' % logfname)
-    repoman.save_record_at_start(SCRNAME, tsfmt=tsfmt)
-
-#    create_directory(dirrepo, dirmode)
-#    dirlog = '%s/logs' % dirrepo
-#    create_directory(dirlog, dirmode)
-
-#    rec = log_rec_at_start(tsfmt)
-#    year = str_tstamp(fmt='%Y')
-#    logfname = '%s/log_%s_%s.txt' % (dirlog, procname, year)
-#    fexists = os.path.exists(logfname)
-#    save_textfile(rec, logfname, mode='a')
-#    if not fexists: set_file_access_mode(logfname, dirmode)
-#    logger.debug('Record on start: %s' % rec)
-#    logger.info('Saved: %s' % logfname)
+    repoman.save_record_at_start(SCRNAME, tsfmt=tsfmt, adddict={'logfile':logfname})
 
 
 def find_file_for_timestamp(dirname, pattern, tstamp):
@@ -102,8 +89,7 @@ def fname_prefix_merge(dmerge, detname, tstamp, exp, irun):
 
 
 def dir_names(dirrepo, panel_id):
-    """Defines structure of subdirectories in calibration repository.
-    """
+    """Defines structure of subdirectories in calibration repository."""
     dir_panel  = '%s/%s' % (dirrepo, panel_id)
     dir_offset = '%s/offset'    % dir_panel
     dir_peds   = '%s/pedestals' % dir_panel
@@ -126,7 +112,7 @@ def path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_r
 
 
 def file_name_prefix(dirrepo, dettype, panel_id, tstamp, exp, irun):
-    panel_alias = alias_for_id(panel_id, fname=os.path.join(dirrepo, FNAME_PANEL_ID_ALIASES))
+    panel_alias = alias_for_id(panel_id, fname=os.path.join(dirrepo, FNAME_PANEL_ID_ALIASES), exp=exp, run=irun)
     return '%s_%s_%s_%s_r%04d' % (dettype, panel_alias, tstamp, exp, irun), panel_alias
 
 
@@ -155,13 +141,6 @@ def step_counter(metadata, nstep_tot, nstep_run, stype='pedestal', nspace=None):
     if scantype != stype:
         logger.warning('UNEXPECTED SCAN TYPE %s' % scantype)
         return None
-
-    # LCLS1
-    #step_names = STEP_NAMES_DARK if nspace is None else step_names(nspace)
-    #ind = step_names.index(step_value)
-    #if ind in list_of_step_collected():
-    #    logger.warning('CALIB-CYCLE %d: %s HAS ALREADY BEEN PROCESSED. SKIPPING' % (ind, step_value))
-    #    return None
 
     if stepnum != nstep_tot:
         s = 'SEQUENTIAL STEP NUMBER nstep_tot:%d, nstep_run:%d' % (nstep_tot, nstep_run)
@@ -274,13 +253,7 @@ def proc_dark_block(block, **kwa):
       + '\n    event spectrum spread    median(abs(raw-med)): %.3f ADU - spectral peak width estimator' % med_abs_dev
     logger.info(s)
 
-    #sys.exit('TEST EXIT')
-
     logger.debug(info_ndarr(arr_med, '1st iteration proc time = %.3f sec arr_av1' % (time()-t0_sec)))
-    #gate_half = nsigma*rms_ave
-    #logger.debug('set gate_half=%.3f for intensity gated average, which is %.3f * sigma' % (gate_half,nsigma))
-    #gate_half = nsigma*abs_dev_med
-    #logger.debug('set gate_half=%.3f for intensity gated average, which is %.3f * abs_dev_med' % (gate_half,nsigma))
 
     # 2nd loop over recs in block to evaluate gated parameters
     logger.debug('Begin 2nd iteration')
@@ -294,13 +267,10 @@ def proc_dark_block(block, **kwa):
     gate_lo    = arr1_u16 * int_lo
     gate_hi    = arr1_u16 * int_hi
 
-    #gate_hi = np.minimum(arr_av1 + gate_half, gate_hi).astype(dtype=block.dtype)
-    #gate_lo = np.maximum(arr_av1 - gate_half, gate_lo).astype(dtype=block.dtype)
     gate_lo = np.maximum(arr_qlo, gate_lo).astype(dtype=block.dtype)
     gate_hi = np.minimum(arr_qhi, gate_hi).astype(dtype=block.dtype)
     cond = gate_hi>gate_lo
     gate_hi[np.logical_not(cond)] +=1
-    #gate_hi = np.select((cond, np.logical_not(cond)), (gate_hi, gate_hi+1), 0)
 
     logger.debug(info_ndarr(gate_lo, '    gate_lo '))
     logger.debug(info_ndarr(gate_hi, '    gate_hi '))
@@ -309,16 +279,11 @@ def proc_dark_block(block, **kwa):
     arr_sum1 = np.zeros(shape, dtype=np.float64)
     arr_sum2 = np.zeros(shape, dtype=np.float64)
 
-    #blockdbl = np.array(block, dtype=np.float64)
-
     for nrec in range(nrecs):
         raw    = block[nrec,:]
         rawdbl = raw.astype(dtype=np.uint64) # blockdbl[nrec,:]
 
         logger.debug('nrec:%03d median(raw-ave): %f' % (nrec, np.median(raw.astype(dtype=np.float64) - arr_med)))
-        #logger.debug('nrec:%03d median(raw-ave): %.6f' % (nrec, np.median(raw.astype(dtype=np.float64) - arr_med)))
-        #logger.debug(info_ndarr(raw, '  raw     '))
-        #logger.debug(info_ndarr(arr_med, '  arr_med '))
 
         condlist = (np.logical_not(np.logical_or(raw<gate_lo, raw>gate_hi)),)
 
@@ -335,8 +300,7 @@ def proc_dark_block(block, **kwa):
     arr_av1 = divide_protected(arr_sum1, arr_sum0)
     arr_av2 = divide_protected(arr_sum2, arr_sum0)
 
-    frac_int_lo = np.array(sta_int_lo/nrecs, dtype=np.float32)
-    frac_int_hi = np.array(sta_int_hi/nrecs, dtype=np.float32)
+    nevlm = int(fraclm * nrecs)
 
     arr_rms = np.sqrt(arr_av2 - np.square(arr_av1))
     #rms_ave = arr_rms.mean()
@@ -345,18 +309,20 @@ def proc_dark_block(block, **kwa):
     rms_min, rms_max = evaluate_limits(arr_rms, rmsnlo, rmsnhi, rms_lo, rms_hi, cmt='RMS')
     ave_min, ave_max = evaluate_limits(arr_av1, intnlo, intnhi, int_lo, int_hi, cmt='AVE')
 
-    arr_sta_rms_hi = np.select((arr_rms>rms_max,),    (arr1,), 0)
-    arr_sta_rms_lo = np.select((arr_rms<rms_min,),    (arr1,), 0)
-    arr_sta_int_hi = np.select((frac_int_hi>fraclm,), (arr1,), 0)
-    arr_sta_int_lo = np.select((frac_int_lo>fraclm,), (arr1,), 0)
-    arr_sta_ave_hi = np.select((arr_av1>ave_max,),    (arr1,), 0)
-    arr_sta_ave_lo = np.select((arr_av1<ave_min,),    (arr1,), 0)
+    arr_sta_rms_hi = np.select((arr_rms>rms_max,),  (arr1,), 0)
+    arr_sta_rms_lo = np.select((arr_rms<rms_min,),  (arr1,), 0)
+    arr_sta_int_hi = np.select((sta_int_hi>nevlm,), (arr1,), 0)
+    arr_sta_int_lo = np.select((sta_int_lo>nevlm,), (arr1,), 0)
+    arr_sta_ave_hi = np.select((arr_av1>ave_max,),  (arr1,), 0)
+    arr_sta_ave_lo = np.select((arr_av1<ave_min,),  (arr1,), 0)
 
     logger.info('Bad pixel status:'\
                +'\n  status  1: %8d pixel rms       > %.3f' % (arr_sta_rms_hi.sum(), rms_max)\
                +'\n  status  2: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min)\
-               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction of events' % (arr_sta_int_hi.sum(), int_hi, fraclm)\
-               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction of events' % (arr_sta_int_lo.sum(), int_lo, fraclm)\
+               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction (%d/%d) of non-empty events'%\
+                     (arr_sta_int_hi.sum(), int_hi, fraclm, nevlm, nrecs)\
+               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction (%d/%d) of non-empty events'%\
+                     (arr_sta_int_lo.sum(), int_lo, fraclm, nevlm, nrecs)\
                +'\n  status 16: %8d pixel average   > %g'   % (arr_sta_ave_hi.sum(), ave_max)\
                +'\n  status 32: %8d pixel average   < %g'   % (arr_sta_ave_lo.sum(), ave_min)\
                )
@@ -394,7 +360,6 @@ def selected_record(nrec):
     return nrec<5\
        or (nrec<50 and not nrec%10)\
        or (not nrec%100)
-       #or (nrec<500 and not nrec%100)\
 
 
 def print_statistics(nevt, nrec):
@@ -402,30 +367,15 @@ def print_statistics(nevt, nrec):
 
 
 def irun_first(runs):
-    """Returns the 1st (int) run number from list or string or int
-    """
+    """Returns the 1st (int) run number from list or string or int."""
     return runs[0] if isinstance(runs, list) else\
            runs if isinstance(runs, int) else\
            int(runs.split(',',1)[0].split('-',1)[0])
 
 
 def data_source_kwargs(**kwa):
-    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)
-    """
-    fname      = kwa.get('fname', None)
-    detname    = kwa.get('det', None)
-    exp        = kwa.get('exp', None)
-    runs       = kwa.get('runs', None)
-    dirxtc     = kwa.get('dirxtc', None)
-    usesmd     = kwa.get('usesmd', False)
-
-    irun = irun_first(runs)
-
-    kwa = {'files':fname} if fname else {'exp':exp,'run':irun}
-    if dirxtc: kwa['dir'] = dirxtc
-    logger.debug('DataSource **kwargs: %s' % str(kwa))
-    #sys.exit('TEST EXIT')
-    return kwa
+    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
+    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
 
 
 def pedestals_calibration(*args, **kwa):
@@ -434,73 +384,43 @@ def pedestals_calibration(*args, **kwa):
        - use MPI
        all-panel or selected-panel one-step (gain range) or all steps calibration of pedestals
     """
-    fname      = kwa.get('fname', None)
+    str_dskwargs = kwa.get('dskwargs', None)
     detname    = kwa.get('det', None)
-    exp        = kwa.get('exp', None)
-    runs       = kwa.get('runs', None)
     nrecs      = kwa.get('nrecs', 1000)
     stepnum    = kwa.get('stepnum', None)
     stepmax    = kwa.get('stepmax', 5)
     evskip     = kwa.get('evskip', 0)
     events     = kwa.get('events', 1000)
-    dirxtc     = kwa.get('dirxtc', None)
-    dirrepo    = kwa.get('dirrepo', CALIB_REPO_EPIX10KA)
+    dirrepo    = kwa.get('dirrepo', DIR_REPO_EPIX10KA)
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
     idx_sel    = kwa.get('idx', None)
-    dirmode    = kwa.get('dirmode', 0o777)
-    filemode   = kwa.get('filemode', 0o666)
-    usesmd     = kwa.get('usesmd', False)
+    dirmode    = kwa.get('dirmode', 0o2775)
+    filemode   = kwa.get('filemode', 0o664)
+    group      = kwa.get('group', 'ps-users')
     logmode    = kwa.get('logmode', 'DEBUG')
     errskip    = kwa.get('errskip', False)
+    irun       = None
+    exp        = None
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
 
-    #irun = runs[0] if isinstance(runs, list) else\
-    #       int(runs.split(',',1)[0].split('-',1)[0]) # int first run number from str of run(s)
-    irun = irun_first(runs)
-
-    #dsname = 'exp=%s:run=%s'%(exp,runs) if dirxtc is None else 'exp=%s:run=%s:dir=%s'%(exp, runs, dirxtc)
-    #if usesmd: dsname += ':smd'
-
-    #_name = sys._getframe().f_code.co_name
-    _name = SCRNAME
-    logger.info('In %s\n  exp: %s\n  runs: %s\n  detector: %s' % (_name, exp, str(runs), detname))
-    save_log_record_at_start(dirrepo, _name, dirmode, filemode, logmode)
-
-    #cpdic = get_config_info_for_dataset_detname(dsname, detname)
-    #tstamp      = cpdic.get('tstamp', None)
-    #panel_ids   = cpdic.get('panel_ids', None)
-    #expnum      = cpdic.get('expnum', None)
-    #dettype     = cpdic.get('dettype', None)
-    #shape       = cpdic.get('shape', None)
-    #ny,nx = shape
-
-    #panel_id = get_panel_id(panel_ids, idx)
-    #logger.debug('Found panel ids:\n%s' % ('\n'.join(panel_ids)))
+    logger.info('In %s\n  dskwargs: %s\n  detector: %s' % (SCRNAME, str_dskwargs, detname))
+    save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
 
     #read input xtc file and accumulate block of data
 
-    #================= MPI
-
-    #from mpi4py import MPI
-    #comm = MPI.COMM_WORLD
-    #rank = comm.Get_rank()
-    #size = comm.Get_size() # number of MPI nodes; 1 for regular python command
-
-    #=================
-
-    kwa = data_source_kwargs(**kwa)
-    #ds = DataSource(**kwa)
-    try: ds = DataSource(**kwa)
+    dskwargs = data_source_kwargs(**kwa)
+    try: ds = DataSource(**dskwargs)
     except Exception as err:
-        logger.error('DataSource(**kwa) does not work:\n    %s' % err)
+        logger.error('DataSource(**dskwargs) does not work for **dskwargs: %s\n    %s' % (dskwargs, err))
         sys.exit('EXIT - requested DataSource does not exist or is not accessible.')
 
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
-    logger.info('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
+    xtc_files = getattr(ds, 'xtc_files', None)
+    logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
 
     mode = None # gain_mode
     nstep_tot = -1
@@ -510,6 +430,9 @@ def pedestals_calibration(*args, **kwa):
       logger.debug('==run.runnum   : %d' % orun.runnum)        # 27
       logger.debug('  run.detnames : %s' % str(orun.detnames)) # {'epixquad'}
       logger.debug('  run.expt     : %s', orun.expt)           # ueddaq02
+
+      if irun is None: irun = orun.runnum
+      if exp is None: exp = orun.expt
 
       runtstamp = orun.timestamp    # 4193682596073796843 relative to 1990-01-01
       trun_sec = seconds(runtstamp) # 1607569818.532117 sec
@@ -547,9 +470,6 @@ def pedestals_calibration(*args, **kwa):
       BIT_MASK = det.raw._data_bit_mask
       logger.info('    det.raw._data_bit_mask BIT_MASK: %s' % oct(BIT_MASK))
 
-      #logger.debug('    det.raw._segment_ids: %s' % str(det.raw._segment_ids()))
-      #logger.debug('    det.raw._segment_indices: %s' % str(det.raw._segment_indices()))
-
       dcfg = det.raw._config_object() #ue.config_object_det(det)
 
       for nstep_run, step in enumerate(orun.steps()): #(loop through calyb cycles, using only the first):
@@ -561,11 +481,6 @@ def pedestals_calibration(*args, **kwa):
         nstep = step_counter(metadic, nstep_tot, nstep_run, stype='pedestal')
 
         if nstep is None: continue
-
-        #if size > 1:
-        #    # if MPI is on process all steps, step per rank
-        #    if nstep < rank: continue
-        #    if nstep > rank: break
 
         if nstep_tot>=stepmax:
             logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nstep_tot, stepmax))
@@ -664,13 +579,7 @@ def pedestals_calibration(*args, **kwa):
 
             logger.info('\n%s\nprocess panel:%02d id:%s' % (96*'=', idx, panel_id))
 
-            #if mode is None:
-            #    msg = 'Gain mode for dark processing is not defined "%s" try to set option -m <gain-mode>' % mode
-            #    logger.warning(msg)
-            #    sys.exit(msg)
-
             dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = dir_names(dirrepo, panel_id)
-
             #print('XXXX panel_id, tstamp, exp, irun', panel_id, tstamp, exp, irun)
 
             fname_prefix, panel_alias = file_name_prefix(dirrepo, det.raw._dettype, panel_id, tstamp, exp, irun)
@@ -679,10 +588,6 @@ def pedestals_calibration(*args, **kwa):
             prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status =\
                 path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_rms, dir_status)
 
-            #logger.debug('Directories under %s\n  SHOULD ALREADY EXIST after charge-injection offset_calibration' % dir_panel)
-            #assert os.path.exists(dir_offset), 'Directory "%s" DOES NOT EXIST' % dir_offset
-            #assert os.path.exists(dir_peds),   'Directory "%s" DOES NOT EXIST' % dir_peds
-
             create_directory(dir_panel,  mode=dirmode)
             create_directory(dir_peds,   mode=dirmode)
             create_directory(dir_offset, mode=dirmode)
@@ -690,15 +595,8 @@ def pedestals_calibration(*args, **kwa):
             create_directory(dir_rms,    mode=dirmode)
             create_directory(dir_status, mode=dirmode)
 
-
-            #dark=block[:nrec,:].mean(0)  #Calculate mean
-
             #block.sahpe = (1024, 16, 352, 384)
             dark, rms, status = proc_dark_block(block[:nrec,idx,:], **kwa) # process pedestals per-panel (352, 384)
-
-
-            #continue # TEST
-            #==========
 
             fname = '%s_pedestals_%s.dat' % (prefix_peds, mode)
             save_2darray_in_textfile(dark, fname, filemode, fmt_peds)
@@ -749,7 +647,7 @@ def get_config_info_for_dataset_detname(**kwargs):
     ds = DataSource(**data_source_kwargs(**kwargs))
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
-    logger.info('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
+    logger.debug('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
 
     #for orun in ds.runs():
     orun = next(ds.runs())
@@ -773,7 +671,7 @@ def get_config_info_for_dataset_detname(**kwargs):
       #co = det.raw._config_object()
 
       cpdic = {}
-      cpdic['expname']    = orun.expt
+      cpdic['expname']    = orun.expt   # experiment name
       cpdic['strsrc']     = None
       cpdic['shape']      = det.raw._seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2
       cpdic['gain_mode']  = ue.find_gain_mode(det.raw, evt=None) #data=raw: distinguish 5-modes w/o data
@@ -787,6 +685,7 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['trun_sec']   = int(trun_sec) # 1607569818.532117 sec
       cpdic['tsrun_dark'] = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
       cpdic['gains_def']  = det.raw._gains_def # e.g. for epix10ka (16.4, 5.466, 0.164) ADU/keV
+      cpdic['runnum']     = orun.runnum   # run number
       return cpdic
 
 
@@ -912,20 +811,18 @@ def deploy_constants(*args, **kwa):
     import psana.pscalib.calib.MDBWebUtils as wu
     cc = wu.cc # import psana.pscalib.calib.CalibConstants as cc
 
-    exp        = kwa.get('exp', None)
     detname    = kwa.get('det', None)
-    runs       = kwa.get('runs', None)
     tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
-    dirxtc     = kwa.get('dirxtc', None)
-    dirrepo    = kwa.get('dirrepo', CALIB_REPO_EPIX10KA)
+    dirrepo    = kwa.get('dirrepo', DIR_REPO_EPIX10KA)
     deploy     = kwa.get('deploy', False)
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_gain   = kwa.get('fmt_gain', '%.6f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
     logmode    = kwa.get('logmode', 'DEBUG')
-    dirmode    = kwa.get('dirmode',  0o777)
-    filemode   = kwa.get('filemode', 0o666)
+    dirmode    = kwa.get('dirmode',  0o2775)
+    filemode   = kwa.get('filemode', 0o664)
+    group      = kwa.get('group', 'ps-users')
     high       = kwa.get('high',   16.40) # ADU/keV
     medium     = kwa.get('medium', 5.466) # ADU/keV
     low        = kwa.get('low',    0.164) # ADU/keV
@@ -938,11 +835,7 @@ def deploy_constants(*args, **kwa):
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
 
-    #dsname = 'exp=%s:run=%d'%(exp,irun) if dirxtc is None else 'exp=%s:run=%d:dir=%s'%(exp, irun, dirxtc)
-    irun = irun_first(runs)
-    #_name = sys._getframe().f_code.co_name
-    _name = SCRNAME
-    save_log_record_at_start(dirrepo, _name, dirmode, filemode, logmode)
+    save_log_record_at_start(dirrepo, SCRNAME, dirmode, filemode, logmode, group=group)
 
     cpdic = get_config_info_for_dataset_detname(**kwa)
     tstamp_run  = cpdic.get('tstamp',    None) # str
@@ -953,11 +846,13 @@ def deploy_constants(*args, **kwa):
     panel_inds  = cpdic.get('panel_inds',None)
     dettype     = cpdic.get('dettype',   None)
     det_name    = cpdic.get('det_name',  None)
-    longname    = cpdic.get('longname', detname)
+    longname    = cpdic.get('longname',  detname)
     gains_def   = cpdic.get('gains_def', None)
+    irun        = cpdic.get('runnum',    None)
+    exp         = cpdic.get('expname',   None)
 
     req_inds = None if paninds is None else [int(i) for i in paninds.split(',')] # conv str '0,1,2,3' to list [0,1,2,3]
-    logger.info('In %s\n      detector: "%s" \n      requested_inds: %s' % (_name, detname, str(req_inds)))
+    logger.info('In %s\n      detector: "%s" \n      requested_inds: %s' % (SCRNAME, detname, str(req_inds)))
 
     assert isinstance(gains_def, tuple)
     assert len(gains_def) == 3
@@ -1116,19 +1011,18 @@ if __name__ == "__main__":
       det     = 'epixquad',\
       runs    = 27,\
       tstamp  = 20201216000000,\
-      dirxtc  = '/cds/data/psdm/ued/ueddaq02/xtc/',\
-      deploy  = False)
+       deploy  = False)
       #dirrepo = './work',\
     print('TBD')
 
 
-  SCRNAME = sys.argv[0].rsplit('/')[-1]
   USAGE = 'python %s <test-name>' % SCRNAME\
         + '\n  where <test-name>'\
         + '\n  1: test_offset_calibration_epix10ka - TBD'\
         + '\n  2: test_pedestals_calibration_epix10ka'\
         + '\n  3: test_deploy_constants_epix10ka - TBD'\
         + '\n'
+
 
 if __name__ == "__main__":
     print(80*'_')

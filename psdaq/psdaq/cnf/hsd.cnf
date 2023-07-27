@@ -3,12 +3,12 @@ if not platform: platform = '6'
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 #epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 epics_env = 'EPICS_PVA_ADDR_LIST=10.0.3.255'+' '+ld_lib_path
-hsd_epics_env = ld_lib_path
+hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.25 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
 pyxpm_optsdb = '-P DAQ:NEH:XPM:%d'
 
 ioc_node = 'daq-tmo-hsd-01'
-pva_node = 'drp-neh-ctl002'
+pva_node = 'drp-srcf-cmp004'
 hsd_epics = 'DAQ:TMO:HSD:1'
 hsd_ids = ['1b','1a','3e','3d','5e','da','b2','b1']
 
@@ -16,11 +16,11 @@ procmgr_config = []
 iport = 29071
 for hsd in hsd_ids:
     for ch in ['a','b']:
-        procmgr_config.append({host:pva_node, id:'hsdpvs_{:}_{:}'.format(hsd,ch), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(hsd_epics,hsd.upper(),ch.upper())})
+        procmgr_config.append({host:pva_node, id:'hsdpvs_tmo_{:}_{:}'.format(hsd,ch), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(hsd_epics,hsd.upper(),ch.upper())})
         iport += 1
 
 for hsd in hsd_ids:
-    procmgr_config.append({host:ioc_node, id:'hsdioc_{:}'.format(hsd), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(hsd_epics,hsd.upper(),hsd)})
+    procmgr_config.append({host:ioc_node, id:'hsdioc_tmo_{:}'.format(hsd), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(hsd_epics,hsd.upper(),hsd)})
     iport += 1
 
 peppex_node = 'daq-tmo-hsd-02'
@@ -28,27 +28,27 @@ peppex_epics = 'DAQ:TMO:HSD:2'
 peppex_hsd = '41' # relies on this not conflicting with hsd_ids above
 
 for ch in ['a','b']:
-    procmgr_config.append({host:peppex_node, id:'hsdpvs_{:}_{:}'.format(peppex_hsd,ch), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(peppex_epics,peppex_hsd.upper(),ch.upper())})
+    procmgr_config.append({host:peppex_node, id:'hsdpvs_tmo_{:}_{:}'.format(peppex_hsd,ch), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(peppex_epics,peppex_hsd.upper(),ch.upper())})
     iport += 1
-procmgr_config.append({host:peppex_node, id:'hsdioc_{:}'.format(peppex_hsd), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(peppex_epics,peppex_hsd.upper(),peppex_hsd)})
+procmgr_config.append({host:peppex_node, id:'hsdioc_tmo_{:}'.format(peppex_hsd), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(peppex_epics,peppex_hsd.upper(),peppex_hsd)})
 iport += 1
 
 #  Map of HSD connections
-#  hsd_0  1B:A   drp-neh-cmp020:0   OK
-#  hsd_1  1B:B   drp-neh-cmp020:4   no conn  [RxPwr at DRP OK] [3 lanes OK]
-#  hsd_2  1A:A   drp-neh-cmp017:0   OK
-#  hsd_3  1A:B   drp-neh-cmp017:4   OK [PGP lane 1 intermittent error]
-#  hsd_4  3E:A   drp-neh-cmp019:4   OK
-#  hsd_7  3E:B   drp-neh-cmp018:0   OK (??)
-#  hsd_6  3D:A   drp-neh-cmp021:4   OK
-#  hsd_5  3D:B   drp-neh-cmp018:4   OK
-#  hsd_8  5E:A   drp-neh-cmp022:0   OK
-#  hsd_9  5E:B   drp-neh-cmp022:4   OK
-#  hsd_10 DA:B   drp-neh-cmp024:4   OK
-#  hsd_11 DA:A   drp-neh-cmp024:0   OK
+#  hsd_0  1B:A   drp-srcf-cmp020:0   OK
+#  hsd_1  1B:B   drp-srcf-cmp020:4   no conn  [RxPwr at DRP OK] [3 lanes OK]
+#  hsd_2  1A:A   drp-srcf-cmp020:0   OK
+#  hsd_3  1A:B   drp-srcf-cmp017:4   OK [PGP lane 1 intermittent error]
+#  hsd_4  3E:A   drp-srcf-cmp019:4   OK
+#  hsd_7  3E:B   drp-srcf-cmp018:0   OK (??)
+#  hsd_6  3D:A   drp-srcf-cmp021:4   OK
+#  hsd_5  3D:B   drp-srcf-cmp018:4   OK
+#  hsd_8  5E:A   drp-srcf-cmp022:0   OK
+#  hsd_9  5E:B   drp-srcf-cmp022:4   OK
+#  hsd_10 DA:B   drp-srcf-cmp024:4   OK
+#  hsd_11 DA:A   drp-srcf-cmp024:0   OK
 #  hsd_12 B2:A   drp-neh-cmp021:0   OK
 #  hsd_13 B2:B   drp-neh-cmp019:0   OK
 #  hsd_14 B1:    drp-neh-cmp019:0   OK
 #  hsd_15 B1:    drp-neh-cmp019:0   OK
-#  
+#
 # hsdpva DAQ:TMO:HSD:1_1B:A DAQ:TMO:HSD:1_1B:B DAQ:TMO:HSD:1_1A:A DAQ:TMO:HSD:1_1A:B DAQ:TMO:HSD:1_3E:A DAQ:TMO:HSD:1_3E:B DAQ:TMO:HSD:1_3D:A DAQ:TMO:HSD:1_3D:B DAQ:TMO:HSD:1_5E:A DAQ:TMO:HSD:1_5E:B DAQ:TMO:HSD:1_DA:A DAQ:TMO:HSD:1_DA:B DAQ:TMO:HSD:1_B2:A DAQ:TMO:HSD:1_B2:B DAQ:TMO:HSD:1_B1:A DAQ:TMO:HSD:1_B1:B

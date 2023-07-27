@@ -19,7 +19,7 @@ import os
 import sys
 import h5py
 from psana.graphqt.QWTree import Qt, QWTree, icon, QStandardItem
-
+from psana.detector.dir_root import DIR_ROOT
 
 def name_in_path(path,sep='/'):
     return path.rsplit(sep,1)[-1]
@@ -28,7 +28,7 @@ def name_in_path(path,sep='/'):
 class H5VQWTree(QWTree):
     """Widget for HDF5 tree
     """
-    TEST_FNAME = '/cds/group/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5'
+    TEST_FNAME = DIR_ROOT + '/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5'
 
     def __init__(self, **kwargs):
 

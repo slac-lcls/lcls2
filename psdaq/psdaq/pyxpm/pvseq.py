@@ -227,6 +227,7 @@ class PVSeq(object):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
                           handler=DefaultPVHandler())
             provider.add(name+':'+label,pv)
+            print(name+':'+label)
             return pv
 
         self._pv_DescInstrs    = addPV('DESCINSTRS','s','')

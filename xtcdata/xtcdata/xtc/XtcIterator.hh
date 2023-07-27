@@ -42,7 +42,7 @@ class Xtc;
 class XtcIterator
 {
 public:
-    XtcIterator(Xtc* root);
+    XtcIterator(Xtc* root, const void* bufEnd);
     XtcIterator()
     {
     }
@@ -51,15 +51,16 @@ public:
     }
 
 public:
-    virtual int process(Xtc* xtc) = 0;
+    virtual int process(Xtc* xtc, const void* bufEnd) = 0;
 
 public:
     void iterate();
-    void iterate(Xtc*);
+    void iterate(Xtc*, const void* bufEnd);
     const Xtc* root() const;
 
 private:
     Xtc* _root; // Collection to process in the absence of an argument...
+    const void* _bufEnd;
 };
 }
 
@@ -73,7 +74,7 @@ private:
 ** --
 */
 
-inline XtcData::XtcIterator::XtcIterator(Xtc* root) : _root(root)
+inline XtcData::XtcIterator::XtcIterator(Xtc* root, const void* bufEnd) : _root(root), _bufEnd(bufEnd)
 {
 }
 
@@ -101,7 +102,7 @@ inline const XtcData::Xtc* XtcData::XtcIterator::root() const
 
 inline void XtcData::XtcIterator::iterate()
 {
-    iterate(_root);
+    iterate(_root, _bufEnd);
 }
 
 #endif

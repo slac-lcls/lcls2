@@ -128,8 +128,8 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
             PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)func_name));
 
             // returns new reference
-            PyObject* mbytes = PyObject_CallFunction(pFunc,"s",
-                                                     m_epics_name.c_str());
+            PyObject* mbytes = check(PyObject_CallFunction(pFunc,"s",
+                                                           m_epics_name.c_str()));
 
             m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
 

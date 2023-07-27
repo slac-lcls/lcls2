@@ -27,6 +27,7 @@ class Event():
         self._complete()
         self._position = 0
         self._run = run
+        self._proxy_evt = None          # For smalldata-event loop
 
     def __iter__(self):
         return self
@@ -58,24 +59,6 @@ class Event():
 
         return event_bytes
 
-    @classmethod
-    def _from_bytes(cls, configs, event_bytes, run=None):
-        dgrams = []
-        if event_bytes:
-            pf = PacketFooter(view=event_bytes)
-            views = pf.split_packets()
-            
-            assert len(configs) == pf.n_packets
-            
-            dgrams = [None]*pf.n_packets # make sure that dgrams are arranged 
-                                         # according to the smd files.
-            for i in range(pf.n_packets):
-                if views[i].shape[0] > 0: # do not include any missing dgram
-                    dgrams[i] = dgram.Dgram(config=configs[i], view=views[i])
-        
-        evt = cls(dgrams, run=run)
-        return evt
-    
     @property
     def _seconds(self):
         _high = (self.timestamp >> 32) & 0xffffffff
@@ -121,7 +104,7 @@ class Event():
                                 self._det_segments[class_identifier] = {}
                             segs = self._det_segments[class_identifier]
 
-                            if det_name not in ['runinfo','smdinfo'] :
+                            if det_name not in ['runinfo','smdinfo','chunkinfo'] :
                                 assert segment not in segs, f'Found duplicate segment: {segment} for {class_identifier}'
                             segs[segment] = drp_class
                             
@@ -142,7 +125,7 @@ class Event():
             if d:
                 service = d.service()
                 break
-        assert service
+        assert service >= 0, f"number >= 0 expected, got: {service}"
 
         return service
 
@@ -173,3 +156,13 @@ class Event():
         usec = (self.timestamp&0xffffffff)/1000
         delta_t = datetime.timedelta(seconds=sec,microseconds=usec)
         return epoch + delta_t
+
+    def set_destination(self, dest):
+        """ Sets destination (bigdata core rank no.) where this event
+        should be sent to. 
+
+        Destination only works in parallel mode with only one EvenBuilder core
+        (PS_EB_NODES=1). The valid range of destination is from 1 to the number
+        of available bigdata cores.
+        """
+        self._proxy_evt.set_destination(dest)

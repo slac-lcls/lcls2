@@ -83,7 +83,7 @@ void Task::destroy()
   if (*_refCount > 0) {
     delete this;
   }
-  if (*_refCount == 0) {
+  else if (*_refCount == 0) {
     _destroyRoutine = new TaskDelete(this);
     call(_destroyRoutine);
   }

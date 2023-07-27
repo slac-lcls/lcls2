@@ -76,7 +76,7 @@ int connect(Endpoint* endp, LocalIOVec *iov)
 
   endp->shutdown();
 
-  delete key_buff;
+  delete [] key_buff;
 
   return ret;
 }

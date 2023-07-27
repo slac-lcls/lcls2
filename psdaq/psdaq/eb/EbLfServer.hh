@@ -70,11 +70,8 @@ namespace Pds {
                    const char*        name);
     int linksConnect(EbLfServer&                transport,
                      std::vector<EbLfSvrLink*>& links,
+                     unsigned                   id,
                      const char*                name);
-    int linksConfigure(std::vector<EbLfSvrLink*>& links,
-                       unsigned                   id,
-                       const char*                name);
-
   };
 };
 

@@ -177,6 +177,12 @@ target_link_libraries(teb
   ${PYTHON_LIBRARIES}
 )
 
+install(FILES
+  eb.hh
+  ResultDgram.hh
+  DESTINATION include/psdaq/eb
+)
+
 install(TARGETS
   utilities
   contributor

@@ -83,6 +83,8 @@ public:
                const std::shared_ptr<Pds::MetricExporter>& exporter);
     void process(const Pds::Eb::ResultDgram& result, unsigned index) override;
 public:
+    void detector(Detector* det) {m_det = det;}
+    void tsId(unsigned nodeId) {m_tsId = nodeId;}
     void resetCounters();
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
     bool advanceChunkId();
@@ -99,6 +101,8 @@ private:
     void _writeDgram(XtcData::Dgram* dgram);
 private:
     MemPool& m_pool;
+    Detector* m_det;
+    unsigned m_tsId;
     Pds::Eb::MebContributor& m_mon;
     BufferedFileWriterMT m_fileWriter;
     SmdWriter m_smdWriter;
@@ -141,6 +145,7 @@ public:
     void chunkInfoSupport(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup);
     void chunkInfoData   (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, const ChunkInfo& chunkInfo);
     Pds::Eb::TebContributor& tebContributor() {return *m_tebContributor;}
+    EbReceiver& ebReceiver() {return *m_ebRecv;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
     unsigned nodeId() const {return m_nodeId;}

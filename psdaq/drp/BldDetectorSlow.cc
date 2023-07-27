@@ -177,7 +177,9 @@ BldFactory::BldFactory(const char* name,
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramTimestampPos, Bld::DgramHeaderSize, payloadSize,
+    _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
+                                     Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
+                                     Bld::DgramHeaderSize, payloadSize,
                                      tscorr);
 }
 
@@ -214,7 +216,9 @@ BldFactory::BldFactory(const BldPVA& pva) :
     else {
         throw std::string("BLD type ")+_detType+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface, Bld::TimestampPos, Bld::HeaderSize, payloadSize);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface,
+                                     Bld::TimestampPos, Bld::PulseIdPos,
+                                     Bld::HeaderSize, payloadSize);
 }
 
   BldFactory::BldFactory(const BldFactory& o) :
@@ -310,12 +314,14 @@ Bld::Bld(unsigned mcaddr,
          unsigned port,
          unsigned interface,
          unsigned timestampPos,
+         unsigned pulseIdPos,
          unsigned headerSize,
          unsigned payloadSize,
          uint64_t timestampCorr) :
-  m_timestampPos(timestampPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
+  m_timestampPos(timestampPos), m_pulseIdPos(pulseIdPos),
+  m_headerSize(headerSize), m_payloadSize(payloadSize),
   m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
-  m_timestampCorr(timestampCorr)
+  m_timestampCorr(timestampCorr), m_pulseId(0), m_pulseIdJump(0)
 {
     logging::debug("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
 
@@ -323,6 +329,7 @@ Bld::Bld(unsigned mcaddr,
     if (m_sockfd < 0)
         HANDLE_ERR("Open socket");
 
+    //  Yes, we do bump into full buffers.  Bigger or small buffers seem to be worse.
     { unsigned skbSize = 0x1000000;
       if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1)
           HANDLE_ERR("set so_rcvbuf");
@@ -351,6 +358,7 @@ Bld::Bld(unsigned mcaddr,
 
 Bld::Bld(const Bld& o) :
     m_timestampPos(o.m_timestampPos),
+    m_pulseIdPos  (o.m_pulseIdPos),
     m_headerSize  (o.m_headerSize),
     m_payloadSize (o.m_payloadSize),
     m_sockfd      (o.m_sockfd)
@@ -377,23 +385,90 @@ uint8_t payload[]
 
 */
 
+//  Read ahead and clear events older than ts (approximate)
+void     Bld::clear(uint64_t ts)
+{
+    uint64_t timestamp(0L);
+    uint64_t pulseId  (0L);
+    while(1) {
+        // get new multicast if buffer is empty
+        if ((m_position + m_payloadSize + 4) > m_bufferSize) {
+            ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
+            if (bytes <= 0)
+                break;
+            m_bufferSize = bytes;
+            timestamp    = headerTimestamp();
+            if (timestamp >= ts) {
+                m_position = 0;
+                break;
+            }
+            pulseId      = headerPulseId  ();
+            m_payload    = &m_buffer[m_headerSize];
+            m_position   = m_headerSize + m_payloadSize;
+        }
+        else if (m_position==0) {
+            timestamp    = headerTimestamp();
+            if (timestamp >= ts)
+                break;
+            pulseId      = headerPulseId  ();
+            m_payload    = &m_buffer[m_headerSize];
+            m_position   = m_headerSize + m_payloadSize;
+        }
+        else {
+            uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
+            timestamp   = headerTimestamp() + timestampOffset;
+            if (timestamp >= ts)
+                break;
+            uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
+            pulseId     = headerPulseId  () + pulseIdOffset;
+            m_payload   = &m_buffer[m_position + 4];
+            m_position += 4 + m_payloadSize;
+        }
+
+        unsigned jump = pulseId - m_pulseId;
+        m_pulseId = pulseId;
+        if (jump != m_pulseIdJump) {
+            m_pulseIdJump = jump;
+            logging::warning("BLD pulseId jump %u",jump);
+        }
+    }
+}
+
+//  Advance to the next event
 uint64_t Bld::next()
 {
     uint64_t timestamp(0L);
+    uint64_t pulseId  (0L);
     // get new multicast if buffer is empty
     if ((m_position + m_payloadSize + 4) > m_bufferSize) {
-        m_bufferSize = recv(m_sockfd, m_buffer.data(), Bld::MTU, 0);
+        ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, 0);
+        m_bufferSize = bytes;
         timestamp    = headerTimestamp();
+        pulseId      = headerPulseId  ();
+        m_payload    = &m_buffer[m_headerSize];
+        m_position   = m_headerSize + m_payloadSize;
+    }
+    else if (m_position==0) {
+        timestamp    = headerTimestamp();
+        pulseId      = headerPulseId  ();
         m_payload    = &m_buffer[m_headerSize];
         m_position   = m_headerSize + m_payloadSize;
     }
     else {
         uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
         timestamp   = headerTimestamp() + timestampOffset;
+        uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
+        pulseId     = headerPulseId  () + pulseIdOffset;
         m_payload   = &m_buffer[m_position + 4];
         m_position += 4 + m_payloadSize;
     }
-    logging::debug("BLD timestamp %16llx",timestamp);
+
+    unsigned jump = pulseId - m_pulseId;
+    m_pulseId = pulseId;
+    if (jump != m_pulseIdJump) {
+        m_pulseIdJump = jump;
+        logging::warning("BLD pulseId jump %u",jump);
+    }
 
     return timestamp;
 }
@@ -414,16 +489,8 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     m_latency(0), m_nDmaRet(0)
 {
     m_nodeId = det->nodeId;
-    uint8_t mask[DMA_MASK_SIZE];
-    dmaInitMaskBytes(mask);
-    for (unsigned i=0; i<PGP_MAX_LANES; i++) {
-        if (para.laneMask & (1 << i)) {
-            logging::info("setting lane  %d", i);
-            dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
-        }
-    }
-    if (dmaSetMaskBytes(m_drp.pool.fd(), mask)) {
-        logging::error("Failed to allocate lane/vc\n");
+    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+        logging::error("Failed to allocate lane/vc");
     }
 }
 
@@ -574,6 +641,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     std::string s(m_para.detType);
     logging::debug("Parsing %s",s.c_str());
     for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
+        if (s==".") break;
         next  = s.find(',',curr+1);
         size_t pvpos = s.find('+',curr+1);
         logging::debug("(%d,%d,%d)",curr,pvpos,next);
@@ -615,6 +683,10 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             tmo = strtoul(it->second.c_str(),NULL,0);
     }
 
+    //bool lRunning = false;
+    bool lDoPoll = true;    // make the system call
+    unsigned skipPoll = 0;  // bit mask of contributors with data waiting
+
     unsigned nfds = m_config.size()+1;
     pollfd pfd[nfds];
     pfd[0].fd = m_drp.pool.fd();
@@ -623,7 +695,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         pfd[i+1].fd = m_config[i]->handler().fd();
         pfd[i+1].events = POLL_IN;
     }
-
     m_terminate.store(false, std::memory_order_release);
 
     while (true) {
@@ -631,72 +702,61 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             break;
         }
 
-        int rval = poll(pfd, nfds, tmo);
+        timespec tto;
+        clock_gettime(CLOCK_REALTIME,&tto);
+
+        int rval;
+        bool ltmo=false;
+        if (lDoPoll) {
+            rval = poll(pfd, nfds, tmo);
+            ltmo = rval==0;
+        }
+        else {
+            rval = 0;
+            for(unsigned i=0; i<nfds; i++)
+                pfd[i].revents = 0;
+        }
+
+        if (dgram==0 && pfd[0].events==0 && (skipPoll&1)==0)
+            logging::critical("not waiting for dgram");
 
         if (rval < 0) {  // error
         }
-        /**
-        else if (rval == 0) { // timeout
-            // flush dgrams
-            if (pfd[0].events == 0) {
-                bool lMissed = false;
-                uint64_t ts = dgram->time.value();
-                for(unsigned i=0; i<m_config.size(); i++) {
-                    if (timestamp[i] == ts) {
-                        XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                        const Bld& bld = m_config[i]->handler();
-                        XtcData::DescribedData desc(dgram->xtc, bufEnd, namesLookup, namesId);
-                        memcpy(desc.data(), bld.payload(), bld.payloadSize());
-                        desc.set_data_length(bld.payloadSize());
-                        pfd[i+1].events = POLLIN;
-                    }
-                    else {
-                        lMissed = true;
-                        if (!lMissing)
-                            logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
-                                           i, ts, timestamp[i]);
-                    }
-                }
-                if (lMissed) {
-                    lMissing = true;
-                    dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
-                }
-                else
-                    lMissing = false;
-
-                logging::debug("poll tmo  flush dgram %p  extent %u  dmg 0x%x",
-                               dgram, dgram->xtc.extent, dgram->xtc.damage.value());
-                _sendToTeb(*dgram, index);
-                nevents++;
-                pfd[0].events = POLLIN;
-            }
-            for(unsigned i=0; i<m_config.size(); i++)
-                pfd[i+1].events = POLLIN;
-        }
-        **/
         else {
-            logging::debug("poll rval[%d]  pfd[0].events %u  pfd[1].events %u  dgram %p",
-                           rval, pfd[0].events,pfd[1].events,dgram);
+            lDoPoll = false;
+
             // handle pgp
-            if (pfd[0].revents == POLLIN) {
+            if ((skipPoll&(1<<0)) || pfd[0].revents == POLLIN) {
                 dgram = next(index, bytes);
-                pfd[0].events = 0;
+                if (dgram) {
+                    pfd[0].events = 0;
+                    skipPoll &= ~(1<<0);
+                }
             }
 
             // handle bld
             for(unsigned i=0; i<m_config.size(); i++) {
-                if (pfd[i+1].revents == POLLIN) {
+                if (dgram)
+                    m_config[i]->handler().clear(dgram->time.value());
+                if ((skipPoll&(2<<i)) || pfd[i+1].revents == POLLIN) {
                     timestamp[i] = m_config[i]->handler().next();
                     pfd[i+1].events = 0;
+                    skipPoll &= ~(2<<i);
                 }
             }
 
             if (dgram) {
                 bool lready = true;
                 uint64_t ts = dgram->time.value();
+                // handle bld
                 for(unsigned i=0; i<m_config.size(); i++) {
                     if (timestamp[i] < ts) {
-                        pfd[i+1].events = POLLIN;
+                        if (m_config[i]->handler().ready())
+                            skipPoll |= (2<<i);
+                        else {
+                            lDoPoll = true;
+                            pfd[i+1].events = POLLIN;
+                        }
                         lready = false;
                     }
                 }
@@ -724,14 +784,23 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
                         }
                     }
+                    //else if (dgram->service() == XtcData::TransitionId::Enable)
+                    //    lRunning = true;
+                    //else if (dgram->service() == XtcData::TransitionId::Disable)
+                    //    lRunning = false;
 
                     _sendToTeb(*dgram, index);
                     nevents++;
-                    pfd[0].events = POLLIN;
+                    if (_ready())
+                        skipPoll |= (1<<0);
+                    else {
+                        pfd[0].events = POLLIN;
+                        lDoPoll = true;
+                    }
                     dgram = 0;
                 }
                 //  Accept L1 transitions
-                else if (lready or rval==0) {
+                else if (lready or ltmo) {
                     const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
                     bool lMissed = false;
                     for(unsigned i=0; i<m_config.size(); i++) {
@@ -741,26 +810,73 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             XtcData::DescribedData desc(dgram->xtc, bufEnd, namesLookup, namesId);
                             memcpy(desc.data(), bld.payload(), bld.payloadSize());
                             desc.set_data_length(bld.payloadSize());
-                            pfd[i+1].events = POLLIN;
+
+                            if (bld.ready())
+                                skipPoll |= (2<<i);
+                            else {
+                                lDoPoll = true;
+                                pfd[i+1].events = POLLIN;
+                            }
                         }
                         else {
                             lMissed = true;
                             if (!lMissing)
-                                logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
-                                               i, ts, timestamp[i]);
+                                logging::warning("Missed bld[%u]: pgp %016lx  bld %016lx  pid %016llx",
+                                                 i, ts, timestamp[i], dgram->pulseId());
                         }
                     }
                     if (lMissed) {
                         lMissing = true;
                         dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+                        nmissed++;
                     }
-                    else
+                    else {
+                        if (lMissing)
+                            logging::warning("Found bld: %016lx  %016llx",ts, dgram->pulseId());
                         lMissing = false;
+                    }
 
                     _sendToTeb(*dgram, index);
                     nevents++;
-                    pfd[0].events = POLLIN;
+                    if (_ready())
+                        skipPoll |= (1<<0);
+                    else {
+                        pfd[0].events = POLLIN;
+                        lDoPoll = true;
+                    }
                     dgram = 0;
+                }
+            }
+            else {  // dgram==0
+                //  dgram contributor
+                if (_ready())
+                    skipPoll |= (1<<0);
+                else {
+                    lDoPoll = true;
+                    pfd[0].events = POLLIN;
+                }
+                if (ltmo) {
+                    // timedout: free up some network buffers
+                    uint64_t tt = (tto.tv_sec - POSIX_TIME_AT_EPICS_EPOCH);
+                    uint32_t tb = 15000000;  // allow 15 ms for transit+NTP (+2.7ms from xtpg timestamp casting)
+                    if (tto.tv_nsec > tb) {
+                        tt <<= 32;
+                        tt  += tto.tv_nsec-tb;
+                    }
+                    else {
+                        tt--;
+                        tt <<= 32;
+                        tt  += 1000000000+tto.tv_nsec-tb;
+                    }
+                    for(unsigned i=0; i<m_config.size(); i++) {
+                        m_config[i]->handler().clear(tt);
+                        if (m_config[i]->handler().ready())
+                            skipPoll |= (2<<i);
+                        else {
+                            lDoPoll = true;
+                            pfd[i+1].events = POLLIN;
+                        }
+                    }
                 }
             }
         }

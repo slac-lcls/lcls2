@@ -8,13 +8,14 @@ os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' # get rid of libGL error: unable to lo
 
 import sys
 from psana.graphqt.IVMain import do_main, logging
+from psana.detector.dir_root import DIR_DATA_TEST
 
 SCRNAME = sys.argv[0]#.rsplit('/')[-1]
 LEVEL_NAMES = ', '.join(list(logging._levelToName.values()))
 
 USAGE = 'Image Viewer\n\n'\
       + 'command example:\n'\
-      + '  iv /cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy\n'
+      + '  iv %s/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy\n' % DIR_DATA_TEST
 
 
 def image_viewer():
@@ -44,7 +45,7 @@ def image_viewer():
 
 class Constants:
     d_posargs  = None
-    d_fname    = None #'/cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy'
+    d_fname    = None
     d_loglevel = 'INFO'
 
     h_posargs  = 'list of positional arguments, default = %s' % d_posargs

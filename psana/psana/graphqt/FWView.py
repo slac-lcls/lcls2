@@ -37,8 +37,7 @@ Usage ::
     sctrl = w.scale_control()
     w.set_style()
     w._set_signs_of_transform()
-    w.set_background_style(bkgd_color=QColor(50,5,50))
-    w._set_scene_item_rect_zvalue(sc_zvalue=20)
+    w.set_background_brush(color=QColor(50,5,50), pattern=Qt.SolidPattern)
 
     # Re-calls
     #---------
@@ -117,7 +116,7 @@ class FWView(QGraphicsView):
 
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10),\
                  origin='UL', scale_ctl='HV',\
-                 show_mode=0, signal_fast=True):
+                 show_mode=0, signal_fast=True, **kwa):
         """
         Parameters
 
@@ -133,16 +132,14 @@ class FWView(QGraphicsView):
         QGraphicsView.__init__(self, sc, parent)
 
         self._name = self.__class__.__name__
-
         self.rs = rscene         # default rect on scene, restored at reset_original_size
         self.rs_old = self.rs    # rs_old - is used to check if scene rect changed
         self.rs_item = None      # item on scene to change cursor style at howering
-
         self.pos_click = None    # QPoint at mousePress
-        self._set_scene_item_rect_zvalue()
+        self.sc_zvalue = kwa.get('sc_zvalue', 20)
+
         self.set_origin(origin)           # sets self._origin_...
         self.set_scale_control(scale_ctl) # sets self._scale_ctl
-        self._set_signs_of_transform()
 
         self.set_style()
         self.set_view()
@@ -173,6 +170,8 @@ class FWView(QGraphicsView):
         self._origin_dl = self._origin_d and self._origin_l
         self._origin_dr = self._origin_d and self._origin_r
 
+        self._set_signs_of_transform()
+
 
     def set_scale_control(self, scale_ctl='HV'):
         """Sets scale control bit-word
@@ -200,19 +199,16 @@ class FWView(QGraphicsView):
 
 
     def set_style(self):
-
         self.brudf = QBrush()
         self.brubx = QBrush(Qt.black, Qt.SolidPattern)
         self.pendf = QPen()
         self.pendf.setStyle(Qt.NoPen)
         self.penbx = QPen(Qt.black, 6, Qt.SolidLine)
+        self.set_background_brush()
 
-        self.set_background_style()
 
-
-    def set_background_style(self, bkgd_color = QColor(50,5,50)):
-        """Sets self.bkgd (str) - background style"""
-        self.setBackgroundBrush(QBrush(bkgd_color, Qt.SolidPattern))
+    def set_background_brush(self, color=QColor(50,5,50), pattern=Qt.SolidPattern):
+        self.setBackgroundBrush(QBrush(color, pattern))
 
 
     def _set_signs_of_transform(self):
@@ -221,11 +217,6 @@ class FWView(QGraphicsView):
             sy = 1 if self._origin_u else -1
             ts = self.transform().scale(sx, sy)
             self.setTransform(ts)
-
-
-    def _set_scene_item_rect_zvalue(self, sc_zvalue=20):
-        """Sets self.sc_zvalue (float) - scene rect item z value for cursor behavir"""
-        self.sc_zvalue = sc_zvalue
 
 
     def update_my_scene(self):
@@ -293,9 +284,6 @@ class FWView(QGraphicsView):
         QGraphicsView.mousePressEvent(self, e)
         self.pos_click = e.pos()
         self.rs_center = self.scene().sceneRect().center()
-        self.invscalex = 1./self.transform().m11()
-        self.invscaley = 1./self.transform().m22()
-        #self.pos_click_sc = self.mapToScene(self.pos_click)
 
 
     def mouseMoveEvent(self, e):
@@ -307,13 +295,11 @@ class FWView(QGraphicsView):
         if self.pos_click is None: return
 
         dp = e.pos() - self.pos_click
-        dx = dp.x()*self.invscalex if self._scale_ctl & 1 else 0
-        dy = dp.y()*self.invscaley if self._scale_ctl & 2 else 0
-        dpsc = QPointF(dx, dy)
-
+        dx = dp.x() / self.transform().m11() if self._scale_ctl & 1 else 0
+        dy = dp.y() / self.transform().m22() if self._scale_ctl & 2 else 0
         sc = self.scene()
         rs = sc.sceneRect()
-        rs.moveCenter(self.rs_center - dpsc)
+        rs.moveCenter(self.rs_center - QPointF(dx, dy))
         sc.setSceneRect(rs)
 
         if self.signal_fast: self.emit_signal_if_scene_rect_changed()
@@ -422,14 +408,14 @@ class FWView(QGraphicsView):
         item.setPen(pen)
         item.setBrush(brush)
         return item
-        return None
 
 
     def add_test_items_to_scene(self, show_mode=0):
         colfld = Qt.magenta
         colori = Qt.red
         if show_mode & 1:
-            self.rsi = self.add_rect_to_scene_v1(self.rs, pen=QPen(Qt.NoPen), brush=QBrush(colfld))
+            rs=QRectF(0, 0, 10, 10)
+            self.rsi = self.add_rect_to_scene_v1(rs, pen=QPen(Qt.NoPen), brush=QBrush(colfld))
         if show_mode & 2:
             ror=QRectF(-1, -1, 2, 2)
             self.rori = self.add_rect_to_scene_v1(ror, pen=QPen(colori, 0, Qt.SolidLine), brush=QBrush(colori))

@@ -197,7 +197,7 @@ def cbits_config_epixhr2x2(cob, shape=(288, 384)):
     return cbits
 
 
-def cbits_config_and_data_detector(det_raw, evt=None):
+def cbits_config_and_data_detector_alg(data, cbits, data_gain_bit, gain_bit_shift):
     """Returns array of control bits shape=(<number-of-segments>, 352(or 288), 384)
     from any config object and data array.
 
@@ -210,22 +210,29 @@ def cbits_config_and_data_detector(det_raw, evt=None):
     add data bit
     100000 = 1<<5 = 32 - data bit 14/15 for epix10ka/epixhr2x2 panel
     """
-    data = det_raw.raw(evt)
-    cbits = det_raw._cbits_config_detector()
+
     #logger.info(info_ndarr(cbits, 'cbits', first=0, last=5))
     if cbits is None: return None
 
     if data is not None:
         #logger.debug(info_ndarr(data, 'data', first, last))
         # get array of data bit 15 and add it as a bit 5 to cbits
-        datagainbit = np.bitwise_and(data, det_raw._data_gain_bit)
-        databit05 = np.right_shift(datagainbit, det_raw._gain_bit_shift) # 0o100000 -> 0o40
+        datagainbit = np.bitwise_and(data, data_gain_bit)
+        databit05 = np.right_shift(datagainbit, gain_bit_shift) # 0o100000 -> 0o40
         np.bitwise_or(cbits, databit05, out=cbits) # 109us
 
     return cbits
 
 
-def gain_maps_epix10ka_any(det_raw, evt=None):
+def cbits_config_and_data_detector(det_raw, evt=None):
+    return cbits_config_and_data_detector_alg(\
+             det_raw.raw(evt),\
+             det_raw._cbits_config_detector(),\
+             det_raw._data_gain_bit,\
+             det_raw._gain_bit_shift)
+
+
+def gain_maps_epix10ka_any_alg(cbits):
     """Returns maps of gain groups shape=(<number-of-segments>, <2-d-panel-shape>)
        works for both epix10ka (352, 384) and epixhr2x2 (288, 384)
 
@@ -252,7 +259,6 @@ def gain_maps_epix10ka_any(det_raw, evt=None):
       001100 =12 - cbitsM12 - mask
     """
 
-    cbits = det_raw._cbits_config_and_data_detector(evt)
     if cbits is None: return None
 
     cbitsM60 = cbits & 60 # control bits masked by configuration 3-bit-mask
@@ -268,6 +274,10 @@ def gain_maps_epix10ka_any(det_raw, evt=None):
            (cbitsM60 ==  0),\
            (cbitsM60 == 48),\
            (cbitsM60 == 32)
+
+
+def gain_maps_epix10ka_any(det_raw, evt=None):
+    return gain_maps_epix10ka_any_alg(det_raw._cbits_config_and_data_detector(evt))
 
 
 def info_gain_mode_arrays(gmaps, first=0, last=5):
@@ -466,7 +476,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
       - calibrated epix10ka data
     """
 
-    logger.debug('In calib_epix10ka_any')
+    logger.debug('in calib_epix10ka_any')
 
     t0_sec_tot = time()
 
@@ -509,13 +519,17 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
     if gmaps is None: return None
 
-    factor = np.select(gmaps,\
-                       (gfac[0,:], gfac[1,:], gfac[2,:], gfac[3,:],\
-                        gfac[4,:], gfac[5,:], gfac[6,:]), default=1) # 2msec
+#    factor = np.select(gmaps,\
+#                       (gfac[0,:], gfac[1,:], gfac[2,:], gfac[3,:],\
+#                        gfac[4,:], gfac[5,:], gfac[6,:]), default=1) # 2msec
 
-    pedest = np.select(gmaps,\
-                       (peds[0,:], peds[1,:], peds[2,:], peds[3,:],\
-                        peds[4,:], peds[5,:], peds[6,:]), default=0)
+#    pedest = np.select(gmaps,\
+#                       (peds[0,:], peds[1,:], peds[2,:], peds[3,:],\
+#                        peds[4,:], peds[5,:], peds[6,:]), default=0)
+
+    factor = event_constants_for_gmaps(gmaps, gfac, default=1) # 2msec
+
+    pedest = event_constants_for_gmaps(gmaps, peds, default=0)
 
     #factor, pedest = test_event_constants_for_gmaps(det_raw, evt, gfac, peds) # 6msec
     #factor, pedest = test_event_constants_for_grinds(det_raw, evt, gfac, peds) # 12msec
@@ -529,15 +543,19 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     arrf = np.array(raw & det_raw._data_bit_mask, dtype=np.float32) - pedest
 
-    logger.debug('common-mode correction pars cmp: %s' % str(_cmpars))
+    logger.debug('common-mode correction parameters cmpars: %s' % str(_cmpars))
 
     if store.mask is None:
-        mbits = kwa.pop('mbits',1) # 1-mask from status, etc.
-        mask = det_raw._mask_comb(mbits=mbits, **kwa) if mbits > 0 else None
-        mask_opt = kwa.get('mask',None) # mask optional parameter in det_raw.calib(...,mask=...)
-        store.mask = mask if mask_opt is None else mask_opt if mask is None else merge_masks(mask,mask_opt)
+#        mbits = kwa.pop('mbits',1) # 1-mask from status, etc.
+#        mask = det_raw._mask_comb(mbits=mbits, **kwa) if mbits > 0 else None
+#        mask_opt = kwa.get('mask',None) # mask optional parameter in det_raw.calib(...,mask=...)
+#        store.mask = mask if mask_opt is None else mask_opt if mask is None else merge_masks(mask,mask_opt)
+        store.mask = det_raw._mask_from_status(**kwa)
 
     mask = store.mask if store.mask is not None else np.ones_like(raw, dtype=DTYPE_MASK)
+
+    #logger.debug(info_ndarr(arrf,  'arrf:'))
+    #logger.debug(info_ndarr(mask,  'mask:'))
 
     if _cmpars is not None:
       alg, mode, cormax = int(_cmpars[0]), int(_cmpars[1]), _cmpars[2]

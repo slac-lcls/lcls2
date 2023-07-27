@@ -10,22 +10,21 @@ PUSH_GATEWAY        = 'psdm03:9091'
 registry = CollectorRegistry()
 metrics ={
         'psana_smd0_read'       : ('Counter', 'Counting no. of events/batches/MB read by Smd0'), 
-        'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB and wait time  \
-                                    communicating with EventBuilder cores'), 
-        'psana_eb_sent'         : ('Counter', 'Counting no. of events/batches/MB and wait time  \
-                                    communicating with BigData cores'),
-        'psana_eb_filter'       : ('Counter', 'Counting no. of batches and wait time            \
-                                    in filter callback'), 
+        'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB'),  
+        'psana_smd0_wait_eb'    : ('Summary', 'time spent (s) waiting for EventBuilders'),
+        'psana_eb_sent'         : ('Counter', 'Counting no. of events/batches/MB'),              
+        'psana_eb_filter'       : ('Counter', 'Counting no. of batches and time spent'), 
         'psana_eb_wait_smd0'    : ('Summary', 'time spent (s) waiting for Smd0'),
+        'psana_eb_wait_bd'      : ('Summary', 'time spent (s) waiting for BigData cores'),
         'psana_bd_read'         : ('Counter', 'Counting no. of events processed by BigData'),
         'psana_bd_just_read'    : ('Summary', 'time spent (s) reading bigdata'),
         'psana_bd_gen_smd_batch': ('Summary', 'time spent (s) creating a batch of smd events'),
         'psana_bd_gen_evt'      : ('Summary', 'time spent (s) creating an evt'),
-        'psana_bd_wait_eb'      : ('Counter', 'time spent (s) waiting for EventBuilder cores'),
         'psana_bd_ana'          : ('Counter', 'time spent (s) in analysis fn on                 \
                                     BigData core'),
         'psana_timestamp'       : ('Gauge',   'Uses different labels (e.g. python_init,         \
                                     first_event) to set the timestamp of that stage'),
+        'psana_bd_wait_eb'      : ('Summary', 'time spent (s) waiting for EventBuilder'),
         }
 
 for metric_name, (metric_type, desc) in metrics.items():

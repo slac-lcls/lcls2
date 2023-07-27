@@ -76,7 +76,11 @@ class ts_connector:
         for xpm_port in range(14):
             pv_names.append(pv+'RemoteLinkId' +str(xpm_port))
         print('link_ids: {:}'.format(pv_names))
-        link_ids = self.ctxt.get(pv_names)
+        try:
+            link_ids = self.ctxt.get(pv_names)
+        except TimeoutError:
+            print('*** TimeoutError for {:}'.format(pv))
+            return
 
         pv_names = []
         downstream_xpm_names = []
@@ -106,8 +110,11 @@ class ts_connector:
         num_master_disable = len(pv_names_downstream_xpm_master_enable)
         if (num_master_disable):
             print('*** Disable downstream xpm readout group master:',pv_names_downstream_xpm_master_enable)
-            self.ctxt.put(pv_names_downstream_xpm_master_enable,[0]*num_master_disable)
-        
+            try:
+                self.ctxt.put(pv_names_downstream_xpm_master_enable,[0]*num_master_disable)
+            except TimeoutError:
+                print('*** TimeoutError')
+
     def xpm_link_disable_all(self):
         # Start from the master and recursively remove the groups from each downstream link
         self.xpm_link_disable(self.master_xpm_pv, self.readout_group_mask)

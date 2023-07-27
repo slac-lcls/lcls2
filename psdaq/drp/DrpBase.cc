@@ -15,6 +15,8 @@
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Smd.hh"
+#include "DataDriver.h"
+#include "DmaDest.h"
 
 #include "rapidjson/document.h"
 
@@ -125,6 +127,13 @@ MemPool::MemPool(Parameters& para) :
     for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
         m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
     }
+    m_setMaskBytesDone = false;
+}
+
+MemPool::~MemPool()
+{
+   logging::info("%s: closing file descriptor", __PRETTY_FUNCTION__);
+   close(m_fd);
 }
 
 Pds::EbDgram* MemPool::allocateTr()
@@ -142,6 +151,31 @@ void MemPool::shutdown()
     m_transitionBuffers.shutdown();
 }
 
+int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
+{
+    int retval = 0;
+    if (m_setMaskBytesDone) {
+        logging::info("%s: earlier setting in effect", __PRETTY_FUNCTION__);
+    } else {
+        uint8_t mask[DMA_MASK_SIZE];
+        dmaInitMaskBytes(mask);
+        for (unsigned i=0; i<PGP_MAX_LANES; i++) {
+            if (laneMask & (1 << i)) {
+                uint32_t channel = i;
+                uint32_t dest = dmaDest(channel, virtChan);
+                logging::info("setting lane  %u, dest 0x%x", i, dest);
+                dmaAddMaskBytes(mask, dest);
+            }
+        }
+        if (dmaSetMaskBytes(m_fd, mask)) {
+            retval = 1; // error
+        } else {
+            m_setMaskBytesDone = true;
+        }
+    }
+    return retval;
+}
+
 std::string Drp::FileParameters::runName()
 {
     std::ostringstream ss;
@@ -157,6 +191,8 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        const std::shared_ptr<Pds::MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
+  m_det(nullptr),
+  m_tsId(-1u),
   m_mon(mon),
   m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] == "yes"),
   m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
@@ -415,9 +451,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
     }
 
     if (error) {
-        logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
-        logging::critical("lastPid %014lx, lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
-        logging::critical("index %u  previous index %u", index, m_lastIndex);
+        logging::critical("idx     %8u, pid     %014lx, tid     %s, env     %08x", index, pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
+        logging::critical("lastIdx %8u, lastPid %014lx, lastTid %s, lastEnv %08x", m_lastIndex, m_lastPid, XtcData::TransitionId::name(m_lastTid));
         abort();
     }
 
@@ -462,6 +497,13 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
                            dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
     }
+    else { // L1Accept
+        // On just the timing system DRP, save the trigger information
+        if (m_det && (m_det->nodeId == m_tsId)) {
+            const void* bufEnd = (char*)dgram + m_pool.bufferSize();
+            m_det->event(*dgram, bufEnd, result);
+        }
+    }
 
     if (m_writing && !m_chunkRequest && (transitionId == XtcData::TransitionId::L1Accept)) {
         if (chunkSize() > DefaultChunkThresh) {
@@ -496,6 +538,13 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 
     m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
 
+    // Measure latency before sending dgram for monitoring
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+
     if (m_mon.enabled()) {
         // L1Accept
         if (result.isEvent()) {
@@ -508,12 +557,6 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
             m_mon.post(dgram);
         }
     }
-
-    auto now = std::chrono::system_clock::now();
-    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
 
 #if 0  // For "Pause/Resume" deadtime test:
     // For this test, SlowUpdates either need to obey deadtime or be turned off.
@@ -679,12 +722,15 @@ std::string DrpBase::connect(const json& msg, size_t id)
     }
 
     // Make a guess at the size of the Result entries
-    size_t resSizeGuess = sizeof(Pds::EbDgram) + 2  * sizeof(uint32_t);
+    size_t resSizeGuess = sizeof(Pds::Eb::ResultDgram);
 
     rc = m_ebRecv->connect(resSizeGuess, m_numTebBuffers);
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }
+
+    // On the timing system DRP, EbReceiver needs to know its node ID
+    if (m_para.detType == "ts")  m_ebRecv->tsId(m_nodeId);
 
     return std::string{};
 }
@@ -938,7 +984,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
 
         // Build readout group mask for ignoring other partitions' RoGs
         unsigned rog(it.value()["det_info"]["readout"]);
-        if (rog < Pds::Eb::NUM_READOUT_GROUPS - 1) {
+        if (rog < Pds::Eb::NUM_READOUT_GROUPS) {
             m_para.rogMask |= 1 << rog;
         }
         else {
@@ -946,7 +992,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
         }
 
         // The Common RoG governs the index into the Results region.
-        // Its range must be >= that of any subsidary RoG.
+        // Its range must be >= that of any secondary RoG.
         auto numBuffers = it.value()["connect_info"]["num_buffers"];
         if (numBuffers > m_numTebBuffers) {
             if (rog == m_tPrms.partition) {
@@ -1000,14 +1046,16 @@ void DrpBase::printParams() const
     printf("\nParameters of Contributor ID %d (%s:%s):\n",         m_tPrms.id,
                                                                    m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
     printf("  Thread core numbers:          %d, %d\n",             m_tPrms.core[0], m_tPrms.core[1]);
+    printf("  Instrument:                   %s\n",                 m_tPrms.instrument.c_str());
     printf("  Partition:                    %u\n",                 m_tPrms.partition);
+    printf("  Alias (detName, detSeg):      %s ('%s', %u)\n",      m_tPrms.alias.c_str(), m_tPrms.detName.c_str(), m_tPrms.detSegment);
     printf("  Readout group receipient:     0x%02x\n",             m_tPrms.readoutGroup);
     printf("  Readout group contractor:     0x%02x\n",             m_tPrms.contractor);
     printf("  Bit list of TEBs:             0x%016lx, cnt: %zu\n", m_tPrms.builders,
                                                                    std::bitset<64>(m_tPrms.builders).count());
     printf("  Number of MEBs:               %zu\n",                m_mPrms.addrs.size());
     printf("  Batching state:               %s\n",                 m_tPrms.maxEntries > 1 ? "Enabled" : "Disabled");
-    printf("  Batch duration:               0x%014x = %u uS\n",    m_tPrms.maxEntries, m_tPrms.maxEntries); // Revisit: * 14/13
+    printf("  Batch duration:               0x%014x = %u ticks\n", m_tPrms.maxEntries, m_tPrms.maxEntries);
     printf("  Batch pool depth:             0x%08x = %u\n",        pool.nbuffers() / m_tPrms.maxEntries, pool.nbuffers() / m_tPrms.maxEntries);
     printf("  Max # of entries / batch:     0x%08x = %u\n",        m_tPrms.maxEntries, m_tPrms.maxEntries);
     printf("  # of TEB contrib.   buffers:  0x%08x = %u\n",        pool.nbuffers(), pool.nbuffers());

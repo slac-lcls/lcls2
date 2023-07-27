@@ -20,16 +20,19 @@ import logging
 logger = logging.getLogger(__name__)
 DICT_NAME_TO_LEVEL = logging._nameToLevel # {'INFO': 20, 'WARNING': 30, 'WARN': 30,...
 
+from psana.detector.Utils import info_parser_arguments
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana import DataSource
 from psana.detector.UtilsGraphics import gr, fleximagespec#, fleximage, flexhist
+from psana.detector.utils_psana import datasource_kwargs_from_string
 
 from psana.detector.UtilsEpix10ka  import event_constants
 import argparse
 
+#      + '\n    %s -k exp=ueddaq02,run=554 -d epixquad -t1' % SCRNAME\
 USAGE = '\n    %s -h' % SCRNAME\
       + '\n    %s -r554 -t1' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r554 -t1' % SCRNAME\
+      + '\n    %s -k /cds/data/psdm/prj/public01/xtc/ueddaq02-r0569-s001-c000.xtc2 -d epixquad -t1' % SCRNAME\
       + '\n    -t, --tname - test name/number:'\
       + '\n      1 - segment numeration'\
       + '\n      2 - gain range index'\
@@ -47,10 +50,9 @@ USAGE = '\n    %s -h' % SCRNAME\
       + '\n     22 - (raw-peds)/gain, keV hot - specific isuue test'\
       + '\n     23 - (raw-peds)/gain, keV cold - specific isuue test'
 
-d_tname   = '0'
+d_dskwargs = None
 d_detname = 'epixquad'
-d_expname = 'ueddaq02'
-d_run     = 554
+d_tname   = '0'
 d_events  = 5
 d_evskip  = 0
 d_stepnum = None
@@ -61,11 +63,16 @@ d_amax    = None
 d_cframe  = 0
 d_loglev  = 'INFO'
 
+h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
+            ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
+            ' or <fname.xtc> or files=<fname.xtc>'\
+            ' or pythonic dict of generic kwargs, e.g.:'\
+            ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
+
 parser = argparse.ArgumentParser(usage=USAGE, description='%s - test per-event components of the det.raw.calib method'%SCRNAME)
-parser.add_argument('-t', '--tname',   default=d_tname,   type=str, help='test name, def=%s' % d_tname)
+parser.add_argument('-k', '--dskwargs', type=str, help=h_dskwargs)
 parser.add_argument('-d', '--detname', default=d_detname, type=str, help='detector name, def=%s' % d_detname)
-parser.add_argument('-e', '--expname', default=d_expname, type=str, help='experiment name, def=%s' % d_expname)
-parser.add_argument('-r', '--run',     default=d_run,     type=int, help='run number, def=%s' % d_run)
+parser.add_argument('-t', '--tname',   default=d_tname,   type=str, help='test name, def=%s' % d_tname)
 parser.add_argument('-N', '--events',  default=d_events,  type=int, help='maximal number of events, def=%s' % d_events)
 parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
 parser.add_argument('-s', '--stepnum', default=d_stepnum, type=int, help='step number counting from 0 or None for all steps, def=%s' % d_stepnum)
@@ -82,6 +89,8 @@ print('*** parser.parse_args: %s' % str(args))
 logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 logging.getLogger('psana.psexp.event_manager').setLevel(logging.INFO)
+
+logger.info(info_parser_arguments(parser))
 
 tname = args.tname # sys.argv[1] if len(sys.argv) > 1 else '0'
 THRMIN = 100
@@ -100,7 +109,7 @@ def amin_amax(args, amin_def=None, amax_def=None):
     return args.amin if args.amin else amin_def,\
            args.amax if args.amax else amax_def
 
-ds = DataSource(exp=args.expname, run=args.run)
+ds = DataSource(**datasource_kwargs_from_string(args.dskwargs))
 orun = next(ds.runs())
 det = orun.Detector(args.detname)
 

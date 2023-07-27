@@ -10,6 +10,9 @@
 #include <new>
 #include <chrono>
 
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
@@ -169,7 +172,7 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
   void* buffer = _epochFreelist->alloc(sizeof(EbEpoch));
-  if (buffer)
+  if (LIKELY(buffer))
   {
     EbEpoch*  epoch = ::new(buffer) EbEpoch(key, after);
 
@@ -223,7 +226,7 @@ EbEvent* EventBuilder::_event(EbEpoch*            epoch,
                               const time_point_t& t0)
 {
   void* buffer = _eventFreelist->alloc(sizeof(EbEvent));
-  if (buffer)
+  if (LIKELY(buffer))
   {
     EbEvent* event = ::new(buffer) EbEvent(contract(ctrb),
                                            after,
@@ -256,7 +259,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*            epoch,
 
   unsigned index = _evIndex(key);
   EbEvent* event = _eventLut[index];
-  if (event && (event->sequence() == key))  return event->_add(ctrb);
+  if (event && (event->sequence() == key))  return event->_add(ctrb, imm);
 
   bool                 reversed = false;
   const EbEvent* const empty    = epoch->pending.empty();
@@ -266,7 +269,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*            epoch,
   {
     const uint64_t eventKey = event->sequence();
 
-    if (key == eventKey) return event->_add(ctrb);
+    if (key == eventKey) return event->_add(ctrb, imm);
     if (key >  eventKey)
     {
       if (reversed)  break;
@@ -298,7 +301,7 @@ void EventBuilder::_fixup(EbEvent*             event,
 
     fixup(event, srcId);
 
-    remaining &= ~(1ul << srcId);
+    remaining &= ~(1ull << srcId);
   }
   while (remaining);
 
@@ -328,8 +331,8 @@ void EventBuilder::_retire(EbEpoch* epoch, EbEvent* event)
 
   process(event);
 
-  auto age{fast_monotonic_clock::now() - event->_t0};
-  _age = std::chrono::duration_cast<ms_t>(age).count();
+  auto age{fast_monotonic_clock::now(CLOCK_MONOTONIC) - event->_t0};
+  _age = std::chrono::duration_cast<ns_t>(age).count();
 
   const uint64_t key   = event->sequence();
   unsigned       index = _evIndex(key);
@@ -343,7 +346,7 @@ void EventBuilder::_flush(const EbEvent* const due)
 {
   const EbEpoch* const lastEpoch = _pending.empty();
   EbEpoch*             epoch     = _pending.forward();
-  auto                 now       = fast_monotonic_clock::now();
+  auto                 now       = fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
   _tLastFlush = now;
 
@@ -409,7 +412,7 @@ void EventBuilder::_flush()
 void EventBuilder::_tryFlush()
 {
   const ms_t tmo{100};
-  auto       now{fast_monotonic_clock::now()};
+  auto       now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
   if (now - _tLastFlush > tmo)  _flush();
 }
 
@@ -490,11 +493,15 @@ void EventBuilder::process(const EbDgram* ctrb,
 
   while (true)
   {
-    event = _insert(epoch, ctrb, event, imm++, t0);
+    event = _insert(epoch, ctrb, event, imm, t0);
 
-    if (!event->_remaining)  due = event;
+    if (!event->_remaining)
+    {
+      if (due && (event->_contract != due->_contract))  _flush(due);
+      due = event;
+    }
 
-    if (_verbose >= VL_EVENT)
+    if (UNLIKELY(_verbose >= VL_EVENT))
     {
       unsigned  env = ctrb->env;
       unsigned  ctl = ctrb->control();
@@ -510,6 +517,7 @@ void EventBuilder::process(const EbDgram* ctrb,
     if (ctrb->isEOL())  break;
 
     ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
+    imm++;
   }
 
   if (due)  _flush(due);     // Attempt to flush everything up to the due event

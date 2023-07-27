@@ -60,6 +60,7 @@ namespace Pds {
       const int64_t      arrTime(unsigned src) const;
     private:
       friend class EbEvent;
+    public:
       using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
       using ns_t         = std::chrono::nanoseconds;
     private:

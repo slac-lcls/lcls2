@@ -17,11 +17,11 @@ class DataIter : public XtcData::XtcIterator
 public:
     enum {Stop, Continue};
 
-    DataIter(XtcData::Xtc* xtc) : XtcData::XtcIterator(xtc) { iterate(); }
+    DataIter(XtcData::Xtc* xtc, const void* bufEnd) : XtcData::XtcIterator(xtc, bufEnd) { iterate(); }
     DataIter() : XtcData::XtcIterator() {}
    ~DataIter();
 
-    virtual int process(XtcData::Xtc* xtc);
+    virtual int process(XtcData::Xtc* xtc, const void* bufEnd);
 
     ShapesData& shape() {return *_shapesData[0];}
     ShapesData& value() {return *_shapesData[1];}
@@ -40,4 +40,4 @@ private:
 };
 };
 
-#endif // 
+#endif //

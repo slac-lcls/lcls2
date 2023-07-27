@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
   if (endp) delete endp;
   delete pendp;
   delete raddr;
-  delete data_buffer;
+  delete [] data_buffer;
 
   return ret;
 }

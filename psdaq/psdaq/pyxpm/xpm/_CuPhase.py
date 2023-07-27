@@ -70,35 +70,35 @@ class CuPhase(pr.Device):
             mode         = "RO",
         ))
 
-        def _phaseValue(var,read):
-            v = 0
-            s = var.dependencies[0].get(read)
-            if s>0:
-                t = var.dependencies[1].get(read)
-                v = float(t)/float(s)*1000./119.   # ns
-            return v
+#        def _phaseValue(var,read):
+#            v = 0
+#            s = var.dependencies[0].get(read)
+#            if s>0:
+#                t = var.dependencies[1].get(read)
+#                v = float(t)/float(s)*1000./119.   # ns
+#            return v
 
-        self.add(pr.LinkVariable(    
-            name         = "phase_ns",
-            description  = "Phase value in ns",
-            linkedGet    = _phaseValue,
-            dependencies = [self.base,self.early]
-        ))
+#        self.add(pr.LinkVariable(    
+#            name         = "phase_ns",
+#            description  = "Phase value in ns",
+#            linkedGet    = _phaseValue,
+#            dependencies = [self.base,self.early]
+#        ))
 
 
-        def _baseWidth(var,read):
-            v = 0
-            s = var.dependencies[0].get(read)
-            if s>0:
-                t = var.dependencies[1].get(read)
-                v = float(t)/float(s)*1000./119.   # ns
-            return v
+#        def _baseWidth(var,read):
+#            v = 0
+#            s = var.dependencies[0].get(read)
+#            if s>0:
+#                t = var.dependencies[1].get(read)
+#                v = float(t)/float(s)*1000./119.   # ns
+#            return v
 
-        self.add(pr.LinkVariable(    
-            name         = "base_ns",
-            description  = "Base gate width in ns",
-            linkedGet    = _baseWidth,
-            dependencies = [self.base,self.gate]
-        ))
+#        self.add(pr.LinkVariable(    
+#            name         = "base_ns",
+#            description  = "Base gate width in ns",
+#            linkedGet    = _baseWidth,
+#            dependencies = [self.base,self.gate]
+#        ))
 
 

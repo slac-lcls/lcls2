@@ -20,6 +20,11 @@ countrst = 60
 _fidPrescale = 200
 _fidPeriod   = 1400/1.3
 
+NCODES = 16
+seqCodes = {'EventCode'   : ('ai',[i for i in range(272,288)]),
+            'Description' : ('as',['']*NCODES),
+            'Rate'        : ('ai',[0]*NCODES)}
+
 class TransitionId(object):
     Clear   = 0
     Config  = 2
@@ -132,22 +137,6 @@ class CmdH(PVHandler):
         if value:
             retry(self.cmd,pv,value) 
             
-class IdxCmdH(PVHandler):
-
-    def __init__(self, cmd, idxcmd, idx):
-        super(IdxCmdH,self).__init__(self.handle)
-        self._cmd      = cmd
-        self._idxcmd   = idxcmd
-        self._idx      = idx
-
-    def cmd(self,pv,value):
-        self._idxcmd.set(self._idx)
-        self._cmd()
-
-    def handle(self, pv, value):
-        if value:
-            retry_wlock(self.idxcmd,pv,value)
-            
 class RegArrayH(PVHandler):
 
     def __init__(self, valreg, archive=False):
@@ -227,7 +216,7 @@ class CuGenCtrls(object):
             cuBeamCode = 140
             cuInput    = 1
             print('Defaulting XTPG parameters')
-            
+
         def addPV(label, init, reg, archive):
             pvu = SharedPV(initial=NTScalar('f').wrap(init*7000./1300), 
                           handler=DefaultPVHandler())
@@ -489,7 +478,7 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, handle=None, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
+    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, handle=None, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
         global provider
         provider = p
         global lock
@@ -510,6 +499,7 @@ class PVCtrls(object):
         self._ip    = ip
         self._xpm   = xpm
         self._db    = db
+        self._seq   = None
         self._handle= handle
 
         init = None
@@ -530,14 +520,8 @@ class PVCtrls(object):
         app = xpm.XpmApp
 
         self._pv_amcDumpPLL = []
-        for i in range(2):
-            pv = SharedPV(initial=NTScalar('I').wrap(0), 
-                          handler=IdxCmdH(app.amcPLL.Dump,app.amc,i))
-            provider.add(name+':DumpPll%d'%i,pv)
-            self._pv_amcDumpPLL.append(pv)
 
         self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init)
-        #self._cu   = None
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
@@ -553,24 +537,22 @@ class PVCtrls(object):
                                         handler=RegH(app.l0HoldReset,archive=False))
         provider.add(name+':L0HoldReset',self._pv_l0HoldReset)
 
-        self._thread = threading.Thread(target=self.notify)
-        self._thread.start()
+        if self._handle:
+            self._thread = threading.Thread(target=self.notify)
+            self._thread.start()
 
         print('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
         app.monStreamPeriod.set(125000000)
         app.monStreamEnable.set(1)
 
     def update(self,cycle):
-
         #  The following section will throw an exception if the CuInput PV is not set properly
         if cycle < 10:
             print('pvseq in %d'%(10-cycle))
         elif cycle == 10:
-            self._seq = PVSeq(provider, self._name+':SEQENG:0', self._ip, Engine(0, self._xpm.SeqEng_0))
-
-            self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
-                                        handler=CmdH(self._seq._eng.dump))
-            provider.add(self._name+':DumpSeq',self._pv_dumpSeq)
+            self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
+            self._seq_codes_val = toDict(seqCodes)
+            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0)) for i in range(4)]
 
         global countdn
         # check for config save
@@ -633,5 +615,14 @@ class PVCtrls(object):
                 group = next(siter)[0]
                 self._group._groups[group].stepDone(True)
             elif src==2: # stats message
-                self._handle(msg)
-            
+                if self._handle:
+                    offset = self._handle(msg)
+                    if self._seq:
+                        w = struct.unpack_from('<16L',msg,offset)
+                        offset += 64
+                        value = self._seq_codes_pv.current()
+                        self._seq_codes_val['Rate'] = w
+                        self._seq_codes_val['Description'] = value['value']['Description']
+                        value['value'] = self._seq_codes_val
+                        value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
+                        self._seq_codes_pv.post(value)

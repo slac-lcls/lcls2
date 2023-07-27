@@ -21,7 +21,7 @@ namespace Pds {
     {
     public:
       EbLfLink(Fabrics::Endpoint*,
-               int                depth,
+               const unsigned     depth,
                const unsigned&    verbose,
                volatile uint64_t& pending,
                volatile uint64_t& posting);
@@ -48,8 +48,7 @@ namespace Pds {
       int poll(uint64_t* data);
       int poll(uint64_t* data, int msTmo);
     public:
-      ssize_t postCompRecv();
-      ssize_t postCompRecv(unsigned count);
+      ssize_t postCompRecv(const unsigned count);
     protected:
       enum { _BegSync = 0x11111111,
              _EndSync = 0x22222222,
@@ -65,22 +64,22 @@ namespace Pds {
       volatile uint64_t&     _pending; // Flag set when currently pending
       volatile uint64_t&     _posting; // Bit list of IDs currently posting
     public:
-      int                    _depth;
+      const unsigned         _depth;
+      unsigned               _credits;
     };
 
     class EbLfSvrLink : public EbLfLink
     {
     public:
       EbLfSvrLink(Fabrics::Endpoint*,
-                  int                rxDepth,
+                  const unsigned     rxDepth,
                   const unsigned&    verbose,
                   volatile uint64_t& pending,
                   volatile uint64_t& posting);
     public:
-      int prepare(unsigned    id,
-                  const char* peer);
-      int prepare(unsigned    id,
-                  size_t*     size,
+      int exchangeId(unsigned    id,
+                     const char* peer);
+      int prepare(size_t*     size,
                   const char* peer);
       int setupMr(void* region, size_t size, const char* peer);
     private:
@@ -92,20 +91,18 @@ namespace Pds {
     {
     public:
       EbLfCltLink(Fabrics::Endpoint*,
-                  int                rxDepth,
+                  const unsigned     rxDepth,
                   const unsigned&    verbose,
                   volatile uint64_t& pending,
                   volatile uint64_t& posting);
     public:
-      int prepare(unsigned    id,
-                  const char* peer);
-      int prepare(unsigned    id,
-                  void*       region,
+      int exchangeId(unsigned    id,
+                     const char* peer);
+      int prepare(void*       region,
                   size_t      lclSize,
                   size_t      rmtSize,
                   const char* peer);
-      int prepare(unsigned    id,
-                  void*       region,
+      int prepare(void*       region,
                   size_t      size,
                   const char* peer);
       int setupMr(void* region, size_t size);
@@ -151,20 +148,6 @@ inline
 int Pds::Eb::EbLfLink::post(uint64_t immData)
 {
   return post(nullptr, 0, immData);
-}
-
-inline
-ssize_t Pds::Eb::EbLfLink::postCompRecv(unsigned count)
-{
-  ssize_t rc = 0;
-
-  for (unsigned i = 0; i < count; ++i)
-  {
-    rc = postCompRecv();
-    if (rc)  break;
-  }
-
-  return rc;
 }
 
 #endif

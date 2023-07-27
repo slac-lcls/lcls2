@@ -22,9 +22,10 @@ public:
     unsigned stepScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
     bool scanEnabled() override;
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) override;
 private:
     void _addJson(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId& configNamesId, const std::string& config_alias);
-    enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex};
+    enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex, TriggerNamesIndex};
     XtcData::NamesId     m_evtNamesId;
     std::string          m_connect_json;
     PyObject*            m_module;
