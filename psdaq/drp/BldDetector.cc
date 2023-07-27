@@ -64,7 +64,7 @@ static unsigned getVarDefSize(XtcData::VarDef& vd) {
 }
 
 BldPVA::BldPVA(std::string det,
-               unsigned    interface) : _interface(interface)
+               unsigned    interface) : _alg("raw",0,0,0), _interface(interface)
 {
     //
     //  Parse '+' separated list of detName, detType, detId
@@ -75,10 +75,13 @@ BldPVA::BldPVA(std::string det,
     size_t p2 = det.find('+',p1+1);
     if (p2 == std::string::npos) {
     }
+    size_t p3 = det.find('+',p2+1);
 
     _detName = det.substr(   0,     p1).c_str();
     _detType = det.substr(p1+1,p2-p1-1).c_str();
-    _detId   = det.substr(p2+1).c_str();
+    _detId   = det.substr(p2+1,p3-p2-1).c_str();
+    unsigned vsn = strtoul(det.substr(p3+1).c_str(),NULL,16);
+    _alg     = XtcData::Alg("raw",(vsn>>8)&0xf,(vsn>>4)&0xf,(vsn>>0)&0xf);
 
     std::string sname(_detId);
     // _pvaAddr    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":ADDR"   ).c_str());
@@ -192,7 +195,7 @@ BldFactory::BldFactory(const BldPVA& pva) :
     _detName    (pva.detName()),
     _detType    (pva.detType()),
     _detId      (pva.detId  ()),
-    _alg        ("raw", 1, 0, 0)
+    _alg        (pva.alg    ())
 {
     while(1) {
         if (pva.ready())

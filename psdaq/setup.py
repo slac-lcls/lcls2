@@ -108,6 +108,7 @@ if 'PSDAQ' in BUILD_LIST :
             'tprcas = psdaq.cas.tprcas:main',
             'xpmioc = psdaq.cas.xpmioc:main',
             'bldcas = psdaq.cas.bldcas:main',
+            'bldgmd = psdaq.cas.bldgmd:main',
             'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
             'wave8pvs = psdaq.cas.wave8pvs:main',
             'pyxpm = psdaq.pyxpm.pyxpm:main',

@@ -72,6 +72,7 @@ public:
     std::string     detName() const { return _detName; }
     std::string     detType() const { return _detType; }
     std::string     detId  () const { return _detId; }
+    XtcData::Alg    alg    () const { return _alg; }
     unsigned        interface() const { return _interface; }
     bool            ready() const;
     unsigned        addr() const;
@@ -81,6 +82,7 @@ private:
     std::string                        _detName;
     std::string                        _detType;
     std::string                        _detId;
+    XtcData::Alg                       _alg;
     unsigned                           _interface;
     std::shared_ptr<Pds_Epics::PVBase> _pvaAddr;
     std::shared_ptr<Pds_Epics::PVBase> _pvaPort;
