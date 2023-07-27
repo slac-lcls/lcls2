@@ -94,18 +94,16 @@ class epixhremu_fex_0_0_1(DetectorImpl):
         self._compressor = lp.PressioCompressor.from_config(comp_config)
 
         # Hard code shape and data type because they're properies of the detector
-        self._decompressed = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.uint16))
+        self._decompressed = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.float32))
 
     def _calib(self, evt) -> Array2d:
-        calib = None
+        dec = None
         segs = self._segments(evt)
-        if segs is None:
-            pass
-        else:
+        if segs is not None:
             for data in segs.values():  break # Is there only 1?  What if there are more?
-            calib = self._compressor.decode(data.fex, self._decompressed)
-            print(f'*** calib is a {type(calib)} of len {len(calib)}, dtype {calib.dtype}, shape {calib.shape}, ndim {calib.ndim}, size {calib.size}')
+            dec = self._compressor.decode(data.fex, self._decompressed)
+            print(f'*** dec is a {type(dec)} of len {len(dec)}, dtype {dec.dtype}, shape {dec.shape}, ndim {dec.ndim}, size {dec.size}')
 
-        return calib
+        return dec
 
 # EOF
