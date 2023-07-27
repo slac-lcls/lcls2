@@ -6,7 +6,7 @@ unset PYTHONPATH
 #export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
 #conda activate ps-4.5.24
 
-source ~/.local/spack/activate_lcls-ii-dev.sh
+source ~/.local/spack/activate_ps_2023-01-11_old_p4p.sh
 export CC=$(which gcc)
 export CXX=(which cxx)
 

@@ -17,6 +17,17 @@ if not instdir_env:
     raise Exception('Parameter --instdir is missing')
 instdir = instdir_env
 
+xtcdatadir_env = os.environ.get('XTCDATADIR')
+if not xtcdatadir_env:
+    xtcdatadir = instdir_env
+else:
+    xtcdatadir = xtcdatadir_env
+psdaqdir_env = os.environ.get('PSDAQDIR')
+if not psdaqdir_env:
+    psdaqdir = instdir_env
+else:
+    psdaqdir = psdaqdir_env
+
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
 BUILD_LIST = ('PSDAQ','TRIGGER')
@@ -60,6 +71,10 @@ else:
     openmp_link_args = ['-fopenmp']
 
 extra_link_args_rpath = extra_link_args + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(instdir, 'lib'))]
+if xtcdatadir_env:
+    extra_link_args_rpath = extra_link_args_rpath + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdatadir, 'lib'))]
+if psdaqdir_env:
+    extra_link_args_rpath = extra_link_args_rpath + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(psdaqdir, 'lib'))]
 
 CYT_BLD_DIR = 'build'
 
@@ -72,6 +87,19 @@ PACKAGE_DATA = {}
 SCRIPTS = []
 ENTRY_POINTS = {}
 
+if xtcdatadir_env:
+    xtc_headers =  os.path.join(xtcdatadir, 'include')
+    xtc_lib_path = os.path.join(xtcdatadir, 'lib')
+else:
+    xtc_headers =  os.path.join(instdir, 'include')
+    xtc_lib_path = os.path.join(instdir, 'lib')
+
+if psdaqdir_env:
+    psdaq_headers =  os.path.join(psdaqdir, 'include')
+    psdaq_lib_path = os.path.join(psdaqdir, 'lib')
+else:
+    psdaq_headers =  os.path.join(instdir, 'include')
+    psdaq_lib_path = os.path.join(instdir, 'lib')
 
 if 'PSDAQ' in BUILD_LIST :
     PACKAGES = find_packages()
@@ -129,8 +157,8 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('EbDgram',
                     sources=["psdaq/trigger/EbDgram.pyx"],
                     libraries = ['xtc','service','trigger'],
-                    include_dirs = [os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
@@ -140,8 +168,8 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('ResultDgram',
                     sources=["psdaq/trigger/ResultDgram.pyx"],
                     libraries = ['xtc','service','trigger'],
-                    include_dirs = [os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
@@ -151,8 +179,8 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('TmoTebData',
                     sources=["psdaq/trigger/TmoTebData.pyx"],
                     libraries = ['xtc','service','trigger'],
-                    include_dirs = [os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
