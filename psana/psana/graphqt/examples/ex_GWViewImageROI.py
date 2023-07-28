@@ -3,7 +3,8 @@
 from psana.graphqt.GWViewImageROI import *
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
+#datefmt='%Y-%m-%dT%H:%M:%S'
+logging.basicConfig(format='%(asctime)s [%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%M:%S', level=logging.INFO)
 
 import inspect
 import sys
@@ -145,13 +146,13 @@ class TestGWViewImageROI(GWViewImageROI):
         elif key == Qt.Key_F:
             self.finish()
 
-        if ckey in roiu.roi_keys:
+        elif ckey in roiu.roi_keys:
             i = roiu.roi_keys.index(ckey)
             self.roi_type = roiu.roi_types[i]
             self.roi_name = roiu.roi_names[i]
             logger.info('set roi_type: %d roi_name: %s' % (self.roi_type, self.roi_name))
 
-        if ckey in roiu.mode_keys:
+        elif ckey in roiu.mode_keys:
             i = roiu.mode_keys.index(ckey)
             self.mode_type = roiu.mode_types[i]
             self.mode_name = roiu.mode_names[i]

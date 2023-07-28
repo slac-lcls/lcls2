@@ -86,7 +86,6 @@ class GWViewImageROI(GWViewImage):
         self._iscpos_old = None
         self.left_is_pressed = False
         self.roi_active = None
-        self.scpos_first = None
         self.clicknum = 0
         #self.set_style_focus()
 
@@ -116,33 +115,34 @@ class GWViewImageROI(GWViewImage):
         GWViewImage.mousePressEvent(self, e)
 
         if self.mode_type < roiu.ADD: return
-        self.left_is_pressed = e.button() == Qt.LeftButton
+        self.left_is_pressed  = e.button() == Qt.LeftButton
+        self.right_is_pressed = e.button() == Qt.RightButton
+
         if not self.left_is_pressed:
-            logging.warning('USE MOUSE LEFT BUTTON ONLY !!!')
+            logging.warning('USE LEFT MOUSE BUTTON ONLY !!!')
             return
 
         logger.debug('XXX GWViewImageROI.mousePressEvent but=%d (1/2/4 = L/R/M) screen x=%.1f y=%.1f'%\
                      (e.button(), e.pos().x(), e.pos().y()))
 
-        if   self.mode_type & roiu.ADD:    self.add_roi(e)
-        elif self.mode_type & roiu.REMOVE: self.remove_roi(e)
-        elif self.mode_type & roiu.SELECT: self.select_roi(e)
-        elif self.mode_type & roiu.EDIT:   self.edit_roi(e)
+        if   self.mode_type & roiu.ADD:    self.on_press_add(e)
+        elif self.mode_type & roiu.REMOVE: self.on_press_remove(e)
+        elif self.mode_type & roiu.SELECT: self.on_press_select(e)
+        elif self.mode_type & roiu.EDIT:   self.on_press_edit(e)
 
 
     def mouseMoveEvent(self, e):
         GWViewImage.mouseMoveEvent(self, e)
         if self.mode_type < roiu.ADD: return
-        #if not self.left_is_pressed: return
-
-        if self.mode_type & roiu.ADD:    self.move_at_add_roi(e)
-        if self.mode_type & roiu.REMOVE: self.move_at_remove_roi(e)
+        if self.mode_type & roiu.ADD:    self.on_move_add(e)
+        if self.mode_type & roiu.REMOVE: self.on_move_remove(e)
 
 
     def mouseReleaseEvent(self, e):
         GWViewImage.mouseReleaseEvent(self, e)
-        logger.debug('mouseReleaseEvent but=%d %s' % (e.button(), str(e.pos())))
+        logger.debug('mouseReleaseEvent')
         self.left_is_pressed = False
+        self.right_is_pressed = False
 
 
     def set_roi_color(self, roi=None, color=QCOLOR_DEF):
@@ -153,7 +153,7 @@ class GWViewImageROI(GWViewImage):
             pen.setColor(color)     # pen.setCosmetic(True)
             o.scitem.setPen(pen)
             if self.roi_type in (roiu.PIXEL, roiu.PIXGROUP):
-                brush = o.scitem.brush()
+                brush = o.scitem.brush() if hasattr(o.scitem, 'brush') else QBRUSH_DEF
                 brush.setColor(color)
                 o.scitem.setBrush(brush)
 
@@ -167,6 +167,7 @@ class GWViewImageROI(GWViewImage):
 
     def finish_add_roi(self):
         """finish add_roi action on or in stead of last click, set poly at last non-closing click"""
+        logger.info('finish_add_roi')
         if self.roi_active is not None:
            self.roi_active.finish_add_roi() # used in ROIPolygon
         self.roi_active = None
@@ -190,9 +191,9 @@ class GWViewImageROI(GWViewImage):
         return self.mapToScene(e.pos())
 
 
-    def select_roi(self, e, color_sel=QCOLOR_SEL):
+    def on_press_select(self, e, color_sel=QCOLOR_SEL):
         """select ROI on mouthPressEvent"""
-        logger.debug('GWViewImageROI.select_roi at scene pos: %s' % str(self.scene_pos(e)))
+        logger.debug('GWViewImageROI.on_press_select at scene pos: %s' % str(self.scene_pos(e)))
         for o in self.rois_at_point(self.scene_pos(e)):
              color = QCOLOR_DEF if o.scitem.pen().color() == color_sel else color_sel
              self.set_roi_color(o, color)
@@ -203,7 +204,7 @@ class GWViewImageROI(GWViewImage):
         self.roi_active = None if rois == [] else rois[0]
 
 
-    def edit_roi(self, e, color_edi=QCOLOR_EDI):
+    def on_press_edit(self, e, color_edi=QCOLOR_EDI):
         self.select_roi_edit(e, color_edi)
         if self.roi_active is None:
             logger.warning('ROI FOR EDIT IS NOT FOUND near scene point %s' % str(self.scene_pos(e)))
@@ -217,7 +218,7 @@ class GWViewImageROI(GWViewImage):
         self.roi_active.show_handles()
 
 
-    def move_at_remove_roi(self, e):
+    def on_move_remove(self, e):
         """remove ROI on mouthPressEvent - a few ROIs might be removed"""
         if self.left_is_pressed:
             logger.debug('GWViewImageROI.remove_roi for non-PIXEL types')
@@ -250,56 +251,75 @@ class GWViewImageROI(GWViewImage):
         self.roi_active = None
 
 
+    def on_press_remove(self, e):
+        logger.info('GWViewImageROI.on_press_remove DEPRICATED - use SELECT then DELETE')
 
 
-    def add_roi(self, e):
-        scpos = self.mapToScene(e.pos())
+    def on_press_add(self, e):
+        scpos = self.scene_pos(e)
+
+        print('XXX on_press_add self.roi_active', self.roi_active)
 
         if self.roi_active is None: #  1st click
+            logger.info('on_press_add - 1-st click')
             self.clicknum = 1
-            self.add_roi_any(e)
-            self.scpos_first = scpos
-            if self.roi_active and self.roi_active.is_last_point(scpos, self.clicknum):
+            self.add_roi(e)
+            if self.roi_active is not None and self.roi_active.is_last_point(scpos, self.clicknum):
                 self.finish_add_roi()
 
         else: # other clicks
             self.clicknum += 1
+            logger.info('on_press_add - click %d' % self.clicknum)
             self.roi_active.set_point_at_add(scpos, self.clicknum)
             if self.roi_active.is_last_point(scpos, self.clicknum):
                 self.finish_add_roi()
 
 
-
-    def add_roi_any(self, e):
-
-        #if self.roi_active is not None: return
-
+    def add_roi(self, e):
         scpos = self.scene_pos(e)
         #logger.info('GWViewImageROI.add_roi scene x=%.1f y=%.1f'%(int(scpos.x()), int(scpos.y())))
         iscpos = roiu.int_scpos(scpos)
         is_same_iscpos = (iscpos == self._iscpos_old)
         if is_same_iscpos:
-            logger.info('GWViewImageROI.add_roi_any the same int scene position %s as previous %s'\
-                        % (str(iscpos),  str(self._iscpos_old)))
+            logger.info('GWViewImageROI.add_roi the same int scene position %s as previous %s' % (str(iscpos),  str(self._iscpos_old)))
             return
         else:
-            self._iscpos_old = QPoint(iscpos.x(), iscpos.y())
+            self._iscpos_old = QPoint(iscpos) # QPoint(iscpos.x(), iscpos.y())
 
-        is_busy_iscpos = any([iscpos == o.pos for o in self.list_of_rois])
-
-        self.add_roi_to_scene(scpos, is_busy_iscpos)
+        self.add_roi_to_scene(scpos)
 
 
-
-
-    def add_roi_to_scene(self, scpos, is_busy_iscpos):
-        o = roiu.create_roi(self.roi_type, view=self, pos=scpos, is_busy_iscpos=is_busy_iscpos)
+    def add_roi_to_scene(self, scpos):
+        logger.info('add_roi_to_scene')
+        iscpos = roiu.int_scpos(scpos)
+        is_busy = any([iscpos == o.pos for o in self.list_of_rois])
+        o = roiu.create_roi(self.roi_type, view=self, pos=scpos, is_busy_iscpos=is_busy)
         if o is None:
             logger.warning('ROI of type %d is undefined' % self.roi_type) # roiu.dict_roi_type_name[self.roi_type])
             return
         o.add_to_scene(pos=scpos)
         self.list_of_rois.append(o)
         self.roi_active = o
+
+
+    def on_move_add(self, e):
+        scpos = self.scene_pos(e)
+        if self.roi_active is None:
+           if self.roi_type == roiu.PIXEL\
+           and self.left_is_pressed: self.add_roi_to_scene(scpos)
+        else:
+            self.roi_active.move_at_add(scpos, self.left_is_pressed)
+
+        #iscpos = roiu.int_scpos(scpos) # QPoint(int(scpos.x()), int(scpos.y()))
+
+        #if iscpos == self._iscpos_old: return
+        #self._iscpos_old = iscpos
+
+        #if self.roi_type == roiu.PIXEL:
+        #    if self.left_is_pressed:
+        #        self.add_roi_pixel(iscpos)
+        #elif self.roi_active is not None:
+        #      self.roi_active.move_at_add(scpos, self.left_is_pressed)
 
 
 
@@ -321,29 +341,6 @@ class GWViewImageROI(GWViewImage):
 #            if iscpos == o.pos:
 #                return
 #        self.add_roi_to_scene(iscpos)
-
-
-
-
-
-
-
-
-    def move_at_add_roi(self, e):
-        scpos = self.scene_pos(e)
-        iscpos = roiu.int_scpos(scpos) # QPoint(int(scpos.x()), int(scpos.y()))
-
-        #if iscpos == self._iscpos_old: return
-        #self._iscpos_old = iscpos
-
-        if self.roi_type == roiu.PIXEL:
-            if self.left_is_pressed:
-                self.add_roi_pixel(iscpos)
-        elif self.roi_active is not None:
-            self.roi_active.move_at_add(scpos, self.left_is_pressed)
-
-
-
 
 
 

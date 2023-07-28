@@ -144,9 +144,10 @@ class ROIBase():
         self.scaleable  = kwa.get('scaleable', False)
         self.rotateable = kwa.get('rotateable', False)
         self.tolerance  = kwa.get('tolerance', 5.0)
+        self.is_busy_iscpos = kwa.get('is_busy_iscpos', False)
 
         self.is_finished = False
-        self.scitem     = None
+        self.scitem = None
         self.set_color_pen_brush(**kwa)
         assert isinstance(self.view, QGraphicsView)
         assert isinstance(self.pos, (QPoint, QPointF))
@@ -185,7 +186,7 @@ class ROIBase():
 
     def is_last_point(self, scpos, clicknum):
         """Returns boolean answer if input is completed.
-           Default responce for all 2-click ROIs
+           Default responce for all 2-click ROIs like line, rect, ellips, square, circle
         """
         if clicknum > 1:
            self.is_finished = True
@@ -193,12 +194,16 @@ class ROIBase():
 
     def finish_add_roi(self):
         logging.debug('ROIBase.finish_add_roi should be re-implemented if necessary, e.g ROIPolygon')
+        self.is_finished = True
 
     def show_handles(self):
         logging.info('ROIBase.show_handles for ROI %s' % self.roi_name)
 
     def hide_handles(self):
         logging.info('ROIBase.hide_handles for ROI %s' % self.roi_name)
+
+    def move_at_add(self, scpos, left_is_pressed):
+        logging.debug('ROIBase.move_at_add to be re-implemented, if necessary')
 
 
 class ROIPixel(ROIBase):
@@ -217,16 +222,13 @@ class ROIPixel(ROIBase):
     def add_to_scene(self, pos=None):
         """Adds pixel as a rect to scene"""
         logger.debug('ROIPixel.add_to_scene')
-        self.scitem = QGraphicsRectItem(self.pixel_rect(pos))
-        ROIBase.add_to_scene(self, pen=self.pen, brush=self.brush)
-        self.is_finished = True
+        if not self.is_busy_iscpos:
+            self.scitem = QGraphicsRectItem(self.pixel_rect(pos))
+            ROIBase.add_to_scene(self, pen=self.pen, brush=self.brush)
+        self.finish_add_roi()
 
-    def finish_add_roi(self):
-        logging.debug('ROIPixel.finish_add_roi')
-        self.is_finished = True
-
-
-
+    def is_last_point(self, scpos, clicknum):
+        return True
 
 
 
@@ -253,14 +255,15 @@ class ROIPixGroup(ROIBase):
 
         logger.info('ROIPixGroup.add_to_scene iscpos: %s iscpos_last: %s' % (str(iscpos), (self.iscpos_last)))
 
-        if iscpos == self.iscpos_last: return
+        if iscpos == self.iscpos_last\
+        or self.is_busy_iscpos: return
 
         if self.scitem is None:
            path = QPainterPath()
            path.addRect(self.pixel_rect(iscpos))
            self.scitem = QGraphicsPathItem(path)
            ROIBase.add_to_scene(self, pen=self.pen, brush=self.brush)
-           print('XXX pixel added to scene at 1st click')
+           #print('XXX pixel added to scene at 1st click')
 
         else:
            path = self.scitem.path()
@@ -282,12 +285,7 @@ class ROIPixGroup(ROIBase):
 
     def is_last_point(self, p, clicknum):
         """returns boolean answer if input is completed"""
-        return clicknum > 10
-
-
-    def finish_add_roi(self):
-        logging.debug('ROIPixel.finish_add_roi')
-        self.is_finished = True
+        return clicknum > 100
 
 
 
