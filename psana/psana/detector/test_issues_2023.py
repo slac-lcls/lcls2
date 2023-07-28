@@ -289,12 +289,13 @@ def issue_2023_07_25():
     for run in ds.runs():
       det = run.Detector('epixhr_emu')
       for nev,evt in enumerate(run.events()):
-        if nev>10: break
+        if nev>2: break
         #img = det.raw.raw(evt) # WORKS
         #img = det.raw.calib(evt) # WORKS
         #img = det.raw.image(evt) # WORKS
         #img = det.fex.raw(evt) # DOES NOT WORK - missing in decompression?
-        img = det.fex.calib(evt) # DOES NOT WORK - seg. fault
+        img = det.fex.calib(evt)
+        #img = det.fex.image(evt) # DOES NOT WORK - seg. fault
         print(info_ndarr(img, 'ev:%04d  evt.timestamp: %d image arr:' % (nev, evt.timestamp)))
 
 def issue_2023_07_26():
