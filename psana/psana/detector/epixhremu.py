@@ -4,7 +4,7 @@
 
 import os
 import numpy as np
-from amitypes import Array2d
+from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
 import logging
 from psana.detector.detector_impl import DetectorImpl
@@ -96,9 +96,10 @@ class epixhremu_fex_0_0_1(DetectorImpl):
         # Hard code shape and data type because they're properies of the detector
         self._decompressed = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.float32))
 
-    def _calib(self, evt) -> Array2d:
+    def calib(self, evt, **kwargs) -> Array3d:
         dec = None
         segs = self._segments(evt)
+        print('segs', str(segs))
         if segs is not None:
             for data in segs.values():  break # Is there only 1?  What if there are more?
             dec = self._compressor.decode(data.fex, self._decompressed)
@@ -106,4 +107,8 @@ class epixhremu_fex_0_0_1(DetectorImpl):
 
         return dec
 
+    def image(self, evt, **kwargs) -> Array2d:
+        cc = self._calibconst # defined in DetectorImpl
+        print('cc[geometry] meta:\n%s' % str(cc['geometry'][1]))
+        print('cc.keys:\n%s' % str(cc.keys()))
 # EOF
