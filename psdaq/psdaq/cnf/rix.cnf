@@ -77,7 +77,7 @@ ami_manager_node = "drp-srcf-cmp029"
 
 procmgr_config = [
 # {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:3 DAQ:NEH:XPM:5'},
-# {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 '+groups},
+ {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 '+groups},
  {                          id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
 # { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
@@ -121,7 +121,8 @@ procmgr_config = [
  { host: 'drp-srcf-cmp004', id:'rix_fim1_0',  flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D wave8 -k epics_prefix=MR4K2:FIM:W8:02'},
  { host: 'drp-srcf-cmp004', id:'rix_fim0_0',  flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x4 -D wave8 -k epics_prefix=MR3K2:FIM:W8:01'},
 
- { host: 'drp-srcf-cmp027', id:'atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=RIX:TIMETOOL:TTALL'},
+ #{ host: 'drp-srcf-cmp027', id:'atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=RIX:TIMETOOL:TTALL'},
+  { host: 'drp-srcf-cmp027', id:'atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D opal'},
  { host: 'drp-srcf-cmp012', id:'piranha_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D piranha4'},
 
 # Temporarily borrow cmp012 from TMO (Opal1) to allow RIX atmopal and piranha to run at the same time

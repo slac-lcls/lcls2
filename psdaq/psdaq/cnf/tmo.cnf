@@ -79,8 +79,8 @@ ami_monitor_node = "drp-srcf-cmp028"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:2 DAQ:NEH:XPM:4 DAQ:NEH:XPM:6'},
- {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 2 '+groups}, #+' --prod'},
+ #{                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:2 DAQ:NEH:XPM:4 DAQ:NEH:XPM:6'},
+ #{                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 2 '+groups}, #+' --prod'},
  {                          id:'procstat',    flags:'p',                  cmd:'procstat '+CONFIGDIR+'/p'+platform+'.cnf.last' },
 
 # set the phase2 transition timeout to 20s. this is because the teb
@@ -91,11 +91,11 @@ procmgr_config = [
  {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  { host: 'drp-srcf-cmp030', id:'teb0',        flags:'spu',                cmd:teb_cmd},
-# { host: 'drp-srcf-cmp001', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
  { host: 'drp-srcf-mon001', id:'meb1',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb1 -d -n 64 -q {ami_workers_per_node}'},
 
- { host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
+# { host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
+ { host: 'drp-srcf-cmp028', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
  { host: 'drp-srcf-cmp003', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd,pcav'},
 
@@ -112,9 +112,9 @@ procmgr_config = [
 # { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x8 -D wave8 -k epics_w8_prefix=MR2K4:FIM:W8:01 -k epics_shv_prefix=MR2K4:FIM:SHV'},
 # { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x20 -D wave8 -k epics_w8_prefix=MR3K4:FIM:W8:01 -k epics_shv_prefix=MR3K4:FIM:SHV'},
 
- { host: 'drp-srcf-cmp013', id:'tmo_atmpiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
+ #{ host: 'drp-srcf-cmp007', id:'tmo_atmpiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
- { host: 'drp-srcf-cmp007', id:'tmo_fzppiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
+ { host: 'drp-srcf-cmp013', id:'tmo_fzppiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
  { host: 'drp-srcf-cmp011', id:'tmo_fzpopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
 
@@ -122,9 +122,9 @@ procmgr_config = [
 # { host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
  { host: 'drp-srcf-cmp026', id:'tmo_peppexopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x4 -D opal'},
 
- { host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spu', env:im2k0_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
- { host: 'drp-srcf-cmp001', id:'im5k4_0',     flags:'spu', env:im5k4_env, cmd:pva_cmd0+' -l 0x2 IM5K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
- { host: 'drp-srcf-cmp001', id:'im6k4_0',     flags:'spu', env:im6k4_env, cmd:pva_cmd0+' -l 0x4 IM6K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+# { host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spu', env:im2k0_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+# { host: 'drp-srcf-cmp001', id:'im5k4_0',     flags:'spu', env:im5k4_env, cmd:pva_cmd0+' -l 0x2 IM5K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+# { host: 'drp-srcf-cmp001', id:'im6k4_0',     flags:'spu', env:im6k4_env, cmd:pva_cmd0+' -l 0x4 IM6K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
 # { host: 'drp-srcf-cmp014', id:'epix100_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epix100'},
 ]
