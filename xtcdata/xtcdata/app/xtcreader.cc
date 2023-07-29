@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
+#include <cinttypes>
 
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
@@ -248,8 +249,9 @@ int main(int argc, char* argv[])
     unsigned neventreq = 0xffffffff;
     bool debugprint = false;
     unsigned numWords = 3;
+    bool printTimeAsUnsignedLong = false;
 
-    while ((c = getopt(argc, argv, "hf:n:dw:c:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:dw:c:T")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -268,6 +270,9 @@ int main(int argc, char* argv[])
             break;
         case 'c':
             cfg_xtcname = optarg;
+            break;
+        case 'T':
+            printTimeAsUnsignedLong = true;
             break;
         default:
             parseErr++;
@@ -316,11 +321,15 @@ int main(int argc, char* argv[])
     while (dg) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("event %d, %11s transition: time 0x%8.8x.0x%8.8x, env 0x%08x, "
-               "payloadSize %d damage 0x%x extent %d\n",
+        printf("event %d, %11s transition: ",
                nevent,
-               TransitionId::name(dg->service()), dg->time.seconds(),
-               dg->time.nanoseconds(),
+               TransitionId::name(dg->service()));
+        if (printTimeAsUnsignedLong) {
+            printf(" time %" PRIu64 ", ", dg->time.value());
+        } else {
+            printf(" time 0x%8.8x.0x%8.8x, ", dg->time.seconds(), dg->time.nanoseconds());
+        }
+        printf(" env 0x%08x, payloadSize %d damage 0x%x extent %d\n",
                dg->env, dg->xtc.sizeofPayload(),dg->xtc.damage.value(),dg->xtc.extent);
         if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
         dg = iter.next();
