@@ -305,8 +305,8 @@ class GWViewImageROI(GWViewImage):
     def on_move_add(self, e):
         scpos = self.scene_pos(e)
         if self.roi_active is None:
-           if self.roi_type == roiu.PIXEL\
-           and self.left_is_pressed: self.add_roi_to_scene(scpos)
+          if self.roi_type == roiu.PIXEL and self.left_is_pressed:
+            self.add_roi_to_scene(scpos)
         else:
             self.roi_active.move_at_add(scpos, self.left_is_pressed)
 
