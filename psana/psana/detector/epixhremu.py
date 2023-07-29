@@ -82,12 +82,13 @@ fake_seg_config = _fake_seg_config()
 import libpressio as lp
 import json
 
-class epixhremu_fex_0_0_1(DetectorImpl):
+#class epixhremu_fex_0_0_1(DetectorImpl):
+class epixhremu_fex_0_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         super(epixhremu_fex_0_0_1, self).__init__(*args)
 
         # Expect config to be the same for all segments, so pick first one
-        for config in self._seg_configs().values():  break
+        for config in self._seg_configs().values(): break
         comp_config = json.loads(config.config.compressor_json)
 
         # Instantiate the compressor/decompressor
@@ -96,19 +97,29 @@ class epixhremu_fex_0_0_1(DetectorImpl):
         # Hard code shape and data type because they're properies of the detector
         self._decompressed = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.float32))
 
-    def calib(self, evt, **kwargs) -> Array3d:
-        dec = None
+    def _calib(self, evt, **kwargs) -> Array2d:
         segs = self._segments(evt)
-        print('segs', str(segs))
+        dec = None
         if segs is not None:
-            for data in segs.values():  break # Is there only 1?  What if there are more?
+            for data in segs.values(): break # Is there only 1?  What if there are more?
             dec = self._compressor.decode(data.fex, self._decompressed)
             print(f'*** dec is a {type(dec)} of len {len(dec)}, dtype {dec.dtype}, shape {dec.shape}, ndim {dec.ndim}, size {dec.size}')
-
         return dec
 
-    def image(self, evt, **kwargs) -> Array2d:
-        cc = self._calibconst # defined in DetectorImpl
-        print('cc[geometry] meta:\n%s' % str(cc['geometry'][1]))
-        print('cc.keys:\n%s' % str(cc.keys()))
+    def calib(self, evt, **kwargs) -> Array3d:
+        """decode per panel dict of _segments and return array of
+           shape=(<number-of-def-panels>, <panel-number-of-rows>, <panel-number-of-cols>)
+        """
+        segs = self._segments(evt)
+        return None if segs is None else\
+               np.stack([self._compressor.decode(segs[k].fex, self._decompressed) for k in sorted(segs.keys())])
+
+    # def image - inherited from eb.epix_base
+    #def image(self, evt, **kwargs) -> Array2d:
+        #cc = self._calibconst # defined in DetectorImpl
+        #print('cc[geometry] meta:\n%s' % str(cc['geometry'][1]))
+        #print('cc.keys:\n%s' % str(cc.keys()))
+        #segnums = self._segment_numbers = self._sorted_segment_ids # [2, 5, 11] - for run 286 or all 20 for 287
+        #print('  segnums: %s' % str(segnums))
+
 # EOF
