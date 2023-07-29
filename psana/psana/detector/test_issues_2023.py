@@ -265,6 +265,7 @@ def issue_2023_04_28():
 #        print(info_ndarr(x,'x:'))
 #        if det.raw.image(evt) is not None: break
 
+
 def issue_2023_05_19():
     """
     """
@@ -277,6 +278,7 @@ def issue_2023_05_19():
         img = opal.raw.image(evt)
         print('ev:%04d  evt.timestamp: %d image.shape: %s' % (nev, evt.timestamp, str(img.shape)))
 
+
 def issue_2023_07_25():
     """datinfo -k exp=tstx00417,run=287,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc/ -d epixhr_emu
        on pcds use psffb, which sees data
@@ -284,19 +286,31 @@ def issue_2023_07_25():
     """
     from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
-    #ds = DataSource(exp='tstx00417', run=286, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc') # on s3df
-    ds = DataSource(exp='tstx00417', run=287, dir='/cds/data/drpsrcf/tst/tstx00417/xtc', detectors=['epixhr_emu']) # on pcds
+    from psana.detector.UtilsGraphics import gr, fleximage#, arr_median_limits
+    flimg = None
+
+    #ds = DataSource(exp='tstx00417', run=286, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc') # on s3df 3-panel run
+    ds = DataSource(exp='tstx00417', run=286, dir='/cds/data/drpsrcf/tst/tstx00417/xtc') # on pcds 3-panel run
+    #ds = DataSource(exp='tstx00417', run=287, dir='/cds/data/drpsrcf/tst/tstx00417/xtc') # on pcds 20-panel run detectors=['epixhr_emu'])
     for run in ds.runs():
       det = run.Detector('epixhr_emu')
       for nev,evt in enumerate(run.events()):
-        if nev>2: break
-        #img = det.raw.raw(evt) # WORKS
-        #img = det.raw.calib(evt) # WORKS
-        #img = det.raw.image(evt) # WORKS
-        #img = det.fex.raw(evt) # DOES NOT WORK - missing in decompression?
-        img = det.fex.calib(evt)
-        #img = det.fex.image(evt) # DOES NOT WORK - seg. fault
-        print(info_ndarr(img, 'ev:%04d  evt.timestamp: %d image arr:' % (nev, evt.timestamp)))
+        if nev>10000: break
+        arr = det.fex.calib(evt)
+        if arr is None: continue
+        print(info_ndarr(arr, 'ev:%05d  evt.timestamp: %d arr:' % (nev, evt.timestamp)))
+
+        img = det.fex.image(evt)
+        print(info_ndarr(img, 43*' ' + 'image:'))
+
+        if flimg is None:
+           #flimg = fleximage(img, arr=None, h_in=8, w_in=11, amin=9000, amax=11000) #, nneg=1, npos=3)
+           flimg = fleximage(img, arr=None, h_in=8, w_in=11, amin=700, amax=800) #, nneg=1, npos=3)
+        gr.set_win_title(flimg.fig, titwin='Event %d' % nev)
+        flimg.update(img, arr=None)
+        gr.show(mode='DO NOT HOLD')
+    gr.show()
+
 
 def issue_2023_07_26():
     """
