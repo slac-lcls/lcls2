@@ -51,8 +51,12 @@ class PVAServer(object):
 
         nid = '1'
         nvalues = { n[0]:0 for n in ntypes }
-        pv = SharedPV(initial=Value(Type(ntypes,id=nid),nvalues), 
+
+        pv = SharedPV(initial=Value(Type([('BldPayload',
+                                           ('S',None,ntypes))],
+                                         id='epics:nt/NTScalar:1.0')),
                       handler=DefaultPVHandler(self))
+
         self.provider.add(f'DAQ:SRCF:{name}:PAYLOAD',pv)
         self.pvs[name] = (addrpv, portpv, pv)
 
