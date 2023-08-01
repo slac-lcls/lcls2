@@ -103,7 +103,8 @@ class epixhremu_fex_0_0_1(eb.epix_base):
         if segs is not None:
             for data in segs.values(): break # Is there only 1?  What if there are more?
             dec = self._compressor.decode(data.fex, self._decompressed)
-            print(f'*** dec is a {type(dec)} of len {len(dec)}, dtype {dec.dtype}, shape {dec.shape}, ndim {dec.ndim}, size {dec.size}')
+            #print(f'*** dec is a {type(dec)} of len {len(dec)}, dtype {dec.dtype}, shape {dec.shape}, ndim {dec.ndim}, size {dec.size}')
+
         return dec
 
     def calib(self, evt, **kwargs) -> Array3d:
