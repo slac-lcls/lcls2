@@ -220,6 +220,11 @@ class AreaDetector(DetectorImpl):
 
 
     def image(self, evt, nda=None, value_for_missing_segments=None, **kwa) -> Array2d:
+        """Returns 2-d image.
+           If value_for_missing_segments is specified,
+             all missing segments will be substituted with this value and shape = shape for all segments,
+             otherwice image for available self._segment_numbers will be generated.
+        """
         value = value_for_missing_segments
 
         _nda = self.calib(evt) if nda is None else nda
