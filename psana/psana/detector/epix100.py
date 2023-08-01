@@ -8,10 +8,10 @@ logger = ad.logging.getLogger(__name__)
 import psana.detector.UtilsEpix100 as ue100
 
 
-class epix100hw_raw_2_0_1(ad.AreaDetector):
+class epix100hw_raw_2_0_1(ad.AreaDetectorRaw):
 
     def __init__(self, *args, **kwa):
-        ad.AreaDetector.__init__(self, *args, **kwa)
+        ad.AreaDetectorRaw.__init__(self, *args, **kwa)
         self._seg_geo = ad.sgs.Create(segname='EPIX100:V1')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix100a.data'
 
@@ -21,10 +21,10 @@ class epix100hw_raw_2_0_1(ad.AreaDetector):
         return segments[0].raw
 
 
-class epix100_raw_2_0_1(ad.AreaDetector):
+class epix100_raw_2_0_1(ad.AreaDetectorRaw):
 
     def __init__(self, *args, **kwa):
-        ad.AreaDetector.__init__(self, *args, **kwa)
+        ad.AreaDetectorRaw.__init__(self, *args, **kwa)
         self._seg_geo = ad.sgs.Create(segname='EPIX100:V1')
         self._data_bit_mask = 0xffff
         self._gain_ = None # ADU/eV
@@ -39,7 +39,7 @@ class epix100_raw_2_0_1(ad.AreaDetector):
            3. set default gain factor shaped as pedestals
         """
         if self._gain_ is not None: return self._gain_
-        g = ad.AreaDetector._gain(self)
+        g = ad.AreaDetectorRaw._gain(self)
         if g is not None:
             self._gain_factor_ = divide_protected(np.ones_like(g), g)
             return g
