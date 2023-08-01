@@ -15,8 +15,8 @@ int setupDrpMsgQueue(std::string key, size_t mqSize, int& mqId, bool write);
 int detachDrpMq(void*& data, int size);
 int drpSend(int mqId, const char *msg, size_t msgsize);
 int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo);
-int cleanupDrpShmMem(std::string key);
-int cleanupDrpMq(std::string key, int MqId);
+int cleanupDrpShmMem(std::string key, int shmId);
+int cleanupDrpMq(std::string key, int mqId);
 
 }
 

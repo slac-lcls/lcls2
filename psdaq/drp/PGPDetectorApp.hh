@@ -23,11 +23,11 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
-    void setupDrpPython();
+    int setupDrpPython();
     void unconfigure();
     void disconnect();
     void drainDrpMessageQueues();
-    void resetDrpPython();
+    int resetDrpPython();
     DrpBase m_drp;
     Parameters& m_para;
     std::thread m_pgpThread;

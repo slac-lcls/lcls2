@@ -1,6 +1,8 @@
 import sys
 import posix_ipc
 from psana.psexp.zmq_utils import pub_bind, sub_connect
+import logging
+logger = logging.getLogger(__name__)
 
 partition = int(sys.argv[1])
 pebble_bufsize = int(sys.argv[2])
@@ -11,6 +13,10 @@ detector_type = sys.argv[6]
 detector_id = sys.argv[7]
 detector_segment = int(sys.argv[8])
 worker_num = int(sys.argv[9])
+verbose = int(sys.argv[10])
+
+logging.basicConfig(format='%(filename)s L%(lineno)04d: <%(levelname).1s> %(message)s',
+                    level=logging.INFO if verbose==0 else logging.DEBUG)
 
 
 class IPCInfo:
@@ -28,7 +34,6 @@ class IPCInfo:
             self.shm_res = posix_ipc.SharedMemory(f"/shmres_{keybase}_{worker_num}")
         except posix_ipc.Error as exp:
             assert(False)
-
 
 class DrpInfo:
     def __init__(self, detector_name, detector_type, detector_id, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info):
@@ -51,11 +56,11 @@ if is_publisher:
     pub_socket = pub_bind(socket_name)
 else:
     sub_socket = sub_connect(socket_name)
-print(f"[Python - Thread {worker_num}] {is_publisher=} setup socket {socket_name}]")
+logger.debug(f"[Python - Thread {worker_num}] {is_publisher=} setup socket {socket_name}]")
 
 try:
     while True:
-        print(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
+        logger.debug(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
         message, priority = ipc_info.mq_inp.receive()
         if message == b"s":
             ipc_info.mq_res.send(b"s\n")
@@ -64,4 +69,9 @@ try:
             code = compile(fh.read(), message, 'exec')
             exec(code, globals(), locals())
 except KeyboardInterrupt:
-    print(f"[Python - Worker: {worker_num}] KeyboardInterrupt received - drp_python process exiting")
+    logger.info(f"[Python - Worker: {worker_num}] KeyboardInterrupt received - drp_python process exiting")
+finally:
+    ipc_info.mq_inp.close()
+    ipc_info.mq_res.close()
+    ipc_info.shm_inp.close_fd()
+    ipc_info.shm_res.close_fd()
