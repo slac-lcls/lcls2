@@ -6,6 +6,7 @@ import os
 import numpy as np
 from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
+import psana.detector.areadetector as ad
 import logging
 from psana.detector.detector_impl import DetectorImpl
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ class epixhremu_raw_0_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epixhremu_raw_0_0_1.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
-        self._seg_geo = eb.sgs.Create(segname='EPIXHR1X4:V1')
+        self._seg_geo = ad.sgs.Create(segname='EPIXHR1X4:V1')
         self._data_bit_mask = eb.M15 # for epixhremu data
         self._data_gain_bit = eb.B15
         self._gain_bit_shift = 10
@@ -83,9 +84,10 @@ import libpressio as lp
 import json
 
 #class epixhremu_fex_0_0_1(DetectorImpl):
-class epixhremu_fex_0_0_1(eb.epix_base):
+class epixhremu_fex_0_0_1(ad.AreaDetector):
     def __init__(self, *args, **kwargs):
         super(epixhremu_fex_0_0_1, self).__init__(*args)
+        self._seg_geo = ad.sgs.Create(segname='EPIXHR1X4:V1')
 
         # Expect config to be the same for all segments, so pick first one
         for config in self._seg_configs().values(): break
@@ -115,8 +117,10 @@ class epixhremu_fex_0_0_1(eb.epix_base):
         return None if segs is None else\
                np.stack([self._compressor.decode(segs[k].fex, self._decompressed) for k in sorted(segs.keys())])
 
-    # def image - inherited from eb.epix_base
-    #def image(self, evt, **kwargs) -> Array2d:
+    def image(self, evt, **kwargs) -> Array2d: # value_for_missing_segments=1
+        #ad.AreaDetector.image(evt, nda=self.calib(evt), **kwargs)
+        return ad.AreaDetector.image(self, evt, **kwargs)
+
         #cc = self._calibconst # defined in DetectorImpl
         #print('cc[geometry] meta:\n%s' % str(cc['geometry'][1]))
         #print('cc.keys:\n%s' % str(cc.keys()))
