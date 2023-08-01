@@ -96,7 +96,7 @@ procmgr_config = [
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH {xtpg} {groups}'},
  {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
 
- { host: base_host,        id:'pvrtmon-tst', flags:'s',   env:epics_env, cmd:f'epics_exporter -H tst -M {prom_dir} -I xpm-{xtpg} -P DAQ:NEH:XPM:{xtpg} -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+# { host: base_host,        id:'pvrtmon-tst', flags:'s',   env:epics_env, cmd:f'epics_exporter -H tst -M {prom_dir} -I xpm-{xtpg} -P DAQ:NEH:XPM:{xtpg} -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
 
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
@@ -108,31 +108,32 @@ procmgr_config = [
 
  {host: 'drp-srcf-cmp028', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
 
- {host: 'drp-srcf-cmp043', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-srcf-cmp037', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  # EPIX-HR has 2 MP on 20 panels, 4 ASICs/panel, 144 x 192 pixels/ASIC, 2 B/pixel = 221184 B/segment = 2 + 4 * sim_length => sim_length ~= 55294 per panel
-# {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
- {host: 'drp-srcf-cmp036', id:'epixhr_emu_2',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp036', id:'epixhr_emu_2',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp036', id:'epixhr_emu_3',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp043', id:'epixhr_emu_4',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp043', id:'epixhr_emu_4',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp043', id:'epixhr_emu_5',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
-# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_6',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
-# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_7',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
 #
-# {host: 'drp-srcf-cmp035', id:'epixhr_emu_8',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp035', id:'epixhr_emu_9',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp036', id:'epixhr_emu_10', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp036', id:'epixhr_emu_11', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp043', id:'epixhr_emu_12', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp043', id:'epixhr_emu_13', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
-# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_14', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
-# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_15', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_6',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_7',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_8',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_9',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_10', flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_11', flags:'spu',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
 #
-# {host: 'drp-srcf-cmp035', id:'epixhr_emu_16', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp036', id:'epixhr_emu_17', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp043', id:'epixhr_emu_18', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
-# #{host: 'drp-srcf-cmp044', id:'epixhr_emu_19', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_12', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_13', flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_14', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_15', flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_16', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_17', flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D epixhremu -k {epixKwargs}'},
+#
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_18', flags:'spu',                cmd:f'{drp_cmd1} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_19', flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D epixhremu -k {epixKwargs}'},
 
 # {host: 'drp-srcf-cmp034', id:'epixhr_emu_4', flags:'spux',               cmd:f'{drp_cmd0} -l 0x3 -D epixhremu -k {epixKwargs}'},
 ]
