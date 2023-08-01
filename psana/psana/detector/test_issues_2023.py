@@ -298,9 +298,9 @@ def issue_2023_07_25():
         if nev>10000: break
         arr = det.fex.calib(evt)
         if arr is None: continue
-        print(info_ndarr(arr, 'ev:%05d  evt.timestamp: %d arr:' % (nev, evt.timestamp)))
+        print(info_ndarr(arr, '==== ev:%05d  evt.timestamp: %d arr:' % (nev, evt.timestamp)))
 
-        img = det.fex.image(evt)
+        img = det.fex.image(evt, value_for_missing_segments=800)
         print(info_ndarr(img, 43*' ' + 'image:'))
 
         if flimg is None:
