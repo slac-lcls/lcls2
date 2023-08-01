@@ -301,6 +301,7 @@ def issue_2023_07_25():
         print(info_ndarr(arr, '==== ev:%05d  evt.timestamp: %d arr:' % (nev, evt.timestamp)))
 
         img = det.fex.image(evt, value_for_missing_segments=800)
+        #img = det.fex.image(evt)
         print(info_ndarr(img, 43*' ' + 'image:'))
 
         if flimg is None:
