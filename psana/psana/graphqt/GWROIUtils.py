@@ -32,11 +32,11 @@ from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication,\
 from PyQt5.QtGui import  QPen, QPainter, QColor, QBrush, QCursor, QTransform, QPolygonF,  QPainterPath
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLineF # , pyqtSignal
 
-QPEN_DEF   = QPen(Qt.yellow, 1, Qt.SolidLine)  # Qt.DashLine
-QBRUSH_DEF = QBrush()
 QCOLOR_DEF = QColor(Qt.yellow)
 QCOLOR_SEL = QColor('#ffeeaaee')
 QCOLOR_EDI = QColor(Qt.magenta)
+QPEN_DEF   = QPen(QCOLOR_DEF, 1, Qt.SolidLine)  # Qt.DashLine
+QBRUSH_DEF = QBrush(QCOLOR_DEF, Qt.SolidPattern)
 
 NONE = 0
 
@@ -75,7 +75,7 @@ REMOVE    = 8
 SELECT    = 16
 EDIT      = 32
 mode_tuple = (
-  (NONE,      'NONE',      'O'),
+  (NONE,      'NONE',      'M'),
   (UNVISIBLE, 'UNVISIBLE', 'U'),
   (VISIBLE,   'VISIBLE',   'V'),
   (ADD,       'ADD',       'A'),
@@ -179,11 +179,6 @@ class ROIBase():
     def set_point_at_add(self, pos, clicknum):
         logging.warning('ROIBase.set_point_at_add must be re-implemented in SOME of subclasses')
 
-#    def is_last_point(self, scpos, clicknum):
-#        """returns boolean answer if input is completed"""
-#        logging.warning('ROIBase.is_last_point must be re-implemented in SOME of subclasses')
-#        return True
-
     def is_last_point(self, scpos, clicknum):
         """Returns boolean answer if input is completed.
            Default responce for all 2-click ROIs like line, rect, ellips, square, circle
@@ -212,8 +207,8 @@ class ROIPixel(ROIBase):
         ROIBase.__init__(self, **kwa)
         self.pos = int_scpos(self.pos)
         logger.debug('ROIPixel.__init__')
-        self.brush = QCOLOR_DEF  # kwa.get('brush', QBrush(QCOLOR_DEF))
-        self.pen = QPen(QPEN_DEF)  # kwa.get('pen', QPen(QPEN_DEF))
+        self.brush = QBRUSH_DEF
+        self.pen = QPEN_DEF
 
     def pixel_rect(self, pos=None):
         if pos is not None: self.pos = int_scpos(pos)
@@ -238,8 +233,8 @@ class ROIPixGroup(ROIBase):
         ROIBase.__init__(self, **kwa)
         self.pos = int_scpos(self.pos)
         logger.info('ROIPixGroup.__init__')
-        self.brush = QCOLOR_DEF  # kwa.get('brush', QBrush(QCOLOR_DEF))
-        self.pen = QPen(QPEN_DEF)  # kwa.get('pen', QPen(QPEN_DEF))
+        self.brush = QBRUSH_DEF
+        self.pen = QPEN_DEF
         self.pixpos = []
         self.iscpos_last = None
 
