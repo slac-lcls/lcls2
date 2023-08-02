@@ -226,7 +226,6 @@ class ROIPixel(ROIBase):
         return True
 
 
-
 class ROIPixGroup(ROIBase):
     def __init__(self, **kwa):
         self.roi_type = PIXGROUP
@@ -238,32 +237,47 @@ class ROIPixGroup(ROIBase):
         self.pixpos = []
         self.iscpos_last = None
 
+
     def pixel_rect(self, pos=None):
         if pos is not None: self.pos = pos
         self.pixpos.append(self.pos)
         return QRectF(QPointF(self.pos), QSizeF(1,1))
 
 
+    def is_busy_pos(self, iscpos=None):
+        is_busy = any([iscpos == p for p in self.pixpos])
+        #print('XXX ROIPixGroup.is_busy_pos', is_busy)
+        return is_busy
+
+
     def add_to_scene(self, pos=None):
         """Adds pixel as a rect to scene"""
         iscpos = int_scpos(pos)
 
-        logger.info('ROIPixGroup.add_to_scene iscpos: %s iscpos_last: %s' % (str(iscpos), (self.iscpos_last)))
+        #logger.info('ROIPixGroup.add_to_scene iscpos: %s iscpos_last: %s' % (str(iscpos), (self.iscpos_last)))
 
         if iscpos == self.iscpos_last\
-        or self.is_busy_iscpos: return
+        or self.is_busy_iscpos:
+           #print('XXX ROIPixGroup.add_to_scene - DO NOT ADD - return conditional')
+           return
 
         if self.scitem is None:
+           #self.set_color_pen_brush(color=QColor('#ffaaffee'))
            path = QPainterPath()
            path.addRect(self.pixel_rect(iscpos))
            self.scitem = QGraphicsPathItem(path)
            ROIBase.add_to_scene(self, pen=self.pen, brush=self.brush)
-           #print('XXX pixel added to scene at 1st click')
+           #print('XXX ROIPixGroup.add_to_scene - pixel self.scitem is created and added to scene at 1st click')
 
         else:
-           path = self.scitem.path()
+           if self.is_busy_pos(iscpos): return
+           item = self.scitem
+           #item.setPen(self.pen)
+           #item.setBrush(self.brush)
+           path = item.path()
            path.addRect(self.pixel_rect(iscpos))
-           self.scitem.setPath(path)
+           item.setPath(path)
+           #print('XXX ROIPixGroup.add_to_scene - pixel added to scene at serial click or move')
 
         self.iscpos_last = iscpos
 
@@ -273,19 +287,14 @@ class ROIPixGroup(ROIBase):
 
 
     def move_at_add(self, pos, left_is_pressed=False):
-        logger.debug('ROIPixGroup.move_at_add')
+        #logger.debug('ROIPixGroup.move_at_add')
         if left_is_pressed:
             self.add_to_scene(pos=pos)
 
 
-    def is_last_point(self, p, clicknum):
+    def is_last_point(self, p, clicknum, clicknum_max=200):
         """returns boolean answer if input is completed"""
-        return clicknum > 100
-
-
-
-
-
+        return clicknum > clicknum_max
 
 
 class ROILine(ROIBase):
@@ -736,7 +745,7 @@ class HandleOther(HandleBase):
         dx, dy = size_points_on_scene(view, rsize)
         path = None
 
-        print('ZZZ shhand:', self.shhand)
+        #print('XXX shhand:', self.shhand)
 
         if self.shhand == 1:
             path = QPainterPath(p+dx+dy) # W-M-shape

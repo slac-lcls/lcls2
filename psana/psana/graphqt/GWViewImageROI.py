@@ -115,8 +115,7 @@ class GWViewImageROI(GWViewImage):
     def mousePressEvent(self, e):
         GWViewImage.mousePressEvent(self, e)
 
-        logger.info('GWViewImageROI.mousePressEvent but=%d (1/2/4 = L/R/M) screen x=%.1f y=%.1f'%\
-                     (e.button(), e.pos().x(), e.pos().y()))
+        #logger.info('GWViewImageROI.mousePressEvent but=%d (1/2/4 = L/R/M) screen x=%.1f y=%.1f'%(e.button(), e.pos().x(), e.pos().y()))
 
         self.left_is_pressed  = e.button() == Qt.LeftButton
         self.right_is_pressed = e.button() == Qt.RightButton
@@ -171,7 +170,7 @@ class GWViewImageROI(GWViewImage):
 
     def finish_add_roi(self):
         """finish add_roi action on or in stead of last click, set poly at last non-closing click"""
-        logger.info('finish_add_roi')
+        logger.debug('finish_add_roi')
         if self.roi_active is not None:
            self.roi_active.finish_add_roi() # used in ROIPolygon
         self.roi_active = None
@@ -273,13 +272,13 @@ class GWViewImageROI(GWViewImage):
         scpos = self.scene_pos(e)
 
         if self.roi_active is None: #  1st click
-            logger.info('on_press_add - 1-st click')
+            logger.debug('on_press_add - 1-st click')
             self.clicknum = 1
             self.add_roi(e)
 
         else: # other clicks
             self.clicknum += 1
-            logger.info('on_press_add - click %d' % self.clicknum)
+            logger.debug('on_press_add - click %d' % self.clicknum)
             self.roi_active.set_point_at_add(scpos, self.clicknum)
             if self.roi_active.is_last_point(scpos, self.clicknum):
                 self.finish_add_roi()
@@ -290,7 +289,7 @@ class GWViewImageROI(GWViewImage):
         iscpos = roiu.int_scpos(scpos)
         is_same = (iscpos == self._iscpos_old)
         is_busy = any([iscpos == o.pos for o in self.list_of_rois])
-        logger.info('GWViewImageROI.add_roi scene ix=%d iy=%d is_same=%s is_busy=%s'%(iscpos.x(), iscpos.y(), is_same, is_busy))
+        logger.debug('GWViewImageROI.add_roi scene ix=%d iy=%d is_same=%s is_busy=%s'%(iscpos.x(), iscpos.y(), is_same, is_busy))
 
         if is_same: return
         else: self._iscpos_old = QPoint(iscpos)
@@ -320,42 +319,7 @@ class GWViewImageROI(GWViewImage):
           if self.roi_type == roiu.PIXEL and self.left_is_pressed:
             self.add_roi(e)
         else:
-          scpos = self.scene_pos(e)
-          self.roi_active.move_at_add(scpos, self.left_is_pressed)
-
-        #iscpos = roiu.int_scpos(scpos) # QPoint(int(scpos.x()), int(scpos.y()))
-
-        #if iscpos == self._iscpos_old: return
-        #self._iscpos_old = iscpos
-
-        #if self.roi_type == roiu.PIXEL:
-        #    if self.left_is_pressed:
-        #        self.add_roi_pixel(iscpos)
-        #elif self.roi_active is not None:
-        #      self.roi_active.move_at_add(scpos, self.left_is_pressed)
-
-
-
-#    def add_roi_any(self, e):
-#        """add ROI on mouthPressEvent"""
-#        scpos = self.scene_pos(e)
-#        logger.info('GWViewImageROI.add_roi scene x=%.1f y=%.1f'%(int(scpos.x()), int(scpos.y())))
-#        if self.roi_type == roiu.PIXEL:
-#             self.add_roi_pixel(scpos)
-#        else:
-#             self.add_roi_to_scene(scpos)
-
-
-#    def add_roi_pixel(self, scpos):
-#        """add ROIPixel on mouthPressEvent - special treatment for pixels...On/Off at mouthMoveEvent"""
-#        iscpos = roiu.int_scpos(scpos) # QPoint(int(scpos.x()), int(scpos.y()))
-#        self._iscpos_old = iscpos
-#        for o in self.list_of_rois:
-#            if iscpos == o.pos:
-#                return
-#        self.add_roi_to_scene(iscpos)
-
-
+          self.roi_active.move_at_add(self.scene_pos(e), self.left_is_pressed)
 
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
