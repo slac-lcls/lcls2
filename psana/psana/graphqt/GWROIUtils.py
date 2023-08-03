@@ -247,20 +247,31 @@ class ROIPixGroup(ROIBase):
 
     def is_busy_pos(self, iscpos=None):
         is_busy = any([iscpos == p for p in self.pixpos])
-        #print('XXX ROIPixGroup.is_busy_pos', is_busy)
         return is_busy
+
+
+    def remove_pixel_from_path(self, iscpos):
+        """removes pixel position from the list and from the path."""
+        self.pixpos.remove(iscpos)
+        path = QPainterPath()
+        tuple_pos = tuple(self.pixpos)
+        self.pixpos = []
+        for p in tuple_pos:
+            path.addRect(self.pixel_rect(p))
+        self.scitem.setPath(path)
 
 
     def add_to_scene(self, pos=None):
         """Adds pixel as a rect to scene"""
         iscpos = int_scpos(pos)
-
         #logger.info('ROIPixGroup.add_to_scene iscpos: %s iscpos_last: %s' % (str(iscpos), (self.iscpos_last)))
 
         if iscpos == self.iscpos_last\
         or self.is_busy_iscpos:
            #print('XXX ROIPixGroup.add_to_scene - DO NOT ADD - return conditional')
            return
+
+        self.iscpos_last = iscpos
 
         if self.scitem is None:
            #self.set_color_pen_brush(color=QColor('#ffaaffee'))
@@ -271,16 +282,16 @@ class ROIPixGroup(ROIBase):
            #print('XXX ROIPixGroup.add_to_scene - pixel self.scitem is created and added to scene at 1st click')
 
         else:
-           if self.is_busy_pos(iscpos): return
+           if self.is_busy_pos(iscpos):
+               print('XXX ROIPixGroup   is_busy_pos:', iscpos)
+               self.remove_pixel_from_path(iscpos)
+               return
            item = self.scitem
            #item.setPen(self.pen)
            #item.setBrush(self.brush)
            path = item.path()
            path.addRect(self.pixel_rect(iscpos))
            item.setPath(path)
-           #print('XXX ROIPixGroup.add_to_scene - pixel added to scene at serial click or move')
-
-        self.iscpos_last = iscpos
 
 
     def set_point_at_add(self, pos, clicknum):
