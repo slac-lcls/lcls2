@@ -36,7 +36,8 @@ QCOLOR_DEF = QColor(Qt.yellow)
 QCOLOR_SEL = QColor('#ffeeaaee')
 QCOLOR_EDI = QColor(Qt.magenta)
 QPEN_DEF   = QPen(QCOLOR_DEF, 1, Qt.SolidLine)  # Qt.DashLine
-QBRUSH_DEF = QBrush(QCOLOR_DEF, Qt.SolidPattern)
+QBRUSH_DEF = QBrush()
+QBRUSH_ROI = QBrush(QCOLOR_DEF, Qt.SolidPattern)
 
 NONE = 0
 
@@ -207,7 +208,7 @@ class ROIPixel(ROIBase):
         ROIBase.__init__(self, **kwa)
         self.pos = int_scpos(self.pos)
         logger.debug('ROIPixel.__init__')
-        self.brush = QBRUSH_DEF
+        self.brush = QBRUSH_ROI
         self.pen = QPEN_DEF
 
     def pixel_rect(self, pos=None):
@@ -232,7 +233,7 @@ class ROIPixGroup(ROIBase):
         ROIBase.__init__(self, **kwa)
         self.pos = int_scpos(self.pos)
         logger.info('ROIPixGroup.__init__')
-        self.brush = QBRUSH_DEF
+        self.brush = QBRUSH_ROI
         self.pen = QPEN_DEF
         self.pixpos = []
         self.iscpos_last = None
