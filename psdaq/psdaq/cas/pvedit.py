@@ -306,6 +306,7 @@ class PvTableDisplay(QtWidgets.QWidget):
             setattr(self,r,w)
             for i in range(len(rowNames)):
                 grid.addWidget(w[i],i+1,j+1)
+        grid.setRowStretch(grid.rowCount(),1)
 
         self.setLayout(grid)
         self.ready = True
