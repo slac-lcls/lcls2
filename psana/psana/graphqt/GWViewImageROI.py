@@ -233,6 +233,7 @@ class GWViewImageROI(GWViewImage):
 
 
     def remove_roi(self, o):
+        """remove roi item from scene and from the list of rois."""
         self.scene().removeItem(o.scitem)
         self.list_of_rois.remove(o)
 
@@ -288,6 +289,7 @@ class GWViewImageROI(GWViewImage):
 
 
     def pixel_is_removed(self, iscpos):
+        #if self.mode_type & roiu.REMOVE:
         if self.roi_type == roiu.PIXEL:
             for o in self.list_of_rois:
                 if iscpos == o.pos:
@@ -302,7 +304,6 @@ class GWViewImageROI(GWViewImage):
         is_busy = any([iscpos == o.pos for o in self.list_of_rois])
         logger.debug('GWViewImageROI.add_roi scene ix=%d iy=%d is_busy=%s'%(iscpos.x(), iscpos.y(), is_busy))
 
-        #if self.mode_type & roiu.REMOVE:
         if is_busy and self.pixel_is_removed(iscpos): return
 
         o = roiu.create_roi(self.roi_type, view=self, pos=scpos, is_busy_iscpos=is_busy)
@@ -327,6 +328,11 @@ class GWViewImageROI(GWViewImage):
 
 
     def on_move_add(self, e):
+        """Action on mouse move:
+           if mouse position is in the same pixel as in previous event - do nothing
+           if roi type is PIXEL - try to add/remove pixel
+           for other roi_type call roi_active.move_at_add
+        """
         scpos = self.scene_pos(e)
         iscpos = roiu.int_scpos(scpos)
         is_same = (iscpos == self._iscpos_old)
