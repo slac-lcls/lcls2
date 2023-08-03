@@ -232,6 +232,11 @@ class GWViewImageROI(GWViewImage):
         self.roi_active.show_handles()
 
 
+    def remove_roi(self, o):
+        self.scene().removeItem(o.scitem)
+        self.list_of_rois.remove(o)
+
+
     def on_move_remove(self, e):
         """remove ROI on mouthPressEvent - a few ROIs might be removed"""
         if self.left_is_pressed:
@@ -240,8 +245,7 @@ class GWViewImageROI(GWViewImage):
             roisel = [o for o in self.list_of_rois if o.scitem in items]
             logger.debug('remove_roi list of ROIs at point: %s' % str(roisel))
             for o in roisel:
-                self.scene().removeItem(o.scitem)
-                self.list_of_rois.remove(o)
+                self.remove_roi(o)
 
 
     def delete_selected_roi(self):
@@ -249,8 +253,7 @@ class GWViewImageROI(GWViewImage):
         roisel = [o for o in self.list_of_rois if o.scitem.pen().color() == QCOLOR_SEL]
         logger.debug('delete_selected_roi: %s' % str(roisel))
         for o in roisel:
-            self.scene().removeItem(o.scitem)
-            self.list_of_rois.remove(o)
+            self.remove_roi(o)
 
 
     def cancel_add_roi(self):
@@ -284,15 +287,23 @@ class GWViewImageROI(GWViewImage):
                 self.finish_add_roi()
 
 
+    def pixel_is_removed(self, iscpos):
+        if self.roi_type == roiu.PIXEL:
+            for o in self.list_of_rois:
+                if iscpos == o.pos:
+                    self.remove_roi(o)
+                    return True
+        return False
+
+
     def add_roi(self, e):
         scpos = self.scene_pos(e)
         iscpos = roiu.int_scpos(scpos)
-        is_same = (iscpos == self._iscpos_old)
         is_busy = any([iscpos == o.pos for o in self.list_of_rois])
-        logger.debug('GWViewImageROI.add_roi scene ix=%d iy=%d is_same=%s is_busy=%s'%(iscpos.x(), iscpos.y(), is_same, is_busy))
+        logger.debug('GWViewImageROI.add_roi scene ix=%d iy=%d is_busy=%s'%(iscpos.x(), iscpos.y(), is_busy))
 
-        if is_same: return
-        else: self._iscpos_old = QPoint(iscpos)
+        #if self.mode_type & roiu.REMOVE:
+        if is_busy and self.pixel_is_removed(iscpos): return
 
         o = roiu.create_roi(self.roi_type, view=self, pos=scpos, is_busy_iscpos=is_busy)
         if o is None:
@@ -302,7 +313,8 @@ class GWViewImageROI(GWViewImage):
         if o.scitem is not None:
             self.list_of_rois.append(o)
             self.roi_active = o
-        if self.roi_active is not None and self.roi_active.is_last_point(scpos, self.clicknum):
+        if self.roi_active is not None\
+        and self.roi_active.is_last_point(scpos, self.clicknum):
             self.finish_add_roi()
 
 
@@ -315,11 +327,18 @@ class GWViewImageROI(GWViewImage):
 
 
     def on_move_add(self, e):
+        scpos = self.scene_pos(e)
+        iscpos = roiu.int_scpos(scpos)
+        is_same = (iscpos == self._iscpos_old)
+        logger.debug('GWViewImageROI.add_roi scene ix=%d iy=%d is_same=%s'%(iscpos.x(), iscpos.y(), is_same))
+        if is_same: return
+        self._iscpos_old = iscpos #  QPoint(iscpos)
+
         if self.roi_active is None:
           if self.roi_type == roiu.PIXEL and self.left_is_pressed:
             self.add_roi(e)
         else:
-          self.roi_active.move_at_add(self.scene_pos(e), self.left_is_pressed)
+          self.roi_active.move_at_add(scpos, self.left_is_pressed)
 
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
