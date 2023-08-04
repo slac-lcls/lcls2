@@ -70,6 +70,21 @@ import psana.graphqt.GWROIUtils as roiu
 QPEN_DEF, QBRUSH_DEF, QCOLOR_DEF, QCOLOR_SEL, QCOLOR_EDI =\
 roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QCOLOR_DEF, roiu.QCOLOR_SEL, roiu.QCOLOR_EDI
 
+FNAME_DEF = 'roi_parameters.json'
+
+
+def info_dict(d, sep='\n  ', indent='  '):
+    return indent + sep.join(['%s: %s'%(str(k).rjust(4),v) for k,v in d.items()])
+
+def save_dict_in_json_file(d, fname=FNAME_DEF):
+    import json
+    with open(fname, 'w') as f: json.dump(d, f)
+
+def load_dict_from_json_file(fname=FNAME_DEF):
+    import json
+    with open(fname, 'r') as f: data = f.read()
+    return json.loads(data)
+
 
 class GWViewImageROI(GWViewImage):
 
@@ -192,7 +207,7 @@ class GWViewImageROI(GWViewImage):
     def one_roi_at_point(self, p):
         rois = self.rois_at_point(p)
         s = len(rois)
-        if s<0: return None
+        if s<1: return None
         elif self.roi_type == roiu.PIXEL: # select pixel rect nearest to the click position
             dmins = [(p - o.scitem.rect().center()).manhattanLength() for o in rois]
             return rois[dmins.index(min(dmins))]
@@ -345,6 +360,17 @@ class GWViewImageROI(GWViewImage):
             self.add_roi(e)
         else:
           self.roi_active.move_at_add(scpos, self.left_is_pressed)
+
+
+    def save_parameters_in_file(self, fname=FNAME_DEF):
+        d = {i:o.roi_pars() for i,o in enumerate(self.list_of_rois)}
+        save_dict_in_json_file(d, fname)
+        logger.info('GWViewImageROI.save_parameters_in_file %s\n%s' % (fname, info_dict(d)))
+
+
+    def load_parameters_from_file(self, fname=FNAME_DEF):
+        d = self.dict_roi_pars = load_dict_from_json_file(fname)
+        logger.info('GWViewImageROI.load_parameters_from_file %s\n%s' % (fname, info_dict(d)))
 
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):

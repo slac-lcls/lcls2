@@ -134,6 +134,15 @@ def int_scpos(scpos):
     return None if scpos is None else QPoint(int(scpos.x()), int(scpos.y()))
 
 
+def json_point_int(p):
+    return p.x(), p.y()
+    #return '(%d, %d)' % (p.x(), p.y())
+
+def json_point(p, prec=2):
+    return round(p.x(), prec), round(p.y(), prec)
+    #return  '(%.2f, %.2f)' % (p.x(), p.y())
+
+
 class ROIBase():
     def __init__(self, **kwa):
         #self.roi_type   = kwa.get('roi_type', NONE)
@@ -201,6 +210,14 @@ class ROIBase():
     def move_at_add(self, scpos, left_is_pressed):
         logging.debug('ROIBase.move_at_add to be re-implemented, if necessary')
 
+    def roi_pars(self):
+        logging.debug('ROIBase.roi_pars - dict of roi parameters')
+        return {'roi_type':self.roi_type,
+                'roi_name': self.roi_name,
+                'points':[]
+                }
+                #'angle_deg': self.scitem.rotation(),
+
 
 class ROIPixel(ROIBase):
     def __init__(self, **kwa):
@@ -210,6 +227,7 @@ class ROIPixel(ROIBase):
         logger.debug('ROIPixel.__init__')
         self.brush = QBRUSH_ROI
         self.pen = QPEN_DEF
+        print('ROIPixel.roi_pars: %s' % str(self.roi_pars()))
 
     def pixel_rect(self, pos=None):
         if pos is not None: self.pos = int_scpos(pos)
@@ -226,6 +244,11 @@ class ROIPixel(ROIBase):
     def is_last_point(self, scpos, clicknum):
         return True
 
+    def roi_pars(self):
+        d = ROIBase.roi_pars(self)
+        d['points'] = [json_point_int(self.pos),]
+        return d
+
 
 class ROIPixGroup(ROIBase):
     def __init__(self, **kwa):
@@ -238,17 +261,14 @@ class ROIPixGroup(ROIBase):
         self.pixpos = []
         self.iscpos_last = None
 
-
     def pixel_rect(self, pos=None):
         if pos is not None: self.pos = pos
         self.pixpos.append(self.pos)
         return QRectF(QPointF(self.pos), QSizeF(1,1))
 
-
     def is_busy_pos(self, iscpos=None):
         is_busy = any([iscpos == p for p in self.pixpos])
         return is_busy
-
 
     def remove_pixel_from_path(self, iscpos):
         """removes pixel position from the list and from the path."""
@@ -259,7 +279,6 @@ class ROIPixGroup(ROIBase):
         for p in tuple_pos:
             path.addRect(self.pixel_rect(p))
         self.scitem.setPath(path)
-
 
     def add_to_scene(self, pos=None):
         """Adds pixel as a rect to scene"""
@@ -280,7 +299,6 @@ class ROIPixGroup(ROIBase):
            self.scitem = QGraphicsPathItem(path)
            ROIBase.add_to_scene(self, pen=self.pen, brush=self.brush)
            #print('XXX ROIPixGroup.add_to_scene - pixel self.scitem is created and added to scene at 1st click')
-
         else:
            if self.is_busy_pos(iscpos):
                print('XXX ROIPixGroup   is_busy_pos:', iscpos)
@@ -293,20 +311,22 @@ class ROIPixGroup(ROIBase):
            path.addRect(self.pixel_rect(iscpos))
            item.setPath(path)
 
-
     def set_point_at_add(self, pos, clicknum):
         self.add_to_scene(pos)
-
 
     def move_at_add(self, pos, left_is_pressed=False):
         #logger.debug('ROIPixGroup.move_at_add')
         if left_is_pressed:
             self.add_to_scene(pos=pos)
 
-
     def is_last_point(self, p, clicknum, clicknum_max=200):
         """returns boolean answer if input is completed"""
         return clicknum > clicknum_max
+
+    def roi_pars(self):
+        d = ROIBase.roi_pars(self)
+        d['points'] = [json_point_int(p) for p in self.pixpos]
+        return d
 
 
 class ROILine(ROIBase):
@@ -330,6 +350,12 @@ class ROILine(ROIBase):
         line.setP2(pos)
         self.scitem.setLine(line)
 
+    def roi_pars(self):
+        o = self.scitem.line()
+        d = ROIBase.roi_pars(self)
+        d['points'] = [json_point(p) for p in (o.p1(), o.p2())]
+        return d
+
 
 class ROIRect(ROIBase):
     def __init__(self, **kwa):
@@ -352,6 +378,12 @@ class ROIRect(ROIBase):
         rect.setBottomRight(pos)
         self.scitem.setRect(rect)
 
+    def roi_pars(self):
+        o = self.scitem.rect()
+        d = ROIBase.roi_pars(self)
+        d['points'] = [json_point(p) for p in (o.topLeft(), o.bottomRight())]  #  list(o.getCoords())
+        return d
+
 
 def rect_to_square(rect, pos):
     dp = pos - rect.topLeft()
@@ -364,8 +396,9 @@ def rect_to_square(rect, pos):
 
 class ROISquare(ROIRect):
     def __init__(self, **kwa):
-        self.roi_type = SQUARE
         ROIRect.__init__(self, **kwa)
+        self.roi_type = SQUARE
+        self.roi_name = dict_roi_type_name[self.roi_type]
 
     def move_at_add(self, pos, left_is_pressed=False):
         logger.debug('ROISquare.move_at_add')
@@ -418,11 +451,18 @@ class ROIPolygon(ROIBase):
     def set_poly(self, poly=None):
         self.scitem.setPolygon(self.poly_selected if poly==None else poly)
 
+    def roi_pars(self):
+        o = self.scitem.polygon()
+        d = ROIBase.roi_pars(self)
+        points = [o.value(i) for i in range(o.size())]
+        d['points'] = [json_point(p) for p in points]
+        return d
+
 
 class ROIPolyreg(ROIBase): #ROIPolygon):
     def __init__(self, **kwa):
         self.roi_type = POLYREG
-        ROIPolygon.__init__(self, **kwa)
+        ROIBase.__init__(self, **kwa)
         self.scpos_rad = None
         self.radius = None
         self.angle = None
@@ -443,6 +483,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
     def move_at_add(self, scpos, left_is_pressed=False):
         logger.debug('ROILine.move_at_add')
         d, x, y = self.polyreg_dxy(scpos)
+        self.pradius = QPointF(x, y)
         angle = math.degrees(math.atan2(y, x)) if self.angle is None else self.angle
         r = math.sqrt(x*x + y*y) if self.radius is None else self.radius
         if self.scpos_rad is not None:
@@ -471,6 +512,12 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         if clicknum > 2:
            self.is_finished = True
         return self.is_finished
+
+    def roi_pars(self):
+        d = ROIBase.roi_pars(self)
+        d['points'] = [json_point(p) for p in (self.pos, self.pradius)]
+        d['nverts'] = self.nverts
+        return d
 
 
 class ROIEllipse(ROIBase):
@@ -501,11 +548,18 @@ class ROIEllipse(ROIBase):
         dp = pos-c # rect.center()
         self.scitem.setRect(QRectF(c-dp, c+dp))
 
+    def roi_pars(self):
+        o = self.scitem.rect()
+        d = ROIBase.roi_pars(self)
+        d['points'] = [json_point(p) for p in (o.topLeft(), o.bottomRight())]  # list(o.getCoords())
+        return d
+
 
 class ROICircle(ROIEllipse):
     def __init__(self, **kwa):
-        self.roi_type = CIRCLE
         ROIEllipse.__init__(self, **kwa)
+        self.roi_type = CIRCLE
+        self.roi_name = dict_roi_type_name[self.roi_type]
 
 
     def move_at_add(self, pos, left_is_pressed=False):
@@ -584,6 +638,11 @@ class ROIArch(ROIBase):
         if clicknum > 2:
            self.is_finished = True
         return self.is_finished
+
+    def roi_pars(self):
+        d = ROIBase.roi_pars(self)
+        d['points'] = [json_point(p) for p in (self.pos, self.v1, self.v2)]
+        return d
 
 
 def create_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
