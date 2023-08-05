@@ -218,6 +218,10 @@ class ROIBase():
                 }
                 #'angle_deg': self.scitem.rotation(),
 
+    def set_from_roi_pars(self, d):
+        logging.warning('ROIBase.set_from_roi_pars - dict of roi parameter NEEEDS TO BE RE-EMPLEMENTED IN DERIVED SUBCLASS')
+        return False
+
 
 class ROIPixel(ROIBase):
     def __init__(self, **kwa):
@@ -248,6 +252,11 @@ class ROIPixel(ROIBase):
         d = ROIBase.roi_pars(self)
         d['points'] = [json_point_int(self.pos),]
         return d
+
+    def set_from_roi_pars(self, d):
+        logger.info('ROIPixel.set_from_roi_pars dict: %s' % str(d))
+        self.add_to_scene() # x,y = d['points'][0]
+        return True
 
 
 class ROIPixGroup(ROIBase):
@@ -328,6 +337,12 @@ class ROIPixGroup(ROIBase):
         d['points'] = [json_point_int(p) for p in self.pixpos]
         return d
 
+    def set_from_roi_pars(self, d):
+        logger.info('ROIPixGroup.set_from_roi_pars dict: %s' % str(d))
+        for x,y in d['points']:
+            self.add_to_scene(pos=QPoint(x,y))
+        return True
+
 
 class ROILine(ROIBase):
 
@@ -356,6 +371,12 @@ class ROILine(ROIBase):
         d['points'] = [json_point(p) for p in (o.p1(), o.p2())]
         return d
 
+    def set_from_roi_pars(self, d):
+        logger.info('ROILine.set_from_roi_pars dict: %s' % str(d))
+        p1, p2 = [QPointF(*xy) for xy in d['points']]
+        self.add_to_scene(pos=p1, line=QLineF(p1, p2))
+        return True
+
 
 class ROIRect(ROIBase):
     def __init__(self, **kwa):
@@ -383,6 +404,12 @@ class ROIRect(ROIBase):
         d = ROIBase.roi_pars(self)
         d['points'] = [json_point(p) for p in (o.topLeft(), o.bottomRight())]  #  list(o.getCoords())
         return d
+
+    def set_from_roi_pars(self, d):
+        logger.info('ROIRect.set_from_roi_pars dict: %s' % str(d))
+        p1, p2 = [QPointF(*xy) for xy in d['points']]
+        self.add_to_scene(pos=p1, rect=QRectF(p1, p2))
+        return True
 
 
 def rect_to_square(rect, pos):
@@ -458,6 +485,12 @@ class ROIPolygon(ROIBase):
         d['points'] = [json_point(p) for p in points]
         return d
 
+    def set_from_roi_pars(self, d):
+        logger.info('ROIPolygon.set_from_roi_pars dict: %s' % str(d))
+        pxy = [QPointF(*xy) for xy in d['points']]
+        self.add_to_scene(pos=pxy[0], poly=QPolygonF(pxy))
+        return True
+
 
 class ROIPolyreg(ROIBase): #ROIPolygon):
     def __init__(self, **kwa):
@@ -471,7 +504,8 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
     def add_to_scene(self, pos=None, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
         """Adds QGraphicsPolygonItem to scene"""
         t = self.tolerance
-        poly = QPolygonF(regular_polygon(self.pos, rx=t, ry=t, npoints=self.nverts)) # astart=0, aspan=360
+        poly = QPolygonF(regular_polygon(self.pos, rx=t, ry=t, npoints=self.nverts)) if poly is None\
+               else poly  # astart=0, aspan=360
         self.scitem = QGraphicsPolygonItem(poly)
         ROIBase.add_to_scene(self, pen=pen, brush=brush)
 
@@ -517,7 +551,20 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         d = ROIBase.roi_pars(self)
         d['points'] = [json_point(p) for p in (self.pos, self.pradius)]
         d['nverts'] = self.nverts
+        d['radius'] = self.radius
+        d['angle'] = self.angle
         return d
+
+    def set_from_roi_pars(self, d):
+        logger.info('ROIPolyreg.set_from_roi_pars dict: %s' % str(d))
+        pos, pradius = [QPointF(*xy) for xy in d['points']]
+        nverts = self.nverts = d['nverts']
+        radius = self.radius = d['radius']
+        angle  = self.angle  = d['angle']
+        poly = QPolygonF(regular_polygon(pos, rx=radius, ry=radius, npoints=nverts, astart=angle))
+        self.add_to_scene(pos=pos, poly=poly)
+        return True
+
 
 
 class ROIEllipse(ROIBase):
@@ -554,13 +601,18 @@ class ROIEllipse(ROIBase):
         d['points'] = [json_point(p) for p in (o.topLeft(), o.bottomRight())]  # list(o.getCoords())
         return d
 
+    def set_from_roi_pars(self, d):
+        logger.info('ROIEllipse.set_from_roi_pars dict: %s' % str(d))
+        p1, p2 = [QPointF(*xy) for xy in d['points']]
+        self.add_to_scene(pos=p1, rect=QRectF(p1, p2))
+        return True
+
 
 class ROICircle(ROIEllipse):
     def __init__(self, **kwa):
         ROIEllipse.__init__(self, **kwa)
         self.roi_type = CIRCLE
         self.roi_name = dict_roi_type_name[self.roi_type]
-
 
     def move_at_add(self, pos, left_is_pressed=False):
         logger.debug('ROIEllipse.move_at_add')
@@ -601,9 +653,11 @@ class ROIArch(ROIBase):
         elif clicknum == 3: self.set_p2(p)
 
     def set_p1(self, p):
+        self.p1 = p
         self.v1, self.r1, self.a1, self.x1, self.y1 = self.point_vraxy(p)
 
     def set_p2(self, p):
+        self.p2 = p
         self.v2, self.r2, self.a2, self.x2, self.y2 = self.point_vraxy(p)
 
     def path(self):
@@ -641,8 +695,19 @@ class ROIArch(ROIBase):
 
     def roi_pars(self):
         d = ROIBase.roi_pars(self)
-        d['points'] = [json_point(p) for p in (self.pos, self.v1, self.v2)]
+        d['points'] = [json_point(p) for p in (self.pos, self.p1, self.p2)]
         return d
+
+    def set_from_roi_pars(self, d):
+        logger.info('ROIEllipse.set_from_roi_pars dict: %s' % str(d))
+        p0, p1, p2 = [QPointF(*xy) for xy in d['points']]
+        self.add_to_scene(pos=p0)
+        self.set_p1(p1)
+        self.set_p2(p2)
+        self.clicknum = 3
+        self.is_finished = True
+        self.scitem.setPath(self.path())
+        return True
 
 
 def create_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):

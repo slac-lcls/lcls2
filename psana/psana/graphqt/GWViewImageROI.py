@@ -272,6 +272,15 @@ class GWViewImageROI(GWViewImage):
             self.remove_roi(o)
 
 
+    def delete_all_roi(self):
+        """delete all ROIs"""
+        logger.debug('delete_all_roi')
+        sc = self.scene()
+        for o in self.list_of_rois:
+            sc.removeItem(o.scitem)
+        self.list_of_rois = []
+
+
     def cancel_add_roi(self):
         """cancel of adding item to scene"""
         o = self.roi_active
@@ -369,8 +378,24 @@ class GWViewImageROI(GWViewImage):
 
 
     def load_parameters_from_file(self, fname=FNAME_DEF):
-        d = self.dict_roi_pars = load_dict_from_json_file(fname)
+        d = load_dict_from_json_file(fname)
         logger.info('GWViewImageROI.load_parameters_from_file %s\n%s' % (fname, info_dict(d)))
+        self.set_rois_from_dict(d)
+
+
+    def set_rois_from_dict(self, dtot):
+        logger.debug('GWViewImageROI.set_rois_from_dict\n%s' % info_dict(dtot))
+        self.delete_all_roi()
+        for k,d in dtot.items():
+            logger.info('XXX set roi %4s for dict: %s' % (k,d))
+            roi_type =d['roi_type']
+            xy = d['points'][0]
+            o = roiu.create_roi(roi_type, view=self, pos=QPointF(*xy), is_busy_iscpos=False)
+            if o is None:
+                logger.warning('ROI of type %d is undefined' % self.roi_type)
+                continue
+            if o.set_from_roi_pars(d):
+                self.list_of_rois.append(o)
 
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
