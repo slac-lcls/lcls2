@@ -19,7 +19,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2019-01-25 by Mikhail Dubrovin
 """
-#--------------------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -40,7 +39,6 @@ from psdaq.control_gui.CGDaqControl import daq_control, DaqControlEmulator, daq_
 from psdaq.control_gui.QWDialog import QWDialog
 from psdaq.control_gui.CGWConfigSelect import CGWConfigSelect
 
-#--------------------
 char_expand  = u' \u25BC' # down-head triangle
 
 class CGWMainConfiguration(QGroupBox):
@@ -58,13 +56,13 @@ class CGWMainConfiguration(QGroupBox):
         self.but_type = QPushButton('Select %s' % char_expand)
         self.but_edit = QPushButton('Edit')
 
-        self.hbox1 = QHBoxLayout() 
+        self.hbox1 = QHBoxLayout()
         self.hbox1.addWidget(self.lab_type)
-        self.hbox1.addWidget(self.but_type) 
+        self.hbox1.addWidget(self.but_type)
         self.hbox1.addStretch(1)
         self.hbox1.addWidget(self.but_edit, 0, Qt.AlignCenter)
 
-        self.vbox = QVBoxLayout() 
+        self.vbox = QVBoxLayout()
         self.vbox.addLayout(self.hbox1)
 
         self.setLayout(self.vbox)
@@ -84,20 +82,17 @@ class CGWMainConfiguration(QGroupBox):
 
         self.set_buts_enabled()
 
-#--------------------
 
     def set_tool_tips(self):
-        #self.setToolTip('Configuration') 
+        #self.setToolTip('Configuration')
         self.but_edit.setToolTip('Edit configuration dictionary.')
-        self.but_type.setToolTip('Select configuration type.') 
+        self.but_type.setToolTip('Select configuration type.')
 
-#--------------------
 
     def set_buts_enabled(self):
         self.but_type.setEnabled(cp.s_state in ('reset','unallocated','allocated','connected'))
         self.but_edit.setEnabled(True)
 
-#--------------------
 
     def set_style(self):
         from psdaq.control_gui.Styles import style
@@ -111,9 +106,8 @@ class CGWMainConfiguration(QGroupBox):
         #self.setMinimumSize(725,360)
         #self.setFixedSize(750,270)
         #self.setMaximumWidth(800)
- 
-#--------------------
- 
+
+
     def inst_configdb(self, msg=''):
         uris = getattr(cp.cgwmain, 'uris', URI_CONFIGDB)
         inst = getattr(cp, 'inst', None)
@@ -123,7 +117,6 @@ class CGWMainConfiguration(QGroupBox):
         logger.debug('%sconnect to configdb(uris=%s, inst=%s, user=%s, password=...)' % (msg, uris, inst, user))
         return inst, get_configdb(uri=uris, hutch=inst, create=False, root=ROOT_CONFIGDB, user=user, password=pwd)
 
-#--------------------
 
     def save_dictj_in_db(self, dictj, msg=''):
         logger.debug('%ssave_dictj_in_db' % msg)
@@ -143,14 +136,13 @@ class CGWMainConfiguration(QGroupBox):
                 logger.debug('save_dictj_in_db new_key: %d' % new_key)
             except ValueError as err:
                 logger.error('ValueError: %s' % err)
-            except Exception as err:            
+            except Exception as err:
                 logger.error('Exception: %s' % err)
 
         else:
             logger.warning('Saving of configuration in DB is cancelled...')
 
-#--------------------
- 
+
     def on_but_type(self):
         #logger.debug('on_but_type')
         inst, confdb = self.inst_configdb('on_but_type: ')
@@ -167,14 +159,13 @@ class CGWMainConfiguration(QGroupBox):
         if selected in (None, self.type_old): return
 
         rv = daq_control().setConfig(selected)
-        if rv is None: 
+        if rv is None:
             self.set_config_type(selected)
         else:
             logger.error('setConfig("%s"): %s' % (selected,rv))
             self.set_config_type('error')
 
-#--------------------
- 
+
     def set_config_type(self, config_type):
 
         cfgtype = config_type if config_type in ('error','init') else cp.s_cfgtype
@@ -187,21 +178,17 @@ class CGWMainConfiguration(QGroupBox):
         self.type_old = cfgtype
         self.set_buts_enabled()
 
-#--------------------
- 
+
     def set_but_type_text(self, txt='Select'): self.but_type.setText('%s %s' % (txt, char_expand))
     #def set_but_dev_text (self, txt='Select'): self.but_dev .setText('%s %s' % (txt, char_expand))
 
     def but_type_text(self): return str(self.but_type.text()).split(' ')[0] # 'NOBEAM' or 'BEAM'
     #def but_dev_text (self): return str(self.but_dev .text()).split(' ')[0] # 'testdev0'
 
-#--------------------
-
     def cfgtype_and_device(self):
         return self.cfgtype_edit, self.device_edit #self.but_dev_text()
 
-#--------------------
- 
+
     """
     def on_but_dev(self):
         #logger.debug('on_but_dev')
@@ -220,25 +207,7 @@ class CGWMainConfiguration(QGroupBox):
 
         self.set_buts_enabled()
     """
-#--------------------
- 
-#    def on_box_seq(self, ind):
-#        selected = str(self.box_seq.currentText())
-#        msg = 'selected ind:%d %s' % (ind,selected)
-#        logger.debug(msg)
 
-#--------------------
- 
-#    def on_cbx_seq(self, ind):
-#        #if self.cbx.hasFocus():
-#        cbx = self.cbx_seq
-#        tit = cbx.text()
-#        #self.cbx_runc.setStyleSheet(style.styleGreenish if cbx.isChecked() else style.styleYellowBkg)
-#        msg = 'Check box "%s" is set to %s' % (tit, cbx.isChecked())
-#        logger.info(msg)
-
-#--------------------
- 
     def select_config_type_and_dev(self):
 
         wd = CGWConfigSelect(parent=self, type_def=self.but_type_text())
@@ -261,8 +230,7 @@ class CGWMainConfiguration(QGroupBox):
 
         return cfgtype, dev
 
-#--------------------
- 
+
     def select_configuration_dict_to_edit(self):
         logger.debug('select_configuration_dict_to_edit')
         resp = self.select_config_type_and_dev()
@@ -288,8 +256,7 @@ class CGWMainConfiguration(QGroupBox):
 
         return self.config
 
-#--------------------
- 
+
     def on_but_edit(self):
         logger.debug('on_but_edit')
         #if self.w_edit is None:
@@ -306,8 +273,7 @@ class CGWMainConfiguration(QGroupBox):
             logger.debug('Close configuration editor window')
             self.w_edit.close()
 
-#--------------------
- 
+
     def closeEvent(self, e):
         logger.debug('CGWMainConfiguration.closeEvent')
         if cp.cgwconfigeditor is not None:
@@ -315,8 +281,7 @@ class CGWMainConfiguration(QGroupBox):
         QGroupBox.closeEvent(self, e)
         cp.cgwmainconfiguration = None
 
-#--------------------
- 
+
 if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
@@ -330,4 +295,4 @@ if __name__ == "__main__":
     w.show()
     app.exec_()
 
-#--------------------
+# EOF
