@@ -1,4 +1,4 @@
-#--------------------
+
 """
 :py:class:`CGWMainConfiguration` - widget for configuration
 ============================================================================================
@@ -150,6 +150,8 @@ class CGWMainConfiguration(QGroupBox):
         if not list_of_aliases:
             list_of_aliases = self.list_of_aliases # ['NOBEAM', 'BEAM']
             logger.warning('List of configdb-s IS EMPTY... Use default: %s' % str(list_of_aliases))
+        else:
+            self.list_of_aliases = list_of_aliases
 
         selected = popup_select_item_from_list(self.but_type, list_of_aliases, dx=-46, dy=-33) #, use_cursor_pos=True)
 
@@ -162,11 +164,14 @@ class CGWMainConfiguration(QGroupBox):
         if rv is None:
             self.set_config_type(selected)
         else:
-            logger.error('setConfig("%s"): %s' % (selected,rv))
+            logger.error('setConfig("%s"): %s' % (selected, rv))
             self.set_config_type('error')
 
 
     def set_config_type(self, config_type):
+        logger.debug('set_config_type %s' % config_type\
+                    + '\n  cp.s_cfgtype: %s type_old: %s list_of_aliases: %s' %\
+                      (cp.s_cfgtype, self.type_old, str(self.list_of_aliases)))
 
         cfgtype = config_type if config_type in ('error','init') else cp.s_cfgtype
 
