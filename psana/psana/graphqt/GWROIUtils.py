@@ -517,7 +517,6 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
     def move_at_add(self, scpos, left_is_pressed=False):
         logger.debug('ROILine.move_at_add')
         d, x, y = self.polyreg_dxy(scpos)
-        self.pradius = QPointF(x, y)
         angle = math.degrees(math.atan2(y, x)) if self.angle is None else self.angle
         r = math.sqrt(x*x + y*y) if self.radius is None else self.radius
         if self.scpos_rad is not None:
@@ -529,6 +528,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
     def set_radius_and_angle(self, scpos):
         self.scpos_rad = scpos
         d, x, y = self.polyreg_dxy(scpos)
+        self.pradius = QPointF(x, y)
         self.radius = math.sqrt(x*x + y*y)
         self.angle = math.degrees(math.atan2(y, x))
 
@@ -561,6 +561,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         nverts = self.nverts = d['nverts']
         radius = self.radius = d['radius']
         angle  = self.angle  = d['angle']
+        self.pradius = pradius
         poly = QPolygonF(regular_polygon(pos, rx=radius, ry=radius, npoints=nverts, astart=angle))
         self.add_to_scene(pos=pos, poly=poly)
         return True
