@@ -137,7 +137,9 @@ class GWViewImageROI(GWViewImage):
         #self.mid_is_pressed   = e.button() == Qt.MidButton
 
         if not self.left_is_pressed:
-            logging.warning('USE LEFT MOUSE BUTTON ONLY !!!')
+            logging.warning('USE LEFT MOUSE BUTTON ONLY !!! - other buttons finishes input or edition')
+            self.finish()
+            return
 
         if   self.mode_type < roiu.ADD: return
         elif self.mode_type & roiu.ADD:    self.on_press_add(e)
@@ -233,16 +235,20 @@ class GWViewImageROI(GWViewImage):
         self.roi_active = self.one_roi_at_point(self.scene_pos(e))
 
 
-    def on_press_edit(self, e, color_edi=QCOLOR_EDI):
-        self.select_roi_edit(e, color_edi)
-        if self.roi_active is None:
-            logger.warning('ROI FOR EDIT IS NOT FOUND near scene point %s' % str(self.scene_pos(e)))
-            return
+    def deselect_any_edit(self):
         for o in self.list_of_rois:
             if o.scitem.pen().color() == QCOLOR_EDI:
                 o.hide_handles()
             if o.scitem.pen().color() != QCOLOR_DEF:
                 self.set_roi_color(o, QCOLOR_DEF)
+
+
+    def on_press_edit(self, e, color_edi=QCOLOR_EDI):
+        self.select_roi_edit(e, color_edi)
+        if self.roi_active is None:
+            logger.warning('ROI FOR EDIT IS NOT FOUND near scene point %s' % str(self.scene_pos(e)))
+            return
+        self.deselect_any_edit()
         self.set_roi_color(self.roi_active, QCOLOR_EDI)
         self.roi_active.show_handles()
 
