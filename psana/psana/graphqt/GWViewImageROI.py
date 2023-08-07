@@ -372,7 +372,7 @@ class GWViewImageROI(GWViewImage):
 
 
     def save_parameters_in_file(self, fname=FNAME_DEF):
-        d = {i:o.roi_pars() for i,o in enumerate(self.list_of_rois)}
+        d = {'ROI_%04d'%i:o.roi_pars() for i,o in enumerate(self.list_of_rois)}
         save_dict_in_json_file(d, fname)
         logger.info('GWViewImageROI.save_parameters_in_file %s\n%s' % (fname, info_dict(d)))
 
