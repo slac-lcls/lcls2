@@ -177,7 +177,7 @@ class SmdReaderManager(object):
         d_view, d_read = 0, 0
         cn_chunks = 0
         while not is_done:
-            logger.debug(f'TIMELINE SMD0 1. STARTCHUNK {time.monotonic()}', level=2)
+            logger.debug(f'TIMELINE 1. STARTCHUNK {time.monotonic()}', level=2)
             st_view, en_view, st_read, en_read = 0,0,0,0
 
             l1_size = 0
@@ -199,7 +199,7 @@ class SmdReaderManager(object):
                 
                 en_view = time.monotonic()
                 d_view += en_view - st_view
-                logger.debug(f'TIMELINE SMD0 2. DONECREATEVIEW {time.monotonic()}', level=2)
+                logger.debug(f'TIMELINE 2. DONECREATEVIEW {time.monotonic()}', level=2)
 
                 if self.got_events:
                     cn_chunks += 1
@@ -209,7 +209,7 @@ class SmdReaderManager(object):
                 st_read = time.monotonic()
                 self._get()
                 en_read = time.monotonic()
-                logger.debug(f'TIMELINE SMD0 3. DONEREAD {time.monotonic()}', level=2)
+                logger.debug(f'TIMELINE 3. DONEREAD {time.monotonic()}', level=2)
                 d_read += en_read - st_read
                 if not self.smdr.is_complete():
                     is_done = True
