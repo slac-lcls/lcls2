@@ -372,6 +372,12 @@ PGPDetectorApp::~PGPDetectorApp()
         cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
     }
 
+    if (m_drpPids)   delete [] m_drpPids;
+    if (m_resShmId)  delete [] m_resShmId;
+    if (m_inpShmId)  delete [] m_inpShmId;
+    if (m_resMqId)   delete [] m_resMqId;
+    if (m_inpMqId)   delete [] m_inpMqId;
+
     if (m_det)  delete m_det;
 
     try {
@@ -518,7 +524,11 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, m_pythonDrp, m_inpMqId,
+            // Python-DRP is disabled during calibrations
+            std::string config_alias = msg["body"]["config_alias"];
+            bool pythonDrp = config_alias != "CALIB" ? m_pythonDrp : false;
+
+            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, pythonDrp, m_inpMqId,
                                                           m_resMqId, m_inpShmId, m_resShmId, m_shmemSize);
             m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
@@ -530,7 +540,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                             std::ref(m_drp.tebContributor()));
 
-            std::string config_alias = msg["body"]["config_alias"];
             unsigned error = m_det->configure(config_alias, xtc, bufEnd);
             if (!error) {
                 json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());

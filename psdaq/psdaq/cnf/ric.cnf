@@ -17,7 +17,8 @@ groups = platform + ' 6' # + ' 7' + ' 6'
 hutch, user = ('tst', 'tstopr')
 auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
-cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+#cdb  = f'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'     # production  ConfigDb
+cdb  = f'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws'  # development ConfigDb
 
 #
 #  drp variables
@@ -118,7 +119,7 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576'},
- {host: 'drp-srcf-cmp043', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
+ {host: 'drp-srcf-cmp043', id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
@@ -165,10 +166,10 @@ procmgr_config = [
 # Run ~/lclsii/daq/runs/eb/toyP4pSvr.py to serve demo:claus:pv:image
 # {host: 'drp-srcf-cmp028', id:'tst_pv_0',    flags:'spux', env:epics_env, cmd:f'{pva_cmd0} -l 0x4 demo:claus:pv:image'},
 
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_6',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_7',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_6',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_7',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
 ]
 
 # HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)
