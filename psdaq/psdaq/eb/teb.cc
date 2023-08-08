@@ -1179,6 +1179,8 @@ int TebApp::_parseConnectionParams(const json& body)
   {
     logging::error("One or more DRPs have pebble buffer count > the common RoG's (%u)",
                    _prms.maxBuffers);
+    if (_prms.maxBuffers == 0)
+      logging::error("Are any detectors in the common RoG enabled?");
     rc = 1;
   }
 
