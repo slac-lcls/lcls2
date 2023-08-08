@@ -1189,16 +1189,21 @@ int DrpBase::setupTriggerPrimitives(const json& body)
 
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
     {
-        logging::error("%s:\n  Document '%s_0' not found in ConfigDb",
-                       __PRETTY_FUNCTION__, triggerConfig.c_str());
+        logging::error("%s:\n  Document '%s_0' not found in ConfigDb/%s",
+                       __PRETTY_FUNCTION__, triggerConfig.c_str(), configAlias.c_str());
         return -1;
     }
 
     bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
-    if (!buildAll && !top.HasMember(m_para.detName.c_str())) {
-        logging::warning("This DRP is not contributing trigger input data: "
-                         "'%s' not found in ConfigDb for %s",
-                         m_para.detName.c_str(), triggerConfig.c_str());
+
+    std::string buildDets("---");
+    if (top.HasMember("buildDets"))
+        buildDets = top["buildDets"].GetString();
+
+    if (!(buildAll || buildDets.find(m_para.detName))) {
+        logging::info("This DRP is not contributing trigger input data: "
+                      "buildAll is False and '%s' was not found in ConfigDb/%s/%s_0",
+                      m_para.detName.c_str(), configAlias.c_str(), triggerConfig.c_str());
         m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
         m_triggerPrimitive = nullptr;
         m_tPrms.maxInputSize = sizeof(Pds::EbDgram); // Revisit: 0 is bad
