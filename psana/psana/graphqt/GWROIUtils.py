@@ -128,7 +128,7 @@ def size_points_on_scene(view, rsize):
     rx, ry = rsize/t.m11(), rsize/t.m22()
     return QPointF(rx,0), QPointF(0,ry)
 
-def angle_points(p0, p1):
+def angle_between_points(p0, p1):
     d = p1 - p0
     return math.degrees(math.atan2(d.y(), d.x()))
 
@@ -449,6 +449,7 @@ class ROIRect(ROIBase):
     def __init__(self, **kwa):
         self.roi_type = RECT
         ROIBase.__init__(self, **kwa)
+        self.angle = 0
 
     def add_to_scene(self, pos=None, rect=None, pen=None, brush=None, angle_deg=0):
         """Adds QGraphicsRectItem to scene"""
@@ -457,7 +458,9 @@ class ROIRect(ROIBase):
             rect = QRectF(self.pos, QSizeF(t,t))
         item = self.scitem = QGraphicsRectItem(QRectF(rect))
         item.setTransformOriginPoint(item.rect().topLeft())  # center()
-        if angle_deg != 0: item.setRotation(angle_deg)
+        if angle_deg != 0:
+            self.angle = angle_deg
+            item.setRotation(angle_deg)
         ROIBase.add_to_scene(self, pen=pen, brush=brush)
 
     def move_at_add(self, pos, left_is_pressed=False):
@@ -469,13 +472,14 @@ class ROIRect(ROIBase):
     def roi_pars(self):
         o = self.scitem.rect()
         d = ROIBase.roi_pars(self)
+        d['angle'] = self.angle
         d['points'] = [json_point(p) for p in (o.topLeft(), o.bottomRight())]  #  list(o.getCoords())
         return d
 
     def set_from_roi_pars(self, d):
         logger.info('ROIRect.set_from_roi_pars dict: %s' % str(d))
         p1, p2 = [QPointF(*xy) for xy in d['points']]
-        self.add_to_scene(pos=p1, rect=QRectF(p1, p2))
+        self.add_to_scene(pos=p1, rect=QRectF(p1, p2), angle_deg=d['angle'])
         return True
 
     def show_handles(self):
@@ -490,15 +494,17 @@ class ROIRect(ROIBase):
 
     def set_point(self, n, p):
         logging.debug('ROIRect.set_point - set point number: %d to position: %s' % (n, str(p)))
-        r = self.scitem.rect()
         h0, h1, h2 = self.list_of_handles
+        r = self.scitem.rect()
         self.scitem.setTransformOriginPoint(r.topLeft())
         pt = self.scitem.mapFromScene(p)
         if n==0:
             r.moveTo(pt)
             h0.set_handle_pos(pt)
         elif n==1: r.setBottomRight(pt)
-        elif n==2: self.scitem.setRotation(angle_points(r.topLeft(), p))
+        elif n==2:
+            self.angle = angle_between_points(r.topLeft(), p)
+            self.scitem.setRotation(self.angle)
         else: return
         self.scitem.setRect(r)
         h1.set_handle_pos(r.bottomRight())
@@ -529,46 +535,28 @@ class ROISquare(ROIRect):
         o = self.scitem.rect()
         self.list_of_handles = [
             select_handle(TRANSLATE, view=self.view, roi=self, pos=o.topLeft(), poinum=0),
-            select_handle(ROTATE,    view=self.view, roi=self, pos=o.topRight(), poinum=1),
+            select_handle(ROTATE,    view=self.view, roi=self, pos=o.bottomRight(), poinum=1),
         ]
         self.add_handles_to_scene()
 
-
     def set_point(self, n, p):
-        logging.debug('ROIRect.set_point - set point number: %d to position: %s' % (n, str(p)))
-        h0, h1, h2 = self.list_of_handles
+        logging.debug('ROISquare.set_point - set point number: %d to position: %s' % (n, str(p)))
+        h0, h1 = self.list_of_handles
         r = self.scitem.rect()
         self.scitem.setTransformOriginPoint(r.topLeft())
         pt = self.scitem.mapFromScene(p)
         if n==0:
             r.moveTo(pt)
             h0.set_handle_pos(pt)
-        elif n==1: r.setBottomRight(pt)
-        elif n==2: self.scitem.setRotation(angle_points(r.topLeft(), p))
-        else: return
-        self.scitem.setRect(r)
-        h1.set_handle_pos(r.bottomRight())
-        h2.set_handle_pos(r.topRight())
-
-
-
-
-    def set_point(self, n, p):
-        logging.debug('ROISquare.set_point - set point number: %d to position: %s' % (n, str(p)))
-        h0, h1 = self.list_of_handles
-        r = self.scitem.rect()
-        pt = self.scitem.mapFromScene(p)
-        if n==0:
-            r.moveTo(pt)
-            h0.set_handle_pos(pt)
-            self.scitem.setTransformOriginPoint(r.topLeft())
         elif n==1:
-            #self.scitem.setRotation(angle_points(r.topLeft(), p))
-            r.setTopRight(pt)
+            self.angle = angle_between_points(r.topLeft(), p) - 45
+            #logging.debug('rotation angle: %.2f' % self.angle)
+            self.scitem.setRotation(self.angle)
+            r.setBottomRight(pt)
         else: return
         sq = rect_to_square(r, r.bottomRight())
         self.scitem.setRect(sq)
-        h1.set_handle_pos(sq.topRight())
+        h1.set_handle_pos(sq.bottomRight())
 
 
 class ROIPolygon(ROIBase):
