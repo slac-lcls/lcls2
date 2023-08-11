@@ -18,14 +18,12 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2023-06-05 by Mikhail Dubrovin
 """
-#import sys
 
 import logging
 logger = logging.getLogger(__name__)
 
 import math # radians, cos, sin, ceil, pi
 import numpy as np
-
 
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication,\
      QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsLineItem, QGraphicsPolygonItem, QGraphicsPathItem
@@ -34,16 +32,14 @@ from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLin
 
 QCOLOR_DEF = QColor(Qt.yellow)
 QCOLOR_SEL = QColor('#ffeeaaee')
-#QCOLOR_EDI = QColor(Qt.magenta)
-QCOLOR_EDI = QColor(Qt.white)
+QCOLOR_EDI = QColor(Qt.white) # Qt.magenta
 QCOLOR_HID = QColor('#00eeaaee')
 QBRUSH_DEF = QBrush()
 QBRUSH_ROI = QBrush(QCOLOR_DEF, Qt.SolidPattern)
 QBRUSH_EDI = QBrush(QCOLOR_EDI, Qt.SolidPattern)
 QPEN_DEF   = QPen(QCOLOR_DEF, 1, Qt.SolidLine)  # Qt.DashLine
-QPEN_EDI   = QPen(QCOLOR_EDI, 1, Qt.SolidLine)  # Qt.DashLine
-QPEN_HID   = QPen(QCOLOR_HID, 1, Qt.SolidLine)  # Qt.DashLine
-#QPEN_DEF.setCosmetic(True)
+QPEN_EDI   = QPen(QCOLOR_EDI, 1, Qt.SolidLine)
+QPEN_HID   = QPen(QCOLOR_HID, 1, Qt.SolidLine)
 QPEN_EDI.setCosmetic(True)
 QPEN_HID.setCosmetic(True)
 
@@ -154,6 +150,14 @@ def json_point(p, prec=2):
     return round(p.x(), prec), round(p.y(), prec)
     #return  '(%.2f, %.2f)' % (p.x(), p.y())
 
+def rect_to_square(rect, pos):
+    dp = pos - rect.topLeft()
+    w,h = dp.x(), dp.y()
+    v = max(abs(w), abs(h))
+    w,h = math.copysign(v,w), math.copysign(v,h)
+    rect.setSize(QSizeF(w,h))
+    return rect
+
 
 class ROIBase():
     def __init__(self, **kwa):
@@ -189,6 +193,7 @@ class ROIBase():
         return self.view.scene()
 
     def add_to_scene(self, pos=None, pen=None, brush=None):
+        #self.pos = pos
         item = self.scitem
         item.setPen(self.pen if pen is None else pen)
         if self.roi_type != LINE:
@@ -197,10 +202,10 @@ class ROIBase():
 
     def move_at_add(self, pos, left_is_pressed=False):
         """pos (QPointF) - scene position of the mouse"""
-        logging.warning('ROIBase.move_at_add must be re-implemented in subclasses')
+        logging.debug('ROIBase.move_at_add to be re-implemented in subclasses, if necessary')
 
     def set_point_at_add(self, pos, clicknum):
-        logging.warning('ROIBase.set_point_at_add must be re-implemented in SOME of subclasses')
+        logging.debug('ROIBase.set_point_at_add must be re-implemented in SOME of subclasses')
 
     def is_last_point(self, scpos, clicknum):
         """Returns boolean answer if input is completed.
@@ -258,9 +263,6 @@ class ROIBase():
         logger.debug('handle_at_point - point %s: found handles, return [0]: %s' % (str(p), str(handles)))
         if handles in (None, []): return None
         return None if handles in (None, []) else handles[0]
-
-    def move_at_add(self, scpos, left_is_pressed):
-        logging.debug('ROIBase.move_at_add to be re-implemented, if necessary')
 
     def roi_pars(self):
         logging.debug('ROIBase.roi_pars - dict of roi parameters')
@@ -416,7 +418,7 @@ class ROILine(ROIBase):
         #self.scitem = self.scene().addLine(QLineF(line), pen, brush)
 
     def move_at_add(self, pos, left_is_pressed=False):
-        logger.debug('ROILine.move_at_add')
+        #logger.debug('ROILine.move_at_add')
         line = self.scitem.line()
         line.setP2(pos)
         self.scitem.setLine(line)
@@ -443,7 +445,7 @@ class ROILine(ROIBase):
         self.add_handles_to_scene()
 
     def set_point(self, n, p):
-        logging.debug('ROILine.set_point - set point number: %d to position: %s' % (n, str(p)))
+        #logging.debug('ROILine.set_point - set point number: %d to position: %s' % (n, str(p)))
         line = self.scitem.line()
         if   n==0: line.setP1(p)
         elif n==1: line.setP2(p)
@@ -470,7 +472,7 @@ class ROIRect(ROIBase):
         ROIBase.add_to_scene(self, pen=pen, brush=brush)
 
     def move_at_add(self, pos, left_is_pressed=False):
-        logger.debug('ROIRect.move_at_add')
+        #logger.debug('ROIRect.move_at_add')
         rect = self.scitem.rect()
         rect.setBottomRight(pos)
         self.scitem.setRect(rect)
@@ -499,7 +501,7 @@ class ROIRect(ROIBase):
         self.add_handles_to_scene()
 
     def set_point(self, n, p):
-        logging.debug('ROIRect.set_point - set point number: %d to position: %s' % (n, str(p)))
+        #logging.debug('ROIRect.set_point - set point number: %d to position: %s' % (n, str(p)))
         h0, h1, h2 = self.list_of_handles
         r = self.scitem.rect()
         self.scitem.setTransformOriginPoint(r.topLeft())
@@ -517,15 +519,6 @@ class ROIRect(ROIBase):
         h2.set_handle_pos(r.topRight())
 
 
-def rect_to_square(rect, pos):
-    dp = pos - rect.topLeft()
-    w,h = dp.x(), dp.y()
-    v = max(abs(w), abs(h))
-    w,h = math.copysign(v,w), math.copysign(v,h)
-    rect.setSize(QSizeF(w,h))
-    return rect
-
-
 class ROISquare(ROIRect):
     def __init__(self, **kwa):
         ROIRect.__init__(self, **kwa)
@@ -533,7 +526,7 @@ class ROISquare(ROIRect):
         self.roi_name = dict_roi_type_name[self.roi_type]
 
     def move_at_add(self, pos, left_is_pressed=False):
-        logger.debug('ROISquare.move_at_add')
+        #logger.debug('ROISquare.move_at_add')
         self.scitem.setRect(rect_to_square(self.scitem.rect(), pos))
 
     def show_handles(self):
@@ -546,7 +539,7 @@ class ROISquare(ROIRect):
         self.add_handles_to_scene()
 
     def set_point(self, n, p):
-        logging.debug('ROISquare.set_point - set point number: %d to position: %s' % (n, str(p)))
+        #logging.debug('ROISquare.set_point - set point number: %d to position: %s' % (n, str(p)))
         h0, h1 = self.list_of_handles
         r = self.scitem.rect()
         self.scitem.setTransformOriginPoint(r.topLeft())
@@ -634,25 +627,26 @@ class ROIPolygon(ROIBase):
         self.add_handles_to_scene()
 
     def set_point(self, n, p):
-        logging.debug('ROIPolygon.set_point - set point number: %d to position: %s' % (n, str(p)))
+        #logging.debug('ROIPolygon.set_point - set point number: %d to position: %s' % (n, str(p)))
         poly = self.scitem.polygon()
         if n>poly.size(): return
         poly.replace(n, p)
         self.scitem.setPolygon(poly)
 
 
-class ROIPolyreg(ROIBase): #ROIPolygon):
+class ROIPolyreg(ROIBase):
     def __init__(self, **kwa):
         self.roi_type = POLYREG
         ROIBase.__init__(self, **kwa)
-        self.scpos_rad = None
-        self.radius = None
-        self.angle = None
-        self.nverts = 3
+        self.radius = None # kwa.get('radius', 5.0)
+        self.angle  = None # kwa.get('angle', 0)
+        self.nverts = 3 # kwa.get('angle', 3)
         self.clicknum = None
+        self.scpos_rad = None
 
     def add_to_scene(self, pos=None, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
         """Adds QGraphicsPolygonItem to scene"""
+        self.pos = pos
         t = self.tolerance
         poly = QPolygonF(regular_polygon(self.pos, rx=t, ry=t, npoints=self.nverts)) if poly is None\
                else poly  # astart=0, aspan=360
@@ -665,7 +659,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         return d, x, y
 
     def move_at_add(self, scpos, left_is_pressed=False):
-        logger.debug('ROILine.move_at_add')
+        #logger.debug('ROILine.move_at_add')
         d, x, y = self.polyreg_dxy(scpos)
         angle = math.degrees(math.atan2(y, x)) if self.angle is None else self.angle
         r = math.sqrt(x*x + y*y) if self.radius is None else self.radius
@@ -701,7 +695,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         d['points'] = [json_point(p) for p in (self.pos, self.pradius)]
         d['nverts'] = self.nverts
         d['radius'] = self.radius
-        d['angle'] = self.angle
+        d['angle']  = self.angle
         return d
 
     def set_from_roi_pars(self, d):
@@ -726,7 +720,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
 
 
     def set_point(self, n, p):
-        logging.debug('ROIPolyreg.set_point - set point number: %d to position: %s' % (n, str(p)))
+        #logging.debug('ROIPolyreg.set_point - set point number: %d to position: %s' % (n, str(p)))
         h0, h1 = self.list_of_handles
         if n==0:
             self.pos = p   #r.moveTo(p)  # rect.moveCenter(p)
@@ -762,9 +756,8 @@ class ROIEllipse(ROIBase):
         #self.scitem = self.scene().addEllipse(QRectF(rect), pen, brush)
 
     def move_at_add(self, pos, left_is_pressed=False):
-        logger.debug('ROIEllipse.move_at_add')
+        #logger.debug('ROIEllipse.move_at_add')
         c = self.pos
-        #rect = self.scitem.rect()
         dp = pos-c # rect.center()
         self.scitem.setRect(QRectF(c-dp, c+dp))
 
@@ -791,7 +784,7 @@ class ROIEllipse(ROIBase):
         self.add_handles_to_scene()
 
     def set_point(self, n, p):
-        logging.debug('ROIEllipse.set_point - set point number: %d to position: %s' % (n, str(p)))
+        #logging.debug('ROIEllipse.set_point - set point number: %d to position: %s' % (n, str(p)))
         h0, h1, h2 = self.list_of_handles
         r = self.scitem.rect()
         self.scitem.setTransformOriginPoint(r.center())
@@ -815,7 +808,7 @@ class ROICircle(ROIEllipse):
         self.roi_name = dict_roi_type_name[self.roi_type]
 
     def move_at_add(self, pos, left_is_pressed=False):
-        logger.debug('ROIEllipse.move_at_add')
+        #logger.debug('ROIEllipse.move_at_add')
         c = self.pos # center
         d = pos-c
         d = max(d.x(), d.y())
@@ -832,7 +825,7 @@ class ROICircle(ROIEllipse):
         self.add_handles_to_scene()
 
     def set_point(self, n, p):
-        logging.debug('ROICircle.set_point - set point number: %d to position: %s' % (n, str(p)))
+        #logging.debug('ROICircle.set_point - set point number: %d to position: %s' % (n, str(p)))
         h0, h1 = self.list_of_handles
         r = self.scitem.rect()
         if n==0:
@@ -915,7 +908,7 @@ class ROIArch(ROIBase):
 #        return QRectF(p-v,p+v)
 
     def move_at_add(self, p, left_is_pressed=False):
-        logger.debug('ROIArch.move_at_add')
+        #logger.debug('ROIArch.move_at_add')
         if (p-self.pos).manhattanLength() < self.tolerance: return
         if   self.clicknum == 1: self.set_p1(p)
         elif self.clicknum == 2: self.set_p2(p)
@@ -953,7 +946,7 @@ class ROIArch(ROIBase):
         self.add_handles_to_scene()
 
     def set_point(self, n, p):
-        logging.debug('ROIArch.set_point - set point number: %d to position: %s' % (n, str(p)))
+        #logging.debug('ROIArch.set_point - set point number: %d to position: %s' % (n, str(p)))
         h0, h1, h2 = self.list_of_handles
         if n==0:
             d = p - self.pos
@@ -1202,15 +1195,5 @@ def select_handle(htype, roi=None, pos=QPointF(1,1), **kwa):
        logger.info('create new handle %s in scene position x: %.1f y: %.1f' %\
                    (hname, pos.x(), pos.y()))
     return o
-
-
-#def qtransform_rotate_around_center(center=QPointF(0,0), angle_deg=20):
-#    return QTransform().translate(center.x(), center.y()).\
-#           rotate(angle_deg).\
-#           translate(-center.x(), -center.y())
-
-#        t = roiu.qtransform_rotate_around_center(center=r0.center(), angle_deg=20)
-#        p1 = t.mapToPolygon(QRect(r0))
-#        self.scitem = self.scene().addRect(QRectF(rect), pen, brush)
 
 # EOF

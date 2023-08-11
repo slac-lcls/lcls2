@@ -12,7 +12,6 @@ sys.path.append('..') # use relative path from parent dir
 import psana.pyalgos.generic.NDArrGenerators as ag
 import numpy as np
 
-
 class TestGWViewImageROI(GWViewImageROI):
 
     def KEY_USAGE(self): return 'Keys:'\
@@ -36,14 +35,12 @@ class TestGWViewImageROI(GWViewImageROI):
         GWViewImageROI.__init__(self, parent, arr, coltab, origin, scale_ctl, show_mode, signal_fast)
         print(self.KEY_USAGE())
 
-
     def test_mouse_move_event_reception(self, e):
         """Overrides method from GWView"""
         p = self.mapToScene(e.pos())
         ix, iy, v = self.cursor_on_image_pixcoords_and_value(p)
         fv = 0 if v is None else v
         self.setWindowTitle('TestGWViewImageROI x=%d y=%d v=%s%s' % (ix, iy, '%.1f'%fv, 25*' '))
-
 
     def test_draw_shapes(self):
         """Test draw shapes"""
@@ -73,7 +70,6 @@ class TestGWViewImageROI(GWViewImageROI):
         itp0 = roiu.ROIEllipse(view=self).add_to_scene(r0)
         itp1 = roiu.ROIEllipse(view=self).add_to_scene(r0, angle_deg=-30, start_angle=-20, span_angle=300)
 
-
     def test_draw_rois(self):
         """Test ROI"""
         itroi1 = roiu.select_roi(roiu.PIXEL,   view=self, pen=roiu.QPEN_DEF).add_to_scene(pos=QPointF(20, 40))
@@ -86,7 +82,6 @@ class TestGWViewImageROI(GWViewImageROI):
         itroi8 = roiu.select_roi(roiu.CIRCLE,  view=self, pos=QPointF(20, 180)).add_to_scene()
         itroi9 = roiu.select_roi(roiu.ARCH,    view=self, pos=QPointF(20, 200)).add_to_scene()
 
-
     def test_draw_handles(self):
         """Test Handle"""
         ithc = roiu.select_handle(roiu.CENTER,    view=self, roi=None, pos=QPointF(50,20)).add_to_scene()
@@ -98,7 +93,6 @@ class TestGWViewImageROI(GWViewImageROI):
         ith1 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(230,20), shhand=1).add_to_scene()
         ith2 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(260,20), shhand=2).add_to_scene()
         ith3 = roiu.select_handle(roiu.OTHER,     view=self, roi=None, pos=QPointF(290,20), shhand=3).add_to_scene()
-
 
     def keyPressEvent(self, e):
         GWViewImageROI.keyPressEvent(self, e)
@@ -154,12 +148,14 @@ class TestGWViewImageROI(GWViewImageROI):
             self.load_parameters_from_file()
 
         elif ckey in roiu.roi_keys:
+            self.finish()
             i = roiu.roi_keys.index(ckey)
             self.roi_type = roiu.roi_types[i]
             self.roi_name = roiu.roi_names[i]
             logger.info('set roi_type: %d roi_name: %s' % (self.roi_type, self.roi_name))
 
         elif ckey in roiu.mode_keys:
+            self.finish()
             i = roiu.mode_keys.index(ckey)
             self.mode_type = roiu.mode_types[i]
             self.mode_name = roiu.mode_names[i]
@@ -169,7 +165,6 @@ class TestGWViewImageROI(GWViewImageROI):
             self.set_scale_control(scale_ctl=sc)
 
         logger.info(self.KEY_USAGE())
-
 
 def image_with_random_peaks(shape=(500, 500)):
     from psana.pyalgos.generic.NDArrUtils import info_ndarr
@@ -181,7 +176,6 @@ def image_with_random_peaks(shape=(500, 500)):
     peaks = ag.add_random_peaks(img, npeaks=50, amean=100, arms=50, wmean=1.5, wrms=0.3)
     ag.add_ring(img, amp=20, row=500, col=500, rad=300, sigma=50)
     return img
-
 
 def test_gfviewimageroi(tname):
     logger.info(sys._getframe().f_code.co_name)
@@ -235,11 +229,9 @@ def test_gfviewimageroi(tname):
     del w
     del app
 
-
 USAGE = '\nUsage: %s <tname>\n' % sys.argv[0].split('/')[-1]\
       + '\n'.join([s for s in inspect.getsource(test_gfviewimageroi).split('\n') \
                    if "tname ==" in s or 'GWViewImageROI' in s])  # s[9:]
-
 
 if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'

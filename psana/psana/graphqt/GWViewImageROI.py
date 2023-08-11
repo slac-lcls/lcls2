@@ -108,33 +108,15 @@ class GWViewImageROI(GWViewImage):
         self.tolerance = kwa.get('tolerance', 5.0)
         #self.set_style_focus()
 
-#    def set_style_focus(self):
-#        #    QGraphicsView::item:focus {
-#        self.style = """
-#            QGraphicsRectItem:focus {
-#                background: red;
-#                selection-background-color: green;
-#                border: 1px solid gray;}
-#            QGraphicsRectItem:focus {border-color: blue;}"""
-#        self.setStyleSheet(self.style)
-
-#    def paintEvent(self, e):
-#        print('XXX in paintEvent') # , dir(e))
-#        GWViewImage.paintEvent(self, e)
-
-
     def set_roi_and_mode(self, roi_type=roiu.NONE, mode_type=roiu.NONE):
         self.roi_type = roi_type
         self.roi_name = roiu.dict_mode_type_name[roi_type]
         self.mode_type = mode_type
         self.mode_name = roiu.dict_mode_type_name[mode_type]
 
-
     def mousePressEvent(self, e):
         GWViewImage.mousePressEvent(self, e)
-
         #logger.info('GWViewImageROI.mousePressEvent but=%d (1/2/4 = L/R/M) screen x=%.1f y=%.1f'%(e.button(), e.pos().x(), e.pos().y()))
-
         self.left_is_pressed  = e.button() == Qt.LeftButton
         self.right_is_pressed = e.button() == Qt.RightButton # Qt.MidButton
 
@@ -149,16 +131,14 @@ class GWViewImageROI(GWViewImage):
         elif self.mode_type & roiu.SELECT: self.on_press_select(e)
         elif self.mode_type & roiu.EDIT:   self.on_press_edit(e)
 
-
     def mouseMoveEvent(self, e):
         #logging.debug('mouseMoveEvent')
         GWViewImage.mouseMoveEvent(self, e)
         if   self.mode_type < roiu.ADD: return
         elif self.mode_type & roiu.ADD:    self.on_move_add(e)
         elif self.mode_type & roiu.REMOVE: self.on_move_remove(e)
-        elif self.mode_type & roiu.SELECT: self.on_move_select(e)
         elif self.mode_type & roiu.EDIT:   self.on_move_edit(e)
-
+        #elif self.mode_type & roiu.SELECT: self.on_move_select(e)
 
     def mouseReleaseEvent(self, e):
         GWViewImage.mouseReleaseEvent(self, e)
@@ -168,7 +148,6 @@ class GWViewImageROI(GWViewImage):
         elif self.mode_type & roiu.EDIT: self.handle_active = None
         self.left_is_pressed = False
         self.right_is_pressed = False
-
 
     def set_roi_color(self, roi=None, color=QCOLOR_DEF):
         """sets roi color, by default for self.roi_active sets QCOLOR_DEF"""
@@ -183,19 +162,14 @@ class GWViewImageROI(GWViewImage):
                 brush.setColor(color)
                 o.scitem.setBrush(brush)
 
-
     def reset_color_all_rois(self, color=QCOLOR_DEF):
         for o in self.list_of_rois:
             if o.scitem.pen().color() != color:
                 self.set_roi_color(o, color)
 
-
     def finish(self):
-        if self.mode_type & roiu.ADD:
-            self.finish_add_roi()
-        if self.mode_type & roiu.EDIT:
-            self.finish_edit_roi()
-
+        if self.mode_type & roiu.ADD:  self.finish_add_roi()
+        if self.mode_type & roiu.EDIT: self.finish_edit_roi()
 
     def finish_add_roi(self):
         """finish add_roi action on or in stead of last click, set poly at last non-closing click"""
@@ -204,11 +178,9 @@ class GWViewImageROI(GWViewImage):
            self.roi_active.finish_add_roi() # used in ROIPolygon
         self.roi_active = None
 
-
     def finish_edit_roi(self):
         self.set_roi_color()
         self.roi_active = None
-
 
     def rois_at_point(self, p):
         """retiurns list of ROI object found at QPointF p"""
@@ -216,7 +188,6 @@ class GWViewImageROI(GWViewImage):
         rois = [o for o in self.list_of_rois if o.scitem in items]
         logger.debug('rois_at_point - list of ROIs at point: %s' % str(rois))
         return rois
-
 
     def one_roi_at_point(self, p):
         rois = self.rois_at_point(p)
@@ -229,11 +200,9 @@ class GWViewImageROI(GWViewImage):
         else:
             return rois[0]
 
-
     def scene_pos(self, e):
         """scene position for mouse event"""
         return self.mapToScene(e.pos())
-
 
     def on_press_select(self, e, color_sel=QCOLOR_SEL):
         """select ROI on mouthPressEvent"""
@@ -243,21 +212,14 @@ class GWViewImageROI(GWViewImage):
         color = QCOLOR_DEF if o.scitem.pen().color() == color_sel else color_sel
         self.set_roi_color(o, color)
 
-
     def select_roi_edit(self, e, color_edi=QCOLOR_EDI):
         self.roi_active = self.one_roi_at_point(self.scene_pos(e))
-
 
     def deselect_any_edit(self):
         for o in self.list_of_rois:
             if o.scitem.pen().color() == QCOLOR_EDI:
                 o.hide_handles()
         self.reset_color_all_rois(color=QCOLOR_DEF)
-
-
-
-
-
 
 
     def on_press_edit(self, e):
@@ -279,13 +241,6 @@ class GWViewImageROI(GWViewImage):
         self.set_roi_color(self.roi_active, QCOLOR_EDI)
         self.roi_active.show_handles()
 
-
-
-
-
-
-
-
     def on_move_edit(self, e):
         #print('XXX on_move_edit', self.left_is_pressed, self.roi_active, self.handle_active)
         if not self.left_is_pressed\
@@ -293,16 +248,10 @@ class GWViewImageROI(GWViewImage):
         or self.handle_active is None: return
         self.handle_active.on_move(self.scene_pos(e))
 
-
-
-
-
-
     def remove_roi(self, o):
         """remove roi item from scene and from the list of rois."""
         self.scene().removeItem(o.scitem)
         self.list_of_rois.remove(o)
-
 
     def on_move_remove(self, e):
         """remove ROI on mouthPressEvent - a few ROIs might be removed"""
@@ -314,14 +263,12 @@ class GWViewImageROI(GWViewImage):
             for o in roisel:
                 self.remove_roi(o)
 
-
     def delete_selected_roi(self):
         """delete all ROIs selected/marked by QCOLOR_SEL"""
         roisel = [o for o in self.list_of_rois if o.scitem.pen().color() == QCOLOR_SEL]
         logger.debug('delete_selected_roi: %s' % str(roisel))
         for o in roisel:
             self.remove_roi(o)
-
 
     def delete_all_roi(self):
         """delete all ROIs"""
@@ -331,7 +278,6 @@ class GWViewImageROI(GWViewImage):
             self.remove_roi(o)
         #    sc.removeItem(o.scitem)
         #self.list_of_rois = []
-
 
     def cancel_add_roi(self):
         """cancel of adding item to scene"""
@@ -344,10 +290,8 @@ class GWViewImageROI(GWViewImage):
         #self.list_of_rois.remove(o)
         self.roi_active = None
 
-
     def on_press_remove(self, e):
         logger.info('GWViewImageROI.on_press_remove DEPRICATED - use SELECT then DELETE')
-
 
     def on_press_add(self, e):
         scpos = self.scene_pos(e)
@@ -365,7 +309,6 @@ class GWViewImageROI(GWViewImage):
             if self.roi_active.is_last_point(scpos, self.clicknum):
                 self.finish_add_roi()
 
-
     def pixel_is_removed(self, iscpos):
         #if self.mode_type & roiu.REMOVE:
         if self.roi_type == roiu.PIXEL:
@@ -374,7 +317,6 @@ class GWViewImageROI(GWViewImage):
                     self.remove_roi(o)
                     return True
         return False
-
 
     def add_roi(self, e):
         scpos = self.scene_pos(e)
@@ -396,11 +338,8 @@ class GWViewImageROI(GWViewImage):
         and self.roi_active.is_last_point(scpos, self.clicknum):
             self.finish_add_roi()
 
-
-
     def on_move_select(self, e):
         logger.debug('on_move_select TBD')
-
 
     def on_move_add(self, e):
         """Action on mouse move:
@@ -421,7 +360,6 @@ class GWViewImageROI(GWViewImage):
         else:
           self.roi_active.move_at_add(scpos, self.left_is_pressed)
 
-
     def on_release_add(self, e):
         """intended to simplify adding 2-point ROIs for LINE, RECT, SQUARE, ELLIPSE, CIRCLE as click-drug-release along with two clicks"""
         scpos = self.scene_pos(e)
@@ -436,18 +374,15 @@ class GWViewImageROI(GWViewImage):
             self.finish_add_roi()
         self._iscpos_press = None
 
-
     def save_parameters_in_file(self, fname=FNAME_DEF):
         d = {'ROI_%04d'%i:o.roi_pars() for i,o in enumerate(self.list_of_rois)}
         save_dict_in_json_file(d, fname)
         logger.info('GWViewImageROI.save_parameters_in_file %s\n%s' % (fname, info_dict(d)))
 
-
     def load_parameters_from_file(self, fname=FNAME_DEF):
         d = load_dict_from_json_file(fname)
         logger.info('GWViewImageROI.load_parameters_from_file %s\n%s' % (fname, info_dict(d)))
         self.set_rois_from_dict(d)
-
 
     def set_rois_from_dict(self, dtot):
         logger.debug('GWViewImageROI.set_rois_from_dict\n%s' % info_dict(dtot))
@@ -464,27 +399,53 @@ class GWViewImageROI(GWViewImage):
                 self.list_of_rois.append(o)
         #self.reset_color_all_rois(color=QCOLOR_DEF)
 
-
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
         """Input array is scailed by color table. If color table is None arr set as is."""
-
         GWViewImage.set_pixmap_from_arr(self, arr, set_def, amin, amax, frmin, frmax)
-
         image = self.qimage # QImage
         pixmap = self.qpixmap # QPixmap
-
         arr = ct.image_to_arrcolors(self.qimage, channels=4)
+        arrA = ct.pixmap_channel(self.qpixmap, channel=3)
+
 #        print(info_ndarr(arr, 'XXXX image_to_arrcolors:'))
 
 #        arrB = ct.pixmap_channel(self.qpixmap, channel=0)
 #        arrG = ct.pixmap_channel(self.qpixmap, channel=1)
 #        arrR = ct.pixmap_channel(self.qpixmap, channel=2)
-        arrA = ct.pixmap_channel(self.qpixmap, channel=3)
 
 #        print(info_ndarr(arrA, 'XXXX alpha channel'))
 
         #mask = pixmap.createMaskFromColor()
         #arr = pixmap_to_arrcolors(pixmap, channels=4)
+
+#    def set_style_focus(self):
+#        #    QGraphicsView::item:focus {
+#        self.style = """
+#            QGraphicsRectItem:focus {
+#                background: red;
+#                selection-background-color: green;
+#                border: 1px solid gray;}
+#            QGraphicsRectItem:focus {border-color: blue;}"""
+#        self.setStyleSheet(self.style)
+
+#    def paintEvent(self, e):
+#        print('XXX in paintEvent') # , dir(e))
+#        GWViewImage.paintEvent(self, e)
+
+#    def set_style_focus(self):
+#        #    QGraphicsView::item:focus {
+#        self.style = """
+#            QGraphicsRectItem:focus {
+#                background: red;
+#                selection-background-color: green;
+#                border: 1px solid gray;}
+#            QGraphicsRectItem:focus {border-color: blue;}"""
+#        self.setStyleSheet(self.style)
+
+#    def paintEvent(self, e):
+#        print('XXX in paintEvent') # , dir(e))
+#        GWViewImage.paintEvent(self, e)
+
 
 if __name__ == "__main__":
     import sys
