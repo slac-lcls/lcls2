@@ -35,9 +35,16 @@ from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLin
 QCOLOR_DEF = QColor(Qt.yellow)
 QCOLOR_SEL = QColor('#ffeeaaee')
 QCOLOR_EDI = QColor(Qt.magenta)
-QPEN_DEF   = QPen(QCOLOR_DEF, 1, Qt.SolidLine)  # Qt.DashLine
+QCOLOR_HID = QColor('#00eeaaee')
 QBRUSH_DEF = QBrush()
 QBRUSH_ROI = QBrush(QCOLOR_DEF, Qt.SolidPattern)
+QBRUSH_EDI = QBrush(QCOLOR_EDI, Qt.SolidPattern)
+QPEN_DEF   = QPen(QCOLOR_DEF, 1, Qt.SolidLine)  # Qt.DashLine
+QPEN_EDI   = QPen(QCOLOR_EDI, 1, Qt.SolidLine)  # Qt.DashLine
+QPEN_HID   = QPen(QCOLOR_HID, 1, Qt.SolidLine)  # Qt.DashLine
+#QPEN_DEF.setCosmetic(True)
+QPEN_EDI.setCosmetic(True)
+QPEN_HID.setCosmetic(True)
 
 NONE = 0
 
@@ -110,29 +117,28 @@ handle_types = [t for t,n in handle_tuple]
 handle_names = [n for t,n in handle_tuple]
 dict_handle_type_name = {t:n for t,n in handle_tuple}
 
-
 def regular_polygon(p, rx=5, ry=5, npoints=8, astart=0, aspan=360, endpoint=False):
     start, span = math.radians(astart), math.radians(aspan)
     angs = np.linspace(start, start+span, num=npoints, endpoint=endpoint)
     return [QPointF(p.x()+rx*c, p.y()+ry*s)\
             for s,c in zip(tuple(np.sin(angs)), tuple(np.cos(angs)))]
 
-
 def size_points_on_scene(view, rsize):
     t = view.transform()
     rx, ry = rsize/t.m11(), rsize/t.m22()
     return QPointF(rx,0), QPointF(0,ry)
 
+def angle_points(p0, p1):
+    d = p1 - p0
+    return math.degrees(math.atan2(d.y(), d.x()))
 
 def items_at_point(scene, point):
     items = scene.items(point)
     logging.debug('sc.itemsAt(%s): %s' % (str(point), str(items)))
     return items
 
-
 def int_scpos(scpos):
     return None if scpos is None else QPoint(int(scpos.x()), int(scpos.y()))
-
 
 def json_point_int(p):
     return p.x(), p.y()
@@ -155,6 +161,7 @@ class ROIBase():
         self.rotateable = kwa.get('rotateable', False)
         self.tolerance  = kwa.get('tolerance', 5.0)
         self.is_busy_iscpos = kwa.get('is_busy_iscpos', False)
+        self.list_of_handles = []
 
         self.is_finished = False
         self.scitem = None
@@ -202,10 +209,49 @@ class ROIBase():
         self.is_finished = True
 
     def show_handles(self):
-        logging.info('ROIBase.show_handles for ROI %s' % self.roi_name)
+        """in re-implementetion
+           - make self.list_of_handles
+           - self.add_handles_to_scene()
+        """
+        logging.info('ROIBase.show_handles TBRe-implemented for ROI %s' % self.roi_name)
 
     def hide_handles(self):
-        logging.info('ROIBase.hide_handles for ROI %s' % self.roi_name)
+        logging.debug('ROIBase.hide_handles for ROI %s' % self.roi_name)
+        for o in self.list_of_handles:
+            o.setPen(QPEN_HID)
+            #logger.debug('begin remove handle: %s' % str(o))
+        #self.remove_handles_from_scene()
+
+    def add_handles_to_scene(self):
+        logging.debug('ROIBase.add_handles_to_scene for ROI %s' % self.roi_name)
+        logging.warning('  handles might be already added to scene at instatiation... by parent=...')
+        for o in self.list_of_handles:
+            #o.add_handle_to_scene(pen=QPEN_EDI)
+            o.setPen(QPEN_EDI)
+
+    def remove_handles_from_scene(self):
+        """remove handle objects from the self.list_of_handles and scene, reset self.list_of_handles"""
+        logging.debug('ROIBase.remove_handles_from_scene for ROI %s' % self.roi_name)
+        for o in self.list_of_handles.copy():
+            logger.debug('begin remove handle: %s' % str(o))
+            self.scene().removeItem(o)
+            self.list_of_handles.remove(o)
+            #del o
+            logger.debug('   -- removed')
+        #self.list_of_handles = []
+
+    def handles_at_point(self, p):
+        """returns list of Handle objects found at QPointF p"""
+        items = self.scene().items(p)
+        handles = [o for o in self.list_of_handles if o in items]
+        logger.debug('handles_at_point - point %s: list of handles: %s' % (str(p), str(handles)))
+        return handles
+
+    def handle_at_point(self, p):
+        handles = self.handles_at_point(p)
+        logger.debug('handle_at_point - point %s: found handles, return [0]: %s' % (str(p), str(handles)))
+        if handles in (None, []): return None
+        return None if handles in (None, []) else handles[0]
 
     def move_at_add(self, scpos, left_is_pressed):
         logging.debug('ROIBase.move_at_add to be re-implemented, if necessary')
@@ -221,6 +267,10 @@ class ROIBase():
     def set_from_roi_pars(self, d):
         logging.warning('ROIBase.set_from_roi_pars - dict of roi parameter NEEEDS TO BE RE-EMPLEMENTED IN DERIVED SUBCLASS')
         return False
+
+    def set_point(self, n, p):
+        """HandleBase.on_move calls this method"""
+        logging.warning('TB RE-IMPLEMENTED ROIBase.set_point - set point:%d to point %s' % (n,p))
 
 
 class ROIPixel(ROIBase):
@@ -377,6 +427,23 @@ class ROILine(ROIBase):
         self.add_to_scene(pos=p1, line=QLineF(p1, p2))
         return True
 
+    def show_handles(self):
+        logging.info('ROILine.show_handles for ROI %s' % self.roi_name)
+        o = self.scitem.line()
+        self.list_of_handles = [
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=o.p1(), poinum=0),
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=o.p2(), poinum=1),
+        ]
+        self.add_handles_to_scene()
+
+    def set_point(self, n, p):
+        logging.debug('ROILine.set_point - set point number: %d to position: %s' % (n, str(p)))
+        line = self.scitem.line()
+        if   n==0: line.setP1(p)
+        elif n==1: line.setP2(p)
+        else: return
+        self.scitem.setLine(line)
+
 
 class ROIRect(ROIBase):
     def __init__(self, **kwa):
@@ -389,7 +456,7 @@ class ROIRect(ROIBase):
             t = self.tolerance
             rect = QRectF(self.pos, QSizeF(t,t))
         item = self.scitem = QGraphicsRectItem(QRectF(rect))
-        item.setTransformOriginPoint(item.rect().center())
+        item.setTransformOriginPoint(item.rect().topLeft())  # center()
         if angle_deg != 0: item.setRotation(angle_deg)
         ROIBase.add_to_scene(self, pen=pen, brush=brush)
 
@@ -411,6 +478,32 @@ class ROIRect(ROIBase):
         self.add_to_scene(pos=p1, rect=QRectF(p1, p2))
         return True
 
+    def show_handles(self):
+        logging.info('ROIRect.show_handles for ROI %s' % self.roi_name)
+        o = self.scitem.rect()
+        self.list_of_handles = [
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=o.topLeft(),     poinum=0),
+            select_handle(SCALE,     view=self.view, roi=self, pos=o.bottomRight(), poinum=1),
+            select_handle(ROTATE,    view=self.view, roi=self, pos=o.topRight(),    poinum=2),
+        ]
+        self.add_handles_to_scene()
+
+    def set_point(self, n, p):
+        logging.debug('ROIRect.set_point - set point number: %d to position: %s' % (n, str(p)))
+        r = self.scitem.rect()
+        h0, h1, h2 = self.list_of_handles
+        self.scitem.setTransformOriginPoint(r.topLeft())
+        pt = self.scitem.mapFromScene(p)
+        if n==0:
+            r.moveTo(pt)
+            h0.set_handle_pos(pt)
+        elif n==1: r.setBottomRight(pt)
+        elif n==2: self.scitem.setRotation(angle_points(r.topLeft(), p))
+        else: return
+        self.scitem.setRect(r)
+        h1.set_handle_pos(r.bottomRight())
+        h2.set_handle_pos(r.topRight())
+
 
 def rect_to_square(rect, pos):
     dp = pos - rect.topLeft()
@@ -430,6 +523,52 @@ class ROISquare(ROIRect):
     def move_at_add(self, pos, left_is_pressed=False):
         logger.debug('ROISquare.move_at_add')
         self.scitem.setRect(rect_to_square(self.scitem.rect(), pos))
+
+    def show_handles(self):
+        logging.info('ROISquare.show_handles for ROI %s' % self.roi_name)
+        o = self.scitem.rect()
+        self.list_of_handles = [
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=o.topLeft(), poinum=0),
+            select_handle(ROTATE,    view=self.view, roi=self, pos=o.topRight(), poinum=1),
+        ]
+        self.add_handles_to_scene()
+
+
+    def set_point(self, n, p):
+        logging.debug('ROIRect.set_point - set point number: %d to position: %s' % (n, str(p)))
+        h0, h1, h2 = self.list_of_handles
+        r = self.scitem.rect()
+        self.scitem.setTransformOriginPoint(r.topLeft())
+        pt = self.scitem.mapFromScene(p)
+        if n==0:
+            r.moveTo(pt)
+            h0.set_handle_pos(pt)
+        elif n==1: r.setBottomRight(pt)
+        elif n==2: self.scitem.setRotation(angle_points(r.topLeft(), p))
+        else: return
+        self.scitem.setRect(r)
+        h1.set_handle_pos(r.bottomRight())
+        h2.set_handle_pos(r.topRight())
+
+
+
+
+    def set_point(self, n, p):
+        logging.debug('ROISquare.set_point - set point number: %d to position: %s' % (n, str(p)))
+        h0, h1 = self.list_of_handles
+        r = self.scitem.rect()
+        pt = self.scitem.mapFromScene(p)
+        if n==0:
+            r.moveTo(pt)
+            h0.set_handle_pos(pt)
+            self.scitem.setTransformOriginPoint(r.topLeft())
+        elif n==1:
+            #self.scitem.setRotation(angle_points(r.topLeft(), p))
+            r.setTopRight(pt)
+        else: return
+        sq = rect_to_square(r, r.bottomRight())
+        self.scitem.setRect(sq)
+        h1.set_handle_pos(sq.topRight())
 
 
 class ROIPolygon(ROIBase):
@@ -478,11 +617,14 @@ class ROIPolygon(ROIBase):
     def set_poly(self, poly=None):
         self.scitem.setPolygon(self.poly_selected if poly==None else poly)
 
-    def roi_pars(self):
+    def polygon_points(self):
+        """returns a list of QPointsF for polygon vertices"""
         o = self.scitem.polygon()
+        return [o.value(i) for i in range(o.size())]
+
+    def roi_pars(self):
         d = ROIBase.roi_pars(self)
-        points = [o.value(i) for i in range(o.size())]
-        d['points'] = [json_point(p) for p in points]
+        d['points'] = [json_point(p) for p in self.polygon_points()]
         return d
 
     def set_from_roi_pars(self, d):
@@ -490,6 +632,19 @@ class ROIPolygon(ROIBase):
         pxy = [QPointF(*xy) for xy in d['points']]
         self.add_to_scene(pos=pxy[0], poly=QPolygonF(pxy))
         return True
+
+    def show_handles(self):
+        logging.info('ROIPolygon.show_handles for ROI %s' % self.roi_name)
+        self.list_of_handles = [
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=p, poinum=i) for i,p in enumerate(self.polygon_points())]
+        self.add_handles_to_scene()
+
+    def set_point(self, n, p):
+        logging.debug('ROIPolygon.set_point - set point number: %d to position: %s' % (n, str(p)))
+        poly = self.scitem.polygon()
+        if n>poly.size(): return
+        poly.replace(n, p)
+        self.scitem.setPolygon(poly)
 
 
 class ROIPolyreg(ROIBase): #ROIPolygon):
@@ -500,6 +655,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         self.radius = None
         self.angle = None
         self.nverts = 3
+        self.clicknum = None
 
     def add_to_scene(self, pos=None, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
         """Adds QGraphicsPolygonItem to scene"""
@@ -519,9 +675,7 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         d, x, y = self.polyreg_dxy(scpos)
         angle = math.degrees(math.atan2(y, x)) if self.angle is None else self.angle
         r = math.sqrt(x*x + y*y) if self.radius is None else self.radius
-        if self.scpos_rad is not None:
-            d = (scpos-self.scpos_rad).manhattanLength()
-            self.nverts = 3 + int(16*d/self.radius)
+        if self.clicknum != 3: self.set_nverts(scpos)
         poly = QPolygonF(regular_polygon(self.pos, rx=r, ry=r, npoints=self.nverts, astart=angle)) # aspan=360
         self.scitem.setPolygon(poly)
 
@@ -533,8 +687,9 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         self.angle = math.degrees(math.atan2(y, x))
 
     def set_nverts(self, scpos):
-        """self.nverts already set in move_at_add"""
-        pass
+        if self.scpos_rad is not None:
+            d = (scpos-self.scpos_rad).manhattanLength()
+            self.nverts = 3 + int(16*d/self.radius)
 
     def set_point_at_add(self, p, clicknum):
         self.clicknum = clicknum
@@ -566,6 +721,28 @@ class ROIPolyreg(ROIBase): #ROIPolygon):
         self.add_to_scene(pos=pos, poly=poly)
         return True
 
+    def show_handles(self):
+        logging.info('ROIPolyreg.show_handles for ROI %s' % self.roi_name)
+        self.list_of_handles = [
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=self.pos, poinum=0),
+            select_handle(ROTATE,    view=self.view, roi=self, pos=self.scpos_rad, poinum=1),
+          #select_handle(MENU,      view=self.view, roi=self, pos=o.topRight()),
+        ]
+        self.add_handles_to_scene()
+
+
+    def set_point(self, n, p):
+        logging.debug('ROIPolyreg.set_point - set point number: %d to position: %s' % (n, str(p)))
+        h0, h1 = self.list_of_handles
+        if n==0:
+            self.pos = p   #r.moveTo(p)  # rect.moveCenter(p)
+        elif n==1:
+            self.set_radius_and_angle(p)
+        else: return
+        self.move_at_add(p)
+        h1.set_handle_pos(self.pos + self.pradius)
+        #poly = self.scitem.polygon()
+        #self.scitem.setPolygon(poly)
 
 
 class ROIEllipse(ROIBase):
@@ -608,6 +785,16 @@ class ROIEllipse(ROIBase):
         self.add_to_scene(pos=p1, rect=QRectF(p1, p2))
         return True
 
+    def show_handles(self):
+        logging.info('ROIEllipse.show_handles for ROI %s' % self.roi_name)
+        o = self.scitem.rect()
+        self.list_of_handles = [
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=o.center(),      poinum=0),
+            select_handle(SCALE,     view=self.view, roi=self, pos=o.bottomRight(), poinum=1),
+            select_handle(ROTATE,    view=self.view, roi=self, pos=o.topRight(),    poinum=2),
+        ]
+        self.add_handles_to_scene()
+
 
 class ROICircle(ROIEllipse):
     def __init__(self, **kwa):
@@ -622,6 +809,15 @@ class ROICircle(ROIEllipse):
         d = max(d.x(), d.y())
         dp = QPointF(d,d)
         self.scitem.setRect(QRectF(c-dp, c+dp))
+
+    def show_handles(self):
+        logging.info('ROICircle.show_handles for ROI %s' % self.roi_name)
+        o = self.scitem.rect()
+        self.list_of_handles = [
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=o.center(), poinum=0),
+            select_handle(SCALE,     view=self.view, roi=self, pos=QPointF(o.right(), o.center().y()), poinum=1),
+        ]
+        self.add_handles_to_scene()
 
 
 class ROIArch(ROIBase):
@@ -640,6 +836,7 @@ class ROIArch(ROIBase):
         self.set_p2(self.pos + QPointF(t, 0))
         self.scitem = QGraphicsPathItem(self.path())
         ROIBase.add_to_scene(self, pen=pen, brush=brush)
+
 
     def point_vraxy(self, p):
         v = p - self.pos # defines v relative center
@@ -681,6 +878,13 @@ class ROIArch(ROIBase):
         #path.closeSubpath()
         return path
 
+
+#    def boundingRect(self):
+#        #self.prepareGeometryChange()
+#        p, r = self.hpos, self.rsize
+#        v = QPointF(r,r)
+#        return QRectF(p-v,p+v)
+
     def move_at_add(self, p, left_is_pressed=False):
         logger.debug('ROIArch.move_at_add')
         if (p-self.pos).manhattanLength() < self.tolerance: return
@@ -710,6 +914,15 @@ class ROIArch(ROIBase):
         self.scitem.setPath(self.path())
         return True
 
+    def show_handles(self):
+        logging.info('ROILine.show_handles for ROI %s' % self.roi_name)
+        self.list_of_handles = [
+            select_handle(CENTER,    view=self.view, roi=self, pos=self.pos, poinum=0),
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=self.p1, poinum=1),
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=self.p2, poinum=2),
+        ]
+        self.add_handles_to_scene()
+
 
 def create_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
     o = ROIPixel   (view=view, pos=pos, **kwa) if roi_type == PIXEL else\
@@ -733,42 +946,60 @@ def create_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
     return o
 
 
-
 class HandleBase(QGraphicsPathItem):
     """See: DragPoint.py"""
     def __init__(self, **kwa):
-        self.roi         = kwa.get('roi', None)  # any derrived from ROIBase < ... < QGraphicsItem
-        self.pos         = QPointF(kwa.get('pos', QPointF(0,0)))
-        self.rsize       = kwa.get('rsize', 7)
-        self.handle_name = dict_handle_type_name[self.handle_type]
-        self.view        = kwa.get('view', self.roi.view if self.roi is not None else None)
-        self.scene       = kwa.get('scene', self.view.scene() if self.view is not None else None)
-        QGraphicsPathItem.__init__(self, parent=self.roi)
+        self.roi    = kwa.get('roi', None)  # any derrived from ROIBase < ... < QGraphicsItem
+        self.hpos   = QPointF(kwa.get('pos', QPointF(0,0)))
+        self.rsize  = kwa.get('rsize', 7)
+        self.hname  = dict_handle_type_name[self.htype]
+        self.hview  = kwa.get('view', None) # self.roi.view if self.roi is not None else None)
+        self.hscene = kwa.get('scene', self.hview.scene() if self.hview is not None else None)
+        self.hcolor = kwa.get('color', QCOLOR_EDI)
+        self.hpen   = kwa.get('pen', QPEN_EDI)
+        self.poinum = kwa.get('poinum', None)
+
+        QGraphicsPathItem.__init__(self, parent=None if self.roi is None else self.roi.scitem)
+        #self.setPos(self.hpos)
         self.setPath(self.path())
 
     def path(self):
         return QGraphicsPathItem.path(self)
 
-    def add_to_scene(self, pen=QPEN_DEF, brush=QBRUSH_DEF):
-        """Adds QGraphicsPathItem to scene"""
-        #self.scitem = QGraphicsPathItem(path)
-        ROIBase.add_to_scene(self, pen=pen, brush=brush)
-
-    def add_to_scene(self, pen=QPEN_DEF, brush=QBRUSH_DEF):
+    def add_handle_to_scene(self, pen=QPEN_EDI, brush=QBRUSH_DEF):
         self.setBrush(brush)
         self.setPen(pen)
-        self.scene.addItem(self)
+        #self.hscene.addItem(self)  # ALREDAY SET ??? by parent=self.roi
         return self
+
+    def boundingRect(self):
+        #self.prepareGeometryChange()
+        p, r = self.hpos, self.rsize
+        v = QPointF(r,r)
+        return QRectF(p-v,p+v)
+
+    def set_handle_pos(self, p):
+        d = p - self.hpos
+        self.hpos = p
+        self.setPath(self.path()) # WORKS
+        #self.setPos(p) # DOES NOT WORK
+        #self.translate(d.x(), d.y())
+        #print('XXX dir(self):', dir(self))
+
+    def on_move(self, p):
+        #print('XXX on_move p: %s' % str(p))
+        self.set_handle_pos(p)
+        self.roi.set_point(self.poinum, p)
 
 
 class HandleCenter(HandleBase):
     def __init__(self, **kwa):
-        self.handle_type = CENTER
+        self.htype = CENTER
         HandleBase.__init__(self, **kwa)
 
     def path(self):
-        """Returns QPainterPath for HandleCenter in scene coordinates around self.pos"""
-        p, view, rsize = self.pos, self.view, self.rsize
+        """Returns QPainterPath for HandleCenter in scene coordinates around self.hpos"""
+        p, view, rsize = self.hpos, self.hview, self.rsize
         dx, dy = size_points_on_scene(view, rsize)
         path = QPainterPath(p-dy) # Designers sign of center
         path.lineTo(p+dy)
@@ -782,12 +1013,12 @@ class HandleCenter(HandleBase):
 
 class HandleOrigin(HandleBase):
     def __init__(self, **kwa):
-        self.handle_type = ORIGIN
+        self.htype = ORIGIN
         HandleBase.__init__(self, **kwa)
 
     def path(self):
-        """Returns QPainterPath for HandleOrigin in scene coordinates around self.pos"""
-        p, view, rsize = self.pos, self.view, self.rsize
+        """Returns QPainterPath for HandleOrigin in scene coordinates around self.hpos"""
+        p, view, rsize = self.hpos, self.hview, self.rsize
         dx, dy = size_points_on_scene(view, rsize)
         path = QPainterPath(p+dx) #vertical cross
         path.lineTo(p-dx)
@@ -799,12 +1030,12 @@ class HandleOrigin(HandleBase):
 
 class HandleTranslate(HandleBase):
     def __init__(self, **kwa):
-        self.handle_type = TRANSLATE
+        self.htype = TRANSLATE
         HandleBase.__init__(self, **kwa)
 
     def path(self):
-        """Returns QPainterPath for HandleTranslate in scene coordinates around self.pos"""
-        p, view, rsize = self.pos, self.view, self.rsize
+        """Returns QPainterPath for HandleTranslate in scene coordinates around self.hpos"""
+        p, view, rsize = self.hpos, self.hview, self.rsize
         dx, dy = size_points_on_scene(view, rsize)
         path = QPainterPath(p+dx+dy)  #horizantal rectangle
         path.lineTo(p-dx+dy)
@@ -816,12 +1047,12 @@ class HandleTranslate(HandleBase):
 
 class HandleRotate(HandleBase):
     def __init__(self, **kwa):
-        self.handle_type = ROTATE
+        self.htype = ROTATE
         HandleBase.__init__(self, **kwa)
 
     def path(self):
-        """Returns QPainterPath for HandleRotate in scene coordinates around self.pos"""
-        p, view, rsize = self.pos, self.view, self.rsize
+        """Returns QPainterPath for HandleRotate in scene coordinates around self.hpos"""
+        p, view, rsize = self.hpos, self.hview, self.rsize
         dx, dy = size_points_on_scene(view, rsize)
         path = QPainterPath() #Circle/Ellipse - shape
         #path.addEllipse(p, dx.x(), dx.x())
@@ -832,13 +1063,13 @@ class HandleRotate(HandleBase):
 
 class HandleScale(HandleBase):
     def __init__(self, **kwa):
-        self.handle_type = SCALE
+        self.htype = SCALE
         HandleBase.__init__(self, **kwa)
 
     def path(self):
-        """Returns QPainterPath for Handle in scene coordinates around self.pos"""
-        p, view, rsize = self.pos, self.view, self.rsize
-        dx, dy = size_points_on_scene(view, rsize)
+        """Returns QPainterPath for Handle in scene coordinates around self.hpos"""
+        p, view, rsize = self.hpos, self.hview, self.rsize
+        dx, dy = size_points_on_scene(view, 1.41*rsize)
         path = QPainterPath(p+dx) #rombic - shape#
         path.lineTo(p+dy)
         path.lineTo(p-dx)
@@ -849,12 +1080,12 @@ class HandleScale(HandleBase):
 
 class HandleMenu(HandleBase):
     def __init__(self, **kwa):
-        self.handle_type = MENU
+        self.htype = MENU
         HandleBase.__init__(self, **kwa)
 
     def path(self):
-        """Returns QPainterPath for HandleMenu in scene coordinates around self.pos"""
-        p, view, rsize = self.pos, self.view, self.rsize
+        """Returns QPainterPath for HandleMenu in scene coordinates around self.hpos"""
+        p, view, rsize = self.hpos, self.hview, self.rsize
         dx, dy = size_points_on_scene(view, rsize)
         dx06, dy03 = 0.6*dx, 0.3*dy
         path = QPainterPath(p+dx+dy)  #horizantal rectangle
@@ -872,17 +1103,15 @@ class HandleMenu(HandleBase):
 
 class HandleOther(HandleBase):
     def __init__(self, **kwa):
-        self.handle_type = OTHER
+        self.htype = OTHER
         self.shhand = kwa.get('shhand', 1)
         HandleBase.__init__(self, **kwa)
 
     def path(self):
-        """Returns QPainterPath for HandleOther in scene coordinates around self.pos"""
-        p, view, rsize = self.pos, self.view, self.rsize
+        """Returns QPainterPath for HandleOther in scene coordinates around self.hpos"""
+        p, view, rsize = self.hpos, self.hview, self.rsize
         dx, dy = size_points_on_scene(view, rsize)
         path = None
-
-        #print('XXX shhand:', self.shhand)
 
         if self.shhand == 1:
             path = QPainterPath(p+dx+dy) # W-M-shape
@@ -906,22 +1135,23 @@ class HandleOther(HandleBase):
         return path
 
 
-def select_handle(handle_type, roi=None, pos=QPointF(1,1), **kwa):
-    o = HandleCenter   (roi=roi, pos=pos, **kwa) if handle_type == CENTER else\
-        HandleOrigin   (roi=roi, pos=pos, **kwa) if handle_type == ORIGIN else\
-        HandleTranslate(roi=roi, pos=pos, **kwa) if handle_type == TRANSLATE else\
-        HandleRotate   (roi=roi, pos=pos, **kwa) if handle_type == ROTATE else\
-        HandleScale    (roi=roi, pos=pos, **kwa) if handle_type == SCALE else\
-        HandleMenu     (roi=roi, pos=pos, **kwa) if handle_type == MENU else\
-        HandleOther    (roi=roi, pos=pos, **kwa) if handle_type == OTHER else\
+def select_handle(htype, roi=None, pos=QPointF(1,1), **kwa):
+    _roi = roi
+    o = HandleCenter   (roi=_roi, pos=pos, **kwa) if htype == CENTER else\
+        HandleOrigin   (roi=_roi, pos=pos, **kwa) if htype == ORIGIN else\
+        HandleTranslate(roi=_roi, pos=pos, **kwa) if htype == TRANSLATE else\
+        HandleRotate   (roi=_roi, pos=pos, **kwa) if htype == ROTATE else\
+        HandleScale    (roi=_roi, pos=pos, **kwa) if htype == SCALE else\
+        HandleMenu     (roi=_roi, pos=pos, **kwa) if htype == MENU else\
+        HandleOther    (roi=_roi, pos=pos, **kwa) if htype == OTHER else\
         None
 
-    handle_name = dict_handle_type_name[handle_type]
+    hname = dict_handle_type_name[htype]
     if o is None:
-       logger.warning('ROI of type %s is not defined' % handle_name)
+       logger.warning('ROI of type %s is not defined' % hname)
     else:
        logger.info('create new handle %s in scene position x: %.1f y: %.1f' %\
-                   (handle_name, pos.x(), pos.y()))
+                   (hname, pos.x(), pos.y()))
     return o
 
 

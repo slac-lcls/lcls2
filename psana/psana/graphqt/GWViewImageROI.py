@@ -92,17 +92,20 @@ class GWViewImageROI(GWViewImage):
 
     def __init__(self, parent=None, arr=None,\
                  coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20),\
-                 origin='UL', scale_ctl='HV', show_mode=0, signal_fast=True):
+                 origin='UL', scale_ctl='HV', show_mode=0, signal_fast=True, **kwa):
 
         GWViewImage.__init__(self, parent, arr, coltab, origin, scale_ctl, show_mode, signal_fast)
         self._name = 'GWViewImageROI' # self.__class__.__name__
         self.set_roi_and_mode()
         self.list_of_rois = []
         self._iscpos_old = None
+        self._iscpos_press = None
         self.left_is_pressed = False
         self.right_is_pressed = False
         self.roi_active = None
+        self.handle_active = None
         self.clicknum = 0
+        self.tolerance = kwa.get('tolerance', 5.0)
         #self.set_style_focus()
 
 #    def set_style_focus(self):
@@ -133,8 +136,7 @@ class GWViewImageROI(GWViewImage):
         #logger.info('GWViewImageROI.mousePressEvent but=%d (1/2/4 = L/R/M) screen x=%.1f y=%.1f'%(e.button(), e.pos().x(), e.pos().y()))
 
         self.left_is_pressed  = e.button() == Qt.LeftButton
-        self.right_is_pressed = e.button() == Qt.RightButton
-        #self.mid_is_pressed   = e.button() == Qt.MidButton
+        self.right_is_pressed = e.button() == Qt.RightButton # Qt.MidButton
 
         if not self.left_is_pressed:
             logging.warning('USE LEFT MOUSE BUTTON ONLY !!! - other buttons finishes input or edition')
@@ -149,6 +151,7 @@ class GWViewImageROI(GWViewImage):
 
 
     def mouseMoveEvent(self, e):
+        #logging.debug('mouseMoveEvent')
         GWViewImage.mouseMoveEvent(self, e)
         if   self.mode_type < roiu.ADD: return
         elif self.mode_type & roiu.ADD:    self.on_move_add(e)
@@ -159,7 +162,10 @@ class GWViewImageROI(GWViewImage):
 
     def mouseReleaseEvent(self, e):
         GWViewImage.mouseReleaseEvent(self, e)
-        logger.debug('mouseReleaseEvent')
+        logger.debug('mouseReleaseEvent mode_type: %s mode_name: %s' % (str(self.mode_type), str(self.mode_name)))
+        if   self.mode_type < roiu.ADD: return
+        elif self.mode_type & roiu.ADD: self.on_release_add(e)
+        elif self.mode_type & roiu.EDIT: self.handle_active = None
         self.left_is_pressed = False
         self.right_is_pressed = False
 
@@ -176,6 +182,12 @@ class GWViewImageROI(GWViewImage):
                 brush = o.scitem.brush() if hasattr(o.scitem, 'brush') else QBRUSH_DEF
                 brush.setColor(color)
                 o.scitem.setBrush(brush)
+
+
+    def reset_color_all_rois(self, color=QCOLOR_DEF):
+        for o in self.list_of_rois:
+            if o.scitem.pen().color() != color:
+                self.set_roi_color(o, color)
 
 
     def finish(self):
@@ -202,13 +214,14 @@ class GWViewImageROI(GWViewImage):
         """retiurns list of ROI object found at QPointF p"""
         items = self.scene().items(p)
         rois = [o for o in self.list_of_rois if o.scitem in items]
-        logger.debug('select_roi list of ROIs at point: %s' % str(rois))
+        logger.debug('rois_at_point - list of ROIs at point: %s' % str(rois))
         return rois
 
 
     def one_roi_at_point(self, p):
         rois = self.rois_at_point(p)
-        s = len(rois)
+        logger.debug('one_roi_at_point - list of ROIs at point, returns nearest or [0]: %s' % str(rois))
+        s = len(rois) if rois is not None else 0
         if s<1: return None
         elif self.roi_type == roiu.PIXEL: # select pixel rect nearest to the click position
             dmins = [(p - o.scitem.rect().center()).manhattanLength() for o in rois]
@@ -239,18 +252,50 @@ class GWViewImageROI(GWViewImage):
         for o in self.list_of_rois:
             if o.scitem.pen().color() == QCOLOR_EDI:
                 o.hide_handles()
-            if o.scitem.pen().color() != QCOLOR_DEF:
-                self.set_roi_color(o, QCOLOR_DEF)
+        self.reset_color_all_rois(color=QCOLOR_DEF)
 
 
-    def on_press_edit(self, e, color_edi=QCOLOR_EDI):
-        self.select_roi_edit(e, color_edi)
+
+
+
+
+
+    def on_press_edit(self, e):
+        logger.debug('GWViewImageROI.on_press_edit at scene pos: %s' % str(self.scene_pos(e)))
+        print('XXX self.roi_active: %s self.handle_active %s' % (self.roi_active, self.handle_active))
+
+        if self.roi_active is not None: # try to find handle
+            h = self.handle_active = self.roi_active.handle_at_point(self.scene_pos(e))
+            logger.debug('handle_active: %s' % str(h))
+            if h is not None: return
+
+        self.handle_active = None
+        self.deselect_any_edit()
+        self.select_roi_edit(e, QCOLOR_EDI)
         if self.roi_active is None:
             logger.warning('ROI FOR EDIT IS NOT FOUND near scene point %s' % str(self.scene_pos(e)))
+            self.deselect_any_edit()
             return
-        self.deselect_any_edit()
         self.set_roi_color(self.roi_active, QCOLOR_EDI)
         self.roi_active.show_handles()
+
+
+
+
+
+
+
+
+    def on_move_edit(self, e):
+        #print('XXX on_move_edit', self.left_is_pressed, self.roi_active, self.handle_active)
+        if not self.left_is_pressed\
+        or self.roi_active is None\
+        or self.handle_active is None: return
+        self.handle_active.on_move(self.scene_pos(e))
+
+
+
+
 
 
     def remove_roi(self, o):
@@ -281,10 +326,11 @@ class GWViewImageROI(GWViewImage):
     def delete_all_roi(self):
         """delete all ROIs"""
         logger.debug('delete_all_roi')
-        sc = self.scene()
-        for o in self.list_of_rois:
-            sc.removeItem(o.scitem)
-        self.list_of_rois = []
+        #sc = self.scene()
+        for o in self.list_of_rois.copy():
+            self.remove_roi(o)
+        #    sc.removeItem(o.scitem)
+        #self.list_of_rois = []
 
 
     def cancel_add_roi(self):
@@ -293,8 +339,9 @@ class GWViewImageROI(GWViewImage):
         if o is None:
             logger.debug('GWViewImageROI.cancel_add_roi roi_active is None - nothing to cancel...')
             return
-        self.scene().removeItem(o.scitem)
-        self.list_of_rois.remove(o)
+        self.remove_roi(o)
+        #self.scene().removeItem(o.scitem)
+        #self.list_of_rois.remove(o)
         self.roi_active = None
 
 
@@ -304,6 +351,7 @@ class GWViewImageROI(GWViewImage):
 
     def on_press_add(self, e):
         scpos = self.scene_pos(e)
+        self._iscpos_press = roiu.int_scpos(scpos)
 
         if self.roi_active is None: #  1st click
             logger.debug('on_press_add - 1-st click')
@@ -321,7 +369,7 @@ class GWViewImageROI(GWViewImage):
     def pixel_is_removed(self, iscpos):
         #if self.mode_type & roiu.REMOVE:
         if self.roi_type == roiu.PIXEL:
-            for o in self.list_of_rois:
+            for o in self.list_of_rois.copy():
                 if iscpos == o.pos:
                     self.remove_roi(o)
                     return True
@@ -349,9 +397,6 @@ class GWViewImageROI(GWViewImage):
             self.finish_add_roi()
 
 
-    def on_move_edit(self, e):
-        logger.debug('on_move_edit TBD')
-
 
     def on_move_select(self, e):
         logger.debug('on_move_select TBD')
@@ -366,7 +411,7 @@ class GWViewImageROI(GWViewImage):
         scpos = self.scene_pos(e)
         iscpos = roiu.int_scpos(scpos)
         is_same = (iscpos == self._iscpos_old)
-        logger.debug('GWViewImageROI.add_roi scene ix=%d iy=%d is_same=%s'%(iscpos.x(), iscpos.y(), is_same))
+        #logger.debug('GWViewImageROI.add_roi scene ix=%d iy=%d is_same=%s'%(iscpos.x(), iscpos.y(), is_same))
         if is_same: return
         self._iscpos_old = iscpos #  QPoint(iscpos)
 
@@ -375,6 +420,21 @@ class GWViewImageROI(GWViewImage):
             self.add_roi(e)
         else:
           self.roi_active.move_at_add(scpos, self.left_is_pressed)
+
+
+    def on_release_add(self, e):
+        """intended to simplify adding 2-point ROIs for LINE, RECT, SQUARE, ELLIPSE, CIRCLE as click-drug-release along with two clicks"""
+        scpos = self.scene_pos(e)
+        iscpos = roiu.int_scpos(scpos)
+        d = 0 if self._iscpos_press is None else (iscpos-self._iscpos_press).manhattanLength()
+        logger.debug('XXX GWViewImageROI.on_release_add ix=%d iy=%d '%(iscpos.x(), iscpos.y()))
+        #print('XXX roi_active, iscpos, _iscpos_old, roi_type, manhattanLength:', self.roi_active, iscpos, self._iscpos_press, self.roi_type, d)
+        if self.roi_active is None\
+        or self._iscpos_press is None\
+        or d < self.tolerance: return
+        if self.roi_type in (roiu.LINE, roiu.RECT, roiu.SQUARE, roiu.ELLIPSE, roiu.CIRCLE):
+            self.finish_add_roi()
+        self._iscpos_press = None
 
 
     def save_parameters_in_file(self, fname=FNAME_DEF):
@@ -402,6 +462,7 @@ class GWViewImageROI(GWViewImage):
                 continue
             if o.set_from_roi_pars(d):
                 self.list_of_rois.append(o)
+        #self.reset_color_all_rois(color=QCOLOR_DEF)
 
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):

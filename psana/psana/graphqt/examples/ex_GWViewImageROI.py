@@ -4,7 +4,7 @@ from psana.graphqt.GWViewImageROI import *
 
 logger = logging.getLogger(__name__)
 #datefmt='%Y-%m-%dT%H:%M:%S'
-logging.basicConfig(format='%(asctime)s [%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%M:%S', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s [%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%M:%S', level=logging.DEBUG)
 
 import inspect
 import sys
