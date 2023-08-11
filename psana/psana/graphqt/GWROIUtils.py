@@ -851,12 +851,6 @@ class ROICircle(ROIEllipse):
         self.scitem.setRect(r)
 
 
-
-
-
-
-
-
 class ROIArch(ROIBase):
     def __init__(self, **kwa):
         self.roi_type = ARCH
@@ -873,7 +867,6 @@ class ROIArch(ROIBase):
         self.set_p2(self.pos + QPointF(t, 0))
         self.scitem = QGraphicsPathItem(self.path())
         ROIBase.add_to_scene(self, pen=pen, brush=brush)
-
 
     def point_vraxy(self, p):
         v = p - self.pos # defines v relative center
@@ -915,7 +908,6 @@ class ROIArch(ROIBase):
         #path.closeSubpath()
         return path
 
-
 #    def boundingRect(self):
 #        #self.prepareGeometryChange()
 #        p, r = self.hpos, self.rsize
@@ -941,7 +933,7 @@ class ROIArch(ROIBase):
         return d
 
     def set_from_roi_pars(self, d):
-        logger.info('ROIEllipse.set_from_roi_pars dict: %s' % str(d))
+        logger.info('ROIArch.set_from_roi_pars dict: %s' % str(d))
         p0, p1, p2 = [QPointF(*xy) for xy in d['points']]
         self.add_to_scene(pos=p0)
         self.set_p1(p1)
@@ -952,13 +944,33 @@ class ROIArch(ROIBase):
         return True
 
     def show_handles(self):
-        logging.info('ROILine.show_handles for ROI %s' % self.roi_name)
+        logging.info('ROIArch.show_handles for ROI %s' % self.roi_name)
         self.list_of_handles = [
             select_handle(CENTER,    view=self.view, roi=self, pos=self.pos, poinum=0),
             select_handle(TRANSLATE, view=self.view, roi=self, pos=self.p1, poinum=1),
             select_handle(TRANSLATE, view=self.view, roi=self, pos=self.p2, poinum=2),
         ]
         self.add_handles_to_scene()
+
+    def set_point(self, n, p):
+        logging.debug('ROIArch.set_point - set point number: %d to position: %s' % (n, str(p)))
+        h0, h1, h2 = self.list_of_handles
+        if n==0:
+            d = p - self.pos
+            self.pos = p
+            h0.set_handle_pos(p)
+            h1.set_handle_pos(h1.hpos + d)
+            h2.set_handle_pos(h2.hpos + d)
+        elif n==1:
+            d = p - self.p1
+            self.set_p1(p)
+            h1.set_handle_pos(p)
+        elif n==2:
+            d = p - self.p2
+            self.set_p2(p)
+            h2.set_handle_pos(p)
+        else: return
+        self.scitem.setPath(self.path())
 
 
 def create_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
