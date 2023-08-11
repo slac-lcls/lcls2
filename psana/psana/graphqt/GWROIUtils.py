@@ -34,7 +34,8 @@ from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLin
 
 QCOLOR_DEF = QColor(Qt.yellow)
 QCOLOR_SEL = QColor('#ffeeaaee')
-QCOLOR_EDI = QColor(Qt.magenta)
+#QCOLOR_EDI = QColor(Qt.magenta)
+QCOLOR_EDI = QColor(Qt.white)
 QCOLOR_HID = QColor('#00eeaaee')
 QBRUSH_DEF = QBrush()
 QBRUSH_ROI = QBrush(QCOLOR_DEF, Qt.SolidPattern)
@@ -131,6 +132,11 @@ def size_points_on_scene(view, rsize):
 def angle_between_points(p0, p1):
     d = p1 - p0
     return math.degrees(math.atan2(d.y(), d.x()))
+
+def distance_between_points(p0, p1):
+    d = p1 - p0
+    x,y = d.x(), d.y()
+    return math.sqrt(x*x + y*y)
 
 def items_at_point(scene, point):
     items = scene.items(point)
@@ -738,6 +744,7 @@ class ROIEllipse(ROIBase):
     def __init__(self, **kwa):
         self.roi_type = ELLIPSE
         ROIBase.__init__(self, **kwa)
+        self.angle = 0
 
     def add_to_scene(self, pos=None, rect=None, pen=QPEN_DEF, brush=QBRUSH_DEF,\
                      angle_deg=0, start_angle=0, span_angle=360):
@@ -783,6 +790,23 @@ class ROIEllipse(ROIBase):
         ]
         self.add_handles_to_scene()
 
+    def set_point(self, n, p):
+        logging.debug('ROIEllipse.set_point - set point number: %d to position: %s' % (n, str(p)))
+        h0, h1, h2 = self.list_of_handles
+        r = self.scitem.rect()
+        self.scitem.setTransformOriginPoint(r.center())
+        pt = self.scitem.mapFromScene(p)
+        if n==0: r.moveCenter(pt)
+        elif n==1: r.setBottomRight(pt)
+        elif n==2:
+            self.angle = angle_between_points(r.topLeft(), p)
+            self.scitem.setRotation(self.angle)
+        else: return
+        self.scitem.setRect(r)
+        h0.set_handle_pos(r.center())
+        h1.set_handle_pos(r.bottomRight())
+        h2.set_handle_pos(r.topRight())
+
 
 class ROICircle(ROIEllipse):
     def __init__(self, **kwa):
@@ -806,6 +830,31 @@ class ROICircle(ROIEllipse):
             select_handle(SCALE,     view=self.view, roi=self, pos=QPointF(o.right(), o.center().y()), poinum=1),
         ]
         self.add_handles_to_scene()
+
+    def set_point(self, n, p):
+        logging.debug('ROICircle.set_point - set point number: %d to position: %s' % (n, str(p)))
+        h0, h1 = self.list_of_handles
+        r = self.scitem.rect()
+        if n==0:
+            d = p - r.center()
+            r.moveCenter(p)
+            h0.set_handle_pos(p)
+            h1.set_handle_pos(h1.hpos + d)
+        elif n==1:
+            c = r.center()
+            d = distance_between_points(c, p)
+            rp = QPointF(d,d)
+            r.setBottomRight(c+rp)
+            r.setTopLeft(c-rp)
+            h1.set_handle_pos(p)
+        else: return
+        self.scitem.setRect(r)
+
+
+
+
+
+
 
 
 class ROIArch(ROIBase):
@@ -967,7 +1016,7 @@ class HandleBase(QGraphicsPathItem):
         return QRectF(p-v,p+v)
 
     def set_handle_pos(self, p):
-        d = p - self.hpos
+        #d = p - self.hpos
         self.hpos = p
         self.setPath(self.path()) # WORKS
         #self.setPos(p) # DOES NOT WORK
