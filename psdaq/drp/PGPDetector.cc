@@ -84,7 +84,7 @@ static int drpSendReceive(int inpMqId, int resMqId, XtcData::TransitionId::Value
         return rc;    // Return rather than abort so that teardown can happen
     }
 
-    rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 10000);
+    rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 15000);
     if (rc) {
         logging::error("[Thread %u] Response message from Drp python not received: %m", threadNum);
         return rc;    // Return rather than abort so that teardown can happen
@@ -109,6 +109,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     void* resData = nullptr;
     char recvmsg[520];
     bool transition;
+    bool error = false;
 
     if (pythonDrp) {
 
@@ -130,12 +131,14 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             return;     // Return rather than abort so that teardown can happen
         }
 
-        std::string pythonScript = para.kwargs.find("pythonScript")->second;
+        std::string message = (para.kwargs.find("pythonScript")->second + "," +
+                               (drp.isSupervisor() ? "supervisor" : "") + "," +
+                               drp.supervisorIpPort());
 
-        rc = drpSend(inpMqId, pythonScript.c_str(), pythonScript.length());
+        rc = drpSend(inpMqId, message.c_str(), message.length());
         if (rc) {
             logging::error("[Thread %u] Message %s to Drp python not sent",
-                           pythonScript.c_str(), threadNum);
+                           message.c_str(), threadNum);
             return;     // Return rather than abort so that teardown can happen
         }
 
@@ -188,9 +191,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                     XtcData::Dgram* inpDg = dgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
                     auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    auto rc = drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
                     auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
                     pythonTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+                    if (rc)  error = true;
                     XtcData::Dgram* resDg = (XtcData::Dgram*)resData;
                     memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
@@ -224,7 +228,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 if (pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
-                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    auto rc = drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    if (rc)  error = true;
                     XtcData::Dgram* resDg = (XtcData::Dgram*)(resData);
                     memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
@@ -237,12 +242,13 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 transition = true;
                 // Pds::EbDgram* dgram = reinterpret_cast<Pds::EbDgram*>(pool.pebble[pebbleIndex]);
                 Pds::EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];
-                if ( pythonDrp) {
+                if (pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
-                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    auto rc = drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    if (rc)  error = true;
                     // TODO: Add comment explaining how this works
-                    if (threadCountWrite.fetch_sub(1) == 1) {
+                    if (!error && threadCountWrite.fetch_sub(1) == 1) {
                         XtcData::Dgram* resDg = (XtcData::Dgram*)(resData);
                         memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                     }
@@ -260,7 +266,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
         }
 
-        outputQueue.push(batch);
+        if (!error)  outputQueue.push(batch);
     }
 
     if (pythonDrp) {

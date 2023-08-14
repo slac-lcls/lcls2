@@ -201,6 +201,8 @@ public:
     prometheus::Exposer* exposer() {return m_exposer.get();}
     unsigned nodeId() const {return m_nodeId;}
     const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
+    bool isSupervisor() const {return m_isSupervisor;}
+    const std::string& supervisorIpPort() const {return m_supervisorIpPort;}
     MemPool pool;
 private:
     int setupTriggerPrimitives(const nlohmann::json& body);
@@ -224,6 +226,8 @@ private:
     unsigned m_numTebBuffers;
     unsigned m_xpmPort;
     std::shared_ptr<PV> m_deadtimePv;
+    std::string m_supervisorIpPort;
+    bool m_isSupervisor;
 };
 
 }

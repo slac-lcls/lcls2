@@ -1,6 +1,5 @@
 import sys
 import posix_ipc
-from psana.psexp.zmq_utils import pub_bind, sub_connect
 import logging
 logger = logging.getLogger(__name__)
 
@@ -45,18 +44,12 @@ class DrpInfo:
         self.pebble_bufsize = pebble_bufsize
         self.transition_bufsize = transition_bufsize
         self.ipc_info = ipc_info
+        self.is_supervisor = False
+        self.tcp_socket_name = None
+        self.ipc_socket_name = f"ipc:///tmp/{detector_name}_{detector_segment}.pipe"
 
 ipc_info = IPCInfo(partition, detector_name, detector_segment, worker_num, shm_mem_size)
 drp_info = DrpInfo(detector_name, detector_type, detector_id, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info)
-
-# Setup socket for calibration constant broadcast
-is_publisher = True if worker_num == 0 else False
-socket_name = f"ipc:///tmp/{detector_name}_{detector_segment}.pipe"
-if is_publisher:
-    pub_socket = pub_bind(socket_name)
-else:
-    sub_socket = sub_connect(socket_name)
-logger.debug(f"[Python - Thread {worker_num}] {is_publisher=} setup socket {socket_name}]")
 
 try:
     while True:
@@ -65,8 +58,12 @@ try:
         if message == b"s":
             ipc_info.mq_res.send(b"s\n")
             continue
-        with open(message, "r") as fh:
-            code = compile(fh.read(), message, 'exec')
+        pythonScript, is_supervisor, supervisor_ip_port = message.decode().split(',')
+        drp_info.is_supervisor = False if is_supervisor == '' else True
+        drp_info.tcp_socket_name = f"tcp://{supervisor_ip_port}"
+        logger.debug(f"[Python - Worker: {worker_num}] {supervisor_ip_port = }")
+        with open(pythonScript, "r") as fh:
+            code = compile(fh.read(), pythonScript, 'exec')
             exec(code, globals(), locals())
 except KeyboardInterrupt:
     logger.info(f"[Python - Worker: {worker_num}] KeyboardInterrupt received - drp_python process exiting")

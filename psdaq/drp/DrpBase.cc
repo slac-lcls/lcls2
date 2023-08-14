@@ -1272,6 +1272,8 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     m_numTebBuffers = 0;                // Only need the largest value
     unsigned maxBuffers = 0;
     bool bufErr = false;
+    m_supervisorIpPort.clear();
+    m_isSupervisor = false;
     for (auto it : body["drp"].items()) {
         unsigned drpId = it.value()["drp_id"];
 
@@ -1295,6 +1297,17 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
                 maxBuffers = numBuffers;
                 bufErr = drpId == m_nodeId; // Report only for the current DRP
             }
+        }
+
+        // For DrpPython's broadcasting of calibration constants
+        std::string alias = it.value()["proc_info"]["alias"];
+        if (m_supervisorIpPort.empty() && alias.find(m_para.detName) != std::string::npos) {
+            enum {base_port = 32256};
+            std::string ip = it.value()["connect_info"]["nic_ip"]; // Use IB, if available
+            unsigned id = it.value()["connect_info"]["xpm_id"];    // Supervisor's xpm_id
+            uint16_t port = base_port + id * 8 + m_para.partition;
+            m_supervisorIpPort = ip + ":" + std::to_string(port);  // Supervisor's IP and port
+            m_isSupervisor = alias == m_para.alias;                // True if we're the supervisor
         }
     }
 
