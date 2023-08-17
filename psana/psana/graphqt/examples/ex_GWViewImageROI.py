@@ -25,6 +25,7 @@ class TestGWViewImageROI(GWViewImageROI):
                '\n  C - cancel add_roi command and remove currently drawn roi'\
                '\n  F - finish add_roi command and keep currently drawn roi (for polynom)'\
                '\n  L/J - load/save in jason roi parameters'\
+               '\n  M - save mask'\
                '\n  ROI  = %s select from %s' % (str(self.roi_name),  ', '.join(['%s-%s'%(k,n) for t,n,k in roiu.roi_tuple])) + \
                '\n  MODE = %s select from %s' % (str(self.mode_name), ', '.join(['%s-%s'%(k,n) for t,n,k in roiu.mode_tuple])) + \
                '\n'
@@ -146,6 +147,9 @@ class TestGWViewImageROI(GWViewImageROI):
 
         elif key == Qt.Key_L:
             self.load_parameters_from_file()
+
+        elif key == Qt.Key_M:
+            self.save_mask()
 
         elif ckey in roiu.roi_keys:
             self.finish()
