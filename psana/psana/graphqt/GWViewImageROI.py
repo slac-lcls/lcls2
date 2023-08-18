@@ -61,6 +61,7 @@ Created on 2016-09-09 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
 
+from time import time
 from psana.graphqt.GWViewImage import *
 from psana.pyalgos.generic.NDArrUtils import np, info_ndarr
 from PyQt5.QtGui import  QPen, QPainter, QColor, QBrush, QTransform, QPolygonF
@@ -71,6 +72,7 @@ QPEN_DEF, QBRUSH_DEF, QCOLOR_DEF, QCOLOR_SEL, QCOLOR_EDI =\
 roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QCOLOR_DEF, roiu.QCOLOR_SEL, roiu.QCOLOR_EDI
 
 FNAME_DEF = 'roi_parameters.json'
+FNAME_MASK = 'mask.npy'
 
 
 def info_dict(d, sep='\n  ', indent='  '):
@@ -398,6 +400,50 @@ class GWViewImageROI(GWViewImage):
             if o.set_from_roi_pars(d):
                 self.list_of_rois.append(o)
         #self.reset_color_all_rois(color=QCOLOR_DEF)
+
+    def mask_pixels(self):
+        """returns mask generated from roi_type roiu.PIXEL and PIXGROUP"""
+        logger.debug('mask_pixels')
+        shape = self.arr.shape
+        mask = np.ones(shape, dtype=bool)
+        for o in self.list_of_rois:
+            if o.roi_type == roiu.PIXEL:
+                p = o.pos
+                mask[p.y(), p.x()] = False
+            elif o.roi_type == roiu.PIXGROUP:
+                for p in o.pixpos:
+                    mask[p.y(), p.x()] = False
+        return mask
+
+    def mask_total(self):
+        """returns total mask generated for all ROIs"""
+        logger.debug('mask_total')
+        shape = self.arr.shape
+        list_of_nonpix_rois = [o for o in self.list_of_rois if not (o.roi_type in (roiu.PIXEL, roiu.PIXGROUP))]
+        if len(list_of_nonpix_rois) == 0:
+            logger.warning('number off non-pixel rois is 0')
+        t0_sec = time()
+        mtot = self.mask_pixels()
+        logger.info('mask_pixels t(sec)=%.3f' % (time()-t0_sec))
+        for o in list_of_nonpix_rois:
+            t0_sec = time()
+            m = o.mask(shape)
+            mtot = m if mtot is None else\
+                   np.logical_and(mtot, m, out=mtot) # 1ms for 1M image
+            logger.info('mask of %s t(sec)=%.3f' % (o.roi_name, time()-t0_sec))
+        logger.info(info_ndarr(mtot, 'mask_total:'))
+        return mtot.astype(int)
+
+    def save_mask(self, fname=FNAME_MASK):
+        """calls mask_total and save it in specified file"""
+        logger.debug('save_mask')
+        mask = self.mask_total()
+        logger.info(info_ndarr(mask, 'mask_total'))
+        if mask is None:
+            logger.warning('total mask is None - file not saved')
+            return
+        np.save(fname, mask)
+        logger.warning('saved: %s' % fname)
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
         """Input array is scailed by color table. If color table is None arr set as is."""

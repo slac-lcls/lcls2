@@ -80,7 +80,7 @@ REMOVE    = 8
 SELECT    = 16
 EDIT      = 32
 mode_tuple = (
-  (NONE,      'NONE',      'M'),
+  (NONE,      'NONE',      'Q'),
   (UNVISIBLE, 'UNVISIBLE', 'U'),
   (VISIBLE,   'VISIBLE',   'V'),
   (ADD,       'ADD',       'A'),
@@ -114,7 +114,7 @@ handle_types = [t for t,n in handle_tuple]
 handle_names = [n for t,n in handle_tuple]
 dict_handle_type_name = {t:n for t,n in handle_tuple}
 
-def regular_polygon(p, rx=5, ry=5, npoints=8, astart=0, aspan=360, endpoint=False):
+def regular_polygon_qpoints(p, rx=5, ry=5, npoints=8, astart=0, aspan=360, endpoint=False):
     start, span = math.radians(astart), math.radians(aspan)
     angs = np.linspace(start, start+span, num=npoints, endpoint=endpoint)
     return [QPointF(p.x()+rx*c, p.y()+ry*s)\
@@ -158,6 +158,9 @@ def rect_to_square(rect, pos):
     rect.setSize(QSizeF(w,h))
     return rect
 
+def cartesian_distance(x, y):
+    return np.sqrt(x*x + y*y)
+
 
 class ROIBase():
     def __init__(self, **kwa):
@@ -170,6 +173,7 @@ class ROIBase():
         self.scaleable  = kwa.get('scaleable', False)
         self.rotateable = kwa.get('rotateable', False)
         self.tolerance  = kwa.get('tolerance', 5.0)
+        self.inverted   = kwa.get('inverted', False)
         self.is_busy_iscpos = kwa.get('is_busy_iscpos', False)
         self.list_of_handles = []
 
@@ -279,6 +283,25 @@ class ROIBase():
     def set_point(self, n, p):
         """HandleBase.on_move calls this method"""
         logging.warning('TB RE-IMPLEMENTED ROIBase.set_point - set point:%d to point %s' % (n,p))
+
+    def cr_meshgrid(self, shape):
+        logging.debug('XXX cr_meshgrid shape %s' % str(shape))
+        return np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+
+    def good_bad_pixels(self):
+        """accounting inversion"""
+        return (False, True) if self.inverted else (True, False)
+
+    def mask(self, shape):
+        """generic mask for roi using self.scitem.contains(QPointF)"""
+        x, y = self.cr_meshgrid(shape)
+        list_xy = list(zip(x.ravel(), y.ravel()))
+        # mask = np.array(Path(poly_verts).contains_points(ij))
+        print('list_xy:', list_xy[:10])
+        cond = np.array([self.scitem.contains(QPointF(*xy)) for xy in list_xy])
+        cond.shape = shape
+        good, bad = self.good_bad_pixels()
+        return np.select([cond], [bad], default=good)
 
 
 class ROIPixel(ROIBase):
@@ -648,7 +671,7 @@ class ROIPolyreg(ROIBase):
         """Adds QGraphicsPolygonItem to scene"""
         self.pos = pos
         t = self.tolerance
-        poly = QPolygonF(regular_polygon(self.pos, rx=t, ry=t, npoints=self.nverts)) if poly is None\
+        poly = QPolygonF(regular_polygon_qpoints(self.pos, rx=t, ry=t, npoints=self.nverts)) if poly is None\
                else poly  # astart=0, aspan=360
         self.scitem = QGraphicsPolygonItem(poly)
         ROIBase.add_to_scene(self, pen=pen, brush=brush)
@@ -664,7 +687,7 @@ class ROIPolyreg(ROIBase):
         angle = math.degrees(math.atan2(y, x)) if self.angle is None else self.angle
         r = math.sqrt(x*x + y*y) if self.radius is None else self.radius
         if self.clicknum != 3: self.set_nverts(scpos)
-        poly = QPolygonF(regular_polygon(self.pos, rx=r, ry=r, npoints=self.nverts, astart=angle)) # aspan=360
+        poly = QPolygonF(regular_polygon_qpoints(self.pos, rx=r, ry=r, npoints=self.nverts, astart=angle)) # aspan=360
         self.scitem.setPolygon(poly)
 
     def set_radius_and_angle(self, scpos):
@@ -705,7 +728,7 @@ class ROIPolyreg(ROIBase):
         radius = self.radius = d['radius']
         angle  = self.angle  = d['angle']
         self.pradius = pradius
-        poly = QPolygonF(regular_polygon(pos, rx=radius, ry=radius, npoints=nverts, astart=angle))
+        poly = QPolygonF(regular_polygon_qpoints(pos, rx=radius, ry=radius, npoints=nverts, astart=angle))
         self.add_to_scene(pos=pos, poly=poly)
         return True
 
@@ -843,6 +866,17 @@ class ROICircle(ROIEllipse):
         else: return
         self.scitem.setRect(r)
 
+    def mask(self, shape):
+        r = self.scitem.rect()
+        r0 = r.width()/2
+        c = r.center()
+        x, y = self.cr_meshgrid(shape)
+        r = self.scitem.rect()
+        d = cartesian_distance(x-c.x(), y-c.y())
+        good, bad = self.good_bad_pixels()
+        return np.select([d>r0], [good], default=bad)
+        #return np.select([d>r0], [False], default=True)
+
 
 class ROIArch(ROIBase):
     def __init__(self, **kwa):
@@ -889,16 +923,11 @@ class ROIArch(ROIBase):
         if span<0: span += 360
         path = QPainterPath()
         nverts = int(self.npoints * (abs(span)//90+1))
-        regpoly1 = regular_polygon(p0, rx=r1, ry=r1, npoints=nverts, astart=a1, aspan=span, endpoint=True)
-        regpoly2 = regular_polygon(p0, rx=r2, ry=r2, npoints=nverts, astart=a1, aspan=span, endpoint=True)
-        path.addPolygon(QPolygonF(regpoly1))
-        path.moveTo(regpoly1[-1])
-        path.lineTo(regpoly2[-1])
-        path.moveTo(regpoly2[0])
-        path.addPolygon(QPolygonF(regpoly2))
-        path.moveTo(regpoly2[0])
-        path.lineTo(regpoly1[0])
-        #path.closeSubpath()
+        self.poly_qpoints = \
+               regular_polygon_qpoints(p0, rx=r1, ry=r1, npoints=nverts, astart=a1, aspan=span, endpoint=True)\
+             + regular_polygon_qpoints(p0, rx=r2, ry=r2, npoints=nverts, astart=a1+span, aspan=-span, endpoint=True)
+        path.addPolygon(QPolygonF(self.poly_qpoints))
+        path.closeSubpath()
         return path
 
 #    def boundingRect(self):
@@ -964,6 +993,24 @@ class ROIArch(ROIBase):
             h2.set_handle_pos(p)
         else: return
         self.scitem.setPath(self.path())
+
+
+    def mask(self, shape):
+        """generic mask for roi using self.scitem.contains(QPointF)"""
+        x, y = self.cr_meshgrid(shape)
+        list_xy = list(zip(x.ravel(), y.ravel()))
+        #poly_verts = self.scitem.polygon().data() # self.scitemit is path, not a polygon
+        poly_verts = [(p.x(), p.y()) for p in self.poly_qpoints]
+        logging.debug('poly_verts: %s' % str(poly_verts))
+        from matplotlib.path import Path
+        cond = np.array(Path(poly_verts).contains_points(list_xy))
+        cond.shape = shape
+        #print('list_xy:', list_xy[:10])
+        ##cond = np.array([self.scitem.contains(QPointF(*xy)) for xy in list_xy])
+        ##cond.shape = shape
+        good, bad = self.good_bad_pixels()
+        return np.select([cond], [bad], default=good)
+
 
 
 def create_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
@@ -1098,7 +1145,7 @@ class HandleRotate(HandleBase):
         dx, dy = size_points_on_scene(view, rsize)
         path = QPainterPath() #Circle/Ellipse - shape
         #path.addEllipse(p, dx.x(), dx.x())
-        path.addPolygon(QPolygonF(regular_polygon(p, rx=dx.x(), ry=dx.x(), npoints=16))) # astart=0, aspan=360
+        path.addPolygon(QPolygonF(regular_polygon_qpoints(p, rx=dx.x(), ry=dx.x(), npoints=16))) # astart=0, aspan=360
         path.closeSubpath()
         return path
 
