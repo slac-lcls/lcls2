@@ -475,6 +475,19 @@ class ROILine(ROIBase):
         else: return
         self.scitem.setLine(line)
 
+    def mask(self, shape):
+        o = self.scitem.line()
+        p1, p2 = o.p1(), o.p2()
+        x1,x2,y1,y2 = int(p1.x()), int(p2.x()), int(p1.y()), int(p2.y())
+        npix = int(abs((x1-x2) if abs(x1-x2) > abs(y1-y2) else (y1-y2))+1)
+        xarr = np.array(np.linspace(x1, x2, npix, endpoint=True), dtype=np.int32())
+        yarr = np.array(np.linspace(y1, y2, npix, endpoint=True), dtype=np.int32())
+        good, bad = self.good_bad_pixels()
+        mask = np.ones(shape, dtype=bool) if good else\
+              np.zeros(shape, dtype=bool)
+        mask[yarr,xarr] = bad
+        return mask
+
 
 class ROIRect(ROIBase):
     def __init__(self, **kwa):
