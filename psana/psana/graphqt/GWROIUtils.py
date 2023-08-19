@@ -297,7 +297,7 @@ class ROIBase():
         x, y = self.cr_meshgrid(shape)
         list_xy = list(zip(x.ravel(), y.ravel()))
         # mask = np.array(Path(poly_verts).contains_points(ij))
-        print('list_xy:', list_xy[:10])
+        #print('list_xy:', list_xy[:10])
         cond = np.array([self.scitem.contains(QPointF(*xy)) for xy in list_xy])
         cond.shape = shape
         good, bad = self.good_bad_pixels()
@@ -476,16 +476,17 @@ class ROILine(ROIBase):
         self.scitem.setLine(line)
 
     def mask(self, shape):
+        """mask pixels between two edges p1, p2 of the line"""
         o = self.scitem.line()
         p1, p2 = o.p1(), o.p2()
         x1,x2,y1,y2 = int(p1.x()), int(p2.x()), int(p1.y()), int(p2.y())
         npix = int(abs((x1-x2) if abs(x1-x2) > abs(y1-y2) else (y1-y2))+1)
-        xarr = np.array(np.linspace(x1, x2, npix, endpoint=True), dtype=np.int32())
-        yarr = np.array(np.linspace(y1, y2, npix, endpoint=True), dtype=np.int32())
+        ix = np.array(np.linspace(x1, x2, npix, endpoint=True), dtype=np.int32())
+        iy = np.array(np.linspace(y1, y2, npix, endpoint=True), dtype=np.int32())
         good, bad = self.good_bad_pixels()
         mask = np.ones(shape, dtype=bool) if good else\
               np.zeros(shape, dtype=bool)
-        mask[yarr,xarr] = bad
+        mask[iy,ix] = bad
         return mask
 
 
@@ -553,6 +554,14 @@ class ROIRect(ROIBase):
         self.scitem.setRect(r)
         h1.set_handle_pos(r.bottomRight())
         h2.set_handle_pos(r.topRight())
+
+    def mask(self, shape):
+        """generate mask w/o rotation..."""
+        r = self.scitem.rect()
+        x0, y0, w, h = r.top(), r.left(), r.width(), r.height()
+        x, y = self.cr_meshgrid(shape)
+        good, bad = self.good_bad_pixels()
+        return np.select([x<x0, x>x0+w, y<y0, y>y0+h], [good, good, good, good], default=bad)
 
 
 class ROISquare(ROIRect):
