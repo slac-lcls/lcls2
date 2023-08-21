@@ -29,6 +29,7 @@ from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication,\
      QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsLineItem, QGraphicsPolygonItem, QGraphicsPathItem
 from PyQt5.QtGui import  QPen, QPainter, QColor, QBrush, QCursor, QTransform, QPolygonF,  QPainterPath
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLineF # , pyqtSignal
+from matplotlib.path import Path
 
 QCOLOR_DEF = QColor(Qt.yellow)
 QCOLOR_SEL = QColor('#ffeeaaee')
@@ -161,6 +162,25 @@ def rect_to_square(rect, pos):
 def cartesian_distance(x, y):
     return np.sqrt(x*x + y*y)
 
+def cr_meshgrid(shape):
+    #logging.debug('cr_meshgrid shape %s' % str(shape))
+    return np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+
+
+def mask_for_polygon_vertices(shape, poly_verts, good=True, bad=False):
+    """mask for polygon vertices using Path from matplotlib.path
+       - shape (tuple) - image shape
+       - poly_verts (list) - list of (x,y) vertex coordinates,
+       - good, bad (bool) - values for good and bad pixels.
+    """
+    x, y = cr_meshgrid(shape)
+    list_xy = list(zip(x.ravel(), y.ravel()))
+    logging.debug('list_xy: %s' % str(list_xy[:10])\
+                + '\n  poly_verts: %s' % str(poly_verts))
+    cond = np.array(Path(poly_verts).contains_points(list_xy))
+    cond.shape = shape
+    return np.select([cond], [bad], default=good)
+
 
 class ROIBase():
     def __init__(self, **kwa):
@@ -284,20 +304,14 @@ class ROIBase():
         """HandleBase.on_move calls this method"""
         logging.warning('TB RE-IMPLEMENTED ROIBase.set_point - set point:%d to point %s' % (n,p))
 
-    def cr_meshgrid(self, shape):
-        logging.debug('XXX cr_meshgrid shape %s' % str(shape))
-        return np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
-
     def good_bad_pixels(self):
         """accounting inversion"""
         return (False, True) if self.inverted else (True, False)
 
     def mask(self, shape):
-        """generic mask for roi using self.scitem.contains(QPointF)"""
-        x, y = self.cr_meshgrid(shape)
+        """generic mask for roi using self.scitem.contains(QPointF) - very slow..."""
+        x, y = cr_meshgrid(shape)
         list_xy = list(zip(x.ravel(), y.ravel()))
-        # mask = np.array(Path(poly_verts).contains_points(ij))
-        #print('list_xy:', list_xy[:10])
         cond = np.array([self.scitem.contains(QPointF(*xy)) for xy in list_xy])
         cond.shape = shape
         good, bad = self.good_bad_pixels()
@@ -476,7 +490,7 @@ class ROILine(ROIBase):
         self.scitem.setLine(line)
 
     def mask(self, shape):
-        """mask pixels between two edges p1, p2 of the line"""
+        """mask of the line pixels between two edges p1, p2"""
         o = self.scitem.line()
         p1, p2 = o.p1(), o.p2()
         x1,x2,y1,y2 = int(p1.x()), int(p2.x()), int(p1.y()), int(p2.y())
@@ -555,13 +569,22 @@ class ROIRect(ROIBase):
         h1.set_handle_pos(r.bottomRight())
         h2.set_handle_pos(r.topRight())
 
+#    def mask(self, shape):
+#        """mask of the rect w/o rotation..."""
+#        r = self.scitem.rect()
+#        x0, y0, w, h = r.left(), r.top(),  r.width(), r.height()
+#        x, y = cr_meshgrid(shape)
+#        good, bad = self.good_bad_pixels()
+#        return np.select([x<x0, x>x0+w, y<y0, y>y0+h], [good, good, good, good], default=bad)
+
     def mask(self, shape):
-        """generate mask w/o rotation..."""
+        """mask for rect using mask_for_polygon_vertices, accounts for rotation"""
         r = self.scitem.rect()
-        x0, y0, w, h = r.top(), r.left(), r.width(), r.height()
-        x, y = self.cr_meshgrid(shape)
+        qpoints = [self.scitem.mapToScene(p) for p in (r.topLeft(), r.topRight(), r.bottomRight(), r.bottomLeft())]
+        poly_verts = [(p.x(), p.y()) for p in qpoints]
         good, bad = self.good_bad_pixels()
-        return np.select([x<x0, x>x0+w, y<y0, y>y0+h], [good, good, good, good], default=bad)
+        return mask_for_polygon_vertices(shape, poly_verts, good, bad)
+
 
 
 class ROISquare(ROIRect):
@@ -678,6 +701,12 @@ class ROIPolygon(ROIBase):
         poly.replace(n, p)
         self.scitem.setPolygon(poly)
 
+    def mask(self, shape):
+        """mask for polygon using mask_for_polygon_vertices"""
+        poly_verts = [(p.x(), p.y()) for p in self.polygon_points()]
+        good, bad = self.good_bad_pixels()
+        return mask_for_polygon_vertices(shape, poly_verts, good, bad)
+
 
 class ROIPolyreg(ROIBase):
     def __init__(self, **kwa):
@@ -763,7 +792,6 @@ class ROIPolyreg(ROIBase):
         ]
         self.add_handles_to_scene()
 
-
     def set_point(self, n, p):
         #logging.debug('ROIPolyreg.set_point - set point number: %d to position: %s' % (n, str(p)))
         h0, h1 = self.list_of_handles
@@ -776,6 +804,17 @@ class ROIPolyreg(ROIBase):
         h1.set_handle_pos(self.pos + self.pradius)
         #poly = self.scitem.polygon()
         #self.scitem.setPolygon(poly)
+
+    def polygon_points(self):
+        """returns a list of QPointsF for polygon vertices"""
+        o = self.scitem.polygon()
+        return [o.value(i) for i in range(o.size())]
+
+    def mask(self, shape):
+        """mask for polygon using mask_for_polygon_vertices"""
+        poly_verts = [(p.x(), p.y()) for p in self.polygon_points()]
+        good, bad = self.good_bad_pixels()
+        return mask_for_polygon_vertices(shape, poly_verts, good, bad)
 
 
 class ROIEllipse(ROIBase):
@@ -795,8 +834,9 @@ class ROIEllipse(ROIBase):
         item = self.scitem = QGraphicsEllipseItem(QRectF(rect))
         item.setStartAngle(start_angle*16)
         item.setSpanAngle(span_angle*16)
-        item.setTransformOriginPoint(self.pos) # item.rect().center())
+        item.setTransformOriginPoint(item.rect().center()) # self.pos)
         item.setRotation(angle_deg)
+        self.angle = angle_deg
         ROIBase.add_to_scene(self, pen=pen, brush=brush)
         #self.scitem = self.scene().addEllipse(QRectF(rect), pen, brush)
 
@@ -810,12 +850,15 @@ class ROIEllipse(ROIBase):
         o = self.scitem.rect()
         d = ROIBase.roi_pars(self)
         d['points'] = [json_point(p) for p in (o.topLeft(), o.bottomRight())]  # list(o.getCoords())
+        d['angle'] = self.angle
         return d
 
     def set_from_roi_pars(self, d):
         logger.info('ROIEllipse.set_from_roi_pars dict: %s' % str(d))
         p1, p2 = [QPointF(*xy) for xy in d['points']]
-        self.add_to_scene(pos=p1, rect=QRectF(p1, p2))
+        angle = d['angle']
+        r = QRectF(p1, p2)
+        self.add_to_scene(pos=r.center(), rect=r, angle_deg=angle)
         return True
 
     def show_handles(self):
@@ -844,6 +887,16 @@ class ROIEllipse(ROIBase):
         h0.set_handle_pos(r.center())
         h1.set_handle_pos(r.bottomRight())
         h2.set_handle_pos(r.topRight())
+
+
+#    def mask(self, shape):
+#        """mask for rect using mask_for_polygon_vertices, accounts for rotation"""
+#        r = self.scitem.rect()
+#        qpoints = [self.scitem.mapToScene(p) for p in (r.topLeft(), r.topRight(), r.bottomRight(), r.bottomLeft())]
+#        poly_verts = [(p.x(), p.y()) for p in qpoints]
+#        good, bad = self.good_bad_pixels()
+#        return mask_for_polygon_vertices(shape, poly_verts, good, bad)
+
 
 
 class ROICircle(ROIEllipse):
@@ -889,15 +942,15 @@ class ROICircle(ROIEllipse):
         self.scitem.setRect(r)
 
     def mask(self, shape):
+        """mask of the circle"""
         r = self.scitem.rect()
         r0 = r.width()/2
         c = r.center()
-        x, y = self.cr_meshgrid(shape)
+        x, y = cr_meshgrid(shape)
         r = self.scitem.rect()
         d = cartesian_distance(x-c.x(), y-c.y())
         good, bad = self.good_bad_pixels()
         return np.select([d>r0], [good], default=bad)
-        #return np.select([d>r0], [False], default=True)
 
 
 class ROIArch(ROIBase):
@@ -1016,23 +1069,11 @@ class ROIArch(ROIBase):
         else: return
         self.scitem.setPath(self.path())
 
-
     def mask(self, shape):
-        """generic mask for roi using self.scitem.contains(QPointF)"""
-        x, y = self.cr_meshgrid(shape)
-        list_xy = list(zip(x.ravel(), y.ravel()))
-        #poly_verts = self.scitem.polygon().data() # self.scitemit is path, not a polygon
+        """mask for arch using mask_for_polygon_vertices"""
         poly_verts = [(p.x(), p.y()) for p in self.poly_qpoints]
-        logging.debug('poly_verts: %s' % str(poly_verts))
-        from matplotlib.path import Path
-        cond = np.array(Path(poly_verts).contains_points(list_xy))
-        cond.shape = shape
-        #print('list_xy:', list_xy[:10])
-        ##cond = np.array([self.scitem.contains(QPointF(*xy)) for xy in list_xy])
-        ##cond.shape = shape
         good, bad = self.good_bad_pixels()
-        return np.select([cond], [bad], default=good)
-
+        return mask_for_polygon_vertices(shape, poly_verts, good, bad)
 
 
 def create_roi(roi_type, view=None, pos=QPointF(1,1), **kwa):
