@@ -888,15 +888,19 @@ class ROIEllipse(ROIBase):
         h1.set_handle_pos(r.bottomRight())
         h2.set_handle_pos(r.topRight())
 
-
-#    def mask(self, shape):
-#        """mask for rect using mask_for_polygon_vertices, accounts for rotation"""
-#        r = self.scitem.rect()
-#        qpoints = [self.scitem.mapToScene(p) for p in (r.topLeft(), r.topRight(), r.bottomRight(), r.bottomLeft())]
-#        poly_verts = [(p.x(), p.y()) for p in qpoints]
-#        good, bad = self.good_bad_pixels()
-#        return mask_for_polygon_vertices(shape, poly_verts, good, bad)
-
+    def mask(self, shape):
+        """mask for ellips using QPainterPath as ellipse shape > scpath.contains(QPointF),
+           accounts for rotation by scpath = self.scitem.mapToScene(path),
+           consumes ~2s/ellips in 1M image.
+        """
+        x, y = cr_meshgrid(shape)
+        list_xy = list(zip(x.ravel(), y.ravel()))
+        path = self.scitem.shape() # path in local coordinates
+        scpath = self.scitem.mapToScene(path) # path on scene
+        cond = np.array([scpath.contains(QPointF(*xy)) for xy in list_xy])
+        cond.shape = shape
+        good, bad = self.good_bad_pixels()
+        return np.select([cond], [bad], default=good)
 
 
 class ROICircle(ROIEllipse):
