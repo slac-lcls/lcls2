@@ -308,11 +308,29 @@ class ROIBase():
         """accounting inversion"""
         return (False, True) if self.inverted else (True, False)
 
+#    def mask(self, shape):
+#        """generic mask for roi using self.scitem.contains(QPointF)
+#            - does not account for rotation,
+#            - very slow..., ut to ~min
+#        """
+#        x, y = cr_meshgrid(shape)
+#        list_xy = list(zip(x.ravel(), y.ravel()))
+#        cond = np.array([self.scitem.contains(QPointF(*xy)) for xy in list_xy])
+#        cond.shape = shape
+#        good, bad = self.good_bad_pixels()
+#        return np.select([cond], [bad], default=good)
+
     def mask(self, shape):
-        """generic mask for roi using self.scitem.contains(QPointF) - very slow..."""
+        """mask for generic using QPainterPath as its shape > scpath.contains(QPointF),
+           accounts for rotation by scpath = self.scitem.mapToScene(path),
+           consumes ~2s/ellips in 1M image.
+        """
+        logger.debug('ROIBase.mask')
         x, y = cr_meshgrid(shape)
         list_xy = list(zip(x.ravel(), y.ravel()))
-        cond = np.array([self.scitem.contains(QPointF(*xy)) for xy in list_xy])
+        path = self.scitem.shape() # path in local coordinates
+        scpath = self.scitem.mapToScene(path) # path on scene
+        cond = np.array([scpath.contains(QPointF(*xy)) for xy in list_xy])
         cond.shape = shape
         good, bad = self.good_bad_pixels()
         return np.select([cond], [bad], default=good)
@@ -887,20 +905,6 @@ class ROIEllipse(ROIBase):
         h0.set_handle_pos(r.center())
         h1.set_handle_pos(r.bottomRight())
         h2.set_handle_pos(r.topRight())
-
-    def mask(self, shape):
-        """mask for ellips using QPainterPath as ellipse shape > scpath.contains(QPointF),
-           accounts for rotation by scpath = self.scitem.mapToScene(path),
-           consumes ~2s/ellips in 1M image.
-        """
-        x, y = cr_meshgrid(shape)
-        list_xy = list(zip(x.ravel(), y.ravel()))
-        path = self.scitem.shape() # path in local coordinates
-        scpath = self.scitem.mapToScene(path) # path on scene
-        cond = np.array([scpath.contains(QPointF(*xy)) for xy in list_xy])
-        cond.shape = shape
-        good, bad = self.good_bad_pixels()
-        return np.select([cond], [bad], default=good)
 
 
 class ROICircle(ROIEllipse):
