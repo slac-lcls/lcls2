@@ -181,6 +181,8 @@ class GWViewImageROI(GWViewImage):
         self.roi_active = None
 
     def finish_edit_roi(self):
+        logger.debug('finish_edit_roi')
+        self.deselect_any_edit()
         self.set_roi_color()
         self.roi_active = None
 
@@ -222,7 +224,8 @@ class GWViewImageROI(GWViewImage):
             if o.scitem.pen().color() == QCOLOR_EDI:
                 o.hide_handles()
         self.reset_color_all_rois(color=QCOLOR_DEF)
-
+        self.handle_active = None
+        self.roi_active = None
 
     def on_press_edit(self, e):
         logger.debug('GWViewImageROI.on_press_edit at scene pos: %s' % str(self.scene_pos(e)))
@@ -252,8 +255,11 @@ class GWViewImageROI(GWViewImage):
 
     def remove_roi(self, o):
         """remove roi item from scene and from the list of rois."""
+        if o.scitem is None: return
+        #o.remove_handles_from_scene()
         self.scene().removeItem(o.scitem)
         self.list_of_rois.remove(o)
+        del o
 
     def on_move_remove(self, e):
         """remove ROI on mouthPressEvent - a few ROIs might be removed"""
@@ -275,10 +281,8 @@ class GWViewImageROI(GWViewImage):
     def delete_all_roi(self):
         """delete all ROIs"""
         logger.debug('delete_all_roi')
-        #sc = self.scene()
         for o in self.list_of_rois.copy():
             self.remove_roi(o)
-        #    sc.removeItem(o.scitem)
         #self.list_of_rois = []
 
     def cancel_add_roi(self):
@@ -341,7 +345,7 @@ class GWViewImageROI(GWViewImage):
             self.finish_add_roi()
 
     def on_move_select(self, e):
-        logger.debug('on_move_select TBD')
+        logger.debug('on_move_select TBD if needed')
 
     def on_move_add(self, e):
         """Action on mouse move:
@@ -377,11 +381,13 @@ class GWViewImageROI(GWViewImage):
         self._iscpos_press = None
 
     def save_parameters_in_file(self, fname=FNAME_DEF):
+        self.finish()
         d = {'ROI_%04d'%i:o.roi_pars() for i,o in enumerate(self.list_of_rois)}
         save_dict_in_json_file(d, fname)
         logger.info('GWViewImageROI.save_parameters_in_file %s\n%s' % (fname, info_dict(d)))
 
     def load_parameters_from_file(self, fname=FNAME_DEF):
+        self.finish()
         d = load_dict_from_json_file(fname)
         logger.info('GWViewImageROI.load_parameters_from_file %s\n%s' % (fname, info_dict(d)))
         self.set_rois_from_dict(d)
@@ -436,6 +442,7 @@ class GWViewImageROI(GWViewImage):
 
     def save_mask(self, fname=FNAME_MASK):
         """calls mask_total and save it in specified file"""
+        self.finish()
         logger.debug('save_mask')
         mask = self.mask_total()
         logger.info(info_ndarr(mask, 'mask_total'))
