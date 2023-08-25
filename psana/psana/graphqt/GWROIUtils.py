@@ -166,7 +166,6 @@ def cr_meshgrid(shape):
     #logging.debug('cr_meshgrid shape %s' % str(shape))
     return np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
 
-
 def mask_for_polygon_vertices(shape, poly_verts, good=True, bad=False):
     """mask for polygon vertices using Path from matplotlib.path
        - shape (tuple) - image shape
@@ -188,7 +187,7 @@ class ROIBase():
         self.roi_name   = dict_roi_type_name[self.roi_type]
         self.view       = kwa.get('view', None) # QGraphicsView()
         self.pos        = QPointF(kwa.get('pos', QPointF(0,0)))
-        self.mode       = kwa.get('mode', 0) # 0/1/2/4/8/16 - invisible/visible/add/move/rotate/edit
+        self.mode       = kwa.get('mode', NONE) # 0/1/2/4/8/16 - invisible/visible/add/move/rotate/edit
         self.moveable   = kwa.get('moveable', False)
         self.scaleable  = kwa.get('scaleable', False)
         self.rotateable = kwa.get('rotateable', False)
@@ -213,7 +212,20 @@ class ROIBase():
             self.pen.setColor(color)
             self.brush.setColor(color)
 
+    def set_mode(self, mode):
+        if self.mode & mode == 0: self.mode ^= mode # set specified bit
+        #else: return # bit is already set
+
+    def reset_mode(self, mode=None):
+        if mode==None: self.mode = NONE # reset all bits
+        elif self.mode & mode == mode: self.mode ^= mode # reset specified bit
+
+    def is_mode(self, mode):
+        return self.mode & mode == mode
+
     def scene(self):
+        #if not hasattr(self, 'view'): return None
+        if not hasattr(self.view, 'scene'): return None
         return self.view.scene()
 
     def add_to_scene(self, pos=None, pen=None, brush=None):
@@ -271,9 +283,9 @@ class ROIBase():
             logger.debug('begin remove handle: %s' % str(o))
             self.scene().removeItem(o)
             self.list_of_handles.remove(o)
-            #del o
+            del o
             logger.debug('   -- removed')
-        #self.list_of_handles = []
+        self.list_of_handles = []
 
     def handles_at_point(self, p):
         """returns list of Handle objects found at QPointF p"""
@@ -289,12 +301,11 @@ class ROIBase():
         return None if handles in (None, []) else handles[0]
 
     def roi_pars(self):
-        logging.debug('ROIBase.roi_pars - dict of roi parameters')
-        return {'roi_type':self.roi_type,
-                'roi_name': self.roi_name,
+        logging.debug('ROIBase.roi_pars - dict of common roi parameters - name and type')
+        return {'roi_name': self.roi_name,
+                'roi_type': self.roi_type,
                 'points':[]
                 }
-                #'angle_deg': self.scitem.rotation(),
 
     def set_from_roi_pars(self, d):
         logging.warning('ROIBase.set_from_roi_pars - dict of roi parameter NEEEDS TO BE RE-EMPLEMENTED IN DERIVED SUBCLASS')
@@ -335,6 +346,10 @@ class ROIBase():
         good, bad = self.good_bad_pixels()
         return np.select([cond], [bad], default=good)
 
+    def __del__(self):
+        self.remove_handles_from_scene()
+        logger.info('in ROIBase.__del__ for ROI: %s' % self.roi_name)
+
 
 class ROIPixel(ROIBase):
     def __init__(self, **kwa):
@@ -368,7 +383,8 @@ class ROIPixel(ROIBase):
 
     def set_from_roi_pars(self, d):
         logger.info('ROIPixel.set_from_roi_pars dict: %s' % str(d))
-        self.add_to_scene() # x,y = d['points'][0]
+        xy = *d['points'][0]  # list [x, y]
+        self.add_to_scene(pos=QPointF(*xy))
         return True
 
 
@@ -604,7 +620,6 @@ class ROIRect(ROIBase):
         return mask_for_polygon_vertices(shape, poly_verts, good, bad)
 
 
-
 class ROISquare(ROIRect):
     def __init__(self, **kwa):
         ROIRect.__init__(self, **kwa)
@@ -674,6 +689,7 @@ class ROIPolygon(ROIBase):
         self.scitem.setPolygon(poly)
 
     def set_point_at_add(self, pos, clicknum):
+        #logging.debug('ROIPolygon.set_point_at_add - set point number: %d to position: %s' % (clicknum, str(p)))
         self.add_vertex(pos)
 
     def is_last_point(self, scpos, clicknum):
@@ -735,6 +751,8 @@ class ROIPolyreg(ROIBase):
         self.nverts = 3 # kwa.get('angle', 3)
         self.clicknum = None
         self.scpos_rad = None
+        self.pradius = None # QPointF relative to self.pos
+        self.pnverts = None # QPointF relative to scpos_rad
 
     def add_to_scene(self, pos=None, poly=None, pen=QPEN_DEF, brush=QBRUSH_DEF):
         """Adds QGraphicsPolygonItem to scene"""
@@ -751,7 +769,7 @@ class ROIPolyreg(ROIBase):
         return d, x, y
 
     def move_at_add(self, scpos, left_is_pressed=False):
-        #logger.debug('ROILine.move_at_add')
+        #logger.debug('ROIPolyreg.move_at_add')
         d, x, y = self.polyreg_dxy(scpos)
         angle = math.degrees(math.atan2(y, x)) if self.angle is None else self.angle
         r = math.sqrt(x*x + y*y) if self.radius is None else self.radius
@@ -768,10 +786,12 @@ class ROIPolyreg(ROIBase):
 
     def set_nverts(self, scpos):
         if self.scpos_rad is not None:
+            self.pnverts = scpos - self.scpos_rad
             d = (scpos-self.scpos_rad).manhattanLength()
             self.nverts = 3 + int(16*d/self.radius)
 
     def set_point_at_add(self, p, clicknum):
+        logging.debug('ROIPolyreg.set_point_at_add - set point number: %d to position: %s' % (clicknum, str(p)))
         self.clicknum = clicknum
         if   clicknum == 2: self.set_radius_and_angle(p)
         elif clicknum == 3: self.set_nverts(p)
@@ -784,7 +804,7 @@ class ROIPolyreg(ROIBase):
 
     def roi_pars(self):
         d = ROIBase.roi_pars(self)
-        d['points'] = [json_point(p) for p in (self.pos, self.pradius)]
+        d['points'] = [json_point(p) for p in (self.pos, self.pradius, self.pnverts)]
         d['nverts'] = self.nverts
         d['radius'] = self.radius
         d['angle']  = self.angle
@@ -792,11 +812,10 @@ class ROIPolyreg(ROIBase):
 
     def set_from_roi_pars(self, d):
         logger.info('ROIPolyreg.set_from_roi_pars dict: %s' % str(d))
-        pos, pradius = [QPointF(*xy) for xy in d['points']]
+        self.pos, self.pradius, self.pnverts = pos, pradius, pnverts = [QPointF(*xy) for xy in d['points']]
         nverts = self.nverts = d['nverts']
         radius = self.radius = d['radius']
         angle  = self.angle  = d['angle']
-        self.pradius = pradius
         poly = QPolygonF(regular_polygon_qpoints(pos, rx=radius, ry=radius, npoints=nverts, astart=angle))
         self.add_to_scene(pos=pos, poly=poly)
         return True
@@ -804,22 +823,26 @@ class ROIPolyreg(ROIBase):
     def show_handles(self):
         logging.info('ROIPolyreg.show_handles for ROI %s' % self.roi_name)
         self.list_of_handles = [
-            select_handle(TRANSLATE, view=self.view, roi=self, pos=self.pos, poinum=0),
+            select_handle(TRANSLATE, view=self.view, roi=self, pos=self.pos,       poinum=0),
             select_handle(ROTATE,    view=self.view, roi=self, pos=self.scpos_rad, poinum=1),
-          #select_handle(MENU,      view=self.view, roi=self, pos=o.topRight()),
+            select_handle(SCALE,     view=self.view, roi=self, pos=self.scpos_rad + self.pnverts, poinum=2),
         ]
         self.add_handles_to_scene()
 
     def set_point(self, n, p):
-        #logging.debug('ROIPolyreg.set_point - set point number: %d to position: %s' % (n, str(p)))
-        h0, h1 = self.list_of_handles
+        logging.debug('ROIPolyreg.set_point - set point number: %d to position: %s' % (n, str(p)))
+        h0, h1, h2 = self.list_of_handles
+        ph2 = h2.pos  # scpos-self.scpos_rad
         if n==0:
             self.pos = p   #r.moveTo(p)  # rect.moveCenter(p)
         elif n==1:
             self.set_radius_and_angle(p)
+        elif n==2:
+            self.set_nverts(p)
         else: return
         self.move_at_add(p)
         h1.set_handle_pos(self.pos + self.pradius)
+        h2.set_handle_pos(self.pos + self.pradius + self.pnverts)
         #poly = self.scitem.polygon()
         #self.scitem.setPolygon(poly)
 
@@ -874,7 +897,7 @@ class ROIEllipse(ROIBase):
     def set_from_roi_pars(self, d):
         logger.info('ROIEllipse.set_from_roi_pars dict: %s' % str(d))
         p1, p2 = [QPointF(*xy) for xy in d['points']]
-        angle = d['angle']
+        angle = d.get('angle', 0)
         r = QRectF(p1, p2)
         self.add_to_scene(pos=r.center(), rect=r, angle_deg=angle)
         return True
@@ -948,6 +971,12 @@ class ROICircle(ROIEllipse):
             h1.set_handle_pos(p)
         else: return
         self.scitem.setRect(r)
+
+    def roi_pars(self):
+        o = self.scitem.rect()
+        d = ROIBase.roi_pars(self)
+        d['points'] = [json_point(p) for p in (o.topLeft(), o.bottomRight())]  # list(o.getCoords())
+        return d
 
     def mask(self, shape):
         """mask of the circle"""
