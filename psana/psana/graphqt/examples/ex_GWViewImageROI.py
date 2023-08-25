@@ -73,15 +73,15 @@ class TestGWViewImageROI(GWViewImageROI):
 
     def test_draw_rois(self):
         """Test ROI"""
-        itroi1 = roiu.select_roi(roiu.PIXEL,   view=self, pen=roiu.QPEN_DEF).add_to_scene(pos=QPointF(20, 40))
-        itroi2 = roiu.select_roi(roiu.LINE,    view=self, pos=QPointF(20, 60)).add_to_scene()
-        itroi3 = roiu.select_roi(roiu.RECT,    view=self, pos=QPointF(20, 80)).add_to_scene()
-        itroi4 = roiu.select_roi(roiu.SQUARE , view=self, pos=QPointF(20, 100)).add_to_scene()
-        itroi5 = roiu.select_roi(roiu.POLYGON, view=self, pos=QPointF(20, 120)).add_to_scene()
-        itroi6 = roiu.select_roi(roiu.POLYREG, view=self, pos=QPointF(20, 140)).add_to_scene()
-        itroi7 = roiu.select_roi(roiu.ELLIPSE, view=self, pos=QPointF(20, 160)).add_to_scene()
-        itroi8 = roiu.select_roi(roiu.CIRCLE,  view=self, pos=QPointF(20, 180)).add_to_scene()
-        itroi9 = roiu.select_roi(roiu.ARCH,    view=self, pos=QPointF(20, 200)).add_to_scene()
+        itroi1 = roiu.create_roi(roiu.PIXEL,   view=self, pen=roiu.QPEN_DEF).add_to_scene(pos=QPointF(20, 40))
+        itroi2 = roiu.create_roi(roiu.LINE,    view=self, pos=QPointF(20, 60)).add_to_scene()
+        itroi3 = roiu.create_roi(roiu.RECT,    view=self, pos=QPointF(20, 80)).add_to_scene()
+        itroi4 = roiu.create_roi(roiu.SQUARE , view=self, pos=QPointF(20, 100)).add_to_scene()
+        itroi5 = roiu.create_roi(roiu.POLYGON, view=self, pos=QPointF(20, 120)).add_to_scene()
+        itroi6 = roiu.create_roi(roiu.POLYREG, view=self, pos=QPointF(20, 140)).add_to_scene()
+        itroi7 = roiu.create_roi(roiu.ELLIPSE, view=self, pos=QPointF(20, 160)).add_to_scene()
+        itroi8 = roiu.create_roi(roiu.CIRCLE,  view=self, pos=QPointF(20, 180)).add_to_scene()
+        itroi9 = roiu.create_roi(roiu.ARCH,    view=self, pos=QPointF(20, 200)).add_to_scene()
 
     def test_draw_handles(self):
         """Test Handle"""
@@ -230,8 +230,8 @@ def test_gfviewimageroi(tname):
     w.show()
     app.exec_()
 
-    del w
-    del app
+#    del w
+#    del app
 
 USAGE = '\nUsage: %s <tname>\n' % sys.argv[0].split('/')[-1]\
       + '\n'.join([s for s in inspect.getsource(test_gfviewimageroi).split('\n') \
