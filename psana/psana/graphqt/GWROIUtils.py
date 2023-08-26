@@ -33,7 +33,8 @@ from matplotlib.path import Path
 
 QCOLOR_DEF = QColor(Qt.yellow)
 QCOLOR_SEL = QColor('#ffeeaaee')
-QCOLOR_EDI = QColor(Qt.white) # Qt.magenta
+QCOLOR_EDI = QColor(Qt.white)
+QCOLOR_INV = QColor(Qt.magenta)
 QCOLOR_HID = QColor('#00eeaaee')
 QBRUSH_DEF = QBrush()
 QBRUSH_ROI = QBrush(QCOLOR_DEF, Qt.SolidPattern)
@@ -79,16 +80,19 @@ VISIBLE   = 2
 ADD       = 4
 REMOVE    = 8
 SELECT    = 16
-EDIT      = 32
+INVERT    = 32
+EDIT      = 64
 mode_tuple = (
   (NONE,      'NONE',      'Q'),
-  (UNVISIBLE, 'UNVISIBLE', 'U'),
-  (VISIBLE,   'VISIBLE',   'V'),
   (ADD,       'ADD',       'A'),
   (REMOVE,    'REMOVE',    'R'),
   (SELECT,    'SELECT',    'S'),
+  (INVERT,    'INVERT',    'I'),
   (EDIT,      'EDIT',      'E'),
 )
+#  (INVISIBLE, 'INVISIBLE', 'U'),
+#  (VISIBLE,   'VISIBLE',   'V'),
+
 mode_types = [t for t,n,k in mode_tuple]
 mode_names = [n for t,n,k in mode_tuple]
 mode_keys  = [k for t,n,k in mode_tuple]
@@ -212,19 +216,24 @@ class ROIBase():
             self.pen.setColor(color)
             self.brush.setColor(color)
 
-    def set_mode(self, mode):
-        if self.mode & mode == 0: self.mode ^= mode # set specified bit
-        #else: return # bit is already set
-
-    def reset_mode(self, mode=None):
+    def set_mode(self, mode=None, value=True):
+        """sets bit specified by mode to 0/1 by value=False/True,
+           if mode=None - resets all bits.
+        """
         if mode==None: self.mode = NONE # reset all bits
-        elif self.mode & mode == mode: self.mode ^= mode # reset specified bit
+        elif (self.mode & mode == 0 and value) \
+        or   (self.mode & mode == mode and not value):
+            self.mode ^= mode # switch specified bit
+        #else: return # bit is already set correctly
+
+    def swap_mode(self, mode):
+        self.mode ^= mode
 
     def is_mode(self, mode):
         return self.mode & mode == mode
 
     def scene(self):
-        #if not hasattr(self, 'view'): return None
+        if not hasattr(self, 'view'): return None
         if not hasattr(self.view, 'scene'): return None
         return self.view.scene()
 
@@ -279,10 +288,11 @@ class ROIBase():
     def remove_handles_from_scene(self):
         """remove handle objects from the self.list_of_handles and scene, reset self.list_of_handles"""
         logging.debug('ROIBase.remove_handles_from_scene for ROI %s' % self.roi_name)
-        for o in self.list_of_handles.copy():
+        if self.scene():
+          for o in self.list_of_handles: # .reverse():
             logger.debug('begin remove handle: %s' % str(o))
             self.scene().removeItem(o)
-            self.list_of_handles.remove(o)
+            #self.list_of_handles.remove(o)
             del o
             logger.debug('   -- removed')
         self.list_of_handles = []
@@ -304,6 +314,7 @@ class ROIBase():
         logging.debug('ROIBase.roi_pars - dict of common roi parameters - name and type')
         return {'roi_name': self.roi_name,
                 'roi_type': self.roi_type,
+                'inverted': self.is_mode(INVERT),
                 'points':[]
                 }
 
@@ -317,7 +328,8 @@ class ROIBase():
 
     def good_bad_pixels(self):
         """accounting inversion"""
-        return (False, True) if self.inverted else (True, False)
+        return (False, True) if self.is_mode(INVERT) else (True, False)
+        #return (False, True) if self.inverted else (True, False)
 
 #    def mask(self, shape):
 #        """generic mask for roi using self.scitem.contains(QPointF)
@@ -346,9 +358,9 @@ class ROIBase():
         good, bad = self.good_bad_pixels()
         return np.select([cond], [bad], default=good)
 
-    def __del__(self):
-        self.remove_handles_from_scene()
-        logger.info('in ROIBase.__del__ for ROI: %s' % self.roi_name)
+#    def __del__(self):
+#        self.remove_handles_from_scene()
+#        logger.info('in ROIBase.__del__ for ROI: %s' % self.roi_name)
 
 
 class ROIPixel(ROIBase):
@@ -383,7 +395,7 @@ class ROIPixel(ROIBase):
 
     def set_from_roi_pars(self, d):
         logger.info('ROIPixel.set_from_roi_pars dict: %s' % str(d))
-        xy = *d['points'][0]  # list [x, y]
+        xy = d['points'][0]  # list [x, y]
         self.add_to_scene(pos=QPointF(*xy))
         return True
 
