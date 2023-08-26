@@ -152,7 +152,7 @@ class TestGWViewImageROI(GWViewImageROI):
             self.save_mask()
 
         elif ckey in roiu.roi_keys:
-            self.finish()
+            #self.finish()
             i = roiu.roi_keys.index(ckey)
             self.roi_type = roiu.roi_types[i]
             self.roi_name = roiu.roi_names[i]
