@@ -191,12 +191,11 @@ class ROIBase():
         self.roi_name   = dict_roi_type_name[self.roi_type]
         self.view       = kwa.get('view', None) # QGraphicsView()
         self.pos        = QPointF(kwa.get('pos', QPointF(0,0)))
-        self.mode       = kwa.get('mode', NONE) # 0/1/2/4/8/16 - invisible/visible/add/move/rotate/edit
+        self.mode       = kwa.get('mode', NONE) # 0/.../16/32/64/... - NONE/.../SELECT/INVERT/EDIT
         self.moveable   = kwa.get('moveable', False)
         self.scaleable  = kwa.get('scaleable', False)
         self.rotateable = kwa.get('rotateable', False)
         self.tolerance  = kwa.get('tolerance', 5.0)
-        self.inverted   = kwa.get('inverted', False)
         self.is_busy_iscpos = kwa.get('is_busy_iscpos', False)
         self.list_of_handles = []
 
@@ -312,11 +311,12 @@ class ROIBase():
 
     def roi_pars(self):
         logging.debug('ROIBase.roi_pars - dict of common roi parameters - name and type')
-        return {'roi_name': self.roi_name,
-                'roi_type': self.roi_type,
-                'inverted': self.is_mode(INVERT),
-                'points':[]
-                }
+        d = {'roi_name': self.roi_name,
+             'roi_type': self.roi_type,
+             'points':[]
+            }
+        if self.is_mode(INVERT): d['mode'] = self.mode & INVERT # save mode for inverted ROIs only
+        return d
 
     def set_from_roi_pars(self, d):
         logging.warning('ROIBase.set_from_roi_pars - dict of roi parameter NEEEDS TO BE RE-EMPLEMENTED IN DERIVED SUBCLASS')
