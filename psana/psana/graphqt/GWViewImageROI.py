@@ -68,8 +68,10 @@ from PyQt5.QtGui import  QPen, QPainter, QColor, QBrush, QTransform, QPolygonF
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLineF
 import psana.graphqt.QWUtils as gu
 import psana.graphqt.GWROIUtils as roiu
-QPEN_DEF, QBRUSH_DEF, QCOLOR_DEF, QCOLOR_SEL, QCOLOR_EDI =\
-roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QCOLOR_DEF, roiu.QCOLOR_SEL, roiu.QCOLOR_EDI
+QPEN_DEF, QBRUSH_DEF, QCOLOR_DEF, QCOLOR_SEL, QCOLOR_EDI, QCOLOR_INV =\
+roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QCOLOR_DEF, roiu.QCOLOR_SEL, roiu.QCOLOR_EDI, roiu.QCOLOR_INV
+SELECT, EDIT, INVERT = roiu.SELECT, roiu.EDIT, roiu.INVERT
+
 
 FNAME_DEF = 'roi_parameters.json'
 FNAME_MASK = 'mask.npy'
@@ -131,6 +133,7 @@ class GWViewImageROI(GWViewImage):
         elif self.mode_type & roiu.ADD:    self.on_press_add(e)
         elif self.mode_type & roiu.REMOVE: self.on_press_remove(e)
         elif self.mode_type & roiu.SELECT: self.on_press_select(e)
+        elif self.mode_type & roiu.INVERT: self.on_press_invert(e)
         elif self.mode_type & roiu.EDIT:   self.on_press_edit(e)
 
     def mouseMoveEvent(self, e):
@@ -172,6 +175,7 @@ class GWViewImageROI(GWViewImage):
     def finish(self):
         if self.mode_type & roiu.ADD:  self.finish_add_roi()
         if self.mode_type & roiu.EDIT: self.finish_edit_roi()
+        self.set_roi_and_mode(roi_type=roiu.NONE, mode_type=roiu.NONE)
 
     def finish_add_roi(self):
         """finish add_roi action on or in stead of last click, set poly at last non-closing click"""
@@ -208,28 +212,42 @@ class GWViewImageROI(GWViewImage):
         """scene position for mouse event"""
         return self.mapToScene(e.pos())
 
-    def on_press_select(self, e, color_sel=QCOLOR_SEL):
+    def on_press_select(self, e):
         """select ROI on mouthPressEvent"""
         logger.debug('GWViewImageROI.on_press_select at scene pos: %s' % str(self.scene_pos(e)))
         o = self.one_roi_at_point(self.scene_pos(e))
         if o is None: return
-        color = QCOLOR_DEF if o.scitem.pen().color() == color_sel else color_sel
-        self.set_roi_color(o, color)
+        o.swap_mode(SELECT)
+        self.set_roi_color(o, color=QCOLOR_SEL if o.is_mode(SELECT) else QCOLOR_DEF)
 
-    def select_roi_edit(self, e, color_edi=QCOLOR_EDI):
-        self.roi_active = self.one_roi_at_point(self.scene_pos(e))
+    def on_press_invert(self, e):
+        """invert ROI on mouthPressEvent"""
+        logger.debug('GWViewImageROI.on_press_invert at scene pos: %s' % str(self.scene_pos(e)))
+        o = self.one_roi_at_point(self.scene_pos(e))
+        if o is None: return
+        o.swap_mode(INVERT)
+        self.set_roi_color(o, color=QCOLOR_INV if o.is_mode(INVERT) else QCOLOR_DEF)
+
+#    def invert_selected_roi(self):
+#        """invert all ROIs selected/marked by mode SELECT"""
+#        roisel = [o for o in self.list_of_rois if o.is_mode(SELECT)]
+#        logger.debug('invert_selected_roi: %s' % str(roisel))
+#        for o in roisel:
+#            o.swap_mode(INVERT)
+#            self.set_roi_color(o, color=QCOLOR_INV if o.is_mode(INVERT) else QCOLOR_DEF)
 
     def deselect_any_edit(self):
         for o in self.list_of_rois:
-            if o.scitem.pen().color() == QCOLOR_EDI:
+            if o.is_mode(EDIT): #scitem.pen().color() == QCOLOR_EDI:
                 o.hide_handles()
+                o.set_mode(EDIT, False)
         self.reset_color_all_rois(color=QCOLOR_DEF)
         self.handle_active = None
         self.roi_active = None
 
     def on_press_edit(self, e):
         logger.debug('GWViewImageROI.on_press_edit at scene pos: %s' % str(self.scene_pos(e)))
-        print('XXX self.roi_active: %s self.handle_active %s' % (self.roi_active, self.handle_active))
+        #print('XXX self.roi_active: %s self.handle_active %s' % (self.roi_active, self.handle_active))
 
         if self.roi_active is not None: # try to find handle
             h = self.handle_active = self.roi_active.handle_at_point(self.scene_pos(e))
@@ -238,11 +256,12 @@ class GWViewImageROI(GWViewImage):
 
         self.handle_active = None
         self.deselect_any_edit()
-        self.select_roi_edit(e, QCOLOR_EDI)
+        self.roi_active = self.one_roi_at_point(self.scene_pos(e))
         if self.roi_active is None:
             logger.warning('ROI FOR EDIT IS NOT FOUND near scene point %s' % str(self.scene_pos(e)))
             self.deselect_any_edit()
             return
+        self.roi_active.set_mode(EDIT, True)
         self.set_roi_color(self.roi_active, QCOLOR_EDI)
         self.roi_active.show_handles()
 
@@ -258,7 +277,7 @@ class GWViewImageROI(GWViewImage):
         if o.scitem is None: return
         #o.remove_handles_from_scene()
         self.scene().removeItem(o.scitem)
-        self.list_of_rois.remove(o)
+        #self.list_of_rois.remove(o)
         del o
 
     def on_move_remove(self, e):
@@ -272,8 +291,8 @@ class GWViewImageROI(GWViewImage):
                 self.remove_roi(o)
 
     def delete_selected_roi(self):
-        """delete all ROIs selected/marked by QCOLOR_SEL"""
-        roisel = [o for o in self.list_of_rois if o.scitem.pen().color() == QCOLOR_SEL]
+        """delete all ROIs selected/marked by mode SELECT"""
+        roisel = [o for o in self.list_of_rois if o.is_mode(SELECT)]
         logger.debug('delete_selected_roi: %s' % str(roisel))
         for o in roisel:
             self.remove_roi(o)
@@ -281,9 +300,9 @@ class GWViewImageROI(GWViewImage):
     def delete_all_roi(self):
         """delete all ROIs"""
         logger.debug('delete_all_roi')
-        for o in self.list_of_rois.copy():
+        for o in self.list_of_rois:
             self.remove_roi(o)
-        #self.list_of_rois = []
+        self.list_of_rois = []
 
     def cancel_add_roi(self):
         """cancel of adding item to scene"""
