@@ -291,7 +291,7 @@ class ROIBase():
           for o in self.list_of_handles: # .reverse():
             logger.debug('begin remove handle: %s' % str(o))
             self.scene().removeItem(o)
-            #self.list_of_handles.remove(o)
+            #if o in self.list_of_handles: self.list_of_handles.remove(o)
             del o
             logger.debug('   -- removed')
         self.list_of_handles = []
