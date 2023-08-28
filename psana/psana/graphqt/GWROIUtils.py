@@ -39,6 +39,7 @@ QCOLOR_HID = QColor('#00eeaaee')
 QBRUSH_DEF = QBrush()
 QBRUSH_ROI = QBrush(QCOLOR_DEF, Qt.SolidPattern)
 QBRUSH_EDI = QBrush(QCOLOR_EDI, Qt.SolidPattern)
+QBRUSH_SEL = QBrush(QCOLOR_SEL, Qt.SolidPattern)
 QPEN_DEF   = QPen(QCOLOR_DEF, 1, Qt.SolidLine)  # Qt.DashLine
 QPEN_EDI   = QPen(QCOLOR_EDI, 1, Qt.SolidLine)
 QPEN_HID   = QPen(QCOLOR_HID, 1, Qt.SolidLine)
@@ -125,10 +126,6 @@ def regular_polygon_qpoints(p, rx=5, ry=5, npoints=8, astart=0, aspan=360, endpo
     return [QPointF(p.x()+rx*c, p.y()+ry*s)\
             for s,c in zip(tuple(np.sin(angs)), tuple(np.cos(angs)))]
 
-def size_points_on_scene(view, rsize):
-    t = view.transform()
-    rx, ry = rsize/t.m11(), rsize/t.m22()
-    return QPointF(rx,0), QPointF(0,ry)
 
 def angle_between_points(p0, p1):
     d = p1 - p0
@@ -196,6 +193,7 @@ class ROIBase():
         self.scaleable  = kwa.get('scaleable', False)
         self.rotateable = kwa.get('rotateable', False)
         self.tolerance  = kwa.get('tolerance', 5.0)
+        self.is_invertable = True
         self.is_busy_iscpos = kwa.get('is_busy_iscpos', False)
         self.list_of_handles = []
 
@@ -371,7 +369,8 @@ class ROIPixel(ROIBase):
         logger.debug('ROIPixel.__init__')
         self.brush = QBRUSH_ROI
         self.pen = QPEN_DEF
-        print('ROIPixel.roi_pars: %s' % str(self.roi_pars()))
+        self.is_invertable = False
+        #print('ROIPixel.roi_pars: %s' % str(self.roi_pars()))
 
     def pixel_rect(self, pos=None):
         if pos is not None: self.pos = int_scpos(pos)
@@ -408,6 +407,7 @@ class ROIPixGroup(ROIBase):
         logger.info('ROIPixGroup.__init__')
         self.brush = QBRUSH_ROI
         self.pen = QPEN_DEF
+        self.is_invertable = False
         self.pixpos = []
         self.iscpos_last = None
 
@@ -451,7 +451,7 @@ class ROIPixGroup(ROIBase):
            #print('XXX ROIPixGroup.add_to_scene - pixel self.scitem is created and added to scene at 1st click')
         else:
            if self.is_busy_pos(iscpos):
-               print('XXX ROIPixGroup   is_busy_pos:', iscpos)
+               #print('XXX ROIPixGroup   is_busy_pos:', iscpos)
                self.remove_pixel_from_path(iscpos)
                return
            item = self.scitem
@@ -1054,12 +1054,6 @@ class ROIArch(ROIBase):
         path.closeSubpath()
         return path
 
-#    def boundingRect(self):
-#        #self.prepareGeometryChange()
-#        p, r = self.hpos, self.rsize
-#        v = QPointF(r,r)
-#        return QRectF(p-v,p+v)
-
     def move_at_add(self, p, left_is_pressed=False):
         #logger.debug('ROIArch.move_at_add')
         if (p-self.pos).manhattanLength() < self.tolerance: return
@@ -1152,7 +1146,7 @@ class HandleBase(QGraphicsPathItem):
     def __init__(self, **kwa):
         self.roi    = kwa.get('roi', None)  # any derrived from ROIBase < ... < QGraphicsItem
         self.hpos   = QPointF(kwa.get('pos', QPointF(0,0)))
-        self.rsize  = kwa.get('rsize', 7)
+        self.rsize  = kwa.get('rsize', 0.0075) # size of the handle relative viewport rect
         self.hname  = dict_handle_type_name[self.htype]
         self.hview  = kwa.get('view', None) # self.roi.view if self.roi is not None else None)
         self.hscene = kwa.get('scene', self.hview.scene() if self.hview is not None else None)
@@ -1173,10 +1167,17 @@ class HandleBase(QGraphicsPathItem):
         #self.hscene.addItem(self)  # ALREDAY SET ??? by parent=self.roi
         return self
 
+    def size_points_on_scene(self):
+        view, rsize = self.hview, self.rsize
+        vsize = rsize * view.rect().width() # viewport size of the handle
+        t = view.transform()
+        rx, ry = vsize/t.m11(), vsize/t.m22()
+        return QPointF(rx,0), QPointF(0,ry)
+
     def boundingRect(self):
-        #self.prepareGeometryChange()
-        p, r = self.hpos, self.rsize
-        v = QPointF(r,r)
+        p = self.hpos
+        dx, dy = self.size_points_on_scene()
+        v = dx + dy + QPointF(1,1)
         return QRectF(p-v,p+v)
 
     def set_handle_pos(self, p):
@@ -1185,10 +1186,8 @@ class HandleBase(QGraphicsPathItem):
         self.setPath(self.path()) # WORKS
         #self.setPos(p) # DOES NOT WORK
         #self.translate(d.x(), d.y())
-        #print('XXX dir(self):', dir(self))
 
     def on_move(self, p):
-        #print('XXX on_move p: %s' % str(p))
         self.set_handle_pos(p)
         self.roi.set_point(self.poinum, p)
 
@@ -1200,8 +1199,8 @@ class HandleCenter(HandleBase):
 
     def path(self):
         """Returns QPainterPath for HandleCenter in scene coordinates around self.hpos"""
-        p, view, rsize = self.hpos, self.hview, self.rsize
-        dx, dy = size_points_on_scene(view, rsize)
+        p = self.hpos
+        dx, dy = self.size_points_on_scene()
         path = QPainterPath(p-dy) # Designers sign of center
         path.lineTo(p+dy)
         path.lineTo(p-dx/5+dy/5)
@@ -1219,8 +1218,8 @@ class HandleOrigin(HandleBase):
 
     def path(self):
         """Returns QPainterPath for HandleOrigin in scene coordinates around self.hpos"""
-        p, view, rsize = self.hpos, self.hview, self.rsize
-        dx, dy = size_points_on_scene(view, rsize)
+        p = self.hpos
+        dx, dy = self.size_points_on_scene()
         path = QPainterPath(p+dx) #vertical cross
         path.lineTo(p-dx)
         path.moveTo(p+dy)
@@ -1236,8 +1235,8 @@ class HandleTranslate(HandleBase):
 
     def path(self):
         """Returns QPainterPath for HandleTranslate in scene coordinates around self.hpos"""
-        p, view, rsize = self.hpos, self.hview, self.rsize
-        dx, dy = size_points_on_scene(view, rsize)
+        p = self.hpos
+        dx, dy = self.size_points_on_scene()
         path = QPainterPath(p+dx+dy)  #horizantal rectangle
         path.lineTo(p-dx+dy)
         path.lineTo(p-dx-dy)
@@ -1253,8 +1252,8 @@ class HandleRotate(HandleBase):
 
     def path(self):
         """Returns QPainterPath for HandleRotate in scene coordinates around self.hpos"""
-        p, view, rsize = self.hpos, self.hview, self.rsize
-        dx, dy = size_points_on_scene(view, rsize)
+        p = self.hpos
+        dx, dy = self.size_points_on_scene()
         path = QPainterPath() #Circle/Ellipse - shape
         #path.addEllipse(p, dx.x(), dx.x())
         path.addPolygon(QPolygonF(regular_polygon_qpoints(p, rx=dx.x(), ry=dx.x(), npoints=16))) # astart=0, aspan=360
@@ -1269,8 +1268,9 @@ class HandleScale(HandleBase):
 
     def path(self):
         """Returns QPainterPath for Handle in scene coordinates around self.hpos"""
-        p, view, rsize = self.hpos, self.hview, self.rsize
-        dx, dy = size_points_on_scene(view, 1.41*rsize)
+        p = self.hpos
+        dx, dy = self.size_points_on_scene()
+        dx, dy = 1.41*dx, 1.41*dy
         path = QPainterPath(p+dx) #rombic - shape#
         path.lineTo(p+dy)
         path.lineTo(p-dx)
@@ -1286,8 +1286,8 @@ class HandleMenu(HandleBase):
 
     def path(self):
         """Returns QPainterPath for HandleMenu in scene coordinates around self.hpos"""
-        p, view, rsize = self.hpos, self.hview, self.rsize
-        dx, dy = size_points_on_scene(view, rsize)
+        p = self.hpos
+        dx, dy = self.size_points_on_scene()
         dx06, dy03 = 0.6*dx, 0.3*dy
         path = QPainterPath(p+dx+dy)  #horizantal rectangle
         path.lineTo(p-dx+dy)
@@ -1310,8 +1310,8 @@ class HandleOther(HandleBase):
 
     def path(self):
         """Returns QPainterPath for HandleOther in scene coordinates around self.hpos"""
-        p, view, rsize = self.hpos, self.hview, self.rsize
-        dx, dy = size_points_on_scene(view, rsize)
+        p = self.hpos
+        dx, dy = self.size_points_on_scene()
         path = None
 
         if self.shhand == 1:
