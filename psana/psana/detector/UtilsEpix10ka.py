@@ -89,7 +89,7 @@ class Storage:
         - cmpars (int or tuple) - user defined or from calibration constants if None, 0 - cm correction is turrned off
         """
 
-        logger.info('create store with cached parameters for %s' % det_raw._det_name)
+        #logger.info('create store with cached parameters for %s' % det_raw._det_name)
 
         det_raw._store_ = self  # self preservation
         self.counter = -1
@@ -121,12 +121,12 @@ class Storage:
 
         self.cmpars = det_raw._common_mode() if cmpars is None else cmpars
 
-        logger.info('\n  shape_as_daq %s' % str(self.shape_as_daq)\
-                    +info_ndarr(self.gain, '\n  gain')\
-                    +info_ndarr(self.peds, '\n  peds')\
-                    +info_ndarr(self.gfac, '\n  gfac')\
-                    +info_ndarr(self.mask, '\n  mask')\
-                    +'\n  common-mode correction parameters cmpars: %s' % str(self.cmpars))
+        #logger.info('\n  shape_as_daq %s' % str(self.shape_as_daq)\
+        #            +info_ndarr(self.gain, '\n  gain')\
+        #            +info_ndarr(self.peds, '\n  peds')\
+        #            +info_ndarr(self.gfac, '\n  gfac')\
+        #            +info_ndarr(self.mask, '\n  mask')\
+        #            +'\n  common-mode correction parameters cmpars: %s' % str(self.cmpars))
 
 
 def config_object_det(det, detname=None):
@@ -615,7 +615,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     logger.debug(info_ndarr(arrf,  'arrf:'))
 
     if factor is None:
-        logger.warning('gain factor is None - substitute with 1')
+        #logger.warning('gain factor is None - substitute with 1')
         factor = 1
 
     return arrf * factor if mask is None else arrf * factor * mask # gain correction

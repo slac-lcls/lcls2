@@ -5,9 +5,8 @@ from psana import dgram
 from psana.event import Event
 from .run import RunSmallData
 
-import logging
-logger = logging.getLogger(__name__)
-
+from psana import utils
+logger = utils.Logger(myrank=0)
 
 class BatchIterator(object):
     """ Iterates over batches of events.
@@ -99,7 +98,7 @@ class SmdReaderManager(object):
         st = time.monotonic()
         self.smdr.get(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
-        logger.debug(f'read {self.smdr.got/1e6:.3f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
+        logger.debug(f'READRATE SMD0 (0-) {self.smdr.got/(1e6*(en-st))} MB/s ({self.smdr.got/1e6:.3f}MB/ {en-st}s.)')
         self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
         self.c_read.labels('seconds', 'None').inc(en-st)
         
@@ -115,7 +114,7 @@ class SmdReaderManager(object):
         """
         if self.dsparms.max_events > 0 and \
                 self.processed_events >= self.dsparms.max_events:
-            logger.debug(f'max_events={self.dsparms.max_events} reached')
+            logger.debug(f'MESSAGE SMD0 max_events={self.dsparms.max_events} reached')
             return None
 
         dgrams = None
@@ -178,7 +177,7 @@ class SmdReaderManager(object):
         d_view, d_read = 0, 0
         cn_chunks = 0
         while not is_done:
-            logger.debug(f'SMD0 1. STARTCHUNK {time.monotonic()}')
+            logger.debug(f'TIMELINE 1. STARTCHUNK {time.monotonic()}', level=2)
             st_view, en_view, st_read, en_read = 0,0,0,0
 
             l1_size = 0
@@ -194,16 +193,13 @@ class SmdReaderManager(object):
                 got_events = self.got_events
                 self.processed_events += self.got_events
                 
-                # sending data to prometheus
-                logger.debug('got %d events'%(self.got_events))
-
                 if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
-                    logger.debug(f'max_events={self.dsparms.max_events} reached')
+                    logger.debug(f'MESSAGE SMD0 max_events={self.dsparms.max_events} reached')
                     is_done = True
                 
                 en_view = time.monotonic()
                 d_view += en_view - st_view
-                logger.debug(f'SMD0 2. DONECREATEVIEW {time.monotonic()}')
+                logger.debug(f'TIMELINE 2. DONECREATEVIEW {time.monotonic()}', level=2)
 
                 if self.got_events:
                     cn_chunks += 1
@@ -213,7 +209,7 @@ class SmdReaderManager(object):
                 st_read = time.monotonic()
                 self._get()
                 en_read = time.monotonic()
-                logger.debug(f'SMD0 3. DONEREAD {time.monotonic()}')
+                logger.debug(f'TIMELINE 3. DONEREAD {time.monotonic()}', level=2)
                 d_read += en_read - st_read
                 if not self.smdr.is_complete():
                     is_done = True

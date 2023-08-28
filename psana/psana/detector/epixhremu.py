@@ -4,8 +4,9 @@
 
 import os
 import numpy as np
-from amitypes import Array2d
+from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
+import psana.detector.areadetector as ad
 import logging
 from psana.detector.detector_impl import DetectorImpl
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ class epixhremu_raw_0_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epixhremu_raw_0_0_1.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
-        self._seg_geo = eb.sgs.Create(segname='EPIXHR1X4:V1')
+        self._seg_geo = ad.sgs.Create(segname='EPIXHR1X4:V1')
         self._data_bit_mask = eb.M15 # for epixhremu data
         self._data_gain_bit = eb.B15
         self._gain_bit_shift = 10
@@ -82,30 +83,48 @@ fake_seg_config = _fake_seg_config()
 import libpressio as lp
 import json
 
-class epixhremu_fex_0_0_1(DetectorImpl):
+#class epixhremu_fex_0_0_1(DetectorImpl):
+class epixhremu_fex_0_0_1(ad.AreaDetector):
     def __init__(self, *args, **kwargs):
         super(epixhremu_fex_0_0_1, self).__init__(*args)
+        self._seg_geo = ad.sgs.Create(segname='EPIXHR1X4:V1')
 
         # Expect config to be the same for all segments, so pick first one
-        for config in self._seg_configs().values():  break
+        for config in self._seg_configs().values(): break
         comp_config = json.loads(config.config.compressor_json)
 
         # Instantiate the compressor/decompressor
         self._compressor = lp.PressioCompressor.from_config(comp_config)
 
         # Hard code shape and data type because they're properies of the detector
-        self._decompressed = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.uint16))
+        self._decompressed = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.float32))
 
-    def _calib(self, evt) -> Array2d:
-        calib = None
+    def _calib(self, evt, **kwargs) -> Array2d:
         segs = self._segments(evt)
-        if segs is None:
-            pass
-        else:
-            for data in segs.values():  break # Is there only 1?  What if there are more?
-            calib = self._compressor.decode(data.fex, self._decompressed)
-            print(f'*** calib is a {type(calib)} of len {len(calib)}, dtype {calib.dtype}, shape {calib.shape}, ndim {calib.ndim}, size {calib.size}')
+        dec = None
+        if segs is not None:
+            for data in segs.values(): break # Is there only 1?  What if there are more?
+            dec = self._compressor.decode(data.fex, self._decompressed)
+            #print(f'*** dec is a {type(dec)} of len {len(dec)}, dtype {dec.dtype}, shape {dec.shape}, ndim {dec.ndim}, size {dec.size}')
 
-        return calib
+        return dec
+
+    def calib(self, evt, **kwargs) -> Array3d:
+        """decode per panel dict of _segments and return array of
+           shape=(<number-of-def-panels>, <panel-number-of-rows>, <panel-number-of-cols>)
+        """
+        segs = self._segments(evt)
+        return None if segs is None else\
+               np.stack([self._compressor.decode(segs[k].fex, self._decompressed) for k in sorted(segs.keys())])
+
+    def image(self, evt, **kwargs) -> Array2d: # value_for_missing_segments=1
+        #ad.AreaDetector.image(evt, nda=self.calib(evt), **kwargs)
+        return ad.AreaDetector.image(self, evt, **kwargs)
+
+        #cc = self._calibconst # defined in DetectorImpl
+        #print('cc[geometry] meta:\n%s' % str(cc['geometry'][1]))
+        #print('cc.keys:\n%s' % str(cc.keys()))
+        #segnums = self._segment_numbers = self._sorted_segment_ids # [2, 5, 11] - for run 286 or all 20 for 287
+        #print('  segnums: %s' % str(segnums))
 
 # EOF

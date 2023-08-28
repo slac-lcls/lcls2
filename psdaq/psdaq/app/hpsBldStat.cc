@@ -12,20 +12,14 @@
 #include <string>
 #include <signal.h>
 
-#include "psdaq/pgp/kcu1500/app/Client.hh"
 #include "psdaq/bld/Client.hh"
-#include "xtcdata/xtc/Dgram.hh"
-#include "xtcdata/xtc/DescData.hh"
-#include "xtcdata/xtc/ShapesData.hh"
-#include "xtcdata/xtc/NamesLookup.hh"
-#include "xtcdata/xtc/Xtc.hh"
-using namespace XtcData;
-
-//  DescribedData must have a variable-length array!
 
 #include "AppUtils.hh"
 
 #include "psdaq/epicstools/PVBase.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+using namespace XtcData;
 
 static const Name::DataType xtype[] =
   { Name::UINT8 , // pvBoolean
@@ -92,9 +86,6 @@ static uint64_t  event = 0;
 static uint64_t  bytes = 0;
 static uint64_t  misses = 0;
 
-static Pds::Kcu::Client* tpr = 0;
-
-
 // METHOD dump IS COMMENTED IN ORDER TO GET RID OF COMPILER WARNING:
 //  warning: void dump(XtcData::Xtc*, const char*) defined but not used [-Wunused-function]
 //  static void dump(XtcData::Xtc* xtc, const char* title)
@@ -113,7 +104,6 @@ static Pds::Kcu::Client* tpr = 0;
 static void sigHandler(int signal)
 {
   psignal(signal, "bld_client received signal");
-  tpr->stop();
   ::exit(signal);
 }
 
@@ -152,10 +142,11 @@ int main(int argc, char* argv[])
   const char* payName = 0;
   const char* addName = 0;
   const char* prtName = 0;
+  int payloadSize = -1;
   bool lverbose = false;
   unsigned nprint = 10;
 
-  while ( (c=getopt( argc, argv, "f:i:N:P:v#:")) != EOF ) {
+  while ( (c=getopt( argc, argv, "f:i:N:p:P:v#:")) != EOF ) {
     switch(c) {
     case 'f':
       filename = optarg;
@@ -167,6 +158,9 @@ int main(int argc, char* argv[])
       payName = strtok(optarg,",");
       addName = strtok(NULL  ,",");
       prtName = strtok(NULL  ,",");
+      break;
+    case 'p':
+      payloadSize = strtoul(optarg,NULL,0);
       break;
     case 'P':
       partn = strtoul(optarg,NULL,0);
@@ -189,16 +183,11 @@ int main(int argc, char* argv[])
   }
 
   //
-  //  Open the timing receiver
-  //
-  tpr = new Pds::Kcu::Client("/dev/datadev_1");
-
-  //
   //  Fetch channel field names from PVA
   //
   BldPV* pvaPayload    = new BldPV (payName);
-  PVBase* pvaAddr      = new PVBase("ca",addName);
-  PVBase* pvaPort      = new PVBase("ca",prtName);
+  PVBase* pvaAddr      = new PVBase(addName);
+  PVBase* pvaPort      = new PVBase(prtName);
   // PVBase* pvaAddr      = new PVBase((std::string(bldName)+":ADDR"   ).c_str());
   // PVBase* pvaPort      = new PVBase((std::string(bldName)+":PORT"   ).c_str());
 
@@ -239,117 +228,57 @@ int main(int argc, char* argv[])
   sigaction(SIGKILL,&sa,NULL);
   sigaction(SIGSEGV,&sa,NULL);
 
-  //
-  //  Configure : determine structure of data
-  //
-  char* configBuff = new char[1024*1024];
-  const void* configEnd = configBuff + 1024*1024;
-  FILE* fout = filename ? fopen(filename,"w") : 0;
-
   char* eventb = new char[ 8*1024 ];
   const void* eventEnd = eventb + 8*1024;
-  tpr->start(partn);
 
   unsigned _id = 0;
+  uint64_t ppulseId=0;
 
   while(1) {
 
-#if 0
-    //
-    //  Wait for payload description
-    //
-    unsigned id = pvaPayload->getUID();
-    while(id == _id) {
-      usleep(100);
-      id = pvaPayload->getUID();
+    size_t         payloadSz = payloadSize;
+    unsigned       id = 1;
+
+    if (payloadSize < 0) {
+        //
+        //  Wait for payload description
+        //
+        id = pvaPayload->getUID();
+        while(id == _id) {
+            usleep(100);
+            id = pvaPayload->getUID();
+        }
+          
+        //
+        //  Prepare configure transition payload
+        //
+        NameIndex      nameIndex;
+        NamesId        namesId(0,0);
+        VarDef         bldDef = pvaPayload->getVarDef(payloadSz);
     }
+
     bld.setID(_id = id);
-
-    //
-    //  Prepare configure transition payload
-    //
-    NameIndex      nameIndex;
-    NamesId        namesId(0,0);
-    size_t         payloadSz;
-    VarDef         bldDef = pvaPayload->getVarDef(payloadSz);
-#else
-    unsigned id = 1;
-    bld.setID(_id = 1);
-    NameIndex      nameIndex;
-    NamesId        namesId(0,0);
-    size_t         payloadSz=4;
-    VarDef         bldDef;
-    bldDef.NameVec.push_back({"fval", Name::FLOAT, 0});
-#endif
-
-    memset(configBuff, 0, 1024*1024);
-    Dgram& cdg = *write_config(nameIndex, namesId, bldDef, configBuff, configEnd);
-    if (fout)
-      fwrite(&cdg,sizeof(cdg)+cdg.xtc.sizeofPayload(),1,fout);
-
-    //
-    //  Prepare event buffer
-    //
-    Dgram* dgram = new (eventb) Dgram( Transition( Dgram::Event,
-                                                   TransitionId::L1Accept,
-                                                   TimeStamp(0,0),
-                                                   0 ),
-                                       Xtc( TypeId(TypeId::Parent, 0) ) );
-
-    Xtc&   xtc   = dgram->xtc;
-    DescribedData desc(xtc, eventEnd, nameIndex, namesId);
-    desc.set_data_length(payloadSz);
-
-    uint64_t ppulseId=0;
 
     while(1) {
 
       //  First, fetch BLD component
       //    uint64_t pulseId = 0;
-      uint64_t pulseId = bld.fetch((char*)desc.data(),payloadSz);
+      uint64_t pulseId = bld.fetch(eventb,payloadSz);
       //  Check if payload ID has changed
       //  Do we need to handle dynamic changes or just stop receiving
       //    data until a reconfigure?
-      if (!pulseId)
-        break;
-
-      if (lverbose && nprint) {
-        printf("bld pid 0x%lx\n", pulseId);
-        nprint--;
+      if (!pulseId) {
+          printf("  break\n");
+          break;
       }
 
-      //  Second, fetch header (should already be waiting)
-      const XtcData::Transition* tr = tpr->advance(pulseId);
-      //const XtcData::Transition* tr = 0;
+      event++;
+      bytes += payloadSz;
+      if (lverbose)
+          printf(" 0x%016llx  %lld\n", pulseId, pulseId-ppulseId);
 
-      if (tr) {
-        ppulseId = pulseId;
+      ppulseId = pulseId;
 
-        new (dgram) Transition(*tr);
-
-        if (fout)
-          fwrite(dgram, sizeof(*dgram)+dgram->xtc.sizeofPayload(), 1, fout);
-
-        event++;
-        bytes += sizeof(XtcData::Dgram)+payloadSz;
-        if (lverbose)
-          printf(" %9u.%09u extent 0x%x payload %08x %08x...\n",
-                 dgram->time.seconds(),
-                 dgram->time.nanoseconds(),
-                 dgram->xtc.extent,
-                 reinterpret_cast<uint32_t*>(dgram->xtc.payload())[0],
-                 reinterpret_cast<uint32_t*>(dgram->xtc.payload())[1]);
-      }
-      else {
-        //      if (misses++ > 100)
-        //        exit(1);
-
-        if (nprint) {
-          printf("Miss: %016lx  prev %016lx\n",
-                 pulseId, ppulseId);
-          nprint--;
-        }
-      }
     }
   }
 

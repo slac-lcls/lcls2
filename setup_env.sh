@@ -34,6 +34,7 @@ export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages:$PYTHONPATH
 # for procmgr
 export TESTRELDIR=$RELDIR/install
 export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
+export PROCMGR_EXPORT=$PROCMGR_EXPORT,OPENBLAS_NUM_THREADS=1
 
 # cpo: seems that in more recent versions blas is creating many threads
 export OPENBLAS_NUM_THREADS=1

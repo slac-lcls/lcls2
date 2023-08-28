@@ -71,10 +71,15 @@ BldNames::IpimbConfigV2::IpimbConfigV2() {
     NameVec.push_back(Name("adcDelay"           , Name::UINT32));
 }
 
-BldNames::GmdV2::GmdV2() { NameVec.push_back(Name("millijoulesperpulse",Name::FLOAT,0)); }
+BldNames::GmdV2::GmdV2() {
+    NameVec.push_back(Name("millijoulesperpulse",Name::FLOAT,0));
+    NameVec.push_back(Name("RMS_E1",Name::FLOAT,0));
+}
 
 BldNames::XGmdV2::XGmdV2() { 
     NameVec.push_back(Name("millijoulesperpulse",Name::FLOAT,0));
     NameVec.push_back(Name("POSY",Name::FLOAT,0)); 
+    NameVec.push_back(Name("RMS_E1",Name::FLOAT,0));
+    NameVec.push_back(Name("RMS_E2",Name::FLOAT,0));
 }
 

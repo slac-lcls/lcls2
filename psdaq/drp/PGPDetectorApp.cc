@@ -115,45 +115,52 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
 
 namespace Drp {
 
-void cleanupDrpPython(std::string keyBase, int* inpMqId, int* resMqId, int* inpShmId, int* resShmId,
-                      unsigned numWorkers)
+static int cleanupDrpPython(std::string keyBase, int* inpMqId, int* resMqId, int* inpShmId, int* resShmId,
+                            unsigned numWorkers)
 {
+    int rcSave = 0;
     for (unsigned workerNum=0; workerNum<numWorkers; workerNum++) {
         int rc;
         if (inpShmId[workerNum]) {
-            rc = cleanupDrpShmMem("/shminp_" + keyBase + "_" + std::to_string(workerNum));
+            rc = cleanupDrpShmMem("/shminp_" + keyBase + "_" + std::to_string(workerNum), inpShmId[workerNum]);
             if (rc) {
-                logging::critical("Error cleaning up Inputs Shared Memory for worker %d: %m", workerNum);
-                abort();
+                logging::error("Error cleaning up Inputs Shared Memory for worker %d: %m", workerNum);
+                rcSave = rc;
             }
+            inpShmId[workerNum] = 0;
         }
         if (resShmId[workerNum]) {
-            rc = cleanupDrpShmMem("/shmres_" + keyBase + "_" + std::to_string(workerNum));
+            rc = cleanupDrpShmMem("/shmres_" + keyBase + "_" + std::to_string(workerNum), resShmId[workerNum]);
             if (rc) {
-                logging::critical("Error cleaning up Results Shared Memory for worker %d: %m", workerNum);
-                abort();
+                logging::error("Error cleaning up Results Shared Memory for worker %d: %m", workerNum);
+                rcSave = rc;
             }
+            resShmId[workerNum] = 0;
         }
 
         if (inpMqId[workerNum]) {
             rc = cleanupDrpMq("/mqinp_" + keyBase  + "_" + std::to_string(workerNum), inpMqId[workerNum]);
             if (rc) {
-                logging::critical("Error cleaning up Inputs Message Queue for worker %d: %m", workerNum);
-                abort();
+                logging::error("Error cleaning up Inputs Message Queue for worker %d: %m", workerNum);
+                rcSave = rc;
             }
+            inpMqId[workerNum] = 0;
         }
 
         if (resMqId[workerNum]) {
             rc = cleanupDrpMq("/mqres_" + keyBase  + "_" + std::to_string(workerNum), resMqId[workerNum]);
             if (rc) {
-                logging::critical("Error cleaning up Results Message Queue for worker %d: %m", workerNum);
-                abort();
+                logging::error("Error cleaning up Results Message Queue for worker %d: %m", workerNum);
+                rcSave = rc;
             }
+            resMqId[workerNum] = 0;
         }
     }
+
+    return rcSave;
 }
 
-int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Parameters& para, DrpBase& drp)
+static int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Parameters& para, DrpBase& drp)
 {
     // Fork
     pyPid = vfork();
@@ -175,6 +182,7 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Param
                para.serNo.c_str(),
                std::to_string(para.detSegment).c_str(),
                std::to_string(workerNum).c_str(),
+               std::to_string(para.verbose).c_str(),
                nullptr);
 
         // Execlp returns only on error
@@ -186,7 +194,7 @@ int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, const Param
     }
 }
 
-void PGPDetectorApp::setupDrpPython() {
+int PGPDetectorApp::setupDrpPython() {
 
     m_shmemSize = m_drp.pool.pebble.bufferSize();
     if (m_para.maxTrSize > m_shmemSize) m_shmemSize=m_para.maxTrSize;
@@ -212,19 +220,19 @@ void PGPDetectorApp::setupDrpPython() {
         std::string key = "/mqinp_" + keyBase + "_" + std::to_string(workerNum);
         int rc = setupDrpMsgQueue(key, mqSize, m_inpMqId[workerNum], true);
         if (rc) {
-            logging::critical("[Thread %u] Error in creating Drp %s message queue with key %s: %m", workerNum, "Inputs", key.c_str());
+            logging::error("[Thread %u] Error in creating Drp %s message queue with key %s: %m", workerNum, "Inputs", key.c_str());
             cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
-            abort();
+            return rc;
         }
-        logging::info("[Thread %u] Created Drp msg queue %s for key %s", workerNum, "Inputs", key.c_str());
+        logging::debug("[Thread %u] Created Drp msg queue %s for key %s", workerNum, "Inputs", key.c_str());
         key = "/mqres_" + keyBase + "_" + std::to_string(workerNum);
         rc = setupDrpMsgQueue(key, mqSize, m_resMqId[workerNum], false);
         if (rc) {
-            logging::critical("[Thread %u] Error in creating Drp %s message queue with key %s: %m", workerNum, "Inputs", key.c_str());
+            logging::error("[Thread %u] Error in creating Drp %s message queue with key %s: %m", workerNum, "Inputs", key.c_str());
             cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
-            abort();
+            return rc;
         }
-        logging::info("[Thread %u] Created Drp msg queue %s for key %s", workerNum, "Results", key.c_str());
+        logging::debug("[Thread %u] Created Drp msg queue %s for key %s", workerNum, "Results", key.c_str());
 
         // Creating shared memory
         size_t shmemSize = m_drp.pool.pebble.bufferSize();
@@ -237,42 +245,30 @@ void PGPDetectorApp::setupDrpPython() {
         key = "/shminp_" + keyBase + "_" + std::to_string(workerNum);
         rc = setupDrpShMem(key, shmemSize, m_inpShmId[workerNum]);
         if (rc) {
-            logging::critical("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
+            logging::error("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
                               workerNum, "Inputs", key.c_str());
             cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
-            abort();
+            return rc;
         }
-        logging::info("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Inputs", key.c_str());
+        logging::debug("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Inputs", key.c_str());
 
         key = "/shmres_" + keyBase  + "_" + std::to_string(workerNum);
         rc = setupDrpShMem(key, shmemSize, m_resShmId[workerNum]);
         if (rc) {
-            logging::critical("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
+            logging::error("[Thread %u] Error in creating Drp %s shared memory for key %s: %m (open step)",
                               workerNum, "Results", key.c_str());
             cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
-            abort();
+            return rc;
         }
-        logging::info("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Results", key.c_str());
+        logging::debug("[Thread %u] Created Drp shared memory %s for key %s", workerNum, "Results", key.c_str());
 
-        logging::info("IPC set up for worker %d", workerNum);
+        logging::debug("IPC set up for worker %d", workerNum);
 
-        drpPythonThreads.emplace_back(startDrpPython,
-                                      std::ref(m_drpPids[workerNum]),
-                                      workerNum,
-                                      shmemSize,
-                                      std::ref(m_para),
-                                      std::ref(m_drp));
-    }
-
-
-    for (std::vector<std::thread>::iterator thrIter =drpPythonThreads.begin();
-        thrIter != drpPythonThreads.end(); thrIter++) {
-        if (thrIter->joinable()) {
-            thrIter->join();
-        }
+        startDrpPython(m_drpPids[workerNum], workerNum, shmemSize, m_para, m_drp);
     }
 
     logging::info("Drp python processes started");
+    return 0;
 }
 
 // Release GIL on exceptions, too
@@ -354,7 +350,10 @@ void PGPDetectorApp::initialize()
 
     if (m_pythonDrp) {
         logging::info("Starting DrpPython");
-        setupDrpPython();
+        if (setupDrpPython()) {
+            logging::critical("Failed to set up DrpPython");
+            throw "Failed to set up DrpPython";
+        }
     }
 
     logging::info("Ready for transitions");
@@ -372,6 +371,12 @@ PGPDetectorApp::~PGPDetectorApp()
         logging::info("Cleaning up DrpPython");
         cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
     }
+
+    if (m_drpPids)   delete [] m_drpPids;
+    if (m_resShmId)  delete [] m_resShmId;
+    if (m_inpShmId)  delete [] m_inpShmId;
+    if (m_resMqId)   delete [] m_resMqId;
+    if (m_inpMqId)   delete [] m_inpMqId;
 
     if (m_det)  delete m_det;
 
@@ -519,7 +524,11 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, m_pythonDrp, m_inpMqId,
+            // Python-DRP is disabled during calibrations
+            std::string config_alias = msg["body"]["config_alias"];
+            bool pythonDrp = config_alias != "CALIB" ? m_pythonDrp : false;
+
+            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, pythonDrp, m_inpMqId,
                                                           m_resMqId, m_inpShmId, m_resShmId, m_shmemSize);
             m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
@@ -531,7 +540,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                             std::ref(m_drp.tebContributor()));
 
-            std::string config_alias = msg["body"]["config_alias"];
             unsigned error = m_det->configure(config_alias, xtc, bufEnd);
             if (!error) {
                 json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
@@ -663,7 +671,8 @@ void PGPDetectorApp::handleReset(const json& msg)
 
     if (m_pythonDrp) {
         drainDrpMessageQueues();
-        resetDrpPython();
+        if (msg != json({})) // Skip this when exiting since python is already gone
+            resetDrpPython();
     }
 
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
@@ -695,7 +704,7 @@ void PGPDetectorApp::drainDrpMessageQueues()
 {
     // Drains the message queues to make sure that no
     // undelivered message is in them.
-    char recvmsg[420];
+    char recvmsg[520];
 
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
         if (m_inpMqId[workerNum]) {
@@ -710,27 +719,28 @@ void PGPDetectorApp::drainDrpMessageQueues()
     }
 }
 
-void PGPDetectorApp::resetDrpPython()
+int PGPDetectorApp::resetDrpPython()
 {
-    char msg[512];
+    int rcSave = 0;
     char recvmsg[520];
-    snprintf(msg, sizeof(msg), "%s", "s");
 
     for (unsigned workerNum=0; workerNum<m_para.nworkers; workerNum++) {
-        int rc = drpSend(m_inpMqId[workerNum], msg, 1);
+        int rc = drpSend(m_inpMqId[workerNum], "s", 1);
         if (rc) {
-            logging::critical("Error sending reset message to Drp python worker %u: %m",
-                              workerNum);
-            abort();
+            logging::error("Error sending reset message to Drp python worker %u: %m",
+                           workerNum);
+            rcSave = rc;
+            continue;
         }
         rc = drpRecv(m_resMqId[workerNum], recvmsg, sizeof(recvmsg), 10000);
         if (rc) {
-            logging::critical("Error receiving reset message from Drp python worker %u: %m",
-                              workerNum);
-            abort();
+            logging::error("Error receiving reset message from Drp python worker %u: %m",
+                           workerNum);
+            rcSave = rc;
         }
-
     }
+
+    return rcSave;
 }
 
 }

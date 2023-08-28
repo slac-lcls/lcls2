@@ -265,6 +265,7 @@ def issue_2023_04_28():
 #        print(info_ndarr(x,'x:'))
 #        if det.raw.image(evt) is not None: break
 
+
 def issue_2023_05_19():
     """
     """
@@ -277,22 +278,96 @@ def issue_2023_05_19():
         img = opal.raw.image(evt)
         print('ev:%04d  evt.timestamp: %d image.shape: %s' % (nev, evt.timestamp, str(img.shape)))
 
+
 def issue_2023_07_25():
-    """datinfo -k exp=tstx00417,run=286,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc/ -d epixhr_emu
+    """datinfo -k exp=tstx00417,run=287,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc/ -d epixhr_emu
+       on pcds use psffb, which sees data
+       or use s3dff
     """
     from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
-    ds = DataSource(exp='tstx00417', run=286, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc')
+    from psana.detector.UtilsGraphics import gr, fleximage#, arr_median_limits
+    flimg = None
+
+    #ds = DataSource(exp='tstx00417', run=286, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc') # on s3df 3-panel run
+    ds = DataSource(exp='tstx00417', run=286, dir='/cds/data/drpsrcf/tst/tstx00417/xtc') # on pcds 3-panel run
+    #ds = DataSource(exp='tstx00417', run=287, dir='/cds/data/drpsrcf/tst/tstx00417/xtc') # on pcds 20-panel run detectors=['epixhr_emu'])
     for run in ds.runs():
       det = run.Detector('epixhr_emu')
       for nev,evt in enumerate(run.events()):
-        if nev>10: break
-        img = det.raw.raw(evt)
-        #img = det.raw.image(evt)
-        #img = det.fex.fex(evt)
-        #img = det.fex.raw(evt)
-        #img = det.fex.calib(evt)
-        print(info_ndarr(img, 'ev:%04d  evt.timestamp: %d image arr:' % (nev, evt.timestamp)))
+        if nev>10000: break
+        arr = det.fex.calib(evt)
+        if arr is None: continue
+        print(info_ndarr(arr, '==== ev:%05d  evt.timestamp: %d arr:' % (nev, evt.timestamp)))
+
+        img = det.fex.image(evt, value_for_missing_segments=800)
+        #img = det.fex.image(evt)
+        print(info_ndarr(img, 43*' ' + 'image:'))
+
+        if flimg is None:
+           #flimg = fleximage(img, arr=None, h_in=8, w_in=11, amin=9000, amax=11000) #, nneg=1, npos=3)
+           flimg = fleximage(img, arr=None, h_in=8, w_in=11, amin=700, amax=800) #, nneg=1, npos=3)
+        gr.set_win_title(flimg.fig, titwin='Event %d' % nev)
+        flimg.update(img, arr=None)
+        gr.show(mode='DO NOT HOLD')
+    gr.show()
+
+
+def issue_2023_07_26():
+    """
+    """
+    from time import time
+    import psana.pscalib.calib.MDBWebUtils as wu
+    t0_sec = time()
+    det_name = 'epixhremu_00cafe000c-0000000000-0000000000-0000000000-0000000000-0000000000-0000000000'
+    #det_name = 'epixhremu_000002' # works
+    #det_name = 'epixhr_emu' # non-populated  in db
+    calib_const = wu.calib_constants_all_types(det_name, exp='tstx00417', run=0)
+    print('consumed time = %.6f sec' % (time()-t0_sec))
+    print('calib_const.keys:', calib_const.keys())
+
+
+def issue_2023_07_27():
+    """curl commands to access data from GridFS equivalent to previous script:
+        2.031110 sec - get data for ctype: pixel_status
+        2.059888 sec - get data for ctype: geometry
+        2.929590 sec - get data for ctype: pixel_gain
+        3.967860 sec - get data for ctype: pedestals
+        4.862775 sec - get data for ctype: pixel_rms
+    """
+    from requests import get
+    from time import time
+
+    requests = [\
+             'https://pswww.slac.stanford.edu/calib_ws/cdb_tstx00417/gridfs/6450604a3a7ab9e8b9dc63b2',
+             'https://pswww.slac.stanford.edu/calib_ws/cdb_tstx00417/gridfs/64514377ff231530db74d279',
+             'https://pswww.slac.stanford.edu/calib_ws/cdb_tstx00417/gridfs/64506059a42d4cbaddd64eff',
+             'https://pswww.slac.stanford.edu/calib_ws/cdb_tstx00417/gridfs/64506032c67f3e7208e57b33',
+             'https://pswww.slac.stanford.edu/calib_ws/cdb_tstx00417/gridfs/6450604110a2e726664e6a54',
+            ]
+
+    curls = ['curl -s "%s"' % r for r in requests]
+
+    print('\n'.join([s for s in curls]))
+    query=None
+    for url in requests:
+        t0_sec = time()
+        print('====\n  in python: r = get("%s", query=None, timeout=180)' % url)
+        print('  equivalent in os: curl -s "%s"' % url)
+
+        r = get(url, query, timeout=180)
+
+        if r.ok:
+            s = 'content[0:30]: %s...' % r.content[0:30]\
+              + '\nconsumed time = %.6f sec' % (time()-t0_sec)
+            #mu.object_from_data_string(s, doc)
+
+        else:
+            s = 'get url: %s query: %s\n  response status: %s status_code: %s reason: %s'%\
+                (url, str(query), r.ok, r.status_code, r.reason)
+            s += '\nTry command: curl -s "%s"' % url
+        print(s)
+
 
 def issue_2023_mm_dd():
     print('template')
@@ -309,6 +384,8 @@ USAGE = '\nUsage:'\
       + '\n    6 - issue_2023_04_28 - test epixhremu - load default geometry'\
       + '\n    7 - issue_2023_05_19 - test opal.raw.image for Mona'\
       + '\n    8 - issue_2023_07_25 - test epixhremu.fex.image for Ric'\
+      + '\n    9 - issue_2023_07_26 - test calib_constants_all_types for Ric'\
+      + '\n   10 - issue_2023_07_27 - test calib_constants_all_types for Ric - curl commands'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -321,6 +398,8 @@ elif TNAME in  ('5',): issue_2023_04_27()
 elif TNAME in  ('6',): issue_2023_04_28()
 elif TNAME in  ('7',): issue_2023_05_19()
 elif TNAME in  ('8',): issue_2023_07_25()
+elif TNAME in  ('9',): issue_2023_07_26()
+elif TNAME in ('10',): issue_2023_07_27()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

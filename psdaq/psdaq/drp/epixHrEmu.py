@@ -30,7 +30,7 @@ cfgDef = {
     "compressor_json" : (str,      1),
 }
 fexDef = {
-    "fex"             : (np.uint8, 1),
+    "fex"             : (np.uint8, 1), # Why not float32?
 }
 nodeId = None
 namesId = None
@@ -48,11 +48,10 @@ compressor = PressioCompressor.from_config(lpjson)
 for myrun in ds.runs():
     epixhr = myrun.Detector('epixhr_emu')
     for nevt,evt in enumerate(myrun.events()):
-        raw = epixhr.raw.calib(evt)
-        #print(f'*** raw is a {type(raw)} of len {len(raw)}')
-        det.fex.fex = compressor.encode(raw)
+        cal = epixhr.raw.calib(evt)
+        #print(f'*** cal is a {type(cal)} of len {len(cal)}, dtype {cal.dtype}, shape {cal.shape}')
+        #print(f'*** cal {cal}')
+        det.fex.fex = compressor.encode(cal)
         #print(f'*** det.fex.fex is a {type(det.fex.fex)} of len {len(det.fex.fex)}, dtype {det.fex.fex.dtype}, shape {det.fex.fex.shape}, ndim {det.fex.fex.ndim}, size {det.fex.fex.size}')
         ds.add_data(det.fex)
         if nevt%1000!=0: ds.remove_data('epixhr_emu','raw')
-
-print(f"*** [Thread {thread_num}] runs loop exited")

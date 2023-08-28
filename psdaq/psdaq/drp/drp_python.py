@@ -1,6 +1,7 @@
 import sys
 import posix_ipc
-from psana.psexp.zmq_utils import pub_bind, sub_connect
+import logging
+logger = logging.getLogger(__name__)
 
 partition = int(sys.argv[1])
 pebble_bufsize = int(sys.argv[2])
@@ -11,6 +12,10 @@ detector_type = sys.argv[6]
 detector_id = sys.argv[7]
 detector_segment = int(sys.argv[8])
 worker_num = int(sys.argv[9])
+verbose = int(sys.argv[10])
+
+logging.basicConfig(format='%(filename)s L%(lineno)04d: <%(levelname).1s> %(message)s',
+                    level=logging.INFO if verbose==0 else logging.DEBUG)
 
 
 class IPCInfo:
@@ -29,7 +34,6 @@ class IPCInfo:
         except posix_ipc.Error as exp:
             assert(False)
 
-
 class DrpInfo:
     def __init__(self, detector_name, detector_type, detector_id, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info):
         self.det_name = detector_name
@@ -40,28 +44,31 @@ class DrpInfo:
         self.pebble_bufsize = pebble_bufsize
         self.transition_bufsize = transition_bufsize
         self.ipc_info = ipc_info
+        self.is_supervisor = False
+        self.tcp_socket_name = None
+        self.ipc_socket_name = f"ipc:///tmp/{detector_name}_{detector_segment}.pipe"
 
 ipc_info = IPCInfo(partition, detector_name, detector_segment, worker_num, shm_mem_size)
 drp_info = DrpInfo(detector_name, detector_type, detector_id, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info)
 
-# Setup socket for calibration constant broadcast
-is_publisher = True if worker_num == 0 else False
-socket_name = f"ipc:///tmp/{detector_name}_{detector_segment}.pipe"
-if is_publisher:
-    pub_socket = pub_bind(socket_name)
-else:
-    sub_socket = sub_connect(socket_name)
-print(f"[Python - Thread {worker_num}] {is_publisher=} setup socket {socket_name}]")
-
 try:
     while True:
-        print(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
+        logger.debug(f"[Python - Worker: {worker_num}] Python process waiting for new script to run")
         message, priority = ipc_info.mq_inp.receive()
         if message == b"s":
             ipc_info.mq_res.send(b"s\n")
             continue
-        with open(message, "r") as fh:
-            code = compile(fh.read(), message, 'exec')
+        pythonScript, is_supervisor, supervisor_ip_port = message.decode().split(',')
+        drp_info.is_supervisor = False if is_supervisor == '' else True
+        drp_info.tcp_socket_name = f"tcp://{supervisor_ip_port}"
+        logger.debug(f"[Python - Worker: {worker_num}] {supervisor_ip_port = }")
+        with open(pythonScript, "r") as fh:
+            code = compile(fh.read(), pythonScript, 'exec')
             exec(code, globals(), locals())
 except KeyboardInterrupt:
-    print(f"[Python - Worker: {worker_num}] KeyboardInterrupt received - drp_python process exiting")
+    logger.info(f"[Python - Worker: {worker_num}] KeyboardInterrupt received - drp_python process exiting")
+finally:
+    ipc_info.mq_inp.close()
+    ipc_info.mq_res.close()
+    ipc_info.shm_inp.close_fd()
+    ipc_info.shm_res.close_fd()

@@ -1,6 +1,8 @@
 import psdaq.configdb.configdb as cdb
 import json
 
+#import pprint
+
 # json2xtc conversion depends on these being present with ':RO'
 # (and the :RO does not appear in the xtc names)
 leave_alone = ['detName:RO','detType:RO','detId:RO','doc:RO','alg:RO','version:RO']
@@ -20,6 +22,13 @@ def remove_read_only(cfg):
             new[k.replace(':RO', '')] = v
     return new
 
+def update_config(src, dst):
+    for k, v in src.items():
+        if isinstance(v, dict):
+            v = update_config(v, dst[k])
+        dst[k] = v
+    return dst
+
 # this interface requires the detector segment
 def get_config(connect_json,cfgtype,detname,detsegm):
 
@@ -37,6 +46,26 @@ def get_config_with_params(db_url, instrument, db_name, cfgtype, detname):
     cfg = mycdb.get_configuration(cfgtype, detname)
 
     if cfg is None: raise ValueError('Config for instrument/detname %s/%s not found. dbase url: %s, db_name: %s, config_style: %s'%(instrument,detname,db_url,db_name,cfgtype))
+
+    if '_cfgTypeRef' in cfg.keys():
+
+        if cfg['_cfgTypeRef'] == cfgtype:
+            raise ValueError('A configuration cannot be self-relative: _cfgTypeRef is %s'%(cfgtype))
+
+        # Replace values (and add k,v) in the referenced config with those of the requested config
+        # and return the combined config
+        ref = mycdb.get_configuration(cfg['_cfgTypeRef'], detname)
+        if ref is None:
+            raise ValueError('Reference config for instrument/detname %s/%s not found. dbase url: %s, db_name: %s, config_style: %s'%(instrument,detname,db_url,db_name,cfg['_cfgTypeRef']))
+        if cfg['alg:RO']['version:RO'] != ref['alg:RO']['version:RO']: # Require the version numbers to be the same
+            raise ValueError('%s and %s configs for instrument/detname %s/%s must have matching alg version numbers: got %s vs %s'%
+                             (cfgtype, cfg['_cfgTypeRef'], instrument, detname,
+                              cfg['alg:RO']['version:RO'], ref['alg:RO']['version:RO']))
+        cfg = update_config(cfg, ref)
+        #print('*** final config')
+        #pp = pprint.PrettyPrinter()
+        #pp.pprint(cfg)
+        #print('*** end')
 
     cfg_no_RO_names = remove_read_only(cfg)
 

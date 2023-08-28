@@ -27,6 +27,7 @@ Usage::
   v = o.pixel_coords(**kwa)
   v = o.pixel_coord_indexes(**kwa)
   v = o.cached_pixel_coord_indexes(segnums, **kwa)
+  v = o.image(self, nda, segnums=None, **kwa)
   v = o.pix_rc()
   v = o.pix_xyz()
   v = o.interpol_pars()
@@ -41,17 +42,13 @@ import numpy as np
 
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_3d  # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess  # img_from_pixel_arrays
-#from psana.pscalib.geometry.SegGeometryStore import sgs
 
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
 
-#import psana.pscalib.calib.CalibConstants as ccc
 from psana.detector.UtilsMask import DTYPE_MASK, DTYPE_STATUS
 
-#import psana.detector.Utils as ut
-#is_none = ut.is_none
 
 def is_none(par, msg, logger_method=logger.debug):
     resp = par is None
@@ -181,11 +178,6 @@ class CalibConstants:
         return geotxt_and_meta
 
 
-#    def geotxt_default(self):
-#        logger.debug('geotxt_default should be re-implemented in specific detector subclass, othervise returns None')
-#        return None
-
-
     def geo(self):
         """Return GeometryAccess() object."""
         if self._geo is None:
@@ -247,12 +239,7 @@ class CalibConstants:
 
         logger.info(info_ndarr(resp[0], 'self.pixel_coord_indexes '))
 
-        #nsegs = resp[0].shape[-3]
-        #sys.exit('TEST EXIT nsegs=%d' % nsegs)
-        #segnums = 0
-
         rows, cols = self._pix_rc = [reshape_to_3d(a)[segnums,:,:] for a in resp]
-        #self._pix_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
 
         s = 'evaluate_pixel_coord_indexes:'
         for i,a in enumerate(self._pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
@@ -351,11 +338,5 @@ class CalibConstants:
     def pix_xyz(self): return self._pix_xyz
 
     def interpol_pars(self): return self._interpol_pars
-
-# also used in CalibConstants.image
-#self.dmulti_pix_to_img_idx
-#self.dmulti_imgidx_numentries
-#self.img_holes
-#self.hole_rows, self.hole_cols
 
 # EOF

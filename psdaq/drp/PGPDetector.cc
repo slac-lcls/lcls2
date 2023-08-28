@@ -16,15 +16,18 @@
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
 #include "psdaq/service/IpcUtils.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
 
 using logging = psalg::SysLog;
+using ns_t    = std::chrono::nanoseconds;
 
 
 using namespace Drp;
+using namespace Pds;
 using namespace Pds::Ipc;
 
 bool checkPulseIds(const Detector* det, PGPEvent* event)
@@ -62,38 +65,40 @@ clockid_t test_coarse_clock() {
 }
 
 
-static void drpSendReceive(int inpMqId, int resMqId, XtcData::TransitionId::Value transitionId, unsigned threadNum)
+static int drpSendReceive(int inpMqId, int resMqId, XtcData::TransitionId::Value transitionId, unsigned threadNum)
 {
 
-    char msg[512];
+    const char* msg;
     char recvmsg[520];
 
     if (transitionId == XtcData::TransitionId::Unconfigure) {
-        logging::info("[Thread %u] Unconfigure transition. Send stop message to Drp Python", threadNum);
-        snprintf(msg, sizeof(msg), "%s", "s");
+        logging::debug("[Thread %u] Unconfigure transition. Send stop message to Drp Python", threadNum);
+        msg = "s";
     } else {
-        snprintf(msg, sizeof(msg), "%s", "g");
+        msg = "g";
     }
 
     int rc = drpSend(inpMqId, msg, 1);
     if (rc) {
-        logging::critical("[Thread %u] Error sending message %s to Drp python: %m",
-                          threadNum, msg);
-        abort();
+        logging::error("[Thread %u] Error sending message %s to Drp python: %m", threadNum, msg);
+        return rc;    // Return rather than abort so that teardown can happen
     }
 
-    rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 10000);
+    rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 15000);
     if (rc) {
-        logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-        abort();
+        logging::error("[Thread %u] Response message from Drp python not received: %m", threadNum);
+        return rc;    // Return rather than abort so that teardown can happen
     }
+
+    return rc;
 }
 
 
 void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 SPSCQueue<Batch>& inputQueue, SPSCQueue<Batch>& outputQueue, bool pythonDrp,
                 int inpMqId, int resMqId, int inpShmId, int resShmId, size_t shmemSize,
-                unsigned threadNum, std::atomic<int>& threadCountPush, std::atomic<int>& threadCountWrite)
+                unsigned threadNum, std::atomic<int>& threadCountPush, std::atomic<int>& threadCountWrite,
+                int64_t& pythonTime)
 {
     Batch batch;
     MemPool& pool = drp.pool;
@@ -102,62 +107,52 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     auto triggerPrimitive = drp.triggerPrimitive();
     void* inpData = nullptr;
     void* resData = nullptr;
-    char msg[512];
     char recvmsg[520];
     bool transition;
+    bool error = false;
 
     if (pythonDrp) {
-
-        auto kwargs_it = para.kwargs.find("pythonScript");
-
-        std::string pythonScript;
-        if (kwargs_it != para.kwargs.end()) {
-            pythonScript = kwargs_it->second;
-        } else {
-            logging::critical("[Thread %u] python drp script not specified" , threadNum);
-            abort();
-        }
-
-        if (pythonScript.length() > 511) {
-            logging::critical("[Thread %u] Path to python script too long (max 511 chars)" , threadNum);
-            abort();
-        }
 
         std::string keyBase = "p" + std::to_string(para.partition) + "_" + para.detName + "_" + std::to_string(para.detSegment);
         std::string key = "/shminp_" + keyBase + "_" + std::to_string(threadNum);
 
         int rc = attachDrpShMem(key, inpShmId, shmemSize, inpData, true);
         if (rc) {
-            logging::critical("[Thread %u] error attaching to Drp shared memory buffer %s for key %s: %m",
-                              threadNum, "Inputs", key.c_str());
-            abort();
+            logging::error("[Thread %u] Error attaching to Drp shared memory buffer %s for key %s: %m",
+                           threadNum, "Inputs", key.c_str());
+            return;     // Return rather than abort so that teardown can happen
         }
 
         key = "/shmres_" + keyBase + "_" + std::to_string(threadNum);
         rc = attachDrpShMem(key, resShmId, shmemSize, resData, false);
         if (rc) {
-            logging::critical("[Thread %u] error attaching to Drp shared memory buffer %s for key %s: %m",
-                              threadNum, "Results", key.c_str());
-            abort();
+            logging::error("[Thread %u] Error attaching to Drp shared memory buffer %s for key %s: %m",
+                           threadNum, "Results", key.c_str());
+            return;     // Return rather than abort so that teardown can happen
         }
 
-        snprintf(msg, sizeof(msg), "%s",  pythonScript.c_str());
+        std::string message = (para.kwargs.find("pythonScript")->second + "," +
+                               (drp.isSupervisor() ? "supervisor" : "") + "," +
+                               drp.supervisorIpPort());
 
-        rc = drpSend(inpMqId, msg, pythonScript.length());
+        rc = drpSend(inpMqId, message.c_str(), message.length());
         if (rc) {
-            logging::critical("[Thread %u] Message %s from Drp python not sent", msg, threadNum);
-            abort();
+            logging::error("[Thread %u] Message %s to Drp python not sent",
+                           message.c_str(), threadNum);
+            return;     // Return rather than abort so that teardown can happen
         }
 
         // Wait for python process to be up
         rc = drpRecv(resMqId, recvmsg, sizeof(recvmsg), 15000);
         if (rc) {
-            logging::critical("[Thread %u] Message from Drp python not received", threadNum);
-            abort();
+            logging::error("[Thread %u] 'Ready' message from Drp python not received", threadNum);
+            return;     // Return rather than abort so that teardown can happen
         }
 
-        logging::info("[Thread %u] Starting events", threadNum);
+        logging::debug("[Thread %u] Starting events", threadNum);
     }
+
+    pythonTime = 0ll;
 
     while (true) {
 
@@ -195,7 +190,11 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 if ( pythonDrp) {
                     XtcData::Dgram* inpDg = dgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
-                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+                    auto rc = drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+                    pythonTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
+                    if (rc)  error = true;
                     XtcData::Dgram* resDg = (XtcData::Dgram*)resData;
                     memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
@@ -229,7 +228,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 if (pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
-                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    auto rc = drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    if (rc)  error = true;
                     XtcData::Dgram* resDg = (XtcData::Dgram*)(resData);
                     memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                 }
@@ -242,12 +242,13 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 transition = true;
                 // Pds::EbDgram* dgram = reinterpret_cast<Pds::EbDgram*>(pool.pebble[pebbleIndex]);
                 Pds::EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];
-                if ( pythonDrp) {
+                if (pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
-                    drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    auto rc = drpSendReceive(inpMqId, resMqId, transitionId, threadNum);
+                    if (rc)  error = true;
                     // TODO: Add comment explaining how this works
-                    if (threadCountWrite.fetch_sub(1) == 1) {
+                    if (!error && threadCountWrite.fetch_sub(1) == 1) {
                         XtcData::Dgram* resDg = (XtcData::Dgram*)(resData);
                         memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                     }
@@ -265,31 +266,29 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
         }
 
-        outputQueue.push(batch);
+        if (!error)  outputQueue.push(batch);
     }
 
     if (pythonDrp) {
-        logging::info("[Thread %u] Detaching from Drp shared memory and message queues", threadNum);
+        logging::debug("[Thread %u] Detaching from Drp shared memory and message queues", threadNum);
 
         std::string keyBase = "p" + std::to_string(para.partition) + "_" + para.detName + "_" + std::to_string(para.detSegment);
         std::string key = "/shminp_" + keyBase + "_" + std::to_string(threadNum);
         int rc = detachDrpShMem(inpData, shmemSize);
         if (rc) {
-            logging::critical("[Thread %u] error detaching from Drp shared memory buffer %s for key %s: %m",
+            logging::error("[Thread %u] Error detaching from Drp shared memory buffer %s for key %s: %m",
                               threadNum, "Inputs", key.c_str());
-            abort();
+            // Even on error, go on to try to detach from /shmres
         }
 
         key = "/shmres_" + keyBase + "_" + std::to_string(threadNum);
         rc = detachDrpShMem(resData, shmemSize);
         if (rc) {
-            logging::critical("[Thread %u] error detaching from Drp shared memory buffer %s for key %s: %m",
+            logging::error("[Thread %u] Error detaching from Drp shared memory buffer %s for key %s: %m",
                               threadNum, "Results", key.c_str());
-            abort();
+            // Even on error, continue so that teardown can complete
         }
-
     }
-
 }
 
 PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
@@ -312,6 +311,23 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
         logging::error("Failed to allocate lane/vc");
     }
 
+    if (pythonDrp) {
+        auto kwargs_it = para.kwargs.find("pythonScript");
+
+        std::string pythonScript;
+        if (kwargs_it != para.kwargs.end()) {
+            pythonScript = kwargs_it->second;
+        } else {
+            logging::critical("Python drp script not specified" );
+            abort();
+        }
+
+        if (pythonScript.length() > 511) {
+            logging::critical("Path to python script too long (max 511 chars)");
+            abort();
+        }
+    }
+
     for (unsigned i=0; i<para.nworkers; i++) {
         m_workerInputQueues.emplace_back(SPSCQueue<Batch>(drp.pool.nbuffers()));
         m_workerOutputQueues.emplace_back(SPSCQueue<Batch>(drp.pool.nbuffers()));
@@ -332,7 +348,8 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
                                      m_shmemSize,
                                      i,
                                      std::ref(threadCountPush),
-                                     std::ref(threadCountWrite));
+                                     std::ref(threadCountWrite),
+                                     std::ref(m_pyAppTime));
     }
 }
 
@@ -395,6 +412,11 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                   [&](){return nPgpJumps();});
     exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
                   [&](){return nNoTrDgrams();});
+
+    if (pythonDrp) {
+        exporter->add("drp_py_app_time", labels, Pds::MetricType::Gauge,
+                      [&](){return m_pyAppTime;});
+    }
 
     int64_t worker = 0L;
     uint64_t batchId = 0L;
@@ -564,6 +586,7 @@ void PGPDetector::shutdown()
             m_workerThreads[i].join();
         }
     }
+    logging::info("Worker threads finished");
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerOutputQueues[i].shutdown();
     }

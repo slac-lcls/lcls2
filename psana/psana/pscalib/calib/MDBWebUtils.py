@@ -199,6 +199,7 @@ def get_data_for_doc(dbname, doc, url=cc.URL):
         logger.debug("get_data_for_doc: key 'id_data' is missing in selected document...")
         return None
 
+    #print('curl -s "%s"' % ('%s/%s/gridfs/%s'%(url,dbname,idd)))
     r2 = request('%s/%s/gridfs/%s'%(url,dbname,idd))
     if r2 is None: return None
     s = r2.content
@@ -271,11 +272,16 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
 
 def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix=''):
     """Returns constants for all ctype-s."""
+    t0_sec = time()
     ctype=None
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
     dbname = db_det if dbsuffix or (exp is None) else db_exp
+
+    #print('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
+
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
+    #print('time 2: %.6f sec - find docs for query in DB %s' % (time()-t0_sec, dbname))
     if docs is None: return None
 
     ctypes = set([d.get('ctype',None) for d in docs])
@@ -288,8 +294,13 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
         doc = select_latest_doc(docs_for_type, query)
         if doc is None: continue
         resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
+        #print('        %.6f sec - get data for ctype: %s' % (time()-t0_sec, ct))
+
+    #print('time 3: %.6f sec - get data for docs total' % (time()-t0_sec))
 
     resp = calib_constants_of_missing_types(resp, det, time_sec, vers, url)
+
+    #print('time 4: %.6f sec - check for missing types in the det DB' % (time()-t0_sec))
 
     return resp
 

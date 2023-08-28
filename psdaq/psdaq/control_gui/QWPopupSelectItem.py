@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWPopupSelectItem` - Popup GUI for (str) item selection from the list of items
 =========================================================================================
@@ -24,13 +24,10 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Copied from graphqt on 2018-03-26 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 """
-#------------------------------
 
 from PyQt5.QtWidgets import QDialog, QListWidget, QVBoxLayout, QListWidgetItem, QSizePolicy# QPushButton
 from PyQt5.QtCore import Qt, QPoint, QEvent, QMargins, QSize
 from PyQt5.QtGui import QCursor
-
-#------------------------------  
 
 class QWPopupSelectItem(QDialog) :
 
@@ -45,8 +42,6 @@ class QWPopupSelectItem(QDialog) :
 
         vbox = QVBoxLayout()
         vbox.addWidget(self._list)
-        #vbox.addLayout(self.hbox)
-        #vbox.addStretch(1)
         self.setLayout(vbox)
 
         self.show_tool_tips()
@@ -95,33 +90,29 @@ class QWPopupSelectItem(QDialog) :
     #def mousePressEvent(self, e):
     #    logger.debug('mousePressEvent')
 
-        
+
     def event(self, e):
         #logger.debug('event.type', e.type())
         if e.type() == QEvent.WindowDeactivate :
             self.reject()
         return QDialog.event(self, e)
-    
+
 
     def closeEvent(self, e) :
-        #logger.info('closeEvent', __name__)
         self.reject()
 
 
     def selectedName(self):
         return self.name_sel
 
- 
+
     def onCancel(self):
-        #logger.debug('onCancel', __name__)
         self.reject()
 
 
     def onApply(self):
-        #logger.debug('onApply', __name__)  
         self.accept()
 
-#------------------------------  
 
 def popup_select_item_from_list(parent, lst, dx=-46, dy=-33, use_cursor_pos=False, do_sort=True) :
     w = QWPopupSelectItem(parent, lst, do_sort)
@@ -131,15 +122,12 @@ def popup_select_item_from_list(parent, lst, dx=-46, dy=-33, use_cursor_pos=Fals
 
     resp=w.exec_()
     #if   resp == QDialog.Accepted : return w.selectedName()
-    #elif resp == QDialog.Rejected : return None    
+    #elif resp == QDialog.Rejected : return None
     #else : return None
     return w.selectedName()
 
-#------------------------------
-#------------------------------
+
 #----------- TESTS ------------
-#------------------------------
-#------------------------------
 
 if __name__ == "__main__" :
   import logging
@@ -155,9 +143,8 @@ if __name__ == "__main__" :
     logger.debug('lst:', lst)
     app = QApplication(sys.argv)
     exp_name = popup_select_item_from_list(None, lst)
-    logger.debug('exp_name = %s' % exp_name) 
+    logger.debug('exp_name = %s' % exp_name)
 
-#------------------------------
 
 if __name__ == "__main__" :
     import sys; global sys
@@ -169,4 +156,4 @@ if __name__ == "__main__" :
     else : sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of Test %s' % tname)
 
-#------------------------------
+# EOF

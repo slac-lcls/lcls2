@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <mqueue.h>
 #include <unistd.h>
-#include <fcntl.h>  
+#include <fcntl.h>
 #include <time.h>
 #include <chrono>
 #include <cerrno>
@@ -101,30 +101,25 @@ int drpRecv(int mqId, char *msg, size_t msgsize, unsigned msTmo)
 
     auto rc = mq_timedreceive(mqId, msg, msgsize, NULL, &t);
     if (rc == -1) {
-        if (errno == ETIMEDOUT)
-        {
-            logging::critical("Message receiving timed out");
-            return -1;
-        } else {
-            return -1;
+        if (msTmo && (errno == ETIMEDOUT)) {
+            logging::debug("Message receiving timed out");
         }
+        return -1;
     }
     return 0;
 }
 
-int cleanupDrpShmMem(std::string key)
+int cleanupDrpShmMem(std::string key, int shmId)
 {
+    if (shmId)  close(shmId);
     int rc = shm_unlink(key.c_str());
     return rc;
 }
 
-int cleanupDrpMq(std::string key, int MqId)
+int cleanupDrpMq(std::string key, int mqId)
 {
+    if (mqId)  mq_close(mqId);
     int rc = mq_unlink(key.c_str());
-    if (rc) {
-        return -1;
-    }
-    rc = mq_close(MqId);
     return rc;
 }
 

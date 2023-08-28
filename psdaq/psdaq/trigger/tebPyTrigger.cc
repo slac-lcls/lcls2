@@ -169,7 +169,7 @@ int Pds::Trg::TebPyTrig::configure(const json&              connectMsg,
   _pythonScript = scriptPath + "/" + _pythonScript;
   _partition    = prms.partition;
 
-  _keyBase = "p" + std::to_string(prms.partition) + "_teb" + std::to_string(prms.id) ; 
+  _keyBase = "p" + std::to_string(prms.partition) + "_teb" + std::to_string(prms.id) ;
 
   _inpMqId  = 0;
   _resMqId  = 0;
@@ -221,7 +221,7 @@ int Pds::Trg::TebPyTrig::_setupMsgQueue(std::string key,
   logging::info("[C++] %s message queues created", name);
   return 0;
 }
- 
+
 int Pds::Trg::TebPyTrig::_setupShMem(std::string key,
                                      size_t      size,
                                      const char* name,
@@ -293,8 +293,8 @@ void Pds::Trg::TebPyTrig::cleanup()
 {
   Pds::Ipc::cleanupDrpMq("/mqtebinp_" + _keyBase, _inpMqId);
   Pds::Ipc::cleanupDrpMq("/mqtebqres_" + _keyBase, _resMqId);
-  Pds::Ipc::cleanupDrpShmMem("/shmtebinp_" + _keyBase);
-  Pds::Ipc::cleanupDrpShmMem("/shmtebres_" + _keyBase);
+  Pds::Ipc::cleanupDrpShmMem("/shmtebinp_" + _keyBase, _inpShmId);
+  Pds::Ipc::cleanupDrpShmMem("/shmtebres_" + _keyBase, _resShmId);
 }
 
 int Pds::Trg::TebPyTrig::initialize(const std::vector<size_t>& inputsSizes,
@@ -392,7 +392,7 @@ int Pds::Trg::TebPyTrig::initialize(const std::vector<size_t>& inputsSizes,
 
   char recvmsg[520];
   logging::info("[C++] Waiting for aknowledgment from Python");
-  
+
   rc = _recv(_resMqId, recvmsg, sizeof(recvmsg), 5000);
   if (rc)  return rc;
 

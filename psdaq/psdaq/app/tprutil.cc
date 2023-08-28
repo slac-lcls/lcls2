@@ -326,10 +326,15 @@ void frame_rates(TprReg& reg, bool lcls2, int n)
   }
 
   do {
-      usleep(2000000);
+      usleep(1000000);
 
       for(unsigned i=0; i<nrates; i++)
           rates[i] = reg.base.channel[i].evtCount;
+
+      usleep(1000000);
+
+      for(unsigned i=0; i<nrates; i++)
+          rates[i] = (reg.base.channel[i].evtCount - rates[i])&0xfffff;
 
       for(unsigned i=0; i<nrates; i++) {
           unsigned rate = rates[i];
@@ -412,7 +417,9 @@ void* frame_capture_thread(void* a)
   int64_t allrp = q.allwp[idx];
   //int64_t bsarp = q.bsawp;
 
+  printf("Reading... %s  LINE %d\n",__FILE__,__LINE__);
   read(fd, buff, 32);
+  printf("..read\n");
   //  usleep(lcls2 ? 20 : 100000);
   //  usleep(100000);
   //  disable channel 0
@@ -470,7 +477,9 @@ void* frame_capture_thread(void* a)
     if (nframes>=frames && frames!=0)
       break;
     usleep(10000);
+    printf("Reading... %s  LINE %d\n",__FILE__,__LINE__);
     read(fd, buff, 32);
+    printf("..read\n");
   } while(1);
 
   return 0;
@@ -513,10 +522,13 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
   unsigned urate   = lcls2 ? (lRevMarkers ? 6:0) : (1<<11) | (0x3f<<3); // max rate
   unsigned destsel = 1<<17; // BEAM - DONT CARE
   reg.base.channel[_channel].evtSel = (destsel<<13) | (urate<<0);
+  reg.base.channel[_channel].evtSel = (destsel<<13) | (3<<11) | (1<<0);
   reg.base.channel[_channel].bsaDelay = 0;
   reg.base.channel[_channel].bsaWidth = 1;
   reg.base.channel[_channel].control = ucontrol | 1;
+  reg.base.dump();
 
+  /*
   ThreadArgs hargs[14];
   for(unsigned i=0; i<14; i++) {
     if (i==idx) continue;
@@ -526,6 +538,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
     pthread_t      thread_id;
     pthread_create(&thread_id, &attr, &file_monitor_thread, (void*)&hargs[i]);
   }
+  */
 
   //  read the captured frames
   printf("   %16.16s %8.8s %8.8s\n",
@@ -541,6 +554,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
   //int64_t allrp = q.allwp[idx];
   int64_t bsarp = q.bsawp;
 
+  printf("Reading... %s  LINE %d\n",__FILE__,__LINE__);
   read(fdbsa, buff, 32);
   //  usleep(lcls2 ? 20 : 100000);
   //  usleep(100000);
@@ -584,6 +598,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
     if (nframes>=frames)
       break;
     usleep(10000);
+    printf("Reading... %s  LINE %d\n",__FILE__,__LINE__);
     read(fdbsa, buff, 32);
   } while(1);
 

@@ -20,7 +20,7 @@ from amitypes import Array3d
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.detector.areadetector import sgs, AreaDetector, np, ut, DTYPE_MASK, DTYPE_STATUS
+from psana.detector.areadetector import sgs, AreaDetectorRaw, np, ut, DTYPE_MASK, DTYPE_STATUS
 from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index,\
   cbits_config_epix10ka, cbits_config_epixhr2x2, cbits_config_epixhr1x4,\
   cbits_config_and_data_detector, M14, M15, B14, B15
@@ -28,11 +28,11 @@ import psana.detector.UtilsMask as um #import merge_status
 from psana.detector.NDArrUtils import info_ndarr
 
 
-class epix_base(AreaDetector):
+class epix_base(AreaDetectorRaw):
 
     def __init__(self, *args, **kwa):
         logger.debug('epix_base.__init__') # self.__class__.__name__
-        AreaDetector.__init__(self, *args, **kwa)
+        AreaDetectorRaw.__init__(self, *args, **kwa)
         self._seg_geo = None
         self._data_bit_mask = M14 # for epix10ka data
         self._data_gain_bit = B14 # for epix10ka data
@@ -125,10 +125,10 @@ class epix_base(AreaDetector):
 
 
     def _mask_from_status(self, status_bits=0xffff, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK, **kwa):
-        """re-implementation of AreaDetector._mask_from_status for multi-gain detector.
+        """re-implementation of AreaDetectorRaw._mask_from_status for multi-gain detector.
         """
         logger.debug('epix_base._mask_from_status - implementation for epix10ka - merged status masks for gain ranges')
-        return AreaDetector._mask_from_status(self, status_bits=status_bits, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
+        return AreaDetectorRaw._mask_from_status(self, status_bits=status_bits, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
         #return um.merge_mask_for_grinds(smask, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
 
 

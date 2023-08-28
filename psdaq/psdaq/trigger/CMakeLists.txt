@@ -78,6 +78,24 @@ target_link_libraries(tstTebPy
 
 #---
 
+add_library(calibTrigger SHARED
+  calibTriggerDrp.cc
+  calibTriggerTeb.cc
+)
+
+target_include_directories(calibTrigger PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+  ${PYTHON_INCLUDE_DIRS}
+)
+
+target_link_libraries(calibTrigger
+  xtcdata::xtc
+  trigger
+)
+
+#---
+
 install(FILES
   TmoTebData.hh
   DESTINATION include/psdaq/trigger
@@ -88,4 +106,5 @@ install(TARGETS
   tmoTrigger
   tmoTeb
   tstTebPy
+  calibTrigger
 )

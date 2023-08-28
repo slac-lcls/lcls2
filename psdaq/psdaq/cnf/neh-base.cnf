@@ -21,13 +21,13 @@ procmgr_config = [
  { host: base_host, id:'pyxpm-6'  , port:'29455', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.105 '+pyxpm_optsdb%6},   # TMO XPM
  { host: fee_host, id:'pyxpm-fee', port:'29457', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.5.102 '+pyxpm_optsdb%10},  # FEE XPM
 ## EPICS PV exporter
- { host: base_host, id:'pvrtmon',  port:'29460', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo -M {prom_dir} -P DAQ:NEH:XPM:2 -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
- { host: base_host, id:'pvrtmon-rix',  port:'29461', flags:'s', env:epics_env, cmd:f'epics_exporter -H rix -M {prom_dir} -P DAQ:NEH:XPM:3 -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
- { host: fee_host, id:'pvrtmon-fee',  port:'29462', flags:'s', env:epics_env, cmd:f'epics_exporter -H fee -M {prom_dir} -P DAQ:NEH:XPM:10 -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
- { host: base_host, id:'pvrtmon-4',  port:'29463', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo-4 -M {prom_dir} -P DAQ:NEH:XPM:4 -G Us:RxLinkUp DeadFrac'},
- { host: base_host, id:'pvrtmon-5',  port:'29464', flags:'s', env:epics_env, cmd:f'epics_exporter -H rix-5 -M {prom_dir} -P DAQ:NEH:XPM:5 -G Us:RxLinkUp DeadFrac'},
- { host: base_host, id:'pvrtmon-6',  port:'29465', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo-6 -M {prom_dir} -P DAQ:NEH:XPM:6 -G Us:RxLinkUp DeadFrac'},
- { host: base_host, id:'pvrtmon-0',  port:'29466', flags:'s', env:epics_env, cmd:f'epics_exporter -H xpm-0 -M {prom_dir} -P DAQ:NEH:XPM:0 -G Us:RxLinkUp DeadFrac'},
+ { host: base_host, id:'pvrtmon',  port:'29460', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo -I xpm-2 -M {prom_dir} -P DAQ:NEH:XPM:2 -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+ { host: base_host, id:'pvrtmon-rix',  port:'29461', flags:'s', env:epics_env, cmd:f'epics_exporter -H rix -I xpm-3 -M {prom_dir} -P DAQ:NEH:XPM:3 -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+ { host: fee_host, id:'pvrtmon-fee',  port:'29462', flags:'s', env:epics_env, cmd:f'epics_exporter -H tst -I xpm-10 -M {prom_dir} -P DAQ:NEH:XPM:10 -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+ { host: base_host, id:'pvrtmon-4',  port:'29463', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo -I xpm-4 -M {prom_dir} -P DAQ:NEH:XPM:4 -G Us:RxLinkUp DeadFrac'},
+ { host: base_host, id:'pvrtmon-5',  port:'29464', flags:'s', env:epics_env, cmd:f'epics_exporter -H rix -I xpm-5 -M {prom_dir} -P DAQ:NEH:XPM:5 -G Us:RxLinkUp DeadFrac'},
+ { host: base_host, id:'pvrtmon-6',  port:'29465', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo -I xpm-6 -M {prom_dir} -P DAQ:NEH:XPM:6 -G Us:RxLinkUp DeadFrac'},
+ { host: base_host, id:'pvrtmon-0',  port:'29466', flags:'s', env:epics_env, cmd:f'epics_exporter -H tst -I xpm-0 -M {prom_dir} -P DAQ:NEH:XPM:0 -G Us:RxLinkUp DeadFrac'},
 ]
 
 #xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:1 DAQ:NEH:XPM:2 DAQ:NEH:XPM:3 DAQ:NEH:XPM:4 DAQ:NEH:XPM:5 DAQ:NEH:XPM:6 

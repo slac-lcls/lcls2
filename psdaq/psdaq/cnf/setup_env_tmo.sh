@@ -16,7 +16,7 @@ else
     export SIT_PSDM_DATA=/cds/data/psdm
 fi
 
-conda activate ps-4.5.26
+conda activate ps-4.6.0
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
     source $AUTH_FILE

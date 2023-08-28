@@ -264,11 +264,13 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
 {
     payloadSize = 0;
     XtcData::VarDef vd;
-    const pvd::StructureConstPtr& structure = _strct->getStructure();
-    if (!structure) {
+    const pvd::StructureConstPtr& s = _strct->getStructure();
+    if (!s) {
         logging::error("BLD with no payload.  Is FieldMask empty?");
         throw std::string("BLD with no payload.  Is FieldMask empty?");
     }
+
+    const pvd::Structure* structure = static_cast<const pvd::Structure*>(s->getFields()[0].get());
 
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();

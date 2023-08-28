@@ -222,6 +222,28 @@ target_link_libraries(pvcam
 )
 
 #
+#  bldpayload
+#
+add_executable(bldpayload bldpayload.cc)
+
+target_include_directories(bldpayload PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $ENV{CONDA_PREFIX}/include
+)
+
+target_link_libraries(bldpayload
+   xtcdata::xtc
+   epicstools
+   ${EPICS_PVACCESS_LIB}
+   ${EPICS_PVDATA_LIB}
+   ${EPICS_PVACLIENT_LIB}
+   ${EPICS_CA_LIB}
+   readline
+   dl
+   rt
+)
+
+#
 #  sim_udpencoder
 #
 add_executable(sim_udpencoder sim_udpencoder.cc)
@@ -263,6 +285,7 @@ target_include_directories(json2xtc PUBLIC
 )
 
 install(TARGETS app
+#               bldpayload
 		hpsBldServer
 		hpsBldClient
 		hpsBldCopy

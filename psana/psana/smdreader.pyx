@@ -16,7 +16,8 @@ from psana.dgramedit import DgramEdit
 
 cdef class SmdReader:
     cdef ParallelReader prl_reader
-    cdef int         winner, n_view_events
+    cdef int         winner
+    cdef uint64_t    n_view_events
     cdef int         max_retries, sleep_secs
     cdef array.array i_starts                   # ¬ used locally for finding boundary of each
     cdef array.array i_ends                     # } stream file (defined here for speed) in view(),  
@@ -36,7 +37,7 @@ cdef class SmdReader:
     cdef float       total_time
     cdef int         num_threads
     cdef Buffer*     send_bufs                  # array of customed Buffers (one per EB node)
-    cdef int         sendbufsize                # size of each send buffer
+    cdef uint64_t    sendbufsize                # size of each send buffer
     cdef int         n_eb_nodes
     cdef int         fakestep_flag               
     cdef list        configs
@@ -160,7 +161,7 @@ cdef class SmdReader:
         self.winner = -1
 
     @cython.boundscheck(False)
-    def view(self, int batch_size=1000, int intg_stream_id=-1):
+    def view(self, uint64_t batch_size=1000, int intg_stream_id=-1):
         """ Returns memoryview of the data and step buffers.
 
         This function is called by SmdReaderManager only when is_complete is True (
@@ -174,15 +175,22 @@ cdef class SmdReader:
         cdef int i=0
         cdef int i_eob=0
 
-        # Find the winning buffer (slowest detector)- skip when no new read.
+        # Find the winning buffer.
         cdef uint64_t limit_ts=0
+        cdef uint64_t buf_ts=0
         for i in range(self.prl_reader.nfiles):
-            if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
+            # Locate the timestamp at batch_size or n_ready_events (whichever is smaller).
+            if self.prl_reader.bufs[i].n_ready_events < self.prl_reader.bufs[i].n_seen_events + batch_size:
+                buf_ts = self.prl_reader.bufs[i].ts_arr[self.prl_reader.bufs[i].n_ready_events-1]
+            else:
+                buf_ts = self.prl_reader.bufs[i].ts_arr[self.prl_reader.bufs[i].n_seen_events + batch_size - 1]
+            if buf_ts < limit_ts or limit_ts == 0:
                 self.winner = i
-                limit_ts = self.prl_reader.bufs[self.winner].timestamp
+                limit_ts = buf_ts
+        
         # With integrating detector specified, limit_ts is from the integrating
         # detector where the last ts of the winner can be inserted in front of or at.
-        cdef int i_found=0
+        cdef uint64_t i_found=0
         cdef uint64_t[:] buf_ts_arr
         if intg_stream_id > -1:
             buf_ts_arr = <uint64_t [: self.prl_reader.bufs[intg_stream_id].n_ready_events]>self.prl_reader.bufs[intg_stream_id].ts_arr
@@ -521,6 +529,9 @@ cdef class SmdReader:
             ptr_step_bufs[i] = <char *>step_buf.buf
             PyBuffer_Release(&step_buf)
 
+
+        assert total_size <= self.sendbufsize, "Repacked data exceeds send buffer's size."
+        
         # Access raw C pointers so they can be used in nogil loop below
         cdef uint64_t* block_size_bufs = <uint64_t*>self.block_size_bufs.data.as_voidptr
         cdef uint64_t* i_st_bufs = <uint64_t*>self.i_st_bufs.data.as_voidptr

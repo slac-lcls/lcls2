@@ -4,11 +4,10 @@ Data access methods common for all AREA DETECTORS
 
 Usage::
 
-  from psana.detector.areadetector import AreaDetector
+  from psana.detector.areadetector import AreaDetector, AreaDetectorRaw
 
-  o = AreaDetector(*args, **kwa) # inherits from DetectorImpl(*args, **kwa)
+  o = AreaDetector(*args, **kwa)    # inherits from DetectorImpl(*args, **kwa)
 
-  a = o.raw(evt)
   a = o._segment_numbers  # alias of o._sorted_segment_ids, where ids is misleading
   a = o._det_calibconst()
 
@@ -45,10 +44,13 @@ Usage::
               umask=None,\
               force_update=False,\
               all_segs=False)
+  a = o.image(self, evt, nda=None, value_for_missing_segments=None, **kwa)
 
+
+  o = AreaDetectorRaw(*args, **kwa) # inherits from AreaDetector(*args, **kwa), adds raw and calib methods
+  a = o.raw(evt)
   a = o.calib(evt, cmpars=(7,2,100,10), *kwargs)
   a = o.calib(evt, **kwa)
-  a = o.image(self, evt, nda=None, value_for_missing_segments=None, **kwa)
 
 2020-11-06 created by Mikhail Dubrovin
 """
@@ -64,10 +66,10 @@ from psana.detector.calibconstants import CalibConstants
 from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess
 from psana.detector.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
-#from psana.detector.UtilsAreaDetector import arr3d_from_list  # arr3d_from_dict
 from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
+#from psana.detector.UtilsAreaDetector import arr3d_from_list  # arr3d_from_dict
 
 
 def is_none(par, msg, logger_method=logger.debug):
@@ -77,45 +79,15 @@ def is_none(par, msg, logger_method=logger.debug):
 
 
 class AreaDetector(DetectorImpl):
-
+    """Collection of methods common for self = det.raw, det.fex, etc."""
     def __init__(self, *args, **kwargs):
-        logger.debug('AreaDetector.__init__') #  self.__class__.__name__
+        logger.debug('AreaDetector.__init__')
         DetectorImpl.__init__(self, *args, **kwargs)
-
         self._calibc_ = None
-        self._maskalgos_ = None
-        self._store_ = None  # detector dependent storage of cached parameters for method calib
         self._geo = None
         self._segment_numbers = self._sorted_segment_ids  # [0, 1, 2,... 17, 18, 19]
-
-
-    def raw(self, evt) -> Array3d:
-        """
-        Returns dense 3-d numpy array of segment data
-        from dict self._segments(evt)
-
-        Parameters
-        ----------
-        evt: event
-            psana event object, ex. run.events().next().
-
-        Returns
-        -------
-        raw data: np.array, ndim=3, shape: as data
-        """
-        if evt is None: return None
-        segs = self._segments(evt)    # dict = {seg_index: seg_obj}
-        if is_none(segs, 'self._segments(evt) is None'): return None
-        return np.stack([segs[k].raw for k in self._segment_numbers])
-
-
-    def _maskalgos(self, **kwa):
-        if self._maskalgos_ is None:
-            logger.debug('AreaDetector._maskalgos - make MaskAlgos')
-            cc = self._calibconst   # defined in DetectorImpl from detector_impl.py
-            if is_none(cc, 'self._calibconst is None'): return None
-            self._maskalgos_ = MaskAlgos(cc, **kwa)
-        return self._maskalgos_
+        self._maskalgos_ = None
+        self._store_ = None  # detector dependent storage of cached parameters for method calib
 
 
     def _calibconstants(self, **kwa):
@@ -236,23 +208,6 @@ class AreaDetector(DetectorImpl):
         #return self._det_calibconst('shape_as_daq')
 
 
-    def calib(self, evt, **kwa) -> Array3d:
-        """Returns calibrated array of data shaped as daq: calib = (raw - peds) * gfac.
-           Should be overridden for more complicated cases.
-        """
-        logger.debug('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
-                      +'\n  If needed more, it needs to be re-implemented for this detector type.')
-        raw = self.raw(evt)
-        if is_none(raw, 'det.raw.raw(evt) is None'): return None
-
-        peds = self._pedestals()
-        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)'): return raw
-
-        arr = raw - peds
-        gfac = self._gain_factor()
-        return arr*gfac if gfac != 1 else arr
-
-
     def _substitute_value_for_missing_segments(self, nda_daq, value) -> Array3d:
         nsegs_tot = self._number_of_segments_total()
         nsegs_daq = self._number_of_segments_daq()
@@ -265,7 +220,11 @@ class AreaDetector(DetectorImpl):
 
 
     def image(self, evt, nda=None, value_for_missing_segments=None, **kwa) -> Array2d:
-        #value = kwa.get('value_for_missing_segments', None)
+        """Returns 2-d image.
+           If value_for_missing_segments is specified,
+             all missing segments will be substituted with this value and shape = shape for all segments,
+             otherwice image for available self._segment_numbers will be generated.
+        """
         value = value_for_missing_segments
 
         _nda = self.calib(evt) if nda is None else nda
@@ -280,6 +239,15 @@ class AreaDetector(DetectorImpl):
         if o.geo() is None: o._geo = self._det_geo()
 
         return o.image(_nda, segnums=segnums, **kwa)
+
+
+    def _maskalgos(self, **kwa):
+        if self._maskalgos_ is None:
+            logger.debug('AreaDetector._maskalgos - make MaskAlgos')
+            cc = self._calibconst   # defined in DetectorImpl from detector_impl.py
+            if is_none(cc, 'self._calibconst is None'): return None
+            self._maskalgos_ = MaskAlgos(cc, **kwa)
+        return self._maskalgos_
 
 
     def _mask_default(self, dtype=DTYPE_MASK, **kwa):
@@ -364,6 +332,51 @@ class AreaDetector(DetectorImpl):
         if o is None: return None
         m = o.mask(status=status, neighbors=neighbors, edges=edges, center=center, calib=calib, umask=umask, force_update=force_update, dtype=dtype, **kwa)
         return self._arr_for_daq_segments(m, **kwa)
+
+
+class AreaDetectorRaw(AreaDetector):
+    """Collection of methods for self = det.raw, e.g. det.raw.raw(...), det.raw.calib(...) etc."""
+
+    def __init__(self, *args, **kwargs):
+        logger.debug('AreaDetectorRaw.__init__') #  self.__class__.__name__
+        AreaDetector.__init__(self, *args, **kwargs)
+
+
+    def raw(self, evt) -> Array3d:
+        """
+        Returns dense 3-d numpy array of segment data
+        from dict self._segments(evt)
+
+        Parameters
+        ----------
+        evt: event
+            psana event object, ex. run.events().next().
+
+        Returns
+        -------
+        raw data: np.array, ndim=3, shape: as data
+        """
+        if evt is None: return None
+        segs = self._segments(evt)    # dict = {seg_index: seg_obj}
+        if is_none(segs, 'self._segments(evt) is None'): return None
+        return np.stack([segs[k].raw for k in self._segment_numbers])
+
+
+    def calib(self, evt, **kwa) -> Array3d:
+        """Returns calibrated array of data shaped as daq: calib = (raw - peds) * gfac.
+           Should be overridden for more complicated cases.
+        """
+        logger.debug('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
+                      +'\n  If needed more, it needs to be re-implemented for this detector type.')
+        raw = self.raw(evt)
+        if is_none(raw, 'det.raw.raw(evt) is None'): return None
+
+        peds = self._pedestals()
+        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)'): return raw
+
+        arr = raw - peds
+        gfac = self._gain_factor()
+        return arr*gfac if gfac != 1 else arr
 
 
 if __name__ == "__main__":

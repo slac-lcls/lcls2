@@ -32,8 +32,8 @@ class PVAServer(object):
         self.prefix = prefix
         self.pvs = {}
 
-        self.addSource('GMD' , '239.255.25.2', 10148, [ ('milliJoulesPerPulse', 'f') ])
-        self.addSource('XGMD', '239.255.25.3', 10148, [ ('milliJoulesPerPulse', 'f'), ('POSY', 'f') ])
+        self.addSource('GMD' , '239.255.25.2', 10148, [ ('milliJoulesPerPulse', 'f'), ('RMS_E1', 'f') ])
+        self.addSource('XGMD', '239.255.25.3', 10148, [ ('milliJoulesPerPulse', 'f'), ('POSY', 'f'), ('RMS_E1', 'f'), ('RMS_E2', 'f') ])
 
     def addSource(self, name, addr, port, ntypes):
         ia = socket.inet_aton(addr)

@@ -5,7 +5,7 @@ from psana.event import Event
 from psana.smalldata import SmallData
 from psana.dgramedit import DgramEdit
 from psana import dgram
-from psana.psexp.zmq_utils import pub_send, sub_recv
+from psana.psexp.zmq_utils import PubSocket, SubSocket
 
 class DrpDataSource(DataSourceBase):
 
@@ -21,8 +21,23 @@ class DrpDataSource(DataSourceBase):
         self._edtbl_config = True
         self._config_ts = None
 
+        self.det_segment = kwargs["drp"].det_segment
+        self._is_supervisor = kwargs["drp"].is_supervisor
         self.worker_num = kwargs["drp"].worker_num
         self._is_publisher = True if self.worker_num == 0 else False
+
+        if self._is_supervisor:
+            if self._is_publisher:
+                self._tcp_pub_socket = PubSocket(kwargs["drp"].tcp_socket_name)
+                self._ipc_pub_socket = PubSocket(kwargs["drp"].ipc_socket_name)
+            else:
+                self._ipc_sub_socket = SubSocket(kwargs["drp"].ipc_socket_name)
+        else:
+            if self._is_publisher:
+                self._tcp_sub_socket = SubSocket(kwargs["drp"].tcp_socket_name)
+                self._ipc_pub_socket = PubSocket(kwargs["drp"].ipc_socket_name)
+            else:
+                self._ipc_sub_socket = SubSocket(kwargs["drp"].ipc_socket_name)
 
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         self._setup_run()
@@ -60,11 +75,20 @@ class DrpDataSource(DataSourceBase):
                 return True
 
     def _setup_run_calibconst(self):
-        if self._is_publisher:
-            super()._setup_run_calibconst()
-            pub_send(self.dsparms.calibconst)
+        if self._is_supervisor:
+            if self._is_publisher:
+                super()._setup_run_calibconst()
+                zdata = self._tcp_pub_socket.send(self.dsparms.calibconst)
+                self._ipc_pub_socket.sendz(zdata)
+            else:
+                self.dsparms.calibconst = self._ipc_sub_socket.recv()
         else:
-            self.dsparms.calibconst = sub_recv()
+            if self._is_publisher:
+                zdata, self.dsparms.calibconst = self._tcp_sub_socket.recvz()
+                self._ipc_pub_socket.sendz(zdata)
+            else:
+                self.dsparms.calibconst = self._ipc_sub_socket.recv()
+
         # Verbose print: print(f"[Python - Worker {self.worker_num}] Done broadcast {self.dsparms.calibconst}]")
 
     def _start_run(self):
@@ -84,6 +108,21 @@ class DrpDataSource(DataSourceBase):
         while self._start_run():
             run = RunDrp(self, Event(dgrams=self.beginruns))
             yield run
+
+        # Delete sockets to avoid getting 'Address already in use' when recreating them
+        # Its unclear why this doesn't work when done in __del__()
+        if self._is_supervisor:
+            if self._is_publisher:
+                del self._tcp_pub_socket
+                del self._ipc_pub_socket
+            else:
+                del self._ipc_sub_socket
+        else:
+            if self._is_publisher:
+                del self._tcp_sub_socket
+                del self._ipc_pub_socket
+            else:
+                del self._ipc_sub_socket
 
     def is_mpi(self):
         return False

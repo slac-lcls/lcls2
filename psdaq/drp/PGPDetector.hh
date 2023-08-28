@@ -49,6 +49,7 @@ private:
     std::atomic<int> threadCountPush;
     unsigned m_flushTmo;
     size_t m_shmemSize;
+    int64_t m_pyAppTime;
     bool pythonDrp;
 };
 

@@ -124,7 +124,7 @@ class PvGroupMask(PvComboDisplay):
         else:
             print(err)
 
-def LblPushButtonX(parent, pvbase, name, count=1, start=0, istart=0):
+def LblPushButtonX(parent, pvbase, name, count=1, start=0, istart=0, label=None):
     return PvInput(PvPushButtonX, parent, pvbase, name, count, start, istart)
 
 def LblEditIntX(parent, pvbase, name, count=1, start=0, istart=0, enable=True):
@@ -214,14 +214,8 @@ def DeadTime(pvbase,parent):
 #        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), i+1, 2 )
         for j in range(8):
             deadgrid.addWidget( textWidgets[j][i], i+1, j+3 )
-    for i in range(16,21):
-        k = i-1
-        deadgrid.addWidget( QtWidgets.QLabel('BP-slot%d'%(i-13)), k, 0, 1, 2 )
-#        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%(i+1),None), k, 2 )
-        for j in range(8):
-            deadgrid.addWidget( textWidgets[j][i], k, j+3 )
     for i in range(28,32):
-        k = i-7
+        k = i-12
         deadgrid.addWidget( QtWidgets.QLabel('INH%d'%(i-28)), k, 0, 1, 2 )
 #        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), k, 2 )
         for j in range(8):
@@ -288,6 +282,7 @@ def addTiming(self,pvbase):
     PvLabel(self,lor, pvbase, "SOFs"       )
     PvLabel(self,lor, pvbase, "EOFs"       )
     LblPushButtonX( lor, pvbase, "RxReset" )
+    LblPushButtonX( lor, pvbase, "RxCountReset" )
     LblPushButtonX( lor, pvbase, "RxCountReset" )
     lor.addWidget( PvRxAlign(pvbase+'RxAlign','RxAlign') )
     lor.addStretch()
@@ -439,6 +434,7 @@ class GroupsTab(QtWidgets.QWidget):
             grid1.addWidget( self.masterText[i], i+1, 1)
             self.l0RateText[i] = QtWidgets.QLabel('-')
             grid1.addWidget( self.l0RateText[i], i+1, 2)
+        grid1.setRowStretch(grid1.rowCount(),1)
         l.addLayout(grid1)
         l.addStretch()
 
@@ -458,6 +454,7 @@ class GroupsTab(QtWidgets.QWidget):
             grid2.addWidget( self.codesText['desc'][i], i+1, 2 )
             self.codesText['rate'][i] = QtWidgets.QLabel('-')
             grid2.addWidget( self.codesText['rate'][i], i+1, 3 )
+        grid2.setRowStretch(grid2.rowCount(),1)
         l.addLayout(grid2)
 
         self.setLayout(l)
@@ -513,9 +510,20 @@ class Ui_MainWindow(object):
             LblCheckBox(hl, pvbase, "UsRxEnable", enable=False)
             LblCheckBox(hl, pvbase, "CuRxEnable", enable=False)
             LblPushButtonX(hl, pvbase, "ModuleInit"      )
-            LblPushButtonX(hl, pvbase, "DumpPll",        NAmcs)
-            LblPushButtonX(hl, pvbase, "DumpTiming",     2)
-            LblPushButtonX(hl, pvbase, "DumpSeq"         )
+#  These do nothing now
+#            LblPushButtonX(hl, pvbase, "DumpPll",        NAmcs)
+#            LblPushButtonX(hl, pvbase, "DumpTiming",     2)
+
+            seq_lo = QtWidgets.QHBoxLayout()
+            label  = QtWidgets.QLabel("DumpSeq")
+            label.setMinimumWidth(100)
+            seq_lo.addWidget(label)
+            for i in range(4):
+                w = PvPushButtonX(f'{pvbase}:SEQENG:{i}:DUMP',f'{i}')
+                w.setEnabled(True)
+                seq_lo.addWidget(w)
+            hl.addLayout(seq_lo)
+
 #            LblEditIntX   (hl, pvbase, "SetVerbose"      )
             LblPushButtonX(hl, pvbase, "Inhibit"         )
             LblPushButtonX(hl, pvbase, "TagStream"       )

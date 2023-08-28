@@ -1,44 +1,49 @@
 import zmq
 import zlib, pickle
 import time
-calibconst_socket = None
 
-def pub_bind(socket_name):
-    context = zmq.Context()
-    global calibconst_socket
-    calibconst_socket = context.socket(zmq.PUB)
-    calibconst_socket.bind(socket_name)
-    return calibconst_socket
+class PubSocket:
+    def __init__(self, socket_name):
+        self._context = zmq.Context()
+        self._zmq_socket = self._context.socket(zmq.PUB)
+        self._zmq_socket.bind(socket_name)
 
-def pub_send(calib_const):
-    send_zipped_pickle(calibconst_socket, calib_const)
+    def send(self, data):
+        return self.send_zipped_pickle(data)
 
-def send_zipped_pickle(zmq_socket, obj, flags=0, protocol=-1):
-    """pickle an object, and zip the pickle before sending it"""
-    p = pickle.dumps(obj, protocol)
-    z = zlib.compress(p)
-    zmq_socket.send(z, flags=flags)
+    def sendz(self, zdata, flags=0):
+        self._zmq_socket.send(zdata, flags=flags)
 
-def sub_connect(socket_name):
-    context = zmq.Context()
-    global calibconst_socket
-    calibconst_socket = context.socket(zmq.SUB)
-    calibconst_socket.connect(socket_name)
+    def send_zipped_pickle(self, obj, flags=0, protocol=-1):
+        """pickle an object, and zip the pickle before sending it"""
+        p = pickle.dumps(obj, protocol)
+        z = zlib.compress(p)
+        self._zmq_socket.send(z, flags=flags)
+        return z
 
-    # Subscribe to all
-    topicfilter = ""
-    calibconst_socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
-    return calibconst_socket
 
-def sub_recv():
-    st = time.time()
-    calib_const = recv_zipped_pickle(calibconst_socket)
-    en = time.time()
-    print(f"Subscriber recv took:{en-st:.2f}s.")
-    return calib_const
+class SubSocket:
+    def __init__(self, socket_name):
+        self._context = zmq.Context()
+        self._zmq_socket = self._context.socket(zmq.SUB)
+        self._zmq_socket.connect(socket_name)
 
-def recv_zipped_pickle(zmq_socket, flags=0, protocol=-1):
-    """inverse of send_zipped_pickle"""
-    z = zmq_socket.recv(flags)
-    p = zlib.decompress(z)
-    return pickle.loads(p)
+        # Subscribe to all
+        topicfilter = ""
+        self._zmq_socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
+
+    def recv(self):
+        return self.recvz()[1]
+
+    def recvz(self):
+        st = time.time()
+        z,data = self.recv_zipped_pickle()
+        en = time.time()
+        print(f"Subscriber recv took:{en-st:.2f}s.")
+        return z,data
+
+    def recv_zipped_pickle(self, flags=0, protocol=-1):
+        """inverse of send_zipped_pickle"""
+        z = self._zmq_socket.recv(flags)
+        p = zlib.decompress(z)
+        return z,pickle.loads(p)
