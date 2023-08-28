@@ -4,7 +4,7 @@ from psana.graphqt.GWViewImageROI import *
 
 logger = logging.getLogger(__name__)
 #datefmt='%Y-%m-%dT%H:%M:%S'
-logging.basicConfig(format='%(asctime)s [%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%M:%S', level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s [%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', datefmt='%M:%S', level=logging.INFO)
 
 import inspect
 import sys
@@ -101,12 +101,12 @@ class TestGWViewImageROI(GWViewImageROI):
         key = e.key()
 
         if key == Qt.Key_Escape:
-            logger.info('Close app')
+            logger.debug('Close app')
             self.close()
             return
 
         ckey = chr(key)
-        logger.info('keyPressEvent, key = %s' % ckey)
+        logger.debug('keyPressEvent, key = %s' % ckey)
 
         if key == Qt.Key_O:
             logger.info('Reset original size')
@@ -173,7 +173,6 @@ class TestGWViewImageROI(GWViewImageROI):
 def image_with_random_peaks(shape=(500, 500)):
     from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
-    logger.info('image_with_random_peaks shape: %s' % str(shape))
     img = ag.random_standard(shape, mu=0, sigma=10)
     logger.info(info_ndarr(img, 'image_with_random_peaks  ag.random_standard'))
 
