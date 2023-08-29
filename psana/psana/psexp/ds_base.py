@@ -542,11 +542,6 @@ class DataSourceBase(abc.ABC):
                 else:
                     det_uniqueid = configinfo.uniqueid
                 calib_const = wu.calib_constants_all_types(det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix)
-
-                # mona - hopefully this will be removed once the calibconst
-                # db all use uniqueid as an identifier
-                if not calib_const:
-                    calib_const = wu.calib_constants_all_types(det_name, exp=expt, run=runnum, dbsuffix=self.dbsuffix)
                 self.dsparms.calibconst[det_name] = calib_const
             else:
                 print(f"ds_base: Warning: cannot access calibration constant (exp is None)")
