@@ -57,6 +57,10 @@ typedef struct {
     encoder_channel_t   channel[1];
 } encoder_frame_t;
 
+bool     m_interpolating;
+unsigned m_slowGroup;
+encoder_frame_t m_zeroFrame;
+
 static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_frame_t is not size 64");
 class UdpEncoder;
 
@@ -64,7 +68,8 @@ class UdpReceiver
 {
 public:
     UdpReceiver(const Parameters&           para,
-                SPSCQueue<XtcData::Dgram*>& pvQueue,
+                SPSCQueue<XtcData::Dgram*>& encQueue,
+                SPSCQueue<uint32_t>& interpolateQueue,
                 SPSCQueue<XtcData::Dgram*>& bufferFreeList);
     ~UdpReceiver();
 public:
@@ -91,7 +96,8 @@ private:
     void _udpReceiver();
 private:
     const Parameters&           m_para;
-    SPSCQueue<XtcData::Dgram*>& m_pvQueue;
+    SPSCQueue<XtcData::Dgram*>& m_encQueue;
+    SPSCQueue<uint32_t>&        m_interpolateQueue;
     SPSCQueue<XtcData::Dgram*>& m_bufferFreelist;
     std::atomic<bool>           m_terminate;
     std::thread                 m_udpReceiverThread;
@@ -130,8 +136,8 @@ private:
     void _event(XtcData::Dgram& dgram, const void* const bufEnd, encoder_frame_t& frame);
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
-    void _matchUp();
-    void _handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
+    void _process(Pds::EbDgram& dgram);    // was matchUp()
+    void _handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
     enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
@@ -140,7 +146,8 @@ private:
     std::shared_ptr<UdpReceiver> m_udpReceiver;
     std::thread m_workerThread;
     SPSCQueue<uint32_t> m_evtQueue;
-    SPSCQueue<XtcData::Dgram*> m_pvQueue;
+    SPSCQueue<uint32_t> m_interpolateQueue;
+    SPSCQueue<XtcData::Dgram*> m_encQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
     std::vector<uint8_t> m_buffer;
     std::atomic<bool> m_terminate;

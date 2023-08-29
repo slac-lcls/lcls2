@@ -80,6 +80,7 @@ public:
 
 namespace Drp {
 
+#if 0
 static const XtcData::Name::DataType xtype[] = {
   XtcData::Name::UINT8 , // pvBoolean
   XtcData::Name::INT8  , // pvByte
@@ -94,12 +95,15 @@ static const XtcData::Name::DataType xtype[] = {
   XtcData::Name::DOUBLE, // pvDouble
   XtcData::Name::CHARSTR, // pvString
 };
+#endif /* 0 */
 
 UdpReceiver::UdpReceiver(const Parameters&           para,
-                         SPSCQueue<XtcData::Dgram*>& pvQueue,
+                         SPSCQueue<XtcData::Dgram*>& encQueue,
+                         SPSCQueue<uint32_t>& interpolateQueue,
                          SPSCQueue<XtcData::Dgram*>& bufferFreelist) :
     m_para          (para),
-    m_pvQueue       (pvQueue),
+    m_encQueue       (encQueue),
+    m_interpolateQueue (interpolateQueue),
     m_bufferFreelist(bufferFreelist),
     m_terminate     (false),
     m_outOfOrder    (false),
@@ -359,7 +363,7 @@ void UdpReceiver::process()
 
         _read(*dgram);                     // read the frame into the Dgram
 
-        m_pvQueue.push(dgram);
+        m_encQueue.push(dgram);
     }
     else {
         logging::error("%s: buffer not available, frame dropped", __PRETTY_FUNCTION__);
@@ -561,17 +565,29 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
     m_evtQueue      (drp.pool.nbuffers()),
-    m_pvQueue       (8),                  // Revisit size
-    m_bufferFreelist(m_pvQueue.size()),
+    m_encQueue       (drp.pool.nbuffers()),
+    m_interpolateQueue (drp.pool.nbuffers()),
+    m_bufferFreelist(m_encQueue.size()),
     m_terminate     (false),
     m_running       (false)
 {
+    if (para.kwargs.find("slowGroup") != para.kwargs.end())
+        Drp::m_slowGroup = std::stoul(para.kwargs["slowGroup"]);
+    else
+        Drp::m_slowGroup = 0;    // default: interpolation disabled
+
+    logging::info("%s: slowGroup = %u", __PRETTY_FUNCTION__, Drp::m_slowGroup);
+    if (Drp::m_slowGroup == 0) {
+        logging::info("interpolation disabled");
+    } else {
+        logging::info("interpolation enabled");
+    }
 }
 
 unsigned UdpEncoder::connect(std::string& msg)
 {
     try {
-        m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_pvQueue, m_bufferFreelist);
+        m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_encQueue, m_interpolateQueue, m_bufferFreelist);
     }
     catch(std::string& error) {
         logging::error("Failed to create UdpReceiver: %s", error.c_str());
@@ -616,12 +632,15 @@ unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xt
     addNames(0, xtc, bufEnd);
 
     // (Re)initialize the queues
-    m_pvQueue.startup();
+    m_encQueue.startup();
+//  m_interpolateQueue.startup();
     m_evtQueue.startup();
     m_bufferFreelist.startup();
     size_t bufSize = sizeof(XtcData::Dgram) + sizeof(encoder_frame_t);
-    m_buffer.resize(m_pvQueue.size() * bufSize);
-    for(unsigned i = 0; i < m_pvQueue.size(); ++i) {
+//  m_buffer.resize((m_encQueue.size() + m_interpolateQueue.size()) * bufSize);
+    m_buffer.resize(m_encQueue.size() * bufSize);
+//  for(unsigned i = 0; i < m_encQueue.size() + m_interpolateQueue.size(); ++i) {
+    for(unsigned i = 0; i < m_encQueue.size(); ++i) {
         m_bufferFreelist.push(reinterpret_cast<XtcData::Dgram*>(&m_buffer[i * bufSize]));
     }
 
@@ -640,7 +659,8 @@ unsigned UdpEncoder::unconfigure()
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
-    m_pvQueue.shutdown();
+    m_encQueue.shutdown();
+//  m_interpolateQueue.shutdown();
     m_evtQueue.shutdown();
     m_bufferFreelist.shutdown();
     m_namesLookup.clear();   // erase all elements
@@ -678,7 +698,7 @@ void UdpEncoder::_worker()
 
     // Borrow this for awhile
     m_exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
-                    [&](){return m_pvQueue.guess_size();});
+                    [&](){return m_encQueue.guess_size();});
 
     Pgp pgp(*m_para, m_drp, this, m_running);
 
@@ -718,62 +738,10 @@ void UdpEncoder::_worker()
         Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
             m_nEvents++;
-            logging::debug("Worker thread: m_nEvents = %d", m_nEvents);
 
-            XtcData::TransitionId::Value service = dgram->service();
+            m_evtQueue.push(index);
 
-            if (service == XtcData::TransitionId::L1Accept) {
-                if (m_para->loopbackPort) {
-                    m_udpReceiver->loopbackSend();        // LOOPBACK TEST
-                }
-            }
-
-            // Also queue SlowUpdates to keep things in time order
-            if ((service == XtcData::TransitionId::L1Accept) ||
-                (service == XtcData::TransitionId::SlowUpdate)) {
-                m_evtQueue.push(index);
-
-                //printf("                         PGP: %u.%09u\n",
-                //       dgram->time.seconds(), dgram->time.nanoseconds());
-
-                _matchUp();
-
-                // Prevent PGP events from stacking up by by timing them out.
-                // The maximum timeout is < the TEB event build timeout to keep
-                // prompt contributions from timing out before latent ones arrive.
-                // If the PV is updating, _timeout() never finds anything to do.
-                XtcData::TimeStamp timestamp;
-                const uint64_t nsTmo = msTmo * 1000000;
-                _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
-            }
-            else {
-                // Find the transition dgram in the pool and initialize its header
-                Pds::EbDgram* trDgram = m_pool->transitionDgrams[index];
-                const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
-                if (!trDgram)  continue; // Can happen during shutdown
-                *trDgram = *dgram;
-                // copy the temporary xtc created on phase 1 of the transition
-                // into the real location
-                XtcData::Xtc& trXtc = transitionXtc();
-                trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
-                auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
-                memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-
-                if (service == XtcData::TransitionId::Enable) {
-                    m_running = true;
-                }
-                else if (service == XtcData::TransitionId::Disable) { // Sweep out L1As
-                    m_running = false;
-                    logging::debug("Sweeping out L1Accepts and SlowUpdates");
-                    _timeout(TimeMax);
-                }
-
-                _sendToTeb(*dgram, index);
-            }
-        }
-        else {
-            // Time out batches for the TEB
-            m_drp.tebContributor().timeout();
+            _process(*dgram);           // Was _matchUp
         }
     }
 
@@ -785,18 +753,19 @@ void UdpEncoder::_worker()
     logging::info("Worker thread finished");
 }
 
-void UdpEncoder::_matchUp()
+// void UdpEncoder::_process(xtcData::Dgram* dgram)
+void UdpEncoder::_process(Pds::EbDgram& dgram)
 {
     while (true) {
-        XtcData::Dgram* pvDg;
-        if (!m_pvQueue.peek(pvDg))  break;
+        XtcData::Dgram* encDg;
+        if (!m_encQueue.peek(encDg))  break;
 
         uint32_t evtIdx;
         if (!m_evtQueue.peek(evtIdx))  break;
 
         Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[evtIdx]);
 
-        _handleMatch  (*pvDg, *pgpDg);
+        _handleL1Accept(*encDg, *pgpDg);
     }
 }
 
@@ -854,24 +823,34 @@ void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, encoder
     raw.set_string(RawDef::hardwareID, buf);
 }
 
-void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
+void UdpEncoder::_handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg)
 {
     uint32_t evtIdx;
     m_evtQueue.try_pop(evtIdx);         // Actually consume the element
 
     XtcData::Dgram* dgram;
     if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
-        pgpDg.xtc.damage.increase(pvDg.xtc.damage.value());
-        auto bufEnd  = (char*)&pgpDg + m_pool->pebble.bufferSize();
+        if (m_interpolating) {
+            if (pgpDg.readoutGroups() & (1 << Drp::m_slowGroup)) {
+                // slow event...
+                logging::debug("%s: SLOW event...", __PRETTY_FUNCTION__);
+            } else {
+                // fast event...
+                logging::debug("%s: FAST event...", __PRETTY_FUNCTION__);
+            }
+        } else {
+            // not interpolating...
+            pgpDg.xtc.damage.increase(encDg.xtc.damage.value());
+            auto bufEnd  = (char*)&pgpDg + m_pool->pebble.bufferSize();
 
-        _event(pgpDg, bufEnd, *(encoder_frame_t*)(pvDg.xtc.payload()));
+            _event(pgpDg, bufEnd, *(encoder_frame_t*)(encDg.xtc.payload()));
 
-        m_pvQueue.try_pop(dgram);       // Actually consume the element
-        m_bufferFreelist.push(dgram);   // Return buffer to freelist
+            m_encQueue.try_pop(dgram);      // Actually consume the element
+            m_bufferFreelist.push(dgram);   // Return buffer to freelist
 
-        ++m_nMatch;
-    }
-    else { // SlowUpdate
+            ++m_nMatch;
+        }
+    } else { // SlowUpdate
         // Allocate a transition dgram from the pool and initialize its header
         Pds::EbDgram* trDg = m_pool->transitionDgrams[evtIdx];
         *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
