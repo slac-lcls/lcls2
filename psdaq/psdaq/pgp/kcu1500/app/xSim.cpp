@@ -62,6 +62,100 @@
 //    0xC00-0xFFC Fan                  { I2C Mux = 3 }
 //
 
+/*
+typedef struct {
+    unsigned addr;
+    const char* name;
+} drpreg_t;
+
+static drpreg_t drpregs[] = { {0x02, "cdr_swap_mode"},
+                              {0x03, "rxbufreset_time"},
+                              {0x04, "rxcdrphreset_time"},
+                              {0x05, "rxpmareset_time"},
+                              {0x06, "rxdfe_cfg1"},
+                              {0x09, "txpmareset_time"},
+                              {0x0b, "rxpmaclk_sel"},
+                              {0x0c, "txprogclk_sel"},
+                              {0x0e, "rxcdr_cfg0"},
+                              {0x0f, "rxcdr_cfg1"},
+                              {0x10, "rxcdr_cfg2"},
+                              {0x11, "rxcdr_cfg3"},
+                              {0x12, "rxcdr_cfg4"},
+                              {0x13, "rxcdr_lock_cfg0"},
+                              {0x17, "rxbuffer_cfg"},
+                              {0x26, "rxdfe_he_cfg0"},
+                              {0x27, "align_comma_word"},
+                              {0x28, "cpll_fbdiv"},
+                              {0x29, "cpll_lock_cfg"},
+                              {0x2a, "cpll_refclk_div"},
+                              {0x2b, "cpll_init_cfg0"},
+                              {0x2c, "dec_pcomma_detect"},
+                              {0x2d, "rxcdr_lock_cfg1"},
+                              {0x2e, "rxcfok_cfg1"},
+                              {0x2f, "rxdfe_h2_cfg0"},
+                              {0x30, "rxdfe_h2_cfg1"},
+                              {0x31, "rxcfok_cfg2"},
+                              {0x32, "rxlpm_cfg"},
+                              {0x33, "rxlpm_kh_cfg0"},
+                              {0x34, "rxlpm_kh_cfg1"},
+                              {0x35, "rxdfelpm_kl_cfg0"},
+                              {0x36, "rxdfelpm_kl_cfg1"},
+                              {0x37, "rxlpm_os_cfg0"},
+                              {0x38, "rxlpm_os_cfg1"},
+                              {0x39, "rxlpm_gc_cfg"},
+                              {0x3a, "dmonitor_cfg1"},
+                              {0x3d, "rxdfe_hc_cfg0"},
+                              {0x3e, "txprogdiv_cfg"},
+                              {0x50, "rxdfe_hc_cfg1"},
+                              {0x52, "rx_dfe_agc_cfg"},
+                              {0x53, "rxdfe_cfg0"},
+                              {0x54, "rxdfe_cfg1"},
+                              {0x55, "align_mcomma"},
+                              {0x56, "align_pcomma"},
+                              {0x57, "txdly_lcfg"},
+                              {0x58, "rxdfe_os_cfg0"},
+                              {0x59, "rxphdly_cfg"},
+                              {0x5a, "rxdfe_os_cfg1"},
+                              {0x5b, "rxdly_cfg"},
+                              {0x5c, "rxdly_lcfg"},
+                              {0x5d, "rxdfe_hf_cfg0"},
+                              {0x5e, "rxdfe_hd_cfg0"},
+                              {0x5f, "rxbias_cfg0"},
+                              {0x61, "rxph_monitor_sel"},
+                              {0x62, "rxsum_dfetap"},
+                              {0x63, "rxout_div"},
+                              {0x64, "rxsig_valid_dly"},
+                              {0x65, "rxbuf_thresh_ovflw"},
+                              {0x66, "rxbuf_thresh_ovrd"},
+                              {0x67, "rxbuf_reset"},
+                              {0x6d, "rxclk25"},
+                              {0x6e, "txphdly_cfg0"},
+                              {0x6f, "txphdly_cfg1"},
+                              {0x70, "txdly_cfg"},
+                              {0x71, "txph_mon"},
+                              {0x72, "rxcdr_lock_cfg2"},
+                              {0x73, "txph_cfg"},
+                              {0x74, "term_rcal_cfg"},
+                              {0x75, "rxdfe_hf_cfg1"},
+                              {0x76, "term_rcal_ovrd"},
+                              {0x7a, "txclk25"},
+                              {0x7b, "txdeemph"},
+                              {0x7c, "txgearbox"},
+                              {0x7d, "txrxdetect_cfg"},
+                              {0x7e, "txclkmux_en"},
+                              {0x7f, "txmargin_full01"},
+                              {0x80, "txmargin_full23"},
+                              {0x81, "txmargin_full4_low0"},
+                              {0x82, "txmargin_low12"},
+                              {0x83, "txmargin_low34"},
+                              {0x84, "rxdfe_hd_cfg1"},
+                              {0x85, "txintdatawidth"},
+                              {0x8a, "8a"},
+                              {0x8b, "8b"},
+                              {0x8c, "8c"},
+ };
+*/
+
 #define CLIENTS(i)       (0x00800080 + i*0x20)
 #define DMA_LANES(i)     (0x00800100 + i*0x20)
 
@@ -182,9 +276,11 @@ static void print_clk_rate(const char* name, int addr)
     printf("\n");
 }
 
+static const char* field_format = "%20.20s";
+
 static void print_field(const char* name, int addr, int offset, int mask)
 {
-    printf("%20.20s", name);
+    printf(field_format, name);
     uint32_t reg = get_reg32( addr);
     printf(" %8x", (reg >> offset) & mask);
     printf("\n");
@@ -396,6 +492,7 @@ static void usage(const char* p)
   printf("         -T              [reset timing PLL]\n");
   printf("         -F              [reset frame counters]\n");
   printf("         -C partition[,length[,links]] [configure simcam]\n");
+  printf("         -L              [toggle loopback mode]\n");
   printf("         -1              [use 119MHz for refclk]\n");
   printf("Requires -b or -d\n");
 }
@@ -409,6 +506,7 @@ int main(int argc, char* argv[])
     bool timingRst = false;
     bool tcountRst = false;
     bool frameRst  = false;
+    bool loopback  = false;
     int clksel     = 1; // LCLS2 default
     int dramMon    = -1;
     int delayVal   = -1;
@@ -420,12 +518,13 @@ int main(int argc, char* argv[])
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:l:rsStTmMFD:C:1")) != EOF) {
+    while((c = getopt(argc, argv, "cd:l:rsStTLmMFD:C:1")) != EOF) {
       switch(c) {
       case '1': clksel = 0; break;
       case 'd': dev = optarg; break;
       case 'c': setup_clk = true; updateId = true; break;
       case 'l': lanes = strtoul(optarg,&endptr,0); break;
+      case 'L': loopback = true; break;
       case 'r': reset_clk = true; break;
       case 's': status    = true; break;
       case 'S': ringb     = true; break;
@@ -556,13 +655,13 @@ int main(int argc, char* argv[])
         */
         v |= 0x80;
         set_reg32( 0x00c00020, v);
-        usleep(10);
+        usleep(1000);
         v &= ~0x80;
         set_reg32( 0x00c00020, v);
-        usleep(100);
+        usleep(1000000);
         v |= 0x8;
         set_reg32( 0x00c00020, v);
-        usleep(10);
+        usleep(1000);
         v &= ~0x8;
         set_reg32( 0x00c00020, v);
         usleep(100000);
@@ -574,7 +673,7 @@ int main(int argc, char* argv[])
         unsigned v = get_reg32( 0x00c00020) | 1;
         v &= ~(1<<5);  // clear linkDown latch
         set_reg32( 0x00c00020, v);
-        usleep(10);
+        usleep(100);
         v &= ~0x1;
         set_reg32( 0x00c00020, v);
       }
@@ -679,6 +778,7 @@ int main(int argc, char* argv[])
         for(unsigned i=0; i<40; i++)
           printf("%02x%c", (get_reg32(0x00c10000+4*(i/4))>>(4*(i%4)))&0xff, (i%10)==9?'\n':' ');
         printf("\n");
+
       }
     }
 
@@ -712,7 +812,7 @@ int main(int argc, char* argv[])
         (1<<31);
       printf("Configured partition [%u], length [%u], links [%x]: [%x]\n",
              partition, length, links, v);
-      for(int i=0; i<lanes; i++)
+      for(int i=0; i<8; i++)
         if (links&(1<<i)) {
           set_reg32( 0x00a00000+4*i, v);
           set_reg32( 0x00800084+32*i, 0x1f00);
@@ -722,8 +822,20 @@ int main(int argc, char* argv[])
         }
     }
     else if (partition >= 8) {
-        for(int i=0; i<lanes; i++)
-            set_reg32( TRG_LANES(i), 0);
+        for(int i=0; i<8; i++)
+            if (links&(1<<i)) {
+                set_reg32( 0x00a00000+4*i, (1<<30));
+                set_reg32( TRG_LANES(i), 0);
+            }
+    }
+
+    if (loopback) {
+        usleep(100000); // allow some settling time before changing loopback
+        unsigned lb = get_reg32( 0x00c30100 );
+        printf("Loopback read %x\n",lb);
+        lb ^= 2;
+        set_reg32( 0x00c30100, lb);
+        printf("Loopback wrote %x\n",lb);
     }
 
     return 0;
