@@ -41,18 +41,16 @@ procmgr_config = [
  {                        flags:'sp', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING -H {collect_host} --user {user}'},
  # trigger event builder
  { host: collect_host, id:'teb1', flags:'pu', cmd:f'teb -P {hutch} -M {prom_dir} -C {collect_host} -k {network}'},
- # meb
- { host: 'drp-tst-acc01', id:'meb1', flags:'spu', cmd:f'monReqServer -P {hutch} -d -q 4 -C {collect_host} -k {network}'},
  # FakeCam
  { host: 'drp-tst-acc01', id:'cam_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_0 -P {hutch} -C {collect_host}'},
  # ...drp: loopback on port 5007
 #{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -v -o /cds/home/c/caf/data -L 5007 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
  # ...drp:
- { host: 'drp-tst-acc01', id:'encoder_0', flags:'sup', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -l 0x1 -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
+ { host: 'drp-tst-acc01', id:'encoder_0', flags:'supx', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -l 0x1 -d /dev/datadev_1 -P {hutch} -C {collect_host}'},
  # ...sim: 172.21.148.201 = drp-tst-acc01, 5008 = interpolate port
 #{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -a 172.21.148.201 -p 5 -d 5008'},
  { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'sp', cmd:'sim_udpencoder -a 172.21.148.201'},
- { host: 'drp-tst-acc01', id:'timing_0', flags:'sxpu', cmd:f'drp -o {data_dir} -l 0x8 -D ts -d /dev/datadev_1 -P '+hutch+' -C '+collect_host},
+ { host: 'drp-tst-acc01', id:'timing_1', flags:'spu', cmd:f'drp -o {data_dir} -l 0x8 -D ts -d /dev/datadev_1 -P '+hutch+' -C '+collect_host},
  #  ...drp: loopback on port 5007 AND verbose
 #{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'}
 ]
@@ -75,4 +73,4 @@ for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s',
                          cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
 
-procmgr_config.extend(procmgr_ami)
+#procmgr_config.extend(procmgr_ami)

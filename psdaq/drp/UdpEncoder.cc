@@ -565,8 +565,8 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
     m_evtQueue      (drp.pool.nbuffers()),
-    m_encQueue       (drp.pool.nbuffers()),
     m_interpolateQueue (drp.pool.nbuffers()),
+    m_encQueue      (drp.pool.nbuffers()),
     m_bufferFreelist(m_encQueue.size()),
     m_terminate     (false),
     m_running       (false)
@@ -723,10 +723,6 @@ void UdpEncoder::_worker()
     m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nNoTrDgrams();});
 
-    const uint64_t msTmo = m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end()
-                         ? std::stoul(m_para->kwargs["match_tmo_ms"])
-                         : 100;
-
     m_udpReceiver->start();
 
     while (true) {
@@ -741,7 +737,7 @@ void UdpEncoder::_worker()
 
             m_evtQueue.push(index);
 
-            _process(*dgram);           // Was _matchUp
+            _process();                 // Was _matchUp
         }
     }
 
@@ -754,18 +750,22 @@ void UdpEncoder::_worker()
 }
 
 // void UdpEncoder::_process(xtcData::Dgram* dgram)
-void UdpEncoder::_process(Pds::EbDgram& dgram)
+void UdpEncoder::_process()
 {
     while (true) {
-        XtcData::Dgram* encDg;
-        if (!m_encQueue.peek(encDg))  break;
-
         uint32_t evtIdx;
         if (!m_evtQueue.peek(evtIdx))  break;
 
-        Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[evtIdx]);
+        Pds::EbDgram* evtDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[evtIdx]);
+        if (evtDg->service() != XtcData::TransitionId::L1Accept) {
+            _handleTransition(evtIdx, evtDg); // Grab this from PvaDetector
+            continue;
+        }
 
-        _handleL1Accept(*encDg, *pgpDg);
+        XtcData::Dgram* encDg;
+        if (!m_encQueue.peek(encDg))  break;
+
+        _handleL1Accept(*encDg, *evtDg);
     }
 }
 
@@ -823,37 +823,63 @@ void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, encoder
     raw.set_string(RawDef::hardwareID, buf);
 }
 
+void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
+{
+    // Find the transition dgram in the pool and initialize its header
+    Pds::EbDgram* trDgram = m_pool->transitionDgrams[pebbleIdx];
+    if (trDgram) {                      // nullptr happen during shutdown
+        *trDgram = *pebbleDg;
+
+        XtcData::TransitionId::Value service = trDgram->service();
+        if (service != XtcData::TransitionId::SlowUpdate) {
+            // copy the temporary xtc created on phase 1 of the transition
+            // into the real location
+            XtcData::Xtc& trXtc = transitionXtc();
+            trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+            const void* bufEnd = (char*)trDgram + m_para->maxTrSize;
+            auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+            memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
+
+            if (service == XtcData::TransitionId::Enable) {
+                m_running = true;
+            }
+            else if (service == XtcData::TransitionId::Disable) {
+                m_running = false;
+            }
+        }
+    }
+    _sendToTeb(*pebbleDg, pebbleIdx);
+
+    uint32_t evtIdx;
+    m_evtQueue.try_pop(evtIdx);       // Actually consume the pebble index
+    assert(evtIdx == pebbleIdx);
+}
+
 void UdpEncoder::_handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg)
 {
     uint32_t evtIdx;
     m_evtQueue.try_pop(evtIdx);         // Actually consume the element
 
-    XtcData::Dgram* dgram;
-    if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
-        if (m_interpolating) {
-            if (pgpDg.readoutGroups() & (1 << Drp::m_slowGroup)) {
-                // slow event...
-                logging::debug("%s: SLOW event...", __PRETTY_FUNCTION__);
-            } else {
-                // fast event...
-                logging::debug("%s: FAST event...", __PRETTY_FUNCTION__);
-            }
+    if (m_interpolating) {
+        if (pgpDg.readoutGroups() & (1 << Drp::m_slowGroup)) {
+            // slow event...
+            logging::debug("%s: SLOW event...", __PRETTY_FUNCTION__);
         } else {
-            // not interpolating...
-            pgpDg.xtc.damage.increase(encDg.xtc.damage.value());
-            auto bufEnd  = (char*)&pgpDg + m_pool->pebble.bufferSize();
-
-            _event(pgpDg, bufEnd, *(encoder_frame_t*)(encDg.xtc.payload()));
-
-            m_encQueue.try_pop(dgram);      // Actually consume the element
-            m_bufferFreelist.push(dgram);   // Return buffer to freelist
-
-            ++m_nMatch;
+            // fast event...
+            logging::debug("%s: FAST event...", __PRETTY_FUNCTION__);
         }
-    } else { // SlowUpdate
-        // Allocate a transition dgram from the pool and initialize its header
-        Pds::EbDgram* trDg = m_pool->transitionDgrams[evtIdx];
-        *trDg = pgpDg;                  // Initialized Xtc, possibly w/ damage
+    } else {
+        // not interpolating...
+        pgpDg.xtc.damage.increase(encDg.xtc.damage.value());
+        auto bufEnd  = (char*)&pgpDg + m_pool->pebble.bufferSize();
+
+        _event(pgpDg, bufEnd, *(encoder_frame_t*)(encDg.xtc.payload()));
+
+        XtcData::Dgram* dgram;
+        m_encQueue.try_pop(dgram);      // Actually consume the element
+        m_bufferFreelist.push(dgram);   // Return buffer to freelist
+
+        ++m_nMatch;
     }
 
     _sendToTeb(pgpDg, evtIdx);
@@ -1287,7 +1313,6 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
-            if (kwargs.first == "match_tmo_ms")   continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;

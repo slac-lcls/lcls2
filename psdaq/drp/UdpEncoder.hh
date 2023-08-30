@@ -136,7 +136,8 @@ private:
     void _event(XtcData::Dgram& dgram, const void* const bufEnd, encoder_frame_t& frame);
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
-    void _process(Pds::EbDgram& dgram);    // was matchUp()
+    void _process();    // was matchUp()
+    void _handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg);
     void _handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
