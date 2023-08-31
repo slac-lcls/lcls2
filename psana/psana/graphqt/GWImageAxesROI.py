@@ -1,41 +1,44 @@
 
-"""Class :py:class:`GWImageAxes` is a QWidget with image and two axes
+"""Class :py:class:`GWImageAxesROI` is a QWidget with image and two axes
 =====================================================================
 
 Usage ::
 
-    # Run test: python lcls2/psana/psana/graphqt/GWImageAxes.py
+    # Run test: python lcls2/psana/psana/graphqt/GWImageAxesROI.py
 
-    from psana.graphqt.GWImageAxes import GWImageAxes
-    w = GWImageAxes()
+    from psana.graphqt.GWImageAxesROI import GWImageAxesROI
+    w = GWImageAxesROI()
 
 Created on 2021-06-22 by Mikhail Dubrovin
 """
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.graphqt.GWViewImage import *
+from psana.graphqt.GWViewImageROI import *
 from psana.graphqt.GWViewAxis import GWViewAxis
 import psana.graphqt.ColorTable as ct
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QTextEdit
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF
 from psana.pyalgos.generic.NDArrGenerators import test_image
+#from psana.graphqt.CMConfigParameters import cp
 
-class GWImageAxes(QWidget):
+class GWImageAxesROI(QWidget):
     """QWidget for Image Viewer"""
     image_scene_rect_changed = pyqtSignal('QRectF')
 
     def __init__(self, **kwargs):
 
-        parent = kwargs.get('parent', None)
-        image = kwargs.get('image', test_image(shape=(256,256)))
-        ctab = kwargs.get('ctab', ct.color_table_interpolated())
+        parent      = kwargs.get('parent', None)
+        image       = kwargs.get('image', test_image(shape=(256,256)))
+        ctab        = kwargs.get('ctab', ct.color_table_interpolated())
+        #origin      = kwargs.get('origin', 'UL')
+        #scale_ctl   = kwargs.get('scale_ctl', 'HV')
         signal_fast = kwargs.get('signal_fast', False)
 
         QWidget.__init__(self, parent)
         #cp.gwimageaxes = self
 
-        self.wim = GWViewImage(self, image, coltab=ctab, origin='UL', scale_ctl='HV', signal_fast=signal_fast)
+        self.wim = GWViewImageROI(self, image, coltab=ctab, origin='UL', scale_ctl='HV', signal_fast=signal_fast)
 
         self.rs_old = None
         r = self.wim.sceneRect()
@@ -77,6 +80,26 @@ class GWImageAxes(QWidget):
            (not self.edi_info.isVisible()) and (not is_visible): return
         elif is_visible: self.wim.connect_mouse_move_event(self.on_mouse_move_event)
         else: self.wim.disconnect_mouse_move_event(self.on_mouse_move_event)
+
+
+# forwarding calls to self.wim
+#    def set_scale_control(self, scale_ctl='HV'):
+#        self.wim.set_scale_control(scale_ctl)
+
+#    def mapToScene(self, p):
+#        return self.wim.mapToScene(p)
+
+#    def connect_mouse_press_event(self, recip):
+#        self.wim.connect_mouse_press_event(recip)
+
+#    def connect_mouse_press_event(self, recip):
+#        self.wim.connect_mouse_press_event(recip)
+
+#    def connect_mouse_move_event(self, recip):
+#        self.wim.connect_mouse_press_event(recip)
+
+#    def connect_scene_rect_changed(self, recip):
+#        self.wim.connect_scene_rect_changed(recip)
 
     def connect_scene_rect_changed(self):
         self.wim.connect_scene_rect_changed(self.on_wim_scene_rect_changed)
@@ -151,7 +174,7 @@ class GWImageAxes(QWidget):
         ix, iy, v = wimg.cursor_on_image_pixcoords_and_value(p)
         fv = 0 if v is None else v
         s = 'x:%d y:%d v:%s%s' % (ix, iy, '%.3f'%fv, 25*' ')
-        #self.setWindowTitle('GWViewImage %s'%s)
+        #self.setWindowTitle('GWViewImageROI %s'%s)
         self.edi_info.setText(s)
 
     def closeEvent(self, e):
