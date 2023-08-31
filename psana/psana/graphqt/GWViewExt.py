@@ -53,7 +53,7 @@ class GWViewExt(GWView):
         - signal_fast (bool) - send fast signal if the scene rect is changed
         """
 
-        GWView.__init__(self, parent, rscene, origin, scale_ctl, show_mode, **kwa)
+        GWView.__init__(self, parent, rscene, scale_ctl, show_mode, **kwa)
 
         self.rs_def = rscene  # default rect on scene, restored at reset_original_size
         self.rs_old = rscene  # rs_old - is used to check if scene rect changed
