@@ -612,8 +612,7 @@ void PvaDetector::_matchUp()
 
         int result = _compare(pebbleDg->time, pvDg->time);
 
-        logging::debug("PGP: %u.%09d, PV: %u.%09d, PGP - PV: %12ld ns, pid %014lx, svc %2d, compare %c, latency %ld",
-      //printf        ("PGP: %u.%09d, PV: %u.%09d, PGP - PV: %12ld ns, pid %014lx, svc %2d, compare %c, latency %ld\n",
+        logging::debug("PGP: %u.%09d, PV: %u.%09d, PGP - PV: %12ld ns, pid %014lx, svc %2d, compare %c, latency %ld ms",
                        pebbleDg->time.seconds(), pebbleDg->time.nanoseconds(),
                        pvDg->time.seconds(), pvDg->time.nanoseconds(),
                        m_timeDiff, pebbleDg->pulseId(), pebbleDg->service(),
@@ -738,17 +737,11 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
         // No PVA data so mark event as damaged
         dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
         ++m_nTimedOut;
-        //printf("TO: %u.%09u, PGP: %u.%09u, PGP - TO: %10ld ns, svc %2d  Timeout\n",
-        //       timestamp.seconds(), timestamp.nanoseconds(),
-        //       dgram.time.seconds(), dgram.time.nanoseconds(),
-        //       dgram.time.to_ns() - timestamp.to_ns(),
-        //       dgram.service());
         logging::debug("Event timed out!! "
-                       "TimeStamps: timeout %u.%09u > PGP %u.%09u [0x%08x%04x.%05x > 0x%08x%04x.%05x]",
-                       timestamp.seconds(), timestamp.nanoseconds(),
+                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
-                       timestamp.seconds(), (timestamp.nanoseconds()>>16)&0xfffe, timestamp.nanoseconds()&0x1ffff,
-                       dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff);
+                       dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
+                       _deltaT<ms_t>(dgram.time));
     }
 
     _sendToTeb(dgram, index);
