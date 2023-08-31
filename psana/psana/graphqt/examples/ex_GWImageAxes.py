@@ -1,25 +1,25 @@
 #!/usr/bin/env python
 
-"""Class :py:class:`ex_GWViewImAx` - test
+"""Class :py:class:`ex_GWImageAxes` - test
 ==========================================
 
 Usage ::
 
-    # Test: lcls2/psana/psana/graphqt/GWViewImAx.py
+    # Test: lcls2/psana/psana/graphqt/GWImageAxes.py
 
 Created on 2023-05-11 by Mikhail Dubrovin
 """
 
-from psana.graphqt.GWViewImAx import *
+from psana.graphqt.GWImageAxes import *
 from psana.pyalgos.generic.NDArrGenerators import np, test_image, random_standard
 
 #SCRNAME = sys.argv[0].split('/')[-1]
 #USAGE = '\nUsage: %s' % SCRNAME
 
-class TestGWViewImAx(GWViewImAx):
+class TestGWImageAxes(GWImageAxes):
 
       def __init__(self, **kwa):
-          GWViewImAx.__init__(self, **kwa)
+          GWImageAxes.__init__(self, **kwa)
           print(self.key_usage())
 
       def key_usage(self):
@@ -57,9 +57,9 @@ if __name__ == "__main__":
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     logging.basicConfig(format='[%(levelname).1s] %(filename)s L:%(lineno)03d %(message)s', level=logging.INFO)
     app = QApplication(sys.argv)
-    w = TestGWViewImAx(signal_fast=False) # True)
+    w = TestGWImageAxes(signal_fast=False) # True)
     w.setGeometry(100, 50, 800, 800)
-    w.setWindowTitle('ex_GWViewImAx')
+    w.setWindowTitle('ex_GWImageAxes')
     w.show()
     app.exec_()
     del w

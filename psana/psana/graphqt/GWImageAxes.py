@@ -79,6 +79,26 @@ class GWViewImAx(QWidget):
         elif is_visible: self.wim.connect_mouse_move_event(self.on_mouse_move_event)
         else: self.wim.disconnect_mouse_move_event(self.on_mouse_move_event)
 
+
+    #forwarding calls to self.wim
+    def set_scale_control(self, scale_ctl='HV'):
+        self.wim.set_scale_control(scale_ctl)
+
+    def mapToScene(self, p):
+        return self.wim.mapToScene(p)
+
+    def connect_mouse_press_event(self, recip):
+        self.wim.connect_mouse_press_event(recip)
+
+    def connect_mouse_press_event(self, recip):
+        self.wim.connect_mouse_press_event(recip)
+
+    def connect_mouse_move_event(self, recip):
+        self.wim.connect_mouse_press_event(recip)
+
+#    def connect_scene_rect_changed(self, recip):
+#        self.wim.connect_scene_rect_changed(recip)
+
     def connect_scene_rect_changed(self):
         self.wim.connect_scene_rect_changed(self.on_wim_scene_rect_changed)
         self.wax.connect_scene_rect_changed(self.on_wax_scene_rect_changed)
