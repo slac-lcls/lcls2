@@ -35,13 +35,17 @@ import psana.graphqt.QWUtils as qu
 class GWView(QGraphicsView):
     """Bare minimum to move and zoom viewport rect."""
 
-    def __init__(self, parent=None, rscene=QRectF(0, 0, 100, 100),\
-                 origin='UL', scale_ctl='HV',\
+    def __init__(self, parent=None,\
+                 rscene=QRectF(0, 0, 100, 100),\
+                 scale_ctl='HV',\
                  show_mode=0o0, **kwa):
+        #kwa.setdefault('bkg_color', QColor(50,5,50))
+        #kwa.setdefault('bkg_pattern', Qt.SolidPattern)
+        self.kwa = kwa
+
         sc = QGraphicsScene()
         QGraphicsView.__init__(self, sc, parent)
 
-        self.kwa = kwa
         self.set_scale_control(scale_ctl)
         self.set_style()
         self.fit_in_view(rscene, mode=Qt.KeepAspectRatio)
@@ -49,17 +53,14 @@ class GWView(QGraphicsView):
         self.ang_wheel_old = None
         if show_mode > 0: self.add_test_items_to_scene(show_mode)
 
-
     def scene_rect(self):
         return self.scene().sceneRect()
-
 
     def set_scene_rect(self, r):
         if r is not None:
             self.scene().setSceneRect(r)  # self.setSceneRect(r)  # WORKS DIFFERENTLY!
             if logging.root.level == logging.DEBUG:
                 print('GWView.set_scene_rect:  %s' % qu.info_rect_xywh(r), end='\r')
-
 
     def fit_in_view(self, rs=None, mode=Qt.IgnoreAspectRatio):
         """Fits visible part of the scene in the rect rs (scene units).
@@ -69,17 +70,14 @@ class GWView(QGraphicsView):
         self.set_scene_rect(rs)
         self.fitInView(r, mode)
 
-
     def set_style(self):
         logger.debug('GWView.set_style')
         self.set_background_brush()
-
 
     def set_background_brush(self):
         self.setBackgroundBrush(QBrush(\
             self.kwa.get('bkg_color', QColor(50,5,50)),\
             self.kwa.get('bkg_pattern', Qt.SolidPattern)))
-
 
     def set_scale_control(self, scale_ctl='HV'):
         """Sets scale control bit-word
@@ -94,11 +92,9 @@ class GWView(QGraphicsView):
         if 'V' in scale_ctl: self._scale_ctl += 2
         logging.debug('set_scale_control to %d' % self._scale_ctl)
 
-
     def update_my_scene(self):
         """should be re-implemented in derived classes, if needed..."""
         pass
-
 
     def resizeEvent(self, e):
         """important method to make zoom and pan working correctly..."""
@@ -107,7 +103,6 @@ class GWView(QGraphicsView):
         self.fit_in_view()
         self.update_my_scene()
 
-
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:  # and e.modifiers() & Qt.ControlModifier
             logger.debug('GWView.mousePressEvent on LeftButton')
@@ -115,7 +110,6 @@ class GWView(QGraphicsView):
             self.click_pos = e.pos()
             self.rs_center = self.scene_rect().center()
         QGraphicsView.mousePressEvent(self, e)
-
 
     def _move_scene_rect_by_mouse(self, e):
         #logger.debug('_move_scene_rect_by_mouse')
@@ -126,7 +120,6 @@ class GWView(QGraphicsView):
         rs.moveCenter(self.rs_center - QPointF(dx, dy))
         self.set_scene_rect(rs)
 
-
     def mouseMoveEvent(self, e):
         """Move rect CENTER."""
         QGraphicsView.mouseMoveEvent(self, e)
@@ -135,14 +128,12 @@ class GWView(QGraphicsView):
         #logger.debug('mouseMoveEvent at valid click_pos and _scale_ctl')
         self._move_scene_rect_by_mouse(e)
 
-
     def mouseReleaseEvent(self, e):
         QGraphicsView.mouseReleaseEvent(self, e)
         logger.debug('mouseReleaseEvent')
         if self.click_pos is not None:
            self._move_scene_rect_by_mouse(e)
         self.click_pos = None
-
 
     def wheelEvent(self, e):
         ang = e.angleDelta().x() + e.angleDelta().y()
@@ -170,12 +161,10 @@ class GWView(QGraphicsView):
         rs.setRect(x-dx, y-dy, sx, sy)
         self.fit_in_view(rs, Qt.IgnoreAspectRatio)
 
-
     def add_rect_to_scene_v1(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine), pen_is_cosmetic=True):
         """Adds rect to scene, returns QGraphicsRectItem"""
         pen.setCosmetic(pen_is_cosmetic)
         return self.scene().addRect(rect, pen, brush)
-
 
     def add_test_items_to_scene(self, show_mode=3, colori=Qt.red, colfld=Qt.magenta):
         if show_mode & 1:
@@ -186,7 +175,6 @@ class GWView(QGraphicsView):
             self.rori = self.add_rect_to_scene_v1(ror,\
                  pen=QPen(Qt.red, 0, Qt.SolidLine),\
                  brush=QBrush(colori))
-
 
 if __name__ == "__main__":
     import psana.graphqt.QWUtils as qu # print_rect
