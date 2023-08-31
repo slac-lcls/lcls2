@@ -49,24 +49,19 @@ class TestGWViewImageROI(GWViewImageROI):
             gap = int(3*i)
             roiu.ROIPixel(view=self).add_to_scene(QPoint(1+gap, 5+gap))
 
-        # Pixel
         pi = QPointF(300, 100)
         itpi = roiu.ROIPixel(view=self).add_to_scene(pi)
 
-        # Line
         l0 = QLineF(QPointF(300, 600), QPointF(600, 300))
         itl0 = roiu.ROILine(view=self).add_to_scene(l0)
 
-        # Rect
         r0 = QRectF(100, 200, 200, 100)
         itr0 = roiu.ROIRect(view=self).add_to_scene(r0)
         itr1 = roiu.ROIRect(view=self).add_to_scene(r0, angle_deg=30)
 
-        # Polygone
         p0 = QPolygonF([QPointF(500, 600), QPointF(700, 600), QPointF(700, 500), QPointF(650, 650)])
         itp0 = roiu.ROIPolygon(view=self).add_to_scene(p0)
 
-        # Ellipse
         r0 = QRectF(300, 400, 200, 100)
         itp0 = roiu.ROIEllipse(view=self).add_to_scene(r0)
         itp1 = roiu.ROIEllipse(view=self).add_to_scene(r0, angle_deg=-30, start_angle=-20, span_angle=300)
@@ -152,7 +147,6 @@ class TestGWViewImageROI(GWViewImageROI):
             self.save_mask()
 
         elif ckey in roiu.roi_keys:
-            #self.finish()
             i = roiu.roi_keys.index(ckey)
             self.roi_type = roiu.roi_types[i]
             self.roi_name = roiu.roi_names[i]
@@ -182,10 +176,11 @@ def image_with_random_peaks(shape=(500, 500)):
 
 def test_gfviewimageroi(tname):
     logger.info(sys._getframe().f_code.co_name)
-    #arr = np.random.random((1000, 1000))
     arr = image_with_random_peaks((1000, 1000))
-    #ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
     ctab = ct.color_table_monochr256()
+    #arr = np.random.random((1000, 1000))
+    #ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
+    #ctab = ct.color_table_monochr256()
     #ctab = ct.color_table_interpolated()
 
     app = QApplication(sys.argv)
@@ -203,10 +198,6 @@ def test_gfviewimageroi(tname):
         w = TestGWViewImageROI(None, arrct, coltab=None, origin='UL', scale_ctl='V')
         w.setGeometry(50, 50, 40, 500)
     elif tname == '6':
-        #ctab = ct.color_table_rainbow(ncolors=1000, hang1=0, hang2=360)
-        #ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
-        #ctab = ct.color_table_monochr256()
-        #ctab = ct.color_table_interpolated()
         ctab = next_color_table(ict=7)
         arrct = ct.array_for_color_bar(ctab, orient='H')
         w = TestGWViewImageROI(None, arrct, coltab=None, origin='UL', scale_ctl='H')
