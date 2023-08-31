@@ -1,17 +1,16 @@
 
-"""Class :py:class:`GWImageAxes` is a QWidget with image and two axes
+"""Class :py:class:`GWViewImAx` is a QWidget with image and two axes
 =====================================================================
 
 Usage ::
 
-    # Run test: python lcls2/psana/psana/graphqt/GWImageAxes.py
+    # Run test: python lcls2/psana/psana/graphqt/GWViewImAx.py
 
-    from psana.graphqt.GWImageAxes import GWImageAxes
-    w = GWImageAxes()
+    from psana.graphqt.GWViewImAx import GWViewImAx
+    w = GWViewImAx()
 
 Created on 2021-06-22 by Mikhail Dubrovin
 """
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -23,8 +22,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QRectF
 from psana.pyalgos.generic.NDArrGenerators import test_image
 #from psana.graphqt.CMConfigParameters import cp
 
-
-class GWImageAxes(QWidget):
+class GWViewImAx(QWidget):
     """QWidget for Image Viewer"""
     image_scene_rect_changed = pyqtSignal('QRectF')
 
@@ -69,12 +67,10 @@ class GWImageAxes(QWidget):
         self.but_reset.clicked.connect(self.on_but_reset)
         self.set_info_visible(True)
 
-
     def set_signal_fast(self, is_fast=False):
         self.wim.signal_fast = is_fast
         self.wax.signal_fast = is_fast
         self.way.signal_fast = is_fast
-
 
     def set_info_visible(self, is_visible=True):
         self.edi_info.setVisible(is_visible)
@@ -83,18 +79,15 @@ class GWImageAxes(QWidget):
         elif is_visible: self.wim.connect_mouse_move_event(self.on_mouse_move_event)
         else: self.wim.disconnect_mouse_move_event(self.on_mouse_move_event)
 
-
     def connect_scene_rect_changed(self):
         self.wim.connect_scene_rect_changed(self.on_wim_scene_rect_changed)
         self.wax.connect_scene_rect_changed(self.on_wax_scene_rect_changed)
         self.way.connect_scene_rect_changed(self.on_way_scene_rect_changed)
 
-
     def disconnect_scene_rect_changed(self):
         self.wim.disconnect_scene_rect_changed(self.on_wim_scene_rect_changed)
         self.wax.disconnect_scene_rect_changed(self.on_wax_scene_rect_changed)
         self.way.disconnect_scene_rect_changed(self.on_way_scene_rect_changed)
-
 
     def on_but_reset(self):
         self.wim.reset_scene_rect()
@@ -102,12 +95,10 @@ class GWImageAxes(QWidget):
         self.wax.reset_scene_rect()
         self.way.reset_scene_rect()
 
-
     def on_wim_scene_rect_changed(self, r):
         self.wax.fit_in_view(QRectF(r.x(), 0, r.width(), 1))
         self.way.fit_in_view(QRectF(0, r.y(), 1, r.height()))
         self.emit_signal_if_image_scene_rect_changed()
-
 
     def on_wax_scene_rect_changed(self, r):
         #logger.debug('on_wax_scene_rect_changed: %s'%str(r))
@@ -115,13 +106,11 @@ class GWImageAxes(QWidget):
         self.wim.fit_in_view(QRectF(r.x(), rs.y(), r.width(), rs.height()))
         self.emit_signal_if_image_scene_rect_changed()
 
-
     def on_way_scene_rect_changed(self, r):
         #logger.debug('on_way_scene_rect_changed: %s'%str(r))
         rs = self.wim.scene_rect()  # scene().sceneRect()
         self.wim.fit_in_view(QRectF(rs.x(), r.y(), rs.width(), r.height()))
         self.emit_signal_if_image_scene_rect_changed()
-
 
     def emit_signal_if_image_scene_rect_changed(self):
         """Checks if scene rect have changed and submits signal with new rect."""
@@ -130,14 +119,11 @@ class GWImageAxes(QWidget):
             self.rs_old = rs
             self.image_scene_rect_changed.emit(rs)
 
-
     def connect_image_scene_rect_changed(self, recip):
         self.image_scene_rect_changed.connect(recip)
 
-
     def disconnect_image_scene_rect_changed(self, recip):
         self.image_scene_rect_changed.disconnect(recip)
-
 
     def set_tool_tips(self):
         self.wim.setToolTip('Image\npixel map')
@@ -145,12 +131,10 @@ class GWImageAxes(QWidget):
         self.way.setToolTip('Image rows\nV-scale')
         self.edi_info.setToolTip('Information field')
 
-
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
         self.but_reset.setFixedSize(60,30)
         self.edi_info.setMaximumHeight(30)
-
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.001, frmax=0.999):
         """shortcut to image"""
@@ -160,7 +144,6 @@ class GWImageAxes(QWidget):
         self.way.set_axis_limits(r.y(), r.y()+r.height())  # fit_in_view(QRectF(0, r.y(), 1, r.height()))
         self.wax.reset_scene_rect_default()
         self.way.reset_scene_rect_default()
-
 
     def on_mouse_move_event(self, e):
         """Overrides method from GWView"""
@@ -172,12 +155,10 @@ class GWImageAxes(QWidget):
         #self.setWindowTitle('GWViewImage %s'%s)
         self.edi_info.setText(s)
 
-
     def closeEvent(self, e):
         logger.debug('closeEvent')
         QWidget.closeEvent(self, e)
         #cp.gwimageaxes = None
-
 
 if __name__ == "__main__":
     import sys
