@@ -173,19 +173,18 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
     //Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
     TEM* mem_pointer = (TEM*)0x00C20000;
     TEM* tem = new (mem_pointer) TEM;
-    for(unsigned i=0, l=links; l; i++) {
-        Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-        if (l&(1<<i)) {
+    for(unsigned i=0; i<8; i++) {
+        if (links&(1<<i)) {
+            Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
             dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
             dmaWriteRegister(fd, &b.pauseThresh, 16     );
             dmaWriteRegister(fd, &b.group , m_readoutGroup);
             dmaWriteRegister(fd, &b.enable, 3           );  // enable
-            l &= ~(1<<i);
 
             dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
             dmaWriteRegister(fd, 0x00a00000+4*(i&3), (m_length&0xffffff) | (1<<31));  // enable
-          }
-      }
+        }
+    }
 }
 
 unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
@@ -203,10 +202,13 @@ void XpmDetector::shutdown()
     if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
        links <<= 4;
 
-    for(unsigned i=0, l=links; l; i++) {
-        if (l&(1<<i)) {
-          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-          l &= ~(1<<i);
+    TEM* mem_pointer = (TEM*)0x00C20000;
+    TEM* tem = new (mem_pointer) TEM;
+    for(unsigned i=0; i<8; i++) {
+        if (links&(1<<i)) {
+            Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
+            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+            dmaWriteRegister(fd, &b.enable, 0               );  // enable
         }
     }
 }
