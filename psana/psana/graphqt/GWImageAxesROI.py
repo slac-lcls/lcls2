@@ -9,6 +9,8 @@ Usage ::
     from psana.graphqt.GWImageAxesROI import GWImageAxesROI
     w = GWImageAxesROI()
 
+Module is identical to GWImageAxes with substitution GWImageAxesROI and GWViewImage > GWViewImageROI
+
 Created on 2021-06-22 by Mikhail Dubrovin
 """
 import logging
@@ -160,7 +162,6 @@ class GWImageAxesROI(QWidget):
     def closeEvent(self, e):
         logger.debug('closeEvent')
         QWidget.closeEvent(self, e)
-        #cp.gwimageaxes = None
 
 if __name__ == "__main__":
     import sys

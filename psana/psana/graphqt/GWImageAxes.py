@@ -27,13 +27,14 @@ class GWImageAxes(QWidget):
 
     def __init__(self, **kwargs):
 
-        parent = kwargs.get('parent', None)
-        image = kwargs.get('image', test_image(shape=(256,256)))
-        ctab = kwargs.get('ctab', ct.color_table_interpolated())
+        parent      = kwargs.get('parent', None)
+        image       = kwargs.get('image', test_image(shape=(256,256)))
+        ctab        = kwargs.get('ctab', ct.color_table_interpolated())
         signal_fast = kwargs.get('signal_fast', False)
+        #origin      = kwargs.get('origin', 'UL')
+        #scale_ctl   = kwargs.get('scale_ctl', 'HV')
 
         QWidget.__init__(self, parent)
-        #cp.gwimageaxes = self
 
         self.wim = GWViewImage(self, image, coltab=ctab, origin='UL', scale_ctl='HV', signal_fast=signal_fast)
 
