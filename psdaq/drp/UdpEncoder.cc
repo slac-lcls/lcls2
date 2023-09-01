@@ -35,9 +35,7 @@
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
-
-static const XtcData::TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
-                                        std::numeric_limits<unsigned>::max());
+using ns_t = std::chrono::nanoseconds;
 
 // forward declarations
 int setrcvbuf(int socketFd, unsigned size);
@@ -77,6 +75,16 @@ public:
        NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
    }
 } RawDef;
+
+template<typename T>
+static int64_t _deltaT(XtcData::TimeStamp& ts)
+{
+    auto now = std::chrono::system_clock::now();
+    auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{ts.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(tns)};
+    return std::chrono::duration_cast<T>(now - tp).count();
+}
 
 namespace Drp {
 
@@ -723,6 +731,10 @@ void UdpEncoder::_worker()
     m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nNoTrDgrams();});
 
+    const uint64_t nsTmo = (m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end() ?
+                            std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
+                            1500) * 1000000;
+
     m_udpReceiver->start();
 
     while (true) {
@@ -738,6 +750,19 @@ void UdpEncoder::_worker()
             m_evtQueue.push(index);
 
             _process();                 // Was _matchUp
+        }
+        else {
+            // If there are any PGP datagrams stacked up, try to match them
+            // up with any encoder updates that may have arrived
+            _process();                 // Was _matchUp
+
+            // Generate a timestamp in the past for timing out encoder and PGP events
+            XtcData::TimeStamp timestamp(0, nsTmo);
+            auto ns = _deltaT<ns_t>(timestamp);
+            _timeout(timestamp.from_ns(ns));
+
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
         }
     }
 
@@ -887,45 +912,38 @@ void UdpEncoder::_handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpD
 
 void UdpEncoder::_timeout(const XtcData::TimeStamp& timestamp)
 {
-    while (true) {
-        uint32_t index;
-        if (!m_evtQueue.peek(index)) {
-            break;
+    // Time out older encoder updates
+    XtcData::Dgram* encDg;
+    if (m_encQueue.peek(encDg)) {
+        if (!(encDg->time > timestamp)) { // encDg is newer than the timeout timestamp
+            m_encQueue.try_pop(encDg);    // Actually consume the element
+            m_bufferFreelist.push(encDg); // Return buffer to freelist
         }
-
-        Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
-        if (dgram.time > timestamp) {
-            break;                  // dgram is newer than the timeout timestamp
-        }
-
-        uint32_t idx;
-        m_evtQueue.try_pop(idx);        // Actually consume the element
-        assert(idx == index);
-
-        if (dgram.service() == XtcData::TransitionId::L1Accept) {
-          // No UDP data so mark event as damaged
-          dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
-          ++m_nTimedOut;
-          //printf("TO: %u.%09u, PGP: %u.%09u, PGP - TO: %10ld ns, svc %2d  Timeout\n",
-          //       timestamp.seconds(), timestamp.nanoseconds(),
-          //       dgram.time.seconds(), dgram.time.nanoseconds(),
-          //       dgram.time.to_ns() - timestamp.to_ns(),
-          //       dgram.service());
-          logging::debug("Event timed out!! "
-                         "TimeStamps: timeout %u.%09u > PGP %u.%09u [0x%08x%04x.%05x > 0x%08x%04x.%05x]",
-                         timestamp.seconds(), timestamp.nanoseconds(),
-                         dgram.time.seconds(), dgram.time.nanoseconds(),
-                         timestamp.seconds(), (timestamp.nanoseconds()>>16)&0xfffe, timestamp.nanoseconds()&0x1ffff,
-                         dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff);
-        }
-        else { // SlowUpdate
-            // Allocate a transition dgram from the pool and initialize its header
-            Pds::EbDgram* trDg = m_pool->transitionDgrams[index];
-            *trDg = dgram;              // Initialized Xtc, possibly w/ damage
-        }
-
-        _sendToTeb(dgram, index);
     }
+
+    // Time out older pending PGP datagrams
+    uint32_t index;
+    if (!m_evtQueue.peek(index))  return;
+
+    Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
+    if (dgram.time > timestamp)  return;  // dgram is newer than the timeout timestamp
+
+    uint32_t idx;
+    m_evtQueue.try_pop(idx);              // Actually consume the element
+    assert(idx == index);
+
+    if (dgram.service() == XtcData::TransitionId::L1Accept) {
+        // No encoder data so mark event as damaged
+        dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
+        ++m_nTimedOut;
+        logging::debug("Event timed out!! "
+                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                       dgram.time.seconds(), dgram.time.nanoseconds(),
+                       dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
+                       _deltaT<ms_t>(dgram.time));
+    }
+
+    _sendToTeb(dgram, index);
 }
 
 void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
@@ -1214,7 +1232,7 @@ int main(int argc, char* argv[])
                 para.laneMask = std::stoul(optarg, nullptr, 16);
                 break;
             case 'D':
-                para.detType = optarg;  // Defaults to 'pv'
+                para.detType = optarg;  // Defaults to 'encoder'
                 break;
             case 'S':
                 para.serNo = optarg;
@@ -1313,6 +1331,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
+            if (kwargs.first == "match_tmo_ms")   continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
