@@ -584,11 +584,13 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     else
         Drp::m_slowGroup = 0;    // default: interpolation disabled
 
-    logging::info("%s: slowGroup = %u", __PRETTY_FUNCTION__, Drp::m_slowGroup);
+    logging::debug("%s: slowGroup = %u", __PRETTY_FUNCTION__, Drp::m_slowGroup);
     if (Drp::m_slowGroup == 0) {
-        logging::info("interpolation disabled");
+        m_interpolating = false;
+        logging::info("Interpolation disabled");
     } else {
-        logging::info("interpolation enabled");
+        m_interpolating = true;
+        logging::info("Interpolation enabled");
     }
 }
 
@@ -1332,6 +1334,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
             if (kwargs.first == "match_tmo_ms")   continue;
+            if (kwargs.first == "slowGroup")      continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;

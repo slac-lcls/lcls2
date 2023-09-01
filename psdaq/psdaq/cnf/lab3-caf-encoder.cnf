@@ -8,6 +8,14 @@ collect_host = 'drp-tst-acc01'
 
 network =     'ep_fabric="172.21.148.0/22",ep_domain=eno1'
 
+# To enable interpolation, set high_rate to True
+high_rate = False
+
+if high_rate:
+  kwargsEncoder = 'pebbleBufCount=65536,pebbleBufSize=4096,slowGroup=5'
+else:
+  kwargsEncoder = 'pebbleBufCount=65536,pebbleBufSize=4096'
+
 data_dir =    '~caf/data'
 
 #
@@ -46,7 +54,7 @@ procmgr_config = [
  # ...drp: loopback on port 5007
 #{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -v -o /cds/home/c/caf/data -L 5007 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
  # ...drp:
- { host: 'drp-tst-acc01', id:'encoder_0', flags:'supx', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -l 0x1 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
+ { host: 'drp-tst-acc01', id:'encoder_0', flags:'supx', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -l 0x1 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network},{kwargsEncoder}'},
  # ...sim: 172.21.148.201 = drp-tst-acc01, 5008 = interpolate port
 #{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -a 172.21.148.201 -p 5 -d 5008'},
  { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'sp', cmd:'sim_udpencoder -a 172.21.148.201'},
