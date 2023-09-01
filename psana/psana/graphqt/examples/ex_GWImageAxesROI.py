@@ -110,7 +110,7 @@ class TestGWImageAxesROI(GWImageAxesROI):
 
         elif key == Qt.Key_N:
             logger.info('Set new pixel map')
-            s = self.pmi.pixmap().size()
+            s = self.wim.pmi.pixmap().size()
             img = image_with_random_peaks((s.height(), s.width()))
             self.wim.set_pixmap_from_arr(img, set_def=False)
 
