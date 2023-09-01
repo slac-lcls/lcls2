@@ -95,8 +95,10 @@ class GWImageAxes(QWidget):
         self.way.reset_scene_rect()
 
     def on_wim_scene_rect_changed(self, r):
-        self.wax.fit_in_view(QRectF(r.x(), 0, r.width(), 1))
-        self.way.fit_in_view(QRectF(0, r.y(), 1, r.height()))
+        self.wax.set_axis_limits(r.x(), r.x()+r.width())
+        self.way.set_axis_limits(r.y(), r.y()+r.height())
+        #self.wax.fit_in_view(QRectF(r.x(), 0, r.width(), 1))
+        #self.way.fit_in_view(QRectF(0, r.y(), 1, r.height()))
         self.emit_signal_if_image_scene_rect_changed()
 
     def on_wax_scene_rect_changed(self, r):
