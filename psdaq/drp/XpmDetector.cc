@@ -212,7 +212,6 @@ void XpmDetector::shutdown()
         }
     }
 }
-
 }
 
 void dmaReadRegister (int fd, uint32_t* addr, uint32_t* valp)
