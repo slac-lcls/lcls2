@@ -486,6 +486,7 @@ static void usage(const char* p)
   printf("         -c              [setup clock synthesizer]\n");
   printf("         -s              [dump status]\n");
   printf("         -S              [dump status ring buffers]\n");
+  printf("         -V              [dump registers]\n");
   printf("         -m              [disable DRAM monitoring]\n");
   printf("         -M              [enable DRAM monitoring]\n");
   printf("         -t              [reset timing counters]\n");
@@ -503,6 +504,7 @@ int main(int argc, char* argv[])
     bool reset_clk = false;
     bool status    = false;
     bool ringb     = false;
+    bool dumpReg   = false;
     bool timingRst = false;
     bool tcountRst = false;
     bool frameRst  = false;
@@ -518,7 +520,7 @@ int main(int argc, char* argv[])
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:l:rsStTLmMFD:C:1")) != EOF) {
+    while((c = getopt(argc, argv, "cd:l:rsStTLmMFVD:C:1")) != EOF) {
       switch(c) {
       case '1': clksel = 0; break;
       case 'd': dev = optarg; break;
@@ -530,6 +532,7 @@ int main(int argc, char* argv[])
       case 'S': ringb     = true; break;
       case 't': tcountRst = true; break;
       case 'T': timingRst = true; break;
+      case 'V': dumpReg   = true; break;
       case 'm': dramMon   = 0;    break;
       case 'M': dramMon   = 1;    break;
       case 'F': frameRst  = true; break;
@@ -739,7 +742,7 @@ int main(int argc, char* argv[])
       print_lane("enable"     , TEB_REG(0x00),  0, 256, 0x7);
       print_lane("group"      , TEB_REG(0x04),  0, 256, 0xf);
       print_lane("pauseThr"   , TEB_REG(0x08),  0, 256, 0x1f);
-      print_lane("pauseOF"    , TEB_REG(0x10),  0, 256, 0x1f);
+      print_lane("pauseOF"    , TEB_REG(0x10),  0, 256, 0xd);
       print_lane("modes"      , TEB_REG(0x10), 16, 256, 0x7);
       print_lane("cntFifoWr"  , TEB_REG(0x10),  4, 256, 0x1f);
       print_lane("cntL0"      , TEB_REG(0x14),  0, 256, 0xffffffff);
@@ -779,6 +782,46 @@ int main(int argc, char* argv[])
           printf("%02x%c", (get_reg32(0x00c10000+4*(i/4))>>(4*(i%4)))&0xff, (i%10)==9?'\n':' ');
         printf("\n");
 
+        if (dumpReg) {
+            field_format = "%30.30s";
+            print_field("gth_rxalign_resetIn"  , 0x00c10180, 0, 1);
+            print_field("gth_rxalign_resetDone", 0x00c10180, 1, 1);
+            print_field("gth_rxalign_resetErr" , 0x00c10180, 2, 1);
+            print_field("gth_rxalign_r_l0cked" , 0x00c10180, 3, 1);
+            print_field("gth_rxalign_r_rst"    , 0x00c10180, 4, 1);
+            print_field("gth_rxalign_r_rstcnt" , 0x00c10180, 8, 0xf);
+            print_field("gth_rxalign_r_state"  , 0x00c10180, 12, 3);
+
+            print_field("gth_txstatus_clkactive", 0x00c10184, 0, 1);
+            print_field("gth_txstatus_bypassrst", 0x00c10184, 1, 1);
+            print_field("gth_txstatus_pllreset" , 0x00c10184, 2, 1);
+            print_field("gth_txstatus_datareset", 0x00c10184, 3, 1);
+            print_field("gth_txstatus_resetdone", 0x00c10184, 4, 1);
+
+            print_field("gth_rxstatus_clkactive", 0x00c10184,16, 1);
+            print_field("gth_rxstatus_bypassrst", 0x00c10184,17, 1);
+            print_field("gth_rxstatus_pllreset" , 0x00c10184,18, 1);
+            print_field("gth_rxstatus_datareset", 0x00c10184,19, 1);
+            print_field("gth_rxstatus_resetdone", 0x00c10184,20, 1);
+            print_field("gth_rxstatus_bypassdon", 0x00c10184,21, 1);
+            print_field("gth_rxstatus_bypasserr", 0x00c10184,22, 1);
+            print_field("gth_rxstatus_cdrstable", 0x00c10184,23, 1);
+
+            print_field("gth_rxctrl0out", 0x00c10188, 0, 0xffff);
+            print_field("gth_rxctrl1out", 0x00c1018C, 0, 0xffff);
+            print_field("gth_rxctrl3out", 0x00c10190, 0, 0xff);
+
+            /*
+              for(unsigned i=0; i<sizeof(drpregs)/sizeof(drpreg_t); i++)
+              print_field(drpregs[i].name, 0x00c18000+drpregs[i].addr*4, 0, 0xff);
+            */
+            for(unsigned i=0; i<0x100; i++) {
+                printf("drp_%02x : %04x  %04x  %04x\n", i,
+                       get_reg32(0x00c18000+4*i)&0xffff,
+                       get_reg32(0x00c18400+4*i)&0xffff,
+                       get_reg32(0x00c18800+4*i)&0xffff);
+            }
+        }
       }
     }
 

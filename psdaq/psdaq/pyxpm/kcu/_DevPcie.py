@@ -104,6 +104,25 @@ class NoMmcmPhaseLock(pr.Device):
     def dump(self):
         pass
 
+class NoGthRxAlignCheck(pr.Device):
+    def __init__(   self, 
+            name        = "NoGthRxAlignCheck", 
+            description = "GthRxAlign Module", 
+            **kwargs):
+        super().__init__(name=name, description=description, **kwargs)
+
+        v = ['PhaseCount','ResetLen',
+             'LastPhase','TxClkFreq','RxClkFreq','sumPeriod' ]
+        for i in v:
+            self.add(pr.LocalVariable(name = i, mode = 'RO', value=0))
+
+        self.add(pr.LocalVariable(name = 'PhaseTarget', mode='RW', value=0))
+        self.add(pr.LocalVariable(name = 'PhaseTargetMask', mode='RW', value=0))
+        self.add(pr.LocalVariable(name = 'Drp', mode='RO', value=[256*0]))
+
+    def dump(self):
+        pass
+
 class DevPcie(pr.Device):
 
     mmcmParms = [ ['MmcmPL119', 0x08900000],
@@ -192,7 +211,7 @@ class DevPcie(pr.Device):
 
         self.add(timing.GthRxAlignCheck(
             memBase = memBase,
-            name    = 'GthRx',
+            name    = 'UsGthRx',
             offset  = 0x00880000,
         ))
 
@@ -201,6 +220,12 @@ class DevPcie(pr.Device):
             name    = 'UsTiming',
             offset  = 0x008C0000,
         ))
+
+        self.add(NoGthRxAlignCheck(
+            memBase = memBase,
+            name    = 'CuGthRx'
+        ))
+
 
     def start(self):
         print('---DevPcie.start---')
@@ -242,9 +267,9 @@ class DevPcie(pr.Device):
         self.UsTiming.Dump()
 
         print('--GthRx--')
-        print(f'phaseTarget {self.GthRx.PhaseTarget.get()}')
-        print(f'TxClkFreqRaw {self.GthRx.TxClkFreqRaw.get()}')
-        print(f'RxClkFreqRaw {self.GthRx.RxClkFreqRaw.get()}')
+        print(f'phaseTarget  {self.UsGthRx.PhaseTarget.get()}')
+        print(f'TxClkFreqRaw {self.UsGthRx.TxClkFreqRaw.get()}')
+        print(f'RxClkFreqRaw {self.UsGthRx.RxClkFreqRaw.get()}')
 
         self.AxiPcieCore.I2cMux.set(1<<4)
         print(f'QSFP0: {self.AxiPcieCore.QSFP.getRxPwr()}')
