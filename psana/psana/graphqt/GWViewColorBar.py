@@ -55,7 +55,6 @@ from psana.graphqt.GWViewImage import *
 from psana.graphqt.QWPopupSelectColorBar import popup_select_color_table
 import numpy as np
 
-
 class GWViewColorBar(GWViewImage):
 
     new_color_table = pyqtSignal()
@@ -76,7 +75,6 @@ class GWViewColorBar(GWViewImage):
         GWViewImage.__init__(self, parent, arrct, coltab=None, origin='UL', scale_ctl=scale_ctl, signal_fast=signal_fast)
         self._name  = self.__class__.__name__
 
-
     def set_style(self):
         """Overrides method from GWViewImage or GWViewImage"""
         GWViewImage.set_style(self)
@@ -91,11 +89,9 @@ class GWViewColorBar(GWViewImage):
 
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
-
     def mousePressEvent(self, e):
         if self.change_mode & 2: self.on_colorbar(e)
         else: GWViewImage.mousePressEvent(self, e)
-
 
     def on_colorbar(self, e):
         ctab_ind = popup_select_color_table(None)
@@ -104,7 +100,6 @@ class GWViewColorBar(GWViewImage):
         if ctab_ind != self._ctab_ind:
             self._ctab_ind = ctab_ind
             self.set_colorbar_table_ind(ctab_ind)
-
 
     def set_colorbar_table_ind(self, ctab_ind=None):
         """Sets color table from the list of pre-set tables by their index.
@@ -116,7 +111,6 @@ class GWViewColorBar(GWViewImage):
         #self.emit(QtCore.SIGNAL('new_color_table_index_is_selected(int)'), self._ctab_ind)
         self.new_color_table_index_is_selected.emit(self._ctab_ind)
 
-
     def set_colorbar_table(self, ctab):
         """Sets color table ctab (np.array) - list of colors 32-bit unsigned words"""
         self._ctab = ct.np.array(ctab)
@@ -125,14 +119,11 @@ class GWViewColorBar(GWViewImage):
         #self.set_style()
         self.new_color_table.emit()
 
-
     def color_table(self):
         return self._ctab
 
-
     def color_table_index(self):
         return self._ctab_ind
-
 
     def connect_new_color_table_index_is_selected(self, recip):
         self.new_color_table_index_is_selected['int'].connect(recip)
@@ -152,12 +143,10 @@ class GWViewColorBar(GWViewImage):
     def test_new_color_table_reception(self):
         logger.info(sys._getframe().f_code.co_name + ': %s' % str(self._ctab[:5]))
 
-
     def closeEvent(self, e):
         pass
         #print('%s.closeEvent' % self._name)
         #QWidget.closeEvent(self, e)
-
 
 if __name__ == "__main__":
     import sys
