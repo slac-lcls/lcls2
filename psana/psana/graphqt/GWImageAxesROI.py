@@ -38,7 +38,7 @@ class GWImageAxesROI(QWidget):
 
         QWidget.__init__(self, parent)
 
-        self.wim = GWViewImageROI(self, image, coltab=ctab, origin='UL', scale_ctl='HV', signal_fast=signal_fast)
+        self.wim = GWViewImageROI(parent=self, arr=image, coltab=ctab, origin='UL', scale_ctl='HV', signal_fast=signal_fast)
 
         self.rs_old = None
         r = self.wim.sceneRect()
@@ -96,6 +96,7 @@ class GWImageAxesROI(QWidget):
         logger.debug('on_but_reset wim.scene_rect: %s' % qu.info_rect_xywh(self.wim.scene_rect()))
         self.wax.reset_scene_rect()
         self.way.reset_scene_rect()
+        self.on_wim_scene_rect_changed(self.wim.scene_rect())
 
     def on_wim_scene_rect_changed(self, r):
         self.wax.set_axis_limits(r.x(), r.x()+r.width())
@@ -128,6 +129,9 @@ class GWImageAxesROI(QWidget):
 
     def disconnect_image_scene_rect_changed(self, recip):
         self.image_scene_rect_changed.disconnect(recip)
+
+    def test_image_scene_rect_changed(self, r):
+        print(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r), end='\r')
 
     def set_tool_tips(self):
         self.wim.setToolTip('Image\npixel map')
