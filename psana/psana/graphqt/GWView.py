@@ -42,6 +42,9 @@ class GWView(QGraphicsView):
         #kwa.setdefault('bkg_color', QColor(50,5,50))
         #kwa.setdefault('bkg_pattern', Qt.SolidPattern)
         self.kwa = kwa
+        self.bgcolor_def = 'black'
+        self.fgcolor_def = 'yellow'
+        self.style_def = "background-color: rgb(50, 5, 50); color: 'yellow';"
 
         sc = QGraphicsScene()
         QGraphicsView.__init__(self, sc, parent)
@@ -78,6 +81,7 @@ class GWView(QGraphicsView):
         self.setBackgroundBrush(QBrush(\
             self.kwa.get('bkg_color', QColor(50,5,50)),\
             self.kwa.get('bkg_pattern', Qt.SolidPattern)))
+        #self.setStyleSheet(self.style_def)
 
     def set_scale_control(self, scale_ctl='HV'):
         """Sets scale control bit-word
