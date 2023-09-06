@@ -143,6 +143,7 @@ class GWImageAxesROI(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
         self.but_reset.setFixedSize(60,30)
         self.edi_info.setMaximumHeight(30)
+        self.edi_info.setStyleSheet(self.wim.style_def)
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.001, frmax=0.999):
         """shortcut to image"""
