@@ -3,9 +3,13 @@ import zlib, pickle
 import time
 
 class PubSocket:
-    def __init__(self, socket_name):
+    """ A helper for sending messages using pyzmq.
+
+    socket_type: zmq.PUB or zmq.PUSH
+    """
+    def __init__(self, socket_name, socket_type=zmq.PUB):
         self._context = zmq.Context()
-        self._zmq_socket = self._context.socket(zmq.PUB)
+        self._zmq_socket = self._context.socket(socket_type)
         self._zmq_socket.bind(socket_name)
 
     def send(self, data):
@@ -23,14 +27,19 @@ class PubSocket:
 
 
 class SubSocket:
-    def __init__(self, socket_name):
+    """ A helper for receving messages using pyzmq.
+
+    socket_type: zmq.SUB (default) or zmq.PULL)
+    """
+    def __init__(self, socket_name, socket_type=zmq.SUB):
         self._context = zmq.Context()
-        self._zmq_socket = self._context.socket(zmq.SUB)
+        self._zmq_socket = self._context.socket(socket_type)
         self._zmq_socket.connect(socket_name)
 
         # Subscribe to all
-        topicfilter = ""
-        self._zmq_socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
+        if socket_type == zmq.SUB:
+            topicfilter = ""
+            self._zmq_socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
 
     def recv(self):
         return self.recvz()[1]
