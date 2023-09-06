@@ -167,7 +167,7 @@ class GWSpectrum(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
         self.wcbar.setFixedWidth(25)
         self.edi_info.setMaximumHeight(85)
-        self.edi_info.setStyleSheet("background-color: rgb(50, 5, 50); color: #FFFFFF00;") #'yellow';#rgb(0, 255, 255, 255);")
+        self.edi_info.setStyleSheet(self.whi.style_def)
 
     def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.00001, frmax=0.99999, edgemode=0, update_hblimits=True):
         """shotcut"""
