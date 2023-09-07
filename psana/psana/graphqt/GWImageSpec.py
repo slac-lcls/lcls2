@@ -64,6 +64,13 @@ class GWImageSpec(QWidget):
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
 
+    def set_splitter_pos(self, fr=0.8):
+        #self.wimax.setMinimumWidth(200)
+        #self.wspec.setMinimumWidth(200)
+        wid = self.width()
+        s = int(fr*wid)
+        self.hspl.setSizes((s, wid-s))  #spl_pos = self.vspl.sizes()[0]
+
     def connect_image_scene_rect_changed(self):
         #self.wimax.connect_image_scene_rect_changed(self.wimax.test_image_scene_rect_changed)
         self.wimax.connect_image_scene_rect_changed(self.on_image_scene_rect_changed)
