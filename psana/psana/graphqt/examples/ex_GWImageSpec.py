@@ -144,9 +144,7 @@ def test_GWImageSpec(tname):
     w.setWindowTitle('ex_GWImageSpec')
 
     w.setGeometry(20, 20, 900, 600)
-    wid = w.width()
-    s = int(0.7*wid)
-    w.hspl.setSizes((s, wid-s))  #spl_pos = self.vspl.sizes()[0]
+    w.set_splitter_pos()
 
     #w.move(QCursor().pos())
     w.show()
