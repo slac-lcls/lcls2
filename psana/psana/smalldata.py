@@ -495,6 +495,8 @@ class SmallData: # (client)
                 self._batch = []           
 
             event_data_dict['timestamp'] = timestamp
+            if hasattr(event, 'timestamp'):
+                event_data_dict['runnum'] = event.run().runnum
             self._previous_timestamp = timestamp
             self._batch.append(event_data_dict)
 
