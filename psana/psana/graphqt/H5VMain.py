@@ -117,7 +117,7 @@ def hdf5explorer(**kwargs):
 if __name__ == "__main__":
     import os
     kwargs = {\
-      'fname':'/reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5',\
+      'fname':'/reg/g/psdm/detector/calib/DEPRECATED/jungfrau/jungfrau-171113-154920171025-3d00fb.h5',\
       'loglevel':'INFO',\
       'logdir':'%s/hdf5explorer-log' % os.path.expanduser('~'),\
       'savelog':True}
