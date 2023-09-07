@@ -53,7 +53,7 @@ class Board(pr.Root):
         pr.streamConnectBiDir(self.dmaCtrlStreams[0],self._srp)
 
         self.add(epixHr.SysReg  (name='Core'  , memBase=self._srp, offset=0x00000000, sim=False, expand=False, pgpVersion=4, numberOfLanes=lanes,))
-        self.add(fpga.EpixHR10kT(name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
+        self.add(fpga.EpixHR10kT(asicVersion=2, name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
         #  Allow ePixFpga to find the yaml files for fnInitAsic()
         self.top_level = '/tmp'
 
@@ -362,6 +362,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['RegisterControl'],cbase.EpixHR,path,'RegisterControl',tree))
         for i in asics:
             tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['Hr10kTAsic{}'.format(i)],cbase.EpixHR,path,'ASIC{}'.format(i),tree))
+        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['SspLowSpeedDecoderReg'],cbase.EpixHR,path,'SSP',tree))
         # remove non-e xistent field
         for i in range(2):
             if 'gainBitRemapped' in epixHR[f'PacketRegisters{i}']:
@@ -405,6 +406,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
                 saci = getattr(cbase.EpixHR,asicName)
                 saci.enable.set(True)
                 saci.fnSetPixelBitmap(None,None,fn)
+                os.remove(fn)
 
                 #  Don't forget about the trbit and charge injection
                 #  Program these one-by-one since the second call of fnInitAsicScript breaks

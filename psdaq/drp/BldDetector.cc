@@ -6,6 +6,7 @@
 #include <bitset>
 #include <chrono>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
@@ -49,7 +50,6 @@ static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::DOUBLE, // pvDouble
     XtcData::Name::CHARSTR, // pvString
 };
-
 
     //
     //  Until a PVA gateway can be started on the electron-side
@@ -168,6 +168,11 @@ BldFactory::BldFactory(const char* name,
         _alg    = XtcData::Alg("raw", 2, 0, 0);
         _varDef.NameVec = BldNames::PCav().NameVec;
     }
+    else if (strncmp("gasdet",name,6)==0) {
+        mcaddr = 0xefff1802;
+        _alg    = XtcData::Alg("raw", 1, 0, 0);
+        _varDef.NameVec = BldNames::GasDet().NameVec;
+    }
     else if (strncmp("gmd",name,3)==0) {
         mcaddr = 0xefff1902;
         _alg    = XtcData::Alg("raw", 2, 1, 0);
@@ -177,6 +182,12 @@ BldFactory::BldFactory(const char* name,
         mcaddr = 0xefff1903;
         _alg    = XtcData::Alg("raw", 2, 1, 0);
         _varDef.NameVec = BldNames::GmdV1().NameVec;
+    }
+    else if ((mcaddr = BldNames::BeamMonitorV1::mcaddr(name))) {
+        _detType = _detId = std::string("bmmon");
+        _alg    = XtcData::Alg("raw", 1, 0, 0);
+        _varDef.NameVec = BldNames::BeamMonitorV1().NameVec;
+        _arraySizes = BldNames::BeamMonitorV1().arraySizes();
     }
     else {
         throw std::string("BLD name ")+name+" not recognized";
@@ -242,6 +253,24 @@ XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
 
     bldNames.add(xtc, bufEnd, _varDef);
     return XtcData::NameIndex(bldNames);
+}
+
+void BldFactory::addEventData(XtcData::Xtc&          xtc,
+                              const void*            bufEnd,
+                              XtcData::NamesLookup&  namesLookup,
+                              XtcData::NamesId&      namesId)
+{
+    const Bld& bld = handler();
+    XtcData::DescribedData desc(xtc, bufEnd, namesLookup, namesId);
+    memcpy(desc.data(), bld.payload(), bld.payloadSize());
+    desc.set_data_length(bld.payloadSize());
+    unsigned shape[] = {0,0,0,0,0};
+    for(unsigned i=0; i<_arraySizes.size(); i++) {
+        if (_arraySizes[i]) {
+            shape[0] = _arraySizes[i];
+            desc.set_array_shape(i,shape);
+        }
+    }
 }
 
 unsigned interfaceAddress(const std::string& interface)
@@ -441,7 +470,7 @@ void     Bld::clear(uint64_t ts)
         m_pulseId = pulseId;
         if (jump != m_pulseIdJump) {
             m_pulseIdJump = jump;
-            logging::warning("BLD pulseId jump %u [%u]",jump,pulseId);
+            logging::debug("BLD pulseId jump %u [%u]",jump,pulseId);
         }
     }
 }
@@ -490,7 +519,7 @@ uint64_t Bld::next()
     m_pulseId = pulseId;
     if (jump != m_pulseIdJump) {
         m_pulseIdJump = jump;
-        logging::warning("BLD pulseId jump %u [%u]",jump, pulseId);
+        logging::debug("BLD pulseId jump %u [%u]",jump, pulseId);
     }
 
     return timestamp;
@@ -741,10 +770,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                         if (timestamp[i] == nextId) {
                             // Revisit: This is intended to be done by BldDetector::event()
                             XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                            const Bld& bld = m_config[i]->handler();
-                            XtcData::DescribedData desc(dgram->xtc, bufEnd, namesLookup, namesId);
-                            memcpy(desc.data(), bld.payload(), bld.payloadSize());
-                            desc.set_data_length(bld.payloadSize());
+                            m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
                         }
                         else {
                             lMissed = true;

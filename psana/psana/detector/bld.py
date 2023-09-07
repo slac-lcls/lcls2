@@ -42,6 +42,16 @@ class ebeamh_raw_2_0_0(ebeam_ebeamAlg_0_7_1):
     def __init__(self, *args):
         super().__init__(*args)
 
+class gasdet_raw_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(gasdet_raw_1_0_0, self).__init__(*args)
+        self._add_fields()
+
+class bmmon_raw_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(bmmon_raw_1_0_0, self).__init__(*args)
+        self._add_fields()
+
 class pcav_raw_2_0_0(DetectorImpl):
     def __init__(self, *args):
         super(pcav_raw_2_0_0, self).__init__(*args)
