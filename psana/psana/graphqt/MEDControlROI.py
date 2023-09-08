@@ -84,7 +84,7 @@ class MEDControlROI(QWidget):
         self.but_img.setStyleSheet(style.styleButtonGood)
 
     def set_style(self, width=50):
-        self.layout().setContentsMargins(5,2,0,2)
+        self.layout().setContentsMargins(5,10,0,2)
         for but in self.list_of_buts: but.setFixedWidth(width)
         #self.set_buttons_visiable()
 
