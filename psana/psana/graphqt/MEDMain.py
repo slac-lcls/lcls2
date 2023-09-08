@@ -23,6 +23,7 @@ from PyQt5.QtCore import Qt
 from psana.graphqt.GWLoggerStd import GWLoggerStd
 from psana.graphqt.GWImageSpec import GWImageSpec
 from psana.graphqt.MEDControl import MEDControl
+from psana.graphqt.MEDControlROI import MEDControlROI
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -36,8 +37,17 @@ class MEDMain(QWidget):
         self.wisp = GWImageSpec(parent=self) #, image=image, coltab=ctab, signal_fast=self.signal_fast
         self.wlog = GWLoggerStd()
         self.wctl = MEDControl(parent=self)
+        self.wbts = MEDControlROI(parent=self)
+
+        self.hbox = QHBoxLayout()
+        self.hbox.addWidget(self.wbts)
+        self.hbox.addWidget(self.wisp)
+        self.hbox.setContentsMargins(0,0,0,0)
+        self.wbox = QWidget()
+        self.wbox.setLayout(self.hbox)
+
         self.vspl = QSplitter(Qt.Vertical)
-        self.vspl.addWidget(self.wisp)
+        self.vspl.addWidget(self.wbox)
         self.vspl.addWidget(self.wlog)
 
         self.vbox = QVBoxLayout()
@@ -68,7 +78,11 @@ class MEDMain(QWidget):
         h = self.height()
         s = int(fr*h)
         self.vspl.setSizes((s, h-s)) # spl_pos = self.vspl.sizes()[0]
-        self.wisp.set_splitter_pos() # frsp=0.8)
+        self.wisp.set_splitter_pos(fr=0.8)
+
+    def resizeEvent(self, e):
+        QWidget.resizeEvent(self, e)
+        self.set_splitter_pos()
 
     def closeEvent(self, e):
         logger.debug('closeEvent')
