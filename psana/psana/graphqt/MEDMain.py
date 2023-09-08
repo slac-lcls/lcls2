@@ -73,8 +73,8 @@ class MEDMain(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
         #self.wisp.setFixedHeight(400)
 
-    def set_splitter_pos(self, fr=0.8):
-        self.wlog.setMinimumHeight(100)
+    def set_splitter_pos(self, fr=0.95):
+        #self.wlog.setMinimumHeight(100)
         h = self.height()
         s = int(fr*h)
         self.vspl.setSizes((s, h-s)) # spl_pos = self.vspl.sizes()[0]
