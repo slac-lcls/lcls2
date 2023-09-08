@@ -59,7 +59,7 @@ class QWPopupSelectItem(QDialog):
         QTimer().singleShot(self.dt_msec, self.on_timeout)
 
 
-    def on_timeout(self, do_sorted):
+    def on_timeout(self):
         logger.debug('on_timeout - activate popup window, isActive: %s' % self.isActiveWindow())
         self.setFocus(True)
         self.raise_()
