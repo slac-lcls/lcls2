@@ -59,7 +59,7 @@ BldNames::BeamMonitorV1::BeamMonitorV1() {
     NameVec.push_back(Name("xPositionMeters"     , Name::DOUBLE));
     NameVec.push_back(Name("yPositionMeters"     , Name::DOUBLE));
     NameVec.push_back(Name("peakAmplitude"       , Name::DOUBLE,1)); // 16
-    NameVec.push_back(Name("peakTime"            , Name::DOUBLE,1)); // 16
+    NameVec.push_back(Name("peakTime"            , Name::UINT16,1)); // 16
 }
 
 static std::vector<unsigned> _bmmonArraySizes { 0, 0, 0, 16, 16 };
