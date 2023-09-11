@@ -93,6 +93,7 @@ if 'PSDAQ' in BUILD_LIST :
             'epixhr_pedestal_scan = psdaq.cas.epixhr_pedestal_scan:main',
             'epixhr_chargeinj_scan = psdaq.cas.epixhr_chargeinj_scan:main',
             'epixhr_timing_scan = psdaq.cas.epixhr_timing_scan:main',
+            'epixhr_config_scan = psdaq.cas.epixhr_config_scan:main',
             'seq_epixhr = psdaq.seq.seq_epixhr:main',
             'getrun = psdaq.control.getrun:main',
             'groupca = psdaq.cas.groupca:main',
