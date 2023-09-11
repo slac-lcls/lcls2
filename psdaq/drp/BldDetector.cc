@@ -55,10 +55,13 @@ static const XtcData::Name::DataType xtype[] = {
     //  Until a PVA gateway can be started on the electron-side
     //
 
-static unsigned getVarDefSize(XtcData::VarDef& vd) {
+static unsigned getVarDefSize(XtcData::VarDef& vd, const std::vector<unsigned>& as) {
     unsigned sz = 0;
     for(unsigned i=0; i<vd.NameVec.size(); i++) {
-        sz += XtcData::Name::get_element_size(vd.NameVec[i].type()); // assumes rank=0
+        if (as.size()>i && as[i]>0)
+            sz += XtcData::Name::get_element_size(vd.NameVec[i].type())*as[i]; // assumes rank=1
+        else
+            sz += XtcData::Name::get_element_size(vd.NameVec[i].type()); // assumes rank=0
     }
     return sz;
 }
@@ -192,7 +195,7 @@ BldFactory::BldFactory(const char* name,
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    unsigned payloadSize = getVarDefSize(_varDef);
+    unsigned payloadSize = getVarDefSize(_varDef,_arraySizes);
     _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
                                      Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
                                      Bld::DgramHeaderSize, payloadSize,

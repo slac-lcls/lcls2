@@ -12,6 +12,7 @@ if __name__ == '__main__':
     parser.add_argument('--rate', help="Run trigger rate (Hz)", type=float, default=5.0e3);
     parser.add_argument('--tgt' , help="DAQ trigger time (sec)", type=float, default=0.8e-3)
     parser.add_argument('--pv' , help="XPM pv base", default='DAQ:NEH:XPM:7:SEQENG:2')
+    parser.add_argument('--f360', help="Resync at 360Hz", action='store_true')
     parser.add_argument('--test', help="Calculate only", action='store_true')
     args = parser.parse_args()
 
@@ -21,6 +22,8 @@ if __name__ == '__main__':
 
     fbucket = 13.e6/14
     ac_period = 3*0x5088c/119.e6  # a minimum period (about 1/120.25 Hz)
+    if args.f360:
+        ac_period /= 3
     ac_periodb = int(ac_period*fbucket)
     spacing = int(math.ceil(fbucket/args.rate))
     rate    = fbucket/spacing
@@ -28,7 +31,9 @@ if __name__ == '__main__':
     npretrig = int(targetb/spacing)
     startb  = targetb - npretrig*spacing
     nafter  = int((ac_periodb - startb)/spacing) - npretrig
-    avgrate = (npretrig+nafter)*120.
+    avgrate = (npretrig+nafter+1)*120.
+    if args.f360:
+        avgrate *= 3.
 
     print(f' spacing [{spacing}]  rate [{rate} Hz]')
     print(f' npretrig [{npretrig}]  nposttrig [{nafter}]  avg rate [~{avgrate} Hz]')
