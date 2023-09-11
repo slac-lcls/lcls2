@@ -11,7 +11,7 @@ import sys
 
 
 srv_socket = None
-my_subproc = None
+subprocs = {}
 
 
 def get_db_info():
@@ -35,19 +35,24 @@ def get_db_info():
 
 
 def start_psplot(node, port, detname):
-    """ Start psplot as a subprocess with check to kill if
-    there's an existing one."""
-    global my_subproc
-    if my_subproc is not None:
-        # Send SIGTER 
-        my_subproc.terminate()
-        # Wait for process to terminate
-        returncode = my_subproc.wait()
-        print(f"Returncode of subprocess: {returncode}")
-        my_subproc = None
-    my_subproc = subprocess.Popen(["psplot", "-s", node, "-p", str(port), detname])
-    print(f"Process ID of subprocess {my_subproc.pid}")
+    """ Start psplot as a subprocess """
+    global subprocs
+    subproc = subprocess.Popen(["psplot", "-s", node, "-p", str(port), detname])
+    subprocs[subproc.pid] = subproc
+    print(f"Start Process ID: {subproc.pid}")
 
+
+def terminate_psplot(pid):
+    """ Terminate given process id """
+    print(f"Terminating process id: {pid}")
+    global subprocs
+    subproc = subprocs[pid]
+    # Send SIGTER 
+    subproc.terminate()
+    # Wait for process to terminate
+    returncode = subproc.wait()
+    print(f"|-->Return code: {returncode}")
+     
 
 if __name__ == "__main__":
     runnum, node, port = (0, None, None)
