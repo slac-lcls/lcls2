@@ -21,20 +21,22 @@ import numpy as np
 #
 
 def listParams(d,name):
+    result = []
     name = '' if name is None else name+'.'
     for k,v in d.items():
         if 'PacketRegisters' in k:
             pass
         elif 'Hr10kTAsic' in k:
             if k=='Hr10kTAsic0':
-                listParams(v,f'{name}Hr10kTAsic')
+                result.extend(listParams(v,f'{name}Hr10kTAsic'))
             else:
                 pass
         elif isinstance(v,dict):
-            listParams(v,f'{name}{k}')
+            result.extend(listParams(v,f'{name}{k}'))
         else:
-            print(f'{name}{k}')
-    
+            result.extend([f'{name}{k}'])
+    return result
+            
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-P', metavar='PARAMETER', default=None,
@@ -48,7 +50,7 @@ def main():
                         help='timeout msec (default 20000)')
     parser.add_argument('-g', type=int, default=6, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
     parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (e.g. BEAM)')
-    parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
+    parser.add_argument('--detname', default='epixhr_0', help="detector name (default 'epixhr_0')")
     parser.add_argument('--scantype', default='config', help="scan type (default 'config')")
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument('--validate', action='store_true', help='validate config parameter')
@@ -90,8 +92,11 @@ def main():
                          root='configDB', user=dbargs.user, password=dbargs.password)
     top = mycdb.get_configuration(dbargs.alias, dbargs.name+'_%d'%dbargs.segm)
 
+    d = top['expert']['EpixHR']
+    l = listParams(d,None)
+
     keys = None
-    if args.P is not None:
+    if args.P is not None and args.P in l:
         if 'Hr10kTAsic' in args.P:
             keys = [f'{args.detname}:expert.EpixHR.Hr10kTAsic{i}.{args.P[11:]}' for i in range(4)]
         elif 'PacketRegisters' in args.P:
@@ -101,15 +106,7 @@ def main():
         if keys is None:
             print('Invalid parameter {args.P}')
 
-    d = top['expert']['EpixHR']
-    l = listParams(d,None)
-
     usage = keys is None
-    if not usage:
-        for k in keys:
-            if not k in l:
-                usage = True
-                break
 
     if usage:
         print('Valid parameters are:')
