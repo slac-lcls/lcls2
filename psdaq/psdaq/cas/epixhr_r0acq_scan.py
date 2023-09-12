@@ -37,7 +37,6 @@ def listParams(d,name):
     
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--linear', type=float, nargs=3, help='linear scan over range [0]:[1] in steps of [2]')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=2,
                         help='platform (default 2)')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-srcf-cmp004',
@@ -49,10 +48,8 @@ def main():
     parser.add_argument('--detname', default='epixhr_0', help="detector name (default 'epixhr_0')")
     parser.add_argument('--scantype', default='config', help="scan type (default 'config')")
     parser.add_argument('-v', action='store_true', help='be verbose')
-    parser.add_argument('--validate', action='store_true', help='validate config parameter')
-    parser.add_argument('--uris', default='https://pswww.slac.stanford.edu/ws-auth/configdb/ws', help="configdb (default=https://pswww.slac.stanford.edu/ws-auth/configdb/ws")
-    parser.add_argument('--start', default=[0,0], help='list of start values for (R0,AcqDelay2)', args='+')
-    parser.add_argument('--step' , default=1, help='step size')
+    parser.add_argument('--start' , default=[0,0], type=int, help='list of start values for (R0,AcqDelay1)', nargs=2)
+    parser.add_argument('--step'  , default=1, type=int, help='step size')
     parser.add_argument('--nsteps', default=1, type=int, help='number of scan steps')
 
     parser.add_argument('--events', type=int, default=2000, help='events per step (default 2000)')
@@ -146,7 +143,7 @@ def main():
     configureBlock = scan.getBlock(transition="Configure", data=data)
 
     keys = [f'{args.detname}:expert.EpixHR.RegisterControl.R0Delay',
-            f'{args.detname}:expert.EpixHR.RegisterControl.AcqDelay2']
+            f'{args.detname}:expert.EpixHR.RegisterControl.AcqDelay1']
 
     configure_dict = {"NamesBlockHex": configureBlock,
                       "readout_count": args.events,
