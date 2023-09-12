@@ -1,21 +1,25 @@
-import subprocess
+import asyncio
+import psutil
 
 class SubprocHelper():
-    def __init__(self):
-        self.subprocs = {}
-
-    def start_psplot(self, node, port, detname):
+    async def _run(self, cmd, prv='usr'):
         """ Start psplot as a subprocess """
-        subproc = subprocess.Popen(["psplot", "-s", node, "-p", str(port), detname])
-        self.subprocs[subproc.pid] = subproc
-        print(f"Start Process ID: {subproc.pid}")
+        proc = await asyncio.create_subprocess_shell(
+            cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
 
-    def terminate_psplot(self, pid):
-        """ Terminate given process id """
-        print(f"Terminating process id: {pid}")
-        subproc = self.subprocs[pid]
-        # Send SIGTER 
-        subproc.terminate()
-        # Wait for process to terminate
-        returncode = subproc.wait()
-        print(f"|-->Return code: {returncode}")
+    def terminate(self, pid, timeout=3):
+        p = psutil.Process(pid)
+        print(f'Terminating process: {pid}...')
+        p.terminate()
+        p.wait(timeout=timeout)
+        if psutil.pid_exists(pid):
+            print(f'Failed, could not terminate the process.')
+        else:
+            print(f'Succeeded')
+
+
+
+
+
