@@ -62,7 +62,27 @@ Created in 2015 by Mikhail Dubrovin
 import math
 import numpy as np
 from psana.pyalgos.generic.HBins import HBins
-from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
+#from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
+
+
+def info_ndarr(nda, name='', first=0, last=5):
+    _name = '%s '%name if name!='' else name
+    s = ''
+    gap = '\n' if (last-first)>10 else ' '
+    if nda is None: s = '%sNone' % _name
+    elif isinstance(nda, tuple): s += info_ndarr(np.array(nda), 'ndarray from tuple: %s' % name)
+    elif isinstance(nda, list):  s += info_ndarr(np.array(nda), 'ndarray from list: %s' % name)
+    elif not isinstance(nda, np.ndarray):
+        s = '%s%s' % (_name, type(nda))
+    else:
+        a = '' if last == 0 else\
+            '%s%s' % (str(nda.ravel()[first:last]).rstrip(']'), '...]' if nda.size>last else ']')
+        s = '%sshape:%s size:%d dtype:%s%s%s' % (_name, str(nda.shape), nda.size, nda.dtype, gap, a)
+    return s
+
+def print_ndarr(nda, name=' ', first=0, last=5):
+    print(info_ndarr(nda, name, first, last))
+
 
 def divide_protected(num, den, vsub_zero=0):
     """Returns result of devision of numpy arrays num/den with substitution of value vsub_zero for zero den elements.
@@ -189,9 +209,9 @@ class HPolar():
 
     def print_ndarrs(self):
         print('%s n-d arrays:' % self.__class__.__name__)
-        print_ndarr(self.rad, '  rad')
-        print_ndarr(self.phi, '  phi')
-        print_ndarr(self.mask,'  mask')
+        print('  rad  shape=', str(self.rad.shape))
+        print('  phi  shape=', str(self.phi.shape))
+        print('  mask shape=', str(self.mask.shape))
         #print('Phi limits: ', phiedges[0], phiedges[-1])
 
 
