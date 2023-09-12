@@ -119,8 +119,9 @@ public:
   ~Interpolator() {}
 
 public:
+  void reset();
   void update(XtcData::TimeStamp t, unsigned v);
-  unsigned calculate(XtcData::TimeStamp t) const;
+  unsigned calculate(XtcData::TimeStamp t, XtcData::Damage& damage) const;
 
 private:
   unsigned           _idx;

@@ -567,6 +567,12 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 }
 
 
+void Interpolator::reset()
+{
+  _idx = 0;
+  _flag = false;
+}
+
 void Interpolator::update(XtcData::TimeStamp t, unsigned v)
 {
     auto idx = _idx++ & 1;
@@ -578,24 +584,26 @@ void Interpolator::update(XtcData::TimeStamp t, unsigned v)
     _v[idx] = v;
 }
 
-unsigned Interpolator::calculate(XtcData::TimeStamp t) const
+unsigned Interpolator::calculate(XtcData::TimeStamp t, XtcData::Damage& damage) const
 {
-    auto idx0 =  _idx  & 1;
-    auto idx1 =   idx0 ^ 1;
+    auto idx0 = _idx  & 1;
+    auto idx1 =  idx0 ^ 1;
 
     // Linear interpolation
     unsigned v;
     if (_flag) {
         if (t > _t[idx0]) {
             auto rt = (t.asDouble() - _t[idx0].asDouble()) / (_t[idx1].asDouble() - _t[idx0].asDouble());
-            auto dv = double(_v[idx1]) - double(_v[idx0]);
+            auto dv = double(int(_v[idx1]) - int(_v[idx0]));
             auto b  = _v[idx0];
             v = unsigned(rt * dv) + b;
         } else {
             v = _v[idx0];               // Return the earliest value we have
+            damage.increase(XtcData::Damage::MissingData);
         }
     } else {
         v = _v[idx1];                   // Return the only value we have so far
+        damage.increase(XtcData::Damage::MissingData);
     }
 
     logging::debug("*** Int::calc:   idx[0,1] %d, %d, t %u.%09u, v %u", idx0, idx1, t.seconds(), t.nanoseconds(), v);
@@ -824,11 +832,6 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                 const ms_t tmo(1500);
                 auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
                 XtcData::Dgram* encDg;
-                while (m_encQueue.guess_size() > 1) {             // Drain all but 1 entry, the most recent
-                    auto rc = m_encQueue.try_pop(encDg);          // Actually consume the element
-                    if (rc)   m_bufferFreelist.push(encDg);       // Return buffer to freelist
-                    printf("*** enc discarded: %u\n", m_encQueue.guess_size());
-                }
                 while (!m_encQueue.peek(encDg)) {  // Wait for an encoder value
                     if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
                         printf("*** enc peek timed out: %u\n", m_encQueue.guess_size());
@@ -836,32 +839,31 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                     }
                     std::this_thread::yield();
                 }
-                auto frame = (const encoder_frame_t*)(encDg->xtc.payload());
-                auto value = frame->channel[0].encoderValue;
+                auto encFrame = (const encoder_frame_t*)(encDg->xtc.payload());
+                auto encValue = encFrame->channel[0].encoderValue;
 
-                m_interpolator.update(dgram->time, value); // Associate the current L1Accept's time with the latest encoder value
+                m_interpolator.update(dgram->time, encValue); // Associate the current L1Accept's time with the latest encoder value
 
                 // Handle all events that have accumulated on the queue
                 while (true) {
                     uint32_t pgpIdx;
                     if (!m_evtQueue.peek(pgpIdx))  break;
 
-                    // Deal with intermedate SlowUpdates
+                    // Deal with intermediate SlowUpdates
                     auto pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
                     if (pgpDg->service() != XtcData::TransitionId::L1Accept) {
                         _handleTransition(pgpIdx, pgpDg);
                         continue;
                     }
 
+                    // NB: This copies the 2nd frame into the XTC frame, but they're all the same?
+                    auto& frame = *(encoder_frame_t*)(pgpDg->xtc.payload());
+                    frame = *encFrame;
+
                     // When pgpDg == dgram, this returns the most recent encoder value (_v[idx1])
-                    auto value = m_interpolator.calculate(pgpDg->time);
+                    frame.channel[0].encoderValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
 
-                    auto frame = (encoder_frame_t*)(pgpDg->xtc.payload());
-                    frame->channel[0].scale        = 1;
-                    frame->channel[0].scaleDenom   = 1;
-                    frame->channel[0].encoderValue = value;
-
-                    _handleL1Accept(*pgpDg, *frame);
+                    _handleL1Accept(*pgpDg, frame);
 
                     if (pgpDg == dgram)  return;
                 }
@@ -952,6 +954,16 @@ void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
             memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
             if (service == XtcData::TransitionId::Enable) {
+                // Drain the encQueue and repopulate the freelist
+                XtcData::Dgram* encDg;
+                while (m_encQueue.try_pop(encDg)) { // Pop stale encoder buffer
+                    m_bufferFreelist.push(encDg);   // Return buffer to freelist
+                    printf("*** Drained stale encoder buffer: sz %u, %u\n", m_encQueue.guess_size(), m_bufferFreelist.guess_size());
+                }
+
+                // Reset the interpolator
+                m_interpolator.reset();
+
                 m_running = true;
             }
             else if (service == XtcData::TransitionId::Disable) {
