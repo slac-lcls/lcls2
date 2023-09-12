@@ -370,7 +370,6 @@ void UdpReceiver::process()
         _read(*dgram);                     // read the frame into the Dgram
 
         m_encQueue.push(dgram);
-        //printf("*** ur enc %u, bfl %u\n", m_encQueue.guess_size(), m_bufferFreelist.guess_size());
     }
     else {
         logging::error("%s: buffer not available, frame dropped", __PRETTY_FUNCTION__);
@@ -445,8 +444,6 @@ int UdpReceiver::_readFrame(encoder_frame_t *frame, bool& missing)
         logging::debug("ch0  scaleDenom    %7u", (unsigned)frame->channel[0].scaleDenom);
         logging::debug("ch0  error         %7u", (unsigned)frame->channel[0].error);
         logging::debug("ch0  mode          %7u", (unsigned)frame->channel[0].mode);
-
-        //printf("*** frameCount %7u, value %7u\n", frame->header.frameCount, frame->channel[0].encoderValue);
     }
     return (rv);
 }
@@ -575,7 +572,7 @@ void Interpolator::update(XtcData::TimeStamp t, unsigned v)
     auto idx = _idx++ & 1;
     if (_idx > 1)  _flag = true;        // Protect against _idx rollover
 
-    logging::debug("*** Int::update: idx      %d,    t %u.%09u, v %u\n", idx, t.seconds(), t.nanoseconds(), v);
+    logging::debug("*** Int::update: idx      %d,    t %u.%09u, v %u", idx, t.seconds(), t.nanoseconds(), v);
 
     _t[idx] = t;
     _v[idx] = v;
@@ -593,15 +590,15 @@ unsigned Interpolator::calculate(XtcData::TimeStamp t) const
             auto rt = (t.asDouble() - _t[idx0].asDouble()) / (_t[idx1].asDouble() - _t[idx0].asDouble());
             auto dv = double(_v[idx1]) - double(_v[idx0]);
             auto b  = _v[idx0];
-            v = unsigned(rt * dv + 0.5) + b;
+            v = unsigned(rt * dv) + b;
         } else {
-            v = 0;
+            v = _v[idx0];               // Return the earliest value we have
         }
     } else {
-        v = _v[idx0];
+        v = _v[idx1];                   // Return the only value we have so far
     }
 
-    logging::debug("*** Int::calc:   idx[0,1] %d, %d, t %u.%09u, v %u\n", idx0, idx1, t.seconds(), t.nanoseconds(), v);
+    logging::debug("*** Int::calc:   idx[0,1] %d, %d, t %u.%09u, v %u", idx0, idx1, t.seconds(), t.nanoseconds(), v);
 
     return v;
 }
@@ -617,12 +614,12 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     m_running       (false)
 {
     if (para.kwargs.find("slowGroup") != para.kwargs.end())
-        Drp::m_slowGroup = std::stoul(para.kwargs["slowGroup"]);
+        m_slowGroup = std::stoul(para.kwargs["slowGroup"]);
     else
-        Drp::m_slowGroup = 0;    // default: interpolation disabled
+        m_slowGroup = 0;    // default: interpolation disabled
 
-    logging::debug("%s: slowGroup = %u", __PRETTY_FUNCTION__, Drp::m_slowGroup);
-    if (Drp::m_slowGroup == 0) {
+    logging::debug("%s: slowGroup = %u", __PRETTY_FUNCTION__, m_slowGroup);
+    if (m_slowGroup == 0) {
         m_interpolating = false;
         logging::info("Interpolation disabled");
     } else {
@@ -783,7 +780,6 @@ void UdpEncoder::_worker()
             m_nEvents++;
 
             m_evtQueue.push(index);
-            //printf("*** wk evt %u\n", m_evtQueue.guess_size());
 
             _process(dgram);            // Was _matchUp
         }
@@ -823,13 +819,19 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
         }
 
         if (m_interpolating) {
-            if (dgram && (dgram->readoutGroups() & (1 << m_slowGroup))) {
-                const ms_t tmo(500);
+            if (dgram && (dgram->readoutGroups() & (1 << m_slowGroup)) &&
+                (dgram->service() == XtcData::TransitionId::L1Accept)) {
+                const ms_t tmo(1500);
                 auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
                 XtcData::Dgram* encDg;
+                while (m_encQueue.guess_size() > 1) {             // Drain all but 1 entry, the most recent
+                    auto rc = m_encQueue.try_pop(encDg);          // Actually consume the element
+                    if (rc)   m_bufferFreelist.push(encDg);       // Return buffer to freelist
+                    printf("*** enc discarded: %u\n", m_encQueue.guess_size());
+                }
                 while (!m_encQueue.peek(encDg)) {  // Wait for an encoder value
                     if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-                        printf("*** enc peek timed out\n");
+                        printf("*** enc peek timed out: %u\n", m_encQueue.guess_size());
                         return;
                     }
                     std::this_thread::yield();
@@ -962,14 +964,12 @@ void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
     uint32_t evtIdx;
     auto rc = m_evtQueue.try_pop(evtIdx);         // Actually consume the pebble index
     if (rc)  assert(evtIdx == pebbleIdx);
-    //printf("*** tr evt %u, rc %d\n", m_evtQueue.guess_size(), rc);
 }
 
 void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame)
 {
     uint32_t evtIdx;
-    /*auto rc =*/ m_evtQueue.try_pop(evtIdx);         // Actually consume the element
-    //printf("*** L1 evt %u, rc %d\n", m_evtQueue.guess_size(), rc);
+    m_evtQueue.try_pop(evtIdx);         // Actually consume the element
 
     auto bufEnd = (char*)&pgpDg + m_pool->pebble.bufferSize();
 
@@ -979,7 +979,6 @@ void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& fra
         XtcData::Dgram* dgram;
         auto rc = m_encQueue.try_pop(dgram);          // Actually consume the element
         if (rc)   m_bufferFreelist.push(dgram);       // Return buffer to freelist
-        //printf("*** L1 enc %u, bfl %u, rc %d\n", m_encQueue.guess_size(), m_bufferFreelist.guess_size(), rc);
     }
 
     ++m_nMatch;
@@ -999,7 +998,6 @@ void UdpEncoder::_timeout(const XtcData::TimeStamp& timestamp)
     uint32_t idx;
     auto rc = m_evtQueue.try_pop(idx);              // Actually consume the element
     if (rc)  assert(idx == index);
-    //printf("*** TO evt %u, rc %d\n", m_evtQueue.guess_size(), rc);
 
     if (dgram.service() == XtcData::TransitionId::L1Accept) {
         // No encoder data so mark event as damaged

@@ -71,7 +71,7 @@ ami_manager_node = "drp-srcf-mon001"
 procmgr_config = [
  {                        id:'groupca',flags:'s', env:epics_env, cmd:f'groupca DAQ:NEH 3 {groups}'},
  {                        id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
- { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:f'control -S 1 -C BEAM --url {url} -d {cdb}/configDB -P {hutch} -B DAQ:NEH -x 3 --user {user}'},
+ { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 3 -C BEAM --user {user} --url {url} -d {cdb}/configDB -t trigger -S 1'},
  {                        flags:'sp', id:'control_gui', cmd:f'control_gui -E -t 30000 -l WARNING -H {collect_host} --user {user}'},
  # trigger event builder
  { host: 'drp-srcf-cmp029', id:'teb0', flags:'spu', cmd:f'{teb_cmd}'},

@@ -57,10 +57,6 @@ typedef struct {
     encoder_channel_t   channel[1];
 } encoder_frame_t;
 
-bool     m_interpolating;
-unsigned m_slowGroup;
-encoder_frame_t m_zeroFrame;
-
 static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_frame_t is not size 64");
 class UdpEncoder;
 
@@ -119,7 +115,7 @@ private:
 class Interpolator
 {
 public:
-  Interpolator() : _idx(0), _flag(false) {}
+  Interpolator() : _idx(0), _v{0,0}, _flag(false) {}
   ~Interpolator() {}
 
 public:
@@ -164,6 +160,8 @@ private:
     std::shared_ptr<UdpReceiver> m_udpReceiver;
     std::thread m_workerThread;
     Interpolator m_interpolator;
+    bool m_interpolating;
+    unsigned m_slowGroup;
     SPSCQueue<uint32_t> m_evtQueue;
     SPSCQueue<XtcData::Dgram*> m_encQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
