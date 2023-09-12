@@ -11,9 +11,16 @@ Usage ::
 
 Created on 2023-09-07 by Mikhail Dubrovin
 """
-char_expand    = u' \u25BC' # down-head triangle
-char_shrink    = u' \u25B2' # solid up-head triangle
+import os
+import logging
+logger = logging.getLogger(__name__)
 
+
+import psana.pyalgos.generic.PSUtils as psu
+from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr, np
+
+#char_expand    = u' \u25BC' # down-head triangle
+#char_shrink    = u' \u25B2' # solid up-head triangle
 
 def image_from_ndarray(nda):
     if nda is None:
@@ -30,5 +37,37 @@ def image_from_ndarray(nda):
           reshape_to_2d(nda)
     logger.debug(info_ndarr(img,'img'))
     return img
+
+def random_image(shape=(10,10)):
+    import psana.pyalgos.generic.NDArrGenerators as ag
+    return ag.random_standard(shape, mu=0, sigma=10)
+
+def image_from_kwargs(**kwa):
+    ndafname = kwa.get('ndafname', None)
+
+    if not os.path.lexists(ndafname):
+        logger.warning('ndarray file %s not found - use random image' % ndafname)
+        return ndarandom_image()
+
+    nda = np.load(ndafname)
+    if nda is None:
+        logger.warning('can not load ndarray from file: %s - use random image' % ndafname)
+        return ndarandom_image()
+
+    geofname = kwa.get('geofname', None)
+    if not os.path.lexists(geofname):
+        logger.warning('geometry file %s not found - use ndarray without geometry' % geofname)
+        return image_from_ndarray(nda)
+
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+    geo = GeometryAccess(geofname)
+
+    irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
+    return img_from_pixel_arrays(irows, icols, W=nda)
+
+
+def color_table(ict=2):
+    import psana.graphqt.ColorTable as ct
+    return ct.next_color_table(ict)  # OR ct.color_table_monochr256()
 
 # EOF
