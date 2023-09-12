@@ -12,13 +12,6 @@ Usage ::
 Created on 2023-09-07 by Mikhail Dubrovin
 """
 
-#from psana.graphqt.CMWControlBase import * #cp, CMWControlBase, QApplication, os, sys, logging, QRectF, QWFileNameV2
-#from psana.graphqt.IVControlSpec import IVControlSpec
-#import psana.pyalgos.generic.PSUtils as psu
-#from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr, np
-#import psana.graphqt.QWUtils as qu
-#from psana.detector.dir_root import DIR_DATA_TEST
-
 import os
 import sys
 
@@ -35,9 +28,7 @@ from psana.graphqt.Styles import style
 import psana.graphqt.GWROIUtils as roiu
 from psana.graphqt.QWPopupSelectItem import popup_select_item_from_list
 from psana.graphqt.QWPopupFileName import popup_file_name
-
-#from psana.detector.dir_root import DIR_DATA_TEST
-#from psana.graphqt.QWIcons import icon
+import psana.graphqt.MEDUtils as mu
 
 class MEDControl(QWidget):
     """QWidget with control fields for Mask Editor"""
@@ -49,8 +40,11 @@ class MEDControl(QWidget):
 
         QWidget.__init__(self, None)
 
-        self.fname_geo = kwa.get('fname_geo', 'geometry.txt')
+        self.geofname = kwa.get('geofname', 'geometry.txt')
+        self.ndafname = kwa.get('ndafname', 'ndarray.npy')
         self.wmain = kwa.get('parent', None)
+
+
         if self.wmain is not None:
             self.wisp = self.wmain.wisp
             self.wimax = self.wmain.wisp.wimax
@@ -58,22 +52,28 @@ class MEDControl(QWidget):
             self.wim = self.wmain.wisp.wimax.wim
 
         self.lab_geo = QLabel('Geometry:')
-        self.but_geo = QPushButton('Select')
+        self.but_geo = QPushButton(str(self.geofname))
 
-        self.lab_ins = QLabel('Instr:')
-        self.but_ins = QPushButton('Select')
+        self.lab_nda = QLabel('N-d array:')
+        self.but_nda = QPushButton(str(self.ndafname))
+
+        self.lab_dst = QLabel('Dataset:')
+        self.but_dst = QPushButton('Select')
 
         self.list_of_buts = (
+          self.but_nda,
           self.but_geo,
-          self.but_ins,
+          self.but_dst,
         )
 
         self.hbox0 = QHBoxLayout()
-        self.hbox0.addWidget(self.lab_ins)
-        self.hbox0.addWidget(self.but_ins)
+        self.hbox0.addWidget(self.lab_nda)
+        self.hbox0.addWidget(self.but_nda)
         self.hbox0.addStretch()
 
         self.hbox1 = QHBoxLayout()
+        self.hbox1.addWidget(self.lab_dst)
+        self.hbox1.addWidget(self.but_dst)
         self.hbox1.addWidget(self.lab_geo)
         self.hbox1.addWidget(self.but_geo)
         self.hbox1.addStretch()
@@ -86,40 +86,58 @@ class MEDControl(QWidget):
         #for but in self.list_of_buts:
         #    but.clicked.connect(self.on_but_clicked)
 
+        self.but_nda.clicked.connect(self.on_but_nda)
         self.but_geo.clicked.connect(self.on_but_geo)
-        self.but_ins.clicked.connect(self.on_but_ins)
+        self.but_dst.clicked.connect(self.on_but_dst)
 
         self.set_tool_tips()
         self.set_style()
 
     def set_style(self):
         self.layout().setContentsMargins(5,5,5,0)
-        self.lab_ins.setStyleSheet(style.styleLabel)
+        self.lab_dst.setStyleSheet(style.styleLabel)
+        self.lab_nda.setStyleSheet(style.styleLabel)
         self.lab_geo.setStyleSheet(style.styleLabel)
-        self.but_ins.setFixedWidth(50)
+        #self.but_dst.setFixedWidth(50)
         #self.set_buttons_visiable()
         for but in self.list_of_buts: but.setStyleSheet(style.styleButton)
 
     def set_tool_tips(self):
-        self.but_ins.setToolTip('Instrument - click and select')
+        self.but_dst.setToolTip('Dataset - click and select')
         self.but_geo.setToolTip('Geometry file name')
 
     def on_but_geo(self):
         logger.debug(sys._getframe().f_code.co_name)
-        path = popup_file_name(parent=self, mode='r', path=self.fname_geo, dirs=[], fltr='*.txt *.data\n*')
+        path = popup_file_name(parent=self, mode='r', path=self.geofname, dirs=[], fltr='*.txt *.data\n*')
         logger.debug('Selected: %s' % str(path))
         if path is None: return
         self.but_geo.setText(path)
         self.but_geo.setStyleSheet(style.styleButtonGood)
+        self.set_image()
 
-    def on_but_ins(self):
+    def on_but_nda(self):
+        logger.debug(sys._getframe().f_code.co_name)
+        path = popup_file_name(parent=self, mode='r', path=self.ndafname, dirs=[], fltr='*.npy *.txt *.data\n*')
+        logger.debug('Selected: %s' % str(path))
+        if path is None: return
+        self.but_nda.setText(path)
+        self.but_nda.setStyleSheet(style.styleButtonGood)
+        self.set_image()
+
+    def set_image(self):
+        img = mu.image_from_kwargs(\
+               geofname=str(self.but_geo.text()),\
+               ndafname=str(self.but_nda.text())
+        )
+        self.wim.set_pixmap_from_arr(img, set_def=True)
+
+    def on_but_dst(self):
         logger.debug(sys._getframe().f_code.co_name)
         insts = sorted(os.listdir('/cds/data/ffb/'))
         logger.debug('list of instruments: %s' % str(insts))
-
-        ins = popup_select_item_from_list(self.but_ins, insts, dx=10, dy=-10, do_sorted=False)
+        ins = popup_select_item_from_list(self.but_dst, insts, dx=10, dy=-10, do_sorted=False)
         if ins is None: return
-        self.but_ins.setText(ins)
+        self.but_dst.setText(ins)
 
     def closeEvent(self, e):
         QWidget.closeEvent(self, e)
