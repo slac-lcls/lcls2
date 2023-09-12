@@ -37,8 +37,6 @@ def listParams(d,name):
     
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-P', metavar='PARAMETER', default=None,
-                        help='parameter to scan (omit to get full list)')
     parser.add_argument('--linear', type=float, nargs=3, help='linear scan over range [0]:[1] in steps of [2]')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=2,
                         help='platform (default 2)')
@@ -48,11 +46,14 @@ def main():
                         help='timeout msec (default 20000)')
     parser.add_argument('-g', type=int, default=6, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
     parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (e.g. BEAM)')
-    parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
+    parser.add_argument('--detname', default='epixhr_0', help="detector name (default 'epixhr_0')")
     parser.add_argument('--scantype', default='config', help="scan type (default 'config')")
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument('--validate', action='store_true', help='validate config parameter')
     parser.add_argument('--uris', default='https://pswww.slac.stanford.edu/ws-auth/configdb/ws', help="configdb (default=https://pswww.slac.stanford.edu/ws-auth/configdb/ws")
+    parser.add_argument('--start', default=[0,0], help='list of start values for (R0,AcqDelay2)', args='+')
+    parser.add_argument('--step' , default=1, help='step size')
+    parser.add_argument('--nsteps', default=1, type=int, help='number of scan steps')
 
     parser.add_argument('--events', type=int, default=2000, help='events per step (default 2000)')
     parser.add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
@@ -70,52 +71,6 @@ def main():
 
     if args.events < 1:
         parser.error('readout count (--events) must be >= 1')
-
-    #  Validate scan parameter
-    #  Lookup the configuration in the database
-    user = os.environ['USER']
-    hutch = user[:3]
-    if hutch not in ('tmo','rix'):
-        hutch = 'tst'
-    dbargs = cdb.createArgs().args
-    dbargs.inst = hutch
-    dbargs.prod = False
-    dbargs.name = 'epixhr'
-    dbargs.segm = 0
-    dbargs.user = user
-    dbargs.password = 'pcds'
-    create = False
-    db = 'configdb' # if dbargs.prod else 'devconfigdb'
-    mycdb = cdb.configdb(f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/', dbargs.inst, create,
-                         root='configDB', user=dbargs.user, password=dbargs.password)
-    top = mycdb.get_configuration(dbargs.alias, dbargs.name+'_%d'%dbargs.segm)
-
-    keys = None
-    if args.P is not None:
-        if 'Hr10kTAsic' in args.P:
-            keys = [f'{args.detname}:expert.EpixHR.Hr10kTAsic{i}.{args.P[11:]}' for i in range(4)]
-        elif 'PacketRegisters' in args.P:
-            pass
-        else:
-            keys = [f'{args.detname}:expert.EpixHR.{args.P}']
-        if keys is None:
-            print('Invalid parameter {args.P}')
-
-    d = top['expert']['EpixHR']
-    l = listParams(d,None)
-
-    usage = keys is None
-    if not usage:
-        for k in keys:
-            if not k in l:
-                usage = True
-                break
-
-    if usage:
-        print('Valid parameters are:')
-        for i in l:
-            print(i)
-        return
 
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
@@ -190,6 +145,9 @@ def main():
 
     configureBlock = scan.getBlock(transition="Configure", data=data)
 
+    keys = [f'{args.detname}:expert.EpixHR.RegisterControl.R0Delay',
+            f'{args.detname}:expert.EpixHR.RegisterControl.AcqDelay2']
+
     configure_dict = {"NamesBlockHex": configureBlock,
                       "readout_count": args.events,
                       "group_mask"   : group_mask,
@@ -206,18 +164,14 @@ def main():
 
     # scan loop
 
-    if args.linear:
-        print(f'linear: {args.linear}')
-        def steps():
-            metad = {'detname':args.detname, 'scantype':args.scantype}
-            d = {}
-            for value in np.arange(*args.linear):
-                for k in keys:
-                    d[k] = int(value)
-                yield (d, value, json.dumps(metad))
 
-    else:
-        raise RuntimeError('Must specify scan type (--linear,)')
+    def steps():
+        metad = {'detname':args.detname, 'scantype':args.scantype}
+        d = {}
+        for value in np.arange(0.,args.step*args.nsteps,args.step):
+            for i,k in enumerate(keys):
+                d[k] = int(value+args.start[i])
+            yield (d, value, json.dumps(metad))
 
     for step in steps():
         # update
@@ -228,7 +182,7 @@ def main():
             my_step_data.update({motor.name: motor.position})
             # derive step_docstring from step_value
             if motor.name == ControlDef.STEP_VALUE:
-                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {step[1]}}}'
+                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {step[1]+args.start[0]}}}'
                 my_step_data.update({'step_docstring': docstring})
 
         data["motors"] = my_step_data
