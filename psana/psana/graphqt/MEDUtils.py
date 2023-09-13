@@ -38,7 +38,7 @@ def image_from_ndarray(nda):
     logger.debug(info_ndarr(img,'img'))
     return img
 
-def random_image(shape=(10,10)):
+def random_image(shape=(64,64)):
     import psana.pyalgos.generic.NDArrGenerators as ag
     return ag.random_standard(shape, mu=0, sigma=10)
 
@@ -47,7 +47,7 @@ def image_from_kwargs(**kwa):
 
     if not os.path.lexists(ndafname):
         logger.warning('ndarray file %s not found - use random image' % ndafname)
-        return ndarandom_image()
+        return random_image()
 
     nda = np.load(ndafname)
     if nda is None:
