@@ -230,6 +230,10 @@ class DataSourceBase(abc.ABC):
         else:
             return False
 
+    def is_srv(self):
+        """ Only NullDataSource is the srv node. """
+        return False
+
     # to be added at a later date...
     #@abc.abstractmethod
     #def steps(self):
