@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string>
 #include <signal.h>
+#include <cmath>
 
 #include "psdaq/tpr/Client.hh"
 #include "psdaq/tpr/Frame.hh"
@@ -19,6 +20,7 @@ int m_dropRequest;
 struct sockaddr_in m_loopbackAddr;
 uint16_t m_loopbackFrameCount;
 static const char *m_addr = "127.0.0.1";
+static const double PI = 4.0 * std::atan(1.0);
 
 // forward declarations
 void _loopbackInit();
@@ -227,6 +229,8 @@ void _loopbackSend()
     } else {
         // channel 0 test pattern: 100, 200, 100, 200, 100, ...
         pChannel->encoderValue = htonl((frameCount & 1) ? 200 : 100);
+        //// channel 0 test pattern: sine wave between 100 and 200
+        //pChannel->encoderValue = htonl(unsigned(100. * (1.5 + 0.5 * std::sin(2. * PI * double(frameCount) / 102.))));
         // send frame
         sent = sendto(m_loopbackFd, (void *)m_buf, sizeof(m_buf), 0,
                       (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));

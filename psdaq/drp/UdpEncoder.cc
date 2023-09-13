@@ -567,46 +567,82 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 }
 
 
-void Interpolator::reset()
-{
-  _idx = 0;
-  _flag = false;
-}
-
 void Interpolator::update(XtcData::TimeStamp t, unsigned v)
 {
     auto idx = _idx++ & 1;
-    if (_idx > 1)  _flag = true;        // Protect against _idx rollover
+    _idx &= 1;
 
-    logging::debug("*** Int::update: idx      %d,    t %u.%09u, v %u", idx, t.seconds(), t.nanoseconds(), v);
+    logging::debug("*** Int::update: idx      %d,    t %u.%09u, v %u", _idx, t.seconds(), t.nanoseconds(), v);
 
-    _t[idx] = t;
-    _v[idx] = v;
+    _t[idx] = t.asDouble();
+    _v[idx] = double(v);
 }
 
-unsigned Interpolator::calculate(XtcData::TimeStamp t, XtcData::Damage& damage) const
+unsigned Interpolator::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage) const
 {
-    auto idx0 = _idx  & 1;
-    auto idx1 =  idx0 ^ 1;
+    auto i0 = _idx;  const auto& t0 = _t[i0];  const auto& v0 = _v[i0]; // Earliest point
+    auto i1 = i0^1;  const auto& t1 = _t[i1];  const auto& v1 = _v[i1]; // Latest   point
 
     // Linear interpolation
     unsigned v;
-    if (_flag) {
-        if (t > _t[idx0]) {
-            auto rt = (t.asDouble() - _t[idx0].asDouble()) / (_t[idx1].asDouble() - _t[idx0].asDouble());
-            auto dv = double(int(_v[idx1]) - int(_v[idx0]));
-            auto b  = _v[idx0];
-            v = unsigned(rt * dv) + b;
+    if (_t[1] != 0.0) {                 // True when 2 or more points were collected
+        double t = ts.asDouble();
+        if (t > t0) {
+            auto rt = (t - t0) / (t1 - t0);
+            auto dv = v1 - v0;
+            auto b  = v0;
+            v = unsigned(rt * dv + b);
         } else {
-            v = _v[idx0];               // Return the earliest value we have
+            v = unsigned(v0);           // Return the earliest value there is
             damage.increase(XtcData::Damage::MissingData);
         }
     } else {
-        v = _v[idx1];                   // Return the only value we have so far
+        v = unsigned(_v[0]);            // Return the only value available
         damage.increase(XtcData::Damage::MissingData);
     }
 
-    logging::debug("*** Int::calc:   idx[0,1] %d, %d, t %u.%09u, v %u", idx0, idx1, t.seconds(), t.nanoseconds(), v);
+    logging::debug("*** Int::calc:   idx %d, t %u.%09u, v %u", _idx, ts.seconds(), ts.nanoseconds(), v);
+
+    return v;
+}
+
+
+void Interpolator2::update(XtcData::TimeStamp t, unsigned v)
+{
+    auto idx = _idx++ % 3;
+    _idx %= 3;
+
+    logging::debug("*** Int2::update: idx      %d,    t %u.%09u, v %u", idx, t.seconds(), t.nanoseconds(), v);
+
+    _t[idx] = t.asDouble();
+    _v[idx] = double(v);
+}
+
+unsigned Interpolator2::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage) const
+{
+    auto i0 = _idx  %3;  const auto& t0 = _t[i0];  const auto& v0 = _v[i0]; // Earliest point
+    auto i1 = (i0+1)%3;  const auto& t1 = _t[i1];  const auto& v1 = _v[i1]; // Middle   point
+    auto i2 = (i1+1)%3;  const auto& t2 = _t[i2];  const auto& v2 = _v[i2]; // Latest   point
+
+    // Quadratic interpolation
+    unsigned v;
+    if (_t[2] != 0.0) {                 // True when 3 or more points were collected
+        double t = ts.asDouble();
+        if (t > t0) {
+            auto l0 = ((t - t1) * (t - t2)) / ((t0 - t1) * (t0 - t2));
+            auto l1 = ((t - t0) * (t - t2)) / ((t1 - t0) * (t1 - t2));
+            auto l2 = ((t - t0) * (t - t1)) / ((t2 - t0) * (t2 - t1));
+            v = unsigned(v0 * l0 + v1 * l1 + v2 * l2);
+        } else {
+            v = unsigned(v0);           // Return the earliest value there is
+            damage.increase(XtcData::Damage::MissingData);
+        }
+    } else {
+        v = unsigned(_t[1]==0.0 ? _v[0] : _v[1]); // Return the most recent value available
+        damage.increase(XtcData::Damage::MissingData);
+    }
+
+    logging::debug("*** Int::calc:   idx %d, t %u.%09u, v %u", _idx, ts.seconds(), ts.nanoseconds(), v);
 
     return v;
 }
@@ -842,7 +878,8 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                 auto encFrame = (const encoder_frame_t*)(encDg->xtc.payload());
                 auto encValue = encFrame->channel[0].encoderValue;
 
-                m_interpolator.update(dgram->time, encValue); // Associate the current L1Accept's time with the latest encoder value
+                // Associate the current L1Accept's timestamp with the latest encoder value
+                m_interpolator.update(dgram->time, encValue);
 
                 // Handle all events that have accumulated on the queue
                 while (true) {

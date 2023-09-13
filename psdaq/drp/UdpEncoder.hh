@@ -112,22 +112,40 @@ private:
 };
 
 
-class Interpolator
+class Interpolator                      // Linear
 {
 public:
-  Interpolator() : _idx(0), _v{0,0}, _flag(false) {}
+  Interpolator() : _idx(0), _t{0,0}, _v{0,0} {}
   ~Interpolator() {}
 
 public:
-  void reset();
+  void reset() { _idx=0;  _t[1]=0; }
   void update(XtcData::TimeStamp t, unsigned v);
   unsigned calculate(XtcData::TimeStamp t, XtcData::Damage& damage) const;
 
 private:
-  unsigned           _idx;
-  XtcData::TimeStamp _t[2];
-  unsigned           _v[2];
-  bool               _flag;
+  unsigned _idx;
+  double   _t[2];
+  double   _v[2];
+};
+
+
+class Interpolator2                     // Quadratic
+{
+public:
+  Interpolator2() : _idx(0), _t{0,0,0}, _v{0,0,0}, _flag(false) {}
+  ~Interpolator2() {}
+
+public:
+  void reset() { _idx=0;  _t[0]=0;  _t[1]=0;  _t[2]=0; }
+  void update(XtcData::TimeStamp t, unsigned v);
+  unsigned calculate(XtcData::TimeStamp t, XtcData::Damage& damage) const;
+
+private:
+  unsigned _idx;
+  double   _t[3];
+  double   _v[3];
+  bool     _flag;
 };
 
 
