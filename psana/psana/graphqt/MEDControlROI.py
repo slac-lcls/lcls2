@@ -44,31 +44,19 @@ class MEDControlROI(QWidget):
             self.wspec = self.wmain.wisp.wspec
             self.wim = self.wmain.wisp.wimax.wim
 
-        self.but_add = QPushButton('Add')
-        self.but_fin = QPushButton('Finish')
-        self.but_can = QPushButton('Cancel')
-        self.but_edi = QPushButton('Edit')
-        self.but_sel = QPushButton('Select')
-        self.but_del = QPushButton('Delete')
-        self.but_inv = QPushButton('Invert')
-        self.but_sav = QPushButton('Save')
-        self.but_loa = QPushButton('Load')
-        self.but_mas = QPushButton('Mask')
-        self.but_img = QPushButton('Image')
-
-        self.list_of_buts = (
-          self.but_img,
-          self.but_add,
-          self.but_fin,
-          self.but_can,
-          self.but_edi,
-          self.but_sel,
-          self.but_del,
-          self.but_inv,
-          self.but_sav,
-          self.but_loa,
-          self.but_mas,
-        )
+        self.but_img,\
+        self.but_add,\
+        self.but_com,\
+        self.but_can,\
+        self.but_edi,\
+        self.but_sel,\
+        self.but_del,\
+        self.but_inv,\
+        self.but_sav,\
+        self.but_loa,\
+        self.but_mas = self.list_of_buts\
+                     = [QPushButton(s) for s in ('Image', 'Add', 'Compl.', 'Cancel', 'Edit',\
+                                                 'Select', 'Delete', 'Invert', 'Save', 'Load', 'Mask')]
 
         self.box = QVBoxLayout()
         for but in self.list_of_buts:
@@ -83,7 +71,7 @@ class MEDControlROI(QWidget):
         self.but_img.setDefault(True)
         self.but_img.setStyleSheet(style.styleButtonGood)
 
-    def set_style(self, width=50):
+    def set_style(self, width=60):
         self.layout().setContentsMargins(5,10,0,2)
         for but in self.list_of_buts: but.setFixedWidth(width)
         #self.set_buttons_visiable()
@@ -91,7 +79,7 @@ class MEDControlROI(QWidget):
     def set_tool_tips(self):
         self.but_add.setToolTip('Add ROI to image\nclick and select ROI type from pop-up menu,'\
                                 '\nthen click on image as many times as necessary to define ROI shape')
-        self.but_fin.setToolTip('Finishing add ROI for multiclick input\nin case of PIXGROUP and POLYGON')
+        self.but_com.setToolTip('Completing add ROI for multiclick input\nin case of PIXGROUP and POLYGON')
         self.but_edi.setToolTip('Click to edit ROI\nthen click on desired ROI and use control handles to edit')
         self.but_sel.setToolTip('Set mode Select\nclick on ROIs to select\nthen click Delete')
         self.but_del.setToolTip('Delete selected ROIs')
@@ -114,7 +102,7 @@ class MEDControlROI(QWidget):
         elif but == self.but_inv: self.set_mode('I')
         elif but == self.but_del: self.wim.delete_selected_roi()
         elif but == self.but_can: self.wim.cancel_add_roi()
-        elif but == self.but_fin: self.wim.finish()
+        elif but == self.but_com: self.wim.finish()
         elif but == self.but_sav: self.on_but_sav()
         elif but == self.but_loa: self.on_but_loa()
         elif but == self.but_mas: self.on_but_mas()
