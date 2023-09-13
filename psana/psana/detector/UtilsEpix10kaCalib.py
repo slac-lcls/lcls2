@@ -451,7 +451,6 @@ def pedestals_calibration(parser):
 
       logger.debug('--- det.raw._det_name: %s' % odet.raw._det_name) # epixquad
       logger.debug('    det.raw._dettype : %s' % odet.raw._dettype)  # epix
-      logger.debug('    det.raw._calibconst.keys(): %s' % str(odet.raw._calibconst.keys())) # dict_keys(['geometry'])
       #logger.debug('    det.raw._uniqueid: %s' % det.raw._uniqueid)
       #logger.debug('    det.raw._sorted_segment_ids: %s' % str(odet.raw._sorted_segment_ids))
       #logger.debug('    det.raw._fullname: %s' % odet.raw._fullname())
