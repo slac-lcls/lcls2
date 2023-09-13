@@ -121,12 +121,16 @@ def main():
     motors = [MyFloatPv(ControlDef.STEP_VALUE)]
     scan.configure(motors = motors)
 
+    d = {}
+    for i,k in enumerate(keys):
+        d[k] = 0
+
     my_config_data = {}
     for motor in scan.getMotors():
         my_config_data.update({motor.name: motor.position})
         # derive step_docstring from step_value
         if motor.name == ControlDef.STEP_VALUE:
-            docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {motor.position}}}'
+            docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": "{d}"}}'
             my_config_data.update({'step_docstring': docstring})
 
     data = {
@@ -179,7 +183,8 @@ def main():
             my_step_data.update({motor.name: motor.position})
             # derive step_docstring from step_value
             if motor.name == ControlDef.STEP_VALUE:
-                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {step[1]+args.start[0]}}}'
+#                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {step[1]+args.start[0]}}}'
+                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": "{step[0]}"}}'
                 my_step_data.update({'step_docstring': docstring})
 
         data["motors"] = my_step_data

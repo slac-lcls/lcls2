@@ -51,7 +51,7 @@ files['248MHz'] = [path+'ePixHr10kT_MMCM_248MHz.yml',
 #                   path+'ePixHr10kT_TriggerRegisters_100Hz.yml',
 ]
 
-files['4'] = [path+'ePixHr10kT_MMCM_320MHz.yml',
+files['4'] = [path+'ePixHr10kT_MMCM_248MHz.yml',
               path+'ePixHr10kT_PowerSupply_Enable.yml',
               path+'ePixHr10kT_RegisterControl_24us_248MHz.yml',
               path+'ePixHr10kT_PLLBypass_248MHz_ASIC_0.yml',

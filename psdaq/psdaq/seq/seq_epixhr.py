@@ -6,7 +6,7 @@ import argparse
 from psdaq.seq.seq import *
 from psdaq.seq.seqprogram import *
 
-if __name__ == '__main__':
+def main():
 
     parser = argparse.ArgumentParser(description='Sequence for EpixHR DAQ/Run triggering')
     parser.add_argument('--rate', help="Run trigger rate (Hz)", type=float, default=5.0e3);
@@ -53,14 +53,14 @@ if __name__ == '__main__':
     if npretrig:
         line = len(instrset)
         instrset.append(ControlRequest([0]))
-        instrset.append(FixedRateSync(marker=6,occ=spacing-1))
+        instrset.append(FixedRateSync(marker=6,occ=spacing))
         if npretrig>2:
-            instrset.append(Branch.conditional(line,counter=0,value=npretrig-2))
+            instrset.append(Branch.conditional(line,counter=0,value=npretrig-1))
                      
     instrset.append(ControlRequest([0,1]))
 
     line = len(instrset)
-    instrset.append(FixedRateSync(marker=6,occ=spacing-1))
+    instrset.append(FixedRateSync(marker=6,occ=spacing))
     instrset.append(ControlRequest([0]))
     instrset.append(Branch.conditional(line,counter=0,value=nafter-1))
 
@@ -80,3 +80,6 @@ if __name__ == '__main__':
     seq = SeqUser(args.pv)
 
     seq.execute(title,instrset,descset)
+
+if __name__ == '__main__':
+    main()

@@ -67,7 +67,7 @@ static unsigned getVarDefSize(XtcData::VarDef& vd, const std::vector<unsigned>& 
 }
 
 BldPVA::BldPVA(std::string det,
-               unsigned    interface) : _alg("raw",0,0,0), _interface(interface)
+               unsigned    interface) : _alg("raw",1,0,0), _interface(interface)
 {
     //
     //  Parse '+' separated list of detName, detType, detId
@@ -84,14 +84,12 @@ BldPVA::BldPVA(std::string det,
     _detType = det.substr(p1+1,p2-p1-1).c_str();
     _detId   = det.substr(p2+1,p3-p2-1).c_str();
     unsigned vsn = strtoul(det.substr(p3+1).c_str(),NULL,16);
-    _alg     = XtcData::Alg("raw",(vsn>>8)&0xf,(vsn>>4)&0xf,(vsn>>0)&0xf);
+    //    _alg     = XtcData::Alg("raw",(vsn>>8)&0xf,(vsn>>4)&0xf,(vsn>>0)&0xf);
 
     std::string sname(_detId);
-    // _pvaAddr    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":ADDR"   ).c_str());
-    // _pvaPort    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":PORT"   ).c_str());
-    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":ADDR"   ).c_str());
-    _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":PORT"   ).c_str());
-    _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":PAYLOAD").c_str());
+    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":BLD1_MULT_ADDR").c_str());
+    _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":BLD1_MULT_PORT").c_str());
+    _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":BLD_PAYLOAD"   ).c_str());
 
     logging::info("BldPVA::BldPVA looking up multicast parameters for %s/%s from %s",
                   _detName.c_str(), _detType.c_str(), _detId.c_str());
@@ -103,6 +101,13 @@ BldPVA::~BldPVA()
 
 bool BldPVA::ready() const
 {
+#define TrueFalse(v) v->ready()?'T':'F'
+
+    logging::debug("%s  addr %c  port %c  payload %c\n",
+                   _detId.c_str(), 
+                   TrueFalse(_pvaAddr),
+                   TrueFalse(_pvaPort),
+                   TrueFalse(_pvaPayload));
     return (_pvaAddr   ->ready() &&
             _pvaPort   ->ready() &&
             _pvaPayload->ready());
@@ -250,6 +255,8 @@ XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
                                           const void* bufEnd,
                                           const XtcData::NamesId& namesId)
 {
+    logging::info("addToXtc %s/%s\n",_detName.c_str(),_detType.c_str());
+
     XtcData::Names& bldNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
                                                                 _detName.c_str(), _alg,
                                                                 _detType.c_str(), _detId.c_str(), namesId);
@@ -1229,9 +1236,23 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
         if (kwargs.first == "interface")      continue;
+        if (kwargs.first == "pva_addr")       continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
+    }
+
+    //  Add pva_addr to the environment
+    if (para.kwargs.find("pva_addr")!=para.kwargs.end()) {
+        const char* a = para.kwargs["pva_addr"].c_str();
+        char* p = getenv("EPICS_PVA_ADDR_LIST");
+        char envBuff[256];
+        if (p)
+            sprintf(envBuff,"EPICS_PVA_ADDR_LIST=%s %s", p, a);
+        else
+            sprintf(envBuff,"EPICS_PVA_ADDR_LIST=%s", a);
+        logging::info("Setting env %s\n", envBuff);
+        putenv(envBuff);
     }
 
     para.maxTrSize = 256 * 1024;
