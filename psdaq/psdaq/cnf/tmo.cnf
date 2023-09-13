@@ -2,11 +2,10 @@ if not platform: platform = '0'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.78 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
-#im2k0_env = 'EPICS_PVA_ADDR_LIST=172.21.156.96 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
-#im5k4_env = 'EPICS_PVA_ADDR_LIST=172.21.156.113 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
-im2k0_env = ld_lib_path
-im5k4_env = ld_lib_path
-im6k4_env = ld_lib_path
+im2k0_env = 'EPICS_PVA_ADDR_LIST=172.21.156.96 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+im5k4_env = 'EPICS_PVA_ADDR_LIST=172.21.156.113 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+im6k4_env = 'EPICS_PVA_ADDR_LIST=172.21.132.35 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+sp1k4_env = 'EPICS_PVA_ADDR_LIST=172.21.132.32 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 #xtcav_epics_env = 'EPICS_PVA_ADDR_LIST=192.168.0.1 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 xtcav_epics_env = ld_lib_path
@@ -97,7 +96,8 @@ procmgr_config = [
 # { host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
  { host: 'drp-srcf-cmp028', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
- { host: 'drp-srcf-cmp003', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd,pcav'},
+# { host: 'drp-srcf-cmp003', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd,pcav'},
+ { host: 'drp-srcf-cmp003', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D gmd,xgmd'},
 
  { host: 'drp-srcf-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
 
@@ -112,7 +112,7 @@ procmgr_config = [
 # { host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x8 -D wave8 -k epics_w8_prefix=MR2K4:FIM:W8:01 -k epics_shv_prefix=MR2K4:FIM:SHV'},
 # { host: 'drp-srcf-cmp004', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -l 0x20 -D wave8 -k epics_w8_prefix=MR3K4:FIM:W8:01 -k epics_shv_prefix=MR3K4:FIM:SHV'},
 
- #{ host: 'drp-srcf-cmp007', id:'tmo_atmpiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
+ { host: 'drp-srcf-cmp007', id:'tmo_atmpiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
  { host: 'drp-srcf-cmp013', id:'tmo_fzppiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
@@ -123,8 +123,9 @@ procmgr_config = [
  { host: 'drp-srcf-cmp026', id:'tmo_peppexopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x4 -D opal'},
 
 # { host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spu', env:im2k0_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
-# { host: 'drp-srcf-cmp001', id:'im5k4_0',     flags:'spu', env:im5k4_env, cmd:pva_cmd0+' -l 0x2 IM5K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
-# { host: 'drp-srcf-cmp001', id:'im6k4_0',     flags:'spu', env:im6k4_env, cmd:pva_cmd0+' -l 0x4 IM6K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+ { host: 'drp-srcf-cmp001', id:'im5k4_0',     flags:'spu', env:im5k4_env, cmd:pva_cmd0+' -l 0x2 IM5K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+ { host: 'drp-srcf-cmp001', id:'im6k4_0',     flags:'spu', env:im6k4_env, cmd:pva_cmd0+' -l 0x4 IM6K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+ { host: 'drp-srcf-cmp001', id:'sp1k4_0',     flags:'spu', env:sp1k4_env, cmd:pva_cmd0+' -l 0x8 SP1K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
 # { host: 'drp-srcf-cmp014', id:'epix100_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epix100'},
 ]
@@ -174,7 +175,8 @@ procmgr_ami = [
 #  Add a second AMI window for timetool feedback graph
 #{                        id:'ami-client-tt',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} -g "tt_graph" -l /cds/group/pcds/dist/pds/tmo/scripts/tt-feedback.fc' },
 #{                        id:f'ami-client_acr',  flags:'s', cmd:f'ami-client -l tmo_acr_opal_feedback.fc -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_acr -g "acr_graph"'},
- {                        id:f'acr_server',  flags:'s', cmd:f'python tmo_acr_opal_feedback.py -P TMO:ACR'},
+#{                        id:f'ami-client_acr',  flags:'s', cmd:f'ami-client -l tmo_acr_piranha_feedback.fc -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_acr -g "acr_graph"'},
+# {                        id:f'acr_server',  flags:'s', cmd:f'python tmo_acr_opal_feedback.py -P TMO:ACR'},
 ]
 
 
