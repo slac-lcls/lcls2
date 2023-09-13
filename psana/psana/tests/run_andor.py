@@ -17,26 +17,23 @@ runnum=int(sys.argv[2])
 # fake-server is a small standalone zmq python script                           
 fake_dbase_server=sys.argv[3]
 
+ds = DataSource(exp=exp,run=runnum,dir='/cds/data/drpsrcf/rix/rixc00221/xtc/',intg_det='andor_vls',batch_size=1)
 
-# TODO: if ds.is_srv(): or if ds.node_type == 'srv' 
-if rank==4: # hack for now to eliminate use of publish.local below
+if ds.is_srv(): # hack for now to eliminate use of publish.local below
     publish.init()
  
 # we will remove this for batch processing and use "psplot" instead
 # publish.local = True
 
-# TODO: 
-# - get portnumber from psmon publish object 
-# - runnumber can be accessed directly by srv core
+# TODO: hide zmq_send in DataSource
 
 def my_smalldata(data_dict):
-    zmq_send(fake_dbase_server=fake_dbase_server, node=MPI.Get_processor_name(), runnum=data_dict['runnum'], port=12301)
+    zmq_send(fake_dbase_server=fake_dbase_server, node=MPI.Get_processor_name(), exp=exp, runnum=runnum, port=publish.port)
     if 'unaligned_andor_norm' in data_dict:
         andor_norm = data_dict['unaligned_andor_norm'][0]
         myplot = XYPlot(0,"Andor (normalized)",range(len(andor_norm)),andor_norm)
         publish.send('ANDOR',myplot)
  
-ds = DataSource(exp=exp,run=runnum,dir='/cds/data/drpsrcf/rix/rixc00221/xtc/',intg_det='andor_vls',batch_size=1)
 for myrun in ds.runs():
     andor = myrun.Detector('andor_vls')
     timing = myrun.Detector('timing')
