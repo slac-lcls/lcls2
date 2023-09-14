@@ -18,7 +18,7 @@ class BldDescriptor : public Pds_Epics::PVBase
 public:
     BldDescriptor(const char* channelName) : Pds_Epics::PVBase("pva",channelName) {}
     ~BldDescriptor();
-    XtcData::VarDef get(unsigned& payloadSize);
+    XtcData::VarDef get(unsigned& payloadSize, std::vector<unsigned>& sizes);
 };
 
 class Bld
@@ -77,7 +77,7 @@ public:
     bool            ready() const;
     unsigned        addr() const;
     unsigned        port() const;
-    XtcData::VarDef varDef(unsigned& sz) const;
+    XtcData::VarDef varDef(unsigned& sz, std::vector<unsigned>&) const;
 private:
     std::string                        _detName;
     std::string                        _detType;

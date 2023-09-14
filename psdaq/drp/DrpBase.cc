@@ -960,6 +960,20 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
         }
         logging::info("output dir: %s", statPth.c_str());
     }
+
+    //  Add pva_addr to the environment
+    if (para.kwargs.find("pva_addr")!=para.kwargs.end()) {
+        const char* a = para.kwargs["pva_addr"].c_str();
+        char* p = getenv("EPICS_PVA_ADDR_LIST");
+        char envBuff[256];
+        if (p)
+            sprintf(envBuff,"%s %s", p, a);
+        else
+            sprintf(envBuff,"%s", a);
+        logging::info("Setting env %s\n", envBuff);
+        if (setenv("EPICS_PVA_ADDR_LIST",envBuff,1))
+            perror("setenv pva_addr");
+    }
 }
 
 void DrpBase::shutdown()

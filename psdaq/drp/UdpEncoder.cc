@@ -1447,6 +1447,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
+            if (kwargs.first == "pva_addr")       continue;  // DrpBase
             if (kwargs.first == "match_tmo_ms")   continue;
             if (kwargs.first == "slowGroup")      continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
