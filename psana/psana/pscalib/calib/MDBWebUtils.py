@@ -67,7 +67,7 @@ def has_kerberos_ticket():
 
 def check_kerberos_ticket(exit_if_invalid=True):
     if has_kerberos_ticket(): return True
-    logger.warning('KERBEROS TICKET IS UNAVAILABLE OR EXPIRED. Requested operation requires valid kerberos ticket')
+    logger.error('KERBEROS TICKET IS UNAVAILABLE OR EXPIRED. Requested operation requires valid kerberos ticket')
     if exit_if_invalid:
         sys.exit('FIX KERBEROS TICKET - use command "kinit" or check its status with command "klist"')
     return False
