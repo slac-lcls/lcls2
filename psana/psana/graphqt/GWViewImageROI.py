@@ -425,14 +425,15 @@ class GWViewImageROI(GWViewImage):
         """returns mask generated from roi_type roiu.PIXEL and PIXGROUP"""
         logger.debug('mask_pixels')
         shape = self.arr.shape
-        mask = np.ones(shape, dtype=bool)
+        mask = np.ones(shape, dtype=np.uint8)
+        print(info_ndarr(mask, 'XXX mask_pixels'))
         for o in self.list_of_rois:
             if o.roi_type == roiu.PIXEL:
                 p = o.pos
-                mask[p.y(), p.x()] = False
+                mask[p.y(), p.x()] = 0 # False
             elif o.roi_type == roiu.PIXGROUP:
                 for p in o.pixpos:
-                    mask[p.y(), p.x()] = False
+                    mask[p.y(), p.x()] = 1 #False
         return mask
 
     def mask_total(self):
@@ -452,7 +453,7 @@ class GWViewImageROI(GWViewImage):
                    np.logical_and(mtot, m, out=mtot) # 1ms for 1M image
             logger.info('mask of %s t(sec)=%.3f' % (o.roi_name, time()-t0_sec))
         logger.info(info_ndarr(mtot, 'mask_total:'))
-        return mtot.astype(int)
+        return mtot.astype(np.uint8)
 
     def save_mask(self, fname=FNAME_MASK):
         """calls mask_total and save it in specified file"""
