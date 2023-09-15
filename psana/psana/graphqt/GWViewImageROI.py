@@ -466,6 +466,7 @@ class GWViewImageROI(GWViewImage):
             return
         np.save(fname, mask)
         logger.warning('saved: %s' % fname)
+        return mask
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
         """Input array is scailed by color table. If color table is None arr set as is."""
