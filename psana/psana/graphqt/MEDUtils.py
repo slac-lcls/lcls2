@@ -8,6 +8,15 @@ Usage ::
     # Run test: python lcls2/psana/psana/graphqt/MEDUtils.py
 
     from psana.graphqt.MEDUtils import *
+    #     image_from_ndarray, random_image, image_from_kwargs, mask_ndarray_from_2d,
+    #     color_table, list_of_instruments, list_of_experiments
+    v = image_from_ndarray(nda)
+    v = random_image(shape=(64,64))
+    v = image_from_kwargs(**kwa)
+    v = mask_ndarray_from_2d(mask2d, geo)
+    v = color_table(ict=2)
+    v = list_of_instruments()
+    v = list_of_experiments(instr, fltr='cdb_')
 
 Created on 2023-09-07 by Mikhail Dubrovin
 """
@@ -16,7 +25,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import psana.pyalgos.generic.PSUtils as psu
-from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr, np
+from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, reshape_to_3d, info_ndarr, np
 from psana.detector.dir_root import DIR_FFB, DIR_DATA # DIR_FFB='/sdf/data/lcls/drpsrcf/ffb' or DIR_DATA='/sdf/data/lcls/ds/'
 
 #char_expand    = u' \u25BC' # down-head triangle
@@ -69,7 +78,15 @@ def mask_ndarray_from_2d(mask2d, geo):
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess, convert_mask2d_to_ndarray # GeometryAccess, img_from_pixel_arrays
     assert isinstance(geo, GeometryAccess)
     irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
-    return convert_mask2d_to_ndarray(mask2d, irows, icols) # , dtype=np.uint8)
+    irows = reshape_to_3d(irows)
+    icols = reshape_to_3d(icols)
+    #print(info_ndarr(irows, 'XXX irows'))
+    #print(info_ndarr(icols, 'XXX icols'))
+    logger.debug(info_ndarr(mask2d, 'input 2-d mask'))
+    mask_nda = convert_mask2d_to_ndarray(mask2d, irows, icols) # , dtype=np.uint8)
+    mask_nda.shape = irows.shape
+    logger.debug(info_ndarr(mask_nda, 'output 3-d mask'))
+    return mask_nda
 
 def color_table(ict=2):
     import psana.graphqt.ColorTable as ct
