@@ -15,9 +15,9 @@ import os
 import logging
 logger = logging.getLogger(__name__)
 
-
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr, np
+from psana.detector.dir_root import DIR_FFB, DIR_DATA # DIR_FFB='/sdf/data/lcls/drpsrcf/ffb' or DIR_DATA='/sdf/data/lcls/ds/'
 
 #char_expand    = u' \u25BC' # down-head triangle
 #char_shrink    = u' \u25B2' # solid up-head triangle
@@ -43,31 +43,54 @@ def random_image(shape=(64,64)):
     return ag.random_standard(shape, mu=0, sigma=10)
 
 def image_from_kwargs(**kwa):
+    """returns 2-d image array and geo (GeometryAccess) of available, otherwise None"""
     ndafname = kwa.get('ndafname', None)
 
     if not os.path.lexists(ndafname):
         logger.warning('ndarray file %s not found - use random image' % ndafname)
-        return random_image()
+        return random_image(), None
 
     nda = np.load(ndafname)
     if nda is None:
         logger.warning('can not load ndarray from file: %s - use random image' % ndafname)
-        return ndarandom_image()
+        return ndarandom_image(), None
 
     geofname = kwa.get('geofname', None)
     if not os.path.lexists(geofname):
         logger.warning('geometry file %s not found - use ndarray without geometry' % geofname)
-        return image_from_ndarray(nda)
+        return image_from_ndarray(nda), None
 
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
     geo = GeometryAccess(geofname)
-
     irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
-    return img_from_pixel_arrays(irows, icols, W=nda)
+    return img_from_pixel_arrays(irows, icols, W=nda), geo
 
+def mask_ndarray_from_2d(mask2d, geo):
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess, convert_mask2d_to_ndarray # GeometryAccess, img_from_pixel_arrays
+    assert isinstance(geo, GeometryAccess)
+    irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
+    return convert_mask2d_to_ndarray(mask2d, irows, icols) # , dtype=np.uint8)
 
 def color_table(ict=2):
     import psana.graphqt.ColorTable as ct
     return ct.next_color_table(ict)  # OR ct.color_table_monochr256()
 
+def list_of_instruments():
+    #logger.debug(sys._getframe().f_code.co_name)
+    dirins = DIR_DATA
+    logger.debug('list_of_instruments in %s' % dirins)
+    if os.path.lexists(dirins):
+        return sorted(set([s.lower() for s in os.listdir(dirins) if len(s)==3]))
+    else:
+        logger.warning('list_of_instruments: DIRECTORY %s IS UNAVAILABLE - use default list' % dirins)
+        return ['cxi', 'dia', 'mec', 'mfx', 'rix', 'tmo', 'tst', 'txi', 'ued', 'xcs', 'xpp']
+
+def list_of_experiments(instr, fltr='cdb_'):
+    direxp = '%s/%s' % (DIR_DATA, instr)
+    logger.debug('list_of_experiments in %s' % direxp)
+    if os.path.lexists(direxp):
+        return psu.list_of_experiments(direxp=direxp)
+    else:
+        logger.warning('list_of_experiments: %s IS EMPTY' % direxp)
+        return []
 # EOF
