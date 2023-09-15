@@ -21,7 +21,8 @@ from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QGr
                             QPushButton, QLabel, QComboBox, QLineEdit, QTextEdit
 from PyQt5.QtCore import Qt, QSize, QRectF, pyqtSignal, QModelIndex, QTimer
 
-from psana.graphqt.MEDUtils import *
+import numpy as np
+from psana.graphqt.MEDUtils import mask_ndarray_from_2d, info_ndarr
 from psana.graphqt.Styles import style
 
 import psana.graphqt.GWROIUtils as roiu
@@ -43,6 +44,7 @@ class MEDControlROI(QWidget):
             self.wimax = self.wmain.wisp.wimax
             self.wspec = self.wmain.wisp.wspec
             self.wim = self.wmain.wisp.wimax.wim
+            self.wctl = self.wmain.wctl # MEDControl
 
         self.but_img,\
         self.but_add,\
@@ -131,7 +133,19 @@ class MEDControlROI(QWidget):
 
     def on_but_mas(self):
         path = popup_file_name(parent=self, mode='w', path=self.fname_mask, dirs=[], fltr='*.npy\n*')
-        if path: self.wim.save_mask(fname=path)
+        if path:
+            path_2d = path.replace('.npy', '-2d.npy')
+            mask_2d = self.wim.save_mask(fname=path_2d)
+            logger.info(info_ndarr(mask_2d, 'mask 2d') + ' saved in file %s' % path_2d)
+            geo = self.wctl.geo
+            logger.debug('geo: %s' % str(geo))
+            logger.debug('fname_geo: %s' % str(self.wctl.but_geo.text()))
+
+            if geo is not None:
+                mask_nda = mask_ndarray_from_2d(mask_2d, geo)
+                logger.debug('2d mask converted to ndarray of shape %s' % str(mask_nda.shape))
+                np.save(path, mask_nda)
+                logger.info(info_ndarr(mask_nda, 'mask_nda') + ' saved in file %s' % path)
 
     def set_mode(self, ckey):
         if ckey in roiu.mode_keys:
