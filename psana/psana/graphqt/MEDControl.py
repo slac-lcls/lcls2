@@ -40,10 +40,10 @@ class MEDControl(QWidget):
 
         QWidget.__init__(self, None)
 
+        self.geo      = kwa.get('geo', None)
         self.geofname = kwa.get('geofname', 'geometry.txt')
         self.ndafname = kwa.get('ndafname', 'ndarray.npy')
-        self.wmain = kwa.get('parent', None)
-
+        self.wmain    = kwa.get('parent', None)
 
         if self.wmain is not None:
             self.wisp = self.wmain.wisp
@@ -57,13 +57,13 @@ class MEDControl(QWidget):
         self.lab_nda = QLabel('N-d array:')
         self.but_nda = QPushButton(str(self.ndafname))
 
-        self.lab_dst = QLabel('Dataset:')
-        self.but_dst = QPushButton('Select')
+        self.lab_exp = QLabel('Experiment:')
+        self.but_exp = QPushButton('Select')
 
         self.list_of_buts = (
           self.but_nda,
           self.but_geo,
-          self.but_dst,
+          self.but_exp,
         )
 
         self.hbox0 = QHBoxLayout()
@@ -72,8 +72,8 @@ class MEDControl(QWidget):
         self.hbox0.addStretch()
 
         self.hbox1 = QHBoxLayout()
-        self.hbox1.addWidget(self.lab_dst)
-        self.hbox1.addWidget(self.but_dst)
+        self.hbox1.addWidget(self.lab_exp)
+        self.hbox1.addWidget(self.but_exp)
         self.hbox1.addWidget(self.lab_geo)
         self.hbox1.addWidget(self.but_geo)
         self.hbox1.addStretch()
@@ -88,26 +88,26 @@ class MEDControl(QWidget):
 
         self.but_nda.clicked.connect(self.on_but_nda)
         self.but_geo.clicked.connect(self.on_but_geo)
-        self.but_dst.clicked.connect(self.on_but_dst)
+        self.but_exp.clicked.connect(self.on_but_exp)
 
         self.set_tool_tips()
         self.set_style()
 
     def set_style(self):
-        self.layout().setContentsMargins(5,5,5,0)
-        self.lab_dst.setStyleSheet(style.styleLabel)
+        self.layout().setContentsMargins(5,5,5,5)
+        self.lab_exp.setStyleSheet(style.styleLabel)
         self.lab_nda.setStyleSheet(style.styleLabel)
         self.lab_geo.setStyleSheet(style.styleLabel)
-        #self.but_dst.setFixedWidth(50)
+        #self.but_exp.setFixedWidth(50)
         #self.set_buttons_visiable()
         for but in self.list_of_buts: but.setStyleSheet(style.styleButton)
 
     def set_tool_tips(self):
-        self.but_dst.setToolTip('Dataset - click and select')
+        self.but_exp.setToolTip('Dataset - click and select')
         self.but_geo.setToolTip('Geometry file name')
 
     def on_but_geo(self):
-        logger.debug(sys._getframe().f_code.co_name)
+        logger.debug('on_but_geo')  # sys._getframe().f_code.co_name
         path = popup_file_name(parent=self, mode='r', path=self.geofname, dirs=[], fltr='*.txt *.data\n*')
         logger.debug('Selected: %s' % str(path))
         if path is None: return
@@ -116,7 +116,7 @@ class MEDControl(QWidget):
         self.set_image()
 
     def on_but_nda(self):
-        logger.debug(sys._getframe().f_code.co_name)
+        logger.debug('on_but_nda')  # sys._getframe().f_code.co_name
         path = popup_file_name(parent=self, mode='r', path=self.ndafname, dirs=[], fltr='*.npy *.txt *.data\n*')
         logger.debug('Selected: %s' % str(path))
         if path is None: return
@@ -125,23 +125,27 @@ class MEDControl(QWidget):
         self.set_image()
 
     def set_image(self):
-        img = mu.image_from_kwargs(\
+        img, self.geo = mu.image_from_kwargs(\
                geofname=str(self.but_geo.text()),\
                ndafname=str(self.but_nda.text())
         )
         self.wim.set_pixmap_from_arr(img, set_def=True)
 
-    def on_but_dst(self):
-        logger.debug(sys._getframe().f_code.co_name)
-        insts = sorted(os.listdir('/cds/data/ffb/'))
+    def on_but_exp(self):
+        insts = mu.list_of_instruments()
         logger.debug('list of instruments: %s' % str(insts))
-        ins = popup_select_item_from_list(self.but_dst, insts, dx=10, dy=-10, do_sorted=False)
+        ins = popup_select_item_from_list(self.but_exp, insts, dx=10, dy=-10, do_sorted=False)
         if ins is None: return
-        self.but_dst.setText(ins)
+        #self.but_exp.setText(ins)
+
+        exps = mu.list_of_experiments(ins)
+        logger.debug('list_of_experiments: %s' % str(exps))
+        exp = popup_select_item_from_list(self.but_exp, exps, dx=10, dy=-10, do_sorted=False)
+        if exp is None: return
+        self.but_exp.setText(exp)
 
     def closeEvent(self, e):
         QWidget.closeEvent(self, e)
-        logger.debug('sys._getframe().f_code.co_name')
 
 
 if __name__ == "__main__":
