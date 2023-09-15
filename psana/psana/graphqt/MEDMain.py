@@ -12,7 +12,6 @@ See method:
 
 Created on 2023-09-06 by Mikhail Dubrovin
 """
-
 import logging
 logger = logging.getLogger(__name__)
 import sys
@@ -37,11 +36,11 @@ class MEDMain(QWidget):
 
         self.proc_kwargs(**kwa)
 
-        image = mu.image_from_kwargs(**kwa)
+        image, geo = mu.image_from_kwargs(**kwa)
         ctab = mu.color_table(ict=self.ictab)
         self.wisp = GWImageSpec(parent=self, image=image, ctab=ctab, signal_fast=self.signal_fast)
         self.wlog = GWLoggerStd()
-        self.wctl = MEDControl(parent=self, **kwa)
+        self.wctl = MEDControl(parent=self, **kwa, geo=geo)
         self.wbts = MEDControlROI(parent=self)
 
         self.hbox = QHBoxLayout()
@@ -96,7 +95,6 @@ class MEDMain(QWidget):
         logger.debug('closeEvent')
         QWidget.closeEvent(self, e)
 
-
 def mask_editor(**kwa):
     repodir  = kwa.get('repodir', './work')
     loglevel = kwa.get('loglevel', 'INFO').upper()
@@ -120,7 +118,6 @@ def mask_editor(**kwa):
     a.exec_()
     del w
     del a
-
 
 if __name__ == "__main__":
     from psana.detector.dir_root import DIR_DATA_TEST
