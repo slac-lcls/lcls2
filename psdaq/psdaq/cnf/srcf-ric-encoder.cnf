@@ -82,7 +82,7 @@ procmgr_config = [
  # ...drp:
  { host: 'drp-srcf-cmp029', id:'encoder_0', flags:'spux', rtprio:'50', cmd:udp_cmd1+' -l 0x1'},
  # ...sim: 172.21.152.50 = drp-srcf-cmp029, 5008 = interpolate port
- { host: 'drp-neh-ctl002', id:'sim_udpencoder', flags:'s', cmd:f'sim_udpencoder -a 172.21.152.50 -p {slow_group}'},  # -d 5008'},
+ { host: 'drp-neh-ctl002', id:'sim_udpencoder', flags:'s', cmd:f'sim_udpencoder -a 172.21.152.50 -p {slow_group}'}, # -f ~cpo/encoder/g_pi_0.1urs.csv'},  # -d 5008'},
 # { host: 'drp-neh-ctl002', id:'sim_udpencoder', flags:'sp', cmd:'sim_udpencoder -a 172.21.152.50'},
  { host: 'drp-srcf-cmp029', id:'timing_1', flags:'spu', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
  #  ...drp: loopback on port 5007 AND verbose
