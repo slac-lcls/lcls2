@@ -16,6 +16,8 @@
 #include <thread>
 #include <Python.h>
 #include <arpa/inet.h>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/QR>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
@@ -28,9 +30,13 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
+
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
+
+#define MAX_ENC_VALUES 3
+#define POLYNOMIAL_ORDER 2
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
@@ -567,78 +573,71 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 }
 
 
+static void _polyfit(unsigned i0,
+                     const std::vector<double> &t,
+                     const std::vector<double> &v,
+                     std::vector<double> &coeff)
+{
+    // Copy values into a time-ordered vector
+    std::vector<double> val(v.size());
+    for(unsigned i = 0; i < v.size(); i++) {
+        unsigned j = (i0 + i) % v.size();
+        val[i] = v[j];
+    }
+
+    // Create Matrix Placeholder of size n x k, n= number of datapoints, k = order of polynomial, for exame k = 3 for cubic polynomial
+    Eigen::MatrixXd T(t.size(), coeff.size());
+    Eigen::VectorXd V = Eigen::VectorXd::Map(&val.front(), val.size());
+    Eigen::VectorXd result;
+
+    // Populate the matrix
+    double t0 = t[i0 % t.size()];
+    for(size_t i = 0 ; i < t.size(); ++i) {
+        size_t k = (i0 + i) % t.size();
+        for(size_t j = 0; j < coeff.size(); ++j) {
+            T(i, j) = pow(t.at(k) - t0, j);
+        }
+    }
+    //std::cout<<T<<std::endl;
+
+    // Solve for linear least square fit
+    result = T.householderQr().solve(V);
+    for (unsigned k = 0; k < coeff.size(); k++) {
+        coeff[k] = result[k];
+    }
+}
+
 void Interpolator::update(XtcData::TimeStamp t, unsigned v)
 {
-    auto idx = _idx++ & 1;
-    _idx &= 1;
+    auto idx = _idx++;
+    _idx %= _t.size();
 
-    logging::debug("*** Int::update: idx      %d,    t %u.%09u, v %u", _idx, t.seconds(), t.nanoseconds(), v);
+    logging::debug("*** IntE::update: idx      %d,    t %u.%09u, v %u", idx, t.seconds(), t.nanoseconds(), v);
 
     _t[idx] = t.asDouble();
     _v[idx] = double(v);
+
+    if (_t[_t.size() - 1] != 0.0) { // True when MAX_ENC_VALUES or more points were collected
+        _polyfit(_idx, _t, _v, _coeff);
+    }
 }
 
 unsigned Interpolator::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage) const
 {
-    auto i0 = _idx;  const auto& t0 = _t[i0];  const auto& v0 = _v[i0]; // Earliest point
-    auto i1 = i0^1;  const auto& t1 = _t[i1];  const auto& v1 = _v[i1]; // Latest   point
-
-    // Linear interpolation
     unsigned v;
-    if (_t[1] != 0.0) {                 // True when 2 or more points were collected
-        double t = ts.asDouble();
-        if (t > t0) {
-            auto rt = (t - t0) / (t1 - t0);
-            auto dv = v1 - v0;
-            auto b  = v0;
-            v = unsigned(rt * dv + b);
-        } else {
-            v = unsigned(v0);           // Return the earliest value there is
-            damage.increase(XtcData::Damage::MissingData);
+    if (_t[_t.size() - 1] != 0.0) { // True when arrays are full
+        // Sum up the terms of the polynomial
+        double val  = 0;
+        double tPwr = 1;
+        double t0   = _t[_idx % _t.size()];
+        double t    = ts.asDouble() - t0;
+        for(unsigned i = 0; i < _coeff.size(); ++i) {
+            val  += _coeff[i] * tPwr;
+            tPwr *= t;
         }
+        v = unsigned(val);
     } else {
-        v = unsigned(_v[0]);            // Return the only value available
-        damage.increase(XtcData::Damage::MissingData);
-    }
-
-    logging::debug("*** Int::calc:   idx %d, t %u.%09u, v %u", _idx, ts.seconds(), ts.nanoseconds(), v);
-
-    return v;
-}
-
-
-void Interpolator2::update(XtcData::TimeStamp t, unsigned v)
-{
-    auto idx = _idx++ % 3;
-    _idx %= 3;
-
-    logging::debug("*** Int2::update: idx      %d,    t %u.%09u, v %u", idx, t.seconds(), t.nanoseconds(), v);
-
-    _t[idx] = t.asDouble();
-    _v[idx] = double(v);
-}
-
-unsigned Interpolator2::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage) const
-{
-    auto i0 = _idx  %3;  const auto& t0 = _t[i0];  const auto& v0 = _v[i0]; // Earliest point
-    auto i1 = (i0+1)%3;  const auto& t1 = _t[i1];  const auto& v1 = _v[i1]; // Middle   point
-    auto i2 = (i1+1)%3;  const auto& t2 = _t[i2];  const auto& v2 = _v[i2]; // Latest   point
-
-    // Quadratic interpolation
-    unsigned v;
-    if (_t[2] != 0.0) {                 // True when 3 or more points were collected
-        double t = ts.asDouble();
-        if (t > t0) {
-            auto l0 = ((t - t1) * (t - t2)) / ((t0 - t1) * (t0 - t2));
-            auto l1 = ((t - t0) * (t - t2)) / ((t1 - t0) * (t1 - t2));
-            auto l2 = ((t - t0) * (t - t1)) / ((t2 - t0) * (t2 - t1));
-            v = unsigned(v0 * l0 + v1 * l1 + v2 * l2);
-        } else {
-            v = unsigned(v0);           // Return the earliest value there is
-            damage.increase(XtcData::Damage::MissingData);
-        }
-    } else {
-        v = unsigned(_t[1]==0.0 ? _v[0] : _v[1]); // Return the most recent value available
+        v = unsigned(_v[_idx - 1]);   // Return the most recent value available
         damage.increase(XtcData::Damage::MissingData);
     }
 
@@ -651,6 +650,7 @@ unsigned Interpolator2::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage
 UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
+    m_interpolator  (MAX_ENC_VALUES, POLYNOMIAL_ORDER),
     m_evtQueue      (drp.pool.nbuffers()),
     m_encQueue      (drp.pool.nbuffers()),
     m_bufferFreelist(m_encQueue.size()),

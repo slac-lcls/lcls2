@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <assert.h>
 #include <cstdint>
+#include <vector>
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
 #include "spscqueue.hh"
@@ -112,40 +113,27 @@ private:
 };
 
 
-class Interpolator                      // Linear
+class Interpolator
 {
 public:
-  Interpolator() : _idx(0), _t{0,0}, _v{0,0} {}
+  Interpolator(unsigned n, unsigned o) : _idx(0), _t(n), _v(n), _coeff(o+1)
+  {
+    // check to make sure inputs are correct
+    assert(_t.size() == _v.size());
+    assert(_t.size() >= _coeff.size());
+  }
   ~Interpolator() {}
 
 public:
-  void reset() { _idx=0;  _t[1]=0; }
+  void reset() { _idx=0;  std::fill(_t.begin(), _t.end(), 0); }
   void update(XtcData::TimeStamp t, unsigned v);
   unsigned calculate(XtcData::TimeStamp t, XtcData::Damage& damage) const;
 
 private:
-  unsigned _idx;
-  double   _t[2];
-  double   _v[2];
-};
-
-
-class Interpolator2                     // Quadratic
-{
-public:
-  Interpolator2() : _idx(0), _t{0,0,0}, _v{0,0,0}, _flag(false) {}
-  ~Interpolator2() {}
-
-public:
-  void reset() { _idx=0;  _t[0]=0;  _t[1]=0;  _t[2]=0; }
-  void update(XtcData::TimeStamp t, unsigned v);
-  unsigned calculate(XtcData::TimeStamp t, XtcData::Damage& damage) const;
-
-private:
-  unsigned _idx;
-  double   _t[3];
-  double   _v[3];
-  bool     _flag;
+  unsigned            _idx;
+  std::vector<double> _t;
+  std::vector<double> _v;
+  std::vector<double> _coeff;
 };
 
 
