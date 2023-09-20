@@ -352,7 +352,7 @@ if 'DGRAM' in BUILD_LIST :
                     libraries = ['xtc'],
                     #include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
                     #iibrary_dirs = [os.path.join(instdir, 'lib')],
-                    include_dirs = ["psana",< np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
+                    include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
                     library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
