@@ -25,7 +25,7 @@ Created on 2018-01-31 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-import numpy as np
+import cunumeric as np
 from math import fabs
 from psana.detector.NDArrUtils import info_ndarr, print_ndarr
 

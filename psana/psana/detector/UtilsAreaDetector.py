@@ -136,7 +136,7 @@ def img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0):
     """
     assert isinstance(rows, np.ndarray)
     assert isinstance(cols, np.ndarray)
-    assert(isinstance(weight, (np.ndarray,float)))
+    # assert(isinstance(weight, (np.ndarray,float)))
 
     if rows.size != cols.size \
     or (weight is not None and rows.size !=  weight.size):

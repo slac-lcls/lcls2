@@ -79,8 +79,10 @@ class _fake_seg_config:
 
 fake_seg_config = _fake_seg_config()
 
-
-import libpressio as lp
+try:
+    import libpressio as lp
+except ModuleNotFoundError:
+    print("libpressio not found")
 import json
 
 #class epixhremu_fex_0_0_1(DetectorImpl):

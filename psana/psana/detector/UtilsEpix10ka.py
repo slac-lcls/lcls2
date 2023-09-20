@@ -39,7 +39,7 @@ Created on 2020-12-03 by Mikhail Dubrovin for LCLS2 from LCLS1
 
 import os
 import sys
-import numpy as np
+import cunumeric as np
 from time import time
 
 import logging
