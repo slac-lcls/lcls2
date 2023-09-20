@@ -6,15 +6,19 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
 collect_host = 'drp-tst-acc01'
 
+slow_group = 5
+
 network =     'ep_fabric="172.21.148.0/22",ep_domain=eno1'
+batching =    'batching=yes'
+directIO =    'directIO=yes'
 
 # To enable interpolation, set high_rate to True
 high_rate = False
 
 if high_rate:
-  kwargsEncoder = 'pebbleBufCount=65536,pebbleBufSize=4096,slowGroup=5'
+  kwargsEncoder = f'pebbleBufCount=65536,pebbleBufSize=4096,slowGroup={slow_group}'
 else:
-  kwargsEncoder = 'pebbleBufCount=65536,pebbleBufSize=4096'
+  kwargsEncoder = f'pebbleBufCount=65536,pebbleBufSize=4096'
 
 data_dir =    '~caf/data'
 
@@ -50,26 +54,26 @@ procmgr_config = [
  # trigger event builder
  { host: collect_host, id:'teb1', flags:'pu', cmd:f'teb -P {hutch} -M {prom_dir} -C {collect_host} -k {network}'},
  # FakeCam
- { host: 'drp-tst-acc01', id:'cam_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_0 -P {hutch} -C {collect_host} -k {network}'},
- # ...drp: loopback on port 5007
-#{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -v -o /cds/home/c/caf/data -L 5007 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'},
+ { host: 'drp-tst-acc01', id:'cam_0', flags:'spu', cmd:f'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_0 -P {hutch} -C {collect_host} -k {network},{batching},{directIO}'},
  # ...drp:
- { host: 'drp-tst-acc01', id:'encoder_0', flags:'supx', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -M {prom_dir} -l 0x1 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network},{kwargsEncoder}'},
- # ...sim: 172.21.148.201 = drp-tst-acc01, 5008 = interpolate port
-#{ host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -a 172.21.148.201 -p 5 -d 5008'},
- { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'sp', cmd:'sim_udpencoder -a 172.21.148.201'},
- { host: 'drp-tst-acc01', id:'timing_1', flags:'spu', cmd:f'drp -o {data_dir} -l 0x8 -D ts -d /dev/datadev_1 -P '+hutch+' -C '+collect_host+' -k '+network},
- #  ...drp: loopback on port 5007 AND verbose
-#{ host: 'drp-tst-acc01', id:'encoder_0', flags:'spu', cmd:f'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P {hutch} -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network}'}
+ { host: 'drp-tst-acc01', id:'encoder_0', flags:'supx', rtprio:'50', cmd:f'drp_udpencoder    -o /cds/home/c/caf/data -M {prom_dir} -l 0x1 -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network},{batching},{directIO},{kwargsEncoder}'},
+ # ...sim: 172.21.148.201 = drp-tst-acc01
+ { host: 'daq-tst-dev03', id:'sim_udpencoder', flags:'s',  cmd:'sim_udpencoder -a 172.21.148.201 -p 5'},
+ # ...timing:
+ { host: 'drp-tst-acc01', id:'timing_1', flags:'spu', cmd:f'drp -o {data_dir} -l 0x8 -D ts -d /dev/datadev_1 -P {hutch} -C {collect_host} -k {network},{batching},{directIO}'},
 ]
 
+# cpo: this formula should be base_port=5555+50*platform+10*instance
+# to minimize port conflicts for both platform/instance
+base_port = 5555+50*int(platform)
+ 
 #
 # ami
 #
 procmgr_ami = [
-  { host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
-  { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
-  {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}' },
+  { host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers} -p {base_port}' },
+  { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager -p {base_port} --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+  {                        id:'ami-client',  flags:'s', cmd:f'ami-client -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}' },
 ]
 #
 # ami workers
@@ -79,6 +83,6 @@ for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({ host:worker_node, id:f'ami-meb{N}', flags:'spu',
                          cmd:f'{meb_cmd} -d -q {ami_workers_per_node}' })
     procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s',
-                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
+                         cmd:f'ami-node -p {base_port} --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
 
-#procmgr_config.extend(procmgr_ami)
+procmgr_config.extend(procmgr_ami)
