@@ -703,6 +703,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pebbleBufCount")    continue;  // DrpBase
             if (kwargs.first == "batching")          continue;  // DrpBase
             if (kwargs.first == "directIO")          continue;  // DrpBase
+            if (kwargs.first == "pva_addr")          continue;  // DrpBase
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
