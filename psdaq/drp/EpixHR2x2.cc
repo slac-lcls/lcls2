@@ -109,6 +109,8 @@ EpixHR2x2::EpixHR2x2(Parameters* para, MemPool* pool) :
 {
     _init(para->detName.c_str());  // an argument is required here
 
+    m_descramble = false;
+
     epix = this;
 
     struct sigaction sa;
@@ -194,16 +196,18 @@ Pds::TimingHeader* EpixHR2x2::getTimingHeader(uint32_t index) const
     ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
     //  This may get called multiple times, so we can't overwrite input we need
     uint32_t* p = reinterpret_cast<uint32_t*>(ebh->next());
-    // for(unsigned i=0; i<64; i++)
-    //     printf(" %08x%c",p[i],(i&7)==7?'\n':' ');
 
-    //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
-    if (p[2]==0 && p[3]==0) {
-        // A zero timestamp means the data has not been rearranged.
-        for(unsigned i=1; i<5; i++) {
-            p[2*i+0] = p[4*i+0];
-            p[2*i+1] = p[4*i+1];
+    if (m_descramble) {
+        //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
+        if (p[2]==0 && p[3]==0) {
+            // A zero timestamp means the data has not been rearranged.
+            for(unsigned i=1; i<5; i++) {
+                p[2*i+0] = p[4*i+0];
+                p[2*i+1] = p[4*i+1];
+            }
         }
+    }
+    else {
     }
     return reinterpret_cast<Pds::TimingHeader*>(p);
 }
@@ -211,16 +215,13 @@ Pds::TimingHeader* EpixHR2x2::getTimingHeader(uint32_t index) const
 //
 //  Subframes:  3:   ASIC0/1
 //                   0:  Timing
-//                   1:  ASIC0/1 2B interleaved
+//                   2:  ASIC0/1 2B interleaved
 //              4:   ASIC2/3
 //                   0:  Timing
-//                   1:  ASIC2/3 2B interleaved
+//                   2:  ASIC2/3 2B interleaved
 //
 void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    //    printf("subframes %zu  %p  %p\n", subframes.size(), &subframes[0], &subframes[1]);
-    //    printf("_event  [3: %zu]\n", subframes[3].num_elem());
-
     unsigned shape[MaxRank] = {0,0,0,0,0};
 
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
@@ -233,6 +234,44 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDa
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
     shape[0] = elemRows*2; shape[1] = elemRowSize*2;
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixHRPanelDef::raw, shape);
+
+    if (!m_descramble) {
+        if (subframes.size()<5) {
+            logging::error("Missing data: subframe size %d [5]\n",
+                           subframes.size());
+            xtc.damage.increase(XtcData::Damage::MissingData);
+            return;
+        }
+
+        uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
+        for(unsigned i=3; i<5; i++) {
+            std::vector< XtcData::Array<uint8_t> > ssf = 
+                _subframes(subframes[i].data(),subframes[i].shape()[0]);
+            if (ssf.size()<3) {
+                logging::error("Missing data: subframe[%d] size %d [3]\n",
+                               i,ssf.size());
+                xtc.damage.increase(XtcData::Damage::MissingData);
+                return;
+            }
+
+            unsigned sz = elemRows*elemRowSize*4;
+
+            if (ssf[2].num_elem() < sz+2*elemRowSize*4) {
+                logging::error("Missing data: subframe[%d] num_elems %u [%u]\n",
+                               i,ssf[2].num_elem(),sz + 2*elemRowSize*4);
+                xtc.damage.increase(XtcData::Damage::MissingData);
+                return;
+            }
+
+            // skip the first row, drop the last row
+            memcpy(p,ssf[2].data()+elemRowSize*4,sz);
+            p += sz;
+        }
+        return;
+    }
+    //  Missing ASICS are padded with zeroes
+    m_asics = 0xf;
+
     memset(aframe.data(),0,4*elemRows*elemRowSize*2);
 
     logging::debug("m_asics[%d] subframes.num_elem[%d]",m_asics,subframes.size());

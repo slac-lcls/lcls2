@@ -6,6 +6,7 @@
 #include <bitset>
 #include <chrono>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
@@ -50,21 +51,23 @@ static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::CHARSTR, // pvString
 };
 
-
     //
     //  Until a PVA gateway can be started on the electron-side
     //
 
-static unsigned getVarDefSize(XtcData::VarDef& vd) {
+static unsigned getVarDefSize(XtcData::VarDef& vd, const std::vector<unsigned>& as) {
     unsigned sz = 0;
     for(unsigned i=0; i<vd.NameVec.size(); i++) {
-        sz += XtcData::Name::get_element_size(vd.NameVec[i].type()); // assumes rank=0
+        if (as.size()>i && as[i]>0)
+            sz += XtcData::Name::get_element_size(vd.NameVec[i].type())*as[i]; // assumes rank=1
+        else
+            sz += XtcData::Name::get_element_size(vd.NameVec[i].type()); // assumes rank=0
     }
     return sz;
 }
 
 BldPVA::BldPVA(std::string det,
-               unsigned    interface) : _alg("raw",0,0,0), _interface(interface)
+               unsigned    interface) : _alg("raw",1,0,0), _interface(interface)
 {
     //
     //  Parse '+' separated list of detName, detType, detId
@@ -80,15 +83,13 @@ BldPVA::BldPVA(std::string det,
     _detName = det.substr(   0,     p1).c_str();
     _detType = det.substr(p1+1,p2-p1-1).c_str();
     _detId   = det.substr(p2+1,p3-p2-1).c_str();
-    unsigned vsn = strtoul(det.substr(p3+1).c_str(),NULL,16);
-    _alg     = XtcData::Alg("raw",(vsn>>8)&0xf,(vsn>>4)&0xf,(vsn>>0)&0xf);
+    //    unsigned vsn = strtoul(det.substr(p3+1).c_str(),NULL,16);
+    //    _alg     = XtcData::Alg("raw",(vsn>>8)&0xf,(vsn>>4)&0xf,(vsn>>0)&0xf);
 
     std::string sname(_detId);
-    // _pvaAddr    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":ADDR"   ).c_str());
-    // _pvaPort    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":PORT"   ).c_str());
-    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":ADDR"   ).c_str());
-    _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":PORT"   ).c_str());
-    _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":PAYLOAD").c_str());
+    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":BLD1_MULT_ADDR").c_str());
+    _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":BLD1_MULT_PORT").c_str());
+    _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":BLD_PAYLOAD"   ).c_str());
 
     logging::info("BldPVA::BldPVA looking up multicast parameters for %s/%s from %s",
                   _detName.c_str(), _detType.c_str(), _detId.c_str());
@@ -100,6 +101,13 @@ BldPVA::~BldPVA()
 
 bool BldPVA::ready() const
 {
+#define TrueFalse(v) v->ready()?'T':'F'
+
+    logging::debug("%s  addr %c  port %c  payload %c\n",
+                   _detId.c_str(), 
+                   TrueFalse(_pvaAddr),
+                   TrueFalse(_pvaPort),
+                   TrueFalse(_pvaPayload));
     return (_pvaAddr   ->ready() &&
             _pvaPort   ->ready() &&
             _pvaPayload->ready());
@@ -120,9 +128,9 @@ unsigned BldPVA::port() const
     return _pvaPort->getScalarAs<unsigned>();
 }
 
-XtcData::VarDef BldPVA::varDef(unsigned& sz) const
+XtcData::VarDef BldPVA::varDef(unsigned& sz, std::vector<unsigned>& sizes) const
 {
-    return _pvaPayload->get(sz);
+    return _pvaPayload->get(sz,sizes);
 }
 
   //
@@ -168,6 +176,11 @@ BldFactory::BldFactory(const char* name,
         _alg    = XtcData::Alg("raw", 2, 0, 0);
         _varDef.NameVec = BldNames::PCav().NameVec;
     }
+    else if (strncmp("gasdet",name,6)==0) {
+        mcaddr = 0xefff1802;
+        _alg    = XtcData::Alg("raw", 1, 0, 0);
+        _varDef.NameVec = BldNames::GasDet().NameVec;
+    }
     else if (strncmp("gmd",name,3)==0) {
         mcaddr = 0xefff1902;
         _alg    = XtcData::Alg("raw", 2, 1, 0);
@@ -178,10 +191,16 @@ BldFactory::BldFactory(const char* name,
         _alg    = XtcData::Alg("raw", 2, 1, 0);
         _varDef.NameVec = BldNames::GmdV1().NameVec;
     }
+    else if ((mcaddr = BldNames::BeamMonitorV1::mcaddr(name))) {
+        _detType = _detId = std::string("bmmon");
+        _alg    = XtcData::Alg("raw", 1, 0, 0);
+        _varDef.NameVec = BldNames::BeamMonitorV1().NameVec;
+        _arraySizes = BldNames::BeamMonitorV1().arraySizes();
+    }
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    unsigned payloadSize = getVarDefSize(_varDef);
+    unsigned payloadSize = getVarDefSize(_varDef,_arraySizes);
     _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
                                      Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
                                      Bld::DgramHeaderSize, payloadSize,
@@ -207,7 +226,7 @@ BldFactory::BldFactory(const BldPVA& pva) :
     unsigned mcport = pva.port();
 
     unsigned payloadSize = 0;
-    _varDef = pva.varDef(payloadSize);
+    _varDef = pva.varDef(payloadSize,_arraySizes);
 
     _handler = std::make_shared<Bld>(mcaddr, mcport, pva.interface(),
                                      Bld::TimestampPos, Bld::PulseIdPos,
@@ -236,12 +255,32 @@ XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
                                           const void* bufEnd,
                                           const XtcData::NamesId& namesId)
 {
+    logging::info("addToXtc %s/%s\n",_detName.c_str(),_detType.c_str());
+
     XtcData::Names& bldNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
                                                                 _detName.c_str(), _alg,
                                                                 _detType.c_str(), _detId.c_str(), namesId);
 
     bldNames.add(xtc, bufEnd, _varDef);
     return XtcData::NameIndex(bldNames);
+}
+
+void BldFactory::addEventData(XtcData::Xtc&          xtc,
+                              const void*            bufEnd,
+                              XtcData::NamesLookup&  namesLookup,
+                              XtcData::NamesId&      namesId)
+{
+    const Bld& bld = handler();
+    XtcData::DescribedData desc(xtc, bufEnd, namesLookup, namesId);
+    memcpy(desc.data(), bld.payload(), bld.payloadSize());
+    desc.set_data_length(bld.payloadSize());
+    unsigned shape[] = {0,0,0,0,0};
+    for(unsigned i=0; i<_arraySizes.size(); i++) {
+        if (_arraySizes[i]) {
+            shape[0] = _arraySizes[i];
+            desc.set_array_shape(i,shape);
+        }
+    }
 }
 
 unsigned interfaceAddress(const std::string& interface)
@@ -260,7 +299,7 @@ BldDescriptor::~BldDescriptor()
     logging::debug("~BldDescriptor");
 }
 
-XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
+XtcData::VarDef BldDescriptor::get(unsigned& payloadSize, std::vector<unsigned>& sizes)
 {
     payloadSize = 0;
     XtcData::VarDef vd;
@@ -286,7 +325,20 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
                 XtcData::Name::DataType type = xtype[scalar->getScalarType()];
                 vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type));
                 payloadSize += XtcData::Name::get_element_size(type);
+                sizes.push_back(0);
                 break;
+            }
+
+            case pvd::scalarArray: {
+                const pvd::ScalarArray* array = static_cast<const pvd::ScalarArray*>(fields[i].get());
+                if (array->getArraySizeType()!=pvd::Array::fixed) {
+                    throw std::string("PV array type is not Fixed");
+                }
+                XtcData::Name::DataType type = xtype[array->getElementType()];
+                vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type, 1));
+                size_t n = array->getMaximumCapacity();
+                sizes.push_back(n);
+                payloadSize += n*XtcData::Name::get_element_size(type);
             }
 
             default: {
@@ -441,7 +493,7 @@ void     Bld::clear(uint64_t ts)
         m_pulseId = pulseId;
         if (jump != m_pulseIdJump) {
             m_pulseIdJump = jump;
-            logging::warning("BLD pulseId jump %u [%u]",jump,pulseId);
+            logging::debug("BLD pulseId jump %u [%u]",jump,pulseId);
         }
     }
 }
@@ -490,7 +542,7 @@ uint64_t Bld::next()
     m_pulseId = pulseId;
     if (jump != m_pulseIdJump) {
         m_pulseIdJump = jump;
-        logging::warning("BLD pulseId jump %u [%u]",jump, pulseId);
+        logging::debug("BLD pulseId jump %u [%u]",jump, pulseId);
     }
 
     return timestamp;
@@ -741,10 +793,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                         if (timestamp[i] == nextId) {
                             // Revisit: This is intended to be done by BldDetector::event()
                             XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                            const Bld& bld = m_config[i]->handler();
-                            XtcData::DescribedData desc(dgram->xtc, bufEnd, namesLookup, namesId);
-                            memcpy(desc.data(), bld.payload(), bld.payloadSize());
-                            desc.set_data_length(bld.payloadSize());
+                            m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
                         }
                         else {
                             lMissed = true;
@@ -1199,11 +1248,27 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
+        if (kwargs.first == "pva_addr")       continue;  // DrpBase
         if (kwargs.first == "interface")      continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
     }
+
+    /*
+    //  Add pva_addr to the environment
+    if (para.kwargs.find("pva_addr")!=para.kwargs.end()) {
+        const char* a = para.kwargs["pva_addr"].c_str();
+        char* p = getenv("EPICS_PVA_ADDR_LIST");
+        char envBuff[256];
+        if (p)
+            sprintf(envBuff,"EPICS_PVA_ADDR_LIST=%s %s", p, a);
+        else
+            sprintf(envBuff,"EPICS_PVA_ADDR_LIST=%s", a);
+        logging::info("Setting env %s\n", envBuff);
+        putenv(envBuff);
+    }
+    */
 
     para.maxTrSize = 256 * 1024;
     try {

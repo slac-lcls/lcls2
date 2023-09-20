@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <assert.h>
 #include <cstdint>
+#include <vector>
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
 #include "spscqueue.hh"
@@ -64,7 +65,7 @@ class UdpReceiver
 {
 public:
     UdpReceiver(const Parameters&           para,
-                SPSCQueue<XtcData::Dgram*>& pvQueue,
+                SPSCQueue<XtcData::Dgram*>& encQueue,
                 SPSCQueue<XtcData::Dgram*>& bufferFreeList);
     ~UdpReceiver();
 public:
@@ -91,7 +92,7 @@ private:
     void _udpReceiver();
 private:
     const Parameters&           m_para;
-    SPSCQueue<XtcData::Dgram*>& m_pvQueue;
+    SPSCQueue<XtcData::Dgram*>& m_encQueue;
     SPSCQueue<XtcData::Dgram*>& m_bufferFreelist;
     std::atomic<bool>           m_terminate;
     std::thread                 m_udpReceiverThread;
@@ -112,6 +113,30 @@ private:
 };
 
 
+class Interpolator
+{
+public:
+  Interpolator(unsigned n, unsigned o) : _idx(0), _t(n), _v(n), _coeff(o+1)
+  {
+    // check to make sure inputs are correct
+    assert(_t.size() == _v.size());
+    assert(_t.size() >= _coeff.size());
+  }
+  ~Interpolator() {}
+
+public:
+  void reset() { _idx=0;  std::fill(_t.begin(), _t.end(), 0); }
+  void update(XtcData::TimeStamp t, unsigned v);
+  unsigned calculate(XtcData::TimeStamp t, XtcData::Damage& damage) const;
+
+private:
+  unsigned            _idx;
+  std::vector<double> _t;
+  std::vector<double> _v;
+  std::vector<double> _coeff;
+};
+
+
 class UdpEncoder : public XpmDetector
 {
 public:
@@ -127,11 +152,13 @@ public:
     enum { DefaultDataPort = 5006 };
     enum { MajorVersion = 2, MinorVersion = 0, MicroVersion = 0 };
 private:
-    void _event(XtcData::Dgram& dgram, const void* const bufEnd, encoder_frame_t& frame);
+    void _event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame);
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
-    void _matchUp();
-    void _handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
+    void _process(Pds::EbDgram* dgram);
+    void _handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg);
+  //void _handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg);
+    void _handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
     enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
@@ -139,8 +166,11 @@ private:
     DrpBase& m_drp;
     std::shared_ptr<UdpReceiver> m_udpReceiver;
     std::thread m_workerThread;
+    Interpolator m_interpolator;
+    bool m_interpolating;
+    unsigned m_slowGroup;
     SPSCQueue<uint32_t> m_evtQueue;
-    SPSCQueue<XtcData::Dgram*> m_pvQueue;
+    SPSCQueue<XtcData::Dgram*> m_encQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
     std::vector<uint8_t> m_buffer;
     std::atomic<bool> m_terminate;

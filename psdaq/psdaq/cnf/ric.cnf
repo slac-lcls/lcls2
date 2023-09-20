@@ -161,6 +161,7 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
+ {host: 'drp-srcf-cmp036', id:'gmdstr0_0',  flags:'spux', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE0'},
 # {host: 'drp-srcf-cmp028', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms
 
 # Run ~/lclsii/daq/runs/eb/toyP4pSvr.py to serve demo:claus:pv:image

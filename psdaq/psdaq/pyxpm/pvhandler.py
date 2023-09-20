@@ -41,6 +41,12 @@ def addPV(name,ctype,init=0):
     provider.add(name, pv)
     return pv
 
+def addPVC(name,ctype,init,cmd):
+    pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
+                  handler=PVHandler(cmd))
+    provider.add(name,pv)
+    return pv
+
 def addPVT(name,t):
     table,n = toTable(t)
     init    = toDictList(t,n)

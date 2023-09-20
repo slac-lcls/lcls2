@@ -68,8 +68,8 @@ from PyQt5.QtGui import  QPen, QPainter, QColor, QBrush, QTransform, QPolygonF
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF, QSize, QSizeF, QLineF
 import psana.graphqt.QWUtils as gu
 import psana.graphqt.GWROIUtils as roiu
-QPEN_DEF, QBRUSH_DEF, QCOLOR_DEF, QCOLOR_SEL, QCOLOR_EDI, QCOLOR_INV =\
-roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QCOLOR_DEF, roiu.QCOLOR_SEL, roiu.QCOLOR_EDI, roiu.QCOLOR_INV
+QPEN_DEF, QBRUSH_DEF, QBRUSH_SEL, QCOLOR_DEF, QCOLOR_SEL, QCOLOR_EDI, QCOLOR_INV =\
+roiu.QPEN_DEF, roiu.QBRUSH_DEF, roiu.QBRUSH_SEL, roiu.QCOLOR_DEF, roiu.QCOLOR_SEL, roiu.QCOLOR_EDI, roiu.QCOLOR_INV
 NONE, SELECT, EDIT, INVERT = roiu.NONE, roiu.SELECT, roiu.EDIT, roiu.INVERT
 
 
@@ -152,7 +152,7 @@ class GWViewImageROI(GWViewImage):
         self.left_is_pressed = False
         self.right_is_pressed = False
 
-    def set_roi_color(self, roi=None, color=QCOLOR_DEF):
+    def set_roi_color(self, roi=None, color=QCOLOR_DEF): #, brush=None):
         """sets roi color, by default for self.roi_active sets QCOLOR_DEF"""
         o = self.roi_active if roi is None else roi
         if o is not None:
@@ -160,20 +160,20 @@ class GWViewImageROI(GWViewImage):
             pen.setColor(color)
             pen.setCosmetic(True)
             o.scitem.setPen(pen)
-            if self.roi_type in (roiu.PIXEL, roiu.PIXGROUP):
-                brush = o.scitem.brush() if hasattr(o.scitem, 'brush') else QBRUSH_DEF
-                brush.setColor(color)
-                o.scitem.setBrush(brush)
+            if o.roi_type in (roiu.PIXEL, roiu.PIXGROUP):
+                _brush = o.scitem.brush() if hasattr(o.scitem, 'brush') else QBRUSH_DEF
+                #_brush = QBRUSH_DEF if brush is None else brush
+                _brush.setColor(color)
+                o.scitem.setBrush(_brush)
 
     def reset_color_all_rois(self, color=QCOLOR_DEF):
         for o in self.list_of_rois:
             if o.scitem.pen().color() != color:
-                self.set_roi_color(o, color)
+                self.set_roi_color(roi=o, color=color)
 
     def finish(self):
         if self.mode_type & roiu.ADD:  self.finish_add_roi()
         if self.mode_type & roiu.EDIT: self.finish_edit_roi()
-        self.set_roi_and_mode(roi_type=roiu.NONE, mode_type=roiu.NONE)
 
     def finish_add_roi(self):
         """finish add_roi action on or in stead of last click, set poly at last non-closing click"""
@@ -216,15 +216,19 @@ class GWViewImageROI(GWViewImage):
         o = self.one_roi_at_point(self.scene_pos(e))
         if o is None: return
         o.swap_mode(SELECT)
-        self.set_roi_color(o, color=QCOLOR_SEL if o.is_mode(SELECT) else QCOLOR_DEF)
+        self.set_roi_color(roi=o, color=QCOLOR_SEL if o.is_mode(SELECT) else QCOLOR_DEF)
+        #                          brush=QBRUSH_SEL if o.is_mode(SELECT) else QBRUSH_DEF)
 
     def on_press_invert(self, e):
         """invert ROI on mouthPressEvent"""
         logger.debug('GWViewImageROI.on_press_invert at scene pos: %s' % str(self.scene_pos(e)))
         o = self.one_roi_at_point(self.scene_pos(e))
         if o is None: return
+        if not o.is_invertable:
+            logger.warning('ROI of type %s IS NOT INVERTABLE' % o.roi_name)
+            return
         o.swap_mode(INVERT)
-        self.set_roi_color(o, color=QCOLOR_INV if o.is_mode(INVERT) else QCOLOR_DEF)
+        self.set_roi_color(roi=o, color=QCOLOR_INV if o.is_mode(INVERT) else QCOLOR_DEF)
 
     def deselect_any_edit(self):
         for o in self.list_of_rois:
@@ -249,7 +253,7 @@ class GWViewImageROI(GWViewImage):
             self.deselect_any_edit()
             return
         self.roi_active.set_mode(EDIT, True)
-        self.set_roi_color(self.roi_active, QCOLOR_EDI)
+        self.set_roi_color(roi=self.roi_active, color=QCOLOR_EDI)
         self.roi_active.show_handles()
 
     def on_move_edit(self, e):
@@ -388,12 +392,14 @@ class GWViewImageROI(GWViewImage):
 
     def save_parameters_in_file(self, fname=FNAME_DEF):
         self.finish()
+        self.set_roi_and_mode()
         d = {'ROI_%04d'%i:o.roi_pars() for i,o in enumerate(self.list_of_rois)}
         save_dict_in_json_file(d, fname)
         logger.info('GWViewImageROI.save_parameters_in_file %s\n%s' % (fname, info_dict(d)))
 
     def load_parameters_from_file(self, fname=FNAME_DEF):
         self.finish()
+        self.set_roi_and_mode()
         d = load_dict_from_json_file(fname)
         logger.info('GWViewImageROI.load_parameters_from_file %s\n%s' % (fname, info_dict(d)))
         self.set_rois_from_dict(d)
@@ -412,21 +418,22 @@ class GWViewImageROI(GWViewImage):
                 continue
             if o.set_from_roi_pars(d):
                 self.list_of_rois.append(o)
-                self.set_roi_color(o, color=QCOLOR_INV if o.is_mode(INVERT) else QCOLOR_DEF)
+                self.set_roi_color(roi=o, color=QCOLOR_INV if o.is_mode(INVERT) else QCOLOR_DEF)
         #self.reset_color_all_rois(color=QCOLOR_DEF)
 
     def mask_pixels(self):
         """returns mask generated from roi_type roiu.PIXEL and PIXGROUP"""
         logger.debug('mask_pixels')
         shape = self.arr.shape
-        mask = np.ones(shape, dtype=bool)
+        mask = np.ones(shape, dtype=np.uint8)
+        print(info_ndarr(mask, 'XXX mask_pixels'))
         for o in self.list_of_rois:
             if o.roi_type == roiu.PIXEL:
                 p = o.pos
-                mask[p.y(), p.x()] = False
+                mask[p.y(), p.x()] = 0 # False
             elif o.roi_type == roiu.PIXGROUP:
                 for p in o.pixpos:
-                    mask[p.y(), p.x()] = False
+                    mask[p.y(), p.x()] = 1 #False
         return mask
 
     def mask_total(self):
@@ -446,11 +453,12 @@ class GWViewImageROI(GWViewImage):
                    np.logical_and(mtot, m, out=mtot) # 1ms for 1M image
             logger.info('mask of %s t(sec)=%.3f' % (o.roi_name, time()-t0_sec))
         logger.info(info_ndarr(mtot, 'mask_total:'))
-        return mtot.astype(int)
+        return mtot.astype(np.uint8)
 
     def save_mask(self, fname=FNAME_MASK):
         """calls mask_total and save it in specified file"""
         self.finish()
+        self.set_roi_and_mode()
         logger.debug('save_mask')
         mask = self.mask_total()
         logger.info(info_ndarr(mask, 'mask_total'))
@@ -459,6 +467,7 @@ class GWViewImageROI(GWViewImage):
             return
         np.save(fname, mask)
         logger.warning('saved: %s' % fname)
+        return mask
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
         """Input array is scailed by color table. If color table is None arr set as is."""

@@ -32,3 +32,6 @@ class NullDataSource(DataSourceBase):
         """ NullDataSource is used for srv nodes, therefore not a
         'user'-unique rank."""
         return False
+
+    def is_srv(self):
+        return True

@@ -36,7 +36,7 @@ from PyQt5.QtGui import QCursor
 
 class QWPopupSelectItem(QDialog):
 
-    def __init__(self, parent=None, lst=[], show_frame=False):
+    def __init__(self, parent=None, lst=[], show_frame=False, do_sorted=True):
 
         QDialog.__init__(self, parent, flags=Qt.WindowStaysOnTopHint)
 
@@ -44,7 +44,7 @@ class QWPopupSelectItem(QDialog):
         self.list = QListWidget(parent=self)
         self.show_frame = show_frame
 
-        self.fill_list(lst)
+        self.fill_list(lst, do_sorted)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.list)
@@ -67,9 +67,10 @@ class QWPopupSelectItem(QDialog):
         QTimer().singleShot(self.dt_msec, self.on_timeout)
 
 
-    def fill_list(self, lst):
+    def fill_list(self, lst, do_sorted=True):
         self.list.clear()
-        for s in sorted(lst):
+        names = sorted(lst) if do_sorted else lst
+        for s in names:
             item = QListWidgetItem(s, self.list)
             item.setSizeHint(QSize(4*len(s), 15))
         #self.list.sortItems(Qt.AscendingOrder)
@@ -118,8 +119,8 @@ class QWPopupSelectItem(QDialog):
         return self.name_sel
 
 
-def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_frame=False):
-    w = QWPopupSelectItem(parent, lst, show_frame)
+def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_frame=False, do_sorted=True):
+    w = QWPopupSelectItem(parent, lst, show_frame, do_sorted)
     #w.setMinimumHeight(min_height)
     size = len(lst)
     nchars = max([len(s) for s in lst])

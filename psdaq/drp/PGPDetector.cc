@@ -240,7 +240,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             // transitions
             } else {
                 transition = true;
-                // Pds::EbDgram* dgram = reinterpret_cast<Pds::EbDgram*>(pool.pebble[pebbleIndex]);
                 Pds::EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];
                 if (pythonDrp) {
                     XtcData::Dgram* inpDg = trDgram;
@@ -297,6 +296,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
     PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize), m_terminate(false),
     m_flushTmo(1.1 * drp.tebPrms().maxEntries * 14/13),
     m_shmemSize(shmemSize),
+    m_pyAppTime(0),
     pythonDrp(pythonDrp)
 {
     threadCountPush.store(0);

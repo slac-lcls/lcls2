@@ -393,11 +393,14 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                 abort();
             }
 
-            for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
-                PGPEvent* brokenEvent = &m_pool.pgpEvents[e & (m_pool.nDmaBuffers() - 1)];
-                logging::error("broken event:  %08x", brokenEvent->mask);
-                handleBrokenEvent(*brokenEvent);
-                freeDma(brokenEvent);   // Leaves event mask = 0
+            if (m_lastComplete == evtCounter) {}  // something else is going on
+            else {
+                for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
+                    PGPEvent* brokenEvent = &m_pool.pgpEvents[e & (m_pool.nDmaBuffers() - 1)];
+                    logging::error("broken event:  %08x", brokenEvent->mask);
+                    handleBrokenEvent(*brokenEvent);
+                    freeDma(brokenEvent);   // Leaves event mask = 0
+                }
             }
         }
         m_lastComplete = evtCounter;
@@ -956,6 +959,20 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
             logging::error("%s: stat(%s) error: %m", __PRETTY_FUNCTION__, statPth.c_str());
         }
         logging::info("output dir: %s", statPth.c_str());
+    }
+
+    //  Add pva_addr to the environment
+    if (para.kwargs.find("pva_addr")!=para.kwargs.end()) {
+        const char* a = para.kwargs["pva_addr"].c_str();
+        char* p = getenv("EPICS_PVA_ADDR_LIST");
+        char envBuff[256];
+        if (p)
+            sprintf(envBuff,"%s %s", p, a);
+        else
+            sprintf(envBuff,"%s", a);
+        logging::info("Setting env %s\n", envBuff);
+        if (setenv("EPICS_PVA_ADDR_LIST",envBuff,1))
+            perror("setenv pva_addr");
     }
 }
 

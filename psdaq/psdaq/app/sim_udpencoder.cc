@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string>
 #include <signal.h>
+#include <cmath>
 
 #include "psdaq/tpr/Client.hh"
 #include "psdaq/tpr/Frame.hh"
@@ -19,6 +20,8 @@ int m_dropRequest;
 struct sockaddr_in m_loopbackAddr;
 uint16_t m_loopbackFrameCount;
 static const char *m_addr = "127.0.0.1";
+FILE* m_file = 0;
+static const double PI = 4.0 * std::atan(1.0);
 
 // forward declarations
 void _loopbackInit();
@@ -32,6 +35,7 @@ static void usage(const char* p) {
   printf("         -p <partition>\n");
   printf("         -a <dest addr>  (default %s)\n", m_addr);
   printf("         -d <data port>  (default %d)\n", Drp::UdpEncoder::DefaultDataPort);
+  printf("         -f <playback csv file>\n");
   printf("         -v (verbose)\n");
   printf("Either -r or -e or -p is required\n");
 }
@@ -65,8 +69,9 @@ int main(int argc, char* argv[])
   int evcode = -1;
   int partition = -1;
   m_data_port = Drp::UdpEncoder::DefaultDataPort;
+  char* csvFile = NULL;
 
-  while ( (c=getopt( argc, argv, "e:r:p:d:a:vh"))!=EOF) {
+  while ( (c=getopt( argc, argv, "e:r:p:d:a:f:vh"))!=EOF) {
     switch(c) {
     case 'e':
       evcode = strtol(optarg,NULL,0);
@@ -82,6 +87,9 @@ int main(int argc, char* argv[])
       break;
     case 'a':
       m_addr = optarg;
+      break;
+    case 'f':
+      csvFile = optarg;
       break;
     case 'v':
       m_verbose = true;
@@ -104,6 +112,14 @@ int main(int argc, char* argv[])
   if (m_loopbackFd == -1) {
       printf("_loopbackInit() failed\n");
       return 0;
+  }
+
+  if (csvFile) {
+    m_file = fopen(csvFile, "r");
+    if (!m_file) {
+      perror("CSV file open");
+      return 0;
+    }
   }
 
   // open the timing receiver
@@ -149,6 +165,9 @@ int main(int argc, char* argv[])
   }
 
   _loopbackFini();
+  if (m_file) {
+    fclose(m_file);
+  }
   return 0;
 }
 
@@ -225,8 +244,29 @@ void _loopbackSend()
         printf("%s: dropping frame #%hu\n", __PRETTY_FUNCTION__, frameCount);
         -- m_dropRequest;
     } else {
-        // channel 0 test pattern: 100, 200, 100, 200, 100, ...
-        pChannel->encoderValue = htonl((frameCount & 1) ? 200 : 100);
+        if (!m_file) {
+          // channel 0 test pattern: 100, 200, 100, 200, 100, ...
+          pChannel->encoderValue = htonl((frameCount & 1) ? 200 : 100);
+          //// channel 0 test pattern: sine wave between 100 and 200
+          //pChannel->encoderValue = htonl(unsigned(100. * (1.5 + 0.5 * std::sin(2. * PI * double(frameCount) / 102.))));
+        } else {                        // See ~cpo/encoder for *.csv files
+          uint64_t t;                   // time
+          double u;                     // urads?
+          double q;                     // Looks like noise?
+          unsigned z;                   // Zero?
+          unsigned raw;                 // Raw encoder value
+          int rc = fscanf(m_file, "%lu,%lf,%lf,%u,%u", &t, &u, &q, &z, &raw);
+          if (rc == EOF) {
+            rewind(m_file);
+            rc = fscanf(m_file, "%lu,%lf,%lf,%u,%u", &t, &u, &q, &z, &raw);
+          }
+          if (rc == 5) {
+            pChannel->encoderValue = htonl(raw);
+          } else {
+            perror("CSV file fscanf");
+            exit(1);
+          }
+        }
         // send frame
         sent = sendto(m_loopbackFd, (void *)m_buf, sizeof(m_buf), 0,
                       (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));

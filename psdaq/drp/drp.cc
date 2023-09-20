@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     int c;
     std::string kwargs_str;
     std::string::size_type ii = 0;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:W:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -56,6 +56,9 @@ int main(int argc, char* argv[])
                 break;
             case 'M':
                 para.prometheusDir = optarg;
+                break;
+            case 'W':
+                para.nworkers = std::stoi(optarg);
                 break;
             case 'v':
                 ++para.verbose;
@@ -122,6 +125,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pebbleBufCount")    continue;  // DrpBase
         if (kwargs.first == "batching")          continue;  // DrpBase
         if (kwargs.first == "directIO")          continue;  // DrpBase
+        if (kwargs.first == "pva_addr")          continue;  // DrpBase
         if (para.detType == "opal") {
             if (kwargs.first == "simxtc")            continue;  // Opal
             if (kwargs.first == "simxtc2")           continue;  // Opal
@@ -143,7 +147,6 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    para.nworkers = 10;
     para.batchSize = 32; // Must be a power of 2
     para.maxTrSize = 8 * 1024 * 1024;
     try {

@@ -2,7 +2,8 @@ if not platform: platform = '2'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = ld_lib_path
-manta_env = 'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+manta_env = "EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO"+' '+ld_lib_path
+mr2k1_env = "EPICS_PVA_ADDR_LIST=172.21.92.76 EPICS_PVA_AUTO_ADDR_LIST=NO"+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.255'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
 
@@ -77,7 +78,7 @@ ami_manager_node = "drp-srcf-cmp029"
 
 procmgr_config = [
 # {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:3 DAQ:NEH:XPM:5'},
- {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 '+groups},
+# {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 '+groups},
  {                          id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
 # { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
@@ -95,11 +96,11 @@ procmgr_config = [
 # { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
 
 # 11/9/2022 - gmd waveform test (smoeller, espov) - moved from cmp015 to cmp025 (weaver)
- { host: 'drp-srcf-cmp025', id:'gmdstr0_0',   flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT0'},  # Electron waveforms
- { host: 'drp-srcf-cmp025', id:'gmdstr2_0',   flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x1 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT2'},  # Ion waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr1_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x4 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT1'}, # Electron 2 waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr2_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x8 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT2'}, # Ion waveforms
+ { host: 'drp-srcf-cmp025', id:'gmdstr0_0',   flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE0'},  # Electron waveforms
+ { host: 'drp-srcf-cmp025', id:'gmdstr2_0',   flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x1 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE2'},  # Ion waveforms
+ { host: 'drp-srcf-cmp025', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_DOUBLE0'}, # Electron 1 waveforms
+ { host: 'drp-srcf-cmp025', id:'xgmdstr1_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x4 ca/EM2K0:XGMD:HPS:STR0:STREAM_DOUBLE1'}, # Electron 2 waveforms
+ { host: 'drp-srcf-cmp025', id:'xgmdstr2_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x8 ca/EM2K0:XGMD:HPS:STR0:STREAM_DOUBLE2'}, # Ion waveforms
 
 # 10/3/2021 - epixhr beam test
 # {                          id:'groupca6',    flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 6'},
@@ -135,7 +136,7 @@ procmgr_config = [
  { host: 'drp-srcf-cmp025', id:'manta_0',     flags:'spu', env:manta_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
  # 9MPixel G-917C manta untimestamped image @1Hz (hence the "-0" flag)
  # set the pebbleBufSize smaller since filewriter only supports 8388688 currently
-# { host: 'drp-srcf-cmp002', id:'mr2k1_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
+ { host: 'drp-srcf-cmp002', id:'mr2k1_0',     flags:'spu', env:mr2k1_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
 ]
 
 hsd_epics = 'DAQ:RIX:HSD:1'

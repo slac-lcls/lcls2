@@ -31,6 +31,7 @@ struct Parameters
 {
     Parameters() :
         partition(-1),
+        nworkers(10),
         detSegment(0),
         laneMask(0x1),
         loopbackPort(0),

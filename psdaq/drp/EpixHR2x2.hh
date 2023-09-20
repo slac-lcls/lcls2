@@ -35,6 +35,7 @@ protected:
     bool              m_env_empty;
     XtcData::NamesId  m_evtNamesId[2];
     unsigned          m_asics;
+    bool              m_descramble;
   };
 
 }

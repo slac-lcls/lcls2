@@ -189,7 +189,13 @@ class TimingStatus(object):
                 if self._linkUpdate:
                     self._linkUpdate()
             
+class TimingLock(object):
+    def __init__(self, name, dev):
+        self._pv_Dump        = addPVC(name+':DUMP', 'I', 0, self.dump)
 
+    def dump(self, pv, val):
+        self._dev.dump()
+        
 class AmcPLLStatus(object):
     def __init__(self, name, app, idx):
         self._idx    = idx
@@ -419,6 +425,10 @@ class PVStats(object):
 
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp)
+
+#  Expose for dumping the input link locking status
+        self._usTimingLock = TimingLock(name+':Us',xpm.UsGthRx)
+        self._cuTimingLock = TimingLock(name+':Cu',xpm.CuGthRx)
 
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
 

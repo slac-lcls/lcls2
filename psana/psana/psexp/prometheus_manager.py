@@ -9,11 +9,11 @@ PUSH_GATEWAY        = 'psdm03:9091'
 
 registry = CollectorRegistry()
 metrics ={
-        'psana_smd0_read'       : ('Counter', 'Counting no. of events/batches/MB read by Smd0'), 
-        'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB'),  
+        'psana_smd0_read'       : ('Counter', 'Counting no. of events/batches/MB read by Smd0'),
+        'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB'),
         'psana_smd0_wait_eb'    : ('Summary', 'time spent (s) waiting for EventBuilders'),
-        'psana_eb_sent'         : ('Counter', 'Counting no. of events/batches/MB'),              
-        'psana_eb_filter'       : ('Counter', 'Counting no. of batches and time spent'), 
+        'psana_eb_sent'         : ('Counter', 'Counting no. of events/batches/MB'),
+        'psana_eb_filter'       : ('Counter', 'Counting no. of batches and time spent'),
         'psana_eb_wait_smd0'    : ('Summary', 'time spent (s) waiting for Smd0'),
         'psana_eb_wait_bd'      : ('Summary', 'time spent (s) waiting for BigData cores'),
         'psana_bd_read'         : ('Counter', 'Counting no. of events processed by BigData'),
@@ -40,21 +40,24 @@ class PrometheusManager(object):
         self.jobid = jobid
         pass
 
+    def register(self, metric):
+        registry.register(metric)
+
     def push_metrics(self, e, from_whom=''):
         while not e.isSet():
             push_to_gateway(PUSH_GATEWAY, job='psana_pushgateway', grouping_key={'jobid': self.jobid, 'rank': from_whom}, registry=registry, timeout=None)
             logger.debug('TS: %s PUSHED JOBID: %s RANK: %s e.isSet():%s'%(time.time(), self.jobid, from_whom, e.isSet()))
             time.sleep(PUSH_INTERVAL_SECS)
-        
+
     @staticmethod
     def get_metric(metric_name):
-        # get metric object from its name 
+        # get metric object from its name
         # NOTE that _created has to be appended to locate the key
         if metric_name in registry._names_to_collectors:
             collector = registry._names_to_collectors[metric_name]
         else:
             collector = registry._names_to_collectors[f'{metric_name}_created']
         return collector
-        
-        
+
+
 

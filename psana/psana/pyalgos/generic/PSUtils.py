@@ -35,7 +35,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-02
 """
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -46,21 +45,18 @@ import numpy as np
 from time import time, strptime, strftime, localtime, mktime
 from psana.pyalgos.generic.UtilsFS import *
 
-INSTRUMENT_DIR = '/cds/data/psdm/'
+INSTRUMENT_DIR = os.getenv('SIT_PSDM_DATA', '/sdf/data/lcls/ds/').rstrip('/')  # /sdf/data/lcls/ds/ or /cds/data/psdm/
 
 def dir_exp(expname, dirinstr=INSTRUMENT_DIR):
     assert isinstance(expname, str)
     assert len(expname) in (8,9)
     return os.path.join(dirinstr, expname[:3], expname) # expname[:3].upper()
 
-
 def dir_xtc(expname, dirinstr=INSTRUMENT_DIR):
     return os.path.join(dir_exp(expname, dirinstr), 'xtc')
 
-
 def dir_calib(expname, dirinstr=INSTRUMENT_DIR):
     return os.path.join(dir_exp(expname, dirinstr), 'calib')
-
 
 def list_of_experiments(direxp=None): # e.g. '/reg/d/psdm/XPP'
     """ Returns list of experiments in experimental directiory defined through configuration parameters.
@@ -77,8 +73,7 @@ def list_of_experiments(direxp=None): # e.g. '/reg/d/psdm/XPP'
     #print('XXX list_of_experiments:', ldir)
     return [e for e in ldir if e[:3] == ptrn]
 
-
-def list_of_instruments(dirname='/cds/data/psdm'):
+def list_of_instruments(dirname=INSTRUMENT_DIR):
     ldir = os.listdir(dirname)
     if len(ldir)>10: return tuple([d for d in ldir if d[:3].isupper()]) + ('asc','prj','mon','ued','txi')
     else:
@@ -86,30 +81,25 @@ def list_of_instruments(dirname='/cds/data/psdm'):
         return ['MEC', 'TMO', 'MOB', 'MFX', 'RIX', 'USR', 'SXR', 'AMO', 'XPP', 'CXI', 'DET', 'DIA', 'TST', 'XCS',\
                 'asc', 'prj', 'mon', 'ued', 'txi']
 
-
 def list_of_int_from_list_of_str(list_in):
     """Converts  ['0001', '0202', '0203', '0204',...] to [1, 202, 203, 204,...]
     """
     return [int(item.lstrip('0')) for item in list_in]
-
 
 def list_of_str_from_list_of_int(list_in, fmt='%04d'):
     """Converts [1, 202, 203, 204,...] to ['0001', '0202', '0203', '0204',...]
     """
     return [fmt % item for item in list_in]
 
-
-def list_of_runs_in_xtc_dir(dirxtc, ext='.xtc'):  # e.g. '/reg/d/psdm/XPP/xpptut13/xtc'
+def list_of_runs_in_xtc_dir(dirxtc, ext='.xtc'):  # e.g. '/reg/d/psdm/XPP/xpptut15/xtc'
     #xtcfiles = list_of_files_in_dir_for_ext(dirxtc, ext)
     xtcfiles = list_of_files_in_dir_for_pattern(dirxtc, ext)
     runs = [f.split('-')[1].lstrip('r') for f in xtcfiles]
     return set(runs)
 
-
 def src_type_alias_from_cfg_key(key):
     """Returns striped object 'EventKey(type=None, src='DetInfo(CxiDs2.0:Cspad.0)', alias='DsdCsPad')'"""
     return k.src(), k.type(), k.alias()
-
 
 def convertCheetahEventName(evname, fmtts='%Y-%m-%dT%H:%M:%S'):
     """Converts Cheetah event name like 'LCLS_2015_Feb22_r0169_022047_197f7'
@@ -129,10 +119,8 @@ def convertCheetahEventName(evname, fmtts='%Y-%m-%dT%H:%M:%S'):
     tstamp = strftime(fmtts, localtime(tsec))
     return runnum, tstamp, tsec, s_fid
 
-
 def src_from_rc8x8(row, col):
-    """Converts Cheetah 8x8 ASICs table row and column to seg, row, col coordinates
-    """
+    """Converts Cheetah 8x8 ASICs table row and column to seg, row, col coordinates."""
     qsegs, rows, cols = (8, 185, 388)
     quad = math.floor(col/cols) # [0,3]
     qseg = math.floor(row/rows) # [0,7]
@@ -140,7 +128,6 @@ def src_from_rc8x8(row, col):
     c = col%cols if isinstance(col, int) else math.fmod(col, cols)
     r = row%rows if isinstance(row, int) else math.fmod(row, rows)
     return s, r, c
-
 
 def table_from_cspad_ndarr(nda_cspad):
     """returns table of 2x1s shaped as (8*185, 4*388) in style of Cheetah
@@ -154,7 +141,6 @@ def table_from_cspad_ndarr(nda_cspad):
     nda_out = np.hstack([nda_cspad[q,:] for q in range(shape[0])])
     nda_cspad.shape = shape_in # restore original shape
     return nda_out
-
 
 def cspad_ndarr_from_table(table8x8):
     """returns cspad array with shape=(32,185,388)
@@ -176,8 +162,7 @@ def cspad_ndarr_from_table(table8x8):
 
 
 def cspad_psana_from_cctbx(nda_in):
-    """returns cspad array (32, 185, 388) from cctbx array of ASICs (64, 185, 194)
-    """
+    """returns cspad array (32, 185, 388) from cctbx array of ASICs (64, 185, 194)."""
     asics, rows, colsh = shape_in = (64,185,194)
     size = asics * rows * colsh
     segs, cols = asics/2, colsh*2
@@ -197,10 +182,8 @@ def cspad_psana_from_cctbx(nda_in):
 
     return nda_out
 
-
 def cspad_cctbx_from_psana(nda_in):
-    """returns cctbx array of ASICs (64, 185, 194) from cspad array (32, 185, 388)
-    """
+    """returns cctbx array of ASICs (64, 185, 194) from cspad array (32, 185, 388)."""
     segs, rows, cols = shape_in = (32,185,388)
     size = segs * rows * cols
     colsh = cols/2
@@ -218,10 +201,8 @@ def cspad_cctbx_from_psana(nda_in):
         nda_out[a+1,:,:] = nda_in[s,:,colsh:cols]
     return nda_out
 
-
 def cross_check_cspad_psana_cctbx(nda, arr):
-    """Apply two-way conversions between psana and cctbx cspad arrays and compare.
-    """
+    """Apply two-way conversions between psana and cctbx cspad arrays and compare."""
     t0_sec = time()
     nda_c = cspad_psana_from_cctbx(arr)
     dt1 = time() - t0_sec
@@ -230,7 +211,6 @@ def cross_check_cspad_psana_cctbx(nda, arr):
     dt2 = time() - t0_sec
     print('psana ndarray is equal to converted from cctbx: %s, time = %.6f sec' % (np.array_equal(nda, nda_c), dt1))
     print('cctbx ndarray is equal to converted from psana: %s, time = %.6f sec' % (np.array_equal(arr, arr_c), dt2))
-
 
 def table_nxm_cspad2x1_from_ndarr(nda):
     """returns table of cspad2x1 panels shaped as (nxm)
@@ -262,7 +242,6 @@ def table_nxm_cspad2x1_from_ndarr(nda):
        from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
        return reshape_to_2d(a)
 
-
 def table_nxm_jungfrau_from_ndarr(nda):
     """returns table of jungfrau panels shaped as (nxn)
        generated from jungfrau array shaped as (N, 512, 1024) in data.
@@ -287,7 +266,6 @@ def table_nxm_jungfrau_from_ndarr(nda):
     else:
        from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
        return reshape_to_2d(a)
-
 
 def table_nxn_epix10ka_from_ndarr(nda, gapv=20):
     """returns table of epix10ka/epixhr panels shaped as (nxn)
@@ -331,17 +309,14 @@ def table_nxn_epix10ka_from_ndarr(nda, gapv=20):
        from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
        return reshape_to_2d(a)
 
-
 """Aliases"""
 
 table8x8_from_cspad_ndarr = table_from_cspad_ndarr
 cspad_ndarr_from_table8x8 = cspad_ndarr_from_table
 # See tests in Detector/examples/ex_ndarray_from_image.py
 
-
 def env_time(env):
     return 1585724400
-
 
 #----------- TEST -------------
 
@@ -353,50 +328,59 @@ if __name__ == "__main__":
     print('Method convertCheetahEventName converts Cheetah event name %s' % eventName,\
           '\nto runnum: %d  tstamp: %s  tsec: %d  fid: %s' % (runnum, tstamp, tsec, fid))
 
+  def test_directory():
+    d = '%s/XPP/xpptut15/xtc/' % INSTRUMENT_DIR
+    print('test directory: %s' % d)
+    return d
+
+  def test_01():
+    print('empty %s' % sys._getframe().f_code.co_name)
 
   def test_list_of_files_in_dir():
     print('%s:' % sys._getframe().f_code.co_name)
-    lfiles = list_of_files_in_dir('/reg/d/psdm/sxr/sxrtut13/xtc/')
-    for fname in lfiles: print(fname)
-
+    lfiles = list_of_files_in_dir(test_directory())
+    for i,fname in enumerate(lfiles):
+        print(fname)
+        if i>10:
+            print('...')
+            break
 
   def test_list_of_files_in_dir_for_pattern():
     print('%s:' % sys._getframe().f_code.co_name)
-    lfiles = list_of_files_in_dir_for_pattern('/reg/d/psdm/cxi/cxitut13/xtc/', pattern='-r0011')
-    for fname in lfiles: print(fname)
-
+    lfiles = list_of_files_in_dir_for_pattern(test_directory(), pattern='-r0059')
+    for i,fname in enumerate(lfiles): print(fname)
 
   def test_list_of_files_in_dir_for_ext():
     print('%s:' % sys._getframe().f_code.co_name)
-    lfiles = list_of_files_in_dir_for_ext('/reg/d/psdm/sxr/sxrtut13/xtc/', ext='.xtc2')
-    for fname in lfiles: print(fname)
-
+    lfiles = list_of_files_in_dir_for_ext(test_directory(), ext='.xtc')
+    for i,fname in enumerate(lfiles):
+        print(fname)
+        if i>10:
+            print('...')
+            break
 
   def test_list_of_str_from_list_of_int():
     print('%s:' % sys._getframe().f_code.co_name)
     print(list_of_str_from_list_of_int([1, 202, 203, 204], fmt='%04d'))
 
-
   def test_list_of_int_from_list_of_str():
     print('%s:' % sys._getframe().f_code.co_name)
     print(list_of_int_from_list_of_str(['0001', '0202', '0203', '0204']))
 
-
   def test_list_of_experiments(tname):
     print('%s:' % sys._getframe().f_code.co_name)
 
-    lexps = list_of_experiments('/reg/d/psdm/XPP')
+    lexps = list_of_experiments('%s/XPP' % INSTRUMENT_DIR)
     s = 'list_of_experiments():\n'
     for i,e in enumerate(lexps):
         s += '%9s '%e
         if not (i+1)%10: s += '\n'
-    print(s)
-
+    print(s + '\n...')
 
   def test_list_of_runs_in_xtc_dir():
     print('%s:' % sys._getframe().f_code.co_name)
-    print(list_of_runs_in_xtc_dir('/reg/d/psdm/XPP/xpptut13/xtc'))
-
+    d = test_directory()
+    print(list_of_runs_in_xtc_dir(d))
 
   def usage(): return 'Use command: python %s <test-number>, where <test-number> = 1,2,...,8,...' % sys.argv[0]
 
@@ -412,7 +396,6 @@ if __name__ == "__main__":
     elif tname == '7': test_list_of_files_in_dir_for_pattern()
     elif tname == '8': test_list_of_runs_in_xtc_dir()
     else: sys.exit('Test number parameter is not recognized.\n%s' % usage())
-
 
 if __name__ == "__main__":
     import sys; global sys

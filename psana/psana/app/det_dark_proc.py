@@ -112,7 +112,7 @@ def argument_parser():
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
 
-    parser = ArgumentParser(usage=USAGE, description='%s - proceses dark run xtc raw data fro specified detector' % SCRNAME)
+    parser = ArgumentParser(usage=USAGE, description='%s - proceses dark run xtc raw data for specified detector' % SCRNAME)
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
