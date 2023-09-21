@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-"""Test of MDBWebUtils
-"""
+"""Test of MDBWebUtils"""
 
+import inspect
 import logging
 logger = logging.getLogger(__name__)
 from psana.pscalib.calib.MDBWebUtils import *
-
 
 if __name__ == "__main__":
 
@@ -14,15 +13,12 @@ if __name__ == "__main__":
   TEST_EXPNAME = 'testexper'
   TEST_DETNAME = 'testdet_1234'
 
-
   def test_database_names():
     print('test_database_names:', database_names())
-
 
   def test_collection_names():
     dbname = sys.argv[2] if len(sys.argv) > 2 else 'cdb_cspad_0001'
     print('test_collection_names:', collection_names(dbname))
-
 
   def test_find_docs():
     docs = find_docs('cdb_cspad_0001', 'cspad_0001')
@@ -37,7 +33,6 @@ if __name__ == "__main__":
     print('doc0:', doc0)
     print('doc0.keys():', doc0.keys())
 
-
   def test_get_random_doc_and_data_ids(det='cspad_0001'):
     dbname = mu.db_prefixed_name(det)
     colname = det
@@ -49,7 +44,6 @@ if __name__ == "__main__":
     print('_id : %s   id_data : %s' % (id_doc, id_data))
     return id_doc, id_data, dbname, colname
 
-
   def test_find_doc():
     #doc = find_doc('cdb_cxic0415', 'cspad_0001', query={'ctype':'pedestals', 'run':{'$lte':40}})
     #print('====> test_find_doc for run: %s' % str(doc))
@@ -60,12 +54,10 @@ if __name__ == "__main__":
     _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0001')
     _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0002')
 
-
   def test_get_data_for_id():
     id_doc, id_data, dbname, colname = test_get_random_doc_and_data_ids(det='cspad_0001')
     o = get_data_for_id(dbname, id_data)
     print('test_get_data_for_id: r.content raw data: %s ...' % str(o[:500]))
-
 
   def test_get_data_for_docid():
     id_doc, id_data, dbname, colname = test_get_random_doc_and_data_ids(det='cspad_0001')
@@ -73,19 +65,16 @@ if __name__ == "__main__":
     #o = get_data_for_docid('cdb_cxid9114', 'cspad_0001', '5b6cdde71ead144f115319be')
     print_ndarr(o, 'test_get_data_for_docid o:', first=0, last=10)
 
-
   def test_dbnames_collection_query():
     det='cspad_0001'
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
     print('test_dbnames_collection_query:', db_det, db_exp, colname, query)
-
 
   def test_calib_constants():
     det = 'cspad_0001'
     data, doc = calib_constants('cspad_0001', exp='cxic0415', ctype='pedestals', run=50, time_sec=None, vers=None) #, url=cc.URL)
     print_ndarr(data, '==== test_calib_constants', first=0, last=5)
     print('==== doc: %s' % str(doc))
-
 
   def test_calib_constants_text():
     det = 'cspad_0001'
@@ -98,7 +87,6 @@ if __name__ == "__main__":
     print('==== test_calib_constants_text data:', data)
     print('==== doc: %s' % str(doc))
 
-
   def test_calib_constants_dict():
     det = 'opal1000_0059'
     #data, doc = calib_constants(det, exp='amox23616', ctype='lasingoffreference', run=60, time_sec=None, vers=None)
@@ -107,7 +95,6 @@ if __name__ == "__main__":
     print('==== type(data)', type(data))
     print('==== type(doc) ', type(doc))
     print('==== doc: %s' % doc)
-
 
   def test_calib_constants_all_types():
     #resp = calib_constants_all_types('tmo_quadanode', exp='amox27716', run=100, time_sec=None, vers=None) #, url=cc.URL)
@@ -122,8 +109,7 @@ if __name__ == "__main__":
     s = pickle.dumps(resp)
     print('IF YOU SEE THIS, dict FOR ctypes SHOULD BE pickle-d')
 
-
-  def test_insert_constants(expname=TEST_EXPNAME, detname=TEST_DETNAME, ctype='test_ctype', runnum=10, data='test text sampele'):
+  def test_insert_constants(tname='11', expname=TEST_EXPNAME, detname=TEST_DETNAME, ctype='test_ctype', runnum=10, data='test text sampele'):
     """ Inserts constants using direct MongoDB interface from MDBUtils.
     """
     import psana.pyalgos.generic.Utils as gu
@@ -141,20 +127,17 @@ if __name__ == "__main__":
                         time_stamp=ts, **kwa)
     print('test_delete_database 2:', database_names())
 
-
   def test_delete_database(dbname='cdb_testexper'):
     print('test_delete_database %s' % dbname)
     print('test_delete_database BEFORE:', database_names())
     resp = delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_database AFTER :', database_names())
 
-
   def test_delete_collection(dbname='cdb_testexper', colname=TEST_DETNAME):
     print('test_delete_collection %s collection: %s' % (dbname, colname))
     print('test_delete_collection BEFORE:', collection_names(dbname, url=cc.URL))
     resp = delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_collection AFTER :', collection_names(dbname, url=cc.URL))
-
 
   def test_delete_document(dbname='cdb_testexper', colname=TEST_DETNAME, query={'ctype':'test_ctype'}):
     doc = find_doc(dbname, colname, query=query, url=cc.URL)
@@ -166,7 +149,6 @@ if __name__ == "__main__":
     print('test_delete_document for doc _id:', id)
     resp = delete_document(dbname, colname, id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_document resp:', resp)
-
 
   def test_delete_document_and_data(dbname='cdb_testexper', colname=TEST_DETNAME):
     ldocs = find_docs(dbname, colname, query={}, url=cc.URL)
@@ -180,11 +162,9 @@ if __name__ == "__main__":
     resp = delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_document_and_data resp:', resp)
 
-
   def test_add_data_from_file(dbname='cdb_testexper', fname=TEST_FNAME_PNG):
     resp = add_data_from_file(dbname, fname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_add_data_from_file resp: %s of type: %s' % (resp, type(resp)))
-
 
   def test_add_data(dbname='cdb_testexper'):
     #data = 'some text is here'
@@ -192,13 +172,11 @@ if __name__ == "__main__":
     resp = add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_add_data: %s\n  to: %s/gridfs/\n  resp: %s' % (str(data), dbname, resp))
 
-
   def test_add_document(dbname='cdb_testexper', colname=TEST_DETNAME, doc={'ctype':'test_ctype'}):
     from psana.pyalgos.generic.Utils import str_tstamp
     doc['time_stamp'] = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z')
     resp = add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('\ntest_add_document: %s\n  to: %s/%s\n  resp: %s' % (str(doc), dbname, colname, resp))
-
 
   def test_add_data_and_two_docs(exp=TEST_EXPNAME, det=TEST_DETNAME):
     from psana.pyalgos.generic.Utils import get_login
@@ -217,7 +195,6 @@ if __name__ == "__main__":
 
     print('time to insert data and two docs: %.6f sec' % (time()-t0_sec))
 
-
   def test_pro_detector_name():
     shortname = TEST_DETNAME
     longname = shortname + '_this_is_insane_long_detector_name_exceeding_55_characters_in_length_or_longer'
@@ -232,18 +209,15 @@ if __name__ == "__main__":
     print('Long detector name: %s' % dname)
     print('associated in %s with short name: %s' % (cc.DETNAMESDB, name))
 
-
   def test_valid_post_privilege():
       for dbname in ('cdb_xpptut15', 'cdb_epix_000001', 'cdb_ueddaq02'):
           print('\n=== test_test_post_privilege for DB: %s' % dbname)
           r = valid_post_privilege(dbname)
           print('     responce: %s' % r)
 
-
   def test_collection_info():
     s = collection_info('cdb_cspad_0001', 'cspad_0001')
     print('test_collection_info:\n%s' % str(s))
-
 
   def test_tmp():
 
@@ -272,48 +246,18 @@ if __name__ == "__main__":
     #ldocs = find_docs(dbname, colname, query={'_id':doc_id})
     #print('==== query={"_id":doc_id}} ldocs:\n', ldocs)
 
-
 if __name__ == "__main__":
-  def usage():
-      return 'Use command: python %s <test-number>, where <test-number> = 0,1,2,...,9' % sys.argv[0]\
-           + '\n  0: test_database_names'\
-           + '\n  1: test_collection_names [dbname]'\
-           + '\n  2: test_find_docs'\
-           + '\n  3: test_find_doc'\
-           + '\n  4: test_get_data_for_id'\
-           + '\n  5: test_get_data_for_docid'\
-           + '\n  6: test_dbnames_collection_query'\
-           + '\n  7: test_calib_constants'\
-           + '\n  8: test_calib_constants_text'\
-           + '\n  9: test_calib_constants_dict'\
-           + '\n 10: test_calib_constants_all_types'\
-           + '\n 11: test_insert_constants [using direct access methods of MDBUtils]'\
-           + '\n 12: test_delete_database'\
-           + '\n 13: test_delete_collection'\
-           + '\n 14: test_delete_document'\
-           + '\n 15: test_delete_document_and_data'\
-           + '\n 16: test_add_data_from_file'\
-           + '\n 17: test_add_data'\
-           + '\n 18: test_add_document'\
-           + '\n 19: test_add_data_and_two_docs'\
-           + '\n 20: test_pro_detector_name [test-mode=0-short name, 1-fixed long name, n-long name +"_n"]'\
-           + '\n 21: test_valid_post_privilege'\
-           + '\n 22: test_collection_info'\
-           + '\n 00: test_tmp'\
-           + ''
 
-
-if __name__ == "__main__":
+  def test_MDBWebUtils():
     import os
     from psana.pyalgos.generic.NDArrUtils import print_ndarr # info_ndarr, print_ndarr
     global print_ndarr
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
 
-    logger.info('\n%s\n' % usage())
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s Test %s %s' % (25*'_',tname, 25*'_'))
     if   tname == '0': test_database_names()
-    elif tname == '1': test_collection_names()
+    elif tname == '1': test_collection_names() # [dbname]
     elif tname == '2': test_find_docs()
     elif tname == '3': test_find_doc()
     elif tname == '4': test_get_data_for_id()
@@ -323,7 +267,7 @@ if __name__ == "__main__":
     elif tname == '8': test_calib_constants_text()
     elif tname == '9': test_calib_constants_dict()
     elif tname =='10': test_calib_constants_all_types()
-    elif tname =='11': test_insert_constants()
+    elif tname =='11': test_insert_constants(tname=tname) # [using direct access methods of MDBUtils]
     elif tname =='12': test_delete_database()
     elif tname =='13': test_delete_collection()
     elif tname =='14': test_delete_document()
@@ -332,11 +276,18 @@ if __name__ == "__main__":
     elif tname =='17': test_add_data()
     elif tname =='18': test_add_document()
     elif tname =='19': test_add_data_and_two_docs()
-    elif tname =='20': test_pro_detector_name()
+    elif tname =='20': test_pro_detector_name() # [test-mode=0-short name, 1-fixed long name, n-long name +"_n"]
     elif tname =='21': test_valid_post_privilege()
     elif tname =='22': test_collection_info()
     elif tname =='00': test_tmp()
     else: logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 
+  USAGE = '\nUsage: %s <tname>\n' % sys.argv[0].split('/')[-1]\
+      + '\n'.join([s for s in inspect.getsource(test_MDBWebUtils).split('\n') \
+                   if "tname ==" in s or 'GWViewImage' in s])  # s[9:]
+
+if __name__ == "__main__":
+    print('\n%s\n' % USAGE) # usage())
+    test_MDBWebUtils()
 # EOF
