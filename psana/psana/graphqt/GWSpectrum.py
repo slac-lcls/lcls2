@@ -166,7 +166,7 @@ class GWSpectrum(QWidget):
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
         self.wcbar.setFixedWidth(25)
-        self.edi_info.setMaximumHeight(85)
+        self.edi_info.setMinimumHeight(85)
         self.edi_info.setStyleSheet(self.whi.style_def)
 
     def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.00001, frmax=0.99999, edgemode=0, update_hblimits=True):
