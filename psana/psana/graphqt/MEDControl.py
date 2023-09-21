@@ -31,6 +31,10 @@ from psana.graphqt.QWPopupEditConfirm import popup_edit_and_confirm
 from psana.graphqt.QWPopupFileName import popup_file_name
 import psana.graphqt.MEDUtils as mu
 
+def is_none(v, msg='value is None'):
+    r = v is None
+    if r: logger.warning(msg)
+    return r # True or False
 
 class MEDControl(QWidget):
     """QWidget with control fields for Mask Editor"""
@@ -44,6 +48,7 @@ class MEDControl(QWidget):
 
         self.def_det = 'Select'
         self.def_dbg = 'Select'
+        self.def_dba = 'Select'
 
         self.geo      = kwa.get('geo', None)
         self.geofname = kwa.get('geofname', 'geometry.txt')
@@ -73,20 +78,12 @@ class MEDControl(QWidget):
         self.lab_dbg = QLabel('Geo from DB:')
         self.but_dbg = QPushButton(self.def_dbg)
 
+        self.lab_dba = QLabel('Arr from DB:')
+        self.but_dba = QPushButton(self.def_dba)
+
         self.but_set = QPushButton('Settings')
         self.but_tst = QPushButton('Test')
         self.but_mol = QPushButton('Less')
-
-        self.list_of_buts = (
-          self.but_nda,
-          self.but_det,
-          self.but_geo,
-          self.but_dsk,
-          self.but_dbg,
-          self.but_set,
-          self.but_mol,
-          self.but_tst,
-        )
 
         self.hbox0 = QHBoxLayout()
         self.hbox0.addWidget(self.lab_dsk)
@@ -95,6 +92,8 @@ class MEDControl(QWidget):
         self.hbox0.addWidget(self.but_det)
         self.hbox0.addWidget(self.lab_dbg)
         self.hbox0.addWidget(self.but_dbg)
+        self.hbox0.addWidget(self.lab_dba)
+        self.hbox0.addWidget(self.but_dba)
         self.hbox0.addStretch()
         self.hbox0.addWidget(self.but_set)
 
@@ -112,36 +111,39 @@ class MEDControl(QWidget):
         self.vbox.addLayout(self.hbox1)
         self.setLayout(self.vbox)
 
-        #for but in self.list_of_buts:
-        #    but.clicked.connect(self.on_but_clicked)
+        self.list_of_buts = (
+          self.but_nda,
+          self.but_det,
+          self.but_geo,
+          self.but_dsk,
+          self.but_dbg,
+          self.but_dba,
+          self.but_set,
+          self.but_mol,
+          self.but_tst,
+        )
+
+#        for but in self.list_of_buts:
+#            but.clicked.connect(self.on_but_clicked)
 
         self.but_dsk.clicked.connect(self.on_but_dsk)
         self.but_det.clicked.connect(self.on_but_det)
         self.but_nda.clicked.connect(self.on_but_nda)
         self.but_geo.clicked.connect(self.on_but_geo)
         self.but_dbg.clicked.connect(self.on_but_dbg)
+        self.but_dba.clicked.connect(self.on_but_dba)
         self.but_set.clicked.connect(self.on_but_set)
         self.but_mol.clicked.connect(self.on_but_mol)
         self.but_tst.clicked.connect(self.on_but_tst)
 
         self.set_tool_tips()
         self.set_style()
-        self.set_visible_fields()
         self.on_but_mol()
-
-    def set_visible_fields(self):
-        self.lab_dbg.setVisible(True)
-        self.but_dbg.setVisible(True)
-        self.lab_geo.setVisible(True)
-        self.but_geo.setVisible(True)
 
     def set_style(self):
         self.layout().setContentsMargins(5,5,5,5)
-        self.lab_dsk.setStyleSheet(style.styleLabel)
-        self.lab_det.setStyleSheet(style.styleLabel)
-        self.lab_dbg.setStyleSheet(style.styleLabel)
-        self.lab_nda.setStyleSheet(style.styleLabel)
-        self.lab_geo.setStyleSheet(style.styleLabel)
+        for lab in (self.lab_dsk, self.lab_det, self.lab_dbg, self.lab_dba, self.lab_nda, self.lab_geo):
+            lab.setStyleSheet(style.styleLabel)
         self.but_nda.setMaximumWidth(300)
         self.but_geo.setMaximumWidth(300)
         for but in self.list_of_buts: but.setStyleSheet(style.styleButton)
@@ -157,7 +159,6 @@ class MEDControl(QWidget):
         self.but_tst.setToolTip('Test for development only')
 
     def on_but_geo(self):
-        logger.debug('on_but_geo')  # sys._getframe().f_code.co_name
         path = popup_file_name(parent=self, mode='r', path=self.geofname, dirs=[], fltr='*.txt *.data\n*')
         logger.debug('Selected: %s' % str(path))
         if path is None: return
@@ -166,7 +167,6 @@ class MEDControl(QWidget):
         self.set_image()
 
     def on_but_nda(self):
-        logger.debug('on_but_nda')  # sys._getframe().f_code.co_name
         path = popup_file_name(parent=self, mode='r', path=self.ndafname, dirs=[], fltr='*.npy *.txt *.data\n*')
         logger.debug('Selected: %s' % str(path))
         if path is None or path=='':
@@ -176,48 +176,61 @@ class MEDControl(QWidget):
         #self.but_nda.setStyleSheet(style.styleButtonLeftGood)
         self.set_image()
 
-    def set_image(self):
+
+
+
+        
+    def set_image(self, nda=None, geo_txt=None):
+        logger.info('set_image')
+        if nda is not None or geo_txt is not None: logger.warning('TBD set_image for nda, geo_txt')
+
         img, self.geo = mu.image_from_kwargs(\
                geofname=str(self.but_geo.text()),\
                ndafname=str(self.but_nda.text())
         )
         self.wim.set_pixmap_from_arr(img, set_def=True)
 
-    def selected_none(self, sel, msg='Selection terminated'):
-        resp = sel is None
-        if resp:
-            logger.warning('%s' % msg)
-            self.but_dbc.setText(self.bud_dbc_text_def)
-        return resp
+
+
+
+
+
+        
+    def set_visible(self, is_visible=True):
+        for f in (self.lab_dba, self.but_dba, self.lab_geo, self.but_geo):
+            f.setVisible(is_visible)
 
     def on_but_mol(self):
         """switch button states between More and Less"""
         logger.debug('on_but_mol')
-        s = 'Less' if self.but_mol.text() == 'More' else 'More'
-        self.but_mol.setText(s)
-        for f in (self.but_geo, self.lab_geo): f.setVisible(s=='Less')
+        next_visible = self.but_mol.text() == 'More'
+        self.but_mol.setText('Less' if next_visible else 'More')
+        self.set_visible(next_visible)
 
-    def on_but_dbg(self):
-        logger.debug('on_but_dbg')
-
+    def dbname_colname(self):
+        """returns dbname, colname from button fields"""
         exp = self.experiment_from_dskwargs()
         colname = self.but_det.text()
         if colname == self.def_det:
             logger.warning('DETECTOR IS NOT SELECTED')
-            return
-
+            return exp, None
         dbname = 'cdb_%s' % (colname if exp is None else exp)
+        return dbname, colname
+
+    def on_but_dbg(self):
+        logger.info('on_but_dbg')
+        dbname, colname = self.dbname_colname()
         self.set_geometry(dbname, colname)
 
-
-
-
-
+    def on_but_dba(self):
+        """sets ndarray for image from DB"""
+        logger.info('on_but_dba')
+        dbname, colname = self.dbname_colname()
+        self.set_ndarray(dbname, colname)
 
 
     def on_but_dsk(self):
         """Select DataSource kwargs from sequence of pop-up windows."""
-        logger.debug('on_but_dsk')
         self.txt_dsk_old = s = self.but_dsk.text()
         dskwa = {} if s=='Select' else mu.datasource_kwargs_from_string(s)
         logger.info('dskwargs: %s' % str(dskwa))
@@ -227,13 +240,13 @@ class MEDControl(QWidget):
         names1 = ('Instruments:',) + tuple(insts)
         logger.debug('Select from instruments: %s' % str(names1))
         instr = popup_select_item_from_list(self.but_dsk, names1, dx=10, dy=-10, do_sorted=False)
-        if self.selected_none(instr, msg='Selection of instrument terminated'): return
+        if is_none(instr, msg='Selection of instrument terminated'): return
 
         names2 = mu.db_expnames(dbnames, fltr=instr)
         names2 = ('Select experiment:',) + tuple(names2)
         logger.debug('Select from DB experiments: %s' % str(names2))
         exp = popup_select_item_from_list(self.but_dsk, names2, dx=10, dy=-10, do_sorted=False)
-        if self.selected_none(exp, msg='Selection of experiment terminated'): return
+        if is_none(exp, msg='Selection of experiment terminated'): return
         run = dskwa.get('run', 9999)
         resp, run = popup_edit_and_confirm(parent=self, msg=str(run), win_title='Run:')
         dskwa['exp'] = exp
@@ -248,77 +261,141 @@ class MEDControl(QWidget):
     def experiment_from_dskwargs(self):
         dskwa = mu.datasource_kwargs_from_string(self.but_dsk.text())
         logger.info('dskwargs: %s' % str(dskwa))
+        exp = dskwa.get('exp', None)
         return dskwa.get('exp', None)
 
+    def select_detector_in_db(self, dbname):
+        logger.info('select from detectors for exp-db: %s' % dbname)
+        colls = mu.collection_names(dbname)
+        for n in ('fs.chunks', 'fs.files'): colls.remove(n)
+        detname = None
+        if len(colls) == 0:
+            logger.warning('NOT FOUND ANY DETECTOR IN DB: %s' % dbname)
+        elif len(colls) > 1:
+            colls = ('Select detector:',) + tuple(colls)
+            logger.info(str(colls))
+            detname = popup_select_item_from_list(self.but_det, colls, dx=10, dy=-10, do_sorted=False)
+        else:
+            detname = colls[0]
+        return detname
+
     def on_but_det(self):
-        logger.debug('on_but_det')
         self.txt_det_old = self.but_dsk.text()
         exp = self.experiment_from_dskwargs()
-        colname = None
+        detname = None
         dbname = 'cdb_%s' % exp
         dbnames = mu.db_names(fltr=None)
         if dbname in dbnames: # select detector from experiment DB
             logger.info('select from detectors for exp-db: %s' % dbname)
-            colls = mu.collection_names(dbname)
-            for n in ('fs.chunks', 'fs.files'): colls.remove(n)
-            colls = ('Select detector:',) + tuple(colls)
-            logger.info(str(colls))
-            colname = popup_select_item_from_list(self.but_det, colls, dx=10, dy=-10, do_sorted=False)
-
+            detname = self.select_detector_in_db(dbname)
         else:
             logger.warning('NOT FOUND EXPERIMENT DB: %s' % dbname\
               +'\n  TO USE EXPERIMENT DB FIRST SELECT EXISTING DataSource, othervise continue with detector DB')
             #self.but_dsk.setText('Select')
+            detname = None
             dettypes = mu.db_dettypes(dbnames)
             names1 = ('Det types:',) + tuple(dettypes)
             logger.info('Select from dettypes: %s' % str(names1))
             sel1 = popup_select_item_from_list(self.but_det, names1, dx=10, dy=-10, do_sorted=False)
-            if self.selected_none(sel1, msg='Selection of dettype terminated'): return
+            if is_none(sel1, msg='Selection of dettype terminated'): return
             names2 = mu.db_detnames(dbnames, fltr=sel1)
-            names2 = ('Select detector:',) + tuple(names2)
-            logger.debug('dbnames to select: %s' % str(names2))
-            colname = popup_select_item_from_list(self.but_det, names2, dx=10, dy=-10, do_sorted=False)
-            dbname = 'cdb_%s' % colname
+            if len(names2) == 0:
+                logger.warning('NOT FOUND ANY DETECTOR IN DETECTOR-DB: %s' % dbname)
+            elif len(names2) > 1:
+                names2 = ('Select detector:',) + tuple(names2)
+                logger.debug('dbnames to select: %s' % str(names2))
+                detname = popup_select_item_from_list(self.but_det, names2, dx=10, dy=-10, do_sorted=False)
+            else:
+                detname = names2[0]
+        if is_none(detname, msg='Selection of detector terminated'): return
 
-        if self.selected_none(colname, msg='Selection of detector terminated'): return
-        self.but_det.setText(colname)
-        if colname != self.txt_det_old:
+        dbname = 'cdb_%s' % detname
+        self.but_det.setText(detname)
+        if detname != self.txt_det_old:
             self.but_dbg.setText(self.def_dbg)
+            self.but_dba.setText(self.def_dba)
 
-        self.set_geometry(dbname, colname)
-
+        self.set_geometry(dbname, detname)
 
     def set_geometry(self, dbname, colname):
         logger.info('TBD set_geometry for dbname: %s colname: %s' % (dbname, colname))
+        doc = None
         docs = mu.find_docs(dbname, colname)
         docs_geo = [d for d in docs if d['ctype']=='geometry']
         recs = ['run:%d time_stamp:%s id:%s' % (d['run'], d['time_stamp'], d['_id']) for d in docs_geo]
+
         if len(recs) == 0:
             logger.warning('GEOMETRY CONSTANTS NOT FOUND for dbname: %s colname: %s' % (dbname, colname))
             self.but_dbg.setText(self.def_dbg)
             return
 
-        recs = ('Select geometry constants:',) + tuple(recs)
-        rec = popup_select_item_from_list(self.but_dbg, recs, dx=10, dy=-10, do_sorted=False)
-        if self.selected_none(rec, msg='Selection of document is terminated'): return
-        logger.info('selected: %s' % rec)
-        run, time_stamp, _id = rec.split(' ')
-        _id = _id[3:]
-        doc = None
-        for d in docs_geo:
-            if d['_id']==_id:
-                doc = d
-                break
+        elif len(recs) > 1:
+            recs = ('Select geometry constants:',) + tuple(recs)
+            rec = popup_select_item_from_list(self.but_dbg, recs, dx=10, dy=-10, do_sorted=False)
+            if is_none(rec, msg='Selection of document terminated'): return
+            logger.info('selected: %s' % rec)
+            run, time_stamp, _id = rec.split(' ')
+            _id = _id[3:]
+            doc = None
+            for d in docs_geo:
+                if d['_id']==_id:
+                    doc = d
+                    break
+        else:
+            logger.info('ONLY ONE GEOMETRY CONSTANTS for dbname: %s colname: %s' % (dbname, colname))
+            doc = docs_geo[0]
+
         logger.debug('doc: %s' % str(doc))
         s = 'run:%d %s' % (doc['run'], doc['time_stamp'])
         self.but_dbg.setText(s)
         geo_txt = mu.get_data_for_doc(dbname, doc)
-        logger.info('selected geometry:\n%s' % geo_txt)
+        logger.info('set geometry for %s' % s)
+        logger.debug('geometry constants from DB:\n%s' % geo_txt)
+
+        self.set_image(geo_txt=geo_txt)
+
+
+
+
+
+    def set_ndarray(self, dbname, colname):
+        logger.info('TBD on_but_dba: set ndarray from dbname: %s colname: %s' % (dbname, colname))
+        doc = None
+        docs = mu.find_docs(dbname, colname)
+        docs_nda = [d for d in docs if d['ctype'] in ('pedestals', 'pixel_status', 'pixel_rms')]
+        recs = ['%s run:%d time_stamp:%s id:%s' % (d['ctype'], d['run'], d['time_stamp'], d['_id']) for d in docs_geo]
+        if len(recs) == 0:
+            logger.warning('SUITABLE FOR NDARRAY CONSTANTS NOT FOUND for dbname: %s colname: %s' % (dbname, colname))
+            self.but_dba.setText(self.def_dba)
+            return
+        elif len(recs) > 1:
+            recs = ('Select ndarray constants:',) + tuple(recs)
+            rec = popup_select_item_from_list(self.but_dbg, recs, dx=10, dy=-10, do_sorted=False)
+            if is_none(rec, msg='Selection of ndarray constants terminated'): return
+            logger.info('selected: %s' % rec)
+            ctype, run, time_stamp, _id = rec.split(' ')
+            _id = _id[3:]
+            doc = None
+            for d in docs_nda:
+                if d['_id']==_id:
+                    doc = d
+                    break
+        else:
+            doc = docs[0]
+
+        logger.debug('doc: %s' % str(doc))
+        s = '%s run:%d %s' % (doc['ctype'], doc['run'], doc['time_stamp'])
+        self.but_dba.setText(s)
+        nda = mu.get_data_for_doc(dbname, doc)
+        logger.info('set ndarray as image:\n%s' % mu.info_ndarr(nda))
+
+        self.set_image(nda=nda)
+
+        
 
 
 
     def on_but_tst(self):
-        logger.debug('on_but_tst')
         #dbnames = mu.db_names()
         #s = self.but_dbc.text()
         #if s == self.bud_dbc_text_def:
@@ -342,81 +419,19 @@ class MEDControl(QWidget):
     def closeEvent(self, e):
         QWidget.closeEvent(self, e)
 
-#    def on_but_dbc(self):
-#        dbnames = mu.db_names(fltr=None)
-#        insts = mu.db_instruments(dbnames)
-#        dettypes = mu.db_dettypes(dbnames)
-#        names1 = ('Instruments:',) + tuple(insts) + ('Det types:',) + tuple(dettypes)
-#
-#        logger.debug('Select from instruments or dettypes: %s' % str(names1))
-#        sel1 = popup_select_item_from_list(self.but_dbc, names1, dx=10, dy=-10, do_sorted=False)
-#        if self.selected_none(sel1): return
-#        self.but_dbc.setText(sel1)
-#        is_instrument = sel1 in insts
-#
-#        names2 = mu.db_expnames(dbnames, fltr=sel1) if is_instrument else\
-#                 mu.db_detnames(dbnames, fltr=sel1)
-#        names2 = ('Select DB:',) + tuple(names2)
-#        logger.debug('dbnames to select: %s' % str(names2))
-#        sel2 = popup_select_item_from_list(self.but_dbc, names2, dx=10, dy=-10, do_sorted=False)
-#        if self.selected_none(sel2): return
-#
-#        dbname = 'cdb_' + sel2
-#        colname = sel2
-#        if is_instrument:
-#            names3 = mu.collection_names(dbname)
-#            for n in ('fs.chunks', 'fs.files'): names3.remove(n)
-#            if len(names3) == 1:
-#                colname = names3[0]
-#            elif len(names3) > 1:
-#                names3 = ('Select detector:',) + tuple(names3)
-#                logger.debug('collections to select: %s' % str(names3))
-#                sel3 = popup_select_item_from_list(self.but_dbc, names3, dx=10, dy=-10, do_sorted=False)
-#                if self.selected_none(sel3, msg='Selection of collection is terminated'): return
-#                colname = sel3
-#            else:
-#                self.selected_none(None, msg='EMPTY list of collections')
-#                return
-#
-#        self.but_dbc.setText('DB:%s col:%s' % (dbname, colname))
-
-#    def on_but_dbc(self):
-#        dbnames = mu.db_names(fltr=None)
-#        insts = mu.db_instruments(dbnames)
-#        dettypes = mu.db_dettypes(dbnames)
-#        names1 = ('Instruments:',) + tuple(insts) + ('Det types:',) + tuple(dettypes)
-#
-#        logger.debug('Select from instruments or dettypes: %s' % str(names1))
-#        sel1 = popup_select_item_from_list(self.but_dbc, names1, dx=10, dy=-10, do_sorted=False)
-#        if self.selected_none(sel1): return
-#        self.but_dbc.setText(sel1)
-#        is_instrument = sel1 in insts
-#
-#        names2 = mu.db_expnames(dbnames, fltr=sel1) if is_instrument else\
-#                 mu.db_detnames(dbnames, fltr=sel1)
-#        names2 = ('Select DB:',) + tuple(names2)
-#        logger.debug('dbnames to select: %s' % str(names2))
-#        sel2 = popup_select_item_from_list(self.but_dbc, names2, dx=10, dy=-10, do_sorted=False)
-#        if self.selected_none(sel2): return
-#
-#        dbname = 'cdb_' + sel2
-#        colname = sel2
-#        if is_instrument:
-#            names3 = mu.collection_names(dbname)
-#            for n in ('fs.chunks', 'fs.files'): names3.remove(n)
-#            if len(names3) == 1:
-#                colname = names3[0]
-#            elif len(names3) > 1:
-#                names3 = ('Select detector:',) + tuple(names3)
-#                logger.debug('collections to select: %s' % str(names3))
-#                sel3 = popup_select_item_from_list(self.but_dbc, names3, dx=10, dy=-10, do_sorted=False)
-#                if self.selected_none(sel3, msg='Selection of collection is terminated'): return
-#                colname = sel3
-#            else:
-#                self.selected_none(None, msg='EMPTY list of collections')
-#                return
-#
-#        self.but_dbc.setText('DB:%s col:%s' % (dbname, colname))
+#    def on_but_clicked(self):
+#        for b in self.list_of_buts:
+#            if b.hasFocus(): break
+#        logger.info('click on "%s"' % b.text())
+#        if   b == self.but_dsk: self.on_but_dsk()
+#        elif b == self.but_det: self.on_but_det()
+#        elif b == self.but_nda: self.on_but_nda()
+#        elif b == self.but_geo: self.on_but_geo()
+#        elif b == self.but_dbg: self.on_but_dbg()
+#        elif b == self.but_dba: self.on_but_dba()
+#        elif b == self.but_set: self.on_but_set()
+#        elif b == self.but_mol: self.on_but_mol()
+#        elif b == self.but_tst: self.on_but_tst()
 
 
 if __name__ == "__main__":
