@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QApplication, QDialog, QListWidget, QVBoxLayout, QListWidgetItem# QPushButton
 from PyQt5.QtCore import Qt, QPoint, QEvent, QMargins, QSize, QTimer
-from PyQt5.QtGui import QCursor
+from PyQt5.QtGui import QCursor, QColor, QBrush
 
 
 class QWPopupSelectItem(QDialog):
@@ -58,7 +58,6 @@ class QWPopupSelectItem(QDialog):
         self.dt_msec=1000
         QTimer().singleShot(self.dt_msec, self.on_timeout)
 
-
     def on_timeout(self):
         logger.debug('on_timeout - activate popup window, isActive: %s' % self.isActiveWindow())
         self.setFocus(True)
@@ -66,15 +65,17 @@ class QWPopupSelectItem(QDialog):
         self.activateWindow()
         QTimer().singleShot(self.dt_msec, self.on_timeout)
 
-
     def fill_list(self, lst, do_sorted=True):
         self.list.clear()
         names = sorted(lst) if do_sorted else lst
         for s in names:
             item = QListWidgetItem(s, self.list)
+            if s[-1]==':':
+                item.setForeground(QBrush(Qt.black))
+                item.setBackground(QBrush(Qt.yellow))
+                item.setFlags(Qt.NoItemFlags)
             item.setSizeHint(QSize(4*len(s), 15))
         #self.list.sortItems(Qt.AscendingOrder)
-
 
     def set_style(self):
         self.setWindowTitle('Select')
@@ -83,22 +84,23 @@ class QWPopupSelectItem(QDialog):
         self.setFocusPolicy(Qt.StrongFocus)
         self.setEnabled(True)
         self.layout().setContentsMargins(0,0,0,0)
+        #self.setMinimumHeight(400)
         parent = self.parentWidget()
         if parent is None:
            self.move(QCursor.pos().__add__(QPoint(-110,-50)))
         logger.debug('use %s position for popup findow' % ('CURSOR' if parent is None else 'BUTTON'))
 
-
     def show_tool_tips(self):
         self.setToolTip('Select item from the list')
-
 
     def on_item_click(self, item):
         self.name_sel = item.text()
         logger.debug('on_item_click %s' % self.name_sel)
+        if self.name_sel[-1] == ':':
+            logger.warning('Clicked on tytle, select other item')
+            return
         self.accept()
         self.done(QDialog.Accepted)
-
 
     def event(self, e):
         #logger.debug('event.type %s' % str(e.type()))
@@ -108,16 +110,13 @@ class QWPopupSelectItem(QDialog):
             self.done(QDialog.Rejected)
         return QDialog.event(self, e)
 
-
     def closeEvent(self, e):
         logger.debug('closeEvent')
         self.reject()
         self.done(QDialog.Rejected)
 
-
     def selectedName(self):
         return self.name_sel
-
 
 def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_frame=False, do_sorted=True):
     w = QWPopupSelectItem(parent, lst, show_frame, do_sorted)
@@ -131,17 +130,16 @@ def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_fr
     resp=w.exec_()
     return w.selectedName()
 
-
 if __name__ == "__main__":
   logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
 
   def test_select_exp(tname):
-    lst = sorted(os.listdir('/reg/d/psdm/CXI/'))
+    #lst = sorted(os.listdir('/sdf/data/lcls/ds/'))
+    lst = ('Title:', 'CXI', 'DET', 'MEC', 'MFX', 'XCS', 'XPP')
     logger.debug('lst: %s' % str(lst))
     app = QApplication(sys.argv)
-    exp_name = popup_select_item_from_list(None, lst)
+    exp_name = popup_select_item_from_list(None, lst, do_sorted=False)
     logger.debug('exp_name = %s' % exp_name)
-
 
 if __name__ == "__main__":
     import sys; global sys
