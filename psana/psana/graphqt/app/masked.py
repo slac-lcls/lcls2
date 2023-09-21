@@ -31,8 +31,8 @@ def mask_editor():
     posargs = namesp.posargs
     kwargs = vars(namesp)
     print('parser: %s' % info_parser_arguments(parser))
-    if len(posargs)>0 and kwargs['ndafname'] is None: kwargs['ndafname'] = posargs[0]
-    if len(posargs)>1 and kwargs['geofname'] is None: kwargs['geofname'] = posargs[1]
+    #if len(posargs)>0 and kwargs['ndafname'] is None: kwargs['ndafname'] = posargs[0]
+    #if len(posargs)>1 and kwargs['geofname'] is None: kwargs['geofname'] = posargs[1]
 
     import psana.graphqt.MEDMain as mm
     mm.mask_editor(**kwargs)
@@ -44,17 +44,18 @@ def argument_parser():
     from psana.detector.dir_root import DIR_DATA_TEST  # , DIR_REPO # _DARK_PROC
     # /cds/group/psdm/detector/data2_test/geometry
     #ndafname = '%s/misc/epix10kaquad-meclv2518-0099-LAB6-max.npy' % DIR_DATA_TEST
+    ndafname = '%s/misc/epix10kaquad-meclv2518-0101-CeO2-ave.npy' % DIR_DATA_TEST
     #geofname = '%s/geometry/geo-epix10kaquad-meclv2518.data' % DIR_DATA_TEST
+    geofname = '%s/geometry/geo-epix10kaquad-tstx00117.data' % DIR_DATA_TEST
+    #ndafname = '%s/misc/jungfrau4m-cxic00318-r0124-lysozyme-max.npy' % DIR_DATA_TEST
+    #geofname = '%s/geometry/geo-jungfrau-8-segment-cxilv9518.data' % DIR_DATA_TEST
 
-    ndafname = '%s/misc/jungfrau4m-cxic00318-r0124-lysozyme-max.npy' % DIR_DATA_TEST
-    geofname = '%s/geometry/geo-jungfrau-8-segment-cxilv9518.data' % DIR_DATA_TEST
-
-    d_posargs   = [ndafname, geofname]
-    d_ndafname = None
-    d_geofname = None
-    d_dskwargs  = None    # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
-    d_det       = None    # 'tmoopal'
-#    d_dirrepo = DIR_REPO  # '<DIR_ROOT>/detector/calib2'
+    d_posargs  = [] # [ndafname, geofname]
+    d_ndafname = ndafname
+    d_geofname = geofname
+    d_dskwargs = 'exp=ueddaq02,run=5' # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
+    d_detname  = 'Select' # 'epix10ka_000001'
+    d_dirrepo = './work' # DIR_REPO  # '<DIR_ROOT>/detector/calib2'
     d_logmode = 'INFO'
     d_dirmode = 0o2775
     d_filemode= 0o664
@@ -76,8 +77,8 @@ def argument_parser():
                 ' or <fname.xtc> or files=<fname.xtc>'\
                 ' or pythonic dict of generic kwargs, e.g.:'\
                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
-    h_det     = 'detector name, default = %s' % d_det
-#    h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
+    h_detname     = 'detector name, default = %s' % d_detname
+    h_dirrepo = 'repository for files, default = %s' % d_dirrepo
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
@@ -96,7 +97,7 @@ def argument_parser():
     parser.add_argument('posargs',           default=d_posargs,    type=str,   help=h_posargs, nargs='*')
     parser.add_argument('-a', '--ndafname',  default=d_ndafname,   type=str,   help=h_ndafname)
     parser.add_argument('-g', '--geofname',  default=d_geofname,   type=str,   help=h_geofname)
-    parser.add_argument('-d', '--det',       default=d_det,        type=str,   help=h_det)
+    parser.add_argument('-d', '--detname',   default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-k', '--dskwargs',  default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-L', '--logmode',   default=d_logmode,    type=str,   help=h_logmode)
     parser.add_argument('--ictab',           default=d_ictab,      type=int,   help=h_ictab)

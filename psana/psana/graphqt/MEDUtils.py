@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 
 """Class :py:class:`MEDUtils` - utilities for Mask Editor
 =========================================================
@@ -27,9 +27,13 @@ logger = logging.getLogger(__name__)
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, reshape_to_3d, info_ndarr, np
 from psana.detector.dir_root import DIR_FFB, DIR_DATA # DIR_FFB='/sdf/data/lcls/drpsrcf/ffb' or DIR_DATA='/sdf/data/lcls/ds/'
+import psana.pscalib.calib.MDBWebUtils as mdbwu
 
 #char_expand    = u' \u25BC' # down-head triangle
 #char_shrink    = u' \u25B2' # solid up-head triangle
+
+collection_names, find_docs, get_data_for_doc = mdbwu.collection_names, mdbwu.find_docs, mdbwu.get_data_for_doc
+
 
 def image_from_ndarray(nda):
     if nda is None:
@@ -53,9 +57,9 @@ def random_image(shape=(64,64)):
 
 def image_from_kwargs(**kwa):
     """returns 2-d image array and geo (GeometryAccess) of available, otherwise None"""
-    ndafname = kwa.get('ndafname', None)
 
-    if not os.path.lexists(ndafname):
+    ndafname = kwa.get('ndafname', None)
+    if ndafname is None or not os.path.lexists(ndafname):
         logger.warning('ndarray file %s not found - use random image' % ndafname)
         return random_image(), None
 
@@ -65,10 +69,14 @@ def image_from_kwargs(**kwa):
         return ndarandom_image(), None
 
     geofname = kwa.get('geofname', None)
-    if not os.path.lexists(geofname):
+    if geofname is None or not os.path.lexists(geofname):
         logger.warning('geometry file %s not found - use ndarray without geometry' % geofname)
         return image_from_ndarray(nda), None
 
+    return image_and_geo(nda, geofname)
+
+def image_and_geo(nda, geofname):
+    """returns 2-d image array and GeometryAccess object for nda, geofname"""
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
     geo = GeometryAccess(geofname)
     irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
@@ -102,7 +110,7 @@ def list_of_instruments():
         logger.warning('list_of_instruments: DIRECTORY %s IS UNAVAILABLE - use default list' % dirins)
         return ['cxi', 'dia', 'mec', 'mfx', 'rix', 'tmo', 'tst', 'txi', 'ued', 'xcs', 'xpp']
 
-def list_of_experiments(instr, fltr='cdb_'):
+def list_of_experiments(instr): #  fltr='cdb_'
     direxp = '%s/%s' % (DIR_DATA, instr)
     logger.debug('list_of_experiments in %s' % direxp)
     if os.path.lexists(direxp):
@@ -110,4 +118,57 @@ def list_of_experiments(instr, fltr='cdb_'):
     else:
         logger.warning('list_of_experiments: %s IS EMPTY' % direxp)
         return []
+
+def db_names(fltr=None):
+    dbnames = mdbwu.database_names()
+    return dbnames if fltr is None else\
+           [n for n in mdbwu.database_names() if fltr in n]
+
+def db_namesroot(dbnames=None, fltr=None):
+    _dbnames = [n.strip('cdb_') for n in (db_names() if dbnames is None else dbnames)]
+    return _dbnames if fltr is None else\
+          [n for n in _dbnames if fltr in n]
+
+def db_expnames(dbnames=None, fltr=None):
+    return [n for n in db_namesroot(dbnames, fltr) if not '_' in n and (len(n)>7) and (len(n)<12)]
+
+def db_detnames(dbnames=None, fltr=None):
+    return [n for n in db_namesroot(dbnames, fltr) if '_' in n]
+
+def db_instruments(dbnames=None):
+    return sorted(set([n[:3] for n in db_expnames(dbnames)]))
+
+def db_dettypes(dbnames=None):
+    return sorted(set([n.split('_')[0] for n in db_detnames(dbnames)]))
+
+def data_detnames(strkwa='exp=tmoc00321,run=3'): # dir=/sdf/data/lcls/ds/mfx/mfxx49820/xtc'): # /sdf/data/lcls/ds/mfx/mfxx49820/xtc/
+    from psana import DataSource
+    from psana.detector.utils_psana import datasource_kwargs_from_string
+    dskwargs = datasource_kwargs_from_string(strkwa)
+    ds = DataSource(**dskwargs)
+    orun = next(ds.runs())
+    return orun.detnames
+
+def datasource_kwargs_from_string(s):
+    from psana.psexp.utils import datasource_kwargs_from_string
+    return datasource_kwargs_from_string(s)
+
+def datasource_kwargs_to_string(**kwargs):
+    from psana.psexp.utils import datasource_kwargs_to_string
+    return datasource_kwargs_to_string(**kwargs)
+
+
+if __name__ == "__main__":
+    print('\n=== list_of_instruments:\n%s' % str(list_of_instruments()))
+    dbnames = db_names()
+    print('\n=== db_names:\n%s' % str(dbnames))
+    print('\n=== db_namesroot:\n%s' % str(db_namesroot(dbnames)))
+    print('\n=== db_expnames:\n%s' % str(db_expnames(dbnames)))
+    print('\n=== db_detnames:\n%s' % str(db_detnames(dbnames)))
+    print('\n=== db_instruments:\n%s' % str(db_instruments(dbnames)))
+    print('\n=== db_dettypes:\n%s' % str(db_dettypes(dbnames)))
+    print('\n=== db_expnames(fltr="tmo"):\n%s' % str(db_expnames(dbnames, fltr='tmo')))
+    print('\n=== db_detnames(fltr="epixhr2x2"):\n%s' % str(db_detnames(dbnames, fltr='epixhr2x2')))
+    print('\n=== data_detnames:\n%s' % str(data_detnames(strkwa='exp=tmoc00321,run=3')))
+
 # EOF

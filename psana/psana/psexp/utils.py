@@ -57,6 +57,11 @@ def datasource_kwargs_from_string(dsstring):
       # filename specified
       return {'files': dsstring,}
 
+def datasource_kwargs_to_string(**kwargs):
+    """returns string presentation for dict of DataSource kwargs"""
+    return ','.join(['%s=%s' % (k,str(v)) for k,v in kwargs.items()])
+
+
 def DataSourceFromString(dsstring):
     return DataSource(**datasource_kwargs_from_string(dsstring))
 

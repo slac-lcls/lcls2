@@ -10,7 +10,8 @@ groups = platform # + ' 7' + ' 2'
 hutch, user = ('tst', 'tstopr')
 auth = '--user {:} '.format(user)
 url  = '--url https://pswww.slac.stanford.edu/ws-auth/devlgbk/'
-cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+#cdb  = f'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'     # production  ConfigDb
+cdb  = f'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws'  # development ConfigDb
 
 #
 #  drp variables
@@ -20,12 +21,16 @@ data_dir = '/u1/data'
 
 #network  = 'ep_fabric="172.21.156.0/22",ep_domain=eno1,ep_provider=sockets'
 #network  = 'ep_provider=verbs'
-network  = 'ep_fabric="172.21.148.0/22",ep_domain=eno1'
+#network  = 'ep_fabric="172.21.148.0/22",ep_domain=eno1'
+network = 'ep_fabric="172.21.148.0",ep_provider=sockets'  # Doesn't work
 task_set = 'taskset 0xffbfeffbfe '
-batching = 'batching=no'
+batching = 'batching=yes'
+directIO = 'directIO=yes'
+pvaAddr  = 'pva_addr=172.21.148.150' # dev02
+
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir} -k {network}'
-std_opts0 = f'{std_opts} -o {data_dir}  -k {batching} -d /dev/datadev_0'
-std_opts1 = f'{std_opts} -o {data_dir}  -k {batching} -d /dev/datadev_1'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir}  -k {batching},{directIO},{pvaAddr}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir}  -k {batching},{directIO},{pvaAddr}'
 
 #ea_cfg   = '/cds/home/c/claus/lclsii/daq/runs/eb/epicsArch.txt'
 ea_cfg   = '/cds/group/pcds/dist/pds/rix/misc/epicsArch.txt'
@@ -104,7 +109,7 @@ procmgr_config = [
 # { host: 'drp-tst-dev008', id:'gmd_0',       flags:'pu',   cmd:f'pva_cmd1} -l 0x2 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT1'},
 #
 # # EpicsArch
- { host: 'drp-tst-acc05',  id:'epics_0',     flags:'pu',   env:epics_env, cmd:f'{ea_cmd1} -l 0x2'},
+ { host: 'drp-tst-acc01',  id:'epics_0',     flags:'pu',   env:epics_env, cmd:f'{ea_cmd1} -l 0x2'},
 #
 # # BLD - must currently run on dev018 since that's where the bld enet xface is
 # { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    env:epics_env, cmd:f'lclsBldServer -i enp1s0f1 -r 4 -e 40'},
@@ -119,7 +124,8 @@ procmgr_config = [
 # #{ host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'pu',   env:epics_env, cmd:f'{drp_cmd0} -D opal'},
 #
 # # Timing System
- { host: 'drp-tst-acc05', id:'tmots_0',     flags:'spux', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
+# { host: 'drp-tst-acc05', id:'timing_1',     flags:'spux', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
+ { host: 'drp-tst-dev004', id:'timing_1',     flags:'spux', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
 #
 # # Wave8
 # #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    cmd:'wave8pvs --l 0'},
@@ -149,19 +155,19 @@ hsds = [
 #    {node:'daq-tst-dev07',bus:'3e',pv:'DAQ:LAB2:HSD:DEV07_3E',drp:'drp-tst-dev008'},
 ]
 
-segm=0
-pvlist = []
-for e in hsds:
-    procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', env:epics_env, cmd:f'hsd134PVs -P {e[pv]} -d /dev/pcie_adc_%s'%e[bus]})
-    procmgr_config.append({ host: e[drp],  id:'tmohsd_%d'%segm,   flags:'pu',              cmd:f'{drp_cmd0} -D hsd -k hsd_epics_prefix={e[pv]}:A'})
-    segm += 1
-    procmgr_config.append({ host: e[drp],  id:'tmohsd_%d'%segm,   flags:'pu',              cmd:f'{drp_cmd1} -D hsd -k hsd_epics_prefix={e[pv]}:B'})
-    segm += 1
-    pvlist.append(e[pv]+':A')
-    pvlist.append(e[pv]+':B')
-
-if pvlist != []:
-    procmgr_config.append({id:'hsdpva', flags:'', env:epics_env, cmd:f'hsdpva '+' '.join(pvlist)})
+#segm=0
+#pvlist = []
+#for e in hsds:
+#    procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', env:epics_env, cmd:f'hsd134PVs -P {e[pv]} -d /dev/pcie_adc_%s'%e[bus]})
+#    procmgr_config.append({ host: e[drp],  id:'tmohsd_%d'%segm,   flags:'pu',              cmd:f'{drp_cmd0} -D hsd -k hsd_epics_prefix={e[pv]}:A'})
+#    segm += 1
+#    procmgr_config.append({ host: e[drp],  id:'tmohsd_%d'%segm,   flags:'pu',              cmd:f'{drp_cmd1} -D hsd -k hsd_epics_prefix={e[pv]}:B'})
+#    segm += 1
+#    pvlist.append(e[pv]+':A')
+#    pvlist.append(e[pv]+':B')
+#
+#if pvlist != []:
+#    procmgr_config.append({id:'hsdpva', flags:'', env:epics_env, cmd:f'hsdpva '+' '.join(pvlist)})
 
 #
 # ami

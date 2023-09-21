@@ -2,10 +2,6 @@ if not platform: platform = '3'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = f'{ld_lib_path}'
-manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
-hsd_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
-im2k0_env = ld_lib_path
-andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
 collect_host = 'drp-srcf-mon001'
 
@@ -112,9 +108,9 @@ procmgr_config = [
  {host: 'drp-srcf-cmp037', id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  # EPIX-HR has 2 MP on 20 panels, 4 ASICs/panel, 144 x 192 pixels/ASIC, 2 B/pixel = 221184 B/segment = 2 + 4 * sim_length => sim_length ~= 55294 per panel
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux', rtprio:'50',  cmd:f'{drp_cmd0} -l 0x1 -W 60 -D epixhremu -k {epixKwargs}'},
-## {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spux', rtprio:'50',  cmd:f'{drp_cmd1} -l 0xf -W 30 -D epixhremu -k {epixKwargs}'},
-# {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',             cmd:f'{drp_cmd0} -l 0x1 -W 26 -D epixhremu -k {epixKwargs}'},
+## {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spux',              cmd:f'{drp_cmd1} -l 0xf -W 30 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x2 -W 26 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp036', id:'epixhr_emu_2',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp036', id:'epixhr_emu_3',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp043', id:'epixhr_emu_4',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
