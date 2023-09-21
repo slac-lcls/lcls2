@@ -16,7 +16,10 @@ else
     export SIT_PSDM_DATA=/cds/data/psdm
 fi
 
-conda activate ps-4.6.0
+source ~/.local/spack/activate_ps_2023-01-11_old_p4p.sh
+export CC=$(which gcc)
+export CXX=(which cxx)
+
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
     source $AUTH_FILE
@@ -27,7 +30,7 @@ fi
 RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]}") )" && pwd )"
 export PATH=$RELDIR/install/bin:${PATH}
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
-export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
+export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages:$PYTHONPATH
 # for procmgr
 export TESTRELDIR=$RELDIR/install
 export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
