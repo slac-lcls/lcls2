@@ -137,6 +137,8 @@ namespace Pds {
       unsigned                     _prescale;
       unsigned                     _iMeb;
       unsigned                     _rogReserved[MAX_MRQS];
+      uint64_t                     _lastMonPid;
+      uint64_t                     _monThrottle;
     private:
       unsigned                     _wrtCounter;
       uint64_t                     _pidPrv;
@@ -200,6 +202,8 @@ Teb::Teb(const EbParams&         prms,
   _trigger      (nullptr),
   _iMeb         (0),
   _rogReserved  {0, 0, 0, 0},
+  _lastMonPid   (0),
+  _monThrottle  (0),
   _pidPrv       (0),
   _eventCount   (0),
   _trCount      (0),
@@ -216,6 +220,9 @@ Teb::Teb(const EbParams&         prms,
   _l3Transport  (prms.verbose, prms.kwargs),
   _exporter     (exporter)
 {
+  if (_prms.kwargs.find("mon_throttle") != _prms.kwargs.end())
+    _monThrottle = std::stoul(const_cast<EbParams&>(_prms).kwargs["mon_throttle"]);
+
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
@@ -467,34 +474,39 @@ void Teb::run()
 
 void Teb::_monitor(ResultDgram* rdg)
 {
-  const auto numMebs{_monBufLists.size()};
-  const auto allMebs{(1u << numMebs) - 1};
-  auto       dsts{rdg->monitor() & allMebs};
-  const bool roundRobin{dsts == allMebs};
-  while (dsts)
+  if (rdg->pulseId() - _lastMonPid > _monThrottle)
   {
-    unsigned iMeb;
-    if (roundRobin)
+    _lastMonPid = rdg->pulseId();
+
+    const auto numMebs{_monBufLists.size()};
+    const auto allMebs{(1u << numMebs) - 1};
+    auto       dsts{rdg->monitor() & allMebs};
+    const bool roundRobin{dsts == allMebs};
+    while (dsts)
     {
-      iMeb = _iMeb;
-      _iMeb = (iMeb + 1) % numMebs;
-    }
-    else
-      iMeb = __builtin_ffs(dsts) - 1;
+      unsigned iMeb;
+      if (roundRobin)
+      {
+        iMeb = _iMeb;
+        _iMeb = (iMeb + 1) % numMebs;
+      }
+      else
+        iMeb = __builtin_ffs(dsts) - 1;
 
-    dsts &= ~(1 << iMeb);
+      dsts &= ~(1 << iMeb);
 
-    if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
-    {
-      unsigned buffer;
-      _monBufLists[iMeb].pop(buffer);
+      if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
+      {
+        unsigned buffer;
+        _monBufLists[iMeb].pop(buffer);
 
-      rdg->monBufNo(buffer);
+        rdg->monBufNo(buffer);
 
-      ++_monitorCount;
-      ++_mebCount[iMeb];
+        ++_monitorCount;
+        ++_mebCount[iMeb];
 
-      return;
+        return;
+      }
     }
   }
 
@@ -1376,6 +1388,7 @@ int main(int argc, char **argv)
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
     if (kwargs.first == "script_path")  continue;
+    if (kwargs.first == "mon_throttle") continue;
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
