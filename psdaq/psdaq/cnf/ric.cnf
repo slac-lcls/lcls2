@@ -30,6 +30,7 @@ trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 task_set = 'taskset -c 4-63'
 batching = 'batching=yes'
 directIO = 'directIO=yes'
+pvaAddr  = 'pva_addr=172.21.152.78' # mon001
 scripts  = f'script_path={trig_dir}'
 #network  = 'ep_provider=sockets,ep_domain=eno1'
 epixData   = '/cds/data/drpsrcf/temp/claus/xtc/rixx1003721-r0106-s010-c000.xtc2'
@@ -38,8 +39,8 @@ epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/epixHrEmu.py'
 epixKwargs = f'sim_length=110584,xtcfile={epixData},l1aOffset=1000,drp=python,pythonScript={epixScript}'
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
-std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}'
-std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO},{pvaAddr}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO},{pvaAddr}'
 
 teb_cmd  = task_set+' teb '            +std_opts + f' -k {scripts}'
 meb_cmd  = task_set+' monReqServer '   +std_opts
@@ -63,9 +64,9 @@ ea_cmd1 = task_set+' epicsArch '       +std_opts1+' '+ea_cfg
 
 base_host = 'drp-srcf-mon001'
 
-if xtpg == 2:
+if xtpg == 2:                   # TMO
     xpms = 'DAQ:NEH:XPM:2 DAQ:NEH:XPM:4 DAQ:NEH:XPM:6 DAQ:NEH:XPM:0'
-elif xtpg == 3:
+elif xtpg == 3:                 # RIX
     xpms = 'DAQ:NEH:XPM:3 DAQ:NEH:XPM:5 DAQ:NEH:XPM:0'
 else:
     xpms = f'DAQ:NEH:XPM:{xtpg}'
