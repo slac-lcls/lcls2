@@ -58,27 +58,19 @@ public:
       scale,
       scaleDenom,
       mode,
-      error,
-      majorVersion,
-      minorVersion,
-      microVersion,
-      hardwareID
+      error
     };
 
   RawDef()
    {
-       NameVec.push_back({"encoderValue", XtcData::Name::UINT32,1});
+       NameVec.push_back({"encoderValue", XtcData::Name::UINT32});
        // frameCount is common to all channels
        NameVec.push_back({"frameCount", XtcData::Name::UINT16});
-       NameVec.push_back({"timing", XtcData::Name::UINT32,1});
-       NameVec.push_back({"scale", XtcData::Name::UINT16,1});
-       NameVec.push_back({"scaleDenom", XtcData::Name::UINT16,1});
-       NameVec.push_back({"mode", XtcData::Name::UINT8,1});
-       NameVec.push_back({"error", XtcData::Name::UINT8,1});
-       NameVec.push_back({"majorVersion", XtcData::Name::UINT16,1});
-       NameVec.push_back({"minorVersion", XtcData::Name::UINT8,1});
-       NameVec.push_back({"microVersion", XtcData::Name::UINT8,1});
-       NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
+       NameVec.push_back({"timing", XtcData::Name::UINT32});
+       NameVec.push_back({"scale", XtcData::Name::UINT16});
+       NameVec.push_back({"scaleDenom", XtcData::Name::UINT16});
+       NameVec.push_back({"mode", XtcData::Name::UINT8});
+       NameVec.push_back({"error", XtcData::Name::UINT8});
    }
 } RawDef;
 
@@ -926,51 +918,27 @@ void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, const e
 
     XtcData::NamesId namesId1(nodeId, segment);
     XtcData::CreateData raw(dgram.xtc, bufEnd, m_namesLookup, namesId1);
-    unsigned shape[XtcData::MaxRank] = {1};
 
     // ...encoderValue
-    XtcData::Array<uint32_t> arrayA = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
-    arrayA(0) = frame.channel[0].encoderValue;
+    raw.set_value(RawDef::encoderValue, frame.channel[0].encoderValue);
 
     // ...frameCount
     raw.set_value(RawDef::frameCount, frame.header.frameCount);
 
     // ...timing
-    XtcData::Array<uint32_t> arrayB = raw.allocate<uint32_t>(RawDef::timing,shape);
-    arrayB(0) = frame.channel[0].timing;
+    raw.set_value(RawDef::timing, frame.channel[0].timing);
 
     // ...scale
-    XtcData::Array<uint16_t> arrayC = raw.allocate<uint16_t>(RawDef::scale,shape);
-    arrayC(0) = frame.channel[0].scale;
+    raw.set_value(RawDef::scale, frame.channel[0].scale);
 
     // ...scaleDenom
-    XtcData::Array<uint16_t> arrayJ = raw.allocate<uint16_t>(RawDef::scaleDenom,shape);
-    arrayJ(0) = frame.channel[0].scaleDenom;
+    raw.set_value(RawDef::scaleDenom, frame.channel[0].scaleDenom);
 
     // ...mode
-    XtcData::Array<uint8_t> arrayD = raw.allocate<uint8_t>(RawDef::mode,shape);
-    arrayD(0) = frame.channel[0].mode;
+    raw.set_value(RawDef::mode, frame.channel[0].mode);
 
     // ...error
-    XtcData::Array<uint8_t> arrayE = raw.allocate<uint8_t>(RawDef::error,shape);
-    arrayE(0) = frame.channel[0].error;
-
-    // ...majorVersion
-    XtcData::Array<uint16_t> arrayF = raw.allocate<uint16_t>(RawDef::majorVersion,shape);
-    arrayF(0) = frame.header.majorVersion;
-
-    // ...minorVersion
-    XtcData::Array<uint8_t> arrayG = raw.allocate<uint8_t>(RawDef::minorVersion,shape);
-    arrayG(0) = frame.header.minorVersion;
-
-    // ...microVersion
-    XtcData::Array<uint8_t> arrayH = raw.allocate<uint8_t>(RawDef::microVersion,shape);
-    arrayH(0) = frame.header.microVersion;
-
-    // ...hardwareID
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%s", frame.header.hardwareID);
-    raw.set_string(RawDef::hardwareID, buf);
+    raw.set_value(RawDef::error, frame.channel[0].error);
 }
 
 void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
