@@ -55,8 +55,18 @@ def random_image(shape=(64,64)):
     import psana.pyalgos.generic.NDArrGenerators as ag
     return ag.random_standard(shape, mu=0, sigma=10)
 
+
+   
+
+
 def image_from_kwargs(**kwa):
     """returns 2-d image array and geo (GeometryAccess) of available, otherwise None"""
+
+
+    # TBD nda=nda, geo_txt=geo_txt
+    nda     = kwa.get('nda', None)
+    geo_txt = kwa.get('geo_txt', None)
+   
 
     ndafname = kwa.get('ndafname', None)
     if ndafname is None or not os.path.lexists(ndafname):
@@ -73,14 +83,24 @@ def image_from_kwargs(**kwa):
         logger.warning('geometry file %s not found - use ndarray without geometry' % geofname)
         return image_from_ndarray(nda), None
 
-    return image_and_geo(nda, geofname)
+    return image_and_geo(nda, geofname, geo_txt)
 
-def image_and_geo(nda, geofname):
+
+
+   
+
+
+
+def image_and_geo(nda, geofname, geo_txt=None):
     """returns 2-d image array and GeometryAccess object for nda, geofname"""
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
     geo = GeometryAccess(geofname)
     irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
     return img_from_pixel_arrays(irows, icols, W=nda), geo
+
+   
+
+
 
 def mask_ndarray_from_2d(mask2d, geo):
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess, convert_mask2d_to_ndarray # GeometryAccess, img_from_pixel_arrays

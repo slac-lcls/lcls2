@@ -12,9 +12,14 @@ USAGE = 'Usage:'\
       + '\n  %s -i <fname-nda.npy> -g <fname-geometry.npy> -k <DataSource-kwargs> -d <detector> [-L <logging-mode>] [...]' % SCRNAME\
       + '\n      or short form w/o keyword arguments for image and geometry file names'\
       + '\n  %s <fname-nda.npy> <fname-geometry.npy> [other kwards ...], NOTE: -i and -g override positional arguments' % SCRNAME\
-      + '\n\nHelp:\n  %s -h' % SCRNAME
-#      + '\n\nExamples:'\
-#      + '\n  %s -k exp=tmox49720,run=209 -d epix100 -D' % SCRNAME\
+      + '\nU:'\
+      + '\n\nHelp:\n  %s -h' % SCRNAME\
+      + '\n\nExamples:'\
+      + '\n  %s -k exp=ueddaq02' % SCRNAME\
+      + '\n  %s -k exp=ueddaq02 -d epix10ka_000001' % SCRNAME\
+      + '\n  %s -k exp=ueddaq02,run=5' % SCRNAME\
+      + '\n  %s -k exp=ueddaq02,run=5 -d epix10ka_000002' % SCRNAME\
+#      + '\n  %s -k exp=ueddaq02,run=5,dir=/sdf/data/lcls/drpsrcf/ffb/ued/ueddaq02/xtc/ -d epix10ka_000002' % SCRNAME\
 #      + '\n  %s -k exp=tmoc00318,run=10,dir=/a/b/c/xtc -d epix100 -D' % SCRNAME\
 #      + '\n  %s -k "{\'exp\':\'abcd01234\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\', ' % SCRNAME\
 #      + '\'detectors\':[\'epicsinfo\', \'tmo_opal1\', \'ebeam\']}" -d tmo_opal1 -D'\
@@ -96,9 +101,9 @@ def argument_parser():
     parser = ArgumentParser(usage=USAGE, description='%s - command opens mask editor GUI' % SCRNAME)
     parser.add_argument('posargs',           default=d_posargs,    type=str,   help=h_posargs, nargs='*')
     parser.add_argument('-a', '--ndafname',  default=d_ndafname,   type=str,   help=h_ndafname)
-    parser.add_argument('-g', '--geofname',  default=d_geofname,   type=str,   help=h_geofname)
     parser.add_argument('-d', '--detname',   default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-k', '--dskwargs',  default=d_dskwargs,   type=str,   help=h_dskwargs)
+    parser.add_argument('-g', '--geofname',  default=d_geofname,   type=str,   help=h_geofname)
     parser.add_argument('-L', '--logmode',   default=d_logmode,    type=str,   help=h_logmode)
     parser.add_argument('--ictab',           default=d_ictab,      type=int,   help=h_ictab)
 #    parser.add_argument('--dirmode',         default=d_dirmode,    type=int,   help=h_dirmode)
