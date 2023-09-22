@@ -88,6 +88,20 @@ target_link_libraries(drp_udpencoder
     readline
 )
 
+add_executable(tpr_trigger
+    TprTrigger.cc
+)
+
+target_link_libraries(tpr_trigger
+    collection
+    app
+    tpr
+    dl
+    readline
+    Threads::Threads
+    rt
+)
+
 add_executable(configdb_obj_2xtc
     configdb_obj_2xtc.cc
 )
@@ -211,6 +225,7 @@ install(TARGETS drp
   drp_bld
   drp_pva
   drp_udpencoder
+  tpr_trigger
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

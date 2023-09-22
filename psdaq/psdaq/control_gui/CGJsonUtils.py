@@ -68,7 +68,7 @@ def dict_platform():
 
 #--------------------
 
-def get_status(header=['drp','teb','meb']):
+def get_status(header=['drp','teb','meb', 'tpr']):
     """ returns 2-d list for CGWMainCollection.py table from dict_platf = daq_control().getPlatform()
     """
     ncols = len(header)
@@ -134,7 +134,7 @@ def get_status(header=['drp','teb','meb']):
 #--------------------
 
 def get_platform():
-    """ used in CGWMainPartition.py -> 
+    """ used in CGWMainPartition.py ->
         returns dict_platf and 2-d list of fields: [['just-text', [True,''], [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"]], ...],
         - 'just-text' (str) - field of text
         - [True,''] (list)  - field of check-box
@@ -155,10 +155,10 @@ def get_platform():
                 flds = display.split(' ')
                 alias = flds[1] if len(flds)==2 else ''
 
-                is_drp = pname=='drp'
-                readgr = v['det_info']['readout'] if is_drp else ''
+                has_grp = pname=='drp' or pname=='tpr'
+                readgr = v['det_info']['readout'] if has_grp else ''
 
-                flag = 6 if is_drp else 2
+                flag = 6 if has_grp else 2
                 if v['hidden'] == 1: flag += 16
                 list2d.append([[v['active']==1, ''],\
                                [False, str(readgr), flag, "^([0-9]|1[0-5])$"],\
@@ -198,19 +198,19 @@ def set_platform(dict_platf, list2d):
                 status = rec[0][0] # bool
                 int_active = {True:1, False:0}[status]
                 dict_platf[pname][k]['active'] = int_active
-                if pname=='drp':
+                if pname=='drp' or pname=='tpr':
                     val = rec[1][1]
                     if isinstance(val, str) and val.isdigit():
                         dict_platf[pname][k]['det_info']['readout'] = int(val)
                     else:
                         logger.error('set_platform WRONG drp "group readout" value "%s" for "%s"'%\
                                      (str(val), display))
- 
+
                 s += '%s   int_active: %d\n' % (display,int_active)
-        
+
         sj = json.dumps(dict_platf, indent=2, sort_keys=False)
         logger.debug('control.setPlatform() json:\n%s' % str(sj))
-        logger.debug('summary:\n%s' % s)        
+        logger.debug('summary:\n%s' % s)
         daq_control().selectPlatform(dict_platf)
 
     except Exception as ex:
