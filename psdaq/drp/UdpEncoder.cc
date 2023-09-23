@@ -851,9 +851,10 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                     std::this_thread::yield();
                 }
                 auto& frame = *(encoder_frame_t*)(encDg->xtc.payload());
+                auto  value = frame.channel[0].encoderValue;
 
                 // Associate the current L1Accept's timestamp with the latest encoder value
-                m_interpolator.update(dgram->time, frame.channel[0].encoderValue);
+                m_interpolator.update(dgram->time, value);
 
                 // Handle all events that have accumulated on the queue
                 while (true) {
@@ -868,7 +869,13 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                     }
 
                     // Update the encoder value
-                    frame.channel[0].encoderValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
+                    if (pgpDg != dgram) {
+                        frame.channel[0].encoderValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
+                        frame.channel[0].mode = 1; // Indicate this is an interpolated value
+                    } else {
+                        frame.channel[0].encoderValue = value;
+                    }
+
 
                     _handleL1Accept(*pgpDg, frame);
 
