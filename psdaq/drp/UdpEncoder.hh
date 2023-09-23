@@ -150,7 +150,7 @@ public:
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
     int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
     enum { DefaultDataPort = 5006 };
-    enum { MajorVersion = 2, MinorVersion = 0, MicroVersion = 0 };
+    enum { MajorVersion = 3, MinorVersion = 0, MicroVersion = 0 };
 private:
     void _event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame);
     void _worker();

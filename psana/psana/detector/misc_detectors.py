@@ -45,12 +45,12 @@ class encoder_raw_0_0_1(DetectorImpl):
         Checking the code, the configured scale for the encoder is 0.0066667
         urads/count. I guess that makes sense since you’d usually multiply
         by 1e-6 to go from mm to nm.
- 
+
         So to get the “real motor position” you would in general do:
         Position (real units) = encoderValue * scale * 1e-6
         Which works for the current encoderValue and the real position
         shown in the screen.
- 
+
         Though clearly the scale is rounded in this case, with a true
         value of 2/3 * 1e4
 
@@ -94,6 +94,22 @@ class encoder_raw_2_1_0(encoder_raw_2_0_0):
         Version 2.1.0 adds innerCount field.  The return value is unaffected.
         """
         return super().value(evt)
+
+class encoder_raw_3_0_0(DetectorImpl):
+   def __init__(self, *args):
+       super().__init__(*args)
+   def value(self,evt) -> float:
+       """
+       Version 3.0.0 addresses fields as scalars, not as arrays.
+       """
+       segments = self._segments(evt)
+       if segments is None: return None
+       # if scaleDenom > 0, multiply by (float)scale/(float)scaleDenom.
+       # Otherwise, multiply by 1.0.
+       if (segments[0].scaleDenom > 0):
+           return segments[0].encoderValue*(float(segments[0].scale)/float(segments[0].scaleDenom))
+       else:
+           return segments[0].encoderValue*1.0
 
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):
