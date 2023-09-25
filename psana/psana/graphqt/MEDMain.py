@@ -69,7 +69,7 @@ class MEDMain(QWidget):
         logdir     = kwa.get('logdir', './')
         savelog    = kwa.get('savelog', False)
         self.wlog  = kwa.get('wlog', None)
-        self.ictab = kwa.get('ictab', 2)
+        self.ictab = kwa.get('ctab', 2)
         self.signal_fast = kwa.get('signal_fast', False)
 
     def set_tool_tips(self):
