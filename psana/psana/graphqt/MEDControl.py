@@ -39,10 +39,6 @@ class MEDControl(QWidget):
     """QWidget with control fields for Mask Editor"""
 
     def __init__(self, **kwa):
-
-        #d = DIR_DATA_TEST + '/misc/'
-        #kwa.setdefault('dirs', dirs_to_search())
-
         QWidget.__init__(self, None)
 
         self.def_det = 'Select'
@@ -137,9 +133,13 @@ class MEDControl(QWidget):
         self.but_mol.clicked.connect(self.on_but_mol)
         self.but_tst.clicked.connect(self.on_but_tst)
 
+        if self.geo is None and self.geofname==self.def_geo:
+            self.set_geometry_from_kwargs() # ??? COMBINE WITH image, geo = mu.image_from_kwargs(**kwa)
+
         self.set_tool_tips()
         self.set_style()
-        self.set_visible(is_visible=False) # on_but_mol()
+        self.set_visible(is_visible=False)
+
 
     def set_style(self):
         self.layout().setContentsMargins(5,5,5,5)
@@ -187,12 +187,6 @@ class MEDControl(QWidget):
         self.but_nda.setStyleSheet(style.styleButtonGoodRight)
         self.set_image()
 
-
-
-        
-
-
-
     def set_image(self, nda=None, geo_txt=None):
         logger.info('set_image')
         if nda is not None or geo_txt is not None: logger.warning('TBD set_image for nda, geo_txt')
@@ -202,11 +196,6 @@ class MEDControl(QWidget):
                ndafname=self.but_nda.text(),\
                nda=nda, geo_txt=geo_txt)
         self.wim.set_pixmap_from_arr(img, set_def=True)
-
-
-        
-
-
 
     def set_visible(self, is_visible=True):
         for f in (self.lab_dba, self.but_dba, self.but_tst, self.lab_geo, self.but_geo, self.but_set):
@@ -239,7 +228,6 @@ class MEDControl(QWidget):
         logger.info('on_but_dba')
         dbname, colname = self.dbname_colname()
         self.set_ndarray(dbname, colname)
-
 
     def on_but_dsk(self):
         """Select DataSource kwargs from sequence of pop-up windows."""
@@ -329,11 +317,36 @@ class MEDControl(QWidget):
 
         self.set_geometry(dbname, detname)
 
+
+
+    def set_geometry_from_kwargs(self):
+        #exp = self.experiment_from_dskwargs()
+        #det = self.detname
+        #s = self.but_dsk.text()
+        s = self.dskwargs
+        dskwa = {} if s=='Select' else mu.datasource_kwargs_from_string(s)
+        dbname, colname = self.dbname_colname()
+        if is_none(dbname, msg='set_geometry_from_kwargs dbname is None'): return
+        run = dskwa.get('run', 9999)
+        query = {'ctype':'geometry', 'run':{'$lte':run}}
+        logger.info('\n==== set_geometry_from_kwargs dbname: %s colname: %s\n  query: %s' % (dbname, colname, query))
+        doc = mu.find_doc(dbname, colname, query=query)
+
+        geo_txt = mu.get_data_for_doc(dbname, doc)
+        logger.info('set geometry for %s' % s)
+        logger.debug('geometry constants from DB:\n%s' % geo_txt)
+        self.set_but_dbg_text_for_doc(doc)
+
+        self.set_image(geo_txt=geo_txt)
+
+
+
+
     def set_geometry(self, dbname, colname):
         logger.info('TBD set_geometry for dbname: %s colname: %s' % (dbname, colname))
         doc = None
         docs = mu.find_docs(dbname, colname)
-        docs_geo = [d for d in docs if d['ctype']=='geometry']
+        docs_geo = [d for d in docs if d.get('ctype',None)=='geometry']
         recs = ['run:%d time_stamp:%s id:%s' % (d['run'], d['time_stamp'], d['_id']) for d in docs_geo]
 
         if len(recs) == 0:
@@ -357,19 +370,22 @@ class MEDControl(QWidget):
             logger.info('ONLY ONE GEOMETRY CONSTANTS for dbname: %s colname: %s' % (dbname, colname))
             doc = docs_geo[0]
 
-        logger.debug('doc: %s' % str(doc))
-        s = 'run:%d %s' % (doc['run'], doc['time_stamp'])
-        self.but_dbg.setText(s)
+        self.set_but_dbg_text_for_doc(doc)
+
         geo_txt = mu.get_data_for_doc(dbname, doc)
         logger.info('set geometry for %s' % s)
         logger.debug('geometry constants from DB:\n%s' % geo_txt)
 
         self.set_image(geo_txt=geo_txt)
 
+        
+    def set_but_dbg_text_for_doc(self, doc):
+        logger.debug('doc: %s' % str(doc))
+        s = 'run:%d %s' % (doc['run'], doc['time_stamp'])
+        self.but_dbg.setText(s)
 
 
-
-
+        
     def set_ndarray(self, dbname, colname):
         logger.info('TBD on_but_dba: set ndarray from dbname: %s colname: %s' % (dbname, colname))
         doc = None
@@ -403,10 +419,6 @@ class MEDControl(QWidget):
 
         self.set_image(nda=nda)
 
-        
-
-
-
     def on_but_tst(self):
         dbnames = mu.db_names()
         print('\n==== %d cdb_* dbnames: %s\n' % (len(dbnames), str(dbnames)))
@@ -423,8 +435,8 @@ class MEDControl(QWidget):
         else:
           print('\n==== %d docs for dbname: %s colname: %s' % (len(docs) if docs is not None else 0, dbname, colname))
           for i,d in enumerate(docs):
-            print('  %s run:%d %s' % (d['ctype'], d['run'], d['time_stamp']))
-            if i>10:
+            print('%3d:  %12s run:%04d %s' % (i, d['ctype'], d['run'], d['time_stamp']))
+            if i>100:
               print('...')
               break
 
@@ -443,8 +455,6 @@ class MEDControl(QWidget):
 
 
 if __name__ == "__main__":
-
-    #os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = MEDControl()
