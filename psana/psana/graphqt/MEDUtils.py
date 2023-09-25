@@ -21,8 +21,8 @@ Usage ::
 Created on 2023-09-07 by Mikhail Dubrovin
 """
 import os
-from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
-#import logging
+#from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
+import logging
 logger = logging.getLogger(__name__)
 
 import psana.pyalgos.generic.PSUtils as psu
@@ -36,6 +36,11 @@ import psana.detector.Utils as ut  # info_dict, info_command_line, info_namespac
 
 collection_names, find_doc, find_docs, get_data_for_doc =\
     mdbwu.collection_names, mdbwu.find_doc, mdbwu.find_docs, mdbwu.get_data_for_doc
+
+def is_none(v, msg='value is None', meth=logger.debug):
+    r = v is None
+    if r: meth(msg)
+    return r # True or False
 
 def image_from_ndarray(nda):
     if nda is None:
@@ -56,6 +61,41 @@ def image_from_ndarray(nda):
 def random_image(shape=(64,64)):
     import psana.pyalgos.generic.NDArrGenerators as ag
     return ag.random_standard(shape, mu=0, sigma=10)
+
+def experiment_from_dskwargs(s):
+    """returns experiment from string dskwargs"""
+    dskwa = datasource_kwargs_from_string(s)
+    logger.info('dskwargs: %s' % str(dskwa))
+    exp = dskwa.get('exp', None)
+    return dskwa.get('exp', None)
+
+def dbname_colname(**kwa):
+    """returns dbname, colname from **kwa"""
+    logger.debug('**kwa: %s' % str(kwa))
+    s   = kwa.get('dskwargs', None)
+    exp = experiment_from_dskwargs(s)
+    colname = kwa.get('detname', None)
+    if colname == 'Selected':
+        logger.warning('DETECTOR IS NOT SELECTED')
+        return exp, None
+    dbname = 'cdb_%s' % (colname if exp is None else exp)
+    return dbname, colname
+
+def geometry_text_from_db(**kwa):
+    s = kwa.get('dskwargs', None)
+    if is_none(s, msg='str dskwargs is None'): return None
+    dskwa = datasource_kwargs_from_string(s)
+    dbname, colname = dbname_colname(**kwa)
+    if is_none(dbname, msg='dbname is None'): return None
+    if is_none(colname, msg='colname is None'): return None
+    run = dskwa.get('run', 9999)
+    query = {'ctype':'geometry', 'run':{'$lte':run}}
+    logger.info('\n    == set geometry for dbname: %s colname: %s\n     query: %s' % (dbname, colname, query))
+    doc = find_doc(dbname, colname, query=query)
+    if is_none(doc, msg='doc is None'): return None
+    geo_txt = get_data_for_doc(dbname, doc)
+    logger.debug('geometry constants from DB:\n%s' % geo_txt)
+    return geo_txt
 
 def image_from_kwargs(**kwa):
     """returns 2-d image array and geo (GeometryAccess) of available, otherwise None"""
@@ -84,7 +124,11 @@ def image_from_kwargs(**kwa):
     # get geon from (1) geo_txt or (2) geofname
     if geo_txt is None:
         if geofname is None or not os.path.lexists(geofname):
-            logger.warning('geo_txt is None and geometry file %s not found - use ndarray without geometry' % geofname)
+            logger.warning('geo_txt is None and geometry file %s not found - try to find in DB' % geofname)
+            geo_txt = geometry_text_from_db(**kwa)
+            if geo_txt is not None:
+                geo = GeometryAccess()
+                geo.load_pars_from_str(geo_txt)
         else:
             geo = GeometryAccess(geofname)
     else:
@@ -92,6 +136,10 @@ def image_from_kwargs(**kwa):
         geo.load_pars_from_str(geo_txt)
 
     return image_from_geo_and_nda(geo, nda), geo
+
+
+
+
 
 
 def image_from_geo_and_nda(geo, nda, vbase=0):
