@@ -98,7 +98,8 @@ class QWPopupSelectItem(QDialog):
         logger.debug('on_item_click %s' % self.name_sel)
         if self.name_sel[-1] == ':':
             logger.warning('Clicked on tytle, select other item')
-            return
+            self.reject()
+            self.done(QDialog.Rejected)
         self.accept()
         self.done(QDialog.Accepted)
 
@@ -128,12 +129,13 @@ def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_fr
     w.setFixedHeight(height)
     if dx or dy: w.move(QCursor.pos().__add__(QPoint(dx,dy)))
     resp=w.exec_()
-    return w.selectedName()
+    r = w.selectedName()
+    return None if r is None or r[-1]==':' else r
 
 if __name__ == "__main__":
   logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
 
-  def test_select_exp(tname):
+  def test_select_item_from_list(tname):
     #lst = sorted(os.listdir('/sdf/data/lcls/ds/'))
     lst = ('Title:', 'CXI', 'DET', 'MEC', 'MFX', 'XCS', 'XPP')
     logger.debug('lst: %s' % str(lst))
@@ -147,7 +149,7 @@ if __name__ == "__main__":
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.debug('%s\nTest %s' % (50*'_', tname))
-    if   tname == '0': test_select_exp(tname)
+    if   tname == '0': test_select_item_from_list(tname)
     else: sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of Test %s' % tname)
 
