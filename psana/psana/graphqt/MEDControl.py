@@ -30,11 +30,6 @@ from psana.graphqt.QWPopupEditConfirm import popup_edit_and_confirm
 from psana.graphqt.QWPopupFileName import popup_file_name
 import psana.graphqt.MEDUtils as mu
 
-def is_none(v, msg='value is None'):
-    r = v is None
-    if r: logger.warning(msg)
-    return r # True or False
-
 class MEDControl(QWidget):
     """QWidget with control fields for Mask Editor"""
 
@@ -133,8 +128,8 @@ class MEDControl(QWidget):
         self.but_mol.clicked.connect(self.on_but_mol)
         self.but_tst.clicked.connect(self.on_but_tst)
 
-        if self.geo is None and self.geofname==self.def_geo:
-            self.set_geometry_from_kwargs() # ??? COMBINE WITH image, geo = mu.image_from_kwargs(**kwa)
+        #if self.geo is None and self.geofname==self.def_geo:
+        #    self.set_geometry_from_kwargs() # ??? COMBINE WITH image, geo = mu.image_from_kwargs(**kwa)
 
         self.set_tool_tips()
         self.set_style()
@@ -240,13 +235,13 @@ class MEDControl(QWidget):
         names1 = ('Instruments:',) + tuple(insts)
         logger.debug('Select from instruments: %s' % str(names1))
         instr = popup_select_item_from_list(self.but_dsk, names1, dx=10, dy=-10, do_sorted=False)
-        if is_none(instr, msg='Selection of instrument terminated'): return
+        if me.is_none(instr, msg='Selection of instrument terminated'): return
 
         names2 = mu.db_expnames(dbnames, fltr=instr)
         names2 = ('Select experiment:',) + tuple(names2)
         logger.debug('Select from DB experiments: %s' % str(names2))
         exp = popup_select_item_from_list(self.but_dsk, names2, dx=10, dy=-10, do_sorted=False)
-        if is_none(exp, msg='Selection of experiment terminated'): return
+        if me.is_none(exp, msg='Selection of experiment terminated'): return
         run = dskwa.get('run', 9999)
         resp, run = popup_edit_and_confirm(parent=self, msg=str(run), win_title='Run:')
         dskwa['exp'] = exp
@@ -259,10 +254,11 @@ class MEDControl(QWidget):
             self.but_dbg.setText(self.def_dbg)
 
     def experiment_from_dskwargs(self):
-        dskwa = mu.datasource_kwargs_from_string(self.but_dsk.text())
-        logger.info('dskwargs: %s' % str(dskwa))
-        exp = dskwa.get('exp', None)
-        return dskwa.get('exp', None)
+        return mu.experiment_from_dskwargs(self.but_dsk.text())
+        #dskwa = mu.datasource_kwargs_from_string(self.but_dsk.text())
+        #logger.info('dskwargs: %s' % str(dskwa))
+        #exp = dskwa.get('exp', None)
+        #return dskwa.get('exp', None)
 
     def select_detector_in_db(self, dbname):
         logger.info('select from detectors for exp-db: %s' % dbname)
@@ -297,7 +293,7 @@ class MEDControl(QWidget):
             names1 = ('Det types:',) + tuple(dettypes)
             logger.info('Select from dettypes: %s' % str(names1))
             sel1 = popup_select_item_from_list(self.but_det, names1, dx=10, dy=-10, do_sorted=False)
-            if is_none(sel1, msg='Selection of dettype terminated'): return
+            if me.is_none(sel1, msg='Selection of dettype terminated'): return
             names2 = mu.db_detnames(dbnames, fltr=sel1)
             if len(names2) == 0:
                 logger.warning('NOT FOUND ANY DETECTOR IN DETECTOR-DB: %s' % dbname)
@@ -307,7 +303,7 @@ class MEDControl(QWidget):
                 detname = popup_select_item_from_list(self.but_det, names2, dx=10, dy=-10, do_sorted=False)
             else:
                 detname = names2[0]
-        if is_none(detname, msg='Selection of detector terminated'): return
+        if me.is_none(detname, msg='Selection of detector terminated'): return
 
         dbname = 'cdb_%s' % detname
         self.but_det.setText(detname)
@@ -320,18 +316,14 @@ class MEDControl(QWidget):
 
 
     def set_geometry_from_kwargs(self):
-        #exp = self.experiment_from_dskwargs()
-        #det = self.detname
-        #s = self.but_dsk.text()
         s = self.dskwargs
         dskwa = {} if s=='Select' else mu.datasource_kwargs_from_string(s)
         dbname, colname = self.dbname_colname()
-        if is_none(dbname, msg='set_geometry_from_kwargs dbname is None'): return
+        if me.is_none(dbname, msg='set_geometry_from_kwargs dbname is None'): return
         run = dskwa.get('run', 9999)
         query = {'ctype':'geometry', 'run':{'$lte':run}}
         logger.info('\n==== set_geometry_from_kwargs dbname: %s colname: %s\n  query: %s' % (dbname, colname, query))
         doc = mu.find_doc(dbname, colname, query=query)
-
         geo_txt = mu.get_data_for_doc(dbname, doc)
         logger.info('set geometry for %s' % s)
         logger.debug('geometry constants from DB:\n%s' % geo_txt)
@@ -340,12 +332,11 @@ class MEDControl(QWidget):
         self.set_image(geo_txt=geo_txt)
 
 
-
-
     def set_geometry(self, dbname, colname):
         logger.info('TBD set_geometry for dbname: %s colname: %s' % (dbname, colname))
         doc = None
         docs = mu.find_docs(dbname, colname)
+        if me.is_none(docs, msg='docs is None for dbname: %s colname: %s' % (dbname, colname)): return
         docs_geo = [d for d in docs if d.get('ctype',None)=='geometry']
         recs = ['run:%d time_stamp:%s id:%s' % (d['run'], d['time_stamp'], d['_id']) for d in docs_geo]
 
@@ -357,7 +348,7 @@ class MEDControl(QWidget):
         elif len(recs) > 1:
             recs = ('Select geometry constants:',) + tuple(recs)
             rec = popup_select_item_from_list(self.but_dbg, recs, dx=10, dy=-10, do_sorted=False)
-            if is_none(rec, msg='Selection of document terminated'): return
+            if me.is_none(rec, msg='Selection of document terminated'): return
             logger.info('selected: %s' % rec)
             run, time_stamp, _id = rec.split(' ')
             _id = _id[3:]
@@ -373,19 +364,16 @@ class MEDControl(QWidget):
         self.set_but_dbg_text_for_doc(doc)
 
         geo_txt = mu.get_data_for_doc(dbname, doc)
-        logger.info('set geometry for %s' % s)
+        #logger.info('set geometry for %s' % str(doc))
         logger.debug('geometry constants from DB:\n%s' % geo_txt)
 
         self.set_image(geo_txt=geo_txt)
 
-        
     def set_but_dbg_text_for_doc(self, doc):
         logger.debug('doc: %s' % str(doc))
         s = 'run:%d %s' % (doc['run'], doc['time_stamp'])
         self.but_dbg.setText(s)
 
-
-        
     def set_ndarray(self, dbname, colname):
         logger.info('TBD on_but_dba: set ndarray from dbname: %s colname: %s' % (dbname, colname))
         doc = None
@@ -399,7 +387,7 @@ class MEDControl(QWidget):
         elif len(recs) > 1:
             recs = ('Select ndarray constants:',) + tuple(sorted(recs))
             rec = popup_select_item_from_list(self.but_dba, recs, dx=10, dy=-10, do_sorted=False)
-            if is_none(rec, msg='Selection of ndarray constants terminated'): return
+            if me.is_none(rec, msg='Selection of ndarray constants terminated'): return
             logger.info('selected: %s' % rec)
             ctype, run, time_stamp, _id = rec.split(' ')
             _id = _id[3:]
