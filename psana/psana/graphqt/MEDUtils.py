@@ -21,19 +21,20 @@ Usage ::
 Created on 2023-09-07 by Mikhail Dubrovin
 """
 import os
-import logging
+from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
+#import logging
 logger = logging.getLogger(__name__)
 
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, reshape_to_3d, info_ndarr, np
-from psana.detector.dir_root import DIR_FFB, DIR_DATA # DIR_FFB='/sdf/data/lcls/drpsrcf/ffb' or DIR_DATA='/sdf/data/lcls/ds/'
 import psana.pscalib.calib.MDBWebUtils as mdbwu
+from psana.detector.dir_root import DIR_FFB, DIR_DATA, DIR_DATA_TEST #, DIR_FFB='/sdf/data/lcls/drpsrcf/ffb' or DIR_DATA='/sdf/data/lcls/ds/'
+import psana.detector.Utils as ut  # info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
 
 #char_expand    = u' \u25BC' # down-head triangle
 #char_shrink    = u' \u25B2' # solid up-head triangle
 
 collection_names, find_docs, get_data_for_doc = mdbwu.collection_names, mdbwu.find_docs, mdbwu.get_data_for_doc
-
 
 def image_from_ndarray(nda):
     if nda is None:
@@ -55,51 +56,52 @@ def random_image(shape=(64,64)):
     import psana.pyalgos.generic.NDArrGenerators as ag
     return ag.random_standard(shape, mu=0, sigma=10)
 
-
-   
-
-
 def image_from_kwargs(**kwa):
     """returns 2-d image array and geo (GeometryAccess) of available, otherwise None"""
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess
 
-
-    # TBD nda=nda, geo_txt=geo_txt
-    nda     = kwa.get('nda', None)
-    geo_txt = kwa.get('geo_txt', None)
-   
-
+    img, geo = None, None
+    nda      = kwa.get('nda', None)
+    geo_txt  = kwa.get('geo_txt', None)
     ndafname = kwa.get('ndafname', None)
-    if ndafname is None or not os.path.lexists(ndafname):
-        logger.warning('ndarray file %s not found - use random image' % ndafname)
-        return random_image(), None
-
-    nda = np.load(ndafname)
-    if nda is None:
-        logger.warning('can not load ndarray from file: %s - use random image' % ndafname)
-        return ndarandom_image(), None
-
     geofname = kwa.get('geofname', None)
-    if geofname is None or not os.path.lexists(geofname):
-        logger.warning('geometry file %s not found - use ndarray without geometry' % geofname)
-        return image_from_ndarray(nda), None
 
-    return image_and_geo(nda, geofname, geo_txt)
+    logger.info(info_ndarr(nda, 'nda'))
+    logger.info('geo_txt: %s' % ('None' if geo_txt is None else geo_txt[:100]))
+    logger.info('ndafname: %s' % ndafname)
+    logger.info('geofname: %s' % geofname)
+
+    # get nda  from (1) nda or (2) ndafname
+    if nda is None:
+        if ndafname in (None, 'Select') or not os.path.lexists(ndafname):
+            logger.warning('nda is None and ndafname %s not found' % ndafname)
+        else:
+            nda = np.load(ndafname)
+            if nda is None:
+                logger.warning('can not load ndarray from file: %s' % ndafname)
+
+    # get geon from (1) geo_txt or (2) geofname
+    if geo_txt is None:
+        if geofname is None or not os.path.lexists(geofname):
+            logger.warning('geo_txt is None and geometry file %s not found - use ndarray without geometry' % geofname)
+        else:
+            geo = GeometryAccess(geofname)
+    else:
+        geo = GeometryAccess()
+        geo.load_pars_from_str(geo_txt)
+
+    return image_from_geo_and_nda(geo, nda), geo
 
 
-
-   
-
-
-
-def image_and_geo(nda, geofname, geo_txt=None):
-    """returns 2-d image array and GeometryAccess object for nda, geofname"""
-    from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
-    geo = GeometryAccess(geofname)
-    irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
-    return img_from_pixel_arrays(irows, icols, W=nda), geo
-
-   
-
+def image_from_geo_and_nda(geo, nda, vbase=0):
+    """returns 2-d image array and GeometryAccess object for geo, nda"""
+    from psana.pscalib.geometry.GeometryAccess import img_from_pixel_arrays
+    if geo is None:
+        return random_image() if nda is None else\
+               image_from_ndarray(nda)
+    else:
+        irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
+        return img_from_pixel_arrays(irows, icols, W=nda, vbase=vbase)
 
 
 def mask_ndarray_from_2d(mask2d, geo):
