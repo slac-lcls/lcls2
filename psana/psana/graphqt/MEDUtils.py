@@ -34,7 +34,8 @@ import psana.detector.Utils as ut  # info_dict, info_command_line, info_namespac
 #char_expand    = u' \u25BC' # down-head triangle
 #char_shrink    = u' \u25B2' # solid up-head triangle
 
-collection_names, find_docs, get_data_for_doc = mdbwu.collection_names, mdbwu.find_docs, mdbwu.get_data_for_doc
+collection_names, find_doc, find_docs, get_data_for_doc =\
+    mdbwu.collection_names, mdbwu.find_doc, mdbwu.find_docs, mdbwu.get_data_for_doc
 
 def image_from_ndarray(nda):
     if nda is None:
