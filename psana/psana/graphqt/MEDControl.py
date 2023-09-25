@@ -11,7 +11,6 @@ Usage ::
 
 Created on 2023-09-07 by Mikhail Dubrovin
 """
-
 import os
 import sys
 
@@ -22,7 +21,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QGr
                             QPushButton, QLabel, QComboBox, QLineEdit, QTextEdit
 from PyQt5.QtCore import QSize, QRectF, pyqtSignal, QModelIndex, QTimer
 
-from psana.graphqt.MEDUtils import *
+from psana.graphqt.MEDUtils import * #  DIR_DATA_TEST
 from psana.graphqt.Styles import style
 
 import psana.graphqt.GWROIUtils as roiu
@@ -49,10 +48,12 @@ class MEDControl(QWidget):
         self.def_det = 'Select'
         self.def_dbg = 'Select'
         self.def_dba = 'Select'
+        self.def_nda = 'Select'
+        self.def_geo = 'Select'
 
         self.geo      = kwa.get('geo', None)
-        self.geofname = kwa.get('geofname', 'geometry.txt')
-        self.ndafname = kwa.get('ndafname', 'ndarray.npy')
+        self.geofname = kwa.get('geofname', self.def_geo) # 'geometry.txt')
+        self.ndafname = kwa.get('ndafname', self.def_nda) # 'ndarray.npy')
         self.dskwargs = kwa.get('dskwargs', None)
         self.detname  = kwa.get('detname', self.def_det)
         self.wmain    = kwa.get('parent', None)
@@ -66,7 +67,7 @@ class MEDControl(QWidget):
         self.lab_geo = QLabel('geo:')
         self.but_geo = QPushButton(str(self.geofname))
 
-        self.lab_nda = QLabel('array:')
+        self.lab_nda = QLabel('File array:')
         self.but_nda = QPushButton(str(self.ndafname))
 
         self.lab_dsk = QLabel('DataSource:')
@@ -152,10 +153,11 @@ class MEDControl(QWidget):
         self.but_geo.setMaximumWidth(300)
         self.but_dba.setMaximumWidth(190)
 
-        for but in self.list_of_buts: but.setStyleSheet(style.styleButton)
-        self.but_dba.setStyleSheet(style.styleButtonLeft)
-        self.but_nda.setStyleSheet(style.styleButtonRight)
-        self.but_geo.setStyleSheet(style.styleButtonRight)
+        for b in self.list_of_buts:
+            b.setStyleSheet(style.styleButton)
+        self.but_dba.setStyleSheet(style.styleButton if self.but_dba.text() == self.def_dba else style.styleButtonLeft)
+        self.but_nda.setStyleSheet(style.styleButton if self.but_nda.text() == self.def_nda else style.styleButtonRight)
+        self.but_geo.setStyleSheet(style.styleButton if self.but_geo.text() == self.def_geo else style.styleButtonRight)
 
     def set_tool_tips(self):
         self.but_nda.setToolTip('image N-d array file name')
@@ -166,7 +168,8 @@ class MEDControl(QWidget):
         self.but_tst.setToolTip('Test for development only')
 
     def on_but_geo(self):
-        path = popup_file_name(parent=self, mode='r', path=self.geofname, dirs=[], fltr='*.txt *.data\n*')
+        path0 = DIR_DATA_TEST+'/geometry' if self.geofname == self.def_nda else self.geofname
+        path = popup_file_name(parent=self, mode='r', path=path0, dirs=[], fltr='*.txt *.data\n*')
         logger.debug('Selected: %s' % str(path))
         if path is None: return
         self.but_geo.setText(path)
@@ -174,7 +177,8 @@ class MEDControl(QWidget):
         self.set_image()
 
     def on_but_nda(self):
-        path = popup_file_name(parent=self, mode='r', path=self.ndafname, dirs=[], fltr='*.npy *.txt *.data\n*')
+        path0 = DIR_DATA_TEST+'/misc' if self.ndafname == self.def_nda else self.ndafname
+        path = popup_file_name(parent=self, mode='r', path=path0, dirs=[DIR_DATA_TEST,], fltr='*.npy *.txt *.data\n*')
         logger.debug('Selected: %s' % str(path))
         if path is None or path=='':
             self.but_nda.setText('None')
@@ -200,13 +204,12 @@ class MEDControl(QWidget):
         self.wim.set_pixmap_from_arr(img, set_def=True)
 
 
-
         
 
 
 
     def set_visible(self, is_visible=True):
-        for f in (self.lab_dba, self.but_dba, self.but_tst, self.lab_geo, self.but_geo):
+        for f in (self.lab_dba, self.but_dba, self.but_tst, self.lab_geo, self.but_geo, self.but_set):
             f.setVisible(is_visible)
 
     def on_but_mol(self):
@@ -409,12 +412,19 @@ class MEDControl(QWidget):
         print('\n==== %d cdb_* dbnames: %s\n' % (len(dbnames), str(dbnames)))
         dbname, colname = self.dbname_colname()
         colls = mu.collection_names(dbname)
-        print('\n==== %d collections for dbname: %s\n%s' % (len(colls), dbname, str(colls)))
+        if colls is None:
+          print('\n==== collections are None for dbname: %s' % (dbname))
+        else:
+          print('\n==== %d collections for dbname: %s\n%s' % (len(colls) if colls is not None else 0, dbname, str(colls)))
+
         docs = mu.find_docs(dbname, colname)
-        print('\n==== %d docs for dbname: %s colname: %s' % (len(docs), dbname, colname))
-        for i,d in enumerate(docs):
-          print('  %s run:%d %s' % (d['ctype'], d['run'], d['time_stamp']))
-          if i>10:
+        if docs is None:
+          print('\n==== docs is None for dbname: %s colname: %s' % (dbname, colname))
+        else:
+          print('\n==== %d docs for dbname: %s colname: %s' % (len(docs) if docs is not None else 0, dbname, colname))
+          for i,d in enumerate(docs):
+            print('  %s run:%d %s' % (d['ctype'], d['run'], d['time_stamp']))
+            if i>10:
               print('...')
               break
 
