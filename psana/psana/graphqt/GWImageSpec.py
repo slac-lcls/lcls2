@@ -112,8 +112,10 @@ class GWImageSpec(QWidget):
         logger.debug(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r))
         wim = self.wimax.wim
         self.disconnect_image_scene_rect_changed()
+        self.disconnect_image_pixmap_changed()
         wim.set_pixmap_from_arr(wim.arr, set_def=True, amin=r.top(), amax=r.bottom(), frmin=0, frmax=1) # , frmin=0.00001, frmax=0.99999)
         self.connect_image_scene_rect_changed()
+        self.connect_image_pixmap_changed()
 
     def connect_new_color_table(self):
         #self.wspec.wcbar.connect_new_color_table(self.wspec.wcbar.test_new_color_table_reception)
