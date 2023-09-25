@@ -3,6 +3,8 @@
 import sys
 import psana.graphqt.MEDUtils as mu  # includes psana.detector.Utils info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
 
+STR_LEVEL_NAMES=['CRITICAL', 'FATAL', 'ERROR', 'WARN', 'WARNING', 'INFO', 'DEBUG', 'NOTSET']
+
 #from psana.detector.dir_root import DIR_DATA_TEST  # , DIR_REPO # _DARK_PROC
 DIR_DATA_TEST = mu.DIR_DATA_TEST # = '/sdf/group/lcls/ds/ana/detector/data2_test'
 NDAFNAME = '%s/misc/epix10kaquad-meclv2518-0101-CeO2-ave.npy' % DIR_DATA_TEST
@@ -15,13 +17,14 @@ USAGE = 'Usage:'\
       + '\n\nHelp:\n  %s -h' % SCRNAME\
       + '\n\nExamples:'\
       + '\n  %s' % SCRNAME\
-      + '\n  %s -d epix10ka_000001' % SCRNAME\
-      + '\n  %s -k exp=ueddaq02' % SCRNAME\
-      + '\n  %s -k exp=ueddaq02 -d epix10ka_000001' % SCRNAME\
-      + '\n  %s -k exp=ueddaq02,run=5' % SCRNAME\
-      + '\n  %s -k exp=ueddaq02,run=5,dir=/sdf/data/lcls/drpsrcf/ffb/ued/ueddaq02/xtc/ -d epix10ka_000002 # for now dir is not used... to access  DB' % SCRNAME\
-      + '\n  %s -g %s' % (SCRNAME, GEOFNAME)\
-      + '\n  %s -a %s' % (SCRNAME, NDAFNAME)\
+      + '\n  %s -d epix10ka_000001                          # takes geometry from detector DB' % SCRNAME\
+      + '\n  %s -d epix10ka_000001 -k exp=ueddaq02,run=569  # takes geometry from experiment DB' % SCRNAME\
+      + '\n  %s -g %s  # takes geometry from file' % (SCRNAME, GEOFNAME)\
+      + '\n  %s -a %s  # takes array for image from file' % (SCRNAME, NDAFNAME)\
+      + '\n  %s -a %s -g %s' % (SCRNAME, NDAFNAME, GEOFNAME)\
+      + '\n  %s -d epix10ka_000001 -a %s' % (SCRNAME, NDAFNAME)\
+      + '\n  %s -d epix10ka_000001 -k exp=ueddaq02,run=569 -a %s' % (SCRNAME, NDAFNAME)\
+
 #      + '\n  %s -k "{\'exp\':\'abcd01234\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\', ' % SCRNAME\
 #      + '\'detectors\':[\'epicsinfo\', \'tmo_opal1\', \'ebeam\']}" -d tmo_opal1 -D'\
 #      + '\n\nTest:'\
@@ -61,7 +64,7 @@ def argument_parser():
                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_detname     = 'detector name, default = %s' % d_detname
     h_dirrepo = 'repository for files, default = %s' % d_dirrepo
-    h_logmode = 'logging mode, one of %s, default = %s' % (mu.STR_LEVEL_NAMES, d_logmode)
+    h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_group   = 'group ownership for all files, default = %s' % d_group
