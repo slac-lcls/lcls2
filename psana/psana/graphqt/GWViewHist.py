@@ -77,7 +77,7 @@ class GWViewHist(GWViewExt):
         self.penhi = QPen(self.colhi, 1, Qt.SolidLine)
 
 
-    def set_auto_limits(self, frac=0.01):
+    def set_auto_limits(self, frac=0.05):
         #qu.info_rect_xywh(r)
         print('\nTBD IN set_auto_limits - auto_limits: %s orientation: %s scale_ctl: %s'%\
                (self.auto_limits, self.hist.orient, self.str_scale_ctl))  # , end='\n')
