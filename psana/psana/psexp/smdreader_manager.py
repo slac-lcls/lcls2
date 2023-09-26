@@ -98,7 +98,7 @@ class SmdReaderManager(object):
         st = time.monotonic()
         self.smdr.get(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
-        logger.debug(f'READRATE SMD0 (0-) {self.smdr.got/(1e6*(en-st))} MB/s ({self.smdr.got/1e6:.3f}MB/ {en-st}s.)')
+        logger.debug(f'READRATE SMD0 (0-) {self.smdr.got/(1e6*(en-st)):.2f} MB/s ({self.smdr.got/1e6:.2f}MB/ {en-st:.2f}s.)')
         self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
         self.c_read.labels('seconds', 'None').inc(en-st)
         
