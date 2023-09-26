@@ -44,11 +44,11 @@ def is_none(v, msg='value is None', meth=logger.debug):
 
 def image_from_ndarray(nda):
     if nda is None:
-       logger.warning('nda is None - return None for image')
+       logger.debug('nda is None - return None for image')
        return None
 
     if not isinstance(nda, np.ndarray):
-       logger.warning('nda is not np.ndarray, type(nda): %s - return None for image' % type(nda))
+       logger.debug('nda is not np.ndarray, type(nda): %s - return None for image' % type(nda))
        return None
 
     img = psu.table_nxn_epix10ka_from_ndarr(nda) if (nda.size % (352*384) == 0) else\
@@ -65,7 +65,7 @@ def random_image(shape=(64,64)):
 def experiment_from_dskwargs(s):
     """returns experiment from string dskwargs"""
     dskwa = datasource_kwargs_from_string(s)
-    logger.info('dskwargs: %s' % str(dskwa))
+    logger.debug('dskwargs: %s' % str(dskwa))
     exp = dskwa.get('exp', None)
     return dskwa.get('exp', None)
 
@@ -90,7 +90,7 @@ def geo_text_and_meta_from_db(**kwa):
     if is_none(colname, msg='colname is None'): return None, None
     run = dskwa.get('run', 9999)
     query = {'ctype':'geometry', 'run':{'$lte':run}}
-    logger.info('\n    == set geometry for dbname: %s colname: %s\n     query: %s' % (dbname, colname, query))
+    logger.debug('\n  set geometry for dbname: %s colname: %s\n     query: %s' % (dbname, colname, query))
     doc = find_doc(dbname, colname, query=query)
     if is_none(doc, msg='doc is None'): return None, None
     geo_txt = get_data_for_doc(dbname, doc)
@@ -107,10 +107,10 @@ def image_from_kwargs(**kwa):
     ndafname = kwa.get('ndafname', None)
     geofname = kwa.get('geofname', None)
 
-    logger.info(info_ndarr(nda, 'nda'))
-    logger.info('geo_txt: %s' % ('None' if geo_txt is None else geo_txt[:100]))
-    logger.info('ndafname: %s' % ndafname)
-    logger.info('geofname: %s' % geofname)
+    logger.debug(info_ndarr(nda, 'nda'))
+    logger.debug('geo_txt: %s' % ('None' if geo_txt is None else geo_txt[:100]))
+    logger.debug('ndafname: %s' % ndafname)
+    logger.debug('geofname: %s' % geofname)
 
     # get nda  from (1) nda or (2) ndafname
     if nda is None:
@@ -120,6 +120,8 @@ def image_from_kwargs(**kwa):
             nda = np.load(ndafname)
             if nda is None:
                 logger.debug('can not load ndarray from file: %s' % ndafname)
+            else:
+                logger.info('ndarray of shape %s for image is loaded from file: %s' % (nda.shape, ndafname))
 
     # get geo from (1) geo_txt, (2) geofname, (3) DB
     if geo_txt is None:
@@ -127,13 +129,17 @@ def image_from_kwargs(**kwa):
             logger.debug('geo_txt is None and geometry file %s not found - try to find in DB' % geofname)
             geo_txt, geo_doc = geo_text_and_meta_from_db(**kwa)
             if geo_txt is not None:
+                d = geo_doc
+                logger.info('geometry text is loaded from DB for exp: %s det: %s run: %s' % (d['experiment'], d['detector'], str(d['run'])))
                 geo = GeometryAccess()
                 geo.load_pars_from_str(geo_txt)
         else:
+            logger.info('geometry is loaded from file: %s' % str(geofname))
             geo = GeometryAccess(geofname)
     else:
         geo = GeometryAccess()
         geo.load_pars_from_str(geo_txt)
+        logger.info('geometry is set for geo_txt: %s ...' % geo_txt[:200])
 
     return image_from_geo_and_nda(geo, nda), geo
 
