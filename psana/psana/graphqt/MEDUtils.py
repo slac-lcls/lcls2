@@ -81,21 +81,21 @@ def dbname_colname(**kwa):
     dbname = 'cdb_%s' % (colname if exp is None else exp)
     return dbname, colname
 
-def geometry_text_from_db(**kwa):
+def geo_text_and_meta_from_db(**kwa):
     s = kwa.get('dskwargs', None)
-    if is_none(s, msg='str dskwargs is None'): return None
+    if is_none(s, msg='str dskwargs is None'): return None, None
     dskwa = datasource_kwargs_from_string(s)
     dbname, colname = dbname_colname(**kwa)
-    if is_none(dbname, msg='dbname is None'): return None
-    if is_none(colname, msg='colname is None'): return None
+    if is_none(dbname, msg='dbname is None'): return None, None
+    if is_none(colname, msg='colname is None'): return None, None
     run = dskwa.get('run', 9999)
     query = {'ctype':'geometry', 'run':{'$lte':run}}
     logger.info('\n    == set geometry for dbname: %s colname: %s\n     query: %s' % (dbname, colname, query))
     doc = find_doc(dbname, colname, query=query)
-    if is_none(doc, msg='doc is None'): return None
+    if is_none(doc, msg='doc is None'): return None, None
     geo_txt = get_data_for_doc(dbname, doc)
     logger.debug('geometry constants from DB:\n%s' % geo_txt)
-    return geo_txt
+    return geo_txt, doc
 
 def image_from_kwargs(**kwa):
     """returns 2-d image array and geo (GeometryAccess) of available, otherwise None"""
@@ -115,17 +115,17 @@ def image_from_kwargs(**kwa):
     # get nda  from (1) nda or (2) ndafname
     if nda is None:
         if ndafname in (None, 'Select') or not os.path.lexists(ndafname):
-            logger.warning('nda is None and ndafname %s not found' % ndafname)
+            logger.debug('nda is None and ndafname %s not found' % ndafname)
         else:
             nda = np.load(ndafname)
             if nda is None:
-                logger.warning('can not load ndarray from file: %s' % ndafname)
+                logger.debug('can not load ndarray from file: %s' % ndafname)
 
-    # get geon from (1) geo_txt or (2) geofname
+    # get geo from (1) geo_txt, (2) geofname, (3) DB
     if geo_txt is None:
         if geofname is None or not os.path.lexists(geofname):
-            logger.warning('geo_txt is None and geometry file %s not found - try to find in DB' % geofname)
-            geo_txt = geometry_text_from_db(**kwa)
+            logger.debug('geo_txt is None and geometry file %s not found - try to find in DB' % geofname)
+            geo_txt, geo_doc = geo_text_and_meta_from_db(**kwa)
             if geo_txt is not None:
                 geo = GeometryAccess()
                 geo.load_pars_from_str(geo_txt)
@@ -137,11 +137,6 @@ def image_from_kwargs(**kwa):
 
     return image_from_geo_and_nda(geo, nda), geo
 
-
-
-
-
-
 def image_from_geo_and_nda(geo, nda, vbase=0):
     """returns 2-d image array and GeometryAccess object for geo, nda"""
     from psana.pscalib.geometry.GeometryAccess import img_from_pixel_arrays
@@ -151,7 +146,6 @@ def image_from_geo_and_nda(geo, nda, vbase=0):
     else:
         irows, icols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
         return img_from_pixel_arrays(irows, icols, W=nda, vbase=vbase)
-
 
 def mask_ndarray_from_2d(mask2d, geo):
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess, convert_mask2d_to_ndarray # GeometryAccess, img_from_pixel_arrays
