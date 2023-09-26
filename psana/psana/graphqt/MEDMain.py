@@ -39,7 +39,7 @@ class MEDMain(QWidget):
         image, geo = mu.image_from_kwargs(**kwa)
         ctab = mu.color_table(ict=self.ictab)
         self.wisp = GWImageSpec(parent=self, image=image, ctab=ctab, signal_fast=self.signal_fast)
-        self.wlog = GWLoggerStd()
+        self.wlog = GWLoggerStd(**self.kwa)
         self.wctl = MEDControl(parent=self, **kwa, geo=geo)
         self.wbts = MEDControlROI(parent=self)
 
@@ -65,12 +65,17 @@ class MEDMain(QWidget):
     def proc_kwargs(self, **kwa):
         #print_kwa(kwa)
         self.kwa   = kwa
-        loglevel   = kwa.get('loglevel', 'DEBUG').upper()
+        log_level  = kwa.get('logmode', 'DEBUG').upper()
         logdir     = kwa.get('logdir', './')
         savelog    = kwa.get('savelog', False)
         self.wlog  = kwa.get('wlog', None)
         self.ictab = kwa.get('ctab', 2)
         self.signal_fast = kwa.get('signal_fast', False)
+        self.kwa['log_level']        = kwa.get('logmode', 'DEBUG').upper()
+        self.kwa['show_buttons']     = kwa.get('show_buttons', False)
+        self.kwa['log_prefix']       = kwa.get('dirrepo', './')
+        self.kwa['logfname']         = kwa.get('logfname', 'log-med.txt')
+        self.kwa['save_log_at_exit'] = kwa.get('save_log_at_exit', False)
 
     def set_tool_tips(self):
         self.setToolTip('Mask Editor')
