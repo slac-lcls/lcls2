@@ -3,11 +3,8 @@
 import sys
 import psana.graphqt.MEDUtils as mu  # includes psana.detector.Utils info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
 
-#STR_LEVEL_NAMES=['CRITICAL', 'FATAL', 'ERROR', 'WARN', 'WARNING', 'INFO', 'DEBUG', 'NOTSET']
 import logging
 STR_LEVEL_NAMES = ', '.join(logging._nameToLevel.keys())
-
-#from psana.detector.dir_root import DIR_DATA_TEST  # , DIR_REPO # _DARK_PROC
 DIR_DATA_TEST = mu.DIR_DATA_TEST # = '/sdf/group/lcls/ds/ana/detector/data2_test'
 NDAFNAME = '%s/misc/epix10kaquad-meclv2518-0101-CeO2-ave.npy' % DIR_DATA_TEST
 GEOFNAME = '%s/geometry/geo-epix10kaquad-tstx00117.data' % DIR_DATA_TEST
@@ -29,7 +26,6 @@ USAGE = 'Usage:'\
 
 #      + '\n  %s -k "{\'exp\':\'abcd01234\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\', ' % SCRNAME\
 #      + '\'detectors\':[\'epicsinfo\', \'tmo_opal1\', \'ebeam\']}" -d tmo_opal1 -D'\
-#      + '\n\nTest:'\
 #      + '\n  %s -k "{\'exp\':\'tmoc00118\', \'run\':123}" -d tmoopal -o ./work' % SCRNAME\
 #      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/rixl1013320-r0093-s006-c000.xtc2 -d atmopal -o ./work' % SCRNAME\
 
@@ -47,6 +43,7 @@ def argument_parser():
     d_filemode = 0o664
     d_group    = 'ps-users'
     d_ctab     = 3
+    d_savelog  = False
 
     h_posargs = 'list of positional arguments: [<fname-nda.npy>] [<fname-geometry.txt>], default = %s' % d_posargs
     h_ndafname= 'image array file name*.nda, default = %s' % d_ndafname
@@ -63,6 +60,7 @@ def argument_parser():
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_group   = 'group ownership for all files, default = %s' % d_group
     h_ctab    = 'color table index in range [1,8], default = %d' % d_ctab
+    h_savelog = 'On/Off saving log file, default = %d' % d_savelog
 
     parser = ArgumentParser(usage=USAGE, description='%s - command opens mask editor GUI' % SCRNAME)
     parser.add_argument('posargs',           default=d_posargs,    type=str,   help=h_posargs, nargs='*')
@@ -76,6 +74,7 @@ def argument_parser():
     parser.add_argument('--dirmode',         default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',        default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--group',           default=d_group,      type=str,   help=h_group)
+    parser.add_argument('--savelog',         default=d_savelog, action='store_true', help=h_savelog)
 
     return parser
 
