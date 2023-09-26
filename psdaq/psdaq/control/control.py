@@ -1066,13 +1066,20 @@ class CollectionManager():
                 if level != 'tpr': # Revisit: Perhaps there's a better way?
                     self.cmstate[level][id].update(item)
 
+        readout_groups_in_use = set()
         active_state = self.filter_active_dict(self.cmstate_levels())
         # give number to drp nodes for the event builder
         if 'drp' in active_state:
             for i, node in enumerate(active_state['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
+                readout_groups_in_use.add(self.cmstate['drp'][node]['det_info']['readout'])
         else:
             self.report_error('at least one DRP is required')
+            logging.debug('condition_alloc() returning False')
+            return False
+
+        if self.platform not in readout_groups_in_use:
+            self.report_error(f'at least one DRP must use readout group {self.platform}')
             logging.debug('condition_alloc() returning False')
             return False
 
@@ -1117,22 +1124,6 @@ class CollectionManager():
                 self.cmstate['teb'][node]['teb_id'] = i
         else:
             self.report_error('at least one TEB is required')
-            logging.debug('condition_alloc() returning False')
-            return False
-
-        # primary/common readout group must be used
-        pFound = False
-        for drp in self.cmstate['drp'].values():
-            try:
-                readout = drp['det_info']['readout']
-            except KeyError as ex:
-                logging.error(f'condition_alloc(): KeyError: {ex}')
-            else:
-                if readout == self.platform:
-                    pFound = True
-                    break
-        if pFound == False:
-            self.report_error(f'at least one DRP must use readout group {self.platform}')
             logging.debug('condition_alloc() returning False')
             return False
 
