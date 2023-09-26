@@ -21,6 +21,12 @@ ds = DataSource(exp=exp,run=runnum,dir='/cds/data/drpsrcf/rix/rixc00221/xtc/',in
 
 if ds.is_srv(): # hack for now to eliminate use of publish.local below
     publish.init()
+    zmq_send(fake_dbase_server=fake_dbase_server, 
+            node=MPI.Get_processor_name(), 
+            exp=exp, 
+            runnum=runnum, 
+            port=publish.port,
+            slurm_job_id=os.environ.get('SLURM_JOB_ID', os.getpid()))
  
 # we will remove this for batch processing and use "psplot" instead
 # publish.local = True
@@ -28,7 +34,6 @@ if ds.is_srv(): # hack for now to eliminate use of publish.local below
 # TODO: hide zmq_send in DataSource
 
 def my_smalldata(data_dict):
-    zmq_send(fake_dbase_server=fake_dbase_server, node=MPI.Get_processor_name(), exp=exp, runnum=runnum, port=publish.port)
     if 'unaligned_andor_norm' in data_dict:
         andor_norm = data_dict['unaligned_andor_norm'][0]
         myplot = XYPlot(0,"Andor (normalized)",range(len(andor_norm)),andor_norm)

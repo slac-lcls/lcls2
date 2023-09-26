@@ -8,12 +8,12 @@ def zmq_send(**kwargs):
     global client_socket
     if client_socket is None:
         client_socket = SubSocket(kwargs['fake_dbase_server'], socket_type=zmq.PUSH)
-        data = {}
-        for key, val in kwargs.items():
-            if key == 'fake_dbase_server': continue
-            data[key] = val
-        client_socket.send(data)
-        print(f"sent {data} to {kwargs['fake_dbase_server']}")
+    data = {}
+    for key, val in kwargs.items():
+        if key == 'fake_dbase_server': continue
+        data[key] = val
+    client_socket.send(data)
+    print(f"sent {data} to {kwargs['fake_dbase_server']}")
 
 
 def send_zipped_pickle(zmq_socket, obj, flags=0, protocol=-1):
