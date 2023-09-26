@@ -34,7 +34,6 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
 logger = logging.getLogger(__name__)
 
-
 class GWViewHist(GWViewExt):
 
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10), origin='DL', **kwargs):
@@ -61,34 +60,30 @@ class GWViewHist(GWViewExt):
         self.update_my_scene(self.hbins)
         #self.rs_old = rscene
 
-
     def print_attributes(self):
         logger.info(self.info_attributes())
-
 
     def info_attributes(self):
         return 'scale_control: %s' % self.str_scale_control()\
             +'\norigin       : %s' % self.origin()
-
 
     def set_style(self):
         GWViewExt.set_style(self)
         self.colhi = QColor(self.fgcolor)
         self.penhi = QPen(self.colhi, 1, Qt.SolidLine)
 
-
     def set_auto_limits(self, frac=0.05):
         #qu.info_rect_xywh(r)
-        print('\nTBD IN set_auto_limits - auto_limits: %s orientation: %s scale_ctl: %s'%\
-               (self.auto_limits, self.hist.orient, self.str_scale_ctl))  # , end='\n')
+        #logger.debug('\nTBD IN set_auto_limits - auto_limits: %s orientation: %s scale_ctl: %s'%\
+        #       (self.auto_limits, self.hist.orient, self.str_scale_ctl))  # , end='\n')
         r = self.scene_rect()
         x, y, w, h = r.x(), r.y(), r.width(), r.height()
         hb = self.hbins
         orient = self.hist.orient  # HV
         amin, amax = hb.limits()
-        print('XXXX hb.limits: %.3f %.3f' % (amin, amax))
+        #logger.debug('XXXX hb.limits: %.3f %.3f' % (amin, amax))
         arr = hb.bin_data()
-        print('XXXX hb.data min/max: %.3f / %.3f' % (arr.min(), arr.max()))
+        #logger.debug('XXXX hb.data min/max: %.3f / %.3f' % (arr.min(), arr.max()))
         #lim_lo = arr.min()
         #lim_hi = arr.max()
         lim_lo = np.quantile(arr, frac, axis=0)
@@ -96,7 +91,7 @@ class GWViewHist(GWViewExt):
         gap = lim_hi - lim_lo
         lim_hi += gap * 0.5
         lim_lo -= gap * 0.1
-        print('XXXX limits low/hight: %.3f / %.3f' % (lim_lo, lim_hi))
+        logger.debug('limits low/hight: %.3f / %.3f' % (lim_lo, lim_hi))
 
         rpars = ((amin, y, amax-amin, h) if self.auto_limits == 'H' else\
                  (x, lim_lo, w, lim_hi-lim_lo) if self.auto_limits == 'V' else\
@@ -107,7 +102,6 @@ class GWViewHist(GWViewExt):
                  (lim_lo, amin, lim_hi-lim_lo, amax-amin))
 
         self.set_scene_rect(QRectF(*rpars))
-
 
     def update_my_scene(self, hbins=None):
         GWViewExt.update_my_scene(self)
@@ -135,18 +129,15 @@ class GWViewHist(GWViewExt):
 
         self.reset_scene_rect_default()
 
-
     def mouseReleaseEvent(self, e):
         logger.debug('GWViewHist.mouseReleaseEvent')
         GWViewExt.update_my_scene(self)
         GWViewExt.mouseReleaseEvent(self, e)
 
-
     def closeEvent(self, e):
         self.hist.remove()
         GWViewExt.closeEvent(self, e)
         #logger.debug('GWViewHist.closeEvent')
-
 
     def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None,\
                                frmin=0.00001, frmax=0.99999, edgemode=0, update_hblimits=True):
@@ -171,15 +162,17 @@ class GWViewHist(GWViewExt):
         _nbins = int(vmax) - int(vmin)
         if _nbins < nbins: _nbins = nbins
         #arrsize = arr.size
-        #print('XXX arrsize: %d vmin: %.3f vmax: %.3f nbins:%d' % (arrsize, vmin, vmax, _nbins))
+        logger.debug('XXX arrsize: %d vmin: %.3f vmax: %.3f nbins:%d' % (arr.size, vmin, vmax, _nbins))
 
         hb = HBins((vmin,vmax), nbins=_nbins)
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
 
-        hmin, hmax = 0, hb.bin_data_max()
-        #logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
-        #             (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
-        hgap = 0.05*(hmax-hmin)
+        hmin = 0
+        #hmax = hb.bin_data_max()
+        hmax = np.quantile(hb.bin_data(), 0.99, axis=0, interpolation='lower')
+        logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
+                     (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
+        hgap = 0.30*(hmax-hmin)
 
         #rs0 = self.scene().sceneRect()
         rs0 = self.scene_rect()
@@ -189,7 +182,6 @@ class GWViewHist(GWViewExt):
 
         self.update_my_scene(hbins=hb)
         #self.hbins = hb
-
 
 if __name__ == "__main__":
     import sys
