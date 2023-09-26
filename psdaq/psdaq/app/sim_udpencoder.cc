@@ -210,13 +210,14 @@ void _loopbackInit()
     pHeader->minorVersion = Drp::UdpEncoder::MinorVersion;
     pHeader->microVersion = Drp::UdpEncoder::MicroVersion;
     snprintf(pHeader->hardwareID, 16, "sim_updencoder");
+    pHeader->mode = 0;
 
     // initialize channel 0
     Drp::encoder_channel_t *pChannel = (Drp::encoder_channel_t *)(pHeader + 1);
     snprintf(pChannel->hardwareID, 16, "sim_updencoder");
     pChannel->encoderValue = htonl(42);
     pChannel->scale = pChannel->scaleDenom = htons(1);
-    pChannel->mode = 77;
+    pChannel->mode = 0;
 }
 
 void _loopbackFini()
