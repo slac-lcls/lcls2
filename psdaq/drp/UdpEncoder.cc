@@ -871,9 +871,10 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                     // Update the encoder value
                     if (pgpDg != dgram) {
                         frame.channel[0].encoderValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
-                        frame.channel[0].mode = 1; // Indicate this is an interpolated value
+                        frame.channel[0].mode |=  0x1;  // Indicate this is an interpolated value
                     } else {
                         frame.channel[0].encoderValue = value;
+                        frame.channel[0].mode &= ~0x1;  // Indicate this is a non-interpolated value
                     }
 
 
