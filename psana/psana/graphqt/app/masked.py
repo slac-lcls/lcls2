@@ -3,7 +3,9 @@
 import sys
 import psana.graphqt.MEDUtils as mu  # includes psana.detector.Utils info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
 
-STR_LEVEL_NAMES=['CRITICAL', 'FATAL', 'ERROR', 'WARN', 'WARNING', 'INFO', 'DEBUG', 'NOTSET']
+#STR_LEVEL_NAMES=['CRITICAL', 'FATAL', 'ERROR', 'WARN', 'WARNING', 'INFO', 'DEBUG', 'NOTSET']
+import logging
+STR_LEVEL_NAMES = ', '.join(logging._nameToLevel.keys())
 
 #from psana.detector.dir_root import DIR_DATA_TEST  # , DIR_REPO # _DARK_PROC
 DIR_DATA_TEST = mu.DIR_DATA_TEST # = '/sdf/group/lcls/ds/ana/detector/data2_test'
@@ -46,14 +48,6 @@ def argument_parser():
     d_group    = 'ps-users'
     d_ctab     = 3
 
-#    d_fraclm  = 0.1     # allowed fraction limit
-#    d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
-#    d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-#    d_deploy  = False
-#    d_tstamp  = None    # 20180910111049 or run number <10000
-#    d_comment = 'no comment'
-#    d_version = 'V2023-09-15'
-
     h_posargs = 'list of positional arguments: [<fname-nda.npy>] [<fname-geometry.txt>], default = %s' % d_posargs
     h_ndafname= 'image array file name*.nda, default = %s' % d_ndafname
     h_geofname= 'geometry description constants file name *.txt, *.data, default = %s' % d_geofname
@@ -70,15 +64,6 @@ def argument_parser():
     h_group   = 'group ownership for all files, default = %s' % d_group
     h_ctab    = 'color table index in range [1,8], default = %d' % d_ctab
 
-#    h_fraclm  = 'fraction of statistics [0,1] below low or above high gate limit to assign pixel bad status, default = %f' % d_fraclm
-#    h_fraclo  = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
-#    h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
-#    h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
-#    h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS or run number(<10000) for constants selection in repo. '\
-#                'By default run time is used, default = %s' % str(d_tstamp)
-#    h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
-#    h_version = 'version, default = %s' % str(d_version)
-
     parser = ArgumentParser(usage=USAGE, description='%s - command opens mask editor GUI' % SCRNAME)
     parser.add_argument('posargs',           default=d_posargs,    type=str,   help=h_posargs, nargs='*')
     parser.add_argument('-a', '--ndafname',  default=d_ndafname,   type=str,   help=h_ndafname)
@@ -91,14 +76,6 @@ def argument_parser():
     parser.add_argument('--dirmode',         default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',        default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--group',           default=d_group,      type=str,   help=h_group)
-
-#    parser.add_argument('--fraclm',          default=d_fraclm,     type=float, help=h_fraclm)
-#    parser.add_argument('--fraclo',          default=d_fraclo,     type=float, help=h_fraclo)
-#    parser.add_argument('--frachi',          default=d_frachi,     type=float, help=h_frachi)
-#    parser.add_argument('-D', '--deploy',    action='store_true',              help=h_deploy)
-#    parser.add_argument('-t', '--tstamp',    default=d_tstamp,     type=int,   help=h_tstamp)
-#    parser.add_argument('-C', '--comment',   default=d_comment,    type=str,   help=h_comment)
-#    parser.add_argument('-v', '--version',   default=d_version,    type=str,   help=h_version)
 
     return parser
 
