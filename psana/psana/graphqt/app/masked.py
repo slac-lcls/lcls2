@@ -15,7 +15,7 @@ USAGE = 'Usage:'\
       + '\n  %s -a <fname-nda.npy> -k <DataSource-kwargs> -d <detector> -g <fname-geometry.npy> [-L <logging-mode>] [...]' % SCRNAME\
       + '\n\nHelp:\n  %s -h' % SCRNAME\
       + '\n\nExamples:'\
-      + '\n  %s' % SCRNAME\
+      + '\n  %s  # set all parameters using GUI' % SCRNAME\
       + '\n  %s -d epix10ka_000001                          # takes geometry from detector DB' % SCRNAME\
       + '\n  %s -d epix10ka_000001 -k exp=ueddaq02,run=569  # takes geometry from experiment DB' % SCRNAME\
       + '\n  %s -g %s  # takes geometry from file' % (SCRNAME, GEOFNAME)\
@@ -43,7 +43,7 @@ def argument_parser():
     d_filemode = 0o664
     d_group    = 'ps-users'
     d_ctab     = 3
-    d_savelog  = False
+    d_savelog  = True
 
     h_posargs = 'list of positional arguments: [<fname-nda.npy>] [<fname-geometry.txt>], default = %s' % d_posargs
     h_ndafname= 'image array file name*.nda, default = %s' % d_ndafname
@@ -74,7 +74,7 @@ def argument_parser():
     parser.add_argument('--dirmode',         default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',        default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--group',           default=d_group,      type=str,   help=h_group)
-    parser.add_argument('--savelog',         default=d_savelog, action='store_true', help=h_savelog)
+    parser.add_argument('--savelog',         default=d_savelog, action='store_false', help=h_savelog)
 
     return parser
 
@@ -83,13 +83,12 @@ def mask_editor():
     namesp = parser.parse_args()
     posargs = namesp.posargs
     kwargs = vars(namesp)
-    print('parser: %s' % mu.ut.info_parser_arguments(parser))
+    print('Command "%s" started with optional arguments:%s\nLaunch GUI' % (SCRNAME, mu.ut.info_parser_arguments(parser, title='')))
     #if len(posargs)>0 and kwargs['ndafname'] is None: kwargs['ndafname'] = posargs[0]
     #if len(posargs)>1 and kwargs['geofname'] is None: kwargs['geofname'] = posargs[1]
 
     import psana.graphqt.MEDMain as mm
     mm.mask_editor(**kwargs)
-    sys.exit('End of %s'%SCRNAME)
 
 if __name__ == "__main__":
     mask_editor()
