@@ -48,7 +48,7 @@ class MEDMain(QWidget):
         ctab = mu.color_table(ict=self.ictab)
         self.wisp = GWImageSpec(parent=self, image=image, ctab=ctab, signal_fast=self.signal_fast)
         self.wctl = MEDControl(parent=self, **kwa, geo=geo)
-        self.wbts = MEDControlROI(parent=self)
+        self.wbts = MEDControlROI(parent=self, **kwa)
 
         self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.wbts)
