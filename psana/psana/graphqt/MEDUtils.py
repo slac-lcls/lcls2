@@ -98,10 +98,11 @@ def geo_text_and_meta_from_db(**kwa):
     return geo_txt, doc
 
 def image_from_kwargs(**kwa):
-    """returns 2-d image array and geo (GeometryAccess) of available, otherwise None"""
+    """returns 2-d image array, geo (GeometryAccess) of available, otherwise None, and geo_doc if from DB or None"""
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess
 
     img, geo = None, None
+    geo_doc  = None
     nda      = kwa.get('nda', None)
     geo_txt  = kwa.get('geo_txt', None)
     ndafname = kwa.get('ndafname', None)
@@ -141,7 +142,7 @@ def image_from_kwargs(**kwa):
         geo.load_pars_from_str(geo_txt)
         logger.info('geometry is set for geo_txt: %s ...' % geo_txt[:200])
 
-    return image_from_geo_and_nda(geo, nda), geo
+    return image_from_geo_and_nda(geo, nda), geo, geo_doc
 
 def image_from_geo_and_nda(geo, nda, vbase=0):
     """returns 2-d image array and GeometryAccess object for geo, nda"""
