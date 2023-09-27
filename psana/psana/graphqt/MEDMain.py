@@ -44,10 +44,10 @@ class MEDMain(QWidget):
         self.ictab = kwa.get('ctab', 2)
         self.signal_fast = kwa.get('signal_fast', False)
 
-        image, geo = mu.image_from_kwargs(**kwa)
+        image, geo, geo_doc = mu.image_from_kwargs(**kwa)
         ctab = mu.color_table(ict=self.ictab)
         self.wisp = GWImageSpec(parent=self, image=image, ctab=ctab, signal_fast=self.signal_fast)
-        self.wctl = MEDControl(parent=self, **kwa, geo=geo)
+        self.wctl = MEDControl(parent=self, **kwa, geo=geo, geo_doc=geo_doc)
         self.wbts = MEDControlROI(parent=self, **kwa)
 
         self.hbox = QHBoxLayout()
