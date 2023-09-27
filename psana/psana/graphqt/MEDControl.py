@@ -42,12 +42,14 @@ class MEDControl(QWidget):
         self.def_nda = 'Select'
         self.def_geo = 'Select'
 
+        geo_doc       = kwa.get('geo_doc', None)
         self.geo      = kwa.get('geo', None)
-        self.geofname = kwa.get('geofname', self.def_geo) # 'geometry.txt')
-        self.ndafname = kwa.get('ndafname', self.def_nda) # 'ndarray.npy')
+        self.geofname = kwa.get('geofname', self.def_geo)
+        self.ndafname = kwa.get('ndafname', self.def_nda)
         self.dskwargs = kwa.get('dskwargs', None)
         self.detname  = kwa.get('detname', self.def_det)
         self.wmain    = kwa.get('parent', None)
+        self.geo_txt  = None # geometry constants from DB
 
         if self.wmain is not None:
             self.wisp = self.wmain.wisp
@@ -67,11 +69,12 @@ class MEDControl(QWidget):
         self.lab_det = QLabel('Detector:')
         self.but_det = QPushButton(str(self.detname))
 
-        self.lab_dbg = QLabel('geo DB:')
-        self.but_dbg = QPushButton(self.def_dbg)
-
         self.lab_dba = QLabel('array DB:')
         self.but_dba = QPushButton(self.def_dba)
+
+        self.lab_dbg = QLabel('geo DB:')
+        self.but_dbg = QPushButton(self.def_dbg)
+        if geo_doc is not None: self.set_but_dbg_text_for_doc(geo_doc)
 
         self.but_set = QPushButton('Settings')
         self.but_tst = QPushButton('Test')
@@ -129,7 +132,7 @@ class MEDControl(QWidget):
         self.but_tst.clicked.connect(self.on_but_tst)
 
         #if self.geo is None and self.geofname==self.def_geo:
-        #    self.set_geometry_from_kwargs() # ??? COMBINE WITH image, geo = mu.image_from_kwargs(**kwa)
+        #    self.set_geometry_from_kwargs() # ??? COMBINE WITH image, geo, geo_doc = mu.image_from_kwargs(**kwa)
 
         self.set_tool_tips()
         self.set_style()
@@ -150,6 +153,9 @@ class MEDControl(QWidget):
 
         for b in self.list_of_buts:
             b.setStyleSheet(style.styleButton)
+        self.set_style_buts()
+
+    def set_style_buts(self):
         self.but_dba.setStyleSheet(style.styleButton if self.but_dba.text() == self.def_dba else style.styleButtonLeft)
         self.but_nda.setStyleSheet(style.styleButton if self.but_nda.text() == self.def_nda else style.styleButtonRight)
         self.but_geo.setStyleSheet(style.styleButton if self.but_geo.text() == self.def_geo else style.styleButtonRight)
@@ -168,7 +174,11 @@ class MEDControl(QWidget):
         logger.debug('Selected: %s' % str(path))
         if path is None: return
         self.but_geo.setText(path)
-        self.but_geo.setStyleSheet(style.styleButtonGoodRight)
+        self.but_dbg.setText(self.def_dbg)
+        self.set_style_buts()
+        self.geo_txt = None
+        logger.info('use geometry from file: %s' % str(path))
+        #self.but_geo.setStyleSheet(style.styleButtonGoodRight)
         self.set_image()
 
     def on_but_nda(self):
@@ -179,17 +189,22 @@ class MEDControl(QWidget):
             self.but_nda.setText('None')
             return
         self.but_nda.setText(path)
-        self.but_nda.setStyleSheet(style.styleButtonGoodRight)
-        self.set_image()
+        self.set_style_buts()
+        #self.but_nda.setStyleSheet(style.styleButtonGoodRight)
+        self.set_image(geo_txt=self.geo_txt)
 
     def set_image(self, nda=None, geo_txt=None):
-        logger.info('set_image')
-        if nda is not None or geo_txt is not None: logger.warning('TBD set_image for nda, geo_txt')
-
-        img, self.geo = mu.image_from_kwargs(\
+        logger.debug('set_image')
+        geofname=self.but_geo.text()
+        ndafname=self.but_nda.text()
+        img, self.geo, geo_doc = mu.image_from_kwargs(\
                geofname=self.but_geo.text(),\
                ndafname=self.but_nda.text(),\
                nda=nda, geo_txt=geo_txt)
+
+        logger.info('set_image for\n  geofname: %s \n  ndafname: %s \n  nda: %s\n  geo_txt: %s\n...'%\
+                    (geofname, ndafname, mu.info_ndarr(nda),\
+                     geo_txt[:100] if isinstance(geo_txt, str) else str(geo_txt)))
         self.wim.set_pixmap_from_arr(img, set_def=True)
 
     def set_visible(self, is_visible=True):
@@ -216,7 +231,7 @@ class MEDControl(QWidget):
     def on_but_dbg(self):
         logger.info('on_but_dbg')
         dbname, colname = self.dbname_colname()
-        self.set_geometry(dbname, colname)
+        self.set_geometry_from_db(dbname, colname)
 
     def on_but_dba(self):
         """sets ndarray for image from DB"""
@@ -228,7 +243,7 @@ class MEDControl(QWidget):
         """Select DataSource kwargs from sequence of pop-up windows."""
         self.txt_dsk_old = s = self.but_dsk.text()
         dskwa = {} if s=='Select' else mu.datasource_kwargs_from_string(s)
-        logger.info('dskwargs: %s' % str(dskwa))
+        logger.debug('dskwargs: %s' % str(dskwa))
 
         dbnames = mu.db_names(fltr=None)
         insts = mu.db_instruments(dbnames)
@@ -249,6 +264,7 @@ class MEDControl(QWidget):
         #if dskwa.get('files', None) == None: dskwa.pop('files')
         txt_dsk = mu.datasource_kwargs_to_string(**dskwa)
         self.but_dsk.setText(txt_dsk)
+        logger.info('set DataSource kwargs: %s' % txt_dsk)
         if txt_dsk != self.txt_dsk_old:
             self.but_det.setText(self.def_det)
             self.but_dbg.setText(self.def_dbg)
@@ -311,7 +327,7 @@ class MEDControl(QWidget):
             self.but_dbg.setText(self.def_dbg)
             self.but_dba.setText(self.def_dba)
 
-        self.set_geometry(dbname, detname)
+        self.set_geometry_from_db(dbname, detname)
 
     def set_geometry_from_kwargs(self):
         s = self.dskwargs
@@ -322,15 +338,15 @@ class MEDControl(QWidget):
         query = {'ctype':'geometry', 'run':{'$lte':run}}
         logger.info('\n==== set_geometry_from_kwargs dbname: %s colname: %s\n  query: %s' % (dbname, colname, query))
         doc = mu.find_doc(dbname, colname, query=query)
-        geo_txt = mu.get_data_for_doc(dbname, doc)
+        self.geo_txt = mu.get_data_for_doc(dbname, doc)
         logger.info('set geometry for %s' % s)
-        logger.debug('geometry constants from DB:\n%s' % geo_txt)
+        logger.debug('geometry constants from DB:\n%s' % self.geo_txt)
         self.set_but_dbg_text_for_doc(doc)
 
-        self.set_image(geo_txt=geo_txt)
+        self.set_image(geo_txt=self.geo_txt)
 
-    def set_geometry(self, dbname, colname):
-        logger.info('TBD set_geometry for dbname: %s colname: %s' % (dbname, colname))
+    def set_geometry_from_db(self, dbname, colname):
+        logger.info('set_geometry_from_db for dbname: %s colname: %s' % (dbname, colname))
         doc = None
         docs = mu.find_docs(dbname, colname)
         if mu.is_none(docs, msg='docs is None for dbname: %s colname: %s' % (dbname, colname)): return
@@ -360,19 +376,23 @@ class MEDControl(QWidget):
 
         self.set_but_dbg_text_for_doc(doc)
 
-        geo_txt = mu.get_data_for_doc(dbname, doc)
-        #logger.info('set geometry for %s' % str(doc))
-        logger.debug('geometry constants from DB:\n%s' % geo_txt)
+        self.geo_txt = mu.get_data_for_doc(dbname, doc)
+        d = doc
+        logger.info('set geometry constants from DB for doc: %s as:\n%s ...' %
+                    ('run:%d time_stamp:%s id:%s' % (d['run'], d['time_stamp'], d['_id']), self.geo_txt[:100]))
 
-        self.set_image(geo_txt=geo_txt)
+        self.set_image(geo_txt=self.geo_txt)
+        self.but_geo.setText(self.def_geo)
+        self.set_style_buts()
 
     def set_but_dbg_text_for_doc(self, doc):
         logger.debug('doc: %s' % str(doc))
         s = 'run:%d %s' % (doc['run'], doc['time_stamp'])
         self.but_dbg.setText(s)
+        self.set_style_buts()
 
     def set_ndarray(self, dbname, colname):
-        logger.info('TBD on_but_dba: set ndarray from dbname: %s colname: %s' % (dbname, colname))
+        logger.debug('set_ndarray: set ndarray from dbname: %s colname: %s' % (dbname, colname))
         doc = None
         docs = mu.find_docs(dbname, colname)
         docs_nda = [d for d in docs if d['ctype'] in ('pedestals', 'pixel_status', 'pixel_rms')]
@@ -385,7 +405,7 @@ class MEDControl(QWidget):
             recs = ('Select ndarray constants:',) + tuple(sorted(recs))
             rec = popup_select_item_from_list(self.but_dba, recs, dx=10, dy=-10, do_sorted=False)
             if mu.is_none(rec, msg='Selection of ndarray constants terminated'): return
-            logger.info('selected: %s' % rec)
+            logger.debug('selected: %s' % rec)
             ctype, run, time_stamp, _id = rec.split(' ')
             _id = _id[3:]
             doc = None
@@ -399,10 +419,11 @@ class MEDControl(QWidget):
         logger.debug('doc: %s' % str(doc))
         s = '%s run:%d %s' % (doc['ctype'], doc['run'], doc['time_stamp'])
         self.but_dba.setText(s)
+        self.set_style_buts()
         nda = mu.get_data_for_doc(dbname, doc)
-        logger.info('set ndarray as image:\n%s' % mu.info_ndarr(nda))
+        logger.info('set ndarray from DB doc: %s as image:\n%s' % (s, mu.info_ndarr(nda)))
 
-        self.set_image(nda=nda)
+        self.set_image(nda=nda, geo_txt=self.geo_txt)
 
     def on_but_tst(self):
         dbnames = mu.db_names()
