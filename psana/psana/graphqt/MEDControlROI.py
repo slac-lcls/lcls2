@@ -123,7 +123,7 @@ class MEDControlROI(QWidget):
         self.set_mode('A')
         roi_name = popup_select_item_from_list(self.but_add, roiu.roi_names, dx=10, dy=-10, do_sorted=False)
         roi_key = roiu.dict_roi_name_key[roi_name]
-        logger.info('Selected ROI: %s - click on image as many times as necessary for this type of ROI' % roi_name)
+        logger.info('selected ROI: %s\n  click on image as many times as it is necessary to deffine %s parameters' % (roi_name, roi_name))
         self.set_roitype(roi_key)
 
     def on_but_sav(self):
@@ -157,7 +157,7 @@ class MEDControlROI(QWidget):
             i = roiu.mode_keys.index(ckey)
             wim.mode_type = roiu.mode_types[i]
             wim.mode_name = roiu.mode_names[i]
-            logger.info('set mode_type: %d roi_name: %s' % (wim.mode_type, wim.mode_name))
+            logger.info('set mode: %s' % wim.mode_name) # wim.mode_type
             sc = '' if wim.mode_type > roiu.VISIBLE else 'HV'
             wim.set_scale_control(scale_ctl=sc)
 
@@ -167,7 +167,7 @@ class MEDControlROI(QWidget):
             i = roiu.roi_keys.index(ckey)
             wim.roi_type = roiu.roi_types[i]
             wim.roi_name = roiu.roi_names[i]
-            logger.info('set roi_type: %d roi_name: %s' % (wim.roi_type, wim.roi_name))
+            logger.debug('set roi_type: %d roi_name: %s' % (wim.roi_type, wim.roi_name))
 
 
 if __name__ == "__main__":
