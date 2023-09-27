@@ -168,7 +168,7 @@ private:
     std::thread m_workerThread;
     Interpolator m_interpolator;
     bool m_interpolating;
-    unsigned m_slowGroup;
+    int m_slowGroup;
     SPSCQueue<uint32_t> m_evtQueue;
     SPSCQueue<XtcData::Dgram*> m_encQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;

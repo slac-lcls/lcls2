@@ -633,12 +633,12 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     m_running       (false)
 {
     if (para.kwargs.find("slowGroup") != para.kwargs.end())
-        m_slowGroup = std::stoul(para.kwargs["slowGroup"]);
+        m_slowGroup = std::stoi(para.kwargs["slowGroup"]);
     else
-        m_slowGroup = 0;    // default: interpolation disabled
+        m_slowGroup = -1;   // default: interpolation disabled
 
     logging::debug("%s: slowGroup = %u", __PRETTY_FUNCTION__, m_slowGroup);
-    if (m_slowGroup == 0) {
+    if ((m_slowGroup < 0) || (m_slowGroup > 7)) {   // valid readout groups are 0-7
         m_interpolating = false;
         logging::info("Interpolation disabled");
     } else {
@@ -838,6 +838,7 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
         }
 
         if (m_interpolating) {
+            assert((m_slowGroup >= 0) && (m_slowGroup <= 7));
             if (dgram && (dgram->readoutGroups() & (1 << m_slowGroup)) &&
                 (dgram->service() == XtcData::TransitionId::L1Accept)) {
                 const ms_t tmo(1500);
