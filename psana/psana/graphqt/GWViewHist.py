@@ -74,16 +74,16 @@ class GWViewHist(GWViewExt):
 
     def set_auto_limits(self, frac=0.05):
         #qu.info_rect_xywh(r)
-        #logger.debug('\nTBD IN set_auto_limits - auto_limits: %s orientation: %s scale_ctl: %s'%\
+        #logger.debug('\nset_auto_limits - auto_limits: %s orientation: %s scale_ctl: %s'%\
         #       (self.auto_limits, self.hist.orient, self.str_scale_ctl))  # , end='\n')
         r = self.scene_rect()
         x, y, w, h = r.x(), r.y(), r.width(), r.height()
         hb = self.hbins
         orient = self.hist.orient  # HV
         amin, amax = hb.limits()
-        #logger.debug('XXXX hb.limits: %.3f %.3f' % (amin, amax))
+        #logger.debug('hb.limits: %.3f %.3f' % (amin, amax))
         arr = hb.bin_data()
-        #logger.debug('XXXX hb.data min/max: %.3f / %.3f' % (arr.min(), arr.max()))
+        #logger.debug('hb.data min/max: %.3f / %.3f' % (arr.min(), arr.max()))
         #lim_lo = arr.min()
         #lim_hi = arr.max()
         lim_lo = np.quantile(arr, frac, axis=0)
@@ -162,7 +162,7 @@ class GWViewHist(GWViewExt):
         _nbins = int(vmax) - int(vmin)
         if _nbins < nbins: _nbins = nbins
         #arrsize = arr.size
-        logger.debug('XXX arrsize: %d vmin: %.3f vmax: %.3f nbins:%d' % (arr.size, vmin, vmax, _nbins))
+        logger.debug('arrsize: %d vmin: %.3f vmax: %.3f nbins:%d' % (arr.size, vmin, vmax, _nbins))
 
         hb = HBins((vmin,vmax), nbins=_nbins)
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
