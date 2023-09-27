@@ -12,6 +12,7 @@ Usage ::
 Created on 2023-09-07 by Mikhail Dubrovin
 """
 
+import os
 import sys
 
 import logging
@@ -36,8 +37,10 @@ class MEDControlROI(QWidget):
 
         QWidget.__init__(self, None)
 
-        self.fname_json = kwa.get('fname_json', './roi_parameters.json')
-        self.fname_mask = kwa.get('fname_mask', './mask.npy')
+        repoman = kwa.get('repoman', None)
+        dirrepo = './' if repoman is None else repoman.dirrepo
+        self.fname_json = os.path.join(dirrepo, kwa.get('fname_json', './roi_parameters.json'))
+        self.fname_mask = os.path.join(dirrepo, kwa.get('fname_mask', './mask.npy'))
         self.wmain      = kwa.get('parent', None)
         if self.wmain:
             self.wisp = self.wmain.wisp
