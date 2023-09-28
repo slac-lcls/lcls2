@@ -357,12 +357,13 @@ def timestampStr():
 
 def get_readout_group_mask(body):
     mask = 0
-    if 'drp' in body:
-        for key, node_info in body['drp'].items():
-            try:
-                mask |= (1 << node_info['det_info']['readout'])
-            except KeyError:
-                pass
+    for receivertype in ['drp','tpr']:
+        if receivertype in body:
+            for key, node_info in body[receivertype].items():
+                try:
+                    mask |= (1 << node_info['det_info']['readout'])
+                except KeyError:
+                    pass
     return mask
 
 def wait_for_answers(socket, wait_time, msg_id):

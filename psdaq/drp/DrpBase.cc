@@ -1291,6 +1291,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     bool bufErr = false;
     m_supervisorIpPort.clear();
     m_isSupervisor = false;
+
     for (auto it : body["drp"].items()) {
         unsigned drpId = it.value()["drp_id"];
 
@@ -1325,6 +1326,17 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
             uint16_t port = base_port + id * 8 + m_para.partition;
             m_supervisorIpPort = ip + ":" + std::to_string(port);  // Supervisor's IP and port
             m_isSupervisor = alias == m_para.alias;                // True if we're the supervisor
+        }
+    }
+
+    for (auto it : body["tpr"].items()) {
+        // Build readout group mask for ignoring other partitions' RoGs
+        unsigned rog(it.value()["det_info"]["readout"]);
+        if (rog < Pds::Eb::NUM_READOUT_GROUPS) {
+            m_para.rogMask |= 1 << rog;
+        }
+        else {
+            logging::warning("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
         }
     }
 
