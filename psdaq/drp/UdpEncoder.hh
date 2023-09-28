@@ -141,7 +141,7 @@ class UdpEncoder : public XpmDetector
 {
 public:
     UdpEncoder(Parameters& para, DrpBase& drp);
-    unsigned connect(std::string& msg);
+    unsigned connect(std::string& msg, unsigned slowGroup);
     unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;

@@ -647,8 +647,11 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     }
 }
 
-unsigned UdpEncoder::connect(std::string& msg)
+unsigned UdpEncoder::connect(std::string& msg, unsigned slowGroup)
 {
+    // Override the kwarg with connect json info from the TPR process, if found
+    if (slowGroup != -1u)  m_slowGroup = slowGroup;
+
     try {
         m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_encQueue, m_bufferFreelist);
     }
@@ -1119,10 +1122,21 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
         return;
     }
 
-    m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
-    m_det->connect(msg, std::to_string(getId()));
+    unsigned slowGroup = -1u;
+    std::string id = std::to_string(getId());
+    if (m_para.kwargs.find("encTprAlias") != m_para.kwargs.end()) {
+        std::string encTprAlias = m_para.kwargs["encTprAlias"];
+        for (auto it : msg["body"]["tpr"].items()) {
+            slowGroup = it.value()["tpr"][id]["det_info"]["readout"];
+            if (it.value()["tpr"][id]["proc_info"]["alias"] == encTprAlias)
+                break;
+        }
+    }
 
-    unsigned rc = m_udpDetector->connect(errorMsg);
+    m_det->nodeId = msg["body"]["drp"][id]["drp_id"];
+    m_det->connect(msg, id);
+
+    unsigned rc = m_udpDetector->connect(errorMsg, slowGroup);
     if (!errorMsg.empty()) {
         if (!rc) {
             logging::warning(("UdpDetector::connect: " + errorMsg).c_str());
@@ -1405,7 +1419,8 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pva_addr")       continue;  // DrpBase
             if (kwargs.first == "match_tmo_ms")   continue;
             if (kwargs.first == "slowGroup")      continue;
-            logging::critical("Unrecognized kwarg '%s=%s'\n",
+            if (kwargs.first == "encTprAlias")    continue;
+    logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
