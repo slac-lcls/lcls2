@@ -650,7 +650,11 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
 unsigned UdpEncoder::connect(std::string& msg, unsigned slowGroup)
 {
     // Override the kwarg with connect json info from the TPR process, if found
-    if (slowGroup != -1u)  m_slowGroup = slowGroup;
+    if (slowGroup != -1u) {
+        m_interpolating = true;
+        m_slowGroup = slowGroup;
+        logging::info("Interpolation enabled using group %u", m_slowGroup);
+    }
 
     try {
         m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_encQueue, m_bufferFreelist);
@@ -1127,8 +1131,8 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
     if (m_para.kwargs.find("encTprAlias") != m_para.kwargs.end()) {
         std::string encTprAlias = m_para.kwargs["encTprAlias"];
         for (auto it : msg["body"]["tpr"].items()) {
-            slowGroup = it.value()["tpr"][id]["det_info"]["readout"];
-            if (it.value()["tpr"][id]["proc_info"]["alias"] == encTprAlias)
+            slowGroup = it.value()["det_info"]["readout"];
+            if (it.value()["proc_info"]["alias"] == encTprAlias)
                 break;
         }
     }
@@ -1420,7 +1424,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "match_tmo_ms")   continue;
             if (kwargs.first == "slowGroup")      continue;
             if (kwargs.first == "encTprAlias")    continue;
-    logging::critical("Unrecognized kwarg '%s=%s'\n",
+            logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
