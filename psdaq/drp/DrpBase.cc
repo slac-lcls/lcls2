@@ -1329,14 +1329,16 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
         }
     }
 
-    for (auto it : body["tpr"].items()) {
-        // Build readout group mask for ignoring other partitions' RoGs
-        unsigned rog(it.value()["det_info"]["readout"]);
-        if (rog < Pds::Eb::NUM_READOUT_GROUPS) {
-            m_para.rogMask |= 1 << rog;
-        }
-        else {
-            logging::warning("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
+    if (body.find("tpr") != body.end()) {
+        for (auto it : body["tpr"].items()) {
+            // Build readout group mask for ignoring other partitions' RoGs
+            unsigned rog(it.value()["det_info"]["readout"]);
+            if (rog < Pds::Eb::NUM_READOUT_GROUPS) {
+                m_para.rogMask |= 1 << rog;
+            }
+            else {
+                logging::warning("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
+            }
         }
     }
 
