@@ -196,15 +196,16 @@ class GWViewImageROI(GWViewImage):
         return rois
 
     def one_roi_at_point(self, p):
-        rois = self.rois_at_point(p)
+        o = rois = self.rois_at_point(p)
         logger.debug('one_roi_at_point - list of ROIs at point, returns nearest or [0]: %s' % str(rois))
         s = len(rois) if rois is not None else 0
         if s<1: return None
-        elif self.roi_type == roiu.PIXEL: # select pixel rect nearest to the click position
-            dmins = [(p - o.scitem.rect().center()).manhattanLength() for o in rois]
-            return rois[dmins.index(min(dmins))]
-        else:
-            return rois[0]
+        #elif self.roi_type == roiu.PIXEL and hasattr(o.scitem, 'rect'): # select pixel rect nearest to the click position
+        #    dmins = [(p - o.scitem.rect().center()).manhattanLength() for o in rois]
+        #    return rois[dmins.index(min(dmins))]
+        #else:
+        #    return rois[0]
+        return rois[0]
 
     def scene_pos(self, e):
         """scene position for mouse event"""
