@@ -121,7 +121,9 @@ class MEDControlROI(QWidget):
     def on_but_add(self):
         logger.debug(sys._getframe().f_code.co_name)
         self.set_mode('A')
-        roi_name = popup_select_item_from_list(self.but_add, roiu.roi_names, dx=10, dy=-10, do_sorted=False)
+        roi_names = ('ROI name:',) + tuple(roiu.roi_names)
+        roi_name = popup_select_item_from_list(self.but_add, roi_names, dx=10, dy=-10, do_sorted=False)
+        if roi_name == 'ROI name:': roi_name = 'NONE' # roiu.
         roi_key = roiu.dict_roi_name_key[roi_name]
         logger.info('selected ROI: %s\n  click on image as many times as it is necessary to deffine %s parameters' % (roi_name, roi_name))
         self.set_roitype(roi_key)
