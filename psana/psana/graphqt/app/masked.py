@@ -12,7 +12,7 @@ GEOFNAME = '%s/geometry/geo-epix10kaquad-tstx00117.data' % DIR_DATA_TEST
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 USAGE = 'Usage:'\
-      + '\n  %s -a <fname-nda.npy> -k <DataSource-kwargs> -d <detector> -g <fname-geometry.npy> [-L <logging-mode>] [...]' % SCRNAME\
+      + '\n  %s -a <fname-nda.npy> -k <DataSource-kwargs> -d <detector> -g <fname-geometry.data/txt> [-L <logging-mode>] [...]' % SCRNAME\
       + '\n\nHelp:\n  %s -h' % SCRNAME\
       + '\n\nExamples:'\
       + '\n  %s  # set all parameters using GUI' % SCRNAME\
