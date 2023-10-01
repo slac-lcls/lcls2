@@ -172,6 +172,7 @@ class GWViewHist(GWViewExt):
         hmax = np.quantile(hb.bin_data(), 0.99, axis=0, interpolation='lower')
         logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
                      (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
+        if hmax<1: hmax=2
         hgap = 0.30*(hmax-hmin)
 
         #rs0 = self.scene().sceneRect()
