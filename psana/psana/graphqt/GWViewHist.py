@@ -142,9 +142,14 @@ class GWViewHist(GWViewExt):
     def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None,\
                                frmin=0.00001, frmax=0.99999, edgemode=0, update_hblimits=True):
         #if np.array_equal(arr, self.arr_old): return
-        if arr is self.arr_old: return
+        logger.debug(info_ndarr(arr,'set_histogram_from_arr:'))
+        if arr is self.arr_old:
+            logger.debug('  arr is self.arr_old - HISTOGRAM NOT SET')
+            return
         self.arr_old = arr
-        if arr.size<1: return
+        if arr.size<1:
+            logger.debug('  arr.size<1 - HISTOGRAM NOT SET')
+            return
 
         aravel = arr.ravel()
 
