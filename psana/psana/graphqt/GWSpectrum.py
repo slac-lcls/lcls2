@@ -172,7 +172,7 @@ class GWSpectrum(QWidget):
 
     def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.00001, frmax=0.99999, edgemode=0, update_hblimits=True):
         """shotcut"""
-        #logger.info('set_spectrum_from_arr')
+        logger.debug('set_spectrum_from_arr')
         self.whi.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)
         self.update_info_panel()
         self.on_but_reset()
