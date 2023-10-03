@@ -47,7 +47,7 @@ using ns_t = std::chrono::nanoseconds;
 int setrcvbuf(int socketFd, unsigned size);
 int createUdpSocket(int port);
 
-class RawDef:public XtcData::VarDef
+class EncoderDef:public XtcData::VarDef
 {
 public:
   enum index
@@ -61,7 +61,7 @@ public:
       error
     };
 
-  RawDef()
+  EncoderDef()
   {
       NameVec.push_back({"encoderValue", XtcData::Name::UINT32});
       // frameCount is common to all channels
@@ -72,7 +72,7 @@ public:
       NameVec.push_back({"mode", XtcData::Name::UINT8});
       NameVec.push_back({"error", XtcData::Name::UINT8});
    }
-} RawDef;
+} RawDef, InterpolatedDef;
 
 template<typename T>
 static int64_t _deltaT(XtcData::TimeStamp& ts)
@@ -677,6 +677,7 @@ unsigned UdpEncoder::disconnect()
 
 void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd)
 {
+    // raw
     XtcData::Alg encoderRawAlg("raw", UdpEncoder::MajorVersion, UdpEncoder::MinorVersion, UdpEncoder::MicroVersion);
     XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
     XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
@@ -684,6 +685,17 @@ void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEn
                                                                  m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, segment);
     rawNames.add(xtc, bufEnd, RawDef);
     m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
+
+    if (m_interpolating) {
+        // interpolated
+        XtcData::Alg encoderInterpolatedAlg("interpolated", UdpEncoder::MajorVersion, UdpEncoder::MinorVersion, UdpEncoder::MicroVersion);
+        XtcData::NamesId interpolatedNamesId(nodeId, InterpolatedNamesIndex);
+        XtcData::Names&  interpolatedNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                     m_para->detName.c_str(), encoderInterpolatedAlg,
+                                                                     m_para->detType.c_str(), m_para->serNo.c_str(), interpolatedNamesId, segment);
+        interpolatedNames.add(xtc, bufEnd, InterpolatedDef);
+        m_namesLookup[interpolatedNamesId] = XtcData::NameIndex(interpolatedNames);
+    }
 }
 
   //std::string UdpEncoder::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
@@ -867,6 +879,7 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                 // Handle all events that have accumulated on the queue
                 while (true) {
                     uint32_t pgpIdx;
+                    uint32_t rawValue = value;
                     if (!m_evtQueue.peek(pgpIdx))  break;
 
                     // Deal with intermediate SlowUpdates
@@ -878,15 +891,11 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
 
                     // Update the encoder value
                     if (pgpDg != dgram) {
-                        frame.channel[0].encoderValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
-                        frame.channel[0].mode |=  0x1;  // Indicate this is an interpolated value
+                        uint32_t interpolatedValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
+                        _handleL1Accept(*pgpDg, frame, &rawValue, &interpolatedValue);
                     } else {
-                        frame.channel[0].encoderValue = value;
-                        frame.channel[0].mode &= ~0x1;  // Indicate this is a non-interpolated value
+                        _handleL1Accept(*pgpDg, frame, &rawValue, nullptr);
                     }
-
-
-                    _handleL1Accept(*pgpDg, frame);
 
                     if (pgpDg == dgram)  return;
                 }
@@ -894,45 +903,77 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                 break;
             }
         } else {
+            // not interpolating
             XtcData::Dgram* encDg;
             if (!m_encQueue.peek(encDg))  break;
             evtDg->xtc.damage.increase(encDg->xtc.damage.value());
 
             auto frame = (const encoder_frame_t*)(encDg->xtc.payload());
-
-            _handleL1Accept(*evtDg, *frame);
+            uint32_t rawValue = frame->channel[0].encoderValue;
+            _handleL1Accept(*evtDg, *frame, &rawValue, nullptr);
         }
     }
 }
 
-void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame)
+// only doing the CreateData for the “raw” case on events where the encoder is read out.
+void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame,
+                        uint32_t *rawValue, uint32_t *interpolatedValue)
 {
     // ----- CreateData  ------------------------------------------------------
-    unsigned segment = 0;
 
-    XtcData::NamesId namesId1(nodeId, segment);
-    XtcData::CreateData raw(dgram.xtc, bufEnd, m_namesLookup, namesId1);
+    if (interpolatedValue != nullptr) {
+        // interpolated
+        XtcData::NamesId namesId1(nodeId, InterpolatedNamesIndex);
+        XtcData::CreateData interpolated(dgram.xtc, bufEnd, m_namesLookup, namesId1);
 
-    // ...encoderValue
-    raw.set_value(RawDef::encoderValue, frame.channel[0].encoderValue);
+        // ...encoderValue
+        interpolated.set_value(EncoderDef::encoderValue, *interpolatedValue);
 
-    // ...frameCount
-    raw.set_value(RawDef::frameCount, frame.header.frameCount);
+        // ...frameCount
+        interpolated.set_value(EncoderDef::frameCount, frame.header.frameCount);
 
-    // ...timing
-    raw.set_value(RawDef::timing, frame.channel[0].timing);
+        // ...timing
+        interpolated.set_value(EncoderDef::timing, frame.channel[0].timing);
 
-    // ...scale
-    raw.set_value(RawDef::scale, frame.channel[0].scale);
+        // ...scale
+        interpolated.set_value(EncoderDef::scale, frame.channel[0].scale);
 
-    // ...scaleDenom
-    raw.set_value(RawDef::scaleDenom, frame.channel[0].scaleDenom);
+        // ...scaleDenom
+        interpolated.set_value(EncoderDef::scaleDenom, frame.channel[0].scaleDenom);
 
-    // ...mode
-    raw.set_value(RawDef::mode, frame.channel[0].mode);
+        // ...mode
+        interpolated.set_value(EncoderDef::mode, frame.channel[0].mode);
 
-    // ...error
-    raw.set_value(RawDef::error, frame.channel[0].error);
+        // ...error
+        interpolated.set_value(EncoderDef::error, frame.channel[0].error);
+    }
+
+    if (rawValue != nullptr) {
+        // raw
+        XtcData::NamesId namesId2(nodeId, RawNamesIndex);
+        XtcData::CreateData raw(dgram.xtc, bufEnd, m_namesLookup, namesId2);
+
+        // ...encoderValue
+        raw.set_value(EncoderDef::encoderValue, *rawValue);
+
+        // ...frameCount
+        raw.set_value(EncoderDef::frameCount, frame.header.frameCount);
+
+        // ...timing
+        raw.set_value(EncoderDef::timing, frame.channel[0].timing);
+
+        // ...scale
+        raw.set_value(EncoderDef::scale, frame.channel[0].scale);
+
+        // ...scaleDenom
+        raw.set_value(EncoderDef::scaleDenom, frame.channel[0].scaleDenom);
+
+        // ...mode
+        raw.set_value(EncoderDef::mode, frame.channel[0].mode);
+
+        // ...error
+        raw.set_value(EncoderDef::error, frame.channel[0].error);
+    }
 }
 
 void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
@@ -977,14 +1018,15 @@ void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
     if (rc)  assert(evtIdx == pebbleIdx);
 }
 
-void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame)
+void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame,
+                                 uint32_t *rawValue, uint32_t *interpolatedValue)
 {
     uint32_t evtIdx;
     m_evtQueue.try_pop(evtIdx);         // Actually consume the element
 
     auto bufEnd = (char*)&pgpDg + m_pool->pebble.bufferSize();
 
-    _event(pgpDg, bufEnd, frame);
+    _event(pgpDg, bufEnd, frame, rawValue, interpolatedValue);
 
     if (!m_interpolating || (pgpDg.readoutGroups() & (1 << m_slowGroup))) {
         XtcData::Dgram* dgram;

@@ -152,16 +152,16 @@ public:
     enum { DefaultDataPort = 5006 };
     enum { MajorVersion = 3, MinorVersion = 0, MicroVersion = 0 };
 private:
-    void _event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame);
+    void _event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
     void _process(Pds::EbDgram* dgram);
     void _handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg);
   //void _handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg);
-    void _handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame);
+    void _handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
-    enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
+    enum {RawNamesIndex = NamesIndex::BASE, InterpolatedNamesIndex};
     enum { DiscardBufSize = 10000 };
     DrpBase& m_drp;
     std::shared_ptr<UdpReceiver> m_udpReceiver;
