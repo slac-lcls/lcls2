@@ -146,11 +146,11 @@ class GWViewImageROI(GWViewImage):
     def mouseReleaseEvent(self, e):
         GWViewImage.mouseReleaseEvent(self, e)
         logger.debug('mouseReleaseEvent mode_type: %s mode_name: %s' % (str(self.mode_type), str(self.mode_name)))
+        self.left_is_pressed = False
+        self.right_is_pressed = False
         if   self.mode_type < roiu.ADD: return
         elif self.mode_type & roiu.ADD: self.on_release_add(e)
         elif self.mode_type & roiu.EDIT: self.handle_active = None
-        self.left_is_pressed = False
-        self.right_is_pressed = False
 
     def set_roi_color(self, roi=None, color=QCOLOR_DEF): #, brush=None):
         """sets roi color, by default for self.roi_active sets QCOLOR_DEF"""
