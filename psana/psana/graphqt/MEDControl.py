@@ -185,8 +185,8 @@ class MEDControl(QWidget):
         path0 = DIR_DATA_TEST+'/misc' if self.ndafname == self.def_nda else self.ndafname
         path = popup_file_name(parent=self, mode='r', path=path0, dirs=[DIR_DATA_TEST,], fltr='*.npy *.txt *.data\n*')
         logger.debug('Selected: %s' % str(path))
-        if path is None or path=='':
-            self.but_nda.setText('None')
+        if path in (None, '', 'None'):
+            self.but_nda.setText(self.def_nda)
             return
         self.but_nda.setText(path)
         self.set_style_buts()
