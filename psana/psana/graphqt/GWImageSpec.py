@@ -88,6 +88,7 @@ class GWImageSpec(QWidget):
         if r is None: r=self.wimax.wim.scene_rect()
         #print(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r), end='\r')
         logger.debug(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r))
+        self.wimax.wim.arr_limits_old = None
         a = self.wimax.wim.array_in_rect(rect=r)
         self.disconnect_histogram_scene_rect_changed()
         self.wspec.set_spectrum_from_arr(a)
