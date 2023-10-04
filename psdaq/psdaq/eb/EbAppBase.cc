@@ -156,6 +156,8 @@ int EbAppBase::connect(unsigned maxTrBuffers)
                                             {"eb", _pfx}};
   _exporter->constant("EB_EvPlDp", labels, eventPoolDepth());
 
+  _exporter->add("EB_EpAlCt", labels, MetricType::Counter, [&](){ return epochAllocCnt(); });
+  _exporter->add("EB_EpFrCt", labels, MetricType::Counter, [&](){ return epochFreeCnt();  });
   _exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return eventAllocCnt(); });
   _exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return eventFreeCnt();  });
   _exporter->add("EB_EvOcCt", labels, MetricType::Gauge,   [&](){ return eventOccCnt();   });
