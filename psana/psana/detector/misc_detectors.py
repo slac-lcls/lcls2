@@ -111,6 +111,15 @@ class encoder_raw_3_0_0(DetectorImpl):
        else:
            return segments[0].encoderValue*1.0
 
+class encoder_interpolated_3_0_0(encoder_raw_3_0_0):
+   def __init__(self, *args):
+       super().__init__(*args)
+   def value(self,evt) -> float:
+       """
+       Version 3.0.0 addresses fields as scalars, not as arrays.
+       """
+       return super().value(evt)
+
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):
     def __init__(self, *args):
