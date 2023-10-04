@@ -174,6 +174,7 @@ protected:
     uint64_t m_nTmgHdrError;
     uint64_t m_nPgpJumps;
     uint64_t m_nNoTrDgrams;
+    std::mutex m_lock;
 };
 
 class PV;

@@ -189,7 +189,7 @@ void MemPool::freePebble()
 
     // Release when all pebble buffers were in use but now one is free
     if (allocs - frees == m_nbuffers) {
-        std::unique_lock<std::mutex> lock(m_lock);
+        std::lock_guard<std::mutex> lock(m_lock);
         m_condition.notify_one();
     }
 }
@@ -435,6 +435,9 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
 void PgpReader::freeDma(PGPEvent* event)
 {
+    // DMA buffers must be freeable from multiple threads
+    std::lock_guard<std::mutex> lock(m_lock);
+
     // Return buffers and reset event.  Careful with order here!
     // index could be reused as soon as dmaRetIndexes() completes
     for (int i=0; i<PGP_MAX_LANES; i++) {
