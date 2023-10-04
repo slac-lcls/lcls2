@@ -38,6 +38,12 @@ using logging = psalg::SysLog;
 using ms_t    = std::chrono::milliseconds;
 
 
+// Due to the possibility of deadtime, a timeout of 1 batch period after the
+// current batch ends is too short, leading to batch fragments being posted.
+// This causes no harm, but is extra work.
+const std::chrono::microseconds BATCH_TIMEOUT{11000};
+
+
 TebContributor::TebContributor(const TebCtrbParams&                   prms,
                                unsigned                               numBuffers,
                                const std::shared_ptr<MetricExporter>& exporter) :
@@ -183,7 +189,7 @@ int TebContributor::configure()
 }
 
 Batch::Batch(const Pds::EbDgram* dgram, bool contractor_) :
-  entries   (0),
+  entries   (dgram ? 1 : 0),
   tStart    (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)),
   start     (dgram),
   end       (dgram),
@@ -315,10 +321,23 @@ void TebContributor::_post(const Batch& batch)
     uint32_t     idx    = offset / _prms.maxInputSize;
     size_t       extent = (reinterpret_cast<const char*>(batch.end) -
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;
-    uint32_t     data   = ImmData::value(ImmData::Buffer |
-                                         ImmData::Response, _id, idx);
+    uint32_t     data   = ImmData::value(ImmData::Response_Buffer, _id, idx);
+    bool         print  = false;
 
-    if (UNLIKELY(_prms.verbose >= VL_BATCH))
+    if (UNLIKELY((batch.entries == 0) || (batch.entries > _prms.maxEntries)))
+    {
+      logging::error("%s:\n  Bad batch entry count: %u", __PRETTY_FUNCTION__, batch.entries);
+      print = true;
+    }
+    if (UNLIKELY(pid <= _previousPid))
+    {
+      logging::error("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
+                     __PRETTY_FUNCTION__, pid, _previousPid, batch.start->time.seconds(), batch.start->time.nanoseconds());
+      print = true;
+    }
+    _previousPid = pid;
+
+    if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
       printf("CtrbOut posts %9lu    batch[%8u]    @ "
@@ -364,6 +383,7 @@ void TebContributor::_post(const Batch& batch)
 }
 
 // This is the same as in MebContributor as we have no good common place for it
+// The posting side is EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
 static int _getTrBufIdx(EbLfLink* lnk, TebContributor::listU32_t& lst, uint32_t& idx)
 {
   // Try to replenish the transition buffer index list
@@ -372,6 +392,12 @@ static int _getTrBufIdx(EbLfLink* lnk, TebContributor::listU32_t& lst, uint32_t&
     uint64_t imm;
     int rc = lnk->poll(&imm);           // Attempt to get a free buffer index
     if (rc)  break;
+    if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
+        (ImmData::src(imm) != lnk->id()))
+      logging::error("%s: 1\n  "
+                     "Flags %u != %u and/or source %u != %u in immediate data: %08lx\n",
+                     __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
+                     ImmData::src(imm), lnk->id(), imm);
     lst.push_back(ImmData::idx(imm));
   }
 
@@ -383,6 +409,12 @@ static int _getTrBufIdx(EbLfLink* lnk, TebContributor::listU32_t& lst, uint32_t&
     int rc = lnk->poll(&imm, tmo);      // Wait for a free buffer index
     if (rc)  return rc;
     idx = ImmData::idx(imm);
+    if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
+        (ImmData::src(imm) != lnk->id()))
+      logging::error("%s: 2\n  "
+                     "Flags %u != %u and/or source %u != %u in immediate data: %08lx\n",
+                     __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
+                     ImmData::src(imm), lnk->id(), imm);
     return 0;
   }
 
@@ -405,6 +437,7 @@ void TebContributor::_post(const EbDgram* dgram)
   uint64_t pid = dgram->pulseId();
   unsigned dst = (pid / _prms.maxEntries) % _numEbs;
   size_t   sz  = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+  bool     print = false;
 
   if (sz > sizeof(*dgram))
   {
@@ -413,6 +446,13 @@ void TebContributor::_post(const EbDgram* dgram)
                       TransitionId::name(svc), dgram->xtc.sizeofPayload());
     abort();
   }
+  if (UNLIKELY(pid <= _previousPid))
+  {
+    logging::error("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
+                   __PRETTY_FUNCTION__, pid, _previousPid, dgram->time.seconds(), dgram->time.nanoseconds());
+    print = true;
+  }
+  _previousPid = pid;
 
   for (auto link : _links)
   {
@@ -432,10 +472,9 @@ void TebContributor::_post(const EbDgram* dgram)
       }
 
       unsigned offset = _batMan.batchRegionSize() + idx * sizeof(*dgram);
-      uint32_t data   = ImmData::value(ImmData::Transition |
-                                       ImmData::NoResponse, _id, idx);
+      uint32_t data   = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
 
-      if (UNLIKELY(_prms.verbose >= VL_BATCH))
+      if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
       {
         unsigned    env    = dgram->env;
         unsigned    ctl    = dgram->control();
@@ -444,6 +483,7 @@ void TebContributor::_post(const EbDgram* dgram)
         printf("CtrbOut posts    %15s              @ "
                "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
                svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
+        print = false;                  // Just once for now
       }
       else
       {

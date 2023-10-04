@@ -308,13 +308,35 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     return rc;
   }
 
+  unsigned flg = ImmData::flg(data);
   unsigned src = ImmData::src(data);
   unsigned idx = ImmData::idx(data);
   auto     lnk = _links[src];
   auto     ofs = idx * _maxResultSize;
   auto     bdg = static_cast<const ResultDgram*>(lnk->lclAdx(ofs)); // (char*)_region + ofs;
 
-  if (UNLIKELY(_prms.verbose >= VL_BATCH))
+  auto print = false;
+  if (src != bdg->xtc.src.value())
+  {
+    logging::error("%s:\n  Link src (%d) != dgram src (%d)", __PRETTY_FUNCTION__, src, bdg->xtc.src.value());
+    print = true;
+  }
+  if (flg != ImmData::NoResponse_Buffer)
+  {
+    logging::error("%s:\n  Wrong flags %u in immediate data: "
+                   "dgram %p, idx %8u, pid %014lx, svc %u, env %08x, src %2u, imm %08x",
+                   __PRETTY_FUNCTION__, flg,
+                   bdg, idx, bdg->pulseId(), bdg->service(), bdg->env, src, data);
+    print = true;
+  }
+  if ((bdg < _region) || ((char*)bdg + bdg->xtc.sizeofPayload()) >= ((char*)_region + _regSize))
+  {
+    logging::error("%s:\n  Dgram %p, size %u falls outside of region %p, size %zu\n",
+                   __PRETTY_FUNCTION__, bdg, bdg->xtc.sizeofPayload(), _region, _regSize);
+    print = true;
+  }
+
+  if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
   {
     auto     pid     = bdg->pulseId();
     unsigned ctl     = bdg->control();

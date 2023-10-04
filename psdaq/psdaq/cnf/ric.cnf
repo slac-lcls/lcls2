@@ -143,9 +143,10 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x8 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
-# {host: 'drp-srcf-cmp036', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
+ {host: 'drp-srcf-cmp035', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp028', id:'tstcam2_0',   flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=145'},
+ {host: 'drp-srcf-cmp036', id:'tstcam2_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145'},
 
 # {host: 'drp-srcf-cmp029', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd0} -l 0x4 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
@@ -162,13 +163,13 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
- {host: 'drp-srcf-cmp036', id:'gmdstr0_0',  flags:'spux', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE0'},
+# {host: 'drp-srcf-cmp036', id:'gmdstr0_0',  flags:'spux', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE0'},
 # {host: 'drp-srcf-cmp028', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms
 
 # Run ~/lclsii/daq/runs/eb/toyP4pSvr.py to serve demo:claus:pv:image
 # {host: 'drp-srcf-cmp028', id:'tst_pv_0',    flags:'spux', env:epics_env, cmd:f'{pva_cmd0} -l 0x4 demo:claus:pv:image'},
 
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp035', id:'epixhr_emu_6',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp035', id:'epixhr_emu_7',  flags:'spux',                cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},

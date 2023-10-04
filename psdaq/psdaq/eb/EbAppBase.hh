@@ -74,14 +74,13 @@ namespace Pds {
       unsigned                  _maxEvBuffers;
       unsigned                  _maxTrBuffers;
       unsigned&                 _verbose;
-      uint64_t                  _ebTime;
+      std::vector<uint64_t>     _lastPid;
       uint64_t                  _bufferCnt;
       PromHisto_t               _fixupSrc;
       PromHisto_t               _ctrbSrc;
     private:
       std::vector<size_t>       _regSize;
       std::vector<void*>        _region;
-      uint64_t                  _contributors;
       uint64_t                  _idxSrcs;
       unsigned                  _id;
       MetricExporter_t          _exporter;

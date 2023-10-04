@@ -54,6 +54,7 @@ int EventBuilder::initialize(unsigned epochs,
     return 1;
   }
   _mask = ~PulseId(duration - 1).pulseId();
+  _maxEntries = entries;
 
   // Revisit the factor of 2: it seems like the sum of the values over all RoGs
   // may be closer to the right answer
@@ -482,17 +483,20 @@ void EventBuilder::expired()            // Periodically called upon a timeout
 ** --
 */
 
-void EventBuilder::process(const EbDgram* ctrb,
-                           const size_t   size,
-                           unsigned       imm)
+void EventBuilder::process(const EbDgram*    buffer,
+                           const size_t      size,
+                           unsigned          immData,
+                           const void* const end)
 {
   auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
 
+  const EbDgram* ctrb  = buffer;
+  unsigned       imm   = immData;
   EbEpoch*       epoch = _match(ctrb->pulseId());
   EbEvent*       event = epoch->pending.forward();
   const EbEvent* due   = nullptr;
 
-  while (true)
+  for (unsigned i = 0; i < _maxEntries; ++i)
   {
     event = _insert(epoch, ctrb, event, imm, t0);
 
@@ -502,14 +506,14 @@ void EventBuilder::process(const EbDgram* ctrb,
       due = event;
     }
 
+    uint64_t  pid = ctrb->pulseId();
+    unsigned  env = ctrb->env;
+    unsigned  src = ctrb->xtc.src.value();
     if (UNLIKELY(_verbose >= VL_EVENT))
     {
-      unsigned  env = ctrb->env;
       unsigned  ctl = ctrb->control();
-      uint64_t  pid = ctrb->pulseId();
       uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
-      unsigned  src = ctrb->xtc.src.value();
       printf("EB found a ctrb                                 @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, pld [%08x, %08x], imm %08x, due %014lx%s\n",
              ctrb, ctl, pid, env, sz, src, pld[0], pld[1], imm, due ? due->sequence() : 0ul, ctrb->isEOL() ? ", EOL" : "");
@@ -519,6 +523,12 @@ void EventBuilder::process(const EbDgram* ctrb,
 
     ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
     imm++;
+    if ((ctrb > end) || (i == _maxEntries - 1))
+    {
+      fprintf(stderr, "%s:\n  Error: EOL not seen before buffer end, last pid %014lx, env %08x, src %u\n"
+              "  buffer %p, end %p, ctrb %p, entry size, %zu, immData %08x, imm %08x, i %u\n",
+              __PRETTY_FUNCTION__, pid, env, src, buffer, end, ctrb, size, immData, imm, i);
+    }
   }
 
   if (due)  _flush(due);     // Attempt to flush everything up to the due event

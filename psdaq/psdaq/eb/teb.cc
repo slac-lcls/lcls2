@@ -564,16 +564,17 @@ void Teb::process(EbEvent* event)
   _queueMrqBuffers();
 
   // "Selected" EBs respond with a Result, others simply acknowledge
-  if (ImmData::flg(imm) == (ImmData::Response | ImmData::Buffer))
+  if (ImmData::flg(imm) == ImmData::Response_Buffer)
   {
-    if (!ImmData::buf(ImmData::flg(imm)))
-    {
-      logging::critical("%s:\n  No valid index received from %016lx for Results: "
-                        "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
-                        __PRETTY_FUNCTION__, _prms.indexSources,
-                        pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
-      throw "No index for Results";
-    }
+    // Dead code:
+    //if (ImmData::buf(ImmData::flg(imm)) == ImmData::Transition)
+    //{
+    //  logging::critical("%s:\n  No valid index received from %016lx for Results: "
+    //                    "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
+    //                    __PRETTY_FUNCTION__, _prms.indexSources,
+    //                    pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
+    //  throw "No index for Results";
+    //}
     auto idx = ImmData::idx(imm);
     auto buf = _batMan.fetch(idx);
     auto rdg = new(buf) ResultDgram(*dgram, _prms.id);
@@ -620,7 +621,7 @@ void Teb::process(EbEvent* event)
 
     _tryPost(rdg, dsts, idx);
   }
-  else                                  // "Non-selected" TEB case
+  else if (ImmData::flg(imm) == ImmData::NoResponse_Transition) // "Non-selected" TEB case
   {
     // Only transitions are sent to "non-selected" TEBs.
     // "Non-selected" TEBs don't respond to any dgrams they receive, but
@@ -659,6 +660,13 @@ void Teb::process(EbEvent* event)
 
     // Make the transition buffer available to the contributor again
     post(event->begin(), event->end());
+  }
+  else
+  {
+    logging::error("%s:\n  Wrong flags %u in immediate data: "
+                   "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
+                   __PRETTY_FUNCTION__, ImmData::flg(imm),
+                   pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
   }
 
   auto now = std::chrono::system_clock::now();
@@ -734,7 +742,7 @@ void Teb::_post(const Batch& batch)
   size_t   extent = (reinterpret_cast<const char*>(batch.end) -
                      reinterpret_cast<const char*>(batch.start)) + size;
   unsigned offset = batch.idx * size;
-  uint64_t data   = ImmData::value(ImmData::Buffer, _prms.id, batch.idx);
+  uint64_t data   = ImmData::value(ImmData::NoResponse_Buffer, _prms.id, batch.idx);
   uint64_t destns = batch.dsts; // & ~_trimmed;
 
   batch.end->setEOL();                  // Terminate the batch

@@ -40,7 +40,8 @@ namespace Pds {
     public:
       void               process(const Pds::EbDgram* dgrams,
                                  const size_t        bufSize,
-                                 unsigned            imm);
+                                 unsigned            imm,
+                                 const void* const   end);
     public:
       void               resetCounters();
       void               clear();
@@ -90,6 +91,7 @@ namespace Pds {
       LinkedList<EbEpoch>          _pending;       // Listhead, Epochs with events pending
       time_point_t                 _tLastFlush;    // Starting time of timeout
       uint64_t                     _mask;          // Sequence mask
+      unsigned                     _maxEntries;    // Maximum number of entries per buffer/batch
       std::unique_ptr<GenericPool> _epochFreelist; // Freelist for new epochs
       std::vector<EbEpoch*>        _epochLut;      // LUT of allocated epochs
       std::unique_ptr<GenericPool> _eventFreelist; // Freelist for new events

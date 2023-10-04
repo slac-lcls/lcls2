@@ -24,15 +24,16 @@ using ms_t     = std::chrono::milliseconds;
 
 MebContributor::MebContributor(const MebCtrbParams&            prms,
                                std::shared_ptr<MetricExporter> exporter) :
-  _prms      (prms),
-  _maxEvSize (roundUpSize(prms.maxEvSize)),
-  _maxTrSize (prms.maxTrSize),
-  _transport (prms.verbose, prms.kwargs),
-  _id        (-1),
-  _enabled   (false),
-  _verbose   (prms.verbose),
-  _eventCount(0),
-  _trCount   (0)
+  _prms       (prms),
+  _maxEvSize  (roundUpSize(prms.maxEvSize)),
+  _maxTrSize  (prms.maxTrSize),
+  _transport  (prms.verbose, prms.kwargs),
+  _id         (-1),
+  _enabled    (false),
+  _verbose    (prms.verbose),
+  _previousPid(0),
+  _eventCount (0),
+  _trCount    (0)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
@@ -171,31 +172,38 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   // the EOL bit set by EbAppBase
   //ddg->setEOL();                        // Set end-of-list marker
 
+  uint64_t     pid    = ddg->pulseId();
   unsigned     dst    = ImmData::src(destination);
   uint32_t     idx    = ImmData::idx(destination);
   size_t       sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
   unsigned     offset = idx * _maxEvSize;
   EbLfCltLink* link   = _links[dst];
-  uint32_t     data   = ImmData::value(ImmData::Buffer |
-                                       ImmData::NoResponse, _id, idx);
+  uint32_t     data   = ImmData::value(ImmData::NoResponse_Buffer, _id, idx);
+  bool         print  = false;
 
-  if (sz > _maxEvSize)
+  if (UNLIKELY(sz > _maxEvSize))
   {
     logging::critical("L1Accept of size %zd is too big for target buffer of size %zd",
                       sz, _maxEvSize);
     abort();
   }
 
-  if (ddg->xtc.src.value() != _id)
+  if (UNLIKELY(ddg->xtc.src.value() != _id))
   {
     logging::critical("L1Accept src %u does not match DRP's ID %u: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08x",
-                      ddg->xtc.src.value(), _id, ddg->pulseId(), sz, destination, data, offset);
+                      ddg->xtc.src.value(), _id, pid, sz, destination, data, offset);
     abort();
   }
 
-  if (UNLIKELY(_verbose >= VL_BATCH))
+  if (UNLIKELY(pid <= _previousPid))
   {
-    uint64_t pid    = ddg->pulseId();
+    logging::error("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
+                   __PRETTY_FUNCTION__, pid, _previousPid, ddg->time.seconds(), ddg->time.nanoseconds());
+    print = true;
+  }
+
+  if (UNLIKELY(print || (_verbose >= VL_BATCH)))
+  {
     unsigned ctl    = ddg->control();
     uint32_t env    = ddg->env;
     void*    rmtAdx = (void*)link->rmtAdx(offset);
@@ -240,6 +248,7 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     abort();
   }
 
+  _previousPid = pid;
   ++_eventCount;
 
   return 0;
@@ -254,6 +263,12 @@ static int _getTrBufIdx(EbLfLink* lnk, MebContributor::listU32_t& lst, uint32_t&
     uint64_t imm;
     int rc = lnk->poll(&imm);           // Attempt to get a free buffer index
     if (rc)  break;
+    if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
+        (ImmData::src(imm) != lnk->id()))
+      logging::error("%s: 1\n  "
+                     "Flags %u != %u and/or source %u != %u in immediate data: %08lx\n",
+                     __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
+                     ImmData::src(imm), lnk->id(), imm);
     lst.push_back(ImmData::idx(imm));
   }
 
@@ -265,6 +280,12 @@ static int _getTrBufIdx(EbLfLink* lnk, MebContributor::listU32_t& lst, uint32_t&
     int rc = lnk->poll(&imm, tmo);      // Wait for a free buffer index
     if (rc)  return rc;
     idx = ImmData::idx(imm);
+    if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
+        (ImmData::src(imm) != lnk->id()))
+      logging::error("%s: 1\n  "
+                     "Flags %u != %u and/or source %u != %u in immediate data: %08lx\n",
+                     __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
+                     ImmData::src(imm), lnk->id(), imm);
     return 0;
   }
 
@@ -282,7 +303,9 @@ int MebContributor::post(const EbDgram* dgram)
   //dgram->setEOL();                        // Set end-of-list marker
 
   size_t sz  = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+  auto   pid = dgram->pulseId();
   auto   svc = dgram->service();
+  bool   print = false;
 
   if (sz > _maxTrSize)
   {
@@ -294,9 +317,17 @@ int MebContributor::post(const EbDgram* dgram)
   if (dgram->xtc.src.value() != _id)
   {
     logging::critical("%s transition src %u does not match DRP's ID %u for PID %014lx",
-                      TransitionId::name(svc), dgram->xtc.src.value(), _id, dgram->pulseId());
+                      TransitionId::name(svc), dgram->xtc.src.value(), _id, pid);
     abort();
   }
+
+  if (UNLIKELY(pid <= _previousPid))
+  {
+    logging::error("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
+                   __PRETTY_FUNCTION__, pid, _previousPid, dgram->time.seconds(), dgram->time.nanoseconds());
+    print = true;
+  }
+  _previousPid = pid;
 
   for (auto link : _links)
   {
@@ -305,7 +336,6 @@ int MebContributor::post(const EbDgram* dgram)
     int rc = _getTrBufIdx(link, _trBuffers[src], idx);
     if (rc)
     {
-      auto pid = dgram->pulseId();
       auto ts  = dgram->time;
       logging::critical("%s:\n  No transition buffer index received from MEB ID %u "
                         "needed for %s (%014lx, %9u.%09u): rc %d",
@@ -314,22 +344,21 @@ int MebContributor::post(const EbDgram* dgram)
     }
 
     uint64_t offset = _bufRegSize[src] + idx * _maxTrSize;
-    uint32_t data   = ImmData::value(ImmData::Transition |
-                                     ImmData::NoResponse, _id, idx);
+    uint32_t data   = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
 
-    if (UNLIKELY(_verbose >= VL_BATCH))
+    if (UNLIKELY(print || (_verbose >= VL_BATCH)))
     {
       printf("MebCtrb rcvd transition buffer           [%2u] @ "
              "%16p, ofs %016lx = %08zx + %2u * %08zx,     src %2u\n",
              idx, (void*)link->rmtAdx(0), offset, _bufRegSize[src], idx, _maxTrSize, src);
 
-      uint64_t pid    = dgram->pulseId();
       unsigned ctl    = dgram->control();
       uint32_t env    = dgram->env;
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("MebCtrb posts %9lu %15s       @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
              _trCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
+      print = false;                    // Print only once per call
     }
     else
     {
