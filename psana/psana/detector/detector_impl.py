@@ -57,7 +57,7 @@ class DetectorImpl():
                 seg_configs.update(getattr(dgram,self._det_name))
         return seg_configs
 
-    def config(self, evt) -> typing.Dict:
+    def config(self, evt) -> dict:
         return self._seg_configs()
 
     def _segments(self,evt):
