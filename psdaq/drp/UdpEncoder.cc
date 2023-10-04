@@ -890,11 +890,11 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                     }
 
                     // Update the encoder value
+                    uint32_t interpolatedValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
                     if (pgpDg != dgram) {
-                        uint32_t interpolatedValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
-                        _handleL1Accept(*pgpDg, frame, &rawValue, &interpolatedValue);
+                        _handleL1Accept(*pgpDg, frame, nullptr, &interpolatedValue);
                     } else {
-                        _handleL1Accept(*pgpDg, frame, &rawValue, nullptr);
+                        _handleL1Accept(*pgpDg, frame, &rawValue, &interpolatedValue);
                     }
 
                     if (pgpDg == dgram)  return;
