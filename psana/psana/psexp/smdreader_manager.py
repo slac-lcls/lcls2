@@ -124,8 +124,9 @@ class SmdReaderManager(object):
         if self.smdr.is_complete():
             # Get chunks with only one dgram each. There's no need to set
             # integrating stream id here since Configure and BeginRun
-            # must exist in this stream too. 
-            self.smdr.view(batch_size=1)
+            # must exist in this stream too. We need to set ignore_transition
+            # flag to make sure that we can get one transition event.
+            self.smdr.view(batch_size=1, ignore_transition=False)
 
             # For configs, we need to copy data from smdreader's buffers
             # This prevents it from getting overwritten by other dgrams.
@@ -167,7 +168,7 @@ class SmdReaderManager(object):
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
         batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, self.dsparms)
         self.got_events = self.smdr.view_size
-        self.processed_events += self.got_events
+        self.processed_events += self.smdr.n_view_L1Accepts
         return batch_iter
         
 
@@ -191,7 +192,9 @@ class SmdReaderManager(object):
                 self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id)
                 self.got_events = self.smdr.view_size
                 got_events = self.got_events
-                self.processed_events += self.got_events
+
+                # We only count L1Accepts as no. of processed events
+                self.processed_events += self.smdr.n_view_L1Accepts
                 
                 if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
                     logger.debug(f'MESSAGE SMD0 max_events={self.dsparms.max_events} reached')
