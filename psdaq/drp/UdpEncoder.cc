@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <limits>
 #include <thread>
+#include <cmath>
 #include <Python.h>
 #include <arpa/inet.h>
 #include <eigen3/Eigen/Dense>
@@ -610,7 +611,7 @@ unsigned Interpolator::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage)
             val  += _coeff[i] * tPwr;
             tPwr *= t;
         }
-        v = unsigned(val);
+        v = unsigned(std::round(val));
     } else {
         v = unsigned(_v[_idx - 1]);   // Return the most recent value available
         damage.increase(XtcData::Damage::MissingData);
