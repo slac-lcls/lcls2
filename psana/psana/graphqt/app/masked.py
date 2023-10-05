@@ -11,18 +11,18 @@ GEOFNAME = '%s/geometry/geo-epix10kaquad-tstx00117.data' % DIR_DATA_TEST
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
-USAGE = 'Usage:'\
-      + '\n  %s -a <fname-nda.npy> -k <DataSource-kwargs> -d <detector> -g <fname-geometry.data/txt> [-L <logging-mode>] [...]' % SCRNAME\
-      + '\n\nHelp:\n  %s -h' % SCRNAME\
-      + '\n\nExamples:'\
-      + '\n  %s  # set all parameters using GUI' % SCRNAME\
-      + '\n  %s -d epix10ka_000001                          # takes geometry from detector DB' % SCRNAME\
-      + '\n  %s -d epix10ka_000001 -k exp=ueddaq02,run=569  # takes geometry from experiment DB' % SCRNAME\
-      + '\n  %s -g %s  # takes geometry from file' % (SCRNAME, GEOFNAME)\
-      + '\n  %s -a %s  # takes array for image from file' % (SCRNAME, NDAFNAME)\
-      + '\n  %s -a %s -g %s' % (SCRNAME, NDAFNAME, GEOFNAME)\
-      + '\n  %s -d epix10ka_000001 -a %s' % (SCRNAME, NDAFNAME)\
-      + '\n  %s -d epix10ka_000001 -k exp=ueddaq02,run=569 -a %s' % (SCRNAME, NDAFNAME)\
+USAGE = '\n  %s -a <fname-nda.npy> -k <DataSource-kwargs> -d <detector> -g <fname-geometry.data/txt> [-L <logging-mode>] [...]' % SCRNAME\
+      + '\n\nget help:'\
+      + '\n  %s -h' % SCRNAME\
+      + '\n\nexamples (* - recommended):'\
+      + '\n *1) %s  # launch application without parameters and set them in GUI' % SCRNAME\
+      + '\n *2) %s -d epix10ka_000001 -k exp=ueddaq02,run=569 -a %s  # ndarray from file, geometry from experiment DB' % (SCRNAME, NDAFNAME)\
+      + '\n  3) %s -d epix10ka_000001 -a %s  # ndarray from file, geometry from detector DB' % (SCRNAME, NDAFNAME)\
+      + '\n  4) %s -d epix10ka_000001                          # geometry from detector DB' % SCRNAME\
+      + '\n  5) %s -d epix10ka_000001 -k exp=ueddaq02,run=569  # geometry from experiment DB' % SCRNAME\
+      + '\n  6) %s -g %s  # takes geometry from file' % (SCRNAME, GEOFNAME)\
+      + '\n  7) %s -a %s  # takes array for image from file' % (SCRNAME, NDAFNAME)\
+      + '\n  8) %s -a %s -g %s  # ndarray and geometry from files' % (SCRNAME, NDAFNAME, GEOFNAME)\
 
 #      + '\n  %s -k "{\'exp\':\'abcd01234\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\', ' % SCRNAME\
 #      + '\'detectors\':[\'epicsinfo\', \'tmo_opal1\', \'ebeam\']}" -d tmo_opal1 -D'\
@@ -60,9 +60,9 @@ def argument_parser():
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_group   = 'group ownership for all files, default = %s' % d_group
     h_ctab    = 'color table index in range [1,8], default = %d' % d_ctab
-    h_savelog = 'On/Off saving log file, default = %d' % d_savelog
+    h_savelog = 'On/Off saving log file, default = %s' % d_savelog
 
-    parser = ArgumentParser(usage=USAGE, description='%s - command opens mask editor GUI' % SCRNAME)
+    parser = ArgumentParser(usage=USAGE, description='%s - command launching Mask Editor GUI' % SCRNAME)
     parser.add_argument('posargs',           default=d_posargs,    type=str,   help=h_posargs, nargs='*')
     parser.add_argument('-a', '--ndafname',  default=d_ndafname,   type=str,   help=h_ndafname)
     parser.add_argument('-d', '--detname',   default=d_detname,    type=str,   help=h_detname)
