@@ -18,13 +18,41 @@ Usage ::
     v = list_of_instruments()
     v = list_of_experiments(instr, fltr='cdb_')
 
+    Methods on 2023-10-04:
+
+    is_none(v, msg='value is None', meth=logger.debug):
+    image_from_ndarray(nda):
+    random_image(shape=(64,64)):
+    experiment_from_dskwargs(s):
+    dbname_colname(**kwa):
+    geo_text_and_meta_from_db(**kwa):
+    image_from_kwargs(**kwa):
+    image_from_geo_and_nda(geo, nda, vbase=0):
+    mask_ndarray_from_2d(mask2d, geo):
+    color_table(ict=2):
+    list_of_instruments():
+        logger.warning('list_of_instruments: DIRECTORY %s IS UNAVAILABLE - use default list' % dirins)
+    list_of_experiments(instr): #  fltr='cdb_'
+    db_names(fltr=None):
+    db_namesroot(dbnames=None, fltr=None):
+    db_expnames(dbnames=None, fltr=None):
+    db_detnames(dbnames=None, fltr=None):
+    db_instruments(dbnames=None):
+    db_dettypes(dbnames=None):
+    ds_run_from_str_dskwargs(dskwargs='exp=uedcom103,run=812'):
+    data_detnames(dskwargs='exp=tmoc00321,run=3'): #,dir=/sdf/data/lcls/ds/ued/uedcom103/xtc/
+    data_det_uniqueid(dskwargs='exp=uedcom103,run=812', detname_daq='epixquad'):
+    datasource_kwargs_from_string(s):
+    datasource_kwargs_to_string(**kwargs):
+
+
 Created on 2023-09-07 by Mikhail Dubrovin
 """
 import os
-#from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
 import logging
 logger = logging.getLogger(__name__)
 
+#from time import time
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, reshape_to_3d, info_ndarr, np
 import psana.pscalib.calib.MDBWebUtils as mdbwu
@@ -213,13 +241,33 @@ def db_instruments(dbnames=None):
 def db_dettypes(dbnames=None):
     return sorted(set([n.split('_')[0] for n in db_detnames(dbnames)]))
 
-def data_detnames(strkwa='exp=tmoc00321,run=3'): # dir=/sdf/data/lcls/ds/mfx/mfxx49820/xtc'): # /sdf/data/lcls/ds/mfx/mfxx49820/xtc/
-    from psana import DataSource
-    from psana.detector.utils_psana import datasource_kwargs_from_string
-    dskwargs = datasource_kwargs_from_string(strkwa)
-    ds = DataSource(**dskwargs)
-    orun = next(ds.runs())
+def ds_run_from_str_dskwargs(dskwargs='exp=uedcom103,run=812'):
+    from psana import DataSource # dt(sec)=0.000004
+    from psana.detector.utils_psana import datasource_kwargs_from_string # dt(sec)=0.000612
+    kwargs = datasource_kwargs_from_string(dskwargs)
+    ods = DataSource(**kwargs)
+    #t0_sec = time()
+    orun = next(ods.runs()) # dt(sec)=4.244698
+    #print('next(ods.runs()) time = %.6f' % (time() - t0_sec))
+    #det = orun.Detector(detname)
+    return ods, orun
+
+def data_detnames(dskwargs='exp=tmoc00321,run=3'): #,dir=/sdf/data/lcls/ds/ued/uedcom103/xtc/
+    ods, orun = ds_run_from_str_dskwargs(dskwargs)
     return orun.detnames
+
+def detector_uniqueid_namedb(dskwargs='exp=uedcom103,run=812', detname_daq='epixquad'):
+    """Returns odet.raw._uniqueid (lond name recognizable in DB) for (str) DataSource dskwargs.
+       Dataset test cmd: detnames exp=uedcom103,run=812,dir=/sdf/data/lcls/ds/ued/uedcom103/xtc/ epixquad
+    """
+    ods, orun = ds_run_from_str_dskwargs(dskwargs) #  dt(sec)=4.2
+    odet = orun.Detector(detname_daq) # dt(sec)=0.007404
+    #return orun.detnames
+    #odet.raw._uniqueid   # epixhremu_00cafe0002-0000000000-0000000000-0000000000-...
+    #odet.raw._det_name   # epixhr_emu
+    #odet.raw._dettype    # epixhremu
+    uniqueid = odet.raw._uniqueid
+    return uniqueid, mdbwu.pro_detector_name(uniqueid)
 
 def datasource_kwargs_from_string(s):
     from psana.psexp.utils import datasource_kwargs_from_string
@@ -241,6 +289,8 @@ if __name__ == "__main__":
     print('\n=== db_dettypes:\n%s' % str(db_dettypes(dbnames)))
     print('\n=== db_expnames(fltr="tmo"):\n%s' % str(db_expnames(dbnames, fltr='tmo')))
     print('\n=== db_detnames(fltr="epixhr2x2"):\n%s' % str(db_detnames(dbnames, fltr='epixhr2x2')))
-    print('\n=== data_detnames:\n%s' % str(data_detnames(strkwa='exp=tmoc00321,run=3')))
+    #print('\n=== data_detnames:\n%s' % str(data_detnames(dskwargs='exp=tmoc00321,run=3')))
+    uniqueid, detnamedb = detector_uniqueid_namedb(dskwargs='exp=uedcom103,run=812', detname_daq='epixquad')
+    print('\n=== detector_uniqueid_namedb:\n  %s\n  %s' % (uniqueid, detnamedb))
 
 # EOF
