@@ -31,6 +31,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         cp.cgwpartitiontable = self
         self.sort_items()
         self.collapse_all()
+        #self.setMaximumHeight(300)
 
 
     def connect_control(self):
@@ -285,10 +286,15 @@ if __name__ == "__main__":
                [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie_8'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie_0'],\
                [[False, ''],  '', 'teb/123458/drp-tst-dev001', 'teb1'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_3'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_4'],\
                [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_5'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_6'],\
                [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_8'],\
-               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_1'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_9'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_10'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_11'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_12'],\
                [[False, ''],  '', 'ctr/123459/drp-tst-acc06',  'control'],\
     ]
 
