@@ -25,18 +25,16 @@ Created on 2019-03-29 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy#, QDialog, QGridLayout, QCheckBox, QTextEdit, QLabel,
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy
 from PyQt5.QtCore import Qt
 from psdaq.control_gui.Styles import style
-#from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes
 from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 from psdaq.control_gui.CGJsonUtils import get_platform, set_platform, list_active_procs
 from psdaq.control_gui.CGDaqControl import daq_control
 
 
 class QWPopupTableCheck(QWidget):
-    """
-    """
+
     def __init__(self, **kwargs):
         parent = kwargs.get('parent', None)
         QWidget.__init__(self, parent)
@@ -90,7 +88,8 @@ class QWPopupTableCheck(QWidget):
         self.setMinimumWidth(100)
         #self.but_update.setFixedWidth(70)
         #self.but_cancel.setFixedWidth(70)
-        self.but_apply .setFixedWidth(70)
+        self.but_apply.setFixedWidth(70)
+        #self.setMaximumHeight(200)
 
         #self.but_update.setStyleSheet(styleGray)
         #self.but_update.setFocusPolicy(Qt.NoFocus)
@@ -102,7 +101,9 @@ class QWPopupTableCheck(QWidget):
 
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
-        self.wtab.setFixedHeight(self.wtab.height()+2)
+        #self.wtab.setMaximumHeight(400)
+        self.wtab.setFixedHeight(500) # this makes table scrollable
+        #self.wtab.setFixedHeight(self.wtab.height()+2)
         self.setFixedWidth(max(self.wtab.width(),285)+2)
 
         #self.but_update.setVisible(False)
@@ -182,9 +183,15 @@ if __name__ == "__main__" :
                [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie_8'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie_0'],\
                [[False, ''],  '', 'teb/123458/drp-tst-dev001', 'teb1'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_2'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_3'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_4'],\
                [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_5'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_6'],\
                [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_8'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_9'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_10'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_11'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_1'],\
                [[False, ''],  '', 'ctr/123459/drp-tst-acc06',  'control'],\
     ]
