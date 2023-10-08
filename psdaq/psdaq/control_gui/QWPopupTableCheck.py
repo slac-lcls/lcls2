@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWPopupTableCheck` - Popup table of str items and/with check-boxes
 ==================================================================================
@@ -21,12 +21,11 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2019-03-29 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy#, QDialog, QGridLayout, QCheckBox, QTextEdit, QLabel, 
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy#, QDialog, QGridLayout, QCheckBox, QTextEdit, QLabel,
 from PyQt5.QtCore import Qt
 from psdaq.control_gui.Styles import style
 #from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes
@@ -34,7 +33,6 @@ from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 from psdaq.control_gui.CGJsonUtils import get_platform, set_platform, list_active_procs
 from psdaq.control_gui.CGDaqControl import daq_control
 
-#------------------------------
 
 class QWPopupTableCheck(QWidget):
     """
@@ -42,7 +40,7 @@ class QWPopupTableCheck(QWidget):
     def __init__(self, **kwargs):
         parent = kwargs.get('parent', None)
         QWidget.__init__(self, parent)
- 
+
         self.kwargs = kwargs
         self.list2d_out = []
 
@@ -56,10 +54,10 @@ class QWPopupTableCheck(QWidget):
         self.do_ctrl  = kwargs.get('do_ctrl', True)
         self.do_frame = kwargs.get('do_frame', True)
 
-        #self.but_update = QPushButton('&Update') 
-        #self.but_cancel = QPushButton('&Cancel') 
-        self.but_apply  = QPushButton('&Apply') 
-        
+        #self.but_update = QPushButton('&Update')
+        #self.but_cancel = QPushButton('&Cancel')
+        self.but_apply  = QPushButton('&Apply')
+
         #self.but_update.clicked.connect(self.on_but_update)
         #self.but_cancel.clicked.connect(self.onCancel)
         self.but_apply.clicked.connect(self.onApply)
@@ -78,8 +76,6 @@ class QWPopupTableCheck(QWidget):
 
         self.setIcons()
         self.set_style()
-
-#-----------------------------  
 
     def set_style(self):
         #if not self.do_frame:
@@ -109,8 +105,8 @@ class QWPopupTableCheck(QWidget):
         self.wtab.setFixedHeight(self.wtab.height()+2)
         self.setFixedWidth(max(self.wtab.width(),285)+2)
 
-        #self.but_update.setVisible(False)        
-        #self.but_cancel.setVisible(False)        
+        #self.but_update.setVisible(False)
+        #self.but_cancel.setVisible(False)
 
         #self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
         #self.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint)
@@ -122,7 +118,6 @@ class QWPopupTableCheck(QWidget):
           #self.but_cancel.setIcon(icon.icon_button_cancel)
           self.but_apply .setIcon(icon.icon_button_ok)
         except : pass
- 
 
     #def on_but_update(self):
     def update_partition_table(self):
@@ -147,7 +142,7 @@ class QWPopupTableCheck(QWidget):
 
 
     def onApply(self):
-        logger.debug('onApply')  
+        logger.debug('onApply')
         self.list2d_out = self.wtab.fill_output_object()
         #self.accept()
 
@@ -168,7 +163,6 @@ class QWPopupTableCheck(QWidget):
     def table_out(self):
         return self.list2d_out
 
-#------------------------------
 
 if __name__ == "__main__" :
     import os
@@ -215,4 +209,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#------------------------------
+# EOF
