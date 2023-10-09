@@ -54,7 +54,7 @@ def main():
         line = len(instrset)
         instrset.append(ControlRequest([0]))
         instrset.append(FixedRateSync(marker=6,occ=spacing))
-        if npretrig>2:
+        if npretrig>1:
             instrset.append(Branch.conditional(line,counter=0,value=npretrig-1))
                      
     instrset.append(ControlRequest([0,1]))

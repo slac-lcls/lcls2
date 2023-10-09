@@ -24,22 +24,41 @@ def write_seq(gen,seqcodes,filename):
 
     validate(filename)
 
+def one_camera_sequence(args):
 
-
-def main():
-    global args
-    parser = argparse.ArgumentParser(description='rix 2-integrator mode')
-    parser.add_argument("--periods", default=[1,0.01], type=float, nargs=2, help="integration periods (sec); default=[1,0.01]")
-    parser.add_argument("--readout_time", default=[0.391,0.005], type=float, help="camera readout times (sec); default=[0.391,0.005]")
-    parser.add_argument("--bunch_period", default=28, type=int, help="spacing between bunches in the train; default=28")
-    args = parser.parse_args()
+    print(f'Generating one repeating bunch train for one camera')
 
     args_period = [int(TPGSEC*p) for p in args.periods]
 
-    #  validate integration periods with bunch_period
-    for a in args_period:
-        if (a%args.bunch_period):
-            raise ValueError(f'period {a} ({a/TPGSEC} sec) is not a multiple of the bunch period {args.bunch_period}')
+    d = {'period' : args_period[0]//args.bunch_period,
+         'readout': int(args.readout_time[0]*TPGSEC+args.bunch_period-1)//args.bunch_period}
+    print(f'd {d}')
+
+    #  The bunch trains
+    gen = TrainGenerator(start_bucket     =(d['readout']+1)*args.bunch_period,
+                         train_spacing    =d['period']*args.bunch_period,
+                         bunch_spacing    =args.bunch_period,
+                         bunches_per_train=d['period']-d['readout'],
+                         repeat           =1,
+                         charge           =None,
+                         notify           =False,
+                         rrepeat          =True)
+    seqcodes = {0:'Bunch Train'}
+    write_seq(gen,seqcodes,'beam.py')
+    
+    #  The Andor triggers
+    gen = PeriodicGenerator(period=[d['period']*args.bunch_period],
+                            start =[0],
+                            charge=None,
+                            repeat=-1,
+                            notify=False)
+
+    seqcodes = {0:'Slow Andor'}
+    write_seq(gen,seqcodes,'codes.py')
+
+def two_camera_sequence(args):
+
+    args_period = [int(TPGSEC*p) for p in args.periods]
 
     #  period,readout times translated to units of bunch spacing
     d = {}
@@ -58,6 +77,8 @@ def main():
     n = (d['slow']['readout'] - d['fast']['readout'] + d['fast']['period'] - 1) // d['fast']['period']
     d['slow']['readout'] = n*d['fast']['period']+d['fast']['readout']
     rpad = d['slow']['period']*args.bunch_period-(d['slow']['period']//d['fast']['period']-n)*d['fast']['period']*args.bunch_period
+
+    print(f'd {d}  n {n}  rpad {rpad}')
 
     #  The bunch trains
     gen = TrainGenerator(start_bucket     =(d['slow']['readout']+1)*args.bunch_period,
@@ -96,6 +117,35 @@ def main():
                          rpad             =rpad)
     seqcodes = {0:'Fast Andor Gated'}
     write_seq(gen,seqcodes,'codes2.py')
+
+def main():
+    global args
+    parser = argparse.ArgumentParser(description='rix 2-integrator mode',formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--periods", default=[1,0.01], type=float, nargs='+', help="integration periods (sec); default=[1,0.01]")
+    parser.add_argument("--readout_time", default=[0.391,0.005], type=float, help="camera readout times (sec); default=[0.391,0.005]")
+    parser.add_argument("--bunch_period", default=28, type=int, help="spacing between bunches in the train; default=28")
+    parser.add_argument("--laser_onoff", type=int, nargs='+', 
+                        help='''
+                        slow cam periods that laser is on,off,on,off,...
+                        example: 31,1,17,1,37,1,11,1  
+                        on 31, off 1, on 17, off 1, on 37, off 1, on 11, off 1. 
+                        (repeats every 100)''')
+    args = parser.parse_args()
+
+    if len(args.periods) > 2:
+        raise ValueError(f'Too many periods {args.periods}.  Limited to 2')
+
+    args_period = [int(TPGSEC*p) for p in args.periods]
+
+    #  validate integration periods with bunch_period
+    for a in args_period:
+        if (a%args.bunch_period):
+            raise ValueError(f'period {a} ({a/TPGSEC} sec) is not a multiple of the bunch period {args.bunch_period}')
+
+    if len(args_period) == 1:
+        one_camera_sequence(args)
+    else:
+        two_camera_sequence(args)
 
 if __name__ == '__main__':
     main()
