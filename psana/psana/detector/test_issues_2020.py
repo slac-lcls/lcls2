@@ -8,7 +8,7 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 def issue_2020_11_09():
     from psana import DataSource
-    ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
+    ds = DataSource(files='/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
 
     orun = next(ds.runs())
     #for orun in ds.runs():

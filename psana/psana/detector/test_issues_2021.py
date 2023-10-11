@@ -12,7 +12,7 @@ logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(mess
 
 def issue_2020_11_09():
     from psana import DataSource
-    ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
+    ds = DataSource(files='/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
 
     orun = next(ds.runs())
     #for orun in ds.runs():
