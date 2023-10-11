@@ -279,9 +279,9 @@ class HBins():
         else:
             conds = None
             if self._ascending:
-                conds = np.array([arr<edge for edge in self.binedges()], dtype=np.bool)
+                conds = np.array([arr<edge for edge in self.binedges()], dtype=np.dtype(bool))
             else:
-                conds = np.array([arr>edge for edge in self.binedges()], dtype=np.bool)
+                conds = np.array([arr>edge for edge in self.binedges()], dtype=np.dtype(bool))
 
             inds1d = list(range(-1, self._nbins))
             inds1d[0] = indmin # re-define index for underflow

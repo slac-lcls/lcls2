@@ -169,7 +169,7 @@ class HPolar():
                )
 
         if mask is not None:
-            self.cond = np.logical_and(self.cond, mask.astype(np.bool).ravel())
+            self.cond = np.logical_and(self.cond, mask.astype(np.dtype(bool)).ravel())
 
         # index ntbins stands for overflow bin
         self.iseq = np.select((self.cond,), (self.iphi*nrbins + self.irad,), self.ntbins).ravel()
