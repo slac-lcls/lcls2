@@ -11,7 +11,7 @@ if __name__ == '__main__':
     from psana.pscalib.calib.NDArrIO import save_txt, load_txt
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess
 
-    dir       = '/reg/g/psdm/detector/alignment/cspad/calib-cxi-camera2-2016-02-05'
+    dir       = '/sdf/group/lcls/ds/ana/detector/alignment/cspad/calib-cxi-camera2-2016-02-05'
     #fname_nda = '%s/nda-water-ring-cxij4716-r0022-e000001-CxiDs2-0-Cspad-0-ave.txt' % dir
     #fname_nda = '%s/nda-water-ring-cxij4716-r0022-e014636-CxiDs2-0-Cspad-0-ave.txt' % dir
     #fname_nda = '%s/nda-lysozyme-cxi02416-r0010-e052421-CxiDs2-0-Cspad-0-max.txt' % dir
