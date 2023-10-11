@@ -183,6 +183,8 @@ static int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, cons
                std::to_string(para.detSegment).c_str(),
                std::to_string(workerNum).c_str(),
                std::to_string(para.verbose).c_str(),
+               para.instrument.c_str(),
+               para.prometheusDir.c_str(),
                nullptr);
 
         // Execlp returns only on error

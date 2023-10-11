@@ -41,7 +41,7 @@ class DrpDataSource(DataSourceBase):
 
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         self._setup_run()
-        super(). _start_prometheus_client()
+        super(). _start_prometheus_client(prom_cfg_dir=kwargs["drp"].prom_cfg_dir) # Use http exporter
 
     def __del__(self):
         super(). _end_prometheus_client()
