@@ -7,13 +7,15 @@ logging.basicConfig(format='%(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M
 from psana import DataSource
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pscalib.calib.MDBWebUtils as wu
+from psana.hexanode.examples.ex_test_data import DIR_DATA_TEST
 
+FNAME = '%s/%s' % (DIR_DATA_TEST, 'data-amox27716-r0100-acqiris-e000100.xtc2')
 
 def test_calibconst() :
 
     DETNAME = 'tmo_quadanode'
 
-    ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
+    ds = DataSource(files=FNAME) # '/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2'
     orun = next(ds.runs())
     print('\nruninfo expt: %s  runnum: %d' % (orun.expt, orun.runnum))
 
