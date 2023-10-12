@@ -1,3 +1,13 @@
+######################################################################################
+# Simple Database for storing psplot process detail created by psplotdb server.
+# RunInstance:
+#    PK 
+#   {1: slurm_job_id1, rixc00221, 49, sdfmilan032, 12301, pid, DbHistoryStatus.PLOTTED,
+#    2: slurm_job_id2, rixc00221, 50, sdfmilan032, 12301, pid, DbHistoryStatus.PLOTTED,
+#    3: slurm_job_id3, rixc00221, 49, sdfmilan032, 12301, pid, DbHistoryStatus.RECEIVED,
+#
+######################################################################################
+
 from psana.psexp.zmq_utils import PubSocket
 import socket
 import zmq
@@ -7,9 +17,13 @@ class DbHistoryStatus():
     PLOTTED = 1
 
 class DbHistoryColumns():
-    STATUS = 0
-    PID = 1
-    SLURM_JOB_ID = 2
+    SLURM_JOB_ID = 0
+    EXP = 1
+    RUNNUM = 2
+    NODE = 3
+    PORT = 4
+    PID = 5
+    STATUS = 6
 
 class DbHelper():
     def __init__(self):
@@ -17,7 +31,6 @@ class DbHelper():
         # - Instance stores a list of instance ids for a exp, runnum, node, port key
         # - History stores a detail (pid, slurm jobid, status, etc) for an instance id
         self.instance = {} 
-        self.history = {}
 
     def connect(self, socket_name):
         self.srv_socket = PubSocket(socket_name, socket_type=zmq.PULL)
@@ -43,27 +56,26 @@ class DbHelper():
         obj = self.srv_socket.recv()
         return obj 
 
-    def set(self, key, instance_id, values):
-        self.history[key, instance_id] = values
+    def set(self, instance_id, what, val):
+        self.instance[instance_id][what] = val
 
     def save(self, obj):
-        key = (obj['exp'], obj['runnum'], obj['node'], obj['port'])
-        next_id = 0
-        if key in self.instance:
-            ids = self.instance[key] 
+        next_id = 1
+        if self.instance:
+            ids = list(self.instance.keys())
             next_id = max(ids) + 1
-        else:
-            self.instance[key] = []
-        self.instance[key] += [next_id]
+        self.instance[next_id] = [obj['slurm_job_id'],
+                obj['exp'],
+                obj['runnum'],
+                obj['node'],
+                obj['port'],
+                None,
+                DbHistoryStatus.RECEIVED]
+        return next_id
 
-        self.history[key, next_id] = [DbHistoryStatus.RECEIVED, None, None]
-        return key, next_id
-
-    def get(self, what, query_string):
-        found_key, found_instance_id = None, None
-        for key, val in self.history.items():
-            if str(val[what]) == str(query_string):
-                found_key, found_instance_id = key[0], key[1]
-                break
-        return found_key, found_instance_id
+    def get(self, instance_id):
+        found_instance = None
+        if instance_id in self.instance:
+            found_instance = self.instance[instance_id]
+        return found_instance
 

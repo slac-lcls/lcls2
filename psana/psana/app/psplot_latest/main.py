@@ -21,7 +21,8 @@ socket_name = None
 def _exit_handler():
     print('Cleaning up subprocesess...')
     for pid in proc.pids():
-        kill(pid)
+        _kill_pid(pid)
+
 atexit.register(_exit_handler)
 
 
@@ -39,31 +40,28 @@ async def run_monitor(detname, socket_name):
         # For 1), we use the job detail (exp, runnum, etc) as sent via the request
         # Jobs sent this way will only get plotted when it's new.  
         force_flag = False
-        if 'force_rerun_slurm_job_id' in obj:
-            key, instance_id = db.get(DbHistoryColumns.SLURM_JOB_ID, obj['force_rerun_slurm_job_id'])
-            if key is None:
-                print(f'Could not locate any request with this key: {key}, instance_id: {instance_id}')
-            else:
-                force_flag = True
-                new_exp, new_runnum, new_node, new_port = key
-                new_slurm_job_id = obj['force_rerun_slurm_job_id']
-                print(f'Force rerun with {new_exp}:r{new_runnum} {new_node}:{new_port} jobid:{new_slurm_job_id}')
+        if 'force_rerun_instance_id' in obj:
+            db_instance = db.get(obj['force_rerun_instance_id'])
+            force_flag = True
+            new_slurm_job_id, new_exp, new_runnum, new_node, new_port, _, _ = db_instance
+            print(f'Force rerun with {new_exp}:r{new_runnum} {new_node}:{new_port} jobid:{new_slurm_job_id}')
         else:
-            key, instance_id = db.save(obj)
+            instance_id = db.save(obj)
             new_exp, new_runnum, new_node, new_port, new_slurm_job_id = obj['exp'], obj['runnum'], obj['node'], obj['port'], obj['slurm_job_id']
         
         if new_node != node or new_port != port or new_runnum > runnum or force_flag:
             exp, runnum, node, port, slurm_job_id = (new_exp, new_runnum, new_node, new_port, new_slurm_job_id)
             def set_pid(pid):
-                db.history[key, instance_id] = [DbHistoryStatus.PLOTTED, pid, slurm_job_id] 
+                db.set(instance_id, DbHistoryColumns.PID, pid)
+                db.set(instance_id, DbHistoryColumns.STATUS, DbHistoryStatus.PLOTTED)
                 print(f'set pid:{pid}')
-            cmd = f"psplot -s {node} -p {port} {detname} {exp},{runnum},{node},{port},{instance_id},{slurm_job_id}"
+            cmd = f"psplot -s {node} -p {port} {detname} {instance_id},{exp},{runnum},{node},{port},{slurm_job_id}"
             await proc._run(cmd, callback=set_pid)
             if not force_flag:
                 print(f'Received new {exp}:r{runnum} {node}:{port} jobid:{slurm_job_id}', flush=True)
         else:
-            print(f'Received old {new_exp}:r{new_runnum} {new_node}:{new_port} jobid:{new_slurm_job_id}. To reactivate, type: show({new_slurm_job_id})', flush=True)
-            db.history[key, instance_id][DbHistoryColumns.SLURM_JOB_ID] = new_slurm_job_id
+            print(f'Received old {new_exp}:r{new_runnum} {new_node}:{new_port} jobid:{new_slurm_job_id}. To reactivate, type: show({instance_id})', flush=True)
+            db.set(instance_id, DbHistoryColumns.SLURM_JOB_ID, new_slurm_job_id)
 
 
 @app.command()
@@ -79,9 +77,9 @@ def start(detname: str):
     asyncio.run(proc._run(cmd))
     IPython.embed()
 
-def show(slurm_job_id):
+def show(instance_id):
     zmq_send(fake_dbase_server=socket_name, 
-            force_rerun_slurm_job_id=slurm_job_id)
+            force_rerun_instance_id=instance_id)
 
 def _get_proc_info(keyword):
     data = {}
@@ -89,27 +87,47 @@ def _get_proc_info(keyword):
     # list the pid of the main process.
     for proc in psutil.process_iter(['pid', 'cmdline']):
         if ' '.join(proc.info['cmdline']).find(keyword) > -1:
-            key = tuple(proc.info['cmdline'][-1].split(','))
+            pinfo = proc.info['cmdline'][-1].split(',')
+            instance_id = int(pinfo[0])
             pid = int(proc.info['pid'])
-            if key in data:
-                if pid < data[key]:
-                    data[key] = pid
+            if instance_id in data:
+                if pid < data[instance_id][-1]:
+                    data[instance_id] = pinfo[1:] + [pid]
             else:
-                data[key] = pid
+                data[instance_id] = pinfo[1:] + [pid]
     return data
 
 
 def ls():
     data = _get_proc_info("psplot")
-    headers = ["exp", "run", "node", "port", "instance", "slurm jobid", "pid"]
-    format_row = "{:<10} {:<5} {:<20} {:<8} {:<10} {:<12} {:<10}"
+    headers = ["ID", "EXP", "RUN", "NODE", "PORT", "SLURM_JOB_ID", "PID"]
+    format_row = "{:<5} {:<10} {:<5} {:<20} {:<8} {:<12} {:<10}"
     print(format_row.format(*headers))
-    for key, val in data.items():
-        row = list(key) + [val]
-        print(format_row.format(*row))
+    for instance_id, pinfo in data.items():
+        row = [instance_id] + pinfo 
+        # Skip other psplot processes that do not have these fields 
+        # (they are not invoked by psplotdb server app).
+        if len(row) != 7:
+            continue
+        try:
+            print(format_row.format(*row))
+        except Exception as e:
+            print(e)
+            print(f'{row=}')
 
 
-def kill(pid, timeout=3):
+def kill(instance_id, timeout=3):
+    data = _get_proc_info("psplot")
+
+    if instance_id not in data:
+        print(f"could not locate instance_id:{instance_id}")
+        return
+
+    pid = data[instance_id][-1]
+    _kill_pid(pid, timeout=timeout)
+
+
+def _kill_pid(pid, timeout=3):
     def on_terminate(proc):
         print("process {} terminated with exit code {}".format(proc, proc.returncode))
     procs = [psutil.Process(pid)] + psutil.Process(pid).children()
@@ -120,11 +138,12 @@ def kill(pid, timeout=3):
         p.kill()
 
 
+
 def kill_all():
     data = _get_proc_info("psplot")
-    for info, pid in data.items():
-        print(f'kill {info}')
-        kill(pid)
+    for instance_id, pinfo in data.items():
+        print(f'kill {instance_id} (pid:{pinfo[-1]})')
+        kill(instance_id)
 
 if __name__ == "__main__":
     app()

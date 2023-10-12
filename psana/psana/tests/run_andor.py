@@ -8,19 +8,28 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
  
-os.environ['PS_SRV_NODES']='1'
 
-# passin exp and runnum
+os.environ['PS_SRV_NODES']='1'
+os.environ['PS_SMD_N_EVENTS']='1'
+
+
+# passing exp and runnum
 exp=sys.argv[1]
 runnum=int(sys.argv[2])
 
 # fake-server is a small standalone zmq python script                           
 fake_dbase_server=sys.argv[3]
 
-ds = DataSource(exp=exp,run=runnum,dir='/cds/data/drpsrcf/rix/rixc00221/xtc/',intg_det='andor_vls',batch_size=1)
+
+mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
+#mount_dir = '/cds/data/drpsrcf'
+xtc_dir = os.path.join(mount_dir, exp[:3], exp, 'xtc')
+ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',batch_size=1)
+
 
 if ds.is_srv(): # hack for now to eliminate use of publish.local below
     publish.init()
+    # TODO: hide zmq_send in DataSource
     zmq_send(fake_dbase_server=fake_dbase_server, 
             node=MPI.Get_processor_name(), 
             exp=exp, 
@@ -31,7 +40,6 @@ if ds.is_srv(): # hack for now to eliminate use of publish.local below
 # we will remove this for batch processing and use "psplot" instead
 # publish.local = True
 
-# TODO: hide zmq_send in DataSource
 
 def my_smalldata(data_dict):
     if 'unaligned_andor_norm' in data_dict:
