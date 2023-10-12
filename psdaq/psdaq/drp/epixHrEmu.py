@@ -5,7 +5,7 @@ import sys
 import numpy as np
 from libpressio import PressioCompressor
 import json
-from prometheus_client import Gauge
+from prometheus_client import REGISTRY, Gauge
 
 # Define compressor configuration:
 lpjson = {
@@ -32,10 +32,8 @@ labels = { 'alias'      : f'{drp_info.det_name}_{drp_info.det_segment}', # Alias
 
 compT = Gauge('psana_compress_time', 'time spent (s) in compressor()', labels.keys())
 compT.labels(*labels.values())
-ds.prom_man.register(compT)
 calibT = Gauge('psana_calibration_time', 'time spent (s) in det.raw.calib()', labels.keys())
 calibT.labels(*labels.values())
-ds.prom_man.register(calibT)
 
 #print(f'*** [Thread {thread_num}] ds._configs:', ds._configs.keys())
 
@@ -71,3 +69,6 @@ for myrun in ds.runs():
             det.fex.fex = compressor.encode(cal)
         ds.add_data(det.fex)
         if nevt%1000!=0: ds.remove_data('epixhr_emu','raw')
+
+REGISTRY.unregister(calibT)
+REGISTRY.unregister(compT)
