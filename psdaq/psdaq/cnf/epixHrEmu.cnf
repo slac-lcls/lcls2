@@ -109,7 +109,7 @@ procmgr_config = [
  {host: 'drp-srcf-cmp037', id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  # EPIX-HR has 2 MP on 20 panels, 4 ASICs/panel, 144 x 192 pixels/ASIC, 2 B/pixel = 221184 B/segment = 2 + 4 * sim_length => sim_length ~= 55294 per panel
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',             cmd:f'{drp_cmd0} -l 0x1 -W 26 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',             cmd:f'{drp_cmd0} -l 0x1 -W 1 -D epixhremu -k {epixKwargs}'},
 ## {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spux',              cmd:f'{drp_cmd1} -l 0xf -W 30 -D epixhremu -k {epixKwargs}'},
  {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x2 -W 26 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp036', id:'epixhr_emu_2',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},

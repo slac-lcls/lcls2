@@ -39,9 +39,16 @@ for metric_name, (metric_type, desc) in metrics.items():
     elif metric_type == 'Gauge':
         registry.register(Gauge(metric_name, desc, ['checkpoint']))
 
+HTTP_EXPOSER_STARTED = False
+
 def createExposer(prometheusCfgDir):
     if prometheusCfgDir == '':
         logging.warning('Unable to update Prometheus configuration: directory not provided')
+        return
+
+    # Start only one server per session to avoid multiple scrapings per time point
+    global HTTP_EXPOSER_STARTED
+    if HTTP_EXPOSER_STARTED:
         return
 
     hostname = socket.gethostname()
@@ -60,6 +67,7 @@ def createExposer(prometheusCfgDir):
             else:
                 pass            # File exists; no need to rewrite it
             logging.info(f'Providing run-time monitoring data on port {port}')
+            HTTP_EXPOSER_STARTED = True
             return True
         except OSError:
             pass                # Port in use
