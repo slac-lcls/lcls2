@@ -1,7 +1,7 @@
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 
-if [ -d "/sdf/data/lcls/" ]
+if [ -d "/sdf/group/lcls/" ]
 then
     # for s3df
     source /sdf/group/lcls/ds/ana/sw/conda2/inst/etc/profile.d/conda.sh
