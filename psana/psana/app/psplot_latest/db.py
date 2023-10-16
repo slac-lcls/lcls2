@@ -1,14 +1,19 @@
 ######################################################################################
-# Simple Database for storing psplot process detail created by psplotdb server.
-# RunInstance:
+# Simple Database for storing psplot process detail created by psplot server.
+# Instance:
 #    PK 
 #   {1: slurm_job_id1, rixc00221, 49, sdfmilan032, 12301, pid, DbHistoryStatus.PLOTTED,
 #    2: slurm_job_id2, rixc00221, 50, sdfmilan032, 12301, pid, DbHistoryStatus.PLOTTED,
 #    3: slurm_job_id3, rixc00221, 49, sdfmilan032, 12301, pid, DbHistoryStatus.RECEIVED,
 #
+# The server runs on zmq and has two ways of getting db info:
+#   1. Client sends info directly via zmq socket
+#   2. Client is a kafka producer. The server initiates kafka consumer asyncio process
+#      that listens to the producers. The asyncio process takes care of sending info
+#      to zmq socket.
 ######################################################################################
 
-from psana.psexp.zmq_utils import PubSocket
+from psana.psexp.zmq_utils import PubSocket, zmq_send
 import socket
 import zmq
 
@@ -25,16 +30,17 @@ class DbHistoryColumns():
     PID = 5
     STATUS = 6
 
+class DbConnectionType():
+    ZMQ = 0
+    KAFKA = 1
+
+
 class DbHelper():
     def __init__(self):
-        # Keep a history of received request:
-        # - Instance stores a list of instance ids for a exp, runnum, node, port key
-        # - History stores a detail (pid, slurm jobid, status, etc) for an instance id
         self.instance = {} 
 
     def connect(self, socket_name):
         self.srv_socket = PubSocket(socket_name, socket_type=zmq.PULL)
-        print(f'Run psana with this socket: {socket_name}', flush=True)
 
     @staticmethod
     def get_socket(port=None):
@@ -51,10 +57,9 @@ class DbHelper():
         return socket_name
 
     def get_db_info(self):
-        # Fetch data 
         print(f'Waiting for client...')
-        obj = self.srv_socket.recv()
-        return obj 
+        info = self.srv_socket.recv()
+        return info 
 
     def set(self, instance_id, what, val):
         self.instance[instance_id][what] = val

@@ -3,9 +3,11 @@
 # (run_no, node_name, port_no) and displays psplot when 
 # new info arrive using subprocess. 
 ######################################################
-from psana.app.psplot_latest.db import DbHelper, DbHistoryStatus, DbHistoryColumns
+from psana.app.psplot_latest.db import DbHelper, DbHistoryStatus, DbHistoryColumns, DbConnectionType
 from psana.app.psplot_latest.subproc import SubprocHelper
 from psana.psexp.zmq_utils import zmq_send
+from kafka import KafkaConsumer
+import json
 import typer
 import asyncio
 import IPython
@@ -16,14 +18,35 @@ import atexit
 app = typer.Typer()
 proc = SubprocHelper()
 socket_name = None
+conn_type = None
 
 
 def _exit_handler():
     print('Cleaning up subprocesess...')
     for pid in proc.pids():
         _kill_pid(pid)
-
 atexit.register(_exit_handler)
+
+
+KAFKA_MAX_POLL_INTERVAL_MS = 500000
+KAFKA_MAX_POLL_RECORDS = 50
+KAFKA_TOPIC = "monatest"
+KAFKA_BOOTSTRAP_SERVER = "testfac-lgbkdb:9092"
+async def start_kafka_consumer(socket_name):
+    print(f'Connecting to kafa...')
+    consumer = KafkaConsumer(bootstrap_servers=[KAFKA_BOOTSTRAP_SERVER], 
+            max_poll_interval_ms=KAFKA_MAX_POLL_INTERVAL_MS, 
+            max_poll_records=KAFKA_MAX_POLL_RECORDS)
+    consumer.topics()
+    consumer.subscribe([KAFKA_TOPIC])
+    print(f'Connected to kafka at {KAFKA_BOOTSTRAP_SERVER}')
+    for msg in consumer:
+        try:
+            info = json.loads(msg.value)
+            message_type = msg.topic
+            zmq_send(fake_dbase_server=socket_name, **info)
+        except Exception as e:
+            print("Exception processing Kafka message.")
 
 
 async def run_monitor(detname, socket_name):
@@ -65,16 +88,25 @@ async def run_monitor(detname, socket_name):
 
 
 @app.command()
+def kafka(socket_name: str):
+    asyncio.run(start_kafka_consumer(socket_name))
+
+@app.command()
 def monitor(detname: str, socket_name: str):
     asyncio.run(run_monitor(detname, socket_name))
     
-
 @app.command()
-def start(detname: str):
+def start(detname: str, connection_type: str = "KAFKA"):
     global socket_name
     socket_name = DbHelper.get_socket(port=4242)
     cmd = f"xterm -hold -e python main.py monitor {detname} {socket_name}"
     asyncio.run(proc._run(cmd))
+    
+    global conn_type
+    conn_type = getattr(DbConnectionType, connection_type)
+    if conn_type == DbConnectionType.KAFKA:
+        cmd = f"xterm -hold -e python main.py kafka {socket_name}"
+        asyncio.run(proc._run(cmd))
     IPython.embed()
 
 def show(instance_id):
