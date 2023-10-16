@@ -563,20 +563,22 @@ class PVCtrls(object):
             self._thread.start()
 
         print('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
-        app.monStreamPeriod.set(125000000)
+        app.monStreamPeriod.set(104166667)
         app.monStreamEnable.set(1)
 
     def usLinkUp(self):
         if self._usLinkUp is not None:
             self._usLinkUp()
-        for s in self._seq:
-            s.refresh()
+        if self._seq:
+            for s in self._seq:
+                s.refresh()
 
     def seqReset(self,pv,val):
         self._xpm.SeqEng_0.seqRestart.set(val)
-        for s in self._seq:
-            if (1<<s._eng._id)&val:
-                s._eng.resetDone()
+        if self._seq:
+            for s in self._seq:
+                if (1<<s._eng._id)&val:
+                    s._eng.resetDone()
 
     def update(self,cycle):
         #  The following section will throw an exception if the CuInput PV is not set properly
