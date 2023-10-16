@@ -1,7 +1,7 @@
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 
-if [[ ${HOSTNAME} == sdf* ]]
+if [ -d "/sdf/data/lcls/" ]
 then
     # for s3df
     source /sdf/group/lcls/ds/ana/sw/conda2/inst/etc/profile.d/conda.sh
@@ -16,7 +16,7 @@ else
     export SIT_PSDM_DATA=/cds/data/psdm
 fi
 
-conda activate ps-4.6.0
+conda activate ps-4.6.1
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
     source $AUTH_FILE
