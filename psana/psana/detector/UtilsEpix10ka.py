@@ -354,9 +354,13 @@ def gain_maps_epix10ka_any_alg(cbits):
         logger.debug('cbits is None')
         return None
 
-    cbitsM60 = cbits & 60 # control bits masked by configuration 3-bit-mask
-    cbitsM28 = cbits & 28 # control bits masked by configuration 3-bit-mask
-    cbitsM12 = cbits & 12 # control bits masked by configuration 2-bit-mask
+    # cbitsM60 = cbits & 60 # control bits masked by configuration 3-bit-mask
+    # cbitsM28 = cbits & 28 # control bits masked by configuration 3-bit-mask
+    # cbitsM12 = cbits & 12 # control bits masked by configuration 2-bit-mask
+
+    cbitsM60 = np.bitwise_and(cbits, 60) # control bits masked by configuration 3-bit-mask
+    cbitsM28 = np.bitwise_and(cbits, 28) # control bits masked by configuration 3-bit-mask
+    cbitsM12 = np.bitwise_and(cbits, 12) # control bits masked by configuration 2-bit-mask
     #logger.debug(info_ndarr(cbitsMCB, 'cbitsMCB', first, last))
 
     #return gr0, gr1, gr2, gr3, gr4, gr5, gr6 # per-pixel bool for 7 gain ranges
@@ -586,7 +590,6 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     -------
       - calibrated epix10ka data
     """
-
     nda_raw = kwa.get('nda_raw', None)
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
     if raw is None:
@@ -637,8 +640,8 @@ def common_mode_epix_multigain_apply(arrf, gmaps, store):
       #logger.debug(info_ndarr(grhm, 'XXXX grhm'))
       #logger.debug(info_ndarr(gmask, 'XXXX gmask'))
       #logger.debug('common-mode mask massaging (sec) = %.6f' % (time()-t2_sec_cm)) # 5msec
-      logger.debug(info_ndarr(gmask, 'gmask')\
-                   + '\n  per panel statistics of cm-corrected pixels: %s' % str(np.sum(gmask, axis=(1,2), dtype=np.uint32)))
+      # logger.debug(info_ndarr(gmask, 'gmask')\
+      #              + '\n  per panel statistics of cm-corrected pixels: %s' % str(np.sum(gmask, axis=(1,2), dtype=np.uint32)))
 
       #sh = (nsegs, 288, 384) # epixhr
       #sh = (nsegs, 352, 384) # epix10ka

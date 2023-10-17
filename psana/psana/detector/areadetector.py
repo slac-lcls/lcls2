@@ -227,7 +227,7 @@ class AreaDetector(DetectorImpl):
         """
         value = value_for_missing_segments
 
-        _nda = self.calib(evt) if nda is None else nda
+        _nda = self.calib(evt, **kwa) if nda is None else nda
         segnums = self._segment_numbers
 
         if value is not None:
