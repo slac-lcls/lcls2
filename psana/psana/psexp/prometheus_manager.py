@@ -1,11 +1,15 @@
+import os
 import time
+import socket
 from prometheus_client import CollectorRegistry, Counter, push_to_gateway, Summary, Gauge
+from prometheus_client import start_http_server
 
 import logging
 logger = logging.getLogger(__name__)
 
 PUSH_INTERVAL_SECS  = 5
 PUSH_GATEWAY        = 'psdm03:9091'
+PROM_PORT_BASE      = 9200      # Used by the http exposer; Value should match DAQ's
 
 registry = CollectorRegistry()
 metrics ={
@@ -35,19 +39,58 @@ for metric_name, (metric_type, desc) in metrics.items():
     elif metric_type == 'Gauge':
         registry.register(Gauge(metric_name, desc, ['checkpoint']))
 
+HTTP_EXPOSER_STARTED = False
+
+def createExposer(prometheusCfgDir):
+    if prometheusCfgDir == '':
+        logging.warning('Unable to update Prometheus configuration: directory not provided')
+        return
+
+    # Start only one server per session to avoid multiple scrapings per time point
+    global HTTP_EXPOSER_STARTED
+    if HTTP_EXPOSER_STARTED:
+        return
+
+    hostname = socket.gethostname()
+    port = PROM_PORT_BASE
+    while port < PROM_PORT_BASE + 100:
+        try:
+            start_http_server(port)
+            fileName = f'{prometheusCfgDir}/drpmon_{hostname}_{port - PROM_PORT_BASE}.yaml'
+            if not os.path.exists(fileName):
+                try:
+                    with open(fileName, 'wt') as f:
+                        f.write(f'- targets:\n    - {hostname}:{port}\n')
+                except Exception as ex:
+                    logging.error(f'Error creating file {fileName}: {ex}')
+                    return False
+            else:
+                pass            # File exists; no need to rewrite it
+            logging.info(f'Providing run-time monitoring data on port {port}')
+            HTTP_EXPOSER_STARTED = True
+            return True
+        except OSError:
+            pass                # Port in use
+        port += 1
+    logging.error('No available port found for providing run-time monitoring')
+    return False
+
 class PrometheusManager(object):
     def __init__(self, jobid):
         self.jobid = jobid
         pass
 
-    def register(self, metric):
-        registry.register(metric)
+    def register(self, metric_name):
+        registry.register(metric_name)
 
     def push_metrics(self, e, from_whom=''):
         while not e.isSet():
             push_to_gateway(PUSH_GATEWAY, job='psana_pushgateway', grouping_key={'jobid': self.jobid, 'rank': from_whom}, registry=registry, timeout=None)
             logger.debug('TS: %s PUSHED JOBID: %s RANK: %s e.isSet():%s'%(time.time(), self.jobid, from_whom, e.isSet()))
             time.sleep(PUSH_INTERVAL_SECS)
+
+    def create_exposer(self, prometheus_cfg_dir):
+        return createExposer(prometheus_cfg_dir)
 
     @staticmethod
     def get_metric(metric_name):

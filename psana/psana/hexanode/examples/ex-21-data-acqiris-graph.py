@@ -219,14 +219,19 @@ def draw_times(axis, pkvals, pkinds, wt):
 
 
 if __name__ == "__main__":
+
+    from psana.hexanode.examples.ex_test_data import DIR_DATA_TEST
+
     USAGE = '\nUsage: python %s <test-number>\n  where <test-name> stands for 1-4 peakfinder version' % sys.argv[0]
     EVSKIP = 0
     EVENTS = 10 + EVSKIP
     EVSAVE = EVENTS
     ofname = 'waveforms-amox27716-r0100-e%06d.npy'
 
-    ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
-    #ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-acqiris-e001000.xtc2')
+    #ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
+    #ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-acqiris-e001000.xtc2')
+    ds = DataSource(files='%s/%s' % (DIR_DATA_TEST, 'data-amox27716-r0100-acqiris-e001000.xtc2'))
+
     orun = next(ds.runs())
     det  = orun.Detector('tmo_quadanode') # 'tmo_hexanode'
 

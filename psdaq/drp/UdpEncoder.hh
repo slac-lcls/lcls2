@@ -141,7 +141,7 @@ class UdpEncoder : public XpmDetector
 {
 public:
     UdpEncoder(Parameters& para, DrpBase& drp);
-    unsigned connect(std::string& msg);
+    unsigned connect(std::string& msg, unsigned slowGroup);
     unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
@@ -150,25 +150,25 @@ public:
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
     int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
     enum { DefaultDataPort = 5006 };
-    enum { MajorVersion = 2, MinorVersion = 0, MicroVersion = 0 };
+    enum { MajorVersion = 3, MinorVersion = 0, MicroVersion = 0 };
 private:
-    void _event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame);
+    void _event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
     void _process(Pds::EbDgram* dgram);
     void _handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg);
   //void _handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg);
-    void _handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame);
+    void _handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
-    enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
+    enum {RawNamesIndex = NamesIndex::BASE, InterpolatedNamesIndex};
     enum { DiscardBufSize = 10000 };
     DrpBase& m_drp;
     std::shared_ptr<UdpReceiver> m_udpReceiver;
     std::thread m_workerThread;
     Interpolator m_interpolator;
     bool m_interpolating;
-    unsigned m_slowGroup;
+    int m_slowGroup;
     SPSCQueue<uint32_t> m_evtQueue;
     SPSCQueue<XtcData::Dgram*> m_encQueue;
     SPSCQueue<XtcData::Dgram*> m_bufferFreelist;

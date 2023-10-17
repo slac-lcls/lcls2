@@ -65,6 +65,7 @@ class Styles():
         self.styleEditBad      = self.styleRedBkgd
         self.styleButton       = self.styleGray
         self.styleButtonLeft   = self.styleButton + 'text-align: left;'
+        self.styleButtonRight  = self.styleButton + 'text-align: right;'
         self.styleButtonOn     = self.styleBluish
         self.styleButtonClose  = self.stylePink
         self.styleButtonWarning= self.styleYellowBkg
@@ -72,12 +73,14 @@ class Styles():
         self.styleButtonBad    = self.styleReddish # self.stylePink
         self.styleBox          = self.styleGray
         self.styleCBox         = self.styleYellowish
-        self.styleStatusGood   = self.styleGreen
         self.styleStatusWarning= self.styleYellow
         self.styleStatusAlarm  = self.styleRed
         self.styleTitleBold    = self.styleTitle + 'font-size: 18pt; font-family: Courier; font-weight: bold;'
         self.styleWhiteFixed   = self.styleWhite + 'font-family: Fixed;'
         self.styleTitleInFrame = self.styleWhite # self.styleDefault # self.styleWhite # self.styleGray
+        self.styleStatusGood   = self.styleGreen
+        self.styleButtonGoodLeft  = self.styleGreen + 'text-align: left;'
+        self.styleButtonGoodRight = self.styleGreen + 'text-align: right;'
 
         self.styleStat         = self.styleBkgdGray + "color: white;"
 

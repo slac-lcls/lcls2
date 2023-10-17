@@ -369,6 +369,35 @@ def issue_2023_07_27():
         print(s)
 
 
+def issue_2023_10_04():
+    """ detnames exp=tstx00417,run=286,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc
+    Name       | Data Type
+    ----------------------
+    epixhr_emu | raw ...
+    """
+    ds, orun, odet = ds_run_det(exp='tstx00417', run=286, detname='epixhr_emu', dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc')
+    print('odet.raw._uniqueid', odet.raw._uniqueid) # epixhremu_00cafe0002-0000000000-0000000000-0000000000-...
+    print('odet.raw._det_name', odet.raw._det_name) # epixhr_emu
+    print('odet.raw._dettype',  odet.raw._dettype)  # epixhremu
+
+    detname = longname = odet.raw._uniqueid
+    #detname = 'epixhremu_000002' # DB name
+    import psana.pscalib.calib.MDBWebUtils as wu
+    calib_const = wu.calib_constants_all_types(detname, exp='tstx00417', run=9999)
+    #calib_const = wu.calib_constants_all_types(detname, run=9999)
+    print('calib_const.keys:', calib_const.keys())
+
+def issue_2023_10_05():
+    from time import time
+    from psana import DataSource
+    ds = DataSource(exp='uedcom103',run=812)
+    t0_sec = time()
+    orun = next(ds.runs()) # 4.2 sec !!!!
+    print('next(ods.runs()) time = %.6f' % (time() - t0_sec))
+    uniqueid = orun.Detector('epixquad').raw._uniqueid
+    print('uniqueid:', uniqueid)
+
+
 def issue_2023_mm_dd():
     print('template')
 
@@ -386,6 +415,8 @@ USAGE = '\nUsage:'\
       + '\n    8 - issue_2023_07_25 - test epixhremu.fex.image for Ric'\
       + '\n    9 - issue_2023_07_26 - test calib_constants_all_types for Ric'\
       + '\n   10 - issue_2023_07_27 - test calib_constants_all_types for Ric - curl commands'\
+      + '\n   11 - issue_2023_10_04 - test calib constants for detector names'\
+      + '\n   12 - issue_2023_10_05 - test orun = next(ds.runs()) dt = 4.2 sec !!!'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -400,6 +431,8 @@ elif TNAME in  ('7',): issue_2023_05_19()
 elif TNAME in  ('8',): issue_2023_07_25()
 elif TNAME in  ('9',): issue_2023_07_26()
 elif TNAME in ('10',): issue_2023_07_27()
+elif TNAME in ('11',): issue_2023_10_04()
+elif TNAME in ('12',): issue_2023_10_05()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

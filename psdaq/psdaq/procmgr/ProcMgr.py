@@ -353,21 +353,18 @@ class ProcMgr:
         self.procmgr_macro = procmgr_macro
         self.git_describe = None
         if 'TESTRELDIR' in os.environ:
-            errMsg = None
             try:
                 cc = run(["git", "-C", os.environ['TESTRELDIR'], "describe", "--dirty", "--tag"], capture_output=True)
-            except Exception as ex:
-                errMsg = ex
+            except Exception:
+                # failure
+                self.git_describe = 'none'
             else:
                 if not cc.returncode:
                     # success
                     self.git_describe = str(cc.stdout.strip(), 'utf-8')
                 else:
                     # failure
-                    errMsg = str(cc.stderr.strip(), 'utf-8')
-
-            if errMsg:
-                print("*** ERR: running 'git describe' failed: %s" % errMsg)
+                    self.git_describe = 'none'
 
         # configure the default socket timeout in seconds
         socket.setdefaulttimeout(2.5)

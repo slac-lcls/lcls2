@@ -3,6 +3,10 @@
 :py:class:`GWLoggerStd` - GUI for python logger
 ===============================================
 
+        # TRICK: add filter to handler to intercept ALL messages
+        # StreamHandler is ON in DEBUG mode - duplicates all messages to terminal sys.stdout
+        # FileHandler - all in file
+
 Usage::
     # Test: python lcls2/psana/psana/graphqt/GWLoggerStd.py
 
@@ -58,20 +62,21 @@ class QWFilter(logging.Filter):
 
 class GWLoggerStd(QWidget):
 
-    _name = 'GWLoggerStd'
-
     def __init__(self, **kwa):
 
         QWidget.__init__(self, parent=None)
 
+        self.kwa = kwa
         self.show_buttons = kwa.get('show_buttons', False)
-        self.log_level    = kwa.get('log_level', 'INFO')
-        self.log_prefix   = kwa.get('log_prefix', './')
-        self.log_file     = kwa.get('logfname', 'log-med.txt')
-        self.save_log_at_exit = kwa.get('save_log_at_exit', False)
+        self.log_level    = kwa.get('logmode', 'INFO').upper()
+        self.savelog = kwa.get('savelog', False)
+        self.repoman = kwa.get('repoman', None)
+        self.logfname = self.repoman.logname('masked') if self.repoman is not None and self.savelog else\
+                        '/dev/null'
+        #sys.stdout = sys.stderr = open('/dev/null', 'w')
 
-        logger.debug('logging._levelToName: ', logging._levelToName) # {0: 'NOTSET', 50: 'CRITICAL', 20: 'INFO',...
-        logger.debug('logging._nameToLevel: ', logging._nameToLevel) # {'NOTSET': 0, 'ERROR': 40, 'WARNING': 30,...
+        #logger.debug('logging._levelToName: ', logging._levelToName) # {0: 'NOTSET', 50: 'CRITICAL', 20: 'INFO',...
+        #logger.debug('logging._nameToLevel: ', logging._nameToLevel) # {'NOTSET': 0, 'ERROR': 40, 'WARNING': 30,...
 
         self.dict_level_to_name = logging._levelToName
         self.dict_name_to_level = logging._nameToLevel
@@ -113,33 +118,28 @@ class GWLoggerStd(QWidget):
 
     def config_logger(self):
 
-        self.append_qwlogger('Start logger\nLog file: %s' % self.log_file)
+        self.append_qwlogger('Start logger\nLog file: %s' % self.logfname)
 
         levname = self.log_level
         level = self.dict_name_to_level[levname] # e.g. logging.DEBUG
 
-        tsfmt='%Y-%m-%dT%H:%M:%S'
-        fmt = '[%(levelname).1s] %(name)s:L%(lineno)04d %(message)s' if level==logging.DEBUG else\
-              '[%(levelname).1s] %(asctime)s %(name)s: %(message)s' # %(filename)s
-
-        #sys.stdout = sys.stderr = open('/dev/null', 'w')
+        tsfmt='T%H:%M:%S'  # '%Y-%m-%dT%H:%M:%S'
+        fmt = '[%(levelname).1s] %(asctime)s %(name)s:L%(lineno)04d %(message)s' # %(filename)s
 
         self.formatter = logging.Formatter(fmt, datefmt=tsfmt)
 
-        # TRICK: add filter to handler to intercept ALL messages
+        myhandler = logging.StreamHandler() if level==logging.DEBUG else\
+                    logging.FileHandler(self.logfname, 'w')
 
-        if self.save_log_at_exit:
-            gu.create_directory(self.log_file, mode=0o2775, umask=0o0, group='ps-users')
-            self.handler = logging.FileHandler(self.log_file, 'w')
-        else:
-            self.handler = logging.StreamHandler()
+        myhandler.addFilter(QWFilter(self))
+        myhandler.setFormatter(self.formatter)
 
-        self.handler.addFilter(QWFilter(self))
-        self.handler.setFormatter(self.formatter)
-        logger.addHandler(self.handler)
+        logger.handlers.clear()
+        logger.addHandler(myhandler)
+
         self.set_level(levname) # pass level name
-        logger.info('log file: %s\n%s SAVED AT EXIT'%\
-                    (self.log_file, 'IS' if self.save_log_at_exit else 'IS NOT'))
+        logger.info('log file: %s %s SAVED AT EXIT'%\
+                    (self.logfname, 'IS' if self.savelog else 'IS NOT'))
 
     def set_level(self, level_name='DEBUG'):
         level = self.dict_name_to_level[level_name]
@@ -188,9 +188,9 @@ class GWLoggerStd(QWidget):
     def closeEvent(self, e):
         logger.debug('closeEvent')
         #logger.info('%s.closeEvent' % self._name)
-        #self.save_log_total_in_file() # It will be saved at closing of GUIMain
+        #self.savelog_total_in_file() # It will be saved at closing of GUIMain
         #logger.addHandler(self.handler)
-        self.handler.close()
+        #self.handler.close()
         QWidget.closeEvent(self, e)
 
     def on_but_close(self):
@@ -216,10 +216,10 @@ class GWLoggerStd(QWidget):
         self.edi_txt.setText('Start logging messages in GWLoggerStd for level %s' % self.log_level)
 
     def save_log_in_file(self):
-        logger.info('save_log_in_file ' + self.log_file)
+        logger.info('save_log_in_file ' + self.logfname)
         path = str(QFileDialog.getSaveFileName(self,
                                                caption   = 'Select the file to save log',
-                                               directory = self.log_file,
+                                               directory = self.logfname,
                                                filter    = '*.txt'
                                                ))
         if path == '':
@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     w = GWLoggerStd(show_buttons=True)
-    w.setWindowTitle(w._name)
+    #w.setWindowTitle(w._name)
     w.setGeometry(200, 400, 600, 300)
 
     from psana.graphqt.QWIcons import icon

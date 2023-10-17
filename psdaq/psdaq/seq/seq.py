@@ -198,6 +198,43 @@ class ControlRequest(Instruction):
         engine.request = self.args[1]
         engine.instr += 1
 
+class Subroutine(Instruction):
+
+    opcode = 6
+    
+    def __init__(self, args):
+        super(Subroutine, self).__init__(args)
+ 
+    def _word(self):
+        if len(self.args)>1:
+            return int((5<<29) | self.args[1])
+        else:
+            return int((5<<29) | (1<<12))
+
+    @classmethod
+    def call(cls, line):
+        return cls((cls.opcode, line))
+
+    @classmethod
+    def return_(cls):
+        return cls((cls.opcode))
+
+    def print_(self):
+        if len(self.args)>1:
+            return f'Call 0x{self.args[1]:x}'
+        else:
+            return f'Return'
+
+    def execute(self,engine):
+        if len(self.args)>1:
+            engine.returnaddr = engine.instr
+            engine.instr = self.args[1]
+        else:
+            if engine.returnaddr is None:
+                raise ValueError(f'engine.returnaddr is None')
+            engine.instr = engine.returnaddr
+            engine.returnaddr = None
+
 def decodeInstr(w):
     idw = w>>29
     instr = Instruction([])
@@ -214,6 +251,11 @@ def decodeInstr(w):
         instr = ACRateSync(timeslotm=(w>>23)&0x3f,marker=(w>>16)&0xf,occ=w&0xfff)
     elif idw == 4: # Request (assume ControlRequest)
         instr = ControlRequest(word = w&0xffff)
+    elif idw == 5: # Call/Return
+        if (w&(1<<12)):
+            instr = Subroutine.return_()
+        else:
+            instr = Subroutine.call(w&0xfff)
     return instr
 
 #  validate the conditional counters in a list of instructions
@@ -240,4 +282,4 @@ def validate(filename):
                 if addr>s[0] and addr<s[1]:
                     raise ValueError(f'{filename}: CC {cc} found in overlapping loops {r} {s}')
 
-
+    #  don't know how to validate call/return matches

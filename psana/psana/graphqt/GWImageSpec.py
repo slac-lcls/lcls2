@@ -57,6 +57,7 @@ class GWImageSpec(QWidget):
         self.connect_image_scene_rect_changed()
         self.connect_histogram_scene_rect_changed()
         self.connect_new_color_table()
+        self.connect_image_pixmap_changed()
 
     def set_tool_tips(self):
         self.wimax.setToolTip('Image')
@@ -83,13 +84,21 @@ class GWImageSpec(QWidget):
     def disconnect_image_scene_rect_changed(self):
         self.wimax.disconnect_image_scene_rect_changed(self.on_image_scene_rect_changed)
 
-    def on_image_scene_rect_changed(self, r):
+    def on_image_scene_rect_changed(self, r=None):
+        if r is None: r=self.wimax.wim.scene_rect()
         #print(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r), end='\r')
         logger.debug(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r))
+        self.wimax.wim.arr_limits_old = None
         a = self.wimax.wim.array_in_rect(rect=r)
         self.disconnect_histogram_scene_rect_changed()
         self.wspec.set_spectrum_from_arr(a)
         self.connect_histogram_scene_rect_changed()
+
+    def connect_image_pixmap_changed(self):
+        self.wimax.wim.connect_image_pixmap_changed(self.on_image_scene_rect_changed)
+
+    def disconnect_image_pixmap_changed(self):
+        self.wimax.wim.disconnect_image_pixmap_changed(self.on_image_scene_rect_changed)
 
     def connect_histogram_scene_rect_changed(self):
         #self.wspec.connect_histogram_scene_rect_changed(self.wspec.test_histogram_scene_rect_changed)
@@ -104,8 +113,10 @@ class GWImageSpec(QWidget):
         logger.debug(sys._getframe().f_code.co_name + ' %s' % qu.info_rect_xywh(r))
         wim = self.wimax.wim
         self.disconnect_image_scene_rect_changed()
+        self.disconnect_image_pixmap_changed()
         wim.set_pixmap_from_arr(wim.arr, set_def=True, amin=r.top(), amax=r.bottom(), frmin=0, frmax=1) # , frmin=0.00001, frmax=0.99999)
         self.connect_image_scene_rect_changed()
+        self.connect_image_pixmap_changed()
 
     def connect_new_color_table(self):
         #self.wspec.wcbar.connect_new_color_table(self.wspec.wcbar.test_new_color_table_reception)

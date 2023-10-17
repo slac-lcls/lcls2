@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <limits>
 #include <thread>
+#include <cmath>
 #include <Python.h>
 #include <arpa/inet.h>
 #include <Eigen/Dense>
@@ -35,8 +36,8 @@
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
 
-#define MAX_ENC_VALUES 3
-#define POLYNOMIAL_ORDER 2
+#define MAX_ENC_VALUES 2
+#define POLYNOMIAL_ORDER 1
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
@@ -47,7 +48,7 @@ using ns_t = std::chrono::nanoseconds;
 int setrcvbuf(int socketFd, unsigned size);
 int createUdpSocket(int port);
 
-class RawDef:public XtcData::VarDef
+class EncoderDef:public XtcData::VarDef
 {
 public:
   enum index
@@ -58,29 +59,21 @@ public:
       scale,
       scaleDenom,
       mode,
-      error,
-      majorVersion,
-      minorVersion,
-      microVersion,
-      hardwareID
+      error
     };
 
-  RawDef()
-   {
-       NameVec.push_back({"encoderValue", XtcData::Name::UINT32,1});
-       // frameCount is common to all channels
-       NameVec.push_back({"frameCount", XtcData::Name::UINT16});
-       NameVec.push_back({"timing", XtcData::Name::UINT32,1});
-       NameVec.push_back({"scale", XtcData::Name::UINT16,1});
-       NameVec.push_back({"scaleDenom", XtcData::Name::UINT16,1});
-       NameVec.push_back({"mode", XtcData::Name::UINT8,1});
-       NameVec.push_back({"error", XtcData::Name::UINT8,1});
-       NameVec.push_back({"majorVersion", XtcData::Name::UINT16,1});
-       NameVec.push_back({"minorVersion", XtcData::Name::UINT8,1});
-       NameVec.push_back({"microVersion", XtcData::Name::UINT8,1});
-       NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
+  EncoderDef()
+  {
+      NameVec.push_back({"encoderValue", XtcData::Name::UINT32});
+      // frameCount is common to all channels
+      NameVec.push_back({"frameCount", XtcData::Name::UINT16});
+      NameVec.push_back({"timing", XtcData::Name::UINT32});
+      NameVec.push_back({"scale", XtcData::Name::UINT16});
+      NameVec.push_back({"scaleDenom", XtcData::Name::UINT16});
+      NameVec.push_back({"mode", XtcData::Name::UINT8});
+      NameVec.push_back({"error", XtcData::Name::UINT8});
    }
-} RawDef;
+} RawDef, InterpolatedDef;
 
 template<typename T>
 static int64_t _deltaT(XtcData::TimeStamp& ts)
@@ -93,23 +86,6 @@ static int64_t _deltaT(XtcData::TimeStamp& ts)
 }
 
 namespace Drp {
-
-#if 0
-static const XtcData::Name::DataType xtype[] = {
-  XtcData::Name::UINT8 , // pvBoolean
-  XtcData::Name::INT8  , // pvByte
-  XtcData::Name::INT16 , // pvShort
-  XtcData::Name::INT32 , // pvInt
-  XtcData::Name::INT64 , // pvLong
-  XtcData::Name::UINT8 , // pvUByte
-  XtcData::Name::UINT16, // pvUShort
-  XtcData::Name::UINT32, // pvUInt
-  XtcData::Name::UINT64, // pvULong
-  XtcData::Name::FLOAT , // pvFloat
-  XtcData::Name::DOUBLE, // pvDouble
-  XtcData::Name::CHARSTR, // pvString
-};
-#endif /* 0 */
 
 UdpReceiver::UdpReceiver(const Parameters&           para,
                          SPSCQueue<XtcData::Dgram*>& encQueue,
@@ -612,7 +588,7 @@ void Interpolator::update(XtcData::TimeStamp t, unsigned v)
     auto idx = _idx++;
     _idx %= _t.size();
 
-    logging::debug("*** IntE::update: idx      %d,    t %u.%09u, v %u", idx, t.seconds(), t.nanoseconds(), v);
+    logging::debug("Interpolator::update: idx      %d,    t %u.%09u, v %u", idx, t.seconds(), t.nanoseconds(), v);
 
     _t[idx] = t.asDouble();
     _v[idx] = double(v);
@@ -635,13 +611,13 @@ unsigned Interpolator::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage)
             val  += _coeff[i] * tPwr;
             tPwr *= t;
         }
-        v = unsigned(val);
+        v = unsigned(std::round(val));
     } else {
         v = unsigned(_v[_idx - 1]);   // Return the most recent value available
         damage.increase(XtcData::Damage::MissingData);
     }
 
-    logging::debug("*** Int::calc:   idx %d, t %u.%09u, v %u", _idx, ts.seconds(), ts.nanoseconds(), v);
+    logging::debug("Interpolator::calc:   idx %d, t %u.%09u, v %u", _idx, ts.seconds(), ts.nanoseconds(), v);
 
     return v;
 }
@@ -658,12 +634,12 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     m_running       (false)
 {
     if (para.kwargs.find("slowGroup") != para.kwargs.end())
-        m_slowGroup = std::stoul(para.kwargs["slowGroup"]);
+        m_slowGroup = std::stoi(para.kwargs["slowGroup"]);
     else
-        m_slowGroup = 0;    // default: interpolation disabled
+        m_slowGroup = -1;   // default: interpolation disabled
 
     logging::debug("%s: slowGroup = %u", __PRETTY_FUNCTION__, m_slowGroup);
-    if (m_slowGroup == 0) {
+    if ((m_slowGroup < 0) || (m_slowGroup > 7)) {   // valid readout groups are 0-7
         m_interpolating = false;
         logging::info("Interpolation disabled");
     } else {
@@ -672,8 +648,15 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     }
 }
 
-unsigned UdpEncoder::connect(std::string& msg)
+unsigned UdpEncoder::connect(std::string& msg, unsigned slowGroup)
 {
+    // Override the kwarg with connect json info from the TPR process, if found
+    if (slowGroup != -1u) {
+        m_interpolating = true;
+        m_slowGroup = slowGroup;
+        logging::info("Interpolation enabled using group %u", m_slowGroup);
+    }
+
     try {
         m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_encQueue, m_bufferFreelist);
     }
@@ -695,13 +678,25 @@ unsigned UdpEncoder::disconnect()
 
 void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd)
 {
+    // raw
     XtcData::Alg encoderRawAlg("raw", UdpEncoder::MajorVersion, UdpEncoder::MinorVersion, UdpEncoder::MicroVersion);
-    XtcData::NamesId rawNamesId(nodeId, segment);
+    XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
     XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
                                                                  m_para->detName.c_str(), encoderRawAlg,
                                                                  m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, segment);
     rawNames.add(xtc, bufEnd, RawDef);
     m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
+
+    if (m_interpolating) {
+        // interpolated
+        XtcData::Alg encoderInterpolatedAlg("interpolated", UdpEncoder::MajorVersion, UdpEncoder::MinorVersion, UdpEncoder::MicroVersion);
+        XtcData::NamesId interpolatedNamesId(nodeId, InterpolatedNamesIndex);
+        XtcData::Names&  interpolatedNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                     m_para->detName.c_str(), encoderInterpolatedAlg,
+                                                                     m_para->detType.c_str(), m_para->serNo.c_str(), interpolatedNamesId, segment);
+        interpolatedNames.add(xtc, bufEnd, InterpolatedDef);
+        m_namesLookup[interpolatedNamesId] = XtcData::NameIndex(interpolatedNames);
+    }
 }
 
   //std::string UdpEncoder::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
@@ -863,6 +858,7 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
         }
 
         if (m_interpolating) {
+            assert((m_slowGroup >= 0) && (m_slowGroup <= 7));
             if (dgram && (dgram->readoutGroups() & (1 << m_slowGroup)) &&
                 (dgram->service() == XtcData::TransitionId::L1Accept)) {
                 const ms_t tmo(1500);
@@ -870,20 +866,21 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                 XtcData::Dgram* encDg;
                 while (!m_encQueue.peek(encDg)) {  // Wait for an encoder value
                     if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
-                        printf("*** enc peek timed out: %u\n", m_encQueue.guess_size());
+                        logging::warning("encQueue peek timed out: %u\n", m_encQueue.guess_size());
                         return;
                     }
                     std::this_thread::yield();
                 }
-                auto encFrame = (const encoder_frame_t*)(encDg->xtc.payload());
-                auto encValue = encFrame->channel[0].encoderValue;
+                auto& frame = *(encoder_frame_t*)(encDg->xtc.payload());
+                auto  value = frame.channel[0].encoderValue;
 
                 // Associate the current L1Accept's timestamp with the latest encoder value
-                m_interpolator.update(dgram->time, encValue);
+                m_interpolator.update(dgram->time, value);
 
                 // Handle all events that have accumulated on the queue
                 while (true) {
                     uint32_t pgpIdx;
+                    uint32_t rawValue = value;
                     if (!m_evtQueue.peek(pgpIdx))  break;
 
                     // Deal with intermediate SlowUpdates
@@ -893,14 +890,13 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                         continue;
                     }
 
-                    // NB: This copies the 2nd frame into the XTC frame, but they're all the same?
-                    auto& frame = *(encoder_frame_t*)(pgpDg->xtc.payload());
-                    frame = *encFrame;
-
-                    // When pgpDg == dgram, this returns the most recent encoder value (_v[idx1])
-                    frame.channel[0].encoderValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
-
-                    _handleL1Accept(*pgpDg, frame);
+                    // Update the encoder value
+                    uint32_t interpolatedValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
+                    if (pgpDg != dgram) {
+                        _handleL1Accept(*pgpDg, frame, nullptr, &interpolatedValue);
+                    } else {
+                        _handleL1Accept(*pgpDg, frame, &rawValue, &interpolatedValue);
+                    }
 
                     if (pgpDg == dgram)  return;
                 }
@@ -908,69 +904,77 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                 break;
             }
         } else {
+            // not interpolating
             XtcData::Dgram* encDg;
             if (!m_encQueue.peek(encDg))  break;
             evtDg->xtc.damage.increase(encDg->xtc.damage.value());
 
             auto frame = (const encoder_frame_t*)(encDg->xtc.payload());
-
-            _handleL1Accept(*evtDg, *frame);
+            uint32_t rawValue = frame->channel[0].encoderValue;
+            _handleL1Accept(*evtDg, *frame, &rawValue, nullptr);
         }
     }
 }
 
-void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame)
+// only doing the CreateData for the “raw” case on events where the encoder is read out.
+void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame,
+                        uint32_t *rawValue, uint32_t *interpolatedValue)
 {
     // ----- CreateData  ------------------------------------------------------
-    unsigned segment = 0;
 
-    XtcData::NamesId namesId1(nodeId, segment);
-    XtcData::CreateData raw(dgram.xtc, bufEnd, m_namesLookup, namesId1);
-    unsigned shape[XtcData::MaxRank] = {1};
+    if (interpolatedValue != nullptr) {
+        // interpolated
+        XtcData::NamesId namesId1(nodeId, InterpolatedNamesIndex);
+        XtcData::CreateData interpolated(dgram.xtc, bufEnd, m_namesLookup, namesId1);
 
-    // ...encoderValue
-    XtcData::Array<uint32_t> arrayA = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
-    arrayA(0) = frame.channel[0].encoderValue;
+        // ...encoderValue
+        interpolated.set_value(EncoderDef::encoderValue, *interpolatedValue);
 
-    // ...frameCount
-    raw.set_value(RawDef::frameCount, frame.header.frameCount);
+        // ...frameCount
+        interpolated.set_value(EncoderDef::frameCount, frame.header.frameCount);
 
-    // ...timing
-    XtcData::Array<uint32_t> arrayB = raw.allocate<uint32_t>(RawDef::timing,shape);
-    arrayB(0) = frame.channel[0].timing;
+        // ...timing
+        interpolated.set_value(EncoderDef::timing, frame.channel[0].timing);
 
-    // ...scale
-    XtcData::Array<uint16_t> arrayC = raw.allocate<uint16_t>(RawDef::scale,shape);
-    arrayC(0) = frame.channel[0].scale;
+        // ...scale
+        interpolated.set_value(EncoderDef::scale, frame.channel[0].scale);
 
-    // ...scaleDenom
-    XtcData::Array<uint16_t> arrayJ = raw.allocate<uint16_t>(RawDef::scaleDenom,shape);
-    arrayJ(0) = frame.channel[0].scaleDenom;
+        // ...scaleDenom
+        interpolated.set_value(EncoderDef::scaleDenom, frame.channel[0].scaleDenom);
 
-    // ...mode
-    XtcData::Array<uint8_t> arrayD = raw.allocate<uint8_t>(RawDef::mode,shape);
-    arrayD(0) = frame.channel[0].mode;
+        // ...mode
+        interpolated.set_value(EncoderDef::mode, frame.channel[0].mode);
 
-    // ...error
-    XtcData::Array<uint8_t> arrayE = raw.allocate<uint8_t>(RawDef::error,shape);
-    arrayE(0) = frame.channel[0].error;
+        // ...error
+        interpolated.set_value(EncoderDef::error, frame.channel[0].error);
+    }
 
-    // ...majorVersion
-    XtcData::Array<uint16_t> arrayF = raw.allocate<uint16_t>(RawDef::majorVersion,shape);
-    arrayF(0) = frame.header.majorVersion;
+    if (rawValue != nullptr) {
+        // raw
+        XtcData::NamesId namesId2(nodeId, RawNamesIndex);
+        XtcData::CreateData raw(dgram.xtc, bufEnd, m_namesLookup, namesId2);
 
-    // ...minorVersion
-    XtcData::Array<uint8_t> arrayG = raw.allocate<uint8_t>(RawDef::minorVersion,shape);
-    arrayG(0) = frame.header.minorVersion;
+        // ...encoderValue
+        raw.set_value(EncoderDef::encoderValue, *rawValue);
 
-    // ...microVersion
-    XtcData::Array<uint8_t> arrayH = raw.allocate<uint8_t>(RawDef::microVersion,shape);
-    arrayH(0) = frame.header.microVersion;
+        // ...frameCount
+        raw.set_value(EncoderDef::frameCount, frame.header.frameCount);
 
-    // ...hardwareID
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%s", frame.header.hardwareID);
-    raw.set_string(RawDef::hardwareID, buf);
+        // ...timing
+        raw.set_value(EncoderDef::timing, frame.channel[0].timing);
+
+        // ...scale
+        raw.set_value(EncoderDef::scale, frame.channel[0].scale);
+
+        // ...scaleDenom
+        raw.set_value(EncoderDef::scaleDenom, frame.channel[0].scaleDenom);
+
+        // ...mode
+        raw.set_value(EncoderDef::mode, frame.channel[0].mode);
+
+        // ...error
+        raw.set_value(EncoderDef::error, frame.channel[0].error);
+    }
 }
 
 void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
@@ -1015,14 +1019,15 @@ void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
     if (rc)  assert(evtIdx == pebbleIdx);
 }
 
-void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame)
+void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame,
+                                 uint32_t *rawValue, uint32_t *interpolatedValue)
 {
     uint32_t evtIdx;
     m_evtQueue.try_pop(evtIdx);         // Actually consume the element
 
     auto bufEnd = (char*)&pgpDg + m_pool->pebble.bufferSize();
 
-    _event(pgpDg, bufEnd, frame);
+    _event(pgpDg, bufEnd, frame, rawValue, interpolatedValue);
 
     if (!m_interpolating || (pgpDg.readoutGroups() & (1 << m_slowGroup))) {
         XtcData::Dgram* dgram;
@@ -1164,10 +1169,21 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
         return;
     }
 
-    m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
-    m_det->connect(msg, std::to_string(getId()));
+    unsigned slowGroup = -1u;
+    std::string id = std::to_string(getId());
+    if (m_para.kwargs.find("encTprAlias") != m_para.kwargs.end()) {
+        std::string encTprAlias = m_para.kwargs["encTprAlias"];
+        for (auto it : msg["body"]["tpr"].items()) {
+            slowGroup = it.value()["det_info"]["readout"];
+            if (it.value()["proc_info"]["alias"] == encTprAlias)
+                break;
+        }
+    }
 
-    unsigned rc = m_udpDetector->connect(errorMsg);
+    m_det->nodeId = msg["body"]["drp"][id]["drp_id"];
+    m_det->connect(msg, id);
+
+    unsigned rc = m_udpDetector->connect(errorMsg, slowGroup);
     if (!errorMsg.empty()) {
         if (!rc) {
             logging::warning(("UdpDetector::connect: " + errorMsg).c_str());
@@ -1450,6 +1466,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pva_addr")       continue;  // DrpBase
             if (kwargs.first == "match_tmo_ms")   continue;
             if (kwargs.first == "slowGroup")      continue;
+            if (kwargs.first == "encTprAlias")    continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;

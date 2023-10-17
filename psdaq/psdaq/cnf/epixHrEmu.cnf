@@ -26,6 +26,7 @@ trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 task_set = 'taskset -c 4-63'
 batching = 'batching=yes'
 directIO = 'directIO=yes'
+pvaAddr  = 'pva_addr=172.21.152.78' # mon001
 scripts  = f'script_path={trig_dir}'
 #network  = 'ep_provider=sockets,ep_domain=eno1'
 epixData   = '/cds/data/drpsrcf/temp/claus/xtc/rixx1003721-r0106-s010-c000.xtc2'
@@ -34,8 +35,8 @@ epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/epixHrEmu.py'
 epixKwargs = f'pebbleBufCount=16384,sim_length=55292,xtcfile={epixData},l1aOffset=1000,drp=python,pythonScript={epixScript}'
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
-std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}'
-std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO},{pvaAddr}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO},{pvaAddr}'
 
 teb_cmd  = task_set+' teb '            +std_opts + f' -k {scripts}'
 meb_cmd  = task_set+' monReqServer '   +std_opts
@@ -108,7 +109,7 @@ procmgr_config = [
  {host: 'drp-srcf-cmp037', id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  # EPIX-HR has 2 MP on 20 panels, 4 ASICs/panel, 144 x 192 pixels/ASIC, 2 B/pixel = 221184 B/segment = 2 + 4 * sim_length => sim_length ~= 55294 per panel
- {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',             cmd:f'{drp_cmd0} -l 0x1 -W 26 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',             cmd:f'{drp_cmd0} -l 0x1 -W 1 -D epixhremu -k {epixKwargs}'},
 ## {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spux',              cmd:f'{drp_cmd1} -l 0xf -W 30 -D epixhremu -k {epixKwargs}'},
  {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x2 -W 26 -D epixhremu -k {epixKwargs}'},
 # {host: 'drp-srcf-cmp036', id:'epixhr_emu_2',  flags:'spu',                cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},

@@ -146,11 +146,11 @@ class GWViewImageROI(GWViewImage):
     def mouseReleaseEvent(self, e):
         GWViewImage.mouseReleaseEvent(self, e)
         logger.debug('mouseReleaseEvent mode_type: %s mode_name: %s' % (str(self.mode_type), str(self.mode_name)))
+        self.left_is_pressed = False
+        self.right_is_pressed = False
         if   self.mode_type < roiu.ADD: return
         elif self.mode_type & roiu.ADD: self.on_release_add(e)
         elif self.mode_type & roiu.EDIT: self.handle_active = None
-        self.left_is_pressed = False
-        self.right_is_pressed = False
 
     def set_roi_color(self, roi=None, color=QCOLOR_DEF): #, brush=None):
         """sets roi color, by default for self.roi_active sets QCOLOR_DEF"""
@@ -196,15 +196,16 @@ class GWViewImageROI(GWViewImage):
         return rois
 
     def one_roi_at_point(self, p):
-        rois = self.rois_at_point(p)
+        o = rois = self.rois_at_point(p)
         logger.debug('one_roi_at_point - list of ROIs at point, returns nearest or [0]: %s' % str(rois))
         s = len(rois) if rois is not None else 0
         if s<1: return None
-        elif self.roi_type == roiu.PIXEL: # select pixel rect nearest to the click position
-            dmins = [(p - o.scitem.rect().center()).manhattanLength() for o in rois]
-            return rois[dmins.index(min(dmins))]
-        else:
-            return rois[0]
+        #elif self.roi_type == roiu.PIXEL and hasattr(o.scitem, 'rect'): # select pixel rect nearest to the click position
+        #    dmins = [(p - o.scitem.rect().center()).manhattanLength() for o in rois]
+        #    return rois[dmins.index(min(dmins))]
+        #else:
+        #    return rois[0]
+        return rois[0]
 
     def scene_pos(self, e):
         """scene position for mouse event"""
@@ -279,6 +280,7 @@ class GWViewImageROI(GWViewImage):
             roisel = [o for o in self.list_of_rois if o.scitem in items]
             logger.debug('remove_roi list of ROIs at point: %s' % str(roisel))
             for o in roisel:
+                logger.info('remove selected ROI: %s at position: %s' % (o.roi_name, str(o.pos)))
                 self.remove_roi(o)
 
     def delete_selected_roi(self):
@@ -286,6 +288,7 @@ class GWViewImageROI(GWViewImage):
         roisel = [o for o in self.list_of_rois if o.is_mode(SELECT)]
         logger.debug('delete_selected_roi: %s' % str(roisel))
         for o in roisel:
+            logger.info('remove selected ROI: %s at position: %s' % (o.roi_name, str(o.pos)))
             self.remove_roi(o)
 
     def delete_all_roi(self):
@@ -381,7 +384,7 @@ class GWViewImageROI(GWViewImage):
         scpos = self.scene_pos(e)
         iscpos = roiu.int_scpos(scpos)
         d = 0 if self._iscpos_press is None else (iscpos-self._iscpos_press).manhattanLength()
-        logger.debug('XXX GWViewImageROI.on_release_add ix=%d iy=%d '%(iscpos.x(), iscpos.y()))
+        logger.debug('on_release_add ix=%d iy=%d '%(iscpos.x(), iscpos.y()))
         #print('XXX roi_active, iscpos, _iscpos_old, roi_type, manhattanLength:', self.roi_active, iscpos, self._iscpos_press, self.roi_type, d)
         if self.roi_active is None\
         or self._iscpos_press is None\
@@ -408,7 +411,7 @@ class GWViewImageROI(GWViewImage):
         logger.debug('GWViewImageROI.set_rois_from_dict\n%s' % info_dict(dtot))
         self.delete_all_roi()
         for k,d in dtot.items():
-            logger.info('XXX set roi %4s for dict: %s' % (k,d))
+            logger.info('set roi %4s for dict: %s' % (k,d))
             roi_type =d['roi_type']
             xy = d['points'][0]
             mode = d.get('mode', NONE)
@@ -426,7 +429,7 @@ class GWViewImageROI(GWViewImage):
         logger.debug('mask_pixels')
         shape = self.arr.shape
         mask = np.ones(shape, dtype=np.uint8)
-        print(info_ndarr(mask, 'XXX mask_pixels'))
+        logger.debug(info_ndarr(mask, 'mask_pixels'))
         for o in self.list_of_rois:
             if o.roi_type == roiu.PIXEL:
                 p = o.pos

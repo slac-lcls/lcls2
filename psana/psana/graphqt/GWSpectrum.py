@@ -55,7 +55,7 @@ class GWSpectrum(QWidget):
         rscx = QRectF(r.x(), 0, r.width(), 1)
         rscy = QRectF(0, r.y(), 1, r.height())
 
-        self.wax = GWViewAxis(None, rscx, side='U', origin='UR', scale_ctl=True, wwidth=30, wlength=200, signal_fast=signal_fast) #, label_rot=20)
+        self.wax = GWViewAxis(None, rscx, side='U', origin='UR', scale_ctl=True, wwidth=30, wlength=200, signal_fast=signal_fast, label_rot=10)
         self.way = GWViewAxis(None, rscy, side='L', origin='DL', scale_ctl=True, wwidth=60, wlength=200, signal_fast=signal_fast) #, label_rot=-70)
 
         self.but_reset = QPushButton('Reset')
@@ -167,11 +167,12 @@ class GWSpectrum(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
         self.wcbar.setFixedWidth(25)
         self.edi_info.setMinimumHeight(85)
+        self.edi_info.setMaximumHeight(90)
         self.edi_info.setStyleSheet(self.whi.style_def)
 
     def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.00001, frmax=0.99999, edgemode=0, update_hblimits=True):
         """shotcut"""
-        #logger.info('set_spectrum_from_arr')
+        logger.debug('set_spectrum_from_arr')
         self.whi.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)
         self.update_info_panel()
         self.on_but_reset()

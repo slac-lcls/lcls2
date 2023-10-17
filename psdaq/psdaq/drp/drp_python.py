@@ -13,6 +13,8 @@ detector_id = sys.argv[7]
 detector_segment = int(sys.argv[8])
 worker_num = int(sys.argv[9])
 verbose = int(sys.argv[10])
+instrument = sys.argv[11]
+prom_cfg_dir = sys.argv[12]
 
 logging.basicConfig(format='%(filename)s L%(lineno)04d: <%(levelname).1s> %(message)s',
                     level=logging.INFO if verbose==0 else logging.DEBUG)
@@ -35,7 +37,8 @@ class IPCInfo:
             assert(False)
 
 class DrpInfo:
-    def __init__(self, detector_name, detector_type, detector_id, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info):
+    def __init__(self, detector_name, detector_type, detector_id, detector_segment, worker_num,
+                 pebble_bufsize, transition_bufsize, ipc_info, instrument, partition, prom_cfg_dir):
         self.det_name = detector_name
         self.det_type = detector_type
         self.det_id = detector_id
@@ -47,9 +50,13 @@ class DrpInfo:
         self.is_supervisor = False
         self.tcp_socket_name = None
         self.ipc_socket_name = f"ipc:///tmp/{detector_name}_{detector_segment}.pipe"
+        self.instrument = instrument
+        self.partition = partition
+        self.prom_cfg_dir = prom_cfg_dir
 
 ipc_info = IPCInfo(partition, detector_name, detector_segment, worker_num, shm_mem_size)
-drp_info = DrpInfo(detector_name, detector_type, detector_id, detector_segment, worker_num, pebble_bufsize, transition_bufsize, ipc_info)
+drp_info = DrpInfo(detector_name, detector_type, detector_id, detector_segment, worker_num,
+                   pebble_bufsize, transition_bufsize, ipc_info, instrument, partition, prom_cfg_dir)
 
 try:
     while True:

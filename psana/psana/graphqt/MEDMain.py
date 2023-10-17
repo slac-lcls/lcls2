@@ -27,6 +27,8 @@ from psana.graphqt.MEDControl import MEDControl
 from psana.graphqt.MEDControlROI import MEDControlROI
 import psana.graphqt.MEDUtils as mu
 
+from psana.detector.RepoManager import RepoManager
+
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 class MEDMain(QWidget):
@@ -34,14 +36,19 @@ class MEDMain(QWidget):
     def __init__(self, **kwa):
         QWidget.__init__(self, parent=None)
 
-        self.proc_kwargs(**kwa)
+        kwa['repoman'] = repoman = RepoManager(**kwa)
+        self.wlog = GWLoggerStd(**kwa)
+        repoman.save_record_at_start(SCRNAME)
+        self.kwa = kwa
 
-        image, geo = mu.image_from_kwargs(**kwa)
+        self.ictab = kwa.get('ctab', 2)
+        self.signal_fast = kwa.get('signal_fast', False)
+
+        image, geo, geo_doc = mu.image_from_kwargs(**kwa)
         ctab = mu.color_table(ict=self.ictab)
         self.wisp = GWImageSpec(parent=self, image=image, ctab=ctab, signal_fast=self.signal_fast)
-        self.wlog = GWLoggerStd()
-        self.wctl = MEDControl(parent=self, **kwa, geo=geo)
-        self.wbts = MEDControlROI(parent=self)
+        self.wctl = MEDControl(parent=self, **kwa, geo=geo, geo_doc=geo_doc)
+        self.wbts = MEDControlROI(parent=self, **kwa)
 
         self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.wbts)
@@ -62,26 +69,14 @@ class MEDMain(QWidget):
         self.set_style()
         self.set_tool_tips()
 
-    def proc_kwargs(self, **kwa):
-        #print_kwa(kwa)
-        self.kwa   = kwa
-        loglevel   = kwa.get('loglevel', 'DEBUG').upper()
-        logdir     = kwa.get('logdir', './')
-        savelog    = kwa.get('savelog', False)
-        self.wlog  = kwa.get('wlog', None)
-        self.ictab = kwa.get('ictab', 2)
-        self.signal_fast = kwa.get('signal_fast', False)
-
     def set_tool_tips(self):
         self.setToolTip('Mask Editor')
 
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
-        #self.wisp.setFixedHeight(400)
         #self.setStyleSheet("background-color: rgb(0, 0, 0); color: rgb(220, 220, 220);")
 
     def set_splitter_pos(self, fr=0.95):
-        #self.wlog.setMinimumHeight(100)
         h = self.height()
         s = int(fr*h)
         self.vspl.setSizes((s, h-s)) # spl_pos = self.vspl.sizes()[0]
@@ -96,17 +91,10 @@ class MEDMain(QWidget):
         QWidget.closeEvent(self, e)
 
 def mask_editor(**kwa):
-    repodir  = kwa.get('repodir', './work')
-    loglevel = kwa.get('loglevel', 'INFO').upper()
-    intlevel = logging._nameToLevel[loglevel]
-    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=intlevel)
-
-    from psana.detector.Utils import info_dict  #, info_command_line, info_namespace, info_parser_arguments, str_tstamp
-    print('kwargs: %s' % info_dict(kwa))
-
-    if kwa.get('rec_at_start', True):
-        from psana.detector.RepoManager import RepoManager
-        RepoManager(dirrepo=repodir).save_record_at_start(SCRNAME)
+    #loglevel = kwa.get('logmode', 'INFO').upper()
+    #intlevel = logging._nameToLevel[loglevel]
+    #logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=intlevel)
+    #print('kwargs: %s' % mu.ut.info_dict(kwa))
 
     a = QApplication(sys.argv)
     w = MEDMain(**kwa)
@@ -121,13 +109,10 @@ def mask_editor(**kwa):
 
 if __name__ == "__main__":
     from psana.detector.dir_root import DIR_DATA_TEST
-    #import os
-    #os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     kwa = {\
       'ndafname': DIR_DATA_TEST + '/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy',\
       'loglevel':'INFO',\
     }
-
     mask_editor(**kwa)
 
 # EOF

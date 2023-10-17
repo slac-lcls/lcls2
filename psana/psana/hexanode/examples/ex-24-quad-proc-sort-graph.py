@@ -34,6 +34,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
+import os
 import sys
 from time import time
 
@@ -45,7 +46,10 @@ from psana.hexanode.DLDGraphics   import draw_plots
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
+from psana.hexanode.examples.ex_test_data import DIR_DATA_TEST
 
+DIR_ABSPATH = os.path.abspath(os.path.dirname(__file__)) # absolute path to .../psana/hexanode/examples
+FNAME = '%s/%s' % (DIR_DATA_TEST, 'data-amox27716-r0100-acqiris-e001000.xtc2')
 USAGE = 'Usage: python %s' % sys.argv[0]
 
 
@@ -53,7 +57,7 @@ def proc_data(**kwargs):
 
     logger.info(str_kwargs(kwargs, title='Input parameters:'))
 
-    DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
+    DSNAME       = kwargs.get('dsname', FNAME)
     DETNAME      = kwargs.get('detname','tmo_quadanode')
     EVSKIP       = kwargs.get('evskip', 0)
     EVENTS       = kwargs.get('events', 100) + EVSKIP
@@ -64,7 +68,9 @@ def proc_data(**kwargs):
     orun  = next(ds.runs())
     det   = orun.Detector(DETNAME)
 
-    kwargs['consts'] = det.calibconst
+    print('XXX det.calibconst', det.calibconst)
+
+    kwargs['consts'] = det.calibconst if det.calibconst else None
 
     peaks = WFPeaks(**kwargs)
     proc  = DLDProcessor(**kwargs)
@@ -108,7 +114,7 @@ if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print('%s\nTEST %s' % (50*'_', tname))
 
-    kwargs = {'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2',
+    kwargs = {'dsname'   : FNAME,
               'detname'  : 'tmo_quadanode',
               'numchs'   : 5,
               'numhits'  : 16,
@@ -117,8 +123,8 @@ if __name__ == "__main__":
               'ofprefix' : 'figs-DLD/plot',
               'run'      : 100,
               'exp'      : 'amox27716',
-              'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
-              'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
+              'calibcfg' : '%s/configuration_quad.txt' % DIR_ABSPATH,
+              'calibtab' : '%s/calibration_table_data.txt' % DIR_ABSPATH,
               'verbose'  : False,
              }
 

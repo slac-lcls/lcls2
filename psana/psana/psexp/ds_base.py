@@ -181,8 +181,8 @@ class DataSourceBase(abc.ABC):
         files are not used because this callback is used to check if we
         should wait for more data on the xtc files. The read-retry will not
         happen if this callback returns True and there's 0 byte read out.
-        
-        See https://github.com/monarin/psana-nersc/blob/master/psana2/write_then_move.sh 
+
+        See https://github.com/monarin/psana-nersc/blob/master/psana2/write_then_move.sh
         to mimic a live run for testing this feature.
         """
         found_flags = [False] * self.n_files
@@ -246,7 +246,7 @@ class DataSourceBase(abc.ABC):
         dirname = os.path.dirname(xtc_file)
         fn_only = os.path.splitext(os.path.basename(xtc_file))[0]
         inprogress_file = os.path.join(dirname, fn_only+'.xtc2.inprogress')
-        
+
         # Check if either one exists
         file_found = os.path.isfile(xtc_file)
         true_xtc_file = xtc_file
@@ -272,7 +272,7 @@ class DataSourceBase(abc.ABC):
     def _get_file_info_from_db(self, runnum):
         """ Returns a list of xtc2 files as shown in the db.
 
-        Note that the requested url below returns list of all files (all streams and 
+        Note that the requested url below returns list of all files (all streams and
         all chunks) from the database. For psana2, we only need the first chunk (-c)
         of each stream so the original list is filtered down.
 
@@ -296,10 +296,10 @@ class DataSourceBase(abc.ABC):
         except Exception:
             print(f'Warning: unable to connect to {url}')
             all_xtc_files = []
-        
+
         file_info = {}
         if all_xtc_files:
-            # Only take chunk 0 xtc files (matched with *-c*0.) 
+            # Only take chunk 0 xtc files (matched with *-c*0.)
             xtc_files = [os.path.basename(xtc_file) for xtc_file in all_xtc_files if re.search(r'-c(.+?)0\.', xtc_file)]
             if xtc_files:
                 file_info['xtc_files'] = xtc_files
@@ -325,8 +325,8 @@ class DataSourceBase(abc.ABC):
         if file_info:
             # Builds a list of expected smd files
             xtc_files_from_db   = file_info['xtc_files']
-            smd_files   = [os.path.join(self.xtc_path, 'smalldata',           
-                    os.path.splitext(xtc_file_from_db)[0]+'.smd.xtc2')             
+            smd_files   = [os.path.join(self.xtc_path, 'smalldata',
+                    os.path.splitext(xtc_file_from_db)[0]+'.smd.xtc2')
                     for xtc_file_from_db in xtc_files_from_db]
 
             self.current_retry_no = 0
@@ -340,27 +340,27 @@ class DataSourceBase(abc.ABC):
             smd_dir = os.path.join(self.xtc_path, 'smalldata')
             smd_files = sorted(glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4)))) + \
                     glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2.inprogress'%(str(runnum).zfill(4)))))
-        
+
         self.n_files   = len(smd_files)
         assert self.n_files > 0 , f"No smalldata files found from this path: {os.path.join(self.xtc_path, 'smalldata')}"
 
         # Look for matching bigdata files - MUST match all.
         # We start by looking for smd basename with .inprogress extension.
-        # If this name is not found, try .xtc2. 
-        xtc_files = [os.path.join(self.xtc_path, os.path.basename(smd_file).split('.smd')[0] + ".xtc2") 
+        # If this name is not found, try .xtc2.
+        xtc_files = [os.path.join(self.xtc_path, os.path.basename(smd_file).split('.smd')[0] + ".xtc2")
                 for smd_file in smd_files]
         for i_xtc, xtc_file in enumerate(xtc_files):
             flag_found, true_xtc_file = self._check_file_exist_with_retry(xtc_file)
             if not flag_found:
                 raise FileNotFoundError(true_xtc_file)
             xtc_files[i_xtc] = true_xtc_file
-            
+
         self.smd_files = smd_files
         self.xtc_files = xtc_files
 
         logger.debug('smd_files:\n'+'\n'.join(self.smd_files))
         logger.debug('xtc_files:\n'+'\n'.join(self.xtc_files))
-        
+
         # Set default flag for replacing smalldata with bigda files.
         self.dsparms.set_use_smds([False] * self.n_files)
 
@@ -400,10 +400,10 @@ class DataSourceBase(abc.ABC):
         self.smalldata_obj.setup_parms(**kwargs)
         return self.smalldata_obj
 
-    def _start_prometheus_client(self, mpi_rank=0):
+    def _start_prometheus_client(self, mpi_rank=0, prom_cfg_dir=None):
         if not self.monitor:
             logger.debug('ds_base: RUN W/O PROMETHEUS CLENT')
-        else:
+        elif prom_cfg_dir is None: # Use push gateway
             logger.debug('ds_base: START PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
             self.e = threading.Event()
             self.t = threading.Thread(name='PrometheusThread%s'%(mpi_rank),
@@ -411,24 +411,29 @@ class DataSourceBase(abc.ABC):
                     args=(self.e, mpi_rank),
                     daemon=True)
             self.t.start()
+        else:                      # Use http exposer
+            logger.debug('ds_base: START PROMETHEUS CLIENT (PROM_CFG_DIR: %s)'%(prom_cfg_dir))
+            self.e = None
+            self.prom_man.create_exposer(prom_cfg_dir)
 
     def _end_prometheus_client(self, mpi_rank=0):
         if not self.monitor:
             return
 
-        logger.debug('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
-        self.e.set()
-    
+        if self.e is not None:     # Push gateway case only
+            logger.debug('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
+            self.e.set()
+
     @property
     def _configs(self):
         """Returns configs from DgramManager"""
         return self.dm.configs
-    
+
     def _apply_detector_selection(self):
         """
         Handles two arguments
         1) detectors=['detname', 'detname_0']
-            Reduce no. of smd/xtc files to only those with given 'detname' or 
+            Reduce no. of smd/xtc files to only those with given 'detname' or
             'detname:segment_id'.
         2) xdetectors=['detname', 'detname_0']
             Reduce no. of smd/xtc files to only *NOT* in this list.
@@ -489,11 +494,11 @@ class DataSourceBase(abc.ABC):
                             # and there're more than one detectors in the file.
                             if len(exist_set) > len(matched_set):
                                 print(f'Warning: Stream-{i} has one or more detectors matched with the excluded set. All detectors in this stream will be excluded.')
-                             
+
                     if flag_keep:
                         if self.xtc_files: xtc_files.append(self.xtc_files[i])
                         if self.smd_files: smd_files.append(self.smd_files[i])
-                        configs.append(config) 
+                        configs.append(config)
                         det_dict[cn_keeps] = all_det_dict[i]
                         cn_keeps += 1
                         logger.debug(f'  |-- Kept')
@@ -519,7 +524,7 @@ class DataSourceBase(abc.ABC):
                         logger.debug(f'  |-- Kept with bigdata')
 
             self.xtc_files = xtc_files
-            self.smd_files = smd_files  
+            self.smd_files = smd_files
 
             for smd_fd in smd_fds:
                 os.close(smd_fd)
@@ -529,7 +534,7 @@ class DataSourceBase(abc.ABC):
 
     def _setup_run_calibconst(self):
         """
-        note: calibconst is set differently in MPIDataSource and DrpDataSource 
+        note: calibconst is set differently in MPIDataSource and DrpDataSource
         """
         runinfo = self._get_runinfo()
         if not runinfo:
@@ -572,4 +577,4 @@ class DataSourceBase(abc.ABC):
                 os.close(fd)
             logger.debug(f'ds_base: close smd fds: {self.smd_fds}')
 
-    
+

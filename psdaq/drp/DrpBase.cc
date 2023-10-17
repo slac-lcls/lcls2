@@ -189,7 +189,7 @@ void MemPool::freePebble()
 
     // Release when all pebble buffers were in use but now one is free
     if (allocs - frees == m_nbuffers) {
-        std::unique_lock<std::mutex> lock(m_lock);
+        std::lock_guard<std::mutex> lock(m_lock);
         m_condition.notify_one();
     }
 }
@@ -435,6 +435,9 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
 void PgpReader::freeDma(PGPEvent* event)
 {
+    // DMA buffers must be freeable from multiple threads
+    std::lock_guard<std::mutex> lock(m_lock);
+
     // Return buffers and reset event.  Careful with order here!
     // index could be reused as soon as dmaRetIndexes() completes
     for (int i=0; i<PGP_MAX_LANES; i++) {
@@ -1291,6 +1294,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     bool bufErr = false;
     m_supervisorIpPort.clear();
     m_isSupervisor = false;
+
     for (auto it : body["drp"].items()) {
         unsigned drpId = it.value()["drp_id"];
 
@@ -1325,6 +1329,19 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
             uint16_t port = base_port + id * 8 + m_para.partition;
             m_supervisorIpPort = ip + ":" + std::to_string(port);  // Supervisor's IP and port
             m_isSupervisor = alias == m_para.alias;                // True if we're the supervisor
+        }
+    }
+
+    if (body.find("tpr") != body.end()) {
+        for (auto it : body["tpr"].items()) {
+            // Build readout group mask for ignoring other partitions' RoGs
+            unsigned rog(it.value()["det_info"]["readout"]);
+            if (rog < Pds::Eb::NUM_READOUT_GROUPS) {
+                m_para.rogMask |= 1 << rog;
+            }
+            else {
+                logging::warning("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
+            }
         }
     }
 

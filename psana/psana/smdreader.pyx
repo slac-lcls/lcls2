@@ -18,6 +18,7 @@ cdef class SmdReader:
     cdef ParallelReader prl_reader
     cdef int         winner
     cdef uint64_t    n_view_events
+    cdef uint64_t    n_view_L1Accepts
     cdef int         max_retries, sleep_secs
     cdef array.array i_starts                   # ¬ used locally for finding boundary of each
     cdef array.array i_ends                     # } stream file (defined here for speed) in view(),  
@@ -161,7 +162,7 @@ cdef class SmdReader:
         self.winner = -1
 
     @cython.boundscheck(False)
-    def view(self, uint64_t batch_size=1000, int intg_stream_id=-1):
+    def view(self, int batch_size=1000, int intg_stream_id=-1, ignore_transition=True):
         """ Returns memoryview of the data and step buffers.
 
         This function is called by SmdReaderManager only when is_complete is True (
@@ -173,7 +174,7 @@ cdef class SmdReader:
         """
         st_all = time.monotonic()
         cdef int i=0
-        cdef int i_eob=0
+        cdef int i_bob=0, i_eob=0
 
         # Find the winning buffer.
         cdef uint64_t limit_ts=0
@@ -199,19 +200,31 @@ cdef class SmdReader:
                 limit_ts = self.prl_reader.bufs[intg_stream_id].ts_arr[i_found]
                 self.winner = intg_stream_id
 
-        # No. of events available in the viewing window
-        self.n_view_events = self.prl_reader.bufs[self.winner].n_ready_events - \
-                self.prl_reader.bufs[self.winner].n_seen_events
-        # Index of the last event in the viewing window
+        # Index of the first and last event in the viewing window
+        i_bob = self.prl_reader.bufs[self.winner].n_seen_events - 1
         i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
         
         # Apply batch_size- find boundaries (limit ts) of the winning buffer.
-        # this is either the nth or the batch_size event.
-        if self.n_view_events > batch_size:
-            i_eob               = self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size
-            limit_ts            = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
-            self.n_view_events  = batch_size
-
+        # this is either the nth or the batch_size event. Make sure that
+        # we only count L1Accept for batch_size.
+        cdef int n_L1Accepts=0
+        cdef int n_transitions=0
+        cdef int n_counts_toward_batch_size=0
+        for i in range(i_bob+1, i_eob + 1):
+            if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                n_L1Accepts += 1
+            else:
+                n_transitions += 1
+            if ignore_transition:
+                n_counts_toward_batch_size = n_L1Accepts
+            else:
+                n_counts_toward_batch_size = n_L1Accepts + n_transitions
+            if n_counts_toward_batch_size == batch_size:
+                break
+        i_eob = i
+        limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
+        self.n_view_events  = n_L1Accepts + n_transitions
+        self.n_view_L1Accepts = n_L1Accepts
         
         # Save timestamp and transition id of the last event in batch
         self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_eob]      
@@ -408,7 +421,13 @@ cdef class SmdReader:
 
     @property
     def view_size(self):
+        """ Returns all events (L1Accept and transtions) in the viewing window."""
         return self.n_view_events
+
+    @property
+    def n_view_L1Accepts(self):
+        """ Returns no. of L1Accept in the viewing widow."""
+        return self.n_view_L1Accepts
 
     @property
     def total_time(self):
@@ -530,7 +549,7 @@ cdef class SmdReader:
             PyBuffer_Release(&step_buf)
 
 
-        assert total_size <= self.sendbufsize, "Repacked data exceeds send buffer's size."
+        assert total_size <= self.sendbufsize, f"Repacked data exceeds send buffer's size (total:{total_size} bufsize:{self.sendbufsize})."
         
         # Access raw C pointers so they can be used in nogil loop below
         cdef uint64_t* block_size_bufs = <uint64_t*>self.block_size_bufs.data.as_voidptr

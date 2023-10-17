@@ -5,8 +5,7 @@ import sys
 import numpy as np
 from libpressio import PressioCompressor
 import json
-import time
-from prometheus_client import Counter,Gauge
+from prometheus_client import REGISTRY, Gauge
 
 # Define compressor configuration:
 lpjson = {
@@ -25,23 +24,16 @@ lpjson = {
 ds = DataSource(drp=drp_info, monitor=True)
 thread_num = drp_info.worker_num
 
-alias      = f'{drp_info.det_name}_{drp_info.det_segment}'
-detname    = drp_info.det_name
-instrument = 'tst'
-partition  = 3
+labels = { 'alias'      : f'{drp_info.det_name}_{drp_info.det_segment}', # Alias
+           'detname'    : drp_info.det_name,
+           'instrument' : drp_info.instrument,
+           'partition'  : drp_info.partition,
+           'worker_num' : drp_info.worker_num }
 
-compT = Counter('psana_compress_time', 'time spent (s) in compressor()',
-                ['alias','detname','instrument','partition','unit'])
-compT.labels(alias, detname, instrument, partition, 'seconds')
-ds.prom_man.register(compT)
-calibT = Counter('psana_calibration_time', 'time spent (s) in det.raw.calib()',
-                ['alias','detname','instrument','partition','unit'])
-calibT.labels(alias, detname, instrument, partition, 'seconds')
-ds.prom_man.register(calibT)
-triggers = Counter('psana_trigger_count', 'count of the number of triggers',
-                ['alias','detname','instrument','partition','unit'])
-triggers.labels(alias, detname, instrument, partition, 'seconds')
-ds.prom_man.register(triggers)
+compT = Gauge('psana_compress_time', 'time spent (s) in compressor()', labels.keys())
+compT.labels(*labels.values())
+calibT = Gauge('psana_calibration_time', 'time spent (s) in det.raw.calib()', labels.keys())
+calibT.labels(*labels.values())
 
 #print(f'*** [Thread {thread_num}] ds._configs:', ds._configs.keys())
 
@@ -71,17 +63,12 @@ compressor = PressioCompressor.from_config(lpjson)
 for myrun in ds.runs():
     epixhr = myrun.Detector('epixhr_emu')
     for nevt,evt in enumerate(myrun.events()):
-        triggers.labels(alias, detname, instrument, partition, 'counts').inc()
-        st = time.time()
-        cal = epixhr.raw.calib(evt)
-        en = time.time()
-        calibT.labels(alias, detname, instrument, partition, 'seconds').inc(en-st)
-        #print(f'*** cal is a {type(cal)} of len {len(cal)}, dtype {cal.dtype}, shape {cal.shape}')
-        #print(f'*** cal {cal}')
-        st = time.time()
-        det.fex.fex = compressor.encode(cal)
-        en = time.time()
-        compT.labels(alias, detname, instrument, partition, 'seconds').inc(en-st)
-        #print(f'*** det.fex.fex is a {type(det.fex.fex)} of len {len(det.fex.fex)}, dtype {det.fex.fex.dtype}, shape {det.fex.fex.shape}, ndim {det.fex.fex.ndim}, size {det.fex.fex.size}')
+        with calibT.labels(*labels.values()).time():
+            cal = epixhr.raw.calib(evt)
+        with compT.labels(*labels.values()).time():
+            det.fex.fex = compressor.encode(cal)
         ds.add_data(det.fex)
         if nevt%1000!=0: ds.remove_data('epixhr_emu','raw')
+
+REGISTRY.unregister(calibT)
+REGISTRY.unregister(compT)

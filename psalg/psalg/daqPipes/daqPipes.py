@@ -607,7 +607,7 @@ def main():
     parser = argparse.ArgumentParser(description='DAQ data flow display')
     parser.add_argument('-p', '--part', help='partition ['+partition+']', type=str, default=partition)
     parser.add_argument('--inst', help='hutch ['+hutch+']', type=str, default=hutch)
-    parser.add_argument('--start', help='start time [now]', type=str, default=start)
+    parser.add_argument('--start', help='start time (\'YYYY-MM-DD hh:mm:ss\') [now]', type=str, default=start)
     parser.add_argument('--debug', help='debug flag', action='store_true')
 
     daqPipes(promserver, parser.parse_args())

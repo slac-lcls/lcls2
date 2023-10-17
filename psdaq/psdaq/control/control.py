@@ -357,12 +357,13 @@ def timestampStr():
 
 def get_readout_group_mask(body):
     mask = 0
-    if 'drp' in body:
-        for key, node_info in body['drp'].items():
-            try:
-                mask |= (1 << node_info['det_info']['readout'])
-            except KeyError:
-                pass
+    for receivertype in ['drp','tpr']:
+        if receivertype in body:
+            for key, node_info in body[receivertype].items():
+                try:
+                    mask |= (1 << node_info['det_info']['readout'])
+                except KeyError:
+                    pass
     return mask
 
 def wait_for_answers(socket, wait_time, msg_id):
@@ -578,7 +579,7 @@ class CollectionManager():
         self.cmstate = {}
         self.history = {}   # history of drp group assignments
         self.phase1Info = {}
-        self.level_keys = {'drp', 'teb', 'meb', 'control'}
+        self.level_keys = {'drp', 'teb', 'meb', 'control', 'tpr'}
 
         # parse instrument_name[:station_number]
         if ':' in args.P:
@@ -1063,15 +1064,23 @@ class CollectionManager():
         for answer in answers:
             id = answer['header']['sender_id']
             for level, item in answer['body'].items():
-                self.cmstate[level][id].update(item)
+                if level != 'tpr': # Revisit: Perhaps there's a better way?
+                    self.cmstate[level][id].update(item)
 
+        readout_groups_in_use = set()
         active_state = self.filter_active_dict(self.cmstate_levels())
         # give number to drp nodes for the event builder
         if 'drp' in active_state:
             for i, node in enumerate(active_state['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
+                readout_groups_in_use.add(self.cmstate['drp'][node]['det_info']['readout'])
         else:
             self.report_error('at least one DRP is required')
+            logging.debug('condition_alloc() returning False')
+            return False
+
+        if self.platform not in readout_groups_in_use:
+            self.report_error(f'at least one DRP must use readout group {self.platform}')
             logging.debug('condition_alloc() returning False')
             return False
 
@@ -1116,22 +1125,6 @@ class CollectionManager():
                 self.cmstate['teb'][node]['teb_id'] = i
         else:
             self.report_error('at least one TEB is required')
-            logging.debug('condition_alloc() returning False')
-            return False
-
-        # primary/common readout group must be used
-        pFound = False
-        for drp in self.cmstate['drp'].values():
-            try:
-                readout = drp['det_info']['readout']
-            except KeyError as ex:
-                logging.error(f'condition_alloc(): KeyError: {ex}')
-            else:
-                if readout == self.platform:
-                    pFound = True
-                    break
-        if pFound == False:
-            self.report_error(f'at least one DRP must use readout group {self.platform}')
             logging.debug('condition_alloc() returning False')
             return False
 
@@ -1499,7 +1492,7 @@ class CollectionManager():
                         self.report_warning('ignoring attempt to clear the control level active flag')
                         body[level][key2]['active'] = 1
                     self.cmstate[level][int(key2)]['active'] = body[level][key2]['active']
-                    if level == 'drp':
+                    if level == 'drp' or level == 'tpr':
                         # drp readout group
                         self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
 
@@ -1635,7 +1628,7 @@ class CollectionManager():
                         self.cmstate[level] = {}
                     id = answer['header']['sender_id']
                     self.cmstate[level][id] = item
-                    if level == 'drp' or level == 'meb':
+                    if level == 'drp' or level == 'meb' or level == 'tpr':
                         self.cmstate[level][id]['hidden'] = 0
                     else:
                         self.cmstate[level][id]['hidden'] = 1
@@ -1643,15 +1636,15 @@ class CollectionManager():
                     if self.bypass_activedet:
                         # active detectors file disabled: default to active=1
                         self.cmstate[level][id]['active'] = 1
-                        if level == 'drp':
+                        if level == 'drp' or level == 'tpr':
                             self.cmstate[level][id]['det_info'] = {}
                             self.cmstate[level][id]['det_info']['readout'] = self.platform
                     elif responder in newfound_set:
                         # new detector or meb + active detectors file enabled: default to active=0
-                        if level == 'drp' or level == 'meb':
+                        if level == 'drp' or level == 'meb' or level == 'tpr':
                             self.cmstate[level][id]['active'] = 0
                             self.report_warning('rollcall: %s NOT selected for data collection' % responder)
-                            if level == 'drp':
+                            if level == 'drp' or level == 'tpr':
                                 try:
                                     group = json_data['activedet']['drp'][alias]['det_info']['readout']
                                     logging.debug(f'rollcall: {alias} found in activedet, readout group is {group}')
@@ -1674,7 +1667,7 @@ class CollectionManager():
                     else:
                         # copy values from active detectors file
                         self.cmstate[level][id]['active'] = json_data['activedet'][level][alias]['active']
-                        if level == 'drp':
+                        if level == 'drp' or level == 'tpr':
                             self.cmstate[level][id]['det_info'] = json_data['activedet'][level][alias]['det_info'].copy()
                             group = json_data['activedet'][level][alias]['det_info']['readout']
                             logging.info('rollcall: %s selected for data collection (readout group %d)' % (responder, group))

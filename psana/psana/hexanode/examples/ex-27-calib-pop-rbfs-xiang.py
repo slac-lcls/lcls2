@@ -21,9 +21,12 @@ Access opal1k camera in xtc2 files
 import sys
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana import DataSource
+from psana.hexanode.examples.ex_test_data import DIR_DATA_TEST
+
+FNAME = '%s/%s' % (DIR_DATA_TEST, 'data-amox27716-r0085-opal1k.xtc2')
+#FNAME = '/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2'
 
 print('e.g.: [python] %s [test-number]' % sys.argv[0])
-
 
 def test_opal_data_access() :
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
@@ -38,7 +41,7 @@ def test_opal_data_access() :
 
     print('DETECTOR INTERFACE ACCESS CALIBRATION CONSTANTS')
 
-    ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2')
+    ds = DataSource(files=FNAME)
     orun = next(ds.runs())
     camera = orun.Detector('opal')
 

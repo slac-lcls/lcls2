@@ -123,12 +123,20 @@ class ts_connector:
         self.xpm_link_disable_all()
 
         d = {}
+        pvnames_rxready = []
         for xpm_num,xpm_port,readout_group in self.xpm_info:
             pvname = self.xpm_base+str(xpm_num)+':'+'LinkGroupMask'+str(xpm_port)
+            pvnames_rxready.append(self.xpm_base+str(xpm_num)+':'+'LinkRxReady'+str(xpm_port))
             if pvname in d:
                 d[pvname] |= (1<<readout_group)
             else:
                 d[pvname] = (1<<readout_group)
+
+        # make sure the XPM links from the detectors are OK
+        rxready_values = self.ctxt.get(pvnames_rxready)
+        for pvname,val in zip(pvnames_rxready,rxready_values):
+            if val!=1:
+                raise ValueError('RxLink not locked! %s' % pvname)
 
         pv_names = []
         values = []
