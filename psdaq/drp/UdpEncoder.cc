@@ -16,8 +16,8 @@
 #include <thread>
 #include <Python.h>
 #include <arpa/inet.h>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/QR>
+#include <Eigen/Dense>
+#include <Eigen/QR>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"

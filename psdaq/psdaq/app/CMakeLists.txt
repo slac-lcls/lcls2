@@ -253,10 +253,13 @@ target_include_directories(sim_udpencoder PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     ${ZeroMQ_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
+    ${RapidJSON_INCLUDE_DIRS}
 )
 
 target_link_libraries(sim_udpencoder
    tpr
+   libfabric::fabric
+   prometheus-cpp::push
    ${Readline_LIBRARY}
    dl
    rt
@@ -280,7 +283,7 @@ target_link_libraries(json2xtc
 target_include_directories(json2xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    ${RAPIDJSON_INCLUDE_DIRS}
+    ${RapidJSON_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
 )
 

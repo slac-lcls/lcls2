@@ -14,7 +14,6 @@ add_library(drpbase
 
 target_include_directories(drpbase PUBLIC
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../psdaq/pgp/aes-stream-drivers/include
 )
 
 target_link_libraries(drpbase
@@ -95,6 +94,7 @@ add_executable(drp_udpencoder
 
 target_include_directories(drp_udpencoder PUBLIC
     ${Readline_INCLUDE_DIR}
+    ${EIGEN3_INCLUDE_DIRS}
 )
 
 target_link_libraries(drp_udpencoder
@@ -111,7 +111,7 @@ target_include_directories(configdb_obj_2xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
-    ${RAPIDJSON_INCLUDE_DIRS}
+    ${RapidJSON_INCLUDE_DIRS}
 )
 
 target_link_libraries(configdb_obj_2xtc
@@ -125,7 +125,7 @@ add_executable(test_teb_config
 )
 
 target_include_directories(test_teb_config PUBLIC
-    ${RAPIDJSON_INCLUDE_DIRS}
+    ${RapidJSON_INCLUDE_DIRS}
     ${PYTHON_INCLUDE_DIRS}
 )
 
@@ -141,6 +141,7 @@ target_include_directories(pgpread PUBLIC
     ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(pgpread
+    psalg::utils
     xtcdata::xtc
     Threads::Threads
 )
@@ -185,7 +186,6 @@ add_executable(drp_validate
 target_include_directories(drp_validate PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../psdaq/pgp/aes-stream-drivers/include
 )
 target_link_libraries(drp_validate
     Threads::Threads
@@ -201,6 +201,7 @@ target_include_directories(opaltt_test PUBLIC
 
 target_link_libraries(opaltt_test
     xtcdata::xtc
+    psalg::calib
 )
 
 add_executable(fileWriteTest
@@ -218,7 +219,6 @@ add_executable(drp_groupsync
 target_include_directories(drp_groupsync PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../psdaq/pgp/aes-stream-drivers/include
 )
 target_link_libraries(drp_groupsync
     Threads::Threads

@@ -1,5 +1,6 @@
 find_package(PythonLibs REQUIRED)
 
+add_subdirectory(aes-stream-drivers)
 add_subdirectory(service)
 add_subdirectory(mmhw)
 #add_subdirectory(cphw)

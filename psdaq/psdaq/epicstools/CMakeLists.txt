@@ -19,6 +19,7 @@ target_link_libraries(epicstools
     epics::ca
     epics::Com
     psalg::utils
+    xtcdata::xtc
 )
 
 install(TARGETS epicstools

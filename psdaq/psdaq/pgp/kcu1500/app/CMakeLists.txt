@@ -12,11 +12,12 @@ target_include_directories(kcu PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../../aes-stream-drivers/include
+    ${RapidJSON_INCLUDE_DIRS}
 )
 
 target_link_libraries(kcu
     xtcdata::xtc
+    psalg::utils
 )
 
 # A static version of the kcu library is needed for kcuStatus
@@ -31,7 +32,6 @@ target_include_directories(staticKcu PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../../aes-stream-drivers/include
 )
 
 target_link_libraries(staticKcu
@@ -77,15 +77,12 @@ target_include_directories(kcuSim PUBLIC
 
 #add_executable(kcuSimProxy xSimProxy.cpp)
 
-#target_include_directories(kcuSimProxy PUBLIC
-#    ../../aes-stream-drivers/include
-#)
-
 add_executable(kcuSimValid xSimValid.cpp)
 
 target_include_directories(kcuSimValid PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../../aes-stream-drivers/include
 )
 
 add_executable(kcuLoopTest xLoopTest.cpp)
@@ -103,8 +100,9 @@ target_include_directories(kcuReg PUBLIC
 add_executable(kcuRead xRead.cpp)
 
 target_include_directories(kcuRead PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../../aes-stream-drivers/include
 )
 
 target_link_libraries(kcuRead
@@ -115,8 +113,9 @@ target_link_libraries(kcuRead
 add_executable(kcuReadBulk xReadBulk.cpp)
 
 target_include_directories(kcuReadBulk PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../../aes-stream-drivers/include
 )
 
 target_link_libraries(kcuReadBulk
@@ -127,8 +126,9 @@ target_link_libraries(kcuReadBulk
 add_executable(kcuWrite xWrite.cpp)
 
 target_include_directories(kcuWrite PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
     ${AES_STREAM_DRIVER_HEADER_PATH}
-    ../../aes-stream-drivers/include
 )
 
 target_link_libraries(kcuWrite

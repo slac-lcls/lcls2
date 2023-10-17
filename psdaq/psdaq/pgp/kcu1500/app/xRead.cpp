@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <new>
 #include <poll.h>
-#include "DmaDest.h"
+#include "psdaq/aes-stream-drivers/DmaDest.h"
 
 FILE*               writeFile           = 0;
 

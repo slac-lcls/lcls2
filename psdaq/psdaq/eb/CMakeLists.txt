@@ -41,6 +41,7 @@ target_include_directories(contributor PUBLIC
 
 target_link_libraries(contributor
   utilities
+  prometheus-cpp::push
 )
 
 add_library(eventBuilder SHARED
@@ -59,6 +60,7 @@ target_include_directories(eventBuilder PUBLIC
 
 target_link_libraries(eventBuilder
   utilities
+  prometheus-cpp::push
 )
 
 add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)

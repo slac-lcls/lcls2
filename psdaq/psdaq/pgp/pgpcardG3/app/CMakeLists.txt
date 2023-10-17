@@ -6,7 +6,16 @@ find_package(Threads REQUIRED)
 
 add_executable(xStatus xStatus.cpp)
 
+target_include_directories(xStatus PUBLIC
+   ${RapidJSON_INCLUDE_DIRS}
+)
+
+target_link_libraries(xStatus
+   psalg::utils
+)
+
 add_executable(xLoopTest xLoopTest.cpp)
+
 target_link_libraries(xLoopTest
    Threads::Threads
    rt

@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <argp.h>
 #include "DataDriver.h"
-#include "DmaDest.h"
+#include "psdaq/aes-stream-drivers/DmaDest.h"
 using namespace std;
 
 #define EVENT_COUNT_ERR   0x01

@@ -5,7 +5,7 @@
 #include <cstdio>
 #include "drp.hh"
 #include "DataDriver.h"
-#include "DmaDest.h"
+#include "psdaq/aes-stream-drivers/DmaDest.h"
 
 #define MAX_RET_CNT_C 1000
 

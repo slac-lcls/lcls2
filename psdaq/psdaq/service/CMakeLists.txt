@@ -21,11 +21,13 @@ target_include_directories(service PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
-    ${RAPIDJSON_INCLUDE_DIRS}
+    ${RapidJSON_INCLUDE_DIRS}
+    ${XTCDATA_INCLUDE_DIRS}
 )
 
 target_link_libraries(service PUBLIC
     xtcdata::xtc
+    psalg::utils
     dl
     rt
     ${PYTHON_LIBRARIES}
@@ -59,6 +61,7 @@ target_include_directories(exporter PUBLIC
 target_link_libraries(exporter PUBLIC
     psalg::utils
     prometheus-cpp::pull
+    prometheus-cpp::push
 )
 
 install(FILES

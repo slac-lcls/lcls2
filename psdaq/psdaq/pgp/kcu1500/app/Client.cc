@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include "Client.hh"
 #include "DataDriver.h"
-#include "DmaDest.h"
+#include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
 typedef Pds::Mmhw::TriggerEventManager2 TEM;
 

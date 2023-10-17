@@ -16,7 +16,7 @@
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Smd.hh"
 #include "DataDriver.h"
-#include "DmaDest.h"
+#include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/epicstools/PVBase.hh"
 
 #include "rapidjson/document.h"
