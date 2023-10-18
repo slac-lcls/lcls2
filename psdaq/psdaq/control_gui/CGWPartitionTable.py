@@ -9,6 +9,8 @@ Usage ::
     from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
     w = CGWPartitionTable(tableio=tableio, title_h=title_h, do_ctrl=True, is_visv=True)
 
+    CGWPartitionTable < QWTableOfCheckBoxes < QWTable < QTableView
+
 Created on 2019-03-11 by Mikhail Dubrovin
 """
 
@@ -22,8 +24,7 @@ from psdaq.control_gui.CGConfigParameters import cp
 
 
 class CGWPartitionTable(QWTableOfCheckBoxes):
-    """Re-implemented connect_control and field editor using pull-down menu
-    """
+    """Re-implemented connect_control and field editor using pull-down menu."""
     LIST_OF_VALUES = [str(v) for v in range(8)]
 
     def __init__(self, **kwargs):
@@ -31,8 +32,11 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         cp.cgwpartitiontable = self
         self.sort_items()
         self.collapse_all()
-        #self.setMaximumHeight(300)
 
+    def set_style(self):
+        QWTableOfCheckBoxes.set_style(self)
+        self.setMinimumHeight(300)
+        self.setMaximumHeight(1000)
 
     def connect_control(self):
         """re-implementation of QWTable.connect_control"""
@@ -41,13 +45,11 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         #self.doubleClicked.connect(self.on_double_click)
         #self.connect_item_selected_to(self.on_item_selected)
 
-
     def on_item_selected(self, ind_sel, ind_desel):
         """selection signal is not submitted if item is already selected.
         """
         item = self._si_model.itemFromIndex(ind_sel)
         logger.debug('CGWPartitionTable.on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
-
 
     def on_item_changed(self, item):
         if item.column() != self.column_cbx(): return
@@ -56,7 +58,6 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
         logger.debug('CGWPartitionTable.on_item_changed: "%s" at state %s is_collapser: %s'%\
                      (self.getFullNameFromItem(item), state, item_id._is_collapser))
-
 
     def set_group_check_state(self, item_cbx):
         """for group of the "collapser" check-box set check states"""
@@ -67,25 +68,20 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
                 continue
             it.setCheckState(state)
 
-
     def on_click(self, index):
         item = self._si_model.itemFromIndex(index)
         model, row, col, txt = self._si_model, index.row(), index.column(), item.text()
         msg = 'CGWPartitionTable.on_click: item in row:%02d col:%02d text: %s' % (row, col, txt)
         logger.debug(msg)
         #print(msg)
-
         self.set_readout_group_number(item)
-
         self.expand_collapse_detector(item, do_collapse=(not self.in_collapsed_group(item)))
-
 
     def is_column_for_title(self, col, coltitle):
         """checks consistency of the column index with expected column-title"""
         hhi = self._si_model.horizontalHeaderItem(col)
         if hhi is None: return False
         return hhi.text() == coltitle
-
 
     def approved_column_for_title(self, col, coltitle):
         if self.is_column_for_title(col, coltitle): return col
@@ -94,11 +90,11 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
                         +'column number:%d is not consistent with column-title %s' % (col,coltitle))
             return None
 
-
     def column_cbx(self): return self.approved_column_for_title(0, 'sel')
-    def column_grp(self): return self.approved_column_for_title(1, 'grp')
-    def column_id (self): return self.approved_column_for_title(3, 'ID')
 
+    def column_grp(self): return self.approved_column_for_title(1, 'grp')
+
+    def column_id (self): return self.approved_column_for_title(3, 'ID')
 
     def set_readout_group_number(self, item):
         if not self.is_column_for_title(item.column(), 'grp'): return
@@ -118,7 +114,6 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
             self.set_readout_group_number_for_detector_segments(item, selected)
             self.connect_item_changed_to(self.on_item_changed)
 
-
     def set_readout_group_number_for_detector_segments(self, item, selected):
         column_grp = self.column_grp()
         item_cbx = self._si_model.item(item.row(), self.column_cbx())
@@ -127,11 +122,9 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
             if item_grp == item: continue
             item_grp.setText(selected)
 
-
     def detname(self, segname):
         """splits trailed segment number"""
         return segname.rsplit('_', 1)[0]
-
 
     def in_collapsed_group(self, item):
         model, col, row  = self._si_model, item.column(), item.row()
@@ -145,7 +138,6 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
             if r == row: continue
             if self.isRowHidden(r): return True
         return False
-
 
     def expand_collapse_detector(self, item, do_collapse=True):
         col, row  = item.column(), item.row()
@@ -196,6 +188,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         item.setBackground(QBrush(QColor('yellow' if item._is_collapser else 'white')))
         self.connect_item_changed_to(self.on_item_changed)
 
+        self.set_style()
 
     def expand_all(self):
         col_id, model = self.column_id(), self._si_model
@@ -204,7 +197,6 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
             if not item._is_collapser: continue
             self.expand_collapse_detector(item, do_collapse=False)
 
-
     def collapse_all(self):
         col_id, model = self.column_id(), self._si_model
         for r in range(model.rowCount()):
@@ -212,7 +204,6 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
             if col_id is None: continue
             item = model.item(r, col_id)
             self.expand_collapse_detector(item, do_collapse=True)
-
 
     def sort_items(self):
         col_id = self.column_id()
@@ -223,14 +214,12 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         for r in range(model.rowCount()):
             model.item(r, col_id)._is_collapser = False
 
-
     def closeEvent(self, event):
         logger.debug('closeEvent')
         QWTableOfCheckBoxes.closeEvent(self, event)
         cp.cgwpartitiontable = None
         if cp.cgwmainpartition is not None:
            cp.cgwmainpartition.set_but_show_title()
-
 
     def fill_output_object(self):
         """Re-implementation of QWTableOfCheckBoxes.fill_output_object for partition table with collapsed panels."""
@@ -305,7 +294,6 @@ if __name__ == "__main__":
                           do_ctrl=True, do_live=False, do_edit=True, do_sele=True, is_visv=False)
     return w
 
-
   def test01_CGWPartitionTable():
     title_h = ['str', 'cbx', 'flags']
     tableio = [\
@@ -323,7 +311,6 @@ if __name__ == "__main__":
     w = CGWPartitionTable(tableio=tableio, title_h=title_h,\
                           do_ctrl=True, do_live=False, do_edit=True, do_sele=True)
     return w
-
 
 
 if __name__ == "__main__":
