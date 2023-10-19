@@ -113,6 +113,8 @@ class DataSourceBase(abc.ABC):
                     'dbsuffix',
                     'intg_det',
                     'smd_callback',
+                    'psmon_publish',
+                    'psplotdb_server',
                     )
 
             for k in keywords:
