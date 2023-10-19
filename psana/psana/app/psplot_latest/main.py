@@ -49,7 +49,7 @@ async def start_kafka_consumer(socket_name):
             print("Exception processing Kafka message.")
 
 
-async def run_monitor(detname, socket_name):
+async def run_monitor(plotname, socket_name):
     runnum, node, port = (0, None, None)
     db = DbHelper()
     db.connect(socket_name)
@@ -78,7 +78,11 @@ async def run_monitor(detname, socket_name):
                 db.set(instance_id, DbHistoryColumns.PID, pid)
                 db.set(instance_id, DbHistoryColumns.STATUS, DbHistoryStatus.PLOTTED)
                 print(f'set pid:{pid}')
-            cmd = f"psplot -s {node} -p {port} {detname} {instance_id},{exp},{runnum},{node},{port},{slurm_job_id}"
+            # TODO: 
+            # - change plotname to plotname everywhere
+            # - 1 or more plotnames
+            # - add comment here about the extra argument for procinfo
+            cmd = f"psplot -s {node} -p {port} {plotname} {instance_id},{exp},{runnum},{node},{port},{slurm_job_id}"
             await proc._run(cmd, callback=set_pid)
             if not force_flag:
                 print(f'Received new {exp}:r{runnum} {node}:{port} jobid:{slurm_job_id}', flush=True)
@@ -92,14 +96,14 @@ def kafka(socket_name: str):
     asyncio.run(start_kafka_consumer(socket_name))
 
 @app.command()
-def monitor(detname: str, socket_name: str):
-    asyncio.run(run_monitor(detname, socket_name))
+def monitor(plotname: str, socket_name: str):
+    asyncio.run(run_monitor(plotname, socket_name))
     
 @app.command()
-def start(detname: str, connection_type: str = "KAFKA"):
+def start(plotname: str, connection_type: str = "KAFKA"):
     global socket_name
     socket_name = DbHelper.get_socket(port=4242)
-    cmd = f"xterm -hold -e python main.py monitor {detname} {socket_name}"
+    cmd = f"xterm -hold -e python main.py monitor {plotname} {socket_name}"
     asyncio.run(proc._run(cmd))
     
     global conn_type
