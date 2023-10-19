@@ -132,6 +132,12 @@ class ts_raw_2_1_0(ts_raw_2_0_0):
     def inhibitCounts(self,evt) -> amitypes.Array1d:
         return self._info(evt).inhibitCounts
 
+    def pulseId(self,evt) -> int:
+        return self._info(evt).pulseId
+
+    def timestamp(self,evt) -> int:
+        return self._info(evt).timeStamp
+
 class triginfo_triginfo_0_0_1(DetectorImpl):
     def __init__(self, *args):
         super(triginfo_triginfo_0_0_1, self).__init__(*args)
