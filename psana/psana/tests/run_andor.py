@@ -1,9 +1,6 @@
 from psana import DataSource
 from psmon import publish
 from psmon.plots import Image,XYPlot
-from psana.psexp.zmq_utils import zmq_send
-from kafka import KafkaProducer
-import json
 import os, sys, time
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -26,28 +23,10 @@ fake_dbase_server=sys.argv[3]
 mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
 #mount_dir = '/cds/data/drpsrcf'
 xtc_dir = os.path.join(mount_dir, exp[:3], exp, 'xtc')
-ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',batch_size=1)
+ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',batch_size=1, 
+        psmon_publish=publish, psplotdb_server=fake_dbase_server)
 
 
-if ds.is_srv(): # hack for now to eliminate use of publish.local below
-    publish.init()
-    print(f'waiting for psplot connection...')
-    time.sleep(3)
-    # TODO: hide zmq_send in DataSource
-    producer = KafkaProducer(bootstrap_servers=[fake_dbase_server], value_serializer=lambda m:json.JSONEncoder().encode(m).encode('utf-8'))
-    info = {'node': MPI.Get_processor_name(),
-            'exp': exp,
-            'runnum': runnum,
-            'port':publish.port,
-            'slurm_job_id':os.environ.get('SLURM_JOB_ID', os.getpid())}
-    producer.send("monatest", info)
-    #zmq_send(fake_dbase_server=fake_dbase_server, 
-    #        node=MPI.Get_processor_name(), 
-    #        exp=exp, 
-    #        runnum=runnum, 
-    #        port=publish.port,
-    #        slurm_job_id=os.environ.get('SLURM_JOB_ID', os.getpid()))
- 
 # we will remove this for batch processing and use "psplot" instead
 # publish.local = True
 
