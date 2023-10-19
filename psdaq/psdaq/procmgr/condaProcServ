@@ -52,8 +52,7 @@ cmd="${11}"
 args=""
 if (( "$#" > 11 )); then
     shift 11
-    #args="$@"  # This splits arguments with embedded spaces into multiple arguments.
-                # We use "$@" on the launch line below to avoid this. - Ric
+    args=("$@")
 fi
 
 echo "rcFile: '$rcFile'"
@@ -67,7 +66,7 @@ echo "coreSize: '$coreSize'"
 echo "ctrlPort: '$ctrlPort'"
 echo "pythonVer: '$pythonVer'"
 echo "cmd: '$cmd'"
-echo "args: '$args'"
+echo "args: '${args[@]}'"
 
 if [[ -z $rcFile ]]; then
     echo "error: no rcfile specified"
@@ -160,7 +159,7 @@ ulimit -c $coreSize
 if [[ -f $PROCSERVBIN ]]; then
     $PROCSERVBIN \
         --noautorestart --name $name --pidfile /dev/null $waitFlag $logFlag --allow \
-        $ctrlPort $cmd "$@"
+        $ctrlPort $cmd "${args[@]}"
 else
     echo "error: procServ not found"
     exit 9
