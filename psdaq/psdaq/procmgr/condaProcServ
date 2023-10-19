@@ -52,7 +52,8 @@ cmd="${11}"
 args=""
 if (( "$#" > 11 )); then
     shift 11
-    args="$@"
+    #args="$@"  # This splits arguments with embedded spaces into multiple arguments.
+                # We use "$@" on the launch line below to avoid this. - Ric
 fi
 
 echo "rcFile: '$rcFile'"
@@ -159,7 +160,7 @@ ulimit -c $coreSize
 if [[ -f $PROCSERVBIN ]]; then
     $PROCSERVBIN \
         --noautorestart --name $name --pidfile /dev/null $waitFlag $logFlag --allow \
-        $ctrlPort $cmd $args
+        $ctrlPort $cmd "$@"
 else
     echo "error: procServ not found"
     exit 9

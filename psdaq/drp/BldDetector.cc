@@ -104,7 +104,7 @@ bool BldPVA::ready() const
 #define TrueFalse(v) v->ready()?'T':'F'
 
     logging::debug("%s  addr %c  port %c  payload %c\n",
-                   _detId.c_str(), 
+                   _detId.c_str(),
                    TrueFalse(_pvaAddr),
                    TrueFalse(_pvaPort),
                    TrueFalse(_pvaPayload));
@@ -1180,7 +1180,7 @@ int main(int argc, char* argv[])
             case 'k':
                 kwargs_str = kwargs_str.empty()
                            ? optarg
-                           : kwargs_str + ", " + optarg;
+                           : kwargs_str + "," + optarg;
                 break;
             case 'M':
                 para.prometheusDir = optarg;
