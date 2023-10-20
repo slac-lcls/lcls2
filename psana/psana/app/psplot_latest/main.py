@@ -13,6 +13,7 @@ import asyncio
 import IPython
 import psutil
 import atexit
+import os
 
 
 app = typer.Typer()
@@ -30,8 +31,8 @@ atexit.register(_exit_handler)
 
 KAFKA_MAX_POLL_INTERVAL_MS = 500000
 KAFKA_MAX_POLL_RECORDS = 50
-KAFKA_TOPIC = "monatest"
-KAFKA_BOOTSTRAP_SERVER = "testfac-lgbkdb:9092"
+KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", "psplot_live")
+KAFKA_BOOTSTRAP_SERVER = os.environ.get("KAFKA_BOOTSTRAP_SERVER", "172.24.5.240:9094")
 async def start_kafka_consumer(socket_name):
     print(f'Connecting to kafa...')
     consumer = KafkaConsumer(bootstrap_servers=[KAFKA_BOOTSTRAP_SERVER], 
