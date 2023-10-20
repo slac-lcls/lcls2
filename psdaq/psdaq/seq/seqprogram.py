@@ -50,16 +50,16 @@ class SeqUser:
             print(f'idx {idx}')
             while (idx>0):
                 print( 'Removing seq %d'%idx)
+#                self.seqr.put(0)
                 self.idxseqr.put(idx)
                 self.seqr.put(1)
-                self.seqr.put(0)
                 time.sleep(1.0)
                 idx = self.idxseq.get()
         elif ridx > 1:
             print( 'Removing seq %d'%ridx)
+            self.seqr.put(0)
             self.idxseqr.put(ridx)
             self.seqr.put(1)
-            self.seqr.put(0)
 
     def load(self, title, instrset, descset=None):
         self.desc.put(title)
@@ -74,6 +74,7 @@ class SeqUser:
 
         time.sleep(1.0)
 
+#        self.insert.put(0)
         ninstr = self.ninstr.get()
         if ninstr != len(instrset):
             print( 'Error: ninstr invalid %u (%u)' % (ninstr, len(instrset)))
@@ -82,7 +83,6 @@ class SeqUser:
         print( 'Confirmed ninstr %d'%ninstr)
 
         self.insert.put(1)
-        self.insert.put(0)
 
         #  How to handshake the insert.put -> idxseq.get (RPC?)
         time.sleep(1.0)
@@ -102,19 +102,19 @@ class SeqUser:
         self._idx = idx
 
     def begin(self, wait=False, refresh=False):
+        self.start .put(0)
         self.idxrun.put(self._idx)
         self.reset .put(0)
         self.start .put(1 if not refresh else 3)
-        self.start .put(0)
         if wait:
             self.lock= Lock()
             self.lock.acquire()
 
     def sync(self,refresh=False):
+        self.start .put(0)
         self.idxrun.put(self._idx)
         self.reset .put(0)
         self.start .put(2 if not refresh else 4)
-        self.start .put(0)
 
     def execute(self, title, instrset, descset=None, sync=False, refresh=False):
         self.insert.put(0)
