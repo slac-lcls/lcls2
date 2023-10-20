@@ -1,6 +1,6 @@
 import pyrogue as pr
 import numpy as np
-from collections import deque
+from collections import deque,OrderedDict
 import logging
 
 def mode(a):
@@ -58,21 +58,31 @@ def intToBool(d,types,key):
     elif types[key]=='boolEnum':
         d[key] = False if d[key]==0 else True
 
+def ordered(d,order):
+    od = OrderedDict()
+    for key in order:
+        od[key] = d[key]
+    return od
+        
 #
 #  Translate a dictionary of register value pairs to a yaml file for rogue configuration
 #
-def dictToYaml(d,types,keys,dev,path,name,tree):
+def dictToYaml(d,types,keys,dev,path,name,tree,ordering=None):
     v = {'enable':True}
     for key in keys:
         if key in d:
-            v[key] = d[key]
+            if ordering is None:
+                v[key] = d[key]
+            else:
+                v[key] = ordered(d[key],ordering[key])
             intToBool(v,types,key)
             v[key]['enable'] = True
         else:
             v[key] = {'enable':False}
 
     key = tree[-1]
-    nd = {key:v}
+    nd = OrderedDict()
+    nd[key] = v
     for leaf in reversed(tree[:-1]):
         nd = {leaf:{'enable':True,'ForceWrite':False,'InitAfterConfig':False,key:nd[key]}}
         key = leaf
@@ -89,8 +99,10 @@ def dictToYaml(d,types,keys,dev,path,name,tree):
     #  Need to remove the enable field else Json2Xtc fails
     for key in keys:
         if key in d:
-            del d[key]['enable']
-
+            try:
+                del d[key]['enable']
+            except KeyError:
+                pass
     return fn
 
 #

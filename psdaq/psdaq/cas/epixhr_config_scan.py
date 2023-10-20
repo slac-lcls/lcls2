@@ -42,13 +42,13 @@ def main():
     parser.add_argument('-P', metavar='PARAMETER', default=None,
                         help='parameter to scan (omit to get full list)')
     parser.add_argument('--linear', type=float, nargs=3, help='linear scan over range [0]:[1] in steps of [2]')
-    parser.add_argument('-p', type=int, choices=range(0, 8), default=2,
-                        help='platform (default 2)')
+    parser.add_argument('-p', type=int, choices=range(0, 8), default=3,
+                        help='platform (default 3)')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-srcf-cmp004',
                         help='collection host (default drp-srcf-cmp004)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=20000,
                         help='timeout msec (default 20000)')
-    parser.add_argument('-g', type=int, default=6, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
+    parser.add_argument('-g', type=int, default=11, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
     parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (e.g. BEAM)')
     parser.add_argument('--detname', default='epixhr_0', help="detector name (default 'epixhr_0')")
     parser.add_argument('--scantype', default='config', help="scan type (default 'config')")
@@ -139,6 +139,16 @@ def main():
     if daqState == 'error':
         sys.exit(1)
 
+    # get the step group from the detector name
+    platform = control.getPlatform()
+    step_group = None
+    for v in platform['drp'].values():
+        if (v['active'] == 1 and v['proc_info']['alias'] == args.detname):
+            step_group = v['det_info']['readout']
+            break
+    if step_group is None:
+        step_group = args.p
+
     # optionally set BEAM or NOBEAM
     if args.config is not None:
         # config alias request
@@ -191,11 +201,11 @@ def main():
                       "readout_count": args.events,
                       "group_mask"   : group_mask,
                       'step_keys'    : keys,
-                      "step_group"   : args.p }  # we should have a separate group param
+                      "step_group"   : step_group }  # we should have a separate group param
 
     enable_dict = {'readout_count': args.events,
                    'group_mask'   : group_mask,
-                   'step_group'   : args.p}
+                   "step_group"   : step_group }
 
     # config scan setup
     keys_dict = {"configure": configure_dict,

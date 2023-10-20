@@ -37,6 +37,160 @@ RTP = 6   # run trigger partition
 #  Timing delay scans can be limited by this
 EventBuilderTimeout = int(1.0e-3*156.25e6)
 
+#  Register ordering matters, but our configdb does not preserve the order.
+#  For now, put the ordering in code here, until the configdb can be updated to preserve order.
+#  Underneath, it is just storing json, so order preservation should be possible.
+ordering = {'MMCMRegisters':[]}
+i=0
+ordering['MMCMRegisters'].extend([f'CLKOUT{i}PhaseMux',
+                                  f'CLKOUT{i}HighTime',
+                                  f'CLKOUT{i}LowTime',
+                                  f'CLKOUT{i}Frac',
+                                  f'CLKOUT{i}FracEn',
+                                  f'CLKOUT{i}Edge',
+                                  f'CLKOUT{i}NoCount',
+                                  f'CLKOUT{i}DelayTime',])
+for i in range(1,7):
+    ordering['MMCMRegisters'].extend([f'CLKOUT{i}PhaseMux',
+                                      f'CLKOUT{i}HighTime',
+                                      f'CLKOUT{i}LowTime',
+                                      f'CLKOUT{i}Edge',
+                                      f'CLKOUT{i}NoCount',
+                                      f'CLKOUT{i}DelayTime',])
+
+ordering['PowerSupply'] = ['DigitalEn','AnalogEn']
+ordering['RegisterControl'] = ['GlblRstPolarity',
+                               'ClkSyncEn',
+                               'RoLogicRst',
+                               'SyncPolarity',
+                               'SyncDelay',
+                               'SyncWidth',
+                               'SR0Polarity',
+                               'SR0Delay1',
+                               'SR0Width1',
+                               'ePixAdcSHPeriod',
+                               'ePixAdcSHOffset',
+                               'AcqPolarity',
+                               'AcqDelay1',
+                               'AcqWidth1',
+                               'AcqDelay2',
+                               'AcqWidth2',
+                               'R0Polarity',
+                               'R0Delay',
+                               'R0Width',
+                               'PPbePolarity',
+                               'PPbeDelay',
+                               'PPbeWidth',
+                               'PpmatPolarity',
+                               'PpmatDelay',
+                               'PpmatWidth',
+                               'SaciSyncPolarity',
+                               'SaciSyncDelay',
+                               'SaciSyncWidth',
+                               'ResetCounters',
+                               'AsicPwrEnable',
+                               'AsicPwrManual',
+                               'AsicPwrManualDig',
+                               'AsicPwrManualAna',
+                               'AsicPwrManualIo',
+                               'AsicPwrManualFpga',
+                               'DebugSel_TG',
+                               'DebugSel_MPS',
+                               'StartupReq',]
+
+for i in range(4):
+    ordering[f'Hr10kTAsic{i}'] = ['shvc_DAC',
+                                  'fastPP_enable',
+                                  'PulserSync',
+                                  'Pll_RO_Reset',
+                                  'Pll_Itune',
+                                  'Pll_KVCO',
+                                  'Pll_filter1LSB',
+                                  'Pll_filter1MSB',
+                                  'Pulser',
+                                  'pbit',
+                                  'atest',
+                                  'test',
+                                  'sab_test',
+                                  'hrtest',
+                                  'PulserR',
+                                  'DigMon1',
+                                  'DigMon2',
+                                  'PulserDac',
+                                  'MonostPulser',
+                                  'RefGenB',
+                                  'Dm1En',
+                                  'Dm2En',
+                                  'emph_bd',
+                                  'emph_bc',
+                                  'VRef_DAC',
+                                  'VRefLow',
+                                  'trbit',
+                                  'TpsMux',
+                                  'RoMonost',
+                                  'TpsGr',
+                                  'Balcony_clk',
+                                  'PpOcbS2d',
+                                  'Ocb',
+                                  'Monost',
+                                  'mTest',
+                                  'Preamp',
+                                  'S2D_1_b',
+                                  'Vld1_b',
+                                  'CompTH_DAC',
+                                  'TC',
+                                  'S2d',
+                                  'S2dDacBias',
+                                  'Tsd_Tser',
+                                  'Tps_DAC',
+                                  'PLL_RO_filter2',
+                                  'PLL_RO_divider',
+                                  'TestBe',
+                                  'RSTreg',
+                                  'DelExec',
+                                  'DelCCKReg',
+                                  'RO_rst_en',
+                                  'SlvdsBit',
+                                  'FELmode',
+                                  'CompEnOn',
+                                  'RowStartAddr',
+                                  'RowStopAddr',
+                                  'ColStartAddr',
+                                  'ColStopAddr',
+                                  'DCycle_DAC',
+                                  'DCycle_en',
+                                  'DCycle_bypass',
+                                  'Debug_bit',
+                                  'OSRsel',
+                                  'SecondOrder',
+                                  'DHg',
+                                  'RefGenC',
+                                  'dbus_del_sel',
+                                  'SDclk_b',
+                                  'SDrst_b',
+                                  'Filter_DAC',
+                                  'Rodis01',
+                                  'CompEn',
+                                  'Pixel_CB',
+                                  'rodis34',
+                                  'rowCK2matrix_delay',
+                                  'ro_mode',
+                                  'rodis5',
+                                  'pipoclk_delay',]
+
+ordering['SspLowSpeedDecoderReg'] = ['LockingCntCfg']
+for i in range(2):
+    ordering[f'PacketRegisters{i}'] = ['asicDataReq','DisableLane','EnumerateDisLane',]
+
+ordering['TriggerRegisters'] = ['RunTriggerEnable',
+                                'RunTriggerDelay',
+                                'DaqTriggerEnable',
+                                'DaqTriggerDelay',
+                                'AutoRunEn',
+                                'AutoDaqEn',
+                                'AutoTrigPeriod',
+                                'PgpTrigEn',]
+
 def gain_mode_map(gain_mode):
     mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
     trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
@@ -53,7 +207,7 @@ class Board(pr.Root):
         pr.streamConnectBiDir(self.dmaCtrlStreams[0],self._srp)
 
         self.add(epixHr.SysReg  (name='Core'  , memBase=self._srp, offset=0x00000000, sim=False, expand=False, pgpVersion=4, numberOfLanes=lanes,))
-        self.add(fpga.EpixHR10kT(asicVersion=2, name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
+        self.add(fpga.EpixHR10kT(asicVersion=4, name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
         #  Allow ePixFpga to find the yaml files for fnInitAsic()
         self.top_level = '/tmp'
 
@@ -174,7 +328,7 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
         cbase.EpixHR.ConfigLclsTimingV2()
 
     # configure internal ADC
-#    cbase.InitHSADC()
+    cbase.EpixHR.InitHSADC()
 
     time.sleep(1)
 #    epixhr2x2_internal_trigger(base)
@@ -332,8 +486,8 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 #        for i in asics:
 #            m = m | (4<<int(i/2))
         m=3<<2
-    base['bypass'] = 0x3f^m
-    base['batchers'] = m>>2
+    base['bypass'] = 0x3f^m  # mask of active batcher channels
+    base['batchers'] = m>>2  # mask of active batchers
     print('=== configure bypass {:x} ==='.format(base['bypass']))
     pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
 
@@ -357,20 +511,24 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         epixHRTypes = cfg[':types:']['expert']['EpixHR']
         tree = ('ePixHr10kT','EpixHR')
         tmpfiles = []
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['MMCMRegisters'  ],cbase.EpixHR,path,'MMCM',tree))
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['PowerSupply'    ],cbase.EpixHR,path,'PowerSupply',tree))
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['RegisterControl'],cbase.EpixHR,path,'RegisterControl',tree))
+        def toYaml(keys,name):
+            tmpfiles.append(dictToYaml(epixHR,epixHRTypes,keys,cbase.EpixHR,path,name,tree,ordering))
+
+        toYaml(['MMCMRegisters'],'MMCM')
+        toYaml(['PowerSupply'],'PowerSupply')
+        toYaml(['RegisterControl'],'RegisterControl')
         for i in asics:
-            tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['Hr10kTAsic{}'.format(i)],cbase.EpixHR,path,'ASIC{}'.format(i),tree))
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['SspLowSpeedDecoderReg'],cbase.EpixHR,path,'SSP',tree))
-        # remove non-e xistent field
+            toYaml([f'Hr10kTAsic{i}'],f'ASIC{i}')
+
+        toYaml(['SspLowSpeedDecoderReg'],'SSP')
+
+        # remove non-existent field
         for i in range(2):
             if 'gainBitRemapped' in epixHR[f'PacketRegisters{i}']:
                 del epixHR[f'PacketRegisters{i}']['gainBitRemapped']
-            # I'd like to ask the FPGA to zero pad the inactive ASICs
-            #epixHR[f'PacketRegisters{i}'][
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['PacketRegisters{}'.format(i) for i in range(2)],cbase.EpixHR,path,'PacketReg',tree))
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['TriggerRegisters'],cbase.EpixHR,path,'TriggerReg',tree))
+
+        toYaml([f'PacketRegisters{i}' for i in range(2)],'PacketReg')
+        toYaml(['TriggerRegisters'],'TriggerReg')
 
         arg = [1,0,0,0,0]
         for i in asics:
