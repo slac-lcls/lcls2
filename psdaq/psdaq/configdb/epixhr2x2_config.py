@@ -16,6 +16,7 @@ import json
 import os
 import numpy as np
 import IPython
+import datetime
 import logging
 
 base = None
@@ -589,14 +590,22 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
             for i in asics:
                 saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
                 saci.enable.set(True)
-                saci.CmdPrepForRead() # added this
-                for b in range(48):
-                    saci.PrepareMultiConfig
-                    saci.ColCounter.set(b)
-                    saci.WriteColData.set(mapv)
-                saci.CmdPrepForRead()
+                if False:
+                    mapp = np.zeros((146, 192),dtype='uint16')+mapv
+                    np.savetxt('/tmp/pixelMap.csv', mapp, fmt='%d', delimiter=',', newline='\n')
+                    saci.fnSetPixelBitmap(None,None,'/tmp/pixelMap.csv')
+                else:
+                    saci.fnClearMatrix(None,None,mapv)
                 saci.trbit.set(trbit)
                 saci.enable.set(False)
+
+    for i in asics:
+        saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
+        saci.enable.set(True)
+        fname = f'/tmp/Hr10kTAsic{i}.{datetime.datetime.now().strftime("%Y-%m-%d.%H:%M:%S")}.csv'
+        logging.warning(f'Reading pixel map to {fname}')
+        saci.fnGetPixelBitmap(None,None,fname)
+        saci.enable.set(False)
 
     logging.warning('config_expert complete')
 
