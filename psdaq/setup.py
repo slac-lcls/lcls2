@@ -90,6 +90,7 @@ if 'PSDAQ' in BUILD_LIST :
             'configdb = psdaq.configdb.configdb:main',
             'epixquad_store_gainmap = psdaq.configdb.epixquad_store_gainmap:main',
             'epixquad_create_pixelmask = psdaq.configdb.epixquad_create_pixelmask:main',
+            'epixhr_config_from_yaml_set = psdaq.configdb.epixhr_config_from_yaml_set:main',
             'epixhr_pedestal_scan = psdaq.cas.epixhr_pedestal_scan:main',
             'epixhr_chargeinj_scan = psdaq.cas.epixhr_chargeinj_scan:main',
             'epixhr_timing_scan = psdaq.cas.epixhr_timing_scan:main',
