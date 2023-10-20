@@ -15,6 +15,7 @@ def main():
     parser.add_argument('--full', help='DAQ trigger at RUN trigger rate', action='store_true')
     parser.add_argument('--pv' , help="XPM pv base", default='DAQ:NEH:XPM:7:SEQENG:2')
     parser.add_argument('--test', help="Calculate only", action='store_true')
+    parser.add_argument('--verbose', help="Verbose", action='store_true')
     args = parser.parse_args()
 
     #  Generate a sequence that repeats at each 120 Hz AC marker
@@ -32,11 +33,12 @@ def main():
     nafter  = int((ac_periodb - startb)/spacing) - npretrig
     avgrate = (npretrig+nafter+1)*120.
 
-    print(f' spacing [{spacing}]  rate [{rate} Hz]')
-    print(f' npretrig [{npretrig}]  nposttrig [{nafter}]  avg rate [~{avgrate} Hz]')
-    print(f' first [{startb} bkt  {startb/fbucket*1.e6} usec]')
-    print(f' beam [{startb+npretrig*spacing} bkt]  {(startb+npretrig*spacing)/fbucket*1.e6} usec]')
-    print(f' last [{startb+(npretrig+nafter)*spacing} bkt  {(startb+(npretrig+nafter)*spacing)/fbucket*1.e6} usec]')
+    if args.verbose:
+        print(f' spacing [{spacing}]  rate [{rate} Hz]')
+        print(f' npretrig [{npretrig}]  nposttrig [{nafter}]  avg rate [~{avgrate} Hz]')
+        print(f' first [{startb} bkt  {startb/fbucket*1.e6} usec]')
+        print(f' beam [{startb+npretrig*spacing} bkt]  {(startb+npretrig*spacing)/fbucket*1.e6} usec]')
+        print(f' last [{startb+(npretrig+nafter)*spacing} bkt  {(startb+(npretrig+nafter)*spacing)/fbucket*1.e6} usec]')
 
     RUN = 0
     DAQ = 1
@@ -62,7 +64,7 @@ def main():
     if npretrig:
         if args.full:
             line = len(instrset)
-            intrset.append(ControlRequest([RUN,DAQ,PARENT]))
+            instrset.append(ControlRequest([RUN,DAQ,PARENT]))
             instrset.append(FixedRateSync(marker='910kH',occ=spacing))
             if npretrig>1:
                 instrset.append(Branch.conditional(line,counter=0,value=npretrig-1))
@@ -96,10 +98,11 @@ def main():
 
     descset = [f'{int(fbucket/spacing)} Hz run trig','daq trig','daq parent group trig']
 
-    i=0
-    for instr in instrset:
-        print(f' {i}: {instr.print_()}')
-        i += 1
+    if args.verbose:
+        i=0
+        for instr in instrset:
+            print(f' {i}: {instr.print_()}')
+            i += 1
 
 
     title = 'ePixHR'
