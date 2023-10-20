@@ -31,19 +31,31 @@ ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',batch_size=1
 def my_smalldata(data_dict):
     if 'unaligned_andor_norm' in data_dict:
         andor_norm = data_dict['unaligned_andor_norm'][0]
-        myplot = XYPlot(0,"Andor (normalized)",range(len(andor_norm)),andor_norm)
+        myplot = XYPlot(0,f"Andor (normalized) run:{runnum}",range(len(andor_norm)),andor_norm)
         publish.send('ANDOR',myplot)
+    if 'sum_atmopal' in data_dict:
+        atmopal_sum = data_dict['sum_atmopal']
+        myplot = XYPlot(0,f"Atmopal (sum) run:{runnum}",range(len(atmopal_sum)), atmopal_sum)
+        publish.send('ATMOPAL', myplot)
  
 for myrun in ds.runs():
     andor = myrun.Detector('andor_vls')
+    atmopal = myrun.Detector('atmopal')
     timing = myrun.Detector('timing')
     smd = ds.smalldata(filename='mysmallh5.h5',batch_size=1000, callbacks=[my_smalldata])
     norm = 0
     ndrop_inhibit = 0
+    sum_atmopal = None
     for nstep,step in enumerate(myrun.steps()):
         print('step:',nstep)
         for nevt,evt in enumerate(step.events()):
             andor_img = andor.raw.value(evt)
+            atmopal_img = atmopal.raw.image(evt)
+            if atmopal_img is not None:
+                if sum_atmopal is None:
+                    sum_atmopal = atmopal_img[0,:]
+                else:
+                    sum_atmopal += atmopal_img[0,:]
             # also need to check for events missing due to damage
             # (or compare against expected number of events)
             ndrop_inhibit += timing.raw.inhibitCounts(evt)
@@ -61,6 +73,8 @@ for myrun in ds.runs():
                 # the low-rate andor dataset doesn't get padded
                 # to align with the high rate datasets
                 smd.event(evt, mydata=nevt,
-                          unaligned_andor_norm=(andor_img/norm))
+                          unaligned_andor_norm=(andor_img/norm),
+                          sum_atmopal=sum_atmopal)
                 norm=0
                 ndrop_inhibit=0
+                sum_atmopal = None
