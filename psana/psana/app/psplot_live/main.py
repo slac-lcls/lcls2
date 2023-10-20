@@ -3,8 +3,8 @@
 # (run_no, node_name, port_no) and displays psplot when 
 # new info arrive using subprocess. 
 ######################################################
-from psana.app.psplot_latest.db import DbHelper, DbHistoryStatus, DbHistoryColumns, DbConnectionType
-from psana.app.psplot_latest.subproc import SubprocHelper
+from psana.app.psplot_live.db import DbHelper, DbHistoryStatus, DbHistoryColumns, DbConnectionType
+from psana.app.psplot_live.subproc import SubprocHelper
 from psana.psexp.zmq_utils import zmq_send
 from kafka import KafkaConsumer
 from typing import List
