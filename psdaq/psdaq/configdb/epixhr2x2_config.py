@@ -252,8 +252,16 @@ def user_to_rogue(a):
     vf = np.flip(v)
     s[1,:elemRowsD] = vf[elemRowsD:,elemCols:]
     s[3,:elemRowsD] = vf[elemRowsD:,:elemCols]
-
     return s
+
+def rogue_to_user(s):
+    vf = np.zeros((elemRowsD*2,elemCols*2),dtype=np.uint8)
+    vf[elemRowsD:,:elemCols] = s[3,:elemRowsD]
+    vf[elemRowsD:,elemCols:] = s[1,:elemRowsD]
+    v = np.flip(vf)
+    v[elemRowsD:,elemCols:] = s[2,:elemRowsD]
+    v[elemRowsD:,:elemCols] = s[0,:elemRowsD]
+    return v.reshape(elemRowsD*elemCols*4)
 
 #
 #  Initialize the rogue accessor
@@ -590,21 +598,23 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
             for i in asics:
                 saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
                 saci.enable.set(True)
-                if False:
-                    mapp = np.zeros((146, 192),dtype='uint16')+mapv
-                    np.savetxt('/tmp/pixelMap.csv', mapp, fmt='%d', delimiter=',', newline='\n')
-                    saci.fnSetPixelBitmap(None,None,'/tmp/pixelMap.csv')
-                else:
-                    saci.fnClearMatrix(None,None,mapv)
+                saci.fnClearMatrix(None,None,mapv)
                 saci.trbit.set(trbit)
                 saci.enable.set(False)
 
+    #  read back the pixel maps
     for i in asics:
         saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
         saci.enable.set(True)
         fname = f'/tmp/Hr10kTAsic{i}.{datetime.datetime.now().strftime("%Y-%m-%d.%H:%M:%S")}.csv'
         logging.warning(f'Reading pixel map to {fname}')
         saci.fnGetPixelBitmap(None,None,fname)
+        cname = f'/tmp/Hr10kTAsic{i}.latest'
+        try:
+            os.remove(cname)
+        except:
+            pass
+        os.symlink(fname,cname)
         saci.enable.set(False)
 
     logging.warning('config_expert complete')
@@ -686,15 +696,41 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     #  User pixel map is assumed to be 288x384 in standard element orientation
     gain_mode = cfg['user']['gain_mode']
-    if gain_mode==5:
-        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
+    if False:
+        if gain_mode==5:
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
+        else:
+            mapv,trbit0 = gain_mode_map(gain_mode)
+            trbit = [trbit0 for i in range(4)]
+            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
     else:
-        mapv,trbit0 = gain_mode_map(gain_mode)
-        trbit = [trbit0 for i in range(4)]
-        pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+        if gain_mode==5:
+            pixelConfigSet = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        else:
+            mapv,trbit0 = gain_mode_map(gain_mode)
+            pixelConfigSet = np.zeros((2*elemRowsD*2*elemCols),dtype=np.uint8)+mapv
+
+        s = user_to_rogue(pixelConfigSet)
+        for i in asics:
+            cname = f'/tmp/Hr10kTAsic{i}.latest'
+            s[i] = np.loadtxt(cname, dtype=np.uint8, delimiter=',')
+
+        pixelConfigUsr = rogue_to_user(s)
+
+        # Lets do some validation
+
+        if pixelConfigUsr.shape != pixelConfigSet.shape:
+            logging.error(f'  shape error  wrote {pixelConfigSet.shape}  read {pixelConfigUsr.shape}')
+        else:
+            nerr = 0
+            for i in range(pixelConfigUsr.shape[0]):
+                if pixelConfigUsr[i] != pixelConfigSet[i]:
+                    nerr += 1
+                    if nerr < 20:
+                        logging.error(f'  mismatch at {i}({i//(2*elemCols)},{i%(2*elemCols)})  wrote {pixelConfigSet[i]}  read {pixelConfigUsr[i]}')
+            logging.warning(f'Gain map validation complete with {nerr} mismatches')
 
     print(f'pixelConfigUsr shape {pixelConfigUsr.shape}  trbit {trbit}')
-    pixelConfigMap = user_to_rogue(pixelConfigUsr)
 
     for seg in range(1):
         #  Construct the ID
