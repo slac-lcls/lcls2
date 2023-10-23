@@ -1146,6 +1146,18 @@ class CollectionManager():
             except KeyError as ex:
                 logging.error(f'condition_alloc(): KeyError: {ex}')
 
+        # update tpr group history
+        if 'tpr' in self.cmstate:
+            for tpr in self.cmstate['tpr'].values():
+                try:
+                    alias = tpr['proc_info']['alias']
+                    readout = tpr['det_info']['readout']
+                    self.history['tpr'][alias] = {'det_info' : {'readout' : readout}}
+                except KeyError as ex:
+                    logging.error(f'condition_alloc(): KeyError: {ex}')
+        else:
+            logging.debug('condition_alloc(): no tpr')
+
         # write to the activedet file only if the contents would change
         dst = {**levels_to_activedet(self.cmstate_levels()), **{'history': self.history}}
         json_from_file = self.read_json_file(self.activedetfilename)
@@ -1589,7 +1601,10 @@ class CollectionManager():
                     logging.info('rollcall: history not found in json_data.keys()')
 
                 if 'drp' not in self.history:
-                    self.history = dict(drp = dict())
+                    self.history['drp'] = dict()
+
+                if 'tpr' not in self.history:
+                    self.history['tpr'] = dict()
 
                 if "activedet" in json_data.keys():
                     active_set, inactive_set = self.get_active_and_inactive(json_data)
@@ -1646,12 +1661,12 @@ class CollectionManager():
                             self.report_warning('rollcall: %s NOT selected for data collection' % responder)
                             if level == 'drp' or level == 'tpr':
                                 try:
-                                    group = json_data['activedet']['drp'][alias]['det_info']['readout']
+                                    group = json_data['activedet'][level][alias]['det_info']['readout']
                                     logging.debug(f'rollcall: {alias} found in activedet, readout group is {group}')
                                 except KeyError:
                                     logging.debug(f'rollcall: {alias} not in activedet')
                                     try:
-                                        group = self.history['drp'][alias]['det_info']['readout']
+                                        group = self.history[level][alias]['det_info']['readout']
                                         logging.debug(f'rollcall: {alias} found in history, readout group is {group}')
                                     except KeyError:
                                         logging.debug(f'rollcall: {alias} not in history')
