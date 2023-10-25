@@ -132,6 +132,7 @@ if 'PSANA' in BUILD_LIST :
             'iv                  = psana.graphqt.app.iv:image_viewer',
             'masked              = psana.graphqt.app.masked:mask_editor',
             'roicon              = psana.app.roicon:__main__',
+            'psplot_live         = psana.app.psplot_live.main:start',
         ]
     }
 
