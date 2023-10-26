@@ -72,10 +72,12 @@ def main():
     group_mask = 0
     for v in platform['drp'].values():
         if v['active']==1:
-            group_mask |= v['det_info']['readout']
+            group_mask |= 1<<(v['det_info']['readout'])
             if v['proc_info']['alias'] == args.detname:
                 step_group = v['det_info']['readout']
-                break
+
+    logging.info('*** group_mask {group_mask}  step_group {step_group} ***')
+
     if step_group is None:
         step_group = args.p
 
