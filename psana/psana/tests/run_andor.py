@@ -1,9 +1,6 @@
 from psana import DataSource
 from psmon import publish
 from psmon.plots import Image,XYPlot
-from psana.psexp.zmq_utils import zmq_send
-from kafka import KafkaProducer
-import json
 import os, sys, time
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -19,35 +16,14 @@ os.environ['PS_SMD_N_EVENTS']='1'
 exp=sys.argv[1]
 runnum=int(sys.argv[2])
 
-# fake-server is a small standalone zmq python script                           
-fake_dbase_server=sys.argv[3]
-
 
 mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
 #mount_dir = '/cds/data/drpsrcf'
 xtc_dir = os.path.join(mount_dir, exp[:3], exp, 'xtc')
-ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',batch_size=1)
+ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',batch_size=1, 
+        psmon_publish=publish)
 
 
-if ds.is_srv(): # hack for now to eliminate use of publish.local below
-    publish.init()
-    print(f'waiting for psplot connection...')
-    time.sleep(3)
-    # TODO: hide zmq_send in DataSource
-    producer = KafkaProducer(bootstrap_servers=[fake_dbase_server], value_serializer=lambda m:json.JSONEncoder().encode(m).encode('utf-8'))
-    info = {'node': MPI.Get_processor_name(),
-            'exp': exp,
-            'runnum': runnum,
-            'port':publish.port,
-            'slurm_job_id':os.environ.get('SLURM_JOB_ID', os.getpid())}
-    producer.send("monatest", info)
-    #zmq_send(fake_dbase_server=fake_dbase_server, 
-    #        node=MPI.Get_processor_name(), 
-    #        exp=exp, 
-    #        runnum=runnum, 
-    #        port=publish.port,
-    #        slurm_job_id=os.environ.get('SLURM_JOB_ID', os.getpid()))
- 
 # we will remove this for batch processing and use "psplot" instead
 # publish.local = True
 
@@ -55,19 +31,31 @@ if ds.is_srv(): # hack for now to eliminate use of publish.local below
 def my_smalldata(data_dict):
     if 'unaligned_andor_norm' in data_dict:
         andor_norm = data_dict['unaligned_andor_norm'][0]
-        myplot = XYPlot(0,"Andor (normalized)",range(len(andor_norm)),andor_norm)
+        myplot = XYPlot(0,f"Andor (normalized) run:{runnum}",range(len(andor_norm)),andor_norm)
         publish.send('ANDOR',myplot)
+    if 'sum_atmopal' in data_dict:
+        atmopal_sum = data_dict['sum_atmopal']
+        myplot = XYPlot(0,f"Atmopal (sum) run:{runnum}",range(len(atmopal_sum)), atmopal_sum)
+        publish.send('ATMOPAL', myplot)
  
 for myrun in ds.runs():
     andor = myrun.Detector('andor_vls')
+    atmopal = myrun.Detector('atmopal')
     timing = myrun.Detector('timing')
     smd = ds.smalldata(filename='mysmallh5.h5',batch_size=1000, callbacks=[my_smalldata])
     norm = 0
     ndrop_inhibit = 0
+    sum_atmopal = None
     for nstep,step in enumerate(myrun.steps()):
         print('step:',nstep)
         for nevt,evt in enumerate(step.events()):
             andor_img = andor.raw.value(evt)
+            atmopal_img = atmopal.raw.image(evt)
+            if atmopal_img is not None:
+                if sum_atmopal is None:
+                    sum_atmopal = atmopal_img[0,:]
+                else:
+                    sum_atmopal += atmopal_img[0,:]
             # also need to check for events missing due to damage
             # (or compare against expected number of events)
             ndrop_inhibit += timing.raw.inhibitCounts(evt)
@@ -85,6 +73,8 @@ for myrun in ds.runs():
                 # the low-rate andor dataset doesn't get padded
                 # to align with the high rate datasets
                 smd.event(evt, mydata=nevt,
-                          unaligned_andor_norm=(andor_img/norm))
+                          unaligned_andor_norm=(andor_img/norm),
+                          sum_atmopal=sum_atmopal)
                 norm=0
                 ndrop_inhibit=0
+                sum_atmopal = None

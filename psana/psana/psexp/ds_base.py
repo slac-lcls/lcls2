@@ -113,6 +113,7 @@ class DataSourceBase(abc.ABC):
                     'dbsuffix',
                     'intg_det',
                     'smd_callback',
+                    'psmon_publish',
                     )
 
             for k in keywords:

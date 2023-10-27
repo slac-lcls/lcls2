@@ -611,7 +611,7 @@ int main(int argc, char* argv[])
             case 'k':
                 kwargs_str = kwargs_str.empty()
                            ? optarg
-                           : kwargs_str + ", " + optarg;
+                           : kwargs_str + "," + optarg;
                 break;
             case 'P':
                 para.instrument = optarg;

@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtWidgets import QTableView, QVBoxLayout, QAbstractItemView, QSizePolicy
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, QModelIndex
-
 from psdaq.control_gui.QWIcons import icon
 
 
@@ -43,61 +42,52 @@ class QWTable(QTableView):
         self.connect_control()
         self.set_style()
 
-
     def connect_control(self):
         self.connect_item_selected_to(self.on_item_selected)
         self.clicked.connect(self.on_click)
         self.doubleClicked.connect(self.on_double_click)
         self.connect_item_changed_to(self.on_item_changed)
 
-
-    #def __del__(self):
-    #    QTableView.__del__(self) - it does not have __del__
-
-
     def set_selection_mode(self, smode=QAbstractItemView.ExtendedSelection):
         logger.debug('Set selection mode: %s'%smode)
         self.setSelectionMode(smode)
 
-
     def connect_item_changed_to(self, recipient):
         self._si_model.itemChanged.connect(recipient)
         self.is_connected_item_changed = True
-
 
     def disconnect_item_changed_from(self, recipient):
         if self.is_connected_item_changed:
             self._si_model.itemChanged.disconnect(recipient)
             self.is_connected_item_changed = False
 
-
     def connect_item_selected_to(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].connect(recipient)
-
 
     def disconnect_item_selected_from(self, recipient):
         #self.selectionModel().selectionChanged[QModelIndex, QModelIndex].disconnect(recipient)
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
-
 
     def set_style(self):
         self.setStyleSheet("QTableView::item:hover{background-color:#00FFAA;}")
         #self.setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed)
         self.set_exact_widget_size()
 
-
     def set_exact_widget_size(self):
         """set window size exactly matching actual size of QTableView.
         """
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded) # Qt.ScrollBarAlwaysOff Qt.ScrollBarAlwaysOn
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.resizeColumnsToContents()
-        self.setFixedSize(self.horizontalHeader().length()+self.verticalHeader().width(),\
-                          self.verticalHeader().length()+self.horizontalHeader().height())
-
+        self.setFixedWidth(self.horizontalHeader().length()+self.verticalHeader().width()+25)
+        #self.setMinimumHeight(min(self.verticalHeader().length()+self.horizontalHeader().height()+20, 500))
+        self.setMaximumHeight(min(self.verticalHeader().length()+self.horizontalHeader().height()+5, 600))
+        #self.setFixedSize(self.horizontalHeader().length()+self.verticalHeader().width(),\
+        #                  self.verticalHeader().length()+self.horizontalHeader().height())
 
     def fill_table_model(self, **kwargs):
+        """To be re-implemented for other table"""
         self.clear_model()
         self._si_model.setHorizontalHeaderLabels(['col0', 'col1', 'col2', 'col3', 'col4'])
         self._si_model.setVerticalHeaderLabels(['row0', 'row1', 'row2', 'row3'])
@@ -111,27 +101,22 @@ class QWTable(QTableView):
                 if col==3: item.setText('Some text')
                 #self._si_model.appendRow(item)
 
-
     def clear_model(self):
         rows,cols = self._si_model.rowCount(), self._si_model.columnCount()
         self._si_model.removeRows(0, rows)
         self._si_model.removeColumns(0, cols)
 
-
     def selected_indexes(self):
         return self.selectedIndexes()
-
 
     def selected_items(self):
         indexes =  self.selectedIndexes()
         return [self._si_model.itemFromIndex(i) for i in self.selectedIndexes()]
 
-
     def getFullNameFromItem(self, item):
         #item = self._si_model.itemFromIndex(ind)
         ind   = self._si_model.indexFromItem(item)
         return self.getFullNameFromIndex(ind)
-
 
     def getFullNameFromIndex(self, ind):
         item = self._si_model.itemFromIndex(ind)
@@ -139,7 +124,6 @@ class QWTable(QTableView):
         self._full_name = item.text()
         self._getFullName(ind)
         return self._full_name
-
 
     def _getFullName(self, ind):
         ind_par  = self._si_model.parent(ind)
@@ -153,28 +137,19 @@ class QWTable(QTableView):
             self._full_name = item_par.text() + '/' + self._full_name
             self._getFullName(ind_par)
 
-
-#    def resizeEvent(self, e):
-#        logger.debug('resizeEvent')
-#        QTableView.resizeEvent(self, e)
-
-
     def closeEvent(self, event): # if the x is clicked
         logger.debug('closeEvent')
         QTableView.closeEvent(self, event)
-
 
     def on_click(self, index):
         item = self._si_model.itemFromIndex(index)
         msg = 'on_click: item in row:%02d text: %s' % (index.row(), item.text())
         logger.debug(msg)
 
-
     def on_double_click(self, index):
         item = self._si_model.itemFromIndex(index)
         msg = 'on_double_click: item in row:%02d text: %s' % (index.row(), item.text())
         logger.debug(msg)
-
 
     def on_item_selected(self, ind_sel, ind_desel):
         #logger.debug("ind   selected: ", ind_sel.row(),  ind_sel.column())
@@ -183,11 +158,9 @@ class QWTable(QTableView):
         logger.debug('on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
         #logger.debug('on_item_selected: %s' % self.getFullNameFromItem(item))
 
-
     def on_item_changed(self, item):
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
         logger.debug('abstract on_item_changed: "%s" at state %s' % (self.getFullNameFromItem(item), state))
-
 
     def process_selected_items(self):
         selitems = self.selected_items()
@@ -196,6 +169,12 @@ class QWTable(QTableView):
             msg += '\n  %s' % i.text()
         logger.info(msg)
 
+#    def resizeEvent(self, e):
+#        logger.debug('resizeEvent')
+#        QTableView.resizeEvent(self, e)
+
+#    def __del__(self):
+#        QTableView.__del__(self) - it does not have __del__
 
     if __name__ == '__main__':
 
@@ -203,10 +182,8 @@ class QWTable(QTableView):
         logger.info('keyPressEvent, key=%s' % e.key())
         if   e.key() == Qt.Key_Escape:
             self.close()
-
         elif e.key() == Qt.Key_S:
             self.process_selected_items()
-
         else:
             logger.info('Keys:'\
                '\n  ESC - exit'\
@@ -217,7 +194,6 @@ class QWTable(QTableView):
 if __name__ == '__main__':
     import sys
     from PyQt5.QtWidgets import QApplication
-
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = QWTable()

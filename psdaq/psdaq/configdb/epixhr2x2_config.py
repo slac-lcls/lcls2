@@ -16,6 +16,7 @@ import json
 import os
 import numpy as np
 import IPython
+import datetime
 import logging
 
 base = None
@@ -37,6 +38,160 @@ RTP = 6   # run trigger partition
 #  Timing delay scans can be limited by this
 EventBuilderTimeout = int(1.0e-3*156.25e6)
 
+#  Register ordering matters, but our configdb does not preserve the order.
+#  For now, put the ordering in code here, until the configdb can be updated to preserve order.
+#  Underneath, it is just storing json, so order preservation should be possible.
+ordering = {'MMCMRegisters':[]}
+i=0
+ordering['MMCMRegisters'].extend([f'CLKOUT{i}PhaseMux',
+                                  f'CLKOUT{i}HighTime',
+                                  f'CLKOUT{i}LowTime',
+                                  f'CLKOUT{i}Frac',
+                                  f'CLKOUT{i}FracEn',
+                                  f'CLKOUT{i}Edge',
+                                  f'CLKOUT{i}NoCount',
+                                  f'CLKOUT{i}DelayTime',])
+for i in range(1,7):
+    ordering['MMCMRegisters'].extend([f'CLKOUT{i}PhaseMux',
+                                      f'CLKOUT{i}HighTime',
+                                      f'CLKOUT{i}LowTime',
+                                      f'CLKOUT{i}Edge',
+                                      f'CLKOUT{i}NoCount',
+                                      f'CLKOUT{i}DelayTime',])
+
+ordering['PowerSupply'] = ['DigitalEn','AnalogEn']
+ordering['RegisterControl'] = ['GlblRstPolarity',
+                               'ClkSyncEn',
+                               'RoLogicRst',
+                               'SyncPolarity',
+                               'SyncDelay',
+                               'SyncWidth',
+                               'SR0Polarity',
+                               'SR0Delay1',
+                               'SR0Width1',
+                               'ePixAdcSHPeriod',
+                               'ePixAdcSHOffset',
+                               'AcqPolarity',
+                               'AcqDelay1',
+                               'AcqWidth1',
+                               'AcqDelay2',
+                               'AcqWidth2',
+                               'R0Polarity',
+                               'R0Delay',
+                               'R0Width',
+                               'PPbePolarity',
+                               'PPbeDelay',
+                               'PPbeWidth',
+                               'PpmatPolarity',
+                               'PpmatDelay',
+                               'PpmatWidth',
+                               'SaciSyncPolarity',
+                               'SaciSyncDelay',
+                               'SaciSyncWidth',
+                               'ResetCounters',
+                               'AsicPwrEnable',
+                               'AsicPwrManual',
+                               'AsicPwrManualDig',
+                               'AsicPwrManualAna',
+                               'AsicPwrManualIo',
+                               'AsicPwrManualFpga',
+                               'DebugSel_TG',
+                               'DebugSel_MPS',
+                               'StartupReq',]
+
+for i in range(4):
+    ordering[f'Hr10kTAsic{i}'] = ['shvc_DAC',
+                                  'fastPP_enable',
+                                  'PulserSync',
+                                  'Pll_RO_Reset',
+                                  'Pll_Itune',
+                                  'Pll_KVCO',
+                                  'Pll_filter1LSB',
+                                  'Pll_filter1MSB',
+                                  'Pulser',
+                                  'pbit',
+                                  'atest',
+                                  'test',
+                                  'sab_test',
+                                  'hrtest',
+                                  'PulserR',
+                                  'DigMon1',
+                                  'DigMon2',
+                                  'PulserDac',
+                                  'MonostPulser',
+                                  'RefGenB',
+                                  'Dm1En',
+                                  'Dm2En',
+                                  'emph_bd',
+                                  'emph_bc',
+                                  'VRef_DAC',
+                                  'VRefLow',
+                                  'trbit',
+                                  'TpsMux',
+                                  'RoMonost',
+                                  'TpsGr',
+                                  'Balcony_clk',
+                                  'PpOcbS2d',
+                                  'Ocb',
+                                  'Monost',
+                                  'mTest',
+                                  'Preamp',
+                                  'S2D_1_b',
+                                  'Vld1_b',
+                                  'CompTH_DAC',
+                                  'TC',
+                                  'S2d',
+                                  'S2dDacBias',
+                                  'Tsd_Tser',
+                                  'Tps_DAC',
+                                  'PLL_RO_filter2',
+                                  'PLL_RO_divider',
+                                  'TestBe',
+                                  'RSTreg',
+                                  'DelExec',
+                                  'DelCCKReg',
+                                  'RO_rst_en',
+                                  'SlvdsBit',
+                                  'FELmode',
+                                  'CompEnOn',
+                                  'RowStartAddr',
+                                  'RowStopAddr',
+                                  'ColStartAddr',
+                                  'ColStopAddr',
+                                  'DCycle_DAC',
+                                  'DCycle_en',
+                                  'DCycle_bypass',
+                                  'Debug_bit',
+                                  'OSRsel',
+                                  'SecondOrder',
+                                  'DHg',
+                                  'RefGenC',
+                                  'dbus_del_sel',
+                                  'SDclk_b',
+                                  'SDrst_b',
+                                  'Filter_DAC',
+                                  'Rodis01',
+                                  'CompEn',
+                                  'Pixel_CB',
+                                  'rodis34',
+                                  'rowCK2matrix_delay',
+                                  'ro_mode',
+                                  'rodis5',
+                                  'pipoclk_delay',]
+
+ordering['SspLowSpeedDecoderReg'] = ['LockingCntCfg']
+for i in range(2):
+    ordering[f'PacketRegisters{i}'] = ['asicDataReq','DisableLane','EnumerateDisLane',]
+
+ordering['TriggerRegisters'] = ['RunTriggerEnable',
+                                'RunTriggerDelay',
+                                'DaqTriggerEnable',
+                                'DaqTriggerDelay',
+                                'AutoRunEn',
+                                'AutoDaqEn',
+                                'AutoTrigPeriod',
+                                'PgpTrigEn',]
+
 def gain_mode_map(gain_mode):
     mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
     trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
@@ -53,7 +208,7 @@ class Board(pr.Root):
         pr.streamConnectBiDir(self.dmaCtrlStreams[0],self._srp)
 
         self.add(epixHr.SysReg  (name='Core'  , memBase=self._srp, offset=0x00000000, sim=False, expand=False, pgpVersion=4, numberOfLanes=lanes,))
-        self.add(fpga.EpixHR10kT(asicVersion=2, name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
+        self.add(fpga.EpixHR10kT(asicVersion=4, name='EpixHR', memBase=self._srp, offset=0x80000000, hidden=False, enabled=True))
         #  Allow ePixFpga to find the yaml files for fnInitAsic()
         self.top_level = '/tmp'
 
@@ -97,8 +252,16 @@ def user_to_rogue(a):
     vf = np.flip(v)
     s[1,:elemRowsD] = vf[elemRowsD:,elemCols:]
     s[3,:elemRowsD] = vf[elemRowsD:,:elemCols]
-
     return s
+
+def rogue_to_user(s):
+    vf = np.zeros((elemRowsD*2,elemCols*2),dtype=np.uint8)
+    vf[elemRowsD:,:elemCols] = s[3,:elemRowsD]
+    vf[elemRowsD:,elemCols:] = s[1,:elemRowsD]
+    v = np.flip(vf)
+    v[elemRowsD:,elemCols:] = s[2,:elemRowsD]
+    v[elemRowsD:,:elemCols] = s[0,:elemRowsD]
+    return v.reshape(elemRowsD*elemCols*4)
 
 #
 #  Initialize the rogue accessor
@@ -174,7 +337,7 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
         cbase.EpixHR.ConfigLclsTimingV2()
 
     # configure internal ADC
-#    cbase.InitHSADC()
+    cbase.EpixHR.InitHSADC()
 
     time.sleep(1)
 #    epixhr2x2_internal_trigger(base)
@@ -332,8 +495,8 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 #        for i in asics:
 #            m = m | (4<<int(i/2))
         m=3<<2
-    base['bypass'] = 0x3f^m
-    base['batchers'] = m>>2
+    base['bypass'] = 0x3f^m  # mask of active batcher channels
+    base['batchers'] = m>>2  # mask of active batchers
     print('=== configure bypass {:x} ==='.format(base['bypass']))
     pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
 
@@ -357,20 +520,24 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         epixHRTypes = cfg[':types:']['expert']['EpixHR']
         tree = ('ePixHr10kT','EpixHR')
         tmpfiles = []
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['MMCMRegisters'  ],cbase.EpixHR,path,'MMCM',tree))
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['PowerSupply'    ],cbase.EpixHR,path,'PowerSupply',tree))
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['RegisterControl'],cbase.EpixHR,path,'RegisterControl',tree))
+        def toYaml(keys,name):
+            tmpfiles.append(dictToYaml(epixHR,epixHRTypes,keys,cbase.EpixHR,path,name,tree,ordering))
+
+        toYaml(['MMCMRegisters'],'MMCM')
+        toYaml(['PowerSupply'],'PowerSupply')
+        toYaml(['RegisterControl'],'RegisterControl')
         for i in asics:
-            tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['Hr10kTAsic{}'.format(i)],cbase.EpixHR,path,'ASIC{}'.format(i),tree))
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['SspLowSpeedDecoderReg'],cbase.EpixHR,path,'SSP',tree))
-        # remove non-e xistent field
+            toYaml([f'Hr10kTAsic{i}'],f'ASIC{i}')
+
+        toYaml(['SspLowSpeedDecoderReg'],'SSP')
+
+        # remove non-existent field
         for i in range(2):
             if 'gainBitRemapped' in epixHR[f'PacketRegisters{i}']:
                 del epixHR[f'PacketRegisters{i}']['gainBitRemapped']
-            # I'd like to ask the FPGA to zero pad the inactive ASICs
-            #epixHR[f'PacketRegisters{i}'][
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['PacketRegisters{}'.format(i) for i in range(2)],cbase.EpixHR,path,'PacketReg',tree))
-        tmpfiles.append(dictToYaml(epixHR,epixHRTypes,['TriggerRegisters'],cbase.EpixHR,path,'TriggerReg',tree))
+
+        toYaml([f'PacketRegisters{i}' for i in range(2)],'PacketReg')
+        toYaml(['TriggerRegisters'],'TriggerReg')
 
         arg = [1,0,0,0,0]
         for i in asics:
@@ -431,14 +598,24 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
             for i in asics:
                 saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
                 saci.enable.set(True)
-                saci.CmdPrepForRead() # added this
-                for b in range(48):
-                    saci.PrepareMultiConfig
-                    saci.ColCounter.set(b)
-                    saci.WriteColData.set(mapv)
-                saci.CmdPrepForRead()
+                saci.fnClearMatrix(None,None,mapv)
                 saci.trbit.set(trbit)
                 saci.enable.set(False)
+
+    #  read back the pixel maps
+    for i in asics:
+        saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
+        saci.enable.set(True)
+        fname = f'/tmp/Hr10kTAsic{i}.{datetime.datetime.now().strftime("%Y-%m-%d.%H:%M:%S")}.csv'
+        logging.warning(f'Reading pixel map to {fname}')
+        saci.fnGetPixelBitmap(None,None,fname)
+        cname = f'/tmp/Hr10kTAsic{i}.latest'
+        try:
+            os.remove(cname)
+        except:
+            pass
+        os.symlink(fname,cname)
+        saci.enable.set(False)
 
     logging.warning('config_expert complete')
 
@@ -519,15 +696,41 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     #  User pixel map is assumed to be 288x384 in standard element orientation
     gain_mode = cfg['user']['gain_mode']
-    if gain_mode==5:
-        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
+    if False:
+        if gain_mode==5:
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
+        else:
+            mapv,trbit0 = gain_mode_map(gain_mode)
+            trbit = [trbit0 for i in range(4)]
+            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
     else:
-        mapv,trbit0 = gain_mode_map(gain_mode)
-        trbit = [trbit0 for i in range(4)]
-        pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+        if gain_mode==5:
+            pixelConfigSet = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        else:
+            mapv,trbit0 = gain_mode_map(gain_mode)
+            pixelConfigSet = np.zeros((2*elemRowsD*2*elemCols),dtype=np.uint8)+mapv
+
+        s = user_to_rogue(pixelConfigSet)
+        for i in asics:
+            cname = f'/tmp/Hr10kTAsic{i}.latest'
+            s[i] = np.loadtxt(cname, dtype=np.uint8, delimiter=',')
+
+        pixelConfigUsr = rogue_to_user(s)
+
+        # Lets do some validation
+
+        if pixelConfigUsr.shape != pixelConfigSet.shape:
+            logging.error(f'  shape error  wrote {pixelConfigSet.shape}  read {pixelConfigUsr.shape}')
+        else:
+            nerr = 0
+            for i in range(pixelConfigUsr.shape[0]):
+                if pixelConfigUsr[i] != pixelConfigSet[i]:
+                    nerr += 1
+                    if nerr < 20:
+                        logging.error(f'  mismatch at {i}({i//(2*elemCols)},{i%(2*elemCols)})  wrote {pixelConfigSet[i]}  read {pixelConfigUsr[i]}')
+            logging.warning(f'Gain map validation complete with {nerr} mismatches')
 
     print(f'pixelConfigUsr shape {pixelConfigUsr.shape}  trbit {trbit}')
-    pixelConfigMap = user_to_rogue(pixelConfigUsr)
 
     for seg in range(1):
         #  Construct the ID

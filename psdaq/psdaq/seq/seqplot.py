@@ -29,9 +29,13 @@ class Engine(object):
         self.modes   = 0
         self.ccnt    = [0]*4
         self.done    = False
+        self.returnaddr = None
 
     def frame_number(self):
         return int(self.acframe) if self.acmode else int(self.frame)
+
+    def __str__(self):
+        return f'request {self.request}  instr {self.instr}  returnaddr {self.returnaddr}  frame {self.frame}  ccnt {self.ccnt}'
 
 class SeqUser(object):
     def __init__(self, start=0, stop=200, acmode=False):
@@ -68,6 +72,8 @@ class SeqUser(object):
                             self.ydata.append(i)
                 frame   = engine.frame_number()
                 request = int(engine.request)
+
+        print(f'engine exited {engine}')
 
         if engine.modes == 3:
             print(bcolors.WARNING + "Found both fixed-rate-sync and ac-rate-sync instructions." + bcolors.ENDC)
@@ -158,6 +164,9 @@ def main():
         seq = 'from psdaq.seq.seq import *\n'
         seq += open(fname).read()
         exec(compile(seq, fname, 'exec'), {}, config)
+
+        for i,ins in enumerate(config['instrset']):
+            print(f'{i}: {ins}')
 
         seq = SeqUser(start=0,stop=int(args.time*TPGSEC),acmode=False)
         seq.execute(config['title'],config['instrset'],config['descset'])

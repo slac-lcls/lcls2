@@ -38,13 +38,15 @@ def ctxt_get(names):
 
 def ctxt_put(names, values):
 
+    r = []
     print(f'ctxt_put [{names}] [{values}]')
     if isinstance(names,str):
-        epics.PV(names).put(values)
+        r.append(epics.PV(names).put(values))
     else:
         if isinstance(names,list):
             for i,n in enumerate(names):
-                epics.PV(n).put(values[i])
+                r.append(epics.PV(n).put(values[i]))
+    print(f'returned {r}')
 
 #  Create a dictionary of config key to PV name
 def epics_get(d):

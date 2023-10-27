@@ -566,17 +566,20 @@ def _rollback(args):
 
 
 class createArgs(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        def opt(key,default):
+            return kwargs[key] if key in kwargs.keys() else default
+
         parser = argparse.ArgumentParser(description='Write a new segment configuration into the database')
-        parser.add_argument('--prod', help='use production db', action='store_true')
-        parser.add_argument('--inst', help='instrument', type=str, default='tst')
-        parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
-        parser.add_argument('--name', help='detector name', type=str, default='tstts')
-        parser.add_argument('--segm', help='detector segment', type=int, default=0)
-        parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
-        parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
-        parser.add_argument('--password', help='password for HTTP authentication', type=str, default=os.getenv('CONFIGDB_AUTH'))
-        parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=None)
+        parser.add_argument('--prod', help='use production db', action='store_true', default=opt('prod',False))
+        parser.add_argument('--inst', help='instrument', type=str, default=opt('inst','tst'))
+        parser.add_argument('--alias', help='alias name', type=str, default=opt('alias','BEAM'))
+        parser.add_argument('--name', help='detector name', type=str, default=opt('name','tstts'))
+        parser.add_argument('--segm', help='detector segment', type=int, default=opt('segm',0))
+        parser.add_argument('--id', help='device id/serial num', type=str, default=opt('id','serial1234'))
+        parser.add_argument('--user', help='user for HTTP authentication', type=str, default=opt('user','xppopr'))
+        parser.add_argument('--password', help='password for HTTP authentication', type=str, default=opt('password',os.getenv('CONFIGDB_AUTH')))
+        parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=opt('yaml',None))
         self.args = parser.parse_args()
 
 

@@ -78,8 +78,8 @@ class Pv(object):
             logger.error(f'Exception in monitor_cb for {self.pvname} {e} [{newval}]')
         return result
 
-    def get(self, useCached=True):
-        self.__value__ = self.to_value(pvactx.get(self.pvname))
+    def get(self, useCached=True, timeout=5.0):
+        self.__value__ = self.to_value(pvactx.get(self.pvname,timeout=timeout))
         logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 

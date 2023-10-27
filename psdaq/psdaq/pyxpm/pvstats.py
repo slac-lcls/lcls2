@@ -268,11 +268,6 @@ class MonClkStatus(object):
         self._pv_fbClk  = addPV(name+':FbClk' ,'f')
         self._pv_recClk = addPV(name+':RecClk','f')
 
-        print('MonClkStatus clkRates {:} {:} {:} {:} MHz'.format(app.monClk_0.get(),
-                                                                 app.monClk_1.get(),
-                                                                 app.monClk_2.get(),
-                                                                 app.monClk_3.get()) )
-
     def handle(self, msg, offset, timev):
         w = struct.unpack_from('<LLLL',msg,offset)
         offset += 16

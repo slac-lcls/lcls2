@@ -243,6 +243,17 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDa
             return;
         }
 
+        if (0) {  // debug
+            uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
+            for(unsigned i=3; i<5; i++) {
+                std::vector< XtcData::Array<uint8_t> > ssf = 
+                    _subframes(subframes[i].data(),subframes[i].shape()[0]);
+                for(unsigned j=0; j<ssf.size(); j++)
+                    printf("Subframe %u/%u  Num_Elem %lu\n",
+                           i, j, ssf[j].num_elem());
+            }
+        }
+
         uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
         for(unsigned i=3; i<5; i++) {
             std::vector< XtcData::Array<uint8_t> > ssf = 
