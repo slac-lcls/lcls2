@@ -79,6 +79,26 @@ class PvPushButtonX(QtWidgets.QPushButton):
         self.pv.put(1)
         self.pv.put(0)
 
+class PvPushButtonVal(QtWidgets.QPushButton):
+
+    valueSet = QtCore.pyqtSignal('QString',name='valueSet')
+
+    def __init__(self, pvname, label, value):
+        super(PvPushButtonVal, self).__init__(label)
+        self.value = value
+        if ATCAWidget:
+            self.setMaximumWidth(70)
+
+        self.clicked.connect(self.buttonClicked)
+
+        initPvMon(self,pvname)
+
+    def update(self, err):
+        pass
+
+    def buttonClicked(self):
+        self.pv.put(self.value)
+
 class PvEditIntX(PvEditInt):
 
     def __init__(self, pv, label):
@@ -435,6 +455,15 @@ class GroupsTab(QtWidgets.QWidget):
             self.l0RateText[i] = QtWidgets.QLabel('-')
             grid1.addWidget( self.l0RateText[i], i+1, 2)
         grid1.setRowStretch(grid1.rowCount(),1)
+
+        grid1.addWidget( QtWidgets.QLabel('Sequence'), 10, 0)
+        for i in range(4):
+            grid1.addWidget( QtWidgets.QLabel(str(i)), 11+i, 0)
+            grid1.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:ENABLE', 'Ena', 1), 11+i, 1 )
+            grid1.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:ENABLE', 'Dis', 0), 11+i, 2 )
+            grid1.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:DUMP', 'Dump', 1), 11+i,3 )
+        grid1.setRowStretch(grid1.rowCount(),1)
+            
         l.addLayout(grid1)
         l.addStretch()
 
