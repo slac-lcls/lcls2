@@ -76,7 +76,7 @@ import sys
 
 #from time import localtime, strftime, time
 
-import numpy as np
+import cunumeric as np
 
 from psana.pscalib.calib.NDArrIO import save_txt
 

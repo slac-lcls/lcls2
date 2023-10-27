@@ -38,7 +38,7 @@ Usage::
 import logging
 logger = logging.getLogger(__name__)
 
-import numpy as np
+import cunumeric as np
 from psana.detector.NDArrUtils import info_ndarr
 from time import time
 

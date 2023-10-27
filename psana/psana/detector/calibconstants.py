@@ -38,7 +38,7 @@ Usage::
 import logging
 logger = logging.getLogger(__name__)
 import sys
-import numpy as np
+import cunumeric as np
 
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_3d  # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess  # img_from_pixel_arrays
