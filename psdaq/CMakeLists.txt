@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
+cmake_policy(SET CMP0148 OLD)
+
 project(psdaq)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -28,8 +30,6 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 find_path(AES_STREAM_DRIVER_HEADER_PATH NAMES "DataDriver.h" PATH_SUFFIXES include REQUIRED)
-
-message("DEBUG: ${AES_STREAM_DRIVER_HEADER_PATH}")
 
 add_subdirectory(psdaq)
 add_subdirectory(drp)

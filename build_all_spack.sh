@@ -1,6 +1,6 @@
 set -e
 
-export CXXFLAGS=-`spack location -e `/.spack-env/view/include/
+export CXXFLAGS="-I$(spack location -e)/.spack-env/view/include/"
 export CC=`which gcc`
 export CXX=`which c++`
 

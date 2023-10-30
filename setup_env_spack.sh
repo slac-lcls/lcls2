@@ -16,7 +16,8 @@ else
     export SIT_PSDM_DATA=/cds/data/psdm
 fi
 
-source ~/.local/spack/activate_ps_2023-01-11_old_p4p.sh
+spack env activate -v dev ps202310_01
+
 export CC=$(which gcc)
 export CXX=(which cxx)
 
