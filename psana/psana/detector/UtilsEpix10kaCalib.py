@@ -597,6 +597,10 @@ def pedestals_calibration(parser):
             create_directory(dir_status, mode=dirmode)
 
             #block.sahpe = (1024, 16, 352, 384)
+            int_hi = kwa.get('int_hi', None)
+            rms_hi = kwa.get('rms_hi', None)
+            kwa['int_hi'] = BIT_MASK-1 if int_hi is None else int_hi
+            kwa['rms_hi'] = BIT_MASK-1 if rms_hi is None else rms_hi
             dark, rms, status = proc_dark_block(block[:nrec,idx,:], **kwa) # process pedestals per-panel (352, 384)
 
             fname = '%s_pedestals_%s.dat' % (prefix_peds, mode)
