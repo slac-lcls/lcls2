@@ -287,7 +287,16 @@ int EbAppBase::process()
                      ? (                   idx * _maxBufSize[src]) // In batch/buffer region
                      : (_bufRegSize[src] + idx * _maxTrSize[src]); // Tr region for non-selected EB is after batch/buffer region
   const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));    // Or, (char*)(_region[src]) + ofs;
-  const void*    end = (const char*)idg + ((ImmData::buf(flg) == ImmData::Buffer) ? _maxEntries * _maxBufSize[src] : _maxTrSize[src]);
+  auto           sz  = sizeof(*idg) + idg->xtc.sizeofPayload();
+  void*          end;
+  if (ImmData::buf(flg) == ImmData::Buffer)
+  {
+    // idg is first dgram in batch; set end to end of region if idg is within 1 batch size of it
+    end = idx < _prms.numBuffers[src] - _maxEntries ? (char*)idg + _maxEntries * _maxBufSize[src]
+                                                    : (char*)_region[src] + _bufRegSize[src];
+  } else {
+    end = (char*)idg + _maxTrSize[src];
+  }
 
   // "Non-selected" TEBs receive only single dgrams that are transitions needing
   // to have their EOL flag set to avoid the EB iterating to the next buffer.
@@ -306,31 +315,44 @@ int EbAppBase::process()
   }
   if (ImmData::buf(flg) == ImmData::Buffer)
   {
-    if ((idg < _region[src]) || ((char*)idg + idg->xtc.sizeofPayload()) >= ((char*)_region[src] + _bufRegSize[src]))
+    if (idx > _prms.numBuffers[src])
     {
-      logging::error("%s:\n  L1 dgram %p, size %u falls outside of region %p, size %zu\n",
-                     __PRETTY_FUNCTION__, idg, idg->xtc.sizeofPayload(), _region[src], _bufRegSize[src]);
+      logging::error("%s:\n  Buffer index for src %d is out of range 0:%u: %u\n",
+                     __PRETTY_FUNCTION__, src, _prms.numBuffers[src], idx);
       print = true;
     }
-    if (sizeof(*idg) + idg->xtc.sizeofPayload() > _maxBufSize[src])
+    if ((idg < _region[src]) || (end > ((char*)_region[src] + _bufRegSize[src])))
     {
-      logging::error("%s:\n  L1 dgram %p, size %u overruns buffer of size %zu\n",
-                     __PRETTY_FUNCTION__, idg, idg->xtc.sizeofPayload(), _maxBufSize[src]);
+      logging::error("%s:\n  Buffer %p:%p falls outside of region limits %p:%p\n",
+                     __PRETTY_FUNCTION__, idg, end, _region[src], (char*)_region[src] + _bufRegSize[src]);
+      print = true;
+    }
+    if (sz > _maxBufSize[src])
+    {
+      logging::error("%s:\n  Buffer's dgram %p, size %u overruns buffer of size %zu\n",
+                     __PRETTY_FUNCTION__, idg, sz, _maxBufSize[src]);
       print = true;
     }
   }
   else
   {
-    if ((idg < (void*)((char*)_region[src] + _bufRegSize[src])) || ((char*)idg + idg->xtc.sizeofPayload()) >= ((char*)_region[src] + _regSize[src]))
+    if (idx > _maxTrBuffers)
     {
-      logging::error("%s:\n  Tr dgram %p, size %u falls outside of region %p, size %zu\n",
-                     __PRETTY_FUNCTION__, idg, idg->xtc.sizeofPayload(), (char*)_region[src] + _regSize[src]);
+      logging::error("%s:\n  Tr buffer index for src %d is out of range 0:%u: %u\n",
+                     __PRETTY_FUNCTION__, src, _maxTrBuffers, idx);
       print = true;
     }
-    if (sizeof(*idg) + idg->xtc.sizeofPayload() > _maxTrSize[src])
+    if ((idg < (void*)((char*)_region[src] + _bufRegSize[src])) || (end > ((char*)_region[src] + _regSize[src])))
+    {
+      logging::error("%s:\n  Tr dgram %p:%p falls outside of region limits %p:%p\n",
+                     __PRETTY_FUNCTION__, idg, end,
+                     (char*)_region[src] + _bufRegSize[src], (char*)_region[src] + _regSize[src]);
+      print = true;
+    }
+    if (sz > _maxTrSize[src])
     {
       logging::error("%s:\n  Tr dgram %p, size %u overruns buffer of size %zu\n",
-                     __PRETTY_FUNCTION__, idg, idg->xtc.sizeofPayload(), _maxTrSize[src]);
+                     __PRETTY_FUNCTION__, idg, sz, _maxTrSize[src]);
       print = true;
     }
   }

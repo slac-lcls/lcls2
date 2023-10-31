@@ -234,20 +234,22 @@ void TebContributor::process(const EbDgram* dgram)
     // On wrapping, post the batch at the end of the region, if any
     if (dgram == _batMan.batchRegion())  _flush();
 
-    // Initiailize a new batch with the first dgram seen
-    if (!_batch.start)  _batch = {dgram, contractor};
-
     auto svc     = dgram->service();
     bool doFlush = ((svc != TransitionId::L1Accept) &&
                     (svc != TransitionId::SlowUpdate));
-    bool expired = _batMan.expired(       dgram->pulseId(),
-                                   _batch.start->pulseId());
+    bool expired = _batch.start && (_batMan.expired(       dgram->pulseId(),
+                                                    _batch.start->pulseId()));
 
     if (LIKELY(!expired && !doFlush))   // Most frequent case when batching
     {
-      _batch.end         = dgram;       // Append dgram to batch
-      _batch.contractor |= contractor;
-      _batch.entries++;
+      if (LIKELY(_batch.start))         // Append dgram to batch
+      {
+        _batch.end         = dgram;
+        _batch.contractor |= contractor;
+        _batch.entries++;
+      }
+      else                              // Create a new batch
+        _batch             = {dgram, contractor};
     }
     else
     {
@@ -263,10 +265,14 @@ void TebContributor::process(const EbDgram* dgram)
 
       if (doFlush)                      // Post the batch + transition
       {
-        _batch.end         = dgram;     // Append dgram to batch
-        _batch.contractor |= contractor;
-        _batch.entries++;
-
+        if (LIKELY(_batch.start))       // Append dgram to batch
+        {
+          _batch.end         = dgram;
+          _batch.contractor |= contractor;
+          _batch.entries++;
+        }
+        else                            // Create a new batch
+          _batch             = {dgram, contractor};
         _post(_batch);
 
         _batch.start = nullptr;         // Start a new batch
@@ -327,6 +333,21 @@ void TebContributor::_post(const Batch& batch)
     if (UNLIKELY((batch.entries == 0) || (batch.entries > _prms.maxEntries)))
     {
       logging::error("%s:\n  Bad batch entry count: %u", __PRETTY_FUNCTION__, batch.entries);
+      print = true;
+    }
+    if (UNLIKELY(extent != _batch.entries * _prms.maxInputSize))
+    {
+      logging::error("%s:\n  Batch extent does not match entry count: %zu vs %u * %zu = %zu",
+                     __PRETTY_FUNCTION__, extent,
+                     _batch.entries, _prms.maxInputSize, _batch.entries * _prms.maxInputSize);
+      print = true;
+    }
+    if (UNLIKELY((batch.start < _batMan.batchRegion()) ||
+                 ((char*)(batch.start) + extent > (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize())))
+    {
+      logging::error("%s:\n  Batch %p:%p falls outide of region limits %p:%p",
+                     __PRETTY_FUNCTION__, batch.start, (char*)(batch.start) + extent,
+                     _batMan.batchRegion(), (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize());
       print = true;
     }
     if (UNLIKELY(pid <= _previousPid))
