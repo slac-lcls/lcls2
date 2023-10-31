@@ -16,6 +16,7 @@ USAGE = 'Usage:'\
       + '\n  %s -k exp=ueddaq02,run=83 -d epixquad -o ./work' % SCRNAME\
       + '\nTests:'\
       + '\n  %s -k exp=rixx45619,run=121 -d epixhr -o ./work' % SCRNAME\
+      + '\n  %s -k exp=rixx1003721,run=200 -d epixhr  -o ./work --int_hi 32000' % SCRNAME\
       + '\n  %s -k \"{\'exp\':\'rixx45619\', \'run\':121}\" -d epixhr -o ./work' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
       #+ '\n  ??? mpirun -n 5 %s -k exp=ueddaq02,run=27 -d epixquad -i15 -o ./work -L DEBUG' % SCRNAME\
@@ -55,11 +56,11 @@ def argument_parser():
     d_filemode= 0o664
     d_group   = 'ps-users'
     d_int_lo  = 1       # lowest  intensity accepted for dark evaluation
-    d_int_hi  = 16000   # highest intensity accepted for dark evaluation
+    d_int_hi  = None    # highest intensity accepted for dark evaluation, ex: 16000
     d_intnlo  = 6.0     # intensity ditribution number-of-sigmas low
     d_intnhi  = 6.0     # intensity ditribution number-of-sigmas high
     d_rms_lo  = 0.001   # rms ditribution low
-    d_rms_hi  = 16000   # rms ditribution high
+    d_rms_hi  = None    # rms ditribution high, ex: 16000
     d_rmsnlo  = 6.0     # rms ditribution number-of-sigmas low
     d_rmsnhi  = 6.0     # rms ditribution number-of-sigmas high
     d_fraclm  = 0.1     # allowed fraction limit
@@ -86,11 +87,11 @@ def argument_parser():
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_int_lo  = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
-    h_int_hi  = 'highest intensity accepted for dark evaluation, default = %d' % d_int_hi
+    h_int_hi  = 'highest intensity accepted for dark evaluation, for None derived from data_bit_mask, default = %s' % d_int_hi
     h_intnlo  = 'intensity ditribution number-of-sigmas low, default = %f' % d_intnlo
     h_intnhi  = 'intensity ditribution number-of-sigmas high, default = %f' % d_intnhi
     h_rms_lo  = 'rms ditribution low, default = %f' % d_rms_lo
-    h_rms_hi  = 'rms ditribution high, default = %f' % d_rms_hi
+    h_rms_hi  = 'rms ditribution high, for None derived from data_bit_mask, default = %s' % d_rms_hi
     h_rmsnlo  = 'rms ditribution number-of-sigmas low, default = %f' % d_rmsnlo
     h_rmsnhi  = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
     h_fraclm  = 'fraction of statistics [0,1] below low or above high gate limit to assign pixel bad status, default = %f' % d_fraclm
