@@ -408,7 +408,7 @@ def issue_2023_10_26():
     M14 =  0x3fff  # 16383
     M15 =  0x7fff  # 32767
 
-    print('data bits: %d' % M15)
+    print('data bits: %d' % M14)
 
     for irun,orun in enumerate(ds.runs()):
       print('\n\n== run:%d' % irun)
@@ -425,7 +425,7 @@ def issue_2023_10_26():
           #a = raw[:,:144,:192] # min:0 max:0
           #a = raw[:,:144,193:] # min:0 max:0
           #a = raw[:,145:,193:] # min:0 max:0
-          a = raw[:,145:,:192] & M15  # min:4811 max:10054
+          a = raw[:,145:,:192] & M14  # min:4811 max:10054
           print(info_ndarr(a,'raw:%4d' % ievt), 'min:%6d max:%6d' % (a.min(), a.max()), end='\r')
 
 
