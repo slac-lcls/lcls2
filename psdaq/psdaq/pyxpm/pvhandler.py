@@ -1,10 +1,59 @@
+from p4p.server.thread import SharedPV
+from p4p.nt import NTScalar
+from p4p.nt import NTTable
 import time
 
 lverbose = False
+provider = None
 
 def setVerbose(v):
     global lverbose
     lverbose = v
+
+def setProvider(v):
+    global provider
+    provider = v
+
+def toTable(t):
+    table = []
+    for v in t.items():
+        table.append((v[0],v[1][0][1:]))
+        n = len(v[1][1])
+    return table,n
+
+def toDict(t):
+    d = {}
+    for v in t.items():
+        d[v[0]] = v[1][1]
+    return d
+
+def toDictList(t,n):
+    l = []
+    for i in range(n):
+        d = {}
+        for v in t.items():
+            d[v[0]] = v[1][1][i]
+        l.append(d)
+    return l
+
+def addPV(name,ctype,init=0):
+    pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=DefaultPVHandler())
+    provider.add(name, pv)
+    return pv
+
+def addPVC(name,ctype,init,cmd):
+    pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
+                  handler=PVHandler(cmd))
+    provider.add(name,pv)
+    return pv
+
+def addPVT(name,t):
+    table,n = toTable(t)
+    init    = toDictList(t,n)
+    pv = SharedPV(initial=NTTable(table).wrap(init),
+                  handler=DefaultPVHandler())
+    provider.add(name,pv)
+    return pv
 
 def pvUpdate(pv, val):
     value = pv.current()

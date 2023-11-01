@@ -1,4 +1,3 @@
-#----------
 
 """
 Class :py:class:`WFPeaks` a set of methods to find peaks in waveforms
@@ -41,7 +40,6 @@ from ndarray import wfpkfinder_cfd # from psana.pycalgos
 from psana.hexanode.WFUtils import peak_finder_v2, peak_finder_v3
 from psana.hexanode.PyCFD import PyCFD
 
-#----------
 
 class WFPeaks :
 
@@ -56,14 +54,13 @@ class WFPeaks :
 
         self.tbins = None # need it in V4 to convert _pktsec to _pkinds and _pkvals
 
-#----------
 
     def set_wf_peak_finder_parameters(self, **kwargs) :
 
         self.NUM_CHANNELS= kwargs.get('numchs',  5)
         self.NUM_HITS    = kwargs.get('numhits',16)
         self.VERSION     = kwargs.get('version', 1)
-        self.DLD     = kwargs.get('DLD', False)        
+        self.DLD     = kwargs.get('DLD', False)
 
         if True :
             self.BASE        = kwargs.get('cfd_base',          0.)
@@ -96,10 +93,10 @@ class WFPeaks :
             self.IOFFSETEND  = kwargs.get('pf3_ioffsetend',  2000)
             self.WFBINBEG    = kwargs.get('pf3_wfbinbeg',    6000)
             self.WFBINEND    = kwargs.get('pf3_wfbinend',   30000)
-            
+
         if self.VERSION == 4 :
             paramsCFD = kwargs.get('paramsCFD', {})
-            
+
             if self.DLD:
                 self.paramsCFD = {}
 
@@ -117,24 +114,22 @@ class WFPeaks :
                     for k,param in paramsCFD.items():
                         if param['channel'] not in self.cnls:
                             raise NameError("Channel names should be chosen from ['x1','x2','y1','y2','mcp'] for QUAD and ['u1','u2','v1','v2','w1','w2','mcp'] for HEX.")
-                        self.paramsCFD[param['channel']] = param                    
+                        self.paramsCFD[param['channel']] = param
 
                 self.PyCFDs = [PyCFD(self.paramsCFD[self.cnls[i]]) for i in range(self.NUM_CHANNELS)]
             else:
-                if isinstance(paramsCFD,list):            
-                    self.PyCFDs = [PyCFD(paramsCFD[i]) for i in range(self.NUM_CHANNELS)] 
-                elif isinstance(paramsCFD,dict):       
-                    self.PyCFDs = [PyCFD(param) for k, param in paramsCFD.items()]                                             
+                if isinstance(paramsCFD,list):
+                    self.PyCFDs = [PyCFD(paramsCFD[i]) for i in range(self.NUM_CHANNELS)]
+                elif isinstance(paramsCFD,dict):
+                    self.PyCFDs = [PyCFD(param) for k, param in paramsCFD.items()]
 
-#----------
 
     def _init_arrays(self) :
-        self._number_of_hits = np.zeros((self.NUM_CHANNELS), dtype=np.int)
+        self._number_of_hits = np.zeros((self.NUM_CHANNELS), dtype=np.int32)
         self._pkvals = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.double)
         self._pkinds = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.uint32)
         self._pktsec = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.double)
 
-#----------
 
     def proc_waveforms(self, wfs, wts) :
         """
@@ -143,7 +138,7 @@ class WFPeaks :
         if wfs is self._wfs_old : return
 
         self._init_arrays()
- 
+
         #print_ndarr(wfs, '  waveforms : ', last=4)
         assert (self.NUM_CHANNELS==wfs.shape[0]),\
                'expected number of channels in not consistent with waveforms array shape'
@@ -152,9 +147,9 @@ class WFPeaks :
 
         if self.VERSION == 4:
             self.wfsprep = wfs[:,self.WFBINBEG:self.WFBINEND]
-        else:      
+        else:
             offsets = wfs[:,self.IOFFSETBEG:self.IOFFSETEND].mean(axis=1)
-            #print('  XXX offsets: %s' % str(offsets))        
+            #print('  XXX offsets: %s' % str(offsets))
             self.wfsprep = wfs[:,self.WFBINBEG:self.WFBINEND] - offsets.reshape(-1, 1) # subtract wf-offset
         self.wtsprep = wts[:,self.WFBINBEG:self.WFBINEND] # sec
 
@@ -196,17 +191,15 @@ class WFPeaks :
 
         self._wfs_old = wfs
 
-#----------
 
     def waveforms_preprocessed(self, wfs, wts) :
         """Returns preprocessed waveforms for selected range [WFBINBEG:WFBINEND];
            wfsprep[NUM_CHANNELS,WFBINBEG:WFBINEND] - intensities with subtracted mean evaluated
-           wtsprep[NUM_CHANNELS,WFBINBEG:WFBINEND] - times in [sec] like raw data 
+           wtsprep[NUM_CHANNELS,WFBINBEG:WFBINEND] - times in [sec] like raw data
         """
         self.proc_waveforms(wfs, wts)
         return self.wfsprep, self.wtsprep
 
-#----------
 
     def number_of_hits(self, wfs, wts) :
         self.proc_waveforms(wfs, wts)
@@ -243,14 +236,10 @@ class WFPeaks :
                self._pkinds,\
                self._pkvals,\
                self._pktsec
-#----------
 
     def __del__(self) :
         pass
 
-#----------
-#----------
-#----------
 
 if __name__ == "__main__" :
   def test_WFPeaks() :
@@ -291,7 +280,6 @@ if __name__ == "__main__" :
 
     o = WFPeaks(**kwargs)
 
-#----------
 
   def usage(tname):
     s = '\nUsage: python %s <test-number>' % sys.argv[0]
@@ -299,7 +287,6 @@ if __name__ == "__main__" :
     if tname in ('0','1') : s+='\n 1 - test_WFPeaks()'
     return s
 
-#----------
 
 if __name__ == "__main__" :
     import numpy as np; global np
@@ -317,5 +304,5 @@ if __name__ == "__main__" :
     print('%s' % usage('0')) # tname
     sys.exit(s)
 
-#----------
+# EOF
 

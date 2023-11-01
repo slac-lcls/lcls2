@@ -15,10 +15,14 @@ class EnvManager(object):
         self.config     = config
         self.env_name   = env_name
         self.dgrams     = []
-        self.timestamps = []
+        self._timestamps= [] # save as a list of d.timestamp
         self.n_items    = 0
 
         self._init_env_variables()
+
+    @property
+    def timestamps(self):
+        return np.asarray(self._timestamps, dtype=np.uint64)
 
     def _init_env_variables(self):
         """ From the given config, build a list of variables from
@@ -63,7 +67,7 @@ class EnvManager(object):
 
     def add(self, d):
         self.dgrams.append(d)
-        self.timestamps.append(d.timestamp())
+        self._timestamps.append(d.timestamp())
         self.n_items += 1
     
     def is_empty(self):
@@ -182,10 +186,12 @@ class EnvStore(object):
                     for p in range(found_pos, found_pos - PS_N_STEP_SEARCH_STEPS, -1):
                         if p < 0:
                             break
-                        envs = getattr(env_man.dgrams[p], self.env_name)[segment_id]
-                        if hasattr(envs, alg):
-                            val = getattr(getattr(envs, alg), env_variable)
-                            break
+                        env_d = env_man.dgrams[p]
+                        if hasattr(env_man.dgrams[p], self.env_name):
+                            envs = getattr(env_man.dgrams[p], self.env_name)[segment_id]
+                            if hasattr(envs, alg):
+                                val = getattr(getattr(envs, alg), env_variable)
+                                break
                     
                     if val is not None: break # found the value from this env manager
             env_values.append(val)

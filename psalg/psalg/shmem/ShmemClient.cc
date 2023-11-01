@@ -19,6 +19,7 @@
 #include "XtcMonitorMsg.hh"
 
 #include <poll.h>
+#include <time.h>
 
 //#define DBUG
 //#define DBUG2
@@ -247,6 +248,11 @@ ShmemClient::ShmemClient() :
 
 ShmemClient::~ShmemClient()
 {
+  _shutdown();
+}
+
+void ShmemClient::_shutdown()
+{
   if (_myInputEvQueue != (mqd_t)-1)        mq_close(_myInputEvQueue);
 
   for (unsigned i = 0; i < _numberOfEvQueues; ++i)
@@ -256,10 +262,10 @@ ShmemClient::~ShmemClient()
 
   // Avoid race with server and let it unlink the mqueues
 
-  if (_handler)  delete _handler;
-  delete [] _myOutputEvQueue;
+  if (_handler)          { delete    _handler;          _handler = 0; }
+  if (_myOutputEvQueue)  { delete [] _myOutputEvQueue;  _myOutputEvQueue = nullptr; }
 
-  if (!(_myTrFd < 0))  ::close(_myTrFd);
+  if (!(_myTrFd < 0))    { ::close(_myTrFd);            _myTrFd = -1; }
 }
 
 /*
@@ -312,6 +318,9 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 
   umask(0);   // Need this to set group/other write permissions on mqueue
 
+  // In case resources are still lingering from a previous call, shut down first
+  _shutdown();
+
   XtcMonitorMsg myMsg;
   unsigned priority;
 
@@ -322,44 +331,54 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   _myTrFd = ::socket(AF_INET, SOCK_STREAM, 0);
   if (_myTrFd < 0) {
     perror("Opening myTrFd socket");
+    delete[] qname;
     return 1;
     }
 
   XtcMonitorMsg::discoveryQueue(tag,qname);
-  mqd_t discoveryQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
-  if (discoveryQueue == (mqd_t)-1)
-	error++;
+  ssize_t rv;
+  do {
+      mqd_t discoveryQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
+      if (discoveryQueue == (mqd_t)-1) {
+          sleep(1);
+          continue;
+      }
 
-  if (mq_receive(discoveryQueue, (char*)&myMsg, sizeof(myMsg), &priority) < 0) {
-	perror("mq_receive discoveryQ");
-        delete[] qname;
-	return ++error;
-    }
+      printf("[%p] Reading discoveryQueue %d\n",this, discoveryQueue);
+      timespec tmo;
+      clock_gettime(CLOCK_REALTIME,&tmo);
+      tmo.tv_sec++;
+      rv = mq_timedreceive(discoveryQueue, (char*)&myMsg, sizeof(myMsg), &priority, &tmo);
+      mq_close(discoveryQueue);
+  } while (rv<0);
 
-  mq_close(discoveryQueue);
+  unsigned port = myMsg.bufferIndex();
 
   sockaddr_in saddr;
   saddr.sin_family = AF_INET;
   saddr.sin_addr.s_addr = htonl(0x7f000001);
-  saddr.sin_port        = htons(myMsg.bufferIndex());
+  saddr.sin_port        = htons(port);
 
-  if (::connect(_myTrFd, (sockaddr*)&saddr, sizeof(saddr)) < 0) {
-    perror("Connecting myTrFd socket");
-    sleep(1);
-    }
-  else {
+  printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
+  while (::connect(_myTrFd, (sockaddr*)&saddr, sizeof(saddr)) < 0) {
+      printf("[%p] Error connecting myTrFd socket",this);
+      sleep(1);
+      printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
+  }
+
 #ifdef DBUG
-    socklen_t addrlen = sizeof(sockaddr_in);
-    sockaddr_in name;
-    ::getsockname(_myTrFd, (sockaddr*)&name, &addrlen);
-    printf("Connected to %08x.%d [%d] from %08x.%d\n",
-           ntohl(saddr.sin_addr.s_addr),ntohs(saddr.sin_port),_myTrFd,
-           ntohl(name.sin_addr.s_addr),ntohs(name.sin_port));
+  socklen_t addrlen = sizeof(sockaddr_in);
+  sockaddr_in name;
+  ::getsockname(_myTrFd, (sockaddr*)&name, &addrlen);
+  printf("[%p] Connected to %08x.%d [%d] from %08x.%d\n", this,
+         ntohl(saddr.sin_addr.s_addr),ntohs(saddr.sin_port),_myTrFd,
+         ntohl(name.sin_addr.s_addr),ntohs(name.sin_port));
 #endif
-    }
 
-  if (::read(_myTrFd,&myMsg,sizeof(myMsg))!=sizeof(myMsg)) {
-    printf("Connection rejected by shmem server [too many clients]\n");
+  ssize_t rc;
+  if ((rc=::read(_myTrFd,&myMsg,sizeof(myMsg)))!=sizeof(myMsg)) {
+    if (rc < 0)  perror("read failed");
+    else         printf("read returned %zd of %zd bytes\n", rc, sizeof(myMsg));
     delete[] qname;
     return ++error;
     }

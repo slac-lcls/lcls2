@@ -6,6 +6,7 @@ namespace Pds {
 
     struct TriggerData_bld
     {
+      TriggerData_bld(uint64_t eBeam_) : eBeam(eBeam_) {};
       uint64_t eBeam;
     };
   };

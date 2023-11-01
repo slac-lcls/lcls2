@@ -14,6 +14,7 @@ add_library(service SHARED
     Histogram.cc
     Dl.cc
     Json2Xtc.cc
+    IpcUtils.cc
 )
 
 target_include_directories(service PUBLIC
@@ -59,6 +60,10 @@ target_link_libraries(exporter PUBLIC
     prometheus-cpp::pull
 )
 
+install(FILES
+    EbDgram.hh
+    DESTINATION include/psdaq/service
+)
 
 install(TARGETS service collection exporter
     ARCHIVE DESTINATION lib

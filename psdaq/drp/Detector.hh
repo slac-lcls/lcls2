@@ -10,6 +10,12 @@
 #include <unordered_map>
 #include "psdaq/service/json.hpp"
 
+namespace Pds {
+  namespace Eb {
+    class ResultDgram;
+  }
+};
+
 namespace Drp {
 
 struct Parameters;
@@ -22,19 +28,19 @@ public:
     virtual ~Detector() {}
     virtual nlohmann::json connectionInfo(const nlohmann::json& msg) {return nlohmann::json({});}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
-    virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) = 0;
-    virtual unsigned beginrun (XtcData::Xtc& xtc, const nlohmann::json& runInfo) {return 0;}
-    virtual unsigned beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {return 0;};
-    virtual unsigned enable   (XtcData::Xtc& xtc, const nlohmann::json& info) {return 0;};
-    virtual unsigned disable  (XtcData::Xtc& xtc, const nlohmann::json& info) {return 0;};
-    virtual void slowupdate(XtcData::Xtc& xtc) { XtcData::Xtc& trXtc = transitionXtc();
-                                                 memcpy((void*)&xtc, (const void*)&trXtc, trXtc.extent); };
-    virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
+    virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) = 0;
+    virtual unsigned beginrun (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo) {return 0;}
+    virtual unsigned beginstep(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& stepInfo) {return 0;};
+    virtual unsigned enable   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) {return 0;};
+    virtual unsigned disable  (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) {return 0;};
+    virtual void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) { xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}}; };
+    virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) = 0;
+    virtual void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) {};
     virtual void shutdown() {};
 
     // Scan methods.  Default is to fail.
-    virtual unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc) {return 1;};
-    virtual unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc) {return 1;};
+    virtual unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) {return 1;};
+    virtual unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) {return 1;};
 
     virtual Pds::TimingHeader* getTimingHeader(uint32_t index) const
     {
@@ -42,6 +48,7 @@ public:
     }
     virtual bool scanEnabled() {return false;}
     XtcData::Xtc& transitionXtc() {return *reinterpret_cast<XtcData::Xtc*>(m_xtcbuf.data());}
+    const void*   trXtcBufEnd()   {return m_xtcbuf.data() + m_xtcbuf.size();}
     XtcData::NamesLookup& namesLookup() {return m_namesLookup;}
     unsigned nodeId;
     unsigned virtChan;
@@ -49,7 +56,7 @@ protected:
     Parameters* m_para;
     MemPool* m_pool;
     XtcData::NamesLookup m_namesLookup;
-    std::vector<uint8_t> m_xtcbuf;
+    std::vector<char> m_xtcbuf;
 };
 
 template <typename T>

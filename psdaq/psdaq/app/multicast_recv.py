@@ -20,6 +20,12 @@ elif sys.argv[1]=="-g": #gmd
 elif sys.argv[1]=="-x": #xgmd
     print('XGMD:')
     multicast_group = '239.255.25.3'
+elif sys.argv[1]=="-w": #xpp wave8
+    print('XPP WAVE8:')
+    multicast_group = '239.255.24.75'
+elif sys.argv[1]=="-i": #xpp ipimb
+    print('XPP IPIMB:')
+    multicast_group = '239.255.24.40'
 
 # Create the socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

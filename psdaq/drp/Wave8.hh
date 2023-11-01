@@ -13,8 +13,8 @@ public:
     Wave8(Parameters* para, MemPool* pool);
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;
 private:
-    unsigned       _configure(XtcData::Xtc&, XtcData::ConfigIter&) override;
-    void           _event    (XtcData::Xtc&,
+    unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
+    void           _event    (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&) override;
 private:
     XtcData::NamesId  m_evtNamesRaw;

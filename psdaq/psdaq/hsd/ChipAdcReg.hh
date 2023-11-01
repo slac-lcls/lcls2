@@ -90,7 +90,7 @@ namespace Pds {
 
       // vuint32_t fullToTrig;     // [ deprecated ]
       //
-      //      vuint32_t status;
+      vuint32_t buildStatus;
       //      vuint32_t statusCount[32];
     };
   };

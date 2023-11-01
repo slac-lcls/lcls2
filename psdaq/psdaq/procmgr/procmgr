@@ -11,7 +11,7 @@ if sys.version_info[0] == 2:
 from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform2, getConfigFileNames, add_macro_config, getUser, ConfigFileError, rcFileDefault
 from optparse import OptionParser
 import os.path
-from os import remove, symlink, environ
+from os import remove, symlink, environ, access, R_OK, W_OK
 import shutil
 import filecmp
 import stat
@@ -22,6 +22,12 @@ from time import sleep
 #
 def _stop(argv0, args, runconfig, lastconfig, configfile, options, *, allFlag=False):
     _stop_rv = 1    # return value
+
+    configdir = os.path.abspath(os.path.dirname(configfile))
+    if not access(configdir, W_OK):
+        print("%s: stop requires write permission for '%s' directory" % (argv0, configdir))
+        return 1    # error
+
     try:
         if os.path.isfile(runconfig):
             print(("%s: using config file '%s' to stop" % (argv0, runconfig)))
@@ -74,6 +80,12 @@ def _stop(argv0, args, runconfig, lastconfig, configfile, options, *, allFlag=Fa
 #
 def _start(argv0, args, runconfig, lastconfig, configfile, options, procmgr_macro):
     _start_rv = 1   # return value
+
+    configdir = os.path.abspath(os.path.dirname(configfile))
+    if not access(configdir, W_OK):
+        print("%s: start requires write permission for '%s' directory" % (argv0, configdir))
+        return 1    # error
+
     if (os.path.exists(runconfig)) and (len(args) == 0):
         print("It is necessary to stop the running config before starting '%s'." % configfile)
         print("If this is incorrect, remove '%s'." % runconfig)
@@ -122,6 +134,12 @@ def _start(argv0, args, runconfig, lastconfig, configfile, options, procmgr_macr
 #
 def _status(argv0, args, lastconfig, configfile, options):
     _status_rv = 1    # return value
+
+    configdir = os.path.abspath(os.path.dirname(configfile))
+    if not access(configdir, R_OK):
+        print("%s: status requires read permission for '%s' directory" % (argv0, configdir))
+        return 1    # error
+
     try:
         if os.path.exists(lastconfig):
             print("%s: using config file '%s'" % (sys.argv[0], lastconfig))

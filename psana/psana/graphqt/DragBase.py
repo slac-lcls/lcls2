@@ -1,10 +1,10 @@
+
 """
 Class :py:class:`DragBase` is a base class for draggable objects
 ==================================================================
 
 Created on 2016-09-14 by Mikhail Dubrovin
 """
-#-----------------------------
 import logging
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,6 @@ from PyQt5.QtGui import QPen, QBrush, QCursor
 from psana.graphqt.DragTypes import * #dic_drag_type_to_name, UNDEF #, POINT, LINE, RECT, CIRC, POLY, WEDG
 from psana.graphqt.QWUtils import select_item_from_popup_menu, select_color
 
-#-----------------------------
 
 FROZEN = 0
 ADD    = 1
@@ -30,20 +29,18 @@ mode_names = ('FROZEN', 'ADD', 'MOVE', 'EDIT', 'DELETE')
 dic_mode_type_to_name = dict(zip(mode_types, mode_names))
 dic_mode_name_to_type = dict(zip(mode_names, mode_types))
 
-#-----------------------------
 
-def print_warning(o, metframe) :
+def print_warning(o, metframe):
     wng = 'WARNING: %s.%16s - abstract interface method needs to be re-implemented in derived class.' \
           % (o.__class__.__name__, metframe.f_code.co_name)
     print(wng)
     #raise NotImplementedError(wng)
 
-#-----------------------------
 
-class DragBase(object) :
-    
+class DragBase(object):
+
     def __init__(self, parent=None,\
-                 brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)) :
+                 brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)):
 
         #logger.debug('In DragBase create %s' % self.str_dragtype())
 
@@ -62,27 +59,27 @@ class DragBase(object) :
         #self.style_reddish = "background-color: rgb(220,   0,   0); color: rgb(0, 0, 0);" # Reddish background
         #self.style_transp  = "background-color: rgb(255,   0,   0, 100);"
 
-    
-    def set_drag_mode(self, mode=MOVE) :
+
+    def set_drag_mode(self, mode=MOVE):
         #logger.debug('In DragBase.set_drag_mode %s for %s' % (mode_names[mode], self.str_dragtype()))
         self._drag_mode = mode
 
 
-    def mode(self) :
+    def mode(self):
         return self._drag_mode
 
 
-    def set_child_item_sel(self, item=None) :
+    def set_child_item_sel(self, item=None):
         self._child_item_sel = item
 
 
-    def child_item_sel(self) :
+    def child_item_sel(self):
         return self._child_item_sel
 
 
-    def set_control_points_visible(self, visible=True) :
-        if self.lst_ctl_points is None : return
-        for cpt in self.lst_ctl_points :
+    def set_control_points_visible(self, visible=True):
+        if self.lst_ctl_points is None: return
+        for cpt in self.lst_ctl_points:
             cpt.setVisible(visible)
             #cpt.setZValue(100 if visible else 30)
             #cpt.setEnabled(True)
@@ -93,45 +90,45 @@ class DragBase(object) :
         self.setZValue(40 if visible else 20)
 
 
-    def str_dragtype(self) :
+    def str_dragtype(self):
         return dic_drag_type_to_name[self._dragtype]
 
 
-    def set_cursor_hover(self, cursor=Qt.CrossCursor) :
+    def set_cursor_hover(self, cursor=Qt.CrossCursor):
         self.hover_cursor = cursor
 
 
-    def set_cursor_grab(self, cursor=Qt.SizeAllCursor) : # Qt.ClosedHandCursor) :
+    def set_cursor_grab(self, cursor=Qt.SizeAllCursor): # Qt.ClosedHandCursor):
         self.grub_cursor = cursor
 
 
-    def control_point_menu(self) :
+    def control_point_menu(self):
         lst = ('Invert', 'Delete', 'Color', 'Cancel')
         txt = select_item_from_popup_menu(lst)
 
-        if txt == 'Invert' :
+        if txt == 'Invert':
             self.setPen(self._pen_inv if self.pen()==self._pen_pos else self._pen_pos)
 
-        elif txt == 'Delete' :
+        elif txt == 'Delete':
             #print('ask parent class:', self._parent, ' to kill self:', self)
             self.set_drag_mode(DELETE)
             self.setVisible(False)
             #self._parent.delete_item(self)
 
-        elif txt == 'Cancel' :
+        elif txt == 'Cancel':
             return
 
-        elif txt == 'Color' :
+        elif txt == 'Color':
             color = select_color(self._pen_pos.color())
             self._pen_pos = QPen(color, 2, Qt.SolidLine)
             self._pen_pos.setCosmetic(True)
             self.setPen(self._pen_pos)
 
-        else :
+        else:
             print('DragBase: this point features are not implemented for item "%s"' % txt)
 
 
-    def rotate_point(self, p, sign=-1) :
+    def rotate_point(self, p, sign=-1):
         angle = self.rotation()
         angle_rads = sign * radians(angle)
         s,c = sin(angle_rads), cos(angle_rads)
@@ -150,25 +147,24 @@ class DragBase(object) :
         dp = self.rotate_point(tl, sign=1)
 
         #print('XXX item pos dx:%6.1f dy:%6.1f' % (p0.x(), p0.y()))
-        #print('XXX rect tl    :%6.1f dy:%6.1f' % (tl.x(), tl.y()))
-        #print('XXX rot  tl    :%6.1f dy:%6.1f' % (dp.x(), dp.y()))
+        #print('XXX rect tl   :%6.1f dy:%6.1f' % (tl.x(), tl.y()))
+        #print('XXX rot  tl   :%6.1f dy:%6.1f' % (dp.x(), dp.y()))
 
-        self.setRect(QRectF(QPointF(0,0), r0.size()))        
+        self.setRect(QRectF(QPointF(0,0), r0.size()))
         self.setPos(p0+dp)
 
-#-----------------------------
+
 # Abstract interface methods
-#-----------------------------
 
-#    def create(self)            : print_warning(self, sys._getframe()) # ; return None
-#    def move(self)              : print_warning(self, sys._getframe())
-#    def move_is_completed(self) : print_warning(self, sys._getframe())
-#    def contains(self)          : print_warning(self, sys._getframe())
-#    def draw(self)              : print_warning(self, sys._getframe())
-#    def print_attrs(self)       : print_warning(self, sys._getframe())
+#    def create(self)           : print_warning(self, sys._getframe()) # ; return None
+#    def move(self)             : print_warning(self, sys._getframe())
+#    def move_is_completed(self): print_warning(self, sys._getframe())
+#    def contains(self)         : print_warning(self, sys._getframe())
+#    def draw(self)             : print_warning(self, sys._getframe())
+#    def print_attrs(self)      : print_warning(self, sys._getframe())
 
-#-----------------------------
-if __name__ == "__main__" :
+if __name__ == "__main__":
     print('Self test is not implemented...')
     print('use > python FWViewImageShapes.py')
-#-----------------------------
+
+# EOF

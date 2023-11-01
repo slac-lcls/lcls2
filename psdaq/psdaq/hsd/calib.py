@@ -23,7 +23,7 @@ def set_calib(db_url,instrument,seg,alias,calib):
     dbname = 'configDB'
 
     mycdb = cdb.configdb(db_url, instrument, create,
-                         root='configDB', user=instrument+'opr', password='pcds')
+                         root='configDB', user=instrument+'opr')
     mycdb.add_device_config('hsdcal')
 
     top = cdict()

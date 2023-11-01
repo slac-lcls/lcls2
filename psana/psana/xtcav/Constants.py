@@ -2,13 +2,11 @@
 Detector Names
 """
 CALIB_GROUP = 'Xtcav::CalibV1' 
-ANALYSIS_VERSION = 'XTCAV_Analysis_Version'
 
 DETNAME      = 'xtcav'       # XrayTransportDiagnostic.0:Opal1000.0
-EVENTID      = 'eventid'     # EventId
+#EVENTID      = 'EventId'     # EventId
 EBEAM        = 'ebeam'       # EBeam
-GAS_DETECTOR = 'gasdetector' # FEEGasDetEnergy
-XTCAVPARS    = 'xtcavpars'
+GAS_DETECTOR = 'gmd' # FEEGasDetEnergy
 
 ROI_SIZE_X_names  = ['XTCAV_ROI_sizeX',  'ROI_X_Length', 'OTRS:DMP1:695:SizeX']
 ROI_SIZE_Y_names  = ['XTCAV_ROI_sizeY',  'ROI_Y_Length', 'OTRS:DMP1:695:SizeY']
@@ -26,6 +24,7 @@ RF_AMP_CALIB_names   = ['XTCAV_Amp_Des_calib_MV','XTCAV_Cal_Amp','SIOC:SYS0:ML01
 RF_PHASE_CALIB_names = ['XTCAV_Phas_Des_calib_deg','XTCAV_Cal_Phase','SIOC:SYS0:ML01:AO215']
 DUMP_E_names         = ['XTCAV_Beam_energy_dump_GeV','Dump_Energy','REFS:DMP1:400:EDES']
 DUMP_DISP_names      = ['XTCAV_calib_disp_posToEnergy','Dump_Disp','SIOC:SYS0:ML01:AO216']
+ANALYSIS_VERSION = ['XTCAV_Analysis_Version']
 
 xtcav_varnames = {\
   'ROI_SIZE_X_names'     : ROI_SIZE_X_names ,\

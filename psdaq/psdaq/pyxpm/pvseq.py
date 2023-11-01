@@ -1,6 +1,6 @@
 import time
 
-from psdaq.cas.seq import *
+from psdaq.seq.seq import *
 from psdaq.pyxpm.pvhandler import *
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
@@ -26,6 +26,16 @@ class Engine(object):
         self._jump = reg.find(name='SeqJump_%d'%id)[0]
         self._ram  = reg.find(name='SeqMem_%d'%id)[0].mem
         self._caches  = {}  # instruction sequences committed to device
+
+        #  Track sequences that can be reset on 1Hz marker repeatedly
+        #  _refresh = 0 : only reset explicitly
+        #  _refresh = 1 : wait for explicit reset, then go to 2
+        #  _refresh = 2 : reset on linkUp
+        self._refresh = 0   
+
+        self._indices = 0
+        self.dump()
+
         a = 0
         self._caches[a]                           = SeqCache(0,3,[FixedRateSync(5,1),FixedRateSync(5,1),Branch.unconditional(line=0)])
         self._ram   [a  ].set(FixedRateSync(5,1)._word())
@@ -57,9 +67,14 @@ class Engine(object):
                     else:
                         seq.append(Branch.conditional(args[1],args[2],args[3]))
                 elif instr == CheckPoint.opcode:
-                    seq.append(CheckPoint(0))
+                    seq.append(CheckPoint())
                 elif instr == ControlRequest.opcode:
                     seq.append(ControlRequest(args[1]))
+                elif instr == Call.opcode:
+                    seq.append(Call(args[1]))
+                elif instr == Return.opcode:
+                    seq.append(Return())
+
         except StopIteration:
             pass
         self._seq = seq
@@ -117,22 +132,12 @@ class Engine(object):
 
             #  Translate addresses
             addr = best_ram
-            for i in self._seq:
-                if i.opcode == Branch.opcode:
-                    jumpto = i.address()
-                    if jumpto > len(self._seq):
-                        rval = -3
-                    elif jumpto >= 0:
-                        jaddr = 0
-                        for j,seq in enumerate(self._seq):
-                            if j==jumpto:
-                                break
-                            jaddr += _nwords(seq)
-                        self._ram[addr].set(i._word(jaddr+best_ram))
-                        addr += 1
-                else:
-                    self._ram[addr].set(i._word())
-                    addr += 1
+            words = relocate(self._seq,best_ram)
+            if words is None:
+                rval = -3
+            else:
+                for i,w in enumerate(words):
+                    self._ram[best_ram+i].set(w)
 
             print('Translated addresses rval = {}'.format(rval))
 
@@ -185,8 +190,17 @@ class Engine(object):
     def reset(self):
         v = 1<<self._id
         self._reg.seqRestart.set(v)
+        self.resetDone()
+
+    def resetDone(self):
+        if self._refresh==1:
+            self._refresh=2
 
     def dump(self):
+        print('seqAddrLen %d'%self._reg.seqAddrLen.get())
+        print('ctlSeq     %d'%self._reg.ctlSeq.get())
+        print('xpmSeq     %d'%self._reg.xpmSeq.get())
+
         v = self._jump.reg[15].get()
         print('Sync [{:04x}]  Start [{:04x}]  Enable [{:08x}]'.format(v>>16,v&0xffff,self._reg.seqEn.get()))
         state = self._reg.find(name='SeqState_%d'%self._id)[0]
@@ -208,41 +222,52 @@ class Engine(object):
         for key,entry in self._caches.items():
             if entry.index == i:
                 for j in range(entry.size):
-                    print('[{:08x}] {:08x}'.format(key+j,self._ram[key+j].get()))
+                    ram = self._ram[key+j].get()
+                    print('[{:08x}] {:08x} {:}'.format(key+j,ram,decodeInstr(ram)))
+
 
 class PVSeq(object):
-    def __init__(self, provider, name, ip, engine):
+    def __init__(self, provider, name, ip, engine, pv_enabled):
         self._eng = engine
         self._seq = []
+        self._pv_enabled = pv_enabled
 
-        def addPV(label,ctype='I',init=0):
+        def _addPV(label,ctype='I',init=0):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
                           handler=DefaultPVHandler())
             provider.add(name+':'+label,pv)
+            print(name+':'+label)
             return pv
 
-        self._pv_DescInstrs    = addPV('DESCINSTRS','s','')
-        self._pv_InstrCnt      = addPV('INSTRCNT')
-        self._pv_SeqIdx        = addPV('SEQIDX'    ,'aI',[0]*NSubSeq)
-        self._pv_SeqDesc       = addPV('SEQDESC'   ,'as',['']*NSubSeq)
-        self._pv_Seq00Idx      = addPV('SEQ00IDX')
-        self._pv_Seq00Desc     = addPV('SEQ00DESC' ,'s','')
-        self._pv_Seq00BDesc    = addPV('SEQ00BDESC','as',['']*NSubSeq)
-        self._pv_RmvIdx        = addPV('RMVIDX')
-        self._pv_RunIdx        = addPV('RUNIDX')
-        self._pv_Running       = addPV('RUNNING')
+        self._pv_DescInstrs    = _addPV('DESCINSTRS','s','')
+        self._pv_InstrCnt      = _addPV('INSTRCNT')
+        self._pv_SeqIdx        = _addPV('SEQIDX'    ,'aI',[0]*NSubSeq)
+        self._pv_SeqDesc       = _addPV('SEQDESC'   ,'as',['']*NSubSeq)
+        self._pv_Seq00Idx      = _addPV('SEQ00IDX')
+        self._pv_Seq00Desc     = _addPV('SEQ00DESC' ,'s','')
+        self._pv_Seq00BDesc    = _addPV('SEQ00BDESC','as',['']*NSubSeq)
+        self._pv_RmvIdx        = _addPV('RMVIDX')
+        self._pv_RunIdx        = _addPV('RUNIDX')
+        self._pv_Running       = _addPV('RUNNING')
 
-        def addPV(label,ctype,init,cmd):
+        def _addPV(label,ctype,init,cmd):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
                           handler=PVHandler(cmd))
             provider.add(name+':'+label,pv)
             return pv
 
-        self._pv_Instrs        = addPV('INSTRS'    ,'aI',[0]*16384, self.instrs)
-        self._pv_RmvSeq        = addPV('RMVSEQ'    , 'I',        0, self.rmvseq)
-        self._pv_Ins           = addPV('INS'       , 'I',        0, self.ins)
-        self._pv_SchedReset    = addPV('SCHEDRESET', 'I',        0, self.schedReset)
-        self._pv_ForceReset    = addPV('FORCERESET', 'I',        0, self.forceReset)
+        self._pv_Instrs        = _addPV('INSTRS'    ,'aI',[0]*16384, self.instrs)
+        self._pv_RmvSeq        = _addPV('RMVSEQ'    , 'I',        0, self.rmvseq)
+        self._pv_Ins           = _addPV('INS'       , 'I',        0, self.ins)
+        self._pv_SchedReset    = _addPV('SCHEDRESET', 'I',        0, self.schedReset)
+        self._pv_ForceReset    = _addPV('FORCERESET', 'I',        0, self.forceReset)
+        self._pv_Enable        = _addPV('ENABLE'    , 'I',        0, self.enable)
+        self._pv_Dump          = _addPV('DUMP'      , 'I',        0, self.dump)
+
+        if engine._reg.seqEn.get()&(1<<engine._id):
+            self.enable(None,1)
+
+#        self.updateInstr()
 
     def instrs(self, pv, val):
         pvUpdate(self._pv_InstrCnt,self._eng.cacheSeq(val))
@@ -260,23 +285,43 @@ class PVSeq(object):
             pvUpdate(self._pv_Seq00Idx,rval)
 
     def schedReset(self, pv, val):
-        if val:
+        if val>0:
             idx = self._pv_RunIdx.current()['value']
-            print('Scheduling index {}',idx)
+            print(f'Scheduling index {idx}')
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
-            self._eng.enable(True)
-            self._eng.setAddress(idx,0,1)
-            self._eng.reset()
+            self.enable(None,1)
+            self._eng.setAddress(idx,0,0)  # syncs start to marker 0 (1Hz)
+            self._eng._refresh = 0
+            if val==1:
+                self._eng.reset()
+            elif val==2:
+                pass  # No reset
+            elif val==3:
+                self._eng._refresh = 1
+                self._eng.reset()
+            elif val==4:
+                self._eng._refresh = 1
 
     def forceReset(self, pv, val):
         if val:
             idx = self._pv_RunIdx.current()['value']
-            print('Starting index {}',idx)
+            print(f'Starting index {idx}')
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
-            self._eng.enable(True)
-            self._eng.setAddress(idx,0,0)
+            self.enable(None,1)
+            self._eng.setAddress(idx,0,6)  # syncs start to marker 6 (MHz)
             self._eng.reset()
+
+    def enable(self, pv, val):
+        id = self._eng._id
+        self._pv_enabled['Enabled'][4*id:4*id+4] = [(val!=0)]*4
+        self._eng.enable(val)
 
     def checkPoint(self,addr):
         pvUpdate(self._pv_Running,0)
 
+    def dump(self, pv, val):
+        self._eng.dump()
+
+    def refresh(self):
+        if self._eng._refresh > 1:
+            self._eng.reset()

@@ -131,8 +131,7 @@ namespace Pds_Epics {
   public:
     EpicsPVA(const char *channelName, const int maxElements=0);
     EpicsPVA(const char *channelName, PVMonitorCb*, const int maxElements=0);
-    EpicsPVA(const char* provider, const char *channelName, PVMonitorCb*, const int maxElements=0);
-    EpicsPVA(const char* provider, const char *channelName, PVMonitorCb*, const int maxElements, bool nType);
+    EpicsPVA(const char* provider, const char *channelName, PVMonitorCb*, const int maxElements=0, bool nType=false);
     virtual ~EpicsPVA();
 
     static void setProvider(const char*);

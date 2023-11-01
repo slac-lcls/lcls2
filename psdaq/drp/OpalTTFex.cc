@@ -148,16 +148,17 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
       GET_VECTOR(calib_poly);
 #undef GET_VECTOR
 
-    {
+  }
+
+  {
       if (nameMap.find("fex.invert_weights:boolEnum") != nameMap.end()) {
-        int invert = descdata.get_value<int32_t>("fex.invert_weights:boolEnum");
-        if (invert) {
-          for(unsigned k=0; k<m_fir_weights.size(); k++)
-            m_fir_weights[k] = -1.*m_fir_weights[k];
-          printf("weights inverted\n");
-        }
+          int invert = descdata.get_value<int32_t>("fex.invert_weights:boolEnum");
+          if (invert) {
+              for(unsigned k=0; k<m_fir_weights.size(); k++)
+                  m_fir_weights[k] = -1.*m_fir_weights[k];
+              printf("weights inverted\n");
+          }
       }
-    }
   }
 
 #define GET_ENUM(a,b,c) {                                                \
@@ -903,14 +904,14 @@ void OpalTTFex::_monitor_flt_sig (std::vector<double>& a)
 
 bool   OpalTTFex::write_evt_image      ()  
 {
-  bool r = m_prescale_image_counter==m_prescale_image;
+  bool r = m_prescale_image_counter>=m_prescale_image;
   if (m_prescale_image_counter >= m_prescale_image)
     m_prescale_image_counter = 0;
   return r;
 }
 bool   OpalTTFex::write_evt_projections() 
 {
-  bool r = m_prescale_projections_counter==m_prescale_projections;
+  bool r = m_prescale_projections_counter>=m_prescale_projections;
   if (m_prescale_projections_counter >= m_prescale_projections)
     m_prescale_projections_counter = 0;
   return r;

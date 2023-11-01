@@ -9,7 +9,7 @@ if __name__ == '__main__':
     parser.add_argument('--pv' , help="TPG pv base", default='TPG:SYS2:2')
     args = parser.parse_args()
 
-    sync_marker = 6
+    sync_marker = 0
     
     instrset = []
     #  Insert global sync instruction (1Hz?)
@@ -22,7 +22,7 @@ if __name__ == '__main__':
             if i*(j+1)%90 < j+1:
                 bits = bits | (1<<j)
         instrset.append(ControlRequest(bits))
-        instrset.append(FixedRateSync(marker=0,occ=1))
+        instrset.append(FixedRateSync(marker=6,occ=1))
 
     instrset.append(Branch.conditional(line=1, counter=0, value=99))
     instrset.append(Branch.conditional(line=1, counter=1, value=99))

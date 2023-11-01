@@ -18,6 +18,24 @@ target_link_libraries(kcu
     xtcdata::xtc
 )
 
+# A static version of the kcu library is needed for kcuStatus
+add_library(staticKcu STATIC
+    Reg.cc
+    GthEyeScan.cc
+    Client.cc
+    Si570.cc
+)
+
+target_include_directories(staticKcu PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    ../../aes-stream-drivers/include
+)
+
+target_link_libraries(staticKcu
+    xtcdata::staticXtc
+)
+
 
 #
 #  xStatus
@@ -28,8 +46,9 @@ target_include_directories(kcuStatus PUBLIC
     ../../aes-stream-drivers/include
 )
 
-target_link_libraries(kcuStatus 
-    kcu
+# kcuStatus needs to be runnable at boot time without the standard environment
+target_link_libraries(kcuStatus
+    staticKcu
 )
 
 add_executable(kcuPgpStatus xPgpStatus.cpp)
@@ -38,7 +57,7 @@ target_include_directories(kcuPgpStatus PUBLIC
     ../../aes-stream-drivers/include
 )
 
-target_link_libraries(kcuPgpStatus 
+target_link_libraries(kcuPgpStatus
     kcu
 )
 

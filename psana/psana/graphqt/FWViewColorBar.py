@@ -23,15 +23,15 @@ Usage ::
     ctab = w.color_table()          # current color table used in colorbar
     ctab_ind = w.color_table_index()  # current color table index
 
-    w.connect_new_color_table_index_is_selected_to(recip)
-    w.disconnect_new_color_table_index_is_selected_from(recip)
-    w.connect_new_color_table_index_is_selected_to(w.test_new_color_table_index_is_selected_reception)
+    w.connect_new_color_table_index_is_selected(recip)
+    w.disconnect_new_color_table_index_is_selected(recip)
+    w.connect_new_color_table_index_is_selected(w.test_new_color_table_index_is_selected_reception)
 
-    w.connect_new_color_table_to(w.test_new_color_table_reception)
-    w.disconnect_new_color_table_from(recip)
-    w.connect_new_color_table_to(w.test_new_color_table_reception)
+    w.connect_new_color_table(w.test_new_color_table_reception)
+    w.disconnect_new_color_table(recip)
+    w.connect_new_color_table(w.test_new_color_table_reception)
 
-    w.connect_mouse_move_event_to(w.test_mouse_move_event_reception) # from FWViewImage
+    w.connect_mouse_move_event(w.test_mouse_move_event_reception) # from FWViewImage
 
 See:
     - :class:`FWView`
@@ -126,37 +126,29 @@ class FWViewColorBar(FWViewImage):
     def color_table(self):
         return self._ctab
 
- 
+
     def color_table_index(self):
         return self._ctab_ind
 
 
-    def connect_new_color_table_index_is_selected_to(self, recip):
+    def connect_new_color_table_index_is_selected(self, recip):
         self.new_color_table_index_is_selected['int'].connect(recip)
         #self.connect(self, QtCore.SIGNAL('new_color_table_index_is_selected(int)'), recip)
 
 
-    def disconnect_new_color_table_index_is_selected_from(self, recip):
+    def disconnect_new_color_table_index_is_selected(self, recip):
         self.new_color_table_index_is_selected['int'].disconnect(recip)
         #self.disconnect(self, QtCore.SIGNAL('new_color_table_index_is_selected(int)'), recip)
 
 
-    def connect_new_color_table_to(self, recip):
+    def connect_new_color_table(self, recip):
         self.new_color_table_index_is_selected.connect(recip)
         #self.connect(self, QtCore.SIGNAL('new_color_table()'), recip)
 
 
-    def disconnect_new_color_table_from(self, recip):
+    def disconnect_new_color_table(self, recip):
         self.new_color_table_index_is_selected.disconnect(recip)
         #self.disconnect(self, QtCore.SIGNAL('new_color_table()'), recip)
-
-
-    def test_new_color_table_reception(self):
-        print('  FWViewColorBar.test_new_color_table_reception: %s' % str(self._ctab[:5]))
-
-
-    def test_new_color_table_index_is_selected_reception(self, ind):
-        print('  FWViewColorBar.test_new_color_table_index_is_selected_reception: %s' % str(self._ctab_ind))
 
 
     def closeEvent(self, e):
@@ -165,76 +157,8 @@ class FWViewColorBar(FWViewImage):
         #QWidget.closeEvent(self, e)
 
 
-    if __name__ == "__main__":
-
-      def key_usage(self):
-        return 'Keys:'\
-               '\n  ESC - exit'\
-               '\n  R - reset color table 0'\
-               '\n  N - set next color table'\
-               '\n'
-
-      def keyPressEvent(self, e):
-        #print('keyPressEvent, key=', e.key())
-
-        if not (self.change_mode & 1): return
-
-        if   e.key() == Qt.Key_Escape:
-            self.close()
-
-        elif e.key() == Qt.Key_R: 
-            print('Reset original size')
-            self.set_colorbar_table_ind(ctab_ind=0)
-
-        elif e.key() == Qt.Key_N: 
-            print('Set next color table')
-            self.set_colorbar_table_ind(ctab_ind=None)
-
-        else:
-            print(self.key_usage())
-  
-
 if __name__ == "__main__":
-
-  import os
-  import sys
-  logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG)
-
-  os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
-
-  def test_wfviewcolorbar(tname):
-    print('%s:' % sys._getframe().f_code.co_name)
-    arr = np.random.random((1000, 100))
-    #arr = image_with_random_peaks((1000, 1000))
-    ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
-    #ctab = ct.color_table_monochr256()
-    #ctab = ct.color_table_interpolated()
-
-    app = QApplication(sys.argv)
-    w = None
-    if   tname == '0': w = FWViewColorBar(None, coltab=ctab, orient='H', change_mode=1, scale_ctl='H')
-    elif tname == '1': w = FWViewColorBar(None, coltab=ctab, orient='V')
-    else:
-        print('test %s is not implemented' % tname)
-        return
-
-    w.setWindowTitle(w._name)
-
-    w.connect_mouse_move_event_to(w.test_mouse_move_event_reception)
-    w.connect_new_color_table_index_is_selected_to(w.test_new_color_table_index_is_selected_reception)
-    w.connect_new_color_table_to(w.test_new_color_table_reception)
-
-    w.show()
-    app.exec_()
-
-    del w
-    del app
-
-
-if __name__ == "__main__":
-    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print(50*'_', '\nTest %s' % tname)
-    test_wfviewcolorbar(tname)
-    sys.exit('End of Test %s' % tname)
+    import sys
+    sys.exit(qu.msg_on_exit())
 
 # EOF

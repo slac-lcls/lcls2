@@ -175,7 +175,7 @@ public:
             data[i] = getVal<T>(val[i], typ);
     }
     void process(Value &val) {
-        Value *typ = findJsonType();            
+        Value *typ = findJsonType();
         if (typ->IsArray()) {
             unsigned i;
             unsigned shape[MaxRank], size = 1;
@@ -294,7 +294,7 @@ private:
     int          _cnt;
 };
 
-int translateJson2XtcNames(Document* d, Xtc* xtc, NamesLookup& nl, NamesId namesID, Value& json, const char* detname, unsigned segment)
+int translateJson2XtcNames(Document* d, Xtc* xtc, const void* bufEnd, NamesLookup& nl, NamesId namesID, Value& json, const char* detname, unsigned segment)
 {
     if (d->HasParseError()) {
         printf("Parse error: %s, location %zu\n",
@@ -312,14 +312,15 @@ int translateJson2XtcNames(Document* d, Xtc* xtc, NamesLookup& nl, NamesId names
     }
     const Value& a = (*d)["alg:RO"];
     const Value& v = a["version:RO"];
-    Alg alg = Alg(a["alg:RO"].GetString(), v[0].GetInt(), 
+    Alg alg = Alg(a["alg:RO"].GetString(), v[0].GetInt(),
                   v[1].GetInt(), v[2].GetInt());
     // Set alg._doc from a["doc"].GetString()?
     d->RemoveMember("alg:RO");
-    Names& names = *new(xtc) Names(detname ? detname : (*d)["detName:RO"].GetString(),
-                                   alg,
-                                   (*d)["detType:RO"].GetString(),
-                                   (*d)["detId:RO"].GetString(), namesID, segment);
+    Names& names = (*new(xtc, bufEnd) Names(bufEnd,
+                                            detname ? detname : (*d)["detName:RO"].GetString(),
+                                            alg,
+                                            (*d)["detType:RO"].GetString(),
+                                            (*d)["detId:RO"].GetString(), namesID, segment));
     // Set _NameInfo.doc from d["doc"].GetString()?
     d->RemoveMember("detName:RO");
     d->RemoveMember("detType:RO");
@@ -345,15 +346,15 @@ int translateJson2XtcNames(Document* d, Xtc* xtc, NamesLookup& nl, NamesId names
     }
     JsonFindArrayIterator fai = JsonFindArrayIterator(*d, json, vars);
     fai.iterate();
-    names.add(*xtc, vars);
+    names.add(*xtc, bufEnd, vars);
     nl[namesID] = NameIndex(names);
 
     return 0;
 }
 
-int translateJson2XtcData(Document* d, Xtc* xtc, NamesLookup& nl, NamesId namesID, Value& json)
+int translateJson2XtcData(Document* d, Xtc* xtc, const void* bufEnd, NamesLookup& nl, NamesId namesID, Value& json)
 {
-    CreateData cd(*xtc, nl, namesID);
+    CreateData cd(*xtc, bufEnd, nl, namesID);
     JsonCreateDataIterator cdi = JsonCreateDataIterator(*d, json, cd);
     if (json.HasMember(":enum:")) {
         Value &etypes = json[":enum:"];
@@ -381,27 +382,27 @@ int translateJson2XtcData(Document* d, Xtc* xtc, NamesLookup& nl, NamesId namesI
 // This returns the size of what is written into out, or -1 if there
 // is an error.
 //
-int translateJson2Xtc(char *in, char *out, NamesId namesID, const char* detname, unsigned segment)
+int translateJson2Xtc(char *in, char *out, const void* bufEnd, NamesId namesID, const char* detname, unsigned segment)
 {
     TypeId tid(TypeId::Parent, 0);
-    Xtc *xtc = new (out) Xtc(tid);
+    Xtc *xtc = new (out, bufEnd) Xtc(tid);
 
     Document *d = new Document();
     NamesLookup nl;
     Value json;
 
     d->Parse(in);
-    if (translateJson2XtcNames(d, xtc, nl, namesID, json, detname, segment) < 0)
+    if (translateJson2XtcNames(d, xtc, bufEnd, nl, namesID, json, detname, segment) < 0)
         return -1;
 
-    if (translateJson2XtcData (d, xtc, nl, namesID, json) < 0)
+    if (translateJson2XtcData (d, xtc, bufEnd, nl, namesID, json) < 0)
         return -1;
 
     delete d;
     return xtc->extent;
 }
 
-int translateJson2Xtc( PyObject* item, Xtc& xtc, NamesId namesID) 
+int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId namesID)
 {
     int result = -1;
 
@@ -435,10 +436,10 @@ int translateJson2Xtc( PyObject* item, Xtc& xtc, NamesId namesID)
             detname = sdetName.substr(0,pos).c_str();
         }
 
-        if (Pds::translateJson2XtcNames(d, &xtc, nl, namesID, jsonv, detname, segment) < 0)
+        if (Pds::translateJson2XtcNames(d, &xtc, bufEnd, nl, namesID, jsonv, detname, segment) < 0)
             break;
-    
-        if (Pds::translateJson2XtcData (d, &xtc, nl, namesID, jsonv) < 0)
+
+        if (Pds::translateJson2XtcData (d, &xtc, bufEnd, nl, namesID, jsonv) < 0)
             break;
 
         result = 0;

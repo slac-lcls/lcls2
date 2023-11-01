@@ -1,15 +1,15 @@
 if not platform: platform = '1'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 xtcav_epics_env = 'EPICS_PVA_ADDR_LIST=192.168.0.1 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.89 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
 collect_host = 'drp-neh-ctl001'
 
 groups = platform
-hutch, user, password = ('tmo', 'tmoopr', 'pcds')
-auth = ' --user {:} --password {:} '.format(user,password)
+hutch, user = ('tmo', 'tmoopr')
+auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 
@@ -17,7 +17,7 @@ cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 #  drp variables
 #
 prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
-data_dir = '/ffb01/data'
+data_dir = '/drpneh/data'
 
 task_set = 'taskset 0xffbfeffbfe '
 std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
@@ -45,7 +45,7 @@ ami_manager_node = "drp-neh-ctl001"
 
 procmgr_config = [
  #{                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups},
- { id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
+  {                         id:'procstat',    flags:'p',   cmd:'procstat '+CONFIGDIR+'/p'+platform+'.cnf.last'},
 
  { host: 'drp-neh-cmp016', id:'teb0',        flags:'spu', cmd:'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir},
 
@@ -58,8 +58,8 @@ procmgr_config = [
  { host: 'drp-neh-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
 # { host: 'drp-neh-cmp010', id:'andor_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x8 TMO:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2097216'},
  { host: 'drp-neh-cmp001', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
- { host: 'drp-neh-cmp001', id:'xcusbr_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x2 ca/BPMS:CLTS:420:XCUSBR -k pebbleBufSize=8192'},
- { host: 'drp-neh-cmp001', id:'tmitcusbr_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x4 ca/BPMS:UNDS:4790:TMITCUSBR -k pebbleBufSize=8192'},
+# { host: 'drp-neh-cmp001', id:'xcusbr_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x2 ca/BPMS:CLTS:420:XCUSBR -k pebbleBufSize=8192'},
+# { host: 'drp-neh-cmp001', id:'tmitcusbr_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x4 ca/BPMS:UNDS:4790:TMITCUSBR -k pebbleBufSize=8192'},
 ]
 
 procmgr_ami = [

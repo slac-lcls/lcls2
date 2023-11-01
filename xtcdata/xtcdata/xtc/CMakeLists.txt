@@ -18,6 +18,27 @@ target_include_directories(xtc PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+# A static version of the xtc library is needed for kcuStatus
+add_library(staticXtc STATIC
+    src/TransitionId.cc
+    src/XtcIterator.cc
+    src/TimeStamp.cc
+    src/Level.cc
+    src/TypeId.cc
+    src/XtcFileIterator.cc
+    src/ShapesData.cc
+    src/NamesIter.cc
+    src/ConfigIter.cc
+    src/DataIter.cc
+    src/Smd.cc
+    src/XtcUpdateIter.cc
+)
+
+target_include_directories(staticXtc PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
 install(FILES
     Level.hh
     NamesId.hh
@@ -45,7 +66,7 @@ install(FILES
     DESTINATION include/xtcdata/xtc
 )
 
-install(TARGETS xtc
+install(TARGETS xtc staticXtc
     EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

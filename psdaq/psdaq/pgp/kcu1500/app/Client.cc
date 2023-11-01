@@ -1,9 +1,16 @@
+#include <unistd.h>
 #include "Client.hh"
 #include "DataDriver.h"
+#include "DmaDest.h"
+#include "psdaq/mmhw/TriggerEventManager2.hh"
+typedef Pds::Mmhw::TriggerEventManager2 TEM;
+
 #include "psdaq/service/EbDgram.hh"
 using XtcData::Transition;
 
 using namespace Pds::Kcu;
+
+static void dmaWriteRegister(int, uint32_t*, uint32_t);
 
 Client::Client(const char* dev) : 
   _dmaBuffers(0), _current(0), _ret(0), 
@@ -57,32 +64,27 @@ void Client::start(unsigned group)
 {
   //  Configure the simulated camera
   unsigned links = 1;
-  unsigned length = 1;
-  bool     frameRst = true;
+  unsigned length = 100;
 
-  if (frameRst) {
-    unsigned v; dmaReadRegister(_fd,0x00a00000,&v);
-    unsigned w = v;
-    w &= ~(0xf<<28);    // disable and drain
-    dmaWriteRegister(_fd,0x00a00000,w);
-    usleep(1000);
-    w |=  (1<<3);       // reset
-    dmaWriteRegister(_fd, 0x00a00000,w);
-    usleep(1);         
-    dmaWriteRegister(_fd, 0x00a00000,v);
+  AxiVersion vsn;
+  axiVersionGet(_fd, &vsn);
+  if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
+      links <<= 4;
+
+  TEM* tem = (TEM*)0x00C20000;
+  for(unsigned i=0, l=links; l; i++) {
+      Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
+      if (l&(1<<i)) {
+          dmaWriteRegister(_fd, &b.enable, (1<<2)      );  // reset counters
+          dmaWriteRegister(_fd, &b.pauseThresh, 16     );
+          dmaWriteRegister(_fd, &b.group , group);
+          dmaWriteRegister(_fd, &b.enable, 3           );  // enable
+          l &= ~(1<<i);
+
+          dmaWriteRegister(_fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+          dmaWriteRegister(_fd, 0x00a00000+4*(i&3), (length&0xffffff) | (1<<31));  // enable
+      }
   }
-
-  unsigned v = ((group&0xf)<<0) |
-    ((length&0xffffff)<<4) |
-    (links<<28);
-  dmaWriteRegister(_fd,0x00a00000, v);
-  unsigned w;
-  dmaReadRegister(_fd,0x00a00000,&w);
-  printf("Configured group [%u], length [%u], links [%x]: [%x](%x)\n",
-         group, length, links, v, w);
-  for(unsigned i=0; i<4; i++)
-    if (links&(1<<i))
-      dmaWriteRegister(_fd,0x00800084+32*i, 0x1f00);
 
   _skips = 0;
 }
@@ -150,6 +152,10 @@ const Transition* Client::advance(uint64_t pulseId)
         result = b;
         break;
       }
+      
+      printf("pulseid %016lx : %016lx\n",
+             b->pulseId(),pulseId);
+
       if (b->pulseId() > pulseId) {
         _next = b->pulseId();
         break;
@@ -175,4 +181,10 @@ void Client::dump()
 {
   printf("skips: %u  retries %u\n",_skips,_retries);
   _skips = _retries = 0;
+}
+
+void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
+{
+  uintptr_t addri = (uintptr_t)addr;
+  dmaWriteRegister(fd, addri&0xffffffff, val);
 }

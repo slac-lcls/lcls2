@@ -1,17 +1,21 @@
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import *
+from psdaq.cas.xpm_utils import timTxId
+import lcls2_pgp_pcie_apps
 import epics
-import logging
 
 import json
 import time
 import pprint
+import logging
 
 prefix = None
 ocfg   = None
 group  = None
 lane   = 0
+timebase = '186M'
+base = {'timebase':'186M', 'prefix':None, lane:0}
 
 #
 #  Change this script to do minimal configuration:
@@ -33,47 +37,16 @@ def ctxt_get(names):
     return v
 
 def ctxt_put(names, values):
+
+    r = []
+    print(f'ctxt_put [{names}] [{values}]')
     if isinstance(names,str):
-        print(f'Put {names} {values}')
-        epics.PV(names).put(values)
-        print(f'Put {names} complete')
+        r.append(epics.PV(names).put(values))
     else:
         if isinstance(names,list):
             for i,n in enumerate(names):
-                print(f'Put {n} {values[i]}')
-                epics.PV(n).put(values[i])
-                print(f'Put {n} complete')
-
-def epics_put(cfg,epics_prefix,names,values):
-    global lane
-
-    # translate legal Python names to Rogue names
-    rogue_translate = {'TriggerEventBuffer':'TriggerEventBuffer[%d]'%lane,
-                       'AdcReadout0'       :'AdcReadout[0]',
-                       'AdcReadout1'       :'AdcReadout[1]',
-                       'AdcReadout2'       :'AdcReadout[2]',
-                       'AdcReadout3'       :'AdcReadout[3]',
-                       'AdcConfig0'        :'AdcConfig[0]',
-                       'AdcConfig1'        :'AdcConfig[1]',
-                       'AdcConfig2'        :'AdcConfig[2]',
-                       'AdcConfig3'        :'AdcConfig[3]'}
-
-    rogue_not_arrays = ['CorrCoefficientFloat64','BuffEn','DelayAdcALane','DelayAdcBLane']
-
-    for key,val in cfg.items():
-        if key in rogue_translate:
-            key = rogue_translate[key]
-        if isinstance(val,dict):
-            epics_put(val,epics_prefix+key+':',names,values)
-        else:
-            if ':RO' in key:
-                continue
-            if key in rogue_not_arrays:
-                for i,v in enumerate(val):
-                    names.append(epics_prefix+key+'[%d]'%i)
-                    values.append(v)
-            names.append(epics_prefix+key)
-            values.append(val)
+                r.append(epics.PV(n).put(values[i]))
+    print(f'returned {r}')
 
 #  Create a dictionary of config key to PV name
 def epics_get(d):
@@ -93,10 +66,10 @@ def epics_get(d):
     out = {}
     for key,val in d.items():
         #  Skip these that have no PVs yet
-        if ('AdcPatternTester' in key or 
+        if ('AdcPatternTester' in key or
             'CorrCoefficient' in key):
             continue
-        
+
         pvname = rogue_translate[key] if key in rogue_translate else key
         if isinstance(val,dict):
             r = epics_get(val)
@@ -110,12 +83,19 @@ def epics_get(d):
                 out[key] = pvname
     return out
 
-def config_timing(epics_prefix, lcls2=False):
+def config_timing(epics_prefix, timebase='186M'):
+    # cpo found on 01/30/23 that when we toggle between LCLS1/LCLS2 timing
+    # using ModeSel that we generate junk into the KCU giving these errors:
+    # PGPReader: Jump in complete l1Count 0 -> 2 | difference 2, tid ClearReadout
+    # We used to go to LCLS1 timing on disconnect (which called
+    # this routine) to be friendly to the controls group.  Since we're now
+    # in the LCLS2 era, keep this always hardwired to ModeSel=1 (i.e. LCLS2 timing).
     names = [epics_prefix+':Top:SystemRegs:timingUseMiniTpg',
              epics_prefix+':Top:TimingFrameRx:ModeSelEn',
+             epics_prefix+':Top:TimingFrameRx:ModeSel',
              epics_prefix+':Top:TimingFrameRx:ClkSel',
              epics_prefix+':Top:TimingFrameRx:RxPllReset']
-    values = [0, 0, 1, 1] if lcls2 else [0, 0, 0, 1]
+    values = [0, 1, 1, 1 if timebase=='186M' else 0, 1]
     ctxt_put(names,values)
 
     time.sleep(1.0)
@@ -126,32 +106,70 @@ def config_timing(epics_prefix, lcls2=False):
 
     time.sleep(1.0)
 
-    names = [epics_prefix+':Top:TimingFrameRx:RxDown']
-    values = [0]
+    names = [epics_prefix+':Top:TimingFrameRx:RxDown',
+             epics_prefix+':Timing:TriggerSource']  # 0=XPM/DAQ, 1=EVR
+    values = [0,0]
     ctxt_put(names,values)
-        
+
 def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
     global prefix
+    global lane
     logging.getLogger().setLevel(40-10*verbosity)
     prefix = epics_prefix
-    return epics_prefix
+    base['prefix'] = epics_prefix
+    base['timebase'] = timebase
+    lm=lanemask
+    lane = (lm&-lm).bit_length()-1
+    assert(lm==(1<<lane)) # check that lanemask only has 1 bit for wave8
+
+    print(f'--- lanemask {lanemask:x}  lane {lane}  timebase {timebase} ---')
+
+    if timebase=="119M":  # UED
+        print('Configure for UED')
+        #  We need pcie control to configure event batcher (which normally doesnt exist)
+        #  Concerned if we will interfere with other pcie operation (for epixquad)
+        pbase = lcls2_pgp_pcie_apps.DevRoot(dev           =dev,
+                                            enLclsI       =False,
+                                            enLclsII      =True,
+                                            yamlFileLclsI =None,
+                                            yamlFileLclsII=None,
+                                            startupMode   =True,
+                                            standAloneMode=False,
+                                            pgp4          =True,
+                                            dataVc        =0,
+                                            pollEn        =False,
+                                            initRead      =False)
+        pbase.__enter__()
+        base['pci'] = pbase
+        eventBuilder = getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder
+        eventBuilder.Blowoff.set(True)
+
+    wave8_unconfig(base)
+
+    return base
 
 def wave8_init_feb(slane=None,schan=None):
     global lane
     if slane is not None:
         lane = int(slane)
 
-def wave8_connect(epics_prefix, connect_json_str):
+def wave8_connect(base, connect_json_str):
+    epics_prefix = base['prefix']
 
     #  Switch to LCLS2 Timing
     #    Need this to properly receive RxId
     #    Controls is no longer in-control
-    config_timing(epics_prefix,lcls2=True)
+    config_timing(epics_prefix,timebase=base['timebase'])
+
+    #  This fails with the current IOC, but hopefully it will be fixed.  It works directly via pgp.
+    txId = timTxId('wave8')
+    ctxt_put(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:TxId', txId)
+    ctxt_put(epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',0)
 
     # Retrieve connection information from EPICS
     # May need to wait for other processes here, so poll
     for i in range(50):
-        values = ctxt_get(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId')
+        values = int(ctxt_get(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId'))
         if values!=0:
             break
         print('{:} is zero, retry'.format(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId'))
@@ -165,38 +183,57 @@ def wave8_connect(epics_prefix, connect_json_str):
 def user_to_expert(prefix, cfg, full=False):
     global group
     global ocfg
+    global timebase
 
     d = {}
     try:
-#        lcls1Delay     = ctxt_get(prefix+'TriggerEventManager:EvrV2CoreTriggers.EvrV2TriggerReg[0]:Delay')
-        lcls1Delay = 0.9e-3*119e6
+        lcls1Delay     = 0.9e-3*119e6
+        ctrlDelay      = ctxt_get(prefix+'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
         partitionDelay = ctxt_get(prefix+'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]'%group)
         delta          = cfg['user']['delta_ns']
-        triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
-        print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}  triggerDelay {:}'.format(lcls1Delay,partitionDelay,delta,triggerDelay))
-        if triggerDelay < 0:
-            raise ValueError('triggerDelay computes to < 0')
-        
-        ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
+        #  This is not so good; using timebase to distinguish LCLS from UED
+        if timebase=='186M':
+            if False:
+                print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}'.format(lcls1Delay,partitionDelay,delta))
+                triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
+            else:
+                #  LCLS2 timing.  Let controls set the delay value.
+                print('ctrlDelay {:}  partitionDelay {:}  delta_ns {:}'.format(ctrlDelay,partitionDelay,delta))
+                triggerDelay   = int(ctrlDelay + delta*1300/7000 - partitionDelay*200)
+
+            print('triggerDelay {:}'.format(triggerDelay))
+            if triggerDelay < 0:
+                print('Raise delta_ns >= {:}'.format(-triggerDelay*7000/1300.))
+                raise ValueError('triggerDelay computes to < 0')
+
+            ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
+        else:
+            #  119M = UED, 238 clks per timing frame (500kHz)
+            #  UED is only LCLS2 timing.  Let controls set the delay value.
+            pass
 
     except KeyError:
         pass
 
 #    try:
-#        prescale = cfg['user']['raw_prescale'] 
+#        prescale = cfg['user']['raw_prescale']
 #        # Firmware needs a value one less
-#        if prescale>0:  
+#        if prescale>0:
 #           prescale -= 1
 #        d['expert.RawBuffers.TrigPrescale'] = prescale
 #    except KeyError:
 #        pass
 
 
-def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
+def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     global lane
     global group
     global ocfg
+    global timebase
 
+    print(f'base [{base}]')
+    prefix = base['prefix']
+    timebase = base['timebase']
     group = grp
 
     #  Read the configdb
@@ -205,7 +242,7 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
 
     #  Apply the user configs
     epics_prefix = prefix + ':Top:'
-    user_to_expert(epics_prefix, cfg, full=True) 
+    user_to_expert(epics_prefix, cfg, full=True)
 
     #  Assert clears
     names_clr = [epics_prefix+'BatcherEventBuilder:Blowoff',
@@ -217,8 +254,11 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
 
     names_cfg = [epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
-                 epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
-    values = [group,16,1]
+                 epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',
+                 epics_prefix+'RawBuffers:FifoPauseThreshold',
+                 epics_prefix+'Integrators:ProcFifoPauseThreshold',
+                 epics_prefix+'Integrators:IntFifoPauseThreshold']
+    values = [group,16,1,127,127,127]
     ctxt_put(names_cfg, values)
 
     time.sleep(0.2)
@@ -286,22 +326,22 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
                  [ 0x13,0x12,0x13,0x12,0x12,0x11,0x12,0x11 ] ]
 
     for iadc in range(4):
-        base = 'AdcReadout%d'%iadc
-        top.set('expert.'+base+'.DelayAdcALane', dlyAlane[iadc], 'UINT8')
-        top.set('expert.'+base+'.DelayAdcBLane', dlyBlane[iadc], 'UINT8')
-        top.set('expert.'+base+'.DMode'  , 3, 'UINT8')
-        top.set('expert.'+base+'.Invert' , 0, 'UINT8')
-        top.set('expert.'+base+'.Convert', 3, 'UINT8')
+        adc = 'AdcReadout%d'%iadc
+        top.set('expert.'+adc+'.DelayAdcALane', dlyAlane[iadc], 'UINT8')
+        top.set('expert.'+adc+'.DelayAdcBLane', dlyBlane[iadc], 'UINT8')
+        top.set('expert.'+adc+'.DMode'  , 3, 'UINT8')
+        top.set('expert.'+adc+'.Invert' , 0, 'UINT8')
+        top.set('expert.'+adc+'.Convert', 3, 'UINT8')
 
     for iadc in range(4):
-        base = 'AdcConfig%d'%iadc
+        adc = 'AdcConfig%d'%iadc
         zeroregs = [7,8,0xb,0xc,0xf,0x10,0x11,0x12,0x12,0x13,0x14,0x16,0x17,0x18,0x20]
         for r in zeroregs:
-            top.set('expert.'+base+'.AdcReg_0x%04X'%r,    0, 'UINT8')
-        top.set('expert.'+base+'.AdcReg_0x0006'  , 0x80, 'UINT8')
-        top.set('expert.'+base+'.AdcReg_0x000D'  , 0x6c, 'UINT8')
-        top.set('expert.'+base+'.AdcReg_0x0015'  ,    1, 'UINT8')
-        top.set('expert.'+base+'.AdcReg_0x001F'  , 0xff, 'UINT8')
+            top.set('expert.'+adc+'.AdcReg_0x%04X'%r,    0, 'UINT8')
+        top.set('expert.'+adc+'.AdcReg_0x0006'  , 0x80, 'UINT8')
+        top.set('expert.'+adc+'.AdcReg_0x000D'  , 0x6c, 'UINT8')
+        top.set('expert.'+adc+'.AdcReg_0x0015'  ,    1, 'UINT8')
+        top.set('expert.'+adc+'.AdcReg_0x001F'  , 0xff, 'UINT8')
 
     top.set('expert.AdcPatternTester.Channel', 0, 'UINT8' )
     top.set('expert.AdcPatternTester.Mask'   , 0, 'UINT8' )
@@ -335,6 +375,16 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
 
     pprint.pprint(scfg)
     v = json.dumps(scfg)
+
+    if 'pci' in base:
+        #  Note that other segment levels can step on EventBuilder settings (Bypass,VcDataTap)
+        pbase = base['pci']
+        getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').VcDataTap.Tap.set(1)
+        eventBuilder = getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder
+        eventBuilder.Bypass.set(5)
+        eventBuilder.Blowoff.set(False)
+        eventBuilder.SoftRst()
+
     return v
 
 def wave8_scan_keys(update):
@@ -368,9 +418,19 @@ def wave8_update(update):
 
 
 #  This is really shutdown/disconnect
-def wave8_unconfig(epics_prefix):
+def wave8_unconfig(base):
 
-    ctxt_put(epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable', 0)
-    #config_timing(epics_prefix, lcls2=False)
+    epics_prefix = base['prefix']
+    # cpo removed setting Partition=1 (aka readout group) here
+    # because this is called in init() and writes fail before the timing
+    # the timing system is initialized.  Then subsequent writes start
+    # silently failing as well resulting in lost configure phase2.
+    names_cfg = [epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
+    values = [0]
+    ctxt_put(names_cfg, values)
+
+    #  Leaving DAQ control.
+    if base['timebase']=='186M':
+        config_timing(epics_prefix)
 
     return None;

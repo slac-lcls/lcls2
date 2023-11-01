@@ -15,7 +15,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("experiment", help="experiment name")
     parser.add_argument("--user", default="xppopr")
-    parser.add_argument("--password", default="pcds")
+    parser.add_argument("--password", default=os.getenv("CONFIGDB_AUTH"))
     parser.add_argument("--start", action="store_true", help="start run")
     parser.add_argument("--end", action="store_true", help="end run")
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"

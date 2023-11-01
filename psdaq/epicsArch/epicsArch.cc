@@ -15,158 +15,80 @@
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using ms_t = std::chrono::milliseconds;
 
 namespace Drp {
 
-class Pgp
+class Pgp : public PgpReader
 {
 public:
-    Pgp(const Parameters& para, DrpBase& drp, const bool& running) :
-        m_para(para), m_pool(drp.pool), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_lastComplete(0)
+    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
+        PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
+        m_available(0), m_current(0), m_nDmaRet(0)
     {
         m_nodeId = drp.nodeId();
-        uint8_t mask[DMA_MASK_SIZE];
-        dmaInitMaskBytes(mask);
-        for (unsigned i=0; i<4; i++) {
-            if (para.laneMask & (1 << i)) {
-                logging::info("setting lane  %d", i);
-                dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
-            }
+        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+            logging::error("Failed to allocate lane/vc");
         }
-        dmaSetMaskBytes(drp.pool.fd(), mask);
     }
 
-    Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
+    Pds::EbDgram* next(uint32_t& evtIndex);
+    const uint64_t nDmaRet() { return m_nDmaRet; }
 private:
-    Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
-    const Parameters& m_para;
-    MemPool& m_pool;
+    Pds::EbDgram* _handle(uint32_t& evtIndex);
+    Detector* m_det;
     Pds::Eb::TebContributor& m_tebContributor;
     static const int MAX_RET_CNT_C = 100;
-    int32_t dmaRet[MAX_RET_CNT_C];
-    uint32_t dmaIndex[MAX_RET_CNT_C];
-    uint32_t dest[MAX_RET_CNT_C];
     const bool& m_running;
     int32_t m_available;
     int32_t m_current;
-    uint32_t m_lastComplete;
-    XtcData::TransitionId::Value m_lastTid;
-    uint32_t m_lastData[6];
     unsigned m_nodeId;
+    uint64_t m_nDmaRet;
+
 };
 
-Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
+Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
-    uint32_t size = dmaRet[m_current];
-    uint32_t index = dmaIndex[m_current];
-    uint32_t lane = (dest[m_current] >> 8) & 7;
-    bytes += size;
-    if (size > m_pool.dmaSize()) {
-        logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
-        throw "DMA overflowed buffer";
-    }
+    const Pds::TimingHeader* timingHeader = handle(m_det, m_current);
+    if (!timingHeader)  return nullptr;
 
-    const uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
-    uint32_t evtCounter = data[5] & 0xffffff;
-    const unsigned bufferMask = m_pool.nbuffers() - 1;
-    current = evtCounter & bufferMask;
-    PGPEvent* event = &m_pool.pgpEvents[current];
-    // Revisit: Doesn't always work?  assert(event->mask == 0);
-
-    DmaBuffer* buffer = &event->buffers[lane];
-    buffer->size = size;
-    buffer->index = index;
-    event->mask |= (1 << lane);
-
-    logging::debug("PGPReader  lane %d  size %d  hdr %016lx.%016lx.%08x",
-                   lane, size,
-                   reinterpret_cast<const uint64_t*>(data)[0],
-                   reinterpret_cast<const uint64_t*>(data)[1],
-                   reinterpret_cast<const uint32_t*>(data)[4]);
-
-    const Pds::TimingHeader* timingHeader = reinterpret_cast<const Pds::TimingHeader*>(data);
-    if (timingHeader->error()) {
-        logging::error("Timing header error bit is set");
-    }
-    XtcData::TransitionId::Value transitionId = timingHeader->service();
-    if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
-            logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
-                          XtcData::TransitionId::name(transitionId),
-                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                          timingHeader->pulseId());
-        }
-        else {
-            logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
-                           XtcData::TransitionId::name(transitionId),
-                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                           timingHeader->pulseId());
-        }
-        if (transitionId == XtcData::TransitionId::BeginRun) {
-            m_lastComplete = 0;  // EvtCounter reset
-        }
-    }
-    if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-        logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-                          RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
-        logging::critical("data: %08x %08x %08x %08x %08x %08x",
-                          data[0], data[1], data[2], data[3], data[4], data[5]);
-
-        logging::critical("lastTid %s", XtcData::TransitionId::name(m_lastTid));
-        logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
-                          m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
-
-        throw "Jump in event counter";
-
-        for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
-            PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
-            logging::error("broken event:  %08x", brokenEvent->mask);
-            brokenEvent->mask = 0;
-
-        }
-    }
-    m_lastComplete = evtCounter;
-    m_lastTid = transitionId;
-    memcpy(m_lastData, data, 24);
-
-    event->l3InpBuf = m_tebContributor.allocate(*timingHeader, (void*)((uintptr_t)current));
+    uint32_t pgpIndex = timingHeader->evtCounter & (m_pool.nDmaBuffers() - 1);
+    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
 
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
-    Pds::EbDgram* dgram = new(m_pool.pebble[current]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
+    evtIndex = event->pebbleIndex;
+    XtcData::Src src = m_det->nodeId;
+    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, src, m_para.rogMask);
+
+    // Collect indices of DMA buffers that can be recycled and reset event
+    freeDma(event);
 
     return dgram;
 }
 
-Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
+Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 {
     // get new buffers
     if (m_current == m_available) {
         m_current = 0;
-        auto start = std::chrono::steady_clock::now();
-        while (true) {
-            m_available = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
-            if (m_available > 0) {
-                m_pool.allocate(m_available);
-                break;
-            }
-
-            // wait for a total of 10 ms otherwise timeout
-            auto now = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-            if (elapsed > 10) {
-                //if (m_running)  logging::debug("pgp timeout");
-                return nullptr;
-            }
+        m_available = read();
+        m_nDmaRet = m_available;
+        if (m_available == 0) {
+            return nullptr;
         }
     }
 
-    Pds::EbDgram* dgram = _handle(evtIndex, bytes);
+    Pds::EbDgram* dgram = _handle(evtIndex);
     m_current++;
     return dgram;
 }
@@ -224,14 +146,13 @@ unsigned EaDetector::disconnect()
     return 0;
 }
 
-unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 {
     logging::info("EpicsArch configure");
 
-    if (XpmDetector::configure(config_alias, xtc))
+    if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
-    if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -240,7 +161,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     size_t payloadSize;
     m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
                         m_para->detSegment,
-                        xtc, m_namesLookup, nodeId, payloadSize);
+                        xtc, bufEnd, m_namesLookup, nodeId, payloadSize);
     // make sure config transition will fit in the transition buffer (where SlowUpdate goes), however this check is too late: code can unfortunately segfault in the above line -cpo
     if (sizeof(XtcData::Dgram)+xtc.sizeofPayload() > m_para->maxTrSize) {
         logging::critical("Increase Parameter::maxTrSize (%zd) to avoid truncation of configure transition (%zd)",
@@ -261,20 +182,26 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 
 unsigned EaDetector::unconfigure()
 {
+    if (m_exporter)  m_exporter.reset();
+
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
+    m_exporter.reset();
     m_namesLookup.clear();   // erase all elements
 
     return 0;
 }
 
-void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
+void EaDetector::event(XtcData::Dgram&, const void* bufEnd, PGPEvent*)
 {
-    auto payloadSize = m_para->maxTrSize - sizeof(Pds::EbDgram);
+    // Unused
+}
 
-    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize, m_nStales);
+void EaDetector::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
+{
+    m_monitor->getData(xtc, bufEnd, m_namesLookup, nodeId, m_nStales);
 }
 
 void EaDetector::_worker()
@@ -288,17 +215,35 @@ void EaDetector::_worker()
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
-    uint64_t bytes = 0L;
-    m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
-                    [&](){return bytes;});
     m_nUpdates = 0;
-    m_exporter->add("ea_update_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_update_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nUpdates;});
     m_nStales = 0;
-    m_exporter->add("ea_stale_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_stale_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nStales;});
 
-    Pgp pgp(*m_para, m_drp, m_running);
+    Pgp pgp(*m_para, m_drp, this, m_running);
+
+    m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nDmaRet();});
+    m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
+                    [&](){return pgp.dmaBytes();});
+    m_exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.dmaSize();});
+    m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.latency();});
+    m_exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nDmaErrors();});
+    m_exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nNoComRoG();});
+    m_exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nMissingRoGs();});
+    m_exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nTmgHdrError();});
+    m_exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nPgpJumps();});
+    m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
+                    [&](){return pgp.nNoTrDgrams();});
 
     m_terminate.store(false, std::memory_order_release);
 
@@ -308,7 +253,7 @@ void EaDetector::_worker()
         }
 
         uint32_t index;
-        Pds::EbDgram* dgram = pgp.next(index, bytes);
+        Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
             m_nEvents++;
 
@@ -317,22 +262,24 @@ void EaDetector::_worker()
                            XtcData::TransitionId::name(service),
                            dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
             if (service != XtcData::TransitionId::L1Accept) {
-                // Allocate a transition dgram from the pool and initialize its header
-                Pds::EbDgram* trDgram = m_pool->allocateTr();
+                // Find the transition dgram in the pool and initialize its header
+                Pds::EbDgram* trDgram = m_pool->transitionDgrams[index];
+                const void*   bufEnd  = (char*)trDgram + m_para->maxTrSize;
+                if (!trDgram)  continue; // Can happen during shutdown
                 *trDgram = *dgram;
-                PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
-                pgpEvent->transitionDgram = trDgram;
 
                 if (service == XtcData::TransitionId::SlowUpdate) {
                     m_nUpdates++;
 
-                    event(*trDgram, pgpEvent);
+                    slowupdate(trDgram->xtc, bufEnd);
                 }
                 else {
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
                     XtcData::Xtc& trXtc = transitionXtc();
-                    memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
+                    trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                    auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
                     if (service == XtcData::TransitionId::Enable) {
                         m_running = true;
@@ -345,7 +292,15 @@ void EaDetector::_worker()
 
             _sendToTeb(*dgram, index);
         }
+        else {
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
+        }
     }
+
+    // Flush the DMA buffers
+    pgp.flush();
+
     logging::info("Worker thread finished");
 }
 
@@ -354,23 +309,23 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
     const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
-                         ? m_pool->bufferSize()
+                         ? m_pool->pebble.bufferSize()
                          : m_para->maxTrSize;
     if (size > maxSize) {
         logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
         throw "Dgram overflowed buffer";
     }
 
-    PGPEvent* event = &m_drp.pool.pgpEvents[index];
-    if (event->l3InpBuf) { // else shutting down
-        Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
-        if (l3InpDg->isEvent()) {
-            if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
-                m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
-            }
+    auto l3InpBuf = m_drp.tebContributor().fetch(index);
+    Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(dgram);
+    if (l3InpDg->isEvent()) {
+        auto triggerPrimitive = m_drp.triggerPrimitive();
+        if (triggerPrimitive) { // else this DRP doesn't provide input
+            const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
+            triggerPrimitive->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
         }
-        m_drp.tebContributor().process(l3InpDg);
     }
+    m_drp.tebContributor().process(l3InpDg);
 }
 
 
@@ -379,16 +334,14 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     m_drp        (para, context()),
     m_para       (para),
     m_eaDetector (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp)),
-    m_det        (m_eaDetector.get())
+    m_det        (m_eaDetector.get()),
+    m_unconfigure(false)
 {
+    Py_Initialize();                    // for use by configuration
+
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Fatal: Could not create Detector object";
-    }
-    if (m_para.outputDir.empty()) {
-        logging::info("output dir: n/a");
-    } else {
-        logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
 }
@@ -398,12 +351,8 @@ EpicsArchApp::~EpicsArchApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
-}
 
-void EpicsArchApp::_shutdown()
-{
-    _unconfigure();
-    _disconnect();
+    Py_Finalize();                      // for use by configuration
 }
 
 void EpicsArchApp::_disconnect()
@@ -415,8 +364,10 @@ void EpicsArchApp::_disconnect()
 
 void EpicsArchApp::_unconfigure()
 {
-    m_drp.unconfigure();  // TebContributor must be shut down before the worker
+    m_drp.pool.shutdown();  // Release Tr buffer pool
+    m_drp.unconfigure();    // TebContributor must be shut down before the worker
     m_eaDetector->unconfigure();
+    m_unconfigure = false;
 }
 
 json EpicsArchApp::connectionInfo(const nlohmann::json& msg)
@@ -431,6 +382,11 @@ json EpicsArchApp::connectionInfo(const nlohmann::json& msg)
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
+}
+
+void EpicsArchApp::connectionShutdown()
+{
+    m_drp.shutdown();
 }
 
 void EpicsArchApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
@@ -468,8 +424,6 @@ void EpicsArchApp::handleConnect(const nlohmann::json& msg)
         }
     }
 
-    m_unconfigure = false;
-
     json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -480,7 +434,6 @@ void EpicsArchApp::handleDisconnect(const json& msg)
     // Carry out the queued Unconfigure, if there was one
     if (m_unconfigure) {
         _unconfigure();
-        m_unconfigure = false;
     }
 
     _disconnect();
@@ -495,11 +448,8 @@ void EpicsArchApp::handlePhase1(const json& msg)
     logging::debug("handlePhase1 for %s in EpicsArchApp", key.c_str());
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    xtc.src = XtcData::Src(m_det->nodeId); // set the src field for the event builders
-    xtc.damage = 0;
-    xtc.contains = tid;
-    xtc.extent = sizeof(XtcData::Xtc);
+    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    auto bufEnd = m_det->trXtcBufEnd();
 
     json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
@@ -513,7 +463,6 @@ void EpicsArchApp::handlePhase1(const json& msg)
     if (key == "configure") {
         if (m_unconfigure) {
             _unconfigure();
-            m_unconfigure = false;
         }
 
         std::string errorMsg = m_drp.configure(msg);
@@ -525,7 +474,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
         }
 
         std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc);
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
             std::string errorMsg = "Failed transition phase 1";
             logging::error("%s", errorMsg.c_str());
@@ -533,7 +482,8 @@ void EpicsArchApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_drp.runInfoSupport(xtc, m_det->namesLookup());
+        m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -547,7 +497,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
         else if (runInfo.runNumber > 0) {
-            m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
+            m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
     }
     else if (key == "endrun") {
@@ -557,6 +507,25 @@ void EpicsArchApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
     }
+    else if (key == "enable") {
+        bool chunkRequest;
+        ChunkInfo chunkInfo;
+        std::string errorMsg = m_drp.enable(phase1Info, chunkRequest, chunkInfo);
+        if (!errorMsg.empty()) {
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        } else if (chunkRequest) {
+            logging::debug("handlePhase1 enable found chunkRequest");
+            m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
+        }
+        unsigned error = m_det->enable(xtc, bufEnd, phase1Info);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::enable()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
+        logging::debug("handlePhase1 enable complete");
+    }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -564,8 +533,10 @@ void EpicsArchApp::handlePhase1(const json& msg)
 
 void EpicsArchApp::handleReset(const nlohmann::json& msg)
 {
-    _shutdown();
-    m_drp.reset();
+    unsubscribePartition();             // ZMQ_UNSUBSCRIBE
+    _unconfigure();
+    _disconnect();
+    connectionShutdown();
 }
 
 } // namespace Drp
@@ -640,7 +611,7 @@ int main(int argc, char* argv[])
             case 'k':
                 kwargs_str = kwargs_str.empty()
                            ? optarg
-                           : kwargs_str + ", " + optarg;
+                           : kwargs_str + "," + optarg;
                 break;
             case 'P':
                 para.instrument = optarg;
@@ -700,22 +671,46 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
     para.serNo = "detnum1234";
 
-    get_kwargs(kwargs_str, para.kwargs);
-
     std::string pvCfgFile;
     if (optind < argc)
-        pvCfgFile = argv[optind];
+    {
+        pvCfgFile = argv[optind++];
+
+        if (optind < argc)
+        {
+            logging::error("Unrecognized argument:");
+            while (optind < argc)
+                logging::error("  %s ", argv[optind++]);
+            return 1;
+        }
+    }
     else {
         logging::critical("A PV config filename is mandatory");
         return 1;
     }
 
     try {
-        Py_Initialize(); // for use by configuration
+        get_kwargs(kwargs_str, para.kwargs);
+        for (const auto& kwargs : para.kwargs)
+        {
+            if (kwargs.first == "forceEnet")         continue;
+            if (kwargs.first == "ep_fabric")         continue;
+            if (kwargs.first == "ep_domain")         continue;
+            if (kwargs.first == "ep_provider")       continue;
+            if (kwargs.first == "sim_length")        continue;  // XpmDetector
+            if (kwargs.first == "timebase")          continue;  // XpmDetector
+            if (kwargs.first == "pebbleBufSize")     continue;  // DrpBase
+            if (kwargs.first == "pebbleBufCount")    continue;  // DrpBase
+            if (kwargs.first == "batching")          continue;  // DrpBase
+            if (kwargs.first == "directIO")          continue;  // DrpBase
+            if (kwargs.first == "pva_addr")          continue;  // DrpBase
+            logging::critical("Unrecognized kwarg '%s=%s'\n",
+                              kwargs.first.c_str(), kwargs.second.c_str());
+            return 1;
+        }
+
         Drp::EpicsArchApp app(para, pvCfgFile);
         app.run();
-        app.handleReset(json({}));
-        Py_Finalize(); // for use by configuration
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }

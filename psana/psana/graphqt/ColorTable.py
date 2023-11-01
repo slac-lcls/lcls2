@@ -10,7 +10,8 @@ Usage ::
     ctab = ct.color_table_monochr256()
     ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
     ctab = ct.color_table_interpolated()
-    ctab = ct.color_table_interpolated(points=[0, 100, 200, 400, 500, 650, 700], colors=[0xffffff, 0xffff00, 0x00ff00, 0xff0000, 0xff00ff, 0x0000ff, 0])
+    ctab = ct.color_table_interpolated(points=[0, 100, 200, 400, 500, 650, 700],\
+               colors=[0xffffff, 0xffff00, 0x00ff00, 0xff0000, 0xff00ff, 0x0000ff, 0])
 
 See:
     - :py:class:`ColorTable`
@@ -23,11 +24,10 @@ Created on 2015-12-06 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
 
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtGui
 from PyQt5.QtCore import Qt
 import numpy as np
 from math import floor
-
 
 class Storage:
     """Store for shared parameters."""
@@ -37,9 +37,7 @@ class Storage:
     def color_table_index(self):
         return self.ictab
 
-
 STOR = Storage()
-
 
 def print_colors(arr):
     sh = arr.shape
@@ -50,13 +48,9 @@ def print_colors(arr):
         print('%4d' % qc.red(),)
       print('')
 
-
-def apply_color_table(arr, ctable=None, amin=None, amax=None, frmin=0.01, frmax=0.99):
-    """ Returns numpy array with colors in stead of intensities
-    """
+def apply_color_table(arr, ctable=None, amin=None, amax=None, frmin=0.00001, frmax=0.99999):
+    """Returns numpy array with colors in stead of intensities."""
     ctab = ctable if ctable is not None else color_table_default
-    #min = np.quantile(arr.ravel(), frmin, axis=0, interpolation='lower')  if amin is None else amin
-    #max = np.quantile(arr.ravel(), frmax, axis=0, interpolation='higher') if amax is None else amax
     aravel = arr.ravel()
     min = amin if amin is not None else\
           aravel.min() if frmin in (0,None) else\
@@ -67,7 +61,7 @@ def apply_color_table(arr, ctable=None, amin=None, amax=None, frmin=0.01, frmax=
 
     if min==max: max+=1
     f = float(ctab.size-1)/(max-min)
-    ict = np.require(f*(arr-min), dtype=np.int) # array of indexes in color table
+    ict = np.require(f*(arr-min), dtype=np.int32) # array of indexes in color table
 
     imax = len(ctab) - 1
     cond = np.logical_and(ict>0, ict<len(ctab))
@@ -75,30 +69,23 @@ def apply_color_table(arr, ctable=None, amin=None, amax=None, frmin=0.01, frmax=
 
     return ctab[ict]
 
-
 def color_table_default():
     return color_table_interpolated()
     #return color_table_rainbow(ncolors=1000, hang1=0, hang2=360)
 
-
 def color_table_monochr256(inverted=False):
-    """ Returns numpy array with monochrome table of 256 colors
-    """
+    """Returns numpy array with monochrome table of 256 colors."""
     ncolors=256
     inds = range(ncolors-1,-1,-1) if inverted else range(ncolors)
-    return np.array([c + c*0x100 + c*0x10000 + 0xff000000 for c in inds], dtype=np.uint32)  
-
+    return np.array([c + c*0x100 + c*0x10000 + 0xff000000 for c in inds], dtype=np.uint32)
 
 def color_table_linear(ncolors=100):
-    """ Returns numpy array with ncolors constructed from entire range of RGB colors
-    """
+    """Returns numpy array with ncolors constructed from entire range of RGB colors."""
     f = 1./ncolors
-    return np.array([0xffffff*c*f + 0xff000000 for c in range(ncolors)], dtype=np.uint32)  
-
+    return np.array([0xffffff*c*f + 0xff000000 for c in range(ncolors)], dtype=np.uint32)
 
 def interpolate_colors(ctab, p1, p2, c1, c2):
-    """Fills color table ctab between index/points p1 and p2 for interpolated colors from c1 to c2
-    """
+    """Fills color table ctab between index/points p1 and p2 for interpolated colors from c1 to c2."""
     #print(p1, p2, c1, c2)
     A = 0xff000000
     R = 0x00ff0000
@@ -127,11 +114,9 @@ def interpolate_colors(ctab, p1, p2, c1, c2):
 
         ctab[p] = A + b + g*0x100 + r*0x10000
 
-
 def color_table_interpolated(points=[0,      50,      200,      300,      500,      600,      700],\
                              colors=[0, 0x0000ff, 0xff00ff, 0xff0000, 0x00ff00, 0xffff00, 0xffffff]):
-    """ Returns numpy array of colors linearly-interpolated between points with defined colors
-    """
+    """Returns numpy array of colors linearly-interpolated between points with defined colors."""
     ctab = np.zeros(points[-1], dtype=np.uint32)
     for i,p in enumerate(points[:-1]):
         p1, p2 = p, points[i+1]
@@ -139,15 +124,12 @@ def color_table_interpolated(points=[0,      50,      200,      300,      500,  
         interpolate_colors(ctab, p1, p2, c1, c2)
     return ctab
 
-
 def color_table_rainbow(ncolors=1000, hang1=250, hang2=-20):
     ct = ColorTable(ncolors, hang1, hang2)
     return ct.np_ctable()
 
-
 def next_color_table(ict=None):
-    """Returns color table selected in loop or requested by index ict: int among pre-defined
-    """
+    """Returns color table selected in loop or requested by index ict: int among pre-defined."""
     if ict is None: STOR.ictab += 1
     else          : STOR.ictab = ict
     if   STOR.ictab == 2: return color_table_rainbow(ncolors=1000, hang1=-20, hang2=250)
@@ -157,11 +139,10 @@ def next_color_table(ict=None):
     elif STOR.ictab == 6: return color_table_rainbow(ncolors=1000, hang1=100, hang2=-120)
     elif STOR.ictab == 7: return color_table_interpolated()
     elif STOR.ictab == 8: return color_table_interpolated(points=[0, 100, 200, 400, 500, 650, 700],\
-                                colors=[0xffffff, 0xffff00, 0x00ff00, 0xff0000, 0xff00ff, 0x0000ff, 0]) 
+                                colors=[0xffffff, 0xffff00, 0x00ff00, 0xff0000, 0xff00ff, 0x0000ff, 0])
     else:
         STOR.ictab = 1
         return color_table_rainbow()
-
 
 def get_pixmap(ind, orient='H', size=(200,30)):
     ctab = next_color_table(ict=ind)
@@ -171,31 +152,56 @@ def get_pixmap(ind, orient='H', size=(200,30)):
     pixmap= QtGui.QPixmap.fromImage(image.scaled(size[0], size[1], Qt.IgnoreAspectRatio, Qt.FastTransformation))
     return pixmap
 
-
-def array_for_color_bar(ctab=color_table_monochr256(), orient='V', width=2): 
-    """Returns 2-d array made of repeated 1-d array ctab to display as a color bar
-    """
+def array_for_color_bar(ctab=color_table_monochr256(), orient='V', width=2):
+    """Returns 2-d array made of repeated 1-d array ctab to display as a color bar."""
     arr = [(c,c) for c in ctab[::-1]] if orient=='V' else\
           [ctab for r in range(width)]
     npa = np.array(arr, dtype=np.uint32) #.T
-    #print('XXX array for color bar:\n', npa)
-    #print('XXX shape: ', npa.shape)
     return npa
 
+def qpixmap_from_arr(arr, ctable=next_color_table(3), amin=None, amax=None, frmin=0.00001, frmax=0.99999):
+    """Returns QPixmap for input array scailed by color table."""
+    anorm = apply_color_table(arr, ctable=ctable, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
+    h, w = arr.shape
+    qimage = QtGui.QImage(anorm, w, h, QtGui.QImage.Format_ARGB32)
+    return QtGui.QPixmap.fromImage(qimage)
+
+def image_to_arrcolors(image, channels=4):
+    """Converts QImage to array of color channels, e.g. (1000, 1000, 4) where  4 stays for ARGB."""
+    h,w = image.height(), image.width()
+    s = image.bits().asstring(h * w * channels)
+    return np.fromstring(s, dtype=np.uint8).reshape((h, w, channels))
+
+def pixmap_to_arrcolors(pixmap, channels=4):
+    """Converts QPixmap to array of color channels, e.g. (1000, 1000, 4) where  4 stays for ARGB."""
+    return image_to_arrcolors(pixmap.toImage(), channels)
+
+def image_channel(image, channel=3):
+    """For QImage returns uint8 array of colors for specified channel, where chanel 3/2/1/0 stays for A/R/G/B."""
+    return image_to_arrcolors(image)[:,:,channel]
+
+def pixmap_channel(pixmap, channel=3):
+    """For QPixmap returns uint8 array of colors for specified channel, where chanel 3/2/1/0 stays for A/R/G/B."""
+    return pixmap_to_arrcolors(pixmap)[:,:,channel]
+
+def test_mask(arr):
+    from psana.pyalgos.generic.NDArrUtils import info_ndarr
+    print(info_ndarr(arr, 'XXX test_mask.arr:'))
+    h, w = arr.shape                        #   AARRGGBB
+    m = np.ones_like(arr, dtype=np.uint32)  * 0xffffffff # visible
+    m[int(h/4):int(h/2), int(w/4):int(w/2)] = 0x00ffffff # masked
+    print(info_ndarr(m, 'XXX test_mask.mask:'))
+    return m
 
 class ColorTable():
-    """Creates and provide access to color table
-    """
+    """Creates and provide access to rainbow-like color table generated with Hue angles."""
     def __init__(self, ncolors=1000, hang1=0, hang2=360, vmin=-10000, vmax=10000):
-        """Makes color table - list of QColors of length ncolors 
-        """
+        """Makes color table - list of QColors of length ncolors."""
         self.make_ctable_for_hue_range(ncolors, hang1, hang2)
         self.set_value_range(vmin, vmax)
 
-    
     def make_ctable_for_hue_range(self, ncolors=1000, hang1=0, hang2=360):
-        """Makes color table in the range of hue values
-        """
+        """Makes color table in the range of hue values."""
         self.ncolors = ncolors
         self.hang1 = float(hang1)
         self.hang2 = float(hang2)
@@ -210,59 +216,44 @@ class ColorTable():
             qc.setHsvF(hnorm, 1., 1., alpha=1.)
             self.ctable.append(qc)
 
-
     def int_ctable(self):
-        """converts list of QColor to list of integer rgba values
-        """
+        """Converts list of QColor to list of integer rgba values."""
         return [c.rgba() for c in self.ctable]
-
 
     def np_ctable(self):
         return np.array(self.int_ctable(), dtype=np.uint32)
 
-
     def set_ncolors(self, ncolors):
-        """Sets the number of color in table and re-generate color table
-        """
+        """Sets the number of color in table and re-generate color table."""
         self.make_ctable_for_hue_range(ncolors, self.hang1, self.hang2)
         self.set_value_range(self.vmin, self.vmax)
 
-        
     def set_hue_range(self, hang1, hang2):
-        """Sets the range of hue angles and re-generate color table
-        """
+        """Sets the range of hue angles and re-generate color table."""
         self.make_ctable_for_hue_range(self.ncolors, hang1, hang2)
         self.set_value_range(self.vmin, self.vmax)
 
-                
     def set_value_range(self, vmin, vmax):
-        """Sets the range of values which will be mapped to color table
-        """
+        """Sets the range of values which will be mapped to color table."""
         self.vmin = float(vmin)
         self.vmax = float(vmax)
         self.vfct = self.ncolors/(self.vmax - self.vmin)
 
-
     def color_for_value(self, v):
-        """Returns color mapped to the value in the color table
-        """
+        """Returns color mapped to the value in the color table."""
         if   v < self.vmin: return self.ctable[0]
         elif v < self.vmax: return self.ctable[self.vfct*v]
         else              : return self.ctable[-1]
 
-      
-    def print_color_table(self):    
-        for ic, qc in enumerate(self.ctable):
-            print('i:%4d  R:%3d  G:%3d  B:%3d' % (ic, qc.red(), qc.green(), qc.blue()))
+    def info_color_table(self):
+        return '\n'.join(['i:%4d  R:%3d  G:%3d  B:%3d' %\
+                         (ic, qc.red(), qc.green(), qc.blue())\
+                         for ic, qc in enumerate(self.ctable)])
 
-
-if __name__ == '__main__':
-  def test():
-    ct = ColorTable()
-    ct.print_color_table()
-    
+    def print_color_table(self):
+        print(self.info_color_table())
 
 if __name__ == '__main__':
-    test()
+    ColorTable().print_color_table()
 
 # EOF

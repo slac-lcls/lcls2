@@ -20,11 +20,11 @@ public:
 
     enum CTOR_TYPE {CTOR_DEFAULT, CTOR_REGULAR};
 
-    ConfigIter(XtcData::Xtc* xtc) : XtcData::NamesIter(xtc), _ctor_type(CTOR_REGULAR) {iterate();}
+    ConfigIter(XtcData::Xtc* xtc, const void* bufEnd) : XtcData::NamesIter(xtc, bufEnd), _ctor_type(CTOR_REGULAR) {iterate();}
     ConfigIter() : XtcData::NamesIter(), _ctor_type(CTOR_DEFAULT) {}
    ~ConfigIter();
 
-    virtual int process(XtcData::Xtc* xtc);
+    virtual int process(XtcData::Xtc* xtc, const void* bufEnd);
 
     ShapesData& shape() {return *_shapesData[0];}
     ShapesData& value() {return *_shapesData[1];}
@@ -49,4 +49,4 @@ private:
 };
 };
 
-#endif // 
+#endif //

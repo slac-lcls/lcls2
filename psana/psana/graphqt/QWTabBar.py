@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWTabBar` - Re-implementation of QWTabBar
 ========================================
@@ -20,7 +20,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2017-02-08 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
-#------------------------------
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -28,12 +28,11 @@ from PyQt5.QtWidgets import QTabBar#, QWidget
 from PyQt5.QtCore import QPoint, QSize # Qt, QEvent
 from psana.graphqt.QWIcons import icon
 
-#------------------------------
 
-class QWTabBar(QTabBar) :
+class QWTabBar(QTabBar):
     """Re-implementation of QTabBar - add "+" tab
     """
-    def __init__ (self, parent=None, width=80) :
+    def __init__ (self, parent=None, width=80):
         QTabBar.__init__(self, parent)
         #self._name = self.__class__.__name__
         icon.set_icons()
@@ -49,7 +48,6 @@ class QWTabBar(QTabBar) :
         self.set_style()
         self.set_tool_tips()
 
-    #-------------------
 
     def make_tab_bar(self):
 
@@ -76,7 +74,7 @@ class QWTabBar(QTabBar) :
 
         itab = 2
         w.tabButton(itab, QTabBar.RightSide).hide() # hide closing button
-    
+
         #itab = 2
         #w.setTabIcon(itab, icon.icon_table)
         #but_tab2_close = w.tabButton(itab, QTabBar.RightSide)
@@ -92,41 +90,34 @@ class QWTabBar(QTabBar) :
 
       #but_close.setVisible(True)
         #logger.debug(str(but_close))
-    
-        #logger.debug(dir(but_close))
 
-    #-------------------
 
-    def on_current_changed(self, itab) :
+    def on_current_changed(self, itab):
         logger.debug('on_current_changed tab index:%d' % (itab))
 
-    #-------------------
 
     def current_tab_index_and_name(self):
         tab_ind  = self.currentIndex()
         tab_name = str(self.tabText(tab_ind))
         return tab_ind, tab_name
 
-    #-------------------
 
-    def on_tab_close(self) :
+    def on_tab_close(self):
         tab_ind, tab_name = self.current_tab_index_and_name()
         logger.debug('on_tab_close tab index:%d name:%s' % (tab_ind, tab_name))
 
-    #-------------------
 
-    def on_tab_close_request(self, itab) :
+    def on_tab_close_request(self, itab):
         logger.debug('on_tab_close_request tab index:%d' % itab)
 
-    #-------------------
 
-    def on_tab_moved(self, inew, iold) :
+    def on_tab_moved(self, inew, iold):
         logger.debug('on_tab_close_request tab index begin:%d -> end:%d' % (iold, inew))
 
-    #-------------------
 
     def set_tool_tips(self):
-        self.setToolTip('This is a tabbar') 
+        self.setToolTip('This is a tabbar')
+
 
     def set_style(self):
         self.setMinimumWidth(600)
@@ -136,9 +127,9 @@ class QWTabBar(QTabBar) :
         self.setStyleSheet(ss)
 
 
-    def enterEvent(self, e) :
+    def enterEvent(self, e):
         logger.debug('enterEvent %s' % e.type())
-        #if e.type() == QEvent.Enter :
+        #if e.type() == QEvent.Enter:
         #self.setTabEnabled(self.tabi_add, True)
         #self.setTabsClosable(True)
         self.tabi_add = self.addTab('+')
@@ -147,50 +138,43 @@ class QWTabBar(QTabBar) :
         #self.tabButton(self.tabi_add, QTabBar.RightSide).hide() # hide closing button
 
 
-    def leaveEvent(self, e) :
+    def leaveEvent(self, e):
         logger.debug('leaveEvent %s' % e.type())
-        #if e.type() == QtCore.QEvent.Leave :
+        #if e.type() == QtCore.QEvent.Leave:
         #self.setTabEnabled(self.tabi_add, False)
         #self.setTabsClosable(False)
-        if self.tabi_add is not None : self.removeTab(self.tabi_add)
+        if self.tabi_add is not None: self.removeTab(self.tabi_add)
         self.tabi_add = None
 
 
     def tabSizeHint(self, index):
         w = self.tab_width
-        if index==self.tabi_add or (self.tabText(index)[0] == '+') : w = 30
+        if index==self.tabi_add or (self.tabText(index)[0] == '+'): w = 30
         h = QTabBar.tabSizeHint(self, index).height()
         return QSize(w, h)
 
 
-    #def event(self, e) :
+    #def event(self, e):
     #    QTabBar.event(self, e)
     #    logger.debug('event %s' % e.type())
 
 
-    #def setExpanding(self, enabled) :
-    #    QtWidgets.QTabBar.setExpanding(self, False)
-
-
-    #def mouseMoveEvent(self, e) :
+    #def mouseMoveEvent(self, e):
     #    logger.debug('mouseMoveEvent x,y=%.3f,%.3f' % (e.x(), e.y()))
 
 
-    def mouseHoverEvent(self, e) :
+    def mouseHoverEvent(self, e):
         logger.debug('mouseHoverEvent')
 
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
 
-        #try    : self.gui_win.close()
-        #except : pass
+        #try   : self.gui_win.close()
+        #except: pass
 
-#------------------------------
-#------------------------------
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
     from PyQt5.QtWidgets import QApplication, QPushButton
     app = QApplication(sys.argv)
@@ -202,4 +186,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#------------------------------
+# EOF

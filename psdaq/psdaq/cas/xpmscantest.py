@@ -63,3 +63,6 @@ def main():
     c = ScanControl(args)
     for i in range(args.n):
         c.run()
+
+if __name__ == '__main__':
+    main()

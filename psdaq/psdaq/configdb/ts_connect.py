@@ -76,7 +76,11 @@ class ts_connector:
         for xpm_port in range(14):
             pv_names.append(pv+'RemoteLinkId' +str(xpm_port))
         print('link_ids: {:}'.format(pv_names))
-        link_ids = self.ctxt.get(pv_names)
+        try:
+            link_ids = self.ctxt.get(pv_names)
+        except TimeoutError:
+            print('*** TimeoutError for {:}'.format(pv))
+            return
 
         pv_names = []
         downstream_xpm_names = []
@@ -106,8 +110,11 @@ class ts_connector:
         num_master_disable = len(pv_names_downstream_xpm_master_enable)
         if (num_master_disable):
             print('*** Disable downstream xpm readout group master:',pv_names_downstream_xpm_master_enable)
-            self.ctxt.put(pv_names_downstream_xpm_master_enable,[0]*num_master_disable)
-        
+            try:
+                self.ctxt.put(pv_names_downstream_xpm_master_enable,[0]*num_master_disable)
+            except TimeoutError:
+                print('*** TimeoutError')
+
     def xpm_link_disable_all(self):
         # Start from the master and recursively remove the groups from each downstream link
         self.xpm_link_disable(self.master_xpm_pv, self.readout_group_mask)
@@ -115,12 +122,27 @@ class ts_connector:
     def xpm_link_enable(self):
         self.xpm_link_disable_all()
 
-        pv_names = []
-        values = []
+        d = {}
+        pvnames_rxready = []
         for xpm_num,xpm_port,readout_group in self.xpm_info:
             pvname = self.xpm_base+str(xpm_num)+':'+'LinkGroupMask'+str(xpm_port)
-            pv_names.append(pvname)
-            values.append((1<<readout_group))
+            pvnames_rxready.append(self.xpm_base+str(xpm_num)+':'+'LinkRxReady'+str(xpm_port))
+            if pvname in d:
+                d[pvname] |= (1<<readout_group)
+            else:
+                d[pvname] = (1<<readout_group)
+
+        # make sure the XPM links from the detectors are OK
+        rxready_values = self.ctxt.get(pvnames_rxready)
+        for pvname,val in zip(pvnames_rxready,rxready_values):
+            if val!=1:
+                raise ValueError('RxLink not locked! %s' % pvname)
+
+        pv_names = []
+        values = []
+        for name,value in d.items():
+            pv_names.append(name)
+            values.append(value)
 
         print('*** setting xpm link enables',pv_names,values)
         self.ctxt.put(pv_names,values)

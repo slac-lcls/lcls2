@@ -45,43 +45,45 @@ AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
 {
 }
 
-unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
+unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
     logging::info("AreaDetector configure");
 
-    if (XpmDetector::configure(config_alias, xtc))
+    if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
     Alg fexAlg("fex", 2, 0, 0);
     NamesId fexNamesId(nodeId,FexNamesIndex);
-    Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), fexAlg,
-                                      m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, m_para->detSegment);
+    Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
+                                              m_para->detName.c_str(), fexAlg,
+                                              m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, m_para->detSegment);
     FexDef myFexDef;
-    fexNames.add(xtc, myFexDef);
+    fexNames.add(xtc, bufEnd, myFexDef);
     m_namesLookup[fexNamesId] = NameIndex(fexNames);
 
     Alg rawAlg("raw", 2, 0, 0);
     NamesId rawNamesId(nodeId,RawNamesIndex);
-    Names& rawNames = *new(xtc) Names(m_para->detName.c_str(), rawAlg,
-                                      m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, m_para->detSegment);
+    Names& rawNames = *new(xtc, bufEnd) Names(bufEnd,
+                                              m_para->detName.c_str(), rawAlg,
+                                              m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, m_para->detSegment);
     RawDef myRawDef;
-    rawNames.add(xtc, myRawDef);
+    rawNames.add(xtc, bufEnd, myRawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);
 
     return 0;
 }
 
-unsigned AreaDetector::beginrun(XtcData::Xtc& xtc, const json& runInfo)
+unsigned AreaDetector::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const json& runInfo)
 {
     logging::info("AreaDetector beginrun");
     return 0;
 }
 
-void AreaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
+void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
     // fex data
     NamesId fexNamesId(nodeId,FexNamesIndex);
-    CreateData fex(dgram.xtc, m_namesLookup, fexNamesId);
+    CreateData fex(dgram.xtc, bufEnd, m_namesLookup, fexNamesId);
     unsigned shape[MaxRank] = {3,3};
     Array<uint16_t> arrayT = fex.allocate<uint16_t>(FexDef::array_fex,shape);
 
@@ -112,7 +114,7 @@ void AreaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
 
     // raw data
     NamesId rawNamesId(nodeId,RawNamesIndex);
-    DescribedData raw(dgram.xtc, m_namesLookup, rawNamesId);
+    DescribedData raw(dgram.xtc, bufEnd, m_namesLookup, rawNamesId);
     unsigned size = 0;
     unsigned nlanes = 0;
     for (int i=0; i<PGP_MAX_LANES; i++) {

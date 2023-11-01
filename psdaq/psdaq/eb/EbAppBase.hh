@@ -19,6 +19,9 @@ namespace XtcData {
 };
 
 namespace Pds {
+
+  class EbDgram;
+
   namespace Eb {
 
     class EbLfSvrLink;
@@ -35,21 +38,15 @@ namespace Pds {
       EbAppBase(const EbParams& prms,
                 const MetricExporter_t&,
                 const std::string& pfx,
-                const uint64_t duration,
-                const unsigned maxEntries,
-                const unsigned maxEvBuffers,
-                const unsigned maxTrBuffers,
                 const unsigned msTimeout);
       virtual ~EbAppBase();
-    public:
-      int              checkEQ()  { return _transport.pollEQ(); }
     public:
       int              resetCounters();
       int              startConnection(const std::string& ifAddr,
                                        std::string&       port,
                                        unsigned           nLinks);
-      int              connect(const EbParams& prms, size_t inpSizeGuess);
-      int              configure(const EbParams& prms);
+      int              connect(unsigned maxTrBuffers);
+      int              configure();
       void             unconfigure();
       void             disconnect();
       void             shutdown();
@@ -57,13 +54,14 @@ namespace Pds {
       void             post(const EbDgram* const* begin,
                             const EbDgram** const end);
       void             trim(unsigned dst);
+    protected:
+      const std::vector<size_t>& bufferSizes() const;
     public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contract(const Pds::EbDgram* contrib) const;
     private:
       int              _linksConfigure(const EbParams&            prms,
                                        std::vector<EbLfSvrLink*>& links,
-                                       unsigned                   id,
                                        const char*                name);
     private:                           // Arranged in order of access frequency
       u64arr_t                  _contract;
@@ -72,23 +70,31 @@ namespace Pds {
       std::vector<size_t>       _bufRegSize;
       std::vector<size_t>       _maxTrSize;
       std::vector<size_t>       _maxBufSize;
-      const unsigned            _maxEntries;
-      const unsigned            _maxEvBuffers;
-      const unsigned            _maxTrBuffers;
-      const unsigned&           _verbose;
+      unsigned                  _maxEntries;
+      unsigned                  _maxEvBuffers;
+      unsigned                  _maxTrBuffers;
+      unsigned&                 _verbose;
+      std::vector<uint64_t>     _lastPid;
       uint64_t                  _bufferCnt;
       PromHisto_t               _fixupSrc;
       PromHisto_t               _ctrbSrc;
     private:
       std::vector<size_t>       _regSize;
       std::vector<void*>        _region;
-      uint64_t                  _contributors;
+      uint64_t                  _idxSrcs;
       unsigned                  _id;
-      const MetricExporter_t&   _exporter;
-      const std::string&        _pfx;
+      MetricExporter_t          _exporter;
+      const std::string         _pfx;
+      const EbParams&           _prms;
     };
   };
 };
 
-#endif
 
+inline
+const std::vector<size_t>& Pds::Eb::EbAppBase::bufferSizes() const
+{
+  return _maxBufSize;
+}
+
+#endif

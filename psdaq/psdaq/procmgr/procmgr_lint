@@ -116,9 +116,11 @@ if os.path.isfile(configfile) != 1:
 #  - procmgr_macro = empty dictionary
 #  - instrument = None
 #  - id, cmd, flags, port, host, rtprio, env, evr, conda = keyword strings
+#  - CONDA_PREFIX = $CONDA_PREFIX
+#  - CONFIGDIR = empty string
 #
-config = {'platform': options.platform, 'procmgr_config': None, 'instrument': None,
-          'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
+config = {'platform': options.platform, 'procmgr_config': None, 'instrument': None, 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
+          'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', 'CONFIGDIR': '',
           'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': dict()}
 
 try:

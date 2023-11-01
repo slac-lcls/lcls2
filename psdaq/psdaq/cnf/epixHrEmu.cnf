@@ -1,0 +1,157 @@
+if not platform: platform = '3'
+
+ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
+epics_env = f'{ld_lib_path}'
+#test_env = '"EPICS_PVA_ADDR_LIST=172.21.152.78 172.27.131.255"'+' '+ld_lib_path
+
+collect_host = 'drp-srcf-cmp034'
+
+#xtpg = 2                    # TMO
+#xtpg = 3                    # RIX
+xtpg = 0                    # TXI
+#xtpg = 10                   # FEE
+groups = platform + ' 6' # + ' 7' + ' 6'
+hutch, user = ('tst', 'tstopr')
+auth = ' --user {:} '.format(user)
+url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
+#cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+cdb  = 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws'
+
+#
+#  drp variables
+#
+prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
+data_dir = f'/cds/data/drpsrcf'
+trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
+
+task_set = 'taskset -c 4-63'
+pvaAddr  = 'pva_addr=172.21.152.78' # mon001
+scripts  = f'script_path={trig_dir}'
+#network  = 'ep_provider=sockets,ep_domain=eno1'
+epixData   = '/cds/data/drpsrcf/temp/claus/xtc/rixx1003721-r0106-s010-c000.xtc2'
+#epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/test_drp.py'
+epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/epixHrEmu.py'
+epixKwargs = f'pebbleBufCount=16384,sim_length=55292,xtcfile={epixData},l1aOffset=1000,drp=python,pythonScript={epixScript}'
+
+std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {pvaAddr}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {pvaAddr}'
+
+teb_cmd  = task_set+' teb '            +std_opts + f' -k {scripts}'
+meb_cmd  = task_set+' monReqServer '   +std_opts
+
+drp_cmd0 = task_set+' drp '            +std_opts0
+drp_cmd1 = task_set+' drp '            +std_opts1
+pva_cmd0 = task_set+' drp_pva '        +std_opts0
+pva_cmd1 = task_set+' drp_pva '        +std_opts1
+udp_cmd0 = task_set+' drp_udpencoder ' +std_opts0
+udp_cmd1 = task_set+' drp_udpencoder ' +std_opts1
+bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1'
+bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1'
+
+elog_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/elog_{hutch}.txt'
+
+#ea_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/epicsArch.txt'
+#ea_cfg = f'/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
+ea_cfg = f'/cds/group/pcds/dist/pds/rix/misc/epicsArch.txt'
+ea_cmd0 = task_set+' epicsArch '       +std_opts0+' '+ea_cfg
+ea_cmd1 = task_set+' epicsArch '       +std_opts1+' '+ea_cfg
+
+if xtpg == 2:
+    xpms = 'DAQ:NEH:XPM:2 DAQ:NEH:XPM:4 DAQ:NEH:XPM:6 DAQ:NEH:XPM:0'
+elif xtpg == 3:
+    xpms = 'DAQ:NEH:XPM:3 DAQ:NEH:XPM:5 DAQ:NEH:XPM:0'
+else:
+    xpms = f'DAQ:NEH:XPM:{xtpg}'
+
+#
+#  ami variables
+#
+heartbeat_period = 1000 # units are ms
+
+ami_workers_per_node = 4
+ami_worker_nodes = ["drp-srcf-cmp034"]
+ami_num_workers = len(ami_worker_nodes)
+ami_manager_node = "drp-srcf-cmp034"
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:f'xpmpva {xpms}'},
+ {                         id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH {xtpg} {groups}'},
+ {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
+
+# {host: 'drp-srcf-mon001', id:'pvrtmon-tst', flags:'s',   env:epics_env, cmd:f'epics_exporter -H tst -M {prom_dir} -I xpm-{xtpg} -P DAQ:NEH:XPM:{xtpg} -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+
+# set the phase2 transition timeout to 20s. this is because the teb
+# has a 16s timeout for slow PVA detectors coming through the gateway.
+# both can be reduced if/when we get consistent behavior from gateways.
+ {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+# {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 0 -T 20000 -V {elog_cfg}'},
+# {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
+ {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
+
+ {host: 'drp-srcf-cmp028', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
+
+ {host: 'drp-srcf-cmp037', id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+
+ # EPIX-HR has 2 MP on 20 panels, 4 ASICs/panel, 144 x 192 pixels/ASIC, 2 B/pixel = 221184 B/segment = 2 + 4 * sim_length => sim_length ~= 55294 per panel
+ {host: 'drp-srcf-cmp035', id:'epixhr_emu_0',  flags:'spux',             cmd:f'{drp_cmd0} -l 0x1 -W 1 -D epixhremu -k {epixKwargs}'},
+## {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spux',             cmd:f'{drp_cmd1} -l 0xf -W 30 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu', env:test_env, cmd:f'{drp_cmd0} -l 0x2 -W 26 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp035', id:'epixhr_emu_1',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x2 -W 26 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp036', id:'epixhr_emu_2',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_3',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
+ {host: 'drp-srcf-cmp043', id:'epixhr_emu_4',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_5',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x2 -D epixhremu -k {epixKwargs}'},
+
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_6',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_7',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_8',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_9',  flags:'spu',              cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_10', flags:'spu',              cmd:f'{drp_cmd0} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_11', flags:'spu',              cmd:f'{drp_cmd0} -l 0x8 -D epixhremu -k {epixKwargs}'},
+#
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_12', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_13', flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_14', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp036', id:'epixhr_emu_15', flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_16', flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp043', id:'epixhr_emu_17', flags:'spu',                cmd:f'{drp_cmd1} -l 0x2 -D epixhremu -k {epixKwargs}'},
+#
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_18', flags:'spu',                cmd:f'{drp_cmd1} -l 0x4 -D epixhremu -k {epixKwargs}'},
+# {host: 'drp-srcf-cmp035', id:'epixhr_emu_19', flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D epixhremu -k {epixKwargs}'},
+
+# {host: 'drp-srcf-cmp034', id:'epixhr_emu_4', flags:'spux',               cmd:f'{drp_cmd0} -l 0x3 -D epixhremu -k {epixKwargs}'},
+]
+
+#
+# ami
+#
+procmgr_ami = [
+ {host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}'},
+ {host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}'},
+ {                       id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}'},
+]
+
+#
+# ami workers
+#
+for N, worker_node in enumerate(ami_worker_nodes):
+    procmgr_ami.append({host:worker_node, id:f'ami-meb{N}', flags:'spu',
+                        cmd:f'{meb_cmd} -d -n 64 -q {ami_workers_per_node}'})
+    procmgr_ami.append({host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env,
+                        #cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}'})
+                        cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level debug worker -b {heartbeat_period} psana://shmem={hutch}'})
+
+#procmgr_config.extend(procmgr_ami)

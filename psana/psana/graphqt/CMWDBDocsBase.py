@@ -23,7 +23,7 @@ from PyQt5.QtCore import Qt
 
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.CMDBUtils import dbu
-    
+
 
 class CMWDBDocsBase():
     def __init__(self):
@@ -35,14 +35,10 @@ class CMWDBDocsBase():
 
 
     def __del__(self):
-        #logger.debug('in d-tor')
         cp.cmwdbdocswidg = None
 
 
     def show_documents(self, dbname, colname, docs):
-        #msg = 'THIS METHOD NEEDS TO BE IMPLEMENTED IN THE DERIVED CLASS for db: %s col: %s'%\
-        #      (self.dbname, self.colname)
-        #logger.warning(msg)
         self.dbname, self.colname, self.current_docs = dbname, colname, docs
 
 # EOF

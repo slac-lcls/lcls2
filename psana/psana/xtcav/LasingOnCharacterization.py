@@ -57,7 +57,7 @@ class LasingOnCharacterization():
         self.island_split_par1   = getattr(args, 'island_split_par1', None)
         self.island_split_par2   = getattr(args, 'island_split_par2', None)
         self.dark_reference_path = getattr(args, 'dark_reference_path', None) #Dark reference file path
-        self.lasingoff_ref_path  = getattr(args, 'lasingoff_reference_path', None) #Lasing off reference file path
+#       self.lasingoff_ref_path  = getattr(args, 'lasingoff_reference_path', None) #Lasing off reference file path
         #self.calibration_path   = getattr(args, 'calibration_path', '')
 
         self._setDetectorDataObjects()
@@ -118,27 +118,27 @@ class LasingOnCharacterization():
         """
         self._lasingoffreference = None
             
-        if self.lasingoff_ref_path:
-            self._lasingoffreference = LasingOffReference.load(self.lasingoff_ref_path)
-            logger.info('Using lasing off reference from file %s'%self.lasingoff_ref_path.split('/')[-1])
-            self._setLasingOffReferenceParameters()
-            return
+        # if self.lasingoff_ref_path:
+        #     self._lasingoffreference = LasingOffReference.load(self.lasingoff_ref_path)
+        #     logger.info('Using lasing off reference from file %s'%self.lasingoff_ref_path.split('/')[-1])
+        #     self._setLasingOffReferenceParameters()
+        #     return
 
-        if self._lasingoffreference is None:
-            #lofr_data, lofr_meta = self._camera.calibconst.get('xtcav_lasingoff')
-            lofr_data, lofr_meta = xtup.get_calibconst(self._camera, 'xtcav_lasingoff', cons.DETNAME, self.run.expt, self.run.runnum)
-            self._lasingoffreference = xtu.xtcav_calib_object_from_dict(lofr_data)
-            logger.debug('==== lofr_meta:\n%s' % str(lofr_meta))
-            logger.debug('==== dir(_lasingoffreference):\n%s'% str(dir(self._lasingoffreference)))
-            logger.debug('==== _lasingoffreference.parameters:\n%s'% str(self._lasingoffreference.parameters))
-            logger.debug('==== _lasingoffreference.averaged_profiles:\n%s'% str(self._lasingoffreference.averaged_profiles))            
-            logger.info('Using lasing off reference from DB')
-            self._setLasingOffReferenceParameters()
-            return
+        # if self._lasingoffreference is None:
+        #lofr_data, lofr_meta = self._camera.calibconst.get('xtcav_lasingoff')
+        lofr_data, lofr_meta = xtup.get_calibconst(self._camera, 'xtcav_lasingoff', cons.DETNAME, self.run.expt, self.run.runnum)
+        self._lasingoffreference = xtu.xtcav_calib_object_from_dict(lofr_data)
+        logger.debug('==== lofr_meta:\n%s' % str(lofr_meta))
+        logger.debug('==== dir(_lasingoffreference):\n%s'% str(dir(self._lasingoffreference)))
+        logger.debug('==== _lasingoffreference.parameters:\n%s'% str(self._lasingoffreference.parameters))
+        logger.debug('==== _lasingoffreference.averaged_profiles:\n%s'% str(self._lasingoffreference.averaged_profiles))            
+        logger.info('Using lasing off reference from DB')
+        self._setLasingOffReferenceParameters()
 
         if not self._lasingoffreference:
             logger.warning('Lasing off reference for run %d not found, using default values' % self._currentevent.run())
             self._setDefaultProcessingParameters()
+        return
 
             
     def _setDefaultProcessingParameters(self):
@@ -188,13 +188,13 @@ class LasingOnCharacterization():
         #if not self._darkreference: self._loadDarkReference()
         #if not self._lasingoffreference: self._loadLasingOffReference()
 
-        self._roixtcav = xtup.getXTCAVImageROI(self._valsxtp, evt)
+        self._roixtcav = xtup.getXTCAVImageROI(self._xtcavroipars, evt)
         logger.debug('_roixtcav: %s' % str(self._roixtcav))
 
-        self._global_calibration = xtup.getGlobalXTCAVCalibration(self._valsxtp, evt)
+        self._global_calibration = xtup.getGlobalXTCAVCalibration(self._xtcavcalibpars, evt)
         logger.debug('_global_calibration: %s' % str(self._global_calibration))
 
-        self._saturation_value = xtup.getCameraSaturationValue(self._valsxtp, evt)
+        self._saturation_value = xtup.getCameraSaturationValue(self._xtcavcalibpars, evt)
         logger.debug('_saturation_value: %d' % self._saturation_value)
 
         if self._roixtcav and self._global_calibration and self._saturation_value:
@@ -231,14 +231,14 @@ class LasingOnCharacterization():
 
 
         #Obtain the shot to shot parameters necessary for the retrieval of the x and y axis in time and energy units
-        shot_to_shot = xtup.getShotToShotParameters(evt, self._valsebm, self._valsgd, self._valseid)
+        shot_to_shot = xtup.getShotToShotParameters(evt, self._ebeam, self._gasdetector)
         logger.debug('shot_to_shot: %s' % str(shot_to_shot))
         
         if not shot_to_shot.valid:
             logger.warning('shot_to_shot info is not valid')
             return False 
 
-        self._rawimage = self._camraw(evt)
+        self._rawimage = self._camera.raw.value(evt)
         logger.debug(info_ndarr(self._rawimage, 'camera raw:'))
 
         if self._rawimage is None: 
@@ -731,17 +731,18 @@ def setDetectors(run, camera=None, ebeam=None, gasdetector=None, eventid=None, x
     o._camera      = camera      if camera      is not None else run.Detector(cons.DETNAME)      # 'xtcav'      
     o._ebeam       = ebeam       if ebeam       is not None else run.Detector(cons.EBEAM)        # 'ebeam'      
     o._gasdetector = gasdetector if gasdetector is not None else run.Detector(cons.GAS_DETECTOR) # 'gasdetector'
-    o._eventid     = eventid     if eventid     is not None else run.Detector(cons.EVENTID)      # 'eventid'    
-    o._xtcavpars   = xtcavpars   if xtcavpars   is not None else run.Detector(cons.XTCAVPARS)    # 'xtcavpars'  
+    # o._eventid     = eventid     if eventid     is not None else run.Detector(cons.EVENTID)      # 'eventid'    
+    # o._xtcavpars   = xtcavpars   if xtcavpars   is not None else run.Detector(cons.XTCAVPARS)    # 'xtcavpars'  
+    o._xtcavroipars = xtup.get_roi_parameters(run)
 
-    o._camraw   = xtup.get_attribute(o._camera,      'raw')
-    o._valsebm  = xtup.get_attribute(o._ebeam,       'valsebm')
-    o._valsgd   = xtup.get_attribute(o._gasdetector, 'valsgd')
-    o._valseid  = xtup.get_attribute(o._eventid,     'valseid')
-    o._valsxtp  = xtup.get_attribute(o._xtcavpars,   'valsxtp')
+    # o._camraw   = xtup.get_attribute(o._camera,      'raw')
+    # o._valsebm  = xtup.get_attribute(o._ebeam,       'valsebm')
+    # o._valsgd   = xtup.get_attribute(o._gasdetector, 'valsgd')
+    # o._valseid  = xtup.get_attribute(o._eventid,     'valseid')
+    o._xtcavcalibpars = xtup.get_calibration_parameters(run)
 
-    if None in (o._camraw, o._valsebm, o._valsgd, o._valseid, o._valsxtp) : 
-        sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
+    # if None in (o._camraw, o._valsebm, o._valsgd, o._valseid, o._valsxtp) : 
+    #     sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
     return o
 
 
@@ -812,11 +813,11 @@ def data_xtcavpars(valsxtp, evt):
 
 def procEvents(args):
 
-    fname     = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2')
+    #fname     = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2')
     max_shots = getattr(args, 'max_shots', 200)
     mode      = getattr(args, 'mode', 'smd')
 
-    ds = DataSource(files=fname)
+    ds = DataSource(exp=args.experiment, run=args.run_number)
     run = next(ds.runs())
 
     dets = setDetectors(run) # NEEDS IN camera, ebeam, gasdetecto, eventid, xtcavpars
@@ -825,7 +826,7 @@ def procEvents(args):
     nimgs=0
     for nev,evt in enumerate(run.events()):
 
-        img = dets._camraw(evt)
+        img = lon._camera.raw.value(evt)
         logger.info('Event %03d' % nev)
         logger.debug(info_ndarr(img, 'camera raw:'))
         if img is None: continue

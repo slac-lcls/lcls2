@@ -41,7 +41,7 @@ class DarkBackgroundReference():
 
         #self.args = args
 
-        fname = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav-v2.xtc2')
+        #fname = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav-v2.xtc2')
         experiment       = getattr(args, 'experiment', 'amox23616')
         run_number       = getattr(args, 'run_number', 104)
         max_shots        = getattr(args, 'max_shots', 400)
@@ -63,15 +63,15 @@ class DarkBackgroundReference():
         save it in the proper location. 
         """
         logger.info('dark background reference')
-        logger.info('\t Data file: %s' % fname)
+        #logger.info('\t Data file: %s' % fname)
         logger.info('\t Experiment: %s' % self.parameters.experiment)
         logger.info('\t Run: %s' % self.parameters.run_number)
         logger.info('\t Valid shots to process: %d' % self.parameters.max_shots)
         logger.info('\t Detector name: %s' % cons.DETNAME)
         
         #Loading the dataset from the "dark" run, this way of working should be compatible with both xtc and hdf5 files
-        ds=DataSource(files=fname)
-        
+        #ds=DataSource(files=fname)
+        ds = DataSource(exp=self.parameters.experiment, run=self.parameters.run_number)
         run = next(ds.runs())
         logger.info('\t RunInfo expt: %s runnum: %d\n' % (run.expt, run.runnum))
 
@@ -80,21 +80,21 @@ class DarkBackgroundReference():
         #ebeam       = run.Detector(cons.EBEAM)
         #eventid     = run.Detector(cons.EVENTID)
         #gasdetector = run.Detector(cons.GAS_DETECTOR)
-        xtcavpars   = run.Detector(cons.XTCAVPARS)
+        xtcavroipars = xtup.get_roi_parameters(run)
 
         #Stores for environment variables    
         #configStore=dataSource.env().configStore()
         #epicsStore=dataSource.env().epicsStore()
         print('\n',100*'_','\n')
 
-        camraw  = xtup.get_attribute(camera,      'raw')
-        valsxtp = xtup.get_attribute(xtcavpars,   'valsxtp')
+        #camraw  = xtup.get_attribute(camera,      'raw')
+        #valsxtp = xtup.get_attribute(xtcavpars,   'valsxtp')
         #valsebm = xtup.get_attribute(ebeam,       'valsebm')
         #valseid = xtup.get_attribute(eventid,     'valseid')
         #valsgd  = xtup.get_attribute(gasdetector, 'valsgd')
 
-        if None in (camraw, valsxtp) : # valsebm, eventid, valsgd) : 
-            sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
+        #if camraw is None : # valsebm, eventid, valsgd) : 
+        #    sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
 
         accumulator_xtcav = None
 
@@ -103,11 +103,11 @@ class DarkBackgroundReference():
 
             #print('Event %03d'%nev, end='')
 
-            img = camera.raw(evt)
+            img = camera.raw.value(evt)
             if img is None: continue
 
             if self.ROI is None :
-                if not self._getImageROI(nev, evt, camraw, valsxtp) : continue
+                if not self._getImageROI(nev, evt, xtcavroipars) : continue
                 accumulator_xtcav = np.zeros((self.ROI.yN, self.ROI.xN), dtype=np.float64)
 
             accumulator_xtcav += img 
@@ -141,8 +141,8 @@ class DarkBackgroundReference():
             self.save(fname)
 
 
-    def _getImageROI(self, nev, evt, camraw, valsxtp):
-        self.ROI = xtup.getXTCAVImageROI(valsxtp, evt)
+    def _getImageROI(self, nev, evt, xtcavpars):
+        self.ROI = xtup.getXTCAVImageROI(xtcavpars, evt)
         logger.info('\t Event %2d ImageROI: %s' % (nev,str(self.ROI)))
         return self.ROI is not None
 
@@ -169,9 +169,10 @@ class DarkBackgroundReference():
         logger.info('command to check file: hdf5explorer %s' % path)
 
         d = instance.parameters
-        s = 'cdb add -e %s -d %s -c xtcav_pedestals -r %s -f %s -i xtcav -u <user>' % (d['experiment'], cons.DETNAME, d['run_number'], path)
-        logger.info('command to deploy: %s' % s)
-
+        s = 'cdb add -e %s -d %s -c xtcav_pedestals -r %s -f %s -i xtcav' % (d['experiment'], cons.DETNAME, d['run_number'], path)
+        ret = os.system(s)
+        if ret !=0:
+            sys.error("ERROR DEPLOYING XTCAV PEDESTALS TO DATABASE")
 
     @staticmethod    
     def load(path):        

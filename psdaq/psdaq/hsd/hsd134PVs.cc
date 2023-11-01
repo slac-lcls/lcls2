@@ -14,6 +14,8 @@
 #include "Pgp3.hh"
 #include "PV134Stats.hh"
 #include "PV134Ctrls.hh"
+#include "I2c134.hh"
+#include "Fmc134Cpld.hh"
 
 #include "psdaq/mmhw/AxiVersion.hh"
 #include "psdaq/mmhw/Xvc.hh"
@@ -145,6 +147,7 @@ int main(int argc, char** argv)
   
     const char* dev    = 0;
     const char* prefix = "DAQ:LAB2:HSD";
+    bool lInternalTiming = false;
     bool lAbortOnErr = false;
     bool lverbose    = false;
     unsigned    busId  = 0;
@@ -167,6 +170,8 @@ int main(int argc, char** argv)
             } break;
         case 'E':
             lAbortOnErr = true;   break;
+        case 'I':
+            lInternalTiming = true;  break;
         case 'P':
             prefix = optarg;      break;
         case 'v':
@@ -251,7 +256,8 @@ int main(int argc, char** argv)
     m->setup_timing();
     m->setup_jesd(lAbortOnErr, 
                   adc_calib[0],
-                  adc_calib[1]);
+                  adc_calib[1],
+                  lInternalTiming);
 
     if (db_args[4] && db_args[4][0]=='L') {    // Write calibration
         PyObject* pFunc   = _check(PyDict_GetItemString(pDict, "set_calib"));

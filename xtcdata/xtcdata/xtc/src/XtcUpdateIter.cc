@@ -1,59 +1,42 @@
 
 #include "xtcdata/xtc/XtcUpdateIter.hh"
+#include <sys/time.h>
 
 using namespace XtcData;
-using std::string;
+using namespace std;
 
-class FexDef:public VarDef
-{
-public:
-  enum index
-    {
-      arrayFex,
-    };
-
-  FexDef()
-   {
-       NameVec.push_back({"arrayFex",Name::FLOAT,2});
-   }
-} FexDef;
-
-void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
-{
-    CreateData fex(parent, namesLookup, namesId);
-
-    unsigned shape[MaxRank] = {2,3};
-    Array<float> arrayT = fex.allocate<float>(FexDef::arrayFex,shape);
-    for(unsigned i=0; i<shape[0]; i++){
-        for (unsigned j=0; j<shape[1]; j++) {
-            arrayT(i,j) = 142.0+i*shape[1]+j;
-        }
-    };
-
-}
+#define VERBOSE 0
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
+    if (VERBOSE == 0) return;
+
     printf("'%s' ", name);
-    printf(" numWords:%u rank:%u ", numWords, rank); 
+    printf(" numWords:%u rank:%u ", numWords, rank);
     printf("(shape:");
     for (unsigned w = 0; w < rank; w++) printf(" %d",shape[w]);
     printf("): ");
+
+    if (shape[0] < numWords) {
+        numWords = shape[0];
+    }
+
     for (unsigned w = 0; w < numWords; ++w) {
         printf(fmt, arrT.data()[w]);
     }
     printf("\n");
 }
 
+
 void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
     int data_rank = name.rank();
     int data_type = name.type();
-    printf("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
+    if (VERBOSE > 0) printf("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
 
     switch(name.type()){
     case(Name::UINT8):{
         if(data_rank > 0){
-            _dump<uint8_t>(name.name(), descdata.get_array<uint8_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
+            _dump<uint8_t>(name.name(), descdata.get_array<uint8_t>(i), _numWords, descdata.shape(name), name.rank(), " %u");
         }
         else{
             printf("'%s': %d\n",name.name(),descdata.get_value<uint8_t>(i));
@@ -63,7 +46,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 
     case(Name::UINT16):{
         if(data_rank > 0){
-            _dump<uint16_t>(name.name(), descdata.get_array<uint16_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
+            _dump<uint16_t>(name.name(), descdata.get_array<uint16_t>(i), _numWords, descdata.shape(name), name.rank(), " %u");
         }
         else{
             printf("'%s': %d\n",name.name(),descdata.get_value<uint16_t>(i));
@@ -73,7 +56,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 
     case(Name::UINT32):{
         if(data_rank > 0){
-            _dump<uint32_t>(name.name(), descdata.get_array<uint32_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
+            _dump<uint32_t>(name.name(), descdata.get_array<uint32_t>(i), _numWords, descdata.shape(name), name.rank(), " %u");
         }
         else{
             printf("'%s': %d\n",name.name(),descdata.get_value<uint32_t>(i));
@@ -83,7 +66,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
 
     case(Name::UINT64):{
         if(data_rank > 0){
-            _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
+            _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, descdata.shape(name), name.rank(), " %lu");
         }
         else{
             printf("'%s': %llu\n",name.name(),descdata.get_value<uint64_t>(i));
@@ -183,41 +166,79 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
     }
 }
 
-int XtcUpdateIter::process(Xtc* xtc)
+
+/* Is a callback from iterate.
+   Dgrampy uses iterate to go through Names and ShapesData.
+   For Names, both new and existing Names are copied to _tmpbuf.
+   For ShapesData, only those that are not filtered out are
+   copied to _tmpbuf.
+*/
+int XtcUpdateIter::process(Xtc* xtc, const void* bufEnd)
 {
+    if (VERBOSE > 0) printf("\nXtcUpdateIter:process\n");
+
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {
-        iterate(xtc);
+        iterate(xtc, bufEnd);
         break;
     }
     case (TypeId::Names): {
         Names& names = *(Names*)xtc;
         _namesLookup[names.namesId()] = NameIndex(names);
         Alg& alg = names.alg();
-    printf("*** DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
-               names.detName(), names.segment(), names.detType(), names.detId(),
-               alg.name(), alg.version(), (int)names.namesId());
 
         for (unsigned i = 0; i < names.num(); i++) {
             Name& name = names.get(i);
-            printf("Name: '%s' Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
         }
 
-        unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name)); 
-        printf("BEFORE sizeof(Names):%u names.num():%u sizeof(Name):%u total:%u sizeof(Xtc):%u sizeofPayload:%d\n", sizeof(Names), names.num(), sizeof(Name), namesSize, sizeof(Xtc), xtc->sizeofPayload());
+        unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name));
 
-        // copy Names to out buffer
-        copy2buf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
-        printf("COPY Names sizeof(Xtc):%u sizeofPayload: %u bufsize: %u\n", sizeof(Xtc), xtc->sizeofPayload(), _bufsize);
 
+        // Copy Names to _tmpbuf if flag is set
+        if (_cfgWriteFlag == 1) {
+            copyPayload((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+        }
+
+        // Initialize filter flag
+        string sDet(names.detName());
+        string sAlg(alg.name());
+        _flagFilter.insert(pair<string, int>(sDet+"_"+sAlg, 0));
+
+        // Keep track of nodeId
+        _nodeId = names.namesId().nodeId();
+
+        // Keep track of existing NamesId (for both lower and upper ranges)
+        int distanceToMin = names.namesId().namesId() - _maxOfMinNamesId;
+        int distanceToMax = names.namesId().namesId() - _minOfMaxNamesId;
+        // Pull to the closest range (favor lower range)
+        if (abs(distanceToMin) <= abs(distanceToMax)) {
+            if (names.namesId().namesId() > _maxOfMinNamesId) {
+                _maxOfMinNamesId = names.namesId().namesId();
+            }
+
+        } else {
+            if (names.namesId().namesId() < _minOfMaxNamesId) {
+                _minOfMaxNamesId = names.namesId().namesId();
+            }
+
+        }
+
+        if (VERBOSE > 0) {
+            cout << "[Names] detName:" << names.detName() << " alg:" << alg.name() << endl;
+            cout << "        nodeId:" << names.namesId().nodeId() << endl;
+            cout << "        namesId:" << names.namesId().namesId() << endl;
+            cout << "        _maxOfMinNamesId:" << _maxOfMinNamesId << " _minOfMaxNamesId:" << _minOfMaxNamesId << endl;
+            cout << "        distance to min:" << distanceToMin << " distance to max:" << distanceToMax << endl;
+        }
         break;
     }
     case (TypeId::ShapesData): {
+        if (VERBOSE > 0) printf("[ShapesData]\n");
         ShapesData& shapesdata = *(ShapesData*)xtc;
         // lookup the index of the names we are supposed to use
         NamesId namesId = shapesdata.namesId();
         // if this is the namesId that we want (raw.fex), copy it
-        
+
         // protect against the fact that this namesid
         // may not have a NamesLookup.  cpo thinks this
         // should be fatal, since it is a sign the xtc is "corrupted",
@@ -227,22 +248,54 @@ int XtcUpdateIter::process(Xtc* xtc)
             throw "invalid namesid";
             break;
         }
+
         DescData descdata(shapesdata, _namesLookup[namesId]);
         Names& names = descdata.nameindex().names();
         Data& data = shapesdata.data();
-        
-        Alg& alg = names.alg();
-    printf("*** DetName: %s, Alg: %s\n", names.detName(), alg.name());
-    
-    printf("Found %d names\n",names.num());
-        for (unsigned i = 0; i < names.num(); i++) {
-            Name& name = names.get(i);
-            get_value(i, name, descdata);
+        if (VERBOSE > 0) {
+            for (unsigned i = 0; i < names.num(); i++) {
+                Name& name = names.get(i);
+                get_value(i, name, descdata);
+            }
         }
 
-        // copy ShapesData to out buffer
-        copy2buf((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
-        printf("COPY ShapesData sizeof(Xtc):%u sizeofPayload: %u bufsize: %u\n", sizeof(Xtc), xtc->sizeofPayload(), _bufsize);
+        Alg& alg = names.alg();
+
+
+        // For ShapesData in Configure (check if write flag is set).
+        // Note that dgrampy sets this to False for all non-configure dgrams.
+        if (_cfgFlag == 1) {
+            if (_cfgWriteFlag == 1) {
+                copyPayload((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+            }
+        } else {
+            // For ShapesData in non-configure dgrams, determines removed size
+            // (if detname and alg matched with given))or copies ShapesData to tmp buffer
+            string sDet(names.detName());
+            string sAlg(alg.name());
+            map<string, int>::iterator itr;
+            int flagRemoved = 0;
+
+            if (VERBOSE > 0)
+                cout << "  Check remove for det:" << sDet << " alg:" << sAlg << " ";
+
+            for (itr = _flagFilter.begin(); itr != _flagFilter.end(); ++itr){
+                if (sDet+"_"+sAlg == itr->first) {
+                    if (itr->second == 1) {
+                        _removedSize += sizeof(Xtc) + xtc->sizeofPayload();
+                        flagRemoved = 1;
+                        if (VERBOSE > 0)
+                            cout << "--> Removed size:" << _removedSize << endl;
+                    }
+                    break;
+                }
+            }
+            if (flagRemoved == 0) {
+                if (VERBOSE > 0)
+                    cout << "--> Keep" << endl;
+                copyPayload((char*)xtc, sizeof(Xtc) + xtc->sizeofPayload());
+            }
+        }
         break;
     }
     default:
@@ -251,22 +304,264 @@ int XtcUpdateIter::process(Xtc* xtc)
     return Continue;
 }
 
-void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
-    memcpy(_buf+get_bufsize(), in_buf, in_size);
-    _bufsize += in_size;
+
+void XtcUpdateIter::copyPayload(char* in_buf, unsigned in_size){
+    memcpy(_outbuf + _payloadSize + sizeof(Dgram), in_buf, in_size);
+    _payloadSize += in_size;
 }
 
 
-void XtcUpdateIter::addNames(Xtc& xtc, char* detName, unsigned nodeId, unsigned namesId, unsigned segment) 
+/* Copies the parent dgram to the begining of the buffer and
+   updates/resets size parameters.
+*/
+void XtcUpdateIter::copyParent(Dgram* parent_d){
+    // TODO Add checks for overflown
+    memcpy(_outbuf, (char *) parent_d, sizeof(Dgram));
+    _bufSize = sizeof(Dgram) + _payloadSize;
+    _payloadSize = 0;
+    _removedSize = 0;
+
+    // Resets flag for all detectors to 0
+    clearFilter();
+}
+
+
+void XtcUpdateIter::updateTimeStamp(Dgram& d, uint64_t timestamp_val){
+    d.time = TimeStamp(timestamp_val);
+}
+
+
+/* Creates Names object and adds it  to the given `xtc`
+   Names is created from:
+      - Alg object (`algName`, `major`, `minor`, & `micro`)
+      - Detector components (`detName`, `detType`, and `detId)
+      - NamesId object (`nodeId` and `namesId)
+
+   This new Names object is subsequently populated with DataDef
+   object (e.g. a triplet of arrayFex0, dtype, & rankNo) and stored
+   in _namesLookup for later use.
+*/
+void XtcUpdateIter::addNames(Xtc& xtc, const void* bufEnd, char* detName, char* detType, char* detId,
+        unsigned nodeId, unsigned namesId, unsigned segment,
+        char* algName, uint8_t major, uint8_t minor, uint8_t micro,
+        DataDef& datadef)
 {
-    Alg hsdFexAlg("fex",4,5,6);
+    Alg alg0(algName,major,minor,micro);
     NamesId namesId0(nodeId, namesId);
-    Names& fexNames = *new(xtc) Names(detName, hsdFexAlg, "hsd","detnum1234", namesId0, segment);
-    fexNames.add(xtc, FexDef);
-    _namesLookup[namesId0] = NameIndex(fexNames);
+    Names& names0 = *new(xtc, bufEnd) Names(bufEnd, detName, alg0, detType, detId, namesId0, segment);
+    names0.add(xtc, bufEnd, datadef);
+    _namesLookup[namesId0] = NameIndex(names0);
+
 }
 
-void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId) {
+
+/* Creates new CreateData object from `xtc`, `nodeId`, and `namesId`
+
+   This new object is refered to by a unique pointer class member so
+   that its life-time membership is managed automatically.
+*/
+void XtcUpdateIter::createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId) {
     NamesId namesId0(nodeId, namesId);
-    fexExample(xtc, _namesLookup, namesId0);
+    _newData = std::unique_ptr<CreateData>(new CreateData{xtc, bufEnd, _namesLookup, namesId0});
+}
+
+
+/* Wraps set_string member function of CreateData object so
+   that we can look up newIndex from the given `varname` (e.g.
+   arrayFex0 returns 0).
+*/
+void XtcUpdateIter::setString(char* data, DataDef& datadef, char* varname){
+    unsigned newIndex = datadef.index(varname);
+    _newData->set_string(newIndex, data);
+}
+
+void XtcUpdateIter::setValue(unsigned nodeId, unsigned namesId,
+        char* data, DataDef& datadef, char* varname){
+    NamesId namesId0(nodeId, namesId);
+    unsigned newIndex = datadef.index(varname);
+    Name& name = _namesLookup[namesId0].names().get(newIndex);
+
+    switch(name.type()){
+    case(Name::UINT8):{
+        _newData->set_value(newIndex, *(uint8_t*)data);
+        break;
+    }
+    case(Name::UINT16):{
+        _newData->set_value(newIndex, *(uint16_t*)data);
+        break;
+    }
+    case(Name::UINT32):{
+        _newData->set_value(newIndex, *(uint32_t*)data);
+        break;
+    }
+    case(Name::UINT64):{
+        _newData->set_value(newIndex, *(uint64_t*)data);
+        break;
+    }
+    case(Name::INT8):{
+        _newData->set_value(newIndex, *(int8_t*)data);
+        break;
+    }
+    case(Name::INT16):{
+        _newData->set_value(newIndex, *(int16_t*)data);
+        break;
+    }
+    case(Name::INT32):{
+        _newData->set_value(newIndex, *(int32_t*)data);
+        break;
+    }
+    case(Name::INT64):{
+        _newData->set_value(newIndex, *(int64_t*)data);
+        break;
+    }
+    case(Name::FLOAT):{
+        _newData->set_value(newIndex, *(float*)data);
+        break;
+    }
+    case(Name::DOUBLE):{
+        _newData->set_value(newIndex, *(double*)data);
+        break;
+    }
+    }
+}
+
+// Returns element size of the given `varname`
+int XtcUpdateIter::getElementSize(unsigned nodeId, unsigned namesId,
+        DataDef& datadef, char* varname) {
+    NamesId namesId0(nodeId, namesId);
+    unsigned newIndex = datadef.index(varname);
+    Name& name = _namesLookup[namesId0].names().get(newIndex);
+    return Name::get_element_size(name.type());
+}
+
+
+// Allocates new memory space and copies given `data` to it
+void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
+        unsigned* shape, char* data, DataDef& datadef, char* varname) {
+    NamesId namesId0(nodeId, namesId);
+
+    unsigned newIndex = datadef.index(varname);
+
+    // Get shape and name (rank and type)
+    Shape shp(shape);
+    Name& name = _namesLookup[namesId0].names().get(newIndex);
+
+    // Add data
+    switch(name.type()){
+    case(Name::UINT8):{
+        Array<uint8_t> arrayT = _newData->allocate<uint8_t>(newIndex, shape);
+        memcpy(arrayT.data(), (uint8_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::UINT16):{
+        Array<uint16_t> arrayT = _newData->allocate<uint16_t>(newIndex, shape);
+        memcpy(arrayT.data(), (uint16_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::UINT32):{
+        Array<uint32_t> arrayT = _newData->allocate<uint32_t>(newIndex, shape);
+        memcpy(arrayT.data(), (uint32_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::UINT64):{
+        Array<uint64_t> arrayT = _newData->allocate<uint64_t>(newIndex, shape);
+        memcpy(arrayT.data(), (uint64_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::INT8):{
+        Array<int8_t> arrayT = _newData->allocate<int8_t>(newIndex, shape);
+        memcpy(arrayT.data(), (int8_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::INT16):{
+        Array<int16_t> arrayT = _newData->allocate<int16_t>(newIndex, shape);
+        memcpy(arrayT.data(), (int16_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::INT32):{
+        Array<int32_t> arrayT = _newData->allocate<int32_t>(newIndex, shape);
+        memcpy(arrayT.data(), (int32_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::INT64):{
+        Array<int64_t> arrayT = _newData->allocate<int64_t>(newIndex, shape);
+        memcpy(arrayT.data(), (int64_t*) data, shp.size(name));
+        break;
+    }
+    case(Name::FLOAT):{
+        Array<float> arrayT = _newData->allocate<float>(newIndex, shape);
+        memcpy(arrayT.data(), (float*) data, shp.size(name));
+        break;
+    }
+    case(Name::DOUBLE):{
+        Array<double> arrayT = _newData->allocate<double>(newIndex, shape);
+        memcpy(arrayT.data(), (double*) data, shp.size(name));
+        break;
+    }
+    case(Name::CHARSTR):{
+        Array<char> arrayT = _newData->allocate<char>(newIndex, shape);
+        memcpy(arrayT.data(), (char*) data, shp.size(name));
+        break;
+    }
+    }
+
+    if (VERBOSE > 0) {
+        printf("  addData: ");
+        for(unsigned i=0; i<MaxRank; i++){
+            printf("shape[%u]: %u ", i, shape[i]);
+        }
+        printf(" %u bytes\n", shp.size(name));
+    }
+
+}
+
+
+// Returns new Dgram created from `utransId` and `timestamp_val`
+Dgram& XtcUpdateIter::createTransition(unsigned utransId,
+        bool counting_timestamps,
+        uint64_t timestamp_val,
+        char* buf)
+{
+    TransitionId::Value transId = (TransitionId::Value) utransId;
+    TypeId tid(TypeId::Parent, 0);
+    uint64_t pulseId = 0;
+    uint32_t env = 0;
+    struct timeval tv;
+
+    if (counting_timestamps) {
+        Transition tr(Dgram::Event, transId, TimeStamp(timestamp_val), env);
+        return *new(buf) Dgram(tr, Xtc(tid));
+    } else {
+        gettimeofday(&tv, NULL);
+        Transition tr(Dgram::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+        return *new(buf) Dgram(tr, Xtc(tid));
+    }
+}
+
+
+// Set _filterFlag with key detName_algName to 1
+void XtcUpdateIter::setFilter(char* detName, char* algName){
+    string sDet(detName);
+    string sAlg(algName);
+
+    if (VERBOSE > 0) printf("setFilter\n");
+    map<string, int>::iterator itr;
+    for (itr = _flagFilter.begin(); itr != _flagFilter.end(); ++itr){
+        if ( sDet+"_"+sAlg == itr->first ){
+            itr->second = 1;
+            if (VERBOSE > 0)
+                cout << '\t' << itr->first << '\t' << itr->second << '\n';
+            break;
+        }
+    }
+
+}
+
+
+void XtcUpdateIter::clearFilter(){
+    if (VERBOSE > 0) printf("clearFilter\n");
+    map<string, int>::iterator itr;
+    for (itr=_flagFilter.begin(); itr!=_flagFilter.end(); ++itr){
+        itr->second = 0;
+    }
 }

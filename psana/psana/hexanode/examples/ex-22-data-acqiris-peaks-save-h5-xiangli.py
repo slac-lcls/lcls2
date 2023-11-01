@@ -2,15 +2,12 @@
 """
    Reads xtc2 processes waveforms and saves peak info in hdf5.
 
-   The same as ex-25-quad-proc-data.py, 
+   The same as ex-25-quad-proc-data.py,
    BUT:
        - do not use DLDProcessor
        + saves wf times and nhits in HDF5 file
    peak time units: [sec]
 """
-
-#----------
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -23,18 +20,17 @@ from psana.hexanode.WFHDF5IO import open_output_h5file
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
+from psana.hexanode.examples.ex_test_data import DIR_DATA_TEST
 
-#----------
-
-USAGE = 'Use command: python %s [test-number]' % sys.argv[0]
-
-#----------
+FNAME = '%s/%s' % (DIR_DATA_TEST, 'data-amox27716-r0100-acqiris-e001000.xtc2')
+USAGE = 'Usage: python %s' % sys.argv[0]
 
 def proc_data(**kwargs):
 
     logger.info(str_kwargs(kwargs, title='Input parameters:'))
 
-    DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
+#    DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
+    DSNAME       = kwargs.get('dsname', FNAME)
     DETNAME      = kwargs.get('detname','tmo_quadanode')
     EVSKIP       = kwargs.get('evskip', 0)
     EVENTS       = kwargs.get('events', 10) + EVSKIP
@@ -51,20 +47,22 @@ def proc_data(**kwargs):
     orun  = next(ds.runs())
     det   = orun.Detector(DETNAME)
 
+    tb_sec = time()
+    nev = 0
     for nev,evt in enumerate(orun.events()):
-    
-        if nev<EVSKIP : continue
-        if nev>EVENTS : break
 
-        if do_print(nev) : logger.info('Event %4d'%nev)
+        if nev<EVSKIP: continue
+        if nev>EVENTS: break
+
+        if do_print(nev): logger.info('Event %4d'%nev)
         t0_sec = time()
 
-        wts = det.raw.times(evt)     
+        wts = det.raw.times(evt)
         wfs = det.raw.waveforms(evt)
 
         nhits, pkinds, pkvals, pktsec = peaks(wfs,wts) # ACCESS TO PEAK INFO
 
-        if VERBOSE :
+        if VERBOSE:
             print("  ev:%4d waveforms processing time = %.6f sec" % (nev, time()-t0_sec))
             print_ndarr(wfs,    '    waveforms      : ', last=4)
             print_ndarr(wts,    '    times          : ', last=4)
@@ -73,16 +71,17 @@ def proc_data(**kwargs):
 
         ofile.add_event_to_h5file()
 
-#----------
+    print("  ev:%4d processing time = %.6f sec" % (nev, time()-tb_sec))
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print('%s\nTEST %s' % (50*'_', tname))
 
-    kwargs = {'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2',
+    kwargs = {'dsname'   : FNAME,
               'detname'  : 'tmo_quadanode',
               'numchs'   : 5,
               'numhits'  : 16,
@@ -92,8 +91,8 @@ if __name__ == "__main__" :
               'run'      : 100,
               'exp'      : 'amox27716',
               'version'  : 4,
-              'DLD': True,
-              'paramsCFD' : {0: {'channel': 'mcp',
+              'DLD'      : True,
+              'paramsCFD': {0: {'channel': 'mcp',
                               'delay': 3.068e-09,
                               'fraction': 0.35,
                               'offset': 0.054470544805354439,
@@ -162,4 +161,4 @@ if __name__ == "__main__" :
     print('\n%s' % USAGE)
     sys.exit('End of %s' % sys.argv[0])
 
-#----------
+# EOF

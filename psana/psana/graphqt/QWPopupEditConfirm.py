@@ -8,7 +8,10 @@ Usage::
     # Test: python lcls2/psana/psana/graphqt/QWPopupEditConfirm.py
 
     # Import
-    from psana.graphqt.QWPopupEditConfirm import QWPopupEditConfirm
+    from psana.graphqt.QWPopupEditConfirm import popup_edit_and_confirm
+    r, s = popup_edit_and_confirm(parent, dx=0, dy=0, height=60, width=150, is_frameless=False,\
+                                  msg='text to edit',\
+                                  win_title='Edit & confirm or cancel')
 
     # Methods - see test
 
@@ -26,12 +29,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QTextEdit, QFrame, QSizePolicy, QApplication
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QCursor  # , QColor, QBrush
 
 
 class QWPopupEditConfirm(QDialog):
-    """
-    """
+
     def __init__(self, **kwa):
         QDialog.__init__(self, kwa.get('parent', None))
         win_title = kwa.get('win_title', 'Edit and confirm or cancel')
@@ -53,67 +56,57 @@ class QWPopupEditConfirm(QDialog):
         self.setLayout(self.vbox)
 
         self.but_cancel.setFocusPolicy(Qt.NoFocus)
-
         self.set_style()
-#        self.set_icons()
-#        self.set_tool_tips()
-
 
     def set_style(self):
         self.layout().setContentsMargins(2,2,2,2)
-        styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);" # Gray
-#        styleDefault = ""
-#        self.setStyleSheet(styleDefault)
+        styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);"
         self.but_cancel.setStyleSheet(styleGray)
         self.but_apply.setStyleSheet(styleGray)
-        self.edi_msg.setMinimumSize(500,60)
-        self.setFixedHeight(100)
-#        self.setModal(True)
-#        self.setFixedWidth(200)
+        #self.edi_msg.setMinimumSize(500,60)
+        #self.setFixedHeight(30)
+        #self.setMinimumHeight(30)
 
-#    def set_icons(self):
-#        from psana.graphqt.QWIcons import icon
-#        icon.set_icons()
-#        self.but_cancel.setIcon(icon.icon_button_cancel)
-#        self.but_apply .setIcon(icon.icon_button_ok)
-
-#    def set_tool_tips(self):
-#        self.but_apply.setToolTip('Apply')
-#        self.but_cancel.setToolTip('Cancel')
-
- 
     def on_cancel(self):
         logger.debug('on_cancel')
         self.reject()
 
-
     def on_apply(self):
-        logger.debug('on_apply')  
+        logger.debug('on_apply')
         self.accept()
-
 
     def message(self):
         return str(self.edi_msg.toPlainText())
 
+def popup_edit_and_confirm(parent, dx=0, dy=0, height=60, width=150, is_frameless=False,\
+                           msg='text to edit',\
+                           win_title='Edit & confirm or cancel'):
+    w = QWPopupEditConfirm(parent=parent, msg=msg, win_title=win_title)
+    if width  is not None: w.setFixedWidth(width)
+    if height is not None: w.setFixedHeight(height)
+    if is_frameless: w.setWindowFlags(w.windowFlags() | Qt.FramelessWindowHint)
+    w.move(QCursor.pos().__add__(QPoint(dx,dy)))
+    resp = w.exec_()
+    s = w.message()
+    del w
+    return resp, s
 
 if __name__ == "__main__":
     import os
     import sys
-    logging.getLogger('h5py').setLevel(logging.WARNING)
     logging.getLogger('psana.pscalib.geometry').setLevel(logging.WARNING)
-    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     logging.basicConfig(format='[%(levelname).1s] L:%(lineno)03d %(name)s %(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
-    w = QWPopupEditConfirm(msg='Text to edit and confirm', win_title='Edit & confirm or cancel')
-    w.setGeometry(20, 40, 500, 200)
-    resp=w.exec_()
-    logger.debug('resp=%s' % resp)
+    parent = None
+    r, s = popup_edit_and_confirm(parent, dx=0, dy=0, height=60, width=150, is_frameless=False,\
+                                  msg='my text', win_title='Edit & confirm or cancel')
+
     logger.debug('QtWidgets.QDialog.Rejected: %d' % QDialog.Rejected)
     logger.debug('QtWidgets.QDialog.Accepted: %d' % QDialog.Accepted)
-    logger.debug('output message: %s' % w.message())
+    logger.debug('resp=%s output: %s' % (r,s))
 
-    del w
+    #del w
     del app
 
 # EOF

@@ -26,18 +26,17 @@ Adopted for LCLS2 on 2018-02-15
 """
 
 import os
-
 import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QApplication, QDialog, QListWidget, QVBoxLayout, QListWidgetItem# QPushButton
 from PyQt5.QtCore import Qt, QPoint, QEvent, QMargins, QSize, QTimer
-from PyQt5.QtGui import QCursor
+from PyQt5.QtGui import QCursor, QColor, QBrush
 
 
 class QWPopupSelectItem(QDialog):
 
-    def __init__(self, parent=None, lst=[], show_frame=False):
+    def __init__(self, parent=None, lst=[], show_frame=False, do_sorted=True):
 
         QDialog.__init__(self, parent, flags=Qt.WindowStaysOnTopHint)
 
@@ -45,27 +44,10 @@ class QWPopupSelectItem(QDialog):
         self.list = QListWidget(parent=self)
         self.show_frame = show_frame
 
-        self.fill_list(lst)
-        #self.fill_list_icons(lst_icons)
-
-        # Confirmation buttons
-        #self.but_cancel = QPushButton('&Cancel') 
-        #self.but_apply  = QPushButton('&Apply') 
-        #cp.setIcons()
-        #self.but_cancel.setIcon(cp.icon_button_cancel)
-        #self.but_apply .setIcon(cp.icon_button_ok)
-        #self.connect(self.but_cancel, QtCore.SIGNAL('clicked()'), self.onCancel)
-        #self.connect(self.but_apply,  QtCore.SIGNAL('clicked()'), self.onApply)
-
-        #self.hbox = QVBoxLayout()
-        #self.hbox.addWidget(self.but_cancel)
-        #self.hbox.addWidget(self.but_apply)
-        ##self.hbox.addStretch(1)
+        self.fill_list(lst, do_sorted)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.list)
-        #vbox.addLayout(self.hbox)
-        #vbox.addStretch(1)
         self.setLayout(vbox)
 
         self.list.itemClicked.connect(self.on_item_click)
@@ -76,11 +58,6 @@ class QWPopupSelectItem(QDialog):
         self.dt_msec=1000
         QTimer().singleShot(self.dt_msec, self.on_timeout)
 
-#    def focusOutEvent(self, e):
-#        QDialog.focusOutEvent(self, e)
-#        print('XXX focusOutEvent')
-
-
     def on_timeout(self):
         logger.debug('on_timeout - activate popup window, isActive: %s' % self.isActiveWindow())
         self.setFocus(True)
@@ -88,55 +65,44 @@ class QWPopupSelectItem(QDialog):
         self.activateWindow()
         QTimer().singleShot(self.dt_msec, self.on_timeout)
 
-
-    def fill_list(self, lst):
+    def fill_list(self, lst, do_sorted=True):
         self.list.clear()
-        for s in sorted(lst):
+        names = sorted(lst) if do_sorted else lst
+        for s in names:
             item = QListWidgetItem(s, self.list)
+            if s[-1]==':':
+                item.setForeground(QBrush(Qt.black))
+                item.setBackground(QBrush(Qt.yellow))
+                item.setFlags(Qt.NoItemFlags)
             item.setSizeHint(QSize(4*len(s), 15))
         #self.list.sortItems(Qt.AscendingOrder)
-
-
-#    def fill_list_icons(self, lst_icons):
-#        for ind, icon in enumerate(lst_icons):
-#            item = QListWidgetItem(icon, '%d'%ind, self.list) #'%d'%ind
-#            item.setSizeHint(QtCore.QSize(80,30))
-#        #self.list.sortItems(Qt.AscendingOrder)
-
 
     def set_style(self):
         self.setWindowTitle('Select')
         if not self.show_frame:
           self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        #self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setEnabled(True)
-        #self.setWindowModality(Qt.WindowModal)
-        #self.setWindowState(Qt.WindowActive)
-        #self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
         self.layout().setContentsMargins(0,0,0,0)
+        #self.setMinimumHeight(400)
         parent = self.parentWidget()
         if parent is None:
            self.move(QCursor.pos().__add__(QPoint(-110,-50)))
         logger.debug('use %s position for popup findow' % ('CURSOR' if parent is None else 'BUTTON'))
 
-
     def show_tool_tips(self):
         self.setToolTip('Select item from the list')
-
 
     def on_item_click(self, item):
         self.name_sel = item.text()
         logger.debug('on_item_click %s' % self.name_sel)
+        if self.name_sel[-1] == ':':
+            logger.warning('Clicked on tytle, select other item')
+            self.reject()
+            self.done(QDialog.Rejected)
         self.accept()
         self.done(QDialog.Accepted)
 
-
-#    def mousePressEvent(self, e):
-#        QDialog.mousePressEvent(self, e)
-#        logger.debug('mousePressEvent')
-
-        
     def event(self, e):
         #logger.debug('event.type %s' % str(e.type()))
         if e.type() == QEvent.WindowDeactivate:
@@ -144,31 +110,17 @@ class QWPopupSelectItem(QDialog):
             self.reject()
             self.done(QDialog.Rejected)
         return QDialog.event(self, e)
-    
 
     def closeEvent(self, e):
         logger.debug('closeEvent')
         self.reject()
         self.done(QDialog.Rejected)
 
-
     def selectedName(self):
         return self.name_sel
 
- 
-#    def onCancel(self):
-#        logger.debug('onCancel', __name__)
-#        self.reject()
-#        self.done(QDialog.Rejected)
- 
-#    def onApply(self):
-#        logger.debug('onApply', __name__)  
-#        self.accept()
-#        self.done(QDialog.Accepted)
-
-
-def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_frame=False):
-    w = QWPopupSelectItem(parent, lst, show_frame)
+def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_frame=False, do_sorted=True):
+    w = QWPopupSelectItem(parent, lst, show_frame, do_sorted)
     #w.setMinimumHeight(min_height)
     size = len(lst)
     nchars = max([len(s) for s in lst])
@@ -177,23 +129,19 @@ def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_fr
     w.setFixedHeight(height)
     if dx or dy: w.move(QCursor.pos().__add__(QPoint(dx,dy)))
     resp=w.exec_()
-    #if   resp == QDialog.Accepted: return w.selectedName()
-    #elif resp == QDialog.Rejected: return None    
-    #else: return None
-    return w.selectedName()
-
-#----------- TESTS ------------
+    r = w.selectedName()
+    return None if r is None or r[-1]==':' else r
 
 if __name__ == "__main__":
   logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
 
-  def test_select_exp(tname):
-    lst = sorted(os.listdir('/reg/d/psdm/CXI/'))
+  def test_select_item_from_list(tname):
+    #lst = sorted(os.listdir('/sdf/data/lcls/ds/'))
+    lst = ('Title:', 'CXI', 'DET', 'MEC', 'MFX', 'XCS', 'XPP')
     logger.debug('lst: %s' % str(lst))
     app = QApplication(sys.argv)
-    exp_name = popup_select_item_from_list(None, lst)
-    logger.debug('exp_name = %s' % exp_name) 
-
+    exp_name = popup_select_item_from_list(None, lst, do_sorted=False)
+    logger.debug('exp_name = %s' % exp_name)
 
 if __name__ == "__main__":
     import sys; global sys
@@ -201,7 +149,7 @@ if __name__ == "__main__":
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.debug('%s\nTest %s' % (50*'_', tname))
-    if   tname == '0': test_select_exp(tname)
+    if   tname == '0': test_select_item_from_list(tname)
     else: sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of Test %s' % tname)
 

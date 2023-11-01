@@ -58,7 +58,7 @@ class CMWDBDocsList(CMWDBDocsBase, QWList):
           rec += ' for DB: %s cols: %s' % (self.dbname, self.colname)\
                  if not(None in (self.dbname, self.colname)) else ''
           item = QStandardItem(rec)
-          #item.setCheckable(False) 
+          #item.setCheckable(False)
           item.setSizeHint(QSize(-1,30))
           item.setEnabled(False)
           item.setSelectable(False)
@@ -80,7 +80,7 @@ class CMWDBDocsList(CMWDBDocsBase, QWList):
             item = QStandardItem('Select collection in the DB pannel')
             item.setIcon(icon.icon_table)
             item.setSelectable(False)
-            item.setCheckable(False) 
+            item.setCheckable(False)
             item.setEditable(False)
             self.model.appendRow(item)
 
@@ -128,13 +128,5 @@ class CMWDBDocsList(CMWDBDocsBase, QWList):
 
         s0, s1, s2 = cp.cmwdbmain.hsplitter_sizes()
         if s2<10: cp.cmwdbmain.set_hsplitter_size2(300)
-
-
-#    def __del__(self):
-#        #QWList.__del__(self)
-#        #CMWDBDocsBase.__del__(self)
-#       logger.debug('d-tor CMWDBDocsList')
-#       h0, h1, h2 = cp.cmwdbmain.hspl.sizes()
-#       cp.cmwdbmain.hspl.setSizes((h0, h1+h2, 0)) # shrink 3-d panel
 
 # EOF

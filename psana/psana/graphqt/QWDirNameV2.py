@@ -28,7 +28,7 @@ class QWDirNameV2(QWFileNameV2):
     """Widget for directory name input
     """
     def __init__(self, parent=None, label='Dir:',\
-                 path='/cds/group/psdm',\
+                 path='DIR_ROOT,\
                  mode='r',\
                  fltr=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,\
                  dirs=[os.path.expanduser('~'), './calib'],\
@@ -36,9 +36,8 @@ class QWDirNameV2(QWFileNameV2):
 
         QWFileNameV2.__init__(self, parent, label, path, mode, fltr, dirs=dirs, hide_path=hide_path)
 
- 
+
     def on_but(self):
-        #logger.debug('on_but')
         path0 = self.but.text()
         path1 = str(QFileDialog.getExistingDirectory(self,'Select directory', path0, self.fltr))
 
@@ -58,11 +57,11 @@ class QWDirNameV2(QWFileNameV2):
 if __name__ == "__main__":
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     from PyQt5.QtWidgets import QApplication
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)#%(name)s 
+    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = QWDirNameV2(None, label='Dir:', path='/cds/group/psdm/Select')
+    w = QWDirNameV2(None, label='Dir:', path=DIR_ROOT + '/Select')
     w.setGeometry(100, 50, 400, 80)
-    w.connect_path_is_changed_to_recipient(w.test_signal_reception)
+    w.connect_path_is_changed(w.test_signal_reception)
     w.show()
     app.exec_()
 

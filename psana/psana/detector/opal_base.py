@@ -22,13 +22,15 @@ logger = logging.getLogger(__name__)
 
 from psana.detector.areadetector import AreaDetector, np
 from psana.detector.UtilsAreaDetector import arr3d_from_dict
-from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, divide_protected, info_ndarr
+from psana.detector.NDArrUtils import reshape_to_2d, divide_protected, info_ndarr
 
 class opal_base(AreaDetector):
 
     def __init__(self, *args, **kwa):
         logger.debug('opal_base.__init__')
         AreaDetector.__init__(self, *args, **kwa)
+        self._seg_geo = None
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-TBD.data'
 
 
     def raw(self,evt) -> Array3d:
@@ -68,6 +70,7 @@ class opal_base(AreaDetector):
     def image(self, evt, nda=None, **kwa) -> Array2d:
         logger.debug('opal_base.image')
         arr = self.calib(evt, **kwa) if nda is None else nda
+        if arr is None: return None
         return arr if arr.ndim==2 else reshape_to_2d(arr)
 
 

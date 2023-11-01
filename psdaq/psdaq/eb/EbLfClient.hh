@@ -22,9 +22,11 @@ namespace Pds {
                   unsigned      tmo);
       int disconnect(EbLfCltLink*);
     public:
-      const uint64_t& pending() const  { return *const_cast<uint64_t*>(&_pending); } // Cast away volatile
+      const uint64_t pending() const { return _pending; }
+      const uint64_t posting() const { return _posting; }
     private:
-      volatile uint64_t _pending;       // Bit list of IDs currently posting
+      volatile uint64_t _pending;       // Flag set when currently pending
+      volatile uint64_t _posting;       // Bit list of IDs currently posting
       const unsigned&   _verbose;       // Print some stuff if set
       Fabrics::Info     _info;          // Connection options
     };
@@ -35,17 +37,13 @@ namespace Pds {
                      std::vector<EbLfCltLink*>&      links,
                      const std::vector<std::string>& addrs,
                      const std::vector<std::string>& ports,
+                     unsigned                        id,
                      const char*                     name);
     int linksConfigure(std::vector<EbLfCltLink*>& links,
-                       unsigned                   id,
-                       const char*                name);
-    int linksConfigure(std::vector<EbLfCltLink*>& links,
-                       unsigned                   id,
                        void*                      region,
                        size_t                     regSize,
                        const char*                name);
     int linksConfigure(std::vector<EbLfCltLink*>& links,
-                       unsigned                   id,
                        void*                      region,
                        size_t                     lclSize,
                        size_t                     rmtSize,

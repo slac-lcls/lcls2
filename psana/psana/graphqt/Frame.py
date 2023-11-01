@@ -1,7 +1,7 @@
-#------------------------------
+
 """
 :py:class:`Frame` - derived from QFrame
-============================================================================================
+=======================================
 
 Usage::
 
@@ -20,11 +20,8 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2014-12-03 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 """
-#------------------------------
-__version__ = "v2018-02-15"
-#------------------------------
 
-from PyQt5 import QtWidgets #, QtCore
+from PyQt5 import QtWidgets
 
 class Frame(QtWidgets.QFrame):
     """ class Frame inherits from QFrame and sets its parameters.
@@ -38,24 +35,16 @@ class Frame(QtWidgets.QFrame):
 
 
     def setFrame(self, lw=0, mlw=1, vis=False, style=QtWidgets.QFrame.Box | QtWidgets.QFrame.Sunken):
-        self.setFrameStyle(style) #Box, Panel | Sunken, Raised 
+        self.setFrameStyle(style)
         self.setLineWidth(lw)
         self.setMidLineWidth(mlw)
-        self.setBoarderVisible(vis) 
-        #self.setGeometry(self.parent.rect())
-        #self.setContentsMargins(0,0,0,0)
+        self.setBoarderVisible(vis)
 
-    def setBoarderVisible(self, vis=True) :
-        if vis : self.setFrameShape(QtWidgets.QFrame.Box)
-        else   : self.setFrameShape(QtWidgets.QFrame.NoFrame)
-    
-#    def resizeEvent(self, e):
-#        print('resizeEvent')
-#        #self.setGeometry(self.parent.rect())
 
-#------------------------------
-# TEST AND EXAMPLE OF USAGE
-#------------------------------
+    def setBoarderVisible(self, vis=True):
+        if vis: self.setFrameShape(QtWidgets.QFrame.Box)
+        else  : self.setFrameShape(QtWidgets.QFrame.NoFrame)
+
 
 class GUILabel(QtWidgets.QLabel, Frame):
     def __init__(self, parent=None):
@@ -63,7 +52,7 @@ class GUILabel(QtWidgets.QLabel, Frame):
         #QtWidgets.QLabel.__init__(self, QtCore.QString('label'), parent)
         self.setText('GUILabel set')
 
-  
+
 class GUIWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
@@ -80,7 +69,6 @@ class GUIWidgetFrame(Frame, QtWidgets.QWidget):
         but.move(20,10)
 
 
-# Use Frame in stead of QWidget
 class GUIFrame(Frame):
     def __init__(self, parent=None):
         #Frame.__init__(self, parent, mlw=5)
@@ -88,23 +76,15 @@ class GUIFrame(Frame):
         but = QtWidgets.QPushButton('Button', self)
         but.move(30,20)
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
-    
-    app = QtWidgets.QApplication(sys.argv)
 
-    ##w = QtWidgets.QTextEdit()
-    #w = QtWidgets.QLabel('QLabel')
-    #fb = Frame(w, lw=0, mlw=3, vis=True)
-    #w = GUILabel()
-    #w = GUIWidgetFrame()
-    #w = GUIWidget()
+    app = QtWidgets.QApplication(sys.argv)
     w = GUIFrame()
     w.setWindowTitle('GUIWidget')
     w.setGeometry(200, 500, 200, 100)
     w.show()
     app.exec_()
 
-#------------------------------
+# EOF

@@ -39,7 +39,7 @@ class QWPopupSelectColorBar(QDialog):
 
         QDialog.__init__(self, parent)
 
-        self.but_cancel = QPushButton('&Cancel') 
+        self.but_cancel = QPushButton('&Cancel')
 
         self.ctab_selected = None
         self.list = QListWidget(parent)
@@ -69,8 +69,8 @@ class QWPopupSelectColorBar(QDialog):
 
         item = QListWidgetItem('cancel', self.list)
         self.list.setItemWidget(item, self.but_cancel)
-        
-  
+
+
     def onItemClick(self, item):
         self.ctab_selected = item._coltab_index
         logger.debug('onItemClick ctab_selected: %s' % str(self.ctab_selected))
@@ -80,7 +80,7 @@ class QWPopupSelectColorBar(QDialog):
     def set_style(self):
         self.setWindowTitle('Select')
         self.setFixedWidth(215)
-        lst_len = self.list.__len__()        
+        lst_len = self.list.__len__()
         self.setMinimumHeight(30*lst_len+10)
         self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.layout().setContentsMargins(0,0,0,0)

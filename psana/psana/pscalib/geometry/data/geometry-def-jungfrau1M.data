@@ -1,0 +1,30 @@
+# TITLE      Geometry parameters of Jungfrau
+# DATE_TIME  2017-10-26 11:00:00 PDT
+# METROLOGY  no metrology available
+# AUTHOR     dubrovin
+# EXPERIMENT xcsx22015
+# DETECTOR   XcsEndstation.0:Jungfrau.0
+# CALIB_TYPE geometry
+# COMMENT:01 Manually created as an example for the 2-segment 1M Jungfrau detector
+# COMMENT:02 
+
+# PARAM:01 PARENT     - name and version of the parent object
+# PARAM:02 PARENT_IND - index of the parent object
+# PARAM:03 OBJECT     - name and version of the object
+# PARAM:04 OBJECT_IND - index of the new object
+# PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+
+# HDR PARENT IND      OBJECT     IND    X0[um]  Y0[um]  Z0[um]   ROT-Z ROT-Y ROT-X    TILT-Z   TILT-Y   TILT-X
+
+JFCAMERA:V1    0    JUNGFRAU:V1    0         0   20625       0       0     0   180    0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V1    1         0  -20625       0       0     0   180    0.0      0.0      0.0
+
+IP:V1          0    JFCAMERA:V1    0         0       0  100000      90     0     0    0.0      0.0      0.0

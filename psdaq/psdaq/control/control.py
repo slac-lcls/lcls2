@@ -16,6 +16,7 @@ from psalg.utils.syslog import SysLog
 from p4p.client.thread import Context
 import epics
 from threading import Thread, Event, Condition
+from copy import deepcopy
 import dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
                                   progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
@@ -182,9 +183,9 @@ class RunParams:
         valueList = self.pva.pv_get(nameList)
         for name, value in zip(nameList, valueList):
             if isinstance(value, TimeoutError):
-                self.collection.report_error(f"failed to read PVA PV {name}")
+                self.collection.report_warning(f"failed to read PVA PV {name}")
             elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_error(f"PVA PV {name} not recorded in logbook (nan)")
+                self.collection.report_warning(f"PVA PV {name} not recorded in logbook (nan)")
             else:
                 params[name] = value
 
@@ -195,9 +196,9 @@ class RunParams:
         valueList = epics.caget_many(nameList)
         for name, value in zip(nameList, valueList):
             if value is None:
-                self.collection.report_error(f"failed to read CA PV {name}")
+                self.collection.report_warning(f"failed to read CA PV {name}")
             elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_error(f"CA PV {name} not recorded in logbook (nan)")
+                self.collection.report_warning(f"CA PV {name} not recorded in logbook (nan)")
             else:
                 params[name] = value
 
@@ -356,12 +357,13 @@ def timestampStr():
 
 def get_readout_group_mask(body):
     mask = 0
-    if 'drp' in body:
-        for key, node_info in body['drp'].items():
-            try:
-                mask |= (1 << node_info['det_info']['readout'])
-            except KeyError:
-                pass
+    for receivertype in ['drp','tpr']:
+        if receivertype in body:
+            for key, node_info in body[receivertype].items():
+                try:
+                    mask |= (1 << node_info['det_info']['readout'])
+                except KeyError:
+                    pass
     return mask
 
 def wait_for_answers(socket, wait_time, msg_id):
@@ -421,7 +423,6 @@ class DaqPVA():
         self.platform         = platform
         self.xpm_master       = xpm_master
         self.pv_xpm_base      = pv_base + ':XPM:%d'         % xpm_master
-        self.pv_xpm_part_base = pv_base + ':XPM:%d:PART:%d' % (xpm_master, platform)
         self.report_error     = report_error
 
         # name PVs
@@ -431,9 +432,6 @@ class DaqPVA():
         self.pvGroupL0Disable = self.pv_xpm_base+':GroupL0Disable'
         self.pvGroupMsgInsert = self.pv_xpm_base+':GroupMsgInsert'
         self.pvGroupL0Reset   = self.pv_xpm_base+':GroupL0Reset'
-        self.pvStepGroups     = self.pv_xpm_part_base+':StepGroups'
-        self.pvStepDone       = self.pv_xpm_part_base+':StepDone'
-        self.pvStepEnd        = self.pv_xpm_part_base+':StepEnd'
 
         # initialize EPICS context
         self.ctxt = Context('pva', nt=None)
@@ -443,9 +441,19 @@ class DaqPVA():
     #
     # If you don't want steps, set StepGroups = 0.
     #
-    def step_groups(self, *, mask):
-        logging.debug("DaqPVA.step_groups(mask=%d)" % mask)
-        return self.pv_put(self.pvStepGroups, mask)
+    def setup_step(self, group, mask, readout):
+        pv_base = f'{self.pv_xpm_base}:PART:{group}'
+        self.pv_put(f'{pv_base}:StepEnd', readout)
+
+        self.pvStepDone = f'{pv_base}:StepDone'
+        self.pv_put(self.pvStepDone, 0)
+
+        logging.debug("DaqPVA.setup_step(mask=%d)" % mask)
+        return self.pv_put(f'{pv_base}:StepGroups', mask)
+
+    def setup_seq(self, seqpv):
+        self.pvStepDone = seqpv
+        return 0
 
     #
     # DaqPVA.pv_get -
@@ -508,10 +516,11 @@ class CollectionManager():
         self.front_rep.bind('tcp://*:%d' % front_rep_port(args.p))
         self.fast_rep.bind('tcp://*:%d' % fast_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
-        self.slow_update_rate = args.S if args.S else 0
+        self.slow_update_rate = args.S
         self.fast_reply_rate = 10           # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.threads_exit = Event()
+        self.step_exit = Event()
         self.phase2_timeout = args.T
         self.user = args.user
         self.password = args.password
@@ -522,7 +531,6 @@ class CollectionManager():
         self.bypass_activedet = False
         self.cydgram = dc.CyDgram()
         self.step_done = Event()
-        self.readoutCumulative = 0
 
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, report_error=self.report_error)
@@ -536,7 +544,7 @@ class CollectionManager():
         else:
             # default active detectors file
             homedir = os.path.expanduser('~')
-            self.activedetfilename = '%s/.psdaq/p%d.activedet.json' % (homedir, self.platform)
+            self.activedetfilename = '%s/.psdaq/x%d_p%d.activedet.json' % (homedir, self.xpm_master, self.platform)
 
         if self.activedetfilename == '/dev/null':
             # active detectors file bypassed
@@ -548,14 +556,12 @@ class CollectionManager():
         # initialize fast reply thread
         self.fast_reply_thread = Thread(target=self.fast_reply_func, name='fastreply')
 
+        logging.debug(f'slow update rate = {self.slow_update_rate} Hz')
         if self.slow_update_rate:
             # initialize slow update thread
             self.slow_update_thread = Thread(target=self.slow_update_func, name='slowupdate')
         else:
             self.slow_update_thread = None
-
-        # initialize stepdone thread
-        self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
 
         # initialize poll set
         self.poller = zmq.Poller()
@@ -571,8 +577,9 @@ class CollectionManager():
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
+        self.history = {}   # history of drp group assignments
         self.phase1Info = {}
-        self.level_keys = {'drp', 'teb', 'meb', 'control'}
+        self.level_keys = {'drp', 'teb', 'meb', 'control', 'tpr'}
 
         # parse instrument_name[:station_number]
         if ':' in args.P:
@@ -600,7 +607,8 @@ class CollectionManager():
             'selectplatform': self.handle_selectplatform,
             'getstate': self.handle_getstate,
             'storejsonconfig': self.handle_storejsonconfig,
-            'getstatus': self.handle_getstatus
+            'getstatus': self.handle_getstatus,
+            'chunkRequest': self.handle_chunkrequest
         }
         self.handle_fast = {
             'getinstrument': self.handle_getinstrument,
@@ -654,9 +662,6 @@ class CollectionManager():
 
         # start fast reply thread
         self.fast_reply_thread.start()
-
-        # start step done thread
-        self.step_done_thread.start()
 
         # start main loop
         self.run()
@@ -848,6 +853,10 @@ class CollectionManager():
                     self.report_error(msg['body']['err_info'])
                 elif msg['header']['key'] == 'warning':
                     self.report_warning(msg['body']['err_info'])
+                # chunkRequest is more than a "report."
+                # include it here so drp's can use the back_pull zmq socket.
+                if msg['header']['key'] == 'chunkRequest':
+                    self.handle_chunkrequest(msg['body'])
             except KeyError as ex:
                 logging.error('process_reports() KeyError: %s' % ex)
 
@@ -1020,7 +1029,7 @@ class CollectionManager():
     def get_phase2_replies(self, transition):
         # get responses from the drp timing systems
         ids = self.filter_active_set(self.ids)
-        ids = self.filter_level('drp', ids)
+        ids = self.filter_level('drp', ids) | self.filter_level('meb', ids)
         # make sure all the clients respond to transition before timeout
         missing, answers, reports = self.confirm_response(self.back_pull, self.phase2_timeout, None, ids, progress_txt=transition+' phase 2')
         try:
@@ -1043,7 +1052,7 @@ class CollectionManager():
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
         # make sure all the clients respond to alloc message with their connection info
-        retlist, answers, reports = self.confirm_response(self.back_pull, 2000, msg['header']['msg_id'], ids)
+        retlist, answers, reports = self.confirm_response(self.back_pull, 5000, msg['header']['msg_id'], ids)
         self.process_reports(reports)
         ret = len(retlist)
         if ret:
@@ -1055,15 +1064,23 @@ class CollectionManager():
         for answer in answers:
             id = answer['header']['sender_id']
             for level, item in answer['body'].items():
-                self.cmstate[level][id].update(item)
+                if level != 'tpr': # Revisit: Perhaps there's a better way?
+                    self.cmstate[level][id].update(item)
 
+        readout_groups_in_use = set()
         active_state = self.filter_active_dict(self.cmstate_levels())
         # give number to drp nodes for the event builder
         if 'drp' in active_state:
             for i, node in enumerate(active_state['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
+                readout_groups_in_use.add(self.cmstate['drp'][node]['det_info']['readout'])
         else:
             self.report_error('at least one DRP is required')
+            logging.debug('condition_alloc() returning False')
+            return False
+
+        if self.platform not in readout_groups_in_use:
+            self.report_error(f'at least one DRP must use readout group {self.platform}')
             logging.debug('condition_alloc() returning False')
             return False
 
@@ -1077,19 +1094,30 @@ class CollectionManager():
             return False
 
         # if you don't want steps, set StepGroups = 0 for each group in partition
-        if not self.step_groups_clear(self.groups):
+        if not self.step_groups_clear():
             logging.error('condition_alloc(): step_groups_clear() failed')
             return False
 
         # create group-dependent PVs
         self.pva.pvListMsgHeader = []
         self.pva.pvListXPM = []
+        self.pva.pvListL0Groups = []
         for g in range(8):
             if self.groups & (1 << g):
                 self.pva.pvListMsgHeader.append(self.pva.pv_xpm_base+":PART:"+str(g)+':MsgHeader')
                 self.pva.pvListXPM.append(self.pva.pv_xpm_base+":PART:"+str(g)+':Master')
+                self.pva.pvListL0Groups.append(self.pva.pv_xpm_base+":PART:"+str(g)+':L0Groups')
         logging.debug('pvListMsgHeader: %s' % self.pva.pvListMsgHeader)
         logging.debug('pvListXPM: %s' % self.pva.pvListXPM)
+        logging.debug('pvListL0Groups: %s' % self.pva.pvListL0Groups)
+
+        # Couple deadtime of all readout groups
+        for pv in self.pva.pvListL0Groups:
+            logging.debug(f'condition_alloc() putting {self.groups} to PV {pv}')
+            if not self.pva.pv_put(pv, self.groups):
+                self.report_error(f'condition_alloc() failed putting {self.groups} to PV {pv}')
+                logging.debug('condition_alloc() returning False')
+                return False
 
         # give number to teb nodes for the event builder
         if 'teb' in active_state:
@@ -1109,8 +1137,29 @@ class CollectionManager():
 
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
 
+        # update drp group history
+        for drp in self.cmstate['drp'].values():
+            try:
+                alias = drp['proc_info']['alias']
+                readout = drp['det_info']['readout']
+                self.history['drp'][alias] = {'det_info' : {'readout' : readout}}
+            except KeyError as ex:
+                logging.error(f'condition_alloc(): KeyError: {ex}')
+
+        # update tpr group history
+        if 'tpr' in self.cmstate:
+            for tpr in self.cmstate['tpr'].values():
+                try:
+                    alias = tpr['proc_info']['alias']
+                    readout = tpr['det_info']['readout']
+                    self.history['tpr'][alias] = {'det_info' : {'readout' : readout}}
+                except KeyError as ex:
+                    logging.error(f'condition_alloc(): KeyError: {ex}')
+        else:
+            logging.debug('condition_alloc(): no tpr')
+
         # write to the activedet file only if the contents would change
-        dst = levels_to_activedet(self.cmstate_levels())
+        dst = {**levels_to_activedet(self.cmstate_levels()), **{'history': self.history}}
         json_from_file = self.read_json_file(self.activedetfilename)
         if dst == json_from_file:
             logging.debug('condition_alloc(): no change to activedet file %s' % self.activedetfilename)
@@ -1142,6 +1191,16 @@ class CollectionManager():
                 self.report_error('%s did not respond to dealloc' % alias)
             self.report_error('%d client did not respond to dealloc' % ret)
             dealloc_ok = False
+
+        if dealloc_ok:
+            # clear L0Groups PVs
+            for pv in self.pva.pvListL0Groups:
+                logging.debug(f'condition_dealloc() putting 0 to PV {pv}')
+                if not self.pva.pv_put(pv, 0):
+                    self.report_error(f'condition_dealloc() failed putting 0 to PV {pv}')
+                    dealloc_ok = False
+                    break
+
         if dealloc_ok:
             self.lastTransition = 'dealloc'
         logging.debug('condition_dealloc() returning %s' % dealloc_ok)
@@ -1198,11 +1257,13 @@ class CollectionManager():
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
-        self.readoutCumulative = 0
+        self.readoutCumulative = [0 for i in range(8)]
 
         ok = self.get_phase2_replies('beginrun')
         if not ok:
             return False
+
+        self.slowupdateArmed = self.slow_update_rate != 0
 
         self.lastTransition = 'beginrun'
         return True
@@ -1225,7 +1286,6 @@ class CollectionManager():
             self.pva.pv_put(pv, ControlDef.transitionId['EndRun'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-        self.step_groups(mask=0)    # default is no scanning
 
         ok = self.get_phase2_replies('endrun')
         if not ok:
@@ -1286,7 +1346,8 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
-            if not self.pva.pv_put(pv, ControlDef.transitionId['SlowUpdate']):
+            # Force SlowUpdate to respect deadtime
+            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
                 update_ok = False
                 break
 
@@ -1316,7 +1377,7 @@ class CollectionManager():
             msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
             self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-            retlist, answers, reports = self.confirm_response(self.back_pull, 15000, msg['header']['msg_id'], ids, progress_txt='connect')
+            retlist, answers, reports = self.confirm_response(self.back_pull, 20000, msg['header']['msg_id'], ids, progress_txt='connect')
             self.process_reports(reports)
             connect_ok = (self.check_answers(answers) == 0)
             ret = len(retlist)
@@ -1358,6 +1419,28 @@ class CollectionManager():
     def handle_getstatus(self, body):
         logging.debug('handle_getstatus()')
         return self.status_msg()
+
+    # request chunking opportunity (Running->Paused->Running)
+    def handle_chunkrequest(self, body):
+        logging.debug(f'handle_chunkrequest() in state {self.state}')
+
+        retval = create_msg('ok')   # ok
+
+        if self.state == 'running':
+            answer = self.handle_trigger('disable')
+            if 'err_info' in answer['body']:
+                retval = answer     # error
+            else:
+                answer = self.handle_trigger('enable')
+                if 'err_info' in answer['body']:
+                    retval = answer # error
+        else:
+            # error -- not in Running state
+            errMsg = f'cannot chunkrequest in state \'{self.state}\' -- must be Running first'
+            logging.error(errMsg)
+            retval = create_msg('error', body={'err_info': errMsg})
+
+        return retval
 
     # Update the active detector file.
     # May throw an exception.
@@ -1421,7 +1504,7 @@ class CollectionManager():
                         self.report_warning('ignoring attempt to clear the control level active flag')
                         body[level][key2]['active'] = 1
                     self.cmstate[level][int(key2)]['active'] = body[level][key2]['active']
-                    if level == 'drp':
+                    if level == 'drp' or level == 'tpr':
                         # drp readout group
                         self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
 
@@ -1511,6 +1594,18 @@ class CollectionManager():
             # determine which clients are required by reading the active detectors file
             json_data = self.read_json_file(self.activedetfilename)
             if len(json_data) > 0:
+                if 'history' in json_data.keys():
+                    logging.debug('rollcall: history found in json_data.keys()')
+                    self.history = deepcopy(json_data['history'])
+                else:
+                    logging.info('rollcall: history not found in json_data.keys()')
+
+                if 'drp' not in self.history:
+                    self.history['drp'] = dict()
+
+                if 'tpr' not in self.history:
+                    self.history['tpr'] = dict()
+
                 if "activedet" in json_data.keys():
                     active_set, inactive_set = self.get_active_and_inactive(json_data)
                     logging.debug(f'rollcall: active_set = {active_set}')
@@ -1548,7 +1643,7 @@ class CollectionManager():
                         self.cmstate[level] = {}
                     id = answer['header']['sender_id']
                     self.cmstate[level][id] = item
-                    if level == 'drp' or level == 'meb':
+                    if level == 'drp' or level == 'meb' or level == 'tpr':
                         self.cmstate[level][id]['hidden'] = 0
                     else:
                         self.cmstate[level][id]['hidden'] = 1
@@ -1556,21 +1651,28 @@ class CollectionManager():
                     if self.bypass_activedet:
                         # active detectors file disabled: default to active=1
                         self.cmstate[level][id]['active'] = 1
-                        if level == 'drp':
+                        if level == 'drp' or level == 'tpr':
                             self.cmstate[level][id]['det_info'] = {}
                             self.cmstate[level][id]['det_info']['readout'] = self.platform
                     elif responder in newfound_set:
                         # new detector or meb + active detectors file enabled: default to active=0
-                        if level == 'drp' or level == 'meb':
+                        if level == 'drp' or level == 'meb' or level == 'tpr':
                             self.cmstate[level][id]['active'] = 0
                             self.report_warning('rollcall: %s NOT selected for data collection' % responder)
-                            if level == 'drp':
-                                if responder in inactive_set:
-                                    # use readout group from active detector file
+                            if level == 'drp' or level == 'tpr':
+                                try:
                                     group = json_data['activedet'][level][alias]['det_info']['readout']
-                                else:
-                                    # not yet in active detector file, use default readout group
-                                    group = self.platform
+                                    logging.debug(f'rollcall: {alias} found in activedet, readout group is {group}')
+                                except KeyError:
+                                    logging.debug(f'rollcall: {alias} not in activedet')
+                                    try:
+                                        group = self.history[level][alias]['det_info']['readout']
+                                        logging.debug(f'rollcall: {alias} found in history, readout group is {group}')
+                                    except KeyError:
+                                        logging.debug(f'rollcall: {alias} not in history')
+                                        # not yet in active detector file, use default readout group
+                                        group = self.platform
+                                        logging.debug(f'rollcall: {alias} using default readout group {group}')
                                 self.cmstate[level][id]['det_info'] = {}
                                 self.cmstate[level][id]['det_info']['readout'] = group
                                 logging.info(f"rollcall: newfound drp {responder} is in readout group {group}")
@@ -1580,7 +1682,7 @@ class CollectionManager():
                     else:
                         # copy values from active detectors file
                         self.cmstate[level][id]['active'] = json_data['activedet'][level][alias]['active']
-                        if level == 'drp':
+                        if level == 'drp' or level == 'tpr':
                             self.cmstate[level][id]['det_info'] = json_data['activedet'][level][alias]['det_info'].copy()
                             group = json_data['activedet'][level][alias]['det_info']['readout']
                             logging.info('rollcall: %s selected for data collection (readout group %d)' % (responder, group))
@@ -1900,8 +2002,39 @@ class CollectionManager():
 
     def condition_configure(self):
         logging.debug('condition_configure: phase1Info = %s' % self.phase1Info)
+
+        # readout_count and group_mask are optional
+        try:
+            self.group_mask    = self.phase1Info['configure']['group_mask']
+            self.readout_count = self.phase1Info['configure']['readout_count']
+        except KeyError:
+            self.group_mask    = 1 << self.platform
+            self.readout_count = 0
+
+        # step_group is optional
+        try:
+            self.step_group    = self.phase1Info['configure']['step_group']
+        except KeyError:
+            self.step_group    = self.platform
+
+        logging.debug(f'condition_configure(): readout_count {self.readout_count}  group_mask {self.group_mask}  step_group {self.step_group}')
+
+        try:
+            self.seqpv_name = self.phase1Info['configure']['seqpv_name']
+            self.seqpv_val  = self.phase1Info['configure']['seqpv_val']
+        except KeyError:
+            self.seqpv_name = None
+
+        try:
+            seqpv_done = self.phase1Info['configure']['seqpv_done']
+        except KeyError:
+            seqpv_done = None
+
+        if self.seqpv_name:
+            logging.debug(f'condition_configure(): seqpv {self.seqpv_name} {self.seqpv_val} {seqpv_done}')
+
         # phase 1
-        ok = self.condition_common('configure', 45000,
+        ok = self.condition_common('configure', 60000,
                                    body={'config_alias': self.config_alias, 'trigger_config': self.trigger_config})
         if not ok:
             logging.error('condition_configure(): configure phase1 failed')
@@ -1922,9 +2055,25 @@ class CollectionManager():
             self.pva.pv_put(pv, ControlDef.transitionId['Configure'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-        self.step_groups(mask=0)    # default is no scanning
+        self.step_groups_clear()    # default is no scanning
 
-        self.readoutCumulative = 0
+        start_step_thread = False
+        if (self.readout_count > 0):
+            start_step_thread = True
+            self.pva.setup_step(self.step_group,self.group_mask,1)
+        elif seqpv_done is not None:
+            self.pva.setup_seq(seqpv_done)
+            start_step_thread = True
+        else:
+            self.step_groups_clear()    # default is no scanning
+
+        if start_step_thread:
+            self.step_exit.clear()
+            # initialize stepdone thread
+            self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
+            # start step done thread
+            self.step_done_thread.start()
+
 
         ok = self.get_phase2_replies('configure')
         if not ok:
@@ -1955,6 +2104,8 @@ class CollectionManager():
         if not ok:
             return False
 
+        self.step_exit.set()
+
         logging.debug('condition_unconfigure() returning %s' % ok)
 
         self.lastTransition = 'unconfigure'
@@ -1969,11 +2120,11 @@ class CollectionManager():
 
     # step_groups_clear - clear all StepGroups PVs included in mask
     # Returns False on error
-    def step_groups_clear(self, groups):
+    def step_groups_clear(self):
         logging.debug("step_groups_clear()")
         retval = True
         for g in range(8):
-            if groups & (1 << g):
+            if self.groups & (1 << g):
                 pv = self.pva.pv_xpm_base + f':PART:{g}:StepGroups'
                 logging.debug(f'step_groups_clear(): clearing {pv}')
                 if not self.pva.pv_put(pv, 0):
@@ -1981,12 +2132,6 @@ class CollectionManager():
                     retval = False
 
         return retval
-
-    # step_groups -
-    # Returns False on error
-    def step_groups(self, *, mask):
-        logging.debug("step_groups(mask=%d)" % mask)
-        return self.pva.pv_put(self.pva.pvStepGroups, mask)
 
     # set slow_update_enabled to True or False
     def set_slow_update_enabled(self, enabled):
@@ -2003,13 +2148,14 @@ class CollectionManager():
 
     def condition_enable(self):
         # readout_count and group_mask are optional
+        group_mask    = self.group_mask
         try:
+            group_mask    = self.phase1Info['enable']['group_mask']
             readout_count = self.phase1Info['enable']['readout_count']
-            group_mask = self.phase1Info['enable']['group_mask']
         except KeyError:
             readout_count = 0
-            group_mask = 1 << self.platform
-        logging.debug(f'condition_enable(): readout_count={readout_count} group_mask={group_mask}')
+
+        logging.debug(f'condition_enable(): readout_count={readout_count} group_mask={group_mask} step_group {self.step_group}')
 
         # phase 1
         ok = self.condition_common('enable', 6000)
@@ -2017,17 +2163,13 @@ class CollectionManager():
             logging.error('condition_enable(): enable phase1 failed')
             return False
 
-        # phase 2
-        if (readout_count > 0):
+        if (self.readout_count > 0):
             # set EPICS PVs.
             # StepEnd is a cumulative count.
-            self.readoutCumulative += readout_count
-            self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
-            self.pva.step_groups(mask=group_mask)
-            self.pva.pv_put(self.pva.pvStepDone, 0)
-        else:
-            self.step_groups(mask=0)    # default is no scanning
+            self.readoutCumulative[self.step_group] += self.readout_count
+            self.pva.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
 
+        # phase 2
         for pv in self.pva.pvListMsgHeader:
             self.pva.pv_put(pv, ControlDef.transitionId['Enable'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
@@ -2037,10 +2179,23 @@ class CollectionManager():
         if not ok:
             return False
 
+        # For the first Enable after a BeginRun, possibly issue a Slow Update
+        # after Enable has gone through but before enabling triggers
+        if self.slowupdateArmed:
+            self.slowupdateArmed = False
+            lastTransition = self.lastTransition
+            if not self.condition_slowupdate():
+                self.lastTransition = lastTransition
+                return False
+
         # order matters: set Enable PV after others transition
         if not self.group_run(True):
             logging.error('condition_enable(): group_run(True) failed')
             return False
+
+        # optionally enable a sequence
+        if self.seqpv_name:
+            self.pva.pv_put(self.seqpv_name, self.seqpv_val)
 
         self.lastTransition = 'enable'
         return True
@@ -2069,7 +2224,8 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Disable'])
+            #  Force Disable to respect deadtime but remain queued
+            self.pva.pv_put(pv, (0x180 | ControlDef.transitionId['Disable']))
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
@@ -2091,6 +2247,9 @@ class CollectionManager():
 
         # disable slowupdate timer
         self.set_slow_update_enabled(False)
+
+        # stop step_done thread
+        self.step_exit.set()
 
         msg = create_msg('reset')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
@@ -2151,7 +2310,7 @@ class CollectionManager():
         # start monitoring the StepDone PV
         sub = self.pva.monitor_StepDone(callback=callback)
 
-        while not self.threads_exit.is_set():
+        while not self.step_exit.is_set():
             if self.step_done.wait(0.5):
                 self.step_done.clear()
                 # stepDone event received
@@ -2176,16 +2335,19 @@ def main():
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-t', metavar='TRIGGER_CONFIG', default='tmoteb', help='trigger configuration name')
-    parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, default=0, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 0)')
-    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
+    parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, default=1, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 1)')
+#    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
+# 7.5 s seems to be too short for UED and this timeout must be larger than the EB timeouts, currently at 12 s
+    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=12500, help='phase 2 timeout msec (default 12500)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
+    parser.add_argument('-s', metavar='STEP_GROUP', default=None, type=int, help='Readout group for scan step counts')
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument('-V', metavar='LOGBOOK_FILE', default='/dev/null', help='run parameters file')
     parser.add_argument("--user", default="tstopr", help='HTTP authentication user')
-    parser.add_argument("--password", default="pcds", help='HTTP authentication password')
+    parser.add_argument("--password", default=os.getenv("CONFIGDB_AUTH"), help='HTTP authentication password')
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
-    defaultActiveDetFile = "~/.psdaq/p<platform>.activedet.json"
+    defaultActiveDetFile = "~/.psdaq/x<XPM>_p<platform>.activedet.json"
     parser.add_argument('-r', metavar='ACTIVEDETFILE', help="active detectors file. Defaults to " + defaultActiveDetFile)
     args = parser.parse_args()
 

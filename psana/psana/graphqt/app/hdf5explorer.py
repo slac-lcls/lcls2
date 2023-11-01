@@ -3,8 +3,6 @@
 """
 Created on 2019-11-13 by Mikhail Dubrovin
 """
-#import logging
-#logger = logging.getLogger(__name__)
 
 import os
 os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' # get rid of libGL error: unable to load driver: swrast_dri.so
@@ -18,7 +16,7 @@ USAGE = 'command examples for app %s\n'%sys.argv[0]\
       + '  hdf5explorer <hdf5-file-name> [options]\n'\
       + '  hdf5explorer /reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5\n'\
       + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5\n'\
-      + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5 -l INFO' 
+      + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5 -l INFO'
 
 
 def hdf5explorer_gui():
@@ -36,6 +34,7 @@ def hdf5explorer_gui():
 
     fname = pargs[0] if len(pargs) else FNAME_TEST
     kwargs['fname'] = fname
+    kwargs['rec_at_start'] = True
 
     hdf5explorer(**kwargs)
 
@@ -46,7 +45,7 @@ def input_option_parser():
 
     d_loglevel   = 'INFO'
     d_logdir     = '%s/hdf5explorer-log' % os.path.expanduser('~')
-    d_savelog    = False 
+    d_savelog    = False
 
     h_loglevel   = 'logging level, default = %s' % d_loglevel
     h_logdir     = 'logger directory, default = %s' % d_logdir

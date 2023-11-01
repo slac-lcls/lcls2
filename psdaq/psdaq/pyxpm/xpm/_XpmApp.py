@@ -21,6 +21,11 @@ import pyrogue        as pr
 
 from ._Si5317 import *
 
+_fidPrescale = 200
+
+def _get(o,read):
+    return o.get()
+
 class XpmInhConfig(pr.Device):
 
     def __init__(   self, 
@@ -63,10 +68,15 @@ class XpmInhConfig(pr.Device):
 
 class XpmApp(pr.Device):
     def __init__(   self, 
-            name        = "XpmApp", 
-            description = "XPM Module", 
-            **kwargs):
+                    name        = "XpmApp", 
+                    description = "XPM Module", 
+                    fidPrescale = 200,
+                    removeMonReg = False,
+                    **kwargs):
         super().__init__(name=name, description=description, **kwargs)
+
+        global _fidPrescale
+        _fidPrescale = fidPrescale
 
         ##############################
         # Variables
@@ -263,96 +273,47 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "dsLinkStatus",
-            description  = "link status summary",
-            offset       =  0x0c,
-            bitSize      =  32,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
+        if not removeMonReg:
+            self.add(pr.RemoteVariable(    
+                name         = "dsLinkStatus",
+                description  = "link status summary",
+                offset       =  0x0c,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
 
-        def _rxErrCnt(var,read):
-            return var.dependencies[0].get(read)&0xffff
+            self.add(pr.RemoteVariable(    
+                name         = "dsLinkRxCnt",
+                description  = "Rx message count",
+                offset       =  0x10,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
 
-        self.add(pr.LinkVariable(    
-            name         = "rxErrCnt",
-            description  = "Receive error counts",
-            linkedGet    = _rxErrCnt,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _txResetDone(var,read):
-            return (var.dependencies[0].get(read)>>16)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "txResetDone",
-            description  = "Tx reset done",
-            linkedGet    = _txResetDone,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _txReady(var,read):
-            return (var.dependencies[0].get(read)>>17)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "txReady",
-            description  = "Tx ready",
-            linkedGet    = _txReady,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _rxResetDone(var,read):
-            return (var.dependencies[0].get(read)>>18)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "rxResetDone",
-            description  = "Rx reset done",
-            linkedGet    = _rxResetDone,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _rxReady(var,read):
-            return (var.dependencies[0].get(read)>>19)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "rxReady",
-            description  = "Rx ready",
-            linkedGet    = _rxReady,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        def _rxIsXpm(var,read):
-            return (var.dependencies[0].get(read)>>20)&1
-
-        self.add(pr.LinkVariable(    
-            name         = "rxIsXpm",
-            description  = "Remote link partner is XPM",
-            linkedGet    = _rxIsXpm,
-            dependencies = [self.dsLinkStatus]
-        ))
-
-        self.add(pr.RemoteVariable(    
-            name         = "dsLinkRxCnt",
-            description  = "Rx message count",
-            offset       =  0x10,
-            bitSize      =  32,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-
-        self.add(Si5317(    
-            name         = "amcPLL",
-            offset       =  0x14,
-        ))
+            self.add(Si5317(    
+                name         = "amcPLL",
+                offset       =  0x14,
+            ))
 
         self.add(pr.RemoteVariable(    
             name         = "l0Reset",
             description  = "L0 trigger reset",
             offset       =  0x18,
             bitSize      =  1,
+            bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "l0Groups",
+            description  = "L0 deadtime groups",
+            offset       =  0x19,
+            bitSize      =  8,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
@@ -408,17 +369,18 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
-        self.add(pr.RemoteVariable(
-            name         = "l0Stats",
-            description  = "L0 Statistics",
-            offset       =  0x20,
-            bitSize      =  320,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            minimum      =  0.,
-            maximum      =  1.,
-            mode         = "RO",
-        ))
+        if not removeMonReg:
+            self.add(pr.RemoteVariable(
+                name         = "l0Stats",
+                description  = "L0 Statistics",
+                offset       =  0x20,
+                bitSize      =  320,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                minimum      =  0.,
+                maximum      =  1.,
+                mode         = "RO",
+            ))
 
         self.add(pr.RemoteVariable(    
             name         = "numL1Acc",
@@ -551,45 +513,28 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
-        def pipelineGet(var,read):
-            value = var.dependencies[0].get(read)
-            return value>>16
-
-        def pipelineSet(deps):
-            def pipelineSetValue(var, value, write):
-                val = ((value*200)&0xffff) | (value<<16)
-                print('Setting pipeline reg to 0x{:x}'.format(val))
-                deps[0].set(val,write)
-            return pipelineSetValue
-
-        self.add(pr.LinkVariable(
-            name         = "l0Delay",
-            linkedGet    = pipelineGet,
-            linkedSet    = pipelineSet([self.pipelineDepth]),
-            dependencies = [self.pipelineDepth]
-        ))
-
         self.add(pr.RemoteVariable(    
             name         = "msgHdr",
             description  = "Message header",
             offset       =  0x70,
-            bitSize      =  8,
+            bitSize      =  9,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
             verify       = False
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "msgIns",
-            description  = "Message insert",
-            offset       =  0x71,
-            bitSize      =  1,
-            bitOffset    =  0x07,
-            base         = pr.UInt,
-            mode         = "RW",
-            verify       = False
-        ))
+        if False:
+            self.add(pr.RemoteVariable(    
+                name         = "msgIns",
+                description  = "Message insert",
+                offset       =  0x71,
+                bitSize      =  1,
+                bitOffset    =  0x07,
+                base         = pr.UInt,
+                mode         = "RW",
+                verify       = False
+            ))
 
         self.add(pr.RemoteVariable(    
             name         = "msgPayl",
@@ -601,15 +546,16 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "remId",
-            description  = "Remote link ID",
-            offset       =  0x78,
-            bitSize      =  32,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
+        if not removeMonReg:
+            self.add(pr.RemoteVariable(    
+                name         = "remId",
+                description  = "Remote link ID",
+                offset       =  0x78,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
 
         for i in range(4):
             self.add(XpmInhConfig(    
@@ -617,28 +563,29 @@ class XpmApp(pr.Device):
                 offset       =  0x80+4*i,
             ))
 
-        self.add(pr.RemoteVariable(
-            name         = "inhEvCnt",
-            description  = "Inhibit event counts by link",
-            offset       =  0x90,
-            bitSize      =  1024,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            minimum      =  0.,
-            maximum      =  1.,
-            mode         = "RO",
-        ))
-
-        for i in range(4):
-            self.add(pr.RemoteVariable(    
-                name         = "monClk_%d"%i,
-                description  = "Monitor clock rate",
-                offset       =  0x110+4*i,
-                bitSize      =  29,
+        if not removeMonReg:
+            self.add(pr.RemoteVariable(
+                name         = "inhEvCnt",
+                description  = "Inhibit event counts by link",
+                offset       =  0x90,
+                bitSize      =  1024,
                 bitOffset    =  0x00,
                 base         = pr.UInt,
+                minimum      =  0.,
+                maximum      =  1.,
                 mode         = "RO",
             ))
+
+            for i in range(4):
+                self.add(pr.RemoteVariable(    
+                    name         = "monClk_%d"%i,
+                    description  = "Monitor clock rate",
+                    offset       =  0x110+4*i,
+                    bitSize      =  29,
+                    bitOffset    =  0x00,
+                    base         = pr.UInt,
+                    mode         = "RO",
+                ))
 
         self.add(pr.RemoteVariable(    
             name         = "inhTmCnt",
@@ -798,4 +745,7 @@ class XpmApp(pr.Device):
         
     def numL0Acc(self, l0Stats):
         return (l0Stats>>256)&((1<<64)-1)
-        
+
+    def l0Delay(self, group):
+        self.partition.set(group)
+        return self.pipelineDepth.get()>>16

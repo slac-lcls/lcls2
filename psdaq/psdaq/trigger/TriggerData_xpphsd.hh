@@ -6,6 +6,7 @@ namespace Pds {
 
     struct TriggerData_xpphsd
     {
+      TriggerData_xpphsd(uint64_t nPeaks_) : nPeaks(nPeaks_) {};
       uint64_t nPeaks;
     };
   };

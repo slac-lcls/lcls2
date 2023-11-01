@@ -10,9 +10,11 @@ t0_sec = time()
 import numpy as np
 print('np import consumed time (sec) = %.6f' % (time()-t0_sec))
 
+from psana.detector.Utils import info_parser_arguments
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana import DataSource
 from psana.detector.UtilsMask import CC, DTYPE_MASK
+from psana.detector.utils_psana import datasource_kwargs_from_string, timestamp_run
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -60,8 +62,9 @@ def det_calib_constants(det, ctype):
     #ctype = 'pixel_rms', 'pixel_status', 'pedestals', 'pixel_gain', 'geometry'
     calib_const = det.calibconst if hasattr(det,'calibconst') else None
     if calib_const is not None:
-      logger.info('det.calibconst.keys(): ' + str(calib_const.keys()))
-      cdata, cmeta = calib_const[ctype]
+      keys = calib_const.keys()
+      logger.info('det.calibconst.keys(): ' + str(keys))
+      cdata, cmeta = calib_const[ctype] if ctype in keys else (None, None)
       logger.info('%s meta: %s' % (ctype, str(cmeta)))
       logger.info(info_ndarr(cdata, '%s data'%ctype))
       return cdata, cmeta
@@ -90,11 +93,13 @@ def datasource_run_det(**kwa):
 
 def ds_run_det(args):
 
-    logger.info('ds_run_det input file:\n  %s' % args.fname)
+    logger.info('ds_run_det dskwargs (str):\n  %s' % args.dskwargs)
 
-    kwa = {'files':args.fname,} if args.fname is not None else\
-          {'exp':args.expname,'run':int(args.runs.split(',')[0])}
-    if args.dirxtc is not None: kwa['dir'] = args.dirxtc
+    kwa = datasource_kwargs_from_string(args.dskwargs)
+
+    #kwa = {'files':args.fname,} if args.fname is not None else\
+    #      {'exp':args.expname,'run':int(args.runs.split(',')[0])}
+    #if args.dirxtc is not None: kwa['dir'] = args.dirxtc
 
     #ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc')
     ds = DataSource(**kwa)
@@ -111,16 +116,16 @@ def ds_run_det(args):
 
     oraw = det.raw
     detnameid = oraw._uniqueid
-    expname = orun.expt if orun.expt is not None else args.expname # 'mfxc00318'
+    expname = orun.expt  # 'mfxc00318'
     runnum = orun.runnum
 
     print('run.detnames : ', orun.detnames) # {'epixquad'}
     print('run.expt     : ', orun.expt)     # tstx00117
     print('run.id       : ', orun.id)       # 0
-    print('run.timestamp: ', orun.timestamp)# 4190613356186573936 (int)
+    print('run.timestamp: ', orun.timestamp, ' >', timestamp_run(orun, fmt='%Y-%m-%dT%H:%M:%S'))# 4190613356186573936 (int)
 
-    print('fname:', args.fname)
-    print('expname:', expname)
+    #print('fname:', args.fname)
+    #print('expname:', expname)
     print('runnum :', runnum)
     print('detname:', det._det_name)
     print('split detnameid:', '\n'.join(detnameid.split('_')))
@@ -150,9 +155,9 @@ def test_raw(args):
         if evnum>args.events: sys.exit('exit by number of events limit %d' % args.events)
         if not selected_record(evnum): continue
         print('%s\nEvent %04d' % (50*'_',evnum))
-        segs = det.raw._segment_numbers(evt)
+        segnums = det.raw._segment_numbers
         raw  = det.raw.raw(evt)
-        logger.info(info_ndarr(segs, 'segs '))
+        logger.info(info_ndarr(segnums, 'segnums '))
         logger.info(info_ndarr(raw,  'raw  '))
     print(50*'-')
 
@@ -247,6 +252,12 @@ def test_image(args):
     is_epixhr2x2 = False if det is None else det.raw._dettype == 'epixhr2x2'
     dcfg = ue.config_object_det(det) if is_epix10ka else None
 
+    geo = det.raw._det_geo()
+    print('geo:', geo)
+
+    pscsize = geo.get_pixel_scale_size()
+    #print('pscsize', pscsize)
+
     break_event_loop = False
 
     nframes = 0
@@ -340,14 +351,15 @@ def test_image(args):
             continue
 
         t0_sec = time()
-        img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
+
+        img = det.raw.image(evt, nda=arr, pix_scale_size_um=pscsize, mapmode=args.mapmode)
         print('image composition time = %.6f sec ' % (time()-t0_sec))
 
         logger.info(info_ndarr(img, 'img '))
-        logger.info(info_ndarr(arr, 'arr '))
+        #logger.info(info_ndarr(arr, 'arr '))
         if img is None: continue
 
-        title = '%s %s run:%s step:%d ev:%d' % (args.detname, args.expname, args.runs, stepnum, evnum)
+        title = '%s %s run:%s step:%d ev:%d' % (args.detname, run.expt, run.runnum, stepnum, evnum)
 
         if 'i' in dograph:
             if flimg is None:
@@ -369,11 +381,11 @@ def test_image(args):
 
         if 'c' in dograph:
             if flims is None:
-                flims = fleximagespec(img, arr=arr, bins=100, color='lightgreen',\
+                flims = fleximagespec(img, arr=arr, bins=100, color='lightgreen', figsize=(16,12),\
                                       amin=args.gramin,   amax=args.gramax,\
                                       nneg=args.grnneg,   npos=args.grnpos,\
                                       fraclo=args.grfrlo, frachi=args.grfrhi,\
-                                      w_in=14, h_in=8,\
+                                      w_in=args.figwid, h_in=args.fighig,\
                 )
                 flims.move(10,20)
             else:
@@ -421,17 +433,29 @@ def test_single_image(args):
 
     arr, amin, amax, title = None, None, None, '%s for --grindex=%d ' % (tname, grindex)
     if tname == 'mask':
-        arr = det.raw._mask_comb(mbits=0o7,edge_rows=20, edge_cols=10, center_rows=4, center_cols=2) + 1
-        amin, amax =-1, 2
+
+        umask = np.ones((4, 352, 384), dtype=np.uint8)
+        umask[3, 100:120, 160:200] = 0
+        arr = 1 + det.raw._mask(status=True, status_bits=0xffff, gain_range_inds=(0,1,2,3,4),\
+                                neighbors=True, rad=5, ptrn='r',\
+                                edges=True, edge_rows=10, edge_cols=5,\
+                                center=True, center_rows=5, center_cols=3,\
+                                calib=False,\
+                                umask=umask,\
+                                force_update=False)
+        amin, amax = 0, 2
         title = 'mask+1'
     elif tname=='peds':    arr = det.raw._pedestals()[grindex,:]
     elif tname=='status':  arr = det.raw._status()[grindex,:]
     elif tname=='rms':     arr = det.raw._rms()[grindex,:]
     elif tname=='gain':    arr = det.raw._gain()[grindex,:]
-    elif tname=='xcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[0] #, **kwa)
-    elif tname=='ycoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[1] #, **kwa)
-    elif tname=='zcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[2] #, **kwa)
+    elif tname=='xcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[0]
+    elif tname=='ycoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[1]
+    elif tname=='zcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[2]
     else: arr = det.raw._mask_calib()
+
+    geo = det.raw._det_geo()
+    pscsize = geo.get_pixel_scale_size()
 
     print(info_ndarr(arr, 'array for %s' % tname))
 
@@ -443,10 +467,10 @@ def test_single_image(args):
             print('Found non-empty event %d' % evnum); break
         if evt is None: sys.exit('ALL events are None')
 
-        img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
+        img = det.raw.image(evt, nda=arr, pix_scale_size_um=pscsize, mapmode=args.mapmode)
         print(info_ndarr(img, 'image for %s' % tname))
 
-        flimg = fleximage(img, arr=arr, h_in=8, w_in=11.5, amin=amin, amax=amax)#, cmap='jet')
+        flimg = fleximage(img, arr=arr, h_in=args.fighig, w_in=args.figwid, amin=amin, amax=amax)#, cmap='jet')
         flimg.fig.canvas.set_window_title(title)
         flimg.move(10,20)
         gr.show()
@@ -468,39 +492,37 @@ def do_main():
       + '\n    [image] - test_image WITH GRAPHICS - optional default'\
       + '\n    mask, peds, rms, status, gain, z/y/xcoords - test_single_image WITH GRAPHICS'\
       + '\n ==== '\
-      + '\n    %s raw -e ueddaq02 -d epixquad -r66 # raw' % SCRNAME\
-      + '\n    %s calib -e ueddaq02 -d epixquad -r66 # calib' % SCRNAME\
-      + '\n    %s mask  -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r66 -N1000 # image' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r108 -N1 -S grind' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r211 -N1 -M0 -Speds -g0 # - plot pedestals for gain group 0/FH' % SCRNAME\
-      + '\n    %s -e ueddaq02 -d epixquad -r211 -N100 -Sraw-peds -M2 -g2 # - plot calib[step=2] - pedestals[gain group 2]' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Sraw' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Speds -g0' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin -100 --gramax 100 -Sraw-peds -g0' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r119 -Scalib' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -r119 -Sones' % SCRNAME\
-      + '\n    %s -e rixx45619 -d epixhr -N10000 -J200 --gramin 0 --gramax 10 -Sgrind' % SCRNAME\
-      + '\n    %s mask -e rixx45619 -d epixhr -r119' % SCRNAME\
-      + '\n    %s peds -e rixx45619 -d epixhr -r119 -g1' % SCRNAME\
-      + '\n    %s gains -e rixx45619 -d epixhr -r119 -g1' % SCRNAME\
-      + '\n    %s xcoords -e rixx45619 -d epixhr -r119 --cframe=1' % SCRNAME\
+      + '\n    %s raw   -k exp=ueddaq02,run=66 -d epixquad # raw' % SCRNAME\
+      + '\n    %s calib -k exp=ueddaq02,run=66 -d epixquad # calib' % SCRNAME\
+      + '\n    %s mask  -k exp=ueddaq02,run=66 -d epixquad # mask' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=66  -d epixquad -N1000 # image' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=108 -d epixquad -N1 -S grind' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=140 -d epixquad -N100 -M2 -S calibcm8' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=140 -d epixquad -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=211 -d epixquad -N1 -M0 -Speds -g0 # - plot pedestals for gain group 0/FH' % SCRNAME\
+      + '\n    %s -k exp=ueddaq02,run=211 -d epixquad -N100 -Sraw-peds -M2 -g2 # - plot calib[step=2] - pedestals[gain group 2]' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr --gramin 1 --gramax 32000 -Sraw' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr --gramin 1 --gramax 32000 -Speds -g0' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr --gramin -100 --gramax 100 -Sraw-peds -g0' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr -Scalib' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr -Sones' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr -N10000 -J200 --gramin 0 --gramax 10 -Sgrind' % SCRNAME\
+      + '\nTest:'\
+      + '\n    %s mask -k exp=rixx45619,run=121 -d epixhr' % SCRNAME\
+      + '\n    %s peds -k exp=rixx45619,run=121 -d epixhr -g1' % SCRNAME\
+      + '\n    %s gains -k exp=rixx45619,run=121 -d epixhr -g1' % SCRNAME\
+      + '\n    %s xcoords -k exp=rixx45619,run=121 -d epixhr --cframe=1' % SCRNAME\
+      + '\n    %s -k exp=rixx45619,run=121 -d epixhr -Scalib' % SCRNAME\
 
+    d_dskwargs = None
     d_loglev  = 'INFO'
-    d_fname   = None
     d_pattrs  = False
     d_dograph = 'c' # 'ihc'
     d_cumulat = False
     d_show    = 'calibcm'
     d_detname = 'epixquad'
-    d_expname = 'ueddaq02'
-    d_runs    = '1'
-    d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
     d_ofname  = None
     d_mapmode = 1
-    d_pscsize = 100
     d_events  = 1000
     d_evskip  = 0
     d_evjump  = 100
@@ -517,32 +539,34 @@ def do_main():
     d_grfrlo  = 0.01
     d_grfrhi  = 0.99
     d_cframe  = 0
+    d_figwid  = 14
+    d_fighig  = 12
 
+    h_dskwargs = 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
+                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
+                 ' or <fname.xtc> or files=<fname.xtc>'\
+                 ' or pythonic dict of generic kwargs, e.g.:'\
+                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
     h_show = 'select image correction from raw/calib/calibcm/calibcm8/grind/rawbm/raw-peds/raw-peds-med/peds/ones, def=%s' % d_show
-    h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
-    import argparse
 
+    import argparse
     parser = argparse.ArgumentParser(usage=usage, description='%s - test epix10ka data'%SCRNAME)
     #parser.add_argument('posargs', nargs='*', type=str, help='test name and other positional arguments')
+    parser.add_argument('-k', '--dskwargs', type=str, help=h_dskwargs)
     parser.add_argument('tname', nargs='?', type=str, help='test name and other positional arguments')
-    parser.add_argument('-f', '--fname',   default=d_fname,   type=str, help='xtc file name, def=%s' % d_fname)
     parser.add_argument('-l', '--loglev',  default=d_loglev,  type=str, help=h_loglev)
     parser.add_argument('-d', '--detname', default=d_detname, type=str, help='detector name, def=%s' % d_detname)
-    parser.add_argument('-e', '--expname', default=d_expname, type=str, help='experiment name, def=%s' % d_expname)
-    parser.add_argument('-r', '--runs',    default=d_runs,    type=str, help='run or comma separated list of runs, def=%s' % d_runs)
-    parser.add_argument('-x', '--dirxtc',  default=d_dirxtc,  type=str, help=h_dirxtc)
     parser.add_argument('-P', '--pattrs',  default=d_pattrs,  action='store_true',  help='print objects attrubutes, def=%s' % d_pattrs)
     parser.add_argument('-G', '--dograph', default=d_dograph, type=str, help='plot i/h/c=image/hist/comb, def=%s' % d_dograph)
     parser.add_argument('-C', '--cumulat', default=d_cumulat, action='store_true', help='plot cumulative image, def=%s' % d_cumulat)
-    parser.add_argument('-S', '--show',    default=d_show,    type=str, help=h_show)
-    parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
-    parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
-    parser.add_argument('-N', '--events',  default=d_events,  type=int, help='maximal number of events, def=%s' % d_events)
-    parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
-    parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
-    parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
+    parser.add_argument('-S', '--show',    default=d_show,    type=str,   help=h_show)
+    parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str,   help='output image file name, def=%s' % d_ofname)
+    parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int,   help=h_mapmode)
+    parser.add_argument('-N', '--events',  default=d_events,  type=int,   help='maximal number of events, def=%s' % d_events)
+    parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int,   help='number of events to skip in the beginning of run, def=%s' % d_evskip)
+    parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int,   help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int,   help='bitmask for raw MDBITS=16383/0x7fff=32767, def=%s' % hex(d_bitmask))
     parser.add_argument('-M', '--stepnum', default=d_stepnum, type=int,   help='step selected to show or None for all, def=%s' % d_stepnum)
     parser.add_argument('-g', '--grindex', default=d_grindex, type=int,   help='gain range index [0,6] for peds, def=%s' % str(d_grindex))
@@ -555,12 +579,15 @@ def do_main():
     parser.add_argument('--grnpos',        default=d_grnpos,  type=float, help='number of mean deviations of intensity negative limit for grphics, def=%s' % str(d_grnpos))
     parser.add_argument('--grfrlo',        default=d_grfrlo,  type=float, help='fraqction of statistics [0,1] below low  limit for grphics, def=%s' % str(d_grfrlo))
     parser.add_argument('--grfrhi',        default=d_grfrhi,  type=float, help='fraqction of statistics [0,1] below high limit for grphics, def=%s' % str(d_grfrhi))
-    parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
+    parser.add_argument('--cframe',        default=d_cframe,  type=int,   help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
+    parser.add_argument('--figwid',        default=d_figwid,  type=float, help='figure width, inch, def=%f' % d_figwid)
+    parser.add_argument('--fighig',        default=d_fighig,  type=float, help='figure width, inch, def=%f' % d_fighig)
 
     args = parser.parse_args()
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(name)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
-    logger.debug('parser.parse_args: %s' % str(args))
+    #logger.debug('parser.parse_args: %s' % str(args))
+    logger.info(info_parser_arguments(parser))
 
     kwa = vars(args)
     s = '\nArguments:'
@@ -579,7 +606,7 @@ def do_main():
     if   tname=='raw':   test_raw  (args)
     elif tname=='calib': test_calib(args)
     elif tname=='image': test_image(args)
-    elif tname in ('mask', 'peds', 'status', 'rms', 'gain', 'xcoords', 'ycoords', 'zcoords') :  test_single_image(args)
+    elif tname in ('mask', 'peds', 'status', 'rms', 'gain', 'xcoords', 'ycoords', 'zcoords'): test_single_image(args)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
 

@@ -11,17 +11,22 @@ public:
     EpixHR2x2(Parameters* para, MemPool* pool);
     ~EpixHR2x2();
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;
-    unsigned enable   (XtcData::Xtc& xtc, const nlohmann::json& info) override;
-    unsigned disable  (XtcData::Xtc& xtc, const nlohmann::json& info) override;
-    void slowupdate(XtcData::Xtc&) override;
+    unsigned enable   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
+    unsigned disable  (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
+    void slowupdate(XtcData::Xtc&, const void* bufEnd) override;
     bool scanEnabled() override;
     void shutdown() override;
-    void write_image(XtcData::Xtc&, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
+    void write_image(XtcData::Xtc&, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
+
+    Pds::TimingHeader* getTimingHeader(uint32_t index) const override;
 protected:
     void           _connect  (PyObject*) override;
-    unsigned       _configure(XtcData::Xtc&, XtcData::ConfigIter&) override;
-    void           _event    (XtcData::Xtc&,
+    unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
+    void           _event    (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&) override;
+private:
+    void           __event   (XtcData::Xtc&, const void* bufEnd,
+                              std::vector< XtcData::Array<uint8_t> >&);
 public:
     void           monStreamEnable ();
     void           monStreamDisable();
@@ -30,6 +35,7 @@ protected:
     bool              m_env_empty;
     XtcData::NamesId  m_evtNamesId[2];
     unsigned          m_asics;
+    bool              m_descramble;
   };
 
 }

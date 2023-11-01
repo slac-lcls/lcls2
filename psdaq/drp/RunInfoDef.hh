@@ -23,5 +23,21 @@ public:
    }
 };
 
+class ChunkInfoDef : public XtcData::VarDef
+{
+public:
+  enum index
+    {
+        FILENAME,
+        CHUNKID
+    };
+
+  ChunkInfoDef()
+   {
+       XtcData::VarDef::NameVec.push_back({"filename", XtcData::Name::CHARSTR,1});
+       XtcData::VarDef::NameVec.push_back({"chunkid", XtcData::Name::UINT32});
+   }
+};
+
 }
 #endif

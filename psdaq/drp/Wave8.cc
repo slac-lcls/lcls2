@@ -1,5 +1,6 @@
 #include "Wave8.hh"
 
+#include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
@@ -11,6 +12,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <fstream>
+#include <string>
 
 using namespace XtcData;
 using logging = psalg::SysLog;
@@ -113,40 +115,43 @@ namespace Drp {
     };
     class Streams {
     public:
-        static void defineData(Xtc& xtc, const char* detName,
+        static void defineData(Xtc& xtc, const void* bufEnd, const char* detName,
                                const char* detType, const char* detNum,
                                NamesLookup& lookup, NamesId& raw, NamesId& fex) {
           // set up the names for L1Accept data
           { Alg alg("raw", 0, 0, 1);
-            Names& eventNames = *new(xtc) Names(detName, alg,
-                                                detType, detNum, raw);
+            Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                        detName, alg,
+                                                        detType, detNum, raw);
             VarDef v;
             for(unsigned i=0; i<8; i++)
                 RawStream::varDef(v,i);
-            eventNames.add(xtc, v);
+            eventNames.add(xtc, bufEnd, v);
             lookup[raw] = NameIndex(eventNames); }
           { Alg alg("fex", 0, 0, 1);
-            Names& eventNames = *new(xtc) Names(detName, alg,
-                                                detType, detNum, fex);
+            Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                        detName, alg,
+                                                        detType, detNum, fex);
             VarDef v;
             IntegralStream::varDef(v);
             ProcStream    ::varDef(v);
-            eventNames.add(xtc, v);
+            eventNames.add(xtc, bufEnd, v);
             lookup[fex] = NameIndex(eventNames); }
         }
         static void createData(XtcData::Xtc&         xtc,
+                               const void*           bufEnd,
                                XtcData::NamesLookup& lookup,
                                XtcData::NamesId&     rawId,
                                XtcData::NamesId&     fexId,
                                XtcData::Array<uint8_t>* streams) {
-            CreateData raw(xtc, lookup, rawId);
+            CreateData raw(xtc, bufEnd, lookup, rawId);
 
             unsigned index=0;
             for(unsigned i=0; i<8; i++)
                 RawStream::createData(raw,index,i,streams[i]);
 
             index=0;
-            CreateData fex(xtc, lookup, fexId);
+            CreateData fex(xtc, bufEnd, lookup, fexId);
 
             if (streams[8].data())
                 IntegralStream::createData(fex,index,streams[8]);
@@ -155,35 +160,43 @@ namespace Drp {
                 ProcStream::createData(fex,index,streams[9]);
        }
     };
+    
   };
 
 Wave8::Wave8(Parameters* para, MemPool* pool) :
     BEBDetector(para, pool)
 {
     _init(para->kwargs["epics_prefix"].c_str());
+
+    if (para->kwargs.find("timebase")!=para->kwargs.end() &&
+        para->kwargs["timebase"]==std::string("119M"))
+        m_debatch = true;
 }
 
 json Wave8::connectionInfo(const nlohmann::json& msg)
 {
+    return BEBDetector::connectionInfo();
+
     // Exclude connection info until cameralink-gateway timingTxLink is fixed
     logging::error("Returning NO XPM link; implementation incomplete");
     return json({});
 }
 
-unsigned Wave8::_configure(Xtc& xtc,ConfigIter&)
+unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter&)
 {
     // set up the names for the event data
     m_evtNamesRaw = NamesId(nodeId, EventNamesIndex+0);
     m_evtNamesFex = NamesId(nodeId, EventNamesIndex+1);
-    W8::Streams::defineData(xtc,m_para->detName.c_str(),
+    W8::Streams::defineData(xtc,bufEnd,m_para->detName.c_str(),
                             m_para->detType.c_str(),m_para->serNo.c_str(),
                             m_namesLookup,m_evtNamesRaw,m_evtNamesFex);
     return 0;
 }
 
-void Wave8::_event(XtcData::Xtc& xtc, 
-                   std::vector< XtcData::Array<uint8_t> >& subframes) 
+void Wave8::_event(XtcData::Xtc& xtc,
+                   const void* bufEnd,
+                   std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    W8::Streams::createData(xtc, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);
+    W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);
 }
 }

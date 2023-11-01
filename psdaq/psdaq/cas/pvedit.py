@@ -1,5 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from p4p.client.thread import Context
+from psdaq.configdb.tsdef import *
 import logging
 
 try:
@@ -21,9 +22,6 @@ NBeamSeq = 16
 interval   = 14./13.
 dstsel     = ['Include','DontCare']
 evtsel     = ['Fixed Rate','AC Rate','EventCode','Sequence']
-fixedRates  = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
-acRates     = ['60Hz','30Hz','10Hz','5Hz','1Hz']
-acTS        = ['TS%u'%(i+1) for i in range(6)]
 seqBits     = ['b%u'%i for i in range(16)]
 # Sequence 16 is programmed for rates stepping at 10kHz
 seqIdxs     = ['s%u'%i for i in range(18)]
@@ -47,7 +45,7 @@ def setCuMode(v):
 def getCuMode():
     return xtpg
 
-class Pv:
+class Pv(object):
     def __init__(self, pvname, callback=None, isStruct=False):
         self.pvname = pvname
         self.__value__ = None
@@ -55,15 +53,9 @@ class Pv:
         if callback:
             logger.info("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
-                if self.isStruct:
-                    self.__value__ = newval
-                else:
-                    self.__value__ = newval.raw.value
+                self.__value__ = self.to_value(newval)
                 logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
-#                try:
                 callback(err=None)
-#                except Exception as e:
-#                    logger.error("Exception in callback for %s"%self.pvname)
             try:
                 self.subscription = pvactx.monitor(self.pvname, monitor_cb)
                 self.__value__ = None
@@ -73,11 +65,21 @@ class Pv:
             self.__value__ = None
             logger.debug("PV %s created without a callback", self.pvname) # Call get explictly for an sync get or use for put
 
-    def get(self, useCached=True):
-        if self.isStruct:
-            self.__value__ = pvactx.get(self.pvname)
-        else:
-            self.__value__ = pvactx.get(self.pvname).raw.value
+    def to_value(self,newval):
+        result = None
+        try:
+            if self.isStruct:
+                result = newval
+            elif hasattr(newval,"value"):
+                result = newval.value
+            else:
+                result = newval.raw.value
+        except Exception as e:
+            logger.error(f'Exception in monitor_cb for {self.pvname} {e} [{newval}]')
+        return result
+
+    def get(self, useCached=True, timeout=5.0):
+        self.__value__ = self.to_value(pvactx.get(self.pvname,timeout=timeout))
         logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 
@@ -285,6 +287,39 @@ class PvComboDisplay(QtWidgets.QComboBox):
 
     def setValue(self,value):
         self.setCurrentIndex(value)
+
+class PvTableDisplay(QtWidgets.QWidget):
+
+    def __init__(self, pvname, rowNames=None):
+        super(PvTableDisplay, self).__init__()
+        self.ready = False
+        initPvMon(self,pvname,isStruct=True)
+
+        v = self.pv.get()
+
+        grid = QtWidgets.QGridLayout()
+        for j,r in enumerate(rowNames):
+            grid.addWidget(QtWidgets.QLabel(r),j+1,0)
+        for j,r in enumerate(v.labels):
+            grid.addWidget(QtWidgets.QLabel(r),0,j+1)
+            w = [QtWidgets.QLabel('-') for i in range(len(rowNames))]
+            setattr(self,r,w)
+            for i in range(len(rowNames)):
+                grid.addWidget(w[i],i+1,j+1)
+        grid.setRowStretch(grid.rowCount(),1)
+
+        self.setLayout(grid)
+        self.ready = True
+
+    def update(self,err):
+        if not self.ready:
+            return
+        v = self.pv.__value__
+        for j,r in enumerate(v.labels):
+            w = getattr(self,r)
+            q = getattr(v.value,r)
+            for i,qv in enumerate(q):
+                w[i].setText(str(qv))
 
 class PvEditTxt(PvTextDisplay):
 
@@ -546,7 +581,7 @@ class PvCString(QtWidgets.QWidget):
     def update(self, err):
         if self.pv.isStruct:
             q = self.pv.get().value
-        else: 
+        else:
             q = self.pv.get()
         print(q)
         if err is None:
@@ -591,15 +626,15 @@ class PvMaskTab(QtWidgets.QWidget):
 
         self.cb = cb
         initPvMon(self,pvname)
-        
+
         self.chkBox = []
         layout = QtWidgets.QGridLayout()
         rows = (len(names)+3)/4
         cols = (len(names)+rows-1)/rows
         for i in range(len(names)):
-            layout.addWidget( QtWidgets.QLabel(names[i]), i/cols, 2*(i%cols) )
+            layout.addWidget( QtWidgets.QLabel(names[i]), int(i/cols), int(2*(i%cols)) )
             chkB = QtWidgets.QCheckBox()
-            layout.addWidget( chkB, i/cols, 2*(i%cols)+1 )
+            layout.addWidget( chkB, int(i/cols), int(2*(i%cols)+1) )
             chkB.clicked.connect(self.setValue)
             self.chkBox.append(chkB)
         self.setLayout(layout)
@@ -750,9 +785,9 @@ class PvDstTab(QtWidgets.QWidget):
         self.chkBox = []
         layout = QtWidgets.QGridLayout()
         for i in range(NBeamSeq):
-            layout.addWidget( QtWidgets.QLabel('D%d'%i), i/4, 2*(i%4) )
+            layout.addWidget( QtWidgets.QLabel('D%d'%i), int(i/4), int(2*(i%4)) )
             chkB = QtWidgets.QCheckBox()
-            layout.addWidget( chkB, i/4, 2*(i%4)+1 )
+            layout.addWidget( chkB, int(i/4), int(2*(i%4)+1) )
             chkB.clicked.connect(self.setValue)
             self.chkBox.append(chkB)
         self.setLayout(layout)
@@ -810,7 +845,7 @@ class PvEditTS(PvEditCmb):
     def __init__(self, pvname, idx):
         super(PvEditTS, self).__init__(pvname, ['%u'%i for i in range(16)])
 
-def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True):
+def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=True, horiz=True, width=None):
     pvname = pvbase+name
     print(pvname)
 
@@ -824,11 +859,15 @@ def PvInput(widget, parent, pvbase, name, count=1, start=0, istart=0, enable=Tru
     #layout.addStretch
     if count == 1:
         w = widget(pvname, '')
+        if width:
+            w.setMaximumWidth(width)
         w.setEnabled(enable)
         layout.addWidget(w)
     else:
         for i in range(count):
             w = widget(pvname+'%d'%(i+start), QString(i+istart))
+            if width:
+                w.setMaximumWidth(width)
             w.setEnabled(enable)
             layout.addWidget(w)
     #layout.addStretch

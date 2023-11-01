@@ -13,12 +13,12 @@ usage = '\nE.g. : %s amox23616 137' % scrname\
       + '\n  or : %s amox23616 137 -l DEBUG -f fname.xtc2\n' % scrname
 print(usage)
 
-d_fname = '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2'
+#d_fname = '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2'
 
 parser = argparse.ArgumentParser(description='XTCAV DISPLAY results of data processing') # , usage=usage())
 parser.add_argument('experiment', help='psana experiment string (e.g. "amox23616")')
-parser.add_argument('run', type=int, help="run number")
-parser.add_argument('-f', '--fname', type=str, default=d_fname, help='xtc2 file')
+parser.add_argument('run_number', type=int, help="run number")
+#parser.add_argument('-f', '--fname', type=str, default=d_fname, help='xtc2 file')
 parser.add_argument('-l', '--loglev', default='DEBUG', type=str, help='logging level name, one of %s' % STR_LEVEL_NAMES)
 parser.add_argument('-p', '--pause', type=float, default=2, help="pause [sec] to browse events")
 parser.add_argument('-g', '--grmode', type=int, default=1, help="graphics control mode; 0-close window, 1-using keyboard keys")
@@ -131,24 +131,24 @@ def press(event):
 
 def procEvents(args):
 
-    fname      = getattr(args, 'fname',      '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2')
-    fname_loff = getattr(args, 'fname_loff', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2')
+    #fname      = getattr(args, 'fname',      '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2')
+    #fname_loff = getattr(args, 'fname_loff', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2')
     nevents    = getattr(args, 'nevents', 100)
     mode       = getattr(args, 'mode', 'smd')
     exp        = getattr(args, 'experiment', None)
     grmode     = getattr(args, 'grmode', 1)
     pause      = getattr(args, 'pause', 1)
 
-    ds = DataSource(files=fname)
+    ds = DataSource(exp=args.experiment, run=args.run_number)
     run = next(ds.runs())
 
     lon = LasingOnCharacterization(args, run, setDetectors(run))
 
-    camraw   = lon._camraw
-    valsebm  = lon._valsebm
-    valsgd   = lon._valsgd
-    valseid  = lon._valseid
-    valsxtp  = lon._valsxtp
+    #camraw   = lon._camraw
+    #valsebm  = lon._valsebm
+    #valsgd   = lon._valsgd
+    #valseid  = lon._valseid
+    #valsxtp  = lon._valsxtp
 
     if grmode == 1 :
         fig, axes, titles = figaxtitles()
@@ -159,7 +159,7 @@ def procEvents(args):
     nimgs=0
     for nev,evt in enumerate(run.events()):
 
-        raw = camraw(evt)
+        raw = lon._camera.raw.value(evt)
         logger.info('Event %03d' % nev)
         logger.debug(info_ndarr(raw, 'camera raw:'))
         if raw is None: continue
@@ -175,9 +175,11 @@ def procEvents(args):
 
         print('%sAgreement:%7.3f%%  Max power: %g  GW Pulse Delay: %.3f '%(12*' ', agreement*100,np.amax(power), pulse[0]))
 
+        #TODO: f_11_ENRC is not avaliable directly
+        
         #gd = valsgd(evt)
-        f_11_ENRC = 'N/A' if valsgd is None else valsgd.f_11_ENRC(evt)
-        print('Agreement:', agreement, 'Gasdet.f_11_ENRC:', f_11_ENRC)
+        #f_11_ENRC = 'N/A' if lon._gasdetector is None else valsgd.f_11_ENRC(evt)
+        #print('Agreement:', agreement, 'Gasdet.f_11_ENRC:', f_11_ENRC)
         
         if agreement<0.5: continue
     

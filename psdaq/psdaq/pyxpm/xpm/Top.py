@@ -15,6 +15,7 @@ import rogue.hardware.axi
 import pyrogue as pr
 import pyrogue.protocols
 import time
+import cameralink_gateway  # to get surf
 import surf.axi                     as axi
 import surf.xilinx                  as xil
 import surf.devices.ti              as ti
@@ -31,11 +32,12 @@ class Top(pr.Device):
                   ['MmcmPL186', 0x80040000] ]
 
     def __init__(   self,       
-            name        = "Top",
-            description = "Container for XPM",
-            ipAddr      = '10.0.1.101',
-            memBase     = 0,
-            **kwargs):
+                    name        = "Top",
+                    description = "Container for XPM",
+                    ipAddr      = '10.0.1.101',
+                    memBase     = 0,
+                    fidPrescale = 200,
+                    **kwargs):
         super().__init__(name=name, description=description, **kwargs)
         
 
@@ -179,14 +181,14 @@ class Top(pr.Device):
 #        self.add(timing.GthRxAlignCheck(
         self.add(xpm.GthRxAlignCheck(
             memBase = self.srp,
-            name   = 'UsGthRxAlign',
+            name   = 'UsGthRx',
             offset = 0x0b000000,
         ))        
-                       
+
 #        self.add(timing.GthRxAlignCheck(
         self.add(xpm.GthRxAlignCheck(
             memBase = self.srp,
-            name   = 'CuGthRxAlign',
+            name   = 'CuGthRx',
             offset = 0x0c000000,
         ))        
                        
@@ -194,6 +196,7 @@ class Top(pr.Device):
             memBase = self.srp,
             name   = 'XpmApp',
             offset = 0x80000000,
+            fidPrescale = fidPrescale,
         ))
         
         self.add(AxiLiteRingBuffer(

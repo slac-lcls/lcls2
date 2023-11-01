@@ -77,6 +77,12 @@ def gen_h5(source='xtc', pid=None):
 
             if (rank % 2 == 0) and (smd._type == 'client'):
                 smd.event(evt, missing_vds=1)
+        # Todo: MONA put this in because with the new change in DgramManager,
+        # it continues to look for new run in shmem mode. In this data file,
+        # we have only one run so we needed to find a way to stop the process.
+        # Future: We might need to test in case where where actually have multple
+        # runs. For this, we may need an eof flag coming from the datasource.
+        break
 
     if smd.summary:
         smd.save_summary({'summary_array' : np.arange(3)}, summary_int=1)

@@ -16,6 +16,7 @@ using ms_t = std::chrono::milliseconds;
 
 EbLfClient::EbLfClient(const unsigned& verbose) :
   _pending(0),
+  _posting(0),
   _verbose(verbose)
 {
 }
@@ -23,6 +24,7 @@ EbLfClient::EbLfClient(const unsigned& verbose) :
 EbLfClient::EbLfClient(const unsigned&                           verbose,
                        const std::map<std::string, std::string>& kwargs) :
   _pending(0),
+  _posting(0),
   _verbose(verbose),
   _info   (kwargs)
 {
@@ -38,8 +40,6 @@ int EbLfClient::connect(EbLfCltLink** link,
             __PRETTY_FUNCTION__, _info.error());
     return _info.error_num();
   }
-
-  _pending = 0;
 
   const uint64_t flags  = 0;
   _info.hints->tx_attr->size = 0; //192;     // Tunable parameter
@@ -109,17 +109,17 @@ int EbLfClient::connect(EbLfCltLink** link,
   if ((ep->error_num() != FI_SUCCESS) || (msTmo && (dT > msTmo)))
   {
     int rc = ep->error_num();
-    fprintf(stderr, "%s:\n  %s connecting to %s:%s: %s\n",
+    fprintf(stderr, "%s:\n  %s connecting to %s:%s after %lu ms: %s\n",
             __PRETTY_FUNCTION__, (dT <= msTmo) ? "Error" : "Timed out",
-            peer, port, ep->error());
+            peer, port, dT, ep->error());
     delete ep;
-    return (dT <= msTmo) ? rc : -FI_ETIMEDOUT;
+    return (dT <= msTmo) ? rc : -FI_EAGAIN;
   }
-  if (_verbose > 1)  printf("EbLfClient: dT to connect: %lu ms\n", dT);
+  if (_verbose > 1)  printf("EbLfClient: connect() took %lu ms\n", dT);
 
   int rxDepth = fab->info()->rx_attr->size;
   if (_verbose > 1)  printf("EbLfClient: rx_attr.size = %d\n", rxDepth);
-  *link = new EbLfCltLink(ep, rxDepth, _verbose, _pending);
+  *link = new EbLfCltLink(ep, rxDepth, _verbose, _pending, _posting);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
@@ -135,19 +135,18 @@ int EbLfClient::disconnect(EbLfCltLink* link)
   if (!link)  return FI_SUCCESS;
 
   if (_verbose)
-    printf("Disconnecting from EbLfServer %d\n", link->id());
+    printf("EbLfClient: Disconnecting from EbLfServer %d\n", link->id());
 
   Endpoint* ep = link->endpoint();
+  delete link;
   if (ep)
   {
     CompletionQueue* txcq = ep->txcq();
     Fabric*          fab  = ep->fabric();
+    delete ep;
     if (txcq)  delete txcq;
     if (fab)   delete fab;
-    delete ep;
   }
-  delete link;
-  _pending = 0;
 
   return FI_SUCCESS;
 }
@@ -162,78 +161,75 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
                           std::vector<EbLfCltLink*>&      links,
                           const std::vector<std::string>& addrs,
                           const std::vector<std::string>& ports,
+                          unsigned                        id,
                           const char*                     peer)
 {
+  std::vector<EbLfCltLink*> tmpLinks(links.size());
   for (unsigned i = 0; i < addrs.size(); ++i)
   {
-    auto           t0(std::chrono::steady_clock::now());
     int            rc;
     const char*    addr = addrs[i].c_str();
     const char*    port = ports[i].c_str();
-    EbLfCltLink*   link;
     const unsigned msTmo(14750);        // < control.py transition timeout
-    if ( (rc = transport.connect(&link, addr, port, msTmo)) )
+    if ( (rc = transport.connect(&tmpLinks[i], addr, port, msTmo)) )
     {
-      logging::error("%s:\n  Error connecting to %s at %s:%s",
-                     __PRETTY_FUNCTION__, peer, addr, port);
+      logging::error("%s:\n  Error connecting to %s at %s:%s for link[%u]",
+                     __PRETTY_FUNCTION__, peer, addr, port, i);
       return rc;
     }
-    links[i] = link;
+  }
+  for (unsigned i = 0; i < addrs.size(); ++i)
+  {
+    int  rc;
+    auto link = tmpLinks[i];
+    if ( (rc = link->exchangeId(id, peer)) )
+    {
+      logging::error("%s:\n  Error exchanging IDs with %s for link[%u]",
+                     __PRETTY_FUNCTION__, peer, i);
+      return rc;
+    }
+    unsigned rmtId = link->id();
+    links[rmtId]   = link;
 
-    auto t1 = std::chrono::steady_clock::now();
-    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Outbound link[%u] with %s connected in %lu ms",
-                  i, peer, dT);
+    logging::info("Outbound link with %3s ID %2d at %s:%s connected", // in %4lu ms",
+                  peer, rmtId, addrs[i].c_str(), ports[i].c_str());
   }
 
   return 0;
 }
 
 int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
-                            unsigned                   id,
-                            const char*                peer)
-{
-  return linksConfigure(links, id, nullptr, 0, 0, peer);
-}
-
-int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
-                            unsigned                   id,
                             void*                      region,
                             size_t                     regSize,
                             const char*                peer)
 {
-  return linksConfigure(links, id, region, regSize, regSize, peer);
+  return linksConfigure(links, region, regSize, regSize, peer);
 }
 
 int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
-                            unsigned                   id,
                             void*                      region,
                             size_t                     lclSize,
                             size_t                     rmtSize,
                             const char*                peer)
 {
-  std::vector<EbLfCltLink*> tmpLinks(links.size());
-
   for (auto link : links)
   {
     auto t0(std::chrono::steady_clock::now());
-    int  rc = link->prepare(id, region, lclSize, rmtSize, peer);
+    int  rc = link->prepare(region, lclSize, rmtSize, peer);
     if (rc)
     {
       logging::error("%s:\n  Failed to prepare link with %s ID %d",
                      __PRETTY_FUNCTION__, peer, link->id());
       return rc;
     }
-    unsigned rmtId  = link->id();
-    tmpLinks[rmtId] = link;
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    logging::info("Outbound link with %s ID %d configured in %lu ms",
-                  peer, rmtId, dT);
+    auto rb = region;
+    auto re = (char*)rb + lclSize;
+    logging::info("Outbound link with %3s ID %2d, %10p : %10p (%08zx), configured in %4lu ms",
+                  peer, link->id(), rb, re, lclSize, dT);
   }
-
-  links = tmpLinks;                     // Now in remote ID sorted order
 
   return 0;
 }

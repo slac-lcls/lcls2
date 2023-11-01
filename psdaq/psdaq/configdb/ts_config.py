@@ -13,6 +13,7 @@ def ts_config(connect_json,cfgtype,detname,detsegm):
     global pv_prefix
     global readout_groups
 
+
     cfg = get_config(connect_json,cfgtype,detname,detsegm)
     ocfg = cfg
     connect_info = json.loads(connect_json)
@@ -23,6 +24,10 @@ def ts_config(connect_json,cfgtype,detname,detsegm):
     connect_info = json.loads(connect_json)
     for nodes in connect_info['body']['drp'].values():
         readout_groups.append(nodes['det_info']['readout'])
+    # the tpr's also send out their desired readout groups
+    if 'tpr' in connect_info['body']:
+        for nodes in connect_info['body']['tpr'].values():
+            readout_groups.append(nodes['det_info']['readout'])
     readout_groups = set(readout_groups)
 
     control_info = connect_info['body']['control']['0']['control_info']
@@ -58,7 +63,7 @@ def apply_config(cfg):
             pvdict[str(group)+':L0Select'          ] = grp['trigMode']
             pvdict[str(group)+':L0Select_FixedRate'] = grp['fixed']['rate']
             pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
-            pvdict[str(group)+':L0Select_EventCode'] = 0  # not an option
+            pvdict[str(group)+':L0Select_EventCode'] = grp['eventcode']
             pvdict[str(group)+':L0Select_Sequence' ] = grp['seq']['mode']
             pvdict[str(group)+':DstSelect'         ] = grp['destination']['select']
 
@@ -66,7 +71,8 @@ def apply_config(cfg):
             tsmask = 0
             for tsnum in range(6):
                 tsval = grp['ac']['ts'+str(tsnum)]
-                tsmask |= 1<<tsval
+                if tsval:
+                    tsmask |= 1<<tsnum
             pvdict[str(group)+':L0Select_ACTimeslot'] = tsmask
 
             # L0Select_SeqBit is one var used by all of seq.(burst/fixed/local)

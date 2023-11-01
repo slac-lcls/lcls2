@@ -23,8 +23,7 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def deldoc(self):
-        """Deletes document and associated data for specified docid. DB and collection names are evaluated from input parameters.
-        """
+        """Deletes document and associated data for specified docid. DB and collection names are evaluated from input parameters."""
         kwa = self.kwargs
         dbname = mu.get_dbname(**kwa)
         colname = mu.get_colname(**kwa)
@@ -47,8 +46,7 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def delcol(self):
-        """Deletes collection and all associated data. DB and collection names are evaluated from input parameters.
-        """
+        """Deletes collection and all associated data. DB and collection names are evaluated from input parameters."""
         kwa = self.kwargs
         dbname = mu.get_dbname(**kwa)
         colname = mu.get_colname(**kwa)
@@ -84,8 +82,7 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def deldb(self):
-        """Deletes data base. DB name is evaluated from input parameters.
-        """
+        """Deletes data base. DB name is evaluated from input parameters."""
         dbname = mu.get_dbname(**self.kwargs)
 
         logger.info('MDBWeb_CLI mode "%s" database "%s"' % (self.mode, dbname))
@@ -106,8 +103,7 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def get(self):
-        """Finds requested document and associated data and saves them in files.
-        """
+        """Finds requested document and associated data and saves them in files."""
         # self._warning()
         kwa        = self.kwargs
         det        = kwa.get('detector', None)
@@ -136,8 +132,7 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def add(self):
-        """Adds calibration constants to database from file.
-        """
+        """Adds calibration constants to database from file."""
         kwa = self.kwargs
         fname = kwa.get('iofname', 'None')
         ctype = kwa.get('ctype', 'None')
@@ -180,8 +175,7 @@ class MDBWeb_CLI(MDB_CLI):
 
 
 def cdb_web(parser):
-    """Calibration Data Base Command Line Interface
-    """
+    """Calibration Data Base Command Line Interface"""
     MDBWeb_CLI(parser)
 
 

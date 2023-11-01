@@ -4,14 +4,23 @@
 import numpy as np
 from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
+from psana.detector.detector_impl import DetectorImpl
 import logging
 logger = logging.getLogger(__name__)
+
+# make an empty detector interface for Matt's hardware
+# configuration object so that config_dump works - cpo
+class epix10kaquad_config_2_0_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super(epix10kaquad_config_2_0_0, self).__init__(*args)
+
 
 class epix10k_raw_0_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('%s.__init__' % self.__class__.__name__)
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-opal-TBD.data'
 
 
 class epix10ka_raw_2_0_1(eb.epix_base):
@@ -23,16 +32,18 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         self._data_gain_bit = eb.B14
         self._gain_bit_shift = 9
         self._gains_def = (16.4, 5.466, 0.164) # epix10ka ADU/keV H:M:L = 1 : 1/3 : 1/100
-
-
-    def calib(self, evt, **kwa) -> Array3d:
-        logger.debug('epix10ka_raw_2_0_1.calib')
-        return eb.calib_epix10ka_any(self, evt, **kwa)
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-TBD.data'
 
 
     def _cbits_config_segment(self, cob):
         """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object"""
         return eb.cbits_config_epix10ka(cob, shape=(352, 384))
+
+
+# calib is the same as in epix_base
+#    def calib(self, evt, **kwa) -> Array3d:
+#        logger.debug('epix10ka_raw_2_0_1.calib')
+#        return eb.calib_epix10ka_any(self, evt, **kwa)
 
 
 # MOVED TO epix_base

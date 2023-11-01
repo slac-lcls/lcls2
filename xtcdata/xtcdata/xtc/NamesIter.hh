@@ -7,9 +7,9 @@ class NamesIter : public XtcData::XtcIterator
 {
 public:
     enum { Stop, Continue };
-    NamesIter(XtcData::Xtc* xtc) : XtcData::XtcIterator(xtc) {}
+    NamesIter(XtcData::Xtc* xtc, const void* bufEnd) : XtcData::XtcIterator(xtc, bufEnd) {}
     NamesIter() : XtcData::XtcIterator() {}
-    virtual int process(XtcData::Xtc* xtc);
+    virtual int process(XtcData::Xtc* xtc, const void* bufEnd);
     NamesLookup& namesLookup() {return _namesLookup;}
 private:
     NamesLookup _namesLookup;

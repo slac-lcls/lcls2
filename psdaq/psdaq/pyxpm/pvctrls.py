@@ -17,6 +17,14 @@ provider = None
 lock     = None
 countdn  = 0
 countrst = 60
+_fidPrescale = 200
+_fidPeriod   = 1400/1.3
+
+NCODES = 16
+seqCodes = {'EventCode'   : ('ai',[i for i in range(272,288)]),
+            'Description' : ('as',['']*NCODES),
+            'Rate'        : ('ai',[0]*NCODES),
+            'Enabled'     : ('ab',[False]*NCODES)}
 
 class TransitionId(object):
     Clear   = 0
@@ -32,7 +40,7 @@ class RateSel(object):
 
 def pipelinedepth_from_delay(value):
     v = value &0xffff
-    return ((v*200)&0xffff) | (v<<16)
+    return ((v*_fidPrescale)&0xffff) | (v<<16)
 
 def forceUpdate(reg):
     reg.get()
@@ -113,7 +121,7 @@ class L0DelayH(IdxRegH):
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
 
         curr = self.pvu.current()
-        curr['value'] = value*1400/1.3
+        curr['value'] = value*_fidPeriod
         self.pvu.post(curr)
         countdn = countrst
 
@@ -129,22 +137,6 @@ class CmdH(PVHandler):
     def handle(self, pv, value):
         if value:
             retry(self.cmd,pv,value) 
-            
-class IdxCmdH(PVHandler):
-
-    def __init__(self, cmd, idxcmd, idx):
-        super(IdxCmdH,self).__init__(self.handle)
-        self._cmd      = cmd
-        self._idxcmd   = idxcmd
-        self._idx      = idx
-
-    def cmd(self,pv,value):
-        self._idxcmd.set(self._idx)
-        self._cmd()
-
-    def handle(self, pv, value):
-        if value:
-            retry_wlock(self.idxcmd,pv,value)
             
 class RegArrayH(PVHandler):
 
@@ -172,7 +164,7 @@ class LinkCtrls(object):
         app = self._app
         linkreg = app.link
 
-        def addPV(label, reg, init=0):
+        def _addPV(label, reg, init=0):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
                           handler=IdxRegH(reg,linkreg,link))
             provider.add(name+':'+label+'%d'%link,pv)
@@ -181,22 +173,22 @@ class LinkCtrls(object):
 
         linkreg.set(link)  #  initialization
         app.fullEn.set(1)
-#        self._pv_linkRxTimeout = addPV('LinkRxTimeout',app.rxTimeout, init=186)
-        self._pv_linkGroupMask = addPV('LinkGroupMask',app.fullMask)
-#        self._pv_linkTrigSrc   = addPV('LinkTrigSrc'  ,app.trigSrc)
-        self._pv_linkLoopback  = addPV('LinkLoopback' ,app.loopback)
-        self._pv_linkTxReset   = addPV('TxLinkReset'  ,app.txReset)
-        self._pv_linkRxReset   = addPV('RxLinkReset'  ,app.rxReset)
+#        self._pv_linkRxTimeout = _addPV('LinkRxTimeout',app.rxTimeout, init=186)
+        self._pv_linkGroupMask = _addPV('LinkGroupMask',app.fullMask)
+#        self._pv_linkTrigSrc   = _addPV('LinkTrigSrc'  ,app.trigSrc)
+        self._pv_linkLoopback  = _addPV('LinkLoopback' ,app.loopback)
+        self._pv_linkTxReset   = _addPV('TxLinkReset'  ,app.txReset)
+        self._pv_linkRxReset   = _addPV('RxLinkReset'  ,app.rxReset)
         print('LinkCtrls.init link {}  fullEn {}'
               .format(link, app.fullEn.get()))
         
-        def addPV(label, init, handler):
+        def _addPV(label, init, handler):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
                           handler=handler)
             provider.add(name+':'+label+'%d'%link,pv)
             return pv
 
-        self._pv_linkRxDump    = addPV('RxLinkDump',0,handler=PVHandler(self.dump))
+        self._pv_linkRxDump    = _addPV('RxLinkDump',0,handler=PVHandler(self.dump))
 
     def _dump(self, pv, val):
         self._app.linkDebug.set(self._link)
@@ -221,12 +213,12 @@ class CuGenCtrls(object):
             cuInput    = dbinit['XTPG']['CuInput']
             print('Read XTPG parameters CuDelay {}, CuBeamCode {}, CuInput {}'.format(cuDelay,cuBeamCode,cuInput))
         except:
-            cuDelay    = 200*800
+            cuDelay    = _fidPrescale*800
             cuBeamCode = 140
             cuInput    = 1
             print('Defaulting XTPG parameters')
-            
-        def addPV(label, init, reg, archive):
+
+        def _addPV(label, init, reg, archive):
             pvu = SharedPV(initial=NTScalar('f').wrap(init*7000./1300), 
                           handler=DefaultPVHandler())
             provider.add(name+':'+label+'_ns',pvu)
@@ -237,19 +229,19 @@ class CuGenCtrls(object):
             reg.set(init)
             return pv
 
-        self._pv_cuDelay    = addPV('CuDelay'   ,    cuDelay, xpm.CuGenerator.cuDelay          , True)
+        self._pv_cuDelay    = _addPV('CuDelay'   ,    cuDelay, xpm.CuGenerator.cuDelay          , True)
 
-        def addPV(label, init, reg, archive):
+        def _addPV(label, init, reg, archive):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
                           handler=RegH(reg,archive=archive))
             provider.add(name+':'+label,pv)
             reg.set(init)
             return pv
 
-        self._pv_cuBeamCode = addPV('CuBeamCode', cuBeamCode, xpm.CuGenerator.cuBeamCode       , True)
-        self._pv_clearErr   = addPV('ClearErr'  ,          0, xpm.CuGenerator.cuFiducialIntvErr, False)
+        self._pv_cuBeamCode = _addPV('CuBeamCode', cuBeamCode, xpm.CuGenerator.cuBeamCode       , True)
+        self._pv_clearErr   = _addPV('ClearErr'  ,          0, xpm.CuGenerator.cuFiducialIntvErr, False)
 
-        def addPV(label, init, reg, archive):
+        def _addPV(label, init, reg, archive):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
                           handler=RegArrayH(reg, archive=archive))
             provider.add(name+':'+label,pv)
@@ -257,7 +249,7 @@ class CuGenCtrls(object):
                 r.set(init)
             return pv
 
-        self._pv_cuInput    = addPV('CuInput'   , cuInput, xpm.AxiSy56040.OutputConfig, True)
+        self._pv_cuInput    = _addPV('CuInput'   , cuInput, xpm.AxiSy56040.OutputConfig, True)
 
 class PVInhibit(object):
     def __init__(self, name, app, inh, group, idx):
@@ -266,16 +258,16 @@ class PVInhibit(object):
         self._app   = app
         self._inh   = inh
 
-        def addPV(label,cmd,init):
+        def _addPV(label,cmd,init):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
                           handler=PVHandler(cmd))
             provider.add(name+':'+label+'%d'%idx,pv)
             cmd(pv,init)  # initialize
             return pv
 
-        self._pv_InhibitInt = addPV('InhInterval', RetryWLock(self.inhibitIntv), 10)
-        self._pv_InhibitLim = addPV('InhLimit'   , RetryWLock(self.inhibitLim ),  4)
-        self._pv_InhibitEna = addPV('InhEnable'  , RetryWLock(self.inhibitEna ),  0)
+        self._pv_InhibitInt = _addPV('InhInterval', RetryWLock(self.inhibitIntv), 10)
+        self._pv_InhibitLim = _addPV('InhLimit'   , RetryWLock(self.inhibitLim ),  4)
+        self._pv_InhibitEna = _addPV('InhEnable'  , RetryWLock(self.inhibitEna ),  0)
 
     def inhibitIntv(self, pv, value):
         self._app.partition.set(self._group)
@@ -298,7 +290,7 @@ class GroupSetup(object):
         self._app   = app
         self._stats = stats
 
-        def addPV(label,cmd,init=0,set=False):
+        def _addPV(label,cmd,init=0,set=False):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
                           handler=PVHandler(cmd))
             provider.add(name+':'+label,pv)
@@ -306,25 +298,25 @@ class GroupSetup(object):
                 cmd(pv,init)
             return pv
 
-        self._pv_L0Select   = addPV('L0Select'               ,self.put)
-        self._pv_FixedRate  = addPV('L0Select_FixedRate'     ,self.put)
-        self._pv_ACRate     = addPV('L0Select_ACRate'        ,self.put)
-        self._pv_ACTimeslot = addPV('L0Select_ACTimeslot'    ,self.put)
-        self._pv_EventCode  = addPV('L0Select_EventCode'     ,self.put)
-        self._pv_Sequence   = addPV('L0Select_Sequence'      ,self.put)
-        self._pv_SeqBit     = addPV('L0Select_SeqBit'        ,self.put)        
-        self._pv_DstMode    = addPV('DstSelect'              ,self.put, 1)
-        self._pv_DstMask    = addPV('DstSelect_Mask'         ,self.put)
-        self._pv_Run        = addPV('Run'                    ,self.run   , set=True)
-        self._pv_Master     = addPV('Master'                 ,self.master, set=True)
+        self._pv_L0Select   = _addPV('L0Select'               ,self.put)
+        self._pv_FixedRate  = _addPV('L0Select_FixedRate'     ,self.put)
+        self._pv_ACRate     = _addPV('L0Select_ACRate'        ,self.put)
+        self._pv_ACTimeslot = _addPV('L0Select_ACTimeslot'    ,self.put)
+        self._pv_EventCode  = _addPV('L0Select_EventCode'     ,self.put)
+        self._pv_Sequence   = _addPV('L0Select_Sequence'      ,self.put)
+        self._pv_SeqBit     = _addPV('L0Select_SeqBit'        ,self.put)        
+        self._pv_DstMode    = _addPV('DstSelect'              ,self.put, 1)
+        self._pv_DstMask    = _addPV('DstSelect_Mask'         ,self.put)
+        self._pv_Run        = _addPV('Run'                    ,self.run   , set=True)
+        self._pv_Master     = _addPV('Master'                 ,self.master, set=True)
 
         self._pv_StepDone   = SharedPV(initial=NTScalar('I').wrap(0), handler=DefaultPVHandler())
         provider.add(name+':StepDone', self._pv_StepDone)
 
-        self._pv_StepGroups = addPV('StepGroups'            ,self.stepGroups, set=True)
-        self._pv_StepEnd    = addPV('StepEnd'               ,self.stepEnd   , set=True)
+        self._pv_StepGroups = _addPV('StepGroups'            ,self.stepGroups, set=True)
+        self._pv_StepEnd    = _addPV('StepEnd'               ,self.stepEnd   , set=True)
 
-        def addPV(label,reg,init=0,set=False):
+        def _addPV(label,reg,init=0,set=False):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
                           handler=IdxRegH(reg,self._app.partition,group))
             provider.add(name+':'+label,pv)
@@ -333,11 +325,12 @@ class GroupSetup(object):
                 reg.set(init)
             return pv
         
-        self._pv_MsgHeader  = addPV('MsgHeader' , app.msgHdr ,  0, set=True)
-        self._pv_MsgPayload = addPV('MsgPayload', app.msgPayl,  0, set=True)
+        self._pv_MsgHeader  = _addPV('MsgHeader' , app.msgHdr ,  0, set=True)
+        self._pv_MsgPayload = _addPV('MsgPayload', app.msgPayl,  0, set=True)
+        self._pv_L0Groups   = _addPV('L0Groups'  , app.l0Groups, 0, set=True)
 
-        def addPV(label,reg,init=0,set=False):
-            pvu = SharedPV(initial=NTScalar('f').wrap(init*1400/1.3),
+        def _addPV(label,reg,init=0,set=False):
+            pvu = SharedPV(initial=NTScalar('f').wrap(init*_fidPeriod),
                            handler=DefaultPVHandler())
             provider.add(name+':'+label+'_ns',pvu)
 
@@ -349,18 +342,18 @@ class GroupSetup(object):
                 reg.set(pipelinedepth_from_delay(init))
             return pv
 
-        self._pv_L0Delay    = addPV('L0Delay'   , app.pipelineDepth, init['L0Delay'][group] if init else 90, set=True)
+        self._pv_L0Delay    = _addPV('L0Delay'   , app.pipelineDepth, init['L0Delay'][group] if init else 90, set=True)
 
         #  initialize
         self.put(None,None)
 
-        def addPV(label):
+        def _addPV(label):
             pv = SharedPV(initial=NTScalar('I').wrap(0), 
                           handler=DefaultPVHandler())
             provider.add(name+':'+label,pv)
             return pv
 
-        self._pv_MsgConfigKey = addPV('MsgConfigKey')
+        self._pv_MsgConfigKey = _addPV('MsgConfigKey')
 
         self._inhibits = []
         self._inhibits.append(PVInhibit(name, app, app.inh_0, group, 0))
@@ -465,16 +458,16 @@ class GroupSetup(object):
 class GroupCtrls(object):
     def __init__(self, name, app, stats, init=None):
 
-        def addPV(label,reg):
+        def _addPV(label,reg):
             pv = SharedPV(initial=NTScalar('I').wrap(0), 
                           handler=RegH(reg))
             provider.add(name+':'+label,pv)
             return pv
 
-        self._pv_l0Reset   = addPV('GroupL0Reset'  ,app.groupL0Reset)
-        self._pv_l0Enable  = addPV('GroupL0Enable' ,app.groupL0Enable)
-        self._pv_l0Disable = addPV('GroupL0Disable',app.groupL0Disable)
-        self._pv_MsgInsert = addPV('GroupMsgInsert',app.groupMsgInsert)
+        self._pv_l0Reset   = _addPV('GroupL0Reset'  ,app.groupL0Reset)
+        self._pv_l0Enable  = _addPV('GroupL0Enable' ,app.groupL0Enable)
+        self._pv_l0Disable = _addPV('GroupL0Disable',app.groupL0Disable)
+        self._pv_MsgInsert = _addPV('GroupMsgInsert',app.groupMsgInsert)
 
         self._groups = []
         for i in range(8):
@@ -486,11 +479,15 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, handle=None, db=None, cuInit=False):
+    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, usTiming=None, handle=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
         global provider
         provider = p
         global lock
         lock     = m
+        global _fidPrescale
+        _fidPrescale = fidPrescale
+        global _fidPeriod
+        _fidPeriod = fidPeriod
 
         # Assign transmit link ID
         ip_comp = ip.split('.')
@@ -503,6 +500,7 @@ class PVCtrls(object):
         self._ip    = ip
         self._xpm   = xpm
         self._db    = db
+        self._seq   = None
         self._handle= handle
 
         init = None
@@ -523,45 +521,74 @@ class PVCtrls(object):
         app = xpm.XpmApp
 
         self._pv_amcDumpPLL = []
-        for i in range(2):
-            pv = SharedPV(initial=NTScalar('I').wrap(0), 
-                          handler=IdxCmdH(app.amcPLL.Dump,app.amc,i))
-            provider.add(name+':DumpPll%d'%i,pv)
-            self._pv_amcDumpPLL.append(pv)
 
         self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init)
-        #self._cu   = None
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
-        #  The following section will throw an exception if the CuInput PV is not set properly
-        if not cuInit:
-            self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
+        def _addPV(label,reg):
+            pv = SharedPV(initial=NTScalar('I').wrap(0), 
+                          handler=RegH(reg))
+            provider.add(name+':'+label,pv)
+            return pv
 
-            self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
-                                        handler=CmdH(self._seq._eng.dump))
-            provider.add(name+':DumpSeq',self._pv_dumpSeq)
-
-        self._pv_usRxReset = SharedPV(initial=NTScalar('I').wrap(0),
-                                      handler=CmdH(xpm.UsTiming.C_RxReset))
-        provider.add(name+':Us:RxReset',self._pv_usRxReset)
-
-        self._pv_cuRxReset = SharedPV(initial=NTScalar('I').wrap(0),
-                                      handler=CmdH(xpm.CuTiming.C_RxReset))
-        provider.add(name+':Cu:RxReset',self._pv_cuRxReset)
+        self._pv_usRxReset      = _addPV('Us:RxReset'     ,xpm.UsTiming.RxReset)
+        self._pv_usRxPllReset   = _addPV('Us:RxPllReset'  ,xpm.UsTiming.RxPllReset)
+        self._pv_usRxCountReset = _addPV('Us:RxCountReset',xpm.UsTiming.RxCountReset)
+        self._pv_cuRxReset      = _addPV('Cu:RxReset'     ,xpm.CuTiming.RxReset)
+        self._pv_cuRxPllReset   = _addPV('Cu:RxPllReset'  ,xpm.CuTiming.RxPllReset)
+        self._pv_cuRxCountReset = _addPV('Cu:RxCountReset',xpm.CuTiming.RxCountReset)
 
         self._pv_l0HoldReset = SharedPV(initial=NTScalar('I').wrap(0),
                                         handler=RegH(app.l0HoldReset,archive=False))
         provider.add(name+':L0HoldReset',self._pv_l0HoldReset)
 
-        self._thread = threading.Thread(target=self.notify)
-        self._thread.start()
+        self._pv_seqReset   = SharedPV(initial=NTScalar('I').wrap(0),
+#                                        handler=RegH(xpm.SeqEng_0.seqRestart,archive=False))
+                                        handler=PVHandler(self.seqReset))
+        provider.add(name+':SeqReset',self._pv_seqReset)
+
+        self._pv_seqDone   = SharedPV(initial=NTScalar('I').wrap(0),
+                                      handler=DefaultPVHandler())
+        provider.add(name+':SeqDone',self._pv_seqDone)
+
+        if usTiming:
+            self._usLinkUp = usTiming._linkUpdate
+            usTiming._linkUpdate = self.usLinkUp
+        else:
+            self._usLinkUp = None
+
+        if notify:
+            self._thread = threading.Thread(target=self.notify)
+            self._thread.start()
 
         print('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
-        app.monStreamPeriod.set(125000000)
+        app.monStreamPeriod.set(104166667)
         app.monStreamEnable.set(1)
 
-    def update(self):
+    def usLinkUp(self):
+        if self._usLinkUp is not None:
+            self._usLinkUp()
+        if self._seq:
+            for s in self._seq:
+                s.refresh()
+
+    def seqReset(self,pv,val):
+        self._xpm.SeqEng_0.seqRestart.set(val)
+        if self._seq:
+            for s in self._seq:
+                if (1<<s._eng._id)&val:
+                    s._eng.resetDone()
+
+    def update(self,cycle):
+        #  The following section will throw an exception if the CuInput PV is not set properly
+        if cycle < 10:
+            print('pvseq in %d'%(10-cycle))
+        elif cycle == 10:
+            self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
+            self._seq_codes_val = toDict(seqCodes)
+            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(4)]
+
         global countdn
         # check for config save
         if countdn > 0:
@@ -570,7 +597,7 @@ class PVCtrls(object):
                 # save config
                 print('Updating {}'.format(self._db))
                 db_url, db_name, db_instrument, db_alias = self._db.split(',',4)
-                mycdb = cdb.configdb(db_url, db_instrument, True, db_name, user=db_instrument+'opr', password='pcds')
+                mycdb = cdb.configdb(db_url, db_instrument, True, db_name, user=db_instrument+'opr')
                 mycdb.add_device_config('xpm')
 
                 top = cdict()
@@ -583,8 +610,7 @@ class PVCtrls(object):
                 top.set('XTPG.CuInput'   , self._xpm.AxiSy56040.OutputConfig[0].get(), 'UINT8')
                 v = []
                 for i in range(8):
-                    self._xpm.XpmApp.partition.set(i)
-                    v.append( self._xpm.XpmApp.l0Delay.get() )
+                    v.append( self._xpm.XpmApp.l0Delay(i) )
                 top.set('PART.L0Delay', v, 'UINT32')
                 lock.release()
 
@@ -605,9 +631,13 @@ class PVCtrls(object):
         
         while True:
             msg = client.recv(4096)
+            self.handle(msg)
+
+    def handle(self,msg):
             s = struct.Struct('H')
             siter = s.iter_unpack(msg)
             src = next(siter)[0]
+
             if src==0:   # sequence notify message
                 mask = next(siter)[0]
                 i=0
@@ -616,12 +646,21 @@ class PVCtrls(object):
                         addr = next(siter)[0]
                         print('addr[{}] {:x}'.format(i,addr))
                         if i<1:
-                            self._seq.checkPoint(addr)
+                            pvUpdate(self._pv_seqDone,1)
                     i += 1
                     mask = mask>>1
             elif src==1: # step end message
                 group = next(siter)[0]
                 self._group._groups[group].stepDone(True)
             elif src==2: # stats message
-                self._handle(msg)
-            
+                if self._handle:
+                    offset = self._handle(msg)
+                    if self._seq:
+                        w = struct.unpack_from('<16L',msg,offset)
+                        offset += 64
+                        value = self._seq_codes_pv.current()
+                        self._seq_codes_val['Rate'] = w
+                        self._seq_codes_val['Description'] = value['value']['Description']
+                        value['value'] = self._seq_codes_val
+                        value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
+                        self._seq_codes_pv.post(value)

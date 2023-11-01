@@ -20,15 +20,16 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2016-12-09 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 """
-
 import os
 import sys
 
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import pyqtSignal, Qt
+from psana.detector.dir_root import DIR_DATA_TEST
+from psana.graphqt.Styles import style
 
 class QWFileNameV2(QWidget):
     """Widget for file name input
@@ -36,7 +37,7 @@ class QWFileNameV2(QWidget):
     path_is_changed = pyqtSignal('QString')
 
     def __init__(self, parent=None, label='File:',\
-                 path='/cds/group/psdm/detector/data2_test/npy/Select',\
+                 path=DIR_DATA_TEST + '/npy/Select',\
                  mode='r',\
                  fltr='*.txt *.data *.png *.gif *.jpg *.jpeg\n *',\
                  but_style_on_start = 'background-color: rgb(100, 255, 100); color: rgb(0, 0, 0);',\
@@ -57,7 +58,7 @@ class QWFileNameV2(QWidget):
         self.lab = QLabel(label)
         self.but = QPushButton(self.but_text())
 
-        self.hbox = QHBoxLayout() 
+        self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.lab)
         self.hbox.addWidget(self.but)
         self.hbox.addStretch(1)
@@ -68,22 +69,17 @@ class QWFileNameV2(QWidget):
 
         self.but.clicked.connect(self.on_but)
 
-
     def path(self):
         return self.path
-
 
     def but_text(self):
         return self.path.rsplit('/',1)[-1] if self.hide_path else self.path
 
-
     def set_dirs_to_search(self, dirs):
         self.dirs = dirs
 
-
     def set_tool_tips(self):
         self.but.setToolTip('Click and select input file.')
-
 
     def set_style(self):
         self.setWindowTitle('File name selection widget')
@@ -91,22 +87,21 @@ class QWFileNameV2(QWidget):
         self.but.setMinimumWidth(200)
         self.layout().setContentsMargins(0,0,0,0)
         self.but.setStyleSheet(self.but_style_on_start)
-        self.lab.setAlignment(Qt.AlignRight)
-        #self.lab.setStyleSheet(style.styleLabel)
-
+        #self.lab.setAlignment(Qt.AlignRight)
+        self.lab.setStyleSheet(style.styleLabel)
 
     def on_but(self):
         path_old = self.path
-        qfdial = QFileDialog(directory=self.path)
+        qfdial = QFileDialog() # directory=self.path)
         qfdial.setHistory([]) # clear history
         rsp = qfdial.restoreState(qfdial.saveState())
         qfdial.setHistory(self.dirs)
         logger.debug('QFileDialog.history: %s' % str(qfdial.history()))
-        resp = qfdial.getSaveFileName(parent=self, caption='Output file', filter=self.fltr)\
+        resp = qfdial.getSaveFileName(parent=self, caption='Output file', filter=self.fltr, directory=self.path)\
                if self.mode == 'w' else \
-               qfdial.getOpenFileName(parent=self, caption='Input file', filter=self.fltr)
+               qfdial.getOpenFileName(parent=self, caption='Input file', filter=self.fltr, directory=self.path)
 
-        logger.debug('response: %s len=%d' % (resp, len(resp)))
+        logger.debug('response: %s' % str(resp))
 
         self.path, filter = resp
 
@@ -130,30 +125,25 @@ class QWFileNameV2(QWidget):
             self.path_is_changed.emit(self.path)
             self.but.setStyleSheet(self.but_style_selected)
 
-
-    def connect_path_is_changed_to_recipient(self, recip):
+    def connect_path_is_changed(self, recip):
         self.path_is_changed['QString'].connect(recip)
 
-
-    def disconnect_path_is_changed_from_recipient(self, recip):
+    def disconnect_path_is_changed(self, recip):
         self.path_is_changed['QString'].disconnect(recip)
 
- 
     def test_signal_reception(self, s):
         logger.debug('test_signal_reception: %s' % s)
 
 
 if __name__ == "__main__":
 
-    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
-
-    from PyQt5.QtWidgets import QApplication
+    #os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = QWFileNameV2(None, label='Path:', path='/cds/group/psdm/detector/data2_test/npy/Select')
+    w = QWFileNameV2(None, label='Path:', path=DIR_DATA_TEST + '/npy/Select')
     w.setGeometry(100, 50, 350, 80)
-    w.connect_path_is_changed_to_recipient(w.test_signal_reception)
+    w.connect_path_is_changed(w.test_signal_reception)
     w.show()
     app.exec_()
 

@@ -16,11 +16,6 @@ import numpy as np
 #    So, for (100,1800100,90000) the binning should be (21,-89800,1800200)
 #    (Valid plot points will be 200,90200,...,1710200 inclusive)
 #
-#  Trouble when XPM L0Delay is < 70
-#    KCU doesn't send all triggers
-#    Minimum trigger delay is then 77 us
-#    (likely solved by l2si-core trigfifo-fix)
-#
     
 def main():
     parser = argparse.ArgumentParser()

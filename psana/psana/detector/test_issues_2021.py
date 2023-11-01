@@ -12,7 +12,7 @@ logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(mess
 
 def issue_2020_11_09():
     from psana import DataSource
-    ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
+    ds = DataSource(files='/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
 
     orun = next(ds.runs())
     #for orun in ds.runs():
@@ -94,7 +94,7 @@ def issue_2020_12_10():
 
 def issue_2020_12_16():
     """Chris' access to config does not work, Matts' works """
-    from psana.pyalgos.generic.NDArrUtils import print_ndarr
+    from psana.detector.NDArrUtils import print_ndarr
     from psana import DataSource
     ds = DataSource(files='/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2')
     detname = 'epixquad'
@@ -129,7 +129,7 @@ def issue_2020_12_16():
 
 def issue_2020_12_19():
     """First version of det.raw.calib"""
-    from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
+    from psana.detector.NDArrUtils import print_ndarr, info_ndarr
     from psana import DataSource
 
     ds = DataSource(exp='ueddaq02',run=28)
@@ -185,7 +185,7 @@ def issue_2021_02_03():
 
   args = Arguments()
 
-  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+  from psana.detector.NDArrUtils import info_ndarr
   from psana import DataSource
   ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc')
 
@@ -202,7 +202,7 @@ def issue_2021_02_03():
         if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
 
         print('%s\nEvent %04d' % (80*'_',ievt))
-        segs = det.raw._segment_numbers(evt)
+        segs = det.raw._segment_numbers
         raw  = det.raw.raw(evt)
 
         print(info_ndarr(segs, 'segsments '))
@@ -238,7 +238,7 @@ def issue_2021_02_09():
      What?s the equivalent function to the det.calib(evt) method in psana2?
   """
   import numpy as np
-  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+  from psana.detector.NDArrUtils import info_ndarr
   from psana import DataSource
 
   ds = DataSource(exp='tmoc00118', run=123, max_events=100)
@@ -292,7 +292,7 @@ def issue_2021_03_13_full():
   """
   from time import time
   import numpy as np
-  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+  from psana.detector.NDArrUtils import info_ndarr
   #a = np.arange(12).reshape((3, 4))
   mu, sigma = 32, 3
   arr3d = mu + sigma*np.random.standard_normal(size=(100, 352, 384)).astype(dtype=np.float64)
@@ -336,7 +336,7 @@ def issue_2021_03_13():
   """
   from time import time
   import numpy as np
-  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+  from psana.detector.NDArrUtils import info_ndarr
 
   shape = (1000, 352, 384)
   mu, sigma = 32, 5
@@ -379,7 +379,7 @@ def issue_2021_10_06():
      Would you be able to have a look to help us understand?  Thanks!
      chris
   """
-  from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
+  from psana.detector.NDArrUtils import print_ndarr, info_ndarr
   from psana import DataSource
   ds = DataSource(exp='rixx45619',run=119)
   myrun = next(ds.runs())

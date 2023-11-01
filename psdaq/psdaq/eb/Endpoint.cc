@@ -792,6 +792,19 @@ bool Fabric::deregister_memory(MemoryRegion* mr)
   return false;
 }
 
+void Fabric::list_memory() const
+{
+  printf("List of MRs for fabric %p\n", this);
+  for (unsigned i=0; i<_mem_regions.size(); i++) {
+    printf("%2u: mr %p", i, _mem_regions[i]);
+    if (_mem_regions[i]) {
+      printf("  start %12p  length %08zx = %zu",
+             _mem_regions[i]->start(), _mem_regions[i]->length(), _mem_regions[i]->length());
+    }
+    printf("\n");
+  }
+}
+
 MemoryRegion* Fabric::lookup_memory(const void* start, size_t len) const
 {
   for (unsigned i=0; i<_mem_regions.size(); i++) {
@@ -1222,8 +1235,14 @@ ssize_t Endpoint::send(const void* buf, size_t len, void* context, const MemoryR
 
   ssize_t rret = fi_send(_ep, buf, len, mr->desc(), 0, context);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_send");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_SEND | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_send");
+    }
   }
 
   return rret;
@@ -1327,8 +1346,14 @@ ssize_t Endpoint::write(const void* buf, size_t len, const RemoteAddress* raddr,
 
   ssize_t rret = fi_write(_ep, buf, len, mr->desc(), 0, raddr->addr, raddr->rkey, context);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_write");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_WRITE | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_write");
+    }
   }
 
   return rret;
@@ -1362,8 +1387,14 @@ ssize_t Endpoint::writedata(const void* buf, size_t len, const RemoteAddress* ra
 
   ssize_t rret = fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_writedata");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_WRITE | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_writedata");
+    }
   }
 
   return rret;
@@ -1395,8 +1426,14 @@ ssize_t Endpoint::inject_writedata(const void* buf, size_t len, const RemoteAddr
 {
   ssize_t rret = fi_inject_writedata(_ep, buf, len, data, 0, raddr->addr, raddr->rkey);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_inject_writedata");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_WRITE | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_inject_writedata");
+    }
   }
 
   return rret;
@@ -1438,8 +1475,14 @@ ssize_t Endpoint::sendv(LocalIOVec* iov, void* context)
 
   ssize_t rret = fi_sendv(_ep, iov->iovecs(), iov->desc(), iov->count(), 0, context);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_sendv");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_SEND | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_sendv");
+    }
   }
 
   return rret;
@@ -1489,8 +1532,14 @@ ssize_t Endpoint::sendmsg(Message* msg, uint64_t flags)
 
   ssize_t rret = fi_sendmsg(_ep, msg->msg(), flags);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_sendmsg");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_SEND | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_sendmsg");
+    }
   }
 
   return rret;
@@ -1540,8 +1589,14 @@ ssize_t Endpoint::writev(LocalIOVec* iov, const RemoteAddress* raddr, void* cont
 
   ssize_t rret = fi_writev(_ep, iov->iovecs(), iov->desc(), iov->count(), 0, raddr->addr, raddr->rkey, context);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_writev");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_WRITE | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_writev");
+    }
   }
 
   return rret;
@@ -1553,7 +1608,7 @@ ssize_t Endpoint::writev_sync(LocalIOVec* iov, const RemoteAddress* raddr)
 
   ssize_t rret = readv(iov, raddr, &context);
   if (rret == FI_SUCCESS) {
-    return check_completion(_txcq, context, FI_READ | FI_RMA);
+    return check_completion(_txcq, context, FI_WRITE | FI_RMA);
   }
 
   return rret;
@@ -1591,8 +1646,14 @@ ssize_t Endpoint::writemsg(RmaMessage* msg, uint64_t flags)
 
   ssize_t rret = fi_writemsg(_ep, msg->msg(), flags);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_writemsg");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_WRITE | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_writemsg");
+    }
   }
 
   return rret;
@@ -1615,8 +1676,14 @@ ssize_t Endpoint::injectdata(const void* buf, size_t len, uint64_t data)
 {
   ssize_t rret = fi_injectdata(_ep, buf, len, data, 0);
   if (rret != FI_SUCCESS) {
-    _errno = (int) rret;
-    set_error("fi_injectdata");
+    if (rret == -FI_EAGAIN) {
+      ssize_t rc = check_completion_noctx(_txcq, FI_SEND | FI_RMA, 0, 0);
+      if (rc != FI_SUCCESS)
+        rret = rc;
+    } else {
+      _errno = (int) rret;
+      set_error("fi_injectdata");
+    }
   }
 
   return rret;
@@ -1627,9 +1694,9 @@ ssize_t Endpoint::injectdata(const LocalAddress* laddr, uint64_t data)
   return injectdata(laddr->buf(), laddr->len(), data);
 }
 
-ssize_t Endpoint::check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data)
+ssize_t Endpoint::check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data, int timeout)
 {
-  ssize_t rret = cq->check_completion(context, flags, data);
+  ssize_t rret = cq->check_completion(context, flags, data, timeout);
   if (rret != FI_SUCCESS) {
     _errno = (int) cq->error_num();
     set_custom_error(cq->error());
@@ -1638,9 +1705,9 @@ ssize_t Endpoint::check_completion(CompletionQueue* cq, int context, unsigned fl
   return rret;
 }
 
-ssize_t Endpoint::check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data)
+ssize_t Endpoint::check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data, int timeout)
 {
-  ssize_t rret = cq->check_completion_noctx(flags, data);
+  ssize_t rret = cq->check_completion_noctx(flags, data, timeout);
   if (rret != FI_SUCCESS) {
     _errno = (int) cq->error_num();
     set_custom_error(cq->error());
@@ -2003,22 +2070,23 @@ ssize_t CompletionQueue::comp_error(struct fi_cq_err_entry* comp_err)
   return rret;
 }
 
-#pragma GCC diagnostic ignored "-Wunused-function"
-
-static void comp_error_dump(struct fi_cq_err_entry* comp_err)
+void CompletionQueue::comp_error_dump(struct fi_cq_err_entry* comp_err)
 {
-  printf ("void*    op_context    %p\n",     comp_err->op_context);
-  printf ("uint64_t flags         %016lx\n", comp_err->flags);
-  printf ("size_t   len           %zd\n",    comp_err->len);
-  printf ("void*    buf           %p\n",     comp_err->buf);
-  printf ("uint64_t data          %016lx\n", comp_err->data);
-  printf ("uint64_t tag           %016lx\n", comp_err->tag);
-  printf ("size_t   olen          %zd\n",    comp_err->olen);
-  printf ("int      err           %d\n",     comp_err->err);
-  printf ("int      prov_errno    %d\n",     comp_err->prov_errno);
+  char buf[ERR_MSG_LEN];          memset(buf, 0, sizeof(buf));
+  auto msg = fi_cq_strerror(_cq, comp_err->prov_errno, comp_err->err_data, buf, sizeof(buf));
+
+  printf ("void*    op_context    %p\n",      comp_err->op_context);
+  printf ("uint64_t flags         %016lx\n",  comp_err->flags);
+  printf ("size_t   len           %zd\n",     comp_err->len);
+  printf ("void*    buf           %p\n",      comp_err->buf);
+  printf ("uint64_t data          %016lx\n",  comp_err->data);
+  printf ("uint64_t tag           %016lx\n",  comp_err->tag);
+  printf ("size_t   olen          %zd\n",     comp_err->olen);
+  printf ("int      err           %d (%s)\n", comp_err->err, fi_strerror(comp_err->err));
+  printf ("int      prov_errno    %d (%s)\n", comp_err->prov_errno, msg);
   /* err_data is available until the next time the CQ is read */
-  printf ("size_t   err_data_size %zd\n",    comp_err->err_data_size);
-  printf ("void*    err_data      %p\n",     comp_err->err_data);
+  printf ("size_t   err_data_size %zd\n",     comp_err->err_data_size);
+  printf ("void*    err_data      %p\n",      comp_err->err_data);
   if (comp_err->err_data_size) {
     uint32_t* ptr = (uint32_t*)comp_err->err_data;
     for (unsigned i = 0; i < comp_err->err_data_size; ++i)
@@ -2027,24 +2095,21 @@ static void comp_error_dump(struct fi_cq_err_entry* comp_err)
   }
 }
 
-#pragma GCC diagnostic pop
-
 ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd)
 {
-  struct fi_cq_err_entry comp_err;
-  //uint32_t err_data = 0xeeeeeeee;
-  //memset(&comp_err, 0xee, sizeof(comp_err));
-  //comp_err.buf      = nullptr;
-  //comp_err.err_data = &err_data;
-
   if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
     _errno = (int) comp_ret;
     if (comp_ret == -FI_EAVAIL) {
+      struct fi_cq_err_entry comp_err;  memset(&comp_err, 0, sizeof(comp_err));
+      char* err_data[ERR_MSG_LEN];      memset(err_data, 0, sizeof(err_data));
+      comp_err.err_data      = err_data;
+      comp_err.err_data_size = sizeof(err_data);
       if (comp_error(&comp_err) > 0) {
-        char buf[ERR_MSG_LEN];
-        fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, buf, sizeof(buf));
-        set_custom_error("%s: %s(%d)", cmd, buf, comp_err.prov_errno);
-        //comp_error_dump(&comp_err);
+        comp_ret = -comp_err.err;
+        _errno = (int) comp_ret;
+        set_error(cmd);
+        fprintf(stderr, "%s:\n  Completion error data:\n", __PRETTY_FUNCTION__);
+        comp_error_dump(&comp_err);
       }
     } else {
       set_error(cmd);
@@ -2063,50 +2128,55 @@ ssize_t CompletionQueue::comp_wait(struct fi_cq_data_entry* comp, ssize_t max_co
   return handle_comp(fi_cq_sread(_cq, comp, max_count, NULL, timeout), comp, "fi_cq_sread");
 }
 
-ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t* data)
+ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t* data, int timeout)
 {
-  struct fi_cq_data_entry comp;
-  //memset(&comp, 0xee, sizeof(comp));
+  struct fi_cq_data_entry entry;
+  //memset(&entry, 0xee, sizeof(entry));
 
-  ssize_t rret = comp_wait(&comp, 1);
-  if (rret == 1) {
-    if ((comp.flags & flags) == flags) {
-      if (comp.op_context) {
-        if (*((int*) comp.op_context) == context) {
+  ssize_t rret = (timeout == 0) ? comp(&entry, 1) : comp_wait(&entry, 1, timeout);
+  if (rret > 0) {
+    if ((entry.flags & flags) == flags) {
+      if (entry.op_context) {
+        if (*((int*) entry.op_context) == context) {
           if (data)
-            *data = comp.data;
-          //dump_cq_data_entry(comp); // Temporary
-          return FI_SUCCESS;
+            *data = entry.data;
+          //dump_cq_data_entry(entry); // Temporary
         } else {
-          set_custom_error("Wrong completion: comp.op_context value is %d, expected %d", *(int*)comp.op_context, context);
-          dump_cq_data_entry(comp);
+          set_custom_error("Wrong completion: entry.op_context value is %d, expected %d", *(int*)entry.op_context, context);
+          dump_cq_data_entry(entry);
           return -EFAULT;
         }
       } else {
-        set_custom_error("Wrong completion: comp.op_context is %p, expected %d", comp.op_context, context);
-        dump_cq_data_entry(comp);
+        set_custom_error("Wrong completion: entry.op_context is %p, expected %d", entry.op_context, context);
+        dump_cq_data_entry(entry);
         return -EFAULT;
       }
+    } else {
+      fprintf(stderr, "%s:  Flags mismatch: %08lx, expected %08x\n", __PRETTY_FUNCTION__, entry.flags, flags);
+      dump_cq_data_entry(entry);
     }
+    return FI_SUCCESS;
   }
 
-  return rret ? rret : -FI_EAGAIN;     // Revisit case when comp_wait returns 0
+  return rret;
 }
 
-ssize_t CompletionQueue::check_completion_noctx(unsigned flags, uint64_t* data)
+ssize_t CompletionQueue::check_completion_noctx(unsigned flags, uint64_t* data, int timeout)
 {
-  struct fi_cq_data_entry comp;
+  struct fi_cq_data_entry entry;
 
-  ssize_t rret = comp_wait(&comp, 1);
-  if (rret == 1) {
-    if ((comp.flags & flags) == flags) {
+  ssize_t rret = (timeout == 0) ? comp(&entry, 1) : comp_wait(&entry, 1, timeout);
+  if (rret > 0) {
+    if ((entry.flags & flags) == flags) {
       if (data)
-        *data = comp.data;
-      return FI_SUCCESS;
+        *data = entry.data;
+    } else {
+      fprintf(stderr, "%s:  Flags mismatch: %08lx, expected %08x\n", __PRETTY_FUNCTION__, entry.flags, flags);
     }
+    return FI_SUCCESS;
   }
 
-  return rret ? rret : -FI_EAGAIN;     // Revisit case when comp_wait returns 0
+  return rret;
 }
 
 void CompletionQueue::dump_cq_data_entry(struct fi_cq_data_entry& comp)

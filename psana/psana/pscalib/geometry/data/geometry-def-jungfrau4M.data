@@ -1,0 +1,39 @@
+# TITLE      Geometry parameters of Jungfrau
+# DATE_TIME  2020-01-21 12:30:00 PDT
+# METROLOGY  no metrology available
+# AUTHOR     dubrovin
+# EXPERIMENT detdaq17
+# DETECTOR   DetLab.0:Jungfrau.2 or jungfrau4M
+# CALIB_TYPE geometry
+# COMMENT:01 Manually created as an example for the 8-segment Jungfrau4M detector
+# COMMENT:02 2020-01-13 use Rebecca's drawing LCL5004-007815 to exaluate design segment centers
+# COMMENT:03 2020-01-21 Philip and Kaz segment numeration: from left to right, from top to bottom on design plot
+# COMMENT:04 Dan - pixel (0,0) of each segment is in bottom-left corner on the same plot
+# COMMENT:05 command to test geometry: python Detector/examples/ex_jungfrau_images.py 42
+
+# PARAM:01 PARENT     - name and version of the parent object
+# PARAM:02 PARENT_IND - index of the parent object
+# PARAM:03 OBJECT     - name and version of the object
+# PARAM:04 OBJECT_IND - index of the new object
+# PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+
+# HDR PARENT IND      OBJECT     IND    X0[um]  Y0[um]  Z0[um]   ROT-Z ROT-Y ROT-X    TILT-Z   TILT-Y   TILT-X
+
+JFCAMERA:V1    0    JUNGFRAU:V1    0   -56807.1  44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V1    1   -15557.5  44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V1    2    25692.1  33921.7     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V1    3    66941.7  33921.7     0      90     180	 0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V1    4   -66941.7 -33921.7     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V1    5   -25692.1 -33921.7     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V1    6    15557.5 -44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V1    7    56807.1 -44005.5     0      90     180   0   	 0.0      0.0      0.0
+
+IP:V1          0    JFCAMERA:V1    0           0       0  100000    90     0     0       0.0      0.0      0.0

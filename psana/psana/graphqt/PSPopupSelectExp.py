@@ -191,7 +191,6 @@ def select_instrument_experiment(parent=None, dir_instr='/cds/data/psdm', show_f
     lst_exp = list_of_experiments(dir_exp) # os.listdir(dir_exp))
     return instr, select_experiment(parent, lst_exp, show_frame)
 
-#----------- TESTS ------------
 
 if __name__ == "__main__":
   logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)

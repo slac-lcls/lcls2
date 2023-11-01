@@ -7,6 +7,7 @@
  */
 
 #include <string>
+#include <cstdint>
 //#include <map>
 //#include "psalg/utils/Logger.hh" // MSG, LOGGER
 

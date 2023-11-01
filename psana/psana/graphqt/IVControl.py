@@ -16,6 +16,8 @@ from psana.graphqt.CMWControlBase import * #cp, CMWControlBase, QApplication, os
 from psana.graphqt.IVControlSpec import IVControlSpec
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr, np
+import psana.graphqt.QWUtils as qu
+from psana.detector.dir_root import DIR_DATA_TEST
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ class IVControl(CMWControlBase):
 
     def __init__(self, **kwa):
 
-        d = '/cds/group/psdm/detector/data2_test/misc/'
+        d = DIR_DATA_TEST + '/misc/'
         fname_geo = d + 'Select'
         kwa.setdefault('parent', None)
         kwa.setdefault('path', d + 'Select')
@@ -76,12 +78,12 @@ class IVControl(CMWControlBase):
         self.box.addWidget(self.wfnm_geo, 1, 0, 1, 5)
         self.box.addWidget(self.wctl_spec,1, 5, 1, 6)
         self.setLayout(self.box)
- 
+
         self.but_exp.clicked.connect(self.on_but_exp)
         self.but_reset.clicked.connect(self.on_but_reset)
         self.but_buts.clicked.connect(self.on_buts)
-        self.wfnm_nda.connect_path_is_changed_to_recipient(self.on_changed_fname_nda)
-        self.wfnm_geo.connect_path_is_changed_to_recipient(self.on_changed_fname_geo)
+        self.wfnm_nda.connect_path_is_changed(self.on_changed_fname_nda)
+        self.wfnm_geo.connect_path_is_changed(self.on_changed_fname_geo)
         self.wctl_spec.connect_signal_spectrum_range_changed(self.on_spectrum_range_changed)
 
         self.connect_image_scene_rect_changed()
@@ -89,7 +91,7 @@ class IVControl(CMWControlBase):
         self.connect_image_pixmap_changed()
 
         w = cp.ivspectrum
-        if w is not None: w.wcbar.connect_new_color_table_to(self.on_color_table_changed)
+        if w is not None: w.wcbar.connect_new_color_table(self.on_color_table_changed)
 
         self.set_tool_tips()
         self.set_style()
@@ -113,7 +115,7 @@ class IVControl(CMWControlBase):
             logger.debug('on_color_table_changed - do nothing here')
             return
         ctab =  w.wcbar.color_table()
-        logger.debug(info_ndarr(ctab, 'TBD on_color_table_changed: new color table'))
+        logger.debug(info_ndarr(ctab, 'on_color_table_changed: new color table'))
         w = cp.ivimageaxes
         if w is not None:
             wi = w.wimg
@@ -132,14 +134,10 @@ class IVControl(CMWControlBase):
 
     def set_style(self):
         CMWControlBase.set_style(self)
-        #self.but_tabs.setFixedWidth(50)
         self.but_reset.setFixedWidth(50)
         self.but_buts.setFixedWidth(50)
         self.but_exp.setFixedWidth(80)
-        #self.wfnm_nda.lab.setStyleSheet(style.styleLabel)
         self.wfnm_geo.lab.setStyleSheet(style.styleLabel)
-         #self.but_buts.setStyleSheet(style.styleButtonstyleLabel)
-        #self.but_tabs.setVisible(True)
 
 
     def set_signal_fast(self, is_fast=True):
@@ -158,11 +156,11 @@ class IVControl(CMWControlBase):
 
 
     def on_image_scene_rect_changed(self, r):
-        logger.debug('on_image_scene_rect_changed: %s'%str(r))
         wimg = cp.ivimageaxes.wimg
         a = wimg.array_in_rect(r)
-        logger.debug(info_ndarr(a, 'on_image_scene_rect_changed: selected array in rect'))
-        self.set_spectrum_from_arr(a)
+        logger.debug('on_image_scene_rect_changed: %s' % qu.info_rect_xywh(r))
+        #logger.debug('on_image_scene_rect_changed: %s\n    %s' % (qu.info_rect_xywh(r), info_ndarr(a, 'selected array in rect', first=0, last=3)))
+        self.set_spectrum_from_arr(a, update_hblimits=False)
 
 
     def connect_image_pixmap_changed(self):
@@ -176,20 +174,21 @@ class IVControl(CMWControlBase):
 
 
     def on_image_pixmap_changed(self):
-        logger.debug('TBD on_image_pixmap_changed')
+        logger.debug('on_image_pixmap_changed')
         wimg = cp.ivimageaxes.wimg
         arr = wimg.array_in_rect()
         coltab = wimg.coltab
-        self.set_spectrum_from_arr(arr)
+        self.set_spectrum_from_arr(arr, update_hblimits=False)
 
 
-    def set_spectrum_from_arr(self, arr, edgemode=0): #, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+    def set_spectrum_from_arr(self, arr, edgemode=0, update_hblimits=True): #, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
         if arr is self.arr_his_old: return
         self.arr_his_old = arr
         w = cp.ivspectrum
         if w is not None:
+            #r = w.whis.scene().sceneRect()
             mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
-            w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode)
+            w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode, update_hblimits)
 
 
     def connect_histogram_scene_rect_changed(self):
@@ -203,9 +202,9 @@ class IVControl(CMWControlBase):
 
 
     def on_histogram_scene_rect_changed(self, r):
-        logger.debug('TBD on_histogram_scene_rect_changed: %s'%str(r))
         x1,y1,x2,y2 = r.getCoords()
-        logger.debug('on_histogram_scene_rect_changed: reset image for spectal value in range %.3f:%.3f'%(y1,y2))
+        logger.debug('on_histogram_scene_rect_changed: %s reset image for spectal value in range %.3f:%.3f '%\
+                     (qu.info_rect_xywh(r),y1,y2))
         w = cp.ivimageaxes
         if w is not None:
             wi = w.wimg
@@ -344,7 +343,6 @@ if __name__ == "__main__":
 
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
-
     app = QApplication(sys.argv)
     w = IVControl()
     w.setGeometry(100, 50, 500, 80)

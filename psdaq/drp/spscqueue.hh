@@ -2,14 +2,17 @@
 #define SPSCQUEUE_H
 
 #include <atomic>
-#include <cassert>
 #include <mutex>
 #include <vector>
 #include <condition_variable>
+#include <cstdio>
+
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 template <typename T>
 class SPSCQueue
 {
+    using us_t = std::chrono::microseconds;
 public:
     SPSCQueue(int capacity) : m_terminate(false), m_write_index(0), m_read_index(0)
     {
@@ -46,13 +49,13 @@ public:
         asm volatile("mfence" ::: "memory");
         // signal consumer that queue is no longer empty
         if (index == m_read_index.load(std::memory_order_acquire)) {
-            std::unique_lock<std::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_condition.notify_one();
         }
     }
 
     // blocking read from queue
-    bool pop(T& value)
+    bool popW(T& value)
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
 
@@ -64,6 +67,27 @@ public:
             });
             if (m_terminate.load(std::memory_order_acquire) && is_empty()) {
                 return false;
+            }
+        }
+
+        value = m_ring_buffer[index & m_buffer_mask];
+        int64_t next = index + 1;
+        m_read_index.store(next, std::memory_order_release);
+        return true;
+    }
+
+    // blocking read from queue with polling for the 1st N us before blocking
+    bool pop(T& value)
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+
+        // check if queue is empty
+        auto t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+        while (index == m_write_index.load(std::memory_order_acquire)) {
+            auto t1 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+            auto dt = std::chrono::duration_cast<us_t>(t1 - t0).count();
+            if (dt > 1000) {
+                return popW(value);
             }
         }
 

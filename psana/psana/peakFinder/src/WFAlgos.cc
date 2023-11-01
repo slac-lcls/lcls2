@@ -1,27 +1,23 @@
-//---------
 
 #include <iostream> // cout
-#include "psalg/peaks/WFAlgos.hh"
+#include "../WFAlgos.hh"
+//#include "psana/peakFinder/WFAlgos.hh"
 
 //#include <list>
 //#include <cstddef>  // size_t
 //#include <utility>  // pair
 
-//---------
-
 namespace psalg {
 
-//---------
-
 template <typename T>
-void 
+void
 _add_edge(
   const std::vector<T>& v,
   bool     rising, // leading positive or trailing negative edge
   double   fraction,
   double   deadtime,
-  T        peak, 
-  index_t  start, 
+  T        peak,
+  index_t  start,
   double&  last,
   index_t& ipk,
   T*       pkvals,
@@ -50,7 +46,7 @@ _add_edge(
     while(v[i] > edge_v)
       i++;
   }
-  double edge = i>0 ? 
+  double edge = i>0 ?
     (edge_v-v[i])/(v[i]-v[i-1])
     + double(i) : 0;
 
@@ -63,11 +59,10 @@ _add_edge(
   }
 }
 
-//---------
 
 //find leading or trailing edges
 template <typename T>
-index_t 
+index_t
 find_edges(
   index_t  npkmax,
   T*       pkvals,
@@ -104,7 +99,7 @@ find_edges(
   index_t  k=0;
   for(; k<wf.size(); k++) {
     T y = wf[k];
-    bool over = 
+    bool over =
        (rising && y>threshold) ||
       (!rising && y<threshold);
 
@@ -128,22 +123,20 @@ find_edges(
         start = k;
     }
   }
-    
+
   // the last edge may not have fallen back below threshold
   if(crossed && (npk < npkmax) && (double(k-start)>deadtime)) {
     _add_edge(wf, rising==leading_edge, fraction*(peak-baseline)+baseline,
                  deadtime, peak, start, last, npk, pkvals, pkinds);
   }
 
-  //std::cout << "\nIn WFAlgos.cc - find_edges found npk: " << npk << '\n'; 
+  //std::cout << "\nIn WFAlgos.cc - find_edges found npk: " << npk << '\n';
   //std::cout << "\n  - pkinds: "; for(index_t i=0; i<npk; ++i) std::cout << pkinds[i] << ' ';
   //std::cout << "\n  - pkvals: "; for(index_t i=0; i<npk; ++i) std::cout << pkvals[i] << ' ';
   //std::cout << '\n';
 
   return npk;
 }
-
-//---------
 
 #ifdef INST_FIND_EDGES
 #undef INST_FIND_EDGES
@@ -158,7 +151,5 @@ INST_FIND_EDGES(int)
 INST_FIND_EDGES(int64_t)
 INST_FIND_EDGES(int16_t)
 //INST_FIND_EDGES(int32_t)// the same as int
-
-//---------
 
 } // namespace psalg

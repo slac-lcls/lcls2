@@ -36,13 +36,13 @@ class CMWConfig(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
 
-        self.but_close  = QPushButton('&Close') 
-        self.but_save   = QPushButton('&Save') 
-        self.but_show   = QPushButton('Show &Image') 
+        self.but_close  = QPushButton('&Close')
+        self.but_save   = QPushButton('&Save')
+        self.but_show   = QPushButton('Show &Image')
 
         self.hboxW = QHBoxLayout()
         self.hboxB = QHBoxLayout()
-        self.hboxB.addStretch(1)     
+        self.hboxB.addStretch(1)
         self.hboxB.addWidget(self.but_close)
         self.hboxB.addWidget(self.but_save)
         self.hboxB.addWidget(self.but_show )
@@ -56,10 +56,10 @@ class CMWConfig(QWidget):
         self.make_tab_bar()
         self.gui_selector(cp.current_config_tab.value())
 
-        self.vbox = QVBoxLayout()   
+        self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.tab_bar)
         self.vbox.addLayout(self.hboxW)
-        self.vbox.addStretch(1)     
+        self.vbox.addStretch(1)
         self.vbox.addLayout(self.hboxB)
         self.setLayout(self.vbox)
 
@@ -113,7 +113,7 @@ class CMWConfig(QWidget):
 
     def gui_selector(self, tab_name):
 
-        if self.gui_win is not None: 
+        if self.gui_win is not None:
             self.gui_win.close()
             del self.gui_win
 
@@ -148,21 +148,9 @@ class CMWConfig(QWidget):
         self.parent = parent
 
 
-#    def resizeEvent(self, e):
-#        logger.debug('resizeEvent') 
-#        print self._name + ' config: self.size():', self.size()
-#        self.setMinimumSize( self.size().width(), self.size().height()-40 )
-
-#    def moveEvent(self, e):
-#        logger.debug('moveEvent') 
-#        self.position = self.mapToGlobal(self.pos())
-#        self.position = self.pos()
-#        logger.debug('moveEvent: new pos:' + str(self.position))
-
-
     def closeEvent(self, e):
         logger.debug('closeEvent')
-        self.tab_bar.close()        
+        self.tab_bar.close()
         if self.gui_win is not None: self.gui_win.close()
         QWidget.close(self)
 

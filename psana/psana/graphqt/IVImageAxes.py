@@ -61,7 +61,7 @@ class IVImageAxes(QWidget):
         self.box.addWidget(self.wax,      10,  1,  1, 10)
         self.box.addWidget(self.but_reset,10,  0, alignment=Qt.AlignCenter)
         self.setLayout(self.box)
- 
+
         self.set_tool_tips()
         self.set_style()
 
@@ -80,20 +80,20 @@ class IVImageAxes(QWidget):
         self.edi_info.setVisible(is_visible)
         if self.edi_info.isVisible() and is_visible or\
            (not self.edi_info.isVisible()) and (not is_visible): return
-        elif is_visible: self.wimg.connect_mouse_move_event_to(self.on_mouse_move_event)
-        else: self.wimg.disconnect_mouse_move_event_from(self.on_mouse_move_event)
+        elif is_visible: self.wimg.connect_mouse_move_event(self.on_mouse_move_event)
+        else: self.wimg.disconnect_mouse_move_event(self.on_mouse_move_event)
 
 
     def connect_scene_rect_changed(self):
-        self.wimg.connect_scene_rect_changed_to(self.on_wimg_scene_rect_changed)
-        self.wax.connect_scene_rect_changed_to(self.on_wax_scene_rect_changed)
-        self.way.connect_scene_rect_changed_to(self.on_way_scene_rect_changed)
+        self.wimg.connect_scene_rect_changed(self.on_wimg_scene_rect_changed)
+        self.wax.connect_scene_rect_changed(self.on_wax_scene_rect_changed)
+        self.way.connect_scene_rect_changed(self.on_way_scene_rect_changed)
 
 
     def disconnect_scene_rect_changed(self):
-        self.wimg.disconnect_scene_rect_changed_from(self.on_wimg_scene_rect_changed)
-        self.wax.disconnect_scene_rect_changed_from(self.on_wax_scene_rect_changed)
-        self.way.disconnect_scene_rect_changed_from(self.on_way_scene_rect_changed)
+        self.wimg.disconnect_scene_rect_changed(self.on_wimg_scene_rect_changed)
+        self.wax.disconnect_scene_rect_changed(self.on_wax_scene_rect_changed)
+        self.way.disconnect_scene_rect_changed(self.on_way_scene_rect_changed)
 
 
     def on_but_reset(self):
@@ -135,7 +135,7 @@ class IVImageAxes(QWidget):
 
     def connect_image_scene_rect_changed(self, recip):
         self.image_scene_rect_changed.connect(recip)
- 
+
 
     def disconnect_image_scene_rect_changed(self, recip):
         self.image_scene_rect_changed.disconnect(recip)

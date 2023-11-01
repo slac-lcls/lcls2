@@ -24,7 +24,8 @@ namespace Pds {
       void   event(const Drp::MemPool& pool,
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,
-                   XtcData::Xtc&       xtc) override;
+                   XtcData::Xtc&       xtc,
+                   const void*         bufEnd) override;
       size_t size() const  { return sizeof(TriggerData_bld); }
     };
   };
@@ -43,15 +44,13 @@ int Pds::Trg::TriggerPrimitiveExample_bld::configure(const Document& top,
 void Pds::Trg::TriggerPrimitiveExample_bld::event(const Drp::MemPool& pool,
                                                   uint32_t            idx,
                                                   const XtcData::Xtc& ctrb,
-                                                  XtcData::Xtc&       xtc)
+                                                  XtcData::Xtc&       xtc,
+                                                  const void*         bufEnd)
 {
   uint32_t* bld   = reinterpret_cast<uint32_t*>(ctrb.payload());
   uint64_t  eBeam = ctrb.damage.value() ? 0 : bld[2]; // Revisit: do something real
 
-  void* buf  = xtc.alloc(sizeof(TriggerData_bld));
-  auto  data = static_cast<TriggerData_bld*>(buf);
-
-  data->eBeam = eBeam;
+  new(xtc.alloc(sizeof(TriggerData_bld), bufEnd)) TriggerData_bld(eBeam);
 }
 
 // The class factory

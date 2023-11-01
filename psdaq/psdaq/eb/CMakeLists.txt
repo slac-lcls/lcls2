@@ -78,9 +78,9 @@ add_executable(tstEbLfLink      tstEbLfLink.cc)
 
 #add_executable(ibMon            ibMon.cc)
 
-add_executable(ctrb
-  ctrb.cc
-)
+#add_executable(ctrb
+#  ctrb.cc
+#)
 
 add_executable(teb
   teb.cc
@@ -140,6 +140,7 @@ target_link_libraries(ft_writemsg_server
 
 target_link_libraries(eblf_pingpong
   utilities
+  collection
   epicstools
 )
 
@@ -156,13 +157,13 @@ target_link_libraries(tstEbLfLink
 #)
 #
 
-target_link_libraries(ctrb
-  contributor
-  collection
-  exporter
-  Threads::Threads
-  rt
-)
+#target_link_libraries(ctrb
+#  contributor
+#  collection
+#  exporter
+#  Threads::Threads
+#  rt
+#)
 
 target_link_libraries(teb
   eventBuilder
@@ -176,11 +177,17 @@ target_link_libraries(teb
   ${PYTHON_LIBRARIES}
 )
 
+install(FILES
+  eb.hh
+  ResultDgram.hh
+  DESTINATION include/psdaq/eb
+)
+
 install(TARGETS
   utilities
   contributor
   eventBuilder
-  ctrb
+#  ctrb
   teb
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -195,6 +202,17 @@ target_include_directories(tstIndexPool PUBLIC
 )
 
 target_link_libraries(tstIndexPool
+)
+
+add_executable(tstClocks    tstClocks.cc)
+
+target_include_directories(tstClocks PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(tstClocks
+  rt
 )
 
 #

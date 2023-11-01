@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <stdio.h>
+#include <cstdio>
 
 typedef struct
 {

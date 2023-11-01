@@ -15,7 +15,10 @@ import psana.xtcav.Constants as cons
 import collections
 import psana.xtcav.SplittingUtils as su
 import psana.xtcav.ClusteringUtils as cu
-#import collections
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 from psana.pscalib.calib.XtcavUtils import xtcav_calib_object_from_dict, info_xtcav_object
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
@@ -536,7 +539,6 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
             sublist_physical_units = [list_physical_units[i] for i in indices]
             
             eventTime[j][g] = sublist_shot_to_shot[-1].unixtime
-            eventFid[j][g] = sublist_shot_to_shot[-1].fiducial
             distT=[(sublist_image_stats[i][j].xCOM-sublist_image_stats[i][0].xCOM) \
                    *sublist_physical_units[i].xfsPerPix for i in range(num_in_cluster)]
             distE=[(sublist_image_stats[i][j].yCOM-sublist_image_stats[i][0].yCOM) \
@@ -571,7 +573,7 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
 
     return AveragedProfiles(t, averageECurrent, averageECOMslice, 
         averageERMSslice, averageDistT, averageDistE, averageTRMS, 
-        averageERMS, num_bunches, eventTime, eventFid), num_clusters
+        averageERMS, num_bunches, eventTime), num_clusters
 
 
 # http://stackoverflow.com/questions/26248654/numpy-return-0-with-divide-by-zero
@@ -590,7 +592,7 @@ def namedtuple(typename, field_names, default_values=()):
     T = collections.namedtuple(typename, field_names)
     T.__new__.__defaults__ = (None,) * len(T._fields)
 
-    if isinstance(default_values, collections.Mapping):
+    if isinstance(default_values, Mapping):
         prototype = T(**default_values)
     else:
         prototype = T(*default_values)
@@ -654,8 +656,7 @@ AveragedProfiles = namedtuple('AveragedProfiles',
     'tRMS',                       #Total dispersion in time in fs
     'eRMS',                       #Total dispersion in energy in MeV
     'num_bunches',                #Number of bunches
-    'eventTime',                  #Unix times used for jumping to events
-    'eventFid'])                  #Fiducial values used for jumping to events
+    'eventTime'])                 #Unix times used for jumping to events
 
 PulseCharacterization = namedtuple('PulseCharacterization',
     ['t',                        #Master time vector in fs

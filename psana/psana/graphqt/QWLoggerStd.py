@@ -34,16 +34,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QLabel, QPushButto
 from PyQt5.QtGui import QTextCursor
 from psana.graphqt.Styles import style
 import psana.pyalgos.generic.Utils as gu
-
-
-def log_file_name(lfpath):
-    """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/2018/20180518T122407-dubrovin.txt
-    """
-    t0_sec = gu.time()
-    tstamp = gu.str_tstamp('%Y%m%dT%H%M%S', t0_sec) 
-    #year_month = gu.str_tstamp('%Y/%m', time_sec=None) 
-    year = gu.str_tstamp('%Y', time_sec=None) 
-    return '%s/%s/%s-%s.txt' % (lfpath, year, tstamp, gu.get_login())#, os.getpid())
+scrname = sys.argv[0].rsplit('/')[-1]
 
 
 class QWFilter(logging.Filter):
@@ -70,7 +61,7 @@ class QWLoggerStd(QWidget):
 
     _name = 'QWLoggerStd'
 
-    def __init__(self, cp, show_buttons=True):
+    def __init__(self, cp, show_buttons=True, logfname='log-calibman.txt'):
 
         QWidget.__init__(self, parent=None)
 
@@ -79,38 +70,34 @@ class QWLoggerStd(QWidget):
         self.log_prefix = cp.log_prefix
         self.log_file   = cp.log_file # DEPRICATED
 
-        log_fname = log_file_name(self.log_prefix.value())
-        #print('Log file: %s' % log_fname)
-
         self.show_buttons = show_buttons
         cp.qwloggerstd = self
 
-        #logger.debug('logging.DEBUG: ', logging.DEBUG)
         logger.debug('logging._levelToName: ', logging._levelToName) # {0: 'NOTSET', 50: 'CRITICAL', 20: 'INFO',...
         logger.debug('logging._nameToLevel: ', logging._nameToLevel) # {'NOTSET': 0, 'ERROR': 40, 'WARNING': 30,...
 
         self.dict_level_to_name = logging._levelToName
         self.dict_name_to_level = logging._nameToLevel
         self.level_names = list(logging._levelToName.values())
-        
+
         self.edi_txt   = QTextEdit('Logger window')
         self.lab_level = QLabel('Log level:')
-        self.but_close = QPushButton('&Close') 
-        self.but_save  = QPushButton('&Save log-file') 
-        self.but_rand  = QPushButton('&Random') 
-        self.cmb_level = QComboBox(self) 
+        self.but_close = QPushButton('&Close')
+        self.but_save  = QPushButton('&Save log-file')
+        self.but_rand  = QPushButton('&Random')
+        self.cmb_level = QComboBox(self)
         self.cmb_level.addItems(self.level_names)
         self.cmb_level.setCurrentIndex(self.level_names.index(self.log_level.value()))
-        
+
         self.hboxM = QHBoxLayout()
         self.hboxM.addWidget(self.edi_txt)
 
         self.hboxB = QHBoxLayout()
-        self.hboxB.addStretch(4)     
+        self.hboxB.addStretch(4)
         self.hboxB.addWidget(self.lab_level)
         self.hboxB.addWidget(self.cmb_level)
         self.hboxB.addWidget(self.but_rand)
-        self.hboxB.addStretch(1)     
+        self.hboxB.addStretch(1)
         self.hboxB.addWidget(self.but_save)
         self.hboxB.addWidget(self.but_close)
 
@@ -124,12 +111,12 @@ class QWLoggerStd(QWidget):
         self.set_style()
         self.set_tool_tips()
 
-        self.config_logger(log_fname)
+        self.config_logger(logfname)
 
 
-    def config_logger(self, log_fname='log.txt'):
+    def config_logger(self, logfname='log.txt'):
 
-        self.append_qwlogger('Start logger\nLog file: %s' % log_fname)
+        self.append_qwlogger('Start logger\nLog file: %s' % logfname)
 
         levname = self.log_level.value()
         level = self.dict_name_to_level[levname] # e.g. logging.DEBUG
@@ -146,9 +133,9 @@ class QWLoggerStd(QWidget):
         # TRICK: add filter to handler to intercept ALL messages
 
         if self.save_log_at_exit:
-            depth = 6 if log_fname[0]=='/' else 1
-            gu.create_path(log_fname, depth, mode=0o0777)
-            self.handler = logging.FileHandler(log_fname, 'w')
+            depth = 6 if logfname[0]=='/' else 1
+            gu.create_path(logfname, depth, mode=0o0777)
+            self.handler = logging.FileHandler(logfname, 'w')
         else:
             self.handler = logging.StreamHandler()
 
@@ -159,6 +146,8 @@ class QWLoggerStd(QWidget):
         self.set_level(levname) # pass level name
 
         #logger.debug('dir(self.handler):' , dir(self.handler))
+        logger.info('log file: %s\n%s SAVED AT EXIT' % (logfname, 'IS' if self.save_log_at_exit else 'IS NOT'))
+
 
 
     def set_level(self, level_name='DEBUG'):
@@ -200,11 +189,11 @@ class QWLoggerStd(QWidget):
         #self.lab_title.setStyleSheet(style.styleTitleBold)
         self.lab_level .setStyleSheet(style.styleTitle)
         self.but_close .setStyleSheet(style.styleButton)
-        self.but_save  .setStyleSheet(style.styleButton) 
-        self.but_rand  .setStyleSheet(style.styleButton) 
-        self.cmb_level .setStyleSheet(style.styleButton) 
+        self.but_save  .setStyleSheet(style.styleButton)
+        self.but_rand  .setStyleSheet(style.styleButton)
+        self.cmb_level .setStyleSheet(style.styleButton)
         self.edi_txt   .setReadOnly(True)
-        self.edi_txt   .setStyleSheet(style.styleWhiteFixed) 
+        self.edi_txt   .setStyleSheet(style.styleWhiteFixed)
         #self.edi_txt   .ensureCursorVisible()
         #self.lab_title.setAlignment(QtCore.Qt.AlignCenter)
         #self.titTitle.setBold()
@@ -215,7 +204,7 @@ class QWLoggerStd(QWidget):
         self.but_rand  .setVisible(self.show_buttons)
         self.but_close .setVisible(self.show_buttons)
 
-        #if not self.show_buttons: 
+        #if not self.show_buttons:
         self.layout().setContentsMargins(0,0,0,0)
         #self.setMinimumSize(300,50)
         #self.setBaseSize(500,200)
@@ -226,12 +215,12 @@ class QWLoggerStd(QWidget):
 
 
     #def resizeEvent(self, e):
-        #logger.debug('resizeEvent') 
+        #logger.debug('resizeEvent')
         #pass
 
 
     #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
+        #logger.debug('moveEvent')
         #self.cp.posGUIMain = (self.pos().x(),self.pos().y())
         #pass
 
@@ -283,12 +272,10 @@ class QWLoggerStd(QWidget):
                                                filter    = '*.txt'
                                                ))
         if path == '':
-            logger.debug('Saving is cancelled.')
-            return 
+            logger.debug('Log saving is cancelled.')
+            return
         self.log_file.setValue(path)
-        logger.info('TBD ????????????????  Output file: ' + path)
-
-        #logger.save_log_in_file(path)
+        logger.info('Log saved in: %s' % str(path))
 
 
     #def save_log_total_in_file(self):
@@ -304,7 +291,7 @@ class QWLoggerStd(QWidget):
     def scrollDown(self):
         #logger.debug('scrollDown')
         #scrol_bar_v = self.edi_txt.verticalScrollBar() # QScrollBar
-        #scrol_bar_v.setValue(scrol_bar_v.maximum()) 
+        #scrol_bar_v.setValue(scrol_bar_v.maximum())
         self.edi_txt.moveCursor(QTextCursor.End)
         self.edi_txt.repaint()
         #self.raise_()

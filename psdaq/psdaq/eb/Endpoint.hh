@@ -200,6 +200,7 @@ namespace Pds {
       MemoryRegion* register_memory(void* start, size_t len);
       MemoryRegion* register_memory(LocalAddress* laddr);
       bool deregister_memory(MemoryRegion* mr);
+      void list_memory() const;
       MemoryRegion* lookup_memory(const void* start, size_t len) const;
       MemoryRegion* lookup_memory(LocalAddress* laddr) const;
       bool lookup_memory_iovec(LocalIOVec* iov) const;
@@ -317,8 +318,8 @@ namespace Pds {
     private:
       bool    complete_connect(int timeout);
       ssize_t post_comp_data_recv(void* context=NULL);
-      ssize_t check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data=0);
-      ssize_t check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data=0);
+      ssize_t check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data=0, int timeout=-1);
+      ssize_t check_completion_noctx(CompletionQueue* cq, unsigned flags, uint64_t* data=0, int timeout=-1);
       ssize_t check_connection_state();
     private:
       uint64_t        _counter;
@@ -378,13 +379,14 @@ namespace Pds {
       void shutdown();
     public:
       static void dump_cq_data_entry(struct fi_cq_data_entry& comp);
+      void comp_error_dump(struct fi_cq_err_entry* comp_err);
     private:
       bool initialize(struct fi_cq_attr* cq_attr, void* context);
     private:
       friend Endpoint;
       ssize_t handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd);
-      ssize_t check_completion(int context, unsigned flags, uint64_t* data=0);
-      ssize_t check_completion_noctx(unsigned flags, uint64_t* data=0);
+      ssize_t check_completion(int context, unsigned flags, uint64_t* data=0, int timeout=-1);
+      ssize_t check_completion_noctx(unsigned flags, uint64_t* data=0, int timeout=-1);
     private:
       bool           _up;
       Fabric*        _fabric;

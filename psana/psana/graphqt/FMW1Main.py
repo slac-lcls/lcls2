@@ -16,7 +16,6 @@ Created on 2021-07-27 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 import sys
-
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt
 from psana.graphqt.CMConfigParameters import cp, dir_calib, expname_def

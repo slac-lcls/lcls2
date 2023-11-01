@@ -27,6 +27,7 @@ from psana.graphqt.CMConfigParameters import cp, dirs_to_search, expname_def, di
 from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
 import psana.graphqt.QWUtils as qwu
+from psana.detector.dir_root import DIR_DATA_TEST
 
 COMMAND_SET_ENV_LCLS1 = '. /cds/sw/ds/ana/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
 ENV1 = {} #'PATH':'/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin'}
@@ -41,7 +42,7 @@ class CMWControlBase(QWidget):
 
         self.wfnm = QWFileNameV2(parent = self,\
           label  = kwa.get('label', 'File:'),\
-          path   = kwa.get('path', '/cds/group/psdm/detector/data2_test/misc/Select'),\
+          path   = kwa.get('path', DIR_DATA_TEST + '/misc/Select'),\
           fltr   = kwa.get('fltr', '*.txt *.npy *.data *.dat\n*'),\
           dirs   = kwa.get('dirs', dirs_to_search()))
 
@@ -62,7 +63,7 @@ class CMWControlBase(QWidget):
             self.box1.addWidget(self.but_view)
             self.setLayout(self.box1)
 
-            self.wfnm.connect_path_is_changed_to_recipient(self.on_changed_fname)
+            self.wfnm.connect_path_is_changed(self.on_changed_fname)
 
             self.set_tool_tips()
             self.set_style()

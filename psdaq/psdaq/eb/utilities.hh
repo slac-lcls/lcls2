@@ -10,9 +10,6 @@
 
 #include "rapidjson/document.h"
 
-#define unlikely(expr)  __builtin_expect(!!(expr), 0)
-#define likely(expr)    __builtin_expect(!!(expr), 1)
-
 namespace Pds
 {
   namespace Eb
@@ -42,6 +39,10 @@ namespace Pds
       // The Monitor request server protocol depends on this
       enum Flags { Transition = 0 << 0, Buffer     = 1 << 0,
                    Response   = 0 << 1, NoResponse = 1 << 1 };
+      enum { Response_Transition   = Response   | Transition, // 0
+             Response_Buffer       = Response   | Buffer,     // 1
+             NoResponse_Transition = NoResponse | Transition, // 2
+             NoResponse_Buffer     = NoResponse | Buffer };   // 3
       enum { MaxSrc = m_src, MaxIdx = m_idx };
     public:
       ImmData()  { }

@@ -27,20 +27,22 @@ using namespace Pds::Eb;
 ** --
 */
 
-EbEvent::EbEvent(uint64_t        contract,
-                 EbEvent*        after,
-                 const EbDgram*  cdg,
-                 unsigned        prm) :
-  _contract (contract),
-  _prm      (prm),
-  _damage   (0),
-  _last     (_contributions)
+EbEvent::EbEvent(uint64_t            contract,
+                 EbEvent*            after,
+                 const EbDgram*      cdg,
+                 unsigned            immData,
+                 const time_point_t& t0) :
+  _contract(contract),
+  _t0      (t0),
+  _immData (immData),                   // May be 0 (invalid), else valid
+  _damage  (0),
+  _last    (_contributions)
 {
   *_last++   = cdg;
 
   _size      = cdg->xtc.sizeofPayload();
 
-  _remaining = contract & ~(1ul << cdg->xtc.src.value());
+  _remaining = contract & ~(1ull << cdg->xtc.src.value());
   if (_remaining == contract)           // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %u isn't in contract %016lx "
@@ -57,35 +59,6 @@ EbEvent::EbEvent(uint64_t        contract,
 /*
 ** ++
 **
-**    As soon as an event becomes "complete" its datagram is the only
-**    information of value within the event. Therefore, when the event
-**    becomes complete it is deleted which cause the destructor to
-**    remove the event from the pending queue.
-**
-** --
-*/
-
-Pds::Eb::EbEvent::~EbEvent()
-{
-}
-
-/*
-** ++
-**
-**    This function is used to insert a "dummy" contribution into the event.
-**    The dummy contribution is identified by the input argument.
-**
-** --
-*/
-
-void EbEvent::_insert(const EbDgram* dummy)
-{
-  *_last++ = dummy;
-}
-
-/*
-** ++
-**
 **    This function is used to ADD a new contribution to the event. The
 **    contribution is identified by the input argument. The function will
 **    refresh its living counter (see "isAlive"), add the contribution
@@ -97,14 +70,17 @@ void EbEvent::_insert(const EbDgram* dummy)
 ** --
 */
 
-EbEvent* EbEvent::_add(const EbDgram* cdg)
+EbEvent* EbEvent::_add(const EbDgram* cdg, unsigned immData)
 {
+  if (immData > MAX_ENTRIES)            // Require some upper bits to be set
+    _immData = immData;                 // Don't overwrite a valid value with 0
+
   *_last++   = cdg;
 
   _size     += cdg->xtc.sizeofPayload();
 
   uint64_t remaining = _remaining;
-  _remaining = remaining & ~(1ul << cdg->xtc.src.value());
+  _remaining = remaining & ~(1ull << cdg->xtc.src.value());
   if (_remaining == remaining)          // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %u didn't affect remaining %016lx "

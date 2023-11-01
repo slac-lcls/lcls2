@@ -87,7 +87,7 @@ void TprBase::setupChannel(unsigned i,
                            unsigned    bsaDelay,
                            unsigned    bsaWidth) {
   channel[i].control  = 0;
-  channel[i].evtSel   = (1<<30) | (2<<11) | (unsigned(r)&0xff); //
+  channel[i].evtSel   = (1<<30) | (2<<11) | (unsigned(r)&0x3ff); //
   channel[i].bsaDelay = (bsaPresample<<20) | bsaDelay;
   channel[i].bsaWidth = bsaWidth;
   channel[i].control  = bsaWidth ? 7 : 5;

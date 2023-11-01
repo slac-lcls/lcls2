@@ -95,8 +95,10 @@ uint64_t Client::fetch(char* payload, unsigned sizeofT)
     Header& h = *new (_buffer) Header;
     //  Check for ID change
     //  If so, drop the whole packet
-    if (h.id() != _id)
+    if (h.id() != _id) {
+        printf("id changed 0x%x -> 0x%x\n",_id,h.id());
       return 0;
+    }
 
     result = h.pulseId();
     memcpy(payload, _buffer+Header::sizeofFirst, sizeofT);

@@ -80,8 +80,6 @@ class CMWMainTabs(QWidget):
             tab_ind = self.tab_bar.addTab(tab_name)
             self.tab_bar.setTabTextColor(tab_ind, QColor('blue')) #gray, red, grayblue
 
-        #self.tab_bar.setTabsClosable(True)
-        #self.tab_bar.setMovable(True)
         self.tab_bar.setShape(QTabBar.RoundedNorth)
 
         tab_index = self.tab_names.index(start_tab_name)
@@ -215,7 +213,6 @@ class CMWMainTabs(QWidget):
             self.set_tab(tabname)
         elif isinstance(data, np.ndarray):
             logger.info(info_ndarr(data, 'switch to Image Viewer to view data:'))
-            #logger.warning('TBD: IV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
             self.set_tab(tabname='Image')
         elif isinstance(data, str):
             logger.info(info_ndarr(data, 'switch to Text Viewer to view data:'))

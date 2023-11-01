@@ -30,19 +30,21 @@ namespace Pds
         std::vector<bool>        _isnum;
     };
 
-    int translateJson2Xtc(char *in, char *out, XtcData::NamesId namesID, const char* detname=0, unsigned segment=0);
-    int translateJson2Xtc( PyObject* item, XtcData::Xtc& xtc, XtcData::NamesId namesID);
-    int translateJson2XtcNames(rapidjson::Document* d, 
-                               XtcData::Xtc* xtc, 
-                               XtcData::NamesLookup& nl, 
-                               XtcData::NamesId namesID, 
-                               rapidjson::Value& json, 
-                               const char* detname, 
+    int translateJson2Xtc(char *in, char *out, const void* bufEnd, XtcData::NamesId namesID, const char* detname=0, unsigned segment=0);
+    int translateJson2Xtc( PyObject* item, XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId namesID);
+    int translateJson2XtcNames(rapidjson::Document* d,
+                               XtcData::Xtc* xtc,
+                               const void* bufEnd,
+                               XtcData::NamesLookup& nl,
+                               XtcData::NamesId namesID,
+                               rapidjson::Value& json,
+                               const char* detname,
                                unsigned segment);
-    int translateJson2XtcData (rapidjson::Document* d, 
-                               XtcData::Xtc* xtc, 
-                               XtcData::NamesLookup& nl, 
-                               XtcData::NamesId namesID, 
+    int translateJson2XtcData (rapidjson::Document* d,
+                               XtcData::Xtc* xtc,
+                               const void* bufEnd,
+                               XtcData::NamesLookup& nl,
+                               XtcData::NamesId namesID,
                                rapidjson::Value& json);
 
 }; // namespace Pds

@@ -60,8 +60,8 @@ class IVControlSpec(QWidget):
         self.edi_nbins.setValidator(QIntValidator(1, 1000000, parent=self))
         self.edi_min.setValidator(QRegExpValidator(QRegExp("[-+]?(\d*[.])?\d+|$"), parent=self))
         self.edi_max.setValidator(QRegExpValidator(QRegExp("[-+]?(\d*[.])?\d+|$"), parent=self))
-        self.box = QHBoxLayout() 
-        self.box.addStretch(1) 
+        self.box = QHBoxLayout()
+        self.box.addStretch(1)
         self.box.addWidget(self.lab_min)
         self.box.addWidget(self.edi_min)
         self.box.addWidget(self.lab_max)
@@ -126,7 +126,7 @@ class IVControlSpec(QWidget):
         elif self.is_mode('fraction'):
           self.frmin_def = self.edi_min.text()
           self.frmax_def = self.edi_max.text()
-   
+
         self.emit_signal_spectrum_range_changed()
 
 
@@ -156,7 +156,7 @@ class IVControlSpec(QWidget):
         self.edi_nbins.setToolTip('spectrum histogram\nnumber of bins')
         self.edi_min.setToolTip('spectrum range\nminimal value/fraction')
         self.edi_max.setToolTip('spectrum range\nmaximal value/fraction')
- 
+
 
     def set_style(self):
         self.layout().setContentsMargins(5,0,5,0)

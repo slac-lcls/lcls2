@@ -62,6 +62,7 @@ protected:
     void handleAlloc(const nlohmann::json& msg);
     void handleDealloc(const nlohmann::json& msg);
     virtual nlohmann::json connectionInfo(const nlohmann::json& msg) = 0;
+    virtual void connectionShutdown() {};
     virtual void handleConnect(const nlohmann::json& msg) = 0;
     virtual void handleDisconnect(const nlohmann::json& msg) {};
     virtual void handlePhase1(const nlohmann::json& msg) {};

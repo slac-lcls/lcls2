@@ -4,7 +4,7 @@
 #include "AxisDriver.h"
 #include "DataDriver.h"
 #include "psalg/utils/SysLog.hh"
-#include "psdaq/mmhw/TriggerEventManager.hh"
+#include "psdaq/mmhw/TriggerEventManager2.hh"
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -15,6 +15,10 @@ using logging = psalg::SysLog;
 
 static void dmaReadRegister (int, uint32_t*, uint32_t*);
 static void dmaWriteRegister(int, uint32_t*, uint32_t);
+static void resetTimingPll  (int);
+
+//typedef Pds::Mmhw::TriggerEventManager TEM;
+typedef Pds::Mmhw::TriggerEventManager2 TEM;
 
 namespace Drp {
 
@@ -54,15 +58,16 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       Si570 rclk(fd,0x00E00800);
       rclk.program(index);
 
-      logging::info("Reset timing PLL\n");
       unsigned v;
       dmaReadRegister(fd, 0x00C00020, &v);
-      v |= 0x80;
-      dmaWriteRegister(fd, 0x00C00020, v);
-      usleep(10);
-      v &= ~0x80;
-      dmaWriteRegister(fd, 0x00C00020, v);
-      usleep(100);
+      logging::info("Skip reset timing PLL\n");
+      // v |= 0x80;
+      // dmaWriteRegister(fd, 0x00C00020, v);
+      // usleep(10);
+      // v &= ~0x80;
+      // dmaWriteRegister(fd, 0x00C00020, v);
+      // usleep(100);
+      logging::info("Reset timing data path\n");
       v |= 0x8;
       dmaWriteRegister(fd, 0x00C00020, v);
       usleep(10);
@@ -76,8 +81,8 @@ json XpmDetector::connectionInfo(const nlohmann::json& msg)
 {
     int fd = m_pool->fd();
 
-    Pds::Mmhw::TriggerEventManager* mem_pointer = (Pds::Mmhw::TriggerEventManager*)0x00C20000;
-    Pds::Mmhw::TriggerEventManager* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager;
+    TEM* mem_pointer = (TEM*)0x00C20000;
+    TEM* tem = new (mem_pointer) TEM;
 
     //  Advertise ID on the timing link
     {
@@ -118,6 +123,7 @@ json XpmDetector::connectionInfo(const nlohmann::json& msg)
     //  Retrieve the timing link ID
     uint32_t reg;
     dmaReadRegister(fd, &tem->xma().rxId, &reg);
+    printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
 
     // there is currently a failure mode where the register reads
     // back as zero or 0xffffffff (incorrectly). This is not the best
@@ -125,9 +131,18 @@ json XpmDetector::connectionInfo(const nlohmann::json& msg)
     // difficulty is that Matt says this register has to work
     // so that an automated software solution would know which
     // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-    if (!reg || reg==0xffffffff) {
-        logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",reg);
-        abort();
+    // Also, register is corrupted when port number > 15 - Ric
+    if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
+        logging::critical("XPM Remote link id register illegal value: 0x%x. Trying RxPllReset.",reg);
+        resetTimingPll(fd);
+
+        dmaReadRegister(fd, &tem->xma().rxId, &reg);
+        printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
+
+        if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
+            logging::critical("XPM Remote link id register illegal value: 0x%x. Aborting. Try XPM TxLink reset.",reg);
+            abort();
+        }
     }
     int xpm  = (reg >> 20) & 0x0F;
     int port = (reg >>  0) & 0xFF;
@@ -156,24 +171,23 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
        links <<= 4;
 
     //Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
-    Pds::Mmhw::TriggerEventManager* mem_pointer = (Pds::Mmhw::TriggerEventManager*)0x00C20000;
-    Pds::Mmhw::TriggerEventManager* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager;
-    for(unsigned i=0, l=links; l; i++) {
-        Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-        if (l&(1<<i)) {
+    TEM* mem_pointer = (TEM*)0x00C20000;
+    TEM* tem = new (mem_pointer) TEM;
+    for(unsigned i=0; i<8; i++) {
+        if (links&(1<<i)) {
+            Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
             dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
             dmaWriteRegister(fd, &b.pauseThresh, 16     );
             dmaWriteRegister(fd, &b.group , m_readoutGroup);
             dmaWriteRegister(fd, &b.enable, 3           );  // enable
-            l &= ~(1<<i);
 
             dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
             dmaWriteRegister(fd, 0x00a00000+4*(i&3), (m_length&0xffffff) | (1<<31));  // enable
-          }
-      }
+        }
+    }
 }
 
-unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
 {
     return 0;
 }
@@ -188,14 +202,16 @@ void XpmDetector::shutdown()
     if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
        links <<= 4;
 
-    for(unsigned i=0, l=links; l; i++) {
-        if (l&(1<<i)) {
-          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-          l &= ~(1<<i);
+    TEM* mem_pointer = (TEM*)0x00C20000;
+    TEM* tem = new (mem_pointer) TEM;
+    for(unsigned i=0; i<8; i++) {
+        if (links&(1<<i)) {
+            Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
+            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+            dmaWriteRegister(fd, &b.enable, 0               );  // enable
         }
     }
 }
-
 }
 
 void dmaReadRegister (int fd, uint32_t* addr, uint32_t* valp)
@@ -210,4 +226,23 @@ void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
   uintptr_t addri = (uintptr_t)addr;
   dmaWriteRegister(fd, addri&0xffffffff, val);
   logging::debug("[%08lx] %08x\n",addri,val);
+}
+
+void resetTimingPll(int fd)
+{
+  uint32_t v;
+  dmaReadRegister(fd, 0x00c0020, &v);
+
+  v |= 0x80;
+  dmaWriteRegister(fd, 0x00c00020, v);
+  usleep(10);
+  v &= ~0x80;
+  dmaWriteRegister(fd, 0x00c00020, v);
+  usleep(100);
+  v |= 0x8;
+  dmaWriteRegister(fd, 0x00c00020, v);
+  usleep(10);
+  v &= ~0x8;
+  dmaWriteRegister(fd, 0x00c00020, v);
+  usleep(100000);
 }

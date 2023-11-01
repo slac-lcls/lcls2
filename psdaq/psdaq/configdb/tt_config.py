@@ -72,7 +72,7 @@ def tt_connect(cl):
 
     rxId = cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
-        
+
     d = {}
     d['paddr'] = rxId
     return d
@@ -116,7 +116,7 @@ def config_expert(cl,cfg):
                        'PllConfig0'        :'PllConfig[0]',
                        'PllConfig1'        :'PllConfig[1]',
                        'PllConfig2'        :'PllConfig[2]'}
-    
+
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).UartPiranha4
 
     depth = 0
@@ -135,8 +135,8 @@ def config_expert(cl,cfg):
                         my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
                     except KeyError:
                         print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
-        
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
 
             #  All FIR parameters are stored in configdb as hex strings (I don't know why)
             if ".FIR." in path:
@@ -144,7 +144,7 @@ def config_expert(cl,cfg):
                 rogue_node.set(int(str(configdb_node),16))
             else:
                 rogue_node.set(configdb_node)
-            
+
             if 'Uart' in path:
                 if 'ROI[0]' in path or 'SAD[0]' in path or 'SAD[1]' in path:
                     # These don't cause the send of a serial command
@@ -171,7 +171,7 @@ def tt_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg['expert']['ClinkFeb']['ClinkTop']['ClinkCh']['Blowoff'] = False
 
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).UartPiranha4
-        
+
     getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).UartPiranha4.SendEscape()
 
     config_expert(cl,cfg)
@@ -222,4 +222,4 @@ def tt_update(update):
 
 def tt_unconfig(cl):
     getattr(cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager,'TriggerEventBuffer[%d]'%lane).MasterEnable.set(False)
-    
+

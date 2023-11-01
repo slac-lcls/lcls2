@@ -1,4 +1,4 @@
-####!/usr/bin/env python
+#!/usr/bin/env python
 """:py:class:`Graphics` wrapping methods for matplotlib
 =======================================================
 
@@ -62,6 +62,7 @@ os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
 
 import logging
 logger = logging.getLogger('Graphics')
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 import numpy as np
 from time import time, localtime, strftime
@@ -72,6 +73,7 @@ import matplotlib.pyplot  as plt
 import matplotlib.lines   as lines
 import matplotlib.patches as patches
 
+#logging.getLogger('matplotlib').setLevel(logging.WARNING)
 plt.rcParams.update({'figure.max_open_warning': 0}) #get rid of warning: More than 20 figures have been opened.
 
 
@@ -96,23 +98,23 @@ def figure(**kwa):
     kwa.setdefault('tight_layout', False)
     kwa.setdefault('constrained_layout', False)
     kwa_f = dict_subset(kwa, ('num', 'figsize', 'dpi', 'facecolor', 'edgecolor', 'frameon', 'FigureClass', 'clear',\
-               'linewidth', 'subplotpars', 'tight_layout', 'constrained_layout'))
+               'linewidth', 'subplotpars', 'tight_layout'))  #, 'constrained_layout'))
     fig = plt.figure(**kwa_f)
     title = kwa.get('title', 'Image')
     move  = kwa.get('move', None)
-    if title: fig.canvas.set_window_title(title) #, **kwa)
+    if title: fig.canvas.manager.set_window_title(title) #, **kwa)
     if move: move_fig(fig, x0=move[0], y0=move[1])
     return fig
 
 
 def set_win_title(fig, titwin='Image', **kwa):
-    fig.canvas.set_window_title(titwin, **kwa)
+    fig.canvas.manager.set_window_title(titwin, **kwa)
 
 
 def move_fig(fig, x0=200, y0=100):
     #fig.canvas.manager.window.geometry('+%d+%d' % (x0, y0)) # in previous version of matplotlib
     backend = matplotlib.get_backend()
-    logger.debug('matplotlib.get_backend(): %s' % backend)
+    #logger.debug('matplotlib.get_backend(): %s' % backend)
     if backend == 'TkAgg': # this is our case
         fig.canvas.manager.window.wm_geometry("+%d+%d" % (x0, y0))
     elif backend == 'WXAgg':
@@ -275,7 +277,7 @@ def add_stat_text(axhi, weights, bins):
     x = xb + (xe-xb)*0.98
     y = yb + (ye-yb)*0.95
 
-    if axhi.get_yscale() is 'log':
+    if axhi.get_yscale() == 'log':
         log_yb, log_ye = log10(yb), log10(ye)
         log_y = log_yb + (log_ye-log_yb)*0.95
         y = 10**log_y
@@ -290,8 +292,11 @@ def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=Fal
     """Makes historgam from input array of values (arr), which are sorted in number of bins (bins) in the range (amp_range=(amin,amax))
     """
     #axhi.cla()
-    hi = axhi.hist(arr.ravel(), bins=bins, range=amp_range, weights=weights, color=color, log=log, **kwa) #, log=logYIsOn)
-    if amp_range is not None: axhi.set_xlim(amp_range) # axhi.set_autoscale_on(False) # suppress autoscailing
+    hi = axhi.hist(arr.ravel(), bins=bins, range=amp_range, weights=weights, color=color, log=log, **kwa)
+    ori = kwa.get('orientation', None)
+    if amp_range is not None and ori is not None:
+        if ori[0]=='v': axhi.set_xlim(amp_range)
+        if ori[0]=='h': axhi.set_ylim(amp_range)
     wei, bins, patches = hi
     add_stat_text(axhi, wei, bins)
     return hi
@@ -463,7 +468,12 @@ def drawCenter(axes, xy0, **kwa):
 def drawLine(axes, xarr, yarr, **kwa):
     kwa.setdefault('linewidth', 1)
     kwa.setdefault('color', 'w')
-    line = lines.Line2D(xarr, yarr, **kwa)
+    #print('drawLine kwa keys: %s' % str(kwa.keys()))
+    kwal = dict_subset(kwa, ('color','linewidth','linestyle','marker','markersize',\
+           'markeredgewidth','markeredgecolor','markerfacecolor','markerfacecoloralt','fillstyle',\
+           'antialiased','dash_capstyle','solid_capstyle','dash_joinstyle','solid_joinstyle',\
+           'pickradius','drawstyle','markevery'))
+    line = lines.Line2D(xarr, yarr, **kwal)
     axes.add_artist(line)
 
 
@@ -484,7 +494,7 @@ def plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='
     axim.autoscale(False)
     colb = fig.colorbar(imsh, pad=0.005, fraction=0.09, shrink=1, aspect=40) # orientation=1
     if amp_range is not None: imsh.set_clim(amp_range[0], amp_range[1])
-    fig.canvas.set_window_title(title)
+    fig.canvas.manager.set_window_title(title)
     return axim
 
 
@@ -496,8 +506,8 @@ def hist1d(arr, bins=None, amp_range=None, weights=None, color=None, show_stat=T
     #print 'hist1d: title=%s, size=%d' % (title, arr.size)
     if arr.size==0: return None, None, None
     fig = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
-    if   titwin is not None: fig.canvas.set_window_title(titwin)
-    elif title  is not None: fig.canvas.set_window_title(title)
+    if   titwin is not None: fig.canvas.manager.set_window_title(titwin)
+    elif title  is not None: fig.canvas.manager.set_window_title(title)
     axhi = fig.add_axes(axwin)
     hbins = bins if bins is not None else 100
     hi = axhi.hist(arr.ravel(), bins=hbins, range=amp_range, weights=weights, color=color, log=log) #, log=logYIsOn)
@@ -544,158 +554,9 @@ def img_from_pixel_arrays(rows, cols, W=None, dtype=np.float32, vbase=0):
 getImageFromIndexArrays = img_from_pixel_arrays # backward compatability
 
 
-
 if __name__ == "__main__":
-
-  def test01():
-    """imshow"""
-    img = random_standard(shape=(40,60), mu=200, sigma=25)
-    fig, axim = fig_img_axes()
-    move_fig(fig, x0=50, y0=20)
-    imsh = imshow(axim, img, amp_range=None, extent=None,\
-           interpolation='nearest', aspect='auto', origin='upper',\
-           orientation='horizontal', cmap='jet')
-
-
-  def test02():
-    """ hist
-    """
-    mu, sigma = 200, 25
-    arr = random_standard((500,), mu, sigma)
-    #fig = figure(figsize=(6,5), title='Test hist', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))
-    #axhi = add_axes(fig, axwin=(0.10, 0.08, 0.85, 0.88))
-    fig, axhi = fig_img_axes()
-    move_fig(fig, x0=50, y0=20)
-    his = hist(axhi, arr, bins=100, amp_range=(mu-6*sigma,mu+6*sigma), weights=None, color=None, log=False)
-
-
-  def test03():
-    """ Update image in the event loop
-    """
-    #fig = figure(figsize=(6,5), title='Test hist', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))
-    #axim = add_axes(fig, axwin=(0.10, 0.08, 0.85, 0.88))
-    fig, axim = fig_img_axes()
-    move_fig(fig, x0=50, y0=20)
-    imsh = None
-    for i in range(10):
-       print('Event %3d' % i)
-       img = random_standard((1000,1000), mu=200, sigma=25)
-       #axim.cla()
-       set_win_title(fig, 'Event %d' % i)
-
-       if imsh is None:
-           imsh = imshow(axim, img, amp_range=None, extent=None,\
-                  interpolation='nearest', aspect='auto', origin='upper',\
-                  orientation='horizontal', cmap='jet')
-       else:
-           imsh.set_data(img)
-       show(mode=1)  # !!!!!!!!!!
-       #draw_fig(fig) # !!!!!!!!!!
-
-
-  def test04():
-    """ Update histogram in the event loop
-    """
-    mu, sigma = 200, 25
-    #fig = figure(figsize=(6,5), title='Test hist', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))
-    #axhi = add_axes(fig, axwin=(0.10, 0.08, 0.85, 0.88))
-    fig, axhi = fig_img_axes()
-
-    for i in range(10):
-       print('Event %3d' % i)
-       arr = random_standard((500,), mu, sigma, dtype=np.float)
-       axhi.cla()
-       set_win_title(fig, 'Event %d' % i)
-       his = hist(axhi, arr, bins=100, amp_range=(mu-6*sigma,mu+6*sigma), weights=None, color=None, log=False)
-
-       show(mode=1) # !!!!!!!!!!
-       #draw(fig)    # !!!!!!!!!!
-
-
-  def test05():
-    """ Update image with color bar in the event loop
-    """
-    fig, axim, axcb = fig_img_cbar_axes()
-    move_fig(fig, x0=200, y0=0)
-    imsh = None
-    for i in range(20):
-       print('Event %3d' % i)
-       img = random_standard((1000,1000), mu=i, sigma=10)
-       #axim.cla()
-       set_win_title(fig, 'Event %d' % i)
-       if imsh is None:
-           imsh, cbar = imshow_cbar(fig, axim, axcb, img, amin=None, amax=None, extent=None,\
-                                    interpolation='nearest', aspect='auto', origin='upper',\
-                                    orientation='vertical', cmap='inferno')
-       else:
-           imsh.set_data(img)
-           ave, rms = img.mean(), img.std()
-           imsh.set_clim(ave-1*rms, ave+3*rms)
-       show(mode=1)  # !!!!!!!!!!
-       #draw_fig(fig) # !!!!!!!!!!
-
-  def test06():
-    """ fig_img_cbar
-    """
-    img = random_standard((1000,1000), mu=100, sigma=10)
-    fig, axim, axcb, imsh, cbar = fig_img_cbar(img)#, **kwa)
-    move_fig(fig, x0=200, y0=0)
-
-
-  def test07():
-    """ r-phi fig_img_proj_cbar
-    """
-    img = random_standard((200,200), mu=100, sigma=10)
-    fig, axim, axcb, imsh, cbar = fig_img_proj_cbar(img)
-    move_fig(fig, x0=200, y0=0)
-
-
-  def usage():
-    msg = 'Usage: python psalgos/examples/ex-02-localextrema.py <test-number>'\
-          '\n  where <test-number> ='\
-          '\n  1 - single 2d random image'\
-          '\n  2 - single random histgram'\
-          '\n  3 - in loop 2d random images'\
-          '\n  4 - in loop random histgrams'\
-          '\n  5 - in loop 2d large random images'\
-          '\n  6 - fig_img_cbar'\
-          '\n  7 - r-phi projection fig_img_proj_cbar'
-    print(msg)
-
-
-  def do_test():
-    from time import time
-    from psana.pyalgos.generic.NDArrGenerators import random_standard; global random_standard
-
-    if len(sys.argv)==1:
-        print('Use command > python %s <test-number [1-5]>' % sys.argv[0])
-        sys.exit ('Add <test-number> in command line...')
-
-    tname = sys.argv[1] if len(sys.argv) > 1 else '1'
-    print(50*'_', '\nTest %s' % tname)
-    t0_sec=time()
-    if   tname == '1': test01()
-    elif tname == '2': test02()
-    elif tname == '3': test03()
-    elif tname == '4': test04()
-    elif tname == '5': test05()
-    elif tname == '6': test06()
-    elif tname == '7': test07()
-    else: usage(); sys.exit('Test %s is not implemented' % tname)
-    msg = 'Test %s consumed time %.3f' % (tname, time()-t0_sec)
-    show()
-    sys.exit(msg)
-
-
-if __name__ == "__main__":
-
-    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
-                        datefmt='%m-%d-%Y %H:%M:%S',\
-                        level=logging.INFO)
-
-    import sys; global sys
-    do_test()
-    sys.exit('End of test')
+    import sys
+    sys.exit('Run test examples in examples/ex_Graphics.py')
 
 # EOF
 

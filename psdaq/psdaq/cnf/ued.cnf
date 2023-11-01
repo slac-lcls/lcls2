@@ -1,29 +1,30 @@
 if not platform: platform = '0'
 
-import os
-ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.36.255'+' '+ld_lib_path
 #ued_epics_env = 'EPICS_CA_SERVER_PORT=5058 EPICS_CA_ADDR_LIST="172.27.99.255\ 172.21.36.255:5064'+' '+ld_lib_path
 ued_epics_env = 'EPICS_CA_SERVER_PORT=5058 EPICS_CA_ADDR_LIST=172.27.99.255'+' '+ld_lib_path
 
-#collect_host = os.uname()[1]
 collect_host = 'drp-ued-cmp002'
 
 groups = platform
-hutch, user, password = ('ued', 'uedopr', 'pcds')
-#hutch, user, password = ('tst', 'tstopr', 'pcds')
+hutch, user = ('ued', 'uedopr')
+#hutch, user = ('tst', 'tstopr')
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
-auth = ' --user {:} --password {:} '.format(user,password)
+auth = ' --user {:} '.format(user)
 
 #
 #  drp variables
 #
 prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom/ued' # Prometheus
 data_dir = '/u2/pcds/pds'
-kwargs   = 'ep_fabric="172.21.36.0/24",ep_domain=enp129s0'
+#kwargs   = 'ep_fabric="172.21.36.0/24",ep_domain=enp129s0'
+kwargs   = 'ep_provider=sockets,ep_domain=enp129s0'
 task_set = 'taskset 0xfffefffe '
 std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -k '+kwargs+' -d /dev/datadev_%d'
+
+elog_cfg = '/cds/group/pcds/dist/pds/ued/misc/elog_ued.txt'
 
 drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no '
 drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no '
@@ -31,7 +32,6 @@ pva_cmd0 = task_set+'drp_pva '  +(std_opts%0)+' -k batching=no '
 pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
 bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=enp129s0 '
 bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=enp129s0 '
-
 ea_cfg = '/cds/group/pcds/dist/pds/ued/misc/epicsArch.txt'
 ea_cmd0 = task_set+'epicsArch '+(std_opts%0)+' -k batching=no '+ea_cfg
 ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
@@ -41,6 +41,7 @@ pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
 
 teb_cmd = task_set+'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -k '+kwargs
 meb_cmd = task_set+'monReqServer '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -k '+kwargs
+pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/configdb/ws/,configDB,ued,XPM -P DAQ:UED:XPM:%d'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -57,20 +58,23 @@ meb_cmd = task_set+'monReqServer '+'-P '+hutch+' -C '+collect_host+' -M '+prom_d
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
+
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:UED:XPM:0'},
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:UED 0 '+groups}, #+' --prod'},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
-# { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1'},
- { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger'},
+ { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -V {elog_cfg} -T 10000'},
+# { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger'},
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-ued-cmp001', id:'teb0',        flags:'spu',                cmd:teb_cmd},
+ { host: 'drp-ued-cmp002', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
  { host: 'drp-ued-cmp001', id:'epixquad_0',  flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixquad -k timebase=119M'},
+ { host: 'drp-ued-cmp001', id:'wave8_0',     flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x2 -D wave8 -k epics_prefix=UED:USR:DIO,timebase=119M'},
 
- { host: 'drp-ued-cmp002', id:'timing_0',    flags:'spu',                cmd:drp_cmd0+' -l 0x1 -D ts -k timebase=119M'},
+# { host: 'drp-ued-cmp001', id:'timing_0',    flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x8 -D tb -k feb_lane=3,timebase=119M'},
+ { host: 'drp-ued-cmp002', id:'timing_0',    flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D ts -k timebase=119M'},
 
  { host: 'drp-ued-cmp002', id:'epics_0',     flags:'spu', env:ued_epics_env, cmd:ea_cmd0+' -l 0x2 -k timebase=119M'},
 
@@ -84,9 +88,9 @@ procmgr_config = [
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-ued-cmp001"]
+ami_worker_nodes = ["drp-ued-cmp002"]
 ami_num_workers = len(ami_worker_nodes)
-ami_manager_node = "drp-ued-cmp001"
+ami_manager_node = "drp-ued-cmp002"
 
 procmgr_ami = [
 #
@@ -108,3 +112,9 @@ for N, worker_node in enumerate(ami_worker_nodes):
 procmgr_config.extend(procmgr_ami)
 
 #procmgr_config.append({ host:'drp-ued-cmp001', id:f'mebN', flags:'spux', cmd:f'{meb_cmd} -d -q {ami_workers_per_node} -P {hutch}usr '})
+
+if platform=='0':
+   procmgr_xpm = [{ host: 'drp-ued-cmp001', id:'pyxpm-0' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.104 '+pyxpm_optsdb%0+' -L -F 2.0e-6'},
+                  { host: 'drp-ued-cmp001', id:'pvrtmon',  port:'29460', flags:'s', env:epics_env, cmd:f'epics_exporter -H ued -M /cds/group/psdm/psdatmgr/etc/config/prom/ued -P DAQ:UED:XPM:0 -G Cu:FIDs,Cu:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},]
+   procmgr_config.extend(procmgr_xpm)
+

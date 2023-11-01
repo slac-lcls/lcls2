@@ -12,6 +12,6 @@ from . import TransitionId
 from .events import Events
 from . import legion_node
 from .ds_base import DataSourceBase
-from .run import Run, RunShmem, RunSingleFile, RunLegion, RunSerial
+from .run import Run, RunShmem, RunDrp, RunSingleFile, RunLegion, RunSerial
 from .node import Smd0, EventBuilderNode, BigDataNode
 from .step import Step

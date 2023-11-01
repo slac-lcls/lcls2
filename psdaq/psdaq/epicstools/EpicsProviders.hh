@@ -5,10 +5,15 @@
 
 namespace Pds_Epics {
     class EpicsProviders {
-    public:
+    private:
         EpicsProviders();
+        ~EpicsProviders();
+    public:
         static pvac::ClientProvider& pva();
         static pvac::ClientProvider& ca ();
+    private:
+        pvac::ClientProvider* _pva;
+        pvac::ClientProvider* _ca;
     };
 };
 

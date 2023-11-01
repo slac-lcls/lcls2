@@ -49,7 +49,7 @@ See:
 This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-Created on 2020-11-02 by Mikhail Dubrovin 
+Created on 2020-11-02 by Mikhail Dubrovin
 """
 
 from psana.graphqt.FWView import * # FWView, QtGui, QtCore, Qt
@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 
 
 class FWViewHist(FWView):
-    
+
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10), origin='DL', **kwargs):
 
         self.bgcolor_def = 'black'
@@ -126,89 +126,57 @@ class FWViewHist(FWView):
 #        self.set_view()
 #        self.update_my_scene()
 #        self.check_axes_limits_changed()
-#    def mouseMoveEvent(self, e):
-#        self.update_my_scene()
-#        FWView.mouseMoveEvent(self, e)
-
 
     def mouseReleaseEvent(self, e):
         logger.debug('mouseReleaseEvent')
         FWView.update_my_scene(self)
         FWView.mouseReleaseEvent(self, e)
 
- 
+
     def closeEvent(self, e):
         self.hist.remove()
         FWView.closeEvent(self, e)
         #print('FWViewHist.closeEvent')
 
 
-    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0, update_hblimits=True):
         #if np.array_equal(arr, self.arr_old): return
         if arr is self.arr_old: return
         self.arr_old = arr
         if arr.size<1: return
 
         aravel = arr.ravel()
-        vmin = amin if amin is not None else\
+
+        vmin, vmax = self.hbins.limits() if self.hbins is not None else (None, None)
+
+        if self.hbins is None or update_hblimits:
+          vmin = amin if amin is not None else\
                aravel.min() if frmin in (0,None) else\
                np.quantile(aravel, frmin, axis=0, interpolation='lower')
-        vmax = amax if amax is not None else\
+          vmax = amax if amax is not None else\
                aravel.max() if frmax in (1,None) else\
                np.quantile(aravel, frmax, axis=0, interpolation='higher')
-        if not vmin<vmax: vmax=vmin+1
+          if not vmin<vmax: vmax=vmin+1
 
         hb = HBins((vmin,vmax), nbins=nbins)
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
-        hmin, hmax = 0, hb.bin_data_max()
 
+        hmin, hmax = 0, hb.bin_data_max()
         #logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
         #             (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
         hgap = 0.05*(hmax-hmin)
-        rs = QRectF(hmin-hgap, hb.vmin(), hmax-hmin+2*hgap, hb.vmax()-hb.vmin())
-        self.set_rect_scene(rs, set_def=True)
+
+        rs0 = self.scene().sceneRect()
+        rsy, rsh = (hb.vmin(), hb.vmax()-hb.vmin()) if update_hblimits else (rs0.y(), rs0.height())
+        rs = QRectF(hmin-hgap, rsy, hmax-hmin+2*hgap, rsh)
+        self.set_rect_scene(rs, set_def=update_hblimits)
+
         self.update_my_scene(hbins=hb)
         self.hbins = hb
 
 
 if __name__ == "__main__":
-
-  import sys
-
-  def test_guiview(tname):
-    print('%s:' % sys._getframe().f_code.co_name)
-    app = QApplication(sys.argv)
-    w = None
-
-    rs = QRectF(0, 0, 100, 1000)
-
-    if   tname ==  '0': w=FWViewHist(None, rs, origin='UL', scale_ctl='V', fgcolor='white', bgcolor='gray')
-    elif tname ==  '1': w=FWViewHist(None, rs, origin='DL', scale_ctl='H', fgcolor='black', bgcolor='yellow')
-    elif tname ==  '2': w=FWViewHist(None, rs, origin='DR')
-    elif tname ==  '3': w=FWViewHist(None, rs, origin='UR')
-    elif tname ==  '4': w=FWViewHist(None, rs, origin='DR', scale_ctl='V', fgcolor='yellow', bgcolor='gray', orient='V')
-    elif tname ==  '5': w=FWViewHist(None, rs, origin='DR', scale_ctl='V', fgcolor='white', orient='V')
-    else:
-        print('test %s is not implemented' % tname)
-        return
-
-    w.print_attributes()
-
-    #w.connect_axes_limits_changed_to(w.test_axes_limits_changed_reception)
-    #w.disconnect_axes_limits_changed_from(w.test_axes_limits_changed_reception)
-    w.show()
-    app.exec_()
-
-    del w
-    del app
-
-
-if __name__ == "__main__":
-    import os
-    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
-    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    print(50*'_', '\nTest %s' % tname)
-    test_guiview(tname)
-    sys.exit('End of Test %s' % tname)
+    import sys
+    sys.exit(qu.msg_on_exit())
 
 # EOF

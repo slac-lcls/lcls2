@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------
+
 """
 Class :py:class:`GeometryObject` is a building block for hierarchical geometry
 ==============================================================================
@@ -42,7 +42,7 @@ Usage::
     x0, y0, z0             = geo.get_origin()
     rot_z, rot_y, rot_x    = geo.get_rot()
     tilt_z, tilt_y, tilt_x = geo.get_tilt()
-    
+
     # private methods for internal consumption:
     geo.set_parent(parent)
     geo.add_child(child)
@@ -66,7 +66,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Author: Mikhail Dubrovin
 """
-#------------------------------
 
 from math import radians, sin, cos
 import numpy as np
@@ -74,16 +73,14 @@ import logging
 logger = logging.getLogger(__name__)
 from psana.pscalib.geometry.SegGeometryStore import sgs
 
-#------------------------------
 
 def rotation_cs(X, Y, C, S):
     """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot.
     """
-    Xrot = X*C - Y*S 
-    Yrot = Y*C + X*S 
+    Xrot = X*C - Y*S
+    Yrot = Y*C + X*S
     return Xrot, Yrot
 
-#------------------------------
 
 def rotation(X, Y, angle_deg):
     """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot rotated by angle_deg.
@@ -92,7 +89,6 @@ def rotation(X, Y, angle_deg):
     S, C = sin(angle_rad), cos(angle_rad)
     return rotation_cs(X, Y, C, S)
 
-#------------------------------
 
 class GeometryObject:
 
@@ -101,7 +97,7 @@ class GeometryObject:
                  x0=0, y0=0, z0=0,\
                  rot_z=0, rot_y=0, rot_x=0,\
                  tilt_z=0, tilt_y=0, tilt_x=0,\
-                 use_wide_pix_center=False): 
+                 use_wide_pix_center=False):
 
         self.pname  = pname
         self.pindex = pindex
@@ -113,27 +109,25 @@ class GeometryObject:
         # ---- 2-nd stage
         self.parent = None
         self.list_of_children = []
-        
-#------------------------------
-        
+
+
     def set_geo_pars(self, \
                      x0=0, y0=0, z0=0, \
                      rot_z=0, rot_y=0, rot_x=0, \
-                     tilt_z=0, tilt_y=0, tilt_x=0): 
+                     tilt_z=0, tilt_y=0, tilt_x=0):
         """ Sets self object geometry parameters.
         """
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
-        self.rot_z  = rot_z  
-        self.rot_y  = rot_y 
-        self.rot_x  = rot_x 
+        self.rot_z  = rot_z
+        self.rot_y  = rot_y
+        self.rot_x  = rot_x
         self.tilt_z = tilt_z
         self.tilt_y = tilt_y
         self.tilt_x = tilt_x
 
-#------------------------------
-        
+
     def move_geo(self, dx=0, dy=0, dz=0):
         """ Adds offset for origin of the self object w.r.t. current position.
         """
@@ -141,8 +135,7 @@ class GeometryObject:
         self.y0 += dy
         self.z0 += dz
 
-#------------------------------
-        
+
     def tilt_geo(self, dt_x=0, dt_y=0, dt_z=0):
         """ Tilts the self object w.r.t. current orientation.
         """
@@ -150,7 +143,6 @@ class GeometryObject:
         self.tilt_y += dt_y
         self.tilt_x += dt_x
 
-#------------------------------
 
     def print_geo(self):
         """ Print info about self geometry object.
@@ -160,7 +152,6 @@ class GeometryObject:
               '  rot_z:%8.3f  rot_y:%8.3f  rot_x:%8.3f' % (self.rot_z, self.rot_y, self.rot_x) + \
               '  tilt_z:%8.5f  tilt_y:%8.5f  tilt_x:%8.5f' % (self.tilt_z, self.tilt_y, self.tilt_x))
 
-#------------------------------
 
     def str_data(self):
         """ Returns a string of data to save in file.
@@ -173,7 +164,6 @@ class GeometryObject:
                '  %8s   %8s   %8s  ' % (s_rot_z, s_rot_y, s_rot_x) + \
                '  %8.5f %8.5f %8.5f' % (self.tilt_z, self.tilt_y, self.tilt_x)
 
-#------------------------------
 
     def print_geo_children(self):
         """ Print info about children of self geometry object.
@@ -184,63 +174,54 @@ class GeometryObject:
             msg += ' %s:%d' % (geo.oname, geo.oindex)
         logger.info(msg)
 
-#------------------------------
 
     def set_parent(self, parent):
         """ Set parent geometry object for self.
         """
         self.parent = parent
 
-#------------------------------
 
     def add_child(self, child):
         """ Add children geometry object to the list.
         """
         self.list_of_children.append(child)
 
-#------------------------------
 
     def get_parent(self):
         """ Returns parent geometry object.
         """
         return self.parent
 
-#------------------------------
 
     def get_list_of_children(self):
         """ Returns list of children geometry objects.
         """
         return self.list_of_children
 
-#------------------------------
 
     def get_geo_name(self):
         """ Returns self geometry object name.
         """
         return self.oname
 
-#------------------------------
 
     def get_geo_index(self):
         """ Returns self geometry object index.
         """
         return self.oindex
 
-#------------------------------
 
     def get_parent_name(self):
         """ Returns parent geometry object name.
         """
         return self.pname
 
-#------------------------------
 
     def get_parent_index(self):
         """ Returns parent geometry object index.
         """
         return self.pindex
 
-#------------------------------
 
     def transform_geo_coord_arrays(self, X, Y, Z, do_tilt=True):
         """ Transform geometry object coordinates to the parent frame.
@@ -257,9 +238,8 @@ class GeometryObject:
         Yt = Y3 + self.y0
         Xt = X2 + self.x0
 
-        return Xt, Yt, Zt 
+        return Xt, Yt, Zt
 
-#------------------------------
 
     def get_pixel_coords(self, do_tilt=True):
         """ Returns three numpy arrays with pixel X, Y, Z coordinates for self geometry object.
@@ -294,9 +274,8 @@ class GeometryObject:
         yac.shape = geo_shape
         zac.shape = geo_shape
         X, Y, Z = self.transform_geo_coord_arrays(xac, yac, zac, do_tilt)
-        return self.det_shape(X), self.det_shape(Y), self.det_shape(Z) 
+        return self.det_shape(X), self.det_shape(Y), self.det_shape(Z)
 
-#------------------------------
 
     def get_pixel_areas(self):
         """ Returns numpy array with pixel areas for self geometry object.
@@ -321,7 +300,6 @@ class GeometryObject:
         aar.shape = geo_shape
         return self.det_shape(aar)
 
-#------------------------------
 
     def get_pixel_mask(self, mbits=0o377, **kwargs):
         """ Returns numpy array with pixel mask for self geometry object.
@@ -353,7 +331,6 @@ class GeometryObject:
         oar.shape = geo_shape
         return self.det_shape(oar)
 
-#------------------------------
 
     def get_size_geo_array(self):
         """ Returns size of  self geometry object.
@@ -366,7 +343,6 @@ class GeometryObject:
 
         return size_arr
 
-#------------------------------
 
     def get_pixel_scale_size(self):
         """ Returns pixel scale size of the geometry object from the first found segment.
@@ -376,30 +352,26 @@ class GeometryObject:
         for child in self.list_of_children:
             return child.get_pixel_scale_size()
 
-#------------------------------
-        
+
     def get_origin(self):
         """ Returns object origin x, y, z coordinates [um] relative to parent frame.
         """
         return  self.x0, self.y0, self.z0
 
-#------------------------------
-        
+
     def get_rot(self):
         """ Returns object tilt angles [degree] around z, y, and x axes, respectively.
         """
         return self.rot_z, self.rot_y, self.rot_x
 
-#------------------------------
-        
+
     def get_tilt(self):
         """ Returns object rotation angles [degree] around z, y, and x axes, respectively.
         """
         return self.tilt_z, self.tilt_y, self.tilt_x
 
-#------------------------------
+
 # Additional to interface 2-d methods
-#------------------------------
 
     def transform_2d_geo_coord_arrays(self, X, Y, do_tilt=True):
         """ Simplified version of transform_geo_coord_arrays(...) for 2-d case.
@@ -410,12 +382,11 @@ class GeometryObject:
         Yt = Y1 + self.y0
         return Xt, Yt
 
-#------------------------------
 
     def get_2d_pixel_coords(self, do_tilt=True):
         """ Simplified version of get_pixel_coords() for 2-d case.
         """
-        #if self.oname == 'SENS2X1:V1': 
+        #if self.oname == 'SENS2X1:V1':
         if self.algo is not None:
             #xac, yac, zac = self.algo.get_xyz_maps_um()
             xac, yac, zac = self.algo.pixel_coord_array()
@@ -427,9 +398,8 @@ class GeometryObject:
             xac += list(xch.flatten())
             yac += list(ych.flatten())
         X, Y = self.transform_2d_geo_coord_arrays(np.array(xac), np.array(yac), do_tilt)
-        return self.det_shape(X), self.det_shape(Y) 
+        return self.det_shape(X), self.det_shape(Y)
 
-#------------------------------
 
     def det_shape(self, arr):
         """ Check detector dependency and re-shape array if necessary.
@@ -440,9 +410,7 @@ class GeometryObject:
             return two2x1ToData2x2(arr)
         return arr
 
-#------------------------------
 #------ Global Method(s) ------
-#------------------------------
 
 def data2x2ToTwo2x1(arr2x2):
     """Converts array shaped as CSPAD2x2 data (185,388,2)
@@ -454,10 +422,9 @@ def data2x2ToTwo2x1(arr2x2):
     if arr2x2.shape[-1] != 2:
         raise ValueError('Expected n-d array shape=(185,388,2), input shape=%s' % str(arr2x2.shape))
 
-    arr2x2.shape = (185,388,2) 
+    arr2x2.shape = (185,388,2)
     return np.array([arr2x2[:,:,0], arr2x2[:,:,1]])
 
-#------------------------------
 
 def two2x1ToData2x2(arrTwo2x1):
     """Converts array shaped as two 2x1 arrays (2,185,388) or (2*185,388)
@@ -475,13 +442,12 @@ def two2x1ToData2x2(arrTwo2x1):
     arr2x2.shape = (185,388,2)
     return arr2x2
 
-#------------------------------
 
 if __name__ == "__main__":
     import sys
     print(63*'='+'\n==  Tests for this module are available in GeometryAccess.py ==\n'+63*'=')
     sys.exit('End of %s' % sys.argv[0])
 
-#------------------------------
+# EOF
 
 

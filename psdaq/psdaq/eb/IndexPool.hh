@@ -11,6 +11,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <atomic>
+#include <cstdio>
 
 
 namespace Pds

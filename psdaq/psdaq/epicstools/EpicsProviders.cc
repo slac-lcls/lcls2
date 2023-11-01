@@ -7,22 +7,50 @@ namespace pva = epics::pvAccess;
 
 namespace Pds_Epics {
 
-    static pvac::ClientProvider* _pva;
-    static pvac::ClientProvider* _ca;
+    static EpicsProviders* _providers = nullptr;
 
-    pvac::ClientProvider& EpicsProviders::pva() { return *_pva; }
-    pvac::ClientProvider& EpicsProviders::ca () { return *_ca ; }
-
-    EpicsProviders::EpicsProviders()
+    EpicsProviders::EpicsProviders() :
+      _pva(nullptr),
+      _ca (nullptr)
     {
-        pva::Configuration::shared_pointer
-          configuration(pva::ConfigurationBuilder()
-                        .push_env()
-                        .build());
-        pva::ca::CAClientFactory::start();
-        _ca  = new pvac::ClientProvider("ca" , configuration);
-        _pva = new pvac::ClientProvider("pva", configuration);
+        if (!_pva)
+        {
+            pva::Configuration::shared_pointer
+              configuration(pva::ConfigurationBuilder()
+                            .push_env()
+                            .build());
+            pva::ca::CAClientFactory::start();
+            _ca  = new pvac::ClientProvider("ca" , configuration);
+            _pva = new pvac::ClientProvider("pva", configuration);
+        }
     }
 
-    static EpicsProviders _providers;
+    EpicsProviders::~EpicsProviders()
+    {
+        if (_providers)
+        {
+          if (_pva)  delete _pva;
+          if (_ca)   delete _ca;
+          delete _providers;
+          _providers = nullptr;
+        }
+    }
+
+    pvac::ClientProvider& EpicsProviders::pva()
+    {
+        if (_providers && _providers->_pva)  return *_providers->_pva;
+
+        if (!_providers)  _providers = new EpicsProviders;
+
+        return *_providers->_pva;
+    }
+
+    pvac::ClientProvider& EpicsProviders::ca()
+    {
+        if (_providers && _providers->_ca)  return *_providers->_ca;
+
+        if (!_providers)  _providers = new EpicsProviders;
+
+        return *_providers->_ca;
+    }
 };

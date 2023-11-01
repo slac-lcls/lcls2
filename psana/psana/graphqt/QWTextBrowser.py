@@ -25,7 +25,7 @@ class QWTextBrowser(CMWControlBase):
     def __init__(self, **kwa):
 
         kwa.setdefault('parent', None)
-        kwa.setdefault('path', '/cds/group/psdm/detector/data2_test/misc/Select') #test.txt'
+        kwa.setdefault('path', DIR_DATA_TEST + '/misc/Select') #test.txt'
         kwa.setdefault('label', 'File:')
         kwa.setdefault('fltr', '*.txt *.text *.dat *.data *.meta\n*')
         kwa.setdefault('dirs', dirs_to_search())
@@ -58,7 +58,7 @@ class QWTextBrowser(CMWControlBase):
         self.vbox.addLayout(self.hbox2)
         self.setLayout(self.vbox)
 
-        self.wfnm.connect_path_is_changed_to_recipient(self.on_changed_fname)
+        self.wfnm.connect_path_is_changed(self.on_changed_fname)
 
         self.set_tool_tips()
         self.set_style()
@@ -85,13 +85,7 @@ class QWTextBrowser(CMWControlBase):
 
 
     def set_text(self, txt):
-        #self.edi_txt.setLineWrapColumnOrWidth(300)
-        #self.edi_txt.setLineWrapMode(self.edi_txt.NoWrap) # WidgetWidth) # FixedColumnWidth)
-        #self.edi_txt.document().setTextWidth(200)
-        #logger.debug('XXX lineWrapMode: %d' % self.edi_txt.lineWrapMode())
-        #logger.debug('XXX lineWrapColumnOrWidth: %d' % self.edi_txt.lineWrapColumnOrWidth())
         self.edi_txt.setText(txt)
-        #print(txt)
 
 
     def on_changed_fname(self, fname):
@@ -112,7 +106,7 @@ class QWTextBrowser(CMWControlBase):
 
 
     def on_but_view(self):
-        logger.debug('TBD re-implemented on_but_view')
+        logger.debug('on_but_view should be re-implemented')
 
 
     def on_but_save(self):

@@ -44,7 +44,7 @@ USERPW = 'pw-should-be-provided-somehow'
 DBNAME_PREFIX = 'cdb_'
 DETNAMESDB = '%sdetnames' % DBNAME_PREFIX
 MAX_DETNAME_SIZE = 55
-OPER = 'pcds'
+OPER = os.getenv('CALIBDB_AUTH')
 
 try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHeaders()
 #except kerberos.GSSError as e:
@@ -71,6 +71,8 @@ PIXEL_OFFSET  = 8
 PIXEL_DATAST  = 9
 CODE_GEOMETRY = 10
 LASINGOFFREFERENCE = 11
+USERS_MASK    = 12
+STATUS_EXTRA  = 13
 
 ctype_tuple = (
     (PEDESTALS,      'pedestals',     np.float32),
@@ -84,6 +86,8 @@ ctype_tuple = (
     (PIXEL_OFFSET,   'pixel_offset',  np.float32),
     (PIXEL_DATAST,   'pixel_datast',  np.uint16 ),
     (CODE_GEOMETRY,  'code_geometry', str       ),
+    (USERS_MASK,     'users_mask',    np.uint8  ),
+    (STATUS_EXTRA,   'status_extra',  np.uint64 ),
     (LASINGOFFREFERENCE, 'lasingoffreference', 'hdf5')
 )
 
@@ -169,15 +173,14 @@ dic_det_name_to_type = dict(zip(list_det_names, list_det_types))
 
 
 if __name__ == "__main__":
-  def test_constants() :
-    print('URL_ENV  : %s' % str(URL_ENV ))
-    print('URL      : %s' % str(URL     ))
-    print('URL_KRB  : %s' % str(URL_KRB ))
-    print('HOST     : %s' % str(HOST    ))
-    print('PORT     : %s' % str(PORT    ))
-    print('USERNAME : %s' % str(USERNAME))
-    print('USERPW   : %s' % str(USERPW  ))
-
+  def test_constants():
+    print('URL_ENV  : %s' % str(URL_ENV )\
+      + '\nURL      : %s' % str(URL     )\
+      + '\nURL_KRB  : %s' % str(URL_KRB )\
+      + '\nHOST     : %s' % str(HOST    )\
+      + '\nPORT     : %s' % str(PORT    )\
+      + '\nUSERNAME : %s' % str(USERNAME)\
+      + '\nUSERPW   : %s' % str(USERPW  ))
 
 if __name__ == "__main__":
 

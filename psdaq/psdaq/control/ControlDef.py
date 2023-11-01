@@ -96,6 +96,10 @@ def fileReport_msg(path):
     body = {'path': path}
     return create_msg('fileReport', body=body)
 
+def chunkRequest_msg(offset):
+    body = {'offset': offset}
+    return create_msg('chunkRequest', body=body)
+
 def progress_msg(transition, elapsed, total):
     body = {'transition': transition, 'elapsed': int(elapsed), 'total': int(total)}
     return create_msg('progress', body=body)

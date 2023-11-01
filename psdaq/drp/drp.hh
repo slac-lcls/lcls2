@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <map>
 #include <atomic>
-
+#include <mutex>
+#include <condition_variable>
+#include <string>
 #include "spscqueue.hh"
 
 #define PGP_MAX_LANES 8
@@ -25,24 +27,11 @@ enum NamesIndex
    RUNINFO      = 255,
 };
 
-struct DmaBuffer
-{
-    int32_t size;
-    uint32_t index;
-};
-
-struct PGPEvent
-{
-    DmaBuffer buffers[PGP_MAX_LANES];
-    uint8_t mask = 0;
-    void* l3InpBuf;
-    Pds::EbDgram* transitionDgram;
-};
-
 struct Parameters
 {
     Parameters() :
         partition(-1),
+        nworkers(10),
         detSegment(0),
         laneMask(0x1),
         loopbackPort(0),
@@ -70,52 +59,82 @@ struct Parameters
     size_t maxTrSize;
 };
 
+struct DmaBuffer
+{
+    int32_t size;
+    uint32_t index;
+};
+
+struct PGPEvent
+{
+    DmaBuffer buffers[PGP_MAX_LANES];
+    uint8_t mask = 0;
+    unsigned pebbleIndex;
+};
+
 class Pebble
 {
 public:
-    void resize(unsigned nbuffers, size_t bufferSize, unsigned nTrBuffers, size_t trBufSize)
-    {
-        m_bufferSize = bufferSize;
-        size_t size = nbuffers*m_bufferSize + nTrBuffers*trBufSize;
-        m_buffer.resize(size);
+    ~Pebble() {
+        if (m_buffer) {
+            delete m_buffer;
+            m_buffer = nullptr;
+        }
     }
+    void create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, size_t trBufSize);
 
     inline uint8_t* operator [] (unsigned index) {
         uint64_t offset = index*m_bufferSize;
         return &m_buffer[offset];
     }
-    size_t size() const {return m_buffer.size();}
+    size_t size() const {return m_size;}
     size_t bufferSize() const {return m_bufferSize;}
 private:
-    size_t m_bufferSize;
-    std::vector<uint8_t> m_buffer;
+    size_t   m_size;
+    size_t   m_bufferSize;
+    uint8_t* m_buffer;
 };
 
 class MemPool
 {
 public:
     MemPool(Parameters& para);
+    ~MemPool();
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
+    std::vector<Pds::EbDgram*> transitionDgrams;
     void** dmaBuffers;
-    unsigned nbuffers() const {return m_nbuffers;}
-    unsigned bufferSize() const {return m_bufferSize;}
+    unsigned nDmaBuffers() const {return m_nDmaBuffers;}
     unsigned dmaSize() const {return m_dmaSize;}
-    int fd () const {return m_fd;}
+    unsigned nbuffers() const {return m_nbuffers;}
+    size_t bufferSize() const {return pebble.bufferSize();}
+    int fd() const {return m_fd;}
+    void shutdown();
     Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
-    void allocate(unsigned count) { m_inUse.fetch_add(count, std::memory_order_acq_rel) ; }
-    void release(unsigned count) { m_inUse.fetch_sub(count, std::memory_order_acq_rel); }
-    const uint64_t& inUse() const { m_dmaBuffersInUse = m_inUse.load(std::memory_order_relaxed);
-                                    return m_dmaBuffersInUse; }
+    unsigned countDma();
+    unsigned allocate();
+    void freeDma(std::vector<uint32_t>& indices, unsigned count);
+    void freePebble();
+    const int64_t dmaInUse() const { return m_dmaAllocs.load(std::memory_order_relaxed) -
+                                            m_dmaFrees.load(std::memory_order_relaxed); }
+    const int64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -
+                                         m_frees.load(std::memory_order_relaxed); }
+    void resetCounters();
+    int setMaskBytes(uint8_t laneMask, unsigned virtChan);
 private:
+    unsigned m_nDmaBuffers;
     unsigned m_nbuffers;
-    unsigned m_bufferSize;
     unsigned m_dmaSize;
     int m_fd;
+    bool m_setMaskBytesDone;
     SPSCQueue<void*> m_transitionBuffers;
-    std::atomic<unsigned> m_inUse;
-    mutable uint64_t m_dmaBuffersInUse;
+    std::atomic<uint64_t> m_dmaAllocs;
+    std::atomic<uint64_t> m_dmaFrees;
+    std::atomic<uint64_t> m_allocs;
+    std::atomic<uint64_t> m_frees;
+    std::mutex m_lock;
+    std::condition_variable m_condition;
 };
 
 }

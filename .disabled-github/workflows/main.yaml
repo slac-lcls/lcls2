@@ -1,0 +1,35 @@
+name: lcls2-ci
+on:
+  push:
+    branches:
+      - master
+jobs:
+  run-tests-macos:
+    runs-on: macos-latest
+    env:
+        CONDA_ENV: myrel 
+        TRAVIS_OS_NAME: osx
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: setup python on macos
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: conda installation
+        run: ./install_travis.sh "$TRAVIS_OS_NAME"
+      - name: tests on macos
+        run: ./run_travis.sh "$TRAVIS_OS_NAME"
+  run-tests-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: scr.svc.stanford.edu/slaclcls/lcls2_docker/lcls2:centos7-py3.9
+      env:
+        CONDA_ENV: myrel
+        TRAVIS_OS_NAME: linux
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: tests on centos7
+        run: bash -l ./run_travis.sh "$TRAVIS_OS_NAME"

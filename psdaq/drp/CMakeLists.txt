@@ -21,13 +21,19 @@ target_link_libraries(drpbase
     exporter
     collection
     xtcdata::xtc
+    epicstools
+    Threads::Threads
 )
 
 add_executable(drp
     AreaDetector.cc
     Digitizer.cc
     EpixHR2x2.cc
+    EpixHRemu.cc
+    Epix100.cc
     EpixQuad.cc
+    TimingDef.cc
+    TimingBEB.cc
     TimingSystem.cc
     TimeTool.cc
     Wave8.cc
@@ -35,6 +41,8 @@ add_executable(drp
 #    OpalTT.cc
     OpalTTFex.cc
 #    OpalTTSim.cc
+    Piranha4.cc
+    Piranha4TTFex.cc
     PGPDetector.cc
     PGPDetectorApp.cc
     drp.cc
@@ -44,21 +52,19 @@ target_link_libraries(drp
     psalg::digitizer
     psalg::detector
     xtcdata::xtc
-    Threads::Threads
     drpbase
-    epicstools
     trigger
 )
 
 add_executable(drp_bld
-#    BldDetector.cc
-    BldDetectorSlow.cc
+#    BldDetectorSlow.cc
+    BldDetector.cc
+    BldNames.cc
 )
 
 target_link_libraries(drp_bld
     drpbase
     trigger
-    epicstools
     readline
 )
 
@@ -69,7 +75,6 @@ add_executable(drp_pva
 target_link_libraries(drp_pva
     drpbase
     trigger
-    epicstools
     readline
 )
 
@@ -81,6 +86,20 @@ target_link_libraries(drp_udpencoder
     drpbase
     trigger
     readline
+)
+
+add_executable(tpr_trigger
+    TprTrigger.cc
+)
+
+target_link_libraries(tpr_trigger
+    collection
+    app
+    tpr
+    dl
+    readline
+    Threads::Threads
+    rt
 )
 
 add_executable(configdb_obj_2xtc
@@ -163,11 +182,12 @@ add_executable(drp_validate
     validate.cc
 )
 target_include_directories(drp_validate PUBLIC
-     ../psdaq/pgp/aes-stream-drivers/include
- )
- target_link_libraries(drp_validate
-     Threads::Threads
- )
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    ../psdaq/pgp/aes-stream-drivers/include
+)
+target_link_libraries(drp_validate
+    Threads::Threads
+)
 
 add_executable(opaltt_test
     opaltt_test.cc
@@ -189,7 +209,23 @@ target_link_libraries(fileWriteTest
     drpbase
 )
 
-install(TARGETS drp drp_bld drp_pva drp_udpencoder
+add_executable(drp_groupsync
+    groupsync.cc
+)
+target_include_directories(drp_groupsync PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    ../psdaq/pgp/aes-stream-drivers/include
+)
+target_link_libraries(drp_groupsync
+    Threads::Threads
+)
+
+
+install(TARGETS drp
+  drp_bld
+  drp_pva
+  drp_udpencoder
+  tpr_trigger
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

@@ -37,23 +37,23 @@ class QWRange(QWidget):
         self.set_edi_validators()
 
         self.hboxC = QHBoxLayout()
-        self.hboxC.addStretch(1)     
+        self.hboxC.addStretch(1)
         if self.use_lab_from: self.hboxC.addWidget( self.lab_from )
         self.hboxC.addWidget( self.edi_from )
         self.hboxC.addWidget( self.lab_to )
         self.hboxC.addWidget( self.edi_to )
-        self.hboxC.addStretch(1)     
+        self.hboxC.addStretch(1)
 
-        self.vboxW = QVBoxLayout() 
+        self.vboxW = QVBoxLayout()
         self.vboxW.addStretch(1)
-        self.vboxW.addLayout( self.hboxC ) 
+        self.vboxW.addLayout( self.hboxC )
         self.vboxW.addStretch(1)
-        
+
         self.setLayout(self.vboxW)
 
         self.edi_from.editingFinished.connect(self.on_edi_from)
         self.edi_to  .editingFinished.connect(self.on_edi_to)
-  
+
         self.set_tool_tips()
         self.set_style()
 
@@ -89,7 +89,7 @@ class QWRange(QWidget):
 
         if self.use_lab_from: self.lab_from  .setStyleSheet(style.styleLabel)
         self.lab_to.setStyleSheet(style.styleLabel)
- 
+
         self.set_style_buttons()
 
 
@@ -99,7 +99,7 @@ class QWRange(QWidget):
         if int(self.str_from) > int(self.str_to):
             #msg  = 'Begin number %s exceeds the end number %s' % (self.str_from, self.str_to)
             #msg += '\nRANGE SEQUENCE SHOULD BE FIXED !!!!!!!!'
-            #logger.warning(msg)            
+            #logger.warning(msg)
             return False
 
         return True
@@ -114,32 +114,10 @@ class QWRange(QWidget):
             self.edi_to  .setStyleSheet(style.styleEditBad)
 
 
-    #def resizeEvent(self, e):
-         #logger.debug('resizeEvent') 
-         #pass
-
-
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
-        #self.position = self.mapToGlobal(self.pos())
-        #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position))       
-        #pass
-
-
-    #def closeEvent(self, event):
-        #logger.debug('closeEvent')
-        # cp.guirange = None 
-
-
-#    def run( self ):
-#        self.emit_field_is_changed_signal()
-
-
     def emit_field_is_changed_signal(self,msg):
         self.field_is_changed.emit(msg)
 
-  
+
     def on_edi_from(self):
         #logger.debug('on_edi_from')
         txt = str( self.edi_from.text() )
@@ -172,8 +150,8 @@ class QWRange(QWidget):
             self.edi_from.setStyleSheet(style.styleEditInfo)
             self.edi_to  .setStyleSheet(style.styleEditInfo)
 
-        self.edi_from.setEnabled(is_enabled) 
-        self.edi_to  .setEnabled(is_enabled) 
+        self.edi_from.setEnabled(is_enabled)
+        self.edi_to  .setEnabled(is_enabled)
 
         self.edi_from .setReadOnly(not is_enabled)
         self.edi_to   .setReadOnly(not is_enabled)

@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`CMWMain` is a QWidget for interactive image
 ============================================================
@@ -14,16 +15,20 @@ See:
 Created on 2017-02-01 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
+import sys
 import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt, QPoint
 
-from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line, log_rec_on_start
+from psana.detector.RepoManager import RepoManager
+from psana.detector.Utils import gu
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWLoggerStd import QWLoggerStd
 
+print_kwargs, is_in_command_line = gu.print_kwargs, gu.is_in_command_line
+SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 class CMWMain(QWidget):
 
@@ -31,10 +36,17 @@ class CMWMain(QWidget):
         QWidget.__init__(self, parent=None, flags=Qt.WindowStaysOnTopHint)
 
         cp.cmwmain = self
+
+        repoman = RepoManager(dirrepo=kwargs['repodir'])  # dettype=SCRNAME
+        logfname = repoman.logname(SCRNAME)
+        #print('log file name: %s' % logfname)
+
         self.set_input_pars(**kwargs)
 
         from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER set_input_pars !!!!\
-        self.wlog = cp.wlog = QWLoggerStd(cp, show_buttons=False)
+        self.wlog = cp.wlog = QWLoggerStd(cp, show_buttons=False, logfname=logfname)
+
+        repoman.save_record_at_start(SCRNAME)
 
         self.wtab = CMWMainTabs()
 
@@ -63,7 +75,7 @@ class CMWMain(QWidget):
         x,y,w,h = self.xywh
         self.setGeometry(x,y,w,h)
         logger.info('set preserved window geometry x,y,w,h: %d,%d,%d,%d' % (x,y,w,h))
-        logger.info(log_rec_on_start())
+        #logger.info(log_rec_at_start())
 
         self.main_win_pos_x  = cp.main_win_pos_x
         self.main_win_pos_y  = cp.main_win_pos_y
@@ -76,17 +88,22 @@ class CMWMain(QWidget):
         cp.upwd    = kwa.get('upwd', None)
         exp        = kwa.get('experiment', None)
         det        = kwa.get('detector', None)
-        logdir     = kwa.get('logdir', None)
+        repodir    = kwa.get('repodir', None)
         loglevel   = kwa.get('loglevel', 'DEBUG').upper()
         savecfg    = kwa.get('savecfg', False)
+        savelog    = kwa.get('savelog', False)
         if isinstance(loglevel,str): loglevel = loglevel.upper()
+
+        cp.save_log_at_exit.setValue(savelog)
+        cp.log_level.setValue(loglevel)
+        cp.log_prefix.setValue(repodir)
 
         if is_in_command_line(None, '--host')      : cp.cdb_host.setValue(host)
         if is_in_command_line(None, '--port')      : cp.cdb_port.setValue(port)
         if is_in_command_line('-e', '--experiment'): cp.exp_name.setValue(exp)
         if is_in_command_line('-d', '--detector')  : cp.data_source.setValue(det)
-        if is_in_command_line('-l', '--loglevel')  : cp.log_level.setValue(loglevel)
-        if is_in_command_line('-L', '--logdir')    : cp.log_prefix.setValue(logdir)
+        #if is_in_command_line('-l', '--loglevel')  : cp.log_level.setValue(loglevel)
+        #if is_in_command_line('-o', '--repodir')   : cp.log_prefix.setValue(repodir)
 
         cp.save_cp_at_exit.setValue(savecfg)
 
@@ -115,12 +132,6 @@ class CMWMain(QWidget):
         self.on_save()
         QWidget.closeEvent(self, e)
         cp.wlog = None
-
-
-#    def resizeEvent(self, e):
-#        QWidget.resizeEvent(self, e)
-#    def moveEvent(self, e):
-#        QWidget.moveEvent(self, e)
 
 
     def key_usage(self):
@@ -160,9 +171,6 @@ class CMWMain(QWidget):
         if cp.save_cp_at_exit.value():
             cp.printParameters()
             cp.saveParametersInFile() # see ConfigParameters
-
-#        if cp.save_log_at_exit.value():
-#            pass # see QWLoggerStd.py /reg/g/psdm/logs/calibman/lcls2/<year>/
 
 
 def calibman(**kwargs):

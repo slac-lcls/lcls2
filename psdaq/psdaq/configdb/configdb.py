@@ -1,9 +1,12 @@
+import os
+
 import requests
 from requests.auth import HTTPBasicAuth
 from krtc import KerberosTicket
 from urllib.parse import urlparse
 import json
 import logging
+import datetime
 from .typed_json import cdict
 
 class JSONEncoder(json.JSONEncoder):
@@ -24,7 +27,7 @@ class configdb(object):
     #     root   - Database name, usually "configDB"
     #     user   - User for HTTP authentication
     #     password - Password for HTTP authentication
-    def __init__(self, url, hutch, create=False, root="NONE", user="tstopr", password="pcds"):
+    def __init__(self, url, hutch, create=False, root="NONE", user="tstopr", password=os.getenv("CONFIGDB_AUTH")):
         if root == "NONE":
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch
@@ -70,7 +73,7 @@ class configdb(object):
         return resp.json()
 
     # Retrieve the configuration of the device with the specified alias.
-    # This returns a dictionary where the keys are the collection names and the 
+    # This returns a dictionary where the keys are the collection names and the
     # values are typed JSON objects representing the device configuration(s).
     # On error return an empty dictionary.
     def get_configuration(self, alias, device, hutch=None):
@@ -92,17 +95,17 @@ class configdb(object):
         else:
             return xx['value']
 
-    # Get the history of the device configuration for the variables 
+    # Get the history of the device configuration for the variables
     # in plist.  The variables are dot-separated names with the first
     # component being the the device configuration name.
     def get_history(self, alias, device, plist, hutch=None):
         if hutch is None:
             hutch = self.hutch
-        value = JSONEncoder().encode(plist)
+        #value = JSONEncoder().encode(plist)
         try:
             xx = self._get_response('get_history/' + hutch + '/' +
                                     alias + '/' + device + '/',
-                                    json=value)
+                                    json=plist)
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             xx = []
@@ -355,7 +358,7 @@ class configdb(object):
                 return 0
 
             # set detName
-            read_val['detName:RO'] = newdevice 
+            read_val['detName:RO'] = newdevice
 
             # write configuration to new location
             write_val = self.modify_device(newalias, read_val, hutch=self.hutch)
@@ -372,6 +375,25 @@ class configdb(object):
 import sys
 import argparse
 import pprint
+
+# Determine whether a device is an XPM
+def isXpm(xx):
+    return xx.find('/') != xx.rfind('/') and xx.split('/')[1] == 'XPM'
+
+# Parse a device name into 3 elements.
+# Input format: <hutch>/<alias>/<device>
+# Returns: hutch, alias, device, segment
+# On error raises NameError.
+def _parse_device3(name):
+    error_txt = 'Name \'%s\' does not match <hutch>/<alias>/<device>' % name
+    try:
+        split1 = name.split('/')
+    except Exception:
+        raise NameError(error_txt)
+    if len(split1) != 3:
+        raise NameError(error_txt)
+
+    return split1
 
 # Parse a device name into 4 elements.
 # Input format: <hutch>/<alias>/<device>_<segment>
@@ -395,27 +417,41 @@ def _parse_device4(name):
     return (split2[0], split2[1], split2[2], segment)
 
 def _cat(args):
-    try:
-        hutch, alias, dev, seg = _parse_device4(args.src)
-    except NameError as ex:
-        print('%s' % ex) 
-        sys.exit(1)
+    if isXpm(args.src):
+        seg = None
+        try:
+            hutch, alias, dev = _parse_device3(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+    else:
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            sys.exit(ex)
 
     # authentication is not required, adjust url accordingly
     url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
 
     # get configuration and pretty print it
     mycdb = configdb(url, hutch, root=args.root)
-    xx = mycdb.get_configuration(alias, '%s_%d' % (dev, seg), hutch)
+    if seg is None:
+        xx = mycdb.get_configuration(alias, f'{dev}', hutch)
+    else:
+        xx = mycdb.get_configuration(alias, f'{dev}_{seg}', hutch)
     if len(xx) > 0:
         pprint.pprint(xx)
 
 def _cp(args):
     try:
-        oldhutch, oldalias, olddev, oldseg = _parse_device4(args.src)
-        newhutch, newalias, newdev, newseg = _parse_device4(args.dst)
+        if isXpm(args.src) and isXpm(args.dst):
+            oldseg = newseg = None
+            oldhutch, oldalias, olddev = _parse_device3(args.src)
+            newhutch, newalias, newdev = _parse_device3(args.dst)
+        else:
+            oldhutch, oldalias, olddev, oldseg = _parse_device4(args.src)
+            newhutch, newalias, newdev, newseg = _parse_device4(args.dst)
     except NameError as ex:
-        print('%s' % ex) 
+        print('%s' % ex)
         sys.exit(1)
 
     # transfer configuration
@@ -423,11 +459,19 @@ def _cp(args):
                      user=args.user, password=args.password)
     if args.create:
         mycdb.add_alias(newalias)
-    retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
-                                   newalias, '%s_%d' % (newdev, newseg))
-    if retval == 0:
-        print('failed to transfer configuration')
-        sys.exit(1)
+
+    if args.write:
+        if isXpm(args.src) and isXpm(args.dst):
+            retval = mycdb.transfer_config(oldhutch, oldalias, olddev, newalias, newdev)
+        else:
+            retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
+                                        newalias, '%s_%d' % (newdev, newseg))
+        if retval == 0:
+            print('failed to transfer configuration')
+            sys.exit(1)
+    else:
+        print("")
+        print("WARNING: Not written to database (use the --write option)")
 
 def _ls(args):
     # authentication is not required, adjust url accordingly
@@ -455,18 +499,87 @@ def _ls(args):
         print('Name \'%s\' does not match <hutch>[/<alias>]' % args.src)
         sys.exit(1)
 
+def _history(args):
+    if isXpm(args.src):
+        seg = None
+        try:
+            hutch, alias, dev = _parse_device3(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+    else:
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+
+    # get configuration and pretty print it
+    mycdb = configdb(args.url, hutch, root=args.root, user=args.user,
+                     password=args.password)
+    if seg is None:
+        xx = mycdb.get_history(alias, dev, hutch=hutch, plist=["detName:RO"])
+    else:
+        xx = mycdb.get_history(alias, device=f"{dev}_{seg}",
+                                hutch=hutch, plist=["detName:RO"])
+
+    if len(xx) > 0:
+        for entry in xx["value"]:
+            date_obj = datetime.datetime.fromisoformat(entry['date'])
+            fmtd_date = date_obj.strftime('%m/%d/%Y, %H:%M:%S')
+            print(f"Date: {fmtd_date} UTC - Key: {entry['key']}")
+
+def _rollback(args):
+    if isXpm(args.src):
+        seg = None
+        try:
+            hutch, alias, dev = _parse_device3(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+    else:
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+
+    # get configuration and pretty print it
+    mycdb = configdb(args.url, hutch, root=args.root, user=args.user,
+                     password=args.password)
+    if seg is None:
+        config = mycdb.get_configuration(alias=args.key, device=dev, hutch=hutch)
+    else:
+        config = mycdb.get_configuration(alias=args.key, device=f"{dev}_{seg}",
+                                         hutch=hutch)
+
+    pprint.pprint(config)
+    if args.write:
+        cd = cdict(config)
+        print("")
+        if seg is None:
+            print("Adding configuration to database as latest for "
+                  f"hutch: {hutch}, alias: {alias}, device: {dev}")
+        else:
+            print("Adding configuration to database as latest for "
+                  f"hutch: {hutch}, alias: {alias}, device: {dev}_{seg}")
+        mycdb.modify_device(alias, cd)
+    else:
+        print("")
+        print("WARNING: Not written to database (use the --write option)")
+
+
 class createArgs(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        def opt(key,default):
+            return kwargs[key] if key in kwargs.keys() else default
+
         parser = argparse.ArgumentParser(description='Write a new segment configuration into the database')
-        parser.add_argument('--prod', help='use production db', action='store_true')
-        parser.add_argument('--inst', help='instrument', type=str, default='tst')
-        parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
-        parser.add_argument('--name', help='detector name', type=str, default='tstts')
-        parser.add_argument('--segm', help='detector segment', type=int, default=0)
-        parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
-        parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
-        parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
-        parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=None)
+        parser.add_argument('--prod', help='use production db', action='store_true', default=opt('prod',False))
+        parser.add_argument('--inst', help='instrument', type=str, default=opt('inst','tst'))
+        parser.add_argument('--alias', help='alias name', type=str, default=opt('alias','BEAM'))
+        parser.add_argument('--name', help='detector name', type=str, default=opt('name','tstts'))
+        parser.add_argument('--segm', help='detector segment', type=int, default=opt('segm',0))
+        parser.add_argument('--id', help='device id/serial num', type=str, default=opt('id','serial1234'))
+        parser.add_argument('--user', help='user for HTTP authentication', type=str, default=opt('user','xppopr'))
+        parser.add_argument('--password', help='password for HTTP authentication', type=str, default=opt('password',os.getenv('CONFIGDB_AUTH')))
+        parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=opt('yaml',None))
         self.args = parser.parse_args()
 
 
@@ -481,17 +594,34 @@ def main():
 
     # create the parser for the "cat" command
     parser_cat = subparsers.add_parser('cat', help='print a configuration')
-    parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
+    parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cat.set_defaults(func=_cat)
 
     # create the parser for the "cp" command
     parser_cp = subparsers.add_parser('cp', help='copy a configuration')
-    parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
-    parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment>')
+    parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cp.add_argument('--user', default='tstopr', help='default: tstopr')
-    parser_cp.add_argument('--password', default='pcds', help='default: pcds')
+    parser_cp.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
+    parser_cp.add_argument('--write', action="store_true", help='Write to database')
     parser_cp.set_defaults(func=_cp)
+
+    # create the parser for the "history"
+    parser_history = subparsers.add_parser('history', help='get history of a configuration')
+    parser_history.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_history.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_history.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_history.set_defaults(func=_history)
+
+    # create the parser for the "rollback"
+    parser_rollback = subparsers.add_parser('rollback', help='rollback configuration to a specific key')
+    parser_rollback.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/<alias>/<xpm>')
+    parser_rollback.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_rollback.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_rollback.add_argument('--key', default=None, required=True, help='key to roll back to, required')
+    parser_rollback.add_argument('--write', action="store_true", help='Write to database')
+    parser_rollback.set_defaults(func=_rollback)
 
     # create the parser for the "ls" command
     parser_ls = subparsers.add_parser('ls', help='list directory contents')
@@ -505,7 +635,10 @@ def main():
     except Exception:
         parser.print_help(sys.stderr)
         sys.exit(1)
-    subcommand(args)
+    try:
+        subcommand(args)
+    except Exception as ex:
+        sys.exit(ex)
 
 if __name__ == '__main__':
     main()

@@ -1,14 +1,14 @@
 #include "TimingSystem.hh"
+#include "TimingDef.hh"
 #include "PythonConfigScanner.hh"
 #include "psdaq/service/EbDgram.hh"
-#include "xtcdata/xtc/VarDef.hh"
-#include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "AxisDriver.h"
 #include "DataDriver.h"
+#include "psdaq/eb/ResultDgram.hh"
 
 #include <fcntl.h>
 #include <Python.h>
@@ -32,47 +32,28 @@ static PyObject* check(PyObject* obj) {
     return obj;
 }
 
-namespace Drp {
+static Drp::TimingDef TSDef;
 
-class TSDef : public VarDef
+namespace Drp
+{
+
+class TrigInfoDef : public XtcData::VarDef
 {
 public:
-    enum index {
-      pulseId,
-      timeStamp,
-      fixedRates,
-      acRates,
-      timeSlot,
-      timeSlotPhase,
-      ebeamPresent,
-      ebeamDestn,
-      ebeamCharge,
-      ebeamEnergy,
-      xWavelength,
-      dmod5,
-      mpsLimits,
-      mpsPowerClass,
-      sequenceValues,
-    };
-    TSDef()
+    enum index
     {
-        NameVec.push_back({"pulseId"       , Name::UINT64, 0});
-        NameVec.push_back({"timeStamp"     , Name::UINT64, 0});
-        NameVec.push_back({"fixedRates"    , Name::UINT8 , 1});
-        NameVec.push_back({"acRates"       , Name::UINT8 , 1});
-        NameVec.push_back({"timeSlot"      , Name::UINT8 , 0});
-        NameVec.push_back({"timeSlotPhase" , Name::UINT16, 0});
-        NameVec.push_back({"ebeamPresent"  , Name::UINT8 , 0});
-        NameVec.push_back({"ebeamDestn"    , Name::UINT8 , 0});
-        NameVec.push_back({"ebeamCharge"   , Name::UINT16, 0});
-        NameVec.push_back({"ebeamEnergy"   , Name::UINT16, 1});
-        NameVec.push_back({"xWavelength"   , Name::UINT16, 1});
-        NameVec.push_back({"dmod5"         , Name::UINT16, 0});
-        NameVec.push_back({"mpsLimits"     , Name::UINT8 , 1});
-        NameVec.push_back({"mpsPowerClass" , Name::UINT8 , 1});
-        NameVec.push_back({"sequenceValues", Name::UINT16, 1});
+        TRIGINFO
+    };
+
+    TrigInfoDef()
+    {
+        XtcData::VarDef::NameVec.push_back({"data", XtcData::Name::UINT32});
     }
-} TSDef;
+};
+
+};
+
+using Drp::TimingSystem;
 
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
     XpmDetector   (para, pool),
@@ -94,7 +75,7 @@ TimingSystem::~TimingSystem()
     Py_DECREF(m_module);
 }
 
-void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& config_alias) {
+void TimingSystem::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesId, const std::string& config_alias) {
 
     // returns borrowed reference
     PyObject* pDict = check(PyModule_GetDict(m_module));
@@ -113,7 +94,8 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     char* json = (char*)PyBytes_AsString(json_bytes);
 
     // convert to json to xtc
-    unsigned len = Pds::translateJson2Xtc(json, config_buf, configNamesId, m_para->detName.c_str(), m_para->detSegment);
+    auto config_end = config_buf + sizeof(config_buf);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, config_end, configNamesId, m_para->detName.c_str(), m_para->detSegment);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }
@@ -123,8 +105,8 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
 
     // append the config xtc info to the dgram
     Xtc& jsonxtc = *(Xtc*)config_buf;
-    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
-    xtc.alloc(jsonxtc.sizeofPayload());
+    auto payload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
+    memcpy(payload,(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
 
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
@@ -171,40 +153,51 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
     Py_DECREF(mybytes);
 }
 
-unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc)
+unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-    if (XpmDetector::configure(config_alias, xtc))
+    if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    _addJson(xtc, configNamesId, config_alias);
+    _addJson(xtc, bufEnd, configNamesId, config_alias);
 
     // set up the names for L1Accept data
-    Alg alg("raw", 2, 0, 0);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
-    eventNames.add(xtc, TSDef);
+    Alg alg("raw", 2, 1, 0);
+    Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                m_para->detName.c_str(), alg,
+                                                m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
+    eventNames.add(xtc, bufEnd, TSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
+
+    // set up the names for trigger information data
+    Alg trigAlg("triginfo", 0, 0, 1);
+    XtcData::NamesId trigNamesId(nodeId, TriggerNamesIndex);
+    Names& trigNames = *new(xtc, bufEnd) Names(bufEnd,
+                                               "triginfo", trigAlg,
+                                               "triginfo", "", trigNamesId);
+    TrigInfoDef trigInfoDef;
+    trigNames.add(xtc, bufEnd, trigInfoDef);
+    m_namesLookup[trigNamesId] = NameIndex(trigNames);
     return 0;
 }
 
-unsigned TimingSystem::configureScan(const nlohmann::json& scan_keys, XtcData::Xtc& xtc) 
+unsigned TimingSystem::configureScan(const nlohmann::json& scan_keys, XtcData::Xtc& xtc, const void* bufEnd)
 {
     NamesId namesId(nodeId,UpdateNamesIndex);
-    return m_configScanner->configure(scan_keys, xtc, namesId, m_namesLookup);
+    return m_configScanner->configure(scan_keys, xtc, bufEnd, namesId, m_namesLookup);
 }
 
-unsigned TimingSystem::beginstep(XtcData::Xtc& xtc, const json& stepInfo) {
+unsigned TimingSystem::beginstep(XtcData::Xtc& xtc, const void* bufEnd, const json& stepInfo) {
     std::cout << "*** stepInfo: " << stepInfo.dump() << std::endl;
     return 0;
 }
 
-unsigned TimingSystem::stepScan(const json& stepInfo, Xtc& xtc)
+unsigned TimingSystem::stepScan(const json& stepInfo, Xtc& xtc, const void* bufEnd)
 {
     NamesId namesId(nodeId,UpdateNamesIndex);
-    return m_configScanner->step(stepInfo, xtc, namesId, m_namesLookup);
+    return m_configScanner->step(stepInfo, xtc, bufEnd, namesId, m_namesLookup);
 }
 
 
@@ -213,27 +206,19 @@ bool TimingSystem::scanEnabled() {
     return true;
 }
 
-void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
+void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
-    DescribedData ts(dgram.xtc, m_namesLookup, m_evtNamesId);
-
     int lane = __builtin_ffs(event->mask) - 1;
     // there should be only one lane of data in the timing system
     uint32_t dmaIndex  = event->buffers[lane].index;
-    //    unsigned data_size = event->buffers[lane].size - sizeof(Pds::TimingHeader);
-    // DMA is padded to workaround firmware problem; only copy relevant part.
-    unsigned data_size = 968/8;
 
-    memcpy(ts.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
-    ts.set_data_length(data_size);
-
-    ts.set_array_shape(TSDef::fixedRates    ,(const unsigned[MaxRank]){10});
-    ts.set_array_shape(TSDef::acRates       ,(const unsigned[MaxRank]){ 6});
-    ts.set_array_shape(TSDef::ebeamEnergy   ,(const unsigned[MaxRank]){ 4});
-    ts.set_array_shape(TSDef::xWavelength   ,(const unsigned[MaxRank]){ 2});
-    ts.set_array_shape(TSDef::mpsLimits     ,(const unsigned[MaxRank]){16});
-    ts.set_array_shape(TSDef::mpsPowerClass ,(const unsigned[MaxRank]){16});
-    ts.set_array_shape(TSDef::sequenceValues,(const unsigned[MaxRank]){18});
+    TSDef.describeData(dgram.xtc, bufEnd, m_namesLookup, m_evtNamesId,
+                       (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader));
 }
 
+void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result)
+{
+    XtcData::NamesId namesId(nodeId, TriggerNamesIndex);
+    XtcData::CreateData data(dgram.xtc, bufEnd, m_namesLookup, namesId);
+    data.set_value(TrigInfoDef::TRIGINFO, result.data());
 }

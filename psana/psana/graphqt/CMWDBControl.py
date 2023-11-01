@@ -156,12 +156,6 @@ class CMWDBControl(CMWControlBase):
         # TEST BUTTON
         self.but_test.setIcon(icon.icon_undo)
         self.but_test.setCheckable(True)
-        #self.but_test.setChecked(True)
-        #self.but_test.setFlat(True)
-        #self.but_test.setVisible(False)
-        #self.but_test.setFixedWidth(100)
-        #self.but_test.setFixedHeight(100)
-        #self.but_test.setIconSize(QSize(96,96))
 
         self.layout().setContentsMargins(10,0,10,0) # L,U,R,D
         self.setMinimumWidth(500)
@@ -180,16 +174,9 @@ class CMWDBControl(CMWControlBase):
         self.wfnm.setVisible(False)
         self.wfnm.setEnabled(False)
 
-#    def resizeEvent(self, e):
-#        logger.debug('resizeEvent size: %s' % str(e.size()))
-#    def moveEvent(self, e):
-#        logger.debug('moveEvent pos: %s' % str(e.pos()))
-
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
-        #try   : del cp.guiworkresdirs # CMWDBControl
-        #except: pass # silently ignore
 
 
     def on_edi_db_filter_finished(self):
@@ -464,7 +451,7 @@ class CMWDBControl(CMWControlBase):
     def add_db(self):
         """Adds DB from file
         """
-        logger.debug('TBD: In add_db - Adds DB from file')
+        logger.debug('add_db - Adds DB from file')
 
         path0 = '.'
         path = qwu.get_open_fname_through_dialog_box(self, path0, 'Select file with DB to add', filter='*')
@@ -475,10 +462,10 @@ class CMWDBControl(CMWControlBase):
         host = cp.cdb_host.value()
         port = cp.cdb_port.value()
 
-        dbname = os.path.basename(path) # ????????????????????? split file extension?
+        dbname = os.path.basename(path)
 
         logger.info('Add DB "%s" from file %s' % (dbname, path))
-        dbu.importdb(host, port, dbname, path) #, **kwa)
+        dbu.importdb(host, port, dbname, path)
 
 
     def add_doc(self):

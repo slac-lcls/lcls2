@@ -42,17 +42,17 @@ class CMWConfigPars(QWidget):
         self.lab_exp  = QLabel('Experiment:')
         self.fld_log_file = QWDirNameV2(self, label='Log dir:', path=cp.log_prefix.value(), hide_path=False)
         self.fld_dir_ins = QWDirNameV2(self, label='Instrument dir:', path=cp.instr_dir.value(), hide_path=False)
-        self.cmb_host = QComboBox(self)        
+        self.cmb_host = QComboBox(self)
         self.cmb_host.addItems(cp.list_of_hosts)
         hostname = cp.cdb_host.value()
         idx = cp.list_of_hosts.index(hostname) if hostname in cp.list_of_hosts else 1
         self.cmb_host.setCurrentIndex(idx)
 
-        self.cmb_port = QComboBox(self)        
+        self.cmb_port = QComboBox(self)
         self.cmb_port.addItems(cp.list_of_str_ports)
         self.cmb_port.setCurrentIndex(cp.list_of_str_ports.index(str(cp.cdb_port.value())))
 
-        self.cmb_level = QComboBox(self)        
+        self.cmb_level = QComboBox(self)
         self.cmb_level.addItems(self.log_level_names)
         self.cmb_level.setCurrentIndex(self.log_level_names.index(cp.log_level.value()))
 
@@ -75,12 +75,12 @@ class CMWConfigPars(QWidget):
         self.grid.addWidget(self.but_exp, 5, 1)
 
         self.setLayout(self.grid)
-        
+
         self.cmb_host.currentIndexChanged[int].connect(self.on_cmb_host_changed)
         self.cmb_port.currentIndexChanged[int].connect(self.on_cmb_port_changed)
         self.cmb_level.currentIndexChanged[int].connect(self.on_cmb_level_changed)
-        self.fld_log_file.connect_path_is_changed_to_recipient(self.on_fld)
-        self.fld_dir_ins.connect_path_is_changed_to_recipient(self.on_fld)
+        self.fld_log_file.connect_path_is_changed(self.on_fld)
+        self.fld_dir_ins.connect_path_is_changed(self.on_fld)
         self.but_exp.clicked.connect(self.on_but_exp)
         self.set_tool_tips()
         self.set_style()
@@ -98,62 +98,27 @@ class CMWConfigPars(QWidget):
         self.fld_log_file.lab.setStyleSheet(style.styleLabel)
         self.fld_dir_ins.lab.setStyleSheet(style.styleLabel)
         self.setMaximumSize(400,600)
-        #self.lab_dir_ins.setStyleSheet(style.styleLabel)
 
-    #def resizeEvent(self, e):
-    #    logger.debug('resizeEvent size: %s' % str(e.size())) 
-
-
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent pos: %s' % str(e.pos())) 
-        #cp.posGUIMain = (self.pos().x(),self.pos().y())
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
-        #try   : del cp.guiworkresdirs # CMWConfigPars
-        #except: pass # silently ignore
 
-
-#    def on_cbx(self, par, cbx):
-#        #if cbx.hasFocus():
-#        par.setValue(cbx.isChecked())
-#        msg = 'check box %s is set to: %s' % (cbx.text(), str(par.value()))
-#        logger.info(msg)
-
-
-#    def on_cbx_host_changed(self, i):
-#        logger.debug('XXX: %s' % str(type(i))
-#        self.on_cbx(cp.cdb_host, self.cbx_host)
-
-
-#    def on_cbx_port_changed(self, i):
-#        self.on_cbx(cp.cdb_port, self.cbx_port)
 
     def on_cmb_host_changed(self):
         selected = self.cmb_host.currentText()
-        cp.cdb_host.setValue(selected) 
+        cp.cdb_host.setValue(selected)
         logger.info('Set DB host: %s' % selected)
 
     def on_cmb_port_changed(self):
         selected = self.cmb_port.currentText()
-        cp.cdb_port.setValue(int(selected)) 
+        cp.cdb_port.setValue(int(selected))
         logger.info('Set DB port: %s' % selected)
 
     def on_cmb_level_changed(self):
         selected = self.cmb_level.currentText()
-        cp.log_level.setValue(selected) 
+        cp.log_level.setValue(selected)
         logger.info('Set logger level %s' % selected)
 
-#    def on_edi(self, par, but):
-#        #logger.debug('on_edi')
-#        par.setValue(str(but.displayText()))
-#        logger.info('Set field: %s' % str(par.value()))
-
-#    def on_edi_log_file(self):
-#        ##logger.debug('on_edi_log_file')
-#        self.on_edi(cp.log_prefix, self.edi_log_file)
-#        #cp.log_prefix.setValue(str(self.edi_log_file.displayText()))
-#        #logger.info('Set logger file name: ' + str(cp.log_prefix.value()))
 
     def on_fld(self,s):
         logger.debug('on_fld selected:%s'%s)

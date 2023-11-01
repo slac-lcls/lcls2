@@ -81,7 +81,7 @@ std::string getNicIp(bool forceEnet)
             if (s->sll_hatype == ARPHRD_INFINIBAND) {
                 if (!interface_name) interface_name = ifa->ifa_name;
             }
-            else if (s->sll_hatype == ARPHRD_ETHER && 
+            else if (s->sll_hatype == ARPHRD_ETHER &&
                      ifa->ifa_flags & IFF_RUNNING) {
                 if (!ethernet_name) ethernet_name  = ifa->ifa_name;
             }
@@ -284,6 +284,7 @@ void CollectionApp::handleAlloc(const json &msg)
 void CollectionApp::handleDealloc(const json &msg)
 {
     unsubscribePartition();     // ZMQ_UNSUBSCRIBE
+    connectionShutdown();
     json body = json({});
     json answer = createMsg("dealloc", msg["header"]["msg_id"], m_id, body);
     reply(answer);
@@ -362,7 +363,7 @@ void CollectionApp::run()
                 json body;
                 json answer = createMsg("timingTransition", std::to_string(pid), getId(), body);
                 reply(answer);
-            } else if ((key == "fileReport") || (key == "error")) {
+            } else if ((key == "fileReport") || (key == "error") || (key == "chunkRequest")) {
                 json answer = createMsg(key.c_str(), "0", 0, msg["body"]);
                 logging::debug("reply %s: %s", key.c_str(), answer.dump().c_str());
                 reply(answer);

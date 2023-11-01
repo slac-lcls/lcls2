@@ -1,7 +1,7 @@
-#------------------------------
+
 """
-:py:class:`Styles` 
-============================================================================================
+:py:class:`Styles`
+==================
 
 Usage::
 
@@ -24,18 +24,16 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2016-11-22 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 """
-#------------------------------
 
-class Styles() :
+class Styles():
     """Storage of CalibManager styles.
     """
-    def __init__(self) :
+    def __init__(self):
         self._name = self.__class__.__name__
         self.set_styles()
 
-#------------------------------
-    def set_styles(self) :
 
+    def set_styles(self):
         self.styleYellowish = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
         self.stylePink      = "background-color: rgb(255, 200, 220); color: rgb(0, 0, 0);" # Pinkish
         self.styleYellowBkg = "background-color: rgb(240, 240, 100); color: rgb(0, 0, 0);" # YellowBkg
@@ -67,6 +65,7 @@ class Styles() :
         self.styleEditBad      = self.styleRedBkgd
         self.styleButton       = self.styleGray
         self.styleButtonLeft   = self.styleButton + 'text-align: left;'
+        self.styleButtonRight  = self.styleButton + 'text-align: right;'
         self.styleButtonOn     = self.styleBluish
         self.styleButtonClose  = self.stylePink
         self.styleButtonWarning= self.styleYellowBkg
@@ -74,12 +73,14 @@ class Styles() :
         self.styleButtonBad    = self.styleReddish # self.stylePink
         self.styleBox          = self.styleGray
         self.styleCBox         = self.styleYellowish
-        self.styleStatusGood   = self.styleGreen
         self.styleStatusWarning= self.styleYellow
         self.styleStatusAlarm  = self.styleRed
         self.styleTitleBold    = self.styleTitle + 'font-size: 18pt; font-family: Courier; font-weight: bold;'
         self.styleWhiteFixed   = self.styleWhite + 'font-family: Fixed;'
         self.styleTitleInFrame = self.styleWhite # self.styleDefault # self.styleWhite # self.styleGray
+        self.styleStatusGood   = self.styleGreen
+        self.styleButtonGoodLeft  = self.styleGreen + 'text-align: left;'
+        self.styleButtonGoodRight = self.styleGreen + 'text-align: right;'
 
         self.styleStat         = self.styleBkgdGray + "color: white;"
 
@@ -87,11 +88,6 @@ class Styles() :
                              "QGroupBox{margin-top:10px; padding-top:10px;}"\
                              "QGroupBox{border: 1px solid; border-color: #AA00B0B0; border-radius:5px;}"
 
-        #self.colorEditInfo     = QtGui.QColor(100, 255, 200)
-        #self.colorEditBad      = QtGui.QColor(255,   0,   0)
-        #self.colorEdit         = QtGui.QColor('white')
-        #self.colorTabItem      = QtGui.QColor('white')
-
-#------------------------------
 style = Styles()
-#------------------------------
+
+# EOF

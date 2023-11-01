@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 from math import fabs
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
+from psana.detector.NDArrUtils import info_ndarr, print_ndarr
 
 
 def common_mode_rows(arr, mask=None, cormax=None, npix_min=10):
@@ -47,18 +47,17 @@ def common_mode_rows(arr, mask=None, cormax=None, npix_min=10):
         npix = mask.sum(axis=1) # count good pixels in each row
         #print('npix', npix[:100])
         cmode = np.select((npix>npix_min,), (cmode,), default=0)
-    
+
     if cormax is not None:
         cmode = np.select((np.fabs(cmode) < cormax,), (cmode,), default=0)
-    
+
     #logger.debug(info_ndarr(cmode, 'cmode'))
     _,m2 = np.meshgrid(np.zeros(cols, dtype=np.int16), cmode) # stack cmode 1-d column to 2-d matrix
     if mask is None:
         arr -= m2
-    else: 
+    else:
         bmask = mask>0
         arr[bmask] -= m2[bmask]
-
 
 
 def common_mode_cols(arr, mask=None, cormax=None, npix_min=10):
@@ -90,9 +89,8 @@ def common_mode_cols(arr, mask=None, cormax=None, npix_min=10):
         arr[bmask] -= m1[bmask]
 
 
-
 def common_mode_2d(arr, mask=None, cormax=None, npix_min=10):
-    """Defines and applys common mode correction to entire 2-d arr using the same shape mask. 
+    """Defines and applys common mode correction to entire 2-d arr using the same shape mask.
     """
     if mask is None:
         cmode = np.median(arr)
@@ -108,12 +106,11 @@ def common_mode_2d(arr, mask=None, cormax=None, npix_min=10):
             arr[bmask] -= cmode
 
 
-
 def common_mode_rows_hsplit_nbanks(data, mask=None, nbanks=4, cormax=None, npix_min=10):
     """Works with 2-d data and mask numpy arrays,
        hsplits them for banks (df. nbanks=4),
        for each bank applies median common mode correction for pixels in rows,
-       hstack banks in array of original data shape and copy results in i/o data 
+       hstack banks in array of original data shape and copy results in i/o data
     """
     bdata = np.hsplit(data, nbanks)
 
@@ -124,15 +121,14 @@ def common_mode_rows_hsplit_nbanks(data, mask=None, nbanks=4, cormax=None, npix_
         bmask = np.hsplit(mask, nbanks)
         for b,m in zip(bdata,bmask):
             common_mode_rows(b, m, cormax, npix_min)
-    data[:] = np.hstack(bdata)[:]    
-
+    data[:] = np.hstack(bdata)[:]
 
 
 def common_mode_2d_hsplit_nbanks(data, mask=None, nbanks=4, cormax=None, npix_min=10):
     """Works with 2-d data and mask numpy arrays,
        hsplits them for banks (df. nbanks=4),
        for each bank applies median common mode correction for all pixels,
-       hstack banks in array of original data shape and copy results in i/o data 
+       hstack banks in array of original data shape and copy results in i/o data
     """
     bdata = np.hsplit(data, nbanks)
     if mask is None:
@@ -142,6 +138,46 @@ def common_mode_2d_hsplit_nbanks(data, mask=None, nbanks=4, cormax=None, npix_mi
         bmask = np.hsplit(mask, nbanks) if mask is not None else None
         for b,m in zip(bdata,bmask):
             common_mode_2d(b, m, cormax, npix_min)
-    data[:] = np.hstack(bdata)[:]    
+    data[:] = np.hstack(bdata)[:]
+
+
+def common_mode_apply(arrf, mask, cmpars=(0,7,100,10), nbanks_rows_cols=(2,8)):
+    """Applies common mode correction to arrf (=raw-peds), shape=(<number-of-segments>, 704, 768).
+    Example of epix100: shape=(1, 704, 768), nbanks_rows_cols=(2,8).
+    If multiple correction is selected it is applied in particular order - in banks, in rows per bank, in columns per bank.
+
+    Parameters
+    ----------
+
+       arrf (ndarray, float) - I/O array of pedestal subtracted intensities (raw-peds).
+       mask (ndarray, int16) - mask array of 0/1 shaped as arrf.
+       cmpars (tuple) - common mode parameters
+          [0] - (int) algorithm number - currently this number does not matter, median algorithm is used everywhere.
+          [1] - (uint) mode bitword - 1/2/4 : correction applied in rows per bank / columns per bank / banks.
+          [2] - (float) absolute maximal allowed correction. Correction is not applied if exceeds this value.
+          [3] - (uint) minimal number of (anmasked) pixels to evaluate correction.
+       nbanks_rows_cols (tuple of uint) = (2,8) for epix100
+    """
+
+    if cmpars is None: return
+    alg, mode, cormax = int(cmpars[0]), int(cmpars[1]), cmpars[2]
+    npixmin = cmpars[3] if len(cmpars)>3 else 10
+
+    nbr, nbc = nbanks_rows_cols
+    hrows = int(arrf.shape[1]/nbr) # 704/2=352
+
+    if mode>0:
+      for s in range(arrf.shape[0]):
+
+        if mode & 4: # in banks: (704/2,768/8)=(352,96) pixels
+          common_mode_2d_hsplit_nbanks(arrf[s,:hrows,:], mask=mask[s,:hrows,:], nbanks=nbc, cormax=cormax, npix_min=npixmin)
+          common_mode_2d_hsplit_nbanks(arrf[s,hrows:,:], mask=mask[s,hrows:,:], nbanks=nbc, cormax=cormax, npix_min=npixmin)
+
+        if mode & 1: # in rows per bank: 768/8 = 96 pixels # ?ms
+          common_mode_rows_hsplit_nbanks(arrf[s,], mask=mask[s,], nbanks=nbc, cormax=cormax, npix_min=npixmin)
+
+        if mode & 2: # in cols per bank: 704/2 = 352 pixels # ?ms
+          common_mode_cols(arrf[s,:hrows,:], mask=mask[s,:hrows,:], cormax=cormax, npix_min=npixmin)
+          common_mode_cols(arrf[s,hrows:,:], mask=mask[s,hrows:,:], cormax=cormax, npix_min=npixmin)
 
 # EOF

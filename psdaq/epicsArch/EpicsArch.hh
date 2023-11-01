@@ -20,8 +20,9 @@ public:
     unsigned disconnect();
     unsigned unconfigure();
 public:                                 // Detector virtuals
-    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
-    void event(XtcData::Dgram& dgram, PGPEvent* event) override;
+    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
+    void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
 private:
     void _worker();
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
@@ -47,12 +48,12 @@ public:
     void handleReset(const nlohmann::json& msg) override;
 private:
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;
+    void connectionShutdown() override;
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
     void _unconfigure();
     void _disconnect();
-    void _shutdown();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:
     DrpBase m_drp;

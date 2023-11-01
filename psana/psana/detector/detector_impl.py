@@ -3,9 +3,18 @@ import amitypes
 from psana.dgram import Dgram
 
 
+def hiddenmethod(obj):
+    """
+    Adds an '_hidden' attribute to an object so it won't be picked up by detinfo
+    """
+    obj._hidden = True
+    return obj
+
+
 class Container(object):
     def __init__(self):
         pass
+
 
 class MissingDet:
     def __init__(self):
@@ -22,7 +31,7 @@ class MissingDet:
         return None
 
 
-class DetectorImpl(object):
+class DetectorImpl():
     def __init__(self, det_name, drp_class_name, configinfo, calibconst,
             env_store   = None,
             var_name    = None):
@@ -47,6 +56,9 @@ class DetectorImpl(object):
             if hasattr(dgram,self._det_name):
                 seg_configs.update(getattr(dgram,self._det_name))
         return seg_configs
+
+    def config(self, evt) -> dict:
+        return self._seg_configs()
 
     def _segments(self,evt):
         """
@@ -94,8 +106,9 @@ class DetectorImpl(object):
         for config in self._configs:
             if not hasattr(config,'software'): continue
 
-            seg      = getattr(config.software,self._det_name)
-            seg_dict = getattr(seg[0],self._drp_class_name)
+            seg      = getattr(config.software,self._det_name)  # {1: <psana.container.Container object at 0x7f1d9064b4f0>}
+            key0     = list(seg.keys())[0]  # 1
+            seg_dict = getattr(seg[key0],self._drp_class_name)
             attrs    = [attr for attr in vars(seg_dict) if not (attr=='software' or attr=='version')]
             for field in attrs:
                 fd = getattr(seg_dict,field)

@@ -240,7 +240,7 @@ XtcMonitorServer::Result XtcMonitorServer::events(Dgram* dg)
     int ibuffer = itr + _numberOfEvBuffers;
 
     _myMsg.bufferIndex(ibuffer);
-    _copyDatagram(dg, _myShm + _sizeOfBuffers*ibuffer);
+    _copyDatagram(dg, _myShm + _sizeOfBuffers*ibuffer, _sizeOfBuffers);
 
     if (trid == TransitionId::Enable) {
       //
@@ -294,6 +294,10 @@ void XtcMonitorServer::discover()
   pfd.events  = POLLIN;
   pfd.revents = 0;
 
+  int opt = 1;
+  if (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
+    perror("setsockopt failed");
+
   //  assign an ephemeral port
   unsigned port = 32768;
   sockaddr_in saddr;
@@ -326,7 +330,7 @@ void XtcMonitorServer::discover()
   _flushQueue(_discoveryQueue);
 
   if (::listen(fd,10)<0)
-    printf("ConnectionManager listen failed\n");
+    perror("ConnectionManager listen failed\n");
   else {
     while(!_terminate.load(std::memory_order_relaxed)) {
       timespec tv; tv.tv_sec=tv.tv_nsec=0;
@@ -411,7 +415,7 @@ void XtcMonitorServer::routine()
         if (mq_receive(_shuffleQueue, (char*)&m, sizeof(m), NULL) < 0)
           perror("mq_receive");
 
-        _copyDatagram(m.dg(),_myShm+_sizeOfBuffers*m.msg().bufferIndex());
+        _copyDatagram(m.dg(),_myShm+_sizeOfBuffers*m.msg().bufferIndex(), _sizeOfBuffers);
         _deleteDatagram(m.dg());
 
         if (m.msg().serial()) {
@@ -722,10 +726,12 @@ void XtcMonitorServer::_update(int iclient,
   }
 }
 
-void XtcMonitorServer::_copyDatagram(Dgram* p, char* b)
+void XtcMonitorServer::_copyDatagram(Dgram* p, char* b, size_t s)
 {
   Dgram* dg = (Dgram*)p;
-  memcpy((char*)b, dg, sizeof(Dgram)+dg->xtc.sizeofPayload());
+  size_t sz = sizeof(Dgram)+dg->xtc.sizeofPayload();
+  if (sz > s)  throw "XtcMonitorServer::_copyDatagram: dgram too big for buffer";
+  memcpy((char*)b, dg, sz);
 }
 
 void XtcMonitorServer::_deleteDatagram(Dgram* p) {}

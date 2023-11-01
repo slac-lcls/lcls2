@@ -7,7 +7,6 @@
 
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
-#include "psdaq/service/fast_monotonic_clock.hh"
 
 namespace Pds {
   namespace Eb {
@@ -22,9 +21,8 @@ namespace Pds {
     public:
       void dump(int number);
     public:
-      LinkedList<EbEvent>              pending; // Listhead, events pending;
-      uint64_t                         key;     // Epoch sequence number
-      fast_monotonic_clock::time_point t0;      // Starting time of timeout
+      LinkedList<EbEvent> pending;    // Listhead, events pending;
+      uint64_t            key;        // Epoch sequence number
     };
   };
 };
@@ -42,8 +40,7 @@ namespace Pds {
 
 inline Pds::Eb::EbEpoch::EbEpoch(uint64_t key, EbEpoch* after) :
   pending(),
-  key(key),
-  t0(fast_monotonic_clock::now())
+  key(key)
 {
   connect(after);
 }

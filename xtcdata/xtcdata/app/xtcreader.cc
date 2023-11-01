@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
+#include <cinttypes>
 
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
@@ -15,10 +16,16 @@ using std::string;
 
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
+    unsigned maxWords = 1;
     printf("'%s' ", name);
     printf("(shape:");
-    for (unsigned w = 0; w < rank; w++) printf(" %d",shape[w]);
+    for (unsigned w = 0; w < rank; w++) {
+        printf(" %d",shape[w]);
+        maxWords *= shape[w];
+    }
     printf("): ");
+    if (maxWords < numWords)
+        numWords = maxWords;
     for (unsigned w = 0; w < numWords; ++w) {
         printf(fmt, arrT.data()[w]);
     }
@@ -171,11 +178,11 @@ public:
         }
     }
 
-    int process(Xtc* xtc)
+    int process(Xtc* xtc, const void* bufEnd)
     {
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            iterate(xtc);
+            iterate(xtc, bufEnd);
             break;
         }
         case (TypeId::Names): {
@@ -209,7 +216,7 @@ public:
             DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
             Data& data = shapesdata.data();
-	    printf("Found %d names\n",names.num());
+	    printf("Found %d names for namesid 0x%x\n",names.num(),namesId);
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 get_value(i, name, descdata);
@@ -237,12 +244,14 @@ int main(int argc, char* argv[])
 {
     int c;
     char* xtcname = 0;
+    char* cfg_xtcname = 0;
     int parseErr = 0;
     unsigned neventreq = 0xffffffff;
     bool debugprint = false;
     unsigned numWords = 3;
+    bool printTimeAsUnsignedLong = false;
 
-    while ((c = getopt(argc, argv, "hf:n:dw:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:dw:c:T")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -258,6 +267,12 @@ int main(int argc, char* argv[])
             break;
         case 'w':
             numWords = atoi(optarg);
+            break;
+        case 'c':
+            cfg_xtcname = optarg;
+            break;
+        case 'T':
+            printTimeAsUnsignedLong = true;
             break;
         default:
             parseErr++;
@@ -275,22 +290,54 @@ int main(int argc, char* argv[])
         exit(2);
     }
 
-    XtcFileIterator iter(fd, 0x4000000);
+
+    // Open xtc file for config if given
+    int cfg_fd = -1;
     Dgram* dg;
-    unsigned nevent=0;
     DebugIter dbgiter(numWords);
-    while ((dg = iter.next())) {
-        if (nevent>=neventreq) break;
-        nevent++;
-        printf("event %d, %11s transition: time %d.%09d, env 0x%08x, "
-               "payloadSize %d extent %d\n",
-               nevent,
-               TransitionId::name(dg->service()), dg->time.seconds(),
-               dg->time.nanoseconds(),
-               dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
-        if (debugprint) dbgiter.iterate(&(dg->xtc));
+    if (cfg_xtcname) {
+        cfg_fd = open(cfg_xtcname, O_RDONLY);
+        if (cfg_fd < 0) {
+            fprintf(stderr, "Unable to open config file '%s'\n", cfg_xtcname);
+            exit(2);
+        }
+
+        // Use config from given config file as default
+        XtcFileIterator cfg_iter(cfg_fd, 0x4000000);
+
+        // Only access the first dgram (config)
+        dg = cfg_iter.next();
+        const void* bufEnd = ((char*)dg) + 0x4000000;
+
+        // dbgiter will remember all the configs
+        if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
+
     }
 
+    XtcFileIterator iter(fd, 0x4000000);
+    unsigned nevent=0;
+    dg = iter.next();
+    const void* bufEnd = ((char*)dg) + 0x4000000;
+    while (dg) {
+        if (nevent>=neventreq) break;
+        nevent++;
+        printf("event %d, %11s transition: ",
+               nevent,
+               TransitionId::name(dg->service()));
+        if (printTimeAsUnsignedLong) {
+            printf(" time %" PRIu64 ", ", dg->time.value());
+        } else {
+            printf(" time 0x%8.8x.0x%8.8x, ", dg->time.seconds(), dg->time.nanoseconds());
+        }
+        printf(" env 0x%08x, payloadSize %d damage 0x%x extent %d\n",
+               dg->env, dg->xtc.sizeofPayload(),dg->xtc.damage.value(),dg->xtc.extent);
+        if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
+        dg = iter.next();
+    }
+
+    if (cfg_fd >= 0) {
+        ::close(cfg_fd);
+    }
     ::close(fd);
     return 0;
 }

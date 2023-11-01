@@ -18,13 +18,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 import os
-
-from psana.pyalgos.generic.Utils import save_textfile, load_textfile
-
-CALIB_REPO_EPIX10KA = '/cds/group/psdm/detector/gains2/epix10ka/panels'
+from psana.detector.Utils import save_textfile, load_textfile, get_login, str_tstamp
+from psana.detector.dir_root import DIR_REPO_EPIX10KA  # DIR_ROOT, DIR_LOG_AT_START, HOSTNAME
+#DIR_REPO_EPIX10KA = DIR_ROOT + '/detector/gains2/epix10ka/panels'
 FNAME_PANEL_ID_ALIASES = '.aliases.txt'
 
-def alias_for_id(panel_id, fname=FNAME_PANEL_ID_ALIASES):
+def alias_for_id(panel_id, fname=FNAME_PANEL_ID_ALIASES, exp=None, run=None, **kwa):
     """Returns Epix100a/10ka panel short alias for long panel_id,
        e.g., for panel_id = 3925999616-0996663297-3791650826-1232098304-0953206283-2655595777-0520093719
        returns 0001
@@ -43,7 +42,11 @@ def alias_for_id(panel_id, fname=FNAME_PANEL_ID_ALIASES):
         if ialias>alias_max: alias_max = ialias
         #print(fields)
     # if record for panel_id is not found yet, add it to the file and return its alias
-    rec = '%04d %s\n' % (alias_max+1, panel_id)
+    rec = '%04d %s %s' % (alias_max+1, panel_id, str_tstamp())
+    if exp is not None: rec += ' %10s' %  exp
+    if run is not None: rec += ' r%04d' %  run
+    if len(kwa)>0: rec += ' '+' '.join([str(v) for k,v in kwa.items() if v is not None])
+    rec += ' %s\n' % get_login()
     logger.debug('file "%s" is appended with record:\n%s' % (fname, rec))
     save_textfile(rec, fname, mode='a')
     return '%04d' % (alias_max+1)

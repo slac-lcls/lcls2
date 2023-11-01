@@ -24,12 +24,12 @@ namespace Drp
                    const std::string& sProvider,
                    const std::string& sRequest,
                    bool               bDebug);
-     ~EpicsMonitorPv();   // non-virtual destructor: this class is not for inheritance
+    ~EpicsMonitorPv();   // non-virtual destructor: this class is not for inheritance
 
     int  release();
     int  printPv() const;
     int  addVarDef(EpicsArchDef& varDef, size_t& size);
-    int  addToXtc(XtcData::Damage& damage, bool& stale, char *pcXtcMem, size_t& iSizeXtc, std::vector<uint32_t>& sShape);
+    int  addToXtc(XtcData::Damage& damage, bool& stale, char *pcXtcMem, size_t& iSizeXtc, uint32_t sShape[XtcData::MaxRank]);
 
     /* Get & Set functions */
     const std::string  getPvName()         const {return name();}
@@ -37,11 +37,11 @@ namespace Drp
     bool               isConnected()       const {return _connected;}
     void               disable()                 {_bDisabled = true;}
     bool               isDisabled()        const {return _bDisabled;}
+    size_t             rank()              const {return _rank;}
   private:
     void onConnect()    override;
     void onDisconnect() override;
     void updated()      override;
-    void _ready();
   private:
     enum State { NotReady, Ready };
   private: // Marked static to share one mutex & condvar across all instances
@@ -50,9 +50,8 @@ namespace Drp
   private:
     std::string                    _sPvDescription;
     std::vector<uint8_t>           _pData;
-    std::vector<uint32_t>          _shape;
+    uint32_t                       _shape[XtcData::MaxRank];
     size_t                         _size;
-    const std::string              _pvField;
     pvd::ScalarType                _type;
     size_t                         _nelem;
     size_t                         _rank;

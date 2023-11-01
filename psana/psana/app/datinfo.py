@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
-import os
+#import os
 import sys
 from time import time
 import json
 
-from psana.detector.Utils import info_dict, info_command_line, info_namespace
+from psana.detector.Utils import info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import datasource_arguments, info_run
-from psana.detector.UtilsAreaCalib import info_detector
+from psana.detector.utils_psana import datasource_kwargs_from_string, info_run, info_detnames_for_dskwargs, info_detector, seconds, timestamp_run
 from psana import DataSource
 
 import logging
@@ -17,18 +16,24 @@ logger = logging.getLogger(__name__)
 DICT_NAME_TO_LEVEL = logging._nameToLevel
 STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 
-#SCRNAME = sys.argv[0].rsplit('/')[-1]
-SCRNAME = os.path.basename(sys.argv[0])
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+#SCRNAME = os.path.basename(sys.argv[0])
 
-USAGE = '\n  %s -d <detector> -e <experiment> -r <run-number(s)> [kwargs]' % SCRNAME\
+USAGE = '\n  %s -d <detector> -k <datasource-kwargs> [kwargs]' % SCRNAME\
       + '\nCOMMAND EXAMPLES:'\
-      + '\n  %s -d epixquad -e ueddaq02 -r 27 -td -L DEBUG' % SCRNAME\
-      + '\n  %s -d epixquad -e ueddaq02 -r 30-82 <--- DOES NOT WORK - missconfigured' % SCRNAME\
-      + '\n  %s -d epixquad -e ueddaq02 -r 83 <--- dark' % SCRNAME\
-      + '\n  %s -d epixquad -e ueddaq02 -r 84 <--- PARTLY WORKS charge injection' % SCRNAME\
-      + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2' % SCRNAME\
-      + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
-      + '\n  %s -d tmoopal -e tmoc00118 -r 123 -td' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=27 -td -L DEBUG' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=30 <--- DOES NOT WORK - missconfigured' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=83 <--- dark' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=84 <--- PARTLY WORKS charge injection' % SCRNAME\
+      + '\n  %s -d epixquad -k /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2' % SCRNAME\
+      + '\n  %s -d epixquad -k /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
+      + '\n  %s -d tmoopal  -k exp=tmoc00118,run=123 -td' % SCRNAME\
+      + '\n  %s -k exp=tmoc00318,run=8 -d epix100hw' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/rixx45619-r0121-s001-c000.xtc2 -d epixhr' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00318-r0010-s000-c000.xtc2 -d epix100' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00118-r0222-s006-c000.xtc2 -d tmo_atmopal' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/uedcom103-r0007-s002-c000.xtc2 -d epixquad' % SCRNAME\
+      + '\n  %s -k /cds/data/psdm/prj/public01/xtc/ueddaq02-r0569-s001-c000.xtc2  -d epixquad' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
 
 def ds_run_det(args):
@@ -37,10 +42,10 @@ def ds_run_det(args):
         print('detector information is not requested by -td option - skip it')
         return
 
-    ds_kwa = datasource_arguments(args)
-    print('DataSource kwargs:%s' % info_dict(ds_kwa, fmt='%s: %s', sep=' '))
+    dskwargs = datasource_kwargs_from_string(args.dskwargs)  # datasource_arguments(args)
+    print('DataSource kwargs:%s' % info_dict(dskwargs, fmt='%s: %s', sep=' '))
     try:
-      ds = DataSource(**ds_kwa)
+      ds = DataSource(**dskwargs)
     except:
       print('Can not open DataSource\nCheck if xtc2 file is available')
       sys.exit()
@@ -55,7 +60,7 @@ def ds_run_det(args):
     if xtc_path is not None:
       print('ds.n_files:', str(ds.n_files))
       print('ds.xtc_files:\n ', '\n  '.join(ds.xtc_files))
-      print('ds.xtc_ext:', str(ds.xtc_ext))
+      print('ds.xtc_ext:', str(ds.xtc_ext) if hasattr(ds,'xtc_ext') else 'N/A')
       print('ds.smd_files:\n ', '\n  '.join(ds.smd_files))
     print('ds.shmem:', str(ds.shmem))
     print('ds.smalldata_kwargs:', str(ds.smalldata_kwargs))
@@ -69,37 +74,40 @@ def ds_run_det(args):
 
     expname = run.expt if run.expt is not None else args.expname # 'mfxc00318'
 
-    print('fname:', args.fname)
-    #print('expname:', expname)
-    #print('runnum :', run.runnum)
+    print('dskwargs:', args.dskwargs)
     #print('run.timestamp :', run.timestamp)
-    print('_fullname       :', det.raw._fullname())
-    print('_segment_ids    :', det.raw._segment_ids())
-    print('_segment_indices:', det.raw._segment_indices())
-
-    #print('_config_object  :', str(det.raw._config_object()))
-    #print('_config_object2 :', str(ue.config_object_det(det)))
-    #print('_config_object3 :', str(ue.config_object_det_raw(det.raw)))
-
-    dcfg = det.raw._config_object()
-    for k,v in dcfg.items():
-        print('  seg:%s %s' % (str(k), info_ndarr(v.config.trbit, ' v.config.trbit for ASICs')))
-        print('  seg:%s %s' % (str(k), info_ndarr(v.config.asicPixelConfig, ' v.config.asicPixelConfig')))
 
     print(info_run(run, cmt='run info\n    ', sep='\n    '))
-    if det is not None:
-      print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
-      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape())
+    #print(info_detnames(run, cmt='\ncommand: '))
+    print(info_detnames_for_dskwargs(args.dskwargs, cmt='\ncommand: '))
 
-    #sys.exit('TEST EXIT')
+    if det is None:
+        print('detector object is None for detname %s' % args.detname)
+        sys.exit('EXIT')
+
+    det_raw_attrs = dir(det.raw)
+    print('\ndir(det.raw):', det_raw_attrs)
+
+    print('det.raw._uniqueid       :', det.raw._uniqueid if '_uniqueid' in det_raw_attrs else 'MISSING')
+    print('det.raw._fullname       :', det.raw._fullname() if '_fullname' in det_raw_attrs else 'MISSING')
+    print('det.raw._segment_ids    :', det.raw._segment_ids() if '_segment_ids' in det_raw_attrs else 'MISSING')
+    print('det.raw._segment_indices:', det.raw._segment_indices() if '_segment_indices' in det_raw_attrs else 'MISSING')
+
+    if '_config_object' in det_raw_attrs:
+      dcfg = det.raw._config_object()
+      for k,v in dcfg.items():
+        print('  seg:%s %s' % (str(k), info_ndarr(v.config.trbit, ' v.config.trbit for ASICs')))
+        print('  seg:%s %s' % (str(k), info_ndarr(v.config.asicPixelConfig, ' v.config.asicPixelConfig')))
+    else: print('det.raw._config_object  : MISSING')
+
+    print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
+    print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
 
 
 def selected_record(nrec):
     return nrec<5\
        or (nrec<50 and not nrec%10)\
        or (not nrec%100)
-       #or (nrec<500 and not nrec%100)\
-       #or (not nrec%1000)
 
 
 def info_det_evt(det, evt, ievt):
@@ -119,12 +127,12 @@ def loop_run_step_evt(args):
   #from psana import DataSource
   #ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc', max_events=1000)
 
-  ds = DataSource(**datasource_arguments(args))
+  ds = DataSource(**datasource_kwargs_from_string(args.dskwargs))
 
   if do_loopruns:
-    for irun,run in enumerate(ds.runs()):
+    for irun, run in enumerate(ds.runs()):
       print('\n==== %02d run: %d exp: %s detnames: %s' % (irun, run.runnum, run.expt, ','.join(run.detnames)))
-
+      print('run.timestamp LCLS2 int: %d > epoch unix sec: %.6f > %s' % (run.timestamp, seconds(run.timestamp), timestamp_run(run)))
       if not do_loopsteps: continue
       print('%s detector object' % args.detname)
       det = None if args.detname is None else run.Detector(args.detname)
@@ -135,11 +143,17 @@ def loop_run_step_evt(args):
       try:    step_docstring = run.Detector('step_docstring')
       except: step_docstring = None
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
-      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape())
+      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
 
-      dcfg = det.raw._config_object() #_config_object() #ue.config_object_det(det)
+      timing = run.Detector('timing') if 'timing' in run.detnames else None
+      if timing is not None: timing.raw._add_fields()
+      tsec_old = 0
+      pulseid_old = 0
 
-      for istep,step in enumerate(run.steps()):
+      dcfg = det.raw._config_object() if '_config_object' in dir(det.raw) else None
+      if dcfg is None: print('det.raw._config_object is MISSING')
+
+      for istep, step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
 
         if step_docstring is not None:
@@ -147,20 +161,32 @@ def loop_run_step_evt(args):
           try: sdsdict = json.loads(sds)
           except Exception as err:
             print('\nERROR FOR step_docstring: ', sds)
-            logger.error('json.loads(step_docstring(step)) err:', err)
+            logger.error('json.loads(step_docstring(step)) err: %s' % str(err))
             sdsdict = None
 
         metadic = None if step_docstring is None else sdsdict
         print('  metadata: %s' % str(metadic))
 
         if not do_loopevts: continue
-        ievt,evt,segs = None,None,None
-        for ievt,evt in enumerate(step.events()):
+        ievt, evt, segs = None, None, None
+        for ievt, evt in enumerate(step.events()):
           #if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
           if not selected_record(ievt): continue
           if segs is None:
-             segs = det.raw._segment_numbers(evt) if det is not None else None
-             print('  Event %05d %s     ' % (ievt, info_ndarr(segs,'segments')))
+             segs = det.raw._segment_numbers if det is not None else None
+             #tstamp = evt.timestamp   # like 4193682596073796843 relative to 1990-01-01
+             tsec = seconds(evt.timestamp)
+             tsec_diff = tsec-tsec_old
+             tsec_old = tsec
+             print('  Event %05d t=%.6fsec dt=%.6fsec/record %s '%\
+                   (ievt, tsec, tsec_diff, info_ndarr(segs,'segments')), end='')
+             if timing is not None:
+                 pulseid = timing.raw.pulseId(evt) # evt.get(EventId).fiducials()
+                 pulseid_diff = pulseid-pulseid_old
+                 pulseid_old = pulseid
+                 print('  pulseId=%d diff=%d/record' % (pulseid, pulseid_diff))
+             else:
+                 print(' timing is None, pulseId is N/A')
              raw = det.raw.raw(evt)
              print(info_ndarr(raw,'    det.raw.raw(evt)'))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
@@ -185,6 +211,7 @@ def do_main():
     parser = argument_parser()
     args = parser.parse_args()
     opts = vars(args)
+
     #?????defs = vars(parser.parse_args([])) # dict of defaults only
 
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
@@ -193,7 +220,9 @@ def do_main():
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
 
     print('command line: %s' % info_command_line())
-    print('input parameters: %s' % info_dict(opts, fmt='%s: %s', sep=', '))
+    logger.info(info_parser_arguments(parser))
+
+    #print('input parameters: %s' % info_dict(opts, fmt='%s: %s', sep=', '))
     #pedestals_calibration(*args, **opts)
     #pedestals_calibration(**opts)
     ds_run_det(args)
@@ -206,31 +235,26 @@ def do_main():
 def argument_parser():
     from argparse import ArgumentParser
 
+    d_dskwargs = None
     d_detname = None # 'epixquad'
-    d_expname = None # 'ueddaq02'
-    d_runs    = None # '66' # 1021 or 1021,1022-1025
-    d_fname   = None # '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
     d_evtmax  = 0 # maximal number of events
-    d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
     d_logmode = 'INFO'
     d_typeinfo= 'DRSE'
 
+    h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
+                ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
+                ' or <fname.xtc> or files=<fname.xtc>'\
+                ' or pythonic dict of generic kwargs, e.g.:'\
+                ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_detname = 'detector name, e.g. %s' % d_detname
-    h_fname   = 'input xtc file name, default = %s' % d_fname
-    h_expname = 'experiment name, e.g. %s' % d_expname
-    h_runs    = 'run number or list of runs e.g. 12,14,18 or 12, default = %s' % str(d_runs)
     h_evtmax  = 'number of events to print, default = %s' % str(d_evtmax)
-    h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_typeinfo= 'type of information for output D-detector, R-run-loop, S-step-loop, E-event-loop, default = %s' % d_typeinfo
 
-    parser = ArgumentParser(description='Print info about experiment detector and run')
+    parser = ArgumentParser(usage=USAGE, description='Print info about experiment detector and run')
+    parser.add_argument('-k', '--dskwargs', type=str, help=h_dskwargs)
     parser.add_argument('-d', '--detname', default=d_detname, type=str, help=h_detname)
-    parser.add_argument('-e', '--expname', type=str, help=h_expname)
-    parser.add_argument('-r', '--runs',    type=str, help=h_runs)
-    parser.add_argument('-f', '--fname', default=d_fname, type=str, help=h_fname)
     parser.add_argument('-n', '--evtmax', default=d_evtmax, type=int, help=h_evtmax)
-    parser.add_argument('-x', '--dirxtc', default=d_dirxtc, type=str, help=h_dirxtc)
     parser.add_argument('-L', '--logmode', default=d_logmode, type=str, help=h_logmode)
     parser.add_argument('-t', '--typeinfo', default=d_typeinfo, type=str, help=h_typeinfo)
 

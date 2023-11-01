@@ -27,7 +27,7 @@ using namespace XtcData;
 
 #include "psdaq/epicstools/PVBase.hh"
 
-static const Name::DataType xtype[] = 
+static const Name::DataType xtype[] =
   { Name::UINT8 , // pvBoolean
     Name::INT8  , // pvByte
     Name::UINT16, // pvShort
@@ -39,18 +39,18 @@ static const Name::DataType xtype[] =
     Name::UINT64, // pvULong
     Name::FLOAT , // pvFloat
     Name::DOUBLE, // pvDouble
-    Name::CHARSTR, // pvString 
+    Name::CHARSTR, // pvString
   };
 
 namespace Pds_Epics {
   class BldPV : public PVBase {
   public:
-    BldPV(const char* channelName) : 
+    BldPV(const char* channelName) :
       PVBase(channelName) {}
   public:
     unsigned getUID() const { return strtoul(_strct->getStructure()->getID().c_str(),NULL,10); }
     const pvd::StructureConstPtr structure() const { return _strct->getStructure(); }
-    XtcData::VarDef getVarDef(size_t& sz) const { 
+    XtcData::VarDef getVarDef(size_t& sz) const {
       sz = 0;
       XtcData::VarDef vd;
       const pvd::FieldConstPtrArray& fields = structure()->getFields();
@@ -68,7 +68,7 @@ namespace Pds_Epics {
           throw std::string("PV type ")+pvd::TypeFunc::name(fields[i]->getType())+
             " for field "+names[i]+" not supported";
           break;
-        }          
+        }
       }
       return vd;
     }
@@ -84,6 +84,8 @@ void usage(const char* p) {
   printf("Options: -i <ip interface, name or dotted notation>\n");
   printf("         -N <bld service name>\n");
   printf("         -P <partition>\n");
+  printf("         -f <filename>\n");
+  printf("         -# <nprint>\n");
 }
 
 static uint64_t  event = 0;
@@ -118,7 +120,8 @@ static void sigHandler(int signal)
 static Dgram* write_config( NameIndex&       nameIndex,
                             NamesId&         namesId,
                             VarDef&          bldDef,
-                            char*            buff )
+                            char*            buff,
+                            const void*      bufEnd)
 {
   timespec tv; clock_gettime(CLOCK_REALTIME,&tv);
   Dgram& dg = *new (buff) Dgram( Transition( Dgram::Event,
@@ -126,11 +129,12 @@ static Dgram* write_config( NameIndex&       nameIndex,
                                              TimeStamp(tv.tv_sec,tv.tv_nsec),
                                              0 ),
                                  Xtc( TypeId(TypeId::Parent, 0) ) );
-    
+
   Alg     bldAlg    ("bldAlg", 1, 2, 3);
-  Names&  bldNames = *new(dg.xtc) Names("mybld", bldAlg, "bld",
-                                        "bld1234", namesId, 0);
-  bldNames.add(dg.xtc, bldDef);
+  Names&  bldNames = *new(dg.xtc, bufEnd) Names(bufEnd,
+                                                "mybld", bldAlg, "bld",
+                                                "bld1234", namesId, 0);
+  bldNames.add(dg.xtc, bufEnd, bldDef);
 
   nameIndex = NameIndex(bldNames);
 
@@ -145,10 +149,12 @@ int main(int argc, char* argv[])
   const char* filename = 0;
   unsigned intf = 0;
   unsigned partn = 0;
-  const char* bldName = 0;
+  const char* payName = 0;
+  const char* addName = 0;
+  const char* prtName = 0;
   bool lverbose = false;
   unsigned nprint = 10;
-  
+
   while ( (c=getopt( argc, argv, "f:i:N:P:v#:")) != EOF ) {
     switch(c) {
     case 'f':
@@ -158,7 +164,9 @@ int main(int argc, char* argv[])
       intf = Psdaq::AppUtils::parse_interface(optarg);
       break;
     case 'N':
-      bldName = optarg;
+      payName = strtok(optarg,",");
+      addName = strtok(NULL  ,",");
+      prtName = strtok(NULL  ,",");
       break;
     case 'P':
       partn = strtoul(optarg,NULL,0);
@@ -175,7 +183,7 @@ int main(int argc, char* argv[])
     }
   }
 
-  if (!bldName || !intf) {
+  if (!prtName || !intf) {
     usage(argv[0]);
     return -1;
   }
@@ -183,31 +191,38 @@ int main(int argc, char* argv[])
   //
   //  Open the timing receiver
   //
-  tpr = new Pds::Kcu::Client("/dev/datadev_0");
+  tpr = new Pds::Kcu::Client("/dev/datadev_1");
 
   //
   //  Fetch channel field names from PVA
   //
-  BldPV* pvaPayload    = new BldPV ((std::string(bldName)+":PAYLOAD").c_str());
-  PVBase* pvaAddr      = new PVBase((std::string(bldName)+":ADDR"   ).c_str());
-  PVBase* pvaPort      = new PVBase((std::string(bldName)+":PORT"   ).c_str());
+  BldPV* pvaPayload    = new BldPV (payName);
+  PVBase* pvaAddr      = new PVBase("ca",addName);
+  PVBase* pvaPort      = new PVBase("ca",prtName);
+  // PVBase* pvaAddr      = new PVBase((std::string(bldName)+":ADDR"   ).c_str());
+  // PVBase* pvaPort      = new PVBase((std::string(bldName)+":PORT"   ).c_str());
 
   while(1) {
-    if (pvaPayload   ->ready() &&
+      if (//pvaPayload   ->ready() &&
         pvaAddr      ->ready() &&
         pvaPort      ->ready())
       break;
     usleep(100000);
   }
 
-  printf("Intf/Addr/Port 0x%x/0x%x/0x%x\n", 
+  unsigned mcaddr = Psdaq::AppUtils::parse_ip(pvaAddr->getScalarAs<std::string>().c_str());
+
+  printf("Intf/Addr/Port 0x%x/0x%x/0x%x\n",
          intf,
-         pvaAddr->getScalarAs<unsigned>(), 
+         mcaddr,
          pvaPort->getScalarAs<unsigned>());
   //
   //  Open the bld receiver
   //
-  Pds::Bld::Client  bld(intf, pvaAddr->getScalarAs<unsigned>(), pvaPort->getScalarAs<unsigned>());
+
+  Pds::Bld::Client  bld(intf, 
+                        mcaddr,
+                        pvaPort->getScalarAs<unsigned>());
 
   Psdaq::MonitorArgs monitor_args;
   monitor_args.add("Events","Hz" ,event);
@@ -228,15 +243,18 @@ int main(int argc, char* argv[])
   //  Configure : determine structure of data
   //
   char* configBuff = new char[1024*1024];
+  const void* configEnd = configBuff + 1024*1024;
   FILE* fout = filename ? fopen(filename,"w") : 0;
 
   char* eventb = new char[ 8*1024 ];
+  const void* eventEnd = eventb + 8*1024;
   tpr->start(partn);
 
   unsigned _id = 0;
 
   while(1) {
 
+#if 0
     //
     //  Wait for payload description
     //
@@ -254,9 +272,18 @@ int main(int argc, char* argv[])
     NamesId        namesId(0,0);
     size_t         payloadSz;
     VarDef         bldDef = pvaPayload->getVarDef(payloadSz);
+#else
+    unsigned id = 1;
+    bld.setID(_id = 1);
+    NameIndex      nameIndex;
+    NamesId        namesId(0,0);
+    size_t         payloadSz=4;
+    VarDef         bldDef;
+    bldDef.NameVec.push_back({"fval", Name::FLOAT, 0});
+#endif
 
     memset(configBuff, 0, 1024*1024);
-    Dgram& cdg = *write_config(nameIndex, namesId, bldDef, configBuff);
+    Dgram& cdg = *write_config(nameIndex, namesId, bldDef, configBuff, configEnd);
     if (fout)
       fwrite(&cdg,sizeof(cdg)+cdg.xtc.sizeofPayload(),1,fout);
 
@@ -268,9 +295,9 @@ int main(int argc, char* argv[])
                                                    TimeStamp(0,0),
                                                    0 ),
                                        Xtc( TypeId(TypeId::Parent, 0) ) );
-    
+
     Xtc&   xtc   = dgram->xtc;
-    DescribedData desc(xtc, nameIndex, namesId);
+    DescribedData desc(xtc, eventEnd, nameIndex, namesId);
     desc.set_data_length(payloadSz);
 
     uint64_t ppulseId=0;
@@ -290,7 +317,7 @@ int main(int argc, char* argv[])
         printf("bld pid 0x%lx\n", pulseId);
         nprint--;
       }
-    
+
       //  Second, fetch header (should already be waiting)
       const XtcData::Transition* tr = tpr->advance(pulseId);
       //const XtcData::Transition* tr = 0;

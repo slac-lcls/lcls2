@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWIcons` - singleton access to icons
 ================================================
@@ -28,7 +28,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2016-11-22 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 """
-#------------------------------
 
 import os
 import logging
@@ -36,68 +35,57 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtGui import QIcon
 
-#------------------------------
 
-class QWIcons() :
+class QWIcons():
     """A singleton storage of icons with caching.
     """
-    def __init__(self) :
+    def __init__(self):
         self._name = self.__class__.__name__
         self.icons_are_loaded = False
 
-#------------------------------
 
-    def path_to_icons(self) :
+    def path_to_icons(self):
         _ROOT = os.path.abspath(os.path.dirname(__file__))
         #path_icon = 'psana/psana/graphqt/data/icons'
         path_icon = '%s/data/icons' % _ROOT
-        #logger.debug('XXX set_icons :path_icon', path_icon)
+        #logger.debug('XXX set_icons:path_icon', path_icon)
         return path_icon
 
-#------------------------------
-#    def path_to_icons_v1(self) :
-#        import pkgutil
-#        path_icon = pkgutil.get_data('graphqt', 'data/icons/contents.png')
-#        logger.debug('XXX set_icons :path_icon', path_icon)
-#        logger.debug('XXX set_icons :__name__', __name__)
-#        logger.debug('XXX set_icons :__file__', __file__)
-#        return path_icon
-#------------------------------
 
-    def set_icons(self) :
+    def set_icons(self):
         """QIcon SHOULD BE CALLED AFTER QApplication"""
 
-        if self.icons_are_loaded : return
+        if self.icons_are_loaded: return
         self.icons_are_loaded = True
 
         path_icon = self.path_to_icons()
 
-        self.path_icon_contents      = '%s/contents.png' % path_icon     
-        self.path_icon_mail_forward  = '%s/mail-forward.png' % path_icon 
-        self.path_icon_button_ok     = '%s/button_ok.png' % path_icon    
+        self.path_icon_contents      = '%s/contents.png' % path_icon
+        self.path_icon_mail_forward  = '%s/mail-forward.png' % path_icon
+        self.path_icon_button_ok     = '%s/button_ok.png' % path_icon
         self.path_icon_button_cancel = '%s/button_cancel.png' % path_icon
-        self.path_icon_exit          = '%s/exit.png' % path_icon         
-        self.path_icon_home          = '%s/home.png' % path_icon         
-        self.path_icon_redo          = '%s/redo.png' % path_icon         
-        self.path_icon_undo          = '%s/undo.png' % path_icon         
-        self.path_icon_reload        = '%s/reload.png' % path_icon       
-        self.path_icon_save          = '%s/save.png' % path_icon         
-        self.path_icon_save_cfg      = '%s/fileexport.png' % path_icon   
-        self.path_icon_edit          = '%s/edit.png' % path_icon         
-        self.path_icon_browser       = '%s/fileopen.png' % path_icon     
-        self.path_icon_monitor       = '%s/icon-monitor.png' % path_icon 
-        self.path_icon_unknown       = '%s/icon-unknown.png' % path_icon 
-        self.path_icon_plus          = '%s/icon-plus.png' % path_icon    
-        self.path_icon_minus         = '%s/icon-minus.png' % path_icon   
-        self.path_icon_logviewer     = '%s/logviewer.png' % path_icon    
-        self.path_icon_lock          = '%s/locked-icon.png' % path_icon  
+        self.path_icon_exit          = '%s/exit.png' % path_icon
+        self.path_icon_home          = '%s/home.png' % path_icon
+        self.path_icon_redo          = '%s/redo.png' % path_icon
+        self.path_icon_undo          = '%s/undo.png' % path_icon
+        self.path_icon_reload        = '%s/reload.png' % path_icon
+        self.path_icon_save          = '%s/save.png' % path_icon
+        self.path_icon_save_cfg      = '%s/fileexport.png' % path_icon
+        self.path_icon_edit          = '%s/edit.png' % path_icon
+        self.path_icon_browser       = '%s/fileopen.png' % path_icon
+        self.path_icon_monitor       = '%s/icon-monitor.png' % path_icon
+        self.path_icon_unknown       = '%s/icon-unknown.png' % path_icon
+        self.path_icon_plus          = '%s/icon-plus.png' % path_icon
+        self.path_icon_minus         = '%s/icon-minus.png' % path_icon
+        self.path_icon_logviewer     = '%s/logviewer.png' % path_icon
+        self.path_icon_lock          = '%s/locked-icon.png' % path_icon
         self.path_icon_unlock        = '%s/unlocked-icon.png' % path_icon
-        self.path_icon_convert       = '%s/icon-convert.png' % path_icon 
-        self.path_icon_table         = '%s/table.gif' % path_icon        
-        self.path_icon_folder_open   = '%s/folder_open.gif' % path_icon  
+        self.path_icon_convert       = '%s/icon-convert.png' % path_icon
+        self.path_icon_table         = '%s/table.gif' % path_icon
+        self.path_icon_folder_open   = '%s/folder_open.gif' % path_icon
         self.path_icon_folder_closed = '%s/folder_closed.gif' % path_icon
         self.path_icon_expcheck      = '%s/folder_open_checked.png' % path_icon
- 
+
         self.icon_contents      = QIcon(self.path_icon_contents     )
         self.icon_mail_forward  = QIcon(self.path_icon_mail_forward )
         self.icon_button_ok     = QIcon(self.path_icon_button_ok    )
@@ -131,16 +119,12 @@ class QWIcons() :
         self.icon_expand        = self.icon_folder_open
         self.icon_collapse      = self.icon_folder_closed
         self.icon_print         = self.icon_contents
- 
-#------------------------------
-        
+
 icon = QWIcons()
 
-#------------------------------
+if __name__ == "__main__":
 
-if __name__ == "__main__" :
-
-  def test_QWIcons() :
+  def test_QWIcons():
     logger.debug('Icon pathes:')
     logger.debug(icon.path_icon_contents)
     logger.debug(icon.path_icon_mail_forward)
@@ -149,7 +133,7 @@ if __name__ == "__main__" :
     logger.debug(icon.path_icon_exit)
     logger.debug(icon.path_icon_home)
     logger.debug(icon.path_icon_redo)
-    logger.debug(icon.path_icon_undo)  
+    logger.debug(icon.path_icon_undo)
     logger.debug(icon.path_icon_reload)
     logger.debug(icon.path_icon_save)
     logger.debug(icon.path_icon_save_cfg)
@@ -167,9 +151,8 @@ if __name__ == "__main__" :
     logger.debug(icon.path_icon_folder_open)
     logger.debug(icon.path_icon_folder_closed)
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
     from PyQt5.QtWidgets import QApplication
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
@@ -178,4 +161,4 @@ if __name__ == "__main__" :
     test_QWIcons()
     sys.exit(0)
 
-#------------------------------
+# EOF

@@ -52,7 +52,7 @@ cmd="${11}"
 args=""
 if (( "$#" > 11 )); then
     shift 11
-    args="$@"
+    args=("$@")
 fi
 
 echo "rcFile: '$rcFile'"
@@ -66,7 +66,7 @@ echo "coreSize: '$coreSize'"
 echo "ctrlPort: '$ctrlPort'"
 echo "pythonVer: '$pythonVer'"
 echo "cmd: '$cmd'"
-echo "args: '$args'"
+echo "args: '${args[@]}'"
 
 if [[ -z $rcFile ]]; then
     echo "error: no rcfile specified"
@@ -113,7 +113,7 @@ if [[ -v TESTRELDIR ]]; then
     echo "TESTRELDIR=${TESTRELDIR}"
     echo "CONDA_PREFIX=${CONDA_PREFIX}"
     # TESTRELDIR before condaEnv in PATH
-    export PATH="${TESTRELDIR}/bin:${CONDA_PREFIX}/bin:${PATH}"
+    export PATH="${TESTRELDIR}/bin:${CONDA_PREFIX}/bin:$CONDA_PREFIX/epics/bin/linux-x86_64:${PATH}"
     # SET LD_LIBRARY_PATH
     export LD_LIBRARY_PATH="${TESTRELDIR}/lib"
     if [ ! -z $pythonVer ]; then
@@ -122,7 +122,7 @@ if [[ -v TESTRELDIR ]]; then
     fi
 else
     echo "CONDA_PREFIX=${CONDA_PREFIX}"
-    export PATH="${CONDA_PREFIX}/bin:${PATH}"
+    export PATH="${CONDA_PREFIX}/bin:$CONDA_PREFIX/epics/bin/linux-x86_64:${PATH}"
 fi
 
 # expand command to absolute path
@@ -158,8 +158,8 @@ ulimit -c $coreSize
 
 if [[ -f $PROCSERVBIN ]]; then
     $PROCSERVBIN \
-        --noautorestart --name $name $waitFlag $logFlag --allow \
-        $ctrlPort $cmd $args
+        --noautorestart --name $name --pidfile /dev/null $waitFlag $logFlag --allow \
+        $ctrlPort $cmd "${args[@]}"
 else
     echo "error: procServ not found"
     exit 9

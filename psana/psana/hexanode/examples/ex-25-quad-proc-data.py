@@ -9,7 +9,7 @@
 
     - use Detector interface to get acqiris raw waveforms and sampling times
           det = orun.Detector(DETNAME)
-          wts = det.raw.times(evt)     
+          wts = det.raw.times(evt)
           wfs = det.raw.waveforms(evt)
 
     - process all Quad-DLD chanel waveforms using peakfinder
@@ -23,11 +23,10 @@
           for x,y,r,t in proc.xyrt_list(nev, nhits, pktsec) :
 """
 
-#----------
-
 import logging
 logger = logging.getLogger(__name__)
 
+import os
 import sys
 from time import time
 
@@ -37,18 +36,17 @@ from psana.hexanode.DLDProcessor import DLDProcessor
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
+from psana.hexanode.examples.ex_test_data import DIR_DATA_TEST
 
-#----------
-
-USAGE = 'Use command: python %s [test-number]' % sys.argv[0]
-
-#----------
+DIR_ABSPATH = os.path.abspath(os.path.dirname(__file__)) # absolute path to .../psana/hexanode/examples
+FNAME = '%s/%s' % (DIR_DATA_TEST, 'data-amox27716-r0100-acqiris-e001000.xtc2')
+USAGE = 'Usage: python %s' % sys.argv[0]
 
 def proc_data(**kwargs):
 
     logger.info(str_kwargs(kwargs, title='Input parameters:'))
 
-    DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
+    DSNAME       = kwargs.get('dsname', FNAME) # '/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
     DETNAME      = kwargs.get('detname','tmo_quadanode')
     EVSKIP       = kwargs.get('evskip', 0)
     EVENTS       = kwargs.get('events', 10) + EVSKIP
@@ -61,44 +59,42 @@ def proc_data(**kwargs):
 
     det   = orun.Detector(DETNAME)
     #kwargs['detobj'] = det
-    kwargs['consts'] = det.calibconst
+    kwargs['consts'] = det.calibconst if det.calibconst else None
 
     peaks = WFPeaks(**kwargs)
     proc  = DLDProcessor(**kwargs) #detobj=det to get cfg/calib constants
 
     for nev,evt in enumerate(orun.events()):
-        if nev<EVSKIP : continue
-        if nev>EVENTS : break
+        if nev<EVSKIP: continue
+        if nev>EVENTS: break
 
-        if do_print(nev) : logger.info('Event %3d'%nev)
+        if do_print(nev): logger.info('Event %3d'%nev)
         t0_sec = time()
 
-        wts = det.raw.times(evt)     
+        wts = det.raw.times(evt)
         wfs = det.raw.waveforms(evt)
 
         nhits, pkinds, pkvals, pktsec = peaks(wfs,wts) # ACCESS TO PEAK INFO
 
-        if VERBOSE :
+        if VERBOSE:
             print("  waveforms processing time = %.6f sec" % (time()-t0_sec))
-            print_ndarr(wfs,    '  waveforms      : ', last=4)
-            print_ndarr(wts,    '  times          : ', last=4)
-            print_ndarr(nhits,  '  number_of_hits : ')
-            print_ndarr(pktsec, '  peak_times_sec : ', last=4)
+            print_ndarr(wfs,    '  waveforms     : ', last=4)
+            print_ndarr(wts,    '  times         : ', last=4)
+            print_ndarr(nhits,  '  number_of_hits: ')
+            print_ndarr(pktsec, '  peak_times_sec: ', last=4)
 
-        for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)) :
+        for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)):
             print('    hit:%2d x:%7.3f y:%7.3f t:%10.5g r:%7.3f' % (i,x,y,t,r))
 
-#----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print('%s\nTEST %s' % (50*'_', tname))
 
-    kwargs = {#'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2',
-              'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2',
+    kwargs = {'dsname'   : FNAME,
               'detname'  : 'tmo_quadanode',
               'numchs'   : 5,
               'numhits'  : 16,
@@ -107,8 +103,8 @@ if __name__ == "__main__" :
               'ofprefix' : './',
               'run'      : 100,
               'exp'      : 'amox27716',
-              'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
-              'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
+              'calibcfg' : '%s/configuration_quad.txt' % DIR_ABSPATH,
+              'calibtab' : '%s/calibration_table_data.txt' % DIR_ABSPATH,
               'verbose'  : False,
               'command'  : 1, # if != 1 - overrides command from configuration file
               'detobj'   : None # get cfg & calib constants from detector object if specified
@@ -133,4 +129,4 @@ if __name__ == "__main__" :
     print('\n%s' % USAGE)
     sys.exit('End of %s' % sys.argv[0])
 
-#----------
+# EOF

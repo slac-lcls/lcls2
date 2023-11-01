@@ -6,14 +6,9 @@ import sys
 spacing  = 7
 detName  = 'epixquad_0'
 
-def pixel_mask(value0,value1,spacing,position):
+def pixel_mask(value0,value1,spacing,position_x,position_y):
     ny,nx=352,384;
-    if position>=spacing**2:
-        print('position out of range')
-        position=0;
-#    print 'pixel_mask(', value0, value1, spacing, position, ')'
     out=np.zeros((ny,nx),dtype=np.int)+value0;
-    position_x=position%spacing; position_y=position//spacing;
     out[position_y::spacing,position_x::spacing]=value1;
     p = np.pad(out,[(0,4),(0,0)],mode='constant')
     a = np.zeros((4,178,192),dtype=np.uint8)
@@ -43,10 +38,13 @@ def steps():
             saci = f'{detName}:expert.EpixQuad.Epix10kaSaci[{a}]'
             d[f'{saci}.trbit'] = trbit
         for s in range(spacing**2):
-            pmask = pixel_mask(0,1,spacing,s)
+            position_x=position%spacing
+            position_y=position//spacing;
+            pmask = pixel_mask(0,1,spacing,position_x,position_y)
             d[f'{detName}:user.pixel_map'] = pmask.reshape(-1).tolist()
             #  Set the global meta data
             metad['step'] = s+trbit*spacing**2
+            metad['injpos'] = [position_y,position_x]
 
             yield (d, float(s+trbit*spacing**2), json.dumps(metad))
 

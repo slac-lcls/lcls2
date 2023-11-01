@@ -12,6 +12,15 @@ s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
 s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')
 s_bd_gen_evt = PrometheusManager.get_metric('psana_bd_gen_evt')
 
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
+
+class ExitId:
+    NoError = 0
+    BdReadFail = 1
+
 class EventManager(object):
     """ Return an event from the received smalldata memoryview (view)
 
@@ -41,6 +50,12 @@ class EventManager(object):
         self.use_smds = use_smds
         self.smd_view = view
         self.i_evt = 0
+        self.exit_id = ExitId.NoError
+        
+        # Store chunkid and chunk filename 
+        self.chunkinfo = {}  
+        
+        self.zeroedbug_wait_sec = int(os.environ.get('PS_ZEROEDBUG_WAIT_SEC', '3'))
 
         # Each chunk must fit in BD_CHUNKSIZE and we only fill bd buffers
         # when bd_offset reaches the size of buffer.
@@ -58,6 +73,11 @@ class EventManager(object):
 
     @s_bd_gen_evt.time()
     def __next__(self):
+        # Check in case there are some failures (I/O) happened on a core.
+        # For MPI Mode, this allows clean exit.
+        if self.exit_id > 0:
+            raise StopIteration
+
         if self.i_evt == self.n_events: 
             raise StopIteration
         
@@ -135,19 +155,25 @@ class EventManager(object):
                 self.services[i_evt] = d.service()
 
                 # For L1 with bigdata files, store offset and size found in smd dgrams.
-                # For SlowUpdate, store new chunk id (if found). TODO: check if
-                # we need to always check for epics for SlowUpdate.
+                # For Enable, store new chunk id (if found). 
                 if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
                     if i_first_L1 == -1:
                         i_first_L1 = i_evt
                     self._get_bd_offset_and_size(d, current_bd_offsets, current_bd_chunk_sizes, i_evt, i_smd, i_first_L1)
-                elif d.service() == TransitionId.SlowUpdate and hasattr(d, 'chunkinfo'):
+                elif d.service() == TransitionId.Enable and hasattr(d, 'chunkinfo'):
                     # We only support chunking on bigdata
                     if self.dm.n_files > 0: 
-                        stream_id = self.dm.get_stream_id(i_smd)
                         _chunk_ids = [getattr(d.chunkinfo[seg_id].chunkinfo, 'chunkid') for seg_id in d.chunkinfo]
-                        # There must be only one unique epics var
-                        if _chunk_ids: self.new_chunk_id_array[i_evt, i_smd] = _chunk_ids[0] 
+                        _chunk_filenames = [getattr(d.chunkinfo[seg_id].chunkinfo, 'filename') for seg_id in d.chunkinfo]
+                        # Only flag new chunk when there's chunkinfo and that chunkid is new
+                        if _chunk_ids: 
+                            # There must be only one unique chunkid name 
+                            new_chunk_id = _chunk_ids[0]
+                            new_filename = _chunk_filenames[0]
+                            current_chunk_id = self.dm.get_chunk_id(i_smd)
+                            if new_chunk_id > current_chunk_id:
+                                self.new_chunk_id_array[i_evt, i_smd] = new_chunk_id
+                                self.chunkinfo[(i_smd, new_chunk_id)] = new_filename 
             
             offset += smd_aux_sizes[i_smd]            
             i_smd += 1
@@ -167,31 +193,57 @@ class EventManager(object):
     def _open_new_bd_file(self, i_smd, new_chunk_id):
         os.close(self.dm.fds[i_smd])
         xtc_dir = os.path.dirname(self.dm.xtc_files[i_smd])
-        filename = os.path.basename(self.dm.xtc_files[i_smd])
-        found = filename.find('-c')
-        new_filename = filename.replace(filename[found:found+4], '-c'+str(new_chunk_id).zfill(2))
-        fd = os.open(os.path.join(xtc_dir, new_filename), os.O_RDONLY)
+        new_filename = os.path.join(xtc_dir, self.chunkinfo[(i_smd, new_chunk_id)])
+        fd = os.open(new_filename, os.O_RDONLY)
         self.dm.fds[i_smd] = fd
         self.dm.xtc_files[i_smd] = new_filename
-    
+        self.dm.set_chunk_id(i_smd, new_chunk_id)
+
+    def _stat_and_read(self, fd, size, offset):
+        stat_result = os.fstat(fd)
+        t_delta = time.time() - stat_result.st_mtime
+        if t_delta > 0 and t_delta < self.zeroedbug_wait_sec:
+            print(f'Warning: bigdata waiting {self.zeroedbug_wait_sec}s ... (file is only {t_delta:.2f}s old).')
+            time.sleep(self.zeroedbug_wait_sec)
+        
+        return os.pread(fd, size, offset)
+
     @s_bd_just_read.time()
     def _read(self, fd, size, offset):
         st = time.monotonic()
         chunk = bytearray()
+        
+        request_size = size
         for i_retry in range(self.max_retries+1):
-            chunk.extend(os.pread(fd, size, offset))
-            got = memoryview(chunk).nbytes
-            if got == size:
+            # In live mode, we circumvent zeroed read bytes problem by checking
+            # that modified time of the file is old enough. 
+            if self.max_retries > 0:
+                new_read = self._stat_and_read(fd, size, offset)
+            else:
+                new_read = os.pread(fd, size, offset)
+            chunk.extend(new_read)
+            got = memoryview(new_read).nbytes
+            if memoryview(chunk).nbytes == request_size:
                 break
+            
+            # Check if we should exit when asked amount is not fulfilled
+            if i_retry == self.max_retries and got < size:
+                if self.max_retries > 0:
+                    # Live mode use max_retries
+                    print(f'Error: maximum no. of retries reached. exit.')
+                else:
+                    # Normal mode
+                    print(f'Error: not able to completely read big data (asked: {size} bytes/ got: {got} bytes)')
+
+                # Flag failure for system exit
+                self.exit_id = ExitId.BdReadFail
+                break
+
             offset += got
             size -= got
+            
+            print(f'Warning: bigdata read retry#{i_retry}/{self.max_retries} fd:{fd} {self.dm.fds_map[fd]} ask={size} offset={offset} got={got}') 
 
-            found_xtc2_flags = self.dm.found_xtc2('bd')
-            if got == 0 and all(found_xtc2_flags):
-                print(f'bigddata got 0 byte and .xtc2 files found on disk. stop reading this .inprogress file')
-                break
-
-            print(f'bigdata read retry#{i_retry} - waiting for {size/1e6} MB, max_retries: {self.max_retries} (PS_R_MAX_RETRIES), sleeping 1 second...') 
             time.sleep(1)
         
         en = time.monotonic()

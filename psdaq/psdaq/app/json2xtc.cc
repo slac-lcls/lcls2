@@ -17,8 +17,9 @@ int main(int argc, char **argv)
         exit(0);
     }
     fclose(fp);
+    const void* bufEnd = writeBuffer + sizeof(writeBuffer);
     XtcData::NamesId nid(1, 0);
-    unsigned len = Pds::translateJson2Xtc(readBuffer, writeBuffer, nid);
+    unsigned len = Pds::translateJson2Xtc(readBuffer, writeBuffer, bufEnd, nid);
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(0);

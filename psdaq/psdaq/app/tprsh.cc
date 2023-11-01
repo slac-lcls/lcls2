@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <time.h>
+#include <pthread.h>
 
 #include <string>
 #include <vector>
@@ -49,8 +50,8 @@ static void dumpFrame(const uint32_t* p)
   switch(mtyp) {
   case 0:
     pl = reinterpret_cast<const uint64_t*>(p+2);
-    printf("EVENT [x%x]: %16lx %16lx %16lx %16lx %16lx %c\n",
-           (p[1]>>16)&0xffff,pl[0],pl[1],pl[2],pl[3],pl[4],m);
+    printf("EVENT [x%x]: %16lx %16lx %16lx %16lx %16lx %c [%ld %09ld]\n",
+           (p[1]>>16)&0xffff,pl[0],pl[1],pl[2],pl[3],pl[4],m,pl[0],pl[1]&0xffffffff);
     break;
   case 1:
     pl = reinterpret_cast<const uint64_t*>(p+1);
@@ -192,7 +193,7 @@ int main(int argc, char** argv) {
 
     if (idx>=0) {
       int64_t rp = q.allwp[idx];
-      if (lverbose) { 
+      if (lverbose) {
         printf("allwp 0x%llx,  bsawp 0x%llx,  gwp 0x%llx\n",
                q.allwp[idx],
                q.bsawp,
@@ -200,7 +201,7 @@ int main(int argc, char** argv) {
       }
       while(1) {
         read(fd, buff, 32);
-        if (lverbose) { 
+        if (lverbose) {
           printf("allwp 0x%llx,  bsawp 0x%llx,  gwp 0x%llx\n",
                  q.allwp[idx],
                  q.bsawp,

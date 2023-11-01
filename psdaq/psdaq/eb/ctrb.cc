@@ -288,10 +288,13 @@ const EbDgram* DrpSim::generate()
     }
   }
 
+  size_t inputSize = INPUT_EXTENT * sizeof(uint32_t);
+
   ++_allocPending;
-  void* buffer = _pool->alloc(sizeof(Input));
+  void* buffer = _pool->alloc(sizeof(Input) + inputSize);
   --_allocPending;
   if (!buffer)  return (EbDgram*)buffer;
+  const void* bufEnd = ((char*)buffer) + sizeof(Input) + inputSize;
 
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -301,11 +304,9 @@ const EbDgram* DrpSim::generate()
 
   if (idg->isEvent())
   {
-    size_t inputSize = INPUT_EXTENT * sizeof(uint32_t);
-
     // Here is where trigger input information is inserted into the datagram
     {
-      uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
+      uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize, bufEnd); // Revisit: May have gotten messed up when adding bufEnd arg
       payload[WRT_IDX] = (_pid %   3) == 0 ? 0xdeadbeef : 0xabadcafe;
       payload[MON_IDX] = (_pid % 119) == 0 ? 0x12345678 : 0;
       //payload[MON_IDX] = _pid & (131072 - 1);
@@ -449,6 +450,8 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams&                   prms,
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition",  std::to_string(prms.partition)},
+                                            {"detname", prms.detName},
+                                            {"detseg", std::to_string(prms.detSegment)},
                                             {"alias", prms.alias}};
   exporter->add("TCtbO_AlPdg", labels, MetricType::Gauge, [&](){ return _drpSim.allocPending(); });
 }
@@ -864,6 +867,8 @@ int main(int argc, char **argv)
                            /* .instrument    = */ {"tst"},
                            /* .partition     = */ NO_PARTITION,
                            /* .alias         = */ { }, // Unique name from cmd line
+                           /* .detName       = */ { }, // Calculated from alias
+                           /* .detSegment    = */ 0,   // Calculated from alias
                            /* .id            = */ -1u,
                            /* .builders      = */ 0,   // TEBs
                            /* .addrs         = */ { },
@@ -879,6 +884,8 @@ int main(int argc, char **argv)
                            /* .instrument    = */ {"tst"},
                            /* .partition     = */ NO_PARTITION,
                            /* .alias         = */ { }, // Unique name from cmd line
+                           /* .detName       = */ { }, // Calculated from alias
+                           /* .detSegment    = */ 0,   // Calculated from alias
                            /* .id            = */ -1u,
                            /* .maxEvents     = */ 0,  // Filled in @ connect time
                            /* .maxEvSize     = */ MON_BUF_SIZE,
@@ -933,6 +940,18 @@ int main(int argc, char **argv)
             MAX_ENTRIES, BATCH_DURATION);
     throw "Fatal: MAX_ENTRIES > BATCH_DURATION";
   }
+
+  // Alias must be of form <detName>_<detSegment>
+  size_t found = tebPrms.alias.rfind('_');
+  if ((found == std::string::npos) || !isdigit(tebPrms.alias.back())) {
+    logging::critical("-u: alias must have _N suffix");
+    return 1;
+  }
+  tebPrms.detName    = tebPrms.alias.substr(0, found);
+  tebPrms.detSegment = std::stoi(tebPrms.alias.substr(found+1, tebPrms.alias.size()));
+
+  mebPrms.detName    = tebPrms.detName;
+  mebPrms.detSegment = tebPrms.detSegment;
 
   struct sigaction sigAction;
 

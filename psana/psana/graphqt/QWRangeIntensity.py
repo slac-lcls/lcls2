@@ -37,7 +37,7 @@ class QWRangeIntensity(QWRange):
     def redraw(self):
         if self.parent is not None: self.parent.widgimage.on_draw()
 
-        
+
     def set_params(self, str_from=None, str_to=None):
         self.str_from = str_from if str_from is not None else ''
         self.str_to   = str_to   if str_to   is not None else ''
@@ -52,12 +52,12 @@ class QWRangeIntensity(QWRange):
     def status_buttons_is_good(self):
         if self.str_from == '' and self.str_to == '': return True
         if self.str_from == '' or  self.str_to == '':
-            #logger.warning('\nBOTH FIELDS MUST BE DEFINED OR EMPTY !!!!!!!!')            
+            #logger.warning('\nBOTH FIELDS MUST BE DEFINED OR EMPTY !!!!!!!!')
             return False
         if float(self.str_from) > float(self.str_to):
             #msg  = 'First value in range %s exceeds the second value %s' % (self.str_from, self.str_to)
             #msg += '\nRANGE SEQUENCE SHOULD BE FIXED !!!!!!!!'
-            #logger.warning(msg)            
+            #logger.warning(msg)
             return False
         return True
 

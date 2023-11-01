@@ -25,6 +25,8 @@ from psana.graphqt.FWViewImage import FWViewImage, ct
 from psana.graphqt.IVImageAxes import IVImageAxes, test_image
 from psana.graphqt.IVSpectrum import IVSpectrum
 
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+
 class IVMain(QWidget):
 
     def __init__(self, **kwargs):
@@ -66,11 +68,6 @@ class IVMain(QWidget):
             self.wctrl.wfnm_nda.but.setText(fname)
             self.wctrl.on_changed_fname_nda(fname)
 
-#        self.connect_signals_to_slots()
-#    def connect_signals_to_slots(self):
-#        self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
-#        self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
-
 
     def proc_kwargs(self, **kwargs):
         #print_kwargs(kwargs)
@@ -79,8 +76,6 @@ class IVMain(QWidget):
         savelog    = kwargs.get('savelog', False)
         self.wlog  = kwargs.get('wlog', None)
         self.signal_fast = kwargs.get('signal_fast', True)
-        #if is_in_command_line('-l', '--loglevel'): cp.log_level.setValue(loglevel)
-        #cp.save_log_at_exit.setValue(savelog)
 
 
     def set_tool_tips(self):
@@ -100,9 +95,14 @@ class IVMain(QWidget):
 
 
 def image_viewer(**kwargs):
+    repodir = kwargs.get('repodir', './work')
     loglevel = kwargs.get('loglevel', 'DEBUG').upper()
     intlevel = logging._nameToLevel[loglevel]
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=intlevel)
+
+    if kwargs.get('rec_at_start', True):
+        from psana.detector.RepoManager import RepoManager
+        RepoManager(dirrepo=repodir).save_record_at_start(SCRNAME)
 
     a = QApplication(sys.argv)
     w = IVMain(**kwargs)
@@ -139,10 +139,11 @@ def do_python_threads(**kwargs):
 
 
 if __name__ == "__main__":
+    from psana.detector.dir_root import DIR_DATA_TEST
     import os
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     kwargs = {\
-      'fname':'/cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy',\
+      'fname': DIR_DATA_TEST + '/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy',\
       'loglevel':'DEBUG',\
     }
 

@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`CMWConfigFile` is a QWidget for configuration parameters
 ==============================================================================
 
@@ -17,7 +17,6 @@ See:
 
 Created on 2017-04-05 by Mikhail Dubrovin
 """
-#------------------------------
 
 import os
 
@@ -25,16 +24,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QCheckBox, QGridLayout, QVBoxLayout, QFileDialog
-# QHBoxLayout, QVBoxLayout #QTextEdit, QComboBox, QHBoxLayout, QVBoxLayout
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.Styles import style
 
-#------------------------------
 
-class CMWConfigFile(QWidget) :
+class CMWConfigFile(QWidget):
     """QWidget for configuration file parameters management"""
 
-    def __init__(self, parent=None) :
+    def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         self._name = 'CMWConfigFile'
 
@@ -47,10 +44,10 @@ class CMWConfigFile(QWidget) :
         self.butWrite    = QPushButton('Save')
         self.butDefault  = QPushButton('Reset default')
         self.butPrint    = QPushButton('Print current')
-        self.ediFile     = QLineEdit(cp.fname_cp)        
+        self.ediFile     = QLineEdit(cp.fname_cp)
         self.cbxSave     = QCheckBox('Save at exit')
         self.cbxSave.setChecked(cp.save_cp_at_exit.value())
- 
+
         grid = QGridLayout()
         grid.addWidget(self.titFile,       0, 0, 1, 5)
         grid.addWidget(self.butFile,       1, 0)
@@ -63,7 +60,7 @@ class CMWConfigFile(QWidget) :
         grid.addWidget(self.butPrint,      3, 4)
         #self.setLayout(grid)
 
-        self.vbox = QVBoxLayout() 
+        self.vbox = QVBoxLayout()
         self.vbox.addLayout(grid)
         self.vbox.addStretch(1)
         self.setLayout(self.vbox)
@@ -75,7 +72,7 @@ class CMWConfigFile(QWidget) :
         self.butDefault.clicked.connect(self.onDefault)
         self.butFile.clicked.connect(self.onFile)
         self.cbxSave.stateChanged[int].connect(self.onCbxSave)
- 
+
         self.set_tool_tips()
         self.set_style()
 
@@ -101,10 +98,10 @@ class CMWConfigFile(QWidget) :
         self           .setStyleSheet(style.styleBkgd)
         self.titFile   .setStyleSheet(style.styleLabel)
         self.titPars   .setStyleSheet(style.styleLabel)
-        self.ediFile   .setStyleSheet(style.styleEdit) 
+        self.ediFile   .setStyleSheet(style.styleEdit)
         self.ediFile   .setReadOnly(True)
 
-        self.butFile   .setStyleSheet(style.styleButton) 
+        self.butFile   .setStyleSheet(style.styleButton)
         self.butRead   .setStyleSheet(style.styleButton)
         self.butWrite  .setStyleSheet(style.styleButton)
         self.butDefault.setStyleSheet(style.styleButton)
@@ -114,26 +111,15 @@ class CMWConfigFile(QWidget) :
 
         self.butFile   .setFixedWidth(50)
 
- 
-    def setParent(self,parent) :
+
+    def setParent(self,parent):
         self.parent = parent
-
-
-    #def resizeEvent(self, e):
-        #logger.debug('resizeEvent') 
-        #pass
-
-
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
-        #cp.posGUIMain = (self.pos().x(),self.pos().y())
-        #pass
 
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
-        #try    : del cp.guiconfigparameters 
-        #except : pass
+        #try   : del cp.guiconfigparameters
+        #except: pass
 
 
     def onClose(self):
@@ -182,13 +168,13 @@ class CMWConfigFile(QWidget) :
         self.path = QFileDialog.getOpenFileName(self,'Open file',self.dname)[0]
         self.dname, self.fname = os.path.split(self.path)
 
-        if self.dname == '' or self.fname == '' :
+        if self.dname == '' or self.fname == '':
             logger.info('Input directiry name or file name is empty... use default values')
-        else :
+        else:
             self.ediFile.setText(self.path)
             cp.fname_cp = self.path
             logger.info('Set configuration file name: %s' % cp.fname_cp)
-            
+
 
     def onEditFile(self):
         logger.debug('onEditFile')
@@ -196,8 +182,8 @@ class CMWConfigFile(QWidget) :
         #cp.fname_cp.setValue(self.path)
         cp.fname_cp = self.path
         dname,fname = os.path.split(self.path)
-        logger.info('Set dname : %s' % dname)
-        logger.info('Set fname : %s' % fname)
+        logger.info('Set dname: %s' % dname)
+        logger.info('Set fname: %s' % fname)
 
 
     def getFileNameFromEditField(self):
@@ -205,7 +191,7 @@ class CMWConfigFile(QWidget) :
 
 
     def onCbxSave(self):
-        #if self.cbx.hasFocus() :
+        #if self.cbx.hasFocus():
         par = cp.save_cp_at_exit
         cbx = self.cbxSave
         tit = cbx.text()
@@ -214,9 +200,8 @@ class CMWConfigFile(QWidget) :
         msg = 'Check box "%s" is set to %s' % (tit, str(par.value()))
         logger.info(msg)
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     import sys
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
@@ -229,4 +214,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#------------------------------
+# EOF

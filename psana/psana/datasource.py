@@ -23,6 +23,7 @@ class InvalidDataSource(Exception): pass
 from psana.psexp.serial_ds     import SerialDataSource
 from psana.psexp.singlefile_ds import SingleFileDataSource
 from psana.psexp.shmem_ds      import ShmemDataSource
+from psana.psexp.drp_ds        import DrpDataSource
 from psana.psexp.legion_ds     import LegionDataSource
 from psana.psexp.null_ds       import NullDataSource
 
@@ -98,8 +99,8 @@ def DataSource(*args, **kwargs):
     # ==== from XTC file(s) ====
     elif 'files' in kwargs: # an xtc file
         return SingleFileDataSource(*args, **kwargs)
-
-
+    elif 'drp' in kwargs: # the DRP
+        return DrpDataSource(*args, **kwargs)
     else:
         raise InvalidDataSource("Expected keyword(s) not found. DataSource requires exp, shmem, or files keywords.")
 

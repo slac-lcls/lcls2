@@ -23,16 +23,12 @@ logger = logging.getLogger(__name__)
 
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
-
-#from psana.graphqt.CMQThreadClient import CMQThreadClient
 from psana.graphqt.CMDBUtils import dbu
-
-
-from PyQt5.QtCore import pyqtSignal # Qt 
+from PyQt5.QtCore import pyqtSignal # Qt
 
 
 class CMWDBTree(QWTree):
-    """GUI for database-collection tree 
+    """GUI for database-collection tree
     """
     db_and_collection_selected = pyqtSignal('QString','QString')
 
@@ -58,12 +54,6 @@ class CMWDBTree(QWTree):
 
         logger.info('tree-model filling time %.3f sec' % (time()-t0_sec))
 
-        # connect in thread
-        #if self.thread is not None: self.thread.quit()
-        #self.thread = CMQThreadClient()
-        #self.thread.connect_client_is_ready_to(self.fill_tree_model_web)
-        #self.thread.start()
-
 
     def fill_tree_model_dbs(self):
 
@@ -86,23 +76,17 @@ class CMWDBTree(QWTree):
             itdb = QStandardItem(dbname)
             itdb.setIcon(icon.icon_folder_closed)
             itdb.setEditable(False)
-            #itdb.setCheckable(True) 
+            #itdb.setCheckable(True)
             parentItem.appendRow(itdb)
-
-            #db = dbu.database(client, dbname)
 
             if False: # DO NOT FILL COLLECTIONS
 
               for col in dbu.collection_names(dbname):
                 if not col: continue
-                itcol = QStandardItem(col)  
+                itcol = QStandardItem(col)
                 itcol.setIcon(icon.icon_folder_closed)
                 itcol.setEditable(False)
                 itdb.appendRow(itcol)
-
-                #item.setIcon(icon.icon_table)
-                #item.setCheckable(True) 
-                #print('append item %s' % (item.text()))
 
 
     def fill_tree_model_collections(self, index):
@@ -149,7 +133,7 @@ class CMWDBTree(QWTree):
         wdocs = cp.cmwdbdocs
         if wdocs is None: return
         wdocs.show_documents(dbname, colname)
- 
+
 
     def on_item_selected(self, selected, deselected):
         QWTree.on_item_selected(self, selected, deselected)

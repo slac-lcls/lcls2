@@ -28,11 +28,13 @@ static void usage(const char* p) {
   printf("          -d <clks> : delay\n");
   printf("          -w <clks> : width\n");
   printf("          -D <unit> : delay tap\n");
+  printf("          -P <0/1>  : polarity (falling/rising)\n");
   printf("          -e <code> : event code\n");
   printf("          -r <rate> : fixed rate\n");
   printf("          -p <part> : partition\n");
   printf("          -C        : clksel (0=LCLS1,1=LCLS2[default]\n");
   printf("          -M        : modsel (0=clksel[default],1=LCLS1,2=LCLS2\n");
+  printf("          -L        : loopout (0=false, 1=true)\n");
   printf("          -z        : wait for key before exit\n");
 }
 
@@ -51,15 +53,20 @@ int main(int argc, char** argv) {
   unsigned delay   = 0;
   unsigned width   = 1;
   unsigned tap     = 0;
+  unsigned polarity = 0; // Falling
   int  clksel      = 1;
   int  modsel      = 0;
+  int  loopout     = -1;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:D:w:o:t:r:e:p:zC:M:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:D:w:o:t:r:e:p:zC:L:M:P:h?")) != EOF ) {
     switch(c) {
     case 'C':
         clksel = strtoul(optarg,NULL,0);
+        break;
+    case 'L':
+        loopout = strtoul(optarg,NULL,0);
         break;
     case 'M':
         modsel = strtoul(optarg,NULL,0);
@@ -110,6 +117,9 @@ int main(int argc, char** argv) {
       mode = 2;
       rate = strtoul(optarg,NULL,0);
       break;
+    case 'P':
+      polarity = strtoul(optarg,NULL,0);
+      break;
     case 'z':
       lSleep = true;
       break;
@@ -141,12 +151,17 @@ int main(int argc, char** argv) {
          channel, output, names[mode], rate);
 
   Client client(evrdev,channel,clksel>0,(Client::ModeSel)modsel);
+  client.stop();  // Is this enough to clear the trigger fifo?
+  usleep(1000000);
+
+  if (loopout>=0)
+      client.loopOut(loopout>0);
 
   client.reg().tpr.dump();
 
   for(unsigned i=0; output; i++) {
     if (output & (1<<i)) {
-      client.setup(i, delay, width, Client::Falling, tap);
+      client.setup(i, delay, width, polarity, tap);
       output &= ~(1<<i);
     }
   }
@@ -158,8 +173,10 @@ int main(int argc, char** argv) {
   };
 
   client.reg().base.dump();
-  usleep(1000000);
-  client.reg().base.dump();
+  for(unsigned i=0; i<4; i++) {
+      usleep(1000000);
+      client.reg().base.dump();
+  }
 
   client.release();
 

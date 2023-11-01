@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`CMQThreadWorker` -  sub-class of QThread
 ==========================================================
@@ -12,30 +13,25 @@ See:
 
 Created on 2018-05-29 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
 
-#------------------------------
-
 import sys
 import os
 import random
-#from time import sleep
 from psana.graphqt.CMConfigParameters import cp
 
 from PyQt5.QtCore import QThread #, QTimer # Qt, QPoint
 
-#------------------------------
 
-class CMQThreadWorker(QThread) :
+class CMQThreadWorker(QThread):
 
-    def __init__ (self, parent=None, dt_msec=5) :
+    def __init__ (self, parent=None, dt_msec=5):
         """
            uses/updates cp.list_of_sources
         """
-        QThread.__init__(self, parent)        
+        QThread.__init__(self, parent)
 
         self.dt_msec = dt_msec
         self.counter = 0
@@ -47,48 +43,45 @@ class CMQThreadWorker(QThread) :
         #self.timer.stop()
 
 
-#    def on_timeout(self) :
+#    def on_timeout(self):
 #        """Slot for signal on_timeout
 #        """
 #        self.counter += 1
 #        print 'XXX:CMQThreadWorker %d' % (counter)
 #        self.timer.start(self.dt_msec)
-        #if  cp.flag_nevents_collected : 
+        #if  cp.flag_nevents_collected:
         #    cp.flag_nevents_collected = False
         #    self.update_presenter()
 
-
-#    def set_request_find_sources(self) :
+#    def set_request_find_sources(self):
 #        self.cp.list_of_sources = None
 
-
-#    def check_flags(self) :
-#        if self.cp.list_of_sources is None : 
+#    def check_flags(self):
+#        if self.cp.list_of_sources is None:
 #           t0_sec = time()
 #           self.cp.list_of_sources = psu.list_of_sources()
            #msg = 'XXX %s.%s consumed time (sec) = %.3f' % (self._name, sys._getframe().f_code.co_name, time()-t0_sec)
            #print msg
 
 
-    def run(self) :
-        while True :
+    def run(self):
+        while True:
             self.counter += 1
             logger.debug('XXX:CMQThreadWorker %d' % self.counter)
             #self.check_flags()
             #self.emit_check_status_signal()
             self.msleep(self.dt_msec)
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     import sys
     logging.basicConfig(format='%(levelname)s %(name)s: %(message)s', level=logging.DEBUG)
 
-    def on_but_play() :
+    def on_but_play():
         logger.debug('XXX: on_but_play')
 
-    def on_but_exit() :
+    def on_but_exit():
         #stat = t1.quit()
         logger.debug('XXX: on_but_exit')
         sys.exit()
@@ -111,4 +104,4 @@ if __name__ == "__main__" :
     b2.clicked.connect(on_but_exit)
     stat = app.exec_()
 
-#------------------------------
+# EOF

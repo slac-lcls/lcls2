@@ -24,7 +24,7 @@ BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARR
 build_list_env = os.environ.get('BUILD_LIST')
 if build_list_env:
     BUILD_LIST = build_list_env.split(':')
-    #print('Build c++ python-extensions: %s' % s_exts)
+    #print('Build c++ python-extensions: %s' % str(BUILD_LIST))
 
 
 # allows a version number to be passed to the setup
@@ -122,6 +122,7 @@ if 'PSANA' in BUILD_LIST :
             'xtcavDisplay        = psana.xtcav.app.xtcavDisplay:__main__',
             'shmemClientSimple   = psana.app.shmemClientSimple:main',
             'epix10ka_pedestals_calibration = psana.app.epix10ka_pedestals_calibration:do_main',
+            'epix10ka_charge_injection = psana.app.epix10ka_charge_injection:do_main',
             'epix10ka_deploy_constants = psana.app.epix10ka_deploy_constants:do_main',
             'epix10ka_raw_calib_image = psana.app.epix10ka_raw_calib_image:do_main',
             'epix10ka_calib_components = psana.app.epix10ka_calib_components:__main__',
@@ -129,6 +130,9 @@ if 'PSANA' in BUILD_LIST :
             'det_dark_proc       = psana.app.det_dark_proc:do_main',
             'parallel_proc       = psana.app.parallel_proc:do_main',
             'iv                  = psana.graphqt.app.iv:image_viewer',
+            'masked              = psana.graphqt.app.masked:mask_editor',
+            'roicon              = psana.app.roicon:__main__',
+            'psplot_live         = psana.app.psplot_live.main:start',
         ]
     }
 
@@ -280,9 +284,9 @@ if 'DGRAM' in BUILD_LIST :
                     extra_link_args=extra_link_args + openmp_link_args,
     )
     CYTHON_EXTS.append(ext)
-    
-    ext = Extension("psana.xtcupdateiter",
-                    sources=["psana/xtcupdateiter.pyx"],
+
+    ext = Extension("psana.dgramedit",
+                    sources=["psana/dgramedit.pyx"],
                     libraries = ['xtc'],
                     include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
                     library_dirs = [os.path.join(instdir, 'lib')],
@@ -291,7 +295,28 @@ if 'DGRAM' in BUILD_LIST :
                     extra_link_args = extra_link_args_rpath,
     )
     CYTHON_EXTS.append(ext)
-    
+
+    ext = Extension("quadanode",
+                    sources=["psana/quadanode.pyx"],
+                    include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args,
+                    extra_link_args = extra_link_args_rpath,
+    )
+    CYTHON_EXTS.append(ext)
+
+    ext = Extension("psana.dgramlite",
+                    sources=["psana/dgramlite.pyx"],
+                    libraries = ['xtc'],
+                    include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args,
+                    extra_link_args = extra_link_args_rpath,
+    )
+    CYTHON_EXTS.append(ext)
+
 
 if 'HSD' in BUILD_LIST :
     ext = Extension("hsd",
@@ -308,18 +333,18 @@ if 'HSD' in BUILD_LIST :
     CYTHON_EXTS.append(ext)
 
 
-#if 'NDARRAY' in BUILD_LIST :
-#    ext = Extension("ndarray",
-#                    sources=["psana/pycalgos/NDArray_ext.pyx",
-#                             "psana/peakFinder/src/WFAlgos.cc"],
-#                    language="c++",
-#                    extra_compile_args = extra_cxx_compile_args,
-#                    include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
-#                    library_dirs = [os.path.join(instdir, 'lib')],
-#                    libraries=[],
-#                    extra_link_args = extra_link_args,
-#    )
-#    CYTHON_EXTS.append(ext)
+if 'NDARRAY' in BUILD_LIST :
+    ext = Extension("ndarray",
+                    sources=["psana/pycalgos/NDArray_ext.pyx",
+                             "psana/peakFinder/src/WFAlgos.cc"],
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args,
+                    include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+                    libraries=[],
+                    extra_link_args = extra_link_args,
+    )
+    CYTHON_EXTS.append(ext)
 
 
 setup(

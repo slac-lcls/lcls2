@@ -48,9 +48,8 @@ Usage::
     shape    = sg.shape()
     pix_size = pixel_scale_size()
 
-    area     = sg.pixel_area_array()
-    mask     = sg.pixel_mask_array(mbits=0o377)
-    # where mbits = +1-edges, +2-wide pixels
+    area = sg.pixel_area_array()
+    mask = sg.pixel_mask_array(width=0, wcenter=0, edge_rows=1, edge_cols=1, center_rows=1, center_cols=1)
 
     sizeX = sg.pixel_size_array('X')
     sizeX, sizeY, sizeZ = sg.pixel_size_array()
@@ -328,146 +327,63 @@ class SegGeometryEpix100V1(SegGeometry):
         return sp.return_switch(sp.get_xyz_max_um, axis)
 
 
-    def pixel_mask_array(sp, mbits=0o377, **kwa):
-        """ Returns numpy array of pixel mask: 1/0 = ok/masked,
-        mbits: +1 - mask edges,
-        +2 - mask two central columns
+    def pixel_ones_array(sp, dtype=DTYPE_MASK):
+        return np.ones((sp._rows,sp._cols), dtype=dtype)
+
+
+    def pixel_mask_array(sp, width=0, wcenter=0, edge_rows=1, edge_cols=1, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa):
+        """ Returns numpy array of pixel mask: 1/0 = ok/masked.
+
+        Parameters
+        ----------
+
+        - width (uint) - width in pixels of masked edge
+        - wcenter (uint) - width in pixels of masked central rows and columns
+        - edge_rows (uint) - width in pixels of masked edge rows
+        - edge_cols (uint) - width in pixels of masked edge columns
+        - center_rows (uint) - width in pixels of masked central rows
+        - center_cols (uint) - width in pixels of masked central columns
+
+        Return
+        ------
+
+        np.array (dtype=np.uint8) - mask array shaped as data
         """
-        zero_col = np.zeros(sp._rows,dtype=np.uint8)
-        zero_row = np.zeros(sp._cols,dtype=np.uint8)
-        mask     = np.ones((sp._rows,sp._cols),dtype=np.uint8)
+        mask = sp.pixel_ones_array()
 
-        if mbits & 1:
-        # mask edges
-            mask[0, :] = zero_row # mask top    edge
-            mask[-1,:] = zero_row # mask bottom edge
-            mask[:, 0] = zero_col # mask left   edge
-            mask[:,-1] = zero_col # mask right  edge
+        if width>0: edge_rows = edge_cols = width
+        if wcenter>0: center_rows = center_cols = wcenter
 
-        if mbits & 2:
-        # mask two central columns and rows
-            mask[:,sp._colsh-1] = zero_col # mask central-left  column
-            mask[:,sp._colsh]   = zero_col # mask central-right column
-            mask[sp._rowsh-1]   = zero_row # mask central-low   row
-            mask[sp._rowsh]     = zero_row # mask central-high  row
+        if edge_rows>0: # mask edge rows
+            w = edge_rows
+            zero_row = np.zeros((w,sp._cols),dtype=dtype)
+            mask[0:w,:] = zero_row # mask top    edge rows
+            mask[-w:,:] = zero_row # mask bottom edge rows
+
+        if edge_cols>0: # mask edge cols
+            w = edge_cols
+            zero_col = np.zeros((sp._rows,w),dtype=dtype)
+            mask[:,0:w] = zero_col # mask left  edge columns
+            mask[:,-w:] = zero_col # mask right edge columns
+
+        if center_rows>0: # mask central rows
+            w = center_rows
+            g = sp._rowsh
+            zero_row = np.zeros((w,sp._cols),dtype=dtype)
+            mask[g-w:g,:] = zero_row # mask central-low  rows
+            mask[g:g+w,:] = zero_row # mask central-high rows
+
+        if center_cols>0: # mask central rows
+            w = center_cols
+            g = sp._colsh
+            zero_col = np.zeros((sp._rows,w),dtype=dtype)
+            mask[:,g-w:g] = zero_col # mask central-left  columns
+            mask[:,g:g+w] = zero_col # mask central-right columns
 
         return mask
 
 
 epix2x2_one = SegGeometryEpix100V1(use_wide_pix_center=False)
 epix2x2_wpc = SegGeometryEpix100V1(use_wide_pix_center=True)
-
-#----------- TEST -------------
-
-if __name__ == "__main__":
-
-  import sys
-  from time import time
-  import psana.pyalgos.generic.Graphics as gg # For test purpose in main only
-
-  logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
-
-  def test_xyz_min_max():
-    w = SegGeometryEpix100V1()
-    w.print_xyz_min_max_um()
-    logger.info('\n  Ymin = %f' % w.pixel_coord_min('Y')\
-              + '\n  Ymax = %f' % w.pixel_coord_max('Y'))
-
-
-  def test_xyz_maps():
-
-    w = SegGeometryEpix100V1()
-    w.print_maps_seg_um()
-    titles = ['X map','Y map']
-    for i,arr2d in enumerate(w.get_seg_xy_maps_pix()):
-        amp_range = (arr2d.min(), arr2d.max())
-        gg.plotImageLarge(arr2d, amp_range=amp_range, figsize=(10,5), title=titles[i])
-        gg.move(200*i,100*i)
-
-    gg.show()
-
-
-  def test_2x2_img():
-
-    w = SegGeometryEpix100V1(use_wide_pix_center=False)
-    X,Y = w.get_seg_xy_maps_pix()
-
-    w.print_seg_info(0o377)
-
-    logger.info('X.shape =' + str(X.shape))
-
-    xmin, ymin, zmin = w.get_xyz_min_um()
-    xmax, ymax, zmax = w.get_xyz_max_um()
-    xmin /= w.pixel_scale_size()
-    xmax /= w.pixel_scale_size()
-    ymin /= w.pixel_scale_size()
-    ymax /= w.pixel_scale_size()
-
-    xsize = xmax - xmin + 1
-    ysize = ymax - ymin + 1
-    logger.info('xsize =' + str(xsize))
-    logger.info('ysize =' + str(ysize))
-
-
-  def test_2x2_img_easy():
-    pc2x2 = SegGeometryEpix100V1(use_wide_pix_center=False)
-    X,Y = pc2x2.get_seg_xy_maps_pix_with_offset()
-    iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
-    img = gg.getImageFromIndexArrays(iX,iY,iX+iY)
-    gg.plotImageLarge(img, amp_range=(0, 1500), figsize=(8,10))
-    gg.show()
-
-
-  def test_pix_sizes():
-    w = SegGeometryEpix100V1()
-    w.print_pixel_size_arrs()
-    size_arrX = w.pixel_size_array('X')
-    size_arrY = w.pixel_size_array('Y')
-    area_arr  = w.pixel_area_array()
-    s='\n  area_arr[348:358,378:388]:\n'  + str(area_arr[348:358,378:388])\
-    + '\n  area_arr.shape:'               + str(area_arr.shape)\
-    + '\n  size_arrX[348:358,378:388]:\n' + str(size_arrX[348:358,378:388])\
-    + '\n  size_arrX.shape:'              + str(size_arrX.shape)\
-    + '\n  size_arrY[348:358,378:388]:\n' + str(size_arrY[348:358,378:388])\
-    + '\n  size_arrY.shape:'              + str(size_arrY.shape)
-    logger.info(s)
-
-
-  def test_2x2_mask(mbits=0o377):
-    pc2x2 = SegGeometryEpix100V1(use_wide_pix_center=False)
-    X, Y = pc2x2.get_seg_xy_maps_pix_with_offset()
-    mask = pc2x2.pixel_mask_array(mbits)
-    mask[mask==0]=3
-    iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
-    img = gg.getImageFromIndexArrays(iX,iY,mask)
-    gg.plotImageLarge(img, amp_range=(-1, 2), figsize=(8,10))
-    gg.show()
-
-
-  def usage(tname='0'):
-    s = ''
-    if tname in ('0',): s+='\n==== Usage: python %s <test-number>' % sys.argv[0]
-    if tname in ('0','1'): s+='\n 1 - test_xyz_min_max()'
-    if tname in ('0','2'): s+='\n 2 - test_xyz_maps()'
-    if tname in ('0','3'): s+='\n 3 - test_2x2_img()'
-    if tname in ('0','4'): s+='\n 4 - test_2x2_img_easy()'
-    if tname in ('0','5'): s+='\n 5 - test_pix_sizes()'
-    if tname in ('0','6'): s+='\n 6 - test_2x2_mask(mbits=1+2)'
-    return s
-
-
-if __name__ == "__main__":
-
-    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    if len(sys.argv)==1: logger.info(usage())
-    elif tname=='1': test_xyz_min_max()
-    elif tname=='2': test_xyz_maps()
-    elif tname=='3': test_2x2_img()
-    elif tname=='4': test_2x2_img_easy()
-    elif tname=='5': test_pix_sizes()
-    elif tname=='6': test_2x2_mask(mbits=1+2)
-    else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
-    if len(sys.argv)>1: logger.info(usage(tname))
-    sys.exit('END OF TEST')
 
 # EOF
