@@ -295,9 +295,9 @@ void Piranha4::_connect(PyObject* mbytes)
         logging::error("Piranha4 BiST error: %s", bist.c_str());
 }
 
-json Piranha4::connectionInfo()
+json Piranha4::connectionInfo(const nlohmann::json& msg)
 {
-    return BEBDetector::connectionInfo();
+    return BEBDetector::connectionInfo(msg);
 
     // Exclude connection info until cameralink-gateway timingTxLink is fixed
     logging::error("Returning NO XPM link; implementation incomplete");
