@@ -21,8 +21,6 @@ data_dir = f'/cds/data/drpsrcf'
 trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
 task_set = 'taskset -c 4-63'
-batching = 'batching=yes'
-directIO = 'directIO=yes'
 pvaAddr  = 'pva_addr=172.21.152.78' # mon001
 scripts  = f'script_path={trig_dir}'
 #network  = 'ep_provider=sockets,ep_domain=eno1'
@@ -36,8 +34,8 @@ else:
   kwargsEncoder = 'pebbleBufCount=65536,pebbleBufSize=4096'
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
-std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO},{pvaAddr}'
-std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO},{pvaAddr}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {pvaAddr}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {pvaAddr}'
 
 teb_cmd  = task_set+' teb '            +std_opts + f' -k {scripts},mon_throttle=40' # pulse ID ticks
 meb_cmd  = task_set+' monReqServer '   +std_opts

@@ -25,8 +25,6 @@ data_dir = f'/cds/data/drpsrcf'
 trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
 task_set = 'taskset -c 4-63'
-batching = 'batching=no' #yes'
-directIO = 'directIO=yes'
 pvaAddr  = 'pva_addr=172.21.152.78' # mon001
 scripts  = f'script_path={trig_dir}'
 #network  = 'ep_provider=sockets,ep_domain=eno1'
@@ -36,8 +34,8 @@ epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/epixHrEmu.py'
 epixKwargs = f'pebbleBufCount=16384,sim_length=55292,xtcfile={epixData},l1aOffset=1000,drp=python,pythonScript={epixScript}'
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
-std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO},{pvaAddr}'
-std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO},{pvaAddr}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {pvaAddr}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {pvaAddr}'
 
 teb_cmd  = task_set+' teb '            +std_opts + f' -k {scripts}'
 meb_cmd  = task_set+' monReqServer '   +std_opts
