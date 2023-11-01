@@ -38,7 +38,7 @@ Usage::
 import logging
 logger = logging.getLogger(__name__)
 
-import numpy as np
+import cupy as np
 from psana.detector.NDArrUtils import info_ndarr
 from time import time
 
@@ -85,8 +85,8 @@ def statistics_of_pixel_arrays(rows, cols):
        - dict for multiple entries: {<pixel-index-in-data-array> : <pixel-index-on-image>} for ravel arrays
        - dict with number of entries: {<pixel-index-on-image> : <number-of-entries gt.1>} for ravel image array
     """
-    assert isinstance(rows, np.ndarray)
-    assert isinstance(cols, np.ndarray)
+    # assert isinstance(rows, np.ndarray)
+    # assert isinstance(cols, np.ndarray)
     assert rows.size == cols.size
 
     img_shape = nrows, ncols = image_shape(rows, cols)
@@ -134,8 +134,8 @@ def img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0):
     """Returns image from rows, cols index arrays and associated weights W.
        Methods like matplotlib imshow(img) plot 2-d image array oriented as matrix(rows,cols).
     """
-    assert isinstance(rows, np.ndarray)
-    assert isinstance(cols, np.ndarray)
+    # assert isinstance(rows, np.ndarray)
+    # assert isinstance(cols, np.ndarray)
     # assert(isinstance(weight, (np.ndarray,float)))
 
     if rows.size != cols.size \
@@ -276,8 +276,8 @@ def statistics_of_holes(rows, cols, **kwa):
        img_holes - image-shaped [bool]
        hole_rows, hole_cols - arrays of hole rows and cols in image
     """
-    assert isinstance(rows, np.ndarray)
-    assert isinstance(cols, np.ndarray)
+    # assert isinstance(rows, np.ndarray)
+    # assert isinstance(cols, np.ndarray)
     assert rows.size == cols.size
 
     arr_shape = rows.shape

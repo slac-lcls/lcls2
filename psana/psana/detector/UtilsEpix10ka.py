@@ -39,7 +39,7 @@ Created on 2020-12-03 by Mikhail Dubrovin for LCLS2 from LCLS1
 
 import os
 import sys
-import cunumeric as np
+import cupy as np
 from time import time
 
 import logging
@@ -94,7 +94,7 @@ class Storage:
         det_raw._store_ = self  # self preservation
         self.counter = -1
 
-        self.gain = det_raw._gain()      # - 4d gains  (7, <nsegs>, 352, 384)
+        self.gain = np.asarray(det_raw._gain())      # - 4d gains  (7, <nsegs>, 352, 384)
         self.peds = det_raw._pedestals() # - 4d pedestals
         #if self.gain is None: return None # gain = np.ones_like(peds)  # - 4d gains for all gain ranges
         #if self.peds is None: return None # peds = np.zeros_like(peds) # - 4d pedestals
@@ -308,7 +308,7 @@ def cbits_config_and_data_detector_alg(data, cbits, data_gain_bit, gain_bit_shif
     if data is not None:
         #logger.debug(info_ndarr(data, 'data', first, last))
         # get array of data bit 15 and add it as a bit 5 to cbits
-        datagainbit = np.bitwise_and(data, data_gain_bit)
+        datagainbit = np.bitwise_and(np.asarray(data), data_gain_bit)
         databit05 = np.right_shift(datagainbit, gain_bit_shift) # 0o100000 -> 0o40
         return np.bitwise_or(cbits, databit05) # create copy, DO NOT OVERRIDE cbits !!!
 
@@ -602,9 +602,9 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
         return None
 
     store = Storage(det_raw, cmpars, **kwa) if det_raw._store_ is None else det_raw._store_
-    mask = store.mask
+    mask = np.asarray(store.mask)
     factor = event_constants_for_gmaps(gmaps, store.gfac, default=1)  # 3d gain factors
-    pedest = event_constants_for_gmaps(gmaps, store.peds, default=0)  # 3d pedestals
+    pedest = event_constants_for_gmaps(gmaps, np.asarray(store.peds), default=0)  # 3d pedestals
 
     store.counter += 1
     if not store.counter%100: print_gmaps_info(gmaps)
