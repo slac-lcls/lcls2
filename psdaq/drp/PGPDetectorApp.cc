@@ -687,10 +687,16 @@ json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
+
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
+
     json info = m_det->connectionInfo(msg);
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
+
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
+
     return body;
 }
 

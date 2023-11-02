@@ -296,7 +296,6 @@ json Opal::connectionInfo(const nlohmann::json& msg)
 {
     logging::info("Opal connectionInfo");
     std::string alloc_json = msg.dump();
-    std::cout << "** alloc json " << alloc_json << std::endl;
 
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     {
@@ -320,8 +319,6 @@ json Opal::connectionInfo(const nlohmann::json& msg)
 
       Py_DECREF(mbytes);
     }
-
-
 
     return BEBDetector::connectionInfo(msg);
 
@@ -383,18 +380,6 @@ void     Opal::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 
 void     Opal::shutdown()
 {
-    // returns borrowed reference
-    PyObject* pDict = _check(PyModule_GetDict(m_module));
-
-    char func_name[64];
-    sprintf(func_name,"%s_shutdown",m_para->detType.c_str());
-    // returns borrowed reference
-    PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
-
-    // returns new reference
-    PyObject* val = _check(PyObject_CallFunction(pFunc,"O",m_root));
-
-    Py_DECREF(val);
     if (m_tt) m_tt->shutdown();
     this->BEBDetector::shutdown();
 }
@@ -848,4 +833,3 @@ int Drp::L2Iter::process(Xtc* xtc, const void* bufEnd)
     }
     return Continue;
 }
-

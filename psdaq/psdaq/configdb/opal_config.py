@@ -37,7 +37,7 @@ def supervisor_info(connect_json):
         proc_info = drp['proc_info']
         host = proc_info['host']
         pid = proc_info['pid']
-        if host==myhostname:
+        if host==myhostname and drp['active']:
             if supervisor is None:
                 # we are supervisor if our pid is the first entry
                 supervisor = pid==mypid
@@ -98,11 +98,8 @@ def opal_init_feb(slane=None,schan=None):
         chan = int(schan)
 
 # called on alloc
-def connectionInfo(alloc_json_str):
+def connectionInfo(cl, alloc_json_str):
     alloc_json = json.loads(alloc_json_str)
-    print('*** alloc_json_str',alloc_json_str)
-    print('*** alloc_json',alloc_json)
-
     supervisor,nworker = supervisor_info(alloc_json)
     print('Opal supervisor:',supervisor,'nworkers:',nworker)
     barrier_global.init(supervisor,nworker)
@@ -215,6 +212,7 @@ def user_to_expert(cl, cfg, full=False):
             #raise ValueError('gate_ns > 160000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=gate*0.001
 
+    #  Parameters like black-level need time to take affect (100ms?)
     if (hasUser and 'black_level' in cfg['user']):
         d['expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.BL']=cfg['user']['black_level']
 
@@ -261,8 +259,6 @@ def config_expert(cl, cfg):
                 print('*** non-supervisor skipping setting',path,'to value',configdb_node)
                 continue
             rogue_node.set(configdb_node)
-
-    #  Parameters like black-level need time to take affect (100ms?)
 
 #  Apply the full configuration
 def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
@@ -408,9 +404,13 @@ def opal_update(update):
         copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
     return json.dumps(cfg)
 
-def opal_shutdown(cl):
+def opal_unconfig(cl):
+    print('opal_unconfig')
+
     # this routine gets called on disconnect transition
     if barrier_global.supervisor:
         cl.StopRun()
     barrier_global.wait()
     barrier_global.shutdown()
+
+    return cl
