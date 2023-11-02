@@ -90,8 +90,61 @@ INT_TYPES   = [int, np.int8, np.int16, np.int32, np.int64,
                int, np.uint8, np.uint16, np.uint32, np.uint64, np.uint]
 FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, float]
 
-RAGGED_PREFIX   = 'ragged_'
+# This is not actually implemented, so let's comment it out for now.
+# RAGGED_PREFIX   = 'ragged_' 
 UNALIGED_PREFIX = 'unaligned_'
+VAR_PREFIX      = 'var_'
+LEN_SUFFIX      = '_len'
+
+# It is assumed that "var_" can appear at any level in the key.
+#
+# The lengths of all the variables that branch from a given var 
+# will be the same and will share a "_len" array.
+
+var_dict = {}    # var name to True/False if var
+len_dict = {}    # var name to True/False if len
+len_map = {}     # var name to len array name (i.e. x/var_mcb/y --> x/var_mcb_len)
+len_evt = {}     # len name to {timestamp: length}
+
+def set_keytypes(k):
+    parts = k.split('/')
+    # New regime: any part can have "var_"!
+    for (i,p) in enumerate(parts):
+        if p.startswith(VAR_PREFIX):
+            var_dict[k] = True
+            if p.endswith(LEN_SUFFIX) and i == len(parts) - 1:
+                len_dict[k] = True
+            else:
+                m = '/'.join(parts[:i+1]) + LEN_SUFFIX
+                len_map[k] = m
+                len_dict[k] = False
+                len_dict[m] = True
+                if m not in len_evt.keys():
+                    len_evt[m] = {}
+            return
+    var_dict[k] = False
+    len_dict[k] = False
+
+def get_len_map(k):
+    try:
+        return len_map[k]
+    except:
+        set_keytypes(k)
+        return len_map[k]
+
+def is_len_key(k):
+    try:
+        return len_dict[k]
+    except:
+        set_keytypes(k)
+        return len_dict[k]
+
+def is_var_key(k):
+    try:
+        return var_dict[k]
+    except:
+        set_keytypes(k)
+        return var_dict[k]
 
 def is_unaligned(dset_name):
     return dset_name.split('/')[-1].startswith(UNALIGED_PREFIX)
@@ -143,25 +196,46 @@ class CacheArray:
     the server's memory.
     """
 
-    def __init__(self, singleton_shape, dtype, cache_size):
+    def __init__(self, singleton_shape, dtype, cache_size, is_var):
         
         self.singleton_shape = singleton_shape
         self.dtype = dtype
         self.cache_size = cache_size
+        self.is_var = is_var
 
         # initialize
-        self.data = np.empty((self.cache_size,) + self.singleton_shape,
-                             dtype=self.dtype)
+        if is_var:
+            # We really *can't* cache variable arrays and have to just
+            # keep appending to them.
+            self.data = None
+        else:
+            self.data = np.empty((self.cache_size,) + self.singleton_shape,
+                                 dtype=self.dtype)
         self.reset()
 
         return
 
     def append(self, data):
-        self.data[self.n_events,...] = data
+        if self.is_var:
+            if data is None or len(data) == 0:
+                self.n_events += 1
+                return
+            if self.data is None:
+                self.data = np.reshape(np.array(data, dtype=self.dtype), 
+                                       (len(data),)+self.singleton_shape)
+            else:
+                self.data = np.append(self.data, data, axis=0)
+            self.size += len(data)
+        else:
+            self.data[self.n_events,...] = data
+            self.size += 1
         self.n_events += 1
         return
 
     def reset(self):
+        if self.is_var:
+            self.data = None
+        self.size = 0;
         self.n_events = 0
         return
 
@@ -218,24 +292,71 @@ class Server: # (hdf5 handling)
                 to_backfill = list(self._dsets.keys())
 
                 for dataset_name, data in event_data_dict.items():
-
+                    is_var = is_var_key(dataset_name)
+                    is_len = is_len_key(dataset_name)
+                    if is_var:
+                        if is_len:
+                            raise KeyError('Key: event keys cannot have the form "var_*_len! (%s)'
+                                           % (dataset_name))
+                        else:
+                            len_name = len_map[dataset_name]
                     if dataset_name not in self._dsets.keys():
-                        self.new_dset(dataset_name, data)
+                        if is_var:
+                            # A new var array.
+                            if len(data) > 0:
+                                self.new_dset(dataset_name, data)
+                                # Several dataset_names can share a length dataset!
+                                if len_name not in self._dsets.keys():
+                                    self.new_dset(len_name, len(data))
+                            else:
+                                # If we don't have any actual data, we can't even
+                                # figure out types, so we'll just have to backfill
+                                # later!
+                                continue
+                        else:
+                            self.new_dset(dataset_name, data)
                     else:
                         to_backfill.remove(dataset_name)
                     self.append_to_cache(dataset_name, data)
+                    if is_var:
+                        try:
+                            # All of the datasets that share a length dataset should
+                            # be the same size.  Otherwise, flag an error.
+                            exp_len = len_evt[len_name][event_data_dict['timestamp']]
+                            if len(data) != exp_len:
+                                raise TypeError("Data for %s is length %d, not %d!" 
+                                                % (dataset_name, len(data), exp_len))
+                        except:
+                            # This is the first dataset for this length dataset,
+                            # so remember the length.
+                            len_evt[len_name][event_data_dict['timestamp']] = len(data)
+                            self.append_to_cache(len_name, len(data))
 
                 for dataset_name in to_backfill:
-                    if not is_unaligned(dataset_name):
+                    if is_var_key(dataset_name):
+                        # So, we never have to backfill a variable key.  Or for
+                        # that matter, the length key should never be in the event,
+                        # so we can ignore it in the to_backfill list.
+                        #
+                        # However, we might have to fill its length *if* the key
+                        # itself is in the list!
+                        if is_len_key(dataset_name):
+                            continue
+                        len_name = len_map[dataset_name]
+                        try:
+                            exp_len = len_evt[len_name][event_data_dict['timestamp']]
+                        except:
+                            # Only backfill the first time we see this timestamp.
+                            self.backfill(len_name, 1, missing_value=0)
+                            len_evt[len_name][event_data_dict['timestamp']] = 0
+                    elif not is_unaligned(dataset_name):
                         self.backfill(dataset_name, 1)
 
             self.num_events_seen += 1
 
         return
 
-
-    def new_dset(self, dataset_name, data):
-
+    def _get_data_info(self, data, dataset_name):
         if type(data) == int:
             shape = ()
             maxshape = (None,)
@@ -250,7 +371,20 @@ class Server: # (hdf5 handling)
             dtype = data.dtype
         else:
             raise TypeError('Type: Dataset %s type %s not compatible' % (dataset_name, type(data)))
+        return (shape, maxshape, dtype)
 
+    def new_dset(self, dataset_name, data):
+        is_var = is_var_key(dataset_name)
+        is_len = is_len_key(dataset_name)
+        if is_var and not is_len:
+            if type(data) == list:
+                data = np.array(data)
+            if hasattr(data, 'dtype'):
+                (shape, maxshape, dtype) = self._get_data_info(data[0], dataset_name)
+            else:
+                raise TypeError("Type: Dataset %s is variable and should be a list!" % dataset_name)
+        else:
+            (shape, maxshape, dtype) = self._get_data_info(data, dataset_name)
         if shape==(0,): raise ValueError('Dataset %s has illegal shape (0,)' % dataset_name)
 
         self._dsets[dataset_name] = (dtype, shape)
@@ -260,9 +394,11 @@ class Server: # (hdf5 handling)
                                                dtype=dtype,
                                                chunks=(self.cache_size,) + shape)
 
-        if not is_unaligned(dataset_name):
-            self.backfill(dataset_name, self.num_events_seen)
-
+        if is_var:
+            if is_len:
+                self.backfill(dataset_name, self.num_events_seen, missing_value=0)
+        elif not is_unaligned(dataset_name):
+            self.backfill(dataset_name, self.num_events_seen, missing_value=0)
         return
 
 
@@ -270,7 +406,8 @@ class Server: # (hdf5 handling)
 
         if dataset_name not in self._cache.keys():
             dtype, shape = self._dsets[dataset_name]
-            cache = CacheArray(shape, dtype, self.cache_size)
+            cache = CacheArray(shape, dtype, self.cache_size, 
+                               is_var_key(dataset_name) and not is_len_key(dataset_name))
             self._cache[dataset_name] = cache
         else:
             cache = self._cache[dataset_name]
@@ -285,19 +422,20 @@ class Server: # (hdf5 handling)
 
     def write_to_file(self, dataset_name, cache):
         dset = self.file_handle.get(dataset_name)
-        new_size = (dset.shape[0] + cache.n_events,) + dset.shape[1:]
+        new_size = (dset.shape[0] + cache.size,) + dset.shape[1:]
         dset.resize(new_size)
-        # remember: data beyond n_events in the cache may be OLD
-        dset[-cache.n_events:,...] = cache.data[:cache.n_events,...] 
+        # remember: data beyond size in the cache may be OLD
+        dset[-cache.size:,...] = cache.data[:cache.size,...] 
         cache.reset()
         return
 
 
-    def backfill(self, dataset_name, num_to_backfill):
+    def backfill(self, dataset_name, num_to_backfill, missing_value=None):
         
         dtype, shape = self._dsets[dataset_name]
 
-        missing_value = _get_missing_value(dtype) 
+        if missing_value is None:
+            missing_value = _get_missing_value(dtype) 
         fill_data = np.empty(shape, dtype=dtype)
         fill_data.fill(missing_value)
     
