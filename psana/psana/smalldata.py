@@ -414,7 +414,7 @@ class Server: # (hdf5 handling)
 
         cache.append(data)
 
-        if cache.n_events == self.cache_size:
+        if cache.size >= self.cache_size:
             self.write_to_file(dataset_name, cache)
 
         return
