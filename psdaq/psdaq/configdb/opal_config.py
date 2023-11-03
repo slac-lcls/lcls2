@@ -5,7 +5,6 @@ from psdaq.configdb.barrier import Barrier
 from psdaq.cas.xpm_utils import timTxId
 import os
 import socket
-import logging
 import rogue
 import cameralink_gateway
 import time
@@ -203,7 +202,7 @@ def user_to_expert(cl, cfg, full=False):
     if (hasUser and 'gate_ns' in cfg['user']):
         gate = cfg['user']['gate_ns']
         if gate > 160000:
-            print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate));
+            print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate))
             # cpo removed this because people kept asking for it to try
             # to find their signals or increase brightness.  this
             # was originally added because we had an issue where
@@ -212,7 +211,6 @@ def user_to_expert(cl, cfg, full=False):
             #raise ValueError('gate_ns > 160000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=gate*0.001
 
-    #  Parameters like black-level need time to take affect (100ms?)
     if (hasUser and 'black_level' in cfg['user']):
         d['expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.BL']=cfg['user']['black_level']
 
@@ -259,6 +257,7 @@ def config_expert(cl, cfg):
                 print('*** non-supervisor skipping setting',path,'to value',configdb_node)
                 continue
             rogue_node.set(configdb_node)
+            #  Parameters like black-level need time to take affect (100ms?)
 
 #  Apply the full configuration
 def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
