@@ -100,7 +100,7 @@ def opal_init_feb(slane=None,schan=None):
 def connectionInfo(cl, alloc_json_str):
     alloc_json = json.loads(alloc_json_str)
     supervisor,nworker = supervisor_info(alloc_json)
-    print('Opal supervisor:',supervisor,'nworkers:',nworker)
+    print('camlink supervisor:',supervisor,'nworkers:',nworker)
     barrier_global.init(supervisor,nworker)
 
     # Open a new thread here
