@@ -368,7 +368,7 @@ def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBH
 
 
 def insert_document_and_data(dbname, colname, dicdoc, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
-    """Wrapper for pymongo compatability."""
+    """DEPRECATED - wrapper for pymongo compatability - is used in graphqt/CMWDB*.py"""
     return add_data_and_doc(data, dbname, colname, url, krbheaders, **dicdoc)
 
 
