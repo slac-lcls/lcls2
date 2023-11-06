@@ -105,7 +105,7 @@ def main():
 
     instrset.append(Branch.unconditional(line=0))
 
-    descset = [f'{int(fbucket/spacing)} Hz run trig','daq trig','daq parent group trig']
+    descset = [f'epixhr run trig','epixhr daq trig','daq parent group trig']
 
     if args.verbose:
         i=0

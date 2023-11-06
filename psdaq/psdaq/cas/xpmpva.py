@@ -398,17 +398,29 @@ class XpmGroups(object):
     # monitor PAddr recursively
     # monitor PART:[0..7].Master,L0InpRate
     def __init__(self,pvbase):
-        self.name    = pvbase[-6:]
+        # assuming that pvbase is of the form DAQ:NEH:XPM:1:
+        pvbase_split = pvbase.split(":")
+        pos = pvbase_split.index("XPM")
+        self.name = ":".join([pvbase_split[pos],pvbase_split[pos+1],""])
         self.parent  = None
-        paddr = Pv(pvbase+'PAddr').get()
+
+        # adding try except because in the fee teststand xpm0 is not reachable
+        try:
+            paddr = Pv(pvbase+'PAddr').get()
+        except:
+            paddr=0xffffffff
+            print("XPM timed out assuming 0xffffffff")
+
         if paddr!=0xffffffff:
             name = xpmLinkId(paddr)[0]
-            if name[:3]=='XPM':
-                self.parent = XpmGroups(pvbase[:-6]+name+':')
+            if 'XPM' in name:
+                xpmpath=":".join(pvbase_split[:pos])
+                xpmname=":".join(["",name,""])
+                self.parent = XpmGroups(f'{xpmpath}{xpmname}')
 
-        self.vals = {'master':{i:Pv(pvbase+f'PART:{i}:Master'   ,self.update) for i in range(8)},
-                    'l0rate':{i:Pv(pvbase+f'PART:{i}:L0InpRate' ,self.update) for i in range(8)},
-                     'codes' : Pv(pvbase+f'SEQCODES'            ,self.update, isStruct=True) }
+        self.vals = {'master':{i:Pv(pvbase+f'PART:{i}:Master'    ,self.update) for i in range(8)},
+                     'l0rate':{i:Pv(pvbase+f'PART:{i}:L0InpRate' ,self.update) for i in range(8)},
+                     'codes' : Pv(pvbase+f'SEQCODES'             ,self.update, isStruct=True) }
 
     def update(self,err):
         pass
