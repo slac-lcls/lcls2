@@ -11,12 +11,23 @@
 #include "xtcdata/xtc/Dgram.hh"
 #include <unistd.h>
 #include <getopt.h>
+#include "psdaq/mmhw/TriggerEventManager2.hh"
+
+
+typedef Pds::Mmhw::TriggerEventManager2 TEM;
 
 #define MAX_RET_CNT_C 1000
 static int fd;
+static void dmaWriteRegister(int, uint32_t*, uint32_t);
 std::atomic<bool> terminate;
 
 using namespace Drp;
+
+void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
+{
+    uintptr_t addri = (uintptr_t)addr;
+    dmaWriteRegister(fd, addri&0xffffffff, val);
+}
 
 unsigned dmaDest(unsigned lane, unsigned vc)
 {
@@ -42,9 +53,9 @@ int main(int argc, char* argv[])
     virtChan = 0;
     std::string device;
     unsigned lverbose = 0;
-    bool lrogue = false;
+    bool lrogue = false, timing_kcu_enable=false;
     bool lusage = false;
-    while((c = getopt(argc, argv, "c:d:vrh?")) != EOF) {
+    while((c = getopt(argc, argv, "c:d:tvrh?")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
@@ -57,6 +68,9 @@ int main(int argc, char* argv[])
                 break;
             case 'v':
                 ++lverbose;
+                break;
+            case 't':
+                timing_kcu_enable = true;
                 break;
             default:
                 lusage = true;
@@ -74,7 +88,10 @@ int main(int argc, char* argv[])
 
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
+    
     for (unsigned i=0; i<PGP_MAX_LANES; i++) {
+        uint32_t dest = dmaDest(i, virtChan);
+        printf("setting lane %u, dest 0x%x \n",i,dest);
         dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, virtChan));
     }
 
@@ -100,6 +117,28 @@ int main(int argc, char* argv[])
             printf("%08x%c", u[i], (i%8)==7?'\n':' ');
         return -1;
     }       
+
+    if (timing_kcu_enable){
+        unsigned m_readoutGroup = 0;
+        int links = 1;
+
+        TEM* mem_pointer = (TEM*)0x00C20000;
+        TEM* tem = new (mem_pointer) TEM;
+        for(unsigned i=0; i<8; i++) {
+            if (links&(1<<i)) {
+                Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
+                dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
+                dmaWriteRegister(fd, &b.pauseThresh, 16     );
+                dmaWriteRegister(fd, &b.group , m_readoutGroup);
+                dmaWriteRegister(fd, &b.enable, 3           );  // enable
+
+                dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+                dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<31));  // enable
+            }
+
+        }
+        
+    }
 
     uint64_t nevents = 0L;
     int32_t dmaRet[MAX_RET_CNT_C];
