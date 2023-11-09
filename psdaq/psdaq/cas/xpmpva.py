@@ -454,6 +454,7 @@ class GroupsTab(QtWidgets.QWidget):
         super(GroupsTab,self).__init__()
 
         l = QtWidgets.QHBoxLayout()
+        lv = QtWidgets.QVBoxLayout()
         grid1 = QtWidgets.QGridLayout()
         grid1.addWidget( QtWidgets.QLabel('Group')    , 0, 0 )
         grid1.addWidget( QtWidgets.QLabel('Master')   , 0, 1 )
@@ -466,17 +467,25 @@ class GroupsTab(QtWidgets.QWidget):
             grid1.addWidget( self.masterText[i], i+1, 1)
             self.l0RateText[i] = QtWidgets.QLabel('-')
             grid1.addWidget( self.l0RateText[i], i+1, 2)
-        grid1.setRowStretch(grid1.rowCount(),1)
+#        grid1.setRowStretch(grid1.rowCount(),1)
+        box1 = QtWidgets.QGroupBox("Groups")
+        box1.setLayout(grid1)
 
-        grid1.addWidget( QtWidgets.QLabel('Sequence'), 10, 0)
+        grid3 = QtWidgets.QGridLayout()
+        grid3.addWidget( QtWidgets.QLabel('Sequence'), 0, 0)
         for i in range(4):
-            grid1.addWidget( QtWidgets.QLabel(str(i)), 11+i, 0)
-            grid1.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:ENABLE', 'Ena', 1), 11+i, 1 )
-            grid1.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:ENABLE', 'Dis', 0), 11+i, 2 )
-            grid1.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:DUMP', 'Dump', 1), 11+i,3 )
-        grid1.setRowStretch(grid1.rowCount(),1)
+            grid3.addWidget( QtWidgets.QLabel(str(i)), 1+i, 0)
+            grid3.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:ENABLE', 'Ena', 1), 1+i, 1 )
+            grid3.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:ENABLE', 'Dis', 0), 1+i, 2 )
+            grid3.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:DUMP', 'Dump', 1), 1+i,3 )
+#        grid3.setRowStretch(grid3.rowCount(),1)
+        box3 = QtWidgets.QGroupBox("Sequence Control")
+        box3.setLayout(grid3)
             
-        l.addLayout(grid1)
+        lv.addWidget(box1)
+        lv.addWidget(box3)
+        lv.addStretch()
+        l.addLayout(lv)
         l.addStretch()
 
         grid2 = QtWidgets.QGridLayout()
@@ -496,7 +505,9 @@ class GroupsTab(QtWidgets.QWidget):
             self.codesText['rate'][i] = QtWidgets.QLabel('-')
             grid2.addWidget( self.codesText['rate'][i], i+1, 3 )
         grid2.setRowStretch(grid2.rowCount(),1)
-        l.addLayout(grid2)
+        box2 = QtWidgets.QGroupBox("Event Code Sources")
+        box2.setLayout(grid2)
+        l.addWidget(box2)
 
         self.setLayout(l)
 

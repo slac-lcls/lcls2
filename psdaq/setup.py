@@ -132,6 +132,7 @@ if 'PSDAQ' in BUILD_LIST :
             'seqprogram = psdaq.seq.seqprogram:main',
             'traingenerator = psdaq.seq.traingenerator:main',
             'periodicgenerator = psdaq.seq.periodicgenerator:main',
+            'rixgenerator = psdaq.seq.rixgeneratory:main',
             'bos = psdaq.bos.bos:main',
         ]
     }
