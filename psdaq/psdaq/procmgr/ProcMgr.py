@@ -268,7 +268,7 @@ def add_macro_config(procmgr_macro, oldfilename, newfilename, platform):
 
 #
 # findOnPath - find executable on PATH environment variable
-# 
+#
 def findOnPath(cmd, env):
     retval = cmd
     if env is not None:
@@ -286,7 +286,7 @@ def findOnPath(cmd, env):
 
 #
 # ConfigFileError - this exception is raised to report configuration file errors
-# 
+#
 class ConfigFileError(Exception):
     def __init__(self, value):
         self.value = value
@@ -765,7 +765,7 @@ class ProcMgr:
                     continue
 
             if only_static and ('k' not in self.d[key][self.DICT_FLAGS]):
-                # only_static flag was passed in and this entry does not 
+                # only_static flag was passed in and this entry does not
                 # have the 'k' flag set: skip this entry
                 continue
 
@@ -1097,18 +1097,31 @@ class ProcMgr:
                     print('*** ERR: %s/condaProcServ not found' % prefix)
                     continue
 
-                startcmd = condaProcServCmd + ' %s %s %s %s %s %s %s %s %s %s %s' % \
+                # expand command to absolute path
+                val = value[self.DICT_CMD].split()
+                cmd = shutil.which(val[0])
+                args = ' '.join(val[1:])
+
+                # add rtprio
+                rtprio = f'/usr/bin/chrt -f {value[self.DICT_RTPRIO]}' if value[self.DICT_RTPRIO] != "''" else ''
+
+                # add env after getting rid of leading and trailing quotes
+                env = f'/bin/env {value[self.DICT_ENV][1:-1]}' if value[self.DICT_ENV] != "''" else ''
+
+                startcmd = condaProcServCmd + ' %s %s %s %s %s %s %s %s %s %s %s %s' % \
                            (rcFile, \
                             value[self.DICT_CONDA], \
-                            value[self.DICT_ENV], \
-                            value[self.DICT_RTPRIO], \
                             name, \
                             waitflag, \
                             logfile, \
                             coresize, \
                             value[self.DICT_CTRL], \
                             python_version(), \
-                            value[self.DICT_CMD])
+                            rtprio, \
+                            env, \
+                            cmd, \
+                            args)
+
                 # is this host already in the dictionary?
                 if starthost in startdict:
                     # yes: add to set of start commands
@@ -1432,7 +1445,7 @@ class ProcMgr:
                         continue
 
                 if only_static and ('k' not in self.d[key][self.DICT_FLAGS]):
-                    # only_static flag was passed in and this entry does not 
+                    # only_static flag was passed in and this entry does not
                     # have the 'k' flag set: skip this entry
                     continue
 
@@ -1488,7 +1501,7 @@ class ProcMgr:
     # setStatus
     #
     # This method sets the status for each process in a specified list.
-    # 
+    #
     # RETURNS: 0 on success, 1 on error.
     #
     def setStatus(self, key_list, newStatus):

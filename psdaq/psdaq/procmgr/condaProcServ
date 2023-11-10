@@ -5,16 +5,13 @@
 # arguments:
 #   1:   rcFile
 #   2:   condaEnv
-#   3:   env
-#   4:   rtprio
-#   5:   name
-#   6:   waitFlag
-#   7:   logFile
-#   8:   coreSize
-#   9:   ctrlPort
-#   10:  pythonVer
-#   11:  cmd
-#   12+: optional arguments to cmd
+#   3:   name
+#   4:   waitFlag
+#   5:   logFile
+#   6:   coreSize
+#   7:   ctrlPort
+#   8:   pythonVer
+#   9+:  [rtprio] [env] cmd [args]
 #
 # return values:
 #   0: success
@@ -29,8 +26,8 @@
 #   13: CONDA_PREFIX not defined in environment
 #   other: procServ error
 
-if (( "$#" < 11 )); then
-    echo "usage: ${0} <rcFile> <condaEnv> <env> <rtprio> <name> <waitFlag> <logFile> <coreSize> <ctrlPort> <pythonVer> <cmd> [<arg1> ...]"
+if (( "$#" < 9 )); then
+    echo "usage: ${0} <rcFile> <condaEnv> <name> <waitFlag> <logFile> <coreSize> <ctrlPort> <pythonVer> [<arg1> ...]"
     exit 5
 fi
 
@@ -39,34 +36,33 @@ export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
 
 rcFile="${1}"
 condaEnv="${2}"
-env="${3}"
-rtprio="${4}"
-name="${5}"
-waitFlag="${6}"
-logFile="${7}"
-coreSize="${8}"
-ctrlPort="${9}"
-# remove .* suffix from ${10}, shortening xx.yy.zz to xx.yy
-pythonVer="${10%.*}"
-cmd="${11}"
+name="${3}"
+waitFlag="${4}"
+logFile="${5}"
+coreSize="${6}"
+ctrlPort="${7}"
+# remove .* suffix from ${8}, shortening xx.yy.zz to xx.yy
+pythonVer="${8%.*}"
 args=""
-if (( "$#" > 11 )); then
-    shift 11
+
+#for arg in "$@"; do
+#    echo "*** " "${arg}" > /tmp/junk_${ctrlPort}.log #${logFile}_2
+#done
+
+if (( "$#" > 8 )); then
+    shift 8
     args=("$@")
 fi
 
-echo "rcFile: '$rcFile'"
-echo "condaEnv: '$condaEnv'"
-echo "env: '$env'"
-echo "rtprio: '$rtprio'"
-echo "name: '$name'"
-echo "waitFlag: '$waitFlag'"
-echo "logFile: '$logFile'"
-echo "coreSize: '$coreSize'"
-echo "ctrlPort: '$ctrlPort'"
-echo "pythonVer: '$pythonVer'"
-echo "cmd: '$cmd'"
-echo "args: '${args[@]}'"
+echo "rcFile: '$rcFile'"        # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
+echo "condaEnv: '$condaEnv'"    # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
+echo "name: '$name'"            # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
+echo "waitFlag: '$waitFlag'"    # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
+echo "logFile: '$logFile'"      # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
+echo "coreSize: '$coreSize'"    # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
+echo "ctrlPort: '$ctrlPort'"    # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
+echo "pythonVer: '$pythonVer'"  # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
+echo "args: '${args[@]}'"       # >> /tmp/junk_${ctrlPort}.log #${logFile}_2
 
 if [[ -z $rcFile ]]; then
     echo "error: no rcfile specified"
@@ -125,23 +121,6 @@ else
     export PATH="${CONDA_PREFIX}/bin:$CONDA_PREFIX/epics/bin/linux-x86_64:${PATH}"
 fi
 
-# expand command to absolute path
-fullpath=`type -P "$cmd"`
-if [[ -z $fullpath ]]; then
-    echo "error: not found on PATH: '$cmd'"
-    exit 7
-else
-    cmd=$fullpath
-fi
-
-# add rtprio and env after expanding cmd
-if [[ ! -z $rtprio ]]; then
-    cmd="/usr/bin/chrt -f $rtprio $cmd"
-fi
-if [[ ! -z $env ]]; then
-    cmd="/bin/env $env $cmd"
-fi
-
 if [[ -z $logFile ]]; then
     logFlag=""
 else
@@ -157,9 +136,17 @@ fi
 ulimit -c $coreSize
 
 if [[ -f $PROCSERVBIN ]]; then
+    #echo "***" $PROCSERVBIN \
+    #    --noautorestart --name $name --pidfile /dev/null $waitFlag $logFlag --allow \
+    #    $ctrlPort "${args[@]}"  >> /tmp/junk_${ctrlPort}.log # ${logFile}_2
     $PROCSERVBIN \
         --noautorestart --name $name --pidfile /dev/null $waitFlag $logFlag --allow \
-        $ctrlPort $cmd "${args[@]}"
+        $ctrlPort "${args[@]}" # &>> /tmp/junk2_${ctrlPort}.log
+    #$PROCSERVBIN \
+    #    --noautorestart --name $name --pidfile /dev/null $waitFlag $logFlag --allow \
+    #    $ctrlPort "/bin/env" "EPICS_PVA_ADDR_LIST=172.21.152.78 172.27.131.255"     \
+    #    "LD_LIBRARY_PATH=/cds/sw/ds/ana/conda2/inst/envs/ps-4.6.1/epics/lib/linux-x86_64:/cds/sw/ds/ana/conda2/inst/envs/ps-4.6.1/pcas/lib/linux-x86_64" \
+    #    $cmd "${args[@]}"
 else
     echo "error: procServ not found"
     exit 9
