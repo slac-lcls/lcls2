@@ -132,6 +132,9 @@ class ts_raw_2_1_0(ts_raw_2_0_0):
     def inhibitCounts(self,evt) -> amitypes.Array1d:
         return self._info(evt).inhibitCounts
 
+    def destination(self,evt) -> int:
+        return self._info(evt).ebeamDestn
+
     def pulseId(self,evt) -> int:
         return self._info(evt).pulseId & ~(1<<63) # bit 63 identifies LCLS-1
 
