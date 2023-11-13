@@ -3,7 +3,7 @@ if not platform: platform = '2'
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = ld_lib_path
 manta_env = "EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO"+' '+ld_lib_path
-mr2k1_env = "EPICS_PVA_ADDR_LIST=172.21.92.76 EPICS_PVA_AUTO_ADDR_LIST=NO"+' '+ld_lib_path
+mr2k1_env = "EPICS_PVA_ADDR_LIST=172.21.92.68 EPICS_PVA_AUTO_ADDR_LIST=NO"+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.255'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
 
@@ -28,11 +28,13 @@ trig_dir = '/cds/home/opr/rixopr/scripts/trigger'
 task_set = 'taskset -c 4-63'
 batching = 'batching=yes'
 directIO = 'directIO=yes'
+pvaAddr  = 'pva_addr=172.21.152.78' # mon001
 scripts  = f'script_path={trig_dir}'
+encKwargs = 'pebbleBufCount=65536,pebbleBufSize=4096,encTprAlias=tprtrig'
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}'
-std_opts0 = f'{std_opts} -o {data_dir} -d /dev/datadev_0 -k {batching},{directIO}'
-std_opts1 = f'{std_opts} -o {data_dir} -d /dev/datadev_1 -k {batching},{directIO}'
+std_opts0 = f'{std_opts} -o {data_dir} -d /dev/datadev_0 -k {batching},{directIO},{pvaAddr}'
+std_opts1 = f'{std_opts} -o {data_dir} -d /dev/datadev_1 -k {batching},{directIO},{pvaAddr}'
 
 teb_cmd  = task_set+' teb '            +std_opts+' -k '+scripts
 meb_cmd  = task_set+' monReqServer '   +std_opts
@@ -41,10 +43,15 @@ drp_cmd0 = task_set+' drp '            +std_opts0
 drp_cmd1 = task_set+' drp '            +std_opts1
 pva_cmd0 = task_set+' drp_pva '        +std_opts0
 pva_cmd1 = task_set+' drp_pva '        +std_opts1
-udp_cmd0 = task_set+' drp_udpencoder ' +std_opts0
-udp_cmd1 = task_set+' drp_udpencoder ' +std_opts1
-bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1'
-bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1'
+udp_cmd0 = task_set+' drp_udpencoder ' +std_opts0+f' -k {encKwargs}'
+udp_cmd1 = task_set+' drp_udpencoder ' +std_opts1+f' -k {encKwargs}'
+tpr_cmd  = task_set+' tpr_trigger '    +f' -H {hutch} -C {collect_host}'
+bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1'# -k pva_addr=172.27.131.255'
+bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1'# -k pva_addr=172.27.131.255'
+
+#  format is {name}+{type}+{pvname}
+gmd  = 'gmd+scbld+EM1K0:GMD:HPS'
+xgmd = 'xgmd+scbld+EM2K0:XGMD:HPS'
 
 elog_cfg = '/cds/group/pcds/dist/pds/rix/misc/elog_rix.txt'
 
@@ -85,7 +92,8 @@ procmgr_config = [
  { host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-neh-ctl002',  id:'tprtrig',     flags:'sp',                 cmd:'tprtrig -t a -c 0 -o 1 -d 2 -w 10 -z'},
+ #{ host: 'drp-neh-ctl002',  id:'tprtrig',     flags:'sp',                 cmd:'tprtrig -t a -c 0 -o 1 -d 2 -w 10 -z'},
+ { host: 'drp-neh-ctl002',  id:'mono_enc_trig',     flags:'spu',                 cmd:f'{tpr_cmd} -t a -c 0 -o 1 -d 2 -w 10'},
 
  { host: 'drp-srcf-cmp013', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
@@ -93,18 +101,8 @@ procmgr_config = [
 
  { host: 'drp-srcf-cmp010', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
-# { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
-
-# 11/9/2022 - gmd waveform test (smoeller, espov) - moved from cmp015 to cmp025 (weaver)
- { host: 'drp-srcf-cmp025', id:'gmdstr0_0',   flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE0'},  # Electron waveforms
- { host: 'drp-srcf-cmp025', id:'gmdstr2_0',   flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x1 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE2'},  # Ion waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_DOUBLE0'}, # Electron 1 waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr1_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x4 ca/EM2K0:XGMD:HPS:STR0:STREAM_DOUBLE1'}, # Electron 2 waveforms
- { host: 'drp-srcf-cmp025', id:'xgmdstr2_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x8 ca/EM2K0:XGMD:HPS:STR0:STREAM_DOUBLE2'}, # Ion waveforms
-
-# 10/3/2021 - epixhr beam test
-# {                          id:'groupca6',    flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 6'},
-# { host: 'drp-srcf-cmp014', id:'epixhr_0',  flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixhr2x2'},
+ { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
+# { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D '+f'{gmd},{xgmd}'},
 
  { host: 'drp-srcf-cmp002', id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
