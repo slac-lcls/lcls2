@@ -28,6 +28,9 @@ cdef struct Buffer:
     struct_stat* result_stat
     timeval t_now
     double t_delta
+    int    force_reread                 # set when intg event is incomplete
+    uint64_t cp_offset                  # when forec reread is set, cp_offset is the seen_offset
+                                        # otherwise it's ready_offset (not using local var due to nogil)
 
 cdef class ParallelReader:
     cdef int[:]     file_descriptors
@@ -43,7 +46,7 @@ cdef class ParallelReader:
     cdef uint64_t   got                  # summing the size of new reads used by prometheus
     cdef uint64_t   chunk_overflown
     cdef int        num_threads
-    cdef int        max_events
+    cdef uint64_t   max_events
     cdef array.array gots
     cdef int        zeroedbug_wait_sec
     cdef int        max_retries

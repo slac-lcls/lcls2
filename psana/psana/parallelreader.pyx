@@ -47,6 +47,7 @@ cdef class ParallelReader:
             buf.timestamp       = 0       
             buf.found_endrun    = 0
             buf.endrun_ts       = 0
+            buf.force_reread    = 0
             buf.chunk      = <char *>malloc(self.chunksize)
             buf.ts_arr     = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
             buf.sv_arr     = <unsigned *>malloc(sizeof(unsigned) * self.max_events)
@@ -98,11 +99,18 @@ cdef class ParallelReader:
             step_buf = &(self.step_bufs[i])
 
             # skip reading this buffer if there is/are still some event(s).
-            if buf.n_ready_events - buf.n_seen_events > 0: continue 
+            # or when there's a split integrating event.
+            if (buf.n_ready_events - buf.n_seen_events > 0) and not buf.force_reread: continue 
             
-            # copy remaining data if any 
-            if buf.got - buf.ready_offset > 0 and buf.ready_offset > 0:
-                memcpy(buf.chunk, buf.chunk + buf.ready_offset, buf.got - buf.ready_offset)
+            # copy remaining data if any -
+            # if force_reread is set (intg det), we need to copy data from seen_offset
+            # instead of ready_offset.
+            if buf.force_reread:
+                buf.cp_offset = buf.seen_offset
+            else:
+                buf.cp_offset = buf.ready_offset
+            if buf.got - buf.cp_offset > 0 and buf.cp_offset > 0:
+                memcpy(buf.chunk, buf.chunk + buf.cp_offset, buf.got - buf.cp_offset)
             
             # temporary fix for zeroed bug filesystem problem (live-mode only)
             if self.max_retries > 0:
@@ -113,13 +121,13 @@ cdef class ParallelReader:
                     sleep(self.zeroedbug_wait_sec)
 
             # read more data to fill up the buffer
-            gots[i] = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.ready_offset), \
-                                        self.chunksize - (buf.got - buf.ready_offset) )
+            gots[i] = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.cp_offset), \
+                                        self.chunksize - (buf.got - buf.cp_offset) )
 
             # summing the size of all the new reads
             self.got += gots[i]
             
-            buf.got = (buf.got - buf.ready_offset) + gots[i]
+            buf.got = (buf.got - buf.cp_offset) + gots[i]
             
             # reset the offsets and no. of events
             buf.ready_offset        = 0
@@ -130,6 +138,9 @@ cdef class ParallelReader:
             step_buf.n_ready_events = 0
             step_buf.seen_offset    = 0
             step_buf.n_seen_events  = 0
+            
+            # reset force_read flag for integrating event
+            buf.force_reread        = 0
             
             while buf.ready_offset < buf.got and buf.n_ready_events < self.max_events:
                 if buf.got - buf.ready_offset >= sizeof(Dgram):
