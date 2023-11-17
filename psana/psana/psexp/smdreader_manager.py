@@ -158,8 +158,10 @@ class SmdReaderManager(object):
         return self
 
     def check_split_event(self, current_processed_events):
-        # Return True if there's no split integrating event or
-        # when it has been handled correctly.
+        # Return True 
+        #   - if there's no split integrating event or
+        #   - when it has been handled correctly by reread once
+        #   - EndRun is found
         # 
         # How we check? If no. of viewed event is not increasing, this means there's a split
         # integrating event and we need to reread again. 
@@ -169,11 +171,12 @@ class SmdReaderManager(object):
         #   - We only try to reread one time for split events. If this is not successful, 
         #     we abort with below message.
         check_pass = True
-        if self.processed_events <= current_processed_events:
+        if self.processed_events <= current_processed_events and not self.smdr.found_endrun():
+            # Also fail if we cannot get more data
             check_pass = self.get()
             self.smdr.find_view_offsets(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id, max_events=self.dsparms.max_events)
             if self.processed_events <= current_processed_events:
-                print(f'Exit: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize})')
+                print(f'Exit: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize}). Useful debug info: {self.processed_events=} {current_processed_events=}.')
                 check_pass = False
         return check_pass
 

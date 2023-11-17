@@ -411,7 +411,7 @@ cdef class EventBuilder:
                 proxy_events.append(proxy_evt)
                 got += 1
 
-        assert got <= MAX_BATCH_SIZE, f"No. of events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got})"
+        assert got <= MAX_BATCH_SIZE, f"No. of events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got}). For integrating detector, lower the value of PS_SMD_N_EVENTS."
         assert got_step <= MAX_BATCH_SIZE, f"No. of transition events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got_step})"
         self.nevents = got
         self.nsteps = got_step

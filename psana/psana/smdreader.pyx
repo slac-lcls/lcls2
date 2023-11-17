@@ -225,7 +225,7 @@ cdef class SmdReader:
         
         return limit_ts
 
-    def find_intg_limit_ts(self, intg_stream_id, max_events):
+    def find_intg_limit_ts(self, intg_stream_id, batch_size, max_events):
         """ Find limit_ts for integrating events
 
         An integrating event accumulates over fast events in other streams. 
@@ -240,7 +240,7 @@ cdef class SmdReader:
         cdef int i=0, j=0
         
         # Index of the first and last event in the viewing window
-        cdef int i_bob=0, i_eob=0
+        cdef int i_bob=0, i_eob=0, i_complete=0
         
         cdef int n_L1Accepts=0
         cdef int n_transitions=0
@@ -251,6 +251,7 @@ cdef class SmdReader:
         # transitions.
         i_bob = self.prl_reader.bufs[self.winner].n_seen_events - 1
         i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
+        i_complete = i_bob
         for i in range(i_bob+1, i_eob + 1):
             if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
                 limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i]
@@ -262,28 +263,28 @@ cdef class SmdReader:
                     delta = buf_ts - limit_ts
                     if buf_ts < limit_ts:
                         is_split = 1
-                        limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_bob]
                         self.prl_reader.bufs[j].force_reread = 1
                         break
                 if not is_split:
-                    n_L1Accepts = 1
+                    n_L1Accepts += 1
+                    i_complete = i
             else:
                 n_transitions += 1
+                # TODO: Also check for split EndRun
+                if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.EndRun:
+                    i_complete = i
 
-            if n_L1Accepts == 1 or is_split \
+            if n_L1Accepts == batch_size or is_split \
                     or (self.n_processed_events + n_L1Accepts == max_events and max_events > 0):
                 break
 
-        if not is_split:
-            i_eob = i
-            limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
-            self.n_view_events  = n_L1Accepts + n_transitions
-            self.n_view_L1Accepts = n_L1Accepts
-            self.n_processed_events += n_L1Accepts
-            
-            # Save timestamp and transition id of the last event in batch
-            self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_eob]      
-            self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
+        limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
+        self.n_view_events  = n_L1Accepts + n_transitions
+        self.n_view_L1Accepts = n_L1Accepts
+        self.n_processed_events += n_L1Accepts
+        # Save timestamp and transition id of the last event in batch
+        self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_complete]      
+        self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
         
         return limit_ts
 
@@ -311,7 +312,7 @@ cdef class SmdReader:
         if intg_stream_id == -1 or ignore_transition==False: 
             limit_ts = self.find_limit_ts(batch_size, max_events, ignore_transition)
         else:
-            limit_ts = self.find_intg_limit_ts(intg_stream_id, max_events)
+            limit_ts = self.find_intg_limit_ts(intg_stream_id, batch_size, max_events)
             if limit_ts == self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_seen_events - 1]:
                 return
 
