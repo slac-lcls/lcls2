@@ -46,8 +46,8 @@ pva_cmd1 = task_set+' drp_pva '        +std_opts1
 udp_cmd0 = task_set+' drp_udpencoder ' +std_opts0+f' -k {encKwargs}'
 udp_cmd1 = task_set+' drp_udpencoder ' +std_opts1+f' -k {encKwargs}'
 tpr_cmd  = task_set+' tpr_trigger '    +f' -H {hutch} -C {collect_host}'
-bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1'# -k pva_addr=172.27.131.255'
-bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1'# -k pva_addr=172.27.131.255'
+bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1 -k pva_addr=172.27.131.255'
+bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1 -k pva_addr=172.27.131.255'
 
 #  format is {name}+{type}+{pvname}
 gmd  = 'gmd+scbld+EM1K0:GMD:HPS'
@@ -101,8 +101,8 @@ procmgr_config = [
 
  { host: 'drp-srcf-cmp010', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
- { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
-# { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D '+f'{gmd},{xgmd}'},
+# { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D gmd,xgmd'},
+ { host: 'drp-srcf-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D '+f'{gmd},{xgmd}'},
 
  { host: 'drp-srcf-cmp002', id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
