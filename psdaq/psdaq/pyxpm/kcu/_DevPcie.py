@@ -104,6 +104,18 @@ class NoMmcmPhaseLock(pr.Device):
     def dump(self):
         pass
 
+class NoXpmPhase(pr.Device):
+    def __init__(self,
+                 name        = "XpmPhase",
+                 description = "XpmPhase placeholder",
+                 **kwargs):
+        super().__init__(name=name, description=description, **kwargs)
+
+        self.add(pr.LocalVariable(name = "block", mode='RO', value=0))
+
+    def phase(self):
+        return 0
+
 class NoGthRxAlignCheck(pr.Device):
     def __init__(   self, 
             name        = "NoGthRxAlignCheck", 
@@ -138,6 +150,7 @@ class DevPcie(pr.Device):
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
         self.isXpmGen = isXpmGen
+        self.fwVersion = 0x03070000
 
         ######################################################################
         
@@ -166,6 +179,10 @@ class DevPcie(pr.Device):
             name = 'AxiSy56040',
         ))
 
+        self.add(NoXpmPhase(
+            name   = 'CuToScPhase',
+        ))
+
         self.add(xpm.XpmApp(
             memBase = memBase,
             name   = 'XpmApp',
@@ -182,7 +199,7 @@ class DevPcie(pr.Device):
         self.add(xpm.XpmSequenceEngine(
             memBase = memBase,
             name   = 'SeqEng_0',
-            offset = 0x00820000,
+            offset = 0x00840000,
         ))
 
         self.add(timing.TPGMiniCore(
@@ -194,19 +211,7 @@ class DevPcie(pr.Device):
         self.add(DevReset(
             memBase = memBase,
             name   = 'DevReset',
-            offset = 0x00840000,
-        ))
-
-#        self.add(xpm.CuPhase(
-#            memBase = memBase,
-#            name = 'CuPhase',
-#            offset = 0x00850000,
-#        ))
-
-        self.add(xpm.XpmPhase(
-            memBase = memBase,
-            name   = 'CuToScPhase',
-            offset = 0x00850000,
+            offset = 0x00820000,
         ))
 
         self.add(timing.GthRxAlignCheck(
@@ -230,6 +235,18 @@ class DevPcie(pr.Device):
     def start(self):
         print('---DevPcie.start---')
         self.DevReset.clearTimingPhyReset.set(0)
+
+        #  Firmware version check
+        fwVersion = self.AxiPcieCore.AxiVersion.FpgaVersion.get()
+        if (fwVersion < self.fwVersion):
+            errMsg = f"""
+            PCIe.AxiVersion.FpgaVersion = {fwVersion:#04x} != {self.fwVersion:#04x}
+            Please update PCIe firmware using software/scripts/updatePcieFpga.py
+            https://github.com/slaclab/lcls2-pgp-pcie-apps/blob/master/firmware/targets/shared_config.mk
+            """
+            click.secho(errMsg, bg='red')
+            raise ValueError(errMsg)
+
         #  Reprogram the reference clock
         self.AxiPcieCore.I2cMux.set(1<<2)
         self.AxiPcieCore.Si570._program()

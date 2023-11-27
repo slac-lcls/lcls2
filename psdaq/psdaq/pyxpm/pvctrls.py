@@ -20,8 +20,8 @@ countrst = 60
 _fidPrescale = 200
 _fidPeriod   = 1400/1.3
 
-NCODES = 16
-seqCodes = {'EventCode'   : ('ai',[i for i in range(272,288)]),
+NCODES = 32
+seqCodes = {'EventCode'   : ('ai',[i for i in range(288-NCODES,288)]),
             'Description' : ('as',['']*NCODES),
             'Rate'        : ('ai',[0]*NCODES),
             'Enabled'     : ('ab',[False]*NCODES)}
@@ -587,7 +587,7 @@ class PVCtrls(object):
         elif cycle == 10:
             self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
             self._seq_codes_val = toDict(seqCodes)
-            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(4)]
+            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(NCODES//4)]
 
         global countdn
         # check for config save
@@ -656,7 +656,7 @@ class PVCtrls(object):
                 if self._handle:
                     offset = self._handle(msg)
                     if self._seq:
-                        w = struct.unpack_from('<16L',msg,offset)
+                        w = struct.unpack_from(f'<{NCODES}L',msg,offset)
                         offset += 64
                         value = self._seq_codes_pv.current()
                         self._seq_codes_val['Rate'] = w
