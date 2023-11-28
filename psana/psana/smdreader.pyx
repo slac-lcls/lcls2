@@ -12,6 +12,8 @@ import numpy as np
 from cython.parallel import prange
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from psana.dgramedit import DgramEdit
+from cpython.object cimport PyObject
+from cpython.getargs cimport PyArg_ParseTupleAndKeywords
 
 
 cdef class SmdReader:
@@ -46,11 +48,23 @@ cdef class SmdReader:
     cdef bytearray   _fakebuf
     cdef unsigned    _fakebuf_maxsize
     cdef unsigned    _fakebuf_size
+    cdef PyObject*   dsparms
 
-    def __init__(self, int[:] fds, int chunksize, int max_retries):
+    def __init__(self, int[:] fds, int chunksize, *args, **kwargs):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
-        self.prl_reader         = ParallelReader(fds, chunksize)
-        self.max_retries        = max_retries                       # no default value (set when creating datasource)
+        
+        # Keyword args that need to be passed in once. To save some of
+        # them as cpp class attributes, we need to read them in as PyObject*.
+        cdef char* kwlist[2]
+        kwlist[0] = "dsparms"
+        kwlist[1] = NULL
+        if PyArg_ParseTupleAndKeywords(args, kwargs, "|O", kwlist, 
+                &(self.dsparms)) == False:
+            raise RuntimeError, "Invalid kwargs for SmdReader"
+        
+        dsparms                 = <object> self.dsparms
+        self.prl_reader         = ParallelReader(fds, chunksize, dsparms=dsparms)
+        self.max_retries        = dsparms.max_retries
         self.sleep_secs         = 1
         self.total_time         = 0
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
@@ -89,6 +103,7 @@ cdef class SmdReader:
         
         # Sets event frequency that fake EndStep/BeginStep pair is inserted.
         self.fakestep_flag = int(os.environ.get('PS_FAKESTEP_FLAG', 0))
+        
         
 
     def __dealloc__(self):
@@ -199,23 +214,40 @@ cdef class SmdReader:
         
         # Apply batch_size and max_events
         cdef int n_L1Accepts=0
-        cdef int n_transitions=0
-        cdef int n_counts_toward_batch_size=0
-        for i in range(i_bob+1, i_eob + 1):
-            if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
-                n_L1Accepts += 1
+        cdef int n_events=0
+
+        if ignore_transition:
+            if max_events == 0:
+                for i in range(i_bob+1, i_eob + 1):
+                    n_events += 1
+                    if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                        n_L1Accepts +=1
+                    if n_L1Accepts == batch_size: break
             else:
-                n_transitions += 1
-            if ignore_transition:
-                n_counts_toward_batch_size = n_L1Accepts
+                for i in range(i_bob+1, i_eob + 1):
+                    n_events += 1
+                    if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                        n_L1Accepts +=1
+                    if n_L1Accepts == batch_size: break
+                    if self.n_processed_events + n_L1Accepts == max_events: break
+        else:
+            if max_events == 0:
+                for i in range(i_bob+1, i_eob + 1):
+                    n_events += 1
+                    if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                        n_L1Accepts +=1
+                    if n_events == batch_size: break
             else:
-                n_counts_toward_batch_size = n_L1Accepts + n_transitions
-            if n_counts_toward_batch_size == batch_size or \
-                    (self.n_processed_events + n_counts_toward_batch_size == max_events and max_events > 0):
-                break
+                for i in range(i_bob+1, i_eob + 1):
+                    n_events += 1
+                    if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                        n_L1Accepts +=1
+                    if n_events == batch_size: break
+                    if self.n_processed_events + n_events == max_events: break
+
         i_eob = i
         limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
-        self.n_view_events  = n_L1Accepts + n_transitions
+        self.n_view_events  = n_events
         self.n_view_L1Accepts = n_L1Accepts
         self.n_processed_events += n_L1Accepts
         
