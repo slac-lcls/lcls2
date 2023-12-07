@@ -14,6 +14,7 @@
 #include "EpixQuad.hh"
 #include "EpixHR2x2.hh"
 #include "EpixHRemu.hh"
+#include "EpixM320.hh"
 #include "Epix100.hh"
 #include "Opal.hh"
 #include "Wave8.hh"
@@ -315,6 +316,7 @@ void PGPDetectorApp::initialize()
     f.register_type<EpixQuad>    ("epixquad");
     f.register_type<EpixHR2x2>   ("epixhr2x2");
     f.register_type<EpixHRemu>   ("epixhremu");
+    f.register_type<EpixM320>    ("epixm320");
     f.register_type<Epix100>     ("epix100");
     f.register_type<Opal>        ("opal");
     f.register_type<TimeTool>    ("tt");
@@ -322,7 +324,6 @@ void PGPDetectorApp::initialize()
     f.register_type<TimingSystem>("ts");
     f.register_type<Wave8>       ("wave8");
     f.register_type<Piranha4>    ("piranha4");
-
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {

@@ -1,7 +1,9 @@
 if not platform: platform = '3'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = f'{ld_lib_path}'
+#epics_env = f'{ld_lib_path}'
+#epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
+epics_env = '"EPICS_PVA_ADDR_LIST=172.21.159.255 127.0.0.1"'+' '+ld_lib_path
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
 hsd_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 im2k0_env = ld_lib_path
@@ -90,9 +92,9 @@ ami_manager_node = "drp-srcf-cmp034"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:f'xpmpva {xpms}'},
- {                         id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH {xtpg} {groups}'},
- {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
+ {                         id:'xpmpva' ,     flags:'sx',   env:epics_env, cmd:f'xpmpva {xpms}'},
+ {                         id:'groupca',     flags:'sx',   env:epics_env, cmd:f'groupca DAQ:NEH {xtpg} {groups}'},
+ {                         id:'procstat',    flags:'px',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
 
 # {host: 'drp-srcf-mon001', id:'pvrtmon-tst', flags:'s',   env:epics_env, cmd:f'epics_exporter -H tst -M {prom_dir} -I xpm-{xtpg} -P DAQ:NEH:XPM:{xtpg} -G Us:RxLinkUp RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
 # {host: 'drp-srcf-mon001', id:'pvrtmon-t4',  flags:'s',   env:epics_env, cmd:f'epics_exporter -H tmo -M {prom_dir} -I xpm-4 -P DAQ:NEH:XPM:4 -G Us:RxLinkUp DeadFrac'
@@ -101,10 +103,10 @@ procmgr_config = [
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ {host: collect_host,      id:'control',     flags:'spux', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger2 -S 0 -T 20000 -V {elog_cfg}'},
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger2 -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
- {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
+ {                         id:'control_gui', flags:'px',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  {host: 'drp-srcf-cmp028', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
 
@@ -116,7 +118,7 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576'},
- {host: 'drp-srcf-cmp037', id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-srcf-cmp037', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
@@ -141,10 +143,10 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x8 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
- {host: 'drp-srcf-cmp035', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+# {host: 'drp-srcf-cmp035', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp028', id:'tstcam2_0',   flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=145'},
- {host: 'drp-srcf-cmp036', id:'tstcam2_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+# {host: 'drp-srcf-cmp036', id:'tstcam2_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
 # {host: 'drp-srcf-cmp029', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd0} -l 0x4 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
@@ -218,4 +220,4 @@ for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env,
                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}'})
 
-procmgr_config.extend(procmgr_ami)
+#procmgr_config.extend(procmgr_ami)
