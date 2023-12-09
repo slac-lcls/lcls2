@@ -1,5 +1,6 @@
-{"metrics": [{"name": "temp", "query": "node_hwmon_temp_celsius{job=\"%J\",sensor=\"temp9\"}", "type": "d", "alarm": {"lowAlarmLimit" : 1, "highAlarmLimit": 5}},
-             {"name": "boot", "query": "node_boot_time_seconds{job=\"%J\"}",                   "type": "d", "alarm": {"lowAlarmLimit" : 1, "highAlarmLimit": 5}},
+{"metrics": [{"name": "temp", "query": "node_hwmon_temp_celsius{job=\"%J\",sensor=\"temp9\"}", "type": "d", "alarm": {"lowAlarmLimit": 1, "highAlarmLimit": 5}},
+             {"name": "boot", "query": "node_boot_time_seconds{job=\"%J\"}",                   "type": "d", "alarm": {"lowAlarmLimit": 1, "highAlarmLimit": 5}},
              {"name": "damage", "query": "sum(DRP_Damage{{instrument=\"%I\",partition=\"%P\"}}) by (alias, instance)"},
-             {"name": "record_rate", "query": "sum(irate(DRP_RecordSize{{instrument=\"%I\",partition=\"%P\"}})[5s]) by (alias, instance)"}]
+             {"name": "record_rate", "query": "sum(irate(DRP_RecordSize{{instrument=\"%I\",partition=\"%P\"}})[5s]) by (instrument, partition)"},
+             {"name": "xpm_link_up", "query": "sum(Us:RxLinkUp{job=\"%J\",instrument=\"%I\"}) by (instrument)", "type": "I", "alarm": {"lowAlarmLimit": 2, "highAlarmLimit": 4, "lowAlarmSeverity": 3, "highAlarmSeverity": 3}}]
 }

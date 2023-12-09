@@ -32,8 +32,8 @@ class PromMetric(object):
         response.raise_for_status()
 
         data = response.json()
-        #print('query response: ')
-        #pprint.pprint(data)
+        _log.debug(f"Response to query '{self._query}':")
+        if _log.getEffectiveLevel() == logging.DEBUG:  pprint.pprint(data)
         return data
 
     def get(self):
@@ -47,7 +47,7 @@ class PromMetric(object):
                 if len(result['data']['result']) == 1:
                     return result['data']['result'][0]['value']
                 else:
-                    raise RuntimeError(f"More than 1 item ({len(result['data']['result'])}) from query {self._query}")
+                    raise RuntimeError(f"Expected 1 item from query '{self._query}'; got: {len(result['data']['result'])}")
             elif result['data']['resultType'] in ['scalar','string']:
                 return result['data']['result']['value']
             else:
@@ -90,12 +90,12 @@ class Timer(object):
                 self._active = False
 
 class Handler(object):
-    def __init__(self, timer, name, metric, typeCode, alarm):
+    def __init__(self, timer, name, metric, typeCode=None, alarm=None):
         self._timer = timer
         self._name = name
         self._metric = metric
-        self._NT = NTScalar(typeCode, valueAlarm=alarm is not None)
-        self._valueAlarm = alarm
+        self._NT = NTScalar(typeCode if typeCode is not None else 'd', valueAlarm=alarm is not None)
+        self._valueAlarm = alarm if alarm is not None else {}
         self._pv = None
         self._active = False
         self._eq = cothread.EventQueue()
@@ -155,14 +155,14 @@ def main():
 
     srv = 'http://psmetric03:9090'
 
-    parser.add_argument('-J', '--job',    required=False, metavar='JOB',            default='psdm', help='e.g. psdm')
-    parser.add_argument('-H', '--inst',   required=True,  metavar='HUTCH',          default='tst',  help='e.g. tst')
-    parser.add_argument('-p', '--part',   required=True,  metavar='PARTITION',      default='0',    help='e.g. 0')
-    parser.add_argument('-S',             required=False, metavar='PROMETHEUS_SRV', default=srv,    help=f'Prometheus server [{srv}]')
-    parser.add_argument('-P',             required=False, metavar='PREFIX',         default='DAQ',  help='e.g. DAQ:LAB2:XPM:2')
-    parser.add_argument('-I', type=float, required=False, metavar='INTERVAL',       default='1',    help='Sampling interval (s)')
-    parser.add_argument('filename',                       metavar='FILENAME',                       help='Path to json configuration file')
-    parser.add_argument('-v', '--verbose', action='store_true',                                     help='be verbose')
+    parser.add_argument('-J', '--job',    required=False, metavar='JOB',            default='drpmon', help='e.g. drpmon')
+    parser.add_argument('-H', '--inst',   required=True,  metavar='HUTCH',          default='tst',    help='e.g. tst')
+    parser.add_argument('-p', '--part',   required=True,  metavar='PARTITION',      default='0',      help='e.g. 0')
+    parser.add_argument('-S',             required=False, metavar='PROMETHEUS_SRV', default=srv,      help=f'Prometheus server [{srv}]')
+    parser.add_argument('-P',             required=False, metavar='PREFIX',         default='DAQ',    help='e.g. DAQ:LAB2')
+    parser.add_argument('-I', type=float, required=False, metavar='INTERVAL',       default='1',      help='Sampling interval (s)')
+    parser.add_argument('filename',                       metavar='FILENAME',                         help='Json metric description file')
+    parser.add_argument('-v', '--verbose', action='store_true',                                       help='be verbose')
 
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
@@ -172,14 +172,12 @@ def main():
     config = json.loads(Path(args.filename).read_text().replace('%J', args.job).replace('%I', args.inst).replace('%P', args.part))
     if args.verbose:  pprint.pprint(config)
 
-    metrics = {}
-    pvs = {}
     timer = Timer(args.I)
-    prefix = f'{args.inst}:{args.part}:'
-    if args.P is not None:  prefix = f'{args.P}:' + prefix
+    prefix = f'{args.P}:{args.inst}:{args.part}:'
+    pvs = {}
     for item in config['metrics']:
-        metric = PromMetric(args.S, item['query'])
-        typeCode = item['type'] if 'type' in item else 'd'
+        metric = PromMetric(promserver, item['query'])
+        typeCode = item['type'] if 'type' in item else None
         alarm = item['alarm'] if 'alarm' in item else None
         pvs[prefix+item['name']] = SharedPV(handler=Handler(timer, prefix+item['name'], metric, typeCode, alarm))
 
