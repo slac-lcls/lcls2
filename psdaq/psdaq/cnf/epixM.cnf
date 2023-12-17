@@ -40,7 +40,7 @@ udp_cmd1 = task_set+' drp_udpencoder ' +std_opts1
 bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1'
 bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1'
 
-elog_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/elog_{hutch}.txt'
+elog_cfg = '/dev/null' #f'/cds/group/pcds/dist/pds/{hutch}/misc/elog_{hutch}.txt'
 
 #ea_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/epicsArch.txt'
 #ea_cfg = f'/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
@@ -80,12 +80,12 @@ procmgr_config = [
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -v -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-neh-cmp009',  id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
+ {host: 'drp-neh-cmp010',  id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
 
- {host: 'drp-neh-cmp010',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-neh-cmp010',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320 -v'},
 ]

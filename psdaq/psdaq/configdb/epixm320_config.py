@@ -198,8 +198,8 @@ for i in range(4):
                                         'LockingCntCfg',
                                         'BypFirstBerDet',
                                         'Polarity',
-                                        'GearBoxSlaveBitOrder',
-                                        'GearBoxMasterBitOrder',
+                                        'GearboxSlaveBitOrder',
+                                        'GearboxMasterBitOrder',
                                         'MaskOffCodeErr',
                                         'MaskOffDispErr',
                                         'MaskOffOutOfSync',
@@ -289,28 +289,14 @@ class Root(pr.Root):
             self.App.SspMonGrp[asicIndex].enable.set(True)
             print("ASIC{}: {:#x}".format(asicIndex, self.App.SspMonGrp[asicIndex].Locked.get()))
 
-    #def fnInitAsic(self, dev,cmd,arg):
-    #    """SetTestBitmap command function"""
-    #    print("Rysync ASIC started")
-    #
-    #    self.filenamePLL         = self.root.top_level + "/ePixM320_PllConfig.csv"
-    #    self.filenamePowerSupply = self.root.top_level + "/ePixM320_PowerSupply.yml"
-    #    self.filenameWaveForms   = self.root.top_level + "/ePixM320_RegisterControl.yml"
-    #    self.filenameASIC        = self.root.top_level + "/ePixM320_ASIC_u{}.yml"
-    #    self.filenameDESER       = self.root.top_level + "/ePixM320_SspMonGrp.yml"
-    #    self.filenamePacketReg   = self.root.top_level + "/ePixM320_PacketRegisters.yml"
-    #    self.filenameBatcher     = self.root.top_level + "/ePixM320_BatcherEventBuilder.yml"
-    #
-    #    arguments = np.asarray(arg)
-    #    if arguments[0] != 0:
-    #        self.fnInitAsicScript(dev,cmd,arg)
-
     def fnInitAsicScript(self, dev,cmd,arg):
         """SetTestBitmap command function"""
         arguments = np.asarray(arg)
 
         print("Init ASIC script started")
-        delay = 1
+        #delay = 1
+        delay = 0.1
+        print('*** cpo and dawood set delay to 0.1')
 
 
         # configure PLL
@@ -328,33 +314,33 @@ class Root(pr.Root):
         print("Loading supply configuration")
         self.root.LoadConfig(self.filenamePowerSupply)
         print("Loading {}".format(self.filenamePowerSupply))
-        time.sleep(delay)
+        #time.sleep(delay)
 
         if (not self.sim):
             # load deserializer
             print("Loading lane delay configurations")
             self.root.LoadConfig(self.filenameDESER)
             print("Loading {}".format(self.filenameDESER))
-            time.sleep(delay)
+            #time.sleep(delay)
 
 
         # load config that sets waveforms
         print("Loading waveforms configuration")
         self.root.LoadConfig(self.filenameWaveForms)
         print("Loading {}".format(self.filenameWaveForms))
-        time.sleep(delay)
+        #time.sleep(delay)
 
         # load config that sets packet registers
         print("Loading packet register configurations")
         self.root.LoadConfig(self.filenamePacketReg)
         print("Loading {}".format(self.filenamePacketReg))
-        time.sleep(delay)
+        #time.sleep(delay)
 
         # load batcher
         print("Loading batcher configurations")
         self.root.LoadConfig(self.filenameBatcher)
         print("Loading {}".format(self.filenameBatcher))
-        time.sleep(delay)
+        #time.sleep(delay)
 
         ## takes the asics off of reset
         print("Taking asic off of reset")
@@ -363,10 +349,10 @@ class Root(pr.Root):
         self.App.AsicTop.RegisterControlDualClock.GlblRstPolarityN.set(False)
         time.sleep(delay)
         self.App.AsicTop.RegisterControlDualClock.GlblRstPolarityN.set(True)
-        time.sleep(delay)
+        #time.sleep(delay)
         self.App.AsicTop.RegisterControlDualClock.ClkSyncEn.set(True)
         self.root.readBlocks()
-        time.sleep(delay)
+        #time.sleep(delay)
 
         ## load config for the asic
         if not self.sim :
@@ -375,7 +361,7 @@ class Root(pr.Root):
                 if arguments[asicIndex] != 0:
                     self.root.LoadConfig(self.filenameASIC.format(asicIndex))
                     print("Loading {}".format(self.filenameASIC.format(asicIndex)))
-                    time.sleep(5*delay)
+                    #time.sleep(5*delay)
 
         print("Initialization routine completed.")
 
@@ -646,9 +632,9 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         ###raise Exception('Aborting before fnInitAsic: Check the yaml files')
         root.fnInitAsicScript(None,None,arg)
 
-        ##  Remove the yml files
-        #for f in tmpfiles:
-        #    os.remove(f)
+        #  Remove the yml files
+        for f in tmpfiles:
+            os.remove(f)
 
     # run some triggers and exercise lanes and locks
     frames = 5000
@@ -657,7 +643,14 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
     root.hwTrigger(frames, rate)
 
     #get locked lanes
+    print('Locked lanes:')
     root.getLaneLocks()
+
+    # Disable non-locking lanes
+    for i in asics:
+        lanes = root.App.SspMonGrp[i].Locked.get();
+        print(f'Setting DigAsicStrmRegisters[{i}].DisableLane to 0x{lanes:x}')
+        getattr(root.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(lanes);
 
     logging.warning('config_expert complete')
 
@@ -794,13 +787,22 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
         top.set('trbit'          , trbit, 'UINT8')
         scfg[seg+1] = top.typed_json()
 
+    # Sanitize the json for json2xtc by removing offensive characters
+    def translate_config(src):
+        dst = {}
+        for k, v in src.items():
+            if isinstance(v, dict):
+                v = translate_config(v)
+            dst[k.replace('[','').replace(']','').replace('(','').replace(')','')] = v
+        return dst
+
     result = []
     for i in seglist:
         logging.warning('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
-        result.append( json.dumps(scfg[i]) ) #.replace('(','').replace(')','').replace('[','').replace(']','') )
+        result.append( json.dumps(translate_config(scfg[i])) )
 
-    print('*** json result:')
-    pprint.pprint(result)
+    #print('*** json result:')
+    #pprint.pprint(result)
     return result
 
 def epixm320_unconfig(base):
@@ -951,13 +953,13 @@ def _resetSequenceCount():
 
 def epixm320_external_trigger(base):
     #  Switch to external triggering
-    print(f'=== external triggering with bypass {base["bypass"]} ===')
+    print(f"=== external triggering with bypass {base['bypass']} ===")
     root = base['root']
     root.App.AsicTop.TriggerRegisters.SetTimingTrigger(1)
 
 def epixm320_internal_trigger(base):
     #  Disable frame readout
-    mask = 0x3f if base['pcie_timing'] else 0x3b
+    mask = 0x3
     print('=== internal triggering with bypass {:x} ==='.format(mask))
     root = base['root']
     for i in range(root.numOfAsics):
@@ -972,11 +974,11 @@ def epixm320_internal_trigger(base):
 def epixm320_enable(base):
     print('epixm320_enable')
     epixm320_external_trigger(base)
-#    _start(base)
+    _start(base)
 
 def epixm320_disable(base):
     print('epixm320_disable')
-#    epixm320_internal_trigger(base)
+    epixm320_internal_trigger(base)
 
 def _stop(base):
     root = base['root']
@@ -986,6 +988,7 @@ def _stop(base):
 def _start(base):
     root = base['root']
     root.App.StartRun()
+    root.App.AsicTop.TriggerRegisters.PgpTrigEn.set(True)
     for i in range(root.numOfAsics):
         getattr(root.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(0)
     for i in range(root.numOfAsics):
