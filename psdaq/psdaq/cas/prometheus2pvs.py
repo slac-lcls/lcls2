@@ -29,7 +29,10 @@ class PromMetric(object):
         url = f'{self._srvurl}/api/v1/query'
         response = requests.get(url, params=payload)
         #_log.debug(f"query response: {response.status_code}")
-        response.raise_for_status()
+        #response.raise_for_status()
+        if response.status_code != 200:
+            _log.error(f"HTTPError {response.status_code} for {url}, {payload}")
+            return None
 
         data = response.json()
         _log.debug(f"Response to query '{self._query}':")
@@ -38,6 +41,8 @@ class PromMetric(object):
 
     def get(self):
         result = self.query()
+        if result is None:
+            return None, None
         if 'warnings' in result:
             _log.warning(f"Warnings from query {self._query}:")
             for warning in result['warnings']:
@@ -94,11 +99,62 @@ class Handler(object):
         self._timer = timer
         self._name = name
         self._metric = metric
-        self._NT = NTScalar(typeCode if typeCode is not None else 'd', valueAlarm=alarm is not None)
-        self._valueAlarm = alarm if alarm is not None else {}
+        self._typeCode = typeCode if typeCode is not None else 'd'
+        if self._typeCode not in 'dI':
+            raise RuntimeError(f"Invalid typeCode '{self._typeCode}' for '{name}'")
+        self._NT = NTScalar(self._typeCode, valueAlarm=alarm is not None)
+        self._initAlarm(alarm if alarm is not None else {})
         self._pv = None
         self._active = False
         self._eq = cothread.EventQueue()
+
+    def _initAlarm(self, valueAlarm):
+        self._valueAlarm = { 'active' : False,
+                             'lowAlarmLimit' : 0,
+                             'lowWarningLimit' : 0,
+                             'highWarningLimit' : 0,
+                             'highAlarmLimit' : 0,
+                             'lowAlarmSeverity' : 0,
+                             'lowWarningSeverity' : 0,
+                             'highWarningSeverity' : 0,
+                             'highAlarmSeverity' : 0,
+                             'hysteresis' : 0 }
+        for item in valueAlarm:
+            if item in self._valueAlarm:
+                self._valueAlarm[item] = valueAlarm[item]
+            else:
+                _log.error(f"Unrecognized valueAlarm keyword '{item}' for {self._pv.name}")
+
+    def _raiseAlarm(level, value, severity, status, message):
+        wrapped['alarm.severity'] = severity
+        wrapped['alarm.status'] = status
+        wrapped['alarm.message'] = message
+
+    def _evalAlarm(self, value):
+        active = self._valueAlarm['active']
+        if not active:  return 0, 0, ''
+
+        severity = self._valueAlarm['highAlarmSeverity']
+        level = self._valueAlarm['highAlarmLimit']
+        if severity > 0 and value >= level:
+            return severity, 3, 'highAlarm'
+
+        severity = self._valueAlarm['lowAlarmSeverity']
+        level = self._valueAlarm['lowAlarmLimit']
+        if severity > 0 and value <= level:
+            return severity, 5, 'lowAlarm'
+
+        severity = self._valueAlarm['highWarningSeverity']
+        level = self._valueAlarm['highWarningLimit']
+        if severity > 0 and value >= level:
+            return severity, 4, 'highWarning'
+
+        severity = self._valueAlarm['lowWarningSeverity']
+        level = self._valueAlarm['lowWarningLimit']
+        if severity > 0 and value <= level:
+            return severity, 6, 'lowWarning'
+
+        return 0, 0, ''
 
     def onFirstConnect(self, pv):
         _log.debug(f"First client connects to {self._name}")
@@ -118,20 +174,27 @@ class Handler(object):
             self._pv = None
 
         else:
+            while len(self._eq):
+                (item, value) = self._eq.Wait(0)
+                self._valueAlarm[item.split('.')[1]] = value
             timestamp, value = self._metric.get()
-            wrapped = self._NT.wrap(value, timestamp=timestamp)
+            if timestamp is None:  return
+            if self._typeCode == 'd':
+                value = float(value)
+            elif self._typeCode == 'I':
+                value = int(value)
+            severity, status, message = self._evalAlarm(value)
+            wrapped = self._NT.wrap(value, timestamp=timestamp, severity=severity, message=message)
+            wrapped['alarm.status'] = status
+            for key in self._valueAlarm.keys():
+                wrapped['valueAlarm.'+key] = self._valueAlarm[key]
 
             if not self._pv.isOpen():
                 _log.debug(f"Open {self._name} [{timestamp}, {value}]")
-                for key in self._valueAlarm.keys():
-                    wrapped['valueAlarm.'+key] = self._valueAlarm[key]
                 self._pv.open(wrapped)
 
             else:
                 _log.debug(f"Tick {self._name} [{timestamp}, {value}]")
-                while len(self._eq):
-                    (item, value) = self._eq.Wait(0)
-                    wrapped[item] = value
                 self._pv.post(wrapped)
 
     def onLastDisconnect(self, pv):
@@ -143,7 +206,6 @@ class Handler(object):
         msg = ''
         for item in op.value().changedSet(expand=False):
             if item.split('.')[0] == 'valueAlarm':
-                self._valueAlarm[item.split('.')[1]] = op.value()[item]
                 self._eq.Signal( (item, op.value()[item]) )
             else:
                 msg += ' ' + item
