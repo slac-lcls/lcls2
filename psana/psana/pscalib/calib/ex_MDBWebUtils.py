@@ -9,9 +9,15 @@ from psana.pscalib.calib.MDBWebUtils import *
 
 if __name__ == "__main__":
 
-  TEST_FNAME_PNG = '/reg/g/psdm/detector/data2_test/misc/small_img.png'
+  TEST_FNAME_PNG = '/sdf/group/lcls/ds/ana/detector/data2_test/misc/small_img.png'
   TEST_EXPNAME = 'testexper'
   TEST_DETNAME = 'testdet_1234'
+  TEST_DBEXPNAME = 'cdb_%s' % TEST_EXPNAME
+
+  def get_test_nda():
+    """Returns random standard nupmpy array for test purpose."""
+    import psana.pyalgos.generic.NDArrGenerators as ag
+    return ag.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=float)
 
   def test_database_names():
     print('test_database_names:', database_names())
@@ -110,10 +116,12 @@ if __name__ == "__main__":
     print('IF YOU SEE THIS, dict FOR ctypes SHOULD BE pickle-d')
 
   def test_insert_constants(tname='11', expname=TEST_EXPNAME, detname=TEST_DETNAME, ctype='test_ctype', runnum=10, data='test text sampele'):
-    """ Inserts constants using direct MongoDB interface from MDBUtils.
-    """
-    import psana.pyalgos.generic.Utils as gu
+    """ DEPRECATED - Inserts constants using direct MongoDB interface from MDBUtils."""
 
+    print('test_insert_constants - DEPRECATED due to direct use of pymongo')
+    return
+
+    import psana.pyalgos.generic.Utils as gu
     print('test_delete_database 1:', database_names())
     #txt = '%s\nThis is a string\n to test\ncalibration storage' % gu.str_tstamp()
     #data, ctype = txt, 'testtext'; logger.debug('txt: %s' % str(data))
@@ -127,19 +135,20 @@ if __name__ == "__main__":
                         time_stamp=ts, **kwa)
     print('test_delete_database 2:', database_names())
 
-  def test_delete_database(dbname='cdb_testexper'):
+  def test_delete_database(dbname=TEST_DBEXPNAME):
+    print('WARNING: before deleting something, add this something, use tests 16-18')
     print('test_delete_database %s' % dbname)
     print('test_delete_database BEFORE:', database_names())
     resp = delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_database AFTER :', database_names())
 
-  def test_delete_collection(dbname='cdb_testexper', colname=TEST_DETNAME):
+  def test_delete_collection(dbname=TEST_DBEXPNAME, colname=TEST_DETNAME):
     print('test_delete_collection %s collection: %s' % (dbname, colname))
     print('test_delete_collection BEFORE:', collection_names(dbname, url=cc.URL))
     resp = delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_collection AFTER :', collection_names(dbname, url=cc.URL))
 
-  def test_delete_document(dbname='cdb_testexper', colname=TEST_DETNAME, query={'ctype':'test_ctype'}):
+  def test_delete_document(dbname=TEST_DBEXPNAME, colname=TEST_DETNAME, query={'ctype':'test_ctype'}):
     doc = find_doc(dbname, colname, query=query, url=cc.URL)
     print('find_doc:', doc)
     if doc is None:
@@ -150,7 +159,7 @@ if __name__ == "__main__":
     resp = delete_document(dbname, colname, id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_document resp:', resp)
 
-  def test_delete_document_and_data(dbname='cdb_testexper', colname=TEST_DETNAME):
+  def test_delete_document_and_data(dbname=TEST_DBEXPNAME, colname=TEST_DETNAME):
     ldocs = find_docs(dbname, colname, query={}, url=cc.URL)
     if not ldocs:
         print('test_delete_document_and_data db/collection: %s/%s does not have any document' % (dbname, colname))
@@ -162,17 +171,17 @@ if __name__ == "__main__":
     resp = delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_document_and_data resp:', resp)
 
-  def test_add_data_from_file(dbname='cdb_testexper', fname=TEST_FNAME_PNG):
+  def test_add_data_from_file(dbname=TEST_DBEXPNAME, fname=TEST_FNAME_PNG):
     resp = add_data_from_file(dbname, fname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_add_data_from_file resp: %s of type: %s' % (resp, type(resp)))
 
-  def test_add_data(dbname='cdb_testexper'):
+  def test_add_data(dbname=TEST_DBEXPNAME):
     #data = 'some text is here'
-    data = mu.get_test_nda() # np.array(range(12))
+    data = get_test_nda() # np.array(range(12))
     resp = add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
-    print('test_add_data: %s\n  to: %s/gridfs/\n  resp: %s' % (str(data), dbname, resp))
+    print('test_add_data: %s\n  to: %s/gridfs/\n  resp: %s' % (info_ndarr(data, 'test nda'), dbname, resp))
 
-  def test_add_document(dbname='cdb_testexper', colname=TEST_DETNAME, doc={'ctype':'test_ctype'}):
+  def test_add_document(dbname=TEST_DBEXPNAME, colname=TEST_DETNAME, doc={'ctype':'test_ctype'}):
     from psana.pyalgos.generic.Utils import str_tstamp
     doc['time_stamp'] = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z')
     resp = add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
@@ -189,7 +198,7 @@ if __name__ == "__main__":
            'time_sec'  : t0_sec,
            'time_stamp': mu._timestamp(int(t0_sec)),
           }
-    data = mu.get_test_nda()
+    data = get_test_nda()
     res = add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
     if res is None: print('\n!!!! add_data_and_two_docs responce is None')
 
@@ -250,8 +259,8 @@ if __name__ == "__main__":
 
   def test_MDBWebUtils():
     import os
-    from psana.pyalgos.generic.NDArrUtils import print_ndarr # info_ndarr, print_ndarr
-    global print_ndarr
+    from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
+    global print_ndarr, info_ndarr
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
@@ -267,7 +276,7 @@ if __name__ == "__main__":
     elif tname == '8': test_calib_constants_text()
     elif tname == '9': test_calib_constants_dict()
     elif tname =='10': test_calib_constants_all_types()
-    elif tname =='11': test_insert_constants(tname=tname) # [using direct access methods of MDBUtils]
+    elif tname =='11': test_insert_constants(tname=tname) # [DEPRECATED - using direct access methods of MDBUtils]
     elif tname =='12': test_delete_database()
     elif tname =='13': test_delete_collection()
     elif tname =='14': test_delete_document()

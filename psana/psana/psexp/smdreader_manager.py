@@ -86,15 +86,24 @@ class SmdReaderManager(object):
         # Sets the memory size for smalldata buffer for each stream file.
         self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x10000000))
 
-        self.smdr = SmdReader(smd_fds, self.chunksize, self.dsparms.max_retries)
-        self.processed_events = 0
+        self.smdr = SmdReader(smd_fds, self.chunksize, dsparms=dsparms)
         self.got_events = -1
         self._run = None
         
         # Collecting Smd0 performance using prometheus
         self.c_read = self.dsparms.prom_man.get_metric('psana_smd0_read')
+    
+    def get(self):
+        """ Reads new data and raise if unable too"""
+        get_success = True
+        if not self.smdr.is_complete():
+            self._get()
+            if not self.smdr.is_complete():
+                get_success = False
+        return get_success
 
     def _get(self):
+        """ Reads new data with retry and check for .inprogress """
         st = time.monotonic()
         self.smdr.get(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
@@ -105,6 +114,10 @@ class SmdReaderManager(object):
         if self.smdr.chunk_overflown > 0:
             msg = f"SmdReader found dgram ({self.smdr.chunk_overflown} MB) larger than chunksize ({self.chunksize/1e6} MB)"
             raise ValueError(msg)
+    
+    @property
+    def processed_events(self):
+        return self.smdr.n_processed_events
 
     def get_next_dgrams(self):
         """ Returns list of dgrams as appeared in the current offset of the smd chunks.
@@ -124,9 +137,9 @@ class SmdReaderManager(object):
         if self.smdr.is_complete():
             # Get chunks with only one dgram each. There's no need to set
             # integrating stream id here since Configure and BeginRun
-            # must exist in this stream too. We need to set ignore_transition
-            # flag to make sure that we can get one transition event.
-            self.smdr.view(batch_size=1, ignore_transition=False)
+            # must exist in this stream too. Note that by setting batch_size
+            # to 1, we automatically ask for all types of event.
+            self.smdr.find_view_offsets(batch_size=1, ignore_transition=False)
 
             # For configs, we need to copy data from smdreader's buffers
             # This prevents it from getting overwritten by other dgrams.
@@ -144,6 +157,28 @@ class SmdReaderManager(object):
     def __iter__(self):
         return self
 
+    def check_split_event(self, current_processed_events):
+        # Return True 
+        #   - if there's no split integrating event or
+        #   - when it has been handled correctly by reread once
+        #   - EndRun is found
+        # 
+        # How we check? If no. of viewed event is not increasing, this means there's a split
+        # integrating event and we need to reread again. 
+        # Notes:
+        #   - Reread in get() is performed for any streams with n_ready_events == n_seen_events
+        #     or when force_reread flag is set (split integrating event).
+        #   - We only try to reread one time for split events. If this is not successful, 
+        #     we abort with below message.
+        check_pass = True
+        if self.processed_events <= current_processed_events and not self.smdr.found_endrun():
+            # Also fail if we cannot get more data
+            check_pass = self.get()
+            self.smdr.find_view_offsets(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id, max_events=self.dsparms.max_events)
+            if self.processed_events <= current_processed_events:
+                print(f'Exit: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize}). Useful debug info: {self.processed_events=} {current_processed_events=}.')
+                check_pass = False
+        return check_pass
 
     def __next__(self):
         """
@@ -160,15 +195,22 @@ class SmdReaderManager(object):
         if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
             raise StopIteration
         
-        if not self.smdr.is_complete():
-            self._get()
-            if not self.smdr.is_complete():
-                raise StopIteration
-        self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=intg_stream_id)
+        # Read new data if needed
+        if not self.get():
+            raise StopIteration
+
+        # Locate viewing windows for each chunk
+        current_processed_events = self.processed_events 
+        self.smdr.find_view_offsets(batch_size=self.smd0_n_events, intg_stream_id=intg_stream_id, max_events=self.dsparms.max_events)
+
+        # Check if reread is needed for split integrating event
+        check_pass = self.check_split_event(current_processed_events)
+        if not check_pass:
+            raise StopIteration
+
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
         batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, self.dsparms)
         self.got_events = self.smdr.view_size
-        self.processed_events += self.smdr.n_view_L1Accepts
         return batch_iter
         
 
@@ -181,21 +223,22 @@ class SmdReaderManager(object):
             logger.debug(f'TIMELINE 1. STARTCHUNK {time.monotonic()}', level=2)
             st_view, en_view, st_read, en_read = 0,0,0,0
 
-            l1_size = 0
-            tr_size = 0
-            got_events = 0
             if self.smdr.is_complete():
 
                 st_view = time.monotonic()
 
                 # Gets the next batch of already read-in data. 
-                self.smdr.view(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id)
-                self.got_events = self.smdr.view_size
-                got_events = self.got_events
-
-                # We only count L1Accepts as no. of processed events
-                self.processed_events += self.smdr.n_view_L1Accepts
+                current_processed_events = self.processed_events 
+                self.smdr.find_view_offsets(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id, max_events=self.dsparms.max_events)
                 
+                
+                # Check if reread is needed for split integrating event
+                check_pass = self.check_split_event(current_processed_events)
+                if not check_pass:
+                    break
+                
+                self.got_events = self.smdr.view_size
+
                 if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
                     logger.debug(f'MESSAGE SMD0 max_events={self.dsparms.max_events} reached')
                     is_done = True

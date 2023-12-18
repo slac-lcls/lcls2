@@ -222,6 +222,7 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
 
         _regSize = regSize;
       }
+      _numBuffers    = numTebBuffers;
       _maxResultSize = regSize / numTebBuffers;
       size           = regSize;
     }
@@ -315,6 +316,10 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   auto     ofs = idx * _maxResultSize;
   auto     bdg = static_cast<const ResultDgram*>(lnk->lclAdx(ofs)); // (char*)_region + ofs;
 
+  // bdg is first dgram in batch; set end to end of region if idg is within 1 batch size of it
+  const void* end = idx < _numBuffers - _prms.maxEntries ? (char*)bdg + _prms.maxEntries * _maxResultSize
+                                                         : (char*)_region + _regSize;
+
   auto print = false;
   if (src != bdg->xtc.src.value())
   {
@@ -329,10 +334,15 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
                    bdg, idx, bdg->pulseId(), bdg->service(), bdg->env, src, data);
     print = true;
   }
-  if ((bdg < _region) || ((char*)bdg + bdg->xtc.sizeofPayload()) >= ((char*)_region + _regSize))
+  if (idx > _numBuffers)
   {
-    logging::error("%s:\n  Dgram %p, size %u falls outside of region %p, size %zu\n",
-                   __PRETTY_FUNCTION__, bdg, bdg->xtc.sizeofPayload(), _region, _regSize);
+    logging::error("%s:\n  Buffer index is out of range 0:%u: %u\n", __PRETTY_FUNCTION__, _numBuffers, idx);
+    print = true;
+  }
+  if ((bdg < _region) || (end > ((char*)_region + _regSize)))
+  {
+    logging::error("%s:\n  Dgram %p:%p falls outside of region %p:%p\n",
+                   __PRETTY_FUNCTION__, bdg, end, _region, (char*)_region + _regSize);
     print = true;
   }
 

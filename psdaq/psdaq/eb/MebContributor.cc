@@ -179,7 +179,8 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   unsigned     offset = idx * _maxEvSize;
   EbLfCltLink* link   = _links[dst];
   uint32_t     data   = ImmData::value(ImmData::NoResponse_Buffer, _id, idx);
-  bool         print  = false;
+  void*        buffer = (char*)(_region[dst]) + offset;
+  memcpy(buffer, ddg, sz);  // Copy the datagram into the intermediate buffer
 
   if (UNLIKELY(sz > _maxEvSize))
   {
@@ -193,6 +194,14 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     logging::critical("L1Accept src %u does not match DRP's ID %u: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08x",
                       ddg->xtc.src.value(), _id, pid, sz, destination, data, offset);
     abort();
+  }
+
+  bool print = false;
+  if (UNLIKELY((buffer < _region[dst]) || ((char*)buffer + sz > (char*)_region[dst] + _bufRegSize[dst])))
+  {
+    logging::error("%s:\n  L1 dgram %p:%p falls outside of region limits %p:%p\n",
+                   __PRETTY_FUNCTION__, buffer, (char*)buffer + sz, _region[dst], (char*)_region[dst] + _bufRegSize[dst]);
+    print = true;
   }
 
   if (UNLIKELY(pid <= _previousPid))
@@ -230,10 +239,6 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
       }
     }
   }
-
-  // Copy the datagram into the intermediate buffer
-  void* buffer = (char*)(_region[dst]) + offset;
-  memcpy(buffer, ddg, sz);
 
   int rc = link->post(buffer, sz, offset, data);
   if (rc < 0)
@@ -345,6 +350,15 @@ int MebContributor::post(const EbDgram* dgram)
 
     uint64_t offset = _bufRegSize[src] + idx * _maxTrSize;
     uint32_t data   = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
+    void*    buffer = (char*)(_region[src]) + offset;
+    memcpy(buffer, dgram, sz); // Copy the datagram into the intermediate buffer
+
+    if (UNLIKELY((buffer < (char*)_region[src] + _bufRegSize[src]) || ((char*)buffer + sz > (char*)_region[src] + _regSize[src])))
+    {
+      logging::error("%s:\n  Tr dgram %p:%p falls outside of region limits %p:%p\n",
+                     __PRETTY_FUNCTION__, buffer, (char*)buffer + sz, (char*)_region[src] + _bufRegSize[src], (char*)_region[src] + _regSize[src]);
+      print = true;
+    }
 
     if (UNLIKELY(print || (_verbose >= VL_BATCH)))
     {
@@ -379,10 +393,6 @@ int MebContributor::post(const EbDgram* dgram)
         }
       }
     }
-
-    // Copy the datagram into the intermediate buffer
-    void* buffer = (char*)(_region[src]) + offset;
-    memcpy(buffer, dgram, sz);
 
     rc = link->post(buffer, sz, offset, data); // Not a batch; Continue on error
     if (rc)

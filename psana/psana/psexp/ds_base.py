@@ -21,6 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
+from psana.psexp.tools import MODE
 
 class InvalidDataSourceArgument(Exception): pass
 
@@ -398,6 +399,11 @@ class DataSourceBase(abc.ABC):
             raise InvalidDataSourceArgument("run accepts only int or list. Leave out run arugment to process all available runs.")
 
     def smalldata(self, **kwargs):
+        if MODE == 'PARALLEL':
+            PS_SRV_NODES = int(os.environ.get('PS_SRV_NODES', 0))
+            if not PS_SRV_NODES: 
+                msg = f'Smalldata requires at least one SRV core ({MODE=}). Try setting PS_SRV_NODES=1 or more.'
+                raise Exception(msg)
         self.smalldata_obj.setup_parms(**kwargs)
         return self.smalldata_obj
 

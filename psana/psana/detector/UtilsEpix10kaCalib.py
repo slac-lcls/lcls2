@@ -463,7 +463,7 @@ def pedestals_calibration(parser):
       logger.info(s)
 
       BIT_MASK = odet.raw._data_bit_mask
-      logger.info('    odet.raw._data_bit_mask BIT_MASK: %s' % oct(BIT_MASK))
+      logger.info('    det.raw._data_bit_mask BIT_MASK: %d or %s or %s' % (BIT_MASK, oct(BIT_MASK), hex(BIT_MASK)))
 
       dcfg = odet.raw._config_object() #ue.config_object_det(odet)
 
@@ -471,11 +471,6 @@ def pedestals_calibration(parser):
         nstep_tot += 1
         logger.info('\n=============== step %2d ===============' % nstep_tot)
         logger.debug('    step.evt._seconds: %d' % step.evt._seconds)
-
-
-        #print('XXX', step_docstring(step))
-        #sys.exit('TEST EXIT')
-
 
         metadic = json.loads(step_docstring(step))
         nstep = step_counter(metadic, nstep_tot, nstep_run, stype='pedestal')
@@ -536,11 +531,17 @@ def pedestals_calibration(parser):
         nrec,nevt = -1,0
 
         ss = None
+        counter = 0
+        counter_max = 60
         for nevt,evt in enumerate(step.events()):
             raw = odet.raw.raw(evt)
             do_print = selected_record(nevt)
             if raw is None:
-                logger.info('==== Ev:%04d rec:%04d raw is None' % (nevt,nrec))
+                counter += 1
+                if counter < counter_max:
+                    logger.info('==== Ev:%04d rec:%04d raw is None' % (nevt,nrec))
+                elif counter == counter_max:
+                    logger.info('==== DO NOT SHOW MORE MESSAGES THAT raw is None')
                 continue
 
             if nevt < evskip:
@@ -596,6 +597,10 @@ def pedestals_calibration(parser):
             create_directory(dir_status, mode=dirmode)
 
             #block.sahpe = (1024, 16, 352, 384)
+            int_hi = kwa.get('int_hi', None)
+            rms_hi = kwa.get('rms_hi', None)
+            kwa['int_hi'] = BIT_MASK-1 if int_hi is None else int_hi
+            kwa['rms_hi'] = BIT_MASK-1 if rms_hi is None else rms_hi
             dark, rms, status = proc_dark_block(block[:nrec,idx,:], **kwa) # process pedestals per-panel (352, 384)
 
             fname = '%s_pedestals_%s.dat' % (prefix_peds, mode)

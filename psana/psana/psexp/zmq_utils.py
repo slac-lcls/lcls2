@@ -16,66 +16,76 @@ def zmq_send(**kwargs):
     print(f"sent {data} to {kwargs['fake_dbase_server']}")
 
 
-def send_zipped_pickle(zmq_socket, obj, flags=0, protocol=-1):
-    """pickle an object, and zip the pickle before sending it"""
-    p = pickle.dumps(obj, protocol)
-    z = zlib.compress(p)
-    zmq_socket.send(z, flags=flags)
-    return z
+class ZMQSocket:
+    def __init__(self, zmq_socket):
+        self.socket = zmq_socket
 
 
-def recv_zipped_pickle(zmq_socket, flags=0, protocol=-1):
-    """unzip and unpickle received data"""
-    z = zmq_socket.recv(flags)
-    p = zlib.decompress(z)
-    return z,pickle.loads(p)
+    def send_zipped_pickle(self, obj, flags=0, protocol=-1):
+        """pickle an object, and zip the pickle before sending it"""
+        p = pickle.dumps(obj, protocol)
+        z = zlib.compress(p)
+        self.socket.send(z, flags=flags)
+        return z
 
-
-class PubSocket:
-    """ A helper for a Binder Zmq-Socket
-    """
-    def __init__(self, socket_name, socket_type=zmq.PUB):
-        self._context = zmq.Context()
-        self._zmq_socket = self._context.socket(socket_type)
-        self._zmq_socket.bind(socket_name)
-
+    def recv_zipped_pickle(self, flags=0, protocol=-1):
+        """unzip and unpickle received data"""
+        z = self.socket.recv(flags)
+        p = zlib.decompress(z)
+        return z,pickle.loads(p)
+    
     def send(self, data):
-        return send_zipped_pickle(self._zmq_socket, data)
+        return self.send_zipped_pickle(data)
 
     def sendz(self, zdata, flags=0):
-        self._zmq_socket.send(zdata, flags=flags)
+        self.socket.send(zdata, flags=flags)
 
     def recv(self):
         return self.recvz()[1]
 
     def recvz(self):
-        z,data = recv_zipped_pickle(self._zmq_socket)
+        z,data = self.recv_zipped_pickle()
         return z,data
 
 
-class SubSocket:
+class PubSocket(ZMQSocket):
+    """ A helper for a Binder Zmq-Socket
+    """
+    def __init__(self, socket_name, socket_type=zmq.PUB):
+        context = zmq.Context()
+        zmq_socket = context.socket(socket_type)
+        zmq_socket.bind(socket_name)
+        super(PubSocket, self).__init__(zmq_socket)
+
+
+
+class SubSocket(ZMQSocket):
     """ A helper for a Connector Zmq-Socket
     """
     def __init__(self, socket_name, socket_type=zmq.SUB):
-        self._context = zmq.Context()
-        self._zmq_socket = self._context.socket(socket_type)
-        self._zmq_socket.connect(socket_name)
+        context = zmq.Context()
+        zmq_socket = context.socket(socket_type)
+        zmq_socket.connect(socket_name)
+        super(SubSocket, self).__init__(zmq_socket)
 
         # Subscribe to all
         if socket_type == zmq.SUB:
             topicfilter = ""
-            self._zmq_socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
+            self.socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
     
-    def send(self, data):
-        return send_zipped_pickle(self._zmq_socket, data)
 
-    def sendz(self, zdata, flags=0):
-        self._zmq_socket.send(zdata, flags=flags)
+class SrvSocket(ZMQSocket):
+    def __init__(self, socket_name):
+        context = zmq.Context()
+        zmq_socket = context.socket(zmq.REP)
+        zmq_socket.bind(socket_name)
+        super(SrvSocket, self).__init__(zmq_socket)
 
-    def recv(self):
-        return self.recvz()[1]
 
-    def recvz(self):
-        z,data = recv_zipped_pickle(self._zmq_socket)
-        return z,data
+class ClientSocket(ZMQSocket):
+    def __init__(self, socket_name):
+        context = zmq.Context()
+        zmq_socket = context.socket(zmq.REQ)
+        zmq_socket.connect(socket_name)
+        super(ClientSocket, self).__init__(zmq_socket)
 

@@ -738,16 +738,33 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 
 void Teb::_post(const Batch& batch)
 {
-  size_t   size   = _trigger->size();
+  size_t   maxResultSize = _trigger->size();
   size_t   extent = (reinterpret_cast<const char*>(batch.end) -
-                     reinterpret_cast<const char*>(batch.start)) + size;
-  unsigned offset = batch.idx * size;
+                     reinterpret_cast<const char*>(batch.start)) + maxResultSize;
+  unsigned offset = batch.idx * maxResultSize;
   uint64_t data   = ImmData::value(ImmData::NoResponse_Buffer, _prms.id, batch.idx);
   uint64_t destns = batch.dsts; // & ~_trimmed;
+  bool     print  = false;
 
   batch.end->setEOL();                  // Terminate the batch
 
-  if (UNLIKELY(_prms.verbose >= VL_BATCH))
+  if (UNLIKELY(extent > _prms.maxEntries * maxResultSize))
+  {
+    logging::error("%s:\n  Batch extent exceeds maximum: %zu vs %u * %zu = %zu",
+                   __PRETTY_FUNCTION__, extent,
+                   _prms.maxEntries, maxResultSize, _prms.maxEntries * maxResultSize);
+    print = true;
+  }
+  if (UNLIKELY((batch.start < _batMan.batchRegion()) ||
+               ((char*)(batch.start) + extent > (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize())))
+  {
+    logging::error("%s:\n  Batch %p:%p falls outide of region limits %p:%p",
+                   __PRETTY_FUNCTION__, batch.start, (char*)(batch.start) + extent,
+                   _batMan.batchRegion(), (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize());
+    print = true;
+  }
+
+  if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
   {
     uint64_t pid = batch.start->pulseId();
     printf("TEB posts          %9lu result  [%8u] @ "

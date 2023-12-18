@@ -13,10 +13,14 @@ def main():
     parser.add_argument('--rate', help="Run trigger rate (Hz)", type=float, default=4.9e3)
     parser.add_argument('--tgt' , help="DAQ trigger time (sec)", type=float, default=0.834e-3)
     parser.add_argument('--full', help='DAQ trigger at RUN trigger rate', action='store_true')
+    parser.add_argument('--f360', help='DAQ trigger at 360 Hz', action='store_true')
     parser.add_argument('--pv' , help="XPM pv base", default='DAQ:NEH:XPM:7:SEQENG:2')
     parser.add_argument('--test', help="Calculate only", action='store_true')
     parser.add_argument('--verbose', help="Verbose", action='store_true')
     args = parser.parse_args()
+
+    if args.full and args.f360:
+        raise RunTimeError('Both --full and --f360 cannot be used together')
 
     #  Generate a sequence that repeats at each 120 Hz AC marker
     #  One pulse is targeted for the DAQ trigger time.  Pulses before and after
@@ -24,6 +28,8 @@ def main():
 
     fbucket = 13.e6/14
     ac_period = 3*0x5088c/119.e6  # a minimum period (about 1/120.25 Hz)
+    if args.f360:
+        ac_period /= 3
     ac_periodb = int(ac_period*fbucket)
     spacing = int(math.ceil(fbucket/args.rate))
     rate    = fbucket/spacing
@@ -32,6 +38,8 @@ def main():
     startb  = targetb - npretrig*spacing
     nafter  = int((ac_periodb - startb)/spacing) - npretrig
     avgrate = (npretrig+nafter+1)*120.
+    if args.f360:
+        avgrate *= 3
 
     if args.verbose:
         print(f' spacing [{spacing}]  rate [{rate} Hz]')
@@ -44,17 +52,18 @@ def main():
     DAQ = 1
     PARENT = 2
     RUN_rate = int(rate)
-    DAQ_rate = int(rate) if args.full else 120
+    DAQ_rate = int(rate) if args.full else 360 if args.f360 else 120
     PARENT_rate = DAQ_rate
-    if startb or npretrig:
-        PARENT_rate += 120
+    if startb or (npretrig and not args.full):
+        PARENT_rate += 360 if args.f360 else 120 
     print(f' eventcode 0: {RUN_rate} Hz run trigger')
     print(f' eventcode 1: {DAQ_rate} Hz daq trigger')
     print(f' eventcode 2: {PARENT_rate} Hz parent group trigger')
 
     instrset = []
     # 60Hz x timeslots 1,4
-    instrset.append(ACRateSync((1<<0)|(1<<3),0,1))  # hardcoded to (wrong) AC rate marker until xtpg fixed
+    tsmask = 0x3f if args.f360 else 0x9
+    instrset.append(ACRateSync(tsmask,0,1))  # hardcoded to (wrong) AC rate marker until xtpg fixed
 
     #  Parent trigger comes first
     if startb:
@@ -96,7 +105,7 @@ def main():
 
     instrset.append(Branch.unconditional(line=0))
 
-    descset = [f'{int(fbucket/spacing)} Hz run trig','daq trig','daq parent group trig']
+    descset = [f'epixhr run trig','epixhr daq trig','daq parent group trig']
 
     if args.verbose:
         i=0

@@ -398,6 +398,37 @@ def issue_2023_10_05():
     print('uniqueid:', uniqueid)
 
 
+def issue_2023_10_26():
+
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+
+    ds = DataSource(exp='rixx1003721', run=200, intg_det='epixhr')
+
+    M14 =  0x3fff  # 16383
+    M15 =  0x7fff  # 32767
+
+    print('data bits: %d' % M14)
+
+    for irun,orun in enumerate(ds.runs()):
+      print('\n\n== run:%d' % irun)
+      det = orun.Detector('epixhr')
+      for istep,ostep in enumerate(orun.steps()):
+        print('\n==== step:%d' % istep)
+        for ievt,evt in enumerate(ostep.events()):
+
+          if evt is None:
+              continue
+          raw = det.raw.raw(evt)
+          if raw is None:
+              continue
+          #a = raw[:,:144,:192] # min:0 max:0
+          #a = raw[:,:144,193:] # min:0 max:0
+          #a = raw[:,145:,193:] # min:0 max:0
+          a = raw[:,145:,:192] & M14  # min:4811 max:10054
+          print(info_ndarr(a,'raw:%4d' % ievt), 'min:%6d max:%6d' % (a.min(), a.max()), end='\r')
+
+
 def issue_2023_mm_dd():
     print('template')
 
@@ -417,6 +448,7 @@ USAGE = '\nUsage:'\
       + '\n   10 - issue_2023_07_27 - test calib_constants_all_types for Ric - curl commands'\
       + '\n   11 - issue_2023_10_04 - test calib constants for detector names'\
       + '\n   12 - issue_2023_10_05 - test orun = next(ds.runs()) dt = 4.2 sec !!!'\
+      + '\n   13 - issue_2023_10_26 - issue reported by philip'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -433,6 +465,7 @@ elif TNAME in  ('9',): issue_2023_07_26()
 elif TNAME in ('10',): issue_2023_07_27()
 elif TNAME in ('11',): issue_2023_10_04()
 elif TNAME in ('12',): issue_2023_10_05()
+elif TNAME in ('13',): issue_2023_10_26()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

@@ -1,4 +1,5 @@
 from psana import DataSource
+import sys
 
 # a small utility for taking a command line datasource string
 # like "exp=rixx43518,run=341" or "files=<filename>" and returning
