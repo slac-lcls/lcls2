@@ -161,6 +161,7 @@ if 'PSANA' in BUILD_LIST :
             'epix10ka_calib_components = psana.app.epix10ka_calib_components:__main__',
             'datinfo             = psana.app.datinfo:do_main',
             'det_dark_proc       = psana.app.det_dark_proc:do_main',
+            'det_pixel_status    = psana.app.det_pixel_status:do_main',
             'parallel_proc       = psana.app.parallel_proc:do_main',
             'iv                  = psana.graphqt.app.iv:image_viewer',
             'masked              = psana.graphqt.app.masked:mask_editor',
