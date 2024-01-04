@@ -831,6 +831,8 @@ def epixhr2x2_update(update):
     logging.warning('epixhr2x2_update')
     global ocfg
     global base
+
+    _stop(base)
     ##
     ##  Having problems with partial configuration
     ##
