@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWPopupTableCheck` - Popup table of str items and/with check-boxes
 ==================================================================================
@@ -19,57 +19,46 @@ See:
 This software was developed for the LCLS2 project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
+    QWPopupTableCheck < QWidget  <+(has-a) CGWPartitionTable < QWTableOfCheckBoxes < QWTable < QTableView
+
 Created on 2019-03-29 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy#, QDialog, QGridLayout, QCheckBox, QTextEdit, QLabel, 
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSizePolicy
 from PyQt5.QtCore import Qt
 from psdaq.control_gui.Styles import style
-#from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes
 from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 from psdaq.control_gui.CGJsonUtils import get_platform, set_platform, list_active_procs
 from psdaq.control_gui.CGDaqControl import daq_control
 
-#------------------------------
 
 class QWPopupTableCheck(QWidget):
-    """
-    """
+
     def __init__(self, **kwargs):
         parent = kwargs.get('parent', None)
         QWidget.__init__(self, parent)
- 
+
         self.kwargs = kwargs
         self.list2d_out = []
 
         win_title = kwargs.get('win_title', None)
         if win_title is not None : self.setWindowTitle(win_title)
 
-        #self.wtab = QWTableOfCheckBoxes(**kwargs)
         self.wtab = CGWPartitionTable(**kwargs)
-        #self.make_gui_checkbox()
 
         self.do_ctrl  = kwargs.get('do_ctrl', True)
         self.do_frame = kwargs.get('do_frame', True)
 
-        #self.but_update = QPushButton('&Update') 
-        #self.but_cancel = QPushButton('&Cancel') 
-        self.but_apply  = QPushButton('&Apply') 
-        
-        #self.but_update.clicked.connect(self.on_but_update)
-        #self.but_cancel.clicked.connect(self.onCancel)
+        self.but_apply = QPushButton('&Apply')
         self.but_apply.clicked.connect(self.onApply)
 
         self.hbox = QHBoxLayout()
-        #self.hbox.addWidget(self.but_update)
-        #self.hbox.addStretch(1)
-        #self.hbox.addWidget(self.but_cancel)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_apply)
+        self.hbox.addStretch(1)
 
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.wtab)
@@ -79,50 +68,41 @@ class QWPopupTableCheck(QWidget):
         self.setIcons()
         self.set_style()
 
-#-----------------------------  
-
     def set_style(self):
         #if not self.do_frame:
         #   self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);" # Gray
-        #styleTest = "background-color: rgb(100, 240, 200); color: rgb(0, 0, 0);"
         styleDefault = ""
         self.setStyleSheet(styleDefault)
 
-        self.layout().setContentsMargins(0,0,0,0)
+        self.layout().setContentsMargins(0,0,0,5)
 
-        self.setMinimumWidth(100)
-        #self.but_update.setFixedWidth(70)
-        #self.but_cancel.setFixedWidth(70)
-        self.but_apply .setFixedWidth(70)
+        wtab = self.wtab
+        wtab.set_style()
+        #htab = min(wtab.verticalHeader().length()+wtab.horizontalHeader().height()+5, 600)
+        #wtab.setMaximumHeight(htab)
+        #self.setMaximumHeight(wtab.height()+20)
+        self.setMaximumHeight(1000)
+        self.setMaximumWidth(wtab.width()+100)
 
-        #self.but_update.setStyleSheet(styleGray)
-        #self.but_update.setFocusPolicy(Qt.NoFocus)
+        self.but_apply.setFixedWidth(70)
+        self.but_apply.setFixedHeight(24)
+
         #self.but_cancel.setFocusPolicy(Qt.NoFocus)
-        #self.but_cancel.setStyleSheet(styleGray)
         self.but_apply.setStyleSheet(styleGray)
         self.but_apply.setEnabled(self.do_ctrl)
         self.but_apply.setFlat(not self.do_ctrl)
 
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
-        self.wtab.setFixedHeight(self.wtab.height()+2)
-        self.setFixedWidth(max(self.wtab.width(),285)+2)
-
-        #self.but_update.setVisible(False)        
-        #self.but_cancel.setVisible(False)        
-
-        #self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
         #self.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint)
 
     def setIcons(self):
         try :
           from psdaq.control_gui.QWIcons import icon
           icon.set_icons()
-          #self.but_cancel.setIcon(icon.icon_button_cancel)
           self.but_apply .setIcon(icon.icon_button_ok)
         except : pass
- 
 
     #def on_but_update(self):
     def update_partition_table(self):
@@ -140,14 +120,17 @@ class QWPopupTableCheck(QWidget):
         self.wtab = wtab
         self.set_style()
 
+#    def resizeEvent(self, e):
+#        #logger.debug('resizeEvent')
+#        QWidget.resizeEvent(self, e)
+#        self.wtab.set_style()
 
-    #def onCancel(self):
-    #    logger.debug('onCancel')
-    #    self.reject()
-
+#def onCancel(self):
+#        logger.debug('onCancel')
+#        self.reject()
 
     def onApply(self):
-        logger.debug('onApply')  
+        logger.debug('onApply')
         self.list2d_out = self.wtab.fill_output_object()
         #self.accept()
 
@@ -168,7 +151,6 @@ class QWPopupTableCheck(QWidget):
     def table_out(self):
         return self.list2d_out
 
-#------------------------------
 
 if __name__ == "__main__" :
     import os
@@ -183,14 +165,20 @@ if __name__ == "__main__" :
 
     title_h = ['sel', 'grp', 'level/pid/host', 'ID']
     tableio = [\
-               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie_9'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev002', 'cookie_9'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie_1'],\
-               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie_8'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev003', 'cookie_8'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie_0'],\
                [[False, ''],  '', 'teb/123458/drp-tst-dev001', 'teb1'],\
-               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_5'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev004', 'tokie_2'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_3'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev005', 'tokie_4'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev006', 'tokie_5'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_6'],\
-               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_8'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev007', 'tokie_8'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_9'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_10'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_11'],\
                [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_1'],\
                [[False, ''],  '', 'ctr/123459/drp-tst-acc06',  'control'],\
     ]
@@ -202,9 +190,6 @@ if __name__ == "__main__" :
     w.move(200,100)
     w.show()
     app.exec_()
-    #resp=w.exec_()
-    #logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
-    #for name,state in dict_in.items() : logger.debug('%s checkbox state %s' % (name.ljust(10), state))
 
     print('%s\nI/O table:' % (50*'_'))
     for rec in tableio : print(rec)
@@ -215,4 +200,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#------------------------------
+# EOF

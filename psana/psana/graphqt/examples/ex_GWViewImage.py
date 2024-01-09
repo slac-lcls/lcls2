@@ -29,6 +29,8 @@ class TestGWViewImage(GWViewImage):
         fv = 0 if v is None else v
         self.setWindowTitle('TestGWViewImage x=%d y=%d v=%s%s' % (ix, iy, '%.1f'%fv, 25*' '))
 
+    def test_image_pixmap_changed(self):
+        logger.info('image_pixmap_changed')
 
     def keyPressEvent(self, e):
         logger.info('keyPressEvent, key = %s' % e.key())
@@ -111,6 +113,7 @@ def test_gfviewimage(tname):
     w.connect_mouse_press_event(w.test_mouse_press_event_reception)
     w.connect_mouse_move_event(w.test_mouse_move_event_reception)
     w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
+    w.connect_image_pixmap_changed(w.test_image_pixmap_changed)
 
     w.setWindowTitle('ex_GWViewImage')
     w.setGeometry(20, 20, 600, 600)

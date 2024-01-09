@@ -20,8 +20,8 @@ countrst = 60
 _fidPrescale = 200
 _fidPeriod   = 1400/1.3
 
-NCODES = 16
-seqCodes = {'EventCode'   : ('ai',[i for i in range(272,288)]),
+NCODES = 32
+seqCodes = {'EventCode'   : ('ai',[i for i in range(288-NCODES,288)]),
             'Description' : ('as',['']*NCODES),
             'Rate'        : ('ai',[0]*NCODES),
             'Enabled'     : ('ab',[False]*NCODES)}
@@ -563,20 +563,22 @@ class PVCtrls(object):
             self._thread.start()
 
         print('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
-        app.monStreamPeriod.set(125000000)
+        app.monStreamPeriod.set(104166667)
         app.monStreamEnable.set(1)
 
     def usLinkUp(self):
         if self._usLinkUp is not None:
             self._usLinkUp()
-        for s in self._seq:
-            s.refresh()
+        if self._seq:
+            for s in self._seq:
+                s.refresh()
 
     def seqReset(self,pv,val):
         self._xpm.SeqEng_0.seqRestart.set(val)
-        for s in self._seq:
-            if (1<<s._eng._id)&val:
-                s._eng.resetDone()
+        if self._seq:
+            for s in self._seq:
+                if (1<<s._eng._id)&val:
+                    s._eng.resetDone()
 
     def update(self,cycle):
         #  The following section will throw an exception if the CuInput PV is not set properly
@@ -585,7 +587,7 @@ class PVCtrls(object):
         elif cycle == 10:
             self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
             self._seq_codes_val = toDict(seqCodes)
-            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(4)]
+            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(NCODES//4)]
 
         global countdn
         # check for config save
@@ -654,7 +656,7 @@ class PVCtrls(object):
                 if self._handle:
                     offset = self._handle(msg)
                     if self._seq:
-                        w = struct.unpack_from('<16L',msg,offset)
+                        w = struct.unpack_from(f'<{NCODES}L',msg,offset)
                         offset += 64
                         value = self._seq_codes_pv.current()
                         self._seq_codes_val['Rate'] = w

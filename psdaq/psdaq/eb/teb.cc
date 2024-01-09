@@ -137,6 +137,8 @@ namespace Pds {
       unsigned                     _prescale;
       unsigned                     _iMeb;
       unsigned                     _rogReserved[MAX_MRQS];
+      uint64_t                     _lastMonPid;
+      uint64_t                     _monThrottle;
     private:
       unsigned                     _wrtCounter;
       uint64_t                     _pidPrv;
@@ -200,6 +202,8 @@ Teb::Teb(const EbParams&         prms,
   _trigger      (nullptr),
   _iMeb         (0),
   _rogReserved  {0, 0, 0, 0},
+  _lastMonPid   (0),
+  _monThrottle  (0),
   _pidPrv       (0),
   _eventCount   (0),
   _trCount      (0),
@@ -216,6 +220,9 @@ Teb::Teb(const EbParams&         prms,
   _l3Transport  (prms.verbose, prms.kwargs),
   _exporter     (exporter)
 {
+  if (_prms.kwargs.find("mon_throttle") != _prms.kwargs.end())
+    _monThrottle = std::stoul(const_cast<EbParams&>(_prms).kwargs["mon_throttle"]);
+
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
@@ -467,34 +474,39 @@ void Teb::run()
 
 void Teb::_monitor(ResultDgram* rdg)
 {
-  const auto numMebs{_monBufLists.size()};
-  const auto allMebs{(1u << numMebs) - 1};
-  auto       dsts{rdg->monitor() & allMebs};
-  const bool roundRobin{dsts == allMebs};
-  while (dsts)
+  if (rdg->pulseId() - _lastMonPid > _monThrottle)
   {
-    unsigned iMeb;
-    if (roundRobin)
+    _lastMonPid = rdg->pulseId();
+
+    const auto numMebs{_monBufLists.size()};
+    const auto allMebs{(1u << numMebs) - 1};
+    auto       dsts{rdg->monitor() & allMebs};
+    const bool roundRobin{dsts == allMebs};
+    while (dsts)
     {
-      iMeb = _iMeb;
-      _iMeb = (iMeb + 1) % numMebs;
-    }
-    else
-      iMeb = __builtin_ffs(dsts) - 1;
+      unsigned iMeb;
+      if (roundRobin)
+      {
+        iMeb = _iMeb;
+        _iMeb = (iMeb + 1) % numMebs;
+      }
+      else
+        iMeb = __builtin_ffs(dsts) - 1;
 
-    dsts &= ~(1 << iMeb);
+      dsts &= ~(1 << iMeb);
 
-    if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
-    {
-      unsigned buffer;
-      _monBufLists[iMeb].pop(buffer);
+      if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
+      {
+        unsigned buffer;
+        _monBufLists[iMeb].pop(buffer);
 
-      rdg->monBufNo(buffer);
+        rdg->monBufNo(buffer);
 
-      ++_monitorCount;
-      ++_mebCount[iMeb];
+        ++_monitorCount;
+        ++_mebCount[iMeb];
 
-      return;
+        return;
+      }
     }
   }
 
@@ -552,16 +564,17 @@ void Teb::process(EbEvent* event)
   _queueMrqBuffers();
 
   // "Selected" EBs respond with a Result, others simply acknowledge
-  if (ImmData::flg(imm) == (ImmData::Response | ImmData::Buffer))
+  if (ImmData::flg(imm) == ImmData::Response_Buffer)
   {
-    if (!ImmData::buf(ImmData::flg(imm)))
-    {
-      logging::critical("%s:\n  No valid index received from %016lx for Results: "
-                        "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
-                        __PRETTY_FUNCTION__, _prms.indexSources,
-                        pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
-      throw "No index for Results";
-    }
+    // Dead code:
+    //if (ImmData::buf(ImmData::flg(imm)) == ImmData::Transition)
+    //{
+    //  logging::critical("%s:\n  No valid index received from %016lx for Results: "
+    //                    "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
+    //                    __PRETTY_FUNCTION__, _prms.indexSources,
+    //                    pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
+    //  throw "No index for Results";
+    //}
     auto idx = ImmData::idx(imm);
     auto buf = _batMan.fetch(idx);
     auto rdg = new(buf) ResultDgram(*dgram, _prms.id);
@@ -608,7 +621,7 @@ void Teb::process(EbEvent* event)
 
     _tryPost(rdg, dsts, idx);
   }
-  else                                  // "Non-selected" TEB case
+  else if (ImmData::flg(imm) == ImmData::NoResponse_Transition) // "Non-selected" TEB case
   {
     // Only transitions are sent to "non-selected" TEBs.
     // "Non-selected" TEBs don't respond to any dgrams they receive, but
@@ -647,6 +660,13 @@ void Teb::process(EbEvent* event)
 
     // Make the transition buffer available to the contributor again
     post(event->begin(), event->end());
+  }
+  else
+  {
+    logging::error("%s:\n  Wrong flags %u in immediate data: "
+                   "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
+                   __PRETTY_FUNCTION__, ImmData::flg(imm),
+                   pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
   }
 
   auto now = std::chrono::system_clock::now();
@@ -718,16 +738,33 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 
 void Teb::_post(const Batch& batch)
 {
-  size_t   size   = _trigger->size();
+  size_t   maxResultSize = _trigger->size();
   size_t   extent = (reinterpret_cast<const char*>(batch.end) -
-                     reinterpret_cast<const char*>(batch.start)) + size;
-  unsigned offset = batch.idx * size;
-  uint64_t data   = ImmData::value(ImmData::Buffer, _prms.id, batch.idx);
+                     reinterpret_cast<const char*>(batch.start)) + maxResultSize;
+  unsigned offset = batch.idx * maxResultSize;
+  uint64_t data   = ImmData::value(ImmData::NoResponse_Buffer, _prms.id, batch.idx);
   uint64_t destns = batch.dsts; // & ~_trimmed;
+  bool     print  = false;
 
   batch.end->setEOL();                  // Terminate the batch
 
-  if (UNLIKELY(_prms.verbose >= VL_BATCH))
+  if (UNLIKELY(extent > _prms.maxEntries * maxResultSize))
+  {
+    logging::error("%s:\n  Batch extent exceeds maximum: %zu vs %u * %zu = %zu",
+                   __PRETTY_FUNCTION__, extent,
+                   _prms.maxEntries, maxResultSize, _prms.maxEntries * maxResultSize);
+    print = true;
+  }
+  if (UNLIKELY((batch.start < _batMan.batchRegion()) ||
+               ((char*)(batch.start) + extent > (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize())))
+  {
+    logging::error("%s:\n  Batch %p:%p falls outide of region limits %p:%p",
+                   __PRETTY_FUNCTION__, batch.start, (char*)(batch.start) + extent,
+                   _batMan.batchRegion(), (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize());
+    print = true;
+  }
+
+  if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
   {
     uint64_t pid = batch.start->pulseId();
     printf("TEB posts          %9lu result  [%8u] @ "
@@ -1376,6 +1413,7 @@ int main(int argc, char **argv)
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
     if (kwargs.first == "script_path")  continue;
+    if (kwargs.first == "mon_throttle") continue;
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;

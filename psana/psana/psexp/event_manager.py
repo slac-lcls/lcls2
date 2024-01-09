@@ -12,11 +12,6 @@ s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
 s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')
 s_bd_gen_evt = PrometheusManager.get_metric('psana_bd_gen_evt')
 
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-
 class ExitId:
     NoError = 0
     BdReadFail = 1

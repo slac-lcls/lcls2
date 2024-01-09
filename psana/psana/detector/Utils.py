@@ -80,7 +80,7 @@ def info_command_line_parameters(parser):
     return s
 
 
-def info_parser_arguments(parser):
+def info_parser_arguments(parser, title='optional parameters:'):
     """Prints input arguments and optional parameters
        from argparse import ArgumentParser
        parser = ArgumentParser(...)
@@ -89,8 +89,8 @@ def info_parser_arguments(parser):
     opts = vars(args)
     defs = vars(parser.parse_args([])) # defaults only
 
-    s = 'Optional parameters:\n'\
-        '    <key>      <value>              <default>\n'
+    s = '%s\n' % title\
+      + '    <key>      <value>              <default>\n'
     for k,v in opts.items():
         _v, _d = v, defs[k]
         if k in ('dirmode', 'filemode'):

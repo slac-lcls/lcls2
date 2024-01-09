@@ -308,7 +308,8 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
     int* m_resShmId = resShmId;
 
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
-        logging::error("Failed to allocate lane/vc");
+        logging::critical("Failed to allocate lane/vc");
+        abort();
     }
 
     if (pythonDrp) {

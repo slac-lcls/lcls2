@@ -379,7 +379,6 @@ cdef class EventBuilder:
         """
         # Grab dsparms (cast PyObject* to Python object)
         dsparms = <object> self.dsparms
-        filter_timestamps = dsparms.timestamps
         
         # For counting no. of events. If `intg_stream_id`
         # is not given, this counts no. of events (equivalent to `got`).
@@ -389,7 +388,6 @@ cdef class EventBuilder:
 
         # Keeping all built proxy event
         proxy_events = []
-        non_L1_indices = []
 
         while cn_intg_events < dsparms.batch_size and self.has_more():
             proxy_evt = self.build_proxy_event()
@@ -405,36 +403,14 @@ cdef class EventBuilder:
                 # Counts no. of steps 
                 if proxy_evt.service != TransitionId.L1Accept:
                     got_step += 1
-                    if filter_timestamps.shape[0] > 0:
-                        non_L1_indices.append(got)
                 
                 proxy_events.append(proxy_evt)
                 got += 1
 
-        assert got <= MAX_BATCH_SIZE, f"No. of events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got})"
+        assert got <= MAX_BATCH_SIZE, f"No. of events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got}). For integrating detector, lower the value of PS_SMD_N_EVENTS."
         assert got_step <= MAX_BATCH_SIZE, f"No. of transition events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got_step})"
         self.nevents = got
         self.nsteps = got_step
-
-        # Filter by timestamps note that all non-L1 will not get filtered
-        # This is done by locating insert positions in the filter_timestamps.
-        # If the position is the shape of filter_timestamps, this indicates
-        # not found. The exact match means the insert position has the same
-        # timestamp.
-        cdef int i, ia, ib
-        if filter_timestamps.shape[0]:
-            timestamps = np.asarray([proxy_evt.timestamp for proxy_evt in proxy_events], dtype=np.uint64)
-            # Find best position to insert filter_timestamps into timestamps
-            insert_indices = np.searchsorted(timestamps, filter_timestamps)
-            # The insert positions should have the same timestamp value
-            found_indices = []
-            for ia, ib in enumerate(insert_indices):
-                # Skip if not found (returned index is the size of the array)
-                if ib == got: continue
-                if timestamps[ib] - filter_timestamps[ia] == 0:
-                    found_indices.append(ib)
-            _proxy_events = [proxy_events[i] for i in sorted(list(found_indices)+non_L1_indices)]
-            proxy_events = _proxy_events
 
         # Eiter return the proxy_events (smd_callback) or bytearrays (grouped by destination)
         if as_proxy_events:

@@ -31,11 +31,6 @@ class ConfigScan:
         self.detname = args.detname
         self.scantype = args.scantype
 
-        if args.g is None:
-            self.groupMask = 1 << args.p
-        else:
-            self.groupMask = args.g
-
     # this thread tells the daq to do a step and waits for the completion
     def daq_communicator_thread(self):
         logging.debug('*** daq_communicator_thread')

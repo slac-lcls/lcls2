@@ -1,13 +1,13 @@
 
-"""Class :py:class:`GWViewImAx` is a QWidget with image and two axes
+"""Class :py:class:`GWImageAxes` is a QWidget with image and two axes
 =====================================================================
 
 Usage ::
 
-    # Run test: python lcls2/psana/psana/graphqt/GWViewImAx.py
+    # Run test: python lcls2/psana/psana/graphqt/GWImageAxes.py
 
-    from psana.graphqt.GWViewImAx import GWViewImAx
-    w = GWViewImAx()
+    from psana.graphqt.GWImageAxes import GWImageAxes
+    w = GWImageAxes()
 
 Created on 2021-06-22 by Mikhail Dubrovin
 """
@@ -20,21 +20,21 @@ import psana.graphqt.ColorTable as ct
 from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QTextEdit
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF
 from psana.pyalgos.generic.NDArrGenerators import test_image
-#from psana.graphqt.CMConfigParameters import cp
 
-class GWViewImAx(QWidget):
+class GWImageAxes(QWidget):
     """QWidget for Image Viewer"""
     image_scene_rect_changed = pyqtSignal('QRectF')
 
     def __init__(self, **kwargs):
 
-        parent = kwargs.get('parent', None)
-        image = kwargs.get('image', test_image(shape=(256,256)))
-        ctab = kwargs.get('ctab', ct.color_table_interpolated())
+        parent      = kwargs.get('parent', None)
+        image       = kwargs.get('image', test_image(shape=(256,256)))
+        ctab        = kwargs.get('ctab', ct.color_table_interpolated())
         signal_fast = kwargs.get('signal_fast', False)
+        #origin      = kwargs.get('origin', 'UL')
+        #scale_ctl   = kwargs.get('scale_ctl', 'HV')
 
         QWidget.__init__(self, parent)
-        #cp.gwimageaxes = self
 
         self.wim = GWViewImage(self, image, coltab=ctab, origin='UL', scale_ctl='HV', signal_fast=signal_fast)
 
@@ -96,8 +96,10 @@ class GWViewImAx(QWidget):
         self.way.reset_scene_rect()
 
     def on_wim_scene_rect_changed(self, r):
-        self.wax.fit_in_view(QRectF(r.x(), 0, r.width(), 1))
-        self.way.fit_in_view(QRectF(0, r.y(), 1, r.height()))
+        self.wax.set_axis_limits(r.x(), r.x()+r.width())
+        self.way.set_axis_limits(r.y(), r.y()+r.height())
+        #self.wax.fit_in_view(QRectF(r.x(), 0, r.width(), 1))
+        #self.way.fit_in_view(QRectF(0, r.y(), 1, r.height()))
         self.emit_signal_if_image_scene_rect_changed()
 
     def on_wax_scene_rect_changed(self, r):
@@ -135,6 +137,7 @@ class GWViewImAx(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
         self.but_reset.setFixedSize(60,30)
         self.edi_info.setMaximumHeight(30)
+        self.edi_info.setStyleSheet(self.wim.style_def)
 
     def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.001, frmax=0.999):
         """shortcut to image"""

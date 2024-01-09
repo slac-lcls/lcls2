@@ -65,6 +65,9 @@ class Test:
 
         run_early_termination = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_early_termination.py')
         subprocess.check_call(['python',run_early_termination], env=env)
+        
+        step_w_ts_filter = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_steps_w_ts_filter.py')
+        subprocess.check_call(['python',run_early_termination], env=env)
 
     def test_detnames(self, xtc_file):
         # for now just check that the various detnames don't crash

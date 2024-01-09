@@ -49,7 +49,7 @@ public:
         asm volatile("mfence" ::: "memory");
         // signal consumer that queue is no longer empty
         if (index == m_read_index.load(std::memory_order_acquire)) {
-            std::unique_lock<std::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_condition.notify_one();
         }
     }

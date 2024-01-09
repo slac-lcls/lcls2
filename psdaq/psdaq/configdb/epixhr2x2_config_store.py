@@ -183,6 +183,7 @@ def epixhr2x2_cdict():
     top.set(base+'Version'          , 0, 'UINT32')
     top.set(base+'GlblRstPolarity'  , 0, 'boolEnum')
     top.set(base+'ClkSyncEn'        , 0, 'boolEnum')
+    top.set(base+'RoLogicRst'       , 0, 'boolEnum')
     top.set(base+'SyncPolarity'     , 0, 'boolEnum')
     top.set(base+'SyncDelay'        , 0, 'UINT32')
     top.set(base+'SyncWidth'        , 0, 'UINT32')

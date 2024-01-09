@@ -127,7 +127,7 @@ class XpmSequenceEngine(pr.Device):
     def __init__(   self, 
                     name        = "XpmSequenceEngine", 
                     description = "XPM Sequence Engine module", 
-                    nseq        = 4,
+                    nseq        = 8,
                     alen        = 11,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
@@ -183,13 +183,13 @@ class XpmSequenceEngine(pr.Device):
             verify       = False,  # resets itself
         ))
 
-        for i in range(16):
+        for i in range(nseq):
             self.add(SeqState(
                 name     = 'SeqState_%d'%i,
                 offset   = 0x80+i*0x10,
             ))
 
-        for i in range(16):
+        for i in range(nseq):
             self.add(SeqJump(
                 name     = 'SeqJump_%d'%i,
                 offset   = 0x4000+i*0x40,
@@ -198,6 +198,6 @@ class XpmSequenceEngine(pr.Device):
         for i in range(nseq):
             self.add(SeqMem(
                 name     = f'SeqMem_{i}',
-                offset   = 0x8000+i*(1<<(alen+2)),
+                offset   = 0x10000+i*(1<<(alen+2)),
             ))
 

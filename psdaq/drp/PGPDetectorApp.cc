@@ -14,6 +14,7 @@
 #include "EpixQuad.hh"
 #include "EpixHR2x2.hh"
 #include "EpixHRemu.hh"
+#include "EpixM320.hh"
 #include "Epix100.hh"
 #include "Opal.hh"
 #include "Wave8.hh"
@@ -183,6 +184,8 @@ static int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, cons
                std::to_string(para.detSegment).c_str(),
                std::to_string(workerNum).c_str(),
                std::to_string(para.verbose).c_str(),
+               para.instrument.c_str(),
+               para.prometheusDir.c_str(),
                nullptr);
 
         // Execlp returns only on error
@@ -313,6 +316,7 @@ void PGPDetectorApp::initialize()
     f.register_type<EpixQuad>    ("epixquad");
     f.register_type<EpixHR2x2>   ("epixhr2x2");
     f.register_type<EpixHRemu>   ("epixhremu");
+    f.register_type<EpixM320>    ("epixm320");
     f.register_type<Epix100>     ("epix100");
     f.register_type<Opal>        ("opal");
     f.register_type<TimeTool>    ("tt");
@@ -320,7 +324,6 @@ void PGPDetectorApp::initialize()
     f.register_type<TimingSystem>("ts");
     f.register_type<Wave8>       ("wave8");
     f.register_type<Piranha4>    ("piranha4");
-
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {

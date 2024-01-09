@@ -75,6 +75,7 @@ roi_types = [r[0] for r in roi_tuple]
 roi_names = [r[1] for r in roi_tuple]
 roi_keys  = [r[2] for r in roi_tuple]
 dict_roi_type_name = {t:n for t,n,k in roi_tuple}
+dict_roi_name_key  = {n:k for t,n,k in roi_tuple}
 
 UNVISIBLE = 1
 VISIBLE   = 2

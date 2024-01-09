@@ -1013,7 +1013,7 @@ int main(int argc, char* argv[])
             case 'k':
                 kwargs_str = kwargs_str.empty()
                            ? optarg
-                           : kwargs_str + ", " + optarg;
+                           : kwargs_str + "," + optarg;
                 break;
             case 'P':
                 para.instrument = optarg;
@@ -1111,6 +1111,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
+            if (kwargs.first == "pva_addr")       continue;  // DrpBase
             if (kwargs.first == "firstdim")       continue;
             if (kwargs.first == "match_tmo_ms")   continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",

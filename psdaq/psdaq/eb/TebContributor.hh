@@ -68,9 +68,6 @@ namespace Pds {
       void       _post(const Pds::EbDgram* nonEvent);
       void       _post(const Batch& batch);
     public:
-      // Time out the current batch 1 batch period after the current one ends
-      const std::chrono::microseconds BATCH_TIMEOUT{int(1.1 * MAX_ENTRIES * 14/13)};
-    public:
       using listU32_t = std::list<uint32_t>;
     private:
       const TebCtrbParams&      _prms;

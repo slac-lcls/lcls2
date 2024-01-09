@@ -23,7 +23,6 @@ Created on 2017-12-12 by Mikhail Dubrovin
 Adopted as FWViewAxis for LCLS2 on 2018-02-20
 Refactored to GWViewAxis on 2022-08-18
 """
-
 from psana.graphqt.GWViewExt import * # GWView, QtGui, QtCore, Qt
 from psana.graphqt.GWRuler import GWRuler
 from PyQt5.QtGui import QColor, QFont
@@ -57,12 +56,10 @@ class GWViewAxis(GWViewExt):
         GWViewExt.__init__(self, parent, rscene, origin, scale_ctl=scctl, move_fast=move_fast, wheel_fast=wheel_fast)
         self.update_my_scene()
 
-
     def info_attributes(self):
         return 'scale_control: %s' % self.str_scale_control()\
            + '\norigin       : %s' % self.origin()\
            + '\nside         : %s' % self.side
-
 
     def set_axis_limits(self, vmin, vmax):
         logger.debug('GWViewAxis.set_axis_limits vmin: %.1f vmax: %.1f' % (vmin, vmax))
@@ -75,7 +72,6 @@ class GWViewAxis(GWViewExt):
             r.setHeight(vmax - vmin)
         self.fit_in_view(r)
         self.update_my_scene()
-
 
     def set_style(self):
         GWViewExt.set_style(self)
@@ -93,7 +89,6 @@ class GWViewAxis(GWViewExt):
             self.setMinimumSize(2, self.wlength)
             self.setFixedWidth(self.wwidth)
 
-
     def update_ruler(self):
         logging.debug('GWViewAxis.update_ruler for side: %s' % self.side)
         if self.bgcolor != self.bgcolor_def:
@@ -108,7 +103,6 @@ class GWViewAxis(GWViewExt):
         self.ruler = GWRuler(view, side=self.side, color=self.colax, pen=self.penax, font=self.fonax,\
                              label_rot=self.kwargs.get('label_rot', 0))
 
-
     def update_my_scene(self):
         """Re-implementation of GWViewExt.update_my_scene.
            Auto-called when the scene rect is changed."""
@@ -116,18 +110,22 @@ class GWViewAxis(GWViewExt):
         logger.debug('GWViewAxis.update_my_scene')
         self.update_ruler()
 
-
     def mouseReleaseEvent(self, e):
         logger.debug('GWViewAxis.mouseReleaseEvent')
         self.update_my_scene()
         GWViewExt.mouseReleaseEvent(self, e)
-
 
     def closeEvent(self, e):
         self.ruler.remove()
         GWViewExt.closeEvent(self, e)
         logger.debug('GWViewAxis.closeEvent')
 
+    def reset_scene_rect(self, rs=None, mode=Qt.IgnoreAspectRatio):
+        GWViewExt.reset_scene_rect(self, rs=rs, mode=mode)
+        self.update_ruler()
+
+#        r = self.rs_def
+#        self.fit_in_view(self.rs_def, mode)
 
 #    def reset_original_image_size(self):
 #         # def in GWViewExt.py with overloaded update_my_scene()
@@ -135,7 +133,6 @@ class GWViewAxis(GWViewExt):
 #        self.reset_scene_rect()
 #        self.update_ruler()
 #        self.check_axes_limits_changed()
-
 
 if __name__ == "__main__":
     import sys

@@ -57,7 +57,7 @@ class DetectorImpl():
                 seg_configs.update(getattr(dgram,self._det_name))
         return seg_configs
 
-    def config(self, evt) -> typing.Dict:
+    def config(self, evt) -> dict:
         return self._seg_configs()
 
     def _segments(self,evt):
@@ -106,8 +106,9 @@ class DetectorImpl():
         for config in self._configs:
             if not hasattr(config,'software'): continue
 
-            seg      = getattr(config.software,self._det_name)
-            seg_dict = getattr(seg[0],self._drp_class_name)
+            seg      = getattr(config.software,self._det_name)  # {1: <psana.container.Container object at 0x7f1d9064b4f0>}
+            key0     = list(seg.keys())[0]  # 1
+            seg_dict = getattr(seg[key0],self._drp_class_name)
             attrs    = [attr for attr in vars(seg_dict) if not (attr=='software' or attr=='version')]
             for field in attrs:
                 fd = getattr(seg_dict,field)

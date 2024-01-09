@@ -9,6 +9,8 @@ Usage ::
     from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes
     w = QWTableOfCheckBoxes(tableio=tableio, title_h=title_h, do_ctrl=True, is_visv=True)
 
+    QWTableOfCheckBoxes < QWTable < QTableView
+
 Created on 2019-03-11 by Mikhail Dubrovin
 """
 
@@ -31,14 +33,15 @@ BIT_HIDDENROW  =16
 
 
 class QWTableOfCheckBoxes(QWTable):
-    """Widget for table with fields containing text with check-boxes.
-    """
+    """Widget for table with fields containing text with check-boxes."""
     def __init__(self, **kwargs):
         self._list_hidden_rows = []
         QWTable.__init__(self, **kwargs)
         #self._name = self.__class__.__name__
         self.hide_hidden_rows()
 
+    def set_style(self):
+        QWTable.set_style(self)
 
     def fill_table_model(self, **kwargs):
         """Owerrides QWTable.fill_table_model
@@ -106,7 +109,6 @@ class QWTableOfCheckBoxes(QWTable):
 
         self.hide_hidden_rows()
 
-
     def hide_hidden_rows(self):
         for row in self._list_hidden_rows:
             # 2021-04-29 Chris F. requested to show rows but not editable
@@ -114,7 +116,6 @@ class QWTableOfCheckBoxes(QWTable):
             self.set_items_in_hidden_row(row)
             logger.debug('row %d isRowHidden: %s'%(row, self.isRowHidden(row)))
         self.set_exact_widget_size()
-
 
     def set_items_in_hidden_row(self, row):
         """ 2021-04-29 Chris F. requested to show rows but not editable.
@@ -128,14 +129,12 @@ class QWTableOfCheckBoxes(QWTable):
             #item.setCheckable(False)
             item.setEnabled(False)
 
-
     def connect_control(self):
         """re-implementation of QWTable.connect_control"""
         #self.connect_item_selected_to(self.on_item_selected)
         self.clicked.connect(self.on_click)
         #self.doubleClicked.connect(self.on_double_click)
         self.connect_item_changed_to(self.on_item_changed)
-
 
     def on_item_changed(self, item):
         state = LIST_STR_CHECK_BOX_STATES[item.checkState()]
@@ -160,7 +159,6 @@ class QWTableOfCheckBoxes(QWTable):
                 self.tableio[row][col][1] = str(item.text())
             elif item.accessibleDescription() == 'type:str':
                 self.tableio[row][col] = str(item.text())
-
 
     def fill_output_object(self):
         """Fills output 2-d list from table of items"""

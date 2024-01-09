@@ -59,6 +59,7 @@ namespace Pds
     private:
       EbLfServer                    _transport;
       std::vector<EbLfSvrLink*>     _links;
+      unsigned                      _numBuffers;
       size_t                        _maxResultSize;
       const EbDgram*                _inputs;
       std::list<const ResultDgram*> _deferred;

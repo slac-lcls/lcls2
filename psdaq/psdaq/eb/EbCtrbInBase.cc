@@ -222,6 +222,7 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
 
         _regSize = regSize;
       }
+      _numBuffers    = numTebBuffers;
       _maxResultSize = regSize / numTebBuffers;
       size           = regSize;
     }
@@ -308,13 +309,44 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     return rc;
   }
 
+  unsigned flg = ImmData::flg(data);
   unsigned src = ImmData::src(data);
   unsigned idx = ImmData::idx(data);
   auto     lnk = _links[src];
   auto     ofs = idx * _maxResultSize;
   auto     bdg = static_cast<const ResultDgram*>(lnk->lclAdx(ofs)); // (char*)_region + ofs;
 
-  if (UNLIKELY(_prms.verbose >= VL_BATCH))
+  // bdg is first dgram in batch; set end to end of region if idg is within 1 batch size of it
+  const void* end = idx < _numBuffers - _prms.maxEntries ? (char*)bdg + _prms.maxEntries * _maxResultSize
+                                                         : (char*)_region + _regSize;
+
+  auto print = false;
+  if (src != bdg->xtc.src.value())
+  {
+    logging::error("%s:\n  Link src (%d) != dgram src (%d)", __PRETTY_FUNCTION__, src, bdg->xtc.src.value());
+    print = true;
+  }
+  if (flg != ImmData::NoResponse_Buffer)
+  {
+    logging::error("%s:\n  Wrong flags %u in immediate data: "
+                   "dgram %p, idx %8u, pid %014lx, svc %u, env %08x, src %2u, imm %08x",
+                   __PRETTY_FUNCTION__, flg,
+                   bdg, idx, bdg->pulseId(), bdg->service(), bdg->env, src, data);
+    print = true;
+  }
+  if (idx > _numBuffers)
+  {
+    logging::error("%s:\n  Buffer index is out of range 0:%u: %u\n", __PRETTY_FUNCTION__, _numBuffers, idx);
+    print = true;
+  }
+  if ((bdg < _region) || (end > ((char*)_region + _regSize)))
+  {
+    logging::error("%s:\n  Dgram %p:%p falls outside of region %p:%p\n",
+                   __PRETTY_FUNCTION__, bdg, end, _region, (char*)_region + _regSize);
+    print = true;
+  }
+
+  if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
   {
     auto     pid     = bdg->pulseId();
     unsigned ctl     = bdg->control();

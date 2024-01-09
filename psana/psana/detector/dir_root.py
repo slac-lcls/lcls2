@@ -15,8 +15,13 @@
    /cds/group/psdm # on psana lcls2
    /cds/group/psdm # on sdflogin lcls2
 
-from psana.detector.dir_root import DIR_REPO_EPIX10KA, DIR_LOG_AT_START, HOSTNAME, ...
-from psana.detector.dir_root import DIR_ROOT
+   SIT_PSDM_DATA
+   /sdf/data/lcls/ds/
+
+   ffb data
+   /sdf/data/lcls/drpsrcf/ffb/
+
+from psana.detector.dir_root import DIR_ROOT, DIR_REPO
 """
 import os
 
@@ -37,7 +42,7 @@ DIR_DATA_TEST       = os.path.join(DIR_ROOT, 'detector/data2_test')             
 DIR_REPO_CALIBMAN   = DIR_REPO                                                  # prev: /cds/group/psdm/detector/calib2/constants/logs
 #DIR_LOG_CALIBMAN    = os.path.join(DIR_ROOT, 'detector/logs/calibman/lcls2')   # /cds/group/psdm/detector/logs/calibman/lcls2
 
-#DIR_REPO = os.path.join(DIR_ROOT, 'detector/calib/constants/')
-#DIR_ROOT_DATA = '/reg/d/psdm'  # dcs
-
+# for s3df
+DIR_DATA = os.getenv('SIT_PSDM_DATA', '/sdf/data/lcls/ds')  # /sdf/data/lcls/ds/
+DIR_FFB = os.path.join(DIR_DATA, '../drpsrcf/ffb').replace('/ds/../','/')  # '/sdf/data/lcls/drpsrcf/ffb'
 # EOF

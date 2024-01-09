@@ -24,6 +24,10 @@ def ts_config(connect_json,cfgtype,detname,detsegm):
     connect_info = json.loads(connect_json)
     for nodes in connect_info['body']['drp'].values():
         readout_groups.append(nodes['det_info']['readout'])
+    # the tpr's also send out their desired readout groups
+    if 'tpr' in connect_info['body']:
+        for nodes in connect_info['body']['tpr'].values():
+            readout_groups.append(nodes['det_info']['readout'])
     readout_groups = set(readout_groups)
 
     control_info = connect_info['body']['control']['0']['control_info']

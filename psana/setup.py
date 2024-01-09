@@ -130,7 +130,9 @@ if 'PSANA' in BUILD_LIST :
             'det_dark_proc       = psana.app.det_dark_proc:do_main',
             'parallel_proc       = psana.app.parallel_proc:do_main',
             'iv                  = psana.graphqt.app.iv:image_viewer',
+            'masked              = psana.graphqt.app.masked:mask_editor',
             'roicon              = psana.app.roicon:__main__',
+            'psplot_live         = psana.app.psplot_live.main:start',
         ]
     }
 

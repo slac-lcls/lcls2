@@ -1135,7 +1135,7 @@ int main(int argc, char* argv[])
             case 'k':
                 kwargs_str = kwargs_str.empty()
                            ? optarg
-                           : kwargs_str + ", " + optarg;
+                           : kwargs_str + "," + optarg;
                 break;
             case 'M':
                 para.prometheusDir = optarg;
@@ -1203,6 +1203,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
+        if (kwargs.first == "pva_addr")       continue;  // DrpBase
         if (kwargs.first == "interface")      continue;
         if (kwargs.first == "timeout")        continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",

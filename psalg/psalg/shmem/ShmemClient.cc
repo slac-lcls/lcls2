@@ -19,6 +19,7 @@
 #include "XtcMonitorMsg.hh"
 
 #include <poll.h>
+#include <time.h>
 
 //#define DBUG
 //#define DBUG2
@@ -335,36 +336,41 @@ int ShmemClient::connect(const char* tag, int tr_index) {
     }
 
   XtcMonitorMsg::discoveryQueue(tag,qname);
-  mqd_t discoveryQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
-  if (discoveryQueue == (mqd_t)-1)
-    error++;
+  ssize_t rv;
+  do {
+      mqd_t discoveryQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
+      if (discoveryQueue == (mqd_t)-1) {
+          sleep(1);
+          continue;
+      }
 
-  if (mq_receive(discoveryQueue, (char*)&myMsg, sizeof(myMsg), &priority) < 0) {
-    perror("mq_receive discoveryQ");
-    delete[] qname;
-    return ++error;
-    }
-
-  mq_close(discoveryQueue);
+      printf("[%p] Reading discoveryQueue %d\n",this, discoveryQueue);
+      timespec tmo;
+      clock_gettime(CLOCK_REALTIME,&tmo);
+      tmo.tv_sec++;
+      rv = mq_timedreceive(discoveryQueue, (char*)&myMsg, sizeof(myMsg), &priority, &tmo);
+      mq_close(discoveryQueue);
+  } while (rv<0);
 
   unsigned port = myMsg.bufferIndex();
-  printf("Connecting to XtcMonitor server on port %d (%d)\n",port,_myTrFd);
 
   sockaddr_in saddr;
   saddr.sin_family = AF_INET;
   saddr.sin_addr.s_addr = htonl(0x7f000001);
   saddr.sin_port        = htons(port);
 
+  printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
   while (::connect(_myTrFd, (sockaddr*)&saddr, sizeof(saddr)) < 0) {
-    perror("Connecting myTrFd socket");
-    sleep(1);
-    }
+      printf("[%p] Error connecting myTrFd socket",this);
+      sleep(1);
+      printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
+  }
 
 #ifdef DBUG
   socklen_t addrlen = sizeof(sockaddr_in);
   sockaddr_in name;
   ::getsockname(_myTrFd, (sockaddr*)&name, &addrlen);
-  printf("Connected to %08x.%d [%d] from %08x.%d\n",
+  printf("[%p] Connected to %08x.%d [%d] from %08x.%d\n", this,
          ntohl(saddr.sin_addr.s_addr),ntohs(saddr.sin_port),_myTrFd,
          ntohl(name.sin_addr.s_addr),ntohs(name.sin_port));
 #endif

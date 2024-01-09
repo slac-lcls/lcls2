@@ -33,8 +33,17 @@ def intg_det():
                     }
     sum_hsd = 0
     sum_epix = 0
+    delta_intg_evt = 0
+    n_events = 0
+    n_intg_events = 0
+    sendbuf = np.zeros([1,2], dtype='i')
+    recvbuf = None
+    if rank == 0:
+        recvbuf = np.empty([size, 2], dtype='i')
 
     for i_evt, evt in enumerate(run.events()):
+        delta_intg_evt += 1
+        n_events += 1
         hsd_calib = hsd.raw.calib(evt)
         andor_calib = andor.raw.calib(evt)
         epix_calib = epix.raw.calib(evt)
@@ -46,7 +55,9 @@ def intg_det():
         if epix_calib is not None:
             sum_epix += np.sum(epix_calib[:])/np.prod(epix_calib.shape)
         if andor_calib is not None:
+            n_intg_events += 1
             val_andor = np.sum(andor_calib[:])/np.prod(andor_calib.shape)
+            print(f'  intg evt:{evt.timestamp} delta:{delta_intg_evt}')
             print(f'  andor: {val_andor} sum_hsd:{sum_hsd} sum_epix:{sum_epix}')
             if evt.timestamp in known_answers:
                 k_andor, k_hsd, k_epix = known_answers[evt.timestamp]
@@ -56,7 +67,17 @@ def intg_det():
 
             sum_hsd = 0
             sum_epix = 0
+            delta_intg_evt = 0
 
+    sendbuf[:] = [n_events, n_intg_events]
+    comm.Gather(sendbuf, recvbuf, root=0)
+
+    if rank == 0:
+        sumbuf = np.sum(recvbuf, axis=0)
+        n_events, n_intg_events = sumbuf
+        print(f'Total events: {n_events} #intg_events:{n_intg_events}')
+        assert n_events == 17
+        assert n_intg_events == 5
 
 if __name__ == "__main__":
     intg_det()

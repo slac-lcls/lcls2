@@ -14,8 +14,11 @@
 #include <algorithm>
 #include <limits>
 #include <thread>
+#include <cmath>
 #include <Python.h>
 #include <arpa/inet.h>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/QR>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
@@ -28,22 +31,24 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
+
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
 
+#define MAX_ENC_VALUES 2
+#define POLYNOMIAL_ORDER 1
+
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
-
-static const XtcData::TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
-                                        std::numeric_limits<unsigned>::max());
+using ns_t = std::chrono::nanoseconds;
 
 // forward declarations
 int setrcvbuf(int socketFd, unsigned size);
 int createUdpSocket(int port);
 
-class RawDef:public XtcData::VarDef
+class EncoderDef:public XtcData::VarDef
 {
 public:
   enum index
@@ -54,56 +59,39 @@ public:
       scale,
       scaleDenom,
       mode,
-      error,
-      majorVersion,
-      minorVersion,
-      microVersion,
-      hardwareID
+      error
     };
 
-  RawDef()
-   {
-       NameVec.push_back({"encoderValue", XtcData::Name::UINT32,1});
-       // frameCount is common to all channels
-       NameVec.push_back({"frameCount", XtcData::Name::UINT16});
-       NameVec.push_back({"timing", XtcData::Name::UINT32,1});
-       NameVec.push_back({"scale", XtcData::Name::UINT16,1});
-       NameVec.push_back({"scaleDenom", XtcData::Name::UINT16,1});
-       NameVec.push_back({"mode", XtcData::Name::UINT8,1});
-       NameVec.push_back({"error", XtcData::Name::UINT8,1});
-       NameVec.push_back({"majorVersion", XtcData::Name::UINT16,1});
-       NameVec.push_back({"minorVersion", XtcData::Name::UINT8,1});
-       NameVec.push_back({"microVersion", XtcData::Name::UINT8,1});
-       NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
+  EncoderDef()
+  {
+      NameVec.push_back({"encoderValue", XtcData::Name::UINT32});
+      // frameCount is common to all channels
+      NameVec.push_back({"frameCount", XtcData::Name::UINT16});
+      NameVec.push_back({"timing", XtcData::Name::UINT32});
+      NameVec.push_back({"scale", XtcData::Name::UINT16});
+      NameVec.push_back({"scaleDenom", XtcData::Name::UINT16});
+      NameVec.push_back({"mode", XtcData::Name::UINT8});
+      NameVec.push_back({"error", XtcData::Name::UINT8});
    }
-} RawDef;
+} RawDef, InterpolatedDef;
+
+template<typename T>
+static int64_t _deltaT(XtcData::TimeStamp& ts)
+{
+    auto now = std::chrono::system_clock::now();
+    auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{ts.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(tns)};
+    return std::chrono::duration_cast<T>(now - tp).count();
+}
 
 namespace Drp {
 
-#if 0
-static const XtcData::Name::DataType xtype[] = {
-  XtcData::Name::UINT8 , // pvBoolean
-  XtcData::Name::INT8  , // pvByte
-  XtcData::Name::INT16 , // pvShort
-  XtcData::Name::INT32 , // pvInt
-  XtcData::Name::INT64 , // pvLong
-  XtcData::Name::UINT8 , // pvUByte
-  XtcData::Name::UINT16, // pvUShort
-  XtcData::Name::UINT32, // pvUInt
-  XtcData::Name::UINT64, // pvULong
-  XtcData::Name::FLOAT , // pvFloat
-  XtcData::Name::DOUBLE, // pvDouble
-  XtcData::Name::CHARSTR, // pvString
-};
-#endif /* 0 */
-
 UdpReceiver::UdpReceiver(const Parameters&           para,
                          SPSCQueue<XtcData::Dgram*>& encQueue,
-                         SPSCQueue<uint32_t>& interpolateQueue,
                          SPSCQueue<XtcData::Dgram*>& bufferFreelist) :
     m_para          (para),
-    m_encQueue       (encQueue),
-    m_interpolateQueue (interpolateQueue),
+    m_encQueue      (encQueue),
     m_bufferFreelist(bufferFreelist),
     m_terminate     (false),
     m_outOfOrder    (false),
@@ -561,33 +549,116 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 }
 
 
+static void _polyfit(unsigned i0,
+                     const std::vector<double> &t,
+                     const std::vector<double> &v,
+                     std::vector<double> &coeff)
+{
+    // Copy values into a time-ordered vector
+    std::vector<double> val(v.size());
+    for(unsigned i = 0; i < v.size(); i++) {
+        unsigned j = (i0 + i) % v.size();
+        val[i] = v[j];
+    }
+
+    // Create Matrix Placeholder of size n x k, n= number of datapoints, k = order of polynomial, for exame k = 3 for cubic polynomial
+    Eigen::MatrixXd T(t.size(), coeff.size());
+    Eigen::VectorXd V = Eigen::VectorXd::Map(&val.front(), val.size());
+    Eigen::VectorXd result;
+
+    // Populate the matrix
+    double t0 = t[i0 % t.size()];
+    for(size_t i = 0 ; i < t.size(); ++i) {
+        size_t k = (i0 + i) % t.size();
+        for(size_t j = 0; j < coeff.size(); ++j) {
+            T(i, j) = pow(t.at(k) - t0, j);
+        }
+    }
+    //std::cout<<T<<std::endl;
+
+    // Solve for linear least square fit
+    result = T.householderQr().solve(V);
+    for (unsigned k = 0; k < coeff.size(); k++) {
+        coeff[k] = result[k];
+    }
+}
+
+void Interpolator::update(XtcData::TimeStamp t, unsigned v)
+{
+    auto idx = _idx++;
+    _idx %= _t.size();
+
+    logging::debug("Interpolator::update: idx      %d,    t %u.%09u, v %u", idx, t.seconds(), t.nanoseconds(), v);
+
+    _t[idx] = t.asDouble();
+    _v[idx] = double(v);
+
+    if (_t[_t.size() - 1] != 0.0) { // True when MAX_ENC_VALUES or more points were collected
+        _polyfit(_idx, _t, _v, _coeff);
+    }
+}
+
+unsigned Interpolator::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage) const
+{
+    unsigned v;
+    if (_t[_t.size() - 1] != 0.0) { // True when arrays are full
+        // Sum up the terms of the polynomial
+        double val  = 0;
+        double tPwr = 1;
+        double t0   = _t[_idx % _t.size()];
+        double t    = ts.asDouble() - t0;
+        for(unsigned i = 0; i < _coeff.size(); ++i) {
+            val  += _coeff[i] * tPwr;
+            tPwr *= t;
+        }
+        v = unsigned(std::round(val));
+    } else {
+        v = unsigned(_v[_idx - 1]);   // Return the most recent value available
+        damage.increase(XtcData::Damage::MissingData);
+    }
+
+    logging::debug("Interpolator::calc:   idx %d, t %u.%09u, v %u", _idx, ts.seconds(), ts.nanoseconds(), v);
+
+    return v;
+}
+
+
 UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
+    m_interpolator  (MAX_ENC_VALUES, POLYNOMIAL_ORDER),
     m_evtQueue      (drp.pool.nbuffers()),
-    m_interpolateQueue (drp.pool.nbuffers()),
     m_encQueue      (drp.pool.nbuffers()),
     m_bufferFreelist(m_encQueue.size()),
     m_terminate     (false),
     m_running       (false)
 {
     if (para.kwargs.find("slowGroup") != para.kwargs.end())
-        Drp::m_slowGroup = std::stoul(para.kwargs["slowGroup"]);
+        m_slowGroup = std::stoi(para.kwargs["slowGroup"]);
     else
-        Drp::m_slowGroup = 0;    // default: interpolation disabled
+        m_slowGroup = -1;   // default: interpolation disabled
 
-    logging::info("%s: slowGroup = %u", __PRETTY_FUNCTION__, Drp::m_slowGroup);
-    if (Drp::m_slowGroup == 0) {
-        logging::info("interpolation disabled");
+    logging::debug("%s: slowGroup = %u", __PRETTY_FUNCTION__, m_slowGroup);
+    if ((m_slowGroup < 0) || (m_slowGroup > 7)) {   // valid readout groups are 0-7
+        m_interpolating = false;
+        logging::info("Interpolation disabled");
     } else {
-        logging::info("interpolation enabled");
+        m_interpolating = true;
+        logging::info("Interpolation enabled");
     }
 }
 
-unsigned UdpEncoder::connect(std::string& msg)
+unsigned UdpEncoder::connect(std::string& msg, unsigned slowGroup)
 {
+    // Override the kwarg with connect json info from the TPR process, if found
+    if (slowGroup != -1u) {
+        m_interpolating = true;
+        m_slowGroup = slowGroup;
+        logging::info("Interpolation enabled using group %u", m_slowGroup);
+    }
+
     try {
-        m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_encQueue, m_interpolateQueue, m_bufferFreelist);
+        m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_encQueue, m_bufferFreelist);
     }
     catch(std::string& error) {
         logging::error("Failed to create UdpReceiver: %s", error.c_str());
@@ -607,13 +678,25 @@ unsigned UdpEncoder::disconnect()
 
 void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd)
 {
+    // raw
     XtcData::Alg encoderRawAlg("raw", UdpEncoder::MajorVersion, UdpEncoder::MinorVersion, UdpEncoder::MicroVersion);
-    XtcData::NamesId rawNamesId(nodeId, segment);
+    XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
     XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
                                                                  m_para->detName.c_str(), encoderRawAlg,
                                                                  m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, segment);
     rawNames.add(xtc, bufEnd, RawDef);
     m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
+
+    if (m_interpolating) {
+        // interpolated
+        XtcData::Alg encoderInterpolatedAlg("interpolated", UdpEncoder::MajorVersion, UdpEncoder::MinorVersion, UdpEncoder::MicroVersion);
+        XtcData::NamesId interpolatedNamesId(nodeId, InterpolatedNamesIndex);
+        XtcData::Names&  interpolatedNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                     m_para->detName.c_str(), encoderInterpolatedAlg,
+                                                                     m_para->detType.c_str(), m_para->serNo.c_str(), interpolatedNamesId, segment);
+        interpolatedNames.add(xtc, bufEnd, InterpolatedDef);
+        m_namesLookup[interpolatedNamesId] = XtcData::NameIndex(interpolatedNames);
+    }
 }
 
   //std::string UdpEncoder::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
@@ -633,13 +716,10 @@ unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xt
 
     // (Re)initialize the queues
     m_encQueue.startup();
-//  m_interpolateQueue.startup();
     m_evtQueue.startup();
     m_bufferFreelist.startup();
     size_t bufSize = sizeof(XtcData::Dgram) + sizeof(encoder_frame_t);
-//  m_buffer.resize((m_encQueue.size() + m_interpolateQueue.size()) * bufSize);
     m_buffer.resize(m_encQueue.size() * bufSize);
-//  for(unsigned i = 0; i < m_encQueue.size() + m_interpolateQueue.size(); ++i) {
     for(unsigned i = 0; i < m_encQueue.size(); ++i) {
         m_bufferFreelist.push(reinterpret_cast<XtcData::Dgram*>(&m_buffer[i * bufSize]));
     }
@@ -660,7 +740,6 @@ unsigned UdpEncoder::unconfigure()
         m_workerThread.join();
     }
     m_encQueue.shutdown();
-//  m_interpolateQueue.shutdown();
     m_evtQueue.shutdown();
     m_bufferFreelist.shutdown();
     m_namesLookup.clear();   // erase all elements
@@ -723,6 +802,10 @@ void UdpEncoder::_worker()
     m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
                     [&](){return pgp.nNoTrDgrams();});
 
+    const uint64_t nsTmo = (m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end() ?
+                            std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
+                            1500) * 1000000;
+
     m_udpReceiver->start();
 
     while (true) {
@@ -737,7 +820,20 @@ void UdpEncoder::_worker()
 
             m_evtQueue.push(index);
 
-            _process();                 // Was _matchUp
+            _process(dgram);            // Was _matchUp
+        }
+        else {
+            // If there are any PGP datagrams stacked up, try to match them
+            // up with any encoder updates that may have arrived
+            _process(dgram);            // Was _matchUp
+
+            // Generate a timestamp in the past for timing out encoder and PGP events
+            XtcData::TimeStamp timestamp(0, nsTmo);
+            auto ns = _deltaT<ns_t>(timestamp);
+            _timeout(timestamp.from_ns(ns));
+
+            // Time out batches for the TEB
+            m_drp.tebContributor().timeout();
         }
     }
 
@@ -749,8 +845,7 @@ void UdpEncoder::_worker()
     logging::info("Worker thread finished");
 }
 
-// void UdpEncoder::_process(xtcData::Dgram* dgram)
-void UdpEncoder::_process()
+void UdpEncoder::_process(Pds::EbDgram* dgram)
 {
     while (true) {
         uint32_t evtIdx;
@@ -758,69 +853,128 @@ void UdpEncoder::_process()
 
         Pds::EbDgram* evtDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[evtIdx]);
         if (evtDg->service() != XtcData::TransitionId::L1Accept) {
-            _handleTransition(evtIdx, evtDg); // Grab this from PvaDetector
+            _handleTransition(evtIdx, evtDg);
             continue;
         }
 
-        XtcData::Dgram* encDg;
-        if (!m_encQueue.peek(encDg))  break;
+        if (m_interpolating) {
+            assert((m_slowGroup >= 0) && (m_slowGroup <= 7));
+            if (dgram && (dgram->readoutGroups() & (1 << m_slowGroup)) &&
+                (dgram->service() == XtcData::TransitionId::L1Accept)) {
+                const ms_t tmo(1500);
+                auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+                XtcData::Dgram* encDg;
+                while (!m_encQueue.peek(encDg)) {  // Wait for an encoder value
+                    if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+                        logging::warning("encQueue peek timed out: %u\n", m_encQueue.guess_size());
+                        return;
+                    }
+                    std::this_thread::yield();
+                }
+                auto& frame = *(encoder_frame_t*)(encDg->xtc.payload());
+                auto  value = frame.channel[0].encoderValue;
 
-        _handleL1Accept(*encDg, *evtDg);
+                // Associate the current L1Accept's timestamp with the latest encoder value
+                m_interpolator.update(dgram->time, value);
+
+                // Handle all events that have accumulated on the queue
+                while (true) {
+                    uint32_t pgpIdx;
+                    uint32_t rawValue = value;
+                    if (!m_evtQueue.peek(pgpIdx))  break;
+
+                    // Deal with intermediate SlowUpdates
+                    auto pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
+                    if (pgpDg->service() != XtcData::TransitionId::L1Accept) {
+                        _handleTransition(pgpIdx, pgpDg);
+                        continue;
+                    }
+
+                    // Update the encoder value
+                    uint32_t interpolatedValue = m_interpolator.calculate(pgpDg->time, pgpDg->xtc.damage);
+                    if (pgpDg != dgram) {
+                        _handleL1Accept(*pgpDg, frame, nullptr, &interpolatedValue);
+                    } else {
+                        _handleL1Accept(*pgpDg, frame, &rawValue, &interpolatedValue);
+                    }
+
+                    if (pgpDg == dgram)  return;
+                }
+            } else {
+                break;
+            }
+        } else {
+            // not interpolating
+            XtcData::Dgram* encDg;
+            if (!m_encQueue.peek(encDg))  break;
+            evtDg->xtc.damage.increase(encDg->xtc.damage.value());
+
+            auto frame = (const encoder_frame_t*)(encDg->xtc.payload());
+            uint32_t rawValue = frame->channel[0].encoderValue;
+            _handleL1Accept(*evtDg, *frame, &rawValue, nullptr);
+        }
     }
 }
 
-void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, encoder_frame_t& frame)
+// only doing the CreateData for the “raw” case on events where the encoder is read out.
+void UdpEncoder::_event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame,
+                        uint32_t *rawValue, uint32_t *interpolatedValue)
 {
     // ----- CreateData  ------------------------------------------------------
-    unsigned segment = 0;
 
-    XtcData::NamesId namesId1(nodeId, segment);
-    XtcData::CreateData raw(dgram.xtc, bufEnd, m_namesLookup, namesId1);
-    unsigned shape[XtcData::MaxRank] = {1};
+    if (interpolatedValue != nullptr) {
+        // interpolated
+        XtcData::NamesId namesId1(nodeId, InterpolatedNamesIndex);
+        XtcData::CreateData interpolated(dgram.xtc, bufEnd, m_namesLookup, namesId1);
 
-    // ...encoderValue
-    XtcData::Array<uint32_t> arrayA = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
-    arrayA(0) = frame.channel[0].encoderValue;
+        // ...encoderValue
+        interpolated.set_value(EncoderDef::encoderValue, *interpolatedValue);
 
-    // ...frameCount
-    raw.set_value(RawDef::frameCount, frame.header.frameCount);
+        // ...frameCount
+        interpolated.set_value(EncoderDef::frameCount, frame.header.frameCount);
 
-    // ...timing
-    XtcData::Array<uint32_t> arrayB = raw.allocate<uint32_t>(RawDef::timing,shape);
-    arrayB(0) = frame.channel[0].timing;
+        // ...timing
+        interpolated.set_value(EncoderDef::timing, frame.channel[0].timing);
 
-    // ...scale
-    XtcData::Array<uint16_t> arrayC = raw.allocate<uint16_t>(RawDef::scale,shape);
-    arrayC(0) = frame.channel[0].scale;
+        // ...scale
+        interpolated.set_value(EncoderDef::scale, frame.channel[0].scale);
 
-    // ...scaleDenom
-    XtcData::Array<uint16_t> arrayJ = raw.allocate<uint16_t>(RawDef::scaleDenom,shape);
-    arrayJ(0) = frame.channel[0].scaleDenom;
+        // ...scaleDenom
+        interpolated.set_value(EncoderDef::scaleDenom, frame.channel[0].scaleDenom);
 
-    // ...mode
-    XtcData::Array<uint8_t> arrayD = raw.allocate<uint8_t>(RawDef::mode,shape);
-    arrayD(0) = frame.channel[0].mode;
+        // ...mode
+        interpolated.set_value(EncoderDef::mode, frame.channel[0].mode);
 
-    // ...error
-    XtcData::Array<uint8_t> arrayE = raw.allocate<uint8_t>(RawDef::error,shape);
-    arrayE(0) = frame.channel[0].error;
+        // ...error
+        interpolated.set_value(EncoderDef::error, frame.channel[0].error);
+    }
 
-    // ...majorVersion
-    XtcData::Array<uint16_t> arrayF = raw.allocate<uint16_t>(RawDef::majorVersion,shape);
-    arrayF(0) = frame.header.majorVersion;
+    if (rawValue != nullptr) {
+        // raw
+        XtcData::NamesId namesId2(nodeId, RawNamesIndex);
+        XtcData::CreateData raw(dgram.xtc, bufEnd, m_namesLookup, namesId2);
 
-    // ...minorVersion
-    XtcData::Array<uint8_t> arrayG = raw.allocate<uint8_t>(RawDef::minorVersion,shape);
-    arrayG(0) = frame.header.minorVersion;
+        // ...encoderValue
+        raw.set_value(EncoderDef::encoderValue, *rawValue);
 
-    // ...microVersion
-    XtcData::Array<uint8_t> arrayH = raw.allocate<uint8_t>(RawDef::microVersion,shape);
-    arrayH(0) = frame.header.microVersion;
+        // ...frameCount
+        raw.set_value(EncoderDef::frameCount, frame.header.frameCount);
 
-    // ...hardwareID
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%s", frame.header.hardwareID);
-    raw.set_string(RawDef::hardwareID, buf);
+        // ...timing
+        raw.set_value(EncoderDef::timing, frame.channel[0].timing);
+
+        // ...scale
+        raw.set_value(EncoderDef::scale, frame.channel[0].scale);
+
+        // ...scaleDenom
+        raw.set_value(EncoderDef::scaleDenom, frame.channel[0].scaleDenom);
+
+        // ...mode
+        raw.set_value(EncoderDef::mode, frame.channel[0].mode);
+
+        // ...error
+        raw.set_value(EncoderDef::error, frame.channel[0].error);
+    }
 }
 
 void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
@@ -841,6 +995,16 @@ void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
             memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
             if (service == XtcData::TransitionId::Enable) {
+                // Drain the encQueue and repopulate the freelist
+                XtcData::Dgram* encDg;
+                while (m_encQueue.try_pop(encDg)) { // Pop stale encoder buffer
+                    m_bufferFreelist.push(encDg);   // Return buffer to freelist
+                    printf("*** Drained stale encoder buffer: sz %u, %u\n", m_encQueue.guess_size(), m_bufferFreelist.guess_size());
+                }
+
+                // Reset the interpolator
+                m_interpolator.reset();
+
                 m_running = true;
             }
             else if (service == XtcData::TransitionId::Disable) {
@@ -851,81 +1015,56 @@ void UdpEncoder::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
     _sendToTeb(*pebbleDg, pebbleIdx);
 
     uint32_t evtIdx;
-    m_evtQueue.try_pop(evtIdx);       // Actually consume the pebble index
-    assert(evtIdx == pebbleIdx);
+    auto rc = m_evtQueue.try_pop(evtIdx);         // Actually consume the pebble index
+    if (rc)  assert(evtIdx == pebbleIdx);
 }
 
-void UdpEncoder::_handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg)
+void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame,
+                                 uint32_t *rawValue, uint32_t *interpolatedValue)
 {
     uint32_t evtIdx;
     m_evtQueue.try_pop(evtIdx);         // Actually consume the element
 
-    if (m_interpolating) {
-        if (pgpDg.readoutGroups() & (1 << Drp::m_slowGroup)) {
-            // slow event...
-            logging::debug("%s: SLOW event...", __PRETTY_FUNCTION__);
-        } else {
-            // fast event...
-            logging::debug("%s: FAST event...", __PRETTY_FUNCTION__);
-        }
-    } else {
-        // not interpolating...
-        pgpDg.xtc.damage.increase(encDg.xtc.damage.value());
-        auto bufEnd  = (char*)&pgpDg + m_pool->pebble.bufferSize();
+    auto bufEnd = (char*)&pgpDg + m_pool->pebble.bufferSize();
 
-        _event(pgpDg, bufEnd, *(encoder_frame_t*)(encDg.xtc.payload()));
+    _event(pgpDg, bufEnd, frame, rawValue, interpolatedValue);
 
+    if (!m_interpolating || (pgpDg.readoutGroups() & (1 << m_slowGroup))) {
         XtcData::Dgram* dgram;
-        m_encQueue.try_pop(dgram);      // Actually consume the element
-        m_bufferFreelist.push(dgram);   // Return buffer to freelist
-
-        ++m_nMatch;
+        auto rc = m_encQueue.try_pop(dgram);          // Actually consume the element
+        if (rc)   m_bufferFreelist.push(dgram);       // Return buffer to freelist
     }
+
+    ++m_nMatch;
 
     _sendToTeb(pgpDg, evtIdx);
 }
 
 void UdpEncoder::_timeout(const XtcData::TimeStamp& timestamp)
 {
-    while (true) {
-        uint32_t index;
-        if (!m_evtQueue.peek(index)) {
-            break;
-        }
+    // Time out older pending PGP datagrams
+    uint32_t index;
+    if (!m_evtQueue.peek(index))  return;
 
-        Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
-        if (dgram.time > timestamp) {
-            break;                  // dgram is newer than the timeout timestamp
-        }
+    Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
+    if (dgram.time > timestamp)  return;  // dgram is newer than the timeout timestamp
 
-        uint32_t idx;
-        m_evtQueue.try_pop(idx);        // Actually consume the element
-        assert(idx == index);
+    uint32_t idx;
+    auto rc = m_evtQueue.try_pop(idx);              // Actually consume the element
+    if (rc)  assert(idx == index);
 
-        if (dgram.service() == XtcData::TransitionId::L1Accept) {
-          // No UDP data so mark event as damaged
-          dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
-          ++m_nTimedOut;
-          //printf("TO: %u.%09u, PGP: %u.%09u, PGP - TO: %10ld ns, svc %2d  Timeout\n",
-          //       timestamp.seconds(), timestamp.nanoseconds(),
-          //       dgram.time.seconds(), dgram.time.nanoseconds(),
-          //       dgram.time.to_ns() - timestamp.to_ns(),
-          //       dgram.service());
-          logging::debug("Event timed out!! "
-                         "TimeStamps: timeout %u.%09u > PGP %u.%09u [0x%08x%04x.%05x > 0x%08x%04x.%05x]",
-                         timestamp.seconds(), timestamp.nanoseconds(),
-                         dgram.time.seconds(), dgram.time.nanoseconds(),
-                         timestamp.seconds(), (timestamp.nanoseconds()>>16)&0xfffe, timestamp.nanoseconds()&0x1ffff,
-                         dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff);
-        }
-        else { // SlowUpdate
-            // Allocate a transition dgram from the pool and initialize its header
-            Pds::EbDgram* trDg = m_pool->transitionDgrams[index];
-            *trDg = dgram;              // Initialized Xtc, possibly w/ damage
-        }
-
-        _sendToTeb(dgram, index);
+    if (dgram.service() == XtcData::TransitionId::L1Accept) {
+        // No encoder data so mark event as damaged
+        dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
+        ++m_nTimedOut;
+        logging::debug("Event timed out!! "
+                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                       dgram.time.seconds(), dgram.time.nanoseconds(),
+                       dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
+                       _deltaT<ms_t>(dgram.time));
     }
+
+    _sendToTeb(dgram, index);
 }
 
 void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
@@ -1030,10 +1169,21 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
         return;
     }
 
-    m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
-    m_det->connect(msg, std::to_string(getId()));
+    unsigned slowGroup = -1u;
+    std::string id = std::to_string(getId());
+    if (m_para.kwargs.find("encTprAlias") != m_para.kwargs.end()) {
+        std::string encTprAlias = m_para.kwargs["encTprAlias"];
+        for (auto it : msg["body"]["tpr"].items()) {
+            slowGroup = it.value()["det_info"]["readout"];
+            if (it.value()["proc_info"]["alias"] == encTprAlias)
+                break;
+        }
+    }
 
-    unsigned rc = m_udpDetector->connect(errorMsg);
+    m_det->nodeId = msg["body"]["drp"][id]["drp_id"];
+    m_det->connect(msg, id);
+
+    unsigned rc = m_udpDetector->connect(errorMsg, slowGroup);
     if (!errorMsg.empty()) {
         if (!rc) {
             logging::warning(("UdpDetector::connect: " + errorMsg).c_str());
@@ -1181,7 +1331,7 @@ int createUdpSocket(int port)
   }
   /* set receive buffer size */
   if (setrcvbuf(fd, UDP_RCVBUF_SIZE) < 0) {
-    printf("Error: Failed to set socket receive buffer to %u bytes\n\r", UDP_RCVBUF_SIZE);
+    logging::error("Failed to set socket receive buffer to %u bytes: %m", UDP_RCVBUF_SIZE);
     return 0;
   }
   return (fd);
@@ -1214,7 +1364,7 @@ int main(int argc, char* argv[])
                 para.laneMask = std::stoul(optarg, nullptr, 16);
                 break;
             case 'D':
-                para.detType = optarg;  // Defaults to 'pv'
+                para.detType = optarg;  // Defaults to 'encoder'
                 break;
             case 'S':
                 para.serNo = optarg;
@@ -1231,7 +1381,7 @@ int main(int argc, char* argv[])
             case 'k':
                 kwargs_str = kwargs_str.empty()
                            ? optarg
-                           : kwargs_str + ", " + optarg;
+                           : kwargs_str + "," + optarg;
                 break;
             case 'P':
                 para.instrument = optarg;
@@ -1313,6 +1463,10 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
+            if (kwargs.first == "pva_addr")       continue;  // DrpBase
+            if (kwargs.first == "match_tmo_ms")   continue;
+            if (kwargs.first == "slowGroup")      continue;
+            if (kwargs.first == "encTprAlias")    continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;

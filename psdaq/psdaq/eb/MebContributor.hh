@@ -53,6 +53,7 @@ namespace Pds {
       unsigned                  _id;
       bool                      _enabled;
       unsigned                  _verbose;
+      uint64_t                  _previousPid;
     private:
       uint64_t                  _eventCount;
       uint64_t                  _trCount;

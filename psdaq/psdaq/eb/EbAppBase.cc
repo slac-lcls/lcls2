@@ -45,8 +45,8 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   EventBuilder (msTimeout, prms.verbose),
   _transport   (prms.verbose, prms.kwargs),
   _verbose     (prms.verbose),
+  _lastPid     (0),
   _bufferCnt   (0),
-  _contributors(0),
   _id          (-1),
   _exporter    (exporter),
   _pfx         (pfx),
@@ -98,7 +98,6 @@ void EbAppBase::disconnect()
   _links.clear();
 
   _id           = -1;
-  _contributors = 0;
   _contract     .fill(0);
   _bufRegSize   .clear();
   _maxBufSize   .clear();
@@ -137,8 +136,8 @@ int EbAppBase::connect(unsigned maxTrBuffers)
   _bufRegSize   .resize(nCtrbs);
   _maxTrSize    .resize(nCtrbs);
   _maxBufSize   .resize(nCtrbs);
+  _lastPid      .resize(nCtrbs);
   _id           = _prms.id;
-  _contributors = _prms.contributors;
   _idxSrcs      = _prms.indexSources;
   _contract     = _prms.contractors;
 
@@ -157,6 +156,8 @@ int EbAppBase::connect(unsigned maxTrBuffers)
                                             {"eb", _pfx}};
   _exporter->constant("EB_EvPlDp", labels, eventPoolDepth());
 
+  _exporter->add("EB_EpAlCt", labels, MetricType::Counter, [&](){ return epochAllocCnt(); });
+  _exporter->add("EB_EpFrCt", labels, MetricType::Counter, [&](){ return epochFreeCnt();  });
   _exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return eventAllocCnt(); });
   _exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return eventFreeCnt();  });
   _exporter->add("EB_EvOcCt", labels, MetricType::Gauge,   [&](){ return eventOccCnt();   });
@@ -166,6 +167,10 @@ int EbAppBase::connect(unsigned maxTrBuffers)
   {
     // Pass loop index by value or it will be out of scope when lambda runs
     _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=](){ return arrTime(i); });
+
+    // Revisit: Doesn't work:
+    //labels["ctrb"] = _prms.drps[i];
+    //_exporter->add("EB_arrTime", labels, MetricType::Gauge, [=](){ return arrTime(i); });
   }
 
   _fixupSrc = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
@@ -282,6 +287,16 @@ int EbAppBase::process()
                      ? (                   idx * _maxBufSize[src]) // In batch/buffer region
                      : (_bufRegSize[src] + idx * _maxTrSize[src]); // Tr region for non-selected EB is after batch/buffer region
   const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));    // Or, (char*)(_region[src]) + ofs;
+  auto           sz  = sizeof(*idg) + idg->xtc.sizeofPayload();
+  void*          end;
+  if (ImmData::buf(flg) == ImmData::Buffer)
+  {
+    // idg is first dgram in batch; set end to end of region if idg is within 1 batch size of it
+    end = idx < _prms.numBuffers[src] - _maxEntries ? (char*)idg + _maxEntries * _maxBufSize[src]
+                                                    : (char*)_region[src] + _bufRegSize[src];
+  } else {
+    end = (char*)idg + _maxTrSize[src];
+  }
 
   // "Non-selected" TEBs receive only single dgrams that are transitions needing
   // to have their EOL flag set to avoid the EB iterating to the next buffer.
@@ -290,17 +305,68 @@ int EbAppBase::process()
   // prematurely.  MEBs receive only single dgrams that are the source data,
   // which shouldn't be modified, so we userp the NoResponse bit (which isn't
   // used by MEBs) to indicate it should be done here.
-  if (flg & ImmData::NoResponse)  idg->setEOL();
+  if (ImmData::rsp(flg) == ImmData::NoResponse)  idg->setEOL();
 
+  auto print = false;
   if (src != idg->xtc.src.value())
   {
-    logging::error("Link src (%d) != dgram src (%d)", src, idg->xtc.src.value());
-    _verbose = VL_EVENT;
+    logging::error("%s:\n  Link src (%d) != dgram src (%d)", __PRETTY_FUNCTION__, src, idg->xtc.src.value());
+    print = true;
   }
+  if (ImmData::buf(flg) == ImmData::Buffer)
+  {
+    if (idx > _prms.numBuffers[src])
+    {
+      logging::error("%s:\n  Buffer index for src %d is out of range 0:%u: %u\n",
+                     __PRETTY_FUNCTION__, src, _prms.numBuffers[src], idx);
+      print = true;
+    }
+    if ((idg < _region[src]) || (end > ((char*)_region[src] + _bufRegSize[src])))
+    {
+      logging::error("%s:\n  Buffer %p:%p falls outside of region limits %p:%p\n",
+                     __PRETTY_FUNCTION__, idg, end, _region[src], (char*)_region[src] + _bufRegSize[src]);
+      print = true;
+    }
+    if (sz > _maxBufSize[src])
+    {
+      logging::error("%s:\n  Buffer's dgram %p, size %u overruns buffer of size %zu\n",
+                     __PRETTY_FUNCTION__, idg, sz, _maxBufSize[src]);
+      print = true;
+    }
+  }
+  else
+  {
+    if (idx > _maxTrBuffers)
+    {
+      logging::error("%s:\n  Tr buffer index for src %d is out of range 0:%u: %u\n",
+                     __PRETTY_FUNCTION__, src, _maxTrBuffers, idx);
+      print = true;
+    }
+    if ((idg < (void*)((char*)_region[src] + _bufRegSize[src])) || (end > ((char*)_region[src] + _regSize[src])))
+    {
+      logging::error("%s:\n  Tr dgram %p:%p falls outside of region limits %p:%p\n",
+                     __PRETTY_FUNCTION__, idg, end,
+                     (char*)_region[src] + _bufRegSize[src], (char*)_region[src] + _regSize[src]);
+      print = true;
+    }
+    if (sz > _maxTrSize[src])
+    {
+      logging::error("%s:\n  Tr dgram %p, size %u overruns buffer of size %zu\n",
+                     __PRETTY_FUNCTION__, idg, sz, _maxTrSize[src]);
+      print = true;
+    }
+  }
+  if (idg->pulseId() <= _lastPid[src])
+  {
+    logging::error("%s:\n  Pulse ID for src %u did not advance: %014lx <= %014lx, ts %u.%09u",
+                   __PRETTY_FUNCTION__, src, idg->pulseId(), _lastPid[src], idg->time.seconds(), idg->time.nanoseconds());
+    print = true;
+  }
+  _lastPid[src] = idg->pulseId();
 
   _ctrbSrc->observe(double(src));       // Revisit: For testing
 
-  if (UNLIKELY(_verbose >= VL_BATCH))
+  if (UNLIKELY(print || (_verbose >= VL_BATCH)))
   {
     unsigned    env = idg->env;
     uint64_t    pid = idg->pulseId();
@@ -331,7 +397,7 @@ int EbAppBase::process()
 
   // Tr space bufSize value is irrelevant since idg has EOL set in that case
   if ((_idxSrcs & (1ull << src)) == 0)  data = 0;
-  EventBuilder::process(idg, _maxBufSize[src], data);
+  EventBuilder::process(idg, _maxBufSize[src], data, end);
 
   ++_bufferCnt;
 
@@ -347,7 +413,7 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
     auto     lnk = _links[src];
     size_t   ofs = lnk->lclOfs(idg);
     unsigned idx = (ofs - _bufRegSize[src]) / _maxTrSize[src];
-    uint64_t imm = ImmData::value(ImmData::Transition, _id, idx);
+    uint64_t imm = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
 
     if (UNLIKELY(_verbose >= VL_EVENT))
       printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",

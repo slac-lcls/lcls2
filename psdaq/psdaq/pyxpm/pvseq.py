@@ -70,6 +70,11 @@ class Engine(object):
                     seq.append(CheckPoint())
                 elif instr == ControlRequest.opcode:
                     seq.append(ControlRequest(args[1]))
+                elif instr == Call.opcode:
+                    seq.append(Call(args[1]))
+                elif instr == Return.opcode:
+                    seq.append(Return())
+
         except StopIteration:
             pass
         self._seq = seq
@@ -127,22 +132,12 @@ class Engine(object):
 
             #  Translate addresses
             addr = best_ram
-            for i in self._seq:
-                if i.opcode == Branch.opcode:
-                    jumpto = i.address()
-                    if jumpto > len(self._seq):
-                        rval = -3
-                    elif jumpto >= 0:
-                        jaddr = 0
-                        for j,seq in enumerate(self._seq):
-                            if j==jumpto:
-                                break
-                            jaddr += _nwords(seq)
-                        self._ram[addr].set(i._word(jaddr+best_ram))
-                        addr += 1
-                else:
-                    self._ram[addr].set(i._word())
-                    addr += 1
+            words = relocate(self._seq,best_ram)
+            if words is None:
+                rval = -3
+            else:
+                for i,w in enumerate(words):
+                    self._ram[best_ram+i].set(w)
 
             print('Translated addresses rval = {}'.format(rval))
 

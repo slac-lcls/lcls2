@@ -228,7 +228,7 @@ class calib_components_epix():
         if self._data_bit_mask is None:
             dettype = self.dettype()
             assert dettype in ('epix10ka', 'epixhr'), 'implemented for listed detect types only'
-            self._data_bit_mask = ue.data_bitword(dettype) # {'epix10ka':ue.M14, 'epixhr':ue.M15}.get(dettype, None)
+            self._data_bit_mask = ue.data_bitword(dettype) # {'epix10ka':ue.M14, 'epixhr':ue.M14}.get(dettype, None)
         return self._data_bit_mask
 
     def cbits_config_segment(self, cob):

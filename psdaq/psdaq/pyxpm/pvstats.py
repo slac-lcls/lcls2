@@ -189,7 +189,13 @@ class TimingStatus(object):
                 if self._linkUpdate:
                     self._linkUpdate()
             
+class TimingLock(object):
+    def __init__(self, name, dev):
+        self._pv_Dump        = addPVC(name+':DUMP', 'I', 0, self.dump)
 
+    def dump(self, pv, val):
+        self._dev.dump()
+        
 class AmcPLLStatus(object):
     def __init__(self, name, app, idx):
         self._idx    = idx
@@ -261,11 +267,6 @@ class MonClkStatus(object):
         self._pv_bpClk  = addPV(name+':BpClk' ,'f')
         self._pv_fbClk  = addPV(name+':FbClk' ,'f')
         self._pv_recClk = addPV(name+':RecClk','f')
-
-        print('MonClkStatus clkRates {:} {:} {:} {:} MHz'.format(app.monClk_0.get(),
-                                                                 app.monClk_1.get(),
-                                                                 app.monClk_2.get(),
-                                                                 app.monClk_3.get()) )
 
     def handle(self, msg, offset, timev):
         w = struct.unpack_from('<LLLL',msg,offset)
@@ -390,7 +391,7 @@ class PVMmcmPhaseLock(object):
 
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None):
         setProvider(p)
         global lock
         lock     = m
@@ -404,6 +405,8 @@ class PVStats(object):
         self.fwbuild = addPV(name+':FwBuild','s',axiv.BuildStamp.get())
         self.usRxEn  = addPV(name+':UsRxEnable','I',self._app.usRxEnable.get())
         self.cuRxEn  = addPV(name+':CuRxEnable','I',self._app.cuRxEnable.get())
+
+        self._tsSync = tsSync
 
         self._links = []
         for i in range(32):
@@ -419,6 +422,10 @@ class PVStats(object):
 
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp)
+
+#  Expose for dumping the input link locking status
+        self._usTimingLock = TimingLock(name+':Us',xpm.UsGthRx)
+        self._cuTimingLock = TimingLock(name+':Cu',xpm.CuGthRx)
 
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
 
@@ -460,6 +467,8 @@ class PVStats(object):
 
     def update(self, cycle, cuMode=False):
         try:
+            if self._tsSync:
+                self._tsSync.update()
             if cuMode:
                 self._cuTiming.update()
                 self._cuGen   .update()

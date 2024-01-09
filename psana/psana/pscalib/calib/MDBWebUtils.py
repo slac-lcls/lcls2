@@ -67,7 +67,7 @@ def has_kerberos_ticket():
 
 def check_kerberos_ticket(exit_if_invalid=True):
     if has_kerberos_ticket(): return True
-    logger.warning('KERBEROS TICKET IS UNAVAILABLE OR EXPIRED. Requested operation requires valid kerberos ticket')
+    logger.error('KERBEROS TICKET IS UNAVAILABLE OR EXPIRED. Requested operation requires valid kerberos ticket')
     if exit_if_invalid:
         sys.exit('FIX KERBEROS TICKET - use command "kinit" or check its status with command "klist"')
     return False
@@ -368,7 +368,7 @@ def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBH
 
 
 def insert_document_and_data(dbname, colname, dicdoc, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
-    """Wrapper for pymongo compatability."""
+    """DEPRECATED - wrapper for pymongo compatability - is used in graphqt/CMWDB*.py"""
     return add_data_and_doc(data, dbname, colname, url, krbheaders, **dicdoc)
 
 

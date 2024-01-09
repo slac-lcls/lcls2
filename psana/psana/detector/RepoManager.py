@@ -296,6 +296,7 @@ def init_repoman_and_logger(**kwa):
     logmode     = kwa.get('logmode', 'INFO')
     group       = kwa.get('group', 'ps-users')
     fmt         = kwa.get('fmt', '[%(levelname).1s] %(filename)s L%(lineno)04d %(message)s')
+    dirrepo     = kwa.get('dirrepo', 'work')
 
     repoman = RepoManager(**kwa)
 
@@ -304,7 +305,8 @@ def init_repoman_and_logger(**kwa):
     logfname = repoman.makedir_logname(logsuffix)
     if savelogfile:
         init_file_handler(logfname=logfname, loglevel=logmode, **kwa)  # loglevel=logmode, filemode=filemode, group=group, fmt=fmt
-    repoman.save_record_at_start(SCRNAME, adddict={}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
+    if dirrepo != 'work' and dirrepo != './work':
+        repoman.save_record_at_start(SCRNAME, adddict={}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
     if parser is not None:
         logger.info(ut.info_parser_arguments(parser))

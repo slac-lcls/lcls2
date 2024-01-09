@@ -39,6 +39,8 @@ static json createChunkRequestMsg();
 
 namespace Drp {
 
+static const bool DIRECT_IO = true;     // Give an argument a name
+
 static long readInfinibandCounter(const std::string& counter)
 {
     std::string path{"/sys/class/infiniband/mlx5_0/ports/1/counters/" + counter};
@@ -189,7 +191,7 @@ void MemPool::freePebble()
 
     // Release when all pebble buffers were in use but now one is free
     if (allocs - frees == m_nbuffers) {
-        std::unique_lock<std::mutex> lock(m_lock);
+        std::lock_guard<std::mutex> lock(m_lock);
         m_condition.notify_one();
     }
 }
@@ -393,11 +395,14 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                 abort();
             }
 
-            for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
-                PGPEvent* brokenEvent = &m_pool.pgpEvents[e & (m_pool.nDmaBuffers() - 1)];
-                logging::error("broken event:  %08x", brokenEvent->mask);
-                handleBrokenEvent(*brokenEvent);
-                freeDma(brokenEvent);   // Leaves event mask = 0
+            if (m_lastComplete == evtCounter) {}  // something else is going on
+            else {
+                for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
+                    PGPEvent* brokenEvent = &m_pool.pgpEvents[e & (m_pool.nDmaBuffers() - 1)];
+                    logging::error("broken event:  %08x", brokenEvent->mask);
+                    handleBrokenEvent(*brokenEvent);
+                    freeDma(brokenEvent);   // Leaves event mask = 0
+                }
             }
         }
         m_lastComplete = evtCounter;
@@ -432,6 +437,9 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
 void PgpReader::freeDma(PGPEvent* event)
 {
+    // DMA buffers must be freeable from multiple threads
+    std::lock_guard<std::mutex> lock(m_lock);
+
     // Return buffers and reset event.  Careful with order here!
     // index could be reused as soon as dmaRetIndexes() completes
     for (int i=0; i<PGP_MAX_LANES; i++) {
@@ -465,7 +473,7 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_det(nullptr),
   m_tsId(-1u),
   m_mon(mon),
-  m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] == "yes"),
+  m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), DIRECT_IO),
   m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
   m_writing(false),
   m_inprocSend(inprocSend),
@@ -924,7 +932,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_tPrms.maxEntries = m_para.kwargs["batching"] == "yes" ? Pds::Eb::MAX_ENTRIES : 1; // Default to "no"
+    m_tPrms.maxEntries = Pds::Eb::MAX_ENTRIES; // Batching is always enabled; set to 1 to disable
     m_tPrms.core[0]    = -1;
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
@@ -956,6 +964,27 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
             logging::error("%s: stat(%s) error: %m", __PRETTY_FUNCTION__, statPth.c_str());
         }
         logging::info("output dir: %s", statPth.c_str());
+    }
+
+    //  Add pva_addr to the environment
+    if (para.kwargs.find("pva_addr")!=para.kwargs.end()) {
+        const char* a = para.kwargs["pva_addr"].c_str();
+        char* p = getenv("EPICS_PVA_ADDR_LIST");
+        char envBuff[256];
+        if (p)
+            sprintf(envBuff,"%s %s", p, a);
+        else
+            sprintf(envBuff,"%s", a);
+        logging::info("Setting env %s\n", envBuff);
+        if (setenv("EPICS_PVA_ADDR_LIST",envBuff,1))
+            perror("setenv pva_addr");
+    }
+
+    if (para.kwargs.find("batching")!=para.kwargs.end()) {
+        logging::warning("The batching kwarg is obsolete and ignored (always enabled");
+    }
+    if (para.kwargs.find("directIO")!=para.kwargs.end()) {
+        logging::warning("The directIO kwarg is obsolete and ignored (always enabled)");
     }
 }
 
@@ -1274,6 +1303,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     bool bufErr = false;
     m_supervisorIpPort.clear();
     m_isSupervisor = false;
+
     for (auto it : body["drp"].items()) {
         unsigned drpId = it.value()["drp_id"];
 
@@ -1308,6 +1338,19 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
             uint16_t port = base_port + id * 8 + m_para.partition;
             m_supervisorIpPort = ip + ":" + std::to_string(port);  // Supervisor's IP and port
             m_isSupervisor = alias == m_para.alias;                // True if we're the supervisor
+        }
+    }
+
+    if (body.find("tpr") != body.end()) {
+        for (auto it : body["tpr"].items()) {
+            // Build readout group mask for ignoring other partitions' RoGs
+            unsigned rog(it.value()["det_info"]["readout"]);
+            if (rog < Pds::Eb::NUM_READOUT_GROUPS) {
+                m_para.rogMask |= 1 << rog;
+            }
+            else {
+                logging::warning("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
+            }
         }
     }
 

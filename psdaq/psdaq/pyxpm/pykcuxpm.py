@@ -19,6 +19,7 @@ from psdaq.pyxpm.pvstats import *
 from psdaq.pyxpm.pvctrls import *
 from psdaq.pyxpm.pvhandler import *
 from psdaq.pyxpm.pvxtpg  import *
+from psdaq.pyxpm.tssync import TsSync
 
 class NoLock(object):
     def __init__(self):
@@ -74,10 +75,13 @@ def main():
     axiv.printStatus()
 
     provider = StaticProvider(__name__)
+    setProvider(provider)
 
     lock = Lock()
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False)
+    tsSync = TsSync(args.P,base.XPM.TpgMini) if args.G else None
+
+    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False, tsSync=tsSync)
 #    base.handle(pvstats.handle)
 
     pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, notify=False, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9)

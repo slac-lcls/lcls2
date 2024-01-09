@@ -17,7 +17,7 @@ class epixhremu_raw_0_0_1(eb.epix_base):
         logger.debug('epixhremu_raw_0_0_1.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = ad.sgs.Create(segname='EPIXHR1X4:V1')
-        self._data_bit_mask = eb.M15 # for epixhremu data
+        self._data_bit_mask = eb.M14 # for epixhr2x2 data on 2023-10-30 Dionisio - HR has 14 data bits.
         self._data_gain_bit = eb.B15
         self._gain_bit_shift = 10
         self._gains_def = (41.0, 13.7, 0.512) # epixhremu ADU/keV H:M:L = 1 : 1/3 : 1/80
