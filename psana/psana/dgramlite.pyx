@@ -19,6 +19,7 @@ cdef class DgramLite:
         self.payload = d.xtc.extent - sizeof(Xtc)
         self.timestamp = <uint64_t>d.seq.high << 32 | d.seq.low
         self.service = (d.env>>24)&0xf
+        self.env = d.env
         PyBuffer_Release(&buf)
 
     @property
@@ -32,5 +33,9 @@ cdef class DgramLite:
     @property
     def service(self):
         return self.service
+
+    @property
+    def keepraw(self):
+        return (self.env>>6)&1
 
 
