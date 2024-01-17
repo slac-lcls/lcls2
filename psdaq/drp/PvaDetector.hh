@@ -14,24 +14,36 @@
 
 namespace Drp {
 
-struct PvaParameters;
-class  PvaDetector;
+struct PvParameters;
+class  PvDetector;
 
-class PvaMonitor : public Pds_Epics::PvMonitorBase
+class PvMonitor : public Pds_Epics::PvMonitorBase
 {
 public:
-    PvaMonitor(const PvaParameters& para,
-               PvaDetector&         pvaDetector);
+    PvMonitor(const PvParameters& para,
+              const std::string&  alias,
+              const std::string&  pvName,
+              const std::string&  provider,
+              const std::string&  request,
+              const std::string&  field,
+              unsigned            id,
+              size_t              nBuffers,
+              uint32_t            firstDim);
 public:
     void onConnect()    override;
     void onDisconnect() override;
     void updated()      override;
 public:
-    void clear();
-    int  getVarDef(XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: rankHack!
-    size_t rank() {return m_rank;}
+    void startup();
+    void shutdown();
+    void timeout(const XtcData::TimeStamp& timestamp);
+    int  getParams(std::string& fieldName, XtcData::Name::DataType& xtcType, int& rank);
+    unsigned id() const { return m_id; }
+    const std::string& alias() const { return m_alias; }
+    uint64_t nUpdates() const { return m_nUpdates; }
+    uint64_t nMissed() const { return m_nMissed; }
 private:
-    enum State { NotReady, Ready };
+    enum State { NotReady, Armed, Ready };
 private:
     const Parameters&               m_para;
     mutable std::mutex              m_mutex;
@@ -39,43 +51,56 @@ private:
     pvd::ScalarType                 m_type;
     size_t                          m_nelem;
     size_t                          m_rank;
+    size_t                          m_payloadSize;
     State                           m_state;
-    PvaDetector&                    m_pvaDetector;
+    unsigned                        m_id;
+    uint32_t                        m_firstDimOverride;
+    std::string                     m_alias;
+public:
+    SPSCQueue<XtcData::Dgram*>      pvQueue;
+    SPSCQueue<XtcData::Dgram*>      bufferFreelist;
+private:
+    std::vector<uint8_t>            m_buffer;
     ZmqContext                      m_context;
     ZmqSocket                       m_notifySocket;
+    uint64_t                        m_nUpdates;
+    uint64_t                        m_nMissed;
 };
 
 
-class PvaDetector : public XpmDetector
+class PvDetector : public XpmDetector
 {
 public:
-    PvaDetector(PvaParameters& para, DrpBase& drp);
+    PvDetector(PvParameters& para, DrpBase& drp);
     unsigned connect(std::string& msg);
     unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ };
+    void event(XtcData::Dgram& dgram, const void* bufEnd, const XtcData::Xtc& pvXtc);
     unsigned unconfigure();
-    void process(const XtcData::TimeStamp&);
 private:
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
     void _matchUp();
-    void _handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg);
-    void _handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
-    void _handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
-    void _handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
+    void _handleTransition(Pds::EbDgram& evtDg, Pds::EbDgram& trDg);
+    void _tEvtEqPv(std::shared_ptr<PvMonitor>&, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
+    void _tEvtLtPv(std::shared_ptr<PvMonitor>&, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
+    void _tEvtGtPv(std::shared_ptr<PvMonitor>&, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
+    struct Event
+    {
+      uint32_t index;
+      uint32_t remaining;
+    };
+private:
     enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
-    const PvaParameters& m_para;
+    PvParameters& m_para;
     DrpBase& m_drp;
-    std::shared_ptr<PvaMonitor> m_pvaMonitor;
+    std::vector< std::shared_ptr<PvMonitor> > m_pvMonitors;
     std::thread m_workerThread;
-    SPSCQueue<uint32_t> m_evtQueue;
-    SPSCQueue<XtcData::Dgram*> m_pvQueue;
-    SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
-    std::vector<uint8_t> m_buffer;
+    SPSCQueue<Event> m_evtQueue;
     std::atomic<bool> m_terminate;
     std::atomic<bool> m_running;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
@@ -87,15 +112,14 @@ private:
     uint64_t m_nTooOld;
     uint64_t m_nTimedOut;
     int64_t m_timeDiff;
-    uint32_t m_firstDimKw;              // Revisit: Hack!
 };
 
 
-class PvaApp : public CollectionApp
+class PvApp : public CollectionApp
 {
 public:
-    PvaApp(PvaParameters& para);
-    ~PvaApp();
+    PvApp(PvParameters& para);
+    ~PvApp();
     void handleReset(const nlohmann::json& msg) override;
 private:
     nlohmann::json connectionInfo() override;
@@ -108,8 +132,8 @@ private:
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:
     DrpBase m_drp;
-    PvaParameters& m_para;
-    std::unique_ptr<PvaDetector> m_pvaDetector;
+    PvParameters& m_para;
+    std::unique_ptr<PvDetector> m_pvDetector;
     Detector* m_det;
     bool m_unconfigure;
 };
