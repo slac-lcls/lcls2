@@ -122,7 +122,8 @@ class ConfigScanBase(object):
         my_config_data = {}
         for motor in scan.getMotors():
             my_config_data.update({motor.name: motor.position})
-            my_config_data.update({'step_docstring': step[2]})
+            docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {motor.position}}}'
+            my_config_data.update({'step_docstring': docstring})
 
         data = {
             "motors":           my_config_data,
