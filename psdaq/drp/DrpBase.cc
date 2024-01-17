@@ -981,7 +981,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     }
 
     if (para.kwargs.find("batching")!=para.kwargs.end()) {
-        logging::warning("The batching kwarg is obsolete and ignored (always enabled");
+        logging::warning("The batching kwarg is obsolete and ignored (always enabled)");
     }
     if (para.kwargs.find("directIO")!=para.kwargs.end()) {
         logging::warning("The directIO kwarg is obsolete and ignored (always enabled)");
