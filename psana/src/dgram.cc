@@ -623,6 +623,10 @@ static int dgram_read(PyDgramObject* self, int sequential)
     return readSuccess;
 }
 
+static PyObject* env(PyDgramObject* self) {
+    return PyLong_FromLong(self->dgram->env);
+}
+
 static PyObject* service(PyDgramObject* self) {
     return PyLong_FromLong(self->dgram->service());
 }
@@ -892,6 +896,7 @@ static PyMemberDef dgram_members[] = {
 };
 
 static PyMethodDef dgram_methods[] = {
+    {"env", (PyCFunction)env, METH_NOARGS, "env"},
     {"service", (PyCFunction)service, METH_NOARGS, "service"},
     {"timestamp", (PyCFunction)timestamp, METH_NOARGS, "timestamp"},
     {"get_dgram_ptr", (PyCFunction)get_dgram_ptr, METH_NOARGS, "dgram pointer"},
