@@ -125,6 +125,30 @@ public:
         return true;
     }
 
+    T& front()
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[index & m_buffer_mask];
+    }
+
+    const T& front() const
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[index & m_buffer_mask];
+    }
+
+    T& back()
+    {
+        int64_t index = m_write_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[index & m_buffer_mask];
+    }
+
+    const T& back() const
+    {
+        int64_t index = m_write_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[index & m_buffer_mask];
+    }
+
     bool is_empty()
     {
         return m_read_index.load(std::memory_order_acquire) ==
