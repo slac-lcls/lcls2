@@ -20,7 +20,7 @@ top.setAlg('config', [0,0,0])
 
 top.set('XTPG.CuDelay'   , 134682, 'UINT32')
 top.set('XTPG.CuBeamCode',     40, 'UINT8')
-top.set('XTPG.CuInput'   ,      0, 'UINT8')
+top.set('XTPG.CuInput'   ,      1, 'UINT8')
 v = [10]*8
 top.set('PART.L0Delay', v, 'UINT32')
 
