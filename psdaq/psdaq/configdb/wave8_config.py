@@ -255,10 +255,11 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     names_cfg = [epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',
+                 epics_prefix+'DataPathCtrl:EnableStream', # 0x1 for Controls, 0x2 for DAQ
                  epics_prefix+'RawBuffers:FifoPauseThreshold',
                  epics_prefix+'Integrators:ProcFifoPauseThreshold',
                  epics_prefix+'Integrators:IntFifoPauseThreshold']
-    values = [group,16,1,127,127,127]
+    values = [group,16,1,0x2,127,127,127]
     ctxt_put(names_cfg, values)
 
     time.sleep(0.2)
@@ -429,7 +430,7 @@ def wave8_unconfig(base):
     values = [0]
     ctxt_put(names_cfg, values)
 
-    #  Leaving DAQ control.  
+    #  Leaving DAQ control.
     if base['timebase']=='186M':
         config_timing(epics_prefix)
 
