@@ -311,7 +311,7 @@ void EventBuilder::_fixup(EbEvent*             event,
   else                      ++_tmoEvtCnt;
 
   //if (_verbose >= VL_EVENT)
-  if (_fixupCnt + _tmoEvtCnt < 1000)
+  if (_fixupCnt + _tmoEvtCnt < 100)
   {
     const EbDgram* dg = event->creator();
     printf("%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, tmo %ld ms\n",

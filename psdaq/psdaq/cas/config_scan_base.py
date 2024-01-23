@@ -14,7 +14,7 @@ import numpy as np
 #
 
 class ConfigScanBase(object):
-    def __init__(self, args):
+    def __init__(self, args=[]):
 
         parser = argparse.ArgumentParser()
         parser.add_argument('-p', type=int, choices=range(0, 8), default=3,
@@ -122,10 +122,8 @@ class ConfigScanBase(object):
         my_config_data = {}
         for motor in scan.getMotors():
             my_config_data.update({motor.name: motor.position})
-            # derive step_docstring from step_value
-            if motor.name == ControlDef.STEP_VALUE:
-                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {motor.position}}}'
-                my_config_data.update({'step_docstring': docstring})
+            docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {motor.position}}}'
+            my_config_data.update({'step_docstring': docstring})
 
         data = {
             "motors":           my_config_data,
@@ -161,10 +159,7 @@ class ConfigScanBase(object):
             my_step_data = {}
             for motor in scan.getMotors():
                 my_step_data.update({motor.name: motor.position})
-                # derive step_docstring from step_value
-                if motor.name == ControlDef.STEP_VALUE:
-                    docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {motor.position}}}'
-                    my_step_data.update({'step_docstring': docstring})
+                my_step_data.update({'step_docstring': step[2]})
 
             data["motors"] = my_step_data
 

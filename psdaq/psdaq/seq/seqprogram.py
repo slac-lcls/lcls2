@@ -31,6 +31,10 @@ class SeqUser:
         self._idx     = 0
         self.lock     = None
 
+        xpmpf = ':'.join(prefix.split(':')[:4])
+        self.seqcodes = Pv(xpmpf+':SEQCODES',isStruct=True)
+        self.eng      = int(prefix.split(':')[-1])
+
     def changed(self,err=None):
         q = self.running.__value__
         if q==0 and self.lock!=None:
@@ -99,7 +103,19 @@ class SeqUser:
         #  (Optional for XPM) Write descriptions for each bit in the sequence
         if descset!=None:
             self.seqbname.put(descset,wait=tmo)
+            
+            seqcodes = self.seqcodes.get()
+            desc     = seqcodes.value.Description
+            for e in range(4*self.eng,4*self.eng+4):
+                desc[e] = ''
+            for i,d in enumerate(descset):
+                desc[4*self.eng+i] = d
 
+            v = seqcodes.value
+            v.Description = desc
+            seqcodes.value = v
+            self.seqcodes.put(seqcodes,wait=tmo)
+                
         self._idx = idx
 
     def begin(self, wait=False, refresh=False):

@@ -14,22 +14,32 @@ cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 #
 #  drp variables
 #
-prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
-data_dir = '/drpneh/data'
+prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
+data_dir = '/cds/data/psdm/tst'
+trig_dir = '/cds/home/opr/tmoopr/daq/trigger'
 
 task_set = 'taskset 0xffbfeffbfe '
-std_opts =f'-P {hutch} -C {collect_host} -M {prom_dir} -o {data_dir} -d /dev/datadev_%d'
+batching = 'batching=yes'
+directIO = 'directIO=yes'
+scripts  = f'script_path={trig_dir}'
 
-drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no '
-drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no '
-pva_cmd0 = task_set+'drp_pva '  +(std_opts%0)+' -k batching=no '
-pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
-bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=eno1 '
-bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
+std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir
+std_opts0 = std_opts+' -o '+data_dir+' -d /dev/datadev_0'+' -k '+batching+','+directIO
+std_opts1 = std_opts+' -o '+data_dir+' -d /dev/datadev_1'+' -k '+batching+','+directIO
 
-ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_fee.txt'
-ea_cmd0 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
-ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+teb_cmd  = task_set+' teb '         +std_opts+' -k '+scripts
+meb_cmd  = task_set+' monReqServer '+std_opts
+
+drp_cmd0 = task_set+' drp '    +std_opts0
+drp_cmd1 = task_set+' drp '    +std_opts1
+pva_cmd0 = task_set+' drp_pva '+std_opts0
+pva_cmd1 = task_set+' drp_pva '+std_opts1
+bld_cmd0 = task_set+' drp_bld '+std_opts0+' -k interface=eno1'
+bld_cmd1 = task_set+' drp_bld '+std_opts1+' -k interface=eno1'
+
+ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
+ea_cmd0 = task_set+' epicsArch '+std_opts0+' '+ea_cfg
+ea_cmd1 = task_set+' epicsArch '+std_opts1+' '+ea_cfg
 
 #
 #  ami variables
@@ -39,7 +49,8 @@ heartbeat_period = 1000 # units are ms
 ami_workers_per_node = 4
 ami_worker_nodes = ["drp-neh-cmp013"]
 ami_num_workers = len(ami_worker_nodes)
-ami_manager_node = "drp-neh-cmp016"
+ami_manager_node = "drp-neh-cmp013"
+ami_monitor_node = "drp-neh-cmp013"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -56,17 +67,18 @@ ami_manager_node = "drp-neh-cmp016"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:10'},
+ {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:10 DAQ:NEH:XPM:11'},
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:f'groupca DAQ:NEH 10 {groups}'},
  {                         id:'procstat',    flags:'p',                  cmd:f'procstat p{platform}.cnf.last'},
 
  { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 10 -C BEAM {auth} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
-
+ { host: 'drp-neh-cmp005', id:'fee_fzpopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
  { host: 'drp-neh-cmp016', id:'teb0',        flags:'spu',                cmd:f'{task_set}teb -P {hutch} -C {collect_host} -M {prom_dir}'},
-
- { host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D ts'},
-
+ { host: 'drp-neh-cmp001', id:'timing_1',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D ts'},
+ { host: 'drp-neh-cmp002', id:'timing_2',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam '}, 
+ { host: 'drp-neh-cmp010', id:'timing_3',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam'},
+ { host: 'drp-neh-cmp015', id:'timing_4',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam'}
 ]
 
 procmgr_ami = [

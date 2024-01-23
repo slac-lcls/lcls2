@@ -29,7 +29,7 @@ class Top(pr.Device):
     mmcmParms = [ ['MmcmPL119', 0x08900000],
                   ['MmcmPL70' , 0x08a00000],
                   ['MmcmPL130', 0x08b00000],
-                  ['MmcmPL186', 0x80040000] ]
+                  ['MmcmPL186', 0x80030000] ]
 
     def __init__(   self,       
                     name        = "Top",
@@ -39,7 +39,7 @@ class Top(pr.Device):
                     fidPrescale = 200,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
-        
+        self.fwVersion = 0x03070000
 
         ################################################################################################################
         # UDP_SRV_XVC_IDX_C         => 2542,  -- Xilinx XVC 
@@ -209,7 +209,7 @@ class Top(pr.Device):
         self.add(xpm.XpmSequenceEngine(
             memBase = self.srp,
             name   = 'SeqEng_0',
-            offset = 0x80020000,
+            offset = 0x80040000,
         ))
 
 #        self.add(xpm.CuPhase(
@@ -221,6 +221,19 @@ class Top(pr.Device):
         self.add(xpm.XpmPhase(
             memBase = self.srp,
             name   = 'CuToScPhase',
-            offset = 0x80050000,
+            offset = 0x80080000,
         ))
 
+    def start(self):
+        #  Firmware version check
+        fwVersion = self.AxiVersion.FpgaVersion.get()
+        if (fwVersion < self.fwVersion):
+            errMsg = f"""
+            PCIe.AxiVersion.FpgaVersion = {fwVersion:#04x} != {self.fwVersion:#04x}
+            Please update PCIe firmware using software/scripts/updatePcieFpga.py
+            https://github.com/slaclab/lcls2-pgp-pcie-apps/blob/master/firmware/targets/shared_config.mk
+            """
+            click.secho(errMsg, bg='red')
+            raise ValueError(errMsg)
+
+        

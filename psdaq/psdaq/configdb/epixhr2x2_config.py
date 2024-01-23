@@ -28,6 +28,7 @@ ocfg = None
 segids = None
 seglist = [0,1]
 asics = None
+readPixelMaps = False
 
 elemRowsC = 146
 elemRowsD = 144
@@ -297,13 +298,15 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     cbase.__enter__()
     base['cam'] = cbase
 
+    #cbase.Core.enable.set(True)
     firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
     buildStamp = cbase.Core.AxiVersion.BuildStamp.get()
     gitHash = cbase.Core.AxiVersion.GitHash.get()
     print(f'firmwareVersion [{firmwareVersion:x}]')
     print(f'buildStamp      [{buildStamp}]')
     print(f'gitHash         [{gitHash:x}]')
-
+    #cbase.Core.enable.set(False)
+    
     #  Enable the environmental monitoring
     cbase.EpixHR.SlowAdcRegisters.enable.set(1)
     cbase.EpixHR.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
@@ -603,19 +606,20 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
                 saci.enable.set(False)
 
     #  read back the pixel maps
-    for i in asics:
-        saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
-        saci.enable.set(True)
-        fname = f'/tmp/Hr10kTAsic{i}.{datetime.datetime.now().strftime("%Y-%m-%d.%H:%M:%S")}.csv'
-        logging.warning(f'Reading pixel map to {fname}')
-        saci.fnGetPixelBitmap(None,None,fname)
-        cname = f'/tmp/Hr10kTAsic{i}.latest'
-        try:
-            os.remove(cname)
-        except:
-            pass
-        os.symlink(fname,cname)
-        saci.enable.set(False)
+    if readPixelMaps:
+        for i in asics:
+            saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
+            saci.enable.set(True)
+            fname = f'/tmp/Hr10kTAsic{i}.{datetime.datetime.now().strftime("%Y-%m-%d.%H:%M:%S")}.csv'
+            logging.warning(f'Reading pixel map to {fname}')
+            saci.fnGetPixelBitmap(None,None,fname)
+            cname = f'/tmp/Hr10kTAsic{i}.latest'
+            try:
+                os.remove(cname)
+            except:
+                pass
+            os.symlink(fname,cname)
+            saci.enable.set(False)
 
     logging.warning('config_expert complete')
 
@@ -675,6 +679,7 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     #  Capture the firmware version to persist in the xtc
     cbase = base['cam']
+    #cbase.Core.enable.set(True)
     firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
 
     ocfg = cfg
@@ -696,7 +701,7 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     #  User pixel map is assumed to be 288x384 in standard element orientation
     gain_mode = cfg['user']['gain_mode']
-    if False:
+    if not readPixelMaps:
         if gain_mode==5:
             pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
         else:
@@ -751,6 +756,8 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
         top.set('asicPixelConfig', pixelConfigUsr)
         top.set('trbit'          , trbit, 'UINT8')
         scfg[seg+1] = top.typed_json()
+
+    #cbase.Core.enable.set(False)
 
     result = []
     for i in seglist:
@@ -824,6 +831,8 @@ def epixhr2x2_update(update):
     logging.warning('epixhr2x2_update')
     global ocfg
     global base
+
+    _stop(base)
     ##
     ##  Having problems with partial configuration
     ##

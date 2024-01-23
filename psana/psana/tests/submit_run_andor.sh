@@ -13,9 +13,8 @@ t_start=`date +%s`
 
 exp=$1
 runnum=$2
-socket=${3}
 #srun python run_andor.py $exp $runnum ${socket}
-mpirun -n 5 python run_andor.py $exp $runnum ${socket}
+mpirun -n 5 python run_andor.py $exp $runnum
 
 t_end=`date +%s`
 echo PSJobCompleted TotalElapsed $((t_end-t_start)) 

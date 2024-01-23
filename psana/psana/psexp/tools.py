@@ -4,6 +4,11 @@ import logging
 
 # mode can be 'mpi' or 'legion' or 'none' for non parallel 
 mode = os.environ.get('PS_PARALLEL', 'mpi')
+MODE = 'PARALLEL'
+if mode == 'mpi':
+    from mpi4py import MPI
+    if MPI.COMM_WORLD.Get_size() == 1:
+        MODE = 'SERIAL'
 
 
 class RunHelper(object):

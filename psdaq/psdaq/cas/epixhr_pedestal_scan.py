@@ -3,9 +3,10 @@ import json
 
 def main():
 
-    scan = ConfigScanBase([('--spacing',{'type':int,'default':5,'help':'size of rectangular grid'})])
+    scan = ConfigScanBase()
 
     args = scan.args
+    args.scantype = 'pedestal'
     keys = [f'{args.detname}:user.gain_mode']
 
     def steps():

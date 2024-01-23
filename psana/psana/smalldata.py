@@ -319,17 +319,18 @@ class Server: # (hdf5 handling)
                         to_backfill.remove(dataset_name)
                     self.append_to_cache(dataset_name, data)
                     if is_var:
+                        ts = event_data_dict['timestamp']
                         try:
                             # All of the datasets that share a length dataset should
                             # be the same size.  Otherwise, flag an error.
-                            exp_len = len_evt[len_name][event_data_dict['timestamp']]
+                            exp_len = len_evt[len_name][ts]
                             if len(data) != exp_len:
                                 raise TypeError("Data for %s is length %d, not %d!" 
                                                 % (dataset_name, len(data), exp_len))
                         except:
                             # This is the first dataset for this length dataset,
-                            # so remember the length.
-                            len_evt[len_name][event_data_dict['timestamp']] = len(data)
+                            # so remember the length and forget all of the older ones!
+                            len_evt[len_name] = {ts: len(data)}
                             self.append_to_cache(len_name, len(data))
 
                 for dataset_name in to_backfill:
@@ -414,7 +415,7 @@ class Server: # (hdf5 handling)
 
         cache.append(data)
 
-        if cache.n_events == self.cache_size:
+        if cache.size >= self.cache_size:
             self.write_to_file(dataset_name, cache)
 
         return

@@ -256,26 +256,32 @@ def copyValues(din,dout,k=None):
         else:
             print(f'{k} unchanged')
 
-create = False
-dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
+def main():
+    create = False
+    dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
-args = cdb.createArgs(inst='rix',prod=True,name='epixhr',segm=0,user='rixopr',yaml='5').args
+    args = cdb.createArgs(inst='rix',prod=True,name='epixhr',segm=0,user='rixopr',yaml='5').args
+    if args.inst=='asc':
+        args.prod = False
+        args.user = 'detopr'
 
-db = 'configdb' if args.prod else 'devconfigdb'
-mycdb = cdb.configdb(f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/', args.inst, create,
-                     root=dbname, user=args.user, password=args.password)
-top = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+    db = 'configdb' if args.prod else 'devconfigdb'
+    mycdb = cdb.configdb(f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/', args.inst, create,
+                         root=dbname, user=args.user, password=args.password)
+    top = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
 
-base = 'ePixHr10kT'
+    base = 'ePixHr10kT'
 
-yml = ePixYml([int(args.yaml)])
-for f in yml.files:
-    print(path+f)
+    yml = ePixYml([int(args.yaml)])
+    for f in yml.files:
+        print(path+f)
 
-for fn in yml.files:
-    d = pr.yamlToData(fName=path+fn)
-    copyValues(d[base],top,'expert')
+    for fn in yml.files:
+        d = pr.yamlToData(fName=path+fn)
+        copyValues(d[base],top,'expert')
 
-mycdb.modify_device(args.alias, top)
+    mycdb.modify_device(args.alias, top)
 
+if __name__ == '__main__':
+    main()
     
