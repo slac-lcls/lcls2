@@ -140,13 +140,14 @@ class Event():
                 break
         return service
 
+    @property
     def keepraw(self):
-        keepraw = None
+        v = None
         for d in self._dgrams:
             if d:
-                keepraw = (d.env()>>22)&0x1
+                v = (d.env()>>22)&0x1
                 break
-        return keepraw
+        return v
 
     def get_offsets_and_sizes(self):
         offset_and_size_arr = np.zeros((self._size, 2), dtype=np.int64)
