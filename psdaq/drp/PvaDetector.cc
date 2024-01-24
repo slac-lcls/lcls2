@@ -894,7 +894,7 @@ void PvApp::_unconfigure()
     m_unconfigure = false;
 }
 
-json PvaApp::connectionInfo(const nlohmann::json& msg)
+json PvApp::connectionInfo(const nlohmann::json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])

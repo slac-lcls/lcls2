@@ -146,9 +146,9 @@ unsigned EpixM320::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann
     return 0;
 }
 
-json EpixM320::connectionInfo()
+json EpixM320::connectionInfo(const nlohmann::json& msg)
 {
-    return BEBDetector::connectionInfo();
+    return BEBDetector::connectionInfo(msg);
 }
 
 unsigned EpixM320::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
