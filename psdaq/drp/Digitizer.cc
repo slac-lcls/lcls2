@@ -164,7 +164,7 @@ Digitizer::~Digitizer()
     Py_DECREF(m_module);
 }
 
-json Digitizer::connectionInfo()
+json Digitizer::connectionInfo(const nlohmann::json& msg)
 {
     unsigned reg = m_paddr;
     int xpm  = (reg >> 20) & 0xF;

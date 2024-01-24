@@ -47,7 +47,7 @@ public:
     ~EpicsArchApp();
     void handleReset(const nlohmann::json& msg) override;
 private:
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void connectionShutdown() override;
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;

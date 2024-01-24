@@ -1048,7 +1048,7 @@ class CollectionManager():
     def condition_alloc(self):
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
-        msg = create_msg('alloc', body={'ids': list(ids)})
+        msg = create_msg('alloc', body={'ids': list(ids), **self.cmstate})
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
         # make sure all the clients respond to alloc message with their connection info

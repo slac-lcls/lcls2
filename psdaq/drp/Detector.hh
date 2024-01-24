@@ -26,7 +26,7 @@ public:
     Detector(Parameters* para, MemPool* pool) :
         nodeId(-1), virtChan(0), m_para(para), m_pool(pool), m_xtcbuf(para->maxTrSize) {}
     virtual ~Detector() {}
-    virtual nlohmann::json connectionInfo() {return nlohmann::json({});}
+    virtual nlohmann::json connectionInfo(const nlohmann::json& msg) {return nlohmann::json({});}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
     virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) = 0;
     virtual unsigned beginrun (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo) {return 0;}

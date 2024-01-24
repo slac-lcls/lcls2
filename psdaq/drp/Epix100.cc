@@ -111,7 +111,7 @@ unsigned Epix100::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann:
     return 0;
 }
 
-json Epix100::connectionInfo()
+json Epix100::connectionInfo(const nlohmann::json& msg)
 {
     // Exclude connection info until lcls2-epix-hr-pcie timingTxLink is fixed
     // What I observed with epix100: when deadtime is enabled the epix100
@@ -120,7 +120,7 @@ json Epix100::connectionInfo()
     logging::error("Returning NO XPM link; implementation incomplete");
     return json({});
 
-    return BEBDetector::connectionInfo();
+    return BEBDetector::connectionInfo(msg);
 }
 
 unsigned Epix100::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)

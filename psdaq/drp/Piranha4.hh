@@ -17,7 +17,7 @@ class Piranha4 : public BEBDetector
 public:
     Piranha4(Parameters* para, MemPool* pool);
     ~Piranha4();
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void slowupdate(XtcData::Xtc&, const void* bufEnd) override;
     void shutdown() override;
     void write_image(XtcData::Xtc&, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);

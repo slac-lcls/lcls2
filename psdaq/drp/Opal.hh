@@ -13,7 +13,7 @@ class Opal : public BEBDetector
 public:
     Opal(Parameters* para, MemPool* pool);
     ~Opal();
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void slowupdate(XtcData::Xtc&, const void* bufEnd) override;
     void shutdown() override;
     void write_image(XtcData::Xtc&, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);

@@ -31,7 +31,7 @@ public:
     BEBDetector(Parameters* para, MemPool* pool);
     virtual ~BEBDetector();
 public:  // Implementation of Detector
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void           connect       (const nlohmann::json&, const std::string& collectionId) override;
     unsigned       configure     (const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     void           event         (XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;

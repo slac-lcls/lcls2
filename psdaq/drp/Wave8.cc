@@ -160,7 +160,7 @@ namespace Drp {
                 ProcStream::createData(fex,index,streams[9]);
        }
     };
-    
+
   };
 
 Wave8::Wave8(Parameters* para, MemPool* pool) :
@@ -173,9 +173,9 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
         m_debatch = true;
 }
 
-json Wave8::connectionInfo()
+json Wave8::connectionInfo(const nlohmann::json& msg)
 {
-    return BEBDetector::connectionInfo();
+    return BEBDetector::connectionInfo(msg);
 
     // Exclude connection info until cameralink-gateway timingTxLink is fixed
     logging::error("Returning NO XPM link; implementation incomplete");

@@ -83,9 +83,9 @@ xpm_pvhost = '172.21.152.78'    # Temporary
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-srcf-cmp034"]
+ami_worker_nodes = ["drp-srcf-cmp042"]
 ami_num_workers = len(ami_worker_nodes)
-ami_manager_node = "drp-srcf-cmp034"
+ami_manager_node = "drp-srcf-cmp042"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -140,7 +140,7 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp004', id:'tmo_fim0_0',  flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D wave8 -k epics_prefix=TST:FIM:W8:01'},
 
 # {host: 'drp-srcf-cmp012', id:'tst_atmpiranha_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x2 -D piranha4'},
-# {host: 'drp-srcf-cmp007', id:'tst_atmpiranha_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4 -k pebbleBufSize=16384'},
+ {host: 'drp-srcf-cmp007', id:'tst_atmpiranha_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4 -k pebbleBufSize=16384'},
 # {host: 'drp-srcf-cmp012', id:'tst_atmpiranha_0', flags:'spux', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D piranha4 -k pebbleBufSize=16384'},
 
 # {host: 'drp-srcf-cmp007', id:'tmo_piranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
@@ -159,6 +159,10 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp029', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd0} -l 0x4 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
 # {host: 'drp-srcf-cmp011', id:'tmo_fzpopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
+
+ { host: 'drp-srcf-cmp026', id:'tst_atmopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=TMO:TIMETOOL:TTALL'},
+# { host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
+ { host: 'drp-srcf-cmp026', id:'tst_peppexopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x4 -D opal'},
 
 # {host: 'drp-srcf-cmp028', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x4 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 # {host: 'drp-srcf-cmp020', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd1+' -l 0x8 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
