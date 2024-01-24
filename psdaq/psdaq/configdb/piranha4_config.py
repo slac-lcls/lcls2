@@ -155,41 +155,42 @@ def connectionInfo(cl, alloc_json_str):
     print('camlink supervisor:',supervisor,'nworkers:',nworker)
     barrier_global.init(supervisor,nworker)
 
-    # Open a new thread here
-    if xpmpv_global is not None:
-        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-        pv = PVCtrls(xpmpv_global,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
-        pv.start()
-    else:
-        if barrier_global.supervisor:
-            nbad = 0
-            while 1:
-                # check to see if timing is stuck
-                sof1 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
-                time.sleep(0.1)
-                sof2 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
-                if sof1!=sof2: break
-                nbad+=1
-                print('*** Timing link stuck:',sof1,sof2,'resetting. Iteration:', nbad)
-                #  Empirically found that we need to cycle to LCLS1 timing
-                #  to get the timing feedback link to lock
-                #  cpo: switch this to XpmMini which recovers from more issues?
-                cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-                time.sleep(3.5)
-                cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-                time.sleep(3.5)
+    ## TODO: Mona commented below to test if 3.7.0 works without this workaround
+    ## Open a new thread here
+    #if xpmpv_global is not None:
+    #    cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+    #    pv = PVCtrls(xpmpv_global,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
+    #    pv.start()
+    #else:
+    #    if barrier_global.supervisor:
+    #        nbad = 0
+    #        while 1:
+    #            # check to see if timing is stuck
+    #            sof1 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+    #            time.sleep(0.1)
+    #            sof2 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+    #            if sof1!=sof2: break
+    #            nbad+=1
+    #            print('*** Timing link stuck:',sof1,sof2,'resetting. Iteration:', nbad)
+    #            #  Empirically found that we need to cycle to LCLS1 timing
+    #            #  to get the timing feedback link to lock
+    #            #  cpo: switch this to XpmMini which recovers from more issues?
+    #            cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+    #            time.sleep(3.5)
+    #            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+    #            time.sleep(3.5)
 
-            # camlink timing seems to intermittently lose lock back to the XPM
-            # and empirically this fixes it.  not sure if we need the sleep - cpo
-            cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
-            time.sleep(0.1)
+    #        # camlink timing seems to intermittently lose lock back to the XPM
+    #        # and empirically this fixes it.  not sure if we need the sleep - cpo
+    #        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+    #        time.sleep(0.1)
 
-            txId = timTxId('piranha4')
+    #        txId = timTxId('piranha4')
 
-            cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
-        barrier_global.wait()
-        rxId = cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
-        print('rxId {:x}'.format(rxId))
+    #        cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+    #    barrier_global.wait()
+    #    rxId = cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+    #    print('rxId {:x}'.format(rxId))
 
     if barrier_global.supervisor:
         cl.StopRun()
