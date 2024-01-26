@@ -323,6 +323,15 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         ++m_nTmgHdrError;
     }
     XtcData::TransitionId::Value transitionId = timingHeader->service();
+    //{
+    //  uint32_t lane = dest[current] >> 8;
+    //  uint32_t vc   = dest[current] & 0xff;
+    //  auto event_header = timingHeader;
+    //  printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %014lx | env %08x | event counter %u | index %u\n",
+    //         size, lane, vc, transitionId, event_header->pulseId(), event_header->env, event_header->evtCounter, index);
+    //  //for(unsigned i=0; i<32; i++) //i<((size+3)>>2); i++)
+    //  //  printf("%08x%c",reinterpret_cast<uint32_t*>(m_pool.dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
+    //}
     auto rogs = timingHeader->readoutGroups();
     if ((rogs & (1 << m_para.partition)) == 0) {
         logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",

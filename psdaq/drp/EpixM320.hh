@@ -4,6 +4,9 @@
 #include "BEBDetector.hh"
 #include "psdaq/service/Semaphore.hh"
 
+#define NUM_BANKS 24
+
+
 namespace Drp {
 
 class EpixM320 : public BEBDetector
@@ -28,6 +31,7 @@ protected:
 private:
     void           __event   (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&);
+    void           _descramble(uint16_t input[3073][NUM_BANKS], uint16_t output[3073][NUM_BANKS]);
 public:
     void           monStreamEnable ();
     void           monStreamDisable();

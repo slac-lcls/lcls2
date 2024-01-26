@@ -242,7 +242,6 @@ def epixm320_cdict(prjCfg):
     top.set(base+'AsicPwrManualFpga', 0, 'boolEnum')
     top.set(base+'DebugSel0',         0, 'debugChEnum')
     top.set(base+'DebugSel1',         0, 'debugChEnum')
-    top.set(base+'StartupReq',        0, 'boolEnum')
     top.set(base+'getSerialNumbers',  0, 'boolEnum')
     top.set(base+'AsicRdClk',         0, 'boolEnum')
 
@@ -265,6 +264,13 @@ def epixm320_cdict(prjCfg):
         top.set(base+'DisableLane'     , 0, 'UINT32')
         top.set(base+'EnumerateDisLane', 0, 'UINT32')
 
+    # These registers are set in the epixm320_config.py file
+    #for i in range(numAsics):
+    #    base = 'expert.App.AsicTop.BatcherEventBuilder{}.'.format(i)
+    #    top.set(base+'Bypass'     , 0, 'UINT8')
+    #    top.set(base+'Timeout'    , 0, 'UINT32')
+    #    top.set(base+'Blowoff'    , 0, 'boolEnum')
+
     base = 'expert.App.PowerControl.'
     top.set(base+'DigitalSupplyEn', 3, 'UINT8')
 
@@ -274,19 +280,19 @@ def epixm320_cdict(prjCfg):
     top.define_enum('wfEnum', {'CustomWF':0, 'RampCounter':1})
 
     base = 'expert.App.Dac.FastDac.'
-    top.set(base+'WFEnabled'       , 0, 'boolEnum')
-    top.set(base+'run'             , 0, 'boolEnum')
-    top.set(base+'externalUpdateEn', 0, 'boolEnum')
-    top.set(base+'waveformSource'  , 0, 'wfEnum')
-    top.set(base+'samplingCounter' , 0, 'UINT16')
-    top.set(base+'DacValue'        , 0, 'UINT32')
-    top.set(base+'rCStartValue'    , 0, 'UINT32')
-    top.set(base+'rCStopValue'     , 0, 'UINT32')
-    top.set(base+'rCStep'          , 0, 'UINT32')
+    top.set(base+'WFEnabled'       , 0,       'boolEnum')
+    top.set(base+'run'             , 0,       'boolEnum')
+    top.set(base+'externalUpdateEn', 0,       'boolEnum')
+    top.set(base+'waveformSource'  , 0,       'wfEnum')
+    top.set(base+'samplingCounter' , 0x220,   'UINT16')
+    top.set(base+'DacValue'        , 0x30000, 'UINT32')
+    top.set(base+'rCStartValue'    , 0,       'UINT32')
+    top.set(base+'rCStopValue'     , 0,       'UINT32')
+    top.set(base+'rCStep'          , 0,       'UINT32')
 
-    top.define_enum('clkEnum', {'250MHz':1, '125MHz':2, '168MHz':3})
+    top.define_enum('clkEnum', {'250MHz':1, '125MHz':2, '168MHz':3, 'Default':4})
     base = 'expert.Pll.'
-    top.set(base+'Clock', 3, 'clkEnum')
+    top.set(base+'Clock', 4, 'clkEnum')
     conv = functools.partial(int, base=16)
     top.set(base+'_250_MHz', np.loadtxt(prjCfg+'/EPixHRM320KPllConfig250Mhz.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))
     top.set(base+'_125_MHz', np.loadtxt(prjCfg+'/EPixHRM320KPllConfig125Mhz.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))

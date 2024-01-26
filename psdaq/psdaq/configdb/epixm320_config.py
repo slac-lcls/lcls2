@@ -10,7 +10,7 @@ import rogue.hardware.axi
 import pyrogue.protocols
 
 import epix_hr_m_320k
-import ePix320kM as fpgaBoard
+import ePix320kM as ePixM
 import epix_hr_leap_common as leapCommon
 import surf.protocols.batcher as batcher
 
@@ -39,7 +39,7 @@ asics = None
 RTP = 6   # run trigger partition
 
 #  Timing delay scans can be limited by this
-EventBuilderTimeout = int(1.0e-3*156.25e6)
+EventBuilderTimeout = 4*int(1.0e-3*156.25e6)
 
 #  Register ordering matters, but our configdb does not preserve the order.
 #  For now, put the ordering in code here, until the configdb can be updated to preserve order.
@@ -84,7 +84,6 @@ ordering['RegisterControlDualClock'] = ['IDreset',
                                         'AsicPwrManualFpga',
                                         'DebugSel0',
                                         'DebugSel1',
-                                        'StartupReq',
                                         'getSerialNumbers',
                                         'AsicRdClk',]
 
@@ -220,152 +219,7 @@ ordering['TriggerRegisters'] = ['RunTriggerEnable',
                                 'PgpTrigEn',
                                 'numberTrigger',]
 for i in range(4):
-    ordering['BatcherEventBuilder{i}'] = ['Bypass','Timeout','Blowoff',]
-
-
-#class EpixMRoot(pr.Root):
-class Root(pr.Root):
-    def __init__(self,dev='/dev/datadev_0', **kwargs):
-        #  Allow ePixFpga to find the yaml files for fnInitAsic()
-        self.top_level = '/tmp'
-
-        self.numOfAsics = 4
-        self.sim = False
-        self.promProg = False
-
-        # Set the timeout
-        kwargs['timeout'] = 10.0 # 5.0 seconds default
-
-        super().__init__(**kwargs)
-
-        # # Map the DMA streams
-        self.srpStream = rogue.hardware.axi.AxiStreamDma(dev, 0x100 * 5 + 0, 1) # Registers
-
-        # # Create SRPv3
-        self.srp = rogue.protocols.srp.SrpV3()
-
-        # # Connect SRPv3 to srpStream
-        pyrogue.streamConnectBiDir(self.srpStream, self.srp)
-
-        # Add Devices
-        self.add(leapCommon.Core(offset = 0x0000_0000, memBase = self.srp, sim = False, promProg = False, expand = False,))
-        self.add(fpgaBoard.App  (offset = 0x8000_0000, memBase = self.srp, sim = False, enabled  = True,  expand = False,))
-
-    def start(self, **kwargs):
-        super().start(**kwargs)
-        # Check if not simulation and not PROM programming
-        if not self.sim and not self.promProg:
-            self.CountReset()
-
-    def enableAllAsics(self, enable) :
-        for batcherIndex in range(self.numOfAsics) :
-            self.enableAsic(batcherIndex, enable)
-
-    def enableAsic(self, batcherIndex, enable) :
-        getattr(self.App.AsicTop, f"BatcherEventBuilder{batcherIndex}").Blowoff.set(not enable)
-
-    def hwTrigger(self, frames, rate) :
-        with self.root.updateGroup(.25):
-            # precaution in case someone stops the acquire function in the middle
-            self.App.AsicTop.TriggerRegisters.StopTriggers()
-
-            self.App.AsicTop.TriggerRegisters.AcqCountReset()
-            self.App.AsicTop.TriggerRegisters.SetAutoTrigger(rate)
-            self.App.AsicTop.TriggerRegisters.numberTrigger.set(frames)
-            self.App.AsicTop.TriggerRegisters.StartAutoTrigger()
-
-            # Wait for the file write to write the 10 waveforms
-            #time.sleep(frames/rate)
-            while (self.App.AsicTop.TriggerRegisters.AcqCount.get() != frames) :
-                print("Triggers sent: {}".format(self.App.AsicTop.TriggerRegisters.AcqCount.get()) , end='\r')
-                time.sleep(0.1)
-            print("Triggers sent: {}".format(self.App.AsicTop.TriggerRegisters.AcqCount.get()))
-
-            # stops triggers
-            self.App.AsicTop.TriggerRegisters.StopTriggers()
-
-    def getLaneLocks(self) :
-        for asicIndex in range(self.numOfAsics) :
-            self.App.SspMonGrp[asicIndex].enable.set(True)
-            print("ASIC{}: {:#x}".format(asicIndex, self.App.SspMonGrp[asicIndex].Locked.get()))
-
-    def fnInitAsicScript(self, dev,cmd,arg):
-        """SetTestBitmap command function"""
-        arguments = np.asarray(arg)
-
-        print("Init ASIC script started")
-        #delay = 1
-        delay = 0.1
-        print('*** cpo and dawood set delay to 0.1')
-
-
-        # configure PLL
-        print("Loading PLL configuration")
-        self.App.enable.set(False)
-        if not self.sim :
-            self.Core.Si5345Pll.enable.set(True)
-            self.Core.Si5345Pll.LoadCsvFile(self.filenamePLL)
-            print("Loaded. Waiting for lock...")
-            time.sleep(6)
-            self.App.enable.set(True)
-            self.Core.Si5345Pll.enable.set(False)
-
-        # load config that sets prog supply
-        print("Loading supply configuration")
-        self.root.LoadConfig(self.filenamePowerSupply)
-        print("Loading {}".format(self.filenamePowerSupply))
-        #time.sleep(delay)
-
-        if (not self.sim):
-            # load deserializer
-            print("Loading lane delay configurations")
-            self.root.LoadConfig(self.filenameDESER)
-            print("Loading {}".format(self.filenameDESER))
-            #time.sleep(delay)
-
-
-        # load config that sets waveforms
-        print("Loading waveforms configuration")
-        self.root.LoadConfig(self.filenameWaveForms)
-        print("Loading {}".format(self.filenameWaveForms))
-        #time.sleep(delay)
-
-        # load config that sets packet registers
-        print("Loading packet register configurations")
-        self.root.LoadConfig(self.filenamePacketReg)
-        print("Loading {}".format(self.filenamePacketReg))
-        #time.sleep(delay)
-
-        # load batcher
-        print("Loading batcher configurations")
-        self.root.LoadConfig(self.filenameBatcher)
-        print("Loading {}".format(self.filenameBatcher))
-        #time.sleep(delay)
-
-        ## takes the asics off of reset
-        print("Taking asic off of reset")
-        self.App.AsicTop.RegisterControlDualClock.enable.set(True)
-        self.App.AsicTop.RegisterControlDualClock.ClkSyncEn.set(False)
-        self.App.AsicTop.RegisterControlDualClock.GlblRstPolarityN.set(False)
-        time.sleep(delay)
-        self.App.AsicTop.RegisterControlDualClock.GlblRstPolarityN.set(True)
-        #time.sleep(delay)
-        self.App.AsicTop.RegisterControlDualClock.ClkSyncEn.set(True)
-        self.root.readBlocks()
-        #time.sleep(delay)
-
-        ## load config for the asic
-        if not self.sim :
-            print("Loading ASICs and timing configuration")
-            for asicIndex in range(1 ,5, 1):
-                if arguments[asicIndex] != 0:
-                    self.root.LoadConfig(self.filenameASIC.format(asicIndex))
-                    print("Loading {}".format(self.filenameASIC.format(asicIndex)))
-                    #time.sleep(5*delay)
-
-        print("Initialization routine completed.")
-
-        return
+    ordering[f'BatcherEventBuilder{i}'] = ['Bypass','Timeout','Blowoff',]
 
 
 #
@@ -380,9 +234,13 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
 
     base = {}
     #  Connect to the camera and the PCIe card
-    assert(lanemask.bit_length() == 4)
-    #root = EpixMRoot(dev=dev)
-    root = Root(dev=dev)
+    ###assert(lanemask.bit_length() == 4)
+    root = ePixM.Root(top_level              = '/tmp',
+                      dev                    = '/dev/datadev_0',
+                      pollEn                 = False,
+                      initRead               = False,
+                      justCtrl               = True,
+                      fullRateDataReceiverEn = False)
     root.__enter__()
     base['root'] = root
 
@@ -576,6 +434,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 #        m=3<<2
 #    base['bypass'] = 0x3f^m  # mask of active batcher channels
 #    base['batchers'] = m>>2  # mask of active batchers
+    base['bypass'] = root.numOfAsics * [0x0]  # Enable Timing (bit-0) and Data (bit-1)
     base['batchers'] = root.numOfAsics * [1]  # list of active batchers
     print(f'=== configure bypass {base["bypass"]} ===')
     for i in asics:
@@ -590,13 +449,14 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         for eb in eventBuilder:
             eb.Timeout.set(EventBuilderTimeout)
             eb.Blowoff.set(True)
-
+            print('*** eb.Blowoff set to true')
     #
     #  For some unknown reason, performing this part of the configuration on BeginStep
     #  causes the readout to fail until the next Configure
     #
     if app is not None and not secondPass:
         # Work hard to use the underlying rogue interface
+        # Config data was initialized from the distribution's yaml files by epixhr_config_from_yaml.py
         # Translate config data to yaml files
         path = '/tmp/ePixM320_'
         epixMTypes = cfg[':types:']['expert']['App']
@@ -609,12 +469,13 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
                 tmpfiles.append(dictToYaml(app[sect],epixMTypes[sect],keys,root,path,name,(*tree,sect),ordering))
 
         clk = cfg['expert']['Pll']['Clock']
-        freq = [None,'_250_MHz','_125_MHz','_168_MHz'][clk]
-        pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
-        fn = path+'PllConfig'+'.csv'
-        np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
-        tmpfiles.append(fn)
-        setattr(root, 'filenamePLL', fn)
+        if clk != 4:            # 4 is the Default firmware setting
+            freq = [None,'_250_MHz','_125_MHz','_168_MHz'][clk]
+            pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
+            fn = path+'PllConfig'+'.csv'
+            np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
+            tmpfiles.append(fn)
+            setattr(root, 'filenamePLL', fn)
 
         toYaml('App',['PowerControl'],'PowerSupply')
         toYaml('App',[f'SspMonGrp[{i}]' for i in asics],'DESER')
@@ -625,9 +486,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
             toYaml('App',[f'Mv2Asic[{i}]'],f'ASIC_u{i+1}')
         setattr(root, 'filenameASIC', path+'ASIC_u{}'+'.yml') # This one is a little different
 
-        arg = [clk,0,0,0,0]
-        for i in asics:
-            arg[i+1] = 1
+        arg = [clk,1,1,1,1]
         logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
         ###raise Exception('Aborting before fnInitAsic: Check the yaml files')
         root.fnInitAsicScript(None,None,arg)
@@ -648,9 +507,13 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 
     # Disable non-locking lanes
     for i in asics:
-        lanes = root.App.SspMonGrp[i].Locked.get();
+        lanes = root.App.SspMonGrp[i].Locked.get() ^ 0xffffff;
         print(f'Setting DigAsicStrmRegisters[{i}].DisableLane to 0x{lanes:x}')
         getattr(root.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(lanes);
+
+    # Enable the batchers
+    for i in asics:
+        getattr(root.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
 
     logging.warning('config_expert complete')
 
@@ -806,6 +669,7 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     return result
 
 def epixm320_unconfig(base):
+    print('epixm320_unconfig')
     _stop(base)
     return base
 
@@ -978,22 +842,22 @@ def epixm320_enable(base):
 
 def epixm320_disable(base):
     print('epixm320_disable')
-    epixm320_internal_trigger(base)
+    # Prevents transitions going through: epixm320_internal_trigger(base)
 
 def _stop(base):
+    print('_stop')
     root = base['root']
     root.App.StopRun()
     time.sleep(0.1)  #  let last triggers pass through
 
 def _start(base):
+    print('_start')
     root = base['root']
+    root.App.AsicTop.TriggerRegisters.SetTimingTrigger()
     root.App.StartRun()
-    root.App.AsicTop.TriggerRegisters.PgpTrigEn.set(True)
     for i in range(root.numOfAsics):
-        getattr(root.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(0)
-    for i in range(root.numOfAsics):
+        getattr(root.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
         getattr(root.App.AsicTop,f'BatcherEventBuilder{i}').Blowoff.set(base['batchers'][i]==0)
-    print(f'Blowoff BatcherEventBuilders {[base["batchers"][i]==0 for i in range(root.numOfAsics)]}')
 
 #
 #  Test standalone

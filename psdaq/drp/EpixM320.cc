@@ -107,9 +107,11 @@ EpixM320::EpixM320(Parameters* para, MemPool* pool) :
     m_env_sem     (Pds::Semaphore::FULL),
     m_env_empty   (true)
 {
+    virtChan = 0;
+
     _init(para->detName.c_str());  // an argument is required here
 
-    m_descramble = false;
+    m_descramble = true;
 
     epix = this;
 
@@ -195,15 +197,118 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
     EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
     ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
     //  This may get called multiple times, so we can't overwrite input we need
-    uint32_t* p = reinterpret_cast<uint32_t*>(ebh->next());
+    uint32_t* p = reinterpret_cast<uint32_t*>(ebh);
 
     if (m_descramble) {
-        // @todo: Descrambling will be done in software
+        //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
+        if (p[2]==0 && p[3]==0) {
+            // A zero timestamp means the data has not been rearranged.
+            for(unsigned i=1; i<5; i++) {
+                p[2*i+0] = p[4*i+0];
+                p[2*i+1] = p[4*i+1];
+            }
+        }
     }
     else {
         // Descrambling will be done in firmware
     }
     return reinterpret_cast<Pds::TimingHeader*>(p);
+}
+
+#define BYTES_PER_PIXEL 2
+#define ROW_PER_FRAME 192
+#define COLS_PER_FRAME 384
+#define ROWS_PER_BANK 48
+#define COLS_PER_BANK 64
+#define BANKS_PER_ROW 6
+#define NUM_DATA_CYCLES 3072
+#define IO_STREAM_WIDTH_BYTES NUM_BANKS * BYTES_PER_PIXEL
+#define IO_STREAM_WIDTH_BITS IO_STREAM_WIDTH_BYTES * 8
+#define ASIC_DATA_WIDTH_BITS BYTES_PER_PIXEL * 8
+
+void EpixM320::_descramble(uint16_t inputImageAxiStreamBunches[3073][NUM_BANKS], /* first cycle header and rest is body */
+                           uint16_t outputImageAxiStreamBunches[3073][NUM_BANKS]) /* first cycle header and rest is body */
+{
+    // Unused: uint16_t descrambledImage[NUM_BANKS][ROWS_PER_BANK][COLS_PER_BANK];
+    uint16_t descrambledImageFlattened[NUM_BANKS * ROWS_PER_BANK * COLS_PER_BANK];
+
+    /* Reorder banks from
+    # 18    19    20    21    22    23
+    # 12    13    14    15    16    17
+    #  6     7     8     9    10    11
+    #  0     1     2     3     4     5
+    #
+    #                To
+    #  3     7    11    15    19    23
+    #  2     6    10    14    18    22
+    #  1     5     9    13    17    21
+    #  0     4     8    12    16    20
+    */
+    const int bankRemapping[24] = {0, 6, 12, 18, 1, 7, 13, 19, 2, 8, 14, 20, 3, 9, 15, 21, 4, 10, 16, 22, 5, 11, 17, 23};
+    const int colOffset[24] = {0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5 };
+    const int rowOffset[24] = {0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5 };
+
+    int rowPerBankIndex = 0;
+    int colPerBankIndex = 1;
+    bool even = false;
+
+    unsigned idx = 0;
+    for (unsigned imageAxiStreamBunchesIndex = 1; imageAxiStreamBunchesIndex < 3073; imageAxiStreamBunchesIndex++)
+    {
+      for (unsigned bankIndex = 0; bankIndex < NUM_BANKS; bankIndex++)
+        {
+            //descrambledImage[bankRemapping[bankIndex]][rowPerBankIndex][colPerBankIndex] = inputImageAxiStreamBunches[imageAxiStreamBunchesIndex][bankIndex];
+            //printf("%u : %u.%u | ", idx++, imageAxiStreamBunchesIndex, bankIndex);  fflush(stdout);
+            auto br = bankRemapping[bankIndex];
+            //printf("b %u | ", br);  fflush(stdout);
+            //printf("r %u : %u | ", rowOffset[br], rowOffset[br] * ROWS_PER_BANK * COLS_PER_BANK);  fflush(stdout);
+            //printf("c %u : %u | ", colOffset[br], colOffset[br] * COLS_PER_BANK);  fflush(stdout);
+            //printf("rpbi %u: %u | ", rowPerBankIndex, rowPerBankIndex * BANKS_PER_ROW * COLS_PER_BANK);  fflush(stdout);
+            //printf("cpbi %u: %u | ", colPerBankIndex, colPerBankIndex);  fflush(stdout);
+            auto sum = rowOffset[br] * ROWS_PER_BANK * COLS_PER_BANK +
+                       colOffset[br] * COLS_PER_BANK +
+                       rowPerBankIndex * BANKS_PER_ROW * COLS_PER_BANK +
+                       colPerBankIndex;
+            //printf("sum %u\n", sum);
+            if (sum > NUM_BANKS * ROWS_PER_BANK * COLS_PER_BANK)
+            {
+                printf(">>> sum too big: %u > max b %u * r %u * c %u = %u\n", sum, NUM_BANKS, ROWS_PER_BANK, COLS_PER_BANK, NUM_BANKS * ROWS_PER_BANK * COLS_PER_BANK);
+            }
+            descrambledImageFlattened[sum] = inputImageAxiStreamBunches[imageAxiStreamBunchesIndex][bankIndex];
+        }
+
+        if (colPerBankIndex >= COLS_PER_BANK-2)
+            colPerBankIndex = even ? 0 : 1;
+
+        if (rowPerBankIndex >= ROWS_PER_BANK-1)
+            rowPerBankIndex = 0;
+
+        if ((colPerBankIndex == COLS_PER_BANK-1) && (rowPerBankIndex == ROWS_PER_BANK-1))
+        {
+            even = true;
+            colPerBankIndex = 0;
+        }
+        if ((colPerBankIndex == COLS_PER_BANK-2) && (rowPerBankIndex == ROWS_PER_BANK-1))
+        {
+            printf("%u : %u.%u\n", idx, imageAxiStreamBunchesIndex, NUM_BANKS-1);
+            break;
+        }
+
+        // Update counters
+        colPerBankIndex += 2;
+        rowPerBankIndex++;
+    }
+
+    memcpy(outputImageAxiStreamBunches[0], inputImageAxiStreamBunches[0], NUM_BANKS * sizeof(uint16_t));
+    for (unsigned imageAxiStreamBunchesIndex = 0; imageAxiStreamBunchesIndex < 3072; imageAxiStreamBunchesIndex++)
+    {
+        for (unsigned bankIndex = 0; bankIndex < NUM_BANKS; bankIndex++)
+        {
+            //printf("%u.%u\n", imageAxiStreamBunchesIndex, bankIndex);
+            outputImageAxiStreamBunches[imageAxiStreamBunchesIndex+1][bankIndex] = descrambledImageFlattened[imageAxiStreamBunchesIndex * NUM_BANKS + bankIndex];
+        }
+    }
+    //abort();
 }
 
 //
@@ -221,7 +326,7 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const unsigned elemRows     = 384;
     const unsigned elemRowSize  = 192;
-    const unsigned timHdrSize   =  60; // timing header prepended to every ASIC segment
+    //const unsigned timHdrSize   =  60; // timing header prepended to every ASIC segment
 
     //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
@@ -238,7 +343,6 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
         }
 
         if (0) {  // debug
-            uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
             for(unsigned i=3; i<5; i++) {
                 std::vector< XtcData::Array<uint8_t> > ssf =
                     _subframes(subframes[i].data(),subframes[i].shape()[0]);
@@ -283,92 +387,13 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
 
     //  Validate timing headers
 
-    //
-    //    A1   |   A3       (A1,A3) rotated 180deg
-    // --------+--------
-    //    A0   |   A2
-    //
+    // Descramble the data
+    //auto p = subframes[0].data() + 4*8*4;
+    //for(unsigned i=0; i<6*8; i++)
+    //    printf("%08x%c",reinterpret_cast<uint32_t*>(p)[i], (i&7)==7 ? '\n':' ');
 
-    //  Check which ASICs are in the streams
-    unsigned q_asics = m_asics;
-    for(unsigned q=0; q<4; q++) {
-        if (q_asics & (1<<q)) {
-            if (subframes.size()<(q/2+4)) {
-                logging::error("Missing data from asic %d\n",q);
-                xtc.damage.increase(XtcData::Damage::MissingData);
-                q_asics ^= (1<<q);
-            }
-            else if (subframes[q/2+3].num_elem()!=2*(56076+timHdrSize)) {
-                logging::error("Wrong size frame %d [%d] from asic %d\n",
-                               subframes[q/2+3].num_elem()/2,56076+timHdrSize,q);
-                xtc.damage.increase(XtcData::Damage::MissingData);
-                q_asics ^= (1<<q);
-            }
-        }
-    }
-
-    char dline[5*128+32];
-    //  Copy A0,A1 into the 2x2 buffer
-    for(unsigned iq=0; iq<2; iq++) {
-        unsigned q = iq;
-        if ((q_asics & (1<<q))==0)
-            continue;
-        logging::debug("asic[%d] nelem[%d]",q,subframes[q/2+3].num_elem()/2);
-        {
-            const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
-            { for(unsigned i=0; i<128; i++)
-                    sprintf(&dline[i*5]," %04x", u[i]);
-                logging::debug("asic[%d] sz[%d] [0:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
-            u += 192*144+timHdrSize;
-            { for(unsigned i=0; i<128; i++)
-                    sprintf(&dline[i*5]," %04x", u[i]);
-                logging::debug("asic[%d] sz[%d] [next:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
-        }
-        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
-        u += timHdrSize;
-        u += 6*(iq&1);
-        for(unsigned row=0, e=0; row<elemRows; row++, e+=2*elemRowSize) {
-            uint16_t* dst = &aframe(row+elemRows,elemRowSize*(q>>1));
-            for(unsigned m=0; m<elemRowSize; m++) {
-                //  special fixup for the last two columns
-                if (row > 1 && (m&0x1f) > 0x1d)
-                    dst[m] = u[e+12*(m&0x1f)+(m>>5)-2*elemRowSize];
-                else
-                    dst[m] = u[e+12*(m&0x1f)+(m>>5)];
-            }
-        }
-    }
-    //  Copy A2,A3 into the 2x2 buffer (rotated 180)
-    for(unsigned iq=0; iq<2; iq++) {
-        unsigned q = iq+2;
-        if ((q_asics & (1<<q))==0)
-            continue;
-        logging::debug("asic[%d] nelem[%d]",q,subframes[q/2+3].num_elem()/2);
-        {
-            const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
-            { for(unsigned i=0; i<128; i++)
-                    sprintf(&dline[i*5]," %04x", u[i]);
-                logging::debug("asic[%d] sz[%d] [0:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
-            u += 192*144+timHdrSize;
-            { for(unsigned i=0; i<128; i++)
-                    sprintf(&dline[i*5]," %04x", u[i]);
-                logging::debug("asic[%d] sz[%d] [next:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
-        }
-        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
-        u += timHdrSize;
-        u += 12;
-        u += 6*(iq&1);
-        for(unsigned row=0, e=0; row<elemRows; row++, e+=2*elemRowSize) {
-            uint16_t* dst = &aframe(elemRows-1-row,elemRowSize*(1-(q>>1)));
-            for(unsigned m=0; m<elemRowSize; m++) {
-                //  special fixup for the last two columns
-                if (row > 1 && (m&0x1f) > 0x1d)
-                    dst[elemRowSize-1-m] = u[e+12*(m&0x1f)+(m>>5)-2*elemRowSize];
-                else
-                    dst[elemRowSize-1-m] = u[e+12*(m&0x1f)+(m>>5)];
-            }
-        }
-    }
+    _descramble((uint16_t(*)[NUM_BANKS])(subframes[0].data() + 4*8*4),
+                (uint16_t(*)[NUM_BANKS])(aframe.data()));
 }
 
 void     EpixM320::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)

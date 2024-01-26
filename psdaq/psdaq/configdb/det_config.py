@@ -63,7 +63,7 @@ def ordered(d,order):
     for key in order:
         od[key] = d[key]
     return od
-        
+
 #
 #  Translate a dictionary of register value pairs to a yaml file for rogue configuration
 #
@@ -74,7 +74,13 @@ def dictToYaml(d,types,keys,dev,path,name,tree,ordering=None):
             if ordering is None:
                 v[key] = d[key]
             else:
-                v[key] = ordered(d[key],ordering[key])
+                try:
+                    v[key] = ordered(d[key],ordering[key])
+                except KeyError:
+                    print('*** key:', key)
+                    print('*** d:', d)
+                    print('*** o:', ordering)
+                    raise
             intToBool(v,types,key)
             v[key]['enable'] = True
         else:

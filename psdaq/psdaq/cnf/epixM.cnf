@@ -6,7 +6,7 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 collect_host = 'drp-neh-ctl002'
 
 xtpg = 10                   # FEE
-groups = platform
+groups = f'{platform} 6'
 hutch, user = ('tst', 'tstopr')
 auth = ' --user {:} '.format(user)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
@@ -80,7 +80,7 @@ procmgr_config = [
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -v -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 0 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  {host: 'drp-neh-cmp010',  id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
@@ -88,6 +88,8 @@ procmgr_config = [
  {host: 'drp-neh-cmp010',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320 -v'},
+
+ {host: 'drp-neh-cmp010',  id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=145'},
 ]
 
 # HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)
