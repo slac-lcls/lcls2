@@ -42,7 +42,7 @@ void int_handler(int dummy)
 
 static void show_usage(const char* p)
 {
-    printf("Usage: %s -d <device file> [-c <virtChan>] [-r]\n",p);
+    printf("Usage: %s -d <device file> [-c <virtChan>] [-l <laneMask>] [-r]\n",p);
     printf("       -r  Has batcher event builder\n");
     printf("       -v  verbose\n");
 }
@@ -52,17 +52,21 @@ int main(int argc, char* argv[])
     int c, virtChan;
 
     virtChan = 0;
+    uint8_t laneMask = (1 << PGP_MAX_LANES) - 1;
     std::string device;
     unsigned lverbose = 0;
     bool lrogue = false, timing_kcu_enable=false;
     bool lusage = false;
-    while((c = getopt(argc, argv, "c:d:tvrh?")) != EOF) {
+    while((c = getopt(argc, argv, "c:d:l:tvrh?")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
                 break;
             case 'c':
                 virtChan = atoi(optarg);
+                break;
+            case 'l':
+                laneMask = std::stoul(optarg, nullptr, 16);
                 break;
             case 'r':
                 lrogue = true;
@@ -89,19 +93,21 @@ int main(int argc, char* argv[])
 
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    
+
     for (unsigned i=0; i<PGP_MAX_LANES; i++) {
-        if (virtChan<0) {
-            for(unsigned j=0; j<4; j++) {
-                uint32_t dest = dmaDest(i, j);
+        if (laneMask & (1 << i)) {
+            if (virtChan<0) {
+                for(unsigned j=0; j<4; j++) {
+                    uint32_t dest = dmaDest(i, j);
+                    printf("setting lane %u, dest 0x%x \n",i,dest);
+                    dmaAddMaskBytes((uint8_t*)mask, dest);
+                }
+            }
+            else {
+                uint32_t dest = dmaDest(i, virtChan);
                 printf("setting lane %u, dest 0x%x \n",i,dest);
                 dmaAddMaskBytes((uint8_t*)mask, dest);
             }
-        }
-        else {
-            uint32_t dest = dmaDest(i, virtChan);
-            printf("setting lane %u, dest 0x%x \n",i,dest);
-            dmaAddMaskBytes((uint8_t*)mask, dest);
         }
     }
 
@@ -126,7 +132,7 @@ int main(int argc, char* argv[])
         for(unsigned i=0; i<DMA_MASK_SIZE/4; i++)
             printf("%08x%c", u[i], (i%8)==7?'\n':' ');
         return -1;
-    }       
+    }
 
     if (timing_kcu_enable){
         unsigned m_readoutGroup = 0;
@@ -147,7 +153,7 @@ int main(int argc, char* argv[])
             }
 
         }
-        
+
     }
 
     uint64_t nevents = 0L;
