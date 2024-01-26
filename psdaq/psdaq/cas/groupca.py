@@ -215,6 +215,7 @@ def addGroup(tw, base, group, xpm):
     LblEditEvt   (trglo, pvbase, "L0Select"        )
     #LblEditInt   (trglo, pvbase, "L0Delay"         )
     LblEditDst   (trglo, pvbase, "DstSelect"       )
+    LblEditInt   (trglo, pvbase, "L0RawUpdate"     )
     trgbox.setLayout(trglo)
     wlo.addWidget(trgbox)
 

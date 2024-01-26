@@ -66,8 +66,8 @@ class LinkStatus(object):
         self._app = app
         self._idx = i
         self._app.link.set(i)
-        self._rxRcv = self._app.dsLinkRxCnt.get()
-        self._rxErr = self._app.dsLinkStatus.get()&0xffff
+        self._rxRcv = 0 # self._app.dsLinkRxCnt.get()
+        self._rxErr = 0 # self._app.dsLinkStatus.get()&0xffff
 
         def _addPVI(label):
             return addPV(name+':'+label+'%d'%i,'I')
@@ -283,7 +283,7 @@ class GroupStats(object):
         self._master = 0
         self._timeval = float(time.time_ns())
         self._app.partition.set(group)
-        l0Stats        = self._app.l0Stats.get()
+        l0Stats        = 0
         self._l0Ena    = self._app.l0EnaCnt(l0Stats)
         self._l0Inh    = self._app.l0InhCnt(l0Stats)
         self._numL0    = self._app.numL0   (l0Stats)

@@ -328,6 +328,7 @@ class GroupSetup(object):
         self._pv_MsgHeader  = _addPV('MsgHeader' , app.msgHdr ,  0, set=True)
         self._pv_MsgPayload = _addPV('MsgPayload', app.msgPayl,  0, set=True)
         self._pv_L0Groups   = _addPV('L0Groups'  , app.l0Groups, 0, set=True)
+        self._pv_RawUpdate  = _addPV('L0RawUpdate', app.l0RawUpdate, 1, set=True)
 
         def _addPV(label,reg,init=0,set=False):
             pvu = SharedPV(initial=NTScalar('f').wrap(init*_fidPeriod),

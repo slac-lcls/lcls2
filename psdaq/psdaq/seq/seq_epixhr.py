@@ -80,7 +80,7 @@ def main():
     # 60Hz x timeslots 1,4
     tsmask = 0x3f if args.f360 else 0x9
 #    instrset.append(ACRateSync(tsmask,0,1))  # hardcoded to (wrong) AC rate marker until xtpg fixed
-    instrset.append(ACRateSync(tsmask,5,1))
+    instrset.append(ACRateSync(tsmask,'60H',1))
 
     #  Parent trigger comes first
     if startb:

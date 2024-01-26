@@ -126,16 +126,19 @@ namespace Pds {
       Pds_Epics::EpicsPVA& pv = *_pv[fmc];
 
       unsigned streamMask=0;
+      unsigned rawStreams=0;
 
       // configure fex's for each channel
       unsigned fullEvt  = PVGET(full_event);
       unsigned fullSize = PVGET(full_size);
-      if (PVGET(raw_prescale)) {
+      if (PVGET(raw_prescale) || PVGET(raw_keep)) {
         streamMask |= (1<<0);
         fex._base[0].setGate(PVGET(raw_start),
                              PVGET(raw_gate));
         fex._base[0].setFull(fullSize,fullEvt);
         fex._base[0].setPrescale(PVGET(raw_prescale)-1);
+        if (PVGET(raw_keep))
+            rawStreams |= (1<<0);
       }
       if (PVGET(fex_prescale)) {
         streamMask |= (1<<1);
@@ -148,7 +151,7 @@ namespace Pds {
         fex._stream[1].parms[2].v=PVGET(fex_xpre);
         fex._stream[1].parms[3].v=PVGET(fex_xpost);
       }
-      fex._streams= streamMask | (fullEvt<<8);
+      fex._streams= streamMask | (fullEvt<<8) | (rawStreams<<16);
     
 #define PRINT_FEX_FIELD(title,arg,op) {         \
         printf("%12.12s:",title);               \

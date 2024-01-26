@@ -1,5 +1,6 @@
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
+from psdaq.seq.globals import *
 from p4p.client.thread import Context
 import json
 import time
@@ -65,6 +66,7 @@ def apply_config(cfg):
             pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
             pvdict[str(group)+':L0Select_EventCode'] = grp['eventcode']
             pvdict[str(group)+':L0Select_Sequence' ] = grp['seq']['mode']
+            pvdict[str(group)+':L0RawUpdate'       ] = int(TPGSEC/grp['rawInsertRate'])
             pvdict[str(group)+':DstSelect'         ] = grp['destination']['select']
 
             # convert ac.ts0 through ac.ts5 to L0Select_ACTimeslot bitmask
