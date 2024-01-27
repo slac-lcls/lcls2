@@ -360,7 +360,7 @@ def epixhr2x2_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epixhr2x2_connect(base, connect_json_str):
+def epixhr2x2_connectionInfo(base, alloc_json_str):
 
 #
 #  To do:  get the IDs from the detector and not the timing link
@@ -970,7 +970,7 @@ if __name__ == "__main__":
 
     _base = epixhr2x2_init(None,dev='/dev/datadev_0')
     epixhr2x2_init_feb()
-    epixhr2x2_connect(_base, None)
+    epixhr2x2_connectionInfo(_base, None)
 
     db = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws/configDB'
     d = {'body':{'control':{'0':{'control_info':{'instrument':'tst',

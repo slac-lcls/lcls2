@@ -127,7 +127,7 @@ EpixHR2x2::~EpixHR2x2()
 {
 }
 
-void EpixHR2x2::_connect(PyObject* mbytes)
+void EpixHR2x2::_connectionInfo(PyObject* mbytes)
 {
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
@@ -144,11 +144,6 @@ unsigned EpixHR2x2::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohman
     logging::debug("EpixHR2x2 disable");
     monStreamEnable();
     return 0;
-}
-
-json EpixHR2x2::connectionInfo(const nlohmann::json& msg)
-{
-    return BEBDetector::connectionInfo(msg);
 }
 
 unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)

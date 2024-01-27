@@ -119,7 +119,7 @@ json BEBDetector::connectionInfo(const json& msg)
     char func_name[64];
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     {
-      sprintf(func_name,"%s_connect",m_para->detType.c_str());
+      sprintf(func_name,"%s_connectionInfo",m_para->detType.c_str());
       PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
 
       // returns new reference
@@ -140,7 +140,7 @@ json BEBDetector::connectionInfo(const json& msg)
           abort();
       }
 
-      _connect(mbytes);
+      _connectionInfo(mbytes);
 
       Py_DECREF(mbytes);
     }
@@ -151,6 +151,13 @@ json BEBDetector::connectionInfo(const json& msg)
     json info = {{"xpm_id", xpm}, {"xpm_port", port}};
     printf("*** BEBDet %d %d %x\n",xpm,port,m_paddr);
     return info;
+}
+
+void BEBDetector::connect(const json& connect_json, const std::string& collectionId)
+{
+    logging::info("BEBDetector connect");
+    m_connect_json = connect_json.dump();
+    m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 }
 
 unsigned BEBDetector::configure(const std::string& config_alias,
@@ -215,13 +222,6 @@ unsigned BEBDetector::stepScan(const json& stepInfo, Xtc& xtc, const void* bufEn
 {
     NamesId namesId(nodeId,UpdateNamesIndex);
     return m_configScanner->step(stepInfo,xtc,bufEnd,namesId,m_namesLookup);
-}
-
-void BEBDetector::connect(const json& connect_json, const std::string& collectionId)
-{
-    logging::info("BEBDetector connect");
-    m_connect_json = connect_json.dump();
-    m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 }
 
 Pds::TimingHeader* BEBDetector::getTimingHeader(uint32_t index) const

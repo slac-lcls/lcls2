@@ -274,7 +274,7 @@ void Piranha4::_fatal_error(std::string errMsg)
     throw errMsg;
 }
 
-void Piranha4::_connect(PyObject* mbytes)
+void Piranha4::_connectionInfo(PyObject* mbytes)
 {
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
 #define MODEL(num,pixels) case num: m_pixels = pixels; break
@@ -293,23 +293,6 @@ void Piranha4::_connect(PyObject* mbytes)
     const auto bist(_string_from_PyDict(mbytes,"bist"));
     if (bist != "Good")
         logging::error("Piranha4 BiST error: %s", bist.c_str());
-}
-
-json Piranha4::connectionInfo(const nlohmann::json& msg)
-{
-    logging::info("Piranha connectionInfo");
-    std::string alloc_json = msg.dump();
-
-    PyObject* pDict = _check(PyModule_GetDict(m_module));
-    {
-      PyObject* pFunc = _check(PyDict_GetItemString(pDict, "connectionInfo"));
-
-      // returns new reference
-      PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"Os",m_root,alloc_json.c_str()));
-
-      Py_DECREF(mbytes);
-    }
-    return BEBDetector::connectionInfo(msg);
 }
 
 unsigned Piranha4::_configure(XtcData::Xtc&        xtc,

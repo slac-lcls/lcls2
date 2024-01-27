@@ -127,7 +127,7 @@ def epix100_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epix100_connect(base, connect_json_str):
+def epix100_connectionInfo(base, alloc_json_str):
 
     if 'pci' in base:
         pbase = base['pci']

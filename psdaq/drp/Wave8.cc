@@ -173,15 +173,6 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
         m_debatch = true;
 }
 
-json Wave8::connectionInfo(const nlohmann::json& msg)
-{
-    return BEBDetector::connectionInfo(msg);
-
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
-}
-
 unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter&)
 {
     // set up the names for the event data

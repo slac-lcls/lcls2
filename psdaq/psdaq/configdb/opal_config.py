@@ -18,7 +18,6 @@ cl = None
 pv = None
 xpmpv_global = None
 barrier_global = Barrier()
-connect_info_global = {}
 lm = 1
 
 #FEB parameters
@@ -88,7 +87,7 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     weakref.finalize(cl, cl.stop)
     cl.start()
 
-    # TODO: To be removed, now commented out xpm glitch workaround 
+    # TODO: To be removed, now commented out xpm glitch workaround
     # Open a new thread here
     #if xpmpv is not None:
     #    cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
@@ -126,7 +125,12 @@ def opal_init_feb(slane=None,schan=None):
         chan = int(schan)
 
 # called on alloc
-def connectionInfo(cl, alloc_json_str):
+def opal_connectionInfo(cl, alloc_json_str):
+    global lane
+    global chan
+
+    print('opal_connectionInfo')
+
     alloc_json = json.loads(alloc_json_str)
     supervisor,nworker = supervisor_info(alloc_json)
     print('camlink supervisor:',supervisor,'nworkers:',nworker)
@@ -171,15 +175,10 @@ def connectionInfo(cl, alloc_json_str):
     if barrier_global.supervisor:
         cl.StopRun()
     barrier_global.wait()
-    connect_info_global['paddr'] = rxId
+    connect_info = {}
+    connect_info['paddr'] = rxId
 
-    return connect_info_global
-
-def opal_connect(cl, connect_json_str):
-    global lane
-    global chan
-
-    print('opal_connect')
+    # Was opal_connect(cl, connect_json_str):
 
     # initialize the serial link
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan)
@@ -199,14 +198,14 @@ def opal_connect(cl, connect_json_str):
     print('opalid {:}'.format(opalid))
 
     try:
-        connect_info_global['model'] = opalid.split('-')[1].split('/')[0]
-        connect_info_global['serno'] = opalid.split(':')[1]
+        connect_info['model'] = opalid.split('-')[1].split('/')[0]
+        connect_info['serno'] = opalid.split(':')[1]
     except:
         logging.warning('No opal model/serialnum available on camlink serial port. Configure camera with rogue.')
-        connect_info_global['model'] = 'none'
-        connect_info_global['serno'] = '1000' # not ideal: default to opal1000
+        connect_info['model'] = 'none'
+        connect_info['serno'] = '1000' # not ideal: default to opal1000
 
-    return connect_info_global
+    return connect_info
 
 def user_to_expert(cl, cfg, full=False):
     global group

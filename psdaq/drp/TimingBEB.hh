@@ -14,7 +14,7 @@ public:
     bool scanEnabled() override;
     void shutdown() override;
 protected:
-    void           _connect  (PyObject*) override;
+    void           _connectionInfo(PyObject*) override;
     unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
     void           _event    (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&) override;

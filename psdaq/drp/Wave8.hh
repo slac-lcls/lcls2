@@ -11,7 +11,6 @@ class Wave8 : public BEBDetector
 {
 public:
     Wave8(Parameters* para, MemPool* pool);
-    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
 private:
     unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
     void           _event    (XtcData::Xtc&, const void* bufEnd,

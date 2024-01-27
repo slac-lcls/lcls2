@@ -108,7 +108,7 @@ EpixQuad::~EpixQuad()
 {
 }
 
-void EpixQuad::_connect(PyObject* mbytes)
+void EpixQuad::_connectionInfo(PyObject* mbytes)
 {
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
@@ -123,15 +123,6 @@ unsigned EpixQuad::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann
 {
     _monStreamEnable();
     return 0;
-}
-
-json EpixQuad::connectionInfo(const nlohmann::json& msg)
-{
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    // logging::error("Returning NO XPM link; implementation incomplete");
-    // return json({});
-
-    return BEBDetector::connectionInfo(msg);
 }
 
 unsigned EpixQuad::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)

@@ -129,7 +129,7 @@ EpixM320::~EpixM320()
 {
 }
 
-void EpixM320::_connect(PyObject* mbytes)
+void EpixM320::_connectionInfo(PyObject* mbytes)
 {
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
@@ -146,11 +146,6 @@ unsigned EpixM320::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann
     logging::debug("EpixM320 disable");
     monStreamEnable();
     return 0;
-}
-
-json EpixM320::connectionInfo(const nlohmann::json& msg)
-{
-    return BEBDetector::connectionInfo(msg);
 }
 
 unsigned EpixM320::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)

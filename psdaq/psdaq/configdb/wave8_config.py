@@ -153,7 +153,7 @@ def wave8_init_feb(slane=None,schan=None):
     if slane is not None:
         lane = int(slane)
 
-def wave8_connect(base, connect_json_str):
+def wave8_connectionInfo(base, alloc_json_str):
     epics_prefix = base['prefix']
 
     #  Switch to LCLS2 Timing
