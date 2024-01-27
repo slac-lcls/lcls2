@@ -316,7 +316,7 @@ def epixm320_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epixm320_connect(base):
+def epixm320_connect(base, connect_json_str):
 
 #
 #  To do:  get the IDs from the detector and not the timing link
@@ -866,7 +866,7 @@ if __name__ == "__main__":
 
     _base = epixm320_init(None,dev='/dev/datadev_0')
     epixm320_init_feb()
-    epixm320_connect(_base)
+    epixm320_connect(_base, None)
 
     db = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws/configDB'
     d = {'body':{'control':{'0':{'control_info':{'instrument':'tst',

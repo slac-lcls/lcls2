@@ -115,6 +115,36 @@ void BEBDetector::_init_feb()
 
 json BEBDetector::connectionInfo(const json& msg)
 {
+    std::string alloc_json = msg.dump();
+    char func_name[64];
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    {
+      sprintf(func_name,"%s_connect",m_para->detType.c_str());
+      PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
+
+      // returns new reference
+      PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"Os",m_root,alloc_json.c_str()));
+
+      m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
+      printf("*** BebDetector: paddr is %08x = %u\n", m_paddr, m_paddr);
+
+      // there is currently a failure mode where the register reads
+      // back as zero or 0xffffffff (incorrectly). This is not the best
+      // longterm fix, but throw here to highlight the problem. the
+      // difficulty is that Matt says this register has to work
+      // so that an automated software solution would know which
+      // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
+      // Also, register is corrupted when port number > 15 - Ric
+      if (!m_paddr || m_paddr==0xffffffff || (m_paddr & 0xff) > 15) {
+          logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
+          abort();
+      }
+
+      _connect(mbytes);
+
+      Py_DECREF(mbytes);
+    }
+
     unsigned reg = m_paddr;
     int xpm  = (reg >> 20) & 0x0F;
     int port = (reg >>  0) & 0xFF;
@@ -192,36 +222,6 @@ void BEBDetector::connect(const json& connect_json, const std::string& collectio
     logging::info("BEBDetector connect");
     m_connect_json = connect_json.dump();
     m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
-
-    char func_name[64];
-    PyObject* pDict = _check(PyModule_GetDict(m_module));
-    {
-      sprintf(func_name,"%s_connect",m_para->detType.c_str());
-      PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
-
-      // returns new reference
-      PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"Os",m_root,m_connect_json.c_str()));
-
-      m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
-      printf("*** BebDetector: paddr is %08x = %u\n", m_paddr, m_paddr);
-
-      // there is currently a failure mode where the register reads
-      // back as zero or 0xffffffff (incorrectly). This is not the best
-      // longterm fix, but throw here to highlight the problem. the
-      // difficulty is that Matt says this register has to work
-      // so that an automated software solution would know which
-      // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-      // Also, register is corrupted when port number > 15 - Ric
-      if (!m_paddr || m_paddr==0xffffffff || (m_paddr & 0xff) > 15) {
-          logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
-          abort();
-      }
-
-      _connect(mbytes);
-
-      Py_DECREF(mbytes);
-    }
-
 }
 
 Pds::TimingHeader* BEBDetector::getTimingHeader(uint32_t index) const

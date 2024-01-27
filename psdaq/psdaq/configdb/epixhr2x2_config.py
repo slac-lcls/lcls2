@@ -306,7 +306,7 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     print(f'buildStamp      [{buildStamp}]')
     print(f'gitHash         [{gitHash:x}]')
     #cbase.Core.enable.set(False)
-    
+
     #  Enable the environmental monitoring
     cbase.EpixHR.SlowAdcRegisters.enable.set(1)
     cbase.EpixHR.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
@@ -317,7 +317,7 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     if timebase=="119M":  # UED
         logging.warning('Using timebase 119M')
         base['bypass'] = 0x3f
-        base['clk_period'] = 1000/119. 
+        base['clk_period'] = 1000/119.
         base['msg_period'] = 238
         base['pcie_timing'] = True
 
@@ -360,7 +360,7 @@ def epixhr2x2_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epixhr2x2_connect(base):
+def epixhr2x2_connect(base, connect_json_str):
 
 #
 #  To do:  get the IDs from the detector and not the timing link
@@ -546,7 +546,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         for i in asics:
             arg[i+1] = 1
         logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
-        cbase.EpixHR.fnInitAsicScript(None,None,arg) 
+        cbase.EpixHR.fnInitAsicScript(None,None,arg)
 
         #  Remove the yml files
         for f in tmpfiles:
@@ -586,7 +586,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
                     setSaci(saci.test,'test',di)
                     setSaci(saci.trbit,'trbit',di)
                     setSaci(saci.Pulser,'Pulser',di)
-                    
+
                 saci.enable.set(False)
 
             logging.warning('SetAsicsMatrix complete')
@@ -921,7 +921,7 @@ def epixhr2x2_external_trigger(base):
     cbase.TriggerRegisters.SetTimingTrigger(1)
 
 def epixhr2x2_internal_trigger(base):
-    #  Disable frame readout 
+    #  Disable frame readout
     mask = 0x3f if base['pcie_timing'] else 0x3b
     print('=== internal triggering with bypass {:x} ==='.format(mask))
     pbase = base['pci']
@@ -970,7 +970,7 @@ if __name__ == "__main__":
 
     _base = epixhr2x2_init(None,dev='/dev/datadev_0')
     epixhr2x2_init_feb()
-    epixhr2x2_connect(_base)
+    epixhr2x2_connect(_base, None)
 
     db = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws/configDB'
     d = {'body':{'control':{'0':{'control_info':{'instrument':'tst',

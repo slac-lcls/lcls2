@@ -307,26 +307,9 @@ json Piranha4::connectionInfo(const nlohmann::json& msg)
       // returns new reference
       PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"Os",m_root,alloc_json.c_str()));
 
-      m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
-
-      // there is currently a failure mode where the register reads
-      // back as zero or 0xffffffff (incorrectly). This is not the best
-      // longterm fix, but throw here to highlight the problem. the
-      // difficulty is that Matt says this register has to work
-      // so that an automated software solution would know which
-      // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-      if (!m_paddr || m_paddr==0xffffffff) {
-          logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
-          abort();
-      }
-
       Py_DECREF(mbytes);
     }
     return BEBDetector::connectionInfo(msg);
-
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
 }
 
 unsigned Piranha4::_configure(XtcData::Xtc&        xtc,
