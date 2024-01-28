@@ -134,6 +134,8 @@ if 'PSDAQ' in BUILD_LIST :
             'periodicgenerator = psdaq.seq.periodicgenerator:main',
             'rixgenerator = psdaq.seq.rixgeneratory:main',
             'bos = psdaq.bos.bos:main',
+            'prometheus2pvs = psdaq.cas.prometheus2pvs:main',
+            'prometheusIOC = psdaq.cas.prometheusIOC:main',
         ]
     }
 
