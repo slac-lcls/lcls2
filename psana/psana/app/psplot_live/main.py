@@ -22,6 +22,13 @@
 #
 # The interactive session allows user to use all the functions that
 # doesn't start with "_" in their name.
+#
+# Example run on s3df
+# To start monitoring two plots,
+# psplot_live ANDOR ATMOPAL
+# On another node, submit an analysis job that generates these two plots
+# cd psana/psana/tests
+# sbatch submit_run_andor.sh rixc00221 49
 ####################################################################
 
 from psana.app.psplot_live.db import *
@@ -41,9 +48,10 @@ import os
 proc = SubprocHelper()
 runner = None
 
-def _kill_pid(pid, timeout=3):
+def _kill_pid(pid, timeout=3, verbose=False):
     def on_terminate(proc):
-        print("process {} terminated with exit code {}".format(proc, proc.returncode))
+        if verbose:
+            print("process {} terminated with exit code {}".format(proc, proc.returncode))
     procs = [psutil.Process(pid)] + psutil.Process(pid).children()
     for p in procs:
         p.terminate()
@@ -171,20 +179,31 @@ class Runner():
         return reply['instance']
 
     def list_proc(self):
+        # Get all psplot process form the main process' database
         data = self.query_db()
         # 1: slurm_job_id1, rixc00221, 49, sdfmilan032, 12301, pid, DbHistoryStatus.PLOTTED
         headers = ["ID", "SLURM_JOB_ID", "EXP", "RUN", "NODE", "PORT", "STATUS"]
         format_row = "{:<5} {:<12} {:<10} {:<5} {:<35} {:<5} {:<10}"
         print(format_row.format(*headers))
         for instance_id, info in data.items():
-            # Skip PID (last column) in pinfo
+            psplot_subproc_pid = info[-2]
+
+            # Check if no. of subprocess created by psplot is two. We'll
+            # kill the process and update the database if it's not the
+            # case (due to users close the plot window).
+            procs = psutil.Process(psplot_subproc_pid).children()
+            if len(procs) != 2:
+                kill(instance_id)
+                continue
+
+            # Do not display PID (last column) in pinfo
             row = [instance_id] + info[:-2] + [DbHistoryStatus.get_name(info[-1])]
             try:
                 print(format_row.format(*row))
             except Exception as e:
                 print(e)
                 print(f'{row=}')
-
+        
     def kill(self, instance_id, timeout=3):
         data = self.query_db()
 
