@@ -29,7 +29,8 @@ prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
 
 procmgr_config = [
  { host: 'daq-tst-dev02',  id:'pyxpm-2' , port:'29451', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_0 -G '+pyxpm_optsdb%2},
-#{ host: 'daq-tst-dev01',  id:'pyxpm-3' , port:'29452', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_0    '+pyxpm_optsdb%3},
+{ host: 'daq-tst-dev06',  id:'pyxpm-10' , port:'29453', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_2 -G '+pyxpm_optsdb%10},
+{ host: 'daq-tst-dev06',  id:'pyxpm-11' , port:'29454', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_3 -G '+pyxpm_optsdb%11},
 
 ## EPICS camera
 # { host: base_host,  id:'pvcamcas', port:'29465', flags:'s', env:epics_env, cmd:'campvs -P DAQ:LAB2:PVCAM'},
