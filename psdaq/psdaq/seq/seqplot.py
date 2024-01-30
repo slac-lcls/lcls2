@@ -52,6 +52,8 @@ class SeqUser(object):
 
         x = 0
 
+        # keep separate lists for each request line and merge at the end
+        xdata = {}
         engine  = Engine(self.acmode)
         while engine.frame_number() < self.stop and not engine.done:
 
@@ -68,10 +70,17 @@ class SeqUser(object):
                 if request != 0:
                     for i in range(16):
                         if (request&(1<<i)):
-                            self.xdata.append(frame)
-                            self.ydata.append(i)
+                            if i in xdata:
+                                xdata[i].append(frame)
+                            else:
+                                xdata[i]=[frame]
                 frame   = engine.frame_number()
                 request = int(engine.request)
+
+        for i in range(16):
+            if i in xdata:
+                self.xdata.extend(xdata[i])
+                self.ydata.extend([i]*len(xdata[i]))
 
         print(f'engine exited {engine}')
 
