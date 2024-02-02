@@ -208,7 +208,7 @@ def user_to_expert(prefix, cfg, full=False):
 
             print('triggerDelay {:}'.format(triggerDelay))
             if triggerDelay < 0:
-                print('Raise delta_ns >= {:}'.format(-triggerDelay*7000/1300.))
+                print('Raise controls trigger delay >= {:} nanoseconds {:} clock ticks'.format(-triggerDelay*7000/1300.,-triggerDelay))
                 raise ValueError('triggerDelay computes to < 0')
 
             ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
