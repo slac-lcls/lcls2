@@ -222,7 +222,7 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
 #define ASIC_DATA_WIDTH_BITS BYTES_PER_PIXEL * 8
 
 void EpixM320::_descramble(uint16_t inputImageAxiStreamBunches[3073][NUM_BANKS], /* first cycle header and rest is body */
-                           uint16_t outputImageAxiStreamBunches[3073][NUM_BANKS]) /* first cycle header and rest is body */
+                           uint16_t outputImageAxiStreamBunches[3072][NUM_BANKS])
 {
     // Unused: uint16_t descrambledImage[NUM_BANKS][ROWS_PER_BANK][COLS_PER_BANK];
     uint16_t descrambledImageFlattened[NUM_BANKS * ROWS_PER_BANK * COLS_PER_BANK];
@@ -250,7 +250,7 @@ void EpixM320::_descramble(uint16_t inputImageAxiStreamBunches[3073][NUM_BANKS],
     unsigned idx = 0;
     for (unsigned imageAxiStreamBunchesIndex = 1; imageAxiStreamBunchesIndex < 3073; imageAxiStreamBunchesIndex++)
     {
-      for (unsigned bankIndex = 0; bankIndex < NUM_BANKS; bankIndex++)
+        for (unsigned bankIndex = 0; bankIndex < NUM_BANKS; bankIndex++)
         {
             //descrambledImage[bankRemapping[bankIndex]][rowPerBankIndex][colPerBankIndex] = inputImageAxiStreamBunches[imageAxiStreamBunchesIndex][bankIndex];
             //printf("%u : %u.%u | ", idx++, imageAxiStreamBunchesIndex, bankIndex);  fflush(stdout);
@@ -294,16 +294,14 @@ void EpixM320::_descramble(uint16_t inputImageAxiStreamBunches[3073][NUM_BANKS],
         rowPerBankIndex++;
     }
 
-    memcpy(outputImageAxiStreamBunches[0], inputImageAxiStreamBunches[0], NUM_BANKS * sizeof(uint16_t));
     for (unsigned imageAxiStreamBunchesIndex = 0; imageAxiStreamBunchesIndex < 3072; imageAxiStreamBunchesIndex++)
     {
         for (unsigned bankIndex = 0; bankIndex < NUM_BANKS; bankIndex++)
         {
             //printf("%u.%u\n", imageAxiStreamBunchesIndex, bankIndex);
-            outputImageAxiStreamBunches[imageAxiStreamBunchesIndex+1][bankIndex] = descrambledImageFlattened[imageAxiStreamBunchesIndex * NUM_BANKS + bankIndex];
+            outputImageAxiStreamBunches[imageAxiStreamBunchesIndex][bankIndex] = descrambledImageFlattened[imageAxiStreamBunchesIndex * NUM_BANKS + bankIndex];
         }
     }
-    //abort();
 }
 
 //
@@ -321,74 +319,58 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const unsigned elemRows     = 384;
     const unsigned elemRowSize  = 192;
-    //const unsigned timHdrSize   =  60; // timing header prepended to every ASIC segment
+    const size_t   headerSize   = 24 * sizeof(uint16_t);
 
     //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
-    shape[0] = elemRows*2; shape[1] = elemRowSize*2;
+    shape[0] = elemRows; shape[1] = elemRowSize;
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixMPanelDef::raw, shape);
 
-    if (!m_descramble) {
-        if (subframes.size()<5) {
-            logging::error("Missing data: subframe size %d [5]\n",
-                           subframes.size());
-            xtc.damage.increase(XtcData::Damage::MissingData);
-            return;
-        }
-
-        if (0) {  // debug
-            for(unsigned i=3; i<5; i++) {
-                std::vector< XtcData::Array<uint8_t> > ssf =
-                    _subframes(subframes[i].data(),subframes[i].shape()[0]);
-                for(unsigned j=0; j<ssf.size(); j++)
-                    printf("Subframe %u/%u  Num_Elem %lu\n",
-                           i, j, ssf[j].num_elem());
-            }
-        }
-
-        uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
-        for(unsigned i=3; i<5; i++) {
-            std::vector< XtcData::Array<uint8_t> > ssf =
-                _subframes(subframes[i].data(),subframes[i].shape()[0]);
-            if (ssf.size()<3) {
-                logging::error("Missing data: subframe[%d] size %d [3]\n",
-                               i,ssf.size());
-                xtc.damage.increase(XtcData::Damage::MissingData);
-                return;
-            }
-
-            unsigned sz = elemRows*elemRowSize*4;
-
-            if (ssf[2].num_elem() < sz+2*elemRowSize*4) {
-                logging::error("Missing data: subframe[%d] num_elems %u [%u]\n",
-                               i,ssf[2].num_elem(),sz + 2*elemRowSize*4);
-                xtc.damage.increase(XtcData::Damage::MissingData);
-                return;
-            }
-
-            // skip the first row, drop the last row
-            memcpy(p,ssf[2].data()+elemRowSize*4,sz);
-            p += sz;
-        }
+    if (subframes.size() != 3) {
+        logging::error("Missing data: subframe size %d [3]\n",
+                       subframes.size());
+        xtc.damage.increase(XtcData::Damage::MissingData);
         return;
     }
-    //  Missing ASICS are padded with zeroes
-    m_asics = 0xf;
-
-    memset(aframe.data(),0,4*elemRows*elemRowSize*2);
 
     logging::debug("m_asics[%d] subframes.num_elem[%d]",m_asics,subframes.size());
+    //for (unsigned i = 0; i < subframes.size(); ++i)
+    //{
+    //  logging::debug("subframes[%u].rank %u\n", i, subframes[i].rank());
+    //  logging::debug("subframes[%u].num_elem %lu\n", i, subframes[i].num_elem());
+    //}
 
     //  Validate timing headers
 
     // Descramble the data
-    //auto p = subframes[0].data() + 4*8*4;
-    //for(unsigned i=0; i<6*8; i++)
+    //auto p = subframes[2].data();
+    //for(unsigned i=0; i<16*8; i++)
     //    printf("%08x%c",reinterpret_cast<uint32_t*>(p)[i], (i&7)==7 ? '\n':' ');
 
-    _descramble((uint16_t(*)[NUM_BANKS])(subframes[0].data() + 4*8*4),
-                (uint16_t(*)[NUM_BANKS])(aframe.data()));
+    //_descramble((uint16_t(*)[NUM_BANKS])(subframes[2].data()),
+    //            (uint16_t(*)[NUM_BANKS])(aframe.data()));
+    memcpy(aframe.data(), subframes[2].data() + headerSize, elemRows*elemRowSize*sizeof(uint16_t));
+
+    ////uint16_t* f = (uint16_t*)aframe.data();
+    //uint16_t* f = (uint16_t*)(subframes[2].data() + headerSize);
+    //for (unsigned i = 0; i < 1; ++i)  // < 4
+    //{
+    //  for (unsigned j = 0; j < 3; ++j)
+    //  {
+    //    unsigned k = i*384+j;
+    //    printf("%u %3u: %5hu %5hu %5hu ... %5hu %5hu %5hu\n", i, j, f[k*192+  0], f[k*192+  1], f[k*192+  2],
+    //                                                                f[k*192+189], f[k*192+190], f[k*192+191]);
+    //  }
+    //  printf("       ...\n");
+    //  for (unsigned j = 381; j < 384; ++j)
+    //  {
+    //    unsigned k = i*384+j;
+    //    printf("%u %3u: %5hu %5hu %5hu ... %5hu %5hu %5hu\n", i, j, f[k*192+  0], f[k*192+  1], f[k*192+  2],
+    //                                                                f[k*192+189], f[k*192+190], f[k*192+191]);
+    //  }
+    //  printf("\n");
+    //}
 }
 
 void     EpixM320::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)

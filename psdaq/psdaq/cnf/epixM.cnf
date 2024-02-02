@@ -56,9 +56,9 @@ xpms = f'DAQ:NEH:XPM:{xtpg} DAQ:NEH:XPM:11'
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-neh-cmp013"]
+ami_worker_nodes = ["drp-neh-cmp003"]
 ami_num_workers = len(ami_worker_nodes)
-ami_manager_node = "drp-neh-cmp016"
+ami_manager_node = "drp-neh-cmp003"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -87,7 +87,7 @@ procmgr_config = [
 
  {host: 'drp-neh-cmp010',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
- {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320 -v'},
+ {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320'},
 
  {host: 'drp-neh-cmp010',  id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=145'},
 ]
@@ -102,7 +102,9 @@ procmgr_hsd = [
 # ami
 #
 procmgr_ami = [
- {host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}'},
+ # Turn on prompt mode when running at low rate to reduce latency
+ #{host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}'},
+ {host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers} -d 1'}, # prompt mode
  {host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}'},
  {                       id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}'},
 ]
@@ -116,4 +118,4 @@ for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env,
                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}'})
 
-#procmgr_config.extend(procmgr_ami)
+procmgr_config.extend(procmgr_ami)
