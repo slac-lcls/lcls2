@@ -163,8 +163,9 @@ async def run_monitor(plotnames, socket_name):
 # Interactive session functions
 ####################################################################
 class Runner():
-    def __init__(self, socket_name):
+    def __init__(self, socket_name, plotnames):
         self.sub = ClientSocket(socket_name)
+        self.plotnames = plotnames
 
     def show(self, instance_id):
         data = {'msgtype': MonitorMsgType.RERUN, 'force_rerun_instance_id':instance_id}
@@ -188,11 +189,14 @@ class Runner():
         for instance_id, info in data.items():
             psplot_subproc_pid = info[-2]
 
-            # Check if no. of subprocess created by psplot is two. We'll
-            # kill the process and update the database if it's not the
-            # case (due to users close the plot window).
-            procs = psutil.Process(psplot_subproc_pid).children()
-            if len(procs) != 2:
+            # Our main process creates a psplot process and for each plot GUI, another
+            # subprocess. Upon checking if we only see one psplot process, we assume
+            # all the plot GUIs have been closed. We'll kill the process and remove
+            # it from the database.
+            sprocs = psutil.Process(psplot_subproc_pid).children()
+            all_procs = [f'm{psplot_subproc_pid}'] + [f's{sp.pid}' for sp in sprocs]
+
+            if len(sprocs) == 1:
                 kill(instance_id)
                 continue
 
@@ -242,7 +246,7 @@ def main(plotnames: List[str], connection_type: str = "KAFKA", subproc: str = "m
                 cmd = f"xterm -hold -e {cmd}"
             asyncio.run(proc._run(cmd))
         global runner 
-        runner = Runner(socket_name)
+        runner = Runner(socket_name, plotnames)
         IPython.embed()
     elif subproc == "kafka":
         asyncio.run(start_kafka_consumer(socket_name))
