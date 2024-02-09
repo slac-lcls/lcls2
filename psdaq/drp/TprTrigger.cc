@@ -61,7 +61,7 @@ void TprApp::_disconnect()
     }
 }
 
-json TprApp::connectionInfo()
+json TprApp::connectionInfo(const nlohmann::json& msg)
 {
     json body = {{}};
     return body;

@@ -274,7 +274,7 @@ void Piranha4::_fatal_error(std::string errMsg)
     throw errMsg;
 }
 
-void Piranha4::_connect(PyObject* mbytes)
+void Piranha4::_connectionInfo(PyObject* mbytes)
 {
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
 #define MODEL(num,pixels) case num: m_pixels = pixels; break
@@ -293,15 +293,6 @@ void Piranha4::_connect(PyObject* mbytes)
     const auto bist(_string_from_PyDict(mbytes,"bist"));
     if (bist != "Good")
         logging::error("Piranha4 BiST error: %s", bist.c_str());
-}
-
-json Piranha4::connectionInfo()
-{
-    return BEBDetector::connectionInfo();
-
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
 }
 
 unsigned Piranha4::_configure(XtcData::Xtc&        xtc,

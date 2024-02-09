@@ -249,7 +249,7 @@ void TebContributor::process(const EbDgram* dgram)
         _batch.entries++;
       }
       else                              // Create a new batch
-        _batch             = {dgram, contractor};
+        _batch = {dgram, contractor};   // Start a new batch with dgram
     }
     else
     {
@@ -267,12 +267,15 @@ void TebContributor::process(const EbDgram* dgram)
       {
         if (LIKELY(_batch.start))       // Append dgram to batch
         {
-          _batch.end         = dgram;
-          _batch.contractor |= contractor;
-          _batch.entries++;
+          if (!expired)                 // Don't redo when expired
+          {
+            _batch.end         = dgram;
+            _batch.contractor |= contractor;
+            _batch.entries++;
+          }
         }
         else                            // Create a new batch
-          _batch             = {dgram, contractor};
+          _batch = {dgram, contractor}; // Start a new batch with dgram
         _post(_batch);
 
         _batch.start = nullptr;         // Start a new batch

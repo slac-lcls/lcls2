@@ -160,7 +160,7 @@ namespace Drp {
                 ProcStream::createData(fex,index,streams[9]);
        }
     };
-    
+
   };
 
 Wave8::Wave8(Parameters* para, MemPool* pool) :
@@ -171,15 +171,6 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
     if (para->kwargs.find("timebase")!=para->kwargs.end() &&
         para->kwargs["timebase"]==std::string("119M"))
         m_debatch = true;
-}
-
-json Wave8::connectionInfo()
-{
-    return BEBDetector::connectionInfo();
-
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
 }
 
 unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter&)

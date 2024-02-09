@@ -11,6 +11,8 @@
 
 t_start=`date +%s`
 
+#exp=rixc00221 
+#runnum=49
 exp=$1
 runnum=$2
 #srun python run_andor.py $exp $runnum ${socket}

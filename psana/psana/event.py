@@ -79,6 +79,16 @@ class Event():
         assert ts
         return ts
 
+    @property
+    def env(self):
+        r = None
+        for d in self._dgrams:
+            if d:
+                r = d.env()
+                break
+        assert r
+        return r
+
     def run(self):
         return self._run
 
@@ -123,12 +133,20 @@ class Event():
         service = None
         for d in self._dgrams:
             if d:
-                service = d.service()
+                service = (d.env()>>24)&0xf
                 if not service:
                     print(f'expected value between 1-13, got: {service}')
                     raise
                 break
         return service
+
+    def keepraw(self):
+        keepraw = None
+        for d in self._dgrams:
+            if d:
+                keepraw = (d.env()>>22)&0x1
+                break
+        return keepraw
 
     def get_offsets_and_sizes(self):
         offset_and_size_arr = np.zeros((self._size, 2), dtype=np.int64)

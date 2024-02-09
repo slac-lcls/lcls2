@@ -199,7 +199,7 @@ def epixquad_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epixquad_connect(base):
+def epixquad_connectionInfo(base, alloc_json_str):
 
     if 'pci' in base:
         pbase = base['pci']

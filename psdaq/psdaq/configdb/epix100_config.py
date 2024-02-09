@@ -101,7 +101,7 @@ def epix100_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
     if timebase=="119M":
         logging.info('Using timebase 119M')
-        base['clk_period'] = 1000/119. 
+        base['clk_period'] = 1000/119.
         base['msg_period'] = 238
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
     else:
@@ -127,7 +127,7 @@ def epix100_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epix100_connect(base):
+def epix100_connectionInfo(base, alloc_json_str):
 
     if 'pci' in base:
         pbase = base['pci']

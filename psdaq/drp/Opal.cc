@@ -272,7 +272,7 @@ void Opal::_fatal_error(std::string errMsg)
     throw errMsg;
 }
 
-void Opal::_connect(PyObject* mbytes)
+void Opal::_connectionInfo(PyObject* mbytes)
 {
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
 #define MODEL(num,rows,cols) case num: m_rows = rows; m_columns = cols; break
@@ -290,15 +290,6 @@ void Opal::_connect(PyObject* mbytes)
     }
 
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
-}
-
-json Opal::connectionInfo()
-{
-    return BEBDetector::connectionInfo();
-
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
 }
 
 unsigned Opal::_configure(XtcData::Xtc& xtc,const void* bufEnd,XtcData::ConfigIter& configo)
@@ -807,4 +798,3 @@ int Drp::L2Iter::process(Xtc* xtc, const void* bufEnd)
     }
     return Continue;
 }
-

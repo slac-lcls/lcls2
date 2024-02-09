@@ -31,7 +31,7 @@ public:
     BEBDetector(Parameters* para, MemPool* pool);
     virtual ~BEBDetector();
 public:  // Implementation of Detector
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void           connect       (const nlohmann::json&, const std::string& collectionId) override;
     unsigned       configure     (const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     void           event         (XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
@@ -44,9 +44,9 @@ public:  // Implementation of Detector
 
     static PyObject* _check(PyObject*);
 protected:  // This is the sub class interface
-    virtual void           _connect  (PyObject*) {}     // handle dictionary entries returned by <detType>_connect python
+    virtual void           _connectionInfo(PyObject*) {} // handle dictionary entries returned by <detType>_connect python
     virtual unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&)=0; // attach descriptions to xtc
-    virtual void           _event    (XtcData::Xtc&,    // fill xtc from subframes
+    virtual void           _event    (XtcData::Xtc&,     // fill xtc from subframes
                                       const void* bufEnd,
                                       std::vector< XtcData::Array<uint8_t> >&) {}
 protected:

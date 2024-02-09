@@ -127,7 +127,7 @@ EpixHR2x2::~EpixHR2x2()
 {
 }
 
-void EpixHR2x2::_connect(PyObject* mbytes)
+void EpixHR2x2::_connectionInfo(PyObject* mbytes)
 {
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
@@ -144,11 +144,6 @@ unsigned EpixHR2x2::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohman
     logging::debug("EpixHR2x2 disable");
     monStreamEnable();
     return 0;
-}
-
-json EpixHR2x2::connectionInfo()
-{
-    return BEBDetector::connectionInfo();
 }
 
 unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
@@ -246,7 +241,7 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDa
         if (0) {  // debug
             uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
             for(unsigned i=3; i<5; i++) {
-                std::vector< XtcData::Array<uint8_t> > ssf = 
+                std::vector< XtcData::Array<uint8_t> > ssf =
                     _subframes(subframes[i].data(),subframes[i].shape()[0]);
                 for(unsigned j=0; j<ssf.size(); j++)
                     printf("Subframe %u/%u  Num_Elem %lu\n",
@@ -256,7 +251,7 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDa
 
         uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
         for(unsigned i=3; i<5; i++) {
-            std::vector< XtcData::Array<uint8_t> > ssf = 
+            std::vector< XtcData::Array<uint8_t> > ssf =
                 _subframes(subframes[i].data(),subframes[i].shape()[0]);
             if (ssf.size()<3) {
                 logging::error("Missing data: subframe[%d] size %d [3]\n",

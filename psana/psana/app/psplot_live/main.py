@@ -22,6 +22,13 @@
 #
 # The interactive session allows user to use all the functions that
 # doesn't start with "_" in their name.
+#
+# Example run on s3df
+# To start monitoring two plots,
+# psplot_live ANDOR ATMOPAL
+# On another node, submit an analysis job that generates these two plots
+# cd psana/psana/tests
+# sbatch submit_run_andor.sh rixc00221 49
 ####################################################################
 
 from psana.app.psplot_live.db import *
@@ -41,9 +48,10 @@ import os
 proc = SubprocHelper()
 runner = None
 
-def _kill_pid(pid, timeout=3):
+def _kill_pid(pid, timeout=3, verbose=False):
     def on_terminate(proc):
-        print("process {} terminated with exit code {}".format(proc, proc.returncode))
+        if verbose:
+            print("process {} terminated with exit code {}".format(proc, proc.returncode))
     procs = [psutil.Process(pid)] + psutil.Process(pid).children()
     for p in procs:
         p.terminate()
@@ -155,8 +163,9 @@ async def run_monitor(plotnames, socket_name):
 # Interactive session functions
 ####################################################################
 class Runner():
-    def __init__(self, socket_name):
+    def __init__(self, socket_name, plotnames):
         self.sub = ClientSocket(socket_name)
+        self.plotnames = plotnames
 
     def show(self, instance_id):
         data = {'msgtype': MonitorMsgType.RERUN, 'force_rerun_instance_id':instance_id}
@@ -171,20 +180,34 @@ class Runner():
         return reply['instance']
 
     def list_proc(self):
+        # Get all psplot process form the main process' database
         data = self.query_db()
         # 1: slurm_job_id1, rixc00221, 49, sdfmilan032, 12301, pid, DbHistoryStatus.PLOTTED
         headers = ["ID", "SLURM_JOB_ID", "EXP", "RUN", "NODE", "PORT", "STATUS"]
         format_row = "{:<5} {:<12} {:<10} {:<5} {:<35} {:<5} {:<10}"
         print(format_row.format(*headers))
         for instance_id, info in data.items():
-            # Skip PID (last column) in pinfo
+            psplot_subproc_pid = info[-2]
+
+            # Our main process creates a psplot process and for each plot GUI, another
+            # subprocess. Upon checking if we only see one psplot process, we assume
+            # all the plot GUIs have been closed. We'll kill the process and remove
+            # it from the database.
+            sprocs = psutil.Process(psplot_subproc_pid).children()
+            all_procs = [f'm{psplot_subproc_pid}'] + [f's{sp.pid}' for sp in sprocs]
+
+            if len(sprocs) == 1:
+                kill(instance_id)
+                continue
+
+            # Do not display PID (last column) in pinfo
             row = [instance_id] + info[:-2] + [DbHistoryStatus.get_name(info[-1])]
             try:
                 print(format_row.format(*row))
             except Exception as e:
                 print(e)
                 print(f'{row=}')
-
+        
     def kill(self, instance_id, timeout=3):
         data = self.query_db()
 
@@ -223,7 +246,7 @@ def main(plotnames: List[str], connection_type: str = "KAFKA", subproc: str = "m
                 cmd = f"xterm -hold -e {cmd}"
             asyncio.run(proc._run(cmd))
         global runner 
-        runner = Runner(socket_name)
+        runner = Runner(socket_name, plotnames)
         IPython.embed()
     elif subproc == "kafka":
         asyncio.run(start_kafka_consumer(socket_name))

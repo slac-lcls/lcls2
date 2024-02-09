@@ -580,6 +580,7 @@ class createArgs(object):
         parser.add_argument('--user', help='user for HTTP authentication', type=str, default=opt('user','xppopr'))
         parser.add_argument('--password', help='password for HTTP authentication', type=str, default=opt('password',os.getenv('CONFIGDB_AUTH')))
         parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=opt('yaml',None))
+        parser.add_argument('--dir', help='Load values from directory tree', type=str, default=opt('dir',None))
         self.args = parser.parse_args()
 
 

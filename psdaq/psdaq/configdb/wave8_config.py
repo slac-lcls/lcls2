@@ -153,7 +153,7 @@ def wave8_init_feb(slane=None,schan=None):
     if slane is not None:
         lane = int(slane)
 
-def wave8_connect(base):
+def wave8_connectionInfo(base, alloc_json_str):
     epics_prefix = base['prefix']
 
     #  Switch to LCLS2 Timing
@@ -199,11 +199,16 @@ def user_to_expert(prefix, cfg, full=False):
             else:
                 #  LCLS2 timing.  Let controls set the delay value.
                 print('ctrlDelay {:}  partitionDelay {:}  delta_ns {:}'.format(ctrlDelay,partitionDelay,delta))
-                triggerDelay   = int(ctrlDelay + delta*1300/7000 - partitionDelay*200)
+                # since controls now also runs off the LCLS2 timing fiber there
+                # is not reason to have a "delta".  This was put in place to
+                # compensate for different lcls1/lcls2 timing fiber lengths
+                # when controls used the lcls1 timing fiber = cpo 02/01/24
+                #triggerDelay   = int(ctrlDelay + delta*1300/7000 - partitionDelay*200)
+                triggerDelay   = int(ctrlDelay - partitionDelay*200)
 
             print('triggerDelay {:}'.format(triggerDelay))
             if triggerDelay < 0:
-                print('Raise delta_ns >= {:}'.format(-triggerDelay*7000/1300.))
+                print('Raise controls trigger delay >= {:} nanoseconds ({:} 185MHz clock ticks)'.format(-triggerDelay*7000/1300.,-triggerDelay))
                 raise ValueError('triggerDelay computes to < 0')
 
             ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
@@ -255,10 +260,11 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     names_cfg = [epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',
+                 epics_prefix+'DataPathCtrl:EnableStream', # 0x1 for Controls, 0x2 for DAQ
                  epics_prefix+'RawBuffers:FifoPauseThreshold',
                  epics_prefix+'Integrators:ProcFifoPauseThreshold',
                  epics_prefix+'Integrators:IntFifoPauseThreshold']
-    values = [group,16,1,127,127,127]
+    values = [group,16,1,0x2,127,127,127]
     ctxt_put(names_cfg, values)
 
     time.sleep(0.2)
@@ -429,7 +435,7 @@ def wave8_unconfig(base):
     values = [0]
     ctxt_put(names_cfg, values)
 
-    #  Leaving DAQ control.  
+    #  Leaving DAQ control.
     if base['timebase']=='186M':
         config_timing(epics_prefix)
 

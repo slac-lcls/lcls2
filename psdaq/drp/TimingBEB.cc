@@ -32,6 +32,11 @@ TimingBEB::~TimingBEB()
 {
 }
 
+void TimingBEB::_connectionInfo(PyObject* mbytes)
+{
+    m_para->serNo = _string_from_PyDict(mbytes,"serno");
+}
+
 void TimingBEB::connect(const json&        connect_json,
                         const std::string& collectionId)
 {
@@ -53,11 +58,6 @@ void TimingBEB::connect(const json&        connect_json,
 
     Py_DECREF(pModule);
     Py_DECREF(mybytes);
-}
-
-void TimingBEB::_connect(PyObject* mbytes)
-{
-    m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
 
 unsigned TimingBEB::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
