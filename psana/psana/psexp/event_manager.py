@@ -5,8 +5,13 @@ import numpy as np
 import os
 import time
 
-import logging
-logger = logging.getLogger(__name__)
+from psana import utils
+from psana.psexp.tools import mode
+if mode == 'mpi':
+    from mpi4py import MPI
+    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
+else:
+    logger = utils.Logger()
 
 s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
 s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')

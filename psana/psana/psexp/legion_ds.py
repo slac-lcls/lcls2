@@ -3,8 +3,13 @@ from psana.dgrammanager import DgramManager
 from psana.event import Event
 import numpy as np
 
-import logging
-logger = logging.getLogger(__name__)
+from psana import utils
+from psana.psexp.tools import mode
+if mode == 'mpi':
+    from mpi4py import MPI
+    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
+else:
+    logger = utils.Logger()
 
 import os
 

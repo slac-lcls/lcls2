@@ -17,8 +17,13 @@ from psana import dgram
 from psana.detector import detectors
 import psana.pscalib.calib.MDBWebUtils as wu
 
-import logging
-logger = logging.getLogger(__name__)
+from psana import utils
+from psana.psexp.tools import mode
+if mode == 'mpi':
+    from mpi4py import MPI
+    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
+else:
+    logger = utils.Logger()
 
 from dataclasses import dataclass
 from psana.psexp.tools import MODE
