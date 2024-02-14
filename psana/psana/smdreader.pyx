@@ -201,9 +201,17 @@ cdef class SmdReader:
         if self.winner == -1:
             for i in range(self.prl_reader.nfiles):
                 buf_ts = self.prl_reader.bufs[i].ts_arr[self.prl_reader.bufs[i].n_ready_events-1]
-                if buf_ts < limit_ts or limit_ts == 0:
+                if limit_ts == 0:
                     self.winner = i
                     limit_ts = buf_ts
+                else:
+                    if buf_ts == limit_ts:
+                        if self.winner > -1:
+                            if self.prl_reader.bufs[i].n_ready_events > self.prl_reader.bufs[self.winner].n_ready_events:
+                                self.winner = i
+                    elif buf_ts < limit_ts:
+                        self.winner = i
+                        limit_ts = buf_ts
         else:
             limit_ts = self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_ready_events-1]
         
