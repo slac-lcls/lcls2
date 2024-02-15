@@ -18,6 +18,7 @@ import numpy as np
 import IPython
 import datetime
 import logging
+import copy # deepcopy
 
 base = None
 pv = None
@@ -193,6 +194,19 @@ ordering['TriggerRegisters'] = ['RunTriggerEnable',
                                 'AutoTrigPeriod',
                                 'PgpTrigEn',]
 
+def _dict_compare(d1,d2,path):
+    for k in d1.keys():
+        if k in d2.keys():
+            if isinstance(d1[k],dict):
+                _dict_compare(d1[k],d2[k],path+'.'+k)
+            elif (d1[k] != d2[k]):
+                print(f'key[{k}] d1[{d1[k]}] != d2[{d2[k]}]')
+        else:
+            print(f'key[{k}] not in d1')
+    for k in d2.keys():
+        if k not in d1.keys():
+            print(f'key[{k}] not in d2')
+
 def gain_mode_map(gain_mode):
     mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
     trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
@@ -342,6 +356,9 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     # configure internal ADC
     cbase.EpixHR.InitHSADC()
 
+    #  store previously applied configuration
+    base['cfg'] = None
+
     time.sleep(1)
 #    epixhr2x2_internal_trigger(base)
     return base
@@ -360,7 +377,7 @@ def epixhr2x2_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epixhr2x2_connectionInfo(base, alloc_json_str):
+def epixhr2x2_connect(base):
 
 #
 #  To do:  get the IDs from the detector and not the timing link
@@ -475,7 +492,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 
     epixHR = None
     if ('expert' in cfg and 'EpixHR' in cfg['expert']):
-        epixHR = cfg['expert']['EpixHR'].copy()
+        epixHR = copy.deepcopy(cfg['expert']['EpixHR'])
 
     #  Make list of enabled ASICs
     if 'user' in cfg and 'asic_enable' in cfg['user']:
@@ -663,6 +680,15 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Translate user settings to the expert fields
     writePixelMap=user_to_expert(base, cfg, full=True)
 
+    if cfg==base['cfg']:
+        print('### Skipping redundant configure')
+        return base['result']
+
+    if base['cfg']:
+        print('--- config changed ---')
+        _dict_compare(base['cfg'],cfg,'cfg')
+        print('--- /config changed ---')
+
     #  Apply the expert settings to the device
     _stop(base)
 
@@ -764,6 +790,9 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
         logging.warning('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
         result.append( json.dumps(scfg[i]) )
 
+    base['cfg']    = copy.deepcopy(cfg)
+    base['result'] = copy.deepcopy(result)
+
     return result
 
 def epixhr2x2_unconfig(base):
@@ -831,6 +860,9 @@ def epixhr2x2_update(update):
     logging.warning('epixhr2x2_update')
     global ocfg
     global base
+
+    #  Queue full configuration next Configure transition
+    base['cfg'] = None
 
     _stop(base)
     ##
@@ -970,7 +1002,7 @@ if __name__ == "__main__":
 
     _base = epixhr2x2_init(None,dev='/dev/datadev_0')
     epixhr2x2_init_feb()
-    epixhr2x2_connectionInfo(_base, None)
+    epixhr2x2_connect(_base)
 
     db = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws/configDB'
     d = {'body':{'control':{'0':{'control_info':{'instrument':'tst',
