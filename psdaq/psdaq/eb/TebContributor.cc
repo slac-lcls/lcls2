@@ -64,6 +64,7 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
                                             {"detseg", std::to_string(prms.detSegment)},
                                             {"alias", prms.alias}};
 
+  exporter->constant("TCtb_BEMax",  labels, prms.maxEntries);
   exporter->constant("TCtb_IUMax",  labels, MAX_BATCHES);
   exporter->constant("TCtbO_IFMax", labels, _pending.size());
 
@@ -311,7 +312,6 @@ void TebContributor::_post(const Batch& batch)
   using ns_t = std::chrono::nanoseconds;
   auto age   = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - batch.tStart;
   _age       = std::chrono::duration_cast<ns_t>(age).count();
-  _entries   = batch.entries;
 
   batch.end->setEOL();        // Avoid race: terminate before adding batch to pending list
   _pending.push(batch.start); // Get the batch on the queue before any corresponding result can show up
@@ -331,11 +331,12 @@ void TebContributor::_post(const Batch& batch)
     size_t       extent = (reinterpret_cast<const char*>(batch.end) -
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;
     uint32_t     data   = ImmData::value(ImmData::Response_Buffer, _id, idx);
-    bool         print  = false;
+    _entries = extent / _prms.maxInputSize;
 
-    if (UNLIKELY((batch.entries == 0) || (batch.entries > _prms.maxEntries)))
+    bool         print  = false;
+    if (UNLIKELY(batch.entries != _entries))
     {
-      logging::error("%s:\n  Bad batch entry count: %u", __PRETTY_FUNCTION__, batch.entries);
+      logging::error("%s:\n  Bad batch entry count: %u vs %lu", __PRETTY_FUNCTION__, batch.entries, _entries);
       print = true;
     }
     if (UNLIKELY(extent != _batch.entries * _prms.maxInputSize))

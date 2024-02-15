@@ -154,6 +154,7 @@ namespace Pds {
       uint64_t                     _prescaleCount;
       int64_t                      _latency;
       int64_t                      _trgTime;
+      uint64_t                     _entries;
     private:
       const EbParams&              _prms;
       EbLfClient                   _l3Transport;
@@ -227,6 +228,8 @@ Teb::Teb(const EbParams&         prms,
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
                                             {"alias", prms.alias}};
+  exporter->constant("TEB_BEMax",  labels, prms.maxEntries);
+
   exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;            });
   exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;               });
   exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;            });
@@ -242,6 +245,7 @@ Teb::Teb(const EbParams&         prms,
   exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;         });
   exporter->add("TEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;               });
   exporter->add("TEB_trg_dt", labels, MetricType::Gauge,   [&](){ return _trgTime;               });
+  exporter->add("TEB_BtEnt",  labels, MetricType::Gauge,   [&](){ return _entries;               });
 }
 
 int Teb::resetCounters()
@@ -744,10 +748,11 @@ void Teb::_post(const Batch& batch)
   unsigned offset = batch.idx * maxResultSize;
   uint64_t data   = ImmData::value(ImmData::NoResponse_Buffer, _prms.id, batch.idx);
   uint64_t destns = batch.dsts; // & ~_trimmed;
-  bool     print  = false;
+  _entries = extent / maxResultSize;
 
   batch.end->setEOL();                  // Terminate the batch
 
+  bool print = false;
   if (UNLIKELY(extent > _prms.maxEntries * maxResultSize))
   {
     logging::error("%s:\n  Batch extent exceeds maximum: %zu vs %u * %zu = %zu",
