@@ -17,7 +17,7 @@ cdb  = f'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'     # production  
 #  drp variables
 #
 prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
-data_dir = f'/drpneh/data'
+data_dir = f'/reg/neh/operator/tstopr/data/drp'  #'/drpneh/data'
 trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
 task_set = 'taskset 0xffbfeffbfe '
@@ -87,8 +87,10 @@ procmgr_config = [
 
  {host: 'drp-neh-cmp010',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
+ # the ePixM 'DAQ' trigger is being fired on the platform group, e.g. 3
  {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320'},
 
+ # The tstcam is for triggering the ePixM 'run' trigger on another group, e.g. 6
  {host: 'drp-neh-cmp010',  id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=145'},
 ]
 
