@@ -1155,7 +1155,6 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.contractors.fill(0);
   _prms.receivers.fill(0);
 
-  _prms.maxEntries   = MAX_ENTRIES;     // Revisit: Make configurable?
   _prms.maxBuffers   = 0;               // Save the largest value
   _prms.indexSources = 0ull;            // DRP(s) with the largest DMA index range
   _prms.numBuffers.resize(MAX_DRPS, 0); // Number of buffers on each DRP
@@ -1438,6 +1437,8 @@ int main(int argc, char **argv)
 
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
+
+  prms.maxEntries = MAX_ENTRIES;        // Revisit: Make configurable?
 
   try
   {

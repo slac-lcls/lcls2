@@ -529,6 +529,13 @@ def daqPipes(srvurl, args):
         entry  = '% 11.6f' % (number)
         return entry, color
 
+    def _fmtPctNC(value):       # No Color
+        number = float(value)
+        color  = 3
+        #entry  = ('% 11.6f' if '.' in value else '% 11.0f') % (number)
+        entry  = '% 11.6f' % (number)
+        return entry, color
+
     def _fmtBool(value):
         number = int(value)
         color  = 3 if number == 0 else 4
@@ -559,7 +566,7 @@ def daqPipes(srvurl, args):
         '%_WkrO_occ'  : (f'100.0*{DRP_WrkOutQue}/{DRP_WrkQueDp}',
                          _fmtPct, 'Percentage occupancy of all Output work queues on a DRP'),
         '%_IBat_occ'  : (f'100.0*{TCtbO_BtEnt}/{TCtb_BEMax}',
-                         _fmtPct, 'Entry occupancy of DRP-to-TEB (Input) batches'),
+                         _fmtPctNC, 'Entry occupancy of DRP-to-TEB (Input) batches'),
 #        '%_Bat_InUse' : (f'100.0*{TCtb_IUBats}/{TCtb_IUMax}',
 #                         _fmtPct, 'Percentage of DRP Input batches allocated'),
 #        'Bat_Wtg'     : (_q(args, 'TCtbO_BtWtg'),
@@ -571,7 +578,7 @@ def daqPipes(srvurl, args):
         '%_TEB_Full'  : (f'100.0*({TEB_EvAlCt}-{TEB_EvFrCt})/{TEB_EvPlDp}',
                          _fmtPct, 'Percentage of allocated TEB event buffers'),
         '%_RBat_occ'  : (f'100.0*{TEB_BtEnt}/{TEB_BEMax}',
-                         _fmtPct, 'Entry occupancy of TEB-to-DRP (Result) batches'),
+                         _fmtPctNC, 'Entry occupancy of TEB-to-DRP (Result) batches'),
         'TEB->DRP'    : (_q(args, 'TEB_TxPdg'),
                          _fmtHex, 'Indicator of when traffic from TEB to DRP is stalled', 16),
         '%_FileW_occ' : (f'100.0*(1.0 - {DRP_RecDp}/{DRP_RecDpMax})',
