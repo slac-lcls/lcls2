@@ -654,31 +654,39 @@ ssize_t Pds::Eb::EbLfLink::postCompRecv(unsigned count)
 {
   ssize_t rc = 0;
 
-  // Subtract the number of credits consummed (count)
-  if (count <= _credits)  _credits -= count;
-  else
+  // The number of consumable credits (count) must be
+  // less than or equal to the number of credits available
+  if (count > _credits)
   {
-    fprintf(stderr, "%s:\n  Error: _credits (%u) - count (%u) < 0\n",
-            __PRETTY_FUNCTION__, _credits, count);
-    _credits = 0;
+    fprintf(stderr, "%s:\n  Error: Link ID %d credits consummed (%u) > available (%u)\n",
+            __PRETTY_FUNCTION__, _id, count, _credits);
+    count = _credits;
   }
 
+  _credits -= count;                    // Consume credits
+
   // Replenish credits
-  for (unsigned i = _credits; i < _depth; ++i)
+  unsigned retries = 0;
+  while (_credits < _depth)
   {
     if ((rc = _ep->recv_comp_data(this)) < 0)
     {
-      if (rc != -FI_EAGAIN)
-        fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
-                __PRETTY_FUNCTION__, _id, _ep->error());
-      break;
+      if ((rc != -FI_EAGAIN) || (++retries == 100000))
+        break;
+      else
+        usleep(10);
     }
     ++_credits;
+    retries = 0;
   }
 
-  if (_credits == 0)
-    fprintf(stderr, "%s:\n  Error: _credits is %u, count = %u\n",
-            __PRETTY_FUNCTION__, _credits, count);
+  if ((rc < 0) && (rc != -FI_EAGAIN))
+    fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
+            __PRETTY_FUNCTION__, _id, _ep->error());
+
+  if (_credits != _depth)
+    fprintf(stderr, "%s:\n  Error: Link ID %d credits: %u, max: %u, count: %u\n",
+            __PRETTY_FUNCTION__, _id, _credits, _depth, count);
 
   return rc != -FI_EAGAIN ? rc : 0;
 }
