@@ -17,6 +17,7 @@
 #include "psdaq/service/Fifo.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -152,6 +153,7 @@ namespace Pds {
       uint64_t                     _nMonCount;
       uint64_t                     _mebCount[MAX_MEBS];
       uint64_t                     _prescaleCount;
+      uint64_t                     _latPid;
       int64_t                      _latency;
       int64_t                      _trgTime;
       uint64_t                     _entries;
@@ -215,6 +217,7 @@ Teb::Teb(const EbParams&         prms,
   _nMonCount    (0),
   _mebCount     {0, 0, 0, 0},
   _prescaleCount(0),
+  _latPid       (0),
   _latency      (0),
   _trgTime      (0),
   _prms         (prms),
@@ -588,9 +591,9 @@ void Teb::process(EbEvent* event)
     if (rdg->isEvent())
     {
       // Present event contributions to "user" code for building a result datagram
-      auto t0 = std::chrono::system_clock::now();
+      auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
       _trigger->event(event->begin(), event->end(), *rdg); // Consume
-      auto t1 = std::chrono::system_clock::now();
+      auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
       _trgTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
 
       // Handle prescale
@@ -673,11 +676,14 @@ void Teb::process(EbEvent* event)
                    pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
   }
 
-  auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+  if (!dgram->isEvent() || (dgram->pulseId() - _latPid > 13000000/14)) {
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+    _latPid = dgram->pulseId();
+  }
 }
 
 // Called by EB  on timeout when it is empty of events
@@ -857,7 +863,7 @@ public:
   TebApp(const std::string& collSrv, EbParams&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
-  json connectionInfo(const nlohmann::json& msg) override;
+  json connectionInfo(const json& msg) override;
   void connectionShutdown() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;

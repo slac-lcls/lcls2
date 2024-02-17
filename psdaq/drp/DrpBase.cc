@@ -72,6 +72,16 @@ static unsigned nextPowerOf2(unsigned n)
 }
 
 
+int64_t latency(const TimeStamp& time)
+{
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    return std::chrono::duration_cast<ms_t>(now - tp).count();
+}
+
+
 void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, size_t trBufSize)
 {
     size_t algnSz = 16;                    // For cache boundaries
@@ -258,6 +268,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_count       (0),
     m_dmaBytes    (0),
     m_dmaSize     (0),
+    m_latPid      (0),
     m_latency     (0),
     m_nDmaErrors  (0),
     m_nNoComRoG   (0),
@@ -427,6 +438,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
             if (!m_pool.transitionDgrams[evtIndex]) {
                 ++m_nNoTrDgrams;
                 freeDma(event);         // Leaves event mask = 0
+                m_pool.freePebble();    // Avoid leaking pebbles on errors
                 return nullptr;         // Can happen during shutdown
             }
         }
@@ -435,12 +447,10 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         return nullptr;                 // Event is still incomplete
     }
 
-    auto now = std::chrono::system_clock::now();
-    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-
+    if (!timingHeader->isEvent() || (timingHeader->pulseId() - m_latPid > 13000000/14)) {
+        m_latency = Drp::latency(timingHeader->time);
+        m_latPid = timingHeader->pulseId();
+    }
     return timingHeader;
 }
 
@@ -493,6 +503,7 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_configureBuffer(para.maxTrSize),
   m_damage(0),
   m_evtSize(0),
+  m_latPid(0),
   m_latency(0),
   m_partition(para.partition)
 {
@@ -830,11 +841,10 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
 
         // Measure latency before sending dgram for monitoring
-        auto now = std::chrono::system_clock::now();
-        auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-                 + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-        std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-        m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+        if (!dgram->isEvent() || (dgram->pulseId() - m_latPid > 13000000/14)) {
+            m_latency = Drp::latency(dgram->time);
+            m_latPid = dgram->pulseId();
+        }
 
         if (m_mon.enabled()) {
             // L1Accept

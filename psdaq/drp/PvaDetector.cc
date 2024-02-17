@@ -82,7 +82,7 @@ static int _compare(const TimeStamp& ts1,
 }
 
 template<typename T>
-static int64_t _deltaT(TimeStamp& ts)
+static int64_t _deltaT(const TimeStamp& ts)
 {
     auto now = std::chrono::system_clock::now();
     auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}

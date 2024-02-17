@@ -80,6 +80,8 @@ public:
     std::string runName();
 };
 
+int64_t latency(const XtcData::TimeStamp&);
+
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
@@ -124,6 +126,7 @@ private:
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
     uint64_t m_evtSize;
+    uint64_t m_latPid;
     int64_t m_latency;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
     FileParameters m_fileParameters;
@@ -167,6 +170,7 @@ protected:
     unsigned m_count;
     uint64_t m_dmaBytes;
     uint64_t m_dmaSize;
+    uint64_t m_latPid;
     int64_t m_latency;
     uint64_t m_nDmaErrors;
     uint64_t m_nNoComRoG;

@@ -76,7 +76,7 @@ public:
 } RawDef, InterpolatedDef;
 
 template<typename T>
-static int64_t _deltaT(XtcData::TimeStamp& ts)
+static int64_t _deltaT(const XtcData::TimeStamp& ts)
 {
     auto now = std::chrono::system_clock::now();
     auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}

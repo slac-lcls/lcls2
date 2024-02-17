@@ -56,6 +56,7 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   _previousPid(0),
   _eventCount (0),
   _batchCount (0),
+  _latPid     (0),
   _latency    (0)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
@@ -221,12 +222,14 @@ bool TebContributor::timeout()
 // NB: process() must not be called concurrently with timeout()
 void TebContributor::process(const EbDgram* dgram)
 {
-  auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-
+  if (!dgram->isEvent() || (dgram->pulseId() - _latPid > 13000000/14)) {
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+    _latPid = dgram->pulseId();
+  }
   auto rogs       = dgram->readoutGroups();
   bool contractor = rogs & _prms.contractor; // T if providing TEB input
 

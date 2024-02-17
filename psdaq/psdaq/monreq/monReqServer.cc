@@ -350,6 +350,7 @@ namespace Pds {
     std::vector<EbLfCltLink*>           _mrqLinks;
     std::unique_ptr<GenericPool>        _pool;
     uint64_t                            _pidPrv;
+    uint64_t                            _latPid;
     int64_t                             _latency;
     uint64_t                            _eventCount;
     uint64_t                            _trCount;
@@ -383,6 +384,7 @@ Meb::Meb(const MebParams&        prms,
          const MetricExporter_t& exporter) :
   EbAppBase    (prms, exporter, "MEB", EB_TMO_MS),
   _pidPrv      (0),
+  _latPid      (0),
   _latency     (0),
   _eventCount  (0),
   _trCount     (0),
@@ -644,11 +646,14 @@ void Meb::process(EbEvent* event)
     }
   }
 
-  auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  tp_t tp   {std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+  if (!dgram->isEvent() || (dgram->pulseId() - _latPid > 13000000/14)) {
+    auto now = std::chrono::system_clock::now();
+    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+    tp_t tp   {std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+    _latPid = dgram->pulseId();
+  }
 
   if (dg->service() == TransitionId::L1Accept)
   {
@@ -696,7 +701,7 @@ public:
   MebApp(const std::string& collSrv, MebParams&);
   virtual ~MebApp();
 public:                                 // For CollectionApp
-  json connectionInfo(const nlohmann::json& msg) override;
+  json connectionInfo(const json& msg) override;
   void connectionShutdown() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
