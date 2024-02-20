@@ -17,6 +17,7 @@
 #include "EpixM320.hh"
 #include "Epix100.hh"
 #include "Opal.hh"
+#include "HREncoder.hh"
 #include "Wave8.hh"
 #include "Piranha4.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -323,6 +324,7 @@ void PGPDetectorApp::initialize()
     f.register_type<TimingBEB>   ("tb");
     f.register_type<TimingSystem>("ts");
     f.register_type<Wave8>       ("wave8");
+    f.register_type<HREncoder>   ("hrencoder");
     f.register_type<Piranha4>    ("piranha4");
 
     m_det = f.create(&m_para, &m_drp.pool);

@@ -38,6 +38,7 @@ add_executable(drp
     TimingSystem.cc
     TimeTool.cc
     Wave8.cc
+    HREncoder.cc
     Opal.cc
 #    OpalTT.cc
     OpalTTFex.cc
