@@ -1,3 +1,4 @@
+#undef NDEBUG
 #include "Json2Xtc.hh"
 
 #include <list>
@@ -309,6 +310,9 @@ int translateJson2XtcNames(Document* d, Xtc* xtc, const void* bufEnd, NamesLooku
         !d->HasMember("detId:RO") || !d->HasMember("doc:RO")) {
         printf("Document is missing a mandatory field (alg, detName, detType, detId, or doc)!\n");
         return -1;
+    }
+    if (!d->HasMember(":types:")) {
+        printf("Document is missing mandatory :types: field!");
     }
     const Value& a = (*d)["alg:RO"];
     const Value& v = a["version:RO"];
