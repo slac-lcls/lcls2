@@ -129,6 +129,26 @@ class encoder_raw_3_0_0(DetectorImpl):
        else:
            return segments[0].encoderValue*1.0
 
+class hrencoder_raw_0_1_0(DetectorImpl):
+    """High rate encoder.
+
+    The hrencoder detector returns 4 fields:
+        position - The encoder value/position.
+        missedTrig_cnt - Missed triggers
+        error_cnt - Number of errors.
+        latches - Only 3 bits of this integer correspond to the latch status.
+    """
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def value(self, evt) -> float:
+        segments = self._segments(evt)
+
+        if segments is None:
+            return None
+
+        return segments[0].position
+
 class encoder_interpolated_3_0_0(encoder_raw_3_0_0):
    def __init__(self, *args):
        super().__init__(*args)
