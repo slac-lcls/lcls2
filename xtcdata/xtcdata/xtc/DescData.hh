@@ -39,7 +39,7 @@ public:
         _offset[0]=0;
         _numentries = names.num();
         unsigned shapeIndex = 0;
-        for (unsigned i=0; i<_numentries-1; i++) {
+        for (unsigned i=0; _numentries && i<_numentries-1; i++) {
             Name& name = names.get(i);
             if (name.rank()==0) _offset[i+1]=_offset[i]+Name::get_element_size(name.type());
             else {
@@ -271,6 +271,7 @@ public:
     {
         Shapes& shapes = *new (&_shapesdata, _bufEnd) Shapes(_parent, _bufEnd);
         Names& names = _nameindex.names();
+        _numExpectedEntries = names.num();
         shapes.alloc(names.numArrays()*sizeof(Shape), _shapesdata, _parent, _bufEnd);
         new (&_shapesdata, _bufEnd) Data(_parent, _bufEnd);
     }
@@ -280,10 +281,18 @@ public:
     {
         Shapes& shapes = *new (&_shapesdata, _bufEnd) Shapes(_parent, _bufEnd);
         Names& names = _nameindex.names();
+        _numExpectedEntries = names.num();
         shapes.alloc(names.numArrays()*sizeof(Shape), _shapesdata, _parent, _bufEnd);
         new (&_shapesdata, _bufEnd) Data(_parent, _bufEnd);
     }
 
+    ~CreateData()
+    {
+        if (_numentries != _numExpectedEntries) {
+            printf("CreateData: %d entries not equal to number of expected entries %d\n", _numentries, _numExpectedEntries);
+            abort();
+        }
+    }
 
     template <typename T>
     Array<T> allocate(unsigned index, unsigned *shape)
@@ -369,6 +378,7 @@ public:
     }
 
 private:
+    unsigned    _numExpectedEntries;
     Xtc&        _parent;
     const void* _bufEnd;
 };
