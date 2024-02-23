@@ -299,9 +299,8 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
         auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data()) + headerSize;
         for (unsigned bankRow = 0; bankRow < bankRows; ++bankRow) {
             for (unsigned r = 0; r < bankHeight; ++r) {
-                // ASIC firmware bug: first and last row of each bank are swapped
-                auto row  = r == 0 ? bankHeight - 1 : (r == bankHeight - 1 ? 0 : r); // Swap first and last row
-                //auto row  = r == 0 ? bankHeight - 1 : r - 1; // Shift rows up by one in ring buffer fashion
+                // ASIC firmware bug: Rows are shifted up by one in ring buffer fashion
+                auto row  = r == 0 ? bankHeight - 1 : r - 1; // Compensate
                 auto aRow = bankRow*bankHeight+r;
                 //auto dst  = q<2 ? &aframe(aRow+elemRows,  elemRowSize*(q&1))
                 //                : &aframe(elemRows-1-aRow,elemRowSize*(1-(q&1)));
