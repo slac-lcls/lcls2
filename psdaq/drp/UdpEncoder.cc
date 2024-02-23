@@ -483,33 +483,17 @@ int UdpReceiver::reset()
   return (rv);
 }
 
-class Pgp : public PgpReader
-{
-public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
-        PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
-        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_nDmaRet(0)
-    {
-        m_nodeId = drp.nodeId();
-        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
-            logging::error("Failed to allocate lane/vc");
-        }
-    }
 
-    Pds::EbDgram* next(uint32_t& evtIndex);
-    const uint64_t nDmaRet() { return m_nDmaRet; }
-private:
-    Pds::EbDgram* _handle(uint32_t& evtIndex);
-    Detector* m_det;
-    Pds::Eb::TebContributor& m_tebContributor;
-    static const int MAX_RET_CNT_C = 100;
-    const bool& m_running;
-    int32_t m_available;
-    int32_t m_current;
-    unsigned m_nodeId;
-    uint64_t m_nDmaRet;
-};
+Pgp::Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+    m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
+    m_available(0), m_current(0), m_nDmaRet(0)
+{
+    m_nodeId = drp.nodeId();
+    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+        logging::error("Failed to allocate lane/vc");
+    }
+}
 
 Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
@@ -626,6 +610,7 @@ unsigned Interpolator::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage)
 UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
+    m_pgp           (para, drp, this, m_running),
     m_interpolator  (MAX_ENC_VALUES, POLYNOMIAL_ORDER),
     m_evtQueue      (drp.pool.nbuffers()),
     m_encQueue      (drp.pool.nbuffers()),
@@ -779,32 +764,30 @@ void UdpEncoder::_worker()
     m_exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
                     [&](){return m_encQueue.guess_size();});
 
-    Pgp pgp(*m_para, m_drp, this, m_running);
-
     m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nDmaRet();});
+                    [&](){return m_pgp.nDmaRet();});
     m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
-                    [&](){return pgp.dmaBytes();});
+                    [&](){return m_pgp.dmaBytes();});
     m_exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.dmaSize();});
+                    [&](){return m_pgp.dmaSize();});
     m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.latency();});
+                    [&](){return m_pgp.latency();});
     m_exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nDmaErrors();});
+                    [&](){return m_pgp.nDmaErrors();});
     m_exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nNoComRoG();});
+                    [&](){return m_pgp.nNoComRoG();});
     m_exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nMissingRoGs();});
+                    [&](){return m_pgp.nMissingRoGs();});
     m_exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nTmgHdrError();});
+                    [&](){return m_pgp.nTmgHdrError();});
     m_exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nPgpJumps();});
+                    [&](){return m_pgp.nPgpJumps();});
     m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nNoTrDgrams();});
+                    [&](){return m_pgp.nNoTrDgrams();});
 
-    const uint64_t nsTmo = (m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end() ?
-                            std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
-                            1500) * 1000000;
+    const ms_t tmo{ m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end() ?
+                    std::stoul(Detector::m_para->kwargs["match_tmo_ms"])        :
+                    1500 };
 
     m_udpReceiver->start();
 
@@ -814,7 +797,7 @@ void UdpEncoder::_worker()
         }
 
         uint32_t index;
-        Pds::EbDgram* dgram = pgp.next(index);
+        Pds::EbDgram* dgram = m_pgp.next(index);
         if (dgram) {
             m_nEvents++;
 
@@ -827,10 +810,7 @@ void UdpEncoder::_worker()
             // up with any encoder updates that may have arrived
             _process(dgram);            // Was _matchUp
 
-            // Generate a timestamp in the past for timing out encoder and PGP events
-            XtcData::TimeStamp timestamp(0, nsTmo);
-            auto ns = _deltaT<ns_t>(timestamp);
-            _timeout(timestamp.from_ns(ns));
+            _timeout(tmo);
 
             // Time out batches for the TEB
             m_drp.tebContributor().timeout();
@@ -840,7 +820,7 @@ void UdpEncoder::_worker()
     m_udpReceiver->stop();
 
     // Flush the DMA buffers
-    pgp.flush();
+    m_pgp.flush();
 
     logging::info("Worker thread finished");
 }
@@ -1040,14 +1020,14 @@ void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& fra
     _sendToTeb(pgpDg, evtIdx);
 }
 
-void UdpEncoder::_timeout(const XtcData::TimeStamp& timestamp)
+void UdpEncoder::_timeout(ms_t timeout)
 {
     // Time out older pending PGP datagrams
     uint32_t index;
     if (!m_evtQueue.peek(index))  return;
 
     Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
-    if (dgram.time > timestamp)  return;  // dgram is newer than the timeout timestamp
+    if (m_pgp.age(dgram.time) < timeout)  return;
 
     uint32_t idx;
     auto rc = m_evtQueue.try_pop(idx);              // Actually consume the element
@@ -1096,11 +1076,11 @@ UdpApp::UdpApp(Parameters& para) :
     m_drp(para, context()),
     m_para(para),
     m_udpDetector(std::make_unique<UdpEncoder>(m_para, m_drp)),
-    m_det(m_udpDetector.get()),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
 
+    m_det = m_udpDetector.get();
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -1245,6 +1225,10 @@ void UdpApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
+
+        // Provide EbReceiver with the Detector interface so that additional
+        // data blocks can be formatted into the XTC, e.g. trigger information
+        m_drp.ebReceiver().configure(m_det, m_udpDetector->pgp());
 
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);

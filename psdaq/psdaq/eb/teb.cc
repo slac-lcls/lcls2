@@ -676,12 +676,12 @@ void Teb::process(EbEvent* event)
                    pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
   }
 
-  if (!dgram->isEvent() || (dgram->pulseId() - _latPid > 13000000/14)) {
-    auto now = std::chrono::system_clock::now();
+  if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
+    auto now = std::chrono::system_clock::now();  // Takes a long time!
     auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
              + std::chrono::nanoseconds{dgram->time.nanoseconds()};
     std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+    _latency = std::chrono::duration_cast<us_t>(now - tp).count();
     _latPid = dgram->pulseId();
   }
 }

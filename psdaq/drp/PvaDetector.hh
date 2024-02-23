@@ -4,6 +4,7 @@
 #include <atomic>
 #include <string>
 #include <mutex>
+#include <chrono>
 #include <condition_variable>
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
@@ -16,6 +17,25 @@ namespace Drp {
 
 struct PvParameters;
 class  PvDetector;
+
+class Pgp : public PgpReader
+{
+public:
+    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running);
+    Pds::EbDgram* next(uint32_t& evtIndex);
+    const uint64_t nDmaRet() { return m_nDmaRet; }
+private:
+    Pds::EbDgram* _handle(uint32_t& evtIndex);
+    Detector* m_det;
+    Pds::Eb::TebContributor& m_tebContributor;
+    static const int MAX_RET_CNT_C = 100;
+    const bool& m_running;
+    int32_t m_available;
+    int32_t m_current;
+    unsigned m_nodeId;
+    uint64_t m_nDmaRet;
+};
+
 
 class PvMonitor : public Pds_Epics::PvMonitorBase
 {
@@ -36,7 +56,7 @@ public:
 public:
     void startup();
     void shutdown();
-    void timeout(const XtcData::TimeStamp& timestamp);
+    void timeout(const PgpReader& pgp, std::chrono::milliseconds timeout);
     int  getParams(std::string& fieldName, XtcData::Name::DataType& xtcType, int& rank);
     unsigned id() const { return m_id; }
     const std::string& alias() const { return m_alias; }
@@ -79,9 +99,10 @@ public:
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ };
     void event(XtcData::Dgram& dgram, const void* bufEnd, const XtcData::Xtc& pvXtc);
     unsigned unconfigure();
+    const PgpReader* pgp() { return &m_pgp; }
 private:
     void _worker();
-    void _timeout(const XtcData::TimeStamp& timestamp);
+    void _timeout(std::chrono::milliseconds timeout);
     void _matchUp();
     void _handleTransition(Pds::EbDgram& evtDg, Pds::EbDgram& trDg);
     void _tEvtEqPv(std::shared_ptr<PvMonitor>&, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
@@ -98,6 +119,7 @@ private:
     enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
     PvParameters& m_para;
     DrpBase& m_drp;
+    Pgp m_pgp;
     std::vector< std::shared_ptr<PvMonitor> > m_pvMonitors;
     std::thread m_workerThread;
     SPSCQueue<Event> m_evtQueue;

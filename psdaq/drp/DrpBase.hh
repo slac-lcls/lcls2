@@ -80,7 +80,7 @@ public:
     std::string runName();
 };
 
-int64_t latency(const XtcData::TimeStamp&);
+class PgpReader;
 
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
@@ -93,6 +93,7 @@ public:
     void detector(Detector* det) {m_det = det;}
     void tsId(unsigned nodeId) {m_tsId = nodeId;}
     void resetCounters(bool all);
+    void configure(Detector*, const PgpReader*);
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
     bool advanceChunkId();
     std::string reopenFiles();
@@ -109,6 +110,7 @@ private:
 private:
     MemPool& m_pool;
     Detector* m_det;
+    const PgpReader* m_pgp;
     unsigned m_tsId;
     Pds::Eb::MebContributor& m_mon;
     BufferedFileWriterMT m_fileWriter;
@@ -133,8 +135,6 @@ private:
     unsigned m_partition;
 };
 
-class Detector;
-
 class PgpReader
 {
 public:
@@ -155,6 +155,9 @@ public:
     const uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
     const uint64_t nPgpJumps()    const { return m_nPgpJumps; }
     const uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
+    std::chrono::nanoseconds age(const XtcData::TimeStamp& time) const;
+private:
+    void _setTimeOffset(const XtcData::TimeStamp& time);
 protected:
     const Parameters& m_para;
     MemPool& m_pool;
@@ -179,6 +182,7 @@ protected:
     uint64_t m_nPgpJumps;
     uint64_t m_nNoTrDgrams;
     std::mutex m_lock;
+    std::chrono::nanoseconds m_tOffset;
 };
 
 class PV;

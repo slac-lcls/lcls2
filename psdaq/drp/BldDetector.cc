@@ -1066,6 +1066,10 @@ void BldApp::handlePhase1(const json& msg)
 
         m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
 
+        // Provide EbReceiver with the Detector interface so that additional
+        // data blocks can be formatted into the XTC, e.g. trigger information
+        m_drp.ebReceiver().configure(m_det, m_pgp.get());
+
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);
