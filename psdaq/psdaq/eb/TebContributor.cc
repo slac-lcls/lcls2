@@ -36,12 +36,12 @@ using namespace Pds;
 using namespace Pds::Eb;
 using logging = psalg::SysLog;
 using ms_t    = std::chrono::milliseconds;
-using us_t     = std::chrono::microseconds;
+using us_t    = std::chrono::microseconds;
 
 
 // Due to the possibility of deadtime, a timeout of 1 batch period after the
 // current batch ends is too short, leading to batch fragments being posted.
-// This causes no harm, but is extra work.
+// This causes no harm, but is extra work that is avoided with a longer timeout.
 const std::chrono::microseconds BATCH_TIMEOUT{11000};
 
 

@@ -228,6 +228,10 @@ void EaDetector::_worker()
 
     m_terminate.store(false, std::memory_order_release);
 
+    // Reset counters to avoid 'jumping' errors reconfigures
+    m_pool->resetCounters();
+    m_pgp.resetEventCounter();
+
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;

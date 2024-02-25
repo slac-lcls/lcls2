@@ -12,6 +12,7 @@
 #include "psdaq/eb/ResultDgram.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
@@ -161,6 +162,9 @@ private:
 protected:
     const Parameters& m_para;
     MemPool& m_pool;
+    pollfd m_pfd;
+    Pds::fast_monotonic_clock::time_point m_t0;
+    int m_tmo;
     std::vector<int32_t> dmaRet;
     std::vector<uint32_t> dmaIndex;
     std::vector<uint32_t> dest;

@@ -789,6 +789,10 @@ void UdpEncoder::_worker()
                     std::stoul(Detector::m_para->kwargs["match_tmo_ms"])        :
                     1500 };
 
+    // Reset counters to avoid 'jumping' errors reconfigures
+    m_pool->resetCounters();
+    m_pgp.resetEventCounter();
+
     m_udpReceiver->start();
 
     while (true) {
@@ -810,6 +814,7 @@ void UdpEncoder::_worker()
             // up with any encoder updates that may have arrived
             _process(dgram);            // Was _matchUp
 
+            // Time out older encoder packets and datagrams
             _timeout(tmo);
 
             // Time out batches for the TEB
@@ -1022,29 +1027,36 @@ void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& fra
 
 void UdpEncoder::_timeout(ms_t timeout)
 {
-    // Time out older pending PGP datagrams
-    uint32_t index;
-    if (!m_evtQueue.peek(index))  return;
+    // Try to clear out as many of the older queue entries as we can in one go
+    while (true) {
+        // Time out older pending PGP datagrams
+        uint32_t index;
+        if (!m_evtQueue.peek(index))  break;
 
-    Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
-    if (m_pgp.age(dgram.time) < timeout)  return;
+        Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
+        if (m_pgp.age(dgram.time) < timeout)  break;
 
-    uint32_t idx;
-    auto rc = m_evtQueue.try_pop(idx);              // Actually consume the element
-    if (rc)  assert(idx == index);
-
-    if (dgram.service() == XtcData::TransitionId::L1Accept) {
-        // No encoder data so mark event as damaged
-        dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
-        ++m_nTimedOut;
         logging::debug("Event timed out!! "
-                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       _deltaT<ms_t>(dgram.time));
-    }
+                       _deltaT<ms_t>(dgram.time), dgram.service());
 
-    _sendToTeb(dgram, index);
+        if (dgram.service() == XtcData::TransitionId::L1Accept) {
+            // No encoder data so mark event as damaged
+            dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
+            ++m_nTimedOut;
+
+            uint32_t idx;
+            auto rc = m_evtQueue.try_pop(idx);              // Actually consume the element
+            if (rc)  assert(idx == index);
+
+            _sendToTeb(dgram, index);
+        }
+        else {
+            _handleTransition(index, &dgram);
+        }
+    }
 }
 
 void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)

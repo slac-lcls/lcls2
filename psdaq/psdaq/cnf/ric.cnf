@@ -116,7 +116,7 @@ procmgr_config = [
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger2 -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-srcf-cmp028', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp030', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
 
 # {host: 'drp-srcf-cmp034', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 8 -q {ami_workers_per_node}'},
 # {host: 'drp-srcf-cmp034', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -t -R'},
@@ -126,13 +126,13 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp001', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x2 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576'},
- {host: 'drp-srcf-cmp028', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-srcf-cmp028', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp035', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
 
-# {host: 'drp-srcf-cmp028', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
+ {host: 'drp-srcf-cmp028', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
 
 # { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4 -L 5007'},  # Loopback
 # { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4'},
@@ -165,13 +165,13 @@ procmgr_config = [
 # { host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
 # { host: 'drp-srcf-cmp026', id:'tst_peppexopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x4 -D opal'},
 
- {host: 'drp-srcf-cmp028', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x4 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+ {host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x4 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 # {host: 'drp-srcf-cmp020', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd1+' -l 0x8 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 # {host: 'drp-srcf-cmp001', id:'imNkM_0',     flags:'spu', env:imNkM_env, cmd:pva_cmd1+f' -l 0x8 -k pebbleBufSize={3*8400000} im5k4=IM5K4:PPM:CAM:DATA1:Pva:Image im6k4=IM6K4:PPM:CAM:DATA1:Pva:Image sp1k4=SP1K4:PPM:CAM:DATA1:Pva:Image'},
 
  #{host: 'drp-srcf-cmp028', id:'im5k4_0',     flags:'spu', env:im5k4_env, cmd:pva_cmd0+' -l 0x2 IM5K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
  #{host: 'drp-srcf-cmp028', id:'im6k4_0',     flags:'spu', env:im6k4_env, cmd:pva_cmd0+' -l 0x4 IM6K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
- {host: 'drp-srcf-cmp028', id:'sp1k4_0',     flags:'spu', env:sp1k4_env, cmd:pva_cmd0+' -l 0x8 SP1K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000 -k pva_addr='+xpm_pvhost},
+ #{host: 'drp-srcf-cmp028', id:'sp1k4_0',     flags:'spu', env:sp1k4_env, cmd:pva_cmd0+' -l 0x8 SP1K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000 -k pva_addr='+xpm_pvhost},
 
 # {host: 'drp-srcf-cmp029', id:'andor_dir_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 

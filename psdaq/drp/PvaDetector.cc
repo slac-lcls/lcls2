@@ -620,6 +620,10 @@ void PvDetector::_worker()
                     std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
                     1500 };
 
+    // Reset counters to avoid 'jumping' errors on reconfigures
+    m_pool->resetCounters();
+    m_pgp.resetEventCounter();
+
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -688,10 +692,10 @@ void PvDetector::_matchUp()
             if (evt.remaining)  break;  // Break so the timeout routine can run
         }
         else {
-          // Find the transition dgram in the pool
-          EbDgram* trDg = m_pool->transitionDgrams[evt.index];
-          if (trDg)                     // nullptr can happen during shutdown
-              _handleTransition(*evtDg, *trDg);
+            // Find the transition dgram in the pool
+            EbDgram* trDg = m_pool->transitionDgrams[evt.index];
+            if (trDg)                   // nullptr can happen during shutdown
+                _handleTransition(*evtDg, *trDg);
         }
 
         Event event;
@@ -778,34 +782,44 @@ void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg
 
 void PvDetector::_timeout(ms_t timeout)
 {
-    // Time out older PV updates
-    for (auto& pvMonitor : m_pvMonitors) {
-        pvMonitor->timeout(m_pgp, timeout);
-    }
+    // Try to clear out as many of the older queue entries as we can in one go
+    while (true) {
+        // Time out older PV updates
+        for (auto& pvMonitor : m_pvMonitors) {
+            pvMonitor->timeout(m_pgp, timeout);
+        }
 
-    // Time out older pending PGP datagrams
-    Event event;
-    if (!m_evtQueue.peek(event))  return;
+        // Time out older pending PGP datagrams
+        Event event;
+        if (!m_evtQueue.peek(event))  break;
 
-    EbDgram& dgram = *reinterpret_cast<EbDgram*>(m_pool->pebble[event.index]);
-    if (m_pgp.age(dgram.time) < timeout)  return;
+        EbDgram& dgram = *reinterpret_cast<EbDgram*>(m_pool->pebble[event.index]);
+        if (m_pgp.age(dgram.time) < timeout)  break;
 
-    Event evt;
-    m_evtQueue.try_pop(evt);            // Actually consume the element
-    assert(evt.index == event.index);
-
-    if (dgram.service() == TransitionId::L1Accept) {
-        // No PV data so mark event as damaged
-        dgram.xtc.damage.increase(Damage::TimedOut);
-        ++m_nTimedOut;
         logging::debug("Event timed out!! "
-                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       _deltaT<ms_t>(dgram.time));
-    }
+                       _deltaT<ms_t>(dgram.time), dgram.service());
 
-    _sendToTeb(dgram, event.index);
+        if (dgram.service() == TransitionId::L1Accept) {
+            // No PV data so mark event as damaged
+            dgram.xtc.damage.increase(Damage::TimedOut);
+            ++m_nTimedOut;
+        }
+        else {
+            // Find the transition dgram in the pool
+            EbDgram* trDg = m_pool->transitionDgrams[event.index];
+            if (trDg)                   // nullptr can happen during shutdown
+                _handleTransition(dgram, *trDg);
+        }
+
+        Event evt;
+        m_evtQueue.try_pop(evt);        // Actually consume the element
+        assert(evt.index == event.index);
+
+        _sendToTeb(dgram, event.index);
+    }
 }
 
 void PvDetector::_sendToTeb(const EbDgram& dgram, uint32_t index)

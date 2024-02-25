@@ -248,6 +248,7 @@ int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt) :
     m_para        (para),
     m_pool        (pool),
+    m_tmo         {100}, // ms
     dmaRet        (maxRetCnt),
     dmaIndex      (maxRetCnt),
     dest          (maxRetCnt),
@@ -268,12 +269,40 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nPgpJumps   (0),
     m_nNoTrDgrams (0)
 {
+    m_pfd.fd = pool.fd();
+    m_pfd.events = POLLIN;
+
     pool.resetCounters();
 }
 
 int32_t PgpReader::read()
 {
-  return dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+    if (m_tmo) {                        // If in interrupt mode...
+        // Wait for DMAed data to become available
+        if (poll(&m_pfd, 1, m_tmo) < 0) {
+            logging::error("%s: poll() error: %m", __PRETTY_FUNCTION__);
+            return 0;
+        }
+        if (m_pfd.revents == 0) {
+            return 0;                   // Timed out
+        }
+        if (m_pfd.revents == POLLIN) {  // When DMAed data is available...
+            m_tmo = 0;                  // switch to polling mode
+            m_t0  = Pds::fast_monotonic_clock::now();
+        }
+    }
+
+    int rc = dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+
+    if ((rc == 0) && (m_tmo == 0)) {    // If no DMAed data and in polling mode...
+        auto t1 { Pds::fast_monotonic_clock::now() };
+
+        if (t1 - m_t0 >= ms_t{1}) {
+            m_tmo = 100;                // switch to interrupt mode after 1 ms
+        }
+    }
+
+    return rc;
 }
 
 void PgpReader::flush()
