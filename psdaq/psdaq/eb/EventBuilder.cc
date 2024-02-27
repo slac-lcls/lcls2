@@ -348,7 +348,7 @@ void EventBuilder::_flush(const EbEvent* const due)
 {
   const EbEpoch* const lastEpoch = _pending.empty();
   EbEpoch*             epoch     = _pending.forward();
-  auto                 now       = fast_monotonic_clock::now(CLOCK_MONOTONIC);
+  auto                 now       = fast_monotonic_clock::now();
 
   _tLastFlush = now;
 
@@ -414,7 +414,7 @@ void EventBuilder::_flush()
 void EventBuilder::_tryFlush()
 {
   const ms_t tmo{100};
-  auto       now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+  auto       now{fast_monotonic_clock::now()};
   if (now - _tLastFlush > tmo)  _flush();
 }
 

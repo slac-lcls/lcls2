@@ -847,10 +847,10 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
             if (dgram && (dgram->readoutGroups() & (1 << m_slowGroup)) &&
                 (dgram->service() == XtcData::TransitionId::L1Accept)) {
                 const ms_t tmo(1500);
-                auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+                auto tInitial = Pds::fast_monotonic_clock::now();
                 XtcData::Dgram* encDg;
                 while (!m_encQueue.peek(encDg)) {  // Wait for an encoder value
-                    if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+                    if (Pds::fast_monotonic_clock::now() - tInitial > tmo) {
                         logging::warning("encQueue peek timed out: %u\n", m_encQueue.guess_size());
                         return;
                     }

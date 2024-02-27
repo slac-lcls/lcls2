@@ -605,7 +605,7 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
     // get new buffers
     if (m_current == m_available) {
         m_current = 0;
-        auto start = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+        auto start = Pds::fast_monotonic_clock::now();
         while (true) {
             m_available = read();
             m_nDmaRet = m_available;
@@ -618,7 +618,7 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
             //            return nullptr;
 
             // wait for a total of 10 ms otherwise timeout
-            auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+            auto now = Pds::fast_monotonic_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
             if (elapsed > TMO_MS) {
                 m_next = timestamp + _skip_intv;

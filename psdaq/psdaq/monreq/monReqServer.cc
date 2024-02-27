@@ -51,6 +51,7 @@ using logging  = psalg::SysLog;
 using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
 using tp_t     = std::chrono::system_clock::time_point;
 using ms_t     = std::chrono::milliseconds;
+using us_t     = std::chrono::microseconds;
 using ns_t     = std::chrono::nanoseconds;
 
 static struct sigaction      lIntAction;
@@ -651,7 +652,7 @@ void Meb::process(EbEvent* event)
     auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
              + std::chrono::nanoseconds{dgram->time.nanoseconds()};
     tp_t tp   {std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+    _latency = std::chrono::duration_cast<us_t>(now - tp).count();
     _latPid = dgram->pulseId();
   }
 

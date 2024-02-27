@@ -23,7 +23,6 @@
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
 #include "psdaq/service/IpcUtils.hh"
-#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
@@ -61,16 +60,6 @@ bool checkPulseIds(const Detector* det, PGPEvent* event)
     }
     return true;
 }
-
-clockid_t test_coarse_clock() {
-    struct timespec t;
-    if (clock_gettime(CLOCK_MONOTONIC_COARSE, &t) == 0) {
-        return CLOCK_MONOTONIC_COARSE;
-    } else {
-        return CLOCK_MONOTONIC;
-    }
-}
-
 
 static int drpSendReceive(int inpMqId, int resMqId, XtcData::TransitionId::Value transitionId, unsigned threadNum)
 {
