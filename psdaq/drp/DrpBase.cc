@@ -248,7 +248,7 @@ int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt) :
     m_para        (para),
     m_pool        (pool),
-    m_tmo         {100}, // ms
+    m_tmo         {0},
     dmaRet        (maxRetCnt),
     dmaIndex      (maxRetCnt),
     dest          (maxRetCnt),
@@ -298,7 +298,7 @@ int32_t PgpReader::read()
         auto t1 { Pds::fast_monotonic_clock::now() };
 
         if (t1 - m_t0 >= ms_t{1}) {
-            m_tmo = 100;                // switch to interrupt mode after 1 ms
+            m_tmo = 10;                 // switch to interrupt mode after 1 ms
         }
     }
 

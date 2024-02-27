@@ -126,13 +126,15 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp003', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp001', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x2 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576'},
- {host: 'drp-srcf-cmp028', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+# {host: 'drp-srcf-cmp028', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-srcf-cmp003', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp035', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
 
- {host: 'drp-srcf-cmp028', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
+# {host: 'drp-srcf-cmp028', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
+ {host: 'drp-srcf-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
 
 # { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4 -L 5007'},  # Loopback
 # { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4'},

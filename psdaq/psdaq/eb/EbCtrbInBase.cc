@@ -20,6 +20,13 @@
 #include <bitset>
 #include <chrono>
 
+#if !defined(_GNU_SOURCE)
+#  define _GNU_SOURCE
+#endif
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
 
@@ -262,7 +269,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
                    __PRETTY_FUNCTION__, _prms.core[1]);
   }
 
-  logging::info("Receiver thread is starting");
+  logging::info("EB Receiver thread is starting with process ID %lu", syscall(SYS_gettid));
 
   int rcPrv = 0;
   while (running.load(std::memory_order_relaxed))

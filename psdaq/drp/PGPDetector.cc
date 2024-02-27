@@ -161,7 +161,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
     pythonTime = 0ll;
 
-    printf("*** Worker %u process ID %lu\n", threadNum, syscall(SYS_gettid));
+    logging::info("Worker %u is starting with process ID %lu", threadNum, syscall(SYS_gettid));
 
     while (true) {
 
@@ -437,7 +437,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     const std::chrono::microseconds tmo(m_flushTmo);
     auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
-    printf("*** PGP reader process ID %lu\n", syscall(SYS_gettid));
+    logging::info("PGP reader is starting with process ID %lu", syscall(SYS_gettid));
 
     while (1) {
          if (m_terminate.load(std::memory_order_relaxed)) {
@@ -549,7 +549,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
 
 void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
 {
-    printf("*** Collector process ID %lu\n", syscall(SYS_gettid));
+    logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
 
     int64_t worker = 0L;
     Batch batch;
