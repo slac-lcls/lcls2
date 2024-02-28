@@ -11,8 +11,8 @@
 
 t_start=`date +%s`
 
-
-python main.py /sdf/data/lcls/drpsrcf/ffb/users/monarin/h5/mylargeh5.h5 /sdf/data/lcls/drpsrcf/ffb/users/monarin/h5/output/result.h5
+#timestamp_sort_h5
+python -u main.py /sdf/data/lcls/drpsrcf/ffb/users/monarin/h5/mylargeh5.h5 /sdf/data/lcls/drpsrcf/ffb/users/monarin/h5/output/result.h5
 
 
 t_end=`date +%s`

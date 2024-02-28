@@ -7,7 +7,7 @@ import dask
 import dask.array as da
 import dask.dataframe as dd
 
-from utils import get_dask_client
+from utils import get_dask_client, create_virtual_dataset
 
 class TsSort:
     def __init__(self, in_h5, out_h5,
@@ -43,8 +43,14 @@ class TsSort:
     def slice_and_write(self, inds_arr):
         # Spawn mpiworkers
         maxprocs = self.n_ranks
-        sub_comm = MPI.COMM_SELF.Spawn(sys.executable, args=['parallel_h5_write.py'], maxprocs=maxprocs,)
+        sub_comm = MPI.COMM_SELF.Spawn(sys.executable, args=[f'parallel_h5_write.py'], maxprocs=maxprocs,)
         common_comm=sub_comm.Merge(False)
+        
+        data = {'n_procs': self.n_procs,
+                'chunk_size': self.chunk_size,
+                'in_h5fname': self.in_h5fname,
+                'out_h5fname': self.out_h5fname} 
+        common_comm.bcast(data, root=0)
 
         # Send data
         n_samples = inds_arr.shape[0]
@@ -63,7 +69,11 @@ class TsSort:
         for i in range(common_comm.Get_size()-1):
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             common_comm.Send(bytearray(), dest=rankreq[0])
-        commom_comm.Barrier()
+
+        # Create virtual dataset
+        create_virtual_dataset(self.in_h5fname, self.out_h5fname, n_files)
+        
+        common_comm.Barrier()
         common_comm.Abort(1)
 
     def view(self, n_rows=10):
