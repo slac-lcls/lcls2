@@ -167,6 +167,7 @@ if 'PSANA' in BUILD_LIST :
             'masked              = psana.graphqt.app.masked:mask_editor',
             'roicon              = psana.app.roicon:__main__',
             'psplot_live         = psana.app.psplot_live.main:start',
+            'timestamp_sort_h5   = psana.app.timestamp_sort_h5.main:start',
         ]
     }
 

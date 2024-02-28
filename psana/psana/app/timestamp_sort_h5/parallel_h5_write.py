@@ -4,7 +4,7 @@ import h5py
 import time
 import os
 import dask.array as da
-from utils import get_dask_client 
+from psana.app.timestamp_sort_h5.utils import get_dask_client 
 
 
 # Get and merge parent comm to get the common comm

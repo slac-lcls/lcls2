@@ -7,7 +7,7 @@ import dask
 import dask.array as da
 import dask.dataframe as dd
 
-from utils import get_dask_client, create_virtual_dataset
+from psana.app.timestamp_sort_h5.utils import get_dask_client, create_virtual_dataset
 
 class TsSort:
     def __init__(self, in_h5, out_h5,
@@ -43,7 +43,8 @@ class TsSort:
     def slice_and_write(self, inds_arr):
         # Spawn mpiworkers
         maxprocs = self.n_ranks
-        sub_comm = MPI.COMM_SELF.Spawn(sys.executable, args=[f'parallel_h5_write.py'], maxprocs=maxprocs,)
+        spawn_file = os.path.join(os.environ.get('RELDIR',''), 'psana', 'psana', 'app', 'timestamp_sort_h5', 'parallel_h5_write.py')
+        sub_comm = MPI.COMM_SELF.Spawn(sys.executable, args=[spawn_file], maxprocs=maxprocs,)
         common_comm=sub_comm.Merge(False)
         
         data = {'n_procs': self.n_procs,

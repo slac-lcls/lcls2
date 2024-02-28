@@ -25,7 +25,7 @@
 from typing import List
 import json
 import typer
-from sort_ts import TsSort
+from psana.app.timestamp_sort_h5.sort_ts import TsSort
 import time
 
 
