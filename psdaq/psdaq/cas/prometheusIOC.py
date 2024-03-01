@@ -49,8 +49,11 @@ class PromMetric(object):
             if result['data']['resultType'] == 'vector':
                 if len(result['data']['result']) == 1:
                     return result['data']['result'][0]['value']
+                elif len(result['data']['result']) == 0:
+                    return None, None
                 else:
-                    raise RuntimeError(f"Expected 1 item from query '{self._query}'; got: {len(result['data']['result'])}")
+                    raise RuntimeError(f"Expected 1 item from query '{self._query}'; "
+                                       f"got: {len(result['data']['result'])}:\n({result['data']['result']})")
             elif result['data']['resultType'] in ['scalar','string']:
                 return result['data']['result']['value']
             else:
@@ -62,13 +65,15 @@ class PromMetric(object):
 
 class Handler(object):
     def __init__(self, name, metric, typeCode, valueAlarm):
+        # See p4p documentation for type definitions
         self._typeCode = typeCode if typeCode is not None else 'd'
-        if self._typeCode == 'd':
+        if self._typeCode in 'df':
             self._pv = builder.aIn(name)
-        elif self._typeCode == 'I':
+        elif self._typeCode in 'bBhHiIlL':
             self._pv = builder.longIn(name)
         else:
-            raise RuntimeError(f"Invalid typeCode '{self._typeCode}' for '{name}'")
+            raise RuntimeError(f"Unsupported typeCode '{self._typeCode}' for '{name}'")
+        # alarm is not None if config file specifies alarm levels
         self._initAlarm(valueAlarm if valueAlarm is not None else {})
         self._metric = metric
         _log.info(f"Created PV '{self._pv.name}' with query '{self._metric._query}'")
@@ -119,10 +124,12 @@ class Handler(object):
     def process(self):
         timestamp, value = self._metric.get()
         if timestamp is None:  return
-        if self._typeCode == 'd':
+        if self._typeCode in 'df':
             value = float(value)
-        elif self._typeCode == 'I':
+        elif self._typeCode in 'bBhHiIlL':
             value = int(value)
+        else:
+            raise RuntimeError(f"Invalid typeCode '{self._typeCode}' for '{self._pv.name}'")
         severity, alarm = self._evalAlarm(value)
         self._pv.set(value, timestamp=timestamp, severity=severity, alarm=alarm)
 
@@ -138,6 +145,7 @@ def main():
     parser.add_argument('-S',             required=False, metavar='PROMETHEUS_SRV', default=srv,      help=f'Prometheus server [{srv}]')
     parser.add_argument('-P',             required=False, metavar='PREFIX',         default='DAQ',    help='e.g. DAQ:LAB2')
     parser.add_argument('-I', type=float, required=False, metavar='INTERVAL',       default='1',      help='Sampling interval (s)')
+    parser.add_argument('-x', type=int,   required=False, metavar='XPM',            default='0',      help='master XPM')
     parser.add_argument('filename',                       metavar='FILENAME',                         help='Json metric description file')
     parser.add_argument('-v', '--verbose', action='store_true',                                       help='be verbose')
 
@@ -146,7 +154,10 @@ def main():
 
     promserver = os.environ.get('DM_PROM_SERVER', args.S)
 
-    config = json.loads(Path(args.filename).read_text().replace('%J', args.job).replace('%I', args.inst).replace('%P', args.part))
+    config = json.loads(Path(args.filename).read_text().replace('%J', args.job)
+                                                       .replace('%I', args.inst)
+                                                       .replace('%X', f"xpm-{args.x}")
+                                                       .replace('%P', args.part))
     if args.verbose:  pprint.pprint(config)
 
     # Set the record prefix

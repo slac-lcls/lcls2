@@ -1,4 +1,5 @@
-{"metrics": [{"name": "damage", "query": "sum(DRP_Damage{{instrument=\"%I\",partition=\"%P\"}}) by (alias, instance)"},
-             {"name": "record_rate", "query": "sum(irate(DRP_RecordSize{{instrument=\"%I\",partition=\"%P\"}})[5s]) by (instrument, partition)"},
-             {"name": "xpm_link_up", "query": "sum(Us:RxLinkUp{job=\"%J\",instrument=\"%I\"}) by (instrument)", "type": "I", "alarm": {"active": true, "lowAlarmLimit": 2, "highAlarmLimit": 4, "lowAlarmSeverity": 2, "highAlarmSeverity": 2}}]
+{"metrics": [
+    {"name": "damage", "query": "sum(DRP_Damage{instrument=\"%I\",partition=\"%P\"}) by (instrument, partition)"},
+    {"name": "record_rate", "query": "sum(irate(DRP_RecordSize{instrument=\"%I\",partition=\"%P\"})[5s]) by (instrument, partition)"},
+    {"name": "xpm_link_up", "query": "sum(Us:RxLinkUp{job=\"%J\",instrument=\"%I\"}) by (instrument)", "type": "I", "alarm": {"active": true, "lowAlarmLimit": 2, "highAlarmLimit": 4, "lowAlarmSeverity": 2, "highAlarmSeverity": 2}}]
 }
