@@ -246,6 +246,8 @@ def main():
     prefix = f'{args.P}:{args.inst}:{args.part}:'
     pvs = {}
     for item in config['metrics']:
+        # Treat all items not having a "name" element as comments
+        if 'name' not in item:  continue
         metric = PromMetric(promserver, item['query'])
         typeCode = item['type'] if 'type' in item else None
         alarm = item['alarm'] if 'alarm' in item else None
