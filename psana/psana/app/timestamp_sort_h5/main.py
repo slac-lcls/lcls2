@@ -5,7 +5,7 @@
 # The output h5file is a virtual datasource that binds all the 
 # result_partN.h5 file where N is the MPI rank id. 
 #
-# Usage: h5sort 
+# Usage: timestamp_sort_h5 
 # Parameters:
 #   - in-h5:            path to unsorted hdf5 file.
 #   - out-h5:           path to the new sorted output hdf5 file.
