@@ -4,6 +4,7 @@
 #include "psdaq/hsd/EnvMon.hh"
 #include "psdaq/hsd/Globals.hh"
 #include "psdaq/hsd/I2cSwitch.hh"
+#include "psdaq/mmhw/AxiVersion.hh"
 #include "psdaq/service/Semaphore.hh"
 #include <string>
 #include <stdint.h>
@@ -12,12 +13,11 @@
 
 namespace Pds {
   namespace Mmhw {
-    class AxiVersion;
     class Jtag;
+    class TprCore;
     class TriggerEventManager2;
   };
   namespace HSD {
-    class TprCore;
     class Fmc134Ctrl;
     class FexCfg;
     class Mmcm;
@@ -37,19 +37,19 @@ namespace Pds {
 
       ~Module134();
 
-      const Pds::Mmhw::AxiVersion& version() const;
+      const Pds::Mmhw::AxiVersion& version() const { return _vsn; }
       I2c134&                      i2c    ();
       ChipAdcCore&                 chip   (unsigned ch);
       Pds::Mmhw::TriggerEventManager2& tem    ();
       Fmc134Ctrl&                  jesdctl();
       Mmcm&                        mmcm   ();
-      TprCore&                     tpr    ();
+      Pds::Mmhw::TprCore&          tpr    ();
 
       std::vector<Pgp*>            pgp    ();
       Jesd204b&                    jesd   (unsigned ch);
       OptFmc&                      optfmc ();
       void*                        reg    ();
-      Pds::Mmhw::Jtag&             xvc    ();
+        //      Pds::Mmhw::Jtag&             xvc    ();
 
       //  Accessors
       uint64_t device_dna() const;
@@ -89,6 +89,7 @@ namespace Pds {
       PrivateData*      p;
 
       int               _fd;
+      Mmhw::AxiVersion  _vsn;
       mutable Semaphore _sem_i2c;
     };
   };

@@ -1,14 +1,13 @@
 #ifndef HSD_ModuleBase_hh
 #define HSD_ModuleBase_hh
 
-#include "TprCore.hh"
-#include "DmaCore.hh"
+//#include "DmaCore.hh"
 #include "PhyCore.hh"
-#include "FlashController.hh"
+//#include "FlashController.hh"
 
-#include "psdaq/mmhw/AxiVersion.hh"
 #include "psdaq/mmhw/RegProxy.hh"
 #include "psdaq/mmhw/RingBuffer.hh"
+#include "psdaq/mmhw/TprCore.hh"
 #include "psdaq/mmhw/Xvc.hh"
 
 typedef volatile uint32_t vuint32_t;
@@ -24,45 +23,30 @@ namespace Pds {
       static unsigned local_id(unsigned bus); 
       static ModuleBase* create(int);
     public:
-      Mmhw::AxiVersion version;
-      uint32_t rsvd_to_0x08000[(0x8000-sizeof(version))/4];
-
-      FlashController      flash;
-      uint32_t rsvd_to_0x10000[(0x8000-sizeof(flash))/4];
-
+      uint32_t  rsvd_to_0x10_0000[0x100000/4];
+        
+      // I2C (0010_0000)
       uint32_t  i2c_regs[0x8000/4];  // FMC-dependent
-      vuint32_t regProxy[(0x08000)/4]; // 0x18000
+      uint32_t  regProxy[0x8000/4];  // 0x108000
 
-      // DMA
-      DmaCore           dma_core; // 0x20000
-      uint32_t rsvd_to_0x30000[(0x10000-sizeof(dma_core))/4];
+      // GTH (0011_0000)
+      Mmhw::Reg gthAlign[10];
+      uint32_t  rsvd_to_0x11_0100  [54];
+      Mmhw::Reg gthAlignTarget;
+      Mmhw::Reg gthAlignLast;
+      uint32_t  rsvd_to_0x11_4000[(0x4000-0x108)/4];
+      Mmhw::Reg gthDrp[0x200];
+      uint32_t  rsvd_to_0x14_0000[(0x2C000-sizeof(gthDrp))/4];
 
-      // PHY
-      PhyCore           phy_core; // 0x30000
-      uint32_t rsvd_to_0x31000[(0x1000-sizeof(phy_core))/4];
+      // Timing (0014_0000)
+      Mmhw::TprCore            tpr;
+      uint32_t rsvd_to_0x15_0000  [(0x10000-sizeof(tpr))/4];
 
-      // GTH
-      vuint32_t gthAlign[10];     // 0x31000
-      uint32_t rsvd_to_0x31100  [54];
-      vuint32_t gthAlignTarget;
-      vuint32_t gthAlignLast;
-      uint32_t rsvd_to_0x31800[(0x800-0x108)/4];
-      vuint32_t gthDrp[0x200];
+      Mmhw::RingBuffer         ring0;   // 0x15_0000
+      uint32_t rsvd_to_0x16_0000  [(0x10000-sizeof(ring0))/4];
 
-      // XVC
-      Mmhw::Jtag    xvc;
-      uint32_t rsvd_to_0x40000[(0xE000-sizeof(xvc))/4];
-
-      // Timing
-      TprCore  tpr;     // 0x40000
-      uint32_t rsvd_to_0x50000  [(0x10000-sizeof(tpr))/4];
-
-      Mmhw::RingBuffer         ring0;   // 0x50000
-      uint32_t rsvd_to_0x60000  [(0x10000-sizeof(ring0))/4];
-
-      Mmhw::RingBuffer         ring1;   // 0x60000
-      uint32_t rsvd_to_0x70000  [(0x10000-sizeof(ring1))/4];
-      uint32_t rsvd_to_0x80000  [0x10000/4];
+      Mmhw::RingBuffer         ring1;   // 0x16_0000
+      uint32_t  rsvd_to_0x20_0000  [(0xA0000-sizeof(ring1))/4];
     };
   };
 };

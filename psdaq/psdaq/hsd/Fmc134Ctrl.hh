@@ -1,6 +1,7 @@
 #ifndef HSD_Fmc134Ctrl_hh
 #define HSD_Fmc134Ctrl_hh
 
+#include "psdaq/mmhw/Reg.hh"
 #include "Globals.hh"
 
 namespace Pds {
@@ -13,18 +14,18 @@ namespace Pds {
       int32_t reset       ();
       void dump();
     public:
-      vuint32_t info;
-      vuint32_t xcvr;
-      vuint32_t status;
-      vuint32_t adc_val;
-      vuint32_t scramble;
-      vuint32_t sw_trigger;
-      vuint32_t lmfc_cnt;
-      vuint32_t align_char;
-      vuint32_t adc_pins;
-      vuint32_t adc_pins_r;
-      vuint32_t test_clksel;
-      vuint32_t test_clkfrq;
+      Mmhw::Reg info;
+      Mmhw::Reg xcvr;
+      Mmhw::Reg status;
+      Mmhw::Reg adc_val;
+      Mmhw::Reg scramble;
+      Mmhw::Reg sw_trigger;
+      Mmhw::Reg lmfc_cnt;
+      Mmhw::Reg align_char;
+      Mmhw::Reg adc_pins;
+      Mmhw::Reg adc_pins_r;
+      Mmhw::Reg test_clksel;
+      Mmhw::Reg test_clkfrq;
     };
   };
 };

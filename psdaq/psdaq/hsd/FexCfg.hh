@@ -1,6 +1,8 @@
 #ifndef HSD_FexCfg_hh
 #define HSD_FexCfg_hh
 
+#include "psdaq/mmhw/Reg.hh"
+
 #include "Globals.hh"
 
 namespace Pds {
@@ -9,10 +11,10 @@ namespace Pds {
     public:
       void disable();
     public:
-      vuint32_t _streams;
-      vuint32_t _oflow;
-      vuint32_t _flowstatus;
-      vuint32_t _flowidxs;
+      Mmhw::Reg _streams;
+      Mmhw::Reg _oflow;
+      Mmhw::Reg _flowstatus;
+      Mmhw::Reg _flowidxs;
 
       class StreamBase {
       public:
@@ -39,26 +41,26 @@ namespace Pds {
           _reg[1] = (_reg[1] & 0xfffff) | (prescale<<20);
         }
       public:
-        vuint32_t _reg[4];
+        Mmhw::Reg _reg[4];
       } _base  [4];
 
-      vuint32_t _rsvd_50[0xb0>>2];
-      // vuint32_t _bram_wr_errors;
-      // vuint32_t _bram_wr_sample;
-      // vuint32_t _bram_rd_errors;
-      // vuint32_t _bram_rd_sample;
+      Mmhw::Reg _rsvd_50[0xb0>>2];
+      // Mmhw::Reg _bram_wr_errors;
+      // Mmhw::Reg _bram_wr_sample;
+      // Mmhw::Reg _bram_rd_errors;
+      // Mmhw::Reg _bram_rd_sample;
 
-      // vuint32_t _rsvd_80[0x80>>2];
+      // Mmhw::Reg _rsvd_80[0x80>>2];
 
       class Stream {
       public:
         Stream() {}
       public:
-        vuint32_t rsvd [4];
+        Mmhw::Reg rsvd [4];
         class Parm {
         public:
-          vuint32_t v;
-          vuint32_t rsvd;
+          Mmhw::Reg v;
+          Mmhw::Reg rsvd;
         } parms[30];
       } _stream[4];
     };

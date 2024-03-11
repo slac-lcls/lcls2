@@ -1,11 +1,10 @@
-#include "psdaq/hsd/TprCore.hh"
+#include "psdaq/mmhw/TprCore.hh"
 
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
 
-using namespace Pds::HSD;
-using Pds::Mmhw::Reg;
+using namespace Pds::Mmhw;
 
 bool TprCore::rxPolarity() const {
   volatile uint32_t v = CSR;

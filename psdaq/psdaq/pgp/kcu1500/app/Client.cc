@@ -48,6 +48,8 @@ Client::Client(const char* dev) :
   dmaSetMaskBytes(_fd,mask);
 
   delete[] mask;
+
+  Pds::Mmhw::Reg::set(_fd);
 }
 
 Client::~Client() { stop(); close(_fd); }
@@ -75,10 +77,10 @@ void Client::start(unsigned group)
   for(unsigned i=0, l=links; l; i++) {
       Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
       if (l&(1<<i)) {
-          dmaWriteRegister(_fd, &b.enable, (1<<2)      );  // reset counters
-          dmaWriteRegister(_fd, &b.pauseThresh, 16     );
-          dmaWriteRegister(_fd, &b.group , group);
-          dmaWriteRegister(_fd, &b.enable, 3           );  // enable
+          b.enable = 1<<2;  // reset counters
+          b.pauseThresh = 16;
+          b.group = group;
+          b.enable = 3;
           l &= ~(1<<i);
 
           dmaWriteRegister(_fd, 0x00a00000+4*(i&3), (1<<30));  // clear

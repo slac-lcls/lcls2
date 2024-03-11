@@ -1,6 +1,7 @@
 #ifndef HSD_DmaCore_hh
 #define HSD_DmaCore_hh
 
+#include "psdaq/mmhw/Reg.hh"
 #include "Globals.hh"
 
 namespace Pds {
@@ -10,31 +11,31 @@ namespace Pds {
     public:
       void init(unsigned maxDmaSize=0);
       void dump() const;
-      vuint32_t rxEnable;
-      vuint32_t txEnable;
-      vuint32_t fifoClear;
-      vuint32_t irqEnable;
-      vuint32_t fifoValid; // W fifoThres, R b0 = inbound, b1=outbound
-      vuint32_t maxRxSize; // inbound
-      vuint32_t mode;      // b0 = online, b1=acknowledge, b2=ibrewritehdr
-      vuint32_t irqStatus; // W b0=ack, R b0=ibPend, R b1=obPend
-      vuint32_t irqRequests;
-      vuint32_t irqAcks;
-      vuint32_t irqHoldoff;
-      vuint32_t dmaCount;
+      Mmhw::Reg rxEnable;
+      Mmhw::Reg txEnable;
+      Mmhw::Reg fifoClear;
+      Mmhw::Reg irqEnable;
+      Mmhw::Reg fifoValid; // W fifoThres, R b0 = inbound, b1=outbound
+      Mmhw::Reg maxRxSize; // inbound
+      Mmhw::Reg mode;      // b0 = online, b1=acknowledge, b2=ibrewritehdr
+      Mmhw::Reg irqStatus; // W b0=ack, R b0=ibPend, R b1=obPend
+      Mmhw::Reg irqRequests;
+      Mmhw::Reg irqAcks;
+      Mmhw::Reg irqHoldoff;
+      Mmhw::Reg dmaCount;
 
-      vuint32_t reserved[244];
+      Mmhw::Reg reserved[244];
 
-      vuint32_t ibFifoPop;
-      vuint32_t obFifoPop;
-      vuint32_t reserved_pop[62];
+      Mmhw::Reg ibFifoPop;
+      Mmhw::Reg obFifoPop;
+      Mmhw::Reg reserved_pop[62];
 
-      vuint32_t loopFifoData; // RO
-      vuint32_t reserved_loop[63];
+      Mmhw::Reg loopFifoData; // RO
+      Mmhw::Reg reserved_loop[63];
 
-      vuint32_t ibFifoPush[16];  // W data, R[0] status
-      vuint32_t obFifoPush[16];  // R b0=full, R b1=almost full, R b2=prog full
-      vuint32_t reserved_push[32];
+      Mmhw::Reg ibFifoPush[16];  // W data, R[0] status
+      Mmhw::Reg obFifoPush[16];  // R b0=full, R b1=almost full, R b2=prog full
+      Mmhw::Reg reserved_push[32];
     };
   };
 };

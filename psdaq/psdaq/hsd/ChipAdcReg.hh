@@ -1,6 +1,8 @@
 #ifndef HSD_ChipAdcReg_hh
 #define HSD_ChipAdcReg_hh
 
+#include "psdaq/mmhw/Reg.hh"
+
 #include "Globals.hh"
 
 namespace Pds {
@@ -21,12 +23,12 @@ namespace Pds {
       void setLocalId (unsigned v); // deprecated
       void dump() const;
     public:
-      vuint32_t irqEnable;
-      vuint32_t irqStatus;
-      //      vuint32_t partitionAddr; // deprecated
+      Mmhw::Reg irqEnable;
+      Mmhw::Reg irqStatus;
+      //      Mmhw::Reg partitionAddr; // deprecated
       uint32_t  rsvd_08;
-      vuint32_t dmaFullThr;
-      vuint32_t csr; 
+      Mmhw::Reg dmaFullThr;
+      Mmhw::Reg csr; 
       //   CSR
       // [ 0:0]  count reset
       // [ 1:1]  dma size histogram enable (unused)
@@ -37,19 +39,19 @@ namespace Pds {
       // [ 6:6]  fb pll reset
       // [ 8:15] trigger bit mask shift
       // [31:31] acqEnable
-      //      vuint32_t acqSelect; [ deprecated ]
+      //      Mmhw::Reg acqSelect; [ deprecated ]
       uint32_t  rsvd_20;
       //   AcqSelect
       // [12: 0]  rateSel  :   [7:0] eventCode
       // [31:13]  destSel
-      vuint32_t control;
+      Mmhw::Reg control;
       //   Control
       // [7:0] channel enable mask
       // [8:8] interleave
       // [19:16] readout group [ deprecated ]
       // [20]  inhibit
-      vuint32_t samples;       //  Must be a multiple of 16 [v1 only]
-      vuint32_t prescale;      //  Sample prescaler [v1 only]  [0x020]
+      Mmhw::Reg samples;       //  Must be a multiple of 16 [v1 only]
+      Mmhw::Reg prescale;      //  Sample prescaler [v1 only]  [0x020]
       //   Prescale
       //   Values are mapped as follows:
       //  Value    Rate Divisor    Nominal Rate
@@ -65,33 +67,33 @@ namespace Pds {
       //  [48..55]     70             17.9 MHz
       //  [56..63]     80             15.6 MHz
       //  Delay (bits 6:31) [units of TimingRef clk]
-      vuint32_t offset;        // [0x24] Not implemented
-      vuint32_t countEnable;   // [0x28]
-      vuint32_t countAcquire;  // [0x2c]
-      vuint32_t countInhibit;  // [0x30]
-      vuint32_t countRead;     // [0x34]
-      vuint32_t countStart;    // [0x38]
-      //      vuint32_t countQueue;    // [ deprecated ]
+      Mmhw::Reg offset;        // [0x24] Not implemented
+      Mmhw::Reg countEnable;   // [0x28]
+      Mmhw::Reg countAcquire;  // [0x2c]
+      Mmhw::Reg countInhibit;  // [0x30]
+      Mmhw::Reg countRead;     // [0x34]
+      Mmhw::Reg countStart;    // [0x38]
+      //      Mmhw::Reg countQueue;    // [ deprecated ]
       uint32_t  rsvd_60[1];
       //
-      vuint32_t cacheSel;
-      vuint32_t cacheState;
-      vuint32_t cacheAddr;
+      Mmhw::Reg cacheSel;
+      Mmhw::Reg cacheState;
+      Mmhw::Reg cacheAddr;
 
-      // vuint32_t msgDelay;       // [ deprecated ]
-      // vuint32_t headerCnt;      // [ deprecated ]
-      // vuint32_t headerFifo;     // [ deprecated ]
+      // Mmhw::Reg msgDelay;       // [ deprecated ]
+      // Mmhw::Reg headerCnt;      // [ deprecated ]
+      // Mmhw::Reg headerFifo;     // [ deprecated ]
 
-      // vuint32_t rsvd_88[4];
+      // Mmhw::Reg rsvd_88[4];
 
-      // vuint32_t localId;        // [ deprecated ]
-      // vuint32_t upstreamId;     // [ deprecated ]
-      // vuint32_t dnstreamId[4];  // [ deprecated ]
+      // Mmhw::Reg localId;        // [ deprecated ]
+      // Mmhw::Reg upstreamId;     // [ deprecated ]
+      // Mmhw::Reg dnstreamId[4];  // [ deprecated ]
 
-      // vuint32_t fullToTrig;     // [ deprecated ]
+      // Mmhw::Reg fullToTrig;     // [ deprecated ]
       //
-      vuint32_t buildStatus;
-      //      vuint32_t statusCount[32];
+      Mmhw::Reg buildStatus;
+      //      Mmhw::Reg statusCount[32];
     };
   };
 };

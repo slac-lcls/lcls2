@@ -5,6 +5,8 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>  // perror
+#include <cstdlib>  // EXIT_FAILURE
 
 using Pds::HSD::ModuleBase;
 
@@ -16,7 +18,7 @@ ModuleBase* ModuleBase::create(int fd)
     return 0;
   }
 
-  ModuleBase* m = new(ptr) ModuleBase;
+  ModuleBase* m = (ModuleBase*)ptr;
 
   Pds::Mmhw::RegProxy::initialize(m, m->regProxy);
   

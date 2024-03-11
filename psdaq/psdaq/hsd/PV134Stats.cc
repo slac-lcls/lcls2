@@ -5,10 +5,10 @@
 #include "Jesd204b.hh"
 #include "ChipAdcCore.hh"
 #include "OptFmc.hh"
-#include "TprCore.hh"
 #include "Fmc134Ctrl.hh"
 #include "I2c134.hh"
 
+#include "psdaq/mmhw/TprCore.hh"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
 
 #include "psdaq/epicstools/EpicsPVA.hh"
@@ -92,7 +92,7 @@ namespace Pds {
       _m.mon_start();
 
       for(unsigned i=0; i<2; i++) {
-        TprCore& tpr  = _m.tpr();
+        Mmhw::TprCore& tpr  = _m.tpr();
         _p_monTiming[i].timerrcntsum = tpr.RxDecErrs + tpr.RxDspErrs;
         _p_monTiming[i].timrstcntsum = tpr.RxRstDone;
       }
@@ -110,10 +110,10 @@ namespace Pds {
       bool jesdreset = false;
 
       for(unsigned i=0; i<2; i++) {
-        ChipAdcCore& chip = _m.chip(i);
-        ChipAdcReg&  reg  = chip.reg;
-        FexCfg&      fex  = chip.fex;
-        TprCore& tpr  = _m.tpr();
+        ChipAdcCore& chip  = _m.chip(i);
+        ChipAdcReg&  reg   = chip.reg;
+        FexCfg&      fex   = chip.fex;
+        Mmhw::TprCore& tpr = _m.tpr();
         Pds::Mmhw::TriggerEventBuffer& teb = _m.tem().det(i);
 
         { MonTiming v;

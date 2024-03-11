@@ -143,10 +143,10 @@ int main(int argc, char* argv[])
         for(unsigned i=0; i<8; i++) {
             if (links&(1<<i)) {
                 Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-                dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
-                dmaWriteRegister(fd, &b.pauseThresh, 16     );
-                dmaWriteRegister(fd, &b.group , m_readoutGroup);
-                dmaWriteRegister(fd, &b.enable, 3           );  // enable
+                b.enable = 1<<2;  // reset counters
+                b.pauseThresh = 16;
+                b.group = m_readoutGroup;
+                b.enable = 3; // enable
 
                 dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
                 dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<31));  // enable

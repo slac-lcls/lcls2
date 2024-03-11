@@ -1,20 +1,20 @@
 #include "psdaq/hsd/Module126.hh"
 #include "psdaq/hsd/ModuleBase.hh"
 
-#include "psdaq/mmhw/AxiVersion.hh"
+#include "AxiVersion.h"
 #include "psdaq/mmhw/RegProxy.hh"
-#include "psdaq/hsd/TprCore.hh"
+#include "psdaq/mmhw/TprCore.hh"
 #include "psdaq/hsd/RxDesc.hh"
 #include "psdaq/hsd/ClkSynth.hh"
 #include "psdaq/hsd/Mmcm.hh"
-#include "psdaq/hsd/DmaCore.hh"
+//#include "psdaq/hsd/DmaCore.hh"
 #include "psdaq/hsd/PhyCore.hh"
 #include "psdaq/hsd/Pgp2b.hh"
 #include "psdaq/mmhw/Pgp2bAxi.hh"
 #include "psdaq/hsd/Pgp3.hh"
 #include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/RingBuffer.hh"
-#include "psdaq/mmhw/Xvc.hh"
+//#include "psdaq/mmhw/Xvc.hh"
 #include "psdaq/hsd/I2cSwitch.hh"
 #include "psdaq/hsd/LocalCpld.hh"
 #include "psdaq/hsd/FmcSpi.hh"
@@ -28,13 +28,14 @@
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/HdrFifo.hh"
 #include "psdaq/hsd/PhaseMsmt.hh"
-#include "psdaq/hsd/FlashController.hh"
+//#include "psdaq/hsd/FlashController.hh"
 #include "psdaq/hsd/OptFmc.hh"
 
-using Pds::Mmhw::AxiVersion;
+//using Pds::Mmhw::AxiVersion;
 using Pds::Mmhw::Pgp2bAxi;
 using Pds::Mmhw::Pgp3Axil;
 using Pds::Mmhw::RingBuffer;
+using Pds::Mmhw::TprCore;
 
 #include <string>
 #include <unistd.h>
@@ -52,7 +53,7 @@ namespace Pds {
   namespace HSD {
     class Module126::PrivateData {
     public:
-      void dumpPgp         () const;
+      void dumpPgp         (string) const;
       //
       //  Low level API
       //
@@ -100,6 +101,12 @@ Module126* Module126::create(int fd)
   Pds::HSD::Module126* m = new Pds::HSD::Module126;
   m->p = reinterpret_cast<Pds::HSD::Module126::PrivateData*>(ptr);
   m->_fd = fd;
+
+  AxiVersion vsn;
+  axiVersionGet(fd,&vsn);
+  m->_vsn.FpgaVersion = vsn.firmwareVersion;
+  memcpy((void*)(&m->_vsn.dnaValue),&vsn.dnaValue,16);
+  memcpy((void*)(&m->_vsn.BuildStamp),&vsn.buildString,256);
 
   Pds::Mmhw::RegProxy::initialize(m->p, m->p->mbase.regProxy);
 
@@ -437,34 +444,33 @@ void Module126::disable_cal()
 #define LPRINT(title,field) {                     \
       printf("\t%20.20s :",title);                \
       for(unsigned i=0; i<4; i++)                 \
-        printf(" %11x",pgp[i].field);             \
+          printf(" %11x",unsigned(pgp[i].field)); \
       printf("\n"); }
     
 #define LPRBF(title,field,shift,mask) {                 \
       printf("\t%20.20s :",title);                      \
       for(unsigned i=0; i<4; i++)                       \
-        printf(" %11x",(pgp[i].field>>shift)&mask);     \
+          printf(" %11x",(unsigned(pgp[i].field)>>shift)&mask); \
       printf("\n"); }
     
 #define LPRVC(title,field) {                      \
       printf("\t%20.20s :",title);                \
       for(unsigned i=0; i<4; i++)                 \
         printf(" %2x %2x %2x %2x",                \
-               pgp[i].field##0,                   \
-             pgp[i].field##1,                     \
-             pgp[i].field##2,                     \
-             pgp[i].field##3 );                   \
+               unsigned(pgp[i].field##0),                               \
+               unsigned(pgp[i].field##1),                               \
+               unsigned(pgp[i].field##2),                               \
+               unsigned(pgp[i].field##3) );                             \
     printf("\n"); }
 
 #define LPRFRQ(title,field) {                           \
       printf("\t%20.20s :",title);                      \
       for(unsigned i=0; i<4; i++)                       \
-        printf(" %11.4f",double(pgp[i].field)*1.e-6);   \
+          printf(" %11.4f",double(unsigned(pgp[i].field))*1.e-6);       \
       printf("\n"); }
     
-void Module126::PrivateData::dumpPgp     () const
+void Module126::PrivateData::dumpPgp     (string buildStamp) const
 {
-  string buildStamp = mbase.version.buildStamp();
   if (buildStamp.find("pgp")==string::npos)
     return;
 
@@ -545,10 +551,9 @@ void Module126::dumpBase() const
 
 void Module126::dumpMap() const
 {
-  printf("AxiVersion     : %p\n", &p->mbase.version);
   printf("LocalCpld      : %p\n", &i2c().local_cpld);
   printf("FmcSpi         : %p\n", &i2c().fmc_spi);
-  printf("DmaCore        : %p\n", &p->mbase.dma_core);
+  //  printf("DmaCore        : %p\n", &p->mbase.dma_core);
   printf("TprCore        : %p\n", &p->mbase.tpr);
   printf("QABase         : %p\n", &p->base);
   printf("HdrFifo        : %p\n", &p->hdr_fifo[0]);
@@ -624,9 +629,9 @@ void Module126::fmc_modify(int A, int B, int P, int R, int cp, int ab)
 
 uint64_t Module126::device_dna() const
 {
-  uint64_t v = p->mbase.version.DeviceDnaHigh;
+  uint64_t v = version().DeviceDnaHigh;
   v <<= 32;
-  v |= p->mbase.version.DeviceDnaLow;
+  v |= version().DeviceDnaLow;
   return v;
 }
 
@@ -637,14 +642,14 @@ void Module126::set_local_id(unsigned bus)
 {
   unsigned id = ModuleBase::local_id(bus);
   p->base.localId = id;
-  p->mbase.version.UserConstants[0] = id;
+  //  p->version().UserConstants[0] = id;
 }
 
 unsigned Module126::remote_id() const { return p->base.partitionAddr; }
 
 void Module126::board_status()
 {
-  { AxiVersion& v = p->mbase.version;
+  { const Pds::Mmhw::AxiVersion& v = version();
     printf("Axi Version [%p]: BuildStamp[%p]: %s\n", 
            &v, &v.BuildStamp[0], v.buildStamp().c_str());
     printf("Dna: %08x%08x  Serial: %08x%08x\n",
@@ -708,12 +713,14 @@ void Module126::board_status()
   }
 }
 
+#if 0
 void Module126::flash_write(const char* fname)
 {
   p->mbase.flash.write(fname);
 }
 
 FlashController& Module126::flash() { return p->mbase.flash; }
+#endif
 
 void Module126::clear_test_pattern_errors() {
 #if 0   // removed from hsd/v3 
@@ -744,13 +751,12 @@ void Module126::setAdcMux(unsigned channels)
   _sem_i2c.give();
 }
 
-const Pds::Mmhw::AxiVersion& Module126::version() const { return p->mbase.version; }
-Pds::HSD::TprCore&    Module126::tpr    () { return p->mbase.tpr; }
+Pds::Mmhw::TprCore&    Module126::tpr    () { return p->mbase.tpr; }
 
 void Module126::setRxAlignTarget(unsigned v) { p->mbase.setRxAlignTarget(v); }
 void Module126::setRxResetLength(unsigned v) { p->mbase.setRxResetLength(v); }
 void Module126::dumpRxAlign     () const { p->mbase.dumpRxAlign(); }
-void Module126::dumpPgp         () const { p->dumpPgp(); }
+void Module126::dumpPgp         () const { p->dumpPgp(version().buildStamp()); }
 
 void Module126::sample_init(unsigned length, 
                          unsigned delay,
@@ -760,9 +766,9 @@ void Module126::sample_init(unsigned length,
   p->base.samples  = length;
   p->base.prescale = (delay<<6) | (prescale&0x3f);
 
-  p->mbase.dma_core.init(32+48*length);
+  //  p->mbase.dma_core.init(32+48*length);
 
-  p->mbase.dma_core.dump();
+  //  p->mbase.dma_core.dump();
 
   //  p->dma.setEmptyThr(emptyThr);
   //  p->base.dmaFullThr=fullThr;
@@ -815,7 +821,7 @@ void Module126::start()
 void Module126::stop()
 {
   p->base.stop();
-  p->mbase.dma_core.dump();
+  //  p->mbase.dma_core.dump();
 }
 
 unsigned Module126::get_offset(unsigned channel)
@@ -875,7 +881,7 @@ void* Module126::reg() { return (void*)p; }
 std::vector<Pgp*> Module126::pgp() {
   std::vector<Pgp*> v(0);
   while(1) {
-    string buildStamp = p->mbase.version.buildStamp();
+    string buildStamp = version().buildStamp();
     if (buildStamp.find("pgp")==string::npos)
       break;
     if (buildStamp.find("pgp3")==string::npos) {
@@ -893,7 +899,7 @@ std::vector<Pgp*> Module126::pgp() {
   return v;
 }
 
-Pds::Mmhw::Jtag* Module126::xvc() { return &p->mbase.xvc; }
+//Pds::Mmhw::Jtag* Module126::xvc() { return &p->mbase.xvc; }
 
 FexCfg* Module126::fex() { return &p->fex_chan[0]; }
 

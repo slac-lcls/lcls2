@@ -55,6 +55,7 @@ target_link_libraries(drp
     xtcdata::xtc
     drpbase
     trigger
+    mmhw
 )
 
 add_executable(drp_bld
@@ -71,6 +72,7 @@ target_link_libraries(drp_bld
     drpbase
     trigger
     epicstools
+    mmhw
     ${Readline_LIBRARY}
 )
 
@@ -85,6 +87,7 @@ target_include_directories(drp_pva PUBLIC
 target_link_libraries(drp_pva
     drpbase
     trigger
+    mmhw
     epicstools
     ${Readline_LIBRARY}
 )
@@ -101,6 +104,7 @@ target_include_directories(drp_udpencoder PUBLIC
 target_link_libraries(drp_udpencoder
     drpbase
     trigger
+    mmhw
     ${Readline_LIBRARY}
 )
 
@@ -156,6 +160,7 @@ target_include_directories(pgpread PUBLIC
     ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(pgpread
+    mmhw
     psalg::utils
     xtcdata::xtc
     Threads::Threads

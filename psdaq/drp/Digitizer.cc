@@ -10,6 +10,7 @@
 #include "psalg/digitizer/Hsd.hh"
 #include "DataDriver.h"
 #include "Si570.hh"
+#include "psdaq/mmhw/Reg.hh"
 #include "psalg/utils/SysLog.hh"
 
 #include <Python.h>
@@ -26,8 +27,22 @@ using namespace rapidjson;
 using logging = psalg::SysLog;
 
 using json = nlohmann::json;
+using Pds::Mmhw::Reg;
 
 namespace Drp {
+
+    //  hardware register model
+    class DrpPgpIlv {
+    public:
+        uint32_t reserved_to_80_0000[0x800000/4];
+        Reg      mig[0x200];
+        uint32_t reserved_to_a4_0010[0x240010/4-sizeof(mig)];
+        Reg      linkId[4];
+        Reg      pgp[4];
+        uint32_t reserved_to_e0_0000[0x5BFFF0/4-sizeof(linkId)-sizeof(pgp)];
+        Reg      i2c     [0x200];       // 0x00E0_0000
+        Si570    si570;                 // 0x00E0_0800
+    };
 
 class HsdDef : public VarDef
 {
@@ -66,18 +81,19 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     // Check PGP reference clock, reprogram if necessary
     //
     int fd = m_pool->fd();
+    Pds::Mmhw::Reg::set(fd);
+    DrpPgpIlv& hw = *new(0) DrpPgpIlv;
+    
     AxiVersion vsn;
     axiVersionGet(fd, &vsn);
     if (vsn.userValues[2] == 0) {  // Only one PCIe interface has access to I2C bus
-        unsigned pgpclk;
-        dmaReadRegister(fd, 0x80010c, &pgpclk);
+        unsigned pgpclk = hw.mig[0x10c];
         printf("PGP RefClk %f MHz\n", double(pgpclk&0x1fffffff)*1.e-6);
         if ((pgpclk&0x1fffffff) < 185000000) { // target is 185.7 MHz
             //  Set the I2C Mux
-            dmaWriteRegister(fd, 0x00e00000, (1<<2));
+            hw.i2c[0] = 1<<2;
             //  Configure the Si570
-            Si570 s(fd, 0x00e00800);
-            s.program();
+            hw.si570.program();
         }
     }
 
@@ -107,7 +123,7 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
 
         for(unsigned i=0; i<4; i++) {
             unsigned link = (vsn.userValues[2] == 0) ? i : i+4;
-            dmaWriteRegister(fd, 0x00a40010+4*(link&3), id | (link<<16));
+            hw.linkId[link&3] = id | (link<<16);
         }
     }
 
@@ -244,21 +260,21 @@ void Digitizer::connect(const json& connect_json, const std::string& collectionI
 
 unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
+    DrpPgpIlv& hw = *new(0) DrpPgpIlv;
     //  Reset the PGP links
-    int fd = m_pool->fd();
     //  user reset
-    dmaWriteRegister(fd, 0x00800000, (1<<31));
+    hw.mig[0] = 1<<31;
     usleep(10);
-    dmaWriteRegister(fd, 0x00800000, 0);
+    hw.mig[0] = 0;
     //  QPLL reset
-    dmaWriteRegister(fd, 0x00a40024, 1);
+    hw.pgp[1] = 1;
     usleep(10);
-    dmaWriteRegister(fd, 0x00a40024, 0);
+    hw.pgp[1] = 0;
     usleep(10);
     //  Reset the Tx and Rx
-    dmaWriteRegister(fd, 0x00a40024, 6);
+    hw.pgp[1] = 6;
     usleep(10);
-    dmaWriteRegister(fd, 0x00a40024, 0);
+    hw.pgp[1] = 0;
 
     unsigned lane_mask;
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);

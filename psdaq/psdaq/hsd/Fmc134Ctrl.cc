@@ -1,6 +1,7 @@
 #include "psdaq/hsd/Fmc134Ctrl.hh"
 #include "psdaq/hsd/Fmc134Cpld.hh"
 
+#include "psdaq/mmhw/Reg.hh"
 #include <unistd.h>
 #include <stdio.h>
 
@@ -65,8 +66,8 @@ public:
   enum { AddrCtrl=0 };
 };
 
-#define unitapi_write_register(unit,addr,val) reinterpret_cast<volatile uint32_t*>(this)[addr] = val
-#define unitapi_read_register(unit,addr,pval) *(pval) = reinterpret_cast<volatile uint32_t*>(this)[addr]
+#define unitapi_write_register(unit,addr,val) reinterpret_cast<Mmhw::Reg*>(this)[addr] = val
+#define unitapi_read_register(unit,addr,pval) *(pval) = reinterpret_cast<Mmhw::Reg*>(this)[addr]
 #define unitapi_sleep_ms(tms) usleep(tms*1000)
 
 static const int32_t FMC134_ERR_ADC_INIT = 1;

@@ -9,8 +9,8 @@
 #include "Pgp.hh"
 #include "OptFmc.hh"
 #include "Jesd204b.hh"
-#include "TprCore.hh"
 
+#include "psdaq/mmhw/TprCore.hh"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 
@@ -119,13 +119,13 @@ namespace Pds {
         }
       }
       if (PVGET(timpllrst)) {
-        Pds::HSD::TprCore& tpr = _m.tpr();
+        Pds::Mmhw::TprCore& tpr = _m.tpr();
         tpr.resetRxPll();
         usleep(10000);
         tpr.resetCounts();
       }
       if (PVGET(timrxrst)) {
-        Pds::HSD::TprCore& tpr = _m.tpr();
+        Pds::Mmhw::TprCore& tpr = _m.tpr();
         tpr.resetRx();
         usleep(10000);
         tpr.resetCounts();
