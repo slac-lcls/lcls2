@@ -1,5 +1,6 @@
 from psdaq.configdb.typed_json import cdict
 from psdaq.configdb.tsdef import *
+from psdaq.configdb.get_config import update_config
 import psdaq.configdb.configdb as cdb
 import pyrogue as pr
 import numpy as np
@@ -8,6 +9,8 @@ import sys
 import IPython
 import argparse
 
+import pprint
+
 numAsics = 4
 elemRows = 384
 elemCols = 192
@@ -15,18 +18,29 @@ elemCols = 192
 def epixm320_cdict(prjCfg):
 
     top = cdict()
-    top.setAlg('config', [0,0,0])
+    top.setAlg('config', [0,1,0])
 
     top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     top.set("firmwareVersion:RO",   0, 'UINT32')
 
     help_str  = "-- user interface --"
-    help_str += "\nstart_ns     : nanoseconds to exposure start"
+    help_str += "\nstart_ns          : nanoseconds to exposure start"
+    help_str += "\ngain_mode         : SoftHigh/SoftLow/Auto/Map"
+    help_str += "\npixel_map         : 3D-map of pixel gain/inj settings"
+    help_str += "\nrun_trigger_group : Group for the Run trigger"
     top.set("help:RO", help_str, 'CHARSTR')
+
+    pixelMap = np.zeros((elemRows*2,elemCols*2),dtype=np.uint8)
+    top.set("user.pixel_map", pixelMap)
 
     top.set("user.start_ns", 107749, 'UINT32')
 
+    top.define_enum('gainEnum', {'SoftHigh':0, 'SoftLow':1, 'Auto':2, 'Map':3})
+    top.set("user.gain_mode",      0, 'gainEnum')
+
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
+
+    top.set("user.run_trigger_group", 6, 'UINT32')
 
     # timing system
     # run trigger
@@ -302,22 +316,28 @@ def epixm320_cdict(prjCfg):
 
 
 if __name__ == "__main__":
-    create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
     args = cdb.createArgs().args
 
+    if args.dir is None:
+        raise Exception('Rogue project root directory is required (--dir)')
+
+    create = not args.update
     db = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
-    mycdb.add_alias(args.alias)
-    mycdb.add_device_config('epixm320hw')
-
-    if args.dir is None:
-        raise Exception('Rogue project root directory is required (--dir)')
 
     top = epixm320_cdict(args.dir+'/software/config')
     top.setInfo('epixm320hw', args.name, args.segm, args.id, 'No comment')
 
-    mycdb.modify_device(args.alias, top)
+    if args.update:
+        cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+        top = update_config(cfg, top.typed_json(), args.verbose)
+
+    if not args.dryrun:
+        if create:
+            mycdb.add_alias(args.alias)
+            mycdb.add_device_config('epixm320hw')
+        mycdb.modify_device(args.alias, top)

@@ -36,8 +36,6 @@ segids = None
 seglist = [0,1]
 asics = None
 
-RTP = 6   # run trigger partition
-
 #  Timing delay scans can be limited by this
 EventBuilderTimeout = 4*int(1.0e-3*156.25e6)
 
@@ -222,6 +220,49 @@ for i in range(4):
     ordering[f'BatcherEventBuilder{i}'] = ['Bypass','Timeout','Blowoff',]
 
 
+def _dict_compare(d1,d2,path):
+    for k in d1.keys():
+        if k in d2.keys():
+            if isinstance(d1[k],dict):
+                _dict_compare(d1[k],d2[k],path+'.'+k)
+            elif (d1[k] != d2[k]):
+                print(f'key[{k}] d1[{d1[k]}] != d2[{d2[k]}]')
+        else:
+            print(f'key[{k}] not in d1')
+    for k in d2.keys():
+        if k not in d1.keys():
+            print(f'key[{k}] not in d2')
+
+def gain_mode_map(gain_mode):
+    mapv  = (0xc,0x8,0x0,0x0)[gain_mode] # SH/SL/A/M
+    trbit = (0x1,0x0,0x1,0x0)[gain_mode]
+    return (mapv,trbit)
+
+#
+#  Scramble the user element pixel array into the native asic orientation
+#
+#
+#    A1   |   A3
+# --------+--------
+#    A0   |   A2
+#
+def user_to_rogue(a):
+    v = a.reshape((elemRows*2,elemCols*2))
+    s = np.zeros((4,elemRows,elemCols),dtype=np.uint8)
+    s[0,:elemRows] = v[elemRows:,:elemCols]
+    s[2,:elemRows] = v[elemRows:,elemCols:]
+    s[1,:elemRows] = v[elemRows:,elemCols:]
+    s[3,:elemRows] = v[elemRows:,:elemCols]
+    return s
+
+def rogue_to_user(s):
+    v = np.zeros((elemRows*2,elemCols*2),dtype=np.uint8)
+    v[elemRows:,:elemCols] = s[3,:elemRows]
+    v[elemRows:,elemCols:] = s[1,:elemRows]
+    v[elemRows:,elemCols:] = s[2,:elemRows]
+    v[elemRows:,:elemCols] = s[0,:elemRows]
+    return v.reshape(elemRows*elemCols*4)
+
 #
 #  Initialize the rogue accessor
 #
@@ -235,43 +276,33 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
     base = {}
     #  Connect to the camera and the PCIe card
     ###assert(lanemask.bit_length() == 4)
-    root = ePixM.Root(top_level              = '/tmp',
-                      dev                    = '/dev/datadev_0',
-                      pollEn                 = False,
-                      initRead               = False,
-                      justCtrl               = True,
-                      fullRateDataReceiverEn = False)
-    root.__enter__()
-    base['root'] = root
+    cbase = ePixM.Root(top_level              = '/tmp',
+                       dev                    = '/dev/datadev_0',
+                       pollEn                 = False,
+                       initRead               = False,
+                       justCtrl               = True,
+                       fullRateDataReceiverEn = False)
+    cbase.__enter__()
+    base['cam'] = cbase
 
-    firmwareVersion = root.Core.AxiVersion.FpgaVersion.get()
-    buildDate       = root.Core.AxiVersion.BuildDate.get()
-    gitHashShort    = root.Core.AxiVersion.GitHashShort.get()
+    firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
+    buildDate       = cbase.Core.AxiVersion.BuildDate.get()
+    gitHashShort    = cbase.Core.AxiVersion.GitHashShort.get()
     print(f'firmwareVersion [{firmwareVersion:x}]')
     print(f'buildDate       [{buildDate}]')
     print(f'gitHashShort    [{gitHashShort}]')
 
     # Ric: These don't exist, so need to find equivalents
     ##  Enable the environmental monitoring
-    #root.App.SlowAdcRegisters.enable.set(1)
-    #root.App.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
-    #root.App.SlowAdcRegisters.StreamEn.set(1)
-    #root.App.SlowAdcRegisters.enable.set(0)
+    #cbase.App.SlowAdcRegisters.enable.set(1)
+    #cbase.App.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
+    #cbase.App.SlowAdcRegisters.StreamEn.set(1)
+    #cbase.App.SlowAdcRegisters.enable.set(0)
 
     # configure timing
     logging.warning(f'Using timebase {timebase}')
-    if timebase=="186M":
-        base['bypass'] = root.numOfAsics * [0x3]
-        base['clk_period'] = 7000/1300. # default 185.7 MHz clock
-        base['msg_period'] = 200
-        base['pcie_timing'] = False
-
-        logging.warning('epixm320_unconfig')
-        epixm320_unconfig(base)
-
-        root.App.TimingRx.ConfigLclsTimingV2()
-    else:                       # UED
-        base['bypass'] = root.numOfAsics * [0x3]
+    if timebase=="119M":  # UED
+        base['bypass'] = cbase.numOfAsics * [0x3]
         base['clk_period'] = 1000/119.
         base['msg_period'] = 238
         base['pcie_timing'] = True
@@ -279,16 +310,27 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
         logging.warning('epixm320_unconfig')
         epixm320_unconfig(base)
 
-        root.App.TimingRx.TimingFrameRx.ModeSelEn.set(1) # UseModeSel
-        root.App.TimingRx.TimingFrameRx.ClkSel.set(0)    # LCLS-1 Clock
-        root.App.TimingRx.TimingFrameRx.RxDown.set(0)
+        cbase.App.TimingRx.TimingFrameRx.ModeSelEn.set(1) # UseModeSel
+        cbase.App.TimingRx.TimingFrameRx.ClkSel.set(0)    # LCLS-1 Clock
+        cbase.App.TimingRx.TimingFrameRx.RxDown.set(0)
+    else:
+        base['bypass'] = cbase.numOfAsics * [0x3]
+        base['clk_period'] = 7000/1300. # default 185.7 MHz clock
+        base['msg_period'] = 200
+        base['pcie_timing'] = False
+
+        logging.warning('epixm320_unconfig')
+        epixm320_unconfig(base)
+
+        cbase.App.TimingRx.ConfigLclsTimingV2()
 
     # Delay long enough to ensure that timing configuration effects have completed
     cnt = 0
     while cnt < 10:
         time.sleep(1)
-        rxId = root.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+        rxId = cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
         if rxId != 0xffffffff:  break
+        del rxId                # Maybe this can help getting RxId reevaluated
         cnt += 1
 
     if cnt == 10:
@@ -296,7 +338,7 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
 
     # Ric: Not working yet
     ## configure internal ADC
-    ##root.App.InitHSADC()
+    ##cbase.App.InitHSADC()
 
     time.sleep(1)               # Still needed?
 #    epixm320_internal_trigger(base)
@@ -324,10 +366,10 @@ def epixm320_connectionInfo(base, alloc_json_str):
     txId = timTxId('epixm320')
     logging.info('TxId {:x}'.format(txId))
 
-    root = base['root']
-    rxId = root.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+    cbase = base['cam']
+    rxId = cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     logging.info('RxId {:x}'.format(rxId))
-    root.App.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+    cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
 
     epixmid = '-'
 
@@ -350,9 +392,10 @@ def user_to_expert(base, cfg, full=False):
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
-        root = base['root']
-        for i,p in enumerate([RTP,group]):
-            partitionDelay = getattr(root.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
+        cbase = base['cam']
+        rtp = cfg['user']['run_trigger_group']   # run trigger partition
+        for i,p in enumerate([rtp,group]):
+            partitionDelay = getattr(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
             rawStart       = cfg['user']['start_ns']
             triggerDelay   = int(rawStart*base['clk_period'] - partitionDelay*base['msg_period'])
             logging.warning(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
@@ -363,26 +406,25 @@ def user_to_expert(base, cfg, full=False):
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[{i}].TriggerDelay']=triggerDelay
 
         if full:
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']=RTP
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']=group
+            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']=rtp    # Run trigger
+            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']=group  # DAQ trigger
 
     pixel_map_changed = False
-    # Ric: ePixM is autoranging, so not yet clear what to do here
-    #a = None
-    #hasUser = 'user' in cfg
-    #if hasUser and ('pixel_map' in cfg['user'] or
-    #                'gain_mode' in cfg['user']):
-    #    gain_mode = cfg['user']['gain_mode']
-    #    if gain_mode==5:  # user map
-    #        a  = cfg['user']['pixel_map']
-    #        logging.warning('pixel_map len {}'.format(len(a)))
-    #        d['user.pixel_map'] = a
-    #        # what about associated trbit?
-    #    else:
-    #        mapv, trbit = gain_mode_map(gain_mode)
-    #        for i in range(4):
-    #            d[f'expert.App.Mv2Asic[{i}].trbit'] = trbit
-    #    pixel_map_changed = True
+    a = None
+    hasUser = 'user' in cfg
+    if hasUser and 'gain_mode' in cfg['user']:
+        gain_mode = cfg['user']['gain_mode']
+        if gain_mode==3:  # user map
+            if 'pixel_map' in cfg['user']:
+                a  = cfg['user']['pixel_map']
+                logging.warning('pixel_map len {}'.format(len(a)))
+                d['user.pixel_map'] = a
+                # what about associated trbit?
+        else:
+            mapv, trbit = gain_mode_map(gain_mode)
+            for i in range(cbase.numOfAsics):
+                d[f'expert.App.Mv2Asic[{i}].trbit'] = trbit
+        pixel_map_changed = True
 
     update_config_entry(cfg,ocfg,d)
 
@@ -397,12 +439,12 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
     #  Disable internal triggers during configuration
     epixm320_external_trigger(base)
 
-    root = base['root']
+    cbase = base['cam']
 
     # overwrite the low-level configuration parameters with calculations from the user configuration
     if 'expert' in cfg:
         try:  # config update might not have this
-            apply_dict('root.App.TimingRx.TriggerEventManager',root.App.TimingRx.TriggerEventManager,cfg['expert']['App']['TimingRx']['TriggerEventManager'])
+            apply_dict('cbase.App.TimingRx.TriggerEventManager',cbase.App.TimingRx.TriggerEventManager,cfg['expert']['App']['TimingRx']['TriggerEventManager'])
         except KeyError:
             pass
 
@@ -413,7 +455,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
     #  Make list of enabled ASICs
     if 'user' in cfg and 'asic_enable' in cfg['user']:
         asics = []
-        for i in range(root.numOfAsics):
+        for i in range(cbase.numOfAsics):
             if cfg['user']['asic_enable']&(1<<i):
                 asics.append(i)
             else:
@@ -434,22 +476,21 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 #        m=3<<2
 #    base['bypass'] = 0x3f^m  # mask of active batcher channels
 #    base['batchers'] = m>>2  # mask of active batchers
-    base['bypass'] = root.numOfAsics * [0x0]  # Enable Timing (bit-0) and Data (bit-1)
-    base['batchers'] = root.numOfAsics * [1]  # list of active batchers
+    base['bypass'] = cbase.numOfAsics * [0x0]  # Enable Timing (bit-0) and Data (bit-1)
+    base['batchers'] = cbase.numOfAsics * [1]  # list of active batchers
     print(f'=== configure bypass {base["bypass"]} ===')
     for i in asics:
-        getattr(root.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
+        getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
     #  Without a timeout, dropped contributions create an off-by-one between contributors
     for i in asics:
-        getattr(root.App.AsicTop, f'BatcherEventBuilder{i}').Timeout.set(EventBuilderTimeout) # 400 us
+        getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Timeout.set(EventBuilderTimeout) # 400 us
     if not base['pcie_timing']:
-        eventBuilder = root.find(typ=batcher.AxiStreamBatcherEventBuilder)
+        eventBuilder = cbase.find(typ=batcher.AxiStreamBatcherEventBuilder)
         for eb in eventBuilder:
             eb.Timeout.set(EventBuilderTimeout)
             eb.Blowoff.set(True)
-            print('*** eb.Blowoff set to true')
     #
     #  For some unknown reason, performing this part of the configuration on BeginStep
     #  causes the readout to fail until the next Configure
@@ -464,9 +505,9 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         tmpfiles = []
         def toYaml(sect,keys,name):
             if sect == tree[-1]:
-                tmpfiles.append(dictToYaml(app,epixMTypes,keys,root,path,name,tree,ordering))
+                tmpfiles.append(dictToYaml(app,epixMTypes,keys,cbase,path,name,tree,ordering))
             else:
-                tmpfiles.append(dictToYaml(app[sect],epixMTypes[sect],keys,root,path,name,(*tree,sect),ordering))
+                tmpfiles.append(dictToYaml(app[sect],epixMTypes[sect],keys,cbase,path,name,(*tree,sect),ordering))
 
         clk = cfg['expert']['Pll']['Clock']
         if clk != 4:            # 4 is the Default firmware setting
@@ -475,7 +516,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
             fn = path+'PllConfig'+'.csv'
             np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
             tmpfiles.append(fn)
-            setattr(root, 'filenamePLL', fn)
+            setattr(cbase, 'filenamePLL', fn)
 
         toYaml('App',['PowerControl'],'PowerSupply')
         toYaml('App',[f'SspMonGrp[{i}]' for i in asics],'DESER')
@@ -484,45 +525,48 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         toYaml('AsicTop',[f'BatcherEventBuilder{i}' for i in asics],'Batcher')
         for i in asics:
             toYaml('App',[f'Mv2Asic[{i}]'],f'ASIC_u{i+1}')
-        setattr(root, 'filenameASIC', path+'ASIC_u{}'+'.yml') # This one is a little different
+        setattr(cbase, 'filenameASIC', path+'ASIC_u{}'+'.yml') # This one is a little different
 
         arg = [clk,1,1,1,1]
         logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
         ###raise Exception('Aborting before fnInitAsic: Check the yaml files')
-        root.fnInitAsicScript(None,None,arg)
+        cbase.fnInitAsicScript(None,None,arg)
 
         #  Remove the yml files
         for f in tmpfiles:
             os.remove(f)
 
-    # run some triggers and exercise lanes and locks
-    frames = 5000
-    rate = 1000
+        # run some triggers and exercise lanes and locks
+        frames = 5000
+        rate = 1000
 
-    root.hwTrigger(frames, rate)
+        cbase.hwTrigger(frames, rate)
 
-    #get locked lanes
-    print('Locked lanes:')
-    root.getLaneLocks()
+        #get locked lanes
+        print('Locked lanes:')
+        cbase.getLaneLocks()
 
-    # Disable non-locking lanes
-    for i in asics:
-        lanes = root.App.SspMonGrp[i].Locked.get() ^ 0xffffff;
-        print(f'Setting DigAsicStrmRegisters[{i}].DisableLane to 0x{lanes:x}')
-        getattr(root.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(lanes);
+        # Disable non-locking lanes
+        for i in asics:
+            lanes = cbase.App.SspMonGrp[i].Locked.get() ^ 0xffffff;
+            print(f'Setting DigAsicStrmRegisters[{i}].DisableLane to 0x{lanes:x}')
+            getattr(cbase.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(lanes);
 
-    # Enable the batchers
-    for i in asics:
-        getattr(root.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
+        # Enable the batchers
+        for i in asics:
+            getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
+
+    # Ric: I think here is where the Calibration registers should conditionally be set
+    # The writePixelMap variable provided the condition for the 2x2
 
     logging.warning('config_expert complete')
 
 def reset_counters(base):
     # Reset the timing counters
-    base['root'].App.TimingRx.TimingFrameRx.countReset()
+    base['cam'].App.TimingRx.TimingFrameRx.countReset()
 
     # Reset the trigger counters
-    base['root'].App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].countReset()
+    base['cam'].App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].countReset()
 
 #
 #  Called on Configure
@@ -538,24 +582,19 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Retrieve the full configuration from the configDB
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
-
-    if not base['pcie_timing']:
-        if 'TriggerEventManager' not in cfg['expert']['App']['TimingRx']:
-            #  Add missing fields
-            f = {'Partition':'UINT32','PauseThreshold':'UINT32','TriggerDelay':'UINT32'}
-            cfg[':types:']['expert']['App']['TimingRx']['TriggerEventManager'] = {'TriggerEventBuffer[0]':f.copy(),
-                                                                                  'TriggerEventBuffer[1]':f.copy()}
-            f = cfg['expert']['App']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
-            cfg['expert']['App']['TimingRx']['TriggerEventManager'] = {'TriggerEventBuffer[0]':f.copy(),
-                                                                       'TriggerEventBuffer[1]':f.copy()}
-            #  Remove the old ones
-            del cfg[':types:']['expert']['App']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
-            del cfg['expert']['App']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
-
     ocfg = cfg
 
     #  Translate user settings to the expert fields
     writePixelMap=user_to_expert(base, cfg, full=True)
+
+    if cfg==base['cfg']:
+        print('### Skipping redundant configure')
+        return base['result']
+
+    if base['cfg']:
+        print('--- config changed ---')
+        _dict_compare(base['cfg'],cfg,'cfg')
+        print('--- /config changed ---')
 
     #  Apply the expert settings to the device
     _stop(base)
@@ -572,14 +611,15 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
 #    epixm320_internal_trigger(base)
 
     #  Capture the firmware version to persist in the xtc
-    root = base['root']
-    firmwareVersion = root.Core.AxiVersion.FpgaVersion.get()
+    cbase = base['cam']
+    firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
+
     ocfg = cfg
 
     #
     #  Create the segment configurations from parameters required for analysis
     #
-    trbit = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['trbit'] for i in range(root.numOfAsics) ]
+    trbit = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['trbit'] for i in range(cbase.numOfAsics) ]
 
     topname = cfg['detName:RO'].split('_')
 
@@ -590,53 +630,52 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     scfg[0] = cfg.copy()
     scfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
-    # Ric: ePixM is autoranging; deal with gain later
-    ##  User pixel map is assumed to be 288x384 in standard element orientation
-    #gain_mode = cfg['user']['gain_mode']
-    #if False:
-    #    if gain_mode==5:
-    #        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
-    #    else:
-    #        mapv,trbit0 = gain_mode_map(gain_mode)
-    #        trbit = [trbit0 for i in range(4)]
-    #        pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
-    #else:
-    #    if gain_mode==5:
-    #        pixelConfigSet = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-    #    else:
-    #        mapv,trbit0 = gain_mode_map(gain_mode)
-    #        pixelConfigSet = np.zeros((2*elemRowsD*2*elemCols),dtype=np.uint8)+mapv
-    #
-    #    s = user_to_rogue(pixelConfigSet)
-    #    for i in asics:
-    #        cname = f'/tmp/Hr10kTAsic{i}.latest'
-    #        s[i] = np.loadtxt(cname, dtype=np.uint8, delimiter=',')
-    #
-    #    pixelConfigUsr = rogue_to_user(s)
-    #
-    #    # Lets do some validation
-    #
-    #    if pixelConfigUsr.shape != pixelConfigSet.shape:
-    #        logging.error(f'  shape error  wrote {pixelConfigSet.shape}  read {pixelConfigUsr.shape}')
-    #    else:
-    #        nerr = 0
-    #        for i in range(pixelConfigUsr.shape[0]):
-    #            if pixelConfigUsr[i] != pixelConfigSet[i]:
-    #                nerr += 1
-    #                if nerr < 20:
-    #                    logging.error(f'  mismatch at {i}({i//(2*elemCols)},{i%(2*elemCols)})  wrote {pixelConfigSet[i]}  read {pixelConfigUsr[i]}')
-    #        logging.warning(f'Gain map validation complete with {nerr} mismatches')
-    #
-    #print(f'pixelConfigUsr shape {pixelConfigUsr.shape}  trbit {trbit}')
+    #  User pixel map is assumed to be 768x384 in standard element orientation
+    gain_mode = cfg['user']['gain_mode']
+    if False:
+        if gain_mode==3:
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
+        else:
+            mapv,trbit0 = gain_mode_map(gain_mode)
+            trbit = [trbit0 for i in range(cbase.numOfAsics)]
+            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+    else:
+        if gain_mode==3:
+            pixelConfigSet = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        else:
+            mapv,trbit0 = gain_mode_map(gain_mode)
+            pixelConfigSet = np.zeros((2*elemRowsD*2*elemCols),dtype=np.uint8)+mapv
+
+        s = user_to_rogue(pixelConfigSet)
+        for i in asics:
+            cname = f'/tmp/Hr10kTAsic{i}.latest'
+            s[i] = np.loadtxt(cname, dtype=np.uint8, delimiter=',')
+
+        pixelConfigUsr = rogue_to_user(s)
+
+        # Lets do some validation
+
+        if pixelConfigUsr.shape != pixelConfigSet.shape:
+            logging.error(f'  shape error  wrote {pixelConfigSet.shape}  read {pixelConfigUsr.shape}')
+        else:
+            nerr = 0
+            for i in range(pixelConfigUsr.shape[0]):
+                if pixelConfigUsr[i] != pixelConfigSet[i]:
+                    nerr += 1
+                    if nerr < 20:
+                        logging.error(f'  mismatch at {i}({i//(2*elemCols)},{i%(2*elemCols)})  wrote {pixelConfigSet[i]}  read {pixelConfigUsr[i]}')
+            logging.warning(f'Gain map validation complete with {nerr} mismatches')
+
+    print(f'pixelConfigUsr shape {pixelConfigUsr.shape}  trbit {trbit}')
 
     for seg in range(1):
         #  Construct the ID
-        digitalId = [0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.DigIDLow.get(),
-                     0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.DigIDHigh.get()]
-        pwrCommId = [0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.PowerAndCommIDLow.get(),
-                     0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.PowerAndCommIDHigh.get()]
-        carrierId = [0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.CarrierIDLow.get(),
-                     0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.CarrierIDHigh.get()]
+        digitalId = [0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.DigIDLow.get(),
+                     0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.DigIDHigh.get()]
+        pwrCommId = [0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.PowerAndCommIDLow.get(),
+                     0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.PowerAndCommIDHigh.get()]
+        carrierId = [0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.CarrierIDLow.get(),
+                     0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.CarrierIDHigh.get()]
         id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
                                                           carrierId[0], carrierId[1],
                                                           digitalId[0], digitalId[1],
@@ -664,8 +703,9 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
         logging.warning('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
         result.append( json.dumps(translate_config(scfg[i])) )
 
-    #print('*** json result:')
-    #pprint.pprint(result)
+    base['cfg']    = copy.deepcopy(cfg)
+    base['result'] = copy.deepcopy(result)
+
     return result
 
 def epixm320_unconfig(base):
@@ -702,16 +742,16 @@ def epixm320_scan_keys(update):
 
     if pixelMapChanged:
         gain_mode = cfg['user']['gain_mode']
-        if gain_mode==5:
+        if gain_mode==3:
             pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
         else:
             mapv,trbit = gain_mode_map(gain_mode)
             pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
 
-        pixelConfigMap = user_to_rogue(pixelConfigUsr)
-        trbit = [ cfg['expert']['EpixM'][f'Hr10kTAsic{i}']['trbit'] for i in range(4)]
-
         cbase = base['cam']
+        pixelConfigMap = user_to_rogue(pixelConfigUsr)
+        trbit = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['trbit'] for i in range(cbase.numOfAsics) ]
+
         for seg in range(1):
             id = segids[seg]
             top = cdict()
@@ -734,6 +774,11 @@ def epixm320_update(update):
     logging.warning('epixm320_update')
     global ocfg
     global base
+
+    #  Queue full configuration next Configure transition
+    base['cfg'] = None
+
+    _stop(base)
     ##
     ##  Having problems with partial configuration
     ##
@@ -778,7 +823,7 @@ def epixm320_update(update):
 
     if writePixelMap:
         gain_mode = cfg['user']['gain_mode']
-        if gain_mode==5:
+        if gain_mode==3:
             pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
         else:
             mapv,trbit = gain_mode_map(gain_mode)
@@ -786,7 +831,7 @@ def epixm320_update(update):
 
         pixelConfigMap = user_to_rogue(pixelConfigUsr)
         try:
-            trbit = [ cfg['expert']['EpixM'][f'Hr10kTAsic{i}']['trbit'] for i in range(4)]
+            trbit = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['trbit'] for i in range(cbase.numOfAsics) ]
         except:
             trbit = None
 
@@ -810,30 +855,30 @@ def epixm320_update(update):
     return result
 
 def _resetSequenceCount():
-    root = base['root']
-    root.App.AsicTop.RegisterControlDualClock.ResetCounters.set(1)
+    cbase = base['cam']
+    cbase.App.AsicTop.RegisterControlDualClock.ResetCounters.set(1)
     time.sleep(1.e6)
-    root.App.AsicTop.RegisterControlDualClock.ResetCounters.set(0)
+    cbase.App.AsicTop.RegisterControlDualClock.ResetCounters.set(0)
 
 def epixm320_external_trigger(base):
     #  Switch to external triggering
     print(f"=== external triggering with bypass {base['bypass']} ===")
-    root = base['root']
-    root.App.AsicTop.TriggerRegisters.SetTimingTrigger(1)
+    cbase = base['cam']
+    cbase.App.AsicTop.TriggerRegisters.SetTimingTrigger(1)
 
 def epixm320_internal_trigger(base):
     #  Disable frame readout
     mask = 0x3
     print('=== internal triggering with bypass {:x} ==='.format(mask))
-    root = base['root']
-    for i in range(root.numOfAsics):
-        getattr(root.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(mask)
+    cbase = base['cam']
+    for i in range(cbase.numOfAsics):
+        getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(mask)
     return
 
     #  Switch to internal triggering
     print('=== internal triggering ===')
-    root = base['root']
-    root.App.AsicTop.TriggerRegisters.SetAutoTrigger(1)
+    cbase = base['cam']
+    cbase.App.AsicTop.TriggerRegisters.SetAutoTrigger(1)
 
 def epixm320_enable(base):
     print('epixm320_enable')
@@ -846,18 +891,18 @@ def epixm320_disable(base):
 
 def _stop(base):
     print('_stop')
-    root = base['root']
-    root.App.StopRun()
+    cbase = base['cam']
+    cbase.App.StopRun()
     time.sleep(0.1)  #  let last triggers pass through
 
 def _start(base):
     print('_start')
-    root = base['root']
-    root.App.AsicTop.TriggerRegisters.SetTimingTrigger()
-    root.App.StartRun()
-    for i in range(root.numOfAsics):
-        getattr(root.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
-        getattr(root.App.AsicTop,f'BatcherEventBuilder{i}').Blowoff.set(base['batchers'][i]==0)
+    cbase = base['cam']
+    cbase.App.AsicTop.TriggerRegisters.SetTimingTrigger()
+    cbase.App.StartRun()
+    for i in range(cbase.numOfAsics):
+        getattr(cbase.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
+        getattr(cbase.App.AsicTop,f'BatcherEventBuilder{i}').Blowoff.set(base['batchers'][i]==0)
 
 #
 #  Test standalone

@@ -581,6 +581,9 @@ class createArgs(object):
         parser.add_argument('--password', help='password for HTTP authentication', type=str, default=opt('password',os.getenv('CONFIGDB_AUTH')))
         parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=opt('yaml',None))
         parser.add_argument('--dir', help='Load values from directory tree', type=str, default=opt('dir',None))
+        parser.add_argument('--update', help='update an existing schema', action='store_true', default=opt('update',False))
+        parser.add_argument('--dryrun', help='make no DB changes', action='store_true', default=opt('dryrun',False))
+        parser.add_argument('--verbose', help='enable prints', action='store_true', default=opt('verbose',False))
         self.args = parser.parse_args()
 
 
