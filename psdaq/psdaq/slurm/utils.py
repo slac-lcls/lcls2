@@ -13,7 +13,7 @@ class SbatchParms:
     partition: str
     nodelist: list[str] 
     ntasks: int
-    time: str = "00:05:00"
+    time: str = "00:15:00"
     job_name: str = "psbatch"
 
 class SbatchManager:
@@ -55,7 +55,7 @@ class SbatchManager:
             fh.writelines(f"t_start=`date +%s`"+"\n")
             fh.writelines(f"set -xe"+"\n")
             fh.writelines(cmd+"\n")
-            fh.writelines("echo $SLURM_JOB_ID\n")
+            fh.writelines("wait\n")
             fh.writelines(f"t_end=`date +%s`"+"\n")
             fh.writelines(f"echo PSJobCompleted TotalElapsed $((t_end-t_start))")
 

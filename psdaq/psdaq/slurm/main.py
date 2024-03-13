@@ -3,7 +3,7 @@
 # Usage: psbatch
 # Parameters:
 #   - subcommand:   actions to be performed on the inputs
-#   - input-cnf:    input cnf file with resources 
+#   - inp_file:     input file with resources 
 ####################################################################
 
 from typing import List
@@ -56,14 +56,19 @@ class Runner():
         asyncio.run(sbman.run(sbatch_cmd, callback=save_to_db))
 
 def main(subcommand: str,
-        cnf_file: str,
+        inp_file: str,
         debug: bool = False
         ):
-    sbparms = SbatchParms(partition="anaq", nodelist=["drp-srcf-cmp035"], ntasks=1) 
-    cmd = "srun -N1 -n1 drp -P tst -C drp-srcf-cmp035 -M /cds/group/psdm/psdatmgr/etc/config/prom/tst -d /dev/datadev_1 -o /cds/data/drpsrcf -k batching=yes,directIO=yes -l 0x1 -D ts -u timing_0 -p 4" 
     global runner
     runner = Runner()
-    runner.submit(sbparms, cmd)
+    with open('slurm.json', 'r') as f:
+        data =json.loads(f.read())
+    for item in data['job_details']:
+        sbparms = SbatchParms(partition="anaq", nodelist=[item["node"]], ntasks=1) 
+        for cmd in item['cmds']:
+            cmd = "srun -N1 -n1 "+cmd
+            print(f'submit {cmd}')
+            runner.submit(sbparms, cmd)
     IPython.embed()
 
 def ls():
@@ -82,8 +87,25 @@ def restart(instance_id):
     _, sbparms, cmd, _ = db.get(instance_id)
     db.set(instance_id, DbHistoryColumns.STATUS, DbHistoryStatus.REPLACED)
     runner.submit(sbparms, cmd)
-    
+
+def stop():
+    if runner is None: return
+    data = db.instance
+    for instance_id, info in data.items():
+        if info[DbHistoryColumns.STATUS] == DbHistoryStatus.SUBMITTED:
+            cancel(instance_id)
+
 def start():
+    if runner is None: return
+    data = db.instance
+    for instance_id, info in data.items():
+        if info[DbHistoryColumns.STATUS] == DbHistoryStatus.CANCELLED:
+            restart(instance_id)
+
+
+
+    
+def _do_main():
     typer.run(main)
 
 if __name__ == "__main__":

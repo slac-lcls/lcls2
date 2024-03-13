@@ -1,0 +1,23 @@
+{
+    "job_details": [
+        {
+            "node": "drp-srcf-cmp035",
+            "cmds": [
+            "drp -P tst -C drp-srcf-cmp035 -M /cds/group/psdm/psdatmgr/etc/config/prom/tst -d /dev/datadev_1 -o /cds/data/drpsrcf -k batching=yes,directIO=yes -l 0x1 -D ts -u timing_0 -p 4",
+
+            "teb -P tst -C drp-srcf-cmp035 -M /cds/group/psdm/psdatmgr/etc/config/prom/tst -k script_path=/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf -u teb0 -p 4",
+
+            "control -P tst -B DAQ:NEH -x 0 -C BEAM --user tstopr --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ -d https://pswww.slac.stanford.edu/ws-auth/configdb/ws/configDB -t trigger -S 1 -T 20000 -V /cds/group/pcds/dist/pds/tst/misc/elog_tst.txt -u control -p 4",
+
+            ]
+        },
+        {
+            "node": "drp-srcf-cmp036",
+            "cmds": [
+
+            "control_gui -H drp-srcf-cmp035 --uris https://pswww.slac.stanford.edu/ws-auth/configdb/ws --expert --user tstopr --loglevel WARNING -p 4",
+
+            ]
+        }
+    ]
+}
