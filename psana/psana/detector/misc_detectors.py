@@ -1,4 +1,5 @@
 from psana.detector.detector_impl import DetectorImpl
+from amitypes import Array2d
 
 # create a dictionary that can be used to look up other
 # information about an epics variable.  the key in
@@ -150,13 +151,21 @@ class hrencoder_raw_0_1_0(DetectorImpl):
         return segments[0].position
 
 class encoder_interpolated_3_0_0(encoder_raw_3_0_0):
-   def __init__(self, *args):
-       super().__init__(*args)
-   def value(self,evt) -> float:
-       """
-       Version 3.0.0 addresses fields as scalars, not as arrays.
-       """
-       return super().value(evt)
+    def __init__(self, *args):
+        super().__init__(*args)
+    def value(self,evt) -> float:
+        """
+        Version 3.0.0 addresses fields as scalars, not as arrays.
+        """
+        return super().value(evt)
+
+class archon_raw_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def raw(self,evt) -> Array2d:
+        segs = self._segments(evt)
+        if segs is None: return None
+        return segs[0].value
 
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):
