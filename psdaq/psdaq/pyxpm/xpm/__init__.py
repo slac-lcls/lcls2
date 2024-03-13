@@ -13,3 +13,4 @@ from ._GthRxAlignCheck import *
 from ._XpmApp import *
 from ._XpmPhase import *
 from ._XpmSequenceEngine import *
+from ._XpmGth import *
