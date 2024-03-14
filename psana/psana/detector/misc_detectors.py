@@ -1,5 +1,6 @@
 from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array2d
+import logging
 
 # create a dictionary that can be used to look up other
 # information about an epics variable.  the key in
@@ -166,7 +167,20 @@ class archon_raw_1_0_0(DetectorImpl):
         segs = self._segments(evt)
         if segs is None: return None
         return segs[0].value
-
+    def calib(self,evt) -> Array2d:
+        raw = self.raw(evt)
+        if raw is None: return None
+        peds = self._calibconst['pedestals'][0]
+        if peds is None:
+            logging.warning('no archon pedestals')
+            return raw
+        if peds.shape != raw.shape:
+            logging.warning(f'incorrect archon pedestal shape: {peds.shape}, raw data shape: {raw.shape}')
+            return raw
+        return raw-peds
+    def image(self,evt) -> Array2d:
+        return self.calib(evt)
+        
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):
     def __init__(self, *args):
