@@ -210,7 +210,7 @@ class XpmGth(pr.Device):
         ypoints = np.array(eye)
         xpoints = np.array(list(range(-64,64)) + list(reversed(range(-64,64))))
         plt.plot(xpoints, ypoints, color='blue', label='BER: {:.2e}'.format(target))
-        plt.fill_between([-10, 0, 10, 0, -10], [0, 30, 0, -30, 0], color='green', label='CDR Mask')
+        plt.fill_between([-10, 0, 10, 0, -10], [0, 30, 0, -30, 0], color='red', label='CDR Mask')
 
         plt.legend()
         plt.show()
@@ -264,6 +264,7 @@ class XpmGth(pr.Device):
         y = 0
 
         for pos in range(-64, 64):
+            print("[{}%] Eye measurement in progress          \r".format(round((float(64.0+pos)/256.0)*100)), end='')
             prev = ber
 
             currY = []
@@ -299,11 +300,11 @@ class XpmGth(pr.Device):
                     positiveY.append(y-2)
                     break
 
-        print("NEGATIVE")
         ber = -1
         y = 0
 
         for pos in range(-64, 64):
+            print("[{}%] Eye measurement in progress          \r".format(round((float(128.0+64.0+pos)/256.0)*100)), end='')
             prev = ber
 
             currY = []
@@ -408,7 +409,7 @@ class XpmGth(pr.Device):
         sampleCount = self.ES_SAMPLE_COUNT.get()
         bitCount = 20*math.pow(2, 1+prescaler)*sampleCount
 
-        print('[{}/{}] Err = {}, Bit = {}'.format(x,y, errCount, bitCount))
+        #print('[{}/{}] Err = {}, Bit = {}'.format(x,y, errCount, bitCount))
 
         if bitCount == 0:
             return 1
