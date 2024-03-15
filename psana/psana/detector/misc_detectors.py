@@ -1,6 +1,7 @@
 from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array2d
 import logging
+from psana.detector.areadetector import AreaDetectorRaw
 
 # create a dictionary that can be used to look up other
 # information about an epics variable.  the key in
@@ -160,7 +161,7 @@ class encoder_interpolated_3_0_0(encoder_raw_3_0_0):
         """
         return super().value(evt)
 
-class archon_raw_1_0_0(DetectorImpl):
+class archon_raw_1_0_0(AreaDetectorRaw):
     def __init__(self, *args):
         super().__init__(*args)
     def raw(self,evt) -> Array2d:
@@ -180,7 +181,7 @@ class archon_raw_1_0_0(DetectorImpl):
         return raw-peds
     def image(self,evt) -> Array2d:
         return self.calib(evt)
-        
+
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):
     def __init__(self, *args):
