@@ -482,10 +482,12 @@ def deploy_constants(dic_consts, **kwa):
         dir_ct = repoman.makedir_ctype(panelid, ctype)
         fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
 
-        fname = '%s-%s.txt' % (fprefix, ctype)
+        fname = '%s-%s.data' % (fprefix, ctype)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
         save_ndarray_in_textfile(nda, fname, filemode, fmt)
         #save_2darray_in_textfile(nda, fname, filemode, fmt)
+
+        logger.info('preserve constants in repository: %s' % fname)
 
         dtype = 'ndarray'
         kwa['iofname'] = fname
@@ -639,6 +641,10 @@ def pedestals_calibration(parser):
           dpo.summary()
           ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
           consts = arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
+          logger.info('evaluated constants: \n  %s\n  %s\n  %s' % (
+                      info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
+                      info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
+                      info_ndarr(arr_sta, 'arr_sta', first=0, last=5)))
           dic_consts = dict(zip(ctypes, consts))
           kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
           kwa_depl['repoman'] = repoman
