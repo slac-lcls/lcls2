@@ -24,10 +24,9 @@ class Top(pr.Root):
 
     def __init__(   self,       
                     name        = "Top",
-                    description = "Container for X",
+                    description = "Container for XPM",
                     ipAddr      = 'localhost',
                     memBase     = 0,
-                    fidPrescale = 200,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
 
@@ -114,7 +113,7 @@ class Top(pr.Root):
             memBase = self.srp,
             name   = 'XpmApp',
             offset = 0x80000000,
-            fidPrescale = fidPrescale,
+            linkMonitoring = True
         ))
 
 def main():
@@ -130,6 +129,7 @@ def main():
     parser.add_argument('--eye', action='store_true', help='Generate eye diagram')
     parser.add_argument('--bathtub', action='store_true', help='Generate bathtub curve')
     parser.add_argument('--target', type=float, required=False, help="BET Target" )
+    parser.add_argument('--forceLoopback', action='store_true', help='Set link in loopback mode')
 
     args = parser.parse_args()
     if args.verbose:
@@ -173,9 +173,11 @@ def main():
 
     #GTH Config
     base.XpmApp.link.set(linkid)
-    base.XpmApp.loopback.set(0x00)
 
     loopback = base.XpmApp.loopback.get()
+    if args.forceLoopback:
+        base.XpmApp.loopback.set(0x01)
+
     link_rxcdrlock = base.XpmApp.link_rxcdrlock.get()
     link_rxpmarstdone = base.XpmApp.link_rxpmarstdone.get()
     link_txpmarstdone = base.XpmApp.link_txResetDone.get()
@@ -185,7 +187,7 @@ def main():
         base.stop()
         return
 
-    print('Link [{}] Loopback({}) CDRLocked ({}) RxPMARstDone ({}) TxPMARstDone ({})'.format(linkid, loopback, link_rxcdrlock, link_rxpmarstdone, link_txpmarstdone))
+    #print('Link [{}] Loopback({}) CDRLocked ({}) RxPMARstDone ({}) TxPMARstDone ({})'.format(linkid, loopback, link_rxcdrlock, link_rxpmarstdone, link_txpmarstdone))
 
     if args.hseq is not None:
         #High-speed repeater config
@@ -203,16 +205,31 @@ def main():
 
     if args.eye:
         base.Link[linkid].eyePlot(target=target)
+        
+    base.XpmApp.loopback.set(loopback)
 
-    base.stop()
+    # DevGui not used but can be enabled by uncommenting
+    # the following lines:
 
     #pyrogue.pydm.runPyDM(
     #    serverList  = base.zmqServer.address,
     #    sizeX       = 800,
     #    sizeY       = 800,
     #)
-    
-    #base.Link[0].EyePlot()
+
+    link_rxRcvCnts = 0
+    link_rxErrCnts = 0
+
+    while link_rxRcvCnts < (1/target):
+        base.XpmApp.link_gthCntRst.set(0x01)
+        base.XpmApp.link_gthCntRst.set(0x00)
+        time.sleep(0.1)
+        link_rxRcvCnts += base.XpmApp.link_rxRcvCnts.get()*20
+        link_rxErrCnts += base.XpmApp.link_rxErrCnts.get()
+
+    print('BER: {:.2e} ({} err/ {} rcv)'.format((link_rxErrCnts/link_rxRcvCnts), link_rxErrCnts, link_rxRcvCnts))
+
+    base.stop()
 
 if __name__ == '__main__':
     main()
