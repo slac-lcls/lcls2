@@ -1,21 +1,20 @@
 #!/bin/bash
-#SBATCH --partition=anaq
-#SBATCH --job-name=test-slurm
-#SBATCH --nodelist=drp-srcf-cmp035
-#SBATCH --ntasks=2
-##SBATCH --ntasks-per-node=50
-#SBATCH --output=%j.log
-#SBATCH --exclusive
-#SBATCH --time=00:05:00
- 
 
-t_start=`date +%s`
-set -xe
-set -m
+#SBATCH --job-name parallel   ## name that will show up in the queue
+#SBATCH --output slurm-%j.out   ## filename of the output; the %j is equal to jobID; default is slurm-[jobID].out
+#SBATCH --ntasks=3  ## number of tasks (analyses) to run
+##SBATCH --ntasks-per-node=2
+#SBATCH --nodelist=drp-srcf-cmp036,drp-srcf-cmp035
+##SBATCH --cpus-per-task=2  ## the number of threads allocated to each task
+#SBATCH --mem-per-cpu=1G   # memory per CPU core
+#SBATCH --partition=anaq  ## the partitions to run in (comma seperated)
+#SBATCH --time=0-00:10:00  ## time for analysis (day-hour:min:sec)
 
-srun -n1 "sleep 5; echo hello1" & 
-srun -n1 "sleep 10; echo hello2" & 
+# Execute job steps
+srun --ntasks=1 --nodes=1 --exclusive --nodelist=drp-srcf-cmp036 bash -c "sleep 2; python test_mpi.py" &
+srun --ntasks=1 --nodes=1 --exclusive --nodelist=drp-srcf-cmp036 bash -c "sleep 3; python test_mpi.py" &
+srun --ntasks=1 --nodes=1 --exclusive --nodelist=drp-srcf-cmp035 bash -c "sleep 4; python test_mpi.py" &
+
+
 wait
 
-t_end=`date +%s`
-echo PSJobCompleted TotalElapsed $((t_end-t_start)) 

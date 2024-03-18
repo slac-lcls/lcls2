@@ -33,6 +33,7 @@ class Runner():
         self.procmgr = ProcMgr(cnf_file, self.platform)
 
     def get_cmds(self):
+        """ Extract commands from the cnf file """
         data = {}
         for key, val in self.procmgr.d.items():
             node, job_name = key.split(":")
@@ -80,19 +81,33 @@ class Runner():
 
 def main(subcommand: str,
         cnf_file: str,
-        debug: bool = False
+        as_step: bool = False,
         ):
     global runner
     runner = Runner(cnf_file)
     sbjob = runner.get_cmds()
-    for node, job_details in sbjob.items():
-        nodelist = [node]
-        if node == "localhost": nodelist = [LOCALHOST]
-        for job_name, details in job_details.items():
-            sbparms = SbatchParms(partition="anaq", nodelist=nodelist, ntasks=1, job_name=job_name) 
-            cmd = "srun -N1 -n1 " + details['cmd']
-            runner.submit(sbparms, cmd)
-        
+    
+    if not as_step:
+        for node, job_details in sbjob.items():
+            nodelist = [node]
+            if node == "localhost": nodelist = [LOCALHOST]
+            for job_name, details in job_details.items():
+                sbparms = SbatchParms(partition="anaq", nodelist=nodelist, ntasks=1, job_name=job_name) 
+                cmd = "srun -N1 -n1 " + details['cmd']
+                runner.submit(sbparms, cmd)
+    else:
+        nodelist = list(map(lambda st: str.replace(st, "localhost", LOCALHOST), list(sbjob.keys())))
+        # We overallocate no. of tasks as max(#cmds per node) x #nodes. We should be able to find
+        # a better way to allocate different #cores per node.
+        maxcmds = max([len(job_details.keys()) for _, job_details in sbjob.items()])
+        ntasks = maxcmds * len(sbjob.keys())
+        sbparms = SbatchParms(partition="anaq", nodelist=nodelist, ntasks=ntasks)
+        cmd = ''
+        for node, job_details in sbjob.items():
+            if node == "localhost": node = LOCALHOST
+            for job_name, details in job_details.items():
+                cmd += f"srun -N1 -n1 --exclusive --nodelist={node} {details['cmd']}" + "& \n" 
+        runner.submit(sbparms, cmd)
     IPython.embed()
 
 def ls():
