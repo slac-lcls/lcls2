@@ -1,4 +1,4 @@
-// #undef NDEBUG
+#undef NDEBUG
 #include "Json2Xtc.hh"
 
 #include <list>
@@ -102,7 +102,7 @@ class JsonFindArrayIterator : public JsonIterator
 {
 public:
     JsonFindArrayIterator(Value &root, Value &types, VarDef &vars)
-        : JsonIterator(root, types), _vars(vars) {};
+      : JsonIterator(root, types), _types(types), _vars(vars) {};
     void process(Value &val) {
         std::string name = curname();
         Value *typ = findJsonType();
@@ -127,6 +127,7 @@ public:
         }
     }
 private:
+    rapidjson::Value &_types;
     VarDef &_vars;
 };
 
@@ -245,33 +246,73 @@ public:
                 }
                 break;
             case Name::UINT16:
+                if (!val.IsUint()) {
+                    printf("Json2Xtc Conversion Error: %s is not a UINT(16)!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, (uint16_t) val.GetUint());
                 break;
             case Name::UINT32:
+                if (!val.IsUint()) {
+                    printf("Json2Xtc Conversion Error: %s is not a UINT(32)!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, (uint32_t) val.GetUint());
                 break;
             case Name::UINT64:
+                if (!val.IsUint64()) {
+                    printf("Json2Xtc Conversion Error: %s is not a UINT64!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, val.GetUint64());
                 break;
             case Name::INT8:
+                if (!val.IsInt()) {
+                    printf("Json2Xtc Conversion Error: %s is not a INT(8)!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, (int8_t) val.GetInt());
                 break;
             case Name::INT16:
+                if (!val.IsInt()) {
+                    printf("Json2Xtc Conversion Error: %s is not a INT(16)!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, (int16_t) val.GetInt());
                 break;
             case Name::INT32:
+                if (!val.IsInt()) {
+                    printf("Json2Xtc Conversion Error: %s is not a INT(32)!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, (int32_t) val.GetInt());
                 break;
             case Name::INT64:
+                if (!val.IsInt64()) {
+                    printf("Json2Xtc Conversion Error: %s is not a INT64!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, val.GetInt64());
                 break;
             case Name::FLOAT:
+                if (!val.IsFloat()) {
+                    printf("Json2Xtc Conversion Error: %s is not a FLOAT!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, val.GetFloat());
                 break;
             case Name::DOUBLE:
+                if (!val.IsDouble()) {
+                    printf("Json2Xtc Conversion Error: %s is not a DOUBLE!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_value(_cnt, val.GetDouble());
                 break;
             case Name::CHARSTR:
+                if (!val.IsString()) {
+                    printf("Json2Xtc Conversion Error: %s is not a STRING!\n", curname().c_str());
+                    abort();
+                }
                 _cd.set_string(_cnt, val.GetString());
                 break;
             case Name::ENUMVAL:
