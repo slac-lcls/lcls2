@@ -70,7 +70,7 @@ ami_monitor_node = "drp-srcf-cmp035"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
+ #{                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
 
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.

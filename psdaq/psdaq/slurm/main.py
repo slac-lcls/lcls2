@@ -10,23 +10,46 @@ from typing import List
 import json
 import typer
 import time
-from psdaq.slurm.utils import SbatchManager, SbatchParms
-from psdaq.slurm.db import DbHelper, DbHistoryStatus, DbHistoryColumns
 import asyncio
 import atexit
 import psutil
 import IPython
+import copy
+import socket
+from psdaq.slurm.utils import SbatchManager, SbatchParms
+from psdaq.slurm.db import DbHelper, DbHistoryStatus, DbHistoryColumns
+from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform
 
 
 sbman = SbatchManager()
 db = DbHelper()
 runner = None
+LOCALHOST = socket.gethostname()
 
 
 class Runner():
-    def __init__(self, ):
-        pass
-    
+    def __init__(self, cnf_file):
+        self.platform = deduce_platform(cnf_file)
+        self.procmgr = ProcMgr(cnf_file, self.platform)
+
+    def get_cmds(self):
+        data = {}
+        for key, val in self.procmgr.d.items():
+            node, job_name = key.split(":")
+            _, _, cmd, _, _, flag, _, conda_env, env, _ = val
+            if node not in data:
+                job_details = {}
+                job_details[job_name] = {"cmd": cmd, "flag": flag, "conda_env": conda_env, "env": env}  
+                data[node] = job_details
+            else:
+                job_details = data[node] 
+                if job_name in job_details:
+                    msg = f"Error: cannot create more than one {job_name} on {node}"
+                    raise NameError('HiThere')
+                else:
+                    job_details[job_name] = {"cmd": cmd, "flag": flag, "conda_env": conda_env, "env": env}
+        return data
+
     def list_jobs(self):
         # Get all psplot process form the main process' database
         data = db.instance
@@ -56,19 +79,20 @@ class Runner():
         asyncio.run(sbman.run(sbatch_cmd, callback=save_to_db))
 
 def main(subcommand: str,
-        inp_file: str,
+        cnf_file: str,
         debug: bool = False
         ):
     global runner
-    runner = Runner()
-    with open('slurm.json', 'r') as f:
-        data =json.loads(f.read())
-    for item in data['job_details']:
-        sbparms = SbatchParms(partition="anaq", nodelist=[item["node"]], ntasks=1) 
-        for cmd in item['cmds']:
-            cmd = "srun -N1 -n1 "+cmd
-            print(f'submit {cmd}')
+    runner = Runner(cnf_file)
+    sbjob = runner.get_cmds()
+    for node, job_details in sbjob.items():
+        nodelist = [node]
+        if node == "localhost": nodelist = [LOCALHOST]
+        for job_name, details in job_details.items():
+            sbparms = SbatchParms(partition="anaq", nodelist=nodelist, ntasks=1, job_name=job_name) 
+            cmd = "srun -N1 -n1 " + details['cmd']
             runner.submit(sbparms, cmd)
+        
     IPython.embed()
 
 def ls():
@@ -97,7 +121,9 @@ def stop():
 
 def start():
     if runner is None: return
-    data = db.instance
+    # Make a copy of the current db dict because restart add new items,
+    # which change the size of the dictionary.
+    data = copy.deepcopy(db.instance)
     for instance_id, info in data.items():
         if info[DbHistoryColumns.STATUS] == DbHistoryStatus.CANCELLED:
             restart(instance_id)
