@@ -304,7 +304,7 @@ def cbits_config_and_data_detector_alg(data, cbits, data_gain_bit, gain_bit_shif
     """
 
     #logger.info(info_ndarr(cbits, 'cbits', first=0, last=5))
-    if cbits is None:
+    if cbits in (None, [None]):
        logger.debug('cbits is None')
        return None
 
@@ -420,7 +420,7 @@ def pixel_gain_mode_fractions(det_raw, evt=None):
 
 
 def info_pixel_gain_mode_for_fractions(grp_prob, msg='pixel gain mode fractions: '):
-    return '%s%s' % (msg, ', '.join(['%.5f'%p for p in grp_prob]))
+    return None if grp_prob is None else '%s%s' % (msg, ', '.join(['%.5f'%p for p in grp_prob]))
 
 
 def info_pixel_gain_mode_fractions(det_raw, evt=None, msg='pixel gain mode fractions: '):
