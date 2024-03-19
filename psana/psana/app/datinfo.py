@@ -96,8 +96,10 @@ def ds_run_det(args):
     if '_config_object' in det_raw_attrs:
       dcfg = det.raw._config_object()
       for k,v in dcfg.items():
-        print('  seg:%s %s' % (str(k), info_ndarr(v.config.trbit, ' v.config.trbit for ASICs')))
-        print('  seg:%s %s' % (str(k), info_ndarr(v.config.asicPixelConfig, ' v.config.asicPixelConfig')))
+        trbit = getattr(v.config, 'trbit', None)  # v.config.trbit
+        asicPixelConfig = getattr(v.config, 'asicPixelConfig', None)  # v.config.asicPixelConfig
+        print('  seg:%s %s' % (str(k), info_ndarr(trbit, ' v.config.trbit for ASICs')))
+        print('  seg:%s %s' % (str(k), info_ndarr(asicPixelConfig, ' v.config.asicPixelConfig')))
     else: print('det.raw._config_object  : MISSING')
 
     print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
