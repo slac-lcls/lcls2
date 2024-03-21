@@ -411,6 +411,16 @@ class XpmApp(pr.Device):
                 mode         = "RO",
             ))
 
+            self.add(pr.RemoteVariable(
+                name         = "link_eyescanrst",
+                description  = "Reset GTH counters",
+                offset       =  0x08,
+                bitSize      =  1,
+                bitOffset    =  21,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
         if not removeMonReg:
             self.add(pr.RemoteVariable(    
                 name         = "dsLinkStatus",
