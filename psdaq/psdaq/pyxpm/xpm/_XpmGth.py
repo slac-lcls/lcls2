@@ -260,6 +260,8 @@ class XpmGth(pr.Device):
         positiveY = []
         negativeY = []
 
+        print(self.RX_DATA_WIDTH.get())
+
         ber = -1
         y = 0
 
@@ -362,13 +364,16 @@ class XpmGth(pr.Device):
             else:
                 break
 
+        #self.ES_EYE_SCAN_EN.set(0x00)
+        #self.ES_ERRDET_EN.set(0x00)
+
         self.ES_EYE_SCAN_EN.set(0x01)
         self.ES_ERRDET_EN.set(0x01)
 
         self.ES_PRESCALE.set(prescaler)
 
-        self.ES_SDATA_MASK[0].set(0x0000)
-        self.ES_SDATA_MASK[1].set(0x0000)
+        self.ES_SDATA_MASK[0].set(0xffff)
+        self.ES_SDATA_MASK[1].set(0x000f)
         self.ES_SDATA_MASK[2].set(0xff00)
         self.ES_SDATA_MASK[3].set(0xffff)
         self.ES_SDATA_MASK[4].set(0xffff)
@@ -394,22 +399,25 @@ class XpmGth(pr.Device):
         else:
             self.ES_HORZ_OFFSET.set(x)
 
+        #Wait for status being WAIT
         status = self.ES_CONTROL_STATUS.get()
-        while (status & 0x0e) != 0:
+        while (status & 0x01) != 1:
             status = self.ES_CONTROL_STATUS.get()
-            #print("Wait for ready status: {}".format(status))
+            #print('Wait for WAIT status: {}'.format(status))
 
         self.ES_CONTROL.set(0x01)
-        status = self.ES_CONTROL_STATUS.get()
 
-        while not (status & 0x01):
+        #Wait for status being RESET
+        status = self.ES_CONTROL_STATUS.get()
+        while (status & 0x01) != 1:
             status = self.ES_CONTROL_STATUS.get()
+            #print("Wait for ready status: {}".format(status))
 
         errCount = self.ES_ERROR_COUNT.get()
         sampleCount = self.ES_SAMPLE_COUNT.get()
         bitCount = 20*math.pow(2, 1+prescaler)*sampleCount
 
-        #print('[{}/{}] Err = {}, Bit = {}'.format(x,y, errCount, bitCount))
+        print('[{}/{}] Err = {}, Bit = {}           '.format(x,y, errCount, bitCount))
 
         if bitCount == 0:
             return 1

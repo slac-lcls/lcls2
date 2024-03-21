@@ -128,6 +128,7 @@ def main():
     parser.add_argument('--hseq', type=int, required=False, help="High speed equalizer setting" )
     parser.add_argument('--eye', action='store_true', help='Generate eye diagram')
     parser.add_argument('--bathtub', action='store_true', help='Generate bathtub curve')
+    parser.add_argument('--gui', action='store_true', help='Bring up GUI')
     parser.add_argument('--target', type=float, required=False, help="BET Target" )
     parser.add_argument('--forceLoopback', action='store_true', help='Set link in loopback mode')
 
@@ -135,9 +136,9 @@ def main():
     if args.verbose:
         setVerbose(True)
 
-    if args.eye == False and args.bathtub == False:
-        print("Select at least one plot: --eye or --bathtub")
-        return
+    #if args.eye == False and args.bathtub == False:
+    #    print("Select at least one plot: --eye or --bathtub")
+    #    return
 
     # Set base
     base = Top(
@@ -171,23 +172,43 @@ def main():
     else:
         linkid = args.link
 
-    #GTH Config
     base.XpmApp.link.set(linkid)
 
+    #GTH Config
+    imageId = base.AxiVersion.ImageName.get()
+    if imageId == 'xpm_noRTM' and linkid <= 6:
+        linkid -= 1
+
+    if linkid < 0 or linkid > 13:
+        print("Error: linkid does not exists")
+        base.stop()
+        return
+        
     loopback = base.XpmApp.loopback.get()
     if args.forceLoopback:
+        print("Set in loopback")
         base.XpmApp.loopback.set(0x01)
+
+        base.XpmApp.txReset.set(0x01)
+        base.XpmApp.rxPllReset.set(0x01)
+        base.XpmApp.rxReset.set(0x01)
+        time.sleep(0.5)
+
+        base.XpmApp.txReset.set(0x00)
+        base.XpmApp.rxPllReset.set(0x00)
+        base.XpmApp.rxReset.set(0x00)
+        time.sleep(0.5)
 
     link_rxcdrlock = base.XpmApp.link_rxcdrlock.get()
     link_rxpmarstdone = base.XpmApp.link_rxpmarstdone.get()
     link_txpmarstdone = base.XpmApp.link_txResetDone.get()
 
-    if link_rxcdrlock != 0x01:
+    #base.XpmApp.link_eyescanrst.set(0x00)
+
+    if link_rxcdrlock != 0x01 or link_rxpmarstdone != 0x01:
         print("Link not locked: CDR not locked, link not connected or data quality too bad")
         base.stop()
         return
-
-    #print('Link [{}] Loopback({}) CDRLocked ({}) RxPMARstDone ({}) TxPMARstDone ({})'.format(linkid, loopback, link_rxcdrlock, link_rxpmarstdone, link_txpmarstdone))
 
     if args.hseq is not None:
         #High-speed repeater config
@@ -200,23 +221,6 @@ def main():
     else:
         target = args.target
 
-    if args.bathtub:
-        base.Link[linkid].bathtubPlot()
-
-    if args.eye:
-        base.Link[linkid].eyePlot(target=target)
-        
-    base.XpmApp.loopback.set(loopback)
-
-    # DevGui not used but can be enabled by uncommenting
-    # the following lines:
-
-    #pyrogue.pydm.runPyDM(
-    #    serverList  = base.zmqServer.address,
-    #    sizeX       = 800,
-    #    sizeY       = 800,
-    #)
-
     link_rxRcvCnts = 0
     link_rxErrCnts = 0
 
@@ -227,8 +231,22 @@ def main():
         link_rxRcvCnts += base.XpmApp.link_rxRcvCnts.get()*20
         link_rxErrCnts += base.XpmApp.link_rxErrCnts.get()
 
-    print('BER: {:.2e} ({} err/ {} rcv)'.format((link_rxErrCnts/link_rxRcvCnts), link_rxErrCnts, link_rxRcvCnts))
+        print('BER: {:.2e} ({} err/ {} rcv)'.format((link_rxErrCnts/link_rxRcvCnts), link_rxErrCnts, link_rxRcvCnts))
 
+    if args.gui:
+        pyrogue.pydm.runPyDM(
+            serverList  = base.zmqServer.address,
+            sizeX       = 800,
+            sizeY       = 800,
+        )
+  
+    if args.bathtub:
+        base.Link[linkid].bathtubPlot()
+
+    if args.eye:
+        base.Link[linkid].eyePlot(target=target)
+
+    base.XpmApp.loopback.set(loopback)
     base.stop()
 
 if __name__ == '__main__':
