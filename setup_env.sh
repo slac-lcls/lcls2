@@ -29,6 +29,7 @@ if [ -h "$CUDA_ROOT" ]; then
     export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
     #export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
+fi
 
 RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]}") )" && pwd )"
 export PATH=$RELDIR/install/bin:${PATH}
