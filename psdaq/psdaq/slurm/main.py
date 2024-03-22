@@ -16,7 +16,7 @@ import psutil
 import IPython
 import copy
 import socket
-from psdaq.slurm.utils import SbatchManager, SbatchParms
+from psdaq.slurm.utils import SbatchManager
 from psdaq.slurm.db import DbHelper, DbHistoryStatus, DbHistoryColumns
 from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform
 
@@ -32,7 +32,7 @@ class Runner():
         self.platform = deduce_platform(cnf_file)
         self.procmgr = ProcMgr(cnf_file, self.platform)
 
-    def get_cmds(self):
+    def parse_cnf(self):
         """ Extract commands from the cnf file """
         data = {}
         for key, val in self.procmgr.d.items():
@@ -55,29 +55,27 @@ class Runner():
         # Get all psplot process form the main process' database
         data = db.instance
         # 1: sbparms, cmd, DbHistoryStatus.PLOTTED
-        headers = ["ID", "SLURM_JOB_ID", "NODE", "CMD", "STATUS"]
-        format_row = "{:<5} {:<12} {:<14} {:<35} {:<10}"
+        headers = ["ID", "SLURM_JOB_ID", "STATUS"]
+        format_row = "{:<5} {:<12} {:<10}"
         print(format_row.format(*headers))
         for instance_id, info in data.items():
-            slurm_job_id, sbparms, cmd, status = info
+            slurm_job_id, sb_script, status = info
 
-            row = [instance_id, slurm_job_id, ','.join(sbparms.nodelist), cmd] + [DbHistoryStatus.get_name(status)]
+            row = [instance_id, slurm_job_id, DbHistoryStatus.get_name(status)]
             try:
                 print(format_row.format(*row))
             except Exception as e:
                 print(e)
                 print(f'{row=}')
 
-    def submit(self, sbparms, cmd):
-        sbman.create_job_file(sbparms, cmd)
-        sbatch_cmd = f"sbatch {sbman.job_file}"
+    def submit(self):
+        cmd = "sbatch << EOF\n"+sbman.sb_script+"\nEOF\n"
         def save_to_db(slurm_job_id):
-            data = {'sbparms': sbparms,
-                    'cmd': cmd,
+            data = {'sb_script': sbman.sb_script,
                     'slurm_job_id': slurm_job_id
                     }
             db.save(data)
-        asyncio.run(sbman.run(sbatch_cmd, callback=save_to_db))
+        asyncio.run(sbman.run(cmd, callback=save_to_db))
 
 def main(subcommand: str,
         cnf_file: str,
@@ -85,29 +83,15 @@ def main(subcommand: str,
         ):
     global runner
     runner = Runner(cnf_file)
-    sbjob = runner.get_cmds()
-    
-    if not as_step:
-        for node, job_details in sbjob.items():
-            nodelist = [node]
-            if node == "localhost": nodelist = [LOCALHOST]
-            for job_name, details in job_details.items():
-                sbparms = SbatchParms(partition="anaq", nodelist=nodelist, ntasks=1, job_name=job_name) 
-                cmd = "srun -N1 -n1 " + details['cmd']
-                runner.submit(sbparms, cmd)
+    sbjob = runner.parse_cnf()
+    if as_step:
+        sbman.generate_as_step(sbjob)
+        runner.submit()
     else:
-        nodelist = list(map(lambda st: str.replace(st, "localhost", LOCALHOST), list(sbjob.keys())))
-        # We overallocate no. of tasks as max(#cmds per node) x #nodes. We should be able to find
-        # a better way to allocate different #cores per node.
-        maxcmds = max([len(job_details.keys()) for _, job_details in sbjob.items()])
-        ntasks = maxcmds * len(sbjob.keys())
-        sbparms = SbatchParms(partition="anaq", nodelist=nodelist, ntasks=ntasks)
-        cmd = ''
         for node, job_details in sbjob.items():
-            if node == "localhost": node = LOCALHOST
             for job_name, details in job_details.items():
-                cmd += f"srun -N1 -n1 --exclusive --nodelist={node} {details['cmd']}" + "& \n" 
-        runner.submit(sbparms, cmd)
+                sbman.generate(node, job_name, details)
+                runner.submit()
     IPython.embed()
 
 def ls():

@@ -2,23 +2,17 @@ import os
 from dataclasses import dataclass, field
 import asyncio
 import psutil
+import socket
+LOCALHOST = socket.gethostname()
 
 class PSbatchSubCommand:
     START=0
     STOP=1
     RESTART=2
 
-@dataclass
-class SbatchParms:
-    partition: str
-    nodelist: list[str] 
-    ntasks: int
-    time: str = "00:15:00"
-    job_name: str = "psbatch"
-
 class SbatchManager:
     def __init__(self):
-        self.job_file = "_sbatch.sh"
+        self.sb_script = ''
 
     async def read_stdout(self, proc):
         # Read data from stdout until EOF
@@ -44,19 +38,29 @@ class SbatchManager:
                 callback(slurm_job_id)
         await proc.wait()
     
-    def create_job_file(self, sbparms, cmd):
-        with open(self.job_file, "w") as fh:
-            fh.writelines("#!/bin/bash\n")
-            fh.writelines(f"#SBATCH --partition={sbparms.partition}"+"\n")
-            fh.writelines(f"#SBATCH --job-name={sbparms.job_name}"+"\n")
-            fh.writelines(f"#SBATCH --nodelist={','.join(sbparms.nodelist)}"+"\n")
-            fh.writelines(f"#SBATCH --ntasks={sbparms.ntasks}"+"\n")
-            fh.writelines(f"#SBATCH --time={sbparms.time}"+"\n")
-            fh.writelines(f"t_start=`date +%s`"+"\n")
-            fh.writelines(f"set -xe"+"\n")
-            fh.writelines(cmd+"\n")
-            fh.writelines("wait\n")
-            fh.writelines(f"t_end=`date +%s`"+"\n")
-            fh.writelines(f"echo PSJobCompleted TotalElapsed $((t_end-t_start))")
+    def generate_as_step(self, sbjob):
+        sb_script = "#!/bin/bash\n"
+        sb_script += f"#SBATCH --partition=anaq"+"\n"
+        sb_script += f"#SBATCH --job-name=main"+"\n"
+        sb_header = ''
+        sb_steps = '' 
+        for het_group, (node, job_details) in enumerate(sbjob.items()):
+            if node == "localhost": node = LOCALHOST
+            sb_header += f"#SBATCH --nodelist={node} --ntasks={len(job_details.keys())}" + "\n"
+            if het_group < len(sbjob.keys()) - 1:
+                sb_header += "#SBATCH hetjob\n"
+            for job_name, details in job_details.items():
+                sb_steps += f"srun -n1 --job-name={job_name} --het-group={het_group} --exclusive {details['cmd']}" + "& \n"
+        sb_script += sb_header + sb_steps + "wait"
+        self.sb_script = sb_script
+        print(self.sb_script)
 
-        
+    def generate(self, node, job_name, details):
+        sb_script = "#!/bin/bash\n"
+        sb_script += f"#SBATCH --partition=anaq"+"\n"
+        sb_script += f"#SBATCH --job-name={job_name}"+"\n"
+        if node == "localhost": node = LOCALHOST
+        sb_script += f"#SBATCH --nodelist={node} --ntasks=1"+"\n"
+        sb_script += f"srun -n1 " + details['cmd'] + "\n"
+        self.sb_script = sb_script
+

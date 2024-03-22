@@ -19,9 +19,8 @@ class DbHistoryStatus():
 
 class DbHistoryColumns():
     SLURM_JOB_ID = 0
-    SBPARMS = 1
-    CMD = 2
-    STATUS = 3
+    SB_SCRIPT = 1
+    STATUS = 2
 
 
 class DbHelper():
@@ -37,8 +36,7 @@ class DbHelper():
             ids = list(self.instance.keys())
             next_id = max(ids) + 1
         self.instance[next_id] = [obj['slurm_job_id'],
-                obj['sbparms'],
-                obj['cmd'],
+                obj['sb_script'],
                 DbHistoryStatus.SUBMITTED]
         return next_id
 
