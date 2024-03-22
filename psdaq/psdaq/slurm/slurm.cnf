@@ -18,7 +18,8 @@ prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
 data_dir = f'/cds/data/drpsrcf'
 trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
-task_set = 'taskset -c 4-63'
+#task_set = 'taskset -c 4-63'
+task_set = ''
 batching = 'batching=yes'
 directIO = 'directIO=yes'
 scripts  = f'script_path={trig_dir}'

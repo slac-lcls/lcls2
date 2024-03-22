@@ -107,9 +107,9 @@ def cancel(instance_id):
 
 def restart(instance_id):
     if runner is None: return
-    _, sbparms, cmd, _ = db.get(instance_id)
+    _, sb_script, _ = db.get(instance_id)
     db.set(instance_id, DbHistoryColumns.STATUS, DbHistoryStatus.REPLACED)
-    runner.submit(sbparms, cmd)
+    runner.submit()
 
 def stop():
     if runner is None: return
