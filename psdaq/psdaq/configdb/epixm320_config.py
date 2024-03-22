@@ -21,6 +21,7 @@ import numpy as np
 import IPython
 import datetime
 import logging
+import copy # deepcopy
 
 import pprint
 
@@ -35,6 +36,8 @@ ocfg = None
 segids = None
 seglist = [0,1]
 asics = None
+
+nColumns = 384
 
 #  Timing delay scans can be limited by this
 EventBuilderTimeout = 4*int(1.0e-3*156.25e6)
@@ -233,35 +236,24 @@ def _dict_compare(d1,d2,path):
         if k not in d1.keys():
             print(f'key[{k}] not in d2')
 
+# Sanitize the json for json2xtc by removing offensive characters
+def sanitize_config(src):
+    dst = {}
+    for k, v in src.items():
+        if isinstance(v, dict):
+            v = sanitize_config(v)
+        dst[k.replace('[','').replace(']','').replace('(','').replace(')','')] = v
+    return dst
+
+def setSaci(reg,field,di):
+    if field in di:
+        v = di[field]
+        reg.set(v)
+
 def gain_mode_map(gain_mode):
-    mapv  = (0xc,0x8,0x0,0x0)[gain_mode] # SH/SL/A/M
-    trbit = (0x1,0x0,0x1,0x0)[gain_mode]
-    return (mapv,trbit)
-
-#
-#  Scramble the user element pixel array into the native asic orientation
-#
-#
-#    A1   |   A3
-# --------+--------
-#    A0   |   A2
-#
-def user_to_rogue(a):
-    v = a.reshape((elemRows*2,elemCols*2))
-    s = np.zeros((4,elemRows,elemCols),dtype=np.uint8)
-    s[0,:elemRows] = v[elemRows:,:elemCols]
-    s[2,:elemRows] = v[elemRows:,elemCols:]
-    s[1,:elemRows] = v[elemRows:,elemCols:]
-    s[3,:elemRows] = v[elemRows:,:elemCols]
-    return s
-
-def rogue_to_user(s):
-    v = np.zeros((elemRows*2,elemCols*2),dtype=np.uint8)
-    v[elemRows:,:elemCols] = s[3,:elemRows]
-    v[elemRows:,elemCols:] = s[1,:elemRows]
-    v[elemRows:,elemCols:] = s[2,:elemRows]
-    v[elemRows:,:elemCols] = s[0,:elemRows]
-    return v.reshape(elemRows*elemCols*4)
+    compTH        = ( 0, 63, 12, 0)[gain_mode] # SoftHigh/SoftLow/Auto/User
+    precharge_DAC = (45, 50, 45, 0)[gain_mode]
+    return (compTH, precharge_DAC)
 
 #
 #  Initialize the rogue accessor
@@ -326,19 +318,23 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
 
     # Delay long enough to ensure that timing configuration effects have completed
     cnt = 0
-    while cnt < 10:
+    while cnt < 15:
         time.sleep(1)
         rxId = cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
         if rxId != 0xffffffff:  break
         del rxId                # Maybe this can help getting RxId reevaluated
         cnt += 1
 
-    if cnt == 10:
+    if cnt == 15:
         raise ValueError("rxId didn't become valid after configuring timing")
+    print(f"rxId {rxId:x} found after {cnt}s")
 
     # Ric: Not working yet
     ## configure internal ADC
     ##cbase.App.InitHSADC()
+
+    #  store previously applied configuration
+    base['cfg'] = None
 
     time.sleep(1)               # Still needed?
 #    epixm320_internal_trigger(base)
@@ -389,10 +385,11 @@ def user_to_expert(base, cfg, full=False):
     global group
     global lane
 
+    cbase = base['cam']
+
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
-        cbase = base['cam']
         rtp = cfg['user']['run_trigger_group']   # run trigger partition
         for i,p in enumerate([rtp,group]):
             partitionDelay = getattr(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
@@ -409,31 +406,28 @@ def user_to_expert(base, cfg, full=False):
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']=rtp    # Run trigger
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']=group  # DAQ trigger
 
-    pixel_map_changed = False
+    calibRegsChanged = False
     a = None
     hasUser = 'user' in cfg
     if hasUser and 'gain_mode' in cfg['user']:
         gain_mode = cfg['user']['gain_mode']
-        if gain_mode==3:  # user map
-            if 'pixel_map' in cfg['user']:
-                a  = cfg['user']['pixel_map']
-                logging.warning('pixel_map len {}'.format(len(a)))
-                d['user.pixel_map'] = a
-                # what about associated trbit?
+        if gain_mode==3:  # user's choices
+            d['user.chgInj_column_map'] = cfg['user']['chgInj_column_map']
         else:
-            mapv, trbit = gain_mode_map(gain_mode)
+            compTH, precharge_DAC = gain_mode_map(gain_mode)
             for i in range(cbase.numOfAsics):
-                d[f'expert.App.Mv2Asic[{i}].trbit'] = trbit
-        pixel_map_changed = True
+                d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM'] = compTH
+                d[f'expert.App.Mv2Asic[{i}].Precharge_DAC_ePixM'] = precharge_DAC
+        calibRegsChanged = True
 
     update_config_entry(cfg,ocfg,d)
 
-    return pixel_map_changed
+    return calibRegsChanged
 
 #
 #  Apply the cfg dictionary settings
 #
-def config_expert(base, cfg, writePixelMap=True, secondPass=False):
+def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     global asics  # Need to maintain this across configuration updates
 
     #  Disable internal triggers during configuration
@@ -444,7 +438,9 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
     # overwrite the low-level configuration parameters with calculations from the user configuration
     if 'expert' in cfg:
         try:  # config update might not have this
-            apply_dict('cbase.App.TimingRx.TriggerEventManager',cbase.App.TimingRx.TriggerEventManager,cfg['expert']['App']['TimingRx']['TriggerEventManager'])
+            apply_dict('cbase.App.TimingRx.TriggerEventManager',
+                       cbase.App.TimingRx.TriggerEventManager,
+                       cfg['expert']['App']['TimingRx']['TriggerEventManager'])
         except KeyError:
             pass
 
@@ -556,8 +552,43 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         for i in asics:
             getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
 
-    # Ric: I think here is where the Calibration registers should conditionally be set
-    # The writePixelMap variable provided the condition for the 2x2
+    if writeCalibRegs:
+        hasGainMode = 'gain_mode' in cfg['user']
+        if (hasGainMode and cfg['user']['gain_mode']==3) or not hasGainMode:
+            #
+            #  Write the general pixel map
+            #
+            column_map = np.array(cfg['user']['chgInj_column_map'],dtype=np.uint8)
+
+            for i in asics:
+                #  Don't forget about the gain_mode and charge injection
+                asicName = f'Mv2Asic[{i}]'
+                saci = getattr(cbase.App,asicName)
+                saci.enable.set(True)
+
+                #  Don't forget about charge injection
+                if app is not None and asicName in app:
+                    di = app[asicName]
+                    setSaci(saci.CompTH_ePixM,'CompTH_epixM',di)
+                    setSaci(saci.Precharge_DAC_ePixM,'Precharge_DAC_epixM',di)
+
+                    cbase.App.setupChargeInjection(i, column_map, di['Pulser'])
+                else:
+                    cbase.App.chargeInjectionCleanup(i)
+
+                saci.enable.set(False)
+        else:
+            gain_mode = cfg['user']['gain_mode']
+            compTH, precharge_DAC = gain_mode_map(gain_mode)
+            print(f'Setting gain mode {gain_mode} compTH {compTH} precharge_DAC {precharge_DAC}')
+
+            for i in asics:
+                saci = getattr(cbase.App,f'Mv2Asic[{i}]')
+                saci.enable.set(True)
+                cbase.App.chargeInjectionCleanup(i)
+                saci.CompTH_ePixM.set(compTH)
+                saci.Precharge_DAC_ePixM.set(precharge_DAC)
+                saci.enable.set(False)
 
     logging.warning('config_expert complete')
 
@@ -585,7 +616,7 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     ocfg = cfg
 
     #  Translate user settings to the expert fields
-    writePixelMap=user_to_expert(base, cfg, full=True)
+    writeCalibRegs=user_to_expert(base, cfg, full=True)
 
     if cfg==base['cfg']:
         print('### Skipping redundant configure')
@@ -599,7 +630,7 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Apply the expert settings to the device
     _stop(base)
 
-    config_expert(base, cfg, writePixelMap)
+    config_expert(base, cfg, writeCalibRegs)
 
     time.sleep(0.01)
     _start(base)
@@ -619,7 +650,8 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #
     #  Create the segment configurations from parameters required for analysis
     #
-    trbit = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['trbit'] for i in range(cbase.numOfAsics) ]
+    compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(cbase.numOfAsics) ]
+    precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(cbase.numOfAsics) ]
 
     topname = cfg['detName:RO'].split('_')
 
@@ -630,43 +662,15 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     scfg[0] = cfg.copy()
     scfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
-    #  User pixel map is assumed to be 768x384 in standard element orientation
     gain_mode = cfg['user']['gain_mode']
-    if False:
-        if gain_mode==3:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
-        else:
-            mapv,trbit0 = gain_mode_map(gain_mode)
-            trbit = [trbit0 for i in range(cbase.numOfAsics)]
-            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+    if gain_mode==3:
+        column_map    = np.array(cfg['user']['chgInj_column_map'], dtype=np.uint8)
     else:
-        if gain_mode==3:
-            pixelConfigSet = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-        else:
-            mapv,trbit0 = gain_mode_map(gain_mode)
-            pixelConfigSet = np.zeros((2*elemRowsD*2*elemCols),dtype=np.uint8)+mapv
+        compTH0,precharge_DAC0 = gain_mode_map(gain_mode)
+        compTH        = [compTH0        for i in range(cbase.numOfAsics)]
+        precharge_DAC = [precharge_DAC0 for i in range(cbase.numOfAsics)]
 
-        s = user_to_rogue(pixelConfigSet)
-        for i in asics:
-            cname = f'/tmp/Hr10kTAsic{i}.latest'
-            s[i] = np.loadtxt(cname, dtype=np.uint8, delimiter=',')
-
-        pixelConfigUsr = rogue_to_user(s)
-
-        # Lets do some validation
-
-        if pixelConfigUsr.shape != pixelConfigSet.shape:
-            logging.error(f'  shape error  wrote {pixelConfigSet.shape}  read {pixelConfigUsr.shape}')
-        else:
-            nerr = 0
-            for i in range(pixelConfigUsr.shape[0]):
-                if pixelConfigUsr[i] != pixelConfigSet[i]:
-                    nerr += 1
-                    if nerr < 20:
-                        logging.error(f'  mismatch at {i}({i//(2*elemCols)},{i%(2*elemCols)})  wrote {pixelConfigSet[i]}  read {pixelConfigUsr[i]}')
-            logging.warning(f'Gain map validation complete with {nerr} mismatches')
-
-    print(f'pixelConfigUsr shape {pixelConfigUsr.shape}  trbit {trbit}')
+    print(f'gain_mode {gain_mode}  CompTH_ePixM {compTH}  Precharge_DAC_ePixM {precharge_DAC}  column_map shape {column_map.shape if gain_mode==3 else None}')
 
     for seg in range(1):
         #  Construct the ID
@@ -685,23 +689,16 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
         top = cdict()
         top.setAlg('config', [0,0,0])
         top.setInfo(detType='epixm320', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-        #top.set('asicPixelConfig', pixelConfigUsr)
-        top.set('trbit'          , trbit, 'UINT8')
+        top.set('CompTH_ePixM',        compTH,        'UINT8')
+        top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
+        if gain_mode==3:
+            top.set('chgInj_column_map',   column_map)
         scfg[seg+1] = top.typed_json()
-
-    # Sanitize the json for json2xtc by removing offensive characters
-    def translate_config(src):
-        dst = {}
-        for k, v in src.items():
-            if isinstance(v, dict):
-                v = translate_config(v)
-            dst[k.replace('[','').replace(']','').replace('(','').replace(')','')] = v
-        return dst
 
     result = []
     for i in seglist:
         logging.warning('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
-        result.append( json.dumps(translate_config(scfg[i])) )
+        result.append( json.dumps(sanitize_config(scfg[i])) )
 
     base['cfg']    = copy.deepcopy(cfg)
     base['result'] = copy.deepcopy(result)
@@ -710,6 +707,9 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
 def epixm320_unconfig(base):
     print('epixm320_unconfig')
+    cbase = base['cam']
+    for i in range(cbase.numOfAsics):
+        cbase.App.chargeInjectionCleanup(i)
     _stop(base)
     return base
 
@@ -726,7 +726,7 @@ def epixm320_scan_keys(update):
     cfg = {}
     copy_reconfig_keys(cfg,ocfg,json.loads(update))
     # Apply to expert
-    pixelMapChanged = user_to_expert(base,cfg,full=False)
+    calibRegsChanged = user_to_expert(base,cfg,full=False)
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
         copy_config_entry(cfg,ocfg,key)
@@ -740,30 +740,31 @@ def epixm320_scan_keys(update):
     scfg[0] = cfg.copy()
     scfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
-    if pixelMapChanged:
-        gain_mode = cfg['user']['gain_mode']
-        if gain_mode==3:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
-        else:
-            mapv,trbit = gain_mode_map(gain_mode)
-            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
-
+    if calibRegsChanged:
         cbase = base['cam']
-        pixelConfigMap = user_to_rogue(pixelConfigUsr)
-        trbit = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['trbit'] for i in range(cbase.numOfAsics) ]
+        compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(cbase.numOfAsics) ]
+        precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(cbase.numOfAsics) ]
+        if 'chgInj_column_map' in cfg['user']:
+            gain_mode = cfg['user']['gain_mode']
+            if gain_mode==3:
+                column_map = np.array(cfg['user']['chgInj_column_map'], dtype=np.uint8)
+            else:
+                column_map = np.zeros(nColumns, dtype=np.uint8)
 
         for seg in range(1):
             id = segids[seg]
             top = cdict()
             top.setAlg('config', [0,0,0])
             top.setInfo(detType='epixm320', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigUsr)
-            top.set('trbit'          , trbit                  , 'UINT8')
+            top.set('CompTH_ePixM',        compTH,        'UINT8')
+            top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
+            if 'chgInj_column_map' in cfg['user']:
+                top.set('chgInj_column_map', column_map)
             scfg[seg+1] = top.typed_json()
 
     result = []
     for i in range(len(scfg)):
-        result.append( json.dumps(scfg[i]) )
+        result.append( json.dumps(sanitize_config(scfg[i])) )
 
     return result
 
@@ -786,20 +787,20 @@ def epixm320_update(update):
     cfg = {}
     update_config_entry(cfg,ocfg,json.loads(update))
     #  Apply to expert
-    writePixelMap = user_to_expert(base,cfg,full=False)
-    print(f'Partial config writePixelMap {writePixelMap}')
+    writeCalibRegs = user_to_expert(base,cfg,full=False)
+    print(f'Partial config writeCalibRegs {writeCalibRegs}')
     if True:
         #  Apply config
-        config_expert(base, cfg, writePixelMap, secondPass=True)
+        config_expert(base, cfg, writeCalibRegs, secondPass=True)
     else:
         ##
         ##  Try full configuration
         ##
         ncfg = ocfg.copy()
         update_config_entry(ncfg,ocfg,json.loads(update))
-        _writePixelMap = user_to_expert(base,ncfg,full=True)
-        print(f'Full config writePixelMap {_writePixelMap}')
-        config_expert(base, ncfg, _writePixelMap, secondPass=True)
+        _writeCalibRegs = user_to_expert(base,ncfg,full=True)
+        print(f'Full config writeCalibRegs {_writeCalibRegs}')
+        config_expert(base, ncfg, _writeCalibRegs, secondPass=True)
 
     _start(base)
 
@@ -821,36 +822,36 @@ def epixm320_update(update):
 
     scfg[0] = cfg
 
-    if writePixelMap:
-        gain_mode = cfg['user']['gain_mode']
-        if gain_mode==3:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
-        else:
-            mapv,trbit = gain_mode_map(gain_mode)
-            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
-
-        pixelConfigMap = user_to_rogue(pixelConfigUsr)
-        try:
-            trbit = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['trbit'] for i in range(cbase.numOfAsics) ]
-        except:
-            trbit = None
-
+    if writeCalibRegs:
         cbase = base['cam']
+        try:
+            compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(cbase.numOfAsics) ]
+        except:
+            compTH        = None; print('cTH is None')
+        try:
+            precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(cbase.numOfAsics) ]
+        except:
+            precharge_DAC = None; print('pc_DAC is None')
+        try:
+            column_map    = np.array(cfg['user']['chgInj_column_map'], dtype=np.uint8)
+        except:
+            column_map    = None; print('cm is None')
+
         for seg in range(1):
             id = segids[seg]
             top = cdict()
             top.setAlg('config', [0,0,0])
             top.setInfo(detType='epixm320', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigUsr)
-            if trbit is not None:
-                top.set('trbit'      , trbit                  , 'UINT8')
+            if compTH        is not None:  top.set('CompTH_ePixM',        compTH,        'UINT8')
+            if precharge_DAC is not None:  top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
+            if column_map    is not None:  top.set('chgInj_column_map',   column_map)
             scfg[seg+1] = top.typed_json()
 
     result = []
     for i in range(len(scfg)):
-        result.append( json.dumps(scfg[i]) )
+        result.append( json.dumps(sanitize_config(scfg[i])) )
 
-    logging.warning('update complete')
+    logging.info('update complete')
 
     return result
 
@@ -921,12 +922,12 @@ if __name__ == "__main__":
     _connect_str = json.dumps(d)
     epixm320_config(_base,_connect_str,'BEAM','tst_epixm',0,4)
 
-    #print('***** SCAN_KEYS *****')
-    #epixm320_scan_keys(json.dumps(["user.gain_mode"]))
-    #
-    #for i in range(100):
-    #    print(f'***** UPDATE {i} *****')
-    #    epixm320_update(json.dumps({'user.gain_mode':i%5}))
+    print('***** SCAN_KEYS *****')
+    epixm320_scan_keys(json.dumps(["user.gain_mode"]))
+
+    for i in range(100):
+        print(f'***** UPDATE {i} *****')
+        epixm320_update(json.dumps({'user.gain_mode':i%3}))
 
     print('***** DONE *****')
 

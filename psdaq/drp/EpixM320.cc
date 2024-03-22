@@ -236,7 +236,7 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixMPanelDef::raw, shape);
 
     if (subframes.size() != 6) {
-        logging::error("Missing data: subframe size %d [6]\n",
+        logging::error("Missing data: subframe size %d vs 6 expected\n",
                        subframes.size());
         xtc.damage.increase(XtcData::Damage::MissingData);
         return;

@@ -12,8 +12,8 @@ import argparse
 import pprint
 
 numAsics = 4
-elemRows = 384
-elemCols = 192
+nColumns = 384
+nRows    = 192
 
 def epixm320_cdict(prjCfg):
 
@@ -25,22 +25,22 @@ def epixm320_cdict(prjCfg):
 
     help_str  = "-- user interface --"
     help_str += "\nstart_ns          : nanoseconds to exposure start"
-    help_str += "\ngain_mode         : SoftHigh/SoftLow/Auto/Map"
-    help_str += "\npixel_map         : 3D-map of pixel gain/inj settings"
+    help_str += "\ngain_mode         : SoftHigh/SoftLow/AutoHiLo/User"
     help_str += "\nrun_trigger_group : Group for the Run trigger"
+    help_str += "\nchgInj_column_map : Map of columns for charge injection scan"
     top.set("help:RO", help_str, 'CHARSTR')
-
-    pixelMap = np.zeros((elemRows*2,elemCols*2),dtype=np.uint8)
-    top.set("user.pixel_map", pixelMap)
 
     top.set("user.start_ns", 107749, 'UINT32')
 
-    top.define_enum('gainEnum', {'SoftHigh':0, 'SoftLow':1, 'Auto':2, 'Map':3})
-    top.set("user.gain_mode",      0, 'gainEnum')
+    top.define_enum('gainEnum', {'SoftHigh':0, 'SoftLow':1, 'Auto':2, 'User':3})
+    top.set("user.gain_mode", 2, 'gainEnum')
 
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
 
     top.set("user.run_trigger_group", 6, 'UINT32')
+
+    columnMap = np.zeros(nColumns, dtype=np.uint8)
+    top.set("user.chgInj_column_map", columnMap)
 
     # timing system
     # run trigger
@@ -68,7 +68,7 @@ def epixm320_cdict(prjCfg):
         top.set(base+'Pll_KVCO',            0, 'UINT8')
         top.set(base+'Pll_filter1LSB',      0, 'UINT8')
         top.set(base+'Pll_filter1MSB',      0, 'UINT8')
-        top.set(base+'Pulser',              0, 'UINT8')
+        top.set(base+'Pulser',              0, 'UINT16')
         top.set(base+'pbit',                0, 'boolEnum')
         top.set(base+'atest',               0, 'boolEnum')
         top.set(base+'test',                0, 'boolEnum')
@@ -115,8 +115,8 @@ def epixm320_cdict(prjCfg):
         top.set(base+'SlvdsBit',            0, 'boolEnum')
         top.set(base+'FE_Autogain',         0, 'boolEnum')
         top.set(base+'FE_Lowgain',          0, 'boolEnum')
-        top.set(base+'RowStartAddr',        0, 'UINT8')
-        top.set(base+'RowStopAddr',         0, 'UINT8')
+        top.set(base+'RowStartAddr',        0, 'UINT16')
+        top.set(base+'RowStopAddr',         0, 'UINT16')
         top.set(base+'ColStartAddr',        0, 'UINT8')
         top.set(base+'ColStopAddr',         0, 'UINT8')
         top.set(base+'DCycle_DAC',          0, 'UINT8')

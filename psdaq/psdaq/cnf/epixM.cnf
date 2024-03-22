@@ -83,18 +83,18 @@ procmgr_config = [
  {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-neh-cmp011',  id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
+ {host: 'drp-neh-cmp003',  id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
 
- {host: 'drp-neh-cmp010',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+# {host: 'drp-neh-cmp010',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-neh-cmp001',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
-# {host: 'drp-neh-cmp002',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-neh-cmp002',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-neh-cmp015',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  # the ePixM 'DAQ' trigger is being fired on the platform group, e.g. 3
-# {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320'},
+ {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320'},
 
  # The tstcam is for triggering the ePixM 'run' trigger on another group, e.g. 6
-# {host: 'drp-neh-cmp010',  id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam -k sim_length=145'},
+ {host: 'drp-neh-cmp002',  id:'tstcam1_0',   flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D fakecam -k sim_length=145'},
 ]
 
 # HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)
