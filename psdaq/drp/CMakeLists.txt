@@ -240,6 +240,13 @@ target_link_libraries(drp_groupsync
     Threads::Threads
 )
 
+if(CMAKE_CUDA_COMPILER)
+    add_executable(test_gpu_add
+        test_gpu_add.cu
+    )
+    set_target_properties(test_gpu_add PROPERTIES CUDA_ARCHITECTURES "86")
+endif()
+
 
 install(TARGETS drp
   drp_bld

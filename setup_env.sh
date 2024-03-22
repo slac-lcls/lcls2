@@ -24,6 +24,12 @@ else
   echo "$AUTH_FILE file is missing"
 fi
 
+export CUDA_ROOT=/usr/local/cuda
+if [ -h "$CUDA_ROOT" ]; then
+    export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
+    #export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+    export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
+
 RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]}") )" && pwd )"
 export PATH=$RELDIR/install/bin:${PATH}
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
