@@ -18,10 +18,10 @@ class epixm320_raw_0_0_0(eb.epix_base):
         logger.debug('epixm320_raw_0_0_0.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIXM320:V1')
-        self._data_bit_mask = eb.M14 # for epixhr2x2 data on 2023-10-30 Dionisio - HR has 14 data bits.
+        self._data_bit_mask = eb.M14 # for epixm320 data on 2024-03-20 Dawood - M has 14 data bits.
         self._data_gain_bit = eb.B15
         self._gain_bit_shift = 10
-        self._gains_def = (41.0, 13.7, 0.512) # epixhr2x2 ADU/keV H:M:L = 1 : 1/3 : 1/80
+        self._gains_def = (41.0, 13.7, 0.512) # Revisit: epixhr2x2 ADU/keV H:M:L = 1 : 1/3 : 1/80
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixm320.data'
         self._dataDebug = None
 
@@ -45,7 +45,5 @@ class epixm320_raw_0_0_0(eb.epix_base):
 
     def image(self, evt, **kwargs) -> Array2d:
         if evt is None: return None
-        segs = self._segments(evt)    # dict = {seg_index: seg_obj}
-        if segs is None: return None
 
-        return self.raw(evt)[0]
+        return self.raw(evt)[0].reshape(768,384)

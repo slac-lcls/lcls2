@@ -26,12 +26,10 @@ namespace Drp {
     class EpixMPanelDef : public VarDef
     {
     public:
-        //        enum index { raw, aux, numfields };
         enum index { raw, numfields };
 
         EpixMPanelDef() {
-            ADD_FIELD(raw              ,UINT16,2);
-            //            ADD_FIELD(aux              ,UINT16,2);
+            ADD_FIELD(raw, UINT16, 3);
         }
     } epixMPanelDef;
 
@@ -222,9 +220,8 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
 //
 void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    unsigned shape[MaxRank] = {0,0,0,0,0};
-
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
+    const unsigned numAsics    = 4;
     const unsigned elemRows    = 192;
     const unsigned elemRowSize = 384;
     const size_t   headerSize  = 24;
@@ -232,7 +229,7 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
-    shape[0] = elemRows*2; shape[1] = elemRowSize*2;
+    unsigned shape[MaxRank] = { numAsics, elemRows, elemRowSize, 0,0 };
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixMPanelDef::raw, shape);
 
     if (subframes.size() != 6) {
@@ -253,7 +250,6 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     //
 
     //  Missing ASICS are padded with zeroes
-    const unsigned numAsics = 4;
     const unsigned asicSize = elemRows*elemRowSize;
     memset(aframe.data(), 0, numAsics*asicSize*sizeof(uint16_t));
 
@@ -301,10 +297,7 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
             for (unsigned r = 0; r < bankHeight; ++r) {
                 // ASIC firmware bug: Rows are shifted up by one in ring buffer fashion
                 auto row  = r == 0 ? bankHeight - 1 : r - 1; // Compensate
-                auto aRow = bankRow*bankHeight+r;
-                //auto dst  = q<2 ? &aframe(aRow+elemRows,  elemRowSize*(q&1))
-                //                : &aframe(elemRows-1-aRow,elemRowSize*(1-(q&1)));
-                auto dst  = &aframe(aRow+elemRows*((q&2)>>1),  elemRowSize*(q&1));
+                auto dst  = &aframe(q, bankRow * bankHeight + r, 0);
                 for (unsigned bankCol = 0; bankCol < bankCols; ++bankCol) {
                     unsigned bank = bankWidth * bankCol + bankRow;
                     for (unsigned col = 0; col < bankWidth; ++col) {
