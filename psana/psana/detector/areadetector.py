@@ -61,6 +61,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import os
+import sys
 import numpy as np
 from psana.detector.calibconstants import CalibConstants
 from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
@@ -83,6 +84,8 @@ class AreaDetector(DetectorImpl):
     def __init__(self, *args, **kwargs):
         logger.debug('AreaDetector.__init__')
         DetectorImpl.__init__(self, *args, **kwargs)
+        self._args = args
+        self._kwargs = kwargs
         self._calibc_ = None
         self._geo = None
         self._seg_geo = None
@@ -236,7 +239,7 @@ class AreaDetector(DetectorImpl):
             segnums = None
 
         o = self._calibconstants(**kwa)
-        if is_none(o, 'det.raw._calibconstants(...) is None'): return None
+        #if is_none(o, 'in AreaDetector det.raw._calibconstants(...) is None', logger_method=logger.info): return None
         if o.geo() is None: o._geo = self._det_geo()
 
         return o.image(_nda, segnums=segnums, **kwa)
@@ -357,6 +360,7 @@ class AreaDetectorRaw(AreaDetector):
         -------
         raw data: np.array, ndim=3, shape: as data
         """
+        #print('XXX AreaDetectorRaw.raw')
         if evt is None: return None
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
         if is_none(segs, 'self._segments(evt) is None'): return None
@@ -367,6 +371,7 @@ class AreaDetectorRaw(AreaDetector):
         """Returns calibrated array of data shaped as daq: calib = (raw - peds) * gfac.
            Should be overridden for more complicated cases.
         """
+        #print('XXX AreaDetectorRaw.calib')
         logger.debug('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
                       +'\n  If needed more, it needs to be re-implemented for this detector type.')
         raw = self.raw(evt)
