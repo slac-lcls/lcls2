@@ -50,7 +50,7 @@ class SbatchManager:
         output_filepath = os.path.join(self.output_path, 
                 self.output_prefix_datetime + '_' + node + ':' + job_name + '.log')
         return output_filepath
-    
+
     def generate_as_step(self, sbjob):
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition=anaq"+"\n"
@@ -66,7 +66,12 @@ class SbatchManager:
                 sb_header += "#SBATCH hetjob\n"
             for job_name, details in job_details.items():
                 output = self.get_output_filepath(node, job_name)
-                sb_steps += f"srun -n1 --job-name={job_name} --het-group={het_group} --exclusive --output={output} {details['cmd']}" + "& \n"
+                env = details['env'].replace(" ", ",").strip("'")
+                cmd = details['cmd']
+                if details['conda_env'] != '':
+                    cmd = f"conda deactivate; conda activate {details['conda_env']}; {cmd}"
+                print(f"{cmd=}")
+                sb_steps += f"srun -n1 --exclusive --job-name={job_name} --het-group={het_group} --output={output} --export=ALL,{env} {cmd}" + "& \n"
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
 
@@ -80,7 +85,12 @@ class SbatchManager:
         
         output = self.get_output_filepath(node, job_name)
         sb_script += f"#SBATCH --output={output}"+"\n"
-
-        sb_script += f"srun -n1 " + details['cmd'] + "\n"
+        
+        env = details['env'].replace(" ", ",").strip("'")
+        cmd = details['cmd']
+        if details['conda_env'] != '':
+            cmd = f"conda deactivate; conda activate {details['conda_env']}; {cmd}"
+        print(f"{cmd=}")
+        sb_script += f"srun -n1 --export=ALL,{env} {cmd}" + "\n"
         self.sb_script = sb_script
 
