@@ -160,6 +160,7 @@ def loop_run_step_evt(args):
 
         if step_docstring is not None:
           sds = step_docstring(step)
+          #print('XXX step_docstring(step):', sds)
           try: sdsdict = json.loads(sds)
           except Exception as err:
             print('\nERROR FOR step_docstring: ', sds)
