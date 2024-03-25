@@ -7,9 +7,8 @@ import logging
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 global STRLOGLEV # sys.argv[2] if len(sys.argv)>2 else 'INFO'
-global INTLOGLEV  # logging._nameToLevel[STRLOGLEV]
+global INTLOGLEV # logging._nameToLevel[STRLOGLEV]
 logger = logging.getLogger(__name__)
-#logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
 
 
 def ds_run_det(exp='ascdaq18', run=171, detname='epixhr', **kwa):
@@ -260,12 +259,12 @@ def issue_2024_02_22():
 def issue_2024_03_14():
     """
     O'Grady, Paul Christopher <cpo@slac.stanford.edu>
-​    Dubrovin, Mikhail
+    Dubrovin, Mikhail
     Hi Mikhail,
     This archon calibration is working really well (and calibman is a nice tool for looking at constants).
     There is one small issue where it would be good to brainstorm about what is best:
-    rixc00121 run 140 has the archon in “full vertical binning” mode where the det.raw.raw data shape is (1,4800),
-    but det.calibconst[‘pedestals’][0] returns shape (4800).
+    rixc00121 run 140 has the archon infull vertical binning mode where the det.raw.raw data shape is (1,4800),
+    but det.calibconstpedestals[0] returns shape (4800).
     Would it be possible (and a good idea?) to have det_dark_proc store the pedestals with the same shape as the data (1,4800)?
     Thanks for any thoughts,
     chris
@@ -285,6 +284,42 @@ def issue_2024_03_14():
     peds = det.calibconst['pedestals'][0]
     print(info_ndarr(peds, 'peds'))
     print('\ndet.calibconst["pedestals"]', det.calibconst['pedestals'])
+
+
+def issue_2024_03_19():
+    """config scan for epixm
+       datinfo -k exp=tstx00417,run=309,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm
+    """
+    from psana import DataSource
+    import sys
+    from psana.detector.NDArrUtils import info_ndarr
+    ds = DataSource(exp='tstx00417',run=309,dir='/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/')
+    orun = next(ds.runs())
+    det = orun.Detector('tst_epixm')
+    calibconst = det.calibconst#['pedestals'][0]
+    print('calibconst:', calibconst)
+    print('dir(det.raw):', dir(det.raw))
+    geo = det.raw._det_geo()
+    print('geo:', geo)
+    peds = det.raw._pedestals()
+    print('peds:', peds)
+
+    step_value = orun.Detector('step_value')
+    step_docstring = orun.Detector('step_docstring')
+    for nstep, step in enumerate(orun.steps()):
+        print('step:', nstep, step_value(step), step_docstring(step))
+        for nevt,evt in enumerate(step.events()):
+            if nevt==3: print('evt3 nstep:', nstep, ' step_value:', step_value(evt), ' step_docstring:', step_docstring(evt))
+
+        for k,v in det.raw._seg_configs().items():
+            cob = v.config
+            print('dir(cob) w/o underscores:', [v for v in tuple(dir(cob)) if v[0]!='_'])
+            print('  cob.CompTH_ePixM', cob.CompTH_ePixM)
+            print('  cob.Precharge_DAC_ePixM', cob.Precharge_DAC_ePixM)
+
+        print(info_ndarr(det.raw.raw(evt), 'raw'))
+        print(info_ndarr(det.raw.calib(evt), 'calib'))
+        print(info_ndarr(det.raw.image(evt), 'image'))
 
 
 def argument_parser():
@@ -312,16 +347,11 @@ def USAGE():
 
 
 def selector():
-
     parser = argument_parser()
     args = parser.parse_args()
     STRLOGLEV = args.loglevel
     INTLOGLEV = logging._nameToLevel[STRLOGLEV]
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
-    #basic_config(format='[%(levelname).1s] L%(lineno)04d: %(filename)s %(message)s', int_loglevel=None, str_loglevel=args.loglevel)
-    #logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING) # get rid of messages
-    #STRLOGLEV = sys.argv[2] if len(sys.argv)>2 else 'INFO'
-    #TNAME = sys.argv[1] if len(sys.argv)>1 else None
 
     TNAME = args.tname  # sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -333,6 +363,7 @@ def selector():
     elif TNAME in  ('5',): issue_2024_02_14() # ascdaq18,run=407, epixhr - zero pedestals for Philip
     elif TNAME in  ('6',): issue_2024_02_22() # calib for epixm320 tstx00417,run=308 for Ric
     elif TNAME in  ('7',): issue_2024_03_14() # new detector archon exp=rixc00121,run=142 for Chris
+    elif TNAME in  ('8',): issue_2024_03_19() # Ric and Chris - config scan for epixm
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
