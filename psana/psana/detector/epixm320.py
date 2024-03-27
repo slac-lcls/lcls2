@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
@@ -17,13 +18,14 @@ class epixm320_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epixm320_raw_0_0_0.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
-        self._seg_geo = eb.sgs.Create(segname='EPIXM320:V1')
+        self._seg_geo = eb.sgs.Create(segname='EPIXMASIC:V1')
         self._data_bit_mask = eb.M14 # for epixm320 data on 2024-03-20 Dawood - M has 14 data bits.
         self._data_gain_bit = eb.B15
         self._gain_bit_shift = 10
         self._gains_def = (41.0, 13.7, 0.512) # Revisit: epixhr2x2 ADU/keV H:M:L = 1 : 1/3 : 1/80
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixm320.data'
         self._dataDebug = None
+        #self._segment_numbers = [0,1,2,3]
 
     def _array(self, evt) -> Array2d:
         f = None
@@ -36,14 +38,23 @@ class epixm320_raw_0_0_0(eb.epix_base):
             f = segs[0].raw & self._data_bit_mask # 0x7fff
         return f
 
-    def raw(self, evt) -> Array3d:
+    def _cbits_config_segment(self, cob):
+        """not used in epixm"""
+        return None
+
+#    def raw(self, evt) -> Array3d: # see in areadetector.py
+#        if evt is None: return None
+#        segs = self._segments(evt)    # dict = {seg_index: seg_obj}
+#        if segs is None: return None
+#        return segs[0].raw # shape=(4, 192, 384)
+
+    def calib(self, evt) -> Array3d: # already defined in epix_base and AreaDetectorRaw
+        """ TBD - when pedestals are availavle..."""
+        #logger.debug('%s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
+        print('TBD: %s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
         if evt is None: return None
-        segs = self._segments(evt)    # dict = {seg_index: seg_obj}
-        if segs is None: return None
+        return self.raw(evt).astype(np.float32)
 
-        return np.stack([segs[0].raw])
-
-    def image(self, evt, **kwargs) -> Array2d:
-        if evt is None: return None
-
-        return self.raw(evt)[0].reshape(768,384)
+#    def image(self, evt, **kwargs) -> Array2d: # see in areadetector.py
+#        if evt is None: return None
+#        return self.raw(evt)[0].reshape(768,384)
