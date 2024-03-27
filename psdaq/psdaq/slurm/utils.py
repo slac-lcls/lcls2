@@ -51,6 +51,29 @@ class SbatchManager:
                 self.output_prefix_datetime + '_' + node + ':' + job_name + '.log')
         return output_filepath
 
+    def get_jobstep_cmd(self, job_name, details, het_group=-1, output=None):
+        output_opt = ''
+        if output:
+            output_opt = f"--output={output} "
+        env_opt = ''
+        if details['env'] != '':
+            env = details['env'].replace(" ", ",").strip("'")
+            env_opt = f"--export=ALL,{env} "
+        het_group_opt = ''
+        if het_group > -1:
+            het_group_opt = f"--het-group={het_group} "
+            
+        cmd = details['cmd']
+        if details['conda_env'] != '':
+            CONDA_EXE = os.environ.get('CONDA_EXE','')
+            loc_inst = CONDA_EXE.find('/inst')
+            conda_profile = os.path.join(CONDA_EXE[:loc_inst],'inst','etc','profile.d','conda.sh')
+            cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
+        
+        jobstep_cmd = f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} bash -c '{cmd}'" + "& \n"
+        return jobstep_cmd
+
+
     def generate_as_step(self, sbjob):
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition=anaq"+"\n"
@@ -66,12 +89,7 @@ class SbatchManager:
                 sb_header += "#SBATCH hetjob\n"
             for job_name, details in job_details.items():
                 output = self.get_output_filepath(node, job_name)
-                env = details['env'].replace(" ", ",").strip("'")
-                cmd = details['cmd']
-                if details['conda_env'] != '':
-                    cmd = f"conda deactivate; conda activate {details['conda_env']}; {cmd}"
-                print(f"{cmd=}")
-                sb_steps += f"srun -n1 --exclusive --job-name={job_name} --het-group={het_group} --output={output} --export=ALL,{env} {cmd}" + "& \n"
+                sb_steps += self.get_jobstep_cmd(job_name, details, het_group=het_group, output=output)
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
 
@@ -86,11 +104,7 @@ class SbatchManager:
         output = self.get_output_filepath(node, job_name)
         sb_script += f"#SBATCH --output={output}"+"\n"
         
-        env = details['env'].replace(" ", ",").strip("'")
-        cmd = details['cmd']
-        if details['conda_env'] != '':
-            cmd = f"conda deactivate; conda activate {details['conda_env']}; {cmd}"
-        print(f"{cmd=}")
-        sb_script += f"srun -n1 --export=ALL,{env} {cmd}" + "\n"
+        sb_script += self.get_jobstep_cmd(job_name, details)
+        sb_script += "wait"
         self.sb_script = sb_script
 
