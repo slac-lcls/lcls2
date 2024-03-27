@@ -66,7 +66,8 @@ import numpy as np
 from psana.detector.calibconstants import CalibConstants
 from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess
-from psana.detector.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
+import psana.detector.NDArrUtils as au # reshape_to_3d, shape_as_3d, shape_as_3d, reshape_to_2d
+info_ndarr, reshape_to_3d =  au.info_ndarr, au.reshape_to_3d
 from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
@@ -232,6 +233,7 @@ class AreaDetector(DetectorImpl):
         value = value_for_missing_segments
 
         _nda = self.calib(evt) if nda is None else nda
+
         segnums = self._segment_numbers
 
         if value is not None:
@@ -241,7 +243,6 @@ class AreaDetector(DetectorImpl):
         o = self._calibconstants(**kwa)
         #if is_none(o, 'in AreaDetector det.raw._calibconstants(...) is None', logger_method=logger.info): return None
         if o.geo() is None: o._geo = self._det_geo()
-
         return o.image(_nda, segnums=segnums, **kwa)
 
 
@@ -364,7 +365,9 @@ class AreaDetectorRaw(AreaDetector):
         if evt is None: return None
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
         if is_none(segs, 'self._segments(evt) is None'): return None
-        return np.stack([segs[k].raw for k in self._segment_numbers])
+        if len(segs) == 1:
+            return segs[0].raw
+        return reshape_to_3d(np.stack([segs[k].raw for k in self._segment_numbers]))
 
 
     def calib(self, evt, **kwa) -> Array3d:
