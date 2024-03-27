@@ -13,7 +13,6 @@ import time
 import asyncio
 import atexit
 import psutil
-import IPython
 import copy
 import socket
 from psdaq.slurm.utils import SbatchManager
@@ -92,7 +91,6 @@ def main(subcommand: str,
             for job_name, details in job_details.items():
                 sbman.generate(node, job_name, details)
                 runner.submit()
-    IPython.embed()
 
 def ls():
     if runner is None: return
