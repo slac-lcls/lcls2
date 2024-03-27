@@ -150,6 +150,7 @@ class CalibConstants:
 
     def shape_as_daq(self):
         peds = self.pedestals()
+        #print(info_ndarr(peds, 'XXX shape_as_daq pedesstals'))
         if is_none(peds, 'shape_as_daq - pedestals is None, can not define daq data shape - returns None'): return None
         return peds.shape if peds.ndim<4 else peds.shape[-3:]
 
@@ -313,6 +314,8 @@ class CalibConstants:
         mapmode   = kwa.get('mapmode',2)
         fillholes = kwa.get('fillholes',True)
 
+        #print('XXX in CalibConstants.image segnums', segnums, 'mapmode:', mapmode)
+
         if mapmode==0: return self.img_entries
 
         if is_none(nda, 'CalibConstants.image calib returns None', logger_method=logger.warning): return None
@@ -323,6 +326,7 @@ class CalibConstants:
         logger.debug(info_ndarr(cols, 'cols ', last=3))
 
         img = img_from_pixel_arrays(rows, cols, weight=nda, vbase=vbase) # mapmode==1
+
         if   mapmode==2: img_multipixel_max(img, nda, self.dmulti_pix_to_img_idx)
         elif mapmode==3: img_multipixel_mean(img, nda, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries)
 
