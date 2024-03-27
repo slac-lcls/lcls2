@@ -304,7 +304,7 @@ def cbits_config_and_data_detector_alg(data, cbits, data_gain_bit, gain_bit_shif
     """
 
     #logger.info(info_ndarr(cbits, 'cbits', first=0, last=5))
-    if cbits == None or cbits == [None]:
+    if cbits is None or (isinstance(cbits, list) and cbits[0] is None):
        logger.debug('cbits is None or [None]')
        return None
 
