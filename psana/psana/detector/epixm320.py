@@ -25,7 +25,7 @@ class epixm320_raw_0_0_0(eb.epix_base):
         self._gains_def = (41.0, 13.7, 0.512) # Revisit: epixhr2x2 ADU/keV H:M:L = 1 : 1/3 : 1/80
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixm320.data'
         self._dataDebug = None
-        #self._segment_numbers = [0,1,2,3]
+        self._segment_numbers = [0,1,2,3]
 
     def _array(self, evt) -> Array2d:
         f = None
