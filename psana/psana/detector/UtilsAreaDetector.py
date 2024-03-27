@@ -130,7 +130,7 @@ def statistics_of_pixel_arrays(rows, cols):
     return img_sta, multinds, nentries
 
 
-def img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0):
+def img_from_pixel_arrays(rows, cols, weight=None, dtype=np.float32, vbase=0):
     """Returns image from rows, cols index arrays and associated weights W.
        Methods like matplotlib imshow(img) plot 2-d image array oriented as matrix(rows,cols).
     """
@@ -139,10 +139,10 @@ def img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0):
     assert(isinstance(weight, (np.ndarray,float)))
 
     if rows.size != cols.size \
-    or (weight is not None and rows.size !=  weight.size):
+    or (weight is not None and rows.size != weight.size):
         msg = 'img_from_pixel_arrays(): input array sizes are different;' \
             + ' rows.size=%d, cols.size=%d, W.size=%d' % (rows.size, cols.size, weight.size)
-        logger.debug(msg)
+        logger.warning(msg)
         return img_default(np.ones_like(rows, dtype=dtype))
 
     img_shape = image_shape(rows, cols)
