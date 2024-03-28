@@ -22,6 +22,9 @@ class SbatchManager:
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
 
+    def set_attr(self, attr, val):
+        setattr(self, attr, val)
+
     async def read_stdout(self, proc):
         # Read data from stdout until EOF
         data = ""
@@ -51,6 +54,12 @@ class SbatchManager:
                 self.output_prefix_datetime + '_' + node + ':' + job_name + '.log')
         return output_filepath
 
+    def get_daq_cmd(self, details):
+        cmd = details['cmd']
+        if 'p' in details['flags']:
+            cmd += (' -p ' + repr(self.platform))
+        return cmd
+
     def get_jobstep_cmd(self, job_name, details, het_group=-1, output=None):
         output_opt = ''
         if output:
@@ -63,7 +72,7 @@ class SbatchManager:
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
             
-        cmd = details['cmd']
+        cmd = self.get_daq_cmd(details)
         if details['conda_env'] != '':
             CONDA_EXE = os.environ.get('CONDA_EXE','')
             loc_inst = CONDA_EXE.find('/inst')
@@ -89,7 +98,10 @@ class SbatchManager:
                 sb_header += "#SBATCH hetjob\n"
             for job_name, details in job_details.items():
                 output = self.get_output_filepath(node, job_name)
-                sb_steps += self.get_jobstep_cmd(job_name, details, het_group=het_group, output=output)
+                # For one hetgroup, we don't need to specify hetgroup option
+                het_group_id = het_group
+                if len(sbjob) == 1: het_group_id = -1
+                sb_steps += self.get_jobstep_cmd(job_name, details, het_group=het_group_id, output=output)
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
 

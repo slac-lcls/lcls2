@@ -29,6 +29,7 @@ LOCALHOST = socket.gethostname()
 class Runner():
     def __init__(self, cnf_file):
         self.platform = deduce_platform(cnf_file)
+        sbman.set_attr('platform', self.platform)
         self.procmgr = ProcMgr(cnf_file, self.platform)
 
     def parse_cnf(self):
@@ -36,10 +37,11 @@ class Runner():
         data = {}
         for key, val in self.procmgr.d.items():
             node, job_name = key.split(":")
-            _, _, cmd, _, _, flag, _, conda_env, env, _ = val
+            if node == "localhost": node = LOCALHOST
+            _, _, cmd, _, _, flags, _, conda_env, env, _ = val
             if node not in data:
                 job_details = {}
-                job_details[job_name] = {"cmd": cmd, "flag": flag, "conda_env": conda_env, "env": env}  
+                job_details[job_name] = {"cmd": cmd, "flags": flags, "conda_env": conda_env, "env": env}  
                 data[node] = job_details
             else:
                 job_details = data[node] 
@@ -47,7 +49,7 @@ class Runner():
                     msg = f"Error: cannot create more than one {job_name} on {node}"
                     raise NameError('HiThere')
                 else:
-                    job_details[job_name] = {"cmd": cmd, "flag": flag, "conda_env": conda_env, "env": env}
+                    job_details[job_name] = {"cmd": cmd, "flags": flags, "conda_env": conda_env, "env": env}
         return data
 
     def list_jobs(self):
