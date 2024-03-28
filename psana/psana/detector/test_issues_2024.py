@@ -109,6 +109,8 @@ def issue_2024_03_19():
     from psana import DataSource
     import sys
     from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
+
     ds = DataSource(exp='tstx00417',run=317,dir='/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/')
     orun = next(ds.runs())
     det = orun.Detector('tst_epixm')
@@ -122,6 +124,7 @@ def issue_2024_03_19():
 
     step_value = orun.Detector('step_value')
     step_docstring = orun.Detector('step_docstring')
+    flimg = None
     for nstep, step in enumerate(orun.steps()):
         print('step:', nstep, step_value(step), step_docstring(step))
         for nevt,evt in enumerate(step.events()):
@@ -135,7 +138,15 @@ def issue_2024_03_19():
 
         #print(info_ndarr(det.raw.raw(evt), 'raw'))
         print(info_ndarr(det.raw.calib(evt), 'calib'))
-        print(info_ndarr(det.raw.image(evt), 'image'))
+        img = det.raw.image(evt)
+        print(info_ndarr(img, 'image'))
+
+        if flimg is None:
+           flimg = fleximage(img, arr=None, h_in=5, w_in=10, nneg=1, npos=3)
+        gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
+        flimg.update(img, arr=None)
+        gr.show(mode='DO NOT HOLD')
+    gr.show()
 
 
 def issue_2024_03_26():
