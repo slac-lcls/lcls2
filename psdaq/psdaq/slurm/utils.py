@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import asyncio
 import psutil
 from datetime import datetime
+from subprocess import run
 
 import socket
 LOCALHOST = socket.gethostname()
@@ -21,6 +22,21 @@ class SbatchManager:
                 now.strftime('%Y'), now.strftime('%m'))
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
+        envs = ['CONDA_PREFIX', 'CONFIGDB_AUTH', 'TESTRELDIR', 'RDMAV_FORK_SAFE', 'RDMAV_HUGEPAGES_SAFE', 'OPENBLAS_NUM_THREADS',
+                'PS_PARALLEL' ]
+        self.env_dict = {key: os.environ.get(key, '') for key in envs}
+    
+    @property
+    def git_describe(self):
+        git_describe = None
+        if 'TESTRELDIR' in os.environ:
+            try:
+                cc = run(["git", "-C", os.environ['TESTRELDIR'], "describe", "--dirty", "--tag"], capture_output=True)
+                if not cc.returncode:
+                    git_describe = str(cc.stdout.strip(), 'utf-8')
+            except Exception:
+                pass
+        return git_describe
 
     def set_attr(self, attr, val):
         setattr(self, attr, val)
@@ -57,13 +73,33 @@ class SbatchManager:
     def get_daq_cmd(self, details):
         cmd = details['cmd']
         if 'p' in details['flags']:
-            cmd += (' -p ' + repr(self.platform))
+            if cmd.find(f'-p {self.platform}') < 0:
+                cmd += (' -p ' + repr(self.platform))
+        if 'x' in details['flags']:
+            cmd = 'xterm -e ' + cmd 
         return cmd
+
+    def write_output_header(self, output, node, job_name, details):
+        with open(output, 'w') as f:
+            f.write("# ID:      %s\n" % job_name)
+            f.write("# PLATFORM:%s\n" % self.platform)
+            f.write("# HOST:    %s\n" % node)
+            f.write("# CMDLINE: %s\n" % details['cmd'])
+            # obfuscating the password in the log
+            clear_auth = self.env_dict['CONFIGDB_AUTH']
+            self.env_dict["CONFIGDB_AUTH"] = "*****"
+            for key2, val2 in self.env_dict.items():
+                f.write(f"# {key2}:{val2}\n")
+            self.env_dict["CONFIGDB_AUTH"] = clear_auth
+            if 'TESTRELDIR' in self.env_dict:
+                git_describe = self.git_describe
+                if git_describe:
+                    f.write("# GIT_DESCRIBE:%s\n" % git_describe)
 
     def get_jobstep_cmd(self, job_name, details, het_group=-1, output=None):
         output_opt = ''
         if output:
-            output_opt = f"--output={output} "
+            output_opt = f"--output={output} --open-mode=append "
         env_opt = ''
         if details['env'] != '':
             env = details['env'].replace(" ", ",").strip("'")
@@ -98,6 +134,7 @@ class SbatchManager:
                 sb_header += "#SBATCH hetjob\n"
             for job_name, details in job_details.items():
                 output = self.get_output_filepath(node, job_name)
+                self.write_output_header(output, node, job_name, details)
                 # For one hetgroup, we don't need to specify hetgroup option
                 het_group_id = het_group
                 if len(sbjob) == 1: het_group_id = -1
@@ -114,7 +151,9 @@ class SbatchManager:
         sb_script += f"#SBATCH --nodelist={node} --ntasks=1"+"\n"
         
         output = self.get_output_filepath(node, job_name)
+        self.write_output_header(output, node, job_name, details)
         sb_script += f"#SBATCH --output={output}"+"\n"
+        sb_script += f"#SBATCH --open-mode=append"+"\n"
         
         sb_script += self.get_jobstep_cmd(job_name, details)
         sb_script += "wait"
