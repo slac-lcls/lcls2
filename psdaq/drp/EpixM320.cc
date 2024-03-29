@@ -196,6 +196,7 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
 
     if (m_descramble) {
         //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
+        //  Padding has been removed as of 3/25/24
         if (p[2]==0 && p[3]==0) {
             // A zero timestamp means the data has not been rearranged.
             for(unsigned i=1; i<5; i++) {
@@ -279,7 +280,6 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     //  6     7     8     9    10    11        1     5     9    13    17    21
     //  0     1     2     3     4     5        0     4     8    12    16    20
 
-    //const unsigned asicOrder[] = {0, 2, 1, 3};
     const unsigned numBanks    = 24;
     const unsigned bankRows    = 4;
     const unsigned bankCols    = 6;
@@ -291,18 +291,16 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     for (unsigned q = 0; q < numAsics; ++q) {
         if ((q_asics & (1<<q))==0)
             continue;
-        //auto src = reinterpret_cast<const uint16_t*>(subframes[2 + asicOrder[q]].data()) + headerSize;
         auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data()) + headerSize;
+        auto dst = &aframe(q, 0, 0);
         for (unsigned bankRow = 0; bankRow < bankRows; ++bankRow) {
-            for (unsigned r = 0; r < bankHeight; ++r) {
-                // ASIC firmware bug: Rows are shifted up by one in ring buffer fashion
-                auto row  = r == 0 ? bankHeight - 1 : r - 1; // Compensate
-                auto dst  = &aframe(q, bankRow * bankHeight + r, 0);
+            for (unsigned row = 0; row < bankHeight; ++row) {
+                auto rowFix = row == 0 ? bankHeight - 1 : row - 1; // Shift rows up by one for ASIC f/w bug
                 for (unsigned bankCol = 0; bankCol < bankCols; ++bankCol) {
-                    unsigned bank = bankWidth * bankCol + bankRow;
+                    unsigned bank = bankRows * bankCol + bankRow;  // Given (column, row), reorder banks
                     for (unsigned col = 0; col < bankWidth; ++col) {
-                        //          (even cols w/ offset + row offset + inc every 2 cols) * fill one pixel / bank + bank inc
-                        auto idx = (((col+1) % 2) * hb   +  hw * row  + int(col / 2))     * numBanks              + bank;
+                        //          (even cols w/ offset + row offset  + inc every 2 cols) * fill one pixel / bank + bank inc
+                        auto idx = (((col+1) % 2) * hb   + hw * rowFix + int(col / 2))     * numBanks              + bank;
                         *dst++ = src[idx];
                     }
                 }
