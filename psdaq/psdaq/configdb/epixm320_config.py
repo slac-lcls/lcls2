@@ -40,7 +40,7 @@ asics = None
 nColumns = 384
 
 #  Timing delay scans can be limited by this
-EventBuilderTimeout = 4*int(1.0e-3*156.25e6)
+EventBuilderTimeout = 0 #4*int(1.0e-3*156.25e6)
 
 #  Register ordering matters, but our configdb does not preserve the order.
 #  For now, put the ordering in code here, until the configdb can be updated to preserve order.
@@ -144,10 +144,6 @@ for i in range(4):
                                  'SlvdsBit',
                                  'FE_Autogain',
                                  'FE_Lowgain',
-                                 'RowStartAddr',
-                                 'RowStopAddr',
-                                 'ColStartAddr',
-                                 'ColStopAddr',
                                  'DCycle_DAC',
                                  'DCycle_en',
                                  'DCycle_bypass',
@@ -267,7 +263,6 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
 
     base = {}
     #  Connect to the camera and the PCIe card
-    ###assert(lanemask.bit_length() == 4)
     cbase = ePixM.Root(top_level              = '/tmp',
                        dev                    = '/dev/datadev_0',
                        pollEn                 = False,
@@ -523,30 +518,16 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             toYaml('App',[f'Mv2Asic[{i}]'],f'ASIC_u{i+1}')
         setattr(cbase, 'filenameASIC', path+'ASIC_u{}'+'.yml') # This one is a little different
 
-        arg = [clk,1,1,1,1]
+        arg = [clk,0,0,0,0]
+        for i in asics:
+            arg[1+i] = 1
         logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
-        ###raise Exception('Aborting before fnInitAsic: Check the yaml files')
         cbase.fnInitAsicScript(None,None,arg)
+        cbase.laneDiagnostics(arg[1:5], threshold=20, loops=5, debugPrint=False)
 
         #  Remove the yml files
         for f in tmpfiles:
             os.remove(f)
-
-        # run some triggers and exercise lanes and locks
-        frames = 5000
-        rate = 1000
-
-        cbase.hwTrigger(frames, rate)
-
-        #get locked lanes
-        print('Locked lanes:')
-        cbase.getLaneLocks()
-
-        # Disable non-locking lanes
-        for i in asics:
-            lanes = cbase.App.SspMonGrp[i].Locked.get() ^ 0xffffff;
-            print(f'Setting DigAsicStrmRegisters[{i}].DisableLane to 0x{lanes:x}')
-            getattr(cbase.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(lanes);
 
         # Enable the batchers
         for i in asics:
@@ -580,7 +561,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         else:
             gain_mode = cfg['user']['gain_mode']
             compTH, precharge_DAC = gain_mode_map(gain_mode)
-            print(f'Setting gain mode {gain_mode} compTH {compTH} precharge_DAC {precharge_DAC}')
+            print(f'Setting gain mode {gain_mode}:  compTH {compTH},  precharge_DAC {precharge_DAC}')
 
             for i in asics:
                 saci = getattr(cbase.App,f'Mv2Asic[{i}]')
@@ -684,7 +665,7 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
                                                           carrierId[0], carrierId[1],
                                                           digitalId[0], digitalId[1],
                                                           pwrCommId[0], pwrCommId[1])
-        print(f'id {id}')
+        print(f'ePixM320k id: {id}')
         segids[seg] = id
         top = cdict()
         top.setAlg('config', [0,0,0])
@@ -707,9 +688,6 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
 def epixm320_unconfig(base):
     print('epixm320_unconfig')
-    cbase = base['cam']
-    for i in range(cbase.numOfAsics):
-        cbase.App.chargeInjectionCleanup(i)
     _stop(base)
     return base
 

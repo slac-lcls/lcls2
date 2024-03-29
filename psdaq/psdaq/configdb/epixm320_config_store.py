@@ -115,10 +115,6 @@ def epixm320_cdict(prjCfg):
         top.set(base+'SlvdsBit',            0, 'boolEnum')
         top.set(base+'FE_Autogain',         0, 'boolEnum')
         top.set(base+'FE_Lowgain',          0, 'boolEnum')
-        top.set(base+'RowStartAddr',        0, 'UINT16')
-        top.set(base+'RowStopAddr',         0, 'UINT16')
-        top.set(base+'ColStartAddr',        0, 'UINT8')
-        top.set(base+'ColStopAddr',         0, 'UINT8')
         top.set(base+'DCycle_DAC',          0, 'UINT8')
         top.set(base+'DCycle_en',           0, 'boolEnum')
         top.set(base+'DCycle_bypass',       0, 'boolEnum')
@@ -178,20 +174,21 @@ def epixm320_cdict(prjCfg):
         top.set(base+'RollOverEn'           , 0, 'UINT8')
 
     base = 'expert.App.AsicTop.RegisterControlDualClock.'
-    top.define_enum('debugChEnum', { 'AsicDM(0)'        :  0,
-                                     'AsicDM(1)'        :  1,
+    # I think the parentheses in the following enums are problematic
+    top.define_enum('debugChEnum', { 'AsicDM_0'         :  0,  # 'AsicDM(0)'
+                                     'AsicDM_1'         :  1,  # 'AsicDM(1)'
                                      'AsicSync'         :  2,
                                      'AsicAcq'          :  3,
                                      'AsicSR0'          :  4,
                                      'AsicGRst'         :  5,
                                      'AsicClkEn'        :  6,
                                      'AsicR0'           :  7,
-                                     'AsicSaciCmd(0)'   :  8,
+                                     'AsicSaciCmd_0'    :  8,  # 'AsicSaciCmd(0)'
                                      'AsicSaciClk'      :  9,
-                                     'AsicSaciSelL(0)'  : 10,
-                                     'AsicSaciSelL(1)'  : 11,
-                                     'AsicSaciSelL(2)'  : 12,
-                                     'AsicSaciSelL(3)'  : 13,
+                                     'AsicSaciSelL_0'   : 10,  # 'AsicSaciSelL(0)'
+                                     'AsicSaciSelL_1'   : 11,  # 'AsicSaciSelL(1)'
+                                     'AsicSaciSelL_2'   : 12,  # 'AsicSaciSelL(2)'
+                                     'AsicSaciSelL_3'   : 13,  # 'AsicSaciSelL(3)'
                                      'AsicRsp'          : 14,
                                      'LdoShutDnl0'      : 15,
                                      'LdoShutDnl1'      : 16,
@@ -204,20 +201,20 @@ def epixm320_cdict(prjCfg):
                                      'hsDacSclk'        : 23,
                                      'hsDacDin'         : 24,
                                      'hsLdacb'          : 25,
-                                     'slowAdcDout(0)'   : 26,
-                                     'slowAdcDrdyL(0)'  : 27,
-                                     'slowAdcSyncL(0)'  : 28,
-                                     'slowAdcSclk(0)'   : 29,
-                                     'slowAdcCsL(0)'    : 30,
-                                     'slowAdcDin(0)'    : 31,
-                                     'slowAdcRefClk(0)' : 32,
-                                     'slowAdcDout(1)'   : 33,
-                                     'slowAdcDrdyL(1)'  : 34,
-                                     'slowAdcSyncL(1)'  : 35,
-                                     'slowAdcSclk(1)'   : 36,
-                                     'slowAdcCsL(1)'    : 37,
-                                     'slowAdcDin(1)'    : 38,
-                                     'slowAdcRefClk(1)' : 39})
+                                     'slowAdcDout_0'    : 26,  # 'slowAdcDout(0)'
+                                     'slowAdcDrdyL_0'   : 27,  # 'slowAdcDrdyL(0)'
+                                     'slowAdcSyncL_0'   : 28,  # 'slowAdcSyncL(0)'
+                                     'slowAdcSclk_0'    : 29,  # 'slowAdcSclk(0)'
+                                     'slowAdcCsL_0'     : 30,  # 'slowAdcCsL(0)'
+                                     'slowAdcDin_0'     : 31,  # 'slowAdcDin(0)'
+                                     'slowAdcRefClk_0'  : 32,  # 'slowAdcRefClk(0)'
+                                     'slowAdcDout_1'    : 33,  # 'slowAdcDout(1)'
+                                     'slowAdcDrdyL_1'   : 34,  # 'slowAdcDrdyL(1)'
+                                     'slowAdcSyncL_1'   : 35,  # 'slowAdcSyncL(1)'
+                                     'slowAdcSclk_1'    : 36,  # 'slowAdcSclk(1)'
+                                     'slowAdcCsL_1'     : 37,  # 'slowAdcCsL(1)'
+                                     'slowAdcDin_1'     : 38,  # 'slowAdcDin(1)'
+                                     'slowAdcRefClk_1'  : 39}) # 'slowAdcRefClk(1)'
     top.set(base+'IDreset',           0, 'UINT32')
     top.set(base+'GlblRstPolarityN',  0, 'boolEnum')
     top.set(base+'ClkSyncEn',         0, 'boolEnum')
@@ -254,6 +251,7 @@ def epixm320_cdict(prjCfg):
     top.set(base+'AsicPwrManualAna',  0, 'boolEnum')
     top.set(base+'AsicPwrManualIo',   0, 'boolEnum')
     top.set(base+'AsicPwrManualFpga', 0, 'boolEnum')
+    # DebugSel0 and 1 are problematic
     top.set(base+'DebugSel0',         0, 'debugChEnum')
     top.set(base+'DebugSel1',         0, 'debugChEnum')
     top.set(base+'getSerialNumbers',  0, 'boolEnum')
