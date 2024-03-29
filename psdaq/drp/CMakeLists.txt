@@ -240,6 +240,10 @@ target_link_libraries(drp_groupsync
     Threads::Threads
 )
 
+add_executable(ePixMDescTest
+    ePixMDescTest.cc
+)
+
 if(CMAKE_CUDA_COMPILER)
     add_executable(test_gpu_add
         test_gpu_add.cu
