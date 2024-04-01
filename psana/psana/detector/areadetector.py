@@ -71,7 +71,6 @@ info_ndarr, reshape_to_3d =  au.info_ndarr, au.reshape_to_3d
 from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
-#from psana.detector.UtilsAreaDetector import arr3d_from_list  # arr3d_from_dict
 
 
 def is_none(par, msg, logger_method=logger.debug):
@@ -99,8 +98,8 @@ class AreaDetector(DetectorImpl):
         """Returns cached object of CalibConstants derived from DetectorImpl._calibconst - dict from DB."""
         if self._calibc_ is None:
             logger.debug('AreaDetector._calibconstants - make CalibConstants')
-            cc = self._calibconst   # defined in DetectorImpl
-            if is_none(cc, 'self._calibconst is None'): return None
+            cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
+            logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
             self._calibc_ = CalibConstants(cc, **kwa)
         return self._calibc_
 
