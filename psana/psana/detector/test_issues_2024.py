@@ -115,12 +115,12 @@ def issue_2024_03_19():
     orun = next(ds.runs())
     det = orun.Detector('tst_epixm')
     calibconst = det.calibconst#['pedestals'][0]
-    print('calibconst:', calibconst)
-    print('dir(det.raw):', dir(det.raw))
+    print('calibconst.keys():', calibconst.keys())
+    #print('dir(det.raw):', dir(det.raw))
     geo = det.raw._det_geo()
     print('geo:', geo)
     peds = det.raw._pedestals()
-    print('peds:', peds)
+    print(info_ndarr(peds, 'peds'))
 
     step_value = orun.Detector('step_value')
     step_docstring = orun.Detector('step_docstring')
