@@ -1,5 +1,5 @@
-# TITLE      Geometry parameters of epixm320 1x4 ASIC panel, raw data shape:(4,192,384) - 4 ASICS
-# DATE_TIME  2024-03-25 10:00:00 PDT
+# TITLE      Geometry parameters of epixm320 2x2 ASIC panel, raw data shape:(4,192,384) - 4 ASICS
+# DATE_TIME  2024-04-01 10:00:00 PDT
 # METROLOGY  N/A use manual settings in this file
 # AUTHOR     dubrovin
 # EXPERIMENT exp=tstx00417:run=317,319

@@ -49,7 +49,7 @@ Usage::
 
   o = AreaDetectorRaw(*args, **kwa) # inherits from AreaDetector(*args, **kwa), adds raw and calib methods
   a = o.raw(evt)
-  a = o.calib(evt, cmpars=(7,2,100,10), *kwargs)
+  a = o.calib(evt, cmpars=(7,2,100,10), **kwa)
   a = o.calib(evt, **kwa)
 
 2020-11-06 created by Mikhail Dubrovin
