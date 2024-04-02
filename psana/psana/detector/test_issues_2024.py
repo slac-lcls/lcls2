@@ -164,6 +164,22 @@ def issue_2024_03_26():
     print('saved in file %s' % fname)
 
 
+def issue_2024_04_02():
+    """junk.py from Chris and Ric
+       datinfo -k exp=tstx00417,run=320,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d epixm
+
+    """
+    from psana import DataSource
+    ds = DataSource(exp='tstx00417',run=320,dir='/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc')
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixm')
+    for nevt,evt in enumerate(myrun.events()):
+        raw = det.raw.raw(evt)
+        print(raw.shape)
+        print(det.raw.image(evt))
+        if nevt>3: break
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -203,6 +219,7 @@ def selector():
     elif TNAME in  ('3',): issue_2024_03_14() # new detector archon exp=rixc00121,run=142 for Chris
     elif TNAME in  ('4',): issue_2024_03_19() # Ric and Chris - config scan for epixm
     elif TNAME in  ('5',): issue_2024_03_26() # generate and save text ndarray
+    elif TNAME in  ('6',): issue_2024_04_02() # junk.py from Chris and Ric
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
