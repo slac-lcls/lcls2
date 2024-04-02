@@ -169,7 +169,7 @@ def info_detector(det, cmt='detector info:', sep='\n    '):
     return cmt\
         +  'det.raw._det_name   : %s' % (det.raw._det_name)\
         +'%sdet.raw._dettype    : %s' % (sep, det.raw._dettype)\
-        +'%s_sorted_segment_ids : %s' % (sep, str(det.raw._sorted_segment_ids))\
+        +'%s_sorted_segment_inds: %s' % (sep, str(det.raw._sorted_segment_inds))\
         +'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
         +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
         +'%sdet methods vbisible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\

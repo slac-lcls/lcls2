@@ -8,7 +8,7 @@ Usage::
 
   o = AreaDetector(*args, **kwa)    # inherits from DetectorImpl(*args, **kwa)
 
-  a = o._segment_numbers  # alias of o._sorted_segment_ids, where ids is misleading
+  a = o._segment_numbers  # alias of o._sorted_segment_inds, where inds stands for indices
   a = o._det_calibconst()
 
   a = o._pedestals(all_segs=False)
@@ -89,7 +89,7 @@ class AreaDetector(DetectorImpl):
         self._calibc_ = None
         self._geo = None
         self._seg_geo = None
-        self._segment_numbers = self._sorted_segment_ids  # [0, 1, 2,... 17, 18, 19]
+        self._segment_numbers = self._sorted_segment_inds  # [0, 1, 2,... 17, 18, 19]
         self._maskalgos_ = None
         self._store_ = None  # detector dependent storage of cached parameters for method calib
 

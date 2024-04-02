@@ -55,8 +55,8 @@ class epix_base(AreaDetectorRaw):
 
 
     def _segment_indices(self):
-        """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]"""
-        return self._sorted_segment_ids
+        """Returns list det.raw._sorted_segment_inds, e.g. [0, 1, 2, 3]"""
+        return self._sorted_segment_inds
 
 
     def _fullname(self):
