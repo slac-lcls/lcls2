@@ -194,7 +194,7 @@ def loop_run_step_evt(args):
              print(info_ndarr(raw,'    det.raw.raw(evt)'))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
 
-             if dcfg is not None:
+             if dcfg is not None and (is_epix10ka or is_epixhr2x2):
                s = '    gain mode fractions for: FH       FM       FL'\
                    '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
                print(ue.info_pixel_gain_mode_fractions(det.raw, evt, msg=s))
