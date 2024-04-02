@@ -18,6 +18,7 @@ USAGE = 'Usage:'\
       + '\n  %s -k exp=rixx45619,run=121 -d epixhr -o ./work' % SCRNAME\
       + '\n  %s -k exp=rixx1003721,run=200 -d epixhr  -o ./work --int_hi 32000' % SCRNAME\
       + '\n  %s -k \"{\'exp\':\'rixx45619\', \'run\':121}\" -d epixhr -o ./work' % SCRNAME\
+      + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm -o ./work' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
       #+ '\n  ??? mpirun -n 5 %s -k exp=ueddaq02,run=27 -d epixquad -i15 -o ./work -L DEBUG' % SCRNAME\
 
@@ -33,8 +34,11 @@ def do_main():
     from psana.detector.UtilsEpix10kaCalib import pedestals_calibration
     from time import time
     t0_sec = time()
+    #if args.det  == 'tst_epixm': sys.exit('TEST EXIT FOR %s' % args.det)
     pedestals_calibration(parser)
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
+
+    sys.exit('End of %s' % SCRNAME)
 
 
 def argument_parser():
@@ -66,7 +70,7 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2023-04-20'
+    d_version = 'V2024-04-01'
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -132,6 +136,5 @@ def argument_parser():
 
 if __name__ == "__main__":
     do_main()
-    sys.exit('End of %s'%SCRNAME)
 
 # EOF
