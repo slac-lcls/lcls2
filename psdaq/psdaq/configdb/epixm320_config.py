@@ -514,9 +514,10 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         toYaml('AsicTop',['RegisterControlDualClock'],'WaveForms')
         toYaml('AsicTop',[f'DigAsicStrmRegisters{i}' for i in asics],'PacketReg')
         toYaml('AsicTop',[f'BatcherEventBuilder{i}' for i in asics],'Batcher')
+        setattr(cbase, 'filenameASIC',4*[None]) # This one is a little different
         for i in asics:
             toYaml('App',[f'Mv2Asic[{i}]'],f'ASIC_u{i+1}')
-        setattr(cbase, 'filenameASIC', path+'ASIC_u{}'+'.yml') # This one is a little different
+            cbase.filenameASIC[i] = getattr(cbase,f'filenameASIC_u{i+1}')
 
         arg = [clk,0,0,0,0]
         for i in asics:
