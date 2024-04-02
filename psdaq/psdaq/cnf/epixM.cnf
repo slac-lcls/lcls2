@@ -17,7 +17,8 @@ cdb  = f'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'     # production  
 #  drp variables
 #
 prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
-data_dir = f'/reg/neh/operator/tstopr/data/drp'  #'/drpneh/data'
+#data_dir = f'/reg/neh/operator/tstopr/data/drp'
+data_dir = '/drpneh/data -k directIO=no' # Lustre doesn't support Direct IO?
 trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
 task_set = 'taskset 0xffbfeffbfe '

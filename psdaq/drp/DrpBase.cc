@@ -40,8 +40,6 @@ static json createChunkRequestMsg();
 
 namespace Drp {
 
-static const bool DIRECT_IO = true;     // Give an argument a name
-
 static long readInfinibandCounter(const std::string& counter)
 {
     std::string path{"/sys/class/infiniband/mlx5_0/ports/1/counters/" + counter};
@@ -533,7 +531,7 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_pgp(nullptr),
   m_tsId(-1u),
   m_mon(mon),
-  m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), DIRECT_IO),
+  m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] != "no"), // Default to "yes"
   m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
   m_writing(false),
   m_inprocSend(inprocSend),
@@ -998,7 +996,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_tPrms.maxEntries = Pds::Eb::MAX_ENTRIES; // Batching is always enabled; set to 1 to disable
+    m_tPrms.maxEntries = m_para.kwargs["batching"] == "no" ? 1 : Pds::Eb::MAX_ENTRIES; // Default to "yes"
     m_tPrms.core[0]    = -1;
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
@@ -1044,13 +1042,6 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
         logging::info("Setting env %s\n", envBuff);
         if (setenv("EPICS_PVA_ADDR_LIST",envBuff,1))
             perror("setenv pva_addr");
-    }
-
-    if (para.kwargs.find("batching")!=para.kwargs.end()) {
-        logging::warning("The batching kwarg is obsolete and ignored (always enabled)");
-    }
-    if (para.kwargs.find("directIO")!=para.kwargs.end()) {
-        logging::warning("The directIO kwarg is obsolete and ignored (always enabled)");
     }
 }
 
