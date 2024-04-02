@@ -261,6 +261,16 @@ class configdb(object):
         for v in self.cdb[name].find():
             print(v)
 
+    # Given a {"_id": ID, "collection": collection}, return a new one
+    # changing the saved detName:RO to newname.
+    def modify_name_in_config(self, cfg, newname, session=None):
+        cname = cfg['collection']
+        r = self.cdb[cname].find_one({"_id": cfg['_id']},
+                                     session=session)
+        r['config']['detName:RO'] = newname
+        return {'_id': self.save_device_config(cname, r['config'], session=session), 
+                'collection': cname}
+
     # Transfer a configuration from another hutch to the current hutch,
     # returning the new key.
     def transfer_config(self, oldhutch, oldalias, olddevice, newalias,
@@ -285,6 +295,9 @@ class configdb(object):
                             raise ValueError("transfer_config: No change!")
                         cnew['devices'].remove(l)
                         break
+                # cfg points to the old name, so change it if necessary.
+                if olddevice != newdevice:
+                    cfg = [self.modify_name_in_config(cfg[0], newdevice, session=session)]
                 cnew['devices'].append({'device': newdevice, 'configs': cfg})
                 cnew['devices'].sort(key=lambda x: x['device'])
                 cnew['date'] = datetime.datetime.utcnow()
@@ -314,3 +327,89 @@ class configdb(object):
                 d[p] = cl.get(p)
             l.append(d)
         return l
+
+    """
+    # Untested, but might be useful.
+    def rename_hutch(self, hutch, newname):
+        all = self.get_hutches()
+        if hutch not in all:
+            raise ValueError("rename_hutch: %s is not a hutch!" % hutch)
+        if newname in all:
+            raise ValueError("rename_hutch: %s is already a hutch!" % newname)
+        d = self.cdb.counters.find_one_and_update({'hutch': hutch},
+                                                  {'$set': {'hutch': newname}},
+                                                  session=session,
+                                                  return_document=ReturnDocument.AFTER)
+        self.cdb[hutch].rename(newname)
+        if self.hutch == hutch:
+            self.hutch = newname
+            self.hutch_coll = self.cdb[newname]
+        
+    # Untested, but might be useful.
+    def rename_alias(self, alias, newname, hutch=None):
+        all = self.get_aliases(hutch)
+        if hutch not in all:
+            raise ValueError("rename_alias: %s is not a hutch!" % alias)
+        if newname in all:
+            raise ValueError("rename_alias: %s is already a hutch!" % newname)
+        if hutch is None:
+            hc = self.hutch_coll
+        else:
+            hc = self.cdb[hutch]
+        for l in hc.find({"alias": alias}):
+            d = hc.find_one_and_update({'alias': alias, 'key': l['key']},
+                                       {'$set': {'alias': newname}},
+                                       session=session,
+                                       return_document=ReturnDocument.AFTER)
+    """
+
+    # cfg is a dict of the form: {'collection': cname, '_id': id}.
+    # If no one is using this entry, delete it.  Leaving this blank,
+    # because it seems like an excessive amount of effort.
+    def remove_orphan(self, cfg):
+        pass
+
+    def modify_device_name(self, device, newname, alias, hutch=None):
+        if hutch is None:
+            hc = self.hutch_coll
+        else:
+            hc = self.cdb[hutch]
+        if True:
+                session = None
+                cs = []
+                for c in hc.find({"alias": alias}):
+                    found = False
+                    for l in c['devices']:
+                        if l['device'] == device:
+                            found = True
+                            break
+                    if not found:
+                        continue
+                    # l points to our device.
+                    # Now, we need to fix up c['devices'].
+                    oldcfg = l['configs'][0]
+                    if newname is None:
+                        # Removing, just take it out!
+                        c['devices'].remove(l)
+                    else:
+                        # Renaming.
+                        l['device'] = newname
+                        l['configs'] = [self.modify_name_in_config(oldcfg, newname, session=session)]
+                    cs.append(oldcfg)
+                    d = hc.find_one_and_update({"alias": alias, "key": c['key']},
+                                               {'$set': {'devices': c['devices']}},
+                                               session=session,
+                                               return_document=ReturnDocument.AFTER)
+                if len(cs) == 0:
+                    raise ValueError("%s_device: cannot find device %s in hutch %s, alias %s"
+                                     % ("remove" if newname is None else "rename",
+                                        device, self.hutch if hutch is None else hutch, alias))
+                for c in cs:
+                    self.remove_orphan(c)
+
+    def rename_device(self, device, newname, alias, hutch=None):
+        return self.modify_device_name(device, newname, alias, hutch)
+
+    def remove_device(self, device, alias, hutch=None):
+        return self.modify_device_name(device, None, alias, hutch)
+            
