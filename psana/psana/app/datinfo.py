@@ -34,6 +34,7 @@ USAGE = '\n  %s -d <detector> -k <datasource-kwargs> [kwargs]' % SCRNAME\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00118-r0222-s006-c000.xtc2 -d tmo_atmopal' % SCRNAME\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/uedcom103-r0007-s002-c000.xtc2 -d epixquad' % SCRNAME\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/ueddaq02-r0569-s001-c000.xtc2  -d epixquad' % SCRNAME\
+      + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
 
 def ds_run_det(args):
