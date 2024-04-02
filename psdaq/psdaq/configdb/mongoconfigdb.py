@@ -328,6 +328,7 @@ class configdb(object):
             l.append(d)
         return l
 
+    """
     # Untested, but might be useful.
     def rename_hutch(self, hutch, newname):
         all = self.get_hutches()
@@ -360,6 +361,7 @@ class configdb(object):
                                        {'$set': {'alias': newname}},
                                        session=session,
                                        return_document=ReturnDocument.AFTER)
+    """
 
     # cfg is a dict of the form: {'collection': cname, '_id': id}.
     # If no one is using this entry, delete it.  Leaving this blank,
