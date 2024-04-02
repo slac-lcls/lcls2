@@ -413,6 +413,7 @@ def pedestals_calibration(parser):
     xtc_files = getattr(ds, 'xtc_files', None)
     logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
 
+
     mode = None # gain_mode
     nstep_tot = -1
 
@@ -449,10 +450,10 @@ def pedestals_calibration(parser):
         sys.exit('Exit processing due to missing info about dark data step.')
       #cd = orun.Detector('ControlData') #LCLS1
 
-      logger.debug('--- det.raw._det_name: %s' % odet.raw._det_name) # epixquad
-      logger.debug('    det.raw._dettype : %s' % odet.raw._dettype)  # epix
+      logger.info('--- det.raw._det_name: %s' % odet.raw._det_name) # epixquad
+      logger.info('    det.raw._dettype : %s' % odet.raw._dettype)  # epix
       #logger.debug('    det.raw._uniqueid: %s' % det.raw._uniqueid)
-      #logger.debug('    det.raw._sorted_segment_ids: %s' % str(odet.raw._sorted_segment_ids))
+      #logger.debug('    det.raw._sorted_segment_inds: %s' % str(odet.raw._sorted_segment_inds))
       #logger.debug('    det.raw._fullname: %s' % odet.raw._fullname())
 
       segment_ids = odet.raw._segment_ids() #ue.segment_ids_det(odet)
@@ -466,6 +467,13 @@ def pedestals_calibration(parser):
       logger.info('    det.raw._data_bit_mask BIT_MASK: %d or %s or %s' % (BIT_MASK, oct(BIT_MASK), hex(BIT_MASK)))
 
       dcfg = odet.raw._config_object() #ue.config_object_det(odet)
+
+
+
+      #sys.exit('TEST EXIT')
+
+
+
 
       for nstep_run, step in enumerate(orun.steps()): #(loop through calyb cycles, using only the first):
         nstep_tot += 1
