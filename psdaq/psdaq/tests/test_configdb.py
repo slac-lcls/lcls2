@@ -140,9 +140,25 @@ class Test_CONFIGDB:
                 c2.transfer_config("AMO", "BEAM", "evr0", "FOO", "evr3")
             print("Configs:")
             c2.print_configs()
-            cfg =  c.get_configuration("BEAM", "evr0")
+            cfg1 =  c.get_configuration("BEAM", "evr0")
             cfg2 = c2.get_configuration("FOO", "evr3")
-            assert cfg == cfg2
+            # These should be the same except for the detector names!
+            del cfg1['detName:RO']
+            del cfg2['detName:RO']
+            assert cfg1 == cfg2
+            c2.rename_device("evr3", "evr7", "FOO")
+            cfg3 = c2.get_configuration("FOO", "evr7")
+            # These should be the same except for the detector names!
+            del cfg3['detName:RO']
+            assert cfg2 == cfg3
+            with pytest.raises(ValueError):
+                c2.remove_device("evr6", "FOO")
+            c2.remove_device("evr7", "FOO")
+            with pytest.raises(ValueError):
+                cfg4 = c2.get_configuration("FOO", "evr7")
+            c2.transfer_config("AMO", "BEAM", "evr0", "FOO", "evr0")  # 2
+            print("Configs:")
+            c2.print_configs()
             print("Test complete!")
 
 def run():
