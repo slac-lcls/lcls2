@@ -39,5 +39,7 @@ for k,v in top.items():
     print(f'-- key {k}')
     print(top[k])
 
-mycdb.modify_device(args.alias, top)
+if not args.dryrun:
+    mycdb.modify_device(args.alias, top)
+
 #mycdb.print_configs()

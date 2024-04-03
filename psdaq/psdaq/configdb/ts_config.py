@@ -66,7 +66,11 @@ def apply_config(cfg):
             pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
             pvdict[str(group)+':L0Select_EventCode'] = grp['eventcode']
             pvdict[str(group)+':L0Select_Sequence' ] = grp['seq']['mode']
-            pvdict[str(group)+':L0RawUpdate'       ] = int(TPGSEC/grp['rawInsertRate'])
+            #  until we update all timing configurations
+            if grp has 'keepRawRate':
+                pvdict[str(group)+':L0RawUpdate'       ] = int(TPGSEC/grp['keepRawRate'])
+            else:
+                logging.warning(f'No keepRawRate entry in user.SC.{grp_prefix}.  Run ts_config_update.py')
             pvdict[str(group)+':DstSelect'         ] = grp['destination']['select']
 
             # convert ac.ts0 through ac.ts5 to L0Select_ACTimeslot bitmask

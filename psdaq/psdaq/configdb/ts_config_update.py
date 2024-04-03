@@ -15,15 +15,17 @@ mycdb = cdb.configdb(url, args.inst, create,
 
 top = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
 
-top['help:RO'] += "\nrawInsertRate: raw data retention rate (Hz)" 
+top['help:RO'] += "\nkeepRawRate: raw data retention rate (Hz)" 
 
 for k in top['user']['SC'].keys():
-    top[':types:']['user']['SC'][k]['rawInsertRate'] = 'FLOAT'
-    top['user']['SC'][k]['rawInsertRate'] = 1.
+    top[':types:']['user']['SC'][k]['keepRawRate'] = 'FLOAT'
+    top['user']['SC'][k]['keepRawRate'] = 1.
 
 for k,v in top.items():
     print(f'-- key {k}')
     print(top[k])
 
-mycdb.modify_device(args.alias, top)
+if not args.dryrun:
+    mycdb.modify_device(args.alias, top)
+
 #mycdb.print_configs()

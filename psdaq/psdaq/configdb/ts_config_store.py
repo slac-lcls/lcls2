@@ -51,7 +51,7 @@ def usual_cdict():
     help_str += "\n   Exclusive : trigger when not beam to one of destns"
     help_str += "\n   DontCare  : ignore destn"
     help_str += "\ndestn.destN  : add destN to trigger consideration"
-    help_str += "\nrawInsertRate: raw data retention rate (Hz)" 
+    help_str += "\nkeepRawRate: raw data retention rate (Hz)" 
     top.set('help:RO', help_str, 'CHARSTR')
 
     top.set('user.LINAC', 0, 'linacEnum')
@@ -63,7 +63,7 @@ def usual_cdict():
         else:
             top.set(grp_prefix+'eventcode', 40, 'UINT32')
 
-        top.set(grp_prefix+'rawInsertRate', 1., 'FLOAT')
+        top.set(grp_prefix+'keepRawRate', 1., 'FLOAT')
 
         grp_prefix = 'user.SC.group'+str(group)+'.'
         top.set(grp_prefix+'trigMode', 0, 'trigModeEnum') # default to fixed rate
@@ -84,7 +84,7 @@ def usual_cdict():
         for destnum in range(16):
             top.set(grp_prefix+'destination.dest'+str(destnum), 0, 'boolEnum')
 
-        top.set(grp_prefix+'rawInsertRate', 1., 'FLOAT')
+        top.set(grp_prefix+'keepRawRate', 1., 'FLOAT')
 
         grp_prefix = 'expert.group'+str(group)+'.'
         for inhnum in range(4):
