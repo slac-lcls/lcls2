@@ -24,7 +24,7 @@ namespace Drp {
   struct Stream {
   public:
       Stream() {}
-      uint32_t getPosition() { return m_position; }
+      int32_t getPosition() { return m_position; }
       uint8_t getEncErrCnt() { return m_encErrCnt; }
       uint8_t getMissedTrigCnt() { return m_missedTrigCnt; }
       uint8_t getLatches() { return m_latches; }
@@ -36,13 +36,14 @@ namespace Drp {
           std::cout << "Missed Triggers: " << m_missedTrigCnt << std::endl;
           std::cout << "Latch bits: " << m_latches << std::endl;
           std::cout << "Reserved: " << m_reserved << std::endl;
+
       }
   private:
-      uint32_t m_position{};
-      uint8_t m_encErrCnt{};
-      uint8_t m_missedTrigCnt{};
-      uint8_t m_latches{}; // upper 3 bits define 3 latch bits
-      uint8_t m_reserved{}; // actually 13 bits
+      int32_t m_position;
+      uint8_t m_encErrCnt;
+      uint8_t m_missedTrigCnt;
+      uint8_t m_latches; // upper 3 bits define 3 latch bits
+      uint8_t m_reserved; // actually 13 bits
     };
 
   } // Enc
@@ -68,7 +69,7 @@ unsigned HREncoder::_configure(Xtc& xtc, const void* bufEnd, ConfigIter&)
                                                  alg, m_para->detType.c_str(),
                                                  m_para->serNo.c_str(), m_evtNamesRaw);
     VarDef v;
-    v.NameVec.push_back(XtcData::Name("position", XtcData::Name::UINT32));
+    v.NameVec.push_back(XtcData::Name("position", XtcData::Name::INT32));
     v.NameVec.push_back(XtcData::Name("error_cnt", XtcData::Name::UINT8));
     v.NameVec.push_back(XtcData::Name("missedTrig_cnt", XtcData::Name::UINT8));
     v.NameVec.push_back(XtcData::Name("latches", XtcData::Name::UINT8)); // Only 3 bits
@@ -90,5 +91,6 @@ void HREncoder::_event(XtcData::Xtc& xtc,
     cd.set_value(index++, p.getEncErrCnt());
     cd.set_value(index++, p.getMissedTrigCnt());
     cd.set_value(index++, p.getLatches());
+    //p.printValues();
 }
 } // Drp
