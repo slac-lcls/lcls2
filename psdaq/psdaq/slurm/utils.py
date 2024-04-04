@@ -7,6 +7,7 @@ from subprocess import run
 
 import socket
 LOCALHOST = socket.gethostname()
+SLURM_PARTITION = 'drpq'
 
 class PSbatchSubCommand:
     START=0
@@ -70,13 +71,16 @@ class SbatchManager:
                 self.output_prefix_datetime + '_' + node + ':' + job_name + '.log')
         return output_filepath
 
-    def get_daq_cmd(self, details):
+    def get_daq_cmd(self, details, output):
         cmd = details['cmd']
         if 'p' in details['flags']:
             if cmd.find(f'-p {self.platform}') < 0:
                 cmd += (' -p ' + repr(self.platform))
         if 'x' in details['flags']:
-            cmd = 'xterm -e ' + cmd 
+            if output:
+                cmd = f'xterm -l -lf {output} -e ' + cmd 
+            else:
+                cmd = 'xterm -e ' + cmd
         return cmd
 
     def write_output_header(self, output, node, job_name, details):
@@ -96,10 +100,9 @@ class SbatchManager:
                 if git_describe:
                     f.write("# GIT_DESCRIBE:%s\n" % git_describe)
 
-    def get_jobstep_cmd(self, job_name, details, het_group=-1, output=None):
-        output_opt = ''
-        if output:
-            output_opt = f"--output={output} --open-mode=append "
+    def get_jobstep_cmd(self, node, job_name, details, het_group=-1):
+        output = self.get_output_filepath(node, job_name)
+        output_opt = f"--output={output} --open-mode=append "
         env_opt = ''
         if details['env'] != '':
             env = details['env'].replace(" ", ",").strip("'")
@@ -108,7 +111,7 @@ class SbatchManager:
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
             
-        cmd = self.get_daq_cmd(details)
+        cmd = self.get_daq_cmd(details, output)
         if details['conda_env'] != '':
             CONDA_EXE = os.environ.get('CONDA_EXE','')
             loc_inst = CONDA_EXE.find('/inst')
@@ -121,7 +124,7 @@ class SbatchManager:
 
     def generate_as_step(self, sbjob):
         sb_script = "#!/bin/bash\n"
-        sb_script += f"#SBATCH --partition=anaq"+"\n"
+        sb_script += f"#SBATCH --partition={SLURM_PARTITION}"+"\n"
         sb_script += f"#SBATCH --job-name=main"+"\n"
         output = self.get_output_filepath(LOCALHOST, "slurm")
         sb_script += f"#SBATCH --output={output}"+"\n"
@@ -138,24 +141,20 @@ class SbatchManager:
                 # For one hetgroup, we don't need to specify hetgroup option
                 het_group_id = het_group
                 if len(sbjob) == 1: het_group_id = -1
-                sb_steps += self.get_jobstep_cmd(job_name, details, het_group=het_group_id, output=output)
+                sb_steps += self.get_jobstep_cmd(node, job_name, details, het_group=het_group_id)
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
+        print(self.sb_script)
 
     def generate(self, node, job_name, details):
         sb_script = "#!/bin/bash\n"
-        sb_script += f"#SBATCH --partition=anaq"+"\n"
+        sb_script += f"#SBATCH --partition={SLURM_PARTITION}"+"\n"
         sb_script += f"#SBATCH --job-name={job_name}"+"\n"
         
         if node == "localhost": node = LOCALHOST
         sb_script += f"#SBATCH --nodelist={node} --ntasks=1"+"\n"
         
-        output = self.get_output_filepath(node, job_name)
-        self.write_output_header(output, node, job_name, details)
-        sb_script += f"#SBATCH --output={output}"+"\n"
-        sb_script += f"#SBATCH --open-mode=append"+"\n"
-        
-        sb_script += self.get_jobstep_cmd(job_name, details)
+        sb_script += self.get_jobstep_cmd(node, job_name, details)
         sb_script += "wait"
         self.sb_script = sb_script
 
