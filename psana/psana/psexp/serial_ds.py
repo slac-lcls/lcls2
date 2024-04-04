@@ -23,6 +23,7 @@ class SerialDataSource(DataSourceBase):
         self.smd_fds = None
         
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
+        self.setup_psplot_live()
         self._setup_run()
         super()._start_prometheus_client()
 
