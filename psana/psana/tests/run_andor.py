@@ -24,7 +24,8 @@ ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',
         batch_size=1, 
         psmon_publish=publish,
         detectors=['timing','andor_vls','atmopal'],
-        max_events=3)
+        max_events=0,
+        live=True)
 
 
 # we will remove this for batch processing and use "psplot" instead
