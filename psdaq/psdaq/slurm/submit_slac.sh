@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --partition=anaq  
+#SBATCH --partition=drpq
 #SBATCH --job-name parallel   
 #SBATCH --output slurm-%j.out   
 #SBATCH -N1 -n3 --nodelist=drp-srcf-cmp035 
