@@ -42,6 +42,21 @@ class epixm320_raw_0_0_0(eb.epix_base):
         """not used in epixm"""
         return None
 
+
+    def _segment_ids(self):
+        """Re-impliment epix_base._segment_ids for epixm320
+        returns list of detector segment ids using ASIC numbers, e.g.
+        [00016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206-ASIC-00,
+         00016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206-ASIC-01,
+         00016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206-ASIC-02,
+         00016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206-ASIC-03]
+         for det.raw._uniqueid: epixm320_0016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206
+         and self._segment_numbers = [0, 1, 2, 3]
+        """
+        id = self._uniqueid.split('_')[1] # 0016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206
+        return ['%s-ASIC-%02d' % (id,i) for i in self._segment_numbers]
+
+
 #    def raw(self, evt) -> Array3d: # see in areadetector.py
 #        if evt is None: return None
 #        segs = self._segments(evt)    # dict = {seg_index: seg_obj}
