@@ -385,7 +385,7 @@ def user_to_expert(base, cfg, full=False):
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
-        rtp = cfg['user']['run_trigger_group']   # run trigger partition
+        rtp = ocfg['user']['run_trigger_group'] # run trigger partition
         for i,p in enumerate([rtp,group]):
             partitionDelay = getattr(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
             rawStart       = cfg['user']['start_ns']

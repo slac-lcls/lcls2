@@ -66,7 +66,7 @@ class epixm320_raw_0_0_0(eb.epix_base):
     def calib(self, evt) -> Array3d: # already defined in epix_base and AreaDetectorRaw
         """ TBD - when pedestals are availavle..."""
         #logger.debug('%s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
-        print('TBD: %s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
+        #print('TBD: %s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
         if evt is None: return None
         return self.raw(evt).astype(np.float32)
 
