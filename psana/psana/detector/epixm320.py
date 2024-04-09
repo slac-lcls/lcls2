@@ -7,6 +7,8 @@ import logging
 from psana.detector.detector_impl import DetectorImpl
 logger = logging.getLogger(__name__)
 
+M15 = 0o77777 # 15-bit mask
+B16 = 0o100000 # the 16-th bit (counting from 1)
 
 # make an empty detector interface for Matt's hardware
 # configuration object so that config_dump works - cpo
@@ -19,8 +21,8 @@ class epixm320_raw_0_0_0(eb.epix_base):
         logger.debug('epixm320_raw_0_0_0.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIXMASIC:V1')
-        self._data_bit_mask = eb.M14 # for epixm320 data on 2024-03-20 Dawood - M has 14 data bits.
-        self._data_gain_bit = eb.B15
+        self._data_bit_mask = M15 # for epixm320 data on 2024-03-20 Dawood - epixM has 15 data bits.
+        self._data_gain_bit = B16 # gain switching bit
         self._gain_bit_shift = 10
         self._gains_def = (41.0, 13.7, 0.512) # Revisit: epixhr2x2 ADU/keV H:M:L = 1 : 1/3 : 1/80
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixm320.data'
