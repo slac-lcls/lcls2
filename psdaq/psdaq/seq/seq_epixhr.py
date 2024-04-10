@@ -4,8 +4,11 @@ import math
 import argparse
 #from sequser import *
 from psdaq.configdb.tsdef import *
+from psdaq.seq.globals import *
 from psdaq.seq.seq import *
 from psdaq.seq.seqprogram import *
+import psdaq.seq.seqplot as seqp
+import numpy as np
 
 def auto_int(val):
     return int(val,0)
@@ -19,8 +22,9 @@ def main():
     parser.add_argument('--full', help='DAQ trigger at RUN trigger rate', action='store_true')
     parser.add_argument('--f360', help='DAQ trigger at 360 Hz', action='store_true')
     parser.add_argument('--minAC', help='Minimum 120H interval in 119MHz clocks', default=0x5088c, type=auto_int )
-    parser.add_argument('--pv' , help="XPM pv base", default='DAQ:NEH:XPM:7:SEQENG:2')
+    parser.add_argument('--pv' , help="XPM pv base (like DAQ:NEH:XPM:7:SEQENG:2)", required=True)
     parser.add_argument('--test', help="Calculate only", action='store_true')
+    parser.add_argument('--plot', help="Plot sequence", action='store_true')
     parser.add_argument('--verbose', help="Verbose", action='store_true')
     args = parser.parse_args()
 
@@ -67,6 +71,7 @@ def main():
     RUN = 0
     DAQ = 1
     PARENT = 2
+    TARGET = 3
     RUN_rate = int(rate)
     DAQ_rate = int(rate/args.daq) if args.daq else 360 if args.f360 else 120
     PARENT_rate = DAQ_rate
@@ -89,7 +94,7 @@ def main():
 
     if npretrig:
         if args.daq:
-            for i in range(npretrig,1,-1):
+            for i in range(npretrig,0,-1):
                 instrset.append(ControlRequest([RUN,DAQ,PARENT] if (i%args.daq)==0 else [RUN]))
                 instrset.append(FixedRateSync(marker='910kH',occ=spacing))
 
@@ -110,7 +115,7 @@ def main():
                 if npretrig>2:
                     instrset.append(Branch.conditional(line,counter=0,value=npretrig-2))
 
-    instrset.append(ControlRequest([RUN,DAQ,PARENT]))
+    instrset.append(ControlRequest([RUN,DAQ,PARENT,TARGET]))
 
     if nafter:
         if not args.daq or args.daq==1:
@@ -148,6 +153,33 @@ def main():
                 print(f'--- Timeout #{tmo}')
 
         print(f'--- Done: {"Success" if tmo<11 else "Fail"}')
+
+    if args.plot:
+
+        app = QtWidgets.QApplication([])
+        plot = seqp.PatternWaveform()
+
+        config = {'title':'epixhr','instrset':instrset,'descset':
+                  [f'{RUN_rate} Hz run trigger',
+                   f'{DAQ_rate} Hz daq trigger',
+                   f'{PARENT_rate} Hz parent group trigger']}
+
+        args_time = 0.01
+        seq = seqp.SeqUser(start=0,stop=int(args_time*TPGSEC),acmode=False)
+        seq.execute(config['title'],config['instrset'],config['descset'])
+        ydata = np.array(seq.ydata)
+        plot.add('epixhr', seq.xdata, ydata)
+
+        MainWindow = QtWidgets.QMainWindow()
+        centralWidget = QtWidgets.QWidget(MainWindow)
+        vb = QtWidgets.QVBoxLayout()
+        vb.addWidget(plot.gl)
+        centralWidget.setLayout(vb)
+        MainWindow.setCentralWidget(centralWidget)
+        MainWindow.updateGeometry()
+        MainWindow.show()
+        
+        app.exec_()
 
 if __name__ == '__main__':
     main()
