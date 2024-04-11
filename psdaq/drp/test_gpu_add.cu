@@ -29,6 +29,14 @@ void add3(int n, float *x, float *y)
     y[i] = x[i] + y[i];
 }
 
+__global__
+void add4(int n, float *x, float *y)
+{
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n)
+    y[i] = x[i] + y[i];
+}
+
 void try1(int n, float *x, float *y)
 {
   // initialize x and y arrays on the host
@@ -52,7 +60,7 @@ void try1(int n, float *x, float *y)
   float maxError = 0.0f;
   for (int i = 0; i < n; i++)
     maxError = fmax(maxError, fabs(y[i]-3.0f));
-  std::cout << "Max error: " << maxError << std::endl;
+  std::cout << "try1: Max error: " << maxError << std::endl;
 }
 
 void try2(int n, float *x, float *y)
@@ -80,7 +88,7 @@ void try2(int n, float *x, float *y)
   float maxError = 0.0f;
   for (int i = 0; i < n; i++)
     maxError = fmax(maxError, fabs(y[i]-3.0f));
-  std::cout << "Max error: " << maxError << std::endl;
+  std::cout << "try2: Max error: " << maxError << std::endl;
 }
 
 void try3(int n, float *x, float *y)
@@ -111,7 +119,35 @@ void try3(int n, float *x, float *y)
   float maxError = 0.0f;
   for (int i = 0; i < n; i++)
     maxError = fmax(maxError, fabs(y[i]-3.0f));
-  std::cout << "Max error: " << maxError << std::endl;
+  std::cout << "try3: Max error: " << maxError << std::endl;
+}
+
+void try4(int n, float *x, float *y)
+{
+  // initialize x and y arrays on the host
+  for (int i = 0; i < n; i++) {
+    x[i] = 1.0f;
+    y[i] = 2.0f;
+  }
+
+  int device = -1;
+  cudaGetDevice( &device );
+  cudaMemPrefetchAsync( x, n * sizeof( float ), device, 0 );
+  cudaMemPrefetchAsync( y, n * sizeof( float ), device, 0 );
+
+  // Run kernel on 1M elements on the GPU
+  int blockSize = 256;
+  int numBlocks = (n + blockSize - 1) / blockSize;
+  add4<<<numBlocks, blockSize>>>(n, x, y);
+
+  // Wait for GPU to finish before accessing on host
+  cudaDeviceSynchronize();
+
+  // Check for errors (all values should be 3.0f)
+  float maxError = 0.0f;
+  for (int i = 0; i < n; i++)
+    maxError = fmax(maxError, fabs(y[i]-3.0f));
+  std::cout << "try4: Max error: " << maxError << std::endl;
 }
 
 int main(void)
@@ -126,6 +162,7 @@ int main(void)
   for (unsigned i = 0; i < 10; ++i)  try1(N, x, y);
   for (unsigned i = 0; i < 10; ++i)  try2(N, x, y);
   for (unsigned i = 0; i < 10; ++i)  try3(N, x, y);
+  for (unsigned i = 0; i < 10; ++i)  try4(N, x, y);
 
   // Free memory
   cudaFree(x);
