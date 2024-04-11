@@ -3,7 +3,6 @@
 #include "EbEpoch.hh"
 #include "EbEvent.hh"
 
-#include "psdaq/service/Task.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdlib.h>
@@ -12,6 +11,10 @@
 
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
+
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
 
 using namespace XtcData;
 using namespace Pds;
@@ -23,10 +26,21 @@ using us_t = std::chrono::microseconds;
 static constexpr unsigned CLS = 64;     // Cache Line Size
 
 
+std::chrono::system_clock::duration Pds::Eb::latency(const TimeStamp& time)
+{
+    auto now = std::chrono::system_clock::now();  // Takes a long time!
+    auto dgt = std::chrono::seconds    { time.seconds() + POSIX_TIME_AT_EPICS_EPOCH }
+             + std::chrono::nanoseconds{ time.nanoseconds() };
+    std::chrono::system_clock::time_point tp{ std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt) };
+    return now - tp;
+}
+
+
 EventBuilder::EventBuilder(unsigned        timeout,
                            const unsigned& verbose) :
   _pending     (),
-  _eventTimeout(uint64_t(timeout) * 1000000ul), // Convert to ns
+  _eventTimeout(timeout ? uint64_t(timeout) * 1000000ul : // Convert to ns
+                std::chrono::system_clock::duration::max().count()),
   _tmoEvtCnt   (0),
   _fixupCnt    (0),
   _missing     (0),
@@ -36,6 +50,7 @@ EventBuilder::EventBuilder(unsigned        timeout,
   _ebTime      (0),
   _verbose     (verbose)
 {
+  printf("EventBuilder timeout is %u ms, %lu ns\n", timeout, _eventTimeout.count());
 }
 
 EventBuilder::~EventBuilder()
@@ -314,16 +329,17 @@ void EventBuilder::_fixup(EbEvent*             event,
   if (_fixupCnt + _tmoEvtCnt < 100)
   {
     const EbDgram* dg = event->creator();
-    printf("%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, tmo %ld ms\n",
+    printf("%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, latency %ld ms\n",
            age < _eventTimeout ? "Fixed-up" : "Timed-out",
            TransitionId::name(dg->service()), event->sequence(), event->_size,
            event->_remaining, dg->readoutGroups(), event->_contract,
            std::chrono::duration_cast<ms_t>(age).count(),
-           std::chrono::duration_cast<ms_t>(_eventTimeout).count());
+           std::chrono::duration_cast<ms_t>(latency(dg->time)).count());
     if (age < _eventTimeout)
-      printf("Flushed by %15s %014lx, size %5zu, with remaining %016lx, RoGs %04hx, contract %016lx\n",
+      printf("Flushed by %15s %014lx, size %5zu, with remaining %016lx, RoGs %04hx, contract %016lx, latency %ld ms\n",
              TransitionId::name(due->creator()->service()), due->sequence(),
-             due->_size, due->_remaining, dg->readoutGroups(), due->_contract);
+             due->_size, due->_remaining, dg->readoutGroups(), due->_contract,
+             std::chrono::duration_cast<ms_t>(latency(due->creator()->time)).count());
   }
 }
 

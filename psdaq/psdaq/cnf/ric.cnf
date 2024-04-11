@@ -2,8 +2,9 @@ if not platform: platform = '3'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 #epics_env = f'{ld_lib_path}'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
+#epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 #epics_env = '"EPICS_PVA_ADDR_LIST=172.21.159.255 127.0.0.1"'+' '+ld_lib_path
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.78 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
 manta_env = f'EPICS_PVA_ADDR_LIST=172.21.140.33 EPICS_PVA_AUTO_ADDR_LIST=NO {ld_lib_path}'
 hsd_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path
 im2k0_env = ld_lib_path
@@ -57,8 +58,12 @@ pv_cmd0  = task_set+' drp_pv '         +std_opts0
 pv_cmd1  = task_set+' drp_pv '         +std_opts1
 udp_cmd0 = task_set+' drp_udpencoder ' +std_opts0
 udp_cmd1 = task_set+' drp_udpencoder ' +std_opts1
-bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1'
-bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1'
+bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1 -k pva_addr=172.27.131.255'
+bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1 -k pva_addr=172.27.131.255'
+
+#  bld format is {name}+{type}+{pvname}
+gmd  = 'gmd+scbld+EM1K0:GMD:HPS'
+xgmd = 'xgmd+scbld+EM2K0:XGMD:HPS'
 
 elog_cfg = f'/cds/group/pcds/dist/pds/{hutch}/misc/elog_{hutch}.txt'
 
@@ -116,7 +121,7 @@ procmgr_config = [
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger2 -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-srcf-cmp030', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp030', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd} -k eb_timeout=0'},
 
 # {host: 'drp-srcf-cmp034', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 8 -q {ami_workers_per_node}'},
 # {host: 'drp-srcf-cmp034', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -t -R'},
@@ -127,14 +132,15 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp001', id:'timing_0',    flags:'spux', env:epics_env, cmd:f'{drp_cmd1} -l 0x2 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x8 -D ts -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
- {host: 'drp-srcf-cmp003', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-srcf-cmp003', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd0} -l 0x4 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp035', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
+ {host: 'drp-srcf-cmp003', id:'bld_0',       flags:'spux', env:epics_env, cmd:bld_cmd0+' -l 0x8 -D '+f'{gmd},{xgmd} -v'},
 
 # {host: 'drp-srcf-cmp028', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
- {host: 'drp-srcf-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
+# {host: 'drp-srcf-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
 
 # { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4 -L 5007'},  # Loopback
 # { host: 'drp-srcf-cmp002', id:'mono_encoder_0', flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x4'},
@@ -167,7 +173,7 @@ procmgr_config = [
 # { host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
 # { host: 'drp-srcf-cmp026', id:'tst_peppexopal_0', flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x4 -D opal'},
 
- {host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x4 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+# {host: 'drp-srcf-cmp001', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd0+' -l 0x4 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 # {host: 'drp-srcf-cmp020', id:'im2k0_0',     flags:'spux', env:im2k0_env, cmd:pva_cmd1+' -l 0x8 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 # {host: 'drp-srcf-cmp001', id:'imNkM_0',     flags:'spu', env:imNkM_env, cmd:pva_cmd1+f' -l 0x8 -k pebbleBufSize={3*8400000} im5k4=IM5K4:PPM:CAM:DATA1:Pva:Image im6k4=IM6K4:PPM:CAM:DATA1:Pva:Image sp1k4=SP1K4:PPM:CAM:DATA1:Pva:Image'},
 

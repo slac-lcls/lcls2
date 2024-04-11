@@ -383,7 +383,7 @@ static json createPulseIdMsg(uint64_t pulseId)
 Meb::Meb(const MebParams&        prms,
          ZmqContext&             context,
          const MetricExporter_t& exporter) :
-  EbAppBase    (prms, exporter, "MEB", EB_TMO_MS),
+  EbAppBase    (prms, exporter, "MEB"),
   _pidPrv      (0),
   _latPid      (0),
   _latency     (0),
@@ -648,11 +648,7 @@ void Meb::process(EbEvent* event)
   }
 
   if (!dgram->isEvent() || (dgram->pulseId() - _latPid > 13000000/14)) {
-    auto now = std::chrono::system_clock::now();
-    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-    tp_t tp   {std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    _latency = std::chrono::duration_cast<us_t>(now - tp).count();
+    _latency = std::chrono::duration_cast<us_t>(latency(dgram->time)).count();
     _latPid = dgram->pulseId();
   }
 
@@ -1171,6 +1167,7 @@ int main(int argc, char** argv)
     if (kwargs.first == "ep_fabric")    continue;
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
+    if (kwargs.first == "eb_timeout")   continue; // EbAppBase
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;

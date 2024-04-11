@@ -37,8 +37,7 @@ namespace Pds {
     public:
       EbAppBase(const EbParams& prms,
                 const MetricExporter_t&,
-                const std::string& pfx,
-                const unsigned msTimeout);
+                const std::string& pfx);
       virtual ~EbAppBase();
     public:
       int              resetCounters();

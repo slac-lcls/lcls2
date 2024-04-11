@@ -198,7 +198,7 @@ using namespace Pds::Eb;
 
 Teb::Teb(const EbParams&         prms,
          const MetricExporter_t& exporter) :
-  EbAppBase     (prms, exporter, "TEB", EB_TMO_MS),
+  EbAppBase     (prms, exporter, "TEB"),
   _mrqTransport (prms.verbose, prms.kwargs),
   _batch        {nullptr, 0, 0},
   //_trimmed      (0),
@@ -670,18 +670,17 @@ void Teb::process(EbEvent* event)
   }
   else
   {
-    logging::error("%s:\n  Wrong flags %u in immediate data: "
-                   "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
-                   __PRETTY_FUNCTION__, ImmData::flg(imm),
-                   pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
+    // We can legitimately get here for timed-out/fixed-up events that are
+    // comprised of contributions from non-common RoG contributors
+    if (!event->remaining())
+      logging::error("%s:\n  Wrong flags %u in immediate data: "
+                     "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
+                     __PRETTY_FUNCTION__, ImmData::flg(imm),
+                     pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
   }
 
   if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
-    auto now = std::chrono::system_clock::now();  // Takes a long time!
-    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    _latency = std::chrono::duration_cast<us_t>(now - tp).count();
+    _latency = std::chrono::duration_cast<us_t>(latency(dgram->time)).count();
     _latPid = dgram->pulseId();
   }
 }
@@ -1424,6 +1423,7 @@ int main(int argc, char **argv)
     if (kwargs.first == "ep_provider")  continue;
     if (kwargs.first == "script_path")  continue;
     if (kwargs.first == "mon_throttle") continue;
+    if (kwargs.first == "eb_timeout")   continue; // EbAppBase
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
