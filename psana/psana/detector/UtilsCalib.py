@@ -63,6 +63,7 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
 def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
     """Returns (str) tstamp_run, tstamp_now#, e.g. (str) 20201209191018, 20201217140026
     """
+    trun_sec = int(trun_sec)
     ts_run = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=trun_sec)
     ts_now = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None)
     return ts_run, ts_now
@@ -171,7 +172,7 @@ class DarkProc():
 
 
     def accumulate_block(self, raw):
-        self.block[self.irec,:] = raw # & M14 is not applied
+        self.block[self.irec,:] = raw
 
 
     def proc_block(self):
@@ -566,7 +567,7 @@ def pedestals_calibration(parser):
 
     runtstamp = orun.timestamp    # 4193682596073796843 relative to 1990-01-01
     trun_sec = up.seconds(runtstamp) # 1607569818.532117 sec
-    ts_run, ts_now = tstamps_run_and_now(trun_sec)
+    ts_run, ts_now = tstamps_run_and_now(int(trun_sec))
 
     for istep,step in enumerate(orun.steps()):
       nsteptot += 1
