@@ -124,9 +124,7 @@ class Pgp : public PgpReader
 public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
-    Pds::EbDgram* next(uint32_t& evtIndex); // Slow case
-    //  Returns NULL if earliest received data is already later than requested data
-    Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex); // Non-Slow case
+    const Pds::TimingHeader* next();
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
@@ -145,7 +143,6 @@ private:
     int32_t                                    m_available;
     int32_t                                    m_current;
     unsigned                                   m_nodeId;
-    uint64_t                                   m_next;
     uint64_t                                   m_nDmaRet;
     enum TmoState { None, Started, Finished };
     TmoState                                   m_tmoState;
