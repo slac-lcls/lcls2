@@ -71,11 +71,9 @@ class SbatchManager:
                 self.output_prefix_datetime + '_' + node + ':' + job_name + '.log')
         return output_filepath
 
-    def get_daq_cmd(self, details, output):
+    def get_daq_cmd(self, details, output, job_name):
         cmd = details['cmd']
-        if 'p' in details['flags']:
-            if cmd.find(f'-p {self.platform}') < 0:
-                cmd += (' -p ' + repr(self.platform))
+        cmd += f' -p {repr(self.platform)} -u {job_name}'
         if 'x' in details['flags']:
             if output:
                 cmd = f'xterm -l -lf {output} -e ' + cmd 
@@ -104,19 +102,21 @@ class SbatchManager:
         output = self.get_output_filepath(node, job_name)
         output_opt = f"--output={output} --open-mode=append "
         env_opt = ''
-        if details['env'] != '':
-            env = details['env'].replace(" ", ",").strip("'")
-            env_opt = f"--export=ALL,{env} "
+        if 'env' in details:
+            if details['env'] != '':
+                env = details['env'].replace(" ", ",").strip("'")
+                env_opt = f"--export=ALL,{env} "
         het_group_opt = ''
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
             
-        cmd = self.get_daq_cmd(details, output)
-        if details['conda_env'] != '':
-            CONDA_EXE = os.environ.get('CONDA_EXE','')
-            loc_inst = CONDA_EXE.find('/inst')
-            conda_profile = os.path.join(CONDA_EXE[:loc_inst],'inst','etc','profile.d','conda.sh')
-            cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
+        cmd = self.get_daq_cmd(details, output, job_name)
+        if 'conda_env' in details:
+            if details['conda_env'] != '':
+                CONDA_EXE = os.environ.get('CONDA_EXE','')
+                loc_inst = CONDA_EXE.find('/inst')
+                conda_profile = os.path.join(CONDA_EXE[:loc_inst],'inst','etc','profile.d','conda.sh')
+                cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
         
         jobstep_cmd = f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} bash -c '{cmd}'" + "& \n"
         return jobstep_cmd
@@ -144,7 +144,6 @@ class SbatchManager:
                 sb_steps += self.get_jobstep_cmd(node, job_name, details, het_group=het_group_id)
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
-        print(self.sb_script)
 
     def generate(self, node, job_name, details):
         sb_script = "#!/bin/bash\n"

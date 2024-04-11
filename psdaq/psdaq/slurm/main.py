@@ -17,7 +17,8 @@ import copy
 import socket
 from psdaq.slurm.utils import SbatchManager
 from psdaq.slurm.db import DbHelper, DbHistoryStatus, DbHistoryColumns
-from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform
+import os, sys
+from psdaq.slurm.config import Config
 
 
 sbman = SbatchManager()
@@ -27,29 +28,43 @@ LOCALHOST = socket.gethostname()
 
 
 class Runner():
-    def __init__(self, cnf_file):
-        self.platform = deduce_platform(cnf_file)
-        sbman.set_attr('platform', self.platform)
-        self.procmgr = ProcMgr(cnf_file, self.platform)
+    def __init__(self, configfilename):
+        # Allowing users' code to do relative 'import'
+        sys.path.append(os.path.dirname(configfilename))
+        config_dict = {'platform': None, 'config': None}
+        try:
+            exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, config_dict)
+        except:
+            print('Error parsing configuration file:', sys.exc_info()[1])
+        self.platform = config_dict['platform']
+        # Check if we are getting main or derived config file
+        if config_dict['config'] is None:
+            config = Config(config_dict['main_config'])
+            self.config = config.main_config
+        else:
+            self.config = config_dict['config'].select_config
 
-    def parse_cnf(self):
+        sbman.set_attr('platform', self.platform)
+
+    def parse_config(self):
         """ Extract commands from the cnf file """
         data = {}
-        for key, val in self.procmgr.d.items():
-            node, job_name = key.split(":")
-            if node == "localhost": node = LOCALHOST
-            _, _, cmd, _, _, flags, _, conda_env, env, _ = val
+        for config_id, config_detail in self.config.items():
+            if 'host' in config_detail:
+                node = config_detail['host']
+            else:
+                node = LOCALHOST
             if node not in data:
                 job_details = {}
-                job_details[job_name] = {"cmd": cmd, "flags": flags, "conda_env": conda_env, "env": env}  
+                job_details[config_id] = config_detail
                 data[node] = job_details
             else:
-                job_details = data[node] 
-                if job_name in job_details:
-                    msg = f"Error: cannot create more than one {job_name} on {node}"
-                    raise NameError('HiThere')
+                job_details = data[node]
+                if config_id in job_details:
+                    msg = f"Error: cannot create more than one {config_id} on {node}"
+                    raise NameError(msg)
                 else:
-                    job_details[job_name] = {"cmd": cmd, "flags": flags, "conda_env": conda_env, "env": env}
+                    job_details[config_id] = config_detail
         return data
 
     def list_jobs(self):
@@ -84,7 +99,7 @@ def main(subcommand: str,
         ):
     global runner
     runner = Runner(cnf_file)
-    sbjob = runner.parse_cnf()
+    sbjob = runner.parse_config()
     if as_step:
         sbman.generate_as_step(sbjob)
         runner.submit()
