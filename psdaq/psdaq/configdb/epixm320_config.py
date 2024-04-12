@@ -389,10 +389,11 @@ def user_to_expert(base, cfg, full=False):
         for i,p in enumerate([rtp,group]):
             partitionDelay = getattr(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
             rawStart       = cfg['user']['start_ns']
-            triggerDelay   = int(rawStart*base['clk_period'] - partitionDelay*base['msg_period'])
+            triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
             logging.warning(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
             if triggerDelay < 0:
                 logging.error(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
+                logging.error('Raise start_ns >= {:}'.format(partitionDelay*base['msg_period']*base['clk_period']))
                 raise ValueError('triggerDelay computes to < 0')
 
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[{i}].TriggerDelay']=triggerDelay
