@@ -18,8 +18,8 @@ def main():
              'scantype':args.scantype}
     def steps():
         for i,value in enumerate(np.arange(*aargs)):
-            d[f'{args.detname}:user.start_ns'] = int(value)
-            metad['step'] = i
+            d['f{args.detname}:user.start_ns'] = value
+            metad['step'] = value
             yield (d, value, json.dumps(metad))
 
     scan.run(keys,steps)

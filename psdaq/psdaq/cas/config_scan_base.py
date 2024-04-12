@@ -157,7 +157,7 @@ class ConfigScanBase(object):
 
         for step in steps():
             # update
-            scan.update(value=scan.step_count())
+            scan.update(value=step[1])
 
             my_step_data = {}
             for motor in scan.getMotors():
