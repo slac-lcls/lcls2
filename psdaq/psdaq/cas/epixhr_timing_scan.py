@@ -5,7 +5,7 @@ import json
 def main():
 
     aargs = [('--linear',{'type':int,'nargs':3,'help':'linear scan over range [0]:[1] in steps of [2]'})]
-    scan = ConfigScanBase(aargs)
+    scan = ConfigScanBase(aargs, scantype='timing')
 
     args = scan.args
 
@@ -15,7 +15,7 @@ def main():
     aargs = args.linear if args.linear else (107700,1107700,100000)
     d = {}
     metad = {'detname':args.detname,
-             'scantype':'timing'}
+             'scantype':args.scantype}
     def steps():
         for i,value in enumerate(np.arange(*aargs)):
             d[f'{args.detname}:user.start_ns'] = int(value)

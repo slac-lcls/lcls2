@@ -3,7 +3,7 @@ import json
 
 def main():
 
-    scan = ConfigScanBase()
+    scan = ConfigScanBase(scantype='pedestal')
 
     args = scan.args
     args.scantype = 'pedestal'
@@ -15,7 +15,7 @@ def main():
     def steps():
         d = {}
         metad = {'detname':args.detname,
-                 'scantype':'pedestal'}
+                 'scantype':args.scantype}
         for gain in range(3):
             d[f'{args.detname}:user.gain_mode'] = int(gain)
             metad['gain_mode'] = gain_mode_map(gain)
