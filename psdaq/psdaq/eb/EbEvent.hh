@@ -45,7 +45,7 @@ namespace Pds {
       const Pds::EbDgram*  const* begin()   const;
       const Pds::EbDgram** const  end()     const;
     public:
-      void     dump(int number);
+      void     dump(unsigned detail, int number);
     private:
       friend class EventBuilder;
     private:

@@ -322,9 +322,6 @@ void EventBuilder::_fixup(EbEvent*             event,
   }
   while (remaining);
 
-  if (age < _eventTimeout)  ++_fixupCnt;
-  else                      ++_tmoEvtCnt;
-
   //if (_verbose >= VL_EVENT)
   if (_fixupCnt + _tmoEvtCnt < 100)
   {
@@ -341,6 +338,9 @@ void EventBuilder::_fixup(EbEvent*             event,
              due->_size, due->_remaining, dg->readoutGroups(), due->_contract,
              std::chrono::duration_cast<ms_t>(latency(due->creator()->time)).count());
   }
+
+  if (age < _eventTimeout)  ++_fixupCnt;
+  else                      ++_tmoEvtCnt;
 }
 
 void EventBuilder::_retire(EbEpoch* epoch, EbEvent* event)
@@ -567,19 +567,21 @@ void EventBuilder::dump(unsigned detail) const
 {
   printf("\nEvent builder dump:\n");
 
-  if (detail)
-  {
-    const EbEpoch* const last  = _pending.empty();
-    EbEpoch*             epoch = _pending.forward();
+  const EbEpoch* const last  = _pending.empty();
+  EbEpoch*             epoch = _pending.forward();
 
-    if (epoch != last)
+  if (epoch != last)
+  {
+    if (detail)
     {
       int number = 1;
-      do epoch->dump(number++); while (epoch = epoch->forward(), epoch != last);
+      do epoch->dump(detail, number++); while (epoch = epoch->forward(), epoch != last);
     }
     else
-      printf(" Event Builder has no pending events...\n");
+      epoch->dump(detail, 0);
   }
+  else
+    printf(" Event Builder has no pending events...\n");
 
   printf("Event Builder epoch pool:\n");
   _epochFreelist->dump();

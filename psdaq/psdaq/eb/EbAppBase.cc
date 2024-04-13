@@ -113,8 +113,6 @@ void EbAppBase::disconnect()
 
 void EbAppBase::unconfigure()
 {
-  if (!_links.empty())                  // Avoid dumping again if already done
-    EventBuilder::dump(0);
   EventBuilder::clear();
 }
 
@@ -467,7 +465,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   event->damage(Damage::DroppedContribution);
 
-  if (fixupCnt() < 100)
+  if (fixupCnt() + timeoutCnt() < 100)
   {
     logging::warning("Fixup %s, %014lx, size %zu, source %d (%s)",
                      TransitionId::name(event->creator()->service()),

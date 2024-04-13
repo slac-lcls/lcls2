@@ -19,7 +19,7 @@ namespace Pds {
       EbEpoch(uint64_t key, EbEpoch* after);
       ~EbEpoch();
     public:
-      void dump(int number);
+      void dump(unsigned detail, int number);
     public:
       LinkedList<EbEvent> pending;    // Listhead, events pending;
       uint64_t            key;        // Epoch sequence number

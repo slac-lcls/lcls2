@@ -474,6 +474,8 @@ void Teb::run()
   uint64_t immData;
   while (_mrqTransport.poll(&immData) > 0);
 
+  EventBuilder::dump(0);
+
   //_tbDump();
 
   logging::info("TEB thread finished");
@@ -530,7 +532,7 @@ void Teb::process(EbEvent* event)
   if (UNLIKELY(_prms.verbose >= VL_DETAILED))
   {
     printf("Teb::process event dump:\n");
-    event->dump(_trCount + _eventCount);
+    event->dump(1, _trCount + _eventCount);
   }
 
   const EbDgram* dgram = event->creator();

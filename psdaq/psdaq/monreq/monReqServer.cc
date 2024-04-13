@@ -551,6 +551,8 @@ void Meb::run()
     rcPrv = rc;
   }
 
+  EventBuilder::dump(0);
+
   logging::info("MEB thread finished");
 }
 
@@ -558,9 +560,8 @@ void Meb::process(EbEvent* event)
 {
   if (_prms.verbose >= VL_DETAILED)
   {
-    static unsigned cnt = 0;
     printf("Meb::process event dump:\n");
-    event->dump(++cnt);
+    event->dump(1, _trCount + _eventCount);
   }
 
   const EbDgram* dgram = event->creator();
@@ -614,7 +615,7 @@ void Meb::process(EbEvent* event)
     printf("Directory datagram pool\n");
     _pool->dump();
     printf("Meb::process event dump:\n");
-    event->dump(-1);
+    event->dump(1, -1);
     abort();
   }
 
