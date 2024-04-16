@@ -762,8 +762,12 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 
         if (timingHeader) {
             if (timingHeader->service()!=XtcData::TransitionId::L1Accept) {     //  Handle immediately
-
                 Pds::EbDgram* dgram = _handle(index);
+                if (!dgram) {
+                    m_current++;
+                    timingHeader = 0;
+                    continue;
+                }
 
                 // Find the transition dgram in the pool and initialize its header
                 Pds::EbDgram* trDgram = m_drp.pool.transitionDgrams[index];
@@ -780,7 +784,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 switch (dgram->service()) {
                 case XtcData::TransitionId::Configure: {
                     logging::info("BLD configure");
-                    
+                        
                     // Revisit: This is intended to be done by BldDetector::configure()
                     for(unsigned i=0; i<m_config.size(); i++) {
                         XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
@@ -800,6 +804,11 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             }
             else if (ttv < tts) {  // Handle if old enough
                 Pds::EbDgram* dgram = _handle(index);
+                if (!dgram) {
+                    m_current++;
+                    timingHeader = 0;
+                    continue;
+                }
                 const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
                 bool lMissed = false;
                 for(unsigned i=0; i<m_config.size(); i++) {
