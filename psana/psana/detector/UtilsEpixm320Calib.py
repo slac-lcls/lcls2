@@ -156,12 +156,17 @@ def pedestals_calibration(parser):
                                      (ievt, orun.runnum, istep))
       if True:
           dpo.summary()
-          ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
-          consts = arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
-          logger.info('evaluated constants: \n  %s\n  %s\n  %s' % (
+          #ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
+          ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
+          arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
+          arr_max, arr_min = dpo.constants_max_min()
+          consts = arr_av1, arr_rms, arr_sta, arr_max, arr_min
+          logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
                       info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
                       info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
-                      info_ndarr(arr_sta, 'arr_sta', first=0, last=5)))
+                      info_ndarr(arr_sta, 'arr_sta', first=0, last=5),\
+                      info_ndarr(arr_max, 'arr_max', first=0, last=5),\
+                      info_ndarr(arr_min, 'arr_min', first=0, last=5)))
           dic_consts = dict(zip(ctypes, consts))
           gainmode = gain_mode(odet, metadic, istep) # nsteptot)
           kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
@@ -188,8 +193,7 @@ def pedestals_calibration(parser):
              +'\n  created  for gain modes: %s' % str(gainmodes)\
              +'\n  expected for gain modes: %s' % str(odet.raw._gain_modes))
 
-  ctypes = ('pedestals', 'pixel_rms', 'pixel_status')
-
+  ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
   deploy_constants(ctypes, gainmodes, **kwa_depl)
 
   logger.debug('run/step/event loop is completed')
@@ -300,10 +304,14 @@ def save_constants_in_repository(dic_consts, **kwa):
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
+    fmt_max    = kwa.get('fmt_max', '%i')
+    fmt_min    = kwa.get('fmt_min', '%i')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
+                 'pixel_max'   : fmt_max,
+                 'pixel_min'   : fmt_min,
                  'status_extra': fmt_status}
 
     if repoman is None:
@@ -358,10 +366,14 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
+    fmt_max    = kwa.get('fmt_max', '%i')
+    fmt_min    = kwa.get('fmt_min', '%i')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
+                 'pixel_max'   : fmt_max,
+                 'pixel_min'   : fmt_min,
                  'status_extra': fmt_status}
 
     if repoman is None:
