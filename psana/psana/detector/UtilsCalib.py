@@ -163,7 +163,7 @@ class DarkProc():
         self.rms_hi = kwa.get('rms_hi', 16000)   # rms ditribution high
         self.rmsnlo = kwa.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
         self.rmsnhi = kwa.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
-        self.datbits= kwa.get('datbits', 0x3fff) # data bits 0x3fff is 14-bit mask for epix10ka and Jungfrau
+        self.datbits= kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
 
         self.status = 0 # 0/1/2 stage
         self.kwa    = kwa
@@ -211,7 +211,7 @@ class DarkProc():
         self.gate_lo    = np.maximum(self.arr1 * self.int_lo, self.gate_lo)
 
         self.arr_max    = np.zeros(shape_raw, dtype=dtype_raw)
-        self.arr_min    = np.ones (shape_raw, dtype=dtype_raw) * 0xffff
+        self.arr_min    = np.ones (shape_raw, dtype=dtype_raw) * self.datbits
 
 
     def summary(self):
@@ -296,7 +296,7 @@ class DarkProc():
 
     def add_event(self, raw, irec):
         logger.debug(info_ndarr(raw, 'add_event %3d raw' % irec))
-        _raw = raw & self.datbits # use data bits only (14 for jungfrau and epix10ka)
+        _raw = raw & self.datbits # use data bits only 16-bit default (should be 14 for jungfrau and epix10ka)
         _raw_f64 = _raw.astype(np.float64)
 
         cond_lo = _raw<self.gate_lo
@@ -385,6 +385,9 @@ class DarkProc():
     def constants_av1_rms_sta(self):
         return self.arr_av1, self.arr_rms, self.arr_sta
 
+    def constants_max_min(self):
+        return self.arr_max, self.arr_min
+
 
 def plot_image(nda, tit=''):
     """Plots averaged image"""
@@ -464,10 +467,14 @@ def deploy_constants(dic_consts, **kwa):
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
+    fmt_max    = kwa.get('fmt_max', '%i')
+    fmt_min    = kwa.get('fmt_min', '%i')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
+#                 'pixel_max'   : fmt_max,
+#                 'pixel_min'   : fmt_min,
                  'status_extra': fmt_status}
 
     if repoman is None:
@@ -640,12 +647,19 @@ def pedestals_calibration(parser):
                                      (ievt, orun.runnum, istep))
       if True:
           dpo.summary()
+          #ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
           ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
-          consts = arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
-          logger.info('evaluated constants: \n  %s\n  %s\n  %s' % (
+          arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
+          arr_max, arr_min = dpo.constants_max_min()
+          #consts = (arr_av1, arr_rms, arr_sta, arr_max, arr_min)
+          consts = (arr_av1, arr_rms, arr_sta)
+
+          logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
                       info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
                       info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
-                      info_ndarr(arr_sta, 'arr_sta', first=0, last=5)))
+                      info_ndarr(arr_sta, 'arr_sta', first=0, last=5),\
+                      info_ndarr(arr_max, 'arr_max', first=0, last=5),\
+                      info_ndarr(arr_min, 'arr_min', first=0, last=5)))
           dic_consts = dict(zip(ctypes, consts))
           kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
           kwa_depl['repoman'] = repoman
