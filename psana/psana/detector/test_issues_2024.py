@@ -201,9 +201,32 @@ def issue_2024_04_16():
     print('geo:', det.raw._det_geo())
     print(info_ndarr(det.raw._pedestals(), 'peds'))
     print(info_ndarr(det.raw._rms(), 'rms'))
-    print(info_ndarr(det.raw._status(), 'peds'))
+    print(info_ndarr(det.raw._status(), 'status'))
 
+def issue_2024_04_17():
+    """
+       ssh -Y drp-neh-cmp001
+       datinfo -k exp=tstx00417,run=324,dir=/drpneh/data/tst/tstx00417/xtc -d epixm
+       epixm320_dark_proc -k exp=tstx00417,run=324,dir=/drpneh/data/tst/tstx00417/xtc/ -d epixm -o ./work -D
+    """
+    from psana import DataSource
+    import sys
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
 
+    ds = DataSource(exp='tstx00417',run=324,dir='/drpneh/data/tst/tstx00417/xtc/')
+    orun = next(ds.runs())
+    det = orun.Detector('epixm')
+    #evt = next(orun.events())
+    for nevt,evt in enumerate(orun.events()):
+        raw = det.raw.raw(evt)
+        print(info_ndarr(raw, 'raw  ', first=1000, last=1005))
+        calib = det.raw.calib(evt)
+        print(info_ndarr(calib, 'calib', first=1000, last=1005))
+        peds = det.raw._pedestals()
+        print(info_ndarr(peds, 'peds', first=1000, last=1005))
+
+        if nevt>3: break
 
 def argument_parser():
     from argparse import ArgumentParser
@@ -246,6 +269,7 @@ def selector():
     elif TNAME in  ('5',): issue_2024_03_26() # generate and save text ndarray
     elif TNAME in  ('6',): issue_2024_04_02() # junk.py from Chris and Ric
     elif TNAME in  ('7',): issue_2024_04_16() # first access epixm320 pedestals, pixel_status, pixel_rms
+    elif TNAME in  ('8',): issue_2024_04_17() # epixm320 calib method
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
