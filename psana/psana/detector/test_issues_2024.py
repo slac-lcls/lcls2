@@ -213,20 +213,21 @@ def issue_2024_04_17():
     import sys
     from psana.detector.NDArrUtils import info_ndarr
     from psana.detector.UtilsGraphics import gr, fleximage
+    from psana.detector.UtilsEpixm320Calib import gain_mode_name
 
     ds = DataSource(exp='tstx00417',run=324,dir='/drpneh/data/tst/tstx00417/xtc/')
     orun = next(ds.runs())
     det = orun.Detector('epixm')
     #evt = next(orun.events())
-    for nevt,evt in enumerate(orun.events()):
-        raw = det.raw.raw(evt)
-        print(info_ndarr(raw, 'raw  ', first=1000, last=1005))
-        calib = det.raw.calib(evt)
-        print(info_ndarr(calib, 'calib', first=1000, last=1005))
-        peds = det.raw._pedestals()
-        print(info_ndarr(peds, 'peds', first=1000, last=1005))
-
-        if nevt>3: break
+    for nstep,step in enumerate(orun.steps()):
+      print('\n=============== step %d config gain mode: %s' % (nstep, gain_mode_name(det)))
+      for nevt,evt in enumerate(step.events()):
+        s = '  == evt %d' % nevt
+        s += info_ndarr(det.raw.raw(evt), '\n  raw  ', first=1000, last=1005)
+        s += info_ndarr(det.raw._pedestals(), '\n peds ', first=1000, last=1005)
+        s += info_ndarr(det.raw.calib(evt), '\n  calib', first=1000, last=1005)
+        print(s)
+        if nevt>1: break
 
 def argument_parser():
     from argparse import ArgumentParser
