@@ -202,6 +202,19 @@ def pedestals_calibration(parser):
   sys.exit('TEST EXIT see commented deploy_constants')
 
 
+def gain_mode_name(odet, asic=0):
+    """for epixm320 returns 'AHL'=AUTO, 'SH'=HIGH, 'SL'=LOW, or None from detector configuration object
+       See: https://confluence.slac.stanford.edu/display/PSDM/EPIXM
+    """
+    if odet.raw._dettype != 'epixm320': return None
+    cfg = odet.raw._config_object()[0].config
+    comp = cfg.CompTH_ePixM[asic]
+    preq = cfg.Precharge_DAC_ePixM[asic]
+    #print('YYY:', comp, preq)
+    return {0:'SH', 12:'AHL'}.get(comp, None) if preq == 45 else\
+           'SL' if preq == 50 and comp == 63 else\
+           None
+
 
 def gain_mode(odet, metadic, nstep):
     """gain mode potential check using step, metadata from docstring, and config.
