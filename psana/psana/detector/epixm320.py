@@ -1,10 +1,10 @@
 import os
 import sys
-from time import time
+#from time import time
+#from psana.detector.NDArrUtils import info_ndarr
 import numpy as np
 from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
-from psana.detector.NDArrUtils import info_ndarr
 import logging
 from psana.detector.detector_impl import DetectorImpl
 logger = logging.getLogger(__name__)
@@ -75,25 +75,25 @@ class epixm320_raw_0_0_0(eb.epix_base):
         #print('TBD: %s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
         if evt is None: return None
 
-        t0_sec = time()
+        #t0_sec = time()
         raw = self.raw(evt)
 
         # Subtract pedestals
         peds = self._pedestals()
         if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)'):
             return raw
-        print(info_ndarr(peds,'XXX peds', first=1000, last=1005))
+        #print(info_ndarr(peds,'XXX peds', first=1000, last=1005))
 
         gr1 = (raw & self._data_gain_bit) > 0
 
-        print(info_ndarr(gr1,'XXX gr1', first=1000, last=1005))
+        #print(info_ndarr(gr1,'XXX gr1', first=1000, last=1005))
         pedgr = np.select((gr1,), (peds[1,:],), default=peds[0,:])
         arrf = np.array(raw & self._data_bit_mask, dtype=np.float32)
         arrf -= pedgr
 
-        print('XXX time for calib: %.6f sec' % (time()-t0_sec)) # 4ms on drp-neh-cmp001
+        #print('XXX time for calib: %.6f sec' % (time()-t0_sec)) # 4ms on drp-neh-cmp001
 
-        return arrf # raw.astype(np.float32)
+        return arrf
 
 
 #    def image(self, evt, **kwargs) -> Array2d: # see in areadetector.py
