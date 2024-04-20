@@ -8,8 +8,6 @@ CONFIGDIR = '/cds/home/m/monarin/lcls2/psdaq/psdaq/slurm'
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = f'{ld_lib_path}'
 
-collect_host = 'drp-srcf-cmp035'
-
 groups = platform+' 1'
 hutch, user = ('tst', 'tstopr')
 auth = ' --user {:} '.format(user)
@@ -30,7 +28,7 @@ directIO = 'directIO=yes'
 scripts  = f'script_path={trig_dir}'
 #network  = 'ep_provider=sockets,ep_domain=eno1'
 
-std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
+std_opts = f'-P {hutch} -M {prom_dir}' # -k {network}'
 std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}'
 std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO}'
 
@@ -82,11 +80,11 @@ main_config = [
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
- {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
+ {id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ {                         id:'control_gui', flags:'p',                  cmd:f'control_gui --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-srcf-cmp035', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
- {host: 'drp-srcf-cmp035', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
+ {id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
+ {id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 ]
 
 #

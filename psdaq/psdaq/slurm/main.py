@@ -18,6 +18,7 @@ import socket
 from psdaq.slurm.utils import SbatchManager
 from psdaq.slurm.db import DbHelper, DbHistoryStatus, DbHistoryColumns
 import os, sys
+import subprocess
 from psdaq.slurm.config import Config
 
 
@@ -29,7 +30,7 @@ LOCALHOST = socket.gethostname()
 
 class Runner():
     def __init__(self, configfilename):
-        # Allowing users' code to do relative 'import'
+        # Allowing users' code to do relative 'import' in config file
         sys.path.append(os.path.dirname(configfilename))
         config_dict = {'platform': None, 'config': None}
         try:
@@ -46,26 +47,68 @@ class Runner():
 
         sbman.set_attr('platform', self.platform)
 
+    def get_node_features(self):
+        output = subprocess.check_output(["sinfo", "-N", "-h", "-o", '"%N %f"'])
+        lines = output.decode('utf-8').splitlines()
+        node_features = {}
+        for line in lines:
+            node, features = line.strip('"').split()
+            node_features[node] = {feature: 0 for feature in features.split(',')}
+        return node_features
+
     def parse_config(self):
         """ Extract commands from the cnf file """
-        data = {}
+        use_feature = True
         for config_id, config_detail in self.config.items():
             if 'host' in config_detail:
-                node = config_detail['host']
-            else:
-                node = LOCALHOST
-            if node not in data:
-                job_details = {}
-                job_details[config_id] = config_detail
-                data[node] = job_details
-            else:
-                job_details = data[node]
-                if config_id in job_details:
-                    msg = f"Error: cannot create more than one {config_id} on {node}"
+                use_feature = False
+
+        data = {}
+        if use_feature:
+            node_features = self.get_node_features()
+        else:
+            node_features = None
+        for config_id, config_detail in self.config.items():
+            if use_feature:
+                found_feature = False
+                for node, features in node_features.items():
+                    for feature, occupied in features.items():
+                        if occupied: continue
+                        if config_id == feature:
+                            node_features[node][feature] = 1
+                            found_feature = True
+                            if node not in data:
+                                job_details = {}
+                                job_details[config_id] = config_detail
+                                data[node] = job_details
+                            else:
+                                job_details = data[node]
+                                if config_id in job_details:
+                                    msg = f"Error: cannot create more than one {config_id} on {node}"
+                                    raise NameError(msg)
+                                else:
+                                    job_details[config_id] = config_detail
+                            break
+                if not found_feature:
+                    msg = f"Error: cannot locate feature for {config_id}"
                     raise NameError(msg)
+            else:
+                if 'host' in config_detail:
+                    node = config_detail['host']
                 else:
+                    node = LOCALHOST
+                if node not in data:
+                    job_details = {}
                     job_details[config_id] = config_detail
-        return data
+                    data[node] = job_details
+                else:
+                    job_details = data[node]
+                    if config_id in job_details:
+                        msg = f"Error: cannot create more than one {config_id} on {node}"
+                        raise NameError(msg)
+                    else:
+                        job_details[config_id] = config_detail
+        return data, node_features
 
     def list_jobs(self):
         # Get all psplot process form the main process' database
@@ -99,14 +142,14 @@ def main(subcommand: str,
         ):
     global runner
     runner = Runner(cnf_file)
-    sbjob = runner.parse_config()
+    sbjob, node_features = runner.parse_config()
     if as_step:
-        sbman.generate_as_step(sbjob)
+        sbman.generate_as_step(sbjob, node_features)
         runner.submit()
     else:
         for node, job_details in sbjob.items():
             for job_name, details in job_details.items():
-                sbman.generate(node, job_name, details)
+                sbman.generate(node, job_name, details, node_features)
                 runner.submit()
 
 def ls():

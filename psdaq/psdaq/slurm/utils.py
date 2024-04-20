@@ -71,14 +71,15 @@ class SbatchManager:
                 self.output_prefix_datetime + '_' + node + ':' + job_name + '.log')
         return output_filepath
 
-    def get_daq_cmd(self, details, output, job_name):
+    def get_daq_cmd(self, details, job_name):
         cmd = details['cmd']
         cmd += f' -p {repr(self.platform)} -u {job_name}'
-        if 'x' in details['flags']:
-            if output:
-                cmd = f'xterm -l -lf {output} -e ' + cmd 
-            else:
-                cmd = 'xterm -e ' + cmd
+        # Add control host
+        self.collect_host = 'drp-srcf-cmp035'
+        if job_name == 'control_gui':
+            cmd += f' -H {self.collect_host}'
+        elif job_name != 'control':
+            cmd += f' -C {self.collect_host}'
         return cmd
 
     def write_output_header(self, output, node, job_name, details):
@@ -110,7 +111,7 @@ class SbatchManager:
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
             
-        cmd = self.get_daq_cmd(details, output, job_name)
+        cmd = self.get_daq_cmd(details, job_name)
         if 'conda_env' in details:
             if details['conda_env'] != '':
                 CONDA_EXE = os.environ.get('CONDA_EXE','')
@@ -121,8 +122,7 @@ class SbatchManager:
         jobstep_cmd = f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} bash -c '{cmd}'" + "& \n"
         return jobstep_cmd
 
-
-    def generate_as_step(self, sbjob):
+    def generate_as_step(self, sbjob, node_features):
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}"+"\n"
         sb_script += f"#SBATCH --job-name=main"+"\n"
@@ -132,7 +132,12 @@ class SbatchManager:
         sb_steps = '' 
         for het_group, (node, job_details) in enumerate(sbjob.items()):
             if node == "localhost": node = LOCALHOST
-            sb_header += f"#SBATCH --nodelist={node} --ntasks={len(job_details.keys())}" + "\n"
+            if node_features is None:
+                sb_header += f"#SBATCH --nodelist={node} --ntasks={len(job_details.keys())}" + "\n"
+            else:
+                features = ','.join(node_features[node].keys())
+                sb_header += f"#SBATCH --constraint={features} --ntasks={len(job_details.keys())}" + "\n"
+
             if het_group < len(sbjob.keys()) - 1:
                 sb_header += "#SBATCH hetjob\n"
             for job_name, details in job_details.items():
@@ -145,13 +150,17 @@ class SbatchManager:
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
 
-    def generate(self, node, job_name, details):
+    def generate(self, node, job_name, details, node_features):
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}"+"\n"
         sb_script += f"#SBATCH --job-name={job_name}"+"\n"
         
-        if node == "localhost": node = LOCALHOST
-        sb_script += f"#SBATCH --nodelist={node} --ntasks=1"+"\n"
+        if node_features is None:
+            if node == "localhost": node = LOCALHOST
+            sb_script += f"#SBATCH --nodelist={node} --ntasks=1"+"\n"
+        else:
+            sb_script += f"#SBATCH --constraint={job_name} --ntasks=1"+"\n"
+
         
         sb_script += self.get_jobstep_cmd(node, job_name, details)
         sb_script += "wait"
