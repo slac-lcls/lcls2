@@ -150,12 +150,13 @@ int main(int argc, char** argv)
     const char* dev    = 0;
     const char* prefix = "DAQ:LAB2:HSD";
     bool lInternalTiming = false;
+    bool lLoopback = false;
     bool lAbortOnErr = false;
     bool lverbose    = false;
     unsigned    busId  = 0;
     const char* db_args[5] = {0,0,0,0,0};
 
-    while ( (c=getopt( argc, argv, "d:D:EP:Ivh")) != EOF ) {
+    while ( (c=getopt( argc, argv, "d:D:ELP:Ivh")) != EOF ) {
         switch(c) {
         case 'd':
             dev    = optarg;      break;
@@ -174,6 +175,8 @@ int main(int argc, char** argv)
             lAbortOnErr = true;   break;
         case 'I':
             lInternalTiming = true;  break;
+        case 'L':
+            lLoopback = true; break;
         case 'P':
             prefix = optarg;      break;
         case 'v':
@@ -258,7 +261,7 @@ int main(int argc, char** argv)
     }
 
 #if 1
-    m->setup_timing();
+    m->setup_timing(lLoopback);
     m->setup_jesd(lAbortOnErr, 
                   adc_calib[0],
                   adc_calib[1],

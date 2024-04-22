@@ -48,9 +48,7 @@ namespace Pds {
       ModuleBase  base                ; // 0
       //  App registers
       ChipAdcCore chip[2]             ; // 0x200000, 0x202000
-        //      TriggerEventManager tem         ; // 0x204000
-        //      uint32_t    rsvd_88000[(0x4000-sizeof(tem))>>2];
-      uint32_t    rsvd_204000[0x4000>>2];
+      uint32_t    rsvd_208000[0x4000>>2];
       Fmc134Ctrl  fmc_ctrl            ; // 0x208000
       uint32_t    rsvd_208800[(0x800-sizeof(fmc_ctrl))>>2];
       Mmcm        mmcm                ; // 0x208800
@@ -94,8 +92,9 @@ Module134* Module134::create(int fd)
   return m;
 }
 
-void Module134::setup_timing()
+void Module134::setup_timing(bool lLoopback)
 {
+  p->base.tprLoopback = lLoopback ? 8:0;
   //
   //  Verify clock synthesizer is setup
   //  Necessary for timing and dual firefly channel pgp
@@ -138,6 +137,13 @@ void Module134::setup_timing()
 
       optfmc().resetPgp();
     }
+    else {
+      tpr.resetCounts();
+      usleep(100000);
+      tpr.dump();
+    }
+    double rxclkr = tpr.rxRecClockRate();
+    printf("RxRecClk: %f MHz\n", rxclkr);
   }
 }
 
@@ -148,7 +154,7 @@ void Module134::_jesd_init(unsigned mode)
   Mmhw::Reg* jesd0  = &p->surf_jesd0[0];
   Mmhw::Reg* jesd1  = &p->surf_jesd1[0];
   while(1) {
-      if (!ctrl.default_init(cpld, mode)) {
+      if (!ctrl.default_init(cpld, mode, true)) {
           usleep(2000000);
           unsigned dvalid=0;
           for(unsigned i=0; i<8; i++) {
@@ -158,6 +164,7 @@ void Module134::_jesd_init(unsigned mode)
           if (dvalid == 0xffff)
               break;
           printf("dvalid: 0x%x\n",dvalid);
+          break;
       }
       usleep(1000);
   }            

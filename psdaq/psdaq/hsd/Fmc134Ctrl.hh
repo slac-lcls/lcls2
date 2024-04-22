@@ -10,7 +10,7 @@ namespace Pds {
     class Fmc134Ctrl {
     public:
       void    remote_sync ();
-      int32_t default_init(Fmc134Cpld&, unsigned mode=0);
+      int32_t default_init(Fmc134Cpld&, unsigned mode=0, bool lSkipMFA=false);
       int32_t reset       ();
       void dump();
     public:

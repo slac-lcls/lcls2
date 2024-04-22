@@ -54,7 +54,7 @@ namespace Pds {
       //  Accessors
       uint64_t device_dna() const;
 
-      void     setup_timing();
+      void     setup_timing(bool lLoopback=false);
       void     setup_jesd  (bool lAbortOnErr,
                             std::string& calib_adc0,
                             std::string& calib_adc1,

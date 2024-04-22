@@ -205,8 +205,8 @@ namespace Pds {
           for(unsigned j=0; j<8; j++) {
             stat[j] = _m.jesd(i).status(j);
             //if (stat[j].recvDataValid==0)
-            if (stat[j].syncDone==0)
-              jesdreset = true;
+            // if (stat[j].syncDone==0)
+            //   jesdreset = true;
           }
           for(unsigned j=0; j<5; j++)
             v.clks[j] = float(_m.optfmc().clks[j]&0x1fffffff)*1.e-6;

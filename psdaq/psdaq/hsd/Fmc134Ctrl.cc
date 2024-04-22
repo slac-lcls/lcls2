@@ -32,12 +32,12 @@ void Fmc134Ctrl::dump()
     printf("~RxByteAligned %x\t", (~v>>16)&0xf);
     printf("~QPLLlock %x\t", (~v>>20)&0xf); 
     printf("\n"); }
-  printf("ADCvalid: %x\n", adc_val);
-  printf("Scramble: %x\n", scramble);
-  printf("SWtrig  : %x\n", sw_trigger);
-  printf("LMFCcnt : %x\n", lmfc_cnt);
-  printf("AlignCh : %x\n", align_char);
-  printf("ADC pins: %x / %x\n", adc_pins, adc_pins_r);
+  printf("ADCvalid: %x\n", unsigned(adc_val));
+  printf("Scramble: %x\n", unsigned(scramble));
+  printf("SWtrig  : %x\n", unsigned(sw_trigger));
+  printf("LMFCcnt : %x\n", unsigned(lmfc_cnt));
+  printf("AlignCh : %x\n", unsigned(align_char));
+  printf("ADC pins: %x / %x\n", unsigned(adc_pins), unsigned(adc_pins_r));
   { unsigned v = adc_pins;
     printf("\tSYNC %u\tNCO %x\n", v&1, (v>>8)&0xff); }
   { unsigned v = adc_pins_r;
@@ -139,7 +139,7 @@ int32_t Fmc134Ctrl::reset()
         return FMC134_ERR_OK;
 }
 
-int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
+int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode, bool lSkipMFA)
 {
         uint32_t dword = 0;
 
@@ -224,7 +224,7 @@ int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
         else {
                 printf("\n\nADC Initial Lane Alignment Failed!\n");
                 printf("reg7 = 0x%X\n\n", dword);
-                return FMC134_ERR_ADC_INIT;
+                return lSkipMFA ? FMC134_ERR_OK : FMC134_ERR_ADC_INIT;
         }
 
         return FMC134_ERR_OK;
