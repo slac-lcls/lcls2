@@ -1,4 +1,7 @@
 from psana.detector.detector_impl import DetectorImpl
+from amitypes import Array2d
+import logging
+from psana.detector.areadetector import AreaDetectorRaw
 
 # create a dictionary that can be used to look up other
 # information about an epics variable.  the key in
@@ -129,14 +132,55 @@ class encoder_raw_3_0_0(DetectorImpl):
        else:
            return segments[0].encoderValue*1.0
 
+class hrencoder_raw_0_1_0(DetectorImpl):
+    """High rate encoder.
+
+    The hrencoder detector returns 4 fields:
+        position - The encoder value/position.
+        missedTrig_cnt - Missed triggers
+        error_cnt - Number of errors.
+        latches - Only 3 bits of this integer correspond to the latch status.
+    """
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def value(self, evt) -> float:
+        segments = self._segments(evt)
+
+        if segments is None:
+            return None
+
+        return segments[0].position
+
 class encoder_interpolated_3_0_0(encoder_raw_3_0_0):
-   def __init__(self, *args):
-       super().__init__(*args)
-   def value(self,evt) -> float:
-       """
-       Version 3.0.0 addresses fields as scalars, not as arrays.
-       """
-       return super().value(evt)
+    def __init__(self, *args):
+        super().__init__(*args)
+    def value(self,evt) -> float:
+        """
+        Version 3.0.0 addresses fields as scalars, not as arrays.
+        """
+        return super().value(evt)
+
+class archon_raw_1_0_0(AreaDetectorRaw):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def raw(self,evt) -> Array2d:
+        segs = self._segments(evt)
+        if segs is None: return None
+        return segs[0].value
+    def calib(self,evt) -> Array2d:
+        raw = self.raw(evt)
+        if raw is None: return None
+        peds = self._calibconst['pedestals'][0]
+        if peds is None:
+            logging.warning('no archon pedestals')
+            return raw
+        if peds.shape != raw.shape:
+            logging.warning(f'incorrect archon pedestal shape: {peds.shape}, raw data shape: {raw.shape}')
+            return raw
+        return raw-peds
+    def image(self,evt) -> Array2d:
+        return self.calib(evt)
 
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):

@@ -283,12 +283,11 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
     {
       if (_tmo)  break;
 
-      const ms_t tmo{msTmo};
-      auto       t1 {fast_monotonic_clock::now()};
+      auto t1 { fast_monotonic_clock::now() };
 
-      if (t1 - t0 > tmo)
+      if (t1 - t0 >= ms_t{1})
       {
-        _tmo = msTmo;               // Switch to waiting after a timeout
+        _tmo = msTmo;               // Switch to waiting after 1 ms
         break;
       }
     }

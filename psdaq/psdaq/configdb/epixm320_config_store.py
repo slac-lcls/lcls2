@@ -1,5 +1,6 @@
 from psdaq.configdb.typed_json import cdict
 from psdaq.configdb.tsdef import *
+from psdaq.configdb.get_config import update_config
 import psdaq.configdb.configdb as cdb
 import pyrogue as pr
 import numpy as np
@@ -8,25 +9,38 @@ import sys
 import IPython
 import argparse
 
+import pprint
+
 numAsics = 4
-elemRows = 384
-elemCols = 192
+nColumns = 384
+nRows    = 192
 
 def epixm320_cdict(prjCfg):
 
     top = cdict()
-    top.setAlg('config', [0,0,0])
+    top.setAlg('config', [0,1,0])
 
     top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     top.set("firmwareVersion:RO",   0, 'UINT32')
 
     help_str  = "-- user interface --"
-    help_str += "\nstart_ns     : nanoseconds to exposure start"
+    help_str += "\nstart_ns          : nanoseconds to exposure start"
+    help_str += "\ngain_mode         : SoftHigh/SoftLow/AutoHiLo/User"
+    help_str += "\nrun_trigger_group : Group for the Run trigger"
+    help_str += "\nchgInj_column_map : Map of columns for charge injection scan"
     top.set("help:RO", help_str, 'CHARSTR')
 
     top.set("user.start_ns", 107749, 'UINT32')
 
+    top.define_enum('gainEnum', {'SoftHigh':0, 'SoftLow':1, 'Auto':2, 'User':3})
+    top.set("user.gain_mode", 2, 'gainEnum')
+
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
+
+    top.set("user.run_trigger_group", 6, 'UINT32')
+
+    columnMap = np.zeros(nColumns, dtype=np.uint8)
+    top.set("user.chgInj_column_map", columnMap)
 
     # timing system
     # run trigger
@@ -54,7 +68,7 @@ def epixm320_cdict(prjCfg):
         top.set(base+'Pll_KVCO',            0, 'UINT8')
         top.set(base+'Pll_filter1LSB',      0, 'UINT8')
         top.set(base+'Pll_filter1MSB',      0, 'UINT8')
-        top.set(base+'Pulser',              0, 'UINT8')
+        top.set(base+'Pulser',              0, 'UINT16')
         top.set(base+'pbit',                0, 'boolEnum')
         top.set(base+'atest',               0, 'boolEnum')
         top.set(base+'test',                0, 'boolEnum')
@@ -101,10 +115,6 @@ def epixm320_cdict(prjCfg):
         top.set(base+'SlvdsBit',            0, 'boolEnum')
         top.set(base+'FE_Autogain',         0, 'boolEnum')
         top.set(base+'FE_Lowgain',          0, 'boolEnum')
-        top.set(base+'RowStartAddr',        0, 'UINT8')
-        top.set(base+'RowStopAddr',         0, 'UINT8')
-        top.set(base+'ColStartAddr',        0, 'UINT8')
-        top.set(base+'ColStopAddr',         0, 'UINT8')
         top.set(base+'DCycle_DAC',          0, 'UINT8')
         top.set(base+'DCycle_en',           0, 'boolEnum')
         top.set(base+'DCycle_bypass',       0, 'boolEnum')
@@ -164,46 +174,46 @@ def epixm320_cdict(prjCfg):
         top.set(base+'RollOverEn'           , 0, 'UINT8')
 
     base = 'expert.App.AsicTop.RegisterControlDualClock.'
-    top.define_enum('debugChEnum', { 'AsicDM(0)'        :  0,
-                                     'AsicDM(1)'        :  1,
-                                     'AsicSync'         :  2,
-                                     'AsicAcq'          :  3,
-                                     'AsicSR0'          :  4,
-                                     'AsicGRst'         :  5,
-                                     'AsicClkEn'        :  6,
-                                     'AsicR0'           :  7,
-                                     'AsicSaciCmd(0)'   :  8,
-                                     'AsicSaciClk'      :  9,
-                                     'AsicSaciSelL(0)'  : 10,
-                                     'AsicSaciSelL(1)'  : 11,
-                                     'AsicSaciSelL(2)'  : 12,
-                                     'AsicSaciSelL(3)'  : 13,
-                                     'AsicRsp'          : 14,
-                                     'LdoShutDnl0'      : 15,
-                                     'LdoShutDnl1'      : 16,
-                                     'pllLolL'          : 17,
-                                     'biasDacDin'       : 18,
-                                     'biasDacSclk'      : 19,
-                                     'biasDacCsb'       : 20,
-                                     'biasDacClrb'      : 21,
-                                     'hsDacCsb'         : 22,
-                                     'hsDacSclk'        : 23,
-                                     'hsDacDin'         : 24,
-                                     'hsLdacb'          : 25,
-                                     'slowAdcDout(0)'   : 26,
-                                     'slowAdcDrdyL(0)'  : 27,
-                                     'slowAdcSyncL(0)'  : 28,
-                                     'slowAdcSclk(0)'   : 29,
-                                     'slowAdcCsL(0)'    : 30,
-                                     'slowAdcDin(0)'    : 31,
-                                     'slowAdcRefClk(0)' : 32,
-                                     'slowAdcDout(1)'   : 33,
-                                     'slowAdcDrdyL(1)'  : 34,
-                                     'slowAdcSyncL(1)'  : 35,
-                                     'slowAdcSclk(1)'   : 36,
-                                     'slowAdcCsL(1)'    : 37,
-                                     'slowAdcDin(1)'    : 38,
-                                     'slowAdcRefClk(1)' : 39})
+    top.define_enum('debugChEnum', { 'AsicDM0'         :  0,
+                                     'AsicDM1'         :  1,
+                                     'AsicSync'        :  2,
+                                     'AsicAcq'         :  3,
+                                     'AsicSR0'         :  4,
+                                     'AsicGRst'        :  5,
+                                     'AsicClkEn'       :  6,
+                                     'AsicR0'          :  7,
+                                     'AsicSaciCmd0'    :  8,
+                                     'AsicSaciClk'     :  9,
+                                     'AsicSaciSelL0'   : 10,
+                                     'AsicSaciSelL1'   : 11,
+                                     'AsicSaciSelL2'   : 12,
+                                     'AsicSaciSelL3'   : 13,
+                                     'AsicRsp'         : 14,
+                                     'LdoShutDnl0'     : 15,
+                                     'LdoShutDnl1'     : 16,
+                                     'pllLolL'         : 17,
+                                     'biasDacDin'      : 18,
+                                     'biasDacSclk'     : 19,
+                                     'biasDacCsb'      : 20,
+                                     'biasDacClrb'     : 21,
+                                     'hsDacCsb'        : 22,
+                                     'hsDacSclk'       : 23,
+                                     'hsDacDin'        : 24,
+                                     'hsLdacb'         : 25,
+                                     'slowAdcDout0'    : 26,
+                                     'slowAdcDrdyL0'   : 27,
+                                     'slowAdcSyncL0'   : 28,
+                                     'slowAdcSclk0'    : 29,
+                                     'slowAdcCsL0'     : 30,
+                                     'slowAdcDin0'     : 31,
+                                     'slowAdcRefClk0'  : 32,
+                                     'slowAdcDout1'    : 33,
+                                     'slowAdcDrdyL1'   : 34,
+                                     'slowAdcSyncL1'   : 35,
+                                     'slowAdcSclk1'    : 36,
+                                     'slowAdcCsL1'     : 37,
+                                     'slowAdcDin1'     : 38,
+                                     'slowAdcRefClk1'  : 39})
     top.set(base+'IDreset',           0, 'UINT32')
     top.set(base+'GlblRstPolarityN',  0, 'boolEnum')
     top.set(base+'ClkSyncEn',         0, 'boolEnum')
@@ -302,22 +312,28 @@ def epixm320_cdict(prjCfg):
 
 
 if __name__ == "__main__":
-    create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
     args = cdb.createArgs().args
 
+    if args.dir is None:
+        raise Exception('Rogue project root directory is required (--dir)')
+
+    create = not args.update
     db = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
-    mycdb.add_alias(args.alias)
-    mycdb.add_device_config('epixm320hw')
-
-    if args.dir is None:
-        raise Exception('Rogue project root directory is required (--dir)')
 
     top = epixm320_cdict(args.dir+'/software/config')
     top.setInfo('epixm320hw', args.name, args.segm, args.id, 'No comment')
 
-    mycdb.modify_device(args.alias, top)
+    if args.update:
+        cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+        top = update_config(cfg, top.typed_json(), args.verbose)
+
+    if not args.dryrun:
+        if create:
+            mycdb.add_alias(args.alias)
+            mycdb.add_device_config('epixm320hw')
+        mycdb.modify_device(args.alias, top)

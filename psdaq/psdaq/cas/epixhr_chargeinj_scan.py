@@ -5,7 +5,7 @@ import json
 def main():
 
     aargs = [('--spacing',{'type':int,'default':5,'help':'size of rectangular grid'})]
-    scan = ConfigScanBase(aargs)
+    scan = ConfigScanBase(aargs, scantype='chargeinj')
 
     args = scan.args
     keys = []
@@ -36,7 +36,7 @@ def main():
         d = {}
         metad = {}
         metad['detname'] = args.detname
-        metad['scantype'] = 'chargeinj'
+        metad['scantype'] = args.scantype
         d[f'{args.detname}:user.gain_mode'] = 5  # Map
         for a in range(4):
             saci = f'{args.detname}:expert.EpixHR.Hr10kTAsic{a}'

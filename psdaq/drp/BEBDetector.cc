@@ -254,7 +254,7 @@ void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
 
     std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
     if (m_debatch)
-      subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
+        subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
 
     while ( (mask &= mask - 1) ) {
         lane = __builtin_ffs(mask) - 1;

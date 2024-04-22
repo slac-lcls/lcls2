@@ -51,6 +51,7 @@ using logging  = psalg::SysLog;
 using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
 using tp_t     = std::chrono::system_clock::time_point;
 using ms_t     = std::chrono::milliseconds;
+using us_t     = std::chrono::microseconds;
 using ns_t     = std::chrono::nanoseconds;
 
 static struct sigaction      lIntAction;
@@ -350,6 +351,7 @@ namespace Pds {
     std::vector<EbLfCltLink*>           _mrqLinks;
     std::unique_ptr<GenericPool>        _pool;
     uint64_t                            _pidPrv;
+    uint64_t                            _latPid;
     int64_t                             _latency;
     uint64_t                            _eventCount;
     uint64_t                            _trCount;
@@ -381,8 +383,9 @@ static json createPulseIdMsg(uint64_t pulseId)
 Meb::Meb(const MebParams&        prms,
          ZmqContext&             context,
          const MetricExporter_t& exporter) :
-  EbAppBase    (prms, exporter, "MEB", EB_TMO_MS),
+  EbAppBase    (prms, exporter, "MEB"),
   _pidPrv      (0),
+  _latPid      (0),
   _latency     (0),
   _eventCount  (0),
   _trCount     (0),
@@ -548,6 +551,8 @@ void Meb::run()
     rcPrv = rc;
   }
 
+  EventBuilder::dump(0);
+
   logging::info("MEB thread finished");
 }
 
@@ -555,9 +560,8 @@ void Meb::process(EbEvent* event)
 {
   if (_prms.verbose >= VL_DETAILED)
   {
-    static unsigned cnt = 0;
     printf("Meb::process event dump:\n");
-    event->dump(++cnt);
+    event->dump(1, _trCount + _eventCount);
   }
 
   const EbDgram* dgram = event->creator();
@@ -611,7 +615,7 @@ void Meb::process(EbEvent* event)
     printf("Directory datagram pool\n");
     _pool->dump();
     printf("Meb::process event dump:\n");
-    event->dump(-1);
+    event->dump(1, -1);
     abort();
   }
 
@@ -644,11 +648,10 @@ void Meb::process(EbEvent* event)
     }
   }
 
-  auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  tp_t tp   {std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+  if (!dgram->isEvent() || (dgram->pulseId() - _latPid > 13000000/14)) {
+    _latency = std::chrono::duration_cast<us_t>(latency(dgram->time)).count();
+    _latPid = dgram->pulseId();
+  }
 
   if (dg->service() == TransitionId::L1Accept)
   {
@@ -696,7 +699,7 @@ public:
   MebApp(const std::string& collSrv, MebParams&);
   virtual ~MebApp();
 public:                                 // For CollectionApp
-  json connectionInfo(const nlohmann::json& msg) override;
+  json connectionInfo(const json& msg) override;
   void connectionShutdown() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
@@ -1165,6 +1168,7 @@ int main(int argc, char** argv)
     if (kwargs.first == "ep_fabric")    continue;
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
+    if (kwargs.first == "eb_timeout")   continue; // EbAppBase
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;

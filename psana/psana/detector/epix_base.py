@@ -20,12 +20,12 @@ from amitypes import Array3d
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.detector.areadetector import sgs, AreaDetectorRaw, np, ut, DTYPE_MASK, DTYPE_STATUS
+from psana.detector.areadetector import sgs, AreaDetectorRaw, np, ut, DTYPE_MASK, DTYPE_STATUS, au
 from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index,\
   cbits_config_epix10ka, cbits_config_epixhr2x2, cbits_config_epixhr1x4,\
   cbits_config_and_data_detector, M14, M15, B14, B15
 import psana.detector.UtilsMask as um #import merge_status
-from psana.detector.NDArrUtils import info_ndarr
+info_ndarr, reshape_to_3d = au.info_ndarr, au.reshape_to_3d
 
 
 class epix_base(AreaDetectorRaw):
@@ -55,8 +55,8 @@ class epix_base(AreaDetectorRaw):
 
 
     def _segment_indices(self):
-        """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]"""
-        return self._sorted_segment_ids
+        """Returns list det.raw._segment_numbers, e.g. [0, 1, 2, 3] if not re-implemented it is self._sorted_segment_inds"""
+        return self._segment_numbers
 
 
     def _fullname(self):

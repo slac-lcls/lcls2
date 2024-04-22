@@ -51,7 +51,7 @@ def ctxt_put(names, values):
 #  Create a dictionary of config key to PV name
 def epics_get(d):
     # translate legal Python names to Rogue names
-    rogue_translate = {'TriggerEventBuffer':'TriggerEventBuffer[%d]'%lane,
+    rogue_translate = {'TriggerEventBuffer':'TriggerEventBuffer[0]',
                        'AdcReadout0'       :'AdcReadout[0]',
                        'AdcReadout1'       :'AdcReadout[1]',
                        'AdcReadout2'       :'AdcReadout[2]',
@@ -360,6 +360,9 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     #
     #  Retrieve full configuration for recording
     #
+    # GFD 2024/03/13 - epics.PV().get returns None if PV does not exist - only
+    # replace cfg value if retrieval worked. This prevents JSON errors (due to
+    # typing) when converting to XTC
     d = epics_get(scfg['expert'])
     keys  = [key for key,v in d.items()]
     names = [epics_prefix+v for key,v in d.items()]
@@ -372,11 +375,11 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
             del k[0]
         if k[0][0]=='[':
             elem = int(k[0][1:-1])
-            c[elem] = v
+            c[elem] = v if v else c[elem]
         else:
-            c[k[0]] = v
-
-    scfg['firmwareVersion:RO'] = ctxt_get(prefix+':AxiVersion:FpgaVersion')
+            c[k[0]] = v if v else c[k[0]]
+    version = ctxt_get(prefix+':Top:AxiVersion:FpgaVersion')
+    scfg['firmwareVersion:RO'] = version if version else scfg['firmwareVersion:RO']
     #scfg['firmwareBuild:RO'  ] = ctxt_get(prefix+':AxiVersion:BuildStamp')
 
     pprint.pprint(scfg)

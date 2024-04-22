@@ -29,6 +29,7 @@ using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
+using us_t = std::chrono::microseconds;
 
 static void local_mkdir (const char * path);
 static json createFileReportMsg(std::string path, std::string absolute_path,
@@ -38,8 +39,6 @@ static json createPulseIdMsg(uint64_t pulseId);
 static json createChunkRequestMsg();
 
 namespace Drp {
-
-static const bool DIRECT_IO = true;     // Give an argument a name
 
 static long readInfinibandCounter(const std::string& counter)
 {
@@ -247,6 +246,7 @@ int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt) :
     m_para        (para),
     m_pool        (pool),
+    m_tmo         {0},
     dmaRet        (maxRetCnt),
     dmaIndex      (maxRetCnt),
     dest          (maxRetCnt),
@@ -258,6 +258,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_count       (0),
     m_dmaBytes    (0),
     m_dmaSize     (0),
+    m_latPid      (0),
     m_latency     (0),
     m_nDmaErrors  (0),
     m_nNoComRoG   (0),
@@ -266,12 +267,40 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nPgpJumps   (0),
     m_nNoTrDgrams (0)
 {
+    m_pfd.fd = pool.fd();
+    m_pfd.events = POLLIN;
+
     pool.resetCounters();
 }
 
 int32_t PgpReader::read()
 {
-  return dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+    if (m_tmo) {                        // If in interrupt mode...
+        // Wait for DMAed data to become available
+        if (poll(&m_pfd, 1, m_tmo) < 0) {
+            logging::error("%s: poll() error: %m", __PRETTY_FUNCTION__);
+            return 0;
+        }
+        if (m_pfd.revents == 0) {
+            return 0;                   // Timed out
+        }
+        if (m_pfd.revents == POLLIN) {  // When DMAed data is available...
+            m_tmo = 0;                  // switch to polling mode
+            m_t0  = Pds::fast_monotonic_clock::now();
+        }
+    }
+
+    int rc = dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+
+    if ((rc == 0) && (m_tmo == 0)) {    // If no DMAed data and in polling mode...
+        auto t1 { Pds::fast_monotonic_clock::now() };
+
+        if (t1 - m_t0 >= ms_t{1}) {
+            m_tmo = 10;                 // switch to interrupt mode after 1 ms
+        }
+    }
+
+    return rc;
 }
 
 void PgpReader::flush()
@@ -427,6 +456,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
             if (!m_pool.transitionDgrams[evtIndex]) {
                 ++m_nNoTrDgrams;
                 freeDma(event);         // Leaves event mask = 0
+                m_pool.freePebble();    // Avoid leaking pebbles on errors
                 return nullptr;         // Can happen during shutdown
             }
         }
@@ -435,13 +465,31 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         return nullptr;                 // Event is still incomplete
     }
 
-    auto now = std::chrono::system_clock::now();
-    auto dgt = std::chrono::seconds{timingHeader->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{timingHeader->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-
+    // Determine the difference between epochs and clock offsets.
+    // We ignore the time difference due to the two clocks not
+    // being read at quite the same point in time.
+    if (transitionId == XtcData::TransitionId::Configure) {
+        _setTimeOffset(timingHeader->time);
+    }
+    if (timingHeader->pulseId() - m_latPid > 1300000/14) { // 10 Hz
+        m_latency = std::chrono::duration_cast<us_t>(age(timingHeader->time)).count();
+        m_latPid = timingHeader->pulseId();
+    }
     return timingHeader;
+}
+
+void PgpReader::_setTimeOffset(const XtcData::TimeStamp& time) {
+    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
+    auto tTh = (std::chrono::seconds    { time.seconds()     } +
+                std::chrono::nanoseconds{ time.nanoseconds() });
+    m_tOffset = now - tTh;
+}
+
+std::chrono::nanoseconds PgpReader::age(const XtcData::TimeStamp& time) const {
+    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
+    auto tTh = (std::chrono::seconds    { time.seconds()     } +
+                std::chrono::nanoseconds{ time.nanoseconds() });
+    return now - tTh - m_tOffset;
 }
 
 void PgpReader::freeDma(PGPEvent* event)
@@ -480,9 +528,10 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_det(nullptr),
+  m_pgp(nullptr),
   m_tsId(-1u),
   m_mon(mon),
-  m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), DIRECT_IO),
+  m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] != "no"), // Default to "yes"
   m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
   m_writing(false),
   m_inprocSend(inprocSend),
@@ -493,6 +542,7 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_configureBuffer(para.maxTrSize),
   m_damage(0),
   m_evtSize(0),
+  m_latPid(0),
   m_latency(0),
   m_partition(para.partition)
 {
@@ -512,6 +562,12 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     exporter->add("DRP_bufPendBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.pendBlocked(); });
     exporter->add("DRP_evtSize",      labels, Pds::MetricType::Gauge,   [&](){ return m_evtSize; });
     exporter->add("DRP_evtLatency",   labels, Pds::MetricType::Gauge,   [&](){ return m_latency; });
+}
+
+void EbReceiver::configure(Detector* detector, const PgpReader* pgpReader)
+{
+    m_det = detector;
+    m_pgp = pgpReader;
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)
@@ -830,11 +886,10 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
 
         // Measure latency before sending dgram for monitoring
-        auto now = std::chrono::system_clock::now();
-        auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-                 + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-        std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-        m_latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+        if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
+            m_latency = std::chrono::duration_cast<us_t>(m_pgp->age(dgram->time)).count();
+            m_latPid = dgram->pulseId();
+        }
 
         if (m_mon.enabled()) {
             // L1Accept
@@ -941,7 +996,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_tPrms.maxEntries = Pds::Eb::MAX_ENTRIES; // Batching is always enabled; set to 1 to disable
+    m_tPrms.maxEntries = m_para.kwargs["batching"] == "no" ? 1 : Pds::Eb::MAX_ENTRIES; // Default to "yes"
     m_tPrms.core[0]    = -1;
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
@@ -987,13 +1042,6 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
         logging::info("Setting env %s\n", envBuff);
         if (setenv("EPICS_PVA_ADDR_LIST",envBuff,1))
             perror("setenv pva_addr");
-    }
-
-    if (para.kwargs.find("batching")!=para.kwargs.end()) {
-        logging::warning("The batching kwarg is obsolete and ignored (always enabled)");
-    }
-    if (para.kwargs.find("directIO")!=para.kwargs.end()) {
-        logging::warning("The directIO kwarg is obsolete and ignored (always enabled)");
     }
 }
 
@@ -1070,7 +1118,7 @@ std::string DrpBase::configure(const json& msg)
         }
     }
 
-    rc = m_ebRecv->configure(m_numTebBuffers);
+    rc = m_ebRecv->EbCtrbInBase::configure(m_numTebBuffers);
     if (rc) {
         return std::string{"EbReceiver configure failed"};
     }
@@ -1480,4 +1528,3 @@ static json createChunkRequestMsg()
     msg["body"] = body;
     return msg;
 }
-

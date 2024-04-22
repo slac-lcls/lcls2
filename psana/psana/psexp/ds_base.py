@@ -28,6 +28,11 @@ else:
 from dataclasses import dataclass
 from psana.psexp.tools import MODE
 
+from psana.psexp.zmq_utils import ClientSocket
+from kafka import KafkaProducer
+import json
+import socket
+
 class InvalidDataSourceArgument(Exception): pass
 
 @dataclass
@@ -175,6 +180,33 @@ class DataSourceBase(abc.ABC):
         else:
             if kwargs['mpi_ts'] == 0:
                 self.dsparms.set_timestamps()
+
+    def setup_psplot_live(self):
+        # Send run info to psplotdb server using kafka (default).
+        # Note that you can use zmq instead by specifying zmq server
+        # in the env var. below.
+        PSPLOT_LIVE_ZMQ_SERVER = os.environ.get("PSPLOT_LIVE_ZMQ_SERVER", "")
+        if hasattr(self, "psmon_publish"):
+            publish = self.psmon_publish
+            publish.init()
+            # Send fully qualified hostname
+            fqdn_host = socket.getfqdn()
+            info = {'node': fqdn_host,
+                    'exp': self.exp,
+                    'runnum': self.runnum,
+                    'port':publish.port,
+                    'slurm_job_id':os.environ.get('SLURM_JOB_ID', os.getpid())}
+            if PSPLOT_LIVE_ZMQ_SERVER == "":
+                KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", "psplot_live")
+                KAFKA_BOOTSTRAP_SERVER = os.environ.get("KAFKA_BOOTSTRAP_SERVER", "172.24.5.240:9094")
+                # Connect to kafka server
+                producer = KafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVER, 
+                        value_serializer=lambda m:json.JSONEncoder().encode(m).encode('utf-8'))
+                producer.send(KAFKA_TOPIC, info)
+            else:
+                sub = ClientSocket(PSPLOT_LIVE_ZMQ_SERVER)
+                info['msgtype'] = MonitorMsgType.PSPLOT
+                sub.send(info)
 
     def smd_inprogress_converted(self):
         """ Returns a list of True/False if smd.xtc2.inprogress has been

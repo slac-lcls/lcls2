@@ -17,6 +17,7 @@
 #include "psdaq/service/Fifo.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -152,8 +153,10 @@ namespace Pds {
       uint64_t                     _nMonCount;
       uint64_t                     _mebCount[MAX_MEBS];
       uint64_t                     _prescaleCount;
+      uint64_t                     _latPid;
       int64_t                      _latency;
       int64_t                      _trgTime;
+      uint64_t                     _entries;
     private:
       const EbParams&              _prms;
       EbLfClient                   _l3Transport;
@@ -195,7 +198,7 @@ using namespace Pds::Eb;
 
 Teb::Teb(const EbParams&         prms,
          const MetricExporter_t& exporter) :
-  EbAppBase     (prms, exporter, "TEB", EB_TMO_MS),
+  EbAppBase     (prms, exporter, "TEB"),
   _mrqTransport (prms.verbose, prms.kwargs),
   _batch        {nullptr, 0, 0},
   //_trimmed      (0),
@@ -214,6 +217,7 @@ Teb::Teb(const EbParams&         prms,
   _nMonCount    (0),
   _mebCount     {0, 0, 0, 0},
   _prescaleCount(0),
+  _latPid       (0),
   _latency      (0),
   _trgTime      (0),
   _prms         (prms),
@@ -227,6 +231,8 @@ Teb::Teb(const EbParams&         prms,
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
                                             {"alias", prms.alias}};
+  exporter->constant("TEB_BEMax",  labels, prms.maxEntries);
+
   exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;            });
   exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;               });
   exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;            });
@@ -242,6 +248,7 @@ Teb::Teb(const EbParams&         prms,
   exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;         });
   exporter->add("TEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;               });
   exporter->add("TEB_trg_dt", labels, MetricType::Gauge,   [&](){ return _trgTime;               });
+  exporter->add("TEB_BtEnt",  labels, MetricType::Gauge,   [&](){ return _entries;               });
 }
 
 int Teb::resetCounters()
@@ -467,6 +474,8 @@ void Teb::run()
   uint64_t immData;
   while (_mrqTransport.poll(&immData) > 0);
 
+  EventBuilder::dump(0);
+
   //_tbDump();
 
   logging::info("TEB thread finished");
@@ -523,7 +532,7 @@ void Teb::process(EbEvent* event)
   if (UNLIKELY(_prms.verbose >= VL_DETAILED))
   {
     printf("Teb::process event dump:\n");
-    event->dump(_trCount + _eventCount);
+    event->dump(1, _trCount + _eventCount);
   }
 
   const EbDgram* dgram = event->creator();
@@ -584,9 +593,9 @@ void Teb::process(EbEvent* event)
     if (rdg->isEvent())
     {
       // Present event contributions to "user" code for building a result datagram
-      auto t0 = std::chrono::system_clock::now();
+      auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
       _trigger->event(event->begin(), event->end(), *rdg); // Consume
-      auto t1 = std::chrono::system_clock::now();
+      auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
       _trgTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
 
       // Handle prescale
@@ -663,17 +672,19 @@ void Teb::process(EbEvent* event)
   }
   else
   {
-    logging::error("%s:\n  Wrong flags %u in immediate data: "
-                   "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
-                   __PRETTY_FUNCTION__, ImmData::flg(imm),
-                   pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
+    // We can legitimately get here for timed-out/fixed-up events that are
+    // comprised of contributions from non-common RoG contributors
+    if (!event->remaining())
+      logging::error("%s:\n  Wrong flags %u in immediate data: "
+                     "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
+                     __PRETTY_FUNCTION__, ImmData::flg(imm),
+                     pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
   }
 
-  auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+  if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
+    _latency = std::chrono::duration_cast<us_t>(latency(dgram->time)).count();
+    _latPid = dgram->pulseId();
+  }
 }
 
 // Called by EB  on timeout when it is empty of events
@@ -744,10 +755,11 @@ void Teb::_post(const Batch& batch)
   unsigned offset = batch.idx * maxResultSize;
   uint64_t data   = ImmData::value(ImmData::NoResponse_Buffer, _prms.id, batch.idx);
   uint64_t destns = batch.dsts; // & ~_trimmed;
-  bool     print  = false;
+  _entries = extent / maxResultSize;
 
   batch.end->setEOL();                  // Terminate the batch
 
+  bool print = false;
   if (UNLIKELY(extent > _prms.maxEntries * maxResultSize))
   {
     logging::error("%s:\n  Batch extent exceeds maximum: %zu vs %u * %zu = %zu",
@@ -852,7 +864,7 @@ public:
   TebApp(const std::string& collSrv, EbParams&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
-  json connectionInfo(const nlohmann::json& msg) override;
+  json connectionInfo(const json& msg) override;
   void connectionShutdown() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
@@ -1150,7 +1162,6 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.contractors.fill(0);
   _prms.receivers.fill(0);
 
-  _prms.maxEntries   = MAX_ENTRIES;     // Revisit: Make configurable?
   _prms.maxBuffers   = 0;               // Save the largest value
   _prms.indexSources = 0ull;            // DRP(s) with the largest DMA index range
   _prms.numBuffers.resize(MAX_DRPS, 0); // Number of buffers on each DRP
@@ -1414,6 +1425,7 @@ int main(int argc, char **argv)
     if (kwargs.first == "ep_provider")  continue;
     if (kwargs.first == "script_path")  continue;
     if (kwargs.first == "mon_throttle") continue;
+    if (kwargs.first == "eb_timeout")   continue; // EbAppBase
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
@@ -1433,6 +1445,8 @@ int main(int argc, char **argv)
 
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
+
+  prms.maxEntries = MAX_ENTRIES;        // Revisit: Make configurable?
 
   try
   {

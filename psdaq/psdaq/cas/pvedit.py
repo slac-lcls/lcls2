@@ -440,7 +440,7 @@ class PvEditDbl(PvEditTxt):
         super(PvEditDbl, self).__init__(pv, label)
 
     def setPv(self):
-        value = self.text().toDouble()
+        value = float(self.text())
         self.pv.put(value)
 
     def update(self, err):
@@ -889,6 +889,9 @@ def LblCheckBox(parent, pvbase, name, count=1, start=0, istart=0, enable=True, h
 
 def LblEditInt(parent, pvbase, name, count=1, horiz=True):
     return PvInput(PvEditInt, parent, pvbase, name, count, horiz=horiz)
+
+def LblEditDbl(parent, pvbase, name, count=1, horiz=True):
+    return PvInput(PvEditDbl, parent, pvbase, name, count, horiz=horiz)
 
 def LblEditHML(parent, pvbase, name, count=1):
     return PvInput(PvEditHML, parent, pvbase, name, count)

@@ -103,18 +103,32 @@ EbEvent* EbEvent::_add(const EbDgram* cdg, unsigned immData)
 */
 
 #include <stdio.h>
+#include <chrono>
 
-void EbEvent::dump(int number)
+void EbEvent::dump(unsigned detail, int number)
 {
+  using ms_t = std::chrono::milliseconds;
+
   const EbDgram*  const* current = begin();
   const EbDgram*         contrib = *current;
 
+  auto svc = contrib->service();
   auto ctl = contrib->control();
   auto env = contrib->env;
   auto src = contrib->xtc.src.value();
+  auto now = fast_monotonic_clock::now();
+  auto age   {now - _t0};
 
-  printf("  Event #%2d @ %16p nxt %16p prv %16p seq %014lx ctl %02x env %08x sz %6zd src %2u rem %016lx req %016lx\n",
-         number, this, forward(), reverse(), sequence(), ctl, env, _size, src, _remaining, _contract);
+  if (!detail)
+    printf("  %15s seq %014lx ctl %02x env %08x sz %6zd src %2u rem %016lx con %016lx age %ld ms latency %ld ms\n",
+           TransitionId::name(svc), sequence(), ctl, env, _size, src, _remaining, _contract,
+           std::chrono::duration_cast<ms_t>(age).count(),
+           std::chrono::duration_cast<ms_t>(latency(contrib->time)).count());
+  else
+    printf("  Event #%2d @ %16p nxt %16p prv %16p seq %014lx ctl %02x env %08x sz %6zd src %2u rem %016lx con %016lx age %ld ms latency %ld ms\n",
+           number, this, forward(), reverse(), sequence(), ctl, env, _size, src, _remaining, _contract,
+           std::chrono::duration_cast<ms_t>(age).count(),
+           std::chrono::duration_cast<ms_t>(latency(contrib->time)).count());
 
   //printf("   Event #%d @ address %p has sequence %014lX\n",
   //       number, this, sequence());

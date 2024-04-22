@@ -9,7 +9,6 @@ from psdaq.seq.seq import *
 from psdaq.seq.seqprogram import *
 import psdaq.seq.seqplot as seqp
 import numpy as np
-#from psdaq.seq.seqplot import *
 
 def auto_int(val):
     return int(val,0)
@@ -23,7 +22,7 @@ def main():
     parser.add_argument('--full', help='DAQ trigger at RUN trigger rate', action='store_true')
     parser.add_argument('--f360', help='DAQ trigger at 360 Hz', action='store_true')
     parser.add_argument('--minAC', help='Minimum 120H interval in 119MHz clocks', default=0x5088c, type=auto_int )
-    parser.add_argument('--pv' , help="XPM pv base", default='DAQ:NEH:XPM:7:SEQENG:2')
+    parser.add_argument('--pv' , help="XPM pv base (like DAQ:NEH:XPM:7:SEQENG:6)", default=None)
     parser.add_argument('--test', help="Calculate only", action='store_true')
     parser.add_argument('--plot', help="Plot sequence", action='store_true')
     parser.add_argument('--verbose', help="Verbose", action='store_true')
@@ -86,7 +85,7 @@ def main():
     # 60Hz x timeslots 1,4
     tsmask = 0x3f if args.f360 else 0x9
 #    instrset.append(ACRateSync(tsmask,0,1))  # hardcoded to (wrong) AC rate marker until xtpg fixed
-    instrset.append(ACRateSync(tsmask,5,1))
+    instrset.append(ACRateSync(tsmask,'60H',1))
 
     #  Parent trigger comes first
     if startb:
@@ -143,6 +142,9 @@ def main():
     title = 'ePixHR'
 
     if not args.test:
+        if args.pv is None:
+            raise RuntimeError('No --pv argument supplied')
+
         seq = SeqUser(args.pv)
         tmo = 0
         while(tmo<10):

@@ -12,6 +12,7 @@
 #include "psdaq/eb/ResultDgram.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
@@ -80,6 +81,8 @@ public:
     std::string runName();
 };
 
+class PgpReader;
+
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
@@ -91,6 +94,7 @@ public:
     void detector(Detector* det) {m_det = det;}
     void tsId(unsigned nodeId) {m_tsId = nodeId;}
     void resetCounters(bool all);
+    void configure(Detector*, const PgpReader*);
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
     bool advanceChunkId();
     std::string reopenFiles();
@@ -107,6 +111,7 @@ private:
 private:
     MemPool& m_pool;
     Detector* m_det;
+    const PgpReader* m_pgp;
     unsigned m_tsId;
     Pds::Eb::MebContributor& m_mon;
     BufferedFileWriterMT m_fileWriter;
@@ -124,13 +129,12 @@ private:
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
     uint64_t m_evtSize;
+    uint64_t m_latPid;
     int64_t m_latency;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
     FileParameters m_fileParameters;
     unsigned m_partition;
 };
-
-class Detector;
 
 class PgpReader
 {
@@ -152,9 +156,15 @@ public:
     const uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
     const uint64_t nPgpJumps()    const { return m_nPgpJumps; }
     const uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
+    std::chrono::nanoseconds age(const XtcData::TimeStamp& time) const;
+private:
+    void _setTimeOffset(const XtcData::TimeStamp& time);
 protected:
     const Parameters& m_para;
     MemPool& m_pool;
+    pollfd m_pfd;
+    Pds::fast_monotonic_clock::time_point m_t0;
+    int m_tmo;
     std::vector<int32_t> dmaRet;
     std::vector<uint32_t> dmaIndex;
     std::vector<uint32_t> dest;
@@ -167,6 +177,7 @@ protected:
     unsigned m_count;
     uint64_t m_dmaBytes;
     uint64_t m_dmaSize;
+    uint64_t m_latPid;
     int64_t m_latency;
     uint64_t m_nDmaErrors;
     uint64_t m_nNoComRoG;
@@ -175,6 +186,7 @@ protected:
     uint64_t m_nPgpJumps;
     uint64_t m_nNoTrDgrams;
     std::mutex m_lock;
+    std::chrono::nanoseconds m_tOffset;
 };
 
 class PV;

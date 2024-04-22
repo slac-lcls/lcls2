@@ -75,6 +75,8 @@ def main():
     )
 
     xpm = base.XPM
+    xpm.start()
+
     app = base.XPM.XpmApp
     axiv = base.XPM.AxiVersion
 

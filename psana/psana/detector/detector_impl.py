@@ -39,13 +39,13 @@ class DetectorImpl():
         self._drp_class_name    = drp_class_name
 
         # Both configs and calibconst are for only this detector
-        self._configs           = configinfo.configs
-        self._calibconst        = calibconst
-        self._sorted_segment_ids= configinfo.sorted_segment_ids
-        self._uniqueid          = configinfo.uniqueid
-        self._dettype           = configinfo.dettype
-        self._env_store         = env_store
-        self._var_name          = var_name
+        self._configs             = configinfo.configs
+        self._calibconst          = calibconst
+        self._sorted_segment_inds = configinfo.sorted_segment_ids
+        self._uniqueid            = configinfo.uniqueid
+        self._dettype             = configinfo.dettype
+        self._env_store           = env_store
+        self._var_name            = var_name
 
     def _seg_configs(self):
         """
@@ -70,7 +70,7 @@ class DetectorImpl():
             # check that all promised segments have been received
             evt_segments = list(evt._det_segments[key].keys())
             evt_segments.sort()
-            if evt_segments != self._sorted_segment_ids:
+            if evt_segments != self._sorted_segment_inds:
                 return None
             else:
                 return evt._det_segments[key]

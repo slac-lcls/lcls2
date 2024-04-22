@@ -14,7 +14,10 @@ import numpy as np
 #
 
 class ConfigScanBase(object):
-    def __init__(self, args=[]):
+    def __init__(self, args=[], **kwargs):
+
+
+        scantype = kwargs['scantype'] if 'scantype' in kwargs.keys() else 'chargeinj'
 
         parser = argparse.ArgumentParser()
         parser.add_argument('-p', type=int, choices=range(0, 8), default=3,
@@ -26,7 +29,7 @@ class ConfigScanBase(object):
         parser.add_argument('--hutch', default=None, type=str, help="hutch (shortcut to platform/collect_host")
         parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (e.g. BEAM)')
         parser.add_argument('--detname', default='epixhr_0', help="detector name (default 'scan')")
-        parser.add_argument('--scantype', default='chargeinj', help="scan type (default 'chargeinj')")
+        parser.add_argument('--scantype', default=scantype, help=f'scan type (default {scantype})')
         parser.add_argument('-v', action='store_true', help='be verbose')
 
         parser.add_argument('--events', type=int, default=2000, help='events per step (default 2000)')
@@ -51,7 +54,7 @@ class ConfigScanBase(object):
         self.args = args
 
     def run(self,keys,steps):
-        
+
         args = self.args
 
         # instantiate DaqControl object
@@ -154,7 +157,7 @@ class ConfigScanBase(object):
 
         for step in steps():
             # update
-            scan.update(value=scan.step_count())
+            scan.update(value=step[1])
 
             my_step_data = {}
             for motor in scan.getMotors():

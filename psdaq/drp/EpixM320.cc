@@ -26,12 +26,10 @@ namespace Drp {
     class EpixMPanelDef : public VarDef
     {
     public:
-        //        enum index { raw, aux, numfields };
         enum index { raw, numfields };
 
         EpixMPanelDef() {
-            ADD_FIELD(raw              ,UINT16,2);
-            //            ADD_FIELD(aux              ,UINT16,2);
+            ADD_FIELD(raw, UINT16, 3);
         }
     } epixMPanelDef;
 
@@ -198,6 +196,7 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
 
     if (m_descramble) {
         //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
+        //  Padding has been removed as of 3/25/24
         if (p[2]==0 && p[3]==0) {
             // A zero timestamp means the data has not been rearranged.
             for(unsigned i=1; i<5; i++) {
@@ -222,9 +221,8 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
 //
 void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    unsigned shape[MaxRank] = {0,0,0,0,0};
-
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
+    const unsigned numAsics    = 4;
     const unsigned elemRows    = 192;
     const unsigned elemRowSize = 384;
     const size_t   headerSize  = 24;
@@ -232,11 +230,11 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
-    shape[0] = elemRows*2; shape[1] = elemRowSize*2;
+    unsigned shape[MaxRank] = { numAsics, elemRows, elemRowSize, 0,0 };
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixMPanelDef::raw, shape);
 
     if (subframes.size() != 6) {
-        logging::error("Missing data: subframe size %d [6]\n",
+        logging::error("Missing data: subframe size %d vs 6 expected\n",
                        subframes.size());
         xtc.damage.increase(XtcData::Damage::MissingData);
         return;
@@ -253,7 +251,6 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     //
 
     //  Missing ASICS are padded with zeroes
-    const unsigned numAsics = 4;
     const unsigned asicSize = elemRows*elemRowSize;
     memset(aframe.data(), 0, numAsics*asicSize*sizeof(uint16_t));
 
@@ -283,7 +280,6 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     //  6     7     8     9    10    11        1     5     9    13    17    21
     //  0     1     2     3     4     5        0     4     8    12    16    20
 
-    //const unsigned asicOrder[] = {0, 2, 1, 3};
     const unsigned numBanks    = 24;
     const unsigned bankRows    = 4;
     const unsigned bankCols    = 6;
@@ -295,22 +291,16 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     for (unsigned q = 0; q < numAsics; ++q) {
         if ((q_asics & (1<<q))==0)
             continue;
-        //auto src = reinterpret_cast<const uint16_t*>(subframes[2 + asicOrder[q]].data()) + headerSize;
         auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data()) + headerSize;
+        auto dst = &aframe(q, 0, 0);
         for (unsigned bankRow = 0; bankRow < bankRows; ++bankRow) {
-            for (unsigned r = 0; r < bankHeight; ++r) {
-                // ASIC firmware bug: first and last row of each bank are swapped
-                auto row  = r == 0 ? bankHeight - 1 : (r == bankHeight - 1 ? 0 : r); // Swap first and last row
-                //auto row  = r == 0 ? bankHeight - 1 : r - 1; // Shift rows up by one in ring buffer fashion
-                auto aRow = bankRow*bankHeight+r;
-                //auto dst  = q<2 ? &aframe(aRow+elemRows,  elemRowSize*(q&1))
-                //                : &aframe(elemRows-1-aRow,elemRowSize*(1-(q&1)));
-                auto dst  = &aframe(aRow+elemRows*((q&2)>>1),  elemRowSize*(q&1));
+            for (unsigned row = 0; row < bankHeight; ++row) {
+                auto rowFix = row == 0 ? bankHeight - 1 : row - 1; // Shift rows up by one for ASIC f/w bug
                 for (unsigned bankCol = 0; bankCol < bankCols; ++bankCol) {
-                    unsigned bank = bankWidth * bankCol + bankRow;
+                    unsigned bank = bankRows * bankCol + bankRow;  // Given (column, row), reorder banks
                     for (unsigned col = 0; col < bankWidth; ++col) {
-                        //          (even cols w/ offset + row offset + inc every 2 cols) * fill one pixel / bank + bank inc
-                        auto idx = (((col+1) % 2) * hb   +  hw * row  + int(col / 2))     * numBanks              + bank;
+                        //          (even cols w/ offset + row offset  + inc every 2 cols) * fill one pixel / bank + bank inc
+                        auto idx = (((col+1) % 2) * hb   + hw * rowFix + int(col / 2))     * numBanks              + bank;
                         *dst++ = src[idx];
                     }
                 }

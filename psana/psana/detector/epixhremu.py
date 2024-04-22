@@ -124,7 +124,7 @@ class epixhremu_fex_0_0_1(ad.AreaDetector):
         #cc = self._calibconst # defined in DetectorImpl
         #print('cc[geometry] meta:\n%s' % str(cc['geometry'][1]))
         #print('cc.keys:\n%s' % str(cc.keys()))
-        #segnums = self._segment_numbers = self._sorted_segment_ids # [2, 5, 11] - for run 286 or all 20 for 287
+        #segnums = self._segment_numbers = self._sorted_segment_inds # [2, 5, 11] - for run 286 or all 20 for 287
         #print('  segnums: %s' % str(segnums))
 
 # EOF

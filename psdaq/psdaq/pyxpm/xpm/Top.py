@@ -155,12 +155,12 @@ class Top(pr.Device):
                 offset = Top.mmcmParms[i][1],
             ))
         
-        hsrParms = [ ['HSRep0',0x09000000],
-                     ['HSRep1',0x09010000],
-                     ['HSRep2',0x09020000],
-                     ['HSRep3',0x09030000],
-                     ['HSRep4',0x09040000],
-                     ['HSRep5',0x09050000] ]
+        hsrParms = [ ['HSRep[0]',0x09000000],
+                     ['HSRep[1]',0x09010000],
+                     ['HSRep[2]',0x09020000],
+                     ['HSRep[3]',0x09030000],
+                     ['HSRep[4]',0x09040000],
+                     ['HSRep[5]',0x09050000] ]
         for i in range(len(hsrParms)):
             self.add(xpm.Ds125br401(
                 memBase = self.srp,
@@ -236,4 +236,10 @@ class Top(pr.Device):
             click.secho(errMsg, bg='red')
             raise ValueError(errMsg)
 
-        
+        print('*** Setting default HSRepeater equalizer values ***')
+        #  Set default equalizer values
+        for idev in (0,1,3,4):
+            dev = self.HSRep[idev]
+            for ch in range(4):
+                dev.EQ_ch[ch].set(3)
+            

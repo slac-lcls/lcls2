@@ -36,7 +36,7 @@ def print_det_raw_attrs(det):
     print('r._info:', r._info)
     print('r._return_types:', r._return_types)
     print('r._segments:', r._segments)
-    print('r._sorted_segment_ids:', r._sorted_segment_ids)
+    print('r._sorted_segment_inds:', r._sorted_segment_inds)
     print('r._uniqueid:', r._uniqueid)
     print('r._var_name:', r._var_name)
     print('r.raw:', r.raw)
@@ -178,7 +178,7 @@ def test_calib(args):
     print('XXX det.raw._calibconst.keys(): ', det.raw._calibconst.keys()) # dict_keys(['geometry'])
     print('XXX det.raw._seg_configs(): ', det.raw._seg_configs())
     print('XXX det.raw._uniqueid: ', det.raw._uniqueid)
-    print('XXX det.raw._sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
+    print('XXX det.raw._sorted_segment_inds: ', det.raw._sorted_segment_inds) # [0, 1, 2, 3]
 
     #peds   =  det.raw._calibconst['pedestals'][0]
     #status =  det.raw._calibconst['pixel_status'][0]

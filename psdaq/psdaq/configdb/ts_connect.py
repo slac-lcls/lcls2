@@ -133,10 +133,18 @@ class ts_connector:
                 d[pvname] = (1<<readout_group)
 
         # make sure the XPM links from the detectors are OK
-        rxready_values = self.ctxt.get(pvnames_rxready)
-        for pvname,val in zip(pvnames_rxready,rxready_values):
-            if val!=1:
-                raise ValueError('RxLink not locked! %s' % pvname)
+        cnt = 0
+        while cnt < 15:
+            cnt += 1
+            rxready_values = self.ctxt.get(pvnames_rxready)
+            for pvname,val in zip(pvnames_rxready,rxready_values):
+                if val==1:  break
+                time.sleep(1)
+            if val==1:  break
+        if val == 1:
+            if cnt > 1:  print('RxLink locked after %u tries' % cnt)
+        else:
+            raise ValueError('RxLink not locked! %s' % pvname)
 
         pv_names = []
         values = []

@@ -20,8 +20,12 @@ runnum=int(sys.argv[2])
 mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
 #mount_dir = '/cds/data/drpsrcf'
 xtc_dir = os.path.join(mount_dir, exp[:3], exp, 'xtc')
-ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',batch_size=1, 
-        psmon_publish=publish)
+ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',
+        batch_size=1, 
+        psmon_publish=publish,
+        detectors=['timing','andor_vls','atmopal'],
+        max_events=0,
+        live=True)
 
 
 # we will remove this for batch processing and use "psplot" instead
@@ -42,13 +46,18 @@ for myrun in ds.runs():
     andor = myrun.Detector('andor_vls')
     atmopal = myrun.Detector('atmopal')
     timing = myrun.Detector('timing')
-    smd = ds.smalldata(filename='mysmallh5.h5',batch_size=1000, callbacks=[my_smalldata])
+    smd = ds.smalldata(filename='mysmallh5.h5',batch_size=5, callbacks=[my_smalldata])
     norm = 0
     ndrop_inhibit = 0
     sum_atmopal = None
+    cn_andor_events = 0
+    cn_intg_events = 0
+    ts_st = None
     for nstep,step in enumerate(myrun.steps()):
         print('step:',nstep)
         for nevt,evt in enumerate(step.events()):
+            if ts_st is None: ts_st = evt.timestamp
+            cn_intg_events += 1
             andor_img = andor.raw.value(evt)
             atmopal_img = atmopal.raw.image(evt)
             if atmopal_img is not None:
@@ -65,7 +74,9 @@ for myrun in ds.runs():
             # data due to deadtime
             norm+=nevt # fake normalization
             if andor_img is not None:
-                print('andor data on evt:',nevt,'ndrop_inhibit:',ndrop_inhibit)
+                cn_andor_events += 1
+                #print('andor data on evt:',nevt,'ndrop_inhibit:',ndrop_inhibit)
+                print(f'BD{rank-1}: #andor_events: {cn_andor_events} #intg_event:{cn_intg_events} st: {ts_st} en:{evt.timestamp}')
                 # check that the high-read readout group (2) didn't
                 # miss any events due to deadtime
                 if ndrop_inhibit[2]!=0: print('*** data lost due to deadtime')
@@ -78,3 +89,6 @@ for myrun in ds.runs():
                 norm=0
                 ndrop_inhibit=0
                 sum_atmopal = None
+                cn_intg_events = 0
+                ts_st = None
+    smd.done()

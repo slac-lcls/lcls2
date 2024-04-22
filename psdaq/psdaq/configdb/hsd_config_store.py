@@ -25,6 +25,7 @@ help_str = "-- user fields --"
 help_str += "\nuser.raw.start_ns : nanoseconds from fiducial to sampling start"
 help_str += "\nuser.raw.gate_ns  : nanoseconds from sampling start to end"
 help_str += "\nuser.raw.prescale : event downsampling; record 1-out-of-N"
+help_str += "\nuser.raw.keep     : event downsampling; record on keepraw event"
 help_str += "\nuser.fex.start_ns : nanoseconds from fiducial to sparsify start"
 help_str += "\nuser.fex.gate_ns  : nanoseconds from sparsify start to end"
 help_str += "\nuser.fex.prescale : event downsampling; record 1-out-of-N"
@@ -38,6 +39,7 @@ top.set("help:RO", help_str, 'CHARSTR')
 top.set('user.raw.start_ns',  93000, 'UINT32')
 top.set('user.raw.gate_ns' ,    200, 'UINT32')
 top.set('user.raw.prescale',      1, 'UINT32')
+top.set('user.raw.keep',          1, 'UINT32')
 
 top.set('user.fex.start_ns',  93000, 'UINT32')
 top.set('user.fex.gate_ns' ,    200, 'UINT32')
@@ -54,6 +56,7 @@ top.set('expert.enable'      , 0, 'UINT32')
 top.set('expert.raw_start'   , 40, 'UINT32')
 top.set('expert.raw_gate'    , 40, 'UINT32')
 top.set('expert.raw_prescale', 0, 'UINT32')
+top.set('expert.raw_keep'    , 0, 'UINT32')
 top.set('expert.fex_start'   , 40, 'UINT32')
 top.set('expert.fex_gate'    , 40, 'UINT32')
 top.set('expert.fex_xpre'    , 1, 'UINT32')

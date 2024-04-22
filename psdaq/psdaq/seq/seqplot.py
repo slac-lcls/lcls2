@@ -90,6 +90,7 @@ class SeqUser(object):
 class PatternWaveform(object):
     def __init__(self):
         self.gl = pg.GraphicsLayoutWidget()
+        self.gl.setBackground('w')
         self.index = 0
         self.q0 = None
 
@@ -117,7 +118,7 @@ class PatternWaveform(object):
                     if b==bnext and y[i]==dlast:
                         bnext = b+1
                     elif bnext-bfirst > 1:
-                        q.plot([bfirst,bnext-1],[dlast,dlast],pen=pg.mkPen('w',width=5))
+                        q.plot([bfirst,bnext-1],[dlast,dlast],pen=pg.mkPen('k',width=5))
                         dlast  = y[i]
                         bfirst = b
                         bnext  = b+1
@@ -128,7 +129,7 @@ class PatternWaveform(object):
                         bfirst = b
                         bnext  = b+1
                 if bnext-bfirst > 1:
-                    q.plot([bfirst,bnext-1],[dlast,dlast],pen=pg.mkPen('w',width=5))
+                    q.plot([bfirst,bnext-1],[dlast,dlast],pen=pg.mkPen('k',width=5))
                 else:
                     rx.append(bfirst)
                     ry.append(dlast)

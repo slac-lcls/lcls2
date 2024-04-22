@@ -441,21 +441,19 @@ uint8_t  payload[]
 //  Read ahead and clear events older than ts (approximate)
 void     Bld::clear(uint64_t ts)
 {
-    {
-        timespec ts;
-        clock_gettime(CLOCK_REALTIME,&ts);
-        logging::debug("Bld::clear [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, ts);
-    }
+    timespec tts;
+    clock_gettime(CLOCK_REALTIME,&tts);
+    logging::debug("Bld::clear [%u.%09d]  ts %016llx", tts.tv_sec, tts.tv_nsec, ts);
 
     uint64_t timestamp(0L);
     uint64_t pulseId  (0L);
     while(1) {
         // get new multicast if buffer is empty
         if ((m_position + m_payloadSize + 4) > m_bufferSize) {
+            timestamp = 0;
             ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
             if (bytes <= 0)
                 break;
-            //printf("*** 1 pos %u,  pay %u, bufSz %d, bytes %zd\n", m_position, m_payloadSize, m_bufferSize, bytes);
             m_bufferSize = bytes;
             timestamp    = headerTimestamp();
             if (timestamp >= ts) {
@@ -465,10 +463,6 @@ void     Bld::clear(uint64_t ts)
             pulseId      = headerPulseId  ();
             m_payload    = &m_buffer[m_headerSize];
             m_position   = m_headerSize + m_payloadSize;
-            //printf("*** 1 pid %014lx\n", pulseId);
-            timespec ts;
-            clock_gettime(CLOCK_REALTIME,&ts);
-            logging::debug("Bld::clear [%u.%09d] new ts %016llx", ts.tv_sec, ts.tv_nsec, timestamp);
         }
         else if (m_position==0) {
             timestamp    = headerTimestamp();
@@ -489,6 +483,8 @@ void     Bld::clear(uint64_t ts)
             m_position += 4 + m_payloadSize;
         }
 
+        logging::debug("Bld::clear drop ts %016llx", timestamp);
+
         unsigned jump = pulseId - m_pulseId;
         m_pulseId = pulseId;
         if (jump != m_pulseIdJump) {
@@ -496,6 +492,8 @@ void     Bld::clear(uint64_t ts)
             logging::debug("BLD pulseId jump %u [%u]",jump,pulseId);
         }
     }
+
+    logging::debug("Bld::clear leaving ts %016llx", timestamp);
 }
 
 //  Advance to the next event
@@ -503,28 +501,31 @@ uint64_t Bld::next()
 {
     uint64_t timestamp(0L);
     uint64_t pulseId  (0L);
+
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME,&ts);
+
     // get new multicast if buffer is empty
     if ((m_position + m_payloadSize + 4) > m_bufferSize) {
         ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
-        if (bytes <= 0)
+        if (bytes <= 0) {
+            logging::debug("Bld::next [%u.%09d] no data", ts.tv_sec, ts.tv_nsec);
             return timestamp; // Check only for EWOULDBLOCK and EAGAIN?
-        //printf("*** 2 pos %u,  pay %u, bufSz %d, bytes %zd\n", m_position, m_payloadSize, m_bufferSize, bytes);
+        }
+
         // To do: Handle partial reads?
         m_bufferSize = bytes;
         timestamp    = headerTimestamp();
         pulseId      = headerPulseId  ();
         m_payload    = &m_buffer[m_headerSize];
         m_position   = m_headerSize + m_payloadSize;
-        timespec ts;
-        clock_gettime(CLOCK_REALTIME,&ts);
-        logging::debug("Bld::next [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, timestamp);
+        logging::debug("Bld::next [%u.%09d]  ts %016llx  diff %d", ts.tv_sec, ts.tv_nsec, timestamp, ts.tv_sec - (timestamp>>32) - POSIX_TIME_AT_EPICS_EPOCH);
     }
     else if (m_position==0) {
         timestamp    = headerTimestamp();
         pulseId      = headerPulseId  ();
         m_payload    = &m_buffer[m_headerSize];
         m_position   = m_headerSize + m_payloadSize;
-        //printf("*** 2b pid %014lx\n", pulseId);
     }
     else {
         uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
@@ -533,17 +534,9 @@ uint64_t Bld::next()
         pulseId     = headerPulseId  () + pulseIdOffset;
         m_payload   = &m_buffer[m_position + 4];
         m_position += 4 + m_payloadSize;
-        //printf("*** 2c pid %014lx, pidOs %u\n", pulseId, pulseIdOffset);
     }
 
     logging::debug("Bld::next timestamp %016llx  pulseId %016llx", timestamp, pulseId);
-
-    unsigned jump = pulseId - m_pulseId;
-    m_pulseId = pulseId;
-    if (jump != m_pulseIdJump) {
-        m_pulseIdJump = jump;
-        logging::debug("BLD pulseId jump %u [%u]",jump, pulseId);
-    }
 
     return timestamp;
 }
@@ -561,7 +554,7 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
     m_para(para), m_drp(drp), m_det(det),
     m_config(0), m_terminate(false), m_running(false),
-    m_available(0), m_current(0), m_next(0), m_nDmaRet(0)
+    m_available(0), m_current(0), m_nDmaRet(0)
 {
     m_nodeId = det->nodeId;
     if (drp.pool.setMaskBytes(para.laneMask, 0)) {
@@ -589,23 +582,16 @@ Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
     return dgram;
 }
 
-// measured 11 ms latency for gmd at low rates
-static const unsigned _skip_intv = 20000000; // ns
+//
 static const unsigned TMO_MS = 20;
-static const std::chrono::microseconds TMO_US(25000);
 
-Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
+//  Look at the next timing header (or wait 20ms for the next one) 
+const Pds::TimingHeader* Pgp::next()
 {
-    logging::debug("Pgp::next ts %016llx  m_next %016llx  tmo %c", timestamp, m_next, m_tmoState==Finished?'T':'F');
-
-    //  Fast forward to _next timestamp only when there is a BLD timestamp
-    if (timestamp && (timestamp < m_next))
-        return nullptr;
-
     // get new buffers
     if (m_current == m_available) {
         m_current = 0;
-        auto start = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+        auto start = Pds::fast_monotonic_clock::now();
         while (true) {
             m_available = read();
             m_nDmaRet = m_available;
@@ -614,55 +600,19 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex)
             // Time out batches for the TEB
             m_drp.tebContributor().timeout();
 
-            //  Timing data should arrive long before BLD - no need to wait
-            //            return nullptr;
-
             // wait for a total of 10 ms otherwise timeout
-            auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+            auto now = Pds::fast_monotonic_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
             if (elapsed > TMO_MS) {
-                m_next = timestamp + _skip_intv;
                 if (m_running)  logging::debug("pgp timeout");
                 return nullptr;
             }
         }
     }
 
-    const Pds::TimingHeader* timingHeader = m_det->getTimingHeader(dmaIndex[m_current]);
-    timespec ts;
-    clock_gettime(CLOCK_REALTIME,&ts);
-    logging::debug("Pgp::next [%u.%09d]  ts %016llx", ts.tv_sec, ts.tv_nsec, timingHeader->time.value());
-
-    Pds::EbDgram* dgram = nullptr;
-
-    // return dgram if bld timestamp matches pgp timestamp or if it's a transition
-    if ((timestamp == timingHeader->time.value()) || (timingHeader->service() != XtcData::TransitionId::L1Accept)) {
-        dgram = _handle(evtIndex);
-        m_current++;
-        m_next = timingHeader->time.value();
-    }
-    // Missed BLD data so mark event as damaged
-    else if (timestamp > timingHeader->time.value() || m_tmoState==Finished) {
-        dgram = _handle(evtIndex);
-        dgram->xtc.damage.increase(XtcData::Damage::MissingData);
-        m_current++;
-        m_next = timingHeader->time.value();
-    }
-    else {
-        if (m_tmoState == TmoState::None) {
-            m_tmoState = TmoState::Started;
-            m_tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-        } else {
-            if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - m_tInitial > TMO_US) {
-                m_tmoState = TmoState::Finished;
-            }
-        }
-    }
-
-    if (dgram)
-        m_tmoState = TmoState::None;
-
-    return dgram;
+    logging::debug("Pgp::next returning %016llx",
+                   m_det->getTimingHeader(dmaIndex[m_current])->time.value());
+    return m_det->getTimingHeader(dmaIndex[m_current]);
 }
 
 void Pgp::shutdown()
@@ -764,113 +714,134 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 
     m_terminate.store(false, std::memory_order_release);
 
+    const Pds::TimingHeader* timingHeader = 0;
+    uint32_t index = 0;
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
         }
-        uint32_t index;
-        Pds::EbDgram* dgram = next(nextId, index);
-        bool lHold(false);
-        //printf("dgram %p, lHold %d\n", dgram, lHold);
-        if (dgram) {
-            logging::debug("pgp %016lx  bld %016lx  pid %014lx\n",
-                           dgram->time.value(), nextId, dgram->pulseId());
-            if (dgram->xtc.damage.value()) {
-                ++nmissed;
-                if (dgram->time.value() < nextId)
-                    lHold=true;
-                if (!lMissing) {
-                    lMissing = true;
-                    logging::debug("Missed next bld: pgp %016lx  bld %016lx  pid %014lx",
-                                   dgram->time.value(), nextId, dgram->pulseId());
-                }
+
+        //  calculate realtime timeout (50 ms)
+        const unsigned TMO_NS = 50000000;
+        timespec ts;
+        clock_gettime(CLOCK_REALTIME,&ts);
+        uint64_t tts = ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH;
+        if (ts.tv_nsec < TMO_NS) {
+            tts = (tts-1)<<32;
+            tts |= 1000000000+ts.tv_nsec-TMO_NS;
+        }
+        else {
+            tts <<= 32;
+            tts |= ts.tv_nsec-TMO_NS;
+        }
+        logging::debug("tmo time %016llx", tts);
+
+        //  get oldest timing header
+        if (!timingHeader)
+            timingHeader = next();
+
+        uint64_t ttv = timingHeader ? timingHeader->time.value() : 0;
+
+        //  get oldest BLD and throw away anything older than timingheader or timeout value
+        nextId = -1UL;
+        for(unsigned i=0; i<m_config.size(); i++) {
+            uint64_t tto = tts;
+            if (timingHeader)
+                tto = ttv;
+            if (timestamp[i]<tto) {
+                m_config[i]->handler().clear(tto);
+                uint64_t tt = m_config[i]->handler().next();
+                logging::debug("Bld[%u] replacing %016llx with %016llx",
+                               i, timestamp[i],tt);
+                timestamp[i] = tt;
             }
-            else {
-                if (dgram->service() == XtcData::TransitionId::L1Accept) {
-                    const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
-                    bool lMissed = false;
+            if (timestamp[i]<nextId)
+                nextId = timestamp[i];
+        }
+        logging::debug("Bld next %016llx", nextId);
+
+        if (timingHeader) {
+            if (timingHeader->service()!=XtcData::TransitionId::L1Accept) {     //  Handle immediately
+                Pds::EbDgram* dgram = _handle(index);
+                if (!dgram) {
+                    m_current++;
+                    timingHeader = 0;
+                    continue;
+                }
+
+                // Find the transition dgram in the pool and initialize its header
+                Pds::EbDgram* trDgram = m_drp.pool.transitionDgrams[index];
+                const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
+                if (!trDgram)  continue; // Can happen during shutdown
+                memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                // copy the temporary xtc created on phase 1 of the transition
+                // into the real location
+                XtcData::Xtc& trXtc = m_det->transitionXtc();
+                trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+                auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+                memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
+
+                switch (dgram->service()) {
+                case XtcData::TransitionId::Configure: {
+                    logging::info("BLD configure");
+                        
+                    // Revisit: This is intended to be done by BldDetector::configure()
                     for(unsigned i=0; i<m_config.size(); i++) {
-                        if (timestamp[i] == nextId) {
-                            // Revisit: This is intended to be done by BldDetector::event()
-                            XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                            m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
-                        }
-                        else {
-                            lMissed = true;
-                            if (!lMissing)
-                                logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
-                                                 i, nextId, timestamp[i], dgram->pulseId());
-                        }
+                        XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                        namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
                     }
-                    if (lMissed) {
-                        lMissing = true;
-                        dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
-                        nmissed++;
+                    break;
+                }
+                default: {      // Handle other transitions
+                    break;
+                }
+                }
+
+                m_current++;
+                timingHeader = 0;
+                _sendToTeb(*dgram, index);
+                nevents++;
+            }
+            else if (ttv < tts) {  // Handle if old enough
+                Pds::EbDgram* dgram = _handle(index);
+                if (!dgram) {
+                    m_current++;
+                    timingHeader = 0;
+                    continue;
+                }
+                const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
+                bool lMissed = false;
+                for(unsigned i=0; i<m_config.size(); i++) {
+                    if (timestamp[i] == ttv) {
+                        // Revisit: This is intended to be done by BldDetector::event()
+                        XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                        m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
                     }
                     else {
-                        if (lMissing)
-                            logging::debug("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
-                        lMissing = false;
+                        lMissed = true;
+                        if (!lMissing)
+                            logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
+                                           i, nextId, timestamp[i], dgram->pulseId());
                     }
+                }
+                if (lMissed) {
+                    lMissing = true;
+                    dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+                    nmissed++;
                 }
                 else {
-                    lHold=true;         // Hold off BLD for all transitions
-
-                    // Find the transition dgram in the pool and initialize its header
-                    Pds::EbDgram* trDgram = m_drp.pool.transitionDgrams[index];
-                    const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
-                    if (!trDgram)  continue; // Can happen during shutdown
-                    memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
-                    // copy the temporary xtc created on phase 1 of the transition
-                    // into the real location
-                    XtcData::Xtc& trXtc = m_det->transitionXtc();
-                    trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
-                    auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
-                    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-
-                    switch (dgram->service()) {
-                        case XtcData::TransitionId::Configure: {
-                            logging::info("BLD configure");
-
-                            // Revisit: This is intended to be done by BldDetector::configure()
-                            for(unsigned i=0; i<m_config.size(); i++) {
-                                XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                                namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
-                            }
-                            break;
-                        }
-                        case XtcData::TransitionId::Enable: {
-                            m_running = true;
-                            break;
-                        }
-                        case XtcData::TransitionId::Disable: {
-                            m_running = false;
-                            break;
-                        }
-                        default: {      // Handle other transitions
-                            break;
-                        }
-                    }
+                    if (lMissing)
+                        logging::debug("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
+                    lMissing = false;
                 }
+
+                m_current++;
+                timingHeader = 0;
+                _sendToTeb(*dgram, index);
+                nevents++;
             }
-            _sendToTeb(*dgram, index);
-            nevents++;
         }
-
-        if (!lHold) {
-            nextId++;
-            for(unsigned i=0; i<m_config.size(); i++) {
-                if (dgram)
-                    m_config[i]->handler().clear(dgram->time.value());
-                if (timestamp[i] < nextId)
-                    timestamp[i] = m_config[i]->handler().next();
-            }
-
-            nextId = -1UL;
-            for(unsigned i=0; i<m_config.size(); i++) {
-                if (timestamp[i] < nextId)
-                    nextId = timestamp[i];
-            }
+        else {   // No timing header waiting
         }
     }
 
@@ -1065,6 +1036,10 @@ void BldApp::handlePhase1(const json& msg)
         }
 
         m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
+
+        // Provide EbReceiver with the Detector interface so that additional
+        // data blocks can be formatted into the XTC, e.g. trigger information
+        m_drp.ebReceiver().configure(m_det, m_pgp.get());
 
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {

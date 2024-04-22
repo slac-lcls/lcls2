@@ -17,6 +17,7 @@
 #include "EpixM320.hh"
 #include "Epix100.hh"
 #include "Opal.hh"
+#include "HREncoder.hh"
 #include "Wave8.hh"
 #include "Piranha4.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -323,6 +324,7 @@ void PGPDetectorApp::initialize()
     f.register_type<TimingBEB>   ("tb");
     f.register_type<TimingSystem>("ts");
     f.register_type<Wave8>       ("wave8");
+    f.register_type<HREncoder>   ("hrencoder");
     f.register_type<Piranha4>    ("piranha4");
 
     m_det = f.create(&m_para, &m_drp.pool);
@@ -330,10 +332,6 @@ void PGPDetectorApp::initialize()
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
     }
-
-    // Provide EbReceiver with the Detector interface so that additional
-    // data blocks can be formatted into the XTC, e.g. trigger information
-    m_drp.ebReceiver().detector(m_det);
 
     // Initialize these to zeros. They will store the file descriptors and
     // process numbers if Drp Python is used or be just zeros if it is not.
@@ -528,7 +526,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
         else {
             // Python-DRP is disabled during calibrations
-            std::string config_alias = msg["body"]["config_alias"];
+            const std::string& config_alias = msg["body"]["config_alias"];
             bool pythonDrp = config_alias != "CALIB" ? m_pythonDrp : false;
 
             m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, pythonDrp, m_inpMqId,
@@ -542,6 +540,10 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                                       std::ref(m_det), std::ref(m_drp.tebContributor())};
             m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                             std::ref(m_drp.tebContributor()));
+
+            // Provide EbReceiver with the Detector interface so that additional
+            // data blocks can be formatted into the XTC, e.g. trigger information
+            m_drp.ebReceiver().configure(m_det, m_pgpDetector.get());
 
             unsigned error = m_det->configure(config_alias, xtc, bufEnd);
             if (!error) {

@@ -5,7 +5,7 @@ find_package(Threads REQUIRED)
 
 add_library(utilities SHARED
   utilities.cc
-  IndexPool.cc
+#  IndexPool.cc
   Endpoint.cc
   EbLfLink.cc
   EbLfServer.cc
@@ -148,6 +148,7 @@ target_link_libraries(eblf_pingpong
 
 target_link_libraries(tstEbLfLink
   utilities
+  collection
   Threads::Threads
   rt
 )
@@ -196,15 +197,15 @@ install(TARGETS
   RUNTIME DESTINATION bin
 )
 
-add_executable(tstIndexPool    tstIndexPool.cc IndexPool.cc)
-
-target_include_directories(tstIndexPool PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-  $<INSTALL_INTERFACE:include>
-)
-
-target_link_libraries(tstIndexPool
-)
+#add_executable(tstIndexPool    tstIndexPool.cc IndexPool.cc)
+#
+#target_include_directories(tstIndexPool PUBLIC
+#  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#  $<INSTALL_INTERFACE:include>
+#)
+#
+#target_link_libraries(tstIndexPool
+#)
 
 add_executable(tstClocks    tstClocks.cc)
 

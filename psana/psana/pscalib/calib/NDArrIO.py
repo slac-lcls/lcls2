@@ -231,7 +231,7 @@ def load_txt(fname):
         str_metad = 'dtype=%s ndim=%d shape=%s' % (str(dtype), ndim, str(shape))
         raise IOError('Inconsistent metadata (NDIM != len(shape)) in file: %s' % str_metad)
 
-    if ndim > 2: nparr.shape = shape
+    if ndim > 1: nparr.shape = shape
 
     return nparr
 

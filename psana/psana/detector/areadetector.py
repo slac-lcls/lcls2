@@ -8,7 +8,7 @@ Usage::
 
   o = AreaDetector(*args, **kwa)    # inherits from DetectorImpl(*args, **kwa)
 
-  a = o._segment_numbers  # alias of o._sorted_segment_ids, where ids is misleading
+  a = o._segment_numbers  # alias of o._sorted_segment_inds, where inds stands for indices
   a = o._det_calibconst()
 
   a = o._pedestals(all_segs=False)
@@ -49,7 +49,7 @@ Usage::
 
   o = AreaDetectorRaw(*args, **kwa) # inherits from AreaDetector(*args, **kwa), adds raw and calib methods
   a = o.raw(evt)
-  a = o.calib(evt, cmpars=(7,2,100,10), *kwargs)
+  a = o.calib(evt, cmpars=(7,2,100,10), **kwa)
   a = o.calib(evt, **kwa)
 
 2020-11-06 created by Mikhail Dubrovin
@@ -61,15 +61,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 import os
+import sys
 import numpy as np
 from psana.detector.calibconstants import CalibConstants
 from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess
-from psana.detector.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
+import psana.detector.NDArrUtils as au # reshape_to_3d, shape_as_3d, shape_as_3d, reshape_to_2d
+info_ndarr, reshape_to_3d =  au.info_ndarr, au.reshape_to_3d
 from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
-#from psana.detector.UtilsAreaDetector import arr3d_from_list  # arr3d_from_dict
 
 
 def is_none(par, msg, logger_method=logger.debug):
@@ -83,9 +84,12 @@ class AreaDetector(DetectorImpl):
     def __init__(self, *args, **kwargs):
         logger.debug('AreaDetector.__init__')
         DetectorImpl.__init__(self, *args, **kwargs)
+        self._args = args
+        self._kwargs = kwargs
         self._calibc_ = None
         self._geo = None
-        self._segment_numbers = self._sorted_segment_ids  # [0, 1, 2,... 17, 18, 19]
+        self._seg_geo = None
+        self._segment_numbers = self._sorted_segment_inds  # [0, 1, 2,... 17, 18, 19]
         self._maskalgos_ = None
         self._store_ = None  # detector dependent storage of cached parameters for method calib
 
@@ -94,8 +98,8 @@ class AreaDetector(DetectorImpl):
         """Returns cached object of CalibConstants derived from DetectorImpl._calibconst - dict from DB."""
         if self._calibc_ is None:
             logger.debug('AreaDetector._calibconstants - make CalibConstants')
-            cc = self._calibconst   # defined in DetectorImpl
-            if is_none(cc, 'self._calibconst is None'): return None
+            cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
+            #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
             self._calibc_ = CalibConstants(cc, **kwa)
         return self._calibc_
 
@@ -228,6 +232,7 @@ class AreaDetector(DetectorImpl):
         value = value_for_missing_segments
 
         _nda = self.calib(evt) if nda is None else nda
+
         segnums = self._segment_numbers
 
         if value is not None:
@@ -235,9 +240,8 @@ class AreaDetector(DetectorImpl):
             segnums = None
 
         o = self._calibconstants(**kwa)
-        if is_none(o, 'det.raw._calibconstants(...) is None'): return None
+        #if is_none(o, 'in AreaDetector det.raw._calibconstants(...) is None', logger_method=logger.info): return None
         if o.geo() is None: o._geo = self._det_geo()
-
         return o.image(_nda, segnums=segnums, **kwa)
 
 
@@ -356,16 +360,20 @@ class AreaDetectorRaw(AreaDetector):
         -------
         raw data: np.array, ndim=3, shape: as data
         """
+        #print('XXX AreaDetectorRaw.raw')
         if evt is None: return None
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
         if is_none(segs, 'self._segments(evt) is None'): return None
-        return np.stack([segs[k].raw for k in self._segment_numbers])
+        if len(segs) == 1:
+            return segs[0].raw
+        return reshape_to_3d(np.stack([segs[k].raw for k in self._segment_numbers]))
 
 
     def calib(self, evt, **kwa) -> Array3d:
         """Returns calibrated array of data shaped as daq: calib = (raw - peds) * gfac.
            Should be overridden for more complicated cases.
         """
+        #print('XXX AreaDetectorRaw.calib')
         logger.debug('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
                       +'\n  If needed more, it needs to be re-implemented for this detector type.')
         raw = self.raw(evt)

@@ -5,6 +5,7 @@
 #include <string>
 #include <functional>
 #include <mutex>
+#include <chrono>
 #include <condition_variable>
 #include <assert.h>
 #include <cstdint>
@@ -113,6 +114,25 @@ private:
 };
 
 
+class Pgp : public PgpReader
+{
+public:
+    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running);
+    Pds::EbDgram* next(uint32_t& evtIndex);
+    const uint64_t nDmaRet() { return m_nDmaRet; }
+private:
+    Pds::EbDgram* _handle(uint32_t& evtIndex);
+    Detector* m_det;
+    Pds::Eb::TebContributor& m_tebContributor;
+    static const int MAX_RET_CNT_C = 100;
+    const bool& m_running;
+    int32_t m_available;
+    int32_t m_current;
+    unsigned m_nodeId;
+    uint64_t m_nDmaRet;
+};
+
+
 class Interpolator
 {
 public:
@@ -149,12 +169,13 @@ public:
     unsigned unconfigure();
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
     int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
+    const PgpReader* pgp() { return &m_pgp; }
     enum { DefaultDataPort = 5006 };
     enum { MajorVersion = 3, MinorVersion = 0, MicroVersion = 0 };
 private:
     void _event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
     void _worker();
-    void _timeout(const XtcData::TimeStamp& timestamp);
+    void _timeout(std::chrono::milliseconds timeout);
     void _process(Pds::EbDgram* dgram);
     void _handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg);
   //void _handleL1Accept(const XtcData::Dgram& encDg, Pds::EbDgram& pgpDg);
@@ -164,6 +185,7 @@ private:
     enum {RawNamesIndex = NamesIndex::BASE, InterpolatedNamesIndex};
     enum { DiscardBufSize = 10000 };
     DrpBase& m_drp;
+    Pgp m_pgp;
     std::shared_ptr<UdpReceiver> m_udpReceiver;
     std::thread m_workerThread;
     Interpolator m_interpolator;

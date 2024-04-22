@@ -27,6 +27,12 @@ from psana.detector.utils_psana import seconds, datasource_kwargs_from_string
 from psana.detector.UtilsLogging import init_file_handler
 
 
+def is_none(par, msg, logger_method=logger.debug):
+    resp = par is None
+    if resp: logger_method(msg)
+    return resp
+
+
 def find_file_for_timestamp(dirname, pattern, tstamp):
     # list of file names in directory, dirname, containing pattern
     fnames = [name for name in os.listdir(dirname) if os.path.splitext(name)[-1]=='.dat' and pattern in name]
@@ -449,10 +455,10 @@ def pedestals_calibration(parser):
         sys.exit('Exit processing due to missing info about dark data step.')
       #cd = orun.Detector('ControlData') #LCLS1
 
-      logger.debug('--- det.raw._det_name: %s' % odet.raw._det_name) # epixquad
-      logger.debug('    det.raw._dettype : %s' % odet.raw._dettype)  # epix
+      logger.info('--- det.raw._det_name: %s' % odet.raw._det_name) # epixquad
+      logger.info('    det.raw._dettype : %s' % odet.raw._dettype)  # epix
       #logger.debug('    det.raw._uniqueid: %s' % det.raw._uniqueid)
-      #logger.debug('    det.raw._sorted_segment_ids: %s' % str(odet.raw._sorted_segment_ids))
+      #logger.debug('    det.raw._sorted_segment_inds: %s' % str(odet.raw._sorted_segment_inds))
       #logger.debug('    det.raw._fullname: %s' % odet.raw._fullname())
 
       segment_ids = odet.raw._segment_ids() #ue.segment_ids_det(odet)
@@ -463,7 +469,9 @@ def pedestals_calibration(parser):
       logger.info(s)
 
       BIT_MASK = odet.raw._data_bit_mask
+      BIT_GAIN = odet.raw._data_gain_bit
       logger.info('    det.raw._data_bit_mask BIT_MASK: %d or %s or %s' % (BIT_MASK, oct(BIT_MASK), hex(BIT_MASK)))
+      logger.info('    det.raw._data_gain_bit BIT_GAIN: %d or %s or %s' % (BIT_GAIN, oct(BIT_GAIN), hex(BIT_GAIN)))
 
       dcfg = odet.raw._config_object() #ue.config_object_det(odet)
 
@@ -475,7 +483,7 @@ def pedestals_calibration(parser):
         metadic = json.loads(step_docstring(step))
         nstep = step_counter(metadic, nstep_tot, nstep_run, stype='pedestal')
 
-        if nstep is None: continue
+        if is_none(nstep, 'step is unknown, None', logger_method=logger.info): continue
 
         if nstep_tot>=stepmax:
             logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nstep_tot, stepmax))
@@ -488,6 +496,7 @@ def pedestals_calibration(parser):
             elif nstep > stepnum:
                 logger.info('==== Step:%02d loop is terminated, --stepnum=%d' % (nstep, stepnum))
                 break
+
 
         #for k,v in odet.raw._seg_configs().items(): # cpo's pattern DOES NOT WORK
         for k,v in dcfg.items():
@@ -576,7 +585,7 @@ def pedestals_calibration(parser):
 
         for idx, panel_id in zip(segment_inds,segment_ids):
 
-            if idx_sel is not None and idx_sel != idx: continue # skip panels with inices other than idx_sel if specified
+            if idx_sel is not None and idx_sel != idx: continue # skip panels with indices other than idx_sel if specified
 
             logger.info('\n%s\nprocess panel:%02d id:%s' % (96*'=', idx, panel_id))
 

@@ -3,6 +3,7 @@ from psdaq.configdb.scan_utils import *
 from p4p.client.thread import Context
 import json
 import time
+import logging
 
 ocfg = None
 partitionDelay = None
@@ -106,6 +107,11 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['raw_start'] = raw_start
     expert['raw_gate' ] = raw_gate
     expert['raw_prescale'] = raw['prescale']
+    if 'keep' in raw:
+        expert['raw_keep']  = raw['keep']
+    else:
+        expert['raw_keep'] = 0
+        logging.warning('No user.raw.keep entry in config.  Run hsd_config_update.py')
     expert['fex_start'] = fex_start
     expert['fex_gate' ] = fex_gate
     expert['fex_xpre' ] = fex_xpre

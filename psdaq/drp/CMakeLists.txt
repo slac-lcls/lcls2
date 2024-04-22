@@ -38,6 +38,7 @@ add_executable(drp
     TimingSystem.cc
     TimeTool.cc
     Wave8.cc
+    HREncoder.cc
     Opal.cc
 #    OpalTT.cc
     OpalTTFex.cc
@@ -243,6 +244,17 @@ target_include_directories(drp_groupsync PUBLIC
 target_link_libraries(drp_groupsync
     Threads::Threads
 )
+
+add_executable(ePixMDescTest
+    ePixMDescTest.cc
+)
+
+if(CMAKE_CUDA_COMPILER)
+    add_executable(test_gpu_add
+        test_gpu_add.cu
+    )
+    set_target_properties(test_gpu_add PROPERTIES CUDA_ARCHITECTURES "86")
+endif()
 
 
 install(TARGETS drp

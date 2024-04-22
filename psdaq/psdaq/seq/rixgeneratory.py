@@ -4,6 +4,7 @@ from psdaq.seq.traingenerator import *
 from psdaq.seq.periodicgenerator import *
 from psdaq.seq.globals import *
 from psdaq.seq.seq import *
+from psdaq.seq.sub_rates import sub_rates
 import argparse
 import logging
 import time
@@ -234,6 +235,8 @@ def main():
                         example: 31,1,17,1,37,1,11,1  
                         on 31, off 1, on 17, off 1, on 37, off 1, on 11, off 1. 
                         (repeats every 31+1+17+1+37+1+11+1=100)''')
+    parser.add_argument('--override', action='store_true', help='Do not correct readout periods')
+
     args = parser.parse_args()
 
     if len(args.periods) > 2:
@@ -242,9 +245,30 @@ def main():
     args_period = [int(TPGSEC*p) for p in args.periods]
 
     #  validate integration periods with bunch_period
-    for a in args_period:
-        if (a%args.bunch_period):
-            raise ValueError(f'period {a} ({a/TPGSEC} sec) is not a multiple of the bunch period {args.bunch_period}')
+    for i,a in enumerate(args_period):
+        l_bunch_period = a%args.bunch_period
+        l_tpgsec = TPGSEC%a
+        if l_bunch_period:
+            logging.warning(f'period {a} ({a/TPGSEC} sec) is not a multiple of the bunch period {args.bunch_period}.')
+        if l_tpgsec:
+            logging.warning(f'period {a} ({a/TPGSEC} sec) is not an integer factor of the TPG 1Hz period')
+
+        if l_bunch_period or l_tpgsec:
+            if args.override:
+                logging.warning('period {a} is not corrected')
+                continue
+
+            rates = sub_rates(args.bunch_period)
+            newa = None
+            for r in sorted(rates):
+                if r[2]<a:
+                    break
+                newa = r[2]
+            if newa is None:
+                logging.error('No valid period replacement found')
+                return
+            logging.warning(f'Raising period {a/TPGSEC} sec to {newa/TPGSEC} sec.')
+            args.periods[i] = newa/TPGSEC
 
     if len(args_period) == 1:
         one_camera_sequence(args)

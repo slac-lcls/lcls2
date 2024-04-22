@@ -500,12 +500,16 @@ def daqPipes(srvurl, args):
     DRP_WrkQueDp  = _q(args, 'drp_worker_queue_depth')
     DRP_WrkInQue  = _q(args, 'drp_worker_input_queue')
     DRP_WrkOutQue = _q(args, 'drp_worker_output_queue')
+    TCtb_BEMax    = _q(args, 'TCtb_BEMax')
+    TCtbO_BtEnt   = _q(args, 'TCtbO_BtEnt')
     TCtb_IUMax    = _q(args, 'TCtb_IUMax')
 #    TCtb_IUBats   = _q(args, 'TCtb_IUBats')
     TCtbO_IFMax   = _q(args, 'TCtbO_IFMax')
     TCtbO_InFlt   = _q(args, 'TCtbO_InFlt')
     TCtbO_BatCt   = _q(args, 'TCtbO_BatCt')
     TCtbI_BatCt   = _q(args, 'TCtbI_BatCt')
+    TEB_BEMax     = _q(args, 'TEB_BEMax')
+    TEB_BtEnt     = _q(args, 'TEB_BtEnt')
     TEB_BfInCt    = _q(args, 'EB_BfInCt', 'TEB')
     TEB_EvFrCt    = _q(args, 'EB_EvFrCt', 'TEB')
     TEB_EvAlCt    = _q(args, 'EB_EvAlCt', 'TEB')
@@ -521,6 +525,13 @@ def daqPipes(srvurl, args):
     def _fmtPct(value):
         number = float(value)
         color  = 3 if number < 95.0 else 5 if number < 99.0 else 4
+        #entry  = ('% 11.6f' if '.' in value else '% 11.0f') % (number)
+        entry  = '% 11.6f' % (number)
+        return entry, color
+
+    def _fmtPctNC(value):       # No Color
+        number = float(value)
+        color  = 3
         #entry  = ('% 11.6f' if '.' in value else '% 11.0f') % (number)
         entry  = '% 11.6f' % (number)
         return entry, color
@@ -554,6 +565,8 @@ def daqPipes(srvurl, args):
                          _fmtPct, 'Percentage occupancy of all Input work queues on a DRP'),
         '%_WkrO_occ'  : (f'100.0*{DRP_WrkOutQue}/{DRP_WrkQueDp}',
                          _fmtPct, 'Percentage occupancy of all Output work queues on a DRP'),
+        '%_IBat_occ'  : (f'100.0*{TCtbO_BtEnt}/{TCtb_BEMax}',
+                         _fmtPctNC, 'Entry occupancy of DRP-to-TEB (Input) batches'),
 #        '%_Bat_InUse' : (f'100.0*{TCtb_IUBats}/{TCtb_IUMax}',
 #                         _fmtPct, 'Percentage of DRP Input batches allocated'),
 #        'Bat_Wtg'     : (_q(args, 'TCtbO_BtWtg'),
@@ -564,6 +577,8 @@ def daqPipes(srvurl, args):
                          _fmtBool, 'Indicator of when traffic from DRP to TEB is stalled', 8),
         '%_TEB_Full'  : (f'100.0*({TEB_EvAlCt}-{TEB_EvFrCt})/{TEB_EvPlDp}',
                          _fmtPct, 'Percentage of allocated TEB event buffers'),
+        '%_RBat_occ'  : (f'100.0*{TEB_BtEnt}/{TEB_BEMax}',
+                         _fmtPctNC, 'Entry occupancy of TEB-to-DRP (Result) batches'),
         'TEB->DRP'    : (_q(args, 'TEB_TxPdg'),
                          _fmtHex, 'Indicator of when traffic from TEB to DRP is stalled', 16),
         '%_FileW_occ' : (f'100.0*(1.0 - {DRP_RecDp}/{DRP_RecDpMax})',

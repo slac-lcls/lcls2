@@ -82,7 +82,7 @@ static int _compare(const TimeStamp& ts1,
 }
 
 template<typename T>
-static int64_t _deltaT(TimeStamp& ts)
+static int64_t _deltaT(const TimeStamp& ts)
 {
     auto now = std::chrono::system_clock::now();
     auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
@@ -296,11 +296,11 @@ void PvMonitor::updated()
     }
 }
 
-void PvMonitor::timeout(const TimeStamp& timestamp)
+void PvMonitor::timeout(const PgpReader& pgp, ms_t timeout)
 {
     Dgram* pvDg;
     if (pvQueue.peek(pvDg)) {
-        if (!(pvDg->time > timestamp)) { // Discard PV if older than the timeout timestamp
+        if (pgp.age(pvDg->time) > timeout) {
             logging::debug("PV timed out!! "
                            "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
                            pvDg->time.seconds(),  pvDg->time.nanoseconds(),
@@ -313,33 +313,16 @@ void PvMonitor::timeout(const TimeStamp& timestamp)
 }
 
 
-class Pgp : public PgpReader
+Pgp::Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+    m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
+    m_available(0), m_current(0), m_nDmaRet(0)
 {
-public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
-        PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
-        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_nDmaRet(0)
-    {
-        m_nodeId = drp.nodeId();
-        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
-            logging::error("Failed to allocate lane/vc");
-        }
+    m_nodeId = drp.nodeId();
+    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+        logging::error("Failed to allocate lane/vc");
     }
-
-    EbDgram* next(uint32_t& evtIndex);
-    const uint64_t nDmaRet() { return m_nDmaRet; }
-private:
-    EbDgram* _handle(uint32_t& evtIndex);
-    Detector* m_det;
-    Eb::TebContributor& m_tebContributor;
-    static const int MAX_RET_CNT_C = 100;
-    const bool& m_running;
-    int32_t m_available;
-    int32_t m_current;
-    unsigned m_nodeId;
-    uint64_t m_nDmaRet;
-};
+}
 
 EbDgram* Pgp::_handle(uint32_t& pebbleIndex)
 {
@@ -385,6 +368,7 @@ PvDetector::PvDetector(PvParameters& para,
     XpmDetector      (&para, &drp.pool),
     m_para           (para),
     m_drp            (drp),
+    m_pgp            (para, drp, this, m_running),
     m_evtQueue       (drp.pool.nbuffers()),
     m_terminate      (false),
     m_running        (false)
@@ -609,34 +593,36 @@ void PvDetector::_worker()
     m_exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
                     [&](){return m_pvMonitors[0]->pvQueue.guess_size();});
 
-    Pgp pgp(m_para, m_drp, this, m_running);
-
     m_exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
-                    [&](){return pgp.nDmaRet();});
+                    [&](){return m_pgp.nDmaRet();});
     m_exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
-                    [&](){return pgp.dmaBytes();});
+                    [&](){return m_pgp.dmaBytes();});
     m_exporter->add("drp_dma_size", labels, MetricType::Gauge,
-                    [&](){return pgp.dmaSize();});
+                    [&](){return m_pgp.dmaSize();});
     m_exporter->add("drp_th_latency", labels, MetricType::Gauge,
-                    [&](){return pgp.latency();});
+                    [&](){return m_pgp.latency();});
     m_exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
-                    [&](){return pgp.nDmaErrors();});
+                    [&](){return m_pgp.nDmaErrors();});
     m_exporter->add("drp_num_no_common_rog", labels, MetricType::Gauge,
-                    [&](){return pgp.nNoComRoG();});
+                    [&](){return m_pgp.nNoComRoG();});
     m_exporter->add("drp_num_missing_rogs", labels, MetricType::Gauge,
-                    [&](){return pgp.nMissingRoGs();});
+                    [&](){return m_pgp.nMissingRoGs();});
     m_exporter->add("drp_num_th_error", labels, MetricType::Gauge,
-                    [&](){return pgp.nTmgHdrError();});
+                    [&](){return m_pgp.nTmgHdrError();});
     m_exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
-                    [&](){return pgp.nPgpJumps();});
+                    [&](){return m_pgp.nPgpJumps();});
     m_exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
-                    [&](){return pgp.nNoTrDgrams();});
+                    [&](){return m_pgp.nNoTrDgrams();});
 
     uint32_t contract = (1 << m_pvMonitors.size()) - 1;
 
-    const uint64_t nsTmo = (m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
-                            std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
-                            1500) * 1000000;
+    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
+                    std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
+                    1500 };
+
+    // Reset counters to avoid 'jumping' errors on reconfigures
+    m_pool->resetCounters();
+    m_pgp.resetEventCounter();
 
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
@@ -644,7 +630,7 @@ void PvDetector::_worker()
         }
 
         uint32_t index;
-        if (pgp.next(index)) {
+        if (m_pgp.next(index)) {
             m_nEvents++;
 
             m_evtQueue.push({index, contract});
@@ -656,10 +642,8 @@ void PvDetector::_worker()
             // up with any PV updates that may have arrived
             _matchUp();
 
-            // Generate a timestamp in the past for timing out PVs and PGP events
-            TimeStamp timestamp(0, nsTmo);
-            auto ns = _deltaT<ns_t>(timestamp);
-            _timeout(timestamp.from_ns(ns));
+            // Time out older PVs and datagrams
+            _timeout(tmo);
 
             // Time out batches for the TEB
             m_drp.tebContributor().timeout();
@@ -667,7 +651,7 @@ void PvDetector::_worker()
     }
 
     // Flush the DMA buffers
-    pgp.flush();
+    m_pgp.flush();
 
     logging::info("Worker thread finished");
 }
@@ -708,10 +692,10 @@ void PvDetector::_matchUp()
             if (evt.remaining)  break;  // Break so the timeout routine can run
         }
         else {
-          // Find the transition dgram in the pool
-          EbDgram* trDg = m_pool->transitionDgrams[evt.index];
-          if (trDg)                     // nullptr can happen during shutdown
-              _handleTransition(*evtDg, *trDg);
+            // Find the transition dgram in the pool
+            EbDgram* trDg = m_pool->transitionDgrams[evt.index];
+            if (trDg)                   // nullptr can happen during shutdown
+                _handleTransition(*evtDg, *trDg);
         }
 
         Event event;
@@ -796,36 +780,46 @@ void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg
     pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
 }
 
-void PvDetector::_timeout(const TimeStamp& timeout)
+void PvDetector::_timeout(ms_t timeout)
 {
-    // Time out older PV updates
-    for (auto& pvMonitor : m_pvMonitors) {
-        pvMonitor->timeout(timeout);
-    }
+    // Try to clear out as many of the older queue entries as we can in one go
+    while (true) {
+        // Time out older PV updates
+        for (auto& pvMonitor : m_pvMonitors) {
+            pvMonitor->timeout(m_pgp, timeout);
+        }
 
-    // Time out older pending PGP datagrams
-    Event event;
-    if (!m_evtQueue.peek(event))  return;
+        // Time out older pending PGP datagrams
+        Event event;
+        if (!m_evtQueue.peek(event))  break;
 
-    EbDgram& dgram = *reinterpret_cast<EbDgram*>(m_pool->pebble[event.index]);
-    if (dgram.time > timeout)  return;  // dgram is newer than the timeout timestamp
+        EbDgram& dgram = *reinterpret_cast<EbDgram*>(m_pool->pebble[event.index]);
+        if (m_pgp.age(dgram.time) < timeout)  break;
 
-    Event evt;
-    m_evtQueue.try_pop(evt);            // Actually consume the element
-    assert(evt.index == event.index);
-
-    if (dgram.service() == TransitionId::L1Accept) {
-        // No PV data so mark event as damaged
-        dgram.xtc.damage.increase(Damage::TimedOut);
-        ++m_nTimedOut;
         logging::debug("Event timed out!! "
-                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       _deltaT<ms_t>(dgram.time));
-    }
+                       _deltaT<ms_t>(dgram.time), dgram.service());
 
-    _sendToTeb(dgram, event.index);
+        if (dgram.service() == TransitionId::L1Accept) {
+            // No PV data so mark event as damaged
+            dgram.xtc.damage.increase(Damage::TimedOut);
+            ++m_nTimedOut;
+        }
+        else {
+            // Find the transition dgram in the pool
+            EbDgram* trDg = m_pool->transitionDgrams[event.index];
+            if (trDg)                   // nullptr can happen during shutdown
+                _handleTransition(dgram, *trDg);
+        }
+
+        Event evt;
+        m_evtQueue.try_pop(evt);        // Actually consume the element
+        assert(evt.index == event.index);
+
+        _sendToTeb(dgram, event.index);
+    }
 }
 
 void PvDetector::_sendToTeb(const EbDgram& dgram, uint32_t index)
@@ -858,11 +852,12 @@ PvApp::PvApp(PvParameters& para) :
     m_drp(para, context()),
     m_para(para),
     m_pvDetector(std::make_unique<PvDetector>(para, m_drp)),
-    m_det(m_pvDetector.get()),
+    m_det(nullptr),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
 
+    m_det = m_pvDetector.get();
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -996,6 +991,10 @@ void PvApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
+
+        // Provide EbReceiver with the Detector interface so that additional
+        // data blocks can be formatted into the XTC, e.g. trigger information
+        m_drp.ebReceiver().configure(m_det, m_pvDetector->pgp());
 
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);

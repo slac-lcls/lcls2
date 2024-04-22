@@ -8,6 +8,9 @@
 #include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
+namespace XtcData {
+  class TimeStamp;
+};
 namespace Pds {
   class EbDgram;
 };
@@ -18,6 +21,8 @@ namespace Pds {
 
     class EbEpoch;
     class EbEvent;
+
+    std::chrono::system_clock::duration latency(const XtcData::TimeStamp&);
 
     class EventBuilder
     {

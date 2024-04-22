@@ -159,13 +159,16 @@ if 'PSANA' in BUILD_LIST :
             'epix10ka_deploy_constants = psana.app.epix10ka_deploy_constants:do_main',
             'epix10ka_raw_calib_image = psana.app.epix10ka_raw_calib_image:do_main',
             'epix10ka_calib_components = psana.app.epix10ka_calib_components:__main__',
+            'epixm320_dark_proc  = psana.app.epixm320_dark_proc:do_main',
             'datinfo             = psana.app.datinfo:do_main',
             'det_dark_proc       = psana.app.det_dark_proc:do_main',
+            'det_pixel_status    = psana.app.det_pixel_status:do_main',
             'parallel_proc       = psana.app.parallel_proc:do_main',
             'iv                  = psana.graphqt.app.iv:image_viewer',
             'masked              = psana.graphqt.app.masked:mask_editor',
             'roicon              = psana.app.roicon:__main__',
             'psplot_live         = psana.app.psplot_live.main:start',
+            'timestamp_sort_h5   = psana.app.timestamp_sort_h5.main:start',
         ]
     }
 

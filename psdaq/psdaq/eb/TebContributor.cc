@@ -36,12 +36,13 @@ using namespace Pds;
 using namespace Pds::Eb;
 using logging = psalg::SysLog;
 using ms_t    = std::chrono::milliseconds;
+using us_t    = std::chrono::microseconds;
 
 
 // Due to the possibility of deadtime, a timeout of 1 batch period after the
 // current batch ends is too short, leading to batch fragments being posted.
-// This causes no harm, but is extra work.
-const std::chrono::microseconds BATCH_TIMEOUT{11000};
+// This causes no harm, but is extra work that is avoided with a longer timeout.
+const std::chrono::milliseconds BATCH_TIMEOUT{1};
 
 
 TebContributor::TebContributor(const TebCtrbParams&                   prms,
@@ -56,6 +57,7 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   _previousPid(0),
   _eventCount (0),
   _batchCount (0),
+  _latPid     (0),
   _latency    (0)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
@@ -64,6 +66,7 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
                                             {"detseg", std::to_string(prms.detSegment)},
                                             {"alias", prms.alias}};
 
+  exporter->constant("TCtb_BEMax",  labels, prms.maxEntries);
   exporter->constant("TCtb_IUMax",  labels, MAX_BATCHES);
   exporter->constant("TCtbO_IFMax", labels, _pending.size());
 
@@ -190,7 +193,7 @@ int TebContributor::configure()
 
 Batch::Batch(const Pds::EbDgram* dgram, bool contractor_) :
   entries   (dgram ? 1 : 0),
-  tStart    (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)),
+  tStart    (Pds::fast_monotonic_clock::now()),
   start     (dgram),
   end       (dgram),
   contractor(contractor_)
@@ -209,7 +212,7 @@ void TebContributor::_flush()
 // NB: timeout() must not be called concurrently with process()
 bool TebContributor::timeout()
 {
-  auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+  auto now = Pds::fast_monotonic_clock::now();
 
   if (now - _batch.tStart < BATCH_TIMEOUT)  return false;
 
@@ -220,12 +223,14 @@ bool TebContributor::timeout()
 // NB: process() must not be called concurrently with timeout()
 void TebContributor::process(const EbDgram* dgram)
 {
-  auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
-
+  if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
+    auto now = std::chrono::system_clock::now();  // Takes a long time!
+    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
+             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
+    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
+    _latency = std::chrono::duration_cast<us_t>(now - tp).count();
+    _latPid = dgram->pulseId();
+  }
   auto rogs       = dgram->readoutGroups();
   bool contractor = rogs & _prms.contractor; // T if providing TEB input
 
@@ -309,9 +314,8 @@ void TebContributor::process(const EbDgram* dgram)
 void TebContributor::_post(const Batch& batch)
 {
   using ns_t = std::chrono::nanoseconds;
-  auto age   = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - batch.tStart;
+  auto age   = Pds::fast_monotonic_clock::now() - batch.tStart;
   _age       = std::chrono::duration_cast<ns_t>(age).count();
-  _entries   = batch.entries;
 
   batch.end->setEOL();        // Avoid race: terminate before adding batch to pending list
   _pending.push(batch.start); // Get the batch on the queue before any corresponding result can show up
@@ -331,11 +335,12 @@ void TebContributor::_post(const Batch& batch)
     size_t       extent = (reinterpret_cast<const char*>(batch.end) -
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;
     uint32_t     data   = ImmData::value(ImmData::Response_Buffer, _id, idx);
-    bool         print  = false;
+    _entries = extent / _prms.maxInputSize;
 
-    if (UNLIKELY((batch.entries == 0) || (batch.entries > _prms.maxEntries)))
+    bool         print  = false;
+    if (UNLIKELY(batch.entries != _entries))
     {
-      logging::error("%s:\n  Bad batch entry count: %u", __PRETTY_FUNCTION__, batch.entries);
+      logging::error("%s:\n  Bad batch entry count: %u vs %lu", __PRETTY_FUNCTION__, batch.entries, _entries);
       print = true;
     }
     if (UNLIKELY(extent != _batch.entries * _prms.maxInputSize))

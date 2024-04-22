@@ -37,12 +37,19 @@ using logging          = psalg::SysLog;
 using MetricExporter_t = std::shared_ptr<MetricExporter>;
 using ms_t             = std::chrono::milliseconds;
 
+static unsigned _ebTimeout(const EbParams& prms)
+{
+  if (prms.kwargs.find("eb_timeout") != prms.kwargs.end())
+    return std::stoul(const_cast<EbParams&>(prms).kwargs["eb_timeout"]);
+
+  const_cast<EbParams&>(prms).kwargs["eb_timeout"] = std::to_string(EB_TMO_MS);
+  return EB_TMO_MS;
+}
 
 EbAppBase::EbAppBase(const EbParams&         prms,
                      const MetricExporter_t& exporter,
-                     const std::string&      pfx,
-                     const unsigned          msTimeout) :
-  EventBuilder (msTimeout, prms.verbose),
+                     const std::string&      pfx) :
+  EventBuilder (_ebTimeout(prms), prms.verbose),
   _transport   (prms.verbose, prms.kwargs),
   _verbose     (prms.verbose),
   _lastPid     (0),
@@ -106,8 +113,6 @@ void EbAppBase::disconnect()
 
 void EbAppBase::unconfigure()
 {
-  if (!_links.empty())                  // Avoid dumping again if already done
-    EventBuilder::dump(0);
   EventBuilder::clear();
 }
 
@@ -266,10 +271,6 @@ int EbAppBase::process()
     {
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
-
-      // This does something only if errors prevented replenishment in pend/poll
-      for (auto link : _links)
-        link->postCompRecv(0);
     }
     else if (_transport.pollEQ() == -FI_ENOTCONN)
       rc = -FI_ENOTCONN;
@@ -464,7 +465,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   event->damage(Damage::DroppedContribution);
 
-  if (fixupCnt() < 100)
+  if (fixupCnt() + timeoutCnt() < 100)
   {
     logging::warning("Fixup %s, %014lx, size %zu, source %d (%s)",
                      TransitionId::name(event->creator()->service()),

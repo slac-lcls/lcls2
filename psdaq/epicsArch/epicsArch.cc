@@ -27,34 +27,16 @@ using ms_t = std::chrono::milliseconds;
 
 namespace Drp {
 
-class Pgp : public PgpReader
+Pgp::Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+    m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
+    m_available(0), m_current(0), m_nDmaRet(0)
 {
-public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
-        PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
-        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_nDmaRet(0)
-    {
-        m_nodeId = drp.nodeId();
-        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
-            logging::error("Failed to allocate lane/vc");
-        }
+    m_nodeId = drp.nodeId();
+    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+        logging::error("Failed to allocate lane/vc");
     }
-
-    Pds::EbDgram* next(uint32_t& evtIndex);
-    const uint64_t nDmaRet() { return m_nDmaRet; }
-private:
-    Pds::EbDgram* _handle(uint32_t& evtIndex);
-    Detector* m_det;
-    Pds::Eb::TebContributor& m_tebContributor;
-    static const int MAX_RET_CNT_C = 100;
-    const bool& m_running;
-    int32_t m_available;
-    int32_t m_current;
-    unsigned m_nodeId;
-    uint64_t m_nDmaRet;
-
-};
+}
 
 Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
@@ -97,9 +79,10 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 EaDetector::EaDetector(Parameters& para, const std::string& pvCfgFile, DrpBase& drp) :
     XpmDetector(&para, &drp.pool),
     m_pvCfgFile(pvCfgFile),
-    m_drp(drp),
+    m_drp      (drp),
+    m_pgp      (para, drp, this, m_running),
     m_terminate(false),
-    m_running(false)
+    m_running  (false)
 {
 }
 
@@ -222,30 +205,32 @@ void EaDetector::_worker()
     m_exporter->add("drp_stale_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nStales;});
 
-    Pgp pgp(*m_para, m_drp, this, m_running);
-
     m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nDmaRet();});
+                    [&](){return m_pgp.nDmaRet();});
     m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
-                    [&](){return pgp.dmaBytes();});
+                    [&](){return m_pgp.dmaBytes();});
     m_exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.dmaSize();});
+                    [&](){return m_pgp.dmaSize();});
     m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.latency();});
+                    [&](){return m_pgp.latency();});
     m_exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nDmaErrors();});
+                    [&](){return m_pgp.nDmaErrors();});
     m_exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nNoComRoG();});
+                    [&](){return m_pgp.nNoComRoG();});
     m_exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nMissingRoGs();});
+                    [&](){return m_pgp.nMissingRoGs();});
     m_exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nTmgHdrError();});
+                    [&](){return m_pgp.nTmgHdrError();});
     m_exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nPgpJumps();});
+                    [&](){return m_pgp.nPgpJumps();});
     m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nNoTrDgrams();});
+                    [&](){return m_pgp.nNoTrDgrams();});
 
     m_terminate.store(false, std::memory_order_release);
+
+    // Reset counters to avoid 'jumping' errors reconfigures
+    m_pool->resetCounters();
+    m_pgp.resetEventCounter();
 
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
@@ -253,7 +238,7 @@ void EaDetector::_worker()
         }
 
         uint32_t index;
-        Pds::EbDgram* dgram = pgp.next(index);
+        Pds::EbDgram* dgram = m_pgp.next(index);
         if (dgram) {
             m_nEvents++;
 
@@ -299,7 +284,7 @@ void EaDetector::_worker()
     }
 
     // Flush the DMA buffers
-    pgp.flush();
+    m_pgp.flush();
 
     logging::info("Worker thread finished");
 }
@@ -334,11 +319,11 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     m_drp        (para, context()),
     m_para       (para),
     m_eaDetector (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp)),
-    m_det        (m_eaDetector.get()),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
 
+    m_det = m_eaDetector.get();
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Fatal: Could not create Detector object";
@@ -472,6 +457,10 @@ void EpicsArchApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
+
+        // Provide EbReceiver with the Detector interface so that additional
+        // data blocks can be formatted into the XTC, e.g. trigger information
+        m_drp.ebReceiver().configure(m_det, m_eaDetector->pgp());
 
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);

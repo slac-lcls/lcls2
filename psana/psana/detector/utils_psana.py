@@ -145,35 +145,39 @@ def info_detnames(run, cmt='command: '):
     #out = str(p.stdout.read())
     #return fmt%(cmt, cmd, out)
     from subprocess import getoutput
-    cmd = 'detnames exp=%s,run=%d -r' % (run.expt, run.runnum)
+    cmd = 'detnames exp=%s,run=%d -r -s' % (run.expt, run.runnum)
     return cmt + cmd + '\n' + getoutput(cmd)
 
 
 def info_detnames_for_dskwargs(str_kwa, cmt='command: '):
     from subprocess import getoutput
-    cmd = 'detnames %s -r' % (str_kwa)
+    cmd = 'detnames %s -r -s' % (str_kwa)
     return cmt + cmd + '\n' + getoutput(cmd)
 
 
 def print_detnames(run, cmt='command: '):
     import os
-    cmd = 'detnames exp=%s,run=%d -r' % (run.expt, run.runnum)
+    cmd = 'detnames exp=%s,run=%d -r -s' % (run.expt, run.runnum)
     print(cmt + cmd)
     os.system(cmd)
 
 
 def info_detector(det, cmt='detector info:', sep='\n    '):
+
+    calibconst = det.raw._calibconst
+
     return cmt\
         +  'det.raw._det_name   : %s' % (det.raw._det_name)\
         +'%sdet.raw._dettype    : %s' % (sep, det.raw._dettype)\
-        +'%s_sorted_segment_ids : %s' % (sep, str(det.raw._sorted_segment_ids))\
+        +'%s_sorted_segment_inds: %s' % (sep, str(det.raw._sorted_segment_inds))\
+        +'%s_segment_numbers    : %s' % (sep, str(det.raw._segment_numbers))\
         +'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
         +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
         +'%sdet methods vbisible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\
         +'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det) if (v[0]=='_' and v[1]!='_')]))\
         +'%sdet.raw     vbisible: %s' % (sep, ' '.join([v for v in dir(det.raw) if v[0]!='_']))\
         +'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det.raw) if (v[0]=='_' and v[1]!='_')]))\
-        +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(det.raw._calibconst.keys()))
+        +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(calibconst.keys() if calibconst is not None else []))
 
 
 def info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):', sep='\n '):
