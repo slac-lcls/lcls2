@@ -72,7 +72,10 @@ def pedestals_calibration(parser):
     logger.info('created %s detector object' % detname)
     logger.info(up.info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
 
-    step_docstring = orun.Detector('step_docstring')
+    try:
+      step_docstring = orun.Detector('step_docstring')
+    except:
+      step_docstring = None
 
     runtstamp = orun.timestamp       # 4193682596073796843 relative to 1990-01-01
     trun_sec = up.seconds(runtstamp) # 1607569818.532117 sec
@@ -83,7 +86,7 @@ def pedestals_calibration(parser):
     for istep,step in enumerate(orun.steps()):
       nsteptot += 1
 
-      metadic = json.loads(step_docstring(step))
+      metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
 
       logger.info('Step %1d docstring: %s' % (istep, str(metadic)))
       ss = ''
@@ -104,6 +107,7 @@ def pedestals_calibration(parser):
       if dpo is None:
          kwa['rms_hi'] = odet.raw._data_bit_mask - 10
          kwa['int_hi'] = odet.raw._data_bit_mask - 10
+
          dpo = DarkProc(**kwa)
          dpo.runnum = orun.runnum
          dpo.exp = expname
@@ -194,7 +198,9 @@ def pedestals_calibration(parser):
              +'\n  expected for gain modes: %s' % str(odet.raw._gain_modes))
 
   ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
-  deploy_constants(ctypes, gainmodes, **kwa_depl)
+  gmodes = odet.raw._gain_modes #  or gainmodes
+  kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
+  deploy_constants(ctypes, gmodes, **kwa_depl)
 
   logger.debug('run/step/event loop is completed')
   repoman.logfile_save()
@@ -222,17 +228,19 @@ def gain_mode(odet, metadic, nstep):
     """
     s  = 'gain mode consistency check\n  nstep: %d' % nstep
     s += '\n  metadic: %s' % str(metadic)
+    cfggainmode = None
     if odet.raw._dettype  == 'epixm320':
         dcfg = odet.raw._config_object()
         epix320cfg = dcfg[0].config
         s += '\n  epix320cfg.CompTH_ePixM: %s' % str(epix320cfg.CompTH_ePixM)
         s += '\n  epix320cfg.Precharge_DAC_ePixM: %s' % str(epix320cfg.Precharge_DAC_ePixM)
+        cfggainmode = gain_mode_name(odet)
 
     scantype = metadic.get('scantype', None)
     gainmode = metadic.get('gain_mode', None)
     s += '\n  scantype: %s\n  gain_mode: %s' % (scantype, gainmode)
     logging.info(s)
-    return gainmode if scantype=='pedestal' else None
+    return gainmode if scantype=='pedestal' else cfggainmode # else None
 
 
 
@@ -375,6 +383,7 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
     uniqueid = kwa.get('uniqueid', 'not-def-id')
+    shape_as_daq = kwa.get('shape_as_daq', (4, 192, 384))
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -428,9 +437,13 @@ def deploy_constants(ctypes, gainmodes, **kwa):
         _ = kwa.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
         _ = kwa.pop('det',None)
 
-        data = data_from_file(fname, ctype, dtype, True)
-        logger.info(info_ndarr(data, 'constants loaded from file', last=10))
-
+        try:
+          data = data_from_file(fname, ctype, dtype, True)
+          logger.info(info_ndarr(data, 'constants loaded from file', last=10))
+        except AssertionError as err:
+          logger.warning(err)
+          data = np.zeros(shape_as_daq, np.uint16)
+          logger.info(info_ndarr(data, 'substitute array with', last=10))
         dic_nda[gm] = data
 
       nda = np.stack([dic_nda[gm] for gm in gainmodes])
