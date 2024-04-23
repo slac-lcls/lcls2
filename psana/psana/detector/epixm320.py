@@ -27,7 +27,7 @@ class epixm320_raw_0_0_0(eb.epix_base):
         self._data_bit_mask = M15 # for epixm320 data on 2024-03-20 Dawood - epixM has 15 data bits.
         self._data_gain_bit = B16 # gain switching bit
         self._gain_bit_shift = 10
-        self._gains_def = (41.0, 13.7, 0.512) # Revisit: epixhr2x2 ADU/keV H:M:L = 1 : 1/3 : 1/80
+        self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
         self._gain_modes = ('SH', 'SL', 'AHL')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixm320.data'
         self._dataDebug = None
@@ -77,6 +77,8 @@ class epixm320_raw_0_0_0(eb.epix_base):
 
         #t0_sec = time()
         raw = self.raw(evt)
+        if is_none(raw, 'self.raw(evt) is None - return None'):
+            return raw
 
         # Subtract pedestals
         peds = self._pedestals()
