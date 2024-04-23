@@ -130,6 +130,11 @@ def issue_2024_03_19():
         for nevt,evt in enumerate(step.events()):
             if nevt==3: print('evt3 nstep:', nstep, ' step_value:', step_value(evt), ' step_docstring:', step_docstring(evt))
 
+#<     sconfs = det.raw._seg_configs()
+#<     print('\ndir(det.raw._seg_configs()):', dir(sconfs))
+#<     print('\nsconfs:', sconfs)
+#<     print('\nsconfs.keys():', sconfs.keys())
+
         for k,v in det.raw._seg_configs().items():
             cob = v.config
             print('dir(cob) w/o underscores:', [v for v in tuple(dir(cob)) if v[0]!='_'])
@@ -229,6 +234,35 @@ def issue_2024_04_17():
         print(s)
         if nevt>1: break
 
+def issue_2024_04_23():
+    """
+       @sdfiana002
+       datinfo -k exp=rixx1005922,run=28 -d epixm
+       datinfo -k exp=rixx1005922,run=34 -d epixm
+       epixm320_dark_proc -k exp=rixx1005922,run=28 -d epixm -o ./work # -D
+    """
+    from psana import DataSource
+    import sys
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
+    from psana.detector.UtilsEpixm320Calib import gain_mode_name
+
+    ds = DataSource(exp='rixx1005922',run=34)
+    orun = next(ds.runs())
+    det = orun.Detector('epixm')
+    #evt = next(orun.events())
+    print('det.raw._shape_as_daq():', det.raw._shape_as_daq())
+    for nstep,step in enumerate(orun.steps()):
+      print('\n=============== step %d config gain mode: %s' % (nstep, gain_mode_name(det)))
+      for nevt,evt in enumerate(step.events()):
+        s = '  == evt %d' % nevt
+        s += info_ndarr(det.raw.raw(evt), '\n  raw  ', first=1000, last=1005)
+        s += info_ndarr(det.raw._pedestals(), '\n peds ', first=1000, last=1005)
+        s += info_ndarr(det.raw.calib(evt), '\n  calib', first=1000, last=1005)
+        print(s)
+        if nevt>1: break
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -270,7 +304,8 @@ def selector():
     elif TNAME in  ('5',): issue_2024_03_26() # generate and save text ndarray
     elif TNAME in  ('6',): issue_2024_04_02() # junk.py from Chris and Ric
     elif TNAME in  ('7',): issue_2024_04_16() # first access epixm320 pedestals, pixel_status, pixel_rms
-    elif TNAME in  ('8',): issue_2024_04_17() # epixm320 calib method
+    elif TNAME in  ('8',): issue_2024_04_17() # epixm320 calib method for exp=tstx00417,run=324 on drp_neh_cmp001 psana
+    elif TNAME in  ('9',): issue_2024_04_23() # epixm320 calib method for exp='rixx1005922',run=34 on sdf
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
