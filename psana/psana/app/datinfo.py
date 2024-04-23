@@ -142,6 +142,7 @@ def loop_run_step_evt(args):
 
       is_epix10ka  = False if det is None else det.raw._dettype == 'epix10ka'
       is_epixhr2x2 = False if det is None else det.raw._dettype == 'epixhr2x2'
+      is_epixm320  = False if det is None else det.raw._dettype == 'epixm320'
 
       try:    step_docstring = run.Detector('step_docstring')
       except: step_docstring = None
@@ -158,6 +159,10 @@ def loop_run_step_evt(args):
 
       for istep, step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
+        if is_epixm320:
+          from psana.detector.UtilsEpixm320Calib import gain_mode_name
+          print(' gain mode name from config: %s' % gain_mode_name(det), end='')
+
 
         if step_docstring is not None:
           sds = step_docstring(step)
