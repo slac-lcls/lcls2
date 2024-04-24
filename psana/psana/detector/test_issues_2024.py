@@ -246,8 +246,9 @@ def issue_2024_04_23():
     from psana.detector.NDArrUtils import info_ndarr
     from psana.detector.UtilsGraphics import gr, fleximage
     from psana.detector.UtilsEpixm320Calib import gain_mode_name
-
-    ds = DataSource(exp='rixx1005922',run=34)
+    flimg = None
+    #ds = DataSource(exp='rixx1005922',run=34)
+    ds = DataSource(exp='rixx1005922',run=7)
     orun = next(ds.runs())
     det = orun.Detector('epixm')
     #evt = next(orun.events())
@@ -261,6 +262,16 @@ def issue_2024_04_23():
         s += info_ndarr(det.raw.calib(evt), '\n  calib', first=1000, last=1005)
         print(s)
         if nevt>1: break
+
+        nda = det.raw.calib(evt)
+        if nda is None: continue
+        img = det.raw.image(evt)
+        if flimg is None:
+           flimg = fleximage(img, arr=nda, h_in=5, w_in=10, nneg=1, npos=3)
+        gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
+        flimg.update(img, arr=nda)
+        gr.show(mode='DO NOT HOLD')
+    gr.show()
 
 
 def argument_parser():
