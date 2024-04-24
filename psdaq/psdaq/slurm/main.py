@@ -16,14 +16,14 @@ import psutil
 import copy
 import socket
 from psdaq.slurm.utils import SbatchManager
-from psdaq.slurm.db import DbHelper, DbHistoryStatus, DbHistoryColumns
+from psdaq.slurm.subproc import SubprocHelper
 import os, sys
-import subprocess
 from psdaq.slurm.config import Config
+from IPython import embed
 
 
 sbman = SbatchManager()
-db = DbHelper()
+proc = SubprocHelper()
 runner = None
 LOCALHOST = socket.gethostname()
 
@@ -44,17 +44,16 @@ class Runner():
             self.config = config.main_config
         else:
             self.config = config_dict['config'].select_config
+        # Find xpm number
+        self.xpm_id = 99
+        if 'control' in self.config:
+            cmd_tokens = self.config['control']['cmd'].split()
+            for cmd_index, cmd_token in enumerate(cmd_tokens):
+                if cmd_token == '-x':
+                    self.xpm_id = int(cmd_tokens[cmd_index+1])
 
         sbman.set_attr('platform', self.platform)
 
-    def get_node_features(self):
-        output = subprocess.check_output(["sinfo", "-N", "-h", "-o", '"%N %f"'])
-        lines = output.decode('utf-8').splitlines()
-        node_features = {}
-        for line in lines:
-            node, features = line.strip('"').split()
-            node_features[node] = {feature: 0 for feature in features.split(',')}
-        return node_features
 
     def parse_config(self):
         """ Extract commands from the cnf file """
@@ -63,130 +62,138 @@ class Runner():
             if 'host' in config_detail:
                 use_feature = False
 
-        data = {}
         if use_feature:
-            node_features = self.get_node_features()
+            node_features = sbman.get_node_features()
         else:
             node_features = None
+        
+        data = {}
         for config_id, config_detail in self.config.items():
+            config_detail['comment'] = f'x{self.xpm_id}_p{self.platform}_{config_id}'
             if use_feature:
-                found_feature = False
+                found_node = None
                 for node, features in node_features.items():
                     for feature, occupied in features.items():
                         if occupied: continue
                         if config_id == feature:
                             node_features[node][feature] = 1
-                            found_feature = True
-                            if node not in data:
-                                job_details = {}
-                                job_details[config_id] = config_detail
-                                data[node] = job_details
-                            else:
-                                job_details = data[node]
-                                if config_id in job_details:
-                                    msg = f"Error: cannot create more than one {config_id} on {node}"
-                                    raise NameError(msg)
-                                else:
-                                    job_details[config_id] = config_detail
+                            found_node = node
                             break
-                if not found_feature:
-                    msg = f"Error: cannot locate feature for {config_id}"
-                    raise NameError(msg)
+                if not found_node:
+                    node = "localhost"
+                else:
+                    node = found_node
             else:
                 if 'host' in config_detail:
                     node = config_detail['host']
                 else:
                     node = LOCALHOST
-                if node not in data:
-                    job_details = {}
-                    job_details[config_id] = config_detail
-                    data[node] = job_details
+            if node not in data:
+                job_details = {}
+                job_details[config_id] = config_detail
+                data[node] = job_details
+            else:
+                job_details = data[node]
+                if config_id in job_details:
+                    msg = f"Error: cannot create more than one {config_id} on {node}"
+                    raise NameError(msg)
                 else:
-                    job_details = data[node]
-                    if config_id in job_details:
-                        msg = f"Error: cannot create more than one {config_id} on {node}"
-                        raise NameError(msg)
-                    else:
-                        job_details[config_id] = config_detail
-        return data, node_features
+                    job_details[config_id] = config_detail
+        self.sbjob = data
+        self.node_features = node_features
+        return 
 
     def list_jobs(self):
-        # Get all psplot process form the main process' database
-        data = db.instance
-        # 1: sbparms, cmd, DbHistoryStatus.PLOTTED
-        headers = ["ID", "SLURM_JOB_ID", "STATUS"]
-        format_row = "{:<5} {:<12} {:<10}"
-        print(format_row.format(*headers))
-        for instance_id, info in data.items():
-            slurm_job_id, sb_script, status = info
-
-            row = [instance_id, slurm_job_id, DbHistoryStatus.get_name(status)]
-            try:
-                print(format_row.format(*row))
-            except Exception as e:
-                print(e)
-                print(f'{row=}')
+        cmd = ''
+        user = os.environ.get('USER','')
+        if not user: 
+            print(f'Cannot list jobs for user. $USER variable is not set.')
+        else:
+            if sbman.as_step:
+                cmd = "sacct --format=JobIDRaw,JobName%12,User,State,Start,Elapsed,NNodes,NodeList,Comment"
+            else:
+                cmd = f'squeue -u {user} -o "%10i %15j %8u %8T %20S %10M %6D %R %k"'
+        cmd = f"xterm -fa 'Source Code Pro' -geometry 120x31+15+15 -e watch -n 5 --no-title '{cmd}'" 
+        asyncio.run(proc._run(cmd))
 
     def submit(self):
         cmd = "sbatch << EOF\n"+sbman.sb_script+"\nEOF\n"
-        def save_to_db(slurm_job_id):
-            data = {'sb_script': sbman.sb_script,
-                    'slurm_job_id': slurm_job_id
-                    }
-            db.save(data)
-        asyncio.run(sbman.run(cmd, callback=save_to_db))
+        asyncio.run(sbman.run(cmd))
 
 def main(subcommand: str,
         cnf_file: str,
         as_step: bool = False,
+        interactive: bool = False,
         ):
     global runner
     runner = Runner(cnf_file)
-    sbjob, node_features = runner.parse_config()
-    if as_step:
-        sbman.generate_as_step(sbjob, node_features)
-        runner.submit()
+    runner.parse_config()
+    sbman.as_step = as_step
+    if subcommand == "start":
+        start()
+        embed()
+    elif subcommand == "status":
+        ls(interactive=interactive)
+    elif subcommand == "stop":
+        stop()
+    elif subcommand == "restart":
+        restart()
     else:
-        for node, job_details in sbjob.items():
-            for job_name, details in job_details.items():
-                sbman.generate(node, job_name, details, node_features)
-                runner.submit()
-
-def ls():
-    if runner is None: return
-    runner.list_jobs()
-
-def cancel(instance_id):
-    if runner is None: return
-    slurm_job_id = db.get(instance_id)[DbHistoryColumns.SLURM_JOB_ID]
-    sbatch_cmd = f"scancel {slurm_job_id}"
-    db.set(instance_id, DbHistoryColumns.STATUS, DbHistoryStatus.CANCELLED)
-    asyncio.run(sbman.run(sbatch_cmd))
-
-def restart(instance_id):
-    if runner is None: return
-    _, sb_script, _ = db.get(instance_id)
-    db.set(instance_id, DbHistoryColumns.STATUS, DbHistoryStatus.REPLACED)
-    runner.submit()
-
-def stop():
-    if runner is None: return
-    data = db.instance
-    for instance_id, info in data.items():
-        if info[DbHistoryColumns.STATUS] == DbHistoryStatus.SUBMITTED:
-            cancel(instance_id)
+        print(f'Unrecognized subcommand: {subcommand}')
 
 def start():
+    if sbman.as_step:
+        sbman.generate_as_step(runner.sbjob, runner.node_features)
+        runner.submit()
+    else:
+        for node, job_details in runner.sbjob.items():
+            for job_name, details in job_details.items():
+                sbman.generate(node, job_name, details, runner.node_features)
+                runner.submit()
+
+def ls(interactive=True):
     if runner is None: return
-    # Make a copy of the current db dict because restart add new items,
-    # which change the size of the dictionary.
-    data = copy.deepcopy(db.instance)
-    for instance_id, info in data.items():
-        if info[DbHistoryColumns.STATUS] == DbHistoryStatus.CANCELLED:
-            restart(instance_id)
+    if interactive:
+        runner.list_jobs()
+        embed()
+    else:
+        job_details = {}
+        for i, job_info in enumerate(sbman.get_job_info(format_string='"%i %j %T %R %k"', noheader=True)):
+            job_id, job_name, state, nodelist, comment = job_info.strip('"').split()
+            job_details[comment] = {'job_id': job_id, 'job_name': job_name, 'state': state, 'nodelist': nodelist}
 
+        print('%20s %12s %10s %40s' %('Host', 'UniqueID', 'Status', 'Command+Args'))
+        for config_id, detail in runner.config.items():
+            comment = f'x{runner.xpm_id}_p{runner.platform}_{config_id}'
+            if comment in job_details:
+                job_detail = job_details[comment]
+                print('%20s %12s %10s %40s'%(job_detail['nodelist'], job_detail['job_name'], job_detail['state'], detail['cmd']))
 
+def cancel(slurm_job_id):
+    if runner is None: return
+    sbatch_cmd = f"scancel {slurm_job_id}"
+    asyncio.run(sbman.run(sbatch_cmd))
 
+def stop():
+    """ Stops running job using their comment.
+    
+    Each job is submitted with their unique comment. We can stop all the processes
+    by looking at the given cnf and match the comment (see below for detail) with
+    comment returned by slurm."""
+    if runner is None: return
+    job_comments = {}
+    for i, job_info in enumerate(sbman.get_job_info(format_string='"%i %k"', noheader=True)):
+        job_id, comment = job_info.strip('"').split()
+        job_comments[comment] = job_id
+
+    for config_id, detail in runner.config.items():
+        comment = f'x{runner.xpm_id}_p{runner.platform}_{config_id}'
+        if comment in job_comments:
+            cancel(job_comments[comment])
+
+def restart():
+    stop()
+    start()
     
 def _do_main():
     typer.run(main)

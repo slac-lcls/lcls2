@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import asyncio
 import psutil
 from datetime import datetime
-from subprocess import run
+import subprocess
 
 import socket
 LOCALHOST = socket.gethostname()
@@ -26,17 +26,13 @@ class SbatchManager:
         envs = ['CONDA_PREFIX', 'CONFIGDB_AUTH', 'TESTRELDIR', 'RDMAV_FORK_SAFE', 'RDMAV_HUGEPAGES_SAFE', 'OPENBLAS_NUM_THREADS',
                 'PS_PARALLEL' ]
         self.env_dict = {key: os.environ.get(key, '') for key in envs}
+        self.as_step = False
     
     @property
     def git_describe(self):
         git_describe = None
         if 'TESTRELDIR' in os.environ:
-            try:
-                cc = run(["git", "-C", os.environ['TESTRELDIR'], "describe", "--dirty", "--tag"], capture_output=True)
-                if not cc.returncode:
-                    git_describe = str(cc.stdout.strip(), 'utf-8')
-            except Exception:
-                pass
+            git_describe = self.call_subprocess("git", "-C", os.environ['TESTRELDIR'], "describe", "--dirty", "--tag")
         return git_describe
 
     def set_attr(self, attr, val):
@@ -53,18 +49,47 @@ class SbatchManager:
                 break
         return data
     
-    async def run(self, sbatch_cmd, callback=None):
+    async def run(self, sbatch_cmd):
         proc = await asyncio.create_subprocess_shell(
                 sbatch_cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
                 )
         stdout = await self.read_stdout(proc)
-        if stdout.find('Submitted batch job') == 0:
-            slurm_job_id = int(stdout.split()[-1])
-            if callback:
-                callback(slurm_job_id)
         await proc.wait()
+
+    def call_subprocess(self, *args):
+        cc = subprocess.run(args, capture_output=True)
+        output = None
+        if not cc.returncode:
+            output = str(cc.stdout.strip(), 'utf-8')
+        return output
+    
+    def get_node_features(self):
+        lines = self.call_subprocess("sinfo", "-N", "-h", "-o", '"%N %f"').splitlines()
+        node_features = {}
+        for line in lines:
+            node, features = line.strip('"').split()
+            node_features[node] = {feature: 0 for feature in features.split(',')}
+        return node_features
+
+    def get_job_info(self, format_string=None, noheader=False):
+        """ Returns formatted output from squeue by the current user"""
+        user = os.environ.get('USER','')
+        if not user: 
+            print(f'Cannot list jobs for user. $USER variable is not set.')
+        else:
+            noheader_opt = ''
+            if noheader: noheader_opt = '-h'
+            if self.as_step:
+                if format_string is None:
+                    format_string = "JobIDRaw,JobName%12,User,State,Start,Elapsed,NNodes,NodeList,Comment"
+                lines = self.call_subprocess("sacct", noheader_opt, f"--format={format_string}").splitlines()
+            else:
+                if format_string is None:
+                    format_string = '"%.18i %15j %.8u %.8T %20S %.10M %.6D %R %k"'
+                lines = self.call_subprocess("squeue", "-u", user, noheader_opt, "-o", format_string).splitlines()
+        return lines
     
     def get_output_filepath(self, node, job_name):
         output_filepath = os.path.join(self.output_path, 
@@ -110,6 +135,10 @@ class SbatchManager:
         het_group_opt = ''
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
+        xterm_opt = ''
+        if 'flags' in details:
+            if details['flags'].find('x') > -1:
+                xterm_opt = '-x11=batch xterm -e'
             
         cmd = self.get_daq_cmd(details, job_name)
         if 'conda_env' in details:
@@ -118,8 +147,8 @@ class SbatchManager:
                 loc_inst = CONDA_EXE.find('/inst')
                 conda_profile = os.path.join(CONDA_EXE[:loc_inst],'inst','etc','profile.d','conda.sh')
                 cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
-        
-        jobstep_cmd = f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} bash -c '{cmd}'" + "& \n"
+
+        jobstep_cmd = f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt}{xterm_opt} bash -c '{cmd}'" + "& \n"
         return jobstep_cmd
 
     def generate_as_step(self, sbjob, node_features):
@@ -128,11 +157,12 @@ class SbatchManager:
         sb_script += f"#SBATCH --job-name=main"+"\n"
         output = self.get_output_filepath(LOCALHOST, "slurm")
         sb_script += f"#SBATCH --output={output}"+"\n"
+        sb_script += f"#SBATCH --output={output}"+"\n"
         sb_header = ''
         sb_steps = '' 
         for het_group, (node, job_details) in enumerate(sbjob.items()):
-            if node == "localhost": node = LOCALHOST
-            if node_features is None:
+            if node == "localhost" or node_features is None: 
+                if node == "localhost": node = LOCALHOST
                 sb_header += f"#SBATCH --nodelist={node} --ntasks={len(job_details.keys())}" + "\n"
             else:
                 features = ','.join(node_features[node].keys())
@@ -154,8 +184,11 @@ class SbatchManager:
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}"+"\n"
         sb_script += f"#SBATCH --job-name={job_name}"+"\n"
+        output = self.get_output_filepath(LOCALHOST, "slurm")
+        sb_script += f"#SBATCH --output={output}"+"\n"
+        sb_script += f"#SBATCH --comment={details['comment']}"+"\n"
         
-        if node_features is None:
+        if node == "localhost" or node_features is None:
             if node == "localhost": node = LOCALHOST
             sb_script += f"#SBATCH --nodelist={node} --ntasks=1"+"\n"
         else:
