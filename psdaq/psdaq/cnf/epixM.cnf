@@ -92,7 +92,7 @@ procmgr_config = [
 # {host: 'drp-neh-cmp015',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
  # the ePixM 'DAQ' trigger is being fired on the platform group, e.g. 3
- # Unit 0xbf: {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320'},
+ # {host: 'drp-neh-cmp003',  id:'tst_epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320'}, # Unit 0xbf
  {host: 'drp-neh-cmp003',  id:'epixm_0', flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixm320'}, # Unit 0x75
 ]
 

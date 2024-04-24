@@ -25,19 +25,20 @@ def epixm320_cdict(prjCfg):
 
     help_str  = "-- user interface --"
     help_str += "\nstart_ns          : nanoseconds to exposure start"
-    help_str += "\ngain_mode         : SoftHigh/SoftLow/AutoHiLo/User"
     help_str += "\nrun_trigger_group : Group for the Run trigger"
+    help_str += "\nasic_enable       : 4 bits for enabling the ASICs"
+    help_str += "\ngain_mode         : SoftHigh/SoftLow/AutoHiLo/User"
     help_str += "\nchgInj_column_map : Map of columns for charge injection scan"
     top.set("help:RO", help_str, 'CHARSTR')
 
     top.set("user.start_ns", 107749, 'UINT32')
 
-    top.define_enum('gainEnum', {'SoftHigh':0, 'SoftLow':1, 'Auto':2, 'User':3})
-    top.set("user.gain_mode", 2, 'gainEnum')
+    top.set("user.run_trigger_group", 6, 'UINT32')
 
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
 
-    top.set("user.run_trigger_group", 6, 'UINT32')
+    top.define_enum('gainEnum', {'SoftHigh':0, 'SoftLow':1, 'Auto':2, 'User':3})
+    top.set("user.gain_mode", 2, 'gainEnum')
 
     columnMap = np.zeros(nColumns, dtype=np.uint8)
     top.set("user.chgInj_column_map", columnMap)

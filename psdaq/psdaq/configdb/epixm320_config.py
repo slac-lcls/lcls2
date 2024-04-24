@@ -247,8 +247,8 @@ def setSaci(reg,field,di):
         reg.set(v)
 
 def gain_mode_map(gain_mode):
-    compTH        = ( 0, 63, 12, 0)[gain_mode] # SoftHigh/SoftLow/Auto/User
-    precharge_DAC = (45, 50, 45, 0)[gain_mode]
+    compTH        = ( 0, 63, 12)[gain_mode] # SoftHigh/SoftLow/Auto
+    precharge_DAC = (45, 50, 45)[gain_mode]
     return (compTH, precharge_DAC)
 
 #
@@ -408,6 +408,7 @@ def user_to_expert(base, cfg, full=False):
     if hasUser and 'gain_mode' in cfg['user']:
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==3:  # user's choices
+            # Use CompTH and Precharge_DAC from cfg['expert']
             d['user.chgInj_column_map'] = cfg['user']['chgInj_column_map']
         else:
             compTH, precharge_DAC = gain_mode_map(gain_mode)
@@ -675,7 +676,7 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
         top.set('CompTH_ePixM',        compTH,        'UINT8')
         top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
         if gain_mode==3:
-            top.set('chgInj_column_map',   column_map)
+            top.set('chgInj_column_map', column_map)
         scfg[seg+1] = top.typed_json()
 
     result = []
@@ -807,15 +808,15 @@ def epixm320_update(update):
         try:
             compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(cbase.numOfAsics) ]
         except:
-            compTH        = None; print('cTH is None')
+            compTH        = None; print('CompTH is None')
         try:
             precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(cbase.numOfAsics) ]
         except:
-            precharge_DAC = None; print('pc_DAC is None')
+            precharge_DAC = None; print('Precharge_DAC is None')
         try:
             column_map    = np.array(cfg['user']['chgInj_column_map'], dtype=np.uint8)
         except:
-            column_map    = None; print('cm is None')
+            column_map    = None; print('column_map is None')
 
         for seg in range(1):
             id = segids[seg]
