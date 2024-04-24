@@ -1064,7 +1064,7 @@ int main(int argc, char* argv[])
     Drp::PvParameters para;
     std::string kwargs_str;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:01v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:01v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
