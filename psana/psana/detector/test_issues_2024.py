@@ -274,6 +274,18 @@ def issue_2024_04_23():
     gr.show()
 
 
+def issue_2024_04_24():
+    """
+    ISSUE: data files copied in the directoryy for wrong experiment:
+    /sdf/data/lcls/ds/rix/rixx1005922/scratch/xtc/tstx00417-r0328-s000-c000.xtc2
+    """
+    from psana import DataSource
+    ds = DataSource(exp='rixx1005922',run=328,dir='/sdf/data/lcls/ds/rix/rixx1005922/scratch/xtc')
+    #ds = DataSource(exp='tstx00417',run=328,dir='/sdf/data/lcls/ds/rix/rixx1005922/scratch/xtc')
+    orun = next(ds.runs())
+    print('orun.expt', orun.expt, ' expected rixx1005922...')
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -317,6 +329,7 @@ def selector():
     elif TNAME in  ('7',): issue_2024_04_16() # first access epixm320 pedestals, pixel_status, pixel_rms
     elif TNAME in  ('8',): issue_2024_04_17() # epixm320 calib method for exp=tstx00417,run=324 on drp_neh_cmp001 psana
     elif TNAME in  ('9',): issue_2024_04_23() # epixm320 calib method for exp='rixx1005922',run=34 on sdf
+    elif TNAME in ('10',): issue_2024_04_24() # epixm320 exp='rixx1005922',run=328 run.expt: tstx00417
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
