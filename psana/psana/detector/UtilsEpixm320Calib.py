@@ -13,6 +13,8 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2024-04-09 by Mikhail Dubrovin
 """
+from psana.detector.Utils import info_dict
+
 from psana.detector.UtilsCalib import * # logging
 import json
 
@@ -37,7 +39,8 @@ def pedestals_calibration(parser):
   events  = kwa.get('events', 1000)
 
   dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
-  logger.info('DataSource kwargs: %s' % str(dskwargs))
+
+  logger.info('DataSource kwargs:%s' % info_dict(dskwargs, fmt='  %12s: %s', sep='\n'))
   ds = DataSource(**dskwargs)
 
   t0_sec = time()
@@ -62,7 +65,9 @@ def pedestals_calibration(parser):
 
     nevrun = 0
     logger.info('\n==== %02d run: %d exp: %s' % (irun, runnum, expname))
-    logger.info(up.info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
+    logger.info(up.info_run(orun, cmt='run info:    ', sep='\n    ', verb=3))
+
+    #sys.exit('TEST EXIT')
 
     odet = orun.Detector(detname)
     if dettype is None:
@@ -177,12 +182,14 @@ def pedestals_calibration(parser):
           kwa_depl['gainmode'] = gainmode
           kwa_depl['repoman'] = repoman
           #kwa_depl['segment_ids'] = odet.raw._segment_ids()
+
+          logger.info('kwa_depl:\n%s' % info_dict(kwa_depl, fmt='  %12s: %s', sep='\n'))
+          #sys.exit('TEST EXIT')
+
           save_constants_in_repository(dic_consts, **kwa_depl)
           dic_consts_tot[gainmode] = dic_consts
           del(dpo)
           dpo=None
-
-          #sys.exit('TEST EXIT')
 
       if break_steps:
         logger.info('terminate_steps')
@@ -200,12 +207,16 @@ def pedestals_calibration(parser):
   ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
   gmodes = odet.raw._gain_modes #  or gainmodes
   kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
+  kwa_depl['exp'] = expname
+  kwa_depl['det'] = detname
+  kwa_depl['run_orig'] = runnum
+
   deploy_constants(ctypes, gmodes, **kwa_depl)
 
   logger.debug('run/step/event loop is completed')
   repoman.logfile_save()
 
-  sys.exit('TEST EXIT see commented deploy_constants')
+  #sys.exit('TEST EXIT see commented deploy_constants')
 
 
 def gain_mode_name(odet, asic=0):
