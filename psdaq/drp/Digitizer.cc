@@ -35,11 +35,11 @@ namespace Drp {
     class DrpPgpIlv {
     public:
         uint32_t reserved_to_80_0000[0x800000/4];
-        Reg      mig[0x200];
-        uint32_t reserved_to_a4_0010[0x240010/4-sizeof(mig)];
+        Reg      mig[0x80];
+        uint32_t reserved_to_a4_0010[(0x240010-sizeof(mig))/4];
         Reg      linkId[4];
         Reg      pgp[4];
-        uint32_t reserved_to_e0_0000[0x5BFFF0/4-sizeof(linkId)-sizeof(pgp)];
+        uint32_t reserved_to_e0_0000[(0x3BFFF0-sizeof(linkId)-sizeof(pgp))/4];
         Reg      i2c     [0x200];       // 0x00E0_0000
         Si570    si570;                 // 0x00E0_0800
     };
@@ -82,12 +82,18 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     //
     int fd = m_pool->fd();
     Pds::Mmhw::Reg::set(fd);
+    Pds::Mmhw::Reg::verbose(true);
     DrpPgpIlv& hw = *new(0) DrpPgpIlv;
+
+    logging::debug("DrpPgpIlv::mig    %p",&hw.mig[0]);
+    logging::debug("DrpPgpIlv::linkId %p",&hw.linkId[0]);
+    logging::debug("DrpPgpIlv::i2c    %p",&hw.i2c[0]);
+    logging::debug("DrpPgpIlv::si570  %p",&hw.si570);
     
     AxiVersion vsn;
     axiVersionGet(fd, &vsn);
     if (vsn.userValues[2] == 0) {  // Only one PCIe interface has access to I2C bus
-        unsigned pgpclk = hw.mig[0x10c];
+        unsigned pgpclk = hw.mig[0x10c/4];
         printf("PGP RefClk %f MHz\n", double(pgpclk&0x1fffffff)*1.e-6);
         if ((pgpclk&0x1fffffff) < 185000000) { // target is 185.7 MHz
             //  Set the I2C Mux
@@ -329,6 +335,7 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(i+1, shape);
             uint32_t dmaIndex = event->buffers[i].index;
             memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
+
             //
             // Check the overflow bit in the stream headers
             //
@@ -337,6 +344,7 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
             do {
                 const Pds::HSD::StreamHeader& stream = *reinterpret_cast<const Pds::HSD::StreamHeader*>(p);
                 if (stream.overflow()) {
+                    logging::debug("Overflow");
                     dgram.xtc.damage.increase(Damage::UserDefined);
                     break;
                 }

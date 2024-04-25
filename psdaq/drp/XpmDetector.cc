@@ -29,11 +29,11 @@ namespace Drp {
         uint32_t reserved_to_80_0000[0x800000/4];
         uint32_t migToPci[0x200000/4];  // 0x0080_0000
         Reg      tDetSemi[8];           // 0x00A0_0000
-        uint32_t reserved_to_c0_0000[0x20000/4-sizeof(tDetSemi)];
+        uint32_t reserved_to_c0_0000[(0x200000-sizeof(tDetSemi))/4];
         TprCore  tpr;                   // 0x00C0_0000
-        uint32_t reserved_to_c2_0000[0x20000/4-sizeof(TprCore)];
+        uint32_t reserved_to_c2_0000[(0x020000-sizeof(TprCore))/4];
         TEM      tem;                   // 0x00C2_0000
-        uint32_t reserved_to_e0_0000[0x1E0000/4-sizeof(TEM)];
+        uint32_t reserved_to_e0_0000[(0x1E0000-sizeof(TEM))/4];
         Reg      i2c     [0x200];       // 0x00E0_0000
         Si570    si570;                 // 0x00E0_0800
     };

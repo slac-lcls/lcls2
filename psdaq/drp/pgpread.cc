@@ -193,10 +193,12 @@ int main(int argc, char* argv[])
                     printf("env %08x\n", event_header->env);
                     for(unsigned i=0; i<((size+3)>>2); i++)
                         printf("%08x%c",reinterpret_cast<uint32_t*>(dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
+                    if (((size+3)>>2)&7)
+                        printf("\n");
                 }
                 else {
                     const uint32_t* p = reinterpret_cast<const uint32_t*>(event_header+1);
-                    printf("env %08x | payload %08x %08x %08x %08x\n", event_header->env,p[0],p[1],p[2],p[3]);
+                    printf("env %08x | payload %08x %08x %08x %08x %08x %08x\n", event_header->env,p[0],p[1],p[2],p[3],p[4],p[5]);
                 }
             }
         }

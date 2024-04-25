@@ -27,7 +27,8 @@ daqReset   = {'timrxrst'    :('i', 0),
               'jesdsetup'   :('i', 0),
               'jesdinit'    :('i', 0),
               'jesdadcinit' :('i', 0),
-              'jesdclear'   :('i', 0)}
+              'jesdclear'   :('i', 0),
+              'cfgdump'     :('i', 0)}
 
 monTiming = {'timframecnt':('i', 0),
              'timpausecnt':('i', 0),
