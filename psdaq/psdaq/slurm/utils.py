@@ -38,32 +38,16 @@ class SbatchManager:
     def set_attr(self, attr, val):
         setattr(self, attr, val)
 
-    async def read_stdout(self, proc):
-        # Read data from stdout until EOF
-        data = ""
-        while True:
-            line = await proc.stdout.readline()
-            if line:
-                data += line.decode()
-            else:
-                break
-        return data
-    
-    async def run(self, sbatch_cmd):
-        proc = await asyncio.create_subprocess_shell(
-                sbatch_cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-                )
-        stdout = await self.read_stdout(proc)
-        await proc.wait()
-
     def call_subprocess(self, *args):
         cc = subprocess.run(args, capture_output=True)
         output = None
         if not cc.returncode:
             output = str(cc.stdout.strip(), 'utf-8')
         return output
+
+    def get_comment(self, xpm_id, platform, config_id): 
+        comment = f'x{xpm_id}_p{platform}_{config_id}'
+        return comment
     
     def get_node_features(self):
         lines = self.call_subprocess("sinfo", "-N", "-h", "-o", '"%N %f"').splitlines()
@@ -107,48 +91,53 @@ class SbatchManager:
             cmd += f' -C {self.collect_host}'
         return cmd
 
-    def write_output_header(self, output, node, job_name, details):
-        with open(output, 'w') as f:
-            f.write("# ID:      %s\n" % job_name)
-            f.write("# PLATFORM:%s\n" % self.platform)
-            f.write("# HOST:    %s\n" % node)
-            f.write("# CMDLINE: %s\n" % details['cmd'])
-            # obfuscating the password in the log
-            clear_auth = self.env_dict['CONFIGDB_AUTH']
-            self.env_dict["CONFIGDB_AUTH"] = "*****"
-            for key2, val2 in self.env_dict.items():
-                f.write(f"# {key2}:{val2}\n")
-            self.env_dict["CONFIGDB_AUTH"] = clear_auth
-            if 'TESTRELDIR' in self.env_dict:
-                git_describe = self.git_describe
-                if git_describe:
-                    f.write("# GIT_DESCRIBE:%s\n" % git_describe)
+    def get_output_header(self, node, job_name, details):
+        header = "" 
+        header +="# ID:      %s\n" % job_name
+        header +="# PLATFORM:%s\n" % self.platform
+        header +="# HOST:    %s\n" % node
+        header +="# CMDLINE: %s\n" % details['cmd']
+        # obfuscating the password in the log
+        clear_auth = self.env_dict['CONFIGDB_AUTH']
+        self.env_dict["CONFIGDB_AUTH"] = "*****"
+        for key2, val2 in self.env_dict.items():
+            header += f"# {key2}:{val2}\n"
+        self.env_dict["CONFIGDB_AUTH"] = clear_auth
+        if 'TESTRELDIR' in self.env_dict:
+            git_describe = self.git_describe
+            if git_describe:
+                header += "# GIT_DESCRIBE:%s\n" % git_describe
+        return header
 
     def get_jobstep_cmd(self, node, job_name, details, het_group=-1):
         output = self.get_output_filepath(node, job_name)
         output_opt = f"--output={output} --open-mode=append "
-        env_opt = ''
+        env_opt = '--export=ALL'
         if 'env' in details:
             if details['env'] != '':
                 env = details['env'].replace(" ", ",").strip("'")
-                env_opt = f"--export=ALL,{env} "
+                env_opt += f",{env}"
         het_group_opt = ''
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
-        xterm_opt = ''
-        if 'flags' in details:
-            if details['flags'].find('x') > -1:
-                xterm_opt = '-x11=batch xterm -e'
             
         cmd = self.get_daq_cmd(details, job_name)
+        header = self.get_output_header(node, job_name, details)
+        cmd = f'echo "{header}"; {cmd}'
+        print(f'{cmd=}')
         if 'conda_env' in details:
             if details['conda_env'] != '':
                 CONDA_EXE = os.environ.get('CONDA_EXE','')
                 loc_inst = CONDA_EXE.find('/inst')
                 conda_profile = os.path.join(CONDA_EXE[:loc_inst],'inst','etc','profile.d','conda.sh')
                 cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
-
-        jobstep_cmd = f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt}{xterm_opt} bash -c '{cmd}'" + "& \n"
+        x11_opt = ''
+        if 'flags' in details:
+            if details['flags'].find('x') > -1:
+                x11_opt = f'--x11 xterm -e '
+                env_opt += ",DISPLAY=localhost:11.0"
+        env_opt += ' '
+        jobstep_cmd = f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} {x11_opt}bash -c '{cmd}'" + "& \n"
         return jobstep_cmd
 
     def generate_as_step(self, sbjob, node_features):
@@ -171,15 +160,13 @@ class SbatchManager:
             if het_group < len(sbjob.keys()) - 1:
                 sb_header += "#SBATCH hetjob\n"
             for job_name, details in job_details.items():
-                output = self.get_output_filepath(node, job_name)
-                self.write_output_header(output, node, job_name, details)
                 # For one hetgroup, we don't need to specify hetgroup option
                 het_group_id = het_group
                 if len(sbjob) == 1: het_group_id = -1
                 sb_steps += self.get_jobstep_cmd(node, job_name, details, het_group=het_group_id)
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
-
+    
     def generate(self, node, job_name, details, node_features):
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}"+"\n"
