@@ -11,7 +11,6 @@ import json
 import typer
 import time
 import asyncio
-import atexit
 import psutil
 import copy
 import socket
@@ -26,7 +25,6 @@ sbman = SbatchManager()
 proc = SubprocHelper()
 runner = None
 LOCALHOST = socket.gethostname()
-
 
 class Runner():
     def __init__(self, configfilename):
@@ -69,7 +67,7 @@ class Runner():
         
         data = {}
         for config_id, config_detail in self.config.items():
-            config_detail['comment'] = f'x{self.xpm_id}_p{self.platform}_{config_id}'
+            config_detail['comment'] = sbman.get_comment(self.xpm_id, self.platform, config_id)
             if use_feature:
                 found_node = None
                 for node, features in node_features.items():
@@ -114,11 +112,11 @@ class Runner():
             else:
                 cmd = f'squeue -u {user} -o "%10i %15j %8u %8T %20S %10M %6D %R %k"'
         cmd = f"xterm -fa 'Source Code Pro' -geometry 120x31+15+15 -e watch -n 5 --no-title '{cmd}'" 
-        asyncio.run(proc._run(cmd))
+        asyncio.run(proc.run(cmd))
 
     def submit(self):
         cmd = "sbatch << EOF\n"+sbman.sb_script+"\nEOF\n"
-        asyncio.run(sbman.run(cmd))
+        asyncio.run(proc.run(cmd, wait_output=True))
 
 def main(subcommand: str,
         cnf_file: str,
@@ -130,8 +128,7 @@ def main(subcommand: str,
     runner.parse_config()
     sbman.as_step = as_step
     if subcommand == "start":
-        start()
-        embed()
+        start(interactive)
     elif subcommand == "status":
         ls(interactive=interactive)
     elif subcommand == "stop":
@@ -141,15 +138,17 @@ def main(subcommand: str,
     else:
         print(f'Unrecognized subcommand: {subcommand}')
 
-def start():
+def start(interactive):
     if sbman.as_step:
         sbman.generate_as_step(runner.sbjob, runner.node_features)
         runner.submit()
     else:
         for node, job_details in runner.sbjob.items():
             for job_name, details in job_details.items():
+                #        continue
                 sbman.generate(node, job_name, details, runner.node_features)
                 runner.submit()
+    if interactive: embed()
 
 def ls(interactive=True):
     if runner is None: return
@@ -164,7 +163,7 @@ def ls(interactive=True):
 
         print('%20s %12s %10s %40s' %('Host', 'UniqueID', 'Status', 'Command+Args'))
         for config_id, detail in runner.config.items():
-            comment = f'x{runner.xpm_id}_p{runner.platform}_{config_id}'
+            comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
             if comment in job_details:
                 job_detail = job_details[comment]
                 print('%20s %12s %10s %40s'%(job_detail['nodelist'], job_detail['job_name'], job_detail['state'], detail['cmd']))
@@ -172,7 +171,7 @@ def ls(interactive=True):
 def cancel(slurm_job_id):
     if runner is None: return
     sbatch_cmd = f"scancel {slurm_job_id}"
-    asyncio.run(sbman.run(sbatch_cmd))
+    asyncio.run(proc.run(sbatch_cmd, wait_output=True))
 
 def stop():
     """ Stops running job using their comment.
@@ -187,7 +186,7 @@ def stop():
         job_comments[comment] = job_id
 
     for config_id, detail in runner.config.items():
-        comment = f'x{runner.xpm_id}_p{runner.platform}_{config_id}'
+        comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
         if comment in job_comments:
             cancel(job_comments[comment])
 

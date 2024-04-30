@@ -13,7 +13,8 @@ collect_host = 'drp-srcf-cmp035'
 groups = platform+' 1'
 hutch, user = ('tst', 'tstopr')
 auth = ' --user {:} '.format(user)
-url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+#url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 
 #
@@ -85,7 +86,7 @@ main_config = [
  {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-srcf-cmp035', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp035', id:'teb0',        flags:'spux',                cmd:f'{teb_cmd}'},
  {host: 'drp-srcf-cmp035', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 ]
 
