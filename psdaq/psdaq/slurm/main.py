@@ -138,14 +138,27 @@ def main(subcommand: str,
     else:
         print(f'Unrecognized subcommand: {subcommand}')
 
+def exists():
+    """ Check if the config matches any existing jobs """
+    job_exists = False
+    job_details = sbman.get_job_info(noheader=True)
+    for config_id, detail in runner.config.items():
+        comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
+        if comment in job_details:
+            job_exists = True
+            break
+    return job_exists
+
 def start(interactive):
+    if exists():
+        msg = "Error: found one or more running jobs using the same resources"
+        raise RuntimeError(msg)
     if sbman.as_step:
         sbman.generate_as_step(runner.sbjob, runner.node_features)
         runner.submit()
     else:
         for node, job_details in runner.sbjob.items():
             for job_name, details in job_details.items():
-                #        continue
                 sbman.generate(node, job_name, details, runner.node_features)
                 runner.submit()
     if interactive: embed()
@@ -156,11 +169,7 @@ def ls(interactive=True):
         runner.list_jobs()
         embed()
     else:
-        job_details = {}
-        for i, job_info in enumerate(sbman.get_job_info(format_string='"%i %j %T %R %k"', noheader=True)):
-            job_id, job_name, state, nodelist, comment = job_info.strip('"').split()
-            job_details[comment] = {'job_id': job_id, 'job_name': job_name, 'state': state, 'nodelist': nodelist}
-
+        job_details = sbman.get_job_info(noheader=True)
         print('%20s %12s %10s %40s' %('Host', 'UniqueID', 'Status', 'Command+Args'))
         for config_id, detail in runner.config.items():
             comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
@@ -180,19 +189,15 @@ def stop():
     by looking at the given cnf and match the comment (see below for detail) with
     comment returned by slurm."""
     if runner is None: return
-    job_comments = {}
-    for i, job_info in enumerate(sbman.get_job_info(format_string='"%i %k"', noheader=True)):
-        job_id, comment = job_info.strip('"').split()
-        job_comments[comment] = job_id
-
+    job_details = sbman.get_job_info(noheader=True)
     for config_id, detail in runner.config.items():
         comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
-        if comment in job_comments:
-            cancel(job_comments[comment])
+        if comment in job_details:
+            cancel(job_details[comment]['job_id'])
 
 def restart():
     stop()
-    start()
+    start(False)
     
 def _do_main():
     typer.run(main)

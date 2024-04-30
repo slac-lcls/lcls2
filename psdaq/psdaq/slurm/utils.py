@@ -57,7 +57,7 @@ class SbatchManager:
             node_features[node] = {feature: 0 for feature in features.split(',')}
         return node_features
 
-    def get_job_info(self, format_string=None, noheader=False):
+    def get_job_info(self, format_string='"%i %j %T %R %k"', noheader=False):
         """ Returns formatted output from squeue by the current user"""
         user = os.environ.get('USER','')
         if not user: 
@@ -73,7 +73,11 @@ class SbatchManager:
                 if format_string is None:
                     format_string = '"%.18i %15j %.8u %.8T %20S %.10M %.6D %R %k"'
                 lines = self.call_subprocess("squeue", "-u", user, noheader_opt, "-o", format_string).splitlines()
-        return lines
+        job_details = {}
+        for i, job_info in enumerate(lines):
+            job_id, job_name, state, nodelist, comment = job_info.strip('"').split()
+            job_details[comment] = {'job_id': job_id, 'job_name': job_name, 'state': state, 'nodelist': nodelist}
+        return job_details
     
     def get_output_filepath(self, node, job_name):
         output_filepath = os.path.join(self.output_path, 
@@ -124,7 +128,6 @@ class SbatchManager:
         cmd = self.get_daq_cmd(details, job_name)
         header = self.get_output_header(node, job_name, details)
         cmd = f'echo "{header}"; {cmd}'
-        print(f'{cmd=}')
         if 'conda_env' in details:
             if details['conda_env'] != '':
                 CONDA_EXE = os.environ.get('CONDA_EXE','')
