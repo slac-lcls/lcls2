@@ -16,6 +16,7 @@ namespace Pds {
       Mmhw::Reg phaseValue_0;
       Mmhw::Reg phaseCount_1;
       Mmhw::Reg phaseValue_1;
+      Mmhw::Reg txId;
     public:
       void resetPgp();
     };

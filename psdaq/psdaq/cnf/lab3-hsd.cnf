@@ -36,6 +36,6 @@ procmgr_config = [
 { host: 'daq-tst-dev06',  id:'hsdpvs-a', port:'29456', flags:'s', env:epics_env, cmd:'hsdpvs -P DAQ:LAB2:HSD:A'},
 { host: 'daq-tst-dev06',  id:'hsdpvs-b', port:'29457', flags:'s', env:epics_env, cmd:'hsdpvs -P DAQ:LAB2:HSD:B'},
 
-{ host: 'daq-tst-dev06',  id:'hsdioc', port:'29458', flags:'spu', env:epics_env, cmd:'hsd134PVs -d /dev/datadev_0 -P DAQ:LAB2:HSD'},
+{ host: 'daq-tst-dev06',  id:'hsdioc', port:'29458', flags:'s', env:epics_env, cmd:'hsd134PVs -d /dev/datadev_0 -P DAQ:LAB2:HSD'},
 
   ]

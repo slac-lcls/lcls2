@@ -319,11 +319,15 @@ void Module134::disable_test_pattern()
   _jesd_init(0);
 }
 
-// Update ID advertised on timing link
+// Update ID advertised on timing and pgp link
 
 void Module134::set_local_id(unsigned bus)
 {
   p->tem.xma().txId = ModuleBase::local_id(bus);
+  optfmc    ().txId = bus;
+  printf("***********************\n");
+  printf("Programmed txId %08x\n", unsigned(optfmc().txId));
+  printf("***********************\n");
 }
 
 unsigned Module134::remote_id() const { return p->tem.xma().rxId; }
