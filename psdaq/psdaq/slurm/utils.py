@@ -27,6 +27,7 @@ class SbatchManager:
                 'PS_PARALLEL' ]
         self.env_dict = {key: os.environ.get(key, '') for key in envs}
         self.as_step = False
+        self.verbose = False
     
     @property
     def git_describe(self):
@@ -134,11 +135,13 @@ class SbatchManager:
                 loc_inst = CONDA_EXE.find('/inst')
                 conda_profile = os.path.join(CONDA_EXE[:loc_inst],'inst','etc','profile.d','conda.sh')
                 cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
+        
         x11_opt = ''
         if 'flags' in details:
             if details['flags'].find('x') > -1:
                 x11_opt = f'--x11 xterm -e '
                 env_opt += ",DISPLAY=localhost:11.0"
+        
         env_opt += ' '
         jobstep_cmd = f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} {x11_opt}bash -c '{cmd}'" + "& \n"
         return jobstep_cmd
@@ -183,9 +186,11 @@ class SbatchManager:
             sb_script += f"#SBATCH --nodelist={node} --ntasks=1"+"\n"
         else:
             sb_script += f"#SBATCH --constraint={job_name} --ntasks=1"+"\n"
-
         
         sb_script += self.get_jobstep_cmd(node, job_name, details)
         sb_script += "wait"
         self.sb_script = sb_script
+        if self.verbose:
+            print(self.sb_script)
+            print('')
 
