@@ -1,10 +1,11 @@
 import asyncio
 import psutil
 
-class SubprocHelper():
+
+class SubprocHelper:
     def __init__(self):
         self.procs = {}
-    
+
     async def read_stdout(self, proc):
         # Read data from stdout until EOF
         data = ""
@@ -17,12 +18,10 @@ class SubprocHelper():
         return data
 
     async def run(self, cmd, wait_output=False):
-        """ Start psplot as a subprocess """
+        """Start psplot as a subprocess"""
         proc = await asyncio.create_subprocess_shell(
-            cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-            )
+            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
         if wait_output:
             stdout = await self.read_stdout(proc)
             await proc.wait()
@@ -31,9 +30,3 @@ class SubprocHelper():
 
     def pids(self):
         return list(self.procs.keys())
-
-
-
-
-
-
