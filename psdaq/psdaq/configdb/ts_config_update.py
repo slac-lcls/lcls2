@@ -23,10 +23,10 @@ if not 'keepRawRate' in top['user']['SC']['group0']:
         top[':types:']['user']['SC'][k]['keepRawRate'] = 'FLOAT'
         top['user']['SC'][k]['keepRawRate'] = 1.
 
-if not '0.5Hz' in top[':types:'][':enum:']['acRateEnum']:
+if not '0_5Hz' in top[':types:'][':enum:']['acRateEnum']:
     print('** updating acRateEnum')
     #  Add 0.5Hz and bump all the settings
-    top[':types:'][':enum:']['acRateEnum'] = {'60Hz':5, '30Hz':4, '10Hz':3, '5Hz':2, '1Hz':1, '0.5Hz':0}
+    top[':types:'][':enum:']['acRateEnum'] = {'60Hz':5, '30Hz':4, '10Hz':3, '5Hz':2, '1Hz':1, '0_5Hz':0}
     for k in top['user']['SC'].keys():
         top['user']['SC'][k]['ac']['rate'] = top['user']['SC'][k]['ac']['rate']+1
 
