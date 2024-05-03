@@ -1,6 +1,7 @@
 #ifndef HSD_QABase_hh
 #define HSD_QABase_hh
 
+#include "psdaq/mmhw/Reg.hh"
 #include "Globals.hh"
 
 namespace Pds {
@@ -32,11 +33,11 @@ namespace Pds {
       void setupDaq(unsigned partition, unsigned fmc);
       unsigned running() const;
     public:
-      vuint32_t irqEnable;
-      vuint32_t irqStatus;
-      vuint32_t partitionAddr;
-      vuint32_t dmaFullThr;
-      vuint32_t csr; 
+      Mmhw::Reg irqEnable;
+      Mmhw::Reg irqStatus;
+      Mmhw::Reg partitionAddr;
+      Mmhw::Reg dmaFullThr;
+      Mmhw::Reg csr; 
       //   CSR
       // [ 0:0]  count reset
       // [ 1:1]  dma size histogram enable (unused)
@@ -47,19 +48,19 @@ namespace Pds {
       // [ 6:6]  fb pll reset
       // [ 8:15] trigger bit mask shift
       // [31:30] acqEnable per FMC
-      vuint32_t acqSelect;
+      Mmhw::Reg acqSelect;
       //   AcqSelect
       // [12: 0]  rateSel  :   [7:0] eventCode
       // [31:13]  destSel
-      vuint32_t control;
+      Mmhw::Reg control;
       //   Control
       // [7:0] channel enable mask
       // [8:8] interleave
       // [19:16] partition FMC 0
       // [23:20] partition FMC 1
       // [24]  inhibit
-      vuint32_t samples;       //  Must be a multiple of 16 [v1 only]
-      vuint32_t prescale;      //  Sample prescaler [v1 only]
+      Mmhw::Reg samples;       //  Must be a multiple of 16 [v1 only]
+      Mmhw::Reg prescale;      //  Sample prescaler [v1 only]
       //   Prescale
       //   Values are mapped as follows:
       //  Value    Rate Divisor    Nominal Rate
@@ -75,29 +76,29 @@ namespace Pds {
       //  [48..55]     70             17.9 MHz
       //  [56..63]     80             15.6 MHz
       //  Delay (bits 6:31) [units of TimingRef clk]
-      vuint32_t offset;        //  Not implemented
-      vuint32_t countAcquire;
-      vuint32_t countEnable;
-      vuint32_t countInhibit;
-      vuint32_t countRead;
-      vuint32_t countStart;
-      vuint32_t countQueue;
+      Mmhw::Reg offset;        //  Not implemented
+      Mmhw::Reg countAcquire;
+      Mmhw::Reg countEnable;
+      Mmhw::Reg countInhibit;
+      Mmhw::Reg countRead;
+      Mmhw::Reg countStart;
+      Mmhw::Reg countQueue;
       //
-      vuint32_t cacheSel;
-      vuint32_t cacheState;
-      vuint32_t cacheAddr;
+      Mmhw::Reg cacheSel;
+      Mmhw::Reg cacheState;
+      Mmhw::Reg cacheAddr;
 
-      vuint32_t msgDelay;
-      vuint32_t headerCnt;
+      Mmhw::Reg msgDelay;
+      Mmhw::Reg headerCnt;
 
-      vuint32_t rsvd_84[5];
+      Mmhw::Reg rsvd_84[5];
 
-      vuint32_t localId;
-      vuint32_t upstreamId;
-      vuint32_t dnstreamId[4];
+      Mmhw::Reg localId;
+      Mmhw::Reg upstreamId;
+      Mmhw::Reg dnstreamId[4];
       //
-      //      vuint32_t status;
-      //      vuint32_t statusCount[32];
+      //      Mmhw::Reg status;
+      //      Mmhw::Reg statusCount[32];
     };
   };
 };

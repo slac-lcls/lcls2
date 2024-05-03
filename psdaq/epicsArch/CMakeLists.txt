@@ -15,6 +15,7 @@ target_link_libraries(epicsArch
     drpbase
     trigger
     epicstools
+    mmhw
     ${Readline_LIBRARY}
 )
 

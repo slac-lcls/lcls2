@@ -143,10 +143,10 @@ int main(int argc, char* argv[])
         for(unsigned i=0; i<8; i++) {
             if (links&(1<<i)) {
                 Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-                dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
-                dmaWriteRegister(fd, &b.pauseThresh, 16     );
-                dmaWriteRegister(fd, &b.group , m_readoutGroup);
-                dmaWriteRegister(fd, &b.enable, 3           );  // enable
+                b.enable = 1<<2;  // reset counters
+                b.pauseThresh = 16;
+                b.group = m_readoutGroup;
+                b.enable = 3; // enable
 
                 dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
                 dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<31));  // enable
@@ -193,10 +193,12 @@ int main(int argc, char* argv[])
                     printf("env %08x\n", event_header->env);
                     for(unsigned i=0; i<((size+3)>>2); i++)
                         printf("%08x%c",reinterpret_cast<uint32_t*>(dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
+                    if (((size+3)>>2)&7)
+                        printf("\n");
                 }
                 else {
                     const uint32_t* p = reinterpret_cast<const uint32_t*>(event_header+1);
-                    printf("env %08x | payload %08x %08x %08x %08x\n", event_header->env,p[0],p[1],p[2],p[3]);
+                    printf("env %08x | payload %08x %08x %08x %08x %08x %08x\n", event_header->env,p[0],p[1],p[2],p[3],p[4],p[5]);
                 }
             }
         }

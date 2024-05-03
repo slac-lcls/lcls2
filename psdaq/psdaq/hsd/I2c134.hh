@@ -9,6 +9,7 @@
 #include "psdaq/hsd/Adt7411.hh"
 #include "psdaq/hsd/Ad7291.hh"
 #include "psdaq/hsd/Tps2481.hh"
+#include "psdaq/mmhw/RegProxy.hh"
 
 namespace Pds {
   namespace HSD {
@@ -26,7 +27,7 @@ namespace Pds {
       Ad7291     fmcadcmon;       // 0x12000
       Ad7291     fmcvmon;         // 0x12400
       Fmc134Cpld fmc_cpld;        // 0x12800 
-      vuint32_t  eeprom[0x100];   // 0x12C00
+      Mmhw::RegProxy  eeprom[0x100];   // 0x12C00
     };
   };
 };

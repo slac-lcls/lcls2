@@ -131,14 +131,19 @@ namespace Pds {
       // configure fex's for each channel
       unsigned fullEvt  = PVGET(full_event);
       unsigned fullSize = PVGET(full_size);
-      if (PVGET(raw_prescale) || PVGET(raw_keep)) {
+      unsigned rawPre   = PVGET(raw_prescale);
+      unsigned rawKeep  = PVGET(raw_keep);
+      if (rawPre) {
         streamMask |= (1<<0);
+        fex._base[0].setPrescale(PVGET(raw_prescale)-1);
+      }
+      else if (rawKeep) {
+        rawStreams |= (1<<0);
+      }
+      if (rawKeep || rawPre) {
         fex._base[0].setGate(PVGET(raw_start),
                              PVGET(raw_gate));
         fex._base[0].setFull(fullSize,fullEvt);
-        fex._base[0].setPrescale(PVGET(raw_prescale)-1);
-        if (PVGET(raw_keep))
-            rawStreams |= (1<<0);
       }
       if (PVGET(fex_prescale)) {
         streamMask |= (1<<1);

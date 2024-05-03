@@ -25,6 +25,7 @@ static void usage(const char* p) {
   printf("          -t <dev>  : <tpr a/b>\n");
   printf("          -c <chan> : logic channel\n");
   printf("          -o <outp> : bit mask of outputs\n");
+  printf("          -m <clks> : message delay\n");
   printf("          -d <clks> : delay\n");
   printf("          -w <clks> : width\n");
   printf("          -D <unit> : delay tap\n");
@@ -48,6 +49,7 @@ int main(int argc, char** argv) {
   bool lSleep = false;
   unsigned output  = 0;
   unsigned channel = 10;
+  int      msgdelay = -1;
   int      mode    = -1;
   int      rate    = -1;
   unsigned delay   = 0;
@@ -60,13 +62,16 @@ int main(int argc, char** argv) {
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:D:w:o:t:r:e:p:zC:L:M:P:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:D:m:w:o:t:r:e:p:zC:L:M:P:h?")) != EOF ) {
     switch(c) {
     case 'C':
         clksel = strtoul(optarg,NULL,0);
         break;
     case 'L':
         loopout = strtoul(optarg,NULL,0);
+        break;
+    case 'm':
+        msgdelay = strtoul(optarg,NULL,0);
         break;
     case 'M':
         modsel = strtoul(optarg,NULL,0);
@@ -156,6 +161,9 @@ int main(int argc, char** argv) {
 
   if (loopout>=0)
       client.loopOut(loopout>0);
+
+  if (msgdelay>=0)
+      const_cast<TprReg&>(client.reg()).tpr.MsgDelay = msgdelay;
 
   client.reg().tpr.dump();
 

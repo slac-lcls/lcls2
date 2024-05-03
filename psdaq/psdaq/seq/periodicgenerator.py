@@ -31,8 +31,9 @@ def myunion(s0,s1):
     return set(s0) | set(s1)
 
 class PeriodicGenerator(object):
-    def __init__(self, period, start, charge=None, repeat=-1, notify=False, marker='\"910kH\"'):
+    def __init__(self, period, start, charge=None, repeat=-1, notify=False, merge=False, marker='\"910kH\"'):
         self.charge = charge
+        self.merge  = merge
         self.init(period, start, marker, repeat, notify)
 
     def init(self, period, start, marker='\"910kH\"', repeat=-1, notify=False):
@@ -92,11 +93,9 @@ class PeriodicGenerator(object):
         bunion = sorted(reduce(myunion,bkts))  # set of buckets with a request
         reqs   = []  # list of request values for those buckets
         for b in bunion:
-#            req = 0
             req = []
             for i,bs in enumerate(bkts):
                 if b in bs:
-#                    req |= (1<<i)
                     req.append(i)
             reqs.append(req)
 
@@ -148,7 +147,7 @@ class PeriodicGenerator(object):
                 if self.charge is not None:
                     self.instr.append('instrset.append( BeamRequest({}) )'.format(self.charge))
                 else:
-                    self.instr.append('instrset.append( ControlRequest({}) )'.format(reqs[i]))
+                    self.instr.append('instrset.append( ControlRequest({}) )'.format([0] if self.merge else reqs[i]))
                 self.ninstr += 1
                 self.instr.append('instrset.append( Branch.conditional(start, 0, {}) )'.format(n))
                 self.ninstr += 1
@@ -158,7 +157,7 @@ class PeriodicGenerator(object):
                 if self.charge is not None:
                     self.instr.append('instrset.append( BeamRequest({}) )'.format(self.charge))
                 else:
-                    self.instr.append('instrset.append( ControlRequest({}) )'.format(reqs[i]))
+                    self.instr.append('instrset.append( ControlRequest({}) )'.format([0] if self.merge else reqs[i]))
                 self.ninstr += 1
         
         #  Step to the end of the common period and repeat
@@ -195,9 +194,11 @@ def main():
                         help="number of times to repeat 1 second sequence (default: indefinite)")
     parser.add_argument("-n", "--notify"            , action='store_true',
                         help="assert SeqDone PV when repeats are finished")
+    parser.add_argument("-m", "--merge"            , action='store_true',
+                        help="merge all triggers onto one code")
     args = parser.parse_args()
     print('# periodicgenerator args {}'.format(args))
-    gen = PeriodicGenerator(period=args.period, start=args.start_bucket, repeat=args.repeat, notify=args.notify)
+    gen = PeriodicGenerator(period=args.period, start=args.start_bucket, repeat=args.repeat, notify=args.notify, merge=args.merge)
     if (gen.ninstr > 1000):
         sys.stderr.write('*** Sequence has {} instructions.  May be too large to load. ***\n'.format(gen.ninstr))
     print('# {} instructions'.format(gen.ninstr))

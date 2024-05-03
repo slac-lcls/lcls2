@@ -181,7 +181,7 @@ def main():
         MainWindow.setCentralWidget(centralWidget)
         MainWindow.updateGeometry()
         MainWindow.show()
-        
+
         app.exec_()
 
 if __name__ == '__main__':

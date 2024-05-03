@@ -8,8 +8,8 @@ add_library(hsd SHARED
   AdcSync.cc
   Adt7411.cc
   ClkSynth.cc
-  DmaCore.cc
-  FlashController.cc
+  #DmaCore.cc
+  #FlashController.cc
   FexCfg.cc
   FmcCore.cc
   FmcSpi.cc
@@ -23,7 +23,6 @@ add_library(hsd SHARED
   PhyCore.cc
   PvDef.cc
   QABase.cc
-  TprCore.cc
   Tps2481.cc
   #Validator.cc
 
@@ -43,6 +42,7 @@ target_include_directories(hsd PUBLIC
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
+    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 target_link_libraries(hsd
@@ -57,6 +57,7 @@ target_link_libraries(hsd
 add_executable(mempeek mempeek.cc)
 
 target_link_libraries(mempeek
+   mmhw
    dl
    rt
 )
@@ -137,20 +138,7 @@ target_link_libraries(hsdRead
    rt
 )
 
-add_executable(hsd_promload promload.cc)
-target_include_directories(hsdRead PUBLIC
-     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-)
-
-target_link_libraries(hsd_promload
-   hsd
-   mmhw
-   rt
-)
-
-
 install(TARGETS hsd
-                hsd_promload
  		hsd126PVs
  		hsd134PVs
     ARCHIVE DESTINATION lib

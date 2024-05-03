@@ -1,6 +1,7 @@
 #ifndef Fmc134CPld_hh
 #define Fmc134CPld_hh
 
+#include "psdaq/mmhw/RegProxy.hh"
 #include "Globals.hh"
 #include <string>
 
@@ -55,14 +56,14 @@ namespace Pds {
             int32_t internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t clockmode);
             int32_t reset_clock_chip(int32_t);
         private:
-            vuint32_t _command; // device select
-            vuint32_t _control0; //
-            vuint32_t _control1; //
+            Mmhw::RegProxy _command; // device select
+            Mmhw::RegProxy _control0; //
+            Mmhw::RegProxy _control1; //
             uint32_t  _reserved3;
-            vuint32_t _status;
-            vuint32_t _version;
-            vuint32_t _i2c_data[4]; // write cache
-            vuint32_t _i2c_read[4]; // read cache
+            Mmhw::RegProxy _status;
+            Mmhw::RegProxy _version;
+            Mmhw::RegProxy _i2c_data[4]; // write cache
+            Mmhw::RegProxy _i2c_read[4]; // read cache
             uint32_t  _reserved[0x100-14];
         };
     };

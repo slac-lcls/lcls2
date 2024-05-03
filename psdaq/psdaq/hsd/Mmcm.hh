@@ -1,6 +1,7 @@
 #ifndef HSD_Mmcm_hh
 #define HSD_Mmcm_hh
 
+#include "psdaq/mmhw/Reg.hh"
 #include "Globals.hh"
 
 namespace Pds {
@@ -15,34 +16,34 @@ namespace Pds {
       void _setLock  (unsigned);
       void _setFilt  (unsigned);
     private:
-      vuint32_t rsvd0[6];
-      vuint32_t ClkOut5_1;
-      vuint32_t ClkOut5_2;
-      vuint32_t ClkOut0_1;
-      vuint32_t ClkOut0_2;
-      vuint32_t ClkOut1_1;
-      vuint32_t ClkOut1_2;
-      vuint32_t ClkOut2_1;
-      vuint32_t ClkOut2_2;
-      vuint32_t ClkOut3_1;
-      vuint32_t ClkOut3_2;
-      vuint32_t ClkOut4_1;
-      vuint32_t ClkOut4_2;
-      vuint32_t ClkOut6_1;
-      vuint32_t ClkOut6_2;
-      vuint32_t ClkFbOut_1;
-      vuint32_t ClkFbOut_2;
-      vuint32_t DivClk;
-      vuint32_t rsvd1;
-      vuint32_t Lock_1;
-      vuint32_t Lock_2;
-      vuint32_t Lock_3;
-      vuint32_t rsvd1B[12];
-      vuint32_t PowerU;
-      vuint32_t rsvd3[38];
-      vuint32_t Filt_1;
-      vuint32_t Filt_2;
-      vuint32_t rsvd4[0x200-0x50];
+      Mmhw::Reg rsvd0[6];
+      Mmhw::Reg ClkOut5_1;
+      Mmhw::Reg ClkOut5_2;
+      Mmhw::Reg ClkOut0_1;
+      Mmhw::Reg ClkOut0_2;
+      Mmhw::Reg ClkOut1_1;
+      Mmhw::Reg ClkOut1_2;
+      Mmhw::Reg ClkOut2_1;
+      Mmhw::Reg ClkOut2_2;
+      Mmhw::Reg ClkOut3_1;
+      Mmhw::Reg ClkOut3_2;
+      Mmhw::Reg ClkOut4_1;
+      Mmhw::Reg ClkOut4_2;
+      Mmhw::Reg ClkOut6_1;
+      Mmhw::Reg ClkOut6_2;
+      Mmhw::Reg ClkFbOut_1;
+      Mmhw::Reg ClkFbOut_2;
+      Mmhw::Reg DivClk;
+      Mmhw::Reg rsvd1;
+      Mmhw::Reg Lock_1;
+      Mmhw::Reg Lock_2;
+      Mmhw::Reg Lock_3;
+      Mmhw::Reg rsvd1B[12];
+      Mmhw::Reg PowerU;
+      Mmhw::Reg rsvd3[38];
+      Mmhw::Reg Filt_1;
+      Mmhw::Reg Filt_2;
+      Mmhw::Reg rsvd4[0x200-0x50];
     };
   };
 };

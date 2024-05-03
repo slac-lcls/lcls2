@@ -165,7 +165,7 @@ namespace Pds {
       volatile uint32_t RxDecErrs;
       volatile uint32_t RxDspErrs;
       volatile uint32_t CSR;
-      uint32_t          reserved;
+      volatile uint32_t MsgDelay;
       volatile uint32_t TxRefClks;
       volatile uint32_t BypassCnts;
       volatile uint32_t FrameVersion;

@@ -1,6 +1,7 @@
 #ifndef HSD_AdcCore_hh
 #define HSD_AdcCore_hh
 
+#include "psdaq/mmhw/Reg.hh"
 #include "Globals.hh"
 
 namespace Pds {
@@ -16,15 +17,15 @@ namespace Pds {
       void set_ref_delay (unsigned);
       void dump_status   () const;
     private:
-      vuint32_t _cmd;
-      vuint32_t _status;
-      vuint32_t _master_start;
-      vuint32_t _adrclk_delay_set_auto;
-      vuint32_t _channel_select;
-      vuint32_t _tap_match_lo;
-      vuint32_t _tap_match_hi;
-      vuint32_t _adc_req_tap ;
-      vuint32_t _rsvd2[0xf8];
+      Mmhw::Reg _cmd;
+      Mmhw::Reg _status;
+      Mmhw::Reg _master_start;
+      Mmhw::Reg _adrclk_delay_set_auto;
+      Mmhw::Reg _channel_select;
+      Mmhw::Reg _tap_match_lo;
+      Mmhw::Reg _tap_match_hi;
+      Mmhw::Reg _adc_req_tap ;
+      uint32_t  _rsvd2[0xf8];
     };
   };
 };

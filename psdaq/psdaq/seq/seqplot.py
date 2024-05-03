@@ -23,8 +23,8 @@ class Engine(object):
     def __init__(self, acmode=False):
         self.request = 0
         self.instr   = 0
-        self.frame   = -1  # 1MHz timeslot
-        self.acframe = -1  # 360Hz timeslot
+        self.frame   = 0  # 1MHz timeslot
+        self.acframe = 0  # 360Hz timeslot
         self.acmode  = acmode
         self.modes   = 0
         self.ccnt    = [0]*4

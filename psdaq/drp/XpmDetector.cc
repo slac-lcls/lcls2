@@ -4,6 +4,7 @@
 #include "AxisDriver.h"
 #include "DataDriver.h"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/mmhw/TprCore.hh"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
 #include <unistd.h>
 #include <netdb.h>
@@ -12,20 +13,38 @@
 using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using Pds::Mmhw::Reg;
+using Pds::Mmhw::TprCore;
 
-static void dmaReadRegister (int, uint32_t*, uint32_t*);
-static void dmaWriteRegister(int, uint32_t*, uint32_t);
-static void resetTimingPll  (int);
+static void resetTimingPll  (TprCore&);
 
 //typedef Pds::Mmhw::TriggerEventManager TEM;
 typedef Pds::Mmhw::TriggerEventManager2 TEM;
 
 namespace Drp {
 
+    //  hardware register model
+    class DrpTDet {
+    public:
+        uint32_t reserved_to_80_0000[0x800000/4];
+        uint32_t migToPci[0x200000/4];  // 0x0080_0000
+        Reg      tDetSemi[8];           // 0x00A0_0000
+        uint32_t reserved_to_c0_0000[(0x200000-sizeof(tDetSemi))/4];
+        TprCore  tpr;                   // 0x00C0_0000
+        uint32_t reserved_to_c2_0000[(0x020000-sizeof(TprCore))/4];
+        TEM      tem;                   // 0x00C2_0000
+        uint32_t reserved_to_e0_0000[(0x1E0000-sizeof(TEM))/4];
+        Reg      i2c     [0x200];       // 0x00E0_0000
+        Si570    si570;                 // 0x00E0_0800
+    };
+
 XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     Detector(para, pool)
 {
     int fd = pool->fd();
+    Pds::Mmhw::Reg::set(fd);
+    DrpTDet& hw = *new(0) DrpTDet;
+    TprCore& tpr = hw.tpr;
 
     static const double flo[] = {115.,180.};
     static const double fhi[] = {125.,190.};
@@ -33,12 +52,7 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     unsigned index = (para->kwargs["timebase"]=="119M") ? 0:1;
 
     // Check timing reference clock, program if necessary
-    unsigned ccnt0,ccnt1;
-    dmaReadRegister(fd, 0x00C00028, &ccnt0);
-    usleep(100000);
-    dmaReadRegister(fd, 0x00C00028, &ccnt1);
-    ccnt1 -= ccnt0;
-    double clkr = double(ccnt1)*16.e-5;
+    double clkr = tpr.txRefClockRate();
     logging::info("Timing RefClk %f MHz\n", clkr);
     if (clkr < flo[index] || clkr > fhi[index]) {
       AxiVersion vsn;
@@ -49,17 +63,14 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       }
 
       //  Flush I2C by reading the Mux
-      unsigned mux;
-      dmaReadRegister(fd, 0x00E00000, &mux);
+      unsigned mux = hw.i2c[0];
       logging::info("I2C mux:  0x%x\n", mux); // Force the read not to be optimized out
       //  Set the I2C Mux
-      dmaWriteRegister(fd, 0x00E00000, (1<<2));
+      hw.i2c[0] = 1<<2;
 
-      Si570 rclk(fd,0x00E00800);
-      rclk.program(index);
+      hw.si570.program(index);
 
-      unsigned v;
-      dmaReadRegister(fd, 0x00C00020, &v);
+      unsigned v = tpr.CSR;
       logging::info("Skip reset timing PLL\n");
       // v |= 0x80;
       // dmaWriteRegister(fd, 0x00C00020, v);
@@ -69,20 +80,18 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       // usleep(100);
       logging::info("Reset timing data path\n");
       v |= 0x8;
-      dmaWriteRegister(fd, 0x00C00020, v);
+      tpr.CSR = v;
       usleep(10);
       v &= ~0x8;
-      dmaWriteRegister(fd, 0x00C00020, v);
+      tpr.CSR = v;
       usleep(100000);
     }
 }
 
 json XpmDetector::connectionInfo(const nlohmann::json& msg)
 {
-    int fd = m_pool->fd();
-
-    TEM* mem_pointer = (TEM*)0x00C20000;
-    TEM* tem = new (mem_pointer) TEM;
+    DrpTDet& hw = *new(0) DrpTDet;
+    TEM& tem     = hw.tem;
 
     //  Advertise ID on the timing link
     {
@@ -107,7 +116,7 @@ json XpmDetector::connectionInfo(const nlohmann::json& msg)
           unsigned ip = ntohl(saddr->sin_addr.s_addr);
           if ((ip>>16)==0xac15) {
               unsigned id = 0xfb000000 | (ip&0xffff);
-              dmaWriteRegister(fd, &tem->xma().txId, id);
+              tem.xma().txId = id;
               break;
           }
           result = result->ai_next;
@@ -116,13 +125,12 @@ json XpmDetector::connectionInfo(const nlohmann::json& msg)
       if (!result) {
           logging::info("No 172.21 address found.  Defaulting");
           unsigned id = 0xfb000000;
-          dmaWriteRegister(fd, &tem->xma().txId, id);
+          tem.xma().txId = id;
       }
     }
 
     //  Retrieve the timing link ID
-    uint32_t reg;
-    dmaReadRegister(fd, &tem->xma().rxId, &reg);
+    uint32_t reg = tem.xma().rxId;
     printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
 
     // there is currently a failure mode where the register reads
@@ -134,9 +142,9 @@ json XpmDetector::connectionInfo(const nlohmann::json& msg)
     // Also, register is corrupted when port number > 15 - Ric
     if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
         logging::critical("XPM Remote link id register illegal value: 0x%x. Trying RxPllReset.",reg);
-        resetTimingPll(fd);
+        resetTimingPll(hw.tpr);
 
-        dmaReadRegister(fd, &tem->xma().rxId, &reg);
+        reg = tem.xma().rxId;
         printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
 
         if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
@@ -171,18 +179,19 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
        links <<= 4;
 
     //Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
-    TEM* mem_pointer = (TEM*)0x00C20000;
-    TEM* tem = new (mem_pointer) TEM;
+    DrpTDet& hw = *new(0) DrpTDet;
+    TEM& tem    = hw.tem;
+    Reg* det    = hw.tDetSemi;
     for(unsigned i=0; i<8; i++) {
         if (links&(1<<i)) {
-            Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-            dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
-            dmaWriteRegister(fd, &b.pauseThresh, 16     );
-            dmaWriteRegister(fd, &b.group , m_readoutGroup);
-            dmaWriteRegister(fd, &b.enable, 3           );  // enable
+            Pds::Mmhw::TriggerEventBuffer& b = tem.det(i);
+            b.enable = 1<<2;  // reset counters
+            b.pauseThresh = 16;
+            b.group = m_readoutGroup;
+            b.enable = 3;  // enable
 
-            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (m_length&0xffffff) | (1<<31));  // enable
+            det[i&3] = 1<<30;  // clear
+            det[i&3] = (m_length&0xffffff) | (1<<31);
         }
     }
 }
@@ -202,47 +211,29 @@ void XpmDetector::shutdown()
     if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
        links <<= 4;
 
-    TEM* mem_pointer = (TEM*)0x00C20000;
-    TEM* tem = new (mem_pointer) TEM;
+    DrpTDet& hw = *new(0) DrpTDet;
     for(unsigned i=0; i<8; i++) {
         if (links&(1<<i)) {
-            Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-            dmaWriteRegister(fd, &b.enable, 0               );  // enable
+            hw.tDetSemi[i&3] = (1<<30); // clear
+            hw.tem.det(i).enable = 0;
         }
     }
 }
 }
 
-void dmaReadRegister (int fd, uint32_t* addr, uint32_t* valp)
+void resetTimingPll(TprCore& tpr)
 {
-  uintptr_t addri = (uintptr_t)addr;
-  dmaReadRegister(fd, addri&0xffffffff, valp);
-  logging::debug("[%08lx] = %08x\n",addri,*valp);
-}
-
-void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
-{
-  uintptr_t addri = (uintptr_t)addr;
-  dmaWriteRegister(fd, addri&0xffffffff, val);
-  logging::debug("[%08lx] %08x\n",addri,val);
-}
-
-void resetTimingPll(int fd)
-{
-  uint32_t v;
-  dmaReadRegister(fd, 0x00c0020, &v);
-
+  uint32_t v = tpr.CSR;
   v |= 0x80;
-  dmaWriteRegister(fd, 0x00c00020, v);
+  tpr.CSR = v;
   usleep(10);
   v &= ~0x80;
-  dmaWriteRegister(fd, 0x00c00020, v);
+  tpr.CSR = v;
   usleep(100);
   v |= 0x8;
-  dmaWriteRegister(fd, 0x00c00020, v);
+  tpr.CSR = v;
   usleep(10);
   v &= ~0x8;
-  dmaWriteRegister(fd, 0x00c00020, v);
+  tpr.CSR = v;
   usleep(100000);
 }

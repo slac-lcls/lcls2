@@ -1,6 +1,7 @@
 #ifndef HSD_I2cSwitch_hh
 #define HSD_I2cSwitch_hh
 
+#include "psdaq/mmhw/RegProxy.hh"
 #include "Globals.hh"
 
 namespace Pds {
@@ -11,7 +12,7 @@ namespace Pds {
       void select(Port);
       void dump () const;
     private:
-      vuint32_t _control;
+      Mmhw::RegProxy _control;
       uint32_t  _reserved[255];
     };
   };

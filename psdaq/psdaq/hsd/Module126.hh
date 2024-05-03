@@ -5,6 +5,7 @@
 #include "psdaq/hsd/Globals.hh"
 #include "psdaq/hsd/I2cSwitch.hh"
 #include "psdaq/hsd/I2c126.hh"
+#include "psdaq/mmhw/AxiVersion.hh"
 #include "psdaq/service/Semaphore.hh"
 #include <stdint.h>
 #include <stdio.h>
@@ -12,13 +13,12 @@
 
 namespace Pds {
   namespace Mmhw {
-    class AxiVersion;
     class Jtag;
+    class TprCore;
   };
   namespace HSD {
-    class TprCore;
     class FexCfg;
-    class FlashController;
+      //    class FlashController;
     class HdrFifo;
     class PhaseMsmt;
     class Pgp;
@@ -41,8 +41,8 @@ namespace Pds {
       void set_local_id(unsigned bus);
       unsigned remote_id() const;
 
-      void flash_write(const char*);
-      FlashController& flash();
+        //      void flash_write(const char*);
+        //      FlashController& flash();
 
       //  Initialize busses
       void init();
@@ -86,9 +86,9 @@ namespace Pds {
       void     sync      ();
       void     clocktree_sync();
 
-      const Pds::Mmhw::AxiVersion& version() const;
+      const Pds::Mmhw::AxiVersion& version() const { return _vsn; }
       I2c126&                      i2c()     const;
-      Pds::HSD::TprCore&    tpr    ();
+      Pds::Mmhw::TprCore&          tpr    ();
 
       void setRxAlignTarget(unsigned);
       void setRxResetLength(unsigned);
@@ -108,7 +108,7 @@ namespace Pds {
       PhaseMsmt*                  trgPhase();
 
       std::vector<Pgp*>            pgp    ();
-      Pds::Mmhw::Jtag*             xvc    ();
+        //      Pds::Mmhw::Jtag*             xvc    ();
       OptFmc&                      optfmc ();
       void*                        reg    ();
 
@@ -125,6 +125,7 @@ namespace Pds {
       PrivateData* p;
 
       int       _fd;
+      Pds::Mmhw::AxiVersion _vsn;
       mutable Semaphore _sem_i2c;
     };
   };

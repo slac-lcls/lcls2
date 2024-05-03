@@ -706,8 +706,8 @@ unsigned Fmc134Cpld::_read()
 #define cpld_address 0
 #define spi_write(unit,sel,reg,val) writeRegister(sel,reg,val)
 #define spi_read(unit,sel,reg,valp) *(valp) = readRegister(sel,reg)
-#define i2c_write(unit,addr,val)  reinterpret_cast<volatile uint32_t*>(this)[addr]=val
-#define i2c_read(unit,addr,valp)  *(valp) = reinterpret_cast<volatile uint32_t*>(this)[addr]
+#define i2c_write(unit,addr,val)  reinterpret_cast<Mmhw::RegProxy*>(this)[addr]=val
+#define i2c_read(unit,addr,valp)  *(valp) = reinterpret_cast<Mmhw::RegProxy*>(this)[addr]
 #define unitapi_sleep_ms(tms) usleep(tms*1000)
 
 static const int32_t UNITAPI_OK = 0;

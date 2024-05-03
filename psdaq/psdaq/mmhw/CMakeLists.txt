@@ -5,9 +5,12 @@ add_library(mmhw SHARED
     AxiVersion.cc
     HexFile.cc
     McsFile.cc
+    Reg.cc
+    Reg64.cc
     RegProxy.cc
     RingBuffer.cc
     GthEyeScan.cc
+    TprCore.cc
     TriggerEventManager.cc
     Xvc.cc
 )

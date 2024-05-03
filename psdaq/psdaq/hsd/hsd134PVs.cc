@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <Python.h>
 
+#include "AxiVersion.h"
 #include "Module134.hh"
 #include "ChipAdcCore.hh"
 #include "Pgp3.hh"
@@ -18,7 +19,8 @@
 #include "Fmc134Cpld.hh"
 
 #include "psdaq/mmhw/AxiVersion.hh"
-#include "psdaq/mmhw/Xvc.hh"
+#include "psdaq/mmhw/Reg.hh"
+//#include "psdaq/mmhw/Xvc.hh"
 
 #include "psdaq/service/Routine.hh"
 #include "psdaq/service/Task.hh"
@@ -148,12 +150,13 @@ int main(int argc, char** argv)
     const char* dev    = 0;
     const char* prefix = "DAQ:LAB2:HSD";
     bool lInternalTiming = false;
+    bool lLoopback = false;
     bool lAbortOnErr = false;
     bool lverbose    = false;
     unsigned    busId  = 0;
     const char* db_args[5] = {0,0,0,0,0};
 
-    while ( (c=getopt( argc, argv, "d:D:EP:Ivh")) != EOF ) {
+    while ( (c=getopt( argc, argv, "d:D:ELP:Ivh")) != EOF ) {
         switch(c) {
         case 'd':
             dev    = optarg;      break;
@@ -172,6 +175,8 @@ int main(int argc, char** argv)
             lAbortOnErr = true;   break;
         case 'I':
             lInternalTiming = true;  break;
+        case 'L':
+            lLoopback = true; break;
         case 'P':
             prefix = optarg;      break;
         case 'v':
@@ -205,6 +210,8 @@ int main(int argc, char** argv)
         perror("Open device failed");
         return -1;
     }
+
+    Pds::Mmhw::Reg::verbose(lverbose);
 
     Module134* m = Module134::create(fd);
     m->dumpMap();
@@ -253,11 +260,13 @@ int main(int argc, char** argv)
         }
     }
 
-    m->setup_timing();
+#if 1
+    m->setup_timing(lLoopback);
     m->setup_jesd(lAbortOnErr, 
                   adc_calib[0],
                   adc_calib[1],
                   lInternalTiming);
+#endif
 
     if (db_args[4] && db_args[4][0]=='L') {    // Write calibration
         PyObject* pFunc   = _check(PyDict_GetItemString(pDict, "set_calib"));
@@ -320,7 +329,7 @@ int main(int argc, char** argv)
         delete pvaa[i];
     }
 
-    Pds::Mmhw::Xvc::launch( &m->xvc(), 11000+busId, false );
+    //    Pds::Mmhw::Xvc::launch( &m->xvc(), 11000+busId, false );
     while(1)
         sleep(1);                    // Seems to help prevent a crash in cpsw on exit
 
