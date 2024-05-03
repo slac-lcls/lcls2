@@ -233,6 +233,7 @@ void TprCore::dump() const {
   printf("RxDecErrs: %08x\n", RxDecErrs);
   printf("RxDspErrs: %08x\n", RxDspErrs);
   printf("CSR      : %08x\n", CSR); 
+  printf("MsgDelay : %08x\n", MsgDelay); 
   printf("TxRefClks: %08x\n", TxRefClks);
   printf("BypDone  : %04x\n", (BypassCnts>> 0)&0xffff);
   printf("BypResets: %04x\n", (BypassCnts>>16)&0xffff);
