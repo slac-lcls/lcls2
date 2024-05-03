@@ -112,13 +112,23 @@ class SbatchManager:
 
     def get_daq_cmd(self, details, job_name):
         cmd = details["cmd"]
-        cmd += f" -p {repr(self.platform)} -u {job_name}"
-        # Add control host
-        self.collect_host = "drp-srcf-cmp035"
-        if job_name == "control_gui":
-            cmd += f" -H {self.collect_host}"
-        elif job_name != "control":
-            cmd += f" -C {self.collect_host}"
+        if (
+            not job_name.startswith("ami")
+            and not job_name == "groupca"
+            and not job_name == "prom2pvs"
+        ):
+            cmd += f" -u {job_name}"
+            # Add control host
+            self.collect_host = "drp-srcf-cmp035"
+            if job_name == "control_gui":
+                cmd += f" -H {self.collect_host}"
+            elif job_name != "control":
+                cmd += f" -C {self.collect_host}"
+        if "flags" in details:
+            if details["flags"].find("p") > -1:
+                cmd += f" -p {repr(self.platform)}"
+        if job_name.startswith("ami-meb"):
+            cmd += f" -u {job_name}"
         return cmd
 
     def get_output_header(self, node, job_name, details):
@@ -139,9 +149,11 @@ class SbatchManager:
                 header += "# GIT_DESCRIBE:%s\n" % git_describe
         return header
 
-    def get_jobstep_cmd(self, node, job_name, details, het_group=-1):
-        output = self.get_output_filepath(node, job_name)
-        output_opt = f"--output={output} --open-mode=append "
+    def get_jobstep_cmd(self, node, job_name, details, het_group=-1, with_output=False):
+        output_opt = ""
+        if with_output:
+            output = self.get_output_filepath(node, job_name)
+            output_opt = f"--output={output} --open-mode=append "
         env_opt = "--export=ALL"
         if "env" in details:
             if details["env"] != "":
@@ -208,7 +220,7 @@ class SbatchManager:
                 if len(sbjob) == 1:
                     het_group_id = -1
                 sb_steps += self.get_jobstep_cmd(
-                    node, job_name, details, het_group=het_group_id
+                    node, job_name, details, het_group=het_group_id, with_output=True
                 )
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
@@ -217,7 +229,7 @@ class SbatchManager:
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}" + "\n"
         sb_script += f"#SBATCH --job-name={job_name}" + "\n"
-        output = self.get_output_filepath(LOCALHOST, "slurm")
+        output = self.get_output_filepath(node, job_name)
         sb_script += f"#SBATCH --output={output}" + "\n"
         sb_script += f"#SBATCH --comment={details['comment']}" + "\n"
 

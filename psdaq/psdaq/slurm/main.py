@@ -1,14 +1,7 @@
-####################################################################
-# psbatch
-# Usage: psbatch
-# Parameters:
-#   - subcommand:   actions to be performed on the inputs
-#   - inp_file:     input file with resources
-####################################################################
-
 from typing import List
 import json
 import typer
+from typing_extensions import Annotated
 import time
 import asyncio
 import psutil
@@ -43,7 +36,7 @@ class Runner:
         self.platform = config_dict["platform"]
         # Check if we are getting main or derived config file
         if config_dict["config"] is None:
-            config = Config(config_dict["main_config"])
+            config = Config(config_dict["procmgr_config"])
             self.config = config.main_config
         else:
             self.config = config_dict["config"].select_config
@@ -127,12 +120,23 @@ class Runner:
 
 
 def main(
-    subcommand: str,
-    cnf_file: str,
-    as_step: bool = False,
+    subcommand: Annotated[
+        str, typer.Argument(help="Available options: [start, stop, restart, status]")
+    ],
+    cnf_file: Annotated[
+        str, typer.Argument(help="Configuration file with .py extension.")
+    ],
+    unique_ids: Annotated[
+        str,
+        typer.Argument(
+            help="A comma separated string containing selected processes (e.g. timing0,teb0)."
+        ),
+    ] = None,
+    as_step: Annotated[
+        bool, typer.Option(help="Submit DAQ processes as slurm job steps.")
+    ] = False,
     interactive: bool = False,
     verbose: bool = False,
-    unique_ids: str = None,
 ):
     global runner
     runner = Runner(cnf_file)
