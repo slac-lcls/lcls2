@@ -26,12 +26,12 @@ chan = 0
 ocfg = None
 group = None
 
-def supervisor_info(connect_json):
+def supervisor_info(json_msg):
     nworker = 0
     supervisor=None
     mypid = os.getpid()
     myhostname = socket.gethostname()
-    for drp in connect_json['body']['drp'].values():
+    for drp in json_msg['body']['drp'].values():
         proc_info = drp['proc_info']
         host = proc_info['host']
         pid = proc_info['pid']
@@ -177,8 +177,6 @@ def opal_connectionInfo(cl, alloc_json_str):
     barrier_global.wait()
     connect_info = {}
     connect_info['paddr'] = rxId
-
-    # Was opal_connect(cl, connect_json_str):
 
     # initialize the serial link
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan)
@@ -438,6 +436,5 @@ def opal_unconfig(cl):
     if barrier_global.supervisor:
         cl.StopRun()
     barrier_global.wait()
-    barrier_global.shutdown()
 
     return cl

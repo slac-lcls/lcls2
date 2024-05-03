@@ -7,6 +7,12 @@ class Barrier:
     """
     def __init__(self):
         self.context = zmq.Context()
+        self.nworker = 0
+        self.publisher = False
+        self.subscriber = False
+
+    def __del__(self):
+        self.shutdown()
 
     def init(self, supervisor, nworker, port1=5561, port2=5562):
         self.supervisor = supervisor
@@ -20,7 +26,7 @@ class Barrier:
             self.worker_init()
 
     def shutdown(self):
-        # called on the disconnect transition
+        # To be called on the deallocate transition
         if self.nworker==0: return
         if self.supervisor:
             self.publisher.close()
@@ -31,14 +37,15 @@ class Barrier:
 
     def supervisor_init(self):
         # Socket to talk to workers
-        self.publisher = self.context.socket(zmq.PUB)
-        # set SNDHWM, so we don't drop messages for slow subscribers
-        # cpo: not necessary for this example since we're sending slow/small msgs
-        #self.publisher.sndhwm = 1100000
-        self.publisher.bind(f"tcp://*:{self.port1}")
-        # Socket to receive signals
-        self.syncservice = self.context.socket(zmq.REP)
-        self.syncservice.bind(f"tcp://*:{self.port2}")
+        if not self.publisher:
+            self.publisher = self.context.socket(zmq.PUB)
+            # set SNDHWM, so we don't drop messages for slow subscribers
+            # cpo: not necessary for this example since we're sending slow/small msgs
+            #self.publisher.sndhwm = 1100000
+            self.publisher.bind(f"tcp://*:{self.port1}")
+            # Socket to receive signals
+            self.syncservice = self.context.socket(zmq.REP)
+            self.syncservice.bind(f"tcp://*:{self.port2}")
 
         # Get synchronization from subscribers
         subscribers = 0
@@ -50,6 +57,7 @@ class Barrier:
             subscribers += 1
 
     def worker_init(self):
+        if not self.subscriber:
             self.subscriber = self.context.socket(zmq.SUB)
             self.subscriber.connect(f"tcp://localhost:{self.port1}")
             self.subscriber.setsockopt(zmq.SUBSCRIBE, b'')
@@ -69,11 +77,11 @@ class Barrier:
             self.syncworker = self.context.socket(zmq.REQ)
             self.syncworker.connect(f"tcp://localhost:{self.port2}")
 
-            # send a synchronization request
-            self.syncworker.send(b'')
+        # send a synchronization request
+        self.syncworker.send(b'')
 
-            # wait for synchronization reply
-            self.syncworker.recv()
+        # wait for synchronization reply
+        self.syncworker.recv()
 
     def wait(self):
         if self.nworker==0: return # do nothing if only one opal
@@ -91,7 +99,8 @@ if __name__ == "__main__":
     port1 = 5561
     port2 = 5562
 
-    barrier = Barrier(supervisor,nworker,port1,port2)
+    barrier = Barrier()
+    barrier.init(supervisor,nworker,port1,port2)
     for i in range(5):
         if supervisor: time.sleep(1) # supervisor does some work
         barrier.wait() # allow workers to continue

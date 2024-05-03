@@ -70,12 +70,12 @@ class MyUartPiranha4Rx(clink.ClinkSerialRx):
             elif c != '':
                 self._cur.append(c)
 
-def supervisor_info(connect_json):
+def supervisor_info(json_msg):
     nworker = 0
     supervisor=None
     mypid = os.getpid()
     myhostname = socket.gethostname()
-    for drp in connect_json['body']['drp'].values():
+    for drp in json_msg['body']['drp'].values():
         proc_info = drp['proc_info']
         host = proc_info['host']
         pid = proc_info['pid']
@@ -233,8 +233,6 @@ def piranha4_connectionInfo(cl, alloc_json_str):
     barrier_global.wait()
     connect_info = {}
     connect_info['paddr'] = rxId
-
-    # Was piranha4_connect(cl, connect_json_str):
 
     ## initialize the serial link
     #uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan)
@@ -521,6 +519,5 @@ def piranha4_unconfig(cl):
     if barrier_global.supervisor:
         cl.StopRun()
     barrier_global.wait()
-    barrier_global.shutdown()
 
     return cl
