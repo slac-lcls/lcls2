@@ -72,6 +72,24 @@ class configdb(object):
         resp.raise_for_status()
         return resp.json()
 
+    # Remove the specified device configuration.
+    def remove_device(self, alias, device, hutch=None):
+        if hutch is None:
+            hutch = self.hutch
+        try:
+            xx = self._get_response('remove_device/' + hutch + '/' +
+                                    alias + '/' + device + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            raise ex
+        except Exception as ex:
+            logging.error('%s' % ex)
+            raise ex
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+            raise RuntimeError('Internal error removing device configuration')
+
     # Retrieve the configuration of the device with the specified alias.
     # This returns a dictionary where the keys are the collection names and the
     # values are typed JSON objects representing the device configuration(s).
@@ -441,6 +459,29 @@ def _cat(args):
     if len(xx) > 0:
         pprint.pprint(xx)
 
+def _rm(args):
+    if isXpm(args.src):
+        seg = None
+        try:
+            hutch, alias, dev = _parse_device3(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+    else:
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+
+    if args.write:
+        mycdb = configdb(args.url, hutch, root=args.root)
+        if seg is None:
+            xx = mycdb.remove_device(alias, f'{dev}', hutch)
+        else:
+            xx = mycdb.remove_device(alias, f'{dev}_{seg}', hutch)
+    else:
+        print("")
+        print("WARNING: Not written to database (use the --write option)")
+
 def _cp(args):
     try:
         if isXpm(args.src) and isXpm(args.dst):
@@ -600,6 +641,14 @@ def main():
     parser_cat = subparsers.add_parser('cat', help='print a configuration')
     parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cat.set_defaults(func=_cat)
+
+    # create the parser for the "rm" command
+    parser_rm = subparsers.add_parser('rm', help='remove a configuration')
+    parser_rm.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_rm.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_rm.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_rm.add_argument('--write', action="store_true", help='Write to database')
+    parser_rm.set_defaults(func=_rm)
 
     # create the parser for the "cp" command
     parser_cp = subparsers.add_parser('cp', help='copy a configuration')
