@@ -18,16 +18,9 @@ typedef Pds::Mmhw::TriggerEventManager2 TEM;
 
 #define MAX_RET_CNT_C 1000
 static int fd;
-static void dmaWriteRegister(int, uint32_t*, uint32_t);
 std::atomic<bool> terminate;
 
 using namespace Drp;
-
-void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
-{
-    uintptr_t addri = (uintptr_t)addr;
-    dmaWriteRegister(fd, addri&0xffffffff, val);
-}
 
 unsigned dmaDest(unsigned lane, unsigned vc)
 {

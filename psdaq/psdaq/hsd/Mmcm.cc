@@ -253,13 +253,13 @@ void Mmcm::_setFbMult(unsigned m)
   v &= ~0xefff;
   v |= ((m>>1)&0x3f)<<0;
   v |= ((m-(m>>1))&0x3f)<<6;
-  printf("ClkFbOut_1 %x -> %x\n", ClkFbOut_1, v);
+  printf("ClkFbOut_1 %x -> %x\n", unsigned(ClkFbOut_1), v);
   ClkFbOut_1 = v;
 
   v  = ClkFbOut_2;
   v &= ~0x7fff;
   v |= (2&0x3)<<8;   // MX (required)
-  printf("ClkFbOut_2 %x -> %x\n", ClkFbOut_2, v);
+  printf("ClkFbOut_2 %x -> %x\n", unsigned(ClkFbOut_2), v);
   ClkFbOut_2 = v;
 }
 
@@ -272,7 +272,7 @@ void Mmcm::_setClkDiv(unsigned delay_int, unsigned delay_frac)
   v |= (5&0x3f)<<0;
   v |= (5&0x3f)<<6;
   v |= (delay_frac&0x7)<<13; // Fractional delay of vco
-  printf("ClkOut0_1 %x -> %x\n", ClkOut0_1, v);
+  printf("ClkOut0_1 %x -> %x\n", unsigned(ClkOut0_1), v);
   ClkOut0_1 = v;
 
   v  = ClkOut0_2;
@@ -280,7 +280,7 @@ void Mmcm::_setClkDiv(unsigned delay_int, unsigned delay_frac)
   v |= (delay_int&0x3f)<<0;  // Integer delay of vco
   v |= (2&0x3)<<8;           // MX (required)
   v |= ((4&0x7)<<12) | (1<<11) | (1<<10); // Frac = 4/8
-  printf("ClkOut0_2 %x -> %x\n", ClkOut0_2, v);
+  printf("ClkOut0_2 %x -> %x\n", unsigned(ClkOut0_2), v);
   ClkOut0_2 = v;
 
   v  = ClkOut5_2;
@@ -288,13 +288,13 @@ void Mmcm::_setClkDiv(unsigned delay_int, unsigned delay_frac)
   v |= 0x2<<8;
   v |= 1<<12;
   v |= 0x2<<13;  // falling edge at 1/4 cycle
-  printf("ClkOut5_2 %x -> %x\n", ClkOut5_2, v);
+  printf("ClkOut5_2 %x -> %x\n", unsigned(ClkOut5_2), v);
   ClkOut5_2 = v;
 
   v  = DivClk;
   v &= ~0x3fff;
   v |= (3<<12);
-  printf("DivClk %x -> %x\n", DivClk, v);
+  printf("DivClk %x -> %x\n", unsigned(DivClk), v);
   DivClk = v;
 }
 
@@ -305,21 +305,21 @@ void Mmcm::_setLock(unsigned m)
   v = Lock_1;
   v &= ~0x3ff;
   v |= (lock_entry>>20)&0x3ff;
-  printf("Lock_1 %x -> %x\n", Lock_1, v);
+  printf("Lock_1 %x -> %x\n", unsigned(Lock_1), v);
   Lock_1 = v;
 
   v = Lock_2;
   v &= ~0x7fff;
   v |= ((lock_entry>>30)&0x1f)<<10;
   v |= ((lock_entry>>0)&0x3ff)<<0;
-  printf("Lock_2 %x -> %x\n", Lock_2, v);
+  printf("Lock_2 %x -> %x\n", unsigned(Lock_2), v);
   Lock_2 = v;
 
   v = Lock_3;
   v &= ~0x7fff;
   v |= ((lock_entry>>35)&0x1f)<<10;
   v |= ((lock_entry>>10)&0x3ff)<<0;
-  printf("Lock_3 %x -> %x\n", Lock_3, v);
+  printf("Lock_3 %x -> %x\n", unsigned(Lock_3), v);
   Lock_3 = v;
 }
 
@@ -333,7 +333,7 @@ void Mmcm::_setFilt(unsigned m)
   v |= ((filter_entry>>9)&0x1)<<15;
   v |= ((filter_entry>>7)&0x3)<<11;
   v |= ((filter_entry>>6)&0x1)<<8;
-  printf("Filt_1 %x -> %x\n", Filt_1, v);
+  printf("Filt_1 %x -> %x\n", unsigned(Filt_1), v);
   Filt_1 = v;
 
   v = Filt_2;
@@ -342,6 +342,6 @@ void Mmcm::_setFilt(unsigned m)
   v |= ((filter_entry>>3)&0x3)<<11;
   v |= ((filter_entry>>1)&0x3)<<7;
   v |= ((filter_entry>>0)&0x1)<<4;
-  printf("Filt_2 %x -> %x\n", Filt_2, v);
+  printf("Filt_2 %x -> %x\n", unsigned(Filt_2), v);
   Filt_2 = v;
 }

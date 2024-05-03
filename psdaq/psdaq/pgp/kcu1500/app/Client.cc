@@ -10,8 +10,6 @@ using XtcData::Transition;
 
 using namespace Pds::Kcu;
 
-static void dmaWriteRegister(int, uint32_t*, uint32_t);
-
 Client::Client(const char* dev) : 
   _dmaBuffers(0), _current(0), _ret(0), 
   _retry_intv(1000), _retry_num(10), // 10 ms
@@ -185,8 +183,3 @@ void Client::dump()
   _skips = _retries = 0;
 }
 
-void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
-{
-  uintptr_t addri = (uintptr_t)addr;
-  dmaWriteRegister(fd, addri&0xffffffff, val);
-}

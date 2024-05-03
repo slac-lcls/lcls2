@@ -50,7 +50,7 @@ Reg& Reg::operator=(const unsigned r)
 Reg::operator unsigned() const
 {
   uint32_t addr = reinterpret_cast<uintptr_t>(this);
-  uint32_t r=-1UL;
+  uint32_t r=-1U;
   if (dmaReadRegister(_fd, addr, &r)<0) {
       printf("read 0x%x\n",addr);
       perror("Pds::Mmhw::Reg read");

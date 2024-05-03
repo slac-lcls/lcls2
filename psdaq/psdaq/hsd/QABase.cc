@@ -147,7 +147,7 @@ void QABase::resetFbPLL()
 
 void QABase::dump() const
 {
-#define PR(r) printf("%9.9s: %08x\n",#r, r)
+#define PR(r) printf("%9.9s: %08x\n",#r, unsigned(r))
 
   PR(localId);
   PR(upstreamId);

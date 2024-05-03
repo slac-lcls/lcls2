@@ -274,7 +274,7 @@ int main(int argc, char* argv[])
     VarDef         bldDef = pvaPayload->getVarDef(payloadSz);
 #else
     unsigned id = 1;
-    bld.setID(_id = 1);
+    bld.setID(_id = id);
     NameIndex      nameIndex;
     NamesId        namesId(0,0);
     size_t         payloadSz=4;
