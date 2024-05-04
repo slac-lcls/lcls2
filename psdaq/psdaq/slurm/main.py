@@ -135,8 +135,15 @@ def main(
     as_step: Annotated[
         bool, typer.Option(help="Submit DAQ processes as slurm job steps.")
     ] = False,
-    interactive: bool = False,
-    verbose: bool = False,
+    interactive: Annotated[
+        bool,
+        typer.Option(
+            help="Display results in a separate window for supported subcommands."
+        ),
+    ] = False,
+    verbose: Annotated[
+        bool, typer.Option(help="Print out sbatch script(s) submitted by psbatch.")
+    ] = False,
 ):
     global runner
     runner = Runner(cnf_file)
@@ -156,8 +163,6 @@ def main(
             show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
-    if interactive:
-        embed()
 
 
 def _select_config_ids(unique_ids):
@@ -277,4 +282,4 @@ def _do_main():
 
 
 if __name__ == "__main__":
-    start()
+    _do_main()
