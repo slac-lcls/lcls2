@@ -90,6 +90,25 @@ class configdb(object):
             logging.error('%s' % xx['msg'])
             raise RuntimeError('Internal error removing device configuration')
 
+    # Rename the specified device configuration.
+    def rename_device(self, alias, device, newname, hutch=None):
+
+        if hutch is None:
+            hutch = self.hutch
+        try:
+            xx = self._get_response(f'rename_device/{hutch}/' +
+                                    f'{alias}/{device}/?newname={newname}')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            raise ex
+        except Exception as ex:
+            logging.error('%s' % ex)
+            raise ex
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+            raise RuntimeError('Internal error renaming device configuration')
+
     # Retrieve the configuration of the device with the specified alias.
     # This returns a dictionary where the keys are the collection names and the
     # values are typed JSON objects representing the device configuration(s).
@@ -514,6 +533,27 @@ def _cp(args):
         print("")
         print("WARNING: Not written to database (use the --write option)")
 
+def _rename(args):
+    try:
+        if isXpm(args.src):
+            oldseg = newseg = None
+            oldhutch, oldalias, olddev = _parse_device3(args.src)
+        else:
+            oldhutch, oldalias, olddev, oldseg = _parse_device4(args.src)
+    except NameError as ex:
+        print('%s' % ex)
+        sys.exit(1)
+
+    if args.write:
+        mycdb = configdb(args.url, oldhutch, root=args.root)
+        if oldseg is None:
+            xx = mycdb.rename_device(oldalias, f'{olddev}', args.newname, oldhutch)
+        else:
+            xx = mycdb.rename_device(oldalias, f'{olddev}_{oldseg}', args.newname, oldhutch)
+    else:
+        print("")
+        print("WARNING: Not written to database (use the --write option)")
+
 def _ls(args):
     # authentication is not required, adjust url accordingly
     url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
@@ -659,6 +699,15 @@ def main():
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
     parser_cp.add_argument('--write', action="store_true", help='Write to database')
     parser_cp.set_defaults(func=_cp)
+
+    # create the parser for the "rename" command
+    parser_rename = subparsers.add_parser('rename', help='rename a configuration')
+    parser_rename.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_rename.add_argument('newname', help='new name')
+    parser_rename.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_rename.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_rename.add_argument('--write', action="store_true", help='Write to database')
+    parser_rename.set_defaults(func=_rename)
 
     # create the parser for the "history"
     parser_history = subparsers.add_parser('history', help='get history of a configuration')
