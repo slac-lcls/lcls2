@@ -123,7 +123,7 @@ namespace psalg {
 
           if(dg->service()==XtcData::TransitionId::L1Accept) {
 #ifdef DBUG
-              printf("ShmemClient DgramHandler free dgram index %d size %d\n",index,size);
+              printf("ShmemClient DgramHandler free dgram index %d size %zd\n",index,size);
 #endif
               mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo);
           } else {
@@ -361,7 +361,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 
   printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
   while (::connect(_myTrFd, (sockaddr*)&saddr, sizeof(saddr)) < 0) {
-      printf("[%p] Error connecting myTrFd socket",this);
+      printf("[%p] Error connecting myTrFd socket\n",this);
       sleep(1);
       printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
   }
@@ -381,7 +381,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
     else         printf("read returned %zd of %zd bytes\n", rc, sizeof(myMsg));
     delete[] qname;
     return ++error;
-    }
+  }
 
   //
   //  Initialize shared memory from first message

@@ -122,7 +122,6 @@ namespace psalg {
       int               _nfd;
       mqd_t             _shuffleQueue;      // message queue for pre-distribution event processing
       mqd_t             _requestQueue;      // message queue for buffers awaiting request completion
-      timespec          _tmo;
       std::atomic<bool> _terminate;         // Flag for causing subthreads to exit
       std::thread       _discThread;        // thread for receiving new client connections
       std::thread       _taskThread;        // thread for datagram distribution

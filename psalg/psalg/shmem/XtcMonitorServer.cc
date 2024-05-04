@@ -112,9 +112,6 @@ XtcMonitorServer::XtcMonitorServer(const char* tag,
   _myMsg.sizeOfBuffers  (sizeofBuffers);
   _myMsg.return_queue   (0);
 
-  _tmo.tv_sec  = 0;
-  _tmo.tv_nsec = 0;
-
   apps = this;
 
   struct sigaction int_action;
@@ -165,15 +162,8 @@ void XtcMonitorServer::distribute(bool l)
 
 bool XtcMonitorServer::_send(Dgram* dg)
 {
-  //
-  //  For reasons I don't yet understand, sometimes the message queues
-  //  are opened in blocking mode.  So, I use mq_timedreceive
-  //  with a 0 timeout to avoid blocking.
-  //
   XtcMonitorMsg msg;
-  const timespec no_wait={0,0};
-  int r = mq_timedreceive(_requestQueue, (char*)&msg, sizeof(msg), NULL,
-                          &no_wait);
+  int r = mq_receive(_requestQueue, (char*)&msg, sizeof(msg), NULL);
 
 #ifndef NO_STEAL
   static unsigned _nsteals=0;
@@ -183,8 +173,7 @@ bool XtcMonitorServer::_send(Dgram* dg)
     if (r<0) ; // perror("Error reading input event queue");
     for(unsigned i=0; i<_numberOfEvQueues; i++) {
       unsigned iq = (i+_nsteals)%_numberOfEvQueues; // fairness
-      r=mq_timedreceive(_myOutputEvQueue[iq], (char*)&msg, sizeof(msg), NULL,
-                        &no_wait);
+      r=mq_receive(_myOutputEvQueue[iq], (char*)&msg, sizeof(msg), NULL);
       if (r>0) break;
       if (r<0) ; // perror("Error reading output event queue");
     }
@@ -195,8 +184,8 @@ bool XtcMonitorServer::_send(Dgram* dg)
   if (r>0) {
     _msgDest[msg.bufferIndex()]=-1;
     ShMsg m(msg, dg);
-    if (mq_timedsend(_shuffleQueue, (const char*)&m, sizeof(m), 0, &_tmo)) {
-      printf("ShuffleQ timed out\n");
+    if (mq_send(_shuffleQueue, (const char*)&m, sizeof(m), 0)) {
+      perror("ShuffleQ timed out\n");
       _deleteDatagram(dg);
     }
   }
@@ -333,11 +322,10 @@ void XtcMonitorServer::discover()
     perror("ConnectionManager listen failed\n");
   else {
     while(!_terminate.load(std::memory_order_relaxed)) {
-      timespec tv; tv.tv_sec=tv.tv_nsec=0;
       XtcMonitorMsg m(port);
-      if (mq_timedsend(_discoveryQueue,(const char*)&m,sizeof(m),0,&_tmo)<0) {
+      if (mq_send(_discoveryQueue,(const char*)&m,sizeof(m),0)<0) {
         perror("Error advertising discovery port");
-        abort();
+        if (errno != EAGAIN)  abort();
       }
 
       // Wait for a connection
@@ -391,9 +379,8 @@ void XtcMonitorServer::routine()
       //
       if (_pfd[1].revents & POLLIN) {
         XtcMonitorMsg msg;
-        const timespec no_wait={0,0};
-        while(mq_timedreceive(_myInputEvQueue, (char*)&msg, sizeof(msg), NULL, &no_wait) > 0) {
-          if (mq_timedsend(_requestQueue, (const char*)&msg, sizeof(msg), 0, &_tmo))
+        while(mq_receive(_myInputEvQueue, (char*)&msg, sizeof(msg), NULL) > 0) {
+          if (mq_send(_requestQueue, (const char*)&msg, sizeof(msg), 0))
             perror("Writing to requestQ");
           else {
             _requestDatagram();
@@ -423,7 +410,7 @@ void XtcMonitorServer::routine()
           //  Send this event to the first available client
           //
           for(unsigned i=0; i<=_numberOfEvQueues; i++)
-            if (mq_timedsend(_myOutputEvQueue[i], (const char*)&m.msg(), sizeof(m.msg()), 0, &_tmo))
+            if (mq_send(_myOutputEvQueue[i], (const char*)&m.msg(), sizeof(m.msg()), 0))
               ; //          printf("outputEv timed out to client %d\n",i);
             else {
 #ifdef DBUG2
@@ -441,7 +428,7 @@ void XtcMonitorServer::routine()
           for(unsigned i=0; i<_numberOfEvQueues; i++) {
             int oc = _ievt++%_numberOfEvQueues;
             int oq = _myOutputEvQueue[oc];
-            if (mq_timedsend(oq, (const char*)&m.msg(), sizeof(m.msg()), 0, &_tmo))
+            if (mq_send(oq, (const char*)&m.msg(), sizeof(m.msg()), 0))
               ;
             else {
 #ifdef DBUG2
@@ -453,7 +440,7 @@ void XtcMonitorServer::routine()
             }
           }
           if (!lsent) {
-            if (mq_timedsend(_myInputEvQueue, (const char*)&m.msg(), sizeof(m.msg()), 0, &_tmo))
+            if (mq_send(_myInputEvQueue, (const char*)&m.msg(), sizeof(m.msg()), 0))
               perror("Unable to distribute or reclaim event");
           }
         }
@@ -498,7 +485,7 @@ void XtcMonitorServer::routine()
                       printf("Recovering buffer %d\n",j);
                       msg = _myMsg;
                       msg.bufferIndex(j);
-                      if (mq_timedsend(_myInputEvQueue, (const char*)&msg, sizeof(msg), 0, &_tmo)<0)
+                      if (mq_send(_myInputEvQueue, (const char*)&msg, sizeof(msg), 0)<0)
                         perror("Failed to recover buffer queued to retired client");
                       else
                         _msgDest[j]=-1;
@@ -530,17 +517,15 @@ void XtcMonitorServer::routine()
 void XtcMonitorServer::_clearDest(mqd_t queue)
 {
   XtcMonitorMsg msg;
-  const timespec no_wait={0,0};
   std::list<int> indices;
-  while(mq_timedreceive(queue, (char*)&msg,
-                        sizeof(msg), NULL, &no_wait)>0)
+  while(mq_receive(queue, (char*)&msg, sizeof(msg), NULL)>0)
     indices.push_back(msg.bufferIndex());
 
   for(std::list<int>::iterator it=indices.begin();
       it!=indices.end(); it++) {
     _msgDest[*it]=-1;
     msg.bufferIndex(*it);
-    if (mq_timedsend(queue, (char*)&msg,sizeof(msg),0,&no_wait)<0) {
+    if (mq_send(queue, (char*)&msg,sizeof(msg),0)<0) {
       perror("Accounting input queue buffers");
       printf("May have lost buffer %d\n",*it);
     }
@@ -591,7 +576,7 @@ int XtcMonitorServer::_init()
   for(unsigned i=0; i<_numberOfEvBuffers; i++) {
     _myMsg.bufferIndex(i);
     _msgDest[i]=-1;
-    if (mq_timedsend(_myInputEvQueue, (const char*)&_myMsg, sizeof(_myMsg), 0, &_tmo)<0)
+    if (mq_send(_myInputEvQueue, (const char*)&_myMsg, sizeof(_myMsg), 0)<0)
       perror("Failed to queue buffer to input queue (initialize)");
   }
 
@@ -740,7 +725,7 @@ void XtcMonitorServer::_requestDatagram() {}
 
 mqd_t XtcMonitorServer::_openQueue(const char* name, mq_attr& attr)
 {
-  mqd_t q = mq_open(name,  O_CREAT|O_RDWR, PERMS, &attr);
+  mqd_t q = mq_open(name, O_CREAT|O_RDWR|(attr.mq_flags & O_NONBLOCK), PERMS, &attr);
   if (q == (mqd_t)-1) {
     perror("mq_open output");
     printf("name: '%s'\nmq_attr:\n\tmq_flags 0x%0lx\n\tmq_maxmsg 0x%0lx\n\tmq_msgsize 0x%0lx\n\tmq_curmsgs 0x%0lx\n",
@@ -755,16 +740,18 @@ mqd_t XtcMonitorServer::_openQueue(const char* name, mq_attr& attr)
 
   mq_attr r_attr;
   mq_getattr(q,&r_attr);
-  if (r_attr.mq_maxmsg != attr.mq_maxmsg ||
+  if (r_attr.mq_flags  != attr.mq_flags  ||
+      r_attr.mq_maxmsg != attr.mq_maxmsg ||
       r_attr.mq_msgsize!= attr.mq_msgsize) {
 
     printf("Failed to set queue attributes the first time.\n");
     mq_close(q);
 
-    mqd_t q = mq_open(name,  O_CREAT|O_RDWR, PERMS, &attr);
+    mqd_t q = mq_open(name,  O_CREAT|O_RDWR|(attr.mq_flags & O_NONBLOCK), PERMS, &attr);
     mq_getattr(q,&r_attr);
 
-    if (r_attr.mq_maxmsg != attr.mq_maxmsg ||
+    if (r_attr.mq_flags  != attr.mq_flags  ||
+        r_attr.mq_maxmsg != attr.mq_maxmsg ||
         r_attr.mq_msgsize!= attr.mq_msgsize) {
       printf("Failed to set queue attributes the second time.\n");
       printf("open attr  %lx %lx %lx  read attr %lx %lx %lx\n",
@@ -789,7 +776,7 @@ void XtcMonitorServer::_flushQueue(mqd_t q, char* m, unsigned sz)
   do {
     mq_getattr(q, &attr);
     if (attr.mq_curmsgs)
-      mq_timedreceive(q, m, sz, NULL, &_tmo);
+      mq_receive(q, m, sz, NULL);
   } while (attr.mq_curmsgs);
 }
 
@@ -800,11 +787,11 @@ void XtcMonitorServer::_moveQueue(mqd_t iq, mqd_t oq)
   do {
     mq_getattr(iq, &attr);
     if (attr.mq_curmsgs) {
-      if (mq_timedreceive(iq, (char*)&m, sizeof(m), NULL, &_tmo) == -1) {
-        perror("moveQueue: mq_timedreceive");
+      if (mq_receive(iq, (char*)&m, sizeof(m), NULL) == -1) {
+        perror("moveQueue: mq_receive");
         break;
       }
-      else if (mq_timedsend   (oq, (char*)&m, sizeof(m), 0, &_tmo) == -1) {
+      else if (mq_send(oq, (char*)&m, sizeof(m), 0) == -1) {
         printf("Failed to reclaim buffer %i : %s\n",
                m.bufferIndex(), strerror(errno));
       }
@@ -816,16 +803,15 @@ void XtcMonitorServer::_moveQueue(mqd_t iq, mqd_t oq)
 
 void XtcMonitorServer::_replQueue(mqd_t q, unsigned rq)
 {
-  timespec tmo; tmo.tv_sec = 0; tmo.tv_nsec = 0;
   struct mq_attr attr;
   mq_getattr(q,&attr);
   printf("Replacing %lu entries\n",attr.mq_curmsgs);
   while(attr.mq_curmsgs--) {
     XtcMonitorMsg m;
-    mq_timedreceive(q, reinterpret_cast<char*>(&m), sizeof(m), NULL, &tmo);
+    mq_receive(q, reinterpret_cast<char*>(&m), sizeof(m), NULL);
     m.return_queue(rq);
     _msgDest[m.bufferIndex()] = -1;
-    mq_timedsend   (q, reinterpret_cast<const char*>(&m), sizeof(m), 0, &tmo);
+    mq_send(q, reinterpret_cast<const char*>(&m), sizeof(m), 0);
   }
 }
 
