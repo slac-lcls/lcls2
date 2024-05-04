@@ -165,6 +165,7 @@ if 'PSDAQ' in BUILD_LIST :
             'prometheus2pvs = psdaq.cas.prometheus2pvs:main',
             'prometheusIOC = psdaq.cas.prometheusIOC:main',
             'psbatch = psdaq.slurm.main:_do_main',
+            'cnf2py = psdaq.slurm.cnftopy:_do_main',
         ]
     }
 
