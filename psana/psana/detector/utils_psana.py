@@ -22,8 +22,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2021-02-16 by Mikhail Dubrovin
 """
 
-from psana.detector.Utils import str_tstamp
-from psana.detector.Utils import info_dict #, info_namespace, info_command_line
+from psana.detector.Utils import info_dict, str_tstamp #, info_namespace, info_command_line
 
 def seconds(ts, epoch_offset_sec=631152000) -> float:
     """
@@ -125,6 +124,29 @@ def info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:\n ', sep='\n
     return cmt + info_dict(run.dsparms.det_classes, fmt='%10s : %s', sep=sep)
 
 
+def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
+    """Returns (str) tstamp_run, tstamp_now#, e.g. (str) 20201209191018, 20201217140026
+    """
+    trun_sec = int(trun_sec)
+    ts_run = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=trun_sec)
+    ts_now = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None)
+    return ts_run, ts_now
+
+def dict_run(orun):
+    runtstamp = orun.timestamp    # 4193682596073796843 (int) code of sec and mks relative to 1990-01-01
+    trun_sec = seconds(runtstamp) # 1607569818.532117 sec Epoch time
+    tstamp_run, tstamp_now = tstamps_run_and_now(int(trun_sec)) # (str) 20201209191018, 20201217140026
+    return {\
+      'expt': orun.expt,\
+      'runnum': orun.runnum,\
+      'runid': orun.id,\
+      'detnames': orun.detnames,\
+      'trun_sec': trun_sec,\
+      'tstamp_run': tstamp_run,\
+      'tstamp_now': tstamp_now,\
+    }
+
+
 def info_run(run, cmt='run info:', sep='\n    ', verb=0o377):
     t_sec = seconds(run.timestamp)
     ts_run = timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S')
@@ -136,6 +158,25 @@ def info_run(run, cmt='run info:', sep='\n    ', verb=0o377):
       + '%srun.timestamp : %s -> %s' % (sep, run.timestamp, ts_run)\
       +('%srun.id        : %s' % (sep, run.id) if verb & 1 else '')\
       +('%s%s' % (sep, info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:', sep=sep+'   ')) if verb & 2 else '')
+
+
+def dict_datasource(ds):
+    #ds = DataSource(**uec.data_source_kwargs(**kwargs))
+    return {\
+      'n_files': ds.n_files,\
+      'xtc_files': ds.xtc_files,\
+      'xtc_ext' : ds.xtc_ext if hasattr(ds,'xtc_ext') else 'N/A',\
+      'smd_files': ds.smd_files,\
+      'shmem': ds.shmem,\
+      'smalldata_kwargs': ds.smalldata_kwargs,\
+      'timestamps': ds.timestamps,\
+      'live': ds.live,\
+      'destination': ds.destination,\
+      'runnum_list': ds.runnum_list,\
+      'detectors': ds.detectors,\
+#      'unique_user_rank': ds.unique_user_rank,\
+#      'is_mpi': ds.is_mpi,\
+    }
 
 
 def info_detnames(run, cmt='command: '):
@@ -160,6 +201,24 @@ def print_detnames(run, cmt='command: '):
     cmd = 'detnames exp=%s,run=%d -r -s' % (run.expt, run.runnum)
     print(cmt + cmd)
     os.system(cmd)
+
+
+def dict_detector(odet):
+    det_raw = odet.raw
+    return {\
+      'det_name'    : det_raw._det_name,\
+      'dettype'     : det_raw._dettype,\
+      'longname'    : det_raw._fullname(),\
+      'uniqueid'    : det_raw._uniqueid,\
+      'shape'       : det_raw._shape_as_daq(),\
+      'shape_seg'   : det_raw._seg_geo.shape(),\
+      'segment_ids' : det_raw._segment_ids(),\
+      'segment_indices' : det_raw._segment_indices(),\
+      'sorted_segment_inds' : det_raw._sorted_segment_inds,\
+      'segment_numbers' : det_raw._segment_numbers,\
+      'gains_def'   : det_raw._gains_def,\
+#      'gain_mode'  : ue.find_gain_mode(det_raw, evt=None),\
+    }
 
 
 def info_detector(det, cmt='detector info:', sep='\n    '):
