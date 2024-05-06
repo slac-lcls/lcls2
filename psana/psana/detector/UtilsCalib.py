@@ -146,6 +146,54 @@ def proc_block(block, **kwa):
     return gate_lo, gate_hi, arr_med, arr_abs_dev
 
 
+class DataBlock():
+    """primitive data block accumulation w/o processing"""
+    def __init__(self, **kwa):
+        self.kwa    = kwa
+        self.nrecs  = kwa.get('nrecs',1000)
+        self.datbits= kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
+        self.block  = None
+        self.irec   = -1
+
+
+    def event(self, raw, evnum):
+        """Switch between gain mode processing objects using igm index of the gain mode (0,1,2).
+           - evnum (int) - event number
+           - igm (int) - index of the gain mode in DIC_GAIN_MODE
+        """
+        logger.debug('event %d' % evnum)
+
+        if raw is None: return self.status
+
+        if self.block is None :
+           self.block=np.zeros((self.nrecs,)+tuple(raw.shape), dtype=raw.dtype)
+           self.evnums=np.zeros((self.nrecs,), dtype=np.uint16)
+           logger.info(info_ndarr(self.block,'created empty data block'))
+           logger.info(info_ndarr(self.block,'and array for event numbers'))
+
+        if self.not_full():
+            self.irec +=1
+            self.block[self.irec,:] = raw
+            self.evnums[self.irec] = evnum
+
+        return self.is_full()
+
+
+    def is_full(self):
+        return not self.not_full()
+
+
+    def not_full(self):
+        return self.irec < self.nrecs-1
+
+
+    def extra_arrays(self, raw, evnum):
+        self.arr_max = np.zeros(shape_raw, dtype=dtype_raw)
+        self.arr_min = np.ones (shape_raw, dtype=dtype_raw) * self.datbits
+        np.maximum(self.arr_max, raw, out=self.arr_max)
+        np.minimum(self.arr_min, raw, out=self.arr_min)
+
+
 class DarkProc():
     """dark data accumulation and processing"""
     def __init__(self, **kwa):
