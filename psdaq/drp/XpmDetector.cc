@@ -1,6 +1,7 @@
 
 #include "XpmDetector.hh"
 #include "Si570.hh"
+#include "XpmInfo.hh"
 #include "AxisDriver.h"
 #include "DataDriver.h"
 #include "psalg/utils/SysLog.hh"
@@ -152,10 +153,7 @@ json XpmDetector::connectionInfo(const nlohmann::json& msg)
             abort();
         }
     }
-    int xpm  = (reg >> 20) & 0x0F;
-    int port = (reg >>  0) & 0xFF;
-    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
-    return info;
+    return xpmInfo(reg);
 }
 
 // setup up device to receive data over pgp

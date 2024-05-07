@@ -13,8 +13,8 @@ class xpm_link:
         return (int(self.value)>>24)&0xff == 0xff
 
     def xpm_num(self):
-        print('xpm_num {:x} {:}'.format(self.value,(int(self.value)>>20)&0xf))
-        return (int(self.value)>>20)&0xf
+        print('xpm_num {:x} {:}'.format(self.value,(int(self.value)>>16)&0xff))
+        return (int(self.value)>>16)&0xff
 
 class ts_connector:
     def __init__(self,json_connect_info):

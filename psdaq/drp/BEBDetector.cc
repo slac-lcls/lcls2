@@ -1,5 +1,6 @@
 #include "BEBDetector.hh"
 #include "PythonConfigScanner.hh"
+#include "XpmInfo.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -145,12 +146,7 @@ json BEBDetector::connectionInfo(const json& msg)
       Py_DECREF(mbytes);
     }
 
-    unsigned reg = m_paddr;
-    int xpm  = (reg >> 20) & 0x0F;
-    int port = (reg >>  0) & 0xFF;
-    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
-    printf("*** BEBDet %d %d %x\n",xpm,port,m_paddr);
-    return info;
+    return xpmInfo(m_paddr);
 }
 
 void BEBDetector::connect(const json& connect_json, const std::string& collectionId)

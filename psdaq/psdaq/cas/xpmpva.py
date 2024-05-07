@@ -53,7 +53,7 @@ class PvPAddr(QtWidgets.QWidget):
             if qs[0:8]=='ffffffff':
                 s = 'XTPG'
             elif qs[0:2]=='ff':
-                shelf = int(qs[2:3],16)
+                shelf = int(qs[2:4],16)
                 port  = int(qs[6:8],16)
                 s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
             self.__display.valueSet.emit(s)

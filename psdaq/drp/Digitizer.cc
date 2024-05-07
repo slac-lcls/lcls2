@@ -10,6 +10,7 @@
 #include "psalg/digitizer/Hsd.hh"
 #include "DataDriver.h"
 #include "Si570.hh"
+#include "XpmInfo.hh"
 #include "psdaq/mmhw/Reg.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -187,12 +188,8 @@ Digitizer::~Digitizer()
 }
 
 json Digitizer::connectionInfo(const nlohmann::json& msg)
-{
-    unsigned reg = m_paddr;
-    int xpm  = (reg >> 20) & 0xF;
-    int port = (reg >>  0) & 0xFF;
-    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
-    return info;
+{   
+    return xpmInfo(m_paddr);
 }
 
 unsigned Digitizer::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesId, const std::string& config_alias) {

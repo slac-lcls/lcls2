@@ -2,7 +2,7 @@ import socket
 from psdaq.cas.pvedit import *
 
 def atcaIp(v):
-    return '10.0.{:}.{:}'.format((v>>16)&0xf,(v>>8)&0xff)
+    return '10.0.{:}.{:}'.format((v>>12)&0xf,100+((v>>8)&0xf))
 
 def hostName(v):
     ip = '172.21.{:d}.{:d}'.format((v>>8)&0xff,(v>>0)&0xff)
@@ -13,7 +13,7 @@ def hostName(v):
     return name
 
 def nameLinkXpm(v):
-    return ('XPM:{:}'.format((v>>20)&0xf), atcaIp(v))
+    return ('XPM:{:}'.format((v>>16)&0xff), atcaIp(v))
 
 def nameLinkDti(v):
     return ('DTI', atcaIp(v))
