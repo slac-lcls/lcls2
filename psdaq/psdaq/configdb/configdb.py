@@ -93,6 +93,10 @@ class configdb(object):
     # Rename the specified device configuration.
     def rename_device(self, alias, device, newname, hutch=None):
 
+        for xx in '/.':
+            if xx in newname:
+                raise RuntimeError(f"Error: '{xx}' character not allowed in device names")
+
         if hutch is None:
             hutch = self.hutch
         try:
@@ -533,7 +537,7 @@ def _cp(args):
         print("")
         print("WARNING: Not written to database (use the --write option)")
 
-def _rename(args):
+def _mv(args):
     try:
         if isXpm(args.src):
             oldseg = newseg = None
@@ -700,14 +704,14 @@ def main():
     parser_cp.add_argument('--write', action="store_true", help='Write to database')
     parser_cp.set_defaults(func=_cp)
 
-    # create the parser for the "rename" command
-    parser_rename = subparsers.add_parser('rename', help='rename a configuration')
-    parser_rename.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
-    parser_rename.add_argument('newname', help='new name')
-    parser_rename.add_argument('--user', default='tstopr', help='default: tstopr')
-    parser_rename.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
-    parser_rename.add_argument('--write', action="store_true", help='Write to database')
-    parser_rename.set_defaults(func=_rename)
+    # create the parser for the "mv" command
+    parser_mv = subparsers.add_parser('mv', help='rename a configuration (EXAMPLE: configdb mv --write tst/BEAM/timing_45 timing_46)')
+    parser_mv.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_mv.add_argument('newname', help='new name')
+    parser_mv.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_mv.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_mv.add_argument('--write', action="store_true", help='Write to database')
+    parser_mv.set_defaults(func=_mv)
 
     # create the parser for the "history"
     parser_history = subparsers.add_parser('history', help='get history of a configuration')
