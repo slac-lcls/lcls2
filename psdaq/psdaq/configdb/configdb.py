@@ -695,7 +695,7 @@ def main():
     parser_rm.set_defaults(func=_rm)
 
     # create the parser for the "cp" command
-    parser_cp = subparsers.add_parser('cp', help='copy a configuration')
+    parser_cp = subparsers.add_parser('cp', help='copy a configuration (EXAMPLE: configdb cp --create --write tmo/BEAM/timing_0 newhutch/BEAM/timing_0)')
     parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cp.add_argument('--user', default='tstopr', help='default: tstopr')
