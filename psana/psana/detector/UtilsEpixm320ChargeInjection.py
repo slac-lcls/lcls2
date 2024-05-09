@@ -10,6 +10,7 @@ import psana.detector.UtilsGraphics as ug
 from psana.detector.UtilsLogging import logging  # DICT_NAME_TO_LEVEL, init_stream_handler
 import psana.detector.UtilsCalib as uc
 import psana.detector.UtilsEpix10kaCalib as uec
+from psana.detector.UtilsEpixm320Calib import save_constants_in_repository
 from psana.detector.utils_psana import seconds, str_tstamp, info_run, info_detector, seconds,\
     dict_run, dict_detector, dict_datasource
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
@@ -53,6 +54,7 @@ def charge_injection(parser):
     logmode    = kwa.get('logmode', 'DEBUG')
     pixrc      = kwa.get('pixrc', None) # ex.: '23,123'
     nsigm      = kwa.get('nsigm', 8)
+    deploy     = kwa.get('deploy', False)
     sslice     = kwa.get('slice', '0:,0:')
     irun       = None
     exp        = None
@@ -65,6 +67,10 @@ def charge_injection(parser):
 
     dskwargs = uec.datasource_kwargs_from_string(str_dskwargs)
     logger.info('dskwargs:%s\n' % uec.info_dict(dskwargs))
+
+    expname = dskwargs.get('exp', None)
+    runnum  = dskwargs.get('run', None)
+
 
     try: ds = uec.DataSource(**dskwargs)
     except Exception as err:
@@ -125,8 +131,6 @@ def charge_injection(parser):
     dbo = None
     flimg = None
 
-    expname = dskwargs.get('exp', None)
-    runnum  = dskwargs.get('run', None)
 
     for irun,orun in enumerate(ds.runs()):
 
@@ -137,7 +141,6 @@ def charge_injection(parser):
       if expname is None: expname = orun.expt
       runnum = orun.runnum
 
-      nevrun = 0
       logger.info('\n==== %02d run: %d exp: %s' % (irun, runnum, expname))
       logger.info(info_run(orun, cmt='run info:    ', sep='\n    ', verb=3))
 
@@ -151,9 +154,6 @@ def charge_injection(parser):
       dict_det = dict_detector(odet)
       logger.info('dict_detector:%s' % uec.info_dict(dict_det))
 
-#      sys.exit('TEST EXIT')
-#      logger.info(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
-
       try:
         step_docstring = orun.Detector('step_docstring')
       except:
@@ -163,6 +163,7 @@ def charge_injection(parser):
       trun_sec = seconds(runtstamp) # 1607569818.532117 sec
       ts_run, ts_now = uec.tstamps_run_and_now(int(trun_sec))
 
+      nevrun = 0
       break_steps  = False
 
       for istep,step in enumerate(orun.steps()):
@@ -206,17 +207,8 @@ def charge_injection(parser):
           if ievt < evskip:
               logger.debug('==== Ev:%04d is skipped --evskip=%d' % (ievt,evskip))
               continue
-          elif ievt>evstep-1:
-              logger.info('Events in step > --evstep=%d next step' % evskip)
-              break
-          elif evskip>0 and (ievt == evskip):
+          elif ievt>0 and ievt == evskip:
               logger.info('Events < --evskip=%d are skipped' % evskip)
-
-          if ievt > events-1:
-              logger.info(ss)
-              logger.info('\n==== Ev:%04d event loop is terminated --events=%d' % (ievt,events))
-              break_events = True
-              break
 
           raw = odet.raw.raw(evt)
 
@@ -245,59 +237,64 @@ def charge_injection(parser):
                    (irun, runnum, istep, nevtot, nevrun, ievt+1, nevsel, time()-t0_sec, dt)
               logger.info(ss)
 
-          #status = dbo.event(raw, ievt)
           status = dbo.event(raw, nevtot)
+
+          #print('XXX status:', status)
+
           if status:
               logger.info('requested statistics --nrecs=%d is collected - terminate loops' % dbo.nrecs)
               break_events = True
+              break_steps = True
+              break_runs = True
               break
           # End of event-loop
 
+          if ievt > evstep-2:
+              logger.info('Events in step > --evstep=%d next step' % evstep)
+              break_events = True
+              break
+
+          if ievt > events-2:
+              logger.info(ss)
+              logger.info('\n==== Ev:%04d event loop is terminated --events=%d' % (ievt,events))
+              break_events = True
+              break
+
         if ievt < events: logger.info('==== Ev:%04d end of events in run %d step %d'%\
                                        (ievt, runnum, istep))
-
-#        if True:
-#            dbo.summary()
-#            #ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
-#            ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
-#            arr_av1, arr_rms, arr_sta = dbo.constants_av1_rms_sta()
-#            arr_max, arr_min = dbo.constants_max_min()
-#            consts = arr_av1, arr_rms, arr_sta, arr_max, arr_min
-#            logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
-#                        info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
-#                        info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
-#                        info_ndarr(arr_sta, 'arr_sta', first=0, last=5),\
-#                        info_ndarr(arr_max, 'arr_max', first=0, last=5),\
-#                        info_ndarr(arr_min, 'arr_min', first=0, last=5)))
-#            dic_consts = dict(zip(ctypes, consts))
-#            gainmode = gain_mode(odet, metadic, istep) # nsteptot)
-#            kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
-#            kwa_depl['gainmode'] = gainmode
-#            kwa_depl['repoman'] = repoman
-#            #kwa_depl['segment_ids'] = odet.raw._segment_ids()
-
-#            logger.info('kwa_depl:\n%s' % info_dict(kwa_depl, fmt='  %12s: %s', sep='\n'))
-#            #sys.exit('TEST EXIT')
-
-#            save_constants_in_repository(dic_consts, **kwa_depl)
-#            dic_consts_tot[gainmode] = dic_consts
-#            del(dbo)
-#            dbo=None
 
         if break_steps:
           logger.info('terminate_steps')
           break # break step loop
 
-
       if break_runs:
         logger.info('terminate_runs')
         break # break run loop
 
-    summary(dbo)
+    kwa_summary = {\
+                   'repoman': repoman,
+                   'exp': expname,
+                   'det': detname,
+                   'dettype': dict_det['dettype'],
+                   'deploy': deploy,
+                   'dirrepo': dirrepo,
+                   'dirmode': dirmode,
+                   'filemode': filemode,
+                   'tstamp': dic_run['tstamp_run'],
+                   'tsshort': dic_run['tstamp_run'],
+                   'run_orig': runnum,
+                   'uniqueid': dict_det['uniqueid'],
+                   'segment_ids': dict_det['segment_ids'],
+                   'gainmode': metadic['gain_mode'],
+                   }
+
+    logger.info('kwa_summary:%s' % uec.info_dict(kwa_summary))
+
+    summary(dbo, **kwa_summary)
+#    dic_consts_tot[gainmode] = dic_consts
+    del(dbo)
 
     if plotim==1: gr.show()
-
-
 
 #    gainmodes = [k for k in dic_consts_tot.keys()]
 #    logger.info('constants'\
@@ -319,12 +316,34 @@ def charge_injection(parser):
     #sys.exit('TEST EXIT see commented deploy_constants')
 
 
-def summary(dbo):
+def summary(dbo, **kwa):
+
     block  = dbo.block
     evnums = dbo.evnums
     logger.info('block summary: \n  %s\n  %s\n' % (
                 info_ndarr(block, 'block', first=0, last=5),\
                 info_ndarr(evnums, 'evnums', first=0, last=5),\
-        ))
+    ))
+
+    ctypes = ('pixel_max', 'pixel_min')
+    consts = arr_max, arr_min = dbo.max_min()
+
+    logger.info('evaluated constants: \n  %s\n  %s' % (
+        info_ndarr(arr_max, 'arr_max', first=0, last=5),\
+        info_ndarr(arr_min, 'arr_min', first=0, last=5)))
+
+    dic_consts = dict(zip(ctypes, consts))
+
+    #sys.exit('TEST EXIT')
+    save_constants_in_repository(dic_consts, **kwa)
+
+#    gainmode = gain_mode(odet, metadic, istep) # nsteptot)
+#    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+#    kwa_depl['gainmode'] = gainmode
+#    kwa_depl['repoman'] = repoman
+#    #kwa_depl['segment_ids'] = odet.raw._segment_ids()
+
+#    logger.info('kwa_depl:\n%s' % info_dict(kwa_depl, fmt='  %12s: %s', sep='\n'))
+#    #sys.exit('TEST EXIT')
 
 #EOF

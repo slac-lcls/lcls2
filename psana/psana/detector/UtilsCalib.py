@@ -187,11 +187,16 @@ class DataBlock():
         return self.irec < self.nrecs-1
 
 
-    def extra_arrays(self, raw, evnum):
-        self.arr_max = np.zeros(shape_raw, dtype=dtype_raw)
-        self.arr_min = np.ones (shape_raw, dtype=dtype_raw) * self.datbits
-        np.maximum(self.arr_max, raw, out=self.arr_max)
-        np.minimum(self.arr_min, raw, out=self.arr_min)
+#    def extra_arrays(self, raw, evnum):
+#        self.arr_max = np.zeros(shape_raw, dtype=dtype_raw)
+#        self.arr_min = np.ones (shape_raw, dtype=dtype_raw) * self.datbits
+#        np.maximum(self.arr_max, raw, out=self.arr_max)
+#        np.minimum(self.arr_min, raw, out=self.arr_min)
+
+
+    def max_min(self):
+        return np.max(self.block, axis=0),\
+               np.min(self.block, axis=0)
 
 
 class DarkProc():

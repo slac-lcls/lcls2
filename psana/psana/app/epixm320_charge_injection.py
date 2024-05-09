@@ -36,7 +36,7 @@ def argument_parser() :
     d_dskwargs = None  # exp=ascdaq18,run=171
     d_det      = None  # 'NoDetector.0:Epix10ka.3'
     d_idx      = None  # 0-15 for epix10ka2m, 0-3 for epix10kaquad
-    d_nrecs    = 1000  # number of frames
+    d_nrecs    = 230   # number of records in the data block
     d_dirrepo  = DIR_REPO_EPIX10KA # './work'
     d_logmode  = 'INFO'
     d_stepnum  = None
