@@ -71,36 +71,41 @@ class SbatchManager:
             node_features[node] = {feature: 0 for feature in features.split(",")}
         return node_features
 
-    def get_job_info(self, format_string='"%i %j %T %R %k"', noheader=False):
+    def get_job_info(self):
         """Returns formatted output from squeue by the current user"""
         user = os.environ.get("USER", "")
         if not user:
             print(f"Cannot list jobs for user. $USER variable is not set.")
         else:
-            noheader_opt = ""
-            if noheader:
-                noheader_opt = "-h"
             if self.as_step:
-                if format_string is None:
-                    format_string = "JobIDRaw,JobName%12,User,State,Start,Elapsed,NNodes,NodeList,Comment"
+                format_string = "JobIDRaw,Comment,JobName,State,NodeList"
                 lines = self.call_subprocess(
-                    "sacct", noheader_opt, f"--format={format_string}"
+                    "sacct", "-h", f"--format={format_string}"
                 ).splitlines()
             else:
-                if format_string is None:
-                    format_string = '"%.18i %15j %.8u %.8T %20S %.10M %.6D %R %k"'
+                format_string='"%i %k %j %T %R"'
                 lines = self.call_subprocess(
-                    "squeue", "-u", user, noheader_opt, "-o", format_string
+                    "squeue", "-u", user, "-h", "-o", format_string
                 ).splitlines()
+        
         job_details = {}
         for i, job_info in enumerate(lines):
-            job_id, job_name, state, nodelist, comment = job_info.strip('"').split()
-            job_details[comment] = {
-                "job_id": job_id,
-                "job_name": job_name,
-                "state": state,
-                "nodelist": nodelist,
-            }
+            cols = job_info.strip('"').split()
+            success = True
+            if len(cols) == 5:
+                job_id, comment, job_name, state, nodelist = cols 
+            elif len(cols) > 5:
+                job_id, comment, job_name, state = cols[:4]
+                nodelist = ' '.join(cols[5:])
+            else:
+                success = False
+            if success:
+                job_details[comment] = {
+                    "job_id": job_id,
+                    "job_name": job_name,
+                    "state": state,
+                    "nodelist": nodelist,
+                }
         return job_details
 
     def get_output_filepath(self, node, job_name):

@@ -175,7 +175,7 @@ def _select_config_ids(unique_ids):
 def exists(unique_ids=None):
     """Check if the config matches any existing jobs"""
     job_exists = False
-    job_details = sbman.get_job_info(noheader=True)
+    job_details = sbman.get_job_info()
 
     config_ids = _select_config_ids(unique_ids)
 
@@ -223,7 +223,7 @@ def ls():
 
 
 def show_status():
-    job_details = sbman.get_job_info(noheader=True)
+    job_details = sbman.get_job_info()
     print("%20s %12s %10s %40s" % ("Host", "UniqueID", "Status", "Command+Args"))
     for config_id, detail in runner.config.items():
         comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
@@ -255,7 +255,7 @@ def stop(unique_ids=None):
     if runner is None:
         return
     _check_unique_ids(unique_ids)
-    job_details = sbman.get_job_info(noheader=True)
+    job_details = sbman.get_job_info()
 
     if unique_ids is not None:
         config_ids = unique_ids.split(",")
