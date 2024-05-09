@@ -17,7 +17,7 @@ class Config:
     def select(self, items):
         """Select only configs with given config ids or add
         new one if given a list of dictionary.
-        
+
         items example:
         ids: ['timing_0', 'teb0', 'control'] or
         configs: [{ host: ...}, { host: ...}, ...]
@@ -54,16 +54,9 @@ class Config:
         print("%20s %18s %80s" % ("UniqueID", "Host", "Command+Args"))
         for cid, config_detail in self.select_config.items():
             host = "localhost"
-            if 'host' in config_detail:
-                host = config_detail['host']
-            cmd = config_detail["cmd"][:65] + '...' + config_detail["cmd"][-12:]
+            if "host" in config_detail:
+                host = config_detail["host"]
+            cmd = config_detail["cmd"][:65] + "..." + config_detail["cmd"][-12:]
             if full:
                 cmd = config_detail["cmd"]
-            print(
-                "%20s %18s %80s"
-                % (
-                    cid,
-                    host,
-                    cmd
-                )
-            )
+            print("%20s %18s %80s" % (cid, host, cmd))

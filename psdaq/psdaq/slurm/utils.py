@@ -83,20 +83,20 @@ class SbatchManager:
                     "sacct", "-h", f"--format={format_string}"
                 ).splitlines()
             else:
-                format_string='"%i %k %j %T %R"'
+                format_string = '"%i %k %j %T %R"'
                 lines = self.call_subprocess(
                     "squeue", "-u", user, "-h", "-o", format_string
                 ).splitlines()
-        
+
         job_details = {}
         for i, job_info in enumerate(lines):
             cols = job_info.strip('"').split()
             success = True
             if len(cols) == 5:
-                job_id, comment, job_name, state, nodelist = cols 
+                job_id, comment, job_name, state, nodelist = cols
             elif len(cols) > 5:
                 job_id, comment, job_name, state = cols[:4]
-                nodelist = ' '.join(cols[5:])
+                nodelist = " ".join(cols[5:])
             else:
                 success = False
             if success:
