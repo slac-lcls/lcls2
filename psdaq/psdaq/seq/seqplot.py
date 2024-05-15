@@ -159,8 +159,10 @@ class PatternWaveform(object):
 def main():
     parser = argparse.ArgumentParser(description='simple sequence plotting gui')
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
-    parser.add_argument("--time", required=False, type=float, default=1., help="simulated time (sec)")
+    parser.add_argument("--time", required=False, type=float, nargs='+', default=[0.,1.], help="simulated time (sec)")
     args = parser.parse_args()
+    if len(args.time)==1:
+        args.time.insert(0,0.)
 
     config = {'title':'TITLE', 'descset':None, 'instrset':None}
 
@@ -178,7 +180,7 @@ def main():
         for i,ins in enumerate(config['instrset']):
             print(f'{i}: {ins}')
 
-        seq = SeqUser(start=0,stop=int(args.time*TPGSEC),acmode=False)
+        seq = SeqUser(start=int(args.time[0]*TPGSEC),stop=int(args.time[1]*TPGSEC),acmode=False)
         seq.execute(config['title'],config['instrset'],config['descset'])
 
         ydata = np.array(seq.ydata)+int(engine)*4+272

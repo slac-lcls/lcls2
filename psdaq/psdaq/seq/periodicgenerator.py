@@ -79,17 +79,48 @@ class PeriodicGenerator(object):
     def _fill_instr(self):
         #  Common period (subharmonic)
         period = numpy.lcm.reduce(self.period)
-        #period = reduce(lcm,self.period)
-
-#        self.repeat *= TPGSEC//period
-#        if ((TPGSEC % period) and self.repeat > 0):
-#            raise ValueError(f'TPGSEC ({TPGSEC}) is not a multiple of common period {period}')
 
         #  Brute force it to see how far we get (when will it fail?)
         print('# period {}  args.period {}'.format(period,self.period))
         reps   = [period // p for p in self.period]
-        bkts   = [range(self.start[i],period,self.period[i]) 
-                  for i in range(len(self.period))]
+        last_start = numpy.max(self.start)
+
+        #  First handle the interval up to the last start bucket
+        if last_start > 0:
+            bkts = [range(self.start[i],last_start,self.period[i]) for i in range(len(self.period))]
+            self.fill_bkts(bkts,last_start)
+
+        #  Then, repeat the period starting after the last start bucket
+        start_repeat = self.ninstr
+        bkts = []
+        for i in range(len(self.start)):
+            if self.start[i]<last_start:
+                np = 1+(last_start-self.start[i]-1)//self.period[i]
+                bkts.append(range(np*self.period[i]+self.start[i]-last_start,period,self.period[i]))
+            else:
+                bkts.append(range(0,period,self.period[i]))
+        self.fill_bkts(bkts,period)
+
+        if self.repeat < 0:
+            self.instr.append(f'instrset.append( Branch.unconditional({start_repeat}) )')
+            self.ninstr += 1
+        else:
+            if self.repeat > 0:
+                #  Conditional branch (opcode 2) to instruction 0 (1Hz sync)
+                self.instr.append(f'instrset.append( Branch.conditional({start_repeat}, 2, {self.repeat}) )')
+                self.ninstr += 1
+
+            if self.notify:
+                self.instr.append('instrset.append( CheckPoint() )')
+                self.ninstr += 1
+
+            self.instr.append('last = len(instrset)')
+            self.instr.append('instrset.append( FixedRateSync(marker="1H",occ=1) )')
+            self.instr.append('instrset.append( Branch.unconditional(last) )')
+            self.ninstr += 2
+
+
+    def fill_bkts(self,bkts,period):
         bunion = sorted(reduce(myunion,bkts))  # set of buckets with a request
         reqs   = []  # list of request values for those buckets
         for b in bunion:
@@ -104,10 +135,14 @@ class PeriodicGenerator(object):
         rem    = period - blist[-1]  # remainder to complete common period
 
         if verbose:
-            print('common period {}'.format(period))
-            print('bkts {}'.format(bkts))
-            print('bunion {}'.format(bunion))
-            print('blist {}  bsteps {}  reqs {}  rem {}'.format(blist,bsteps,reqs,rem))
+            print('#common period {}'.format(period))
+            print('#bkts {}'.format(bkts))
+            print('#bunion {}'.format(bunion))
+            print('#blist {}  bsteps {}  reqs {}  rem {}'.format(blist,bsteps,reqs,rem))
+
+        if len(bsteps)==0:
+            self._wait(rem)
+            return
 
         #  Reduce common steps+requests into loops
         breps = []
@@ -127,15 +162,15 @@ class PeriodicGenerator(object):
                 del bsteps[j:j+r]
                 del reqs  [j:j+r]
                 if verbose:
-                    print('del [{}:{}]'.format(j,j+r))
-                    print('bsteps {}'.format(bsteps))
-                    print('reqs   {}'.format(reqs))
+                    print('#del [{}:{}]'.format(j,j+r))
+                    print('#bsteps {}'.format(bsteps))
+                    print('#reqs   {}'.format(reqs))
             j += 1
 
         if verbose:
-            print('breps  {}'.format(breps))
-            print('bsteps {}'.format(bsteps))
-            print('reqs   {}'.format(reqs))
+            print('#breps  {}'.format(breps))
+            print('#bsteps {}'.format(bsteps))
+            print('#reqs   {}'.format(reqs))
 
         #  Now step to each bucket, make the request, and repeat if necessary
         for i,n in enumerate(breps):
@@ -163,24 +198,6 @@ class PeriodicGenerator(object):
         #  Step to the end of the common period and repeat
         if rem > 0:
             self._wait(rem)
-
-        if self.repeat < 0:
-            self.instr.append('instrset.append( Branch.unconditional(0) )')
-            self.ninstr += 1
-        else:
-            if self.repeat > 0:
-                #  Conditional branch (opcode 2) to instruction 0 (1Hz sync)
-                self.instr.append('instrset.append( Branch.conditional(0, 2, {}) )'.format(self.repeat))
-                self.ninstr += 1
-
-            if self.notify:
-                self.instr.append('instrset.append( CheckPoint() )')
-                self.ninstr += 1
-
-            self.instr.append('last = len(instrset)')
-            self.instr.append('instrset.append( FixedRateSync(marker="1H",occ=1) )')
-            self.instr.append('instrset.append( Branch.unconditional(last) )')
-            self.ninstr += 2
 
 def main():
     parser = argparse.ArgumentParser(description='Periodic sequence generator')
