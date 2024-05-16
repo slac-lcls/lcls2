@@ -1,4 +1,5 @@
 import os
+import time
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -7,6 +8,7 @@ from urllib.parse import urlparse
 import json
 import logging
 import datetime
+import pytz
 from .typed_json import cdict
 
 class JSONEncoder(json.JSONEncoder):
@@ -607,10 +609,20 @@ def _history(args):
                                 hutch=hutch, plist=["detName:RO"])
 
     if len(xx) > 0:
+
+        if args.utc:
+            zone_name = 'UTC'
+        else:
+            zone_name = 'US/Pacific'
+            pacific = pytz.timezone(zone_name)
+
         for entry in xx["value"]:
             date_obj = datetime.datetime.fromisoformat(entry['date'])
+            if not args.utc:
+                date_obj = date_obj.astimezone(pacific)
+
             fmtd_date = date_obj.strftime('%m/%d/%Y, %H:%M:%S')
-            print(f"Date: {fmtd_date} UTC - Key: {entry['key']}")
+            print(f"Date: {fmtd_date} {zone_name} - Key: {entry['key']}")
 
 def _rollback(args):
     if isXpm(args.src):
@@ -718,6 +730,7 @@ def main():
     parser_history.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_history.add_argument('--user', default='tstopr', help='default: tstopr')
     parser_history.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_history.add_argument('--utc', action="store_true", help='UTC timestamps (default: US/Pacific)')
     parser_history.set_defaults(func=_history)
 
     # create the parser for the "rollback"
