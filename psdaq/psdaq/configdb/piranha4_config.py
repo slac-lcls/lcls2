@@ -139,6 +139,12 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     weakref.finalize(cl, cl.stop)
     cl.start()
 
+    # there appear to be no options to tell ClinkDevRoot to use
+    # LCLS2 timing (without reading yaml files, which we don't
+    # want to do) so set it by hand here.
+    cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+    time.sleep(3.5)
+
     # TODO: To be removed, now commented out xpm glitch workaround
     ## Open a new thread here
     #if xpmpv is not None:
@@ -169,8 +175,8 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
 
     # camlink timing seems to intermittently lose lock back to the XPM
     # and empirically this fixes it.  not sure if we need the sleep - cpo
-    cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
-    time.sleep(0.1)
+    #cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+    #time.sleep(0.1)
 
     return cl
 
@@ -200,6 +206,7 @@ def piranha4_connectionInfo(cl, alloc_json_str):
     else:
         if barrier_global.supervisor:
             nbad = 0
+            '''
             while 1:
                 # check to see if timing is stuck
                 sof1 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
@@ -215,11 +222,12 @@ def piranha4_connectionInfo(cl, alloc_json_str):
                 time.sleep(3.5)
                 cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
                 time.sleep(3.5)
+            '''
 
             # camlink timing seems to intermittently lose lock back to the XPM
             # and empirically this fixes it.  not sure if we need the sleep - cpo
-            cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
-            time.sleep(0.1)
+            #cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+            #time.sleep(0.1)
 
             txId = timTxId('piranha4')
 
