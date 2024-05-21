@@ -73,7 +73,7 @@ procmgr_config = [
 
  { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 10 -C BEAM {auth} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
- { host: 'drp-neh-cmp005', id:'fee_fzpopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D opal'},
+ { host: 'drp-neh-cmp005', id:'tst_atmpiranha_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
  { host: 'drp-neh-cmp016', id:'teb0',        flags:'spu',                cmd:f'{task_set}teb -P {hutch} -C {collect_host} -M {prom_dir}'},
  { host: 'drp-neh-cmp001', id:'timing_1',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D ts'},
  { host: 'drp-neh-cmp002', id:'timing_2',    flags:'spu',                cmd:f'{drp_cmd1} -l 0x1 -D fakecam '}, 
