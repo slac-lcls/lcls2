@@ -45,6 +45,9 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['enable'   ] = 0
     apply_config(ctxt,cfg)
 
+    # Wait for the L0Delay to update
+    time.sleep(1.1)
+
     # fetch the current configuration for defaults not specified in the configuration
     values = ctxt.get(epics_prefix+':CONFIG')
 

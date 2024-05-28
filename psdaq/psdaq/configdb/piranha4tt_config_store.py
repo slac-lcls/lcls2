@@ -1,4 +1,6 @@
 from psdaq.configdb.typed_json import cdict
+from psdaq.configdb.tsdef import *
+from psdaq.configdb.get_config import update_config
 import psdaq.configdb.configdb as cdb
 import psdaq.configdb.piranha4_config_store as piranha4
 import sys
@@ -67,20 +69,24 @@ def piranha4tt_cdict():
 if __name__ == "__main__":
     args = cdb.createArgs().args
 
-    create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
+    create = not args.update
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
-
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
-    mycdb.add_alias(args.alias)
-    mycdb.add_device_config('piranha4')
 
     top = piranha4tt_cdict()
     top.setInfo('piranha4', args.name, args.segm, args.id, 'No comment')
 
-    if mycdb.modify_device(args.alias, top) == 0:
-        print('Failed to store configuration')
-        sys.exit(1)
+    if args.update:
+        cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+        top = update_config(cfg, top.typed_json(), args.verbose)
+
+    if not args.dryrun:
+        if create:
+            mycdb.add_alias(args.alias)
+            mycdb.add_device_config('piranha4')
+        mycdb.modify_device(args.alias, top)
+
