@@ -1270,22 +1270,22 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     const std::string triggerConfig = body["trigger_config"];
 
     // In the following, _0 is added in prints to show the default segment number
-    logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
+    logging::info("DrpBase: Fetching trigger info from ConfigDb/%s/%s_0",
                   configAlias.c_str(), triggerConfig.c_str());
-
+    
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
     {
         logging::error("%s:\n  Document '%s_0' not found in ConfigDb/%s",
                        __PRETTY_FUNCTION__, triggerConfig.c_str(), configAlias.c_str());
         return -1;
     }
-
+    logging::info("############# DRP 1");
     bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
 
     std::string buildDets("---");
     if (top.HasMember("buildDets"))
         buildDets = top["buildDets"].GetString();
-
+    
     if (!(buildAll || buildDets.find(m_para.detName))) {
         logging::info("This DRP is not contributing trigger input data: "
                       "buildAll is False and '%s' was not found in ConfigDb/%s/%s_0",
@@ -1296,20 +1296,20 @@ int DrpBase::setupTriggerPrimitives(const json& body)
         return 0;
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
-
+    
     std::string symbol("create_producer");
     if (!buildAll)  symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
     if (!m_triggerPrimitive) {
         logging::error("%s:\n  Failed to create TriggerPrimitive",
-                       __PRETTY_FUNCTION__);
+                    __PRETTY_FUNCTION__);
         return -1;
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
     if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
         logging::error("%s:\n  Failed to configure TriggerPrimitive",
-                       __PRETTY_FUNCTION__);
+                    __PRETTY_FUNCTION__);
         return -1;
     }
 

@@ -15,6 +15,7 @@
 #include "EpixHR2x2.hh"
 #include "EpixHRemu.hh"
 #include "EpixM320.hh"
+#include "EpixUHR.hh"
 #include "Epix100.hh"
 #include "Opal.hh"
 #include "HREncoder.hh"
@@ -85,7 +86,7 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
             }
         }
     }
-
+    logging::debug("###########################################");
     logging::debug("_getscankeys returning [%s]",update.dump().c_str());
     return update;
 }
@@ -318,6 +319,7 @@ void PGPDetectorApp::initialize()
     f.register_type<EpixHR2x2>   ("epixhr2x2");
     f.register_type<EpixHRemu>   ("epixhremu");
     f.register_type<EpixM320>    ("epixm320");
+    f.register_type<EpixUHR>     ("epixUHR");
     f.register_type<Epix100>     ("epix100");
     f.register_type<Opal>        ("opal");
     f.register_type<TimeTool>    ("tt");

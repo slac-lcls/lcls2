@@ -287,7 +287,7 @@ int main(int argc, char* argv[])
     printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
 
     if (dmaSetMaskBytes(fd, mask)) {
-        printf("Failed to allocate lane/vc\n");
+        
         return -1;
     }
 

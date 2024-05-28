@@ -31,6 +31,7 @@ add_executable(drp
     EpixHR2x2.cc
     EpixHRemu.cc
     EpixM320.cc
+    EpixUHR.cc
     Epix100.cc
     EpixQuad.cc
     TimingDef.cc

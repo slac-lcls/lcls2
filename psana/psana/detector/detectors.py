@@ -16,3 +16,4 @@ from .epixhr2x2             import *
 from .epixhremu             import *
 from .epix100               import *
 from .epixm320              import *
+from .epixUHR               import *

@@ -51,24 +51,29 @@ def nameLinkPiranha4(v):
 def nameLinkEpixM320(v):
     return ('ePixM320', hostName(v))
 
+def nameLinkEpixUHR(v):
+    return ('epixUHR', hostName(v))
+
 def nameLinkHREncoder(v):
     return ('HREncoder', hostName(v))
 
 timDevType = {}
-timDevType['xpm']      = 0xff
-timDevType['dti']      = 0xfe
-timDevType['drp']      = 0xfd
-timDevType['hsd']      = 0xfc
-timDevType['tdet']     = 0xfb
-timDevType['wave8']    = 0xfa
-timDevType['opal']     = 0xf9
-timDevType['timetool'] = 0xf8
-timDevType['epixquad'] = 0xf7
-timDevType['epixhr2x2']= 0xf6
-timDevType['epix100']  = 0xf5
-timDevType['piranha4'] = 0xf4
-timDevType['epixm320'] = 0xf3
-timDevType['hrencoder'] = 0xf2
+timDevType['xpm']       = 0xff
+timDevType['dti']       = 0xfe
+timDevType['drp']       = 0xfd
+timDevType['hsd']       = 0xfc
+timDevType['tdet']      = 0xfb
+timDevType['wave8']     = 0xfa
+timDevType['opal']      = 0xf9
+timDevType['timetool']  = 0xf8
+timDevType['epixquad']  = 0xf7
+timDevType['epixhr2x2'] = 0xf6
+timDevType['epix100']   = 0xf5
+timDevType['piranha4']  = 0xf4
+timDevType['epixm320']  = 0xf3
+timDevType['epixUHR']   = 0xf2
+timDevType['hrencoder'] = 0xf1
+
 
 linkType = {}
 linkType[0xff] = nameLinkXpm
@@ -84,7 +89,8 @@ linkType[0xf6] = nameLinkEpixHR2x2
 linkType[0xf5] = nameLinkEpix100
 linkType[0xf4] = nameLinkPiranha4
 linkType[0xf3] = nameLinkEpixM320
-linkType[0xf2] = nameLinkHREncoder
+linkType[0xf2] = nameLinkEpixUHR
+linkType[0xf1] = nameLinkHREncoder
 
 def xpmLinkId(value):
     itype = (value>>24)&0xff
