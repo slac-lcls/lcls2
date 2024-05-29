@@ -86,7 +86,7 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
             }
         }
     }
-    logging::debug("###########################################");
+    
     logging::debug("_getscankeys returning [%s]",update.dump().c_str());
     return update;
 }

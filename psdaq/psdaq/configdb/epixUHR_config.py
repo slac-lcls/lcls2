@@ -20,7 +20,7 @@ import IPython
 import datetime
 import logging
 import os 
-from psdaq.configdb.Board import *
+from psdaq.configdb.EpixUHRBoard import *
 import json
 
 #import epixUHR_ordering
@@ -237,7 +237,7 @@ def user_to_expert(base, cfg, full=False):
 
         if full:
             d[f'expert.App.TriggerEventManager.TriggerEventBuffer[0].Partition']=rtp    # Run trigger
-            print(f"########## GROUP VALUE {group}")
+            
             d[f'expert.App.TriggerEventManager.TriggerEventBuffer[1].Partition']=group  # DAQ trigger
 
     pixel_map_changed = False
@@ -401,7 +401,6 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     writePixelMap=user_to_expert(base, cfg, full=True)
 
     if cfg==base['cfg']:
-        print('### Skipping redundant configure')
         return base['result']
 
     if base['cfg']:
@@ -415,9 +414,9 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     config_expert(base, cfg, writePixelMap)
 
     time.sleep(0.01)
-    print("#### start config before ###")
+    
     _start(base)
-    print("#### start config after ###")
+    
     #  Add some counter resets here
     reset_counters(base)
 
@@ -563,7 +562,7 @@ def epixUHR_update(update):
     update_config_entry(cfg,ocfg,json.loads(update))
     #  Apply to expert
     writePixelMap = user_to_expert(base,cfg,full=False)
-    print(f'Partial config writePixelMap {writePixelMap}')
+    
     if True:
         #  Apply config
         config_expert(base, cfg, writePixelMap, secondPass=True)
@@ -574,7 +573,7 @@ def epixUHR_update(update):
         ncfg = ocfg.copy()
         update_config_entry(ncfg,ocfg,json.loads(update))
         _writePixelMap = user_to_expert(base,ncfg,full=True)
-        print(f'Full config writePixelMap {_writePixelMap}')
+        
         config_expert(base, ncfg, _writePixelMap, secondPass=True)
 
     _start(base)
@@ -645,13 +644,13 @@ def epixUHR_external_trigger(base):
 def epixUHR_internal_trigger(base):
     #  Disable frame readout
     mask = 0x3
-    print('=== internal triggering with bypass {:x} ==='.format(mask))
+    
     cbase = base['cam']
     cbase.App.BatcherEventBuilder0.Bypass.set(mask)
     return
 
     #  Switch to internal triggering
-    print('=== internal triggering ===')
+    
     cbase = base['cam']
     cbase.App.TriggerRegisters.SetAutoTrigger(1)
 
@@ -691,17 +690,12 @@ if __name__ == "__main__":
     db = 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/configDB'
     d = {'body':{'control':{'0':{'control_info':{'instrument':'tst', 'cfg_dbase' :db}}}}}
 
-    print('***** CONFIG *****')
+    
     _connect_str = json.dumps(d)
     epixUHR_config(_base,_connect_str,'BEAM','epixUHR',0,4)
     
-    print('***** SCAN_KEYS *****')
     epixUHR_scan_keys(json.dumps(["user.gain_mode"]))
     #
     for i in range(100):
-        print(f'***** UPDATE {i} *****')
         epixUHR_update(json.dumps({'user.gain_mode':i%5}))
-    
-    
-    print('***** DONE *****')
 

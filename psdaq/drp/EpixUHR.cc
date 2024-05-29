@@ -155,7 +155,6 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
     // set up the names for L1Accept data
     // Generic panel data
     {
-        printf("##### EpixUHR Config C started \n");
         Alg alg("raw", 0, 0, 0);
         
         // copy the detName, detType, detId from the Config Names
@@ -192,7 +191,7 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
         }
         
     }
-    printf("##### EpixUHR Config finished \n");
+   
     return 0;
 }
 
