@@ -119,16 +119,9 @@ class SbatchManager:
         cmd = details["cmd"]
         if (
             not job_name.startswith("ami")
-            and not job_name == "groupca"
-            and not job_name == "prom2pvs"
+            and not job_name in ("groupca", "prom2pvs", "control_gui")
         ):
             cmd += f" -u {job_name}"
-            # Add control host
-            self.collect_host = "drp-srcf-cmp035"
-            if job_name == "control_gui":
-                cmd += f" -H {self.collect_host}"
-            elif job_name != "control":
-                cmd += f" -C {self.collect_host}"
         if "flags" in details:
             if details["flags"].find("p") > -1:
                 cmd += f" -p {repr(self.platform)}"
@@ -141,7 +134,7 @@ class SbatchManager:
         header += "# ID:      %s\n" % job_name
         header += "# PLATFORM:%s\n" % self.platform
         header += "# HOST:    %s\n" % node
-        header += "# CMDLINE: %s\n" % details["cmd"]
+        header += "# CMDLINE: %s\n" % self.get_daq_cmd(details, job_name)
         # obfuscating the password in the log
         clear_auth = self.env_dict["CONFIGDB_AUTH"]
         self.env_dict["CONFIGDB_AUTH"] = "*****"
