@@ -1,5 +1,6 @@
 #pragma once
 
+#include "TTFex.hh"
 #include "psdaq/service/Semaphore.hh"
 
 #include "xtcdata/xtc/Xtc.hh"
@@ -12,32 +13,7 @@
 #include <string>
 
 namespace Drp {
-
-class Roi {
-public:
-  unsigned x0, y0, x1, y1;
-};
 class Parameters;
-
-class EventInfo {
-public:
-  bool fixedRate(unsigned rate) const { return _fixedRates & (1<<rate); }
-  bool acRate(unsigned rate,
-              unsigned tslots) const { return _acRates & (1<<rate) && (_timeSlots&tslots); }
-  bool eventCode(unsigned ec) const { return _seqInfo[ec>>4] & (1<<(ec&0xf)); }
-  bool sequencer(unsigned word,
-                 unsigned bit) const { return _seqInfo[word] & (1<<bit); }
-public:
-  uint64_t _pulseId; 
-  unsigned _fixedRates  : 10;
-  unsigned _acRates     : 6;
-  unsigned _timeSlots   : 8;
-  unsigned _beamPresent : 1, : 3;
-  unsigned _beamDestn   : 4;
-  uint16_t _seqInfo[18];
-};
-
-
 class OpalTTFex {
 public:
     OpalTTFex(Parameters*);
@@ -78,10 +54,10 @@ private:
     unsigned m_columns;
     unsigned m_rows;
 
-    std::vector<uint8_t> m_eventcodes_beam_incl;
-    std::vector<uint8_t> m_eventcodes_beam_excl;
-    std::vector<uint8_t> m_eventcodes_laser_incl;
-    std::vector<uint8_t> m_eventcodes_laser_excl;
+    std::vector<uint16_t> m_eventcodes_beam_incl;
+    std::vector<uint16_t> m_eventcodes_beam_excl;
+    std::vector<uint16_t> m_eventcodes_laser_incl;
+    std::vector<uint16_t> m_eventcodes_laser_excl;
 
     unsigned m_project_axis    ;  // project image onto Y axis
     int      m_project_minvalue;  // valid projection must be at least this large

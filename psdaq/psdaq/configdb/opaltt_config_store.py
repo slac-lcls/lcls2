@@ -1,4 +1,5 @@
 from psdaq.configdb.typed_json import cdict
+from psdaq.configdb.get_config import update_config
 import psdaq.configdb.configdb as cdb
 import psdaq.configdb.opal_config_store as opal
 import sys
@@ -26,10 +27,10 @@ def opaltt_cdict():
     top.set("fex.enable",    1, 'UINT8')
 
     #  assume mode is nobeam on separate events (vs nobeam in separate roi) 
-    top.set("fex.eventcodes.beam.incl" , [136], 'UINT8') # beam present = AND beam.incl NOR beam.excl
-    top.set("fex.eventcodes.beam.excl" , [161], 'UINT8') 
-    top.set("fex.eventcodes.laser.incl", [67], 'UINT8') # laser present = AND laser.incl NOR laser.excl
-    top.set("fex.eventcodes.laser.excl", [68], 'UINT8') 
+    top.set("fex.eventcodes.beam.incl" , [136], 'UINT16') # beam present = AND beam.incl NOR beam.excl
+    top.set("fex.eventcodes.beam.excl" , [161], 'UINT16') 
+    top.set("fex.eventcodes.laser.incl", [67], 'UINT16') # laser present = AND laser.incl NOR laser.excl
+    top.set("fex.eventcodes.laser.excl", [68], 'UINT16') 
 
     top.set("fex.sig.roi.x0",    0, 'UINT32')
     top.set("fex.sig.roi.y0",  350, 'UINT32')
@@ -81,18 +82,24 @@ def opaltt_cdict():
 if __name__ == "__main__":
     args = cdb.createArgs().args
 
-    create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
+    create = not args.update
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
-
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
-    mycdb.add_alias(args.alias)
-    mycdb.add_device_config('opal')
 
     top = opaltt_cdict()
     top.setInfo('opal', args.name, args.segm, args.id, 'No comment')
 
-    mycdb.modify_device(args.alias, top)
+    if args.update:
+        cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+        top = update_config(cfg, top.typed_json(), args.verbose)
+
+    if not args.dryrun:
+        if create:
+            mycdb.add_alias(args.alias)
+            mycdb.add_device_config('opal')
+        mycdb.modify_device(args.alias, top)
+

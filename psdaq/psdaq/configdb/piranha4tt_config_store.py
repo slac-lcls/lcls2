@@ -29,10 +29,10 @@ def piranha4tt_cdict():
     top.set("fex.enable",    1, 'UINT8')
 
     #  assume mode is nobeam on separate events (vs nobeam in separate roi)
-    top.set("fex.eventcodes.beam.incl" , [136], 'UINT8') # beam present = AND beam.incl NOR beam.excl
-    top.set("fex.eventcodes.beam.excl" , [161], 'UINT8')
-    top.set("fex.eventcodes.laser.incl", [67], 'UINT8') # laser present = AND laser.incl NOR laser.excl
-    top.set("fex.eventcodes.laser.excl", [68], 'UINT8')
+    top.set("fex.eventcodes.beam.incl" , [136], 'UINT16') # beam present = AND beam.incl NOR beam.excl
+    top.set("fex.eventcodes.beam.excl" , [161], 'UINT16')
+    top.set("fex.eventcodes.laser.incl", [67], 'UINT16') # laser present = AND laser.incl NOR laser.excl
+    top.set("fex.eventcodes.laser.excl", [68], 'UINT16')
 
     top.set("fex.sig.roi.x0",  700, 'UINT32')
     top.set("fex.sig.roi.x1",  900, 'UINT32')

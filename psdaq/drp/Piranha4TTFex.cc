@@ -109,17 +109,17 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
       int data_rank = name.rank();
       int data_type = name.type();
       printf("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
-#define GET_VECTOR(a,b)                                         \
-      if (strcmp(name.name(),"fex.eventcodes." #a "." #b)==0) { \
-        Array<uint8_t> t = descdata.get_array<uint8_t>(i);      \
-        std::vector<uint8_t>& v = m_eventcodes_##a##_##b;       \
-          unsigned len = t.num_elem();                          \
-          v.resize(len);                                        \
-          memcpy(v.data(),t.data(),len);                        \
-          printf("m_eventcodes_" #a "_" #b);                    \
-          for(unsigned k=0; k<len; k++)                         \
-            printf(" %u", v[k]);                                \
-          printf("\n");                                         \
+#define GET_VECTOR(a,b)                                          \
+      if (strcmp(name.name(),"fex.eventcodes." #a "." #b)==0) {  \
+          Array<uint16_t> t = descdata.get_array<uint16_t>(i);   \
+          std::vector<uint16_t>& v = m_eventcodes_##a##_##b;     \
+              unsigned len = t.num_elem();                       \
+              v.resize(len);                                     \
+              memcpy(v.data(),t.data(),len);                     \
+              printf("m_eventcodes_" #a "_" #b);                 \
+              for(unsigned k=0; k<len; k++)                      \
+                  printf(" %u", v[k]);                           \
+              printf("\n");                                      \
       }
       GET_VECTOR(beam,incl);
       GET_VECTOR(beam,excl);

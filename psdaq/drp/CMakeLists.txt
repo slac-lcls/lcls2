@@ -6,6 +6,7 @@ find_package(Threads REQUIRED)
 add_library(drpbase
     PythonConfigScanner.cc
     BEBDetector.cc
+    TTFex.cc
     XpmDetector.cc
     DrpBase.cc
     FileWriter.cc

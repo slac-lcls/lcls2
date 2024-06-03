@@ -743,8 +743,7 @@ void OpalTTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcD
         NameIndex&  index  = m_timinput.namesLookup[namesId];
         ShapesData& shapes = *m_timinput.shapesdata[namesId];
         DescData descdata(shapes, index);
-        EventInfo& info = *reinterpret_cast<EventInfo*>(subframes[3].data());
-        memcpy(info._seqInfo, descdata.get_array<uint8_t>(index.nameMap()["sequenceValues"]).data(), 18*sizeof(uint16_t));
+        EventInfo& info = *new(subframes[3].data()) EventInfo(descdata);
 #ifdef DBUG
         const uint16_t* p = (const uint16_t*)(info._seqInfo);
         printf("seq:");
