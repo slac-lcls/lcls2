@@ -61,7 +61,7 @@ cdef class PyChannelPython:
         shape[0] = numsamples
         if numsamples:
             self.waveform = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, wf_ptr)
-            self.waveform.base = <PyObject*> dgram
+            cnp.PyArray_SetBaseObject(self.waveform, dgram)
             Py_INCREF(dgram)
         else:
             self.waveform = None
@@ -85,7 +85,7 @@ cdef class PyChannelPython:
                 self.peakList = []
                 self.startPosList = []
             peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, peakPtr)
-            peak.base = <PyObject*> dgram
+            cnp.PyArray_SetBaseObject(peak, dgram)
             Py_INCREF(dgram)
             self.peakList.append(peak)
             self.startPosList.append(startPos)

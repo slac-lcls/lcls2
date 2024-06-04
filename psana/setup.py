@@ -310,7 +310,7 @@ if 'DGRAM' in BUILD_LIST :
                     #extra_compile_args=extra_c_compile_args,
                     extra_compile_args=extra_c_compile_args + openmp_compile_args,
                     #extra_link_args=extra_link_args,
-                    extra_link_args=extra_link_args + openmp_link_args,
+                    extra_link_args=extra_link_args + openmp_link_args + extra_link_args_rpath
     )
     CYTHON_EXTS.append(ext)
 
