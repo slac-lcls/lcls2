@@ -14,6 +14,8 @@ add_compile_options(-fno-omit-frame-pointer)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+message("$CONDA_PREFIX ")
+
 find_package(xtcdata REQUIRED)
 find_package(RapidJSON REQUIRED)
 find_package(CURL REQUIRED)
