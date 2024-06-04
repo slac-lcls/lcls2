@@ -27,12 +27,12 @@ class NoLock(object):
 
     def acquire(self):
         if self._level!=0:
-            print('NoLock.acquire level {}'.format(self._level))
+            logging.info('NoLock.acquire level {}'.format(self._level))
         self._level=self._level+1
 
     def release(self):
         if self._level!=1:
-            print('NoLock.release level {}'.format(self._level))
+            logging.info('NoLock.release level {}'.format(self._level))
         self._level=self._level-1
 
 def main():
@@ -54,9 +54,8 @@ def main():
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
 
     args = parser.parse_args()
-    if args.verbose:
-#        logging.basicConfig(level=logging.DEBUG)
-        setVerbose(True)
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                        format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
     # Set base
     base = pr.Root(name='AMCc',description='') 
@@ -89,7 +88,7 @@ def main():
 
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv)
 #    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
-    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
+    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
 
     cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
     pvxtpg = None
@@ -112,12 +111,12 @@ def main():
                     pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode, bypassLock=args.L)
                     pvxtpg.init()
                 elif cycle < 5:
-                    print('pvxtpg in %d'%(5-cycle))
+                    logging.info('pvxtpg in %d'%(5-cycle))
                 if pvxtpg is not None:
                     pvxtpg .update()
                 curr  = time.perf_counter()
                 delta = prev+updatePeriod-curr
-#                print('Delta {:.2f}  Update {:.2f}  curr {:.2f}  prev {:.2f}'.format(delta,curr-prev,curr,prev))
+#                logging.verbose('Delta {:.2f}  Update {:.2f}  curr {:.2f}  prev {:.2f}'.format(delta,curr-prev,curr,prev))
                 if delta>0:
                     time.sleep(delta)
                 cycle += 1

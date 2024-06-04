@@ -2,13 +2,12 @@ from p4p.server.thread import SharedPV
 from p4p.nt import NTScalar
 from p4p.nt import NTTable
 import time
+import logging
 
-lverbose = False
 provider = None
 
 def setVerbose(v):
-    global lverbose
-    lverbose = v
+    pass
 
 def setProvider(v):
     global provider
@@ -67,10 +66,8 @@ class DefaultPVHandler(object):
         pass
 
     def put(self, pv, op):
-        global lverbose
         postedval = op.value()
-        if lverbose:
-            print('DefaultPVHandler.put ',pv,postedval['value'])
+        logging.debug('DefaultPVHandler.put ',pv,postedval['value'])
         postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
         pv.post(postedval)
         op.done()
@@ -81,10 +78,8 @@ class PVHandler(object):
         self._cb = cb
 
     def put(self, pv, op):
-        global lverbose
         postedval = op.value()
-        if lverbose:
-            print('PVHandler.put ',postedval['value'],self._cb)
+        logging.debug('PVHandler.put ',postedval['value'],self._cb)
         postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
         pv.post(postedval)
         self._cb(pv,postedval['value'])

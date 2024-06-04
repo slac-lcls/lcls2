@@ -2,6 +2,7 @@ import sys
 import time
 import traceback
 import struct
+import logging
 from datetime import datetime
 from p4p.nt import NTScalar
 from p4p.nt import NTTable
@@ -35,7 +36,7 @@ class SFPStatus(object):
 
         amc = self._xpm.amcs[0]
         mod = amc.SfpSummary.modabs.get()
-        print(f'SFPStatus mod {mod:x}')
+        logging.info(f'SFPStatus mod {mod:x}')
 
     def update(self):
 
@@ -149,7 +150,7 @@ class TimingStatus(object):
                 value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
                 pv.post(value)
                 if type(verbose) is type("") and nv != ov:
-                    print(f'*** {datetime.now()} {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
+                    logging.warning(f'*** {datetime.now()} {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
                 return nv
             else:
                 return ov
@@ -177,14 +178,14 @@ class TimingStatus(object):
             self._pv_rxLinkUp.post(value)
 
             if v != self._vLast:
-                print(f'*** {datetime.now()} {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
+                logging.warning(f'*** {datetime.now()} {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
                 self._vLast = v
 #                if v and self._linkUpdate:
 #                    self._linkUpdate()
 
             #  Link was down but now is up
             if v and self._device.RxDown.get():
-                print(f'*** {datetime.now()} {self._name}:RxDown latched and linkUp')
+                logging.warning(f'*** {datetime.now()} {self._name}:RxDown latched and linkUp')
                 self._device.RxDownCTL.set(0)
                 if self._linkUpdate:
                     self._linkUpdate()
@@ -210,7 +211,7 @@ class AmcPLLStatus(object):
         self._pv_los    = _addPVI('PLL_LOS')
         self._pv_losCnt = _addPVI('PLL_LOSCNT')
 
-        print(f'amcPLL{idx} {app.amcPLL.rstn.get()} {app.amcPLL.bypass.get()}')
+        logging.info(f'amcPLL{idx} {app.amcPLL.rstn.get()} {app.amcPLL.bypass.get()}')
 
     def handle(self, msg, offset, timev):
         w = struct.unpack_from('<B',msg,offset)
@@ -450,7 +451,7 @@ class PVStats(object):
 
     def updatePaddr(self):
         v = self._app.paddr.get()
-        print(f'-- updating PADDR to {v}')
+        logging.info(f'-- updating PADDR to {v}')
         pvUpdate(self.paddr,v)
 
     def handle(self, msg):
@@ -484,4 +485,4 @@ class PVStats(object):
                 raise
             else:
                 traceback.print_exception(exc[0],exc[1],exc[2])
-                print('Caught exception... retrying.')
+                logging.error('Caught exception... retrying.')

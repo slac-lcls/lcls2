@@ -9,7 +9,7 @@ lock     = None
 
 class PVMmcm(PVHandler):
     def __init__(self, provider, name, idx, dev, chd, cuMode=False):
-        print(f'Initializing PVmmcm {idx}')
+        logging.info(f'Initializing PVmmcm {idx}')
 
         self._dev = dev
         self._chd = chd
@@ -18,30 +18,30 @@ class PVMmcm(PVHandler):
         pv = SharedPV(initial=NTScalar('aI').wrap([0*2049]), handler=DefaultPVHandler())
         provider.add(name+':MMCM%d'%idx, pv)
         self._pv = pv
-        print(f'Added {name}:MMCM{idx}')
+        logging.info(f'Added {name}:MMCM{idx}')
 
         pv = SharedPV(initial=NTScalar('aI').wrap([0*2049]), handler=DefaultPVHandler())
         provider.add(name+':IMMCM%d'%idx, pv)
         self._ipv = pv
-        print(f'Added {name}:IMMCM{idx}')
+        logging.info(f'Added {name}:IMMCM{idx}')
 
 #        self.update()
 
         pv = SharedPV(initial=NTScalar('I').wrap(0), handler=PVHandler(self.set))
         provider.add(name+':SetMmcm%d'%idx, pv)
         self._set = pv
-        print(f'Added {name}:SetMmcm{idx}')
+        logging.info(f'Added {name}:SetMmcm{idx}')
 
         pv = SharedPV(initial=NTScalar('I').wrap(0), handler=self)
         provider.add(name+':ResetMmcm%d'%idx, pv)
         self._reset = pv
-        print(f'Added {name}:ResetMmcm{idx}')
+        logging.info(f'Added {name}:ResetMmcm{idx}')
 
     def update(self,timev):
         while self._dev.nready.get()==1 and self._cuMode:
-            print('Waiting for phase lock: {}',self._dev)
+            logging.info('Waiting for phase lock: {}',self._dev)
             time.sleep(1)
-        print(f'Locked: {self._dev}')
+        logging.info(f'Locked: {self._dev}')
 
         v = []
         w = []
@@ -87,13 +87,13 @@ class PVMmcm(PVHandler):
         self._update_required = 1
 
     def dump(self):
-        print(self._dev)
-        print('delay setting {}'.format(self._dev.delaySet  .get()))
-        print('delay value   {}'.format(self._dev.delayValue.get()))
-        print('delay end     {}'.format(self._dev.delayEnd  .get()))
-        print('external lock {}'.format(self._dev.externalLock.get()))
-        print('nready        {}'.format(self._dev.nready.get()))
-#        print('status        {:x}'.format(self._dev.status.get()))
+        logging.info(self._dev)
+        logging.info('delay setting {}'.format(self._dev.delaySet  .get()))
+        logging.info('delay value   {}'.format(self._dev.delayValue.get()))
+        logging.info('delay end     {}'.format(self._dev.delayEnd  .get()))
+        logging.info('external lock {}'.format(self._dev.externalLock.get()))
+        logging.info('nready        {}'.format(self._dev.nready.get()))
+#        logging.info('status        {:x}'.format(self._dev.status.get()))
         self._dev.dump()
 
 class PVCuPhase(object):
@@ -106,7 +106,7 @@ class PVCuPhase(object):
         self._pv = pv
 
     def update(self,timev):
-        print('PvCuPhase: {:}/{:} {:.2f}  {:},{:}'.format(self._dev.base.get(),
+        logging.info('PvCuPhase: {:}/{:} {:.2f}  {:},{:}'.format(self._dev.base.get(),
                                                           self._dev.early.get(),
                                                           self._dev.phase_ns.get(),
                                                           self._dev.gate.get(),
@@ -140,7 +140,7 @@ class PVXTpg(object):
                 xpm.UsTiming.Dump()
 
         if bypassLock:
-            print('Bypassing AMC PLL lock')
+            logging.info('Bypassing AMC PLL lock')
             app = xpm.find(name=devs[3][0])[0]
             app.bypassLock.set(1)
             time.sleep(1)

@@ -56,7 +56,7 @@ def retry(cmd,pv,value):
                 raise
             else:
                 traceback.print_exception(exc[0],exc[1],exc[2])
-                print('Caught exception... retrying.')
+                logging.error('Caught exception... retrying.')
 
 def retry_wlock(cmd,pv,value):
     lock.acquire()
@@ -179,8 +179,7 @@ class LinkCtrls(object):
         self._pv_linkLoopback  = _addPV('LinkLoopback' ,app.loopback)
         self._pv_linkTxReset   = _addPV('TxLinkReset'  ,app.txReset)
         self._pv_linkRxReset   = _addPV('RxLinkReset'  ,app.rxReset)
-        print('LinkCtrls.init link {}  fullEn {}'
-              .format(link, app.fullEn.get()))
+        logging.info(f'LinkCtrls.init link {link}  fullEn {app.fullEn.get()}')
         
         def _addPV(label, init, handler):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
@@ -211,12 +210,12 @@ class CuGenCtrls(object):
             cuDelay    = dbinit['XTPG']['CuDelay']
             cuBeamCode = dbinit['XTPG']['CuBeamCode']
             cuInput    = dbinit['XTPG']['CuInput']
-            print('Read XTPG parameters CuDelay {}, CuBeamCode {}, CuInput {}'.format(cuDelay,cuBeamCode,cuInput))
+            logging.info(f'Read XTPG parameters CuDelay {cuDelay}, CuBeamCode {cuBeamCode}, CuInput {cuInput}')
         except:
             cuDelay    = _fidPrescale*800
             cuBeamCode = 140
             cuInput    = 1
-            print('Defaulting XTPG parameters')
+            logging.info('Defaulting XTPG parameters')
 
         def _addPV(label, init, reg, archive):
             pvu = SharedPV(initial=NTScalar('f').wrap(init*7000./1300), 
@@ -363,8 +362,7 @@ class GroupSetup(object):
         self._inhibits.append(PVInhibit(name, app, app.inh_3, group, 3))
 
     def dump(self):
-        print('Group: {}  Master: {}  RateSel: {:x}  DestSel: {:x}  Ena: {}'
-              .format(self._group, self._app.l0Master.get(), self._app.l0RateSel.get(), self._app.l0DestSel.get(), self._app.l0En.get()))
+        logging.info(f'Group: {self._group}  Master: {self._app.l0Master.get()}  RateSel: {self._app.l0RateSel.get():x}  DestSel: {self._app.l0DestSel.get():x}  Ena: {self._app.l0En.get()}')
 
     def setFixedRate(self):
         rateVal = (0<<14) | (self._pv_FixedRate.current()['value']&0xf)
@@ -425,7 +423,7 @@ class GroupSetup(object):
         elif mode == RateSel.Sequence:
             self.setSequence()
         else:
-            print('L0Select mode invalid {}'.format(mode))
+            logging.warning('L0Select mode invalid {}'.format(mode))
 
         forceUpdate(self._app.l0DestSel)
         self.setDestn()
@@ -433,6 +431,7 @@ class GroupSetup(object):
         lock.release()
 
     def stepGroups(self, pv, val):
+        #logging.info(f'stepGroups{self._group} 0x{val:x}')
         getattr(self._app,'stepGroup%i'%self._group).set(val)
 
     def stepEnd(self, pv, val):
@@ -480,7 +479,7 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, usTiming=None, handle=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
+    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, usTiming=None, handle=None, paddr=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
         global provider
         provider = p
         global lock
@@ -497,11 +496,12 @@ class PVCtrls(object):
         if ip_comp[3]!=0:
             v |= ((int(ip_comp[2])&0xf)<<8) | (((int(ip_comp[3])-100)&0xff)<<4)
         xpm.XpmApp.paddr.set(v)
-        print('Set PADDR to 0x{:08x}'.format(v))
+        logging.info('Set PADDR to 0x{:08x}'.format(v))
 
         self._name  = name
         self._ip    = ip
         self._xpm   = xpm
+        self._paddr = paddr
         self._db    = db
         self._seq   = None
         self._handle= handle
@@ -509,13 +509,13 @@ class PVCtrls(object):
         init = None
         try:
             db_url, db_name, db_instrument, db_alias = db.split(',',4)
-            print('db {:}'.format(db))
-            print('url {:}  name {:}  instr {:}  alias {:}'.format(db_url,db_name,db_instrument,db_alias))
-            print('device {:}'.format(name))
+            logging.info('db {:}'.format(db))
+            logging.info('url {:}  name {:}  instr {:}  alias {:}'.format(db_url,db_name,db_instrument,db_alias))
+            logging.info('device {:}'.format(name))
             init = get_config_with_params(db_url, db_instrument, db_name, db_alias, name)
-            print('cfg {:}'.format(init))
+            logging.info('cfg {:}'.format(init))
         except:
-            print('Caught exception reading configdb [{:}]'.format(db))
+            logging.warning('Caught exception reading configdb [{:}]'.format(db))
 
         self._links = []
         for i in range(24):
@@ -565,7 +565,7 @@ class PVCtrls(object):
             self._thread = threading.Thread(target=self.notify)
             self._thread.start()
 
-        print('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
+        logging.info('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
         app.monStreamPeriod.set(104166667)
         app.monStreamEnable.set(1)
 
@@ -586,7 +586,7 @@ class PVCtrls(object):
     def update(self,cycle):
         #  The following section will throw an exception if the CuInput PV is not set properly
         if cycle < 10:
-            print('pvseq in %d'%(10-cycle))
+            logging.info('pvseq in %d'%(10-cycle))
         elif cycle == 10:
             self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
             self._seq_codes_val = toDict(seqCodes)
@@ -598,7 +598,7 @@ class PVCtrls(object):
             countdn -= 1
             if countdn == 0 and self._db:
                 # save config
-                print('Updating {}'.format(self._db))
+                logging.info('Updating {}'.format(self._db))
                 db_url, db_name, db_instrument, db_alias = self._db.split(',',4)
                 mycdb = cdb.configdb(db_url, db_instrument, True, db_name, user=db_instrument+'opr')
                 mycdb.add_device_config('xpm')
@@ -647,7 +647,7 @@ class PVCtrls(object):
                 while mask!=0:
                     if mask&1:
                         addr = next(siter)[0]
-                        print('addr[{}] {:x}'.format(i,addr))
+                        logging.info('addr[{}] {:x}'.format(i,addr))
                         if i<1:
                             pvUpdate(self._pv_seqDone,1)
                     i += 1
@@ -659,11 +659,36 @@ class PVCtrls(object):
                 if self._handle:
                     offset = self._handle(msg)
                     if self._seq:
-                        w = struct.unpack_from(f'<{NCODES}L',msg,offset)
-                        offset += 64
+                        w = struct.unpack_from(f'<{NCODES}L',msg,offset) #seqCount
+                        offset += NCODES*16
+                        #u = struct.unpack_from(f'<B',msg,offset) # seqInvalid
+                        #offset += 1
+                        u = 0
+                        for i in range(NCODES//4):
+                            if u&(1<<i):
+                                logging.warning(f'Seq {i} is invalid.  Resetting.')
+                                self._seq[i]._eng.reset()
+
                         value = self._seq_codes_pv.current()
                         self._seq_codes_val['Rate'] = w
                         self._seq_codes_val['Description'] = value['value']['Description']
                         value['value'] = self._seq_codes_val
                         value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
                         self._seq_codes_pv.post(value)
+                    else:
+                        offset += NCODES*16
+#                        offset += NCODES*16 + 1
+#                    if self._paddr:
+#                        v = struct.unpack_from(f'<I',msg,offset) # pAddr
+#                        if v!=self._paddr.value():
+#                            pvUpdate(self._paddr,v)
+
+                    # check for a dropped "step done"
+                    for i in range(8):
+                        g = self._group._groups[i]
+                        if ((g._pv_StepGroups.current()!=0) and
+                            (g._pv_StepEnd.current()==
+                             g._stats._pv_numL0Acc.current()) and
+                            (g._pv_StepDone.current()==0)):
+                            logging.warning(f'Recover stepDone for group {i}')
+                            g.stepDone(True)

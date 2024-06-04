@@ -1,4 +1,5 @@
 import time
+import logging
 
 from psdaq.seq.seq import *
 from psdaq.pyxpm.pvhandler import *
@@ -100,7 +101,7 @@ class Engine(object):
                 for key,cache in self._caches.items():
                     isize = key-addr
                     if verbose:
-                        print('Found memblock {:x}:{:x} [{:x}]'.format(addr,key,isize))
+                        logging.info('Found memblock {:x}:{:x} [{:x}]'.format(addr,key,isize))
                     if isize==nwords:
                         best_size = isize
                         best_ram  = addr
@@ -110,11 +111,11 @@ class Engine(object):
                         best_ram  = addr
                     addr = key+cache.size
                 if best_size == none_found:
-                    print('BRAM space unavailable')
+                    logging.error('BRAM space unavailable')
                     rval = -1
                     break
                 if verbose:
-                    print('Using memblock {:x}:{:x}  [{:x}]'.format(best_ram,best_ram+nwords,nwords))
+                    logging.info('Using memblock {:x}:{:x}  [{:x}]'.format(best_ram,best_ram+nwords,nwords))
             if rval:
                 break
             if self._indices == -1:
@@ -127,7 +128,7 @@ class Engine(object):
                     aindex = i
                     break
 
-            print('Caching seq {} of size {}'.format(aindex,nwords))
+            logging.info('Caching seq {} of size {}'.format(aindex,nwords))
             self._caches[best_ram] = SeqCache(aindex,nwords,self._seq)
 
             #  Translate addresses
@@ -139,7 +140,7 @@ class Engine(object):
                 for i,w in enumerate(words):
                     self._ram[best_ram+i].set(w)
 
-            print('Translated addresses rval = {}'.format(rval))
+            logging.info('Translated addresses rval = {}'.format(rval))
 
             if rval:
                 self.removeSeq(aindex)
@@ -175,9 +176,9 @@ class Engine(object):
         if a>=0:
             self._jump.setManStart(a,0)
             self._jump.setManSync (sync)
-            print('sequence started at address 0x{:x}'.format(a))
+            logging.info('sequence started at address 0x{:x}'.format(a))
         else:
-            print('sequence {} failed to start'.format(seq))
+            logging.error('sequence {} failed to start'.format(seq))
 
     def enable(self,e):
         v = self._reg.seqEn.get()
@@ -197,15 +198,15 @@ class Engine(object):
             self._refresh=2
 
     def dump(self):
-        print('seqAddrLen %d'%self._reg.seqAddrLen.get())
-        print('ctlSeq     %d'%self._reg.ctlSeq.get())
-        print('xpmSeq     %d'%self._reg.xpmSeq.get())
+        logging.info('seqAddrLen %d'%self._reg.seqAddrLen.get())
+        logging.info('ctlSeq     %d'%self._reg.ctlSeq.get())
+        logging.info('xpmSeq     %d'%self._reg.xpmSeq.get())
 
         v = self._jump.reg[15].get()
-        print('Sync [{:04x}]  Start [{:04x}]  Enable [{:08x}]'.format(v>>16,v&0xffff,self._reg.seqEn.get()))
+        logging.info('Sync [{:04x}]  Start [{:04x}]  Enable [{:08x}]'.format(v>>16,v&0xffff,self._reg.seqEn.get()))
         state = self._reg.find(name='SeqState_%d'%self._id)[0]
         cond  = state.find(name='cntCond')
-        print("Req {:08x}  Inv {:08x}  Addr {:08x}  Cond {:02x}{:02x}{:02x}{:02x}"
+        logging.info("Req {:08x}  Inv {:08x}  Addr {:08x}  Cond {:02x}{:02x}{:02x}{:02x}"
               .format(state.find(name='cntReq')    [0].get(),
                       state.find(name='cntInv')    [0].get(),
                       state.find(name='currAddr')  [0].get(),
@@ -215,7 +216,7 @@ class Engine(object):
                       cond[3].get()))
         for i in range(NSubSeq):
             if (self._indices & (1<<i)):
-                print('Sequence %d'%i)
+                logging.info('Sequence %d'%i)
                 self.dumpSequence(i)
 
     def dumpSequence(self,i):
@@ -223,7 +224,7 @@ class Engine(object):
             if entry.index == i:
                 for j in range(entry.size):
                     ram = self._ram[key+j].get()
-                    print('[{:08x}] {:08x} {:}'.format(key+j,ram,decodeInstr(ram)))
+                    logging.info('[{:08x}] {:08x} {:}'.format(key+j,ram,decodeInstr(ram)))
 
 
 class PVSeq(object):
@@ -236,7 +237,7 @@ class PVSeq(object):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
                           handler=DefaultPVHandler())
             provider.add(name+':'+label,pv)
-            print(name+':'+label)
+            logging.info(name+':'+label)
             return pv
 
         self._pv_DescInstrs    = _addPV('DESCINSTRS','s','')
@@ -274,7 +275,7 @@ class PVSeq(object):
 
     def rmvseq(self, pv, pval):
         val = self._pv_RmvIdx.current()['value']
-        print('rmvseq index %d'%val)
+        logging.info('rmvseq index %d'%val)
         if val > 1 and val < NSubSeq:
             self._eng.removeSeq(val)
             pvUpdate(self._pv_Seq00Idx,0)
@@ -287,7 +288,7 @@ class PVSeq(object):
     def schedReset(self, pv, val):
         if val>0:
             idx = self._pv_RunIdx.current()['value']
-            print(f'Scheduling index {idx}')
+            logging.info(f'Scheduling index {idx}')
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
             self._eng.setAddress(idx,0,0)  # syncs start to marker 0 (1Hz)
@@ -305,7 +306,7 @@ class PVSeq(object):
     def forceReset(self, pv, val):
         if val:
             idx = self._pv_RunIdx.current()['value']
-            print(f'Starting index {idx}')
+            logging.info(f'Starting index {idx}')
             pvUpdate(self._pv_Running,1 if idx>1 else 0)
             self.enable(None,1)
             self._eng.setAddress(idx,0,6)  # syncs start to marker 6 (MHz)
