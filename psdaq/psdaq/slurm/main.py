@@ -110,7 +110,7 @@ class Runner:
             if sbman.as_step:
                 cmd = "sacct --format=JobIDRaw,JobName%15,User,State,Start,Elapsed%9,NNodes%5,NodeList,Comment"
             else:
-                cmd = f'squeue -u {user} -o "%10i %15j %8u %8T %20S %10M %6D %R %k"'
+                cmd = f'squeue -u {user} -o "%10i %15j %8u %8T %20S %10M %6D %C %R %k"'
         cmd = f"xterm -fa 'Source Code Pro' -geometry 125x31+15+15 -e watch -n 5 --no-title '{cmd}'"
         asyncio.run(proc.run(cmd))
 
@@ -152,6 +152,7 @@ def main(
     sbman.verbose = verbose
     if subcommand == "start":
         start(unique_ids=unique_ids)
+        ls()
     elif subcommand == "stop":
         stop(unique_ids=unique_ids)
     elif subcommand == "restart":
@@ -235,6 +236,16 @@ def show_status():
                     job_detail["nodelist"],
                     job_detail["job_name"],
                     job_detail["state"],
+                    detail["cmd"],
+                )
+            )
+        else:
+            print(
+                "%20s %12s %10s %40s"
+                % (
+                    "N/A",
+                    config_id,
+                    "COMPLETED",
                     detail["cmd"],
                 )
             )
