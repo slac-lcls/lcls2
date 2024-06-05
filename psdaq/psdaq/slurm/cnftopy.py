@@ -14,7 +14,7 @@ def main(
 import os
 CONDA_PREFIX = os.environ.get('CONDA_PREFIX','')
 CONFIGDIR = '/cds/home/m/monarin/lcls2/psdaq/psdaq/slurm'
-host, id, flags, env, cmd = ('host', 'id', 'flags', 'env', 'cmd')
+host, cores, id, flags, env, cmd = ('host', 'cores', 'id', 'flags', 'env', 'cmd')
 task_set = ''
 """
     o_file.writelines(header + "\n")
