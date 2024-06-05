@@ -9,6 +9,7 @@ import socket
 
 LOCALHOST = socket.gethostname()
 SLURM_PARTITION = "drpq"
+DRP_N_RSV_CORES = 4
 
 
 class PSbatchSubCommand:
@@ -117,9 +118,10 @@ class SbatchManager:
 
     def get_daq_cmd(self, details, job_name):
         cmd = details["cmd"]
-        if (
-            not job_name.startswith("ami")
-            and not job_name in ("groupca", "prom2pvs", "control_gui")
+        if not job_name.startswith("ami") and not job_name in (
+            "groupca",
+            "prom2pvs",
+            "control_gui",
         ):
             cmd += f" -u {job_name}"
         if "flags" in details:
@@ -127,7 +129,15 @@ class SbatchManager:
                 cmd += f" -p {repr(self.platform)}"
         if job_name.startswith("ami-meb"):
             cmd += f" -u {job_name}"
+        if self.is_drp(details["cmd"]):
+            n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
+            if n_workers < 1:
+                n_workers = 1
+            cmd += f" -W {n_workers}"
         return cmd
+
+    def is_drp(self, cmd):
+        return cmd.strip().startswith("drp ")
 
     def get_output_header(self, node, job_name, details):
         header = ""
@@ -146,6 +156,12 @@ class SbatchManager:
             if git_describe:
                 header += "# GIT_DESCRIBE:%s\n" % git_describe
         return header
+
+    def get_n_cores(self, details):
+        n_cores = 1
+        if "cores" in details:
+            n_cores = int(details["cores"])
+        return n_cores
 
     def get_jobstep_cmd(self, node, job_name, details, het_group=-1, with_output=False):
         output_opt = ""
@@ -180,10 +196,13 @@ class SbatchManager:
                 env_opt += ",DISPLAY=localhost:11.0"
 
         env_opt += " "
-        jobstep_cmd = (
-            f"srun -n1 --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} {x11_opt}bash -c '{cmd}'"
-            + "& \n"
-        )
+        n_cores = self.get_n_cores(details)
+        jobstep_cmd = f"srun -n1 --cpus-per-task={n_cores} --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} {x11_opt}bash -c '{cmd}'"
+
+        if het_group > -1:
+            jobstep_cmd += "&"
+
+        jobstep_cmd += " \n"
         return jobstep_cmd
 
     def generate_as_step(self, sbjob, node_features):
@@ -231,12 +250,14 @@ class SbatchManager:
         sb_script += f"#SBATCH --output={output}" + "\n"
         sb_script += f"#SBATCH --comment={details['comment']}" + "\n"
 
+        n_cores = self.get_n_cores(details)
+
         if node == "localhost" or node_features is None:
             if node == "localhost":
                 node = LOCALHOST
-            sb_script += f"#SBATCH --nodelist={node} --ntasks=1" + "\n"
+            sb_script += f"#SBATCH --nodelist={node} --ntasks={n_cores}" + "\n"
         else:
-            sb_script += f"#SBATCH --constraint={job_name} --ntasks=1" + "\n"
+            sb_script += f"#SBATCH --constraint={job_name} --ntasks={n_cores}" + "\n"
 
         sb_script += self.get_jobstep_cmd(node, job_name, details)
         sb_script += "wait"
