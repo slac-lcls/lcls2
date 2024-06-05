@@ -20,6 +20,14 @@ def updatePv(pv,v,timev):
         value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
         pv.post(value)
 
+def updatePvC(pv,v,timev):
+    if v is not None:
+        value = pv.current()
+        if value['value']!=v:
+            value['value']=v
+            value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
+            pv.post(value)
+            
 NFPLINKS = 14
 sfpStatus  = {'LossOfSignal' : ('ai',[0]*NFPLINKS),
               'ModuleAbsent' : ('ai',[0]*NFPLINKS),
@@ -296,6 +304,8 @@ class GroupStats(object):
         def _addPVF(label):
             return addPV(name+':'+label,'f')
 
+        self._pv_running   = addPV(name+':Running'  ,'b',False)
+        self._pv_recording = addPV(name+':Recording','b',False)
         self._pv_runTime   = _addPVF('RunTime')
 #        self._pv_msgDelay  = _addPVF('MsgDelay')
         self._pv_l0InpRate = _addPVF('L0InpRate')
@@ -363,13 +373,16 @@ class GroupStats(object):
             else:
                 deadFrac = 0
             updatePv(self._pv_deadFrac, deadFrac, timev)
+            updatePvC(self._pv_running, dL0Ena>0, timev)
 
             self._l0Ena   = l0Ena
             self._l0Inh   = l0Inh
             self._numL0   = numL0
             self._numL0Acc= numL0Acc
             self._numL0Inh= numL0Inh
-
+        else:
+            updatePvC(self._pv_running, False, timev)
+            
         if True:
             if self._linkInhTm:
                 den = fidPeriod

@@ -1237,6 +1237,12 @@ class CollectionManager():
         if not ok:
             self.report_error(err_msg)
             return False
+            
+        # Advertise recording status
+        for g in range(8):
+            if self.groups & (1 << g):
+                pv = self.pva.pv_xpm_base + f':PART:{g}:Recording'
+                self.pva.pv_put(pv, self.recording)
 
         # phase 1
         ok = self.condition_common('beginrun', 6000)
@@ -1286,6 +1292,11 @@ class CollectionManager():
             self.pva.pv_put(pv, ControlDef.transitionId['EndRun'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+
+        for g in range(8):
+            if self.groups & (1 << g):
+                pv = self.pva.pv_xpm_base + f':PART:{g}:Recording'
+                self.pva.pv_put(pv, False)
 
         ok = self.get_phase2_replies('endrun')
         if not ok:
