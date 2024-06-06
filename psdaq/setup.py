@@ -53,7 +53,7 @@ if sys.platform == 'darwin':
     #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-W#warnings]
     macos_sdk_version_arg = '-mmacosx-version-min=10.9'
     extra_c_compile_args = ['-Wno-#warnings', macos_sdk_version_arg]
-    extra_cxx_compile_args = ['-std=c++11', '-Wno-#warnings', macos_sdk_version_arg]
+    extra_cxx_compile_args = ['-std=c++20', '-Wno-#warnings', macos_sdk_version_arg]
     extra_link_args = [macos_sdk_version_arg]
     # Use libgomp instead of the version provided by the compiler. Passing plain -fopenmp uses the llvm version of OpenMP
     # which appears to have a conflict with the numpy we use from conda. numpy uses Intel MKL which itself uses OpenMP,
@@ -64,7 +64,7 @@ else:
     # Flag -Wno-cpp hides warning:
     #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-Wcpp]
     extra_c_compile_args=['-Wno-cpp']
-    extra_cxx_compile_args=['-std=c++11', '-Wno-cpp']
+    extra_cxx_compile_args=['-std=c++20', '-Wno-cpp']
     extra_link_args = []
     # Use the version of openmp provided by the compiler
     openmp_compile_args = ['-fopenmp']
