@@ -184,7 +184,7 @@ cdef class cyhsd_base_1_2_3:
             if iseg not in self._padDict:
                 self._padDict[iseg]={}
             self._padDict[iseg][chanNum] = padvalues
-            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg]) * 1/(6.4e9*13/14)
+            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg][0]) * 1/(6.4e9*13/14)
 
     def _parseEvt(self, evt):
         self._wvDict = {}
