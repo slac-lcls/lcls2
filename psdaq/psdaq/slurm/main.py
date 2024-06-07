@@ -34,6 +34,7 @@ class Runner:
         except:
             print("Error parsing configuration file:", sys.exc_info()[1])
         self.platform = config_dict["platform"]
+        self.psqueue_flag = config_dict["psqueue"]
         # Check if we are getting main or derived config file
         if config_dict["config"] is None:
             config = Config(config_dict["procmgr_config"])
@@ -152,7 +153,8 @@ def main(
     sbman.verbose = verbose
     if subcommand == "start":
         start(unique_ids=unique_ids)
-        ls()
+        if runner.psqueue_flag:
+            ls()
     elif subcommand == "stop":
         stop(unique_ids=unique_ids)
     elif subcommand == "restart":
