@@ -1,10 +1,20 @@
 platform = "4"
-# if not platform: platform = '4'
 
 import os
 
 CONDA_PREFIX = os.environ.get("CONDA_PREFIX", "")
 CONFIGDIR = "/cds/home/m/monarin/lcls2/psdaq/psdaq/slurm"
+host, cores, id, flags, env, cmd, rtprio = (
+    "host",
+    "cores",
+    "id",
+    "flags",
+    "env",
+    "cmd",
+    "rtprio",
+)
+task_set = ""
+psqueue = True
 
 ld_lib_path = f"LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64"
 epics_env = f"{ld_lib_path}"
@@ -77,8 +87,7 @@ ami_monitor_node = "drp-srcf-cmp035"
 #        's'         -> stop: sends ctrl-c to process
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
-host, id, flags, env, cmd = ("host", "id", "flags", "env", "cmd")
-main_config = [
+procmgr_config = [
     # {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
     # set the phase2 transition timeout to 20s. this is because the teb
     # has a 16s timeout for slow PVA detectors coming through the gateway.
@@ -95,9 +104,9 @@ main_config = [
         flags: "p",
         cmd: f"control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING",
     },
-    {host: "drp-srcf-cmp035", id: "teb0", flags: "spux", cmd: f"{teb_cmd}"},
+    {host: "drp-srcf-cmp035", id: "teb0", flags: "spu", cmd: f"{teb_cmd}"},
     {
-        host: "drp-srcf-cmp035",
+        host: "drp-srcf-cmp002",
         id: "timing_0",
         flags: "spu",
         env: epics_env,
@@ -151,4 +160,4 @@ for N, worker_node in enumerate(ami_worker_nodes):
         }
     )
 
-# main_config.extend(ami_config)
+# procmgr_config.extend(ami_config)
