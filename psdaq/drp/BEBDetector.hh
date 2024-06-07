@@ -22,8 +22,8 @@ namespace Drp {
 
   enum { MaxSegsPerNode = 10 };
   enum {ConfigNamesIndex = NamesIndex::BASE,
-        EventNamesIndex  = ConfigNamesIndex + MaxSegsPerNode,
-        UpdateNamesIndex = EventNamesIndex  + MaxSegsPerNode }; // index for xtc NamesId
+        EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxSegsPerNode),
+        UpdateNamesIndex = unsigned(EventNamesIndex)  + unsigned(MaxSegsPerNode) }; // index for xtc NamesId
 
 class BEBDetector : public Detector
 {
