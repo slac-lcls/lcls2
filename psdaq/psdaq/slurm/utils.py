@@ -122,6 +122,7 @@ class SbatchManager:
             "groupca",
             "prom2pvs",
             "control_gui",
+            "xpmpva",
         ):
             cmd += f" -u {job_name}"
         if "flags" in details:
