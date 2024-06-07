@@ -22,7 +22,11 @@ psqueue = True
 
     with open(cnf_file, "r") as f:
         for line in f:
-            if line.find("platform:") > -1 or line.find("taskset") > -1 or line.find("procstat") > -1:
+            if (
+                line.find("platform:") > -1
+                or line.find("taskset") > -1
+                or line.find("procstat") > -1
+            ):
                 continue
             o_file.writelines(line)
     o_file.close()
