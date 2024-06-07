@@ -165,6 +165,7 @@ class Runner:
             if comment in job_details:
                 job_detail = job_details[comment]
                 statusdict["status"] = job_detail["state"]
+                statusdict["host"] = job_detail["nodelist"]
                 print(
                     "%20s %12s %10s %40s"
                     % (
@@ -176,16 +177,19 @@ class Runner:
                 )
             else:
                 statusdict["status"] = "COMPLETED"
+                nodelist = LOCALHOST
+                if 'host' in detail:
+                    nodelist = detail['host']
+                statusdict["host"] = nodelist
                 print(
                     "%20s %12s %10s %40s"
                     % (
-                        "N/A",
+                        nodelist,
                         config_id,
                         "COMPLETED",
                         detail["cmd"],
                     )
                 )
-            statusdict["host"] = job_detail["nodelist"]
             # add dictionary to list
             result_list.append(statusdict)
         print(result_list)
