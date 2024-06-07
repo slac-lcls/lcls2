@@ -162,6 +162,7 @@ class Runner:
         for config_id, detail in self.config.items():
             comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
             statusdict = {}
+            statusdict["showId"] = config_id
             if comment in job_details:
                 job_detail = job_details[comment]
                 statusdict["status"] = job_detail["state"]
@@ -178,8 +179,8 @@ class Runner:
             else:
                 statusdict["status"] = "COMPLETED"
                 nodelist = LOCALHOST
-                if 'host' in detail:
-                    nodelist = detail['host']
+                if "host" in detail:
+                    nodelist = detail["host"]
                 statusdict["host"] = nodelist
                 print(
                     "%20s %12s %10s %40s"
@@ -192,7 +193,7 @@ class Runner:
                 )
             # add dictionary to list
             result_list.append(statusdict)
-        print(result_list)
+        return result_list
 
     def _cancel(self, slurm_job_id):
         output = self.sbman.call_subprocess("scancel", str(slurm_job_id))
