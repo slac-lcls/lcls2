@@ -13,18 +13,14 @@ import os, sys
 from psdaq.slurm.config import Config
 from IPython import embed
 
-
-sbman = SbatchManager()
-proc = SubprocHelper()
-runner = None
 LOCALHOST = socket.gethostname()
 
 
 class Runner:
-    def __init__(self, configfilename):
+    def __init__(self, configfilename, as_step=False, verbose=False):
         # Allowing users' code to do relative 'import' in config file
         sys.path.append(os.path.dirname(configfilename))
-        config_dict = {"platform": None, "config": None}
+        config_dict = {"platform": None, "psqueue": False, "config": None}
         try:
             exec(
                 compile(open(configfilename).read(), configfilename, "exec"),
@@ -49,23 +45,32 @@ class Runner:
                 if cmd_token == "-x":
                     self.xpm_id = int(cmd_tokens[cmd_index + 1])
 
-        sbman.set_attr("platform", self.platform)
+        self.sbman = SbatchManager()
+        self.sbman.set_attr("platform", self.platform)
+        self.sbman.as_step = as_step
+        self.sbman.verbose = verbose
+        self.proc = SubprocHelper()
+        self.parse_config()
 
     def parse_config(self):
-        """Extract commands from the cnf file"""
+        """Extract commands from the cnf file
+        Data are stored in:
+        1. sbjob: dictionary containing cmd and its details per node basis
+        2. node_features: list of features per node as obtained by sinfo
+        """
         use_feature = True
         for config_id, config_detail in self.config.items():
             if "host" in config_detail:
                 use_feature = False
 
         if use_feature:
-            node_features = sbman.get_node_features()
+            node_features = self.sbman.get_node_features()
         else:
             node_features = None
 
         data = {}
         for config_id, config_detail in self.config.items():
-            config_detail["comment"] = sbman.get_comment(
+            config_detail["comment"] = self.sbman.get_comment(
                 self.xpm_id, self.platform, config_id
             )
             if use_feature:
@@ -108,16 +113,128 @@ class Runner:
         if not user:
             print(f"Cannot list jobs for user. $USER variable is not set.")
         else:
-            if sbman.as_step:
+            if self.sbman.as_step:
                 cmd = "sacct --format=JobIDRaw,JobName%15,User,State,Start,Elapsed%9,NNodes%5,NodeList,Comment"
             else:
                 cmd = f'squeue -u {user} -o "%10i %15j %8u %8T %20S %10M %6D %C %R %k"'
         cmd = f"xterm -fa 'Source Code Pro' -geometry 125x31+15+15 -e watch -n 5 --no-title '{cmd}'"
-        asyncio.run(proc.run(cmd))
+        asyncio.run(self.proc.run(cmd))
 
     def submit(self):
-        cmd = "sbatch << EOF\n" + sbman.sb_script + "\nEOF\n"
-        asyncio.run(proc.run(cmd, wait_output=True))
+        cmd = "sbatch << EOF\n" + self.sbman.sb_script + "\nEOF\n"
+        asyncio.run(self.proc.run(cmd, wait_output=True))
+
+    def _select_config_ids(self, unique_ids):
+        config_ids = list(self.config.keys())
+        if unique_ids is not None:
+            config_ids = unique_ids.split(",")
+        return config_ids
+
+    def _exists(self, unique_ids=None):
+        """Check if the config matches any existing jobs"""
+        job_exists = False
+        job_details = self.sbman.get_job_info()
+
+        config_ids = self._select_config_ids(unique_ids)
+
+        for config_id in config_ids:
+            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
+            if comment in job_details:
+                job_exists = True
+                break
+        return job_exists
+
+    def _check_unique_ids(self, unique_ids):
+        """Check user's input unique IDs with cnf file"""
+        if unique_ids is None:
+            return True
+        config_ids = unique_ids.split(",")
+        for config_id in config_ids:
+            if config_id not in self.config:
+                msg = f"Error: cannot locate {config_id} in the cnf file"
+                raise RuntimeError(msg)
+        return True
+
+    def show_status(self):
+        job_details = self.sbman.get_job_info()
+        result_list = []
+        print("%20s %12s %10s %40s" % ("Host", "UniqueID", "Status", "Command+Args"))
+        for config_id, detail in self.config.items():
+            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
+            statusdict = {}
+            if comment in job_details:
+                job_detail = job_details[comment]
+                statusdict["status"] = job_detail["state"]
+                print(
+                    "%20s %12s %10s %40s"
+                    % (
+                        job_detail["nodelist"],
+                        job_detail["job_name"],
+                        job_detail["state"],
+                        detail["cmd"],
+                    )
+                )
+            else:
+                statusdict["status"] = "COMPLETED"
+                print(
+                    "%20s %12s %10s %40s"
+                    % (
+                        "N/A",
+                        config_id,
+                        "COMPLETED",
+                        detail["cmd"],
+                    )
+                )
+            statusdict["host"] = job_detail["nodelist"]
+            # add dictionary to list
+            result_list.append(statusdict)
+        print(result_list)
+
+    def _cancel(self, slurm_job_id):
+        output = self.sbman.call_subprocess("scancel", str(slurm_job_id))
+
+    def start(self, unique_ids=None, skip_check_exist=False):
+        self._check_unique_ids(unique_ids)
+        if self._exists(unique_ids=unique_ids) and not skip_check_exist:
+            msg = "Error: found one or more running jobs using the same resources"
+            raise RuntimeError(msg)
+        if self.sbman.as_step:
+            self.sbman.generate_as_step(self.sbjob, self.node_features)
+            self.submit()
+        else:
+            config_ids = self._select_config_ids(unique_ids)
+            for node, job_details in self.sbjob.items():
+                for job_name, details in job_details.items():
+                    if job_name in config_ids:
+                        self.sbman.generate(node, job_name, details, self.node_features)
+                        self.submit()
+
+    def stop(self, unique_ids=None):
+        """Stops running job using their comment.
+
+        Each job is submitted with their unique comment. We can stop all the processes
+        by looking at the given cnf and match the comment (see below for detail) with
+        comment returned by slurm."""
+        self._check_unique_ids(unique_ids)
+        job_details = self.sbman.get_job_info()
+
+        if unique_ids is not None:
+            config_ids = unique_ids.split(",")
+        else:
+            config_ids = list(self.config.keys())
+
+        for config_id in config_ids:
+            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
+            if comment in job_details:
+                self._cancel(job_details[comment]["job_id"])
+            else:
+                print(
+                    f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
+                )
+
+    def restart(self, unique_ids=None):
+        self.stop(unique_ids=unique_ids)
+        self.start(unique_ids=unique_ids, skip_check_exist=True)
 
 
 def main(
@@ -146,148 +263,22 @@ def main(
         bool, typer.Option(help="Print out sbatch script(s) submitted by psbatch.")
     ] = False,
 ):
-    global runner
-    runner = Runner(cnf_file)
-    runner.parse_config()
-    sbman.as_step = as_step
-    sbman.verbose = verbose
+    runner = Runner(cnf_file, as_step=as_step, verbose=verbose)
     if subcommand == "start":
-        start(unique_ids=unique_ids)
+        runner.start(unique_ids=unique_ids)
         if runner.psqueue_flag:
-            ls()
+            runner.list_jobs()
     elif subcommand == "stop":
-        stop(unique_ids=unique_ids)
+        runner.stop(unique_ids=unique_ids)
     elif subcommand == "restart":
-        restart(unique_ids=unique_ids)
+        runner.restart(unique_ids=unique_ids)
     elif subcommand == "status":
         if interactive:
-            ls()
+            runner.list_jobs()
         else:
-            show_status()
+            runner.show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
-
-
-def _select_config_ids(unique_ids):
-    config_ids = list(runner.config.keys())
-    if unique_ids is not None:
-        config_ids = unique_ids.split(",")
-    return config_ids
-
-
-def exists(unique_ids=None):
-    """Check if the config matches any existing jobs"""
-    job_exists = False
-    job_details = sbman.get_job_info()
-
-    config_ids = _select_config_ids(unique_ids)
-
-    for config_id in config_ids:
-        comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
-        if comment in job_details:
-            job_exists = True
-            break
-    return job_exists
-
-
-def _check_unique_ids(unique_ids):
-    """Check user's input unique IDs with cnf file"""
-    if unique_ids is None:
-        return True
-    config_ids = unique_ids.split(",")
-    for config_id in config_ids:
-        if config_id not in runner.config:
-            msg = f"Error: cannot locate {config_id} in the cnf file"
-            raise RuntimeError(msg)
-    return True
-
-
-def start(unique_ids=None, skip_check_exist=False):
-    _check_unique_ids(unique_ids)
-    if exists(unique_ids=unique_ids) and not skip_check_exist:
-        msg = "Error: found one or more running jobs using the same resources"
-        raise RuntimeError(msg)
-    if sbman.as_step:
-        sbman.generate_as_step(runner.sbjob, runner.node_features)
-        runner.submit()
-    else:
-        config_ids = _select_config_ids(unique_ids)
-        for node, job_details in runner.sbjob.items():
-            for job_name, details in job_details.items():
-                if job_name in config_ids:
-                    sbman.generate(node, job_name, details, runner.node_features)
-                    runner.submit()
-
-
-def ls():
-    if runner is None:
-        return
-    runner.list_jobs()
-
-
-def show_status():
-    job_details = sbman.get_job_info()
-    print("%20s %12s %10s %40s" % ("Host", "UniqueID", "Status", "Command+Args"))
-    for config_id, detail in runner.config.items():
-        comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
-        if comment in job_details:
-            job_detail = job_details[comment]
-            print(
-                "%20s %12s %10s %40s"
-                % (
-                    job_detail["nodelist"],
-                    job_detail["job_name"],
-                    job_detail["state"],
-                    detail["cmd"],
-                )
-            )
-        else:
-            print(
-                "%20s %12s %10s %40s"
-                % (
-                    "N/A",
-                    config_id,
-                    "COMPLETED",
-                    detail["cmd"],
-                )
-            )
-
-
-def cancel(slurm_job_id):
-    if runner is None:
-        return
-    output = sbman.call_subprocess("scancel", str(slurm_job_id))
-
-
-def stop(unique_ids=None):
-    """Stops running job using their comment.
-
-    Each job is submitted with their unique comment. We can stop all the processes
-    by looking at the given cnf and match the comment (see below for detail) with
-    comment returned by slurm."""
-    if runner is None:
-        return
-    _check_unique_ids(unique_ids)
-    job_details = sbman.get_job_info()
-
-    if unique_ids is not None:
-        config_ids = unique_ids.split(",")
-    else:
-        config_ids = list(runner.config.keys())
-
-    for config_id in config_ids:
-        comment = sbman.get_comment(runner.xpm_id, runner.platform, config_id)
-        if comment in job_details:
-            cancel(job_details[comment]["job_id"])
-        else:
-            print(
-                f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
-            )
-
-
-def restart(unique_ids=None):
-    stop(unique_ids=unique_ids)
-    start(unique_ids=unique_ids, skip_check_exist=True)
 
 
 def _do_main():
