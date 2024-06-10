@@ -54,8 +54,6 @@ drp_cmd0 = task_set+' drp '            +std_opts0
 drp_cmd1 = task_set+' drp '            +std_opts1
 pva_cmd0 = task_set+' drp_pva '        +std_opts0
 pva_cmd1 = task_set+' drp_pva '        +std_opts1
-pv_cmd0  = task_set+' drp_pv '         +std_opts0
-pv_cmd1  = task_set+' drp_pv '         +std_opts1
 udp_cmd0 = task_set+' drp_udpencoder ' +std_opts0
 udp_cmd1 = task_set+' drp_udpencoder ' +std_opts1
 bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1 -k pva_addr=172.27.131.255'
@@ -185,8 +183,8 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp029', id:'andor_norm_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 RIX:NORM:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
- #{host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pv_cmd0+' -l 0x2 -k pebbleBufSize=4196432 RIX:VLS:CAM:01:IMAGE1:Pva:Image RIX:DIR:CAM:01:IMAGE1:Pva:Image'},
- #{host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pv_cmd0+' -l 0x2 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ #{host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 RIX:VLS:CAM:01:IMAGE1:Pva:Image RIX:DIR:CAM:01:IMAGE1:Pva:Image'},
+ #{host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
 # {host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 

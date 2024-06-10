@@ -9,11 +9,12 @@
 #include <bitset>
 #include <chrono>
 #include <unistd.h>
-#include <iostream>
 #include <map>
 #include <algorithm>
 #include <limits>
 #include <thread>
+#include <fstream>      // std::ifstream
+#include <cctype>       // std::isspace
 #include <Python.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
@@ -26,6 +27,7 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
+#include "psalg/utils/trim.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
@@ -377,7 +379,7 @@ PvDetector::PvDetector(PvParameters& para,
 
 unsigned PvDetector::connect(std::string& msg)
 {
-    // Revisit: firstDim should be able to be different for each PV (but perhaps it's obsolete)
+    // Check for a default first dimension specification
     uint32_t firstDimDef = 0;
     if (m_para.kwargs.find("firstdim") != m_para.kwargs.end()) {
         firstDimDef = std::stoul(m_para.kwargs["firstdim"]);
@@ -530,7 +532,7 @@ unsigned PvDetector::unconfigure()
     return 0;
 }
 
-void PvDetector::event(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
+void PvDetector::_event(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
 {
     NamesId namesId(nodeId, RawNamesIndex + pvXtc.src.value());
     CreateData cd(dgram.xtc, bufEnd, m_namesLookup, namesId);
@@ -614,7 +616,9 @@ void PvDetector::_worker()
     m_exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                     [&](){return m_pgp.nNoTrDgrams();});
 
-    uint32_t contract = (1 << m_pvMonitors.size()) - 1;
+    // Avoid running off the end of the word
+    uint64_t mask = 1ul << (m_pvMonitors.size() - 1);
+    uint64_t contract = mask | (mask - 1ul);
 
     const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
                     std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
@@ -633,7 +637,7 @@ void PvDetector::_worker()
         if (m_pgp.next(index)) {
             m_nEvents++;
 
-            m_evtQueue.push({index, contract});
+            m_evtQueue.push({contract, index});
 
             _matchUp();
         }
@@ -665,10 +669,10 @@ void PvDetector::_matchUp()
         EbDgram* evtDg = reinterpret_cast<EbDgram*>(m_pool->pebble[evt.index]);
         TransitionId::Value service = evtDg->service();
         if (service == TransitionId::L1Accept) {
-            unsigned remaining = evt.remaining;
+            uint64_t remaining = evt.remaining;
             while (remaining) {
                 unsigned id = __builtin_ffsl(remaining) - 1;
-                remaining &= ~(1 << id);
+                remaining &= ~(1ull << id);
 
                 auto& pvMonitor = m_pvMonitors[id];
 
@@ -685,8 +689,8 @@ void PvDetector::_matchUp()
                                m_timeDiff, evtDg->pulseId(), evtDg->service(),
                                result == 0 ? '=' : (result < 0 ? '<' : '>'), _deltaT<ms_t>(evtDg->time));
 
-                if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1 << id); }
-                else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1 << id); }
+                if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
+                else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
                 else                  { _tEvtGtPv(pvMonitor, *evtDg, *pvDg); }
             }
             if (evt.remaining)  break;  // Break so the timeout routine can run
@@ -733,7 +737,7 @@ void PvDetector::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
 void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     auto bufEnd = (char*)&evtDg + m_pool->pebble.bufferSize();
-    event(evtDg, bufEnd, pvDg.xtc);
+    _event(evtDg, bufEnd, pvDg.xtc);
 
     ++m_nMatch;
     logging::debug("PV matches PGP!!  "
@@ -1063,8 +1067,9 @@ int main(int argc, char* argv[])
 {
     Drp::PvParameters para;
     std::string kwargs_str;
+    std::string filename;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:01v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:01f:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -1108,6 +1113,9 @@ int main(int argc, char* argv[])
             case '1':
                 fprintf(stderr, "Option -1 is disabled\n");  exit(EXIT_FAILURE);
                 tsMatchDegree = 1;
+                break;
+            case 'f':
+                filename = optarg;
                 break;
             case 'v':
                 ++para.verbose;
@@ -1159,19 +1167,49 @@ int main(int argc, char* argv[])
     para.detName = para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
-    // Provider is "pva" (default) or "ca"
-    if (optind >= argc) {
+    // Read PVs from a file, if specified
+    unsigned i = 0;
+    if (!filename.empty()) {
+        unsigned lineNo = 0;
+        std::ifstream pvFile(filename.c_str());
+        if (!pvFile) {
+            logging::error("Failed to open file %s", filename.c_str());
+            return 1;     // Cannot open file
+        }
+        logging::debug("Processing file %s", filename.c_str());
+        while (!pvFile.eof()) {
+            std::string line;
+            std::getline(pvFile, line);
+            std::string pvSpec = psalg::trim(line);
+            ++lineNo;
+
+            logging::debug("*** line %u, size %zu, PV: '%s'\n", lineNo, pvSpec.size(), pvSpec.c_str());
+
+            // Skip blank and commented out lines
+            if (pvSpec.size() == 0 || pvSpec[0] == '#')  continue;
+
+            if (std::find(para.pvSpecs.begin(), para.pvSpecs.end(), pvSpec) != para.pvSpecs.end()) {
+                logging::warning("Ignoring duplicate line %u for PV '%s'\n", lineNo, pvSpec.c_str());
+                continue;
+            }
+
+            para.pvSpecs.push_back({pvSpec}); // [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+            ++i;
+        }
+    }
+    // Also read PVs from the command line
+    while (optind < argc) {
+        para.pvSpecs.push_back({argv[optind++]}); // [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+        ++i;
+    }
+    if (para.pvSpecs.empty()) {
+        // Provider is "pva" (default) or "ca"
         logging::critical("At least one PV ([<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]) is required");
         return 1;
     }
-    unsigned i = 0;
-    while (optind < argc) {
-        para.pvSpecs.push_back({argv[optind++]}); // [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
-
-        if (i++ > 31) {
-            logging::critical("Too many PVs provided; max is %u", i);
-            return 1;
-        }
+    if (i > 64) { // Limit is set by the number of bits in the contract/remaining variables
+        logging::critical("Found %u PVs when max supported is %u", i, 64);
+        return 1;
     }
 
     para.maxTrSize = 256 * 1024;

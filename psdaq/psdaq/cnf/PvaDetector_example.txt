@@ -1,0 +1,77 @@
+# Example PV list file for PvaDetector -f
+# If the first not-blank character encountered is a '#', the line is a comment
+# Blank lines are ignored
+# Leading and trailing whitespaces are trimmed
+# There should be one PV per line
+# Duplicate PVs are ignored
+# PVs are specified with the following format:
+#   [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+# <provider> can be "pva" (the default) or "ca"
+
+  # This comment has preceding spaces
+
+RIX:VLS:CAM:01:IMAGE1:Pva:Image
+  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+RIX:VLS:CAM:01:IMAGE1:Pva:Image
+  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
+#RIX:VLS:CAM:01:IMAGE1:Pva:Image
+#  RIX:DIR:CAM:01:IMAGE1:Pva:Image
