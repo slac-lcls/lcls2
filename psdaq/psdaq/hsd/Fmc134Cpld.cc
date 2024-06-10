@@ -39,8 +39,8 @@ void Fmc134Cpld::initialize(bool lDualChannel,
         // turn off 0sc, point at ext ref enable LMX bits 3, 1, and 0
         v = C1_AD | C1_LMX | C1_LED | C1_EEPROM;
         _control1 = v;
-    
-        v = C0_SYNC_FPGA | C0_EXT;
+
+        v = C0_SYNC_FPGA | static_cast<unsigned>(C0_EXT);
         _control0 = v;
     }
 

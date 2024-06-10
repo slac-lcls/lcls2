@@ -97,6 +97,7 @@ public:
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ };
+    void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) override { /* unused */ };
     void event(XtcData::Dgram& dgram, const void* bufEnd, const XtcData::Xtc& pvXtc);
     unsigned unconfigure();
     const PgpReader* pgp() { return &m_pgp; }
