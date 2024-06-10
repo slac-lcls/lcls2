@@ -67,8 +67,8 @@ if sys.platform == 'darwin':
 else:
     # Flag -Wno-cpp hides warning:
     #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-Wcpp]
-    extra_c_compile_args=['-Wno-cpp']
-    extra_cxx_compile_args=['-std=c++20', '-Wno-cpp']
+    extra_c_compile_args=['-Wno-cpp', '-Wno-address']
+    extra_cxx_compile_args=['-std=c++20', '-Wno-cpp', '-Wno-volatile']
     extra_link_args = []
     # Use the version of openmp provided by the compiler
     openmp_compile_args = ['-fopenmp']

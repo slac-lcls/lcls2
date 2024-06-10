@@ -101,7 +101,8 @@ cdef class ParallelReader:
         - n_ready_events = no. of total events that fit in the buffer
 
         """
-        cdef Py_ssize_t i       = 0, j=0
+        cdef size_t i           = 0, k=0
+        cdef Py_ssize_t j       = 0
         cdef int64_t got        = 0
         cdef int64_t[:] gots    = self.gots
         cdef Dgram* d
@@ -254,11 +255,11 @@ cdef class ParallelReader:
             # check if we need to copy from tmp_buf to buf (timestamp filter)
             if tmp_buf.ready_offset > 0:
                 memcpy(buf.chunk, tmp_buf.chunk, tmp_buf.ready_offset)
-                for j in range(tmp_buf.n_ready_events):
-                    buf.ts_arr[j] = tmp_buf.ts_arr[j]
-                    buf.st_offset_arr[j] = tmp_buf.st_offset_arr[j]
-                    buf.en_offset_arr[j] = tmp_buf.en_offset_arr[j]
-                    buf.sv_arr[j] = tmp_buf.sv_arr[j]
+                for k in range(tmp_buf.n_ready_events):
+                    buf.ts_arr[k] = tmp_buf.ts_arr[k]
+                    buf.st_offset_arr[k] = tmp_buf.st_offset_arr[k]
+                    buf.en_offset_arr[k] = tmp_buf.en_offset_arr[k]
+                    buf.sv_arr[k] = tmp_buf.sv_arr[k]
                 buf.n_ready_events = tmp_buf.n_ready_events
                 buf.timestamp = tmp_buf.timestamp
                 buf.ready_offset = tmp_buf.ready_offset
