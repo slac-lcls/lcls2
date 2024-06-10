@@ -55,11 +55,6 @@ class ts_connector:
 
     def get_xpm_info(self):
         self.xpm_info = []
-        # FIXME: cpo/weaver think this doesn't work for digitizers,
-        # for example, where the DRP node can't learn which XPM port
-        # is feeding it timing information.  Currently think we should
-        # try to get the information from the XPM side, instead of the
-        # drp side.
         for key,node_info in self.connect_info['body']['drp'].items():
             try:
                 # FIXME: should have a better method to map xpm ip
@@ -107,9 +102,13 @@ class ts_connector:
             for igroup in range(8):
                 if (1<<igroup)&groups:
                     pv_names_downstream_xpm_master_enable.append(name+':PART:%d:Master'%igroup)
+            # also need to disable the sequences running on the downstream xpms 
+            for iseq in range(8):
+                pv_names_downstream_xpm_master_enable.append(name+':SEQENG:%d:ENABLE'%iseq)
+       
         num_master_disable = len(pv_names_downstream_xpm_master_enable)
         if (num_master_disable):
-            print('*** Disable downstream xpm readout group master:',pv_names_downstream_xpm_master_enable)
+            print('*** Disable downstream xpm readout group master+sequences:',pv_names_downstream_xpm_master_enable)
             try:
                 self.ctxt.put(pv_names_downstream_xpm_master_enable,[0]*num_master_disable)
             except TimeoutError:
