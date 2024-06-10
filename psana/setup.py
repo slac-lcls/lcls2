@@ -388,7 +388,7 @@ if 'NDARRAY' in BUILD_LIST :
                              "psana/peakFinder/src/WFAlgos.cc"],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
-                    include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
+                    include_dirs=["psana","psana/peakFinder/include", os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
                     library_dirs = [os.path.join(instdir, 'lib')],
                     libraries=[],
                     extra_link_args = extra_link_args,
