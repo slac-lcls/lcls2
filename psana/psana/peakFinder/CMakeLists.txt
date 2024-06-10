@@ -1,3 +1,9 @@
+cmake_minimum_required(VERSION 3.10)
+
+# Find the MyLibrary package
+find_package(psalg REQUIRED)
+
+# Create the library target
 add_library(peaks SHARED
     src/LocalExtrema.cc
     src/PeakFinderAlgos.cc
@@ -5,13 +11,42 @@ add_library(peaks SHARED
     src/WFAlgos.cc
 )
 
-# calib included for NDArray
-target_link_libraries(peaks
-    xtcdata::xtc
-    calib
-)
-
+# This includes the headers during the build and also installs the headers in the include dir for lcls2
 target_include_directories(peaks PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+)
+
+
+
+# Export the library
+install(TARGETS peaks
+        EXPORT peaksTargets
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin
+)
+
+# Export the include directory
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include/psana/peakFinder)
+
+# Generate and install the export file for the library
+install(EXPORT peaksTargets
+    FILE peaksTargets.cmake
+    NAMESPACE peaks::
+    DESTINATION lib/cmake/peaks
+)
+
+# Generate the peaksConfig.cmake file
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    ${CMAKE_SOURCE_DIR}/cmake/peaksConfig.cmake.in
+    ${CMAKE_BINARY_DIR}/peaksConfig.cmake
+    INSTALL_DESTINATION lib/cmake/peaks
+)
+
+# Install the MyLibraryConfig.cmake file
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/peaksConfig.cmake
+    DESTINATION lib/cmake/peaks
 )

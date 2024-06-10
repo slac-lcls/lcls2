@@ -1,7 +1,7 @@
 
 //-----------------------------
 
-#include "../LocalExtrema.hh"
+#include "../include/LocalExtrema.hh"
 #include <sstream>   // for stringstream
 
 //-----------------------------
@@ -68,7 +68,7 @@ void printMatrixOfDiagIndexes(const size_t& rank)
   int indmax = rank;
   int indmin =-rank;
 
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "In printMatrixOfDiagIndexes, rank=" << rank << '\n';
 
   for (int i = indmin; i <= indmax; ++ i) {
@@ -90,14 +90,14 @@ void printVectorOfDiagIndexes(const size_t& rank)
 {
   vector<TwoIndexes> v_inddiag = evaluateDiagIndexes(rank);
 
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "In printVectorOfDiagIndexes:\n Vector size: " << v_inddiag.size() << '\n';
   int n_pairs_in_line=0;
   for( vector<TwoIndexes>::const_iterator ij  = v_inddiag.begin();
                                           ij != v_inddiag.end(); ij++ ) {
     ss << " (" << ij->i << "," << ij->j << ")";
     if ( ++n_pairs_in_line > 9 ) {ss << "\n"; n_pairs_in_line=0;}
-  }   
+  }
   ss << '\n';
   cout << ss.str();
 }

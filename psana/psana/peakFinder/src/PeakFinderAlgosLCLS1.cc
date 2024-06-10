@@ -1,5 +1,5 @@
 
-#include "../PeakFinderAlgosLCLS1.hh"
+#include "../include/PeakFinderAlgosLCLS1.hh"
 #include <sstream>   // for stringstream
 #include <cmath>     // floor, ceil
 #include <iomanip>   // for std::typedef
@@ -268,4 +268,3 @@ PeakFinderAlgos::_findConnectedPixelsInRegionVX(const T* data, const int& r, con
 //template void PeakFinderAlgos::_findConnectedPixelsInRegionVX<uint16_t>(const uint16_t*, const int&, const int&);
 
 } // namespace psalg1
-
