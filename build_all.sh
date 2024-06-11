@@ -9,6 +9,8 @@ else
   export INSTDIR="$TESTRELDIR"
 fi
 
+export PSALG=`pwd`/psalg
+
 cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 psana_setup_args=""
@@ -70,7 +72,7 @@ function cmake_build() {
     shift
     mkdir -p build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
+    cmake -DPSALG=$PSALG -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
     make -j 4 install
     cd ../..
 }

@@ -13,7 +13,7 @@ add_library(peaks SHARED
 
 # This includes the headers during the build and also installs the headers in the include dir for lcls2
 target_include_directories(peaks PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}${PSALG}>
     $<INSTALL_INTERFACE:include>
 )
 
