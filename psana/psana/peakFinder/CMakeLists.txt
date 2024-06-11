@@ -17,6 +17,12 @@ target_include_directories(peaks PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+# Link the executable with the MyLibrary library
+target_link_libraries(peaks PUBLIC psalg)
+
+add_custom_command(TARGET peaks
+                   POST_BUILD
+                   COMMAND echo "Pip install")
 
 
 # Export the library
@@ -50,10 +56,3 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/peaksConfig.cmake
     DESTINATION lib/cmake/peaks
 )
-
-# Link the executable with the MyLibrary library
-target_link_libraries(peaks PUBLIC psalg)
-
-add_custom_command(TARGET peaks
-                   POST_BUILD
-                   COMMAND echo "Pip install")
