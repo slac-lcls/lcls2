@@ -5,15 +5,15 @@ find_package(psalg REQUIRED)
 
 # Create the library target
 add_library(peaks SHARED
-    src/LocalExtrema.cc
-    src/PeakFinderAlgos.cc
-    src/PeakFinderAlgosLCLS1.cc
+    #src/LocalExtrema.cc
+    #src/PeakFinderAlgos.cc
+    #src/PeakFinderAlgosLCLS1.cc
     src/WFAlgos.cc
 )
 
 # This includes the headers during the build and also installs the headers in the include dir for lcls2
 target_include_directories(peaks PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}${PSALG}>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 
