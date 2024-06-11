@@ -29,6 +29,13 @@ add_subdirectory(psalg)
 
 include(CMakePackageConfigHelpers)
 
+install(TARGETS psalg
+        EXPORT psalgTargets
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin
+)
+
 install(EXPORT psalgTargets
     FILE psalgTargets.cmake
     NAMESPACE psalg::
