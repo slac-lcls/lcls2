@@ -35,7 +35,7 @@ cdef extern from "<stdint.h>" nogil:
 #    ctypedef shape_t      shape_t
 #    ctypedef mask_t       mask_t
 #    ctypedef extrim_t     extrim_t
-#    ctypedef conmap_t     conmap_t    
+#    ctypedef conmap_t     conmap_t
 
 ctypedef unsigned shape_t
 ctypedef uint16_t mask_t
@@ -95,7 +95,7 @@ ctypedef fused nptype2d :
 #------------------------------
 
 #def test_nda_v1(nptype2d nda): ctest_nda(&nda[0,0], nda.shape[0], nda.shape[1])
-    
+
 #------------------------------
 #------------------------------
 #------------------------------
@@ -103,7 +103,7 @@ ctypedef fused nptype2d :
 #------------------------------
 
 #cdef extern from "psalgos/LocalExtrema.h" namespace "localextrema":
-cdef extern from "LocalExtrema.hh" namespace "localextrema":
+cdef extern from "include/LocalExtrema.hh" namespace "localextrema":
 
     size_t localMinima1d[T](const T *data
                            ,const mask_t *mask
@@ -149,8 +149,8 @@ cdef extern from "LocalExtrema.hh" namespace "localextrema":
                                     ,const size_t& rows
                                     ,const size_t& cols
                                     ,const size_t& rank
-		                    ,const double& thr_low 
-		                    ,const double& thr_high 
+		                    ,const double& thr_low
+		                    ,const double& thr_high
                                     ,extrim_t *arr2d
                                     )
 
@@ -182,7 +182,7 @@ def local_minimums(nptype2d data,\
                    np.ndarray[mask_t, ndim=2, mode="c"] mask,\
                    int32_t rank,\
                    np.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
-                  ): 
+                  ):
     return mapOfLocalMinimums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, &arr2d[0,0])
 
 
@@ -190,14 +190,14 @@ def local_maximums(nptype2d data,\
                    np.ndarray[mask_t, ndim=2, mode="c"] mask,\
                    int32_t rank,\
                    np.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
-                  ): 
+                  ):
     return mapOfLocalMaximums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, &arr2d[0,0])
 
 
 def local_maximums_rank1_cross(nptype2d data,\
                    np.ndarray[mask_t, ndim=2, mode="c"] mask,\
                    np.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
-                  ): 
+                  ):
     return mapOfLocalMaximumsRank1Cross(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], &arr2d[0,0])
 
 
@@ -207,7 +207,7 @@ def threshold_maximums(nptype2d data,\
                        double thr_low,\
                        double thr_high,\
                        np.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
-                      ) : 
+                      ) :
     return mapOfThresholdMaximums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, thr_low, thr_high, &arr2d[0,0])
 
 
@@ -222,7 +222,7 @@ def print_vector_of_diag_indexes(int32_t& rank) : printVectorOfDiagIndexes(rank)
 #------------------------------
 
 #cdef extern from "psalgos/PeakFinderAlgos.h" namespace "psalgos":
-cdef extern from "PeakFinderAlgosLCLS1.hh" namespace "psalg1":
+cdef extern from "include/PeakFinderAlgosLCLS1.hh" namespace "psalg1":
     cdef cppclass Peak :
         Peak() except +
         Peak(const Peak& o) except +
@@ -234,7 +234,7 @@ cdef extern from "PeakFinderAlgosLCLS1.hh" namespace "psalg1":
         #float npos
         float amp_max
         float amp_tot
-        float row_cgrav 
+        float row_cgrav
         float col_cgrav
         float row_sigma
         float col_sigma
@@ -244,7 +244,7 @@ cdef extern from "PeakFinderAlgosLCLS1.hh" namespace "psalg1":
         float col_max
         float bkgd
         float noise
-        float son       
+        float son
 
 #------------------------------
 
@@ -276,62 +276,62 @@ cdef class py_peak :
 #        return self.peak_pars(cpp_obj)
 
 
-    def parameters(self) : #, cpp_obj=None) : 
+    def parameters(self) : #, cpp_obj=None) :
         p = self.cptr     # if cpp_obj is None else <Peak*> &cpp_obj
         return (p.seg, p.row, p.col, p.npix, p.amp_max, p.amp_tot,\
                 p.row_cgrav, p.col_cgrav, p.row_sigma, p.col_sigma,\
                 p.row_min, p.row_max, p.col_min, p.col_max, p.bkgd, p.noise, p.son)
 
     @property
-    def seg      (self) : return self.cptr.seg       
+    def seg      (self) : return self.cptr.seg
 
     @property
-    def row      (self) : return self.cptr.row       
+    def row      (self) : return self.cptr.row
 
     @property
-    def col      (self) : return self.cptr.col       
+    def col      (self) : return self.cptr.col
 
     @property
-    def npix     (self) : return self.cptr.npix      
+    def npix     (self) : return self.cptr.npix
 
     @property
-    def amp_max  (self) : return self.cptr.amp_max   
+    def amp_max  (self) : return self.cptr.amp_max
 
     @property
-    def amp_tot  (self) : return self.cptr.amp_tot   
+    def amp_tot  (self) : return self.cptr.amp_tot
 
     @property
-    def row_cgrav(self) : return self.cptr.row_cgrav 
+    def row_cgrav(self) : return self.cptr.row_cgrav
 
     @property
-    def col_cgrav(self) : return self.cptr.col_cgrav 
+    def col_cgrav(self) : return self.cptr.col_cgrav
 
     @property
-    def row_sigma(self) : return self.cptr.row_sigma 
+    def row_sigma(self) : return self.cptr.row_sigma
 
     @property
-    def col_sigma(self) : return self.cptr.col_sigma 
+    def col_sigma(self) : return self.cptr.col_sigma
 
     @property
-    def row_min  (self) : return self.cptr.row_min   
+    def row_min  (self) : return self.cptr.row_min
 
     @property
-    def row_max  (self) : return self.cptr.row_max   
+    def row_max  (self) : return self.cptr.row_max
 
     @property
-    def col_min  (self) : return self.cptr.col_min   
+    def col_min  (self) : return self.cptr.col_min
 
     @property
-    def col_max  (self) : return self.cptr.col_max   
+    def col_max  (self) : return self.cptr.col_max
 
     @property
-    def bkgd     (self) : return self.cptr.bkgd      
+    def bkgd     (self) : return self.cptr.bkgd
 
     @property
-    def noise    (self) : return self.cptr.noise     
+    def noise    (self) : return self.cptr.noise
 
     @property
-    def son      (self) : return self.cptr.son       
+    def son      (self) : return self.cptr.son
 
 #------------------------------
 #------------------------------
@@ -339,7 +339,7 @@ cdef class py_peak :
 #------------------------------
 
 #cdef extern from "psalgos/PeakFinderAlgos.h" namespace "psalgos":
-cdef extern from "PeakFinderAlgosLCLS1.hh" namespace "psalg1":
+cdef extern from "include/PeakFinderAlgosLCLS1.hh" namespace "psalg1":
     cdef cppclass PeakFinderAlgos:
          #float  m_r0
          #float  m_dr
@@ -376,7 +376,7 @@ cdef extern from "PeakFinderAlgosLCLS1.hh" namespace "psalg1":
 	                       ,const double& r0
 	                       ,const double& dr
                                )
- 
+
          void printParameters();
 
          const Peak& peak(const int& i)
@@ -396,7 +396,7 @@ cdef extern from "PeakFinderAlgosLCLS1.hh" namespace "psalg1":
 #------------------------------
 
 cdef class peak_finder_algos :
-    """ Python wrapper for C++ class. 
+    """ Python wrapper for C++ class.
     """
     cdef PeakFinderAlgos* cptr  # holds a C++ pointer to instance
 
@@ -456,15 +456,15 @@ cdef class peak_finder_algos :
 
 
     def list_of_peaks(self) :
-        cdef vector[Peak] peaks = self.cptr.vectorOfPeaks()	
+        cdef vector[Peak] peaks = self.cptr.vectorOfPeaks()
         return [py_peak.factory(p) for p in peaks]
 
 
-    def peak(self, int i=0) : 
+    def peak(self, int i=0) :
         return py_peak.factory(self.cptr.peak(i))
 
 
-    def peak_selected(self, int i=0) : 
+    def peak_selected(self, int i=0) :
         return py_peak.factory(self.cptr.peakSelected(i))
 
 
