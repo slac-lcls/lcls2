@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 # Find the MyLibrary package
-# find_package(psalg REQUIRED)
-find_package(xtcdata REQUIRED)
+find_package(psalg REQUIRED)
+# find_package(xtcdata REQUIRED)
 
 
 # Create the library target
