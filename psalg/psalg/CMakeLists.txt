@@ -166,6 +166,7 @@ add_test(NAME test_xtc_data COMMAND ${CMAKE_BINARY_DIR}/psalg/test_xtc_data
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS psalg
+    EXPORT psalgTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
