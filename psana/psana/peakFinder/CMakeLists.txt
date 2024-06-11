@@ -20,7 +20,7 @@ target_include_directories(peaks PUBLIC
 )
 
 # Link the executable with the MyLibrary library
-target_link_libraries(peaks PUBLIC xtcdata)
+target_link_libraries(peaks PUBLIC xtcdata::xtc)
 
 add_custom_command(TARGET peaks
                    POST_BUILD
