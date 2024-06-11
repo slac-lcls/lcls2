@@ -26,6 +26,10 @@ add_custom_command(TARGET peaks
 
 
 # Export the library
+# TARGETS: specifies which targets
+# EXPORT: This creates an export set named peaksTargets that
+# includes the target "peaks". Export sets are used to generate cmake files
+# other projects can use to import and link against said target.
 install(TARGETS peaks
         EXPORT peaksTargets
         LIBRARY DESTINATION lib
