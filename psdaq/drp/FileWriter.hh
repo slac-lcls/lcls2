@@ -26,7 +26,7 @@ private:
     size_t m_count;
     XtcData::TimeStamp m_batch_starttime;
     std::vector<uint8_t> m_buffer;
-    uint64_t m_writing;
+    volatile uint64_t m_writing;
 };
 
 class BufferedFileWriterMT

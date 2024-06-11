@@ -111,11 +111,11 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
     // can't be 1 second without a more precise age calculation, since
     // the seconds field could have "rolled over" since the last event
     if ((size > (m_buffer.size() - m_count)) || age_seconds>2) {
-        ++m_writing;
+        m_writing += 1;
         if (_write(m_fd, m_buffer.data(), m_count) == -1) {
             throw "File writing failed";
         }
-        --m_writing;
+        m_writing -= 1;
         // reset these to prepare for the new batch
         m_count = 0;
         m_batch_starttime = timestamp;
@@ -278,9 +278,9 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
     // write out data if buffer full or batch is too old
     // can't be 1 second without a more precise age calculation, since
     // the seconds field could have "rolled over" since the last event
-    ++m_freeBlocked;
+    m_freeBlocked += 1;
     m_free.pend();
-    --m_freeBlocked;
+    m_freeBlocked -= 1;
     if ((size > (m_bufferSize - m_free.front().count)) || age_seconds>2) {
         Buffer b = m_free.front();
         m_free.pop(b);
@@ -306,9 +306,9 @@ void BufferedFileWriterMT::run()
 {
     while (true) {
         std::chrono::milliseconds tmo{100};
-        ++m_pendBlocked;
+        m_pendBlocked += 1;
         m_pend.pend(tmo);
-        --m_pendBlocked;
+        m_pendBlocked -= 1;
         if (m_pend.empty()) {
             if (m_terminate.load(std::memory_order_relaxed)) {
                 break;
@@ -317,11 +317,11 @@ void BufferedFileWriterMT::run()
                 continue;
         }
         Buffer& b = m_pend.front();
-        ++m_writing;
+        m_writing += 1;
         if (_write(m_fd, b.p, b.count) == -1) {
             throw "File writing failed";
         }
-        --m_writing;
+        m_writing -= 1;
         m_pend.pop(b);
         b.count = 0;
         m_free.push(b);
