@@ -112,7 +112,7 @@ cd ..
 # fi
 
 if [ $no_ana == 0 ]; then
-    cmake_build psana
+    # cmake_build psana
     # to build psana with setuptools
     cd psana
     # force build of the extensions.  do this because in some cases

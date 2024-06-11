@@ -113,7 +113,7 @@ cdef extern from "PeakFinderAlgos.hh" namespace "psalgos":
         float npix
         float amp_max
         float amp_tot
-        float row_cgrav 
+        float row_cgrav
         float col_cgrav
         float row_sigma
         float col_sigma
@@ -174,7 +174,7 @@ cdef extern from "PeakFinderAlgos.hh" namespace "psalgos":
                                ,const double& r0
                                ,const double& dr
                                ,const double& nsigm)
- 
+
          void printParameters();
 
          void localMaxima    (extrim_t *arr2d, const size_t& rows, const size_t& cols)
@@ -205,67 +205,67 @@ cdef class py_peak :
         (<py_peak> py_obj).cptr = new Peak(cpp_obj) # C++ copy constructor
         return py_obj
 
-    def parameters(self) : #, cpp_obj=None) : 
+    def parameters(self) : #, cpp_obj=None) :
         p = self.cptr     # if cpp_obj is None else <Peak*> &cpp_obj
         return (p.seg, p.row, p.col, p.npix, p.amp_max, p.amp_tot,\
                 p.row_cgrav, p.col_cgrav, p.row_sigma, p.col_sigma,\
                 p.row_min, p.row_max, p.col_min, p.col_max, p.bkgd, p.noise, p.son)
 
     @property
-    def seg      (self) : return self.cptr.seg       
+    def seg      (self) : return self.cptr.seg
 
     @property
-    def row      (self) : return self.cptr.row       
+    def row      (self) : return self.cptr.row
 
     @property
-    def col      (self) : return self.cptr.col       
+    def col      (self) : return self.cptr.col
 
     @property
-    def npix     (self) : return self.cptr.npix      
+    def npix     (self) : return self.cptr.npix
 
     @property
-    def amp_max  (self) : return self.cptr.amp_max   
+    def amp_max  (self) : return self.cptr.amp_max
 
     @property
-    def amp_tot  (self) : return self.cptr.amp_tot   
+    def amp_tot  (self) : return self.cptr.amp_tot
 
     @property
-    def row_cgrav(self) : return self.cptr.row_cgrav 
+    def row_cgrav(self) : return self.cptr.row_cgrav
 
     @property
-    def col_cgrav(self) : return self.cptr.col_cgrav 
+    def col_cgrav(self) : return self.cptr.col_cgrav
 
     @property
-    def row_sigma(self) : return self.cptr.row_sigma 
+    def row_sigma(self) : return self.cptr.row_sigma
 
     @property
-    def col_sigma(self) : return self.cptr.col_sigma 
+    def col_sigma(self) : return self.cptr.col_sigma
 
     @property
-    def row_min  (self) : return self.cptr.row_min   
+    def row_min  (self) : return self.cptr.row_min
 
     @property
-    def row_max  (self) : return self.cptr.row_max   
+    def row_max  (self) : return self.cptr.row_max
 
     @property
-    def col_min  (self) : return self.cptr.col_min   
+    def col_min  (self) : return self.cptr.col_min
 
     @property
-    def col_max  (self) : return self.cptr.col_max   
+    def col_max  (self) : return self.cptr.col_max
 
     @property
-    def bkgd     (self) : return self.cptr.bkgd      
+    def bkgd     (self) : return self.cptr.bkgd
 
     @property
-    def noise    (self) : return self.cptr.noise     
+    def noise    (self) : return self.cptr.noise
 
     @property
-    def son      (self) : return self.cptr.son    
+    def son      (self) : return self.cptr.son
 
 #------------------------------
 
 cdef class peak_finder_algos :
-    """ Python wrapper for C++ class. 
+    """ Python wrapper for C++ class.
     """
     cdef PeakFinderAlgos* cptr  # holds a C++ pointer to instance
     cdef si.uint16_t rows, cols
@@ -389,8 +389,8 @@ cdef extern from "LocalExtrema.hh" namespace "localextrema":
                                     ,const size_t& rows
                                     ,const size_t& cols
                                     ,const size_t& rank
-		                    ,const double& thr_low 
-		                    ,const double& thr_high 
+		                    ,const double& thr_low
+		                    ,const double& thr_high
                                     ,extrim_t *arr2d
                                     )
 
@@ -422,7 +422,7 @@ def local_minimums(nptype2d data,\
                    cnp.ndarray[mask_t, ndim=2, mode="c"] mask,\
                    si.int32_t rank,\
                    cnp.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
-                  ): 
+                  ):
     return mapOfLocalMinimums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, &arr2d[0,0])
 
 
@@ -430,14 +430,14 @@ def local_maximums(nptype2d data,\
                    cnp.ndarray[mask_t, ndim=2, mode="c"] mask,\
                    si.int32_t rank,\
                    cnp.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
-                  ): 
+                  ):
     return mapOfLocalMaximums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, &arr2d[0,0])
 
 
 def local_maximums_rank1_cross(nptype2d data,\
                    cnp.ndarray[mask_t, ndim=2, mode="c"] mask,\
                    cnp.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
-                  ): 
+                  ):
     return mapOfLocalMaximumsRank1Cross(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], &arr2d[0,0])
 
 
@@ -447,7 +447,7 @@ def threshold_maximums(nptype2d data,\
                        double thr_low,\
                        double thr_high,\
                        cnp.ndarray[extrim_t, ndim=2, mode="c"] arr2d\
-                      ) : 
+                      ) :
     return mapOfThresholdMaximums(&data[0,0], &mask[0,0], data.shape[0], data.shape[1], rank, thr_low, thr_high, &arr2d[0,0])
 
 
@@ -457,7 +457,3 @@ def print_matrix_of_diag_indexes(si.int32_t& rank) : printMatrixOfDiagIndexes(ra
 def print_vector_of_diag_indexes(si.int32_t& rank) : printVectorOfDiagIndexes(rank)
 
 #------------------------------
-
-
-
-
