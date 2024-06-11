@@ -53,7 +53,7 @@ install(EXPORT peaksTargets
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
     ${CMAKE_SOURCE_DIR}/cmake/peaksConfig.cmake.in
-    ${CMAKE_BINARY_DIR}/peaksConfig.cmake
+    ${CMAKE_BINARY_DIR}/psana/peakFinder/peaksConfig.cmake
     INSTALL_DESTINATION lib/cmake/peaks
 )
 
