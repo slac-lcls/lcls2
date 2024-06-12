@@ -14,7 +14,6 @@ host, cores, id, flags, env, cmd, rtprio = (
     "rtprio",
 )
 task_set = ""
-psqueue = True
 
 ld_lib_path = f"LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64"
 epics_env = f"{ld_lib_path}"
@@ -88,14 +87,17 @@ ami_monitor_node = "drp-srcf-cmp035"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-    # {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'},
+    {
+        id: "psqueue",
+        cmd: f"psqueue -i 5",
+    },
     # set the phase2 transition timeout to 20s. this is because the teb
     # has a 16s timeout for slow PVA detectors coming through the gateway.
     # both can be reduced if/when we get consistent behavior from gateways.
     {
         host: collect_host,
         id: "control",
-        flags: "spu",
+        flags: "spux",
         env: epics_env,
         cmd: f"control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}",
     },

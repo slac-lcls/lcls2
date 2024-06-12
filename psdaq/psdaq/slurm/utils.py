@@ -19,7 +19,7 @@ class PSbatchSubCommand:
 
 
 class SbatchManager:
-    def __init__(self):
+    def __init__(self, configfilename, platform, as_step, verbose):
         self.sb_script = ""
         now = datetime.now()
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
@@ -38,8 +38,10 @@ class SbatchManager:
             "PS_PARALLEL",
         ]
         self.env_dict = {key: os.environ.get(key, "") for key in envs}
-        self.as_step = False
-        self.verbose = False
+        self.configfilename = configfilename
+        self.platform = platform
+        self.as_step = as_step
+        self.verbose = verbose
 
     @property
     def git_describe(self):
@@ -101,11 +103,22 @@ class SbatchManager:
             else:
                 success = False
             if success:
+                # Get logfile from job_id
+                scontrol_lines = self.call_subprocess(
+                    "scontrol", "show", "job", job_id
+                ).splitlines()
+                logfile = ""
+                for scontrol_line in scontrol_lines:
+                    if scontrol_line.find("StdOut") > -1:
+                        scontrol_cols = scontrol_line.split("=")
+                        logfile = scontrol_cols[1]
+
                 job_details[comment] = {
                     "job_id": job_id,
                     "job_name": job_name,
                     "state": state,
                     "nodelist": nodelist,
+                    "logfile": logfile,
                 }
         return job_details
 
@@ -123,6 +136,7 @@ class SbatchManager:
             "prom2pvs",
             "control_gui",
             "xpmpva",
+            "psqueue",
         ):
             cmd += f" -u {job_name}"
         if "flags" in details:
@@ -130,6 +144,8 @@ class SbatchManager:
                 cmd += f" -p {repr(self.platform)}"
         if job_name.startswith("ami-meb"):
             cmd += f" -u {job_name}"
+        if job_name == "psqueue":
+            cmd += f" {self.configfilename}"
         if self.is_drp(details["cmd"]):
             n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
             if n_workers < 1:
@@ -190,20 +206,12 @@ class SbatchManager:
                 )
                 cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
 
-        x11_opt = ""
-        if "flags" in details:
-            if details["flags"].find("x") > -1:
-                x11_opt = f"--x11 xterm -e "
-                env_opt += ",DISPLAY=localhost:11.0"
-
         env_opt += " "
         n_cores = self.get_n_cores(details)
-        jobstep_cmd = f"srun -n1 --cpus-per-task={n_cores} --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt} {x11_opt}bash -c '{cmd}'"
-
-        if het_group > -1:
-            jobstep_cmd += "&"
-
-        jobstep_cmd += " \n"
+        jobstep_cmd = (
+            f"srun -n1 --cpus-per-task={n_cores} --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+            + "&\n"
+        )
         return jobstep_cmd
 
     def generate_as_step(self, sbjob, node_features):
@@ -216,9 +224,7 @@ class SbatchManager:
         sb_header = ""
         sb_steps = ""
         for het_group, (node, job_details) in enumerate(sbjob.items()):
-            if node == "localhost" or node_features is None:
-                if node == "localhost":
-                    node = LOCALHOST
+            if node_features is None:
                 sb_header += (
                     f"#SBATCH --nodelist={node} --ntasks={len(job_details.keys())}"
                     + "\n"
@@ -252,15 +258,26 @@ class SbatchManager:
         sb_script += f"#SBATCH --comment={details['comment']}" + "\n"
 
         n_cores = self.get_n_cores(details)
+        flag_x = False
+        if "flags" in details:
+            if details["flags"].find("x") > -1:
+                flag_x = True
+        if flag_x:
+            n_cores += 1
 
-        if node == "localhost" or node_features is None:
-            if node == "localhost":
-                node = LOCALHOST
+        if node_features is None:
             sb_script += f"#SBATCH --nodelist={node} --ntasks={n_cores}" + "\n"
         else:
             sb_script += f"#SBATCH --constraint={job_name} --ntasks={n_cores}" + "\n"
 
         sb_script += self.get_jobstep_cmd(node, job_name, details)
+        if flag_x:
+            cmd = "sattach $SLURM_JOB_ID.0"
+            jobstep_cmd = (
+                f"srun -n1 --exclusive --job-name={job_name}_x --x11 xterm -e bash -c '{cmd}'"
+                + "&\n"
+            )
+            sb_script += jobstep_cmd
         sb_script += "wait"
         self.sb_script = sb_script
         if self.verbose:

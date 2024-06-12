@@ -1,4 +1,7 @@
 import copy, os
+import socket
+
+LOCALHOST = socket.gethostname()
 
 
 class Config:
@@ -9,6 +12,10 @@ class Config:
         self.main_config = {}
         for _config in main_config:
             config = copy.deepcopy(_config)
+            # Make sure host is a required key (detault to LOCALHOST)
+            if "host" not in config:
+                config["host"] = LOCALHOST
+            # Remove the id key and use it as the main key for main_config
             cid = config["id"]
             config.pop("id")
             self.main_config[cid] = config
@@ -53,9 +60,7 @@ class Config:
     def show(self, full=False):
         print("%20s %18s %80s" % ("UniqueID", "Host", "Command+Args"))
         for cid, config_detail in self.select_config.items():
-            host = "localhost"
-            if "host" in config_detail:
-                host = config_detail["host"]
+            host = config_detail["host"]
             cmd = config_detail["cmd"][:65] + "..." + config_detail["cmd"][-12:]
             if full:
                 cmd = config_detail["cmd"]

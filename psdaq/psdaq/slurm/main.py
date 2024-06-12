@@ -9,18 +9,33 @@ import copy
 import socket
 from psdaq.slurm.utils import SbatchManager
 from psdaq.slurm.subproc import SubprocHelper
-import os, sys
+import os, sys, errno
+from subprocess import Popen
 from psdaq.slurm.config import Config
-from IPython import embed
 
 LOCALHOST = socket.gethostname()
+PSBATCH_SCRIPT = "submit_psbatch.sh"
+
+
+def silentremove(filename):
+    try:
+        os.remove(filename)
+    except OSError as e:
+        if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
+            raise
 
 
 class Runner:
+    # paths
+    PATH_XTERM = "/usr/bin/xterm"
+    PATH_TELNET = "/usr/bin/telnet"
+    PATH_LESS = "/usr/bin/less"
+    PATH_CAT = "/bin/cat"
+
     def __init__(self, configfilename, as_step=False, verbose=False):
         # Allowing users' code to do relative 'import' in config file
         sys.path.append(os.path.dirname(configfilename))
-        config_dict = {"platform": None, "psqueue": False, "config": None}
+        config_dict = {"platform": None, "config": None}
         try:
             exec(
                 compile(open(configfilename).read(), configfilename, "exec"),
@@ -30,7 +45,7 @@ class Runner:
         except:
             print("Error parsing configuration file:", sys.exc_info()[1])
         self.platform = config_dict["platform"]
-        self.psqueue_flag = config_dict["psqueue"]
+        self.configfilename = configfilename
         # Check if we are getting main or derived config file
         if config_dict["config"] is None:
             config = Config(config_dict["procmgr_config"])
@@ -45,10 +60,7 @@ class Runner:
                 if cmd_token == "-x":
                     self.xpm_id = int(cmd_tokens[cmd_index + 1])
 
-        self.sbman = SbatchManager()
-        self.sbman.set_attr("platform", self.platform)
-        self.sbman.as_step = as_step
-        self.sbman.verbose = verbose
+        self.sbman = SbatchManager(configfilename, self.platform, as_step, verbose)
         self.proc = SubprocHelper()
         self.parse_config()
 
@@ -60,6 +72,7 @@ class Runner:
         """
         use_feature = True
         for config_id, config_detail in self.config.items():
+            # TODO: This needs fixing. We force 'host' keyword at reading in.
             if "host" in config_detail:
                 use_feature = False
 
@@ -84,14 +97,11 @@ class Runner:
                             found_node = node
                             break
                 if not found_node:
-                    node = "localhost"
+                    node = LOCALHOST
                 else:
                     node = found_node
             else:
-                if "host" in config_detail:
-                    node = config_detail["host"]
-                else:
-                    node = LOCALHOST
+                node = config_detail["host"]
             if node not in data:
                 job_details = {}
                 job_details[config_id] = config_detail
@@ -107,21 +117,10 @@ class Runner:
         self.node_features = node_features
         return
 
-    def list_jobs(self):
-        cmd = ""
-        user = os.environ.get("USER", "")
-        if not user:
-            print(f"Cannot list jobs for user. $USER variable is not set.")
-        else:
-            if self.sbman.as_step:
-                cmd = "sacct --format=JobIDRaw,JobName%15,User,State,Start,Elapsed%9,NNodes%5,NodeList,Comment"
-            else:
-                cmd = f'squeue -u {user} -o "%10i %15j %8u %8T %20S %10M %6D %C %R %k"'
-        cmd = f"xterm -fa 'Source Code Pro' -geometry 125x31+15+15 -e watch -n 5 --no-title '{cmd}'"
-        asyncio.run(self.proc.run(cmd))
-
     def submit(self):
-        cmd = "sbatch << EOF\n" + self.sbman.sb_script + "\nEOF\n"
+        with open(PSBATCH_SCRIPT, "w") as f:
+            f.write(self.sbman.sb_script)
+        cmd = f"sbatch {PSBATCH_SCRIPT}"
         asyncio.run(self.proc.run(cmd, wait_output=True))
 
     def _select_config_ids(self, unique_ids):
@@ -155,10 +154,13 @@ class Runner:
                 raise RuntimeError(msg)
         return True
 
-    def show_status(self):
+    def show_status(self, quiet=False):
         job_details = self.sbman.get_job_info()
         result_list = []
-        print("%20s %12s %10s %40s" % ("Host", "UniqueID", "Status", "Command+Args"))
+        if not quiet:
+            print(
+                "%20s %12s %10s %40s" % ("Host", "UniqueID", "Status", "Command+Args")
+            )
         for config_id, detail in self.config.items():
             comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
             statusdict = {}
@@ -167,30 +169,36 @@ class Runner:
                 job_detail = job_details[comment]
                 statusdict["status"] = job_detail["state"]
                 statusdict["host"] = job_detail["nodelist"]
-                print(
-                    "%20s %12s %10s %40s"
-                    % (
-                        job_detail["nodelist"],
-                        job_detail["job_name"],
-                        job_detail["state"],
-                        detail["cmd"],
+                statusdict["logfile"] = job_detail["logfile"]
+                statusdict["job_id"] = job_detail["job_id"]
+                if not quiet:
+                    print(
+                        "%20s %12s %10s %40s"
+                        % (
+                            job_detail["nodelist"],
+                            job_detail["job_name"],
+                            job_detail["state"],
+                            detail["cmd"],
+                        )
                     )
-                )
             else:
                 statusdict["status"] = "COMPLETED"
                 nodelist = LOCALHOST
                 if "host" in detail:
                     nodelist = detail["host"]
                 statusdict["host"] = nodelist
-                print(
-                    "%20s %12s %10s %40s"
-                    % (
-                        nodelist,
-                        config_id,
-                        "COMPLETED",
-                        detail["cmd"],
+                statusdict["logfile"] = ""
+                statusdict["job_id"] = ""
+                if not quiet:
+                    print(
+                        "%20s %12s %10s %40s"
+                        % (
+                            nodelist,
+                            config_id,
+                            "COMPLETED",
+                            detail["cmd"],
+                        )
                     )
-                )
             # add dictionary to list
             result_list.append(statusdict)
         return result_list
@@ -241,6 +249,85 @@ class Runner:
         self.stop(unique_ids=unique_ids)
         self.start(unique_ids=unique_ids, skip_check_exist=True)
 
+    def spawnConsole(self, config_id, ldProcStatus, large=False):
+        rv = 1  # return value (0=OK, 1=ERR)
+        job_id = ""
+        for statusdict in ldProcStatus:
+            if statusdict["showId"] == config_id:
+                job_id = statusdict["job_id"]
+
+        if not job_id:
+            print("spawnConsole: process '%s' not found" % config_id)
+        else:
+            try:
+                cmd = f"sattach {job_id}.0"
+                if large:
+                    args = [
+                        self.PATH_XTERM,
+                        "-bg",
+                        "midnightblue",
+                        "-fg",
+                        "white",
+                        "-fa",
+                        "18",
+                        "-T",
+                        config_id,
+                        "-e",
+                        cmd,
+                    ]
+                else:
+                    args = [self.PATH_XTERM, "-T", config_id, "-e", cmd]
+                Popen(args)
+            except:
+                print("spawnConsole failed for process '%s'" % config_id)
+            else:
+                rv = 0
+        return rv
+
+    def spawnLogfile(self, config_id, ldProcStatus, large=False):
+        rv = 1  # return value (0=OK, 1=ERR)
+        logfile = ""
+        for statusdict in ldProcStatus:
+            if statusdict["showId"] == config_id:
+                logfile = statusdict["logfile"]
+
+        if not os.path.exists(logfile) or not logfile:
+            print(f"spawnLogfile: process {config_id} logfile not found ({logfile})")
+        else:
+            try:
+                if large:
+                    args = [
+                        self.PATH_XTERM,
+                        "-bg",
+                        "midnightblue",
+                        "-fg",
+                        "white",
+                        "-fa",
+                        "18",
+                        "-T",
+                        config_id,
+                        "-e",
+                        self.PATH_LESS,
+                        "+F",
+                        logfile,
+                    ]
+                else:
+                    args = [
+                        self.PATH_XTERM,
+                        "-T",
+                        config_id,
+                        "-e",
+                        self.PATH_LESS,
+                        "+F",
+                        logfile,
+                    ]
+                Popen(args)
+            except:
+                print("spawnLogfile failed for process '%s'" % uniqueid)
+            else:
+                rv = 0
+        return rv
+
 
 def main(
     subcommand: Annotated[
@@ -271,19 +358,15 @@ def main(
     runner = Runner(cnf_file, as_step=as_step, verbose=verbose)
     if subcommand == "start":
         runner.start(unique_ids=unique_ids)
-        if runner.psqueue_flag:
-            runner.list_jobs()
     elif subcommand == "stop":
         runner.stop(unique_ids=unique_ids)
     elif subcommand == "restart":
         runner.restart(unique_ids=unique_ids)
     elif subcommand == "status":
-        if interactive:
-            runner.list_jobs()
-        else:
-            runner.show_status()
+        runner.show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
+    silentremove(PSBATCH_SCRIPT)
 
 
 def _do_main():

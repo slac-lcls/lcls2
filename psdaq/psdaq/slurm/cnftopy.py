@@ -16,17 +16,15 @@ CONDA_PREFIX = os.environ.get('CONDA_PREFIX','')
 CONFIGDIR = '/cds/home/m/monarin/lcls2/psdaq/psdaq/slurm'
 host, cores, id, flags, env, cmd, rtprio = ('host', 'cores', 'id', 'flags', 'env', 'cmd', 'rtprio')
 task_set = ''
-psqueue = True
 """
     o_file.writelines(header + "\n")
 
     with open(cnf_file, "r") as f:
         for line in f:
-            if (
-                line.find("platform:") > -1
-                or line.find("taskset") > -1
-                or line.find("procstat") > -1
-            ):
+            if line.find("platform:") > -1 or line.find("taskset") > -1:
+                continue
+            elif line.find("procstat") > -1:
+                o_file.writelines(" {id: 'psqueue', cmd: 'psqueue -i 5'},")
                 continue
             o_file.writelines(line)
     o_file.close()
