@@ -146,6 +146,12 @@ int main (int argc, char **argv) {
         printf("axiDataWidth    : %u\n", (vsn.userValues[7]>>16)&0xff);
         printf("axiIdBits       : %u\n", (vsn.userValues[7]>> 8)&0xff);
         printf("axiLenBits      : %u\n", (vsn.userValues[7]>> 0)&0xff);
+
+        if (strstr((char*)vsn.buildString,"DrpPgpIlv")==0) {
+          printf("Unexpected firmware image. Exiting.\n");
+          return 1;
+        }
+            
         check_program_clock(ifd, vsn);
       }
     }   

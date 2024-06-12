@@ -571,6 +571,11 @@ int main(int argc, char* argv[])
       }
 
       core_pcie = (axiv.userValues[2] == 0);
+
+      if (strstr((char*)axiv.buildString,"DrpTDet")==0) {
+          printf("Unexpected firmware image. Exiting.\n");
+          return 1;
+      }
     }
 
     //

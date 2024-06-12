@@ -162,6 +162,7 @@ target_link_libraries(kcuMargin
 
 install(TARGETS kcu
                 kcuSim
+                kcuStatus
                 kcuSimValid
                 kcuHist
     ARCHIVE DESTINATION lib
