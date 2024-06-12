@@ -39,7 +39,7 @@ namespace Pds {
       Reg  txOpCodeCnt;
       Reg  txOpCodeLast;
       Reg  txOpCodeNum;
-      Reg  rsvd_AC;
+      Reg  txGthDriver;
       Reg  rsvd_B0[0x50>>2];
       // phy
       Reg64  phyData;
@@ -51,7 +51,7 @@ namespace Pds {
       Reg  gearboxAligned;
       Reg  rsvd_124[0xC>>2];
       Reg  rxInitCnt;
-      Reg  rsvd_134[(0x1000-0x134)>>2];
+      Reg  rsvd_134[(0x10000-0x134)>>2];
     };
   };
 };

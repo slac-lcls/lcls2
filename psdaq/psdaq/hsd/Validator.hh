@@ -33,7 +33,7 @@ public:
 public:
   //  unsigned num_samples() const { return _p[0]&~(1<<31); }
   unsigned num_samples() const { 
-    unsigned v = _p[0]&~(1<<31);
+    unsigned v = _p[0]&~(3<<30);
     //    if (!v) v = 0x640;  // kludge for fw bug
     //    if (!v) v = 0x320;  // kludge for fw bug
     return v;

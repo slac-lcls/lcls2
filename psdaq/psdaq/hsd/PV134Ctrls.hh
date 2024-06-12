@@ -18,6 +18,7 @@ namespace Pds {
     public:
       void reset     (unsigned);
       void configure (unsigned);
+      void configPgp (unsigned);
       void loopback  (bool) {}
       void loopback  (unsigned,bool);
       void disablefull(unsigned,bool);

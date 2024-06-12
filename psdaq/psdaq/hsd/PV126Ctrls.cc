@@ -131,6 +131,9 @@ namespace Pds {
       _ready[fmc]->putFrom<unsigned>(1);
     }
 
+    void PV126Ctrls::configPgp(unsigned fmc) {
+    }
+
     void PV126Ctrls::reset(unsigned fmc) {
       Pds_Epics::EpicsPVA& pv = *_pv[fmc];
       if (PVGET(reset)) {
