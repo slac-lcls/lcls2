@@ -8,7 +8,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "psdaq/service/json.hpp"
+#include <nlohmann/json.hpp>
+
 
 namespace Pds {
   namespace Eb {

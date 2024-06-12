@@ -1,4 +1,5 @@
 find_package(PythonLibs REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -24,6 +25,7 @@ target_link_libraries(drpbase
     xtcdata::xtc
     epicstools
     Threads::Threads
+    nlohmann_json::nlohmann_json
 )
 
 add_executable(drp
@@ -59,6 +61,7 @@ target_link_libraries(drp
     drpbase
     trigger
     mmhw
+    nlohmann_json::nlohmann_json
 )
 
 add_executable(drp_bld

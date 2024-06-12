@@ -5,7 +5,6 @@
 #include "Detector.hh"
 #include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/trigger/utilities.hh"
-#include "psdaq/service/json.hpp"
 #include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
@@ -15,6 +14,7 @@
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/TransitionId.hh"
+#include <nlohmann/json.hpp>
 
 namespace Pds {
     class TimingHeader;

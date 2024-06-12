@@ -1,4 +1,5 @@
 find_package(PythonLibs REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -18,6 +19,7 @@ target_link_libraries(trigger
   service
   ${PYTHON_LIBRARIES}
   Threads::Threads
+  nlohmann_json::nlohmann_json
 )
 
 #---
@@ -38,6 +40,7 @@ target_include_directories(tmoTrigger PUBLIC
 target_link_libraries(tmoTrigger
   xtcdata::xtc
   trigger
+  nlohmann_json::nlohmann_json
 )
 
 #---

@@ -2,7 +2,7 @@
 #define Pds_Trg_utilities_hh
 
 #include "psdaq/service/Dl.hh"
-#include "psdaq/service/json.hpp"
+#include <nlohmann/json.hpp>
 
 #include <cstdint>
 #include <string>

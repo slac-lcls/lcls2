@@ -2,7 +2,7 @@
 
 #include <string>
 #include <zmq.h>
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 class ZmqContext
 {

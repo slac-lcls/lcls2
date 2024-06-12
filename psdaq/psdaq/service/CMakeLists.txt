@@ -1,4 +1,5 @@
 find_package(PythonLibs REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 add_library(service SHARED
     SysClk.cc
@@ -41,6 +42,7 @@ add_library(collection SHARED
 target_link_libraries(collection
     psalg::utils
     libzmq
+    nlohmann_json::nlohmann_json
 )
 
 target_include_directories(collection PUBLIC

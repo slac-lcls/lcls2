@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "psdaq/service/json.hpp"
+#include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
 #include "psalg/utils/SysLog.hh"
