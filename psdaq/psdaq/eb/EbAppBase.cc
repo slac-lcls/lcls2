@@ -171,7 +171,7 @@ int EbAppBase::connect(unsigned maxTrBuffers)
   for (auto i = 0u; i < nCtrbs; ++i)
   {
     // Pass loop index by value or it will be out of scope when lambda runs
-    _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=](){ return arrTime(i); });
+    _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=,this](){ return arrTime(i); });
 
     // Revisit: Doesn't work:
     //labels["ctrb"] = _prms.drps[i];

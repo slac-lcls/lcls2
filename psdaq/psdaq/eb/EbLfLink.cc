@@ -610,8 +610,8 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
   class Pending
   {
   public:
-    Pending(volatile uint64_t& pending) : _pending(pending) { ++_pending; }
-    ~Pending() { --_pending; }
+    Pending(volatile uint64_t& pending) : _pending(pending) { _pending += 1; }
+    ~Pending() { _pending -= 1; }
   private:
     volatile uint64_t& _pending;
   } pending(_pending);

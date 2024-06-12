@@ -196,7 +196,9 @@ int main(int argc, char* argv[])
   //
   //  Fetch channel field names from PVA
   //
+#if 0 // For debug??
   BldPV* pvaPayload    = new BldPV (payName);
+#endif
   PVBase* pvaAddr      = new PVBase("ca",addName);
   PVBase* pvaPort      = new PVBase("ca",prtName);
   // PVBase* pvaAddr      = new PVBase((std::string(bldName)+":ADDR"   ).c_str());

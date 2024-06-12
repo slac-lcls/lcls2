@@ -271,7 +271,7 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
   int  rc;
   auto t0{fast_monotonic_clock::now()};
 
-  ++_pending;
+  _pending += 1;
 
   while (true)
   {
@@ -300,7 +300,7 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
     }
   }
 
-  --_pending;
+  _pending -= 1;
 
   return rc;
 }
