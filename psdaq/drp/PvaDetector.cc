@@ -399,9 +399,13 @@ unsigned PvDetector::connect(std::string& msg)
                 alias  = pvSpec.substr(0, pos);
                 pvName = pvSpec.substr(pos+1);
             }
+            auto aliasPos = pos;
             pos = pvSpec.find("/", 0);
             if (pos != std::string::npos) { // Parse provider
-                provider = pvSpec.substr(0, pos);
+                if (aliasPos != std::string::npos)
+                    provider = pvSpec.substr(aliasPos+1, pos-aliasPos-1);
+                else
+                    provider = pvSpec.substr(0, pos);
                 pvName   = pvSpec.substr(pos+1);
             }
             pos = pvSpec.find(".", 0);
