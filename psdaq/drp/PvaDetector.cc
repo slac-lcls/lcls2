@@ -386,7 +386,7 @@ unsigned PvDetector::connect(std::string& msg)
     }
 
     unsigned id = 0;
-    for (auto& pvSpec : m_para.pvSpecs) {
+    for (const auto& pvSpec : m_para.pvSpecs) {
         // Parse the pvSpec string of the form "[<alias>=][<provider>/]<PV name>[.<field>][,firstDim]"
         try {
             std::string alias    = m_para.detName;
@@ -394,29 +394,25 @@ unsigned PvDetector::connect(std::string& msg)
             std::string provider = "pva";
             std::string field    = "value";
             uint32_t    firstDim = firstDimDef;
-            auto pos = pvSpec.find("=", 0);
+            auto pos = pvName.find("=", 0);
             if (pos != std::string::npos) { // Parse alias
-                alias  = pvSpec.substr(0, pos);
-                pvName = pvSpec.substr(pos+1);
+                alias  = pvName.substr(0, pos);
+                pvName = pvName.substr(pos+1);
             }
-            auto aliasPos = pos;
-            pos = pvSpec.find("/", 0);
+            pos = pvName.find("/", 0);
             if (pos != std::string::npos) { // Parse provider
-                if (aliasPos != std::string::npos)
-                    provider = pvSpec.substr(aliasPos+1, pos-aliasPos-1);
-                else
-                    provider = pvSpec.substr(0, pos);
-                pvName   = pvSpec.substr(pos+1);
+                provider = pvName.substr(0, pos);
+                pvName   = pvName.substr(pos+1);
             }
-            pos = pvSpec.find(".", 0);
-            if (pos != std::string::npos) { // Parse field name
-                field  = pvSpec.substr(pos+1);
-                pvName = pvSpec.substr(0, pos);
-            }
-            pos = pvSpec.find(",", 0);
+            pos = pvName.find(",", 0);
             if (pos != std::string::npos) { // Parse firstDim value
-                firstDim = std::stoul(pvSpec.substr(pos+1));
-                field    = pvSpec.substr(0, pos);
+                firstDim = std::stoul(pvName.substr(pos+1));
+                pvName   = pvName.substr(0, pos);
+            }
+            pos = pvName.find(".", 0);
+            if (pos != std::string::npos) { // Parse field name
+                field  = pvName.substr(pos+1);
+                pvName = pvName.substr(0, pos);
             }
             std::string request = provider == "pva" ? "field(value,timeStamp,dimension)"
                                                     : "field(value,timeStamp)";
@@ -427,6 +423,8 @@ unsigned PvDetector::connect(std::string& msg)
                 }
             }
 
+            logging::debug("For '%s', alias '%s', provider '%s', PV name '%s', field '%s', firstDim %u, request '%s'",
+                           pvSpec.c_str(), alias.c_str(), provider.c_str(), pvName.c_str(), field.c_str(), firstDim, request.c_str());
             auto pvMonitor = std::make_shared<PvMonitor>(m_para,
                                                          alias, pvName, provider, request, field,
                                                          id++, m_evtQueue.size(), firstDim);
