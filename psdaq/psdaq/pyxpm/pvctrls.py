@@ -427,11 +427,10 @@ class GroupSetup(object):
 
         forceUpdate(self._app.l0DestSel)
         self.setDestn()
-        self.dump()
+        #self.dump()
         lock.release()
 
     def stepGroups(self, pv, val):
-        #logging.info(f'stepGroups{self._group} 0x{val:x}')
         getattr(self._app,'stepGroup%i'%self._group).set(val)
 
     def stepEnd(self, pv, val):
@@ -658,16 +657,10 @@ class PVCtrls(object):
             elif src==2: # stats message
                 if self._handle:
                     offset = self._handle(msg)
+                    # seqcodes
                     if self._seq:
                         w = struct.unpack_from(f'<{NCODES}L',msg,offset) #seqCount
-                        offset += NCODES*16
-                        #u = struct.unpack_from(f'<B',msg,offset) # seqInvalid
-                        #offset += 1
-                        u = 0
-                        for i in range(NCODES//4):
-                            if u&(1<<i):
-                                logging.warning(f'Seq {i} is invalid.  Resetting.')
-                                self._seq[i]._eng.reset()
+                        offset += NCODES*4
 
                         value = self._seq_codes_pv.current()
                         self._seq_codes_val['Rate'] = w
@@ -676,19 +669,36 @@ class PVCtrls(object):
                         value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
                         self._seq_codes_pv.post(value)
                     else:
-                        offset += NCODES*16
-#                        offset += NCODES*16 + 1
-#                    if self._paddr:
-#                        v = struct.unpack_from(f'<I',msg,offset) # pAddr
-#                        if v!=self._paddr.value():
-#                            pvUpdate(self._paddr,v)
+                        offset += NCODES*4
 
+                    # paddr
+                    if True:
+                        v = struct.unpack_from(f'<I',msg,offset)[0] # pAddr
+                        offset += 4
+                        paddr = self._paddr.current()['value']
+                        if v!=paddr:
+                            logging.warning(f'Update paddr {paddr} {v}')
+                            pvUpdate(self._paddr,v)
+
+                    # seqInvalid
+                    if self._seq:
+                        u = struct.unpack_from(f'<B',msg,offset)[0] # seqInvalid
+                        offset += 1
+                        for i in range(NCODES//4):
+                            if u&(1<<i):
+                                logging.warning(f'Seq {i} is invalid.  Resetting.')
+                                self._seq[i]._eng.reset()
+                    else:
+                        offset += 1
+                                
                     # check for a dropped "step done"
                     for i in range(8):
                         g = self._group._groups[i]
-                        if ((g._pv_StepGroups.current()!=0) and
-                            (g._pv_StepEnd.current()==
-                             g._stats._pv_numL0Acc.current()) and
-                            (g._pv_StepDone.current()==0)):
-                            logging.warning(f'Recover stepDone for group {i}')
-                            g.stepDone(True)
+                        if g._pv_StepGroups.current()['value']!=0:
+                            end  = g._pv_StepEnd.current ()['value']
+                            nL0  = g._stats._pv_numL0Acc.current()['value']
+                            done = g._pv_StepDone.current()['value']
+                            #logging.info(f'Check group {i}: end {end}  nL0 {nL0}  done {done}')
+                            if ((end==nL0) and done==0):
+                                logging.warning(f'Recover stepDone for group {i} events {end}')
+                                g.stepDone(True)

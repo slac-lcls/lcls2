@@ -317,6 +317,11 @@ class GroupStats(object):
         self._pv_numL1     = _addPVF('NumL1')
         self._pv_deadFrac  = _addPVF('DeadFrac')
         self._pv_deadTime  = _addPVF('DeadTime')
+        # statistics
+        self._pv_l0First   = _addPVF('L0InpFirst')
+        self._pv_l0Last    = _addPVF('L0InpLast')
+        self._pv_l0MinIntv = _addPVF('L0InpMinIntv')
+        self._pv_l0MaxIntv = _addPVF('L0InpMaxIntv')
 
         self._pv_deadFLink = addPV(name+':DeadFLnk','af',[0.]*32)
 
@@ -343,6 +348,18 @@ class GroupStats(object):
         (numL0   ,offset) = bytes2Int(msg,offset)
         (numL0Inh,offset) = bytes2Int(msg,offset)
         (numL0Acc,offset) = bytes2Int(msg,offset)
+
+        def bytes22Int(msg,offset):
+            b = struct.unpack_from('<BBBBB',msg,offset)
+            offset += 5
+            w = 0
+            for i,v in enumerate(b):
+                w += v<<(8*i)
+            return (w&0xfffff,(w>>20)&0xfffff,offset)
+
+        (l0First , l0Last  , offset) = bytes22Int(msg,offset)
+        (l0MinInt, l0MaxInt, offset) = bytes22Int(msg,offset)
+
         offset += 1
         rT = l0Ena*fidPeriod
         updatePv(self._pv_runTime , rT, timev)
@@ -380,6 +397,11 @@ class GroupStats(object):
             self._numL0   = numL0
             self._numL0Acc= numL0Acc
             self._numL0Inh= numL0Inh
+
+            updatePv(self._pv_l0First  , l0First , timev)
+            updatePv(self._pv_l0Last   , l0Last  , timev)
+            updatePv(self._pv_l0MinIntv, l0MinInt, timev)
+            updatePv(self._pv_l0MaxIntv, l0MaxInt, timev)
         else:
             updatePvC(self._pv_running, False, timev)
             

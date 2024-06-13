@@ -128,6 +128,25 @@ class DeadTime(object):
             self.det[group][0].setText('')
             self.det[group][1].setText('')
 
+class PvPatternStats(QtWidgets.QWidget):
+    def __init__(self, base, pvbase, groups):
+        super(PvPatternStats,self).__init__()
+
+        lo = QtWidgets.QVBoxLayout()
+
+        stats = ['L0InpFirst','L0InpLast','L0InpMinIntv','L0InpMaxIntv']
+        glo = QtWidgets.QGridLayout()
+        for i,g in enumerate(groups):
+            glo.addWidget(QtWidgets.QLabel('Group %d'%g),0,i+1)
+        for i,s in enumerate(stats):
+            glo.addWidget(QtWidgets.QLabel(s),i+1,0,QtCore.Qt.AlignRight)
+            for j,g in enumerate(groups):
+                glo.addWidget(PvDbl(pvbase+'%d:'%g+stats[i]),i+1,j+1)
+
+        lo.addLayout(glo)
+        lo.addStretch()
+        self.setLayout(lo)
+
 class PvGroupStats(QtWidgets.QWidget):
     def __init__(self, base, pvbase, xpm, groups, prod=False):
         super(PvGroupStats,self).__init__()
@@ -157,9 +176,6 @@ class PvGroupStats(QtWidgets.QWidget):
         self.pvL0Disable = Pv(base+':XPM:%d:GroupL0Disable'%xpm,self.monDisable)
         lo.addLayout(hlo)
 
-        #stats = ['L0InpRate','L0AccRate','L1Rate',
-        #         'RunTime','NumL0Inp','NumL0Acc','NumL1',
-        #         'DeadFrac','DeadTime']
         stats = ['L0InpRate','L0AccRate',
                  'RunTime','NumL0Inp','NumL0Acc',
                  'DeadFrac','DeadTime']
@@ -266,6 +282,7 @@ class Ui_MainWindow(object):
                 addGroup(tw, pvbase, g, xpm)
             tw.addTab(PvStateMachine(base,pvbase,xpm,groups,prod),'Transitions')
             tw.addTab(PvGroupStats  (base,pvbase,xpm,groups),'Events')
+            tw.addTab(PvPatternStats(base,pvbase,groups),'Pattern')
             tw.setCurrentIndex(len(groups)+1)
             lol.addWidget(tw)
         else:
