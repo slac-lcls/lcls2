@@ -498,7 +498,8 @@ def _rm(args):
             sys.exit(ex)
 
     if args.write:
-        mycdb = configdb(args.url, hutch, root=args.root)
+        mycdb = configdb(args.url, hutch, root=args.root,
+                         user=args.user, password=args.password)
         if seg is None:
             xx = mycdb.remove_device(alias, f'{dev}', hutch)
         else:
