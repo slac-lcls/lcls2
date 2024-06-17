@@ -135,7 +135,7 @@ procmgr_config = [
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
- {host: 'drp-srcf-cmp003', id:'bld_0',       flags:'spux', env:epics_env, cmd:bld_cmd0+' -l 0x8 -D '+f'{gmd},{xgmd} -v'},
+# {host: 'drp-srcf-cmp003', id:'bld_0',       flags:'spux', env:epics_env, cmd:bld_cmd0+' -l 0x8 -D '+f'{gmd},{xgmd} -v'},
 
 # {host: 'drp-srcf-cmp028', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
 # {host: 'drp-srcf-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:f'{ea_cmd1} -l 0x4'},
@@ -187,6 +187,8 @@ procmgr_config = [
  #{host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
 # {host: 'drp-srcf-cmp029', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+
+ {host: 'drp-neh-cmp029',  id:'andor_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetector_example.txt'},
 
 # {host: 'drp-srcf-cmp036', id:'gmdstr0_0',  flags:'spux', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE0'},
 # {host: 'drp-srcf-cmp028', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms

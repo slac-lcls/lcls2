@@ -539,12 +539,36 @@ void PvDetector::_event(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
     NamesId namesId(nodeId, RawNamesIndex + pvXtc.src.value());
     CreateData cd(dgram.xtc, bufEnd, m_namesLookup, namesId);
     DataDsc* payload = reinterpret_cast<DataDsc*>(pvXtc.payload());
-    uint32_t* shape = payload->shape;
     void* data = &payload->data;
-    size_t size = pvXtc.extent - ((char*)data - (char*)payload); // Exclude shape info
-    void* ptr = cd.get_ptr(); // Fetch a pointer to the next part of contiguous memory
-    cd.set_array_shape(RawDef::field, shape); // Allocate the space before filling it
-    memcpy(ptr, data, size);  // size is the same as the amount of space allocated
+    Name& name = cd.nameindex().names().get(RawDef::field);
+    if (name.rank()) {                  // Handle vectors and arrays, etc.
+        uint32_t* shape = payload->shape;
+        size_t size = pvXtc.extent - ((char*)data - (char*)payload); // Exclude shape info
+        void* ptr = cd.get_ptr(); // Fetch a pointer to the next part of contiguous memory
+        cd.set_array_shape(RawDef::field, shape); // Allocate the space before filling it
+        memcpy(ptr, data, size);  // size is the same as the amount of space allocated
+    }
+    else {                              // Handle scalars
+        switch (name.type()) {
+            case Name::INT8:      cd.set_value(RawDef::field, *static_cast<int8_t  *>(data));  break;
+            case Name::INT16:     cd.set_value(RawDef::field, *static_cast<int16_t *>(data));  break;
+            case Name::INT32:
+            case Name::ENUMVAL:
+            case Name::ENUMDICT:  cd.set_value(RawDef::field, *static_cast<int32_t *>(data));  break;
+            case Name::INT64:     cd.set_value(RawDef::field, *static_cast<int64_t *>(data));  break;
+            case Name::UINT8:     cd.set_value(RawDef::field, *static_cast<uint8_t *>(data));  break;
+            case Name::UINT16:    cd.set_value(RawDef::field, *static_cast<uint16_t*>(data));  break;
+            case Name::UINT32:    cd.set_value(RawDef::field, *static_cast<uint32_t*>(data));  break;
+            case Name::UINT64:    cd.set_value(RawDef::field, *static_cast<uint64_t*>(data));  break;
+            case Name::FLOAT:     cd.set_value(RawDef::field, *static_cast<float   *>(data));  break;
+            case Name::DOUBLE:    cd.set_value(RawDef::field, *static_cast<double  *>(data));  break;
+            default: {
+                logging::critical("Unsupported scalar type %d for %s\n", name.type(), name.name());
+                abort();
+                break;
+            }
+        }
+    }
     dgram.xtc.damage.increase(pvXtc.damage.value());
 }
 
