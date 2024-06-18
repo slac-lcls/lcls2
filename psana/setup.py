@@ -170,6 +170,7 @@ if 'PSANA' in BUILD_LIST :
             'roicon              = psana.app.roicon:__main__',
             'psplot_live         = psana.app.psplot_live.main:start',
             'timestamp_sort_h5   = psana.app.timestamp_sort_h5.main:start',
+            'psanaplot = psana.app.psana_plot:_do_main',
         ]
     }
 
