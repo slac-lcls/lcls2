@@ -1,6 +1,6 @@
 from psana       import dgram
 from psana.event import Event
-from psana.psexp import PacketFooter, TransitionId, PrometheusManager
+from psana.psexp import PacketFooter, TransitionId
 import numpy as np
 import os
 import time
@@ -12,10 +12,6 @@ if mode == 'mpi':
     logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
 else:
     logger = utils.Logger()
-
-s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
-s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')
-s_bd_gen_evt = PrometheusManager.get_metric('psana_bd_gen_evt')
 
 class ExitId:
     NoError = 0
@@ -32,7 +28,7 @@ class EventManager(object):
           Yield one bigdata event.
     """
     def __init__(self, view, smd_configs, dm, esm, 
-            filter_fn=0, prometheus_counter=None, 
+            filter_fn=0, prom_man=None, 
             max_retries=0, use_smds=[]):
         if view:
             pf = PacketFooter(view=view)
@@ -45,7 +41,7 @@ class EventManager(object):
         self.esm = esm
         self.n_smd_files = len(self.smd_configs)
         self.filter_fn = filter_fn
-        self.prometheus_counter = prometheus_counter
+        self.read_gauge = prom_man.get_metric('psana_bd_read')
         self.max_retries = max_retries
         self.use_smds = use_smds
         self.smd_view = view
@@ -67,11 +63,6 @@ class EventManager(object):
     def __iter__(self):
         return self
 
-    def _inc_prometheus_counter(self, unit, value=1):
-        if self.prometheus_counter:
-            self.prometheus_counter.labels(unit,'None').inc(value)
-
-    @s_bd_gen_evt.time()
     def __next__(self):
         # Check in case there are some failures (I/O) happened on a core.
         # For MPI Mode, this allows clean exit.
@@ -107,7 +98,6 @@ class EventManager(object):
 
         current_bd_offsets[i_smd] = self.bd_offset_array[i_evt, i_smd] + self.bd_size_array[i_evt, i_smd]
         
-    @s_bd_gen_smd_batch.time()
     def _get_offset_and_size(self):
         """
         Use fast step-through to read off offset and size from smd_view.
@@ -208,7 +198,6 @@ class EventManager(object):
         
         return os.pread(fd, size, offset)
 
-    @s_bd_just_read.time()
     def _read(self, fd, size, offset):
         st = time.monotonic()
         chunk = bytearray()
@@ -248,12 +237,10 @@ class EventManager(object):
         
         en = time.monotonic()
         sum_read_nbytes = memoryview(chunk).nbytes # for prometheus counter
-        rate = 0
         if sum_read_nbytes > 0:
             rate = (sum_read_nbytes/1e6)/(en-st)
-        logger.debug(f"bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
-        self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
-        self._inc_prometheus_counter('seconds', en-st)
+            logger.debug(f"bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+            self.read_gauge.set(rate)
         return chunk
 
     def _init_bd_chunks(self):
@@ -340,7 +327,6 @@ class EventManager(object):
                 dgrams[i_smd] = dgram.Dgram(config=self.dm.configs[i_smd], view=view, offset=offset)
 
         self.i_evt += 1
-        self._inc_prometheus_counter('evts')
         evt = Event(dgrams=dgrams, run=self.dm.get_run()) 
         return evt
 

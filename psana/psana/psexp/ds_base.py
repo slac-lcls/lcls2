@@ -161,7 +161,7 @@ class DataSourceBase(abc.ABC):
 
         assert self.batch_size > 0
 
-        self.prom_man = PrometheusManager(os.environ['PS_PROMETHEUS_JOBID'])
+        self.prom_man = PrometheusManager(self.exp, self.runnum)
         self.dsparms  = DsParms(self.batch_size,
                 self.max_events,
                 self.filter,
@@ -448,11 +448,12 @@ class DataSourceBase(abc.ABC):
         if not self.monitor:
             logger.debug('ds_base: RUN W/O PROMETHEUS CLENT')
         elif prom_cfg_dir is None: # Use push gateway
-            logger.debug('ds_base: START PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
+            self.prom_man.rank = mpi_rank
+            logger.debug(f'ds_base: START PROMETHEUS CLIENT (EXP:{self.prom_man.exp} RUN:{self.prom_man.runnum} USER:{self.prom_man.username} RANK:{self.prom_man.rank})')
             self.e = threading.Event()
             self.t = threading.Thread(name='PrometheusThread%s'%(mpi_rank),
                     target=self.prom_man.push_metrics,
-                    args=(self.e, mpi_rank),
+                    args=(self.e, ),
                     daemon=True)
             self.t.start()
         else:                      # Use http exposer
@@ -465,7 +466,7 @@ class DataSourceBase(abc.ABC):
             return
 
         if self.e is not None:     # Push gateway case only
-            logger.debug('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
+            logger.debug('ds_base: END PROMETHEUS CLIENT (EXP:%s RUN:%d USER:%s)'%(self.prom_man.exp, self.prom_man.runnum, self.prom_man.username))
             self.e.set()
 
     @property

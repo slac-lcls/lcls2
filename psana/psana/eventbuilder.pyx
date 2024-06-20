@@ -112,7 +112,6 @@ cdef class EventBuilder:
     cdef list configs
     cdef PyObject* dsparms
     cdef PyObject* run
-    cdef PyObject* prometheus_counter
     cdef unsigned nevents
     cdef unsigned nsteps
     cdef array.array offsets
@@ -144,13 +143,11 @@ cdef class EventBuilder:
         cdef char* kwlist[4]
         kwlist[0] = "dsparms"
         kwlist[1] = "run"   
-        kwlist[2] = "prometheus_counter"
-        kwlist[3] = NULL
+        kwlist[2] = NULL
 
-        if PyArg_ParseTupleAndKeywords(args, kwargs, "|OOO", kwlist, 
+        if PyArg_ParseTupleAndKeywords(args, kwargs, "|OO", kwlist, 
                 &(self.dsparms),
-                &(self.run),
-                &(self.prometheus_counter)) == False:
+                &(self.run)) == False:
             raise RuntimeError, "Invalid kwargs for EventBuilder"
         
     def events(self):

@@ -2,13 +2,6 @@ from .datasource import DataSource
 #from .smalldata import SmallData
 
 
-# Collect start-up time (determined as when this file is loaded).
-from psana.psexp.prometheus_manager import PrometheusManager
-import time
-g_ts = PrometheusManager.get_metric('psana_timestamp')
-g_ts.labels('psana_init').set(time.time())
-
-
 # Calls MPI_Abort when one or more (but not all) cores fail.
 from psana.psexp.tools import mode
 # Checks that we are in MPI and not Legion mode

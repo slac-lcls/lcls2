@@ -14,11 +14,6 @@ else:
 
 import time
 
-s_smd0_wait_eb = PrometheusManager.get_metric('psana_smd0_wait_eb')
-s_eb_wait_smd0 = PrometheusManager.get_metric('psana_eb_wait_smd0')
-s_eb_wait_bd = PrometheusManager.get_metric('psana_eb_wait_bd')
-s_bd_wait_eb = PrometheusManager.get_metric('psana_bd_wait_eb')
-
 # Setting up group communications
 # Ex. PS_EB_NODES=3 mpirun -n 13
 #       1   4   7   10
@@ -246,9 +241,9 @@ class Smd0(object):
         self.step_hist = StepHistory(self.comms.smd_size, len(self.configs))
         
         # Collecting Smd0 performance using prometheus
-        self.c_sent = ds.dsparms.prom_man.get_metric('psana_smd0_sent')
+        self.wait_gauge = ds.dsparms.prom_man.get_metric('psana_smd0_wait')
+        self.rate_gauge = ds.dsparms.prom_man.get_metric('psana_smd0_rate')
     
-    @s_smd0_wait_eb.time()
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
         logger.debug(f'TIMELINE 1. SMD0GOTCHUNK {st_req}', level=2)
@@ -258,6 +253,7 @@ class Smd0(object):
         en_req = time.monotonic()
         logger.debug(f'TIMELINE 2. SMD0GOTEB{rankreq[0]} {en_req}', level=2)
         logger.debug(f'WAITTIME SMD0-EB (0-{rankreq[0]}) {en_req-st_req:.5f}') 
+        self.wait_gauge.set(en_req-st_req)
         
     def start(self):
         # Rank 0 waits on World comm for terminating signal
@@ -296,12 +292,9 @@ class Smd0(object):
             
             logger.debug(f'TIMELINE 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}', level=2)
         
-            # sending data to prometheus
-            self.c_sent.labels('evts', rankreq[0]).inc(self.smdr_man.got_events)
-            self.c_sent.labels('batches', rankreq[0]).inc()
-            self.c_sent.labels('MB', rankreq[0]).inc(memoryview(repack_smds[rankreq[0]]).nbytes/1e6)
             en = time.monotonic()
             logger.debug(f'RATE SMD0-EB (0-{rankreq[0]}) {(self.smdr_man.got_events/(en-st))*1e-3} kHz')
+            self.rate_gauge.set((self.smdr_man.got_events/(en-st))*1e-3)
             
             # Check for terminating signal
             t_req_test = t_req.Test()
@@ -356,8 +349,9 @@ class EventBuilderNode(object):
         self.dsparms    = ds.dsparms
         self.dm         = ds.dm
         self.step_hist  = StepHistory(self.comms.bd_size, len(self.configs))
-        # Collecting Smd0 performance using prometheus
-        self.c_sent     = ds.dsparms.prom_man.get_metric('psana_eb_sent')
+        self.rate_gauge = ds.dsparms.prom_man.get_metric('psana_eb_rate')
+        self.wait_smd0_gauge = ds.dsparms.prom_man.get_metric('psana_eb_wait_smd0')
+        self.wait_bd_gauge = ds.dsparms.prom_man.get_metric('psana_eb_wait_bd')
         self.requests   = []
     
     def _init_requests(self):
@@ -387,15 +381,14 @@ class EventBuilderNode(object):
             self.step_hist.extend_buffers(step_pf.split_packets(), dest_rank, as_event=True)
         del step_batch_dict[dest_rank] # done adding
 
-    @s_eb_wait_bd.time()
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
         req = self.comms.bd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
         req.Wait()
         en_req = time.monotonic()
         logger.debug(f'WAITTIME EB-BD ({self.comms.smd_rank}-{rankreq[0]}) {en_req-st_req:.5f}') 
+        self.wait_bd_gauge.set(en_req-st_req)
 
-    @s_eb_wait_smd0.time()
     def _request_data(self, smd_comm):
         st = time.monotonic()
         logger.debug(f'TIMELINE 5. EB{self.comms.world_rank}SENDREQTOSMD0 {time.monotonic()}', level=2)
@@ -410,6 +403,7 @@ class EventBuilderNode(object):
         en = time.monotonic()
         logger.debug(f'TIMELINE 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}', level=2)
         logger.debug(f'WAITTIME EB-SMD0 ({self.comms.smd_rank}-0) {en-st:.5f} ({count/1e3:.5f}KB)') 
+        self.wait_smd0_gauge.set(en-st)
         return smd_chunk
 
     def start(self):
@@ -459,10 +453,6 @@ class EventBuilderNode(object):
                     self.requests[rankreq[0]-1] = bd_comm.Isend(batches[rankreq[0]], dest=rankreq[0])
                     logger.debug(f'TIMELINE 12. EB{self.comms.world_rank}DONESENDDATATOBD{rankreq[0]+1} {time.monotonic()}', level=2)
                     
-                    # sending data to prometheus
-                    self.c_sent.labels('evts', rankreq[0]).inc(eb_man.eb.nevents)
-                    self.c_sent.labels('batches', rankreq[0]).inc()
-                    self.c_sent.labels('MB', rankreq[0]).inc(memoryview(batches[rankreq[0]]).nbytes/1e6)
                     
                     if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:  
                         step_pf = PacketFooter(view=step_batch)
@@ -499,6 +489,7 @@ class EventBuilderNode(object):
 
                 t1 = time.monotonic()
                 logger.debug(f'RATE EB-BD ({self.comms.smd_rank}-{rankreq[0]}) {(eb_man.eb.nevents/(t1-t0))*1e-3:.5f} kHz')
+                self.rate_gauge.set((eb_man.eb.nevents/(t1-t0))*1e-3)
                 t0 = time.monotonic()
             
             # end for smd_batch_dict in ...
@@ -561,10 +552,11 @@ class BigDataNode(object):
         self.ds         = ds
         self.run        = run
         self.comms      = ds.comms
+        self.wait_gauge = ds.dsparms.prom_man.get_metric('psana_bd_wait')
+        self.rate_gauge = ds.dsparms.prom_man.get_metric('psana_bd_rate')
 
     def start(self):
         
-        @s_bd_wait_eb.time()
         def get_smd():
             bd_comm = self.comms.bd_comm
             bd_rank = self.comms.bd_rank
@@ -582,6 +574,7 @@ class BigDataNode(object):
             logger.debug(f'TIMELINE 15. BD{self.comms.world_rank}RECVDATA {time.monotonic()}', level=2)
             en_req = time.monotonic()
             logger.debug(f'WAITTIME BD-EB ({bd_rank}-{self.comms.smd_rank}) {en_req-st_req:.5f}') 
+            self.wait_gauge.set(en_req-st_req)
             return chunk
         
         events = Events(self.ds, self.run, get_smd=get_smd)
@@ -591,5 +584,8 @@ class BigDataNode(object):
             if self.ds.dsparms.terminate_flag: continue
             if i_evt % 1000 == 0: 
                 t1 = time.monotonic()
-                logger.debug(f'RATE BD ({self.comms.bd_rank}-) {(i_evt/(t1-t0))*1e-3:.5f} kHz')
+                rate = 1/(t1-t0)
+                logger.debug(f'RATE BD ({self.comms.bd_rank}-) {rate:.5f} kHz')
+                self.rate_gauge.set(rate)
+                t0 = time.monotonic()
             yield evt

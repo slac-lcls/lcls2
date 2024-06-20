@@ -1,5 +1,5 @@
 from psana.eventbuilder import EventBuilder
-from psana.psexp        import PacketFooter, PrometheusManager
+from psana.psexp        import PacketFooter
 from .run import RunSmallData
 
 class EventBuilderManager(object):
@@ -8,14 +8,12 @@ class EventBuilderManager(object):
         self.configs        = configs 
         self.dsparms        = dsparms
         self.n_files        = len(self.configs)
-        c_filter            = PrometheusManager.get_metric('psana_eb_filter')
 
         pf                  = PacketFooter(view=view)
         views               = pf.split_packets()
         self.eb             = EventBuilder(views, self.configs, 
                                            dsparms=dsparms,
-                                           run=run,
-                                           prometheus_counter=c_filter)
+                                           run=run)
         self.run_smd        = RunSmallData(run, self.eb)            # only used by smalldata callback
 
     def batches(self):

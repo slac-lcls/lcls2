@@ -76,7 +76,6 @@ class Run(object):
     def __init__(self, ds):
         self.expt, self.runnum, self.timestamp = ds._get_runinfo()
         self.dsparms = ds.dsparms
-        self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
         if hasattr(ds, "dm"): ds.dm.set_run(self)
         if hasattr(ds, "smdr_man"): ds.smdr_man.set_run(self)
         RunHelper(self)
@@ -239,11 +238,7 @@ class RunShmem(Run):
             if evt.service() != TransitionId.L1Accept:
                 if evt.service() == TransitionId.EndRun: return
                 continue
-            st = time.time()
             yield evt
-            en = time.time()
-            self.c_ana.labels('seconds','None').inc(en-st)
-            self.c_ana.labels('batches','None').inc()
 
     def steps(self):
         for evt in self._evt_iter:
@@ -284,11 +279,7 @@ class RunDrp(Run):
                     return
                 self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                 continue
-            st = time.time()
             yield evt
-            en = time.time()
-            self.c_ana.labels('seconds','None').inc(en-st)
-            self.c_ana.labels('batches','None').inc()
             self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
             
 
@@ -329,11 +320,7 @@ class RunSingleFile(Run):
             if evt.service() != TransitionId.L1Accept:
                 if evt.service() == TransitionId.EndRun: return
                 continue
-            st = time.time()
             yield evt
-            en = time.time()
-            self.c_ana.labels('seconds','None').inc(en-st)
-            self.c_ana.labels('batches','None').inc()
 
     def steps(self):
         for evt in self._evt_iter:
@@ -358,11 +345,7 @@ class RunSerial(Run):
                 if evt.service() == TransitionId.EndRun: 
                     return
                 continue
-            st = time.time()
             yield evt
-            en = time.time()
-            self.c_ana.labels('seconds','None').inc(en-st)
-            self.c_ana.labels('batches','None').inc()
 
     def steps(self):
         for evt in self._evt_iter:
@@ -373,7 +356,7 @@ class RunSerial(Run):
 class RunLegion(Run):
     def __init__(self, ds, run_evt):
         self.dsparms = ds.dsparms
-        self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
+        self.ana_t_gauge   = self.dsparms.prom_man.get_metric('psana_bd_ana_rate')
         RunHelper(self)
         self._evt       = run_evt
         self.beginruns  = run_evt._dgrams

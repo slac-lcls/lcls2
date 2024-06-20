@@ -39,17 +39,21 @@ class RunParallel(Run):
             self.eb_node = EventBuilderNode(ds)
         elif nodetype == 'bd':
             self.bd_node = BigDataNode(ds, self)
+            self.ana_t_gauge   = self.dsparms.prom_man.get_metric('psana_bd_ana_rate')
 
     def events(self):
         evt_iter = self.start()
-        for evt in evt_iter:
+        st = time.time()
+        for i, evt in enumerate(evt_iter):
             if evt.service() != TransitionId.L1Accept:
                 continue
-            st = time.time()
             yield evt
-            en = time.time()
-            self.c_ana.labels('seconds','None').inc(en-st)
-            self.c_ana.labels('batches','None').inc()
+            if i % 1000 == 0:
+                en = time.time()
+                ana_rate = 1/(en-st)
+                logger.debug(f'ANARATE {ana_rate:.2f} kHz')
+                self.ana_t_gauge.set(ana_rate)
+                st = time.time()
         
     def steps(self):
         evt_iter = self.start()
@@ -146,14 +150,12 @@ class MPIDataSource(DataSourceBase):
         """ Creates and broadcasts configs
         only called by _setup_run()
         """
-        g_ts = self.prom_man.get_metric("psana_timestamp")
         if nodetype == 'smd0':
             super()._close_opened_smd_files()
             self.smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
             logger.debug(f'mpi_ds: smd0 opened smd_fds: {self.smd_fds}')
             self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
             configs = self.smdr_man.get_next_dgrams()
-            g_ts.labels("first_event").set(time.time())
             nbytes = np.array([memoryview(config).shape[0] for config in configs], \
                     dtype='i')
         else:
@@ -169,7 +171,6 @@ class MPIDataSource(DataSourceBase):
         
         if nodetype != 'smd0':
             configs = [dgram.Dgram(view=config, offset=0) for config in configs]
-            g_ts.labels("first_event").set(time.time())
         return configs
 
     def _setup_run(self):

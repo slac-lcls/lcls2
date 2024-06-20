@@ -28,8 +28,7 @@ class BatchIterator(object):
         else:
             self.eb = EventBuilder(views, configs, 
                     dsparms=dsparms,
-                    run=run,
-                    prometheus_counter=None)
+                    run=run)
             self.run_smd = RunSmallData(run, self.eb)
 
     def __iter__(self):
@@ -91,7 +90,7 @@ class SmdReaderManager(object):
         self._run = None
         
         # Collecting Smd0 performance using prometheus
-        self.c_read = self.dsparms.prom_man.get_metric('psana_smd0_read')
+        self.read_gauge = self.dsparms.prom_man.get_metric('psana_smd0_read')
     
     def get(self):
         """ Reads new data and raise if unable too"""
@@ -107,9 +106,9 @@ class SmdReaderManager(object):
         st = time.monotonic()
         self.smdr.get(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
-        logger.debug(f'READRATE SMD0 (0-) {self.smdr.got/(1e6*(en-st)):.2f} MB/s ({self.smdr.got/1e6:.2f}MB/ {en-st:.2f}s.)')
-        self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
-        self.c_read.labels('seconds', 'None').inc(en-st)
+        read_rate = self.smdr.got/(1e6*(en-st))
+        logger.debug(f'READRATE SMD0 (0-) {read_rate:.2f} MB/s ({self.smdr.got/1e6:.2f}MB/ {en-st:.2f}s.)')
+        self.read_gauge.set(read_rate)
         
         if self.smdr.chunk_overflown > 0:
             msg = f"SmdReader found dgram ({self.smdr.chunk_overflown} MB) larger than chunksize ({self.chunksize/1e6} MB)"

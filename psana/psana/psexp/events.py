@@ -11,7 +11,6 @@ class Events:
         self.smdr_man       = smdr_man         # RunSerial
         self._evt_man       = iter([])
         self._batch_iter    = iter([])
-        self.c_read         = self.ds.dsparms.prom_man.get_metric('psana_bd_read')
         self.st_yield       = 0
         self.en_yield       = 0
 
@@ -38,7 +37,7 @@ class Events:
                             self.ds.dm, 
                             self.run.esm,
                             filter_fn           = self.ds.dsparms.filter,
-                            prometheus_counter  = self.c_read,
+                            prom_man            = self.ds.dsparms.prom_man,
                             max_retries         = self.ds.dsparms.max_retries,
                             use_smds            = self.ds.dsparms.use_smds,
                             )
@@ -63,7 +62,7 @@ class Events:
                         self.ds.dm, 
                         self.run.esm,
                         filter_fn           = self.ds.dsparms.filter,
-                        prometheus_counter  = self.c_read,
+                        prom_man            = self.ds.dsparms.prom_man,
                         max_retries         = self.ds.dsparms.max_retries,
                         use_smds            = self.ds.dsparms.use_smds,
                         )
