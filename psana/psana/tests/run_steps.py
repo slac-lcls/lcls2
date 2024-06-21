@@ -25,7 +25,7 @@ def my_filter(evt):
 def run_serial_read(n_events, batch_size=1, filter_fn=0):
     exp_xtc_dir = os.path.join(xtc_dir, '.tmp')
     os.environ['PS_SMD_N_EVENTS'] = str(n_events)
-    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn, monitor=True)
+    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn)
     cn_steps = 0
     cn_events = 0
     result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}

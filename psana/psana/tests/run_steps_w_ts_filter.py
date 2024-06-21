@@ -25,7 +25,7 @@ def run_serial_read(n_events, batch_size=1, filter_fn=0):
     timestamps = np.array([4294967300, 4294967303, 4294967305, 4294967311, \
             4294967317, 4294967318, 4294967319, 4294967321, 4294967322, \
             4294967337, 4294967338, 4294967339, 4294967340, 4294967342, 4294967343], dtype=np.uint64)
-    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn, monitor=True, timestamps=timestamps)
+    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn, timestamps=timestamps)
     cn_steps = 0
     cn_events = 0
     result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}
