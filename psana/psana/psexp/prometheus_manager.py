@@ -5,14 +5,17 @@ import getpass
 from prometheus_client import CollectorRegistry, Counter, push_to_gateway, Summary, Gauge
 from prometheus_client import start_http_server
 from prometheus_client.exposition import tls_auth_handler
+from subprocess import Popen
 
 from psana import utils
 from psana.psexp.tools import mode
 if mode == 'mpi':
     from mpi4py import MPI
     logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
+    size = MPI.COMM_WORLD.Get_size()
 else:
     logger = utils.Logger()
+    size = 1
 
 PUSH_INTERVAL_SECS= 5
 
@@ -105,6 +108,14 @@ class PrometheusManager(object):
                 push_to_gateway(PUSH_GATEWAY, job=self.job, grouping_key={'rank': self.rank}, registry=self.registry, timeout=None)
             logger.debug(f'TS: %s PUSHED EXP:{self.exp} RUN:{self.runnum} USER:{self.username} RANK:{self.rank} {e.isSet()=}')
             time.sleep(PUSH_INTERVAL_SECS)
+
+    def delete_all_metrics_on_pushgateway(self, n_ranks=0):
+        if not n_ranks:
+            n_ranks = size
+        for i_rank in range(n_ranks):
+            args = ['curl', '-k', '-X', 'DELETE', f'{PUSH_GATEWAY}/metrics/job/{self.job}/rank/{i_rank}']
+            Popen(args)
+            logger.debug(f'CLEANUP {args}')
 
     def create_exposer(self, prometheus_cfg_dir):
         return createExposer(prometheus_cfg_dir)
