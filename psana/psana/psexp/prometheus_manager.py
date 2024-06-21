@@ -4,6 +4,7 @@ import socket
 import getpass
 from prometheus_client import CollectorRegistry, Counter, push_to_gateway, Summary, Gauge
 from prometheus_client import start_http_server
+from prometheus_client.exposition import tls_auth_handler
 
 from psana import utils
 from psana.psexp.tools import mode
@@ -13,9 +14,14 @@ if mode == 'mpi':
 else:
     logger = utils.Logger()
 
-PUSH_INTERVAL_SECS  = 5
-PUSH_GATEWAY        = 'psdm03:9091'
-PROM_PORT_BASE      = 9200      # Used by the http exposer; Value should match DAQ's
+PUSH_INTERVAL_SECS= 5
+
+if socket.gethostname().startswith('sdf'):
+    PUSH_GATEWAY = 'https://172.24.5.157:9091'   
+else:
+    PUSH_GATEWAY = 'psdm03:9091'                
+
+PROM_PORT_BASE = 9200      # Used by the http exposer; Value should match DAQ's
 
 HTTP_EXPOSER_STARTED = False
 
@@ -53,6 +59,12 @@ def createExposer(prometheusCfgDir):
     logging.error('No available port found for providing run-time monitoring')
     return False
 
+def my_auth_handler(url, method, timeout, headers, data):
+    #TODO Certificate and key files are hard-coded
+    certfile = '/sdf/group/lcls/ds/ana/data/prom/promgwclient.pem'
+    keyfile = '/sdf/group/lcls/ds/ana/data/prom/promgwclient.key'
+    return tls_auth_handler(url, method, timeout, headers, data, certfile, keyfile, insecure_skip_verify=True)
+
 class PrometheusManager(object):
     registry = CollectorRegistry()
     metrics ={
@@ -85,8 +97,12 @@ class PrometheusManager(object):
         self.registry.register(metric_name)
 
     def push_metrics(self, e):
+        # TODO: Certificate is read at every push, find a better way.
         while not e.isSet():
-            push_to_gateway(PUSH_GATEWAY, job=self.job, grouping_key={'rank': self.rank}, registry=self.registry, timeout=None)
+            if socket.gethostname().startswith('sdf'):
+                push_to_gateway(PUSH_GATEWAY, job=self.job, grouping_key={'rank': self.rank}, registry=self.registry, handler=my_auth_handler, timeout=None)
+            else:
+                push_to_gateway(PUSH_GATEWAY, job=self.job, grouping_key={'rank': self.rank}, registry=self.registry, timeout=None)
             logger.debug(f'TS: %s PUSHED EXP:{self.exp} RUN:{self.runnum} USER:{self.username} RANK:{self.rank} {e.isSet()=}')
             time.sleep(PUSH_INTERVAL_SECS)
 
