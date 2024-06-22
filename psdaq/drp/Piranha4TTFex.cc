@@ -115,7 +115,7 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
           std::vector<uint16_t>& v = m_eventcodes_##a##_##b;     \
               unsigned len = t.num_elem();                       \
               v.resize(len);                                     \
-              memcpy(v.data(),t.data(),len);                     \
+              memcpy(v.data(),t.data(),len*sizeof(uint16_t));    \
               printf("m_eventcodes_" #a "_" #b);                 \
               for(unsigned k=0; k<len; k++)                      \
                   printf(" %u", v[k]);                           \
@@ -266,10 +266,18 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
     laser &= !info.eventCode(m_eventcodes_laser_excl[i]);
 
 #ifdef DBUG
-  { const uint32_t* p = reinterpret_cast<const uint32_t*>(&info);
-    printf("EventInfo [beam %c]: ",beam?'T':'F');
-    for(unsigned i=3; i<11; i++)
-      printf("%08x ",p[i]);
+  {
+    printf("EventInfo [beam %c laser %c]:",beam?'T':'F',laser?'T':'F');
+    printf(" LaserIncl:");
+    for(unsigned i=0; i<m_eventcodes_laser_incl.size(); i++)
+        printf(" %u",m_eventcodes_laser_incl[i]);
+    printf(" LaserExcl:");
+    for(unsigned i=0; i<m_eventcodes_laser_excl.size(); i++)
+        printf(" %u",m_eventcodes_laser_excl[i]);
+    printf("\n");
+    for(unsigned i=0; i<18*16; i++)
+        if (info.eventCode(i))
+            printf(" %u", i);
     printf("\n");
   }
 #endif
@@ -310,7 +318,7 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
   //
   //  Extract signal ROI
   //
-  m_sig = extract_roi(f, m_sig_roi, m_pedestal);
+  std::vector<int> m_sig = extract_roi(f, m_sig_roi, m_pedestal);
 
   m_prescale_averages_counter++;
 
@@ -373,6 +381,17 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
   _monitor_raw_sig( sigd );
 
   if (m_ref_avg.size()==0) {
+      //  Fake a reference once
+      m_ref_avg_sem.take();
+      m_ref_avg.resize(refd.size());
+      double avg = 0;
+      for(unsigned i=0; i<refd.size(); i++)
+          avg += refd[i];
+      avg /= double(refd.size());
+      for(unsigned i=0; i<refd.size(); i++)
+          m_ref_avg[i] = avg;
+      m_ref_avg_sem.give();
+      //
       m_cut[_NOREF]++;
 #ifdef DBUG
       printf("-->NOREF\n");
@@ -785,6 +804,7 @@ void Piranha4TTFex::_monitor_flt_sig (std::vector<double>& a)
 
 bool   Piranha4TTFex::write_evt_image      ()
 {
+  return true;
   bool r = m_prescale_image_counter>=m_prescale_image;
   if (m_prescale_image_counter >= m_prescale_image)
     m_prescale_image_counter = 0;
@@ -792,8 +812,9 @@ bool   Piranha4TTFex::write_evt_image      ()
 }
 bool   Piranha4TTFex::write_evt_averages()
 {
-  bool r = m_prescale_averages_counter>=m_prescale_averages;
-  if (m_prescale_averages_counter >= m_prescale_averages)
+  return false;
+  bool r = (m_prescale_averages>0) && m_prescale_averages_counter>=m_prescale_averages;
+  if (r)
     m_prescale_averages_counter = 0;
   return r;
 }

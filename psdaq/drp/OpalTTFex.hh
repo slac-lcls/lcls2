@@ -90,9 +90,6 @@ private:
     std::vector<double> m_ref_avg; // accumulated reference
     Pds::Semaphore m_sb_avg_sem;
     std::vector<double> m_sb_avg;  // averaged sideband region
-    std::vector<int>    m_sig;     // signal region projection
-    std::vector<int>    m_sb;      // sideband region
-    std::vector<int>    m_ref;     // reference region projection
     unsigned m_pedestal; // from Opal camera configuration
 
     double m_flt_position;

@@ -354,7 +354,8 @@ OpalTT::OpalTT(Opal& d, Parameters* para) :
     m_para            (para),
     m_background_sem  (Pds::Semaphore::FULL),
     m_background_empty(true),
-    m_fex             (para)
+    m_fex             (para),
+    m_vec             (new double[6])
 {
     m_ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
     if (m_ttpv) {
@@ -462,7 +463,6 @@ bool OpalTT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::
     }
     else if (result == OpalTTFex::VALID) {
         //  Live feedback
-	m_vec = new double[6];
         pvd::shared_vector<const double> ttvec(m_vec,0,6);
         m_vec[0] = m_fex.filtered_position();
         m_vec[1] = m_fex.filtered_pos_ps();

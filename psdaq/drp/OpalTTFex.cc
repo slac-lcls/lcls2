@@ -121,7 +121,7 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
           std::vector<uint16_t>& v = m_eventcodes_##a##_##b;      \
               unsigned len = t.num_elem();                        \
               v.resize(len);                                      \
-              memcpy(v.data(),t.data(),len);                      \
+              memcpy(v.data(),t.data(),len*sizeof(uint16_t));     \
               printf("m_eventcodes_" #a "_" #b);                  \
               for(unsigned k=0; k<len; k++)                       \
                   printf(" %u", v[k]);                            \
@@ -327,6 +327,9 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   //
   //  Project signal ROI
   //
+  std::vector<int>    m_sig;     // signal region projection
+  std::vector<int>    m_sb;      // sideband region
+  std::vector<int>    m_ref;     // reference region projection
   if (m_project_axis==0) {
       m_sig = project_x(f, m_sig_roi, m_pedestal);
       if (m_use_ref_roi)
@@ -466,6 +469,17 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   _monitor_raw_sig( sigd );
 
   if (m_ref_avg.size()==0) {
+      //  Fake a reference once
+      m_ref_avg_sem.take();
+      m_ref_avg.resize(refd.size());
+      double avg = 0;
+      for(unsigned i=0; i<refd.size(); i++)
+          avg += refd[i];
+      avg /= double(refd.size());
+      for(unsigned i=0; i<refd.size(); i++)
+          m_ref_avg[i] = avg;
+      m_ref_avg_sem.give();
+      //
       m_cut[_NOREF]++;
 #ifdef DBUG
       printf("-->NOREF\n");

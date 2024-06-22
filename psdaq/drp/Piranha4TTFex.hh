@@ -83,7 +83,6 @@ private:
     std::vector<double> m_sig_avg; // accumulated signal
     Pds::Semaphore m_ref_avg_sem;
     std::vector<double> m_ref_avg; // accumulated reference
-    std::vector<int>    m_sig;     // signal region
     int m_pedestal; // from Piranha4 camera configuration
 
     double m_flt_position;
