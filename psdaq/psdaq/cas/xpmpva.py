@@ -521,6 +521,39 @@ class GroupsTab(QtWidgets.QWidget):
             self.codesText['desc'  ][i].setText(vals['codes'][i]['desc'  ])
             self.codesText['rate'  ][i].setText(vals['codes'][i]['rate'  ])
 
+class PatternTab(QtWidgets.QWidget):
+    def __init__(self, pvbase):
+        super(PatternTab,self).__init__()
+
+        l = QtWidgets.QVBoxLayout()
+        v20b = (1<<20)-1
+        l.addWidget(PvTableDisplay(f'{pvbase}PATT:GROUPS', [f'Group{i}' for i in range(8)], (v20b, v20b, v20b, 0)))
+
+        self.coinc = []
+        g = QtWidgets.QGridLayout()
+        for i in range(7):
+            g.addWidget(QtWidgets.QLabel(f'G{i+1}'),0,i+1)
+            g.addWidget(QtWidgets.QLabel(f'G{i}'),i+1,0)
+        for i in range(7):
+            for j in range(i+1,8):
+                w = QtWidgets.QLabel('-')
+                self.coinc.append(w)
+                g.addWidget(w, i+1, j)
+        box = QtWidgets.QGroupBox("Group Coincidences")
+        box.setLayout(g)
+        l.addWidget(box)
+        l.addStretch()
+        initPvMon(self,f'{pvbase}PATT:COINC',isStruct=True)
+
+        self.setLayout(l)
+
+    def update(self,err):
+        if err is None:
+            v = self.pv.__value__
+            q = v.value.Coinc
+            for i,qv in enumerate(q):
+                self.coinc[i].setText(str(qv))
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, titles):
         global ATCAWidget
@@ -612,6 +645,8 @@ class Ui_MainWindow(object):
             tw.addTab(DeadTime(pvbase,self),"DeadTime")
 
             tw.addTab(GroupsTab(pvbase),"Groups/EventCodes")
+
+            tw.addTab(PatternTab(pvbase),"Pattern")
 
             if 'Kcu' not in v:
                 tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')

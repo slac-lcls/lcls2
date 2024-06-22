@@ -317,11 +317,6 @@ class GroupStats(object):
         self._pv_numL1     = _addPVF('NumL1')
         self._pv_deadFrac  = _addPVF('DeadFrac')
         self._pv_deadTime  = _addPVF('DeadTime')
-        # statistics
-        self._pv_l0First   = _addPVF('L0InpFirst')
-        self._pv_l0Last    = _addPVF('L0InpLast')
-        self._pv_l0MinIntv = _addPVF('L0InpMinIntv')
-        self._pv_l0MaxIntv = _addPVF('L0InpMaxIntv')
 
         self._pv_deadFLink = addPV(name+':DeadFLnk','af',[0.]*32)
 
@@ -348,17 +343,6 @@ class GroupStats(object):
         (numL0   ,offset) = bytes2Int(msg,offset)
         (numL0Inh,offset) = bytes2Int(msg,offset)
         (numL0Acc,offset) = bytes2Int(msg,offset)
-
-        def bytes22Int(msg,offset):
-            b = struct.unpack_from('<BBBBB',msg,offset)
-            offset += 5
-            w = 0
-            for i,v in enumerate(b):
-                w += v<<(8*i)
-            return (w&0xfffff,(w>>20)&0xfffff,offset)
-
-        (l0First , l0Last  , offset) = bytes22Int(msg,offset)
-        (l0MinInt, l0MaxInt, offset) = bytes22Int(msg,offset)
 
         offset += 1
         rT = l0Ena*fidPeriod
@@ -397,11 +381,6 @@ class GroupStats(object):
             self._numL0   = numL0
             self._numL0Acc= numL0Acc
             self._numL0Inh= numL0Inh
-
-            updatePv(self._pv_l0First  , l0First , timev)
-            updatePv(self._pv_l0Last   , l0Last  , timev)
-            updatePv(self._pv_l0MinIntv, l0MinInt, timev)
-            updatePv(self._pv_l0MaxIntv, l0MaxInt, timev)
         else:
             updatePvC(self._pv_running, False, timev)
             
@@ -413,11 +392,57 @@ class GroupStats(object):
                     linkInhTmV.append((linkInhTm[i] - self._linkInhTm[i])*den)
             else:
                 linkInhTmV = [0 for i in range(32)]
+
             self._linkInhTm = linkInhTm
             updatePv(self._pv_deadFLink, linkInhTmV, timev)
 
         return offset
 
+NGROUPS = 8
+pattStats  = {'First'  : ('ai',[0]*NGROUPS),
+              'Last'   : ('ai',[0]*NGROUPS),
+              'MinIntv': ('ai',[0]*NGROUPS),
+              'MaxIntv': ('ai',[0]*NGROUPS)}
+NCOINC = NGROUPS*(NGROUPS-1)//2
+pattCoinc = {'Coinc' : ('ai',[0]*NCOINC)}
+
+class PatternStats(object):
+    def __init__(self, name):
+        # statistics
+        self._stats_pv    = addPVT(f'{name}:GROUPS',pattStats)
+        self._stats_value = toDict(pattStats)
+
+        self._coinc_pv    = addPVT(f'{name}:COINC',pattCoinc)
+        self._coinc_value = toDict(pattCoinc)
+
+    def handle(self,msg,offset,timev):
+
+        def bytes22Int(msg,offset):
+            b = struct.unpack_from('<BBBBB',msg,offset)
+            offset += 5
+            w = 0
+            for i,v in enumerate(b):
+                w += v<<(8*i)
+            return (w&0xfffff,(w>>20)&0xfffff,offset)
+
+        for i in range(NGROUPS):
+            (l0First , l0Last  , offset) = bytes22Int(msg,offset)
+            (l0MinInt, l0MaxInt, offset) = bytes22Int(msg,offset)
+            self._stats_value['First'  ][i] = l0First
+            self._stats_value['Last'   ][i] = l0Last
+            self._stats_value['MinIntv'][i] = l0MinInt
+            self._stats_value['MaxIntv'][i] = l0MaxInt
+
+        for i in range(NGROUPS*(NGROUPS-1)//4):
+            (l0CoincA, l0CoincB, offset) = bytes22Int(msg,offset)
+            self._coinc_value['Coinc'][i*2+0] = l0CoincA
+            self._coinc_value['Coinc'][i*2+1] = l0CoincB
+
+        updatePv(self._stats_pv, self._stats_value, timev)
+        updatePv(self._coinc_pv, self._coinc_value, timev)
+
+        return offset
+        
 class PVMmcmPhaseLock(object):
     def __init__(self, name, mmcm):
         v = []
@@ -456,6 +481,7 @@ class PVStats(object):
         for i in range(8):
             self._groups.append(GroupStats(name+':PART:%d'%i,self._app,i))
 
+        self._pattern = PatternStats(name+':PATT')
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp)
 
@@ -496,6 +522,7 @@ class PVStats(object):
             offset = self._links[i].handle(msg,offset,timev)
         for i in range(8):
             offset = self._groups[i].handle(msg,offset,timev)
+        offset = self._pattern.handle(msg,offset,timev)
         for i in range(2):
             offset = self._amcPll[i].handle(msg,offset,timev)
         offset = self._monClks.handle(msg,offset,timev)

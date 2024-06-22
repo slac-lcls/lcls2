@@ -224,7 +224,7 @@ class PvGroupStats(QtWidgets.QWidget):
         if value==self.groups:
             self.runb.setChecked(False)
 
-def addGroup(tw, base, group, xpm):
+def addGroup(tw, base, group, xpm, mon):
     pvbase = base+'%d:'%group
     wlo    = QtWidgets.QVBoxLayout()
 
@@ -249,8 +249,9 @@ def addGroup(tw, base, group, xpm):
     w.setLayout(wlo)
     tw.addTab(w,'Group %d'%group)
 
-    pvXpm = Pv(pvbase+'Master')
-    pvXpm.put(1)
+    if not mon:
+        pvXpm = Pv(pvbase+'Master')
+        pvXpm.put(1)
 
 class GroupMaster(QtWidgets.QWidget):
     def __init__(self, pvbase, groups):
@@ -265,7 +266,7 @@ class GroupMaster(QtWidgets.QWidget):
         self.setLayout(hlo)
 
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, base, xpm, groups, prod):
+    def setupUi(self, MainWindow, base, xpm, groups, prod, mon):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
@@ -279,10 +280,10 @@ class Ui_MainWindow(object):
 
             tw = QtWidgets.QTabWidget()
             for g in groups:
-                addGroup(tw, pvbase, g, xpm)
+                addGroup(tw, pvbase, g, xpm, mon)
             tw.addTab(PvStateMachine(base,pvbase,xpm,groups,prod),'Transitions')
             tw.addTab(PvGroupStats  (base,pvbase,xpm,groups),'Events')
-            tw.addTab(PvPatternStats(base,pvbase,groups),'Pattern')
+            #tw.addTab(PvPatternStats(base,pvbase,groups),'Pattern')
             tw.setCurrentIndex(len(groups)+1)
             lol.addWidget(tw)
         else:
@@ -322,6 +323,7 @@ class Ui_MainWindow(object):
 def main():
     parser = argparse.ArgumentParser(description='Readout group control and monitoring')
     parser.add_argument('--prod', help='Production Mode', action='store_true', default=False)
+    parser.add_argument('--mon', help='Monitor only.  Master disabled', action='store_true')
     parser.add_argument('pvbase', help='EPICS PV Prefix', type=str)
     parser.add_argument('xpmroot', help='XPM at root', type=int)
     parser.add_argument('groups' , help='list of groups', type=int, nargs='+')
@@ -330,7 +332,7 @@ def main():
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.pvbase,args.xpmroot,args.groups,args.prod)
+    ui.setupUi(MainWindow,args.pvbase,args.xpmroot,args.groups,args.prod,args.mon)
     MainWindow.updateGeometry()
 
     MainWindow.show()
