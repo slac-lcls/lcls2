@@ -18,6 +18,7 @@ target_include_directories(kcu PUBLIC
 target_link_libraries(kcu
     xtcdata::xtc
     psalg::utils
+    mmhw
 )
 
 # A static version of the kcu library is needed for kcuStatus
