@@ -339,7 +339,7 @@ class DataSourceBase(abc.ABC):
         file_info = {}
         if all_xtc_files:
             # Only take chunk 0 xtc files (matched with *-c*0.)
-            xtc_files = [os.path.basename(xtc_file) for xtc_file in all_xtc_files if re.search(r'-c(.+?)0\.', xtc_file)]
+            xtc_files = [os.path.basename(xtc_file) for xtc_file in all_xtc_files if re.search(r'-c000\.', xtc_file)]
             if xtc_files:
                 file_info['xtc_files'] = xtc_files
                 file_info['dirname'] = os.path.dirname(all_xtc_files[0])
