@@ -1,17 +1,13 @@
-#install(FILES
-#    AllocArray.hh
-#    Allocator.hh
-#    DESTINATION include/psalg/alloc
-#)
-##### New
 cmake_minimum_required(VERSION 3.10)
 
 # Create the library target
-add_library(alloc_headers SHARED
+add_library(alloc_headers INTERFACE
             AllocArray.hh
             Allocator.hh
 )
 
+# This marks which targets are going to be exported and also defines instructions on
+# where libraries will be installed.
 install(TARGETS alloc_headers
         EXPORT alloc_headersTargets
         LIBRARY DESTINATION lib
@@ -19,21 +15,23 @@ install(TARGETS alloc_headers
         RUNTIME DESTINATION bin
 )
 
-# Generate and install the export file for the library
+# This will create an export set that includes the targets. Export sets are used
+# to generate cmake files other projects can import and link against. Recall that install
+# (cmake in generaly really) is just creating instructions. Here it is creating install
+# instructions.
 install(EXPORT alloc_headersTargets
     FILE alloc_headersTargets.cmake
     NAMESPACE alloc_headers::
     DESTINATION lib/cmake/alloc_headers
 )
-
+include(CMakePackageConfigHelpers)
 configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/alloc_headersConfig.cmake.in"
-    ${CMAKE_CURRENT_BINARY_DIR}/alloc_headersConfig.cmake
-    INSTALL_DESTINATION lib/cmake/psalg
-    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+    ${CMAKE_SOURCE_DIR}/cmake/alloc_headersConfig.cmake.in
+    ${CMAKE_BINARY_DIR}/alloc_headersConfig.cmake
+    INSTALL_DESTINATION lib/cmake/alloc_headers
 )
 
 install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/alloc_headers.cmake
-    DESTINATION lib/cmake/psalg
+    FILES ${CMAKE_BINARY_DIR}/alloc_headersConfig.cmake
+    DESTINATION lib/cmake/alloc_headers
 )

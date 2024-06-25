@@ -30,11 +30,8 @@ add_custom_command(TARGET peaks
                    COMMAND echo "Pip install")
 
 
-# Export the library
-# TARGETS: specifies which targets
-# EXPORT: This creates an export set named peaksTargets that
-# includes the target "peaks". Export sets are used to generate cmake files
-# other projects can use to import and link against said target.
+# This marks which targets are going to be exported and also defines instructions on
+# where libraries will be installed.
 install(TARGETS peaks
         EXPORT peaksTargets
         LIBRARY DESTINATION lib
@@ -45,7 +42,10 @@ install(TARGETS peaks
 # Export the include directory
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include/psana/peakFinder)
 
-# Generate and install the export file for the library
+# This will create an export set that includes the targets. Export sets are used
+# to generate cmake files other projects can import and link against. Recall that install
+# (cmake in generaly really) is just creating instructions. Here it is creating install
+# instructions.
 install(EXPORT peaksTargets
     FILE peaksTargets.cmake
     NAMESPACE peaks::
