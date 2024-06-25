@@ -3,17 +3,34 @@
 # Blank lines are ignored
 # Leading and trailing whitespaces are trimmed
 # There should be one PV per line
-# Duplicate PVs are ignored
-# PVs are specified with the following format:
+# Duplicate PV specs are ignored
+# PV specs are specified with one of the following 2 formats:
 #   [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+#   [<alias>=][<provider>/]<PV name>[.<field>][<shape>][(<type>)]
+# <shape> is of one of the following 2 formats, including the square brackets:
+#   [<firstDim>]
+#   [<firstDim>,<secondDim>]
 # <provider> can be "pva" (the default) or "ca"
 
   # This comment has preceding spaces
 
 andor_vls=RIX:VLS:CAM:01:IMAGE1:Pva:Image
   andor_dir=RIX:DIR:CAM:01:IMAGE1:Pva:Image
-#  andor_dir=RIX:DIR:CAM:01:IMAGE1:Pva:Image,1024
+  andor_norm=RIX:NORM:CAM:01:IMAGE1:Pva:Image
+#  andor_norm=RIX:NORM:CAM:01:IMAGE1:Pva:Image,1024
 #bpms_undh_1990_x=ca/BPMS:UNDH:1990:X.tstval,1234
+#
+#andor_vls2=RIX:VLS:CAM:01:IMAGE2:Pva:Image[1024,1024]
+#andor_dir2=RIX:DIR:CAM:01:IMAGE2:Pva:Image,2048
+#andor_norm=RIX:NORM:CAM:01:IMAGE2:Pva:Image[2048]
+#bpms_undh_1690_x=ca/BPMS:UNDH:1690:X.tstval[1234]
+#bpms_undh_1691_x=ca/BPMS:UNDH:1691:X.tstval[1234](double)
+#bpms_undh_1692_x=ca/BPMS:UNDH:1692:X.tstval(double)
+#bpms_undh_1693_x=ca/BPMS:UNDH:1693:X(short)
+#bpms_undh_1693_x=ca/BPMS:UNDH:1693:X,1(short)
+#bpms_undh_1693_x=ca/BPMS:UNDH:1693:X[1](short)
+#bpms_undh_1694_x=ca/BPMS:UNDH:1694:X(junk)
+
 #RIX:VLS:CAM:01:IMAGE1:Pva:Image
 #  RIX:DIR:CAM:01:IMAGE1:Pva:Image
 #RIX:VLS:CAM:01:IMAGE1:Pva:Image

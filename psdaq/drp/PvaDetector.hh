@@ -21,7 +21,7 @@ class  PvDetector;
 class Pgp : public PgpReader
 {
 public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running);
+    Pgp(const Parameters& para, DrpBase& drp, Detector* det);
     Pds::EbDgram* next(uint32_t& evtIndex);
     const uint64_t nDmaRet() { return m_nDmaRet; }
 private:
@@ -29,7 +29,6 @@ private:
     Detector* m_det;
     Pds::Eb::TebContributor& m_tebContributor;
     static const int MAX_RET_CNT_C = 100;
-    const bool& m_running;
     int32_t m_available;
     int32_t m_current;
     unsigned m_nodeId;
@@ -40,15 +39,19 @@ private:
 class PvMonitor : public Pds_Epics::PvMonitorBase
 {
 public:
-    PvMonitor(const PvParameters& para,
-              const std::string&  alias,
-              const std::string&  pvName,
-              const std::string&  provider,
-              const std::string&  request,
-              const std::string&  field,
-              unsigned            id,
-              size_t              nBuffers,
-              uint32_t            firstDim);
+    PvMonitor(const PvParameters&      para,
+              const std::string&       alias,
+              const std::string&       pvName,
+              const std::string&       provider,
+              const std::string&       request,
+              const std::string&       field,
+              unsigned                 id,
+              size_t                   nBuffers,
+              pvd::ScalarType          type,
+              size_t                   nelem,
+              size_t                   rank,
+              uint32_t                 firstDim,
+              const std::atomic<bool>& running);
 public:
     void onConnect()    override;
     void onDisconnect() override;
@@ -68,14 +71,15 @@ private:
     const Parameters&               m_para;
     mutable std::mutex              m_mutex;
     mutable std::condition_variable m_condition;
+    State                           m_state;
+    unsigned                        m_id;
     pvd::ScalarType                 m_type;
     size_t                          m_nelem;
     size_t                          m_rank;
     size_t                          m_payloadSize;
-    State                           m_state;
-    unsigned                        m_id;
     uint32_t                        m_firstDimOverride;
     std::string                     m_alias;
+    const std::atomic<bool>&        m_running;
 public:
     SPSCQueue<XtcData::Dgram*>      pvQueue;
     SPSCQueue<XtcData::Dgram*>      bufferFreelist;

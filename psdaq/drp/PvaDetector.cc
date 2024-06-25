@@ -15,6 +15,7 @@
 #include <thread>
 #include <fstream>      // std::ifstream
 #include <cctype>       // std::isspace
+#include <regex>
 #include <Python.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
@@ -136,21 +137,29 @@ public:
     }
 };
 
-PvMonitor::PvMonitor(const PvParameters& para,
-                     const std::string&  alias,
-                     const std::string&  pvName,
-                     const std::string&  provider,
-                     const std::string&  request,
-                     const std::string&  field,
-                     unsigned            id,
-                     size_t              nBuffers,
-                     uint32_t            firstDim) :
+PvMonitor::PvMonitor(const PvParameters&      para,
+                     const std::string&       alias,
+                     const std::string&       pvName,
+                     const std::string&       provider,
+                     const std::string&       request,
+                     const std::string&       field,
+                     unsigned                 id,
+                     size_t                   nBuffers,
+                     pvd::ScalarType          type,
+                     size_t                   nelem,
+                     size_t                   rank,
+                     uint32_t                 firstDim,
+                     const std::atomic<bool>& running) :
     Pds_Epics::PvMonitorBase(pvName, provider, request, field),
     m_para                  (para),
     m_state                 (NotReady),
     m_id                    (id),
+    m_type                  (type),
+    m_nelem                 (nelem),
+    m_rank                  (rank),
     m_firstDimOverride      (firstDim),
     m_alias                 (alias),
+    m_running               (running),
     pvQueue                 (nBuffers),
     bufferFreelist          (pvQueue.size()),
     m_notifySocket          {&m_context, ZMQ_PUSH},
@@ -161,25 +170,25 @@ PvMonitor::PvMonitor(const PvParameters& para,
     m_notifySocket.connect({"tcp://" + m_para.collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para.partition)});
 }
 
-int PvMonitor::getParams(std::string& fieldName,
+int PvMonitor::getParams(std::string&    fieldName,
                          Name::DataType& xtcType,
-                         int& rank)
+                         int&            rank)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     if (m_state == NotReady) {
-        if (this->Pds_Epics::PvMonitorBase::getParams(m_type, m_nelem, m_rank))  {
-            const std::chrono::seconds tmo(3);
-            m_condition.wait_for(lock, tmo, [this] { return m_state == Armed; });
-            if (m_state != Armed) {
-                auto msg("Failed to get parameters for PV "+ name());
-                logging::error("getVardef: %s", msg.c_str());
-                json jmsg = createAsyncErrMsg(m_para.alias, msg);
-                m_notifySocket.send(jmsg.dump());
+        // Wait for PV to connect
+        const std::chrono::seconds tmo(3);
+        m_condition.wait_for(lock, tmo, [this] { return m_state == Armed; });
+        if (m_state != Armed) {
+            auto msg("PV "+name()+" hasn't connected");
+            json jmsg = createAsyncWarnMsg(m_para.alias, msg);
+            m_notifySocket.send(jmsg.dump());
+            if (m_nelem == -1ul || m_rank == -1ul) {   // Parameters weren't defaulted in PV specs
+                logging::error("Failed to get parameters for PV %s", name().c_str());
                 return 1;
             }
-        } else {
-            m_state = Armed;
+            logging::warning("%s; using defaulted parameter values\n", msg.c_str(), name().c_str());
         }
     }
 
@@ -224,7 +233,15 @@ void PvMonitor::shutdown()
 
 void PvMonitor::onConnect()
 {
-    logging::info("PV %s connected", name().c_str());
+    logging::debug("PV %s connected", name().c_str());
+
+    if (m_state == NotReady) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (!this->Pds_Epics::PvMonitorBase::getParams(m_type, m_nelem, m_rank))  {
+            m_state = Armed;
+        }
+        m_condition.notify_one();
+    }
 
     if (m_para.verbose) {
         if (printStructure())
@@ -242,15 +259,13 @@ void PvMonitor::onDisconnect()
 
 void PvMonitor::updated()
 {
-    if (m_state == Ready) {
+    // Queue updates only when Ready and in Running
+    if (m_state == Ready && m_running.load(std::memory_order_relaxed)) {
         int64_t seconds;
         int32_t nanoseconds;
         getTimestampEpics(seconds, nanoseconds);
         TimeStamp timestamp(seconds, nanoseconds);
 
-        // @todo: Revisit: Needed?
-        //// Protect against namesLookup not being stable before Enable
-        //if (m_running.load(std::memory_order_relaxed)) {
         ++m_nUpdates;
         logging::debug("%s updated @ %u.%09u", name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
 
@@ -284,17 +299,6 @@ void PvMonitor::updated()
         else {
             ++m_nMissed;                     // Else count it as missed
         }
-        //}
-    }
-    else {                              // State is NotReady
-        std::lock_guard<std::mutex> lock(m_mutex);
-
-        if (m_state != Armed) {
-            if (!this->Pds_Epics::PvMonitorBase::getParams(m_type, m_nelem, m_rank))  {
-                m_state = Armed;
-            }
-        }
-        m_condition.notify_one();
     }
 }
 
@@ -315,9 +319,9 @@ void PvMonitor::timeout(const PgpReader& pgp, ms_t timeout)
 }
 
 
-Pgp::Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
+Pgp::Pgp(const Parameters& para, DrpBase& drp, Detector* det) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
-    m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
+    m_det(det), m_tebContributor(drp.tebContributor()),
     m_available(0), m_current(0), m_nDmaRet(0)
 {
     m_nodeId = drp.nodeId();
@@ -365,20 +369,21 @@ EbDgram* Pgp::next(uint32_t& evtIndex)
 }
 
 
-PvDetector::PvDetector(PvParameters& para,
-                       DrpBase&      drp) :
-    XpmDetector      (&para, &drp.pool),
-    m_para           (para),
-    m_drp            (drp),
-    m_pgp            (para, drp, this, m_running),
-    m_evtQueue       (drp.pool.nbuffers()),
-    m_terminate      (false),
-    m_running        (false)
+PvDetector::PvDetector(PvParameters& para, DrpBase& drp) :
+    XpmDetector(&para, &drp.pool),
+    m_para     (para),
+    m_drp      (drp),
+    m_pgp      (para, drp, this),
+    m_evtQueue (drp.pool.nbuffers()),
+    m_terminate(false),
+    m_running  (false)
 {
 }
 
 unsigned PvDetector::connect(std::string& msg)
 {
+    unsigned rc = 0;
+
     // Check for a default first dimension specification
     uint32_t firstDimDef = 0;
     if (m_para.kwargs.find("firstdim") != m_para.kwargs.end()) {
@@ -387,13 +392,16 @@ unsigned PvDetector::connect(std::string& msg)
 
     unsigned id = 0;
     for (const auto& pvSpec : m_para.pvSpecs) {
-        // Parse the pvSpec string of the form "[<alias>=][<provider>/]<PV name>[.<field>][,firstDim]"
+        // Parse the pvSpec string of the forms
+        //   "[<alias>=][<provider>/]<PV name>[.<field>][,firstDim]"
+        //   "[<alias>=][<provider>/]<PV name>[.<field>][<shape>][(<type>)]"
         try {
-            std::string alias    = m_para.detName;
-            std::string pvName   = pvSpec;
-            std::string provider = "pva";
-            std::string field    = "value";
-            uint32_t    firstDim = firstDimDef;
+            std::string alias     = m_para.detName;
+            std::string pvName    = pvSpec;
+            std::string provider  = "pva";
+            std::string field     = "value";
+            uint32_t    firstDim  = firstDimDef;
+            uint32_t    secondDim = 0;
             auto pos = pvName.find("=", 0);
             if (pos != std::string::npos) { // Parse alias
                 alias  = pvName.substr(0, pos);
@@ -406,13 +414,92 @@ unsigned PvDetector::connect(std::string& msg)
             }
             pos = pvName.find(",", 0);
             if (pos != std::string::npos) { // Parse firstDim value
-                firstDim = std::stoul(pvName.substr(pos+1));
-                pvName   = pvName.substr(0, pos);
+                // Let '[dim1,dim2]' syntax take precedence
+                if (pvName.find("[", 0) == std::string::npos) {
+                    firstDim = std::stoul(pvName.substr(pos+1));
+                    pvName   = pvName.substr(0, pos);
+                }
             }
             pos = pvName.find(".", 0);
             if (pos != std::string::npos) { // Parse field name
                 field  = pvName.substr(pos+1);
                 pvName = pvName.substr(0, pos);
+            }
+            // Provided values will be clobbered when PV connects
+            // I think this is fine since it means things are working
+            // firstDim will still work as originally
+            // PV shape (optionally) provided as [dim1,dim2]
+            // Shape comes before type [shape](type)
+            std::regex pattern("\\[(.*?)\\]");
+            std::smatch matches;
+            ssize_t rank = -1;
+            size_t nelem = -1ul;
+            if (std::regex_search(pvSpec, matches, pattern)) {
+                // Cleanup pvName or field
+                pos = pvName.find("[", 0);
+                if (pos != std::string::npos)
+                    pvName = pvName.substr(0, pos);
+                else
+                    field = field.substr(0, field.find("[",0));
+                // Extract shape and rank
+                auto dataShape = matches[1].str();
+                pos = dataShape.find(",", 0);
+                if (pos != std::string::npos) { // Rank 2
+                    auto tmp = dataShape.substr(0,pos);
+                    firstDim = std::stoul(tmp);
+                    secondDim = std::stoul(dataShape.substr(pos+1));
+                    rank = 2;
+                    nelem = firstDim * secondDim;
+                } else { // Rank 0/1
+                    // Check if scalar or array
+                    nelem = std::stoul(dataShape);
+                    rank = nelem == 1 ? 0 : 1;
+                    // firstDim should remain 0 or rank = 2 results
+                }
+            }
+            // PV type (optionally) provided as (type)
+            pattern = std::regex("\\((.*?)\\)");
+            pvd::ScalarType type;
+            bool typeDef = false;
+            if (std::regex_search(pvSpec, matches, pattern)) {
+                typeDef = true;
+                // Cleanup pvName or field
+                pos = pvName.find("(", 0);
+                if (pos != std::string::npos)
+                    pvName = pvName.substr(0, pos);
+                else
+                    field = field.substr(0, field.find("(",0));
+                if (matches[1].str().compare("bool") == 0)
+                    type = pvd::pvBoolean;
+                else if (matches[1].str().compare("byte") == 0)
+                    type = pvd::pvByte;
+                else if (matches[1].str().compare("short") == 0)
+                    type = pvd::pvShort;
+                else if (matches[1].str().compare("int") == 0)
+                    type = pvd::pvInt;
+                else if (matches[1].str().compare("long") == 0)
+                    type = pvd::pvLong;
+                else if (matches[1].str().compare("ubyte") == 0)
+                    type = pvd::pvUByte;
+                else if (matches[1].str().compare("ushort") == 0)
+                    type = pvd::pvUShort;
+                else if (matches[1].str().compare("uint") == 0)
+                    type = pvd::pvUInt;
+                else if (matches[1].str().compare("ulong") == 0)
+                    type = pvd::pvULong;
+                else if (matches[1].str().compare("float") == 0)
+                    type = pvd::pvFloat;
+                else if (matches[1].str().compare("double") == 0)
+                    type = pvd::pvDouble;
+                else if (matches[1].str().compare("string") == 0) {
+                    type = pvd::pvString;
+                    nelem = MAX_STRING_SIZE;
+                }
+                else {
+                    logging::error("Unrecognized type '%s'", matches[1].str().c_str());
+                    typeDef = false;
+                }
+                // ...
             }
             std::string request = provider == "pva" ? "field(value,timeStamp,dimension)"
                                                     : "field(value,timeStamp)";
@@ -423,11 +510,17 @@ unsigned PvDetector::connect(std::string& msg)
                 }
             }
 
-            logging::debug("For '%s', alias '%s', provider '%s', PV name '%s', field '%s', firstDim %u, request '%s'",
-                           pvSpec.c_str(), alias.c_str(), provider.c_str(), pvName.c_str(), field.c_str(), firstDim, request.c_str());
+            logging::debug("For '%s', alias '%s', provider '%s', PV '%s', field '%s', "
+                           "type %d, firstDim %u, nelem %zd, rank %zd, request '%s'",
+                           pvSpec.c_str(), alias.c_str(), provider.c_str(), pvName.c_str(), field.c_str(),
+                           type, firstDim, nelem, rank, request.c_str());
+            if (!typeDef && nelem != -1ul && rank != -1) {
+                throw std::string("Incomplete specification for defaults: provide type");
+            }
             auto pvMonitor = std::make_shared<PvMonitor>(m_para,
                                                          alias, pvName, provider, request, field,
-                                                         id++, m_evtQueue.size(), firstDim);
+                                                         id++, m_evtQueue.size(), type, nelem, rank, firstDim,
+                                                         m_running);
             m_pvMonitors.push_back(pvMonitor);
         }
         catch(std::string& error) {
@@ -435,11 +528,11 @@ unsigned PvDetector::connect(std::string& msg)
                            pvSpec.c_str(), error.c_str());
             m_pvMonitors.clear();
             msg = error;
-            return 1;
+            rc = 1;
         }
     }
 
-    return 0;
+    return rc;
 }
 
 unsigned PvDetector::disconnect()
@@ -1219,18 +1312,18 @@ int main(int argc, char* argv[])
                 continue;
             }
 
-            para.pvSpecs.push_back({pvSpec}); // [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+            para.pvSpecs.push_back({pvSpec});
             ++i;
         }
     }
     // Also read PVs from the command line
     while (optind < argc) {
-        para.pvSpecs.push_back({argv[optind++]}); // [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+        para.pvSpecs.push_back({argv[optind++]});
         ++i;
     }
     if (para.pvSpecs.empty()) {
         // Provider is "pva" (default) or "ca"
-        logging::critical("At least one PV ([<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]) is required");
+        logging::critical("At least one PV is required");
         return 1;
     }
     if (i > 64) { // Limit is set by the number of bits in the contract/remaining variables

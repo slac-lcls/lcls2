@@ -3,6 +3,7 @@ if not platform: platform = '3'
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
+test_epics_env = ld_lib_path
 
 collect_host = 'drp-neh-ctl002'
 
@@ -90,7 +91,8 @@ procmgr_config = [
 
 # {host: 'drp-neh-cmp010',  id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 RIX:VLS:CAM:01:IMAGE1:Pva:Image'},
 # {host: 'drp-neh-cmp010',  id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 RIX:VLS:CAM:01:IMAGE1:Pva:Image RIX:DIR:CAM:01:IMAGE1:Pva:Image'},
- {host: 'drp-neh-cmp010',  id:'andor_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetector_example.txt'},
+# {host: 'drp-neh-cmp010',  id:'andor_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetector_example.txt'},
+ {host: 'drp-neh-cmp010',  id:'andor_0', flags:'spux', env:test_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetTest.txt'},
 ]
 
 # HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)

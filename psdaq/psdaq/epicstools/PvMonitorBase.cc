@@ -14,9 +14,9 @@ typedef uint32_t ShpArr[PvMonitorBase::MaxRank];
 
 int PvMonitorBase::printStructure() const
 {
-    if (!_strct)  { logging::error("_strct is NULL");  return 1; }
+    if (!_strct)  { logging::error("PV %s: _strct is NULL", MonTracker::name().c_str());  return 1; }
     const auto& structure = _strct->getStructure();
-    if (!structure)  { logging::error("structure is NULL");  return 1; }
+    if (!structure)  { logging::error("PV %s: structure is NULL", MonTracker::name().c_str());  return 1; }
     const auto& names = structure->getFieldNames();
     //std::cout << "Fields are: " << structure << "\n";
     for (unsigned i=0; i<names.size(); i++) {
@@ -24,7 +24,7 @@ int PvMonitorBase::printStructure() const
         if (!pvField)  { logging::error("pvField %s is NULL", names[i].c_str());  return 1; }
         const auto& field  = pvField->getField();
         const auto& offset = pvField->getFieldOffset();
-        logging::info("PV Name: %s  FieldName: %s  Offset: %zu  FieldType: %s  ID: %s",
+        logging::info("PV: %s  FieldName: %s  Offset: %zu  FieldType: %s  ID: %s",
                       name().c_str(), names[i].c_str(), offset,
                       pvd::TypeFunc::name(field->getType()),
                       field->getID().c_str());
@@ -149,7 +149,7 @@ int PvMonitorBase::getParams(pvd::ScalarType& type,
                              size_t&          nelem,
                              size_t&          rank)
 {
-    if (!_strct)  { logging::error("_strct is NULL");  return 1; }
+    if (!_strct)  { logging::error("PV %s: _strct is NULL", MonTracker::name().c_str());  return 1; }
     const auto& pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
     rank = pvStructureArray ? pvStructureArray->getLength() : 1;
 
@@ -192,7 +192,7 @@ int PvMonitorBase::getParams(pvd::ScalarType& type,
                     throw "Unsupported Scalar type";
                 }
             }
-            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
+            logging::info("PV: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
                           MonTracker::name().c_str(),
                           pvd::TypeFunc::name(field->getType()),
                           pvd::ScalarTypeFunc::name(type),
@@ -230,7 +230,7 @@ int PvMonitorBase::getParams(pvd::ScalarType& type,
                     throw "Unsupported ScalarArray type";
                 }
             }
-            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
+            logging::info("PV: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
                           MonTracker::name().c_str(),
                           pvd::TypeFunc::name(field->getType()),
                           pvd::ScalarTypeFunc::name(type),
@@ -247,7 +247,7 @@ int PvMonitorBase::getParams(pvd::ScalarType& type,
                 rank  = 1;
                 nelem = MAX_STRING_SIZE;
                 getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getEnum(buf, len, shp); };
-                logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
+                logging::info("PV: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
                               MonTracker::name().c_str(),
                               pvd::TypeFunc::name(field->getType()),
                               pvd::ScalarTypeFunc::name(type),
@@ -323,7 +323,7 @@ int PvMonitorBase::getParams(pvd::ScalarType& type,
                     throw "Unsupported Union type";
                 }
             }
-            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
+            logging::info("PV: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
                           MonTracker::name().c_str(),
                           pvd::TypeFunc::name(field->getType()),
                           pvd::ScalarTypeFunc::name(type),
