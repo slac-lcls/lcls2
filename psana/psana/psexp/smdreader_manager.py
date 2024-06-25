@@ -173,10 +173,13 @@ class SmdReaderManager(object):
         if self.processed_events <= current_processed_events and not self.smdr.found_endrun():
             # Also fail if we cannot get more data
             check_pass = self.get()
-            self.smdr.find_view_offsets(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id, max_events=self.dsparms.max_events)
-            if self.processed_events <= current_processed_events:
-                print(f'Exit: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize}). Useful debug info: {self.processed_events=} {current_processed_events=}.')
-                check_pass = False
+            if check_pass:
+                self.smdr.find_view_offsets(batch_size=self.smd0_n_events, intg_stream_id=self.dsparms.intg_stream_id, max_events=self.dsparms.max_events)
+                if self.processed_events <= current_processed_events:
+                    print(f'Exit: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize}). Useful debug info: {self.processed_events=} {current_processed_events=}.')
+                    check_pass = False
+            else:
+                print(f'Exit: unable to locate a new chunk. No data in one or more streams and no EndRun found.')
         return check_pass
 
     def __next__(self):
