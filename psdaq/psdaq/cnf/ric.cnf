@@ -205,15 +205,15 @@ procmgr_config = [
 
  #{host: 'drp-srcf-cmp029',  id:'andor_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetector_example.txt'},
 
-# {host: 'drp-srcf-cmp043',  id:'pvs_0',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x2 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr.txt'}, # HXR PVs
-# {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_1.txt'},
-# {host: 'drp-srcf-cmp043',  id:'pvs_2',  flags:'spux', env:acr_epics_env2, cmd:pva_cmd1+' -l 0x1 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_2.txt'},
-# {host: 'drp-srcf-cmp043',  id:'pvs_3',  flags:'spux', env:acr_epics_env3, cmd:pva_cmd1+' -l 0x2 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_3.txt'},
-# {host: 'drp-srcf-cmp043',  id:'pvs_4',  flags:'spux', env:acr_epics_env4, cmd:pva_cmd1+' -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_4.txt'},
-# {host: 'drp-srcf-cmp043',  id:'pvs_5',  flags:'spux', env:acr_epics_env5, cmd:pva_cmd1+' -l 0x8 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_5.txt'},
+ {host: 'drp-srcf-cmp043',  id:'pvs_0',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x2 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr.txt'}, # HXR PVs
+ {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_1.txt'},
+ {host: 'drp-srcf-cmp043',  id:'pvs_2',  flags:'spux', env:acr_epics_env2, cmd:pva_cmd1+' -l 0x1 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_2.txt'},
+ {host: 'drp-srcf-cmp043',  id:'pvs_3',  flags:'spux', env:acr_epics_env3, cmd:pva_cmd1+' -l 0x2 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_3.txt'},
+ {host: 'drp-srcf-cmp043',  id:'pvs_4',  flags:'spux', env:acr_epics_env4, cmd:pva_cmd1+' -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_4.txt'},
+ {host: 'drp-srcf-cmp043',  id:'pvs_5',  flags:'spux', env:acr_epics_env5, cmd:pva_cmd1+' -l 0x8 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_5.txt'},
 
-# {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -v -l 0x4 -f /cds/home/d/dorlhiac/daq_cnfs/txi_pvlist1_cu_hxr.txt'},
- {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -v -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/txi_pvlist1_cu_hxr.txt'},
+# {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x4 -f /cds/home/d/dorlhiac/daq_cnfs/txi_pvlist1_cu_hxr.txt'},
+# {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -v -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/txi_pvlist1_cu_hxr.txt'},
 
 # {host: 'drp-srcf-cmp036', id:'gmdstr0_0',  flags:'spux', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM1K0:GMD:HPS:STR0:STREAM_DOUBLE0'},
 # {host: 'drp-srcf-cmp028', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms

@@ -47,7 +47,7 @@ public:
               const std::string&       field,
               unsigned                 id,
               size_t                   nBuffers,
-              pvd::ScalarType          type,
+              unsigned                 type,
               size_t                   nelem,
               size_t                   rank,
               uint32_t                 firstDim,
@@ -73,7 +73,7 @@ private:
     mutable std::condition_variable m_condition;
     State                           m_state;
     unsigned                        m_id;
-    pvd::ScalarType                 m_type;
+    unsigned                        m_type;
     size_t                          m_nelem;
     size_t                          m_rank;
     size_t                          m_payloadSize;

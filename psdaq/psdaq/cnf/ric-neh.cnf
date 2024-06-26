@@ -92,7 +92,7 @@ procmgr_config = [
 # {host: 'drp-neh-cmp010',  id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 RIX:VLS:CAM:01:IMAGE1:Pva:Image'},
 # {host: 'drp-neh-cmp010',  id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 RIX:VLS:CAM:01:IMAGE1:Pva:Image RIX:DIR:CAM:01:IMAGE1:Pva:Image'},
 # {host: 'drp-neh-cmp010',  id:'andor_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetector_example.txt'},
- {host: 'drp-neh-cmp010',  id:'andor_0', flags:'spux', env:test_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetTest.txt'},
+ {host: 'drp-neh-cmp010',  id:'pvs_0', flags:'spux', env:test_epics_env, cmd:pva_cmd0+' -v -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetTest3.txt'},
 ]
 
 # HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)

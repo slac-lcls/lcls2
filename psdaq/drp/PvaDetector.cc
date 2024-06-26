@@ -145,7 +145,7 @@ PvMonitor::PvMonitor(const PvParameters&      para,
                      const std::string&       field,
                      unsigned                 id,
                      size_t                   nBuffers,
-                     pvd::ScalarType          type,
+                     unsigned                 type,
                      size_t                   nelem,
                      size_t                   rank,
                      uint32_t                 firstDim,
@@ -179,12 +179,13 @@ int PvMonitor::getParams(std::string&    fieldName,
     if (m_state == NotReady) {
         // Wait for PV to connect
         const std::chrono::seconds tmo(3);
-        m_condition.wait_for(lock, tmo, [this] { return m_state == Armed; });
-        if (m_state != Armed) {
+        m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
+        if (m_state != Ready) {
             auto msg("PV "+name()+" hasn't connected");
             json jmsg = createAsyncWarnMsg(m_para.alias, msg);
             m_notifySocket.send(jmsg.dump());
-            if (m_nelem == -1ul || m_rank == -1ul) {   // Parameters weren't defaulted in PV specs
+            if (m_type == -1u || m_nelem == -1ul || m_rank == -1ul) {
+                // Parameter(s) weren't defaulted in PV specs so can't Configure
                 logging::error("Failed to get parameters for PV %s", name().c_str());
                 return 1;
             }
@@ -195,11 +196,11 @@ int PvMonitor::getParams(std::string&    fieldName,
     fieldName = m_fieldName;
     xtcType   = xtype[m_type];
     rank      = m_rank;
-    if (m_firstDimOverride)
+    if (m_firstDimOverride && m_rank != 2)
     {
-      rank = 2;                         // Override rank
-      logging::warning("%s rank overridden from %zu to %zu\n",
-                       name().c_str(), m_rank, rank);
+        rank = 2;                       // Override rank
+        logging::warning("%s rank overridden from %zu to %zu\n",
+                         name().c_str(), m_rank, rank);
     }
 
     m_payloadSize = m_nelem * Name::get_element_size(xtcType);
@@ -216,14 +217,10 @@ void PvMonitor::startup()
     for (unsigned i = 0; i < pvQueue.size(); ++i) {
         bufferFreelist.push(reinterpret_cast<Dgram*>(&m_buffer[i * bufSize]));
     }
-
-    m_state = Ready;
 }
 
 void PvMonitor::shutdown()
 {
-    m_state = NotReady;
-
     pvQueue.shutdown();
     bufferFreelist.shutdown();
 
@@ -233,12 +230,26 @@ void PvMonitor::shutdown()
 
 void PvMonitor::onConnect()
 {
-    logging::debug("PV %s connected", name().c_str());
+    logging::debug("PV  %s connected", name().c_str());
 
     if (m_state == NotReady) {
         std::lock_guard<std::mutex> lock(m_mutex);
-        if (!this->Pds_Epics::PvMonitorBase::getParams(m_type, m_nelem, m_rank))  {
-            m_state = Armed;
+        pvd::ScalarType type;
+        size_t nelem;
+        size_t rank;
+        if (!this->Pds_Epics::PvMonitorBase::getParams(type, nelem, rank))  {
+            if (m_type  == -1u)   m_type  = type;
+            if (m_nelem == -1ul)  m_nelem = nelem;
+            if (m_rank  == -1ul)  m_rank  = rank;
+            if (type == m_type && nelem == m_nelem && rank == m_rank) {
+                m_state = Ready;
+            }
+            else {
+                logging::critical("PV's defaulted and introspected parameter(s) don't match: "
+                                  "type %d vs %d, nelem %zu vs %zu, rank %zu vs %zu",
+                                  m_type, type, m_nelem, nelem, m_rank, rank);
+                abort();                // Crash so user can fix config file
+            }
         }
         m_condition.notify_one();
     }
@@ -251,9 +262,12 @@ void PvMonitor::onConnect()
 
 void PvMonitor::onDisconnect()
 {
+    // This unfortunately seems not to get called for CA PVs
+    m_state = NotReady;
+
     auto msg("PV "+ name() + " disconnected");
-    logging::error("%s", msg.c_str());
-    json jmsg = createAsyncErrMsg(m_para.alias, msg);
+    logging::warning("%s", msg.c_str());
+    json jmsg = createAsyncWarnMsg(m_para.alias, msg);
     m_notifySocket.send(jmsg.dump());
 }
 
@@ -459,10 +473,8 @@ unsigned PvDetector::connect(std::string& msg)
             }
             // PV type (optionally) provided as (type)
             pattern = std::regex("\\((.*?)\\)");
-            pvd::ScalarType type;
-            bool typeDef = false;
+            unsigned type = -1u;
             if (std::regex_search(pvSpec, matches, pattern)) {
-                typeDef = true;
                 // Cleanup pvName or field
                 pos = pvName.find("(", 0);
                 if (pos != std::string::npos)
@@ -496,8 +508,7 @@ unsigned PvDetector::connect(std::string& msg)
                     nelem = MAX_STRING_SIZE;
                 }
                 else {
-                    logging::error("Unrecognized type '%s'", matches[1].str().c_str());
-                    typeDef = false;
+                    throw std::string("Unrecognized type '" + matches[1].str() + "'");
                 }
                 // ...
             }
@@ -514,9 +525,6 @@ unsigned PvDetector::connect(std::string& msg)
                            "type %d, firstDim %u, nelem %zd, rank %zd, request '%s'",
                            pvSpec.c_str(), alias.c_str(), provider.c_str(), pvName.c_str(), field.c_str(),
                            type, firstDim, nelem, rank, request.c_str());
-            if (!typeDef && nelem != -1ul && rank != -1) {
-                throw std::string("Incomplete specification for defaults: provide type");
-            }
             auto pvMonitor = std::make_shared<PvMonitor>(m_para,
                                                          alias, pvName, provider, request, field,
                                                          id++, m_evtQueue.size(), type, nelem, rank, firstDim,
@@ -1287,47 +1295,47 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     // Read PVs from a file, if specified
-    unsigned i = 0;
+    unsigned nPVs = 0;
     if (!filename.empty()) {
         unsigned lineNo = 0;
         std::ifstream pvFile(filename.c_str());
         if (!pvFile) {
-            logging::error("Failed to open file %s", filename.c_str());
-            return 1;     // Cannot open file
+            logging::critical("Failed to open file %s", filename.c_str());
+            return 1;
         }
         logging::debug("Processing file %s", filename.c_str());
         while (!pvFile.eof()) {
             std::string line;
             std::getline(pvFile, line);
-            std::string pvSpec = psalg::trim(line);
             ++lineNo;
 
-            logging::debug("*** line %u, size %zu, PV: '%s'\n", lineNo, pvSpec.size(), pvSpec.c_str());
+            // Remove whitespaces
+            std::string pvSpec = psalg::strip(line);
 
             // Skip blank and commented out lines
             if (pvSpec.size() == 0 || pvSpec[0] == '#')  continue;
 
-            if (std::find(para.pvSpecs.begin(), para.pvSpecs.end(), pvSpec) != para.pvSpecs.end()) {
-                logging::warning("Ignoring duplicate line %u for PV '%s'\n", lineNo, pvSpec.c_str());
-                continue;
-            }
+            // Remove trailing comments
+            pvSpec = pvSpec.substr(0, pvSpec.find("#", 0));
+
+            logging::debug("line %u, PV spec: '%s'\n", lineNo, pvSpec.c_str());
 
             para.pvSpecs.push_back({pvSpec});
-            ++i;
+            ++nPVs;
         }
     }
     // Also read PVs from the command line
     while (optind < argc) {
         para.pvSpecs.push_back({argv[optind++]});
-        ++i;
+        ++nPVs;
     }
     if (para.pvSpecs.empty()) {
         // Provider is "pva" (default) or "ca"
         logging::critical("At least one PV is required");
         return 1;
     }
-    if (i > 64) { // Limit is set by the number of bits in the contract/remaining variables
-        logging::critical("Found %u PVs when max supported is %u", i, 64);
+    if (nPVs > 64) { // Limit is set by the number of bits in contract/remaining variables
+        logging::critical("Found %u PVs when max supported is %u", nPVs, 64);
         return 1;
     }
 

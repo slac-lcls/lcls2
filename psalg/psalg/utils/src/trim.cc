@@ -8,7 +8,7 @@
 namespace psalg
 {
 
-const std::string WHITESPACE = " \n\r\t\f\v";
+const std::string WHITESPACE{" \n\r\t\f\v"};
 
 std::string ltrim(const std::string& str)
 {
@@ -25,6 +25,14 @@ std::string rtrim(const std::string& str)
 std::string trim(const std::string& str)
 {
     return rtrim(ltrim(str));
+}
+
+std::string strip(const std::string& str)
+{
+    std::string result{str};
+    auto isWS = []( char ch ) { return std::isspace<char>( ch, std::locale::classic() ); };
+    result.erase( std::remove_if( result.begin(), result.end(), isWS ), result.end() );
+    return result;
 }
 
 };
