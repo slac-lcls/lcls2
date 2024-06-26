@@ -555,7 +555,7 @@ class PatternTab(QtWidgets.QWidget):
                 self.coinc[i].setText(str(qv))
 
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, titles):
+    def setupUi(self, MainWindow, titles, nopatt):
         global ATCAWidget
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
@@ -646,7 +646,8 @@ class Ui_MainWindow(object):
 
             tw.addTab(GroupsTab(pvbase),"Groups/EventCodes")
 
-            tw.addTab(PatternTab(pvbase),"Pattern")
+            if nopatt==False:
+                tw.addTab(PatternTab(pvbase),"Pattern")
 
             if 'Kcu' not in v:
                 tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
@@ -679,13 +680,14 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
+    parser.add_argument("--nopatt", help="no pattern stats", action='store_true')
     parser.add_argument("pvs", help="pvs to monitor",nargs='+')
     args = parser.parse_args()
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.pvs)
+    ui.setupUi(MainWindow,args.pvs,args.nopatt)
     MainWindow.updateGeometry()
 
     MainWindow.show()
