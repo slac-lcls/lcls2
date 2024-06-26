@@ -129,7 +129,7 @@ def one_camera_sequence(args):
     print(f'd {d}')
 
     #  The bunch trains
-    gen = TrainGenerator(start_bucket     =(d['readout']+1)*args.bunch_period+SXR_OFFSET,
+    gen = TrainGenerator(start_bucket     =(d['readout']+1)*args.bunch_period+args.start,
                          train_spacing    =d['period']*args.bunch_period,
                          bunch_spacing    =args.bunch_period,
                          bunches_per_train=d['period']-d['readout'],
@@ -142,7 +142,7 @@ def one_camera_sequence(args):
     
     #  The laser triggers (on/off)
     factors = factorize(args_period[0]//args.bunch_period)
-    gen = LaserGenerator(start_bucket=SXR_OFFSET,
+    gen = LaserGenerator(start_bucket=args.start,
                          bunch_period=args.bunch_period,
                          branch_counts=factors,
                          onoff=args.laser_onoff)
@@ -151,7 +151,7 @@ def one_camera_sequence(args):
     
     #  The Andor triggers
     gen = PeriodicGenerator(period=[d['period']*args.bunch_period],
-                            start =[SXR_OFFSET],
+                            start =[args.start],
                             charge=None,
                             repeat=-1,
                             notify=False)
@@ -184,7 +184,7 @@ def two_camera_sequence(args):
     print(f'd {d}  n {n}  rpad {rpad}')
 
     #  The bunch trains
-    gen = TrainGenerator(start_bucket     =(d['slow']['readout']+1)*args.bunch_period+SXR_OFFSET,
+    gen = TrainGenerator(start_bucket     =(d['slow']['readout']+1)*args.bunch_period+args.start,
                          train_spacing    =d['fast']['period']*args.bunch_period,
                          bunch_spacing    =args.bunch_period,
                          bunches_per_train=d['fast']['period']-d['fast']['readout'],
@@ -198,7 +198,7 @@ def two_camera_sequence(args):
 
     #  The laser triggers (on/off)
     factors = factorize(args_period[0]//args.bunch_period)
-    gen = LaserGenerator(start_bucket=SXR_OFFSET,
+    gen = LaserGenerator(start_bucket=args.start,
                          bunch_period=args.bunch_period,
                          branch_counts=factors,
                          onoff=args.laser_onoff)
@@ -208,7 +208,7 @@ def two_camera_sequence(args):
     #  The Andor triggers
     gen = PeriodicGenerator(period=[d['slow']['period']*args.bunch_period,
                                     d['fast']['period']*args.bunch_period],
-                            start =[SXR_OFFSET,SXR_OFFSET],
+                            start =[args.start,args.start],
                             charge=None,
                             repeat=-1,
                             notify=False)
@@ -218,7 +218,7 @@ def two_camera_sequence(args):
 
     #  Since we don't actually have beam to include in the trigger logic,
     #  we need to gate the generation of the fast Andor eventcode to simulate it.
-    gen = TrainGenerator(start_bucket     =(n+1)*d['fast']['period']*args.bunch_period+SXR_OFFSET,
+    gen = TrainGenerator(start_bucket     =(n+1)*d['fast']['period']*args.bunch_period+args.start,
                          train_spacing    =d['fast']['period']*args.bunch_period,
                          bunch_spacing    =args.bunch_period,
                          bunches_per_train=1,
@@ -233,6 +233,7 @@ def two_camera_sequence(args):
 def main():
     global args
     parser = argparse.ArgumentParser(description='rix 2-integrator mode',formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--start", default=7, type=int, help='Offset bucket for all sequences')
     parser.add_argument("--periods", default=[1,0.01], type=float, nargs='+', help="integration periods (sec); default=[1,0.01]")
     parser.add_argument("--readout_time", default=[0.391,0.005], type=float, nargs='+', help="camera readout times (sec); default=[0.391,0.005]")
     parser.add_argument("--bunch_period", default=28, type=int, help="spacing between bunches in the train; default=28")
