@@ -43,7 +43,8 @@ class LaserGenerator(object):
         self.ninstr = 0
         self.instr.append('instrset = []')
         #  Offset the entire sequence from the 1H marker
-        self.instr.append(f'instrset.append( FixedRateSync(marker="910kH", occ={start_bucket}) )')
+        if start_bucket:
+            self.instr.append(f'instrset.append( FixedRateSync(marker="910kH", occ={start_bucket}) )')
         #  Loop through on/off sequences alternating subroutines
         req = 0
         for i,n in enumerate(onoff):
@@ -52,7 +53,7 @@ class LaserGenerator(object):
                 self.instr.append(f'instrset.append( Branch.conditional(line=start,counter=3,value={n-1}) )')
                 self.ninstr += 1
             req = 1-req
-        self.instr.append('instrset.append( Branch.unconditional(line=0) )')
+        self.instr.append(f'instrset.append( Branch.unconditional(line={1 if start_bucket else 0}) )')
         self.ninstr += 1
 
     def one_second(self,bunch_period,branch_counts,req):
