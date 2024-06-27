@@ -18,8 +18,8 @@ typedef std::chrono::high_resolution_clock Clock;
 
 #include "Types.hh"
 #include "LocalExtrema.hh"
-#include "psalg/alloc/Allocator.hh"
-#include "psalg/alloc/AllocArray.hh"
+#include "alloc_headers/alloc/Allocator.hh"
+#include "alloc_headers/alloc/AllocArray.hh"
 
 //-----------------------------
 
