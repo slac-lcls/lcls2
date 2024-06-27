@@ -176,6 +176,9 @@ class RunParams:
 
         logging.debug(f"RunParams: param_descs = {param_descs}")
 
+        # gather partition number
+        params['partition'] = self.pva.platform
+
         # gather pva run parameters
         nameList = []
         for ppp in self.pvaList:
