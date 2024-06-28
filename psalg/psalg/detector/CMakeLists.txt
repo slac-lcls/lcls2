@@ -1,4 +1,5 @@
 
+find_package(xtcdata REQUIRED)
 #   src/AreaDetectorTypes.cc - moved to calib for correct dependences
 add_library(detector SHARED
     src/DetectorTypes.cc

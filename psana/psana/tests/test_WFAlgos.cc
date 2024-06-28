@@ -1,4 +1,4 @@
-/* 
+/*
  * https://curl.haxx.se/libcurl/c/getinfo.html
  */
 
@@ -10,7 +10,7 @@
 //#include <vector>
 
 #include "psalg/calib/NDArray.hh"
-#include "psana/peakFinder/WFAlgos.hh"
+#include "psana/peakFinder/include/WFAlgos.hh"
 
 using namespace psalg;
 
@@ -86,7 +86,7 @@ const double WFTESTDATA[] = {
     1,
     1,
 };
- 
+
 //-------------------
 
 void test_find_edges() {
@@ -106,7 +106,7 @@ void test_find_edges() {
 
   uint32_t npks = find_edges(npkmax, pkvals, pkinds, waveform, baseline, threshold, fraction, deadtime, leading_edges);
 
-  std::cout << "\nIn test_find_edges - find_edges found npk: " << npks << '\n'; 
+  std::cout << "\nIn test_find_edges - find_edges found npk: " << npks << '\n';
   std::cout << "\n  pkinds: ";
   for(index_t i=0; i<npks; ++i) std::cout << pkinds[i] << ' ';
   std::cout << "\n  pkvals: ";
@@ -115,13 +115,13 @@ void test_find_edges() {
 }
 
 //-------------------
- 
+
 void test_input_pars(int i, const int j, int& k, const int& l) {
-  cout << "\nvalue received as       int : " << i; 
-  cout << "\nvalue received as const int : " << j; 
-  cout << "\nvalue received as       int&: " << k; 
-  cout << "\nvalue received as const int&: " << l; 
-  cout << '\n'; 
+  cout << "\nvalue received as       int : " << i;
+  cout << "\nvalue received as const int : " << j;
+  cout << "\nvalue received as       int&: " << k;
+  cout << "\nvalue received as const int&: " << l;
+  cout << '\n';
 }
 
 void test_cpp() {
@@ -155,15 +155,14 @@ int main(int argc, char* argv[])
   cout << usage();
   if (argc==1) {return 0;}
   std::string tname(argv[1]);
-  cout << usage(tname); 
+  cout << usage(tname);
 
   if      (tname=="1")  test_cpp();
   else if (tname=="2")  test_find_edges();
   else MSG(WARNING, "Undefined test name \"" << tname << '\"');
- 
+
   print_hline(80,'_');
   return EXIT_SUCCESS;
 }
 
 //-------------------
-

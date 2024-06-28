@@ -1,6 +1,6 @@
 //-----------------------------
 
-#include "../PeakFinderAlgos.hh"
+#include "../include/PeakFinderAlgos.hh"
 #include <sstream>   // for stringstream
 #include <cmath>     // floor, ceil
 #include <iomanip>   // for std::typedef
@@ -46,7 +46,7 @@ PeakFinderAlgos::PeakFinderAlgos(Allocator *allocator, const size_t& seg, const 
 
 //-----------------------------
 
-PeakFinderAlgos::~PeakFinderAlgos() 
+PeakFinderAlgos::~PeakFinderAlgos()
 {
   #ifndef NDEBUG
   if(m_pbits & LOG::DEBUG) std::cout << "in d-tor ~PeakFinderAlgos\n";
@@ -66,7 +66,7 @@ PeakFinderAlgos::setAllocator(Allocator *allocator) {
 void
 PeakFinderAlgos::printParameters()
 {
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "PeakFinderAlgos::printParameters\n";
   ss << "seg   " << m_seg << '\n';
   ss << "pbits " << m_pbits << '\n';
@@ -97,7 +97,7 @@ void PeakFinderAlgos::_convPeaksSelected(){
 }
 
 
-void 
+void
 PeakFinderAlgos::_initMapsAndVectors_drp()
 {
   #ifndef NDEBUG
@@ -118,7 +118,7 @@ PeakFinderAlgos::_initMapsAndVectors_drp()
 
 //-----------------------------
 
-void 
+void
 PeakFinderAlgos::_evaluateRingIndexes_drp()
 {
   #ifndef NDEBUG
@@ -148,14 +148,14 @@ PeakFinderAlgos::_evaluateRingIndexes_drp()
 
 //-----------------------------
 
-void 
+void
 PeakFinderAlgos::printMatrixOfRingIndexes()
 {
   int indmax = (int)std::ceil(m_r0 + m_dr);
   int indmin = -indmax;
   unsigned counter = 0;
-  std::stringstream ss; 
-  
+  std::stringstream ss;
+
   for (int i = indmin; i <= indmax; ++ i) {
     for (int j = indmin; j <= indmax; ++ j) {
       double r = std::sqrt(double(i*i + j*j));
@@ -172,20 +172,20 @@ PeakFinderAlgos::printMatrixOfRingIndexes()
 
 //-----------------------------
 
-void 
+void
 PeakFinderAlgos::printVectorOfRingIndexes_drp()
 {
   if(arr_indexes_drp.num_elem() == 0) {
     _evaluateRingIndexes_drp();
   }
 
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "In printVectorOfRingIndexes:\n Vector size: " << arr_indexes_drp.num_elem() << '\n';
   int counter_in_line=0;
   for (unsigned int ii = 0; ii < arr_indexes_drp.num_elem(); ii++) {
     ss << " (" << arr_indexes_drp(ii).i << "," << arr_indexes_drp(ii).j << ')';
     if (++counter_in_line > 9) {ss << '\n'; counter_in_line=0;}
-  }   
+  }
   cout << ss.str() << '\n';
 }
 //-----------------------------
@@ -193,7 +193,7 @@ PeakFinderAlgos::printVectorOfRingIndexes_drp()
 void
 PeakFinderAlgos::printSelectionPars()
 {
-  std::stringstream ss; 
+  std::stringstream ss;
   ss << "PeakFinderAlgos::printSelectionPars(), seg=" << m_seg << '\n';
   ss << "  npix_min" << m_peak_npix_min << '\n';
   ss << "  npix_max" << m_peak_npix_max << '\n';
@@ -249,7 +249,7 @@ PeakFinderAlgos::_makeVectorOfSelectedPeaks_drp()
   }
 
   #ifndef NDEBUG
-  if(m_pbits) std::cout << "_makeVectorOfSelectedPeaks, seg=" << m_seg 
+  if(m_pbits) std::cout << "_makeVectorOfSelectedPeaks, seg=" << m_seg
                         << "  #peaks raw=" << arr_peaks_drp.num_elem()
                         << "  sel=" << arr_peaks_sel_drp.num_elem() << '\n';
   #endif
@@ -288,34 +288,34 @@ PeakFinderAlgos::_printVectorOfPeaks_drp(AllocArray1D<Peak> v) {
 //-- NON-CLASS METHODS
 //-----------------------------
 
-  std::ostream& 
-  operator<<(std::ostream& os, const Peak& p) 
+  std::ostream&
+  operator<<(std::ostream& os, const Peak& p)
   {
     os << fixed
        << "Seg:"      << std::setw(3) << std::setprecision(0) << p.seg
-       << " Row:"     << std::setw(4) << std::setprecision(0) << p.row 	     
-       << " Col:"     << std::setw(4) << std::setprecision(0) << p.col 	      
-       << " Npix:"    << std::setw(3) << std::setprecision(0) << p.npix    
-       << " Imax:"    << std::setw(7) << std::setprecision(1) << p.amp_max     	      
-       << " Itot:"    << std::setw(7) << std::setprecision(1) << p.amp_tot    	      
-       << " CGrav r:" << std::setw(6) << std::setprecision(1) << p.row_cgrav 	      
-       << " c:"       << std::setw(6) << std::setprecision(1) << p.col_cgrav   	      
-       << " Sigma r:" << std::setw(5) << std::setprecision(2) << p.row_sigma  	      
-       << " c:"       << std::setw(5) << std::setprecision(2) << p.col_sigma  	      
-       << " Rows["    << std::setw(4) << std::setprecision(0) << p.row_min    	      
-       << ":"         << std::setw(4) << std::setprecision(0) << p.row_max    	      
-       << "] Cols["   << std::setw(4) << std::setprecision(0) << p.col_min    	      
-       << ":"         << std::setw(4) << std::setprecision(0) << p.col_max    	     
-       << "] B:"      << std::setw(5) << std::setprecision(1) << p.bkgd       	      
-       << " N:"       << std::setw(5) << std::setprecision(1) << p.noise      	     
+       << " Row:"     << std::setw(4) << std::setprecision(0) << p.row
+       << " Col:"     << std::setw(4) << std::setprecision(0) << p.col
+       << " Npix:"    << std::setw(3) << std::setprecision(0) << p.npix
+       << " Imax:"    << std::setw(7) << std::setprecision(1) << p.amp_max
+       << " Itot:"    << std::setw(7) << std::setprecision(1) << p.amp_tot
+       << " CGrav r:" << std::setw(6) << std::setprecision(1) << p.row_cgrav
+       << " c:"       << std::setw(6) << std::setprecision(1) << p.col_cgrav
+       << " Sigma r:" << std::setw(5) << std::setprecision(2) << p.row_sigma
+       << " c:"       << std::setw(5) << std::setprecision(2) << p.col_sigma
+       << " Rows["    << std::setw(4) << std::setprecision(0) << p.row_min
+       << ":"         << std::setw(4) << std::setprecision(0) << p.row_max
+       << "] Cols["   << std::setw(4) << std::setprecision(0) << p.col_min
+       << ":"         << std::setw(4) << std::setprecision(0) << p.col_max
+       << "] B:"      << std::setw(5) << std::setprecision(1) << p.bkgd
+       << " N:"       << std::setw(5) << std::setprecision(1) << p.noise
        << " S/N:"     << std::setw(5) << std::setprecision(1) << p.son;
     return os;
   }
 
 //-----------------------------
 
-  std::ostream& 
-  operator<<(std::ostream& os, const RingAvgRms& o) 
+  std::ostream&
+  operator<<(std::ostream& os, const RingAvgRms& o)
   {
     os << fixed
        << " Bkgd avg:" << std::setw(7) << std::setprecision(1) << o.avg
