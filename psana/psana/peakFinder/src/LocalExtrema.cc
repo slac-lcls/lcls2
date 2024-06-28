@@ -1,7 +1,7 @@
 
 //-----------------------------
 
-#include "../LocalExtrema.hh"
+#include "../include/LocalExtrema.hh"
 #include <sstream>   // for stringstream
 
 //-----------------------------

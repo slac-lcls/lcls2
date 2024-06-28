@@ -100,21 +100,22 @@ cd psalg
 pip install --no-deps --prefix=$INSTDIR $pipOptions .
 cd ..
 
-if [ $no_daq == 0 ]; then
-    # to build psdaq with setuptools
-    cmake_build psdaq
-    cd psdaq
-    # force build of the extensions.  do this because in some cases
-    # setup.py is unable to detect if an external header file changed
-    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
-    cd ..
-fi
+# if [ $no_daq == 0 ]; then
+#     # to build psdaq with setuptools
+#     cmake_build psdaq
+#     cd psdaq
+#     # force build of the extensions.  do this because in some cases
+#     # setup.py is unable to detect if an external header file changed
+#     # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
+#     if [ $pyInstallStyle == "develop" ]; then
+#         python setup.py build_ext -f --inplace
+#     fi
+#     pip install --no-deps --prefix=$INSTDIR $pipOptions .
+#     cd ..
+# fi
 
 if [ $no_ana == 0 ]; then
+    cmake_build psana
     # to build psana with setuptools
     cd psana
     # force build of the extensions.  do this because in some cases
