@@ -10,7 +10,9 @@
 #   - in-h5:            path to unsorted hdf5 file.
 #   - out-h5:           path to the new sorted output hdf5 file.
 #   - dask-chunk-size:  (Dask client) no. of rows for each data chunk.
-#                       Default is 100000000.
+#                       Default is 100000000 for 1-D array for float64.
+#                       This is 8*100000000/1e9 = 0.8GB per core. The
+#                       guideline from dask is ~ 100MB - 1GB.
 #   - dask-n-procs:     (Dask client) no. of processes for Dask clients
 #                       Default is 100. Max is no. of cores per node.
 #   - dask-n-jobs:      (Dask client) for scaling beyond one node. 
