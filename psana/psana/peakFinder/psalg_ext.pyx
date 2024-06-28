@@ -103,7 +103,7 @@ ctypedef fused nptype2d :
 #------------------------------
 
 #cdef extern from "psalgos/LocalExtrema.h" namespace "localextrema":
-cdef extern from "LocalExtrema.hh" namespace "localextrema":
+cdef extern from "include/LocalExtrema.hh" namespace "localextrema":
 
     size_t localMinima1d[T](const T *data
                            ,const mask_t *mask
@@ -222,7 +222,7 @@ def print_vector_of_diag_indexes(int32_t& rank) : printVectorOfDiagIndexes(rank)
 #------------------------------
 
 #cdef extern from "psalgos/PeakFinderAlgos.h" namespace "psalgos":
-cdef extern from "PeakFinderAlgosLCLS1.hh" namespace "psalg1":
+cdef extern from "include/PeakFinderAlgosLCLS1.hh" namespace "psalg1":
     cdef cppclass Peak :
         Peak() except +
         Peak(const Peak& o) except +
@@ -339,7 +339,7 @@ cdef class py_peak :
 #------------------------------
 
 #cdef extern from "psalgos/PeakFinderAlgos.h" namespace "psalgos":
-cdef extern from "PeakFinderAlgosLCLS1.hh" namespace "psalg1":
+cdef extern from "include/PeakFinderAlgosLCLS1.hh" namespace "psalg1":
     cdef cppclass PeakFinderAlgos:
          #float  m_r0
          #float  m_dr
