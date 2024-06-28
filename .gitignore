@@ -11,3 +11,4 @@ install
 *.ami
 *.xtc2
 p[0-7].cnf.*
+*.ipynb_checkpoints
