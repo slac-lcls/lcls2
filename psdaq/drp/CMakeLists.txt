@@ -123,7 +123,7 @@ target_link_libraries(tpr_trigger
     app
     tpr
     dl
-    readline
+    ${Readline_LIBRARY}
     Threads::Threads
     rt
 )
