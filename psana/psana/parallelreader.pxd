@@ -41,7 +41,6 @@ cdef class ParallelReader:
     cdef int        coarse_freq
     cdef Buffer     *bufs
     cdef Buffer     *step_bufs
-    cdef Buffer     *tmp_bufs
     cdef unsigned   Configure
     cdef unsigned   BeginRun
     cdef unsigned   L1Accept
@@ -54,7 +53,6 @@ cdef class ParallelReader:
     cdef int        zeroedbug_wait_sec
     cdef int        max_retries
     cdef PyObject*  dsparms
-    cdef array.array filter_timestamp_flags
 
     cdef void _init_buffers(self, Buffer* bufs)
     cdef void _free_buffers(self, Buffer* bufs)

@@ -82,7 +82,6 @@ class MPIDataSource(DataSourceBase):
 
     def __init__(self, comms, *args, **kwargs):
         # Check if an I/O-friendly numpy file storing timestamps is given by the user
-        kwargs['mpi_ts'] = 0
         if 'timestamps' in kwargs:
             if isinstance(kwargs['timestamps'], str):
                 kwargs['mpi_ts'] = 1
@@ -121,8 +120,8 @@ class MPIDataSource(DataSourceBase):
             safe_mpi_abort(msg)
         
         # Load timestamp files on EventBuilder Node
-        if kwargs['mpi_ts'] == 1 and nodetype == 'eb':
-            self.dsparms.set_timestamps()
+        if 'mpi_ts' in kwargs and nodetype == 'eb':
+            self.dsparms.timestamps = self.get_filter_timestamps(self.timestamps)
         
         # setup runnum list
         if nodetype == 'smd0':

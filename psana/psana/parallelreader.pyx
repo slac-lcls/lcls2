@@ -19,8 +19,6 @@ cdef class ParallelReader:
         if PyArg_ParseTupleAndKeywords(args, kwargs, "|O", kwlist, 
                 &(self.dsparms)) == False:
             raise RuntimeError, "Invalid kwargs for SmdReader"
-        dsparms = <object> self.dsparms
-        cdef uint64_t[:] filter_timestamps = dsparms.timestamps
         
         self.file_descriptors   = file_descriptors
         self.chunksize          = chunksize
@@ -31,7 +29,6 @@ cdef class ParallelReader:
         self.EndRun             = TransitionId.EndRun
         self.bufs               = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self.step_bufs          = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
-        self.tmp_bufs           = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self.got                = 0
         self.chunk_overflown    = 0                         # set to dgram size if it's too big
         self.max_events         = int(self.chunksize / 70)  # guess no. of smd events in one chunk
@@ -39,19 +36,12 @@ cdef class ParallelReader:
         self.zeroedbug_wait_sec = int(os.environ.get('PS_ZEROEDBUG_WAIT_SEC', '3'))
         self.max_retries        = int(os.environ.get('PS_R_MAX_RETRIES', '0'))
         self.gots               = array.array('l', [0]*self.nfiles)
-        
-        # This is a 1d array containing timestamp is found flags for all streams
-        cdef int flag_len = self.nfiles * filter_timestamps.shape[0]
-        self.filter_timestamp_flags = array.array('i', [0]*flag_len) 
-
         self._init_buffers(self.bufs)
         self._init_buffers(self.step_bufs)
-        self._init_buffers(self.tmp_bufs)
 
     def __dealloc__(self):
         self._free_buffers(self.bufs)
         self._free_buffers(self.step_bufs)
-        self._free_buffers(self.tmp_bufs)
 
     cdef void _init_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
@@ -108,31 +98,16 @@ cdef class ParallelReader:
         cdef Dgram* d
         cdef Buffer* buf
         cdef Buffer* step_buf
-        cdef Buffer* tmp_buf
         cdef uint64_t payload   = 0
         cdef int err_thread_id  = -1
         cdef int fstat_err      = 0
         self.got                = 0
         cdef int st=0, en=0, sum_found=0
         
-        dsparms = <object> self.dsparms
-        cdef uint64_t[:] filter_timestamps = dsparms.timestamps
-        cdef int[:] filter_timestamp_flags = self.filter_timestamp_flags
-        cdef sum_founds = array.array('i', [0] * self.nfiles)
-        cdef int[:] sum_found_views = sum_founds
-        
         for i in prange(self.nfiles, nogil=True, num_threads=self.num_threads):
-            if filter_timestamps.shape[0] > 0:
-                st = i*filter_timestamps.shape[0]
-                en = st + filter_timestamps.shape[0]
-                for j in range(st, en):
-                    sum_found_views[i] += filter_timestamp_flags[j]
-                if sum_found_views[i] == filter_timestamps.shape[0]:
-                    continue
             gots[i] = 0
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
-            tmp_buf = &(self.tmp_bufs[i])
 
             # skip reading this buffer if there is/are still some event(s).
             # or when there's a split integrating event.
@@ -174,10 +149,6 @@ cdef class ParallelReader:
             step_buf.n_ready_events = 0
             step_buf.seen_offset    = 0
             step_buf.n_seen_events  = 0
-            tmp_buf.ready_offset   = 0
-            tmp_buf.n_ready_events = 0
-            tmp_buf.seen_offset    = 0
-            tmp_buf.n_seen_events  = 0
             
             # reset force_read flag for integrating event
             buf.force_reread        = 0
@@ -202,21 +173,6 @@ cdef class ParallelReader:
                         buf.st_offset_arr[buf.n_ready_events] = buf.ready_offset
                         buf.en_offset_arr[buf.n_ready_events] = buf.ready_offset + sizeof(Dgram) + payload
 
-                        if filter_timestamps.shape[0] > 0 and buf.sv_arr[buf.n_ready_events] == self.L1Accept:
-                            for j in range(filter_timestamps.shape[0]):
-                                if filter_timestamps[j] == buf.ts_arr[buf.n_ready_events] and \
-                                        filter_timestamp_flags[i * filter_timestamps.shape[0] + j] == 0:
-                                    filter_timestamp_flags[i * filter_timestamps.shape[0] + j] = 1
-                                    memcpy(tmp_buf.chunk + tmp_buf.ready_offset, d, sizeof(Dgram) + payload)
-                                    tmp_buf.ts_arr[tmp_buf.n_ready_events] = buf.ts_arr[buf.n_ready_events]
-                                    tmp_buf.st_offset_arr[tmp_buf.n_ready_events] = tmp_buf.ready_offset
-                                    tmp_buf.en_offset_arr[tmp_buf.n_ready_events] = tmp_buf.ready_offset + sizeof(Dgram) + payload
-                                    tmp_buf.sv_arr[tmp_buf.n_ready_events] = buf.sv_arr[buf.n_ready_events] 
-                                    tmp_buf.n_ready_events += 1
-                                    tmp_buf.timestamp = buf.ts_arr[buf.n_ready_events] 
-                                    tmp_buf.ready_offset += sizeof(Dgram) + payload
-                                    break
-                        
                         # check if this a non L1
                         if buf.sv_arr[buf.n_ready_events] != self.L1Accept:
                             memcpy(step_buf.chunk + step_buf.ready_offset, d, sizeof(Dgram) + payload)
@@ -231,16 +187,6 @@ cdef class ParallelReader:
                             if buf.sv_arr[buf.n_ready_events] == self.EndRun:
                                 buf.endrun_ts = buf.ts_arr[buf.n_ready_events]
 
-                            if filter_timestamps.shape[0] > 0:
-                                memcpy(tmp_buf.chunk + tmp_buf.ready_offset, d, sizeof(Dgram) + payload)
-                                tmp_buf.ts_arr[tmp_buf.n_ready_events] = buf.ts_arr[buf.n_ready_events]
-                                tmp_buf.st_offset_arr[tmp_buf.n_ready_events] = tmp_buf.ready_offset
-                                tmp_buf.en_offset_arr[tmp_buf.n_ready_events] = tmp_buf.ready_offset + sizeof(Dgram) + payload
-                                tmp_buf.sv_arr[tmp_buf.n_ready_events] = buf.sv_arr[buf.n_ready_events] 
-                                tmp_buf.n_ready_events += 1
-                                tmp_buf.timestamp = buf.ts_arr[buf.n_ready_events] 
-                                tmp_buf.ready_offset += sizeof(Dgram) + payload
-                        
                         buf.timestamp = buf.ts_arr[buf.n_ready_events] 
                         buf.ready_offset += sizeof(Dgram) + payload
                         buf.n_ready_events += 1
@@ -252,19 +198,6 @@ cdef class ParallelReader:
             
             # end while buf.ready_offset < buf.got:
 
-            # check if we need to copy from tmp_buf to buf (timestamp filter)
-            if tmp_buf.ready_offset > 0:
-                memcpy(buf.chunk, tmp_buf.chunk, tmp_buf.ready_offset)
-                for k in range(tmp_buf.n_ready_events):
-                    buf.ts_arr[k] = tmp_buf.ts_arr[k]
-                    buf.st_offset_arr[k] = tmp_buf.st_offset_arr[k]
-                    buf.en_offset_arr[k] = tmp_buf.en_offset_arr[k]
-                    buf.sv_arr[k] = tmp_buf.sv_arr[k]
-                buf.n_ready_events = tmp_buf.n_ready_events
-                buf.timestamp = tmp_buf.timestamp
-                buf.ready_offset = tmp_buf.ready_offset
-
-        
         # end for i 
         if err_thread_id >= 0: 
             print(f'Error: found 0 extent in stream {err_thread_id}')

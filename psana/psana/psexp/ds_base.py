@@ -45,7 +45,7 @@ class DsParms:
     max_retries:        int
     live:               bool
     smd_inprogress_converted: int
-    timestamps:         np.ndarray
+    timestamps:         np.ndarray      
     intg_det:           str
     smd_callback:       int = 0
     terminate_flag:     bool = False
@@ -58,14 +58,6 @@ class DsParms:
 
     def set_use_smds(self, use_smds):
         self.use_smds = use_smds
-
-    def read_ts_npy_file(self):
-        with open(self.timestamps, 'rb') as ts_npy_f:
-            return(np.asarray(np.load(ts_npy_f), dtype=np.uint64))
-
-    def set_timestamps(self):
-        if isinstance(self.timestamps, str):
-            self.timestamps = self.read_ts_npy_file()
 
     @property
     def intg_stream_id(self):
@@ -129,16 +121,7 @@ class DataSourceBase(abc.ABC):
 
             for k in keywords:
                 if k in kwargs:
-                    if k == 'timestamps':
-                        msg = 'Numpy array or .npy filename is required for timestamps argument'
-                        assert isinstance(kwargs[k], (np.ndarray, str)), msg
-                        # For numpy array, format timestamps to uint64 (for correct search result)
-                        if isinstance(kwargs[k], (np.ndarray,)):
-                            setattr(self, k, np.asarray(kwargs[k], dtype=np.uint64))
-                        else:
-                            setattr(self, k, kwargs[k])
-                    else:
-                        setattr(self, k, kwargs[k])
+                    setattr(self, k, kwargs[k])
 
             if self.destination != 0:
                 self.batch_size = 1 # reset batch_size to prevent L1 transmitted before BeginRun (FIXME?: Mona)
@@ -161,6 +144,10 @@ class DataSourceBase(abc.ABC):
 
         assert self.batch_size > 0
 
+        # This mpi_ts is set by mpi_ds to avoid opening filter timestamps npy file on all ranks
+        if 'mpi_ts' not in kwargs:
+            self.timestamps = self.get_filter_timestamps(self.timestamps)
+        
         self.prom_man = PrometheusManager(self.exp, self.runnum)
         self.dsparms  = DsParms(self.batch_size,
                 self.max_events,
@@ -175,11 +162,20 @@ class DataSourceBase(abc.ABC):
                 self.smd_callback,
                 )
 
-        if 'mpi_ts' not in kwargs:
-            self.dsparms.set_timestamps()
+    def get_filter_timestamps(self, timestamps):
+        # Returns a sorted numpy array 
+        # Input: timestamps
+        #   str         : load the input file (e.g. .npy) and return sorted array with uint64 dtype
+        #   np.ndarray  : return sorted array with np.uint64 dtype
+        formatted_timestamps = np.empty(0, dtype=np.uint64)
+        if isinstance(timestamps, str):
+            with open(timestamps, 'rb') as ts_npy_f:
+                formatted_timestamps = np.load(ts_npy_f)
+        elif isinstance(timestamps, np.ndarray):
+                formatted_timestamps = timestamps
         else:
-            if kwargs['mpi_ts'] == 0:
-                self.dsparms.set_timestamps()
+            print(f'Warning: No timestamp filtering, unrecognized format of the input filter timestamp ({type(timestamps)}). Allowed formats are .npy file or numpy.ndarray).')
+        return np.asarray(np.sort(formatted_timestamps), dtype=np.uint64)
 
     def setup_psplot_live(self):
         # Send run info to psplotdb server using kafka (default).
