@@ -38,7 +38,7 @@ procmgr_config = [
 # { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM -e 40'},
 
 ## EPICS PV exporter
- {                   id:'pvrtmon-2',  port:'29467', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch} -M {prom_dir} -P DAQ:LAB2:XPM:2 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
-#{                   id:'pvrtmon-3',  port:'29468', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch}-3 -M {prom_dir} -P DAQ:LAB2:XPM:3 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+ {                   id:'pvrtmon-2',  port:'29467', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch} -M {prom_dir} -I xpm-2 -P DAQ:LAB2:XPM:2 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+#{                   id:'pvrtmon-3',  port:'29468', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch}-3 -M {prom_dir} -I xpm-3 -P DAQ:LAB2:XPM:3 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
   ]
 
