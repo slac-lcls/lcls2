@@ -443,7 +443,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
 
     app = None
     if 'expert' in cfg and 'App' in cfg['expert']:
-        app = cfg['expert']['App'].copy()
+        app = copy.deepcopy(cfg['expert']['App'])
 
     #  Make list of enabled ASICs
     if 'user' in cfg and 'asic_enable' in cfg['user']:
@@ -532,8 +532,14 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         for f in tmpfiles:
             os.remove(f)
 
-        # Enable the batchers
-        for i in asics:
+        for i in range(cbase.numOfAsics):
+            # Prevent disabled ASICs from participating by disabling their lanes
+            # It seems like disabling their Batchers should be sufficient,
+            # but that prevents transitions from going through
+            if i not in asics:  # Override configDb's value for disabled ASICs
+                getattr(cbase.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(0xffffff)
+
+            # Enable the batchers for all ASICs
             getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
 
     if writeCalibRegs:
@@ -664,6 +670,10 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
                      0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.PowerAndCommIDHigh.get()]
         carrierId = [0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.CarrierIDLow.get(),
                      0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.CarrierIDHigh.get()]
+        digital = (digitalId[1] << 32) | digitalId[0]
+        pwrComm = (pwrCommId[1] << 32) | pwrCommId[0]
+        carrier = (carrierId[1] << 32) | carrierId[0]
+        print(f'ePixM320k ids: f/w {firmwareVersion:x}, carrier {carrier:x}, digital {digital:x}, pwrComm {pwrComm:x}')
         id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
                                                           carrierId[0], carrierId[1],
                                                           digitalId[0], digitalId[1],
@@ -844,18 +854,19 @@ def _resetSequenceCount():
 
 def epixm320_external_trigger(base):
     #  Switch to external triggering
-    print(f"=== external triggering with bypass {base['bypass']} ===")
+    print(f"=== external triggering ===")
     cbase = base['cam']
     cbase.App.AsicTop.TriggerRegisters.SetTimingTrigger(1)
 
 def epixm320_internal_trigger(base):
-    #  Disable frame readout
-    mask = 0x3
-    print('=== internal triggering with bypass {:x} ==='.format(mask))
-    cbase = base['cam']
-    for i in range(cbase.numOfAsics):
-        getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(mask)
-    return
+    ##  Disable frame readout
+    #mask = 0x3
+    #print('=== internal triggering with bypass {:x} ==='.format(mask))
+    #cbase = base['cam']
+    #for i in range(cbase.numOfAsics):
+    #    # This should be base['pci'].DevPcie.Application.EventBuilder.Bypass
+    #    getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(mask)
+    #return
 
     #  Switch to internal triggering
     print('=== internal triggering ===')
@@ -882,9 +893,12 @@ def _start(base):
     cbase = base['cam']
     cbase.App.AsicTop.TriggerRegisters.SetTimingTrigger()
     cbase.App.StartRun()
-    for i in range(cbase.numOfAsics):
-        getattr(cbase.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
-        getattr(cbase.App.AsicTop,f'BatcherEventBuilder{i}').Blowoff.set(base['batchers'][i]==0)
+    # This is unneccessary as it is handled above and in StartRun()
+    #m = base['batchers']
+    #for i in range(cbase.numOfAsics):
+    #    getattr(cbase.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(0x0)
+    #    getattr(cbase.App.AsicTop,f'BatcherEventBuilder{i}').Blowoff.set(m[i]==0)
+    #print(f'Blowoff BatcherEventBuilders {[x^0x1 for x in m]}')
 
 #
 #  Test standalone
