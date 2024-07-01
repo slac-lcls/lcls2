@@ -254,7 +254,7 @@ void PvMonitor::onConnect()
         m_condition.notify_one();
     }
 
-    if (m_para.verbose) {
+    if (m_para.verbose > 1) {           // Use -vv to get increased detail
         if (printStructure())
             logging::error("onConnect: printStructure() failed");
     }
