@@ -10,11 +10,10 @@ class Runner:
         'WAITTIME EB-SMD0': [(-2, 's', 2, [])],
         'WAITTIME EB-BD': [(-1, 's', 3, [])],
         'WAITTIME BD-': [(-1, 's', 4, [])],
-        'events in': [(-1, 'kHz', 5, [])],
-        'READRATE SMD0': [(4, 'MB/s', 6, [])],
-        'RATE SMD0-EB': [(-2, 'kHz', 7, [])],
-        'RATE EB-BD': [(-2, 'kHz', 8, [])],
-        'RATE BD': [(-2, 'kHz', 9, [])],
+        'RATE SMD0-EB': [(-2, 'kHz', 5, [])],
+        'RATE EB-BD': [(-2, 'kHz', 6, [])],
+        'RATE BD': [(-2, 'kHz', 7, [])],
+        'READRATE SMD0': [(4, 'MB/s', 9, [])],
         'bd reads chunk': [(4,'MB', 10, []), (-2, 'MB/s', 11, [])]
         }
     def __init__(self, logfile):
