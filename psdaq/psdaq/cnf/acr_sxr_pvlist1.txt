@@ -1,0 +1,45 @@
+# TO BYPASS GATEWAY EPICS_CA_ADDR_LIST=172.27.131.255:5068
+
+# Example PV list file for PvaDetector -f
+# If the first not-blank character encountered is a '#', the line is a comment
+# Blank lines are ignored
+# Leading and trailing whitespaces are trimmed
+# There should be one PV per line
+# Duplicate PVs are ignored
+# PVs are specified with the following format:
+#   [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+# <provider> can be "pva" (the default) or "ca"
+
+  # This comment has preceding spaces
+# Charge in undulator
+bpms_unds_1690_tmit=ca/BPMS:UNDS:1690:TMITCUSBR[1](double)
+bpms_unds_1990_tmit=ca/BPMS:UNDS:1990:TMITCUSBR[1](double)
+bpms_unds_2190_tmit=ca/BPMS:UNDS:2190:TMITCUSBR[1](double)
+bpms_unds_2490_tmit=ca/BPMS:UNDS:2490:TMITCUSBR[1](double)
+bpms_unds_2590_tmit=ca/BPMS:UNDS:2590:TMITCUSBR[1](double)
+bpms_unds_2690_tmit=ca/BPMS:UNDS:2690:TMITCUSBR[1](double)
+bpms_unds_2790_tmit=ca/BPMS:UNDS:2790:TMITCUSBR[1](double)
+bpms_unds_2890_tmit=ca/BPMS:UNDS:2890:TMITCUSBR[1](double)
+bpms_unds_2990_tmit=ca/BPMS:UNDS:2990:TMITCUSBR[1](double)
+bpms_unds_3090_tmit=ca/BPMS:UNDS:3090:TMITCUSBR[1](double)
+bpms_unds_3190_tmit=ca/BPMS:UNDS:3190:TMITCUSBR[1](double)
+bpms_unds_3290_tmit=ca/BPMS:UNDS:3290:TMITCUSBR[1](double)
+bpms_unds_3390_tmit=ca/BPMS:UNDS:3390:TMITCUSBR[1](double)
+bpms_unds_3490_tmit=ca/BPMS:UNDS:3490:TMITCUSBR[1](double)
+bpms_unds_3590_tmit=ca/BPMS:UNDS:3590:TMITCUSBR[1](double)
+bpms_unds_3690_tmit=ca/BPMS:UNDS:3690:TMITCUSBR[1](double)
+bpms_unds_3790_tmit=ca/BPMS:UNDS:3790:TMITCUSBR[1](double)
+bpms_unds_3890_tmit=ca/BPMS:UNDS:3890:TMITCUSBR[1](double)
+bpms_unds_3990_tmit=ca/BPMS:UNDS:3990:TMITCUSBR[1](double)
+bpms_unds_4090_tmit=ca/BPMS:UNDS:4090:TMITCUSBR[1](double)
+bpms_unds_4190_tmit=ca/BPMS:UNDS:4190:TMITCUSBR[1](double)
+bpms_unds_4290_tmit=ca/BPMS:UNDS:4290:TMITCUSBR[1](double)
+bpms_unds_4390_tmit=ca/BPMS:UNDS:4390:TMITCUSBR[1](double)
+bpms_unds_4490_tmit=ca/BPMS:UNDS:4490:TMITCUSBR[1](double)
+bpms_unds_4590_tmit=ca/BPMS:UNDS:4590:TMITCUSBR[1](double)
+bpms_unds_4690_tmit=ca/BPMS:UNDS:4690:TMITCUSBR[1](double)
+bpms_unds_4790_tmit=ca/BPMS:UNDS:4790:TMITCUSBR[1](double)
+bpms_unds_5190_tmit=ca/BPMS:UNDS:5190:TMITCUSBR[1](double)
+
+gmd_millijoules_per_pulse=ca/EM1K0:GMD:HPS:milliJoulesPerPulseCUSBR[1](double)
+xgmd_millijoules_per_pulse=ca/EM2K0:XGMD:HPS:milliJoulesPerPulseCUSBR[1](double)
