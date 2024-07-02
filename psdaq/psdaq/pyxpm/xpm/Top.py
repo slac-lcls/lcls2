@@ -241,5 +241,7 @@ class Top(pr.Device):
         for idev in (0,1,3,4):
             dev = self.HSRep[idev]
             for ch in range(4):
-                dev.EQ_ch[ch].set(3)
-            
+                try:
+                    dev.EQ_ch[ch].set(3)
+                except:
+                    print('Caught exception.  Carry on.')
