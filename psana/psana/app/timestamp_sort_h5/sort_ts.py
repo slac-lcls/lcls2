@@ -43,7 +43,8 @@ class TsSort:
     def slice_and_write(self, inds_arr):
         # Spawn mpiworkers
         maxprocs = self.n_ranks
-        spawn_file = os.path.join(os.environ.get('RELDIR',''), 'psana', 'psana', 'app', 'timestamp_sort_h5', 'parallel_h5_write.py')
+        source_dir = os.path.dirname(os.path.abspath(__file__))
+        spawn_file = os.path.join(source_dir, 'parallel_h5_write.py')
         sub_comm = MPI.COMM_SELF.Spawn(sys.executable, args=[spawn_file], maxprocs=maxprocs,)
         common_comm=sub_comm.Merge(False)
         
@@ -66,13 +67,17 @@ class TsSort:
             common_comm.Send(inds_arr[st:en], tag=i, dest=rankreq[0])
             print(f'MAIN: Sent {st}:{en} part:{i} to writer {rankreq[0]}')
 
+        print(f'MAIN: Done sending')
+
         # Kill clients
         for i in range(common_comm.Get_size()-1):
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            print(f'MAIN: Kill rank{rankreq[0]}')
             common_comm.Send(bytearray(), dest=rankreq[0])
 
         # Create virtual dataset
         create_virtual_dataset(self.in_h5fname, self.out_h5fname, n_files)
+        print(f'MAIN: Done joining part files. Output: {self.out_h5fname}')
         
         common_comm.Barrier()
         common_comm.Abort(1)
