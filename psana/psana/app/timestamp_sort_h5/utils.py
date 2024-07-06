@@ -25,7 +25,7 @@ def get_dask_client(n_procs,
     cluster.scale(jobs=n_jobs)
     cluster.job_script()
     client = Client(cluster)
-    return client
+    return client, cluster
 
 def create_virtual_dataset(in_h5fname, out_h5fname, n_files):
     """ Creates virtual dataset with out_h5fname main and N-part sub h5 files.

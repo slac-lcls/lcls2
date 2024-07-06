@@ -28,7 +28,7 @@ out_basename = os.path.splitext(os.path.basename(out_h5fname))[0]
 
 # Setup cluster for dask
 st = time.time()
-client = get_dask_client(n_procs)
+client, cluster = get_dask_client(n_procs)
 
 
 t0 = time.time()
@@ -68,9 +68,9 @@ while True:
             if isinstance(array, (tb.array.Array, )):
                 # We only sort 'aligned' data (data with the same size as timestamp)
                 # TODO: once unaligned data are timestamped, we'll sort them too.
+                # TODO: find a better way to get dataset_path (e.g. /grp1/subgrp1/ds_name)
+                ds_path = str(array).split()[0][1:]
                 if in_f[ds_path].shape[0] == ts_len:
-                    # TODO: find a better way to get dataset_path (e.g. /grp1/subgrp1/ds_name)
-                    ds_path = str(array).split()[0][1:]
                     # Dask slicing with ordered indices
                     dask_arr = da.from_array(in_f[ds_path], chunks=chunk_size+in_f[ds_path].shape[1:])
                     access_arr = dask_arr[access_indices].compute()
@@ -85,6 +85,8 @@ while True:
 
 in_f.close()
 in_pytbl.close()
+client.close()
+cluster.close()
 
 en = time.time()
 print(f"WRITER RANK:{common_comm.Get_rank()} DONE setup_cluster:{t0-st:.2f}s. slice_and_write: {en-t0:.2f}s. total: {en-st:.2f}s.")

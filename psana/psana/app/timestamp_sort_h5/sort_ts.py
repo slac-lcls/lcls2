@@ -25,7 +25,7 @@ class TsSort:
         self.n_jobs     = n_jobs
 
     def sort(self):
-        client = get_dask_client(self.n_procs, n_jobs=self.n_jobs) 
+        client, cluster = get_dask_client(self.n_procs, n_jobs=self.n_jobs) 
         ts_chunks = (self.chunk_size, )
         in_f = h5py.File(self.in_h5fname, 'r')
         da_ts = da.from_array(in_f['timestamp'], chunks=ts_chunks)
@@ -38,6 +38,8 @@ class TsSort:
         inds = dd_ts_sorted.index.values
         inds_arr = np.asarray(inds.compute(), dtype=np.int64)
         in_f.close()
+        client.close()
+        cluster.close()
         return inds_arr
 
     def slice_and_write(self, inds_arr):
