@@ -10,32 +10,29 @@ import dask.dataframe as dd
 from psana.app.timestamp_sort_h5.utils import get_dask_client, create_virtual_dataset
 
 from psana import utils
+
 logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
 
+
 class TsSort:
-    def __init__(self, in_h5, out_h5,
-            chunk_size,
-            n_procs,
-            n_jobs,
-            batch_size,
-            n_ranks):
+    def __init__(self, in_h5, out_h5, chunk_size, n_procs, n_jobs, batch_size, n_ranks):
         self.in_h5fname = in_h5
-        self.out_h5fname= out_h5
+        self.out_h5fname = out_h5
         self.chunk_size = chunk_size
         self.batch_size = batch_size
-        self.n_ranks    = n_ranks
-        self.n_procs    = n_procs
-        self.n_jobs     = n_jobs
+        self.n_ranks = n_ranks
+        self.n_procs = n_procs
+        self.n_jobs = n_jobs
 
     def sort(self):
-        client, cluster = get_dask_client(self.n_procs, n_jobs=self.n_jobs) 
-        ts_chunks = (self.chunk_size, )
-        in_f = h5py.File(self.in_h5fname, 'r')
-        da_ts = da.from_array(in_f['timestamp'], chunks=ts_chunks)
-        dd_ts = dd.from_array(da_ts, columns=['timestamp'])
+        client, cluster = get_dask_client(self.n_procs, n_jobs=self.n_jobs)
+        ts_chunks = (self.chunk_size,)
+        in_f = h5py.File(self.in_h5fname, "r")
+        da_ts = da.from_array(in_f["timestamp"], chunks=ts_chunks)
+        dd_ts = dd.from_array(da_ts, columns=["timestamp"])
 
         # Sorting (sort_values is not in-place)
-        dd_ts_sorted = dd_ts.sort_values('timestamp')
+        dd_ts_sorted = dd_ts.sort_values("timestamp")
 
         # Load indices
         inds = dd_ts_sorted.index.values
@@ -49,46 +46,53 @@ class TsSort:
         # Spawn mpiworkers
         maxprocs = self.n_ranks
         source_dir = os.path.dirname(os.path.abspath(__file__))
-        spawn_file = os.path.join(source_dir, 'parallel_h5_write.py')
-        sub_comm = MPI.COMM_SELF.Spawn(sys.executable, args=[spawn_file], maxprocs=maxprocs,)
-        common_comm=sub_comm.Merge(False)
-        
-        data = {'n_procs': self.n_procs,
-                'chunk_size': self.chunk_size,
-                'in_h5fname': self.in_h5fname,
-                'out_h5fname': self.out_h5fname} 
+        spawn_file = os.path.join(source_dir, "parallel_h5_write.py")
+        sub_comm = MPI.COMM_SELF.Spawn(
+            sys.executable,
+            args=[spawn_file],
+            maxprocs=maxprocs,
+        )
+        common_comm = sub_comm.Merge(False)
+
+        data = {
+            "n_procs": self.n_procs,
+            "chunk_size": self.chunk_size,
+            "in_h5fname": self.in_h5fname,
+            "out_h5fname": self.out_h5fname,
+        }
         common_comm.bcast(data, root=0)
 
         # Send data
         n_samples = inds_arr.shape[0]
         batch_size = self.batch_size
-        n_files = int(np.ceil(n_samples/batch_size))
-        rankreq = np.empty(1, dtype='i')
+        n_files = int(np.ceil(n_samples / batch_size))
+        rankreq = np.empty(1, dtype="i")
         for i in range(n_files):
             st = i * batch_size
             en = st + batch_size
-            if en > n_samples: en = n_samples
+            if en > n_samples:
+                en = n_samples
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             common_comm.Send(inds_arr[st:en].astype(np.int64), tag=i, dest=rankreq[0])
-            logger.debug(f'Sent {st}:{en} part:{i} to writer {rankreq[0]}')
+            logger.debug(f"Sent {st}:{en} part:{i} to writer {rankreq[0]}")
 
-        logger.debug(f'Done sending')
+        logger.debug(f"Done sending")
 
         # Kill clients
-        for i in range(common_comm.Get_size()-1):
+        for i in range(common_comm.Get_size() - 1):
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            logger.debug(f'Kill rank{rankreq[0]}')
+            logger.debug(f"Kill rank{rankreq[0]}")
             common_comm.Send(bytearray(), dest=rankreq[0])
 
         # Create virtual dataset
         create_virtual_dataset(self.in_h5fname, self.out_h5fname, n_files)
-        logger.debug(f'Done joining part files. Output: {self.out_h5fname}')
-        
+        logger.debug(f"Done joining part files. Output: {self.out_h5fname}")
+
         common_comm.Barrier()
         common_comm.Abort(1)
 
     def view(self, n_rows=10):
         # Check the first n_rows timestamps
-        chk_f = h5py.File(self.out_h5fname, 'r')
+        chk_f = h5py.File(self.out_h5fname, "r")
         print(f"{chk_f['timestamp'][:n_rows]}")
         chk_f.close()
