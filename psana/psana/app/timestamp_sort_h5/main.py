@@ -13,15 +13,8 @@
 #                       Default is 100000000 for 1-D array for float64.
 #                       This is 8*100000000/1e9 = 0.8GB per core. The
 #                       guideline from dask is ~ 100MB - 1GB.
-#   - dask-n-procs:     (Dask client) no. of processes for Dask clients
-#                       Default is 100. Max is no. of cores per node.
-#   - dask-n-jobs:      (Dask client) for scaling beyond one node. 
-#                       Default is 1.
 #   - data-sort-batch_size: (MPI) no. of indices per batch
 #                       Default is 10000000.
-#   - data-sort-n-ranks:(MPI) no. of MPI ranks. Each receives batch_size data
-#                       at a time and forks n_procs for Dask slicing.
-#                       Default is 15.
 ####################################################################
 
 from typing import List
@@ -45,7 +38,6 @@ def main(in_h5: str,
     # Set dask_chunk_size to the size of timestamp if timestamp is smaller
     in_f = h5py.File(in_h5, 'r')
     ts_len = in_f['timestamp'].shape[0]
-    print(f'ts_len:{ts_len}', flush=True)
     if ts_len < dask_chunk_size:
         dask_chunk_size = ts_len
     # Calculate no. of dask processes needed for n chunks 
@@ -69,6 +61,7 @@ def main(in_h5: str,
     print(f'timestamp_sort_h5:', flush=True)
     print(f'input:     {in_h5}', flush=True)
     print(f'output:    {out_h5}', flush=True)
+    print(f'ts_len:    {ts_len}', flush=True)
     print(f'Dask:', flush=True)
     print(f'chunk_size:{dask_chunk_size} n_procs:{dask_n_procs} n_jobs:{dask_n_jobs}', flush=True)
     print(f'Data sort:', flush=True)
