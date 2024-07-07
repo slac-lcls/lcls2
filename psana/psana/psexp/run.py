@@ -17,11 +17,11 @@ from .step import Step
 
 
 def _is_hidden_attr(obj, name):
-    if name.startswith('_'):
+    if name.startswith("_"):
         return True
     else:
         attr = getattr(obj, name)
-        if hasattr(attr, '_hidden'):
+        if hasattr(attr, "_hidden"):
             return attr._hidden
         else:
             return False
@@ -32,16 +32,29 @@ def _enumerate_attrs(obj):
     found = []
 
     def mygetattr(obj):
-        children = [attr for attr in dir(obj) if not _is_hidden_attr(obj, attr) and attr != "dtype"]
+        children = [
+            attr
+            for attr in dir(obj)
+            if not _is_hidden_attr(obj, attr) and attr != "dtype"
+        ]
         for child in children:
-            childobj = getattr(obj,child)
+            childobj = getattr(obj, child)
 
-            if len([attr for attr in dir(childobj) if not _is_hidden_attr(childobj, attr)]) == 0:
-                found.append( '.'.join(state + [child]) )
+            if (
+                len(
+                    [
+                        attr
+                        for attr in dir(childobj)
+                        if not _is_hidden_attr(childobj, attr)
+                    ]
+                )
+                == 0
+            ):
+                found.append(".".join(state + [child]))
             elif type(childobj) == property:
-                found.append( '.'.join(state + [child]) )
+                found.append(".".join(state + [child]))
             elif not inspect.isclass(childobj) and callable(childobj):
-                found.append( '.'.join(state + [child]) )
+                found.append(".".join(state + [child]))
             else:
                 state.append(child)
                 mygetattr(childobj)
@@ -50,49 +63,57 @@ def _enumerate_attrs(obj):
     mygetattr(obj)
     return found
 
+
 class StepEvent(object):
-    """ Use by AMI to access """
+    """Use by AMI to access"""
+
     def __init__(self, env_store):
         self.env_store = env_store
+
     def dgrams(self, evt):
         return self.env_store.get_step_dgrams_of_event(evt)
+
     def docstring(self, evt) -> str:
-        env_values = self.env_store.values([evt], 'step_docstring')
-        return env_values[0]
-    def value(self, evt) -> float:
-        env_values = self.env_store.values([evt], 'step_value')
+        env_values = self.env_store.values([evt], "step_docstring")
         return env_values[0]
 
+    def value(self, evt) -> float:
+        env_values = self.env_store.values([evt], "step_value")
+        return env_values[0]
+
+
 class Run(object):
-    expt    = 0
-    runnum  = 0
-    dm      = None
+    expt = 0
+    runnum = 0
+    dm = None
     configs = None
-    smd_dm  = None
-    nfiles  = 0
-    scan    = False # True when looping over steps
+    smd_dm = None
+    nfiles = 0
+    scan = False  # True when looping over steps
     smd_fds = None
 
     def __init__(self, ds):
         self.expt, self.runnum, self.timestamp = ds._get_runinfo()
         self.dsparms = ds.dsparms
-        if hasattr(ds, "dm"): ds.dm.set_run(self)
-        if hasattr(ds, "smdr_man"): ds.smdr_man.set_run(self)
+        if hasattr(ds, "dm"):
+            ds.dm.set_run(self)
+        if hasattr(ds, "smdr_man"):
+            ds.smdr_man.set_run(self)
         RunHelper(self)
-        self._dets   = {}
+        self._dets = {}
 
     def run(self):
-        """ Returns integer representaion of run no.
+        """Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
         return self.run_no
 
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constant - set default value to None
-        if not hasattr(self.dsparms, 'calibconst'):
+        if not hasattr(self.dsparms, "calibconst"):
             self.dsparms.calibconst = {det_name: None}
         else:
             if det_name not in self.dsparms.calibconst:
-                self.dsparms.calibconst[det_name]  = None
+                self.dsparms.calibconst[det_name] = None
 
     def _get_valid_env_var_name(self, det_name):
         # Check against detector names
@@ -100,11 +121,10 @@ class Run(object):
             return det_name
 
         # Check against epics names (return detector name not epics name)
-        if det_name in self.esm.stores['epics'].epics_inv_mapper:
-            return self.esm.stores['epics'].epics_inv_mapper[det_name]
+        if det_name in self.esm.stores["epics"].epics_inv_mapper:
+            return self.esm.stores["epics"].epics_inv_mapper[det_name]
 
         return None
-
 
     def Detector(self, name, accept_missing=False):
         if name in self._dets:
@@ -130,23 +150,36 @@ class Run(object):
         # (e.g. (xppcspad,raw) or (xppcspad,fex)
         # make them attributes of the container
         flag_found = False
-        for (det_name,drp_class_name),drp_class in self.dsparms.det_classes['normal'].items():
+        for (det_name, drp_class_name), drp_class in self.dsparms.det_classes[
+            "normal"
+        ].items():
             if det_name == name:
                 # Detetors with cfgscan also owns an EnvStore
                 env_store = None
-                var_name  = None
+                var_name = None
                 if det_name in self.esm.stores:
                     env_store = self.esm.stores[det_name]
                     setattr(det, "step", StepEvent(env_store))
 
                 self._check_empty_calibconst(det_name)
 
-                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.dsparms.configinfo_dict[det_name], self.dsparms.calibconst[det_name], env_store, var_name))
-                setattr(det,'_configs', self.configs)
-                setattr(det,'calibconst', self.dsparms.calibconst[det_name])
-                setattr(det,'_dettype', self.dsparms.det_info_table[det_name][0])
-                setattr(det,'_detid', self.dsparms.det_info_table[det_name][1])
-                setattr(det,'_det_name', det_name)
+                setattr(
+                    det,
+                    drp_class_name,
+                    drp_class(
+                        det_name,
+                        drp_class_name,
+                        self.dsparms.configinfo_dict[det_name],
+                        self.dsparms.calibconst[det_name],
+                        env_store,
+                        var_name,
+                    ),
+                )
+                setattr(det, "_configs", self.configs)
+                setattr(det, "calibconst", self.dsparms.calibconst[det_name])
+                setattr(det, "_dettype", self.dsparms.det_info_table[det_name][0])
+                setattr(det, "_detid", self.dsparms.det_info_table[det_name][1])
+                setattr(det, "_det_name", det_name)
                 flag_found = True
 
         # If no detector found, EnvStore variable is assumed to have been passed in.
@@ -156,7 +189,9 @@ class Run(object):
         # EnvStoreManager searches all the stores assuming that the variable name is
         # unique and returns env_name ('epics' or 'scan') and algorithm.
         if not flag_found:
-            found = self.esm.env_from_variable(name) # assumes that variable name is unique
+            found = self.esm.env_from_variable(
+                name
+            )  # assumes that variable name is unique
             if found is not None:
                 env_name, alg = found
                 det_name = env_name
@@ -167,33 +202,44 @@ class Run(object):
 
                 self._check_empty_calibconst(det_name)
 
-                det = drp_class(det_name, drp_class_name, self.dsparms.configinfo_dict[det_name], self.dsparms.calibconst[det_name], self.esm.stores[env_name], var_name)
-                setattr(det, '_det_name', det_name)
+                det = drp_class(
+                    det_name,
+                    drp_class_name,
+                    self.dsparms.configinfo_dict[det_name],
+                    self.dsparms.calibconst[det_name],
+                    self.esm.stores[env_name],
+                    var_name,
+                )
+                setattr(det, "_det_name", det_name)
 
         self._dets[name] = det
         return det
 
     @property
     def detnames(self):
-        return set([x[0] for x in self.dsparms.det_classes['normal'].keys()])
+        return set([x[0] for x in self.dsparms.det_classes["normal"].keys()])
 
     @property
     def detinfo(self):
         info = {}
-        for ((detname,det_xface_name),det_xface_class) in self.dsparms.det_classes['normal'].items():
-#            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
-            info[(detname,det_xface_name)] = _enumerate_attrs(getattr(self.Detector(detname),det_xface_name))
+        for (detname, det_xface_name), det_xface_class in self.dsparms.det_classes[
+            "normal"
+        ].items():
+            #            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
+            info[(detname, det_xface_name)] = _enumerate_attrs(
+                getattr(self.Detector(detname), det_xface_name)
+            )
         return info
 
     @property
     def epicsinfo(self):
         # EnvStore a key-value pair of detectorname (e.g. AT1K0_PressureSetPt)
         # and epics name (AT1K0:GAS:TRANS_SP_RBV) in epics_mapper.
-        return self.esm.stores['epics'].get_info()
+        return self.esm.stores["epics"].get_info()
 
     @property
     def scaninfo(self):
-        return self.esm.stores['scan'].get_info()
+        return self.esm.stores["scan"].get_info()
 
     @property
     def xtcinfo(self):
@@ -208,12 +254,12 @@ class Run(object):
         return (run_from_id, (self.id,))
 
     def step(self, evt):
-        step_dgrams = self.esm.stores['scan'].get_step_dgrams_of_event(evt)
+        step_dgrams = self.esm.stores["scan"].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self)
 
     def _setup_envstore(self):
-        assert hasattr(self, 'configs')
-        assert hasattr(self, '_evt') # BeginRun
+        assert hasattr(self, "configs")
+        assert hasattr(self, "_evt")  # BeginRun
         self.esm = EnvStoreManager(self.configs, run=self)
         # Special case for BeginRun - normally EnvStore gets updated
         # by EventManager but we get BeginRun w/o EventManager
@@ -222,13 +268,13 @@ class Run(object):
 
 
 class RunShmem(Run):
-    """ Yields list of events from a shared memory client (no event building routine). """
+    """Yields list of events from a shared memory client (no event building routine)."""
 
     def __init__(self, ds, run_evt):
         super(RunShmem, self).__init__(ds)
-        self._evt      = run_evt
+        self._evt = run_evt
         self.beginruns = run_evt._dgrams
-        self.configs   = ds._configs
+        self.configs = ds._configs
         super()._setup_envstore()
         self._evt_iter = Events(ds, self)
 
@@ -236,26 +282,28 @@ class RunShmem(Run):
 
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.EndRun:
+                    return
                 continue
             yield evt
 
     def steps(self):
         for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun: return
+            if evt.service() == TransitionId.EndRun:
+                return
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter)
 
 
 class RunDrp(Run):
-    """ Yields list of events from drp python (no event building routine). """
+    """Yields list of events from drp python (no event building routine)."""
 
     def __init__(self, ds, run_evt):
         super(RunDrp, self).__init__(ds)
-        self._evt      = run_evt
-        self._ds       = ds
+        self._evt = run_evt
+        self._ds = ds
         self.beginruns = run_evt._dgrams
-        self.configs   = ds._configs
+        self.configs = ds._configs
         super()._setup_envstore()
         self._evt_iter = Events(self._ds, self)
         self._edtbl_config = False
@@ -266,22 +314,21 @@ class RunDrp(Run):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
-            
+
             self._ds.curr_dgramedit = DgramEdit(
-                evt._dgrams[0], 
+                evt._dgrams[0],
                 config_dgramedit=self._ds.config_dgramedit,
-                bufsize=buffer_size
+                bufsize=buffer_size,
             )
 
             if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun :
+                if evt.service() == TransitionId.EndRun:
                     self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                     return
                 self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                 continue
             yield evt
             self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
-            
 
     def steps(self):
         for evt in self._evt_iter:
@@ -289,80 +336,85 @@ class RunDrp(Run):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
-            
+
             self._ds.curr_dgramedit = DgramEdit(
                 evt._dgrams[0],
                 config_dgramedit=self._ds.config_dgramedit,
-                bufsize=buffer_size
+                bufsize=buffer_size,
             )
-            
+
             if evt.service() == TransitionId.EndRun:
                 self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                 return
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter)
             self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
-                
+
 
 class RunSingleFile(Run):
-    """ Yields list of events from a single bigdata file. """
+    """Yields list of events from a single bigdata file."""
 
     def __init__(self, ds, run_evt):
         super(RunSingleFile, self).__init__(ds)
-        self._evt      = run_evt
+        self._evt = run_evt
         self.beginruns = run_evt._dgrams
-        self.configs   = ds._configs
+        self.configs = ds._configs
         super()._setup_envstore()
         self._evt_iter = Events(ds, self)
 
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun: return
-                continue
-            yield evt
-
-    def steps(self):
-        for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun: return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter)
-
-class RunSerial(Run):
-    """ Yields list of events from multiple smd/bigdata files using single core."""
-
-    def __init__(self, ds, run_evt):
-        super(RunSerial, self).__init__(ds)
-        self._evt      = run_evt
-        self.beginruns = run_evt._dgrams
-        self.configs   = ds._configs
-        super()._setup_envstore()
-        self._evt_iter = Events(ds, self, smdr_man=ds.smdr_man)
-
-    def events(self):
-        for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
-                if evt.service() == TransitionId.EndRun: 
+                if evt.service() == TransitionId.EndRun:
                     return
                 continue
             yield evt
 
     def steps(self):
         for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun: return
+            if evt.service() == TransitionId.EndRun:
+                return
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter)
+
+
+class RunSerial(Run):
+    """Yields list of events from multiple smd/bigdata files using single core."""
+
+    def __init__(self, ds, run_evt):
+        super(RunSerial, self).__init__(ds)
+        self._evt = run_evt
+        self.beginruns = run_evt._dgrams
+        self.configs = ds._configs
+        super()._setup_envstore()
+        self._evt_iter = Events(ds, self, smdr_man=ds.smdr_man)
+
+    def events(self):
+        for evt in self._evt_iter:
+            if evt.service() != TransitionId.L1Accept:
+                if evt.service() == TransitionId.EndRun:
+                    return
+                continue
+            yield evt
+
+    def steps(self):
+        for evt in self._evt_iter:
+            if evt.service() == TransitionId.EndRun:
+                return
+            if evt.service() == TransitionId.BeginStep:
+                yield Step(evt, self._evt_iter)
+
 
 class RunLegion(Run):
     def __init__(self, ds, run_evt):
         self.dsparms = ds.dsparms
-        self.ana_t_gauge   = self.dsparms.prom_man.get_metric('psana_bd_ana_rate')
+        self.ana_t_gauge = self.dsparms.prom_man.get_metric("psana_bd_ana_rate")
         RunHelper(self)
-        self._evt       = run_evt
-        self.beginruns  = run_evt._dgrams
-        self.smdr_man   = ds.smdr_man
-        self.dm         = ds.dm
-        self.configs    = ds._configs
+        self._evt = run_evt
+        self.beginruns = run_evt._dgrams
+        self.smdr_man = ds.smdr_man
+        self.dm = ds.dm
+        self.configs = ds._configs
         super()._setup_envstore()
 
     def analyze(self, **kwargs):
@@ -370,21 +422,27 @@ class RunLegion(Run):
 
 
 class RunSmallData(Run):
-    """ Yields list of smalldata events
-    
+    """Yields list of smalldata events
+
     This class is created by SmdReaderManager and used exclusively by EventBuilder.
     There's no DataSource class associated with it a "bigdata" run is passed in
-    so that we can propagate some values (w/o the ds). This class makes step and 
-    event generator available to user in smalldata callback. 
+    so that we can propagate some values (w/o the ds). This class makes step and
+    event generator available to user in smalldata callback.
     """
+
     def __init__(self, bd_run, eb):
         self._evt = bd_run._evt
-        configs = [dgram.Dgram(view=cfg) for cfg in bd_run.configs] 
-        self.expt, self.runnum, self.timestamp, self.dsparms = (bd_run.expt, bd_run.runnum, bd_run.timestamp, bd_run.dsparms)
+        configs = [dgram.Dgram(view=cfg) for cfg in bd_run.configs]
+        self.expt, self.runnum, self.timestamp, self.dsparms = (
+            bd_run.expt,
+            bd_run.runnum,
+            bd_run.timestamp,
+            bd_run.dsparms,
+        )
         self.eb = eb
-        self._dets  = {}
+        self._dets = {}
 
-        # Setup EnvStore - this is also done differently from other Run types. 
+        # Setup EnvStore - this is also done differently from other Run types.
         # since RunSmallData doesn't user EventManager (updates EnvStore), it'll
         # need to take care of updating transition events in the step and
         # event generators.
@@ -392,29 +450,36 @@ class RunSmallData(Run):
         self.esm.update_by_event(self._evt)
 
         # Converts EventBuilder generator to an iterator for steps() call. This is
-        # done so that we can pass it to Step (not sure why). Note that for 
+        # done so that we can pass it to Step (not sure why). Note that for
         # events() call, we stil use the generator.
         self._evt_iter = iter(self.eb.events())
-        
+
         # SmdDataSource and BatchIterator share this list. SmdDataSource automatically
         # adds transitions to this list (skip yield and so hidden from smd_callback).
         # BatchIterator adds user-selected L1Accept to the list (default is add all).
         self.proxy_events = []
-    
+
     def steps(self):
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept: 
+            if evt.service() != TransitionId.L1Accept:
                 self.esm.update_by_event(evt)
                 self.proxy_events.append(evt._proxy_evt)
-                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.EndRun:
+                    return
                 if evt.service() == TransitionId.BeginStep:
-                    yield Step(evt, self._evt_iter, proxy_events=self.proxy_events, esm=self.esm)
+                    yield Step(
+                        evt,
+                        self._evt_iter,
+                        proxy_events=self.proxy_events,
+                        esm=self.esm,
+                    )
 
     def events(self):
         for evt in self.eb.events():
-            if evt.service() != TransitionId.L1Accept: 
+            if evt.service() != TransitionId.L1Accept:
                 self.esm.update_by_event(evt)
                 self.proxy_events.append(evt._proxy_evt)
-                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.EndRun:
+                    return
                 continue
             yield evt

@@ -3,26 +3,27 @@ from . import TransitionId
 from .envstore import EnvStore
 import copy
 
+
 class EnvStoreManager(object):
-    """ Manages envStore.
+    """Manages envStore.
     Stores list of EnvStore (defaults are epics and scan).
 
     For detectors with cfgscan, also create corresponding EnvStore.
     E.g. configs[0].tmoopal[0].cfgscan.user.black_level, then
     this detector also owns and EnvStore('tmoopal'). The value of
-    the leaf node can be accessed by calling 
-    
+    the leaf node can be accessed by calling
+
     det = run.Detector("tmoopal")
     val = det.cfgscan.user.black_level(evt)
     """
-    
+
     def __init__(self, configs, run=None):
-        self.configs    = configs
-        envstore_names  = ['epics', 'scan']
+        self.configs = configs
+        envstore_names = ["epics", "scan"]
         # This was defined outside init. This caused self.store in previously
         # defined EnvStoreManager to point to a new one when the new EnvStoreManager
         # is created.
-        self.stores     = {}
+        self.stores = {}
 
         for envstore_name in envstore_names:
             self.stores[envstore_name] = EnvStore(configs, envstore_name)
@@ -38,29 +39,35 @@ class EnvStoreManager(object):
         if not evt:
             return
         for i, d in enumerate(evt._dgrams):
-            if not d: continue
+            if not d:
+                continue
 
             # This releases the original dgram object (friendly
             # with shared memory which has limited capacity).
             new_d = Dgram(view=d, config=self.configs[i], offset=0)
 
             if new_d.service() == TransitionId.SlowUpdate:
-                self.stores['epics'].add_to(new_d, i)
-            elif new_d.service() == TransitionId.BeginStep or \
-                    new_d.service() == TransitionId.BeginRun:
-                self.stores['scan'].add_to(new_d, i)
-                
+                self.stores["epics"].add_to(new_d, i)
+            elif (
+                new_d.service() == TransitionId.BeginStep
+                or new_d.service() == TransitionId.BeginRun
+            ):
+                self.stores["scan"].add_to(new_d, i)
+
                 # For BeginStep, checks if self.configs need to be updated.
-                # Only apply fields w/o leading "_" and exist in the 
+                # Only apply fields w/o leading "_" and exist in the
                 # original config
                 for key, val in d.__dict__.items():
-                    if key.startswith("_") or not hasattr(self.configs[i], key): continue
+                    if key.startswith("_") or not hasattr(self.configs[i], key):
+                        continue
                     cfgold = getattr(self.configs[i], key)
 
                     for segid, segment in getattr(new_d, key).items():
                         # Only apply to fields with .config
                         if hasattr(segment, "config"):
-                            self._update_config(cfgold[segid].config, getattr(segment, "config"))
+                            self._update_config(
+                                cfgold[segid].config, getattr(segment, "config")
+                            )
 
     def env_from_variable(self, variable_name):
         for env_name, store in self.stores.items():
@@ -69,10 +76,3 @@ class EnvStoreManager(object):
                 alg, _ = found
                 return env_name, alg
         return None
-
-
-    
-
-
-        
-        
