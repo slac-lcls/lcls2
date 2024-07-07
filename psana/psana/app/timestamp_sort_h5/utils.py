@@ -1,10 +1,12 @@
 import os
+from psana import utils
+logger = utils.Logger()
 
 def get_dask_client(n_procs, 
         partition='milano', 
         n_jobs=1, 
         memory='512GB', 
-        local_directory='/sdf/data/lcls/drpsrcf/ffb/users/monarin/tmp'):
+        local_directory=None):
     # TODO: make local_directory default to output directory (dask_scratch)
     # also check how dask cleans up its tmp dir try cluster.close()
     # SBATCH_PARTITION
@@ -13,6 +15,9 @@ def get_dask_client(n_procs,
     account = os.environ.get('SLURM_JOB_ACCOUNT', '')
     if not account:
         raise "Account is not available for dask client."
+
+    if local_directory is None:
+        local_directory = os.environ.get("SCRATCH","./")
 
     cluster = SLURMCluster(
         queue=partition,
@@ -72,9 +77,9 @@ def create_virtual_dataset(in_h5fname, out_h5fname, n_files):
                 elif isinstance(array, (tb.unimplemented.UnImplemented, )):
                     val = in_f[entry_key][...]
                 else:
-                    print(f'Warning: found {entry_key} with unsupported data type {type(array)}. This dataset will not be included in the new sorted h5 output file.')
+                    logger.debug(f'Warning: found {entry_key} with unsupported data type {type(array)}. This dataset will not be included in the new sorted h5 output file.')
                 if val is not None:
-                    print(f'Create {entry_key} dataset for unaligned/scalar data type')
+                    logger.debug(f'Create {entry_key} dataset for unaligned/scalar data type')
                     out_f.create_dataset(entry_key, data=val)
 
 
@@ -83,14 +88,14 @@ def create_virtual_dataset(in_h5fname, out_h5fname, n_files):
         for array in in_t.list_nodes(group):
             if isinstance(array, (tb.array.Array, )):
                 entry_key = str(array).split()[0][1:]
-                print(f'Create {entry_key} virtual dataset')
+                logger.debug(f'Create {entry_key} virtual dataset')
                 if len(in_f[entry_key].shape) > 0:
                     if in_f[entry_key].shape[0] == ts_len:
                         st,en = (0,0)
                         for i, filename in enumerate(part_fnames):
                             vsource = h5py.VirtualSource(filename, entry_key, shape=part_files[i][entry_key].shape)
                             en = st + part_files[i][entry_key].shape[0]
-                            print(f'  part{i} shape:{part_files[i][entry_key].shape} {st=} {en=}')
+                            logger.debug(f'  part{i} shape:{part_files[i][entry_key].shape} {st=} {en=}')
                             layouts[entry_key][st:en] = vsource
                             st = en 
                         out_f.create_virtual_dataset(entry_key, layouts[entry_key],)

@@ -9,6 +9,9 @@ import dask.dataframe as dd
 
 from psana.app.timestamp_sort_h5.utils import get_dask_client, create_virtual_dataset
 
+from psana import utils
+logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
+
 class TsSort:
     def __init__(self, in_h5, out_h5,
             chunk_size,
@@ -67,19 +70,19 @@ class TsSort:
             if en > n_samples: en = n_samples
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             common_comm.Send(inds_arr[st:en].astype(np.int64), tag=i, dest=rankreq[0])
-            print(f'MAIN: Sent {st}:{en} part:{i} to writer {rankreq[0]}')
+            logger.debug(f'Sent {st}:{en} part:{i} to writer {rankreq[0]}')
 
-        print(f'MAIN: Done sending')
+        logger.debug(f'Done sending')
 
         # Kill clients
         for i in range(common_comm.Get_size()-1):
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            print(f'MAIN: Kill rank{rankreq[0]}')
+            logger.debug(f'Kill rank{rankreq[0]}')
             common_comm.Send(bytearray(), dest=rankreq[0])
 
         # Create virtual dataset
         create_virtual_dataset(self.in_h5fname, self.out_h5fname, n_files)
-        print(f'MAIN: Done joining part files. Output: {self.out_h5fname}')
+        logger.debug(f'Done joining part files. Output: {self.out_h5fname}')
         
         common_comm.Barrier()
         common_comm.Abort(1)
@@ -87,5 +90,5 @@ class TsSort:
     def view(self, n_rows=10):
         # Check the first n_rows timestamps
         chk_f = h5py.File(self.out_h5fname, 'r')
-        print(f"MAIN: {chk_f['timestamp'][:n_rows]}")
+        print(f"{chk_f['timestamp'][:n_rows]}")
         chk_f.close()
