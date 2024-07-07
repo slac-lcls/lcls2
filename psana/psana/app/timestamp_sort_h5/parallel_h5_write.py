@@ -70,16 +70,19 @@ while True:
                 # TODO: once unaligned data are timestamped, we'll sort them too.
                 # TODO: find a better way to get dataset_path (e.g. /grp1/subgrp1/ds_name)
                 ds_path = str(array).split()[0][1:]
-                if in_f[ds_path].shape[0] == ts_len:
-                    # Dask slicing with ordered indices
-                    dask_arr = da.from_array(in_f[ds_path], chunks=chunk_size+in_f[ds_path].shape[1:])
-                    access_arr = dask_arr[access_indices].compute()
-                    # Reorder the slice back to the original order
-                    val = access_arr[np.argsort(i_data)]
-                    print(f'WRITER RANK:{common_comm.Get_rank()} ds_path:{ds_path} dask slicing:{time.time()-t1:.2f}s.')
-                    out_f.create_dataset(ds_path, data=val)
-                    t2 = time.time()
-                    print(f'WRITER RANK:{common_comm.Get_rank()} ds_path:{ds_path} writing:{time.time()-t2:.2f}s.')
+                if len(in_f[ds_path].shape) > 0:
+                    if in_f[ds_path].shape[0] == ts_len:
+                        # Dask slicing with ordered indices
+                        dask_arr = da.from_array(in_f[ds_path], chunks=chunk_size+in_f[ds_path].shape[1:])
+                        access_arr = dask_arr[access_indices].compute()
+                        # Reorder the slice back to the original order
+                        val = access_arr[np.argsort(i_data)]
+                        print(f'WRITER RANK:{common_comm.Get_rank()} ds_path:{ds_path} dask slicing:{time.time()-t1:.2f}s.')
+                        out_f.create_dataset(ds_path, data=val)
+                        t2 = time.time()
+                        print(f'WRITER RANK:{common_comm.Get_rank()} ds_path:{ds_path} writing:{time.time()-t2:.2f}s.')
+                else:
+                    print(f'WRITER RANK:{common_comm.Get_rank()} Warning: {ds_path} has empty shape')
     out_f.close()
 
 

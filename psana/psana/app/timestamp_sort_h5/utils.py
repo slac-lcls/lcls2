@@ -31,8 +31,8 @@ def create_virtual_dataset(in_h5fname, out_h5fname, n_files):
     """ Creates virtual dataset with out_h5fname main and N-part sub h5 files.
     
     Each *part_n.h5 file contains batch_size events sent by rank 0.
-    For unaligned data (pytables array with size != ts_len) or scalar data
-    (pytables type UnImplemented), we add them to the main out_h5fname h5 file
+    For unaligned data (pytables array with size != ts_len or size = 0) or scalar
+    data (pytables type UnImplemented), we add them to the main out_h5fname h5 file
     directly prior to joining the file.
     """
     import h5py
@@ -57,13 +57,18 @@ def create_virtual_dataset(in_h5fname, out_h5fname, n_files):
             flag_unaligned = True
             entry_key = str(array).split()[0][1:]
             if isinstance(array, (tb.array.Array, )):
-                if in_f[entry_key].shape[0] == ts_len:
-                    layouts[entry_key] = h5py.VirtualLayout(shape=in_f[entry_key].shape, dtype=in_f[entry_key].dtype)
-                    flag_unaligned = False
+                if len(in_f[entry_key].shape) > 0:
+                    if in_f[entry_key].shape[0] == ts_len:
+                        layouts[entry_key] = h5py.VirtualLayout(shape=in_f[entry_key].shape, dtype=in_f[entry_key].dtype)
+                        flag_unaligned = False
             if flag_unaligned:
                 val = None
                 if isinstance(array, (tb.array.Array, )):
-                    val = in_f[entry_key][:]
+                    # Check for empty array (scalar type)
+                    if len(in_f[entry_key].shape) > 0:
+                        val = in_f[entry_key][:]
+                    else:
+                        val = in_f[entry_key][...]
                 elif isinstance(array, (tb.unimplemented.UnImplemented, )):
                     val = in_f[entry_key][...]
                 else:
@@ -79,15 +84,16 @@ def create_virtual_dataset(in_h5fname, out_h5fname, n_files):
             if isinstance(array, (tb.array.Array, )):
                 entry_key = str(array).split()[0][1:]
                 print(f'Create {entry_key} virtual dataset')
-                if in_f[entry_key].shape[0] == ts_len:
-                    st,en = (0,0)
-                    for i, filename in enumerate(part_fnames):
-                        vsource = h5py.VirtualSource(filename, entry_key, shape=part_files[i][entry_key].shape)
-                        en = st + part_files[i][entry_key].shape[0]
-                        print(f'  part{i} shape:{part_files[i][entry_key].shape} {st=} {en=}')
-                        layouts[entry_key][st:en] = vsource
-                        st = en 
-                    out_f.create_virtual_dataset(entry_key, layouts[entry_key],)
+                if len(in_f[entry_key].shape) > 0:
+                    if in_f[entry_key].shape[0] == ts_len:
+                        st,en = (0,0)
+                        for i, filename in enumerate(part_fnames):
+                            vsource = h5py.VirtualSource(filename, entry_key, shape=part_files[i][entry_key].shape)
+                            en = st + part_files[i][entry_key].shape[0]
+                            print(f'  part{i} shape:{part_files[i][entry_key].shape} {st=} {en=}')
+                            layouts[entry_key][st:en] = vsource
+                            st = en 
+                        out_f.create_virtual_dataset(entry_key, layouts[entry_key],)
 
     # Close input h5 file
     for i in range(n_files):
