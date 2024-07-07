@@ -66,7 +66,7 @@ class TsSort:
             en = st + batch_size
             if en > n_samples: en = n_samples
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            common_comm.Send(inds_arr[st:en], tag=i, dest=rankreq[0])
+            common_comm.Send(inds_arr[st:en].astype(np.int64), tag=i, dest=rankreq[0])
             print(f'MAIN: Sent {st}:{en} part:{i} to writer {rankreq[0]}')
 
         print(f'MAIN: Done sending')
