@@ -29,7 +29,8 @@ from psana.graphqt.QWIcons import icon
 import psana.graphqt.QWUtils as qwu
 from psana.detector.dir_root import DIR_DATA_TEST
 
-COMMAND_SET_ENV_LCLS1 = '. /cds/sw/ds/ana/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
+#COMMAND_SET_ENV_LCLS1 = '. /cds/sw/ds/ana/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
+COMMAND_SET_ENV_LCLS1 = '. /sdf/group/lcls/ds/ana/sw/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
 ENV1 = {} #'PATH':'/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin'}
 
 
