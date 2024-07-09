@@ -16,6 +16,7 @@ force_clean=0
 no_ana=0
 no_shmem=0
 build_ext_list=""
+install=1
 
 if [ -d "/cds/sw/" ]; then
     no_daq=0
@@ -68,6 +69,9 @@ if [ $force_clean == 1 ]; then
     if [ -d psalg/build ]; then
         rm -rf psalg/build
     fi
+    if [ -d psana/build ]; then
+        rm -rf psana/build
+    fi
 fi
 
 function cmake_build() {
@@ -76,7 +80,12 @@ function cmake_build() {
     mkdir -p build
     cd build
     cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
-    make -j 4 install
+    if [ $install == 1 ] 
+    then
+        make -j 4 install
+    else
+        make -j 4
+    fi
     cd ../..
 }
 
@@ -113,6 +122,7 @@ cd ..
 #     pip install --no-deps --prefix=$INSTDIR $pipOptions .
 #     cd ..
 # fi
+install=0
 
 if [ $no_ana == 0 ]; then
     cmake_build psana
