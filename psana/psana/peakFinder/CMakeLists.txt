@@ -30,38 +30,3 @@ add_custom_command(TARGET peaks
                    COMMAND echo "Pip install")
 
 
-# This marks which targets are going to be exported and also defines instructions on
-# where libraries will be installed.
-install(TARGETS peaks
-        EXPORT peaksTargets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-)
-
-# Export the include directory
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include/psana/peakFinder)
-
-# This will create an export set that includes the targets. Export sets are used
-# to generate cmake files other projects can import and link against. Recall that install
-# (cmake in generaly really) is just creating instructions. Here it is creating install
-# instructions.
-install(EXPORT peaksTargets
-    FILE peaksTargets.cmake
-    NAMESPACE peaks::
-    DESTINATION lib/cmake/peaks
-)
-
-# Generate the peaksConfig.cmake file
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-    ${CMAKE_SOURCE_DIR}/cmake/peaksConfig.cmake.in
-    ${CMAKE_BINARY_DIR}/psana/peakFinder/peaksConfig.cmake
-    INSTALL_DESTINATION lib/cmake/peaks
-)
-
-# Install the MyLibraryConfig.cmake file
-install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/peaksConfig.cmake
-    DESTINATION lib/cmake/peaks
-)

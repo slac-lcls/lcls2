@@ -15,7 +15,7 @@ public:
     Stack():_allocator(_buf){}
 
 private:
-    uint8_t _buf[1025*1024];
+    uint8_t _buf[1024*1024];
     uint8_t *_allocator;
 
     virtual void free(void *ptr) {
