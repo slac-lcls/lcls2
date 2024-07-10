@@ -17,6 +17,7 @@ no_ana=0
 no_shmem=0
 build_ext_list=""
 install=1
+export psana_path=`pwd`/psana
 
 if [ -d "/cds/sw/" ]; then
     no_daq=0
@@ -79,7 +80,7 @@ function cmake_build() {
     shift
     mkdir -p build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
+    cmake -Dpsana_path=$psana_path -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
     if [ $install == 1 ] 
     then
         make -j 4 install
@@ -127,14 +128,14 @@ install=0
 if [ $no_ana == 0 ]; then
     cmake_build psana
     # to build psana with setuptools
-    cd psana
+    # cd psana
     # force build of the extensions.  do this because in some cases
     # setup.py is unable to detect if an external header file changed
     # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
+    # if [ $pyInstallStyle == "develop" ]; then
+    #     python setup.py build_ext -f --inplace
+    # fi
+    # pip install --no-deps --prefix=$INSTDIR $pipOptions .
 fi
 # The removal of site.py in setup 49.0.0 breaks "develop" installations
 # which are outside the normal system directories: /usr, /usr/local,
