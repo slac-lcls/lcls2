@@ -14,6 +14,7 @@ add_library(peaks SHARED
     #src/PeakFinderAlgos.cc
     #src/PeakFinderAlgosLCLS1.cc
     src/WFAlgos.cc
+    src/LinkPsalg.cc
 )
 
 # This includes the headers during the build and also installs the headers in the include dir for lcls2
@@ -25,8 +26,14 @@ target_include_directories(peaks PUBLIC
 # Link the executable with the MyLibrary library
 target_link_libraries(peaks PUBLIC psalg::alloc)
 
+set(input_path ${SOURCE_DIR})
+
+
+
 add_custom_command(TARGET peaks
                    POST_BUILD
-                   COMMAND echo "Pip install")
+                   WORKING_DIRECTORY ${psana_path}
+                   COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .)
+
 
 
