@@ -1,0 +1,28 @@
+name: Build LCLS-II
+on:
+  schedule:
+    - cron: '0 5 * * *'  # once per day at midnight ET
+  workflow_dispatch:
+
+jobs:
+  build-lcls-ii:
+    runs-on: ubuntu-latest
+    defaults:
+     run:
+       shell: bash -l {0}  # needed for conda environment to work
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0  # tags are required to determine the version
+  
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.9"
+          activate-environment: build-conda-env
+          environment-file: environment.txt
+          mamba-version: "*" # use the latest available version of Mamba at the time of execution.
+  
