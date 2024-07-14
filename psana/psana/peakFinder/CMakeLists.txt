@@ -10,9 +10,9 @@ find_package(xtcdata REQUIRED)
 
 # Create the library target
 add_library(peaks SHARED
-    #src/LocalExtrema.cc
-    #src/PeakFinderAlgos.cc
-    #src/PeakFinderAlgosLCLS1.cc
+    src/LocalExtrema.cc
+    src/PeakFinderAlgos.cc
+    src/PeakFinderAlgosLCLS1.cc
     src/WFAlgos.cc
     src/LinkPsalg.cc
 )
@@ -26,13 +26,12 @@ target_include_directories(peaks PUBLIC
 # Link the executable with the MyLibrary library
 target_link_libraries(peaks PUBLIC psalg::alloc)
 
-set(input_path ${SOURCE_DIR})
-
-
-
 add_custom_command(TARGET peaks
                    POST_BUILD
-                   WORKING_DIRECTORY ${psana_path}
+                   WORKING_DIRECTORY ${PSANA_PATH}
+                   COMMAND echo "BUILDING EXTENSIONS"
+                   COMMAND python setup.py build_ext -f --inplace
+                   COMMAND echo "PIP INSTALLING PSANA"
                    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .)
 
 

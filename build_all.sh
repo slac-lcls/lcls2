@@ -18,7 +18,7 @@ no_ana=0
 no_shmem=0
 build_ext_list=""
 install=1
-export psana_path=`pwd`/psana
+PSANA_PATH=`pwd`/psana
 
 while getopts "c:p:s:b:fdam" opt; do
   case $opt in
@@ -75,7 +75,7 @@ function cmake_build() {
     shift
     mkdir -p build
     cd build
-    cmake -Dpsana_path=$psana_path -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
+    cmake -DPSANA_PATH=$PSANA_PATH -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
     if [ $install == 1 ] 
     then
         make -j 4 install
