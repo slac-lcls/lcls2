@@ -1,6 +1,4 @@
-add_library(alloc INTERFACE
-            AllocArray.hh
-            Allocator.hh)
+add_library(alloc INTERFACE)
 
 target_link_libraries(alloc INTERFACE
     xtcdata::xtc
@@ -17,14 +15,6 @@ target_link_libraries(alloc INTERFACE
 target_include_directories(alloc INTERFACE
     $<INSTALL_INTERFACE:include>
 )
-
-########################################
-# Here we are installing the targets. In this case alloc. 
-# We are not installing the export set here. That is when we do 
-# install(EXPORT psalgTargets
-#    FILE psalgTargets.cmake
-#    NAMESPACE psalg::
-#    DESTINATION lib/cmake/psalg)
 
 # We are installing the target alloc, stating that the target is part of the 
 # psalgTargets export set that will be installed in another install(...).
