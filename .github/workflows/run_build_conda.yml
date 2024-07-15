@@ -21,3 +21,7 @@ jobs:
           activate-environment: build-conda-env
           channels: lcls-ii, conda-forge
           environment-file: ps-4.6.3.txt
+
+      - name: Sanity Check
+        run:
+          conda list
