@@ -20,5 +20,5 @@ jobs:
           auto-update-conda: true
           python-version: "3.9"
           activate-environment: build-conda-env
-          environment-file: environment.txt
+          environment-file: ps-4.6.3.txt
           mamba-version: "*" # use the latest available version of Mamba at the time of execution.
