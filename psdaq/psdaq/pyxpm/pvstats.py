@@ -399,11 +399,12 @@ class GroupStats(object):
         return offset
 
 NGROUPS = 8
-pattStats  = {'First'  : ('ai',[0]*NGROUPS),
+pattStats  = {'Sum'    : ('ai',[0]*NGROUPS),
+              'First'  : ('ai',[0]*NGROUPS),
               'Last'   : ('ai',[0]*NGROUPS),
               'MinIntv': ('ai',[0]*NGROUPS),
               'MaxIntv': ('ai',[0]*NGROUPS)}
-NCOINC = NGROUPS*(NGROUPS-1)//2
+NCOINC = NGROUPS*(NGROUPS+1)//2
 pattCoinc = {'Coinc' : ('ai',[0]*NCOINC)}
 
 class PatternStats(object):
@@ -417,26 +418,36 @@ class PatternStats(object):
 
     def handle(self,msg,offset,timev):
 
-        def bytes22Int(msg,offset):
-            b = struct.unpack_from('<BBBBB',msg,offset)
-            offset += 5
+        def bytes22Int(msg,words,offset):
+            if words%2:
+                raise ValueError
+            nb = 5*words//2
+            b = struct.unpack_from(f'<{nb}B',msg,offset)
+            offset += nb
+            a = []
             w = 0
             for i,v in enumerate(b):
-                w += v<<(8*i)
-            return (w&0xfffff,(w>>20)&0xfffff,offset)
+                w += v<<(8*(i%5))
+                if (i%5)==4:
+                    a.append(w&0xfffff)
+                    w >>= 20
+                    a.append(w&0xfffff)
+                    w = 0
+                    
+            #print(f'inp {words} len {len(a)} {a}')
+            return (a,offset)
 
+        (a, offset) = bytes22Int(msg,NGROUPS*5,offset)
         for i in range(NGROUPS):
-            (l0First , l0Last  , offset) = bytes22Int(msg,offset)
-            (l0MinInt, l0MaxInt, offset) = bytes22Int(msg,offset)
-            self._stats_value['First'  ][i] = l0First
-            self._stats_value['Last'   ][i] = l0Last
-            self._stats_value['MinIntv'][i] = l0MinInt
-            self._stats_value['MaxIntv'][i] = l0MaxInt
+            self._stats_value['Sum'    ][i] = a[5*i+0]
+            self._stats_value['First'  ][i] = a[5*i+1]
+            self._stats_value['Last'   ][i] = a[5*i+2]
+            self._stats_value['MinIntv'][i] = a[5*i+3]
+            self._stats_value['MaxIntv'][i] = a[5*i+4]
 
-        for i in range(NGROUPS*(NGROUPS-1)//4):
-            (l0CoincA, l0CoincB, offset) = bytes22Int(msg,offset)
-            self._coinc_value['Coinc'][i*2+0] = l0CoincA
-            self._coinc_value['Coinc'][i*2+1] = l0CoincB
+        (a, offset) = bytes22Int(msg,NCOINC,offset)
+        for i,v in enumerate(a):
+            self._coinc_value['Coinc'][i] = v
 
         updatePv(self._stats_pv, self._stats_value, timev)
         updatePv(self._coinc_pv, self._coinc_value, timev)

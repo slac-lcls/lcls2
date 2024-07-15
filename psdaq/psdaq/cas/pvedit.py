@@ -914,3 +914,9 @@ def LblMask(pvbase, label, bits=1):
     PvMask(hbox, pvbase+label, bits)
     hbox.addStretch(1)
     return hbox
+
+def to_mask(lista):
+    v = 0
+    for l in lista:
+        v |= (1<<l)
+    return v

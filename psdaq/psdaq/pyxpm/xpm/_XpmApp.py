@@ -308,6 +308,16 @@ class XpmApp(pr.Device):
         ))
 
         self.add(pr.RemoteVariable(    
+            name         = "l0Common",
+            description  = "L0 common master",
+            offset       =  0x1b,
+            bitSize      =  1,
+            bitOffset    =  0x05,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
+
+        self.add(pr.RemoteVariable(    
             name         = "l0Master",
             description  = "L0 trigger master",
             offset       =  0x1b,
@@ -353,6 +363,16 @@ class XpmApp(pr.Device):
             offset       =  0x20,
             bitSize      =  20,
             bitOffset    =  0,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
+
+        self.add(pr.RemoteVariable(
+            name         = "commonL0Delay",
+            description  = "L0Delay for common group",
+            offset       = 0x24,
+            bitSize      = 8,
+            bitOffset    = 0,
             base         = pr.UInt,
             mode         = "RW",
         ))

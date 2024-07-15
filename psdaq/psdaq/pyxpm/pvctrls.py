@@ -46,9 +46,11 @@ def forceUpdate(reg):
     reg.get()
 
 def retry(cmd,pv,value):
+    rval = False
     for tries in range(5):
         try:
             cmd(pv,value)
+            rval = True
             break
         except:
             exc = sys.exc_info()
@@ -57,6 +59,9 @@ def retry(cmd,pv,value):
             else:
                 traceback.print_exception(exc[0],exc[1],exc[2])
                 logging.error('Caught exception... retrying.')
+
+    if not rval:
+        raise RuntimeError('retry failed')
 
 def retry_wlock(cmd,pv,value):
     lock.acquire()
@@ -118,6 +123,7 @@ class L0DelayH(IdxRegH):
 
     def handle(self, pv, value):
         global countdn
+        logging.info(f'Setting L0Delay[{self._idx}] to {pipelinedepth_from_delay(value):x}')
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
 
         curr = self.pvu.current()
@@ -398,6 +404,7 @@ class GroupSetup(object):
 
         if val==0:
             self._app.l0Master.set(0)
+            self._app.l0Common.set(0)
             self._app.l0En    .set(0)
             self._stats._master = 0
             
@@ -405,6 +412,14 @@ class GroupSetup(object):
             curr['value'] = 0
             self._pv_Run.post(curr)
         else:
+            if val>1:
+                logging.info(f'Setting l0Common[{self._group}] delay {self._app.commonL0Delay.get()}')
+                self._app.l0Common.set(1)
+                self._app.pipelineDepth.set(pipelinedepth_from_delay(self._app.commonL0Delay.get()+1))
+                logging.info(f'pipelineDepth {self._app.pipelineDepth.get():x}')
+            else:
+                self._app.l0Common.set(0)
+                self._app.pipelineDepth.set(pipelinedepth_from_delay(self._pv_L0Delay.current()['value']))
             self._app.l0Master.set(1)
             self._stats._master = 1
         lock.release()
@@ -457,6 +472,8 @@ class GroupSetup(object):
 class GroupCtrls(object):
     def __init__(self, name, app, stats, init=None):
 
+        self._app = app
+
         def _addPV(label,reg):
             pv = SharedPV(initial=NTScalar('I').wrap(0), 
                           handler=RegH(reg))
@@ -464,7 +481,8 @@ class GroupCtrls(object):
             return pv
 
         self._pv_l0Reset   = _addPV('GroupL0Reset'  ,app.groupL0Reset)
-        self._pv_l0Enable  = _addPV('GroupL0Enable' ,app.groupL0Enable)
+        #self._pv_l0Enable  = _addPV('GroupL0Enable' ,app.groupL0Enable)
+        self._pv_l0Enable  = addPVC(f'{name}:GroupL0Enable','I',0,self.groupEnable)
         self._pv_l0Disable = _addPV('GroupL0Disable',app.groupL0Disable)
         self._pv_MsgInsert = _addPV('GroupMsgInsert',app.groupMsgInsert)
 
@@ -472,9 +490,40 @@ class GroupCtrls(object):
         for i in range(8):
             self._groups.append(GroupSetup(name+':PART:%d'%i, app, i, stats[i], init=init['PART'] if init else None))
 
+        # need to sync commonL0Delay to group delays/commonGroups
+        self._pv_ComDelay  = addPVC(f'{name}:CommonL0Delay','I',0,self.updateCommon)
+
         #  This is necessary in XTPG
         app.groupL0Reset.set(0xff)
         app.groupL0Reset.set(0)
+
+    def groupEnable(self, pv, val):
+        lock.acquire()
+        self._app.groupL0Enable.post(val)
+        # dump the configuration in question
+        l0common = 0
+        for i in range(8):
+            self._app.partition.set(i)
+            forceUpdate(self._app.l0Common)
+            if self._app.l0Common.get()==1:
+                l0common |= 1<<i
+            logging.info(f'== L0Delay[{i}] {self._app.pipelineDepth.get():x}')
+        logging.info(f'== l0Common {l0common:x}')
+        logging.info(f'== commonDelay {self._app.commonL0Delay.get()}')
+        lock.release()
+
+    def updateCommon(self, pv, val):
+        lock.acquire()
+        self._app.commonL0Delay.set(val)
+        logging.info(f'Set commonL0Delay to {val}')
+        for i in range(8):
+            self._app.partition.set(i)
+            forceUpdate(self._app.l0Common)
+            logging.info(f'l0Common[{i}] {self._app.l0Common.get()}')
+            if self._app.l0Common.get() == 1:
+                self._app.pipelineDepth.set(pipelinedepth_from_delay(val+1))
+                logging.info(f'Set L0Delay[{i}] to {self._app.pipelineDepth.get():x}')
+        lock.release()
 
 class PVCtrls(object):
 
@@ -612,7 +661,8 @@ class PVCtrls(object):
                 top.set('XTPG.CuInput'   , self._xpm.AxiSy56040.OutputConfig[0].get(), 'UINT8')
                 v = []
                 for i in range(8):
-                    v.append( self._xpm.XpmApp.l0Delay(i) )
+                    #v.append( self._xpm.XpmApp.l0Delay(i) )
+                    v.append( self._group._groups[i]._pv_L0Delay.current()['value'] )
                 top.set('PART.L0Delay', v, 'UINT32')
                 lock.release()
 

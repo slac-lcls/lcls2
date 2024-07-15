@@ -431,7 +431,8 @@ class XpmGroups(object):
                                  'desc'  :'-',
                                  'rate'  :'-'} for i in range(NSeqCodes)}}
         for i in range(NGroups):
-            if self.vals['master'][i].__value__ == 1:
+            v = self.vals['master'][i].__value__
+            if v is not None and v > 0:
                 vals['master'][i] = self.name
                 vals['l0rate'][i] = str(self.vals['l0rate'][i].__value__)
 
@@ -527,18 +528,18 @@ class PatternTab(QtWidgets.QWidget):
 
         l = QtWidgets.QVBoxLayout()
         v20b = (1<<20)-1
-        l.addWidget(PvTableDisplay(f'{pvbase}PATT:GROUPS', [f'Group{i}' for i in range(8)], (v20b, v20b, v20b, 0)))
+        l.addWidget(PvTableDisplay(f'{pvbase}PATT:GROUPS', [f'Group{i}' for i in range(8)], (0, v20b, v20b, v20b, 0)))
 
         self.coinc = []
         g = QtWidgets.QGridLayout()
-        for i in range(7):
-            g.addWidget(QtWidgets.QLabel(f'G{i+1}'),0,i+1)
+        for i in range(8):
+            g.addWidget(QtWidgets.QLabel(f'G{i}'),0,i+1)
             g.addWidget(QtWidgets.QLabel(f'G{i}'),i+1,0)
-        for i in range(7):
-            for j in range(i+1,8):
+        for i in range(8):
+            for j in range(i,8):
                 w = QtWidgets.QLabel('-')
                 self.coinc.append(w)
-                g.addWidget(w, i+1, j)
+                g.addWidget(w, i+1, j+1)
         box = QtWidgets.QGroupBox("Group Coincidences")
         box.setLayout(g)
         l.addWidget(box)
