@@ -128,6 +128,25 @@ class DeadTime(object):
             self.det[group][0].setText('')
             self.det[group][1].setText('')
 
+class PvPatternStats(QtWidgets.QWidget):
+    def __init__(self, base, pvbase, groups):
+        super(PvPatternStats,self).__init__()
+
+        lo = QtWidgets.QVBoxLayout()
+
+        stats = ['L0InpFirst','L0InpLast','L0InpMinIntv','L0InpMaxIntv']
+        glo = QtWidgets.QGridLayout()
+        for i,g in enumerate(groups):
+            glo.addWidget(QtWidgets.QLabel('Group %d'%g),0,i+1)
+        for i,s in enumerate(stats):
+            glo.addWidget(QtWidgets.QLabel(s),i+1,0,QtCore.Qt.AlignRight)
+            for j,g in enumerate(groups):
+                glo.addWidget(PvDbl(pvbase+'%d:'%g+stats[i]),i+1,j+1)
+
+        lo.addLayout(glo)
+        lo.addStretch()
+        self.setLayout(lo)
+
 class PvGroupStats(QtWidgets.QWidget):
     def __init__(self, base, pvbase, xpm, groups, prod=False):
         super(PvGroupStats,self).__init__()
@@ -157,9 +176,6 @@ class PvGroupStats(QtWidgets.QWidget):
         self.pvL0Disable = Pv(base+':XPM:%d:GroupL0Disable'%xpm,self.monDisable)
         lo.addLayout(hlo)
 
-        #stats = ['L0InpRate','L0AccRate','L1Rate',
-        #         'RunTime','NumL0Inp','NumL0Acc','NumL1',
-        #         'DeadFrac','DeadTime']
         stats = ['L0InpRate','L0AccRate',
                  'RunTime','NumL0Inp','NumL0Acc',
                  'DeadFrac','DeadTime']
@@ -208,7 +224,7 @@ class PvGroupStats(QtWidgets.QWidget):
         if value==self.groups:
             self.runb.setChecked(False)
 
-def addGroup(tw, base, group, xpm):
+def addGroup(tw, base, group, xpm, mon):
     pvbase = base+'%d:'%group
     wlo    = QtWidgets.QVBoxLayout()
 
@@ -233,8 +249,9 @@ def addGroup(tw, base, group, xpm):
     w.setLayout(wlo)
     tw.addTab(w,'Group %d'%group)
 
-    pvXpm = Pv(pvbase+'Master')
-    pvXpm.put(1)
+    if not mon:
+        pvXpm = Pv(pvbase+'Master')
+        pvXpm.put(1)
 
 class GroupMaster(QtWidgets.QWidget):
     def __init__(self, pvbase, groups):
@@ -249,7 +266,7 @@ class GroupMaster(QtWidgets.QWidget):
         self.setLayout(hlo)
 
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, base, xpm, groups, prod):
+    def setupUi(self, MainWindow, base, xpm, groups, common, prod, mon):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
@@ -258,18 +275,29 @@ class Ui_MainWindow(object):
 
         lol = QtWidgets.QVBoxLayout()
 
+        if common is not None:
+
+        groupc = groups if common is None else [common]+groups
+        print(f'groupc {groupc}  groups {groups}')    
+        
         if not prod:
             lol.addWidget(GroupMaster(pvbase,groups))
 
             tw = QtWidgets.QTabWidget()
             for g in groups:
-                addGroup(tw, pvbase, g, xpm)
-            tw.addTab(PvStateMachine(base,pvbase,xpm,groups,prod),'Transitions')
-            tw.addTab(PvGroupStats  (base,pvbase,xpm,groups),'Events')
+                addGroup(tw, pvbase, g, xpm, mon)
+
+            if common is not None and not mon:
+                Pv(f'{base}:XPM:{xpm}:PART:{common}:L0Groups').put(to_mask(groups))
+                Pv(f'{base}:XPM:{xpm}:PART:{common}:Master').put(2)
+
+            tw.addTab(PvStateMachine(base,pvbase,xpm,groupc,prod),'Transitions')
+            tw.addTab(PvGroupStats  (base,pvbase,xpm,groupc),'Events')
+            #tw.addTab(PvPatternStats(base,pvbase,groups),'Pattern')
             tw.setCurrentIndex(len(groups)+1)
             lol.addWidget(tw)
         else:
-            lol.addWidget(PvGroupStats(base,pvbase,xpm,groups,prod))
+            lol.addWidget(PvGroupStats(base,pvbase,xpm,groupc,prod))
 
         lol.addStretch()
 
@@ -292,19 +320,11 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)
 
-    def master(self,checked):
-        if checked:
-            self.pvL0Enable.put(self.groups)
-            time.sleep(0.1)
-            self.pvL0Enable.put(0)
-        else:
-            self.pvL0Disable.put(self.groups)
-            time.sleep(0.1)
-            self.pvL0Disable.put(0)
-
 def main():
     parser = argparse.ArgumentParser(description='Readout group control and monitoring')
     parser.add_argument('--prod', help='Production Mode', action='store_true', default=False)
+    parser.add_argument('--mon', help='Monitor only.  Master disabled', action='store_true')
+    parser.add_argument('--common', help='Common group', type=int, default=None, required=False)
     parser.add_argument('pvbase', help='EPICS PV Prefix', type=str)
     parser.add_argument('xpmroot', help='XPM at root', type=int)
     parser.add_argument('groups' , help='list of groups', type=int, nargs='+')
@@ -313,7 +333,7 @@ def main():
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.pvbase,args.xpmroot,args.groups,args.prod)
+    ui.setupUi(MainWindow,args.pvbase,args.xpmroot,args.groups,args.common,args.prod,args.mon)
     MainWindow.updateGeometry()
 
     MainWindow.show()

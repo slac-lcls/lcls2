@@ -508,6 +508,7 @@ class CollectionManager():
         self.trigger_config = args.t
         self.xpm_master = args.x
         self.pv_base = args.B
+        self.use_common = args.c
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -1122,6 +1123,35 @@ class CollectionManager():
                 logging.debug('condition_alloc() returning False')
                 return False
 
+        # Configure common group
+        if self.use_common:
+            pv = f'{self.pva.pv_xpm_base}:PART:{self.platform}:L0Groups'
+            groups = self.groups ^ (1<<self.platform)
+            if not self.pva.pv_put(pv,groups):
+                self.report_error(f'condition_alloc() failed putting {groups} to PV {pv}')
+                logging.debug('condition_alloc() returning False')
+                return False                
+            #  set the common group delay
+            pvl = []
+            for g in range(8):
+                if groups & (1 << g):
+                    pvl.append(f'{self.pva.pv_xpm_base}:PART:{g}:L0Delay')
+            l0d = self.pva.pv_get(pvl)
+            if l0d is None:
+                self.report_error(f'condition_alloc() failed getting L0Delays from {pvl}')
+                logging.debug('condition_alloc() returning False')
+                return False                
+            pv = f'{self.pva.pv_xpm_base}:CommonL0Delay'
+            #l0max = max(l0d)+1
+            l0max = 99
+            # The value of 99 shouldn't be necessary, according to simulation.
+            # Empirically, it is necessary for group alignment
+            # This value breaks receivers with old firmware (earlier than l2si-core v3.5.0)
+            if not self.pva.pv_put(pv,l0max):
+                self.report_error(f'condition_alloc() failed setting CommonL0Delay')
+                logging.debug('condition_alloc() returning False')
+                return False                
+
         # give number to teb nodes for the event builder
         if 'teb' in active_state:
             for i, node in enumerate(active_state['teb']):
@@ -1382,6 +1412,12 @@ class CollectionManager():
                 self.report_error('connect: failed to put PV \'%s\'' % pv)
                 connect_ok = False
                 break
+
+        if self.use_common:
+            pv = f'{self.pva.pv_xpm_base}:PART:{self.platform}:Master'
+            if not self.pva.pv_put(pv, 2):
+                self.report_err(f'connect: failed to put PV {pv} common')
+                connect_ok = False
 
         if connect_ok:
             logging.info('master XPM is %d' % self.xpm_master)
@@ -1660,6 +1696,9 @@ class CollectionManager():
                     if level == 'drp' or level == 'meb' or level == 'tpr':
                         self.cmstate[level][id]['hidden'] = 0
                     else:
+                        self.cmstate[level][id]['hidden'] = 1
+                    #  For common group
+                    if self.use_common and level == 'drp' and 'timing' in alias:
                         self.cmstate[level][id]['hidden'] = 1
                     logging.debug('rollcall: responder (%s) in newfound_set = %s' % (responder, responder in newfound_set))
                     if self.bypass_activedet:
@@ -2348,6 +2387,7 @@ def main():
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
+    parser.add_argument('-c', action='store_true', help='use auto common group')
     parser.add_argument('-t', metavar='TRIGGER_CONFIG', default='tmoteb', help='trigger configuration name')
     parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, default=1, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 1)')
 #    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')

@@ -343,6 +343,7 @@ class GroupStats(object):
         (numL0   ,offset) = bytes2Int(msg,offset)
         (numL0Inh,offset) = bytes2Int(msg,offset)
         (numL0Acc,offset) = bytes2Int(msg,offset)
+
         offset += 1
         rT = l0Ena*fidPeriod
         updatePv(self._pv_runTime , rT, timev)
@@ -391,11 +392,68 @@ class GroupStats(object):
                     linkInhTmV.append((linkInhTm[i] - self._linkInhTm[i])*den)
             else:
                 linkInhTmV = [0 for i in range(32)]
+
             self._linkInhTm = linkInhTm
             updatePv(self._pv_deadFLink, linkInhTmV, timev)
 
         return offset
 
+NGROUPS = 8
+pattStats  = {'Sum'    : ('ai',[0]*NGROUPS),
+              'First'  : ('ai',[0]*NGROUPS),
+              'Last'   : ('ai',[0]*NGROUPS),
+              'MinIntv': ('ai',[0]*NGROUPS),
+              'MaxIntv': ('ai',[0]*NGROUPS)}
+NCOINC = NGROUPS*(NGROUPS+1)//2
+pattCoinc = {'Coinc' : ('ai',[0]*NCOINC)}
+
+class PatternStats(object):
+    def __init__(self, name):
+        # statistics
+        self._stats_pv    = addPVT(f'{name}:GROUPS',pattStats)
+        self._stats_value = toDict(pattStats)
+
+        self._coinc_pv    = addPVT(f'{name}:COINC',pattCoinc)
+        self._coinc_value = toDict(pattCoinc)
+
+    def handle(self,msg,offset,timev):
+
+        def bytes22Int(msg,words,offset):
+            if words%2:
+                raise ValueError
+            nb = 5*words//2
+            b = struct.unpack_from(f'<{nb}B',msg,offset)
+            offset += nb
+            a = []
+            w = 0
+            for i,v in enumerate(b):
+                w += v<<(8*(i%5))
+                if (i%5)==4:
+                    a.append(w&0xfffff)
+                    w >>= 20
+                    a.append(w&0xfffff)
+                    w = 0
+                    
+            #print(f'inp {words} len {len(a)} {a}')
+            return (a,offset)
+
+        (a, offset) = bytes22Int(msg,NGROUPS*5,offset)
+        for i in range(NGROUPS):
+            self._stats_value['Sum'    ][i] = a[5*i+0]
+            self._stats_value['First'  ][i] = a[5*i+1]
+            self._stats_value['Last'   ][i] = a[5*i+2]
+            self._stats_value['MinIntv'][i] = a[5*i+3]
+            self._stats_value['MaxIntv'][i] = a[5*i+4]
+
+        (a, offset) = bytes22Int(msg,NCOINC,offset)
+        for i,v in enumerate(a):
+            self._coinc_value['Coinc'][i] = v
+
+        updatePv(self._stats_pv, self._stats_value, timev)
+        updatePv(self._coinc_pv, self._coinc_value, timev)
+
+        return offset
+        
 class PVMmcmPhaseLock(object):
     def __init__(self, name, mmcm):
         v = []
@@ -434,6 +492,7 @@ class PVStats(object):
         for i in range(8):
             self._groups.append(GroupStats(name+':PART:%d'%i,self._app,i))
 
+        self._pattern = PatternStats(name+':PATT')
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp)
 
@@ -474,6 +533,7 @@ class PVStats(object):
             offset = self._links[i].handle(msg,offset,timev)
         for i in range(8):
             offset = self._groups[i].handle(msg,offset,timev)
+        offset = self._pattern.handle(msg,offset,timev)
         for i in range(2):
             offset = self._amcPll[i].handle(msg,offset,timev)
         offset = self._monClks.handle(msg,offset,timev)
