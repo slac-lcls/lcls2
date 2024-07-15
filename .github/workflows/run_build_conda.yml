@@ -20,5 +20,6 @@ jobs:
           auto-update-conda: true
           python-version: "3.9"
           activate-environment: build-conda-env
+          channels: [lcls-ii, conda-forge]
           environment-file: ps-4.6.3.txt
           mamba-version: "*" # use the latest available version of Mamba at the time of execution.
