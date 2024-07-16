@@ -25,3 +25,7 @@ jobs:
       - name: Sanity Check
         run:
           conda list
+
+      - name: Build
+        run:
+          chmod +x build_all.sh
