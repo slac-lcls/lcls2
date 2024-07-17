@@ -31,7 +31,7 @@ ctypedef si.uint8_t chan_t
 #     cdef cppclass Dgram:
 #         pass
 
-cdef extern from "HsdPython.hh" namespace "Pds::HSD":
+cdef extern from "include/HsdPython.hh" namespace "Pds::HSD":
     cdef cppclass ChannelPython:
         ChannelPython()
         ChannelPython(const evthdr_t *evtheader, const si.uint8_t *data)
