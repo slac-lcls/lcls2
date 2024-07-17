@@ -28,6 +28,5 @@ jobs:
 
       - name: Build
         run:
-          # chmod +x build_all.sh
           ./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 
