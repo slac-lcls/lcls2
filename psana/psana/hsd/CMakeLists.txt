@@ -22,5 +22,11 @@ target_include_directories(psana_hsd PUBLIC
 target_link_libraries(psana_hsd PUBLIC psalg::digitizer)
 
 
-
+add_custom_command(TARGET psana_hsd
+                   POST_BUILD
+                   WORKING_DIRECTORY ${PSANA_PATH}
+                   COMMAND echo "BUILDING EXTENSIONS"
+                   COMMAND python setup.py build_ext -f --inplace
+                   COMMAND echo "PIP INSTALLING PSANA"
+                   COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .)
 
