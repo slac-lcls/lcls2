@@ -2,4 +2,4 @@ cmake_minimum_required(VERSION 3.10)
 
 # Include the library subdirectory
 add_subdirectory(peakFinder)
-#add_subdirectory(hsd)
+add_subdirectory(hsd)
