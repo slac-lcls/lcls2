@@ -275,10 +275,7 @@ class Ui_MainWindow(object):
 
         lol = QtWidgets.QVBoxLayout()
 
-        if common is not None:
-
         groupc = groups if common is None else [common]+groups
-        print(f'groupc {groupc}  groups {groups}')    
         
         if not prod:
             lol.addWidget(GroupMaster(pvbase,groups))

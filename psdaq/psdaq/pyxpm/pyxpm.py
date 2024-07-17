@@ -52,6 +52,7 @@ def main():
     parser.add_argument('-T', action='store_true', help='test mode')
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
+    parser.add_argument('-A', type=int, default=2, help='number of AMC cards')
 
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -86,7 +87,7 @@ def main():
 
     lock = Lock()
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv)
+    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A)
 #    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
 

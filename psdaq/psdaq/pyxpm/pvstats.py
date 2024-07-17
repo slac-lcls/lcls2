@@ -36,11 +36,12 @@ sfpStatus  = {'LossOfSignal' : ('ai',[0]*NFPLINKS),
 
 class SFPStatus(object):
 
-    def __init__(self, name, xpm):
+    def __init__(self, name, xpm, nLinks=14):
         self._xpm   = xpm
         self._pv    = addPVT(name,sfpStatus)
         self._value = toDict(sfpStatus)
         self._link  = 0
+        self._nlinks= nLinks
 
         amc = self._xpm.amcs[0]
         mod = amc.SfpSummary.modabs.get()
@@ -63,7 +64,7 @@ class SFPStatus(object):
                 self._value['RxPower'][self._link] = rxp
 
         self._link += 1
-        if self._link==14:
+        if self._link==self._nlinks:
             self._link = 0
             value = self._pv.current()
             value['value'] = self._value
@@ -463,7 +464,7 @@ class PVMmcmPhaseLock(object):
 
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None,nAMCs=2):
         setProvider(p)
         global lock
         lock     = m
@@ -504,7 +505,7 @@ class PVStats(object):
 
         self._monClks  = MonClkStatus(name,self._app)
         if hasSfp:
-            self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
+            self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm,7*nAMCs)
         else:
             self._sfpStat  = None
 
