@@ -405,6 +405,8 @@ class cdict(object):
             self.set(base, old, type="CHARSTR")
         elif isinstance(old, float):
             self.set(base, old, type="DOUBLE")
+        elif isinstance(old, bool):
+            self.set(base, old, type="UINT8")
         else:
             self.set(base, old, type="INT32")
 
