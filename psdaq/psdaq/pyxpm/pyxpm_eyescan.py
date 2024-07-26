@@ -241,7 +241,7 @@ def main():
         )
   
     if args.bathtub:
-        base.Link[linkid].bathtubPlot()
+        base.Link[linkid].bathtubPlot(target)
 
     if args.eye:
         base.Link[linkid].eyePlot(target=target)
