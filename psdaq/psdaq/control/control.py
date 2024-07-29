@@ -440,6 +440,15 @@ class DaqPVA():
         self.ctxt = Context('pva', nt=None)
 
     #
+    # DaqPVA.insert_transition
+    #
+    def insert_transition( self, groups, id ):
+        rval = self.pv_put(self.pvListMsgHeader, id)
+        if rval:
+            rval = self.pv_put(self.pvGroupMsgInsert, groups)
+        return rval
+
+    #
     # DaqPVA.step_groups -
     #
     # If you don't want steps, set StepGroups = 0.
@@ -480,15 +489,17 @@ class DaqPVA():
 
         retval = False
 
+        if isinstance(pvName, list) and not isinstance(val, list):
+            val = [val]*len(pvName)
         try:
-            self.ctxt.put(pvName, val)
+            self.ctxt.put(pvName, val, get=False)
         except TimeoutError:
-            self.report_error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
+            self.report_error(f"self.ctxt.put({pvName}, {val}) timed out")
         except Exception:
-            self.report_error("self.ctxt.put('%s', %d) failed" % (pvName, val))
+            self.report_error(f"self.ctxt.put({pvName}, {val}) failed")
         else:
             retval = True
-            logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
+            logging.debug(f"self.ctxt.put({pvName}, {val})")
 
         return retval
 
@@ -1116,12 +1127,12 @@ class CollectionManager():
         logging.debug('pvListL0Groups: %s' % self.pva.pvListL0Groups)
 
         # Couple deadtime of all readout groups
-        for pv in self.pva.pvListL0Groups:
-            logging.debug(f'condition_alloc() putting {self.groups} to PV {pv}')
-            if not self.pva.pv_put(pv, self.groups):
-                self.report_error(f'condition_alloc() failed putting {self.groups} to PV {pv}')
-                logging.debug('condition_alloc() returning False')
-                return False
+        
+        logging.debug(f'condition_alloc() putting {self.groups} to PV {self.pva.pvListL0Groups}')
+        if not self.pva.pv_put(self.pva.pvListL0Groups, self.groups):
+            self.report_error(f'condition_alloc() failed putting {self.groups} to PV {self.pva.pvListL0Groups}')
+            logging.debug('condition_alloc() returning False')
+            return False
 
         # Configure common group
         if self.use_common:
@@ -1227,12 +1238,10 @@ class CollectionManager():
 
         if dealloc_ok:
             # clear L0Groups PVs
-            for pv in self.pva.pvListL0Groups:
-                logging.debug(f'condition_dealloc() putting 0 to PV {pv}')
-                if not self.pva.pv_put(pv, 0):
-                    self.report_error(f'condition_dealloc() failed putting 0 to PV {pv}')
-                    dealloc_ok = False
-                    break
+            logging.debug(f'condition_dealloc() putting 0 to PV {self.pva.pvListL0Groups}')
+            if not self.pva.pv_put(self.pva.pvListL0Groups, 0):
+                self.report_error(f'condition_dealloc() failed putting 0 to PV {pv}')
+                dealloc_ok = False
 
         if dealloc_ok:
             self.lastTransition = 'dealloc'
@@ -1286,16 +1295,9 @@ class CollectionManager():
         # phase 2
         # ...clear readout
         self.pva.pv_put(self.pva.pvGroupL0Reset, self.groups)
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['ClearReadout'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['ClearReadout'])
         time.sleep(1.0)
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['BeginRun'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['BeginRun'])
         self.readoutCumulative = [0 for i in range(8)]
 
         ok = self.get_phase2_replies('beginrun')
@@ -1321,11 +1323,7 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['EndRun'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['EndRun'])
         for g in range(8):
             if self.groups & (1 << g):
                 pv = self.pva.pv_xpm_base + f':PART:{g}:Recording'
@@ -1352,10 +1350,7 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['BeginStep'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['BeginStep'])
 
         ok = self.get_phase2_replies('beginstep')
         if not ok:
@@ -1372,10 +1367,7 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['EndStep'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['EndStep'])
 
         ok = self.get_phase2_replies('endstep')
         if not ok:
@@ -1389,15 +1381,9 @@ class CollectionManager():
 
         # phase 1 not needed
         # phase 2 no replies needed
-        for pv in self.pva.pvListMsgHeader:
-            # Force SlowUpdate to respect deadtime
-            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
-                update_ok = False
-                break
+        update_ok = self.pva.insert_transition(self.groups, (0x80 | ControlDef.transitionId['SlowUpdate']))
 
         if update_ok:
-            self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-            self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
             self.lastTransition = 'slowupdate'
 
         return update_ok
@@ -2098,16 +2084,10 @@ class CollectionManager():
         # phase 2
         # ...clear readout
         self.pva.pv_put(self.pva.pvGroupL0Reset, self.groups)
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['ClearReadout'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['ClearReadout'])
         time.sleep(1.0)
         # ...configure
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Configure'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['Configure'])
         self.step_groups_clear()    # default is no scanning
 
         start_step_thread = False
@@ -2148,10 +2128,7 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Unconfigure'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['Unconfigure'])
 
         ok = self.get_phase2_replies('unconfigure')
         if not ok:
@@ -2176,13 +2153,15 @@ class CollectionManager():
     def step_groups_clear(self):
         logging.debug("step_groups_clear()")
         retval = True
+        pv = []
         for g in range(8):
             if self.groups & (1 << g):
-                pv = self.pva.pv_xpm_base + f':PART:{g}:StepGroups'
-                logging.debug(f'step_groups_clear(): clearing {pv}')
-                if not self.pva.pv_put(pv, 0):
-                    logging.error(f'step_groups_clear(): clearing {pv} failed')
-                    retval = False
+                pv.append(self.pva.pv_xpm_base + f':PART:{g}:StepGroups')
+
+        logging.debug(f'step_groups_clear(): clearing {pv}')
+        if not self.pva.pv_put(pv, 0):
+            logging.error(f'step_groups_clear(): clearing {pv} failed')
+            retval = False
 
         return retval
 
@@ -2223,10 +2202,7 @@ class CollectionManager():
             self.pva.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Enable'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.pva.insert_transition(self.groups, ControlDef.transitionId['Enable'])
 
         ok = self.get_phase2_replies('enable')
         if not ok:
@@ -2276,11 +2252,7 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            #  Force Disable to respect deadtime but remain queued
-            self.pva.pv_put(pv, (0x180 | ControlDef.transitionId['Disable']))
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.pva.insert_transition(self.groups, (0x180 | ControlDef.transitionId['Disable']))
 
         ok = self.get_phase2_replies('disable')
         if not ok:
