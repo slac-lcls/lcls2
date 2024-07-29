@@ -26,13 +26,7 @@ target_include_directories(peaks PUBLIC
 # Link the executable with the MyLibrary library
 target_link_libraries(peaks PUBLIC psalg::alloc)
 
-add_custom_command(TARGET peaks
-                   POST_BUILD
-                   WORKING_DIRECTORY ${PSANA_PATH}
-                   COMMAND echo "BUILDING EXTENSIONS"
-                   COMMAND python setup.py build_ext -f --inplace
-                   COMMAND echo "PIP INSTALLING PSANA"
-                   COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .)
+
 
 
 

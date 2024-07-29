@@ -12,7 +12,7 @@ fi
 cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 psana_setup_args=""
-force_clean=1
+force_clean=0
 no_daq=0
 no_ana=0
 no_shmem=0
