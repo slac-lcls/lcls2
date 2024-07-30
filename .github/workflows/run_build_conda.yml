@@ -13,6 +13,7 @@ jobs:
        # so these shells need to be explicitly declared.
        # This makes the shell a login shell, which typically
        # sources said files. This is needed for conda.
+       # Refer: https://github.com/marketplace/actions/setup-miniconda
        shell: bash -el {0}  
     steps:
       - name: Checkout repo with submodules
