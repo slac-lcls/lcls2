@@ -21,7 +21,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-class EyeGth(pr.Device):
+class XpmGth(pr.Device):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -181,8 +181,8 @@ class EyeGth(pr.Device):
             mode         = "RW",
         ))
 
-    def bathtubPlot(self, fname=None):
-        bers = self.bathtub()
+    def bathtubPlot(self, target):
+        bers = self.bathtub(target)
         extrapolated = self.extrapolate(bers)
         plt.clf()
         plt.close()
@@ -199,12 +199,7 @@ class EyeGth(pr.Device):
         plt.legend()
         plt.yscale("log")
        
-        if fname:
-            plt.savefig(fname)
-        else:
-            plt.show()
-            
-        return extrapolated[54]
+        plt.show()
 
     def eyePlot(self, target = 1e-4):
         eye = self.getEye(target)
@@ -244,12 +239,12 @@ class EyeGth(pr.Device):
         return extrapolated
 
 
-    def bathtub(self):
+    def bathtub(self, target):
         y = 0
         bers = []
 
         for pos in range(-64, 0):
-            ber = self.getBERFast(1e-9, pos, y)
+            ber = self.getBERFast(target, pos, y)
             if ber != 0:
                 bers.append(ber)
             else:
@@ -271,7 +266,7 @@ class EyeGth(pr.Device):
         y = 0
 
         for pos in range(-64, 64):
-            #print("[{}%] Eye measurement in progress          \r".format(round((float(64.0+pos)/256.0)*100)), end='')
+            print("[{}%] Eye measurement in progress          \r".format(round((float(64.0+pos)/256.0)*100)), end='')
             prev = ber
 
             currY = []
@@ -360,7 +355,6 @@ class EyeGth(pr.Device):
         #self.ES_EYE_SCAN_EN.set(0x00)
         #self.ES_ERRDET_EN.set(0x00)
 
-        ## This requires a PMA reset
         self.ES_EYE_SCAN_EN.set(0x01)
         self.ES_ERRDET_EN.set(0x01)
 
@@ -396,31 +390,26 @@ class EyeGth(pr.Device):
         #Wait for status being WAIT
         ts0 = time.perf_counter()
         status = self.ES_CONTROL_STATUS.get()
-        np = 0
         while (status & 0x01) != 1:
             time.sleep(0.1)
             status = self.ES_CONTROL_STATUS.get()
-            np += 1
-        #print('Wait for WAIT status: {}(1) {}'.format(status,np))
+            #print('Wait for WAIT status: {}'.format(status))
 
         self.ES_CONTROL.set(0x01)
 
         #Wait for status being RESET
         status = self.ES_CONTROL_STATUS.get()
-        np = 0
         ts1 = time.perf_counter()
         while (status & 0x01) != 1:
             time.sleep(0.1)
             status = self.ES_CONTROL_STATUS.get()
-            np += 1
-        #print("Wait for ready status: {}(5) {}".format(status,np))
+            #print("Wait for ready status: {}".format(status))
 
         ts2 = time.perf_counter()
         errCount = self.ES_ERROR_COUNT.get()
         sampleCount = self.ES_SAMPLE_COUNT.get()
         bitCount = 20*math.pow(2, 1+prescale)*sampleCount
 
-        #print(f'getBERsample {errCount} {bitCount} {sampleCount} {ts0} {ts1} {ts2}')
         return (errCount,bitCount)
 
     def getBER(self, berTarget, x, y):

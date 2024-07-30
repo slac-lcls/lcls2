@@ -21,6 +21,22 @@ import sys
 import argparse
 import logging
 import socket
+import time
+
+class TimingRx(pr.Device):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.add(pr.RemoteVariable(
+            name        = 'RxReset',
+            description = 'Reset timing receive link',
+            offset      = 0x20,
+            bitSize     = 1,
+            bitOffset   = 3,
+            mode        = 'WO',
+            verify      = False,
+            ))
+
 
 class EyeScanRoot(pr.Root):
 
@@ -64,19 +80,17 @@ class EyeScanRoot(pr.Root):
         #    offset      = 0x0000_0000
         #))
 
-        pgplanes = [
-            0x00A09000,
-            0x00A19000,
-            0x00A29000,
-            0x00A39000
-        ]
+        self.add(dev.EyeGth(
+            name        = 'gthtim',
+            memBase     = self.memMap,
+            offset      = 0x00C18000,
+        ))
 
-        for i in range(len(pgplanes)):
-            self.add(dev.EyeGth(
-                name        = 'link[{}]'.format(i),
-                memBase     = self.memMap,
-                offset      = pgplanes[i],
-            ))
+        self.add(TimingRx(
+            name        = 'timrx',
+            memBase     = self.memMap,
+            offset      = 0x00C00020,
+        ))
 
     def start(self, **kwargs):
         super().start(**kwargs)
@@ -88,7 +102,6 @@ def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='Eyediag for HSD')
 
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
-    parser.add_argument('--link', type=int, default=None, help="Link id (default is all)" )
     parser.add_argument('--dev', default='/dev/datadev_0', help="Device file (default: /dev/datadev_0)" )
     parser.add_argument('--eye', action='store_true', help='Generate eye diagram')
     parser.add_argument('--bathtub', action='store_true', help='Generate bathtub curve')
@@ -110,34 +123,39 @@ def main():
     ######################
     root.start()
 
+    #  This requires an Rx PMA reset
+    root.gthtim.ES_EYE_SCAN_EN.set(0x01)
+    root.gthtim.ES_ERRDET_EN.set(0x01)
+
+    root.timrx.RxReset.set(1)
+    time.sleep(0.001)
+    root.timrx.RxReset.set(0)
+
     if args.target is None:
         target = 1e-8
     else:
         target = args.target
 
     if args.gui:
-        pyrogue.pydm.runPyDM(
+        pr.pydm.runPyDM(
             serverList  = root.zmqServer.address,
             sizeX       = 800,
             sizeY       = 800,
         )
   
     if args.bathtub:
-        links = [i for i in range(4)] if args.link is None else [args.link]
-        for link in links:
-            if args.write:
-                base = f'{args.write}/{socket.gethostname()}.{args.dev.split("/")[-1]}.{link}'
-                fname = base+'.png'
-                result = root.link[link].bathtubPlot(fname)
-                f=open(base+'.dat',mode='w')
-                f.write(f'BER:{result}')
-                f.close()
-            else:
-                result = root.link[link].bathtubPlot()
-
+        if args.write:
+            base = f'{args.write}/{socket.gethostname()}.timing'
+            fname = base+'.png'
+            result = root.gthtim.bathtubPlot(fname)
+            f=open(base+'.dat',mode='w')
+            f.write(f'BER:{result}')
+            f.close()
+        else:
+            result = root.gthtim.bathtubPlot(fname)
+            
     if args.eye:
-        root.link[args.link].eyePlot(target=target)
-
+        root.gthtim.eyePlot(target=target)
 
     root.stop()
 

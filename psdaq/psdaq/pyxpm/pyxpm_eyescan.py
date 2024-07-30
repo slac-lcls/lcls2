@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import sys
 import time
 import pyrogue as pr
@@ -14,8 +15,6 @@ import time
 
 import cameralink_gateway  # to get surf
 import surf.axi                     as axi
-
-import dev
 
 import psdaq.pyxpm.xpm              as xpm
 
@@ -91,7 +90,7 @@ class Top(pr.Root):
 
 
         for i in range(len(LinksAMC0)):
-            self.add(dev.EyeGth(
+            self.add(xpm.XpmGth(
                 memBase = self.srp,
                 name   = LinksAMC0[i][0],
                 offset = LinksAMC0[i][1],
@@ -125,13 +124,13 @@ def main():
 
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--ip', type=str, required=True, help="IP address" )
-    parser.add_argument('--link', type=int, default=None, help="Link identifier" )
+    parser.add_argument('--link', type=int, required=False, help="Link identifier" )
     parser.add_argument('--hseq', type=int, required=False, help="High speed equalizer setting" )
     parser.add_argument('--eye', action='store_true', help='Generate eye diagram')
     parser.add_argument('--bathtub', action='store_true', help='Generate bathtub curve')
-    parser.add_argument('--write', default=None, help='Write data files to OPATH', metavar='OPATH')
     parser.add_argument('--gui', action='store_true', help='Bring up GUI')
     parser.add_argument('--target', type=float, required=False, help="BET Target" )
+    parser.add_argument('--forceLoopback', action='store_true', help='Set link in loopback mode')
 
     args = parser.parse_args()
     if args.verbose:
@@ -168,89 +167,86 @@ def main():
             {'dev': 4, 'ch': 1}, #AMC1 - Link 6 (link 13)
         ]
 
-    links = [i for i in range(14)] if args.link is None else [args.link]
+    if args.link is None:
+        linkid = 0
+    else:
+        linkid = args.link
 
-    for link in links:
+    base.XpmApp.link.set(linkid)
 
-        print(f'*** LINK {link} ***')
+    #GTH Config
+    imageId = base.AxiVersion.ImageName.get()
+    if imageId == 'xpm_noRTM' and linkid <= 6:
+        linkid -= 1
 
-        linkid = link
-        base.XpmApp.link.set(linkid)
-
-        #GTH Config
-        imageId = base.AxiVersion.ImageName.get()
-        if imageId == 'xpm_noRTM' and linkid <= 6:
-            linkid -= 1
-
-        if linkid < 0 or linkid > 13:
-            print("Error: linkid does not exists")
-            continue
+    if linkid < 0 or linkid > 13:
+        print("Error: linkid does not exists")
+        base.stop()
+        return
         
-        link_rxcdrlock = base.XpmApp.link_rxcdrlock.get()
-        link_rxpmarstdone = base.XpmApp.link_rxpmarstdone.get()
-        link_txpmarstdone = base.XpmApp.link_txResetDone.get()
+    loopback = base.XpmApp.loopback.get()
+    if args.forceLoopback:
+        print("Set in loopback")
+        base.XpmApp.loopback.set(0x01)
 
-        #base.XpmApp.link_eyescanrst.set(0x00)
+        base.XpmApp.txReset.set(0x01)
+        base.XpmApp.rxPllReset.set(0x01)
+        base.XpmApp.rxReset.set(0x01)
+        time.sleep(0.5)
 
-        if link_rxcdrlock != 0x01 or link_rxpmarstdone != 0x01:
-            print("Link not locked: CDR not locked, link not connected or data quality too bad")
-            continue
+        base.XpmApp.txReset.set(0x00)
+        base.XpmApp.rxPllReset.set(0x00)
+        base.XpmApp.rxReset.set(0x00)
+        time.sleep(0.5)
 
-        if args.hseq is not None:
-            #High-speed repeater config
-            device = base.HSRep[hsConfig[linkid]['dev']]
-            device.CtrlEn.set(True)
-            device.EQ_ch[hsConfig[linkid]['ch']].set(args.hseq)
+    link_rxcdrlock = base.XpmApp.link_rxcdrlock.get()
+    link_rxpmarstdone = base.XpmApp.link_rxpmarstdone.get()
+    link_txpmarstdone = base.XpmApp.link_txResetDone.get()
 
-        if args.target is None:
-            target = 1e-8
-        else:
-            target = args.target
+    #base.XpmApp.link_eyescanrst.set(0x00)
 
-        link_rxRcvCnts = 0
-        link_rxErrCnts = 0
+    if link_rxcdrlock != 0x01 or link_rxpmarstdone != 0x01:
+        print("Link not locked: CDR not locked, link not connected or data quality too bad")
+        base.stop()
+        return
 
-        while link_rxRcvCnts < (1/target):
-            base.XpmApp.link_gthCntRst.set(0x01)
-            base.XpmApp.link_gthCntRst.set(0x00)
-            time.sleep(0.1)
-            link_rxRcvCnts += base.XpmApp.link_rxRcvCnts.get()*20
-            link_rxErrCnts += base.XpmApp.link_rxErrCnts.get()
+    if args.hseq is not None:
+        #High-speed repeater config
+        device = base.HSRep[hsConfig[linkid]['dev']]
+        device.CtrlEn.set(True)
+        device.EQ_ch[hsConfig[linkid]['ch']].set(args.hseq)
+
+    if args.target is None:
+        target = 1e-8
+    else:
+        target = args.target
+
+    link_rxRcvCnts = 0
+    link_rxErrCnts = 0
+
+    while link_rxRcvCnts < (1/target):
+        base.XpmApp.link_gthCntRst.set(0x01)
+        base.XpmApp.link_gthCntRst.set(0x00)
+        time.sleep(0.1)
+        link_rxRcvCnts += base.XpmApp.link_rxRcvCnts.get()*20
+        link_rxErrCnts += base.XpmApp.link_rxErrCnts.get()
 
         print('BER: {:.2e} ({} err/ {} rcv)'.format((link_rxErrCnts/link_rxRcvCnts), link_rxErrCnts, link_rxRcvCnts))
 
-        if args.gui:
-            pyrogue.pydm.runPyDM(
-                serverList  = base.zmqServer.address,
-                sizeX       = 800,
-                sizeY       = 800,
-            )
+    if args.gui:
+        pyrogue.pydm.runPyDM(
+            serverList  = base.zmqServer.address,
+            sizeX       = 800,
+            sizeY       = 800,
+        )
   
-        if args.bathtub:
-            for iatt in range(2):
-                if args.write:
-                    fbase = f'{args.write}/xpm.{args.ip}.{link}'
-                    fname = fbase+'.png'
-                    result = base.Link[linkid].bathtubPlot(fname)
-                    f=open(fbase+'.dat',mode='w')
-                    f.write(f'BER:{result}\n')
-                    f.close()
-                else:
-                    result = base.Link[linkid].bathtubPlot()                
+    if args.bathtub:
+        base.Link[linkid].bathtubPlot(target)
 
-                if result < 0.5:  # success
-                    break
+    if args.eye:
+        base.Link[linkid].eyePlot(target=target)
 
-                # try rxreset to engage eyescan/errdet
-                print('Retry...')
-                base.XpmApp.rxReset.set(1)
-                time.sleep(0.0001)
-                base.XpmApp.rxReset.set(0)
-                time.sleep(0.01)
-                
-        if args.eye:
-            base.Link[linkid].eyePlot(target=target)
-
+    base.XpmApp.loopback.set(loopback)
     base.stop()
 
 if __name__ == '__main__':
