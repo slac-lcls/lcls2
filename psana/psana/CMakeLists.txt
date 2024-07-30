@@ -14,8 +14,8 @@ add_library(psana SHARED
 
 # This includes the headers during the build and also installs the headers in the include dir for lcls2
 target_include_directories(psana PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/peakFinder>
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/hsd>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/peakFinder/include>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/hsd/include>
 )
 
 # Link the executable with the MyLibrary library
@@ -28,4 +28,4 @@ add_custom_command(TARGET psana
                    COMMAND echo "BUILDING EXTENSIONS"
                    COMMAND python setup.py build_ext -f --inplace
                    COMMAND echo "PIP INSTALLING PSANA"
-                   COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .)
+                   COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .)

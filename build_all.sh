@@ -13,7 +13,7 @@ cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 psana_setup_args=""
 force_clean=0
-no_daq=0
+no_daq=1
 no_ana=0
 no_shmem=0
 build_ext_list=""
@@ -75,7 +75,7 @@ function cmake_build() {
     shift
     mkdir -p build
     cd build
-    cmake -DPSANA_PATH=$PSANA_PATH -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
+    cmake -DPIP_OPTIONS=$pipOptions -DPSANA_PATH=$PSANA_PATH -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
     if [ $install == 1 ] 
     then
         make -j 4 install
