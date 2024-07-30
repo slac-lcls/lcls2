@@ -9,10 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
      run:
-       # Bash shells do not use ~/.profile or ~/.bashrc,
+       # Bash shells do not use ~/.profile (for env variables) or ~/.bashrc,
        # so these shells need to be explicitly declared.
        # This makes the shell a login shell, which typically
-       # sources said files.
+       # sources said files. This is needed for conda.
        shell: bash -el {0}  
     steps:
       - name: Checkout repo with submodules
