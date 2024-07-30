@@ -9,7 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
      run:
-       shell: bash -l {0}  # needed for conda environment to work
+       # needed for conda environment to work.
+       # Bash shells do not use ~/.profile or ~/.bashrc,
+       # so these shells need to be explicitly declared.
+       shell: bash -l {0}  
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
