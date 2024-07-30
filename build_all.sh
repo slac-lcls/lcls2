@@ -80,7 +80,7 @@ function cmake_build() {
     shift
     mkdir -p build
     cd build
-    cmake -DPSANA_PATH=$PSANA_PATH -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
+    cmake -DPIP_OPTIONS=$pipOptions -DPSANA_PATH=$PSANA_PATH -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
     if [ $install == 1 ] 
     then
         make -j 4 install
