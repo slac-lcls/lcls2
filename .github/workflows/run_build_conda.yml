@@ -9,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
      run:
-       # needed for conda environment to work.
        # Bash shells do not use ~/.profile or ~/.bashrc,
        # so these shells need to be explicitly declared.
        shell: bash -l {0}  
