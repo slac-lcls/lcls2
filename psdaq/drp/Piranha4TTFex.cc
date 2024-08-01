@@ -124,14 +124,14 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
   }          
    
   m_beam_select.set_incl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.incl.eventcode") );
-  m_beam_select.set_incl_destination( descdata.get_value<int32_t> ("fex.beam.incl.destination") );
+  m_beam_select.set_incl_destination( descdata.get_value<int32_t> ("fex.beam.incl.destination:destEnum") );
   m_beam_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.excl.eventcode") );
-  m_beam_select.set_excl_destination( descdata.get_value<int32_t> ("fex.beam.excl.destination") );
+  m_beam_select.set_excl_destination( descdata.get_value<int32_t> ("fex.beam.excl.destination:destEnum") );
 
   m_laser_select.set_incl_eventcode  ( descdata.get_value<uint16_t>("fex.laser.incl.eventcode") );
-  m_laser_select.set_incl_destination( descdata.get_value<int32_t> ("fex.laser.incl.destination") );
+  m_laser_select.set_incl_destination( descdata.get_value<int32_t> ("fex.laser.incl.destination:destEnum") );
   m_laser_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.laser.excl.eventcode") );
-  m_laser_select.set_excl_destination( descdata.get_value<int32_t> ("fex.laser.excl.destination") );
+  m_laser_select.set_excl_destination( descdata.get_value<int32_t> ("fex.laser.excl.destination:destEnum") );
 
   {
       if (nameMap.find("fex.invert_weights:boolEnum") != nameMap.end()) {
