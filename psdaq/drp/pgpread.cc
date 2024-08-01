@@ -120,7 +120,8 @@ int main(int argc, char* argv[])
     printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
 
     if (dmaSetMaskBytes(fd, mask)) {
-        printf("Failed to allocate lane/vc\n");
+        printf("Failed to allocate lane/vc "
+               "- does another process have %s open?\n", device.c_str());
         const unsigned* u = reinterpret_cast<const unsigned*>(mask);
         for(unsigned i=0; i<DMA_MASK_SIZE/4; i++)
             printf("%08x%c", u[i], (i%8)==7?'\n':' ');
