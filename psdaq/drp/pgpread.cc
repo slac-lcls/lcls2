@@ -81,6 +81,16 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    // Complain if all arguments weren't consummed
+    if (optind < argc) {
+        printf("Unrecognized argument:\n");
+        while (optind < argc)
+            printf("  %s ", argv[optind++]);
+        printf("\n");
+        show_usage(argv[0]);
+        return 1;
+    }
+
     terminate.store(false, std::memory_order_release);
     signal(SIGINT, int_handler);
 
