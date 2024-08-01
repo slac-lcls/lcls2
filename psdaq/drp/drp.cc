@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")          continue;  // DrpBase
         if (kwargs.first == "directIO")          continue;  // DrpBase
         if (kwargs.first == "pva_addr")          continue;  // DrpBase
-        if (para.detType == "opal") {
+        if (para.detType == "opal" || para.detType == "piranha4") {
             if (kwargs.first == "simxtc")            continue;  // Opal
             if (kwargs.first == "simxtc2")           continue;  // Opal
             if (kwargs.first == "simtime")           continue;  // Opal
