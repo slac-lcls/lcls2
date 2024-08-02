@@ -19,6 +19,10 @@ daqConfig = {'readoutGroup':('i', 0),
              'fex_xpre'    :('i', 1),
              'fex_xpost'   :('i', 1) }
 
+pgpConfig  = {'diffctrl'    :('ai', [15]*4),
+              'precursor'   :('ai', [7]*4),
+              'postcursor'  :('ai', [7]*4)}
+
 daqReset   = {'timrxrst'    :('i', 0),
               'timpllrst'   :('i', 0),
               'pgploopback' :('i', 0),

@@ -45,23 +45,23 @@ namespace Pds {
       //  Low level API
       //
       //  Core registers
-      ModuleBase  base                ; // 0
+      ModuleBase  base                 ; // 0
+      uint32_t    rsvd_800000[(0x800000-sizeof(base))>>2];
       //  App registers
-      ChipAdcCore chip[2]             ; // 0x200000, 0x202000
-      uint32_t    rsvd_208000[0x4000>>2];
-      Fmc134Ctrl  fmc_ctrl            ; // 0x208000
-      uint32_t    rsvd_208800[(0x800-sizeof(fmc_ctrl))>>2];
-      Mmcm        mmcm                ; // 0x208800
-      uint32_t    rsvd_210000[(0x7800-sizeof(mmcm))>>2];
-      Mmhw::Reg   pgp_reg  [0x8000>>2]; // 0x210000
-      Mmhw::Reg   opt_fmc  [0x1000>>2]; // 0x218000
-      Mmhw::Reg   qsfp0_i2c[0x1000>>2]; // 0x219000
-      Mmhw::Reg   qsfp1_i2c[0x1000>>2]; // 0x21A000
-      Mmhw::Reg   surf_jesd0[0x800>>2]; // 0x21B000
-      Mmhw::Reg   surf_jesd1[0x800>>2]; // 0x21B800
-      Mmhw::Reg   rsvd_21C000[0x4000>>2];
-      TriggerEventManager2 tem         ; // 0x220000
-      Mmhw::Reg   rsvd_tem[2*sizeof(TriggerEventBuffer)>>2];
+      ChipAdcCore chip[2]              ; // 0x800000, 0x802000
+      uint32_t    rsvd_810000[0xc000>>2];
+      Fmc134Ctrl  fmc_ctrl             ; // 0x810000
+      uint32_t    rsvd_820000[(0x10000-sizeof(fmc_ctrl))>>2];
+      Mmcm        mmcm                 ; // 0x820000
+      uint32_t    rsvd_840000[(0x20000-sizeof(mmcm))>>2];
+      Mmhw::Reg   opt_fmc  [0x10000>>2]; // 0x840000
+      Mmhw::Reg   qsfp0_i2c[0x10000>>2]; // 0x850000
+      Mmhw::Reg   qsfp1_i2c[0x10000>>2]; // 0x860000
+      Mmhw::Reg   surf_jesd0[0x10000>>2]; // 0x870000
+      Mmhw::Reg   surf_jesd1[0x10000>>2]; // 0x880000
+      TriggerEventManager2 tem          ; // 0x890000
+      Mmhw::Reg   rsvd_900000[(0x70000-sizeof(tem))>>2];
+      Mmhw::Reg   pgp_reg  [0x100000>>2]  ; // 0x900000
     };
   };
 };

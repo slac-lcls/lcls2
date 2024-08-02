@@ -59,6 +59,7 @@ namespace Pds {
       //
     public:
       ModuleBase mbase;          // 0
+      uint32_t rsvd_to_0x200000  [(0x200000-sizeof(mbase))>>2];
       //  App registers
       QABase   base;             // 0x80000
       uint32_t rsvd_to_0x80800  [(0x800-sizeof(QABase))/4];

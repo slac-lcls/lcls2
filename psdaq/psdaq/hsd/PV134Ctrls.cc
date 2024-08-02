@@ -106,6 +106,22 @@ namespace Pds {
       _ready[fmc]->putFrom<unsigned>(1);
     }
 
+    void PV134Ctrls::configPgp(unsigned fmc) {
+      Pds_Epics::EpicsPVA& pv = *_pv[4+fmc];
+      std::vector<Pgp*> pgp = _m.pgp();
+
+#define PVGETV(field) {                                 \
+          pvd::shared_vector<const int> v;              \
+          pv.getVectorAs(v,#field);                     \
+          for(unsigned i=4*fmc; i<4*(fmc+1); i++)       \
+              pgp[i]->tx##field(v[i]);                  \
+      }
+      
+      PVGETV(diffctrl);
+      PVGETV(precursor);
+      PVGETV(postcursor);
+    }
+
     void PV134Ctrls::reset(unsigned fmc) {
       Pds_Epics::EpicsPVA& pv = *_pv[2+fmc];
       if (PVGET(reset)) {
