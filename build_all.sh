@@ -20,6 +20,7 @@ build_ext_list=""
 install=1
 PSANA_PATH=`pwd`/psana
 
+# Update REBUILD to 1 for faster rebuilding of extensions
 export REBUILD=0
 
 while getopts "c:p:s:b:fdam" opt; do
