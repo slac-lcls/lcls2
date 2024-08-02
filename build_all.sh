@@ -19,11 +19,15 @@ build_ext_list=""
 install=1
 PSANA_PATH=`pwd`/psana
 
+<<<<<<< HEAD
 if [ -d "/cds/sw/" ]; then
     no_daq=0
 elif [ -d "/sdf/group/lcls/" ]; then
     no_daq=1
 fi
+=======
+export REBUILD=1
+>>>>>>> cfd5f6955 (shortcut)
 
 while getopts "c:p:s:b:fdam" opt; do
   case $opt in
