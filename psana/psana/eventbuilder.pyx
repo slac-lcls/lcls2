@@ -394,7 +394,7 @@ cdef class EventBuilder:
                 # Either counting no. of events normally or counting only
                 # events in integrating stream as set by `intg_stream_id`.
                 if dsparms.intg_stream_id > -1:
-                    if proxy_evt.pydgrams[dsparms.intg_stream_id] != 0 and proxy_evt.service != TransitionId.SlowUpdate:
+                    if proxy_evt.pydgrams[dsparms.intg_stream_id] != 0 and proxy_evt.service == TransitionId.L1Accept:
                         cn_intg_events += 1
                 else:
                     cn_intg_events += 1
