@@ -23,7 +23,7 @@ PSANA_PATH=`pwd`/psana
 # Update REBUILD to 1 for faster rebuilding of extensions
 export REBUILD=0
 
-while getopts "c:p:s:b:fdam" opt; do
+while getopts "c:p:s:b:fdamr" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
@@ -40,6 +40,8 @@ while getopts "c:p:s:b:fdam" opt; do
     b) build_ext_list="$OPTARG"
     ;;
     f) force_clean=1                       # Force clean is required building between rhel6&7
+    ;;
+    r) export REBUILD=1
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
