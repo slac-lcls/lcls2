@@ -1,0 +1,37 @@
+name: Build LCLS-II
+on:
+  schedule:
+    - cron: '0 5 * * *'  # once per day at midnight ET
+  workflow_dispatch:
+
+jobs:
+  build-lcls-ii:
+    runs-on: ubuntu-latest
+    defaults:
+     run:
+       # Bash shells do not use ~/.profile (for env variables) or ~/.bashrc,
+       # so these shells need to be explicitly declared.
+       # This makes the shell a login shell, which typically
+       # sources said files. This is needed for conda.
+       # Refer: https://github.com/marketplace/actions/setup-miniconda
+       shell: bash -el {0}  
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          activate-environment: build-conda-env
+          channels: lcls-ii, conda-forge
+          environment-file: ps-4.6.3.txt
+
+      - name: Sanity Check
+        run:
+          conda list
+
+      - name: Build
+        run:
+          ./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+
