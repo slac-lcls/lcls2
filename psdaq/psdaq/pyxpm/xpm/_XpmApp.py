@@ -71,7 +71,6 @@ class XpmApp(pr.Device):
                     name        = "XpmApp", 
                     description = "XPM Module", 
                     fidPrescale = 200,
-                    removeMonReg = False,
                     linkMonitoring = False,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
@@ -404,47 +403,21 @@ class XpmApp(pr.Device):
             self.add(pr.RemoteVariable(
                 name         = "link_gthCntRst",
                 description  = "Reset GTH counters",
-                offset       =  0x08,
+                offset       =  0x0a,
                 bitSize      =  1,
-                bitOffset    =  22,
+                bitOffset    =  6,
                 base         = pr.UInt,
-                mode         = "RO",
+                mode         = "RW",
             ))
 
             self.add(pr.RemoteVariable(
                 name         = "link_eyescanrst",
                 description  = "Reset GTH counters",
-                offset       =  0x08,
+                offset       =  0x0a,
                 bitSize      =  1,
-                bitOffset    =  21,
+                bitOffset    =  5,
                 base         = pr.UInt,
-                mode         = "RO",
-            ))
-
-        if not removeMonReg:
-            self.add(pr.RemoteVariable(    
-                name         = "dsLinkStatus",
-                description  = "link status summary",
-                offset       =  0x0c,
-                bitSize      =  32,
-                bitOffset    =  0x00,
-                base         = pr.UInt,
-                mode         = "RO",
-            ))
-
-            self.add(pr.RemoteVariable(    
-                name         = "dsLinkRxCnt",
-                description  = "Rx message count",
-                offset       =  0x10,
-                bitSize      =  32,
-                bitOffset    =  0x00,
-                base         = pr.UInt,
-                mode         = "RO",
-            ))
-
-            self.add(Si5317(    
-                name         = "amcPLL",
-                offset       =  0x14,
+                mode         = "RW",
             ))
 
         self.add(pr.RemoteVariable(    
