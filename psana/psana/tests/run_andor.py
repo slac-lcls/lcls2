@@ -31,8 +31,8 @@ def check_answer(ts, cn_atm_events, cn_intg_events):
         assert (cn_atm_events, cn_intg_events) == known_answers[ts]
 
 
-mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
-#mount_dir = '/cds/data/drpsrcf'
+#mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
+mount_dir = '/cds/data/drpsrcf'
 xtc_dir = os.path.join(mount_dir, exp[:3], exp, 'xtc')
 ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',
         batch_size=1, 

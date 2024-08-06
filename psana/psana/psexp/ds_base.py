@@ -52,6 +52,7 @@ class DsParms:
     smd_inprogress_converted: int
     timestamps: np.ndarray
     intg_det: str
+    intg_delta_t: int
     smd_callback: int = 0
     terminate_flag: bool = False
 
@@ -98,6 +99,7 @@ class DataSourceBase(abc.ABC):
         # list of user-selected timestamps
         self.dbsuffix = ""  # calibration database name extension for private constants
         self.intg_det = ""  # integrating detector name (contains marker ts for a batch)
+        self.intg_delta_t = 0 # integrating delay (s) 
         self.current_retry_no = 0  # global counting var for no. of read attemps
         self.smd_callback = 0
 
@@ -123,6 +125,7 @@ class DataSourceBase(abc.ABC):
                 "timestamps",
                 "dbsuffix",
                 "intg_det",
+                "intg_delta_t",
                 "smd_callback",
                 "psmon_publish",
             )
@@ -168,6 +171,7 @@ class DataSourceBase(abc.ABC):
             self.smd_inprogress_converted,
             self.timestamps,
             self.intg_det,
+            self.intg_delta_t,
             self.smd_callback,
         )
 

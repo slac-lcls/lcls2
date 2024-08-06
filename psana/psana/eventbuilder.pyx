@@ -382,31 +382,36 @@ cdef class EventBuilder:
         # is not given, this counts no. of events (equivalent to `got`).
         cdef unsigned got       = 0
         cdef unsigned got_step  = 0
-        cdef unsigned cn_intg_events = 0
 
         # Keeping all built proxy event
         proxy_events = []
         non_L1_indices = []
 
-        while cn_intg_events < dsparms.batch_size and self.has_more():
-            proxy_evt = self.build_proxy_event()
-            if proxy_evt is not None:
-                # Either counting no. of events normally or counting only
-                # events in integrating stream as set by `intg_stream_id`.
-                if dsparms.intg_stream_id > -1:
-                    if proxy_evt.pydgrams[dsparms.intg_stream_id] != 0 and proxy_evt.service == TransitionId.L1Accept:
-                        cn_intg_events += 1
-                else:
-                    cn_intg_events += 1
-                
-                # Counts no. of steps 
-                if proxy_evt.service != TransitionId.L1Accept:
-                    got_step += 1
-                    if filter_timestamps.shape[0] > 0:
-                        non_L1_indices.append(got)
-                
-                proxy_events.append(proxy_evt)
-                got += 1
+        # Build a batch of events upto batch_size or whatever we have.
+        # Note that for integrating run, we build everything that
+        # we got from smd0 (no batch_size used). 
+        if dsparms.intg_stream_id > -1:
+            while self.has_more():
+                proxy_evt = self.build_proxy_event()
+                if proxy_evt is not None:
+                    # Potentially keep indices of transition for filtering
+                    if proxy_evt.service != TransitionId.L1Accept:
+                        got_step += 1
+                        if filter_timestamps.shape[0] > 0:
+                            non_L1_indices.append(got)
+                    proxy_events.append(proxy_evt)
+                    got += 1
+        else:
+            while got < dsparms.batch_size and self.has_more():
+                proxy_evt = self.build_proxy_event()
+                if proxy_evt is not None:
+                    # Potentially keep indices of transition for filtering
+                    if proxy_evt.service != TransitionId.L1Accept:
+                        got_step += 1
+                        if filter_timestamps.shape[0] > 0:
+                            non_L1_indices.append(got)
+                    proxy_events.append(proxy_evt)
+                    got += 1
 
         assert got <= MAX_BATCH_SIZE, f"No. of events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got}). For integrating detector, lower the value of PS_SMD_N_EVENTS."
         assert got_step <= MAX_BATCH_SIZE, f"No. of transition events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got_step})"
