@@ -15,7 +15,6 @@ psana_setup_args=""
 force_clean=0
 no_ana=0
 build_ext_list=""
-install=1
 PSANA_PATH=`pwd`/psana
 
 if [ -d "/cds/sw/" ]; then
