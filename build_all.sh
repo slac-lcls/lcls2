@@ -16,10 +16,7 @@ force_clean=0
 no_daq=0
 no_ana=0
 build_ext_list=""
-install=1
 PSANA_PATH=`pwd`/psana
-
-# Update REBUILD to 1 for faster rebuilding of extensions
 export REBUILD=0
 
 while getopts "c:p:s:b:fdar" opt; do
