@@ -33,7 +33,7 @@ jobs:
 
       - name: Build
         run:
-          ./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+          ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 
       - name: Set Env Variables
         run:
