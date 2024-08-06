@@ -45,5 +45,5 @@ jobs:
 
       - name: Test Suite
         run:
-          pip list
+          # pip list
           pytest psana/psana/tests
