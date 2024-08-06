@@ -1,4 +1,4 @@
-name: Build LCLS-II
+name: Test LCLS-II
 on:
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
