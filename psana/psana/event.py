@@ -59,6 +59,21 @@ class Event():
 
         return event_bytes
 
+    def timestamp_diff(self, ts):
+        """ Subtract the given timestamp from the event timestamp and return 
+        differences in nanasecond unit.
+
+        Since timestamp format is [32 bits of seconds][32 bits of nanoseconds],
+        we need to convert these two parts in seconds and nanoseconds
+        respectively prior to the calculation
+        """
+        evt_sec = self._seconds
+        evt_nsec = self._nanoseconds
+        ts_sec = (ts >> 32) & 0xffffffff
+        ts_nsec = ts & 0xffffffff
+        dif_ns = (evt_sec * 1000000000 + evt_nsec) - (ts_sec * 1000000000 + ts_nsec)
+        return dif_ns
+
     @property
     def _seconds(self):
         _high = (self.timestamp >> 32) & 0xffffffff

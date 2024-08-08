@@ -63,7 +63,8 @@ for myrun in ds.runs():
             
             # Check that no. of atm events are as expected with intg_delta_t
             if evt.timestamp == (andor_current_ts + intg_delta_t):
-                txt = f'BD:{rank} ts: {evt.timestamp} #atm: {cn_atm_events} #andor: {cn_andor_events} #intg: {cn_intg_events}'
+                delta_ns = evt.timestamp_diff(andor_current_ts)
+                txt = f'BD:{rank} ts: {evt.timestamp} #atm: {cn_atm_events} #andor: {cn_andor_events} #intg: {cn_intg_events} delta_ns:{delta_ns}'
                 check_answer(evt.timestamp, cn_atm_events, cn_intg_events)
                 print(txt)
                 cn_atm_events = 0
