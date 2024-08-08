@@ -293,9 +293,16 @@ cdef class SmdReader:
         i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
         i_complete = i_bob
         limit_ts_complete = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
+        cdef uint64_t ts_sec=0, ts_nsec=0, ts_sum=0
         for i in range(i_bob+1, i_eob + 1):
             if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
-                limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i] + intg_delta_t
+                # For correct math operation, we need to convert timestamp to seconds
+                # and nanoseconds first, do the operation, and convert the result 
+                # back to the timestamp format.
+                ts_sec = (self.prl_reader.bufs[self.winner].ts_arr[i] >> 32) & 0xffffffff
+                ts_nsec = self.prl_reader.bufs[self.winner].ts_arr[i] & 0xffffffff
+                ts_sum = ts_sec*1000000000 + ts_nsec + intg_delta_t
+                limit_ts = (ts_sum/1000000000)<<32 | (ts_sum%1000000000)
                 # Check if other streams have timestamp up to this integrating event
                 is_split = 0
                 for j in range(self.prl_reader.nfiles):
