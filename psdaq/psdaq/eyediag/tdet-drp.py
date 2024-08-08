@@ -89,7 +89,7 @@ class EyeScanRoot(pr.Root):
         self.add(TimingRx(
             name        = 'timrx',
             memBase     = self.memMap,
-            offset      = 0x00C00020,
+            offset      = 0x00C00000,
         ))
 
     def start(self, **kwargs):
