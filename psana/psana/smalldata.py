@@ -92,7 +92,7 @@ FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, float]
 
 # This is not actually implemented, so let's comment it out for now.
 # RAGGED_PREFIX   = 'ragged_' 
-UNALIGED_PREFIX = 'unaligned_'
+UNALIGNED_PREFIX = 'unaligned_'
 VAR_PREFIX      = 'var_'
 LEN_SUFFIX      = '_len'
 
@@ -105,6 +105,9 @@ var_dict = {}    # var name to True/False if var
 len_dict = {}    # var name to True/False if len
 len_map = {}     # var name to len array name (i.e. x/var_mcb/y --> x/var_mcb_len)
 len_evt = {}     # len name to {timestamp: length}
+
+def unaligned_timestamp_name(dataset_name):
+    return dataset_name+'_timestamp'
 
 def set_keytypes(k):
     parts = k.split('/')
@@ -147,7 +150,7 @@ def is_var_key(k):
         return var_dict[k]
 
 def is_unaligned(dset_name):
-    return dset_name.split('/')[-1].startswith(UNALIGED_PREFIX)
+    return dset_name.split('/')[-1].startswith(UNALIGNED_PREFIX)
 
 # -----------------------------------------------------------------------------
 
@@ -318,8 +321,11 @@ class Server: # (hdf5 handling)
                     else:
                         to_backfill.remove(dataset_name)
                     self.append_to_cache(dataset_name, data)
+                    ts = event_data_dict['timestamp']
+                    # also record the timestamps of unaligned data
+                    if is_unaligned(dataset_name):
+                        self.append_to_cache(unaligned_timestamp_name(dataset_name), ts)
                     if is_var:
-                        ts = event_data_dict['timestamp']
                         try:
                             # All of the datasets that share a length dataset should
                             # be the same size.  Otherwise, flag an error.
@@ -394,6 +400,17 @@ class Server: # (hdf5 handling)
                                                maxshape=maxshape,
                                                dtype=dtype,
                                                chunks=(self.cache_size,) + shape)
+
+        # if this is an unaligned dataset create an
+        # additional dataset to record its timestamps
+        if is_unaligned(dataset_name):
+            unaligned_ts_name = unaligned_timestamp_name(dataset_name)
+            self._dsets[unaligned_ts_name] = (dtype, shape)
+            dset = self.file_handle.create_dataset(unaligned_ts_name,
+                                                   (0,) + shape, # (0,) -> expand dim
+                                                   maxshape=maxshape,
+                                                   dtype=int,
+                                                   chunks=(self.cache_size,) + shape)
 
         if is_var:
             if is_len:
