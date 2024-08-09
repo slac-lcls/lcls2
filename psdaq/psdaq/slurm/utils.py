@@ -74,6 +74,23 @@ class SbatchManager:
             node_features[node] = {feature: 0 for feature in features.split(",")}
         return node_features
 
+    def get_job_info_byid(self, job_id, jobparms):
+        """Returns a dictionary containig values obtained from scontrol 
+        with the given jobparms list.
+        """
+        scontrol_lines = self.call_subprocess(
+            "scontrol", "show", "job", job_id
+        ).splitlines()
+        results = {}
+        for jobparm in jobparms:
+            for scontrol_line in scontrol_lines:
+                scontrol_cols = scontrol_line.split()
+                for scontrol_col in scontrol_cols:
+                    if scontrol_col.find(jobparm) > -1:
+                        _, jobparm_val = scontrol_col.split("=")
+                        results[jobparm] = jobparm_val
+        return results
+
     def get_job_info(self):
         """Returns formatted output from squeue by the current user"""
         user = os.environ.get("USER", "")

@@ -15,6 +15,7 @@ from psdaq.slurm.config import Config
 
 LOCALHOST = socket.gethostname()
 PSBATCH_SCRIPT = "submit_psbatch.sh"
+MAX_RETRIES = 30
 
 
 def silentremove(filename):
@@ -222,7 +223,7 @@ class Runner:
                         self.sbman.generate(node, job_name, details, self.node_features)
                         self.submit()
 
-    def stop(self, unique_ids=None):
+    def stop(self, unique_ids=None, skip_wait=False):
         """Stops running job using their comment.
 
         Each job is submitted with their unique comment. We can stop all the processes
@@ -236,17 +237,33 @@ class Runner:
         else:
             config_ids = list(self.config.keys())
 
+        job_states = {}
         for config_id in config_ids:
             comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
             if comment in job_details:
                 self._cancel(job_details[comment]["job_id"])
+                job_states[job_details[comment]["job_id"]] = None
             else:
                 print(
                     f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
                 )
 
+        # Wait until all cancelled jobs reach CANCELLED state
+        if not skip_wait:
+            for i in range(MAX_RETRIES):
+                for job_id, _ in job_states.items():
+                    results = self.sbman.get_job_info_byid(job_id, ["JobState"])
+                    if "JobState" in results:
+                        job_states[job_id] = results["JobState"]
+                active_jobs = [job_id for job_id, job_state in job_states.items() if job_state != 'CANCELLED']
+                if len(active_jobs) == 0:
+                    break
+                print(f'Wait for jobs: {active_jobs} to complete...')
+                time.sleep(1)
+
+
     def restart(self, unique_ids=None):
-        self.stop(unique_ids=unique_ids)
+        self.stop(unique_ids=unique_ids, skip_wait=True)
         self.start(unique_ids=unique_ids, skip_check_exist=True)
 
     def spawnConsole(self, config_id, ldProcStatus, large=False):
