@@ -528,30 +528,35 @@ def plotGraph(x,y, figsize=(5,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', l
     return fig, ax
 
 
-def img_from_pixel_arrays(rows, cols, W=None, dtype=np.float32, vbase=0):
-    """Returns image from rows, cols index arrays and associated weights W.
+def img_from_pixel_arrays(rows, cols, weights=None, W=None, dtype=np.float32, vbase=0, mask_arr=None):
+    """Returns image from rows, cols index arrays and associated weights or W.
        Methods like matplotlib imshow(img) plot 2-d image array oriented as matrix(rows,cols).
     """
+    w = weights if weights is not None else W
+    w = (w    if mask_arr is None else np.compress(mask_arr.ravel()>0, w)).ravel()
+    r = (rows if mask_arr is None else np.compress(mask_arr.ravel()>0, rows)).ravel()
+    c = (cols if mask_arr is None else np.compress(mask_arr.ravel()>0, cols)).ravel()
+
     if rows.size != cols.size \
-    or (W is not None and rows.size !=  W.size):
+    or (w is not None and r.size !=  w.size):
         msg = 'img_from_pixel_arrays(): input array sizes are different;' \
-            + ' rows.size=%d, cols.size=%d, W.size=%d' % (rows.size, cols.size, W.size)
+            + ' r.size=%d, c.size=%d, w.size=%d' % (rows.size, cols.size, w.size)
         logger.warning(msg)
         return img_default()
 
-    rowsfl = rows.ravel()
-    colsfl = cols.ravel()
+    rowsfl = r.ravel()
+    colsfl = c.ravel()
 
     rsize = int(rowsfl.max())+1
     csize = int(colsfl.max())+1
 
-    weight = W.ravel() if W is not None else np.ones_like(rowsfl)
+    weight = w.ravel() if w is not None else np.ones_like(rowsfl)
     img = vbase*np.ones((rsize,csize), dtype=dtype)
     img[rowsfl,colsfl] = weight # Fill image array with data
     return img
 
 #from psana.pscalib.geometry.GeometryAccess import img_from_pixel_arrays
-getImageFromIndexArrays = img_from_pixel_arrays # backward compatability
+getImageFromIndexArrays = img_from_pixel_arrays
 
 
 if __name__ == "__main__":
