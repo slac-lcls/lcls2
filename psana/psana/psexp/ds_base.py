@@ -102,6 +102,7 @@ class DataSourceBase(abc.ABC):
         self.intg_delta_t = 0 # integrating delay (s) 
         self.current_retry_no = 0  # global counting var for no. of read attemps
         self.smd_callback = 0
+        self.prom_jobid = None
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -128,6 +129,7 @@ class DataSourceBase(abc.ABC):
                 "intg_delta_t",
                 "smd_callback",
                 "psmon_publish",
+                "prom_jobid",
             )
 
             for k in keywords:
@@ -159,7 +161,7 @@ class DataSourceBase(abc.ABC):
         if "mpi_ts" not in kwargs:
             self.timestamps = self.get_filter_timestamps(self.timestamps)
 
-        self.prom_man = PrometheusManager(self.exp, self.runnum)
+        self.prom_man = PrometheusManager(job=self.prom_jobid)
         self.dsparms = DsParms(
             self.batch_size,
             self.max_events,
@@ -499,7 +501,7 @@ class DataSourceBase(abc.ABC):
         elif prom_cfg_dir is None:  # Use push gateway
             self.prom_man.rank = mpi_rank
             logger.debug(
-                f"ds_base: START PROMETHEUS CLIENT (EXP:{self.prom_man.exp} RUN:{self.prom_man.runnum} USER:{self.prom_man.username} RANK:{self.prom_man.rank})"
+                f"ds_base: START PROMETHEUS CLIENT (JOB:{self.prom_man.job} RANK:{self.prom_man.rank})"
             )
             self.e = threading.Event()
             self.t = threading.Thread(
@@ -522,8 +524,8 @@ class DataSourceBase(abc.ABC):
 
         if self.e is not None:  # Push gateway case only
             logger.debug(
-                "ds_base: END PROMETHEUS CLIENT (EXP:%s RUN:%d USER:%s)"
-                % (self.prom_man.exp, self.prom_man.runnum, self.prom_man.username)
+                "ds_base: END PROMETHEUS CLIENT (JOB:%s)"
+                % (self.prom_man.job)
             )
             self.e.set()
 
