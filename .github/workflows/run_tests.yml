@@ -36,10 +36,14 @@ jobs:
           ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 
       - name: Set Env Variables
-        run:
-          cd psana
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
-          cd ..
+        run: |
+          # cd psana
+          # export PYTHONPATH=$PYTHONPATH:$(pwd)
+          # cd ..
+          RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
+          export PATH=$RELDIR/install/bin:${PATH}
+          pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
+          export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
 
       - name: Test Suite
         run:
