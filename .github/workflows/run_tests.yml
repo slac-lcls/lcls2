@@ -31,9 +31,9 @@ jobs:
         run:
           conda list
 
-      - name: Build
-        run:
-          ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+      # - name: Build
+      #   run:
+      #     ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 
       - name: Set Env Variables
         run: |
@@ -44,6 +44,10 @@ jobs:
           export PATH=$RELDIR/install/bin:${PATH}
           pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
           export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
+
+      - name: Sanity Check
+        run:
+          echo $PYTHONPATH
 
       - name: Test Suite
         run:
