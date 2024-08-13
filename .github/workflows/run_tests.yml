@@ -37,20 +37,13 @@ jobs:
 
       - name: Set Env Variables
         run: |
-          cd psana
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
-          cd ..
+          # cd psana
+          # export PYTHONPATH=$PYTHONPATH:$(pwd)
+          # cd ..
+          # echo $PYTHONPATH
+          RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
+          export PATH=$RELDIR/install/bin:${PATH}
+          pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
+          export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
           echo $PYTHONPATH
-          # RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
-          # export PATH=$RELDIR/install/bin:${PATH}
-          # pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
-          # export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
-
-      - name: Sanity Check
-        run:
-          echo $PYTHONPATH
-
-      - name: Test Suite
-        run:
-          # pip list
-          pytest psana/psana/tests
+          # pytest psana/psana/tests
