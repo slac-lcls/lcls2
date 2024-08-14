@@ -46,5 +46,5 @@ jobs:
           pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
           export PYTHONPATH2=$RELDIR/install/lib/python$pyver/site-packages
           echo $PYTHONPATH2
-          ls $(pwd)/lcls2/lcls2
+          ls $(pwd)
           # pytest psana/psana/tests
