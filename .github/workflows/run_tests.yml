@@ -27,24 +27,20 @@ jobs:
           channels: lcls-ii, conda-forge
           environment-file: ps-4.6.3.txt
 
-      # - name: Sanity Check
-      #   run:
-      #     conda list
-
-      # - name: Build
-      #   run:
-      #     ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+      - name: Build
+        run:
+          ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 
       - name: Set Env Variables
         run: |
-          cd psana
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
-          cd ..
-          echo $PYTHONPATH
-          RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
-          export PATH=$RELDIR/install/bin:${PATH}
+          # cd psana
+          # export PYTHONPATH=$PYTHONPATH:$(pwd)
+          # cd ..
+          # echo $PYTHONPATH
+          
+          export PATH=$(pwd)/install/bin:${PATH}
           pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
-          export PYTHONPATH2=$RELDIR/install/lib/python$pyver/site-packages
-          echo $PYTHONPATH2
-          ls $(pwd)
-          # pytest psana/psana/tests
+          export PYTHONPATH=$(pwd)/install/lib/python$pyver/site-packages
+          # echo $PYTHONPATH2
+          # ls $(pwd)
+          pytest psana/psana/tests
