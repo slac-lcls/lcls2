@@ -26,42 +26,45 @@ acr_epics_env4 = 'EPICS_CA_ADDR_LIST=172.27.3.84:5068 EPICS_CA_AUTO_ADDR_LIST=NO
 # cu_pvs_hxr_5
 acr_epics_env5 = 'EPICS_CA_ADDR_LIST=172.27.3.85:5068 EPICS_CA_AUTO_ADDR_LIST=NO '+ld_lib_path
 
-collect_host = 'drp-srcf-cmp034'
+collect_host = 'drp-srcf-mon002'
 
 xtpg  = 0                    # TXI/TST
 #xtpg = 2                    # TMO
 #xtpg = 3                    # RIX
 #xtpg = 0                    # TXI
 #xtpg = 10                   # FEE
-groups = platform + ' 6' # + ' 7' + ' 6'
+groups = platform #+ ' 6' #+ ' 7' + ' 6'
 hutch, user = ('tst', 'tstopr')
 auth = ' --user {:} '.format(user)
+#url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
-cdb  = f'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'     # production  ConfigDb
-#cdb  = f'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws'  # development ConfigDb
+cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'     # production  ConfigDb
+#cdb  = 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws'  # development ConfigDb
 
 #
 #  drp variables
 #
 prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
-data_dir = f'/cds/data/drpsrcf'
+data_dir = '/u1/data' # f'/cds/data/drpsrcf'
 trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
 task_set = 'taskset -c 4-63'
 pvaAddr  = 'pva_addr=172.21.152.78' # mon001
 scripts  = f'script_path={trig_dir}'
-#network  = 'ep_provider=sockets,ep_domain=eno1'
+network  = 'ep_provider=sockets,ep_domain=eno1'
 epixData   = '/cds/data/drpsrcf/temp/claus/xtc/rixx1003721-r0106-s010-c000.xtc2'
 #epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/test_drp.py'
 epixScript = '/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/epixHrEmu.py'
 epixKwargs = f'sim_length=110584,xtcfile={epixData},l1aOffset=1000,drp=python,pythonScript={epixScript}'
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
-std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {pvaAddr}'
-std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {pvaAddr}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {pvaAddr} -k {network}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {pvaAddr} -k {network}'
+gpu_opts0 = f'{std_opts} -d /dev/datagpu_0 -o {data_dir} -k {pvaAddr} -k ep_provider=sockets,ep_domain=enp1s0f0'
+gpu_opts1 = f'{std_opts} -d /dev/datagpu_1 -o {data_dir} -k {pvaAddr} -k ep_provider=sockets,ep_domain=enp1s0f0'
 
-teb_cmd  = task_set+' teb '            +std_opts + f' -k {scripts}'
-meb_cmd  = task_set+' monReqServer '   +std_opts
+teb_cmd  = task_set+' teb '            +std_opts + f' -k {scripts} -k {network}'
+meb_cmd  = task_set+' monReqServer '   +std_opts + f' -k {network}'
 
 drp_cmd0 = task_set+' drp '            +std_opts0
 drp_cmd1 = task_set+' drp '            +std_opts1
@@ -71,6 +74,8 @@ udp_cmd0 = task_set+' drp_udpencoder ' +std_opts0
 udp_cmd1 = task_set+' drp_udpencoder ' +std_opts1
 bld_cmd0 = task_set+' drp_bld '        +std_opts0+' -k interface=eno1 -k pva_addr=172.27.131.255'
 bld_cmd1 = task_set+' drp_bld '        +std_opts1+' -k interface=eno1 -k pva_addr=172.27.131.255'
+gpu_cmd0 = task_set+' drp_gpu '        +gpu_opts0
+gpu_cmd1 = task_set+' drp_gpu '        +gpu_opts1
 
 #  bld format is {name}+{type}+{pvname}
 gmd  = 'gmd+scbld+EM1K0:GMD:HPS'
@@ -133,7 +138,7 @@ procmgr_config = [
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
 # {host: 'drp-srcf-cmp030', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd} -k eb_timeout=0'},
- {host: 'drp-srcf-mon002', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp034', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
 
 # {host: 'drp-srcf-cmp034', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 8 -q {ami_workers_per_node}'},
 # {host: 'drp-srcf-cmp034', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -t -R'},
@@ -146,7 +151,8 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp028', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp003', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd0} -l 0x4 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp035', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
- {host: 'drp-srcf-cmp043', id:'timing_1',    flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+# {host: 'drp-srcf-cmp043', id:'timing_1',    flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-srcf-cmp043', id:'timing_3',    flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
@@ -177,6 +183,7 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp028', id:'tstcam2_0',   flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp036', id:'tstcam2_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-srcf-gpu001', id:'tstcam1_0',   flags:'spux',                cmd:f'{gpu_cmd1} -l 0x1 -D fakecam -vvv'},
 
 # {host: 'drp-srcf-cmp029', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd0} -l 0x4 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
@@ -205,12 +212,12 @@ procmgr_config = [
 
  #{host: 'drp-srcf-cmp029',  id:'andor_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/neh/PvaDetector_example.txt'},
 
- {host: 'drp-srcf-cmp043',  id:'pvs_0',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x2 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr.txt'}, # HXR PVs
- {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_1.txt'},
- {host: 'drp-srcf-cmp043',  id:'pvs_2',  flags:'spux', env:acr_epics_env2, cmd:pva_cmd1+' -l 0x1 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_2.txt'},
- {host: 'drp-srcf-cmp043',  id:'pvs_3',  flags:'spux', env:acr_epics_env3, cmd:pva_cmd1+' -l 0x2 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_3.txt'},
- {host: 'drp-srcf-cmp043',  id:'pvs_4',  flags:'spux', env:acr_epics_env4, cmd:pva_cmd1+' -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_4.txt'},
- {host: 'drp-srcf-cmp043',  id:'pvs_5',  flags:'spux', env:acr_epics_env5, cmd:pva_cmd1+' -l 0x8 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_5.txt'},
+# {host: 'drp-srcf-cmp043',  id:'pvs_0',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x2 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr.txt'}, # HXR PVs
+# {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_1.txt'},
+# {host: 'drp-srcf-cmp043',  id:'pvs_2',  flags:'spux', env:acr_epics_env2, cmd:pva_cmd1+' -l 0x1 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_2.txt'},
+# {host: 'drp-srcf-cmp043',  id:'pvs_3',  flags:'spux', env:acr_epics_env3, cmd:pva_cmd1+' -l 0x2 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_3.txt'},
+# {host: 'drp-srcf-cmp043',  id:'pvs_4',  flags:'spux', env:acr_epics_env4, cmd:pva_cmd1+' -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_4.txt'},
+# {host: 'drp-srcf-cmp043',  id:'pvs_5',  flags:'spux', env:acr_epics_env5, cmd:pva_cmd1+' -l 0x8 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/cu_pvs_hxr_5.txt'},
 
 # {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -l 0x4 -f /cds/home/d/dorlhiac/daq_cnfs/txi_pvlist1_cu_hxr.txt'},
 # {host: 'drp-srcf-cmp043',  id:'pvs_1',  flags:'spux', env:acr_epics_env,  cmd:pva_cmd0+' -v -l 0x4 -f /cds/home/c/claus/lclsii/daq/runs/eb/data/srcf/txi_pvlist1_cu_hxr.txt'},

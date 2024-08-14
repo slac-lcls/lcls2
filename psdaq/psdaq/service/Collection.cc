@@ -59,7 +59,10 @@ std::string _getNicIp(const struct ifaddrs* ifaddr,
             logging::debug("Interface address %s: <%s>\n", ifa->ifa_name, host);
         }
     }
-    if (!host[0])  throw "NIC '" + ifaceName + "' not found";
+    if (!host[0]) {
+        logging::critical("NIC '%s' not found", ifaceName.c_str());
+        abort();
+    }
     return std::string(host);
 }
 
@@ -89,7 +92,8 @@ std::string getNicIp(bool forceEnet)
     }
     if ((interface_name == nullptr) || forceEnet) {
         if (ethernet_name == nullptr) {
-            throw "No Infiniband or Ethernet interface found";
+            logging::critical("No Infiniband or Ethernet interface found");
+            abort();
         }
         if (!forceEnet)
             logging::warning("No Infiniband interface found - using Ethernet");

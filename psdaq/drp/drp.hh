@@ -30,7 +30,7 @@ enum NamesIndex
 struct Parameters
 {
     Parameters() :
-        partition(-1),
+        partition(-1u),
         nworkers(10),
         detSegment(0),
         laneMask(0x1),
@@ -116,10 +116,10 @@ public:
     unsigned allocate();
     void freeDma(std::vector<uint32_t>& indices, unsigned count);
     void freePebble();
-    const int64_t dmaInUse() const { return m_dmaAllocs.load(std::memory_order_relaxed) -
-                                            m_dmaFrees.load(std::memory_order_relaxed); }
-    const int64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -
-                                         m_frees.load(std::memory_order_relaxed); }
+    int64_t dmaInUse() const { return m_dmaAllocs.load(std::memory_order_relaxed) -
+                                      m_dmaFrees.load(std::memory_order_relaxed); }
+    int64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -
+                                   m_frees.load(std::memory_order_relaxed); }
     void resetCounters();
     int setMaskBytes(uint8_t laneMask, unsigned virtChan);
 private:

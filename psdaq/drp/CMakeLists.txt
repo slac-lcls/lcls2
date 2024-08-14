@@ -128,6 +128,53 @@ target_link_libraries(tpr_trigger
     rt
 )
 
+if(CMAKE_CUDA_COMPILER)
+    #message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
+    #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+    #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
+    #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
+    #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES='${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}')
+
+    add_executable(drp_gpu
+        GpuDetector.cc
+        GpuDetectorApp.cc
+    )
+    # @todo: No need for this anymore, I think
+    #target_include_directories(drp_gpu PUBLIC
+    #    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    #)
+    target_link_libraries(drp_gpu
+        xtcdata::xtc
+        drpbase
+        trigger
+        mmhw
+        nlohmann_json::nlohmann_json
+    )
+
+    add_library(AreaDetector_gpu SHARED
+        AreaDetectorGpu.cc
+        GpuWorker_impl.cu
+        AreaDetector.cc
+    )
+    target_include_directories(AreaDetector_gpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        #$<INSTALL_INTERFACE:include>  # Not working?
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${AES_STREAM_DRIVER_HEADER_PATH}
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(AreaDetector_gpu
+        xtcdata::xtc
+        drpbase
+        trigger  # @todo: This needed?
+        mmhw
+        nlohmann_json::nlohmann_json  # @todo: This needed?
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(AreaDetector_gpu PROPERTIES CUDA_ARCHITECTURES "86")
+endif()
+
 add_executable(configdb_obj_2xtc
     configdb_obj_2xtc.cc
 )
@@ -254,13 +301,6 @@ add_executable(ePixMDescTest
     ePixMDescTest.cc
 )
 
-if(CMAKE_CUDA_COMPILER)
-    add_executable(test_gpu_add
-        test_gpu_add.cu
-    )
-    set_target_properties(test_gpu_add PROPERTIES CUDA_ARCHITECTURES "86")
-endif()
-
 
 install(TARGETS drp
   drp_bld
@@ -271,3 +311,10 @@ install(TARGETS drp
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+
+if(CMAKE_CUDA_COMPILER)
+  install(TARGETS
+    drp_gpu
+    AreaDetector_gpu
+  )
+endif()
