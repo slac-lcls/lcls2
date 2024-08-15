@@ -65,7 +65,6 @@ class Config:
     def extend(self, configs):
         """ Add all items in the given configs list """
         for config in configs:
-            print(config)
             self.add(config)
 
     def show(self, full=False):
