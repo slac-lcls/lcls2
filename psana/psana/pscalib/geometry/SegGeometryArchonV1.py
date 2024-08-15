@@ -146,7 +146,7 @@ class SegGeometryArchonV1(SegGeometry):
              mask[:,st*i+sr:st*(i+1)] = fake1bank
         return mask
 
-    def get_seg_xy_maps_pix(sp):
+    def get_seg_xy_maps_um(sp):
         return sp.x_pix_arr_um, sp.y_pix_arr_um
 
     def get_xyz_min_um(sp):
