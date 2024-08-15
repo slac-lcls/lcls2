@@ -180,6 +180,13 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         #print('XXX archon_raw_1_0_0._cmpars: %s' % str(self._cmpars))
         #print('XXX archon_raw_1_0_0._gainfact: %.3f' % self._gainfact)
         #print('XXX calibconst _gain_factor(): %s' % str(self._gain_factor()))
+        #print('XXX dir(_seg_geo):', dir(self._seg_geo))
+        #self._mask_arr = self._seg_geo.mask_fake()
+        #self._ixy = self._seg_geo.get_seg_xy_maps_pix_with_offset()
+        #print('XXX dir(_seg_geo):', dir(self._seg_geo))
+        #print(info_ndarr(self._ixy[0], 'X pixmap:'))
+        #print(info_ndarr(self._ixy[1], 'Y pixmap:'))
+        #sys.exit('TEST EXIT')
 
     def _common_mode(self, frame):
         # courtesy of Phil Hart
@@ -225,17 +232,19 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         c = self.calib(evt) if nda is None else nda
         if c is None:
             return None
-        #print('XXX: archon_raw_1_0_0.image: self._geo:', self._geo)
 
-        return self._arr_to_image(c) #### <<<<<<<<<=======================
+        return self._arr_to_image(c) #### <<<<<<<<<======================= ~70ms
 
         # Use local conversion of raw-like array to image or SegmentGeometry object
-        if self._geo is None:
-            return self._arr_to_image(c)
-        # Use GeometryAccess object
-        X, Y, Z = self._geo.get_pixel_coords(oname=None, oindex=0, do_tilt=True, cframe=0)
-        print(info_ndarr(X, 'X coords:'))
-        print(info_ndarr(Y, 'Y coords:'))
+        #from psana.pyalgos.generic.Graphics import img_from_pixel_arrays
+        #return img_from_pixel_arrays(self._ixy[1], self._ixy[0], weights=c, dtype=np.float32, mask_arr=self._mask_arr) # ~300ms
+
+        #if self._geo is None:
+        #    return self._arr_to_image(c)
+        ## Use GeometryAccess object
+        #X, Y, Z = self._geo.get_pixel_coords(oname=None, oindex=0, do_tilt=True, cframe=0)
+        #print(info_ndarr(X, 'X coords:'))
+        #print(info_ndarr(Y, 'Y coords:'))
         #sys.exit('TEST EXIT')
 
     def _arr_to_image_v0(self, c) -> Array2d:
