@@ -37,11 +37,13 @@ if __name__ == "__main__":
     #for i,arr2d in enumerate([w.x_pix_arr,w.y_pix_arr]):
     maskf = w.mask_fake(dtype=np.uint8)
     #xy_maps = w.x_pix_arr_um, w.y_pix_arr_um
-    xy_maps = maskf * w.x_pix_arr_um, w.y_pix_arr_um
+    xy_maps = maskf * w.x_pix_arr_um, maskf * w.y_pix_arr_um
     amp_range = [(w.pixel_coord_min(axis), w.pixel_coord_max(axis)) for axis in ('X', 'Y')]
     for i,arr2d in enumerate(xy_maps):
         gg.plotImageLarge(arr2d, amp_range=amp_range[i], figsize=(20,4), title=titles[i], window=WINDOW)
         gg.move(200*i,100*i)
+        #gg.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+        gg.save_plt(fname='img_map_%s' % ('x','y')[i], verb=True)
     gg.show()
 
 
