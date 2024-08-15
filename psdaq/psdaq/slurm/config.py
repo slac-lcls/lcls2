@@ -43,8 +43,13 @@ class Config:
                     print(f"Warning: no {cid} found in main_config")
 
     def add(self, config):
+        if not isinstance(config, (dict,)):
+            msg = 'Error: only accept config as a dictionary (e.g. {"id": "daq", ...})'
+            raise ValueError(msg)
         cid = config["id"]
         config.pop("id")
+        if 'host' not in config:
+            config['host'] = LOCALHOST
         self.select_config[cid] = config
 
     def rename(self, *args):
@@ -56,6 +61,12 @@ class Config:
                 self.select_config[new_cid] = self.select_config.pop(current_cid)
             else:
                 print(f"Warning: no {current_cid} found in select_config")
+
+    def extend(self, configs):
+        """ Add all items in the given configs list """
+        for config in configs:
+            print(config)
+            self.add(config)
 
     def show(self, full=False):
         print("%20s %18s %80s" % ("UniqueID", "Host", "Command+Args"))
