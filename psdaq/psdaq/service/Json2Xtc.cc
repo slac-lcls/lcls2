@@ -316,6 +316,11 @@ public:
                 _cd.set_string(_cnt, val.GetString());
                 break;
             case Name::ENUMVAL:
+                if (!val.IsInt()) {
+                    printf("Json2Xtc Conversion Error: %s is not an INT(ENUMVAL)!\n", curname().c_str());
+                    if (val.IsString())  printf("Got string: '%s'\n", val.GetString());
+                    abort();
+                }
                 _cd.set_value(_cnt, (int32_t) val.GetInt());
                 break;
             case Name::ENUMDICT:
@@ -436,7 +441,10 @@ int translateJson2Xtc(char *in, char *out, const void* bufEnd, NamesId namesID, 
     NamesLookup nl;
     Value json;
 
-    d->Parse(in);
+    ParseResult ok = d->Parse(in);
+    if (!ok)
+        logging::error("translateJson2Xtc(char*): JSON parse error: %s (%u)",
+                       GetParseError_En(ok.Code()), ok.Offset());
     if (translateJson2XtcNames(d, xtc, bufEnd, nl, namesID, json, detname, segment) < 0)
         return -1;
 
@@ -459,7 +467,10 @@ int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId nam
     Value jsonv;
 
     Document *d = new Document();
-    d->Parse(json);
+    ParseResult ok = d->Parse(json);
+    if (!ok)
+        logging::error("translateJson2Xtc(PyObject): JSON parse error: %s (%u)",
+                       GetParseError_En(ok.Code()), ok.Offset());
 
     while(1) {
         const char* detname;

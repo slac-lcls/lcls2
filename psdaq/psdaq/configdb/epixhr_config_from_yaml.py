@@ -24,10 +24,14 @@ def copyValues(din,dout,k=None):
         else:
             print(f'{k} unchanged')
     else:
-        if dout[k] != din:
-            print(f'Writing {k} = {din}')
-            dout[k] = din
+        if type(din) is type(dout[k]):
+            if dout[k] != din:
+                print(f'Writing {k} = {din}')
+                dout[k] = din
+            else:
+                print(f'{k} unchanged')
         else:
+            print(f'Type mismatch for {k}: expect {type(dout[k])}, yaml has {type(din)} ({din})')
             print(f'{k} unchanged')
 
 if __name__ == "__main__":
