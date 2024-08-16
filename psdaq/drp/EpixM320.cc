@@ -292,7 +292,7 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     for (unsigned q = 0; q < numAsics; ++q) {
         if ((q_asics & (1<<q))==0)
             continue;
-        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data()) + headerSize + trailerSize;
+        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data()) + headerSize;
         auto dst = &aframe(q, 0, 0);
         for (unsigned bankRow = 0; bankRow < bankRows; ++bankRow) {
             for (unsigned row = 0; row < bankHeight; ++row) {
@@ -311,9 +311,9 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
 #else
     auto frame = aframe.data();
     for (unsigned asic = 0; asic < numAsics; ++asic) {
-        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + asic].data()) + headerSize + trailerSize;
+        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + asic].data()) + headerSize;
         auto dst = &frame[asic * asicSize];
-        memcpy(dst, src, elemRows*elemRowSize*sizeof(uint16_t));
+        memcpy(dst, src, asicSize*sizeof(*src));
     }
 #endif
 }
