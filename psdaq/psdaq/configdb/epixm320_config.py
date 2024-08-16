@@ -202,7 +202,13 @@ for i in range(4):
                                         'LockOnIdleOnly',
                                         'RollOverEn',])
 for i in range(4):
-    ordering[f'DigAsicStrmRegisters{i}'] = ['asicDataReq','DisableLane','EnumerateDisLane',]
+    ordering[f'DigAsicStrmRegisters{i}'] = ['asicDataReq',
+                                            'DisableLane',
+                                            'EnumerateDisLane',
+                                            'FillOnFailEn',
+                                            'FillOnFailPersistantDisable',
+                                            'SroToSofTimeout',
+                                            'DataTimeout',]
 
 ordering['TriggerRegisters'] = ['RunTriggerEnable',
                                 'TimingRunTriggerEnable',
