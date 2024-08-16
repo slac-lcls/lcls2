@@ -33,7 +33,7 @@ class Runner:
     PATH_LESS = "/usr/bin/less"
     PATH_CAT = "/bin/cat"
 
-    def __init__(self, configfilename, as_step=False, verbose=False):
+    def __init__(self, configfilename, as_step=False, verbose=False, output=None):
         # Allowing users' code to do relative 'import' in config file
         sys.path.append(os.path.dirname(configfilename))
         config_dict = {"platform": None, "config": None}
@@ -61,7 +61,7 @@ class Runner:
                 if cmd_token == "-x":
                     self.xpm_id = int(cmd_tokens[cmd_index + 1])
 
-        self.sbman = SbatchManager(configfilename, self.platform, as_step, verbose)
+        self.sbman = SbatchManager(configfilename, self.platform, as_step, verbose, output=output)
         self.proc = SubprocHelper()
         self.parse_config()
 
@@ -223,7 +223,7 @@ class Runner:
                         self.sbman.generate(node, job_name, details, self.node_features)
                         self.submit()
 
-    def stop(self, unique_ids=None, skip_wait=False):
+    def stop(self, unique_ids=None, skip_wait=False, verbose=False):
         """Stops running job using their comment.
 
         Each job is submitted with their unique comment. We can stop all the processes
@@ -244,9 +244,10 @@ class Runner:
                 self._cancel(job_details[comment]["job_id"])
                 job_states[job_details[comment]["job_id"]] = None
             else:
-                print(
-                    f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
-                )
+                if verbose:
+                    print(
+                        f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
+                    )
 
         # Wait until all cancelled jobs reach CANCELLED state
         if not skip_wait:
@@ -262,8 +263,8 @@ class Runner:
                 time.sleep(3)
 
 
-    def restart(self, unique_ids=None):
-        self.stop(unique_ids=unique_ids, skip_wait=True)
+    def restart(self, unique_ids=None, verbose=False):
+        self.stop(unique_ids=unique_ids, skip_wait=True, verbose=verbose)
         self.start(unique_ids=unique_ids, skip_check_exist=True)
 
     def spawnConsole(self, config_id, ldProcStatus, large=False):
@@ -369,16 +370,23 @@ def main(
         ),
     ] = False,
     verbose: Annotated[
-        bool, typer.Option(help="Print out sbatch script(s) submitted by daqbatch.")
+        bool, typer.Option("--verbose", "-v", help="Print out sbatch script(s) submitted by daqbatch and warnings")
     ] = False,
+    output: Annotated[
+        str,
+        typer.Option(
+            "--output", "-o",
+            help="Specify output path for process log files."
+        ),
+    ] = None,
 ):
-    runner = Runner(cnf_file, as_step=as_step, verbose=verbose)
+    runner = Runner(cnf_file, as_step=as_step, verbose=verbose, output=output)
     if subcommand == "start":
         runner.start(unique_ids=unique_ids)
     elif subcommand == "stop":
-        runner.stop(unique_ids=unique_ids)
+        runner.stop(unique_ids=unique_ids, verbose=verbose)
     elif subcommand == "restart":
-        runner.restart(unique_ids=unique_ids)
+        runner.restart(unique_ids=unique_ids, verbose=verbose)
     elif subcommand == "status":
         runner.show_status()
     else:

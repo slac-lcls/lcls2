@@ -19,13 +19,16 @@ class PSbatchSubCommand:
 
 
 class SbatchManager:
-    def __init__(self, configfilename, platform, as_step, verbose):
+    def __init__(self, configfilename, platform, as_step, verbose, output=None):
         self.sb_script = ""
         now = datetime.now()
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
-        self.output_path = os.path.join(
-            os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
-        )
+        if output is None:
+            self.output_path = os.path.join(
+                os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
+            )
+        else:
+            self.output_path = output
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         envs = [
