@@ -14,7 +14,7 @@ from subprocess import Popen
 from psdaq.slurm.config import Config
 
 LOCALHOST = socket.gethostname()
-PSBATCH_SCRIPT = "submit_psbatch.sh"
+DAQBATCH_SCRIPT = "submit_daqbatch.sh"
 MAX_RETRIES = 30
 
 
@@ -119,9 +119,9 @@ class Runner:
         return
 
     def submit(self):
-        with open(PSBATCH_SCRIPT, "w") as f:
+        with open(DAQBATCH_SCRIPT, "w") as f:
             f.write(self.sbman.sb_script)
-        cmd = f"sbatch {PSBATCH_SCRIPT}"
+        cmd = f"sbatch {DAQBATCH_SCRIPT}"
         asyncio.run(self.proc.run(cmd, wait_output=True))
 
     def _select_config_ids(self, unique_ids):
@@ -258,8 +258,8 @@ class Runner:
                 active_jobs = [job_id for job_id, job_state in job_states.items() if job_state != 'CANCELLED']
                 if len(active_jobs) == 0:
                     break
-                print(f'Wait for jobs: {active_jobs} to complete...')
-                time.sleep(1)
+                print(f'Waiting for slurm jobs to complete...')
+                time.sleep(3)
 
 
     def restart(self, unique_ids=None):
@@ -369,7 +369,7 @@ def main(
         ),
     ] = False,
     verbose: Annotated[
-        bool, typer.Option(help="Print out sbatch script(s) submitted by psbatch.")
+        bool, typer.Option(help="Print out sbatch script(s) submitted by daqbatch.")
     ] = False,
 ):
     runner = Runner(cnf_file, as_step=as_step, verbose=verbose)
@@ -383,7 +383,7 @@ def main(
         runner.show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
-    silentremove(PSBATCH_SCRIPT)
+    silentremove(DAQBATCH_SCRIPT)
 
 
 def _do_main():
