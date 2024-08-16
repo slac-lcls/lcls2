@@ -226,6 +226,7 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     const unsigned elemRows    = 192;
     const unsigned elemRowSize = 384;
     const size_t   headerSize  = 24;
+    const size_t   trailerSize = 24;
 
     //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
@@ -263,9 +264,9 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
-            else if (subframes[q+2].num_elem() != 2*(asicSize+headerSize)) {
+            else if (subframes[q+2].num_elem() != 2*(asicSize+headerSize+trailerSize)) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                               subframes[q+2].num_elem()/2, asicSize+headerSize, q);
+                               subframes[q+2].num_elem()/2, asicSize+headerSize+trailerSize, q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
@@ -291,7 +292,7 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     for (unsigned q = 0; q < numAsics; ++q) {
         if ((q_asics & (1<<q))==0)
             continue;
-        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data()) + headerSize;
+        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data()) + headerSize + trailerSize;
         auto dst = &aframe(q, 0, 0);
         for (unsigned bankRow = 0; bankRow < bankRows; ++bankRow) {
             for (unsigned row = 0; row < bankHeight; ++row) {
@@ -310,7 +311,7 @@ void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
 #else
     auto frame = aframe.data();
     for (unsigned asic = 0; asic < numAsics; ++asic) {
-        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + asic].data()) + headerSize;
+        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + asic].data()) + headerSize + trailerSize;
         auto dst = &frame[asic * asicSize];
         memcpy(dst, src, elemRows*elemRowSize*sizeof(uint16_t));
     }
