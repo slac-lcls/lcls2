@@ -114,7 +114,7 @@ def selected_record(nrec):
 
 
 def info_det_evt(det, evt, ievt):
-    return '  Event %05d %s '% (ievt, 'detector is None' if det is None else info_ndarr(det.raw.raw(evt), 'raw '))
+    return '  Event %05d %s' % (ievt, 'detector is None'+80*' ' if det is None else info_ndarr(det.raw.raw(evt), 'raw '))
 
 
 def loop_run_step_evt(args):
