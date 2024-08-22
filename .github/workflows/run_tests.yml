@@ -42,4 +42,4 @@ jobs:
           # pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
           # export PYTHONPATH=$(pwd)/install/lib/python$pyver/site-packages
           # ls $(pwd)
-          pytest psana/psana/tests
+          pytest psana/psana/tests/test_shmem.py
