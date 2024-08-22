@@ -12,6 +12,8 @@ from psdaq.pyxpm.pvhandler import *
 from psdaq.configdb.typed_json import cdict
 import psdaq.configdb.configdb as cdb
 from psdaq.configdb.get_config import get_config_with_params
+# zmq for control connection
+import zmq
 
 provider = None
 lock     = None
@@ -25,6 +27,8 @@ seqCodes = {'EventCode'   : ('ai',[i for i in range(288-NCODES,288)]),
             'Description' : ('as',['']*NCODES),
             'Rate'        : ('ai',[0]*NCODES),
             'Enabled'     : ('ab',[False]*NCODES)}
+
+dbdict = {}
 
 class TransitionId(object):
     Clear   = 0
@@ -86,9 +90,11 @@ class RegH(PVHandler):
 
     def handle(self, pv, value):
         global countdn
+        global dbdict
         retry(self.cmd,pv,value)
         if self._archive:
             countdn = countrst
+            dbdict[pv.name] = value
 
 class CuDelayH(RegH):
     def __init__(self, valreg, archive, pvu):
@@ -153,11 +159,13 @@ class RegArrayH(PVHandler):
 
     def cmd(self,pv,val):
         global countdn
+        global dbdict
         for reg in self._valreg.values():
             reg.post(val)
         if self._archive:
             countdn = countrst
-        
+            dbdict[pv.name] = val
+
     def handle(self, pv, val):
         retry(self.cmd,pv,val)
 
@@ -562,6 +570,12 @@ class PVCtrls(object):
             logging.info('device {:}'.format(name))
             init = get_config_with_params(db_url, db_instrument, db_name, db_alias, name)
             logging.info('cfg {:}'.format(init))
+            #  Load dbdict from database
+            global dbdict
+            for k in init.keys:
+                if k != 'XTPG':
+                    dbdict[k] = dbinit[k]
+            logging.info(f'dbdict {dbdict}')
         except:
             logging.warning('Caught exception reading configdb [{:}]'.format(db))
 
@@ -616,6 +630,10 @@ class PVCtrls(object):
         logging.info('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
         app.monStreamPeriod.set(104166667)
         app.monStreamEnable.set(1)
+        
+        #  Launch the zmq polling thread
+        self._zthread = threading.Thread(target=self.zrcv)
+        self._zthread.start()
 
     def usLinkUp(self):
         if self._usLinkUp is not None:
@@ -656,24 +674,29 @@ class PVCtrls(object):
                 top.setAlg('config', [0,0,0])
 
                 lock.acquire()
-                top.set('XTPG.CuDelay'   , self._xpm.CuGenerator.cuDelay.get()       , 'UINT32')
-                top.set('XTPG.CuBeamCode', self._xpm.CuGenerator.cuBeamCode.get()    , 'UINT8')
-                top.set('XTPG.CuInput'   , self._xpm.AxiSy56040.OutputConfig[0].get(), 'UINT8')
-                v = []
-                for i in range(8):
-                    #v.append( self._xpm.XpmApp.l0Delay(i) )
-                    v.append( self._group._groups[i]._pv_L0Delay.current()['value'] )
-                top.set('PART.L0Delay', v, 'UINT32')
+                if False:
+                    top.set('XTPG.CuDelay'   , self._xpm.CuGenerator.cuDelay.get()       , 'UINT32')
+                    top.set('XTPG.CuBeamCode', self._xpm.CuGenerator.cuBeamCode.get()    , 'UINT8')
+                    top.set('XTPG.CuInput'   , self._xpm.AxiSy56040.OutputConfig[0].get(), 'UINT8')
+                    v = []
+                    for i in range(8):
+                        #v.append( self._xpm.XpmApp.l0Delay(i) )
+                        v.append( self._group._groups[i]._pv_L0Delay.current()['value'] )
+                    top.set('PART.L0Delay', v, 'UINT32')
+
+                    if not db_alias in mycdb.get_aliases():
+                        mycdb.add_alias(db_alias)
+
+                    try:
+                        mycdb.modify_device(db_alias, top)
+                    except:
+                        pass
+                
+                else:
+                    for k,v in dbdict.items():
+                        top.set(k, v, 'UINT32')
                 lock.release()
 
-                if not db_alias in mycdb.get_aliases():
-                    mycdb.add_alias(db_alias)
-
-                try:
-                    mycdb.modify_device(db_alias, top)
-                except:
-                    pass
-                
     def notify(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         client.connect((self._ip,8197))
@@ -752,3 +775,38 @@ class PVCtrls(object):
                             if ((end==nL0) and done==0):
                                 logging.warning(f'Recover stepDone for group {i} events {end}')
                                 g.stepDone(True)
+
+    def zrcv(self):
+        from psdaq.control.ControlDef import xpm_pull_port
+
+        #  Open the zmq socket for control connections
+        xpm_num = int(self._name.rsplit(':',1)[1])
+        zctxt = zmq.Context(1)
+        pull  = zctxt.socket(zmq.PULL)
+        pull.bind('tcp://*:%d' % xpm_pull_port(xpm_num))
+
+        app = self._xpm.XpmApp
+
+        #
+        #  msg should be a dictionary with a 'type' entry
+        #    'insert_msg' - inserts a transition
+        #
+        while True:
+            msg = pull.recv_json()
+
+            if msg['type']=='set_idx_reg':
+                value  = msg['value']
+                groups = msg['groups']
+                lock.acquire()
+                for g in range(8):
+                    if groups & (1<<g):
+                        app.partition.post(g)
+                        reg = getattr(app,msg['reg'])
+                        forceUpdate(reg)
+                        reg.post(value)
+                lock.release()
+
+            elif msg['type']=='set_reg':
+                value = msg['value']
+                reg = getattr(app,msg['reg'])
+                reg.post(value)

@@ -5,7 +5,8 @@ import threading
 import zmq
 import json
 
-from psdaq.control.control import DaqControl, DaqPVA
+from psdaq.control.control import ControlDef, DaqPVA, DaqXPM
+from psdaq.control.DaqControl import DaqControl
 import argparse
 
 class MyDAQ:
@@ -42,7 +43,8 @@ class MyDAQ:
         self.readoutCumulative = 0
 
         # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B, report_error=self.report_error)
+        self.pva = DaqPVA(report_error=self.report_error)
+        self.xpm = DaqXPM(platform=args.p, xpm_master=args.x, pv_base=args.B, pva=self.pva, zctxt=self.context, xpm_host=args.X, report_error=self.report_error)
 
     # this thread tells the daq to do a step and waits for the completion
     def daq_communicator_thread(self):
@@ -81,9 +83,10 @@ class MyDAQ:
                 # set EPICS PVs.
                 # StepEnd is a cumulative count.
                 self.readoutCumulative += self.readoutCount
-                self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
-                self.pva.step_groups(mask=self.groupMask)
-                self.pva.pv_put(self.pva.pvStepDone, 0)
+                #self.pva.pv_put(self.xpm.pvStepEnd, self.readoutCumulative)
+                #self.xpm.step_groups(mask=self.groupMask)
+                #self.pva.pv_put(self.xpm.pvStepDone, 0)
+                self.xpm.setup_step(self.xpm.platform,self.groupMask,self.readoutCumulative)
                 with self.stepDone_cv:
                     self.stepDone = 0
                     self.stepDone_cv.notify()
@@ -110,7 +113,7 @@ class MyDAQ:
                         self.stepDone_cv.notify()
 
                 # start monitoring the StepDone PV
-                sub = self.pva.monitor_StepDone(callback=callback)
+                sub = self.xpm.monitor_StepDone(callback=callback)
 
                 with self.stepDone_cv:
                     while self.stepDone != 1:
@@ -132,7 +135,7 @@ class MyDAQ:
             part1, part2, part3, part4, part5, part6, part7, part8 = self.control.monitorStatus()
             if part1 is None:
                 break
-            elif part1 not in DaqControl.transitions:
+            elif part1 not in ControlDef.transitions:
                 continue
 
             # part1=transition, part2=state, part3=config
@@ -186,6 +189,7 @@ def scan( keys, steps, setupStep=None ):
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')
     parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
+    parser.add_argument('-X', metavar='XPMHOST', type=str, default='drp-neh-ctl002', help='XPM host')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
@@ -288,14 +292,12 @@ def setupXtc(step=None):
 
 def scanNamesBlock():
     cydgram = setupXtc()
-    return cydgram.getSelect(0, DaqControl.transitionId['Configure'],
+    return cydgram.getSelect(0, ControlDef.transitionId['Configure'],
                              add_names=True, add_shapes_data=False)[12:].hex()
 
 def shapesDataBlock(step):
     cydgram = setupXtc(step)
-    return cydgram.getSelect(0, DaqControl.transitionId['BeginStep'],
+    return cydgram.getSelect(0, ControlDef.transitionId['BeginStep'],
                              add_names=False, add_shapes_data=True)[12:].hex()
 
 
-if __name__ == '__main__':
-    main()
