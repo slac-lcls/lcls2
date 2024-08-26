@@ -62,6 +62,7 @@ Some Notes:
 import os
 import numpy as np
 import h5py
+import glob
 from collections.abc import MutableMapping
 
 # -----------------------------------------------------------------------------
@@ -533,6 +534,11 @@ class SmallData: # (client)
         if (filename is not None):
             self._basename = os.path.basename(filename)
             self._dirname  = os.path.dirname(filename)
+
+            # clean up previous part files associated with the filename
+            for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
+                os.remove(f)
+
         self._first_open = True # filename has not been opened yet
 
         if MODE == 'PARALLEL':
