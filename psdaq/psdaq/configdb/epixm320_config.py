@@ -533,7 +533,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
         cbase.fnInitAsicScript(None,None,arg)
 
-        #  Remove the yml files
+        # Remove the yml files
         for f in tmpfiles:
             os.remove(f)
 
@@ -544,11 +544,12 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             if i not in asics:  # Override configDb's value for disabled ASICs
                 getattr(cbase.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(0xffffff)
 
-            # Enable the batchers for all ASICs
-            getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
-
         # Adjust for intermitent lanes of enabled ASICs
-        cbase.laneDiagnostics(arg[1:5], threshold=20, loops=5, debugPrint=False)
+        #cbase.laneDiagnostics(arg[1:5], threshold=20, loops=5, debugPrint=False)
+
+        # Enable the batchers for all ASICs
+        for i in range(cbase.numOfAsics):
+            getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
 
     if writeCalibRegs:
         hasGainMode = 'gain_mode' in cfg['user']
