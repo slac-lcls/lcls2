@@ -471,6 +471,8 @@ class Server: # (hdf5 handling)
                 if cache.n_events > 0:
                     self.write_to_file(dset, cache)
             self.file_handle.close()
+            import time
+            time.sleep(10)
         return
 
 
@@ -542,6 +544,12 @@ class SmallData: # (client)
                 if self._client_comm.Get_rank() == 0:
                     for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
                         os.remove(f)
+            # Need to make sure all smalldata ranks wait for the clean up to be done
+            # before they go about creating the new files.
+            if self._type != 'other': # other = not smalldata (Mona)
+                self._smalldata_comm.barrier()
+
+
 
         self._first_open = True # filename has not been opened yet
 
