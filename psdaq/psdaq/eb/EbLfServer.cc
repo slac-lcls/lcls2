@@ -80,7 +80,7 @@ int EbLfServer::listen(const std::string& addr,
   {
     Fabric* fab  = _pep->fabric();
     void*   data = fab;                 // Something since data can't be NULL
-    printf("Server: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
+    printf("EbLfServer: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
   }
 

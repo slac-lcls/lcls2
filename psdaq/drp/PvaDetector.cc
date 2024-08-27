@@ -39,6 +39,7 @@ using namespace Pds;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
+using us_t = std::chrono::microseconds;
 using ns_t = std::chrono::nanoseconds;
 
 namespace Drp {
@@ -164,7 +165,8 @@ PvMonitor::PvMonitor(const PvParameters&      para,
     bufferFreelist          (pvQueue.size()),
     m_notifySocket          {&m_context, ZMQ_PUSH},
     m_nUpdates              (0),
-    m_nMissed               (0)
+    m_nMissed               (0),
+    m_latency               (0)
 {
     // ZMQ socket for reporting errors
     m_notifySocket.connect({"tcp://" + m_para.collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para.partition)});
@@ -281,7 +283,8 @@ void PvMonitor::updated()
         TimeStamp timestamp(seconds, nanoseconds);
 
         ++m_nUpdates;
-        logging::debug("%s updated @ %u.%09u", name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
+        m_latency = _deltaT<us_t>(timestamp); // Grafana plots latency in us
+        logging::debug("%s updated @ %u.%09u, latency %ld ms", name().c_str(), timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000);
 
         Dgram* dgram;
         if (bufferFreelist.try_pop(dgram)) { // If a buffer is available...
@@ -722,6 +725,10 @@ void PvDetector::_worker()
     m_exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
                     [&](){return m_pvMonitors[0]->pvQueue.guess_size();});
 
+    // @todo: Support multiple PVs
+    m_exporter->add("drp_pv_latency", labels, MetricType::Gauge,
+                    [&](){return m_pvMonitors[0]->latency();});
+
     m_exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
                     [&](){return m_pgp.nDmaRet();});
     m_exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
@@ -810,11 +817,13 @@ void PvDetector::_matchUp()
 
                 int result = _compare(evtDg->time, pvDg->time);
 
-                logging::debug("PGP: %u.%09d, PV: %u.%09d, PGP - PV: %12ld ns, pid %014lx, svc %2d, compare %c, latency %ld ms",
+                logging::debug("PGP: %u.%09d %c PV: %u.%09d, PGP - PV: %12ld ns, "
+                               "pid %014lx, svc %2d, PGP age %ld ms",
                                evtDg->time.seconds(), evtDg->time.nanoseconds(),
+                               result == 0 ? '=' : (result < 0 ? '<' : '>'),
                                pvDg->time.seconds(), pvDg->time.nanoseconds(),
                                m_timeDiff, evtDg->pulseId(), evtDg->service(),
-                               result == 0 ? '=' : (result < 0 ? '<' : '>'), _deltaT<ms_t>(evtDg->time));
+                               _deltaT<ms_t>(evtDg->time));
 
                 if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
                 else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }

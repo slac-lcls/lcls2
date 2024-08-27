@@ -64,7 +64,8 @@ public:
     unsigned id() const { return m_id; }
     const std::string& alias() const { return m_alias; }
     uint64_t nUpdates() const { return m_nUpdates; }
-    uint64_t nMissed() const { return m_nMissed; }
+    uint64_t nMissed()  const { return m_nMissed; }
+    int64_t  latency()  const { return m_latency; }
 private:
     enum State { NotReady, Armed, Ready };
 private:
@@ -89,6 +90,7 @@ private:
     ZmqSocket                       m_notifySocket;
     uint64_t                        m_nUpdates;
     uint64_t                        m_nMissed;
+    int64_t                         m_latency;
 };
 
 
