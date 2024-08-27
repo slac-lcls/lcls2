@@ -549,8 +549,6 @@ class SmallData: # (client)
             if self._type != 'other': # other = not smalldata (Mona)
                 self._smalldata_comm.barrier()
 
-
-
         self._first_open = True # filename has not been opened yet
 
         if MODE == 'PARALLEL':
