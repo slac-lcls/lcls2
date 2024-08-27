@@ -530,14 +530,22 @@ class SmallData: # (client)
             print('setting cache_size -->', batch_size)
             cache_size = batch_size
 
-        self._full_filename = filename
+        self._full_filename = str(filename)
         if (filename is not None):
             self._basename = os.path.basename(filename)
             self._dirname  = os.path.dirname(filename)
 
-            # clean up previous part files associated with the filename
-            for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
-                os.remove(f)
+            # clean up previous part files associated with the filename.
+            # This needs to be done on a single rank to avoid trying to delete i
+            # the same file multiple times.
+            if self._type == 'client' and self._full_filename is not None:
+                if self._client_comm.Get_rank() == 0:
+                    for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
+                        os.remove(f)
+            # Need to make sure all smalldata ranks wait for the clean up to be done
+            # before they go about creating the new files.
+            if self._type != 'other': # other = not smalldata (Mona)
+                self._smalldata_comm.barrier()
 
         self._first_open = True # filename has not been opened yet
 
