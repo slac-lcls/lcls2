@@ -471,8 +471,6 @@ class Server: # (hdf5 handling)
                 if cache.n_events > 0:
                     self.write_to_file(dset, cache)
             self.file_handle.close()
-            import time
-            time.sleep(10)
         return
 
 
