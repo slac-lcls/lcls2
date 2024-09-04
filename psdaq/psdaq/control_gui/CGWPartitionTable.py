@@ -25,7 +25,7 @@ from psdaq.control_gui.CGConfigParameters import cp
 
 class CGWPartitionTable(QWTableOfCheckBoxes):
     """Re-implemented connect_control and field editor using pull-down menu."""
-    LIST_OF_VALUES = [str(v) for v in range(8)]
+    LIST_OF_VALUES = [str(v) for v in range(1,8)]
 
     def __init__(self, **kwargs):
         QWTableOfCheckBoxes.__init__(self, **kwargs)

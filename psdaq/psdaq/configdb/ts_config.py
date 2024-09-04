@@ -66,7 +66,6 @@ def apply_config(cfg):
             pvdict[str(group)+':L0Select_FixedRate'] = grp['fixed']['rate']
             pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
             pvdict[str(group)+':L0Select_EventCode'] = grp['eventcode']
-            pvdict[str(group)+':L0Select_Sequence' ] = grp['seq']['mode']
             #  until we update all timing configurations
             if 'keepRawRate' in grp:
                 pvdict[str(group)+':L0RawUpdate'       ] = int(TPGSEC/grp['keepRawRate'])
@@ -81,17 +80,6 @@ def apply_config(cfg):
                 if tsval:
                     tsmask |= 1<<tsnum
             pvdict[str(group)+':L0Select_ACTimeslot'] = tsmask
-
-            # L0Select_SeqBit is one var used by all of seq.(burst/fixed/local)
-            if grp['seq']['mode']==15: # burst
-                seqbit = grp['seq']['burst']['mode']
-            elif grp['seq']['mode']==16: # fixed rate
-                seqbit = grp['seq']['fixed']['rate']
-            elif grp['seq']['mode']==17: # local
-                seqbit = grp['seq']['local']['rate']
-            else:
-                raise ValueError('Illegal value for trigger sequence mode')
-            pvdict[str(group)+':L0Select_SeqBit'] = seqbit
 
             # DstSelect_Mask should come from destination.dest0 through dest15
             dstmask = 0
