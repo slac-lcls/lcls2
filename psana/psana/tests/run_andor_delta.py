@@ -33,8 +33,8 @@ def check_answer(ts, cn_atm_events, cn_intg_events):
 # set intg_delta_t
 intg_delta_t = 107800000
 
-#mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
-mount_dir = '/cds/data/drpsrcf'
+mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
+#mount_dir = '/cds/data/drpsrcf'
 xtc_dir = os.path.join(mount_dir, exp[:3], exp, 'xtc')
 ds = DataSource(exp=exp,run=runnum,dir=xtc_dir,intg_det='andor_vls',intg_delta_t=intg_delta_t,
         detectors=['timing','andor_vls','atmopal'],
@@ -49,7 +49,7 @@ for myrun in ds.runs():
     andor = myrun.Detector('andor_vls')
     atmopal = myrun.Detector('atmopal')
     for nstep, mystep in enumerate(myrun.steps()):
-        print(f'BD:{rank} step: {nstep}')
+        #print(f'BD:{rank} step: {nstep}')
         for nevt,evt in enumerate(mystep.events()):
             cn_intg_events += 1
             andor_img = andor.raw.value(evt)

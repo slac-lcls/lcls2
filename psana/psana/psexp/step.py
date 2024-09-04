@@ -14,7 +14,7 @@ class Step(object):
 
     def events(self):
         for evt in self.evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndStep:
                     return
                 if self.proxy_events is not None:

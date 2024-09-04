@@ -89,10 +89,22 @@ class EventManager(object):
 
         # Update EnvStore - this is the earliest we know if this event is a Transition
         # make sure we update the envstore now rather than later.
-        if evt.service() != TransitionId.L1Accept:
+        #if evt.service() != TransitionId.L1Accept:
+        if not self.isEvent(evt.service()):
             self.esm.update_by_event(evt)
 
         return evt
+
+    def isEvent(self, service):
+        """ EventManager event is considered as:
+        - TransitionId.isEvent()
+        - service is 0, which only happens to only L1Accept types when the dgram is
+          missing from that stream. The service is marked as 0. 
+        """
+        if TransitionId.isEvent(service) or service == 0:
+            return True
+        else:
+            return False
 
     def _get_bd_offset_and_size(
         self, d, current_bd_offsets, current_bd_chunk_sizes, i_evt, i_smd, i_first_L1
@@ -151,7 +163,10 @@ class EventManager(object):
         self.cutoff_flag_array = np.ones(
             (smd_chunk_pf.n_packets, self.n_smd_files), dtype=dtype
         )
-        self.services = np.zeros(smd_chunk_pf.n_packets, dtype=dtype)
+        self.service_array = np.zeros(
+            (smd_chunk_pf.n_packets, self.n_smd_files), dtype=dtype
+        )
+
         smd_aux_sizes = np.zeros(self.n_smd_files, dtype=dtype)
         # For comparing if the next dgram should be in the same read
         current_bd_offsets = np.zeros(self.n_smd_files, dtype=dtype)
@@ -184,11 +199,12 @@ class EventManager(object):
 
                 self.smd_offset_array[i_evt, i_smd] = offset
                 self.smd_size_array[i_evt, i_smd] = d._size
-                self.services[i_evt] = d.service()
+                self.service_array[i_evt, i_smd] = d.service()
 
                 # For L1 with bigdata files, store offset and size found in smd dgrams.
                 # For Enable, store new chunk id (if found).
-                if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
+                #if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
+                if self.isEvent(d.service()) and self.dm.n_files > 0:
                     if i_first_L1 == -1:
                         i_first_L1 = i_evt
                     self._get_bd_offset_and_size(
@@ -365,7 +381,7 @@ class EventManager(object):
         for i_smd in range(self.n_smd_files):
             if (
                 self.dm.n_files == 0
-                or self.services[self.i_evt] != TransitionId.L1Accept
+                or not self.isEvent(self.service_array[self.i_evt, i_smd])
                 or self.use_smds[i_smd]
             ):
                 view = self.smd_view
@@ -379,7 +395,7 @@ class EventManager(object):
                 self.chunk_indices[i_smd] += 1
 
                 # Check in case we need to switch to the next bigdata chunk file
-                if self.services[self.i_evt] != TransitionId.L1Accept:
+                if not self.isEvent(self.service_array[self.i_evt, i_smd]):
                     if self.new_chunk_id_array[self.i_evt, i_smd] != 0:
                         self._open_new_bd_file(
                             i_smd, self.new_chunk_id_array[self.i_evt, i_smd]

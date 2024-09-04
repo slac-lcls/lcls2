@@ -3,6 +3,7 @@ import os, sys, io
 import numpy as np
 from psana import DataSource, dgram
 import pytest
+from psana.psexp import TransitionId
 
 BUFSIZE = 64000000
 
@@ -128,6 +129,11 @@ def run_dgramedit(output_filename):
         
         det2.raw.arrayRaw = create_array(np.float32)
         dgram_edit.adddata(det2.raw)
+        if i_evt == 0:
+            dgram_edit.updateservice(11)
+            pydg = dgram_edit.get_pydgram()
+            print(f'{i_evt=} {pydg.service()=} isEvent={TransitionId.isEvent(pydg.service())}')
+
         
         if i_evt == 4:
             dgram_edit.removedata("hsd","raw") # per event removal 
@@ -138,6 +144,8 @@ def run_dgramedit(output_filename):
         # For non-configure dgram, you can retreive Dgram back by
         # passing in the output buffer where the Dgram was written to.
         new_dgram = dgram_edit.get_dgram(view=xtc2buf)
+        if i_evt == 0:
+            print(f'{i_evt=} {new_dgram.service()=}')
         assert new_dgram.xpphsd[0].fex.strFex=='hello string'
 
         if i_evt == 4:

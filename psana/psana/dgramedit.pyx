@@ -227,6 +227,9 @@ cdef class PyXtcUpdateIter():
     def updatetimestamp(self, PyDgram pydg, timestamp_val):
         self.cptr.updateTimeStamp(pydg.cptr[0], timestamp_val)
 
+    def updateservice(self, PyDgram pydg, transitionId):
+        self.cptr.updateService(pydg.cptr[0], transitionId)
+
     def names(self, PyDgram pydg, detdef, algdef, PyDataDef pydatadef,
             nodeId, namesId, segment):
         cdef PyXtc pyxtc = pydg.pyxtc
@@ -540,6 +543,9 @@ cdef class DgramEdit:
         
     def updatetimestamp(self, timestamp_val):
         self.uiter.updatetimestamp(self.pydg, timestamp_val)
+
+    def updateservice(self, transitionId):
+        self.uiter.updateservice(self.pydg, transitionId)
 
     @property
     def size(self):
