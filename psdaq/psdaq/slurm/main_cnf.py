@@ -12,10 +12,16 @@ epics_env = f'{ld_lib_path}'
 
 collect_host = 'drp-srcf-cmp035'
 
-groups = platform+' 1'
+#groups = platform+' 1'
+#hutch, user = ('tst', 'tstopr')
+#auth = ' --user {:} '.format(user)
+#url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+#cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+
+groups = platform
 hutch, user = ('tst', 'tstopr')
 auth = ' --user {:} '.format(user)
-url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 
 #
@@ -78,14 +84,15 @@ ami_monitor_node = "drp-srcf-cmp035"
 
 procmgr_config = [
  {id: 'psqueue', cmd: 'psqueue -i 5'},
+ {id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 '+groups},
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
  {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-srcf-cmp035', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
- {host: 'drp-srcf-cmp035', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
+ {host: 'drp-srcf-cmp035',cores: 10, id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp032', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 ]
 
 #
