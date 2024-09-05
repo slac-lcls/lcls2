@@ -251,10 +251,10 @@ class SbatchManager:
         env_opt += " "
         n_cores = self.get_n_cores(details)
         if not as_step:
-            jobstep_cmd = f"srun -n1 -c{n_cores} --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+            jobstep_cmd = f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
         else:
             jobstep_cmd = (
-                f"srun -n1 --exclusive --cpus-per-task={n_cores} --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
                 + "&\n"
             )
         return jobstep_cmd
@@ -264,7 +264,6 @@ class SbatchManager:
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}" + "\n"
         sb_script += f"#SBATCH --job-name=main" + "\n"
         output = self.get_output_filepath(LOCALHOST, "slurm")
-        sb_script += f"#SBATCH --output={output}" + "\n"
         sb_script += f"#SBATCH --output={output}" + "\n"
         sb_header = ""
         sb_steps = ""
@@ -336,7 +335,7 @@ class SbatchManager:
         if flag_x:
             cmd = "sattach $SLURM_JOB_ID.0"
             jobstep_cmd = (
-                f"srun -n1 -c1 --job-name={job_name}_x --x11 xterm -e bash -c '{cmd}'"
+                f"srun -n1 -c1 --unbuffered --job-name={job_name}_x --x11 xterm -e bash -c '{cmd}'"
             )
             sb_script += jobstep_cmd
         self.sb_script = sb_script
