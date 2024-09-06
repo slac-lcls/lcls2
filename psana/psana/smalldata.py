@@ -450,17 +450,16 @@ class Server: # (hdf5 handling)
 
 
     def backfill(self, dataset_name, num_to_backfill, missing_value=None):
-        
         dtype, shape = self._dsets[dataset_name]
 
         if missing_value is None:
-            missing_value = _get_missing_value(dtype) 
+            missing_value = _get_missing_value(dtype)
         fill_data = np.empty(shape, dtype=dtype)
         fill_data.fill(missing_value)
-    
+
         for i in range(num_to_backfill):
             self.append_to_cache(dataset_name, fill_data)
-        
+
         return
 
 
@@ -493,6 +492,7 @@ class SmallData: # (client)
             self._client_group = client_group
 
             self._comm_partition()
+
 
     def setup_parms(self, filename=None, batch_size=1000, cache_size=None,
                  callbacks=[]):
@@ -535,24 +535,26 @@ class SmallData: # (client)
             self._basename = os.path.basename(filename)
             self._dirname  = os.path.dirname(filename)
 
-            # clean up previous part files associated with the filename.
-            # This needs to be done on a single rank to avoid trying to delete i
-            # the same file multiple times.
-            if self._type == 'client' and self._full_filename is not None:
-                if self._client_comm.Get_rank() == 0:
-                    for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
-                        os.remove(f)
-            # Need to make sure all smalldata ranks wait for the clean up to be done
-            # before they go about creating the new files.
-            if self._type != 'other': # other = not smalldata (Mona)
-                self._smalldata_comm.barrier()
-
         self._first_open = True # filename has not been opened yet
 
         if MODE == 'PARALLEL':
 
             # hide intermediate files -- join later via VDS
             if filename is not None:
+
+                # clean up previous part files associated with the filename.
+                # This needs to be done on a single rank to avoid trying to delete i
+                # the same file multiple times.
+                if self._type == 'client' and self._full_filename is not None:
+                    if self._client_comm.Get_rank() == 0:
+                        for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
+                            os.remove(f)
+                # Need to make sure all smalldata ranks wait for the clean up to be done
+                # before they go about creating the new files.
+                if self._type != 'other': # other = not smalldata (Mona)
+                    self._smalldata_comm.barrier()
+
+                # Now make file
                 self._srv_filename = _format_srv_filename(self._dirname,
                                                           self._basename,
                                                           self._server_group.Get_rank())
@@ -560,13 +562,17 @@ class SmallData: # (client)
                 self._srv_filename = None
 
             if self._type == 'server':
-                self._server = Server(filename=self._srv_filename, 
-                                      smdcomm=self._srvcomm, 
+                self._server = Server(filename=self._srv_filename,
+                                      smdcomm=self._srvcomm,
                                       cache_size=cache_size,
                                       callbacks=callbacks)
                 self._server.recv_loop()
 
         elif MODE == 'SERIAL':
+            if filename is not None:
+                # clean up previous part files associated with the filename.
+                for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
+                    os.remove(f)
             self._srv_filename = self._full_filename # dont hide file
             self._type = 'serial'
             self._server = Server(filename=self._srv_filename,
@@ -662,7 +668,7 @@ class SmallData: # (client)
                     self._server.handle(self._batch)
                 elif MODE == 'PARALLEL':
                     self._srvcomm.send(self._batch, dest=0)
-                self._batch = []           
+                self._batch = []
 
             event_data_dict['timestamp'] = timestamp
             self._previous_timestamp = timestamp
