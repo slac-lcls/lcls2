@@ -259,7 +259,7 @@ class Runner:
                 active_jobs = [job_id for job_id, job_state in job_states.items() if job_state != 'CANCELLED']
                 if len(active_jobs) == 0:
                     break
-                print(f'Waiting for slurm jobs to complete...')
+                if i == 0: print(f'Waiting for slurm jobs to complete...')
                 time.sleep(3)
 
 

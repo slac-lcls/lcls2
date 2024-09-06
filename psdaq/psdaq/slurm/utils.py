@@ -78,7 +78,7 @@ class SbatchManager:
         return node_features
 
     def get_job_info_byid(self, job_id, jobparms):
-        """Returns a dictionary containig values obtained from scontrol 
+        """Returns a dictionary containing values obtained from scontrol
         with the given jobparms list.
         """
         scontrol_lines = self.call_subprocess(
@@ -166,18 +166,30 @@ class SbatchManager:
             cmd += f" -u {job_name}"
         if job_name == "psqueue":
             cmd += f" {self.configfilename}"
-        if self.is_drp(details["cmd"]):
-            n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
-            if n_workers < 1:
-                n_workers = 1
-            cmd += f" -W {n_workers}"
+        # if self.is_drp(details["cmd"]):
+        # if job_name.startswith("timing_"):
+        #    n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
+        #    if n_workers < 1:
+        #        n_workers = 1
+        #    cmd += f" -W {n_workers}"
         return cmd
 
     def is_drp(self, cmd):
-        return cmd.strip().startswith("drp ")
+        return (
+            cmd.find(" drp ") > -1
+            or cmd.find(" drp_pva ") > -1
+            or cmd.find(" drp_udpencoder ") > -1
+            or cmd.find(" drp_bld ") > -1
+            or cmd.find(" monReqServer ") > -1
+            or cmd.find(" tpr_trigger ") > -1
+        )
+
+    def is_teb(self, cmd):
+        return cmd.find(" teb ") > -1
 
     def get_output_header(self, node, job_name, details):
         header = ""
+        header += "# SLURM_JOB_ID:$SLURM_JOB_ID\n"
         header += "# ID:      %s\n" % job_name
         header += "# PLATFORM:%s\n" % self.platform
         header += "# HOST:    %s\n" % node
@@ -200,23 +212,33 @@ class SbatchManager:
             n_cores = int(details["cores"])
         return n_cores
 
-    def get_jobstep_cmd(self, node, job_name, details, het_group=-1, with_output=False):
+    def get_jobstep_cmd(
+        self, node, job_name, details, het_group=-1, with_output=False, as_step=False
+    ):
         output_opt = ""
         if with_output:
             output = self.get_output_filepath(node, job_name)
             output_opt = f"--output={output} --open-mode=append "
         env_opt = "--export=ALL"
+        # FIXME: export option in srun doesn't work with bash -c below 
+        # which is needed for Open Console button on the GUI.
+        #if "env" in details:
+        #    if details["env"] != "":
+        #        env = details["env"].replace(" ", ";").strip("'")
+        #        env_opt += f";{env};"
+        env_export = ""
         if "env" in details:
             if details["env"] != "":
-                env = details["env"].replace(" ", ",").strip("'")
-                env_opt += f",{env}"
+                envs = details["env"].split()
+                for env in envs:
+                    env_export += f'export {env};'
         het_group_opt = ""
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
 
         cmd = self.get_daq_cmd(details, job_name)
         header = self.get_output_header(node, job_name, details)
-        cmd = f'echo "{header}"; {cmd}'
+        cmd = f'echo "{header}";{env_export} {cmd}'
         if "conda_env" in details:
             if details["conda_env"] != "":
                 CONDA_EXE = os.environ.get("CONDA_EXE", "")
@@ -228,10 +250,13 @@ class SbatchManager:
 
         env_opt += " "
         n_cores = self.get_n_cores(details)
-        jobstep_cmd = (
-            f"srun -n1 --cpus-per-task={n_cores} --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
-            + "&\n"
-        )
+        if not as_step:
+            jobstep_cmd = f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+        else:
+            jobstep_cmd = (
+                f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                + "&\n"
+            )
         return jobstep_cmd
 
     def generate_as_step(self, sbjob, node_features):
@@ -239,7 +264,6 @@ class SbatchManager:
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}" + "\n"
         sb_script += f"#SBATCH --job-name=main" + "\n"
         output = self.get_output_filepath(LOCALHOST, "slurm")
-        sb_script += f"#SBATCH --output={output}" + "\n"
         sb_script += f"#SBATCH --output={output}" + "\n"
         sb_header = ""
         sb_steps = ""
@@ -264,7 +288,12 @@ class SbatchManager:
                 if len(sbjob) == 1:
                     het_group_id = -1
                 sb_steps += self.get_jobstep_cmd(
-                    node, job_name, details, het_group=het_group_id, with_output=True
+                    node,
+                    job_name,
+                    details,
+                    het_group=het_group_id,
+                    with_output=True,
+                    as_step=True,
                 )
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
@@ -278,27 +307,37 @@ class SbatchManager:
         sb_script += f"#SBATCH --comment={details['comment']}" + "\n"
 
         n_cores = self.get_n_cores(details)
+        n_tasks = 1
         flag_x = False
         if "flags" in details:
             if details["flags"].find("x") > -1:
                 flag_x = True
         if flag_x:
             n_cores += 1
+            n_tasks += 1
+
+        # We allocate one task (-n 1/default) for each drp process with n_cores cpus.
+        # Each process can fork no. of workers (defined in the configuration py file
+        # with default value of 10). We thought that asking for 10 cores would be
+        # enough but this causes the process to hang. See the configuration py file
+        # to check how many cores are for different drp processes.
+        if self.is_drp(details["cmd"]) or self.is_teb(details["cmd"]):
+            sb_script += f"#SBATCH -N 1" + "\n"
+            sb_script += f"#SBATCH -n {n_tasks}" + "\n"
+            sb_script += f"#SBATCH -c {n_cores}" + "\n"
 
         if node_features is None:
-            sb_script += f"#SBATCH --nodelist={node} --ntasks={n_cores}" + "\n"
+            sb_script += f"#SBATCH --nodelist={node}" + "\n"
         else:
-            sb_script += f"#SBATCH --constraint={job_name} --ntasks={n_cores}" + "\n"
+            sb_script += f"#SBATCH --constraint={job_name}" + "\n"
 
         sb_script += self.get_jobstep_cmd(node, job_name, details)
         if flag_x:
             cmd = "sattach $SLURM_JOB_ID.0"
             jobstep_cmd = (
-                f"srun -n1 --exclusive --job-name={job_name}_x --x11 xterm -e bash -c '{cmd}'"
-                + "&\n"
+                f"srun -n1 -c1 --unbuffered --job-name={job_name}_x --x11 xterm -e bash -c '{cmd}'"
             )
             sb_script += jobstep_cmd
-        sb_script += "wait"
         self.sb_script = sb_script
         if self.verbose:
             print(self.sb_script)

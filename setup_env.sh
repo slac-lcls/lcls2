@@ -49,6 +49,9 @@ export HDF5_USE_FILE_LOCKING=FALSE
 export RDMAV_FORK_SAFE=1
 export RDMAV_HUGEPAGES_SAFE=1
 
+# needed by JupyterLab
+export JUPYTERLAB_WORKSPACES_DIR=${HOME}
+
 # cpo: workaround a qt bug which may no longer be there (dec 5, 2022)
 if [ ! -d /usr/share/X11/xkb ]; then
     export QT_XKB_CONFIG_ROOT=${CONDA_PREFIX}/lib
