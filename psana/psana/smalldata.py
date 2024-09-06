@@ -538,7 +538,6 @@ class SmallData: # (client)
         self._first_open = True # filename has not been opened yet
 
         if MODE == 'PARALLEL':
-
             # hide intermediate files -- join later via VDS
             if filename is not None:
 
