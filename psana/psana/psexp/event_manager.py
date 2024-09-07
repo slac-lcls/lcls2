@@ -89,7 +89,6 @@ class EventManager(object):
 
         # Update EnvStore - this is the earliest we know if this event is a Transition
         # make sure we update the envstore now rather than later.
-        #if evt.service() != TransitionId.L1Accept:
         if not self.isEvent(evt.service()):
             self.esm.update_by_event(evt)
 
@@ -203,7 +202,6 @@ class EventManager(object):
 
                 # For L1 with bigdata files, store offset and size found in smd dgrams.
                 # For Enable, store new chunk id (if found).
-                #if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
                 if self.isEvent(d.service()) and self.dm.n_files > 0:
                     if i_first_L1 == -1:
                         i_first_L1 = i_evt
@@ -420,6 +418,8 @@ class EventManager(object):
                 dgrams[i_smd] = dgram.Dgram(
                     config=self.dm.configs[i_smd], view=view, offset=offset
                 )
+                if self.service_array[self.i_evt, i_smd] == TransitionId.L1Accept_EndOfBatch:
+                    setattr(dgrams[i_smd], '_endofbatch', True)
 
         self.i_evt += 1
         evt = Event(dgrams=dgrams, run=self.dm.get_run())

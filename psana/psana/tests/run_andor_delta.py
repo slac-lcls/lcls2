@@ -31,7 +31,7 @@ def check_answer(ts, cn_atm_events, cn_intg_events):
 
 
 # set intg_delta_t
-intg_delta_t = 107800000
+intg_delta_t = 107800000 
 
 mount_dir = '/sdf/data/lcls/drpsrcf/ffb'
 #mount_dir = '/cds/data/drpsrcf'
@@ -62,7 +62,7 @@ for myrun in ds.runs():
                 cn_andor_events += 1
             
             # Check that no. of atm events are as expected with intg_delta_t
-            if evt.timestamp == (andor_current_ts + intg_delta_t):
+            if evt.EndOfBatch():
                 delta_ns = evt.timestamp_diff(andor_current_ts)
                 txt = f'BD:{rank} ts: {evt.timestamp} #atm: {cn_atm_events} #andor: {cn_andor_events} #intg: {cn_intg_events} delta_ns:{delta_ns}'
                 check_answer(evt.timestamp, cn_atm_events, cn_intg_events)
