@@ -200,3 +200,9 @@ class Event():
         of available bigdata cores.
         """
         self._proxy_evt.set_destination(dest)
+
+    def EndOfBatch(self):
+        for d in self._dgrams:
+            if hasattr(d, '_endofbatch'):
+                return True
+        return False

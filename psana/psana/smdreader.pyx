@@ -3,7 +3,7 @@
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from parallelreader cimport Buffer, ParallelReader
-from libc.stdint cimport uint32_t, uint64_t
+from libc.stdint cimport uint8_t, uint32_t, uint64_t
 from cpython cimport array
 import time, os
 cimport cython
@@ -14,6 +14,7 @@ from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONT
 from psana.dgramedit import DgramEdit
 from cpython.object cimport PyObject
 from cpython.getargs cimport PyArg_ParseTupleAndKeywords
+from dgramlite cimport Xtc, Sequence, Dgram
 
 
 cdef class SmdReader:
@@ -30,8 +31,10 @@ cdef class SmdReader:
     cdef array.array block_sizes                # }
     cdef array.array i_st_bufs                  # ¬ for sharing viewing windows in show() 
     cdef array.array block_size_bufs            # }
+    cdef array.array i_en_bufs                  # } 
     cdef array.array i_st_stepbufs              # }
     cdef array.array block_size_stepbufs        # }
+    cdef array.array i_en_stepbufs              # } 
     cdef array.array repack_offsets             # ¬ for parallel repack 
     cdef array.array repack_step_sizes          # }
     cdef array.array repack_footer              # }
@@ -49,6 +52,8 @@ cdef class SmdReader:
     cdef unsigned    _fakebuf_maxsize
     cdef unsigned    _fakebuf_size
     cdef PyObject*   dsparms
+    cdef uint8_t     L1Accept
+    cdef uint8_t     L1Accept_EndOfBatch
 
     def __init__(self, int[:] fds, int chunksize, *args, **kwargs):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
@@ -79,8 +84,10 @@ cdef class SmdReader:
         self.block_sizes        = array.array('L', [0]*fds.size) 
         self.i_st_bufs          = array.array('L', [0]*fds.size) 
         self.block_size_bufs    = array.array('L', [0]*fds.size) 
+        self.i_en_bufs          = array.array('L', [0]*fds.size) 
         self.i_st_stepbufs      = array.array('L', [0]*fds.size) 
         self.block_size_stepbufs= array.array('L', [0]*fds.size) 
+        self.i_en_stepbufs      = array.array('L', [0]*fds.size) 
         self.repack_offsets     = array.array('L', [0]*fds.size)
         self.repack_step_sizes  = array.array('L', [0]*fds.size)
         self.repack_footer      = array.array('I', [0]*(fds.size+1))# size of all smd chunks plus no. of smds
@@ -88,6 +95,8 @@ cdef class SmdReader:
         self._fakebuf           = bytearray(self._fakebuf_maxsize)
         self._fakebuf_size      = 0
         self.n_processed_events = 0
+        self.L1Accept           = TransitionId.L1Accept
+        self.L1Accept_EndOfBatch= TransitionId.L1Accept_EndOfBatch
 
         # Repack footer contains constant (per run) no. of smd files
         self.repack_footer[fds.size] = fds.size 
@@ -228,13 +237,13 @@ cdef class SmdReader:
             if max_events == 0:
                 for i in range(i_bob+1, i_eob + 1):
                     n_events += 1
-                    if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                    if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                         n_L1Accepts +=1
                     if n_L1Accepts == batch_size: break
             else:
                 for i in range(i_bob+1, i_eob + 1):
                     n_events += 1
-                    if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                    if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                         n_L1Accepts +=1
                     if n_L1Accepts == batch_size: break
                     if self.n_processed_events + n_L1Accepts == max_events: break
@@ -242,13 +251,13 @@ cdef class SmdReader:
             if max_events == 0:
                 for i in range(i_bob+1, i_eob + 1):
                     n_events += 1
-                    if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                    if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                         n_L1Accepts +=1
                     if n_events == batch_size: break
             else:
                 for i in range(i_bob+1, i_eob + 1):
                     n_events += 1
-                    if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+                    if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                         n_L1Accepts +=1
                     if n_events == batch_size: break
                     if self.n_processed_events + n_events == max_events: break
@@ -295,7 +304,7 @@ cdef class SmdReader:
         limit_ts_complete = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
         cdef uint64_t ts_sec=0, ts_nsec=0, ts_sum=0
         for i in range(i_bob+1, i_eob + 1):
-            if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.L1Accept:
+            if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                 # For correct math operation, we need to convert timestamp to seconds
                 # and nanoseconds first, do the operation, and convert the result 
                 # back to the timestamp format.
@@ -378,8 +387,10 @@ cdef class SmdReader:
         cdef uint64_t[:] block_sizes        = self.block_sizes 
         cdef uint64_t[:] i_st_bufs          = self.i_st_bufs
         cdef uint64_t[:] block_size_bufs    = self.block_size_bufs
+        cdef uint64_t[:] i_en_bufs          = self.i_en_bufs
         cdef uint64_t[:] i_st_stepbufs      = self.i_st_stepbufs
         cdef uint64_t[:] block_size_stepbufs= self.block_size_stepbufs
+        cdef uint64_t[:] i_en_stepbufs      = self.i_en_stepbufs
 
         # Need to convert Python object to c++ data type for the nogil loop 
         cdef unsigned endrun_id = TransitionId.EndRun
@@ -393,8 +404,10 @@ cdef class SmdReader:
             # does not exceed limiting timestamp.
             i_st_bufs[i] = 0
             block_size_bufs[i] = 0
+            i_en_bufs[i] = 0
             i_st_stepbufs[i] = 0
             block_size_stepbufs[i] = 0
+            i_en_stepbufs[i] = 0
             
             buf = &(self.prl_reader.bufs[i])
             
@@ -411,6 +424,7 @@ cdef class SmdReader:
                
                 i_st_bufs[i] = i_starts[i]
                 block_size_bufs[i] = block_sizes[i]
+                i_en_bufs[i] = i_ends[i]
                 
                 buf.seen_offset = buf.en_offset_arr[i_ends[i]]
                 buf.n_seen_events =  i_ends[i] + 1
@@ -435,6 +449,7 @@ cdef class SmdReader:
                 
                 i_st_stepbufs[i] = i_stepbuf_starts[i]
                 block_size_stepbufs[i] = block_sizes[i]
+                i_en_stepbufs[i] = i_stepbuf_ends[i]
                 
                 buf.seen_offset = buf.en_offset_arr[i_stepbuf_ends[i]]
                 buf.n_seen_events = i_stepbuf_ends[i] + 1
@@ -467,7 +482,7 @@ cdef class SmdReader:
         cdef unsigned i_fake=0, out_offset = 0
         
         # Only create fake buffer when set and the last dgram is a valid transition
-        if self.fakestep_flag == 1 and self.winner_last_sv in (TransitionId.L1Accept, TransitionId.SlowUpdate):
+        if self.fakestep_flag == 1 and self.winner_last_sv in (TransitionId.L1Accept, TransitionId.L1Accept_EndOfBatch, TransitionId.SlowUpdate):
             # Only need to create once since fake transition set is the same for all streams.
             if self._fakebuf_size == 0:
                 fake_config = DgramEdit(transition_id=TransitionId.Configure, ts=0)
@@ -629,7 +644,7 @@ cdef class SmdReader:
         view = <char [:total_size]> (send_buf) 
         return view
 
-    def repack_parallel(self, step_views, eb_node_id, only_steps=0):
+    def repack_parallel(self, step_views, eb_node_id, only_steps=0, intg_stream_id=-1):
         """ Repack step and smd data in one consecutive chunk with footer at end.
         Memory copying is done is parallel.
         """
@@ -644,6 +659,8 @@ cdef class SmdReader:
         send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
         cdef int i=0, offset=0
         cdef uint64_t footer_size=0, total_size=0
+        cdef uint64_t intg_eob_d_size = 0
+        cdef int c_intg_stream_id = intg_stream_id
         
         # Check if we need to append fakestep transition set
         cdef Py_buffer fake_pybuf
@@ -655,7 +672,11 @@ cdef class SmdReader:
 
         # Compute beginning offsets of each chunk and get a list of buffer objects
         # If fakestep_flag is set, we need to append fakestep transition step
-        # to the new repacked data.
+        # to the new repacked data. Also find the stream with the oldest last
+        # dgram (in case integrating detector is turned on and we need to
+        # identify the end of batch for the stream with the most events.
+        cdef int eob_stream_id = -1
+        cdef uint64_t eob_ts = 0 
         for i in range(self.prl_reader.nfiles):
             offsets[i] = offset
             # Move offset and total size to include missing steps
@@ -677,13 +698,22 @@ cdef class SmdReader:
             ptr_step_bufs[i] = <char *>step_buf.buf
             PyBuffer_Release(&step_buf)
 
+            # Find the stream with the oldest last dgram
+            if self.prl_reader.bufs[i].ts_arr[self.i_en_bufs[i]] > eob_ts:
+                eob_ts = self.prl_reader.bufs[i].ts_arr[self.i_en_bufs[i]]
+                eob_stream_id = i
 
         assert total_size <= self.sendbufsize, f"Repacked data exceeds send buffer's size (total:{total_size} bufsize:{self.sendbufsize})."
         
         # Access raw C pointers so they can be used in nogil loop below
         cdef uint64_t* block_size_bufs = <uint64_t*>self.block_size_bufs.data.as_voidptr
         cdef uint64_t* i_st_bufs = <uint64_t*>self.i_st_bufs.data.as_voidptr
+        cdef uint64_t* i_en_bufs = <uint64_t*>self.i_en_bufs.data.as_voidptr
         cdef uint32_t* footer = <uint32_t*>self.repack_footer.data.as_voidptr
+        cdef Dgram* d
+        cdef uint8_t service
+        cdef uint64_t new_env
+        cdef uint64_t second_byte = 0xf0ffffff      # Need this in ctype to avoid conversion in nogil loop below
 
         # Copy step and smd buffers if exist
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
@@ -695,6 +725,16 @@ cdef class SmdReader:
             
             if c_only_steps == 0:
                 if block_size_bufs[i] > 0:
+                    # For integrating detectors, we update the transition of the batch's last dgram 
+                    # in the fastest stream (stream with last dgram with largest ts) to L1Accept_EndOfBatch.
+                    if c_intg_stream_id > -1 and i == eob_stream_id: 
+                        d = <Dgram *>(self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[i_en_bufs[i]])
+                        # From 8 bytes env, |0 |0 |0 |0 |x |- |- |- |  x is service byte
+                        service = (d.env>>24)&0xf
+                        new_env = d.env & second_byte | self.L1Accept_EndOfBatch << 24
+                        if service == self.L1Accept:
+                            memcpy(&(d.env), &new_env, sizeof(uint32_t))
+
                     memcpy(send_buf + offsets[i], 
                             self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[i_st_bufs[i]], 
                             block_size_bufs[i])

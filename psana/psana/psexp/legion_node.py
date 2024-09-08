@@ -53,7 +53,7 @@ def batch_events(smd_batch, run):
     # FIXME: ds needs to be here
     events = Events(ds, run, get_smd=get_smd)
     for evt in events:
-        if evt.service() != TransitionId.L1Accept:
+        if not TransitionId.isEvent(evt.service()):
             continue
         yield evt
 

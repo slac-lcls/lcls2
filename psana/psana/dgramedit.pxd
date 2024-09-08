@@ -4,7 +4,7 @@ cnp.import_array() # needed
 
 cdef extern from 'xtcdata/xtc/TransitionId.hh' namespace "XtcData":
     cdef cppclass TransitionId:
-        enum Value: ClearReadout, Reset, Configure, Unconfigure, BeginRun, EndRun, BeginStep, EndStep, Enable, Disable, SlowUpdate, Unused_11, L1Accept = 12, NumberOf
+        enum Value: ClearReadout, Reset, Configure, Unconfigure, BeginRun, EndRun, BeginStep, EndStep, Enable, Disable, SlowUpdate, L1Accept_EndOfBatch, L1Accept = 12, NumberOf
 
 cdef extern from 'xtcdata/xtc/TimeStamp.hh' namespace "XtcData":
     cdef cppclass TimeStamp:
@@ -97,6 +97,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
                 uint64_t timestamp_val, char* buf)
         void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId)
         void updateTimeStamp(Dgram& d, uint64_t timestamp_val)
+        void updateService(Dgram& d, uint8_t transitionId)
         int  getElementSize(unsigned nodeId, unsigned namesId,
                 DataDef& datadef, char* varname)
         cnp.uint32_t getRemovedSize()

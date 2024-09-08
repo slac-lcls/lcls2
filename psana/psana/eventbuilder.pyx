@@ -224,7 +224,7 @@ cdef class EventBuilder:
                 batch.extend(evt_bytearray)
                 evt_sizes.append(memoryview(evt_bytearray).nbytes)
             else:
-                if proxy_evt.service != TransitionId.L1Accept:
+                if not TransitionId.isEvent(proxy_evt.service):
                     for dest, (step_batch, step_sizes) in step_dict.items():
                         step_batch.extend(evt_bytearray)
                         step_sizes.append(memoryview(evt_bytearray).nbytes)
@@ -355,7 +355,7 @@ cdef class EventBuilder:
         #t4 = time.perf_counter()
 
         # For Non L1, check that all dgrams show up
-        if  proxy_evt.service != TransitionId.L1Accept and cn_dgrams != self.nsmds:
+        if not TransitionId.isEvent(proxy_evt.service) and cn_dgrams != self.nsmds:
             msg = f'TransitionId {proxy_evt.service} incomplete (ts:{proxy_evt.timestamp}) expected:{self.nsmds} received:{cn_dgrams}'
             raise RuntimeError(msg)
         
@@ -395,7 +395,7 @@ cdef class EventBuilder:
                 proxy_evt = self.build_proxy_event()
                 if proxy_evt is not None:
                     # Potentially keep indices of transition for filtering
-                    if proxy_evt.service != TransitionId.L1Accept:
+                    if not TransitionId.isEvent(proxy_evt.service):
                         got_step += 1
                         if filter_timestamps.shape[0] > 0:
                             non_L1_indices.append(got)
@@ -406,7 +406,7 @@ cdef class EventBuilder:
                 proxy_evt = self.build_proxy_event()
                 if proxy_evt is not None:
                     # Potentially keep indices of transition for filtering
-                    if proxy_evt.service != TransitionId.L1Accept:
+                    if not TransitionId.isEvent(proxy_evt.service):
                         got_step += 1
                         if filter_timestamps.shape[0] > 0:
                             non_L1_indices.append(got)

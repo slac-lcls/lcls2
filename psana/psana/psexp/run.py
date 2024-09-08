@@ -287,7 +287,7 @@ class RunShmem(Run):
     def events(self):
 
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndRun:
                     return
                 continue
@@ -316,7 +316,7 @@ class RunDrp(Run):
 
     def events(self):
         for evt in self._evt_iter:
-            if evt.service() == TransitionId.L1Accept:
+            if TransitionId.isEvent(evt.service()):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
@@ -327,7 +327,7 @@ class RunDrp(Run):
                 bufsize=buffer_size,
             )
 
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndRun:
                     self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                     return
@@ -338,7 +338,7 @@ class RunDrp(Run):
 
     def steps(self):
         for evt in self._evt_iter:
-            if evt.service() == TransitionId.L1Accept:
+            if TransitionId.isEvent(evt.service()):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
@@ -370,7 +370,7 @@ class RunSingleFile(Run):
 
     def events(self):
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndRun:
                     return
                 continue
@@ -397,7 +397,7 @@ class RunSerial(Run):
 
     def events(self):
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndRun:
                     return
                 continue
@@ -467,7 +467,7 @@ class RunSmallData(Run):
 
     def steps(self):
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 self.esm.update_by_event(evt)
                 self.proxy_events.append(evt._proxy_evt)
                 if evt.service() == TransitionId.EndRun:
@@ -482,7 +482,7 @@ class RunSmallData(Run):
 
     def events(self):
         for evt in self.eb.events():
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 self.esm.update_by_event(evt)
                 self.proxy_events.append(evt._proxy_evt)
                 if evt.service() == TransitionId.EndRun:
