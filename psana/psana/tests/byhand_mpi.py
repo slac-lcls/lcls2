@@ -11,8 +11,7 @@ class Test:
         setup_input_files(tmp_path)
 
         env = dict(list(os.environ.items()) + [
-            #('TEST_XTC_DIR', str(tmp_path)),
-            ('TEST_XTC_DIR', "/sdf/home/m/monarin/tmp"),
+            ('TEST_XTC_DIR', str(tmp_path)),
             ('PS_SRV_NODES', '0'),
             ('PS_EB_NODES', '1')
         ])
