@@ -9,7 +9,7 @@ import socket
 
 LOCALHOST = socket.gethostname()
 SLURM_PARTITION = "drpq"
-DRP_N_RSV_CORES = 4
+DRP_N_RSV_CORES = int(os.environ.get('PS_DRP_N_RSV_CORES', '4'))
 
 
 class PSbatchSubCommand:
@@ -166,26 +166,15 @@ class SbatchManager:
             cmd += f" -u {job_name}"
         if job_name == "psqueue":
             cmd += f" {self.configfilename}"
-        # if self.is_drp(details["cmd"]):
-        # if job_name.startswith("timing_"):
-        #    n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
-        #    if n_workers < 1:
-        #        n_workers = 1
-        #    cmd += f" -W {n_workers}"
+        if self.is_drp(details["cmd"]):
+            n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
+            if n_workers < 1:
+                n_workers = 1
+            cmd += f" -W {n_workers}"
         return cmd
 
     def is_drp(self, cmd):
-        return (
-            cmd.find(" drp ") > -1
-            or cmd.find(" drp_pva ") > -1
-            or cmd.find(" drp_udpencoder ") > -1
-            or cmd.find(" drp_bld ") > -1
-            or cmd.find(" monReqServer ") > -1
-            or cmd.find(" tpr_trigger ") > -1
-        )
-
-    def is_teb(self, cmd):
-        return cmd.find(" teb ") > -1
+        return cmd.strip().startswith("drp ")
 
     def get_output_header(self, node, job_name, details):
         header = ""
@@ -316,20 +305,10 @@ class SbatchManager:
             n_cores += 1
             n_tasks += 1
 
-        # We allocate one task (-n 1/default) for each drp process with n_cores cpus.
-        # Each process can fork no. of workers (defined in the configuration py file
-        # with default value of 10). We thought that asking for 10 cores would be
-        # enough but this causes the process to hang. See the configuration py file
-        # to check how many cores are for different drp processes.
-        if self.is_drp(details["cmd"]) or self.is_teb(details["cmd"]):
-            sb_script += f"#SBATCH -N 1" + "\n"
-            sb_script += f"#SBATCH -n {n_tasks}" + "\n"
-            sb_script += f"#SBATCH -c {n_cores}" + "\n"
-
         if node_features is None:
-            sb_script += f"#SBATCH --nodelist={node}" + "\n"
+            sb_script += f"#SBATCH --nodelist={node} -c {n_cores}" + "\n"
         else:
-            sb_script += f"#SBATCH --constraint={job_name}" + "\n"
+            sb_script += f"#SBATCH --constraint={job_name} -c {n_cores}" + "\n"
 
         sb_script += self.get_jobstep_cmd(node, job_name, details)
         if flag_x:
