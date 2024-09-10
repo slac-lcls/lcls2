@@ -552,7 +552,8 @@ class DaqXPM():
         # The value of 99 shouldn't be necessary, according to simulation.
         # Empirically, it is necessary for group alignment
         # This value breaks receivers with old firmware (earlier than l2si-core v3.5.0)
-        if self._usepva:
+        #if self._usepva:
+        if True:  # PVA does special handling
             pv = f'{self.pv_xpm_base}:CommonL0Delay'
             if not self.pva.pv_put(pv,l0max):
                 logging.debug(f'setup_common() failed setting CommonL0Delay')
@@ -608,7 +609,8 @@ class DaqXPM():
     #  DaqXPM.set_master
     #
     def set_master(self,groups):
-        if self._usepva:
+        #if self._usepva:
+        if True:  # xpmpva searches for master PV to populate group rates display
             for pv in self.pvListXPM:
                 if not self.pva.pv_put(pv, 1):
                     logging.debug('connect: failed to put PV \'%s\'' % pv)
@@ -625,7 +627,8 @@ class DaqXPM():
     #  DaqXPM.set_common
     #
     def set_common(self,common):
-        if self._usepva:
+        #if self._usepva:
+        if True:  # PVA does special handling
             pv = f'{self.pv_xpm_base}:PART:{common}:Master'
             if not self.pva.pv_put(pv, 2):
                 self.report_error(f'set_common: failed to put PV {pv} common')

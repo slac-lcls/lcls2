@@ -41,7 +41,7 @@ def usual_cdict():
 
     top.set('user.LINAC', 0, 'linacEnum')
 
-    for group in range(1,8):   # remove group 0 (common)
+    for group in range(8):
         grp_prefix = 'user.Cu.group'+str(group)+'_'
         if group==6:
             top.set(grp_prefix+'eventcode', 272, 'UINT32')

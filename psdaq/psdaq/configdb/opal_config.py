@@ -77,6 +77,7 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
                'laneConfig'  : {lane:'Opal1000'},
                'dataDebug'   : False,
                'enLclsII'    : True,
+               'startupMode' : True,
                'pgp4'        : False,
                'enableConfig': False,
     }
@@ -90,8 +91,8 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     # there appear to be no options to tell ClinkDevRoot to use
     # LCLS2 timing (without reading yaml files, which we don't
     # want to do) so set it by hand here.
-    cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-    time.sleep(3.5)
+##    cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+##    time.sleep(3.5)
 
     # TODO: To be removed, now commented out xpm glitch workaround
     # Open a new thread here
@@ -287,9 +288,6 @@ def config_expert(cl, cfg):
 
         #  Apply
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
-            if 'Hsio.TimingRx' in path and not barrier_global.supervisor:
-                print('*** non-supervisor skipping setting',path,'to value',configdb_node)
-                continue
             rogue_node.set(configdb_node)
             #  Parameters like black-level need time to take affect (100ms?)
 
