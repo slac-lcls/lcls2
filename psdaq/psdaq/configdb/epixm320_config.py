@@ -253,8 +253,8 @@ def setSaci(reg,field,di):
         reg.set(v)
 
 def gain_mode_map(gain_mode):
-    compTH        = ( 0, 63, 12)[gain_mode] # SoftHigh/SoftLow/Auto
-    precharge_DAC = (45, 50, 45)[gain_mode]
+    compTH        = ( 0, 44, 24)[gain_mode] # SoftHigh/SoftLow/Auto
+    precharge_DAC = (45, 45, 45)[gain_mode]
     return (compTH, precharge_DAC)
 
 #
