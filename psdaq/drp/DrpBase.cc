@@ -99,7 +99,7 @@ MemPool::MemPool(Parameters& para) :
         logging::critical("Error opening %s: %s", para.device.c_str(), strerror(errno));
         throw "Error opening kcu1500!!";
     }
-    logging::info("PGP device %s opened", para.device.c_str());
+    logging::info("PGP device '%s' opened", para.device.c_str());
 
     uint32_t dmaCount;
     dmaBuffers = dmaMapDma(m_fd, &dmaCount, &m_dmaSize);
@@ -147,7 +147,7 @@ MemPool::MemPool(Parameters& para) :
 
 MemPool::~MemPool()
 {
-   logging::info("%s: closing file descriptor", __PRETTY_FUNCTION__);
+   logging::debug("%s: Closing PGP device file descriptor", __PRETTY_FUNCTION__);
    close(m_fd);
 }
 

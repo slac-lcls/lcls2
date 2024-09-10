@@ -177,13 +177,15 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py'},
 # {host: 'drp-srcf-cmp026', id:'tmo_peppexopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x4 -D opal'},
 
+ {host: 'drp-srcf-cmp043', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x8 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp035', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp028', id:'tstcam2_0',   flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp036', id:'tstcam2_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
- {host: 'drp-srcf-gpu001', id:'tstcam1_0',   flags:'spux',                cmd:f'{gpu_cmd1} -l 0x1 -D fakecam -vvv'},
+# {host: 'drp-srcf-gpu001', id:'tstcam1_0',   flags:'spux',                cmd:f'{gpu_cmd1} -l 0x1 -D fakecam -vvv'},
+# {host: 'drp-srcf-gpu001', id:'tstcam1_0',   flags:'spux',                cmd:f'{task_set} drp {gpu_opts1} -l 0x1 -D fakecam -vvv'},
 
 # {host: 'drp-srcf-cmp029', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd0} -l 0x4 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 
