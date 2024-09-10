@@ -40,7 +40,7 @@ class SbatchManager:
             "OPENBLAS_NUM_THREADS",
             "PS_PARALLEL",
         ]
-        self.env_dict = {key: os.environ.get(key, "") for key in envs}
+        self.env_dict = {key: os.environ.get(key, "none") for key in envs}
         self.configfilename = configfilename
         self.platform = platform
         self.as_step = as_step
