@@ -35,6 +35,15 @@ class NoLock(object):
             logging.info('NoLock.release level {}'.format(self._level))
         self._level=self._level-1
 
+class MyProvider(StaticProvider):
+    def __init__(self, name):
+        super(MyProvider,self).__init__(name)
+        self.pvdict = {}
+
+    def add(self,name,pv):
+        self.pvdict[name] = pv
+        super(MyProvider,self).add(name,pv)
+
 def main():
     global pvdb
     pvdb = {}     # start with empty dictionary
@@ -83,7 +92,8 @@ def main():
     # Print the AxiVersion Summary
     axiv.printStatus()
 
-    provider = StaticProvider(__name__)
+    #provider = StaticProvider(__name__)
+    provider = MyProvider(__name__)
 
     lock = Lock()
 

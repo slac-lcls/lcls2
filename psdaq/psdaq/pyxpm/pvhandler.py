@@ -1,6 +1,7 @@
 from p4p.server.thread import SharedPV
 from p4p.nt import NTScalar
 from p4p.nt import NTTable
+import psdaq.pyxpm.autosave as autosave
 import time
 import logging
 
@@ -74,8 +75,9 @@ class DefaultPVHandler(object):
 
 class PVHandler(object):
 
-    def __init__(self,cb):
+    def __init__(self,cb,archive=None):
         self._cb = cb
+        self._archive = archive
 
     def put(self, pv, op):
         postedval = op.value()
@@ -84,4 +86,6 @@ class PVHandler(object):
         pv.post(postedval)
         self._cb(pv,postedval['value'])
         op.done()
+        if self._archive:
+            autosave.add(self._archive,postedval['value'])
 

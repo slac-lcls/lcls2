@@ -516,7 +516,8 @@ class DaqXPM():
             msg = {'type':'set_idx_reg',
                    'reg' :'l0Groups',
                    'groups':groups,
-                   'value' :groups}
+                   'value' :groups,
+                   'pv'    :self.pvListL0Groups}
             self.push.send_json(msg)
             retVal = True
         return retVal
@@ -535,7 +536,8 @@ class DaqXPM():
             msg = {'type'  :'set_idx_reg',
                    'reg'   :'l0Groups',
                    'groups':1<<platform,
-                   'value' :groups}
+                   'value' :groups,
+                   'pv'    :f'{self.pv_xpm_base}:PART:{platform}:L0Groups'}
             self.push.send_json(msg)
 
         #  set the common group delay
@@ -577,7 +579,8 @@ class DaqXPM():
             msg = {'type'  :'set_idx_reg', 
                    'reg'   :'l0Groups', 
                    'groups':groups, 
-                   'value' :0}
+                   'value' :0,
+                   'pv'    :self.pvListL0Groups}
             self.push.send_json(msg)
             rv = True
         return rv
@@ -609,8 +612,7 @@ class DaqXPM():
     #  DaqXPM.set_master
     #
     def set_master(self,groups):
-        #if self._usepva:
-        if True:  # xpmpva searches for master PV to populate group rates display
+        if self._usepva:
             for pv in self.pvListXPM:
                 if not self.pva.pv_put(pv, 1):
                     logging.debug('connect: failed to put PV \'%s\'' % pv)
@@ -619,7 +621,8 @@ class DaqXPM():
             msg = {'type'  :'set_idx_reg',
                    'reg'   :'l0Master',
                    'groups':groups,
-                   'value' :1}
+                   'value' :1,
+                   'pv'    :self.pvListXPM }
             self.push.send_json(msg)
         return True
 
@@ -645,13 +648,14 @@ class DaqXPM():
     #  DaqXPM.group_run
     #
     def group_run(self, groups, enable):
+        pv = self.pvGroupL0Enable if enable else self.pvGroupL0Disable
         if self._usepva:
-            pv = self.pvGroupL0Enable if enable else self.pvGroupL0Disable
             rv = self.pva.pv_put(pv, groups)
         else:
             msg = {'type' :'set_reg',
                    'reg'  :'groupL0Enable' if enable else 'groupL0Disable',
-                   'value':groups}
+                   'value':groups,
+                   'pv'   :pv}
             self.push.send_json(msg)
             rv = True
         return rv
@@ -696,7 +700,8 @@ class DaqXPM():
         else:
             msg = {'type'  :'set_reg',
                    'reg'   :f'stepEnd{group}',
-                   'value' :readout}
+                   'value' :readout,
+                   'pv'    :f'{pv_base}:StepEnd'}
             self.push.send_json(msg)
 
             self.pvStepDone = f'{pv_base}:StepDone'
@@ -704,7 +709,8 @@ class DaqXPM():
 
             msg = {'type'  :'set_reg',
                    'reg'   :f'stepGroup{group}',
-                   'value' :mask}
+                   'value' :mask,
+                   'pv'    :f'{pv_base}:StepGroups'}
             self.push.send_json(msg)
             rv = True
         return rv
