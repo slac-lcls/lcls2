@@ -193,9 +193,8 @@ int EbLfServer::pollEQ()
       {
         EbLfSvrLink* link = _linkByEp[ep];
         if (_verbose)
-          printf("EbLfClient %d disconnected\n", link->id());
-        disconnect(link);
-        rc = (_linkByEp.size() == 0) ? -FI_ENOTCONN : FI_SUCCESS;
+          printf("EbLfClient %d disconnected on far side\n", link->id());
+        rc = -FI_ENOTCONN;
       }
       else
       {
@@ -266,6 +265,23 @@ void EbLfServer::shutdown()
   }
 }
 
+static ssize_t dumpCqError(CompletionQueue* cq, const char* fn)
+{
+  struct fi_cq_err_entry compErr;
+  auto rc = cq->comp_error(&compErr);
+  if (rc > 0)
+  {
+    fprintf(stderr, "%s:\n  Error reading Rx CQ:\n", fn);
+    cq->comp_error_dump(compErr);
+    rc = -compErr.err;                  // Return the real error
+  }
+  else
+    fprintf(stderr, "%s:\n  Error decoding Rx CQ error: rc %zd: %s\n",
+            fn, rc, cq->error());
+
+  return rc;
+}
+
 int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 {
   int  rc;
@@ -287,20 +303,52 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 
       if (t1 - t0 >= ms_t{1})
       {
-        _tmo = msTmo;               // Switch to waiting after 1 ms
+        _tmo = msTmo;                  // Switch to waiting after 1 ms
         break;
       }
     }
-    else
+    else if (pollEQ() == -FI_ENOTCONN)
     {
-      fprintf(stderr, "%s:\n  Error %d reading Rx CQ: %s\n",
-              __PRETTY_FUNCTION__, rc,
-              _rxcq ? _rxcq->error() : fi_strerror(-rc));
+      rc = -FI_ENOTCONN;               // rc uninteresting if disconnected
+      break;
+    }
+    else                               // Notify of unexpected error
+    {
+      if (_rxcq && rc == -FI_EAVAIL)   // Return actual error instead of EAVAIL
+        rc = dumpCqError(_rxcq, __PRETTY_FUNCTION__);
+      else
+        fprintf(stderr, "%s:\n  Error reading Rx CQ: rc %d: %s\n",
+                __PRETTY_FUNCTION__, rc,
+                _rxcq ? _rxcq->error() : fi_strerror(-rc));
       break;
     }
   }
 
   _pending -= 1;
+
+  return rc;
+}
+
+int Pds::Eb::EbLfServer::poll(uint64_t* data)
+{
+  const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
+  fi_cq_data_entry cqEntry;
+
+  int rc = _poll(&cqEntry, flags);
+  *data = cqEntry.data;
+
+  if (rc > 0 || rc == -FI_EAGAIN)
+    return rc;
+
+  if (pollEQ() == -FI_ENOTCONN)        // rc uninteresting if disconnected
+    return -FI_ENOTCONN;
+
+  if (_rxcq && rc == -FI_EAVAIL)       // Return actual error instead of EAVAIL
+    rc = dumpCqError(_rxcq, __PRETTY_FUNCTION__);
+  else
+    fprintf(stderr, "%s:\n  Error reading Rx CQ: rc %d: %s\n",
+            __PRETTY_FUNCTION__, rc,
+            _rxcq ? _rxcq->error() : fi_strerror(-rc));
 
   return rc;
 }

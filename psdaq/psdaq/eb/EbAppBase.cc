@@ -272,9 +272,7 @@ int EbAppBase::process()
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
     }
-    else if (_transport.pollEQ() == -FI_ENOTCONN)
-      rc = -FI_ENOTCONN;
-    else
+    else if (rc != -FI_ENOTCONN)
       logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;

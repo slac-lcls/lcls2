@@ -2070,27 +2070,27 @@ ssize_t CompletionQueue::comp_error(struct fi_cq_err_entry* comp_err)
   return rret;
 }
 
-void CompletionQueue::comp_error_dump(struct fi_cq_err_entry* comp_err)
+void CompletionQueue::comp_error_dump(const struct fi_cq_err_entry& comp_err) const
 {
   char buf[ERR_MSG_LEN];          memset(buf, 0, sizeof(buf));
-  auto msg = fi_cq_strerror(_cq, comp_err->prov_errno, comp_err->err_data, buf, sizeof(buf));
+  auto msg = fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, buf, sizeof(buf));
 
-  printf ("void*    op_context    %p\n",      comp_err->op_context);
-  printf ("uint64_t flags         %016lx\n",  comp_err->flags);
-  printf ("size_t   len           %zd\n",     comp_err->len);
-  printf ("void*    buf           %p\n",      comp_err->buf);
-  printf ("uint64_t data          %016lx\n",  comp_err->data);
-  printf ("uint64_t tag           %016lx\n",  comp_err->tag);
-  printf ("size_t   olen          %zd\n",     comp_err->olen);
-  printf ("int      err           %d (%s)\n", comp_err->err, fi_strerror(comp_err->err));
-  printf ("int      prov_errno    %d (%s)\n", comp_err->prov_errno, msg);
+  printf("void*    op_context    %p\n",      comp_err.op_context);
+  printf("uint64_t flags         %016lx\n",  comp_err.flags);
+  printf("size_t   len           %zd\n",     comp_err.len);
+  printf("void*    buf           %p\n",      comp_err.buf);
+  printf("uint64_t data          %016lx\n",  comp_err.data);
+  printf("uint64_t tag           %016lx\n",  comp_err.tag);
+  printf("size_t   olen          %zd\n",     comp_err.olen);
+  printf("int      err           %d (%s)\n", comp_err.err, fi_strerror(comp_err.err));
+  printf("int      prov_errno    %d (%s)\n", comp_err.prov_errno, msg);
   /* err_data is available until the next time the CQ is read */
-  printf ("size_t   err_data_size %zd\n",     comp_err->err_data_size);
-  printf ("void*    err_data      %p\n",      comp_err->err_data);
-  if (comp_err->err_data_size) {
-    uint32_t* ptr = (uint32_t*)comp_err->err_data;
-    for (unsigned i = 0; i < comp_err->err_data_size; ++i)
-      printf("  %08x", *ptr++);
+  printf("size_t   err_data_size %zd\n",     comp_err.err_data_size);
+  printf("void*    err_data      %p\n",      comp_err.err_data);
+  if (comp_err.err_data_size) {
+    const uint32_t* ptr = reinterpret_cast<const uint32_t*>(comp_err.err_data);
+    for (unsigned i = 0; i < comp_err.err_data_size; ++i)
+      printf("%08x%c", ptr[i], (i%8)==7?'\n':' ');
     printf("\n");
   }
 }
@@ -2099,21 +2099,7 @@ ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* 
 {
   if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
     _errno = (int) comp_ret;
-    if (comp_ret == -FI_EAVAIL) {
-      struct fi_cq_err_entry comp_err;  memset(&comp_err, 0, sizeof(comp_err));
-      char* err_data[ERR_MSG_LEN];      memset(err_data, 0, sizeof(err_data));
-      comp_err.err_data      = err_data;
-      comp_err.err_data_size = sizeof(err_data);
-      if (comp_error(&comp_err) > 0) {
-        comp_ret = -comp_err.err;
-        _errno = (int) comp_ret;
-        set_error(cmd);
-        fprintf(stderr, "%s:\n  Completion error data:\n", __PRETTY_FUNCTION__);
-        comp_error_dump(&comp_err);
-      }
-    } else {
-      set_error(cmd);
-    }
+    set_error(cmd);
   }
   return comp_ret;
 }
@@ -2179,7 +2165,7 @@ ssize_t CompletionQueue::check_completion_noctx(unsigned flags, uint64_t* data, 
   return rret;
 }
 
-void CompletionQueue::dump_cq_data_entry(struct fi_cq_data_entry& comp)
+void CompletionQueue::dump_cq_data_entry(const struct fi_cq_data_entry& comp)
 {
   printf("op_context: %p",       comp.op_context);
   if (comp.op_context)

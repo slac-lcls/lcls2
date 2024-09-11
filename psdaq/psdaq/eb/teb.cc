@@ -446,9 +446,10 @@ void Teb::run()
   resetCounters();
 
   int rcPrv = 0;
-  while (lRunning)
+  while (true)
   {
     rc = EbAppBase::process();
+    if (!lRunning)  break;              // Don't report errors when exiting
     if (rc < 0)
     {
       if (rc == -FI_EAGAIN)
@@ -464,7 +465,7 @@ void Teb::run()
       }
       else if (rc == rcPrv)
       {
-        logging::critical("TEB thread aborting on repeating fatal error");
+        logging::critical("TEB thread aborting on repeating fatal error: %d", rc);
         throw "Repeating fatal error";
       }
     }
@@ -472,7 +473,7 @@ void Teb::run()
   }
 
   uint64_t immData;
-  while (_mrqTransport.poll(&immData) > 0);
+  while (_mrqTransport.poll(&immData) > 0); // Drain
 
   EventBuilder::dump(0);
 
