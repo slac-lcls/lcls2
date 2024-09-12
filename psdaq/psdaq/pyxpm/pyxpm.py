@@ -19,6 +19,7 @@ from psdaq.pyxpm.pvstats import *
 from psdaq.pyxpm.pvctrls import *
 from psdaq.pyxpm.pvxtpg  import *
 from psdaq.pyxpm.pvhandler import *
+import psdaq.pyxpm.autosave as autosave
 
 class NoLock(object):
     def __init__(self):
@@ -97,6 +98,8 @@ def main():
 
     lock = Lock()
 
+    autosave.set(args.P,args.db,None)
+
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A)
 #    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
@@ -117,10 +120,18 @@ def main():
                 prev = time.perf_counter()
                 pvstats.update(cycle,cuMode)
                 pvctrls.update(cycle)
+                autosave.update()
                 #  We have to delay the startup of some classes
                 if cycle == 5:
                     pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode, bypassLock=args.L)
                     pvxtpg.init()
+                    autosave.restore()
+
+                    #  This is necessary in XTPG
+                    #  Can also fix strange behavior in common group
+                    app.groupL0Reset.set(0xff)
+                    app.groupL0Reset.set(0)
+
                 elif cycle < 5:
                     logging.info('pvxtpg in %d'%(5-cycle))
                 if pvxtpg is not None:

@@ -5,9 +5,13 @@ from p4p.client.thread import Context
 import logging
 
 autosave = None
+countRst = 3600
 
 def add(name, value):
     autosave.add(name,value)
+
+def modify(name, value):
+    autosave.modify(name,value)
 
 def save():
     autosave.save()
@@ -17,6 +21,9 @@ def restore():
 
 def update():
     autosave.update()
+
+def dump():
+    autosave.dump()
 
 class Autosave(object):
     def __init__(self, dev, db, lock):
@@ -40,11 +47,17 @@ class Autosave(object):
             if self.dev==name[:len(self.dev)]:
                 rem = '.'.join(name[len(self.dev)+1:].split(':'))
                 self.dict[rem] = value
-                self.countdn = 3600
-                #self.countdn = 5
+                self.countdn = countRst
             else:
                 logging.warning(f'Autosave.add {name} not a child of {self.dev}')
-
+                
+    def modify(self, name, value):
+        if self.dev==name[:len(self.dev)]:
+            rem = '.'.join(name[len(self.dev)+1:].split(':'))
+            if rem in self.dict:
+                self.dict[rem] = value
+                self.countdn = countRst
+        
     def _cdict(self):
         top = cdict()
         top.setInfo('xpm', self.dev, None, 'serial1234', 'No comment')
@@ -87,7 +100,7 @@ class Autosave(object):
                     self._restore_dict(v[i],f'{name}:{k}:{i}')
             else:
                 n = f'{name}:{k}'
-                #print(f'restoring {n}:{v}')
+                print(f'restoring {n} {v}')
                 self.ctxt.put(n,v)
 
     #  retrieve PV name, value pairs and post them
@@ -100,7 +113,8 @@ class Autosave(object):
             init = get_config_with_params(db_url, db_instrument, db_name, db_alias, self.dev)
             logging.info('cfg {:}'.format(init))
             # exchange . for : to recreate PVs?
-            self._restore_dict(init['PV'],self.dev)
+            if 'PV' in init:
+                self._restore_dict(init['PV'],self.dev)
             
     def update(self):
         if self.countdn > 0:

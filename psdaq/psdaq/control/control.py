@@ -506,20 +506,11 @@ class DaqXPM():
         logging.debug('pvListXPM: %s'       % self.pvListXPM)
         logging.debug('pvListL0Groups: %s'  % self.pvListL0Groups)
 
-            # Couple deadtime of all readout groups
-        if self._usepva:
-            logging.debug(f'DaqPVA.allocate() putting {groups} to PV {self.pvListL0Groups}')
-            retVal = self.pva.pv_put(self.pvListL0Groups, groups)
-            if not retVal:
-                self.report_error(f'condition_alloc() failed putting {groups} to PV {self.pvListL0Groups}')
-        else:
-            msg = {'type':'set_idx_reg',
-                   'reg' :'l0Groups',
-                   'groups':groups,
-                   'value' :groups,
-                   'pv'    :self.pvListL0Groups}
-            self.push.send_json(msg)
-            retVal = True
+        # Couple deadtime of all readout groups
+        logging.debug(f'DaqPVA.allocate() putting {groups} to PV {self.pvListL0Groups}')
+        retVal = self.pva.pv_put(self.pvListL0Groups, groups)
+        if not retVal:
+            self.report_error(f'condition_alloc() failed putting {groups} to PV {self.pvListL0Groups}')
         return retVal
 
     #
@@ -527,18 +518,10 @@ class DaqXPM():
     #
     def setup_common(self,platform,groups):
         groups = groups ^ (1<<platform)
-        if self._usepva:
-            pv = f'{self.pv_xpm_base}:PART:{platform}:L0Groups'
-            if not self.pva.pv_put(pv,groups):
-                logging.debug(f'setup_common() failed putting {groups} to PV {pv}')
-                return False
-        else:
-            msg = {'type'  :'set_idx_reg',
-                   'reg'   :'l0Groups',
-                   'groups':1<<platform,
-                   'value' :groups,
-                   'pv'    :f'{self.pv_xpm_base}:PART:{platform}:L0Groups'}
-            self.push.send_json(msg)
+        pv = f'{self.pv_xpm_base}:PART:{platform}:L0Groups'
+        if not self.pva.pv_put(pv,groups):
+            logging.debug(f'setup_common() failed putting {groups} to PV {pv}')
+            return False
 
         #  set the common group delay
         pvl = []
@@ -554,18 +537,10 @@ class DaqXPM():
         # The value of 99 shouldn't be necessary, according to simulation.
         # Empirically, it is necessary for group alignment
         # This value breaks receivers with old firmware (earlier than l2si-core v3.5.0)
-        #if self._usepva:
-        if True:  # PVA does special handling
-            pv = f'{self.pv_xpm_base}:CommonL0Delay'
-            if not self.pva.pv_put(pv,l0max):
-                logging.debug(f'setup_common() failed setting CommonL0Delay')
-                return False            
-        else:
-            msg = {'type' :'set_reg',
-                   'reg'  :'commonL0Delay',
-                   'value':l0max}
-            self.push.send_json(msg)
-
+        pv = f'{self.pv_xpm_base}:CommonL0Delay'
+        if not self.pva.pv_put(pv,l0max):
+            logging.debug(f'setup_common() failed setting CommonL0Delay')
+            return False            
         return True
 
     #
@@ -573,16 +548,7 @@ class DaqXPM():
     #
     def deallocate(self,groups):
         logging.debug(f'deallocate() putting 0 to PV {self.pvListL0Groups}')
-        if self._usepva:
-            rv = self.pva.pv_put(self.pvListL0Groups, 0)
-        else:
-            msg = {'type'  :'set_idx_reg', 
-                   'reg'   :'l0Groups', 
-                   'groups':groups, 
-                   'value' :0,
-                   'pv'    :self.pvListL0Groups}
-            self.push.send_json(msg)
-            rv = True
+        rv = self.pva.pv_put(self.pvListL0Groups, 0)
         return rv
 
     #
@@ -612,36 +578,20 @@ class DaqXPM():
     #  DaqXPM.set_master
     #
     def set_master(self,groups):
-        if self._usepva:
-            for pv in self.pvListXPM:
-                if not self.pva.pv_put(pv, 1):
-                    logging.debug('connect: failed to put PV \'%s\'' % pv)
-                    return False
-        else:
-            msg = {'type'  :'set_idx_reg',
-                   'reg'   :'l0Master',
-                   'groups':groups,
-                   'value' :1,
-                   'pv'    :self.pvListXPM }
-            self.push.send_json(msg)
+        for pv in self.pvListXPM:
+            if not self.pva.pv_put(pv, 1):
+                logging.debug('connect: failed to put PV \'%s\'' % pv)
+                return False
         return True
 
     #
     #  DaqXPM.set_common
     #
     def set_common(self,common):
-        #if self._usepva:
-        if True:  # PVA does special handling
-            pv = f'{self.pv_xpm_base}:PART:{common}:Master'
-            if not self.pva.pv_put(pv, 2):
-                self.report_error(f'set_common: failed to put PV {pv} common')
-                return False
-        else:
-            msg = {'type'  :'set_idx_reg',
-                   'reg'   :'l0Common',
-                   'groups':1<<common,
-                   'value' :1}
-            self.push.send_json(msg)
+        pv = f'{self.pv_xpm_base}:PART:{common}:Master'
+        if not self.pva.pv_put(pv, 2):
+            self.report_error(f'set_common: failed to put PV {pv} common')
+            return False
         return True
 
     #

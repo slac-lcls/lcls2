@@ -201,18 +201,12 @@ class LinkCtrls(object):
             self._ringb.Dump()
 
 class CuGenCtrls(object):
-    def __init__(self, name, xpm, dbinit=None):
+    def __init__(self, name, xpm):
 
-        try:
-            cuDelay    = dbinit['XTPG']['CuDelay']
-            cuBeamCode = dbinit['XTPG']['CuBeamCode']
-            cuInput    = dbinit['XTPG']['CuInput']
-            logging.info(f'Read XTPG parameters CuDelay {cuDelay}, CuBeamCode {cuBeamCode}, CuInput {cuInput}')
-        except:
-            cuDelay    = _fidPrescale*800
-            cuBeamCode = 140
-            cuInput    = 1
-            logging.info('Defaulting XTPG parameters')
+        cuDelay    = _fidPrescale*800
+        cuBeamCode = 140
+        cuInput    = 1
+        logging.info('Defaulting XTPG parameters')
 
         def _addPV(label, init, reg):
             pvu = SharedPV(initial=NTScalar('f').wrap(init*7000./1300), 
@@ -466,9 +460,8 @@ class GroupSetup(object):
         self.dump()
         lock.release()
 
-
 class GroupCtrls(object):
-    def __init__(self, name, app, stats, init=None):
+    def __init__(self, name, app, stats):
 
         self._app = app
 
@@ -486,14 +479,10 @@ class GroupCtrls(object):
 
         self._groups = []
         for i in range(8):
-            self._groups.append(GroupSetup(name+':PART:%d'%i, app, i, stats[i], init=init['PART'] if init else None))
+            self._groups.append(GroupSetup(name+':PART:%d'%i, app, i, stats[i], None))
 
         # need to sync commonL0Delay to group delays/commonGroups
         self._pv_ComDelay  = addPVC(f'{name}:CommonL0Delay','I',0,self.updateCommon)
-
-        #  This is necessary in XTPG
-        app.groupL0Reset.set(0xff)
-        app.groupL0Reset.set(0)
 
     def groupEnable(self, pv, val):
         lock.acquire()
@@ -535,8 +524,6 @@ class PVCtrls(object):
         global _fidPeriod
         _fidPeriod = fidPeriod
 
-        autosave.set(name,db,lock)
-
         # Assign transmit link ID
         ip_comp = ip.split('.')
         xpm_num = name.rsplit(':',1)[1]
@@ -554,17 +541,6 @@ class PVCtrls(object):
         self._seq   = None
         self._handle= handle
 
-        init = None
-        try:
-            db_url, db_name, db_instrument, db_alias = db.split(',',4)
-            logging.info('db {:}'.format(db))
-            logging.info('url {:}  name {:}  instr {:}  alias {:}'.format(db_url,db_name,db_instrument,db_alias))
-            logging.info('device {:}'.format(name))
-            init = get_config_with_params(db_url, db_instrument, db_name, db_alias, name)
-            logging.info('cfg {:}'.format(init))
-        except:
-            logging.warning('Caught exception reading configdb [{:}]'.format(db))
-
         self._links = []
         for i in range(24):
             self._links.append(LinkCtrls(name, xpm, i))
@@ -573,9 +549,9 @@ class PVCtrls(object):
 
         self._pv_amcDumpPLL = []
 
-        self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init)
+        self._cu    = CuGenCtrls(name+':XTPG', xpm)
 
-        self._group = GroupCtrls(name, app, stats, init=init)
+        self._group = GroupCtrls(name, app, stats)
 
         def _addPV(label,reg):
             pv = SharedPV(initial=NTScalar('I').wrap(0), 
@@ -621,8 +597,6 @@ class PVCtrls(object):
         self._zthread = threading.Thread(target=self.zrcv)
         self._zthread.start()
 
-        autosave.restore()
-
     def usLinkUp(self):
         if self._usLinkUp is not None:
             self._usLinkUp()
@@ -645,8 +619,6 @@ class PVCtrls(object):
             self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
             self._seq_codes_val = toDict(seqCodes)
             self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(NCODES//4)]
-
-        autosave.update()
 
     def notify(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -774,6 +746,7 @@ class PVCtrls(object):
                         postval['value'] = msg['value']
                         postval['timeStamp.secondsPastEpoch'], postval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
                         pv.post(postval)
+                        autosave.modify(name,msg['value'])
 
                 if isinstance(pvname,list):
                     for name in pvname:
