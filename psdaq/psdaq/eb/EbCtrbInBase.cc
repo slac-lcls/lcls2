@@ -286,7 +286,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
       }
       if (rc == rcPrv)
       {
-        logging::critical("Reciever thread aborting on repeating fatal error: %d", rc);
+        logging::critical("Receiver thread aborting on repeating fatal error: %d", rc);
         throw "Repeating fatal error";
       }
     }
