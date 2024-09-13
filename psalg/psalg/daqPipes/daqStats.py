@@ -235,7 +235,7 @@ class Table:
         self._dbg    = dbg
         self._pad    = None
         self._size_y = 0
-        self._size_x = 0
+        self._size_x = 12 + 1          # Add space for detName column
         self.metrics = {}
         for metric, query in queries.items():
             self.metrics[metric] = PromMetric(srvurl, query, self._size_x)
@@ -245,7 +245,7 @@ class Table:
         self._darrow = False
 
     def update(self, rows, start_row, start_col, showInstance, height, width):
-        size_x = 12 + self._size_x + 1 # Add space for detName column
+        size_x = self._size_x
         size_y = 1 + rows              # One row for the header
 
         if showInstance != self._showInstance:
