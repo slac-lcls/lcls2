@@ -10,6 +10,7 @@ import socket
 LOCALHOST = socket.gethostname()
 SLURM_PARTITION = "drpq"
 DRP_N_RSV_CORES = int(os.environ.get('PS_DRP_N_RSV_CORES', '4'))
+SCRIPTS_ROOTDIR = '/reg/g/pcds/dist/pds'
 
 
 class PSbatchSubCommand:
@@ -45,6 +46,9 @@ class SbatchManager:
         self.platform = platform
         self.as_step = as_step
         self.verbose = verbose
+        self.hutch = self.call_subprocess("get_info", "--gethutch")
+        self.user = self.hutch+'opr'
+        self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, 'scripts')
 
     @property
     def git_describe(self):
@@ -79,19 +83,21 @@ class SbatchManager:
 
     def get_job_info_byid(self, job_id, jobparms):
         """Returns a dictionary containing values obtained from scontrol
-        with the given jobparms list.
+        with the given jobparms list. Returns {} if this job does not exist.
         """
-        scontrol_lines = self.call_subprocess(
+        output = self.call_subprocess(
             "scontrol", "show", "job", job_id
-        ).splitlines()
+        )
         results = {}
-        for jobparm in jobparms:
-            for scontrol_line in scontrol_lines:
-                scontrol_cols = scontrol_line.split()
-                for scontrol_col in scontrol_cols:
-                    if scontrol_col.find(jobparm) > -1:
-                        _, jobparm_val = scontrol_col.split("=")
-                        results[jobparm] = jobparm_val
+        if output is not None:
+            scontrol_lines = output.splitlines()
+            for jobparm in jobparms:
+                for scontrol_line in scontrol_lines:
+                    scontrol_cols = scontrol_line.split()
+                    for scontrol_col in scontrol_cols:
+                        if scontrol_col.find(jobparm) > -1:
+                            _, jobparm_val = scontrol_col.split("=")
+                            results[jobparm] = jobparm_val
         return results
 
     def get_job_info(self):
@@ -209,12 +215,6 @@ class SbatchManager:
             output = self.get_output_filepath(node, job_name)
             output_opt = f"--output={output} --open-mode=append "
         env_opt = "--export=ALL"
-        # FIXME: export option in srun doesn't work with bash -c below 
-        # which is needed for Open Console button on the GUI.
-        #if "env" in details:
-        #    if details["env"] != "":
-        #        env = details["env"].replace(" ", ";").strip("'")
-        #        env_opt += f";{env};"
         env_export = ""
         if "env" in details:
             if details["env"] != "":
@@ -297,26 +297,21 @@ class SbatchManager:
 
         n_cores = self.get_n_cores(details)
         n_tasks = 1
-        flag_x = False
-        if "flags" in details:
-            if details["flags"].find("x") > -1:
-                flag_x = True
-        if flag_x:
-            n_cores += 1
-            n_tasks += 1
 
         if node_features is None:
             sb_script += f"#SBATCH --nodelist={node} -c {n_cores}" + "\n"
         else:
             sb_script += f"#SBATCH --constraint={job_name} -c {n_cores}" + "\n"
 
+        # Unset EPICS_*, PYTHONPATH, and LD_LIBRARY_PATH
+        sb_script += "while read var; do unset $var; done < <(env | grep -i EPICS_ | awk -F '=' '{print $1}')" + "\n"
+        sb_script += f"unset PYTHONPATH" + "\n"
+        sb_script += f"unset LD_LIBRARY_PATH" + "\n"
+
+        # Source lcls2 environment
+        sb_script += f"source {os.path.join(self.scripts_dir, 'setup_env.sh')}" + "\n"
+       
         sb_script += self.get_jobstep_cmd(node, job_name, details)
-        if flag_x:
-            cmd = "sattach $SLURM_JOB_ID.0"
-            jobstep_cmd = (
-                f"srun -n1 -c1 --unbuffered --job-name={job_name}_x --x11 xterm -e bash -c '{cmd}'"
-            )
-            sb_script += jobstep_cmd
         self.sb_script = sb_script
         if self.verbose:
             print(self.sb_script)
