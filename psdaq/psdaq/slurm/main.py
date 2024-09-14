@@ -222,6 +222,19 @@ class Runner:
                     if job_name in config_ids:
                         self.sbman.generate(node, job_name, details, self.node_features)
                         self.submit()
+                        if "flags" in details:
+                            if details["flags"].find("x") > -1:
+                                job_state = None
+                                for i in range(MAX_RETRIES):
+                                    if self._exists(unique_ids=job_name): 
+                                        job_details = self.sbman.get_job_info()
+                                        job_state = job_details[details['comment']]['state']
+                                        if job_state == "RUNNING": break
+                                    if i==0: print(f'Waiting for slurm job {job_name} ({job_state}) to start for attaching xterm...')
+                                    time.sleep(3)
+                                if job_state is not None:
+                                    ldProcStatus = self.show_status(quiet=True)
+                                    self.spawnConsole(job_name, ldProcStatus, False)
 
     def stop(self, unique_ids=None, skip_wait=False, verbose=False):
         """Stops running job using their comment.
@@ -295,7 +308,9 @@ class Runner:
                     ]
                 else:
                     args = [self.PATH_XTERM, "-T", config_id, "-e", cmd]
-                Popen(args)
+
+                arg_str = ' '.join(args)
+                asyncio.run(self.proc.run(arg_str, wait_output=False))
             except:
                 print("spawnConsole failed for process '%s'" % config_id)
             else:
