@@ -233,6 +233,7 @@ class Runner:
                                     if i==0: print(f'Waiting for slurm job {job_name} ({job_state}) to start for attaching xterm...')
                                     time.sleep(3)
                                 if job_state is not None:
+                                    time.sleep(1) # Still need to wait! even if job is already in RUNNING state
                                     ldProcStatus = self.show_status(quiet=True)
                                     self.spawnConsole(job_name, ldProcStatus, False)
 
