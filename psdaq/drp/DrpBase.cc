@@ -99,6 +99,7 @@ MemPool::MemPool(Parameters& para) :
         logging::critical("Error opening %s: %s", para.device.c_str(), strerror(errno));
         throw "Error opening kcu1500!!";
     }
+    logging::info("PGP device '%s' opened", para.device.c_str());
 
     uint32_t dmaCount;
     dmaBuffers = dmaMapDma(m_fd, &dmaCount, &m_dmaSize);
@@ -146,7 +147,7 @@ MemPool::MemPool(Parameters& para) :
 
 MemPool::~MemPool()
 {
-   logging::info("%s: closing file descriptor", __PRETTY_FUNCTION__);
+   logging::debug("%s: Closing PGP device file descriptor", __PRETTY_FUNCTION__);
    close(m_fd);
 }
 
@@ -1058,12 +1059,16 @@ json DrpBase::connectionInfo(const std::string& ip)
     m_tPrms.port.clear();               // Use an ephemeral port
 
     int rc = m_ebRecv->startConnection(m_tPrms.port);
-    if (rc)  throw "Error starting connection";
+    if (rc)  {
+        logging::critical("Error starting EbReceiver connection");
+        abort();
+    }
 
     json info = {{"drp_port", m_tPrms.port},
                  {"num_buffers", pool.nbuffers()},
                  {"max_ev_size", pool.bufferSize()},
                  {"max_tr_size", m_para.maxTrSize}};
+
     return info;
 }
 
@@ -1272,20 +1277,19 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     // In the following, _0 is added in prints to show the default segment number
     logging::info("DrpBase: Fetching trigger info from ConfigDb/%s/%s_0",
                   configAlias.c_str(), triggerConfig.c_str());
-    
+
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
     {
         logging::error("%s:\n  Document '%s_0' not found in ConfigDb/%s",
                        __PRETTY_FUNCTION__, triggerConfig.c_str(), configAlias.c_str());
         return -1;
     }
-    logging::info("############# DRP 1");
     bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
 
     std::string buildDets("---");
     if (top.HasMember("buildDets"))
         buildDets = top["buildDets"].GetString();
-    
+
     if (!(buildAll || buildDets.find(m_para.detName))) {
         logging::info("This DRP is not contributing trigger input data: "
                       "buildAll is False and '%s' was not found in ConfigDb/%s/%s_0",
@@ -1296,7 +1300,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
         return 0;
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
-    
+
     std::string symbol("create_producer");
     if (!buildAll)  symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);

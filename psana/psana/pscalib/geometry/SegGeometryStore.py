@@ -114,6 +114,9 @@ def segment_geometry(**kwa):
     elif segname=='SENS2X1:V1':
         from psana.pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one, cspad2x1_wpc
         return cspad2x1_wpc if wpc else cspad2x1_one
+    elif segname=='ARCHON:V1':
+        from psana.pscalib.geometry.SegGeometryArchonV1 import SegGeometryArchonV1
+        return SegGeometryArchonV1(detector=kwa.get('detector', None))
     #elif segname=='ANDOR3D:V1': return seg_andor3d # SegGeometryMatrixV1()
     else:
         logger.debug('segment "%s" gometry IS NOT IMPLEMENTED' % segname)

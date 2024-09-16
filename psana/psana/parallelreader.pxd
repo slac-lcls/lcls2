@@ -44,6 +44,7 @@ cdef class ParallelReader:
     cdef unsigned   Configure
     cdef unsigned   BeginRun
     cdef unsigned   L1Accept
+    cdef unsigned   L1Accept_EndOfBatch
     cdef unsigned   EndRun
     cdef uint64_t   got                  # summing the size of new reads used by prometheus
     cdef uint64_t   chunk_overflown

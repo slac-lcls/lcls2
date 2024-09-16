@@ -29,6 +29,7 @@ if [ -h "$CUDA_ROOT" ]; then
     export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
     #export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
+    export NVCC_PREPEND_FLAGS='-ccbin '${CC} # Ensure the correct host compiler is used with nvcc
 fi
 
 RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
@@ -47,6 +48,9 @@ export HDF5_USE_FILE_LOCKING=FALSE
 # for libfabric. decreases performance a little, but allows forking
 export RDMAV_FORK_SAFE=1
 export RDMAV_HUGEPAGES_SAFE=1
+
+# needed by JupyterLab
+export JUPYTERLAB_WORKSPACES_DIR=${HOME}
 
 # cpo: workaround a qt bug which may no longer be there (dec 5, 2022)
 if [ ! -d /usr/share/X11/xkb ]; then

@@ -19,6 +19,7 @@ from psdaq.pyxpm.pvstats import *
 from psdaq.pyxpm.pvctrls import *
 from psdaq.pyxpm.pvxtpg  import *
 from psdaq.pyxpm.pvhandler import *
+import psdaq.pyxpm.autosave as autosave
 
 class NoLock(object):
     def __init__(self):
@@ -34,6 +35,15 @@ class NoLock(object):
         if self._level!=1:
             logging.info('NoLock.release level {}'.format(self._level))
         self._level=self._level-1
+
+class MyProvider(StaticProvider):
+    def __init__(self, name):
+        super(MyProvider,self).__init__(name)
+        self.pvdict = {}
+
+    def add(self,name,pv):
+        self.pvdict[name] = pv
+        super(MyProvider,self).add(name,pv)
 
 def main():
     global pvdb
@@ -83,9 +93,12 @@ def main():
     # Print the AxiVersion Summary
     axiv.printStatus()
 
-    provider = StaticProvider(__name__)
+    #provider = StaticProvider(__name__)
+    provider = MyProvider(__name__)
 
     lock = Lock()
+
+    autosave.set(args.P,args.db,None)
 
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A)
 #    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
@@ -107,10 +120,18 @@ def main():
                 prev = time.perf_counter()
                 pvstats.update(cycle,cuMode)
                 pvctrls.update(cycle)
+                autosave.update()
                 #  We have to delay the startup of some classes
                 if cycle == 5:
                     pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode, bypassLock=args.L)
                     pvxtpg.init()
+                    autosave.restore()
+
+                    #  This is necessary in XTPG
+                    #  Can also fix strange behavior in common group
+                    app.groupL0Reset.set(0xff)
+                    app.groupL0Reset.set(0)
+
                 elif cycle < 5:
                     logging.info('pvxtpg in %d'%(5-cycle))
                 if pvxtpg is not None:

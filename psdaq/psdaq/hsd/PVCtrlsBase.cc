@@ -29,6 +29,8 @@ namespace Pds {
         switch(_a) {
         case ConfigureA : _pvc.configure(0); break;
         case ConfigureB : _pvc.configure(1); break;
+        case ConfigPgpA : _pvc.configPgp(0); break;
+        case ConfigPgpB : _pvc.configPgp(1); break;
         case ResetA     : _pvc.reset    (0); break;
         case ResetB     : _pvc.reset    (1); break;
         default: break;
@@ -73,6 +75,8 @@ namespace Pds {
     CPV(ResetB      ,{_ctrl.call(ResetB    );}, {})
     CPV(ConfigA     ,{_ctrl.call(ConfigureA);}, {})
     CPV(ConfigB     ,{_ctrl.call(ConfigureB);}, {})
+    CPV(PgpConfigA  ,{_ctrl.call(ConfigPgpA);}, {})
+    CPV(PgpConfigB  ,{_ctrl.call(ConfigPgpB);}, {})
 
     PVCtrlsBase::PVCtrlsBase(Pds::Task& t) : _pv(0), _task(t) 
     {}
@@ -112,6 +116,9 @@ namespace Pds {
 
       NPV(ResetA   ,"A:RESET");
       NPV(ResetB   ,"B:RESET");
+
+      NPV(PgpConfigA   ,"A:PGPCONFIG");
+      NPV(PgpConfigB   ,"B:PGPCONFIG");
 
       _allocate();
 

@@ -17,3 +17,14 @@ Drp::EventInfo::EventInfo(XtcData::DescData& descdata) {
     _beamDestn   = descdata.get_value<uint8_t>("ebeamDestn")&0xf;
     memcpy(_seqInfo, descdata.get_array<uint8_t>(descdata.nameindex().nameMap()["sequenceValues"]).data(), 18*sizeof(uint16_t));
 }
+
+bool Drp::EventSelect::select(const Drp::EventInfo& info) const
+{
+    bool l_incl_eventcode = info.eventCode  (incl_eventcode);
+    bool l_incl_dest      = info.destination(incl_destination);
+    bool l_excl_eventcode = info.eventCode  (excl_eventcode);
+    bool l_excl_dest      = info.destination(excl_destination);
+
+    return (l_incl_eventcode || l_incl_dest) and not 
+        (l_excl_eventcode || l_excl_dest);
+}

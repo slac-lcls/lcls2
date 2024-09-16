@@ -171,11 +171,8 @@ int EbAppBase::connect(unsigned maxTrBuffers)
   for (auto i = 0u; i < nCtrbs; ++i)
   {
     // Pass loop index by value or it will be out of scope when lambda runs
+    labels["ctrb"] = _prms.drps[i];
     _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=,this](){ return arrTime(i); });
-
-    // Revisit: Doesn't work:
-    //labels["ctrb"] = _prms.drps[i];
-    //_exporter->add("EB_arrTime", labels, MetricType::Gauge, [=](){ return arrTime(i); });
   }
 
   _fixupSrc = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
@@ -272,9 +269,7 @@ int EbAppBase::process()
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
     }
-    else if (_transport.pollEQ() == -FI_ENOTCONN)
-      rc = -FI_ENOTCONN;
-    else
+    else if (rc != -FI_ENOTCONN)
       logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;

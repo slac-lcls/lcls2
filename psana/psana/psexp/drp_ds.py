@@ -65,7 +65,7 @@ class DrpDataSource(DataSourceBase):
         for evt in self.dm:
             if not evt:
                 return None
-            if evt.service() == TransitionId.L1Accept:
+            if TransitionId.isEvent(evt.service()):
                 buffer_size = self.dm.pebble_bufsize
             else:
                 buffer_size = self.dm.transition_bufsize

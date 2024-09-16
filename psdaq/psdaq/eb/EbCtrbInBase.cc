@@ -272,9 +272,11 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
   logging::info("EB Receiver thread is starting with process ID %lu", syscall(SYS_gettid));
 
   int rcPrv = 0;
-  while (running.load(std::memory_order_relaxed))
+  while (true)
   {
     rc = _process(ctrb);
+    if (!running.load(std::memory_order_relaxed))
+      break;                            // Don't report errors when exiting
     if (rc < 0)
     {
       if (rc == -FI_ENOTCONN)
@@ -282,7 +284,11 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
         logging::critical("Receiver thread lost connection with a TEB");
         throw "Receiver thread lost connection with a TEB";
       }
-      if (rc == rcPrv)  throw "Repeating fatal error";
+      if (rc == rcPrv)
+      {
+        logging::critical("Receiver thread aborting on repeating fatal error: %d", rc);
+        throw "Repeating fatal error";
+      }
     }
     rcPrv = rc;
   }
@@ -296,17 +302,15 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
 
   // Pend for a Results batch (a set of EbDgrams) and process it.
   uint64_t  data;
-  const int tmo = 100;                  // milliseconds
-  if ( (rc = _transport.pend(&data, tmo)) < 0)
+  const int msTmo = 100;
+  if ( (rc = _transport.pend(&data, msTmo)) < 0)
   {
     if (rc == -FI_EAGAIN)
     {
       _matchUp(ctrb, nullptr);         // Try to sweep out any deferred Results
       rc = 0;
     }
-    else if (_transport.pollEQ() == -FI_ENOTCONN)
-      rc = -FI_ENOTCONN;
-    else
+    else if (rc != -FI_ENOTCONN)
       logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;

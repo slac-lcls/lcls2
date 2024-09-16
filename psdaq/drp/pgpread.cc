@@ -81,6 +81,16 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    // Complain if all arguments weren't consummed
+    if (optind < argc) {
+        printf("Unrecognized argument:\n");
+        while (optind < argc)
+            printf("  %s ", argv[optind++]);
+        printf("\n");
+        show_usage(argv[0]);
+        return 1;
+    }
+
     terminate.store(false, std::memory_order_release);
     signal(SIGINT, int_handler);
 
@@ -120,7 +130,8 @@ int main(int argc, char* argv[])
     printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
 
     if (dmaSetMaskBytes(fd, mask)) {
-        printf("Failed to allocate lane/vc\n");
+        printf("Failed to allocate lane/vc "
+               "- does another process have %s open?\n", device.c_str());
         const unsigned* u = reinterpret_cast<const unsigned*>(mask);
         for(unsigned i=0; i<DMA_MASK_SIZE/4; i++)
             printf("%08x%c", u[i], (i%8)==7?'\n':' ');

@@ -128,3 +128,6 @@ def step_pub_port(platform):
 
 def scan_pull_port(platform):
     return ControlDef.PORT_BASE + platform + 60
+
+def xpm_pull_port(xpm):
+    return ControlDef.PORT_BASE + xpm + 70

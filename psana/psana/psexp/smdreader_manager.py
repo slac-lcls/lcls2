@@ -190,6 +190,7 @@ class SmdReaderManager(object):
                 self.smdr.find_view_offsets(
                     batch_size=self.smd0_n_events,
                     intg_stream_id=self.dsparms.intg_stream_id,
+                    intg_delta_t=self.dsparms.intg_delta_t,
                     max_events=self.dsparms.max_events,
                 )
                 if self.processed_events <= current_processed_events:
@@ -213,8 +214,6 @@ class SmdReaderManager(object):
         The iterator stops reading under two conditions. Either there's
         no more data or max_events reached.
         """
-        intg_stream_id = self.dsparms.intg_stream_id
-
         if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
             raise StopIteration
 
@@ -226,7 +225,8 @@ class SmdReaderManager(object):
         current_processed_events = self.processed_events
         self.smdr.find_view_offsets(
             batch_size=self.smd0_n_events,
-            intg_stream_id=intg_stream_id,
+            intg_stream_id=self.dsparms.intg_stream_id,
+            intg_delta_t=self.dsparms.intg_delta_t,
             max_events=self.dsparms.max_events,
         )
 
@@ -258,6 +258,7 @@ class SmdReaderManager(object):
                 self.smdr.find_view_offsets(
                     batch_size=self.smd0_n_events,
                     intg_stream_id=self.dsparms.intg_stream_id,
+                    intg_delta_t=self.dsparms.intg_delta_t,
                     max_events=self.dsparms.max_events,
                 )
 

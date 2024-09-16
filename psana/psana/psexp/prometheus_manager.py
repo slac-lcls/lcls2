@@ -107,13 +107,12 @@ class PrometheusManager(object):
         "psana_bd_wait": ("Gauge", "time spent (s) waiting for EventBuilder"),
     }
 
-    def __init__(self, exp, runnum, job=None):
-        self.exp = exp
-        self.runnum = runnum
+    def __init__(self, job=None):
         self.username = getpass.getuser()
         self.rank = 0
         if job is None:
-            self.job = f"{self.exp}_{self.runnum}_{self.username}"
+            default_job_id = os.environ.get('SLURM_JOB_ID', f"{self.username}")
+            self.job = default_job_id
         else:
             self.job = job
 
@@ -144,7 +143,7 @@ class PrometheusManager(object):
                     timeout=None,
                 )
             logger.debug(
-                f"TS: %s PUSHED EXP:{self.exp} RUN:{self.runnum} USER:{self.username} RANK:{self.rank} {e.isSet()=}"
+                    f"TS: %s PUSHED JOBID:{self.job} RANK:{self.rank} {e.isSet()=}"
             )
             time.sleep(PUSH_INTERVAL_SECS)
 

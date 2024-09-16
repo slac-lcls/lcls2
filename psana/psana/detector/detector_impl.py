@@ -34,7 +34,8 @@ class MissingDet:
 class DetectorImpl():
     def __init__(self, det_name, drp_class_name, configinfo, calibconst,
             env_store   = None,
-            var_name    = None):
+            var_name    = None,
+            **kwargs): # self._kwargs=kwargs is intercepted by AreaDetectorRaw < AreaDetector
         self._det_name          = det_name
         self._drp_class_name    = drp_class_name
 

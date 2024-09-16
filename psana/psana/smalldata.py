@@ -62,6 +62,7 @@ Some Notes:
 import os
 import numpy as np
 import h5py
+import glob
 from collections.abc import MutableMapping
 
 # -----------------------------------------------------------------------------
@@ -92,7 +93,7 @@ FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, float]
 
 # This is not actually implemented, so let's comment it out for now.
 # RAGGED_PREFIX   = 'ragged_' 
-UNALIGED_PREFIX = 'unaligned_'
+UNALIGNED_PREFIX = 'unaligned_'
 VAR_PREFIX      = 'var_'
 LEN_SUFFIX      = '_len'
 
@@ -105,6 +106,9 @@ var_dict = {}    # var name to True/False if var
 len_dict = {}    # var name to True/False if len
 len_map = {}     # var name to len array name (i.e. x/var_mcb/y --> x/var_mcb_len)
 len_evt = {}     # len name to {timestamp: length}
+
+def unaligned_timestamp_name(dataset_name):
+    return dataset_name+'_timestamp'
 
 def set_keytypes(k):
     parts = k.split('/')
@@ -147,7 +151,7 @@ def is_var_key(k):
         return var_dict[k]
 
 def is_unaligned(dset_name):
-    return dset_name.split('/')[-1].startswith(UNALIGED_PREFIX)
+    return dset_name.split('/')[-1].startswith(UNALIGNED_PREFIX)
 
 # -----------------------------------------------------------------------------
 
@@ -318,8 +322,11 @@ class Server: # (hdf5 handling)
                     else:
                         to_backfill.remove(dataset_name)
                     self.append_to_cache(dataset_name, data)
+                    ts = event_data_dict['timestamp']
+                    # also record the timestamps of unaligned data
+                    if is_unaligned(dataset_name):
+                        self.append_to_cache(unaligned_timestamp_name(dataset_name), ts)
                     if is_var:
-                        ts = event_data_dict['timestamp']
                         try:
                             # All of the datasets that share a length dataset should
                             # be the same size.  Otherwise, flag an error.
@@ -395,6 +402,17 @@ class Server: # (hdf5 handling)
                                                dtype=dtype,
                                                chunks=(self.cache_size,) + shape)
 
+        # if this is an unaligned dataset create an
+        # additional dataset to record its timestamps
+        if is_unaligned(dataset_name):
+            unaligned_ts_name = unaligned_timestamp_name(dataset_name)
+            self._dsets[unaligned_ts_name] = (dtype, shape)
+            dset = self.file_handle.create_dataset(unaligned_ts_name,
+                                                   (0,) + shape, # (0,) -> expand dim
+                                                   maxshape=maxshape,
+                                                   dtype=int,
+                                                   chunks=(self.cache_size,) + shape)
+
         if is_var:
             if is_len:
                 self.backfill(dataset_name, self.num_events_seen, missing_value=0)
@@ -432,17 +450,16 @@ class Server: # (hdf5 handling)
 
 
     def backfill(self, dataset_name, num_to_backfill, missing_value=None):
-        
         dtype, shape = self._dsets[dataset_name]
 
         if missing_value is None:
-            missing_value = _get_missing_value(dtype) 
+            missing_value = _get_missing_value(dtype)
         fill_data = np.empty(shape, dtype=dtype)
         fill_data.fill(missing_value)
-    
+
         for i in range(num_to_backfill):
             self.append_to_cache(dataset_name, fill_data)
-        
+
         return
 
 
@@ -476,7 +493,8 @@ class SmallData: # (client)
 
             self._comm_partition()
 
-    def setup_parms(self, filename=None, batch_size=30, cache_size=None,
+
+    def setup_parms(self, filename=None, batch_size=1000, cache_size=None,
                  callbacks=[]):
         """
         Parameters
@@ -512,16 +530,30 @@ class SmallData: # (client)
             print('setting cache_size -->', batch_size)
             cache_size = batch_size
 
-        self._full_filename = filename
+        self._full_filename = str(filename)
         if (filename is not None):
             self._basename = os.path.basename(filename)
             self._dirname  = os.path.dirname(filename)
+
         self._first_open = True # filename has not been opened yet
 
         if MODE == 'PARALLEL':
-
             # hide intermediate files -- join later via VDS
             if filename is not None:
+
+                # clean up previous part files associated with the filename.
+                # This needs to be done on a single rank to avoid trying to delete i
+                # the same file multiple times.
+                if self._type == 'client' and self._full_filename is not None:
+                    if self._client_comm.Get_rank() == 0:
+                        for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
+                            os.remove(f)
+                # Need to make sure all smalldata ranks wait for the clean up to be done
+                # before they go about creating the new files.
+                if self._type != 'other': # other = not smalldata (Mona)
+                    self._smalldata_comm.barrier()
+
+                # Now make file
                 self._srv_filename = _format_srv_filename(self._dirname,
                                                           self._basename,
                                                           self._server_group.Get_rank())
@@ -529,13 +561,17 @@ class SmallData: # (client)
                 self._srv_filename = None
 
             if self._type == 'server':
-                self._server = Server(filename=self._srv_filename, 
-                                      smdcomm=self._srvcomm, 
+                self._server = Server(filename=self._srv_filename,
+                                      smdcomm=self._srvcomm,
                                       cache_size=cache_size,
                                       callbacks=callbacks)
                 self._server.recv_loop()
 
         elif MODE == 'SERIAL':
+            if filename is not None:
+                # clean up previous part files associated with the filename.
+                for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
+                    os.remove(f)
             self._srv_filename = self._full_filename # dont hide file
             self._type = 'serial'
             self._server = Server(filename=self._srv_filename,
@@ -631,7 +667,7 @@ class SmallData: # (client)
                     self._server.handle(self._batch)
                 elif MODE == 'PARALLEL':
                     self._srvcomm.send(self._batch, dest=0)
-                self._batch = []           
+                self._batch = []
 
             event_data_dict['timestamp'] = timestamp
             self._previous_timestamp = timestamp

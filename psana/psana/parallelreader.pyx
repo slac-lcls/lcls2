@@ -26,6 +26,7 @@ cdef class ParallelReader:
         self.Configure          = TransitionId.Configure
         self.BeginRun           = TransitionId.BeginRun
         self.L1Accept           = TransitionId.L1Accept
+        self.L1Accept_EndOfBatch= TransitionId.L1Accept_EndOfBatch
         self.EndRun             = TransitionId.EndRun
         self.bufs               = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self.step_bufs          = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
@@ -174,7 +175,8 @@ cdef class ParallelReader:
                         buf.en_offset_arr[buf.n_ready_events] = buf.ready_offset + sizeof(Dgram) + payload
 
                         # check if this a non L1
-                        if buf.sv_arr[buf.n_ready_events] != self.L1Accept:
+                        if buf.sv_arr[buf.n_ready_events] != self.L1Accept and \
+                                buf.sv_arr[buf.n_ready_events] != self.L1Accept_EndOfBatch:
                             memcpy(step_buf.chunk + step_buf.ready_offset, d, sizeof(Dgram) + payload)
                             step_buf.ts_arr[step_buf.n_ready_events] = buf.ts_arr[buf.n_ready_events]
                             step_buf.st_offset_arr[step_buf.n_ready_events] = step_buf.ready_offset

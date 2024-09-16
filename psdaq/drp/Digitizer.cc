@@ -11,6 +11,7 @@
 #include "DataDriver.h"
 #include "Si570.hh"
 #include "XpmInfo.hh"
+#include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/Reg.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -37,7 +38,13 @@ namespace Drp {
     public:
         uint32_t reserved_to_80_0000[0x800000/4];
         Reg      mig[0x80];
-        uint32_t reserved_to_a4_0010[(0x240010-sizeof(mig))/4];
+        uint32_t reserved_to_a0_0000[(0x200000-sizeof(mig))/4];
+        struct {  // Fix this weird offset
+            uint32_t reserved_8000[0x8000/4];
+            uint32_t v0;
+            uint32_t reserved_7ffc[0x7ffc/4];
+        } pgpmon[4];
+        uint32_t reserved_to_a4_0010[0x10/4];
         Reg      linkId[4];
         Reg      pgp[4];
         uint32_t reserved_to_e0_0000[(0x3BFFF0-sizeof(linkId)-sizeof(pgp))/4];
@@ -264,6 +271,18 @@ void Digitizer::connect(const json& connect_json, const std::string& collectionI
 unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
     DrpPgpIlv& hw = *new(0) DrpPgpIlv;
+    //  Dump the PGP error counts
+#define RXCNT(lane,name) unsigned(reinterpret_cast<Pds::Mmhw::Pgp3Axil*>(&hw.pgpmon[lane].v0)->name)
+#define PRINT_FIELD(name) {                              \
+        logging::info("%15.15s: %04x %04x %04x %04x",    \
+                      #name,                             \
+                      RXCNT(0,name),                     \
+                      RXCNT(1,name),                     \
+                      RXCNT(2,name),                     \
+                      RXCNT(3,name)); }
+    PRINT_FIELD(rxFrameCnt);
+    PRINT_FIELD(rxFrameErrCnt);
+
     //  Reset the PGP links
     //  user reset
     hw.mig[0] = 1<<31;
@@ -340,8 +359,11 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
             const uint8_t* const p_end = p + data_size;
             do {
                 const Pds::HSD::StreamHeader& stream = *reinterpret_cast<const Pds::HSD::StreamHeader*>(p);
-                if (stream.overflow()) {
-                    logging::debug("Overflow");
+                if (stream.overflow() ||
+                    stream.unlocked()) {
+                    logging::debug("Header error: overflow %c  unlocked %c",
+                                   stream.overflow()?'T':'F',
+                                   stream.unlocked()?'T':'F');
                     dgram.xtc.damage.increase(Damage::UserDefined);
                     break;
                 }

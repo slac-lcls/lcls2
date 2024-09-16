@@ -202,7 +202,13 @@ for i in range(4):
                                         'LockOnIdleOnly',
                                         'RollOverEn',])
 for i in range(4):
-    ordering[f'DigAsicStrmRegisters{i}'] = ['asicDataReq','DisableLane','EnumerateDisLane',]
+    ordering[f'DigAsicStrmRegisters{i}'] = ['asicDataReq',
+                                            'DisableLane',
+                                            'EnumerateDisLane',
+                                            'FillOnFailEn',
+                                            'FillOnFailPersistantDisable',
+                                            'SroToSofTimeout',
+                                            'DataTimeout',]
 
 ordering['TriggerRegisters'] = ['RunTriggerEnable',
                                 'TimingRunTriggerEnable',
@@ -247,8 +253,8 @@ def setSaci(reg,field,di):
         reg.set(v)
 
 def gain_mode_map(gain_mode):
-    compTH        = ( 0, 63, 12)[gain_mode] # SoftHigh/SoftLow/Auto
-    precharge_DAC = (45, 50, 45)[gain_mode]
+    compTH        = ( 0, 44, 24)[gain_mode] # SoftHigh/SoftLow/Auto
+    precharge_DAC = (45, 45, 45)[gain_mode]
     return (compTH, precharge_DAC)
 
 #
@@ -527,7 +533,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
         cbase.fnInitAsicScript(None,None,arg)
 
-        #  Remove the yml files
+        # Remove the yml files
         for f in tmpfiles:
             os.remove(f)
 
@@ -538,11 +544,12 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             if i not in asics:  # Override configDb's value for disabled ASICs
                 getattr(cbase.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(0xffffff)
 
-            # Enable the batchers for all ASICs
-            getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
-
         # Adjust for intermitent lanes of enabled ASICs
-        cbase.laneDiagnostics(arg[1:5], threshold=20, loops=5, debugPrint=False)
+        #cbase.laneDiagnostics(arg[1:5], threshold=20, loops=5, debugPrint=False)
+
+        # Enable the batchers for all ASICs
+        for i in range(cbase.numOfAsics):
+            getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
 
     if writeCalibRegs:
         hasGainMode = 'gain_mode' in cfg['user']

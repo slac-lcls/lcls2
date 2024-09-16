@@ -548,6 +548,16 @@ int main(int argc, char* argv[])
       }
     }
 
+    // Complain if all arguments weren't consummed
+    if (optind < argc) {
+        printf("Unrecognized argument:\n");
+        while (optind < argc)
+            printf("  %s ", argv[optind++]);
+        printf("\n");
+        usage(argv[0]);
+        return 1;
+    }
+
     if ( (fd = open(dev,O_RDWR)) < 0) {
       perror("Opening device file");
       return 1;

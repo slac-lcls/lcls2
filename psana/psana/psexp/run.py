@@ -126,11 +126,12 @@ class Run(object):
 
         return None
 
-    def Detector(self, name, accept_missing=False):
+    def Detector(self, name, accept_missing=False, **kwargs):
         if name in self._dets:
             return self._dets[name]
 
         mapped_env_var_name = self._get_valid_env_var_name(name)
+
         if name not in self.dsparms.configinfo_dict and mapped_env_var_name is None:
             if not accept_missing:
                 err_msg = f"No available detector class matched with {name}. If this is a new detector/version, make sure to add new class in detector folder."
@@ -154,7 +155,7 @@ class Run(object):
             "normal"
         ].items():
             if det_name == name:
-                # Detetors with cfgscan also owns an EnvStore
+                # Detectors with cfgscan also owns an EnvStore
                 env_store = None
                 var_name = None
                 if det_name in self.esm.stores:
@@ -163,6 +164,7 @@ class Run(object):
 
                 self._check_empty_calibconst(det_name)
 
+                # set and add propertiees for det.<drp_class_name>.<drp_class> level, i.e. det.raw.archon_raw_1_0_0
                 setattr(
                     det,
                     drp_class_name,
@@ -173,13 +175,17 @@ class Run(object):
                         self.dsparms.calibconst[det_name],
                         env_store,
                         var_name,
+                        **kwargs
                     ),
                 )
+                # add properties for det.raw level
                 setattr(det, "_configs", self.configs)
                 setattr(det, "calibconst", self.dsparms.calibconst[det_name])
                 setattr(det, "_dettype", self.dsparms.det_info_table[det_name][0])
                 setattr(det, "_detid", self.dsparms.det_info_table[det_name][1])
                 setattr(det, "_det_name", det_name)
+                #setattr(det, "_kwargs", kwargs)
+
                 flag_found = True
 
         # If no detector found, EnvStore variable is assumed to have been passed in.
@@ -281,7 +287,7 @@ class RunShmem(Run):
     def events(self):
 
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndRun:
                     return
                 continue
@@ -310,7 +316,7 @@ class RunDrp(Run):
 
     def events(self):
         for evt in self._evt_iter:
-            if evt.service() == TransitionId.L1Accept:
+            if TransitionId.isEvent(evt.service()):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
@@ -321,7 +327,7 @@ class RunDrp(Run):
                 bufsize=buffer_size,
             )
 
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndRun:
                     self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                     return
@@ -332,7 +338,7 @@ class RunDrp(Run):
 
     def steps(self):
         for evt in self._evt_iter:
-            if evt.service() == TransitionId.L1Accept:
+            if TransitionId.isEvent(evt.service()):
                 buffer_size = self._ds.dm.pebble_bufsize
             else:
                 buffer_size = self._ds.dm.transition_bufsize
@@ -364,7 +370,7 @@ class RunSingleFile(Run):
 
     def events(self):
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndRun:
                     return
                 continue
@@ -391,7 +397,7 @@ class RunSerial(Run):
 
     def events(self):
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndRun:
                     return
                 continue
@@ -461,7 +467,7 @@ class RunSmallData(Run):
 
     def steps(self):
         for evt in self._evt_iter:
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 self.esm.update_by_event(evt)
                 self.proxy_events.append(evt._proxy_evt)
                 if evt.service() == TransitionId.EndRun:
@@ -476,7 +482,7 @@ class RunSmallData(Run):
 
     def events(self):
         for evt in self.eb.events():
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 self.esm.update_by_event(evt)
                 self.proxy_events.append(evt._proxy_evt)
                 if evt.service() == TransitionId.EndRun:

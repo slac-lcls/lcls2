@@ -271,9 +271,13 @@ def epixm320_cdict(prjCfg):
 
     for i in range(numAsics):
         base = 'expert.App.AsicTop.DigAsicStrmRegisters{}.'.format(i)
-        top.set(base+'asicDataReq'     , 0, 'UINT16')
-        top.set(base+'DisableLane'     , 0, 'UINT32')
-        top.set(base+'EnumerateDisLane', 0, 'UINT32')
+        top.set(base+'asicDataReq',                 0, 'UINT16')
+        top.set(base+'DisableLane',                 0, 'UINT32')
+        top.set(base+'EnumerateDisLane',            0, 'UINT32')
+        top.set(base+'FillOnFailEn',                0, 'boolEnum')
+        top.set(base+'FillOnFailPersistantDisable', 0, 'boolEnum')
+        top.set(base+'SroToSofTimeout',             0, 'UINT32')
+        top.set(base+'DataTimeout',                 0, 'UINT32')
 
     # These registers are set in the epixm320_config.py file
     #for i in range(numAsics):

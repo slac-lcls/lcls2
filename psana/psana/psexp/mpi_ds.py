@@ -51,7 +51,7 @@ class RunParallel(Run):
         evt_iter = self.start()
         st = time.time()
         for i, evt in enumerate(evt_iter):
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 continue
             yield evt
             if i % 1000 == 0:

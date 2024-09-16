@@ -54,10 +54,6 @@ static std::vector<double> parab_fit(double* qwf, unsigned ix, unsigned len, dou
 static const unsigned no_shape[] = {0,0};
 
 OpalTTFex::OpalTTFex(Parameters* para) :
-  m_eventcodes_beam_incl (0),
-  m_eventcodes_beam_excl (0),
-  m_eventcodes_laser_incl(0),
-  m_eventcodes_laser_excl(0),
   m_sig_avg_sem          (Pds::Semaphore::FULL),
   m_ref_avg_sem          (Pds::Semaphore::FULL),
   m_sb_avg_sem           (Pds::Semaphore::FULL)
@@ -115,39 +111,22 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
       int data_rank = name.rank();
       int data_type = name.type();
       printf("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
-#define GET_VECTOR(a,b)                                           \
-      if (strcmp(name.name(),"fex.eventcodes." #a "." #b)==0) {   \
-          Array<uint16_t> t = descdata.get_array<uint16_t>(i);    \
-          std::vector<uint16_t>& v = m_eventcodes_##a##_##b;      \
-              unsigned len = t.num_elem();                        \
-              v.resize(len);                                      \
-              memcpy(v.data(),t.data(),len*sizeof(uint16_t));     \
-              printf("m_eventcodes_" #a "_" #b);                  \
-              for(unsigned k=0; k<len; k++)                       \
-                  printf(" %u", v[k]);                            \
-              printf("\n");                                       \
-      }
-      GET_VECTOR(beam,incl);
-      GET_VECTOR(beam,excl);
-      GET_VECTOR(laser,incl);
-      GET_VECTOR(laser,excl);
-#undef GET_VECTOR
-#define GET_VECTOR(a)                                           \
-      if (strcmp(name.name(),"fex." #a)==0) {                   \
-        Array<double> t = descdata.get_array<double>(i);        \
-        unsigned len = t.num_elem();                            \
-        std::vector<double> v(len);                             \
-        memcpy(v.data(),t.data(),len*sizeof(double));           \
-        printf("m_" #a);                                        \
-        for(unsigned k=0; k<len; k++)                           \
-          printf(" %f", v[k]);                                  \
-        printf("\n");                                           \
-        m_##a = v;                                              \
-      }
+
+#define GET_VECTOR(a)                                   \
+      if (strcmp(name.name(),"fex." #a)==0) {           \
+      Array<double> t = descdata.get_array<double>(i);  \
+      unsigned len = t.num_elem();                      \
+      std::vector<double> v(len);                       \
+      memcpy(v.data(),t.data(),len*sizeof(double));     \
+      printf("m_" #a);                                  \
+      for(unsigned k=0; k<len; k++)                     \
+          printf(" %f", v[k]);                          \
+      printf("\n");                                     \
+      m_##a = v;                                        \
+  }
       GET_VECTOR(fir_weights);
       GET_VECTOR(calib_poly);
 #undef GET_VECTOR
-
   }
 
   {
@@ -160,7 +139,17 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
           }
       }
   }
+  
+  m_beam_select.set_incl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.incl.eventcode") );
+  m_beam_select.set_incl_destination( descdata.get_value<int32_t> ("fex.beam.incl.destination:destEnum") );
+  m_beam_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.excl.eventcode") );
+  m_beam_select.set_excl_destination( descdata.get_value<int32_t> ("fex.beam.excl.destination:destEnum") );
 
+  m_laser_select.set_incl_eventcode  ( descdata.get_value<uint16_t>("fex.laser.incl.eventcode") );
+  m_laser_select.set_incl_destination( descdata.get_value<int32_t> ("fex.laser.incl.destination:destEnum") );
+  m_laser_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.laser.excl.eventcode") );
+  m_laser_select.set_excl_destination( descdata.get_value<int32_t> ("fex.laser.excl.destination:destEnum") );
+  
 #define GET_ENUM(a,b,c) {                                                \
     m_##a##_##b = descdata.get_value<int32_t>("fex." #a "." #b ":" #c); \
       printf("m_" #a "_" #b " = %u\n", m_##a##_##b);                    \
@@ -224,15 +213,6 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   m_prescale_image_counter = 0;
   m_prescale_projections_counter = 0;
 
-#ifdef DBUG
-  printf("incl_beam size %zd  excl_beam size %zd\n",
-         m_eventcodes_beam_incl.size(),
-         m_eventcodes_beam_excl.size());
-  printf("incl_laser size %zd  excl_laser size %zd\n",
-         m_eventcodes_laser_incl.size(),
-         m_eventcodes_laser_excl.size());
-#endif
-
 }
       
 void OpalTTFex::unconfigure()
@@ -266,18 +246,8 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   //  EventInfo is in subframe 3
   const EventInfo& info = *reinterpret_cast<const EventInfo*>(subframes[3].data());
 
-
-  bool beam = true;
-  for(unsigned i=0; i<m_eventcodes_beam_incl.size(); i++)
-    beam &= info.eventCode(m_eventcodes_beam_incl[i]);
-  for(unsigned i=0; i<m_eventcodes_beam_excl.size(); i++)
-    beam &= !info.eventCode(m_eventcodes_beam_excl[i]);
-
-  bool laser = true;
-  for(unsigned i=0; i<m_eventcodes_laser_incl.size(); i++)
-    laser &= info.eventCode(m_eventcodes_laser_incl[i]);
-  for(unsigned i=0; i<m_eventcodes_laser_excl.size(); i++)
-    laser &= !info.eventCode(m_eventcodes_laser_excl[i]);
+  bool beam  = m_beam_select.select (info);
+  bool laser = m_laser_select.select(info);
 
 #ifdef DBUG
   { const uint32_t* p = reinterpret_cast<const uint32_t*>(&info);

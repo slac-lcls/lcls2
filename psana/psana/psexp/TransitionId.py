@@ -9,6 +9,12 @@ EndStep = 7
 Enable = 8
 Disable = 9
 SlowUpdate = 10
-Unused_11 = 11
+L1Accept_EndOfBatch = 11
 L1Accept = 12
 NumberOf = 13
+
+def isEvent(transition_id):
+    if transition_id == L1Accept or transition_id == L1Accept_EndOfBatch:
+        return True
+    return False
+

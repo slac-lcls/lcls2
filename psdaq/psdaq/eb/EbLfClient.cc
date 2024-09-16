@@ -55,7 +55,7 @@ int EbLfClient::connect(EbLfCltLink** link,
   if (_verbose)
   {
     void* data = fab;                   // Something since data can't be NULL
-    printf("Client: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
+    printf("EbLfClient: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
   }
 

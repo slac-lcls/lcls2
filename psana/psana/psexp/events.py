@@ -91,7 +91,7 @@ class Events:
             # TODO: MONA Update EnvStore here instead of inside DgramManager.
             # To mirror withe RunSerial/RunParallel, consider moving update
             # into DgramManager.
-            if evt.service() != TransitionId.L1Accept:
+            if not TransitionId.isEvent(evt.service()):
                 self.run.esm.update_by_event(evt)
 
             if not any(evt._dgrams):

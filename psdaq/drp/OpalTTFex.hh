@@ -54,10 +54,8 @@ private:
     unsigned m_columns;
     unsigned m_rows;
 
-    std::vector<uint16_t> m_eventcodes_beam_incl;
-    std::vector<uint16_t> m_eventcodes_beam_excl;
-    std::vector<uint16_t> m_eventcodes_laser_incl;
-    std::vector<uint16_t> m_eventcodes_laser_excl;
+    EventSelect m_beam_select;
+    EventSelect m_laser_select;
 
     unsigned m_project_axis    ;  // project image onto Y axis
     int      m_project_minvalue;  // valid projection must be at least this large

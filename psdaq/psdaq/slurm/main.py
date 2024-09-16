@@ -14,7 +14,8 @@ from subprocess import Popen
 from psdaq.slurm.config import Config
 
 LOCALHOST = socket.gethostname()
-PSBATCH_SCRIPT = "submit_psbatch.sh"
+DAQBATCH_SCRIPT = "submit_daqbatch.sh"
+MAX_RETRIES = 30
 
 
 def silentremove(filename):
@@ -32,7 +33,7 @@ class Runner:
     PATH_LESS = "/usr/bin/less"
     PATH_CAT = "/bin/cat"
 
-    def __init__(self, configfilename, as_step=False, verbose=False):
+    def __init__(self, configfilename, as_step=False, verbose=False, output=None):
         # Allowing users' code to do relative 'import' in config file
         sys.path.append(os.path.dirname(configfilename))
         config_dict = {"platform": None, "config": None}
@@ -60,7 +61,7 @@ class Runner:
                 if cmd_token == "-x":
                     self.xpm_id = int(cmd_tokens[cmd_index + 1])
 
-        self.sbman = SbatchManager(configfilename, self.platform, as_step, verbose)
+        self.sbman = SbatchManager(configfilename, self.platform, as_step, verbose, output=output)
         self.proc = SubprocHelper()
         self.parse_config()
 
@@ -118,9 +119,9 @@ class Runner:
         return
 
     def submit(self):
-        with open(PSBATCH_SCRIPT, "w") as f:
+        with open(DAQBATCH_SCRIPT, "w") as f:
             f.write(self.sbman.sb_script)
-        cmd = f"sbatch {PSBATCH_SCRIPT}"
+        cmd = f"sbatch {DAQBATCH_SCRIPT}"
         asyncio.run(self.proc.run(cmd, wait_output=True))
 
     def _select_config_ids(self, unique_ids):
@@ -221,8 +222,22 @@ class Runner:
                     if job_name in config_ids:
                         self.sbman.generate(node, job_name, details, self.node_features)
                         self.submit()
+                        if "flags" in details:
+                            if details["flags"].find("x") > -1:
+                                job_state = None
+                                for i in range(MAX_RETRIES):
+                                    if self._exists(unique_ids=job_name): 
+                                        job_details = self.sbman.get_job_info()
+                                        job_state = job_details[details['comment']]['state']
+                                        if job_state == "RUNNING": break
+                                    if i==0: print(f'Waiting for slurm job {job_name} ({job_state}) to start for attaching xterm...')
+                                    time.sleep(3)
+                                if job_state is not None:
+                                    time.sleep(1) # Still need to wait! even if job is already in RUNNING state
+                                    ldProcStatus = self.show_status(quiet=True)
+                                    self.spawnConsole(job_name, ldProcStatus, False)
 
-    def stop(self, unique_ids=None):
+    def stop(self, unique_ids=None, skip_wait=False, verbose=False):
         """Stops running job using their comment.
 
         Each job is submitted with their unique comment. We can stop all the processes
@@ -236,17 +251,34 @@ class Runner:
         else:
             config_ids = list(self.config.keys())
 
+        job_states = {}
         for config_id in config_ids:
             comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
             if comment in job_details:
                 self._cancel(job_details[comment]["job_id"])
+                job_states[job_details[comment]["job_id"]] = None
             else:
-                print(
-                    f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
-                )
+                if verbose:
+                    print(
+                        f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
+                    )
 
-    def restart(self, unique_ids=None):
-        self.stop(unique_ids=unique_ids)
+        # Wait until all cancelled jobs reach CANCELLED state
+        if not skip_wait:
+            for i in range(MAX_RETRIES):
+                for job_id, _ in job_states.items():
+                    results = self.sbman.get_job_info_byid(job_id, ["JobState"])
+                    if "JobState" in results:
+                        job_states[job_id] = results["JobState"]
+                active_jobs = [job_id for job_id, job_state in job_states.items() if job_state != 'CANCELLED']
+                if len(active_jobs) == 0:
+                    break
+                if i == 0: print(f'Waiting for slurm jobs to complete...')
+                time.sleep(3)
+
+
+    def restart(self, unique_ids=None, verbose=False):
+        self.stop(unique_ids=unique_ids, skip_wait=True, verbose=verbose)
         self.start(unique_ids=unique_ids, skip_check_exist=True)
 
     def spawnConsole(self, config_id, ldProcStatus, large=False):
@@ -277,7 +309,9 @@ class Runner:
                     ]
                 else:
                     args = [self.PATH_XTERM, "-T", config_id, "-e", cmd]
-                Popen(args)
+
+                arg_str = ' '.join(args)
+                asyncio.run(self.proc.run(arg_str, wait_output=False))
             except:
                 print("spawnConsole failed for process '%s'" % config_id)
             else:
@@ -352,21 +386,28 @@ def main(
         ),
     ] = False,
     verbose: Annotated[
-        bool, typer.Option(help="Print out sbatch script(s) submitted by psbatch.")
+        bool, typer.Option("--verbose", "-v", help="Print out sbatch script(s) submitted by daqbatch and warnings")
     ] = False,
+    output: Annotated[
+        str,
+        typer.Option(
+            "--output", "-o",
+            help="Specify output path for process log files."
+        ),
+    ] = None,
 ):
-    runner = Runner(cnf_file, as_step=as_step, verbose=verbose)
+    runner = Runner(cnf_file, as_step=as_step, verbose=verbose, output=output)
     if subcommand == "start":
         runner.start(unique_ids=unique_ids)
     elif subcommand == "stop":
-        runner.stop(unique_ids=unique_ids)
+        runner.stop(unique_ids=unique_ids, verbose=verbose)
     elif subcommand == "restart":
-        runner.restart(unique_ids=unique_ids)
+        runner.restart(unique_ids=unique_ids, verbose=verbose)
     elif subcommand == "status":
         runner.show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
-    silentremove(PSBATCH_SCRIPT)
+    silentremove(DAQBATCH_SCRIPT)
 
 
 def _do_main():

@@ -9,7 +9,8 @@ import socket
 
 LOCALHOST = socket.gethostname()
 SLURM_PARTITION = "drpq"
-DRP_N_RSV_CORES = 4
+DRP_N_RSV_CORES = int(os.environ.get('PS_DRP_N_RSV_CORES', '4'))
+SCRIPTS_ROOTDIR = '/reg/g/pcds/dist/pds'
 
 
 class PSbatchSubCommand:
@@ -19,13 +20,16 @@ class PSbatchSubCommand:
 
 
 class SbatchManager:
-    def __init__(self, configfilename, platform, as_step, verbose):
+    def __init__(self, configfilename, platform, as_step, verbose, output=None):
         self.sb_script = ""
         now = datetime.now()
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
-        self.output_path = os.path.join(
-            os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
-        )
+        if output is None:
+            self.output_path = os.path.join(
+                os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
+            )
+        else:
+            self.output_path = output
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         envs = [
@@ -37,11 +41,14 @@ class SbatchManager:
             "OPENBLAS_NUM_THREADS",
             "PS_PARALLEL",
         ]
-        self.env_dict = {key: os.environ.get(key, "") for key in envs}
+        self.env_dict = {key: os.environ.get(key, "none") for key in envs}
         self.configfilename = configfilename
         self.platform = platform
         self.as_step = as_step
         self.verbose = verbose
+        self.hutch = self.call_subprocess("get_info", "--gethutch")
+        self.user = self.hutch+'opr'
+        self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, 'scripts')
 
     @property
     def git_describe(self):
@@ -73,6 +80,25 @@ class SbatchManager:
             node, features = line.strip('"').split()
             node_features[node] = {feature: 0 for feature in features.split(",")}
         return node_features
+
+    def get_job_info_byid(self, job_id, jobparms):
+        """Returns a dictionary containing values obtained from scontrol
+        with the given jobparms list. Returns {} if this job does not exist.
+        """
+        output = self.call_subprocess(
+            "scontrol", "show", "job", job_id
+        )
+        results = {}
+        if output is not None:
+            scontrol_lines = output.splitlines()
+            for jobparm in jobparms:
+                for scontrol_line in scontrol_lines:
+                    scontrol_cols = scontrol_line.split()
+                    for scontrol_col in scontrol_cols:
+                        if scontrol_col.find(jobparm) > -1:
+                            _, jobparm_val = scontrol_col.split("=")
+                            results[jobparm] = jobparm_val
+        return results
 
     def get_job_info(self):
         """Returns formatted output from squeue by the current user"""
@@ -158,6 +184,7 @@ class SbatchManager:
 
     def get_output_header(self, node, job_name, details):
         header = ""
+        header += "# SLURM_JOB_ID:$SLURM_JOB_ID\n"
         header += "# ID:      %s\n" % job_name
         header += "# PLATFORM:%s\n" % self.platform
         header += "# HOST:    %s\n" % node
@@ -180,23 +207,27 @@ class SbatchManager:
             n_cores = int(details["cores"])
         return n_cores
 
-    def get_jobstep_cmd(self, node, job_name, details, het_group=-1, with_output=False):
+    def get_jobstep_cmd(
+        self, node, job_name, details, het_group=-1, with_output=False, as_step=False
+    ):
         output_opt = ""
         if with_output:
             output = self.get_output_filepath(node, job_name)
             output_opt = f"--output={output} --open-mode=append "
         env_opt = "--export=ALL"
+        env_export = ""
         if "env" in details:
             if details["env"] != "":
-                env = details["env"].replace(" ", ",").strip("'")
-                env_opt += f",{env}"
+                envs = details["env"].split()
+                for env in envs:
+                    env_export += f'export {env};'
         het_group_opt = ""
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
 
         cmd = self.get_daq_cmd(details, job_name)
         header = self.get_output_header(node, job_name, details)
-        cmd = f'echo "{header}"; {cmd}'
+        cmd = f'echo "{header}";{env_export} {cmd}'
         if "conda_env" in details:
             if details["conda_env"] != "":
                 CONDA_EXE = os.environ.get("CONDA_EXE", "")
@@ -208,10 +239,13 @@ class SbatchManager:
 
         env_opt += " "
         n_cores = self.get_n_cores(details)
-        jobstep_cmd = (
-            f"srun -n1 --cpus-per-task={n_cores} --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
-            + "&\n"
-        )
+        if not as_step:
+            jobstep_cmd = f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+        else:
+            jobstep_cmd = (
+                f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                + "&\n"
+            )
         return jobstep_cmd
 
     def generate_as_step(self, sbjob, node_features):
@@ -219,7 +253,6 @@ class SbatchManager:
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}" + "\n"
         sb_script += f"#SBATCH --job-name=main" + "\n"
         output = self.get_output_filepath(LOCALHOST, "slurm")
-        sb_script += f"#SBATCH --output={output}" + "\n"
         sb_script += f"#SBATCH --output={output}" + "\n"
         sb_header = ""
         sb_steps = ""
@@ -244,7 +277,12 @@ class SbatchManager:
                 if len(sbjob) == 1:
                     het_group_id = -1
                 sb_steps += self.get_jobstep_cmd(
-                    node, job_name, details, het_group=het_group_id, with_output=True
+                    node,
+                    job_name,
+                    details,
+                    het_group=het_group_id,
+                    with_output=True,
+                    as_step=True,
                 )
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
@@ -258,27 +296,22 @@ class SbatchManager:
         sb_script += f"#SBATCH --comment={details['comment']}" + "\n"
 
         n_cores = self.get_n_cores(details)
-        flag_x = False
-        if "flags" in details:
-            if details["flags"].find("x") > -1:
-                flag_x = True
-        if flag_x:
-            n_cores += 1
+        n_tasks = 1
 
         if node_features is None:
-            sb_script += f"#SBATCH --nodelist={node} --ntasks={n_cores}" + "\n"
+            sb_script += f"#SBATCH --nodelist={node} -c {n_cores}" + "\n"
         else:
-            sb_script += f"#SBATCH --constraint={job_name} --ntasks={n_cores}" + "\n"
+            sb_script += f"#SBATCH --constraint={job_name} -c {n_cores}" + "\n"
 
+        # Unset EPICS_*, PYTHONPATH, and LD_LIBRARY_PATH
+        sb_script += "while read var; do unset $var; done < <(env | grep -i EPICS_ | awk -F '=' '{print $1}')" + "\n"
+        sb_script += f"unset PYTHONPATH" + "\n"
+        sb_script += f"unset LD_LIBRARY_PATH" + "\n"
+
+        # Source lcls2 environment
+        sb_script += f"source {os.path.join(self.scripts_dir, 'setup_env.sh')}" + "\n"
+       
         sb_script += self.get_jobstep_cmd(node, job_name, details)
-        if flag_x:
-            cmd = "sattach $SLURM_JOB_ID.0"
-            jobstep_cmd = (
-                f"srun -n1 --exclusive --job-name={job_name}_x --x11 xterm -e bash -c '{cmd}'"
-                + "&\n"
-            )
-            sb_script += jobstep_cmd
-        sb_script += "wait"
         self.sb_script = sb_script
         if self.verbose:
             print(self.sb_script)

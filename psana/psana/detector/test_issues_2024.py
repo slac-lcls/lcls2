@@ -217,7 +217,7 @@ def issue_2024_04_17():
     from psana import DataSource
     import sys
     from psana.detector.NDArrUtils import info_ndarr
-    from psana.detector.UtilsGraphics import gr, fleximage
+    #from psana.detector.UtilsGraphics import gr, fleximage
     from psana.detector.UtilsEpixm320Calib import gain_mode_name
 
     ds = DataSource(exp='tstx00417',run=324,dir='/drpneh/data/tst/tstx00417/xtc/')
@@ -247,7 +247,7 @@ def issue_2024_04_23():
     from psana.detector.UtilsGraphics import gr, fleximage
     from psana.detector.UtilsEpixm320Calib import gain_mode_name
     flimg = None
-    #ds = DataSource(exp='rixx1005922',run=34)
+    #Ds = DataSource(exp='rixx1005922',run=34)
     ds = DataSource(exp='rixx1005922',run=7)
     orun = next(ds.runs())
     det = orun.Detector('epixm')
@@ -284,6 +284,104 @@ def issue_2024_04_24():
     #ds = DataSource(exp='tstx00417',run=328,dir='/sdf/data/lcls/ds/rix/rixx1005922/scratch/xtc')
     orun = next(ds.runs())
     print('orun.expt', orun.expt, ' expected rixx1005922...')
+
+
+def issue_2024_07_24():
+    """test for det.raw.calib/image implementation for archon
+    """
+    #ds, orun, det = ds_run_det(exp='rixc00121', run=140, detname='archon', dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc')
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    #ds = DataSource(exp='rixc00121',run=140, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1,4800)
+    #ds = DataSource(exp='rixc00121',run=141, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1,4800)
+    #ds = DataSource(exp='rixc00121',run=142, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(75,4800)
+    #ds = DataSource(exp='rixc00121',run=151, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(300,4800), 35evts
+    #ds = DataSource(exp='rixc00121',run=152, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(600,4800), 5evts
+    ds = DataSource(exp='rixc00121',run=154, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1200,4800), >200 evts
+    #ds = DataSource(exp='rixc00121',run=155, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(600,4800)
+    #ds = DataSource(exp='rixc00121',run=156, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon'])  # raw data shape=(?,4800)
+    orun = next(ds.runs())
+    #for orun in ds.runs():
+    #det = orun.Detector('archon', gainfact=2, cmpars=(1,2,3,4)) # see class Detector in psana/psana/psexp/run.py **kwargs intercepted by AreaDetector
+    det = orun.Detector('archon', gainfact=2, cmpars=None)
+    #print('ZZZ dir(det): %s' % dir(det))
+    #print('ZZZ gain_factor: %s' % str(det._det_kwargs))
+
+    flimg = None
+    flimg1 = None
+    peds = det.calibconst['pedestals'][0]
+    print(info_ndarr(peds, 'issue_2024_07_24 peds'))
+
+    x, y = det.raw._seg_geo.get_seg_xy_maps_um()
+    print(info_ndarr(x, 'panel pixel x'))
+    print(info_ndarr(y, 'panel pixel y'))
+
+    x, y, z = det.raw._geo.get_pixel_coords()
+    print(info_ndarr(x, 'det pixel x'))
+    print(info_ndarr(y, 'det pixel y'))
+    print(info_ndarr(z, 'det pixel z'))
+
+    #print('\ndet.calibconst["pedestals"]', det.calibconst['pedestals'])
+
+    for nev, evt in enumerate(orun.events()):
+       #print(info_ndarr(det.raw.raw(evt), '%3d: det.raw.raw(evt)' % nev))
+       if nev>20:
+           print('BREAK for nev>20')
+           break
+       raw = det.raw.raw(evt)
+       if raw is None:
+           print('evt:%3d - raw is None' % nev)
+           continue
+
+       t0_sec = time()
+       img  = det.raw.image(evt)
+       dt_sec = (time() - t0_sec)*1000
+       arr = img # calib # img
+       print(info_ndarr(arr, 'evt:%3d dt=%.3f msec  det.raw.img(evt)' % (nev, dt_sec)))
+
+       if flimg is None:
+          flimg = fleximage(img, arr=None, h_in=5, w_in=16, nneg=1, npos=3)
+
+       raw_img = det.raw._arr_to_image(raw)
+       flimg.update(raw_img, arr=None)
+       flimg.fig.suptitle('Event %d: det.raw.raw' % nev, fontsize=16)
+       gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+       print(info_ndarr(raw_img, 'raw_img'))
+       print(info_ndarr(raw, 'raw'))
+
+       flimg.update(img, arr=None)
+       flimg.fig.suptitle('Event %d: det.raw.image' % nev, fontsize=16)
+       gr.save_fig(flimg.fig, fname='img_det_raw_image.png', verb=True)
+       gr.show(mode='DO NOT HOLD')
+
+       if nev<2:
+
+         t0_sec = time()
+         mask_fake = det.raw._mask_fake(raw.shape) # 0.6 msec
+         dt_sec = (time() - t0_sec)*1000
+         print(info_ndarr(mask_fake, '    mask_fake: dt=%.3f msec' % dt_sec))
+
+         if flimg1 is None:
+            flimg1 = fleximage(mask_fake, arr=None, h_in=5, w_in=16, nneg=1, npos=3)
+
+         flimg1.update(mask_fake, arr=None)
+         flimg1.fig.suptitle('mask_fake', fontsize=16)
+         gr.save_fig(flimg1.fig, fname='img_mask_fake.png', verb=True)
+
+         gr.show()
+         sys.exit('TEST EXIT')
+
+
+
+         det.raw._set_tstamp_pixel_values(mask_fake, value=100)
+         flimg.update(mask_fake, arr=None)
+         gr.show(mode='DO NOT HOLD')
+         for ibank in range(16):
+             print('  bank: %02d time stamp: %d' % (ibank, det.raw._tstamp_raw(raw, ibank)))
+
+    gr.show()
 
 
 def argument_parser():
@@ -330,6 +428,7 @@ def selector():
     elif TNAME in  ('8',): issue_2024_04_17() # epixm320 calib method for exp=tstx00417,run=324 on drp_neh_cmp001 psana
     elif TNAME in  ('9',): issue_2024_04_23() # epixm320 calib method for exp='rixx1005922',run=34 on sdf
     elif TNAME in ('10',): issue_2024_04_24() # epixm320 exp='rixx1005922',run=328 run.expt: tstx00417
+    elif TNAME in ('11',): issue_2024_07_24() # test for implementation off archon methods
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

@@ -304,9 +304,10 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
     int* m_resMqId = resMqId;
     int* m_inpShmId = inpShmId;
     int* m_resShmId = resShmId;
-    
+
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
-        logging::critical("Failed to allocate lane/vc");
+        logging::critical("Failed to allocate lane/vc "
+                          "- does another process have %s open?", para.device.c_str());
         abort();
     }
 
