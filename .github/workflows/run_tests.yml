@@ -43,5 +43,5 @@ jobs:
           # export PYTHONPATH=$(pwd)/install/lib/python$pyver/site-packages
           # ls $(pwd)
           # pytest $(sed 's/^/psana\/psana\/tests\//' test_files.txt)
-          pytest
+          pytest psana/psana/tests
 
