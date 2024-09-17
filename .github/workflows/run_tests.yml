@@ -42,6 +42,17 @@ jobs:
           # pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
           # export PYTHONPATH=$(pwd)/install/lib/python$pyver/site-packages
           # ls $(pwd)
-          pytest $(cat psana/psana/tests/tests.txt)
-          # pytest psana/psana/tests
+          pytest psana/psana/tests/test_HBins.py \
+                 psana/psana/tests/test_Time.py \
+                 psana/psana/tests/test_TimeFormat.py \
+                 psana/psana/tests/test_TimeParse.py \
+                 psana/psana/tests/test_dgramedit.py \
+                 psana/psana/tests/test_dgraminit.py \
+                 psana/psana/tests/test_epix_calib.py \
+                 psana/psana/tests/test_hsd.py \
+                 psana/psana/tests/test_packetfooter.py \
+                 psana/psana/tests/test_psalg.py \
+                 psana/psana/tests/test_py2xtc.py \
+                 psana/psana/tests/test_py2xtc_scan.py \
+                 psana/psana/tests/test_pyalgos.py
 
