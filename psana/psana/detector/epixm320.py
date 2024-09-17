@@ -19,6 +19,10 @@ class epixm320hw_config_0_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super(epixm320hw_config_0_0_0, self).__init__(*args)
 
+class epixm320hw_config_0_1_0(epixm320hw_config_0_0_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+
 class epixm320_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epixm320_raw_0_0_0.__init__')
