@@ -54,5 +54,9 @@ jobs:
                  psana/psana/tests/test_psalg.py \
                  psana/psana/tests/test_py2xtc.py \
                  psana/psana/tests/test_py2xtc_scan.py \
-                 psana/psana/tests/test_pyalgos.py
+                 psana/psana/tests/test_pyalgos.py \
+                 psana/psana/tests/test_sample.py \
+                 psana/psana/tests/test_timetool.py \
+                 psana/psana/tests/test_ts.py \
+                 psana/psana/tests/test_xtc.py
 
