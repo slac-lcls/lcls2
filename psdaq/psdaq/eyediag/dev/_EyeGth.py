@@ -456,6 +456,7 @@ class EyeGth(pr.Device):
         bitSum = 0
         ts1 = time.perf_counter()
         prescale = 0
+        errscan = 0
         while True:
             prescale += 1
 
@@ -463,6 +464,16 @@ class EyeGth(pr.Device):
                 raise Exception('BER to high')
 
             (errCount,bitCount) = self.getBERsample(prescale, x, y)
+
+            if bitCount == 0:
+                errscan += 1
+                prescale -= 1
+                if errscan == 5:
+                    print(f'Too many empty scans.  Exiting.')
+                    break
+
+                print(f'No bitCounts.  Repeat with prescale {prescale}')
+                continue
 
             errSum += errCount
             bitSum += bitCount
