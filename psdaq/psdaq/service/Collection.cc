@@ -64,7 +64,7 @@ bool checkResourceLimits()
         if (rlimits[i].rlim_max != limits[i].required) {
             logging::critical("Inadequate %s limit: got %jd, require %jd",
                               limits[i].name, (uintmax_t)rlimits[i].rlim_max, limits[i].required);
-            bad = true;
+            bad |= limits[i].fatal;
         }
     }
     if (bad)  return true;
