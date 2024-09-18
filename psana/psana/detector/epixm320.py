@@ -3,7 +3,7 @@ import sys
 #from time import time
 #from psana.detector.NDArrUtils import info_ndarr
 import numpy as np
-from amitypes import Array2d, Array3d
+from amitypes import Array1d, Array2d, Array3d
 import psana.detector.epix_base as eb
 import logging
 from psana.detector.detector_impl import DetectorImpl
@@ -107,3 +107,60 @@ class epixm320_raw_0_0_0(eb.epix_base):
 #        return self.raw(evt)[0].reshape(768,384)
 
 # EOF
+
+def _to_u32(data):
+    return (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
+
+class epixm320_raw_0_1_0(epixm320_raw_0_0_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    # Below are the header methods.  The layout is:
+    #   ADD_FIELD(rsvd_0,  UINT32, 1);
+    #   ADD_FIELD(frameNo, UINT32, 1);
+    #   ADD_FIELD(asicNo,  UINT8,  1);
+    #   ADD_FIELD(rsvd_9,  UINT8,  1);
+    #   ADD_FIELD(rsvd_10, UINT8,  1);
+    #   ADD_FIELD(rsvd_11, UINT8,  1);
+    #   ADD_FIELD(rsvd_12, UINT32, 1);
+    #   ADD_FIELD(rsvd_16, UINT32, 1);
+    #   ADD_FIELD(rsvd_20, UINT32, 1);
+    #   ADD_FIELD(rsvd_24, UINT32, 1);
+    #   ADD_FIELD(rsvd_28, UINT32, 1);
+    #   ADD_FIELD(rsvd_32, UINT32, 1);
+    #   ADD_FIELD(rsvd_36, UINT32, 1);
+    #   ADD_FIELD(rsvd_40, UINT32, 1);
+    #   ADD_FIELD(rsvd_44, UINT32, 1);
+    def frameNo(self, evt) -> Array1d:
+        segments = self._segments(evt)
+        if segments is None: return None
+        return [ _to_u32(segments[0].header[i][4:8]) for i in range(4) ]
+
+    def asicNo(self, evt) -> Array1d:
+        segments = self._segments(evt)
+        if segments is None: return None
+        return [segments[0].header[i][8] for i in range(4) ]
+
+    # Below are the trailer methods.  The layout is:
+    #   ADD_FIELD(autoFillMask, UINT32, 1);
+    #   ADD_FIELD(fixedMask,    UINT32, 1);
+    #   ADD_FIELD(rsvd_8,       UINT32, 1);
+    #   ADD_FIELD(rsvd_12,      UINT32, 1);
+    #   ADD_FIELD(rsvd_16,      UINT32, 1);
+    #   ADD_FIELD(rsvd_20,      UINT32, 1);
+    #   ADD_FIELD(rsvd_24,      UINT32, 1);
+    #   ADD_FIELD(rsvd_28,      UINT32, 1);
+    #   ADD_FIELD(rsvd_32,      UINT32, 1);
+    #   ADD_FIELD(rsvd_36,      UINT32, 1);
+    #   ADD_FIELD(rsvd_40,      UINT32, 1);
+    #   ADD_FIELD(rsvd_44,      UINT32, 1);
+
+    def autoFillMask(self, evt) -> Array1d:
+        segments = self._segments(evt)
+        if segments is None: return None
+        return [ _to_u32(segments[0].trailer[i][0:4]) for i in range(4) ]
+
+    def fixedMask(self, evt) -> Array1d:
+        segments = self._segments(evt)
+        if segments is None: return None
+        return [ _to_u32(segments[0].trailer[i][4:8]) for i in range(4) ]
