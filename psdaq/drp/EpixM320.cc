@@ -276,7 +276,9 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
     for (unsigned q = 0; q < NumAsics; ++q) {
         if ((q_asics & (1<<q))==0) {
             //  Missing ASICS are padded with zeroes
-            memset(&aHeader(q, 0), 0, headerSize + asicSize + trailerSize);
+            memset(&aHeader (q, 0),    0, headerSize);
+            memset(&aFrame  (q, 0, 0), 0, asicSize);
+            memset(&aTrailer(q, 0),    0, trailerSize);
             continue;
         }
 
