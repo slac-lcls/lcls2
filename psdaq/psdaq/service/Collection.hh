@@ -89,3 +89,5 @@ private:
 nlohmann::json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, nlohmann::json& body);
 nlohmann::json createAsyncErrMsg(const std::string& alias, const std::string& errMsg);
 nlohmann::json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg);
+
+bool checkResourceLimits();

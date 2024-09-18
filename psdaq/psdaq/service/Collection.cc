@@ -8,6 +8,7 @@
 #include <netinet/ether.h>
 #include <netdb.h>
 #include <net/if.h>
+#include <sys/resource.h>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -34,6 +35,54 @@ json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg)
     json body = json({});
     body["err_info"] = alias + ": " + warnMsg;
     return createMsg("warning", "0", 0, body);
+}
+
+bool checkResourceLimits()
+{
+    const struct Resources
+    {
+        const char*  name;              // Pretty name for printing
+        const int    resource;          // RLIMIT_* value
+        const rlim_t required;          // Value application needs for proper execution
+        const bool   fatal;             // Fail if unsettable
+    } limits[] = { { "MEMLOCK", RLIMIT_MEMLOCK, RLIM_INFINITY, true },
+                   { "RTPRIO",  RLIMIT_RTPRIO,  99, false } };
+    const auto size = sizeof(limits) / sizeof(*limits);
+    struct rlimit rlimits[size];
+
+    // Query current and maximum resource limits
+    for (unsigned i = 0; i < size; ++i) {
+        if (getrlimit(limits[i].resource, &rlimits[i]) < 0) {
+            logging::error("Failed to get %s limit: %M", limits[i].name);
+            return true;
+        }
+    }
+
+    // Check whether maximum limits meet requirements
+    bool bad = false;
+    for (unsigned i = 0; i < size; ++i) {
+        if (rlimits[i].rlim_max != limits[i].required) {
+            logging::critical("Inadequate %s limit: got %jd, require %jd",
+                              limits[i].name, (uintmax_t)rlimits[i].rlim_max, limits[i].required);
+            bad = true;
+        }
+    }
+    if (bad)  return true;
+
+    // Raise current limits to maximums, if needed
+    for (unsigned i = 0; i < size; ++i) {
+        if (rlimits[i].rlim_cur != rlimits[i].rlim_max) {
+            rlimits[i].rlim_cur  = rlimits[i].rlim_max;
+            if (setrlimit(limits[i].resource, &rlimits[i]) < 0) {
+                logging::error("Failed to set %s limit from %jd to %jd: %M",
+                               limits[i].name, (uintmax_t)rlimits[i].rlim_cur, (uintmax_t)rlimits[i].rlim_max);
+                return limits[i].fatal;
+            }
+            logging::debug("Raised %s limit from %jd to %jd",
+                           limits[i].name, (uintmax_t)rlimits[i].rlim_cur, (uintmax_t)rlimits[i].rlim_max);
+        }
+    }
+    return false;                       // No error
 }
 
 static
@@ -230,6 +279,11 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_inprocRecv{&m_context, ZMQ_PAIR},
     m_nsubscribe_partition(0)
 {
+    // Check and raise required ulimit resources to maximum (if needed)
+    if (checkResourceLimits()) {
+        throw "Resource limit(s) error";
+    }
+
     m_pushSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(zmq_base_port + platform)});
 
     m_subSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(zmq_base_port + 10 + platform)});
