@@ -167,6 +167,7 @@ if 'PSDAQ' in BUILD_LIST :
             'daqbatch = psdaq.slurm.main:_do_main',
             'cnf2py = psdaq.slurm.cnftopy:_do_main',
             'psqueue = psdaq.slurm.psqueue:_do_main',
+            'daqlog_header = psdaq.slurm.daqlog_header:_do_main',
         ]
     }
 

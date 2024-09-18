@@ -7,7 +7,7 @@ import asyncio
 import psutil
 import copy
 import socket
-from psdaq.slurm.utils import SbatchManager
+from psdaq.slurm.utils import SbatchManager, call_subprocess
 from psdaq.slurm.subproc import SubprocHelper
 import os, sys, errno
 from subprocess import Popen
@@ -205,7 +205,7 @@ class Runner:
         return result_list
 
     def _cancel(self, slurm_job_id):
-        output = self.sbman.call_subprocess("scancel", str(slurm_job_id))
+        output = call_subprocess("scancel", str(slurm_job_id))
 
     def start(self, unique_ids=None, skip_check_exist=False):
         self._check_unique_ids(unique_ids)
