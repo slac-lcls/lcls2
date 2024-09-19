@@ -32,9 +32,9 @@ namespace Drp {
         }
         static void createData(CreateData& cd, unsigned& index, unsigned ch, Array<uint8_t>& seg) {
             unsigned shape[MaxRank];
-            shape[0] = seg.shape()[0]>>1;
+            shape[0] = seg.num_elem()>>1;
             Array<uint16_t> arrayT = cd.allocate<uint16_t>(index++, shape);
-            memcpy(arrayT.data(), seg.data(), seg.shape()[0]);
+            memcpy(arrayT.data(), seg.data(), seg.num_elem());
         }
     };
     class IntegralStream {
@@ -118,8 +118,7 @@ namespace Drp {
     public:
         static void defineData(Xtc& xtc, const void* bufEnd, const char* detName,
                                const char* detType, const char* detNum,
-                               NamesLookup& lookup, NamesId& raw, NamesId& fex,
-                               const uint8_t* rawBuffers) {
+                               NamesLookup& lookup, NamesId& raw, NamesId& fex) {
           // set up the names for L1Accept data
           { Alg alg("raw", 0, 0, 1);
             Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
@@ -127,8 +126,7 @@ namespace Drp {
                                                         detType, detNum, raw);
             VarDef v;
             for(unsigned i=0; i<8; i++)
-                if (rawBuffers[i])
-                    RawStream::varDef(v,i);
+                RawStream::varDef(v,i);
             eventNames.add(xtc, bufEnd, v);
             lookup[raw] = NameIndex(eventNames); }
           { Alg alg("fex", 0, 0, 1);
@@ -146,14 +144,12 @@ namespace Drp {
                                XtcData::NamesLookup& lookup,
                                XtcData::NamesId&     rawId,
                                XtcData::NamesId&     fexId,
-                               XtcData::Array<uint8_t>* streams,
-                               const uint8_t*        rawBuffers) {
+                               XtcData::Array<uint8_t>* streams) {
             CreateData raw(xtc, bufEnd, lookup, rawId);
 
             unsigned index=0;
             for(unsigned i=0; i<8; i++)
-                if (rawBuffers[i])
-                    RawStream::createData(raw,index,i,streams[i]);
+                RawStream::createData(raw,index,i,streams[i]);
 
             index=0;
             CreateData fex(xtc, bufEnd, lookup, fexId);
@@ -183,20 +179,10 @@ unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
     // set up the names for the event data
     m_evtNamesRaw = NamesId(nodeId, EventNamesIndex+0);
     m_evtNamesFex = NamesId(nodeId, EventNamesIndex+1);
-    // get config parameters needed for data shape
-    XtcData::Names& names = detector::configNames(configo);
-    XtcData::DescData& descdata = configo.desc_shape();
-    // arrays are hard to find.  must iterate.
-    for(unsigned i=0; i<names.num(); i++) {
-        XtcData::Name& name = names.get(i);
-        if (strcmp(name.name(),"expert.RawBuffers.BuffEn")==0)
-            memcpy(m_rawBuffers, descdata.get_array<uint8_t>(i).data(),8);
-    }
 
     W8::Streams::defineData(xtc,bufEnd,m_para->detName.c_str(),
                             m_para->detType.c_str(),m_para->serNo.c_str(),
-                            m_namesLookup,m_evtNamesRaw,m_evtNamesFex,
-                            m_rawBuffers);
+                            m_namesLookup,m_evtNamesRaw,m_evtNamesFex);
     return 0;
 }
 
@@ -204,6 +190,6 @@ void Wave8::_event(XtcData::Xtc& xtc,
                    const void* bufEnd,
                    std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2], m_rawBuffers);
+    W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);
 }
 }

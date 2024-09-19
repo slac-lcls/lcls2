@@ -18,7 +18,6 @@ private:
 private:
     XtcData::NamesId  m_evtNamesRaw;
     XtcData::NamesId  m_evtNamesFex;
-    uint8_t           m_rawBuffers[8];
     Heap              m_allocator;
 };
 
