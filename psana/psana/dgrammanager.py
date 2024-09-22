@@ -240,12 +240,22 @@ class DgramManager(object):
                 if det_name not in det_stream_id_table:
                     det_stream_id_table[det_name] = i
 
+        # collect only user detectors 
+        stream_id_to_detnames = {}
+        for det_name, _ in det_classes['normal'].keys():
+            if det_stream_id_table[det_name] in stream_id_to_detnames:
+                if det_name in stream_id_to_detnames[det_stream_id_table[det_name]]: continue
+                stream_id_to_detnames[det_stream_id_table[det_name]].append(det_name)
+            else:
+                stream_id_to_detnames[det_stream_id_table[det_name]] = [det_name]
+        
         # Add products of this function to itself and the consumers
         for config_consumer in [self]+self.config_consumers:
             setattr(config_consumer, 'det_classes', det_classes)
             setattr(config_consumer, 'xtc_info', xtc_info)
             setattr(config_consumer, 'det_info_table', det_info_table)
             setattr(config_consumer, 'det_stream_id_table', det_stream_id_table)
+            setattr(config_consumer, 'stream_id_to_detnames', stream_id_to_detnames)
 
     def _set_configinfo(self):
         """ From configs, we generate a dictionary lookup with det_name as a key.
