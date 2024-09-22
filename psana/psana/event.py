@@ -202,7 +202,16 @@ class Event():
         self._proxy_evt.set_destination(dest)
 
     def EndOfBatch(self):
-        for d in self._dgrams:
+        """ Returns a list of integrating detectors whose batch ends at this event
+        
+        Single integrating detector:
+            defaulted to [intg_det]
+        Multiple integrating detectors (future feature):
+            we probably need another flag to identify which integrating detector(s) 
+            marks the end of this batch.
+        """
+        intg_dets = []
+        for i, d in enumerate(self._dgrams):
             if hasattr(d, '_endofbatch'):
-                return True
-        return False
+                intg_dets.append(self._run.dsparms.intg_det)
+        return intg_dets
