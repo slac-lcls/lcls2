@@ -83,9 +83,6 @@ class StepEvent(object):
 
 
 class Run(object):
-    expt = 0
-    runnum = 0
-    dm = None
     configs = None
     smd_dm = None
     nfiles = 0
@@ -93,6 +90,7 @@ class Run(object):
     smd_fds = None
 
     def __init__(self, ds):
+        self.ds = ds
         self.expt, self.runnum, self.timestamp = ds._get_runinfo()
         self.dsparms = ds.dsparms
         if hasattr(ds, "dm"):
@@ -101,6 +99,10 @@ class Run(object):
             ds.smdr_man.set_run(self)
         RunHelper(self)
         self._dets = {}
+    
+    @property
+    def dm(self):
+        return self.ds.dm
 
     def run(self):
         """Returns integer representaion of run no.
@@ -419,7 +421,6 @@ class RunLegion(Run):
         self._evt = run_evt
         self.beginruns = run_evt._dgrams
         self.smdr_man = ds.smdr_man
-        self.dm = ds.dm
         self.configs = ds._configs
         super()._setup_envstore()
 
