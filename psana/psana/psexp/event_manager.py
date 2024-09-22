@@ -35,28 +35,25 @@ class EventManager(object):
     def __init__(
         self,
         view,
-        smd_configs,
-        dm,
-        esm,
-        filter_fn=0,
-        prom_man=None,
-        max_retries=0,
-        use_smds=[],
+        ds,
+        run,
     ):
         if view:
             pf = PacketFooter(view=view)
             self.n_events = pf.n_packets
         else:
             self.n_events = 0
-
-        self.smd_configs = smd_configs
-        self.dm = dm
-        self.esm = esm
+        
+        self.ds = ds
+        self.run = run
+        self.smd_configs = self.run.configs  
+        self.dm = self.ds.dm
+        self.esm = self.run.esm
         self.n_smd_files = len(self.smd_configs)
-        self.filter_fn = filter_fn
-        self.read_gauge = prom_man.get_metric("psana_bd_read")
-        self.max_retries = max_retries
-        self.use_smds = use_smds
+        self.filter_fn = self.ds.dsparms.filter 
+        self.read_gauge = self.ds.dsparms.prom_man.get_metric("psana_bd_read")
+        self.max_retries = self.ds.dsparms.max_retries
+        self.use_smds = self.ds.dsparms.use_smds
         self.smd_view = view
         self.i_evt = 0
         self.exit_id = ExitId.NoError
@@ -422,5 +419,5 @@ class EventManager(object):
                     setattr(dgrams[i_smd], '_endofbatch', True)
 
         self.i_evt += 1
-        evt = Event(dgrams=dgrams, run=self.dm.get_run())
+        evt = Event(dgrams=dgrams, run=self.run)
         return evt

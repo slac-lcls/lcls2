@@ -39,13 +39,8 @@ class Events:
                     batch_dict, _ = next(self._batch_iter)
                     self._evt_man = EventManager(
                         batch_dict[0][0],
-                        self.run.configs,
-                        self.ds.dm,
-                        self.run.esm,
-                        filter_fn=self.ds.dsparms.filter,
-                        prom_man=self.ds.dsparms.prom_man,
-                        max_retries=self.ds.dsparms.max_retries,
-                        use_smds=self.ds.dsparms.use_smds,
+                        self.ds,
+                        self.run,
                     )
                     return self.__next__()
                 except StopIteration:
@@ -66,13 +61,8 @@ class Events:
 
                 self._evt_man = EventManager(
                     smd_batch,
-                    self.run.configs,
-                    self.ds.dm,
-                    self.run.esm,
-                    filter_fn=self.ds.dsparms.filter,
-                    prom_man=self.ds.dsparms.prom_man,
-                    max_retries=self.ds.dsparms.max_retries,
-                    use_smds=self.ds.dsparms.use_smds,
+                    self.ds,
+                    self.run,
                 )
                 evt = next(self._evt_man)
                 if not any(evt._dgrams):
