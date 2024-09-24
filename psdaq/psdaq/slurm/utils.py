@@ -215,9 +215,7 @@ class SbatchManager:
                     env_name, env_var = env.split('=')
                     if env_name == "LD_LIBRARY_PATH":
                         found_ld_library_path = True
-                    if i != len(envs)-1:
-                        cnf_env += ","
-                    cnf_env += env 
+                    cnf_env += ','+env 
         env_opt += cnf_env 
         
         if not found_ld_library_path:
