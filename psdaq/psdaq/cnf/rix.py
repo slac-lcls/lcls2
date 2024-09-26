@@ -1,11 +1,10 @@
-platform = '2'
+platform = '0'
 
 import os
 CONDA_PREFIX = os.environ.get('CONDA_PREFIX','')
 CONFIGDIR = '/cds/home/m/monarin/lcls2/psdaq/psdaq/slurm'
 host, cores, id, flags, env, cmd, rtprio = ('host', 'cores', 'id', 'flags', 'env', 'cmd', 'rtprio')
-#task_set = ''
-task_set = 'taskset -c 4-63'
+task_set = ''
 
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64 PYEPICS_LIBCA={CONDA_PREFIX}/epics/lib/linux-x86_64/libca.so'
@@ -17,7 +16,6 @@ mr2k1_env = "EPICS_PVA_ADDR_LIST=172.21.92.68 EPICS_PVA_AUTO_ADDR_LIST=NO"+' '+l
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.255'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.140.55 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
 archon_epics_env = 'EPICS_PVA_ADDR_LIST=daq-rix-ccd-01 EPICS_PVA_AUTO_ADDR_LIST=YES'+' '+ld_lib_path
-nogateway_epics_env = 'EPICS_CA_ADDR_LIST=172.21.140.33:5064 EPICS_CA_AUTO_ADDR_LIST=NO ' + ld_lib_path
 
 collect_host = 'drp-srcf-cmp004'
 
@@ -40,9 +38,10 @@ trig_dir = '/cds/home/opr/rixopr/scripts/trigger'
 
 pvaAddr  = 'pva_addr=172.21.152.78' # mon001
 scripts  = f'script_path={trig_dir}'
+network  = 'ep_provider=sockets,ep_domain=eno1'
 encKwargs = 'pebbleBufCount=1048576,pebbleBufSize=4096,encTprAlias=tprtrig'
 
-std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}'
+std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}' # -k {network}'
 std_opts0 = f'{std_opts} -o {data_dir} -d /dev/datadev_0 -k {pvaAddr}'
 std_opts1 = f'{std_opts} -o {data_dir} -d /dev/datadev_1 -k {pvaAddr}'
 
@@ -97,32 +96,32 @@ procmgr_config = [
  {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:3 DAQ:NEH:XPM:5'},
  {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 '+groups},
  {id: 'psqueue', cmd: 'psqueue -i 5'},
- { host: collect_host,      id:'control',     flags:'spu', env:xpm_nogateway_epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -X drp-srcf-mon001 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -vvv'},
+ { host: collect_host,      id:'control',     flags:'spu', env:xpm_nogateway_epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -X drp-srcf-mon001 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -c'},
  {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  #{ host: 'drp-neh-ctl002',  id:'tprtrig',     flags:'sp',                 cmd:'tprtrig -t a -c 0 -o 1 -d 2 -w 10 -z'},
- { host: 'drp-neh-ctl002', cores:5, id:'mono_enc_trig',     flags:'spu',                 cmd:f'{tpr_cmd} -t a -c 0 -o 1 -d 2 -w 10'},
+ { host: 'drp-neh-ctl002', id:'mono_enc_trig',     flags:'spu',                 cmd:f'{tpr_cmd} -t a -c 0 -o 1 -d 2 -w 10'},
 
- { host: 'drp-srcf-cmp013',cores:5, id:'teb0',        flags:'spu',                cmd:teb_cmd},
+ { host: 'drp-srcf-cmp013', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
- { host: 'drp-srcf-cmp008',cores:5, id:'mebuser0',    flags:'spu',                cmd:meb_cmd+f' -t {hutch}_mebuser0 -d -n 64 -q {ami_workers_per_node}'},
+ { host: 'drp-srcf-cmp008', id:'mebuser0',    flags:'spu',                cmd:meb_cmd+f' -t {hutch}_mebuser0 -d -n 64 -q {ami_workers_per_node}'},
 
- { host: 'drp-srcf-cmp002', cores: 14, id:'timing_0',    flags:'spu', env:xpm_nogateway_epics_env, cmd:drp_cmd1+' -l 0x1 -D ts'},
+ { host: 'drp-srcf-cmp002', cores: 10, id:'timing_0',    flags:'spu', env:xpm_nogateway_epics_env, cmd:drp_cmd1+' -l 0x1 -D ts'},
 
- { host: 'drp-srcf-cmp002', cores:5, id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D '+f'{gmd},{xgmd}'},
+ { host: 'drp-srcf-cmp002', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D '+f'{gmd},{xgmd}'},
 
- { host: 'drp-srcf-cmp010', cores:5, id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ { host: 'drp-srcf-cmp010', id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
- { host: 'drp-srcf-cmp010', cores:5, id:'andor_norm_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 RIX:NORM:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ { host: 'drp-srcf-cmp010', id:'andor_norm_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 RIX:NORM:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
- { host: 'drp-srcf-cmp010', cores:5, id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ { host: 'drp-srcf-cmp010', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
- { host: 'drp-srcf-cmp010', cores:5, id:'archon_0', flags:'spu', env:archon_epics_env, cmd:pva_cmd1+' -D archon -S 1 -l 0x2 QRIX:STA:CCD:01:IMAGE1:Pva:Image -k pebbleBufSize=11521064'},
+ { host: 'drp-srcf-cmp010', id:'archon_0', flags:'spu', env:archon_epics_env, cmd:pva_cmd1+' -D archon -S 1 -l 0x2 QRIX:STA:CCD:01:IMAGE1:Pva:Image -k pebbleBufSize=11521064'},
 
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-srcf-cmp010', id:'epics_0',     flags:'spu', env:epics_env,  cmd:ea_cmd1+' -l 0x8 -T 4000000'},
 
- { host: 'drp-srcf-cmp002',cores:5, id:'mono_encoder_0',   flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x8'},
+ { host: 'drp-srcf-cmp002', id:'mono_encoder_0',   flags:'spu', rtprio:'50', cmd:udp_cmd0+' -l 0x8'},
  { host: 'drp-srcf-cmp004',cores:10, id:'mono_hrencoder_0', flags:'spu',              cmd:f'{drp_cmd0} -l 0x80 -D hrencoder'},
 
 # This node is shared with TMO, so need to take care not to over-allocate lanes
@@ -130,21 +129,21 @@ procmgr_config = [
  { host: 'drp-srcf-cmp004',cores: 10, id:'rix_fim1_0',  flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x20 -D wave8 -k epics_prefix=MR4K2:FIM:W8:02'},
  { host: 'drp-srcf-cmp004',cores: 10, id:'rix_fim0_0',  flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x4 -D wave8 -k epics_prefix=MR3K2:FIM:W8:01'},
 
-  #{ host: 'drp-srcf-cmp027',cores: 30, id:'atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=RIX:TIMETOOL:TTALL'},
-  { host: 'drp-srcf-cmp027',cores: 30, id:'c_atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D opal'},
-  { host: 'drp-srcf-cmp027',cores: 30, id:'q_atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D opal'},
- #{ host: 'drp-srcf-cmp012',cores: 30, id:'c_piranha_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D piranha4'},
- { host: 'drp-srcf-cmp012',cores: 5, id:'c_piranha_0',   flags:'spu', env:nogateway_epics_env,  cmd:drp_cmd0+' -l 0x2 -D piranha4 -k ttpv=RIX:TIMETOOL:TTALL'},
- { host: 'drp-srcf-cmp012',cores: 30, id:'q_piranha_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x4 -D piranha4'},
+  #{ host: 'drp-srcf-cmp027',cores: 10, id:'atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D opal -k ttpv=RIX:TIMETOOL:TTALL'},
+  { host: 'drp-srcf-cmp027',cores: 10, id:'c_atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x1 -D opal'},
+  { host: 'drp-srcf-cmp027',cores: 10, id:'q_atmopal_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D opal'},
+ #{ host: 'drp-srcf-cmp012',cores: 10, id:'c_piranha_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D piranha4'},
+ { host: 'drp-srcf-cmp012',cores: 10, id:'c_piranha_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x2 -D piranha4 -k ttpv=RIX:TIMETOOL:TTALL'},
+ { host: 'drp-srcf-cmp012',cores: 10, id:'q_piranha_0',   flags:'spu', env:epics_env,  cmd:drp_cmd0+' -l 0x4 -D piranha4'},
 
 # Temporarily borrow cmp012 from TMO (Opal1) to allow RIX atmopal and piranha to run at the same time
-# { host: 'drp-srcf-cmp012',cores: 30, id:'piranha_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
+# { host: 'drp-srcf-cmp012',cores: 10, id:'piranha_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D piranha4'},
 
  #     Note: '-1' specifies fuzzy timestamping
  #           '-0' specifies no timestamp matching (-0 may have problems)
  #           ''   specifies precise timestamp matching
  # pebbleBufSize was 8388672
- { host: 'drp-srcf-cmp025', cores:5, id:'manta_0',     flags:'spu', env:manta_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+ { host: 'drp-srcf-cmp025', id:'manta_0',     flags:'spu', env:manta_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
  # 9MPixel G-917C manta untimestamped image @1Hz (hence the "-0" flag)
  # set the pebbleBufSize smaller since filewriter only supports 8388688 currently
  { host: 'drp-srcf-cmp010', id:'mr2k1_0',     flags:'spu', env:mr2k1_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
@@ -153,10 +152,10 @@ procmgr_config = [
 hsd_epics = 'DAQ:RIX:HSD:1'
 
 procmgr_hsd = [
- {host:'drp-srcf-cmp009',cores: 14, id:'hsd_0',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
- {host:'drp-srcf-cmp009',cores: 14, id:'hsd_1',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
- {host:'drp-srcf-cmp005',cores: 14, id:'hsd_2',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
- {host:'drp-srcf-cmp005',cores: 14, id:'hsd_3',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
+ {host:'drp-srcf-cmp009',cores: 10, id:'hsd_0',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
+ {host:'drp-srcf-cmp009',cores: 10, id:'hsd_1',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
+ {host:'drp-srcf-cmp005',cores: 10, id:'hsd_2',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
+ {host:'drp-srcf-cmp005',cores: 10, id:'hsd_3',  flags:'spu', env:hsd_epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
 ]
 
 procmgr_config.extend(procmgr_hsd)
