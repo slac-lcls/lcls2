@@ -157,6 +157,7 @@ class Runner:
 
     def show_status(self, quiet=False):
         job_details = self.sbman.get_job_info()
+        sacct_details = self.sbman.get_job_info(use_sacct=True)
         result_list = []
         if not quiet:
             print(
@@ -172,16 +173,12 @@ class Runner:
                 statusdict["host"] = job_detail["nodelist"]
                 statusdict["logfile"] = job_detail["logfile"]
                 statusdict["job_id"] = job_detail["job_id"]
-                if not quiet:
-                    print(
-                        "%20s %12s %10s %40s"
-                        % (
-                            job_detail["nodelist"],
-                            job_detail["job_name"],
-                            job_detail["state"],
-                            detail["cmd"],
-                        )
-                    )
+            elif comment in sacct_details:
+                sacct_detail = sacct_details[comment]
+                statusdict["status"] = "COMPLETED"
+                statusdict["host"] = sacct_detail["nodelist"]
+                statusdict["logfile"] = sacct_detail["logfile"]
+                statusdict["job_id"] = sacct_detail["job_id"]
             else:
                 statusdict["status"] = "COMPLETED"
                 nodelist = LOCALHOST
@@ -190,16 +187,16 @@ class Runner:
                 statusdict["host"] = nodelist
                 statusdict["logfile"] = ""
                 statusdict["job_id"] = ""
-                if not quiet:
-                    print(
-                        "%20s %12s %10s %40s"
-                        % (
-                            nodelist,
-                            config_id,
-                            "COMPLETED",
-                            detail["cmd"],
-                        )
+            if not quiet:
+                print(
+                    "%20s %12s %10s %40s"
+                    % (
+                        statusdict["host"],
+                        statusdict["showId"],
+                        statusdict["status"],
+                        detail["cmd"],
                     )
+                )
             # add dictionary to list
             result_list.append(statusdict)
         return result_list
@@ -273,7 +270,7 @@ class Runner:
                 active_jobs = [job_id for job_id, job_state in job_states.items() if job_state != 'CANCELLED']
                 if len(active_jobs) == 0:
                     break
-                if i == 0: print(f'Waiting for slurm jobs to complete...')
+                if i == 0 and verbose: print(f'Waiting for slurm jobs to complete...')
                 time.sleep(3)
 
 
@@ -281,12 +278,22 @@ class Runner:
         self.stop(unique_ids=unique_ids, skip_wait=True, verbose=verbose)
         self.start(unique_ids=unique_ids, skip_check_exist=True)
 
+    def get_statusdict(self, config_id, ldProcStatus):
+        """ Uses exclusively by spawnX definitions to retreive slurm jobid
+        from the given status details"""
+        result = {}
+        for statusdict in ldProcStatus:
+            if statusdict["showId"] == config_id:
+                result = statusdict
+                break
+        return result
+
     def spawnConsole(self, config_id, ldProcStatus, large=False):
         rv = 1  # return value (0=OK, 1=ERR)
         job_id = ""
-        for statusdict in ldProcStatus:
-            if statusdict["showId"] == config_id:
-                job_id = statusdict["job_id"]
+        result = self.get_statusdict(config_id, ldProcStatus)
+        if result:
+            job_id = result["job_id"]
 
         if not job_id:
             print("spawnConsole: process '%s' not found" % config_id)
@@ -321,10 +328,10 @@ class Runner:
     def spawnLogfile(self, config_id, ldProcStatus, large=False):
         rv = 1  # return value (0=OK, 1=ERR)
         logfile = ""
-        for statusdict in ldProcStatus:
-            if statusdict["showId"] == config_id:
-                logfile = statusdict["logfile"]
-
+        result = self.get_statusdict(config_id, ldProcStatus)
+        if result:
+            logfile = result["logfile"]
+        
         if not os.path.exists(logfile) or not logfile:
             print(f"spawnLogfile: process {config_id} logfile not found ({logfile})")
         else:

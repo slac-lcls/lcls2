@@ -80,16 +80,16 @@ class SbatchManager:
                             results[jobparm] = jobparm_val
         return results
 
-    def get_job_info(self):
+    def get_job_info(self, use_sacct=False):
         """Returns formatted output from squeue by the current user"""
         user = self.user 
         if not user:
             print(f"Cannot list jobs for user. $USER variable is not set.")
         else:
-            if self.as_step:
+            if use_sacct:
                 format_string = "JobIDRaw,Comment,JobName,State,NodeList"
                 lines = call_subprocess(
-                    "sacct", "-h", f"--format={format_string}"
+                    "sacct", "-u", user, "-n", f"--format={format_string}"
                 ).splitlines()
             else:
                 format_string = '"%i %k %j %T %R"'
@@ -100,6 +100,9 @@ class SbatchManager:
         job_details = {}
         for i, job_info in enumerate(lines):
             cols = job_info.strip('"').split()
+            # Check that JobId column has all the characters as digit
+            if not cols[0].isdigit(): continue
+
             success = True
             if len(cols) == 5:
                 job_id, comment, job_name, state, nodelist = cols
@@ -108,24 +111,38 @@ class SbatchManager:
                 nodelist = " ".join(cols[5:])
             else:
                 success = False
+            
             if success:
                 # Get logfile from job_id
-                scontrol_lines = call_subprocess(
+                scontrol_result = call_subprocess(
                     "scontrol", "show", "job", job_id
-                ).splitlines()
+                )
                 logfile = ""
-                for scontrol_line in scontrol_lines:
-                    if scontrol_line.find("StdOut") > -1:
-                        scontrol_cols = scontrol_line.split("=")
-                        logfile = scontrol_cols[1]
-
-                job_details[comment] = {
-                    "job_id": job_id,
-                    "job_name": job_name,
-                    "state": state,
-                    "nodelist": nodelist,
-                    "logfile": logfile,
-                }
+                if scontrol_result is not None:
+                    scontrol_lines = scontrol_result.splitlines()
+                    for scontrol_line in scontrol_lines:
+                        if scontrol_line.find("StdOut") > -1:
+                            scontrol_cols = scontrol_line.split("=")
+                            logfile = scontrol_cols[1]
+                
+                # Results from sacct also show old jobs with the same name.
+                # We choose the oldest job and returns its values. 
+                if comment not in job_details:
+                    job_details[comment] = {
+                        "job_id": job_id,
+                        "job_name": job_name,
+                        "state": state,
+                        "nodelist": nodelist,
+                        "logfile": logfile,
+                    }
+                elif int(job_id) > int(job_details[comment]["job_id"]):
+                    job_details[comment] = {
+                        "job_id": job_id,
+                        "job_name": job_name,
+                        "state": state,
+                        "nodelist": nodelist,
+                        "logfile": logfile,
+                    }
         return job_details
 
     def get_output_filepath(self, node, job_name):

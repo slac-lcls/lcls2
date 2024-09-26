@@ -74,12 +74,14 @@ def psbatchThread(
         locale.LC_ALL, ""
     )  # set locale for printing formatted numbers later
 
+    runner = None
     while True:
         # refresh ProcMgr status
         global bProcMgrThreadError
 
         try:
-            runner = Runner(sConfigFile)
+            if runner is None:
+                runner = Runner(sConfigFile)
             win.runner = runner
             ldProcStatus = runner.show_status(quiet=True)
             win.ldProcStatus = ldProcStatus
