@@ -1,4 +1,3 @@
-
 """
 Smalldata (v2)
 Parallel data analysis with MPI send/recv
@@ -57,7 +56,7 @@ Some Notes:
     for i in np.argsort(ts):
         print(tsneg[i])
 
-"""                          
+"""
 
 import os
 import numpy as np
@@ -69,8 +68,9 @@ from collections.abc import MutableMapping
 
 from psana.psexp.tools import mode
 
-if mode == 'mpi':
+if mode == "mpi":
     from mpi4py import MPI
+
     COMM = MPI.COMM_WORLD
     RANK = COMM.Get_rank()
     SIZE = COMM.Get_size()
@@ -78,48 +78,61 @@ else:
     SIZE = 1
 
 if SIZE > 1:
-    MODE = 'PARALLEL'
+    MODE = "PARALLEL"
 else:
-    MODE = 'SERIAL'
+    MODE = "SERIAL"
 
 # -----------------------------------------------------------------------------
 
-MISSING_INT   = -99999
+MISSING_INT = -99999
 MISSING_FLOAT = np.nan
 
-INT_TYPES   = [int, np.int8, np.int16, np.int32, np.int64,
-               int, np.uint8, np.uint16, np.uint32, np.uint64, np.uint]
+INT_TYPES = [
+    int,
+    np.int8,
+    np.int16,
+    np.int32,
+    np.int64,
+    int,
+    np.uint8,
+    np.uint16,
+    np.uint32,
+    np.uint64,
+    np.uint,
+]
 FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, float]
 
 # This is not actually implemented, so let's comment it out for now.
-# RAGGED_PREFIX   = 'ragged_' 
-UNALIGNED_PREFIX = 'unaligned_'
-VAR_PREFIX      = 'var_'
-LEN_SUFFIX      = '_len'
+# RAGGED_PREFIX   = 'ragged_'
+UNALIGNED_PREFIX = "unaligned_"
+VAR_PREFIX = "var_"
+LEN_SUFFIX = "_len"
 
 # It is assumed that "var_" can appear at any level in the key.
 #
-# The lengths of all the variables that branch from a given var 
+# The lengths of all the variables that branch from a given var
 # will be the same and will share a "_len" array.
 
-var_dict = {}    # var name to True/False if var
-len_dict = {}    # var name to True/False if len
-len_map = {}     # var name to len array name (i.e. x/var_mcb/y --> x/var_mcb_len)
-len_evt = {}     # len name to {timestamp: length}
+var_dict = {}  # var name to True/False if var
+len_dict = {}  # var name to True/False if len
+len_map = {}  # var name to len array name (i.e. x/var_mcb/y --> x/var_mcb_len)
+len_evt = {}  # len name to {timestamp: length}
+
 
 def unaligned_timestamp_name(dataset_name):
-    return dataset_name+'_timestamp'
+    return dataset_name + "_timestamp"
+
 
 def set_keytypes(k):
-    parts = k.split('/')
+    parts = k.split("/")
     # New regime: any part can have "var_"!
-    for (i,p) in enumerate(parts):
+    for i, p in enumerate(parts):
         if p.startswith(VAR_PREFIX):
             var_dict[k] = True
             if p.endswith(LEN_SUFFIX) and i == len(parts) - 1:
                 len_dict[k] = True
             else:
-                m = '/'.join(parts[:i+1]) + LEN_SUFFIX
+                m = "/".join(parts[: i + 1]) + LEN_SUFFIX
                 len_map[k] = m
                 len_dict[k] = False
                 len_dict[m] = True
@@ -129,12 +142,14 @@ def set_keytypes(k):
     var_dict[k] = False
     len_dict[k] = False
 
+
 def get_len_map(k):
     try:
         return len_map[k]
     except:
         set_keytypes(k)
         return len_map[k]
+
 
 def is_len_key(k):
     try:
@@ -143,6 +158,7 @@ def is_len_key(k):
         set_keytypes(k)
         return len_dict[k]
 
+
 def is_var_key(k):
     try:
         return var_dict[k]
@@ -150,13 +166,15 @@ def is_var_key(k):
         set_keytypes(k)
         return var_dict[k]
 
+
 def is_unaligned(dset_name):
-    return dset_name.split('/')[-1].startswith(UNALIGNED_PREFIX)
+    return dset_name.split("/")[-1].startswith(UNALIGNED_PREFIX)
+
 
 # -----------------------------------------------------------------------------
 
 
-def _flatten_dictionary(d, parent_key='', sep='/'):
+def _flatten_dictionary(d, parent_key="", sep="/"):
     """
     http://stackoverflow.com/questions/6027558/flatten-nested-python-dictionaries-compressing-keys
     """
@@ -180,19 +198,21 @@ def _get_missing_value(dtype):
     elif dtype in FLOAT_TYPES:
         missing_value = MISSING_FLOAT
     else:
-        raise ValueError('%s :: Invalid num type for missing data' % str(dtype))
+        raise ValueError("%s :: Invalid num type for missing data" % str(dtype))
 
     return missing_value
 
 
 def _format_srv_filename(dirname, basename, rank):
-    srv_basename = '%s_part%d.h5' % (basename.replace('.h5',''), rank)
+    srv_basename = "%s_part%d.h5" % (basename.replace(".h5", ""), rank)
     srv_fn = os.path.join(dirname, srv_basename)
     return srv_fn
+
 
 # FOR NEXT TIME
 # CONSIDER MAKING A FileServer CLASS
 # CLASS BASECLASS METHOD THEN HANDLES HDF5
+
 
 class CacheArray:
     """
@@ -201,7 +221,7 @@ class CacheArray:
     """
 
     def __init__(self, singleton_shape, dtype, cache_size, is_var):
-        
+
         self.singleton_shape = singleton_shape
         self.dtype = dtype
         self.cache_size = cache_size
@@ -213,8 +233,9 @@ class CacheArray:
             # keep appending to them.
             self.data = None
         else:
-            self.data = np.empty((self.cache_size,) + self.singleton_shape,
-                                 dtype=self.dtype)
+            self.data = np.empty(
+                (self.cache_size,) + self.singleton_shape, dtype=self.dtype
+            )
         self.reset()
 
         return
@@ -225,13 +246,15 @@ class CacheArray:
                 self.n_events += 1
                 return
             if self.data is None:
-                self.data = np.reshape(np.array(data, dtype=self.dtype), 
-                                       (len(data),)+self.singleton_shape)
+                self.data = np.reshape(
+                    np.array(data, dtype=self.dtype),
+                    (len(data),) + self.singleton_shape,
+                )
             else:
                 self.data = np.append(self.data, data, axis=0)
             self.size += len(data)
         else:
-            self.data[self.n_events,...] = data
+            self.data[self.n_events, ...] = data
             self.size += 1
         self.n_events += 1
         return
@@ -239,20 +262,19 @@ class CacheArray:
     def reset(self):
         if self.is_var:
             self.data = None
-        self.size = 0;
+        self.size = 0
         self.n_events = 0
         return
 
 
-class Server: # (hdf5 handling)
+class Server:  # (hdf5 handling)
 
-    def __init__(self, filename=None, smdcomm=None, cache_size=10000,
-                 callbacks=[]):
+    def __init__(self, filename=None, smdcomm=None, cache_size=10000, callbacks=[]):
 
-        self.filename   = filename
-        self.smdcomm    = smdcomm
+        self.filename = filename
+        self.smdcomm = smdcomm
         self.cache_size = cache_size
-        self.callbacks  = callbacks
+        self.callbacks = callbacks
 
         # maps dataset_name --> (dtype, shape)
         self._dsets = {}
@@ -262,8 +284,8 @@ class Server: # (hdf5 handling)
 
         self.num_events_seen = 0
 
-        if (self.filename is not None):
-            self.file_handle = h5py.File(self.filename, 'w')
+        if self.filename is not None:
+            self.file_handle = h5py.File(self.filename, "w")
 
         return
 
@@ -275,11 +297,10 @@ class Server: # (hdf5 handling)
             msg = self.smdcomm.recv(source=MPI.ANY_SOURCE)
             if type(msg) is list:
                 self.handle(msg)
-            elif msg == 'done':
+            elif msg == "done":
                 num_clients_done += 1
 
         return
-
 
     def handle(self, batch):
 
@@ -300,8 +321,10 @@ class Server: # (hdf5 handling)
                     is_len = is_len_key(dataset_name)
                     if is_var:
                         if is_len:
-                            raise KeyError('Key: event keys cannot have the form "var_*_len! (%s)'
-                                           % (dataset_name))
+                            raise KeyError(
+                                'Key: event keys cannot have the form "var_*_len! (%s)'
+                                % (dataset_name)
+                            )
                         else:
                             len_name = len_map[dataset_name]
                     if dataset_name not in self._dsets.keys():
@@ -322,7 +345,7 @@ class Server: # (hdf5 handling)
                     else:
                         to_backfill.remove(dataset_name)
                     self.append_to_cache(dataset_name, data)
-                    ts = event_data_dict['timestamp']
+                    ts = event_data_dict["timestamp"]
                     # also record the timestamps of unaligned data
                     if is_unaligned(dataset_name):
                         self.append_to_cache(unaligned_timestamp_name(dataset_name), ts)
@@ -332,8 +355,10 @@ class Server: # (hdf5 handling)
                             # be the same size.  Otherwise, flag an error.
                             exp_len = len_evt[len_name][ts]
                             if len(data) != exp_len:
-                                raise TypeError("Data for %s is length %d, not %d!" 
-                                                % (dataset_name, len(data), exp_len))
+                                raise TypeError(
+                                    "Data for %s is length %d, not %d!"
+                                    % (dataset_name, len(data), exp_len)
+                                )
                         except:
                             # This is the first dataset for this length dataset,
                             # so remember the length and forget all of the older ones!
@@ -352,11 +377,11 @@ class Server: # (hdf5 handling)
                             continue
                         len_name = len_map[dataset_name]
                         try:
-                            exp_len = len_evt[len_name][event_data_dict['timestamp']]
+                            exp_len = len_evt[len_name][event_data_dict["timestamp"]]
                         except:
                             # Only backfill the first time we see this timestamp.
                             self.backfill(len_name, 1, missing_value=0)
-                            len_evt[len_name][event_data_dict['timestamp']] = 0
+                            len_evt[len_name][event_data_dict["timestamp"]] = 0
                     elif not is_unaligned(dataset_name):
                         self.backfill(dataset_name, 1)
 
@@ -368,17 +393,19 @@ class Server: # (hdf5 handling)
         if type(data) == int:
             shape = ()
             maxshape = (None,)
-            dtype = 'i8'
+            dtype = "i8"
         elif type(data) == float:
             shape = ()
             maxshape = (None,)
-            dtype = 'f8'
-        elif hasattr(data, 'dtype'):
+            dtype = "f8"
+        elif hasattr(data, "dtype"):
             shape = data.shape
             maxshape = (None,) + data.shape
             dtype = data.dtype
         else:
-            raise TypeError('Type: Dataset %s type %s not compatible' % (dataset_name, type(data)))
+            raise TypeError(
+                "Type: Dataset %s type %s not compatible" % (dataset_name, type(data))
+            )
         return (shape, maxshape, dtype)
 
     def new_dset(self, dataset_name, data):
@@ -387,31 +414,38 @@ class Server: # (hdf5 handling)
         if is_var and not is_len:
             if type(data) == list:
                 data = np.array(data)
-            if hasattr(data, 'dtype'):
+            if hasattr(data, "dtype"):
                 (shape, maxshape, dtype) = self._get_data_info(data[0], dataset_name)
             else:
-                raise TypeError("Type: Dataset %s is variable and should be a list!" % dataset_name)
+                raise TypeError(
+                    "Type: Dataset %s is variable and should be a list!" % dataset_name
+                )
         else:
             (shape, maxshape, dtype) = self._get_data_info(data, dataset_name)
-        if shape==(0,): raise ValueError('Dataset %s has illegal shape (0,)' % dataset_name)
+        if shape == (0,):
+            raise ValueError("Dataset %s has illegal shape (0,)" % dataset_name)
 
         self._dsets[dataset_name] = (dtype, shape)
-        dset = self.file_handle.create_dataset(dataset_name,
-                                               (0,) + shape, # (0,) -> expand dim
-                                               maxshape=maxshape,
-                                               dtype=dtype,
-                                               chunks=(self.cache_size,) + shape)
+        dset = self.file_handle.create_dataset(
+            dataset_name,
+            (0,) + shape,  # (0,) -> expand dim
+            maxshape=maxshape,
+            dtype=dtype,
+            chunks=(self.cache_size,) + shape,
+        )
 
         # if this is an unaligned dataset create an
         # additional dataset to record its timestamps
         if is_unaligned(dataset_name):
             unaligned_ts_name = unaligned_timestamp_name(dataset_name)
             self._dsets[unaligned_ts_name] = (dtype, shape)
-            dset = self.file_handle.create_dataset(unaligned_ts_name,
-                                                   (0,) + shape, # (0,) -> expand dim
-                                                   maxshape=maxshape,
-                                                   dtype=int,
-                                                   chunks=(self.cache_size,) + shape)
+            dset = self.file_handle.create_dataset(
+                unaligned_ts_name,
+                (0,) + shape,  # (0,) -> expand dim
+                maxshape=maxshape,
+                dtype=int,
+                chunks=(self.cache_size,) + shape,
+            )
 
         if is_var:
             if is_len:
@@ -420,13 +454,16 @@ class Server: # (hdf5 handling)
             self.backfill(dataset_name, self.num_events_seen, missing_value=0)
         return
 
-
     def append_to_cache(self, dataset_name, data):
 
         if dataset_name not in self._cache.keys():
             dtype, shape = self._dsets[dataset_name]
-            cache = CacheArray(shape, dtype, self.cache_size, 
-                               is_var_key(dataset_name) and not is_len_key(dataset_name))
+            cache = CacheArray(
+                shape,
+                dtype,
+                self.cache_size,
+                is_var_key(dataset_name) and not is_len_key(dataset_name),
+            )
             self._cache[dataset_name] = cache
         else:
             cache = self._cache[dataset_name]
@@ -438,16 +475,14 @@ class Server: # (hdf5 handling)
 
         return
 
-
     def write_to_file(self, dataset_name, cache):
         dset = self.file_handle.get(dataset_name)
         new_size = (dset.shape[0] + cache.size,) + dset.shape[1:]
         dset.resize(new_size)
         # remember: data beyond size in the cache may be OLD
-        dset[-cache.size:,...] = cache.data[:cache.size,...] 
+        dset[-cache.size :, ...] = cache.data[: cache.size, ...]
         cache.reset()
         return
-
 
     def backfill(self, dataset_name, num_to_backfill, missing_value=None):
         dtype, shape = self._dsets[dataset_name]
@@ -462,9 +497,8 @@ class Server: # (hdf5 handling)
 
         return
 
-
     def done(self):
-        if (self.filename is not None):
+        if self.filename is not None:
             # flush the data caches (in case did not hit cache_size yet)
             for dset, cache in self._cache.items():
                 if cache.n_events > 0:
@@ -473,8 +507,7 @@ class Server: # (hdf5 handling)
         return
 
 
-
-class SmallData: # (client)
+class SmallData:  # (client)
 
     def __init__(self, server_group=None, client_group=None):
         """
@@ -486,16 +519,16 @@ class SmallData: # (client)
         client_group : MPI.Group
             The MPI group to allocate to client processes
         """
-        if MODE == 'PARALLEL':
+        if MODE == "PARALLEL":
 
             self._server_group = server_group
             self._client_group = client_group
 
             self._comm_partition()
 
-
-    def setup_parms(self, filename=None, batch_size=1000, cache_size=None,
-                 callbacks=[]):
+    def setup_parms(
+        self, filename=None, batch_size=1000, cache_size=None, callbacks=[]
+    ):
         """
         Parameters
         ----------
@@ -512,7 +545,7 @@ class SmallData: # (client)
 
         callbacks : list of functions
             Functions that get called on each server's data before
-            being written to disk. The functions should take as 
+            being written to disk. The functions should take as
             arguments a dictionary, where the keys are the data field
             names and the values are the data themselves. Each event
             processed will have it's own dictionary of this form
@@ -526,110 +559,114 @@ class SmallData: # (client)
         if cache_size is None:
             cache_size = batch_size
         if cache_size < batch_size:
-            print('Warning: `cache_size` smaller than `batch_size`')
-            print('setting cache_size -->', batch_size)
+            print("Warning: `cache_size` smaller than `batch_size`")
+            print("setting cache_size -->", batch_size)
             cache_size = batch_size
 
         self._full_filename = str(filename)
-        if (filename is not None):
+        if filename is not None:
             self._basename = os.path.basename(filename)
-            self._dirname  = os.path.dirname(filename)
+            self._dirname = os.path.dirname(filename)
 
-        self._first_open = True # filename has not been opened yet
+        self._first_open = True  # filename has not been opened yet
 
-        if MODE == 'PARALLEL':
+        if MODE == "PARALLEL":
             # hide intermediate files -- join later via VDS
             if filename is not None:
 
                 # clean up previous part files associated with the filename.
                 # This needs to be done on a single rank to avoid trying to delete i
                 # the same file multiple times.
-                if self._type == 'client' and self._full_filename is not None:
+                if self._type == "client" and self._full_filename is not None:
                     if self._client_comm.Get_rank() == 0:
-                        for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
+                        for f in glob.glob(
+                            self._full_filename.replace(".h5", "_part*.h5")
+                        ):
                             os.remove(f)
                 # Need to make sure all smalldata ranks wait for the clean up to be done
                 # before they go about creating the new files.
-                if self._type != 'other': # other = not smalldata (Mona)
+                if self._type != "other":  # other = not smalldata (Mona)
                     self._smalldata_comm.barrier()
 
                 # Now make file
-                self._srv_filename = _format_srv_filename(self._dirname,
-                                                          self._basename,
-                                                          self._server_group.Get_rank())
+                self._srv_filename = _format_srv_filename(
+                    self._dirname, self._basename, self._server_group.Get_rank()
+                )
             else:
                 self._srv_filename = None
 
-            if self._type == 'server':
-                self._server = Server(filename=self._srv_filename,
-                                      smdcomm=self._srvcomm,
-                                      cache_size=cache_size,
-                                      callbacks=callbacks)
+            if self._type == "server":
+                self._server = Server(
+                    filename=self._srv_filename,
+                    smdcomm=self._srvcomm,
+                    cache_size=cache_size,
+                    callbacks=callbacks,
+                )
                 self._server.recv_loop()
 
-        elif MODE == 'SERIAL':
+        elif MODE == "SERIAL":
             if filename is not None:
                 # clean up previous part files associated with the filename.
-                for f in glob.glob( self._full_filename.replace('.h5','_part*.h5') ):
+                for f in glob.glob(self._full_filename.replace(".h5", "_part*.h5")):
                     os.remove(f)
-            self._srv_filename = self._full_filename # dont hide file
-            self._type = 'serial'
-            self._server = Server(filename=self._srv_filename,
-                                  cache_size=cache_size,
-                                  callbacks=callbacks)
+            self._srv_filename = self._full_filename  # dont hide file
+            self._type = "serial"
+            self._server = Server(
+                filename=self._srv_filename, cache_size=cache_size, callbacks=callbacks
+            )
 
         return
-
 
     def _comm_partition(self):
 
         self._smalldata_group = MPI.Group.Union(self._server_group, self._client_group)
-        self._smalldata_comm  = COMM.Create(self._smalldata_group)
-        self._client_comm     = COMM.Create(self._client_group)
+        self._smalldata_comm = COMM.Create(self._smalldata_group)
+        self._client_comm = COMM.Create(self._client_group)
 
         # partition into comms
         n_srv = self._server_group.size
         if n_srv < 1:
-            raise Exception('Attempting to run smalldata with no servers'
-                            ' set env var PS_SRV_NODES to be 1 or more')
+            raise Exception(
+                "Attempting to run smalldata with no servers"
+                " set env var PS_SRV_NODES to be 1 or more"
+            )
 
-        if self._server_group.rank != MPI.UNDEFINED: # if in server group
-            self._type = 'server'
+        if self._server_group.rank != MPI.UNDEFINED:  # if in server group
+            self._type = "server"
             self._srv_color = self._server_group.rank
-            self._srvcomm = self._smalldata_comm.Split(self._srv_color, 0) # rank=0
+            self._srvcomm = self._smalldata_comm.Split(self._srv_color, 0)  # rank=0
             if self._srvcomm.Get_size() == 1:
-                print('WARNING: server has no associated clients!')
-                print('This core is therefore idle... set PS_SRV_NODES')
-                print('to be smaller, or increase the number of mpi cores')
-        elif self._client_group.rank != MPI.UNDEFINED: # if in client group
-            self._type = 'client'
+                print("WARNING: server has no associated clients!")
+                print("This core is therefore idle... set PS_SRV_NODES")
+                print("to be smaller, or increase the number of mpi cores")
+        elif self._client_group.rank != MPI.UNDEFINED:  # if in client group
+            self._type = "client"
             self._srv_color = self._client_group.rank % n_srv
-            self._srvcomm = self._smalldata_comm.Split(self._srv_color, 
-                                                       RANK+1) # keep rank order
+            self._srvcomm = self._smalldata_comm.Split(
+                self._srv_color, RANK + 1
+            )  # keep rank order
         else:
             # we are some other node type
-            self._type = 'other'
+            self._type = "other"
 
         return
-
 
     def _get_full_file_handle(self):
         """
         makes sure we overwrite on first open, but not after that
         """
 
-        if MODE == 'PARALLEL':
+        if MODE == "PARALLEL":
             if self._first_open == True and self._full_filename is not None:
-                fh = h5py.File(self._full_filename, 'w', libver='latest')
+                fh = h5py.File(self._full_filename, "w", libver="latest")
                 self._first_open = False
             else:
-                fh = h5py.File(self._full_filename, 'r+', libver='latest')
+                fh = h5py.File(self._full_filename, "r+", libver="latest")
 
-        elif MODE == 'SERIAL':
+        elif MODE == "SERIAL":
             fh = self._server.file_handle
 
         return fh
-
 
     def event(self, event, *args, **kwargs):
         """
@@ -638,17 +675,16 @@ class SmallData: # (client)
 
         if type(event) is int:
             timestamp = event
-        elif hasattr(event, 'timestamp'):
+        elif hasattr(event, "timestamp"):
             timestamp = int(event.timestamp)
         else:
-            raise ValueError('`event` must have a timestamp attribute')
+            raise ValueError("`event` must have a timestamp attribute")
 
         # collect all new data to add
         event_data_dict = {}
         event_data_dict.update(kwargs)
         for d in args:
-            event_data_dict.update( _flatten_dictionary(d) )
-
+            event_data_dict.update(_flatten_dictionary(d))
 
         # check to see if the timestamp indicates a new event...
 
@@ -663,22 +699,24 @@ class SmallData: # (client)
             # (this avoids splitting events if we have multiple
             #  calls to self.event)
             if len(self._batch) >= self.batch_size:
-                if MODE == 'SERIAL':
+                if MODE == "SERIAL":
                     self._server.handle(self._batch)
-                elif MODE == 'PARALLEL':
+                elif MODE == "PARALLEL":
                     self._srvcomm.send(self._batch, dest=0)
                 self._batch = []
 
-            event_data_dict['timestamp'] = timestamp
+            event_data_dict["timestamp"] = timestamp
             self._previous_timestamp = timestamp
             self._batch.append(event_data_dict)
 
         else:
             # FIXME: cpo
-            print('event data is "old", event timestamps'
-                             ' must increase monotonically'
-                             ' previous timestamp: %d, current: %d'
-                             '' % (self._previous_timestamp, timestamp))
+            print(
+                'event data is "old", event timestamps'
+                " must increase monotonically"
+                " previous timestamp: %d, current: %d"
+                "" % (self._previous_timestamp, timestamp)
+            )
             """
             raise IndexError('event data is "old", event timestamps'
                              ' must increase monotonically'
@@ -686,9 +724,7 @@ class SmallData: # (client)
                              '' % (self._previous_timestamp, timestamp))
             """
 
-
         return
-
 
     @property
     def summary(self):
@@ -701,82 +737,85 @@ class SmallData: # (client)
         >>     SmallData.save_summary(mysum=whole)
         """
         r = False
-        if MODE == 'PARALLEL':
-            if self._type == 'client':
+        if MODE == "PARALLEL":
+            if self._type == "client":
                 r = True
-        elif MODE == 'SERIAL':
+        elif MODE == "SERIAL":
             r = True
         else:
             raise RuntimeError()
         return r
 
-
     def sum(self, value, inplace=False):
         return self._reduction(value, MPI.SUM, inplace)
-
 
     def max(self, value, inplace=False):
         return self._reduction(value, MPI.MAX, inplace)
 
-
     def min(self, value, inplace=False):
         return self._reduction(value, MPI.MIN, inplace)
 
-
-    def _safe_reduction(self,value,op,inplace):
+    def _safe_reduction(self, value, op, inplace):
         """
         method that is robust to ranks that have received no data
         """
 
         # convert float/int to array
-        if isinstance(value,int) or isinstance(value,float):
+        if isinstance(value, int) or isinstance(value, float):
             value = np.array([value])
 
         comm = self._client_comm
-        if not isinstance(value,np.ndarray):
-            arrInfo= None
+        if not isinstance(value, np.ndarray):
+            arrInfo = None
         else:
             # in principle could avoid amin/amax calls here since only
             # really needed for min/max reductions
-            arrInfo = [value.shape,value.dtype,np.amin(value),np.amax(value)]
-        arrInfoAll=comm.allgather(arrInfo)
+            arrInfo = [value.shape, value.dtype, np.amin(value), np.amax(value)]
+        arrInfoAll = comm.allgather(arrInfo)
         summaryArrInfo = None
         for arrInfo in arrInfoAll:
-            if arrInfo is None: continue
-            if summaryArrInfo == None: summaryArrInfo = arrInfo
-            if arrInfo[:2] != summaryArrInfo[:2]: # check shape/dtype compatible
-                raise Exception('Unable to reduce incompatible array shapes/types:',arrInfo,summaryArrInfo)
+            if arrInfo is None:
+                continue
+            if summaryArrInfo == None:
+                summaryArrInfo = arrInfo
+            if arrInfo[:2] != summaryArrInfo[:2]:  # check shape/dtype compatible
+                raise Exception(
+                    "Unable to reduce incompatible array shapes/types:",
+                    arrInfo,
+                    summaryArrInfo,
+                )
             # find global min/max (only necessary for min/max reduction)
-            if arrInfo[2]<summaryArrInfo[2]: summaryArrInfo[2]=arrInfo[2]
-            if arrInfo[3]>summaryArrInfo[3]: summaryArrInfo[3]=arrInfo[3]
+            if arrInfo[2] < summaryArrInfo[2]:
+                summaryArrInfo[2] = arrInfo[2]
+            if arrInfo[3] > summaryArrInfo[3]:
+                summaryArrInfo[3] = arrInfo[3]
         if summaryArrInfo is None:
-            raise Exception('No arrays found for MPI reduce')
-        (shape,dtype,amin,amax) = summaryArrInfo
+            raise Exception("No arrays found for MPI reduce")
+        (shape, dtype, amin, amax) = summaryArrInfo
         # if our rank has no data manufacture some that won't affect the result
-        if not isinstance(value,np.ndarray):
+        if not isinstance(value, np.ndarray):
             if op is MPI.SUM:
-                value = np.zeros(shape,dtype=dtype)
+                value = np.zeros(shape, dtype=dtype)
             elif op is MPI.MIN:
-                value = np.empty(shape,dtype=dtype)
-                value.fill(amax) # use global max so we don't affect min calculation
+                value = np.empty(shape, dtype=dtype)
+                value.fill(amax)  # use global max so we don't affect min calculation
             elif op is MPI.MAX:
-                value = np.empty(shape,dtype=dtype)
-                value.fill(amin) # use global min so we don't affect max calculation
+                value = np.empty(shape, dtype=dtype)
+                value.fill(amin)  # use global min so we don't affect max calculation
         if inplace:
-            if comm.Get_rank()==0:
-                comm.Reduce(MPI.IN_PLACE,value,op=op)
+            if comm.Get_rank() == 0:
+                comm.Reduce(MPI.IN_PLACE, value, op=op)
             else:
-                comm.Reduce(value,value,op=op)
-            result=value
+                comm.Reduce(value, value, op=op)
+            result = value
         else:
-            if comm.Get_rank()==0:
-                result = np.empty(shape,dtype=dtype)
+            if comm.Get_rank() == 0:
+                result = np.empty(shape, dtype=dtype)
             else:
                 result = None
-            comm.Reduce(value,result,op=op)
+            comm.Reduce(value, result, op=op)
 
         return result
-
 
     def _reduction(self, value, op, inplace):
         """
@@ -788,21 +827,20 @@ class SmallData: # (client)
         # rank 0 -- later, we need to remember this client
         # is the one who needs to WRITE the summary data to disk!
 
-        if MODE == 'PARALLEL':
+        if MODE == "PARALLEL":
             red_val = None
 
-            if self._type == 'client':
+            if self._type == "client":
                 red_val = self._safe_reduction(value, op, inplace)
 
-        elif MODE == 'SERIAL':
-            red_val = value # just pass it through...
+        elif MODE == "SERIAL":
+            red_val = value  # just pass it through...
 
         return red_val
 
-
     def save_summary(self, *args, **kwargs):
         """
-        Save 'summary data', ie any data that is not per-event (typically 
+        Save 'summary data', ie any data that is not per-event (typically
         slower, e.g. at the end of the job).
 
         Interface is identical to SmallData.event()
@@ -810,11 +848,13 @@ class SmallData: # (client)
         Note: this function should be called in a SmallData.summary: block
         """
         if self._full_filename is None:
-            print('Warning: smalldata not saving summary since no h5 filename specified')
+            print(
+                "Warning: smalldata not saving summary since no h5 filename specified"
+            )
             return
 
         # in parallel mode, only client rank 0 writes to file
-        if MODE == 'PARALLEL':
+        if MODE == "PARALLEL":
             if self._client_comm.Get_rank() != 0:
                 return
 
@@ -822,24 +862,25 @@ class SmallData: # (client)
         data_dict = {}
         data_dict.update(kwargs)
         for d in args:
-            data_dict.update( _flatten_dictionary(d) )
+            data_dict.update(_flatten_dictionary(d))
 
         # >> write to file
         fh = self._get_full_file_handle()
         for dataset_name, data in data_dict.items():
             if data is None:
-                print('Warning: dataset "%s" was passed value: None'
-                      '... ignoring that dataset' % dataset_name)
+                print(
+                    'Warning: dataset "%s" was passed value: None'
+                    "... ignoring that dataset" % dataset_name
+                )
             else:
                 fh[dataset_name] = data
 
         # we don't want to close the file in serial mode
         # this file is the server's main (only) file
-        if MODE == 'PARALLEL':
+        if MODE == "PARALLEL":
             fh.close()
 
         return
-
 
     def done(self):
         """
@@ -848,55 +889,51 @@ class SmallData: # (client)
         """
 
         # >> finish communication
-        if self._type == 'client':
+        if self._type == "client":
             # we want to send the finish signal to the server
             if len(self._batch) > 0:
                 self._srvcomm.send(self._batch, dest=0)
-            self._srvcomm.send('done', dest=0)
+            self._srvcomm.send("done", dest=0)
 
-        elif self._type == 'server':
+        elif self._type == "server":
             self._server.done()
 
-        elif self._type == 'serial':
+        elif self._type == "serial":
             self._server.handle(self._batch)
             self._server.done()
 
         # stuff only one process should do in parallel mode
-        if MODE == 'PARALLEL':
-            if self._type != 'other': # other = not smalldata (Mona)
+        if MODE == "PARALLEL":
+            if self._type != "other":  # other = not smalldata (Mona)
                 self._smalldata_comm.barrier()
 
                 # CLIENT rank 0 does all final file writing
                 # this is because this client may write to the file
                 # during "save_summary(...)" calls, and we want
                 # ONE file owner
-                if self._type == 'client' and self._full_filename is not None:
+                if self._type == "client" and self._full_filename is not None:
                     if self._client_comm.Get_rank() == 0:
                         self.join_files()
 
         return
 
-
     def join_files(self):
-        """
-        """
+        """ """
 
         joined_file = self._get_full_file_handle()
 
         # locate the srv (partial) files we expect
         files = []
         for i in range(self._server_group.Get_size()):
-            srv_fn = _format_srv_filename(self._dirname,
-                                          self._basename,
-                                          i)
+            srv_fn = _format_srv_filename(self._dirname, self._basename, i)
             if os.path.exists(srv_fn):
                 files.append(srv_fn)
             else:
-                print('!!! WARNING: expected partial (srv) file:')
+                print("!!! WARNING: expected partial (srv) file:")
                 print(srv_fn)
-                print('NOT FOUND. Trying to proceed with remaining data...')
-                print('This almost certainly means something went wrong.')
-        print('Joining: %d files --> %s' % (len(files), self._basename))
+                print("NOT FOUND. Trying to proceed with remaining data...")
+                print("This almost certainly means something went wrong.")
+        print("Joining: %d files --> %s" % (len(files), self._basename))
 
         # discover all the dataset names
         file_dsets = {}
@@ -909,14 +946,14 @@ class SmallData: # (client)
         all_dsets = []
         for fn in files:
             tmp_dsets = {}
-            f = h5py.File(fn, 'r')
+            f = h5py.File(fn, "r")
             f.visititems(assign_dset_info)
             file_dsets[fn] = tmp_dsets
             all_dsets += list(tmp_dsets.keys())
             f.close()
 
         all_dsets = set(all_dsets)
- 
+
         # h5py requires you declare the size of the VDS at creation
         # (we have been told by Quincey Koziol that this is not
         # necessary for the C++ version).
@@ -941,13 +978,12 @@ class SmallData: # (client)
                 # "fillvalue" argument below.  if it's unaligned, then
                 # we don't need to extend it at all.
                 elif not is_unaligned(dset_name):
-                    if '/timestamp' in dsets:
-                        total_events += dsets['/timestamp'][1][0]
+                    if "/timestamp" in dsets:
+                        total_events += dsets["/timestamp"][1][0]
 
             combined_shape = (total_events,) + shape[1:]
 
-            layout = h5py.VirtualLayout(shape=combined_shape, 
-                                        dtype=dtype)
+            layout = h5py.VirtualLayout(shape=combined_shape, dtype=dtype)
 
             # part (2): now that the number of events is known for this
             # dataset, fill in the "soft link" that points from the
@@ -960,7 +996,9 @@ class SmallData: # (client)
                 if dset_name in dsets.keys():
                     _, shape = dsets[dset_name]
                     vsource = h5py.VirtualSource(fn, dset_name, shape=shape)
-                    layout[index_of_last_fill:index_of_last_fill+shape[0], ...] = vsource
+                    layout[index_of_last_fill : index_of_last_fill + shape[0], ...] = (
+                        vsource
+                    )
                     index_of_last_fill += shape[0]
 
                 else:
@@ -968,13 +1006,13 @@ class SmallData: # (client)
                     if is_unaligned(dset_name):
                         pass
                     else:
-                        if '/timestamp' in dsets:
-                            n_timestamps = dsets['/timestamp'][1][0]
+                        if "/timestamp" in dsets:
+                            n_timestamps = dsets["/timestamp"][1][0]
                             index_of_last_fill += n_timestamps
 
-            joined_file.create_virtual_dataset(dset_name,
-                                               layout,
-                                               fillvalue=_get_missing_value(dtype)) 
+            joined_file.create_virtual_dataset(
+                dset_name, layout, fillvalue=_get_missing_value(dtype)
+            )
 
         joined_file.close()
 

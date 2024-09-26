@@ -43,14 +43,14 @@ class EventManager(object):
             self.n_events = pf.n_packets
         else:
             self.n_events = 0
-        
+
         self.ds = ds
         self.run = run
-        self.smd_configs = self.run.configs  
+        self.smd_configs = self.run.configs
         self.dm = self.ds.dm
         self.esm = self.run.esm
         self.n_smd_files = len(self.smd_configs)
-        self.filter_fn = self.ds.dsparms.filter 
+        self.filter_fn = self.ds.dsparms.filter
         self.read_gauge = self.ds.dsparms.prom_man.get_metric("psana_bd_read")
         self.max_retries = self.ds.dsparms.max_retries
         self.use_smds = self.ds.dsparms.use_smds
@@ -92,10 +92,10 @@ class EventManager(object):
         return evt
 
     def isEvent(self, service):
-        """ EventManager event is considered as:
+        """EventManager event is considered as:
         - TransitionId.isEvent()
         - service is 0, which only happens to only L1Accept types when the dgram is
-          missing from that stream. The service is marked as 0. 
+          missing from that stream. The service is marked as 0.
         """
         if TransitionId.isEvent(service) or service == 0:
             return True
@@ -415,8 +415,11 @@ class EventManager(object):
                 dgrams[i_smd] = dgram.Dgram(
                     config=self.dm.configs[i_smd], view=view, offset=offset
                 )
-                if self.service_array[self.i_evt, i_smd] == TransitionId.L1Accept_EndOfBatch:
-                    setattr(dgrams[i_smd], '_endofbatch', True)
+                if (
+                    self.service_array[self.i_evt, i_smd]
+                    == TransitionId.L1Accept_EndOfBatch
+                ):
+                    setattr(dgrams[i_smd], "_endofbatch", True)
 
         self.i_evt += 1
         evt = Event(dgrams=dgrams, run=self.run)

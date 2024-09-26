@@ -99,7 +99,7 @@ class Run(object):
             ds.smdr_man.set_run(self)
         RunHelper(self)
         self._dets = {}
-    
+
     @property
     def dm(self):
         return self.ds.dm
@@ -177,7 +177,7 @@ class Run(object):
                         self.dsparms.calibconst[det_name],
                         env_store,
                         var_name,
-                        **kwargs
+                        **kwargs,
                     ),
                 )
                 # add properties for det.raw level
@@ -186,7 +186,7 @@ class Run(object):
                 setattr(det, "_dettype", self.dsparms.det_info_table[det_name][0])
                 setattr(det, "_detid", self.dsparms.det_info_table[det_name][1])
                 setattr(det, "_det_name", det_name)
-                #setattr(det, "_kwargs", kwargs)
+                # setattr(det, "_kwargs", kwargs)
 
                 flag_found = True
 

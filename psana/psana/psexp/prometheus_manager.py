@@ -111,7 +111,7 @@ class PrometheusManager(object):
         self.username = getpass.getuser()
         self.rank = 0
         if job is None:
-            default_job_id = os.environ.get('SLURM_JOB_ID', f"{self.username}")
+            default_job_id = os.environ.get("SLURM_JOB_ID", f"{self.username}")
             self.job = default_job_id
         else:
             self.job = job
@@ -143,7 +143,7 @@ class PrometheusManager(object):
                     timeout=None,
                 )
             logger.debug(
-                    f"TS: %s PUSHED JOBID:{self.job} RANK:{self.rank} {e.isSet()=}"
+                f"TS: %s PUSHED JOBID:{self.job} RANK:{self.rank} {e.isSet()=}"
             )
             time.sleep(PUSH_INTERVAL_SECS)
 

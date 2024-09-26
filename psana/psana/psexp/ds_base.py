@@ -99,7 +99,7 @@ class DataSourceBase(abc.ABC):
         # list of user-selected timestamps
         self.dbsuffix = ""  # calibration database name extension for private constants
         self.intg_det = ""  # integrating detector name (contains marker ts for a batch)
-        self.intg_delta_t = 0 # integrating delay (s) 
+        self.intg_delta_t = 0  # integrating delay (s)
         self.current_retry_no = 0  # global counting var for no. of read attemps
         self.smd_callback = 0
         self.prom_jobid = None
@@ -524,8 +524,7 @@ class DataSourceBase(abc.ABC):
 
         if self.e is not None:  # Push gateway case only
             logger.debug(
-                "ds_base: END PROMETHEUS CLIENT (JOB:%s)"
-                % (self.prom_man.job)
+                "ds_base: END PROMETHEUS CLIENT (JOB:%s)" % (self.prom_man.job)
             )
             self.e.set()
 

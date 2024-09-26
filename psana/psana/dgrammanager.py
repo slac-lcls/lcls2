@@ -16,40 +16,53 @@ from psana.psexp.event_manager import TransitionId
 from psana.dgramedit import DgramEdit
 import numpy as np
 
-def dumpDict(dict,indent):
+
+def dumpDict(dict, indent):
     for k in sorted(dict.keys()):
-        if hasattr(dict[k],'__dict__'):
-            print(' '*indent,k)
-            dumpDict(dict[k].__dict__,indent+2)
+        if hasattr(dict[k], "__dict__"):
+            print(" " * indent, k)
+            dumpDict(dict[k].__dict__, indent + 2)
         else:
-            print(' '*indent,k,dict[k])
+            print(" " * indent, k, dict[k])
+
 
 # method to dump dgrams to stdout.  ideally this would move into dgram.cc
 def dumpDgram(d):
-    dumpDict(d.__dict__,0)
+    dumpDict(d.__dict__, 0)
+
 
 # Maximum length of filenames
 FN_L = 200
 # Maximum no. of shmem connection retries
 SHMEM_CONN_MAX_RETRIES = 100
 
+
 # Warning: If XtcData::Dgram ever changes, this function will likely need to change
 def _service(view):
-    iSvc = 2                    # Index of service field, in units of uint32_t
-    return (np.array(view, copy=False).view(dtype=np.uint32)[iSvc] >> 24) & 0x0f
+    iSvc = 2  # Index of service field, in units of uint32_t
+    return (np.array(view, copy=False).view(dtype=np.uint32)[iSvc] >> 24) & 0x0F
+
 
 # Warning: If XtcData::Dgram ever changes, this function will likely need to change
 def dgSize(view):
-    iExt = 5                    # Index of extent field, in units of uint32_t
-    txSize = 3 * 4              # sizeof(XtcData::TransitionBase)
+    iExt = 5  # Index of extent field, in units of uint32_t
+    txSize = 3 * 4  # sizeof(XtcData::TransitionBase)
     return txSize + np.array(view, copy=False).view(dtype=np.uint32)[iExt]
+
 
 class DgramManager(object):
 
-    def __init__(self, xtc_files, configs=[], fds=[],
-            tag=None, run=None, max_retries=0,
-            config_consumers=[]):
-        """ Opens xtc_files and stores configs.
+    def __init__(
+        self,
+        xtc_files,
+        configs=[],
+        fds=[],
+        tag=None,
+        run=None,
+        max_retries=0,
+        config_consumers=[],
+    ):
+        """Opens xtc_files and stores configs.
         If file descriptors (fds) is given, reuse the given file descriptors.
         """
         self.xtc_files = []
@@ -61,9 +74,9 @@ class DgramManager(object):
         self.shm_inp_mv = None
         self.shm_res_mv = None
         self.shm_size = None
-        self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
+        self.shmem_kwargs = {"index": -1, "size": 0, "cli_cptr": None}
         self.configs = []
-        self._timestamps = [] # built when iterating
+        self._timestamps = []  # built when iterating
         self._run = run
         self.found_endrun = True
 
@@ -79,19 +92,19 @@ class DgramManager(object):
         self.tag = tag
 
         if isinstance(xtc_files, (str)):
-            self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
+            self.xtc_files = np.array([xtc_files], dtype="U%s" % FN_L)
         elif isinstance(xtc_files, (list, np.ndarray)):
-            if len(xtc_files) > 0: # handles smalldata-only case
-                if xtc_files[0] == 'shmem':
+            if len(xtc_files) > 0:  # handles smalldata-only case
+                if xtc_files[0] == "shmem":
                     view = self._connect_shmem_cli(self.tag)
                     d = dgram.Dgram(view=view)
-                    #self.configs += [d]
+                    # self.configs += [d]
                     # The above line is kept to note that prior to the change below,
                     # the configs are saved as a list. Note that only the most recent
                     # one is used. Mona changed this to "replace" so at a time, there's
                     # only one config.
                     self.set_configs([d])
-                elif xtc_files[0] == 'drp':
+                elif xtc_files[0] == "drp":
                     self.det_name = self.tag.det_name
                     self.det_segment = self.tag.det_segment
                     self.worker_num = self.tag.worker_num
@@ -101,17 +114,20 @@ class DgramManager(object):
                     view = self._connect_drp()
                     d = dgram.Dgram(view=view)
                     if d.service() == TransitionId.Configure:
-                         self.set_configs([d])
+                        self.set_configs([d])
                     else:
                         raise RuntimeError(f"Drp expected Configure, got {d.service()}")
                 else:
-                    self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
+                    self.xtc_files = np.asarray(xtc_files, dtype="U%s" % FN_L)
 
         self.given_fds = True if len(fds) > 0 else False
         if self.given_fds:
             self.fds = np.asarray(fds, dtype=np.int32)
         else:
-            self.fds = np.array([os.open(xtc_file, os.O_RDONLY) for xtc_file in self.xtc_files], dtype=np.int32)
+            self.fds = np.array(
+                [os.open(xtc_file, os.O_RDONLY) for xtc_file in self.xtc_files],
+                dtype=np.int32,
+            )
 
         self.fds_map = {}
         for fd, xtc_file in zip(self.fds, self.xtc_files):
@@ -120,13 +136,19 @@ class DgramManager(object):
         given_configs = True if len(configs) > 0 else False
         if given_configs:
             self.set_configs(configs)
-        elif xtc_files[0] != 'shmem' and xtc_files[0] != 'drp':
-            self.set_configs([dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds])
+        elif xtc_files[0] != "shmem" and xtc_files[0] != "drp":
+            self.set_configs(
+                [
+                    dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries)
+                    for fd in self.fds
+                ]
+            )
 
-        self.calibconst = {} # initialize to empty dict - will be populated by run class
+        self.calibconst = (
+            {}
+        )  # initialize to empty dict - will be populated by run class
         self.n_files = len(self.xtc_files)
         self.set_chunk_ids()
-
 
     def _connect_shmem_cli(self, tag):
         # ShmemClients open a connection in connect() and close it in
@@ -134,13 +156,13 @@ class DgramManager(object):
         # that python call the destructor in the gc routine.
         self.shmem_cli = PyShmemClient()
         for retry in range(SHMEM_CONN_MAX_RETRIES):
-            #establish connection to available server - blocking
-            status = int(self.shmem_cli.connect(tag,0))
+            # establish connection to available server - blocking
+            status = int(self.shmem_cli.connect(tag, 0))
             if status == 0:
                 break
             time.sleep(0.01)
-        assert not status,'shmem connect failure %d' % status
-        #wait for first configure datagram - blocking
+        assert not status, "shmem connect failure %d" % status
+        # wait for first configure datagram - blocking
         view = self.shmem_cli.get(self.shmem_kwargs)
         assert view
         # Release shmem buffer after copying Transition data
@@ -150,8 +172,10 @@ class DgramManager(object):
         # and creating a deadlock situation. could revisit this
         # later and only deep-copy arrays inside pickN, for example
         # but would be more fragile.
-        barray = bytes(view[:dgSize(view)])
-        self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
+        barray = bytes(view[: dgSize(view)])
+        self.shmem_cli.freeByIndex(
+            self.shmem_kwargs["index"], self.shmem_kwargs["size"]
+        )
         view = memoryview(barray)
         return view
 
@@ -164,11 +188,13 @@ class DgramManager(object):
         self.mq_res.send(b"r\n")
         message, priority = self.mq_inp.receive()
         if message != b"g":
-            raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' message, "
-                               f"got: {message}")
+            raise RuntimeError(
+                "[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' message, "
+                f"got: {message}"
+            )
         barray = bytes(self.shm_inp_mv[:])
         view = memoryview(barray)
-        self.shm_size = view.nbytes   
+        self.shm_size = view.nbytes
         self._stop_iteration = False
         return view
 
@@ -184,7 +210,7 @@ class DgramManager(object):
         maps (dettype,software,version) to associated python class and
         detector info for a det_name maps to dettype, detid tuple.
         """
-        det_classes = {'epics': {}, 'scan': {}, 'step': {}, 'normal': {}}
+        det_classes = {"epics": {}, "scan": {}, "step": {}, "normal": {}}
 
         xtc_info = []
         det_info_table = {}
@@ -203,7 +229,7 @@ class DgramManager(object):
                 det = det_dict[first_key]
 
                 if det_name not in det_classes:
-                    det_class_table = det_classes['normal']
+                    det_class_table = det_classes["normal"]
                 else:
                     det_class_table = det_classes[det_name]
 
@@ -211,26 +237,36 @@ class DgramManager(object):
                 for drp_class_name, drp_class in det.__dict__.items():
 
                     # collect detname maps to dettype and detid
-                    if drp_class_name == 'dettype':
+                    if drp_class_name == "dettype":
                         dettype = drp_class
                         continue
 
-                    if drp_class_name == 'detid':
+                    if drp_class_name == "detid":
                         detid = drp_class
                         continue
 
                     # FIXME: we want to skip '_'-prefixed drp_classes
                     #        but this needs to be fixed upstream
-                    if drp_class_name.startswith('_'): continue
+                    if drp_class_name.startswith("_"):
+                        continue
 
                     # use this info to look up the desired Detector class
                     versionstring = [str(v) for v in drp_class.version]
-                    class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
-                    xtc_entry = (det_name,det.dettype,drp_class_name,'_'.join(versionstring))
+                    class_name = "_".join(
+                        [det.dettype, drp_class.software] + versionstring
+                    )
+                    xtc_entry = (
+                        det_name,
+                        det.dettype,
+                        drp_class_name,
+                        "_".join(versionstring),
+                    )
                     if xtc_entry not in xtc_info:
                         xtc_info.append(xtc_entry)
                     if hasattr(detectors, class_name):
-                        DetectorClass = getattr(detectors, class_name) # return the class object
+                        DetectorClass = getattr(
+                            detectors, class_name
+                        )  # return the class object
                         det_class_table[(det_name, drp_class_name)] = DetectorClass
                     else:
                         pass
@@ -240,25 +276,26 @@ class DgramManager(object):
                 if det_name not in det_stream_id_table:
                     det_stream_id_table[det_name] = i
 
-        # collect only user detectors 
+        # collect only user detectors
         stream_id_to_detnames = {}
-        for det_name, _ in det_classes['normal'].keys():
+        for det_name, _ in det_classes["normal"].keys():
             if det_stream_id_table[det_name] in stream_id_to_detnames:
-                if det_name in stream_id_to_detnames[det_stream_id_table[det_name]]: continue
+                if det_name in stream_id_to_detnames[det_stream_id_table[det_name]]:
+                    continue
                 stream_id_to_detnames[det_stream_id_table[det_name]].append(det_name)
             else:
                 stream_id_to_detnames[det_stream_id_table[det_name]] = [det_name]
-        
+
         # Add products of this function to itself and the consumers
-        for config_consumer in [self]+self.config_consumers:
-            setattr(config_consumer, 'det_classes', det_classes)
-            setattr(config_consumer, 'xtc_info', xtc_info)
-            setattr(config_consumer, 'det_info_table', det_info_table)
-            setattr(config_consumer, 'det_stream_id_table', det_stream_id_table)
-            setattr(config_consumer, 'stream_id_to_detnames', stream_id_to_detnames)
+        for config_consumer in [self] + self.config_consumers:
+            setattr(config_consumer, "det_classes", det_classes)
+            setattr(config_consumer, "xtc_info", xtc_info)
+            setattr(config_consumer, "det_info_table", det_info_table)
+            setattr(config_consumer, "det_stream_id_table", det_stream_id_table)
+            setattr(config_consumer, "stream_id_to_detnames", stream_id_to_detnames)
 
     def _set_configinfo(self):
-        """ From configs, we generate a dictionary lookup with det_name as a key.
+        """From configs, we generate a dictionary lookup with det_name as a key.
         The information stored the value field contains:
 
         - configs specific to that detector
@@ -271,11 +308,18 @@ class DgramManager(object):
         """
         configinfo_dict = {}
 
-        for detcls_name, det_class in self.det_classes.items(): # det_class is either normal or envstore ('epics', 'scan', 'step')
+        for (
+            detcls_name,
+            det_class,
+        ) in (
+            self.det_classes.items()
+        ):  # det_class is either normal or envstore ('epics', 'scan', 'step')
             for (det_name, _), _ in det_class.items():
                 # we lose a "one-to-one" correspondence with event dgrams.  we may have
                 # to put in None placeholders at some point? - mona and cpo
-                det_configs = [cfg for cfg in self.configs if hasattr(cfg.software, det_name)]
+                det_configs = [
+                    cfg for cfg in self.configs if hasattr(cfg.software, det_name)
+                ]
                 sorted_segment_ids = []
                 # a dictionary of the ids (a.k.a. serial-number) of each segment
                 detid_dict = {}
@@ -292,38 +336,46 @@ class DgramManager(object):
 
                 uniqueid = dettype
                 for segid in sorted_segment_ids:
-                    uniqueid += '_'+detid_dict[segid]
+                    uniqueid += "_" + detid_dict[segid]
 
-                configinfo_dict[det_name] = type("ConfigInfo", (), {\
-                        "configs": det_configs, \
-                        "sorted_segment_ids": sorted_segment_ids, \
-                        "detid_dict": detid_dict, \
-                        "dettype": dettype, \
-                        "uniqueid": uniqueid})
+                configinfo_dict[det_name] = type(
+                    "ConfigInfo",
+                    (),
+                    {
+                        "configs": det_configs,
+                        "sorted_segment_ids": sorted_segment_ids,
+                        "detid_dict": detid_dict,
+                        "dettype": dettype,
+                        "uniqueid": uniqueid,
+                    },
+                )
 
-        for config_consumer in [self]+self.config_consumers:
-            setattr(config_consumer, 'configinfo_dict', configinfo_dict)
+        for config_consumer in [self] + self.config_consumers:
+            setattr(config_consumer, "configinfo_dict", configinfo_dict)
 
     def set_chunk_ids(self):
-        """ Generates a list of chunk ids for all stream files
+        """Generates a list of chunk ids for all stream files
 
         Chunk Id is extracted from data file name:
         New format: xpptut15-r0001-s000-c000[.smd].xtc2
         Old format: xpptut15-r0001-s00-c00[.smd].xtc2
         """
-        if len(self.xtc_files) == 0: return
-        if self.xtc_files[0] == 'shmem': return
+        if len(self.xtc_files) == 0:
+            return
+        if self.xtc_files[0] == "shmem":
+            return
         for xtc_file in self.xtc_files:
             filename = os.path.basename(xtc_file)
-            st = filename.find('-c')
-            en = filename.find('.smd.xtc2')
+            st = filename.find("-c")
+            en = filename.find(".smd.xtc2")
             if en < 0:
-                en = filename.find('.xtc2')
+                en = filename.find(".xtc2")
             if st >= 0 and en >= 0:
-                self.chunk_ids.append(int(filename[st+2:en]))
+                self.chunk_ids.append(int(filename[st + 2 : en]))
 
     def get_chunk_id(self, ind):
-        if not self.chunk_ids: return None
+        if not self.chunk_ids:
+            return None
         return self.chunk_ids[ind]
 
     def set_chunk_id(self, ind, new_chunk_id):
@@ -339,23 +391,30 @@ class DgramManager(object):
 
     def _check_missing_endrun(self, beginruns=None):
         fake_endruns = None
-        if not self.found_endrun: # there's no previous EndRun
-            sec = (self._timestamps[-1] >> 32) & 0xffffffff
-            usec = int((self._timestamps[-1] & 0xffffffff) * 1e3 + 1)
+        if not self.found_endrun:  # there's no previous EndRun
+            sec = (self._timestamps[-1] >> 32) & 0xFFFFFFFF
+            usec = int((self._timestamps[-1] & 0xFFFFFFFF) * 1e3 + 1)
             if beginruns:
-                self.buffered_beginruns = [dgram.Dgram(config=config,
-                        view=d, offset=0, size=d._size)
-                        for d, config in zip(beginruns, self.configs)]
-            fake_endruns = [dgram.Dgram(config=config, fake_endrun=1, \
-                    fake_endrun_sec=sec, fake_endrun_usec=usec) \
-                    for config in self.configs]
+                self.buffered_beginruns = [
+                    dgram.Dgram(config=config, view=d, offset=0, size=d._size)
+                    for d, config in zip(beginruns, self.configs)
+                ]
+            fake_endruns = [
+                dgram.Dgram(
+                    config=config,
+                    fake_endrun=1,
+                    fake_endrun_sec=sec,
+                    fake_endrun_usec=usec,
+                )
+                for config in self.configs
+            ]
             self.found_endrun = True
         else:
             self.found_endrun = False
         return fake_endruns
 
     def __next__(self):
-        """ only support sequential read - no event building"""
+        """only support sequential read - no event building"""
         if self.buffered_beginruns:
             self.found_endrun = False
             evt = Event(self.buffered_beginruns, run=self._run)
@@ -373,16 +432,18 @@ class DgramManager(object):
                 # and creating a deadlock situation. could revisit this
                 # later and only deep-copy arrays inside pickN, for example
                 # but would be more fragile.
-                barray = bytes(view[:dgSize(view)])
-                self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
+                barray = bytes(view[: dgSize(view)])
+                self.shmem_cli.freeByIndex(
+                    self.shmem_kwargs["index"], self.shmem_kwargs["size"]
+                )
                 view = memoryview(barray)
                 # use the most recent configure datagram
-                config = self.configs[len(self.configs)-1]
-                d = dgram.Dgram(config=config,view=view)
+                config = self.configs[len(self.configs) - 1]
+                d = dgram.Dgram(config=config, view=view)
             else:
                 view = self._connect_shmem_cli(self.tag)
-                config = self.configs[len(self.configs)-1]
-                d = dgram.Dgram(config=config,view=view)
+                config = self.configs[len(self.configs) - 1]
+                d = dgram.Dgram(config=config, view=view)
                 if d.service() == TransitionId.Configure:
                     self.set_configs([d])
                 else:
@@ -400,14 +461,19 @@ class DgramManager(object):
             elif message == b"s":
                 self._stop_iteration = True
                 self.shm_res_mv[:] = self.shm_inp_mv[:]
-                self.mq_res.send(b"s\n")                
+                self.mq_res.send(b"s\n")
                 raise StopIteration
             else:
-                raise RuntimeError("[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' or "
-                                  f"'s' message, got: {message}")
+                raise RuntimeError(
+                    "[Python - Worker {self.tag.worker_num}] Drp Python expected 'g' or "
+                    f"'s' message, got: {message}"
+                )
         else:
             try:
-                dgrams = [dgram.Dgram(config=config, max_retries=self.max_retries) for config in self.configs]
+                dgrams = [
+                    dgram.Dgram(config=config, max_retries=self.max_retries)
+                    for config in self.configs
+                ]
             except StopIteration as err:
                 fake_endruns = self._check_missing_endrun()
                 if fake_endruns:
@@ -439,27 +505,33 @@ class DgramManager(object):
             d = None
         else:
             try:
-                d = dgram.Dgram(file_descriptor=self.fds[dgram_i],
+                d = dgram.Dgram(
+                    file_descriptor=self.fds[dgram_i],
                     config=self.configs[dgram_i],
                     offset=offset,
                     size=size,
-                    max_retries=self.max_retries)
+                    max_retries=self.max_retries,
+                )
             except StopIteration:
                 d = None
         return d
 
     def jump(self, offsets, sizes):
-        """ Jumps to the offset and reads out dgram on each xtc file.
+        """Jumps to the offset and reads out dgram on each xtc file.
         This is used in normal mode (multiple detectors with MPI).
         """
         assert len(offsets) > 0 and len(sizes) > 0
-        dgrams = [self.jumps(dgram_i, offset, size) for dgram_i, (offset, size)
-            in enumerate(zip(offsets, sizes))]
+        dgrams = [
+            self.jumps(dgram_i, offset, size)
+            for dgram_i, (offset, size) in enumerate(zip(offsets, sizes))
+        ]
         evt = Event(dgrams, run=self._run)
         return evt
 
     def get_timestamps(self):
-        return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later
+        return np.asarray(
+            self._timestamps, dtype=np.uint64
+        )  # return numpy array for easy search later
 
     def set_run(self, run):
         self._run = run
@@ -467,59 +539,65 @@ class DgramManager(object):
     def get_run(self):
         return self._run
 
+
 def parse_command_line():
-    opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
-    xtcdata_filename="data.xtc"
+    opts, args_proper = getopt.getopt(sys.argv[1:], "hvd:f:")
+    xtcdata_filename = "data.xtc"
     for option, parameter in opts:
-        if option=='-h': usage_error()
-        if option=='-f': xtcdata_filename = parameter
+        if option == "-h":
+            usage_error()
+        if option == "-f":
+            xtcdata_filename = parameter
     if xtcdata_filename is None:
-        xtcdata_filename="data.xtc"
+        xtcdata_filename = "data.xtc"
     return (args_proper, xtcdata_filename)
 
+
 def getMemUsage():
-    pid=os.getpid()
-    ppid=os.getppid()
-    cmd="/usr/bin/ps -q %d --no-headers -eo size" % pid
-    p=os.popen(cmd)
-    size=int(p.read())
+    pid = os.getpid()
+    ppid = os.getppid()
+    cmd = "/usr/bin/ps -q %d --no-headers -eo size" % pid
+    p = os.popen(cmd)
+    size = int(p.read())
     return size
+
 
 def main():
     args_proper, xtcdata_filename = parse_command_line()
-    ds=DgramManager(xtcdata_filename)
+    ds = DgramManager(xtcdata_filename)
     print("vars(ds):")
     for var_name in sorted(vars(ds)):
         print("  %s:" % var_name)
-        e=getattr(ds, var_name)
+        e = getattr(ds, var_name)
         if not isinstance(e, (tuple, list, int, float, str)):
             for key in sorted(e.__dict__.keys()):
                 print("%s: %s" % (key, e.__dict__[key]))
     print()
-    count=0
+    count = 0
     for evt in ds:
         print("evt:", count)
         for dgram in evt:
             for var_name in sorted(vars(dgram)):
-                val=getattr(dgram, var_name)
+                val = getattr(dgram, var_name)
                 print("  %s: %s" % (var_name, type(val)))
-            a=dgram.xpphsd.raw.array0Pgp
+            a = dgram.xpphsd.raw.array0Pgp
             try:
-                a[0][0]=999
+                a[0][0] = 999
             except ValueError:
                 print("The dgram.xpphsd.raw.array0Pgp is read-only, as it should be.")
             else:
                 print("Warning: the evt.array0_pgp array is writable")
             print()
-        count+=1
+        count += 1
     return
 
+
 def usage_error():
-    s="usage: python %s" %  os.path.basename(sys.argv[0])
+    s = "usage: python %s" % os.path.basename(sys.argv[0])
     sys.stdout.write("%s [-h]\n" % s)
-    sys.stdout.write("%s [-f xtcdata_filename]\n" % (" "*len(s)))
+    sys.stdout.write("%s [-f xtcdata_filename]\n" % (" " * len(s)))
     sys.exit(1)
 
-if __name__=='__main__':
-    main()
 
+if __name__ == "__main__":
+    main()

@@ -301,7 +301,9 @@ class Smd0(object):
 
             # Prevent race condition by making a copy of data
             repack_smds[rankreq[0]] = self.smdr_man.smdr.repack_parallel(
-                missing_step_views, rankreq[0], intg_stream_id=self.smdr_man.dsparms.intg_stream_id
+                missing_step_views,
+                rankreq[0],
+                intg_stream_id=self.smdr_man.dsparms.intg_stream_id,
             )
 
             logger.debug(f"TIMELINE 3. SMD0GOTREPACK {time.monotonic()}", level=2)
@@ -343,7 +345,10 @@ class Smd0(object):
             req.Wait()
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
             repack_smds[rankreq[0]] = self.smdr_man.smdr.repack_parallel(
-                missing_step_views, rankreq[0], only_steps=1, intg_stream_id=self.smdr_man.dsparms.intg_stream_id
+                missing_step_views,
+                rankreq[0],
+                only_steps=1,
+                intg_stream_id=self.smdr_man.dsparms.intg_stream_id,
             )
             if memoryview(repack_smds[rankreq[0]]).nbytes > 0:
                 requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(

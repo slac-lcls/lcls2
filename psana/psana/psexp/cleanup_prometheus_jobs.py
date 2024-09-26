@@ -5,7 +5,12 @@ import os
 
 
 def main(
-    job_id: Annotated[str, typer.Argument(help="Prometheus JobID (default is slurm jobid or exp_runnum_user)")],
+    job_id: Annotated[
+        str,
+        typer.Argument(
+            help="Prometheus JobID (default is slurm jobid or exp_runnum_user)"
+        ),
+    ],
     n_ranks: Annotated[int, typer.Argument(help="No. of total mpi ranks")],
 ):
     prom_man = PrometheusManager(job=job_id)
