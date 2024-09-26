@@ -116,6 +116,8 @@ if 'PSDAQ' in BUILD_LIST :
             'testAsyncErr = psdaq.control.testAsyncErr:main',
             'testFileReport = psdaq.control.testFileReport:main',
             'configdb = psdaq.configdb.configdb:main',
+            'configdb_GUI = psdaq.configdb.configdb_GUI:main',
+            'configdb_multimod = psdaq.configdb.configdb_multimod:configdb_multimod',
             'epixquad_store_gainmap = psdaq.configdb.epixquad_store_gainmap:main',
             'epixquad_create_pixelmask = psdaq.configdb.epixquad_create_pixelmask:main',
             'epixhr_config_from_yaml_set = psdaq.configdb.epixhr_config_from_yaml_set:main',
