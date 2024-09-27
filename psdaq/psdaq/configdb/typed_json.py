@@ -884,3 +884,85 @@ def updateValue(typed_json, name, value):
         return 0
     except:
         return 2
+
+def copyValues(din,top,k=None):
+    """Copy values from an input dictionary to an output one.
+
+    Useful for, e.g., reading register values from a YAML and
+    updating a configuration dictionary to resubmit to configdb.
+
+    Performs some type checking and conversion of enum labels to
+    corresponding integer values.
+
+    Args:
+        din (Dict[str,Any]): Dictionary of new values.
+
+        top (Dict[str, Any]): Top of the object configuration.
+            Retrieved by calling cdb.get_configuration. See
+            configdb.py for more information.
+
+        k (str): Key to begin transferring from din to top at.
+    """
+    _copyValues(din, top, top[':types:'], top[':types:'][':enum:'],k)
+
+
+def _copyValues(din,dout,types,enum_types,k=None):
+    """Copy values from an input dictionary to an output one.
+
+    Useful for, e.g., reading register values from a YAML and
+    updating a configuration dictionary to resubmit to configdb.
+
+    Performs some type checking and conversion of enum labels to
+    corresponding integer values.
+
+    Args:
+        din (Dict[str,Any]): Dictionary of new values.
+
+        dout (Dict[str, Any]): Dictionary to copy the values to.
+            Should generally be the `top` object retrieved from
+            the configdb, though this method is called recursively
+            to update nested dictionaries.
+
+        types (Dict[str, str]): Portion of the typed JSON dictionary
+            containing the type information. Generally stored under
+            `top[':types:']`
+
+        enum_types (Dict[str, int]): Enum label-value configuration.
+            This parameter is not updated during recursion. It is
+            generally found under `top[':types:'][':enum:']`.
+
+        k (str): Key to begin transferring from din to dout at.
+    """
+    if enum_types is None:
+        raise ValueError('Cannot type check, provide data types!')
+    if isinstance(din,dict) and isinstance(dout[k],dict):
+        for key,value in din.items():
+            if key in dout[k]:
+                _copyValues(value,dout[k],types[k],enum_types,key)
+            else:
+                print(f'skip {key}')
+    elif isinstance(din,bool):
+        vin = 1 if din else 0
+        if dout[k] != vin:
+            print(f'Writing {k} = {vin}')
+            dout[k] = 1 if din else 0
+        else:
+            print(f'{k} unchanged')
+    else:
+        if type(din) is type(dout[k]):
+            if dout[k] != din:
+                print(f'Writing {k} = {din}')
+                dout[k] = din
+            else:
+                print(f'{k} unchanged')
+        elif types[k] in enum_types:
+            enum_type = enum_types[types[k]]
+            dout[k] = enum_type[din]
+            print(
+                f'Changing enum {din} of {types[k]} to corresponding value: {dout[k]}'
+            )
+        else:
+            print(
+                f'Type mismatch for {k}: expect {type(dout[k])}, yaml has {type(din)} ({din})'
+            )
+            print(f'{k} unchanged')

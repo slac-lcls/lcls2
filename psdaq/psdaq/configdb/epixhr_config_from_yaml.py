@@ -1,4 +1,4 @@
-from psdaq.configdb.typed_json import cdict
+from psdaq.configdb.typed_json import cdict, copyValues
 import psdaq.configdb.configdb as cdb
 import pyrogue as pr
 import numpy as np
@@ -8,31 +8,6 @@ import argparse
 
 elemRows = 144
 elemCols = 192
-
-def copyValues(din,dout,k=None):
-    if isinstance(din,dict) and isinstance(dout[k],dict):
-        for key,value in din.items():
-            if key in dout[k]:
-                copyValues(value,dout[k],key)
-            else:
-                print(f'skip {key}')
-    elif isinstance(din,bool):
-        vin = 1 if din else 0
-        if dout[k] != vin:
-            print(f'Writing {k} = {vin}')
-            dout[k] = 1 if din else 0
-        else:
-            print(f'{k} unchanged')
-    else:
-        if type(din) is type(dout[k]):
-            if dout[k] != din:
-                print(f'Writing {k} = {din}')
-                dout[k] = din
-            else:
-                print(f'{k} unchanged')
-        else:
-            print(f'Type mismatch for {k}: expect {type(dout[k])}, yaml has {type(din)} ({din})')
-            print(f'{k} unchanged')
 
 if __name__ == "__main__":
 
