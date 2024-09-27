@@ -263,7 +263,7 @@ class EventManager(object):
         stat_result = os.fstat(fd)
         t_delta = time.time() - stat_result.st_mtime
         if t_delta > 0 and t_delta < self.zeroedbug_wait_sec:
-            print(
+            logger.info(
                 f"Warning: bigdata waiting {self.zeroedbug_wait_sec}s ... (file is only {t_delta:.2f}s old)."
             )
             time.sleep(self.zeroedbug_wait_sec)
@@ -291,11 +291,11 @@ class EventManager(object):
             if i_retry == self.max_retries and got < size:
                 if self.max_retries > 0:
                     # Live mode use max_retries
-                    print(f"Error: maximum no. of retries reached. exit.")
+                    logger.info(f"Warning: maximum no. of retries reached. Exit.")
                 else:
                     # Normal mode
-                    print(
-                        f"Error: not able to completely read big data (asked: {size} bytes/ got: {got} bytes)"
+                    logger.info(
+                        f"Warning: not able to completely read big data (asked: {size} bytes/ got: {got} bytes)"
                     )
 
                 # Flag failure for system exit
@@ -305,7 +305,7 @@ class EventManager(object):
             offset += got
             size -= got
 
-            print(
+            logger.info(
                 f"Warning: bigdata read retry#{i_retry}/{self.max_retries} fd:{fd} {self.dm.fds_map[fd]} ask={size} offset={offset} got={got}"
             )
 

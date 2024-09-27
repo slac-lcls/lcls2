@@ -25,6 +25,8 @@ else:
     logger = utils.Logger()
     size = 1
 
+import logging
+
 PUSH_INTERVAL_SECS = 5
 
 if socket.gethostname().startswith("sdf"):
@@ -66,7 +68,7 @@ def createExposer(prometheusCfgDir):
                     return False
             else:
                 pass  # File exists; no need to rewrite it
-            logging.info(f"Providing run-time monitoring data on port {port}")
+            logger.info(f"Providing run-time monitoring data on port {port}")
             HTTP_EXPOSER_STARTED = True
             return True
         except OSError:
@@ -174,7 +176,7 @@ class PrometheusManager(object):
             elif metric_type == "Gauge":
                 self.registry.register(Gauge(metric_name, desc))
         else:
-            print(
+            logger.info(
                 f"Warning: {metric_name} is not found in the list of available prometheus metrics"
             )
 

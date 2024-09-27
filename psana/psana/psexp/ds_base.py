@@ -189,7 +189,7 @@ class DataSourceBase(abc.ABC):
         elif isinstance(timestamps, np.ndarray):
             formatted_timestamps = timestamps
         else:
-            print(
+            logger.info(
                 f"Warning: No timestamp filtering, unrecognized format of the input filter timestamp ({type(timestamps)}). Allowed formats are .npy file or numpy.ndarray)."
             )
         return np.asarray(np.sort(formatted_timestamps), dtype=np.uint64)
@@ -324,7 +324,7 @@ class DataSourceBase(abc.ABC):
             if file_found:
                 break
             self.current_retry_no += 1
-            print(f"Waiting for {xtc_file} ...(#retry:{self.current_retry_no})")
+            logger.info(f"Waiting for {xtc_file} ...(#retry:{self.current_retry_no})")
             time.sleep(1)
         return file_found, true_xtc_file
 
@@ -353,7 +353,7 @@ class DataSourceBase(abc.ABC):
             resp.raise_for_status()
             all_xtc_files = resp.json()["value"]
         except Exception:
-            print(f"Warning: unable to connect to {url}")
+            logger.info(f"Warning: unable to connect to {url}")
             all_xtc_files = []
 
         file_info = {}
@@ -604,7 +604,7 @@ class DataSourceBase(abc.ABC):
                             # We only warn users in the case where we exclude a detector
                             # and there're more than one detectors in the file.
                             if len(exist_set) > len(matched_set):
-                                print(
+                                logger.info(
                                     f"Warning: Stream-{i} has one or more detectors matched with the excluded set. All detectors in this stream will be excluded."
                                 )
 
@@ -670,7 +670,7 @@ class DataSourceBase(abc.ABC):
                 )
                 self.dsparms.calibconst[det_name] = calib_const
             else:
-                print(
+                logger.info(
                     f"ds_base: Warning: cannot access calibration constant (exp is None)"
                 )
                 self.dsparms.calibconst[det_name] = None

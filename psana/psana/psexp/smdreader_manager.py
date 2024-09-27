@@ -194,13 +194,13 @@ class SmdReaderManager(object):
                     max_events=self.dsparms.max_events,
                 )
                 if self.processed_events <= current_processed_events:
-                    print(
-                        f"Exit: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize}). Useful debug info: {self.processed_events=} {current_processed_events=}."
+                    logger.log(
+                        f"ERROR: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize}). Useful debug info: {self.processed_events=} {current_processed_events=}."
                     )
                     check_pass = False
             else:
-                print(
-                    f"Exit: unable to locate a new chunk. No data in one or more streams and no EndRun found."
+                logger.log(
+                    f"ERROR: unable to locate a new chunk. No data in one or more streams and no EndRun found."
                 )
         return check_pass
 
@@ -246,7 +246,7 @@ class SmdReaderManager(object):
         d_view, d_read = 0, 0
         cn_chunks = 0
         while not is_done:
-            logger.debug(f"TIMELINE 1. STARTCHUNK {time.monotonic()}", level=2)
+            logger.debug(f"TIMELINE 1. STARTCHUNK {time.monotonic()}", level=3)
             st_view, en_view, st_read, en_read = 0, 0, 0, 0
 
             if self.smdr.is_complete():
@@ -280,7 +280,7 @@ class SmdReaderManager(object):
 
                 en_view = time.monotonic()
                 d_view += en_view - st_view
-                logger.debug(f"TIMELINE 2. DONECREATEVIEW {time.monotonic()}", level=2)
+                logger.debug(f"TIMELINE 2. DONECREATEVIEW {time.monotonic()}", level=3)
 
                 if self.got_events:
                     cn_chunks += 1
@@ -290,7 +290,7 @@ class SmdReaderManager(object):
                 st_read = time.monotonic()
                 self._get()
                 en_read = time.monotonic()
-                logger.debug(f"TIMELINE 3. DONEREAD {time.monotonic()}", level=2)
+                logger.debug(f"TIMELINE 3. DONEREAD {time.monotonic()}", level=3)
                 d_read += en_read - st_read
                 if not self.smdr.is_complete():
                     is_done = True

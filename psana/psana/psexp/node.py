@@ -257,12 +257,12 @@ class Smd0(object):
 
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
-        logger.debug(f"TIMELINE 1. SMD0GOTCHUNK {st_req}", level=2)
+        logger.debug(f"TIMELINE 1. SMD0GOTCHUNK {st_req}", level=3)
 
         req = self.comms.smd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
         req.Wait()
         en_req = time.monotonic()
-        logger.debug(f"TIMELINE 2. SMD0GOTEB{rankreq[0]} {en_req}", level=2)
+        logger.debug(f"TIMELINE 2. SMD0GOTEB{rankreq[0]} {en_req}", level=3)
         logger.debug(f"WAITTIME SMD0-EB (0-{rankreq[0]}) {en_req-st_req:.5f}")
         self.wait_gauge.set(en_req - st_req)
 
@@ -287,7 +287,7 @@ class Smd0(object):
 
             # Check missing steps for the current client
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
-            logger.debug(f"TIMELINE 2.1 SMD0GOTSTEPHIST {time.monotonic()}", level=2)
+            logger.debug(f"TIMELINE 2.1 SMD0GOTSTEPHIST {time.monotonic()}", level=3)
 
             # Update step buffers (after getting the missing steps
             step_views = [
@@ -296,7 +296,7 @@ class Smd0(object):
             ]
             self.step_hist.extend_buffers(step_views, rankreq[0])
             logger.debug(
-                f"TIMELINE 2.2 SMD0STEPHISTUPDATED {time.monotonic()}", level=2
+                f"TIMELINE 2.2 SMD0STEPHISTUPDATED {time.monotonic()}", level=3
             )
 
             # Prevent race condition by making a copy of data
@@ -306,14 +306,14 @@ class Smd0(object):
                 intg_stream_id=self.smdr_man.dsparms.intg_stream_id,
             )
 
-            logger.debug(f"TIMELINE 3. SMD0GOTREPACK {time.monotonic()}", level=2)
+            logger.debug(f"TIMELINE 3. SMD0GOTREPACK {time.monotonic()}", level=3)
 
             requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(
                 repack_smds[rankreq[0]], dest=rankreq[0]
             )
 
             logger.debug(
-                f"TIMELINE 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}", level=2
+                f"TIMELINE 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}", level=3
             )
 
             en = time.monotonic()
@@ -439,12 +439,12 @@ class EventBuilderNode(object):
         st = time.monotonic()
         logger.debug(
             f"TIMELINE 5. EB{self.comms.world_rank}SENDREQTOSMD0 {time.monotonic()}",
-            level=2,
+            level=3,
         )
         smd_comm.Isend(np.array([self.comms.smd_rank], dtype="i"), dest=0)
         logger.debug(
             f"TIMELINE 6. EB{self.comms.world_rank}DONESENDREQ {time.monotonic()}",
-            level=2,
+            level=3,
         )
         info = MPI.Status()
         smd_comm.Probe(source=0, status=info)
@@ -454,7 +454,7 @@ class EventBuilderNode(object):
         req.Wait()
         en = time.monotonic()
         logger.debug(
-            f"TIMELINE 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}", level=2
+            f"TIMELINE 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}", level=3
         )
         logger.debug(
             f"WAITTIME EB-SMD0 ({self.comms.smd_rank}-0) {en-st:.5f} ({count/1e3:.5f}KB)"
@@ -483,7 +483,7 @@ class EventBuilderNode(object):
             )
             logger.debug(
                 f"TIMELINE 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}",
-                level=2,
+                level=3,
             )
 
             # Build batches of events
@@ -501,19 +501,19 @@ class EventBuilderNode(object):
 
                     logger.debug(
                         f"TIMELINE 9. EB{self.comms.world_rank}REQBD {time.monotonic()}",
-                        level=2,
+                        level=3,
                     )
                     if waiting_bds:
                         rankreq[0] = waiting_bds.pop()
                         logger.debug(
                             f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMQUEUE {time.monotonic()}",
-                            level=2,
+                            level=3,
                         )
                     else:
                         self._request_rank(rankreq)
                         logger.debug(
                             f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMREQ {time.monotonic()}",
-                            level=2,
+                            level=3,
                         )
 
                     missing_step_views = self.step_hist.get_buffer(rankreq[0])
@@ -523,14 +523,14 @@ class EventBuilderNode(object):
 
                     logger.debug(
                         f"TIMELINE 11. EB{self.comms.world_rank}SENDDATATOBD{rankreq[0]+1} {time.monotonic()}",
-                        level=2,
+                        level=3,
                     )
                     self.requests[rankreq[0] - 1] = bd_comm.Isend(
                         batches[rankreq[0]], dest=rankreq[0]
                     )
                     logger.debug(
                         f"TIMELINE 12. EB{self.comms.world_rank}DONESENDDATATOBD{rankreq[0]+1} {time.monotonic()}",
-                        level=2,
+                        level=3,
                     )
 
                     if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:
@@ -591,7 +591,7 @@ class EventBuilderNode(object):
             # end for smd_batch_dict in ...
             logger.debug(
                 f"TIMELINE 12.1 EB{self.comms.world_rank}DONEALLBATCHES {time.monotonic()}",
-                level=2,
+                level=3,
             )
 
         # end While True
@@ -610,21 +610,21 @@ class EventBuilderNode(object):
             if batches[dest_rank]:
                 logger.debug(
                     f"TIMELINE 12.2 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{dest_rank+1} {time.monotonic()}",
-                    level=2,
+                    level=3,
                 )
                 self.requests[dest_rank - 1] = bd_comm.Isend(
                     batches[dest_rank], dest_rank
                 )
                 logger.debug(
                     f"TIMELINE 12.3 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{dest_rank+1} {time.monotonic()}",
-                    level=2,
+                    level=3,
                 )
                 waiting_bds.remove(dest_rank)
         wait_for(self.requests)
 
         logger.debug(
             f"TIMELINE 12.4 EB{self.comms.world_rank}DONEMISSSTEPS {time.monotonic()}",
-            level=2,
+            level=3,
         )
 
         # Check if the rest of bds need missing steps from the last batch
@@ -638,21 +638,21 @@ class EventBuilderNode(object):
             if batches[rankreq[0]]:
                 logger.debug(
                     f"TIMELINE 12.5 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{rankreq[0]+1} {time.monotonic()}",
-                    level=2,
+                    level=3,
                 )
                 self.requests[rankreq[0] - 1] = bd_comm.Isend(
                     batches[rankreq[0]], dest=rankreq[0]
                 )
                 logger.debug(
                     f"TIMELINE 12.6 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{rankreq[0]+1} {time.monotonic()}",
-                    level=2,
+                    level=3,
                 )
             else:
                 waiting_bds.append(rankreq[0])
         wait_for(self.requests)
 
         logger.debug(
-            f"TIMELINE 12.7 EB{self.comms.world_rank}DONE {time.monotonic()}", level=2
+            f"TIMELINE 12.7 EB{self.comms.world_rank}DONE {time.monotonic()}", level=3
         )
 
         # end While True: done - kill idling nodes
@@ -686,13 +686,13 @@ class BigDataNode(object):
             bd_rank = self.comms.bd_rank
             logger.debug(
                 f"TIMELINE 13. BD{self.comms.world_rank}SENDREQTOEB {time.monotonic()}",
-                level=2,
+                level=3,
             )
             req = bd_comm.Isend(np.array([bd_rank], dtype="i"), dest=0)
             req.Wait()
             logger.debug(
                 f"TIMELINE 14. BD{self.comms.world_rank}DONESENDREQTOEB {time.monotonic()}",
-                level=2,
+                level=3,
             )
             info = MPI.Status()
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
@@ -703,7 +703,7 @@ class BigDataNode(object):
             req.Wait()
             logger.debug(
                 f"TIMELINE 15. BD{self.comms.world_rank}RECVDATA {time.monotonic()}",
-                level=2,
+                level=3,
             )
             en_req = time.monotonic()
             logger.debug(

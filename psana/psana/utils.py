@@ -13,5 +13,8 @@ class Logger:
             else:
                 print(f"{msg}", flush=True)
 
-    def debug(self, msg, level=1):
+    def info(self, msg):
+        self.log(msg, level=1)
+
+    def debug(self, msg, level=2):
         self.log(msg, level=level)
