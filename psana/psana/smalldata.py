@@ -563,10 +563,13 @@ class SmallData:  # (client)
             print("setting cache_size -->", batch_size)
             cache_size = batch_size
 
-        self._full_filename = str(filename)
-        if filename is not None:
+        if (filename is not None):
             self._basename = os.path.basename(filename)
-            self._dirname = os.path.dirname(filename)
+            self._dirname  = os.path.dirname(filename)
+            self._full_filename = str(filename)
+        else:
+            # this can happen for shmem analysis where there is no file
+            self._full_filename = filename
 
         self._first_open = True  # filename has not been opened yet
 
