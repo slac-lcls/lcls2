@@ -181,7 +181,7 @@ class ConfigdbGUI(QWidget):
         except:
             return
     
-    #search parents in tree dictionnary    
+    #search parents in tree dictionary    
     def find_parents(self, val):
         try:
             self.full_path_param.append(val.parent().text(0))
