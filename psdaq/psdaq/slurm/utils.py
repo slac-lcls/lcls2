@@ -9,8 +9,8 @@ import socket
 
 LOCALHOST = socket.gethostname()
 SLURM_PARTITION = "drpq"
-DRP_N_RSV_CORES = int(os.environ.get('PS_DRP_N_RSV_CORES', '4'))
-SCRIPTS_ROOTDIR = '/reg/g/pcds/dist/pds'
+DRP_N_RSV_CORES = int(os.environ.get("PS_DRP_N_RSV_CORES", "4"))
+SCRIPTS_ROOTDIR = "/reg/g/pcds/dist/pds"
 
 
 class PSbatchSubCommand:
@@ -18,12 +18,14 @@ class PSbatchSubCommand:
     STOP = 1
     RESTART = 2
 
+
 def call_subprocess(*args):
     cc = subprocess.run(args, capture_output=True)
     output = None
     if not cc.returncode:
         output = str(cc.stdout.strip(), "utf-8")
     return output
+
 
 class SbatchManager:
     def __init__(self, configfilename, platform, as_step, verbose, output=None):
@@ -42,9 +44,9 @@ class SbatchManager:
         self.platform = platform
         self.as_step = as_step
         self.verbose = verbose
-        self.user = os.environ['USER'] 
-        self.hutch = self.user[:self.user.find('opr')]
-        self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, 'scripts')
+        self.user = os.environ["USER"]
+        self.hutch = self.user[: self.user.find("opr")]
+        self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, "scripts")
 
     def set_attr(self, attr, val):
         setattr(self, attr, val)
@@ -65,9 +67,7 @@ class SbatchManager:
         """Returns a dictionary containing values obtained from scontrol
         with the given jobparms list. Returns {} if this job does not exist.
         """
-        output = call_subprocess(
-            "scontrol", "show", "job", job_id
-        )
+        output = call_subprocess("scontrol", "show", "job", job_id)
         results = {}
         if output is not None:
             scontrol_lines = output.splitlines()
@@ -82,7 +82,7 @@ class SbatchManager:
 
     def get_job_info(self, use_sacct=False):
         """Returns formatted output from squeue by the current user"""
-        user = self.user 
+        user = self.user
         if not user:
             print(f"Cannot list jobs for user. $USER variable is not set.")
         else:
@@ -101,7 +101,8 @@ class SbatchManager:
         for i, job_info in enumerate(lines):
             cols = job_info.strip('"').split()
             # Check that JobId column has all the characters as digit
-            if not cols[0].isdigit(): continue
+            if not cols[0].isdigit():
+                continue
 
             success = True
             if len(cols) == 5:
@@ -111,12 +112,10 @@ class SbatchManager:
                 nodelist = " ".join(cols[5:])
             else:
                 success = False
-            
+
             if success:
                 # Get logfile from job_id
-                scontrol_result = call_subprocess(
-                    "scontrol", "show", "job", job_id
-                )
+                scontrol_result = call_subprocess("scontrol", "show", "job", job_id)
                 logfile = ""
                 if scontrol_result is not None:
                     scontrol_lines = scontrol_result.splitlines()
@@ -124,9 +123,9 @@ class SbatchManager:
                         if scontrol_line.find("StdOut") > -1:
                             scontrol_cols = scontrol_line.split("=")
                             logfile = scontrol_cols[1]
-                
+
                 # Results from sacct also show old jobs with the same name.
-                # We choose the oldest job and returns its values. 
+                # We choose the oldest job and returns its values.
                 if comment not in job_details:
                     job_details[comment] = {
                         "job_id": job_id,
@@ -185,6 +184,20 @@ class SbatchManager:
             n_cores = int(details["cores"])
         return n_cores
 
+    def get_rtprio(self, details):
+        """Return '', raise, or return valid 'rtprio value'"""
+        rtprio = ""
+        if "rtprio" in details:
+            if not details["rtprio"].isdigit():
+                raise ValueError("malformed rtprio value: %s" % details["rtprio"])
+            else:
+                rtprio_as_int = int(details["rtprio"])
+                if (rtprio_as_int < 1) or (rtprio_as_int > 99):
+                    raise ValueError("rtprio not in range 1-99: %s" % details["rtprio"])
+                else:
+                    rtprio = details["rtprio"]
+        return rtprio
+
     def get_jobstep_cmd(
         self, node, job_name, details, het_group=-1, with_output=False, as_step=False
     ):
@@ -196,32 +209,32 @@ class SbatchManager:
         env_opt = "--export="
 
         # Inherit follows from user's account
-        env_opt +="HOME"
-        env_opt +=",USER"
-        env_opt +=",TESTRELDIR"
-        env_opt +=",CONDA_PREFIX"
-        env_opt +=",CONDA_DEFAULT_ENV"
-        env_opt +=",CONDA_EXE"
-        env_opt +=",CONFIGDB_AUTH"
-        
+        env_opt += "HOME"
+        env_opt += ",USER"
+        env_opt += ",TESTRELDIR"
+        env_opt += ",CONDA_PREFIX"
+        env_opt += ",CONDA_DEFAULT_ENV"
+        env_opt += ",CONDA_EXE"
+        env_opt += ",CONFIGDB_AUTH"
+
         # Build PATH and PYTHONPATH from scratch
-        daq_path ="$TESTRELDIR/bin"
-        daq_path+=":$CONDA_PREFIX/bin"
-        daq_path+=":$CONDA_PREFIX/epics/bin/linux-x86_64"
-        daq_path+=":/usr/sbin"
-        daq_path+=":/usr/bin"
-        daq_path+=":/sbin"
-        daq_path+=":/bin"
-        env_opt +=",PATH="+daq_path
-        env_opt +=f",PYTHONPATH=$TESTRELDIR/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+        daq_path = "$TESTRELDIR/bin"
+        daq_path += ":$CONDA_PREFIX/bin"
+        daq_path += ":$CONDA_PREFIX/epics/bin/linux-x86_64"
+        daq_path += ":/usr/sbin"
+        daq_path += ":/usr/bin"
+        daq_path += ":/sbin"
+        daq_path += ":/bin"
+        env_opt += ",PATH=" + daq_path
+        env_opt += f",PYTHONPATH=$TESTRELDIR/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
 
         # For x11 forwarding
-        env_opt +=",DISPLAY"
-        env_opt +=",XAUTHORITY=$HOME/.Xauthority"
-        
+        env_opt += ",DISPLAY"
+        env_opt += ",XAUTHORITY=$HOME/.Xauthority"
+
         # Include any exists in setup_env.sh backdoor
-        env_opt +=",$DAQBATCH_EXPORT"
-        
+        env_opt += ",$DAQBATCH_EXPORT"
+
         # Include any exists in the configuration file
         cnf_env = ""
         found_ld_library_path = False
@@ -229,24 +242,32 @@ class SbatchManager:
             if details["env"] != "":
                 envs = details["env"].split()
                 for i, env in enumerate(envs):
-                    env_name, env_var = env.split('=')
+                    env_name, env_var = env.split("=")
                     if env_name == "LD_LIBRARY_PATH":
                         found_ld_library_path = True
-                    cnf_env += ','+env 
-        env_opt += cnf_env 
-        
+                    cnf_env += "," + env
+        env_opt += cnf_env
+
         if not found_ld_library_path:
-            env_opt +=",LD_LIBRARY_PATH=$TESTRELDIR/lib"
+            env_opt += ",LD_LIBRARY_PATH=$TESTRELDIR/lib"
 
         env_opt += " "
-        
+
         het_group_opt = ""
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
 
-        cmd = self.get_daq_cmd(details, job_name)
-        daqlog_header = f'daqlog_header {job_name} {self.platform} {node} "{cmd.strip()}"'
-        cmd = f'{daqlog_header}; {cmd}'
+        # Generate as set of commands for srun
+        daq_cmd = self.get_daq_cmd(details, job_name)
+
+        daqlog_header = (
+            f'daqlog_header {job_name} {self.platform} {node} "{daq_cmd.strip()}";'
+        )
+
+        rtprio = self.get_rtprio(details)
+        rtattr = f"/usr/bin/chrt -f {rtprio} " if rtprio else ""
+
+        cmd = f"{daqlog_header}{rtattr}{daq_cmd}"
         if "conda_env" in details:
             if details["conda_env"] != "":
                 CONDA_EXE = os.environ.get("CONDA_EXE", "")
