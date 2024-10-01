@@ -61,7 +61,9 @@ class Runner:
                 if cmd_token == "-x":
                     self.xpm_id = int(cmd_tokens[cmd_index + 1])
 
-        self.sbman = SbatchManager(configfilename, self.platform, as_step, verbose, output=output)
+        self.sbman = SbatchManager(
+            configfilename, self.platform, as_step, verbose, output=output
+        )
         self.proc = SubprocHelper()
         self.parse_config()
 
@@ -223,14 +225,22 @@ class Runner:
                             if details["flags"].find("x") > -1:
                                 job_state = None
                                 for i in range(MAX_RETRIES):
-                                    if self._exists(unique_ids=job_name): 
+                                    if self._exists(unique_ids=job_name):
                                         job_details = self.sbman.get_job_info()
-                                        job_state = job_details[details['comment']]['state']
-                                        if job_state == "RUNNING": break
-                                    if i==0: print(f'Waiting for slurm job {job_name} ({job_state}) to start for attaching xterm...')
+                                        job_state = job_details[details["comment"]][
+                                            "state"
+                                        ]
+                                        if job_state == "RUNNING":
+                                            break
+                                    if i == 0:
+                                        print(
+                                            f"Waiting for slurm job {job_name} ({job_state}) to start for attaching xterm..."
+                                        )
                                     time.sleep(3)
                                 if job_state is not None:
-                                    time.sleep(1) # Still need to wait! even if job is already in RUNNING state
+                                    time.sleep(
+                                        1
+                                    )  # Still need to wait! even if job is already in RUNNING state
                                     ldProcStatus = self.show_status(quiet=True)
                                     self.spawnConsole(job_name, ldProcStatus, False)
 
@@ -267,19 +277,23 @@ class Runner:
                     results = self.sbman.get_job_info_byid(job_id, ["JobState"])
                     if "JobState" in results:
                         job_states[job_id] = results["JobState"]
-                active_jobs = [job_id for job_id, job_state in job_states.items() if job_state != 'CANCELLED']
+                active_jobs = [
+                    job_id
+                    for job_id, job_state in job_states.items()
+                    if job_state != "CANCELLED"
+                ]
                 if len(active_jobs) == 0:
                     break
-                if i == 0 and verbose: print(f'Waiting for slurm jobs to complete...')
+                if i == 0 and verbose:
+                    print(f"Waiting for slurm jobs to complete...")
                 time.sleep(3)
-
 
     def restart(self, unique_ids=None, verbose=False):
         self.stop(unique_ids=unique_ids, skip_wait=True, verbose=verbose)
         self.start(unique_ids=unique_ids, skip_check_exist=True)
 
     def get_statusdict(self, config_id, ldProcStatus):
-        """ Uses exclusively by spawnX definitions to retreive slurm jobid
+        """Uses exclusively by spawnX definitions to retreive slurm jobid
         from the given status details"""
         result = {}
         for statusdict in ldProcStatus:
@@ -317,7 +331,7 @@ class Runner:
                 else:
                     args = [self.PATH_XTERM, "-T", config_id, "-e", cmd]
 
-                arg_str = ' '.join(args)
+                arg_str = " ".join(args)
                 asyncio.run(self.proc.run(arg_str, wait_output=False))
             except:
                 print("spawnConsole failed for process '%s'" % config_id)
@@ -331,7 +345,7 @@ class Runner:
         result = self.get_statusdict(config_id, ldProcStatus)
         if result:
             logfile = result["logfile"]
-        
+
         if not os.path.exists(logfile) or not logfile:
             print(f"spawnLogfile: process {config_id} logfile not found ({logfile})")
         else:
@@ -393,13 +407,17 @@ def main(
         ),
     ] = False,
     verbose: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Print out sbatch script(s) submitted by daqbatch and warnings")
+        bool,
+        typer.Option(
+            "--verbose",
+            "-v",
+            help="Print out sbatch script(s) submitted by daqbatch and warnings",
+        ),
     ] = False,
     output: Annotated[
         str,
         typer.Option(
-            "--output", "-o",
-            help="Specify output path for process log files."
+            "--output", "-o", help="Specify output path for process log files."
         ),
     ] = None,
 ):

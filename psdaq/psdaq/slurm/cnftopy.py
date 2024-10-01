@@ -27,9 +27,9 @@ task_set = ''
                 o_file.writelines(" {id: 'psqueue', cmd: 'psqueue -i 5'},")
             elif line.find("cmd:drp_cmd") > -1 or line.find("cmd:teb_cmd") > -1:
                 # Add 10 cores as a default no. of physical cores need for drp and teb processes
-                cols = line.split(',')
+                cols = line.split(",")
                 cols.insert(1, "cores: 10")
-                new_line = ','.join(cols)
+                new_line = ",".join(cols)
                 o_file.writelines(new_line)
             else:
                 o_file.writelines(line)

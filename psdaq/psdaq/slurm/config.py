@@ -45,8 +45,8 @@ class Config:
             msg = 'Error: only accept config as a dictionary (e.g. {"id": "daq", ...})'
             raise ValueError(msg)
         cid = config["id"]
-        if 'host' not in config:
-            config['host'] = LOCALHOST
+        if "host" not in config:
+            config["host"] = LOCALHOST
         self.select_config[cid] = config
 
     def rename(self, *args):
@@ -60,7 +60,7 @@ class Config:
                 print(f"Warning: no {current_cid} found in select_config")
 
     def extend(self, configs):
-        """ Add all items in the given configs list """
+        """Add all items in the given configs list"""
         for config in configs:
             self.add(config)
 
