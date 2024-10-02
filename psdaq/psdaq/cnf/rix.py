@@ -95,7 +95,7 @@ ami_manager_node = "drp-srcf-cmp029"
 procmgr_config = [
  {                          id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:3 DAQ:NEH:XPM:5'},
  {                          id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 3 '+groups},
- {id: 'psqueue', cmd: 'psqueue -i 5'},
+ {id: 'daqstat', cmd: 'daqstat -i 5'},
  { host: collect_host,      id:'control',     flags:'spu', env:xpm_nogateway_epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -X drp-srcf-mon001 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg} -c'},
  {                          id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 

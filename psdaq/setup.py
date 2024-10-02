@@ -166,9 +166,9 @@ if 'PSDAQ' in BUILD_LIST :
             'bos = psdaq.bos.bos:main',
             'prometheus2pvs = psdaq.cas.prometheus2pvs:main',
             'prometheusIOC = psdaq.cas.prometheusIOC:main',
-            'daqbatch = psdaq.slurm.main:_do_main',
+            'daqmgr = psdaq.slurm.main:_do_main',
             'cnf2py = psdaq.slurm.cnftopy:_do_main',
-            'psqueue = psdaq.slurm.psqueue:_do_main',
+            'daqstat = psdaq.slurm.daqstat:_do_main',
             'daqlog_header = psdaq.slurm.daqlog_header:_do_main',
         ]
     }

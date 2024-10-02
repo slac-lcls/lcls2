@@ -2,7 +2,7 @@ from main_cnf import *
 from psdaq.slurm.config import Config
 
 config = Config(procmgr_config)
-config.select(["timing_0", "control", "teb0", "control_gui", "psqueue"])
+config.select(["timing_0", "control", "teb0", "control_gui", "daqstat"])
 
 config.add(
     {

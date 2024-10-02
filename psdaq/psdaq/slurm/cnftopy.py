@@ -24,7 +24,7 @@ task_set = ''
             if line.find("platform:") > -1 or line.find("taskset") > -1:
                 continue
             elif line.find("procstat") > -1:
-                o_file.writelines(" {id: 'psqueue', cmd: 'psqueue -i 5'},")
+                o_file.writelines(" {id: 'daqstat', cmd: 'daqstat -i 5'},")
             elif line.find("cmd:drp_cmd") > -1 or line.find("cmd:teb_cmd") > -1:
                 # Add 10 cores as a default no. of physical cores need for drp and teb processes
                 cols = line.split(",")

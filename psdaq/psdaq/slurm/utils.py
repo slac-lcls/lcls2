@@ -158,7 +158,7 @@ class SbatchManager:
             "prom2pvs",
             "control_gui",
             "xpmpva",
-            "psqueue",
+            "daqstat",
         ):
             cmd += f" -u {job_name}"
         if "flags" in details:
@@ -166,7 +166,7 @@ class SbatchManager:
                 cmd += f" -p {repr(self.platform)}"
         if job_name.startswith("ami-meb"):
             cmd += f" -u {job_name}"
-        if job_name == "psqueue":
+        if job_name == "daqstat":
             cmd += f" {self.configfilename}"
         if self.is_drp(details["cmd"]):
             n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
@@ -233,7 +233,7 @@ class SbatchManager:
         env_opt += ",XAUTHORITY=$HOME/.Xauthority"
 
         # Include any exists in setup_env.sh backdoor
-        env_opt += ",$DAQBATCH_EXPORT"
+        env_opt += ",$DAQMGR_EXPORT"
 
         # Include any exists in the configuration file
         cnf_env = ""

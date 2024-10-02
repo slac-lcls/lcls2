@@ -14,7 +14,7 @@ from subprocess import Popen
 from psdaq.slurm.config import Config
 
 LOCALHOST = socket.gethostname()
-DAQBATCH_SCRIPT = "submit_daqbatch.sh"
+DAQMGR_SCRIPT = "submit_daqmgr.sh"
 MAX_RETRIES = 30
 
 
@@ -121,9 +121,9 @@ class Runner:
         return
 
     def submit(self):
-        with open(DAQBATCH_SCRIPT, "w") as f:
+        with open(DAQMGR_SCRIPT, "w") as f:
             f.write(self.sbman.sb_script)
-        cmd = f"sbatch {DAQBATCH_SCRIPT}"
+        cmd = f"sbatch {DAQMGR_SCRIPT}"
         asyncio.run(self.proc.run(cmd, wait_output=True))
 
     def _select_config_ids(self, unique_ids):
@@ -411,7 +411,7 @@ def main(
         typer.Option(
             "--verbose",
             "-v",
-            help="Print out sbatch script(s) submitted by daqbatch and warnings",
+            help="Print out sbatch script(s) submitted by daqmgr and warnings",
         ),
     ] = False,
     output: Annotated[
@@ -432,7 +432,7 @@ def main(
         runner.show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
-    silentremove(DAQBATCH_SCRIPT)
+    silentremove(DAQMGR_SCRIPT)
 
 
 def _do_main():

@@ -92,7 +92,7 @@ ami_monitor_node = "drp-srcf-cmp035"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-    {id: "psqueue", cmd: "psqueue -i 5"},
+    {id: "daqstat", cmd: "daqstat -i 5"},
     {id: "groupca", flags: "s", env: epics_env, cmd: "groupca DAQ:NEH 3 " + groups},
     # set the phase2 transition timeout to 20s. this is because the teb
     # has a 16s timeout for slow PVA detectors coming through the gateway.
