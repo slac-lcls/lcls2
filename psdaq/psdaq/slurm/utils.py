@@ -28,7 +28,9 @@ def call_subprocess(*args):
 
 
 class SbatchManager:
-    def __init__(self, configfilename, platform, as_step, verbose, output=None):
+    def __init__(
+        self, configfilename, xpm_id, platform, station, as_step, verbose, output=None
+    ):
         self.sb_script = ""
         now = datetime.now()
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
@@ -41,7 +43,9 @@ class SbatchManager:
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         self.configfilename = configfilename
+        self.xpm_id = xpm_id
         self.platform = platform
+        self.station = station
         self.as_step = as_step
         self.verbose = verbose
         self.user = os.environ["USER"]
@@ -51,8 +55,8 @@ class SbatchManager:
     def set_attr(self, attr, val):
         setattr(self, attr, val)
 
-    def get_comment(self, xpm_id, platform, config_id):
-        comment = f"x{xpm_id}_p{platform}_{config_id}"
+    def get_comment(self, config_id):
+        comment = f"x{self.xpm_id}_p{self.platform}_s{self.station}_{config_id}"
         return comment
 
     def get_node_features(self):
@@ -87,7 +91,7 @@ class SbatchManager:
             print(f"Cannot list jobs for user. $USER variable is not set.")
         else:
             if use_sacct:
-                format_string = "JobIDRaw,Comment,JobName,State,NodeList"
+                format_string = "JobID,Comment%30,JobName,State,NodeList"
                 lines = call_subprocess(
                     "sacct", "-u", user, "-n", f"--format={format_string}"
                 ).splitlines()

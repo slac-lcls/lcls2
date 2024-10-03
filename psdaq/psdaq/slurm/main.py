@@ -36,7 +36,7 @@ class Runner:
     def __init__(self, configfilename, as_step=False, verbose=False, output=None):
         # Allowing users' code to do relative 'import' in config file
         sys.path.append(os.path.dirname(configfilename))
-        config_dict = {"platform": None, "config": None}
+        config_dict = {"platform": None, "station": 0, "config": None}
         try:
             exec(
                 compile(open(configfilename).read(), configfilename, "exec"),
@@ -60,9 +60,17 @@ class Runner:
             for cmd_index, cmd_token in enumerate(cmd_tokens):
                 if cmd_token == "-x":
                     self.xpm_id = int(cmd_tokens[cmd_index + 1])
+        # Set station id
+        self.station = int(config_dict["station"])
 
         self.sbman = SbatchManager(
-            configfilename, self.platform, as_step, verbose, output=output
+            configfilename,
+            self.xpm_id,
+            self.platform,
+            self.station,
+            as_step,
+            verbose,
+            output=output,
         )
         self.proc = SubprocHelper()
         self.parse_config()
@@ -86,9 +94,7 @@ class Runner:
 
         data = {}
         for config_id, config_detail in self.config.items():
-            config_detail["comment"] = self.sbman.get_comment(
-                self.xpm_id, self.platform, config_id
-            )
+            config_detail["comment"] = self.sbman.get_comment(config_id)
             if use_feature:
                 found_node = None
                 for node, features in node_features.items():
@@ -120,6 +126,9 @@ class Runner:
         self.node_features = node_features
         return
 
+    def get_unique_prefix(self):
+        return f"x{self.xpm_id}_p{self.platform}_s{self.station}"
+
     def submit(self):
         with open(DAQMGR_SCRIPT, "w") as f:
             f.write(self.sbman.sb_script)
@@ -140,7 +149,7 @@ class Runner:
         config_ids = self._select_config_ids(unique_ids)
 
         for config_id in config_ids:
-            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
+            comment = self.sbman.get_comment(config_id)
             if comment in job_details:
                 job_exists = True
                 break
@@ -166,7 +175,7 @@ class Runner:
                 "%20s %12s %10s %40s" % ("Host", "UniqueID", "Status", "Command+Args")
             )
         for config_id, detail in self.config.items():
-            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
+            comment = self.sbman.get_comment(config_id)
             statusdict = {}
             statusdict["showId"] = config_id
             if comment in job_details:
@@ -245,7 +254,8 @@ class Runner:
                                     self.spawnConsole(job_name, ldProcStatus, False)
 
     def stop(self, unique_ids=None, skip_wait=False, verbose=False):
-        """Stops running job using their comment.
+        """Cancel jobs with comment matched with the unique identifier (xXPM_pPLATFORM_sSTATION_*).
+        The action is either for all unique_ids or the given ones if specified.
 
         Each job is submitted with their unique comment. We can stop all the processes
         by looking at the given cnf and match the comment (see below for detail) with
@@ -253,22 +263,19 @@ class Runner:
         self._check_unique_ids(unique_ids)
         job_details = self.sbman.get_job_info()
 
+        config_ids = []
         if unique_ids is not None:
             config_ids = unique_ids.split(",")
-        else:
-            config_ids = list(self.config.keys())
+
+        unique_prefix = self.get_unique_prefix()
 
         job_states = {}
-        for config_id in config_ids:
-            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
-            if comment in job_details:
-                self._cancel(job_details[comment]["job_id"])
-                job_states[job_details[comment]["job_id"]] = None
-            else:
-                if verbose:
-                    print(
-                        f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
-                    )
+        for comment, job_detail in job_details.items():
+            if comment.startswith(unique_prefix) and (
+                job_detail["job_name"] in config_ids or not config_ids
+            ):
+                self._cancel(job_detail["job_id"])
+                job_states[job_detail["job_id"]] = None
 
         # Wait until all cancelled jobs reach CANCELLED state
         if not skip_wait:
