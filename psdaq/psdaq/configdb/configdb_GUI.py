@@ -117,10 +117,10 @@ class ConfigdbGUI(QWidget):
     # choosing dev or prod
     def radioURIselected(self):
         if self.radio_dev.isChecked():
-            self.data['URI']='https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws'
+            self.data['URI']='https://pswww.slac.stanford.edu/ws-kerb/devconfigdb/ws'
             self.first_column.setHeaderLabel("Dev")
         else:
-            self.data['URI']='https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+            self.data['URI']='https://pswww.slac.stanford.edu/ws-kerb/configdb/ws'
             self.first_column.setHeaderLabel("Prod")
         
         self.third_column.clear()
@@ -168,6 +168,7 @@ class ConfigdbGUI(QWidget):
 # in case something is selected in second column
     def second_column_select(self):
         self.third_column.clear()
+        self.forth_column.clear()
         self.modButton.setEnabled(False)
         self.second_column_selection = [item.text() for item in self.second_column.selectedItems()] 
         self.load_data_third_column()
@@ -206,7 +207,7 @@ class ConfigdbGUI(QWidget):
         
     #setting default values
     def set_default(self):
-        self.data["URI"]    = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+        self.data["URI"]    = 'https://pswww.slac.stanford.edu/ws-kerb/configdb/ws'
         self.data["Root"]   = 'configDB'
         self.data["Inst"]   = 'TMO'
          

@@ -21,7 +21,7 @@ def nested_set(dic, keys, value):
         d[keys[-1]] = value
     return dic
 
-def configdb_multimod(URI_CONFIGDB = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws', DEV = 'BEAM',ROOT_CONFIGDB = 'configDB', INSTRUMENT = 'tmo', DETECTOR=['hsd_0'] , CONFIG_KEY=['user','raw','prescale'], CONFIG_VALUE=1, MODIFY=False):
+def configdb_multimod(URI_CONFIGDB = 'https://pswww.slac.stanford.edu/ws-kerb/configdb/ws', DEV = 'BEAM',ROOT_CONFIGDB = 'configDB', INSTRUMENT = 'tmo', DETECTOR=['hsd_0'] , CONFIG_KEY=['user','raw','prescale'], CONFIG_VALUE=1, MODIFY=False):
     
     sout=[]
     confdb = configdb(URI_CONFIGDB, INSTRUMENT, create=False, root=ROOT_CONFIGDB )
@@ -54,8 +54,11 @@ def configdb_multimod(URI_CONFIGDB = 'https://pswww.slac.stanford.edu/ws-auth/co
                     con=con[k]
                 print(f'{det}:{CONFIG_KEY}:{con} modified')
                 sout.append(f'{det}:{CONFIG_KEY}:{con} modified')
-                new_key = confdb.modify_device(DEV, config, hutch=INSTRUMENT)
-
+                
+                try:
+                    new_key = confdb.modify_device(DEV, config, hutch=INSTRUMENT)
+                except:
+                    print("There has been an erro wrint the database")
     return sout
 
 
@@ -63,7 +66,7 @@ def main():
     import argparse
     # create the top-level parser
     parser = argparse.ArgumentParser(description='configuration database CLI')
-    parser.add_argument('--URI_CONFIGDB', default='https://pswww.slac.stanford.edu/ws-auth/configdb/ws/',
+    parser.add_argument('--URI_CONFIGDB', default='https://pswww.slac.stanford.edu/ws-kerb/configdb/ws/',
                         help='configuration database connection')
     parser.add_argument('--ROOT_CONFIGDB', default='configDB', help='configuration database root (default: configDB)')
     parser.add_argument('--DEV', default='BEAM', help='configuration database dev (default: BEAM)')
