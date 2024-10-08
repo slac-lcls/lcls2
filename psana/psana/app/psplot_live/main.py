@@ -39,6 +39,7 @@ from typing import List
 import IPython
 import psutil
 import typer
+
 from psana.app.psplot_live.db import DbHelper, DbHistoryStatus
 from psana.app.psplot_live.subproc import SubprocHelper
 from psana.app.psplot_live.utils import MonitorMsgType
@@ -53,17 +54,13 @@ def _kill_pid(pid, timeout=3, verbose=False):
     def on_terminate(proc):
         if verbose:
             print(
-                "process {} terminated with exit code {}".format(
-                    proc, proc.returncode
-                )
+                "process {} terminated with exit code {}".format(proc, proc.returncode)
             )
 
     procs = [psutil.Process(pid)] + psutil.Process(pid).children()
     for p in procs:
         p.terminate()
-    gone, alive = psutil.wait_procs(
-        procs, timeout=timeout, callback=on_terminate
-    )
+    gone, alive = psutil.wait_procs(procs, timeout=timeout, callback=on_terminate)
     for p in alive:
         p.kill()
 
@@ -129,11 +126,7 @@ class Runner:
                 continue
 
             # Do not display PID (last column) in pinfo
-            row = (
-                [instance_id]
-                + info[:-2]
-                + [DbHistoryStatus.get_name(info[-1])]
-            )
+            row = [instance_id] + info[:-2] + [DbHistoryStatus.get_name(info[-1])]
             try:
                 print(format_row.format(*row))
             except Exception as e:
