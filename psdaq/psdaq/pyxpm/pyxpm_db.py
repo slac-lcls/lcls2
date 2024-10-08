@@ -12,8 +12,15 @@ if __name__ == "__main__":
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
 
-    cfg = get_config_with_params(url, args.inst, dbname, args.alias, args.name)
-    print(f'cfg {cfg}')
+    #try:
+    if True:
+        cfg = get_config_with_params(url, args.inst, dbname, args.alias, args.name)
+        print(f'cfg {cfg}')
+    #except:
+    else:
+        cfg = {'PART':{'L0Delay':[0,0,0,0,0,0,0,0,]},
+               'XTPG':{'CuBeamCode':140,'CuDelay':0,'CuInput':1}}
+        print(f'created cfg {cfg}')
 
     autosave.set(args.name,f'{url},{dbname},{args.inst},{args.alias}',None)
     for i,v in enumerate(cfg['PART']['L0Delay']):
