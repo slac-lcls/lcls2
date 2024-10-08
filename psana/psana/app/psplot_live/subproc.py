@@ -1,5 +1,4 @@
 import asyncio
-import psutil
 
 
 class SubprocHelper:

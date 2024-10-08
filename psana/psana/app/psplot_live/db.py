@@ -13,9 +13,8 @@
 #      to zmq socket.
 ######################################################################################
 
-from psana.psexp.zmq_utils import SrvSocket
 import socket
-import zmq
+from psana.psexp.zmq_utils import SrvSocket
 
 
 class DbHistoryStatus:
@@ -65,7 +64,7 @@ class DbHelper:
         return socket_name
 
     def recv(self):
-        print(f"Waiting for client...")
+        print("Waiting for client...")
         info = self.srv_socket.recv()
         return info
 
