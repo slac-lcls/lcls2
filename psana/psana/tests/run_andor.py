@@ -82,9 +82,7 @@ for myrun in ds.runs():
     andor = myrun.Detector("andor_vls")
     atmopal = myrun.Detector("atmopal")
     timing = myrun.Detector("timing")
-    smd = ds.smalldata(
-        filename="mysmallh5.h5", batch_size=5, callbacks=[my_smalldata]
-    )
+    smd = ds.smalldata(filename="mysmallh5.h5", batch_size=5, callbacks=[my_smalldata])
     norm = 0
     ndrop_inhibit = 0
     sum_atmopal = None
