@@ -46,20 +46,24 @@ from psana.psexp.zmq_utils import ClientSocket
 
 proc = SubprocHelper()
 runner = None
-app = typer.Typer()
+app = typer.Typer(add_completion=False)
 
 
 def _kill_pid(pid, timeout=3, verbose=False):
     def on_terminate(proc):
         if verbose:
             print(
-                "process {} terminated with exit code {}".format(proc, proc.returncode)
+                "process {} terminated with exit code {}".format(
+                    proc, proc.returncode
+                )
             )
 
     procs = [psutil.Process(pid)] + psutil.Process(pid).children()
     for p in procs:
         p.terminate()
-    gone, alive = psutil.wait_procs(procs, timeout=timeout, callback=on_terminate)
+    gone, alive = psutil.wait_procs(
+        procs, timeout=timeout, callback=on_terminate
+    )
     for p in alive:
         p.kill()
 
@@ -82,7 +86,10 @@ class Runner:
         self.plotnames = plotnames
 
     def show(self, instance_id):
-        data = {"msgtype": MonitorMsgType.RERUN, "force_rerun_instance_id": instance_id}
+        data = {
+            "msgtype": MonitorMsgType.RERUN,
+            "force_rerun_instance_id": instance_id,
+        }
         self.sub.send(data)
         obj = self.sub.recv()
         print(f"Main received {obj} from db-zmq-server")
@@ -97,7 +104,15 @@ class Runner:
         # Get all psplot process form the main process' database
         data = self.query_db()
         # 1: slurm_job_id1, rixc00221, 49, sdfmilan032, 12301, pid, DbHistoryStatus.PLOTTED
-        headers = ["ID", "SLURM_JOB_ID", "EXP", "RUN", "NODE", "PORT", "STATUS"]
+        headers = [
+            "ID",
+            "SLURM_JOB_ID",
+            "EXP",
+            "RUN",
+            "NODE",
+            "PORT",
+            "STATUS",
+        ]
         format_row = "{:<5} {:<12} {:<10} {:<5} {:<35} {:<5} {:<10}"
         print(format_row.format(*headers))
         for instance_id, info in data.items():
@@ -114,7 +129,11 @@ class Runner:
                 continue
 
             # Do not display PID (last column) in pinfo
-            row = [instance_id] + info[:-2] + [DbHistoryStatus.get_name(info[-1])]
+            row = (
+                [instance_id]
+                + info[:-2]
+                + [DbHistoryStatus.get_name(info[-1])]
+            )
             try:
                 print(format_row.format(*row))
             except Exception as e:
@@ -165,7 +184,7 @@ def main(
 
 @app.command()
 def ls():
-    """List slurm analys jobs ordered by instance_id."""
+    """List psplot instances with instance_id."""
     if runner is None:
         return
     runner.list_proc()
