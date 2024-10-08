@@ -31,22 +31,22 @@
 # sbatch submit_run_andor.sh rixc00221 49
 ####################################################################
 
-from psana.app.psplot_live.db import *
-from psana.app.psplot_live.subproc import SubprocHelper
-from psana.psexp.zmq_utils import ClientSocket
-from kafka import KafkaConsumer
-from typing import List
-import json
-import typer
 import asyncio
-import IPython
-import psutil
 import atexit
 import os
+from typing import List
 
+import IPython
+import psutil
+import typer
+from psana.app.psplot_live.db import DbHelper, DbHistoryStatus
+from psana.app.psplot_live.subproc import SubprocHelper
+from psana.app.psplot_live.utils import MonitorMsgType
+from psana.psexp.zmq_utils import ClientSocket
 
 proc = SubprocHelper()
 runner = None
+app = typer.Typer()
 
 
 def _kill_pid(pid, timeout=3, verbose=False):
@@ -71,138 +71,6 @@ def _exit_handler():
 
 
 atexit.register(_exit_handler)
-
-
-####################################################################
-# Two subprocesses created by main.
-####################################################################
-KAFKA_MAX_POLL_INTERVAL_MS = 500000
-KAFKA_MAX_POLL_RECORDS = 50
-KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", "psplot_live")
-KAFKA_BOOTSTRAP_SERVER = os.environ.get("KAFKA_BOOTSTRAP_SERVER", "172.24.5.240:9094")
-
-
-async def start_kafka_consumer(socket_name):
-    print(f"Connecting to kafa...")
-    consumer = KafkaConsumer(
-        bootstrap_servers=[KAFKA_BOOTSTRAP_SERVER],
-        max_poll_interval_ms=KAFKA_MAX_POLL_INTERVAL_MS,
-        max_poll_records=KAFKA_MAX_POLL_RECORDS,
-    )
-    consumer.topics()
-    consumer.subscribe([KAFKA_TOPIC])
-    print(f"Connected to kafka at {KAFKA_BOOTSTRAP_SERVER}")
-    sub = ClientSocket(socket_name)
-    for msg in consumer:
-        try:
-            info = json.loads(msg.value)
-            message_type = msg.topic
-            # add monitoring message type
-            info["msgtype"] = MonitorMsgType.PSPLOT
-            sub.send(info)
-            obj = sub.recv()
-            print(f"Received {obj} from db-zmq-server")
-        except Exception as e:
-            print("Exception processing Kafka message.")
-            print(e)
-
-
-class MonitorMsgType:
-    PSPLOT = 0
-    RERUN = 1
-    QUERY = 2
-    DONE = 3
-    DELETE = 4
-
-
-async def run_monitor(plotnames, socket_name):
-    runnum, node, port = (0, None, None)
-    db = DbHelper()
-    db.connect(socket_name)
-    while True:
-        obj = db.recv()
-
-        # Received data are either from 1) users' job or from 2) show(slurm_job_id) cmd.
-        # For 2), we need to look at the previous request for this slurm_job_id
-        # and call psplot using the parameters from the request. We set the force_flag
-        # so the check for new run is overridden.
-        # For 1), we use the job detail (exp, runnum, etc) as sent via the request
-        # Jobs sent this way will only get plotted when it's new.
-        force_flag = False
-        msgtype = obj["msgtype"]
-        include_instance = False
-        if msgtype == MonitorMsgType.RERUN:
-            db_instance = db.get(obj["force_rerun_instance_id"])
-            force_flag = True
-            new_slurm_job_id, new_exp, new_runnum, new_node, new_port, _, _ = (
-                db_instance
-            )
-            print(
-                f"Force rerun with {new_exp}:r{new_runnum} {new_node}:{new_port} jobid:{new_slurm_job_id}"
-            )
-        elif msgtype == MonitorMsgType.PSPLOT:
-            instance_id = db.save(obj)
-            new_exp, new_runnum, new_node, new_port, new_slurm_job_id = (
-                obj["exp"],
-                obj["runnum"],
-                obj["node"],
-                obj["port"],
-                obj["slurm_job_id"],
-            )
-        elif msgtype == MonitorMsgType.QUERY:
-            print(f"received a query")
-            include_instance = True
-        elif msgtype == MonitorMsgType.DELETE:
-            instance_id = obj["instance_id"]
-            print(f"received a remove request for {instance_id=}")
-            db.delete(instance_id)
-
-        if msgtype in (MonitorMsgType.PSPLOT, MonitorMsgType.RERUN):
-            if (
-                new_node != node
-                or new_port != port
-                or new_runnum > runnum
-                or force_flag
-            ):
-                exp, runnum, node, port, slurm_job_id = (
-                    new_exp,
-                    new_runnum,
-                    new_node,
-                    new_port,
-                    new_slurm_job_id,
-                )
-
-                def set_pid(pid):
-                    db.set(instance_id, DbHistoryColumns.PID, pid)
-                    db.set(
-                        instance_id, DbHistoryColumns.STATUS, DbHistoryStatus.PLOTTED
-                    )
-                    print(f"set pid:{pid}")
-
-                # The last argument passed to psplot is the EXTRA info attached to the process.
-                # The info is used to display what this psplot process is associated with.
-                # Note that we only send hostname w/o the domain for node argument
-                hostname_only = node.split(".")[0]
-                cmd = f"psplot -s {node} -p {port} {' '.join(plotnames)} {instance_id},{exp},{runnum},{hostname_only},{port},{slurm_job_id}"
-                print(cmd)
-                await proc._run(cmd, callback=set_pid)
-                if not force_flag:
-                    print(
-                        f"Received new {exp}:r{runnum} {node}:{port} jobid:{slurm_job_id}",
-                        flush=True,
-                    )
-            else:
-                print(
-                    f"Received old {new_exp}:r{new_runnum} {new_node}:{new_port} jobid:{new_slurm_job_id}. To reactivate, type: show({instance_id})",
-                    flush=True,
-                )
-                db.set(instance_id, DbHistoryColumns.SLURM_JOB_ID, new_slurm_job_id)
-
-        reply = {"msgtype": MonitorMsgType.DONE}
-        db.send(reply, include_instance=include_instance)
-
-
-####################################################################
 
 
 ####################################################################
@@ -240,7 +108,6 @@ class Runner:
             # all the plot GUIs have been closed. We'll kill the process and remove
             # it from the database.
             sprocs = psutil.Process(psplot_subproc_pid).children()
-            all_procs = [f"m{psplot_subproc_pid}"] + [f"s{sp.pid}" for sp in sprocs]
 
             if len(sprocs) == 1:
                 kill(instance_id)
@@ -266,7 +133,7 @@ class Runner:
         # Remove the killed process from db instance
         data = {"msgtype": MonitorMsgType.DELETE, "instance_id": instance_id}
         self.sub.send(data)
-        reply = self.sub.recv()
+        self.sub.recv()
 
     def kill_all(self):
         data = self.query_db()
@@ -276,65 +143,60 @@ class Runner:
 
 
 ####################################################################
-
-
+@app.callback(invoke_without_command=True)
 def main(
     plotnames: List[str],
-    connection_type: str = "KAFKA",
-    subproc: str = "main",
-    socket_name: str = "",
     debug: bool = False,
 ):
-    if subproc == "main":
-        socket_name = DbHelper.get_socket()
-        cmd = f"psplot_live {' '.join(plotnames)} --subproc monitor --socket-name {socket_name}"
-        if debug:
-            cmd = f"xterm -hold -e {cmd}"
-        asyncio.run(proc._run(cmd))
+    socket_name = DbHelper.get_socket()
+    cmd = f"python {os.path.join(os.path.dirname(os.path.realpath(__file__)), 'psplot_monitor.py')} {' '.join(plotnames)} {socket_name}"
+    if debug:
+        cmd = f"xterm -hold -e {cmd}"
+    asyncio.run(proc._run(cmd))
 
-        conn_type = getattr(DbConnectionType, connection_type)
-        if conn_type == DbConnectionType.KAFKA:
-            cmd = f"psplot_live {' '.join(plotnames)} --subproc kafka --socket-name {socket_name}"
-            if debug:
-                cmd = f"xterm -hold -e {cmd}"
-            asyncio.run(proc._run(cmd))
-        global runner
-        runner = Runner(socket_name, plotnames)
-        IPython.embed()
-    elif subproc == "kafka":
-        asyncio.run(start_kafka_consumer(socket_name))
-    elif subproc == "monitor":
-        asyncio.run(run_monitor(plotnames, socket_name))
-    else:
-        print(f"Error: unsupported subprocess {subproc}")
+    cmd = f"python {os.path.join(os.path.dirname(os.path.realpath(__file__)), 'kafka_consumer.py')} {socket_name}"
+    if debug:
+        cmd = f"xterm -hold -e {cmd}"
+    asyncio.run(proc._run(cmd))
+    global runner
+    runner = Runner(socket_name, plotnames)
+    IPython.embed()
 
 
-def start():
-    typer.run(main)
-
-
+@app.command()
 def ls():
+    """List slurm analys jobs ordered by instance_id."""
     if runner is None:
         return
     runner.list_proc()
 
 
+@app.command()
 def kill(instance_id):
+    """Close psplot window. Usage: kill(1) to close psplot with instance_id=1."""
     if runner is None:
         return
     runner.kill(instance_id)
 
 
+@app.command()
 def show(instance_id):
+    """Re-open psplot window. Usage: show(1) to re-open psplot with instance_id=1."""
     if runner is None:
         return
     runner.show(instance_id)
 
 
-def kill_all():
+@app.command()
+def killall():
+    """Close all psplot windows."""
     if runner is None:
         return
     runner.kill_all()
+
+
+def start():
+    app()
 
 
 if __name__ == "__main__":
