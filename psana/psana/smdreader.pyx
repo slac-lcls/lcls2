@@ -359,6 +359,33 @@ cdef class SmdReader:
 
         return limit_ts_complete
 
+    def mark_endofbatch(self):
+        """ Only for integrating detector. First, identify the stream with largest
+        timestamp (fastest) and change the TransitionId of the last dgram in the
+        integrating sub-batch to L1Accept_EndOfBatch.
+        """
+        # Find the stream with the largest timestamp
+        cdef int eob_stream_id = -1
+        cdef uint64_t eob_ts = 0
+        cdef int i
+        for i in range(self.prl_reader.nfiles):
+            if self.prl_reader.bufs[i].ts_arr[self.i_en_bufs[i]] > eob_ts:
+                eob_ts = self.prl_reader.bufs[i].ts_arr[self.i_en_bufs[i]]
+                eob_stream_id = i
+
+        # Update the transition
+        cdef Dgram* d
+        cdef uint8_t service
+        cdef uint64_t new_env
+        cdef uint64_t second_byte = 0xf0ffffff  # Safe if used in no-gil
+        if self.block_size_bufs[eob_stream_id] > 0:
+            d = <Dgram *>(self.prl_reader.bufs[eob_stream_id].chunk + self.prl_reader.bufs[eob_stream_id].st_offset_arr[self.i_en_bufs[eob_stream_id]])
+            # From 8 bytes env, |0 |0 |0 |0 |x |- |- |- |  x is service byte
+            service = (d.env>>24)&0xf
+            new_env = d.env & second_byte | self.L1Accept_EndOfBatch << 24
+            if service == self.L1Accept:
+                memcpy(&(d.env), &new_env, sizeof(uint32_t))
+
     @cython.boundscheck(False)
     def find_view_offsets(self, int batch_size=1000, int intg_stream_id=-1, uint64_t intg_delta_t=0, max_events=0, ignore_transition=True):
         """ Set the start and end offsets for both data and transition buffers.
@@ -465,6 +492,11 @@ cdef class SmdReader:
                 i_stepbuf_starts[i]  = i_stepbuf_ends[i] + 1
 
         # end for i in ...
+
+        # Mark EndOfBatch for integrating detector run
+        if intg_stream_id > -1:
+            self.mark_endofbatch()
+
         en_all = time.monotonic()
         self.total_time += en_all - st_all
 
@@ -667,7 +699,6 @@ cdef class SmdReader:
         send_buf = self.send_bufs[eb_idx].chunk  # select the buffer for this eb
         cdef int i=0, offset=0
         cdef uint64_t footer_size=0, total_size=0
-        cdef int c_intg_stream_id = intg_stream_id
 
         # Check if we need to append fakestep transition set
         cdef Py_buffer fake_pybuf
@@ -679,11 +710,7 @@ cdef class SmdReader:
 
         # Compute beginning offsets of each chunk and get a list of buffer objects
         # If fakestep_flag is set, we need to append fakestep transition step
-        # to the new repacked data. Also find the stream with the oldest last
-        # dgram (in case integrating detector is turned on and we need to
-        # identify the end of batch for the stream with the most events.
-        cdef int eob_stream_id = -1
-        cdef uint64_t eob_ts = 0
+        # to the new repacked data.
         for i in range(self.prl_reader.nfiles):
             offsets[i] = offset
             # Move offset and total size to include missing steps
@@ -705,22 +732,12 @@ cdef class SmdReader:
             ptr_step_bufs[i] = <char *>step_buf.buf
             PyBuffer_Release(&step_buf)
 
-            # Find the stream with the oldest last dgram
-            if self.prl_reader.bufs[i].ts_arr[self.i_en_bufs[i]] > eob_ts:
-                eob_ts = self.prl_reader.bufs[i].ts_arr[self.i_en_bufs[i]]
-                eob_stream_id = i
-
         assert total_size <= self.sendbufsize, f"Repacked data exceeds send buffer's size (total:{total_size} bufsize:{self.sendbufsize})."
 
         # Access raw C pointers so they can be used in nogil loop below
         cdef uint64_t* block_size_bufs = <uint64_t*>self.block_size_bufs.data.as_voidptr
         cdef uint64_t* i_st_bufs = <uint64_t*>self.i_st_bufs.data.as_voidptr
-        cdef uint64_t* i_en_bufs = <uint64_t*>self.i_en_bufs.data.as_voidptr
         cdef uint32_t* footer = <uint32_t*>self.repack_footer.data.as_voidptr
-        cdef Dgram* d
-        cdef uint8_t service
-        cdef uint64_t new_env
-        cdef uint64_t second_byte = 0xf0ffffff      # Need this in ctype to avoid conversion in nogil loop below
 
         # Copy step and smd buffers if exist
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
@@ -732,16 +749,6 @@ cdef class SmdReader:
 
             if c_only_steps == 0:
                 if block_size_bufs[i] > 0:
-                    # For integrating detectors, we update the transition of the batch's last dgram
-                    # in the fastest stream (stream with last dgram with largest ts) to L1Accept_EndOfBatch.
-                    if c_intg_stream_id > -1 and i == eob_stream_id:
-                        d = <Dgram *>(self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[i_en_bufs[i]])
-                        # From 8 bytes env, |0 |0 |0 |0 |x |- |- |- |  x is service byte
-                        service = (d.env>>24)&0xf
-                        new_env = d.env & second_byte | self.L1Accept_EndOfBatch << 24
-                        if service == self.L1Accept:
-                            memcpy(&(d.env), &new_env, sizeof(uint32_t))
-
                     memcpy(send_buf + offsets[i], self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[i_st_bufs[i]], block_size_bufs[i])
                     offsets[i] += block_size_bufs[i]
                     footer[i] += block_size_bufs[i]
