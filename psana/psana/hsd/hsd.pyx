@@ -30,7 +30,6 @@ ctypedef si.uint8_t chan_t
 # cdef extern from "xtcdata/xtc/Dgram.hh" namespace "XtcData":
 #     cdef cppclass Dgram:
 #         pass
-
 cdef extern from "HsdPython.hh" namespace "Pds::HSD":
     cdef cppclass ChannelPython:
         ChannelPython()
@@ -363,18 +362,19 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
 
     def __init__(self, *args):
         hsd_raw_2_0_0.__init__(self, *args)
-
+	
     def _parseEvt(self, evt):
         cyhsd_base_1_2_3._parseEvt(self, evt)
-        if not self._peaksDict:
+        peaksDict = self.peaks(evt)
+        if not peaksDict:
             return
         #  Extract the baseline constants
         self._fexBaselines = {}
-        for seg, chand in self._peaksDict.items():
-            for chan, t in chand:
-                self._peaksDict[seg][chan][0] += 4
-                wf = self._peaksDict[seg][chan][1]
-                self._peaksDict[seg][chan][1] = wf[4:]
+        for seg, chand in peaksDict.items():
+            for chan, t in chand.items():
+                peaksDict[seg][chan][0][0] += 4
+                wf = peaksDict[seg][chan][1][0]
+                peaksDict[seg][chan][1][0] = wf[4:]
                 self._fexBaselines[seg] = {chan:wf[:4]}
 
     @cython.binding(True)
