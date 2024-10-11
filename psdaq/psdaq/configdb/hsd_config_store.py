@@ -9,14 +9,9 @@ args = cdb.createArgs().args
 db   = 'configdb' if args.prod else 'devconfigdb'
 url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
 
-mycdb = cdb.configdb(url, args.inst, create,
-                     root=dbname, user=args.user, password=args.password)
-mycdb.add_device_config('hsd')
-
 top = cdict()
 
-#top.setInfo('hsd', args.name, args.segm, args.id, 'No comment')
-top.setAlg('config', [2,0,0])
+top.setAlg('config', [3,0,0])
 
 top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
 top.set("firmwareVersion:RO",   0, 'UINT32' )
@@ -29,6 +24,8 @@ help_str += "\nuser.raw.keep     : event downsampling; record on keepraw event"
 help_str += "\nuser.fex.start_ns : nanoseconds from fiducial to sparsify start"
 help_str += "\nuser.fex.gate_ns  : nanoseconds from sparsify start to end"
 help_str += "\nuser.fex.prescale : event downsampling; record 1-out-of-N"
+help_str += "\nuser.fex.corr.baseline : new baseline after sample correction"
+help_str += "\nuser.fex.corr.accum    : pre-gate baseline accumulation period"
 help_str += "\nuser.fex.ymin     : minimum ADC value to sparsify"
 help_str += "\nuser.fex.ymax     : maximum ADC value to sparsify"
 help_str += "\nuser.fex.xpre     : keep N samples leading excursion"
@@ -48,6 +45,19 @@ top.set('user.fex.ymin' ,      2000, 'UINT32')
 top.set('user.fex.ymax' ,      2080, 'UINT32')
 top.set('user.fex.xpre' ,         8, 'UINT32')
 top.set('user.fex.xpost',         8, 'UINT32')
+
+top.define_enum('baselineAccumEnum', {'  11 ns ( 64 S)' :  4, 
+                                      '  22 ns (128 S)' :  5, 
+                                      '  43 ns (256 S)' :  6, 
+                                      '  86 ns (512 S)' :  7,
+                                      ' 172 ns (  1 kS)':  8, 
+                                      ' 345 ns (  2 kS)':  9, 
+                                      ' 689 ns (  4 kS)': 10, 
+                                      '1378 ns (  8 kS)': 11, 
+                                      '2757 ns ( 16 kS)': 12})
+
+top.set('user.fex.corr.baseline', 16384, 'UINT32')
+top.set('user.fex.corr.accum',       12, 'baselineAccumEnum')
 
 top.define_enum('dataModeEnum', {'Data': -1, 'Ramp': 0, 'Spike11': 1, 'Spike12': 3, 'Spike16': 5})
 
@@ -90,9 +100,16 @@ if False:
     top.set('adccal.tadj_a_fg90', 0x80, 'UINT8')
     top.set('adccal.tadj_b_fg0' , 0x80, 'UINT8')
 
-mycdb.add_alias(args.alias)
-
 top.setInfo('hsd', args.name, args.segm, args.id, 'No comment')
-mycdb.modify_device(args.alias, top)
-#mycdb.print_configs()
+
+if args.update:
+    cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+    top = update_config(cfg, top.typed_json(), args.verbose)
+
+if not args.dryrun:
+    if create:
+        mycdb.add_alias(args.alias)
+        mycdb.add_device_config('hsd')
+    mycdb.modify_device(args.alias, top)
+
 

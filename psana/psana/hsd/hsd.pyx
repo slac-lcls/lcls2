@@ -19,7 +19,7 @@ cimport numpy as cnp
 cnp.import_array()
 
 import sys # ref count
-from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies, HSDPeakTimes
+from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies, HSDPeakTimes, Array1D
 
 ################# High Speed Digitizer #################
 
@@ -184,7 +184,7 @@ cdef class cyhsd_base_1_2_3:
             if iseg not in self._padDict:
                 self._padDict[iseg]={}
             self._padDict[iseg][chanNum] = padvalues
-            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg][0]) * 1/(6.4e9*13/14)
+            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg]) * 1/(6.4e9*13/14)
 
     def _parseEvt(self, evt):
         self._wvDict = {}
@@ -353,3 +353,35 @@ class hsd_raw_2_0_0(hsd_hsd_1_2_3):
                 self._padValue[seg] = (seg_config.config.user.fex.ymin+
                                        seg_config.config.user.fex.ymax)//2
                 self._padLength[seg] = int(seg_config.config.user.fex.gate_ns*0.160*13/14)*40
+
+#
+#  2.0.0 -> 3.0.0
+#    Fex sample data is baseline-corrected and given 4 fractional bits, 15 total
+#    Baseline corrections (4 numbers) will also be stored on each event
+#
+class hsd_raw_3_0_0(hsd_raw_2_0_0):
+
+    def __init__(self, *args):
+        hsd_raw_2_0_0.__init__(self, *args)
+
+    def _parseEvt(self, evt):
+        cyhsd_base_1_2_3._parseEvt(self, evt)
+        #  Extract the baseline constants
+        self._fexBaselines = {}
+        for seg, chand in self._peaksDict.items():
+            for chan, t in chand:
+                self._peaksDict[seg][chan][0] += 4
+                wf = self._peaksDict[seg][chan][1]
+                self._peaksDict[seg][chan][1] = wf[4:]
+                self._fexBaselines[seg] = {chan:wf[:4]}
+
+    @cython.binding(True)
+    def fex_baseline(self, evt, seg) -> Array1D:
+        #  This will be a dictionary of (int,array) tuples
+        #  once the amitype is created and supported
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+        if not self._fexBaselines:
+            return None
+        else:
+            return self._fexBaselines[seg][0]
