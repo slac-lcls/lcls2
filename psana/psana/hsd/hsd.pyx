@@ -366,6 +366,8 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
 
     def _parseEvt(self, evt):
         cyhsd_base_1_2_3._parseEvt(self, evt)
+        if not self._peaksDict:
+            return
         #  Extract the baseline constants
         self._fexBaselines = {}
         for seg, chand in self._peaksDict.items():
