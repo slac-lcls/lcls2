@@ -19,7 +19,7 @@ cimport numpy as cnp
 cnp.import_array()
 
 import sys # ref count
-from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies, HSDPeakTimes, Array1D
+from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies, HSDPeakTimes, Array1d
 
 ################# High Speed Digitizer #################
 
@@ -376,7 +376,7 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
                 self._fexBaselines[seg] = {chan:wf[:4]}
 
     @cython.binding(True)
-    def fex_baseline(self, evt, seg) -> Array1D:
+    def fex_baseline(self, evt, seg) -> Array1d:
         #  This will be a dictionary of (int,array) tuples
         #  once the amitype is created and supported
         if self._isNewEvt(evt):
