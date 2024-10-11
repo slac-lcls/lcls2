@@ -1,5 +1,6 @@
 from psdaq.configdb.typed_json import cdict
 import psdaq.configdb.configdb as cdb
+from psdaq.configdb.get_config import update_config
 import os
 import io
 
@@ -8,6 +9,9 @@ dbname = 'configDB'
 args = cdb.createArgs().args
 db   = 'configdb' if args.prod else 'devconfigdb'
 url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
+
+mycdb = cdb.configdb(url, args.inst, create,
+                     root=dbname, user=args.user, password=args.password)
 
 top = cdict()
 
@@ -46,18 +50,18 @@ top.set('user.fex.ymax' ,      2080, 'UINT32')
 top.set('user.fex.xpre' ,         8, 'UINT32')
 top.set('user.fex.xpost',         8, 'UINT32')
 
-top.define_enum('baselineAccumEnum', {'  11 ns ( 64 S)' :  4, 
-                                      '  22 ns (128 S)' :  5, 
-                                      '  43 ns (256 S)' :  6, 
-                                      '  86 ns (512 S)' :  7,
-                                      ' 172 ns (  1 kS)':  8, 
-                                      ' 345 ns (  2 kS)':  9, 
-                                      ' 689 ns (  4 kS)': 10, 
-                                      '1378 ns (  8 kS)': 11, 
-                                      '2757 ns ( 16 kS)': 12})
+top.define_enum('accumEnum', {'11ns_64Sa'   :  4, 
+                              '22ns_128Sa'  :  5, 
+                              '43ns_256Sa'  :  6, 
+                              '86ns_512Sa'  :  7,
+                              '172ns_1kSa'  :  8, 
+                              '345ns_2kSa'  :  9, 
+                              '689ns_4kSa'  : 10, 
+                              '1378ns_8kSa' : 11, 
+                              '2757ns_16kSa': 12})
 
-top.set('user.fex.corr.baseline', 16384, 'UINT32')
-top.set('user.fex.corr.accum',       12, 'baselineAccumEnum')
+top.set('user.fex.corr.baseline' , 16384, 'UINT32')
+top.set('user.fex.corr.accum'    ,    12, 'accumEnum')
 
 top.define_enum('dataModeEnum', {'Data': -1, 'Ramp': 0, 'Spike11': 1, 'Spike12': 3, 'Spike16': 5})
 
@@ -112,4 +116,8 @@ if not args.dryrun:
         mycdb.add_device_config('hsd')
     mycdb.modify_device(args.alias, top)
 
+if args.verbose:
+    print('--- new ---')
+    import pprint
+    pprint.pp(top)
 

@@ -37,12 +37,14 @@ cdef extern from "HsdPython.hh" namespace "Pds::HSD":
         si.uint16_t* waveform(unsigned &numsamples)
         #si.uint16_t* sparse(unsigned &numsamples)
         unsigned next_peak(unsigned &sPos, si.uint16_t** peakPtr)
+        unsigned char fex_out_of_range()
 
 cdef class PyChannelPython:
     cdef public cnp.ndarray waveform
     #cdef public cnp.ndarray sparse
     cdef public list peakList
     cdef public list startPosList
+    cdef public unsigned fexOor
     def __init__(self, cnp.ndarray[evthdr_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan, dgram):
         cdef cnp.npy_intp shape[1]
         cdef si.uint16_t* wf_ptr
@@ -88,6 +90,8 @@ cdef class PyChannelPython:
             Py_INCREF(dgram)
             self.peakList.append(peak)
             self.startPosList.append(startPos)
+
+        self.fexOor = chanpy.fex_out_of_range()
 
 class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
 
@@ -145,6 +149,7 @@ cdef class cyhsd_base_1_2_3:
         self._padDict = {}
         self._padValue = {}
         self._padLength = {}
+        self._fexOor = {}
 
     def _isNewEvt(self, evt):
         if self._evt == None or not (evt._nanoseconds == self._evt._nanoseconds and evt._seconds == self._evt._seconds):
@@ -190,6 +195,7 @@ cdef class cyhsd_base_1_2_3:
         self._spDict = {}
         self._peaksDict = {}
         self._padDict = {}
+        self._fexOor = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
         if self._hsdsegments is None: return # no segments at all
@@ -230,6 +236,10 @@ cdef class cyhsd_base_1_2_3:
                     if iseg not in self._peaksDict.keys():
                         self._peaksDict[iseg]={}
                     self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
+
+                if iseg not in self._fexOor.keys():
+                    self._fexOor[iseg]={}
+                self._fexOor[iseg][chanNum] = pychan.fexOor
 
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
@@ -375,7 +385,8 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
                 peaksDict[seg][chan][0][0] += 4
                 wf = peaksDict[seg][chan][1][0]
                 peaksDict[seg][chan][1][0] = wf[4:]
-                self._fexBaselines[seg] = {chan:wf[:4]}
+                #  Baselines are shifted to keep in 15b range
+                self._fexBaselines[seg] = {chan:wf[:4]+(1<<14)}
 
     @cython.binding(True)
     def fex_baseline(self, evt, seg) -> Array1d:
@@ -387,3 +398,14 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
             return None
         else:
             return self._fexBaselines[seg][0]
+
+    @cython.binding(True)
+    def fex_out_of_range(self, evt, seg):
+        #  This will be a dictionary of (int,char) tuples
+        #  once the amitype is created and supported
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+        if not self._fexOor:
+            return None
+        else:
+            return self._fexOor[seg][0]
