@@ -149,7 +149,7 @@ cdef class cyhsd_base_1_2_3:
         self._padDict = {}
         self._padValue = {}
         self._padLength = {}
-        self._fexOor = {}
+        self._fexStatus = {}
 
     def _isNewEvt(self, evt):
         if self._evt == None or not (evt._nanoseconds == self._evt._nanoseconds and evt._seconds == self._evt._seconds):
@@ -195,7 +195,7 @@ cdef class cyhsd_base_1_2_3:
         self._spDict = {}
         self._peaksDict = {}
         self._padDict = {}
-        self._fexOor = {}
+        self._fexStatus = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
         if self._hsdsegments is None: return # no segments at all
@@ -220,6 +220,7 @@ cdef class cyhsd_base_1_2_3:
             chan = getattr(self._hsdsegments[iseg], chanName)
             if chan.size > 0:
                 pychan = PyChannelPython(self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg])
+
                 self._pychansegs[iseg] = (chanNum, pychan)
                 if pychan.waveform is not None:
                     if iseg not in self._wvDict.keys():
@@ -237,9 +238,9 @@ cdef class cyhsd_base_1_2_3:
                         self._peaksDict[iseg]={}
                     self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
 
-                if iseg not in self._fexOor.keys():
-                    self._fexOor[iseg]={}
-                self._fexOor[iseg][chanNum] = pychan.fexOor
+                if iseg not in self._fexStatus.keys():
+                    self._fexStatus[iseg]={}
+                self._fexStatus[iseg][chanNum] = ([pychan.fexOor],[])
 
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
@@ -379,33 +380,22 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
         if not peaksDict:
             return
         #  Extract the baseline constants
-        self._fexBaselines = {}
         for seg, chand in peaksDict.items():
             for chan, t in chand.items():
                 peaksDict[seg][chan][0][0] += 4
                 wf = peaksDict[seg][chan][1][0]
                 peaksDict[seg][chan][1][0] = wf[4:]
+                fexOor = self._fexStatus[seg][chan][0]
                 #  Baselines are shifted to keep in 15b range
-                self._fexBaselines[seg] = {chan:wf[:4]+(1<<14)}
+                self._fexStatus[seg][chan] = (fexOor,[wf[:4]+(1<<4),])
 
     @cython.binding(True)
-    def fex_baseline(self, evt, seg) -> Array1d:
+    def fex_status(self, evt) -> HSDPeaks:
         #  This will be a dictionary of (int,array) tuples
         #  once the amitype is created and supported
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-        if not self._fexBaselines:
+        if not self._fexStatus:
             return None
         else:
-            return self._fexBaselines[seg][0]
-
-    @cython.binding(True)
-    def fex_out_of_range(self, evt, seg):
-        #  This will be a dictionary of (int,char) tuples
-        #  once the amitype is created and supported
-        if self._isNewEvt(evt):
-            self._parseEvt(evt)
-        if not self._fexOor:
-            return None
-        else:
-            return self._fexOor[seg][0]
+            return self._fexStatus

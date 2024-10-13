@@ -93,7 +93,7 @@ namespace Pds {
             return peakLen;
         }
 
-        unsigned char fex_out_of_range() { return _sh_fex->out_of_range(); }
+      unsigned char fex_out_of_range() { return _sh_fex ? _sh_fex->out_of_range() : 0; }
     private:
         uint32_t* _evtheader;
         uint8_t*  _data;
