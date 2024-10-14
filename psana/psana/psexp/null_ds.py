@@ -1,5 +1,4 @@
-import os
-from psana.psexp import Run, mode, DataSourceBase
+from psana.psexp.ds_base import DataSourceBase
 from psana.smalldata import SmallData
 
 
@@ -21,7 +20,6 @@ class NullRun(object):
 
 
 class NullDataSource(DataSourceBase):
-
     def __init__(self, *args, **kwargs):
         super(NullDataSource, self).__init__(**kwargs)
         # Prepare comms for running SmallData

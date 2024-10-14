@@ -1,9 +1,12 @@
-from psana.psexp import RunLegion, DataSourceBase, SmdReaderManager, TransitionId
-from psana.dgrammanager import DgramManager
-from psana.event import Event
 import numpy as np
 
 from psana import utils
+from psana.dgrammanager import DgramManager
+from psana.event import Event
+from psana.psexp import TransitionId
+from psana.psexp.ds_base import DataSourceBase
+from psana.psexp.run import RunLegion
+from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.tools import mode
 
 if mode == "mpi":

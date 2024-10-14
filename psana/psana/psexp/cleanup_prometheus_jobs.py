@@ -1,7 +1,7 @@
-from psana.psexp import PrometheusManager
 import typer
 from typing_extensions import Annotated
-import os
+
+from psana.psexp.prometheus_manager import PrometheusManager
 
 
 def main(

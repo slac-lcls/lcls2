@@ -1,10 +1,10 @@
 from psana.eventbuilder import EventBuilder
-from psana.psexp import PacketFooter
+from psana.psexp.packet_footer import PacketFooter
+
 from .run import RunSmallData
 
 
 class EventBuilderManager(object):
-
     def __init__(self, view, configs, dsparms, run):
         self.configs = configs
         self.dsparms = dsparms

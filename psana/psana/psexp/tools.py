@@ -1,6 +1,5 @@
-import weakref
 import os
-import logging
+import weakref
 
 # mode can be 'mpi' or 'legion' or 'none' for non parallel
 mode = os.environ.get("PS_PARALLEL", "mpi")

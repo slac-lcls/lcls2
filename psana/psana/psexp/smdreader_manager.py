@@ -1,11 +1,11 @@
-from psana.smdreader import SmdReader
-from psana.eventbuilder import EventBuilder
-import os, time
-from psana import dgram
-from psana.event import Event
-from .run import RunSmallData
+import os
+import time
 
-from psana import utils
+from psana import dgram, utils
+from psana.eventbuilder import EventBuilder
+from psana.smdreader import SmdReader
+
+from .run import RunSmallData
 
 logger = utils.Logger(myrank=0)
 
@@ -200,7 +200,7 @@ class SmdReaderManager(object):
                     check_pass = False
             else:
                 logger.log(
-                    f"ERROR: unable to locate a new chunk. No data in one or more streams and no EndRun found."
+                    "ERROR: unable to locate a new chunk. No data in one or more streams and no EndRun found."
                 )
         return check_pass
 

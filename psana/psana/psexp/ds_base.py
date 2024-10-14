@@ -1,23 +1,18 @@
-import weakref
-import os
-import glob
 import abc
-import numpy as np
-import pathlib
-import requests
+import glob
+import os
 import re
+import threading
 import time
 
-from psana.dgrammanager import DgramManager
+import numpy as np
+import requests
 
-from psana.psexp import PrometheusManager, SmdReaderManager
-import threading
-from psana import dgram
-
-from psana.detector import detectors
 import psana.pscalib.calib.MDBWebUtils as wu
-
 from psana import utils
+from psana.app.psplot_live.utils import MonitorMsgType
+from psana.psexp.prometheus_manager import PrometheusManager
+from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.tools import mode
 
 if mode == "mpi":
@@ -27,13 +22,14 @@ if mode == "mpi":
 else:
     logger = utils.Logger()
 
-from dataclasses import dataclass
-from psana.psexp.tools import MODE
-
-from psana.psexp.zmq_utils import ClientSocket
-from kafka import KafkaProducer
 import json
 import socket
+from dataclasses import dataclass
+
+from kafka import KafkaProducer
+
+from psana.psexp.tools import MODE
+from psana.psexp.zmq_utils import ClientSocket
 
 
 class InvalidDataSourceArgument(Exception):
@@ -309,17 +305,17 @@ class DataSourceBase(abc.ABC):
         # Check if either one exists
         file_found = os.path.isfile(xtc_file)
         true_xtc_file = xtc_file
-        if file_found == False:
+        if not file_found:
             file_found = os.path.isfile(inprogress_file)
-            if file_found == True:
+            if not file_found:
                 true_xtc_file = inprogress_file
 
         # Retry if live mode is set
         while self.current_retry_no < self.dsparms.max_retries:
             file_found = os.path.isfile(xtc_file)
-            if file_found == False:
+            if not file_found:
                 file_found = os.path.isfile(inprogress_file)
-                if file_found == True:
+                if file_found:
                     true_xtc_file = inprogress_file
             if file_found:
                 break
@@ -578,7 +574,7 @@ class DataSourceBase(abc.ABC):
             if self.detectors or self.xdetectors:
                 include_set = set(self.detectors)
                 exclude_set = set(self.xdetectors)
-                logger.debug(f"Applying detector selection/exclusion")
+                logger.debug("Applying detector selection/exclusion")
                 logger.debug(f"  Included: {include_set}")
                 logger.debug(f"  Excluded: {exclude_set}")
 
@@ -591,15 +587,13 @@ class DataSourceBase(abc.ABC):
                     if self.detectors:
                         if not include_set.intersection(exist_set):
                             flag_keep = False
-                            logger.debug(
-                                f"  |-- Discarded, not matched given detectors"
-                            )
+                            logger.debug("  |-- Discarded, not matched given detectors")
                     if self.xdetectors and flag_keep:
                         matched_set = exclude_set.intersection(exist_set)
                         if matched_set:
                             flag_keep = False
                             logger.debug(
-                                f"  |-- Discarded, matched with excluded detectors"
+                                "  |-- Discarded, matched with excluded detectors"
                             )
                             # We only warn users in the case where we exclude a detector
                             # and there're more than one detectors in the file.
@@ -616,7 +610,7 @@ class DataSourceBase(abc.ABC):
                         configs.append(config)
                         det_dict[cn_keeps] = all_det_dict[i]
                         cn_keeps += 1
-                        logger.debug(f"  |-- Kept")
+                        logger.debug("  |-- Kept")
             else:
                 xtc_files = self.xtc_files[:]
                 smd_files = self.smd_files[:]
@@ -626,7 +620,7 @@ class DataSourceBase(abc.ABC):
             use_smds = [False] * len(smd_files)
             if self.small_xtc:
                 s1 = set(self.small_xtc)
-                logger.debug(f"Applying smalldata replacement")
+                logger.debug("Applying smalldata replacement")
                 logger.debug(f"  Smalldata: {self.small_xtc}")
                 for i in range(len(smd_files)):
                     exist_set = set(det_dict[i])
@@ -634,9 +628,9 @@ class DataSourceBase(abc.ABC):
                     if s1.intersection(exist_set):
                         smd_files[i] = xtc_files[i]
                         use_smds[i] = True
-                        logger.debug(f"  |-- Replaced with smalldata")
+                        logger.debug("  |-- Replaced with smalldata")
                     else:
-                        logger.debug(f"  |-- Kept with bigdata")
+                        logger.debug("  |-- Kept with bigdata")
 
             self.xtc_files = xtc_files
             self.smd_files = smd_files
@@ -671,7 +665,7 @@ class DataSourceBase(abc.ABC):
                 self.dsparms.calibconst[det_name] = calib_const
             else:
                 logger.info(
-                    f"ds_base: Warning: cannot access calibration constant (exp is None)"
+                    "ds_base: Warning: cannot access calibration constant (exp is None)"
                 )
                 self.dsparms.calibconst[det_name] = None
 

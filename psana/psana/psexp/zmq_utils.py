@@ -1,7 +1,7 @@
-import zmq
-import zlib, pickle
-import time
+import pickle
+import zlib
 
+import zmq
 
 client_socket = None
 

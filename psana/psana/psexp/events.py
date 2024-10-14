@@ -1,8 +1,6 @@
 from . import TransitionId
 from .event_manager import EventManager
 
-import types
-
 
 class Events:
     def __init__(self, ds, run, get_smd=None, smdr_man=None):

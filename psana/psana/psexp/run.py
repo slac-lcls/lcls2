@@ -1,19 +1,15 @@
-import os, sys
-import pickle
 import inspect
-import numpy as np
-import time
-from copy import copy
+
 from psana import dgram
-from psana.dgrammanager import DgramManager
 from psana.detector.detector_impl import MissingDet
-from psana.event import Event
 from psana.dgramedit import DgramEdit
+from psana.event import Event
+
 from . import TransitionId
-from .tools import RunHelper
 from .envstore_manager import EnvStoreManager
 from .events import Events
 from .step import Step
+from .tools import RunHelper
 
 
 def _is_hidden_attr(obj, name):
@@ -51,7 +47,7 @@ def _enumerate_attrs(obj):
                 == 0
             ):
                 found.append(".".join(state + [child]))
-            elif type(childobj) == property:
+            elif type(childobj) is property:
                 found.append(".".join(state + [child]))
             elif not inspect.isclass(childobj) and callable(childobj):
                 found.append(".".join(state + [child]))
@@ -258,9 +254,6 @@ class Run(object):
             if event_fn is not None:
                 event_fn(event, det)
 
-    def __reduce__(self):
-        return (run_from_id, (self.id,))
-
     def step(self, evt):
         step_dgrams = self.esm.stores["scan"].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self)
@@ -423,9 +416,6 @@ class RunLegion(Run):
         self.smdr_man = ds.smdr_man
         self.configs = ds._configs
         super()._setup_envstore()
-
-    def analyze(self, **kwargs):
-        return legion_node.analyze(self, **kwargs)
 
 
 class RunSmallData(Run):

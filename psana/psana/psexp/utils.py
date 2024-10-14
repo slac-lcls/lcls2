@@ -1,5 +1,6 @@
-from psana import DataSource
 import sys
+
+from psana import DataSource
 
 # a small utility for taking a command line datasource string
 # like "exp=rixx43518,run=341" or "files=<filename>" and returning
@@ -48,11 +49,13 @@ def datasource_kwargs_from_string(dsstring):
                 if k in ("files", "exp", "dir", "shmem")
                 else (
                     int(v)
-                    if k == "run" and (not "," in v)
+                    if k == "run" and ("," not in v)
                     else (
                         int(v)
                         if k in ("max_events", "batch_size")
-                        else v == "True" if k in ("live",) else None
+                        else v == "True"
+                        if k in ("live",)
+                        else None
                     )
                 )
             )

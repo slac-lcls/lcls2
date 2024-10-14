@@ -1,11 +1,12 @@
-from psana import dgram
-from psana.event import Event
-from psana.psexp import PacketFooter, TransitionId
-import numpy as np
 import os
 import time
 
-from psana import utils
+import numpy as np
+
+from psana import dgram, utils
+from psana.event import Event
+from psana.psexp import TransitionId
+from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
 
 if mode == "mpi":
@@ -291,7 +292,7 @@ class EventManager(object):
             if i_retry == self.max_retries and got < size:
                 if self.max_retries > 0:
                     # Live mode use max_retries
-                    logger.info(f"Warning: maximum no. of retries reached. Exit.")
+                    logger.info("Warning: maximum no. of retries reached. Exit.")
                 else:
                     # Normal mode
                     logger.info(

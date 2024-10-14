@@ -1,13 +1,13 @@
-from psana.psexp import DataSourceBase, RunShmem
 from psana.dgrammanager import DgramManager
-from psana.psexp import Events, TransitionId
 from psana.event import Event
-from psana.smalldata import SmallData
+from psana.psexp import TransitionId
+from psana.psexp.ds_base import DataSourceBase
+from psana.psexp.run import RunShmem
 from psana.psexp.zmq_utils import PubSocket, SubSocket
+from psana.smalldata import SmallData
 
 
 class ShmemDataSource(DataSourceBase):
-
     def __init__(self, *args, **kwargs):
         super(ShmemDataSource, self).__init__(**kwargs)
         self.tag = self.shmem
@@ -36,7 +36,6 @@ class ShmemDataSource(DataSourceBase):
         if self.runnum_list_index == len(self.runnum_list):
             return False
 
-        runnum = self.runnum_list[self.runnum_list_index]
         self.dm = DgramManager(["shmem"], tag=self.tag, config_consumers=[self.dsparms])
         self.runnum_list_index += 1
         return True

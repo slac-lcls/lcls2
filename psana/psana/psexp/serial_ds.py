@@ -1,13 +1,16 @@
-from psana.psexp import RunSerial, DataSourceBase
-from psana.psexp import Events, TransitionId, SmdReaderManager
-from psana.event import Event
-from psana.dgrammanager import DgramManager
-import numpy as np
 import os
-from psana.smalldata import SmallData
+
+import numpy as np
 
 from psana import utils
+from psana.dgrammanager import DgramManager
+from psana.event import Event
+from psana.psexp import TransitionId
+from psana.psexp.ds_base import DataSourceBase
+from psana.psexp.run import RunSerial
+from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.tools import mode
+from psana.smalldata import SmallData
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -18,7 +21,6 @@ else:
 
 
 class SerialDataSource(DataSourceBase):
-
     def __init__(self, *args, **kwargs):
         super(SerialDataSource, self).__init__(**kwargs)
         super()._setup_runnum_list()

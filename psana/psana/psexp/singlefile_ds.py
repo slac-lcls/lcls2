@@ -1,11 +1,11 @@
-from psana.psexp import DataSourceBase, RunSingleFile
-from psana.psexp import Events, TransitionId
 from psana.dgrammanager import DgramManager
 from psana.event import Event
+from psana.psexp import TransitionId
+from psana.psexp.ds_base import DataSourceBase
+from psana.psexp.run import RunSingleFile
 
 
 class SingleFileDataSource(DataSourceBase):
-
     def __init__(self, *args, **kwargs):
         super(SingleFileDataSource, self).__init__(**kwargs)
         self.runnum_list = list(range(len(self.files)))
@@ -20,7 +20,6 @@ class SingleFileDataSource(DataSourceBase):
         if self.runnum_list_index == len(self.runnum_list):
             return False
 
-        runnum = self.runnum_list[self.runnum_list_index]
         self.dm = DgramManager(
             self.files[self.runnum_list_index], config_consumers=[self.dsparms]
         )

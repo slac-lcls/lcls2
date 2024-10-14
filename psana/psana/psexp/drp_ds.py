@@ -1,15 +1,14 @@
-from psana.psexp import DataSourceBase, RunDrp
-from psana.dgrammanager import DgramManager, dgSize
-from psana.psexp import Events, TransitionId
-from psana.event import Event
-from psana.smalldata import SmallData
 from psana.dgramedit import DgramEdit
-from psana import dgram
+from psana.dgrammanager import DgramManager
+from psana.event import Event
+from psana.psexp import TransitionId
+from psana.psexp.ds_base import DataSourceBase
+from psana.psexp.run import RunDrp
 from psana.psexp.zmq_utils import PubSocket, SubSocket
+from psana.smalldata import SmallData
 
 
 class DrpDataSource(DataSourceBase):
-
     def __init__(self, *args, **kwargs):
         super(DrpDataSource, self).__init__(**kwargs)
         self.tag = self.drp
@@ -52,7 +51,6 @@ class DrpDataSource(DataSourceBase):
     def _setup_run(self):
         if self.runnum_list_index == len(self.runnum_list):
             return False
-        runnum = self.runnum_list[self.runnum_list_index]
         self.dm = DgramManager(["drp"], tag=self.tag, config_consumers=[self.dsparms])
         self.config_dgramedit = DgramEdit(
             self._configs[-1], bufsize=self.dm.transition_bufsize

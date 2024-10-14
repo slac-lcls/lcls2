@@ -1,7 +1,8 @@
-from psana.psexp import PacketFooter
-import numpy as np
-from collections import defaultdict
 import os
+from collections import defaultdict
+
+import numpy as np
+
 from psana.detector.detector_impl import DetectorImpl
 
 
@@ -61,7 +62,7 @@ class EnvManager(object):
                                         self.epics_inv_mapper[epics_value] = var_name
 
                         var_obj = getattr(seg_alg, var_name)
-                        if hasattr(var_obj, "_type") == False:
+                        if not hasattr(var_obj, "_type"):
                             continue
                         var_type = DetectorImpl._return_types(
                             var_obj._type, var_obj._rank
@@ -195,7 +196,6 @@ class EnvStore(object):
                     for p in range(found_pos, found_pos - PS_N_STEP_SEARCH_STEPS, -1):
                         if p < 0:
                             break
-                        env_d = env_man.dgrams[p]
                         if hasattr(env_man.dgrams[p], self.env_name):
                             envs = getattr(env_man.dgrams[p], self.env_name)[segment_id]
                             if hasattr(envs, alg):

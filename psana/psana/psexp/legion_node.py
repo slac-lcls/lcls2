@@ -1,4 +1,7 @@
-from psana.psexp import mode
+from psana.psexp import TransitionId
+from psana.psexp.eventbuilder_manager import EventBuilderManager
+from psana.psexp.events import Events
+from psana.psexp.tools import mode
 
 pygion = None
 if mode == "legion":
@@ -12,9 +15,6 @@ else:
         return fn
 
 
-from psana.psexp import EventBuilderManager, TransitionId, Events
-
-
 def smd_chunks(run):
     for smd_chunk, update_chunk in run.smdr_man.chunks():
         yield smd_chunk
@@ -22,8 +22,6 @@ def smd_chunks(run):
 
 @task(inner=True)
 def run_smd0_task(run):
-    global_procs = pygion.Tunable.select(pygion.Tunable.GLOBAL_PYS).get()
-
     for i, smd_chunk in enumerate(smd_chunks(run)):
         run_smd_task(smd_chunk, run, point=i)
     # Block before returning so that the caller can use this task's future for synchronization
@@ -51,6 +49,7 @@ def batch_events(smd_batch, run):
             return this_batch
 
     # FIXME: ds needs to be here
+    ds = None
     events = Events(ds, run, get_smd=get_smd)
     for evt in events:
         if not TransitionId.isEvent(evt.service()):
@@ -79,7 +78,7 @@ def analyze(run, event_fn=None, det=None):
         pygion.c.legion_phase_barrier_arrive(
             pygion._my.ctx.runtime, pygion._my.ctx.context, bar, 1
         )
-        global_task_registration_barrier = pygion.c.legion_phase_barrier_advance(
+        pygion.c.legion_phase_barrier_advance(
             pygion._my.ctx.runtime, pygion._my.ctx.context, bar
         )
         pygion.c.legion_phase_barrier_wait(

@@ -1,7 +1,7 @@
 from psana.dgram import Dgram
+
 from . import TransitionId
 from .envstore import EnvStore
-import copy
 
 
 class EnvStoreManager(object):

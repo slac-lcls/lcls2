@@ -1,10 +1,12 @@
-from sys import byteorder
-import numpy as np
-from psana.psexp import *
-from psana.dgram import Dgram
 import os
 
+import numpy as np
+
 from psana import utils
+from psana.dgram import Dgram
+from psana.psexp.eventbuilder_manager import EventBuilderManager
+from psana.psexp.events import Events
+from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
 
 if mode == "mpi":
@@ -467,7 +469,6 @@ class EventBuilderNode(object):
         smd_comm = self.comms.smd_comm
         n_bd_nodes = self.comms.bd_comm.Get_size() - 1
         bd_comm = self.comms.bd_comm
-        smd_rank = self.comms.smd_rank
         waiting_bds = []
 
         # Initialize Non-blocking Send Requests with Null
@@ -680,7 +681,6 @@ class BigDataNode(object):
         self.rate_gauge = ds.dsparms.prom_man.get_metric("psana_bd_rate")
 
     def start(self):
-
         def get_smd():
             bd_comm = self.comms.bd_comm
             bd_rank = self.comms.bd_rank

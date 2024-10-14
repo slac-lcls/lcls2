@@ -1,20 +1,16 @@
-import os
-import time
-import socket
 import getpass
-from prometheus_client import (
-    CollectorRegistry,
-    Counter,
-    push_to_gateway,
-    Summary,
-    Gauge,
-)
-from prometheus_client import start_http_server
-from prometheus_client.exposition import tls_auth_handler
+import os
+import socket
+import time
 from subprocess import Popen
+
+from prometheus_client import (CollectorRegistry, Counter, Gauge, Summary,
+                               push_to_gateway, start_http_server)
+from prometheus_client.exposition import tls_auth_handler
 
 from psana import utils
 from psana.psexp.tools import mode
+import logging
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -24,8 +20,6 @@ if mode == "mpi":
 else:
     logger = utils.Logger()
     size = 1
-
-import logging
 
 PUSH_INTERVAL_SECS = 5
 
