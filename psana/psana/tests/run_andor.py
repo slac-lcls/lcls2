@@ -2,9 +2,10 @@ import os
 import sys
 
 from mpi4py import MPI
-from psana import DataSource
 from psmon import publish
 from psmon.plots import XYPlot
+
+from psana import DataSource
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -112,7 +113,7 @@ for myrun in ds.runs():
             # event to make sure we haven't missed normalization
             # data due to deadtime
             norm += nevt  # fake normalization
-            if andor_img is not None:
+            if evt.EndOfBatch():
                 cn_andor_events += 1
                 # print('andor data on evt:',nevt,'ndrop_inhibit:',ndrop_inhibit)
                 print(
@@ -126,12 +127,13 @@ for myrun in ds.runs():
                 # need to prefix the name with "unaligned_" so
                 # the low-rate andor dataset doesn't get padded
                 # to align with the high rate datasets
-                smd.event(
-                    evt,
-                    mydata=nevt,
-                    unaligned_andor_norm=(andor_img / norm),
-                    sum_atmopal=sum_atmopal,
-                )
+                if andor_img is not None:
+                    smd.event(
+                        evt,
+                        mydata=nevt,
+                        unaligned_andor_norm=(andor_img / norm),
+                        sum_atmopal=sum_atmopal,
+                    )
                 norm = 0
                 ndrop_inhibit = 0
                 sum_atmopal = None
