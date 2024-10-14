@@ -8,14 +8,14 @@
 #SBATCH --error=output-%j.txt
 #SBATCH -t 00:05:00
 
-t_start=`date +%s`
+t_start=$(date +%s)
 
-exp=rixc00221 
+exp=rixc00221
 runnum=49
 #exp=$1
 #runnum=$2
 #srun python run_andor.py $exp $runnum ${socket}
-mpirun -n 5 python run_andor.py $exp $runnum
+mpirun -n 5 python run_andor_delta.py $exp $runnum
 
-t_end=`date +%s`
-echo PSJobCompleted TotalElapsed $((t_end-t_start)) 
+t_end=$(date +%s)
+echo PSJobCompleted TotalElapsed $((t_end-t_start))
