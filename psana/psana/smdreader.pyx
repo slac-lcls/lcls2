@@ -32,17 +32,14 @@ cdef class SmdReader:
     cdef uint64_t    n_view_L1Accepts
     cdef uint64_t    n_processed_events
     cdef int         max_retries, sleep_secs
-    cdef array.array i_starts                   # ¬ used locally for finding boundary of each
-    cdef array.array i_ends                     # } stream file (defined here for speed) in view(),
-    cdef array.array i_stepbuf_starts           # } which generates sharing window variables below.
-    cdef array.array i_stepbuf_ends             # }
+    cdef array.array i_st_nextblocks            # ¬ used locally for finding boundary of each
+    cdef array.array i_st_blocks                # } which generates sharing window variables below.
+    cdef array.array i_en_blocks                # } for sharing viewing windows in show()
     cdef array.array block_sizes                # }
-    cdef array.array i_st_bufs                  # ¬ for sharing viewing windows in show()
-    cdef array.array block_size_bufs            # }
-    cdef array.array i_en_bufs                  # }
-    cdef array.array i_st_stepbufs              # }
-    cdef array.array block_size_stepbufs        # }
-    cdef array.array i_en_stepbufs              # }
+    cdef array.array i_st_step_nextblocks       # }
+    cdef array.array i_st_step_blocks           # }
+    cdef array.array i_en_step_blocks           # }
+    cdef array.array step_block_sizes           # }
     cdef array.array repack_offsets             # ¬ for parallel repack
     cdef array.array repack_step_sizes          # }
     cdef array.array repack_footer              # }
@@ -84,17 +81,14 @@ cdef class SmdReader:
         self.winner_last_ts     = 0
         self._next_fake_ts      = 0
         self.configs            = []
-        self.i_starts           = array.array('L', [0]*fds.size)
-        self.i_ends             = array.array('L', [0]*fds.size)
-        self.i_stepbuf_starts   = array.array('L', [0]*fds.size)
-        self.i_stepbuf_ends     = array.array('L', [0]*fds.size)
+        self.i_st_nextblocks    = array.array('L', [0]*fds.size)
+        self.i_st_step_nextblocks = array.array('L', [0]*fds.size)
+        self.i_st_blocks        = array.array('L', [0]*fds.size)
         self.block_sizes        = array.array('L', [0]*fds.size)
-        self.i_st_bufs          = array.array('L', [0]*fds.size)
-        self.block_size_bufs    = array.array('L', [0]*fds.size)
-        self.i_en_bufs          = array.array('L', [0]*fds.size)
-        self.i_st_stepbufs      = array.array('L', [0]*fds.size)
-        self.block_size_stepbufs= array.array('L', [0]*fds.size)
-        self.i_en_stepbufs      = array.array('L', [0]*fds.size)
+        self.i_en_blocks        = array.array('L', [0]*fds.size)
+        self.i_st_step_blocks   = array.array('L', [0]*fds.size)
+        self.step_block_sizes   = array.array('L', [0]*fds.size)
+        self.i_en_step_blocks   = array.array('L', [0]*fds.size)
         self.repack_offsets     = array.array('L', [0]*fds.size)
         self.repack_step_sizes  = array.array('L', [0]*fds.size)
         self.repack_footer      = array.array('I', [0]*(fds.size+1))  # size of all smd chunks plus no. of smds
@@ -166,10 +160,8 @@ cdef class SmdReader:
             if (buf.n_ready_events - buf.n_seen_events > 0) and \
                     not buf.force_reread:
                 continue
-            self.i_starts[i] = 0
-            self.i_ends[i] = 0
-            self.i_stepbuf_starts[i] = 0
-            self.i_stepbuf_ends[i] = 0
+            self.i_st_nextblocks[i] = 0
+            self.i_st_step_nextblocks[i] = 0
 
         self.prl_reader.just_read()
 
@@ -288,8 +280,8 @@ cdef class SmdReader:
 
         return limit_ts
 
-    def find_intg_limit_ts(self, intg_stream_id, intg_delta_t, batch_size, max_events):
-        """ Find limit_ts for integrating events
+    def find_intg_limit_ts(self, intg_stream_id, intg_delta_t, max_events):
+        """ Find limit_ts for a single integrating event
 
         An integrating event accumulates over fast events in other streams.
         The winner is automatically set to the integrating stream and limit_ts
@@ -308,7 +300,7 @@ cdef class SmdReader:
         cdef int n_transitions=0
         cdef int is_split = 0
 
-        # Locate an integrating event and check for and max_events
+        # Locate an integrating event and check for max_events
         # We still need to loop ever the available events to skip
         # transitions.
         i_bob = self.prl_reader.bufs[self.winner].n_seen_events - 1
@@ -346,7 +338,7 @@ cdef class SmdReader:
                     i_complete = i
                     limit_ts_complete = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
 
-            if n_L1Accepts == batch_size or is_split \
+            if n_L1Accepts or is_split \
                     or (self.n_processed_events + n_L1Accepts == max_events and max_events > 0):
                 break
 
@@ -369,8 +361,8 @@ cdef class SmdReader:
         cdef uint64_t eob_ts = 0
         cdef int i
         for i in range(self.prl_reader.nfiles):
-            if self.prl_reader.bufs[i].ts_arr[self.i_en_bufs[i]] > eob_ts:
-                eob_ts = self.prl_reader.bufs[i].ts_arr[self.i_en_bufs[i]]
+            if self.prl_reader.bufs[i].ts_arr[self.i_en_blocks[i]] > eob_ts:
+                eob_ts = self.prl_reader.bufs[i].ts_arr[self.i_en_blocks[i]]
                 eob_stream_id = i
 
         # Update the transition
@@ -378,8 +370,8 @@ cdef class SmdReader:
         cdef uint8_t service
         cdef uint64_t new_env
         cdef uint64_t second_byte = 0xf0ffffff  # Safe if used in no-gil
-        if self.block_size_bufs[eob_stream_id] > 0:
-            d = <Dgram *>(self.prl_reader.bufs[eob_stream_id].chunk + self.prl_reader.bufs[eob_stream_id].st_offset_arr[self.i_en_bufs[eob_stream_id]])
+        if self.block_sizes[eob_stream_id] > 0:
+            d = <Dgram *>(self.prl_reader.bufs[eob_stream_id].chunk + self.prl_reader.bufs[eob_stream_id].st_offset_arr[self.i_en_blocks[eob_stream_id]])
             # From 8 bytes env, |0 |0 |0 |0 |x |- |- |- |  x is service byte
             service = (d.env>>24)&0xf
             new_env = d.env & second_byte | self.L1Accept_EndOfBatch << 24
@@ -400,102 +392,136 @@ cdef class SmdReader:
         st_all = time.monotonic()
         cdef int i=0
         cdef uint64_t limit_ts
-
-        # With batch_size = 1 (used for reading Configure and BeginRun), this
-        # automatically set ignore_transition flag to False so we can get any
-        # type of event. We also use standard way to find limit_ts when asking
-        # for Configure and BeginRun.
-        if intg_stream_id == -1 or ignore_transition is False:
-            limit_ts = self.find_limit_ts(batch_size, max_events, ignore_transition)
-        else:
-            limit_ts = self.find_intg_limit_ts(intg_stream_id, intg_delta_t, batch_size, max_events)
-            if limit_ts == self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_seen_events - 1]:
-                return
-
-        # Reset timestamp and buffer for fake steps (will be calculated lazily)
-        self._next_fake_ts = 0
-        self._fakebuf_size = 0
+        cdef array.array _i_st_blocks_firstbatch = array.array('L', [0]*self.prl_reader.nfiles)
+        cdef array.array _i_st_step_blocks_firstbatch = array.array('L', [0]*self.prl_reader.nfiles)
+        cdef array.array _cn_batch_bufs = array.array('L', [0]*self.prl_reader.nfiles)
+        cdef array.array _cn_batch_stepbufs = array.array('L', [0]*self.prl_reader.nfiles)
 
         # Locate the viewing window and update seen_offset for each buffer
         cdef Buffer* buf
-        cdef uint64_t[:] i_starts           = self.i_starts
-        cdef uint64_t[:] i_ends             = self.i_ends
-        cdef uint64_t[:] i_stepbuf_starts   = self.i_stepbuf_starts
-        cdef uint64_t[:] i_stepbuf_ends     = self.i_stepbuf_ends
-        cdef uint64_t[:] block_sizes        = self.block_sizes
-        cdef uint64_t[:] i_st_bufs          = self.i_st_bufs
-        cdef uint64_t[:] block_size_bufs    = self.block_size_bufs
-        cdef uint64_t[:] i_en_bufs          = self.i_en_bufs
-        cdef uint64_t[:] i_st_stepbufs      = self.i_st_stepbufs
-        cdef uint64_t[:] block_size_stepbufs= self.block_size_stepbufs
-        cdef uint64_t[:] i_en_stepbufs      = self.i_en_stepbufs
+        cdef uint64_t[:] i_st_nextblocks        = self.i_st_nextblocks
+        cdef uint64_t[:] i_st_step_nextblocks   = self.i_st_step_nextblocks
+        cdef uint64_t[:] i_st_blocks            = self.i_st_blocks
+        cdef uint64_t[:] block_sizes            = self.block_sizes
+        cdef uint64_t[:] i_en_blocks            = self.i_en_blocks
+        cdef uint64_t[:] i_st_step_blocks       = self.i_st_step_blocks
+        cdef uint64_t[:] step_block_sizes       = self.step_block_sizes
+        cdef uint64_t[:] i_en_step_blocks       = self.i_en_step_blocks
+        cdef uint64_t[:] i_st_blocks_firstbatch = _i_st_blocks_firstbatch
+        cdef uint64_t[:] i_st_step_blocks_firstbatch = _i_st_step_blocks_firstbatch
+        cdef uint64_t[:] cn_batch_bufs          = _cn_batch_bufs
+        cdef uint64_t[:] cn_batch_stepbufs      = _cn_batch_stepbufs
+
+        # Reset buffer index and size for both normal and step buffers.
+        # They will get set to the boundary value if the current timestamp
+        # does not exceed limiting timestamp.
+        for i in range(self.prl_reader.nfiles):
+            i_st_blocks[i] = 0
+            i_en_blocks[i] = 0
+            block_sizes[i] = 0
+            i_st_step_blocks[i] = 0
+            i_en_step_blocks[i] = 0
+            step_block_sizes[i] = 0
 
         # Need to convert Python object to c++ data type for the nogil loop
         cdef unsigned endrun_id = TransitionId.EndRun
 
-        # Find the boundary of each buffer using limit_ts
-        for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
-            # Reset buffer index and size for both normal and step buffers.
-            # They will get set to the boundary value if the current timestamp
-            # does not exceed limiting timestamp.
-            i_st_bufs[i] = 0
-            block_size_bufs[i] = 0
-            i_en_bufs[i] = 0
-            i_st_stepbufs[i] = 0
-            block_size_stepbufs[i] = 0
-            i_en_stepbufs[i] = 0
+        # A batch is always complete for non-integrating detector runs. For integrating
+        # runs, we continue to find the indices of the all the buffers until batch_size
+        # is reached (find_intg_limit_ts only finds limit_ts for a single integrating
+        # event).
+        cdef int batch_complete_flag = 0
+        cdef int cn_intg_events = 0
+        while not batch_complete_flag:
+            # With batch_size = 1 (used for reading Configure and BeginRun), this
+            # automatically set ignore_transition flag to False so we can get any
+            # type of event. We also use standard way to find limit_ts when asking
+            # for Configure and BeginRun.
+            if intg_stream_id == -1 or ignore_transition is False:
+                limit_ts = self.find_limit_ts(batch_size, max_events, ignore_transition)
+                batch_complete_flag = 1
+            else:
+                limit_ts = self.find_intg_limit_ts(intg_stream_id, intg_delta_t, max_events)
+                # Return none when there is nothing in this batch
+                if limit_ts == self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_seen_events - 1]:
+                    return
+                cn_intg_events += 1
+                if cn_intg_events == batch_size:
+                    batch_complete_flag = 1
 
-            buf = &(self.prl_reader.bufs[i])
+            # Reset timestamp and buffer for fake steps (will be calculated lazily)
+            self._next_fake_ts = 0
+            self._fakebuf_size = 0
 
-            if buf.ts_arr[i_starts[i]] > limit_ts:
-                continue
+            # Find the boundary of each buffer using limit_ts
+            for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
+                buf = &(self.prl_reader.bufs[i])
 
-            i_ends[i] = i_starts[i]
-            if i_ends[i] < buf.n_ready_events:
-                if buf.ts_arr[i_ends[i]] != limit_ts:
-                    while buf.ts_arr[i_ends[i] + 1] <= limit_ts \
-                            and i_ends[i] < buf.n_ready_events - 1:
-                        i_ends[i] += 1
+                if buf.ts_arr[i_st_nextblocks[i]] > limit_ts:
+                    continue
 
-                block_sizes[i] = buf.en_offset_arr[i_ends[i]] - buf.st_offset_arr[i_starts[i]]
+                i_en_blocks[i] = i_st_nextblocks[i]
+                if i_en_blocks[i] < buf.n_ready_events:
+                    if buf.ts_arr[i_en_blocks[i]] != limit_ts:
+                        while buf.ts_arr[i_en_blocks[i] + 1] <= limit_ts \
+                                and i_en_blocks[i] < buf.n_ready_events - 1:
+                            i_en_blocks[i] += 1
 
-                i_st_bufs[i] = i_starts[i]
-                block_size_bufs[i] = block_sizes[i]
-                i_en_bufs[i] = i_ends[i]
+                    i_st_blocks[i] = i_st_nextblocks[i]
+                    block_sizes[i] = buf.en_offset_arr[i_en_blocks[i]] - buf.st_offset_arr[i_st_nextblocks[i]]
+                    if cn_batch_bufs[i] == 0:
+                        i_st_blocks_firstbatch[i] = i_st_blocks[i]
 
-                buf.seen_offset = buf.en_offset_arr[i_ends[i]]
-                buf.n_seen_events =  i_ends[i] + 1
-                if buf.sv_arr[i_ends[i]] == endrun_id:
-                    buf.found_endrun = 1
-                i_starts[i] = i_ends[i] + 1
+                    buf.seen_offset = buf.en_offset_arr[i_en_blocks[i]]
+                    buf.n_seen_events =  i_en_blocks[i] + 1
+                    if buf.sv_arr[i_en_blocks[i]] == endrun_id:
+                        buf.found_endrun = 1
+                    i_st_nextblocks[i] = i_en_blocks[i] + 1
+                    if block_sizes[i] > 0:
 
-            # Handle step buffers the same way
-            buf = &(self.prl_reader.step_bufs[i])
+                        cn_batch_bufs[i] += 1
 
-            # Find boundary using limit_ts (omit check for exact match here because it's unlikely
-            # for transition buffers.
-            i_stepbuf_ends[i] = i_stepbuf_starts[i]
-            if i_stepbuf_ends[i] <  buf.n_ready_events \
-                    and buf.ts_arr[i_stepbuf_ends[i]] <= limit_ts:
-                while buf.ts_arr[i_stepbuf_ends[i] + 1] <= limit_ts \
-                        and i_stepbuf_ends[i] < buf.n_ready_events - 1:
-                    i_stepbuf_ends[i] += 1
+                # Handle step buffers the same way
+                buf = &(self.prl_reader.step_bufs[i])
 
-                block_sizes[i] = buf.en_offset_arr[i_stepbuf_ends[i]] - buf.st_offset_arr[i_stepbuf_starts[i]]
+                # Find boundary using limit_ts (omit check for exact match here because it's unlikely
+                # for transition buffers.
+                i_en_step_blocks[i] = i_st_step_nextblocks[i]
+                if i_en_step_blocks[i] <  buf.n_ready_events \
+                        and buf.ts_arr[i_en_step_blocks[i]] <= limit_ts:
+                    while buf.ts_arr[i_en_step_blocks[i] + 1] <= limit_ts \
+                            and i_en_step_blocks[i] < buf.n_ready_events - 1:
+                        i_en_step_blocks[i] += 1
 
-                i_st_stepbufs[i] = i_stepbuf_starts[i]
-                block_size_stepbufs[i] = block_sizes[i]
-                i_en_stepbufs[i] = i_stepbuf_ends[i]
+                    i_st_step_blocks[i] = i_st_step_nextblocks[i]
+                    step_block_sizes[i] = buf.en_offset_arr[i_en_step_blocks[i]] - buf.st_offset_arr[i_st_step_nextblocks[i]]
+                    if cn_batch_stepbufs[i] == 0:
+                        i_st_step_blocks_firstbatch[i] = i_st_step_blocks[i]
 
-                buf.seen_offset = buf.en_offset_arr[i_stepbuf_ends[i]]
-                buf.n_seen_events = i_stepbuf_ends[i] + 1
-                i_stepbuf_starts[i]  = i_stepbuf_ends[i] + 1
+                    buf.seen_offset = buf.en_offset_arr[i_en_step_blocks[i]]
+                    buf.n_seen_events = i_en_step_blocks[i] + 1
+                    i_st_step_nextblocks[i]  = i_en_step_blocks[i] + 1
+                    if step_block_sizes[i] > 0:
+                        cn_batch_stepbufs[i] += 1
 
-        # end for i in ...
+            # end for i in ...
 
-        # Mark EndOfBatch for integrating detector run
-        if intg_stream_id > -1:
-            self.mark_endofbatch()
+            # Mark EndOfBatch for integrating detector run
+            if intg_stream_id > -1:
+                self.mark_endofbatch()
+
+        # end while not batch
+
+        # Restore starting buffer indices in case there are more than one batch
+        for i in range(self.prl_reader.nfiles):
+            if cn_batch_bufs[i] > 1:
+                buf = &(self.prl_reader.bufs[i])
+                i_st_blocks[i] = i_st_blocks_firstbatch[i]
+                block_sizes[i] = buf.en_offset_arr[i_en_blocks[i]] - buf.st_offset_arr[i_st_blocks[i]]
+            if cn_batch_stepbufs[i] > 1:
+                buf = &(self.prl_reader.step_bufs[i])
+                i_st_step_blocks[i] = i_st_step_blocks_firstbatch[i]
+                step_block_sizes[i] = buf.en_offset_arr[i_en_step_blocks[i]] - buf.st_offset_arr[i_st_step_blocks[i]]
 
         en_all = time.monotonic()
         self.total_time += en_all - st_all
@@ -551,20 +577,20 @@ cdef class SmdReader:
         """
 
         cdef Buffer* buf
-        cdef uint64_t[:] block_size_bufs
-        cdef uint64_t[:] i_st_bufs
+        cdef uint64_t[:] block_sizes
+        cdef uint64_t[:] i_st_blocks
         if step_buf:
             buf = &(self.prl_reader.step_bufs[i_buf])
-            block_size_bufs = self.block_size_stepbufs
-            i_st_bufs = self.i_st_stepbufs
+            block_sizes = self.step_block_sizes
+            i_st_blocks = self.i_st_step_blocks
         else:
             buf = &(self.prl_reader.bufs[i_buf])
-            block_size_bufs = self.block_size_bufs
-            i_st_bufs = self.i_st_bufs
+            block_sizes = self.block_sizes
+            i_st_blocks = self.i_st_blocks
 
         cdef char[:] view
-        if block_size_bufs[i_buf] > 0:
-            view = <char [:block_size_bufs[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_bufs[i_buf]])
+        if block_sizes[i_buf] > 0:
+            view = <char [:block_sizes[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_blocks[i_buf]])
             # Check if there's any data in fake buffer
             fakebuf = self.get_fake_buffer()
             if self._fakebuf_size > 0:
@@ -593,7 +619,7 @@ cdef class SmdReader:
         cdef int i
         cdef uint64_t total_size = 0
         for i in range(self.prl_reader.nfiles):
-            total_size += self.block_size_bufs[i]
+            total_size += self.block_sizes[i]
         return total_size
 
     @property
@@ -668,10 +694,10 @@ cdef class SmdReader:
 
             smd_size = 0
             if not only_steps:
-                smd_size = self.block_size_bufs[i]
+                smd_size = self.block_sizes[i]
                 if smd_size > 0:
                     smd_buf = &(self.prl_reader.bufs[i])
-                    memcpy(send_buf + offset, smd_buf.chunk + smd_buf.st_offset_arr[self.i_st_bufs[i]], smd_size)
+                    memcpy(send_buf + offset, smd_buf.chunk + smd_buf.st_offset_arr[self.i_st_blocks[i]], smd_size)
                     offset += smd_size
 
             footer[i] = step_size + smd_size
@@ -720,8 +746,8 @@ cdef class SmdReader:
 
             # Move offset and total size to include smd data
             if only_steps==0:
-                total_size += self.block_size_bufs[i]
-                offset += self.block_size_bufs[i]
+                total_size += self.block_sizes[i]
+                offset += self.block_sizes[i]
 
             # Move offset and total size to include fakestep transition set (if set)
             total_size += self._fakebuf_size
@@ -735,8 +761,8 @@ cdef class SmdReader:
         assert total_size <= self.sendbufsize, f"Repacked data exceeds send buffer's size (total:{total_size} bufsize:{self.sendbufsize})."
 
         # Access raw C pointers so they can be used in nogil loop below
-        cdef uint64_t* block_size_bufs = <uint64_t*>self.block_size_bufs.data.as_voidptr
-        cdef uint64_t* i_st_bufs = <uint64_t*>self.i_st_bufs.data.as_voidptr
+        cdef uint64_t* block_sizes = <uint64_t*>self.block_sizes.data.as_voidptr
+        cdef uint64_t* i_st_blocks = <uint64_t*>self.i_st_blocks.data.as_voidptr
         cdef uint32_t* footer = <uint32_t*>self.repack_footer.data.as_voidptr
 
         # Copy step and smd buffers if exist
@@ -748,10 +774,10 @@ cdef class SmdReader:
                 footer[i] += step_sizes[i]
 
             if c_only_steps == 0:
-                if block_size_bufs[i] > 0:
-                    memcpy(send_buf + offsets[i], self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[i_st_bufs[i]], block_size_bufs[i])
-                    offsets[i] += block_size_bufs[i]
-                    footer[i] += block_size_bufs[i]
+                if block_sizes[i] > 0:
+                    memcpy(send_buf + offsets[i], self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[i_st_blocks[i]], block_sizes[i])
+                    offsets[i] += block_sizes[i]
+                    footer[i] += block_sizes[i]
 
             if self._fakebuf_size > 0:
                 memcpy(send_buf + offsets[i], fakebuf_ptr, self._fakebuf_size)
