@@ -28,8 +28,8 @@ Analysis consists of two different process types:
   batch  [ --------- ]  ~~~> | [ --------- ]
          [ --------- ]       | [ --------- ]
          [ --------- ]       | [ --------- ]
-                             | 
-                             | [ --------- ] 
+                             |
+                             | [ --------- ]
                              | [ --------- ]
                              | [ --------- ]
                              | [ --------- ]
@@ -58,15 +58,17 @@ Some Notes:
 
 """
 
-import os
-import numpy as np
-import h5py
 import glob
+import os
 from collections.abc import MutableMapping
+
+import h5py
+import numpy as np
+
+from psana.psexp.tools import mode
 
 # -----------------------------------------------------------------------------
 
-from psana.psexp.tools import mode
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -146,7 +148,7 @@ def set_keytypes(k):
 def get_len_map(k):
     try:
         return len_map[k]
-    except:
+    except Exception:
         set_keytypes(k)
         return len_map[k]
 
@@ -154,7 +156,7 @@ def get_len_map(k):
 def is_len_key(k):
     try:
         return len_dict[k]
-    except:
+    except Exception:
         set_keytypes(k)
         return len_dict[k]
 
@@ -162,7 +164,7 @@ def is_len_key(k):
 def is_var_key(k):
     try:
         return var_dict[k]
-    except:
+    except Exception:
         set_keytypes(k)
         return var_dict[k]
 
@@ -268,7 +270,6 @@ class CacheArray:
 
 
 class Server:  # (hdf5 handling)
-
     def __init__(self, filename=None, smdcomm=None, cache_size=10000, callbacks=[]):
 
         self.filename = filename
@@ -359,7 +360,7 @@ class Server:  # (hdf5 handling)
                                     "Data for %s is length %d, not %d!"
                                     % (dataset_name, len(data), exp_len)
                                 )
-                        except:
+                        except Exception:
                             # This is the first dataset for this length dataset,
                             # so remember the length and forget all of the older ones!
                             len_evt[len_name] = {ts: len(data)}
@@ -378,7 +379,7 @@ class Server:  # (hdf5 handling)
                         len_name = len_map[dataset_name]
                         try:
                             exp_len = len_evt[len_name][event_data_dict["timestamp"]]
-                        except:
+                        except Exception:
                             # Only backfill the first time we see this timestamp.
                             self.backfill(len_name, 1, missing_value=0)
                             len_evt[len_name][event_data_dict["timestamp"]] = 0
@@ -390,11 +391,11 @@ class Server:  # (hdf5 handling)
         return
 
     def _get_data_info(self, data, dataset_name):
-        if type(data) == int:
+        if type(data) is int:
             shape = ()
             maxshape = (None,)
             dtype = "i8"
-        elif type(data) == float:
+        elif type(data) is float:
             shape = ()
             maxshape = (None,)
             dtype = "f8"
@@ -412,7 +413,7 @@ class Server:  # (hdf5 handling)
         is_var = is_var_key(dataset_name)
         is_len = is_len_key(dataset_name)
         if is_var and not is_len:
-            if type(data) == list:
+            if type(data) is list:
                 data = np.array(data)
             if hasattr(data, "dtype"):
                 (shape, maxshape, dtype) = self._get_data_info(data[0], dataset_name)
@@ -426,7 +427,7 @@ class Server:  # (hdf5 handling)
             raise ValueError("Dataset %s has illegal shape (0,)" % dataset_name)
 
         self._dsets[dataset_name] = (dtype, shape)
-        dset = self.file_handle.create_dataset(
+        self.file_handle.create_dataset(
             dataset_name,
             (0,) + shape,  # (0,) -> expand dim
             maxshape=maxshape,
@@ -439,7 +440,7 @@ class Server:  # (hdf5 handling)
         if is_unaligned(dataset_name):
             unaligned_ts_name = unaligned_timestamp_name(dataset_name)
             self._dsets[unaligned_ts_name] = (dtype, shape)
-            dset = self.file_handle.create_dataset(
+            self.file_handle.create_dataset(
                 unaligned_ts_name,
                 (0,) + shape,  # (0,) -> expand dim
                 maxshape=maxshape,
@@ -508,7 +509,6 @@ class Server:  # (hdf5 handling)
 
 
 class SmallData:  # (client)
-
     def __init__(self, server_group=None, client_group=None):
         """
         Parameters
@@ -563,9 +563,9 @@ class SmallData:  # (client)
             print("setting cache_size -->", batch_size)
             cache_size = batch_size
 
-        if (filename is not None):
+        if filename is not None:
             self._basename = os.path.basename(filename)
-            self._dirname  = os.path.dirname(filename)
+            self._dirname = os.path.dirname(filename)
             self._full_filename = str(filename)
         else:
             # this can happen for shmem analysis where there is no file
@@ -620,6 +620,9 @@ class SmallData:  # (client)
 
         return
 
+    def get_rank(self):
+        return self._smalldata_comm.Get_rank()
+
     def _comm_partition(self):
 
         self._smalldata_group = MPI.Group.Union(self._server_group, self._client_group)
@@ -660,7 +663,7 @@ class SmallData:  # (client)
         """
 
         if MODE == "PARALLEL":
-            if self._first_open == True and self._full_filename is not None:
+            if self._first_open and self._full_filename is not None:
                 fh = h5py.File(self._full_filename, "w", libver="latest")
                 self._first_open = False
             else:
@@ -779,7 +782,7 @@ class SmallData:  # (client)
         for arrInfo in arrInfoAll:
             if arrInfo is None:
                 continue
-            if summaryArrInfo == None:
+            if summaryArrInfo is None:
                 summaryArrInfo = arrInfo
             if arrInfo[:2] != summaryArrInfo[:2]:  # check shape/dtype compatible
                 raise Exception(
@@ -999,9 +1002,9 @@ class SmallData:  # (client)
                 if dset_name in dsets.keys():
                     _, shape = dsets[dset_name]
                     vsource = h5py.VirtualSource(fn, dset_name, shape=shape)
-                    layout[index_of_last_fill : index_of_last_fill + shape[0], ...] = (
-                        vsource
-                    )
+                    layout[
+                        index_of_last_fill : index_of_last_fill + shape[0], ...
+                    ] = vsource
                     index_of_last_fill += shape[0]
 
                 else:

@@ -24,7 +24,8 @@ class NullDataSource(DataSourceBase):
         super(NullDataSource, self).__init__(**kwargs)
         # Prepare comms for running SmallData
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
-        self.setup_psplot_live()
+        if self.smalldata_obj.get_rank() == 0:
+            self.setup_psplot_live()
 
     def runs(self):
         yield NullRun()
