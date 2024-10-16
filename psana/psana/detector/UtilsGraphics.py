@@ -25,8 +25,10 @@ import psana.pyalgos.generic.Graphics as gr
 #from psana.detector.NDArrUtils import info_ndarr
 
 def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.01, frachi=0.99):
-    """ returns tuple of intensity limits (amin, amax) evaluated from arr or passed directly.
-    """
+    """ returns tuple of intensity limits (amin, amax) evaluated from arr or passed directly."""
+    #print('XXX arr_median_limits arr: %s\namin:%s amax:%s nneg:%s npos:%s fraclo:%.3f frachi:%.3f'%\
+    #(str(arr), str(amin), str(amax), str(nneg), str(npos), fraclo, frachi))
+
     if not(None in (amin, amax)): return amin, amax
 
     if arr is None:
@@ -109,8 +111,8 @@ class flexbase:
         """ returns tuple of intensity limits (amin, amax)
             NOTE: kwa is MUTABLE dict (NOT **kwa) because it needs (???) to be cleaned up of parameters not used in other places
         """
-        arr = a if a is not None else kwa.get('arr', None)
-        return arr_median_limits(arr,\
+        return arr_median_limits(\
+                     kwa.get('arr', a),\
             amin   = kwa.get('amin',   self.amin),
             amax   = kwa.get('amax',   self.amax),
             nneg   = kwa.get('nneg',   self.nneg),
@@ -135,8 +137,7 @@ class flexbase:
 class fleximage(flexbase):
     def __init__(self, img, **kwa):
         flexbase.__init__(self, **kwa)
-        arr = kwa.get('arr', None)
-        if arr is None: arr = img #kwa['arr'] = arr = img
+        arr = kwa.get('arr', img)
         amin, amax = self._intensity_limits(arr, **kwa)
 
         aspratio = float(img.shape[0])/float(img.shape[1]) # heigh/width
@@ -161,9 +162,10 @@ class fleximage(flexbase):
 
 
     def update(self, img, **kwa):
-        """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95
-        """
-        amin, amax = self._intensity_limits(img, **kwa)
+        """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95"""
+        arr = kwa.get('arr', img)
+        amin, amax = self._intensity_limits(arr, **kwa)
+        logger.debug('XXX fleximage.update amin: %.3f amax: %.3f' % (amin, amax))
         self.imsh.set_data(img)
         self.imsh.set_clim(amin, amax)
         #gr.show(mode=1)
