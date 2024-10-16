@@ -267,7 +267,7 @@ def issue_2024_04_23():
         if nda is None: continue
         img = det.raw.image(evt)
         if flimg is None:
-           flimg = fleximage(img, arr=nda, h_in=5, w_in=10, nneg=1, npos=3)
+           flimg = fleximage(img, arr=nda, h_in=5, w_in=10) #, nneg=1, npos=3)
         gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
         flimg.update(img, arr=nda)
         gr.show(mode='DO NOT HOLD')
@@ -384,6 +384,62 @@ def issue_2024_07_24():
     gr.show()
 
 
+
+
+def issue_2024_08_19():
+    """
+       optimization of det.raw.calib for mpi
+       @sdfiana002
+       datinfo -k exp=rixx1005922,run=100 -d epixm
+       epixm320_dark_proc -k exp=rixx1005922,run=28 -d epixm -o ./work # -D
+       datinfo -k exp=uedcom103,run=812 -d epixquad
+       https://confluence.slac.stanford.edu/display/LCLSIIData/psana#psana-PublicPracticeData
+       uedcom103, ueddaq02 epix10ka
+
+    """
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
+    from psana.detector.UtilsEpixm320Calib import gain_mode_name
+    flimg = None
+    ds = DataSource(exp='uedcom103',run=812)
+    #orun = next(ds.runs())
+    #evt = next(orun.events())
+    break_loop = False
+    for nrun,orun in enumerate(ds.runs()):
+      det = orun.Detector('epixquad')
+      if break_loop: break
+      print('det.raw._shape_as_daq():', det.raw._shape_as_daq())
+      for nstep,step in enumerate(orun.steps()):
+        if break_loop: break
+        print('\n=============== step %d config gain mode: %s' % (nstep, gain_mode_name(det)))
+        for nevt,evt in enumerate(step.events()):
+          s = '  == evt %d' % nevt
+          s += info_ndarr(det.raw.raw(evt),     '\n  raw  ', first=1000, last=1005)
+          s += info_ndarr(det.raw._pedestals(), '\n  peds ', first=1000, last=1005)
+          s += info_ndarr(det.raw.calib(evt),   '\n  calib', first=1000, last=1005)
+          print(s)
+          if nevt>10:
+              break_loop = True
+              print('\n break_loop')
+              break
+
+          nda = det.raw.calib(evt)
+          if nda is None: continue
+          img = det.raw.image(evt)
+          print('  nda min: %.3f max: %.3f' % (nda.min(), nda.max()))
+          if flimg is None:
+             flimg = fleximage(img, arr=nda, h_in=10, w_in=11.2)
+          gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
+          flimg.update(img, arr=nda) #, amin=0, amax=60000)
+          gr.show(mode='DO NOT HOLD')
+    gr.show()
+
+
+
+
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -429,6 +485,7 @@ def selector():
     elif TNAME in  ('9',): issue_2024_04_23() # epixm320 calib method for exp='rixx1005922',run=34 on sdf
     elif TNAME in ('10',): issue_2024_04_24() # epixm320 exp='rixx1005922',run=328 run.expt: tstx00417
     elif TNAME in ('11',): issue_2024_07_24() # test for implementation off archon methods
+    elif TNAME in ('12',): issue_2024_08_19() # epixm320 exp='rixx1005922',run=100 on sdf
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
