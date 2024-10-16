@@ -154,7 +154,7 @@ class AreaDetector(DetectorImpl):
             geotxt = self._det_geotxt_default()
             self._geo = GeometryAccess(detector=self)
             self._geo.load_pars_from_str(geotxt)
-            logger.warning('AreaDetector._det_geo DEFAULT GEOMETRY IS LOADED from file %s' % self._fname_geotxt_default())
+            logger.debug('AreaDetector._det_geo DEFAULT GEOMETRY IS LOADED from file %s' % self._fname_geotxt_default())
         return self._geo
 
 
