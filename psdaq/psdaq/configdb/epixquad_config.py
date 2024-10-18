@@ -3,10 +3,10 @@ from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
-import rogue
-import epix
 import ePixQuad
 import lcls2_pgp_pcie_apps
+import rogue
+#import epix
 import time
 import json
 import os
@@ -15,6 +15,7 @@ import IPython
 from collections import deque
 import surf.protocols.batcher  as batcher  # for Start/StopRun
 import l2si_core               as l2si
+import lcls2_pgp_fw_lib.shared as shared
 import logging
 
 base = None
@@ -84,7 +85,8 @@ def apply_dict(pathbase,base,cfg):
                 ('Saci3' in path and 'CompEn' in path) or
                 ('Saci3' in path and 'Preamp' in path) or
                 ('Saci3' in path and 'MonostPulser' in path) or
-                ('Saci3' in path and 'PulserDac' in path)):
+                ('Saci3' in path and 'PulserDac' in path) or
+                ('PseudoScopeCore' in path)):  #  Writes fail -- fix me!
                 logging.info(f'NOT setting {path} to {configdb_node}')
             else:
                 logging.info(f'Setting {path} to {configdb_node}')
@@ -110,7 +112,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     global base
     global pv
     global lane
-    if verbose:
+    if verbose and False:  # pyrogue prevents us from using DEBUG here
         logging.getLogger().setLevel(logging.DEBUG)
     else:
         logging.getLogger().setLevel(logging.INFO)
@@ -136,6 +138,12 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
 
         pbase.__enter__()
 
+        # Set the XPM pause threshold on the DDR buffer
+        appLane = pbase.find(typ=shared.AppLane)
+        for devPtr in appLane:
+            devPtr.XpmPauseThresh.set(0x20)
+            devPtr.EventBuilder.Timeout.set(int(156.25e6/360))
+        
         #  Disable flow control on the PGP lane at the PCIe end
 #        getattr(pbase.DevPcie.Hsio,f'PgpMon[{lane}]').Ctrl.FlowControlDisable.set(1)
 
@@ -692,6 +700,7 @@ def epixquad_external_trigger(base):
     #  Switch to external triggering
     cbase.SystemRegs.AutoTrigEn.set(0)
     cbase.SystemRegs.TrigSrcSel.set(0)
+    cbase.SystemRegs.TrigEn.set(1)
     #  Enable frame readout
     cbase.RdoutCore.RdoutEn.set(1)
 

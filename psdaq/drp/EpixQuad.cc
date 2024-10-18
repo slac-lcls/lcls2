@@ -208,6 +208,12 @@ void EpixQuad::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
     }
 #endif
 
+    if (subframes[2].num_elem() < 4*asicRows*elemRowSize) {
+      logging::error("Missing data: subframe[2] size %d\n", subframes[2].num_elem());
+      xtc.damage.increase(XtcData::Damage::MissingData);
+      return;
+    }
+
     unsigned seg=0;
     for(unsigned q=0; q<4; q++) {
         CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[seg]);
