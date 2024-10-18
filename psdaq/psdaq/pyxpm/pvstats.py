@@ -464,7 +464,7 @@ class PVMmcmPhaseLock(object):
 
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None,nAMCs=2):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None,nAMCs=2,noTiming=False):
         setProvider(p)
         global lock
         lock     = m
@@ -497,9 +497,10 @@ class PVStats(object):
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp)
 
-#  Expose for dumping the input link locking status
-        self._usTimingLock = TimingLock(name+':Us',xpm.UsGthRx)
-        self._cuTimingLock = TimingLock(name+':Cu',xpm.CuGthRx)
+        if not noTiming:
+            #  Expose for dumping the input link locking status
+            self._usTimingLock = TimingLock(name+':Us',xpm.UsGthRx)
+            self._cuTimingLock = TimingLock(name+':Cu',xpm.CuGthRx)
 
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
 

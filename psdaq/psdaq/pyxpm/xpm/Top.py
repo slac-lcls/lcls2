@@ -24,6 +24,7 @@ import surf.devices.microchip       as microchip
 import LclsTimingCore               as timing
 import psdaq.pyxpm.xpm              as xpm
 from psdaq.pyxpm._AxiLiteRingBuffer import AxiLiteRingBuffer
+import click
 
 class Top(pr.Device):
     mmcmParms = [ ['MmcmPL119', 0x08900000],
@@ -37,9 +38,14 @@ class Top(pr.Device):
                     ipAddr      = '10.0.1.101',
                     memBase     = 0,
                     fidPrescale = 200,
+                    numDDC      = 0,
+                    noTiming    = False,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
-        self.fwVersion = 0x03070000
+        self.fwVersion = 0x030B0000
+
+        if noTiming:
+            self.mmcmParms = []
 
         ################################################################################################################
         # UDP_SRV_XVC_IDX_C         => 2542,  -- Xilinx XVC 
@@ -178,19 +184,20 @@ class Top(pr.Device):
             self.add(amc)
             self.amcs.append(amc)
 
-#        self.add(timing.GthRxAlignCheck(
-        self.add(xpm.GthRxAlignCheck(
-            memBase = self.srp,
-            name   = 'UsGthRx',
-            offset = 0x0b000000,
-        ))        
+        if False:
+#            self.add(timing.GthRxAlignCheck(
+            self.add(xpm.GthRxAlignCheck(
+                memBase = self.srp,
+                name   = 'UsGthRx',
+                offset = 0x0b000000,
+            ))        
 
-#        self.add(timing.GthRxAlignCheck(
-        self.add(xpm.GthRxAlignCheck(
-            memBase = self.srp,
-            name   = 'CuGthRx',
-            offset = 0x0c000000,
-        ))        
+#            self.add(timing.GthRxAlignCheck(
+            self.add(xpm.GthRxAlignCheck(
+                memBase = self.srp,
+                name   = 'CuGthRx',
+                offset = 0x0c000000,
+            ))        
                        
         self.add(xpm.XpmApp(
             memBase = self.srp,
@@ -211,6 +218,14 @@ class Top(pr.Device):
             name   = 'SeqEng_0',
             offset = 0x80040000,
         ))
+
+        # DDC at 0x80060000 + 0x1000*i
+        for i in range(numDDC):
+            self.add(xpm.DestDiagControl(
+                memBase = self.srp,
+                name    = f'DestDiagControl_{i}',
+                offset  = 0x80060000+i*0x1000,
+            ))
 
 #        self.add(xpm.CuPhase(
 #            memBase = self.srp,

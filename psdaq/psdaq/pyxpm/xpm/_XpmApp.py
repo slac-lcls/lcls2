@@ -82,6 +82,25 @@ class XpmApp(pr.Device):
         # Variables
         ##############################
 
+        def GLOB_CONST(name, desc, offset, bitsize, bitoffs):
+            self.add(pr.RemoteVariable(    
+                name         = name,
+                description  = desc,
+                offset       = offset,
+                bitSize      = bitsize,
+                bitOffset    = bitoffs,
+                base         = pr.UInt,
+                mode         = "RO",
+                verify       = False,
+            ))
+
+        GLOB_CONST("numddc"    ,"Number of DestDiagControl engines",0x300,8,0)
+        GLOB_CONST("numseq"    ,"Number of Sequence engines"       ,0x300,8,8)
+        GLOB_CONST("numdslinks","Number of downstream links"       ,0x300,8,16)
+        GLOB_CONST("numbplinks","Number of backplane links"        ,0x300,4,24)
+        GLOB_CONST("axilfreq"  ,"Axi-lite bus clock frequency"     ,0x304,32,0)
+        GLOB_CONST("statintv"  ,"Status update interval"           ,0x308,32,0)
+
         self.add(pr.RemoteVariable(    
             name         = "paddr",
             description  = "Timing link address",
@@ -530,6 +549,9 @@ class XpmApp(pr.Device):
             mode         = "RO",
         ))
 
+        #
+        #  Not implemented
+        #
         if False:
             self.add(pr.RemoteVariable(    
                 name         = "l1Clr",
@@ -621,16 +643,6 @@ class XpmApp(pr.Device):
                 mode         = "RO",
             ))
 
-#            self.add(pr.RemoteVariable(    
-#                name         = "anaTagRd",
-#                description  = "Analysis tag read counts",
-#                offset       =  0x68,
-#                bitSize      =  32,
-#                bitOffset    =  0x00,
-#                base         = pr.UInt,
-#                mode         = "RO",
-#            )) 
-
         self.add(pr.RemoteVariable(    
             name         = "l0HoldReset",
             description  = "Hold L0Select Reset",
@@ -661,18 +673,6 @@ class XpmApp(pr.Device):
             mode         = "RW",
             verify       = False
         ))
-
-        if False:
-            self.add(pr.RemoteVariable(    
-                name         = "msgIns",
-                description  = "Message insert",
-                offset       =  0x71,
-                bitSize      =  1,
-                bitOffset    =  0x07,
-                base         = pr.UInt,
-                mode         = "RW",
-                verify       = False
-            ))
 
         self.add(pr.RemoteVariable(    
             name         = "msgPayl",

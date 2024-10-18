@@ -59,7 +59,7 @@ def main():
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
     parser.add_argument('-I', action='store_true', help='initialize Cu timing')
     parser.add_argument('-L', action='store_true', help='bypass AMC Locks')
-    parser.add_argument('-T', action='store_true', help='test mode')
+    parser.add_argument('-T', action='store_true', help='test mode : use when no valid timing input')
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
     parser.add_argument('-A', type=int, default=2, help='number of AMC cards')
@@ -75,6 +75,7 @@ def main():
         name   = 'XPM',
         ipAddr = args.ip,
         fidPrescale = args.C,
+        noTiming = args.T,
     ))
     
     # Start the system
@@ -100,8 +101,8 @@ def main():
 
     autosave.set(args.P,args.db,None)
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A)
-#    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
+    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A, 
+                      noTiming=args.T)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
 
     cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
@@ -130,6 +131,7 @@ def main():
                     #  This is necessary in XTPG
                     #  Can also fix strange behavior in common group
                     app.groupL0Reset.set(0xff)
+                    time.sleep(1.e-3)
                     app.groupL0Reset.set(0)
 
                 elif cycle < 5:
