@@ -1,4 +1,4 @@
-if not platform: platform = '3'
+if not platform: platform = '6'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 #epics_env = f'{ld_lib_path}'
@@ -132,13 +132,13 @@ procmgr_config = [
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
-# {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger2 -S 0 -T 20000 -V {elog_cfg}'},
+# {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger2 -S 0 -T 20000 -V {elog_cfg}'},
 # {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger2 -S 1 -T 20000 -V {elog_cfg} -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
 # {host: 'drp-srcf-cmp030', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd} -k eb_timeout=0'},
- {host: 'drp-srcf-cmp034', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd}'},
+ {host: 'drp-srcf-cmp034', id:'teb0',        flags:'spux',               cmd:f'{teb_cmd} -v'},
 
 # {host: 'drp-srcf-cmp034', id:'meb0',        flags:'spu',                cmd:f'{meb_cmd} -t {hutch}_meb0 -d -n 8 -q {ami_workers_per_node}'},
 # {host: 'drp-srcf-cmp034', id:'shm0',        flags:'s',                  cmd:f'shmemClient -p {hutch}_meb0 -t -R'},
@@ -152,7 +152,8 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp003', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd0} -l 0x4 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp035', id:'timing_1',    flags:'spux', env:epics_env, rtprio:'50', cmd:f'{drp_cmd1} -l 0x1 -D ts -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp043', id:'timing_1',    flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
- {host: 'drp-srcf-cmp043', id:'timing_3',    flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0x1 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+# {host: 'drp-srcf-cmp043', id:'timing_3',    flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -v -l 0x8 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
+ {host: 'drp-srcf-gpu001', id:'timing_3',    flags:'spux', env:epics_env, cmd:f'{task_set} drp {gpu_opts1} -v -l 0x8 -D ts -W 1 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D ebeam,gmd,xgmd,pcav -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp028', id:'bld_0',       flags:'spux', env:epics_env, cmd:f'{bld_cmd1} -l 0x2 -D gmd'},
@@ -177,14 +178,14 @@ procmgr_config = [
 # {host: 'drp-srcf-cmp026', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py'},
 # {host: 'drp-srcf-cmp026', id:'tmo_peppexopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x4 -D opal'},
 
- {host: 'drp-srcf-cmp043', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
+# {host: 'drp-srcf-cmp043', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -v -l 0x2 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp028', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp029', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x8 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576'},
 # {host: 'drp-srcf-cmp035', id:'tstcam1_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
 # {host: 'drp-srcf-cmp028', id:'tstcam2_0',   flags:'spux',                cmd:f'{drp_cmd0} -l 0x2 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp029', id:'tstcam2_0',   flags:'spu',                cmd:f'{drp_cmd0} -l 0x4 -D fakecam -k sim_length=145'},
 # {host: 'drp-srcf-cmp036', id:'tstcam2_0',   flags:'spux',               cmd:f'{drp_cmd0} -l 0x1 -D fakecam -k sim_length=145 -k pebbleBufCount=1048576,pebbleBufSize=4096'},
-# {host: 'drp-srcf-gpu001', id:'tstcam1_0',   flags:'spux',                cmd:f'{gpu_cmd1} -l 0x1 -D fakecam -vvv'},
+ {host: 'drp-srcf-gpu001', id:'tstcam1_0',   flags:'spux',                cmd:f'{gpu_cmd1} -l 0x1 -D fakecam -k sim_length=145 -vvv'},
 # {host: 'drp-srcf-gpu001', id:'tstcam1_0',   flags:'spux',                cmd:f'{task_set} drp {gpu_opts1} -l 0x1 -D fakecam -vvv'},
 
 # {host: 'drp-srcf-cmp029', id:'manta_0',     flags:'spu', env:manta_env, cmd:f'{pva_cmd0} -l 0x4 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},

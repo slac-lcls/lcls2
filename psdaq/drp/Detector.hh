@@ -25,7 +25,7 @@ class Detector
 {
 public:
     Detector(Parameters* para, MemPool* pool) :
-        nodeId(-1), virtChan(0), m_para(para), m_pool(pool), m_xtcbuf(para->maxTrSize) {}
+        nodeId(-1u), virtChan(0), m_para(para), m_pool(pool), m_xtcbuf(para->maxTrSize) {}
     virtual ~Detector() {}
     virtual nlohmann::json connectionInfo(const nlohmann::json& msg) {return nlohmann::json({});}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
