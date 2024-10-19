@@ -249,7 +249,10 @@ cdef class cyhsd_base_1_2_3:
         #seglist.sort()
         #if seglist != self._config_segments: 
 
-
+    #  Need to expose this dictionary to subclasses
+    def peaksDict(self):
+        return self._peaksDict
+	
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety
     @cython.binding(True)
@@ -376,9 +379,9 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
 	
     def _parseEvt(self, evt):
         cyhsd_base_1_2_3._parseEvt(self, evt)
-        peaksDict = self.peaks(evt)
+        peaksDict =cyhsd_base_1_2_3.peaksDict(self)
         if not peaksDict:
-            return
+           return
         #  Extract the baseline constants
         for seg, chand in peaksDict.items():
             for chan, t in chand.items():
