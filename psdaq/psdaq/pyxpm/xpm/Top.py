@@ -184,15 +184,13 @@ class Top(pr.Device):
             self.add(amc)
             self.amcs.append(amc)
 
-        if False:
-#            self.add(timing.GthRxAlignCheck(
+        if not noTiming:
             self.add(xpm.GthRxAlignCheck(
                 memBase = self.srp,
                 name   = 'UsGthRx',
                 offset = 0x0b000000,
             ))        
 
-#            self.add(timing.GthRxAlignCheck(
             self.add(xpm.GthRxAlignCheck(
                 memBase = self.srp,
                 name   = 'CuGthRx',
