@@ -69,37 +69,15 @@ public:
   GpuMemPool(const Parameters& para, MemPool& pool);
   ~GpuMemPool();
 
-  unsigned  count()    const;
-  size_t    dmaSize()  const;
-  unsigned  nbuffers() const;
-  int       fd()       const;
-  Pebble&   pebble()   const;
+  unsigned               count()     const;
+  size_t                 dmaSize()   const;
+  unsigned               nbuffers()  const;
+  int                    fd()        const;
+  Pebble&                pebble()    const;
   std::vector<PGPEvent>& pgpEvents() const;
-  unsigned  allocate();
-  int       initialize();
+  unsigned               allocate();
+  int                    initialize();
 private:
-  /**
-   * \brief Maps FPGA memory to the host and allows GPU access to it
-   * This is the "standard" way of doing DMA with CUDA. cuMemHostRegister
-   * essentially just gives CUDA access to some pages and allows the GPU to
-   * read/write to them.
-   * Unlike RDMA, this doesn't require any custom code on the kernel side, this
-   * will work with any (properly aligned) buffer given, whether it's IO memory
-   * or not. Again unlike RDMA, cuMemHostRegister has more latency and lower
-   * throughput, since a DMA transfer must occur between the
-   * GPU <-> HOST <-> FPGA
-   * \param buffer
-   * \param offset Offset of the register block
-   * \param size Size of the register block
-   * \returns 0 for success
-   */
-  int _gpuMapHostFpgaMem(GpuDmaBuffer_t& buffer, uint64_t offset, size_t size);
-
-  /**
-   * \brief Unmaps memory, clears out the pointer and size
-   */
-  void _gpuUnmapHostFpgaMem(GpuDmaBuffer_t& buffer);
-
   /**
    * \brief Maps GPU memory to the FPGA using RDMA
    * This function uses gpuAddNvidiaMemory to give the FPGA access to some pages
@@ -124,7 +102,6 @@ public:
   static const unsigned MAX_BUFFERS = 4;
 public:
   std::vector<CUdeviceptr> dmaBuffers;
-  GpuDmaBuffer_t           swFpgaRegs;
 private:
   MemPool& m_pool;
 };
@@ -137,7 +114,7 @@ public:
   virtual void timingHeaders(unsigned index, Pds::TimingHeader* buffer) override;
   virtual void process(Batch& batch, bool& sawDisable) override;
   virtual void reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue) override;
-  virtual unsigned lastEvtCtr() const override { return m_lastEvtCtr; }
+  virtual unsigned lastEvtCtr() const { return m_lastEvtCtr; }
 public:
   uint64_t dmaBytes() const { return m_dmaBytes; }
   uint64_t dmaSize()  const { return m_dmaSize; }

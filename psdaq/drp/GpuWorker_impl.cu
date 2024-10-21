@@ -17,8 +17,6 @@ using namespace Pds;
 using namespace XtcData;
 using logging = psalg::SysLog;
 
-//#define USING_SUDO                      // Needed until gpuSetWriteEn() is working
-
 
 #define EMPTY ""           // Ensures there is an arg when __VA_ARGS__ is blank
 #define chkFatal(rc, ...)  checkError((rc), #rc, __FILE__, __LINE__, true,  EMPTY __VA_ARGS__)
@@ -263,10 +261,6 @@ GpuMemPool::~GpuMemPool()
   }
   dmaBuffers.clear();
 
-#ifdef USING_SUDO
-  _gpuUnmapHostFpgaMem(swFpgaRegs);
-#endif
-
   ssize_t rc;
   if ((rc = gpuRemNvidiaMemory(fd())) < 0)
     logging::error("gpuRemNvidiaMemory failed: %zd: %M", rc);
@@ -289,18 +283,6 @@ int GpuMemPool::initialize()
     }
   }
   logging::debug("Done with device mem alloc\n");
-
-#ifdef USING_SUDO
-  ////////////////////////////////////////////////
-  // Map FPGA register space to GPU
-  ////////////////////////////////////////////////
-
-  /** Map the GpuAsyncCore FPGA registers **/
-  if (_gpuMapHostFpgaMem(swFpgaRegs, 0x00D00000, 0x00100000) < 0) {
-    logging::error("Failed to map GpuAsyncCore at 0xD00000\n");
-    return -1;
-  }
-#endif
 
   return 0;
 }
@@ -347,49 +329,6 @@ void GpuMemPool::_gpuUnmapFpgaMem(CUdeviceptr& buffer)
   chkError(cuMemFree(buffer));
 
   // FIXME: gpuOnly memory cannot be unmapped?
-}
-
-int GpuMemPool::_gpuMapHostFpgaMem(GpuDmaBuffer_t& outmem, uint64_t offset, size_t size)
-{
-    CUresult status;
-
-    memset(&outmem, 0, sizeof(outmem));
-
-    outmem.ptr = (uint8_t*)dmaMapRegister(fd(), offset, size);
-    if (!outmem.ptr || outmem.ptr == MAP_FAILED) {
-      printf("Failed to map FPGA registers\n");
-      return -1;
-    }
-    printf("swFpgaRegs = %p\n", outmem.ptr);
-
-    status = cuMemHostRegister(outmem.ptr, size, CU_MEMHOSTREGISTER_IOMEMORY);
-    if (chkError(status)) {
-        fprintf(stderr, "Failed to register host memory at offset=%lu, size=%zu: %d\n",
-                offset, size, status);
-        dmaUnMapRegister(fd(), (void**)outmem.ptr, size);
-        return -1;
-    }
-
-    status = cuMemHostGetDevicePointer(&outmem.dptr, outmem.ptr, 0);
-    if (chkError(status)) {
-        fprintf(stderr, "Failed to get device pointer for offset=%lu, size=%zu: %d\n",
-                offset, size, status);
-        dmaUnMapRegister(fd(), (void**)outmem.ptr, size);
-        outmem = {};
-        return -1;
-    }
-
-    //int flag = 1;
-    //chkError(cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, outmem.dptr));
-
-    return 0;
-}
-
-void GpuMemPool::_gpuUnmapHostFpgaMem(GpuDmaBuffer_t& mem)
-{
-  dmaUnMapRegister(mem.fd, &mem.ptr, mem.size);
-  mem.ptr = NULL;
-  mem.size = 0;
 }
 
 
@@ -480,13 +419,6 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
   size_t    size          = m_pool.dmaSize();
   uint32_t* hostWriteBuff = (uint32_t*)malloc(size);
 
-#ifdef USING_SUDO
-  /** Compute 'write start' register location using the device pointer to GpuAsyncCore **/
-  CUdeviceptr hwWriteStart = m_pool.swFpgaRegs.dptr + 0x300;
-
-  printf("Mapped FPGA registers\n");
-#endif
-
   const uint32_t bufferMask = m_pool.nbuffers() - 1;
   Batch          batch{start + 1, 0};
 
@@ -506,17 +438,12 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
 
     // Write to the DMA start register in the FPGA
     logging::debug("Trigger write to buffer %d\n", dmaIndex);
-#ifdef USING_SUDO
-    chkFatal(cuStreamWriteValue32(stream, hwWriteStart + 4 * dmaIndex, 0x00, 0));
-#else
-    //auto rc = gpuSetWriteEn(m_pool.fd(), dmaIndex);
-    auto rc = dmaWriteRegister(m_pool.fd(), 0xD00300 + 4 * dmaIndex, 1);
+    auto rc = gpuSetWriteEn(m_pool.fd(), dmaIndex);
     if (rc < 0) {
       logging::critical("Failed to reenable buffer %d for write: %zd\n", dmaIndex, rc);
       perror("gpuSetWriteEn");
       abort();
     }
-#endif
 
     // Spin on the handshake location until the value is greater than or equal to 1
     // This waits for the data to arrive in the GPU before starting the processing
@@ -539,9 +466,8 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
 
     // @todo: Need indices, errors, etc., like from dmaBulkReadDmaIndex()
     // @todo: Handle multiple lanes
-    uint32_t size  = dsc->size;
-    uint32_t index = dmaIndex; // @todo: dsc->index;
-    uint32_t lane  = (dsc->dest >> 8) & 7;
+    uint32_t size = dsc->size;
+    uint32_t lane = (dsc->dest >> 8) & 7;
     m_dmaSize   = size;
     m_dmaBytes += size;
     // @todo: Is this the case here also?
@@ -553,9 +479,13 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
       abort();
     }
 
+    // @todo: dsc->index is always 0?
+    //if (dmaIndex != dsc->index)
+    //  logging::error("DMA index mismatch: got %u, expected %u\n",
+    //                 dsc->index, dmaIndex);
     evtCounter = th->evtCounter & bufferMask;
     if (evtCounter != batch.start + last)
-      logging::error("Index mismatch: got %u, expected %u\n",
+      logging::error("Event counter mismatch: got %u, expected %u\n",
                      evtCounter, batch.start + last);
 
     sawDisable = th->service() == TransitionId::Disable;
@@ -564,13 +494,13 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
     event->mask |= (1 << lane);
 
     // Allocate a pebble buffer once the event is built
-    auto counter = m_pool.allocate(); // This can block
-    event->pebbleIndex = counter & (m_pool.nbuffers() - 1);
+    auto counter       = m_pool.allocate(); // This can block
+    auto pebbleIndex   = counter & (m_pool.nbuffers() - 1);
+    event->pebbleIndex = pebbleIndex;
 
     // Make a new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
-    auto dgram = new(m_pool.pebble()[event->pebbleIndex]) EbDgram(*th, m_det.nodeId, m_para.rogMask);
-    printf("**G idx %u, pbl %u, pid %014lx\n", index, event->pebbleIndex, dgram->pulseId());
+    auto dgram = new(m_pool.pebble()[pebbleIndex]) EbDgram(*th, m_det.nodeId, m_para.rogMask);
 
     // @todo: Process the data to extract TEB input and calibrate.  Also reduce/compress?
     //if (th->service() == TransitionId::L1Accept)

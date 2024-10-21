@@ -67,7 +67,6 @@ void GpuDetectorApp::initialize()
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
     }
-    printf("*** GpuDetectorApp::init: m_det %p\n", m_gpu->detector());
     m_det = m_gpu->detector();
 
     logging::info("Ready for transitions");
@@ -77,8 +76,6 @@ void GpuDetectorApp::initialize()
 
 GpuDetectorApp::~GpuDetectorApp()
 {
-    printf("*** ~GpuDetectorApp()\n");
-
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
@@ -93,8 +90,6 @@ GpuDetectorApp::~GpuDetectorApp()
     } catch(...) {
         std::cout << "Exception in Python code: UNKNOWN\n";
     }
-
-    printf("*** ~GpuDetectorApp() done\n");
 }
 
 void GpuDetectorApp::_disconnect()
@@ -170,8 +165,6 @@ void GpuDetectorApp::handleDisconnect(const json& msg)
 
 void GpuDetectorApp::handlePhase1(const json& msg)
 {
-    printf("*** GpuDetectorApp::handlePhase1: m_det %p, %p\n", m_det, m_gpu->detector());
-
     std::string key = msg["header"]["key"];
     logging::debug("handlePhase1 for %s in GpuDetectorApp (m_det->scanEnabled() is %s)",
                    key.c_str(), m_det->scanEnabled() ? "TRUE" : "FALSE");
@@ -237,30 +230,23 @@ void GpuDetectorApp::handlePhase1(const json& msg)
         }
         else {
             const std::string& config_alias = msg["body"]["config_alias"];
-            printf("*** Make GpuDetector\n");
             m_gpuDetector = std::make_unique<GpuDetector>(m_para, m_drp, m_gpu);
-            printf("*** Made GpuDetector\n");
             m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
                 m_drp.exposer()->RegisterCollectable(m_exporter);
             }
-            printf("*** Made Exporter\n");
 
             m_gpuThread = std::thread{&GpuDetector::reader, std::ref(*m_gpuDetector), m_exporter,
                                       std::ref(m_det), std::ref(m_drp.tebContributor())};
-            printf("*** Started reader\n");
             m_collectorThread = std::thread(&GpuDetector::collector, std::ref(*m_gpuDetector),
                                             std::ref(m_drp.tebContributor()));
-            printf("*** Started collector\n");
 
             // Provide EbReceiver with the Detector interface so that additional
             // data blocks can be formatted into the XTC, e.g. trigger information
             m_drp.ebReceiver().configure(m_det, m_gpuDetector.get());
-            printf("*** Configured EbReceiver\n");
 
             // @todo: Maybe we should configure the h/w before the reader thread starts?
             unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-            printf("*** Configured Detector\n");
             if (!error) {
                 // @todo:
                 //json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());

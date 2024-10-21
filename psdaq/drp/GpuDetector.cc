@@ -113,11 +113,6 @@ void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det
             const TimingHeader* timingHeader = handle(det, b);
             if (!timingHeader)  continue;
 
-            auto th = timingHeader;
-            printf("**C  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
-                   th->control(), th->pulseId(), th->time.value(), th->env, th->evtCounter,
-                   th->_opaque[0], th->_opaque[1]);
-
             nevents++;
 
             TransitionId::Value transitionId = timingHeader->service();
@@ -246,7 +241,6 @@ void GpuDetector::_gpuCollector(Eb::TebContributor& tebContributor)
             // @todo: This merging is done in the CPU if file writing isn't available from the GPU
             auto pebbleIndex = event->pebbleIndex;
             auto dgram = (EbDgram*)(m_pool.pebble[pebbleIndex]);
-            printf("**C idx %u, pid %014lx\n", pebbleIndex, dgram->pulseId());
 
             // Prepare the trigger primitive with whatever input is needed for the TEB to make trigger decisions
             auto l3InpBuf = tebContributor.fetch(pebbleIndex);
