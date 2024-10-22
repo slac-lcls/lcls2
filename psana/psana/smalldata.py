@@ -504,8 +504,12 @@ class Server:  # (hdf5 handling)
             for dset, cache in self._cache.items():
                 if cache.n_events > 0:
                     self.write_to_file(dset, cache)
+            # flush h5 cache
             self.file_handle.flush()
             self.file_handle.close()
+            # flush node cache
+            with open(self.filename, "r") as fo:
+                os.fsync(fo.fileno())
         return
 
 
