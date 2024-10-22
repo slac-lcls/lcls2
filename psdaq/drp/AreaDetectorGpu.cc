@@ -5,8 +5,8 @@
 using namespace Drp;
 
 AreaDetectorGpu::AreaDetectorGpu(Parameters& para, MemPool& pool) :
-  GpuWorker_impl(para, pool, m_det),
-  m_det(&para, &pool)
+  AreaDetector(&para, &pool),
+  m_worker(para, pool, *this)
 {
 }
 
@@ -15,7 +15,7 @@ AreaDetectorGpu::AreaDetectorGpu(Parameters& para, MemPool& pool) :
 
 // The class factory
 
-extern "C" GpuWorker* createDetectorGpu(Parameters& para, MemPool& pool)
+extern "C" Detector* createDetectorGpu(Parameters& para, MemPool& pool)
 {
   return new AreaDetectorGpu(para, pool);
 }

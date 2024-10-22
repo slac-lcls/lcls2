@@ -110,11 +110,10 @@ class GpuWorker_impl : public GpuWorker
 {
 public:
   GpuWorker_impl(const Parameters& para, MemPool& pool, Detector& det);
-  virtual Detector* detector() override { return &m_det; }
-  virtual void timingHeaders(unsigned index, Pds::TimingHeader* buffer) override;
-  virtual void process(Batch& batch, bool& sawDisable) override;
   virtual void reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue) override;
-  virtual unsigned lastEvtCtr() const { return m_lastEvtCtr; }
+  virtual unsigned lastEvtCtr() const override { return m_lastEvtCtr; }
+  virtual DmaMode_t dmaMode() const override;
+  virtual void dmaMode(DmaMode_t mode_) override;
 public:
   uint64_t dmaBytes() const { return m_dmaBytes; }
   uint64_t dmaSize()  const { return m_dmaSize; }

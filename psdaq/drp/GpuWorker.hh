@@ -18,11 +18,12 @@ class GpuWorker
 {
 public:
   virtual ~GpuWorker() = default;
-  virtual Detector* detector() = 0;
-  virtual void timingHeaders(unsigned index, Pds::TimingHeader* buffer) = 0;
-  virtual void process(Batch& batch, bool& sawDisable) = 0;
   virtual void reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue) = 0;
   virtual unsigned lastEvtCtr() const = 0;
+public:
+  enum DmaMode_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
+  virtual DmaMode_t dmaMode() const = 0;
+  virtual void dmaMode(DmaMode_t mode_) = 0;
 };
 
 };

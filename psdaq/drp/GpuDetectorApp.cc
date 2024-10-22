@@ -40,8 +40,6 @@ GpuDetectorApp::GpuDetectorApp(Parameters& para) :
     m_det(nullptr),
     m_unconfigure(false)
 {
-    logging::info("GpuDetectorApp constructed in process ID %lu", syscall(SYS_gettid));
-
     Py_Initialize(); // for use by configuration
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 }
@@ -60,14 +58,11 @@ void GpuDetectorApp::initialize()
     //f.register_type<EpixHRemuGpu>   ("epixhremu", "libEpixHRemu_gpu.so");
     //f.register_type<EpixM320Gpu>    ("epixm320",  "libEpixM320_gpu.so");
 
-    logging::info("m_gpu created in process ID %lu", syscall(SYS_gettid));
-
-    m_gpu = f.create(m_para.detType, m_para, m_drp.pool);
-    if (m_gpu == nullptr) {
+    m_det = f.create(m_para.detType, m_para, m_drp.pool);
+    if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
     }
-    m_det = m_gpu->detector();
 
     logging::info("Ready for transitions");
 
@@ -80,7 +75,7 @@ GpuDetectorApp::~GpuDetectorApp()
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
 
-    if (m_gpu)  delete m_gpu;
+    if (m_det)  delete m_det;
 
     try {
         PyGILState_Ensure();
@@ -230,14 +225,14 @@ void GpuDetectorApp::handlePhase1(const json& msg)
         }
         else {
             const std::string& config_alias = msg["body"]["config_alias"];
-            m_gpuDetector = std::make_unique<GpuDetector>(m_para, m_drp, m_gpu);
+            m_gpuDetector = std::make_unique<GpuDetector>(m_para, m_drp, m_det);
             m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
                 m_drp.exposer()->RegisterCollectable(m_exporter);
             }
 
             m_gpuThread = std::thread{&GpuDetector::reader, std::ref(*m_gpuDetector), m_exporter,
-                                      std::ref(m_det), std::ref(m_drp.tebContributor())};
+                                      std::ref(m_drp.tebContributor())};
             m_collectorThread = std::thread(&GpuDetector::collector, std::ref(*m_gpuDetector),
                                             std::ref(m_drp.tebContributor()));
 

@@ -13,17 +13,14 @@ using namespace Pds;
 using namespace Drp;
 
 
-GpuDetector::GpuDetector(const Parameters& para, DrpBase& drp, GpuWorker* gpu) :
+GpuDetector::GpuDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, para.batchSize),
     m_drp(drp),
-    m_gpu(gpu),
-    m_det(gpu->detector()),
+    m_det(det),
     m_collectorCpuQueue(drp.pool.nbuffers()),
     m_collectorGpuQueue(drp.pool.nbuffers()),
     m_terminate(false)
 {
-    logging::info("GpuDetector constructed in process ID %lu", syscall(SYS_gettid));
-
     if (drp.pool.setMaskBytes(para.laneMask, m_det->virtChan)) {
         logging::critical("Failed to allocate lane/vc "
                           "- does another process have %s open?", para.device.c_str());
@@ -38,23 +35,14 @@ GpuDetector::~GpuDetector()
     shutdown();
 }
 
-void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det,
+void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter,
                          Eb::TebContributor& tebContributor)
 {
-    logging::info("GpuDetector::reader running in process ID %lu", syscall(SYS_gettid));
-
     uint64_t nevents = 0L;
     const unsigned bufferMask = m_pool.nDmaBuffers() - 1;
 
-    uint32_t regVal;
-    auto rc = dmaReadRegister(m_pool.fd(), 0x00d0002c, &regVal);
-    printf("*** 1 Read (rc %zd)  DMA reg 0x%08x: 0x%08x\n", rc, 0x00d0002c, regVal);
-
-    // @todo: This line addresses only lane 0
-    dmaWriteRegister(m_pool.fd(), 0x00d0002c, 0x0000ffff); // Bypass GPU, @todo: lane 1 only
-
-    rc = dmaReadRegister(m_pool.fd(), 0x00d0002c, &regVal);
-    printf("*** 2 Read (rc %zd)  DMA reg 0x%08x: 0x%08x\n", rc, 0x00d0002c, regVal);
+    // Select timing messages to be DMAed to the CPU
+    m_det->gpuWorker()->dmaMode(GpuWorker::CPU);
 
     // setup monitoring
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
@@ -110,7 +98,7 @@ void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det
         nDmaRet = ret;
 
         for (int b=0; b < ret; b++) {
-            const TimingHeader* timingHeader = handle(det, b);
+            const TimingHeader* timingHeader = handle(m_det, b);
             if (!timingHeader)  continue;
 
             nevents++;
@@ -127,7 +115,7 @@ void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det
                 continue;               // Skip broken event
 
             unsigned pebbleIndex = event->pebbleIndex;
-            Src src = det->nodeId;
+            Src src = m_det->nodeId;
             EbDgram* dgram = new(m_pool.pebble[pebbleIndex]) EbDgram(*timingHeader,
                                                                      src, m_para.rogMask);
 
@@ -144,7 +132,7 @@ void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det
 
                 // copy the temporary xtc created on phase 1 of the transition
                 // into the real location
-                Xtc& trXtc = det->transitionXtc();
+                Xtc& trXtc = m_det->transitionXtc();
                 trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
                 const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
                 auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
@@ -156,34 +144,18 @@ void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det
                 // This must be done before Collector can process the Enable to
                 // ensure that the next TimingHeader goes to the GPU and not the CPU
                 if (transitionId == TransitionId::Enable) {
-                    uint32_t regVal;
-                    auto rc = dmaReadRegister(m_pool.fd(), 0x00d0002c, &regVal);
-                    printf("*** 3 Read (rc %zd)  DMA reg 0x%08x: 0x%08x\n", rc, 0x00d0002c, regVal);
-
                     // Throw "switch" to have subsequent timing headers DMAed to the GPU
-                    // @todo: This line addresses only lane 0
-                    dmaWriteRegister(m_pool.fd(), 0x00d0002c, 0xffff0000); // Bypass CPU
-
-                    rc = dmaReadRegister(m_pool.fd(), 0x00d0002c, &regVal);
-                    printf("*** 4 Read (rc %zd)  DMA reg 0x%08x: 0x%08x\n", rc, 0x00d0002c, regVal);
+                    m_det->gpuWorker()->dmaMode(GpuWorker::GPU); // Bypass CPU
                 }
 
                 // Queue transitions to Collector in order to maintain coherency
                 m_collectorCpuQueue.push(index);
 
                 if (transitionId == TransitionId::Enable) {
-                    m_gpu->reader(index, m_collectorGpuQueue); // Returns when Disable is seen by the GPU
-
-                    uint32_t regVal;
-                    auto rc = dmaReadRegister(m_pool.fd(), 0x00d0002c, &regVal);
-                    printf("*** 5 Read (rc %zd)  DMA reg 0x%08x: 0x%08x\n", rc, 0x00d0002c, regVal);
+                    m_det->gpuWorker()->reader(index, m_collectorGpuQueue); // Returns when Disable is seen by the GPU
 
                     // Throw "switch" to have subsequent timing headers DMAed to the CPU
-                    // @todo: This line addresses only lane 0
-                    dmaWriteRegister(m_pool.fd(), 0x00d0002c, 0x0000ffff); // Bypass GPU
-
-                    rc = dmaReadRegister(m_pool.fd(), 0x00d0002c, &regVal);
-                    printf("*** 6 Read (rc %zd)  DMA reg 0x%08x: 0x%08x\n", rc, 0x00d0002c, regVal);
+                    m_det->gpuWorker()->dmaMode(GpuWorker::CPU); // Bypass GPU
                 }
             } else {                    // L1Accepts and SlowUpdates
                 logging::critical("GpuDetector unexpectedly saw %s @ %u.%09u (%014lx)",
@@ -224,7 +196,6 @@ void GpuDetector::_gpuCollector(Eb::TebContributor& tebContributor)
 {
     const uint32_t bufferMask = m_pool.nbuffers() - 1;
     auto triggerPrimitive = m_drp.triggerPrimitive();
-    //const Src src = m_det->nodeId;
     bool sawDisable = false;
     Batch batch;
     bool rc = m_collectorGpuQueue.pop(batch);
@@ -285,7 +256,7 @@ void GpuDetector::_gpuCollector(Eb::TebContributor& tebContributor)
                     sawDisable = true;
 
                     // Ensure PgpReader::handle() doesn't complain about evtCounter jumps
-                    m_lastComplete = m_gpu->lastEvtCtr();
+                    m_lastComplete = m_det->gpuWorker()->lastEvtCtr();
 
                     // Initialize the transition dgram's header
                     EbDgram* trDgram = m_pool.transitionDgrams[pebbleIndex];

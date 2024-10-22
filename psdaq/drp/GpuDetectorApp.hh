@@ -35,7 +35,7 @@ public:
         m_create_funcs.emplace(name, std::make_pair(&_instantiate, solib));
     }
 
-    GpuWorker* create(const std::string& name, Parameters& para, MemPool& pool)
+    Detector* create(const std::string& name, Parameters& para, MemPool& pool)
     {
         auto it = m_create_funcs.find(name);
         if (it != m_create_funcs.end()) {
@@ -47,7 +47,7 @@ public:
 
 private:
     static
-    GpuWorker* _instantiate(Pds::Dl* dl,
+    Detector* _instantiate(Pds::Dl* dl,
                             const std::string& library, const std::string& symbol,
                             Parameters& para, MemPool& pool)
     {
@@ -60,7 +60,7 @@ private:
             return nullptr;
         }
 
-        typedef GpuWorker* fn_t(Parameters& para, MemPool& pool);
+        typedef Detector* fn_t(Parameters& para, MemPool& pool);
         fn_t* instantiateFn = reinterpret_cast<fn_t*>(dl->loadSymbol(symbol.c_str()));
         if (!instantiateFn)
         {
@@ -68,7 +68,7 @@ private:
                     __PRETTY_FUNCTION__, symbol.c_str(), library.c_str());
             return nullptr;
         }
-        GpuWorker* instance = instantiateFn(para, pool);
+        Detector* instance = instantiateFn(para, pool);
         if (!instance)
         {
             fprintf(stderr, "%s:\n  Error calling %s\n",
@@ -79,9 +79,9 @@ private:
     }
 
 private:
-    typedef GpuWorker* (*PCreateFunc)(Pds::Dl*,
-                                      const std::string& so, const std::string& sym,
-                                      Parameters& para, MemPool& pool);
+    typedef Detector* (*PCreateFunc)(Pds::Dl*,
+                                     const std::string& so, const std::string& sym,
+                                     Parameters& para, MemPool& pool);
     std::unordered_map<std::string, std::pair<PCreateFunc, const std::string> > m_create_funcs;
 };
 
@@ -108,9 +108,7 @@ private:
     std::thread                          m_gpuThread;
     std::thread                          m_collectorThread;
     std::unique_ptr<GpuDetector>         m_gpuDetector;
-    GpuWorker*                           m_gpu;
     Detector*                            m_det;
-    Detector*                            m_crud;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     bool                                 m_unconfigure;
     PyThreadState*                       m_pysave;

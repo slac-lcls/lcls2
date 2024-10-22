@@ -26,9 +26,9 @@ class GpuWorker;
 class GpuDetector : public PgpReader
 {
 public:
-    GpuDetector(const Parameters& para, DrpBase& drp, GpuWorker* gpu);
+    GpuDetector(const Parameters& para, DrpBase& drp, Detector* det);
     virtual ~GpuDetector();
-    void reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
+    void reader(std::shared_ptr<Pds::MetricExporter> exporter, Pds::Eb::TebContributor& tebContributor);
     void collector(Pds::Eb::TebContributor& tebContributor);
     virtual void handleBrokenEvent(const PGPEvent& event) override;
     virtual void resetEventCounter() override;
@@ -38,7 +38,6 @@ private:
 private:
     static constexpr int MAX_RET_CNT_C { 8 };
     DrpBase&             m_drp;
-    GpuWorker*           m_gpu;
     Detector*            m_det;
     SPSCQueue<uint32_t>  m_collectorCpuQueue;
     SPSCQueue<Batch>     m_collectorGpuQueue;

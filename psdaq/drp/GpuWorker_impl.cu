@@ -71,15 +71,11 @@ struct DmaDsc
 
 CudaContext::CudaContext()
 {
-  logging::info("CudaContext constructed in process ID %lu", syscall(SYS_gettid));
-
   chkFatal(cuInit(0), "Error while initting cuda");
 }
 
 bool CudaContext::initialize(int device)
 {
-  logging::info("CudaContext initialized in process ID %lu", syscall(SYS_gettid));
-
   int devs = 0;
   if (chkError(cuDeviceGetCount(&devs)))
     return false;
@@ -251,7 +247,6 @@ GpuMemPool::GpuMemPool(const Parameters& para, MemPool& pool) :
   dmaBuffers(MAX_BUFFERS), // pool.nbuffers()), // @todo: Revisit nbuffs and size
   m_pool    (pool)
 {
-  logging::info("GpuMemPool constructed in process ID %lu", syscall(SYS_gettid));
 }
 
 GpuMemPool::~GpuMemPool()
@@ -303,7 +298,6 @@ int GpuMemPool::_gpuMapFpgaMem(CUdeviceptr& buffer, uint64_t offset, size_t size
   if (chkError(cuMemAlloc(&buffer, size))) {
     return -1;
   }
-  logging::debug("Done with device mem alloc %zd\n", idx);
   cuMemsetD8(buffer, 0, size);
 
   int flag = 1;
@@ -312,14 +306,12 @@ int GpuMemPool::_gpuMapFpgaMem(CUdeviceptr& buffer, uint64_t offset, size_t size
     cuMemFree(buffer);
     return -1;
   }
-  logging::debug("Done with set attr %zd\n", idx);
 
   if (gpuAddNvidiaMemory(fd(), write, buffer, size) < 0) {
     logging::error("gpuAddNvidiaMemory failed for buffer %zd", idx);
     cuMemFree(buffer);
     return -1;
   }
-  logging::debug("Done with gpuAddNvidiaMemory %zd\n", idx);
 
   return 0;
 }
@@ -339,8 +331,6 @@ GpuWorker_impl::GpuWorker_impl(const Parameters& para, MemPool& pool, Detector& 
   m_dmaIndex(0),
   m_para    (para)
 {
-  logging::info("GpuWorker_impl constructed in process ID %lu", syscall(SYS_gettid));
-
   ////////////////////////////////////////////
   // Setup GPU
   ////////////////////////////////////////////
@@ -379,24 +369,47 @@ GpuWorker_impl::GpuWorker_impl(const Parameters& para, MemPool& pool, Detector& 
   logging::debug("Done with creating streams\n");
 }
 
-void GpuWorker_impl::timingHeaders(unsigned index, TimingHeader* buffer)
+GpuWorker::DmaMode_t GpuWorker_impl::dmaMode() const
 {
-  auto idx = index & (m_streams.size() - 1);
-  chkFatal(cuMemcpyDtoH((void*)buffer, m_pool.dmaBuffers[idx], sizeof(*buffer)));
+  // @todo: This line addresses only lane 0
+  uint32_t regVal;
+  dmaReadRegister(m_pool.fd(), 0x00d0002c, &regVal);
+
+  GpuWorker::DmaMode_t mode;
+  switch (regVal)
+  {
+    case CPU:  mode = CPU;  break;
+    case GPU:  mode = GPU;  break;
+    default:   mode = ERR;  break;
+  }
+  return mode;
 }
 
-// @todo: This method is called when it has been recognized that data
-//        has been DMAed into GPU memory and is ready to be processed
-void GpuWorker_impl::process(Batch& batch, bool& sawDisable)
+void GpuWorker_impl::dmaMode(GpuWorker::DmaMode_t mode_)
 {
-  // Set up a buffer pool for timing headers visible to the host
-  // memcpy timing headers from device into this host pool
-  // memcpy the TEB input data right after the timing header?
-  //   Or put them in a separate pool?
-  // Form a batch of them
-  // Return from this routine when batch is full or Disable is seen
-
+  // @todo: This line addresses only lane 0
+  dmaWriteRegister(m_pool.fd(), 0x00d0002c, mode_);
 }
+
+// @todo: Do we still want these?
+//void GpuWorker_impl::timingHeaders(unsigned index, TimingHeader* buffer)
+//{
+//  auto idx = index & (m_streams.size() - 1);
+//  chkFatal(cuMemcpyDtoH((void*)buffer, m_pool.dmaBuffers[idx], sizeof(*buffer)));
+//}
+//
+//// @todo: This method is called when it has been recognized that data
+////        has been DMAed into GPU memory and is ready to be processed
+//void GpuWorker_impl::process(Batch& batch, bool& sawDisable)
+//{
+//  // Set up a buffer pool for timing headers visible to the host
+//  // memcpy timing headers from device into this host pool
+//  // memcpy the TEB input data right after the timing header?
+//  //   Or put them in a separate pool?
+//  // Form a batch of them
+//  // Return from this routine when batch is full or Disable is seen
+//
+//}
 
 // @todo: This method is called to wait for data to be DMAed into GPU memory
 //        This method must then do several things:
@@ -410,8 +423,6 @@ void GpuWorker_impl::process(Batch& batch, bool& sawDisable)
 // do until Disable is seen, so no obvious need for worker thread(s)
 void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
 {
-  logging::debug("GpuWorker_impl::reader() running in process ID %lu", syscall(SYS_gettid));
-
   // Set the context for the current thread
   chkFatal(cuCtxSetCurrent(m_context.context()));
   logging::debug("Done with setting context\n");
@@ -429,12 +440,12 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
   unsigned dmaIndex   = m_dmaIndex;
   unsigned evtCounter;
   do {                                  // @todo: Handle each stream in a separate thread
-    auto&        stream     = m_streams[dmaIndex];
-    CUdeviceptr& hwWritePtr = m_pool.dmaBuffers[dmaIndex];
+    auto&        stream    = m_streams[dmaIndex];
+    CUdeviceptr& dmaBuffer = m_pool.dmaBuffers[dmaIndex];
 
     // Clear the GPU memory handshake space to zero
     logging::debug("Clear memory\n");
-    chkFatal(cuStreamWriteValue32(stream, hwWritePtr + 4, 0x00, 0));
+    chkFatal(cuStreamWriteValue32(stream, dmaBuffer + 4, 0x00, 0));
 
     // Write to the DMA start register in the FPGA
     logging::debug("Trigger write to buffer %d\n", dmaIndex);
@@ -448,13 +459,13 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
     // Spin on the handshake location until the value is greater than or equal to 1
     // This waits for the data to arrive in the GPU before starting the processing
     logging::debug("Wait memory value\n");
-    chkFatal(cuStreamWaitValue32(stream, hwWritePtr + 4, 0x1, CU_STREAM_WAIT_VALUE_GEQ));
+    chkFatal(cuStreamWaitValue32(stream, dmaBuffer + 4, 0x1, CU_STREAM_WAIT_VALUE_GEQ));
     chkError(cuStreamSynchronize(stream));
     logging::debug("Done waiting\n");
 
-    unsigned nDmaRet = 1;  //*((unsigned*)(hwWritePtr + 4));
+    unsigned nDmaRet = 1;  //*((unsigned*)(dmaBuffer + 4));
 
-    chkError(cuMemcpyDtoH(hostWriteBuff, hwWritePtr, sizeof(DmaDsc)+sizeof(TimingHeader)));
+    chkError(cuMemcpyDtoH(hostWriteBuff, dmaBuffer, sizeof(DmaDsc)+sizeof(TimingHeader)));
     auto dsc = (DmaDsc*)&hostWriteBuff[0];
     printf("*** hdr: ret %08x,  sz %08x, idx %08x, dst %08x, flg %08x, err %08x, rsvd %08x %08x\n",
            dsc->ret, dsc->size, dsc->index, dsc->dest, dsc->flags, dsc->errors,

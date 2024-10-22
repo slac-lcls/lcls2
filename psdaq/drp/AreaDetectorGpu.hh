@@ -10,15 +10,16 @@ namespace Drp {
 class Parameters;
 class MemPool;
 
-class AreaDetectorGpu : public GpuWorker_impl
+class AreaDetectorGpu : public AreaDetector
 {
 public:
   AreaDetectorGpu(Parameters& para, MemPool& pool);
 public:
+  virtual GpuWorker* gpuWorker() override { return &m_worker; }
   // __device__ void event(const TimingHeader&, PGPEvent*);
   // __device__ void slowUpdate(const TimingHeader&);
-public:
-  AreaDetector m_det;
+private:
+  GpuWorker_impl m_worker;
 };
 
 }
