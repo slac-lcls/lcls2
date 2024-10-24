@@ -390,7 +390,7 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
                 peaksDict[seg][chan][1][0] = wf[4:]
                 fexOor = self._fexStatus[seg][chan][0]
                 #  Baselines are shifted to keep in 15b range
-                self._fexStatus[seg][chan] = (fexOor,[wf[:4]+(1<<4),])
+                self._fexStatus[seg][chan] = (fexOor,[wf[:4]+(1<<14),])
 
     @cython.binding(True)
     def fex_status(self, evt) -> HSDPeaks:
