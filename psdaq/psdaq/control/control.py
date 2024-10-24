@@ -1521,6 +1521,7 @@ class CollectionManager():
 
         # phase 1 not needed
         # phase 2 no replies needed
+        # 0x80 means throw away transition if there is deadtime
         update_ok = self.xpm.insert_transition(self.groups, (0x80 | ControlDef.transitionId['SlowUpdate']))
 
         if update_ok:
@@ -2364,6 +2365,10 @@ class CollectionManager():
             return False
 
         # phase 2
+        # bits 0x180 here mean we queue the transition and keep trying forever
+        # until deadtime goes away.  can result in completely lost transitions
+        # if deadtime is 100%. could then go out later and corrupt a later instance
+        # of the daq? just a guess.  - cpo oct 24, 2024
         self.xpm.insert_transition(self.groups, (0x180 | ControlDef.transitionId['Disable']))
 
         ok = self.get_phase2_replies('disable')
