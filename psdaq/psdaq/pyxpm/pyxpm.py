@@ -69,7 +69,7 @@ def main():
                         format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
     # Set base
-    base = pr.Root(name='AMCc',description='') 
+    base = pr.Root(name='AMCc',description='',pollEn=False) 
 
     base.add(Top(
         name   = 'XPM',
@@ -79,11 +79,7 @@ def main():
     ))
     
     # Start the system
-    base.start(
-#        pollEn   = False,
-#        initRead = False,
-#        zmqPort  = None,
-    )
+    base.start()
 
     xpm = base.XPM
     xpm.start()
@@ -101,11 +97,13 @@ def main():
 
     autosave.set(args.P,args.db,None)
 
+    cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
+    tsSync = TsSync(args.P,base.XPM.TpgMini) if cuMode else None
+
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A, 
-                      noTiming=args.T)
+                      noTiming=args.T, tsSync=tsSync)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9)
 
-    cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
     pvxtpg = None
 
     # process PVA transactions
