@@ -170,6 +170,7 @@ class XpmSequenceEngine(pr.Device):
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
+            verify       = False,  # pyrogue bug fails in checkTransaction
         ))
 
         self.add(pr.RemoteVariable(    
