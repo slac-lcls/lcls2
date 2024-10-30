@@ -40,7 +40,6 @@ using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
 using us_t = std::chrono::microseconds;
-using ns_t = std::chrono::nanoseconds;
 
 namespace Drp {
 
@@ -85,15 +84,6 @@ static int _compare(const TimeStamp& ts1,
   return result;
 }
 
-template<typename T>
-static int64_t _deltaT(const TimeStamp& ts)
-{
-    auto now = std::chrono::system_clock::now();
-    auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{ts.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(tns)};
-    return std::chrono::duration_cast<T>(now - tp).count();
-}
 
 namespace Drp {
 
@@ -283,7 +273,7 @@ void PvMonitor::updated()
         TimeStamp timestamp(seconds, nanoseconds);
 
         ++m_nUpdates;
-        m_latency = _deltaT<us_t>(timestamp); // Grafana plots latency in us
+        m_latency = Pds::Eb::latency<us_t>(timestamp); // Grafana plots latency in us
         logging::debug("%s updated @ %u.%09u, latency %ld ms", name().c_str(), timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000);
 
         Dgram* dgram;
@@ -328,7 +318,7 @@ void PvMonitor::timeout(const PgpReader& pgp, ms_t timeout)
                            "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
                            pvDg->time.seconds(),  pvDg->time.nanoseconds(),
                            pvDg->time.seconds(), (pvDg->time.nanoseconds()>>16)&0xfffe, pvDg->time.nanoseconds()&0x1ffff,
-                           _deltaT<ms_t>(pvDg->time));
+                           Pds::Eb::latency<ms_t>(pvDg->time));
             pvQueue.try_pop(pvDg);      // Actually consume the element
             bufferFreelist.push(pvDg);  // Return buffer to freelist
         }
@@ -823,7 +813,7 @@ void PvDetector::_matchUp()
                                result == 0 ? '=' : (result < 0 ? '<' : '>'),
                                pvDg->time.seconds(), pvDg->time.nanoseconds(),
                                m_timeDiff, evtDg->pulseId(), evtDg->service(),
-                               _deltaT<ms_t>(evtDg->time));
+                               Pds::Eb::latency<ms_t>(evtDg->time));
 
                 if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
                 else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
@@ -940,7 +930,7 @@ void PvDetector::_timeout(ms_t timeout)
                        "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       _deltaT<ms_t>(dgram.time), dgram.service());
+                       Pds::Eb::latency<ms_t>(dgram.time), dgram.service());
 
         if (dgram.service() == TransitionId::L1Accept) {
             // No PV data so mark event as damaged

@@ -224,12 +224,8 @@ bool TebContributor::timeout()
 void TebContributor::process(const EbDgram* dgram)
 {
   if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
-    auto now = std::chrono::system_clock::now();  // Takes a long time!
-    auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-    _latency = std::chrono::duration_cast<us_t>(now - tp).count();
-    _latPid = dgram->pulseId();
+    _latency = latency<us_t>(dgram->time);
+    _latPid  = dgram->pulseId();
   }
   auto rogs       = dgram->readoutGroups();
   bool contractor = rogs & _prms.contractor; // T if providing TEB input

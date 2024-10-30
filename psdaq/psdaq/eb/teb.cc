@@ -683,8 +683,8 @@ void Teb::process(EbEvent* event)
   }
 
   if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
-    _latency = std::chrono::duration_cast<us_t>(latency(dgram->time)).count();
-    _latPid = dgram->pulseId();
+    _latency = latency<us_t>(dgram->time);
+    _latPid  = dgram->pulseId();
   }
 }
 
