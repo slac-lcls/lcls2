@@ -1,4 +1,5 @@
 import getpass
+import logging
 import os
 import socket
 import time
@@ -10,7 +11,6 @@ from prometheus_client.exposition import tls_auth_handler
 
 from psana import utils
 from psana.psexp.tools import mode
-import logging
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -90,17 +90,23 @@ def my_auth_handler(url, method, timeout, headers, data):
 
 class PrometheusManager(object):
     registry = CollectorRegistry()
+    # Store available psana metrics by metric_type, description, and labelnames
     metrics = {
-        "psana_smd0_read": ("Gauge", "Disk reading rate (MB/s) for smd0"),
-        "psana_smd0_rate": ("Gauge", "Processing rate by smd0 (kHz)"),
-        "psana_smd0_wait": ("Gauge", "time spent (s) waiting for EventBuilders"),
-        "psana_eb_rate": ("Gauge", "Processing rate by eb (kHz)"),
-        "psana_eb_wait_smd0": ("Gauge", "time spent (s) waiting for Smd0"),
-        "psana_eb_wait_bd": ("Gauge", "time spent (s) waiting for BigData cores"),
-        "psana_bd_rate": ("Gauge", "Processing rate by bd (kHz)"),
-        "psana_bd_read": ("Gauge", "Disk reading rate (MB/s) for bd"),
-        "psana_bd_ana_rate": ("Gauge", "User-analysis rate on bd (kHz)"),
-        "psana_bd_wait": ("Gauge", "time spent (s) waiting for EventBuilder"),
+        "psana_smd0_read": ("Gauge", "Disk reading rate (MB/s) for smd0", ()),
+        "psana_smd0_rate": ("Gauge", "Processing rate by smd0 (kHz)", ()),
+        "psana_smd0_wait": ("Gauge", "time spent (s) waiting for EventBuilders", ()),
+        "psana_eb_rate": ("Gauge", "Processing rate by eb (kHz)", ()),
+        "psana_eb_wait_smd0": ("Gauge", "time spent (s) waiting for Smd0", ()),
+        "psana_eb_wait_bd": ("Gauge", "time spent (s) waiting for BigData cores", ()),
+        "psana_bd_rate": ("Gauge", "Processing rate by bd (kHz)", ()),
+        "psana_bd_read": ("Gauge", "Disk reading rate (MB/s) for bd", ()),
+        "psana_bd_ana_rate": ("Gauge", "User-analysis rate on bd (kHz)", ()),
+        "psana_bd_wait": ("Gauge", "time spent (s) waiting for EventBuilder", ()),
+        "psana_damage_total": (
+            "Counter",
+            "Damage counter per detector and damage type",
+            ("detname", "damage"),
+        ),
     }
 
     def __init__(self, job=None):
@@ -162,13 +168,13 @@ class PrometheusManager(object):
 
     def create_metric(self, metric_name):
         if metric_name in self.metrics:
-            metric_type, desc = self.metrics[metric_name]
+            metric_type, desc, labelnames = self.metrics[metric_name]
             if metric_type == "Counter":
-                self.registry.register(Counter(metric_name, desc))
+                self.registry.register(Counter(metric_name, desc, labelnames))
             elif metric_type == "Summary":
-                self.registry.register(Summary(metric_name, desc))
+                self.registry.register(Summary(metric_name, desc, labelnames))
             elif metric_type == "Gauge":
-                self.registry.register(Gauge(metric_name, desc))
+                self.registry.register(Gauge(metric_name, desc, labelnames))
         else:
             logger.info(
                 f"Warning: {metric_name} is not found in the list of available prometheus metrics"

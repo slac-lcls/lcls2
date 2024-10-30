@@ -4,6 +4,7 @@ import numpy as np
 
 from psana import utils
 from psana.dgram import Dgram
+from psana.psexp import DamageId
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.events import Events
 from psana.psexp.packet_footer import PacketFooter
@@ -17,6 +18,9 @@ else:
     logger = utils.Logger()
 
 import time
+
+DAMAGE_USERBITSHIFT = 12
+DAMAGE_VALUEBITMASK = 0x0FFF
 
 # Setting up group communications
 # Ex. PS_EB_NODES=3 mpirun -n 13
@@ -679,6 +683,7 @@ class BigDataNode(object):
         self.comms = ds.comms
         self.wait_gauge = ds.dsparms.prom_man.get_metric("psana_bd_wait")
         self.rate_gauge = ds.dsparms.prom_man.get_metric("psana_bd_rate")
+        self.damage_counter = ds.dsparms.prom_man.get_metric("psana_damage_total")
 
     def start(self):
         def get_smd():
@@ -718,10 +723,25 @@ class BigDataNode(object):
         for i_evt, evt in enumerate(events):
             if self.ds.dsparms.terminate_flag:
                 continue
-            if i_evt % 1000 == 0:
-                t1 = time.monotonic()
-                rate = 1 / (t1 - t0)
-                logger.debug(f"RATE BD ({self.comms.bd_rank}-) {rate:.5f} kHz")
-                self.rate_gauge.set(rate)
-                t0 = time.monotonic()
+
+            if self.ds.monitor:
+                for i_d, d in enumerate(evt._dgrams):
+                    if hasattr(d, "_xtc"):
+                        if d._xtc.damage:
+                            userBits = d._xtc.damage >> DAMAGE_USERBITSHIFT
+                            damage = d._xtc.damage & DAMAGE_VALUEBITMASK
+                            detname = ",".join(self.ds.dm.stream_id_to_detnames[i_d])
+                            damagename = DamageId.damageName(damage)
+                            self.damage_counter.labels(detname, damagename).inc()
+                            logger.debug(
+                                f"DAMAGE ts:{evt.timestamp} detname: {detname} type: {damagename} userBits: {userBits}"
+                            )
+
+                if i_evt % 1000 == 0:
+                    t1 = time.monotonic()
+                    rate = 1 / (t1 - t0)
+                    logger.debug(f"RATE BD ({self.comms.bd_rank}-) {rate:.5f} kHz")
+                    self.rate_gauge.set(rate)
+                    t0 = time.monotonic()
+
             yield evt
