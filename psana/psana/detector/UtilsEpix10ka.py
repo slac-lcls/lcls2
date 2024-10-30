@@ -78,8 +78,13 @@ def data_bitword(dettype):
 
 
 class Storage:
-    def __init__(self, det_raw, cmpars=None, **kwa):
-        """Holds cached parameters for for common mode correction of the epix multi-gain getectors.
+    def __init__(self, det_raw, **kwa):
+        """Holds cached calibration parameters for the epix multi-gain getector.
+
+        **kwa
+        ------
+        cmpars (tuple) - common mode parameters, e.g. (7,2,100,10)
+        perpix (bool) - if True, preserves peds and gfac arrays shaped per pixel, as (<nsegs>, 352, 384, 7)
 
         Parameters
         ----------
@@ -94,42 +99,88 @@ class Storage:
 
         #logger.info('create store with cached parameters for %s' % det_raw._det_name)
 
-        det_raw._store_ = self  # self preservation
+        self.arr1 = None
+        self.peds = None
+        self.gfac = None
+        self.mask = None
         self.counter = -1
 
-        self.gain = det_raw._gain()      # - 4d gains  (7, <nsegs>, 352, 384)
-        self.peds = det_raw._pedestals() # - 4d pedestals
-        #if self.gain is None: return None # gain = np.ones_like(peds)  # - 4d gains for all gain ranges
-        #if self.peds is None: return None # peds = np.zeros_like(peds) # - 4d pedestals
+        cmpars = kwa.get('cmpars', None)
+        perpix = kwa.get('perpix', False)
 
-        #store = dic_store.get(det_raw._det_name, None)
+        #logger.info('det_raw._calibconst.keys: %s' % str(det_raw._calibconst.keys()))
 
-        #if store is None:
-
-        #raw = det_raw.raw(evt) # need it for raw shape only...
-        self.shape_as_daq = det_raw._shape_as_daq()
-        self.gfac = divide_protected(np.ones_like(self.gain), self.gain)
-        self.arr1 = np.ones(self.shape_as_daq, dtype=np.int8)
-        #self.arr1 = np.ones_like(raw, dtype=np.int8)
+        gain = det_raw._gain()      # - 4d gains  (7, <nsegs>, 352, 384)
+        peds = det_raw._pedestals() # - 4d pedestals
 
         # 'FH','FM','FL','AHL-H','AML-M','AHL-L','AML-L'
         #self.gf4 = np.ones_like(raw, dtype=np.int32) * 0.25 # 0.3333 # M - perefierial
         #self.gf6 = np.ones_like(raw, dtype=np.int32) * 1    # L - center
-
         #if self.dcfg is None: self.dcfg = det_raw._config_object() #config_object_det_raw(det_raw)
+
+        #raw = det_raw.raw(evt) # need it for raw shape only...
+        #self.arr1 = np.ones_like(raw, dtype=np.int8)
+        self.shape_as_daq = det_raw._shape_as_daq()
+        self.arr1 = np.ones(self.shape_as_daq, dtype=np.int8)
+        gfac = divide_protected(np.ones_like(gain), gain)
 
         self.mask = det_raw._mask(**kwa)
         if self.mask is None: self.mask = det_raw._mask_from_status(**kwa)
         if self.mask is None: self.mask = np.ones(self.shape_as_daq, dtype=DTYPE_MASK)
 
+        t0_sec = time()
+        self.peds = arr7grToPerPixelCons(peds) if perpix else peds
+        self.gfac = arr7grToPerPixelCons(gfac) if perpix else gfac
+        dt_sec = (time()-t0_sec)*1000
+
         self.cmpars = det_raw._common_mode() if cmpars is None else cmpars
 
-        #logger.info('\n  shape_as_daq %s' % str(self.shape_as_daq)\
-        #            +info_ndarr(self.gain, '\n  gain')\
-        #            +info_ndarr(self.peds, '\n  peds')\
-        #            +info_ndarr(self.gfac, '\n  gfac')\
-        #            +info_ndarr(self.mask, '\n  mask')\
-        #            +'\n  common-mode correction parameters cmpars: %s' % str(self.cmpars))
+        logger.info('\n  det_name: %s' % det_raw._det_name\
+                    +'\n  peds and gfac reshape time: %.3f msec' % dt_sec\
+                    +'\n  shape_as_daq %s' % str(self.shape_as_daq)\
+                    +info_ndarr(gain, '\n  gain')\
+                    +info_ndarr(self.peds, '\n  peds')\
+                    +info_ndarr(self.gfac, '\n  gfac')\
+                    +info_ndarr(self.mask, '\n  mask')\
+                    +'\n  common-mode correction parameters cmpars: %s' % str(self.cmpars))
+
+
+#def data2x2ToTwo2x1(arr2x2):
+#    """Converts array shaped as CSPAD2x2 data (185,388,2) to two 2x1 arrays with shape=(2,185,388)."""
+#    arr2x2.shape = (185,388,2)
+#    return np.array([arr2x2[:,:,0], arr2x2[:,:,1]])
+
+#def two2x1ToData2x2(arrTwo2x1):
+#    """Converts array shaped as two 2x1 arrays (2,185,388) or (2*185,388) to CSPAD2x2 data shape=(185,388,2)."""
+#    arrTwo2x1.shape = (2,185,388)
+#    arr2x2 = np.array(list(zip(arrTwo2x1[0].flatten(), arrTwo2x1[1].flatten())))
+#    arr2x2.shape = (185,388,2)
+#    return arr2x2
+
+
+#def arr7grToPerPixelCons_v0(arr7gr):
+#    """Converts array shaped as (7, <number-of-segments>, 352, 384), dt=6.7ms"""
+#    sh = arr7gr.shape
+#    assert arr7gr.ndim == 4
+#    assert sh[-2:] == (352, 384)
+#    arrperpix = np.array(list(zip([arr7gr[gr].flatten() for gr in range(7)])))
+#    arrperpix.shape = (7, sh[1]*352*384)
+#    arrperpix = arrperpix.T
+#    arrperpix.shape = (sh[1], 352, 384, 7)
+#    return arrperpix
+
+
+def arr7grToPerPixelCons(arr7gr):
+    """Converts array shaped as (7, <number-of-segments>, 352, 384), dt=12us"""
+    sh = arr7gr.shape
+    assert arr7gr.ndim == 4
+    assert sh[-2:] == (352, 384)
+    ngr, nsegs, rows, cols = sh0 = arr7gr.shape # (7, <number-of-segments>, 352, 384)
+    arr7gr.shape = (ngr, nsegs * rows * cols)
+    arrperpix = arr7gr.T
+    arrperpix.shape = (nsegs, rows, cols, ngr)
+    arr7gr.shape = sh0 # preserve shape of input array
+    return arrperpix
 
 
 def config_object_det(det, detname=None):
@@ -167,9 +218,10 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     -------
     xxxx: np.array, dtype:uint8, ndim=2, shape=(352, 384)
     """
-    trbits = cob.trbit # [1 1 1 1]
+    trbits = cob.trbit # [1 1 1 1] < per ASIC trbit in the panel, consisting off 4 ASICs
     pca = cob.asicPixelConfig # [:,:176,:] - fixed in daq # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
     logger.debug(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
+    #print(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
     rowsh, colsh = int(shape[0]/2), int(shape[1]/2) # should be 176, 192 for epix10ka
 
     #t0_sec = time()
@@ -559,6 +611,9 @@ def print_gmaps_info(gmaps):
     logger.debug('%s\n%s' %\
       (info_gain_mode_arrays(gmaps), info_pixel_gain_mode_statistics(gmaps)))
 
+def cond_msg(c, msg='is None', output_meth=logger.debug):
+    if c: output_meth(msg)
+    return c
 
 def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     """
@@ -590,25 +645,24 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
       - calibrated epix10ka data
     """
 
+    #print('XXXX calib_epix10ka_any kwa:', kwa)
+
     nda_raw = kwa.get('nda_raw', None)
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
-    if raw is None:
-        logger.debug('raw is None')
-        return None
+    if cond_msg(raw is None, msg='raw is None'): return None
 
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
-    if gmaps is None:
-        logger.debug('gmaps is None')
-        return None
+    if cond_msg(gmaps is None, msg='gmaps is None'): return None
 
-    store = Storage(det_raw, cmpars, **kwa) if det_raw._store_ is None else det_raw._store_
-    mask = store.mask
+    store = det_raw._store_ = Storage(det_raw, cmpars=cmpars, **kwa) if det_raw._store_ is None else det_raw._store_  #perpix=True
+    store.counter += 1
+    if store.counter < 1: print_gmaps_info(gmaps)
+
     factor = event_constants_for_gmaps(gmaps, store.gfac, default=1)  # 3d gain factors
     pedest = event_constants_for_gmaps(gmaps, store.peds, default=0)  # 3d pedestals
 
     store.counter += 1
     if not store.counter%100: print_gmaps_info(gmaps)
-
     arrf = np.array(raw & det_raw._data_bit_mask, dtype=np.float32)
     if pedest is not None: arrf -= pedest
 
@@ -617,10 +671,9 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     logger.debug(info_ndarr(arrf,  'arrf:'))
 
-    if factor is None:
-        #logger.warning('gain factor is None - substitute with 1')
-        factor = 1
+    if cond_msg(factor is None, msg='factor is None - substitute with 1', output_meth=logger.warning): factor = 1
 
+    mask = store.mask
     return arrf * factor if mask is None else arrf * factor * mask # gain correction
 
 
