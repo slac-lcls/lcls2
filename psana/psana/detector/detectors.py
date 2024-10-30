@@ -13,7 +13,7 @@ from .ts                    import *
 from .wave8                 import *
 from .epix10ka              import *
 from .epixhr2x2             import *
-from .epixhremu             import *
+#from .epixhremu             import *
 from .epix100               import *
 from .epixm320              import *
 from .epixUHR               import *
