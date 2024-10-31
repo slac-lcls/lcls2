@@ -1,6 +1,14 @@
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 
+USEDAQENV=0
+for arg in "$@"
+do
+  if [ "$arg" == "-d" -o "$arg" == "-daq" ]; then
+     USEDAQENV=1
+  fi
+done
+
 if [ -d "/sdf/group/lcls/" ]
 then
     # for s3df
@@ -16,7 +24,11 @@ else
     export SIT_PSDM_DATA=/cds/data/psdm
 fi
 
-conda activate ps-4.6.3
+if [ "${USEDAQENV}" == 1 ]; then
+    conda activate ps-4.6.3-daq
+else
+    conda activate ps-4.6.3
+fi
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
     source $AUTH_FILE
