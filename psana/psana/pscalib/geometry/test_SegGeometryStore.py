@@ -60,7 +60,9 @@ def selector():
     elif(tname=='9'): sg = test_segname('EPIXHR2X2:V1')
     elif(tname=='10'):sg = test_segname('EPIXHR1X4:V1')
     elif(tname=='11'):sg = test_segname('ARCHON:V1', detector=detector_simulator())
-    elif(tname=='12'):sg = sgs.Create(segname='ABRACADABRA:V1');\
+    elif(tname=='12'):sg = test_segname('EPIXMASIC:V1')
+    elif(tname=='13'):sg = test_segname('EPIXUHRASIC:V1')
+    elif(tname=='99'):sg = sgs.Create(segname='ABRACADABRA:V1');\
         logger.info('Return for non-existent segment name: %s' % sg)
     else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
     if len(sys.argv)>1: logger.info(usage())

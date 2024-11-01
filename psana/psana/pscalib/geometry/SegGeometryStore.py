@@ -87,6 +87,9 @@ def segment_geometry(**kwa):
     elif segname=='EPIXMASIC:V1': # The same as 'MTRX:V2:192:384:50:50' # EPIXM ASIC
         from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
         return SegGeometryMatrixV2(192, 384, 50, 50, pix_size_depth=500, pix_scale_size=50)
+    elif segname=='EPIXUHRASIC:V1': # The same as 'MTRX:V2:192:384:50:50' # EPIXUHR ASIC
+        from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
+        return SegGeometryMatrixV2(168, 192, 100, 100, pix_size_depth=500, pix_scale_size=100)
     elif segname[:7]=='MTRX:V2':
         from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
         rows, cols, psize_row, psize_col = matrix_pars_v2(segname)
