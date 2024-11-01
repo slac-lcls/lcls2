@@ -22,7 +22,7 @@ def nameLinkDrp(v):
     return ('TDetSim', hostName(v))
 
 def nameLinkHsd(v):
-    return ('HSD', '{:}.{:x}'.format(hostName(v),(v>>16)&0xff))
+    return ('HSD', '{:}.{:02X}'.format(hostName(v),(v>>16)&0xff))
 
 def nameLinkTDet(v):
     return ('TDetSim', hostName(v))
