@@ -505,8 +505,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         
         toYaml('App',['WaveformControl'],'RegisterControl')
         toYaml('App',['TriggerRegisters'],'TriggerReg')
-        toYaml('App',[f'Asic{i}' for i in asics ],'SACIReg')
-        toYaml('App',[f'BatcherEventBuilder{i}' for i in asics],'General')
+        toYaml('App',[f'Asic{i+1}' for i in range(cbase.numOfAsics) ],'SACIReg')
+        toYaml('App',[f'BatcherEventBuilder{i+1}' for i in range(cbase.numOfAsics)],'General')
         
         #setattr(cbase, 'filenameASIC',4*[None]) # This one is a little different
         #for i in asics:
