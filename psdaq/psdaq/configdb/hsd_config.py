@@ -122,6 +122,8 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['fex_ymin' ] = fex['ymin']
     expert['fex_ymax' ] = fex['ymax']
     expert['fex_prescale'] = fex['prescale']
+    expert['fex_corr_baseline'] = fex['corr']['baseline']
+    expert['fex_corr_accum']    = fex['corr']['accum']
 
     # program the values
     apply_config(ctxt,cfg)
