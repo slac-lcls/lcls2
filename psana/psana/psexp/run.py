@@ -94,7 +94,6 @@ class Run(object):
         if hasattr(ds, "smdr_man"):
             ds.smdr_man.set_run(self)
         RunHelper(self)
-        self._dets = {}
 
     @property
     def dm(self):
@@ -125,8 +124,6 @@ class Run(object):
         return None
 
     def Detector(self, name, accept_missing=False, **kwargs):
-        if name in self._dets:
-            return self._dets[name]
 
         mapped_env_var_name = self._get_valid_env_var_name(name)
 
@@ -216,7 +213,6 @@ class Run(object):
                 )
                 setattr(det, "_det_name", det_name)
 
-        self._dets[name] = det
         return det
 
     @property
@@ -437,7 +433,6 @@ class RunSmallData(Run):
             bd_run.dsparms,
         )
         self.eb = eb
-        self._dets = {}
 
         # Setup EnvStore - this is also done differently from other Run types.
         # since RunSmallData doesn't user EventManager (updates EnvStore), it'll
