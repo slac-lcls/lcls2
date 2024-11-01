@@ -436,8 +436,80 @@ def issue_2024_08_19():
     gr.show()
 
 
+def issue_2024_10_30():
+    """philip, archon common mode
+       myRun.Detector(detName) - a single instance is created..., Philm expects 3.
+    """
+    import sys
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import psana
+
+    detName = 'archon'
+    ds  = psana.DataSource(exp='rixx1017523', run=11, detectors=[detName])
+    myRun = next(ds.runs())
+    detDefault = myRun.Detector(detName)
+    detNoCM = myRun.Detector(detName, cmpars=None)
+    detCM1 = myRun.Detector(detName, cmpars=1)
+
+    for nEvt, evt in enumerate(myRun.events()):
+        if nEvt == 0:
+            print("mean pedestal:", detDefault.calibconst['pedestals'][0].mean())
+        cDef = detDefault.raw.calib(evt)
+        if cDef is None:
+            raise Exception("should never be None I think with detectors set")
+
+        cNoCM = detNoCM.raw.calib(evt)
+        cCM1 = detCM1.raw.calib(evt)
+        print("default = no cm:", cDef == cNoCM)
+        print("no cm = cm:", cNoCM == cCM1)
+        break
+
+def issue_2024_10_31():
+    """test access to config for det.raw.calib development
+       datinfo -k exp=uedcom103,run=812 -d epixquad
+       https://confluence.slac.stanford.edu/display/LCLSIIData/psana#psana-PublicPracticeData
+       uedcom103, ueddaq02 epix10ka
+    """
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    import psana.detector.UtilsEpix10ka as ue
+    flimg = None
+    ds = DataSource(exp='uedcom103',run=812)
+    break_loop = False
+    for nrun,orun in enumerate(ds.runs()):
+      det = orun.Detector('epixquad')
+      #print('det:', dir(det.raw))
+      #print('det.raw:', dir(det.raw))
+      #d = det.raw._seg_configs()
+      #print('det.raw._seg_configs():', d)
+      #for k,v in d.items():
+          #print(k, v.config.trbit, v.config.asicPixelConfig.shape)
+          #cob = v.config
+          #cbits = ue.cbits_config_epix10ka(cob, shape=(352, 384))
+          #print(info_ndarr(cbits, 'panel: %02d cbits:' % k))
+      cbits = det.raw._cbits_config_detector()
+      #print(info_ndarr(('detname: %s cbits:' % det.raw._fullname()), cbits))
+      print(info_ndarr(cbits,'cbits:'))
+      sys.exit('TEST EXIT')
 
 
+      if break_loop: break
+      print('det.raw._shape_as_daq():', det.raw._shape_as_daq())
+      for nstep,step in enumerate(orun.steps()):
+        if break_loop: break
+        #print('\n=============== step %d config gain mode: %s' % (nstep, gain_mode_name(det)))
+        print('\n=============== step %d' % (nstep))
+        for nevt,evt in enumerate(step.events()):
+          s = '  == evt %d' % nevt
+          s += info_ndarr(det.raw.raw(evt),     '\n  raw  ', first=1000, last=1005)
+          s += info_ndarr(det.raw._pedestals(), '\n  peds ', first=1000, last=1005)
+          s += info_ndarr(det.raw.calib(evt),   '\n  calib', first=1000, last=1005)
+          print(s)
+          if nevt>2:
+              break_loop = True
+              print('\n break_loop')
+              break
 
 
 def argument_parser():
@@ -486,6 +558,8 @@ def selector():
     elif TNAME in ('10',): issue_2024_04_24() # epixm320 exp='rixx1005922',run=328 run.expt: tstx00417
     elif TNAME in ('11',): issue_2024_07_24() # test for implementation off archon methods
     elif TNAME in ('12',): issue_2024_08_19() # epixm320 exp='rixx1005922',run=100 on sdf
+    elif TNAME in ('13',): issue_2024_10_30() # philip exp='rixx1017523',run=11, archon common mode
+    elif TNAME in ('14',): issue_2024_10_31() # test access to config for det.raw.calib development
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
