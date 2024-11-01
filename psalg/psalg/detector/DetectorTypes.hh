@@ -82,6 +82,7 @@ namespace detector {
     {"Epix10ka2M"     , AREA_DETECTOR},
     {"Epix100a"       , AREA_DETECTOR},
     {"EpixS"          , AREA_DETECTOR},
+    {"EpixUHR"        , AREA_DETECTOR},
     {"Gotthard"       , AREA_DETECTOR},
     {"Wave8"          , WF_DETECTOR},
     {"LeCroy"         , WF_DETECTOR},

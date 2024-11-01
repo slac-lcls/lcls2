@@ -1,0 +1,70 @@
+if not platform: platform = '1'
+
+hutch, user = ('tst', 'tstopr')
+
+ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'+' '+ld_lib_path
+
+collect_host = 'drp-neh-ctl002'
+
+groups = platform # + ' 7' + ' 2'
+hutch, user = ('tst', 'tstopr')
+auth = '--user {:} '.format(user)
+url  = '--url https://pswww.slac.stanford.edu/ws-auth/devlgbk/'
+#cdb  = f'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'     # production  ConfigDb
+cdb  = f'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws'  # development ConfigDb
+
+#
+#  drp variables
+#
+prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
+data_dir = '/u1/melchior/EpixUHR/data'
+
+#network  = 'ep_fabric="172.21.156.0/22",ep_domain=eno1,ep_provider=sockets'
+#network  = 'ep_provider=verbs'
+#network  = 'ep_fabric="172.21.148.0/22",ep_domain=eno1'  # Works
+#network = 'ep_fabric="172.21.148.0",ep_provider=sockets'  # Doesn't work
+network  = 'ep_provider=sockets,ep_domain=eno1'
+task_set = 'taskset 0xffbfeffbfe '
+pvaAddr  = 'pva_addr=172.21.148.150' # dev02
+
+std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir} -k {network}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir}  -k {pvaAddr},directIO=no'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir}  -k {pvaAddr},directIO=no'
+
+teb_cmd  = f'{task_set} teb '+        std_opts   #+' -1 18 -2 19'
+meb_cmd  = f'{task_set} monReqServer {std_opts}' #+' -1 16 -2 17'
+
+drp_cmd0 = f'{task_set} drp '     +std_opts0
+drp_cmd1 = f'{task_set} drp '     +std_opts1
+
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+#{                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:10 DAQ:NEH:XPM:11'}, 
+#{                         id:'groupca',flags:'sx', env:epics_env, cmd:'groupca DAQ:NEH 10 1'},
+ {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'}, 
+ {host: collect_host,      id:'control',     flags:'spux', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 10 -C BEAM {auth} {url} -r /dev/null -d {cdb}/configDB -t trigger -S 1 -T 20000 -vvv'}, 
+ {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H   {collect_host} --expert {auth} --loglevel WARNING'},
+
+ # trigger event builder
+ { host: 'drp-neh-cmp003', id:'teb0',        flags:'spu',                cmd:f'{task_set}teb -P {hutch} -C {collect_host} -M {prom_dir} -k ep_provider=sockets,ep_domain=eno1'},
+
+ { host: 'drp-neh-cmp003', id:'epixuhr_0',   flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixUHR -vvv'},
+# { host: 'drp-neh-cmp001', id:'timing_1',     flags:'spu', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
+
+ { host: 'drp-neh-cmp002', id:'timing_1',    flags:'spu',                cmd:drp_cmd0+' -l 0x1 -D ts -k ep_provider=sockets,ep_domain=eno1'},
+
+
+]
