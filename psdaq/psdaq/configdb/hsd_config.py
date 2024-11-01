@@ -122,8 +122,8 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['fex_ymin' ] = fex['ymin']
     expert['fex_ymax' ] = fex['ymax']
     expert['fex_prescale'] = fex['prescale']
-    expert['fex_corr_baseline'] = fex['corr']['baseline']
-    expert['fex_corr_accum']    = fex['corr']['accum']
+#    expert['fex_corr_baseline'] = fex['corr']['baseline']
+#    expert['fex_corr_accum']    = fex['corr']['accum']
 
     # program the values
     apply_config(ctxt,cfg)
@@ -249,6 +249,8 @@ def apply_config(ctxt,cfg):
     if 'expert' in cfg:
         for k,v in cfg['expert'].items():
             values[k] = v
+    values['fex_corr_baseline'] = cfg['user']['fex']['corr']['baseline']
+    values['fex_corr_accum'   ] = cfg['user']['fex']['corr']['accum']
     ctxt.put(epics_prefix+':CONFIG',values,wait=True)
 
     # the completion of the "put" guarantees that all of the above
