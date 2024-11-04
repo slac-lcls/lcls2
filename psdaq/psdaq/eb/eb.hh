@@ -173,12 +173,12 @@ int64_t Pds::Eb::latency(const XtcData::TimeStamp& time)
   std::chrono::system_clock::time_point tp{ std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt) };
   auto dt =  now - tp;
 
-  // If the two times are in different epochs, dt will be large so change epoch
-  //if (std::chrono::duration_cast<sec_t>(dt).count() > POSIX_TIME_AT_EPICS_EPOCH)
-  //{
-  //  _epoch = 0;
-  //  return latency<T>(time);
-  //}
+  // If time difference is large, adjust the epoch to get differences near zero
+  if (std::chrono::duration_cast<sec_t>(dt).count() > POSIX_TIME_AT_EPICS_EPOCH)
+  {
+    _epoch = std::chrono::duration_cast<sec_t>(dt).count() + POSIX_TIME_AT_EPICS_EPOCH;
+    return latency<T>(time);
+  }
   return std::chrono::duration_cast<T>(dt).count();
 }
 
