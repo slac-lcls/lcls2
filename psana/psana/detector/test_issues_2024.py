@@ -465,6 +465,7 @@ def issue_2024_10_30():
         print("no cm = cm:", cNoCM == cCM1)
         break
 
+    
 def issue_2024_10_31():
     """test access to config for det.raw.calib development
        datinfo -k exp=uedcom103,run=812 -d epixquad
@@ -512,21 +513,102 @@ def issue_2024_10_31():
               break
 
 
+
+
+
+
+
+def issue_2024_11_01(parser):
+    """
+       datinfo -k exp=tstx00217,run=553,dir=/sdf/group/lcls/ds/ana/detector/data2_test/xtc/ -d epixuhr
+       epixm320_dark_proc -k exp=tstx00217,run=553,dir=/sdf/group/lcls/ds/ana/detector/data2_test/xtc/ -d epixm -o ./work # -D
+       shape for 4 asic (4, 168, 192)
+    """
+    args = parser.parse_args()
+    subtest = args.subtest
+
+    import numpy as np
+    def nda_sunrise(sh=(4, 168, 192), dtype=np.int32):
+        nsegs, nrows, ncols = (4, 168, 192)
+        rows = np.arange(nrows, dtype=dtype)
+        cols = np.arange(ncols, dtype=dtype)
+        cs, rs = np.meshgrid(cols, rows)
+        arr2d = cs + rs
+        nda = np.stack([arr2d, arr2d, arr2d,arr2d])
+        print('nda.shape:', nda.shape)
+        return nda
+
+    from time import time
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
+    #from psana.detector.UtilsEpixm320Calib import gain_mode_name
+    flimg = None
+    ds = DataSource(exp='tstx00217', run=553, dir='/sdf/group/lcls/ds/ana/detector/data2_test/xtc/')
+    #orun = next(ds.runs())
+    #evt = next(orun.events())
+    break_loop = False
+    for nrun,orun in enumerate(ds.runs()):
+      det = orun.Detector('epixuhr')
+      seggeo = det.raw._seg_geo
+      nda_inc = nda_sunrise(seggeo)
+
+      if break_loop: break
+      print('det.raw._shape_as_daq():', det.raw._shape_as_daq())
+      for nstep,step in enumerate(orun.steps()):
+        if break_loop: break
+        #print('\n=============== step %d config gain mode: %s' % (nstep, gain_mode_name(det)))
+        print('\n=============== step %d' % nstep)
+        for nevt,evt in enumerate(step.events()):
+          t0_sec = time()
+          raw = det.raw.raw(evt)
+          print('  time to get raw %.3f sec' % (time()-t0_sec))
+          cal = det.raw.calib(evt)
+          nda = nda_inc if subtest == 'inds' else raw
+          img = det.raw.image(evt, nda=nda)
+          s = '  == evt %d' % nevt
+          s += info_ndarr(raw, '\n  raw  ', first=1000, last=1005)
+          s += info_ndarr(det.raw._pedestals(), '\n  peds ', first=1000, last=1005)
+          s += info_ndarr(cal, '\n  calib', first=1000, last=1005)
+          s += info_ndarr(img, '\n  image', first=1000, last=1005)
+          print(s)
+          if nevt>10:
+              break_loop = True
+              print('\n break_loop')
+              break
+
+          print('  nda min: %.3f max: %.3f' % (nda.min(), nda.max()))
+          if flimg is None:
+             flimg = fleximage(img, arr=nda, h_in=10, w_in=11.2)
+          gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
+          flimg.update(img, arr=nda) #, amin=0, amax=60000)
+          gr.show(mode='DO NOT HOLD')
+    gr.show()
+
+
+
+
+
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
     d_dskwargs = 'exp=rixc00121,run=140,dir=/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc'  # None
     d_detname  = 'archon' # None
     d_loglevel = 'INFO' # 'DEBUG'
+    d_subtest  = None
     h_tname    = 'test name, usually numeric number, default = %s' % d_tname
     h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
     h_detname  = 'detector name, default = %s' % d_detname
+    h_subtest  = '(str) subtest name, default = %s' % d_subtest
     h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
     parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME, usage=USAGE())
     parser.add_argument('tname',            default=d_tname,    type=str, help=h_tname)
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str, help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
     parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
+    parser.add_argument('-s', '--subtest', default=d_subtest, type=str, help=h_subtest)
     return parser
 
 
@@ -560,6 +642,7 @@ def selector():
     elif TNAME in ('12',): issue_2024_08_19() # epixm320 exp='rixx1005922',run=100 on sdf
     elif TNAME in ('13',): issue_2024_10_30() # philip exp='rixx1017523',run=11, archon common mode
     elif TNAME in ('14',): issue_2024_10_31() # test access to config for det.raw.calib development
+    elif TNAME in ('15',): issue_2024_11_01(parser) # test epixUHR /sdf/group/lcls/ds/ana/detector/data2_test/xtc/tstx00217-r0553-s001-c000.xtc2
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
