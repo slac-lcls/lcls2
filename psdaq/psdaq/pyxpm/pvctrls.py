@@ -605,10 +605,12 @@ class PVCtrls(object):
                 s.refresh()
 
     def seqReset(self,pv,val):
-        self._xpm.SeqEng_0.seqRestart.set(val)
+        #  Protect against out-of-range request
+        valm = val & ((1<<int(NCODES//4))-1)
+        self._xpm.SeqEng_0.seqRestart.set(valm)
         if self._seq:
             for s in self._seq:
-                if (1<<s._eng._id)&val:
+                if (1<<s._eng._id)&valm:
                     s._eng.resetDone()
 
     def update(self,cycle):
@@ -720,19 +722,17 @@ class PVCtrls(object):
             if msg['type']=='set_idx_reg':
                 value  = msg['value']
                 groups = msg['groups']
-                lock.acquire()
                 for g in range(8):
                     if groups & (1<<g):
-                        app.partition.post(g)
-                        reg = getattr(app,msg['reg'])
-                        forceUpdate(reg)
-                        reg.post(value)
-                lock.release()
+                        hdl = IdxRegH(getattr(app,msg['reg']),
+                                      app.partition,
+                                      g)
+                        hdl.handle(None,value)
 
             elif msg['type']=='set_reg':
                 value = msg['value']
-                reg = getattr(app,msg['reg'])
-                reg.post(value)
+                hdl = RegH(getattr(app,msg['reg']))
+                hdl.handle(None,value)
 
             if 'pv' in msg:
                 pvname = msg['pv']
