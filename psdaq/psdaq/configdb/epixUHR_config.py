@@ -385,8 +385,12 @@ def user_to_expert(base, cfg, full=False):
     hasUser = 'user' in cfg
     conv = functools.partial(int, base=16)
     #d['expert.Pll'] = np.loadtxt('/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pll/Si5345-B-156MHZ-out-0-5-and-7-v2-Registers.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv)
-
-    
+    if (cfg['user']['App']['SetAllMatrixActivate']):
+        print("Running SetAllMatrix from User; using one value for all Asics")
+        cbase.App.Asic1.SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))
+        cbase.App.Asic2.SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))
+        cbase.App.Asic3.SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))    
+        cbase.App.Asic4.SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))    
     # if hasUser and 'gain_mode' in cfg['user']:
     #     gain_mode = cfg['user']['gain_mode']
     #     if gain_mode==3:  # user's choices
@@ -398,7 +402,7 @@ def user_to_expert(base, cfg, full=False):
     #             d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM'] = compTH
     #             d[f'expert.App.Mv2Asic[{i}].Precharge_DAC_ePixM'] = precharge_DAC
     #     calibRegsChanged = True
-
+    
     update_config_entry(cfg,ocfg,d)
 
     return calibRegsChanged
@@ -437,7 +441,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         for i in range(cbase.numOfAsics):
             if cfg['user']['asic_enable']&(1<<i):
                 asics.append(i+1)
-            #else:
+            
+                
                 # remove the ASIC configuration so we don't try it
             #    del app['Mv2Asic[{}]'.format(i)]
     
@@ -455,12 +460,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
 #        m=3<<2
 #    base['bypass'] = 0x3f^m  # mask of active batcher channels
 #    base['batchers'] = m>>2  # mask of active batchers
-
+    
     base['bypass'] = cbase.numOfAsics * [0x0]  # Enable Timing (bit-0) and Data (bit-1)
     base['batchers'] = cbase.numOfAsics * [1]  # list of active batchers
     #print(f'=== configure bypass {base["bypass"]} ===')
-    #for i in asics:
-    #    getattr(cbase.App, f'BatcherEventBuilder{i}', Bypass).set(True)
+    for i in asics:
+        getattr(cbase.App, f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i-1])
+        #getattr(cbase.App, f'BatcherEventBuilder{i}', base['bypass']).set(True)
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
     #  Without a timeout, dropped contributions create an off-by-one between contributors
@@ -532,8 +538,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #cbase.laneDiagnostics(arg[1:5], threshold=20, loops=5, debugPrint=False)
 
         # Enable the batchers for all ASICs
-        #for i in range(1, cbase.numOfAsics+1):
-        #    getattr(cbase.App, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i-1] == 1)
+        for i in range(cbase.numOfAsics):
+            getattr(cbase.App, f'BatcherEventBuilder{i+1}').enable.set(base['batchers'][i] == 1)
 
    # if writeCalibRegs:
    #     hasGainMode = 'gain_mode' in cfg['user']
@@ -573,10 +579,12 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #        saci.CompTH_ePixM.set(compTH)
         #        saci.Precharge_DAC_ePixM.set(precharge_DAC)
         #        saci.enable.set(False)
-    cbase.App.Asic1.SetAllMatrix(str(cfg['expert']['App']['Asic1']['SetAllMatrix']))
-    cbase.App.Asic2.SetAllMatrix(str(cfg['expert']['App']['Asic2']['SetAllMatrix']))
-    cbase.App.Asic3.SetAllMatrix(str(cfg['expert']['App']['Asic3']['SetAllMatrix']))    
-    cbase.App.Asic4.SetAllMatrix(str(cfg['expert']['App']['Asic4']['SetAllMatrix']))            
+    if (not cfg['user']['App']['SetAllMatrixActivate']):
+        print("Running SetAllMatrix from expert; using a value per ASICS")
+        cbase.App.Asic1.SetAllMatrix(str(cfg['expert']['App']['Asic1']['SetAllMatrix']))
+        cbase.App.Asic2.SetAllMatrix(str(cfg['expert']['App']['Asic2']['SetAllMatrix']))
+        cbase.App.Asic3.SetAllMatrix(str(cfg['expert']['App']['Asic3']['SetAllMatrix']))    
+        cbase.App.Asic4.SetAllMatrix(str(cfg['expert']['App']['Asic4']['SetAllMatrix']))            
     cbase.App.Asic1.PixNumModeEn.set(cfg['expert']['App']['Asic1']['PixNumModeEn'])
     cbase.App.Asic2.PixNumModeEn.set(cfg['expert']['App']['Asic2']['PixNumModeEn'])
     cbase.App.Asic3.PixNumModeEn.set(cfg['expert']['App']['Asic3']['PixNumModeEn'])
@@ -916,7 +924,30 @@ def _start(base):
     print('_start')
     cbase = base['cam']
     cbase.App.SetTimingTrigger()
-    cbase.App.StartRun()
+    #cbase.App.StartRun()
+            
+            # Get devices
+    eventBuilder = cbase.App.find(typ=batcher.AxiStreamBatcherEventBuilder)
+    #trigger      = cbase.App.find(typ=l2si.TriggerEventBuffer)
+
+    # Reset all counters
+    #cbase.App.CountReset()
+
+    # Arm for data/trigger stream
+    for devPtr in eventBuilder:
+        devPtr.Blowoff.set(False)
+    #    devPtr.Bypass.set(0x0)
+        devPtr.SoftRst()
+
+    # Turn on the triggering
+    #for devPtr in trigger:
+    cbase.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(True)
+    cbase.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].MasterEnable.set(True)
+    #self.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition.set(1)
+
+    # Update the run state status variable
+    cbase.App.RunState.set(True)  
+
     # This is unneccessary as it is handled above and in StartRun()
     #m = base['batchers']
     #for i in range(cbase.numOfAsics):

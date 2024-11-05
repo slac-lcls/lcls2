@@ -58,7 +58,7 @@ def epixUHR_cdict():
         top.set(f"expert.App.BatcherEventBuilder{n}.Timeout",			    0		,'UINT8')
         top.set(f"expert.App.BatcherEventBuilder{n}.Blowoff",			    0,     'boolEnum')
         
-        
+
     conv = functools.partial(int, base=16)
     path='/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pll/'
     top.set('expert.Pll', np.loadtxt(path+'Si5345-B-156MHZ-out-0-5-and-7-v2-Registers.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))
@@ -127,6 +127,8 @@ def epixUHR_cdict():
     top.set("user.start_ns" , 106000, 'UINT32') # taken from epixHR
     #top.set("expert.gate_ns" , 154000, 'UINT32') # taken from lcls1 xpptut15 run 260
     #add daqtriggerdelay and runtriggerdelay?
+    top.set("user.App.SetAllMatrixActivate",							0,	  "boolEnum")
+    top.set("user.App.SetAllMatrix",							48,	  'UINT8')
     
     top.set("user.run_trigger_group", 1, 'UINT32')
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
