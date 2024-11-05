@@ -63,7 +63,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         return ['%s-ASIC-%02d' % (id,i) for i in self._segment_numbers]
 
 
-    def read_uint12(self,data_chunk):
+    def _read_uint12(self,data_chunk):
         fst_uint8, mid_uint8, lst_uint8 = np.reshape(data_chunk, (data_chunk.shape[0] // 3, 3)).astype(np.uint16).T
         fst_uint12 = (fst_uint8 << 4) + (mid_uint8 >> 4)
         snd_uint12 = ((mid_uint8 % 16) << 8) + lst_uint8
@@ -72,7 +72,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
                 (fst_uint12[:, None], snd_uint12[:, None]), axis=1), 2 * fst_uint12.shape[0])
 
 
-    def lane_map_uhr100(self,):
+    def _lane_map_uhr100(self,):
         column_map = []
         cluster_map = np.empty(72)
         # Create the sp map
@@ -112,7 +112,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
 
         return lane_map
 
-    def get_pixels_from_raw_data(self,raw_data, gain_msb):
+    def _get_pixels_from_raw_data(self,raw_data, gain_msb):
 
         num_pixels_x = 192
         num_pixels_y = 168
@@ -149,7 +149,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
 
             # Now we need to shift from 8bit per entry to 12bit per entry
             for j in range (1008):
-                lane_12bit[j, :] = self.read_uint12(lane_48bit[j, :])
+                lane_12bit[j, :] = self._read_uint12(lane_48bit[j, :])
 
             lane_12bit = np.flip(lane_12bit, 1)
             full_frame_12bit[:, lanes * 4:(lanes * 4) + 4] = lane_12bit
@@ -157,7 +157,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
             for columns in range(16):
                 slice_lane = full_frame_12bit[:, columns * 2:(columns * 2) + 2]
                 slice_lane = np.reshape(slice_lane, 2016)
-                a = self.lane_map_uhr100()
+                a = self._lane_map_uhr100()
 
                 column_tmp = slice_lane[a]
                 column_tmp = np.flip(np.reshape(column_tmp, (168, 12)), 0)
@@ -169,7 +169,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         # Done
         return full_frame
 
-    def get_data_3Darr(self,all_raw_data, gain_msb=True):
+    def _get_data_3Darr(self,all_raw_data, gain_msb=True):
 
         number_frames_rec = np.shape(all_raw_data)[0]
         #print(np.shape(all_raw_data)[0])
@@ -178,7 +178,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
 
         # For loop over frames, can probably be done in numpy:
         for i, raw_data in enumerate(all_raw_data):
-            pixels = self.get_pixels_from_raw_data(raw_data=raw_data, gain_msb=gain_msb)
+            pixels = self._get_pixels_from_raw_data(raw_data=raw_data, gain_msb=gain_msb)
             data_3Darr[i] = pixels
         return data_3Darr
 
@@ -187,7 +187,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
         if segs is None: return None
         #print(f"### shape of segs {np.shape(segs[0].raw)}")
-        data_3Darr = self.get_data_3Darr(segs[0].raw)
+        data_3Darr = self._get_data_3Darr(segs[0].raw)
         #print("### 3D arr shape ###")
         #print(np.shape(data_3Darr))
         return  data_3Darr # shape=(4, 192, 384)
