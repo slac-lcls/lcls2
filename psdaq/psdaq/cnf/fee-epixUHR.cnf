@@ -62,11 +62,11 @@ procmgr_config = [
 {                         id:'groupca',flags:'sx', env:epics_env, cmd:'groupca DAQ:NEH 10 0 1'},
 {                         id:'groupca6',flags:'sx', env:epics_env, cmd:'groupca DAQ:NEH 10 6'},
  {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'}, 
- {host: collect_host,      id:'control',     flags:'spux', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 10 -C BEAM {auth} {url} -r /dev/null -d {cdb}/configDB -t trigger -S 1 -T 20000'}, 
+ {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 10 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'}, 
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H   {collect_host} --expert {auth} --loglevel WARNING'},
 
  # trigger event builder
- { host: 'drp-neh-cmp003', id:'teb0',        flags:'spux',                cmd:f'{task_set}teb -P {hutch} -C {collect_host} -M {prom_dir} -k ep_provider=sockets,ep_domain=eno1'},
+ { host: 'drp-neh-cmp003', id:'teb0',        flags:'spu',                cmd:f'{task_set}teb -P {hutch} -C {collect_host} -M {prom_dir} -k ep_provider=sockets,ep_domain=eno1'},
 
  { host: 'drp-neh-cmp003', id:'epixuhr_0',   flags:'spux', env:epics_env, cmd:f'{drp_cmd0} -l 0xf -D epixUHR'},
 # { host: 'drp-neh-cmp001', id:'timing_1',     flags:'spu', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
