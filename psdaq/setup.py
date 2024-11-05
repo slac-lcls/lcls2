@@ -157,6 +157,7 @@ if 'PSDAQ' in BUILD_LIST :
             'bluesky_simple = psdaq.control.bluesky_simple:main',
             'opal_config_scan = psdaq.control.opal_config_scan:main',
             'ts_config_scan = psdaq.control.ts_config_scan:main',
+            'timed_run = psdaq.control.timed_run:main',
             'epics_exporter = psdaq.cas.epics_exporter:main',
             'seqplot = psdaq.seq.seqplot:main',
             'seqprogram = psdaq.seq.seqprogram:main',
