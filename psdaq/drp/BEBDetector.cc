@@ -190,8 +190,11 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     else if ( Pds::translateJson2Xtc( mybytes, jsonxtc, end, NamesId(nodeId,ConfigNamesIndex) ) )
         return -1;
 
-    if (jsonxtc.extent>m_para->maxTrSize)
+    if (jsonxtc.extent>m_para->maxTrSize) {
+        logging::critical("Config json output too large (%zu) for buffer (%zu)",
+                          jsonxtc.extent, m_para->maxTrSize);
         throw "**** Config json output too large for buffer\n";
+    }
 
     XtcData::ConfigIter iter(&jsonxtc, end);
     unsigned r = _configure(xtc,bufEnd,iter);
