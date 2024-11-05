@@ -203,11 +203,6 @@ Pds::TimingHeader* EpixUHR::getTimingHeader(uint32_t index) const
     EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
     uint32_t* temp = reinterpret_cast<uint32_t*>(ebh);
     ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
-    
-    for(int i=0; i<30; i++){
-        printf("0x%x ",temp[i]);
-    }
-    printf("\n");
 
     //  This may get called multiple times, so we can't overwrite input we need
     uint32_t* p = reinterpret_cast<uint32_t*>(ebh);
