@@ -9,7 +9,7 @@ ocfg = None
 partitionDelay = None
 epics_prefix = None
 
-def hsd_connect(prefix):
+def hsd_connect(prefix, linkId):
     global epics_prefix
     epics_prefix = prefix
 
@@ -22,6 +22,10 @@ def hsd_connect(prefix):
             break
         print('{:} is zero, retry'.format(epics_prefix+':PADDR_U'))
         time.sleep(0.1)
+
+    remoteLinkId = ctxt.get(epics_prefix+':MONPGP').remlinkid[0]
+    if remoteLinkId != linkId:
+        raise ValueError(f'pgpTxLinkId [{linkId}] does not match remoteLinkId [{remoteLinkId}] from EPICS')   
 
     ctxt.close()
 

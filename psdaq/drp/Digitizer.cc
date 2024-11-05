@@ -159,8 +159,9 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
             PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)func_name), "hsd_connect");
 
             // returns new reference
-            PyObject* mbytes = check(PyObject_CallFunction(pFunc,"s",
-                                                           m_epics_name.c_str()), "hsd_connect()");
+            PyObject* mbytes = check(PyObject_CallFunction(pFunc,"si",
+                                                           m_epics_name.c_str(), hw.linkId[0]),
+                                     "hsd_connect()");
 
             m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
             printf("*** BebDetector: paddr is %08x = %u\n", m_paddr, m_paddr);
