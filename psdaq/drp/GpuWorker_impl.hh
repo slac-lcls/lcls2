@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <vector>
+#include <thread>
+#include <atomic>
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -110,7 +112,9 @@ class GpuWorker_impl : public GpuWorker
 {
 public:
   GpuWorker_impl(const Parameters& para, MemPool& pool, Detector& det);
-  virtual void reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue) override;
+  virtual void start(SPSCQueue<Batch>& collectorGpuQueues) override;
+  virtual void stop() override;
+  virtual void dmaIndex(uint32_t pgpIndex) override { m_batchStart = pgpIndex + 1; }
   virtual unsigned lastEvtCtr() const override { return m_lastEvtCtr; }
   virtual DmaMode_t dmaMode() const override;
   virtual void dmaMode(DmaMode_t mode_) override;
@@ -118,15 +122,20 @@ public:
   uint64_t dmaBytes() const { return m_dmaBytes; }
   uint64_t dmaSize()  const { return m_dmaSize; }
 private:
-  Detector&             m_det;
-  GpuMemPool            m_pool;
-  CudaContext           m_context;
-  std::vector<CUstream> m_streams;
-  unsigned              m_dmaIndex;
-  uint32_t              m_lastEvtCtr;
-  const Parameters&     m_para;
-  uint64_t              m_dmaBytes;
-  uint64_t              m_dmaSize;
+  void _reader(unsigned index, SPSCQueue<Batch>& collectorGpuQueue);
+private:
+  Detector&                m_det;
+  CudaContext              m_context;
+  GpuMemPool               m_pool;
+  std::vector<CUstream>    m_streams;
+  std::vector<std::thread> m_threads;
+  std::atomic<uint32_t>    m_batchStart;
+  std::atomic<uint32_t>    m_batchSize;
+  unsigned                 m_dmaIndex;
+  uint32_t                 m_lastEvtCtr;
+  const Parameters&        m_para;
+  uint64_t                 m_dmaBytes;
+  uint64_t                 m_dmaSize;
 };
 
 };

@@ -1,4 +1,4 @@
-if not platform: platform = '6'
+if not platform: platform = '7'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 #epics_env = f'{ld_lib_path}'
@@ -26,7 +26,7 @@ acr_epics_env4 = 'EPICS_CA_ADDR_LIST=172.27.3.84:5068 EPICS_CA_AUTO_ADDR_LIST=NO
 # cu_pvs_hxr_5
 acr_epics_env5 = 'EPICS_CA_ADDR_LIST=172.27.3.85:5068 EPICS_CA_AUTO_ADDR_LIST=NO '+ld_lib_path
 
-collect_host = 'drp-srcf-mon002'
+collect_host = 'drp-srcf-gpu001'
 
 xtpg  = 0                    # TXI/TST
 #xtpg = 2                    # TMO
@@ -49,7 +49,7 @@ data_dir = '/u1/data' # f'/cds/data/drpsrcf'
 trig_dir = f'/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf'
 
 task_set = 'taskset -c 4-63'
-pvaAddr  = 'pva_addr=172.21.152.78' # mon001
+pvaAddr  = 'pva_addr=172.21.152.78' # mon001;  Added to EPICS_PVA_ADDR_LIST for getting deadtime in grafana
 scripts  = f'script_path={trig_dir}'
 network  = 'ep_provider=sockets,ep_domain=eno1'
 epixData   = '/cds/data/drpsrcf/temp/claus/xtc/rixx1003721-r0106-s010-c000.xtc2'

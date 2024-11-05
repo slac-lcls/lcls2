@@ -12,6 +12,8 @@
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/service/kwargs.hh"
 
+#include <thread>
+
 using namespace Drp;
 using namespace Pds;
 using namespace XtcData;
@@ -153,98 +155,8 @@ void CudaContext::listDevices() {
 }
 
 
-__global__ void workerFunc(unsigned last, CUdeviceptr in, /*Batch* batch,*/ bool& full, bool& sawDisable)
-{
-#if 0
-  // @todo: Process input timing header into a batch entry
-  //        Include the PGPEvent information in the entry structure
-  // @todo: Batch is full when Disable is seen
-
-  int idx = threadIdx.x + blockDim.x * blockIdx.x;
-  int end = last + (uint32_t*)in[1];
-  if (end >= batchMaxIdx) {
-    end  = batchMaxIdx;
-    full = true;
-  }
-  printf("*** idx %d, last %d, end %d\n", idx, last, end);
-  if (idx >= last && idx <= end) {
-    DmaDsc* dmas = (DmaDsc*)(in + 2*sizeof(uint32_t));
-    DmaDsc& dma = dmas[idx];
-
-    uint32_t size = dma.ret;
-    uint32_t index = dma.index;
-    uint32_t lane = (dma.dest >> 8) & 7;
-    m_dmaSize = size;
-    m_dmaBytes += size;
-    // dmaReadBulkIndex() returns a maximum size of m_pool.dmaSize(), never larger.
-    // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
-    // which thus won't have the expected header.  Take the exact match as an overflow indicator.
-    if (size == m_pool.dmaSize()) {
-        // @todo: Revisit how to handle/return errors
-        logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
-        abort();
-    }
-
-    const TimingHeader* timingHeader = det.getTimingHeader(index);
-    uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
-    uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
-    PGPEvent* event = &m_pgpEvents[pgpIndex - last]; // @todo: There are only batchSize pgpEvents in this pool?
-    DmaBuffer* buffer = &event->buffers[lane];
-    buffer->size = size;
-    buffer->index = index;
-    event->mask |= (1 << lane);
-
-    m_pool.countDma(); // DMA buffer was allocated when f/w incremented evtCounter
-
-    // Copy the TimingHeader to the host using managed memory
-    // @todo: Fix TimingHeader class to allow copying
-    m_timingHeaders[index] = *timingHeader;
-
-    TransitionId::Value transitionId = timingHeader->service();
-
-    // Process data payload
-    if (transitionId == TransitionId::L1Accept) {
-      m_det.event(*timingHeader, event); // @todo: Needs an output buffer
-    } else if (transitionId == TransitionId::SlowUpdate) {
-      m_det.slowupdate(*timingHeader);   // @todo: Does this produce output or just update state?
-    } else {                             // @todo: Check/assert for non-Disable transitions?
-      sawDisable |= transitionId == TransitionId::Disable;
-    }
-  }
-#else
-  //unsigned batchMaxIdx = 1;             // @todo: For now
-  int idx = threadIdx.x + blockDim.x * blockIdx.x;
-  int end = -1; //last + ((uint32_t*)in)[1];
-  //if (end >= batchMaxIdx) {
-  //  end  = batchMaxIdx;
-  //  full = true;
-  //}
-  printf("*** thr %d, dim %d, bIdx %d, idx %d, last %d, end %d\n",
-         threadIdx.x, blockDim.x, blockIdx.x, idx, last, end);
-  //if (idx >= last && idx <= end) {
-    uint32_t* hdr = (uint32_t*)in;
-    printf("*** idx %4d  hdr: %08x %08x %08x %08x  %08x %08x %08x %08x\n",
-           idx, hdr[0], hdr[1], hdr[2], hdr[3], hdr[4], hdr[5], hdr[6], hdr[7]);
-    auto th = (uint32_t*)&hdr[8];
-    full = true;
-    auto ctlPid = *(uint64_t*)&th[0];
-    auto pid = ctlPid & 0x00ffffffffffffff;
-    auto ctl = (ctlPid >> 56) & 0xff;
-    auto svc = ctl & 0xf;
-    auto ts  = *(uint64_t*)&th[2];
-    auto env = th[3];
-    auto ctr = th[4];
-    auto opq = &th[5];
-    sawDisable = svc == TransitionId::Disable;
-    printf("*** idx %4d:  pid %016lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
-           idx, pid, ts, env, ctr, opq[0], opq[1]);
-    //}
-#endif
-}
-
-
 GpuMemPool::GpuMemPool(const Parameters& para, MemPool& pool) :
-  dmaBuffers(MAX_BUFFERS), // pool.nbuffers()), // @todo: Revisit nbuffs and size
+  dmaBuffers(MAX_BUFFERS), // @todo: Revisit nbuffs and size
   m_pool    (pool)
 {
 }
@@ -270,8 +182,9 @@ int GpuMemPool::initialize()
 
   // Allocate buffers on the GPU
   // This handles allocating buffers on the device and registering them with the driver.
+  auto size = dmaSize();
   for (CUdeviceptr& dmaBuffer : dmaBuffers) {
-    if (_gpuMapFpgaMem(dmaBuffer, 0, dmaSize(), 1) != 0) {
+    if (_gpuMapFpgaMem(dmaBuffer, 0, size, 1) != 0) {
       logging::error("Failed to alloc buffer list at number %zd",
                      &dmaBuffer - &dmaBuffers[0]);
       return -1;
@@ -325,11 +238,13 @@ void GpuMemPool::_gpuUnmapFpgaMem(CUdeviceptr& buffer)
 
 
 GpuWorker_impl::GpuWorker_impl(const Parameters& para, MemPool& pool, Detector& det) :
-  m_det     (det),
-  m_pool    (para, pool),
-  m_streams (m_pool.count()),
-  m_dmaIndex(0),
-  m_para    (para)
+  m_det       (det),
+  m_pool      (para, pool),
+  m_streams   (m_pool.count()),
+  m_batchStart(0),
+  m_batchSize (0),
+  m_dmaIndex  (0),
+  m_para      (para)
 {
   ////////////////////////////////////////////
   // Setup GPU
@@ -391,6 +306,24 @@ void GpuWorker_impl::dmaMode(GpuWorker::DmaMode_t mode_)
   dmaWriteRegister(m_pool.fd(), 0x00d0002c, mode_);
 }
 
+void GpuWorker_impl::start(SPSCQueue<Batch>& collectorGpuQueues)
+{
+  // Launch one thread per stream
+  for (unsigned i = 0; i < m_streams.size(); ++i) {
+    m_threads.emplace_back(&GpuWorker_impl::_reader, std::ref(*this),
+                           i, std::ref(collectorGpuQueues));
+  }
+}
+
+void GpuWorker_impl::stop()
+{
+  // Stop and clean up the threads
+  for (unsigned i = 0; i < m_threads.size(); ++i) {
+    // @todo: Need to trigger the streams here
+    m_threads[i].join();
+  }
+}
+
 // @todo: Do we still want these?
 //void GpuWorker_impl::timingHeaders(unsigned index, TimingHeader* buffer)
 //{
@@ -418,62 +351,59 @@ void GpuWorker_impl::dmaMode(GpuWorker::DmaMode_t mode_)
 //        - Do the equivalent of the det.event() and det.slowUpdate() routines
 //          to reorganize the data and prepare the Xtc header
 //        - Prepare the TEB input data
-// @todo: Spread this work across GPU blocks/threads/streams?
-// This is called from the GpuDetector::reader() method, which has nothing to
-// do until Disable is seen, so no obvious need for worker thread(s)
-void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
-{
-  // Set the context for the current thread
-  chkFatal(cuCtxSetCurrent(m_context.context()));
-  logging::debug("Done with setting context\n");
 
-  size_t    size          = m_pool.dmaSize();
-  uint32_t* hostWriteBuff = (uint32_t*)malloc(size);
+void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueue)
+{
+  logging::info("GpuWorker::_reader[%d] starting\n", dmaIdx);
+
+  size_t    size         = sizeof(DmaDsc)+sizeof(TimingHeader); //m_pool.dmaSize();
+  uint32_t* hostWriteBuf = (uint32_t*)malloc(size);
 
   const uint32_t bufferMask = m_pool.nbuffers() - 1;
-  Batch          batch{start + 1, 0};
 
   // Handle L1Accepts, SlowUpdates and Disable
-  bool     full       = false;
-  bool     sawDisable = false;
-  unsigned last       = 0;
-  unsigned dmaIndex   = m_dmaIndex;
-  unsigned evtCounter;
-  do {                                  // @todo: Handle each stream in a separate thread
-    auto&        stream    = m_streams[dmaIndex];
-    CUdeviceptr& dmaBuffer = m_pool.dmaBuffers[dmaIndex];
+  bool        full       = false;
+  bool        sawDisable = false;
+  unsigned    last       = 0;
+  unsigned    pgpIndex;
+  const auto& stream     = m_streams[dmaIdx];
+  auto        dmaBuffer  = m_pool.dmaBuffers[dmaIdx];
+  while (true) {
 
     // Clear the GPU memory handshake space to zero
-    logging::debug("Clear memory\n");
+    logging::debug("%d clear memory\n", dmaIdx);
     chkFatal(cuStreamWriteValue32(stream, dmaBuffer + 4, 0x00, 0));
 
     // Write to the DMA start register in the FPGA
-    logging::debug("Trigger write to buffer %d\n", dmaIndex);
-    auto rc = gpuSetWriteEn(m_pool.fd(), dmaIndex);
+    logging::debug("Trigger write to buffer %d\n", dmaIdx);
+    chkError(cuStreamSynchronize(stream));
+    auto rc = gpuSetWriteEn(m_pool.fd(), dmaIdx);
     if (rc < 0) {
-      logging::critical("Failed to reenable buffer %d for write: %zd\n", dmaIndex, rc);
+      logging::critical("Failed to reenable buffer %d for write: %zd\n", dmaIdx, rc);
       perror("gpuSetWriteEn");
       abort();
     }
 
     // Spin on the handshake location until the value is greater than or equal to 1
     // This waits for the data to arrive in the GPU before starting the processing
-    logging::debug("Wait memory value\n");
+    logging::debug("%d Wait memory value\n", dmaIdx);
     chkFatal(cuStreamWaitValue32(stream, dmaBuffer + 4, 0x1, CU_STREAM_WAIT_VALUE_GEQ));
     chkError(cuStreamSynchronize(stream));
-    logging::debug("Done waiting\n");
-
+    logging::debug("%d Done waiting\n", dmaIdx);
     unsigned nDmaRet = 1;  //*((unsigned*)(dmaBuffer + 4));
 
-    chkError(cuMemcpyDtoH(hostWriteBuff, dmaBuffer, sizeof(DmaDsc)+sizeof(TimingHeader)));
-    auto dsc = (DmaDsc*)&hostWriteBuff[0];
-    printf("*** hdr: ret %08x,  sz %08x, idx %08x, dst %08x, flg %08x, err %08x, rsvd %08x %08x\n",
-           dsc->ret, dsc->size, dsc->index, dsc->dest, dsc->flags, dsc->errors,
-           dsc->_rsvd[0], dsc->_rsvd[1]);
-    auto th  = (TimingHeader*)&hostWriteBuff[8];
-    printf("**G  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
-           th->control(), th->pulseId(), th->time.value(), th->env, th->evtCounter,
-           th->_opaque[0], th->_opaque[1]);
+    chkError(cudaMemcpyAsync(hostWriteBuf, (void*)dmaBuffer, sizeof(DmaDsc)+sizeof(TimingHeader), cudaMemcpyDeviceToHost, stream));
+    cuStreamSynchronize(stream);
+    logging::debug("%d DtoH done\n", dmaIdx);
+
+    auto dsc = (DmaDsc*)hostWriteBuf;
+    logging::debug("*** %d hdr: ret %08x,  sz %08x, idx %08x, dst %08x, flg %08x, err %08x, rsvd %08x %08x\n",
+                   dmaIdx, dsc->ret, dsc->size, dsc->index, dsc->dest, dsc->flags, dsc->errors,
+                   dsc->_rsvd[0], dsc->_rsvd[1]);
+    auto th  = (TimingHeader*)&hostWriteBuf[8];
+    logging::debug("**G %d  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
+                   dmaIdx, th->control(), th->pulseId(), th->time.value(), th->env, th->evtCounter,
+                   th->_opaque[0], th->_opaque[1]);
 
     // @todo: Need indices, errors, etc., like from dmaBulkReadDmaIndex()
     // @todo: Handle multiple lanes
@@ -486,22 +416,25 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
     // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
     // which thus won't have the expected header.  Take the exact match as an overflow indicator.
     if (size == m_pool.dmaSize()) {
-      logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
+      logging::critical("%d DMA overflowed buffer: %d vs %d", dmaIdx, size, m_pool.dmaSize());
       abort();
     }
 
     // @todo: dsc->index is always 0?
-    //if (dmaIndex != dsc->index)
+    //if (dmaIdx != dsc->index)
     //  logging::error("DMA index mismatch: got %u, expected %u\n",
-    //                 dsc->index, dmaIndex);
-    evtCounter = th->evtCounter & bufferMask;
-    if (evtCounter != batch.start + last)
-      logging::error("Event counter mismatch: got %u, expected %u\n",
-                     evtCounter, batch.start + last);
+    //                 dsc->index, dmaIdx);
+    pgpIndex = th->evtCounter & bufferMask;
+    if (pgpIndex != m_batchStart + last)
+      logging::error("%d Event counter mismatch: got %u, expected %u\n",
+                     dmaIdx, pgpIndex, m_batchStart + last);
 
     sawDisable = th->service() == TransitionId::Disable;
 
-    PGPEvent* event = &m_pool.pgpEvents()[evtCounter];
+    PGPEvent*  event  = &m_pool.pgpEvents()[pgpIndex];
+    DmaBuffer* buffer = &event->buffers[lane]; // @todo: Do we care about this?
+    buffer->size = size;                       //   "
+    buffer->index = dsc->index;                //   "
     event->mask |= (1 << lane);
 
     // Allocate a pebble buffer once the event is built
@@ -519,30 +452,30 @@ void GpuWorker_impl::reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue)
     //else if (th->service() == TransitionId::SlowUpdate)
     //  this->slowUpdate(*th);
 
-    last       += nDmaRet;
-    batch.size += nDmaRet;
-    full = batch.size == 4;             // @todo: arbitrary
+    last        += nDmaRet;
+    m_batchSize += nDmaRet;
+    full = m_batchSize == 4;           // @todo: arbitrary
 
-    printf("*** nDmaRet %d, last %u, size %u, full %d, sawDisable %d\n",
-           nDmaRet, last, batch.size, full, sawDisable);
+    logging::debug("*** %d nDmaRet %d, last %u, size %u, full %d, sawDisable %d\n",
+                   dmaIdx, nDmaRet, last, m_batchSize.load(), full, sawDisable);
 
     if (full || sawDisable) {
+      // Ensure PgpReader::handle() doesn't complain about jumps
+      m_lastEvtCtr = th->evtCounter;
+
       // Queue the batch to the Collector
-      collectorGpuQueue.push(batch);
+      collectorGpuQueue.push({m_batchStart, m_batchSize});
 
       // Reset to the beginning of the batch
       full = false;
       last = 0;
-      batch.start = th->evtCounter + 1;
-      batch.size = 0;
+      m_batchStart = pgpIndex + 1;
+      m_batchSize  = 0;
     }
-    dmaIndex = (dmaIndex + 1) & (m_streams.size() - 1);
-  } while (!sawDisable);
+  }
 
   // Clean up
-  free(hostWriteBuff);
-  m_dmaIndex   = dmaIndex;   // Ensure we start with the correct buffer next time
-  m_lastEvtCtr = evtCounter; // Ensure PgpReader::handle() doesn't complain about jumps
+  free(hostWriteBuf);
 
-  logging::debug("Returning from reader\n");
+  logging::debug("Returning from reader[%d]\n", dmaIdx);
 }

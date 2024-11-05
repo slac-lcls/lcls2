@@ -26,10 +26,16 @@ GpuDetector::GpuDetector(const Parameters& para, DrpBase& drp, Detector* det) :
                           "- does another process have %s open?", para.device.c_str());
         abort();
     }
+
+    // Start the GPU streams
+    m_det->gpuWorker()->start(m_collectorGpuQueue);
 }
 
 GpuDetector::~GpuDetector()
 {
+    // Stop the GPU streams
+    m_det->gpuWorker()->stop();
+
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     shutdown();
@@ -108,9 +114,9 @@ void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter,
             bool stateTransition = (transitionId != TransitionId::L1Accept) &&
                                    (transitionId != TransitionId::SlowUpdate);
 
-            uint32_t index = timingHeader->evtCounter & bufferMask;
+            uint32_t pgpIndex = timingHeader->evtCounter & bufferMask;
 
-            PGPEvent* event = &m_pool.pgpEvents[index];
+            PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
             if (event->mask == 0)
                 continue;               // Skip broken event
 
@@ -146,17 +152,13 @@ void GpuDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 if (transitionId == TransitionId::Enable) {
                     // Throw "switch" to have subsequent timing headers DMAed to the GPU
                     m_det->gpuWorker()->dmaMode(GpuWorker::GPU); // Bypass CPU
+
+                    // Update the GPU with the next DMA index to expect
+                    m_det->gpuWorker()->dmaIndex(pgpIndex);
                 }
 
                 // Queue transitions to Collector in order to maintain coherency
-                m_collectorCpuQueue.push(index);
-
-                if (transitionId == TransitionId::Enable) {
-                    m_det->gpuWorker()->reader(index, m_collectorGpuQueue); // Returns when Disable is seen by the GPU
-
-                    // Throw "switch" to have subsequent timing headers DMAed to the CPU
-                    m_det->gpuWorker()->dmaMode(GpuWorker::CPU); // Bypass GPU
-                }
+                m_collectorCpuQueue.push(pgpIndex);
             } else {                    // L1Accepts and SlowUpdates
                 logging::critical("GpuDetector unexpectedly saw %s @ %u.%09u (%014lx)",
                                   TransitionId::name(transitionId),
@@ -174,12 +176,12 @@ void GpuDetector::collector(Eb::TebContributor& tebContributor)
 {
     logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
 
-    unsigned index;
-    while (m_collectorCpuQueue.pop(index)) {
-        auto event = &m_pool.pgpEvents[index];
+    unsigned pgpIndex;
+    while (m_collectorCpuQueue.pop(pgpIndex)) {
+        auto event = &m_pool.pgpEvents[pgpIndex];
         auto pebbleIndex = event->pebbleIndex;
         auto l3InpDg = static_cast<EbDgram*>(tebContributor.fetch(pebbleIndex));
-        freeDma(event);                  // Release DMA buffer
+        freeDma(event);                  // Release DMA buffer - @todo: Do in reader thread?
         tebContributor.process(l3InpDg); // Queue input dgram to TEB
 
         // Get transitionId from the TEB's input dgram
@@ -201,8 +203,8 @@ void GpuDetector::_gpuCollector(Eb::TebContributor& tebContributor)
     bool rc = m_collectorGpuQueue.pop(batch);
     while (rc) {
         for (unsigned i=0; i<batch.size; i++) {
-            unsigned index = (batch.start + i) & bufferMask;
-            PGPEvent* event = &m_pool.pgpEvents[index];
+            unsigned pgpIndex = (batch.start + i) & bufferMask;
+            PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
             if (event->mask == 0)
                 continue;               // Skip broken event
 
@@ -291,7 +293,12 @@ void GpuDetector::_gpuCollector(Eb::TebContributor& tebContributor)
 
         // If Disable was seen, no more batches are expected from the GPU
         // Return to handling transitions by the CPU
-        if (sawDisable)  break;
+        if (sawDisable)  {
+            // Throw "switch" to have subsequent timing headers DMAed to the CPU
+            m_det->gpuWorker()->dmaMode(GpuWorker::CPU); // Bypass GPU
+
+            break;
+        }
 
         // Time out batches for the TEB
         while (!m_collectorGpuQueue.try_pop(batch)) { // Poll

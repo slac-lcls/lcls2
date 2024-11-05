@@ -18,7 +18,9 @@ class GpuWorker
 {
 public:
   virtual ~GpuWorker() = default;
-  virtual void reader(uint32_t start, SPSCQueue<Batch>& collectorGpuQueue) = 0;
+  virtual void start(SPSCQueue<Batch>& collectorGpuQueues) = 0;
+  virtual void stop() = 0;
+  virtual void dmaIndex(uint32_t pgpIndex) = 0;
   virtual unsigned lastEvtCtr() const = 0;
 public:
   enum DmaMode_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
