@@ -292,11 +292,11 @@ class EventManager(object):
             if i_retry == self.max_retries and got < size:
                 if self.max_retries > 0:
                     # Live mode use max_retries
-                    logger.info("Warning: maximum no. of retries reached. Exit.")
+                    print("Error: maximum no. of retries reached. Exit.")
                 else:
                     # Normal mode
-                    logger.info(
-                        f"Warning: not able to completely read big data (asked: {size} bytes/ got: {got} bytes)"
+                    print(
+                        f"Error: not able to completely read big data (asked: {size} bytes/ got: {got} bytes)"
                     )
 
                 # Flag failure for system exit
@@ -307,7 +307,7 @@ class EventManager(object):
             size -= got
 
             logger.info(
-                f"Warning: bigdata read retry#{i_retry}/{self.max_retries} fd:{fd} {self.dm.fds_map[fd]} ask={size} offset={offset} got={got}"
+                f"Warning: bigdata read retry#{i_retry}/{self.max_retries} {self.dm.fds_map[fd]} ask={size} offset={offset} got={got}"
             )
 
             time.sleep(1)
