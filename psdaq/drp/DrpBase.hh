@@ -140,7 +140,7 @@ class PgpReader
 {
 public:
     PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt);
-    virtual ~PgpReader() {};
+    virtual ~PgpReader();
     int32_t read();
     void flush();
     const Pds::TimingHeader* handle(Detector* det, unsigned current);

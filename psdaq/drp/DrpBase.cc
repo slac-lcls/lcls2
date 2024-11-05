@@ -101,17 +101,21 @@ MemPool::MemPool(Parameters& para) :
     }
     logging::info("PGP device '%s' opened", para.device.c_str());
 
-    uint32_t dmaCount;
-    dmaBuffers = dmaMapDma(m_fd, &dmaCount, &m_dmaSize);
+    dmaBuffers = dmaMapDma(m_fd, &m_dmaCount, &m_dmaSize);
     if (dmaBuffers == NULL ) {
         logging::critical("Failed to map dma buffers: %s", strerror(errno));
         abort();
     }
-    logging::info("dmaCount %u,  dmaSize %u", dmaCount, m_dmaSize);
+    logging::info("dmaCount %u,  dmaSize %u", m_dmaCount, m_dmaSize);
 
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
-    m_nDmaBuffers = nextPowerOf2(dmaCount);
+    m_nDmaBuffers = nextPowerOf2(m_dmaCount);
+    if (m_nDmaBuffers > 0xffffff) {     // Mask for evtCounter
+        logging::critical("nDmaBuffers (%u) can't exceed evtCounter range (%u)",
+                          m_nDmaBuffers, 0xffffff);
+        abort();
+    }
 
     // make the size of the pebble buffer that will contain the datagram equal
     // to the dmaSize times the number of lanes
@@ -208,10 +212,22 @@ Pds::EbDgram* MemPool::allocateTr()
 
 void MemPool::resetCounters()
 {
-    m_dmaAllocs.store(0);
-    m_dmaFrees .store(0);
-    m_allocs   .store(0);
-    m_frees    .store(0);
+    if (dmaInUse() == 0) {
+        m_dmaAllocs.store(0);
+        m_dmaFrees .store(0);
+    } else {
+        logging::warning("DMA counters cannot be reset while buffers are still in use: "
+                         "Allocs %lu, Frees %lu, inUse %ld",
+                         m_dmaAllocs.load(), m_dmaFrees.load(), dmaInUse());
+    }
+    if (inUse() == 0) {
+        m_allocs   .store(0);
+        m_frees    .store(0);
+    } else {
+        logging::warning("Not resetting pebble counters when buffers are still in use: "
+                         "Allocs %lu, Frees %lu, inUse %ld",
+                         m_allocs.load(), m_frees.load(), inUse());
+    }
 }
 
 void MemPool::shutdown()
@@ -268,10 +284,22 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nPgpJumps   (0),
     m_nNoTrDgrams (0)
 {
+    // Ensure there are more DMA buffers than the size of the batch used to free them
+    if (pool.dmaCount() < m_dmaIndices.size()) {
+        logging::critical("nDmaIndices (%zu) must be >= dmaCount (%u)",
+                          m_dmaIndices.size(), pool.dmaCount());
+        abort();
+    }
+
     m_pfd.fd = pool.fd();
     m_pfd.events = POLLIN;
 
     pool.resetCounters();
+}
+
+PgpReader::~PgpReader()
+{
+    flush();
 }
 
 int32_t PgpReader::read()
@@ -306,6 +334,11 @@ int32_t PgpReader::read()
 
 void PgpReader::flush()
 {
+  // Return buffers queued for freeing
+  if (m_count)  m_pool.freeDma(m_dmaIndices, m_count);
+  m_count = 0;
+
+  // Also return buffers queued for reading, without adjusting counters
   int32_t ret = read();
   if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
 }

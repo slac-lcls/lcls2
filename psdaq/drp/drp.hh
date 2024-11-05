@@ -104,6 +104,7 @@ public:
     std::vector<PGPEvent> pgpEvents;
     std::vector<Pds::EbDgram*> transitionDgrams;
     void** dmaBuffers;
+    unsigned dmaCount() const {return m_dmaCount;}
     unsigned nDmaBuffers() const {return m_nDmaBuffers;}
     unsigned dmaSize() const {return m_dmaSize;}
     unsigned nbuffers() const {return m_nbuffers;}
@@ -123,8 +124,9 @@ public:
     void resetCounters();
     int setMaskBytes(uint8_t laneMask, unsigned virtChan);
 private:
-    unsigned m_nDmaBuffers;
+    unsigned m_nDmaBuffers;             // Rounded up dmaCount
     unsigned m_nbuffers;
+    unsigned m_dmaCount;
     unsigned m_dmaSize;
     int m_fd;
     bool m_setMaskBytesDone;
