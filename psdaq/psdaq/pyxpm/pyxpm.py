@@ -98,7 +98,8 @@ def main():
     autosave.set(args.P,args.db,None)
 
     cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
-    tsSync = TsSync(args.P,base.XPM.TpgMini) if cuMode else None
+#    tsSync = TsSync(args.P,base.XPM.TpgMini) if cuMode else None
+    tsSync = None
 
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A, 
                       noTiming=args.T, tsSync=tsSync)
