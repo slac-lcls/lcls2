@@ -465,7 +465,8 @@ def issue_2024_10_30():
         print("no cm = cm:", cNoCM == cCM1)
         break
 
-    
+
+
 def issue_2024_10_31():
     """test access to config for det.raw.calib development
        datinfo -k exp=uedcom103,run=812 -d epixquad
@@ -494,7 +495,6 @@ def issue_2024_10_31():
       print(info_ndarr(cbits,'cbits:'))
       sys.exit('TEST EXIT')
 
-
       if break_loop: break
       print('det.raw._shape_as_daq():', det.raw._shape_as_daq())
       for nstep,step in enumerate(orun.steps()):
@@ -511,10 +511,6 @@ def issue_2024_10_31():
               break_loop = True
               print('\n break_loop')
               break
-
-
-
-
 
 
 
@@ -584,6 +580,7 @@ def issue_2024_11_01(parser):
           flimg.update(img, arr=nda) #, amin=0, amax=60000)
           gr.show(mode='DO NOT HOLD')
     gr.show()
+    print('dir(det.raw):', dir(det.raw))
 
 
 
@@ -642,7 +639,7 @@ def selector():
     elif TNAME in ('12',): issue_2024_08_19() # epixm320 exp='rixx1005922',run=100 on sdf
     elif TNAME in ('13',): issue_2024_10_30() # philip exp='rixx1017523',run=11, archon common mode
     elif TNAME in ('14',): issue_2024_10_31() # test access to config for det.raw.calib development
-    elif TNAME in ('15',): issue_2024_11_01(parser) # test epixUHR /sdf/group/lcls/ds/ana/detector/data2_test/xtc/tstx00217-r0553-s001-c000.xtc2
+    elif TNAME in ('15',): issue_2024_11_01(parser) # -s inds; test epixUHR /sdf/group/lcls/ds/ana/detector/data2_test/xtc/tstx00217-r0553-s001-c000.xtc2
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
