@@ -22,18 +22,8 @@
 #include <assert.h>
 #include <stdint.h>
 
-// What is this for?
-//#if defined(__CUDACC_VER_MAJOR__) || defined(__clangd__)
-//#define _CUDA
-//#endif
-
 #include <cuda.h>
 #include <cuda_runtime.h>
-
-// What is this for?
-//#if __CUDACC_VER_MAJOR__ < 12
-//#define CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1 CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS
-//#endif
 
 //--------------------------------------------------------------------------------//
 // CUDA Prototypes

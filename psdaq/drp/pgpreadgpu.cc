@@ -44,20 +44,14 @@ struct GpuTestState_t
     GpuBufferState_t buffers[MAX_BUFFERS];
     int buffer_count;
 
-    GpuDmaBuffer_t swVersionRegs;
+    int iters;
 
     bool verbose;
-
-    // Latencies and averages
-    int iters;
-    int total_l;
-    int gpu_l;
-    int wr_l;
-    int rd_l;
 };
 
 //-----------------------------------------------------------------------------//
 
+void report_latencies(GpuTestState_t& state, int buffer);
 void show_help(const char* av0);
 int run_host_test_guts(GpuTestState_t& state, int instance);
 int run_host_test(GpuTestState_t& state);
@@ -75,7 +69,8 @@ int main(int argc, char* argv[]) {
     int opt = -1;
     unsigned lverbose = 0;
     int iters = -1, list_devs = 0, buffers = MAX_BUFFERS, gpu = 0;
-    while ((opt = getopt(argc, argv, "hc:d:lb:g:v")) != -1) {
+    bool cpu = false;                   // GPU mode
+    while ((opt = getopt(argc, argv, "hc:d:lb:g:Cv")) != -1) {
         switch(opt) {
         case 'd':
             strcpy(dev, optarg);
@@ -94,6 +89,9 @@ int main(int argc, char* argv[]) {
             break;
         case 'v':
             ++lverbose;
+            break;
+        case 'C':
+            cpu = true;
             break;
         case 'h':
         default:
@@ -134,16 +132,19 @@ int main(int argc, char* argv[]) {
     if (lverbose)  printf("Device supports unified addressing: %s\n", value ? "YES" : "NO");
 
     // Make the DMA target the GPU
-    const char* dstType = "";
     auto dst = dmaDestGet(gpu0.fd());
+    const char* dstType = "";
     switch (dst) {
         case DmaDest_t::CPU:  dstType = "CPU";  break;
         case DmaDest_t::GPU:  dstType = "GPU";  break;
         default:              dstType = "ERR";  break;
-    }
-    if (lverbose)  printf("DMA destination was %s\n", dstType);
-    if (dst != GPU)
+    };
+    if (lverbose)  printf("DMA destination is changing from %s to %s\n",
+                          dstType, cpu ? "CPU" : "GPU");
+    if (!cpu && dst != GPU)
         dmaDestSet(gpu0.fd(), DmaDest_t::GPU);
+    else if (cpu && dst != CPU)
+        dmaDestSet(gpu0.fd(), DmaDest_t::CPU);
 
     ////////////////////////////////////////////////
     // Create write and read buffers
@@ -184,15 +185,6 @@ int main(int argc, char* argv[]) {
 
     int ret = run_host_test(state);
 
-    uint32_t freq;
-    dmaReadRegister(state.fd, PCIE_AXI_VERSION_OFFSET + PCIE_AXI_VERSION_CLK_FREQ, &freq);
-    printf("===== Test Averages =====\n");
-    printf(" Averaged over %d times\n", state.iters);
-    printf("  total   : %d (%2.f us)\n", state.total_l, (double(state.total_l) / freq) * 1e6);
-    printf("  gpu     : %d (%2.f us)\n", state.gpu_l, (double(state.gpu_l) / freq) * 1e6);
-    printf("  wr      : %d (%2.f us)\n", state.wr_l, (double(state.wr_l) / freq) * 1e6);
-    printf("  rd      : %d (%2.f us)\n", state.rd_l, (double(state.rd_l) / freq) * 1e6);
-
     ////////////////////////////////////
     // Final cleanup
     ////////////////////////////////////
@@ -218,7 +210,6 @@ int run_host_test(GpuTestState_t& state)
     for (int i = 0; i < state.buffer_count; ++i) {
         threads[i].join();
     }
-    //return run_host_test_guts(state, 0); // TODO: thread me!
 
     return 0;
 }
@@ -293,5 +284,6 @@ void show_help(const char* av0)
     printf("   -g <number> : Select the specified GPU\n");
     printf("   -c <iters>  : Do this many iterations of the test\n");
     printf("   -b <count>  : Allocate this many buffers for round robin operation. Must be 0 < X <= MAX_BUFFERS (%d)\n", MAX_BUFFERS);
+    printf("   -C          : Force the DMA destination to be the CPU (defaults to GPU)\n");
     exit(0);
 }
