@@ -24,8 +24,8 @@
 
 # HDR PARENT IND           OBJECT IND    X0[um]   Y0[um]   Z0[um]   ROT-Z ROT-Y ROT-X     TILT-Z   TILT-Y   TILT-X
 
-SEGMENT        0    EPIXUHRASIC:V1  0     -8500     9700        0     270   180     0    0.00000  0.00000  0.00000
-SEGMENT        0    EPIXUHRASIC:V1  1      8500     9700        0     270     0   180    0.00000  0.00000  0.00000
-SEGMENT        0    EPIXUHRASIC:V1  2      8500    -9700        0     270     0   180    0.00000  0.00000  0.00000
-SEGMENT        0    EPIXUHRASIC:V1  3     -8500    -9700        0     270   180     0    0.00000  0.00000  0.00000
+SEGMENT        0    EPIXUHRASIC:V1  0     -8500     9700        0     270     0     0    0.00000  0.00000  0.00000
+SEGMENT        0    EPIXUHRASIC:V1  1      8500     9700        0     270   180   180    0.00000  0.00000  0.00000
+SEGMENT        0    EPIXUHRASIC:V1  2      8500    -9700        0     270   180   180    0.00000  0.00000  0.00000
+SEGMENT        0    EPIXUHRASIC:V1  3     -8500    -9700        0     270     0     0    0.00000  0.00000  0.00000
 IP             0    SEGMENT         0         0        0    10000      90     0     0    0.00000  0.00000  0.00000
