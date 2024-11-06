@@ -14,24 +14,12 @@ def main():
     group.add_argument('--rix', action='store_true', help='RIX')
     group.add_argument('--tmo', action='store_true', help='TMO')
 
-    parser.add_argument('-p', type=int, choices=range(0, 8), default=1,
-                        help='platform (default 1)')
-    parser.add_argument('-C', metavar='COLLECT_HOST', default='daq-tst-dev03',
-                        help='collection host (default daq-tst-dev03)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument('--duration', type=int, default=10,
                         help='run duration seconds (default 10)')
     args = parser.parse_args()
-
-    if args.rix:
-      print('RIX ...')  # FIXME
-    elif args.tmo:
-      print('TMO ...')  # FIXME
-
-    # instantiate DaqControl object
-    control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
 
     # configure logging handlers
     if args.v:
@@ -40,6 +28,19 @@ def main():
         level=logging.WARNING
     logging.basicConfig(level=level)
     logging.info('logging initialized')
+
+    # fill in collection host and platform number for the chosen hutch
+    if args.rix:
+        collect_host = 'drp-srcf-cmp004'
+        platform = 0
+        logging.debug(f'RIX: collect_host = {collect_host}  platform = {platform}')
+    elif args.tmo:
+        collect_host = 'drp-srcf-mon001'
+        platform = 0
+        logging.debug(f'TMO: collect_host = {collect_host}  platform = {platform}')
+
+    # instantiate DaqControl object
+    control = DaqControl(host=collect_host, platform=platform, timeout=args.t)
 
     # get initial DAQ state
     daqState = control.getState()
