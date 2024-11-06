@@ -174,7 +174,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         number_frames_rec = np.shape(all_raw_data)[0]
         #print(np.shape(all_raw_data)[0])
         #print(np.shape(all_raw_data))
-        data_3Darr = np.empty((number_frames_rec,168,192))
+        data_3Darr = np.empty((number_frames_rec,168,192),dtype=np.uint16)
 
         # For loop over frames, can probably be done in numpy:
         for i, raw_data in enumerate(all_raw_data):
