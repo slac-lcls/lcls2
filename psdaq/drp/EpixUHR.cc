@@ -201,7 +201,6 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
 Pds::TimingHeader* EpixUHR::getTimingHeader(uint32_t index) const
 {
     EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
-    uint32_t* temp = reinterpret_cast<uint32_t*>(ebh);
     ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
 
     //  This may get called multiple times, so we can't overwrite input we need
@@ -248,10 +247,10 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
     // Moved to a 1D array instead of 2D, due to packing of the data (12 instead of 16). 
     shape[0] = 4; shape[1] = elemRows*elemRowSize*12/8; // numrows*numcolumns*numasics*(12Bits/pixel; 8bits/Bytes)
     Array<uint8_t> aframe = cd.allocate<uint8_t>(EpixUHRPanelDef::raw, shape);
-
-    if (subframes.size() != 6) {
-        logging::error("Missing data: subframe size %d [6]\n",
-                        subframes.size());
+    unsigned m_asic_check = __builtin_popcount(m_asics)+2;
+    if (subframes.size() != m_asic_check) {
+        logging::error("Missing data: subframe size %d [%d]\n",
+                        subframes.size(), m_asic_check);
         xtc.damage.increase(XtcData::Damage::MissingData);
         return;
     }
@@ -272,29 +271,38 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
     memset(aframe.data(), 0, numAsics*asicSize);
     
     //  Check which ASICs are in the streams
+    unsigned a=0;
     unsigned q_asics = m_asics;
     for(unsigned q=0; q<numAsics; q++) {
         if (q_asics & (1<<q)) {
-            if (subframes.size() < (q+2)) {
+            if (subframes.size() < (a+2)) {
                 logging::error("Missing data from asic %d\n", q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
+
             }
-            else if (subframes[q+2].num_elem() != headerSize+asicSize) {
+            else if (subframes[a+2].num_elem() != headerSize+asicSize) {
             // else if (subframes[q+2].num_elem() != 2*(asicSize+headerSize)) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                                subframes[q+2].num_elem()/2, asicSize+headerSize, q);
+                                subframes[a+2].num_elem()/2, asicSize+headerSize, q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
+            a++;
         }
     }
 
     auto frame = aframe.data();
+    q_asics = m_asics;
+    a=0;
     for (unsigned asic = 0; asic < numAsics; ++asic) {
-        auto src = reinterpret_cast<const uint8_t*>(subframes[2 + asic].data()) + headerSize;
-        auto dst = &frame[asic * asicSize];
-        memcpy(dst, src, elemRows*elemRowSize*12/8);
+        if (q_asics & (1<<asic)) {
+            auto src = reinterpret_cast<const uint8_t*>(subframes[2 + a].data()) + headerSize;
+            auto dst = &frame[asic * asicSize];
+            memcpy(dst, src, elemRows*elemRowSize*12/8);
+            q_asics ^= (1<<asic);
+            a++;
+        }
     }
 }
 

@@ -54,9 +54,9 @@ def epixUHR_cdict():
         # add a label SetAllMatrix to get value for comand (default 48)
         top.set(f"expert.App.Asic{n}.SetAllMatrix",							48,	  'UINT8')
         top.set(f"expert.App.BatcherEventBuilder{n}.enable",				1,	    "boolEnum")
-        top.set(f"expert.App.BatcherEventBuilder{n}.Bypass",				0		,'UINT8')
+        #top.set(f"expert.App.BatcherEventBuilder{n}.Bypass",				0		,'UINT8')
         top.set(f"expert.App.BatcherEventBuilder{n}.Timeout",			    0		,'UINT8')
-        top.set(f"expert.App.BatcherEventBuilder{n}.Blowoff",			    0,     'boolEnum')
+        #top.set(f"expert.App.BatcherEventBuilder{n}.Blowoff",			    0,     'boolEnum')
         
 
     conv = functools.partial(int, base=16)

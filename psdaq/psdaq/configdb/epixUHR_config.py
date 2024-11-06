@@ -57,10 +57,9 @@ def sorting_dict():
                                 "PixNumModeEn",  
                                 ]
         
-        sortdict[f'BatcherEventBuilder{n}']= [  "enable",
-                                                "Bypass", 
+        sortdict[f'BatcherEventBuilder{n}']= [  "enable", 
                                                 "Timeout", 
-                                                "Blowoff"]	
+                                                ]	
 
     sortdict['WaveformControl'] = [    "enable",
                                        "GlblRstPolarity", 
@@ -442,7 +441,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             if cfg['user']['asic_enable']&(1<<i):
                 asics.append(i+1)
             
-                
+               
                 # remove the ASIC configuration so we don't try it
             #    del app['Mv2Asic[{}]'.format(i)]
     
@@ -461,11 +460,14 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
 #    base['bypass'] = 0x3f^m  # mask of active batcher channels
 #    base['batchers'] = m>>2  # mask of active batchers
     
-    base['bypass'] = cbase.numOfAsics * [0x0]  # Enable Timing (bit-0) and Data (bit-1)
+    base['bypass'] = cbase.numOfAsics * [0x2]  # Enable Timing (bit-0) and Data (bit-1)
     base['batchers'] = cbase.numOfAsics * [1]  # list of active batchers
-    #print(f'=== configure bypass {base["bypass"]} ===')
-    for i in asics:
-        getattr(cbase.App, f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i-1])
+    
+    for i in range(cbase.numOfAsics):
+        if i+1 in asics: 
+            base['bypass'][i] = 0
+        getattr(cbase.App, f'BatcherEventBuilder{i+1}').Bypass.set(base['bypass'][i])
+        #getattr(cbase.App, f'Asic{i+1}').enable.set(base['bypass'][i]==0)
         #getattr(cbase.App, f'BatcherEventBuilder{i}', base['bypass']).set(True)
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
@@ -511,8 +513,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         
         toYaml('App',['WaveformControl'],'RegisterControl')
         toYaml('App',['TriggerRegisters'],'TriggerReg')
-        toYaml('App',[f'Asic{i+1}' for i in range(cbase.numOfAsics) ],'SACIReg')
-        toYaml('App',[f'BatcherEventBuilder{i+1}' for i in range(cbase.numOfAsics)],'General')
+        toYaml('App',[f'Asic{i}' for i in asics ],'SACIReg')
+        toYaml('App',[f'BatcherEventBuilder{i}' for i in asics],'General')
         
         #setattr(cbase, 'filenameASIC',4*[None]) # This one is a little different
         #for i in asics:
@@ -540,6 +542,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         # Enable the batchers for all ASICs
         for i in range(cbase.numOfAsics):
             getattr(cbase.App, f'BatcherEventBuilder{i+1}').enable.set(base['batchers'][i] == 1)
+            
+            
 
    # if writeCalibRegs:
    #     hasGainMode = 'gain_mode' in cfg['user']
@@ -584,7 +588,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         cbase.App.Asic1.SetAllMatrix(str(cfg['expert']['App']['Asic1']['SetAllMatrix']))
         cbase.App.Asic2.SetAllMatrix(str(cfg['expert']['App']['Asic2']['SetAllMatrix']))
         cbase.App.Asic3.SetAllMatrix(str(cfg['expert']['App']['Asic3']['SetAllMatrix']))    
-        cbase.App.Asic4.SetAllMatrix(str(cfg['expert']['App']['Asic4']['SetAllMatrix']))            
+        cbase.App.Asic4.SetAllMatrix(str(cfg['expert']['App']['Asic4']['SetAllMatrix']))     
+               
     cbase.App.Asic1.PixNumModeEn.set(cfg['expert']['App']['Asic1']['PixNumModeEn'])
     cbase.App.Asic2.PixNumModeEn.set(cfg['expert']['App']['Asic2']['PixNumModeEn'])
     cbase.App.Asic3.PixNumModeEn.set(cfg['expert']['App']['Asic3']['PixNumModeEn'])
@@ -664,7 +669,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     #  Enable triggers to continue monitoring
     epixUHR_internal_trigger(base)
-
+    
     #  Capture the firmware version to persist in the xtc
     cbase = base['cam']
     firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
@@ -720,7 +725,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #   if gain_mode==3:
     #       top.set('chgInj_column_map', column_map)
     scfg[1] = top.typed_json()
-
+    
     result = []
     for i in seglist:
         logging.debug('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
@@ -728,7 +733,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     
     base['cfg']    = copy.deepcopy(cfg)
     base['result'] = copy.deepcopy(result)
-
+    
     return result
 
 def epixUHR_unconfig(base):
@@ -925,7 +930,6 @@ def _start(base):
     cbase = base['cam']
     cbase.App.SetTimingTrigger()
     #cbase.App.StartRun()
-            
             # Get devices
     eventBuilder = cbase.App.find(typ=batcher.AxiStreamBatcherEventBuilder)
     #trigger      = cbase.App.find(typ=l2si.TriggerEventBuffer)
@@ -934,6 +938,9 @@ def _start(base):
     #cbase.App.CountReset()
 
     # Arm for data/trigger stream
+    #for i in asics:
+    #    getattr(cbase.App, f'BatcherEventBuilder{i}').Blowoff.set(False)
+        
     for devPtr in eventBuilder:
         devPtr.Blowoff.set(False)
     #    devPtr.Bypass.set(0x0)

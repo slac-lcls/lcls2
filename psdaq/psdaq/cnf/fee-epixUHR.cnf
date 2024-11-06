@@ -59,8 +59,8 @@ ami_manager_node = "drp-neh-cmp003"
 
 procmgr_config = [
 {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:10'}, 
-{                         id:'groupca',flags:'sx', env:epics_env, cmd:'groupca DAQ:NEH 10 0 1'},
-{                         id:'groupca6',flags:'sx', env:epics_env, cmd:'groupca DAQ:NEH 10 6'},
+{                         id:'groupca',flags:'s', env:epics_env, cmd:'groupca DAQ:NEH 10 0 1'},
+{                         id:'groupca6',flags:'s', env:epics_env, cmd:'groupca DAQ:NEH 10 6'},
  {                         id:'procstat',    flags:'p',                  cmd:f'procstat {CONFIGDIR}/p{platform}.cnf.last'}, 
  {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 10 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'}, 
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H   {collect_host} --expert {auth} --loglevel WARNING'},
@@ -88,7 +88,6 @@ procmgr_ami = [
 #
 
 for N, worker_node in enumerate(ami_worker_nodes):
-    print(worker_node)
     procmgr_ami.append({host:worker_node, id:f'ami-meb{N}', flags:'spu', cmd:f'{meb_cmd} -d -n 64 -q {ami_workers_per_node}'})
     procmgr_ami.append({host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env, cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}'})
 
