@@ -377,7 +377,8 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
     // Write to the DMA start register in the FPGA
     logging::debug("Trigger write to buffer %d\n", dmaIdx);
     chkError(cuStreamSynchronize(stream));
-    auto rc = gpuSetWriteEn(m_pool.fd(), dmaIdx);
+    //auto rc = gpuSetWriteEn(m_pool.fd(), dmaIdx);
+    auto rc = dmaWriteRegister(m_pool.fd(), 0xD00300 + 4 * dmaIdx, 1);
     if (rc < 0) {
       logging::critical("Failed to reenable buffer %d for write: %zd\n", dmaIdx, rc);
       perror("gpuSetWriteEn");
