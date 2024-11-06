@@ -113,7 +113,7 @@ def epixUHR_cdict():
     top.set("user.App.ADS1217.adcStartEnManual",				0					,"boolEnum")
 
     pixelMap = np.zeros((elemRows*2,elemCols*2), dtype=np.uint8)
-    top.set("expert.pixel_map", pixelMap)
+    #top.set("expert.pixel_map", pixelMap)
     
     top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     top.set("firmwareVersion:RO",   0, 'UINT32')
@@ -130,7 +130,7 @@ def epixUHR_cdict():
     top.set("user.App.SetAllMatrixActivate",							0,	  "boolEnum")
     top.set("user.App.SetAllMatrix",							48,	  'UINT8')
     
-    top.set("user.run_trigger_group", 1, 'UINT32')
+    top.set("user.run_trigger_group", 6, 'UINT32')
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
     # timing system
     # run trigger
