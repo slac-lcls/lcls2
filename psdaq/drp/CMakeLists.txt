@@ -173,6 +173,21 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cuda_driver
     )
     set_target_properties(AreaDetector_gpu PROPERTIES CUDA_ARCHITECTURES "86")
+
+    add_executable(pgpreadgpu
+        pgpreadgpu.cc
+        GpuAsyncLib.cc
+    )
+    target_include_directories(pgpreadgpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        ${AES_STREAM_DRIVER_HEADER_PATH}
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(pgpreadgpu
+        CUDA::cudart
+        CUDA::cuda_driver
+        Threads::Threads
+    )
 endif()
 
 add_executable(configdb_obj_2xtc
