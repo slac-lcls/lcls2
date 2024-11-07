@@ -127,7 +127,7 @@ def gain_mode_map(gain_mode):
     return (compTH, precharge_DAC)
 
 def cbase_init(cbase):
-    for asics in range(1, 5):
+    for asics in [1,4]:
         getattr(cbase.App,f'Asic{asics}').enable.set(True)			  	
         getattr(cbase.App,f'Asic{asics}').TpsDacGain.set(1)						
         getattr(cbase.App,f'Asic{asics}').TpsDac.set(34)						
@@ -248,7 +248,6 @@ def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M
         numOfAsics   = 4,
         timingMessage= False,
         justCtrl     = True,
-        #top_level='/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/'
     )
     
     cbase.__enter__()
@@ -384,13 +383,7 @@ def user_to_expert(base, cfg, full=False):
     hasUser = 'user' in cfg
     conv = functools.partial(int, base=16)
     #d['expert.Pll'] = np.loadtxt('/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pll/Si5345-B-156MHZ-out-0-5-and-7-v2-Registers.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv)
-    if (cfg['user']['App']['SetAllMatrixActivate']):
-        print("Running SetAllMatrix from User; using one value for all Asics")
-        cbase.App.Asic1.SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))
-        cbase.App.Asic2.SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))
-        cbase.App.Asic3.SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))    
-        cbase.App.Asic4.SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))    
-    # if hasUser and 'gain_mode' in cfg['user']:
+        # if hasUser and 'gain_mode' in cfg['user']:
     #     gain_mode = cfg['user']['gain_mode']
     #     if gain_mode==3:  # user's choices
     #         # Use CompTH and Precharge_DAC from cfg['expert']
@@ -585,15 +578,12 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #        saci.enable.set(False)
     if (not cfg['user']['App']['SetAllMatrixActivate']):
         print("Running SetAllMatrix from expert; using a value per ASICS")
-        cbase.App.Asic1.SetAllMatrix(str(cfg['expert']['App']['Asic1']['SetAllMatrix']))
-        cbase.App.Asic2.SetAllMatrix(str(cfg['expert']['App']['Asic2']['SetAllMatrix']))
-        cbase.App.Asic3.SetAllMatrix(str(cfg['expert']['App']['Asic3']['SetAllMatrix']))    
-        cbase.App.Asic4.SetAllMatrix(str(cfg['expert']['App']['Asic4']['SetAllMatrix']))     
-               
-    cbase.App.Asic1.PixNumModeEn.set(cfg['expert']['App']['Asic1']['PixNumModeEn'])
-    cbase.App.Asic2.PixNumModeEn.set(cfg['expert']['App']['Asic2']['PixNumModeEn'])
-    cbase.App.Asic3.PixNumModeEn.set(cfg['expert']['App']['Asic3']['PixNumModeEn'])
-    cbase.App.Asic4.PixNumModeEn.set(cfg['expert']['App']['Asic4']['PixNumModeEn'])
+        for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetAllMatrix']))
+    else:
+        print("Running SetAllMatrix from user; using a single value for all ASICS")
+        for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))
+        
+    for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(cfg['expert']['App'][f'Asic{i}']['PixNumModeEn'])
     
     cbase.App.GTReadoutBoardCtrl.enable.set(app['GTReadoutBoardCtrl']['enable'])
     cbase.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard.set(app['GTReadoutBoardCtrl']['pwrEnableAnalogBoard'])
@@ -603,15 +593,9 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     
     cbase.App.AppAsicGtClk.enable.set(cfg['expert']['App']['AsicGtClk']['enable'])
     cbase.App.AppAsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
-
-    cbase.App.AppAsicGtData1.enable.set(cfg['expert']['App']['AsicGtData1']['enable']           )			
-    cbase.App.AppAsicGtData1.gtStableRst.set(cfg['expert']['App']['AsicGtData1']['gtStableRst']		)	
-    cbase.App.AppAsicGtData2.enable.set(cfg['expert']['App']['AsicGtData2']['enable']			)			
-    cbase.App.AppAsicGtData2.gtStableRst.set(cfg['expert']['App']['AsicGtData2']['gtStableRst']		)	
-    cbase.App.AppAsicGtData3.enable.set(cfg['expert']['App']['AsicGtData3']['enable']			)			
-    cbase.App.AppAsicGtData3.gtStableRst.set(cfg['expert']['App']['AsicGtData3']['gtStableRst']		)	
-    cbase.App.AppAsicGtData4.enable.set(cfg['expert']['App']['AsicGtData4']['enable']			)			
-    cbase.App.AppAsicGtData4.gtStableRst.set(cfg['expert']['App']['AsicGtData4']['gtStableRst']		)	
+    for i in asics:
+        getattr(cbase.App,f"AppAsicGtData{i}").enable.set(cfg['expert']['App'][f'AsicGtData{i}']['enable'])			
+        getattr(cbase.App,f"AppAsicGtData{i}").gtStableRst.set(cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
         		
     cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']						)	
     cbase.App.VINJ_DAC.SetValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']					)	
