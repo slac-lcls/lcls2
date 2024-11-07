@@ -96,11 +96,11 @@ def apply_config(cfg):
                     if dstval:
                         dstmask |= 1<<dstnum
             else:  # new
-                pvdict[str(group)+':DstSelect'     ] = DEST_INCLUDE if dstmask else DEST_DONTCARE
                 dstmask |= (1<<DEST_BSY) if grp['destination']['BsyDump' ] else 0
                 dstmask |= (1<<DEST_HXR) if grp['destination']['HardXRay'] else 0
                 dstmask |= (1<<DEST_SXR) if grp['destination']['SoftXRay'] else 0
                 pvdict[str(group)+':DstSelect_Mask'] = dstmask
+                pvdict[str(group)+':DstSelect'     ] = DEST_INCLUDE if dstmask else DEST_DONTCARE
 
         grp_prefix = 'group'+str(group)
         grp = cfg['expert'][grp_prefix]
