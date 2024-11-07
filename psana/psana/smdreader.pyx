@@ -326,7 +326,6 @@ cdef class SmdReader:
                     if buf_ts < limit_ts:
                         is_split = 1
                         self.prl_reader.bufs[j].force_reread = 1
-                        break
                 if not is_split:
                     n_L1Accepts += 1
                     i_complete = i
