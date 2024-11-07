@@ -576,32 +576,33 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #        saci.CompTH_ePixM.set(compTH)
         #        saci.Precharge_DAC_ePixM.set(precharge_DAC)
         #        saci.enable.set(False)
-    if (not cfg['user']['App']['SetAllMatrixActivate']):
-        print("Running SetAllMatrix from expert; using a value per ASICS")
-        for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetAllMatrix']))
-    else:
-        print("Running SetAllMatrix from user; using a single value for all ASICS")
-        for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))
         
-    for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(cfg['expert']['App'][f'Asic{i}']['PixNumModeEn'])
+        if (not cfg['user']['App']['SetAllMatrixActivate']):
+            print("Running SetAllMatrix from expert; using a value per ASICS")
+            for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetAllMatrix']))
+        else:
+            print("Running SetAllMatrix from user; using a single value for all ASICS")
+            for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))
+            
+        for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(cfg['expert']['App'][f'Asic{i}']['PixNumModeEn'])
     
-    cbase.App.GTReadoutBoardCtrl.enable.set(app['GTReadoutBoardCtrl']['enable'])
-    cbase.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard.set(app['GTReadoutBoardCtrl']['pwrEnableAnalogBoard'])
-    cbase.App.GTReadoutBoardCtrl.timingOutEn0.set(app['GTReadoutBoardCtrl']['timingOutEn0'])
-    cbase.App.GTReadoutBoardCtrl.timingOutEn1.set(app['GTReadoutBoardCtrl']['timingOutEn1'])
-    cbase.App.GTReadoutBoardCtrl.timingOutEn2.set(app['GTReadoutBoardCtrl']['timingOutEn2'])
-    
-    cbase.App.AppAsicGtClk.enable.set(cfg['expert']['App']['AsicGtClk']['enable'])
-    cbase.App.AppAsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
-    for i in asics:
-        getattr(cbase.App,f"AppAsicGtData{i}").enable.set(cfg['expert']['App'][f'AsicGtData{i}']['enable'])			
-        getattr(cbase.App,f"AppAsicGtData{i}").gtStableRst.set(cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
-        		
-    cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']						)	
-    cbase.App.VINJ_DAC.SetValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']					)	
-    cbase.App.ADS1217.enable.set(cfg['user']['App']['ADS1217']['enable']						)	
-    cbase.App.ADS1217.adcStartEnManual.set(cfg['user']['App']['ADS1217']['adcStartEnManual']	)
-    
+        cbase.App.GTReadoutBoardCtrl.enable.set(app['GTReadoutBoardCtrl']['enable'])
+        cbase.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard.set(app['GTReadoutBoardCtrl']['pwrEnableAnalogBoard'])
+        cbase.App.GTReadoutBoardCtrl.timingOutEn0.set(app['GTReadoutBoardCtrl']['timingOutEn0'])
+        cbase.App.GTReadoutBoardCtrl.timingOutEn1.set(app['GTReadoutBoardCtrl']['timingOutEn1'])
+        cbase.App.GTReadoutBoardCtrl.timingOutEn2.set(app['GTReadoutBoardCtrl']['timingOutEn2'])
+        
+        cbase.App.AppAsicGtClk.enable.set(cfg['expert']['App']['AsicGtClk']['enable'])
+        cbase.App.AppAsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
+        for i in asics:
+            getattr(cbase.App,f"AppAsicGtData{i}").enable.set(cfg['expert']['App'][f'AsicGtData{i}']['enable'])			
+            getattr(cbase.App,f"AppAsicGtData{i}").gtStableRst.set(cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
+                    
+        cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']						)	
+        cbase.App.VINJ_DAC.SetValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']					)	
+        cbase.App.ADS1217.enable.set(cfg['user']['App']['ADS1217']['enable']						)	
+        cbase.App.ADS1217.adcStartEnManual.set(cfg['user']['App']['ADS1217']['adcStartEnManual']	)
+        
     logging.info('config_expert complete')
 
 def reset_counters(base):
