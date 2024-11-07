@@ -288,7 +288,7 @@ GpuWorker::DmaMode_t GpuWorker_impl::dmaMode() const
 {
   // @todo: This line addresses only lane 0
   uint32_t regVal;
-  dmaReadRegister(m_pool.fd(), 0x00d0002c, &regVal);
+  dmaReadRegister(m_pool.fd(), 0x0002802c, &regVal);
 
   GpuWorker::DmaMode_t mode;
   switch (regVal)
@@ -303,7 +303,7 @@ GpuWorker::DmaMode_t GpuWorker_impl::dmaMode() const
 void GpuWorker_impl::dmaMode(GpuWorker::DmaMode_t mode_)
 {
   // @todo: This line addresses only lane 0
-  dmaWriteRegister(m_pool.fd(), 0x00d0002c, mode_);
+  dmaWriteRegister(m_pool.fd(), 0x0002802c, mode_);
 }
 
 void GpuWorker_impl::start(SPSCQueue<Batch>& collectorGpuQueues)
@@ -364,21 +364,19 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
   // Handle L1Accepts, SlowUpdates and Disable
   bool        full       = false;
   bool        sawDisable = false;
-  unsigned    last       = 0;
   unsigned    pgpIndex;
   const auto& stream     = m_streams[dmaIdx];
   auto        dmaBuffer  = m_pool.dmaBuffers[dmaIdx];
   while (true) {
 
     // Clear the GPU memory handshake space to zero
-    logging::debug("%d clear memory\n", dmaIdx);
+    //logging::debug("%d clear memory\n", dmaIdx);
     chkFatal(cuStreamWriteValue32(stream, dmaBuffer + 4, 0x00, 0));
 
     // Write to the DMA start register in the FPGA
-    logging::debug("Trigger write to buffer %d\n", dmaIdx);
+    //logging::debug("Trigger write to buffer %d\n", dmaIdx);
     chkError(cuStreamSynchronize(stream));
-    //auto rc = gpuSetWriteEn(m_pool.fd(), dmaIdx);
-    auto rc = dmaWriteRegister(m_pool.fd(), 0xD00300 + 4 * dmaIdx, 1);
+    auto rc = gpuSetWriteEn(m_pool.fd(), dmaIdx);
     if (rc < 0) {
       logging::critical("Failed to reenable buffer %d for write: %zd\n", dmaIdx, rc);
       perror("gpuSetWriteEn");
@@ -387,22 +385,22 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
 
     // Spin on the handshake location until the value is greater than or equal to 1
     // This waits for the data to arrive in the GPU before starting the processing
-    logging::debug("%d Wait memory value\n", dmaIdx);
+    //logging::debug("%d Wait memory value\n", dmaIdx);
     chkFatal(cuStreamWaitValue32(stream, dmaBuffer + 4, 0x1, CU_STREAM_WAIT_VALUE_GEQ));
     chkError(cuStreamSynchronize(stream));
-    logging::debug("%d Done waiting\n", dmaIdx);
+    //logging::debug("%d Done waiting\n", dmaIdx);
     unsigned nDmaRet = 1;  //*((unsigned*)(dmaBuffer + 4));
 
     chkError(cudaMemcpyAsync(hostWriteBuf, (void*)dmaBuffer, sizeof(DmaDsc)+sizeof(TimingHeader), cudaMemcpyDeviceToHost, stream));
     cuStreamSynchronize(stream);
-    logging::debug("%d DtoH done\n", dmaIdx);
+    //logging::debug("%d DtoH done\n", dmaIdx);
 
     auto dsc = (DmaDsc*)hostWriteBuf;
-    logging::debug("*** %d hdr: ret %08x,  sz %08x, idx %08x, dst %08x, flg %08x, err %08x, rsvd %08x %08x\n",
+    logging::debug("*** dma %d hdr: ret %08x,  sz %08x, idx %08x, dst %08x, flg %08x, err %08x, rsvd %08x %08x\n",
                    dmaIdx, dsc->ret, dsc->size, dsc->index, dsc->dest, dsc->flags, dsc->errors,
                    dsc->_rsvd[0], dsc->_rsvd[1]);
     auto th  = (TimingHeader*)&hostWriteBuf[8];
-    logging::debug("**G %d  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
+    logging::debug("**G dma %d  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
                    dmaIdx, th->control(), th->pulseId(), th->time.value(), th->env, th->evtCounter,
                    th->_opaque[0], th->_opaque[1]);
 
@@ -426,9 +424,11 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
     //  logging::error("DMA index mismatch: got %u, expected %u\n",
     //                 dsc->index, dmaIdx);
     pgpIndex = th->evtCounter & bufferMask;
-    if (pgpIndex != m_batchStart + last)
+    //printf("*** pgpIndex %u, batchStart %u, dmaIdx %u\n",
+    //       pgpIndex, m_batchStart.load(), dmaIdx);
+    if (pgpIndex != m_batchStart + dmaIdx)
       logging::error("%d Event counter mismatch: got %u, expected %u\n",
-                     dmaIdx, pgpIndex, m_batchStart + last);
+                     dmaIdx, pgpIndex, m_batchStart + dmaIdx);
 
     sawDisable = th->service() == TransitionId::Disable;
 
@@ -453,12 +453,11 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
     //else if (th->service() == TransitionId::SlowUpdate)
     //  this->slowUpdate(*th);
 
-    last        += nDmaRet;
     m_batchSize += nDmaRet;
     full = m_batchSize == 4;           // @todo: arbitrary
 
-    logging::debug("*** %d nDmaRet %d, last %u, size %u, full %d, sawDisable %d\n",
-                   dmaIdx, nDmaRet, last, m_batchSize.load(), full, sawDisable);
+    //logging::debug("*** %d nDmaRet %d, size %u, full %d, sawDisable %d\n",
+    //               dmaIdx, nDmaRet, m_batchSize.load(), full, sawDisable);
 
     if (full || sawDisable) {
       // Ensure PgpReader::handle() doesn't complain about jumps
@@ -469,7 +468,6 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
 
       // Reset to the beginning of the batch
       full = false;
-      last = 0;
       m_batchStart = pgpIndex + 1;
       m_batchSize  = 0;
     }

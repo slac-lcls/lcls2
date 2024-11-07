@@ -231,7 +231,7 @@ DmaDest_t dmaDestGet(int fd)
 {
     // @todo: This line addresses only lane 0
     uint32_t regVal;
-    dmaReadRegister(fd, 0x00d0002c, &regVal);
+    dmaReadRegister(fd, 0x0002802c, &regVal);
 
     DmaDest_t mode;
     switch (regVal) {
@@ -245,5 +245,5 @@ DmaDest_t dmaDestGet(int fd)
 void dmaDestSet(int fd, DmaDest_t mode_)
 {
     // @todo: This line addresses only lane 0
-    dmaWriteRegister(fd, 0x00d0002c, mode_);
+    dmaWriteRegister(fd, 0x0002802c, mode_);
 }

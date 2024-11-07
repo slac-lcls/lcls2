@@ -243,8 +243,7 @@ int run_host_test_guts(GpuTestState_t& state, int instance)
         if (state.verbose)  logInfo("%d Trigger write\n", instance);
         //checkError(cuStreamWriteValue32(stream, state.hwWriteStart + 4 * instance, 0x01, 0));
         cuStreamSynchronize(stream);
-        //auto rc = gpuSetWriteEn(state.fd, instance);
-        auto rc = dmaWriteRegister(state.fd, 0xD00300 + 4 * instance, 1);
+        auto rc = gpuSetWriteEn(state.fd, instance);
         if (rc < 0) {
           logInfo("Failed to reenable buffer %d for write: %zd\n", instance, rc);
           perror("gpuSetWriteEn");
