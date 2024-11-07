@@ -1,8 +1,22 @@
 #/bin/bash
 
-if (( $# != 1 )); then
-    >&2 echo "Usage: $0 <numberOfSeconds>"
+#
+# example usage:
+#
+#   ./archon_takepeds.sh 10 rix.py
+#
+
+# check the number of arguments
+if (( $# != 2 )); then
+    >&2 echo "Usage: $0 <time_in_seconds> <path_to_config_file>"
     exit 1
 fi
 
-timed_run --rix --duration="$1"   
+# check if the config file is found
+if [ ! -f "$2" ]; then
+    >&2 echo "File not found: $2"
+    exit 1
+fi
+
+# run the daq for the specified duration
+timed_run --duration="$1" --config="$2"
