@@ -1,12 +1,12 @@
 #/bin/bash
 
 #
-# example usage:
+# Example: Run the RIX DAQ for 10 seconds
 #
 #   ./archon_takepeds.sh 10 rix.py
 #
 
-# check the number of arguments
+# check the number of arguments, and exit if incorrect.
 if (( $# != 2 )); then
     >&2 echo "Usage: $0 <time_in_seconds> <path_to_config_file>"
     exit 1
