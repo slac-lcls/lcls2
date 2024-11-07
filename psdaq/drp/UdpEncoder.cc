@@ -779,6 +779,8 @@ void UdpEncoder::_worker()
                     std::stoul(Detector::m_para->kwargs["match_tmo_ms"])        :
                     1500 };
 
+    const ms_t no_tmo{ 0 };
+
     // Reset counters to avoid 'jumping' errors reconfigures
     m_pool->resetCounters();
     m_pgp.resetEventCounter();
@@ -805,7 +807,7 @@ void UdpEncoder::_worker()
             _process(dgram);            // Was _matchUp
 
             // Time out older encoder packets and datagrams
-            _timeout(tmo);
+            _timeout(m_running ? tmo : no_tmo);
 
             // Time out batches for the TEB
             m_drp.tebContributor().timeout();
@@ -876,6 +878,10 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                     if (pgpDg == dgram)  return;
                 }
             } else {
+                //  Trigger a fast flush of the events awaiting interpolation
+                if (dgram && dgram->service() == XtcData::TransitionId::Disable) {
+                    m_running = false;
+                }
                 break;
             }
         } else {

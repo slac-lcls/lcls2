@@ -160,7 +160,7 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
 
             // returns new reference
             PyObject* mbytes = check(PyObject_CallFunction(pFunc,"si",
-                                                           m_epics_name.c_str(), hw.linkId[0]),
+                                                           m_epics_name.c_str(), unsigned(hw.linkId[0])),
                                      "hsd_connect()");
 
             m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
