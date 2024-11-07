@@ -2,6 +2,7 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import cdict
 from psdaq.configdb.det_config import *
+from psdaq.configdb.epixm320_utils import *
 from psdaq.cas.xpm_utils import timTxId
 #from .xpmmini import *
 import pyrogue as pr
@@ -252,11 +253,6 @@ def setSaci(reg,field,di):
         v = di[field]
         reg.set(v)
 
-def gain_mode_map(gain_mode):
-    compTH        = ( 0, 44, 24)[gain_mode] # SoftHigh/SoftLow/Auto
-    precharge_DAC = (45, 45, 45)[gain_mode]
-    return (compTH, precharge_DAC)
-
 #
 #  Initialize the rogue accessor
 #
@@ -417,7 +413,7 @@ def user_to_expert(base, cfg, full=False):
             # Use CompTH and Precharge_DAC from cfg['expert']
             d['user.chgInj_column_map'] = cfg['user']['chgInj_column_map']
         else:
-            compTH, precharge_DAC = gain_mode_map(gain_mode)
+            compTH, precharge_DAC, _ = gain_mode_map(gain_mode)
             for i in range(cbase.numOfAsics):
                 d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM'] = compTH
                 d[f'expert.App.Mv2Asic[{i}].Precharge_DAC_ePixM'] = precharge_DAC
@@ -461,24 +457,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 # remove the ASIC configuration so we don't try it
                 del app['Mv2Asic[{}]'.format(i)]
 
-# Ric: Don't understand what this is doing
-#    #  Set the application event builder for the set of enabled asics
-#    if base['pcie_timing']:
-#        m=3
-#        for i in asics:
-#            m = m | (4<<i)
-#    else:
-##        Enable batchers for all ASICs.  Data will be padded.
-##        m=0
-##        for i in asics:
-##            m = m | (4<<int(i/2))
-#        m=3<<2
-#    base['bypass'] = 0x3f^m  # mask of active batcher channels
-#    base['batchers'] = m>>2  # mask of active batchers
-    base['bypass'] = cbase.numOfAsics * [0x0]  # Enable Timing (bit-0) and Data (bit-1)
+    # Enable batchers for all ASICs.  Data will be padded.
+    base['bypass'] = cbase.numOfAsics * [0x2]  # Enable Timing (bit-0) for all ASICs
     base['batchers'] = cbase.numOfAsics * [1]  # list of active batchers
-    print(f'=== configure bypass {base["bypass"]} ===')
     for i in asics:
+        base['bypass'][i] = 0       # Enable Data (bit-1) only for for enabled ASICs
+    print(f'=== configure bypass {base["bypass"]} ===')
+    for i in range(cbase.numOfAsics):
         getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
@@ -578,7 +563,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 saci.enable.set(False)
         else:
             gain_mode = cfg['user']['gain_mode']
-            compTH, precharge_DAC = gain_mode_map(gain_mode)
+            compTH, precharge_DAC, _ = gain_mode_map(gain_mode)
             print(f'Setting gain mode {gain_mode}:  compTH {compTH},  precharge_DAC {precharge_DAC}')
 
             for i in asics:
@@ -665,7 +650,7 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     if gain_mode==3:
         column_map    = np.array(cfg['user']['chgInj_column_map'], dtype=np.uint8)
     else:
-        compTH0,precharge_DAC0 = gain_mode_map(gain_mode)
+        compTH0,precharge_DAC0, _ = gain_mode_map(gain_mode)
         compTH        = [compTH0        for i in range(cbase.numOfAsics)]
         precharge_DAC = [precharge_DAC0 for i in range(cbase.numOfAsics)]
 

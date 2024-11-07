@@ -214,12 +214,18 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
 }
 
 //
-//  Subframes:  3:   ASIC0/1
+//  Subframes:  2:   ASIC0
 //                   0:  Timing
-//                   2:  ASIC0/1 2B interleaved
-//              4:   ASIC2/3
+//                   2:  ASIC0 2B interleaved
+//              3:   ASIC1
 //                   0:  Timing
-//                   2:  ASIC2/3 2B interleaved
+//                   2:  ASIC1 2B interleaved
+//              4:   ASIC2
+//                   0:  Timing
+//                   2:  ASIC2 2B interleaved
+//              5:   ASIC3
+//                   0:  Timing
+//                   2:  ASIC3 2B interleaved
 //
 void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> >& subframes)
 {
@@ -256,23 +262,26 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
     //
 
     //  Check which ASICs are in the streams
+    unsigned asic = 2;                  // Point to the first ASIC subframe
     unsigned q_asics = m_asics;
     for(unsigned q=0; q<NumAsics; q++) {
         if (q_asics & (1<<q)) {
-            if (subframes.size() < (q+2)) {
+            if (subframes.size() < asic) {
                 logging::error("Missing data from asic %d\n", q);
                 xtc.damage.increase(Damage::MissingData);
                 q_asics ^= (1<<q);
             }
-            else if (subframes[q+2].num_elem() != headerSize+asicSize+trailerSize) {
+            else if (subframes[asic].num_elem() != headerSize+asicSize+trailerSize) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
                                subframes[q+2].num_elem()/2, (headerSize+asicSize+trailerSize)/2, q);
                 xtc.damage.increase(Damage::MissingData);
                 q_asics ^= (1<<q);
             }
+            ++asic;                     // On to the next ASIC in the subframes
         }
     }
 
+    asic = 2;                           // Point to the first ASIC subframes
     for (unsigned q = 0; q < NumAsics; ++q) {
         if ((q_asics & (1<<q))==0) {
             //  Missing ASICS are padded with zeroes
@@ -283,11 +292,11 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
         }
 
         // Pack the header into the Xtc
-        auto header = subframes[2 + q].data();
+        auto header = subframes[asic].data();
         memcpy(&aHeader(q, 0), header, headerSize);
 
         // Pack the image data into the Xtc
-        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data() + headerSize);
+        auto src = reinterpret_cast<const uint16_t*>(subframes[asic].data() + headerSize);
         auto dst = &aFrame(q, 0, 0);
 #if 1
         _descramble(dst, src);
@@ -296,8 +305,10 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
 #endif
 
         // Pack the trailer into the Xtc
-        auto trailer = subframes[2 + q].data() + headerSize + asicSize;
+        auto trailer = subframes[asic].data() + headerSize + asicSize;
         memcpy(&aTrailer(q, 0), trailer, trailerSize);
+
+        ++asic;                         // On to the next ASIC in the subframes
     }
 }
 

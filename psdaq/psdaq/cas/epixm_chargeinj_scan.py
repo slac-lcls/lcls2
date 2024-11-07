@@ -1,4 +1,5 @@
 from psdaq.cas.config_scan_base import ConfigScanBase
+from psdaq.configdb.epixm320_utils import *
 import numpy as np
 import json
 
@@ -23,12 +24,6 @@ def main():
 
     # scan loop
     spacing  = args.spacing
-
-    def gain_mode_map(gain_mode):
-        compTH        = (  0,   63,    12,      0 )[gain_mode] # SoftHigh/SoftLow/Auto/User
-        precharge_DAC = ( 45,   50,    45,      0 )[gain_mode]
-        name          = ('SH', 'SL', 'AHL', 'User')[gain_mode]
-        return (compTH, precharge_DAC, name)
 
     def column_map(spacing, position):
         firstCol = position
