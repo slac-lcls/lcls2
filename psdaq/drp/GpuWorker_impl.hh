@@ -129,6 +129,7 @@ private:
   GpuMemPool               m_pool;
   std::vector<CUstream>    m_streams;
   std::vector<std::thread> m_threads;
+  std::atomic<uint32_t>    m_batchLast;
   std::atomic<uint32_t>    m_batchStart;
   std::atomic<uint32_t>    m_batchSize;
   unsigned                 m_dmaIndex;

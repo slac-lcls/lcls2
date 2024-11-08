@@ -367,6 +367,7 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
   unsigned    pgpIndex;
   const auto& stream     = m_streams[dmaIdx];
   auto        dmaBuffer  = m_pool.dmaBuffers[dmaIdx];
+  m_batchLast = 0;
   while (true) {
 
     // Clear the GPU memory handshake space to zero
@@ -424,11 +425,9 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
     //  logging::error("DMA index mismatch: got %u, expected %u\n",
     //                 dsc->index, dmaIdx);
     pgpIndex = th->evtCounter & bufferMask;
-    //printf("*** pgpIndex %u, batchStart %u, dmaIdx %u\n",
-    //       pgpIndex, m_batchStart.load(), dmaIdx);
-    if (pgpIndex != m_batchStart + dmaIdx)
+    if (pgpIndex != m_batchStart + m_batchLast)
       logging::error("%d Event counter mismatch: got %u, expected %u\n",
-                     dmaIdx, pgpIndex, m_batchStart + dmaIdx);
+                     dmaIdx, pgpIndex, m_batchStart + m_batchLast);
 
     sawDisable = th->service() == TransitionId::Disable;
 
@@ -453,6 +452,7 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
     //else if (th->service() == TransitionId::SlowUpdate)
     //  this->slowUpdate(*th);
 
+    m_batchLast += 1;
     m_batchSize += nDmaRet;
     full = m_batchSize == 4;           // @todo: arbitrary
 
@@ -468,6 +468,7 @@ void GpuWorker_impl::_reader(unsigned dmaIdx, SPSCQueue<Batch>& collectorGpuQueu
 
       // Reset to the beginning of the batch
       full = false;
+      m_batchLast  = 0;
       m_batchStart = pgpIndex + 1;
       m_batchSize  = 0;
     }
