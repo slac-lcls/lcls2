@@ -97,6 +97,8 @@ def xpmLinkId(value):
     names = None
     if itype in linkType:
         names = linkType[itype](value)
+    elif value==0x10080:
+        names = ('Fanout/','Loopback')
     else:
         names = ('undef','{:x}'.format(value))
     return names

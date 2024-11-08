@@ -697,7 +697,9 @@ class PVCtrls(object):
                             nL0  = g._stats._pv_numL0Acc.current()['value']
                             done = g._pv_StepDone.current()['value']
                             #logging.info(f'Check group {i}: end {end}  nL0 {nL0}  done {done}')
-                            if ((end==nL0) and done==0):
+                            #if ((end==nL0) and done==0):
+                            #  Somehow nL0 can exceed the end point
+                            if ((end<=nL0) and done==0):
                                 logging.warning(f'Recover stepDone for group {i} events {end}')
                                 g.stepDone(True)
 
