@@ -58,7 +58,7 @@ class LaserGenerator(object):
 
     def one_second(self,bunch_period,branch_counts,req):
         self.instr.append('start = len(instrset)')
-        self.instr.append(f'instrset.append( ControlRequest([{req}]) )')
+        self.instr.append(f'instrset.append( ControlRequest([{req},2]) )')
         self.instr.append(f'instrset.append( FixedRateSync(marker="910kH", occ={bunch_period}) )')
         self.ninstr += 2
         for i,f in enumerate(branch_counts):
@@ -75,7 +75,7 @@ class LaserGenerator(object):
         #  laser on subroutine
         self.instr.append('subr_on = len(instrset)')
         self.instr.append(f'instrset.append( FixedRateSync(marker="910kH", occ={bunch_period}) )')
-        self.instr.append('instrset.append( ControlRequest([0]) )')
+        self.instr.append('instrset.append( ControlRequest([0,2]) )')
         for i,f in enumerate(branch_counts):
             self.instr.append(f'instrset.append( Branch.conditional(line=subr_on,counter={i},value={f-1}) )')
         self.instr.append('instrset.append( Return() )')
@@ -83,7 +83,7 @@ class LaserGenerator(object):
         # laser off subroutine
         self.instr.append('subr_off = len(instrset)')
         self.instr.append(f'instrset.append( FixedRateSync(marker="910kH", occ={bunch_period}) )')
-        self.instr.append(f'instrset.append( ControlRequest([1]) )')
+        self.instr.append(f'instrset.append( ControlRequest([1,2]) )')
         for i,f in enumerate(branch_counts):
             self.instr.append(f'instrset.append( Branch.conditional(line=subr_off,counter={i},value={f-1}) )')
         self.instr.append('instrset.append( Return() )')
