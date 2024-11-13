@@ -183,22 +183,28 @@ class MyDAQ:
         logging.error(msg)
         return
 
-def scan( keys, steps, setupStep=None ):
+def scan( keys, steps, defargs={}, setupStep=None ):
     parser = argparse.ArgumentParser()
-    parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
-    parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
-                        help='platform (default 0)')
-    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
-    parser.add_argument('-X', metavar='XPMHOST', type=str, default='drp-neh-ctl002', help='XPM host')
-    parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
+    def add_argument(arg,metavar='',default=None,required=False,help='',**kwargs):
+        if arg in defargs:
+            default = defargs[arg]
+            required = False
+        parser.add_argument(arg,default=default,metavar=metavar,required=required,help=help,**kwargs)
+
+    add_argument('-B', metavar='PVBASE', required=True, help='PV base')
+    add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+    add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
+    add_argument('-X', metavar='XPMHOST', type=str, default=None)
+    add_argument('-C', metavar='COLLECT_HOST', default='localhost',
                         help='collection host (default localhost)')
-    parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
+    add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
-    parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
-    parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
-    parser.add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
-    parser.add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
+    add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
+    add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
+    add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
+    add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
     parser.add_argument('-v', action='store_true', help='be verbose')
+
     args = parser.parse_args()
 
     if args.g is not None:

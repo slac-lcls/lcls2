@@ -8,7 +8,7 @@ detName  = 'epixquad_0'
 
 def pixel_mask(value0,value1,spacing,position_x,position_y):
     ny,nx=352,384;
-    out=np.zeros((ny,nx),dtype=np.int)+value0;
+    out=np.zeros((ny,nx),dtype=int)+value0;
     out[position_y::spacing,position_x::spacing]=value1;
     p = np.pad(out,[(0,4),(0,0)],mode='constant')
     a = np.zeros((4,178,192),dtype=np.uint8)
@@ -38,8 +38,8 @@ def steps():
             saci = f'{detName}:expert.EpixQuad.Epix10kaSaci[{a}]'
             d[f'{saci}.trbit'] = trbit
         for s in range(spacing**2):
-            position_x=position%spacing
-            position_y=position//spacing;
+            position_x=s%spacing
+            position_y=s//spacing;
             pmask = pixel_mask(0,1,spacing,position_x,position_y)
             d[f'{detName}:user.pixel_map'] = pmask.reshape(-1).tolist()
             #  Set the global meta data
@@ -51,9 +51,14 @@ def steps():
 if __name__ == '__main__':
 
     # default command line arguments
-    if len(sys.argv)==1:
-        defargs = ['-B','DAQ:UED','-p','0','-x','0','-C','drp-ued-cmp002','-c 2000','--config','BEAM']
-        sys.argv.extend(defargs)
+    defargs = {'-B':'DAQ:UED',
+               '-p':'0',
+               '-x':'0',
+               '-g':'1',
+               '-C':'drp-ued-cmp002',
+               '-c':'1000',
+               '-X':'drp-ued-cmp001',
+               '--config':'BEAM'}
 
     keys = []
     keys.append(f'{detName}:user.gain_mode')
@@ -65,4 +70,4 @@ if __name__ == '__main__':
         keys.append(f'{saci}.trbit' )
         keys.append(f'{saci}.Pulser')
 
-    scan(keys, steps)
+    scan(keys, steps, defargs=defargs)

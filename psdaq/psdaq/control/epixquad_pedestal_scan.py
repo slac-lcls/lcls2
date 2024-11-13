@@ -20,11 +20,16 @@ def steps():
 if __name__ == '__main__':
 
     # default command line arguments
-    if len(sys.argv)==1:
-        defargs = ['-B','DAQ:UED','-p','0','-x','0','-C','drp-ued-cmp002','-c 1000','--config','BEAM']
-        sys.argv.extend(defargs)
+    defargs = {'-B':'DAQ:UED',
+               '-p':'0',
+               '-x':'0',
+               '-g':'1',
+               '-C':'drp-ued-cmp002',
+               '-c':'1000',
+               '-X':'drp-ued-cmp001',
+               '--config':'BEAM'}
 
     keys = []
     keys.append(f'{detName}:user.gain_mode')
 
-    scan(keys, steps)
+    scan(keys, steps, defargs=defargs)
