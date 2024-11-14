@@ -12,41 +12,46 @@ import numpy as np
 #  Specialization for ePix in MFX:
 #    Defaults for platform, collection host, groups
 #
+hutch_def = {'tmo':(0,'drp-srcf-mon001'),
+             'rix':(0,'drp-srcf-mon002'),
+             'ued':(0,'drp-ued-cmp002'),
+             'asc':(2,'drp-det-cmp001')}
 
 class ConfigScanBase(object):
-    def __init__(self, args=[], **kwargs):
+    def __init__(self, userargs=[], defargs={}):
 
-
-        scantype = kwargs['scantype'] if 'scantype' in kwargs.keys() else 'chargeinj'
-
+        #
+        #  add arguments with defaults given by caller
+        #
         parser = argparse.ArgumentParser()
-        parser.add_argument('-p', type=int, choices=range(0, 8), default=3,
-                            help='platform (default 3)')
-        parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-srcf-cmp004',
-                            help='collection host (default drp-srcf-cmp004)')
-        parser.add_argument('-t', type=int, metavar='TIMEOUT', default=20000,
-                            help='timeout msec (default 20000)')
-        parser.add_argument('--hutch', default=None, type=str, help="hutch (shortcut to platform/collect_host")
-        parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (e.g. BEAM)')
-        parser.add_argument('--detname', default='epixhr_0', help="detector name (default 'scan')")
-        parser.add_argument('--scantype', default=scantype, help=f'scan type (default {scantype})')
+        def add_argument(arg,metavar='',default=None,required=False,help='',**kwargs):
+            if arg in defargs:
+                default = defargs[arg]
+                required = False
+            parser.add_argument(arg,default=default,metavar=metavar,required=required,help=help,**kwargs)
+
+        add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
+        add_argument('-C', metavar='COLLECT_HOST', default='localhost',
+                     help='collection host (default localhost)')
+        add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
+                     help='timeout msec (default 10000)')
+        add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
+        add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
+        add_argument('--detname', metavar='DETNAME', default='scan', help="detector name")
+        add_argument('--scantype', metavar='SCANTYPE', default='scan', help="scan type")
+        add_argument('--config', metavar='ALIAS', type=str, default=None, help='configuration alias (e.g. BEAM)')
+        add_argument('--events', type=int, default=2000, help='events per step (default 2000)')
+        add_argument('--record', type=int, choices=range(0, 2), default=None, help='recording flag')
+        add_argument('--hutch' , type=str, default=None, help='hutch (shortcut for -p,-C)')
         parser.add_argument('-v', action='store_true', help='be verbose')
 
-        parser.add_argument('--events', type=int, default=2000, help='events per step (default 2000)')
-        parser.add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
-
-        for a in args:
+        for a in userargs:
             parser.add_argument(a[0],**a[1])
 
         args = parser.parse_args()
 
-        if args.hutch:
-            if args.hutch=='rix':
-                args.p = 3
-                args.C = 'drp-srcf-cmp004'
-            if args.hutch=='asc':
-                args.p = 2
-                args.C = 'drp-det-cmp001'
+        if args.hutch and args.hutch in hutch_def:
+            args.p, args.C = hutch_def[args.hutch]
 
         if args.events < 1:
             parser.error('readout count (--events) must be >= 1')
