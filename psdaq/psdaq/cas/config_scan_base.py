@@ -35,7 +35,6 @@ class ConfigScanBase(object):
                      help='collection host (default localhost)')
         add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                      help='timeout msec (default 10000)')
-        add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
         add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
         add_argument('--detname', metavar='DETNAME', default='scan', help="detector name")
         add_argument('--scantype', metavar='SCANTYPE', default='scan', help="scan type")

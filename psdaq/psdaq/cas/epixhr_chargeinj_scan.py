@@ -4,8 +4,15 @@ import json
 
 def main():
 
+    # default command line arguments
+    defargs = {'--events'  :2000,
+               '--hutch'   :'rix',
+               '--detname' :'epixhr_0',
+               '--scantype':'chargeinj',
+               '--record'  :1}
+
     aargs = [('--spacing',{'type':int,'default':5,'help':'size of rectangular grid'})]
-    scan = ConfigScanBase(aargs, scantype='chargeinj')
+    scan = ConfigScanBase(userargs=aargs, defargs=defargs)
 
     args = scan.args
     keys = []

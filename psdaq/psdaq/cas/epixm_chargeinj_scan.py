@@ -8,8 +8,15 @@ nColumns = 384
 
 def main():
 
+    # default command line arguments
+    defargs = {'--events'  :1000,
+               '--hutch'   :'rix',
+               '--detname' :'epixm320_0',
+               '--scantype':'chargeinj',
+               '--record'  :1}
+
     aargs = [('--spacing',{'type':int,'default':5,'help':'size of lane'})]
-    scan = ConfigScanBase(aargs, scantype='chargeinj')
+    scan = ConfigScanBase(userargs=aargs, defargs=defargs)
 
     args = scan.args
     keys = []

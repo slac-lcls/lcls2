@@ -4,10 +4,17 @@ import json
 
 def main():
 
-    scan = ConfigScanBase(scantype='pedestal')
+    # default command line arguments
+    defargs = {'--events'  :1000,
+               '--hutch'   :'rix',
+               '--detname' :'epixm320_0',
+               '--scantype':'pedestal',
+               '--record'  :1}
+
+    scan = ConfigScanBase(defargs=defargs)
 
     args = scan.args
-    args.scantype = 'pedestal'
+
     keys = [f'{args.detname}:user.gain_mode']
 
     def steps():

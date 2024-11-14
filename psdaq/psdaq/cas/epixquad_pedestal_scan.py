@@ -4,7 +4,7 @@ import json
 def main():
 
     # default command line arguments
-    defargs = {'-c'        :1000,
+    defargs = {'--events'  :1000,
                '--hutch'   :'ued',
                '--detname' :'epixquad_0',
                '--scantype':'pedestal',
