@@ -87,6 +87,9 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       tpr.CSR = v;
       usleep(100000);
     }
+
+    // clear the trigger pipeline
+    shutdown();
 }
 
 json XpmDetector::connectionInfo(const nlohmann::json& msg)
