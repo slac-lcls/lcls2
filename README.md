@@ -14,3 +14,4 @@ source setup_env.sh
 To run the psana automated tests run "pytest psana/psana/tests/" in your git root directory.
 
 You can read the above build_all.sh script to see how to build individual packages.
+
