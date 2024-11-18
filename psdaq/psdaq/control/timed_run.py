@@ -40,6 +40,8 @@ def main():
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
 
+    parser.add_argument('--record', action='store_true', help='enable recording')
+
     parser.add_argument('-v', action='store_true', help='be verbose')
 
     args = parser.parse_args()
