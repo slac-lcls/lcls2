@@ -19,4 +19,4 @@ if [ ! -f "$2" ]; then
 fi
 
 # run the daq for the specified duration with recording ENABLED
-timed_run --duration="$1" --config="$2" --record -v
+timed_run --duration="$1" --config="$2" --record
