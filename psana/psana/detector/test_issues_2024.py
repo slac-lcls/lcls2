@@ -583,10 +583,21 @@ def issue_2024_11_01(parser):
     print('dir(det.raw):', dir(det.raw))
 
 
+def issue_2024_11_19():
+    """Dorlhiac, Gabriel
+       Dubrovin, Mikhail?
+?       O'Grady, Paul Christopher?
+       Good morning Mikhail,
+       I've been using the EpixHREmu calibration constants for testing GPU detector calibration,
+       but I have some questions about how to correctly identify which portion of the data corresponds
+       to each detector segment. For reference I am using run 276 of experiment tstx00417
+       where the detector long name is of the form: ...
 
+       Good morning Gabriel,
+       Sorry, but in ps-4.6.3 by mistake module epixhremu.py was excluded from the list of known detectors.py ...
 
-
-
+       datinfo -d epixhr_emu -k exp=tstx00417,run=276,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc
+    """
 
 def argument_parser():
     from argparse import ArgumentParser
