@@ -25,8 +25,11 @@ def deduce_platform3(configfilename, platform=None):
         if type(cc['platform']) == type('') and cc['platform'].isdigit():
             platform_rv = int(cc['platform'])
     except:
-        print('deduce_platform3 Error:', sys.exc_info()[1])
+        logging.error(f'{sys.exc_info()[1]}')
+        platform_rv = -1
+        collect_host_rv = 'Error'
 
+    logging.debug('deduce_platform3: platform_rv={platform_rv}, collect_host_rv={collect_host_rv}')
     return platform_rv, collect_host_rv
 
 def main():
@@ -56,6 +59,9 @@ def main():
 
     # instantiate DaqControl object
     platform, collect_host = deduce_platform3(args.config)
+    if platform == -1:
+        sys.exit('ERROR:Failed to get platform number')
+    logging.debug(f'platform={platform}  collect_host={collect_host}')
     control = DaqControl(host=collect_host, platform=platform, timeout=args.t)
 
     # get initial DAQ state
@@ -63,6 +69,12 @@ def main():
     logging.info('initial state: %s' % daqState)
     if daqState == 'error':
         sys.exit('failed to get initial DAQ state')
+
+    (r1, r2, r3, recordFlag, r5, r6, r7, r8, r9) = control.getStatus()
+    logging.debug(f'initial record flag setting: {recordFlag}')
+    if args.record == True and recordFlag == False:
+        logging.info('enable recording')
+        control.setRecord(True)
 
     # instantiate TimedRun
     run = TimedRun(control, daqState=daqState, args=args)

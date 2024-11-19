@@ -14,9 +14,9 @@ fi
 
 # check if the config file is found
 if [ ! -f "$2" ]; then
-    >&2 echo "File not found: $2"
+    >&2 echo "ERROR:File not found: $2"
     exit 1
 fi
 
-# run the daq for the specified duration
-timed_run --duration="$1" --config="$2"
+# run the daq for the specified duration with recording ENABLED
+timed_run --duration="$1" --config="$2" --record -v
