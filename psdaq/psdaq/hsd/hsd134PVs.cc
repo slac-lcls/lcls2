@@ -295,11 +295,13 @@ int main(int argc, char** argv)
                 while(!pvPaddr.connected())
                     usleep(1000);
                 pvPaddr.putFrom(paddr); }
+            /*  Do this in PVStats::update
             sprefix += "_U";
             { Pds_Epics::EpicsPVA& pvPaddr = *(pvaa[i+6] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
                 while(!pvPaddr.connected())
                     usleep(1000);
                 pvPaddr.putFrom(upaddr); }
+            */
         }
         printf("paddr [0x%x] [%s]\n", upaddr, paddr.c_str());
     }

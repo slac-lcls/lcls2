@@ -57,6 +57,7 @@ namespace Pds {
            _monJesd,
            _monEnv,
            _monAdc,
+           _monLinkId,  // PADDR_U
            _NumberOf };
 
     PV134Stats::PV134Stats(Module134& m) : _m(m), _pgp(m.pgp()), _pv(2*_NumberOf) {}
@@ -85,6 +86,8 @@ namespace Pds {
       PV_ADD (monJesd);
       PV_ADD (monEnv);
       PV_ADD (monAdc);
+      _pv[_monLinkId            ] = new EpicsPVA(STOU(pvbase_a + "PADDR_U").c_str());
+      _pv[_monLinkId + _NumberOf] = new EpicsPVA(STOU(pvbase_b + "PADDR_U").c_str());
 #undef PV_ADD
 
       printf("PVs allocated\n");
@@ -109,12 +112,20 @@ namespace Pds {
 
       bool jesdreset = false;
 
+      //  Update the linkID
+      unsigned upaddr = _m.remote_id();
+
       for(unsigned i=0; i<2; i++) {
         ChipAdcCore& chip  = _m.chip(i);
         ChipAdcReg&  reg   = chip.reg;
         FexCfg&      fex   = chip.fex;
         Mmhw::TprCore& tpr = _m.tpr();
         Pds::Mmhw::TriggerEventBuffer& teb = _m.tem().det(i);
+
+        { Pds_Epics::EpicsPVA& pv = *_pv[_monLinkId+i*_NumberOf];
+          if (pv.connected())
+              pv.putFrom(upaddr);
+        }
 
         { MonTiming v;
           v.timframecnt = DELT(reg.countEnable , _p_monTiming[i].timframeprv);
