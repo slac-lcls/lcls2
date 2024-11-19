@@ -216,6 +216,10 @@ class Run(object):
         return det
 
     @property
+    def scannames(self):
+        return set([x[0] for x in self.scaninfo.keys()])
+
+    @property
     def detnames(self):
         return set([x[0] for x in self.dsparms.det_classes["normal"].keys()])
 
