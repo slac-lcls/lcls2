@@ -1,9 +1,9 @@
 #/bin/bash
 
 #
-# Example: Run the RIX DAQ for 10 seconds
+# Example: Record a 10 second run on RIX DAQ
 #
-#   ./archon_takepeds.sh 10 rix.py
+#   ./timed_takepeds.sh 10 rix.py
 #
 
 # check the number of arguments, and exit if incorrect.

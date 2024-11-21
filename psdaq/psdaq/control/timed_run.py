@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+timed_run command
+"""
 
 import sys
 import os
