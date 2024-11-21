@@ -330,9 +330,9 @@ def user_to_expert(cl, cfg, full=False):
         if gate < 4000:
             print('gate_ns {:} must be at least 4000 ns'.format(gate))
             raise ValueError('gate_ns < 4000')
-        if gate > 160000:
-            print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate))
-            #raise ValueError('gate_ns > 160000')
+        if gate > 8000:
+            print('gate_ns {:} must be less than 8us to permit 100kHz running'.format(gate))
+            raise ValueError('gate_ns > 8000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=1.0 #gate*0.001
         d['expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET']=gate
 
