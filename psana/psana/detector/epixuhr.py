@@ -15,9 +15,13 @@ B16 = 0o100000 # the 16-th bit (counting from 1)
 
 # make an empty detector interface for Matt's hardware
 # configuration object so that config_dump works - cpo
-class epixuhrhw_config_0_0_0(DetectorImpl):
+class epixuhr_config_0_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
-        super(epixuhrhw_config_0_0_0, self).__init__(*args)
+        super().__init__(*args)
+
+class epixuhr_config_0_1_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
 
 class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):

@@ -173,7 +173,7 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         self._totPixelsPerBank = self._fakePixelsPerBank+self._realPixelsPerBank
         self._totRealPixels = self._realPixelsPerBank*self._nbanks
         self._gainfact = self._kwargs.get('gainfact', 3.65) # 3.65eV/ADU
-        self._cmpars = self._kwargs.get('cmpars', None)
+        self._cmpars = self._kwargs.get('cmpars', (1,0,0))
         self._seg_geo = sgs.Create(segname='ARCHON:V1', detector=self)
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-archon.data'
         self._geo = self._det_geo()
