@@ -30,8 +30,8 @@ help_str += "\nuser.fex.gate_ns  : nanoseconds from sparsify start to end"
 help_str += "\nuser.fex.prescale : event downsampling; record 1-out-of-N"
 help_str += "\nuser.fex.corr.baseline : new baseline after sample correction"
 help_str += "\nuser.fex.corr.accum    : pre-gate baseline accumulation period"
-help_str += "\nuser.fex.ymin     : minimum ADC value to sparsify"
-help_str += "\nuser.fex.ymax     : maximum ADC value to sparsify"
+help_str += "\nuser.fex.dymin    : min ADC value to sparsify relative to fex.corr.baseline"
+help_str += "\nuser.fex.dymax    : max ADC value to sparsify relative to fex.corr.baseline"
 help_str += "\nuser.fex.xpre     : keep N samples leading excursion"
 help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
 
@@ -45,8 +45,8 @@ top.set('user.raw.keep',          1, 'UINT32')
 top.set('user.fex.start_ns',  93000, 'UINT32')
 top.set('user.fex.gate_ns' ,    200, 'UINT32')
 top.set('user.fex.prescale',      0, 'UINT32')
-top.set('user.fex.ymin' ,      2000, 'UINT32')
-top.set('user.fex.ymax' ,      2080, 'UINT32')
+top.set('user.fex.dymin' ,      -20, 'INT32')
+top.set('user.fex.dymax' ,       20, 'INT32')
 top.set('user.fex.xpre' ,         8, 'UINT32')
 top.set('user.fex.xpost',         8, 'UINT32')
 
@@ -109,6 +109,12 @@ top.setInfo('hsd', args.name, args.segm, args.id, 'No comment')
 if args.update:
     cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
     top = update_config(cfg, top.typed_json(), args.verbose)
+    ofex = cfg['user']['fex']
+    nfex = top['user']['fex']
+    bline = int(ofex['corr']['baseline'])
+    if 'dymin' not in ofex:
+        nfex['dymin'] = ofex['ymin']-bline
+        nfex['dymax'] = ofex['ymax']-bline
 
 if not args.dryrun:
     if create:

@@ -123,8 +123,12 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['fex_gate' ] = fex_gate
     expert['fex_xpre' ] = fex_xpre
     expert['fex_xpost'] = fex_xpost
-    expert['fex_ymin' ] = fex['ymin']
-    expert['fex_ymax' ] = fex['ymax']
+    if 'dymin' in fex:
+        expert['fex_ymin' ] = fex['corr']['baseline']+fex['dymin']
+        expert['fex_ymax' ] = fex['corr']['baseline']+fex['dymax']
+    else:
+        expert['fex_ymin' ] = fex['ymin']
+        expert['fex_ymax' ] = fex['ymax']
     expert['fex_prescale'] = fex['prescale']
 #    expert['fex_corr_baseline'] = fex['corr']['baseline']
 #    expert['fex_corr_accum']    = fex['corr']['accum']
