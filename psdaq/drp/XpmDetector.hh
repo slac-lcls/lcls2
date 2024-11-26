@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Detector.hh"
+#include <Python.h>
 
 namespace XtcData {
     class Xtc;
@@ -20,9 +21,10 @@ protected:
     void connect(const nlohmann::json&, const std::string& collectionId) override;
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     void shutdown() override;
+private:
+    void _init();
 protected:
-    unsigned m_length;
-    unsigned m_readoutGroup;
+    PyObject*            m_module;        // python module
 };
 
 }
