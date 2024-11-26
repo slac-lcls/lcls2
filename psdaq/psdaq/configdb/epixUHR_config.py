@@ -20,7 +20,7 @@ import IPython
 import datetime
 import logging
 import copy # deepcopy
-import psdaq.configdb.EpixUHRBoard as EpixUHRBoard
+#import psdaq.configdb.EpixUHRBoard as EpixUHRBoard
 import functools
 
 rogue.Version.minVersion('6.1.0')
@@ -126,63 +126,65 @@ def gain_mode_map(gain_mode):
     precharge_DAC = (45, 45, 45)[gain_mode]
     return (compTH, precharge_DAC)
 
-def cbase_init(cbase):
-    for asics in [1,4]:
-        getattr(cbase.App,f'Asic{asics}').enable.set(True)			  	
-        getattr(cbase.App,f'Asic{asics}').TpsDacGain.set(1)						
-        getattr(cbase.App,f'Asic{asics}').TpsDac.set(34)						
-        getattr(cbase.App,f'Asic{asics}').TpsGr.set(12)						
-        getattr(cbase.App,f'Asic{asics}').TpsMux.set(0)						
-        getattr(cbase.App,f'Asic{asics}').BiasTpsBuffer.set(5)						
-        getattr(cbase.App,f'Asic{asics}').BiasTps.set(4)						
-        getattr(cbase.App,f'Asic{asics}').BiasTpsDac.set(4)						
-        getattr(cbase.App,f'Asic{asics}').DacVthr.set(52)						
-        getattr(cbase.App,f'Asic{asics}').BiasDac.set(4)						
-        getattr(cbase.App,f'Asic{asics}').BgrCtrlDacTps.set(3)						
-        getattr(cbase.App,f'Asic{asics}').BgrCtrlDacComp.set(0)						
-        getattr(cbase.App,f'Asic{asics}').DacVthrGain.set(2)						
-        getattr(cbase.App,f'Asic{asics}').PpbitBe.set(1)						
-        getattr(cbase.App,f'Asic{asics}').BiasPxlCsa.set(1)						
-        getattr(cbase.App,f'Asic{asics}').BiasPxlBuf.set(1)						
-        getattr(cbase.App,f'Asic{asics}').BiasAdcComp.set(0)						
-        getattr(cbase.App,f'Asic{asics}').BiasAdcRef.set(0)						
-        getattr(cbase.App,f'Asic{asics}').CmlRxBias.set(3)						
-        getattr(cbase.App,f'Asic{asics}').CmlTxBias.set(3)						
-        getattr(cbase.App,f'Asic{asics}').DacVfiltGain.set(2)						
-        getattr(cbase.App,f'Asic{asics}').DacVfilt.set(28)						
-        getattr(cbase.App,f'Asic{asics}').DacVrefCdsGain.set(2)						
-        getattr(cbase.App,f'Asic{asics}').DacVrefCds.set(44)						
-        getattr(cbase.App,f'Asic{asics}').DacVprechGain.set(2)						
-        getattr(cbase.App,f'Asic{asics}').DacVprech.set(34)						
-        getattr(cbase.App,f'Asic{asics}').BgrCtrlDacFilt.set(2)						
-        getattr(cbase.App,f'Asic{asics}').BgrCtrlDacAdcRef.set(2)						
-        getattr(cbase.App,f'Asic{asics}').BgrCtrlDacPrechCds.set(2)						
-        getattr(cbase.App,f'Asic{asics}').BgrfCtrlDacAll.set(2)						
-        getattr(cbase.App,f'Asic{asics}').BgrDisable.set(0)						
-        getattr(cbase.App,f'Asic{asics}').DacAdcVrefpGain.set(2)						
-        getattr(cbase.App,f'Asic{asics}').DacAdcVrefp.set(63)						
-        getattr(cbase.App,f'Asic{asics}').DacAdcVrefnGain.set(2)						
-        getattr(cbase.App,f'Asic{asics}').DacAdcVrefn.set(7)						
-        getattr(cbase.App,f'Asic{asics}').DacAdcVrefCmGain.set(2)						
-        getattr(cbase.App,f'Asic{asics}').DacAdcVrefCm.set(37)						
-        getattr(cbase.App,f'Asic{asics}').AdcCalibEn.set(0)						
-        getattr(cbase.App,f'Asic{asics}').CompEnGenEn.set(1)						
-        getattr(cbase.App,f'Asic{asics}').CompEnGenCfg.set(5)						
-        getattr(cbase.App,f'Asic{asics}').CfgAutoflush.set(0)						
-        getattr(cbase.App,f'Asic{asics}').ExternalFlushN.set(1)						
-        getattr(cbase.App,f'Asic{asics}').ClusterDvMask.set(16383)					
-        getattr(cbase.App,f'Asic{asics}').PixNumModeEn.set(0)
+def cbase_ASIC_init(cbase, asics):
+    for asic in asics:
+        getattr(cbase.App,f'Asic{asic}').enable.set(True)			  	
+        getattr(cbase.App,f'Asic{asic}').TpsDacGain.set(1)						
+        getattr(cbase.App,f'Asic{asic}').TpsDac.set(34)						
+        getattr(cbase.App,f'Asic{asic}').TpsGr.set(12)						
+        getattr(cbase.App,f'Asic{asic}').TpsMux.set(0)						
+        getattr(cbase.App,f'Asic{asic}').BiasTpsBuffer.set(5)						
+        getattr(cbase.App,f'Asic{asic}').BiasTps.set(4)						
+        getattr(cbase.App,f'Asic{asic}').BiasTpsDac.set(4)						
+        getattr(cbase.App,f'Asic{asic}').DacVthr.set(52)						
+        getattr(cbase.App,f'Asic{asic}').BiasDac.set(4)						
+        getattr(cbase.App,f'Asic{asic}').BgrCtrlDacTps.set(3)						
+        getattr(cbase.App,f'Asic{asic}').BgrCtrlDacComp.set(0)						
+        getattr(cbase.App,f'Asic{asic}').DacVthrGain.set(2)						
+        getattr(cbase.App,f'Asic{asic}').PpbitBe.set(1)						
+        getattr(cbase.App,f'Asic{asic}').BiasPxlCsa.set(1)						
+        getattr(cbase.App,f'Asic{asic}').BiasPxlBuf.set(1)						
+        getattr(cbase.App,f'Asic{asic}').BiasAdcComp.set(0)						
+        getattr(cbase.App,f'Asic{asic}').BiasAdcRef.set(0)						
+        getattr(cbase.App,f'Asic{asic}').CmlRxBias.set(3)						
+        getattr(cbase.App,f'Asic{asic}').CmlTxBias.set(3)						
+        getattr(cbase.App,f'Asic{asic}').DacVfiltGain.set(2)						
+        getattr(cbase.App,f'Asic{asic}').DacVfilt.set(28)						
+        getattr(cbase.App,f'Asic{asic}').DacVrefCdsGain.set(2)						
+        getattr(cbase.App,f'Asic{asic}').DacVrefCds.set(44)						
+        getattr(cbase.App,f'Asic{asic}').DacVprechGain.set(2)						
+        getattr(cbase.App,f'Asic{asic}').DacVprech.set(34)						
+        getattr(cbase.App,f'Asic{asic}').BgrCtrlDacFilt.set(2)						
+        getattr(cbase.App,f'Asic{asic}').BgrCtrlDacAdcRef.set(2)						
+        getattr(cbase.App,f'Asic{asic}').BgrCtrlDacPrechCds.set(2)						
+        getattr(cbase.App,f'Asic{asic}').BgrfCtrlDacAll.set(2)						
+        getattr(cbase.App,f'Asic{asic}').BgrDisable.set(0)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefpGain.set(2)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefp.set(63)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefnGain.set(2)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefn.set(7)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefCmGain.set(2)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefCm.set(37)						
+        getattr(cbase.App,f'Asic{asic}').AdcCalibEn.set(0)						
+        getattr(cbase.App,f'Asic{asic}').CompEnGenEn.set(1)						
+        getattr(cbase.App,f'Asic{asic}').CompEnGenCfg.set(5)						
+        getattr(cbase.App,f'Asic{asic}').CfgAutoflush.set(0)						
+        getattr(cbase.App,f'Asic{asic}').ExternalFlushN.set(1)						
+        getattr(cbase.App,f'Asic{asic}').ClusterDvMask.set(16383)					
+        getattr(cbase.App,f'Asic{asic}').PixNumModeEn.set(0)
         #PixNumModeEn, change this value to 1 to create a fixed pattern						
-        getattr(cbase.App,f'Asic{asics}').SerializerTestEn.set(0)						
-        getattr(cbase.App,f'BatcherEventBuilder{asics}').enable.set(True)			  	
-        getattr(cbase.App,f'BatcherEventBuilder{asics}').Bypass.set(0)						
-        getattr(cbase.App,f'BatcherEventBuilder{asics}').Timeout.set(0)						
-        getattr(cbase.App,f'BatcherEventBuilder{asics}').Blowoff.set(False)					
-        getattr(cbase.App,f'FramerAsic{asics}').enable.set(False)
-        getattr(cbase.App,f'FramerAsic{asics}').DisableLane.set(0)						
-        getattr(cbase.App,f'AppAsicGtData{asics}').enable.set(True)
-        getattr(cbase.App,f'AppAsicGtData{asics}').gtStableRst.set(False)
+        getattr(cbase.App,f'Asic{asic}').SerializerTestEn.set(0)						
+        getattr(cbase.App,f'BatcherEventBuilder{asic}').enable.set(True)			  	
+        getattr(cbase.App,f'BatcherEventBuilder{asic}').Bypass.set(0)						
+        getattr(cbase.App,f'BatcherEventBuilder{asic}').Timeout.set(0)						
+        getattr(cbase.App,f'BatcherEventBuilder{asic}').Blowoff.set(False)					
+        getattr(cbase.App,f'FramerAsic{asic}').enable.set(False)
+        getattr(cbase.App,f'FramerAsic{asic}').DisableLane.set(0)						
+        getattr(cbase.App,f'AsicGtData{asic}').enable.set(True)
+        getattr(cbase.App,f'AsicGtData{asic}').gtStableRst.set(False)
 
+
+def cbase_init(cbase):
     cbase.App.WaveformControl.enable.set(True)			  	
     cbase.App.WaveformControl.GlblRstPolarity.set(True)		  	
     cbase.App.WaveformControl.SR0Polarity.set(False)			  	
@@ -218,8 +220,8 @@ def cbase_init(cbase):
     cbase.App.GTReadoutBoardCtrl.timingOutEn0.set(False)
     cbase.App.GTReadoutBoardCtrl.timingOutEn1.set(False)
     cbase.App.GTReadoutBoardCtrl.timingOutEn2.set(False)
-    cbase.App.AppAsicGtClk.enable.set(True)
-    cbase.App.AppAsicGtClk.gtRstAll.set(False)					
+    cbase.App.AsicGtClk.enable.set(True)
+    cbase.App.AsicGtClk.gtRstAll.set(False)					
     cbase.App.TimingRx.enable.set(True)
 
 #
@@ -235,7 +237,7 @@ def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M
     base = {}
     #  Connect to the camera and the PCIe card
 
-    cbase = EpixUHRBoard.Root(
+    cbase = epixUhrDev.Root(
         dev          = dev,
         defaultFile  = ' ',
         emuMode      = False,
@@ -248,6 +250,7 @@ def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M
         numOfAsics   = 4,
         timingMessage= False,
         justCtrl     = True,
+        loadPllCsv   = False,
     )
     
     cbase.__enter__()
@@ -404,7 +407,9 @@ def user_to_expert(base, cfg, full=False):
 #
 def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     global asics  # Need to maintain this across configuration updates
-    
+    path = '/tmp/ePixUHR_GTReadout_default_'
+    pathPll = '/tmp/'
+
     #  Disable internal triggers during configuration
     epixUHR_external_trigger(base)
 
@@ -433,7 +438,19 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         for i in range(cbase.numOfAsics):
             if cfg['user']['asic_enable']&(1<<i):
                 asics.append(i+1)
-            
+    
+    pll = cbase.Core.Si5345Pll
+    pll.enable.set(True)
+    
+    pllCfg = np.reshape(cfg['expert']['Pll'], (-1,2))
+    fn = pathPll+'PllConfig'+'.csv'
+    np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
+    tmpfiles = []
+    tmpfiles.append(fn)
+    setattr(cbase, 'filenamePLL', fn)
+    
+    pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')        
+    cbase_ASIC_init(cbase, asics)
                
                 # remove the ASIC configuration so we don't try it
             #    del app['Mv2Asic[{}]'.format(i)]
@@ -483,10 +500,9 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         # Config data was initialized from the distribution's yaml files by epixhr_config_from_yaml.py
         # Translate config data to yaml files
         
-        path = '/tmp/ePixUHR_GTReadout_default_'
         epixMTypes = cfg[':types:']['expert']['App']
         tree = ('Root','App')
-        tmpfiles = []
+        
         def toYaml(sect,keys,name):
             #if sect == tree[-1]:
             tmpfiles.append(dictToYaml(app,epixMTypes,keys,cbase.App,path,name,tree,ordering))
@@ -592,14 +608,14 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         cbase.App.GTReadoutBoardCtrl.timingOutEn1.set(app['GTReadoutBoardCtrl']['timingOutEn1'])
         cbase.App.GTReadoutBoardCtrl.timingOutEn2.set(app['GTReadoutBoardCtrl']['timingOutEn2'])
         
-        cbase.App.AppAsicGtClk.enable.set(cfg['expert']['App']['AsicGtClk']['enable'])
-        cbase.App.AppAsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
+        cbase.App.AsicGtClk.enable.set(cfg['expert']['App']['AsicGtClk']['enable'])
+        cbase.App.AsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
         for i in asics:
-            getattr(cbase.App,f"AppAsicGtData{i}").enable.set(cfg['expert']['App'][f'AsicGtData{i}']['enable'])			
-            getattr(cbase.App,f"AppAsicGtData{i}").gtStableRst.set(cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
+            getattr(cbase.App,f"AsicGtData{i}").enable.set(cfg['expert']['App'][f'AsicGtData{i}']['enable'])			
+            getattr(cbase.App,f"AsicGtData{i}").gtStableRst.set(cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
                     
         cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']						)	
-        cbase.App.VINJ_DAC.SetValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']					)	
+        cbase.App.VINJ_DAC.dacSingleValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']					)	
         cbase.App.ADS1217.enable.set(cfg['user']['App']['ADS1217']['enable']						)	
         cbase.App.ADS1217.adcStartEnManual.set(cfg['user']['App']['ADS1217']['adcStartEnManual']	)
         
