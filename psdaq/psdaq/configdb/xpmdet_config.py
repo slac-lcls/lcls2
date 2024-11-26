@@ -72,7 +72,13 @@ def xpmdet_connectionInfo(alloc_json_str):
                 rate = root.TDetTiming.refClockRate()
 
                 if (rate < clockrange[0] or rate > clockrange[1]):
-                    root.I2CBus.programSi570(args["timebase"])
+                    root.I2CBus.programSi570(119. if args["timebase"]=="119M" else 1300/7.)
+                    tim = root.TDetTiming.TimingFrameRx
+                    tim.RxPllReset.set(1)
+                    tim.RxPllReset.set(0)
+                    time.sleep(0.0001)
+                    tim.C_RxReset()
+                    time.sleep(0.1)
             else:
                 logging.warning('Supervisor is not I2cBus manager')
 
@@ -94,7 +100,7 @@ def xpmdet_connectionInfo(alloc_json_str):
     logging.info('rxId {:x}'.format(rxId))
         
     if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
-        logging.critical(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
+        logging.warning(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
         tim = root.TDetTiming.TimingFrameRx
         tim.RxPllReset.set(1)
         tim.RxPllReset.set(0)

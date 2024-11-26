@@ -255,6 +255,7 @@ target_include_directories(sim_udpencoder PUBLIC
     ${ZeroMQ_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
     ${RapidJSON_INCLUDE_DIRS}
+    ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(sim_udpencoder
@@ -262,6 +263,7 @@ target_link_libraries(sim_udpencoder
    libfabric::fabric
    prometheus-cpp::push
    nlohmann_json::nlohmann_json
+   ${PYTHON_LIBRARIES}
    ${Readline_LIBRARY}
    dl
    rt
