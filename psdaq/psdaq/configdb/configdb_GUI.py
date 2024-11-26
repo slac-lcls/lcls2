@@ -49,7 +49,8 @@ class ConfigdbGUI(QWidget):
             self.third_column = QTreeWidget()
             #disabled (log print output)
             self.forth_column = QTextEdit()
-
+            self.forth_column.setReadOnly(True)
+            
             self.first_column.itemSelectionChanged.connect(self.first_column_select)       
             self.first_column.setHeaderLabel("Prod") 
             self.third_column.setHeaderLabel("Parameters") 
