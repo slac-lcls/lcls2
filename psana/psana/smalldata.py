@@ -439,13 +439,15 @@ class Server:  # (hdf5 handling)
         # additional dataset to record its timestamps
         if is_unaligned(dataset_name):
             unaligned_ts_name = unaligned_timestamp_name(dataset_name)
-            self._dsets[unaligned_ts_name] = (dtype, shape)
+            # make a fake int timestamp (33) to learn shape/type properties
+            (unaligned_ts_shape, unaligned_ts_maxshape, unaligned_ts_dtype) = self._get_data_info(33, unaligned_ts_name)
+            self._dsets[unaligned_ts_name] = (unaligned_ts_dtype, unaligned_ts_shape)
             self.file_handle.create_dataset(
                 unaligned_ts_name,
-                (0,) + shape,  # (0,) -> expand dim
-                maxshape=maxshape,
-                dtype=int,
-                chunks=(self.cache_size,) + shape,
+                (0,) + unaligned_ts_shape,  # (0,) -> expand dim
+                maxshape=unaligned_ts_maxshape,
+                dtype=unaligned_ts_dtype,
+                chunks=(self.cache_size,) + unaligned_ts_shape,
             )
 
         if is_var:
