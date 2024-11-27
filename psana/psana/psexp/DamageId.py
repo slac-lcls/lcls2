@@ -1,10 +1,10 @@
-Truncated = (1,)  # bitmask 0
-OutOfOrder = (2,)
-OutOfSynch = (4,)
-Corrupted = (16,)
-DroppedContribution = (32,)
-MissingData = (64,)
-TimedOut = (128,)
+Truncated = 1  # bitmask 0
+OutOfOrder = 2
+OutOfSynch = 4
+Corrupted = 16
+DroppedContribution = 32
+MissingData = 64
+TimedOut = 128
 UserDefined = 4096  # bitmask 12
 
 damage_id_to_name = {
