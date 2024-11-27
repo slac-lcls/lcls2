@@ -557,7 +557,10 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
 
     for (auto& pvMonitor : m_pvMonitors) {
         // Set up the names for L1Accept data
-        Alg     rawAlg("raw", 1, 0, 0);
+        unsigned uvsn = m_para.kwargs.find("data_vsn") != m_para.kwargs.end() ? std::stoul(m_para.kwargs["data_vsn"],NULL,0) : 0x010000;
+        AlgVersion& vsn = *reinterpret_cast<AlgVersion*>(&uvsn);
+        logging::debug("AlgVersion %d.%d.%d",vsn.major(),vsn.minor(),vsn.micro());
+        Alg     rawAlg("raw", vsn.major(), vsn.minor(), vsn.micro());
         NamesId rawNamesId(nodeId, RawNamesIndex + pvMonitor->id());
         Names&  rawNames = *new(xtc, bufEnd) Names(bufEnd,
                                                    pvMonitor->alias().c_str(), rawAlg,
@@ -1355,6 +1358,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pva_addr")       continue;  // DrpBase
             if (kwargs.first == "firstdim")       continue;
             if (kwargs.first == "match_tmo_ms")   continue;
+            if (kwargs.first == "data_vsn")       continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
