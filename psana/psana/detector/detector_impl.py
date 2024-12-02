@@ -147,5 +147,5 @@ class DetectorImpl:
                 setattr(self, field, func)
 
     @property
-    def Damage(self):
+    def _Damage(self):
         return DamageCls(self._segments)
