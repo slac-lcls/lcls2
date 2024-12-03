@@ -102,11 +102,6 @@ class PrometheusManager(object):
         "psana_bd_read": ("Gauge", "Disk reading rate (MB/s) for bd", ()),
         "psana_bd_ana_rate": ("Gauge", "User-analysis rate on bd (kHz)", ()),
         "psana_bd_wait": ("Gauge", "time spent (s) waiting for EventBuilder", ()),
-        "psana_damage_total": (
-            "Counter",
-            "Damage counter per detector and damage type",
-            ("detname", "damage"),
-        ),
     }
 
     def __init__(self, job=None):
