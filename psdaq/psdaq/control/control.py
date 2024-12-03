@@ -488,7 +488,7 @@ class DaqXPM():
 
         # zmq
         self.push = zctxt.socket(zmq.PUSH)
-        self.push.connect(f'tcp://{xpm_host}:{xpm_pull_port(xpm_master)}')
+        self.push.connect(f'tcp://{xpm_host}:{xpm_pull_port(self.pv_xpm_base)}')
 
     #
     #  DaqXPM.allocate

@@ -707,10 +707,9 @@ class PVCtrls(object):
         from psdaq.control.ControlDef import xpm_pull_port
 
         #  Open the zmq socket for control connections
-        xpm_num = int(self._name.rsplit(':',1)[1])
         zctxt = zmq.Context(1)
         pull  = zctxt.socket(zmq.PULL)
-        pull.bind('tcp://*:%d' % xpm_pull_port(xpm_num))
+        pull.bind('tcp://*:%d' % xpm_pull_port(self._name))
 
         app = self._xpm.XpmApp
 
