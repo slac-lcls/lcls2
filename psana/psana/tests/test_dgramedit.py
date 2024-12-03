@@ -5,8 +5,9 @@ import numpy as np
 import pytest
 
 from psana import DataSource, dgram
+from psana.detector import DamageBitmask
 from psana.dgramedit import AlgDef, DetectorDef, DgramEdit
-from psana.psexp import DamageId, TransitionId
+from psana.psexp import TransitionId
 
 BUFSIZE = 64000000
 
@@ -159,7 +160,7 @@ def run_dgramedit(output_filename):
         dgram_edit.adddata(det2.raw)
         if i_evt == 0:
             dgram_edit.updateservice(11)
-            dgram_edit.updatedamage(DamageId.Corrupted)
+            dgram_edit.updatedamage(1 << DamageBitmask.Corrupted.value)
             pydg = dgram_edit.get_pydgram()
             print(
                 f"{i_evt=} {pydg.service()=} isEvent={TransitionId.isEvent(pydg.service())} damage={pydg.pyxtc.damage.value()}"

@@ -2,8 +2,6 @@ import typing
 
 import amitypes
 
-from psana.psexp.damage import Damage as DamageCls
-
 
 def hiddenmethod(obj):
     """
@@ -145,7 +143,3 @@ class DetectorImpl:
                         return getattr(info, field)
 
                 setattr(self, field, func)
-
-    @property
-    def _Damage(self):
-        return DamageCls(self._segments)
