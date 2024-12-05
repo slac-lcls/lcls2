@@ -157,19 +157,11 @@ class SbatchManager:
 
     def get_daq_cmd(self, details, job_name):
         cmd = details["cmd"]
-        if not job_name.startswith("ami") and not job_name in (
-            "groupca",
-            "prom2pvs",
-            "control_gui",
-            "xpmpva",
-            "daqstat",
-        ):
-            cmd += f" -u {job_name}"
         if "flags" in details:
             if details["flags"].find("p") > -1:
                 cmd += f" -p {repr(self.platform)}"
-        if job_name.startswith("ami-meb"):
-            cmd += f" -u {job_name}"
+            if details["flags"].find("u") > -1:
+                cmd += f" -u {job_name}"
         if job_name == "daqstat":
             cmd += f" {self.configfilename}"
         if self.is_drp(details["cmd"]):
