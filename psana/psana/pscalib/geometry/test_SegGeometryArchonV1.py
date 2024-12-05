@@ -62,13 +62,14 @@ if __name__ == "__main__":
 
     xmin, ymin, zmin = w.get_xyz_min_um()
     xmax, ymax, zmax = w.get_xyz_max_um()
-    xmin /= w.pixel_scale_size()
-    xmax /= w.pixel_scale_size()
-    ymin /= w.pixel_scale_size()
-    ymax /= w.pixel_scale_size()
+    xmin /= w._pixsc # w.pixel_scale_size()
+    xmax /= w._pixsc
+    ymin /= w._pixsr
+    ymax /= w._pixsr
 
     xsize = xmax - xmin + 1
     ysize = ymax - ymin + 1
+
     logger.info('xsize =' + str(xsize))
     logger.info('ysize =' + str(ysize))
 
@@ -76,20 +77,19 @@ if __name__ == "__main__":
   def test_archon_img_easy():
     from psana.detector.NDArrUtils import info_ndarr
     w = SegGeometryArchonV1(detector=detector_simulator())
-    X,Y = w.get_seg_xy_maps_pix_with_offset()
-    print(info_ndarr(X, 'X:'))
-    print(info_ndarr(Y, 'Y:'))
+
+    iX, iY = w.get_seg_xy_maps_pix_with_offset() # contains nans for fake pixels
     cond = w.mask_fake().ravel() > 0
-    X = np.compress(cond, X.ravel())
-    Y = np.compress(cond, Y.ravel())
-    iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
-    print(info_ndarr(iX, 'iX:'))
-    print(info_ndarr(iY, 'iY:'))
+    iX = np.compress(cond, iX.ravel())
+    iY = np.compress(cond, iY.ravel())
+    print(info_ndarr(iX, 'iX first:'))
+    print(info_ndarr(iX, 'iX  last:', first=iX.size-5, last=iX.size))
+    print(info_ndarr(iY, 'iY first:'))
+    print(info_ndarr(iY, 'iY  last:', first=iY.size-5, last=iY.size))
     img = gg.getImageFromIndexArrays(iY,iX,iX+10*iY)
     print(info_ndarr(img, 'img:'))
     gg.plotImageLarge(img, amp_range=(0, 5000), figsize=(20,4), window=WINDOW)
     gg.show()
-
 
   def test_pix_sizes():
     w = SegGeometryArchonV1(detector=detector_simulator())
@@ -110,7 +110,8 @@ if __name__ == "__main__":
     w = SegGeometryArchonV1(detector=detector_simulator())
     iX, iY = w.get_seg_xy_maps_pix_with_offset()
     mask = w.pixel_mask_array() #, dtype=DTYPE_MASK, **kwa)
-    img = gg.getImageFromIndexArrays(iX, iY, weights=mask+1, mask_arr=mask).T
+    #img = gg.getImageFromIndexArrays(iX, iY, weights=mask+1, mask_arr=mask).T
+    img = mask
     gg.plotImageLarge(img, amp_range=(0, 2), figsize=(20,4), window=WINDOW)
     gg.show()
 

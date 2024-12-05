@@ -80,24 +80,26 @@ Created on 2023-04-26 by Mikhail Dubrovin
 #from psana.pscalib.geometry.SegGeometryEpix10kaV1 import *
 from psana.pscalib.geometry.SegGeometry import *
 logger = logging.getLogger(__name__)
+from psana.detector.NDArrUtils import info_ndarr
 
 DTYPE_MASK = np.uint8
 
 class SegGeometryArchonV1(SegGeometry):
     """Self-sufficient class for generation of ArchonV1 sensor pixel coordinate array"""
 
+    _nbanks = 16     # Number of banks
+    _rows  = 300     # Number of rows 1/75/150/300/600/1200
+    _colsr = 264     # Number of cols in a single of 16 banks
+    _colst = 300     # Number of cols in a single of 16 banks
+    _colsf = 36      # Number of cols in a single of 16 banks
+    _pixsr = 20.     # Pixel size in um (micrometer) in row
+    _pixsc = 10.     # Pixel size in um (micrometer) in col
+    _pixd  = 400.00  # Pixel depth in um (micrometer)
+
+
     def __init__(sp, **kwa):
         sp._name = 'SegGeometryArchonV1'
         #logger.debug('%s.__init__()'%sp._name)
-
-        sp._nbanks = 16     # Number of banks
-        sp._rows  = 300     # Number of rows 1/75/150/300/600/1200
-        sp._colsr = 264     # Number of cols in a single of 16 banks
-        sp._colst = 300     # Number of cols in a single of 16 banks
-        sp._colsf = 36      # Number of cols in a single of 16 banks
-        sp._pixsr = 20.     # Pixel size in um (micrometer) in row
-        sp._pixsc = 10.     # Pixel size in um (micrometer) in col
-        sp._pixd  = 400.00  # Pixel depth in um (micrometer)
 
         #sp._nasics_in_rows = 1 # Number of ASICs in row direction
         #sp._nasics_in_cols = 1 # Number of ASICs in column direction
@@ -122,6 +124,7 @@ class SegGeometryArchonV1(SegGeometry):
         y_bank = -np.arange(sp._rows, dtype=dtype)*sp._pixsr
         sp.x_arr_um = np.hstack([x_bank+i*w for i in range(sp._nbanks)])
         sp.x_arr_um -= (sp.x_arr_um[0]+sp.x_arr_um[-1-sp._colsf])/2 # offset to origin in center
+        #print('x_arr_um:', sp.x_arr_um)
         sp.y_arr_um = y_bank - (y_bank[0]+y_bank[-1])/2 # offset to origin in center
         sp.x_pix_arr_um, sp.y_pix_arr_um  = np.meshgrid(sp.x_arr_um, sp.y_arr_um)
         sp.z_pix_arr_um = np.zeros(sp.x_pix_arr_um.shape)
@@ -163,20 +166,17 @@ class SegGeometryArchonV1(SegGeometry):
             sp.y_pix_arr_um_offset = sp.y_pix_arr_um - y_min_um
         return sp.x_pix_arr_um_offset, sp.y_pix_arr_um_offset
 
-    def get_seg_xy_maps_pix(sp):
-        """returns ix and iy pixel array indices, CAN BE NEGATIVE"""
-        if sp.x_pix_arr_pix is None:
-           sp.x_pix_arr_pix = (sp.x_pix_arr_um/sp._pixsc).astype(int)
-           sp.y_pix_arr_pix = (sp.y_pix_arr_um/sp._pixsr).astype(int)
-        return sp.x_pix_arr_pix, sp.y_pix_arr_pix
-
     def get_seg_xy_maps_pix_with_offset(sp):
         """returns ix and iy pixel array indices with offset minimum to 0"""
-        ix, iy = sp.get_seg_xy_maps_pix()
-        ixmin, iymin = int(sp.pixel_coord_min('X')/sp._pixsc),\
-                       int(sp.pixel_coord_min('Y')/sp._pixsr)
-        print('\n  ixmin=%8d  iymin=%8d' % (ixmin, iymin))
-        return ix-ixmin, iy-iymin
+        x, y = sp.get_seg_xy_maps_um_with_offset()
+        notnan = ~np.isnan(x)
+        ix = -np.ones(x.shape, dtype=np.int32)
+        iy = -np.ones(y.shape, dtype=np.int32)
+        ix[notnan] = x[notnan]/sp._pixsc
+        iy[notnan] = y[notnan]/sp._pixsr
+        return ix, iy
+
+    get_seg_xy_maps_pix = get_seg_xy_maps_pix_with_offset
 
     # SegGeometry interface methods implementation
 
@@ -210,8 +210,6 @@ class SegGeometryArchonV1(SegGeometry):
         """ Returns array of pixel relative areas of shape=[rows, cols]"""
         sp.make_pixel_size_arrs()
         return sp.pix_area_arr
-
-
 
     def get_pixel_size_arrs_um(sp):
         sp.make_pixel_size_arrs()
@@ -264,8 +262,6 @@ class SegGeometryArchonV1(SegGeometry):
 
     def pixel_ones_array(sp, dtype=DTYPE_MASK):
         return np.ones((sp._rows, sp._cols), dtype=dtype)
-
-
 
 
 # for converter
