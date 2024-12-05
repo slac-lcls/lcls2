@@ -185,7 +185,7 @@ def issue_2023_01_10():
         #gmaps = cc.gain_maps_epix(raw)
         #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
         #arr = ucc.map_gain_range_index_for_gmaps(gmaps, default=10) # stack bits...
-        #arr = np.array(raw & 0o100000, dtype=np.int) # 0o77777 # behaves ok
+        #arr = np.array(raw & 0o100000, dtype=np.int16) # 0o77777 # behaves ok
         arr1 = np.array(arr[0,irow,100:120], dtype=np.int16) & databitw
         print(info_ndarr(arr1,'%s  arr1:' % s, first=0, last=10), '  v[col]=%5d' % arr1[icol])
 
