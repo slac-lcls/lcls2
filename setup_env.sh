@@ -8,15 +8,16 @@ then
     export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
+    conda activate ps_20241122
 else
     # for psana
     source /cds/sw/ds/ana/conda2-v4/inst/etc/profile.d/conda.sh
     export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
+    conda activate ps-4.6.3
 fi
 
-conda activate ps-4.6.3
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
     source $AUTH_FILE
