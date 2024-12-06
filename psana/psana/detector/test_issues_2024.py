@@ -373,8 +373,6 @@ def issue_2024_07_24():
          gr.show()
          sys.exit('TEST EXIT')
 
-
-
          det.raw._set_tstamp_pixel_values(mask_fake, value=100)
          flimg.update(mask_fake, arr=None)
          gr.show(mode='DO NOT HOLD')
@@ -599,6 +597,62 @@ def issue_2024_11_19():
        datinfo -d epixhr_emu -k exp=tstx00417,run=276,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc
     """
 
+
+
+def issue_2024_12_05():
+    """test for common mode in det.raw.calib/image implementation for archon
+    """
+    #ds, orun, det = ds_run_det(exp='rixc00121', run=140, detname='archon', dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc')
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+
+    ds = DataSource(exp='rixc00121',run=154, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1200,4800), >200 evts
+    orun = next(ds.runs())
+    det = orun.Detector('archon', gainfact=2, cmpars=(1,0,0))
+
+    flimg = None
+    events = 5
+
+    for nev, evt in enumerate(orun.events()):
+       #print(info_ndarr(det.raw.raw(evt), '%3d: det.raw.raw(evt)' % nev))
+       if nev>events:
+           print('BREAK for nev>%d' % events)
+           break
+       raw = det.raw.raw(evt)
+       if raw is None:
+           print('evt:%3d - raw is None' % nev)
+           continue
+
+       print('==== evt:%3d' % nev)
+
+       t0_sec = time()
+
+       #img  = det.raw.image(evt)
+       clb  = det.raw.calib(evt)
+
+       #img = arr_img = raw
+       img = arr_img = clb
+       #img = arr_img = img
+       #img = arr_img = det.raw._arr_to_image(clb)
+
+       dt_sec = (time() - t0_sec)*1000
+       print(info_ndarr(img, 'evt:%3d dt=%.3f msec  det.raw.img(evt)' % (nev, dt_sec)))
+
+       if flimg is None:
+          flimg = fleximage(arr_img, arr=arr_img, h_in=5, w_in=16, nneg=1, npos=3)
+
+       flimg.update(img, arr=arr_img)
+       flimg.fig.suptitle('Event %d: det.raw.raw' % nev, fontsize=16)
+       gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+       print(info_ndarr(img, 'img'))
+       print(info_ndarr(raw, 'raw'))
+       gr.show(mode='DO NOT HOLD')
+
+    gr.show()
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -651,6 +705,7 @@ def selector():
     elif TNAME in ('13',): issue_2024_10_30() # philip exp='rixx1017523',run=11, archon common mode
     elif TNAME in ('14',): issue_2024_10_31() # test access to config for det.raw.calib development
     elif TNAME in ('15',): issue_2024_11_01(parser) # -s inds; test epixUHR /sdf/group/lcls/ds/ana/detector/data2_test/xtc/tstx00217-r0553-s001-c000.xtc2
+    elif TNAME in ('16',): issue_2024_12_05() # archon V1/V2 common mode
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
