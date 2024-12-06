@@ -52,6 +52,8 @@ See:
  * :py:class:`SegGeometryEpixM320V1`
  * :py:class:`SegGeometryJungfrauV1`,
  * :py:class:`SegGeometryMatrixV1`,
+ * :py:class:`SegGeometryArchonV1`,
+ * :py:class:`SegGeometryArchonV2`,
  * :py:class:`SegGeometryStore`
 
 For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/Detector+Geometry>`_.
@@ -120,6 +122,9 @@ def segment_geometry(**kwa):
     elif segname=='ARCHON:V1':
         from psana.pscalib.geometry.SegGeometryArchonV1 import SegGeometryArchonV1
         return SegGeometryArchonV1(detector=kwa.get('detector', None))
+    elif segname=='ARCHON:V2':
+        from psana.pscalib.geometry.SegGeometryArchonV2 import SegGeometryArchonV2
+        return SegGeometryArchonV2(detector=kwa.get('detector', None))
     #elif segname=='ANDOR3D:V1': return seg_andor3d # SegGeometryMatrixV1()
     else:
         logger.debug('segment "%s" gometry IS NOT IMPLEMENTED' % segname)
