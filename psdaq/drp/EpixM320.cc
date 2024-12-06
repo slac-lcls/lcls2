@@ -244,9 +244,10 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
     Array<uint16_t> aFrame   = cd.allocate<uint16_t>(EpixMPanelDef::raw,     fShape);
     Array<uint8_t>  aTrailer = cd.allocate<uint8_t> (EpixMPanelDef::trailer, tShape);
 
-    if (subframes.size() != 6) {
-        logging::error("Missing data: subframe size %d vs 6 expected\n",
-                       subframes.size());
+    unsigned nSubframes = __builtin_popcount(m_asics)+2;
+    if (subframes.size() != nSubframes) {
+        logging::error("Missing data: subframe size %d vs %d expected\n",
+                        subframes.size(), nSubframes);
         xtc.damage.increase(Damage::MissingData);
         return;
     }
