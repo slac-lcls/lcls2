@@ -543,7 +543,7 @@ def test_simulation(*args, **kwargs):
     DTYPE_GAIN = np.float32
     DTYPE_MASK = np.uint8
     DTYPE_BKGD = np.float32
-    DTYPE_CMOD = np.double
+    DTYPE_CMOD = np.float64
     DTYPE_REST = np.float32
     M14 = 0x3fff
     B14 = 0x4000
@@ -711,7 +711,7 @@ def test_simulation_nloops(*args, **kwargs):
     DTYPE_GAIN = np.float32
     DTYPE_REST = np.float32
     DTYPE_BKGD = np.float32
-    DTYPE_CMOD = np.double
+    DTYPE_CMOD = np.float64
     DTYPE_STAT = np.uint64
     M14 = 0x3fff
     B14 = 0x4000
