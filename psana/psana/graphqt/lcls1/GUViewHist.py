@@ -53,8 +53,8 @@ Usage ::
     ind, hb.values = w.hist_bin_value(x, ihis=0)
 
     w.reset_original_hist()
-    w.add_hist(values, edges, pen=QtGui.QPen(Qt.black), brush=QtGui.QBrush(), vtype=np.float)
-    w.add_array_as_hist(arr, pen=QtGui.QPen(Qt.black), brush=QtGui.QBrush(), vtype=np.float)
+    w.add_hist(values, edges, pen=QtGui.QPen(Qt.black), brush=QtGui.QBrush(), vtype=np.float32)
+    w.add_array_as_hist(arr, pen=QtGui.QPen(Qt.black), brush=QtGui.QBrush(), vtype=np.float32)
     w.remove_all_graphs()
 
 
@@ -436,7 +436,7 @@ class GUViewHist(GUViewAxes) :
         #self.update_my_scene() # ?????
 
 
-    def add_hist(self, values, edges, pen=QtGui.QPen(Qt.black), brush=QtGui.QBrush(), vtype=np.float) :
+    def add_hist(self, values, edges, pen=QtGui.QPen(Qt.black), brush=QtGui.QBrush(), vtype=np.float32) :
         nbins = len(values) #if isinstance(values, (list,tuple)) else values.size
         hb   = HBins(edges, nbins) #, vtype)
         binl = hb.binedgesleft()
@@ -477,7 +477,7 @@ class GUViewHist(GUViewAxes) :
 
 
     def add_array_as_hist(self, arr, pen=QtGui.QPen(Qt.black), brush=QtGui.QBrush(),\
-                          vtype=np.float, set_hlims=True) :
+                          vtype=np.float32, set_hlims=True) :
         """Adds array (i.e. like image) as a histogram of intensities
         """
         amin, amax, nbins, values = image_to_hist_arr(arr) #, self.amin, self.amax)

@@ -495,7 +495,7 @@ def path_to_test_data() :
 
 if __name__ == "__main__" :
 
-  def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float) :
+  def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float32) :
     """Returns numpy array of requested shape and type filled with normal distribution for mu and sigma.
     """
     a = mu + sigma*np.random.standard_normal(size=shape)
