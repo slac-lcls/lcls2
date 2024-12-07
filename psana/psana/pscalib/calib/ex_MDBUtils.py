@@ -11,7 +11,7 @@ from psana.pscalib.calib.MDBUtils import *
 def get_test_nda():
     """Returns random standard nupmpy array for test purpose."""
     import psana.pyalgos.generic.NDArrGenerators as ag
-    return ag.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=np.float)
+    return ag.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=np.float32)
 
 def get_test_dic():
     """Returns dict for test purpose."""
