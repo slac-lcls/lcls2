@@ -246,7 +246,7 @@ def pixel_mask_square(value0,value1,spacing,position):
     if position>=spacing**2:
         logging.error('position out of range')
         position=0;
-    out=np.zeros((ny,nx),dtype=np.int)+value0
+    out=np.zeros((ny,nx),dtype=np.int32)+value0
     position_x=position%spacing; position_y=position//spacing
     out[position_y::spacing,position_x::spacing]=value1
     return out

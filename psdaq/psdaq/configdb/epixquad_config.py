@@ -100,7 +100,7 @@ def pixel_mask_square(value0,value1,spacing,position):
     if position>=spacing**2:
         logging.error('position out of range')
         position=0;
-    out=np.zeros((ny,nx),dtype=np.int)+value0
+    out=np.zeros((ny,nx),dtype=np.int32)+value0
     position_x=position%spacing; position_y=position//spacing
     out[position_y::spacing,position_x::spacing]=value1
     return out
@@ -143,7 +143,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         for devPtr in appLane:
             devPtr.XpmPauseThresh.set(0x20)
             devPtr.EventBuilder.Timeout.set(int(156.25e6/360))
-        
+
         #  Disable flow control on the PGP lane at the PCIe end
 #        getattr(pbase.DevPcie.Hsio,f'PgpMon[{lane}]').Ctrl.FlowControlDisable.set(1)
 
@@ -718,3 +718,5 @@ def epixquad_enable(base):
 def epixquad_disable(base):
     time.sleep(0.005)  # Need to make sure readout of last event is complete
     epixquad_internal_trigger(base)
+
+# EOF
