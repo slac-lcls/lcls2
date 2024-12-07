@@ -1,32 +1,21 @@
 #!/usr/bin/env python
-#------------------------------
 
 import hexanode
 
-#------------------------------
-
 def test_01():
     print('call pure python')
-
-#------------------------------
 
 def test_02():
     print('call cython hexanode.met1()')
     hexanode.met1()
 
-#------------------------------
-
 def test_03():
     print('call hexanode.fib(90)')
     print(hexanode.fib(90))
 
-#------------------------------
-
 def test_04():
     print('call ctest_resort()')
     hexanode.ctest_resort()
-
-#------------------------------
 
 def test_05():
     import numpy as np
@@ -81,8 +70,6 @@ def test_05():
              o.get_tdc_data_array(dtdc)
              print('   TDC data:\n', dtdc[0:8,0:5])
 
-#------------------------------
-
 def test_06():
     import numpy as np
     print('test sort_class')
@@ -94,12 +81,12 @@ def test_06():
 
     status = hexanode.py_read_calibration_tables(b"calibration_table.txt", o)
 
-    print('Cu1', o.cu1) 
-    print('Cu2', o.cu2) 
-    print('Cv1', o.cv1) 
-    print('Cv2', o.cv2) 
-    print('Cw1', o.cw1) 
-    print('Cw2', o.cw2) 
+    print('Cu1', o.cu1)
+    print('Cu2', o.cu2)
+    print('Cv1', o.cv1)
+    print('Cv2', o.cv2)
+    print('Cw1', o.cw1)
+    print('Cw2', o.cw2)
     print('Cmcp',o.cmcp )
 
     print('use_sum_correction', o.use_sum_correction)
@@ -120,7 +107,7 @@ def test_06():
     print('uncorrected_time_sum_half_width_v', o.uncorrected_time_sum_half_width_v)
     print('uncorrected_time_sum_half_width_w', o.uncorrected_time_sum_half_width_w)
     print('dead_time_anode                  ', o.dead_time_anode)
-    print('dead_time_mcp                    ', o.dead_time_mcp)          
+    print('dead_time_mcp                    ', o.dead_time_mcp)
 
     for errcode in range(2) :
         text = o.get_error_text(errcode, 512)
@@ -148,8 +135,6 @@ def test_06():
     #print('best_fw', sfo.best_fw)
     #print('best_w_offset', sfo.best_w_offset)
 
-#------------------------------
-
 def usage(tname):
     s = '\nUsage: python psana/psana/hexanode/examples/ex-04-methods.py <test-number>'
     if tname in ('0',)    : s+='\n 0 - test ALL'
@@ -160,8 +145,6 @@ def usage(tname):
     if tname in ('0','5') : s+='\n 5 - test LMF_IO'
     if tname in ('0','6') : s+='\n 6 - test sort_class'
     return s
-
-#------------------------------
 
 if __name__ == "__main__" :
     import sys; global sys
@@ -177,4 +160,4 @@ if __name__ == "__main__" :
     print('%s' % usage(tname))
     sys.exit('End of test %s' % tname)
 
-#------------------------------
+# EOF
