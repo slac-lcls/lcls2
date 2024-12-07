@@ -126,9 +126,9 @@ class WFPeaks :
 
     def _init_arrays(self) :
         self._number_of_hits = np.zeros((self.NUM_CHANNELS), dtype=np.int32)
-        self._pkvals = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.double)
+        self._pkvals = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.float64)
         self._pkinds = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.uint32)
-        self._pktsec = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.double)
+        self._pktsec = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.float64)
 
 
     def proc_waveforms(self, wfs, wts) :
