@@ -23,7 +23,7 @@ class TestGWViewAxis(GWViewAxis):
 
         elif e.key() == Qt.Key_R:
             print('TestGWViewAxis: set random limits for axis')
-            v = ag.random_standard((2,), mu=0, sigma=20, dtype=ag.np.int)
+            v = ag.random_standard((2,), mu=0, sigma=20, dtype=ag.np.int32)
             vmin, vmax = v[0], v[0] + 100
             self.set_axis_limits(vmin, vmax)
 
