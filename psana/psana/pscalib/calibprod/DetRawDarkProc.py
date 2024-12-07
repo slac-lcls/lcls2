@@ -8,7 +8,6 @@
    3. deploy calib files in db
 """
 
-#----------
 import logging
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,6 @@ from psana import DataSource
 from psana.pscalib.calib.NDArrIO import save_txt
 from psana.pscalib.calib.CalibConstants import TSFORMAT
 
-#----------
 
 def plot_det_image(det, evt, nda, tit=''):
     """Plots averaged image
@@ -36,12 +34,10 @@ def plot_det_image(det, evt, nda, tit=''):
     img = np.array(nda)
     if img is None: sys.exit('Image is not available. PROCESSING IS TERMINATED')
     img = reshape_to_2d(img)
-    
     ave, rms = nda.mean(), nda.std()
     gr.plotImageLarge(img, amp_range=(ave-1*rms, ave+3*rms), title=tit)
     gr.show()
 
-#----------
 
 def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=1000, cmt=''):
     """Evaluates low and high limit of the array, which are used to find bad pixels.
@@ -56,24 +52,21 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=1000, cmt=''):
 
     return lo, hi
 
-#----------
 
 def str_tstamp(fmt=TSFORMAT, time_sec=None): #fmt='%Y-%m-%dT%H:%M:%S
     return strftime(fmt, localtime(time_sec))
 
-#----------
 
 def replace(in_tmp, pattern, subst):
     """If pattern in the in_tmp replace it with subst.
-       Returns str object in_tmp with replaced patterns. 
+       Returns str object in_tmp with replaced patterns.
     """
-    fields = in_tmp.split(pattern, 1) 
+    fields = in_tmp.split(pattern, 1)
     if len(fields) > 1:
         return '%s%s%s' % (fields[0], subst, fields[1])
     else:
         return in_tmp
 
-#----------
 
 def fname_template(orun, detname, ofname, nevts, tsec=None, tnsec=None):
     """Replaces parts of the file name specified as
@@ -96,7 +89,6 @@ def fname_template(orun, detname, ofname, nevts, tsec=None, tnsec=None):
     if not '%s' in template: template += '-%s'
     return template
 
-#----------
 
 class DetRawDarkProc:
 
@@ -130,7 +122,7 @@ class DetRawDarkProc:
 
         self.loglev = args.loglev
         self.verbos = o0377 if self.loglev=='DEBUG' else 0 # deprecated
-        
+
         self.det     = None
         self.shape   = None
         self.counter = 0
@@ -167,7 +159,7 @@ class DetRawDarkProc:
     def _common_mode_pars(self, arr_ave, arr_rms, arr_msk):
         """Returns detector-dependent common mode parameters as np.array for a few detectors and None for others.
         """
-        import PSCalib.GlobalUtils as gu 
+        import PSCalib.GlobalUtils as gu
         import math
 
         dettype = gu.det_type_from_source(self.detname)
@@ -222,7 +214,7 @@ class DetRawDarkProc:
 
         logger.info('Begin stage 1 for %s, raw.shape = %s, intensity limits low: %.1f  high: %.1f'%\
                     (self.detname, str(self.shape), self.int_lo, self.int_hi))
-    
+
         self.arr0       = np.zeros(self.shape, dtype=np.int64)
         self.arr1       = np.ones (self.shape, dtype=np.int64)
 
@@ -230,8 +222,8 @@ class DetRawDarkProc:
         self.sta_int_hi = np.zeros(self.shape, dtype=np.int64)
 
         self.arr_sum0   = np.zeros(self.shape, dtype=np.int64)
-        self.arr_sum1   = np.zeros(self.shape, dtype=np.double)
-        self.arr_sum2   = np.zeros(self.shape, dtype=np.double)
+        self.arr_sum1   = np.zeros(self.shape, dtype=np.float64)
+        self.arr_sum2   = np.zeros(self.shape, dtype=np.float64)
 
         self.gate_lo    = self.arr1 * self.int_lo
         self.gate_hi    = self.arr1 * self.int_hi
@@ -240,7 +232,7 @@ class DetRawDarkProc:
         if self.savebw & 32: self.arr_min = np.ones (self.shape, dtype=ndaraw.dtype) * 0xffff
 
         self.stage = 1
-        
+
         return True
 
 
@@ -250,7 +242,7 @@ class DetRawDarkProc:
 
         ndaraw = self.det.raw(evt)
         if ndaraw is None: return
-        ndadbl = np.array(ndaraw, dtype=np.double)
+        ndadbl = np.array(ndaraw, dtype=np.float64)
 
         self._init_stage2(ndaraw)
         self._proc_event(ndadbl, ndaraw)
@@ -285,7 +277,7 @@ class DetRawDarkProc:
 
         if self.stage & 2: return
         if self.counter < self.evstg1: return
- 
+
         t0_sec = time()
 
         arr_av1 = divide_protected(self.arr_sum1, self.arr_sum0)
@@ -309,8 +301,8 @@ class DetRawDarkProc:
         self.gate_lo = np.array(self.gate_lo, dtype=ndaraw.dtype)
 
         self.arr_sum0 = np.zeros(self.shape, dtype=np.int64)
-        self.arr_sum1 = np.zeros(self.shape, dtype=np.double)
-        self.arr_sum2 = np.zeros(self.shape, dtype=np.double)
+        self.arr_sum1 = np.zeros(self.shape, dtype=np.float64)
+        self.arr_sum2 = np.zeros(self.shape, dtype=np.float64)
 
         self.stage = 2
 
@@ -325,7 +317,7 @@ class DetRawDarkProc:
             logger.info(', begin data summary stage')
         else:
             logger.info(', STOP processing, there are no arrays to save...')
-            return 
+            return
 
         t0_sec = time()
 
@@ -346,7 +338,7 @@ class DetRawDarkProc:
         frac_int_hi = np.array(self.sta_int_hi/counter, dtype=np.float32)
 
         arr_rms = np.sqrt(arr_av2 - np.square(arr_av1))
-        
+
         rms_min, rms_max = evaluate_limits(arr_rms, self.rmsnlo, self.rmsnhi, self.rms_lo, self.rms_hi, cmt='RMS')
         ave_min, ave_max = evaluate_limits(arr_av1, self.intnlo, self.intnhi, self.int_lo, self.int_hi, cmt='AVE')
 
@@ -357,7 +349,7 @@ class DetRawDarkProc:
         arr_sta_ave_hi = np.select((arr_av1>ave_max,),    (self.arr1,), 0)
         arr_sta_ave_lo = np.select((arr_av1<ave_min,),    (self.arr1,), 0)
 
-        logger.info('  Bad pixel status:') 
+        logger.info('  Bad pixel status:')
         logger.info('  status  1: %8d pixel rms       > %.3f' % (arr_sta_rms_hi.sum(), rms_max))
         logger.info('  status  8: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min))
         logger.info('  status  2: %8d pixel intensity > %g in more than %g fraction of events' % (arr_sta_int_hi.sum(), int_hi, fraclm))
@@ -365,7 +357,7 @@ class DetRawDarkProc:
         logger.info('  status 16: %8d pixel average   > %g'   % (arr_sta_ave_hi.sum(), ave_max))
         logger.info('  status 32: %8d pixel average   < %g'   % (arr_sta_ave_lo.sum(), ave_min))
 
-        #0/1/2/4/8/16/32 for good/hot-rms/saturated/cold/cold-rms/average above limit/average below limit, 
+        #0/1/2/4/8/16/32 for good/hot-rms/saturated/cold/cold-rms/average above limit/average below limit,
         arr_sta = np.zeros(self.shape, dtype=np.int64)
         arr_sta += arr_sta_rms_hi    # hot rms
         arr_sta += arr_sta_rms_lo*8  # cold rms
@@ -373,7 +365,7 @@ class DetRawDarkProc:
         arr_sta += arr_sta_int_lo*4  # cold
         arr_sta += arr_sta_ave_hi*16 # too large average
         arr_sta += arr_sta_ave_lo*32 # too small average
-        
+
         arr_msk  = np.select((arr_sta>0,), (self.arr0,), 1)
 
         cmod = None # self._common_mode_pars(arr_av1, arr_rms, arr_msk)
@@ -386,10 +378,10 @@ class DetRawDarkProc:
         if plotim & 32: plot_det_image(det, evt, self.arr_min,    tit='minimum')
         if plotim & 64: plot_det_image(det, evt, self.sta_int_lo, tit='statistics below threshold')
         if plotim &128: plot_det_image(det, evt, self.sta_int_hi, tit='statistics above threshold')
-        
+
         cmts = ['DATASET  %s' % self.detname, 'STATISTICS  %d' % counter]
-        
-        # Save n-d array in text file % 
+
+        # Save n-d array in text file %
         template = fname_template(self.orun, self.detname, ofname, counter, self.ev1_sec, self.ev1_nsec)
         addmetad=True
 
@@ -425,17 +417,16 @@ class DetRawDarkProc:
 
         if self.addcdb:
             from psana.pscalib.calib.MDBCommands import add_constants
-        
+
             if savebw &  1: add_constants(template % 'ave', 'pedestals',    **kwa)
-            if savebw &  2: add_constants(template % 'rms', 'pixel_rms',    **kwa) 
-            if savebw &  4: add_constants(template % 'sta', 'pixel_status', **kwa) 
-            if savebw &  8: add_constants(template % 'msk', 'pixel_mask',   **kwa)  
-            if savebw & 16: add_constants(template % 'max', 'pixel_max',    **kwa)   
-            if savebw & 32: add_constants(template % 'min', 'pixel_min',    **kwa)    
+            if savebw &  2: add_constants(template % 'rms', 'pixel_rms',    **kwa)
+            if savebw &  4: add_constants(template % 'sta', 'pixel_status', **kwa)
+            if savebw &  8: add_constants(template % 'msk', 'pixel_mask',   **kwa)
+            if savebw & 16: add_constants(template % 'max', 'pixel_max',    **kwa)
+            if savebw & 32: add_constants(template % 'min', 'pixel_min',    **kwa)
 
         logger.info('Data summary for %s is completed, dt=%7.3f sec' % (self.detname, time()-t0_sec))
 
-#----------
 
 def detectors_dark_proc(parser):
 
@@ -464,14 +455,14 @@ def detectors_dark_proc(parser):
     lst_dpo = [DetRawDarkProc(run, dname, args) for dname in args.dnames.split(',')]
 
     #ecm = EventCodeManager(evcode, verbos)
-           
+
     t0_sec = time()
     tdt = t0_sec
 
     for i,evt in enumerate(run.events()):
         if i<EVSKIP: continue
         if not i<EVENTS: break
-        #if not ecm.select(evt): continue 
+        #if not ecm.select(evt): continue
 
         for dpo in lst_dpo: dpo.event(evt)
         if do_print(i):
@@ -484,9 +475,8 @@ def detectors_dark_proc(parser):
 
     logger.info('%s\n Processed %d events, consumed time = %f sec.' % (80*'_', i, time()-t0_sec))
 
-#----------
 
 if __name__ == "__main__":
     sys.exit('run it by command det_raw_dark_proc')
 
-#----------
+# EOF

@@ -15,7 +15,7 @@ def test_templ(nda) :
 
 def test_01() :
     print(50*'_', '\nTest of templated function test_nda_fused')
-    test_templ(1*np.ones((2,3), dtype=np.double))
+    test_templ(1*np.ones((2,3), dtype=np.float64))
     test_templ(2*np.ones((2,4), dtype=np.int16))
     test_templ(3*np.ones((2,5), dtype=np.uint16))
 
@@ -41,10 +41,10 @@ def test_03() :
     print(50*'_', '\nTest of py_ctest_vector')
     from ndarray import py_ctest_vector
 
-    nda1 = np.arange(0, 10, 1, dtype=np.double)
+    nda1 = np.arange(0, 10, 1, dtype=np.float64)
     nda2 = np.arange(1, 10, 1, dtype=np.float32)
     nda3 = np.arange(10, 1,-1, dtype=np.int32)
-    nda4 = np.ones((5,), dtype=np.double)
+    nda4 = np.ones((5,), dtype=np.float64)
 
     py_ctest_vector(nda1)
     py_ctest_vector(nda2)
@@ -62,7 +62,7 @@ def test_04() :
     print(50*'_', '\nTest of py_ndarray')
     from ndarray import py_ndarray_double
     a = py_ndarray_double()
-    a.set_nda(np.ones((2,3), dtype=np.double))
+    a.set_nda(np.ones((2,3), dtype=np.float64))
 
 #--------
 
@@ -76,9 +76,9 @@ def test_06() :
     from ndarray import wfpkfinder_cfd
     from ex_wf import WF # local import
     #print(WF)
-    #wf  = np.arange(0, 20, 1, dtype=np.double)
-    wf  = np.array(WF, dtype=np.double)
-    pkvals = np.zeros((10,), dtype=np.double)
+    #wf  = np.arange(0, 20, 1, dtype=np.float64)
+    wf  = np.array(WF, dtype=np.float64)
+    pkvals = np.zeros((10,), dtype=np.float64)
     pkinds = np.zeros((10,), dtype=np.uint32)
     baseline, threshold, fraction, deadtime, leading_edges = 0, -5, 0.5, 0, True
     npks = wfpkfinder_cfd(wf, baseline, threshold, fraction, deadtime, leading_edges, pkvals, pkinds)

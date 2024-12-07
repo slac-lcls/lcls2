@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------
+
 """
 :py:class:`GlobalUtils` - a set of utilities
 ============================================
@@ -42,7 +42,7 @@ Usage::
     exists = gu.create_path(path, depth=6, mode=0777, verb=True)
 
     arr  = gu.load_textfile(path)
-    gu.save_textfile(text, path, mode='w') # mode: 'w'-write, 'a'-append 
+    gu.save_textfile(text, path, mode='w') # mode: 'w'-write, 'a'-append
 
     path = gu.replace('/path/#YYYY-MM/fname.txt', '#YYYY-MM', gu.str_tstamp(fmt='%Y/%m'))
 
@@ -68,7 +68,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created: 2013-03-08 by Mikhail Dubrovin
 """
-#--------------------------------
 
 import sys
 import os
@@ -78,11 +77,7 @@ import socket
 import numpy as np
 from time import localtime, strftime
 
-#------------------------------
-
 DIR_INS = '/reg/d/psdm'
-
-#------------------------------
 
 # ATTENTION !!!!! ALL LISTS SHOULD BE IN THE SAME ORDER (FOR DICTIONARIES)
 
@@ -101,7 +96,7 @@ PIXEL_DATAST = 9
 
 calib_types  = ( PEDESTALS,   PIXEL_STATUS,   PIXEL_RMS,   PIXEL_GAIN,   PIXEL_MASK,   PIXEL_BKGD,   COMMON_MODE,   GEOMETRY,   PIXEL_OFFSET,   PIXEL_DATAST)
 calib_names  = ('pedestals', 'pixel_status', 'pixel_rms', 'pixel_gain', 'pixel_mask', 'pixel_bkgd', 'common_mode', 'geometry', 'pixel_offset', 'pixel_datast')
-calib_dtypes = ( np.float32,  np.uint16,      np.float32,  np.float32,   np.uint8,     np.float32,   np.double,     str,        np.float32,     np.uint16)
+calib_dtypes = ( np.float32,  np.uint16,      np.float32,  np.float32,   np.uint8,     np.float32,   np.float64,    str,        np.float32,     np.uint16)
 
 dic_calib_type_to_name  = dict(zip(calib_types, calib_names))
 dic_calib_name_to_type  = dict(zip(calib_names, calib_types))
@@ -121,21 +116,17 @@ calib_statnames  = ('LOADED', 'DEFAULT', 'UNREADABLE', 'UNDEFINED', 'WRONGSIZE',
 dic_calib_status_value_to_name = dict(zip(calib_statvalues, calib_statnames))
 dic_calib_status_name_to_value = dict(zip(calib_statnames,  calib_statvalues))
 
-#------------------------------
-#------------------------------
-#------------------------------
-#------------------------------
 
 UNDEFINED   = 0
-CSPAD       = 1 
-CSPAD2X2    = 2 
-PRINCETON   = 3 
-PNCCD       = 4 
-TM6740      = 5 
-OPAL1000    = 6 
-OPAL2000    = 7 
-OPAL4000    = 8 
-OPAL8000    = 9 
+CSPAD       = 1
+CSPAD2X2    = 2
+PRINCETON   = 3
+PNCCD       = 4
+TM6740      = 5
+OPAL1000    = 6
+OPAL2000    = 7
+OPAL4000    = 8
+OPAL8000    = 9
 ORCAFL40    = 10
 EPIX        = 11
 EPIX10K     = 12
@@ -216,7 +207,6 @@ dic_det_type_to_name = dict(zip(list_of_det_type, list_of_det_names))
 dic_det_type_to_calib_group = dict(zip(list_of_det_type, list_of_calib_groups))
 """ Dictionary for detector type : group"""
 
-#------------------------------
 bld_names = \
 ['EBeam',
 'PhaseCavity',
@@ -282,8 +272,6 @@ bld_names = \
 'AmoAin01']
 
 
-#------------------------------
-
 def det_type_from_source(source) :
     """ Returns enumerated detector type for string source
     """
@@ -319,18 +307,14 @@ def det_type_from_source(source) :
     elif ':Epix10ka.'       in str_src : return EPIX10KA
     else                               : return UNDEFINED
 
-#------------------------------
-##-----------------------------
-#------------------------------
 
 def string_from_source(source) :
   """Returns string like "CxiDs2.0:Cspad.0" from "Source('DetInfo(CxiDs2.0:Cspad.0)')" or "Source('DsaCsPad')"
   """
   str_in_quots = str(source).split('"')[1]
-  str_split = str_in_quots.split('(') 
+  str_split = str_in_quots.split('(')
   return str_split[1].rstrip(')') if len(str_split)>1 else str_in_quots
 
-##-----------------------------
 
 def shape_nda_to_2d(arr) :
     """Return shape of np.array to reshape to 2-d
@@ -339,7 +323,6 @@ def shape_nda_to_2d(arr) :
     if len(sh)<3 : return sh
     return (arr.size/sh[-1], sh[-1])
 
-##-----------------------------
 
 def shape_nda_to_3d(arr) :
     """Return shape of np.array to reshape to 3-d
@@ -348,7 +331,6 @@ def shape_nda_to_3d(arr) :
     if len(sh)<4 : return sh
     return (arr.size/sh[-1]/sh[-2], sh[-2], sh[-1])
 
-##-----------------------------
 
 def reshape_nda_to_2d(arr) :
     """Reshape np.array to 2-d
@@ -358,7 +340,6 @@ def reshape_nda_to_2d(arr) :
     arr.shape = (arr.size/sh[-1], sh[-1])
     return arr
 
-##-----------------------------
 
 def reshape_nda_to_3d(arr) :
     """Reshape np.array to 3-d
@@ -368,10 +349,9 @@ def reshape_nda_to_3d(arr) :
     arr.shape = (arr.size/sh[-1]/sh[-2], sh[-2], sh[-1])
     return arr
 
-#------------------------------
 
 def merge_masks(mask1=None, mask2=None, dtype=np.uint8) :
-    """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1) 
+    """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1)
     """
     if mask1 is None : return mask2
     if mask2 is None : return mask1
@@ -386,7 +366,6 @@ def merge_masks(mask1=None, mask2=None, dtype=np.uint8) :
     mask = np.logical_and(mask1, mask2)
     return mask if dtype==np.bool else np.asarray(mask, dtype)
 
-#------------------------------
 
 def mask_neighbors(mask, allnbrs=True, dtype=np.uint8) :
     """Return mask with masked eight neighbor pixels around each 0-bad pixel in input mask.
@@ -415,7 +394,7 @@ def mask_neighbors(mask, allnbrs=True, dtype=np.uint8) :
 
     else : # shape>2
 
-        mask_out.shape = mask.shape = shape_nda_to_3d(mask)       
+        mask_out.shape = mask.shape = shape_nda_to_3d(mask)
 
         # mask nearest neighbors
         mask_out[:, 0:-1,:] = np.logical_and(mask_out[:, 0:-1,:], mask[:, 1:,  :])
@@ -433,7 +412,6 @@ def mask_neighbors(mask, allnbrs=True, dtype=np.uint8) :
 
     return mask_out
 
-#------------------------------
 
 def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
     """Return mask with a requested number of row and column pixels masked - set to 0.
@@ -452,10 +430,10 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
     if len(sh) == 2 :
         rows, cols = sh
 
-        if mrows > rows : 
+        if mrows > rows :
           raise ValueError('Requested number of edge rows=%d to mask exceeds 2-d, shape=%s' % (mrows, str(sh)))
 
-        if mcols > cols : 
+        if mcols > cols :
           raise ValueError('Requested number of edge columns=%d to mask exceeds 2-d, shape=%s' % (mcols, str(sh)))
 
         if mrows>0 :
@@ -471,14 +449,14 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
           mask_out[:,-mcols:] = mask_cols
 
     else : # shape>2
-        mask_out.shape = shape_nda_to_3d(mask)       
+        mask_out.shape = shape_nda_to_3d(mask)
 
         segs, rows, cols = mask_out.shape
 
-        if mrows > rows : 
+        if mrows > rows :
           raise ValueError('Requested number of edge rows=%d to mask exceeds 2-d, shape=%s' % (mrows, str(sh)))
 
-        if mcols > cols : 
+        if mcols > cols :
           raise ValueError('Requested number of edge columns=%d to mask exceeds 2-d, shape=%s' % (mcols, str(sh)))
 
         if mrows>0 :
@@ -497,7 +475,6 @@ def mask_edges(mask, mrows=1, mcols=1, dtype=np.uint8) :
 
     return mask_out
 
-##-----------------------------
 
 def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=1000, verbos=1, cmt='') :
     """Evaluates low and high limit of the array, which are used to find bad pixels.
@@ -513,21 +490,18 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=1000, verbos=1, cmt=''
 
     return lo, hi
 
-##-----------------------------
 
 def str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=None) :
     """Returns string timestamp for specified format and time in sec or current time by default
     """
     return strftime(fmt, localtime(time_sec))
 
-#------------------------------
 
 def get_enviroment(env='USER') :
     """Returns the value of specified by string name environment variable
     """
     return os.environ[env]
 
-#------------------------------
 
 def get_login() :
     """Returns login name
@@ -543,23 +517,20 @@ def get_hostname() :
     #return os.uname()[1]
     return socket.gethostname()
 
-#------------------------------
 
 def get_cwd() :
     """Returns current working directory
     """
     return os.getcwd()
 
-#------------------------------
 
 def file_mode(fname) :
-    """Returns file mode 
+    """Returns file mode
     """
     return os.stat(fname)[ST_MODE]
 
-#------------------------------
 
-def create_directory(dir, verb=False) : 
+def create_directory(dir, verb=False) :
     if os.path.exists(dir) :
         pass
         #if verb : print 'Directory exists: %s' % dir
@@ -567,7 +538,6 @@ def create_directory(dir, verb=False) :
         os.makedirs(dir)
         if verb : print 'Directory created: %s' % dir
 
-#------------------------------
 
 def create_directory_with_mode(dir, mode=0777, verb=False) :
     """Creates directory and sets its mode"""
@@ -580,9 +550,8 @@ def create_directory_with_mode(dir, mode=0777, verb=False) :
         os.chmod(dir, mode)
         if verb : print 'Directory created: %s, mode(oct)=%s' % (dir, oct(mode))
 
-#------------------------------
 
-def create_path(path, depth=6, mode=0777, verb=False) : 
+def create_path(path, depth=6, mode=0777, verb=False) :
     """Creates missing path of specified depth from the beginning
        e.g. for '/reg/g/psdm/logs/calibman/2016/07/log-file-name.txt'
        or '/reg/d/psdm/cxi/cxi11216/calib/Jungfrau::CalibV1/CxiEndstation.0:Jungfrau.0/pedestals/9-end.data'
@@ -595,33 +564,30 @@ def create_path(path, depth=6, mode=0777, verb=False) :
     subdirs = path.split('/')
     cpath = subdirs[0]
     for i,sd in enumerate(subdirs[:-1]) :
-        if i>0 : cpath += '/%s'% sd 
+        if i>0 : cpath += '/%s'% sd
         if i<depth : continue
         if cpath=='' : continue
         create_directory_with_mode(cpath, mode, verb)
 
     return os.path.exists(cpath)
 
-#------------------------------
 
 def save_textfile(text, path, mode='w') :
-    """Saves text in file specified by path. mode: 'w'-write, 'a'-append 
+    """Saves text in file specified by path. mode: 'w'-write, 'a'-append
     """
     f=open(path, mode)
     f.write(text)
-    f.close() 
+    f.close()
 
-#------------------------------
 
 def load_textfile(path) :
     """Returns text file as a str object
     """
     f=open(path, 'r')
     recs = f.read() # f.readlines()
-    f.close() 
+    f.close()
     return recs
 
-#------------------------------
 
 def calib_dir_for_exp(exp) :
     if not isinstance(exp, str) : raise IOError('Experiment name "%s" is expected as str object', str(exp))
@@ -629,7 +595,6 @@ def calib_dir_for_exp(exp) :
     if len(exp) > 9 : raise IOError('Experiment name "%s" has >9 letters', str(exp))
     return '%s/%s/%s/calib' % (DIR_INS, exp[:3].upper(), exp)
 
-#------------------------------
 
 def calib_dir(env) :
     cdir = env.calibDir()
@@ -638,14 +603,12 @@ def calib_dir(env) :
     if os.path.exists(cdir) :
         return cdir
 
-#------------------------------
 
 def exp_name(env) :
     exp = env.experiment()
     if exp=='' : return None
     return exp
 
-#------------------------------
 
 def log_rec_on_start() :
     """Returns (str) record containing timestamp, login, host, cwd, and command line
@@ -653,7 +616,6 @@ def log_rec_on_start() :
     return '\n%s user:%s@%s cwd:%s\n  command:%s'%\
            (str_tstamp(fmt='%Y-%m-%dT%H:%M:%S'), get_login(), get_hostname(), get_cwd(), ' '.join(sys.argv))
 
-#------------------------------
 
 def add_rec_to_log(lfname, rec, verbos=False) :
     """Adds record rec to the log file with path lfname. If path does not exist, it is created beginning from depth=5.
@@ -667,10 +629,9 @@ def add_rec_to_log(lfname, rec, verbos=False) :
         if verbos : print 'command: %s' % cmd
         os.system(cmd)
         mode_log = 0666
-        if (file_mode(path) & 0777) == mode_log : return 
+        if (file_mode(path) & 0777) == mode_log : return
         os.chmod(path, mode_log)
 
-#------------------------------
 
 def alias_for_src_name(env) :
     ckeys = env.configStore().keys()
@@ -680,19 +641,17 @@ def alias_for_src_name(env) :
     for s,a in d.items() : print 'src: %40s   alias: %s' % (s, a)
     #print keysalias
 
-#------------------------------
 
 def replace(template, pattern, subst) :
     """If pattern in the template replaces it with subst.
-       Returns str object template with replaced patterns. 
+       Returns str object template with replaced patterns.
     """
-    fields = template.split(pattern, 1) 
+    fields = template.split(pattern, 1)
     if len(fields) > 1 :
         return '%s%s%s' % (fields[0], subst, fields[1])
     else :
         return template
 
-#------------------------------
 
 def calib_fname_template(exp, runnum, tsec, tnsec, fid, tsdate, tstime, src, nevts, ofname):
     """Replaces parts of the file name ofname specified as
@@ -717,7 +676,6 @@ def calib_fname_template(exp, runnum, tsec, tnsec, fid, tsdate, tstime, src, nev
     if not '%s' in template : template += '-%s'
     return template
 
-#------------------------------
 
 def history_record(ifname, ctypedir, ctype, ofname, comment='') :
     """Returns (str) history record about deployed constants.
@@ -741,7 +699,6 @@ def history_record(ifname, ctypedir, ctype, ofname, comment='') :
            get_cwd(),
            comment)
 
-#------------------------------
 
 def path_to_history_file(ctypedir, ctype) :
     """Returns path to HISTORY file in the calib store.
@@ -750,7 +707,6 @@ def path_to_history_file(ctypedir, ctype) :
     """
     return '%s/%s/HISTORY' % (ctypedir, ctype)
 
-#------------------------------
 
 def path_to_calib_file(ctypedir, ctype, ofname) :
     """Returns path to file wirh calibration constants in the calib store.
@@ -759,21 +715,18 @@ def path_to_calib_file(ctypedir, ctype, ofname) :
     """
     return '%s/%s/%s' % (ctypedir, ctype, ofname)
 
-#------------------------------
 
 def command_deploy_file(ifname, ofname) :
     """Returns command to deploys file with calibration constants in the calib store.
     """
     return 'cat %s > %s' % (ifname, ofname) # > stands for copy
 
-#------------------------------
 
 def command_add_record_to_file(rec, fname) :
     """Returns command to add record to file.
     """
     return 'echo "%s" >> %s' % (rec, fname) # >> stands for append
 
-#------------------------------
 
 def deploy_file(ifname, ctypedir, ctype, ofname, lfname=None, verbos=False) :
     """Deploys file with calibration constants in the calib store, adds history record in file and in logfile.
@@ -804,10 +757,6 @@ def deploy_file(ifname, ctypedir, ctype, ofname, lfname=None, verbos=False) :
         os.system(cmd)
         if lfname is not None : add_rec_to_log(lfname, '  %s' % rec, verbos)
 
-#------------------------------
-#------------------------------
-#------------------------------
-#------------------------------
 
 def test_mask_neighbors_2d(allnbrs=True) :
     from pyimgalgos.NDArrGenerators import random_exponential
@@ -825,12 +774,11 @@ def test_mask_neighbors_2d(allnbrs=True) :
     mask_nbrs = mask_neighbors(mask, allnbrs)
     img1 = mask # mask # randexp
     img2 = mask_nbrs # mask # randexp
-    
+
     imsh1, cbar1 = gr.imshow_cbar(fig, axim1, axcb1, img1, amin=0, amax=10, orientation='vertical')
     imsh2, cbar2 = gr.imshow_cbar(fig, axim2, axcb2, img2,  amin=0, amax=10, orientation='vertical')
     gr.show(mode=None)
-    
-#------------------------------
+
 
 def test_mask_neighbors_3d(allnbrs=True) :
     from pyimgalgos.NDArrGenerators import random_exponential
@@ -851,12 +799,11 @@ def test_mask_neighbors_3d(allnbrs=True) :
 
     img1 = reshape_nda_to_2d(mask)
     img2 = reshape_nda_to_2d(mask_nbrs)
-    
+
     imsh1, cbar1 = gr.imshow_cbar(fig, axim1, axcb1, img1, amin=0, amax=10, orientation='vertical')
     imsh2, cbar2 = gr.imshow_cbar(fig, axim2, axcb2, img2, amin=0, amax=10, orientation='vertical')
     gr.show(mode=None)
-    
-#------------------------------
+
 
 def test_mask_edges_2d(mrows=1, mcols=1) :
     from pyimgalgos.NDArrGenerators import random_exponential
@@ -872,8 +819,7 @@ def test_mask_edges_2d(mrows=1, mcols=1) :
     img1 = mask_out
     imsh1, cbar1 = gr.imshow_cbar(fig, axim1, axcb1, img1, amin=0, amax=10, orientation='vertical')
     gr.show(mode=None)
-    
-#------------------------------
+
 
 def test_mask_edges_3d(mrows=1, mcols=1) :
     from pyimgalgos.NDArrGenerators import random_exponential
@@ -890,8 +836,7 @@ def test_mask_edges_3d(mrows=1, mcols=1) :
     img1 = reshape_nda_to_2d(mask_out)
     imsh1, cbar1 = gr.imshow_cbar(fig, axim1, axcb1, img1, amin=0, amax=10, orientation='vertical')
     gr.show(mode=None)
-    
-#------------------------------
+
 
 #def src_name_from_alias(env, alias='') :
 #    amap = env.aliasMap()
@@ -902,8 +847,6 @@ def test_mask_edges_3d(mrows=1, mcols=1) :
 #    #psasrc = amap.src(str_src)
 #    #source  = src if amap.alias(psasrc) == '' else amap.src(str_src)
 
-#------------------------------
-#------------------------------
 
 def do_test() :
 
@@ -911,7 +854,7 @@ def do_test() :
     print 'get_login()          : %s' % get_login()
     print 'get_hostname()       : %s' % get_hostname()
     print 'get_cwd()            : %s' % get_cwd()
-    #print ': %s' % 
+    #print ': %s' %
 
     if len(sys.argv) > 1 :
 
@@ -924,9 +867,8 @@ def do_test() :
       if sys.argv[1] == '7' : test_mask_edges_3d(mrows=1, mcols=2)
       if sys.argv[1] == '8' : test_mask_edges_3d(mrows=5, mcols=0)
 
-#------------------------------
 
 if __name__ == "__main__" :
     do_test()
 
-#------------------------------
+# EOF

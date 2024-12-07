@@ -16,7 +16,7 @@ Usage::
 
     shape = (32,185,388) # e.g.
     ave, rms = 200, 25
-    data = np.array(ave + rms*np.random.standard_normal(shape), dtype=np.double)
+    data = np.array(ave + rms*np.random.standard_normal(shape), dtype=np.float64)
     mask = np.ones(shape, dtype=np.uint16)
 
     #mask = det.mask()             # see class Detector.PyDetector

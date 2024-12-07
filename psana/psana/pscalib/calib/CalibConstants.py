@@ -81,7 +81,7 @@ ctype_tuple = (
     (PIXEL_GAIN,     'pixel_gain',    np.float32),
     (PIXEL_MASK,     'pixel_mask',    np.uint8  ),
     (PIXEL_BKGD,     'pixel_bkgd',    np.float32),
-    (COMMON_MODE,    'common_mode',   np.double ),
+    (COMMON_MODE,    'common_mode',   np.float64),
     (GEOMETRY,       'geometry',      str       ),
     (PIXEL_OFFSET,   'pixel_offset',  np.float32),
     (PIXEL_DATAST,   'pixel_datast',  np.uint16 ),

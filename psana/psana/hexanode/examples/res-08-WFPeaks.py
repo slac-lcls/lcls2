@@ -59,9 +59,9 @@ THR       = NSTDTHR*std
 
 #shret = (kwa['numchs'],kwa['numhits'])
 shret = (kwa['numhits'],)
-pkvals = np.zeros(shret, dtype=np.double)
+pkvals = np.zeros(shret, dtype=np.float64)
 pkinds = np.zeros(shret, dtype=np.uint32)
-pktsec = np.zeros(shret, dtype=np.double)
+pktsec = np.zeros(shret, dtype=np.float64)
 
 #----------
 
@@ -70,7 +70,7 @@ print('===== test WFUtils.peak_finder_v2 =====')
 t0_sec = time()
 npeaks = peak_finder_v2(wf, SIGMABINS, THR, DEADBINS, pkvals, pkinds)
 print('==== peak_finder_v2 consumed time %.6f sec'%(time()-t0_sec))
-    
+
 wff = gaussian_filter1d(wf, SIGMABINS)
 
 print_ndarr(wff,'wff')
