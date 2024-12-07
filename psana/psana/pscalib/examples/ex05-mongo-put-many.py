@@ -3,14 +3,12 @@
 Saving large files using gridfs motivated by
 https://github.com/mongodb/mongo-python-driver/blob/master/doc/examples/gridfs.rst
 """
-#------------------------------
 
 import sys
 import gridfs
 from pymongo import MongoClient
 #import pymongo
 
-#------------------------------
 
 #import numpy as np
 #import pyimgalgos.NDArrGenerators as ag
@@ -19,14 +17,12 @@ from pymongo import MongoClient
 from time import time
 import Utils as gu
 
-#------------------------------
 
 #import logging
 #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
 #                    datefmt='%m-%d-%Y %H:%M:%S', level=logging.WARNING)
 #log = logging.getLogger('my_test')
 
-#------------------------------
 
 class Store() :
     def __init__(self) :
@@ -35,18 +31,15 @@ class Store() :
 
 sp = Store()
 
-#------------------------------
 
 def get_nda() :
-    return gu.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=gu.np.float)
+    return gu.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=gu.np.float32)
 
-#------------------------------
 
 def time_and_stamp() :
     time_sec = time()
     return time_sec, gu.str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%Z', time_sec=time_sec)
 
-#------------------------------
 
 def connect_to_server(host='psanaphi105', port=27017) :
     t0_sec = time()
@@ -55,24 +48,20 @@ def connect_to_server(host='psanaphi105', port=27017) :
     print('host: %s port: %d connection time %.6f sec' % (host, port, dt_sec))
     return client
 
-#------------------------------
 
 def db(client, dbname='calib-cspad-0-cxids1-0') :
     return client[dbname]
 
-#------------------------------
 
 def db_and_fs(client, dbname='calib-cxi12345') :
     db = client[dbname]
     fs = gridfs.GridFS(db)
     return db, fs
 
-#------------------------------
 
 def collection(db, cname='camera-0-cxids1-0') :
     return db[cname]
 
-#------------------------------
 
 def doc_exp(data, data_id, **kwargs) :
     """Returns dictionary for db document in style of JSON object.
@@ -114,21 +103,18 @@ def doc_exp(data, data_id, **kwargs) :
     print 'document preparation time %.6f sec' % (dt_sec)
     return doc
 
-#------------------------------
 
 def print_doc(doc) :
     print('Data document attributes')
-    for k,v in doc.iteritems() : 
+    for k,v in doc.iteritems() :
         print('%16s : %s' % (k,v))
 
-#------------------------------
 
 def print_doc_keys(doc, keys=('run', 'time_stamp', 'data_size')) :
     for k in keys :
         print '  %s : %s' % (k, doc[k]),
     print ''
 
-#------------------------------
 
 def insert_document(doc, col) :
     t0_sec = time()
@@ -138,7 +124,6 @@ def insert_document(doc, col) :
     print 'Collection: %s insert document %s time %.6f sec' % (col.name, doc_id, dt_sec)
     return doc_id
 
-#------------------------------
 
 def insert_data(data, fs) :
     t0_sec = time()
@@ -150,7 +135,6 @@ def insert_data(data, fs) :
     print 'Insert data in %s time %.6f sec ida: %s' % (fs, dt_sec, id)
     return id
 
-#------------------------------
 
 def test_01(tname) :
     expname = 'cxi12345'
@@ -171,7 +155,7 @@ def test_01(tname) :
     print('col_det : %s' % col_det.name)
 
     nda = get_nda()
-    gu.print_ndarr(nda, 'nda') 
+    gu.print_ndarr(nda, 'nda')
 
     ida = insert_data(nda, fs)
 
@@ -181,7 +165,6 @@ def test_01(tname) :
     insert_document(doc, col_exp)
     insert_document(doc, col_det)
 
-#------------------------------
 
 def test_02(tname) :
 
@@ -207,7 +190,7 @@ def test_02(tname) :
     for i in range(nloops) :
         print '%s\nEntry: %4d' % (50*'_', i)
         nda = get_nda()
-        gu.print_ndarr(nda, 'nda') 
+        gu.print_ndarr(nda, 'nda')
         ida = insert_data(nda, fs)
 
         doc = doc_exp(nda, ida, exp=expname, det=detname, run=i)
@@ -219,7 +202,6 @@ def test_02(tname) :
     print 'Average time to insert data: %.6f sec' % (sp.t_data/nloops)
     print 'Average time to insert doc : %.6f sec' % (0.5*sp.t_doc/nloops)
 
-#------------------------------
 
 if __name__ == "__main__" :
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
@@ -229,6 +211,6 @@ if __name__ == "__main__" :
     else : print 'Not-recognized test name: %s' % tname
     sys.exit('End of test %s' % tname)
 
-#------------------------------
 sys.exit('TEST EXIT')
-#------------------------------
+
+# EOF
