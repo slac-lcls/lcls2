@@ -385,18 +385,6 @@ def user_to_expert(base, cfg, full=False):
     a = None
     hasUser = 'user' in cfg
     conv = functools.partial(int, base=16)
-    #d['expert.Pll'] = np.loadtxt('/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pll/Si5345-B-156MHZ-out-0-5-and-7-v2-Registers.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv)
-        # if hasUser and 'gain_mode' in cfg['user']:
-    #     gain_mode = cfg['user']['gain_mode']
-    #     if gain_mode==3:  # user's choices
-    #         # Use CompTH and Precharge_DAC from cfg['expert']
-    #         d['user.chgInj_column_map'] = cfg['user']['chgInj_column_map']
-    #     else:
-    #         compTH, precharge_DAC = gain_mode_map(gain_mode)
-    #         for i in range(cbase.numOfAsics):
-    #             d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM'] = compTH
-    #             d[f'expert.App.Mv2Asic[{i}].Precharge_DAC_ePixM'] = precharge_DAC
-    #     calibRegsChanged = True
     
     update_config_entry(cfg,ocfg,d)
 
@@ -442,7 +430,11 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     pll = cbase.Core.Si5345Pll
     pll.enable.set(True)
     
-    pllCfg = np.reshape(cfg['expert']['Pll'], (-1,2))
+    clk = cfg['user']['PllRegistersSel']    
+    freq = [None, '_temp250', '_2-3-7', '_0-5-7', '_2-3-9', '_0-5-7'][clk]
+    base = 'user.'
+    
+    pllCfg = np.reshape(cfg['expert']['pixelBitMaps'][freq], (-1,2))
     fn = pathPll+'PllConfig'+'.csv'
     np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
     tmpfiles = []
@@ -593,15 +585,49 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #        saci.Precharge_DAC_ePixM.set(precharge_DAC)
         #        saci.enable.set(False)
         
-        if (not cfg['user']['App']['SetAllMatrixActivate']):
-            print("Running SetAllMatrix from expert; using a value per ASICS")
-            for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetAllMatrix']))
+        for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(True)
+        
+        if ( cfg['user']['Bias']['SetSameBias4All']):
+            print("Set same Bias for all ASIC")
+            if ( cfg['user']['Bias']['UsePixelMap']):
+                #same MAP for each
+                print("Use Pixel MAP")
+                PixMapSel = cfg['user']['Bias']['PixelBitMapSel']    
+                PixMapSelected= [None, '_temp250', '_2-3-7', '_0-5-7', '_2-3-9', '_0-5-7'][PixMapSel]
+                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 576))
+                fn = pathPll+'csvConfig'+'.csv'
+                np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
+                tmpfiles.append(fn)
+                setattr(cbase, 'filenameCSV', PixMapSelected)
+                for i in asics: getattr(cbase.App,f"Asic{i}").LoadCSVPixelMap(str(fn))
+                #pll.LoadCsvFile(pathPll+'csvConfig'+'.csv')        
+
+            else:
+                #same value for all
+                print("Use single value for all ASICS")
+                for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['user']['Bias']['SetBiasValue']))
         else:
-            print("Running SetAllMatrix from user; using a single value for all ASICS")
-            for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['user']['App']['SetAllMatrix']))
+            print("Set single Bias per ASIC")
+            if ( cfg['user']['Bias']['UsePixelMap']):
+                #a map per each
+                print("Use a Pixel MAP per each ASIC")
+                for i in asics:
+                    PixMapSel = cfg['expert']['App'][f'Asic{i}']['PixelBitMapSel']    
+                    PixMapSelected= [None, '_temp250', '_2-3-7', '_0-5-7', '_2-3-9', '_0-5-7'][PixMapSel]
+                    csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 576))
+                    fn = pathPll+'csvConfigAsic{i}'+'.csv'
+                    np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
+                    tmpfiles.append(fn)
+                    setattr(cbase, 'filenameCSVAsic{i}', PixMapSelected)
+                    getattr(cbase.App,f"Asic{i}").LoadCSVPixelMap(str(fn))
+            else:
+                #a value per each
+                print("Use a value per ASIC")
+                for i in asics: getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetBiasValue']))
             
-        for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(cfg['expert']['App'][f'Asic{i}']['PixNumModeEn'])
-    
+        
+        for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(False)
+        
         cbase.App.GTReadoutBoardCtrl.enable.set(app['GTReadoutBoardCtrl']['enable'])
         cbase.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard.set(app['GTReadoutBoardCtrl']['pwrEnableAnalogBoard'])
         cbase.App.GTReadoutBoardCtrl.timingOutEn0.set(app['GTReadoutBoardCtrl']['timingOutEn0'])
@@ -615,7 +641,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             getattr(cbase.App,f"AsicGtData{i}").gtStableRst.set(cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
                     
         cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']						)	
-        cbase.App.VINJ_DAC.dacSingleValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']					)	
+        cbase.App.VINJ_DAC.dacSingleValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']			)	
         cbase.App.ADS1217.enable.set(cfg['user']['App']['ADS1217']['enable']						)	
         cbase.App.ADS1217.adcStartEnManual.set(cfg['user']['App']['ADS1217']['adcStartEnManual']	)
         
@@ -704,18 +730,18 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     #for seg in range(1):
         #  Construct the ID
-    digitalId = [0, 0]# if base['pcie_timing'] else cbase.App.RegisterControlDualClock.DigIDLow.get(),
-        #             0 if base['pcie_timing'] else cbase.App.RegisterControlDualClock.DigIDHigh.get()]
-    pwrCommId = [0, 0]# if base['pcie_timing'] else cbase.App.RegisterControlDualClock.PowerAndCommIDLow.get(),
+    digitalId =  0 if base['pcie_timing'] else cbase.App.GTReadoutBoardCtrl.DigitalBoardId.get()
+                 #0 if base['pcie_timing'] else cbase.App.RegisterControlDualClock.DigIDHigh.get()]
+    pwrCommId =  0 if base['pcie_timing'] else cbase.App.GTReadoutBoardCtrl.AnalogBoardId.get()
         #             0 if base['pcie_timing'] else cbase.App.RegisterControlDualClock.PowerAndCommIDHigh.get()]
-    carrierId = [0, 0]# if base['pcie_timing'] else cbase.App.RegisterControlDualClock.CarrierIDLow.get(),
+    carrierId =  0 if base['pcie_timing'] else cbase.App.GTReadoutBoardCtrl.CarrierBoardId.get()
         #             0 if base['pcie_timing'] else cbase.App.RegisterControlDualClock.CarrierIDHigh.get()]
         #print(f'ePixUHRk ids: f/w {firmwareVersion:x}, carrier {carrierId:x}, digital {digitalId:x}, pwrComm {pwrCommId:x}')
         
-    id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
-                                                          carrierId[0], carrierId[1],
-                                                          digitalId[0], digitalId[1],
-                                                          pwrCommId[0], pwrCommId[1])
+    id = '%010d-%010d-%010d-%010d'%(firmwareVersion,
+                                    carrierId,
+                                    digitalId,
+                                    pwrCommId)
     
     segids[0] = id
     top = cdict()
