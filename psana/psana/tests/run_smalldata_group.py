@@ -1,3 +1,6 @@
+# test smalldata group
+# run with mpirun -n 4 python run_smalldata_group.py rixc00221 49
+
 import os
 import sys
 
@@ -38,19 +41,14 @@ for myrun in ds.runs():
     for nevt, evt in enumerate(myrun.events()):
         smd.event(evt, mydata=nevt)
         if nevt % 2 == 0:
-            smd.event(evt, grp_mygroup_a=45.1)
-            # alternative interface 1
-            # smd.event(evt, a=45.1, group="mygroup")
-            # atlernatvie interface 2
-            # smd.event(evt, {"mygroup": {a: 45.1, b: }}
+            smd.event(evt, myval_b=42.1, align_group="mygroup")
         if nevt % 5 == 0:
             smd.event(
                 evt,
                 mydata=nevt,
-                sum_x=42.2,
+                sum_x=44,
                 unaligned_y=43,
-                grp_mygroup_b=46,
-                grp_anothergroup_a=100,
             )
+            smd.event(evt, myval_a=42.0, align_group="mygroup")
 
 smd.done()
