@@ -24,12 +24,13 @@ public:
 
   virtual void process_config();
   virtual void process_data(XtcData::DataIter& datao);
-  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
+  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector
 
   virtual const void print_config();
 
   void _class_msg(const std::string& msg=std::string());
 
+  virtual const NDArray<raw_t>& raw(const event_t& evt) {return AreaDetector::raw(evt);} // Silence compiler "hidden" warning
   NDArray<raw_jungfrau_t>& raw(XtcData::DescData& ddata);
   NDArray<raw_jungfrau_t>& raw(XtcData::DataIter& datao);
 

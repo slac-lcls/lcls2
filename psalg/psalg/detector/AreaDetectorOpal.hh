@@ -25,7 +25,7 @@ public:
   AreaDetectorOpal();
   virtual ~AreaDetectorOpal();
 
-  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
+  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector
 
   virtual void _set_indexes_config(XtcData::ConfigIter&);
   virtual void _set_indexes_data(XtcData::DataIter&);
@@ -41,6 +41,7 @@ public:
   virtual NDArray<opal_raw_t>& raw(XtcData::DescData&);
   virtual NDArray<opal_raw_t>& raw(XtcData::DataIter& di) {_set_indexes_data(di); return raw(descdata(di));}
 
+  virtual const NDArray<calib_t>& calib(const event_t& evt) {return AreaDetector::calib(evt);} // Silence compiler "hidden" warning
   virtual NDArray<opal_calib_t>& calib(XtcData::DescData&);
   virtual NDArray<opal_calib_t>& calib(XtcData::DataIter& di) {_set_indexes_data(di); return calib(descdata(di));}
 
@@ -119,6 +120,7 @@ public:
   inline int64_t height	     (XtcData::DataIter& di) {return data_value_for_index<int64_t>(di, _height);}
   inline int64_t width 	     (XtcData::DataIter& di) {return data_value_for_index<int64_t>(di, _width);}
   inline int64_t depth 	     (XtcData::DataIter& di) {return data_value_for_index<int64_t>(di, _depth);}
+  virtual const NDArray<pixel_offset_t>&  offset(const event_t& evt) {return AreaDetector::offset(evt);}  // Silence compiler "hidden" warning
   inline int64_t offset	     (XtcData::DataIter& di) {return data_value_for_index<int64_t>(di, _offset);}
   inline int64_t depth_bytes (XtcData::DataIter& di) {return data_value_for_index<int64_t>(di, _depth_bytes);}
 
@@ -130,25 +132,25 @@ public:
 private:
 
   // CONFIGURATION indices
-  index_t _Version                         = 0; // rank: 0 type: 7 INT64 
-  index_t _TypeId                          = 0; // 
+  index_t _Version                         = 0; // rank: 0 type: 7 INT64
+  index_t _TypeId                          = 0; //
   index_t _defect_pixel_correction_enabled = 0; //
-  index_t _number_of_defect_pixels         = 0; // 
-  index_t _output_offset                   = 0; // 
-  index_t _gain_percent                    = 0; // 
-  index_t _Column_Pixels                   = 0; // 
-  index_t _Row_Pixels                      = 0; // 
-  index_t _Mirroring                       = 0; // 
-  index_t _output_mirroring                = 0; // 
-  index_t _vertical_binning                = 0; // 
-  index_t _Depth                           = 0; // 
-  index_t _Output_LUT_Size                 = 0; // 
-  index_t _Binning                         = 0; // 
-  index_t _output_resolution               = 0; // 
-  index_t _output_resolution_bits          = 0; // 
-  index_t _vertical_remapping              = 0; // 
-  index_t _LUT_Size                        = 0; // 
-  index_t _output_lookup_table_enabled     = 0; // 
+  index_t _number_of_defect_pixels         = 0; //
+  index_t _output_offset                   = 0; //
+  index_t _gain_percent                    = 0; //
+  index_t _Column_Pixels                   = 0; //
+  index_t _Row_Pixels                      = 0; //
+  index_t _Mirroring                       = 0; //
+  index_t _output_mirroring                = 0; //
+  index_t _vertical_binning                = 0; //
+  index_t _Depth                           = 0; //
+  index_t _Output_LUT_Size                 = 0; //
+  index_t _Binning                         = 0; //
+  index_t _output_resolution               = 0; //
+  index_t _output_resolution_bits          = 0; //
+  index_t _vertical_remapping              = 0; //
+  index_t _LUT_Size                        = 0; //
+  index_t _output_lookup_table_enabled     = 0; //
   index_t _black_level                     = 0; //
   index_t _output_lookup_table             = 0; // rank: 1 type: 1 UINT16,  Array typeid=t ndim=1 size=0 shape=(0)
 
