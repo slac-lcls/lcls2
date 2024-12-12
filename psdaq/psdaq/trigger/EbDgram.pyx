@@ -32,7 +32,9 @@ cdef class Xtc():
     # No constructor - the Dgram ptr gets assigned elsewhere.
 
     def payload(self):
-        return self.cptr.payload()
+        # (char*) without an explicit size will be treated 
+        # as a null-terminated string
+        return self.cptr.payload()[:self.cptr.sizeofPayload()]
 
     def sizeofPayload(self):
         return self.cptr.sizeofPayload()
@@ -82,8 +84,7 @@ cdef class EbDgram():
         self._bufOwner = view is not None
         if self._bufOwner:
             PyObject_GetBuffer(view, &self.buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
-            view_ptr = <char *>self.buf.buf
-            self.cptr = <dgram.EbDgram *>(view_ptr)
+            self.cptr = <dgram.EbDgram *>(self.buf.buf)
 
     def __dealloc__(self):
         if self._bufOwner:

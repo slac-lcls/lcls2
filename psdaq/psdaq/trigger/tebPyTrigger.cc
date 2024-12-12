@@ -169,7 +169,7 @@ int Pds::Trg::TebPyTrig::configure(const json&              connectMsg,
   _pythonScript = scriptPath + "/" + _pythonScript;
   _partition    = prms.partition;
 
-  _keyBase = "p" + std::to_string(prms.partition) + "_teb" + std::to_string(prms.id) ;
+  _keyBase = "p" + std::to_string(prms.partition) + "_teb" + std::to_string(prms.id);
 
   _inpMqId  = 0;
   _resMqId  = 0;
@@ -213,7 +213,7 @@ int Pds::Trg::TebPyTrig::_setupMsgQueue(std::string key,
   if ( rc == -1)
   {
     logging::error("[C++] Error in creating %s message queue with key %s: %m",
-                   name, key);
+                   name, key.c_str());
     cleanup();
     return -1;
   }
@@ -233,7 +233,7 @@ int Pds::Trg::TebPyTrig::_setupShMem(std::string key,
   if (rc == -1)
   {
     logging::error("[C++] Error in creating %s shared memory for key %s: %m",
-                   name, key);
+                   name, key.c_str());
     cleanup();
     return -1;
   }
@@ -242,12 +242,12 @@ int Pds::Trg::TebPyTrig::_setupShMem(std::string key,
   if (rc == -1)
   {
     logging::error("[C++] Error attaching %s shared memory for key %s: %m",
-                   name, key);
+                   name, key.c_str());
     cleanup();
     return -1;
   }
 
-  logging::info("[C++] %s shared memory created for key %s", name, key);
+  logging::info("[C++] %s shared memory created for key %s", name, key.c_str());
 
   return 0;
 }
@@ -472,19 +472,25 @@ void Pds::Trg::TebPyTrig::event(const Pds::EbDgram* const* start,
 {
   *(Pds::Eb::ResultDgram*)_resData = result;
 
-  unsigned idx = 0;
+  unsigned rem = (1<<_inpData.size())-1;
   const Pds::EbDgram* const* ctrb = start;
   do
   {
     auto dg   = *ctrb;
     auto size = sizeof(*dg) + dg->xtc.sizeofPayload();
-    auto dest = _inpData[idx++];
+    auto idx = dg->xtc.src.value();
+    auto dest = _inpData[idx];
+    rem ^= 1<<idx;
     memcpy(dest, dg, size);
   }
   while(++ctrb != end);
 
-  if (idx < _inpData.size())            // zero terminate
-    *(EbDgram*)(_inpData[idx]) = EbDgram(PulseId{0}, XtcData::Dgram());
+  //  need to zero-terminate missing contributions?
+  unsigned i;
+  while( (i = __builtin_ffs(rem)) ) {
+      rem ^= 1<<(i-1);
+      *(EbDgram*)(_inpData[i]) = EbDgram(PulseId{0}, XtcData::Dgram());
+  }      
 
   int       rc;
   char msg[512];
