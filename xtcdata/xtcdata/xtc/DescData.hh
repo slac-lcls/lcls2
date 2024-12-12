@@ -91,8 +91,7 @@ public:
         }
     }
     static void checkType(int32_t val, Name& name) {
-        if (Name::INT32!=name.type() && Name::ENUMVAL!=name.type() &&
-            Name::ENUMDICT!=name.type()) {
+        if (Name::INT32!=name.type() && Name::ENUMVAL!=name.type() && Name::ENUMDICT!=name.type()) {
             incorrectType(__FILE__,__LINE__,name);
         }
     }
@@ -334,17 +333,14 @@ public:
     template <typename T>
     void set_value(unsigned index, T val)
     {
-
         Data& data = _shapesdata.data();
 
-        if(index != _numentries)
-            {
-                char error_string [500];
-                const char * error_it_name = _nameindex.names().get(index).name();
+        if(index != _numentries) {
+            const char * error_it_name = _nameindex.names().get(index).name();
 
-                snprintf(error_string,sizeof(error_string), "Item \"%s\" with index %d out of order",error_it_name, index);
-                throw std::runtime_error(error_string);
-            }
+            printf("Item \"%s\" with index %d out of order",error_it_name, index);
+            abort();
+        }
 
         Name& name = _nameindex.names().get(index);
 
