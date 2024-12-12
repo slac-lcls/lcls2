@@ -64,6 +64,7 @@ target_link_libraries(tmoTeb
 #---
 
 add_library(tstTebPy SHARED
+  timingTebPrimitive.cc
   tmoTebPrimitive.cc
   tebPyTrigger.cc
 )
@@ -100,6 +101,7 @@ target_link_libraries(calibTrigger
 #---
 
 install(FILES
+  TimingTebData.hh
   TmoTebData.hh
   DESTINATION include/psdaq/trigger
 )

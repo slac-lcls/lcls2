@@ -1334,13 +1334,23 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
 
+    //  Look for the detector-specific producer first
     std::string symbol("create_producer");
-    if (!buildAll)  symbol +=  "_" + m_para.detName;
+    symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
-    if (!m_triggerPrimitive) {
-        logging::error("%s:\n  Failed to create TriggerPrimitive",
-                    __PRETTY_FUNCTION__);
-        return -1;
+    if (m_triggerPrimitive) {
+        logging::info("%s:\n  Created detector-specific TriggerPrimitive [%s]",
+                      __PRETTY_FUNCTION__, symbol.c_str());
+    }
+    else {
+        // Now try the generic producer
+        symbol = std::string("create_producer");
+        m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
+        if (!m_triggerPrimitive) {
+            logging::error("%s:\n  Failed to create TriggerPrimitive",
+                           __PRETTY_FUNCTION__);
+            return -1;
+        }
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
