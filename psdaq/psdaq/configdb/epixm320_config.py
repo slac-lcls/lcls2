@@ -407,15 +407,19 @@ def user_to_expert(base, cfg, full=False):
     calibRegsChanged = False
     a = None
     hasUser = 'user' in cfg
-    if hasUser and 'gain_mode' in cfg['user']:
+    if hasUser and ('chgInj_column_map' in cfg['user'] or
+                    'gain_mode'         in cfg['user']):
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==3:  # user's choices
-            # Use CompTH and Precharge_DAC from cfg['expert']
-            d['user.chgInj_column_map'] = cfg['user']['chgInj_column_map']
+            for i in range(cbase.numOfAsics):
+                d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM']        = ocfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']
+                d[f'expert.App.Mv2Asic[{i}].Precharge_DAC_ePixM'] = ocfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM']
+            if 'chgInj_column_map' in cfg['user']:
+                d['user.chgInj_column_map'] = cfg['user']['chgInj_column_map']
         else:
             compTH, precharge_DAC, _ = gain_mode_map(gain_mode)
             for i in range(cbase.numOfAsics):
-                d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM'] = compTH
+                d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM']        = compTH
                 d[f'expert.App.Mv2Asic[{i}].Precharge_DAC_ePixM'] = precharge_DAC
         calibRegsChanged = True
 

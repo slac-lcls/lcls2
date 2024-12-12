@@ -1,5 +1,11 @@
 # Utility functions for the ePixM
 
+def gain_mode_name(gain_mode):
+    return ('SH', 'SL', 'AHL')[gain_mode]
+
+def gain_mode_value(gain_mode):
+    return ('SH', 'SL', 'AHL').index(gain_mode)
+
 def gain_mode_map(gain_mode):
     if gain_mode > 2:
         print(f"gain_mode_map: Bad gain mode {gain_mode}")

@@ -21,9 +21,10 @@ def main():
         d = {}
         metad = {'detname':args.detname,
                  'scantype':args.scantype}
-        for gain in range(3):
+        for gain_mode in ('AHL', 'SH'):
+            gain = gain_mode_value(gain_mode)
             d[f'{args.detname}:user.gain_mode'] = int(gain)
-            metad['gain_mode'] = gain_mode_map(gain)[2]
+            metad['gain_mode'] = gain_mode
             metad['step'] = int(gain)
             yield (d, float(gain), json.dumps(metad))
 
