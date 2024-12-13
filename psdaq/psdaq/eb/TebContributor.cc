@@ -164,7 +164,7 @@ int TebContributor::configure()
   if (numBatches * _prms.maxEntries != _pending.size())
   {
     logging::critical("%s:\n  maxEntries (%u) must divide evenly into numBuffers (%u)",
-                      _prms.maxEntries, _pending.size());
+                      __PRETTY_FUNCTION__, _prms.maxEntries, _pending.size());
     abort();
   }
   _batMan.initialize(_prms.maxInputSize, _prms.maxEntries, numBatches);
