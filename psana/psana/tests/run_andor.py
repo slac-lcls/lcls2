@@ -59,8 +59,8 @@ ds = DataSource(
 
 
 def my_smalldata(data_dict):
-    if "unaligned_andor_norm" in data_dict:
-        andor_norm = data_dict["unaligned_andor_norm"][0]
+    if "andor_norm" in data_dict:
+        andor_norm = data_dict["andor_norm"][0]
         myplot = XYPlot(
             0,
             f"Andor (normalized) run:{runnum}",
@@ -124,15 +124,19 @@ for myrun in ds.runs():
                 # miss any events due to deadtime
                 if ndrop_inhibit[2] != 0:
                     print("*** data lost due to deadtime")
-                # need to prefix the name with "unaligned_" so
-                # the low-rate andor dataset doesn't get padded
-                # to align with the high rate datasets
                 if andor_img is not None:
                     smd.event(
                         evt,
                         mydata=nevt,
-                        unaligned_andor_norm=(andor_img / norm),
                         sum_atmopal=sum_atmopal,
+                    )
+                    # need to specify align_group so
+                    # the low-rate andor dataset doesn't get padded
+                    # to align with the high rate datasets
+                    smd.event(
+                        evt,
+                        andor_norm=(andor_img / norm),
+                        align_group="andor"
                     )
                 norm = 0
                 ndrop_inhibit = 0

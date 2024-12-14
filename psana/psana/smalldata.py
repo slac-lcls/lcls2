@@ -106,7 +106,6 @@ FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, float]
 
 # This is not actually implemented, so let's comment it out for now.
 # RAGGED_PREFIX   = 'ragged_'
-UNALIGNED_PREFIX = "unaligned_"
 VAR_PREFIX = "var_"
 LEN_SUFFIX = "_len"
 ALIGN_GROUP_KW = "align_group"
@@ -121,10 +120,6 @@ var_dict = {}  # var name to True/False if var
 len_dict = {}  # var name to True/False if len
 len_map = {}  # var name to len array name (i.e. x/var_mcb/y --> x/var_mcb_len)
 len_evt = {}  # len name to {timestamp: length}
-
-
-def unaligned_timestamp_name(dataset_name):
-    return dataset_name + "_timestamp"
 
 
 def set_keytypes(k):
@@ -171,10 +166,15 @@ def is_var_key(k):
         return var_dict[k]
 
 
-def is_unaligned(dset_name):
-    return dset_name.split("/")[-1].startswith(UNALIGNED_PREFIX)
+def is_group(event_data_dict):
+    return ALIGN_GROUP_KW in event_data_dict
 
 
+def get_group_name(event_data_dict):
+    datagroup = ALIGN_GROUP_DEFAULT
+    if is_group(event_data_dict):
+        datagroup = event_data_dict[ALIGN_GROUP_KW]
+    return datagroup
 # -----------------------------------------------------------------------------
 
 
@@ -303,107 +303,105 @@ class Server:  # (hdf5 handling)
         return
 
     def handle(self, batch):
-        # we send one datagroup batch at a time.
-        datagroup = ALIGN_GROUP_DEFAULT
-        if ALIGN_GROUP_KW in batch[0]:
-            datagroup = batch[0][ALIGN_GROUP_KW]
+        for grp_event_data in batch:
+            # flatten datagroup to align_group/dataset_name: val for the callbacks
+            flatten_event_data_dict = {}
+            for datagroup, event_data_dict in grp_event_data.items():
+                if datagroup not in self._dsets:
+                    self._dsets[datagroup] = {}
+                    self._cache[datagroup] = {}
+                    self.num_events_seen[datagroup] = 0
+                dsets = self._dsets[datagroup]
 
-        if datagroup not in self._dsets:
-            self._dsets[datagroup] = {}
-            self._cache[datagroup] = {}
-            self.num_events_seen[datagroup] = 0
-        dsets = self._dsets[datagroup]
+                if self.filename is not None:
+                    # to_backfill: list of keys we have seen previously
+                    #              we want to be sure to backfill if we
+                    #              dont see them
+                    to_backfill = list(dsets.keys())
 
-        for event_data_dict in batch:
-            if ALIGN_GROUP_KW in event_data_dict:
-                event_data_dict.pop(ALIGN_GROUP_KW)
-
-            for cb in self.callbacks:
-                cb(event_data_dict)
-
-            if self.filename is not None:
-                # to_backfill: list of keys we have seen previously
-                #              we want to be sure to backfill if we
-                #              dont see them
-                to_backfill = list(dsets.keys())
-
-                for dataset_name, data in event_data_dict.items():
-                    is_var = is_var_key(dataset_name)
-                    is_len = is_len_key(dataset_name)
-                    if is_var:
-                        if is_len:
-                            raise KeyError(
-                                'Key: event keys cannot have the form "var_*_len! (%s)'
-                                % (dataset_name)
-                            )
+                    for dataset_name, data in event_data_dict.items():
+                        # save with proper flatten key for the callbacks
+                        if datagroup != ALIGN_GROUP_DEFAULT:
+                            flatten_key = datagroup + "/" + dataset_name
                         else:
-                            len_name = len_map[dataset_name]
-                    if dataset_name not in dsets.keys():
+                            flatten_key = dataset_name
+                        flatten_event_data_dict[flatten_key] = data
+
+                        is_var = is_var_key(dataset_name)
+                        is_len = is_len_key(dataset_name)
                         if is_var:
-                            # A new var array.
-                            if len(data) > 0:
-                                self.new_dset(dataset_name, data, datagroup)
-                                # Several dataset_names can share a length dataset!
-                                if len_name not in dsets.keys():
-                                    self.new_dset(len_name, len(data), datagroup)
-                            else:
-                                # If we don't have any actual data, we can't even
-                                # figure out types, so we'll just have to backfill
-                                # later!
-                                continue
-                        else:
-                            self.new_dset(dataset_name, data, datagroup)
-                    else:
-                        to_backfill.remove(dataset_name)
-                    self.append_to_cache(dataset_name, data, datagroup)
-                    ts = event_data_dict["timestamp"]
-                    # also record the timestamps of unaligned and group data
-                    if is_unaligned(dataset_name):
-                        self.append_to_cache(
-                            unaligned_timestamp_name(dataset_name), ts, datagroup
-                        )
-                    if is_var:
-                        try:
-                            # All of the datasets that share a length dataset should
-                            # be the same size.  Otherwise, flag an error.
-                            exp_len = len_evt[len_name][ts]
-                            if len(data) != exp_len:
-                                raise TypeError(
-                                    "Data for %s is length %d, not %d!"
-                                    % (dataset_name, len(data), exp_len)
+                            if is_len:
+                                raise KeyError(
+                                    'Key: event keys cannot have the form "var_*_len! (%s)'
+                                    % (dataset_name)
                                 )
-                        except Exception:
-                            # This is the first dataset for this length dataset,
-                            # so remember the length and forget all of the older ones!
-                            len_evt[len_name] = {ts: len(data)}
-                            self.append_to_cache(len_name, len(data), datagroup)
+                            else:
+                                len_name = len_map[dataset_name]
+                        if dataset_name not in dsets.keys():
+                            if is_var:
+                                # A new var array.
+                                if len(data) > 0:
+                                    self.new_dset(dataset_name, data, datagroup)
+                                    # Several dataset_names can share a length dataset!
+                                    if len_name not in dsets.keys():
+                                        self.new_dset(len_name, len(data), datagroup)
+                                else:
+                                    # If we don't have any actual data, we can't even
+                                    # figure out types, so we'll just have to backfill
+                                    # later!
+                                    continue
+                            else:
+                                self.new_dset(dataset_name, data, datagroup)
+                        else:
+                            to_backfill.remove(dataset_name)
+                        self.append_to_cache(dataset_name, data, datagroup)
+                        ts = event_data_dict["timestamp"]
+                        if is_var:
+                            try:
+                                # All of the datasets that share a length dataset should
+                                # be the same size.  Otherwise, flag an error.
+                                exp_len = len_evt[len_name][ts]
+                                if len(data) != exp_len:
+                                    raise TypeError(
+                                        "Data for %s is length %d, not %d!"
+                                        % (dataset_name, len(data), exp_len)
+                                    )
+                            except Exception:
+                                # This is the first dataset for this length dataset,
+                                # so remember the length and forget all of the older ones!
+                                len_evt[len_name] = {ts: len(data)}
+                                self.append_to_cache(len_name, len(data), datagroup)
 
-                # end for dataset_name
+                    # end for dataset_name
 
-                for dataset_name in to_backfill:
-                    if is_var_key(dataset_name):
-                        # So, we never have to backfill a variable key.  Or for
-                        # that matter, the length key should never be in the event,
-                        # so we can ignore it in the to_backfill list.
-                        #
-                        # However, we might have to fill its length *if* the key
-                        # itself is in the list!
-                        if is_len_key(dataset_name):
-                            continue
-                        len_name = len_map[dataset_name]
-                        try:
-                            exp_len = len_evt[len_name][event_data_dict["timestamp"]]
-                        except Exception:
-                            # Only backfill the first time we see this timestamp.
-                            self.backfill(len_name, 1, datagroup, missing_value=0)
-                            len_evt[len_name][event_data_dict["timestamp"]] = 0
-                    elif not is_unaligned(dataset_name):
-                        self.backfill(dataset_name, 1, datagroup)
+                    for dataset_name in to_backfill:
+                        if is_var_key(dataset_name):
+                            # So, we never have to backfill a variable key.  Or for
+                            # that matter, the length key should never be in the event,
+                            # so we can ignore it in the to_backfill list.
+                            #
+                            # However, we might have to fill its length *if* the key
+                            # itself is in the list!
+                            if is_len_key(dataset_name):
+                                continue
+                            len_name = len_map[dataset_name]
+                            try:
+                                exp_len = len_evt[len_name][event_data_dict["timestamp"]]
+                            except Exception:
+                                # Only backfill the first time we see this timestamp.
+                                self.backfill(len_name, 1, datagroup, missing_value=0)
+                                len_evt[len_name][event_data_dict["timestamp"]] = 0
+                        else:
+                            self.backfill(dataset_name, 1, datagroup)
 
-            # end if self.filename
-            self.num_events_seen[datagroup] += 1
+                # end if self.filename...
+                self.num_events_seen[datagroup] += 1
 
-        # end for event_data_dict
+            # end for datagroup...
+            for cb in self.callbacks:
+                cb(flatten_event_data_dict)
+
+        # end for grp_event_data...
         return
 
     def _get_data_info(self, data, dataset_name):
@@ -444,9 +442,6 @@ class Server:  # (hdf5 handling)
 
         self._dsets[datagroup].update({dataset_name: (dtype, shape)})
 
-        # grab dsets for this datagroup
-        dsets = self._dsets[datagroup]
-
         # determine handle is root or user-specified group
         if datagroup == ALIGN_GROUP_DEFAULT:
             safe_handle = self.file_handle
@@ -463,25 +458,6 @@ class Server:  # (hdf5 handling)
             chunks=(self.cache_size,) + shape,
         )
 
-        # if this is an unaligned dataset create an
-        # additional dataset to record its timestamps
-        if is_unaligned(dataset_name):
-            unaligned_ts_name = unaligned_timestamp_name(dataset_name)
-            # make a fake int timestamp (33) to learn shape/type properties
-            (
-                unaligned_ts_shape,
-                unaligned_ts_maxshape,
-                unaligned_ts_dtype,
-            ) = self._get_data_info(33, unaligned_ts_name)
-            dsets[unaligned_ts_name] = (unaligned_ts_dtype, unaligned_ts_shape)
-            safe_handle.create_dataset(
-                unaligned_ts_name,
-                (0,) + unaligned_ts_shape,  # (0,) -> expand dim
-                maxshape=unaligned_ts_maxshape,
-                dtype=unaligned_ts_dtype,
-                chunks=(self.cache_size,) + unaligned_ts_shape,
-            )
-
         if is_var:
             if is_len:
                 self.backfill(
@@ -490,7 +466,7 @@ class Server:  # (hdf5 handling)
                     datagroup,
                     missing_value=0,
                 )
-        elif not is_unaligned(dataset_name):
+        else:
             self.backfill(
                 dataset_name,
                 self.num_events_seen[datagroup],
@@ -613,10 +589,8 @@ class SmallData:  # (client)
         """
 
         self.batch_size = batch_size
-        # map datagroup -> []
-        self._batch = {}
-        # map datagroup -> int(init=-1)
-        self._previous_timestamp = {}
+        self._batch = []
+        self._previous_timestamp = -1
 
         if cache_size is None:
             cache_size = batch_size
@@ -755,37 +729,34 @@ class SmallData:  # (client)
         # group data to ALIGN_GROUP_DEFAULT and user-specifed groups
         # kwarg: align_group is reserved!!! and if found, all args and kwargs
         # are grouped datasets.
-        datagroup = ALIGN_GROUP_DEFAULT
-        if ALIGN_GROUP_KW in event_data_dict:
-            datagroup = event_data_dict[ALIGN_GROUP_KW]
+        datagroup = get_group_name(event_data_dict)
+        if is_group(event_data_dict):
+            event_data_dict.pop(ALIGN_GROUP_KW)
 
         # check to see if the timestamp indicates a new event...
 
         #   >> multiple calls to self.event(...), same event as before
-        if datagroup not in self._previous_timestamp:
-            self._previous_timestamp[datagroup] = -1
-
-        if datagroup not in self._batch:
-            self._batch[datagroup] = []
-
-        if timestamp == self._previous_timestamp[datagroup]:
-            self._batch[datagroup][-1].update(event_data_dict)
+        if timestamp == self._previous_timestamp:
+            grp_event_data = self._batch[-1]
+            if datagroup not in grp_event_data:
+                grp_event_data[datagroup] = {"timestamp": timestamp}
+            grp_event_data[datagroup].update(event_data_dict)
 
         #   >> we have a new event
-        elif timestamp > self._previous_timestamp[datagroup]:
+        elif timestamp > self._previous_timestamp:
             # if we have a "batch_size", ship events
             # (this avoids splitting events if we have multiple
             #  calls to self.event)
-            if len(self._batch[datagroup]) >= self.batch_size:
+            if len(self._batch) >= self.batch_size:
                 if MODE == "SERIAL":
-                    self._server.handle(self._batch[datagroup])
+                    self._server.handle(self._batch)
                 elif MODE == "PARALLEL":
-                    self._srvcomm.send(self._batch[datagroup], dest=0)
-                self._batch[datagroup] = []
+                    self._srvcomm.send(self._batch, dest=0)
+                self._batch = []
 
             event_data_dict["timestamp"] = timestamp
-            self._previous_timestamp[datagroup] = timestamp
-            self._batch[datagroup].append(event_data_dict)
+            self._previous_timestamp = timestamp
+            self._batch.append({datagroup: event_data_dict})
 
         else:
             # FIXME: cpo
@@ -793,7 +764,7 @@ class SmallData:  # (client)
                 'event data is "old", event timestamps'
                 " must increase monotonically"
                 " previous timestamp: %d, current: %d"
-                "" % (self._previous_timestamp[datagroup], timestamp)
+                "" % (self._previous_timestamp, timestamp)
             )
             """
             raise IndexError('event data is "old", event timestamps'
@@ -969,18 +940,16 @@ class SmallData:  # (client)
         # >> finish communication
         if self._type == "client":
             # we want to send the finish signal to the server
-            for datagroup, group_batch in self._batch.items():
-                if len(group_batch) > 0:
-                    self._srvcomm.send(group_batch, dest=0)
+            if len(self._batch) > 0:
+                self._srvcomm.send(self._batch, dest=0)
             self._srvcomm.send("done", dest=0)
 
         elif self._type == "server":
             self._server.done()
 
         elif self._type == "serial":
-            for datagroup, group_batch in self._batch.items():
-                if len(group_batch) > 0:
-                    self._server.handle(group_batch)
+            if len(self._batch) > 0:
+                self._server.handle(self._batch)
             self._server.done()
 
         # stuff only one process should do in parallel mode
@@ -1020,7 +989,6 @@ class SmallData:  # (client)
         file_dsets = {}
 
         def assign_dset_info(name, obj):
-            # TODO check if name contains unaligned, if so ignore
             if isinstance(obj, h5py.Dataset):
                 tmp_dsets[obj.name] = (obj.dtype, obj.shape)
 
@@ -1051,13 +1019,7 @@ class SmallData:  # (client)
                 if dset_name in dsets.keys():
                     dtype, shape = dsets[dset_name]
                     total_events += shape[0]
-
-                # this happens if a dataset is completely missing in a file.
-                # to maintain alignment, we need to extend the length by the
-                # appropriate number and it will be filled in with the
-                # "fillvalue" argument below.  if it's unaligned, then
-                # we don't need to extend it at all.
-                elif not is_unaligned(dset_name):
+                else:
                     if "/timestamp" in dsets:
                         total_events += dsets["/timestamp"][1][0]
 
@@ -1081,13 +1043,9 @@ class SmallData:  # (client)
                     index_of_last_fill += shape[0]
 
                 else:
-                    # only need to pad aligned data with "fillvalue" argument below
-                    if is_unaligned(dset_name):
-                        pass
-                    else:
-                        if "/timestamp" in dsets:
-                            n_timestamps = dsets["/timestamp"][1][0]
-                            index_of_last_fill += n_timestamps
+                    if "/timestamp" in dsets:
+                        n_timestamps = dsets["/timestamp"][1][0]
+                        index_of_last_fill += n_timestamps
 
             joined_file.create_virtual_dataset(
                 dset_name, layout, fillvalue=_get_missing_value(dtype)
