@@ -18,6 +18,9 @@ cdef class TimingTebData():
         if self._bufOwner:
             PyBuffer_Release(&self.buf)
 
+    def has_eventcode(self,code):
+        return (self.cptr.eventcodes[code>>5]>>(code&0x1f))&1
+
     @property
     def eventcodes(self):
         rval = list()
