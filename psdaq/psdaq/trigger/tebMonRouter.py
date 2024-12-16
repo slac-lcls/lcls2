@@ -81,13 +81,13 @@ for event in ds.events():
 
             payld = ctrb.xtc.payload()
             data = TimingTebData(payld)
-            eventcodes = data.eventcodes
-            
-            logging.warning(f'[Python] Eventcodes: {eventcodes}')
 
-            if acr_eventcode in eventcodes:
+            eventcodes = data.eventcodes
+            logging.debug(f'[Python] Eventcodes: {eventcodes}')
+
+            if data.has_eventcode(acr_eventcode):
                 mebs = acr_mebs.schedule()
-            elif ami_eventcode in eventcodes:
+            elif data.has_eventcode(ami_eventcode):
                 mebs = ami_mebs.schedule()
             else:
                 mebs = usr_mebs.schedule()
@@ -96,7 +96,7 @@ for event in ds.events():
             payld = ctrb.xtc.payload()
             data = TmoTebData(payld)
 
-            logging.warning(f'[Python] write {data.write:x}')
+            logging.debug(f'[Python] write {data.write:x}')
 
     ds.result(persist, mebs)
 
