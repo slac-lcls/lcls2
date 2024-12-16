@@ -59,8 +59,8 @@ ds = DataSource(
 
 
 def my_smalldata(data_dict):
-    if "andor_norm" in data_dict:
-        andor_norm = data_dict["andor_norm"][0]
+    if "andor/andor_norm" in data_dict:
+        andor_norm = data_dict["andor/andor_norm"][0]
         myplot = XYPlot(
             0,
             f"Andor (normalized) run:{runnum}",
