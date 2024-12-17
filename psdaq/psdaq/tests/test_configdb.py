@@ -1,3 +1,6 @@
+import pytest
+pytest.skip("skip so we can avoid pymongo dependency",allow_module_level=True)
+
 from pymongo import *
 from psdaq.configdb.typed_json import *
 import psdaq.configdb.mongoconfigdb as cdb
