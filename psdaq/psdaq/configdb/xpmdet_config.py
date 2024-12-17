@@ -1,4 +1,4 @@
-import DrpTDet
+import l2si_drp
 from psdaq.configdb.barrier import Barrier
 from psdaq.cas.xpm_utils import timTxId
 import os
@@ -37,7 +37,7 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     args["timebase"]=timebase
     args["lanemask"]=lanemask
 
-    root = DrpTDet.DrpTDetRoot(pollEn=False,devname=dev)
+    root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
     root.__enter__()
 
     logging.info('Reset timing data path')
