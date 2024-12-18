@@ -125,7 +125,7 @@ def xpmdet_connect(grp,length):
     root = args['root']
 
     lm = args["lanemask"]
-    for i in range(8):
+    for i in range(4):
         if (lm & (1<<i)):
             teb = getattr(root.TDetTiming.TriggerEventManager,f'TriggerEventBuffer[{i}]')
             teb.ResetCounters()
@@ -135,17 +135,17 @@ def xpmdet_connect(grp,length):
             teb.TriggerDelay.set(0)
             teb.MasterEnable.set(True)
 
-            getattr(root.TDetSemi,f'Clear_{i&3}').set(1)
-            getattr(root.TDetSemi,f'Length_{i&3}').set(length)
-            getattr(root.TDetSemi,f'Clear_{i&3}').set(0)
-            getattr(root.TDetSemi,f'Enable_{i&3}').set(1)
+            getattr(root.TDetSemi,f'Clear_{i}').set(1)
+            getattr(root.TDetSemi,f'Length_{i}').set(length)
+            getattr(root.TDetSemi,f'Clear_{i}').set(0)
+            getattr(root.TDetSemi,f'Enable_{i}').set(1)
 
 def xpmdet_unconfig():
     root = args['root']
 
     #  Clear TDetSemi
     lm = args["lanemask"]
-    for i in range(8):
+    for i in range(4):
         if (lm & (1<<i)):
             getattr(root.TDetSemi,f'Enable_{i}').set(0)
             getattr(root.TDetSemi,f'Clear_{i}').set(1)
