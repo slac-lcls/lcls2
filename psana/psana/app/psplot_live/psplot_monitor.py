@@ -1,19 +1,20 @@
 import asyncio
-from typing import List
 
 import typer
+import copy
 from psana.app.psplot_live.db import DbHelper, DbHistoryColumns, DbHistoryStatus
 from psana.app.psplot_live.subproc import SubprocHelper
 from psana.app.psplot_live.utils import MonitorMsgType
+from psana.app.psplot_live.main import PsplotParms, _kill_pid
 
 app = typer.Typer()
 proc = SubprocHelper()
 
 
-async def run_monitor(plotnames, socket_name):
+async def run_monitor(psparms):
     runnum, node, port = (0, None, None)
     db = DbHelper()
-    db.connect(socket_name)
+    db.connect(psparms.socket_name)
     while True:
         obj = db.recv()
 
@@ -67,6 +68,16 @@ async def run_monitor(plotnames, socket_name):
                     new_slurm_job_id,
                 )
 
+                # Close all previous psplot processes to allow only the most recent run
+                if psparms.single_run_view:
+                    db_instance = copy.deepcopy(db.instance)
+                    for instance_id, val in db_instance.items():
+                        pid = val[DbHistoryColumns.PID]
+                        if pid is not None:
+                            _kill_pid(pid)
+                            db.delete(instance_id)
+                            print(f'Terminate {pid=}')
+
                 def set_pid(pid):
                     db.set(instance_id, DbHistoryColumns.PID, pid)
                     db.set(
@@ -78,7 +89,7 @@ async def run_monitor(plotnames, socket_name):
                 # The info is used to display what this psplot process is associated with.
                 # Note that we only send hostname w/o the domain for node argument
                 hostname_only = node.split(".")[0]
-                cmd = f"psplot -s {node} -p {port} {' '.join(plotnames)} {instance_id},{exp},{runnum},{hostname_only},{port},{slurm_job_id}"
+                cmd = f"psplot -s {node} -p {port} {' '.join(psparms.plotnames)} {instance_id},{exp},{runnum},{hostname_only},{port},{slurm_job_id}"
                 print(cmd)
                 await proc._run(cmd, callback=set_pid)
                 if not force_flag:
@@ -98,8 +109,9 @@ async def run_monitor(plotnames, socket_name):
 
 
 @app.callback(invoke_without_command=True)
-def main(plotnames: List[str], socket_name: str):
-    asyncio.run(run_monitor(plotnames, socket_name))
+def main(plotnames: str, socket_name: str, single_run_view: int):
+    plotnames = plotnames.split(',')
+    asyncio.run(run_monitor(PsplotParms(plotnames, socket_name, single_run_view)))
 
 
 if __name__ == "__main__":

@@ -3,12 +3,20 @@
 # the info, and activate new psplot process. The main part is inter-
 # active after starting these two async subprocesses:
 #
-# 1) run_monitor
+#   psplot_monitor (psplot_live:)
+#       | <-- owns
+#       db (psplot_live: SrvSocket receives and stores info)
+#       | <-- zmq socket
+#   kafka_consumer (psplot_live: ClientSocket)
+#       | <-- kafka messaging
+#       kafka_producer (DataSource sends exp, run, etc)
+#
+# 1) psplot_monitor
 #    Creates a DbHelper that listens for new messages through zmq
 #    socket. The default publisher (send data to DbHelper) is Kafka
 #    and can be switched to zmq using ZMQ option arg. For any new
 #    psplot, run_monitor generates psplot subprocess accordingly.
-# 2) start_kafka_consumer
+# 2) kafka_consumer
 #    Starts a kafka consumer subprocess that listens to kafka publisher
 #    (in user's analysis code) then passes the message to DbHelper
 #    via zmq socket. Note that if ZMQ option is used instead of KAFKA,
@@ -39,18 +47,28 @@ from typing import List
 import IPython
 import psutil
 import typer
+from typing_extensions import Annotated
+from dataclasses import dataclass
 
 from psana.app.psplot_live.db import DbHelper, DbHistoryStatus
 from psana.app.psplot_live.subproc import SubprocHelper
 from psana.app.psplot_live.utils import MonitorMsgType
 from psana.psexp.zmq_utils import ClientSocket
 
+KILLPROC_TIMEOUT_SEC = 3
+
 proc = SubprocHelper()
 runner = None
 app = typer.Typer(add_completion=False)
 
+@dataclass
+class PsplotParms:
+    plotnames: List
+    socket_name: str
+    single_run_view: bool
 
-def _kill_pid(pid, timeout=3, verbose=False):
+
+def _kill_pid(pid, verbose=False):
     def on_terminate(proc):
         if verbose:
             print(
@@ -60,7 +78,7 @@ def _kill_pid(pid, timeout=3, verbose=False):
     procs = [psutil.Process(pid)] + psutil.Process(pid).children()
     for p in procs:
         p.terminate()
-    gone, alive = psutil.wait_procs(procs, timeout=timeout, callback=on_terminate)
+    gone, alive = psutil.wait_procs(procs, timeout=KILLPROC_TIMEOUT_SEC, callback=on_terminate)
     for p in alive:
         p.kill()
 
@@ -78,9 +96,10 @@ atexit.register(_exit_handler)
 # Interactive session functions
 ####################################################################
 class Runner:
-    def __init__(self, socket_name, plotnames):
-        self.sub = ClientSocket(socket_name)
-        self.plotnames = plotnames
+    def __init__(self, psparms):
+        self.sub = ClientSocket(psparms.socket_name)
+        self.plotnames = psparms.plotnames
+        self.psparms = psparms
 
     def show(self, instance_id):
         data = {
@@ -133,7 +152,7 @@ class Runner:
                 print(e)
                 print(f"{row=}")
 
-    def kill(self, instance_id, timeout=3):
+    def kill(self, instance_id):
         data = self.query_db()
 
         if instance_id not in data:
@@ -141,7 +160,7 @@ class Runner:
             return
 
         pid = data[instance_id][-2]
-        _kill_pid(pid, timeout=timeout)
+        _kill_pid(pid)
         # Remove the killed process from db instance
         data = {"msgtype": MonitorMsgType.DELETE, "instance_id": instance_id}
         self.sub.send(data)
@@ -157,11 +176,20 @@ class Runner:
 ####################################################################
 @app.callback(invoke_without_command=True)
 def main(
-    plotnames: List[str],
-    debug: bool = False,
+    plotnames: Annotated[
+        str, typer.Argument(help="Comma-separated plotnames e.g. ANDOR,ATMOPAL")
+    ],
+    debug: Annotated[
+        bool, typer.Option("--debug", "-d", help="Show subprocesses and their activities in x-windows.")
+    ] = False,
+    single_run_view: Annotated[
+        bool, typer.Option("--single-run-view", "-s", help="Only shows one plot per plotname for contiuous runs.")
+    ] = False,
 ):
+    plotnames = plotnames.split(",")
+
     socket_name = DbHelper.get_socket()
-    cmd = f"python {os.path.join(os.path.dirname(os.path.realpath(__file__)), 'psplot_monitor.py')} {' '.join(plotnames)} {socket_name}"
+    cmd = f"python {os.path.join(os.path.dirname(os.path.realpath(__file__)), 'psplot_monitor.py')} {','.join(plotnames)} {socket_name} {int(single_run_view)}"
     if debug:
         cmd = f"xterm -hold -e {cmd}"
     asyncio.run(proc._run(cmd))
@@ -171,7 +199,7 @@ def main(
         cmd = f"xterm -hold -e {cmd}"
     asyncio.run(proc._run(cmd))
     global runner
-    runner = Runner(socket_name, plotnames)
+    runner = Runner(PsplotParms(plotnames, socket_name, single_run_view))
     IPython.embed()
 
 
