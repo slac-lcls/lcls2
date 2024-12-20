@@ -880,10 +880,11 @@ BldApp::BldApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp        (para, context()),
     m_para       (para),
-    m_det        (new BldDetector(m_para, m_drp)),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
+
+    m_det = new BldDetector(m_para, m_drp);
 
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());

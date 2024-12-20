@@ -984,12 +984,12 @@ PvApp::PvApp(PvParameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_pvDetector(std::make_unique<PvDetector>(para, m_drp)),
     m_det(nullptr),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
 
+    m_pvDetector = std::make_unique<PvDetector>(para, m_drp);
     m_det = m_pvDetector.get();
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());

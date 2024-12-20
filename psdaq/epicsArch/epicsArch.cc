@@ -318,10 +318,11 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp        (para, context()),
     m_para       (para),
-    m_eaDetector (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp)),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
+
+    m_eaDetector = std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp);
 
     m_det = m_eaDetector.get();
     if (m_det == nullptr) {
