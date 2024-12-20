@@ -24,6 +24,7 @@ namespace Pds {
             void        adc_cal_load(unsigned,const std::string&);
             //      void adc_range(unsigned,float fs_vpp);
             void adc_range(unsigned,unsigned fsrng);
+            void adc_input(unsigned,unsigned ch);
         private:
             void _hmc_init();
             void _lmk_init();

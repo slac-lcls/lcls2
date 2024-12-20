@@ -106,9 +106,9 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
                 continue
             seg_dict = getattr(config,self._det_name)
             for seg,seg_config in seg_dict.items():
-                self._padValue[seg] = (seg_config.config.fex.ymin+
-                                       seg_config.config.fex.ymax)//2
-                self._padLength[seg] = seg_config.config.fex.gate*40
+                self._padValue[seg] = (seg_config.config.fex.ymin[0]+
+                                       seg_config.config.fex.ymax[0])//2
+                self._padLength[seg] = seg_config.config.fex.gate[0]*40
         
     # this routine is used by ami/data.py
     def _seg_chans(self):
@@ -188,7 +188,7 @@ cdef class cyhsd_base_1_2_3:
             if iseg not in self._padDict:
                 self._padDict[iseg]={}
             self._padDict[iseg][chanNum] = padvalues
-            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg].item()) * 1/(6.4e9*13/14)
+            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg]) * 1/(6.4e9*13/14)
 
     def _parseEvt(self, evt):
         self._wvDict = {}
@@ -377,6 +377,15 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
     def __init__(self, *args):
         hsd_raw_2_0_0.__init__(self, *args)
 	
+    def _load_config(self):
+        for config in self._configs:
+            if not hasattr(config,self._det_name):
+                continue
+            seg_dict = getattr(config,self._det_name)
+            for seg,seg_config in seg_dict.items():
+                self._padValue[seg] = seg_config.config.user.fex.corr.baseline
+                self._padLength[seg] = int(seg_config.config.user.fex.gate_ns*0.160*13/14)*40
+
     def _parseEvt(self, evt):
         cyhsd_base_1_2_3._parseEvt(self, evt)
         peaksDict =cyhsd_base_1_2_3.peaksDict(self)

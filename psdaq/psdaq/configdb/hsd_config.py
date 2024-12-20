@@ -257,6 +257,7 @@ def apply_config(ctxt,cfg):
     if 'expert' in cfg:
         for k,v in cfg['expert'].items():
             values[k] = v
+    values['input_chan']        = cfg['user']['input_chan']
     values['fex_corr_baseline'] = cfg['user']['fex']['corr']['baseline']
     values['fex_corr_accum'   ] = cfg['user']['fex']['corr']['accum']
     ctxt.put(epics_prefix+':CONFIG',values,wait=True)

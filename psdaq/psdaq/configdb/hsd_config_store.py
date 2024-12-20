@@ -15,12 +15,13 @@ mycdb = cdb.configdb(url, args.inst, create,
 
 top = cdict()
 
-top.setAlg('config', [3,0,0])
+top.setAlg('config', [3,1,0])
 
 top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
 top.set("firmwareVersion:RO",   0, 'UINT32' )
 
 help_str = "-- user fields --"
+help_str += "\nuser.input_chan   : analog input channel selection"
 help_str += "\nuser.raw.start_ns : nanoseconds from fiducial to sampling start"
 help_str += "\nuser.raw.gate_ns  : nanoseconds from sampling start to end"
 help_str += "\nuser.raw.prescale : event downsampling; record 1-out-of-N"
@@ -37,6 +38,9 @@ help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
 
 top.set("help:RO", help_str, 'CHARSTR')
 
+top.define_enum('inputEnum',{'A0_A2': 0, 'A1_A3': 1})
+
+top.set('user.input_chan'  ,      0, 'inputEnum')
 top.set('user.raw.start_ns',  93000, 'UINT32')
 top.set('user.raw.gate_ns' ,    200, 'UINT32')
 top.set('user.raw.prescale',      1, 'UINT32')

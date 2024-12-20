@@ -73,6 +73,7 @@ namespace Pds {
         _testpattern = testp;
       }
 
+      _m.i2c().fmc_cpld.adc_input(fmc,PVGET(input_chan));
       _m.i2c().fmc_cpld.adc_range(fmc,PVGET(fs_range_vpp));
 
       _m.i2c_unlock();
