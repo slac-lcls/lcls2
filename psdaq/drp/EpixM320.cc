@@ -182,6 +182,9 @@ unsigned EpixM320::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
         }
     }
 
+    // Rearm logging of certain messages
+    m_logOnce = true;
+
     return 0;
 }
 
@@ -245,11 +248,17 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
     Array<uint8_t>  aTrailer = cd.allocate<uint8_t> (EpixMPanelDef::trailer, tShape);
 
     unsigned nSubframes = __builtin_popcount(m_asics)+2;
-    if (subframes.size() != nSubframes) {
+    if (subframes.size() < nSubframes) {
         logging::error("Missing data: subframe size %d vs %d expected\n",
                         subframes.size(), nSubframes);
         xtc.damage.increase(Damage::MissingData);
         return;
+    } else if (subframes.size() > nSubframes) {
+        if (m_logOnce) {
+            logging::warning("Ignoring extra data: subframe size %d vs %d expected\n",
+                             subframes.size(), nSubframes);
+            m_logOnce = false;
+        }
     }
 
     logging::debug("m_asics[%d] subframes.num_elem[%d]",m_asics,subframes.size());

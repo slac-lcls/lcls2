@@ -57,6 +57,14 @@ class ConfigScanBase(object):
 
         self.args = args
 
+        # configure logging handlers
+        if args.v:
+            level=logging.DEBUG
+        else:
+            level=logging.WARNING
+        logging.basicConfig(level=level)
+        logging.info('logging initialized')
+
     def run(self,keys,steps):
 
         args = self.args
@@ -72,14 +80,6 @@ class ConfigScanBase(object):
         if instrument is None:
             sys.exit('Error: failed to read instrument name (check -C <COLLECT_HOST>)')
 
-        # configure logging handlers
-        if args.v:
-            level=logging.DEBUG
-        else:
-            level=logging.WARNING
-        logging.basicConfig(level=level)
-        logging.info('logging initialized')
-
         # get initial DAQ state
         daqState = control.getState()
         logging.info('initial state: %s' % daqState)
@@ -90,6 +90,8 @@ class ConfigScanBase(object):
         platform = control.getPlatform()
         step_group = None
         group_mask = 0
+        if 'drp' not in platform:
+            sys.exit('Error: No DRP found - Have you selected DAQ components?')
         for v in platform['drp'].values():
             if v['active']==1:
                 group_mask |= 1<<(v['det_info']['readout'])

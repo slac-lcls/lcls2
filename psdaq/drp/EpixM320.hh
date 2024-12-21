@@ -41,6 +41,7 @@ protected:
     XtcData::NamesId  m_evtNamesId[2];
     unsigned          m_asics;
     bool              m_descramble;
+    bool              m_logOnce;
   };
 
 }
