@@ -126,7 +126,7 @@ def proc_block(block, **kwa):
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - pedestal estimator' % (frac05, med_med)\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate low limit' % (fraclo, med_qlo)\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate upper limit' % (frachi, med_qhi)\
-      + '\n    event spectrum spread    median(abs(raw-med)): %.3f ADU - spectral peak width estimator' % med_abs_dev
+      + '\n    event spectrum spread median(abs(raw-med))      %.3f ADU - spectral peak width estimator' % med_abs_dev
     logger.info(s)
 
     gate_lo    = arr1_u16 * int_lo
@@ -526,6 +526,7 @@ def deploy_constants(dic_consts, **kwa):
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
     uniqueid = kwa.get('uniqueid', 'not-def-id')
+    shortname= kwa.get('shortname', 'not-def-shortname')
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -551,6 +552,7 @@ def deploy_constants(dic_consts, **kwa):
     for ctype, nda in dic_consts.items():
 
         dir_ct = repoman.makedir_ctype(panelid, ctype)
+        #fprefix = fname_prefix(shortname, tsshort, expname, runnum, dir_ct)
         fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
 
         fname = '%s-%s.data' % (fprefix, ctype)
