@@ -32,7 +32,7 @@ class epixm320_raw_0_0_0(eb.epix_base):
         self._data_gain_bit = B16 # gain switching bit
         self._gain_bit_shift = 10
         self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
-        self._gain_modes = ('SH', 'SL', 'AHL')
+        self._gain_modes = ('AHL', 'SH', 'SL')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixm320.data'
         self._dataDebug = None
         self._segment_numbers = [0,1,2,3]
