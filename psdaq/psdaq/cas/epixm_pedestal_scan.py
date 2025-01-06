@@ -11,7 +11,10 @@ def main():
                '--scantype':'pedestal',
                '--record'  :1}
 
-    scan = ConfigScanBase(defargs=defargs)
+    aargs = [('--gain-modes', {'type':str,'nargs':'+','choices':['SH','SL','AHL','User'],
+                               'default':['AHL','SH'],
+                               'help':'Gain modes to use (default [\'AHL\',\'SH\'])'}),]
+    scan = ConfigScanBase(userargs=aargs, defargs=defargs)
 
     args = scan.args
 
@@ -23,7 +26,7 @@ def main():
                  'scantype': args.scantype,
                  'events'  : args.events}
         step = 0
-        for gain_mode in ('AHL', 'SH'):
+        for gain_mode in args.gain_modes:
             gain = gain_mode_value(gain_mode)
             d[f'{args.detname}:user.gain_mode'] = int(gain)
             metad['gain_mode'] = gain_mode

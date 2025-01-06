@@ -16,11 +16,14 @@ def main():
                '--scantype':'chargeinj',
                '--record'  :1}
 
-    aargs = [('--pulserStep', {'type':int,'default':1,'help':'charge injection ramp step'}),
-             ('--firstCol',   {'type':int,'default':0,'help':'first column of injection band'}),
-             ('--lastCol',    {'type':int,'default':nColumns-1,'help':'last column of injection band'}),
-             ('--bandStep',   {'type':int,'default':0,'help':'number of columns to step injection band by'}),
-             ('--nBandSteps', {'type':int,'default':1,'help':'number of times to step the injection band'})]
+    aargs = [('--pulserStep', {'type':int,'default':1,'help':'charge injection ramp step (default 1)'}),
+             ('--firstCol',   {'type':int,'default':0,'help':'first column of injection band (default 0)'}),
+             ('--lastCol',    {'type':int,'default':nColumns-1,'help':f'last column of injection band (default {nColumns-1})'}),
+             ('--bandStep',   {'type':int,'default':0,'help':'number of columns to step injection band by (default 0)'}),
+             ('--nBandSteps', {'type':int,'default':1,'help':'number of times to step the injection band (default 1)'}),
+             ('--gain-modes', {'type':str,'nargs':'+','choices':['SH','SL','AHL','User'],
+                               'default':['SH', 'SL', 'AHL'],
+                               'help':'Gain modes to use (default [\'SH\',\'SL\',\'AHL\'])'}),]
     scan = ConfigScanBase(userargs=aargs, defargs=defargs)
 
     args = scan.args
@@ -57,7 +60,7 @@ def main():
                  'events'  : args.events}
         d[f'{args.detname}:expert.App.FPGAChargeInjection.step'] = args.pulserStep
         step = 0
-        for gain_mode in ('SH', 'SL', 'AHL'):
+        for gain_mode in args.gain_modes:
             gain = gain_mode_value(gain_mode)
             d[f'{args.detname}:user.gain_mode'] = int(gain)
             metad['gain_mode'] = gain_mode
