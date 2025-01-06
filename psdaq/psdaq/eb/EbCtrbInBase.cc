@@ -87,8 +87,7 @@ static void dumpBatch(const TebContributor& ctrb,
 }
 
 
-EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
-                           const std::shared_ptr<MetricExporter>& exporter) :
+EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _transport    (prms.verbose, prms.kwargs),
   _maxResultSize(0),
   _batchCount   (0),
@@ -101,18 +100,6 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   _regSize      (0),
   _region       (nullptr)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.detName},
-                                            {"detseg", std::to_string(prms.detSegment)},
-                                            {"alias", prms.alias}};
-  exporter->add("TCtbI_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
-  exporter->add("TCtbI_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;          });
-  exporter->add("TCtbI_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
-  exporter->add("TCtbI_MisCt",  labels, MetricType::Counter, [&](){ return _missing;             });
-  exporter->add("TCtbI_DefSz",  labels, MetricType::Counter, [&](){ return _deferred.size();     });
-  exporter->add("TCtbI_BypCt",  labels, MetricType::Counter, [&](){ return _bypassCount;         });
-  exporter->add("TCtbI_NPrgCt", labels, MetricType::Counter, [&](){ return _noProgCount;         });
 }
 
 EbCtrbInBase::~EbCtrbInBase()
@@ -162,13 +149,34 @@ int EbCtrbInBase::startConnection(std::string& port)
   return 0;
 }
 
-int EbCtrbInBase::connect()
+int EbCtrbInBase::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.detName},
+                                            {"detseg", std::to_string(_prms.detSegment)},
+                                            {"alias", _prms.alias}};
+  exporter->add("TCtbI_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add("TCtbI_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;          });
+  exporter->add("TCtbI_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
+  exporter->add("TCtbI_MisCt",  labels, MetricType::Counter, [&](){ return _missing;             });
+  exporter->add("TCtbI_DefSz",  labels, MetricType::Counter, [&](){ return _deferred.size();     });
+  exporter->add("TCtbI_BypCt",  labels, MetricType::Counter, [&](){ return _bypassCount;         });
+  exporter->add("TCtbI_NPrgCt", labels, MetricType::Counter, [&](){ return _noProgCount;         });
+
+  return 0;
+}
+
+int EbCtrbInBase::connect(const std::shared_ptr<MetricExporter> exporter)
+{
+  int rc = _setupMetrics(exporter);
+  if (rc)  return rc;
+
   unsigned numEbs = std::bitset<64>(_prms.builders).count();
 
   _links.resize(numEbs);
 
-  int rc = linksConnect(_transport, _links, _prms.id, "TEB");
+  rc = linksConnect(_transport, _links, _prms.id, "TEB");
   if (rc)  return rc;
 
   return 0;

@@ -863,7 +863,7 @@ void PvDetector::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
     }
 }
 
-void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     auto bufEnd = (char*)&evtDg + m_pool->pebble.bufferSize();
     _event(evtDg, bufEnd, pvDg.xtc);
@@ -879,7 +879,7 @@ void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg
     pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
 }
 
-void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     // Because PVs show up in time order, when the most recent PV is younger
     // than the PGP event (t(PV) > t(PGP)), we know that no older PV will show
@@ -894,7 +894,7 @@ void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg
                    pvDg.time.seconds(), pvDg.time.nanoseconds());
 }
 
-void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     // Because PGP events show up in time order, when the most recent PV is older
     // than the PGP event (t(PV) < t(PGP)), we know that no older PGP event will

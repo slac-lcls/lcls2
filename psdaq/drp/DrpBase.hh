@@ -87,13 +87,13 @@ class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
     EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
-               ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
-               const std::shared_ptr<Pds::MetricExporter>& exporter);
+               ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon);
     void process(const Pds::Eb::ResultDgram& result, unsigned index) override;
 public:
     void detector(Detector* det) {m_det = det;}
     void tsId(unsigned nodeId) {m_tsId = nodeId;}
     void resetCounters(bool all);
+    int  connect(const std::shared_ptr<Pds::MetricExporter> exporter);
     void configure(Detector*, const PgpReader*);
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
     bool advanceChunkId();
@@ -107,6 +107,7 @@ public:
     static const uint64_t DefaultChunkThresh = 500ull * 1024ull * 1024ull * 1024ull;    // 500 GB
     FileParameters *fileParameters()    { return &m_fileParameters; }
 private:
+    int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
     void _writeDgram(XtcData::Dgram* dgram);
 private:
     MemPool& m_pool;
@@ -133,7 +134,7 @@ private:
     int64_t m_latency;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
     FileParameters m_fileParameters;
-    unsigned m_partition;
+    const Parameters& m_para;
 };
 
 class PgpReader
@@ -218,6 +219,7 @@ public:
     const std::string& supervisorIpPort() const {return m_supervisorIpPort;}
     MemPool pool;
 private:
+    int setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     int setupTriggerPrimitives(const nlohmann::json& body);
     int parseConnectionParams(const nlohmann::json& body, size_t id);
     void printParams() const;
@@ -235,7 +237,6 @@ private:
     size_t m_collectionId;
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
-    std::string m_hostname;
     unsigned m_numTebBuffers;
     unsigned m_xpmPort;
     std::shared_ptr<PV> m_deadtimePv;

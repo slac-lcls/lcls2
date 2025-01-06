@@ -40,6 +40,13 @@ static json createChunkRequestMsg();
 
 namespace Drp {
 
+static std::string _getHostName()
+{
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    return std::string(hostname);
+}
+
 static long readInfinibandCounter(const std::string& counter)
 {
     std::string path{"/sys/class/infiniband/mlx5_0/ports/1/counters/" + counter};
@@ -557,9 +564,8 @@ std::string Drp::FileParameters::runName()
 }
 
 EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
-                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
-                       const std::shared_ptr<Pds::MetricExporter>& exporter) :
-  EbCtrbInBase(tPrms, exporter),
+                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon) :
+  EbCtrbInBase(tPrms),
   m_pool(pool),
   m_det(nullptr),
   m_pgp(nullptr),
@@ -578,13 +584,17 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_evtSize(0),
   m_latPid(0),
   m_latency(0),
-  m_partition(para.partition)
+  m_para(para)
+{
+}
+
+int EbReceiver::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
 {
     std::map<std::string, std::string> labels
-        {{"instrument", para.instrument},
-         {"partition", std::to_string(para.partition)},
-         {"detname", para.detName},
-         {"alias", para.alias}};
+        {{"instrument", m_para.instrument},
+         {"partition", std::to_string(m_para.partition)},
+         {"detname", m_para.detName},
+         {"alias", m_para.alias}};
     exporter->add("DRP_Damage"    ,   labels, Pds::MetricType::Gauge,   [&](){ return m_damage; });
     exporter->add("DRP_RecordSize",   labels, Pds::MetricType::Counter, [&](){ return m_offset; });
     exporter->add("DRP_RecordDepth",  labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.depth(); });
@@ -596,6 +606,22 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     exporter->add("DRP_bufPendBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.pendBlocked(); });
     exporter->add("DRP_evtSize",      labels, Pds::MetricType::Gauge,   [&](){ return m_evtSize; });
     exporter->add("DRP_evtLatency",   labels, Pds::MetricType::Gauge,   [&](){ return m_latency; });
+    exporter->add("DRP_transitionId", labels, Pds::MetricType::Gauge,   [&](){ return m_lastTid; });
+
+    return 0;
+}
+
+int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
+{
+    m_lastTid = XtcData::TransitionId::Unconfigure; // @todo: Check
+
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+
+    rc = this->EbCtrbInBase::connect(exporter);
+    if (rc)  return rc;
+
+    return 0;
 }
 
 void EbReceiver::configure(Detector* detector, const PgpReader* pgpReader)
@@ -895,7 +921,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 
     // To write/monitor event, require the primary readout group to have triggered
     // Events for which the primary RoG didn't trigger are counted as bypass events
-    if (dgram->readoutGroups() & (1 << m_partition)) {
+    if (dgram->readoutGroups() & (1 << m_para.partition)) {
         if (m_writing) {                    // Won't ever be true for Configure
             // write event to file if it passes event builder or if it's a transition
             if (result.persist() || result.prescale()) {
@@ -980,7 +1006,7 @@ public:
   bool ready()   { return getComplete(); }
 };
 
-static bool _pvVectElem(const std::shared_ptr<PV>& pv, unsigned element, double& value)
+static bool _pvVectElem(const std::shared_ptr<PV> pv, unsigned element, double& value)
 {
   if (!pv || !pv->ready())  return false;
 
@@ -992,38 +1018,7 @@ static bool _pvVectElem(const std::shared_ptr<PV>& pv, unsigned element, double&
 DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
-    char hostname[HOST_NAME_MAX];
-    gethostname(hostname, HOST_NAME_MAX);
-    m_hostname = std::string(hostname);
-
-    m_exposer = Pds::createExposer(para.prometheusDir, m_hostname);
-    m_exporter = std::make_shared<Pds::MetricExporter>();
-
-    if (m_exposer) {
-        m_exposer->RegisterCollectable(m_exporter);
-    }
-
-    std::map<std::string, std::string> labels{{"instrument", para.instrument},
-                                              {"partition", std::to_string(para.partition)},
-                                              {"detname", para.detName},
-                                              {"detseg", std::to_string(para.detSegment)},
-                                              {"alias", para.alias}};
-    m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
-                    [](){return 4*readInfinibandCounter("port_rcv_data");});
-
-    m_exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
-                    [](){return 4*readInfinibandCounter("port_xmit_data");});
-
-    m_exporter->add("drp_dma_in_use", labels, Pds::MetricType::Gauge,
-                    [&](){return pool.dmaInUse();});
-    m_exporter->constant("drp_dma_in_use_max", labels, pool.nDmaBuffers());
-
-    m_exporter->add("drp_pebble_in_use", labels, Pds::MetricType::Gauge,
-                    [&](){return pool.inUse();});
-    m_exporter->constant("drp_pebble_in_use_max", labels, pool.nbuffers());
-
-    m_exporter->addFloat("drp_deadtime", labels,
-                         [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
+    m_exposer = Pds::createExposer(para.prometheusDir, _getHostName());
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition  = para.partition;
@@ -1035,7 +1030,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
-    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, pool.nbuffers(), m_exporter);
+    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, pool.nbuffers());
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition  = para.partition;
@@ -1046,9 +1041,9 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.maxTrSize  = para.maxTrSize;
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;
-    m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
+    m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms);
 
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor, m_exporter);
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor);
 
     m_inprocSend.connect("inproc://drp");
 
@@ -1105,29 +1100,67 @@ json DrpBase::connectionInfo(const std::string& ip)
     return info;
 }
 
+int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
+{
+    std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
+                                              {"partition", std::to_string(m_para.partition)},
+                                              {"detname", m_para.detName},
+                                              {"detseg", std::to_string(m_para.detSegment)},
+                                              {"alias", m_para.alias}};
+    exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
+                  [](){return 4*readInfinibandCounter("port_rcv_data");});
+
+    exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
+                  [](){return 4*readInfinibandCounter("port_xmit_data");});
+
+    exporter->add("drp_dma_in_use", labels, Pds::MetricType::Gauge,
+                  [&](){return pool.dmaInUse();});
+    exporter->constant("drp_dma_in_use_max", labels, pool.nDmaBuffers());
+
+    exporter->add("drp_pebble_in_use", labels, Pds::MetricType::Gauge,
+                  [&](){return pool.inUse();});
+    exporter->constant("drp_pebble_in_use_max", labels, pool.nbuffers());
+
+    exporter->addFloat("drp_deadtime", labels,
+                       [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
+
+    return 0;
+}
+
 std::string DrpBase::connect(const json& msg, size_t id)
 {
     // Save a copy of the json so we can use it to connect to the config database on configure
     m_connectMsg = msg;
     m_collectionId = id;
 
-    int rc = parseConnectionParams(msg["body"], id);
+    // If the exporter already exists, replace it so that previous metrics are deleted
+    m_exporter = std::make_shared<Pds::MetricExporter>();
+    if (m_exposer) {
+        m_exposer->RegisterCollectable(m_exporter);
+    }
+
+    int rc = setupMetrics(m_exporter);
+    if (rc) {
+        return std::string{"Failed to set up metrics"};
+    }
+
+    rc = parseConnectionParams(msg["body"], id);
     if (rc) {
         return std::string{"Connection parameters error - see log"};
     }
 
-    rc = m_tebContributor->connect();
+    rc = m_tebContributor->connect(m_exporter);
     if (rc) {
         return std::string{"TebContributor connect failed"};
     }
     if (m_mPrms.addrs.size() != 0) {
-        rc = m_mebContributor->connect();
+        rc = m_mebContributor->connect(m_exporter);
         if (rc) {
             return std::string{"MebContributor connect failed"};
         }
     }
 
-    rc = m_ebRecv->connect();
+    rc = m_ebRecv->connect(m_exporter);
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }
@@ -1198,7 +1231,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
         if (m_para.outputDir.empty()) {
             msg = "Cannot record due to missing output directory";
         } else {
-            msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname, m_nodeId);
+            msg = m_ebRecv->openFiles(m_para, runInfo, _getHostName(), m_nodeId);
         }
     }
 
@@ -1297,6 +1330,10 @@ void DrpBase::disconnect()
         m_mebContributor->disconnect();
     }
     m_ebRecv->disconnect();
+
+    if (m_exporter) {
+        m_exporter.reset();
+    }
 }
 
 int DrpBase::setupTriggerPrimitives(const json& body)

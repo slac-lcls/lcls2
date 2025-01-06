@@ -45,9 +45,8 @@ using us_t    = std::chrono::microseconds;
 const std::chrono::milliseconds BATCH_TIMEOUT{1};
 
 
-TebContributor::TebContributor(const TebCtrbParams&                   prms,
-                               unsigned                               numBuffers,
-                               const std::shared_ptr<MetricExporter>& exporter) :
+TebContributor::TebContributor(const TebCtrbParams& prms,
+                               unsigned             numBuffers) :
   _prms       (prms),
   _transport  (prms.verbose, prms.kwargs),
   _id         (-1),
@@ -60,24 +59,6 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   _latPid     (0),
   _latency    (0)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.detName},
-                                            {"detseg", std::to_string(prms.detSegment)},
-                                            {"alias", prms.alias}};
-
-  exporter->constant("TCtb_BEMax",  labels, prms.maxEntries);
-  exporter->constant("TCtb_IUMax",  labels, MAX_BATCHES);
-  exporter->constant("TCtbO_IFMax", labels, _pending.size());
-
-  exporter->add("TCtbO_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;          });
-  exporter->add("TCtbO_BatCt", labels, MetricType::Counter, [&](){ return _batchCount;          });
-  exporter->add("TCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
-  exporter->add("TCtbO_InFlt", labels, MetricType::Gauge,   [&](){ _pendingSize = _pending.guess_size();
-                                                                   return _pendingSize; });
-  exporter->add("TCtbO_Lat",   labels, MetricType::Gauge,   [&](){ return _latency;             });
-  exporter->add("TCtbO_BtAge", labels, MetricType::Gauge,   [&](){ return _age;                 });
-  exporter->add("TCtbO_BtEnt", labels, MetricType::Gauge,   [&](){ return _entries;             });
 }
 
 TebContributor::~TebContributor()
@@ -138,14 +119,41 @@ void TebContributor::unconfigure()
   }
 }
 
-int TebContributor::connect()
+int TebContributor::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.detName},
+                                            {"detseg", std::to_string(_prms.detSegment)},
+                                            {"alias", _prms.alias}};
+
+  exporter->constant("TCtb_BEMax",  labels, _prms.maxEntries);
+  exporter->constant("TCtb_IUMax",  labels, MAX_BATCHES);
+  exporter->constant("TCtbO_IFMax", labels, _pending.size());
+
+  exporter->add("TCtbO_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;          });
+  exporter->add("TCtbO_BatCt", labels, MetricType::Counter, [&](){ return _batchCount;          });
+  exporter->add("TCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
+  exporter->add("TCtbO_InFlt", labels, MetricType::Gauge,   [&](){ _pendingSize = _pending.guess_size();
+                                                                   return _pendingSize; });
+  exporter->add("TCtbO_Lat",   labels, MetricType::Gauge,   [&](){ return _latency;             });
+  exporter->add("TCtbO_BtAge", labels, MetricType::Gauge,   [&](){ return _age;                 });
+  exporter->add("TCtbO_BtEnt", labels, MetricType::Gauge,   [&](){ return _entries;             });
+
+  return 0;
+}
+
+int TebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
+{
+  int rc = _setupMetrics(exporter);
+  if (rc)  return rc;
+
   _links    .resize(_prms.addrs.size());
   _trBuffers.resize(_links.size());
   _id       = _prms.id;
   _numEbs   = std::bitset<64>(_prms.builders).count();
 
-  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
+  rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
   if (rc)  return rc;
 
   return 0;

@@ -112,9 +112,9 @@ private:
     void _timeout(std::chrono::milliseconds timeout);
     void _matchUp();
     void _handleTransition(Pds::EbDgram& evtDg, Pds::EbDgram& trDg);
-    void _tEvtEqPv(std::shared_ptr<PvMonitor>&, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
-    void _tEvtLtPv(std::shared_ptr<PvMonitor>&, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
-    void _tEvtGtPv(std::shared_ptr<PvMonitor>&, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
+    void _tEvtEqPv(std::shared_ptr<PvMonitor>, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
+    void _tEvtLtPv(std::shared_ptr<PvMonitor>, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
+    void _tEvtGtPv(std::shared_ptr<PvMonitor>, Pds::EbDgram& evtDg, const XtcData::Dgram& pvDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
     struct Event
