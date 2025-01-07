@@ -49,18 +49,22 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['enable'   ] = 0
     apply_config(ctxt,cfg)
 
-    # Wait for the L0Delay to update
-    time.sleep(1.1)
-
     # fetch the current configuration for defaults not specified in the configuration
     values = ctxt.get(epics_prefix+':CONFIG')
 
-    monTiming = ctxt.get(epics_prefix+':MONTIMING')
+    # Wait for the L0Delay to update
+    while True:
+        monTiming = ctxt.get(epics_prefix+':MONTIMING')
+        if monTiming.group == group:
+            break
+        print(f'Polling monTiming: group {monTiming.group}/{group}')
+        time.sleep(0.2)
+
     print(epics_prefix+':MONTIMING')
     print(monTiming)
 
     # fetch the xpm delay
-    partitionDelay = ctxt.get(epics_prefix+':MONTIMING').msgdelayset
+    partitionDelay = monTiming.msgdelayset
     print('partitionDelay {:}'.format(partitionDelay))
 
     #

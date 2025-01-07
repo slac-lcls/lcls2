@@ -138,6 +138,7 @@ namespace Pds {
           // v.queuecntsum = reg.countQueue;
           v.trigcnt     = v.trigcntsum - _v_monTiming[i].trigcntsum;
           unsigned group = teb.group&0xf;
+          v.group       = group;
           v.msgdelayset = _m.tem().xma().messageDelay[group];
           //          v.msgdelayget = (reg.msgDelay>>16)&0xff;
           v.headercntl0 = teb.l0Count;
