@@ -166,8 +166,9 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-    DrpBase                              m_drp;
     Parameters&                          m_para;
+    MemPoolCpu                           m_pool;
+    DrpBase                              m_drp;
     std::thread                          m_workerThread;
     std::unique_ptr<Pgp>                 m_pgp;
     Detector*                            m_det;

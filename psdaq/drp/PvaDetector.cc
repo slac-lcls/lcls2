@@ -982,8 +982,10 @@ void PvDetector::_sendToTeb(const EbDgram& dgram, uint32_t index)
 
 PvApp::PvApp(PvParameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp(para, context()),
     m_para(para),
+    m_pool(para),
+    m_drp(para, m_pool, context()),
+    m_pvDetector(std::make_unique<PvDetector>(para, m_drp)),
     m_det(nullptr),
     m_unconfigure(false)
 {

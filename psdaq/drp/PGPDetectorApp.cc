@@ -40,6 +40,7 @@ using logging = psalg::SysLog;
 using std::string;
 using namespace Pds::Ipc;
 
+
 // _dehex - convert a hex std::string to an array of chars
 //
 // For example, string "0E2021" is converted to array [14, 32, 33].
@@ -86,7 +87,7 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
             }
         }
     }
-    
+
     logging::debug("_getscankeys returning [%s]",update.dump().c_str());
     return update;
 }
@@ -294,14 +295,14 @@ private:
 
 PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp(para, context()),
     m_para(para),
+    m_pool(para),
+    m_drp(para, m_pool, context()),
     m_det(nullptr),
     m_unconfigure(false)
 {
     Py_Initialize(); // for use by configuration
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
-
 }
 
 // This initialization is in its own method (to be called from a higher layer)
@@ -347,9 +348,7 @@ void PGPDetectorApp::initialize()
     m_shmemSize = 0;
 
     auto kwargs_it = m_para.kwargs.find("drp");
-    if (kwargs_it != m_para.kwargs.end() && kwargs_it->second == "python") {
-        m_pythonDrp = true;
-    }
+    m_pythonDrp = kwargs_it != m_para.kwargs.end() && kwargs_it->second == "python";
 
     if (m_pythonDrp) {
         logging::info("Starting DrpPython");

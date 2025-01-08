@@ -1081,8 +1081,9 @@ void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 
 UdpApp::UdpApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp(para, context()),
     m_para(para),
+    m_pool(para),
+    m_drp(para, m_pool, context()),
     m_udpDetector(std::make_unique<UdpEncoder>(m_para, m_drp)),
     m_unconfigure(false)
 {

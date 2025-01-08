@@ -129,30 +129,37 @@ target_link_libraries(tpr_trigger
 )
 
 if(CMAKE_CUDA_COMPILER)
-    #message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
+    message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
+    message(INSTALL_INTERFACE="$<INSTALL_INTERFACE>")
     #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
     #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
     #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
 
     add_executable(drp_gpu
+        GpuAsyncLib.cc
+        GpuWorker.cu
         GpuDetector.cc
         GpuDetectorApp.cc
     )
-    # @todo: No need for this anymore, I think
-    #target_include_directories(drp_gpu PUBLIC
-    #    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-    #)
+    target_include_directories(drp_gpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        #$<INSTALL_INTERFACE:include>  # Not working?
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
     target_link_libraries(drp_gpu
         xtcdata::xtc
         drpbase
         trigger
         mmhw
         nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
     )
+    set_target_properties(drp_gpu PROPERTIES CUDA_ARCHITECTURES "86")
 
     add_library(AreaDetector_gpu SHARED
-        AreaDetectorGpu.cc
-        GpuWorker_impl.cu
+        AreaDetectorGpu.cu
         AreaDetector.cc
     )
     target_include_directories(AreaDetector_gpu PUBLIC
@@ -178,6 +185,7 @@ if(CMAKE_CUDA_COMPILER)
     )
     target_include_directories(pgpreadgpu PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        ${CMAKE_INSTALL_PREFIX}/include
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(pgpreadgpu

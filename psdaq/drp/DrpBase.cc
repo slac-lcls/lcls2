@@ -94,25 +94,17 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
     }
 }
 
-MemPool::MemPool(Parameters& para) :
+MemPool::MemPool(const Parameters& para) :
     m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
     m_dmaAllocs(0),
     m_dmaFrees(0),
     m_allocs(0),
     m_frees(0)
 {
-    m_fd = open(para.device.c_str(), O_RDWR);
-    if (m_fd < 0) {
-        logging::critical("Error opening %s: %s", para.device.c_str(), strerror(errno));
-        throw "Error opening kcu1500!!";
-    }
-    logging::info("PGP device '%s' opened", para.device.c_str());
+}
 
-    dmaBuffers = dmaMapDma(m_fd, &m_dmaCount, &m_dmaSize);
-    if (dmaBuffers == NULL ) {
-        logging::critical("Failed to map dma buffers: %s", strerror(errno));
-        abort();
-    }
+void MemPool::_initialize(const Parameters& para)
+{
     logging::info("dmaCount %u,  dmaSize %u", m_dmaCount, m_dmaSize);
 
     // make sure there are more buffers in the pebble than in the pgp driver
@@ -131,10 +123,10 @@ MemPool::MemPool(Parameters& para) :
     // be RDMAed from to the MEB
     size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
                       ? __builtin_popcount(para.laneMask) * m_dmaSize
-                      : std::stoul(para.kwargs["pebbleBufSize"]);
+                      : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufSize"]);
     m_nbuffers        = para.kwargs.find("pebbleBufCount") == para.kwargs.end() // Allow overriding the Pebble count
                       ? m_nDmaBuffers
-                      : std::stoul(para.kwargs["pebbleBufCount"]);
+                      : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufCount"]);
     if (m_nbuffers < m_nDmaBuffers) {
       logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
                         m_nbuffers, m_nDmaBuffers);
@@ -153,13 +145,6 @@ MemPool::MemPool(Parameters& para) :
     for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
         m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
     }
-    m_setMaskBytesDone = false;
-}
-
-MemPool::~MemPool()
-{
-   logging::debug("%s: Closing PGP device file descriptor", __PRETTY_FUNCTION__);
-   close(m_fd);
 }
 
 unsigned MemPool::countDma()
@@ -187,9 +172,9 @@ unsigned MemPool::allocate()
     return allocs;
 }
 
-void MemPool::freeDma(std::vector<uint32_t>& indices, unsigned count)
+void MemPool::freeDma(unsigned count, uint32_t* indices)
 {
-    dmaRetIndexes(m_fd, count, indices.data());
+    _freeDma(count, indices);
 
     m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
 }
@@ -228,8 +213,8 @@ void MemPool::resetCounters()
                          m_dmaAllocs.load(), m_dmaFrees.load(), dmaInUse());
     }
     if (inUse() == 0) {
-        m_allocs   .store(0);
-        m_frees    .store(0);
+        m_allocs.store(0);
+        m_frees .store(0);
     } else {
         logging::warning("Not resetting pebble counters when buffers are still in use: "
                          "Allocs %lu, Frees %lu, inUse %ld",
@@ -242,7 +227,39 @@ void MemPool::shutdown()
     m_transitionBuffers.shutdown();
 }
 
-int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
+MemPoolCpu::MemPoolCpu(const Parameters& para) :
+    MemPool(para),
+    m_setMaskBytesDone(false)
+{
+    m_fd = open(para.device.c_str(), O_RDWR);
+    if (m_fd < 0) {
+        logging::critical("Error opening %s: %m", para.device.c_str());
+        abort();
+    }
+    logging::info("PGP device '%s' opened", para.device.c_str());
+
+    dmaBuffers = dmaMapDma(m_fd, &m_dmaCount, &m_dmaSize);
+    if (dmaBuffers == NULL ) {
+        logging::critical("Failed to map dma buffers: %m");
+        abort();
+    }
+
+    // Continue with initialization of the base class
+    _initialize(para);
+}
+
+MemPoolCpu::~MemPoolCpu()
+{
+   logging::debug("%s: Closing PGP device file descriptor", __PRETTY_FUNCTION__);
+    close(m_fd);
+}
+
+void MemPoolCpu::_freeDma(unsigned count, uint32_t* indices)
+{
+    dmaRetIndexes(m_fd, count, indices);
+}
+
+int MemPoolCpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 {
     int retval = 0;
     if (m_setMaskBytesDone) {
@@ -341,13 +358,13 @@ int32_t PgpReader::read()
 
 void PgpReader::flush()
 {
-  // Return buffers queued for freeing
-  if (m_count)  m_pool.freeDma(m_dmaIndices, m_count);
-  m_count = 0;
+    // Return buffers queued for freeing
+    if (m_count)  m_pool.freeDma(m_count, m_dmaIndices.data());
+    m_count = 0;
 
-  // Also return buffers queued for reading, without adjusting counters
-  int32_t ret = read();
-  if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+    // Also return buffers queued for reading, without adjusting counters
+    int32_t ret = read();
+    if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
 }
 
 const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
@@ -546,7 +563,7 @@ void PgpReader::freeDma(PGPEvent* event)
             m_dmaIndices[m_count++] = event->buffers[i].index;
             if (m_count == m_dmaIndices.size()) {
                 // Return buffers.  An index could be reused as soon as dmaRetIndexes() completes
-                m_pool.freeDma(m_dmaIndices, m_count);
+                m_pool.freeDma(m_count, m_dmaIndices.data());
                 m_count = 0;
             }
         }
@@ -946,7 +963,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
 
         // Measure latency before sending dgram for monitoring
-        if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
+        // @todo: Revisit m_pgp being null in the GPU case
+        if (m_pgp && dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
             m_latency = std::chrono::duration_cast<us_t>(m_pgp->age(dgram->time)).count();
             m_latPid = dgram->pulseId();
         }
@@ -1015,8 +1033,8 @@ static bool _pvVectElem(const std::shared_ptr<PV> pv, unsigned element, double& 
   return true;
 }
 
-DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
-    pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
+DrpBase::DrpBase(Parameters& para, MemPool& pool_, ZmqContext& context) :
+    pool(pool_), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
     m_exposer = Pds::createExposer(para.prometheusDir, _getHostName());
 

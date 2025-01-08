@@ -28,8 +28,9 @@ private:
     void disconnect();
     void drainDrpMessageQueues();
     int resetDrpPython();
-    DrpBase m_drp;
     Parameters& m_para;
+    MemPoolCpu m_pool;
+    DrpBase m_drp;
     std::thread m_pgpThread;
     std::thread m_collectorThread;
     std::unique_ptr<PGPDetector> m_pgpDetector;

@@ -1,7 +1,6 @@
 // vim: et
 #include <stdint.h>
 #include <string>
-#include "psdaq/aes-stream-drivers/GpuAsync.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +11,7 @@
 #include <vector>
 #include <thread>
 
-#include "GpuAsyncLib.h"
+#include "GpuAsyncLib.hh"
 
 #include "GpuAsyncOffsets.h"
 
@@ -118,7 +117,7 @@ int main(int argc, char* argv[]) {
     CudaContext context;
 
     if (list_devs) {
-        context.list_devices();
+        context.listDevices();
         return 0;
     }
 
@@ -132,19 +131,19 @@ int main(int argc, char* argv[]) {
     if (lverbose)  printf("Device supports unified addressing: %s\n", value ? "YES" : "NO");
 
     // Make the DMA target the GPU
-    auto dst = dmaDestGet(gpu0.fd());
-    const char* dstType = "";
-    switch (dst) {
-        case DmaDest_t::CPU:  dstType = "CPU";  break;
-        case DmaDest_t::GPU:  dstType = "GPU";  break;
-        default:              dstType = "ERR";  break;
+    auto tgt = dmaTgtGet(gpu0.fd());
+    const char* tgtName = "";
+    switch (tgt) {
+        case DmaTgt_t::CPU:  tgtName = "CPU";  break;
+        case DmaTgt_t::GPU:  tgtName = "GPU";  break;
+        default:             tgtName = "ERR";  break;
     };
-    if (lverbose)  printf("DMA destination is changing from %s to %s\n",
-                          dstType, cpu ? "CPU" : "GPU");
-    if (!cpu && dst != GPU)
-        dmaDestSet(gpu0.fd(), DmaDest_t::GPU);
-    else if (cpu && dst != CPU)
-        dmaDestSet(gpu0.fd(), DmaDest_t::CPU);
+    if (lverbose)  printf("DMA target is changing from %s to %s\n",
+                          tgtName, cpu ? "CPU" : "GPU");
+    if (!cpu && tgt != GPU)
+        dmaTgtSet(gpu0.fd(), DmaTgt_t::GPU);
+    else if (cpu && tgt != CPU)
+        dmaTgtSet(gpu0.fd(), DmaTgt_t::CPU);
 
     ////////////////////////////////////////////////
     // Create write and read buffers
@@ -217,7 +216,7 @@ int run_host_test(GpuTestState_t& state)
 static void show_buf(CUdeviceptr dptr, size_t size, CUstream stream = 0) {
     uint8_t buf[size];
     //cuMemcpyDtoH(buf, dptr, size);
-    checkError(cudaMemcpyAsync(buf, (void*)dptr, size, cudaMemcpyDeviceToHost, stream));
+    chkFatal(cudaMemcpyAsync(buf, (void*)dptr, size, cudaMemcpyDeviceToHost, stream));
     cuStreamSynchronize(stream);
     for (unsigned i = 0; i < size / 4; ++i) {
         printf("%2d: offset=0x%X,  0x%X\n",i,i*4,*((uint32_t*)(buf+(i*4))));
@@ -237,11 +236,11 @@ int run_host_test_guts(GpuTestState_t& state, int instance)
     while(iters < 0 || iters-- > 0) {
         // Clear the GPU memory handshake space to zero
         if (state.verbose)  logInfo("%d Clear memory\n", instance);
-        checkError(cuStreamWriteValue32(stream, hwWritePtr + 4, 0x00, 0));
+        chkFatal(cuStreamWriteValue32(stream, hwWritePtr + 4, 0x00, 0));
 
         // Write to the DMA start register in the FPGA
         if (state.verbose)  logInfo("%d Trigger write\n", instance);
-        //checkError(cuStreamWriteValue32(stream, state.hwWriteStart + 4 * instance, 0x01, 0));
+        //chkFatal(cuStreamWriteValue32(stream, state.hwWriteStart + 4 * instance, 0x01, 0));
         cuStreamSynchronize(stream);
         auto rc = gpuSetWriteEn(state.fd, instance);
         if (rc < 0) {
@@ -261,7 +260,7 @@ int run_host_test_guts(GpuTestState_t& state, int instance)
         // Spin on the handshake location until the value is greater than or equal to 1
         // This waits for the data to arrive before starting the processing
         if (state.verbose)  logInfo("%d Wait memory value\n", instance);
-        checkError(cuStreamWaitValue32(stream, hwWritePtr + 4, 0x1, CU_STREAM_WAIT_VALUE_GEQ));
+        chkFatal(cuStreamWaitValue32(stream, hwWritePtr + 4, 0x1, CU_STREAM_WAIT_VALUE_GEQ));
 
         {
             cuStreamSynchronize(stream);
@@ -283,6 +282,6 @@ void show_help(const char* av0)
     printf("   -g <number> : Select the specified GPU\n");
     printf("   -c <iters>  : Do this many iterations of the test\n");
     printf("   -b <count>  : Allocate this many buffers for round robin operation. Must be 0 < X <= MAX_BUFFERS (%d)\n", MAX_BUFFERS);
-    printf("   -C          : Force the DMA destination to be the CPU (defaults to GPU)\n");
+    printf("   -C          : Force the DMA target to be the CPU (defaults to GPU)\n");
     exit(0);
 }

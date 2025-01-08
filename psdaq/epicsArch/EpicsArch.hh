@@ -77,8 +77,9 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:
-    DrpBase m_drp;
     Drp::Parameters& m_para;
+    MemPoolCpu m_pool;
+    DrpBase m_drp;
     std::unique_ptr<EaDetector> m_eaDetector;
     Detector* m_det;
     bool m_unconfigure;

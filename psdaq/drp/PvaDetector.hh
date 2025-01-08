@@ -161,8 +161,9 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:
-    DrpBase m_drp;
     PvParameters& m_para;
+    MemPoolCpu m_pool;
+    DrpBase m_drp;
     std::unique_ptr<PvDetector> m_pvDetector;
     Detector* m_det;
     bool m_unconfigure;

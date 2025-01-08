@@ -20,7 +20,6 @@ namespace Pds {
 namespace Drp {
 
 struct Parameters;
-class GpuWorker;
 
 class Detector
 {
@@ -45,7 +44,6 @@ public:
     virtual unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) {return 1;};
     virtual unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) {return 1;};
 
-    virtual GpuWorker* gpuWorker() { return nullptr; }
     virtual Pds::TimingHeader* getTimingHeader(uint32_t index) const
     {
         return static_cast<Pds::TimingHeader*>(m_pool->dmaBuffers[index]);

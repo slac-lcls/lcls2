@@ -878,8 +878,10 @@ void Pgp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
 
 BldApp::BldApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp        (para, context()),
     m_para       (para),
+    m_pool       (para),
+    m_drp        (para, m_pool, context()),
+    m_det        (new BldDetector(m_para, m_drp)),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration

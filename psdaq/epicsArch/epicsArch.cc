@@ -316,8 +316,10 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
 
 EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp        (para, context()),
     m_para       (para),
+    m_pool       (para),
+    m_drp        (para, m_pool, context()),
+    m_eaDetector (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp)),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration

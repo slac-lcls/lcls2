@@ -27,9 +27,12 @@
 
 //--------------------------------------------------------------------------------//
 // CUDA Prototypes
-void checkError(CUresult status);
-void checkError(cudaError status);
-bool wasError(CUresult status);
+#define NOARG ""           // Ensures there is an arg when __VA_ARGS__ is blank
+#define chkFatal(rc, ...)  checkError((rc), #rc, __FILE__, __LINE__, true,  NOARG __VA_ARGS__)
+#define chkError(rc, ...)  checkError((rc), #rc, __FILE__, __LINE__, false, NOARG __VA_ARGS__)
+
+bool checkError(CUresult  status, const char* func, const char* file, int line, bool crash=true, const char* msg="");
+bool checkError(cudaError status, const char* func, const char* file, int line, bool crash=true, const char* msg="");
 //--------------------------------------------------------------------------------//
 
 /**
@@ -41,13 +44,13 @@ public:
     DataGPU(const char* path);
     ~DataGPU()
     {
-        close(fd_);
+        close(m_fd);
     }
 
-    int fd() const { return fd_; }
+    int fd() const { return m_fd; }
 
 protected:
-    int fd_;
+    int m_fd;
 };
 
 /**
@@ -56,6 +59,7 @@ protected:
 class CudaContext
 {
 public:
+    CudaContext();
 
     /**
      * Creates a CUDA context, selects a device and ensures that stream memory ops are available.
@@ -63,18 +67,18 @@ public:
      * \param quiet Wheter to spew or not
      * \returns Bool if success
      */
-    bool init(int device = -1, bool quiet = false);
+    bool init(int device = -1);
 
     /**
-     * \brief Dumps a list of devices to stdout
+     * \brief Dumps a list of devices
      */
-    void list_devices();
+    static void listDevices();
 
-    CUdevice device() const { return device_; }
-    CUcontext context() const { return context_; }
+    CUcontext context() const { return m_context; }
+    CUdevice  device()  const { return m_device; }
 
-    CUcontext context_;
-    CUdevice device_;
+    CUcontext m_context;
+    CUdevice  m_device;
 };
 
 /**
@@ -100,11 +104,11 @@ static inline void dumpGpuMem(CUdeviceptr devicePtr, size_t sizeInBytes, void* b
  */
 struct GpuDmaBuffer_t
 {
-    int fd;
-    uint8_t* ptr;       /** Host accessible pointer **/
-    size_t size;        /** Size of the block **/
-    CUdeviceptr dptr;   /** Pointer on the device **/
-    int gpuOnly;        /** 1 if this is FPGA <-> GPU only, not mapped to host at all **/
+  int         fd;
+  uint8_t*    ptr;     /** Host accessible pointer **/
+  size_t      size;    /** Size of the block **/
+  CUdeviceptr dptr;    /** Pointer on the device **/
+  int         gpuOnly; /** 1 if this is FPGA <-> GPU only, not mapped to host at all **/
 };
 
 /**
@@ -167,8 +171,8 @@ void gpuDestroyBufferState(GpuBufferState_t* b);
 /**
  * Functions to get and set the DMA destination.
  * \param fd The file descriptor of the datagpu device
- * \param mode_ The enumerated value of the destination
+ * \param mode The enumerated value of the destination
  */
-enum DmaDest_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
-DmaDest_t dmaDestGet(int fd);
-void dmaDestSet(int fd, DmaDest_t mode_);
+enum DmaTgt_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
+DmaTgt_t dmaTgtGet(int fd);
+void dmaTgtSet(int fd, DmaTgt_t);

@@ -195,7 +195,7 @@ class PV;
 class DrpBase
 {
 public:
-    DrpBase(Parameters& para, ZmqContext& context);
+    DrpBase(Parameters& para, MemPool& pool, ZmqContext& context);
     void shutdown();
     nlohmann::json connectionInfo(const std::string& ip);
     std::string connect(const nlohmann::json& msg, size_t id);
@@ -217,7 +217,7 @@ public:
     const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
     bool isSupervisor() const {return m_isSupervisor;}
     const std::string& supervisorIpPort() const {return m_supervisorIpPort;}
-    MemPool pool;
+    MemPool& pool;
 private:
     int setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     int setupTriggerPrimitives(const nlohmann::json& body);
