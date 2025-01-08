@@ -45,6 +45,8 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     time.sleep(0.1)
 
     args['root'] = root.PcieControl.DevKcu1500
+    args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+
     return root
 
 # called on alloc
@@ -52,7 +54,6 @@ def xpmdet_connectionInfo(alloc_json_str):
     root = args['root']
 
     xma = root.TDetTiming.TriggerEventManager.XpmMessageAligner
-
     alloc_json = json.loads(alloc_json_str)
     supervisor,nworker = supervisor_info(alloc_json)
     barrier_global.init(supervisor,nworker)
@@ -67,7 +68,7 @@ def xpmdet_connectionInfo(alloc_json_str):
             clockrange = None
 
         if clockrange is not None:
-            if root.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0:
+            if args['core']:
                 # check timing reference clock, program if necessary
                 rate = root.TDetTiming.refClockRate()
 
@@ -120,6 +121,11 @@ def xpmdet_connectionInfo(alloc_json_str):
 
     return connect_info
 
+# called on dealloc
+def xpmdet_connectionShutdown():
+    barrier_global.shutdown()
+    return True
+
 #  Apply the full configuration
 def xpmdet_connect(grp,length):
     root = args['root']
@@ -127,7 +133,8 @@ def xpmdet_connect(grp,length):
     lm = args["lanemask"]
     for i in range(4):
         if (lm & (1<<i)):
-            teb = getattr(root.TDetTiming.TriggerEventManager,f'TriggerEventBuffer[{i}]')
+            il = i if args['core'] else i+4
+            teb = getattr(root.TDetTiming.TriggerEventManager,f'TriggerEventBuffer[{il}]')
             teb.ResetCounters()
             teb.PauseThreshold.set(16)
             teb.Partition.set(grp)
@@ -139,6 +146,8 @@ def xpmdet_connect(grp,length):
             getattr(root.TDetSemi,f'Length_{i}').set(length)
             getattr(root.TDetSemi,f'Clear_{i}').set(0)
             getattr(root.TDetSemi,f'Enable_{i}').set(1)
+
+    return True
 
 def xpmdet_unconfig():
     root = args['root']

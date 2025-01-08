@@ -926,6 +926,9 @@ json BldApp::connectionInfo(const nlohmann::json& msg)
 
 void BldApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det.connectionShutdown();
+    }
     m_drp.shutdown();
     if (m_exporter) {
         m_exporter.reset();

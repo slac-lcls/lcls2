@@ -372,6 +372,8 @@ json EpicsArchApp::connectionInfo(const nlohmann::json& msg)
 
 void EpicsArchApp::connectionShutdown()
 {
+    if (m_det)
+        m_det->connectionShutdown();
     m_drp.shutdown();
 }
 

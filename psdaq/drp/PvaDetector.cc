@@ -1038,6 +1038,9 @@ json PvApp::connectionInfo(const nlohmann::json& msg)
 
 void PvApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det->connectionShutdown();
+    }
     m_drp.shutdown();
 }
 

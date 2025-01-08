@@ -214,6 +214,10 @@ def opal_connectionInfo(cl, alloc_json_str):
 
     return connect_info
 
+# called on dealloc
+def opal_connectionShutdown():
+    barrier_global.shutdown()
+
 def user_to_expert(cl, cfg, full=False):
     global group
 

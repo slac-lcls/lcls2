@@ -397,10 +397,17 @@ json GpuDetectorApp::connectionInfo(const nlohmann::json& msg)
 
 void GpuDetectorApp::connectionShutdown()
 {
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
+
+    if (m_det) {
+        m_det.connectionShutdown();
+    }
     m_drp.shutdown();
     if (m_exporter) {
         m_exporter.reset();
     }
+
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
 

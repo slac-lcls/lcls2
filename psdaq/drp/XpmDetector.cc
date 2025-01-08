@@ -21,8 +21,9 @@ static PyObject* _check(PyObject* obj) {
     return obj;
 }
 
-XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
-    Detector(para, pool)
+XpmDetector::XpmDetector(Parameters* para, MemPool* pool, unsigned len) :
+    Detector(para, pool),
+    m_length(len)
 {
     _init();
 }
@@ -33,23 +34,25 @@ void XpmDetector::_init()
     const char* timebase = (it != m_para->kwargs.end()) ? it->second.data() : "186M";
 
     // returns new reference
-    m_module = _check(PyImport_ImportModule("psdaq.configdb.xpmdet_config"));
+    m_xmodule = _check(PyImport_ImportModule("psdaq.configdb.xpmdet_config"));
 
-    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    PyObject* pDict = _check(PyModule_GetDict(m_xmodule));
     PyObject* pFunc = _check(PyDict_GetItemString(pDict, "xpmdet_init"));
-    _check(PyObject_CallFunction(pFunc,"sisi",
-                                 m_para->device.c_str(),
-                                 m_para->laneMask,
-                                 timebase,
-                                 m_para->verbose));
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"sisi",
+                                           m_para->device.c_str(),
+                                           m_para->laneMask,
+                                           timebase,
+                                           m_para->verbose)));
 }
 
 json XpmDetector::connectionInfo(const json& msg)
 {
-    PyObject* pDict  = _check(PyModule_GetDict(m_module));
+    PyObject* pDict  = _check(PyModule_GetDict(m_xmodule));
     PyObject* pFunc  = _check(PyDict_GetItemString(pDict, "xpmdet_connectionInfo"));
     PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"s",msg.dump().c_str()));
-    return xpmInfo(PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr")));
+    json result = xpmInfo(PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr")));
+    Py_DECREF(mbytes);
+    return result;
 }
 
 // setup up device to receive data over pgp
@@ -57,14 +60,13 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
 {
     unsigned readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
     // FIXME make configureable
-    unsigned length = 100;
     std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sim_length");
     if (it != m_para->kwargs.end())
-        length = stoi(it->second);
+        m_length = stoi(it->second);
 
-    PyObject* pDict  = _check(PyModule_GetDict(m_module));
+    PyObject* pDict  = _check(PyModule_GetDict(m_xmodule));
     PyObject* pFunc  = _check(PyDict_GetItemString(pDict, "xpmdet_connect"));
-    _check(PyObject_CallFunction(pFunc,"ii",readoutGroup,length));
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"ii",readoutGroup,m_length)));
 }
 
 unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
@@ -74,8 +76,15 @@ unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 
 void XpmDetector::shutdown()
 {
-    PyObject* pDict  = _check(PyModule_GetDict(m_module));
+    PyObject* pDict  = _check(PyModule_GetDict(m_xmodule));
     PyObject* pFunc  = _check(PyDict_GetItemString(pDict, "xpmdet_unconfig"));
-    _check(PyObject_CallFunction(pFunc,""));
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"")));
+}
+
+void XpmDetector::connectionShutdown()
+{
+    PyObject* pDict  = _check(PyModule_GetDict(m_xmodule));
+    PyObject* pFunc  = _check(PyDict_GetItemString(pDict, "xpmdet_connectionShutdown"));
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"")));
 }
 }

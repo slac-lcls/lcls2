@@ -1136,6 +1136,9 @@ json UdpApp::connectionInfo(const nlohmann::json& msg)
 
 void UdpApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det->connectionShutdown();
+    }
     m_drp.shutdown();
 }
 
