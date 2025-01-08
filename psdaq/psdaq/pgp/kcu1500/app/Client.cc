@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include "Client.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
 typedef Pds::Mmhw::TriggerEventManager2 TEM;
@@ -10,8 +10,8 @@ using XtcData::Transition;
 
 using namespace Pds::Kcu;
 
-Client::Client(const char* dev) : 
-  _dmaBuffers(0), _current(0), _ret(0), 
+Client::Client(const char* dev) :
+  _dmaBuffers(0), _current(0), _ret(0),
   _retry_intv(1000), _retry_num(10), // 10 ms
   _next    (0),
   _rxFlags (new uint32_t[max_ret_cnt]),
@@ -53,7 +53,7 @@ Client::Client(const char* dev) :
 Client::~Client() { stop(); close(_fd); }
 
 void Client::set_retry(unsigned intv_us,
-                       unsigned retries) 
+                       unsigned retries)
 {
   _retry_intv = intv_us;
   _retry_num  = retries;
@@ -120,7 +120,7 @@ const Transition* Client::advance(uint64_t pulseId)
     //  Check if retrieved buffers are exhausted
     //
     if (_current == _ret) {
-      _current = 0; 
+      _current = 0;
       unsigned retries = 0;
       //
       //  Attempt to retrieve more buffers
@@ -141,7 +141,7 @@ const Transition* Client::advance(uint64_t pulseId)
       }
       _retries += retries;
     }
-  
+
     int x = _current;
     int last = _dmaRet[x];
     if (last > 0) {
@@ -152,7 +152,7 @@ const Transition* Client::advance(uint64_t pulseId)
         result = b;
         break;
       }
-      
+
       printf("pulseid %016lx : %016lx\n",
              b->pulseId(),pulseId);
 

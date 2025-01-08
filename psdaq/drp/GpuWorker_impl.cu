@@ -1,6 +1,6 @@
 #include "GpuWorker_impl.hh"
 
-#include <GpuAsync.h>
+#include "psdaq/aes-stream-drivers/GpuAsync.h"
 #include "drp.hh"
 // @todo: Revisit: #include "GpuDetector.hh"
 #include "Detector.hh"

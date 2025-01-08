@@ -4,7 +4,7 @@
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psalg/detector/UtilsConfig.hh"
 #include "psalg/utils/SysLog.hh"
 

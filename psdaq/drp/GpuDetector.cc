@@ -1,10 +1,10 @@
 #include "GpuDetector.hh"
 
+#include "psdaq/aes-stream-drivers/DmaDriver.h"
 #include "psdaq/service/MetricExporter.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "DrpBase.hh"
-#include <DmaDriver.h>
 #include "GpuWorker.hh"
 
 using logging = psalg::SysLog;

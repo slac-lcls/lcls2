@@ -17,7 +17,7 @@
 #include <cctype>       // std::isspace
 #include <regex>
 #include <Python.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"

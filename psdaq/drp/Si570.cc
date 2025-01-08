@@ -1,5 +1,5 @@
 #include "Si570.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -14,8 +14,8 @@ void Si570::reset()
   unsigned v = _reg[135];
   v |= 1;
   _reg[135] = 1;
-  do { 
-    usleep(100); 
+  do {
+    usleep(100);
     v = _reg[135];
   } while (v&1);
 }
@@ -73,7 +73,7 @@ void Si570::program(int index)
   _reg[10]= (rfreq>>16)&0xff;
   _reg[11]= (rfreq>>8)&0xff;
   _reg[12]= (rfreq>>0)&0xff;
-  
+
   logging::info("Wrote: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
                 hs_div, n1, rfreq, fcal);
 

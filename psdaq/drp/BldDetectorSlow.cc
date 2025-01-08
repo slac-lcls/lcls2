@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"

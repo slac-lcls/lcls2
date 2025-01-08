@@ -15,7 +15,7 @@ add_library(drpbase
 )
 
 target_include_directories(drpbase PUBLIC
-    ${AES_STREAM_DRIVER_HEADER_PATH}
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )
 
 target_link_libraries(drpbase
@@ -133,7 +133,6 @@ if(CMAKE_CUDA_COMPILER)
     #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
     #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
     #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
-    message(AES_STREAM_DRIVER_HEADER_PATH='${AES_STREAM_DRIVER_HEADER_PATH}')
 
     add_executable(drp_gpu
         GpuDetector.cc
@@ -160,7 +159,6 @@ if(CMAKE_CUDA_COMPILER)
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
         #$<INSTALL_INTERFACE:include>  # Not working?
         ${CMAKE_INSTALL_PREFIX}/include
-        ${AES_STREAM_DRIVER_HEADER_PATH}
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(AreaDetector_gpu
@@ -180,7 +178,6 @@ if(CMAKE_CUDA_COMPILER)
     )
     target_include_directories(pgpreadgpu PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-        ${AES_STREAM_DRIVER_HEADER_PATH}
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(pgpreadgpu
@@ -225,7 +222,6 @@ add_executable(pgpread
 )
 target_include_directories(pgpread PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(pgpread
     mmhw
@@ -241,7 +237,6 @@ add_executable(pgpread_timetool
 target_include_directories(pgpread_timetool PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    ${AES_STREAM_DRIVER_HEADER_PATH}
     ${PYTHON_INCLUDE_DIRS}
 )
 target_link_libraries(pgpread_timetool
@@ -257,8 +252,6 @@ add_executable(AxiBatcherParserTest
     AxiBatcherParser.cc
 )
 target_include_directories(AxiBatcherParserTest PUBLIC
-
-    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../psdaq/drp
     ${PYTHON_INCLUDE_DIRS}
 )
@@ -273,7 +266,6 @@ add_executable(drp_validate
 )
 target_include_directories(drp_validate PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(drp_validate
     Threads::Threads
@@ -306,7 +298,6 @@ add_executable(drp_groupsync
 )
 target_include_directories(drp_groupsync PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(drp_groupsync
     Threads::Threads

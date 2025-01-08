@@ -43,8 +43,6 @@ endif()
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-find_path(AES_STREAM_DRIVER_HEADER_PATH NAMES "DataDriver.h" PATH_SUFFIXES include REQUIRED)
-
 add_subdirectory(psdaq)
 add_subdirectory(drp)
 add_subdirectory(epicsArch)

@@ -1,7 +1,7 @@
 // vim: et
 #include <stdint.h>
 #include <string>
-#include <GpuAsync.h>
+#include "psdaq/aes-stream-drivers/GpuAsync.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>

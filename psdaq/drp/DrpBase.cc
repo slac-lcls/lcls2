@@ -10,12 +10,12 @@
 #include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
-#include <DmaDriver.h>
+#include "psdaq/aes-stream-drivers/DmaDriver.h"
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Smd.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/epicstools/PVBase.hh"
 

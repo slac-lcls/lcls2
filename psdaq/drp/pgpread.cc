@@ -3,7 +3,7 @@
 #include <iostream>
 #include <signal.h>
 #include <cstdio>
-#include <AxisDriver.h>
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
 #include <stdlib.h>
 #include "drp.hh"
 #include "psdaq/service/EbDgram.hh"

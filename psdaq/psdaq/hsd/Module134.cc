@@ -9,8 +9,8 @@
 #include "Fmc134Ctrl.hh"
 //#include "FlashController.hh"
 #include "OptFmc.hh"
-#include "DmaDriver.h"
-#include "AxiVersion.h"
+#include "psdaq/aes-stream-drivers/DmaDriver.h"
+#include "psdaq/aes-stream-drivers/AxiVersion.h"
 
 #include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
@@ -147,7 +147,7 @@ void Module134::setup_timing(bool lLoopback)
   }
 }
 
-void Module134::_jesd_init(unsigned mode) 
+void Module134::_jesd_init(unsigned mode)
 {
   Fmc134Ctrl& ctrl = jesdctl();
   Fmc134Cpld& cpld = i2c().fmc_cpld;
@@ -167,7 +167,7 @@ void Module134::_jesd_init(unsigned mode)
           break;
       }
       usleep(1000);
-  }            
+  }
 
   ctrl.dump();
 }
@@ -182,7 +182,7 @@ void Module134::setup_jesd(bool lAbortOnErr,
   Fmc134Ctrl* ctrl = &p->fmc_ctrl;
   Mmhw::Reg* jesd0  = &p->surf_jesd0[0];
   Mmhw::Reg* jesd1  = &p->surf_jesd1[0];
-  while (cpld->default_clocktree_init(lInternalTiming ? 
+  while (cpld->default_clocktree_init(lInternalTiming ?
                                       Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL :
                                       Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL)) {
     if (lAbortOnErr)
@@ -221,13 +221,13 @@ Module134::~Module134()
       for(unsigned i=0; i<PGPLANES; i++)          \
           printf(" %11x",unsigned(pgp[i].field)); \
       printf("\n"); }
-    
+
 #define LPRBF(title,field,shift,mask) {                 \
       printf("\t%20.20s :",title);                      \
       for(unsigned i=0; i<PGPLANES; i++)                \
           printf(" %11x",(unsigned(pgp[i].field)>>shift)&mask); \
       printf("\n"); }
-    
+
 #define LPRVC(title,field) {                      \
       printf("\t%20.20s :",title);                \
       for(unsigned i=0; i<PGPLANES; i++)          \
@@ -243,7 +243,7 @@ Module134::~Module134()
       for(unsigned i=0; i<PGPLANES; i++)                \
         printf(" %11.4f",double(pgp[i].field)*1.e-6);   \
       printf("\n"); }
-    
+
 void Module134::PrivateData::dumpPgp     () const
 {
   const Pgp3Axil* pgp = reinterpret_cast<const Pgp3Axil*>(pgp_reg);
@@ -267,7 +267,7 @@ void Module134::PrivateData::dumpPgp     () const
   printf("%10.10s %10.10s SLOW FAST LOCK\n","Clock","Rate, MHz");
   for(unsigned i=0; i<7; i++)
     printf("%10.10s %10.5f    %c   %c   %c\n",
-           clock_name[i], double(opt_fmc[2+i]&0x1fffffff)*1.e-6, 
+           clock_name[i], double(opt_fmc[2+i]&0x1fffffff)*1.e-6,
            opt_fmc[2+i]&(1<<29) ? 'Y':'.',
            opt_fmc[2+i]&(1<<30) ? 'Y':'.',
            opt_fmc[2+i]&(1<<31) ? 'Y':'.');
@@ -335,7 +335,7 @@ unsigned Module134::remote_id() const { return p->tem.xma().rxId; }
 void Module134::board_status()
 {
     { const Pds::Mmhw::AxiVersion& v = version();
-    printf("Axi Version [%p]: BuildStamp[%p]: %s\n", 
+    printf("Axi Version [%p]: BuildStamp[%p]: %s\n",
            &v, &v.BuildStamp[0], v.buildStamp().c_str());
     printf("Dna: %08x%08x  Serial: %08x%08x\n",
            v.DeviceDnaHigh,
@@ -462,7 +462,7 @@ I2c134& Module134::i2c()
 
 void Module134::i2c_lock  (I2cSwitch::Port port) const
 {
-  _sem_i2c.take(); 
+  _sem_i2c.take();
   const_cast<Module134*>(this)->i2c().i2c_sw_control.select(port);
 }
 void Module134::i2c_unlock() const { _sem_i2c.give(); }

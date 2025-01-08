@@ -18,7 +18,7 @@
 #include "gpuUtils.h"
 
 #include <string>
-#include <GpuAsync.h>
+#include "psdaq/aes-stream-drivers/GpuAsync.h"
 #include <assert.h>
 #include <stdint.h>
 

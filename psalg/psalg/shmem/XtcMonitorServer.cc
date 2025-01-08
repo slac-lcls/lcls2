@@ -324,9 +324,11 @@ void XtcMonitorServer::discover()
     while(!_terminate.load(std::memory_order_relaxed)) {
       XtcMonitorMsg m(port);
       if (mq_send(_discoveryQueue,(const char*)&m,sizeof(m),0)<0) {
-	auto en = errno;
-	perror("Error advertising discovery port (not EAGAIN");
-        if (en != EAGAIN) abort();
+        auto en = errno;
+        if (en != EAGAIN) {
+          perror("Error advertising discovery port (not EAGAIN)");
+          abort();
+        }
       }
 
       // Wait for a connection

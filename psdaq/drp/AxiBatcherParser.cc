@@ -4,36 +4,17 @@
 //https://confluence.slac.stanford.edu/display/ppareg/AxiStream+Batcher+Protocol+Version+1
 
 #include "AxiBatcherParser.hh"
-#include <atomic>
-#include <string>
-#include <iostream>
-#include <signal.h>
-#include <cstdio>
-#include <AxisDriver.h>
-#include <stdlib.h>
-#include "psdaq/service/EbDgram.hh"
-#include "xtcdata/xtc/Dgram.hh"
-#include <unistd.h>
-#include <getopt.h>
-#include <time.h>
-#include <Python.h>
-#include <fstream>
-#include <vector>
-#include <typeinfo>
-#include <algorithm>
 
-#define MAX_RET_CNT_C 1000
-
-//this method looks at the position of the raw data indicated in the argument, process the data 
+//this method looks at the position of the raw data indicated in the argument, process the data
 //at that location, and returns the position of the next place to look for the next piece of data
 //it is assumed that the position argument points to the section of the sub-frame tail that contains the subframe length information
 uint16_t eventBuilderParser::frame_to_position(int position){
-    
+
     return (raw_data[position+1]<<8) + raw_data[position]; //+ gets processed before <<
-    
+
 }
-              
-        
+
+
 int eventBuilderParser::get_frame_size(){
     return raw_data.size();
 }
@@ -41,13 +22,13 @@ int eventBuilderParser::get_frame_size(){
 //this method loads the data into the parser class.  May need to become a copy
 int eventBuilderParser::load_frame(std::vector<uint8_t> &incoming_data){
     raw_data   = incoming_data;
-    return 0;        
+    return 0;
 }
 
 int eventBuilderParser::clear(){
 
         raw_data.clear();
-        main_header.clear();   
+        main_header.clear();
         frame_sizes_reverse_order.clear();
         frame_positions_reverse_order.clear();
         frames.clear();
@@ -89,22 +70,22 @@ int eventBuilderParser::parse_array(){
             return 1;//force
         }
 
-        
-    
+
+
     //storing first parsed frame in frames
     std::vector<uint8_t> frame(sub_frame_range[1]-sub_frame_range[0]);
     std::copy(raw_data.begin()+sub_frame_range[0],raw_data.begin()+sub_frame_range[1],frame.begin());
     frames.push_back(frame);
-    
+
 
     int parsed_frame_size = frame_positions_reverse_order.size()*HEADER_WIDTH;
     for(std::vector<uint16_t>::iterator it = frame_sizes_reverse_order.begin(); it != frame_sizes_reverse_order.end(); ++it)
         parsed_frame_size += *it;
-    
+
 
     while(int(raw_data.size()) > (parsed_frame_size+HEADER_WIDTH)){
 
-        //storing frame sizes 
+        //storing frame sizes
         frame_sizes_reverse_order.push_back(frame_to_position(frame_positions_reverse_order.back()[0]-spsft));
 
 
@@ -140,12 +121,12 @@ int eventBuilderParser::parse_array(){
 }
 
 
-// checks if one of the frame elements is itself an axi batcher sub frame type. 
+// checks if one of the frame elements is itself an axi batcher sub frame type.
 int eventBuilderParser::check_for_subframes(){
 
      //before populating for a sub batcher, we need to make sure the frames aren't.  Otherwise there's a segfault in
      //conditional declaration part frames[i].begin+2 that doesn't exist (thanks gdb back trace for pointing here)
-     //It's not clear where the damage that requires this check is coming from.  
+     //It's not clear where the damage that requires this check is coming from.
      //It wasn't present when doing soft triggered testing at 75 KHz, so that indicates it's related to the timing and/or timestamp
      bool damaged_frame = false;
 
@@ -159,11 +140,11 @@ int eventBuilderParser::check_for_subframes(){
      if(damaged_frame){
         for (int i = 0 ; i <  int(frames.size()) ; i = i + 1){
                 is_sub_frame.push_back(0);
-        }  
+        }
 
      return 1;
      }
-     
+
 
      //if the frames aren't damaged, then let's start identifying which frames are axi-batcher frames
      for (int i = 0 ; i <  int(frames.size()) ; i = i + 1){
@@ -176,10 +157,10 @@ int eventBuilderParser::check_for_subframes(){
             my_sub_frame.parse_array();
 
             sub_frames.push_back(my_sub_frame);
-           
+
             }
             else{
-                is_sub_frame.push_back(0);                   
+                is_sub_frame.push_back(0);
             }
      }
 
@@ -205,26 +186,26 @@ int eventBuilderParser::print_frame(){
 
     //printf("raw parsed frames = \n");
     //print_vector2d(frames);
-    
+
     printf("___________________________\n");
     printf("printing summary data\n");
     printf("nsub frame size = \n");
     print_vector(frame_sizes_reverse_order);
-    
+
     printf("sub frame positions = \n");
     print_vector2d(frame_positions_reverse_order);
 
     printf("vector indicating if it's a sub frame. length = %d \n",int(is_sub_frame.size()));
     print_vector(is_sub_frame);
 
-    printf("___________________________\n___________________________\n___________________________\n___________________________\n");            
-    print_sub_batcher();   
+    printf("___________________________\n___________________________\n___________________________\n___________________________\n");
+    print_sub_batcher();
 
     return 0;
 }
 
 template <class T> int eventBuilderParser::print_vector2d(std::vector<T> &my_vector){
-     
+
     for (uint32_t i=0;i<my_vector.size();i=i+1){
 
 
@@ -254,10 +235,10 @@ int eventBuilderParser::print_sub_batcher(){
 
 
     }
-    
+
     return 0;
 }
-        
+
 template <class T> int eventBuilderParser::print_vector(std::vector<T> &my_vector){
 
     for (int i=0;i<std::min(int(my_vector.size()),32);i=i+1){

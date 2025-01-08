@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <getopt.h>
 #include <Python.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "drp/RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"

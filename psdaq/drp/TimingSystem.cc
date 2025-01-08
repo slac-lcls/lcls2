@@ -6,8 +6,8 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
-#include "AxisDriver.h"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/eb/ResultDgram.hh"
 
 #include <fcntl.h>

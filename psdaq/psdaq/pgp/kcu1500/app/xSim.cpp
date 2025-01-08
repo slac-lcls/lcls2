@@ -3,7 +3,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "Si570.hh"
 
 //  DrpTDet register map

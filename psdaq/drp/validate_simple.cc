@@ -3,7 +3,7 @@
 #include <chrono>
 #include <iostream>
 #include <cstdio>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 #define MAX_RET_CNT_C 1000
 

@@ -19,7 +19,7 @@
 #include <arpa/inet.h>
 #include <Eigen/Dense>
 #include <Eigen/QR>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"

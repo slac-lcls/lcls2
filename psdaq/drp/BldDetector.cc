@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -585,7 +585,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 //
 static const unsigned TMO_MS = 20;
 
-//  Look at the next timing header (or wait 20ms for the next one) 
+//  Look at the next timing header (or wait 20ms for the next one)
 const Pds::TimingHeader* Pgp::next()
 {
     // get new buffers
@@ -784,7 +784,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 switch (dgram->service()) {
                 case XtcData::TransitionId::Configure: {
                     logging::info("BLD configure");
-                        
+
                     // Revisit: This is intended to be done by BldDetector::configure()
                     for(unsigned i=0; i<m_config.size(); i++) {
                         XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);

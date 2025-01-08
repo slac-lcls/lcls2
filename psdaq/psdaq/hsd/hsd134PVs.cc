@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <Python.h>
 
-#include "AxiVersion.h"
+#include "psdaq/aes-stream-drivers/AxiVersion.h"
 #include "Module134.hh"
 #include "ChipAdcCore.hh"
 #include "Pgp3.hh"
@@ -45,7 +45,7 @@ namespace Pds {
             PvAllocate(PV134Stats& pvs,
                        PV134Ctrls& pvc,
                        const char* prefix) :
-                _pvs(pvs), _pvc(pvc), _prefix(prefix) 
+                _pvs(pvs), _pvc(pvc), _prefix(prefix)
             { printf("PvAllocate &_pvc %p\n",&_pvc); }
         public:
             void routine() {
@@ -130,7 +130,7 @@ void usage(const char* p) {
     printf("         -E           (abort on error)\n");
 }
 
-static PyObject* _check(PyObject* obj) 
+static PyObject* _check(PyObject* obj)
 {
     if (!obj) {
         PyErr_Print();
@@ -146,7 +146,7 @@ int main(int argc, char** argv)
 
     int c;
     bool lUsage = false;
-  
+
     const char* dev    = 0;
     const char* prefix = "DAQ:LAB2:HSD";
     bool lInternalTiming = false;
@@ -161,7 +161,7 @@ int main(int argc, char** argv)
         case 'd':
             dev    = optarg;      break;
         case 'D':
-            { 
+            {
                 char* p = optarg;
                 unsigned i=0;
                 while(p) {
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
     logging::init(argv[0], lverbose ? LOG_DEBUG : LOG_INFO);
     logging::info("logging configured");
 
-    if (!dev) { 
+    if (!dev) {
         printf("No device specified\n");
         lUsage = true;
     }
@@ -229,7 +229,7 @@ int main(int argc, char** argv)
         Pds_Epics::EpicsPVA& pvBuild = *(pvaa[i] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
         while(!pvBuild.connected())
             usleep(1000);
-        pvBuild.putFrom(buildStamp); 
+        pvBuild.putFrom(buildStamp);
     }
 
     for(unsigned i=0; i<2; i++) {
@@ -238,7 +238,7 @@ int main(int argc, char** argv)
         Pds_Epics::EpicsPVA& pvBuild = *(pvaa[i+2] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
         while(!pvBuild.connected())
             usleep(1000);
-        pvBuild.putFrom(buildVersion); 
+        pvBuild.putFrom(buildVersion);
     }
 
     Py_Initialize();
@@ -262,7 +262,7 @@ int main(int argc, char** argv)
 
 #if 1
     m->setup_timing(lLoopback);
-    m->setup_jesd(lAbortOnErr, 
+    m->setup_jesd(lAbortOnErr,
                   adc_calib[0],
                   adc_calib[1],
                   lInternalTiming);

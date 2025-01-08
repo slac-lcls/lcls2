@@ -8,7 +8,7 @@
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/digitizer/Hsd.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "Si570.hh"
 #include "XpmInfo.hh"
 #include "psdaq/mmhw/Pgp3Axil.hh"
@@ -97,7 +97,7 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     logging::debug("DrpPgpIlv::linkId %p",&hw.linkId[0]);
     logging::debug("DrpPgpIlv::i2c    %p",&hw.i2c[0]);
     logging::debug("DrpPgpIlv::si570  %p",&hw.si570);
-    
+
     AxiVersion vsn;
     axiVersionGet(fd, &vsn);
     if (vsn.userValues[2] == 0) {  // Only one PCIe interface has access to I2C bus
@@ -196,7 +196,7 @@ Digitizer::~Digitizer()
 }
 
 json Digitizer::connectionInfo(const nlohmann::json& msg)
-{   
+{
     return xpmInfo(m_paddr);
 }
 

@@ -8,7 +8,7 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/utils/SysLog.hh"
-#include "AxisDriver.h"
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
 
 #include <thread>
 #include <fcntl.h>
