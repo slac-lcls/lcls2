@@ -485,17 +485,14 @@ void Pds::Trg::TebPyTrig::event(const Pds::EbDgram* const* start,
   }
   while(++ctrb != end);
 
-  //  need to zero-terminate missing contributions?
-  unsigned i;
-  while( (i = __builtin_ffs(rem)) ) {
-      rem ^= 1<<(i-1);
-      *(EbDgram*)(_inpData[i]) = EbDgram(PulseId{0}, XtcData::Dgram());
-  }      
+  // bit mask of contributions
+  unsigned mctrb = ((1<<_inpData.size())-1) ^ rem;
 
   int       rc;
   char msg[512];
-  msg[0] = 'g';
-  rc = _send(_inpMqId, msg, 1);
+  //  msg[0] = 'g';
+  sprintf(msg,"g%08x",mctrb);
+  rc = _send(_inpMqId, msg, 9);
 
   if (rc == 0)
     rc = _checkPy(_pyPid);
