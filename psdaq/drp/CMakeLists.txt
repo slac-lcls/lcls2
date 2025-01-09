@@ -212,19 +212,6 @@ target_link_libraries(configdb_obj_2xtc
     ${PYTHON_LIBRARIES}
 )
 
-add_executable(test_teb_config
-    test_teb_config.cc
-)
-
-target_include_directories(test_teb_config PUBLIC
-    ${RapidJSON_INCLUDE_DIRS}
-    ${PYTHON_INCLUDE_DIRS}
-)
-
-target_link_libraries(test_teb_config
-    ${PYTHON_LIBRARIES}
-)
-
 add_executable(pgpread
     pgpread.cc
 )
