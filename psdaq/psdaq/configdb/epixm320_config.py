@@ -540,6 +540,21 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         for f in tmpfiles:
             os.remove(f)
 
+        # Commented out laneDiagnostics() as per Dawood 1/10/25
+        # cbase.laneDiagnostics(arg[1:5], threshold=1, loops=5, debugPrint=False)
+
+        # Delay determination needs laneDiagnostics. Exercising the lanes seem to stablize
+        # the lanes better for later evaluating the best lanes delays.
+        # Adding sleeps does not seem to suffice. Images need to be sent on the lanes.
+
+        time.sleep(1)
+        print("Evaluating optimal delays")
+
+        cbase.App.FPGADelayDetermination.Start()
+        time.sleep(1)
+        while (cbase.App.FPGADelayDetermination.Busy.get() != 0) :
+            time.sleep(1)
+
         for i in range(cbase.numOfAsics):
             # Prevent disabled ASICs from participating by disabling their lanes
             # It seems like disabling their Batchers should be sufficient,
