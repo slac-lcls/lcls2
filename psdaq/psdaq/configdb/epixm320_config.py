@@ -540,15 +540,15 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         for f in tmpfiles:
             os.remove(f)
 
-        # Commented out laneDiagnostics() as per Dawood 1/10/25
-        # cbase.laneDiagnostics(arg[1:5], threshold=1, loops=5, debugPrint=False)
+        # Adjust for intermitent lanes of enabled ASICs
+        cbase.laneDiagnostics(arg[1:5], threshold=1, loops=5, debugPrint=False)
 
         # Delay determination needs laneDiagnostics. Exercising the lanes seem to stablize
         # the lanes better for later evaluating the best lanes delays.
         # Adding sleeps does not seem to suffice. Images need to be sent on the lanes.
 
         time.sleep(1)
-        print("Evaluating optimal delays")
+        logging.info("Evaluating optimal delays")
 
         cbase.App.FPGADelayDetermination.Start()
         time.sleep(1)
@@ -611,11 +611,17 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     logging.warning('config_expert complete')
 
 def reset_counters(base):
+    cbase = base['cam']
+
     # Reset the timing counters
-    base['cam'].App.TimingRx.TimingFrameRx.countReset()
+    cbase.App.TimingRx.TimingFrameRx.countReset()
 
     # Reset the trigger counters
-    base['cam'].App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].countReset()
+    cbase.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].countReset()
+
+    # Reset the ASIC counters
+    for i in range (cbase.numOfAsics):
+        getattr(cbase.App.AsicTop, f"DigAsicStrmRegisters{i}").CountReset()
 
 #
 #  Called on Configure
@@ -688,6 +694,14 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     print(f'gain_mode {gain_mode}  CompTH_ePixM {compTH}  Precharge_DAC_ePixM {precharge_DAC}')
 
     for seg in range(1):  # Loop over 'tiles', of which the ePixM is defined to have only one
+        # Get serial numbers
+        cbase.App.AsicTop.RegisterControlDualClock.enable.set(True)
+        cbase.App.AsicTop.RegisterControlDualClock.IDreset.set(0x7)
+        cbase.App.AsicTop.RegisterControlDualClock.IDreset.set(0x0)
+
+        # Wait for hardware to get serial numbers
+        time.sleep(0.1)
+
         #  Construct the ID
         digitalId = [0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.DigIDLow.get(),
                      0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.DigIDHigh.get()]
