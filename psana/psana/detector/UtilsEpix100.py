@@ -39,7 +39,7 @@ def calib_epix100(det_raw, evt, cmpars=None, **kwa): #cmpars=(0,7,100,10)):
     mask = det_raw._mask()
     _cmpars  = cmpars #(0,7,100,10) #None #cmpars # det_raw._common_mode() if cmpars is None else cmpars
 
-    if peds is None: return None # peds = np.zeros_like(peds)
+    if peds is None: return raw
 
     arrf = raw - peds
     #arrf[0,352:,:]=5 # for debug
