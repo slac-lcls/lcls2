@@ -1,3 +1,14 @@
+"""
+Take the detector segments and manage xtc._damage fields.
+
+Note that each level of xtc class has _damage property:
+  d._xtc
+  d.xppcspad[0]._xtc
+  d.xppcspad[0].raw._xtc
+, but we only make the alg level (raw, fex, etc.) xtc._damage
+available through the interface below.
+"""
+
 from dataclasses import dataclass
 from enum import Enum
 
@@ -60,16 +71,23 @@ class Damage:
                         damage_counts[damageId] = [
                             0 if i != segment_id else 1 for i in range(len(segments))
                         ]
-                    # TODO: Calculate accumulated sum for the damage counts
+                    # Calculate accumulated sum for the damage counts
                     if flag_sum:
-                        pass
+                        for damageId, seg_damage in damage_counts.items():
+                            if damageId not in self._sum_damage_counts:
+                                self._sum_damage_counts[damageId] = seg_damage
+                            else:
+                                self._sum_damage_counts[damageId] += seg_damage
 
         self._damage_info = DamageInfo(damage_counts, userbits)
 
-    def count(self, evt):
-        self._load_damage_info(evt)
+    def count(self, evt, flag_sum=False):
+        self._load_damage_info(evt, flag_sum=flag_sum)
         return self._damage_info.counts
 
     def userbits(self, evt):
         self._load_damage_info(evt)
         return self._damage_info.userbits
+
+    def sum(self):
+        return self._sum_damage_counts
