@@ -54,21 +54,28 @@ def main():
     keys.append(f'{args.detname}:expert.App.FPGAChargeInjection.currentAsic')
 
     def steps():
+        # The metad goes into the step_docstring of the timing DRP's BeginStep data
+        # The step_docstring is used to guide the offline calibration routine
+        metad = {'detname'    : args.detname,
+                 'scantype'   : args.scantype,
+                 'events'     : args.events,
+                 'pulserStep' : args.pulserStep,
+                 'bandStep'   : args.bandStep,
+                 'nBandSteps' : args.nBandSteps}
         d = {}
-        metad = {'detname' : args.detname,
-                 'scantype': args.scantype,
-                 'events'  : args.events}
         d[f'{args.detname}:expert.App.FPGAChargeInjection.step'] = args.pulserStep
         step = 0
         for gain_mode in args.gain_modes:
-            gain = gain_mode_value(gain_mode)
-            d[f'{args.detname}:user.gain_mode'] = int(gain)
             metad['gain_mode'] = gain_mode
+            d[f'{args.detname}:user.gain_mode'] = int(gain_mode_value(gain_mode))
             for asic in range(nAsics):
+                metad['asic'] = asic
                 d[f'{args.detname}:expert.App.FPGAChargeInjection.currentAsic'] = asic
                 firstCol = args.firstCol
                 lastCol  = args.lastCol
                 for bandStep in range(args.nBandSteps):
+                    metad['startCol'] = firstCol
+                    metad['lastCol']  = lastCol
                     d[f'{args.detname}:expert.App.FPGAChargeInjection.startCol'] = firstCol
                     d[f'{args.detname}:expert.App.FPGAChargeInjection.endCol']   = lastCol
 
