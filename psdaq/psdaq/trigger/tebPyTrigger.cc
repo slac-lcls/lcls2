@@ -472,7 +472,7 @@ void Pds::Trg::TebPyTrig::event(const Pds::EbDgram* const* start,
 {
   *(Pds::Eb::ResultDgram*)_resData = result;
 
-  unsigned rem = (1<<_inpData.size())-1;
+  uint64_t rem = (1ull<<_inpData.size())-1;
   const Pds::EbDgram* const* ctrb = start;
   do
   {
@@ -480,19 +480,19 @@ void Pds::Trg::TebPyTrig::event(const Pds::EbDgram* const* start,
     auto size = sizeof(*dg) + dg->xtc.sizeofPayload();
     auto idx = dg->xtc.src.value();
     auto dest = _inpData[idx];
-    rem ^= 1<<idx;
+    rem ^= 1ull<<idx;
     memcpy(dest, dg, size);
   }
   while(++ctrb != end);
 
   // bit mask of contributions
-  unsigned mctrb = ((1<<_inpData.size())-1) ^ rem;
+  uint64_t mctrb = ((1ull<<_inpData.size())-1) ^ rem;
 
   int       rc;
   char msg[512];
   //  msg[0] = 'g';
-  sprintf(msg,"g%08x",mctrb);
-  rc = _send(_inpMqId, msg, 9);
+  sprintf(msg,"g%016lx",mctrb);
+  rc = _send(_inpMqId, msg, 17);
 
   if (rc == 0)
     rc = _checkPy(_pyPid);

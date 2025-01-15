@@ -127,7 +127,7 @@ def main():
                     pvxtpg.init()
                     autosave.restore()
 
-                    #  This is necessary in XTPG
+                    #  This is necessary after restoring L0Delays
                     #  Can also fix strange behavior in common group
                     app.groupL0Reset.set(0xff)
                     time.sleep(1.e-3)

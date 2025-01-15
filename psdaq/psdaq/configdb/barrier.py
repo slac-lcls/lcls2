@@ -10,6 +10,7 @@ class Barrier:
         self.nworker = 0
         self.publisher = False
         self.subscriber = False
+        self.supervisor = False
 
     def __del__(self):
         self.shutdown()
