@@ -145,15 +145,18 @@ int TebContributor::_setupMetrics(const std::shared_ptr<MetricExporter> exporter
 
 int TebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
 {
-  int rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
   _links    .resize(_prms.addrs.size());
   _trBuffers.resize(_links.size());
   _id       = _prms.id;
   _numEbs   = std::bitset<64>(_prms.builders).count();
 
-  rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
+  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
   if (rc)  return rc;
 
   return 0;

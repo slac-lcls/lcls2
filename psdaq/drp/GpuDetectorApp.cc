@@ -300,8 +300,8 @@ void GpuDetectorApp::handlePhase1(const json& msg)
         else {
             const std::string& config_alias = msg["body"]["config_alias"];
             m_gpuDetector = std::make_unique<GpuDetector>(m_para, m_pool, m_det);
-            m_exporter = std::make_shared<Pds::MetricExporter>();
             if (m_drp.exposer()) {
+                m_exporter = std::make_shared<Pds::MetricExporter>();
                 m_drp.exposer()->RegisterCollectable(m_exporter);
             }
 

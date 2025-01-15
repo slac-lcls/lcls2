@@ -147,8 +147,10 @@ void MemPool::_initialize(const Parameters& para)
     }
 }
 
-unsigned MemPool::countDma()
+unsigned MemPool::allocateDma()
 {
+    // Actually, the DMA buffer is allocated by the f/w and we only account for it here
+
     auto allocs = m_dmaAllocs.fetch_add(1, std::memory_order_acq_rel);
 
     return allocs;
@@ -391,7 +393,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     buffer->index = index;
     event->mask |= (1 << lane);
 
-    m_pool.countDma(); // DMA buffer was allocated when f/w incremented evtCounter
+    m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
     uint32_t flag = dmaFlags[current];
     uint32_t err  = dmaErrors[current];
@@ -632,10 +634,12 @@ int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
 {
     m_lastTid = XtcData::TransitionId::Unconfigure; // @todo: Check
 
-    int rc = _setupMetrics(exporter);
-    if (rc)  return rc;
+    if (exporter) {
+      int rc = _setupMetrics(exporter);
+      if (rc)  return rc;
+    }
 
-    rc = this->EbCtrbInBase::connect(exporter);
+    int rc = this->EbCtrbInBase::connect(exporter);
     if (rc)  return rc;
 
     return 0;
@@ -811,7 +815,7 @@ void EbReceiver::resetCounters(bool all = false)
 
     if (all)  m_lastIndex = -1u;
     m_damage = 0;
-    m_dmgType->clear();
+    if (m_dmgType)  m_dmgType->clear();
     m_latency = 0;
 }
 
@@ -1152,17 +1156,18 @@ std::string DrpBase::connect(const json& msg, size_t id)
     m_collectionId = id;
 
     // If the exporter already exists, replace it so that previous metrics are deleted
-    m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_exposer) {
+        m_exporter = std::make_shared<Pds::MetricExporter>();
         m_exposer->RegisterCollectable(m_exporter);
     }
 
-    int rc = setupMetrics(m_exporter);
-    if (rc) {
-        return std::string{"Failed to set up metrics"};
+    if (m_exporter) {
+        if (setupMetrics(m_exporter)) {
+            return std::string{"Failed to set up metrics"};
+        }
     }
 
-    rc = parseConnectionParams(msg["body"], id);
+    int rc = parseConnectionParams(msg["body"], id);
     if (rc) {
         return std::string{"Connection parameters error - see log"};
     }

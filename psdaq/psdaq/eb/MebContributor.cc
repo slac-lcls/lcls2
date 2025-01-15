@@ -83,8 +83,11 @@ int MebContributor::_setupMetrics(const std::shared_ptr<MetricExporter> exporter
 
 int MebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
 {
-  int rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
   _links      .resize(_prms.addrs.size());
   _region     .resize(_links.size());
@@ -93,7 +96,7 @@ int MebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
   _trBuffers  .resize(_links.size());
   _id         = _prms.id;
 
-  rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "MEB");
+  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "MEB");
   if (rc)  return rc;
 
   return 0;

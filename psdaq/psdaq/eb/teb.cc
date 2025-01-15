@@ -330,10 +330,13 @@ int Teb::connect(const MetricExporter_t exporter)
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
     _monBufLists.emplace_back(_prms.numMebEvBufs[i]);
 
-  int rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
-  rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
+  int rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
   rc = EbAppBase::connect(TEB_TR_BUFFERS, exporter);
@@ -962,9 +965,9 @@ void TebApp::handleConnect(const json& msg)
   _connectMsg = msg;
 
   // If the exporter already exists, replace it so that previous metrics are deleted
-  _exporter = std::make_shared<MetricExporter>();
   if (_exposer)
   {
+    _exporter = std::make_shared<MetricExporter>();
     _exposer->RegisterCollectable(_exporter);
   }
 
