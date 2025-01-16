@@ -541,7 +541,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             os.remove(f)
 
         # Adjust for intermitent lanes of enabled ASICs
-        cbase.laneDiagnostics(arg[1:5], threshold=1, loops=5, debugPrint=False)
+        cbase.laneDiagnostics(arg[1:5], threshold=1, loops=0, debugPrint=False)
 
         # Delay determination needs laneDiagnostics. Exercising the lanes seem to stablize
         # the lanes better for later evaluating the best lanes delays.
