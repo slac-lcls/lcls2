@@ -1,8 +1,9 @@
-'''python epixUHR_config_store.py --user tstopr --inst tst --alias BEAM --name epixuhr --segm 0 --id epixuhr_serial1234'''
+'''python epixUHR_config_store.py --user tstopr --inst tst --alias BEAM --name epixuhr --segm 0 --id epixuhr_serial1234 --prod'''
 
 
 from psdaq.configdb.typed_json import cdict
 import psdaq.configdb.configdb as cdb
+from psdaq.configdb.get_config import update_config
 import numpy as np
 import sys
 import IPython
@@ -29,7 +30,7 @@ def recursive_list(dictionary):
 def epixUHR_cdict():
 
     top = cdict()
-    top.setAlg('config', [0,1,0])
+    top.setAlg('config', [1,1,0])
     top.define_enum('boolEnum', {'False':0, 'True':1})
     top.set("expert.Core.Si5345Pll.enable",						        1   ,	'boolEnum')
     
@@ -54,23 +55,23 @@ def epixUHR_cdict():
     base = 'expert.Pll.'
     conv = functools.partial(int, base=16)
     
-    top.set(base+'_temp250', np.loadtxt(pathPll+'PLLConfig_Si5345_temp_250.csv',                  dtype='uint16', delimiter=',', skiprows=1, converters=conv))
-    top.set(base+'_2-3-7',   np.loadtxt(pathPll+'Si5345-B-156MHZ-out2-3-7-Registers.csv',         dtype='uint16', delimiter=',', skiprows=1, converters=conv))
-    top.set(base+'_0-5-7',   np.loadtxt(pathPll+'Si5345-B-156MHZ-out-0-5-and-7-Registers.csv',    dtype='uint16', delimiter=',', skiprows=1, converters=conv))
-    top.set(base+'_2-3-9',   np.loadtxt(pathPll+'Si5345-B-156MHZ-out2-3-9.csv',                   dtype='uint16', delimiter=',', skiprows=1, converters=conv))
-    top.set(base+'_0-5-7',   np.loadtxt(pathPll+'Si5345-B-156MHZ-out-0-5-and-7-v2-Registers.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))
+    top.set(base+'_temp250',    np.loadtxt(pathPll+'PLLConfig_Si5345_temp_250.csv',                  dtype='uint16', delimiter=',', skiprows=1, converters=conv))
+    top.set(base+'_2_3_7',      np.loadtxt(pathPll+'Si5345-B-156MHZ-out2-3-7-Registers.csv',         dtype='uint16', delimiter=',', skiprows=1, converters=conv))
+    top.set(base+'_0_5_7',      np.loadtxt(pathPll+'Si5345-B-156MHZ-out-0-5-and-7-Registers.csv',    dtype='uint16', delimiter=',', skiprows=1, converters=conv))
+    top.set(base+'_2_3_9',      np.loadtxt(pathPll+'Si5345-B-156MHZ-out2-3-9.csv',                   dtype='uint16', delimiter=',', skiprows=1, converters=conv))
+    top.set(base+'_0_5_7_v2',   np.loadtxt(pathPll+'Si5345-B-156MHZ-out-0-5-and-7-v2-Registers.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))
             
-    pathpix='/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pixelBitMaps/'
-    pixelBitMapDic = {'_FL_FM_FH':0, '_FL_FM_FH_InjOff':1, '_allConfigs':2, '_allPx_52':3, '_allPx_AutoHGLG_InjOff':4, '_allPx_AutoHGLG_InjOn':5, '_allPx_AutoMGLG_InjOff':6, '_allPx_AutoMGLG_InjOn':7, '_allPx_FixedHG_InjOff':8, '_allPx_FixedHG_InjOn':9, '_allPx_FixedLG_InjOff':10, '_allPx_FixedLG_InjOn':11, '_allPx_FixedMG_InjOff':12, '_allPx_FixedMG_InjOn':13, '_crilin':14, '_crilin_epixuhr100k':15, '_defaults':16, '_injection_corners':17, '_injection_corners_px1':18, '_management':19, '_management_epixuhr100k':20, '_management_inj':21, '_maskedCSA':22, '_truck':23, '_truck_epixuhr100k':24, '_xtalk_hole':25}
-    
+    pathpix='/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pixelBitMaps_prod/'
+    #pixelBitMapDic = {'_FL_FM_FH':0, '_FL_FM_FH_InjOff':1, '_allConfigs':2, '_allPx_52':3, '_allPx_AutoHGLG_InjOff':4, '_allPx_AutoHGLG_InjOn':5, '_allPx_AutoMGLG_InjOff':6, '_allPx_AutoMGLG_InjOn':7, '_allPx_FixedHG_InjOff':8, '_allPx_FixedHG_InjOn':9, '_allPx_FixedLG_InjOff':10, '_allPx_FixedLG_InjOn':11, '_allPx_FixedMG_InjOff':12, '_allPx_FixedMG_InjOn':13, '_crilin':14, '_crilin_epixuhr100k':15, '_defaults':16, '_injection_corners':17, '_injection_corners_px1':18, '_management':19, '_management_epixuhr100k':20, '_management_inj':21, '_maskedCSA':22, '_truck':23, '_truck_epixuhr100k':24, '_xtalk_hole':25}
+    pixelBitMapDic = {'default':0, 'injection_truck':1, 'injection_corners_FHG':2, 'injection_corners_AHGLG1':3, 'extra_config_1':4, 'extra_config_2':5,}
     top.define_enum('pixelMapEnum', pixelBitMapDic)
     
     base = 'expert.pixelBitMaps.'
     for pixelmap in pixelBitMapDic:
-        top.set(base+pixelmap, np.loadtxt(pathpix+pixelmap[1:]+'.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))
+        top.set(base+pixelmap, np.loadtxt(pathpix+pixelmap+'.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))
     for n in range(1, 5):
         base = f'expert.App.Asic{n}.'
-        top.set(base+'PixelBitMapSel', 25, 'pixelMapEnum')
+        top.set(base+'PixelBitMapSel', 5, 'pixelMapEnum')
         top.set(base+"SetGainValue",							    48              ,'UINT8'   )    
         
     top.set("expert.App.WaveformControl.enable",					1			  	,'boolEnum')
@@ -130,7 +131,7 @@ def epixUHR_cdict():
 
     top.set("user.start_ns" , 106000, 'UINT32') # taken from epixHR
     
-    top.define_enum('PllRegEnum', {'temp250':1, '2-3-7':2, '0-5-7':3, '2-3-9':4, '0-5-7':5})
+    top.define_enum('PllRegEnum', {'temp250':1, '2_3_7':2, '0_5_7':3, '2_3_9':4, '0_5_7_v2':5})
     base = 'user.'
     
     top.set(base+'PllRegistersSel', 5, 'PllRegEnum')
@@ -139,38 +140,46 @@ def epixUHR_cdict():
     top.set(base+"SetSameGain4All",			            			    0               ,"boolEnum")
     top.set(base+"UsePixelMap",             						    0               ,"boolEnum")
 
-    top.set(base+"SetBiasValue",							    48              ,'UINT8'   )
-    top.set(base+'PixelBitMapSel', 25, 'pixelMapEnum')
+    top.set(base+"SetGainValue",							            48              ,'UINT8'   )
+    top.set(base+'PixelBitMapSel',                                      5               , 'pixelMapEnum')
 
-    top.set("user.run_trigger_group",                               6               ,'UINT32'  )
+    top.set("user.run_trigger_group",                                   6               ,'UINT32'  )
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
     # timing system
     # run trigger
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold',16,'UINT32')
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].TriggerDelay',42,'UINT32')
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition',0,'UINT32')
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].TriggerDelay'  ,42,'UINT32')
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition'     ,0,'UINT32')
     # daq trigger
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].PauseThreshold',16,'UINT32')
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay',42,'UINT32')
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition',0,'UINT32')
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay'  ,42,'UINT32')
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition'     ,0,'UINT32')
 
     return top
 
 if __name__ == "__main__":
-    create = False# True
+    create = True # True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
-
+    
     args = cdb.createArgs().args
     
     db = 'configdb' if args.prod else 'devconfigdb'
     
     mycdb = cdb.configdb(f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/', args.inst, create,    
                         root=dbname, user=args.user, password=args.password)
-    mycdb.add_alias(args.alias)
-    mycdb.add_device_config('epixuhr')
 
     top = epixUHR_cdict()
-    top.setInfo('epixuhr', args.name, args.segm, args.id, 'No comment')
-    
-    mycdb.modify_device(args.alias, top)
+    top.setInfo('epixuhrhw', args.name, args.segm, args.id, 'No comment')
 
+   # no  need for update, value are loaded at creation 
+   # if args.update:
+   #     cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+   #     top = update_config(cfg, top.typed_json(), args.verbose)
+
+    if not args.dryrun:
+        if create:
+            mycdb.add_alias(args.alias)
+            mycdb.add_device_config('epixuhrhw')
+        mycdb.modify_device(args.alias, top.typed_json())
+
+    
