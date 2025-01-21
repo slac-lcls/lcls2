@@ -27,11 +27,11 @@
 #define GPU_ASYNC_CNT_RST					0x20
 
 /** Write addresses and sizes [Starts at 0x100] **/
-#define GPU_ASYNC_WR_ADDR(_n)				(0x100 | ((_n) << 6))
-#define GPU_ASYNC_WR_SIZE(_n)				(0x108 | ((_n) << 6))
+#define GPU_ASYNC_WR_ADDR(_n)				(0x100 | ((_n) << 4))
+#define GPU_ASYNC_WR_SIZE(_n)				(0x108 | ((_n) << 4))
 
 /** Read addresses [Starts at 0x200] **/
-#define GPU_ASYNC_RD_ADDR(_n)				(0x200 | ((_n) << 6))
+#define GPU_ASYNC_RD_ADDR(_n)				(0x200 | ((_n) << 4))
 
 /** Write enable bit [Starts at 0x300] **/
 #define GPU_ASYNC_WR_ENABLE(_n) 			(0x300 | ((_n) * 4))
