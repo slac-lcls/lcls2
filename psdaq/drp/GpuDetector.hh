@@ -26,13 +26,15 @@ public:
     void collector(std::shared_ptr<Pds::MetricExporter>, Pds::Eb::TebContributor&, DrpBase&);
     void shutdown();
 private:
-    const Parameters&               m_para;
-    MemPoolGpu&                     m_pool;
-    Detector*                       m_det;
-    std::vector<GpuWorker*>         m_workers;
-    std::vector< SPSCQueue<Batch> > m_workerQueues;
-    std::atomic<bool>               m_terminate;
-    uint64_t                        m_nNoTrDgrams;
+    int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
+private:
+    const Parameters&       m_para;
+    MemPoolGpu&             m_pool;
+    Detector*               m_det;
+    std::vector<GpuWorker*> m_workers;
+    std::atomic<bool>       m_terminate;
+    uint64_t                m_nNoTrDgrams;
+    GpuMetrics              m_metrics;
 };
 
 }

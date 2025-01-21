@@ -18,6 +18,9 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
+  //static const unsigned GPU_OFFSET      = 0x28000;
+static const size_t   DMA_BUFFER_SIZE = 128*1024;
+
 //https://github.com/slaclab/surf/blob/main/axi/dma/rtl/v2/AxiStreamDmaV2Write.vhd
 struct DmaDsc
 {
@@ -30,7 +33,8 @@ struct DmaDsc
 
 
 MemPoolGpu::MemPoolGpu(Parameters& para) :
-  MemPool(para)
+  MemPool(para),
+  m_setMaskBytesDone(0)
 {
   m_dmaCount = MAX_BUFFERS;             // @todo: use a setter method?
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
@@ -62,7 +66,6 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   getRange(para.device.substr(pos+1, para.device.length()), units);
   m_segs.resize(units.size());
   for (auto unit : units) {
-    printf("*** Worker %d, %s unit %d\n", worker, para.device.substr(0, pos).c_str(), unit);
     auto& seg = m_segs[worker];
 
     std::string device(para.device.substr(0, pos+1) + std::to_string(unit));
@@ -73,23 +76,42 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     }
     logging::info("PGP device '%s' opened", device.c_str());
 
-    // @todo: Get the DMA size from somewhere
-    m_dmaSize = 128*1024;
-
     // Clear out any left-overs from last time
     int res = gpuRemNvidiaMemory(seg.fd);
     if (res < 0)  logging::error("Error in gpuRemNvidiaMemory\n");
     logging::debug("Done with gpuRemNvidiaMemory() cleanup\n");
 
+    ////////////////////////////////////////////////
+    // Map FPGA register space to GPU
+    ////////////////////////////////////////////////
+
+    ///** Map the GpuAsyncCore FPGA registers **/
+    //if (gpuMapHostFpgaMem(&seg.swFpgaRegs, seg.fd, GPU_OFFSET, 0x100000) < 0) {
+    //  logging::critical("Failed to map GpuAsyncCore at offset=%d, size = %d", GPU_OFFSET, 0x100000);
+    //  abort();
+    //}
+
+    /** Compute 'write start' register location using the device pointer to GpuAsyncCore **/
+    //seg.hwWriteStart = seg.swFpgaRegs.dptr + 0x300;
+
+    logging::debug("Mapped FPGA registers");
+
+    // @todo: Get the DMA size from somewhere - query the device?  No, the device is told below.
+    //        Get it from the command line?
+    m_dmaSize = DMA_BUFFER_SIZE;
+
     // Allocate buffers on the GPU
     // This handles allocating buffers on the device and registering them with the driver.
-    auto size = dmaSize();
     for (unsigned i = 0; i < dmaCount(); ++i) {
-      if (_gpuMapFpgaMem(seg.fd, seg.dmaBuffers[i], 0, size, 1) != 0) {
+      if (gpuMapFpgaMem(&seg.dmaBuffers[i], seg.fd, 0, dmaSize(), 1) != 0) {
         logging::critical("Worker %d failed to alloc buffer list at number %zd", worker, i);
         abort();
       }
+      //auto dmaBufAddr = readRegister<void*>   (seg.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i));
+      //auto dmaBufSize = readRegister<uint32_t>(seg.swFpgaRegs.ptr, GPU_ASYNC_WR_SIZE(i));
+      //printf("*** DMA buffer[%d] addr %p, size %u\n", i, dmaBufAddr, dmaBufSize);
     }
+
     logging::debug("Done with device mem alloc for worker %d\n", worker);
     ++worker;
   }
@@ -107,7 +129,7 @@ MemPoolGpu::~MemPoolGpu()
 {
   for (auto seg : m_segs) {
     for (unsigned i = 0; i < dmaCount(); ++i) {
-      _gpuUnmapFpgaMem(seg.dmaBuffers[i]);
+      gpuUnmapFpgaMem(&seg.dmaBuffers[i]);
     }
 
     ssize_t rc;
@@ -122,7 +144,7 @@ MemPoolGpu::~MemPoolGpu()
 int MemPoolGpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 {
     int retval = 0;
-    if (m_setMaskBytesDone) {
+    if (m_setMaskBytesDone == m_segs.size()) {
         logging::debug("%s: earlier setting in effect", __PRETTY_FUNCTION__);
     } else {
         uint8_t mask[DMA_MASK_SIZE];
@@ -139,53 +161,23 @@ int MemPoolGpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
             if (dmaSetMaskBytes(seg.fd, mask)) {
                 retval = 1; // error
             } else {
-                m_setMaskBytesDone = true;
+                ++m_setMaskBytesDone;
             }
         }
     }
     return retval;
 }
 
-int MemPoolGpu::_gpuMapFpgaMem(int fd, CUdeviceptr& buffer, uint64_t offset, size_t size, int write)
-{
-  if (chkError(cuMemAlloc(&buffer, size))) {
-    return -1;
-  }
-  cuMemsetD8(buffer, 0, size);
-
-  int flag = 1;
-  // This attribute is required for peer shared memory. It will synchronize every synchronous memory operation on this block of memory.
-  if (chkError(cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, buffer))) {
-    cuMemFree(buffer);
-    return -1;
-  }
-
-  if (gpuAddNvidiaMemory(fd, write, buffer, size) < 0) {
-    logging::error("gpuAddNvidiaMemory failed");
-    cuMemFree(buffer);
-    return -1;
-  }
-
-  return 0;
-}
-
-void MemPoolGpu::_gpuUnmapFpgaMem(CUdeviceptr& buffer)
-{
-  chkError(cuMemFree(buffer));
-}
-
 
 GpuWorker::GpuWorker(unsigned worker, const Parameters& para, MemPoolGpu& pool) :
-  m_pool        (pool),
-  m_batchStart  (1),
-  m_batchSize   (0),
-  m_dmaIndex    (0),
-  m_worker      (worker),
-  m_para        (para),
-  m_nDmaErrors  (0),
-  m_nNoComRoG   (0),
-  m_nMissingRoGs(0),
-  m_nTmgHdrError(0)
+  m_pool      (pool),
+  m_seg       (m_pool.segs()[worker]),
+  m_terminate (nullptr),
+  m_dmaQueue  (4),                      // @todo: Revisit size
+  ///m_batchStart(1),
+  ///m_batchSize (0),
+  m_worker    (worker),
+  m_para      (para)
 {
   ////////////////////////////////////
   // Allocate streams
@@ -194,9 +186,143 @@ GpuWorker::GpuWorker(unsigned worker, const Parameters& para, MemPoolGpu& pool) 
   /** Allocate a stream per buffer **/
   m_streams.resize(m_pool.dmaCount());
   for (auto& stream : m_streams) {
-    chkFatal(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING), "Error creating streams");
+    chkFatal(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING));
   }
   logging::debug("Done with creating streams\n");
+
+  // Set up thread termination flag
+  chkError(cudaMallocManaged(&m_terminate, sizeof(int)));
+  for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
+    chkError(cudaStreamAttachMemAsync(m_streams[i], m_terminate, 0, cudaMemAttachHost));
+  }
+  *m_terminate = 0;
+
+  // Prepare the CUDA graphs
+  auto& seg = m_pool.segs()[worker];
+  m_graphs.resize(m_pool.dmaCount());
+  m_graphExecs.resize(m_pool.dmaCount());
+  m_hostWriteBufs.resize(m_pool.dmaCount());
+  for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
+    if (_setupCudaGraphs(seg, i)) {
+      logging::critical("Failed to set up CUDA graphs");
+      abort();
+    }
+  }
+}
+
+int GpuWorker::_setupCudaGraphs(const DetSeg& seg, int instance)
+{
+  // Generate the graph
+  if (m_graphs[instance] == 0) {
+    logging::debug("Recording graph %d of CUDA execution", instance);
+    size_t size = sizeof(DmaDsc)+sizeof(TimingHeader); //m_pool.dmaSize();
+    chkError(cudaMallocManaged(&m_hostWriteBufs[instance], size));
+    chkError(cudaStreamAttachMemAsync(m_streams[instance], m_hostWriteBufs[instance], 0, cudaMemAttachHost));
+    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, seg.hwWriteStart, m_hostWriteBufs[instance]);
+    if (m_graphs[instance] == 0)
+      return -1;
+  }
+
+  // Instantiate the graph. The resulting CUgraphExec may only be executed once
+  // at any given time.  I believe it can be reused, but it cannot be launched
+  // while it is already running.  If we wanted to launch multiple, we would
+  // instantiate multiple CUgraphExec's and then launch those individually.
+  if (chkError(cudaGraphInstantiate(&m_graphExecs[instance], m_graphs[instance], cudaGraphInstantiateFlagDeviceLaunch),
+               "Graph create failed")) {
+    return -1;
+  }
+
+  // Upload the graph so it can be launched by the scheduler kernel later
+  logging::debug("Uploading graph...");
+  if (chkError(cudaGraphUpload(m_graphExecs[instance], m_streams[instance]), "Graph upload failed")) {
+    return -1;
+  }
+
+  return 0;
+}
+
+__global__ void waitValueGEQ(const volatile uint32_t* mem, uint32_t val, const volatile int* terminate)
+{
+  while (!*terminate && *mem < val);
+}
+
+__global__ void dataMove(uint32_t* out, uint32_t* in, size_t size, const volatile int* terminate)
+{
+  if (*terminate)  return;
+
+  int offset = blockIdx.x * blockDim.x + threadIdx.x;
+  if (offset < size/sizeof(*out)) {
+    out[offset] = in[offset];
+  }
+
+  // Clear the GPU memory handshake space to zero
+  //   Do this _after_ we captured the size from the dmaDsc!
+  if (offset == 1) {
+    in[offset] = 0;
+  }
+
+  // @todo: Process the data to extract TEB input and calibrate.  Also reduce/compress?
+  //if (timingHeader->service() == TransitionId::L1Accept)
+  //  det.event(*th, event);
+  //else if (timingHeader->service() == TransitionId::SlowUpdate)
+  //  det.slowUpdate(*th);
+}
+
+// This will re-launch the current graph
+__global__ void graphLoop(const volatile int* terminate)
+{
+  if (!*terminate)
+    cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+}
+
+CUgraph GpuWorker::_recordGraph(CUstream&   stream,
+                                CUdeviceptr dmaBuffer,
+                                CUdeviceptr hwWriteStart,
+                                uint32_t*   hostWriteBuf)
+{
+  int instance = &stream - &m_streams[0];
+
+  if (chkError(cuStreamBeginCapture(stream, CU_STREAM_CAPTURE_MODE_THREAD_LOCAL),
+               "Stream capture failed")) {
+    return 0;
+  }
+
+  /****************************************************************************
+   * Clear the handshake space
+   * Originally was cuStreamWriteValue32, but the stream functions are not
+   * supported within graphs. cuMemsetD32Async acts as a good replacement.
+   ****************************************************************************/
+  //chkError(cuMemsetD32Async(dmaBuffer + 4, 0, 1, stream)); // Formerly cuStreamWriteValue32
+
+  // Write to the DMA start register in the FPGA to trigger the write
+  //chkError(cuMemsetD8Async(hwWriteStart + 4  * instance, 1, 1, stream)); // Formerly cuStreamWriteValue32
+
+  /*****************************************************************************
+   * Spin on the handshake location until the value is >= to 1
+   * This waits for the data to arrive before starting the processing
+   * Originally this was a call to cuStreamWait, but that is not supported by
+   * graphs, so instead we use a waitForMemory kernel to spin on the location
+   * until data is ready to be copied.
+   * @todo: This may have negative implications on GPU scheduling.
+   *        Need to profile!!!
+   ****************************************************************************/
+  waitValueGEQ<<<1, 1, 1, stream>>>((uint32_t*)(dmaBuffer + 4), 0x1, m_terminate); // Formerly cuStreamWaitValue32
+
+  // An alternative to the above kernel is to do the waiting on the CPU instead...
+  //chkError(cuLaunchHostFunc(stream, check_memory, (void*)buffer));
+
+  // Do GPU processing here, this simply copies data from the write buffer to the read buffer
+  dataMove<<<4, 1024, 1, stream>>>((uint32_t*)hostWriteBuf, (uint32_t*)dmaBuffer, sizeof(DmaDsc)+sizeof(TimingHeader), m_terminate);
+
+  // Re-launch! Additional behavior can be put in graphLoop as needed. For now, it just re-launches the current graph.
+  graphLoop<<<1, 1, 0, stream>>>(m_terminate);
+
+  CUgraph graph;
+  if (chkError(cuStreamEndCapture(stream, &graph), "Stream capture failed")) {
+    return 0;
+  }
+
+  return graph;
 }
 
 DmaTgt_t GpuWorker::dmaTarget() const
@@ -211,13 +337,13 @@ void GpuWorker::dmaTarget(DmaTgt_t dest)
   dmaTgtSet(m_pool.segs()[m_worker].fd, dest);
 }
 
-void GpuWorker::start(SPSCQueue<Batch>& workerQueue, Detector* det)
+void GpuWorker::start(Detector* det, GpuMetrics& metrics)
 {
-  // Launch one thread per stream
-  for (unsigned i = 0; i < m_streams.size(); ++i) {
-    m_threads.emplace_back(&GpuWorker::_reader, std::ref(*this),
-                           i, std::ref(workerQueue), std::ref(*det));
-  }
+  *m_terminate = 0;
+
+  // Launch the Reader thread
+  m_thread = std::thread(&GpuWorker::_reader, std::ref(*this),
+                         std::ref(*det), std::ref(metrics));
 }
 
 void GpuWorker::stop()
@@ -225,55 +351,43 @@ void GpuWorker::stop()
   logging::warning("GpuWorker::stop called for worker %d\n", m_worker);
 
   chkError(cuCtxSetCurrent(m_pool.context().context()));
-  printf("*** context set\n");
-  //chkError(cuCtxSynchronize());
-  //printf("*** context synced\n");
 
   // Stop and clean up the threads
-  auto& seg = m_pool.segs()[m_worker];
-  for (unsigned i = 0; i < m_threads.size(); ++i) {
-    // @todo: Need to trigger the streams here
-    printf("*** %d Set handshake\n", i);
-    chkFatal(cuStreamWriteValue32(m_streams[i], seg.dmaBuffers[i] + 4, 0x01, 0));
-    //printf("*** %d handshake sync\n", i);
-    //chkError(cuCtxSynchronize());
-    //printf("*** %d context synced\n", i);
-    //chkError(cuStreamSynchronize(m_streams[i]));
-    printf("*** Worker %d, thread %d handshake done\n", m_worker, i);
-  }
-  for (unsigned i = 0; i < m_threads.size(); ++i) {
-    printf("*** Worker %d, thread %d join\n", m_worker, i);
-    m_threads[i].join();
-    printf("*** Worker %d, thread %d joined\n", m_worker, i);
-  }
+  *m_terminate = 1;
+  m_thread.join();
 }
 
-void GpuWorker::freeDma(PGPEvent* event)
+void GpuWorker::freeDma(unsigned index)
 {
-  event->mask = 0;
-
   m_pool.freeDma(1, nullptr);
+
+  // Write to the DMA start register in the FPGA
+  //logging::debug("Trigger write to buffer %d\n", dmaIdx);
+  auto rc = gpuSetWriteEn(m_seg.fd, index);
+  if (rc < 0) {
+    logging::critical("Failed to reenable buffer %d for write: %zd: %m", index, rc);
+    abort();
+  }
 }
 
 void GpuWorker::handleBrokenEvent(const PGPEvent&)
 {
-  m_batchSize += 1; // Broken events must be included in the batch since f/w advanced evtCounter
+  ///m_batchSize += 1; // Broken events must be included in the batch since f/w advanced evtCounter
 }
 
 void GpuWorker::resetEventCounter()
 {
-  m_batchStart = 1;
-  m_batchSize = 0;
-  m_batchLast = 0;
+  ///m_batchStart = 1;
+  ///m_batchSize = 0;
+  ///m_batchLast = 0;
+}
+
+TimingHeader* GpuWorker::timingHeader(unsigned index) const
+{
+  return (TimingHeader*)&(m_hostWriteBufs[index])[8];
 }
 
 // @todo: Do we still want these?
-//void GpuWorker::timingHeaders(unsigned index, TimingHeader* buffer)
-//{
-//  auto idx = index & (m_streams.size() - 1);
-//  chkFatal(cuMemcpyDtoH((void*)buffer, m_pool.dmaBuffers[idx], sizeof(*buffer)));
-//}
-//
 //// @todo: This method is called when it has been recognized that data
 ////        has been DMAed into GPU memory and is ready to be processed
 //void GpuWorker::process(Batch& batch, bool& sawDisable)
@@ -295,202 +409,215 @@ void GpuWorker::resetEventCounter()
 //          to reorganize the data and prepare the Xtc header
 //        - Prepare the TEB input data
 
-void GpuWorker::_reader(unsigned dmaIdx, SPSCQueue<Batch>& workerQueue, Detector& det)
+void GpuWorker::_reader(Detector& det, GpuMetrics& metrics)
 {
-  logging::info("GpuWorker[%d].reader[%d] starting\n", m_worker, dmaIdx);
+  logging::info("GpuWorker[%d] starting\n", m_worker);
   chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
 
   dmaTarget(DmaTgt_t::GPU); // Ensure that timing messages are DMAed to the GPU
 
   resetEventCounter();
 
-  const uint32_t bufferMask = m_pool.nbuffers() - 1;
-
-  size_t    size         = sizeof(DmaDsc)+sizeof(TimingHeader); //m_pool.dmaSize();
-  uint32_t* hostWriteBuf = (uint32_t*)malloc(size);
-
-  // Handle L1Accepts, SlowUpdates and Disable
-  bool        flushBatch = false;
-  const auto& stream     = m_streams[dmaIdx];
-  const auto& seg        = m_pool.segs()[m_worker];
-  auto        dmaBuffer  = seg.dmaBuffers[dmaIdx];
-  auto        fd         = seg.fd;
-  while (true) {
-
+  for (unsigned dmaIdx = 0; dmaIdx < m_pool.dmaCount(); ++dmaIdx) {
     // Clear the GPU memory handshake space to zero
-    //logging::debug("%d clear memory\n", dmaIdx);
-    chkFatal(cuStreamWriteValue32(stream, dmaBuffer + 4, 0x00, 0));
+    auto dmaBuffer = m_seg.dmaBuffers[dmaIdx].dptr;
+    chkFatal(cuStreamWriteValue32(m_streams[dmaIdx], dmaBuffer + 4, 0x00, 0));
+    chkError(cuStreamSynchronize(m_streams[dmaIdx]));
 
     // Write to the DMA start register in the FPGA
-    //logging::debug("Trigger write to buffer %d\n", dmaIdx);
-    chkError(cuStreamSynchronize(stream));
-    auto rc = gpuSetWriteEn(fd, dmaIdx);
+    auto rc = gpuSetWriteEn(m_seg.fd, dmaIdx);
     if (rc < 0) {
-      logging::critical("Failed to reenable buffer %d for write: %zd\n", dmaIdx, rc);
-      perror("gpuSetWriteEn");
+      logging::critical("Failed to reenable buffer %d for write: %zd: %m", dmaIdx, rc);
       abort();
     }
 
-    // Spin on the handshake location until the value is greater than or equal to 1
-    // This waits for the data to arrive in the GPU before starting the processing
-    logging::debug("%d Wait memory value\n", dmaIdx);
-    chkFatal(cuStreamWaitValue32(stream, dmaBuffer + 4, 0x1, CU_STREAM_WAIT_VALUE_GEQ));
-    chkError(cuStreamSynchronize(stream));
-    logging::debug("%d Done waiting\n", dmaIdx);
-    unsigned nDmaRet = 1;
-    m_pool.countDma();
+    chkFatal(cudaGraphLaunch(m_graphExecs[dmaIdx], m_streams[dmaIdx]));
+  }
 
-    chkError(cuMemcpyDtoHAsync(hostWriteBuf, dmaBuffer, sizeof(DmaDsc)+sizeof(TimingHeader), stream));
-    cuStreamSynchronize(stream);
-    logging::debug("%d DtoH done\n", dmaIdx);
+  const uint32_t bufferMask = m_pool.nDmaBuffers() - 1;
 
-    const auto dsc = (DmaDsc*)hostWriteBuf;
-    logging::debug("*** dma %d hdr: err %08x,  sz %08x, rsvd %08x %08x %08x %08x %08x %08x\n",
-                   dmaIdx, dsc->error, dsc->size, dsc->_rsvd[0], dsc->_rsvd[1], dsc->_rsvd[2],
-                   dsc->_rsvd[3], dsc->_rsvd[4], dsc->_rsvd[5]);
-    const auto th  = (TimingHeader*)&hostWriteBuf[8];
-    logging::debug("**G dma %d  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
-                   dmaIdx, th->control(), th->pulseId(), th->time.value(), th->env, th->evtCounter,
-                   th->_opaque[0], th->_opaque[1]);
+  ///bool     flushBatch = false;
+  uint64_t lastPid = 0;
+  ///unsigned lastPblIndex = 0;
+  while (!*m_terminate) {
+    for (unsigned dmaIdx = 0; dmaIdx < m_pool.dmaCount(); ++dmaIdx) {
+      const volatile auto dsc = (DmaDsc*)(m_hostWriteBufs[dmaIdx]);
+      const volatile auto th  = (TimingHeader*)&(m_hostWriteBufs[dmaIdx])[8];
 
-    uint32_t size = dsc->size;
-    uint32_t lane = 0;                  // The lane is always 0 for datagpu devices
-    m_dmaSize   = size;
-    m_dmaBytes += size;
-    // @todo: Is this the case here also?
-    // dmaReadBulkIndex() returns a maximum size of m_pool.dmaSize(), never larger.
-    // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
-    // which thus won't have the expected header.  Take the exact match as an overflow indicator.
-    if (size == m_pool.dmaSize()) {
-      logging::critical("%d DMA overflowed buffer: %d vs %d", dmaIdx, size, m_pool.dmaSize());
-      abort();
-    }
+      metrics.m_nDmaRet.store(0);
+      // Wait for the GPU to have processed an event
+      uint64_t pid;
+      while (!*m_terminate) {
+        pid = th->pulseId();
+        if (pid > lastPid)  break;
+      }
+      if (*m_terminate)  break;
+      //chkFatal(cuCtxSynchronize());
+      lastPid = pid;
 
-    const Pds::TimingHeader* timingHeader = th; //det.getTimingHeader(index);
-    uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
-    unsigned pgpIndex = evtCounter & bufferMask;
-    PGPEvent*  event  = &m_pool.pgpEvents[pgpIndex];
-    DmaBuffer* buffer = &event->buffers[lane]; // @todo: Do we care about this?
-    buffer->size = size;                       //   "
-    buffer->index = dmaIdx;                    //   "
-    event->mask |= (1 << lane);
+      unsigned nDmaRet = 1;
+      metrics.m_nDmaRet.store(nDmaRet);
+      m_pool.allocateDma();
 
-    if (dsc->error) {
-        logging::error("DMA with error 0x%x",dsc->error);
-        m_batchLast += 1;               // Account for the missing entry
-        handleBrokenEvent(*event);
-        freeDma(event);                 // Leaves event mask = 0
-        ++m_nDmaErrors;
+      logging::debug("*** dma %d hdr: err %08x,  sz %08x, rsvd %08x %08x %08x %08x %08x %08x\n",
+                     dmaIdx, dsc->error, dsc->size, dsc->_rsvd[0], dsc->_rsvd[1], dsc->_rsvd[2],
+                     dsc->_rsvd[3], dsc->_rsvd[4], dsc->_rsvd[5]);
+      logging::debug("**G dma %d  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
+                     dmaIdx, th->control(), th->pulseId(), th->time.value(), th->env, th->evtCounter,
+                     th->_opaque[0], th->_opaque[1]);
+
+      uint32_t size = dsc->size;
+      ///uint32_t lane = 0;                  // The lane is always 0 for datagpu devices
+      metrics.m_dmaSize   = size;
+      metrics.m_dmaBytes += size;
+      // @todo: Is this the case here also?
+      // dmaReadBulkIndex() returns a maximum size of m_pool.dmaSize(), never larger.
+      // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
+      // which thus won't have the expected header.  Take the exact match as an overflow indicator.
+      if (size == m_pool.dmaSize()) {
+        logging::critical("%d DMA overflowed buffer: %d vs %d", dmaIdx, size, m_pool.dmaSize());
+        abort();
+      }
+
+      const Pds::TimingHeader* timingHeader = th; //det.getTimingHeader(index);
+      if (!timingHeader)  printf("*** No timingHeader at ctr %d\n", th->evtCounter);
+      ///uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
+      ///unsigned pgpIndex = evtCounter & bufferMask;
+      ///PGPEvent*  event  = &m_pool.pgpEvents[pgpIndex];
+      ///if (!event)  printf("*** No pgpEvent for ctr %d\n", pgpIndex);
+      ///DmaBuffer* buffer = &event->buffers[lane]; // @todo: Do we care about this?
+      ///if (!buffer)  printf("*** No pgpEvent.buffer for lane %d, ctr %d\n", lane, pgpIndex);
+      ///buffer->size = size;                       //   "
+      ///buffer->index = dmaIdx;                    //   "
+      ///event->mask |= (1 << lane);
+
+      if (dsc->error) {
+        logging::error("DMA error 0x%x",dsc->error);
+        ///m_batchLast += 1;               // Account for the missing entry
+        ///handleBrokenEvent(*event);
+        freeDma(dmaIdx);                 // Leaves event mask = 0
+        metrics.m_nDmaErrors += 1;
         continue;
-    }
+      }
 
-    if (timingHeader->error()) {
+      if (timingHeader->error()) {
         logging::error("Timing header error bit is set");
-        ++m_nTmgHdrError;
-    }
-    XtcData::TransitionId::Value transitionId = timingHeader->service();
+        metrics.m_nTmgHdrError += 1;
+      }
+      XtcData::TransitionId::Value transitionId = timingHeader->service();
 
-    auto rogs = timingHeader->readoutGroups();
-    if ((rogs & (1 << m_para.partition)) == 0) {
+      auto rogs = timingHeader->readoutGroups();
+      if ((rogs & (1 << m_para.partition)) == 0) {
         logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);
-        m_batchLast += 1;               // Account for the missing entry
-        handleBrokenEvent(*event);
-        freeDma(event);                 // Leaves event mask = 0
-        ++m_nNoComRoG;
+        ///m_batchLast += 1;               // Account for the missing entry
+        ///handleBrokenEvent(*event);
+        freeDma(dmaIdx);                 // Leaves event mask = 0
+        metrics.m_nNoComRoG += 1;
         continue;
-    }
+      }
 
-    // @todo: Shouldn't this chack for missing RoGs on all transitions?
-    if (transitionId == XtcData::TransitionId::SlowUpdate) {
+      // @todo: Shouldn't this check for missing RoGs on all transitions?
+      if (transitionId == XtcData::TransitionId::SlowUpdate) {
         uint16_t missingRogs = m_para.rogMask & ~rogs;
         if (missingRogs) {
-            logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                           XtcData::TransitionId::name(transitionId),
-                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                           timingHeader->pulseId(), missingRogs, timingHeader->env);
-            m_batchLast += 1;           // Account for the missing entry
-            handleBrokenEvent(*event);
-            freeDma(event);             // Leaves event mask = 0
-            ++m_nMissingRoGs;
-            continue;
+          logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
+                         XtcData::TransitionId::name(transitionId),
+                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                         timingHeader->pulseId(), missingRogs, timingHeader->env);
+          ///m_batchLast += 1;           // Account for the missing entry
+          ///handleBrokenEvent(*event);
+          freeDma(dmaIdx);             // Leaves event mask = 0
+          metrics.m_nMissingRoGs += 1;
+          continue;
         }
-    }
-
-    const uint32_t* data = reinterpret_cast<const uint32_t*>(th);
-    logging::debug("GpuWorker  size %u  hdr %016lx.%016lx.%08x  err 0x%x",
-                   size,
-                   reinterpret_cast<const uint64_t*>(data)[0], // PulseId
-                   reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
-                   reinterpret_cast<const uint32_t*>(data)[4], // env
-                   dsc->error);
-
-    // Allocate a pebble buffer
-    auto counter       = m_pool.allocate(); // This can block
-    auto pebbleIndex   = counter & (m_pool.nbuffers() - 1);
-    event->pebbleIndex = pebbleIndex;
-
-    if (transitionId != XtcData::TransitionId::L1Accept) {
-      if (transitionId != XtcData::TransitionId::SlowUpdate) {
-        logging::info("GpuWorker  saw %s @ %u.%09u (%014lx)",
-                      XtcData::TransitionId::name(transitionId),
-                      timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                      timingHeader->pulseId());
-        flushBatch = true;
       }
-      else {
-        logging::debug("GpuWorker  saw %s @ %u.%09u (%014lx)",
-                       XtcData::TransitionId::name(transitionId),
-                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                       timingHeader->pulseId());
+
+      const uint32_t* data = reinterpret_cast<const uint32_t*>(th);
+      logging::debug("GpuWorker  size %u  hdr %016lx.%016lx.%08x  err 0x%x",
+                     size,
+                     reinterpret_cast<const uint64_t*>(data)[0], // PulseId
+                     reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
+                     reinterpret_cast<const uint32_t*>(data)[4], // env
+                     dsc->error);
+
+      // Allocate a pebble buffer
+      ///auto counter       = m_pool.allocate(); // This can block
+      /////auto pebbleIndex   = counter & (m_pool.nbuffers() - 1);
+      ///auto pebbleIndex   = (lastPblIndex + dmaIdx) & (m_pool.nbuffers() - 1);
+      ///event->pebbleIndex = pebbleIndex;
+      ///
+      ///if (pebbleIndex != ((lastPblIndex + dmaIdx) & (m_pool.nbuffers() - 1))) {
+      ///  printf("*** pblIdx %u, last %u, Worker %d, dmaIdx %d, nbufs %d, pid %014lx, %014lx\n",
+      ///         pebbleIndex, (lastPblIndex + dmaIdx) & (m_pool.nbuffers() - 1), m_worker, dmaIdx,
+      ///         m_pool.nbuffers(), pid, timingHeader->pulseId());
+      ///}
+      ///lastPblIndex += 4;
+
+      if (transitionId != XtcData::TransitionId::L1Accept) {
+        if (transitionId != XtcData::TransitionId::SlowUpdate) {
+          logging::info("GpuWorker  saw %s @ %u.%09u (%014lx)",
+                        XtcData::TransitionId::name(transitionId),
+                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                        timingHeader->pulseId());
+          ///flushBatch = true;
+        }
+        else {
+          logging::debug("GpuWorker  saw %s @ %u.%09u (%014lx)",
+                         XtcData::TransitionId::name(transitionId),
+                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                         timingHeader->pulseId());
+        }
+        if (transitionId == XtcData::TransitionId::BeginRun) {
+          resetEventCounter();
+        }
       }
-      if (transitionId == XtcData::TransitionId::BeginRun) {
-        resetEventCounter();
-      }
-    }
 
-    if (pgpIndex != m_batchStart + m_batchLast)
-      logging::error("%d Event counter mismatch: got %u, expected %u\n",
-                     dmaIdx, pgpIndex, m_batchStart + m_batchLast);
+      //if (pgpIndex != (m_batchStart + m_batchLast) & bufferMask)
+      //  logging::error("%d Event counter mismatch: got %u, expected %u\n",
+      //                 dmaIdx, pgpIndex, (m_batchStart + m_batchLast) & bufferMask);
+      //if (evtCounter != m_lastEvtCtr + pgpIndex + 1) {
+      //  logging::error("%d Event counter mismatch: got %u, expected %u\n",
+      //                 dmaIdx, evtCounter, m_lastEvtCtr + pgpIndex + 1);
+      //  ++m_nPgpJumps;
+      //}
 
-    // Make a new dgram in the pebble
-    // It must be an EbDgram in order to be able to send it to the MEB
-    auto dgram = new(m_pool.pebble[pebbleIndex]) EbDgram(*th, det.nodeId, m_para.rogMask);
+      // Make a new dgram in the pebble
+      // It must be an EbDgram in order to be able to send it to the MEB
+      ///if (!m_pool.pebble[pebbleIndex]) printf("*** pbl[%d] is NULL for ctr %d\n", pebbleIndex, pgpIndex);
+      ///auto dgram = new(m_pool.pebble[pebbleIndex]) EbDgram(*th, det.nodeId, m_para.rogMask);
+      ///if (!dgram) printf("*** dgram %p at pi %d for ctr %d\n", dgram, pebbleIndex, pgpIndex);
 
-    // @todo: Process the data to extract TEB input and calibrate.  Also reduce/compress?
-    //if (timingHeader->service() == TransitionId::L1Accept)
-    //  det.event(*th, event);
-    //else if (timingHeader->service() == TransitionId::SlowUpdate)
-    //  det.slowUpdate(*th);
-
-    m_batchLast += 1;
-    m_batchSize += nDmaRet;
-    flushBatch |= m_batchSize == 4;           // @todo: arbitrary
-
-    //logging::debug("*** %d nDmaRet %d, size %u, full %d, flushBatch %d\n",
-    //               dmaIdx, nDmaRet, m_batchSize.load(), full, flushBatch);
-
-    if (flushBatch) {
-      // Ensure PGPReader::handle() doesn't complain about jumps
-      m_lastEvtCtr = evtCounter;
-
-      // Queue the batch to the Collector
-      logging::debug("Worker %d, idx %d pushing batch %u, size %zu\n",
-                     m_worker, dmaIdx, m_batchStart.load(), m_batchSize.load());
-      workerQueue.push({m_batchStart, m_batchSize});
-
-      // Reset to the beginning of the batch
-      m_batchLast  = 0;
-      m_batchStart = pgpIndex + 1;
-      m_batchSize  = 0;
-      flushBatch   = false;
+      metrics.m_nevents += 1;
+      ///m_batchLast += 1;
+      ///m_batchSize += nDmaRet;
+      ///flushBatch |= m_batchSize == 4;           // @todo: arbitrary
+      ///
+      /////printf("*** dma %d nDmaRet %d, size %u, flushBatch %d\n",
+      /////       dmaIdx, nDmaRet, m_batchSize.load(), flushBatch);
+      ///
+      ///if (flushBatch) {
+      ///  // Ensure PGPReader::handle() doesn't complain about jumps
+      ///  m_lastEvtCtr = evtCounter;
+      ///
+      ///  // Queue the batch to the Collector
+      ///  logging::debug("Worker %d, idx %d pushing batch %u, size %zu\n",
+      ///                 m_worker, dmaIdx, m_batchStart.load(), m_batchSize.load());
+      ///  workerQueue.push({m_batchStart, m_batchSize});
+      ///
+      ///  // Reset to the beginning of the batch
+      ///  m_batchLast  = 0;
+      ///  m_batchStart = pgpIndex + 1;
+      ///  m_batchSize  = 0;
+      ///  flushBatch   = false;
+      ///}
+      m_dmaQueue.push(dmaIdx);
     }
   }
 
-  // Clean up
-  free(hostWriteBuf);
+  m_dmaQueue.shutdown();
 
-  logging::debug("GpuWorker[%d].reader[%d] exiting\n", m_worker, dmaIdx);
+  logging::debug("GpuWorker[%d] exiting\n", m_worker);
 }

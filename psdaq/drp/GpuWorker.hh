@@ -16,9 +16,38 @@
 
 template <typename T> class SPSCQueue;
 
+namespace Pds {
+  class TimingHeader;
+}
+
 namespace Drp {
 
 class Detector;
+
+struct GpuMetrics
+{
+  GpuMetrics() :
+    m_nevents     (0),
+    m_nDmaRet     (0),
+    m_dmaBytes    (0),
+    m_dmaSize     (0),
+    m_nDmaErrors  (0),
+    m_nNoComRoG   (0),
+    m_nMissingRoGs(0),
+    m_nTmgHdrError(0),
+    m_nPgpJumps   (0)
+  {
+  }
+  std::atomic<uint64_t> m_nevents;
+  std::atomic<uint64_t> m_nDmaRet;
+  std::atomic<uint64_t> m_dmaBytes;
+  std::atomic<uint64_t> m_dmaSize;
+  std::atomic<uint64_t> m_nDmaErrors;
+  std::atomic<uint64_t> m_nNoComRoG;
+  std::atomic<uint64_t> m_nMissingRoGs;
+  std::atomic<uint64_t> m_nTmgHdrError;
+  std::atomic<uint64_t> m_nPgpJumps;
+};
 
 struct Batch
 {
@@ -28,8 +57,11 @@ struct Batch
 
 struct DetSeg
 {
-  int         fd;
-  CUdeviceptr dmaBuffers[MAX_BUFFERS];
+  int            fd;
+  GpuDmaBuffer_t dmaBuffers[MAX_BUFFERS];
+  GpuDmaBuffer_t swFpgaRegs;
+  CUdeviceptr    hwWriteStart;
+  GpuDmaBuffer_t swVersionRegs;
 };
 
 class MemPoolGpu : public MemPool
@@ -51,7 +83,7 @@ private:
 private:
   CudaContext         m_context;
   std::vector<DetSeg> m_segs;
-  bool                m_setMaskBytesDone;
+  unsigned            m_setMaskBytesDone;
 };
 
 class GpuWorker
@@ -59,39 +91,39 @@ class GpuWorker
 public:
   GpuWorker(unsigned id, const Parameters&, MemPoolGpu&);
   ~GpuWorker() = default;
-  void start(SPSCQueue<Batch>& workerQueue, Detector* det);
+  void start(Detector* det, GpuMetrics& metrics);
   void stop();
-  void freeDma(PGPEvent* event);
+  void freeDma(unsigned index);
   void handleBrokenEvent(const PGPEvent&);
   void resetEventCounter();
-  void dmaIndex(uint32_t pgpIndex) { m_batchStart = pgpIndex + 1; }
+  SPSCQueue<unsigned>& dmaQueue() { return m_dmaQueue; }
+  Pds::TimingHeader* timingHeader(unsigned index) const;
   unsigned lastEvtCtr() const { return m_lastEvtCtr; }
   DmaTgt_t dmaTarget() const;
   void dmaTarget(DmaTgt_t dest);
 public:
-  MemPool& pool()     const { return m_pool; }
-  uint64_t dmaBytes() const { return m_dmaBytes; }
-  uint64_t dmaSize()  const { return m_dmaSize; }
-  unsigned worker()   const { return m_worker; }
+  MemPool& pool()   const { return m_pool; }
+  unsigned worker() const { return m_worker; }
 private:
-  void _reader(unsigned index, SPSCQueue<Batch>& collectorGpuQueue, Detector& det);
+  int     _setupCudaGraphs(const DetSeg& seg, int instance);
+  CUgraph _recordGraph(CUstream& stream, CUdeviceptr hwWritePtr, CUdeviceptr hwWriteStart, uint32_t* hostWriteBuf);
+  void    _reader(Detector&, GpuMetrics&);
 private:
   MemPoolGpu&              m_pool;
+  const DetSeg&            m_seg;
+  volatile int*            m_terminate;
   std::vector<CUstream>    m_streams;
-  std::vector<std::thread> m_threads;
-  std::atomic<uint32_t>    m_batchLast;
-  std::atomic<uint32_t>    m_batchStart;
-  std::atomic<uint32_t>    m_batchSize;
-  unsigned                 m_dmaIndex;
+  std::vector<CUgraph>     m_graphs;
+  std::vector<CUgraphExec> m_graphExecs;
+  std::thread              m_thread;
+  std::vector<uint32_t*>   m_hostWriteBufs;
+  SPSCQueue<unsigned>      m_dmaQueue;
+  ///std::atomic<uint32_t>    m_batchLast;
+  ///std::atomic<uint32_t>    m_batchStart;
+  ///std::atomic<uint32_t>    m_batchSize;
   uint32_t                 m_lastEvtCtr;
   unsigned                 m_worker;
   const Parameters&        m_para;
-  uint64_t                 m_dmaBytes;
-  uint64_t                 m_dmaSize;
-  uint64_t                 m_nDmaErrors;
-  uint64_t                 m_nNoComRoG;
-  uint64_t                 m_nMissingRoGs;
-  uint64_t                 m_nTmgHdrError;
 };
 
 };
