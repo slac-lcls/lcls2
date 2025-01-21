@@ -41,6 +41,7 @@ bool checkError(cudaError status, const char* func, const char* file, int line, 
 class DataGPU
 {
 public:
+    DataGPU() : m_fd(-1) {}
     DataGPU(const char* path);
     ~DataGPU()
     {
@@ -144,7 +145,7 @@ int gpuMapFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t size, 
 /**
  * \brief Unmaps memory, clears out the pointer and size
  */
-void gpuUnMapFpgaMem(GpuDmaBuffer_t* mem);
+void gpuUnmapFpgaMem(GpuDmaBuffer_t* mem);
 
 //-----------------------------------------------------------------------------//
 

@@ -40,8 +40,8 @@ bool checkError(cudaError status, const char* func, const char* file, int line, 
 DataGPU::DataGPU(const char* path) {
     m_fd = open(path, O_RDWR);
     if (m_fd < 0) {
-        perror("Error while opening file");
-        throw "Error while opening file";
+        logging::critical("Error opening %s: %m", path);
+        abort();
     }
 }
 
@@ -141,7 +141,7 @@ int gpuInitBufferState(GpuBufferState_t* b, const DataGPU& gpu, size_t bufSize)
 
     if (gpuMapFpgaMem(&b->bread, gpu.fd(), 0, bufSize, 0) != 0) {
         perror("gpuMapFpgaMem: read");
-        gpuUnMapFpgaMem(&b->bwrite);
+        gpuUnmapFpgaMem(&b->bwrite);
         return -1;
     }
 
@@ -150,8 +150,8 @@ int gpuInitBufferState(GpuBufferState_t* b, const DataGPU& gpu, size_t bufSize)
 
 void gpuDestroyBufferState(GpuBufferState_t* b)
 {
-    gpuUnMapFpgaMem(&b->bwrite);
-    gpuUnMapFpgaMem(&b->bread);
+    gpuUnmapFpgaMem(&b->bwrite);
+    gpuUnmapFpgaMem(&b->bread);
 }
 
 int gpuMapHostFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t size)
@@ -220,7 +220,7 @@ int gpuMapFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t size, 
     return 0;
 }
 
-void gpuUnMapFpgaMem(GpuDmaBuffer_t* mem)
+void gpuUnmapFpgaMem(GpuDmaBuffer_t* mem)
 {
     if (!mem->gpuOnly) {
         dmaUnMapRegister(mem->fd, &mem->ptr, mem->size);
@@ -228,6 +228,7 @@ void gpuUnMapFpgaMem(GpuDmaBuffer_t* mem)
         mem->size = 0;
     }
     // FIXME: gpuOnly memory cannot be unmapped?
+    chkError(cuMemFree(mem->dptr));
 }
 
 DmaTgt_t dmaTgtGet(int fd)
