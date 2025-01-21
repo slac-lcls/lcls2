@@ -113,7 +113,7 @@ public:
     void shutdown();
     Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
-    unsigned countDma();
+    unsigned allocateDma();
     unsigned allocate();
     void freeDma(unsigned count, uint32_t* indices);
     void freePebble();
