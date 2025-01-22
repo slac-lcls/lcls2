@@ -63,12 +63,12 @@ def epixUHR_cdict():
             
     pathpix='/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pixelBitMaps_prod/'
     #pixelBitMapDic = {'_FL_FM_FH':0, '_FL_FM_FH_InjOff':1, '_allConfigs':2, '_allPx_52':3, '_allPx_AutoHGLG_InjOff':4, '_allPx_AutoHGLG_InjOn':5, '_allPx_AutoMGLG_InjOff':6, '_allPx_AutoMGLG_InjOn':7, '_allPx_FixedHG_InjOff':8, '_allPx_FixedHG_InjOn':9, '_allPx_FixedLG_InjOff':10, '_allPx_FixedLG_InjOn':11, '_allPx_FixedMG_InjOff':12, '_allPx_FixedMG_InjOn':13, '_crilin':14, '_crilin_epixuhr100k':15, '_defaults':16, '_injection_corners':17, '_injection_corners_px1':18, '_management':19, '_management_epixuhr100k':20, '_management_inj':21, '_maskedCSA':22, '_truck':23, '_truck_epixuhr100k':24, '_xtalk_hole':25}
-    pixelBitMapDic = {'default':0, 'injection_truck':1, 'injection_corners_FHG':2, 'injection_corners_AHGLG1':3, 'extra_config_1':4, 'extra_config_2':5,}
+    pixelBitMapDic = {'default':0, 'injection_truck':1, 'injection_corners_FHG':2, 'injection_corners_AHGLG1':3, 'extra_config_1':4, 'extra_config_2':5, 'truck2':6, }
     top.define_enum('pixelMapEnum', pixelBitMapDic)
     
     base = 'expert.pixelBitMaps.'
     for pixelmap in pixelBitMapDic:
-        top.set(base+pixelmap, np.loadtxt(pathpix+pixelmap+'.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))
+        top.set(base+pixelmap, np.loadtxt(pathpix+pixelmap+'.csv', dtype='uint16', delimiter=','))
     for n in range(1, 5):
         base = f'expert.App.Asic{n}.'
         top.set(base+'PixelBitMapSel', 5, 'pixelMapEnum')
@@ -145,6 +145,8 @@ def epixUHR_cdict():
 
     top.set("user.run_trigger_group",                                   6               ,'UINT32'  )
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
+    
+    
     # timing system
     # run trigger
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold',16,'UINT32')
@@ -154,7 +156,8 @@ def epixUHR_cdict():
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].PauseThreshold',16,'UINT32')
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay'  ,42,'UINT32')
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition'     ,0,'UINT32')
-
+    
+    
     return top
 
 if __name__ == "__main__":
