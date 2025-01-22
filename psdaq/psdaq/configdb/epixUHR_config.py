@@ -232,10 +232,11 @@ def cbase_init(cbase):
 def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M",verbosity=0):
     global base
     global pv
+    global config_completed
 #    logging.getLogger().setLevel(40-10*verbosity) # way too much from rogue
     logging.getLogger().setLevel(30)
     logging.info('epixUHR_init')
-
+    config_completed = False
     base = {}
     #  Connect to the camera and the PCIe card
 
@@ -397,6 +398,7 @@ def user_to_expert(base, cfg, full=False):
 #
 def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     global asics  # Need to maintain this across configuration updates
+    
     path = '/tmp/ePixUHR_GTReadout_default_'
     pathPll = '/tmp/'
 
@@ -405,6 +407,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
 
     cbase = base['cam']
 
+    
     # overwrite the low-level configuration parameters with calculations from the user configuration
     if 'expert' in cfg:
         try:  # config update might not have this
@@ -433,23 +436,22 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     
     tmpfiles = []
     Pll_sel=[None, '_temp250', '_2_3_7', '_0_5_7', '_2_3_9', '_0_5_7_v2']
-    if not pll.enable.get():
-        
+    if pll.enable.get() == False:
         pll.enable.set(True)
     
-        clk = cfg['user']['PllRegistersSel'] 
-        
-        freq = Pll_sel[clk]
-        print(f"Loading PLL file: {freq}")
-        
-        pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
-        fn = pathPll+'PllConfig'+'.csv'
-        np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
-        
-        tmpfiles.append(fn)
-        setattr(cbase, 'filenamePLL', fn)
-        
-        pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')    
+    clk = cfg['user']['PllRegistersSel'] 
+    
+    freq = Pll_sel[clk]
+    print(f"Loading PLL file: {freq}")
+    
+    pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
+    fn = pathPll+'PllConfig'+'.csv'
+    np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
+    
+    tmpfiles.append(fn)
+    setattr(cbase, 'filenamePLL', fn)
+    
+    pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')    
     cbase_ASIC_init(cbase, asics)
                
                 # remove the ASIC configuration so we don't try it
@@ -593,8 +595,9 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #        saci.CompTH_ePixM.set(compTH)
         #        saci.Precharge_DAC_ePixM.set(precharge_DAC)
         #        saci.enable.set(False)
+        
         #pixelBitMapDic = ['_FL_FM_FH', '_FL_FM_FH_InjOff', '_allConfigs', '_allPx_52', '_allPx_AutoHGLG_InjOff', '_allPx_AutoHGLG_InjOn', '_allPx_AutoMGLG_InjOff', '_allPx_AutoMGLG_InjOn', '_allPx_FixedHG_InjOff', '_allPx_FixedHG_InjOn', '_allPx_FixedLG_InjOff', '_allPx_FixedLG_InjOn', '_allPx_FixedMG_InjOff', '_allPx_FixedMG_InjOn', '_crilin', '_crilin_epixuhr100k', '_defaults', '_injection_corners', '_injection_corners_px1', '_management', '_management_epixuhr100k', '_management_inj', '_maskedCSA', '_truck', '_truck_epixuhr100k', '_xtalk_hole']
-        pixelBitMapDic = {'default', 'injection_truck', 'injection_corners_FHG', 'injection_corners_AHGLG1', 'extra_config_1', 'extra_config_2',}
+        pixelBitMapDic = ['default', 'injection_truck', 'injection_corners_FHG', 'injection_corners_AHGLG1', 'extra_config_1', 'extra_config_2', 'truck2']
         for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(True)
         
         if ( cfg['user']['Gain']['SetSameGain4All']):
@@ -605,18 +608,21 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 PixMapSel = int(cfg['user']['Gain']['PixelBitMapSel'])
                 
                 PixMapSelected= pixelBitMapDic[PixMapSel]
-                print(len(cfg['expert']['pixelBitMaps'][PixMapSelected]))
-                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 192))
-                fn = pathPll+'csvConfig'+'.csv'
-                print(fn)
-                np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
-                tmpfiles.append(fn)
+                
+#                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 192))
+                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (168, 192))
+#                fn = pathPll+'csvConfig'+'.csv'
+                
+#                np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')    
+                #tmpfiles.append(fn)
                 setattr(cbase, 'filenameCSV', PixMapSelected)
+
                 for i in asics: 
                     print(f"ASIC{i}")
-                    
-                    getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap.set(str(fn))
-                #pll.LoadCsvFile(pathPll+'csvConfig'+'.csv')        
+                    #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)    
+                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
+                    print(f"{PixMapSelected} CSV File Loaded")
+                
 
             else:
                 #same value for all
@@ -633,13 +639,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     print(f"ASIC{i}")
                     PixMapSel = cfg['expert']['App'][f'Asic{i}']['PixelBitMapSel']    
                     PixMapSelected= pixelBitMapDic[PixMapSel]
-                    csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 192))
-                    fn = pathPll+'csvConfigAsic{i}'+'.csv'
-                    print(fn)
-                    np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
-                    tmpfiles.append(fn)
-                    setattr(cbase, 'filenameCSVAsic{i}', PixMapSelected)
-                    getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap.set(str(fn))
+                    print(PixMapSelected)
+                    csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (168, 192))
+                    #fn = pathPll+f'csvConfigAsic{i}'+'.csv'
+                    #np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
+                    #tmpfiles.append(fn)
+                    setattr(cbase, f'filenameCSVAsic{i}', PixMapSelected)
+                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
             else:
                 #a value per each
                 print("Use a value per ASIC")
@@ -662,15 +668,23 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             getattr(cbase.App,f"AsicGtData{i}").enable.set(cfg['expert']['App'][f'AsicGtData{i}']['enable'])			
             getattr(cbase.App,f"AsicGtData{i}").gtStableRst.set(cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
         
-        if not pll.enable.get():            
-            cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']						)	
-            cbase.App.ADS1217.enable.set(cfg['user']['App']['ADS1217']['enable']						)	
         
-        cbase.App.VINJ_DAC.dacSingleValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']			)	
-        cbase.App.ADS1217.adcStartEnManual.set(cfg['user']['App']['ADS1217']['adcStartEnManual']	)
+        if cbase.App.VINJ_DAC.dacSingleValue.get() != cfg['user']['App']['VINJ_DAC']['SetValue']:
+            cbase.App.VINJ_DAC.dacSingleValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']			)	
+        cbase.App.VINJ_DAC.dacEn.set(True)
+        cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']						)	
         
-    logging.info('config_expert complete')
+        if cbase.App.ADS1217.enable.get() != 	cfg['user']['App']['ADS1217']['adcStartEnManual']:
+            cbase.App.ADS1217.adcStartEnManual.set(cfg['user']['App']['ADS1217']['adcStartEnManual']	)
+        cbase.App.ADS1217.enable.set(cfg['user']['App']['ADS1217']['enable']						)	
+        
+        #for i in asics: 
+        #    print(f"ASIC{i}")
+        #cbase.App.Asic1.LoadCsvPixelBitmap.set('/tmp/csvConfig.csv')            
+        #print("########## ASIC1 csv test")        
 
+    logging.info('config_expert complete')
+    config_completed = True
 def reset_counters(base):
     # Reset the timing counters
     base['cam'].App.TimingRx.TimingFrameRx.countReset()
