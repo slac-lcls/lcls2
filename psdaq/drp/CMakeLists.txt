@@ -307,6 +307,18 @@ add_executable(ePixMDescTest
     ePixMDescTest.cc
 )
 
+add_executable(jungfrauTest
+    jungfrauTest.cc
+    JungfrauDetectorId.cc
+)
+
+target_include_directories(jungfrauTest PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(jungfrauTest
+    slsDetectorShared
+)
 
 install(TARGETS drp
   drp_bld
