@@ -17,7 +17,6 @@ GpuDetector::GpuDetector(const Parameters& para, MemPoolGpu& pool, Detector* det
     m_para       (para),
     m_pool       (pool),
     m_det        (det),
-    m_terminate  (false),
     m_nNoTrDgrams(0)
 {
     if (pool.setMaskBytes(para.laneMask, m_det->virtChan)) {
@@ -283,12 +282,7 @@ void GpuDetector::collector(std::shared_ptr<MetricExporter> exporter,
 
 void GpuDetector::shutdown()
 {
-    if (m_terminate.load(std::memory_order_relaxed))
-        return;                         // Already shut down
-
     logging::info("Shutting down GPU collector");
-    m_terminate.store(true, std::memory_order_release);
-
     for (auto& worker : m_workers) {
         worker->dmaQueue().shutdown();
     }

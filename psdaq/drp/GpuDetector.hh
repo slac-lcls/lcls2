@@ -32,7 +32,6 @@ private:
     MemPoolGpu&             m_pool;
     Detector*               m_det;
     std::vector<GpuWorker*> m_workers;
-    std::atomic<bool>       m_terminate;
     uint64_t                m_nNoTrDgrams;
     GpuMetrics              m_metrics;
 };

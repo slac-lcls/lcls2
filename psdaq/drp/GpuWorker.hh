@@ -10,7 +10,7 @@
 #include <atomic>
 
 #include <cuda_runtime.h>
-//#include <cuda/atomic>
+#include <cuda/atomic>
 
 #include "drp.hh"
 
@@ -107,26 +107,27 @@ public:
   unsigned worker() const { return m_worker; }
 private:
   int     _setupCudaGraphs(const DetSeg& seg, int instance);
-  CUgraph _recordGraph(CUstream& stream, CUdeviceptr hwWritePtr, CUdeviceptr hwWriteStart, uint32_t* hostWriteBuf); //, int* bufRdy);
+  CUgraph _recordGraph(cudaStream_t& stream, CUdeviceptr hwWritePtr, CUdeviceptr hwWriteStart, uint32_t* hostWriteBuf); //, int* bufRdy);
   void    _reader(Detector&, GpuMetrics&);
 private:
-  MemPoolGpu&              m_pool;
-  const DetSeg&            m_seg;
-  volatile int*            m_terminate;
-  //cuda::atomic<int>*       m_terminate;
-  //volatile int*            m_bufRdy[MAX_BUFFERS];
-  std::vector<CUstream>    m_streams;
-  std::vector<CUgraph>     m_graphs;
-  std::vector<CUgraphExec> m_graphExecs;
-  std::thread              m_thread;
-  std::vector<uint32_t*>   m_hostWriteBufs;
-  SPSCQueue<unsigned>      m_dmaQueue;
-  ///std::atomic<uint32_t>    m_batchLast;
-  ///std::atomic<uint32_t>    m_batchStart;
-  ///std::atomic<uint32_t>    m_batchSize;
-  uint32_t                 m_lastEvtCtr;
-  unsigned                 m_worker;
-  const Parameters&        m_para;
+  MemPoolGpu&                  m_pool;
+  const DetSeg&                m_seg;
+  std::atomic<bool>            m_terminate_h;
+  cuda::atomic<int>*           m_terminate_d;
+  bool*                        m_done;      // Cache for m_terminate_d
+  //volatile int*                m_bufRdy[MAX_BUFFERS];
+  std::vector<cudaStream_t>    m_streams;
+  std::vector<cudaGraph_t>     m_graphs;
+  std::vector<cudaGraphExec_t> m_graphExecs;
+  std::thread                  m_thread;
+  std::vector<uint32_t*>       m_hostWriteBufs;
+  SPSCQueue<unsigned>          m_dmaQueue;
+  ///std::atomic<uint32_t>        m_batchLast;
+  ///std::atomic<uint32_t>        m_batchStart;
+  ///std::atomic<uint32_t>        m_batchSize;
+  uint32_t                     m_lastEvtCtr;
+  unsigned                     m_worker;
+  const Parameters&            m_para;
 };
 
 };
