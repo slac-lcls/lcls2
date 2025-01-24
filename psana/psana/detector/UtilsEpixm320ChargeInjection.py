@@ -9,6 +9,7 @@ import json
 import psana.detector.UtilsGraphics as ug
 from psana.detector.UtilsLogging import logging  # DICT_NAME_TO_LEVEL, init_stream_handler
 import psana.detector.UtilsCalib as uc
+from psana.detector.dir_root import DIR_REPO_EPIXM320
 import psana.detector.UtilsEpix10kaCalib as uec
 from psana.detector.UtilsEpixm320Calib import save_constants_in_repository
 from psana.detector.utils_psana import seconds, str_tstamp, info_run, info_detector, seconds,\
@@ -21,7 +22,127 @@ logger = logging.getLogger(__name__)
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 create_directory = uec.create_directory
+#        import psana.pyalgos.generic.Graphics as gr
 gr = ug.gr
+np = ug.np
+
+
+class DataBlock():
+    """primitive data block accumulation w/o processing with slices"""
+    def __init__(self, **kwa):
+        self.kwa    = kwa
+        self.nrecs  = kwa.get('nrecs',1000)
+        #self.datbits= kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
+        self.aslice = None
+        self.block  = None
+        self.irec   = -1
+
+    def set_asic_slice(self, aslice):
+        """aslice = (asic, np.s_[:], np.s_[colbeg:colend])"""
+        self.aslice = aslice
+        self.irec   = -1
+        logger.info('set asic slice for raw: %s' % str(aslice))
+
+    def event(self, raw, evnum):
+        """Switch between gain mode processing objects using igm index of the gain mode (0,1,2).
+           - evnum (int) - event number
+           DEP: - igm (int) - index of the gain mode in DIC_GAIN_MODE
+        """
+        logger.debug('event %d' % evnum)
+
+        if raw is None: return False # block is not full
+
+        if self.block is None :
+           self.block=np.zeros((self.nrecs,)+tuple(raw.shape), dtype=raw.dtype)
+           self.evnums=np.zeros((self.nrecs,), dtype=np.uint16)
+           logger.info(info_ndarr(self.block,'created empty data block'))
+           logger.info(info_ndarr(self.evnums,'and array for event numbers'))
+           logger.info('raw.shape: %s' % str(raw.shape))   # raw.shape: (4, 192, 384)
+           logger.info('aslice: %s' % str(self.aslice))
+           logger.info(info_ndarr(raw[self.aslice], 'raw[aslice]'))
+
+        if self.not_full():
+            self.irec +=1
+            irec, aslice = self.irec, self.aslice
+            self.block[(irec,) + aslice] = raw[aslice]
+            self.evnums[irec] = evnum
+        return self.is_full()
+
+    def is_full(self):
+        return not self.not_full()
+
+    def not_full(self):
+        return self.irec < self.nrecs-1
+
+    def max_min(self):
+        return np.max(self.block, axis=0),\
+               np.min(self.block, axis=0)
+
+def plot_block(block, figpref=None):
+        flimg1 = None
+        #logger.info(info_ndarr(self.evnums, 'evnums', last=128))
+        logger.info(info_ndarr(block, 'data block'))
+        nrecs, nasics, rows, cols = block.shape
+        nasics = block.shape[1]
+        for asic in range(nasics):
+          #for irec in range(nrecs):
+            irec = int(nrecs/4)
+            nda = block[irec,asic,:,:]
+            logger.info(info_ndarr(nda, 'data block rec: %03d for asic: %d' % (irec, asic)))
+            img = nda
+            if flimg1 is None:
+               flimg1 = ug.fleximage(img, arr=nda, h_in=8, w_in=16, amin=0, amax=40000)
+            gr.set_win_title(flimg1.fig, titwin='asic %d  irec %03d' % (asic, irec))
+            flimg1.update(img, arr=nda)
+            gr.show(mode='DO NOT HOLD')
+            #if irec == int(nrecs/4):
+            fnm = '%s-img-asic%d-rec%03d.png' % (figpref, asic, irec)
+            gr.save_fig(flimg1.fig, fname=fnm, verb=True)
+        gr.show()
+
+
+def graph_block(block, figpref=None):
+        flimg1 = None
+        logger.info(info_ndarr(block, 'data block'))
+        nrecs, nasics, rows, cols = shape0 = block.shape
+        nbanks = 8
+        block.shape = (nrecs, nasics, rows, nbanks, int(cols/nbanks))
+        x = np.arange(0, nrecs, dtype=np.int16)
+        logger.info(info_ndarr(x, 'x:'))
+        for asic in range(nasics):
+          fig = None
+          for bank in range(nbanks):
+            y = np.median(block[:,asic,bank,:,:], axis=(-2,-1))
+            logger.info(info_ndarr(y, 'median for asic: %d bank: %d' % (asic,bank)))
+            if fig is None:
+              fig, ax = gr.plotGraph(x,y, figsize=(10,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', lw=2)
+              title = 'asic %d' % (asic)
+              gr.set_win_title(fig, titwin=title)
+              gr.add_title_labels_to_axes(ax, title=title, xlabel='record', ylabel='median intensity', fslab=14, fstit=20, color='k')
+            else:
+              ax.plot(x, y, linewidth=2)
+          gr.show()
+          gr.save_fig(fig, fname='%s-graph-asic%d.png' % (figpref, asic), verb=True)
+        block.shape = shape0
+
+
+def init_accumulation_gmode(istep, gmode):
+    print('-- step %02d: init for gmode %s' % (istep, gmode))
+
+def summary_gmode(istep, gmode, cmt=''):
+    print('--%s step %02d: summary for gmode %s' % (cmt, istep, gmode))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -34,7 +155,7 @@ def charge_injection(parser):
     str_dskwargs = kwa.get('dskwargs', None)
     detname    = kwa.get('det', None)
     idx        = kwa.get('idx', 0)
-    dirrepo    = kwa.get('dirrepo', uec.DIR_REPO_EPIX10KA)
+    dirrepo    = kwa.get('dirrepo', DIR_REPO_EPIXM320)
     plotim     = kwa.get('plotim', 1)
     fmt_offset = kwa.get('fmt_offset', '%.6f')
     fmt_peds   = kwa.get('fmt_peds',   '%.3f')
@@ -49,13 +170,14 @@ def charge_injection(parser):
     stepmax    = kwa.get('stepmax', 230)
     stepskip   = kwa.get('stepskip', 0)
     events     = kwa.get('events', 100000)
-    evstep     = kwa.get('evstep', 1)
+    evstep     = kwa.get('evstep', 10000)
     evskip     = kwa.get('evskip', 0)
     logmode    = kwa.get('logmode', 'DEBUG')
     pixrc      = kwa.get('pixrc', None) # ex.: '23,123'
     nsigm      = kwa.get('nsigm', 8)
     deploy     = kwa.get('deploy', False)
     sslice     = kwa.get('slice', '0:,0:')
+    figpref    = kwa.get('figpref', 'figs/fig')
     irun       = None
     exp        = None
     npmin      = 5
@@ -66,11 +188,12 @@ def charge_injection(parser):
     dfid_med = 7761 # THIS VALUE DEPENDS ON EVENT RATE -> SHOULD BE AUTOMATED
 
     dskwargs = uec.datasource_kwargs_from_string(str_dskwargs)
+    #dskwargs.setdefault('detectors', [detname,'step_docstring'])
     logger.info('dskwargs:%s\n' % uec.info_dict(dskwargs))
 
     expname = dskwargs.get('exp', None)
     runnum  = dskwargs.get('run', None)
-
+    #sys.exit('TEST EXIT')
 
     try: ds = uec.DataSource(**dskwargs)
     except Exception as err:
@@ -121,7 +244,6 @@ def charge_injection(parser):
     t0_sec = time()
     tdt = t0_sec
     nevtot = 0
-    nevsel = 0
     nsteptot = 0
     break_runs = False
     dettype = None
@@ -138,19 +260,18 @@ def charge_injection(parser):
           dic_run = dict_run(orun)
           logger.info('dict_run:%s' % uec.info_dict(dic_run))  # fmt=fmt, sep=sep+sepnext)
 
-      if expname is None: expname = orun.expt
-      runnum = orun.runnum
+      if expname is None: expname = orun.expt # would work in case of inpuut from filename
+      if runnum is None: runnum = orun.runnum
 
-      logger.info('\n==== %02d run: %d exp: %s' % (irun, runnum, expname))
-      logger.info(info_run(orun, cmt='run info:    ', sep='\n    ', verb=3))
+      logger.info('\n\n\n==== run: %d exp: %s' % (runnum, expname))
+      logger.info(info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
 
       odet = orun.Detector(detname)
       if dettype is None:
           dettype = odet.raw._dettype
           repoman.set_dettype(dettype)
 
-      logger.info('created %s detector object' % detname)
-
+      logger.info('created Detector object for %s' % detname)
       dict_det = dict_detector(odet)
       logger.info('dict_detector:%s' % uec.info_dict(dict_det))
 
@@ -164,15 +285,12 @@ def charge_injection(parser):
       ts_run, ts_now = uec.tstamps_run_and_now(int(trun_sec))
 
       nevrun = 0
-      break_steps  = False
+      break_steps = False
+      gmode_cur = None
+      status = False
 
       for istep,step in enumerate(orun.steps()):
         nsteptot += 1
-
-        metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
-
-        logger.info('Step %1d docstring: %s' % (istep, str(metadic)))
-        ss = ''
 
         if istep>=stepmax:
             logger.info('==== Step:%02d loop is terminated --stepmax=%d' % (istep, stepmax))
@@ -187,25 +305,49 @@ def charge_injection(parser):
                 break_steps = True
                 break
 
+        metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
+        logger.info('\n\n== step %1d docstring: %s' % (istep, str(metadic)))
+        #== step 31 docstring: {'detname': 'epixm_0', 'scantype': 'chargeinj', 'events': 128, 'pulserStep': 8, 'bandStep': 48, 'nBandSteps': 8, 'gain_mode': 'User', 'asic': 3, 'startCol': 336, 'lastCol': 383, 'step': 31}
+        asic   = metadic['asic']
+        colbeg = metadic['startCol']
+        colend = metadic['lastCol'] + 1
+        aslice = (asic, np.s_[:], np.s_[colbeg:colend])
+
+        evmax = metadic['events']
+        gmode = metadic['gain_mode']
+        if gmode != gmode_cur:
+            if gmode_cur is not None:
+                summary_gmode(istep, gmode_cur, cmt='XXX')
+            init_accumulation_gmode(istep, gmode)
+            del(dbo)
+            dbo = None
+            gmode_cur = gmode
+
+        ss = ''
+
         if dbo is None:
            kwa['rms_hi'] = odet.raw._data_bit_mask - 10
            kwa['int_hi'] = odet.raw._data_bit_mask - 10
-
-           dbo = uc.DataBlock(**kwa)
+           kwa['nrecs'] = metadic['events']
+           dbo = DataBlock(**kwa)
            dbo.runnum = runnum
            dbo.exp = expname
            dbo.ts_run, dbo.ts_now = ts_run, ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FORMAT)
 
+        dbo.set_asic_slice(aslice)
+
+        nevsel = 0
+        nevnone = 0
         break_events = False
 
         for ievt,evt in enumerate(step.events()):
           #print('Event %04d' % ievt, end='\r')
-          sys.stdout.write('Event %04d\r' % ievt)
+          #sys.stdout.write('Event %04d' % ievt)
           nevrun += 1
           nevtot += 1
 
           if ievt < evskip:
-              logger.debug('==== Ev:%04d is skipped --evskip=%d' % (ievt,evskip))
+              logger.debug('==== ievt:%04d is skipped --evskip=%d' % (ievt,evskip))
               continue
           elif ievt>0 and ievt == evskip:
               logger.info('Events < --evskip=%d are skipped' % evskip)
@@ -213,39 +355,45 @@ def charge_injection(parser):
           raw = odet.raw.raw(evt)
 
           if raw is None:
-              logger.info('==== Ev:%04d raw is None' % (ievt))
+              nevnone += 1
+              print('-- ievt:%04d raw is None' % ievt, end='\r')
               continue
 
-          if plotim==1:
+          nevsel += 1
+
+          #if plotim & 1 and (nevsel%10==0):
+          if plotim & 1 and istep in (0,7,8,15,16,23,24,31) and dbo.irec==int(dbo.nrecs/4):
+
              #nda = odet.raw.calib(evt)
              nda = odet.raw.raw(evt)
              img = odet.raw.image(evt, nda=nda)
              if flimg is None:
-                flimg = ug.fleximage(img, arr=nda, h_in=8, w_in=16, nneg=1, npos=3)
-
-             gr.set_win_title(flimg.fig, titwin='Event %d' % nevtot)
+                flimg = ug.fleximage(img, arr=nda, h_in=8, w_in=16, amin=0, amax=50000)
+             #title = 'istep %02d ievt+1 %04d nevtot %04d' % (istep, ievt+1, nevtot)
+             title = 'istep %02d irec %03d' % (istep, dbo.irec)
+             gr.set_win_title(flimg.fig, titwin=title)
              flimg.update(img, arr=nda)
+             gr.add_title_labels_to_axes(flimg.axim, title=title, xlabel='columns', ylabel='rows', fslab=14, fstit=20, color='k')
              gr.show(mode='DO NOT HOLD')
-
-          nevsel += 1
+             flimg.save(fname='%s-img-istep%02d-rec%03d.png' % (figpref, istep, dbo.irec))
 
           tsec = time()
           dt   = tsec - tdt
           tdt  = tsec
-          if uc.selected_record(ievt+1, events):
-              ss = 'run[%d] %d  step %d  events total/run/step/selected: %4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
-                   (irun, runnum, istep, nevtot, nevrun, ievt+1, nevsel, time()-t0_sec, dt)
-              logger.info(ss)
+          #if uc.selected_record(ievt+1, events):
+          if nevsel%10 == 0:
+              ss = 'run[%d] %d  step %d  events total/run/step/selected/none: %4d/%4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
+                   (irun, runnum, istep, nevtot, nevrun, ievt+1, nevsel, nevnone, time()-t0_sec, dt)
+              print(ss, end='\r')
 
           status = dbo.event(raw, nevtot)
-
-          #print('XXX status:', status)
+          #print(info_ndarr(raw[aslice], 'raw[asic, rslice, cslice]'), end='\r')
 
           if status:
               logger.info('requested statistics --nrecs=%d is collected - terminate loops' % dbo.nrecs)
               break_events = True
-              break_steps = True
-              break_runs = True
+              #break_steps = True
+              #break_runs = True
               break
           # End of event-loop
 
@@ -256,20 +404,32 @@ def charge_injection(parser):
 
           if ievt > events-2:
               logger.info(ss)
-              logger.info('\n==== Ev:%04d event loop is terminated --events=%d' % (ievt,events))
+              logger.info('\n==== ievt:%04d event loop is terminated --events=%d' % (ievt,events))
               break_events = True
               break
 
-        if ievt < events: logger.info('==== Ev:%04d end of events in run %d step %d'%\
-                                       (ievt, runnum, istep))
+        ss = 'run[%d]: %d  step %02d  events total/run/step/selected/none: %4d/%4d/%4d/%4d/%4d time=%7.3f sec dt=%5.3f sec'%\
+                   (irun, runnum, istep, nevtot, nevrun, ievt+1, nevsel, nevnone, time()-t0_sec, dt)
+        logger.info(ss)
+        #logger.info('==== end of step %d events ievt+1=nevsel+none %4d=%d+%d'%\
+        #            (istep, ievt+1, nevsel, nevnone))
 
         if break_steps:
           logger.info('terminate_steps')
           break # break step loop
 
+      if plotim & 2: plot_block(dbo.block, figpref=figpref)
+      if plotim & 4: graph_block(dbo.block, figpref=figpref)
+      summary_gmode(istep, gmode_cur, cmt='YYY') # for the last step
+
       if break_runs:
         logger.info('terminate_runs')
         break # break run loop
+
+
+    #sys.exit('TEST EXIT')
+
+
 
     kwa_summary = {\
                    'repoman': repoman,
@@ -290,7 +450,8 @@ def charge_injection(parser):
 
     logger.info('kwa_summary:%s' % uec.info_dict(kwa_summary))
 
-    summary(dbo, **kwa_summary)
+    #summary(dbo, **kwa_summary)
+
 #    dic_consts_tot[gainmode] = dic_consts
     del(dbo)
 
@@ -322,8 +483,7 @@ def summary(dbo, **kwa):
     evnums = dbo.evnums
     logger.info('block summary: \n  %s\n  %s\n' % (
                 info_ndarr(block, 'block', first=0, last=5),\
-                info_ndarr(evnums, 'evnums', first=0, last=5),\
-    ))
+                info_ndarr(evnums, 'evnums', first=0, last=5)))
 
     ctypes = ('pixel_max', 'pixel_min')
     consts = arr_max, arr_min = dbo.max_min()
