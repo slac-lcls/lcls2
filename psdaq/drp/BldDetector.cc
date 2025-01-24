@@ -87,8 +87,10 @@ BldPVA::BldPVA(std::string det,
     //    _alg     = XtcData::Alg("raw",(vsn>>8)&0xf,(vsn>>4)&0xf,(vsn>>0)&0xf);
 
     std::string sname(_detId);
-    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":BLD1_MULT_ADDR").c_str());
-    _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":BLD1_MULT_PORT").c_str());
+    // These are CA,PVA for GMD,XGMD but only CA for PCAV
+    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":BLD1_MULT_ADDR").c_str());
+    _pvaPort    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":BLD1_MULT_PORT").c_str());
+    // This is PVA
     _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":BLD_PAYLOAD"   ).c_str());
 
     logging::info("BldPVA::BldPVA looking up multicast parameters for %s/%s from %s",

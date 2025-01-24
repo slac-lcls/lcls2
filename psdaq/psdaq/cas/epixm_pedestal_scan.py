@@ -21,16 +21,18 @@ def main():
     keys = [f'{args.detname}:user.gain_mode']
 
     def steps():
-        d = {}
+        # The metad goes into the step_docstring of the timing DRP's BeginStep data
+        # The step_docstring is used to guide the offline calibration routine
         metad = {'detname' : args.detname,
                  'scantype': args.scantype,
                  'events'  : args.events}
+        d = {}
         step = 0
         for gain_mode in args.gain_modes:
             gain = gain_mode_value(gain_mode)
-            d[f'{args.detname}:user.gain_mode'] = int(gain)
             metad['gain_mode'] = gain_mode
             metad['step']      = int(gain)
+            d[f'{args.detname}:user.gain_mode'] = int(gain)
             yield (d, float(step), json.dumps(metad))
             step += 1
 

@@ -60,7 +60,7 @@ public:
 protected:
     void handleRollcall(const nlohmann::json& msg);
     void handleAlloc(const nlohmann::json& msg);
-    void handleDealloc(const nlohmann::json& msg);
+    virtual void handleDealloc(const nlohmann::json& msg);
     virtual nlohmann::json connectionInfo(const nlohmann::json& msg) = 0;
     virtual void connectionShutdown() {};
     virtual void handleConnect(const nlohmann::json& msg) = 0;

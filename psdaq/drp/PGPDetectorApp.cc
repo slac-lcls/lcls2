@@ -684,6 +684,13 @@ void PGPDetectorApp::handleReset(const json& msg)
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
+void PGPDetectorApp::handleDealloc(const json& msg)
+{
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
+    CollectionApp::handleDealloc(msg);
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
+}
+
 json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
@@ -706,8 +713,6 @@ json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
 
 void PGPDetectorApp::connectionShutdown()
 {
-    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
-
     if (m_det) {
         m_det->connectionShutdown();
     }
@@ -716,8 +721,6 @@ void PGPDetectorApp::connectionShutdown()
     if (m_exporter) {
         m_exporter.reset();
     }
-
-    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
 void PGPDetectorApp::drainDrpMessageQueues()

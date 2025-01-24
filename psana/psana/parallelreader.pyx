@@ -39,7 +39,6 @@ cdef class ParallelReader:
         self.chunk_overflown    = 0                         # set to dgram size if it's too big
         self.max_events         = int(self.chunksize / 70)  # guess no. of smd events in one chunk
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
-        self.max_retries        = int(os.environ.get('PS_R_MAX_RETRIES', '0'))
         self.gots               = array.array('l', [0]*self.nfiles)
         self._init_buffers(self.bufs)
         self._init_buffers(self.step_bufs)
