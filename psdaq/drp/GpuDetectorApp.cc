@@ -177,10 +177,6 @@ void GpuDetectorApp::_unconfigure()
     if (m_gpuDetector) {
         m_gpuDetector->shutdown();
         if (m_exporter)  m_exporter.reset();
-        if (m_gpuThread.joinable()) {
-            m_gpuThread.join();
-            logging::info("GpuReader thread finished");
-        }
         if (m_collectorThread.joinable()) {
             m_collectorThread.join();
             logging::info("Collector thread finished");

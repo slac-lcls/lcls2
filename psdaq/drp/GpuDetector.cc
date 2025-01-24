@@ -37,6 +37,10 @@ GpuDetector::~GpuDetector()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     shutdown();
+
+    for (auto& worker : m_workers) {
+      delete worker;
+    }
 }
 
 int GpuDetector::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
@@ -121,13 +125,14 @@ void GpuDetector::collector(std::shared_ptr<MetricExporter> exporter,
     ///logging::debug("Worker %d popped batch %u, size %zu\n", worker, batch.start, batch.size);
     //unsigned lastPblIndex = 0;
     uint64_t lastPid = 0;
-    while (rc) {
+    while (true) {
         TimingHeader* timingHeader;
         uint64_t pid = 0;
         ///for (unsigned i=0; i<batch.size; i++) {
         for (auto& worker : m_workers) {
             rc = worker->dmaQueue().pop(dmaIdx);
-            //printf("*** worker %d dmaIdx %u\n", worker->worker(), dmaIdx);
+            //printf("*** rc %d worker %d dmaIdx %u\n", rc, worker->worker(), dmaIdx);
+            if (!rc)  break;
 
             ///unsigned pgpIndex = (batch.start + i) & bufferMask;
             ///PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
@@ -158,9 +163,11 @@ void GpuDetector::collector(std::shared_ptr<MetricExporter> exporter,
 
             // @todo: stash TEB input from after TH
         }
+        if (!rc)  break;
 
         if (pid <= lastPid)
             logging::error("PulseId did not advance: %014lx <= %014lx", pid, lastPid);
+        lastPid = pid;
 
         // Allocate a pebble buffer
         auto counter       = m_pool.allocate(); // This can block  @todo: allocate should return pebbleIndex (already masked)?

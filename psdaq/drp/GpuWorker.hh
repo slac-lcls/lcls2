@@ -10,6 +10,7 @@
 #include <atomic>
 
 #include <cuda_runtime.h>
+//#include <cuda/atomic>
 
 #include "drp.hh"
 
@@ -90,7 +91,7 @@ class GpuWorker
 {
 public:
   GpuWorker(unsigned id, const Parameters&, MemPoolGpu&);
-  ~GpuWorker() = default;
+  ~GpuWorker(); // = default;
   void start(Detector* det, GpuMetrics& metrics);
   void stop();
   void freeDma(unsigned index);
@@ -106,12 +107,14 @@ public:
   unsigned worker() const { return m_worker; }
 private:
   int     _setupCudaGraphs(const DetSeg& seg, int instance);
-  CUgraph _recordGraph(CUstream& stream, CUdeviceptr hwWritePtr, CUdeviceptr hwWriteStart, uint32_t* hostWriteBuf);
+  CUgraph _recordGraph(CUstream& stream, CUdeviceptr hwWritePtr, CUdeviceptr hwWriteStart, uint32_t* hostWriteBuf); //, int* bufRdy);
   void    _reader(Detector&, GpuMetrics&);
 private:
   MemPoolGpu&              m_pool;
   const DetSeg&            m_seg;
   volatile int*            m_terminate;
+  //cuda::atomic<int>*       m_terminate;
+  //volatile int*            m_bufRdy[MAX_BUFFERS];
   std::vector<CUstream>    m_streams;
   std::vector<CUgraph>     m_graphs;
   std::vector<CUgraphExec> m_graphExecs;

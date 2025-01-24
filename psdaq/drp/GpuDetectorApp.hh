@@ -108,7 +108,6 @@ private:
     DrpBase                              m_drp;
     GpuWorkerFactory                     m_factory;
     Detector*                            m_det;
-    std::thread                          m_gpuThread;
     std::thread                          m_collectorThread;
     std::unique_ptr<GpuDetector>         m_gpuDetector;
     std::shared_ptr<Pds::MetricExporter> m_exporter;

@@ -1,3 +1,5 @@
+//#define SUDO
+
 #include "GpuWorker.hh"
 
 #include "Detector.hh"
@@ -18,7 +20,9 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
-  //static const unsigned GPU_OFFSET      = 0x28000;
+#ifdef SUDO
+static const unsigned GPU_OFFSET      = 0x28000;
+#endif
 static const size_t   DMA_BUFFER_SIZE = 128*1024;
 
 //https://github.com/slaclab/surf/blob/main/axi/dma/rtl/v2/AxiStreamDmaV2Write.vhd
@@ -85,14 +89,16 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     // Map FPGA register space to GPU
     ////////////////////////////////////////////////
 
-    ///** Map the GpuAsyncCore FPGA registers **/
-    //if (gpuMapHostFpgaMem(&seg.swFpgaRegs, seg.fd, GPU_OFFSET, 0x100000) < 0) {
-    //  logging::critical("Failed to map GpuAsyncCore at offset=%d, size = %d", GPU_OFFSET, 0x100000);
-    //  abort();
-    //}
+#ifdef SUDO
+    /** Map the GpuAsyncCore FPGA registers **/
+    if (gpuMapHostFpgaMem(&seg.swFpgaRegs, seg.fd, GPU_OFFSET, 0x100000) < 0) {
+      logging::critical("Failed to map GpuAsyncCore at offset=%d, size = %d", GPU_OFFSET, 0x100000);
+      abort();
+    }
 
     /** Compute 'write start' register location using the device pointer to GpuAsyncCore **/
-    //seg.hwWriteStart = seg.swFpgaRegs.dptr + 0x300;
+    seg.hwWriteStart = seg.swFpgaRegs.dptr + 0x300;
+#endif
 
     logging::debug("Mapped FPGA registers");
 
@@ -179,6 +185,8 @@ GpuWorker::GpuWorker(unsigned worker, const Parameters& para, MemPoolGpu& pool) 
   m_worker    (worker),
   m_para      (para)
 {
+  printf("*** GpuWorker::ctor for #%d\n", worker);
+
   ////////////////////////////////////
   // Allocate streams
   ////////////////////////////////////
@@ -187,15 +195,23 @@ GpuWorker::GpuWorker(unsigned worker, const Parameters& para, MemPoolGpu& pool) 
   m_streams.resize(m_pool.dmaCount());
   for (auto& stream : m_streams) {
     chkFatal(cuStreamCreate(&stream, CU_STREAM_NON_BLOCKING));
+    //chkFatal(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
   }
   logging::debug("Done with creating streams\n");
 
   // Set up thread termination flag
-  chkError(cudaMallocManaged(&m_terminate, sizeof(int)));
+  chkError(cudaMallocManaged(&m_terminate, sizeof(*m_terminate)));
   for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
     chkError(cudaStreamAttachMemAsync(m_streams[i], m_terminate, 0, cudaMemAttachHost));
   }
   *m_terminate = 0;
+
+  // Set up buffer-ready flags
+  //for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
+  //  chkError(cudaMallocManaged(&m_bufRdy[i], m_pool.dmaCount() * sizeof(*m_bufRdy[i])));
+  //  chkError(cudaStreamAttachMemAsync(m_streams[i], m_bufRdy[i], 0, cudaMemAttachHost));
+  //  *m_bufRdy[i] = 0;
+  //}
 
   // Prepare the CUDA graphs
   auto& seg = m_pool.segs()[worker];
@@ -210,6 +226,21 @@ GpuWorker::GpuWorker(unsigned worker, const Parameters& para, MemPoolGpu& pool) 
   }
 }
 
+GpuWorker::~GpuWorker()
+{
+  printf("*** GpuWorker::dtor for #%d\n", m_worker);
+
+  for (auto& stream : m_streams) {
+    chkError(cudaStreamDestroy(stream));
+  }
+
+  for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
+    cudaFree(m_hostWriteBufs[i]);
+    //cudaFree(m_bufRdy[i]);
+  }
+  //cudaFree(m_terminate);
+}
+
 int GpuWorker::_setupCudaGraphs(const DetSeg& seg, int instance)
 {
   // Generate the graph
@@ -217,8 +248,9 @@ int GpuWorker::_setupCudaGraphs(const DetSeg& seg, int instance)
     logging::debug("Recording graph %d of CUDA execution", instance);
     size_t size = sizeof(DmaDsc)+sizeof(TimingHeader); //m_pool.dmaSize();
     chkError(cudaMallocManaged(&m_hostWriteBufs[instance], size));
+    chkError(cudaMemset(m_hostWriteBufs[instance], 0, size)); // Avoid rereading junk on re-Configure
     chkError(cudaStreamAttachMemAsync(m_streams[instance], m_hostWriteBufs[instance], 0, cudaMemAttachHost));
-    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, seg.hwWriteStart, m_hostWriteBufs[instance]);
+    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, seg.hwWriteStart, m_hostWriteBufs[instance]); //, m_bufRdy[instance]);
     if (m_graphs[instance] == 0)
       return -1;
   }
@@ -241,14 +273,25 @@ int GpuWorker::_setupCudaGraphs(const DetSeg& seg, int instance)
   return 0;
 }
 
-__global__ void waitValueGEQ(const volatile uint32_t* mem, uint32_t val, const volatile int* terminate)
+__global__ void waitValueGEQ(const volatile uint32_t* mem,
+                             uint32_t                 val,
+                             //const volatile int*      bufRdy,
+                             const volatile int*      terminate)
+                             //cuda::atomic<int>*       terminate)
 {
-  while (!*terminate && *mem < val);
+  while (!*terminate && (*mem < val)); // && *bufRdy);
+  //printf("*** GEQ %d >= %d\n", *mem, val);
+  //while (!terminate->load(cuda::memory_order_acquire) && (*mem < val)); // && cuda::atomic_ref{*bufRdy}.load(cuda::memory_order_acquire));
+  //__threadfence_system();
+  //*bufRdy = 0;
+  //cuda::atomic_ref{*bufRdy}.store(0, cuda::memory_order_release);
 }
 
-__global__ void dataMove(uint32_t* out, uint32_t* in, size_t size, const volatile int* terminate)
+__global__ void event(uint32_t* out, uint32_t* in, size_t size, const volatile int* terminate)
+//__global__ void event(uint32_t* out, uint32_t* in, size_t size, cuda::atomic<int>* terminate)
 {
   if (*terminate)  return;
+  //if (terminate->load(cuda::memory_order_acquire))  return;
 
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
   if (offset < size/sizeof(*out)) {
@@ -259,7 +302,11 @@ __global__ void dataMove(uint32_t* out, uint32_t* in, size_t size, const volatil
   //   Do this _after_ we captured the size from the dmaDsc!
   if (offset == 1) {
     in[offset] = 0;
+    //printf("*** event: err|size %08x\n", out[offset]);
   }
+  //else if (offset == 8) {
+  //  printf("*** event: pid %p, %016lx\n", &out[offset], *(uint64_t*)&(out[offset]));
+  //}
 
   // @todo: Process the data to extract TEB input and calibrate.  Also reduce/compress?
   //if (timingHeader->service() == TransitionId::L1Accept)
@@ -270,15 +317,19 @@ __global__ void dataMove(uint32_t* out, uint32_t* in, size_t size, const volatil
 
 // This will re-launch the current graph
 __global__ void graphLoop(const volatile int* terminate)
+//__global__ void graphLoop(cuda::atomic<int>* terminate)
 {
-  if (!*terminate)
-    cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+  if (*terminate)  return;
+  //if (terminate->load(cuda::memory_order_acquire))  return;
+
+  cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
 }
 
 CUgraph GpuWorker::_recordGraph(CUstream&   stream,
                                 CUdeviceptr dmaBuffer,
                                 CUdeviceptr hwWriteStart,
-                                uint32_t*   hostWriteBuf)
+                                uint32_t*   hostWriteBuf) //,
+                                //int*        bufRdy)
 {
   int instance = &stream - &m_streams[0];
 
@@ -294,8 +345,10 @@ CUgraph GpuWorker::_recordGraph(CUstream&   stream,
    ****************************************************************************/
   //chkError(cuMemsetD32Async(dmaBuffer + 4, 0, 1, stream)); // Formerly cuStreamWriteValue32
 
+#ifdef SUDO
   // Write to the DMA start register in the FPGA to trigger the write
-  //chkError(cuMemsetD8Async(hwWriteStart + 4  * instance, 1, 1, stream)); // Formerly cuStreamWriteValue32
+  chkError(cuMemsetD8Async(hwWriteStart + 4  * instance, 1, 1, stream)); // Formerly cuStreamWriteValue32
+#endif
 
   /*****************************************************************************
    * Spin on the handshake location until the value is >= to 1
@@ -306,13 +359,14 @@ CUgraph GpuWorker::_recordGraph(CUstream&   stream,
    * @todo: This may have negative implications on GPU scheduling.
    *        Need to profile!!!
    ****************************************************************************/
-  waitValueGEQ<<<1, 1, 1, stream>>>((uint32_t*)(dmaBuffer + 4), 0x1, m_terminate); // Formerly cuStreamWaitValue32
+  waitValueGEQ<<<1, 1, 1, stream>>>((uint32_t*)(dmaBuffer + 4), 0x1, /*bufRdy,*/ m_terminate); // Formerly cuStreamWaitValue32
 
   // An alternative to the above kernel is to do the waiting on the CPU instead...
   //chkError(cuLaunchHostFunc(stream, check_memory, (void*)buffer));
 
   // Do GPU processing here, this simply copies data from the write buffer to the read buffer
-  dataMove<<<4, 1024, 1, stream>>>((uint32_t*)hostWriteBuf, (uint32_t*)dmaBuffer, sizeof(DmaDsc)+sizeof(TimingHeader), m_terminate);
+  //printf("*** instance %d, hostWriteBuf %p\n", instance, &((uint32_t*)hostWriteBuf)[8]);
+  event<<<4, 1024, 1, stream>>>((uint32_t*)hostWriteBuf, (uint32_t*)dmaBuffer, sizeof(DmaDsc)+sizeof(TimingHeader), m_terminate);
 
   // Re-launch! Additional behavior can be put in graphLoop as needed. For now, it just re-launches the current graph.
   graphLoop<<<1, 1, 0, stream>>>(m_terminate);
@@ -340,6 +394,7 @@ void GpuWorker::dmaTarget(DmaTgt_t dest)
 void GpuWorker::start(Detector* det, GpuMetrics& metrics)
 {
   *m_terminate = 0;
+  //m_terminate->store(0, cuda::memory_order_release);
 
   // Launch the Reader thread
   m_thread = std::thread(&GpuWorker::_reader, std::ref(*this),
@@ -354,20 +409,27 @@ void GpuWorker::stop()
 
   // Stop and clean up the threads
   *m_terminate = 1;
+  //m_terminate->store(1, cuda::memory_order_release);
   m_thread.join();
 }
 
-void GpuWorker::freeDma(unsigned index)
+void GpuWorker::freeDma(unsigned dmaIdx)
 {
   m_pool.freeDma(1, nullptr);
 
   // Write to the DMA start register in the FPGA
   //logging::debug("Trigger write to buffer %d\n", dmaIdx);
-  auto rc = gpuSetWriteEn(m_seg.fd, index);
+#ifndef SUDO
+  auto rc = gpuSetWriteEn(m_seg.fd, dmaIdx);
   if (rc < 0) {
-    logging::critical("Failed to reenable buffer %d for write: %zd: %m", index, rc);
+    logging::critical("Failed to reenable buffer %d for write: %zd: %m", dmaIdx, rc);
     abort();
   }
+#else
+  //chkError(cuStreamWriteValue32(m_streams[dmaIdx], m_seg.hwWriteStart + 4 * dmaIdx, 1, 0));
+  //*(m_bufRdy[dmaIdx]) = 1;
+  cuda::atomic_ref{*(m_bufRdy[dmaIdx])}.store(1, cuda::memory_order_release);
+#endif
 }
 
 void GpuWorker::handleBrokenEvent(const PGPEvent&)
@@ -382,9 +444,9 @@ void GpuWorker::resetEventCounter()
   ///m_batchLast = 0;
 }
 
-TimingHeader* GpuWorker::timingHeader(unsigned index) const
+TimingHeader* GpuWorker::timingHeader(unsigned dmaIdx) const
 {
-  return (TimingHeader*)&(m_hostWriteBufs[index])[8];
+  return (TimingHeader*)&(m_hostWriteBufs[dmaIdx])[8];
 }
 
 // @todo: Do we still want these?
@@ -440,19 +502,27 @@ void GpuWorker::_reader(Detector& det, GpuMetrics& metrics)
   uint64_t lastPid = 0;
   ///unsigned lastPblIndex = 0;
   while (!*m_terminate) {
+  //while (!m_terminate->load(cuda::memory_order_acquire)) {
     for (unsigned dmaIdx = 0; dmaIdx < m_pool.dmaCount(); ++dmaIdx) {
       const volatile auto dsc = (DmaDsc*)(m_hostWriteBufs[dmaIdx]);
       const volatile auto th  = (TimingHeader*)&(m_hostWriteBufs[dmaIdx])[8];
 
       metrics.m_nDmaRet.store(0);
       // Wait for the GPU to have processed an event
+      //chkFatal(cuCtxSynchronize());
+      //chkError(cuStreamSynchronize(m_streams[dmaIdx]));
       uint64_t pid;
       while (!*m_terminate) {
+      //while (!m_terminate->load(cuda::memory_order_acquire)) {
         pid = th->pulseId();
+        //printf("*** dmaIdx %d, pid %p: %014lx, last %014lx\n", dmaIdx, th, pid, lastPid);
         if (pid > lastPid)  break;
+        if (!lastPid && !pid)  break;   // Expect lastPid to be 0 only on startup
+        //usleep(100000);
       }
       if (*m_terminate)  break;
-      //chkFatal(cuCtxSynchronize());
+      //if (m_terminate->load(cuda::memory_order_acquire))  break;
+      if (!pid)  continue;              // Search for a DMA buffer with data in it
       lastPid = pid;
 
       unsigned nDmaRet = 1;
