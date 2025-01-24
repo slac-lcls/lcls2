@@ -156,7 +156,6 @@ class DataBlock():
         self.block  = None
         self.irec   = -1
 
-
     def event(self, raw, evnum):
         """Switch between gain mode processing objects using igm index of the gain mode (0,1,2).
            - evnum (int) - event number
@@ -179,21 +178,17 @@ class DataBlock():
 
         return self.is_full()
 
-
     def is_full(self):
         return not self.not_full()
 
-
     def not_full(self):
         return self.irec < self.nrecs-1
-
 
 #    def extra_arrays(self, raw, evnum):
 #        self.arr_max = np.zeros(shape_raw, dtype=dtype_raw)
 #        self.arr_min = np.ones (shape_raw, dtype=dtype_raw) * self.datbits
 #        np.maximum(self.arr_max, raw, out=self.arr_max)
 #        np.minimum(self.arr_min, raw, out=self.arr_min)
-
 
     def max_min(self):
         return np.max(self.block, axis=0),\
