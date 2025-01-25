@@ -1,5 +1,3 @@
-//#define SUDO
-
 #include "GpuWorker.hh"
 
 #include "Detector.hh"
@@ -206,12 +204,14 @@ GpuWorker::GpuWorker(unsigned worker, const Parameters& para, MemPoolGpu& pool) 
   chkError(cudaMalloc(&m_done, sizeof(*m_done)));
   chkError(cudaMemset(m_done, 0, sizeof(*m_done)));
 
+#ifdef SUDO
   // Set up buffer-ready flags
-  //for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
-  //  chkError(cudaMallocManaged(&m_bufRdy[i], m_pool.dmaCount() * sizeof(*m_bufRdy[i])));
-  //  chkError(cudaStreamAttachMemAsync(m_streams[i], m_bufRdy[i], 0, cudaMemAttachHost));
-  //  *m_bufRdy[i] = 0;
-  //}
+  for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
+    chkError(cudaMallocManaged(&m_bufRdy[i], m_pool.dmaCount() * sizeof(*m_bufRdy[i])));
+    chkError(cudaStreamAttachMemAsync(m_streams[i], m_bufRdy[i], 0, cudaMemAttachHost));
+    *m_bufRdy[i] = 1;                   // Declare buffers initially ready
+  }
+#endif
 
   // Prepare the CUDA graphs
   auto& seg = m_pool.segs()[worker];
@@ -236,7 +236,9 @@ GpuWorker::~GpuWorker()
 
   for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
     chkError(cudaFree(m_hostWriteBufs[i]));
-    //cudaFree(m_bufRdy[i]);
+#ifdef SUDO
+    cudaFree(m_bufRdy[i]);
+#endif
   }
   chkError(cudaFree(m_terminate_d));
   chkError(cudaFree(m_done));
@@ -251,7 +253,7 @@ int GpuWorker::_setupCudaGraphs(const DetSeg& seg, int instance)
     chkError(cudaMallocManaged(&m_hostWriteBufs[instance], size));
     chkError(cudaMemset(m_hostWriteBufs[instance], 0, size)); // Avoid rereading junk on re-Configure
     chkError(cudaStreamAttachMemAsync(m_streams[instance], m_hostWriteBufs[instance], 0, cudaMemAttachHost));
-    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, seg.hwWriteStart, m_hostWriteBufs[instance]); //, m_bufRdy[instance]);
+    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, seg.hwWriteStart, m_hostWriteBufs[instance]);
     if (m_graphs[instance] == 0)
       return -1;
   }
@@ -276,19 +278,30 @@ int GpuWorker::_setupCudaGraphs(const DetSeg& seg, int instance)
 
 __global__ void waitValueGEQ(const volatile uint32_t* mem,
                              uint32_t                 val,
-                             //const volatile int*      bufRdy,
+#ifdef SUDO
+                             cuda::atomic<int>*       bufRdy,
+#endif
                              const cuda::atomic<int>* terminate,
                              bool*                    done)
 {
-  while (*mem < val) { // && *bufRdy);
+#ifdef SUDO
+  // Wait for the host buffer to become ready
+  while (!*bufRdy) {
     if (terminate->load(cuda::memory_order_acquire)) {
       *done = true;
-      break;
+      return;
     }
   }
-  //printf("*** GEQ %d >= %d\n", *mem, val);
-  //*bufRdy = 0;
-  //cuda::atomic_ref{*bufRdy}.store(0, cuda::memory_order_release);
+  bufRdy->store(0, cuda::memory_order_release); // Mark it not ready
+#endif
+
+  // Wait for data to be DMAed
+  while (*mem < val) {
+    if (terminate->load(cuda::memory_order_acquire)) {
+      *done = true;
+      return;
+    }
+  }
 }
 
 __global__ void event(uint32_t* out, uint32_t* in, size_t size, const bool& done)
@@ -324,8 +337,7 @@ __global__ void graphLoop(const bool& done)
 cudaGraph_t GpuWorker::_recordGraph(cudaStream_t& stream,
                                     CUdeviceptr   dmaBuffer,
                                     CUdeviceptr   hwWriteStart,
-                                    uint32_t*     hostWriteBuf) //,
-                                    //int*          bufRdy)
+                                    uint32_t*     hostWriteBuf)
 {
   int instance = &stream - &m_streams[0];
 
@@ -334,14 +346,15 @@ cudaGraph_t GpuWorker::_recordGraph(cudaStream_t& stream,
     return 0;
   }
 
+#ifdef SUDO
   /****************************************************************************
    * Clear the handshake space
    * Originally was cuStreamWriteValue32, but the stream functions are not
    * supported within graphs. cuMemsetD32Async acts as a good replacement.
    ****************************************************************************/
+  // This is now done in the event CUDA kernel
   //chkError(cuMemsetD32Async(dmaBuffer + 4, 0, 1, stream)); // Formerly cuStreamWriteValue32
 
-#ifdef SUDO
   // Write to the DMA start register in the FPGA to trigger the write
   chkError(cuMemsetD8Async(hwWriteStart + 4  * instance, 1, 1, stream)); // Formerly cuStreamWriteValue32
 #endif
@@ -355,7 +368,11 @@ cudaGraph_t GpuWorker::_recordGraph(cudaStream_t& stream,
    * @todo: This may have negative implications on GPU scheduling.
    *        Need to profile!!!
    ****************************************************************************/
-  waitValueGEQ<<<1, 1, 1, stream>>>((uint32_t*)(dmaBuffer + 4), 0x1, /*bufRdy,*/ m_terminate_d, m_done);
+#ifndef SUDO
+  waitValueGEQ<<<1, 1, 1, stream>>>((uint32_t*)(dmaBuffer + 4), 0x1, m_terminate_d, m_done);
+#else
+  waitValueGEQ<<<1, 1, 1, stream>>>((uint32_t*)(dmaBuffer + 4), 0x1, m_bufRdy[instance], m_terminate_d, m_done);
+#endif
 
   // An alternative to the above kernel is to do the waiting on the CPU instead...
   //chkError(cuLaunchHostFunc(stream, check_memory, (void*)buffer));
@@ -419,9 +436,7 @@ void GpuWorker::freeDma(unsigned dmaIdx)
     abort();
   }
 #else
-  //chkError(cuStreamWriteValue32(m_streams[dmaIdx], m_seg.hwWriteStart + 4 * dmaIdx, 1, 0));
-  //*(m_bufRdy[dmaIdx]) = 1;
-  cuda::atomic_ref{*(m_bufRdy[dmaIdx])}.store(1, cuda::memory_order_release);
+  m_bufRdy[dmaIdx]->store(1, cuda::memory_order_release); // Mark the buffer available
 #endif
 }
 

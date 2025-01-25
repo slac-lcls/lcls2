@@ -14,6 +14,9 @@
 
 #include "drp.hh"
 
+// Define SUDO to have GPU write to the FPGA's DMA start register
+// If not defined, the CPU writes it via the AES Stream Driver
+//#define SUDO
 
 template <typename T> class SPSCQueue;
 
@@ -107,7 +110,7 @@ public:
   unsigned worker() const { return m_worker; }
 private:
   int     _setupCudaGraphs(const DetSeg& seg, int instance);
-  CUgraph _recordGraph(cudaStream_t& stream, CUdeviceptr hwWritePtr, CUdeviceptr hwWriteStart, uint32_t* hostWriteBuf); //, int* bufRdy);
+  CUgraph _recordGraph(cudaStream_t& stream, CUdeviceptr hwWritePtr, CUdeviceptr hwWriteStart, uint32_t* hostWriteBuf);
   void    _reader(Detector&, GpuMetrics&);
 private:
   MemPoolGpu&                  m_pool;
@@ -115,7 +118,9 @@ private:
   std::atomic<bool>            m_terminate_h;
   cuda::atomic<int>*           m_terminate_d;
   bool*                        m_done;      // Cache for m_terminate_d
-  //volatile int*                m_bufRdy[MAX_BUFFERS];
+#ifdef SUDO
+  cuda::atomic<int>*           m_bufRdy[MAX_BUFFERS];
+#endif
   std::vector<cudaStream_t>    m_streams;
   std::vector<cudaGraph_t>     m_graphs;
   std::vector<cudaGraphExec_t> m_graphExecs;
