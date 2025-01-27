@@ -1,0 +1,3 @@
+[submodule "psdaq/psdaq/submodules/cameralink_gateway"]
+	path = psdaq/psdaq/submodules/cameralink_gateway
+	url = git@github.com:slaclab/cameralink-gateway
