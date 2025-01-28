@@ -184,7 +184,6 @@ def cbase_ASIC_init(cbase, asics):
         getattr(cbase.App,f'AsicGtData{asic}').enable.set(True)
         getattr(cbase.App,f'AsicGtData{asic}').gtStableRst.set(False)
 
-
 def cbase_init(cbase):
     cbase.App.WaveformControl.enable.set(True)			  	
     cbase.App.WaveformControl.GlblRstPolarity.set(True)		  	
@@ -225,7 +224,6 @@ def cbase_init(cbase):
     cbase.App.AsicGtClk.gtRstAll.set(False)					
     cbase.App.TimingRx.enable.set(True)
     cbase.Core.Si5345Pll.enable.set(False)
-
 #
 #  Initialize the rogue accessor
 #
@@ -416,7 +414,7 @@ def user_to_expert(base, cfg, full=False):
 #
 def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     global asics  # Need to maintain this across configuration updates
-    
+       
     path = '/tmp/ePixUHR_GTReadout_default_'
     pathPll = '/tmp/'
 
@@ -496,6 +494,9 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     for i in range(cbase.numOfAsics):
         if i+1 in asics: 
             base['bypass'][i] = 0
+        getattr(cbase.App.gain,f'gainCSVAsic{i}').set(0)
+        getattr(cbase.App.gain,f'gainAsic{i}').set(0)
+
         getattr(cbase.App, f'BatcherEventBuilder{i+1}').Bypass.set(base['bypass'][i])
         #getattr(cbase.App, f'Asic{i+1}').enable.set(base['bypass'][i]==0)
         #getattr(cbase.App, f'BatcherEventBuilder{i}', base['bypass']).set(True)
@@ -617,6 +618,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #pixelBitMapDic = ['_FL_FM_FH', '_FL_FM_FH_InjOff', '_allConfigs', '_allPx_52', '_allPx_AutoHGLG_InjOff', '_allPx_AutoHGLG_InjOn', '_allPx_AutoMGLG_InjOff', '_allPx_AutoMGLG_InjOn', '_allPx_FixedHG_InjOff', '_allPx_FixedHG_InjOn', '_allPx_FixedLG_InjOff', '_allPx_FixedLG_InjOn', '_allPx_FixedMG_InjOff', '_allPx_FixedMG_InjOn', '_crilin', '_crilin_epixuhr100k', '_defaults', '_injection_corners', '_injection_corners_px1', '_management', '_management_epixuhr100k', '_management_inj', '_maskedCSA', '_truck', '_truck_epixuhr100k', '_xtalk_hole']
         pixelBitMapDic = ['default', 'injection_truck', 'injection_corners_FHG', 'injection_corners_AHGLG1', 'extra_config_1', 'extra_config_2', 'truck2']
         for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(True)
+        csvCfg = 0
+        gainValue = 0
         
         if ( cfg['user']['Gain']['SetSameGain4All']):
             print("Set same Gain for all ASIC")
@@ -633,12 +636,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 
 #                np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')    
                 #tmpfiles.append(fn)
-                setattr(cbase, 'filenameCSV', PixMapSelected)
+                
 
                 for i in asics: 
                     print(f"ASIC{i}")
                     gainMapSelection[i-1,:,:]=csvCfg
                     #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)    
+                    setattr(cbase, f'gainCSVAsic{i}', csvCfg)
                     getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
                     print(f"{PixMapSelected} CSV File Loaded")
                 
@@ -646,6 +650,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             else:
                 #same value for all
                 print("Use single value for all ASICS")
+                gainValue=str(cfg['user']['Gain']['SetGainValue'])
+                
                 for i in asics: 
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=cfg['user']['Gain']['SetGainValue']
@@ -671,6 +677,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 #a value per each
                 print("Use a value per ASIC")
                 for i in asics: 
+                    gainValue=str(cfg['expert']['App'][f'Asic{i}']['SetGainValue'])
+                    setattr(cbase, f'gainAsic{i}', gainValue)
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=cfg['expert']['App'][f'Asic{i}']['SetGainValue']
                     getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetGainValue']))
@@ -780,7 +788,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Rename the complete config detector
     segcfg[0] = cfg.copy()
     segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
-    #scfg[0]['detType:RO'] = '_'.join(topname[:-1])+'hw' 
+    
     
     #gain_mode = cfg['user']['gain_mode']
     #if gain_mode==3:
@@ -806,13 +814,16 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
                                     carrierId,
                                     digitalId,
                                     pwrCommId)
-    
+
     segids[0] = id
     top = cdict()
     top.setAlg('config', [1,0,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
-    top.set('GainPixelMap',        gainMapSelection.tolist(),        'UINT8')
-    top.set('GainValue',           gainValSelection ,              'UINT8')
+    top.set(f'gainCSVAsic' , gainMapSelection.toList(), 'UINT8')  # only the rows which have readable pixels
+    top.set(f'gainAsic'    , gainValSelection.toList(), 'UINT8')        
+    
+    #top.set('CompTH_ePixM',        compTH,        'UINT8')
+    #top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
     #   if gain_mode==3:
     #       top.set('chgInj_column_map', column_map)
     segcfg[1] = top.typed_json()
@@ -864,7 +875,7 @@ def epixUHR_scan_keys(update):
     
     if calibRegsChanged:
        
-   #     cbase = base['cam']
+        cbase = base['cam']
    #     compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(1, cbase.numOfAsics+1) ]
    #     precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(1, cbase.numOfAsics+1) ]
    #     if 'chgInj_column_map' in cfg['user']:
@@ -879,8 +890,9 @@ def epixUHR_scan_keys(update):
             top = cdict()
             top.setAlg('config', [1,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-            top.set('GainPixelMap',        gainMapSelection.tolist(),        'UINT8')
-            top.set('GainValue',           gainValSelection ,              'UINT8')
+            top.set(f'gainCSVAsic' , gainMapSelection.toList(), 'UINT8')  # only the rows which have readable pixels
+            top.set(f'gainAsic'    , gainValSelection.toList(), 'UINT8')
+   
    #         top.set('CompTH_ePixM',        compTH,        'UINT8')
    #         top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
    #         if 'chgInj_column_map' in cfg['user']:
@@ -904,7 +916,7 @@ def epixUHR_update(update):
     logging.debug('epixUHR_update')
     global origcfg
     global base
-    global gainValSelection
+    global gainMapSelection
     global gainValSelection
     
     #  Queue full configuration next Configure transition
@@ -941,7 +953,7 @@ def epixUHR_update(update):
     segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
     if writeCalibRegs:
-#        cbase = base['cam']
+        cbase = base['cam']
 #        try:
 #            compTH        = [ cfg['expert']['App'][f'Asic[{i}]']['CompTH_ePixM']        for i in range(1, cbase.numOfAsics+1) ]
 #        except:
@@ -960,8 +972,10 @@ def epixUHR_update(update):
             top = cdict()
             top.setAlg('config', [1,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-            top.set('GainPixelMap',        gainMapSelection.tolist(),        'UINT8')
-            top.set('GainValue',           gainValSelection ,              'UINT8')
+            
+            top.set(f'gainCSVAsic' , gainMapSelection.toList(), 'UINT8')  # only the rows which have readable pixels
+            top.set(f'gainAsic'    , gainValSelection.toList(), 'UINT8')
+
 #            if compTH        is not None:  top.set('CompTH_ePixM',        compTH,        'UINT8')
 #            if precharge_DAC is not None:  top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
 #            if column_map    is not None:  top.set('chgInj_column_map',   column_map)
