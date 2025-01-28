@@ -10,7 +10,7 @@ import rogue.hardware.axi
 
 import pyrogue.protocols
 import time
-import cameralink_gateway  # to get surf
+from psdaq.utils import submod_cameralink_gateway  # to get surf
 import surf.axi                     as axi
 from surf.devices.transceivers import Sfp
 

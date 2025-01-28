@@ -6,6 +6,7 @@ from psdaq.cas.xpm_utils import timTxId
 import os
 import socket
 import rogue
+from psdaq.utils import submod_cameralink_gateway
 import cameralink_gateway
 import time
 import json
