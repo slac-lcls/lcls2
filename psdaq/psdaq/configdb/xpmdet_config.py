@@ -68,7 +68,8 @@ def xpmdet_connectionInfo(alloc_json_str):
             clockrange = None
 
         if clockrange is not None:
-            if args['core']:
+            if True:
+#            if args['core']:
                 # check timing reference clock, program if necessary
                 rate = root.TDetTiming.refClockRate()
 
