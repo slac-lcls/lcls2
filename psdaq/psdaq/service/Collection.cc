@@ -411,13 +411,13 @@ void CollectionApp::run()
         // ex 1: {"body":{"pulseId":2463859721849},"key":"pulseId"}
         if (items[1].revents & ZMQ_POLLIN) {
             json msg = m_inprocRecv.recvJson();
-            logging::debug("inproc json received  %s", msg.dump().c_str());
+            //logging::debug("inproc json received  %s", msg.dump().c_str());
             std::string key = msg["key"];
-            logging::debug("inproc '%s' message received", key.c_str());
+            //logging::debug("inproc '%s' message received", key.c_str());
             if (key == "pulseId") {
                 // forward message to control system with pulseId as the message id
                 uint64_t pid = msg["body"]["pulseId"];
-                logging::debug("inproc pulseId received  %014lx", pid);
+                //logging::debug("inproc pulseId received  %014lx", pid);
                 json body;
                 json answer = createMsg("timingTransition", std::to_string(pid), getId(), body);
                 reply(answer);

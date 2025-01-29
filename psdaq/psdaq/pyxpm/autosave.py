@@ -4,26 +4,7 @@ from psdaq.configdb.get_config import get_config_with_params
 from p4p.client.thread import Context
 import logging
 
-autosave = None
 countRst = 3600
-
-def add(name, value):
-    autosave.add(name,value)
-
-def modify(name, value):
-    autosave.modify(name,value)
-
-def save():
-    autosave.save()
-
-def restore():
-    autosave.restore()
-
-def update():
-    autosave.update()
-
-def dump():
-    autosave.dump()
 
 class Autosave(object):
     def __init__(self, dev, db, lock):
@@ -124,6 +105,49 @@ class Autosave(object):
                 #d = self._cdict().typed_json()
                 #print(f'update {d}')
                 #self._restore_dict(d['PV'],self.dev)
+
+class NoAutosave(object):
+    def __init__(self):
+        pass
+
+    def dump(self):
+        pass
+
+    # add PV name, value pairs to go into configdb
+    def add(self, name, value):
+        pass
+
+    def modify(self, name, value):
+        pass
+        
+    def save(self):
+        pass
+
+    def restore(self):
+        pass
+            
+    def update(self):
+        pass
+
+autosave = NoAutosave()
+
+def add(name, value):
+    autosave.add(name,value)
+
+def modify(name, value):
+    autosave.modify(name,value)
+
+def save():
+    autosave.save()
+
+def restore():
+    autosave.restore()
+
+def update():
+    autosave.update()
+
+def dump():
+    autosave.dump()
 
 def set(name,db,lock):
     global autosave

@@ -27,6 +27,12 @@ toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 ATCAWidget  = None
 
+def isATCA(pvbase):
+    print(f'** isATCA {pvbase}')
+    pv = Pv(pvbase+':FwBuild')
+    v = pv.get()
+    return 'Kcu' not in v
+
 class PvPAddr(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name):
         super(PvPAddr,self).__init__()
@@ -55,7 +61,13 @@ class PvPAddr(QtWidgets.QWidget):
             elif qs[0:2]=='ff':
                 shelf = int(qs[2:4],16)
                 port  = int(qs[6:8],16)
-                s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
+
+                pvbase = ':'.join(self.pv.pvname.split(':')[:-2])+f':{shelf}'
+                if isATCA(pvbase):
+                    s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
+                else:
+                    s = 'XPM:%d:QSFP%d-%d'%(shelf,port/4,port%4)
+                    
             self.__display.valueSet.emit(s)
         else:
             print(err)
@@ -569,9 +581,11 @@ class Ui_MainWindow(object):
         stack = QtWidgets.QStackedWidget()
 
         for title in titles:
-            pvbase = title + ':'
+            pvbase = title+':'
+
             pv = Pv(pvbase+'FwBuild')
             v = pv.get()
+
             if 'Kcu' in v:
                 amcTitle = 'QSFP'
                 nDsLinks = (4,4) # if 'Gen' in v else (3,4)
