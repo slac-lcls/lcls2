@@ -591,7 +591,8 @@ int main(int argc, char* argv[])
     //
     //  Update ID advertised on timing link
     //
-    if (updateId && core_pcie) {
+    //    if (updateId && core_pcie) {
+    if (updateId) {
       struct addrinfo hints;
       struct addrinfo* result;
 
@@ -630,7 +631,8 @@ int main(int argc, char* argv[])
     //
     //  Measure si570 clock output
     //
-    if (core_pcie) {
+    if (1) {
+        //    if (core_pcie) {
       double txrefclk, rxrefclk;
       measure_clks(txrefclk,rxrefclk);
 
