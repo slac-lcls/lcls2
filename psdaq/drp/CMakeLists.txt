@@ -28,6 +28,64 @@ target_link_libraries(drpbase
     nlohmann_json::nlohmann_json
 )
 
+# Create a library for BldDetector
+add_library(blddetector_lib
+    BldDetector.cc
+    BldNames.cc
+)
+
+# Add include directories for the library
+target_include_directories(blddetector_lib PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+# Link libraries needed by blddetector_lib
+target_link_libraries(blddetector_lib
+    drpbase
+    trigger
+    epicstools
+    mmhw
+    Threads::Threads
+)
+
+# Specify the directory where the shared libraries are located
+set(SC_TDC_LIB_DIR ${CMAKE_SOURCE_DIR}/libs/scTDC)
+
+# Create a library for PipeCallbackHandler
+add_library(pipecallbackhandler_lib
+    PipeCallbackHandler.cc
+)
+
+# Include directories for the library
+target_include_directories(pipecallbackhandler_lib PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/scTDC>
+)
+
+# Link the shared libraries to pipecallbackhandler_lib
+target_link_directories(pipecallbackhandler_lib PUBLIC ${SC_TDC_LIB_DIR})
+
+# Set RPATH for runtime library loading
+set_target_properties(pipecallbackhandler_lib PROPERTIES
+    BUILD_WITH_INSTALL_RPATH ON
+    INSTALL_RPATH ${SC_TDC_LIB_DIR}
+)
+
+# Install the shared libraries to the target location
+install(FILES ${SC_TDC_LIB_DIR}/libscTDC.so
+        DESTINATION lib)
+
+# Link dependencies needed by PipeCallbackHandler
+target_link_libraries(pipecallbackhandler_lib
+    drpbase
+    Threads::Threads
+    xtcdata::xtc
+    nlohmann_json::nlohmann_json
+    epicstools
+    ${SC_TDC_LIB_DIR}/libscTDC.so
+)
+
 add_executable(drp
     AreaDetector.cc
     Digitizer.cc
@@ -64,22 +122,42 @@ target_link_libraries(drp
     nlohmann_json::nlohmann_json
 )
 
+# Create the drp_bld executable
 add_executable(drp_bld
-#    BldDetectorSlow.cc
-    BldDetector.cc
-    BldNames.cc
+    main_bld.cc  # Replace the main from BldDetector.cc
 )
 
 target_include_directories(drp_bld PUBLIC
     ${Readline_INCLUDE_DIR}
 )
 
+# Link against the blddetector_lib library
 target_link_libraries(drp_bld
+    blddetector_lib
     drpbase
     trigger
     epicstools
     mmhw
     ${Readline_LIBRARY}
+)
+target_compile_options(drp_bld PRIVATE -g)
+
+# Create the drp_kmicroscope executable
+add_executable(drp_kmicroscope
+    KMicroscope.cc
+)
+
+# Link against the blddetector_lib library
+target_link_libraries(drp_kmicroscope
+    pipecallbackhandler_lib
+    blddetector_lib
+    drpbase
+    xtcdata::xtc
+    trigger
+    mmhw
+    nlohmann_json::nlohmann_json
+    Threads::Threads
+    epicstools
 )
 
 add_executable(drp_pva
