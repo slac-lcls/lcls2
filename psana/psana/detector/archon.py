@@ -54,7 +54,7 @@ class archon_raw_1_0_0(AreaDetectorRaw):
                 colOffset += bankSize
 
     def _common_mode_v1(self, frame):
-        """the same as above with short indicees and test for mediann"""
+        """the same as above with short indices and test for median"""
         #print('XXX in archon_raw_1_0_0._common_mode_v1')
         logger.debug('_common_mode_v1')
         sf, st = self._fakePixelsPerBank, self._totPixelsPerBank # = 264, 36, 300
@@ -276,11 +276,12 @@ class archon_raw_1_0_1(AreaDetectorRaw):
 
     def _mask_fake(self, raw_shape, dtype=np.uint8) -> Array2d:
         """returns mask of shape=(<nrows>,4800), with fake pixels of all banks set to 0"""
-        fake1bank = np.zeros((raw_shape[0], self._fakePixelsPerBank), dtype=dtype)
-        mask = np.ones(raw_shape, dtype=dtype)
         sf, st = self._fakePixelsPerBank, self._totPixelsPerBank # = 36, 300
+        fake1bank = np.zeros((raw_shape[0], sf), dtype=dtype)
+        mask = np.ones(raw_shape, dtype=dtype)
         for i in range(self._nbanks):
              mask[:,st*i:st*i+sf] = fake1bank
+        #print(info_ndarr(mask, 'XXX mask:', last=50))
         return mask
 
     def _tstamp(self, evt):
@@ -291,7 +292,7 @@ class archon_raw_1_0_1(AreaDetectorRaw):
     def _tstamp_raw(self, raw):
         """the same as previous but raw passed in the input"""
         return None if raw is None else\
-               np.frombuffer(raw[0,0:4].tobytes(), dtype=np.uint64)
+               np.frombuffer(raw[0,0:4].tobytes(), dtype=np.uint64)[0]
 
     def _set_tstamp_pixel_values(self, a, value=0):
         """sets 4 pixel intensities in the beginning of each fake bank to specified value"""
