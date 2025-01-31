@@ -128,6 +128,7 @@ void JungfrauEmulator::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent
                 dataSize = m_nElems*2;
                 uint8_t* rawData = reinterpret_cast<uint8_t*>(m_substituteRawData.data() + vecIdx*m_nElems);
                 memcpy((uint8_t*)rawArray.data() + size, rawData, dataSize);
+                vecIdx++;
             }
             size += dataSize;
       }
