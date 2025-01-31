@@ -547,12 +547,12 @@ uint64_t Bld::next()
 }
 
 
-class BldDetector : public XpmDetector
-{
-public:
-    BldDetector(Parameters& para, DrpBase& drp) : XpmDetector(&para, &drp.pool) {}
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override {}
-};
+// Constructor Implementation
+BldDetector::BldDetector(Parameters& para, DrpBase& drp)
+    : XpmDetector(&para, &drp.pool) {}
+
+// Override event method (currently empty)
+void BldDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) {}
 
 
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
@@ -881,21 +881,18 @@ void Pgp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
     m_drp.tebContributor().process(l3InpDg);
 }
 
-
-BldApp::BldApp(Parameters& para) :
+BldApp::BldApp(Parameters& para, DrpBase& drp, std::unique_ptr<Detector> detector) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp        (para, context()),
+    m_drp        (drp),
     m_para       (para),
+    m_det        (std::move(detector)),  // Injected detector
     m_unconfigure(false)
 {
-    Py_Initialize();                    // for use by configuration
-
-    m_det = new BldDetector(m_para, m_drp);
-
-    if (m_det == nullptr) {
-        logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
-        throw "Could not create Detector object for " + m_para.detType;
+    if (!m_det) {
+        logging::critical("Error! Detector object is null.");
+        throw std::runtime_error("Could not create Detector object");
     }
+
     logging::info("Ready for transitions");
 }
 
@@ -904,12 +901,9 @@ BldApp::~BldApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
-
-    if (m_det) {
-        delete m_det;
-    }
-
-    Py_Finalize();                      // for use by configuration
+    
+    // Py_Finalize() should not be included here. Python should only be 
+    // finalized when absolutely necessary 
 }
 
 void BldApp::_disconnect()
@@ -1045,11 +1039,11 @@ void BldApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
+        m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det.get());
 
         // Provide EbReceiver with the Detector interface so that additional
         // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp.ebReceiver().configure(m_det, m_pgp.get());
+        m_drp.ebReceiver().configure(m_det.get(), m_pgp.get());
 
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {

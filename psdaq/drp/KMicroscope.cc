@@ -41,24 +41,22 @@ void KMicroscope::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
     desc.set_data_length(sizeof(dummyData));
 }
 
-CustomBldApp::CustomBldApp(Parameters& para, const std::string& customParam)
-    : BldApp(para),  // Call the base class constructor
+CustomBldApp::CustomBldApp(Parameters& para, DrpBase& drp, const std::string& customParam)
+    : BldApp(para, drp, std::make_unique<KMicroscope>(para, drp)),  // ✅ Pass DrpBase correctly
       m_customParam(customParam)
 {
-    logging::info("CustomBldApp instance created with custom parameter: %s", m_customParam.c_str());
-
-    // Add additional initialization logic specific to KMicroscope
-    if (m_customParam.empty()) {
-        logging::warning("Custom parameter is empty. Proceeding with default behavior.");
-    }
+    logging::info("CustomBldApp initialized with KMicroscope (customParam: %s)", m_customParam.c_str());
 }
 
-CustomBldApp::~CustomBldApp() {
-    logging::info("CustomBldApp instance destroyed");
+CustomBldApp::~CustomBldApp()
+{
+    logging::info("Shutting down CustomBldApp...");
 }
 
-void CustomBldApp::run() {
-    logging::info("Running CustomBldApp");
+void CustomBldApp::run()
+{
+    logging::info("Running CustomBldApp with customParam: %s", m_customParam.c_str());
+    BldApp::run();  // Call the base class's run method
 }
 
 }
@@ -183,8 +181,12 @@ int main(int argc, char* argv[])
 
     para.maxTrSize = 256 * 1024;
     std::string customParam = "KMicroscope Custom Test Parameter";
+    Py_Initialize();  // Initialize Python before creating any objects
+
+    ZmqContext zmqCtx;
     try {
-        Drp::CustomBldApp app(para, customParam);
+        Drp::DrpBase drp(para, zmqCtx);  // Create DrpBase first
+        Drp::CustomBldApp app(para, drp, customParam);
         app.run();
         return 0;
     }

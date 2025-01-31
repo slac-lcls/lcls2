@@ -24,15 +24,21 @@ public:
     //void shutdown() override;
 };
 
-// Derived App class for KMicroscope
+/**
+ * CustomBldApp is a specialized version of BldApp that initializes with
+ * a KMicroscope detector instead of the default BldDetector.
+ */
 class CustomBldApp : public BldApp {
 public:
-    CustomBldApp(Parameters& para, const std::string& customParam);
+    // Constructor that initializes BldApp with KMicroscope
+    CustomBldApp(Parameters& para, DrpBase& drp, const std::string& customParam);
     ~CustomBldApp() override;
+
+    // Runs the application
     void run();
 
 private:
-    std::string m_customParam;
+    std::string m_customParam;  // Custom parameter for additional configurations
 };
 
 } // namespace Drp

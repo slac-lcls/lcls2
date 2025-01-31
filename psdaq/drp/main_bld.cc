@@ -1,3 +1,4 @@
+#include <Python.h>  // Required for Py_Initialize()
 #include "BldDetector.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/kwargs.hh"
@@ -134,14 +135,21 @@ int main(int argc, char* argv[])
     */
 
     para.maxTrSize = 256 * 1024;
+    
+    // Initialize Python before the try block
+    Py_Initialize();
+
+    ZmqContext zmqCtx; 
     try {
-        Drp::BldApp app(para);
+        Drp::DrpBase drp(para, zmqCtx);  
+        Drp::BldApp app(para, drp, std::make_unique<Drp::BldDetector>(para, drp));
         app.run();
         return 0;
     }
-    catch (std::exception& e)  { logging::critical("%s", e.what()); }
-    catch (std::string& e)     { logging::critical("%s", e.c_str()); }
-    catch (char const* e)      { logging::critical("%s", e); }
-    catch (...)                { logging::critical("Default exception"); }
+    catch (const std::exception& e)  { logging::critical("%s", e.what()); }
+    catch (const std::string& e)     { logging::critical("%s", e.c_str()); }
+    catch (const char* e)            { logging::critical("%s", e); }
+    catch (...)                      { logging::critical("Unknown exception"); }
+
     return EXIT_FAILURE;
 }

@@ -149,13 +149,14 @@ private:
     std::chrono::time_point<Pds::fast_monotonic_clock> m_tInitial;
 };
 
-
-class BldApp : public CollectionApp
-{
+class BldApp : public CollectionApp {
 public:
-    BldApp(Parameters& para);
+    // Constructor now takes a unique_ptr<Detector>
+    BldApp(Parameters& para, DrpBase& drp, std::unique_ptr<Detector> detector);
     ~BldApp() override;
+
     void handleReset(const nlohmann::json& msg) override;
+
 private:
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void connectionShutdown() override;
@@ -166,13 +167,20 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-    DrpBase                              m_drp;
-    Parameters&                          m_para;
-    std::thread                          m_workerThread;
-    std::unique_ptr<Pgp>                 m_pgp;
-    Detector*                            m_det;
+protected:
+    DrpBase& m_drp;  // Now using reference instead of creating a new one (shared with BldDetector)
+    Parameters& m_para;
+    std::thread m_workerThread;
+    std::unique_ptr<Detector> m_det;  // Now using unique_ptr instead of raw pointer
+    std::unique_ptr<Pgp> m_pgp;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
-    bool                                 m_unconfigure;
+    bool m_unconfigure;
 };
 
-}
+class BldDetector : public XpmDetector {
+public:
+    BldDetector(Parameters& para, DrpBase& drp);
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+};
+
+} // namespace Drp
