@@ -20,6 +20,7 @@ using logging = psalg::SysLog;
 using json = nlohmann::json;
 
 static unsigned cpocount=0;
+//#define DEBUG_PRINT
 
 namespace Drp {
 
@@ -174,6 +175,7 @@ void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
     shape[0] = nrows; shape[1] = ncols;
     Array<uint16_t> aframe = cd.allocate<uint16_t>(Epix100PanelDef::raw, shape);
 
+#ifdef DEBUG_PRINT
     cpocount++;
     if (cpocount%100==0) {
         printf("*** event %d subframes.size: %zd\n",cpocount,subframes.size());
@@ -181,6 +183,7 @@ void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
             printf("*** subframes[%d].num_elem(): %zd\n",i,subframes[i].num_elem());
         }
     }
+#endif
 
     if (subframes[3].num_elem() != expectedsize) {
         printf("*** incorrect size %zd %d\n",subframes[3].num_elem(),expectedsize);
