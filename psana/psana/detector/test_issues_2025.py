@@ -88,6 +88,26 @@ def issue_2025_01_29():
     gr.show()
 
 
+
+def issue_2025_01_31():
+    """datinfo -k exp=mfxdaq23,run=4,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc -d jungfrau
+    """
+    import psana
+    from psana.detector.NDArrUtils import info_ndarr
+
+    #ds = psana.DataSource(exp="mfxdaq23", run=4, dir="/cds/data/drpsrcf/mfx/mfxdaq23/xtc")
+    ds = psana.DataSource(exp='mfxdaq23', run=4, dir='/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc')
+    run = next(ds.runs())
+    evt = next(run.events())
+    det = run.Detector('jungfrau')  # jungfrau  | jungfrauemu | raw       | 0_1_0
+    raw = det.raw.raw(evt).shape #####(8, 512, 1024)
+    print(info_ndarr(raw, 'raw'))
+
+
+
+
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -126,6 +146,7 @@ def selector():
 
     if   TNAME in  ('0',): issue_2025_mm_dd() # template
     elif TNAME in  ('1',): issue_2025_01_29() # archon V2 common mode
+    elif TNAME in  ('2',): issue_2025_01_31() # emulated jungfrau
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
