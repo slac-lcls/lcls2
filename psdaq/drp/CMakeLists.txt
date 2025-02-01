@@ -95,6 +95,7 @@ add_executable(drp
     EpixUHR.cc
     Epix100.cc
     EpixQuad.cc
+    JungfrauEmulator.cc
     TimingDef.cc
     TimingBEB.cc
     TimingSystem.cc
