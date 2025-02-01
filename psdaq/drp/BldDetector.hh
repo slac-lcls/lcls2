@@ -122,7 +122,7 @@ private:
 class Pgp : public PgpReader
 {
 public:
-    Pgp(Parameters& para, DrpBase& drp, Detector* det);
+    Pgp(Parameters& para, DrpBase& drp, Detector* det, bool usePulseId = false);
 
     const Pds::TimingHeader* next();
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
@@ -147,6 +147,7 @@ private:
     enum TmoState { None, Started, Finished };
     TmoState                                   m_tmoState;
     std::chrono::time_point<Pds::fast_monotonic_clock> m_tInitial;
+    bool m_usePulseId;  // New flag to determine whether to use Pulse ID or Timestamp
 };
 
 class BldApp : public CollectionApp {

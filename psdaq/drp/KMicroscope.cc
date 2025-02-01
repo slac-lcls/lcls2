@@ -1,7 +1,9 @@
 #include "KMicroscope.hh"
-#include "PipeCallbackHandler.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/kwargs.hh"
+#include <iostream>
+#include <cstdlib>
+#include <string>
 
 using logging = psalg::SysLog;
 using json = nlohmann::json;
@@ -18,16 +20,6 @@ KMicroscope::~KMicroscope() {
     logging::info("KMicroscope instance destroyed");
 }
 
-void KMicroscope::initialize() {
-    try {
-        PipeCallbackHandler callbackHandler("tdc_gpx3.ini");
-        callbackHandler.startMeasurement(1000); // Start measurement for 1000 ms
-        callbackHandler.waitForEndOfMeasurement();
-    } catch (const std::exception& e) {
-        printf("Error during initialization: %s\n", e.what());
-    }
-}
-
 void KMicroscope::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) {
     logging::debug("KMicroscope::event called");
 
@@ -41,30 +33,105 @@ void KMicroscope::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
     desc.set_data_length(sizeof(dummyData));
 }
 
-CustomBldApp::CustomBldApp(Parameters& para, DrpBase& drp, const std::string& customParam)
-    : BldApp(para, drp, std::make_unique<KMicroscope>(para, drp)),  // ✅ Pass DrpBase correctly
-      m_customParam(customParam)
+CustomBldApp::CustomBldApp(Parameters& para,
+                           DrpBase& drp,
+                           const std::string& customParam,
+                           int measurementTimeMs,
+                           const std::string& iniFilePath,
+                           size_t batchSize)
+    : BldApp(para, drp, std::make_unique<Drp::KMicroscope>(para, drp)),
+      m_customParam(customParam),
+      m_measurementTimeMs(measurementTimeMs)
 {
-    logging::info("CustomBldApp initialized with KMicroscope (customParam: %s)", m_customParam.c_str());
+    logging::info("CustomBldApp initialized with KMicroscope (customParam: %s, measurementTime: %d ms)",
+                  m_customParam.c_str(), m_measurementTimeMs);
 }
 
-CustomBldApp::~CustomBldApp()
-{
+CustomBldApp::~CustomBldApp() {
     logging::info("Shutting down CustomBldApp...");
 }
 
-void CustomBldApp::run()
-{
-    logging::info("Running CustomBldApp with customParam: %s", m_customParam.c_str());
+void CustomBldApp::run() {
+    logging::info("Running CustomBldApp with customParam: %s and measurementTime: %d ms",
+                  m_customParam.c_str(), m_measurementTimeMs);
     BldApp::run();  // Call the base class's run method
 }
 
+KMicroscopeBld::KMicroscopeBld(int measurementTimeMs,
+                               const std::string& iniFilePath,
+                               size_t batchSize)
+    : Bld(0, 0, 0, 0, 0, 0, 0),  // These values are unused
+      m_callbackHandler(measurementTimeMs, iniFilePath, batchSize), 
+      m_measurementTimeMs(measurementTimeMs)
+{
 }
 
-int main(int argc, char* argv[])
+KMicroscopeBld::~KMicroscopeBld() {
+    // Nothing additional to do; m_callbackHandler cleans up automatically.
+}
+
+uint64_t KMicroscopeBld::next() {
+    sc_DldEvent event;
+    // Busy–wait until an event is available.
+    // Optionally, you could call m_callbackHandler.flushPending() here if desired.
+    while (!m_callbackHandler.popEvent(event)) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    }
+    // Return only the time_tag from the event.
+    return event.time_tag;
+}
+
+}
+
+int main(int argc, char* argv[]) {
+    // Default values.
+    std::string iniFile = "tdc_gpx3.ini";
+    int measurementTimeMs = 1000; // For example, 1000 ms.
+    size_t batchSize = 100;        // Default batch size.
+
+    // Simple command line argument parsing.
+    // Usage: runner -i <ini file> -t <measurement time ms> -b <batch size>
+    for (int i = 1; i < argc; i++) {
+        std::string arg(argv[i]);
+        if ((arg == "-i" || arg == "--ini") && i + 1 < argc) {
+            iniFile = argv[++i];
+        } else if ((arg == "-t" || arg == "--time") && i + 1 < argc) {
+            measurementTimeMs = std::atoi(argv[++i]);
+        } else if ((arg == "-b" || arg == "--batch") && i + 1 < argc) {
+            batchSize = static_cast<size_t>(std::atoi(argv[++i]));
+        } else {
+            std::cerr << "Unknown option: " << arg << "\n";
+            std::cerr << "Usage: " << argv[0] << " -i <ini file> -t <measurement time ms> -b <batch size>\n";
+            return EXIT_FAILURE;
+        }
+    }
+
+    std::cout << "Using INI file: " << iniFile << "\n";
+    std::cout << "Measurement time: " << measurementTimeMs << " ms\n";
+    std::cout << "Batch size: " << batchSize << "\n";
+
+    try {
+        // Create the KMicroscopeBld instance using the provided parameters.
+        Drp::KMicroscopeBld microscope(measurementTimeMs, iniFile, batchSize);
+
+        // For demonstration, retrieve 10 pulse IDs.
+        for (int i = 0; i < 10; i++) {
+            uint64_t pulse = microscope.next();
+            std::cout << "Pulse " << i << ": " << pulse << "\n";
+        }
+    } catch (const std::exception& ex) {
+        std::cerr << "Exception: " << ex.what() << "\n";
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/*int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     std::string kwargs_str;
+    int measurementTimeMs = 0;  // Default to 0 if `-t` is not provided
     int c;
     while((c = getopt(argc, argv, "p:o:C:b:d:D:u:P:T::k:M:v")) != EOF) {
         switch(c) {
@@ -103,6 +170,7 @@ int main(int argc, char* argv[])
             case 'v':
                 ++para.verbose;
                 break;
+            case 't': measurementTimeMs = std::stoi(optarg); break;  // Sets value only if `-t` is provided
             default:
                 return 1;
         }
@@ -163,6 +231,7 @@ int main(int argc, char* argv[])
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
     }
+    */
 
     /*
     //  Add pva_addr to the environment
@@ -179,14 +248,16 @@ int main(int argc, char* argv[])
     }
     */
 
-    para.maxTrSize = 256 * 1024;
+    /*para.maxTrSize = 256 * 1024;
     std::string customParam = "KMicroscope Custom Test Parameter";
+    logging::info("Measurement time set to %d ms, Custom Param: %s", measurementTimeMs, customParam.c_str());
+
     Py_Initialize();  // Initialize Python before creating any objects
 
     ZmqContext zmqCtx;
     try {
         Drp::DrpBase drp(para, zmqCtx);  // Create DrpBase first
-        Drp::CustomBldApp app(para, drp, customParam);
+        Drp::CustomBldApp app(para, drp, customParam, measurementTimeMs);
         app.run();
         return 0;
     }
@@ -195,5 +266,8 @@ int main(int argc, char* argv[])
     catch (char const* e)      { logging::critical("%s", e); }
     catch (...)                { logging::critical("Default exception"); }
     return EXIT_FAILURE;
-}
+    
+}*/
+
+
 

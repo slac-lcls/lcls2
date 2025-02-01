@@ -371,42 +371,57 @@ Bld::Bld(unsigned mcaddr,
          unsigned headerSize,
          unsigned payloadSize,
          uint64_t timestampCorr) :
-  m_timestampPos(timestampPos), m_pulseIdPos(pulseIdPos),
-  m_headerSize(headerSize), m_payloadSize(payloadSize),
-  m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
-  m_timestampCorr(timestampCorr), m_pulseId(0), m_pulseIdJump(0)
+    m_timestampPos(timestampPos),
+    m_pulseIdPos(pulseIdPos),
+    m_headerSize(headerSize),
+    m_payloadSize(payloadSize),
+    m_bufferSize(0),
+    m_position(0),
+    m_buffer(Bld::MTU),
+    m_payload(m_buffer.data()),
+    m_timestampCorr(timestampCorr),
+    m_pulseId(0),
+    m_pulseIdJump(0)
 {
-    logging::info("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
+    logging::info("Bld listening for %x.%d with payload size %u", mcaddr, port, payloadSize);
 
-    m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (m_sockfd < 0)
-        HANDLE_ERR("Open socket");
+    // If mcaddr is non-zero, perform the socket setup.
+    if (mcaddr != 0) {
+        m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (m_sockfd < 0)
+            HANDLE_ERR("Open socket");
 
-    //  Yes, we do bump into full buffers.  Bigger or small buffers seem to be worse.
-    { unsigned skbSize = 0x1000000;
-      if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1)
-          HANDLE_ERR("set so_rcvbuf");
+        { 
+            unsigned skbSize = 0x1000000;
+            if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1)
+                HANDLE_ERR("set so_rcvbuf");
+        }
+
+        struct sockaddr_in saddr;
+        saddr.sin_family = AF_INET;
+        saddr.sin_addr.s_addr = htonl(mcaddr);
+        saddr.sin_port = htons(port);
+        memset(saddr.sin_zero, 0, sizeof(saddr.sin_zero));
+        if (bind(m_sockfd, (struct sockaddr*)&saddr, sizeof(saddr)) < 0)
+            HANDLE_ERR("bind");
+
+        int y = 1;
+        if (setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(y)) == -1)
+            HANDLE_ERR("set reuseaddr");
+
+        ip_mreq ipmreq;
+        bzero(&ipmreq, sizeof(ipmreq));
+        ipmreq.imr_multiaddr.s_addr = htonl(mcaddr);
+        ipmreq.imr_interface.s_addr = htonl(interface);
+        if (setsockopt(m_sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
+                       &ipmreq, sizeof(ipmreq)) == -1)
+            HANDLE_ERR("mcast join");
     }
-
-    struct sockaddr_in saddr;
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = htonl(mcaddr);
-    saddr.sin_port = htons(port);
-    memset(saddr.sin_zero, 0, sizeof(saddr.sin_zero));
-    if (bind(m_sockfd, (sockaddr*)&saddr, sizeof(saddr)) < 0)
-        HANDLE_ERR("bind");
-
-    int y = 1;
-    if (setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(y)) == -1)
-        HANDLE_ERR("set reuseaddr");
-
-    ip_mreq ipmreq;
-    bzero(&ipmreq, sizeof(ipmreq));
-    ipmreq.imr_multiaddr.s_addr = htonl(mcaddr);
-    ipmreq.imr_interface.s_addr = htonl(interface);
-    if (setsockopt(m_sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                   &ipmreq, sizeof(ipmreq)) == -1)
-        HANDLE_ERR("mcast join");
+    else {
+        // When mcaddr is 0, skip socket setup.
+        m_sockfd = -1;
+        logging::info("Bld: mcaddr is 0, skipping socket setup.");
+    }
 }
 
 Bld::Bld(const Bld& o) :
@@ -421,7 +436,9 @@ Bld::Bld(const Bld& o) :
 
 Bld::~Bld()
 {
-    close(m_sockfd);
+    // Only close the socket if it was created.
+    if (m_sockfd >= 0)
+        close(m_sockfd);
 }
 
 /*
@@ -555,11 +572,11 @@ BldDetector::BldDetector(Parameters& para, DrpBase& drp)
 void BldDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) {}
 
 
-Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
+Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det, bool usePulseId) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
     m_para(para), m_drp(drp), m_det(det),
     m_config(0), m_terminate(false), m_running(false),
-    m_available(0), m_current(0), m_nDmaRet(0)
+    m_available(0), m_current(0), m_nDmaRet(0), m_usePulseId(usePulseId)
 {
     m_nodeId = det->nodeId;
     if (drp.pool.setMaskBytes(para.laneMask, 0)) {

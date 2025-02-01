@@ -1,48 +1,83 @@
-#pragma once
+#ifndef PIPE_CALLBACK_HANDLER_HH
+#define PIPE_CALLBACK_HANDLER_HH
 
-#include <semaphore.h>
-#include <scTDC.h>
-#include <inttypes.h>
+// Standard includes...
+#include <queue>
+#include <mutex>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <stdexcept>
+#include <vector>
 #include <string>
-#include <memory>
+#include <algorithm>
+#include <scTDC.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Forward declarations in the global namespace.
+void cb_start(void *priv);
+void cb_end(void *priv);
+void cb_millis(void *priv);
+void cb_stat(void *priv, const statistics_t* stat);  
+void cb_tdc_event(void *priv, const sc_TdcEvent* event_array, size_t len);
+void cb_dld_event(void *priv, const sc_DldEvent* const event_array, size_t event_array_len);
+
+#ifdef __cplusplus
+}
+#endif
 
 namespace Drp {
 
-// Struct to hold private data for the callbacks
-struct PrivData {
-    int cn_measures = 0;
-    int cn_tdc_events = 0;
-    int cn_dld_events = 0;
-    double total_time = 0.0;
-};
-
-// Class to encapsulate the pipe callbacks and related operations
 class PipeCallbackHandler {
 public:
-    PipeCallbackHandler(const std::string& configFile);
-    ~PipeCallbackHandler();
+    struct PrivData {
+        int cn_measures;
+        int cn_tdc_events;
+        int cn_dld_events;
+        double total_time;
+        size_t dld_event_size;        // Size (in bytes) of a DLD event.
+        PipeCallbackHandler* handler; // Back–pointer to this handler.
+    };
 
-    void setupCallbacks(struct sc_pipe_callbacks* cbs, PrivData* priv_data);
-    void startMeasurement(int duration_ms);
-    void waitForEndOfMeasurement();
+    // Constructor and other member declarations...
+    PipeCallbackHandler(int measurementTimeMs,
+                        const std::string& iniFilePath,
+                        size_t batchSize = 100);
+    ~PipeCallbackHandler();
+    bool popEvent(sc_DldEvent &event);
+    void accumulateEvents(const std::vector<sc_DldEvent>& events);
+    void flushPending();
 
 private:
-    void init(const std::string& configFile);
-    void deinit();
-    void openPipe();
-    void closePipe();
+    // Member variables...
+    int m_measurementTimeMs;
+    size_t m_batchSize;
+    std::string m_iniFilePath;
+    int m_dd;
+    int m_pd;
+    sc_DeviceProperties3 m_sizes;
+    sc_pipe_callbacks* m_cbs;
+    sc_pipe_callback_params_t m_params;
+    PrivData m_privData;
+    std::queue<sc_DldEvent> m_eventQueue;
+    std::mutex m_queueMutex;
+    std::vector<sc_DldEvent> m_pendingBatch;
+    std::mutex m_batchMutex;
 
-    // Callback functions
-    static void startOfMeasurement(void* p);
-    static void endOfMeasurement(void* p);
-    static void tdcEvent(void* priv, const struct sc_TdcEvent* const event_array, size_t event_array_len);
-    static void dldEvent(void* priv, const struct sc_DldEvent* const event_array, size_t event_array_len);
-
-    // Members
-    sem_t semaphore_;                  // Semaphore for synchronization
-    int deviceDescriptor_;             // Descriptor for the TDC device
-    int pipeDescriptor_;               // Descriptor for the data pipe
-    struct sc_DeviceProperties3 sizes_;// Device properties
+    // Friend declarations: note the global scope qualifier.
+    friend void ::cb_start(void* priv);
+    friend void ::cb_end(void* priv);
+    friend void ::cb_millis(void* priv);
+    friend void ::cb_stat(void* priv, const statistics_t* stat);
+    friend void ::cb_tdc_event(void* priv, const sc_TdcEvent* event_array, size_t len);
+    friend void ::cb_dld_event(void* priv, const sc_DldEvent* const event_array, size_t event_array_len);
 };
 
+// (Other class definitions, e.g. KMicroscopeBld, within namespace Drp.)
+
 } // namespace Drp
+
+#endif  // PIPE_CALLBACK_HANDLER_HH
