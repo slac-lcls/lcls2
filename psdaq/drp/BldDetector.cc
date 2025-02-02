@@ -717,15 +717,19 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     for(unsigned i=0; i<bldPva.size(); i++)
         m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get()));
 
+    // Initialize the BLD values array. We call it "bldValue" since it may represent
+    // either a timestamp or a pulse ID depending on m_usePulseId.
+    uint64_t bldValue[m_config.size()];
+    memset(bldValue, 0, sizeof(bldValue));
     uint64_t nextId = -1UL;
-    uint64_t timestamp[m_config.size()];
-    memset(timestamp,0,sizeof(timestamp));
-
-    for(unsigned i=0; i<m_config.size(); i++) {
-        timestamp[i] = m_config[i]->handler().next();
-        if (timestamp[i] < nextId)
-            nextId = timestamp[i];
-        logging::info("BldApp::worker Initial timestamp[%d] 0x%" PRIx64, i, timestamp[i]);
+    for (unsigned i = 0; i < m_config.size(); i++) {
+        bldValue[i] = m_config[i]->handler().next();
+        if (bldValue[i] < nextId)
+            nextId = bldValue[i];
+        if (!m_usePulseId)
+            logging::info("BldApp::worker Initial timestamp[%d] 0x%" PRIx64, i, bldValue[i]);
+        else
+            logging::info("BldApp::worker Initial pulseId[%d] 0x%" PRIx64, i, bldValue[i]);
     }
 
     bool lMissing = false;
@@ -736,58 +740,94 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 
     m_terminate.store(false, std::memory_order_release);
 
-    const Pds::TimingHeader* timingHeader = 0;
+    const Pds::TimingHeader* timingHeader = nullptr;
     uint32_t index = 0;
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
         }
 
-        //  calculate realtime timeout (50 ms)
-        const unsigned TMO_NS = 50000000;
-        timespec ts;
-        clock_gettime(CLOCK_REALTIME,&ts);
-        uint64_t tts = ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH;
-        if (ts.tv_nsec < TMO_NS) {
-            tts = (tts-1)<<32;
-            tts |= 1000000000+ts.tv_nsec-TMO_NS;
+        uint64_t tts;
+        if (!m_usePulseId) {
+            // Calculate realtime timeout (50 ms) using timestamp (nanosecond) scale.
+            const unsigned TMO_NS = 50000000; // 50,000,000 ns = 50 ms
+            timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            // We assume that the timing header timestamp is represented as a 64-bit value
+            // where the upper 32 bits are (ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) and the lower 32 bits
+            // are the nanoseconds.
+            if (ts.tv_nsec < TMO_NS) {
+                tts = ((ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH - 1ULL) << 32) |
+                      (1000000000ULL + ts.tv_nsec - TMO_NS);
+            } else {
+                tts = ((ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) << 32) |
+                      (ts.tv_nsec - TMO_NS);
+            }
+            logging::debug("tmo time (timestamp mode) %016llx", tts);
+        } else {
+            // Calculate realtime timeout (50 ms) using pulse ID.
+            // Given a pulse rate of 1,000,000 pulses/s, 50 ms corresponds to 50,000 pulses.
+            const unsigned TMO_PULSES = 50000; // 50 ms worth of pulses
+            timespec ts;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            // Convert the current time to a pulse id value.
+            // We use the same reference epoch as before (POSIX_TIME_AT_EPICS_EPOCH)
+            // and assume 1,000,000 pulses per second.
+            uint64_t currentPulseId = (ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) * 1000000ULL +
+                                      (ts.tv_nsec / 1000ULL);
+            // The timeout threshold is then the current pulse id minus the number of pulses in 50 ms.
+            tts = currentPulseId - TMO_PULSES;
+            logging::debug("tmo time (pulse id mode) threshold %016llx", tts);
         }
-        else {
-            tts <<= 32;
-            tts |= ts.tv_nsec-TMO_NS;
-        }
-        logging::debug("tmo time %016llx", tts);
 
         //  get oldest timing header
         if (!timingHeader)
             timingHeader = next();
 
-        uint64_t ttv = timingHeader ? timingHeader->time.value() : 0;
-
-        //  get oldest BLD and throw away anything older than timingheader or timeout value
-        nextId = -1UL;
-        for(unsigned i=0; i<m_config.size(); i++) {
-            uint64_t tto = tts;
-            if (timingHeader)
-                tto = ttv;
-            if (timestamp[i]<tto) {
-                m_config[i]->handler().clear(tto);
-                uint64_t tt = m_config[i]->handler().next();
-                logging::debug("Bld[%u] replacing %016llx with %016llx",
-                               i, timestamp[i],tt);
-                timestamp[i] = tt;
+        // For matching, extract the reference value from the timing header.
+        if (timingHeader) {
+            if (!m_usePulseId) {
+                // Use timestamp matching.
+                uint64_t ttv = timingHeader->time.value();
+                // For each BLD, if its current value is less than the timing header's timestamp,
+                // clear and get a new value.
+                for (unsigned i = 0; i < m_config.size(); i++) {
+                    uint64_t tto = ttv; // We use the timing header's timestamp
+                    if (bldValue[i] < tto) {
+                        m_config[i]->handler().clear(tto);
+                        uint64_t newVal = m_config[i]->handler().next();
+                        logging::debug("Bld[%u] replacing timestamp %016llx with %016llx", i, bldValue[i], newVal);
+                        bldValue[i] = newVal;
+                    }
+                    if (bldValue[i] < nextId)
+                        nextId = bldValue[i];
+                }
             }
-            if (timestamp[i]<nextId)
-                nextId = timestamp[i];
+            else {
+                // Use pulse ID matching.
+                uint64_t timingPulseId = timingHeader->pulseId();
+                for (unsigned i = 0; i < m_config.size(); i++) {
+                    if (bldValue[i] < timingPulseId) {
+                        m_config[i]->handler().clear(timingPulseId);
+                        uint64_t newVal = m_config[i]->handler().next();
+                        logging::debug("Bld[%u] replacing pulseId %016llx with %016llx", i, bldValue[i], newVal);
+                        bldValue[i] = newVal;
+                    }
+                    if (bldValue[i] < nextId)
+                        nextId = bldValue[i];
+                }
+            }
         }
-        logging::debug("Bld next %016llx", nextId);
+
+        // Logging for debugging.
+        logging::debug("Pgp next common value: 0x%016llx", nextId);
 
         if (timingHeader) {
             if (timingHeader->service()!=XtcData::TransitionId::L1Accept) {     //  Handle immediately
                 Pds::EbDgram* dgram = _handle(index);
                 if (!dgram) {
                     m_current++;
-                    timingHeader = 0;
+                    timingHeader = nullptr;
                     continue;
                 }
 
@@ -820,31 +860,45 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 }
 
                 m_current++;
-                timingHeader = 0;
+                timingHeader = nullptr;
                 _sendToTeb(*dgram, index);
                 nevents++;
             }
-            else if (ttv < tts) {  // Handle if old enough
+            else if ((!m_usePulseId && timingHeader->time.value() < tts)
+                     || (m_usePulseId && timingHeader->pulseId() < tts)) {
+                // In the "old" case, use the following block:
                 Pds::EbDgram* dgram = _handle(index);
                 if (!dgram) {
                     m_current++;
-                    timingHeader = 0;
+                    timingHeader = nullptr;
                     continue;
                 }
                 const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
                 bool lMissed = false;
-                for(unsigned i=0; i<m_config.size(); i++) {
-                    // MONA: k-micro uses PulseId
-                    if (timestamp[i] == ttv) {
-                        // Revisit: This is intended to be done by BldDetector::event()
-                        XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                        m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                for (unsigned i = 0; i < m_config.size(); i++) {
+                    if (!m_usePulseId) {
+                        // Timestamp matching.
+                        if (bldValue[i] == timingHeader->time.value()) {
+                            XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                            m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                        }
+                        else {
+                            lMissed = true;
+                            if (!lMissing)
+                                logging::debug("Missed bld[%u]: pgp %016llx  bld %016llx", i, nextId, bldValue[i]);
+                        }
                     }
                     else {
-                        lMissed = true;
-                        if (!lMissing)
-                            logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
-                                           i, nextId, timestamp[i], dgram->pulseId());
+                        // Pulse ID matching.
+                        if (bldValue[i] == dgram->pulseId()) {
+                            XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                            m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                        }
+                        else {
+                            lMissed = true;
+                            if (!lMissing)
+                                logging::debug("Missed bld[%u]: pgp %016llx  bld pulseId %016llx", i, nextId, dgram->pulseId());
+                        }
                     }
                 }
                 if (lMissed) {
@@ -859,7 +913,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 }
 
                 m_current++;
-                timingHeader = 0;
+                timingHeader = nullptr;
                 _sendToTeb(*dgram, index);
                 nevents++;
             }

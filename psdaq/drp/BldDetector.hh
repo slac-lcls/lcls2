@@ -118,7 +118,6 @@ private:
     std::vector<unsigned>          _arraySizes;
 };
 
-
 class Pgp : public PgpReader
 {
 public:
@@ -147,7 +146,7 @@ private:
     enum TmoState { None, Started, Finished };
     TmoState                                   m_tmoState;
     std::chrono::time_point<Pds::fast_monotonic_clock> m_tInitial;
-    bool m_usePulseId;  // New flag to determine whether to use Pulse ID or Timestamp
+    bool                                       m_usePulseId;  // Use pulse ID for matching if true
 };
 
 class BldApp : public CollectionApp {
