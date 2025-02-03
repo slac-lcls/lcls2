@@ -34,6 +34,7 @@ JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
             if (!para->serNo.empty())
                 para->serNo += std::string("-");
             para->serNo += std::string(serNo) + trailingId;
+            m_panelSerNos.push_back(std::string(serNo) + trailingId);
             m_nPanels++;
         }
     }
@@ -49,10 +50,10 @@ JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
         unsigned lenImgArray = imgArrayFile.tellg();
         imgArrayFile.seekg(0, imgArrayFile.beg);
         std::cout << "Loading " << lenImgArray << " bytes as sub data." << std::endl;
-        unsigned vecIdx = 0; // vector index (uint16_t)
+        unsigned panelIdx = 0;
         unsigned panelOffset = 0; // Bytes
         for (size_t i = 0; i < PGP_MAX_LANES - 1; ++i) {
-            if (para->laneMask & (i << i)) {
+            if (para->laneMask & (i << 1)) {
                 // Calculate a panel offset in bytes. Multiply by 2 bytes per element
                 //unsigned panelOffset = para->detSegment*(PGP_MAX_LANES-1)+i;
                 //panelOffset *= 2*m_nElems;
@@ -62,11 +63,11 @@ JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
                     // Could do something fancier, but...
                     panelOffset = 0;
                 }
-                imgArrayFile.seekg(panelOffset, imgArrayFile.beg);
+                imgArrayFile.seekg(panelOffset);
                 m_substituteRawData.resize(m_substituteRawData.size()+m_nElems);
-                imgArrayFile.read(reinterpret_cast<char*>(m_substituteRawData.data() + vecIdx*m_nElems),
+                imgArrayFile.read(reinterpret_cast<char*>(m_substituteRawData.data() + panelIdx*m_nElems),
                                   m_nElems*2);
-                vecIdx++;
+                panelIdx++;
             }
         }
         imgArrayFile.close();
@@ -81,19 +82,23 @@ unsigned JungfrauEmulator::configure(const std::string& config_alias, XtcData::X
         return 1;
 
     XtcData::Alg rawAlg("raw", 0, 1, 0);
-    XtcData::NamesId rawNamesId(nodeId,m_rawNamesIndex);
-    XtcData::Names& rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                m_para->detName.c_str(),
-                                                                rawAlg,
-                                                                m_para->detType.c_str(),
-                                                                m_para->serNo.c_str(),
-                                                                rawNamesId,
-                                                                m_para->detSegment);
-    XtcData::VarDef vDef;
-    vDef.NameVec.push_back(XtcData::Name("raw", XtcData::Name::UINT16, 3));
-    rawNames.add(xtc, bufEnd, vDef);
-    m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
-
+    for (size_t i=0; i<m_nPanels; ++i) {
+        unsigned daqSegment = m_para->detSegment;
+        unsigned detSegment = daqSegment*(PGP_MAX_LANES-1) + i;
+        XtcData::NamesId rawNamesId(nodeId, m_rawNamesIndex+i);
+        std::string serNo = m_panelSerNos[i];
+        XtcData::Names& rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                    m_para->detName.c_str(),
+                                                                    rawAlg,
+                                                                    m_para->detType.c_str(),
+                                                                    serNo.c_str(),
+                                                                    rawNamesId,
+                                                                    detSegment);
+        XtcData::VarDef vDef;
+        vDef.NameVec.push_back(XtcData::Name("raw", XtcData::Name::UINT16, 3));
+        rawNames.add(xtc, bufEnd, vDef);
+        m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
+    }
     return 0;
 }
 
@@ -105,32 +110,31 @@ unsigned JungfrauEmulator::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const
 
 void JungfrauEmulator::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
-    XtcData::NamesId rawNamesId(nodeId, m_rawNamesIndex);
-    XtcData::CreateData cd(dgram.xtc, bufEnd, m_namesLookup, rawNamesId);
-
-    unsigned rawShape[XtcData::MaxRank] = {m_nPanels, m_nRows, m_nCols};
-    XtcData::Array<uint16_t> rawArray = cd.allocate<uint16_t>(m_rawNamesIndex, rawShape);
-    unsigned size = 0;
-
     // Jungfrau panel size: 512x1024 pixels
     // 1 fiber/panel with up to 7 panels coming in on one node (1 per lane)
-    unsigned vecIdx = 0;
+    unsigned panelIdx = 0;
+    unsigned rawShape[XtcData::MaxRank] = { 1, m_nRows, m_nCols };
     for (int i=0; i<PGP_MAX_LANES - 1; ++i) {
         if (event->mask & (1 << i)) {
+            XtcData::NamesId rawNamesId(nodeId, m_rawNamesIndex+panelIdx);
+            XtcData::DescribedData desc(dgram.xtc, bufEnd, m_namesLookup, rawNamesId);
+
             int dataSize;
+            uint8_t* rawData;
             if (m_substituteRawData.empty()) {
                 dataSize = event->buffers[i].size - 32;
                 uint32_t dmaIndex = event->buffers[i].index;
-                uint8_t* rawData = ((uint8_t*)m_pool->dmaBuffers[dmaIndex]) + 32;
-
-                memcpy((uint8_t*)rawArray.data() + size, (uint8_t*)rawData, dataSize);
+                rawData = ((uint8_t*)m_pool->dmaBuffers[dmaIndex]) + 32;
             } else {
-                dataSize = m_nElems*2;
-                uint8_t* rawData = reinterpret_cast<uint8_t*>(m_substituteRawData.data() + vecIdx*m_nElems);
-                memcpy((uint8_t*)rawArray.data() + size, rawData, dataSize);
-                vecIdx++;
+                dataSize = m_nElems*2; // Should be equivalent to above if properly set up
+                rawData = reinterpret_cast<uint8_t*>(m_substituteRawData.data() + panelIdx*m_nElems);
             }
-            size += dataSize;
+            memcpy((uint8_t*)desc.data(), rawData, dataSize);
+            desc.set_data_length(dataSize);
+            // Create a new desc for each segment, so always set array shape
+            // for index 0!
+            desc.set_array_shape(0, rawShape);
+            panelIdx++;
       }
     }
 }
