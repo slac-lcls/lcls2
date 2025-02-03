@@ -100,8 +100,8 @@ def issue_2025_01_31():
     run = next(ds.runs())
     evt = next(run.events())
     det = run.Detector('jungfrau')  # jungfrau  | jungfrauemu | raw       | 0_1_0
-    raw = det.raw.raw(evt).shape #####(8, 512, 1024)
-    print(info_ndarr(raw, 'raw'))
+    raw = det.raw.raw(evt) #####(8, 512, 1024)
+    print(info_ndarr(raw, 'raw', last=10))
 
 
 
