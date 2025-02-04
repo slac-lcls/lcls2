@@ -31,6 +31,7 @@ private:
     unsigned m_nPanels = 0; // Number of detector panels, also number of lanes since 1 panel/lane
     std::vector<uint16_t> m_substituteRawData; // To load data from LCLS1
     std::vector<std::string> m_panelSerNos;
+    std::vector<unsigned> m_segNos; // Must match number of serial numbers if provided!
 };
 
 }
