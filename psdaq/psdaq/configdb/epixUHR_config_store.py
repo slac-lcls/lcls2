@@ -1,4 +1,4 @@
-'''python epixUHR_config_store.py --user tstopr --inst tst --alias BEAM --name epixuhr --segm 0 --id epixuhr_serial1234 --prod'''
+'''python epixUHR_config_store.py --user tstopr --inst tst --alias BEAM --name epixuhr --segm 0 --id epixuhr_serial1234 --prod --update'''
 
 
 from psdaq.configdb.typed_json import cdict
@@ -143,19 +143,26 @@ def epixUHR_cdict():
     top.set(base+"SetGainValue",							            48              ,'UINT8'   )
     top.set(base+'PixelBitMapSel',                                      5               , 'pixelMapEnum')
 
-    top.set("user.run_trigger_group",                                   6               ,'UINT32'  )
+    #top.set("user.run_trigger_group",                                   6               ,'UINT32'  )
     top.set("user.asic_enable", (1<<numAsics)-1, 'UINT32')
     
     
     # timing system
     # run trigger
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold',16,'UINT32')
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].TriggerDelay'  ,42,'UINT32')
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition'     ,0,'UINT32')
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold'              ,16,'UINT32'    )
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].TriggerDelay'                ,42,'UINT32'    )
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].TriggerSource'               ,1,'UINT32'     )
+    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2ChannelReg[0].RateType'     ,2,'UINT32'     )
+    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2ChannelReg[0].RateSel'      ,256,'UINT32'   )
+    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2ChannelReg[0].EnableReg'    ,1,'UINT32'     )
+    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2ChannelReg[0].DestType'     ,2,'UINT32'     )
+    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].EnableTrig'   ,1,'UINT32'     )
+    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].DelayDelta'   ,1185,'UINT32' )
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition'                   ,7,'UINT32'     )
     # daq trigger
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].PauseThreshold',16,'UINT32')
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay'  ,42,'UINT32')
-    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition'     ,0,'UINT32')
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].PauseThreshold'              ,16,'UINT32'    )
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay'                ,42,'UINT32'    )
+    top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition'                   ,0,'UINT32'     )
     
     
     return top
@@ -174,15 +181,16 @@ if __name__ == "__main__":
     top = epixUHR_cdict()
     top.setInfo('epixuhrhw', args.name, args.segm, args.id, 'No comment')
 
+
    # no  need for update, value are loaded at creation 
-   # if args.update:
-   #     cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
-   #     top = update_config(cfg, top.typed_json(), args.verbose)
+    if args.update:
+        cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+        top = update_config(cfg, top.typed_json(), args.verbose)
 
     if not args.dryrun:
         if create:
             mycdb.add_alias(args.alias)
             mycdb.add_device_config('epixuhrhw')
-        mycdb.modify_device(args.alias, top.typed_json())
+        mycdb.modify_device(args.alias, top)
 
     
