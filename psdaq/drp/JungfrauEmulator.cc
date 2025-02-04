@@ -11,9 +11,39 @@
 #include <string>
 #include <unistd.h>
 #include <fstream>
+#include <iostream>
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+
+/**
+ * \brief Split a delimited string of detector segment numbers into a vector.
+ * Segment numbers may be passed as an optional keyword argument of the form
+ * `segNums=0_1_2_3` where the 0,1,2,3 are the detector segment numbers corresponding
+ * to the panels coming in on lanes in incrementing order.
+ * \param inStr Delimited string of segment numbers, e.g. `0_1_2_3`
+ * \param delimiter Segment number delimiter. Currently "_".
+ * \returns segNums A vector of unsigned that contains the parsed segment numbers.
+ */
+static std::vector<unsigned> split_segNums(const std::string& inStr,
+                                           const std::string& delimiter=std::string("_"))
+{
+    std::vector<unsigned> segNums;
+    size_t nextPos = 0;
+    size_t lastPos = 0;
+    std::string subStr;
+    std::cout << "Will use the following segment numbers: ";
+    while ((nextPos = inStr.find(delimiter, lastPos)) != std::string::npos) {
+        subStr = inStr.substr(lastPos, nextPos-lastPos);
+        segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
+        lastPos = nextPos + 1;
+        std::cout << subStr << ", ";
+    }
+    subStr = inStr.substr(lastPos);
+    segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
+    std::cout << subStr << "." << std::endl;
+    return segNums;
+}
 
 namespace Drp {
 
@@ -37,6 +67,17 @@ JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
             m_panelSerNos.push_back(std::string(serNo) + trailingId);
             m_nPanels++;
         }
+    }
+
+    if (para->kwargs.find("segNums") != para->kwargs.end()) {
+        std::vector<unsigned> segNums = split_segNums(para->kwargs["segNums"]);
+        if (segNums.size() != m_nPanels) {
+            logging::critical("Number of detector segments doesn't match number of panels: %d panels, %d segments",
+                              m_nPanels,
+                              segNums.size());
+            abort();
+        }
+        m_segNos = segNums;
     }
 
     if (para->kwargs.find("imgArray") != para->kwargs.end()) {
@@ -83,8 +124,14 @@ unsigned JungfrauEmulator::configure(const std::string& config_alias, XtcData::X
 
     XtcData::Alg rawAlg("raw", 0, 1, 0);
     for (size_t i=0; i<m_nPanels; ++i) {
-        unsigned daqSegment = m_para->detSegment;
-        unsigned detSegment = daqSegment*(PGP_MAX_LANES-1) + i;
+        unsigned detSegment;
+        if (m_segNos.empty()) {
+            unsigned daqSegment = m_para->detSegment;
+            detSegment = daqSegment*(PGP_MAX_LANES-1) + i;
+        } else {
+            detSegment = m_segNos[i];
+        }
+        std::cout << "Configuring detector segment: " << detSegment << std::endl;
         XtcData::NamesId rawNamesId(nodeId, m_rawNamesIndex+i);
         std::string serNo = m_panelSerNos[i];
         XtcData::Names& rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
