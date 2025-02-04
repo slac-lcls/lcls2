@@ -158,6 +158,7 @@ def epixUHR_cdict():
     top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2ChannelReg[0].DestType'     ,2,'UINT32'     )
     top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].EnableTrig'   ,1,'UINT32'     )
     top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].DelayDelta'   ,1185,'UINT32' )
+    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].Delay'        ,1850,'UINT32' )
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition'                   ,7,'UINT32'     )
     # daq trigger
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].PauseThreshold'              ,16,'UINT32'    )
