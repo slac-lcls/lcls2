@@ -78,7 +78,32 @@ class DataBlock():
         return np.max(self.block, axis=0),\
                np.min(self.block, axis=0)
 
-def plot_block(block, figpref=None):
+
+class DataBlockProc(DataBlock):
+    """extendiing DataBlock with specific accumulation and processing methods"""
+
+    def __init__(self, **kwa):
+        DataBlock.__init__(self, **kwa)
+        self.gmode   = kwa.get('gmode', 'N/A')
+        self.plotim  = kwa.get('plotim', 0)
+        self.figpref = kwa.get('figpref', 'figs/fig')
+
+    def init_accumulation(self, istep):
+        print('-- step %02d: init for gmode %s' % (istep, self.gmode))
+
+    def summary(self, istep, gmode, cmt=''):
+        print('-- %s step %02d: summary for gmode %s' % (cmt, istep, self.gmode))
+        assert gmode==self.gmode, 'gain mode in summary %s difers rom init/collect %s' % (gmode, self.gmode)
+        if self.plotim & 2: plot_block(self.block, figpref=self.figpref, gmode=self.gmode)
+        if self.plotim & 4: graph_block(self.block, figpref=self.figpref, gmode=self.gmode)
+        self._evaluate_constants()
+
+    def _evaluate_constants(self):
+        print('-- TBD evaluate_constants for gmode %s' % self.gmode)
+        print(info_ndarr(self.block, 'data block'))
+
+
+def plot_block(block, figpref=None, gmode='N/A'):
         flimg1 = None
         #logger.info(info_ndarr(self.evnums, 'evnums', last=128))
         logger.info(info_ndarr(block, 'data block'))
@@ -88,51 +113,43 @@ def plot_block(block, figpref=None):
           #for irec in range(nrecs):
             irec = int(nrecs/4)
             nda = block[irec,asic,:,:]
-            logger.info(info_ndarr(nda, 'data block rec: %03d for asic: %d' % (irec, asic)))
+            title = '%s rec: %03d asic: %d' % (gmode, irec, asic)
+            logger.info(info_ndarr(nda, title))
             img = nda
             if flimg1 is None:
                flimg1 = ug.fleximage(img, arr=nda, h_in=8, w_in=16, amin=0, amax=40000)
-            gr.set_win_title(flimg1.fig, titwin='asic %d  irec %03d' % (asic, irec))
+            gr.set_win_title(flimg1.fig, titwin=title)
+            gr.add_title_labels_to_axes(flimg1.axim, title=title, xlabel='columns', ylabel='rows', fslab=14, fstit=20, color='k')
             flimg1.update(img, arr=nda)
             gr.show(mode='DO NOT HOLD')
             #if irec == int(nrecs/4):
-            fnm = '%s-img-asic%d-rec%03d.png' % (figpref, asic, irec)
+            fnm = '%s-img-asic%d-rec%03d-%s.png' % (figpref, asic, irec, gmode)
             gr.save_fig(flimg1.fig, fname=fnm, verb=True)
         gr.show()
 
 
-def graph_block(block, figpref=None):
+def graph_block(block, figpref=None, gmode='N/A', nbands=6):
         flimg1 = None
         logger.info(info_ndarr(block, 'data block'))
         nrecs, nasics, rows, cols = shape0 = block.shape
-        nbanks = 8
-        block.shape = (nrecs, nasics, rows, nbanks, int(cols/nbanks))
+        block.shape = (nrecs, nasics, rows, nbands, int(cols/nbands))
         x = np.arange(0, nrecs, dtype=np.int16)
         logger.info(info_ndarr(x, 'x:'))
         for asic in range(nasics):
           fig = None
-          for bank in range(nbanks):
-            y = np.median(block[:,asic,bank,:,:], axis=(-2,-1))
-            logger.info(info_ndarr(y, 'median for asic: %d bank: %d' % (asic,bank)))
+          for band in range(nbands):
+            y = np.median(block[:,asic,band,:,:], axis=(-2,-1))
+            logger.info(info_ndarr(y, '%s median for asic: %d band: %d' % (gmode, asic,band)))
             if fig is None:
               fig, ax = gr.plotGraph(x,y, figsize=(10,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', lw=2)
-              title = 'asic %d' % (asic)
+              title = '%s asic:%d' % (gmode, asic)
               gr.set_win_title(fig, titwin=title)
               gr.add_title_labels_to_axes(ax, title=title, xlabel='record', ylabel='median intensity', fslab=14, fstit=20, color='k')
             else:
               ax.plot(x, y, linewidth=2)
           gr.show()
-          gr.save_fig(fig, fname='%s-graph-asic%d.png' % (figpref, asic), verb=True)
+          gr.save_fig(fig, fname='%s-graph-asic%d-%s.png' % (figpref, asic, gmode), verb=True)
         block.shape = shape0
-
-
-def init_accumulation_gmode(istep, gmode):
-    print('-- step %02d: init for gmode %s' % (istep, gmode))
-
-def summary_gmode(istep, gmode, cmt=''):
-    print('--%s step %02d: summary for gmode %s' % (cmt, istep, gmode))
-
-
 
 
 
@@ -191,9 +208,12 @@ def charge_injection(parser):
     #dskwargs.setdefault('detectors', [detname,'step_docstring'])
     logger.info('dskwargs:%s\n' % uec.info_dict(dskwargs))
 
+    if plotim:
+      figdir = figpref.rsplit('/')[0]
+      assert os.path.exists(figdir), 'directory for figures %s does not exist' % figdir
+
     expname = dskwargs.get('exp', None)
     runnum  = dskwargs.get('run', None)
-    #sys.exit('TEST EXIT')
 
     try: ds = uec.DataSource(**dskwargs)
     except Exception as err:
@@ -205,9 +225,6 @@ def charge_injection(parser):
 
 #    xtc_files = getattr(ds, 'xtc_files', None)
 #    logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(xtc_files)))
-
-#    sys.exit('TEST EXIT')
-
 
 #    cpdic = get_config_info_for_dataset_detname(**kwa)
 
@@ -317,24 +334,28 @@ def charge_injection(parser):
         gmode = metadic['gain_mode']
         if gmode != gmode_cur:
             if gmode_cur is not None:
-                summary_gmode(istep, gmode_cur, cmt='XXX')
-            init_accumulation_gmode(istep, gmode)
+                dbo.summary(istep, gmode_cur, cmt='Loop')
             del(dbo)
             dbo = None
             gmode_cur = gmode
 
-        ss = ''
-
         if dbo is None:
-           kwa['rms_hi'] = odet.raw._data_bit_mask - 10
-           kwa['int_hi'] = odet.raw._data_bit_mask - 10
-           kwa['nrecs'] = metadic['events']
-           dbo = DataBlock(**kwa)
-           dbo.runnum = runnum
-           dbo.exp = expname
-           dbo.ts_run, dbo.ts_now = ts_run, ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FORMAT)
+            kwa['rms_hi'] = odet.raw._data_bit_mask - 10
+            kwa['int_hi'] = odet.raw._data_bit_mask - 10
+            kwa['nrecs']  = metadic['events']
+            kwa['gmode']  = gmode
+            kwa['plotim'] = plotim
+            kwa['figpref'] = figpref
+
+            dbo = DataBlockProc(**kwa)
+            dbo.runnum = runnum
+            dbo.exp = expname
+            dbo.ts_run, dbo.ts_now = ts_run, ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FORMAT)
+            dbo.init_accumulation(istep)
 
         dbo.set_asic_slice(aslice)
+
+        ss = ''
 
         nevsel = 0
         nevnone = 0
@@ -356,13 +377,12 @@ def charge_injection(parser):
 
           if raw is None:
               nevnone += 1
-              print('-- ievt:%04d raw is None' % ievt, end='\r')
+              #print('-- ievt:%04d raw is None' % ievt, end='\r')
               continue
 
           nevsel += 1
 
-          #if plotim & 1 and (nevsel%10==0):
-          if plotim & 1 and istep in (0,7,8,15,16,23,24,31) and dbo.irec==int(dbo.nrecs/4):
+          if plotim & 1 and dbo.irec==int(dbo.nrecs/4):
 
              #nda = odet.raw.calib(evt)
              nda = odet.raw.raw(evt)
@@ -370,12 +390,12 @@ def charge_injection(parser):
              if flimg is None:
                 flimg = ug.fleximage(img, arr=nda, h_in=8, w_in=16, amin=0, amax=50000)
              #title = 'istep %02d ievt+1 %04d nevtot %04d' % (istep, ievt+1, nevtot)
-             title = 'istep %02d irec %03d' % (istep, dbo.irec)
+             title = 'istep %02d irec %03d gmode %s' % (istep, dbo.irec, gmode)
              gr.set_win_title(flimg.fig, titwin=title)
              flimg.update(img, arr=nda)
              gr.add_title_labels_to_axes(flimg.axim, title=title, xlabel='columns', ylabel='rows', fslab=14, fstit=20, color='k')
              gr.show(mode='DO NOT HOLD')
-             flimg.save(fname='%s-img-istep%02d-rec%03d.png' % (figpref, istep, dbo.irec))
+             flimg.save(fname='%s-img-istep%02d-rec%03d-%s.png' % (figpref, istep, dbo.irec, gmode))
 
           tsec = time()
           dt   = tsec - tdt
@@ -418,17 +438,11 @@ def charge_injection(parser):
           logger.info('terminate_steps')
           break # break step loop
 
-      if plotim & 2: plot_block(dbo.block, figpref=figpref)
-      if plotim & 4: graph_block(dbo.block, figpref=figpref)
-      summary_gmode(istep, gmode_cur, cmt='YYY') # for the last step
+      dbo.summary(istep, gmode_cur, cmt='Last') # for the last step
 
       if break_runs:
         logger.info('terminate_runs')
         break # break run loop
-
-
-    #sys.exit('TEST EXIT')
-
 
 
     kwa_summary = {\
