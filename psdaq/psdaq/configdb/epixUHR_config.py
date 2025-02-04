@@ -414,7 +414,9 @@ def user_to_expert(base, cfg, full=False):
 #
 def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     global asics  # Need to maintain this across configuration updates
-       
+    global gainMapSelection
+    global gainValSelection
+     
     path = '/tmp/ePixUHR_GTReadout_default_'
     pathPll = '/tmp/'
 
@@ -494,9 +496,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     for i in range(cbase.numOfAsics):
         if i+1 in asics: 
             base['bypass'][i] = 0
-        getattr(cbase.App.gain,f'gainCSVAsic{i}').set(0)
-        getattr(cbase.App.gain,f'gainAsic{i}').set(0)
-
+        
         getattr(cbase.App, f'BatcherEventBuilder{i+1}').Bypass.set(base['bypass'][i])
         #getattr(cbase.App, f'Asic{i+1}').enable.set(base['bypass'][i]==0)
         #getattr(cbase.App, f'BatcherEventBuilder{i}', base['bypass']).set(True)
@@ -620,7 +620,10 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(True)
         csvCfg = 0
         gainValue = 0
-        
+    
+        gainMapSelection=np.zeros((4, 168, 192))
+        gainValSelection=np.zeros(4)
+  
         if ( cfg['user']['Gain']['SetSameGain4All']):
             print("Set same Gain for all ASIC")
             if ( cfg['user']['Gain']['UsePixelMap']):
@@ -636,13 +639,12 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 
 #                np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')    
                 #tmpfiles.append(fn)
-                
 
                 for i in asics: 
                     print(f"ASIC{i}")
                     gainMapSelection[i-1,:,:]=csvCfg
                     #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)    
-                    setattr(cbase, f'gainCSVAsic{i}', csvCfg)
+                    
                     getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
                     print(f"{PixMapSelected} CSV File Loaded")
                 
@@ -654,8 +656,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 
                 for i in asics: 
                     print(f"ASIC{i}")
-                    gainValSelection[i-1]=cfg['user']['Gain']['SetGainValue']
-                    getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['user']['Gain']['SetGainValue']))
+                    gainValSelection[i-1]=gainValue
+                    getattr(cbase.App,f"Asic{i}").SetAllMatrix(gainValue)
         else:
             print("Set single Gain per ASIC")
             if ( cfg['user']['Gain']['UsePixelMap']):
@@ -671,14 +673,14 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     #np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
                     #tmpfiles.append(fn)
                     gainMapSelection[i-1,:,:]=csvCfg
-                    setattr(cbase, f'filenameCSVAsic{i}', PixMapSelected)
+                    
                     getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
             else:
                 #a value per each
                 print("Use a value per ASIC")
                 for i in asics: 
                     gainValue=str(cfg['expert']['App'][f'Asic{i}']['SetGainValue'])
-                    setattr(cbase, f'gainAsic{i}', gainValue)
+                    
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=cfg['expert']['App'][f'Asic{i}']['SetGainValue']
                     getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetGainValue']))
@@ -819,8 +821,9 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     top = cdict()
     top.setAlg('config', [1,0,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
-    top.set(f'gainCSVAsic' , gainMapSelection.toList(), 'UINT8')  # only the rows which have readable pixels
-    top.set(f'gainAsic'    , gainValSelection.toList(), 'UINT8')        
+    
+    top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
+    top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')        
     
     #top.set('CompTH_ePixM',        compTH,        'UINT8')
     #top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
@@ -890,8 +893,8 @@ def epixUHR_scan_keys(update):
             top = cdict()
             top.setAlg('config', [1,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-            top.set(f'gainCSVAsic' , gainMapSelection.toList(), 'UINT8')  # only the rows which have readable pixels
-            top.set(f'gainAsic'    , gainValSelection.toList(), 'UINT8')
+            top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
+            top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
    
    #         top.set('CompTH_ePixM',        compTH,        'UINT8')
    #         top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
@@ -973,8 +976,8 @@ def epixUHR_update(update):
             top.setAlg('config', [1,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
-            top.set(f'gainCSVAsic' , gainMapSelection.toList(), 'UINT8')  # only the rows which have readable pixels
-            top.set(f'gainAsic'    , gainValSelection.toList(), 'UINT8')
+            top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
+            top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
 
 #            if compTH        is not None:  top.set('CompTH_ePixM',        compTH,        'UINT8')
 #            if precharge_DAC is not None:  top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
