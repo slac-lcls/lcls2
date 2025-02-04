@@ -30,7 +30,7 @@ pv = None
 #lane = 0  # An element consumes all 4 lanes
 chan = None
 group = None
-ocfg = None
+origcfg = None
 
 segids = None
 seglist = [0,1]
@@ -233,6 +233,12 @@ def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M
     global base
     global pv
     global config_completed
+    global gainMapSelection
+    global gainValSelection
+    
+    gainMapSelection=np.zeros((4, 168, 192))
+    gainValSelection=np.zeros(4)
+    
 #    logging.getLogger().setLevel(40-10*verbosity) # way too much from rogue
     logging.getLogger().setLevel(30)
     logging.info('epixUHR_init')
@@ -354,11 +360,11 @@ def epixUHR_connectionInfo(base, alloc_json_str):
 
 #
 #  Translate the 'user' components of the cfg dictionary into 'expert' settings
-#  The cfg dictionary may be partial (scanning), so the ocfg dictionary is
+#  The cfg dictionary may be partial (scanning), so the origcfg dictionary is
 #  reference for the full set.
 #
 def user_to_expert(base, cfg, full=False):
-    global ocfg
+    global origcfg
     global group
     global lane
 
@@ -367,29 +373,41 @@ def user_to_expert(base, cfg, full=False):
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
-        rtp = ocfg['user']['run_trigger_group'] # run trigger partition
-        for i,p in enumerate([rtp,group]):
-            partitionDelay = getattr(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
-            rawStart       = cfg['user']['start_ns']
-            triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
-            logging.warning(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
-            if triggerDelay < 0:
-                logging.error(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
-                logging.error('Raise start_ns >= {:}'.format(partitionDelay*base['msg_period']*base['clk_period']))
-                raise ValueError('triggerDelay computes to < 0')
+        #rtp = origcfg['user']['run_trigger_group'] # run trigger partition
+        
+        #for i,p in enumerate([rtp,group]):
+        partitionDelay = getattr(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+        rawStart       = cfg['user']['start_ns']
 
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[{i}].TriggerDelay']=triggerDelay
+        triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
+        logging.warning(f'partitionDelay[{group}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
+        if triggerDelay < 0:
+            logging.error(f'partitionDelay[{group}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
+            logging.error('Raise start_ns >= {:}'.format(partitionDelay*base['msg_period']*base['clk_period']))
+            raise ValueError('triggerDelay computes to < 0')
+
+  
+        d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay']=triggerDelay
+        triggerDelay=int(rawStart/base["clk_period"])-cfg['expert']['App']['TimingRx']['TriggerEventManager']['EvrV2CoreTriggers']['EvrV2TriggerReg[0]']['DelayDelta'] # value found empirically
+        
+        if triggerDelay < 0:
+            logging.error(f'partitionDelay[{group+1}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
+            logging.error('Raise start_ns >= {:}'.format(partitionDelay*base['msg_period']*base['clk_period']))
+            raise ValueError('triggerDelay computes to < 0')
+
+        d[f'expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].Delay'] = triggerDelay
+        logging.warning(f'partitionDelay[{group+1}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
 
         if full:
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']=rtp    # Run trigger
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']=group  # DAQ trigger
+            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']= group+1    # Run trigger
+            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']= group  # DAQ trigger
 
     calibRegsChanged = False
     a = None
     hasUser = 'user' in cfg
     conv = functools.partial(int, base=16)
     
-    update_config_entry(cfg,ocfg,d)
+    update_config_entry(cfg,origcfg,d)
 
     return calibRegsChanged
 
@@ -619,6 +637,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
 
                 for i in asics: 
                     print(f"ASIC{i}")
+                    gainMapSelection[i-1,:,:]=csvCfg
                     #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)    
                     getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
                     print(f"{PixMapSelected} CSV File Loaded")
@@ -629,6 +648,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 print("Use single value for all ASICS")
                 for i in asics: 
                     print(f"ASIC{i}")
+                    gainValSelection[i-1]=cfg['user']['Gain']['SetGainValue']
                     getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['user']['Gain']['SetGainValue']))
         else:
             print("Set single Gain per ASIC")
@@ -644,6 +664,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     #fn = pathPll+f'csvConfigAsic{i}'+'.csv'
                     #np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
                     #tmpfiles.append(fn)
+                    gainMapSelection[i-1,:,:]=csvCfg
                     setattr(cbase, f'filenameCSVAsic{i}', PixMapSelected)
                     getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
             else:
@@ -651,6 +672,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 print("Use a value per ASIC")
                 for i in asics: 
                     print(f"ASIC{i}")
+                    gainValSelection[i-1]=cfg['expert']['App'][f'Asic{i}']['SetGainValue']
                     getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetGainValue']))
             
         
@@ -696,10 +718,11 @@ def reset_counters(base):
 #  Called on Configure
 #
 def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
-    global ocfg
+    global origcfg
     global group
     global segids
-
+    global gainMapSelection
+    global gainValSelection
     group = rog
 
     #
@@ -707,7 +730,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
 
-    ocfg = cfg
+    origcfg = cfg
     
     
     #  Translate user settings to the expert fields
@@ -741,7 +764,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     cbase = base['cam']
     firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
 
-    ocfg = cfg
+    origcfg = cfg
 
     #
     #  Create the segment configurations from parameters required for analysis
@@ -788,8 +811,8 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     top = cdict()
     top.setAlg('config', [1,0,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
-    #top.set('CompTH_ePixM',        compTH,        'UINT8')
-    #top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
+    top.set('GainPixelMap',        gainMapSelection.tolist(),        'UINT8')
+    top.set('GainValue',           gainValSelection ,              'UINT8')
     #   if gain_mode==3:
     #       top.set('chgInj_column_map', column_map)
     segcfg[1] = top.typed_json()
@@ -815,18 +838,20 @@ def epixUHR_unconfig(base):
 #
 def epixUHR_scan_keys(update):
     logging.debug('epixUHR_scan_keys')
-    global ocfg
+    global origcfg
     global base
     global segids
-
+    global gainValSelection
+    global gainMapSelection
+    
     cfg = {}
-    copy_reconfig_keys(cfg,ocfg,json.loads(update))
+    copy_reconfig_keys(cfg,origcfg,json.loads(update))
     # Apply to expert
     calibRegsChanged = user_to_expert(base,cfg,full=False)
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
-        copy_config_entry(cfg,ocfg,key)
-        copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
+        copy_config_entry(cfg,origcfg,key)
+        copy_config_entry(cfg[':types:'],origcfg[':types:'],key)
 
     topname = cfg['detName:RO'].split('_')
 
@@ -854,6 +879,8 @@ def epixUHR_scan_keys(update):
             top = cdict()
             top.setAlg('config', [1,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
+            top.set('GainPixelMap',        gainMapSelection.tolist(),        'UINT8')
+            top.set('GainValue',           gainValSelection ,              'UINT8')
    #         top.set('CompTH_ePixM',        compTH,        'UINT8')
    #         top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
    #         if 'chgInj_column_map' in cfg['user']:
@@ -875,9 +902,11 @@ def epixUHR_scan_keys(update):
 #
 def epixUHR_update(update):
     logging.debug('epixUHR_update')
-    global ocfg
+    global origcfg
     global base
-
+    global gainValSelection
+    global gainValSelection
+    
     #  Queue full configuration next Configure transition
     base['cfg'] = None
 
@@ -887,7 +916,7 @@ def epixUHR_update(update):
     ##
     # extract updates
     cfg = {}
-    update_config_entry(cfg,ocfg,json.loads(update))
+    update_config_entry(cfg,origcfg,json.loads(update))
     #  Apply to expert
     writeCalibRegs = user_to_expert(base,cfg,full=False)
     print(f'Partial config writeCalibRegs {writeCalibRegs}')
@@ -900,8 +929,8 @@ def epixUHR_update(update):
 
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
-        copy_config_entry(cfg,ocfg,key)
-        copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
+        copy_config_entry(cfg,origcfg,key)
+        copy_config_entry(cfg[':types:'],origcfg[':types:'],key)
 
     topname = cfg['detName:RO'].split('_')
 
@@ -931,6 +960,8 @@ def epixUHR_update(update):
             top = cdict()
             top.setAlg('config', [1,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
+            top.set('GainPixelMap',        gainMapSelection.tolist(),        'UINT8')
+            top.set('GainValue',           gainValSelection ,              'UINT8')
 #            if compTH        is not None:  top.set('CompTH_ePixM',        compTH,        'UINT8')
 #            if precharge_DAC is not None:  top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
 #            if column_map    is not None:  top.set('chgInj_column_map',   column_map)
