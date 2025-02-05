@@ -47,6 +47,18 @@ static std::vector<unsigned> split_segNums(const std::string& inStr,
 
 namespace Drp {
 
+/**
+ * \brief "Emulates" multiple Jungfrau panels (detector segments) coming on one DRP.
+ * The jungfrauemu detector type takes two additional keyword arguments at launch:
+ *   imgArray="/path/to/array.bin" Containing a binary file with a set of Jungfrau
+ *     panels to be substituted into the data stream.
+ *   segNums=X_Y_Z containing the segment numbers to assign to the panels on the
+ *     lanes the DRP is reading from. Must be numbers. Will be assigned to the lanes
+ *     in incrementing order. E.g. above, X goes to lane 0, Y to lane 1, etc...
+ *     These numbers take the place of the _# attached to the executable name. If you
+ *     are only using one lane, then this argument is optional, otherwise it must be
+ *     provided.
+ */
 JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool)
 {
@@ -78,6 +90,11 @@ JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
             abort();
         }
         m_segNos = segNums;
+    } else {
+        if (m_nPanels > 1) {
+            logging::critical("Must specify segNums manually if using multiple segments! Check cnf.");
+            abort();
+        }
     }
 
     if (para->kwargs.find("imgArray") != para->kwargs.end()) {
