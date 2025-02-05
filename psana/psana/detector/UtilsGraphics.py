@@ -35,8 +35,8 @@ def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.
         logger.warning('arr is None, LIMITS CAN NOT BE DEFINED - RETURN 0,1')
         return 0,1
     elif None in (nneg, npos):
-        qlo = np.quantile(arr, fraclo, interpolation='linear')
-        qhi = np.quantile(arr, frachi, interpolation='linear')
+        qlo = np.quantile(arr, fraclo, method='linear')
+        qhi = np.quantile(arr, frachi, method='linear')
         logger.debug('quantile(%.3f):%.1f quantile(%.3f):%.1f' % (fraclo, qlo, frachi, qhi))
         return qlo, qhi
     else:

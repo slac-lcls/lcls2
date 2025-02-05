@@ -98,7 +98,7 @@ def proc_block(block, **kwa):
     """
     NOTE:
     - our data is uint16.
-    - np.median(block, axis=0) or np.quantile(...,interpolation='linear') return result rounded to int
+    - np.median(block, axis=0) or np.quantile(...,method='linear') return result rounded to int
     - in order to return interpolated float values apply the trick:
       data_block + random [0,1)-0.5
     - this would distort data in the range [-0.5,+0.5) ADU, but would allow
@@ -107,9 +107,9 @@ def proc_block(block, **kwa):
     """
     blockf64 = block
     #arr_med = np.median(block, axis=0)
-    arr_med = np.quantile(blockf64, frac05, axis=0, interpolation='linear')
-    arr_qlo = np.quantile(blockf64, fraclo, axis=0, interpolation='lower')
-    arr_qhi = np.quantile(blockf64, frachi, axis=0, interpolation='higher')
+    arr_med = np.quantile(blockf64, frac05, axis=0, method='linear')
+    arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='lower')
+    arr_qhi = np.quantile(blockf64, frachi, axis=0, method='higher')
 
     logger.debug('block array median/quantile(frac) for med, qlo, qhi time = %.3f sec' % (time()-t1_sec))
 
@@ -459,8 +459,8 @@ def plot_image(nda, tit=''):
 
     logger.info(info_ndarr(img, 'plot_image of %s' % tit))
 
-    amin = np.quantile(img, 0.01, interpolation='lower')
-    amax = np.quantile(img, 0.99, interpolation='higher')
+    amin = np.quantile(img, 0.01, method='lower')
+    amax = np.quantile(img, 0.99, method='higher')
     gr.plotImageLarge(img, amp_range=(amin, amax), title=tit)
     gr.show()
 
