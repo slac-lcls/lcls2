@@ -214,7 +214,7 @@ def proc_dark_block(block, **kwa):
     """
     NOTE:
     - our data is uint16.
-    - np.median(block, axis=0) or np.quantile(...,interpolation='linear') return result rounded to int
+    - np.median(block, axis=0) or np.quantile(...,method='linear') return result rounded to int
     - in order to return interpolated float values apply the trick:
       data_block + random [0,1)-0.5
     - this would distort data in the range [-0.5,+0.5) ADU, but would allow to get better interpolation for median and quantile values
@@ -226,9 +226,9 @@ def proc_dark_block(block, **kwa):
 
     t1_sec = time()
     #arr_med = np.median(block, axis=0)
-    arr_med = np.quantile(blockf64, frac05, axis=0, interpolation='linear')
-    arr_qlo = np.quantile(blockf64, fraclo, axis=0, interpolation='linear')
-    arr_qhi = np.quantile(blockf64, frachi, axis=0, interpolation='linear')
+    arr_med = np.quantile(blockf64, frac05, axis=0, method='linear')
+    arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='linear')
+    arr_qhi = np.quantile(blockf64, frachi, axis=0, method='linear')
     logger.debug('block array median/quantile(0.5) for med, qlo, qhi time = %.3f sec' % (time()-t1_sec))
 
     med_med = np.median(arr_med)
