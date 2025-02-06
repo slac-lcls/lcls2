@@ -26,6 +26,9 @@ create_directory = uec.create_directory
 gr = ug.gr
 np = ug.np
 
+B14 = 0o40000 # 16384
+M14 = 0x7fff  # raw & M14
+M15 = 0x7fff  # raw & M15
 
 class DataBlock():
     """primitive data block accumulation w/o processing with slices"""
@@ -94,8 +97,9 @@ class DataBlockProc(DataBlock):
     def summary(self, istep, gmode, cmt=''):
         print('-- %s step %02d: summary for gmode %s' % (cmt, istep, self.gmode))
         assert gmode==self.gmode, 'gain mode in summary %s difers rom init/collect %s' % (gmode, self.gmode)
-        if self.plotim & 2: plot_block(self.block, figpref=self.figpref, gmode=self.gmode)
-        if self.plotim & 4: graph_block(self.block, figpref=self.figpref, gmode=self.gmode)
+        block = self.block & M15
+        if self.plotim & 2: plot_block(block, figpref=self.figpref, gmode=self.gmode)
+        if self.plotim & 4: graph_block(block, figpref=self.figpref, gmode=self.gmode)
         self._evaluate_constants()
 
     def _evaluate_constants(self):
