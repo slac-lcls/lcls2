@@ -15,17 +15,18 @@ B16 = 0o100000 # the 16-th bit (counting from 1)
 
 # make an empty detector interface for Matt's hardware
 # configuration object so that config_dump works - cpo
-class epixuhr_config_0_0_0(DetectorImpl):
+
+class epixuhrhw_config_1_1_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
 
-class epixuhr_config_0_1_0(DetectorImpl):
+class epixuhr_config_1_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
 
-class epixuhr_raw_0_0_0(eb.epix_base):
+class epixuhr_raw_1_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
-        logger.debug('epixuhr_raw_0_0_0.__init__')
+        logger.debug('epixuhr_raw_1_0_0.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIXUHRASIC:V1')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr.data'

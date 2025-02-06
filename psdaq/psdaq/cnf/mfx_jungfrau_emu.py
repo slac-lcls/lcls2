@@ -54,6 +54,12 @@ ea_cmd1 = f'{task_set} epicsArch {std_opts1} {ea_cfg}'
 jungfrau_img_path = "/cds/home/d/dorlhiac/xpptut15_run580_jungfrau_img1.bin"
 jungfrauemu_kwargs = f"sim_length=262144,imgArray={jungfrau_img_path}"
 
+segnums_0 = "segNums=0_1_2_3"
+segnums_1 = "segNums=7_8_9_10"
+
+jungfrauemu_kwargs_0 = f"{jungfrauemu_kwargs},{segnums_0}"
+jungfrauemu_kwargs_1 = f"{jungfrauemu_kwargs},{segnums_1}"
+
 
 #
 #  ami variables
@@ -93,11 +99,11 @@ procmgr_config = [
  { host: 'drp-srcf-cmp014', cores: 10, id: 'timing_1',    flags: 'spu', env: epics_env,               cmd: f'{drp_cmd1} -l 0x1 -D ts'},
 
  # Jungfrau emulator
- { host: 'drp-srcf-cmp033', cores: 10, id: 'jungfrau_0',  flags: 'spu', env: epics_env,               cmd: f'{drp_cmd0} -D jungfrauemu -l 0xf -k {jungfrauemu_kwargs}'},
+ { host: 'drp-srcf-cmp033', cores: 10, id: 'jungfrau_0',  flags: 'spu', env: epics_env,               cmd: f'{drp_cmd0} -D jungfrauemu -l 0xf -k {jungfrauemu_kwargs_0}'},
 
- #{ host: 'drp-srcf-cmp034', cores: 10, id: 'jungfrau_1',  flags: 'spu', env: epics_env,               cmd: f'{drp_cmd0} -D jungfrauemu -l 0xf -k {jungfrauemu_kwargs}'},
+ #{ host: 'drp-srcf-cmp034', cores: 10, id: 'jungfrau_1',  flags: 'spu', env: epics_env,               cmd: f'{drp_cmd0} -D jungfrauemu -l 0xf -k {jungfrauemu_kwargs_1}'},
 
- { host: 'drp-srcf-cmp035', cores: 10, id: 'jungfrau_1',  flags: 'spu', env: epics_env,               cmd: f'{drp_cmd0} -D jungfrauemu -l 0xf -k {jungfrauemu_kwargs}'},
+ { host: 'drp-srcf-cmp035', cores: 10, id: 'jungfrau_1',  flags: 'spu', env: epics_env,               cmd: f'{drp_cmd0} -D jungfrauemu -l 0xf -k {jungfrauemu_kwargs_1}'},
  #{ host: 'drp-srcf-cmp035', cores: 10, id: 'jungfrau_2',  flags: 'spu', env: epics_env,               cmd: f'{drp_cmd0} -D jungfrauemu -l 0xf -k {jungfrauemu_kwargs}'},
 ]
 

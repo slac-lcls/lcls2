@@ -11,12 +11,54 @@
 #include <string>
 #include <unistd.h>
 #include <fstream>
+#include <iostream>
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 
+/**
+ * \brief Split a delimited string of detector segment numbers into a vector.
+ * Segment numbers may be passed as an optional keyword argument of the form
+ * `segNums=0_1_2_3` where the 0,1,2,3 are the detector segment numbers corresponding
+ * to the panels coming in on lanes in incrementing order.
+ * \param inStr Delimited string of segment numbers, e.g. `0_1_2_3`
+ * \param delimiter Segment number delimiter. Currently "_".
+ * \returns segNums A vector of unsigned that contains the parsed segment numbers.
+ */
+static std::vector<unsigned> split_segNums(const std::string& inStr,
+                                           const std::string& delimiter=std::string("_"))
+{
+    std::vector<unsigned> segNums;
+    size_t nextPos = 0;
+    size_t lastPos = 0;
+    std::string subStr;
+    std::cout << "Will use the following segment numbers: ";
+    while ((nextPos = inStr.find(delimiter, lastPos)) != std::string::npos) {
+        subStr = inStr.substr(lastPos, nextPos-lastPos);
+        segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
+        lastPos = nextPos + 1;
+        std::cout << subStr << ", ";
+    }
+    subStr = inStr.substr(lastPos);
+    segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
+    std::cout << subStr << "." << std::endl;
+    return segNums;
+}
+
 namespace Drp {
 
+/**
+ * \brief "Emulates" multiple Jungfrau panels (detector segments) coming on one DRP.
+ * The jungfrauemu detector type takes two additional keyword arguments at launch:
+ *   imgArray="/path/to/array.bin" Containing a binary file with a set of Jungfrau
+ *     panels to be substituted into the data stream.
+ *   segNums=X_Y_Z containing the segment numbers to assign to the panels on the
+ *     lanes the DRP is reading from. Must be numbers. Will be assigned to the lanes
+ *     in incrementing order. E.g. above, X goes to lane 0, Y to lane 1, etc...
+ *     These numbers take the place of the _# attached to the executable name. If you
+ *     are only using one lane, then this argument is optional, otherwise it must be
+ *     provided.
+ */
 JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool)
 {
@@ -34,7 +76,24 @@ JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
             if (!para->serNo.empty())
                 para->serNo += std::string("-");
             para->serNo += std::string(serNo) + trailingId;
+            m_panelSerNos.push_back(std::string(serNo) + trailingId);
             m_nPanels++;
+        }
+    }
+
+    if (para->kwargs.find("segNums") != para->kwargs.end()) {
+        std::vector<unsigned> segNums = split_segNums(para->kwargs["segNums"]);
+        if (segNums.size() != m_nPanels) {
+            logging::critical("Number of detector segments doesn't match number of panels: %d panels, %d segments",
+                              m_nPanels,
+                              segNums.size());
+            abort();
+        }
+        m_segNos = segNums;
+    } else {
+        if (m_nPanels > 1) {
+            logging::critical("Must specify segNums manually if using multiple segments! Check cnf.");
+            abort();
         }
     }
 
@@ -49,10 +108,10 @@ JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
         unsigned lenImgArray = imgArrayFile.tellg();
         imgArrayFile.seekg(0, imgArrayFile.beg);
         std::cout << "Loading " << lenImgArray << " bytes as sub data." << std::endl;
-        unsigned vecIdx = 0; // vector index (uint16_t)
+        unsigned panelIdx = 0;
         unsigned panelOffset = 0; // Bytes
         for (size_t i = 0; i < PGP_MAX_LANES - 1; ++i) {
-            if (para->laneMask & (i << i)) {
+            if (para->laneMask & (i << 1)) {
                 // Calculate a panel offset in bytes. Multiply by 2 bytes per element
                 //unsigned panelOffset = para->detSegment*(PGP_MAX_LANES-1)+i;
                 //panelOffset *= 2*m_nElems;
@@ -62,11 +121,11 @@ JungfrauEmulator::JungfrauEmulator(Parameters* para, MemPool* pool) :
                     // Could do something fancier, but...
                     panelOffset = 0;
                 }
-                imgArrayFile.seekg(panelOffset, imgArrayFile.beg);
+                imgArrayFile.seekg(panelOffset);
                 m_substituteRawData.resize(m_substituteRawData.size()+m_nElems);
-                imgArrayFile.read(reinterpret_cast<char*>(m_substituteRawData.data() + vecIdx*m_nElems),
+                imgArrayFile.read(reinterpret_cast<char*>(m_substituteRawData.data() + panelIdx*m_nElems),
                                   m_nElems*2);
-                vecIdx++;
+                panelIdx++;
             }
         }
         imgArrayFile.close();
@@ -81,19 +140,29 @@ unsigned JungfrauEmulator::configure(const std::string& config_alias, XtcData::X
         return 1;
 
     XtcData::Alg rawAlg("raw", 0, 1, 0);
-    XtcData::NamesId rawNamesId(nodeId,m_rawNamesIndex);
-    XtcData::Names& rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                m_para->detName.c_str(),
-                                                                rawAlg,
-                                                                m_para->detType.c_str(),
-                                                                m_para->serNo.c_str(),
-                                                                rawNamesId,
-                                                                m_para->detSegment);
-    XtcData::VarDef vDef;
-    vDef.NameVec.push_back(XtcData::Name("raw", XtcData::Name::UINT16, 3));
-    rawNames.add(xtc, bufEnd, vDef);
-    m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
-
+    for (size_t i=0; i<m_nPanels; ++i) {
+        unsigned detSegment;
+        if (m_segNos.empty()) {
+            unsigned daqSegment = m_para->detSegment;
+            detSegment = daqSegment*(PGP_MAX_LANES-1) + i;
+        } else {
+            detSegment = m_segNos[i];
+        }
+        std::cout << "Configuring detector segment: " << detSegment << std::endl;
+        XtcData::NamesId rawNamesId(nodeId, m_rawNamesIndex+i);
+        std::string serNo = m_panelSerNos[i];
+        XtcData::Names& rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+                                                                    m_para->detName.c_str(),
+                                                                    rawAlg,
+                                                                    m_para->detType.c_str(),
+                                                                    serNo.c_str(),
+                                                                    rawNamesId,
+                                                                    detSegment);
+        XtcData::VarDef vDef;
+        vDef.NameVec.push_back(XtcData::Name("raw", XtcData::Name::UINT16, 3));
+        rawNames.add(xtc, bufEnd, vDef);
+        m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
+    }
     return 0;
 }
 
@@ -105,32 +174,31 @@ unsigned JungfrauEmulator::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const
 
 void JungfrauEmulator::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
-    XtcData::NamesId rawNamesId(nodeId, m_rawNamesIndex);
-    XtcData::CreateData cd(dgram.xtc, bufEnd, m_namesLookup, rawNamesId);
-
-    unsigned rawShape[XtcData::MaxRank] = {m_nPanels, m_nRows, m_nCols};
-    XtcData::Array<uint16_t> rawArray = cd.allocate<uint16_t>(m_rawNamesIndex, rawShape);
-    unsigned size = 0;
-
     // Jungfrau panel size: 512x1024 pixels
     // 1 fiber/panel with up to 7 panels coming in on one node (1 per lane)
-    unsigned vecIdx = 0;
+    unsigned panelIdx = 0;
+    unsigned rawShape[XtcData::MaxRank] = { 1, m_nRows, m_nCols };
     for (int i=0; i<PGP_MAX_LANES - 1; ++i) {
         if (event->mask & (1 << i)) {
+            XtcData::NamesId rawNamesId(nodeId, m_rawNamesIndex+panelIdx);
+            XtcData::DescribedData desc(dgram.xtc, bufEnd, m_namesLookup, rawNamesId);
+
             int dataSize;
+            uint8_t* rawData;
             if (m_substituteRawData.empty()) {
                 dataSize = event->buffers[i].size - 32;
                 uint32_t dmaIndex = event->buffers[i].index;
-                uint8_t* rawData = ((uint8_t*)m_pool->dmaBuffers[dmaIndex]) + 32;
-
-                memcpy((uint8_t*)rawArray.data() + size, (uint8_t*)rawData, dataSize);
+                rawData = ((uint8_t*)m_pool->dmaBuffers[dmaIndex]) + 32;
             } else {
-                dataSize = m_nElems*2;
-                uint8_t* rawData = reinterpret_cast<uint8_t*>(m_substituteRawData.data() + vecIdx*m_nElems);
-                memcpy((uint8_t*)rawArray.data() + size, rawData, dataSize);
-                vecIdx++;
+                dataSize = m_nElems*2; // Should be equivalent to above if properly set up
+                rawData = reinterpret_cast<uint8_t*>(m_substituteRawData.data() + panelIdx*m_nElems);
             }
-            size += dataSize;
+            memcpy((uint8_t*)desc.data(), rawData, dataSize);
+            desc.set_data_length(dataSize);
+            // Create a new desc for each segment, so always set array shape
+            // for index 0!
+            desc.set_array_shape(0, rawShape);
+            panelIdx++;
       }
     }
 }
