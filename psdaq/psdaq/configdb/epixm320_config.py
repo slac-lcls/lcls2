@@ -246,7 +246,7 @@ def gain_mode_value(gain_mode):
 
 def gain_mode_map(gain_mode):
     compTH        = ( 0,   44,   24)[gain_mode] # SoftHigh/SoftLow/Auto
-    precharge_DAC = (45,   45,   45)[gain_mode]
+    precharge_DAC = (50,   50,   50)[gain_mode]
     return (compTH, precharge_DAC)
 
 # Sanitize the json for json2xtc by removing offensive characters
@@ -604,6 +604,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             cbase.App.FPGAChargeInjection.step.set       (app['FPGAChargeInjection']['step'])
             cbase.App.FPGAChargeInjection.currentAsic.set(app['FPGAChargeInjection']['currentAsic'])
             cbase.App.FPGAChargeInjection.UseTiming.set(True)
+        else:
+            cbase.App.FPGAChargeInjection.step.set(0) # Disable charge injection
 
     logging.warning('config_expert complete')
 
