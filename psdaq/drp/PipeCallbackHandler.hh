@@ -11,7 +11,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <scTDC.h>
+#include <scTDC/scTDC.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +21,7 @@ extern "C" {
 void cb_start(void *priv);
 void cb_end(void *priv);
 void cb_millis(void *priv);
-void cb_stat(void *priv, const statistics_t* stat);  
+void cb_stat(void *priv, const statistics_t* stat);
 void cb_tdc_event(void *priv, const sc_TdcEvent* event_array, size_t len);
 void cb_dld_event(void *priv, const sc_DldEvent* const event_array, size_t event_array_len);
 

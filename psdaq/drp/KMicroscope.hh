@@ -8,7 +8,6 @@
 #include "BldDetector.hh" // Include the base BldApp class
 #include <stdio.h>
 #include <stdlib.h>
-#include <scTDC/scTDC.h>
 #include <inttypes.h>
 #include <queue>
 #include <mutex>
@@ -45,9 +44,9 @@ public:
                  int measurementTimeMs,
                  const std::string& iniFilePath,
                  size_t batchSize = 100);
-                 
+
     ~CustomBldApp() override;
-    
+
     void run();
 
 private:
