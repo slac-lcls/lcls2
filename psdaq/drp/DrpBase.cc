@@ -1070,15 +1070,16 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, ZmqContext& context) :
     m_inprocSend.connect("inproc://drp");
 
     if (para.outputDir.empty()) {
-        logging::info("output dir: n/a");
+        logging::info("Output dir: n/a");
     } else {
         // Induce the automounter to mount in case user enables recording
         struct stat statBuf;
         std::string statPth = para.outputDir + "/" + para.instrument;
+        logging::info("Awaiting availability of %s", statPth.c_str());
         if (::stat(statPth.c_str(), &statBuf) < 0) {
             logging::error("%s: stat(%s) error: %m", __PRETTY_FUNCTION__, statPth.c_str());
         }
-        logging::info("output dir: %s", statPth.c_str());
+        logging::info("Output dir is ready: %s", statPth.c_str());
     }
 
     //  Add pva_addr to the environment
