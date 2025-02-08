@@ -1,5 +1,9 @@
 #pragma once
 
+// Define SUDO to have GPU write to the FPGA's DMA start register
+// If not defined, the CPU writes it via the AES Stream Driver
+#define SUDO
+
 #include "GpuAsyncLib.hh"
 
 #include "GpuAsyncOffsets.h"
@@ -13,10 +17,9 @@
 #include <cuda/atomic>
 
 #include "drp.hh"
-
-// Define SUDO to have GPU write to the FPGA's DMA start register
-// If not defined, the CPU writes it via the AES Stream Driver
-//#define SUDO
+#ifdef SUDO
+#include "ringIndex_gpu.hh"
+#endif
 
 template <typename T> class SPSCQueue;
 
@@ -63,9 +66,10 @@ struct DetSeg
 {
   int            fd;
   GpuDmaBuffer_t dmaBuffers[MAX_BUFFERS];
+#ifdef SUDO
   GpuDmaBuffer_t swFpgaRegs;
   CUdeviceptr    hwWriteStart;
-  GpuDmaBuffer_t swVersionRegs;
+#endif
 };
 
 class MemPoolGpu : public MemPool
@@ -119,17 +123,22 @@ private:
   cuda::atomic<int>*           m_terminate_d;
   bool*                        m_done;      // Cache for m_terminate_d
 #ifdef SUDO
-  cuda::atomic<int>*           m_bufRdy[MAX_BUFFERS];
+  //cuda::atomic<int>*           m_bufRdy[MAX_BUFFERS];
 #endif
   std::vector<cudaStream_t>    m_streams;
   std::vector<cudaGraph_t>     m_graphs;
   std::vector<cudaGraphExec_t> m_graphExecs;
   std::thread                  m_thread;
+#ifdef SUDO
+  Gpu::RingIndex*              m_ringIndex_h;
+  Gpu::RingIndex*              m_ringIndex_d;
+  unsigned*                    m_head[MAX_BUFFERS];
+  cuda::atomic<unsigned, cuda::thread_scope_block>* m_rdyCtr[MAX_BUFFERS];
+  uint32_t**                   m_hostWriteBufs_d;
+  uint32_t**                   m_hostWriteBuf[MAX_BUFFERS];
+#endif
   std::vector<uint32_t*>       m_hostWriteBufs;
   SPSCQueue<unsigned>          m_dmaQueue;
-  ///std::atomic<uint32_t>        m_batchLast;
-  ///std::atomic<uint32_t>        m_batchStart;
-  ///std::atomic<uint32_t>        m_batchSize;
   uint32_t                     m_lastEvtCtr;
   unsigned                     m_worker;
   const Parameters&            m_para;
