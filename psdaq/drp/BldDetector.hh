@@ -8,6 +8,7 @@
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "psdaq/epicstools/PVBase.hh"
+#include "PipeCallbackHandler.hh"
 
 #include <chrono>
 
@@ -62,6 +63,25 @@ private:
     unsigned m_pulseIdJump;
 };
 
+class KMicroscopeBld : public Bld
+{
+public:
+    // Constructor: Passes the measurement time (ms), INI file path, and optionally a batch size
+    // to the PipeCallbackHandler.
+    KMicroscopeBld(int measurementTimeMs,
+                    const std::string& iniFilePath,
+                    size_t batchSize = 100);
+
+    // Destructor: The PipeCallbackHandler cleans up automatically.
+    ~KMicroscopeBld();
+
+    // Overrides Bld::next() to yield the next pulse ID (time_tag) from the PipeCallbackHandler.
+    uint64_t next();
+
+private:
+    PipeCallbackHandler m_callbackHandler;  // Handles device communication and event collection.
+};
+
 class BldPVA
 {
 public:
@@ -93,7 +113,7 @@ class BldFactory
 {
 public:
     BldFactory(const BldPVA& pva);
-    BldFactory(const char* name, unsigned interface);
+    BldFactory(const char* name, Parameters& para);
     BldFactory(const char* name, unsigned interface,
                unsigned addr, unsigned port, std::shared_ptr<BldDescriptor>);
     BldFactory(const BldFactory&);
@@ -149,14 +169,12 @@ private:
     bool                                       m_usePulseId;  // Use pulse ID for matching if true
 };
 
-class BldApp : public CollectionApp {
+class BldApp : public CollectionApp
+{
 public:
-    // Constructor now takes a unique_ptr<Detector>
-    BldApp(Parameters& para, DrpBase& drp, std::unique_ptr<Detector> detector);
+    BldApp(Parameters& para);
     ~BldApp() override;
-
     void handleReset(const nlohmann::json& msg) override;
-
 private:
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void connectionShutdown() override;
@@ -167,14 +185,13 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-protected:
-    DrpBase& m_drp;  // Now using reference instead of creating a new one (shared with BldDetector)
-    Parameters& m_para;
-    std::thread m_workerThread;
-    std::unique_ptr<Detector> m_det;  // Now using unique_ptr instead of raw pointer
-    std::unique_ptr<Pgp> m_pgp;
+    DrpBase                              m_drp;
+    Parameters&                          m_para;
+    std::thread                          m_workerThread;
+    std::unique_ptr<Pgp>                 m_pgp;
+    Detector*                            m_det;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
-    bool m_unconfigure;
+    bool                                 m_unconfigure;
 };
 
 class BldDetector : public XpmDetector {

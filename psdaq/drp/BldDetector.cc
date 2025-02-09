@@ -66,6 +66,17 @@ static unsigned getVarDefSize(XtcData::VarDef& vd, const std::vector<unsigned>& 
     return sz;
 }
 
+unsigned interfaceAddress(const std::string& interface)
+{
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    struct ifreq ifr;
+    strcpy(ifr.ifr_name, interface.c_str());
+    ioctl(fd, SIOCGIFADDR, &ifr);
+    close(fd);
+    logging::debug("%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    return ntohl(*(unsigned*)&(ifr.ifr_addr.sa_data[2]));
+}
+
 BldPVA::BldPVA(std::string det,
                unsigned    interface) : _alg("raw",1,0,0), _interface(interface)
 {
@@ -139,10 +150,11 @@ XtcData::VarDef BldPVA::varDef(unsigned& sz, std::vector<unsigned>& sizes) const
   //  LCLS-I Style
   //
 BldFactory::BldFactory(const char* name,
-                       unsigned    interface) :
+                       Parameters& para) :
   _alg        ("raw", 2, 0, 0)
 {
     logging::debug("BldFactory::BldFactory %s", name);
+    unsigned interface = interfaceAddress(para.kwargs["interface"]);
 
     if (strchr(name,':'))
         name = strrchr(name,':')+1;
@@ -154,6 +166,21 @@ BldFactory::BldFactory(const char* name,
     unsigned mcaddr = 0;
     unsigned mcport = 10148; // 12148, eventually
     uint64_t tscorr = 0x259e9d80UL << 32;
+    // Special case for kmicro:
+    if (strcmp("kmicro", name) == 0) {
+        int measurementTimeMs = para.kwargs.find("measurementTimeMs") == para.kwargs.end()
+                              ? 1000
+                              : std::stoi(para.kwargs["measurementTimeMs"]);
+        const std::string& iniFilePath = para.kwargs.find("measurementTimeMs") == para.kwargs.end()
+                                       ? "tdc_gpx3.ini"
+                                       : para.kwargs["iniFile"];
+        size_t batchSize = para.kwargs.find("batchSize") == para.kwargs.end()
+                         ? 1000
+                         : std::stoul(para.kwargs["batchSize"]);
+        _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, batchSize);
+        return;
+    }
+
     //
     //  Make static configuration of BLD  :(
     //
@@ -285,16 +312,6 @@ void BldFactory::addEventData(XtcData::Xtc&          xtc,
     }
 }
 
-unsigned interfaceAddress(const std::string& interface)
-{
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    struct ifreq ifr;
-    strcpy(ifr.ifr_name, interface.c_str());
-    ioctl(fd, SIOCGIFADDR, &ifr);
-    close(fd);
-    logging::debug("%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
-    return ntohl(*(unsigned*)&(ifr.ifr_addr.sa_data[2]));
-}
 
 BldDescriptor::~BldDescriptor()
 {
@@ -391,7 +408,7 @@ Bld::Bld(unsigned mcaddr,
         if (m_sockfd < 0)
             HANDLE_ERR("Open socket");
 
-        { 
+        {
             unsigned skbSize = 0x1000000;
             if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1)
                 HANDLE_ERR("set so_rcvbuf");
@@ -520,7 +537,7 @@ void     Bld::clear(uint64_t ts)
 uint64_t Bld::next()
 {
     // MONA: reimplement below to match with k-micro data reading
-    // One idea is to have another thread 
+    // One idea is to have another thread
     uint64_t timestamp(0L);
     uint64_t pulseId  (0L);
 
@@ -563,6 +580,28 @@ uint64_t Bld::next()
     return timestamp;
 }
 
+KMicroscopeBld::KMicroscopeBld(int measurementTimeMs,
+    const std::string& iniFilePath,
+    size_t batchSize)
+: Bld(0, 0, 0, 0, 0, 0, 0),  // These values are unused
+m_callbackHandler(measurementTimeMs, iniFilePath, batchSize)
+{
+}
+
+KMicroscopeBld::~KMicroscopeBld() {
+// Nothing additional to do; m_callbackHandler cleans up automatically.
+}
+
+uint64_t KMicroscopeBld::next() {
+    sc_DldEvent event;
+    // Busy–wait until an event is available.
+    // Optionally, you could call m_callbackHandler.flushPending() here if desired.
+    while (!m_callbackHandler.popEvent(event)) {
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
+    }
+    // Return only the time_tag from the event.
+    return event.time_tag;
+}
 
 // Constructor Implementation
 BldDetector::BldDetector(Parameters& para, DrpBase& drp)
@@ -704,14 +743,14 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                                                           interface));
             else
                 m_config.push_back(std::make_shared<BldFactory>(s.substr(curr,next).c_str(),
-                                                                interface));
+                                                                m_para));
         }
         else if (pvpos > curr && pvpos < next)
             bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,next-curr),
                                                       interface));
         else
             m_config.push_back(std::make_shared<BldFactory>(s.substr(curr,next-curr).c_str(),
-                                                            interface));
+                                                            m_para));
     }
 
     for(unsigned i=0; i<bldPva.size(); i++)
@@ -952,18 +991,20 @@ void Pgp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
     m_drp.tebContributor().process(l3InpDg);
 }
 
-BldApp::BldApp(Parameters& para, DrpBase& drp, std::unique_ptr<Detector> detector) :
+BldApp::BldApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp        (drp),
+    m_drp        (para, context()),
     m_para       (para),
-    m_det        (std::move(detector)),  // Injected detector
     m_unconfigure(false)
 {
-    if (!m_det) {
-        logging::critical("Error! Detector object is null.");
-        throw std::runtime_error("Could not create Detector object");
-    }
+    Py_Initialize();                    // for use by configuration
 
+    m_det = new BldDetector(m_para, m_drp);
+
+    if (m_det == nullptr) {
+        logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
+        throw "Could not create Detector object for " + m_para.detType;
+    }
     logging::info("Ready for transitions");
 }
 
@@ -972,9 +1013,9 @@ BldApp::~BldApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
-    
-    // Py_Finalize() should not be included here. Python should only be 
-    // finalized when absolutely necessary 
+
+    // Py_Finalize() should not be included here. Python should only be
+    // finalized when absolutely necessary
 }
 
 void BldApp::_disconnect()
@@ -1110,11 +1151,11 @@ void BldApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det.get());
+        m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
 
         // Provide EbReceiver with the Detector interface so that additional
         // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp.ebReceiver().configure(m_det.get(), m_pgp.get());
+        m_drp.ebReceiver().configure(m_det, m_pgp.get());
 
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
@@ -1192,3 +1233,150 @@ void BldApp::handleReset(const nlohmann::json& msg)
 
 } // namespace Drp
 
+int main(int argc, char* argv[])
+{
+    Drp::Parameters para;
+    std::string kwargs_str;
+    int c;
+    while((c = getopt(argc, argv, "p:o:C:b:d:D:u:P:T::k:M:v")) != EOF) {
+        switch(c) {
+            case 'p':
+                para.partition = std::stoi(optarg);
+                break;
+            case 'o':
+                para.outputDir = optarg;
+                break;
+            case 'C':
+                para.collectionHost = optarg;
+                break;
+            case 'b':
+                para.detName = optarg;
+                break;
+            case 'd':
+                para.device = optarg;
+                break;
+            case 'D':
+                para.detType = optarg;
+                break;
+            case 'u':
+                para.alias = optarg;
+                break;
+            case 'P':
+                para.instrument = optarg;
+                break;
+            case 'k':
+                kwargs_str = kwargs_str.empty()
+                           ? optarg
+                           : kwargs_str + "," + optarg;
+                break;
+            case 'M':
+                para.prometheusDir = optarg;
+                break;
+            case 'v':
+                ++para.verbose;
+                break;
+            default:
+                return 1;
+        }
+    }
+
+    switch (para.verbose) {
+      case 0:  logging::init(para.instrument.c_str(), LOG_INFO);   break;
+      default: logging::init(para.instrument.c_str(), LOG_DEBUG);  break;
+    }
+    logging::info("logging configured");
+    if (optind < argc)
+    {
+        logging::error("Unrecognized argument:");
+        while (optind < argc)
+            logging::error("  %s ", argv[optind++]);
+        return 1;
+    }
+    if (para.instrument.empty()) {
+        logging::warning("-P: instrument name is missing");
+    }
+    // Check required parameters
+    if (para.partition == unsigned(-1)) {
+        logging::critical("-p: partition is mandatory");
+        return 1;
+    }
+    if (para.device.empty()) {
+        logging::critical("-d: device is mandatory");
+        return 1;
+    }
+    if (para.alias.empty()) {
+        logging::critical("-u: alias is mandatory");
+        return 1;
+    }
+
+    // Alias must be of form <detName>_<detSegment>
+    size_t found = para.alias.rfind('_');
+    if ((found == std::string::npos) || !isdigit(para.alias.back())) {
+        logging::critical("-u: alias must have _N suffix");
+        return 1;
+    }
+    para.detName = "bld";  //para.alias.substr(0, found);
+    para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
+    get_kwargs(kwargs_str, para.kwargs);
+    for (const auto& kwargs : para.kwargs) {
+        if (kwargs.first == "forceEnet")      continue;
+        if (kwargs.first == "ep_fabric")      continue;
+        if (kwargs.first == "ep_domain")      continue;
+        if (kwargs.first == "ep_provider")    continue;
+        if (kwargs.first == "sim_length")     continue;  // XpmDetector
+        if (kwargs.first == "timebase")       continue;  // XpmDetector
+        if (kwargs.first == "pebbleBufSize")  continue;  // DrpBase
+        if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
+        if (kwargs.first == "batching")       continue;  // DrpBase
+        if (kwargs.first == "directIO")       continue;  // DrpBase
+        if (kwargs.first == "pva_addr")       continue;  // DrpBase
+        if (kwargs.first == "interface")      continue;
+        if (kwargs.first == "measurementTimeMs") continue;
+        if (kwargs.first == "iniFile") continue;
+        if (kwargs.first == "batchSize") continue;
+        logging::critical("Unrecognized kwarg '%s=%s'\n",
+                          kwargs.first.c_str(), kwargs.second.c_str());
+        return 1;
+    }
+
+
+    /*
+    //  Add pva_addr to the environment
+    if (para.kwargs.find("pva_addr")!=para.kwargs.end()) {
+        const char* a = para.kwargs["pva_addr"].c_str();
+        char* p = getenv("EPICS_PVA_ADDR_LIST");
+        char envBuff[256];
+        if (p)
+            sprintf(envBuff,"EPICS_PVA_ADDR_LIST=%s %s", p, a);
+        else
+            sprintf(envBuff,"EPICS_PVA_ADDR_LIST=%s", a);
+        logging::info("Setting env %s\n", envBuff);
+        putenv(envBuff);
+    }
+    */
+
+    int measurementTimeMs = para.kwargs.find("measurementTimeMs") == para.kwargs.end()
+                          ? 1000
+                          : std::stoi(para.kwargs["measurementTimeMs"]);
+    const std::string& iniFilePath = para.kwargs.find("measurementTimeMs") == para.kwargs.end()
+                                   ? "tdc_gpx3.ini"
+                                   : para.kwargs["iniFile"];
+    size_t batchSize = para.kwargs.find("batchSize") == para.kwargs.end()
+                     ? 1000
+                     : std::stoul(para.kwargs["batchSize"]);
+    std::cout << "Using INI file: " << iniFilePath << "\n";
+    std::cout << "Measurement time: " << measurementTimeMs << " ms\n";
+    std::cout << "Batch size: " << batchSize << "\n";
+    para.maxTrSize = 256 * 1024;
+    try {
+        Drp::BldApp app(para);
+        app.run();
+        return 0;
+    }
+    catch (std::exception& e)  { logging::critical("%s", e.what()); }
+    catch (std::string& e)     { logging::critical("%s", e.c_str()); }
+    catch (char const* e)      { logging::critical("%s", e); }
+    catch (...)                { logging::critical("Default exception"); }
+    return EXIT_FAILURE;
+
+}
