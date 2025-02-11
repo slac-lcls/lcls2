@@ -34,38 +34,53 @@ namespace Drp {
 class PipeCallbackHandler {
 public:
     struct PrivData {
-        int cn_measures;
-        int cn_tdc_events;
-        int cn_dld_events;
+        int   cn_measures;
+        int   cn_tdc_events;
+        int   cn_dld_events;
         double total_time;
         size_t dld_event_size;        // Size (in bytes) of a DLD event.
         PipeCallbackHandler* handler; // Back–pointer to this handler.
     };
 
-    // Constructor and other member declarations...
+    // Constructor and destructor.
     PipeCallbackHandler(int measurementTimeMs,
                         const std::string& iniFilePath,
                         size_t batchSize = 100);
     ~PipeCallbackHandler();
+
+    // Retrieves an event from the event queue; returns false if none available.
     bool popEvent(sc_DldEvent &event);
+
+    // Called (from the callback) to accumulate a batch of events.
     void accumulateEvents(const std::vector<sc_DldEvent>& events);
+
+    // Flushes any pending events into the main event queue.
     void flushPending();
+
+    // Starts the measurement if it hasn't been started already.
+    void startMeasurement();
+
+    // Closes the pipe if the measurement was started.
+    void closePipe();
 
 private:
     // Member variables...
-    int m_measurementTimeMs;
-    size_t m_batchSize;
-    std::string m_iniFilePath;
-    int m_dd;
-    int m_pd;
+    int               m_measurementTimeMs;
+    size_t            m_batchSize;
+    std::string       m_iniFilePath;
+    int               m_dd;
+    int               m_pd;
     sc_DeviceProperties3 m_sizes;
-    sc_pipe_callbacks* m_cbs;
+    sc_pipe_callbacks*   m_cbs;
     sc_pipe_callback_params_t m_params;
-    PrivData m_privData;
+    PrivData          m_privData;
     std::queue<sc_DldEvent> m_eventQueue;
-    std::mutex m_queueMutex;
+    std::mutex      m_queueMutex;
     std::vector<sc_DldEvent> m_pendingBatch;
-    std::mutex m_batchMutex;
+    std::mutex      m_batchMutex;
+
+    // Flag to indicate whether measurement has been started.
+    bool m_measurementStarted;
 
     // Friend declarations: note the global scope qualifier.
     friend void ::cb_start(void* priv);
@@ -75,8 +90,6 @@ private:
     friend void ::cb_tdc_event(void* priv, const sc_TdcEvent* event_array, size_t len);
     friend void ::cb_dld_event(void* priv, const sc_DldEvent* const event_array, size_t event_array_len);
 };
-
-// (Other class definitions, e.g. KMicroscopeBld, within namespace Drp.)
 
 } // namespace Drp
 

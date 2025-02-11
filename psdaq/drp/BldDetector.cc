@@ -616,6 +616,9 @@ void KMicroscopeBld::clear(uint64_t ts)
 
 uint64_t KMicroscopeBld::next() {
     sc_DldEvent event;
+    // Start the measurement if not started
+    m_callbackHandler.startMeasurement();
+
     // Busy–wait until an event is available.
     // Optionally, you could call m_callbackHandler.flushPending() here if desired.
     while (!m_callbackHandler.popEvent(event)) {
@@ -786,16 +789,16 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     uint64_t bldValue[m_config.size()];
     memset(bldValue, 0, sizeof(bldValue));
     uint64_t nextId = -1UL;
-    for (unsigned i = 0; i < m_config.size(); i++) {
-        logging::info("BldApp::worker config: %u detType: %s calling next()", i, m_para.detType.c_str());
-        bldValue[i] = m_config[i]->handler().next();
-        if (bldValue[i] < nextId)
-            nextId = bldValue[i];
-        if (!usePulseId)
-            logging::info("BldApp::worker Initial timestamp[%d] 0x%" PRIx64, i, bldValue[i]);
-        else
-            logging::info("BldApp::worker Initial pulseId[%d] 0x%" PRIx64, i, bldValue[i]);
-    }
+    //for (unsigned i = 0; i < m_config.size(); i++) {
+    //    logging::info("BldApp::worker config: %u detType: %s calling next()", i, m_para.detType.c_str());
+    //    bldValue[i] = m_config[i]->handler().next();
+    //    if (bldValue[i] < nextId)
+    //        nextId = bldValue[i];
+    //    if (!usePulseId)
+    //        logging::info("BldApp::worker Initial timestamp[%d] 0x%" PRIx64, i, bldValue[i]);
+    //    else
+    //        logging::info("BldApp::worker Initial pulseId[%d] 0x%" PRIx64, i, bldValue[i]);
+    //}
 
     bool lMissing = false;
     XtcData::NamesLookup& namesLookup = m_det->namesLookup();
@@ -812,83 +815,14 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             break;
         }
 
-        uint64_t tts;
-        if (!usePulseId) {
-            // Calculate realtime timeout (50 ms) using timestamp (nanosecond) scale.
-            const unsigned TMO_NS = 50000000; // 50,000,000 ns = 50 ms
-            timespec ts;
-            clock_gettime(CLOCK_REALTIME, &ts);
-            // We assume that the timing header timestamp is represented as a 64-bit value
-            // where the upper 32 bits are (ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) and the lower 32 bits
-            // are the nanoseconds.
-            if (ts.tv_nsec < TMO_NS) {
-                tts = ((ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH - 1ULL) << 32) |
-                      (1000000000ULL + ts.tv_nsec - TMO_NS);
-            } else {
-                tts = ((ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) << 32) |
-                      (ts.tv_nsec - TMO_NS);
-            }
-            logging::debug("tmo time (timestamp mode) %016llx", tts);
-        } else {
-            // Calculate realtime timeout (50 ms) using pulse ID.
-            // Given a pulse rate of 1,000,000 pulses/s, 50 ms corresponds to 50,000 pulses.
-            const unsigned TMO_PULSES = 50000; // 50 ms worth of pulses
-            timespec ts;
-            clock_gettime(CLOCK_REALTIME, &ts);
-            // Convert the current time to a pulse id value.
-            // We use the same reference epoch as before (POSIX_TIME_AT_EPICS_EPOCH)
-            // and assume 1,000,000 pulses per second.
-            uint64_t currentPulseId = (ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) * 1000000ULL +
-                                      (ts.tv_nsec / 1000ULL);
-            // The timeout threshold is then the current pulse id minus the number of pulses in 50 ms.
-            tts = currentPulseId - TMO_PULSES;
-            logging::debug("tmo time (pulse id mode) threshold 0x%" PRIx64, tts);
-        }
-
         //  get oldest timing header
         if (!timingHeader)
             timingHeader = next();
 
-        //  get oldest BLD and throw away anything older than timingheader or timeout value
-        nextId = -1UL;
         if (timingHeader) {
-            if (!usePulseId) {
-                // Use timestamp matching.
-                uint64_t ttv = timingHeader->time.value();
-                // For each BLD, if its current value is less than the timing header's timestamp,
-                // clear and get a new value.
-                for (unsigned i = 0; i < m_config.size(); i++) {
-                    uint64_t tto = ttv; // We use the timing header's timestamp
-                    if (bldValue[i] < tto) {
-                        m_config[i]->handler().clear(tto);
-                        uint64_t newVal = m_config[i]->handler().next();
-                        logging::debug("Bld[%u] replacing timestamp %016llx with %016llx", i, bldValue[i], newVal);
-                        bldValue[i] = newVal;
-                    }
-                    if (bldValue[i] < nextId)
-                        nextId = bldValue[i];
-                }
-            }
-            else {
-                // Use pulse ID matching.
-                uint64_t timingPulseId = timingHeader->pulseId();
-                for (unsigned i = 0; i < m_config.size(); i++) {
-                    if (bldValue[i] < timingPulseId) {
-                        //m_config[i]->handler().clear(timingPulseId); MONA No need for clearing?
-                        uint64_t newVal = m_config[i]->handler().next();
-                        logging::debug("Bld[%u] replacing pulseId %016llx with %016llx", i, bldValue[i], newVal);
-                        bldValue[i] = newVal;
-                    }
-                    if (bldValue[i] < nextId)
-                        nextId = bldValue[i];
-                }
-            }
-        }
-        logging::debug("Bld next: 0x%" PRIx64, nextId);
-
-        if (timingHeader) {
+            logging::debug("Pgp::worker got new timingHeader 0x%" PRIx64, timingHeader->time.value());
             if (timingHeader->service()!=XtcData::TransitionId::L1Accept) {     //  Handle immediately
-                logging::debug("Pgp next Transition Found");
+                logging::debug("Pgp::worker Transition Found");
                 Pds::EbDgram* dgram = _handle(index);
                 if (!dgram) {
                     logging::debug("Pgp next not dgram continue");
@@ -908,7 +842,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
                 auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
                 memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-                logging::debug("Pgp next done copying transition");
 
                 switch (dgram->service()) {
                 case XtcData::TransitionId::Configure: {
@@ -931,60 +864,131 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 _sendToTeb(*dgram, index);
                 nevents++;
             }
-            else if ((!usePulseId && timingHeader->time.value() < tts)
-                     || (usePulseId && timingHeader->pulseId() < tts)) {
-                logging::debug("Pgp next Found L1Accept");
-                // In the "old" case, use the following block:
-                Pds::EbDgram* dgram = _handle(index);
-                if (!dgram) {
-                    m_current++;
-                    timingHeader = nullptr;
-                    continue;
-                }
-                const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
-                bool lMissed = false;
-                for (unsigned i = 0; i < m_config.size(); i++) {
-                    if (!usePulseId) {
-                        // Timestamp matching.
-                        if (bldValue[i] == timingHeader->time.value()) {
-                            XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                            m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
-                        }
-                        else {
-                            lMissed = true;
-                            if (!lMissing)
-                                logging::debug("Missed bld[%u]: pgp %016llx  bld %016llx", i, nextId, bldValue[i]);
-                        }
+            else {
+                logging::debug("Pgp::worker L1Accept found");
+                // Calculate realtime timeout
+                uint64_t tts;
+                if (!usePulseId) {
+                    // Calculate realtime timeout (50 ms) using timestamp (nanosecond) scale.
+                    const unsigned TMO_NS = 50000000; // 50,000,000 ns = 50 ms
+                    timespec ts;
+                    clock_gettime(CLOCK_REALTIME, &ts);
+                    // We assume that the timing header timestamp is represented as a 64-bit value
+                    // where the upper 32 bits are (ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) and the lower 32 bits
+                    // are the nanoseconds.
+                    if (ts.tv_nsec < TMO_NS) {
+                        tts = ((ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH - 1ULL) << 32) |
+                            (1000000000ULL + ts.tv_nsec - TMO_NS);
+                    } else {
+                        tts = ((ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) << 32) |
+                            (ts.tv_nsec - TMO_NS);
                     }
-                    else {
-                        // Pulse ID matching.
-                        if (bldValue[i] == dgram->pulseId()) {
-                            XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                            m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
-                        }
-                        else {
-                            lMissed = true;
-                            if (!lMissing)
-                                logging::debug("Missed bld[%u]: pgp %016llx  bld pulseId %016llx", i, nextId, dgram->pulseId());
-                        }
-                    }
-                }
-                if (lMissed) {
-                    lMissing = true;
-                    dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
-                    nmissed++;
-                }
-                else {
-                    if (lMissing)
-                        logging::debug("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
-                    lMissing = false;
+                    logging::debug("tmo time (timestamp mode) %016llx", tts);
+                } else {
+                    // Calculate realtime timeout (50 ms) using pulse ID.
+                    // Given a pulse rate of 1,000,000 pulses/s, 50 ms corresponds to 50,000 pulses.
+                    const unsigned TMO_PULSES = 50000; // 50 ms worth of pulses
+                    timespec ts;
+                    clock_gettime(CLOCK_REALTIME, &ts);
+                    // Convert the current time to a pulse id value.
+                    // We use the same reference epoch as before (POSIX_TIME_AT_EPICS_EPOCH)
+                    // and assume 1,000,000 pulses per second.
+                    uint64_t currentPulseId = (ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) * 1000000ULL +
+                                            (ts.tv_nsec / 1000ULL);
+                    // The timeout threshold is then the current pulse id minus the number of pulses in 50 ms.
+                    tts = currentPulseId - TMO_PULSES;
+                    logging::debug("tmo time (pulse id mode) threshold 0x%" PRIx64, tts);
                 }
 
-                m_current++;
-                timingHeader = nullptr;
-                _sendToTeb(*dgram, index);
-                nevents++;
-            }
+                //  get oldest BLD and throw away anything older than timingheader or timeout value
+                nextId = -1UL;
+                if (!usePulseId) {
+                    // Use timestamp matching.
+                    uint64_t ttv = timingHeader->time.value();
+                    // For each BLD, if its current value is less than the timing header's timestamp,
+                    // clear and get a new value.
+                    for (unsigned i = 0; i < m_config.size(); i++) {
+                        uint64_t tto = ttv; // We use the timing header's timestamp
+                        if (bldValue[i] < tto) {
+                            m_config[i]->handler().clear(tto);
+                            uint64_t newVal = m_config[i]->handler().next();
+                            logging::debug("Bld[%u] replacing timestamp %016llx with %016llx", i, bldValue[i], newVal);
+                            bldValue[i] = newVal;
+                        }
+                        if (bldValue[i] < nextId)
+                            nextId = bldValue[i];
+                    }
+                }
+                else {
+                    // Use pulse ID matching.
+                    uint64_t timingPulseId = timingHeader->pulseId();
+                    for (unsigned i = 0; i < m_config.size(); i++) {
+                        if (bldValue[i] < timingPulseId) {
+                            //m_config[i]->handler().clear(timingPulseId); MONA No need for clearing?
+                            uint64_t newVal = m_config[i]->handler().next();
+                            logging::debug("Bld[%u] replacing pulseId %016llx with %016llx", i, bldValue[i], newVal);
+                            bldValue[i] = newVal;
+                        }
+                        if (bldValue[i] < nextId)
+                            nextId = bldValue[i];
+                    }
+                }
+                logging::debug("Bld next: 0x%" PRIx64, nextId);
+
+                if ((!usePulseId && timingHeader->time.value() < tts)
+                     || (usePulseId && timingHeader->pulseId() < tts)) {
+                    // In the "old" case, use the following block:
+                    Pds::EbDgram* dgram = _handle(index);
+                    if (!dgram) {
+                        m_current++;
+                        timingHeader = nullptr;
+                        continue;
+                    }
+                    const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
+                    bool lMissed = false;
+                    for (unsigned i = 0; i < m_config.size(); i++) {
+                        if (!usePulseId) {
+                            // Timestamp matching.
+                            if (bldValue[i] == timingHeader->time.value()) {
+                                XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                                m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                            }
+                            else {
+                                lMissed = true;
+                                if (!lMissing)
+                                    logging::debug("Missed bld[%u]: pgp %016llx  bld %016llx", i, nextId, bldValue[i]);
+                            }
+                        }
+                        else {
+                            // Pulse ID matching.
+                            if (bldValue[i] == dgram->pulseId()) {
+                                XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                                m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                            }
+                            else {
+                                lMissed = true;
+                                if (!lMissing)
+                                    logging::debug("Missed bld[%u]: pgp %016llx  bld pulseId %016llx", i, nextId, dgram->pulseId());
+                            }
+                        }
+                    }
+                    if (lMissed) {
+                        lMissing = true;
+                        dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+                        nmissed++;
+                    }
+                    else {
+                        if (lMissing)
+                            logging::debug("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
+                        lMissing = false;
+                    }
+
+                    m_current++;
+                    timingHeader = nullptr;
+                    _sendToTeb(*dgram, index);
+                    nevents++;
+                }  // Done with L1Accept with correct timing
+            }  // Done with one event
         }
         else {   // No timing header waiting
         }
