@@ -8,7 +8,7 @@ def main():
     parser = argparse.ArgumentParser(description='ued sequencer programming')
     parser.add_argument('--pv', type=str, default='DAQ:UED:XPM:0', help="sequence engine pv; default DAQ:UED:XPM:0")
     parser.add_argument("--eng", type=int, default=0, help="sequence engine; default=0")
-    parser.add_argument("--period", type=float, default=None, help="period (sec). If unspecified: default to 360Hz on timeslot 1.")
+    parser.add_argument("--period", type=float, default=None, help="period (sec); defaults to 360Hz virtual TS1")
     args = parser.parse_args()
 
     if args.period is None:
