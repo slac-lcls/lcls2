@@ -22,61 +22,100 @@ public:
     XtcData::VarDef get(unsigned& payloadSize, std::vector<unsigned>& sizes);
 };
 
-class Bld
-{
+class BldBase {
 public:
-    Bld(unsigned mcaddr, unsigned port, unsigned interface,
-        unsigned timestampPos, unsigned pulseIdPos,
-        unsigned headerSize, unsigned payloadSize,
-        uint64_t timestampCorr=0);
-    Bld(const Bld&);
-    ~Bld();
-public:
-    static const unsigned MTU = 9000;
-    static const unsigned TimestampPos      =  0; // LCLS-II style
-    static const unsigned PulseIdPos        =  8; // LCLS-II style
-    static const unsigned HeaderSize        = 20;
-    static const unsigned DgramTimestampPos =  0; // LCLS-I style
-    static const unsigned DgramPulseIdPos   =  8; // LCLS-I style
-    static const unsigned DgramHeaderSize   = 60;
-public:
-    bool     ready      () const { return (m_position + m_payloadSize + 4) <= m_bufferSize; }
-    void     clear      (uint64_t ts);
-    uint64_t next       ();
-    uint8_t* payload    () const { return m_payload; }
+    // Constructor (cannot be virtual)
+    BldBase(unsigned mcaddr, unsigned port, unsigned interface,
+            unsigned timestampPos, unsigned pulseIdPos,
+            unsigned headerSize, unsigned payloadSize,
+            uint64_t timestampCorr = 0);
+
+    // Copy constructor
+    BldBase(const BldBase&);
+
+    // Virtual destructor
+    virtual ~BldBase();
+
+    // Virtual methods to be overridden by derived classes.
+    virtual void clear(uint64_t ts) = 0;
+    virtual uint64_t next() = 0;
+
+    // Non-virtual methods.
+    bool     ready() const { return (m_position + m_payloadSize + 4) <= m_bufferSize; }
+    uint8_t* payload() const { return m_payload; }
     unsigned payloadSize() const { return m_payloadSize; }
-    unsigned fd         () const { return m_sockfd; }
-private:
-    uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos) - m_timestampCorr;}
-    uint64_t headerPulseId    () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_pulseIdPos);}
-    int      m_timestampPos;
-    int      m_pulseIdPos;
-    int      m_headerSize;
-    int      m_payloadSize;
-    int      m_sockfd;
-    int      m_bufferSize;
-    int      m_position;
+    unsigned fd() const { return m_sockfd; }
+
+protected:
+    // Helper functions.
+    uint64_t headerTimestamp() const {
+        return *reinterpret_cast<const uint64_t*>(m_buffer.data() + m_timestampPos) - m_timestampCorr;
+    }
+    uint64_t headerPulseId() const {
+        return *reinterpret_cast<const uint64_t*>(m_buffer.data() + m_pulseIdPos);
+    }
+
+    // Data members (from your original Bld class).
+    int m_timestampPos;
+    int m_pulseIdPos;
+    int m_headerSize;
+    int m_payloadSize;
+    int m_sockfd;
+    int m_bufferSize;
+    int m_position;
     std::vector<uint8_t> m_buffer;
     uint8_t* m_payload;
     uint64_t m_timestampCorr;
     uint64_t m_pulseId;
     unsigned m_pulseIdJump;
+
+public:
+    // Static constants.
+    static const unsigned MTU              = 9000;
+    static const unsigned TimestampPos     =  0; // LCLS-II style
+    static const unsigned PulseIdPos       =  8; // LCLS-II style
+    static const unsigned HeaderSize       = 20;
+    static const unsigned DgramTimestampPos=  0; // LCLS-I style
+    static const unsigned DgramPulseIdPos  =  8; // LCLS-I style
+    static const unsigned DgramHeaderSize  =  60;
 };
 
-class KMicroscopeBld : public Bld
-{
+class Bld : public BldBase {
 public:
-    // Constructor: Passes the measurement time (ms), INI file path, and optionally a batch size
-    // to the PipeCallbackHandler.
+    // The constructor calls the base class constructor.
+    Bld(unsigned mcaddr, unsigned port, unsigned interface,
+        unsigned timestampPos, unsigned pulseIdPos,
+        unsigned headerSize, unsigned payloadSize,
+        uint64_t timestampCorr = 0);
+
+    // Copy constructor.
+    Bld(const Bld&);
+
+    // Virtual destructor.
+    virtual ~Bld();
+
+    // Override the virtual methods.
+    virtual void clear(uint64_t ts) override;
+    virtual uint64_t next() override;
+};
+
+class KMicroscopeBld : public BldBase {
+public:
+    // Constructor: takes a measurement time (ms), an INI file path, and
+    // an optional batch size. It must initialize the base class as needed.
     KMicroscopeBld(int measurementTimeMs,
                     const std::string& iniFilePath,
                     size_t batchSize = 100);
 
-    // Destructor: The PipeCallbackHandler cleans up automatically.
-    ~KMicroscopeBld();
+    // Copy constructor (if needed)
+    KMicroscopeBld(const KMicroscopeBld&);
 
-    // Overrides Bld::next() to yield the next pulse ID (time_tag) from the PipeCallbackHandler.
-    uint64_t next();
+    // Virtual destructor.
+    virtual ~KMicroscopeBld();
+
+    // Override the virtual methods.
+    virtual void clear(uint64_t ts) override;
+    virtual uint64_t next() override;
 
 private:
     PipeCallbackHandler m_callbackHandler;  // Handles device communication and event collection.
@@ -119,7 +158,7 @@ public:
     BldFactory(const BldFactory&);
     ~BldFactory();
 public:
-    Bld&               handler   ();
+    BldBase&           handler   ();
     XtcData::NameIndex addToXtc  (XtcData::Xtc&,
                                   const void* bufEnd,
                                   const XtcData::NamesId&);
@@ -134,14 +173,14 @@ private:
     XtcData::Alg                   _alg;
     XtcData::VarDef                _varDef;
     std::shared_ptr<BldDescriptor> _pvaPayload;
-    std::shared_ptr<Bld          > _handler;
+    std::shared_ptr<BldBase      > _handler;
     std::vector<unsigned>          _arraySizes;
 };
 
 class Pgp : public PgpReader
 {
 public:
-    Pgp(Parameters& para, DrpBase& drp, Detector* det, bool usePulseId = false);
+    Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
     const Pds::TimingHeader* next();
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
@@ -166,7 +205,6 @@ private:
     enum TmoState { None, Started, Finished };
     TmoState                                   m_tmoState;
     std::chrono::time_point<Pds::fast_monotonic_clock> m_tInitial;
-    bool                                       m_usePulseId;  // Use pulse ID for matching if true
 };
 
 class BldApp : public CollectionApp

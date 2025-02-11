@@ -1,6 +1,9 @@
 #include "PipeCallbackHandler.hh"
 #include <thread>
 #include <chrono>
+#include "psalg/utils/SysLog.hh"
+
+using logging = psalg::SysLog;
 
 namespace Drp {
 
@@ -157,6 +160,7 @@ void cb_dld_event(void *priv, const sc_DldEvent* const event_array, size_t event
     // Increase the DLD event counter.
     Drp::PipeCallbackHandler::PrivData* pData = static_cast<Drp::PipeCallbackHandler::PrivData*>(priv);
     pData->cn_dld_events++;
+    //logging::debug("DLDCB: %d", pData->cn_dld_events);
     // The event_array is a contiguous buffer where each event’s size is given by pData->dld_event_size.
     const char* buffer = reinterpret_cast<const char*>(event_array);
     // Build a local batch of events.
@@ -164,6 +168,13 @@ void cb_dld_event(void *priv, const sc_DldEvent* const event_array, size_t event
     localBatch.reserve(event_array_len);
     for (size_t j = 0; j < event_array_len; ++j) {
         const sc_DldEvent* obj = reinterpret_cast<const sc_DldEvent*>(buffer + j * pData->dld_event_size);
+        unsigned long long time_tag = obj->time_tag;
+        unsigned long long sum = obj->sum;
+        unsigned short dif1 = obj->dif1;
+        unsigned short dif2 = obj->dif2;
+        unsigned long _low = time_tag & 0xffffffff;
+        unsigned long _high = (time_tag >> 32) & 0xffffffff;
+        //logging::debug("DLDCB::event j %d timetag: %llu (%lu.%lu) sum: %llu dif1: %hu dif2: %hu", j, time_tag, _high, _low, sum, dif1, dif2);
         localBatch.push_back(*obj);
     }
     // Accumulate the events; they will be flushed to the main queue only when a full batch is reached.

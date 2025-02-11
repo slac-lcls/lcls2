@@ -178,6 +178,7 @@ BldFactory::BldFactory(const char* name,
                          ? 1000
                          : std::stoul(para.kwargs["batchSize"]);
         _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, batchSize);
+        logging::info("BldFactory::BldFactory KMicroscopeBld");
         return;
     }
 
@@ -275,7 +276,7 @@ BldFactory::~BldFactory()
 {
 }
 
-Bld& BldFactory::handler()
+BldBase& BldFactory::handler()
 {
     return *_handler;
 }
@@ -299,7 +300,7 @@ void BldFactory::addEventData(XtcData::Xtc&          xtc,
                               XtcData::NamesLookup&  namesLookup,
                               XtcData::NamesId&      namesId)
 {
-    const Bld& bld = handler();
+    const BldBase& bld = handler();
     XtcData::DescribedData desc(xtc, bufEnd, namesLookup, namesId);
     memcpy(desc.data(), bld.payload(), bld.payloadSize());
     desc.set_data_length(bld.payloadSize());
@@ -380,7 +381,7 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize, std::vector<unsigned>&
   perror(str);                                  \
   throw std::string(str); }
 
-Bld::Bld(unsigned mcaddr,
+BldBase::BldBase(unsigned mcaddr,
          unsigned port,
          unsigned interface,
          unsigned timestampPos,
@@ -441,7 +442,7 @@ Bld::Bld(unsigned mcaddr,
     }
 }
 
-Bld::Bld(const Bld& o) :
+BldBase::BldBase(const BldBase& o) :
     m_timestampPos(o.m_timestampPos),
     m_pulseIdPos  (o.m_pulseIdPos),
     m_headerSize  (o.m_headerSize),
@@ -451,7 +452,7 @@ Bld::Bld(const Bld& o) :
     logging::error("Bld copy ctor called");
 }
 
-Bld::~Bld()
+BldBase::~BldBase()
 {
     // Only close the socket if it was created.
     if (m_sockfd >= 0)
@@ -474,9 +475,26 @@ uint8_t  payload[]
 
 */
 
+
+Bld::Bld(unsigned mcaddr,
+         unsigned port,
+         unsigned interface,
+         unsigned timestampPos,
+         unsigned pulseIdPos,
+         unsigned headerSize,
+         unsigned payloadSize,
+         uint64_t timestampCorr)
+: BldBase(mcaddr, port, interface, timestampPos, pulseIdPos, headerSize, payloadSize, timestampCorr)
+{
+}
+
+Bld::~Bld()
+{
+}
+
 //  Read ahead and clear events older than ts (approximate)
 // MONA: k-micro might not need this
-void     Bld::clear(uint64_t ts)
+void Bld::clear(uint64_t ts)
 {
     timespec tts;
     clock_gettime(CLOCK_REALTIME,&tts);
@@ -583,7 +601,7 @@ uint64_t Bld::next()
 KMicroscopeBld::KMicroscopeBld(int measurementTimeMs,
     const std::string& iniFilePath,
     size_t batchSize)
-: Bld(0, 0, 0, 0, 0, 0, 0),  // These values are unused
+: BldBase(0, 0, 0, 0, 0, 0, 0),  // These values are unused
 m_callbackHandler(measurementTimeMs, iniFilePath, batchSize)
 {
 }
@@ -592,15 +610,21 @@ KMicroscopeBld::~KMicroscopeBld() {
 // Nothing additional to do; m_callbackHandler cleans up automatically.
 }
 
+void KMicroscopeBld::clear(uint64_t ts)
+{
+}
+
 uint64_t KMicroscopeBld::next() {
     sc_DldEvent event;
     // Busy–wait until an event is available.
     // Optionally, you could call m_callbackHandler.flushPending() here if desired.
     while (!m_callbackHandler.popEvent(event)) {
-    std::this_thread::sleep_for(std::chrono::microseconds(10));
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
     // Return only the time_tag from the event.
-    return event.time_tag;
+    uint64_t pulseId = event.time_tag&0x00ffffffffffffff;
+    logging::info("KMicroscopeBld::next pulseId %016llx", pulseId);
+    return pulseId;
 }
 
 // Constructor Implementation
@@ -611,11 +635,11 @@ BldDetector::BldDetector(Parameters& para, DrpBase& drp)
 void BldDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) {}
 
 
-Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det, bool usePulseId) :
+Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
     m_para(para), m_drp(drp), m_det(det),
     m_config(0), m_terminate(false), m_running(false),
-    m_available(0), m_current(0), m_nDmaRet(0), m_usePulseId(usePulseId)
+    m_available(0), m_current(0), m_nDmaRet(0)
 {
     m_nodeId = det->nodeId;
     if (drp.pool.setMaskBytes(para.laneMask, 0)) {
@@ -757,15 +781,17 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get()));
 
     // Initialize the BLD values array. We call it "bldValue" since it may represent
-    // either a timestamp or a pulse ID depending on m_usePulseId.
+    // either a timestamp or a pulse ID depending on usePulseId.
+    bool usePulseId = strcmp("kmicro", m_para.detType.c_str()) == 0 ? true : false;
     uint64_t bldValue[m_config.size()];
     memset(bldValue, 0, sizeof(bldValue));
     uint64_t nextId = -1UL;
     for (unsigned i = 0; i < m_config.size(); i++) {
+        logging::info("BldApp::worker config: %u detType: %s calling next()", i, m_para.detType.c_str());
         bldValue[i] = m_config[i]->handler().next();
         if (bldValue[i] < nextId)
             nextId = bldValue[i];
-        if (!m_usePulseId)
+        if (!usePulseId)
             logging::info("BldApp::worker Initial timestamp[%d] 0x%" PRIx64, i, bldValue[i]);
         else
             logging::info("BldApp::worker Initial pulseId[%d] 0x%" PRIx64, i, bldValue[i]);
@@ -787,7 +813,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         }
 
         uint64_t tts;
-        if (!m_usePulseId) {
+        if (!usePulseId) {
             // Calculate realtime timeout (50 ms) using timestamp (nanosecond) scale.
             const unsigned TMO_NS = 50000000; // 50,000,000 ns = 50 ms
             timespec ts;
@@ -816,16 +842,17 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                                       (ts.tv_nsec / 1000ULL);
             // The timeout threshold is then the current pulse id minus the number of pulses in 50 ms.
             tts = currentPulseId - TMO_PULSES;
-            logging::debug("tmo time (pulse id mode) threshold %016llx", tts);
+            logging::debug("tmo time (pulse id mode) threshold 0x%" PRIx64, tts);
         }
 
         //  get oldest timing header
         if (!timingHeader)
             timingHeader = next();
 
-        // For matching, extract the reference value from the timing header.
+        //  get oldest BLD and throw away anything older than timingheader or timeout value
+        nextId = -1UL;
         if (timingHeader) {
-            if (!m_usePulseId) {
+            if (!usePulseId) {
                 // Use timestamp matching.
                 uint64_t ttv = timingHeader->time.value();
                 // For each BLD, if its current value is less than the timing header's timestamp,
@@ -847,7 +874,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 uint64_t timingPulseId = timingHeader->pulseId();
                 for (unsigned i = 0; i < m_config.size(); i++) {
                     if (bldValue[i] < timingPulseId) {
-                        m_config[i]->handler().clear(timingPulseId);
+                        //m_config[i]->handler().clear(timingPulseId); MONA No need for clearing?
                         uint64_t newVal = m_config[i]->handler().next();
                         logging::debug("Bld[%u] replacing pulseId %016llx with %016llx", i, bldValue[i], newVal);
                         bldValue[i] = newVal;
@@ -857,14 +884,14 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 }
             }
         }
-
-        // Logging for debugging.
-        logging::debug("Pgp next common value: 0x%016llx", nextId);
+        logging::debug("Bld next: 0x%" PRIx64, nextId);
 
         if (timingHeader) {
             if (timingHeader->service()!=XtcData::TransitionId::L1Accept) {     //  Handle immediately
+                logging::debug("Pgp next Transition Found");
                 Pds::EbDgram* dgram = _handle(index);
                 if (!dgram) {
+                    logging::debug("Pgp next not dgram continue");
                     m_current++;
                     timingHeader = nullptr;
                     continue;
@@ -881,6 +908,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
                 auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
                 memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
+                logging::debug("Pgp next done copying transition");
 
                 switch (dgram->service()) {
                 case XtcData::TransitionId::Configure: {
@@ -903,8 +931,9 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 _sendToTeb(*dgram, index);
                 nevents++;
             }
-            else if ((!m_usePulseId && timingHeader->time.value() < tts)
-                     || (m_usePulseId && timingHeader->pulseId() < tts)) {
+            else if ((!usePulseId && timingHeader->time.value() < tts)
+                     || (usePulseId && timingHeader->pulseId() < tts)) {
+                logging::debug("Pgp next Found L1Accept");
                 // In the "old" case, use the following block:
                 Pds::EbDgram* dgram = _handle(index);
                 if (!dgram) {
@@ -915,7 +944,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 const void* bufEnd = (char*)dgram + m_drp.pool.pebble.bufferSize();
                 bool lMissed = false;
                 for (unsigned i = 0; i < m_config.size(); i++) {
-                    if (!m_usePulseId) {
+                    if (!usePulseId) {
                         // Timestamp matching.
                         if (bldValue[i] == timingHeader->time.value()) {
                             XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
@@ -1013,6 +1042,10 @@ BldApp::~BldApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
+
+    if (m_det) {
+        delete m_det;
+    }
 
     // Py_Finalize() should not be included here. Python should only be
     // finalized when absolutely necessary
