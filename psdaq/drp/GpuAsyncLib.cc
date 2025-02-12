@@ -1,5 +1,6 @@
 #include "GpuAsyncLib.hh"
 
+#include "psdaq/aes-stream-drivers/GpuAsyncRegs.h"
 #include "psalg/utils/SysLog.hh"
 
 using logging = psalg::SysLog;
@@ -231,11 +232,13 @@ void gpuUnmapFpgaMem(GpuDmaBuffer_t* mem)
     chkError(cuMemFree(mem->dptr));
 }
 
-DmaTgt_t dmaTgtGet(int fd)
+DmaTgt_t dmaTgtGet(const DataGPU& gpu)
 {
     // @todo: This line addresses only lane 0
+    const uint64_t dynRtReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_DynamicRouteMasks0.offset;
     uint32_t regVal;
-    dmaReadRegister(fd, 0x0002802c, &regVal);
+    auto rc = dmaReadRegister(gpu.fd(), dynRtReg, &regVal);
+    if (rc) perror("dmaTgtGet: dmaWriteRegister");
 
     DmaTgt_t tgt;
     switch (regVal) {
@@ -246,8 +249,21 @@ DmaTgt_t dmaTgtGet(int fd)
     return tgt;
 }
 
-void dmaTgtSet(int fd, DmaTgt_t tgt)
+void dmaTgtSet(const DataGPU& gpu, DmaTgt_t tgt)
 {
     // @todo: This line addresses only lane 0
-    dmaWriteRegister(fd, 0x0002802c, tgt);
+    const uint64_t dynRtReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_DynamicRouteMasks0.offset;
+    auto rc = dmaWriteRegister(gpu.fd(), dynRtReg, tgt);
+    if (rc) perror("dmaTgtSet: dmaWriteRegister");
+}
+
+void dmaIdxReset(const DataGPU& gpu)
+{
+    const uint64_t writeEnReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_WriteEnable.offset;
+    uint32_t value;
+    auto rc = dmaReadRegister(gpu.fd(), writeEnReg, &value);
+    rc = dmaWriteRegister(gpu.fd(), writeEnReg, value & ~GpuAsyncReg_WriteEnable.bitMask);
+    if (rc) perror("dmaIdxReset: dmaWriteRegister 1");
+    rc = dmaWriteRegister(gpu.fd(), writeEnReg, value);
+    if (rc) perror("dmaIdxReset: dmaWriteRegister 2");
 }

@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     if (lverbose)  printf("Device supports unified addressing: %s\n", value ? "YES" : "NO");
 
     // Make the DMA target the GPU
-    auto tgt = dmaTgtGet(gpu0.fd());
+    auto tgt = dmaTgtGet(gpu0);
     const char* tgtName = "";
     switch (tgt) {
         case DmaTgt_t::CPU:  tgtName = "CPU";  break;
@@ -141,9 +141,9 @@ int main(int argc, char* argv[]) {
     if (lverbose)  printf("DMA target is changing from %s to %s\n",
                           tgtName, cpu ? "CPU" : "GPU");
     if (!cpu && tgt != GPU)
-        dmaTgtSet(gpu0.fd(), DmaTgt_t::GPU);
+        dmaTgtSet(gpu0, DmaTgt_t::GPU);
     else if (cpu && tgt != CPU)
-        dmaTgtSet(gpu0.fd(), DmaTgt_t::CPU);
+        dmaTgtSet(gpu0, DmaTgt_t::CPU);
 
     ////////////////////////////////////////////////
     // Create write and read buffers

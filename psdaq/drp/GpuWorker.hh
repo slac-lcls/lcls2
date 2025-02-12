@@ -64,12 +64,13 @@ struct Batch
 
 struct DetSeg
 {
-  int            fd;
+  DataGPU        gpu;
   GpuDmaBuffer_t dmaBuffers[MAX_BUFFERS];
 #ifdef SUDO
   GpuDmaBuffer_t swFpgaRegs;
   CUdeviceptr    hwWriteStart;
 #endif
+  DetSeg(std::string& device) : gpu(device.c_str()) {}
 };
 
 class MemPoolGpu : public MemPool
@@ -81,7 +82,7 @@ public:
   int initialize(Parameters& para);
   const std::vector<DetSeg>& segs() const { return m_segs; }
 public:
-  virtual int fd() const override { return m_segs[0].fd; } // @todo: Only the first one for the moment
+  virtual int fd() const override { return m_segs[0].gpu.fd(); } // @todo: Only the first one for the moment
   virtual int setMaskBytes(uint8_t laneMask, unsigned virtChan) override;
   unsigned count() const { return MAX_BUFFERS; }
 private:
@@ -114,11 +115,17 @@ public:
   unsigned worker() const { return m_worker; }
 private:
   int     _setupCudaGraphs(const DetSeg& seg, int instance);
-  CUgraph _recordGraph(cudaStream_t& stream, CUdeviceptr hwWritePtr, CUdeviceptr hwWriteStart, uint32_t* hostWriteBuf);
+  CUgraph _recordGraph(cudaStream_t& stream,
+                       CUdeviceptr   hwWritePtr,
+#ifndef SUDO
+                       uint32_t*     hostWriteBuf
+#else
+                       CUdeviceptr   hwWriteStart
+#endif
+                       );
   void    _reader(Detector&, GpuMetrics&);
 private:
   MemPoolGpu&                  m_pool;
-  const DetSeg&                m_seg;
   std::atomic<bool>            m_terminate_h;
   cuda::atomic<int>*           m_terminate_d;
   bool*                        m_done;      // Cache for m_terminate_d

@@ -171,9 +171,15 @@ void gpuDestroyBufferState(GpuBufferState_t* b);
 
 /**
  * Functions to get and set the DMA destination.
- * \param fd The file descriptor of the datagpu device
+ * \param fd The file descriptor of the PGP PCIe device
  * \param mode The enumerated value of the destination
  */
 enum DmaTgt_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
-DmaTgt_t dmaTgtGet(int fd);
-void dmaTgtSet(int fd, DmaTgt_t);
+DmaTgt_t dmaTgtGet(const DataGPU&);
+void dmaTgtSet(const DataGPU&, DmaTgt_t);
+
+/**
+ * Function to reset the DMA buffer round-robin index.
+ * \param fd The file descriptor of the PGP PCIe device
+ */
+void dmaIdxReset(const DataGPU&);

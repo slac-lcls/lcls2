@@ -69,8 +69,8 @@ public:
 
   __device__ void produce(const unsigned idx)            // Move head forward
   {
-    //const unsigned instance = idx * m_dmaBufMask;
-    //printf("*** rb::produce 1.%d, idx %d\n", instance, idx);
+    //const unsigned instance = idx & m_dmaBufMask;
+    //printf("*** rb::produce 1.%d, idx %d, head %d\n", instance, idx, m_head->load());
     // Make sure head is published in event order so make other streams wait if they get here first
     while (idx != m_head->load(cuda::memory_order_acquire)) { // Out-of-turn streams wait here
       if (m_terminate_d.load(cuda::memory_order_acquire))

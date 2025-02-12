@@ -7,6 +7,7 @@
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/range.hh"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
+#include "psdaq/aes-stream-drivers/GpuAsyncRegs.h"
 
 #include <thread>
 
@@ -19,7 +20,7 @@ using logging = psalg::SysLog;
 namespace Drp {
 
 #ifdef SUDO
-static const unsigned GPU_OFFSET      = 0x28000;
+static const unsigned GPU_OFFSET      = GPU_ASYNC_CORE_OFFSET;
 #endif
 static const size_t   DMA_BUFFER_SIZE = 128*1024;
 
@@ -66,20 +67,15 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   std::vector<int> units;
   auto pos = para.device.find("_", 0);
   getRange(para.device.substr(pos+1, para.device.length()), units);
-  m_segs.resize(units.size());
   for (auto unit : units) {
-    auto& seg = m_segs[worker];
-
     std::string device(para.device.substr(0, pos+1) + std::to_string(unit));
-    seg.fd = open(device.c_str(), O_RDWR);
-    if (seg.fd < 0) {
-      logging::critical("Error opening %s: %m", device.c_str());
-      abort();
-    }
+    m_segs.emplace_back(device);
     logging::info("PGP device '%s' opened", device.c_str());
 
+    auto& seg = m_segs[worker];
+
     // Clear out any left-overs from last time
-    int res = gpuRemNvidiaMemory(seg.fd);
+    int res = gpuRemNvidiaMemory(seg.gpu.fd());
     if (res < 0)  logging::error("Error in gpuRemNvidiaMemory\n");
     logging::debug("Done with gpuRemNvidiaMemory() cleanup\n");
 
@@ -89,7 +85,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     ////////////////////////////////////////////////
 
     /** Map the GpuAsyncCore FPGA registers **/
-    if (gpuMapHostFpgaMem(&seg.swFpgaRegs, seg.fd, GPU_OFFSET, 0x100000) < 0) {
+    if (gpuMapHostFpgaMem(&seg.swFpgaRegs, seg.gpu.fd(), GPU_OFFSET, 0x100000) < 0) {
       logging::critical("Failed to map GpuAsyncCore at offset=%d, size = %d", GPU_OFFSET, 0x100000);
       abort();
     }
@@ -107,7 +103,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     // Allocate buffers on the GPU
     // This handles allocating buffers on the device and registering them with the driver.
     for (unsigned i = 0; i < dmaCount(); ++i) {
-      if (gpuMapFpgaMem(&seg.dmaBuffers[i], seg.fd, 0, dmaSize(), 1) != 0) {
+      if (gpuMapFpgaMem(&seg.dmaBuffers[i], seg.gpu.fd(), 0, dmaSize(), 1) != 0) {
         logging::critical("Worker %d failed to alloc buffer list at number %zd", worker, i);
         abort();
       }
@@ -133,16 +129,14 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
 MemPoolGpu::~MemPoolGpu()
 {
-  for (auto seg : m_segs) {
+  for (auto& seg : m_segs) {
     for (unsigned i = 0; i < dmaCount(); ++i) {
       gpuUnmapFpgaMem(&seg.dmaBuffers[i]);
     }
 
     ssize_t rc;
-    if ((rc = gpuRemNvidiaMemory(seg.fd)) < 0)
+    if ((rc = gpuRemNvidiaMemory(seg.gpu.fd())) < 0)
       logging::error("gpuRemNvidiaMemory failed: %zd: %M", rc);
-
-    close(seg.fd);
   }
   m_segs.clear();
 }
@@ -163,8 +157,8 @@ int MemPoolGpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
                 dmaAddMaskBytes(mask, dest);
             }
         }
-        for (auto seg : m_segs) {
-            if (dmaSetMaskBytes(seg.fd, mask)) {
+        for (const auto& seg : m_segs) {
+            if (dmaSetMaskBytes(seg.gpu.fd(), mask)) {
                 retval = 1; // error
             } else {
                 ++m_setMaskBytesDone;
@@ -177,7 +171,6 @@ int MemPoolGpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 
 GpuWorker::GpuWorker(unsigned worker, const Parameters& para, MemPoolGpu& pool) :
   m_pool       (pool),
-  m_seg        (m_pool.segs()[worker]),
   m_terminate_h(false),
   m_dmaQueue   (m_pool.nbuffers()),     // @todo: Revisit depth
   m_worker     (worker),
@@ -236,7 +229,7 @@ GpuWorker::GpuWorker(unsigned worker, const Parameters& para, MemPoolGpu& pool) 
 #endif
 
   // Prepare the CUDA graphs
-  auto& seg = m_pool.segs()[worker];
+  const auto& seg = m_pool.segs()[worker];
   m_graphs.resize(m_pool.dmaCount());
   m_graphExecs.resize(m_pool.dmaCount());
   for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
@@ -280,12 +273,12 @@ int GpuWorker::_setupCudaGraphs(const DetSeg& seg, int instance)
     chkError(cudaMallocManaged(&m_hostWriteBufs[instance], size));
     chkError(cudaMemset(m_hostWriteBufs[instance], 0, size)); // Avoid rereading junk on re-Configure
     chkError(cudaStreamAttachMemAsync(m_streams[instance], m_hostWriteBufs[instance], 0, cudaMemAttachHost));
-    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, seg.hwWriteStart, m_hostWriteBufs[instance]);
+    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, m_hostWriteBufs[instance]);
 #else
     for (unsigned i = 0; i < m_ringIndex_h->size(); ++i) {
       chkError(cudaStreamAttachMemAsync(m_streams[instance], m_hostWriteBufs[i], 0, cudaMemAttachHost));
     }
-    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, seg.hwWriteStart, nullptr);
+    m_graphs[instance] = _recordGraph(m_streams[instance], seg.dmaBuffers[instance].dptr, seg.hwWriteStart);
 #endif
     if (m_graphs[instance] == 0)
       return -1;
@@ -323,9 +316,7 @@ static __global__ void _waitValueGEQ(const volatile uint32_t* mem,
                                      const cuda::atomic<int>* terminate,
                                      bool*                    done)
 {
-#ifndef SUDO
-  int instance = -1;
-#else
+#ifdef SUDO
   //// Wait for the host buffer to become ready
   //while (!*bufRdy) {
   //  if (terminate->load(cuda::memory_order_acquire)) {
@@ -351,22 +342,22 @@ static __global__ void _waitValueGEQ(const volatile uint32_t* mem,
 }
 
 #ifndef SUDO
-static __global__ void _event(uint32_t* out, uint32_t* in, size_t size, const bool& done)
+static __global__ void _event(uint32_t* out, uint32_t* in, const bool& done)
 #else
-static __global__ void _event(uint32_t* const*        pOut, // Add __restrict__
-                              uint32_t* const         in,  // Add __restrict__
+static __global__ void _event(uint32_t* const* __restrict__                     pOut,
+                              uint32_t* const  __restrict__                     in,
                               cuda::atomic<unsigned, cuda::thread_scope_block>& rdyCtr,
-                              Gpu::RingIndex&         ringIndex,
-                              const unsigned&         head,
-                              const bool&             done)
+                              Gpu::RingIndex&                                   ringIndex,
+                              const unsigned&                                   head,
+                              const bool&                                       done)
 #endif
 {
 #ifdef SUDO
-  uint32_t* out = *pOut;
+  uint32_t* const __restrict__ out = *pOut;
 #endif
   if (done)  return;
 
-  const DmaDsc* dmaDsc = (const DmaDsc*)in;
+  const DmaDsc* const __restrict__ dmaDsc = (const DmaDsc*)in;
 
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
   if (offset >= (sizeof(*dmaDsc)+dmaDsc->size)/sizeof(*out))
@@ -407,8 +398,12 @@ static __global__ void _graphLoop(const bool& done)
 
 cudaGraph_t GpuWorker::_recordGraph(cudaStream_t& stream,
                                     CUdeviceptr   dmaBuffer,
-                                    CUdeviceptr   hwWriteStart,
-                                    uint32_t*     hostWriteBuf)
+#ifndef SUDO
+                                    uint32_t*     hostWriteBuf
+#else
+                                    CUdeviceptr   hwWriteStart
+#endif
+                                    )
 {
   int instance = &stream - &m_streams[0];
 
@@ -487,13 +482,13 @@ cudaGraph_t GpuWorker::_recordGraph(cudaStream_t& stream,
 DmaTgt_t GpuWorker::dmaTarget() const
 {
   // @todo: This line addresses only lane 0
-  return dmaTgtGet(m_pool.segs()[m_worker].fd);
+  return dmaTgtGet(m_pool.segs()[m_worker].gpu);
 }
 
 void GpuWorker::dmaTarget(DmaTgt_t dest)
 {
   // @todo: This line addresses only lane 0
-  dmaTgtSet(m_pool.segs()[m_worker].fd, dest);
+  dmaTgtSet(m_pool.segs()[m_worker].gpu, dest);
 }
 
 void GpuWorker::start(Detector* det, GpuMetrics& metrics)
@@ -521,7 +516,8 @@ void GpuWorker::freeDma(unsigned index)
 #ifndef SUDO
   // Write to the DMA start register in the FPGA
   //logging::debug("Trigger write to buffer %d\n", dmaIdx);
-  auto rc = gpuSetWriteEn(m_seg.fd, index);
+  const auto& seg = m_pool.segs()[m_worker];
+  auto rc = gpuSetWriteEn(seg.gpu.fd(), index);
   if (rc < 0) {
     logging::critical("Failed to reenable buffer %d for write: %zd: %m", index, rc);
     abort();
@@ -552,18 +548,23 @@ void GpuWorker::_reader(Detector& det, GpuMetrics& metrics)
   logging::info("GpuWorker[%d] starting\n", m_worker);
   chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
 
-  dmaTarget(DmaTgt_t::GPU); // Ensure that timing messages are DMAed to the GPU
+  // Ensure that timing messages are DMAed to the GPU
+  dmaTarget(DmaTgt_t::GPU);
+
+  // Ensure that the DMA round-robin index starts with buffer 0
+  const auto& seg = m_pool.segs()[m_worker];
+  dmaIdxReset(seg.gpu);
 
   resetEventCounter();
 
   for (unsigned dmaIdx = 0; dmaIdx < m_pool.dmaCount(); ++dmaIdx) {
     // Clear the GPU memory handshake space to zero
-    auto dmaBuffer = m_seg.dmaBuffers[dmaIdx].dptr;
+    auto dmaBuffer = seg.dmaBuffers[dmaIdx].dptr;
     chkFatal(cuStreamWriteValue32(m_streams[dmaIdx], dmaBuffer + 4, 0x00, 0));
     chkError(cudaStreamSynchronize(m_streams[dmaIdx]));
 
     // Write to the DMA start register in the FPGA
-    auto rc = gpuSetWriteEn(m_seg.fd, dmaIdx);
+    auto rc = gpuSetWriteEn(seg.gpu.fd(), dmaIdx);
     if (rc < 0) {
       logging::critical("Failed to reenable buffer %d for write: %zd: %m", dmaIdx, rc);
       abort();
@@ -714,7 +715,9 @@ void GpuWorker::_reader(Detector& det, GpuMetrics& metrics)
 
       metrics.m_nevents += 1;
       m_dmaQueue.push(index);
+#ifdef SUDO
       index = (index+1)&bufferMask;
+#endif
     }
   }
 

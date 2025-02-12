@@ -157,6 +157,7 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cuda_driver
     )
     set_target_properties(drp_gpu PROPERTIES CUDA_ARCHITECTURES "86")
+    target_compile_options(drp_gpu PUBLIC -O3)
 
     add_library(AreaDetector_gpu SHARED
         AreaDetectorGpu.cu
@@ -178,6 +179,7 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cuda_driver
     )
     set_target_properties(AreaDetector_gpu PROPERTIES CUDA_ARCHITECTURES "86")
+    target_compile_options(AreaDetector_gpu PUBLIC -O3)
 
     add_executable(pgpreadgpu
         pgpreadgpu.cc
