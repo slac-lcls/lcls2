@@ -56,7 +56,7 @@ protected:
         return *reinterpret_cast<const uint64_t*>(m_buffer.data() + m_pulseIdPos);
     }
 
-    // Data members (from your original Bld class).
+    // Data members (from the original Bld class).
     int m_timestampPos;
     int m_pulseIdPos;
     int m_headerSize;

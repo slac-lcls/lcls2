@@ -13,9 +13,10 @@ PipeCallbackHandler::PipeCallbackHandler(int measurementTimeMs,
     : m_measurementTimeMs(measurementTimeMs),
       m_batchSize(batchSize),
       m_iniFilePath(iniFilePath),
-      m_measurementStarted(false)   // new flag: measurement not yet started
+      m_measurementStarted(false),
+      m_hasCurrentEvent(false) // no event in progress yet
 {
-
+    // SC initialization is deferred until init() is called.
 }
 
 void PipeCallbackHandler::init(){
@@ -45,15 +46,13 @@ void PipeCallbackHandler::init(){
     m_privData.dld_event_size = m_sizes.dld_event_size;
     m_privData.handler       = this;
 
-    // Allocate a buffer for the callback structure.
+    // Allocate and initialize the callback structure.
     char* buffer = static_cast<char*>(calloc(1, m_sizes.user_callback_size));
     if (!buffer) {
         throw std::runtime_error("Failed to allocate memory for callback structure");
     }
     m_cbs = reinterpret_cast<sc_pipe_callbacks*>(buffer);
     m_cbs->priv = &m_privData;
-
-    // Assign our callback functions.
     m_cbs->start_of_measure    = cb_start;
     m_cbs->end_of_measure      = cb_end;
     m_cbs->millisecond_countup = cb_millis;
@@ -72,14 +71,11 @@ void PipeCallbackHandler::init(){
         throw std::runtime_error("Failed to open pipe");
     }
     free(buffer);
-
 }
 
 void PipeCallbackHandler::startMeasurement() {
     // Start the measurement only if it hasn't been started before.
     if (!m_measurementStarted) {
-
-        // Start the measurement using the provided measurement time.
         int ret = sc_tdc_start_measure2(m_dd, m_measurementTimeMs);
         logging::debug("PipeCallbackHandler::startMeasurement() measurementTimeMs: %i", m_measurementTimeMs);
         if (ret < 0) {
@@ -93,7 +89,7 @@ void PipeCallbackHandler::startMeasurement() {
 }
 
 PipeCallbackHandler::~PipeCallbackHandler() {
-    // (Optional) Flush any remaining partial batch into the main queue.
+    // Flush any pending complete events.
     flushPending();
     if (m_pd >= 0) {
         sc_pipe_close2(m_dd, m_pd);
@@ -103,7 +99,7 @@ PipeCallbackHandler::~PipeCallbackHandler() {
     m_measurementStarted = false;
 }
 
-bool PipeCallbackHandler::popEvent(sc_DldEvent &event) {
+bool PipeCallbackHandler::popEvent(DrpEvent &event) {
     std::lock_guard<std::mutex> lock(m_queueMutex);
     if (m_eventQueue.empty()) return false;
     event = m_eventQueue.front();
@@ -111,22 +107,15 @@ bool PipeCallbackHandler::popEvent(sc_DldEvent &event) {
     return true;
 }
 
-void PipeCallbackHandler::accumulateEvents(const std::vector<sc_DldEvent>& events) {
+void PipeCallbackHandler::accumulateEvents(const std::vector<DrpEvent>& events) {
     std::lock_guard<std::mutex> lock(m_batchMutex);
-    // Insert the incoming events into the pending batch.
     m_pendingBatch.insert(m_pendingBatch.end(), events.begin(), events.end());
-    // Flush full batches.
-    while (m_pendingBatch.size() >= m_batchSize) {
-        // Prepare a full batch.
-        std::vector<sc_DldEvent> fullBatch(m_pendingBatch.begin(), m_pendingBatch.begin() + m_batchSize);
-        {
-            std::lock_guard<std::mutex> qlock(m_queueMutex);
-            for (const auto &ev : fullBatch) {
-                m_eventQueue.push(ev);
-            }
+    if (m_pendingBatch.size() >= m_batchSize) {
+        std::lock_guard<std::mutex> qlock(m_queueMutex);
+        for (const auto &ev : m_pendingBatch) {
+            m_eventQueue.push(ev);
         }
-        // Remove the flushed events from the accumulation buffer.
-        m_pendingBatch.erase(m_pendingBatch.begin(), m_pendingBatch.begin() + m_batchSize);
+        m_pendingBatch.clear();
     }
 }
 
@@ -141,55 +130,88 @@ void PipeCallbackHandler::flushPending() {
     }
 }
 
+//------------------------------------------------------------------------------
+// This method processes a single raw sc_DldEvent and updates the in–progress DrpEvent.
+// If the new event’s pulseid differs from the current one, the current event is marked complete
+// and stored in the pending batch, and a new DrpEvent is started.
+//------------------------------------------------------------------------------
+void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
+    std::lock_guard<std::mutex> lock(m_batchMutex);
+    uint64_t newPulse = obj->time_tag; // using time_tag as pulseid
+
+    // If no event is in progress, start one.
+    if (!m_hasCurrentEvent) {
+        m_currentEvent = DrpEvent();
+        m_currentEvent.pulseid = newPulse;
+        m_currentEvent.count = 0;
+        m_hasCurrentEvent = true;
+    }
+
+    // If the incoming event's pulseid is different from the current one,
+    // the current event is complete. Store it and start a new one.
+    if (m_hasCurrentEvent && m_currentEvent.pulseid != newPulse) {
+        m_pendingBatch.push_back(m_currentEvent);
+        if (m_pendingBatch.size() >= m_batchSize) {
+            std::lock_guard<std::mutex> qlock(m_queueMutex);
+            for (const auto &ev : m_pendingBatch) {
+                m_eventQueue.push(ev);
+            }
+            m_pendingBatch.clear();
+        }
+        m_currentEvent = DrpEvent();
+        m_currentEvent.pulseid = newPulse;
+        m_currentEvent.count = 0;
+    }
+
+    // Add the raw event data into the current event if there is room.
+    if (m_currentEvent.count < DrpEvent::MAX_EVENTS) {
+        size_t idx = m_currentEvent.count;
+        // Convert raw fields to the new types.
+        m_currentEvent.xpos[idx] = static_cast<uint16_t>(obj->dif1);
+        m_currentEvent.ypos[idx] = static_cast<uint16_t>(obj->dif2);
+        m_currentEvent.time[idx] = static_cast<uint32_t>(obj->sum);
+        m_currentEvent.count++;
+    }
+}
+
 } // namespace Drp
 
-// -------------------------------------------------------------------------
-// Callback Function Definitions (with C linkage, in the global namespace)
-// -------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Callback Function Definitions (with C linkage)
+//------------------------------------------------------------------------------
 extern "C" {
 
 void cb_start(void *priv) {
     // Called at the start of a measurement.
-    // printf("Measurement started.\n");
 }
 
 void cb_end(void *priv) {
     // Called at the end of a measurement.
-    // printf("Measurement ended.\n");
 }
 
 void cb_millis(void *priv) {
     // Called every millisecond.
-    // printf("Millisecond tick.\n");
 }
 
 void cb_stat(void *priv, const statistics_t* stat) {
     // Process statistics if desired.
-    // For now, do nothing.
 }
 
 void cb_tdc_event(void *priv, const sc_TdcEvent* event_array, size_t len) {
     // Process TDC events if desired.
-    // printf("TDC event callback.\n");
 }
 
 void cb_dld_event(void *priv, const sc_DldEvent* const event_array, size_t event_array_len) {
-    // Increase the DLD event counter.
-    Drp::PipeCallbackHandler::PrivData* pData = static_cast<Drp::PipeCallbackHandler::PrivData*>(priv);
+    Drp::PipeCallbackHandler::PrivData* pData =
+        static_cast<Drp::PipeCallbackHandler::PrivData*>(priv);
     pData->cn_dld_events++;
-    // The event_array is a contiguous buffer where each event’s size is given by pData->dld_event_size.
+
+    // The event_array is a contiguous buffer; process each raw event.
     const char* buffer = reinterpret_cast<const char*>(event_array);
-    // Build a local batch of events.
-    std::vector<sc_DldEvent> localBatch;
-    localBatch.reserve(event_array_len);
     for (size_t j = 0; j < event_array_len; ++j) {
         const sc_DldEvent* obj = reinterpret_cast<const sc_DldEvent*>(buffer + j * pData->dld_event_size);
-        //uint64_t pulseId = obj->time_tag&0x00ffffffffffffff;
-        //logging::debug("cb_dld_event got pulseId: %016llx", pulseId);
-        localBatch.push_back(*obj);
+        pData->handler->processScDldEvent(obj);
     }
-    // Accumulate the events; they will be flushed to the main queue only when a full batch is reached.
-    pData->handler->accumulateEvents(localBatch);
 }
 
 } // extern "C"

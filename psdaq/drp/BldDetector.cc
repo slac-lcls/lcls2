@@ -630,7 +630,7 @@ void KMicroscopeBld::clear(uint64_t ts)
 }
 
 uint64_t KMicroscopeBld::next() {
-    sc_DldEvent event;
+    DrpEvent event;
 
     // Busy–wait until an event is available.
     // Optionally, you could call m_callbackHandler.flushPending() here if desired.
@@ -638,8 +638,12 @@ uint64_t KMicroscopeBld::next() {
     while (!m_callbackHandler.popEvent(event)) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
-    // Return only the time_tag from the event.
-    uint64_t pulseId = event.time_tag&0x00ffffffffffffff;
+
+    m_payload = event.payload();
+    m_payloadSize = event.payloadSize();
+
+    // Return only the lower 56 bits
+    uint64_t pulseId = event.pulseid&0x00ffffffffffffff;
     return pulseId;
 }
 
