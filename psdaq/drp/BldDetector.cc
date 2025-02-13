@@ -182,7 +182,6 @@ BldFactory::BldFactory(const char* name,
         _arraySizes = BldNames::KMicroscopeV1().arraySizes();
         unsigned payloadSize = getVarDefSize(_varDef,_arraySizes);
         _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, batchSize, payloadSize);
-        logging::info("BldFactory::BldFactory KMicroscopeBld");
         return;
     }
 
@@ -845,10 +844,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 
         if (timingHeader) {
             if (timingHeader->service()!=XtcData::TransitionId::L1Accept) {     //  Handle immediately
-                logging::debug("Pgp::worker Transition Found");
                 Pds::EbDgram* dgram = _handle(index);
                 if (!dgram) {
-                    logging::debug("Pgp next not dgram continue");
                     m_current++;
                     timingHeader = nullptr;
                     continue;
@@ -889,7 +886,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 nevents++;
             }
             else {
-                logging::debug("Pgp::worker L1Accept found");
                 // Calculate realtime timeout
                 uint64_t tts;
                 if (!usePulseId) {
@@ -949,7 +945,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     for (unsigned i = 0; i < m_config.size(); i++) {
                         if (bldValue[i] < timingPulseId) {
                             //m_config[i]->handler().clear(timingPulseId); MONA No need for clearing?
-                            logging::debug("Bld get next bld");
                             uint64_t newVal = m_config[i]->handler().next();
                             logging::debug("Bld[%u] replacing pulseId %016llx with %016llx", i, bldValue[i], newVal);
                             bldValue[i] = newVal;
@@ -990,6 +985,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             if (bldValue[i] == timingHeader->pulseId()) {
                                 XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
                                 m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                                logging::debug("Found bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
+                                                i, timingHeader->pulseId(), bldValue[i], dgram->pulseId());
                             }
                             else {
                                 lMissed = true;
@@ -1006,7 +1003,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     }
                     else {
                         if (lMissing)
-                            logging::debug("Found bld: %016lx  %014lx",nextId, dgram->pulseId());
+                            logging::debug("Lost bld: %016lx  %014lx",nextId, dgram->pulseId());
                         lMissing = false;
                     }
 
