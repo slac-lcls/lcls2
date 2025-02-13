@@ -109,9 +109,9 @@ BldNames::XGmdV2::XGmdV2() {
 }
 
 BldNames::KMicroscopeV1::KMicroscopeV1() {
-    NameVec.push_back(Name("time"       , Name::DOUBLE,1)); // 16
-    NameVec.push_back(Name("xpos"       , Name::DOUBLE,1)); // 16
-    NameVec.push_back(Name("ypos"       , Name::DOUBLE,1)); // 16
+    NameVec.push_back(Name("xpos"       , Name::UINT16,1)); // 16
+    NameVec.push_back(Name("ypos"       , Name::UINT16,1)); // 16
+    NameVec.push_back(Name("time"       , Name::UINT32,1)); // 16
 }
 
 static std::vector<unsigned> _kmicroArraySizes { 16, 16, 16 };
