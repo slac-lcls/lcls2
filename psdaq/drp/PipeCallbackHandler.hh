@@ -40,43 +40,55 @@ namespace Drp {
 //-----------------------------------------------------------------------
 class DrpEvent {
 public:
-    static const size_t MAX_EVENTS = 16; // maximum number of raw events to save
-    std::array<uint16_t, MAX_EVENTS> xpos; // changed from double to uint16_t
-    std::array<uint16_t, MAX_EVENTS> ypos; // changed from double to uint16_t
-    std::array<uint32_t, MAX_EVENTS> time;   // changed from double to uint32_t
-    uint64_t pulseid; // common pulse id (from time_tag)
-    size_t count;     // number of events stored
+    static const size_t MAX_EVENTS = 16; // Maximum number of raw events to save.
+
+    // Data fields: xpos and ypos are stored as uint16_t, time as uint32_t.
+    std::array<uint16_t, MAX_EVENTS> xpos;
+    std::array<uint16_t, MAX_EVENTS> ypos;
+    std::array<uint32_t, MAX_EVENTS> time;
+    uint64_t pulseid; // Common pulse id (from time_tag)
+    size_t count;     // Number of valid events stored
+
+    // Fixed-size buffer (128 bytes) for building the payload of 8 bytes x 16 MAX_EVENTS.
+    std::array<uint8_t, 128> m_buffer;
 
     DrpEvent() : pulseid(0), count(0) { }
 
-    // payload() builds a contiguous block of memory where each record is:
-    //   [xpos (2 bytes), ypos (2 bytes), time (4 bytes)]
-    // Caller is responsible for freeing the returned memory.
-    uint8_t* payload() const {
-        size_t recordSize = 2 + 2 + 4; // 8 bytes per record.
+    // payload() encodes the stored data into m_buffer.
+    // Each record is 8 bytes: 2 bytes for xpos, 2 for ypos, 4 for time.
+    // The method returns a pointer to m_buffer.data(), and the payload
+    // is exactly count * 8 bytes long.
+    uint8_t* payload() {
+        constexpr size_t recordSize = 8; // 2 + 2 + 4 = 8 bytes per record.
         size_t totalSize = count * recordSize;
-        uint8_t* buf = new uint8_t[totalSize];
+        if (totalSize > m_buffer.size()) {
+            throw std::runtime_error("DrpEvent payload exceeds maximum allowed size");
+        }
         for (size_t i = 0; i < count; i++) {
             size_t offset = i * recordSize;
             // Write xpos[i] in little-endian order.
-            buf[offset]     = static_cast<uint8_t>(xpos[i] & 0xFF);
-            buf[offset + 1] = static_cast<uint8_t>((xpos[i] >> 8) & 0xFF);
+            m_buffer[offset]     = static_cast<uint8_t>(xpos[i] & 0xFF);
+            m_buffer[offset + 1] = static_cast<uint8_t>((xpos[i] >> 8) & 0xFF);
             // Write ypos[i] in little-endian order.
-            buf[offset + 2] = static_cast<uint8_t>(ypos[i] & 0xFF);
-            buf[offset + 3] = static_cast<uint8_t>((ypos[i] >> 8) & 0xFF);
+            m_buffer[offset + 2] = static_cast<uint8_t>(ypos[i] & 0xFF);
+            m_buffer[offset + 3] = static_cast<uint8_t>((ypos[i] >> 8) & 0xFF);
             // Write time[i] in little-endian order.
-            buf[offset + 4] = static_cast<uint8_t>(time[i] & 0xFF);
-            buf[offset + 5] = static_cast<uint8_t>((time[i] >> 8) & 0xFF);
-            buf[offset + 6] = static_cast<uint8_t>((time[i] >> 16) & 0xFF);
-            buf[offset + 7] = static_cast<uint8_t>((time[i] >> 24) & 0xFF);
+            m_buffer[offset + 4] = static_cast<uint8_t>(time[i] & 0xFF);
+            m_buffer[offset + 5] = static_cast<uint8_t>((time[i] >> 8) & 0xFF);
+            m_buffer[offset + 6] = static_cast<uint8_t>((time[i] >> 16) & 0xFF);
+            m_buffer[offset + 7] = static_cast<uint8_t>((time[i] >> 24) & 0xFF);
         }
-        return buf;
+        return m_buffer.data();
     }
 
-    // payloadSize() returns the size (in bytes) of the payload.
+    // payloadSize() returns the total number of bytes in the payload.
     unsigned payloadSize() const {
-        return static_cast<unsigned>(count * 8);
+        return static_cast<unsigned>(count * recordSize());
     }
+
+private:
+    // Helper function to return record size (in bytes).
+    constexpr size_t recordSize() const { return 8; }
 };
 
 //-----------------------------------------------------------------------
