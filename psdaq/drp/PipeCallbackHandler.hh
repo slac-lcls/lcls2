@@ -60,8 +60,8 @@ public:
     // Starts the measurement if it hasn't been started already.
     void startMeasurement();
 
-    // Closes the pipe if the measurement was started.
-    void closePipe();
+    // Initialize device and open communication pipe
+    void init();
 
 private:
     // Member variables...

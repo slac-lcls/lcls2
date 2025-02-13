@@ -15,69 +15,73 @@ PipeCallbackHandler::PipeCallbackHandler(int measurementTimeMs,
       m_iniFilePath(iniFilePath),
       m_measurementStarted(false)   // new flag: measurement not yet started
 {
-    logging::info("PipeCallbackHandler::constructor");
+
+}
+
+void PipeCallbackHandler::init(){
+    // Initialize the scTDC device using the specified INI file.
+    m_dd = sc_tdc_init_inifile(m_iniFilePath.c_str());
+    if (m_dd < 0) {
+        char error_description[ERRSTRLEN];
+        sc_get_err_msg(m_dd, error_description);
+        printf("error! code: %d, message: %s\n", m_dd, error_description);
+        throw std::runtime_error("Failed to initialize sc_tdc device");
+    }
+
+    // Get device properties (assume device type “3” is expected).
+    int ret = sc_tdc_get_device_properties(m_dd, 3, &m_sizes);
+    if (ret < 0) {
+        char error_description[ERRSTRLEN];
+        sc_get_err_msg(ret, error_description);
+        printf("error! code: %d, message: %s\n", ret, error_description);
+        throw std::runtime_error("Failed to get device properties");
+    }
+
+    // Initialize private callback data.
+    m_privData.cn_measures   = 0;
+    m_privData.cn_tdc_events = 0;
+    m_privData.cn_dld_events = 0;
+    m_privData.total_time    = 0.0;
+    m_privData.dld_event_size = m_sizes.dld_event_size;
+    m_privData.handler       = this;
+
+    // Allocate a buffer for the callback structure.
+    char* buffer = static_cast<char*>(calloc(1, m_sizes.user_callback_size));
+    if (!buffer) {
+        throw std::runtime_error("Failed to allocate memory for callback structure");
+    }
+    m_cbs = reinterpret_cast<sc_pipe_callbacks*>(buffer);
+    m_cbs->priv = &m_privData;
+
+    // Assign our callback functions.
+    m_cbs->start_of_measure    = cb_start;
+    m_cbs->end_of_measure      = cb_end;
+    m_cbs->millisecond_countup = cb_millis;
+    m_cbs->statistics          = cb_stat;
+    m_cbs->tdc_event           = cb_tdc_event;
+    m_cbs->dld_event           = cb_dld_event;
+    m_params.callbacks = m_cbs;
+
+    // Open the pipe for communication.
+    m_pd = sc_pipe_open2(m_dd, USER_CALLBACKS, &m_params);
+    if (m_pd < 0) {
+        char error_description[ERRSTRLEN];
+        sc_get_err_msg(m_pd, error_description);
+        printf("error! code: %d, message: %s\n", m_pd, error_description);
+        free(buffer);
+        throw std::runtime_error("Failed to open pipe");
+    }
+    free(buffer);
 
 }
 
 void PipeCallbackHandler::startMeasurement() {
     // Start the measurement only if it hasn't been started before.
     if (!m_measurementStarted) {
-        // Initialize the scTDC device using the specified INI file.
-        m_dd = sc_tdc_init_inifile(m_iniFilePath.c_str());
-        if (m_dd < 0) {
-            char error_description[ERRSTRLEN];
-            sc_get_err_msg(m_dd, error_description);
-            printf("error! code: %d, message: %s\n", m_dd, error_description);
-            throw std::runtime_error("Failed to initialize sc_tdc device");
-        }
-
-        // Get device properties (assume device type “3” is expected).
-        int ret = sc_tdc_get_device_properties(m_dd, 3, &m_sizes);
-        if (ret < 0) {
-            char error_description[ERRSTRLEN];
-            sc_get_err_msg(ret, error_description);
-            printf("error! code: %d, message: %s\n", ret, error_description);
-            throw std::runtime_error("Failed to get device properties");
-        }
-
-        // Initialize private callback data.
-        m_privData.cn_measures   = 0;
-        m_privData.cn_tdc_events = 0;
-        m_privData.cn_dld_events = 0;
-        m_privData.total_time    = 0.0;
-        m_privData.dld_event_size = m_sizes.dld_event_size;
-        m_privData.handler       = this;
-
-        // Allocate a buffer for the callback structure.
-        char* buffer = static_cast<char*>(calloc(1, m_sizes.user_callback_size));
-        if (!buffer) {
-            throw std::runtime_error("Failed to allocate memory for callback structure");
-        }
-        m_cbs = reinterpret_cast<sc_pipe_callbacks*>(buffer);
-        m_cbs->priv = &m_privData;
-
-        // Assign our callback functions.
-        m_cbs->start_of_measure    = cb_start;
-        m_cbs->end_of_measure      = cb_end;
-        m_cbs->millisecond_countup = cb_millis;
-        m_cbs->statistics          = cb_stat;
-        m_cbs->tdc_event           = cb_tdc_event;
-        m_cbs->dld_event           = cb_dld_event;
-        m_params.callbacks = m_cbs;
-
-        // Open the pipe for communication.
-        m_pd = sc_pipe_open2(m_dd, USER_CALLBACKS, &m_params);
-        if (m_pd < 0) {
-            char error_description[ERRSTRLEN];
-            sc_get_err_msg(m_pd, error_description);
-            printf("error! code: %d, message: %s\n", m_pd, error_description);
-            free(buffer);
-            throw std::runtime_error("Failed to open pipe");
-        }
-        free(buffer);
 
         // Start the measurement using the provided measurement time.
-        ret = sc_tdc_start_measure2(m_dd, m_measurementTimeMs);
+        int ret = sc_tdc_start_measure2(m_dd, m_measurementTimeMs);
+        logging::debug("PipeCallbackHandler::startMeasurement() measurementTimeMs: %i", m_measurementTimeMs);
         if (ret < 0) {
             char error_description[ERRSTRLEN];
             sc_get_err_msg(ret, error_description);
@@ -88,20 +92,15 @@ void PipeCallbackHandler::startMeasurement() {
     }
 }
 
-void PipeCallbackHandler::closePipe() {
-    // Close the pipe only if the measurement was started and the pipe is open.
-    if (m_measurementStarted && m_pd >= 0) {
-        sc_pipe_close2(m_dd, m_pd);
-        m_pd = -1; // Mark as closed.
-        sc_tdc_deinit2(m_dd);
-        m_measurementStarted = false;
-    }
-}
-
 PipeCallbackHandler::~PipeCallbackHandler() {
     // (Optional) Flush any remaining partial batch into the main queue.
     flushPending();
-    closePipe();
+    if (m_pd >= 0) {
+        sc_pipe_close2(m_dd, m_pd);
+        m_pd = -1; // Mark as closed.
+        sc_tdc_deinit2(m_dd);
+    }
+    m_measurementStarted = false;
 }
 
 bool PipeCallbackHandler::popEvent(sc_DldEvent &event) {
@@ -185,7 +184,8 @@ void cb_dld_event(void *priv, const sc_DldEvent* const event_array, size_t event
     localBatch.reserve(event_array_len);
     for (size_t j = 0; j < event_array_len; ++j) {
         const sc_DldEvent* obj = reinterpret_cast<const sc_DldEvent*>(buffer + j * pData->dld_event_size);
-        // (Optional: Process individual event fields if needed.)
+        //uint64_t pulseId = obj->time_tag&0x00ffffffffffffff;
+        //logging::debug("cb_dld_event got pulseId: %016llx", pulseId);
         localBatch.push_back(*obj);
     }
     // Accumulate the events; they will be flushed to the main queue only when a full batch is reached.
