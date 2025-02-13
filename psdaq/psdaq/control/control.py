@@ -507,7 +507,7 @@ class DaqXPM():
         logging.debug('pvListL0Groups: %s'  % self.pvListL0Groups)
 
         # Couple deadtime of all readout groups
-        logging.debug(f'DaqPVA.allocate() putting {groups} to PV {self.pvListL0Groups}')
+        logging.debug(f'DaqXPM.allocate() putting {groups} to PV {self.pvListL0Groups}')
         retVal = self.pva.pv_put(self.pvListL0Groups, groups)
         if not retVal:
             self.report_error(f'condition_alloc() failed putting {groups} to PV {self.pvListL0Groups}')
@@ -645,7 +645,7 @@ class DaqXPM():
             self.pvStepDone = f'{pv_base}:StepDone'
             self.pva.pv_put(self.pvStepDone, 0)
 
-            logging.debug("DaqPVA.setup_step(mask=%d)" % mask)
+            logging.debug("DaqXPM.setup_step(mask=%d)" % mask)
             rv = self.pva.pv_put(f'{pv_base}:StepGroups', mask)
         else:
             msg = {'type'  :'set_reg',
@@ -2337,13 +2337,17 @@ class CollectionManager():
 
         # optionally enable a sequence
         if self.seqpv_name:
-            self.xpm.pv_put(self.seqpv_name, self.seqpv_val)
+            self.pva.pv_put(self.seqpv_name, 1)
 
         self.lastTransition = 'enable'
         return True
 
 
     def condition_disable(self):
+
+        # optionally enable a sequence
+        if self.seqpv_name:
+            self.pva.pv_put(self.seqpv_name, 0)
 
         # order matters: set Disable PV before others transition
         if not self.xpm.group_run(self.groups,False):
@@ -2443,7 +2447,8 @@ class CollectionManager():
         def callback(done):
             doneFlag = int(done)
             if doneFlag:
-                if self.state != 'running':
+                #  There is a race between self.state=running and stepdone
+                if self.state != 'running' and self.state != 'paused':
                     logging.debug(f'StepDone PV={doneFlag} in state {self.state} (ignore)')
                 elif doneFlag:
                     logging.debug(f'StepDone PV={doneFlag} in state {self.state} (set step_done event)')
