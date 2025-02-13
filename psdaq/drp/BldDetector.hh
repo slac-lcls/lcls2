@@ -39,6 +39,7 @@ public:
     // Virtual methods to be overridden by derived classes.
     virtual void clear(uint64_t ts) = 0;
     virtual uint64_t next() = 0;
+    virtual void initDevice() = 0;
 
     // Non-virtual methods.
     bool     ready() const { return (m_position + m_payloadSize + 4) <= m_bufferSize; }
@@ -97,6 +98,7 @@ public:
     // Override the virtual methods.
     virtual void clear(uint64_t ts) override;
     virtual uint64_t next() override;
+    virtual void initDevice() override;
 };
 
 class KMicroscopeBld : public BldBase {
@@ -105,7 +107,8 @@ public:
     // an optional batch size. It must initialize the base class as needed.
     KMicroscopeBld(int measurementTimeMs,
                     const std::string& iniFilePath,
-                    size_t batchSize = 100);
+                    size_t batchSize,
+                    unsigned payloadSize);
 
     // Copy constructor (if needed)
     KMicroscopeBld(const KMicroscopeBld&);
@@ -116,6 +119,7 @@ public:
     // Override the virtual methods.
     virtual void clear(uint64_t ts) override;
     virtual uint64_t next() override;
+    virtual void initDevice() override;
 
 private:
     PipeCallbackHandler m_callbackHandler;  // Handles device communication and event collection.
@@ -166,6 +170,7 @@ public:
                                     const void* bufEnd,
                                     XtcData::NamesLookup&,
                                     XtcData::NamesId&);
+    void configBld(); // To be called after configure is sent to eb for (slow) device initialization
 private:
     std::string                    _detName;
     std::string                    _detType;

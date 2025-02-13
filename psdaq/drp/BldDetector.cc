@@ -177,7 +177,11 @@ BldFactory::BldFactory(const char* name,
         size_t batchSize = para.kwargs.find("batchSize") == para.kwargs.end()
                          ? 1000
                          : std::stoul(para.kwargs["batchSize"]);
-        _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, batchSize);
+        _alg    = XtcData::Alg("raw", 1, 0, 0);
+        _varDef.NameVec = BldNames::KMicroscopeV1().NameVec;
+        _arraySizes = BldNames::KMicroscopeV1().arraySizes();
+        unsigned payloadSize = getVarDefSize(_varDef,_arraySizes);
+        _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, batchSize, payloadSize);
         logging::info("BldFactory::BldFactory KMicroscopeBld");
         return;
     }
@@ -311,6 +315,11 @@ void BldFactory::addEventData(XtcData::Xtc&          xtc,
             desc.set_array_shape(i,shape);
         }
     }
+}
+
+void BldFactory::configBld()
+{
+    _handler->initDevice();
 }
 
 
@@ -598,10 +607,16 @@ uint64_t Bld::next()
     return timestamp;
 }
 
+void Bld::initDevice()
+{
+    // Initialize device after configure is sent to eb
+}
+
 KMicroscopeBld::KMicroscopeBld(int measurementTimeMs,
     const std::string& iniFilePath,
-    size_t batchSize)
-: BldBase(0, 0, 0, 0, 0, 0, 0),  // These values are unused
+    size_t batchSize,
+    unsigned payloadSize)
+: BldBase(0, 0, 0, 0, 0, payloadSize, 0),  // These values are unused
 m_callbackHandler(measurementTimeMs, iniFilePath, batchSize)
 {
 }
@@ -616,18 +631,23 @@ void KMicroscopeBld::clear(uint64_t ts)
 
 uint64_t KMicroscopeBld::next() {
     sc_DldEvent event;
-    // Start the measurement if not started
-    m_callbackHandler.startMeasurement();
 
     // Busy–wait until an event is available.
     // Optionally, you could call m_callbackHandler.flushPending() here if desired.
+    m_callbackHandler.flushPending();
     while (!m_callbackHandler.popEvent(event)) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
     // Return only the time_tag from the event.
     uint64_t pulseId = event.time_tag&0x00ffffffffffffff;
-    logging::info("KMicroscopeBld::next pulseId %016llx", pulseId);
     return pulseId;
+}
+
+void KMicroscopeBld::initDevice(){
+    m_callbackHandler.init();
+    // Start the measurement if not started
+    m_callbackHandler.startMeasurement();
+    logging::debug("KMicroscopeBld::next startMeasurement");
 }
 
 // Constructor Implementation
@@ -820,7 +840,6 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
             timingHeader = next();
 
         if (timingHeader) {
-            logging::debug("Pgp::worker got new timingHeader 0x%" PRIx64, timingHeader->time.value());
             if (timingHeader->service()!=XtcData::TransitionId::L1Accept) {     //  Handle immediately
                 logging::debug("Pgp::worker Transition Found");
                 Pds::EbDgram* dgram = _handle(index);
@@ -851,6 +870,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     for(unsigned i=0; i<m_config.size(); i++) {
                         XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
                         namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
+                        m_config[i]->configBld();
                     }
                     break;
                 }
@@ -925,6 +945,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     for (unsigned i = 0; i < m_config.size(); i++) {
                         if (bldValue[i] < timingPulseId) {
                             //m_config[i]->handler().clear(timingPulseId); MONA No need for clearing?
+                            logging::debug("Bld get next bld");
                             uint64_t newVal = m_config[i]->handler().next();
                             logging::debug("Bld[%u] replacing pulseId %016llx with %016llx", i, bldValue[i], newVal);
                             bldValue[i] = newVal;
@@ -956,19 +977,21 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             else {
                                 lMissed = true;
                                 if (!lMissing)
-                                    logging::debug("Missed bld[%u]: pgp %016llx  bld %016llx", i, nextId, bldValue[i]);
+                                    logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
+                                                   i, timingHeader->time.value(), bldValue[i], dgram->pulseId());
                             }
                         }
                         else {
                             // Pulse ID matching.
-                            if (bldValue[i] == dgram->pulseId()) {
+                            if (bldValue[i] == timingHeader->pulseId()) {
                                 XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
                                 m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
                             }
                             else {
                                 lMissed = true;
                                 if (!lMissing)
-                                    logging::debug("Missed bld[%u]: pgp %016llx  bld pulseId %016llx", i, nextId, dgram->pulseId());
+                                    logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
+                                                   i, timingHeader->pulseId(), bldValue[i], dgram->pulseId());
                             }
                         }
                     }

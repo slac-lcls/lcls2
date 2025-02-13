@@ -29,13 +29,18 @@ namespace BldNames {
     public:
         GmdV1();
     };
-    class GmdV2 : public XtcData::VarDef { 
+    class GmdV2 : public XtcData::VarDef {
     public:
         GmdV2();
     };
     class XGmdV2 : public XtcData::VarDef {
     public:
         XGmdV2();
+    };
+    class KMicroscopeV1 : public XtcData::VarDef {
+    public:
+        KMicroscopeV1();
+        static std::vector<unsigned> arraySizes();
     };
 };
 

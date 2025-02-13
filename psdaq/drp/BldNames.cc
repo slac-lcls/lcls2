@@ -87,12 +87,12 @@ static std::map<std::string,unsigned> _bmmonMcaddr
   {"XcsUsrDio"  ,0xefff185b},
   {"CxiUsrDio"  ,0xefff185c},
   {"MecUsrDio"  ,0xefff185d}, };
-                                                     
+
 
 unsigned BldNames::BeamMonitorV1::mcaddr(const char* n)
 {
     std::string s(n);
-    return _bmmonMcaddr.find(s) == _bmmonMcaddr.end() ? 0 : _bmmonMcaddr[s]; 
+    return _bmmonMcaddr.find(s) == _bmmonMcaddr.end() ? 0 : _bmmonMcaddr[s];
 }
 
 
@@ -101,10 +101,20 @@ BldNames::GmdV2::GmdV2() {
     NameVec.push_back(Name("RMS_E1",Name::FLOAT,0));
 }
 
-BldNames::XGmdV2::XGmdV2() { 
+BldNames::XGmdV2::XGmdV2() {
     NameVec.push_back(Name("millijoulesperpulse",Name::FLOAT,0));
-    NameVec.push_back(Name("POSY",Name::FLOAT,0)); 
+    NameVec.push_back(Name("POSY",Name::FLOAT,0));
     NameVec.push_back(Name("RMS_E1",Name::FLOAT,0));
     NameVec.push_back(Name("RMS_E2",Name::FLOAT,0));
 }
+
+BldNames::KMicroscopeV1::KMicroscopeV1() {
+    NameVec.push_back(Name("time"       , Name::DOUBLE,1)); // 16
+    NameVec.push_back(Name("xpos"       , Name::DOUBLE,1)); // 16
+    NameVec.push_back(Name("ypos"       , Name::DOUBLE,1)); // 16
+}
+
+static std::vector<unsigned> _kmicroArraySizes { 16, 16, 16 };
+
+std::vector<unsigned> BldNames::KMicroscopeV1::arraySizes() { return _kmicroArraySizes; }
 
