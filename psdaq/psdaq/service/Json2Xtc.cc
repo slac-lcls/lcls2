@@ -508,4 +508,56 @@ int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId nam
     return result;
 }
 
+int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId namesID, unsigned segment)
+{
+    int result = -1;
+
+    // returns new reference
+    PyObject * json_bytes = PyUnicode_AsASCIIString(item);
+    char* json = (char*)PyBytes_AsString(json_bytes);
+
+    NamesLookup nl;
+    Value jsonv;
+
+    Document *d = new Document();
+    ParseResult ok = d->Parse(json);
+    if (!ok)
+        logging::error("translateJson2Xtc(PyObject): JSON parse error: %s (%u)",
+                       GetParseError_En(ok.Code()), ok.Offset());
+
+    while(1) {
+        const char* detname;
+        if (!d->HasMember("detName:RO")) {
+            logging::info("No detName member in config json");
+            break;
+        }
+
+        //  Extract detname from document detName field
+        std::string sdetName((*d)["detName:RO"].GetString());
+        {
+            size_t pos = sdetName.rfind('_');
+            if (pos==std::string::npos) {
+                logging::info("No segment number in config json");
+                break;
+            }
+            sscanf(sdetName.c_str()+pos+1,"%u",&segment);
+            detname = sdetName.substr(0,pos).c_str();
+        }
+
+        if (Pds::translateJson2XtcNames(d, &xtc, bufEnd, nl, namesID, jsonv, detname, segment) < 0)
+            break;
+
+        if (Pds::translateJson2XtcData (d, &xtc, bufEnd, nl, namesID, jsonv) < 0)
+            break;
+
+        result = 0;
+        break;
+    }
+
+    delete d;
+    Py_DECREF(json_bytes);
+
+    return result;
+}
+
 } // namespace Pds

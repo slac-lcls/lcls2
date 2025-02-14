@@ -23,6 +23,35 @@ using logging = psalg::SysLog;
 
 using json = nlohmann::json;
 
+/**
+ * \brief Split a delimited string of detector segment numbers into a vector.
+ * Segment numbers may be passed as an optional keyword argument of the form
+ * `segNums=0_1_2_3` where the 0,1,2,3 are the detector segment numbers corresponding
+ * to the panels coming in on lanes in incrementing order.
+ * \param inStr Delimited string of segment numbers, e.g. `0_1_2_3`
+ * \param delimiter Segment number delimiter. Currently "_".
+ * \returns segNums A vector of unsigned that contains the parsed segment numbers.
+ */
+static std::vector<unsigned> split_segNums(const std::string& inStr,
+                                           const std::string& delimiter=std::string("_"))
+{
+    std::vector<unsigned> segNums;
+    size_t nextPos = 0;
+    size_t lastPos = 0;
+    std::string subStr;
+    std::cout << "Will use the following segment numbers: ";
+    while ((nextPos = inStr.find(delimiter, lastPos)) != std::string::npos) {
+        subStr = inStr.substr(lastPos, nextPos-lastPos);
+        segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
+        lastPos = nextPos + 1;
+        std::cout << subStr << ", ";
+    }
+    subStr = inStr.substr(lastPos);
+    segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
+    std::cout << subStr << "." << std::endl;
+    return segNums;
+}
+
 namespace Drp {
 
 PyObject* BEBDetector::_check(PyObject* obj) {
@@ -178,9 +207,19 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
 
     // returns new reference
-    PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "Osssii",
-                                                     m_root, m_connect_json.c_str(), config_alias.c_str(),
-                                                     m_para->detName.c_str(), m_para->detSegment, m_readoutGroup));
+    PyObject* mybytes;
+    std::vector<unsigned> segNums;
+    if (!m_multiSegment) {
+        mybytes = _check(PyObject_CallFunction(pFunc, "Osssii",
+                                               m_root, m_connect_json.c_str(), config_alias.c_str(),
+                                               m_para->detName.c_str(), m_para->detSegment, m_readoutGroup));
+    } else {
+        // m_segNoStr in derived class, like jungfrau
+        mybytes = _check(PyObject_CallFunction(pFunc, "Ossssi",
+                                               m_root, m_connect_json.c_str(), config_alias.c_str(),
+                                               m_para->detName.c_str(), m_segNoStr.c_str(), m_readoutGroup));
+        segNums = split_segNums(m_segNoStr);
+    }
 
     char* buffer = new char[m_para->maxTrSize];
     const void* end = buffer + m_para->maxTrSize;
@@ -190,11 +229,19 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     if (PyList_Check(mybytes)) {
         logging::debug("PyList_Check true");
         for(unsigned seg=0; seg<PyList_Size(mybytes); seg++) {
-            logging::debug("seg %d",seg);
+            unsigned detSegment;
+            if (!m_multiSegment)
+                detSegment = m_para->detSegment;
+            else
+                detSegment = segNums[seg];
+            if (!m_multiSegment)
+                logging::debug("seg %d",seg);
+            else
+                logging::debug("seg %d", detSegment);
             PyObject* item = PyList_GetItem(mybytes,seg);
             logging::debug("item %p",item);
             NamesId namesId(nodeId,ConfigNamesIndex+seg);
-            if (Pds::translateJson2Xtc( item, jsonxtc, end, namesId ))
+            if (Pds::translateJson2Xtc( item, jsonxtc, end, namesId, detSegment ))
                 return -1;
         }
     }

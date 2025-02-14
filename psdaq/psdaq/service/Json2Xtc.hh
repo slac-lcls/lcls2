@@ -32,6 +32,7 @@ namespace Pds
 
     int translateJson2Xtc(char *in, char *out, const void* bufEnd, XtcData::NamesId namesID, const char* detname=0, unsigned segment=0);
     int translateJson2Xtc( PyObject* item, XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId namesID);
+    int translateJson2Xtc(PyObject* item, XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId namesID, unsigned segment);
     int translateJson2XtcNames(rapidjson::Document* d,
                                XtcData::Xtc* xtc,
                                const void* bufEnd,

@@ -64,6 +64,8 @@ protected:
     unsigned             m_paddr;         // timing system link id
     PythonConfigScanner* m_configScanner;
     bool                 m_debatch;       // data is contained in an extra AxiStreamBatcherEventBuilder
+    bool                 m_multiSegment = false;
+    std::string          m_segNoStr{""};
   };
 
 }

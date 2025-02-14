@@ -37,6 +37,7 @@ add_executable(drp
     EpixUHR.cc
     Epix100.cc
     EpixQuad.cc
+    Jungfrau.cc
     TimingDef.cc
     TimingBEB.cc
     TimingSystem.cc

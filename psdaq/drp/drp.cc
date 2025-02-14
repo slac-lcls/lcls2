@@ -142,6 +142,9 @@ int main(int argc, char* argv[])
             if (kwargs.first == "xtcfile")           continue;  // EpixHRemu
             if (kwargs.first == "l1aOffset")         continue;  // EpixHRemu
         }
+        if (para.detType == "jungfrau") {
+            if (kwargs.first == "segNums")           continue;
+        }
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;

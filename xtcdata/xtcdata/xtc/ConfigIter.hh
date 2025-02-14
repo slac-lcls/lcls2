@@ -7,6 +7,7 @@
  */
 
 #include "xtcdata/xtc/NamesIter.hh"
+#include <unordered_map>
 //#include "xtcdata/xtc/DescData.hh"
 //#include "xtcdata/xtc/NamesLookup.hh"
 
@@ -28,6 +29,7 @@ public:
 
     ShapesData& shape() {return *_shapesData[0];}
     ShapesData& value() {return *_shapesData[1];}
+    ShapesData& getShape(unsigned idx) {return *_shapesData[idx];}
     //NamesLookup& namesLookup() {return _namesLookup;} // defined in super-class NamesIter
     //void iterate();                                   // defined in super-super-class XtcIterator
 
