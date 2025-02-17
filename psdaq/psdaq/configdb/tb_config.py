@@ -126,7 +126,7 @@ def tb_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbo
                                            pollEn        =False,
                                            initRead      =False)
     elif fwImage.startswith('Clink'):
-        from psdaq.utils import submod_cameralink_gateway
+        from psdaq.utils import enable_cameralink_gateway
         import cameralink_gateway
         pbase = cameralink_gateway.ClinkDevRoot(dev         =dev,
                                                 pollEn      =False,

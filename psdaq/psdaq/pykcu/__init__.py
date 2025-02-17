@@ -7,7 +7,7 @@
 # that would be a lot of work for the tid-air people - cpo.
 import sys
 import os
-from psdaq.utils import submod_cameralink_gateway
+from psdaq.utils import enable_cameralink_gateway
 from surf import *
 
 # extra wrinkle: pick up the pyxpm's version of the packages to avoid

@@ -9,7 +9,7 @@
 #-----------------------------------------------------------------------------
 
 import pyrogue              as pr
-from psdaq.utils import submod_cameralink_gateway # to get surf
+from psdaq.utils import enable_cameralink_gateway # to get surf
 import surf.axi             as axi
 import surf.devices.micron  as micron
 import surf.devices.nxp     as nxp

@@ -19,7 +19,7 @@
 
 import pyrogue                 as pr
 import psdaq.pyxpm.xpm         as xpm
-from psdaq.utils import submod_cameralink_gateway  # to get surf
+from psdaq.utils import enable_cameralink_gateway  # to get surf
 from surf.devices.transceivers import Sfp
 
 class MpsSfpAmc(pr.Device):

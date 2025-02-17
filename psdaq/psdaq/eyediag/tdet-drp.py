@@ -11,7 +11,7 @@
 import pyrogue as pr
 import pyrogue.interfaces.simulation
 
-from psdaq.utils import submod_cameralink_gateway  # to get surf
+from psdaq.utils import enable_cameralink_gateway  # to get surf
 
 import rogue
 import axipcie

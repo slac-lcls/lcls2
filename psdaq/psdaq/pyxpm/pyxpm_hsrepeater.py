@@ -13,7 +13,7 @@ import pyrogue.protocols
 import pyrogue.pydm
 import time
 
-from psdaq.utils import submod_cameralink_gateway  # to get surf
+from psdaq.utils import enable_cameralink_gateway  # to get surf
 import surf.axi                     as axi
 
 import psdaq.pyxpm.xpm              as xpm
