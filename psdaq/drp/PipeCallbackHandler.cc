@@ -99,7 +99,7 @@ PipeCallbackHandler::~PipeCallbackHandler() {
     m_measurementStarted = false;
 }
 
-bool PipeCallbackHandler::popEvent(DrpEvent &event) {
+bool PipeCallbackHandler::popEvent(KMicroscopeData &event) {
     std::lock_guard<std::mutex> lock(m_queueMutex);
     if (m_eventQueue.empty()) return false;
     event = m_eventQueue.front();
@@ -107,7 +107,7 @@ bool PipeCallbackHandler::popEvent(DrpEvent &event) {
     return true;
 }
 
-void PipeCallbackHandler::accumulateEvents(const std::vector<DrpEvent>& events) {
+void PipeCallbackHandler::accumulateEvents(const std::vector<KMicroscopeData>& events) {
     std::lock_guard<std::mutex> lock(m_batchMutex);
     m_pendingBatch.insert(m_pendingBatch.end(), events.begin(), events.end());
     if (m_pendingBatch.size() >= m_batchSize) {
@@ -131,9 +131,9 @@ void PipeCallbackHandler::flushPending() {
 }
 
 //------------------------------------------------------------------------------
-// This method processes a single raw sc_DldEvent and updates the in–progress DrpEvent.
-// If the new event’s pulseid differs from the current one, the current event is marked complete
-// and stored in the pending batch, and a new DrpEvent is started.
+// This method processes a single raw sc_DldEvent and updates the in-progress KMicroscopeData.
+// If the new event’s pulseid differs from the current one, the current event is marked complete,
+// stored in the pending batch, and a new KMicroscopeData is started.
 //------------------------------------------------------------------------------
 void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
     std::lock_guard<std::mutex> lock(m_batchMutex);
@@ -141,9 +141,8 @@ void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
 
     // If no event is in progress, start one.
     if (!m_hasCurrentEvent) {
-        m_currentEvent = DrpEvent();
+        m_currentEvent = KMicroscopeData();
         m_currentEvent.pulseid = newPulse;
-        m_currentEvent.count = 0;
         m_hasCurrentEvent = true;
     }
 
@@ -158,19 +157,13 @@ void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
             }
             m_pendingBatch.clear();
         }
-        m_currentEvent = DrpEvent();
+        m_currentEvent = KMicroscopeData();
         m_currentEvent.pulseid = newPulse;
-        m_currentEvent.count = 0;
     }
 
     // Add the raw event data into the current event if there is room.
-    if (m_currentEvent.count < DrpEvent::MAX_EVENTS) {
-        size_t idx = m_currentEvent.count;
-        // Convert raw fields to the new types.
-        m_currentEvent.xpos[idx] = static_cast<uint16_t>(obj->dif1);
-        m_currentEvent.ypos[idx] = static_cast<uint16_t>(obj->dif2);
-        m_currentEvent.time[idx] = static_cast<uint32_t>(obj->sum);
-        m_currentEvent.count++;
+    if (m_currentEvent.count < KMicroscopeData::MAX_EVENTS) {
+        m_currentEvent.addEvent(obj->dif1, obj->dif2, obj->sum);
     }
 }
 

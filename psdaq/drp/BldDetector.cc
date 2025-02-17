@@ -301,17 +301,32 @@ XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
 void BldFactory::addEventData(XtcData::Xtc&          xtc,
                               const void*            bufEnd,
                               XtcData::NamesLookup&  namesLookup,
-                              XtcData::NamesId&      namesId)
+                              XtcData::NamesId&      namesId,
+                              Parameters& para)
 {
     const BldBase& bld = handler();
     XtcData::DescribedData desc(xtc, bufEnd, namesLookup, namesId);
-    memcpy(desc.data(), bld.payload(), bld.payloadSize());
-    desc.set_data_length(bld.payloadSize());
-    unsigned shape[] = {0,0,0,0,0};
-    for(unsigned i=0; i<_arraySizes.size(); i++) {
-        if (_arraySizes[i]) {
-            shape[0] = _arraySizes[i];
-            desc.set_array_shape(i,shape);
+
+    // Special case for KMicroscope
+    if (strcmp("kmicro", para.detType.c_str()) == 0){
+        const Drp::KMicroscopeBld& kmBld = static_cast<const Drp::KMicroscopeBld&>(bld);
+        new (desc.data()) Drp::KMicroscopeData(kmBld.getMostRecentEvent());
+
+        desc.set_data_length(sizeof(KMicroscopeData));
+
+        unsigned shape[1] = { KMicroscopeData::MAX_EVENTS }; // 16 elements
+        for(unsigned i=0; i<_arraySizes.size(); i++) {
+            desc.set_array_shape(i, shape);
+        }
+    } else {
+        memcpy(desc.data(), bld.payload(), bld.payloadSize());
+        desc.set_data_length(bld.payloadSize());
+        unsigned shape[] = {0,0,0,0,0};
+        for(unsigned i=0; i<_arraySizes.size(); i++) {
+            if (_arraySizes[i]) {
+                shape[0] = _arraySizes[i];
+                desc.set_array_shape(i,shape);
+            }
         }
     }
 }
@@ -615,42 +630,45 @@ KMicroscopeBld::KMicroscopeBld(int measurementTimeMs,
     const std::string& iniFilePath,
     size_t batchSize,
     unsigned payloadSize)
-: BldBase(0, 0, 0, 0, 0, payloadSize, 0),  // These values are unused
-m_callbackHandler(measurementTimeMs, iniFilePath, batchSize)
+    : BldBase(0, 0, 0, 0, 0, payloadSize, 0),  // These values are unused.
+    m_callbackHandler(measurementTimeMs, iniFilePath, batchSize)
 {
 }
 
 KMicroscopeBld::~KMicroscopeBld() {
-// Nothing additional to do; m_callbackHandler cleans up automatically.
+    // Nothing additional to do; m_callbackHandler cleans up automatically.
 }
 
 void KMicroscopeBld::clear(uint64_t ts)
 {
+    // Reset the stored event. (Additional clearing may be added if needed.)
+    m_savedEvent = Drp::KMicroscopeData();
 }
 
 uint64_t KMicroscopeBld::next() {
-    DrpEvent event;
+    Drp::KMicroscopeData event;
+
+    // Flush any pending events.
+    m_callbackHandler.flushPending();
 
     // Busy–wait until an event is available.
-    // Optionally, you could call m_callbackHandler.flushPending() here if desired.
-    m_callbackHandler.flushPending();
     while (!m_callbackHandler.popEvent(event)) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
-    m_payload = event.payload();
-    m_payloadSize = event.payloadSize();
+    // Save (replace) the stored event with the new one.
+    m_savedEvent = event;
 
-    // Return only the lower 56 bits
-    uint64_t pulseId = event.pulseid&0x00ffffffffffffff;
+    // Return only the lower 56 bits of the pulseid.
+    uint64_t pulseId = event.pulseid & 0x00ffffffffffffff;
     return pulseId;
 }
 
 void KMicroscopeBld::initDevice(){
     m_callbackHandler.init();
-    // Start the measurement if not started
+    // Start the measurement if not started.
     m_callbackHandler.startMeasurement();
-    logging::debug("KMicroscopeBld::next startMeasurement");
+    logging::debug("KMicroscopeBld::initDevice - startMeasurement");
 }
 
 // Constructor Implementation
@@ -886,37 +904,29 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 nevents++;
             }
             else {
-                // Calculate realtime timeout
-                uint64_t tts;
-                if (!usePulseId) {
-                    // Calculate realtime timeout (50 ms) using timestamp (nanosecond) scale.
-                    const unsigned TMO_NS = 50000000; // 50,000,000 ns = 50 ms
-                    timespec ts;
-                    clock_gettime(CLOCK_REALTIME, &ts);
-                    // We assume that the timing header timestamp is represented as a 64-bit value
-                    // where the upper 32 bits are (ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) and the lower 32 bits
-                    // are the nanoseconds.
-                    if (ts.tv_nsec < TMO_NS) {
-                        tts = ((ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH - 1ULL) << 32) |
-                            (1000000000ULL + ts.tv_nsec - TMO_NS);
-                    } else {
-                        tts = ((ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) << 32) |
-                            (ts.tv_nsec - TMO_NS);
-                    }
-                    logging::debug("tmo time (timestamp mode) %016llx", tts);
-                } else {
-                    // Calculate realtime timeout (50 ms) using pulse ID.
-                    // Given a pulse rate of 1,000,000 pulses/s, 50 ms corresponds to 50,000 pulses.
-                    const unsigned TMO_PULSES = 50000; // 50 ms worth of pulses
-                    timespec ts;
-                    clock_gettime(CLOCK_REALTIME, &ts);
-                    // Convert the current time to a pulse id value.
-                    // We use the same reference epoch as before (POSIX_TIME_AT_EPICS_EPOCH)
-                    // and assume 1,000,000 pulses per second.
-                    uint64_t currentPulseId = (ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH) * 1000000ULL +
-                                            (ts.tv_nsec / 1000ULL);
-                    // The timeout threshold is then the current pulse id minus the number of pulses in 50 ms.
-                    tts = currentPulseId - TMO_PULSES;
+                // Calculate realtime timeout (50 ms)
+                const unsigned TMO_NS = 50000000;
+                timespec ts;
+                clock_gettime(CLOCK_REALTIME,&ts);
+                uint64_t tts = ts.tv_sec - POSIX_TIME_AT_EPICS_EPOCH;
+                if (ts.tv_nsec < TMO_NS) {
+                    tts = (tts-1)<<32;
+                    tts |= 1000000000+ts.tv_nsec-TMO_NS;
+                }
+                else {
+                    tts <<= 32;
+                    tts |= ts.tv_nsec-TMO_NS;
+                }
+                logging::debug("tmo time (timestamp mode) %016llx", tts);
+                if (usePulseId) {
+                    // Extract the parts from the 64-bit timestamp:
+                    //   upper 32 bits: seconds since EPICS epoch
+                    //   lower 32 bits: nanoseconds
+                    uint32_t sec  = tts >> 32;
+                    uint32_t nsec = tts & 0xffffffff;
+                    double total_sec = sec + nsec / 1e9;
+                    // Use the effective rate of about 928300 pulses per second:
+                    tts = static_cast<uint64_t>(total_sec * 928300.0);
                     logging::debug("tmo time (pulse id mode) threshold 0x%" PRIx64, tts);
                 }
 
@@ -971,7 +981,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             // Timestamp matching.
                             if (bldValue[i] == timingHeader->time.value()) {
                                 XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                                m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                                m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId, m_para);
                             }
                             else {
                                 lMissed = true;
@@ -984,15 +994,15 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             // Pulse ID matching.
                             if (bldValue[i] == timingHeader->pulseId()) {
                                 XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
-                                m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                                m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId, m_para);
                                 logging::debug("Found bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
                                                 i, timingHeader->pulseId(), bldValue[i], dgram->pulseId());
                             }
                             else {
                                 lMissed = true;
                                 if (!lMissing)
-                                    logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
-                                                   i, timingHeader->pulseId(), bldValue[i], dgram->pulseId());
+                                    logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  timestamp %016lx",
+                                                   i, timingHeader->pulseId(), bldValue[i], timingHeader->time.value());
                             }
                         }
                     }

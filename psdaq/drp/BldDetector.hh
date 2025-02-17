@@ -103,15 +103,15 @@ public:
 
 class KMicroscopeBld : public BldBase {
 public:
-    // Constructor: takes a measurement time (ms), an INI file path, and
-    // an optional batch size. It must initialize the base class as needed.
+    // Constructor: takes a measurement time (ms), an INI file path, an optional batch size, and payload size.
     KMicroscopeBld(int measurementTimeMs,
                     const std::string& iniFilePath,
                     size_t batchSize,
                     unsigned payloadSize);
 
-    // Copy constructor (if needed)
-    KMicroscopeBld(const KMicroscopeBld&);
+    // Delete copy constructor and copy-assignment operator.
+    KMicroscopeBld(const KMicroscopeBld&) = delete;
+    KMicroscopeBld& operator=(const KMicroscopeBld&) = delete;
 
     // Virtual destructor.
     virtual ~KMicroscopeBld();
@@ -121,8 +121,12 @@ public:
     virtual uint64_t next() override;
     virtual void initDevice() override;
 
+    // Return the most recent event (as a const reference).
+    const Drp::KMicroscopeData& getMostRecentEvent() const { return m_savedEvent; }
+
 private:
-    PipeCallbackHandler m_callbackHandler;  // Handles device communication and event collection.
+    Drp::PipeCallbackHandler m_callbackHandler;  // Handles device communication and event collection.
+    Drp::KMicroscopeData m_savedEvent;           // Stores the most recent complete event.
 };
 
 class BldPVA
@@ -169,7 +173,8 @@ public:
     void               addEventData(XtcData::Xtc&,
                                     const void* bufEnd,
                                     XtcData::NamesLookup&,
-                                    XtcData::NamesId&);
+                                    XtcData::NamesId&,
+                                    Parameters& para);
     void configBld(); // To be called after configure is sent to eb for (slow) device initialization
 private:
     std::string                    _detName;
