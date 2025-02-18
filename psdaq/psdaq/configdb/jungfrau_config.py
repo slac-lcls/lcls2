@@ -39,7 +39,7 @@ def jungfrau_init(
         "enLane": lane,
         #'dataVcEn': False,      # Whether to open data path in devGui
         #"defaultFile": "",  # Empty string to skip config yaml
-        "defaultFile": "/cds/home/d/dorlhiac/Repos/lcls2_20250213/install/submodules/lcls2_udp_pcie_apps/software/config/defaults.yml",
+        "defaultFile": "",
         "standAloneMode": False,  # False = use fiber timing, True = local timing
         "pollEn": False,  # Enable automatic register polling (True by default)
         "initRead": False,  # Read all registers at init (True by default)
