@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
 
 inline void putByte(uint8_t byte) {
     putc("0123456789ABCDEF"[byte & 0xF], stdout);
@@ -70,3 +71,8 @@ static inline T readRegister(void* fpgaRegs, uintptr_t reg)
 	return *(T*)(((uint8_t*)fpgaRegs) + reg);
 }
 
+static inline double curTime() {
+    timespec tp;
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    return double(tp.tv_sec) + (double(tp.tv_nsec) / 1e9);
+}

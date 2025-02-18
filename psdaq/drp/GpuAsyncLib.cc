@@ -6,41 +6,11 @@
 using logging = psalg::SysLog;
 
 
-bool checkError(CUresult status, const char* func, const char* file, int line, bool crash, const char* msg)
-{
-  if (status != CUDA_SUCCESS) {
-    const char* perrstr = 0;
-    CUresult    rc      = cuGetErrorString(status, &perrstr);
-    if (rc == CUDA_SUCCESS) {
-      if (perrstr) {
-        logging::error("%s:%d:\n  '%s'\n  status %d: info: %s - %s\n", file, line, func, status, perrstr, msg);
-      } else {
-        logging::error("%s:%d:\n  '%s'\n  status %d: info: unknown error - %s\n", file, line, func, status, msg);
-      }
-    } else {
-      logging::error("%s:%d:\n  '%s'\n  status %d: info: unknown error - %s\n", file, line, func, status, msg);
-    }
-    if (crash)  abort();
-    return true;
-  }
-  return false;
-}
-
-bool checkError(cudaError status, const char* func, const char* file, int line, bool crash, const char* msg)
-{
-  if (status != cudaSuccess) {
-    logging::error("%s:%d:  '%s'\n  %s\n  status %d: info: %s - %s\n", file, line, func, status, cudaGetErrorString(status), msg);
-    if (crash)  abort();
-    return true;
-  }
-  return false;
-}
-
 // -------------------------------------------------------------------
 
 DataGPU::DataGPU(const char* path) {
-    m_fd = open(path, O_RDWR);
-    if (m_fd < 0) {
+    fd_ = open(path, O_RDWR);
+    if (fd_ < 0) {
         logging::critical("Error opening %s: %m", path);
         abort();
     }
@@ -48,99 +18,140 @@ DataGPU::DataGPU(const char* path) {
 
 // -------------------------------------------------------------------
 
-CudaContext::CudaContext()
-{
-  chkFatal(cuInit(0), "Error while initting cuda");
+CudaContext::CudaContext() {
+    chkFatal(cuInit(0), "Error while initting cuda");
 }
 
-bool CudaContext::init(int device)
-{
-  int devs = 0;
-  if (chkError(cuDeviceGetCount(&devs)))
-    return false;
-  logging::debug("Total GPU devices %d\n", devs);
-  if (devs <= 0) {
-    logging::error("No GPU devices available!\n");
-    return false;
-  }
-
-  device = device < 0 ? 0 : device;
-  if (devs <= device) {
-    logging::error("Invalid GPU device number %d! There are only %d devices available\n", device, devs);
-    return false;
-  }
-
-  // Actually get the device...
-  if (chkError(cuDeviceGet(&m_device, device), "Could not get GPU device!"))
-    return false;
-
-  // Spew device name
-  char name[256];
-  if (chkError(cuDeviceGetName(name, sizeof(name), m_device)))
-    return false;
-  logging::debug("Selected GPU device: %s\n", name);
-
-  // Set required attributes
-  int res;
-  if (chkError(cuDeviceGetAttribute(&res, CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1, m_device)))
-    return false;
-  if (!res) {
-    logging::warning("This device does not support CUDA Stream Operations, this code will not run!\n");
-    logging::error("  Consider setting NVreg_EnableStreamMemOPs=1 when loading the NVIDIA kernel module, "
-                   "if your GPU is supported.\n");
-    return false;
-  }
-
-  // Report memory totals
-  size_t global_mem = 0;
-  if (chkError(cuDeviceTotalMem(&global_mem, m_device)))
-    return false;
-  logging::debug("Global memory: %zu MB\n", global_mem >> 20);
-  if (global_mem > (size_t)4 << 30)
-    logging::debug("64-bit Memory Address support\n");
-
-  int value;
-  if (chkError(cuDeviceGetAttribute(&value, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, m_device)))
-    return false;
-  logging::debug("Device supports unified addressing: %s\n", value ? "YES" : "NO");
-
-  // Create context
-  if (chkError(cuCtxCreate(&m_context, 0, m_device)))
-    return false;
-
-  return true;
-}
-
-void CudaContext::listDevices()
-{
-  int devs = 0;
-  if (chkError(cuDeviceGetCount(&devs), "Unable to get device count"))
-    return;
-
-  for (int i = 0; i < devs; ++i) {
-    CUdevice dev;
-    if (chkError(cuDeviceGet(&dev, i))) {
-      logging::error("Unable to get device %d", i);
-      continue;
+bool CudaContext::init(int device, bool quiet) {
+    int devs = 0;
+    if (chkError(cuDeviceGetCount(&devs)))
+        return false;
+    logging::debug("Total GPU devices %d\n", devs);
+    if (devs <= 0) {
+        logging::error("No GPU devices available!\n");
+        return false;
     }
+
+    device = device < 0 ? 0 : device;
+    if (devs <= device) {
+        logging::error("Invalid GPU device number %d! There are only %d devices available\n", device, devs);
+        return false;
+    }
+
+    // Actually get the device...
+    if (chkError(cuDeviceGet(&device_, device), "Could not get GPU device!"))
+        return false;
+
+    // Spew device name
     char name[256];
-    if (chkError(cuDeviceGetName(name, sizeof(name), dev)))
-      break;
-    logging::info("%d: %s\n", i, name);
-  }
+    if (chkError(cuDeviceGetName(name, sizeof(name), device_)))
+        return false;
+    logging::debug("Selected GPU device: %s\n", name);
+
+    // Set required attributes
+    int res;
+    if (chkError(cuDeviceGetAttribute(&res, CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1, device_)))
+        return false;
+    if (!res) {
+        logging::warning("This device does not support CUDA Stream Operations, this code will not run!\n");
+        logging::error("  Consider setting NVreg_EnableStreamMemOPs=1 when loading the NVIDIA kernel module, "
+                       "if your GPU is supported.\n");
+        return false;
+    }
+
+    // Report memory totals
+    size_t global_mem = 0;
+    if (chkError(cuDeviceTotalMem(&global_mem, device_)))
+        return false;
+    logging::debug("Global memory: %zu MB\n", global_mem >> 20);
+    if (global_mem > (size_t)4 << 30)
+        logging::debug("64-bit Memory Address support\n");
+
+    int value;
+    if (chkError(cuDeviceGetAttribute(&value, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device_)))
+        return false;
+    logging::debug("Device supports unified addressing: %s\n", value ? "YES" : "NO");
+
+    // Create context
+    if (chkError(cuCtxCreate(&context_, 0, device_)))
+        return false;
+
+    return true;
+}
+
+void CudaContext::listDevices() {
+    int devs = 0;
+    if (chkError(cuDeviceGetCount(&devs), "Unable to get GPU device count"))
+        return;
+
+    for (int i = 0; i < devs; ++i) {
+        CUdevice dev;
+        if (chkError(cuDeviceGet(&dev, i))) {
+            logging::error("Unable to get GPU device %d", i);
+            continue;
+        }
+        char name[256];
+        if (chkError(cuDeviceGetName(name, sizeof(name), dev))) {
+            logging::error("Unable to get name of GPU device %d", i);
+            continue;
+        }
+        logging::info("%d: %s\n", i, name);
+    }
+}
+
+int CudaContext::getAttribute(CUdevice_attribute attr) {
+    int out;
+    if (cuDeviceGetAttribute(&out, attr, device_) == CUDA_SUCCESS)
+        return out;
+    return 0;
+}
+
+
+// -------------------------------------------------------------------
+
+bool checkError(CUresult status, const char* func, const char* file, int line, bool crash, const char* msg)
+{
+    if (status != CUDA_SUCCESS) {
+        const char* perrstr = 0;
+        CUresult ok         = cuGetErrorString(status, &perrstr);
+        const char* perrnam = 0;
+        CUresult ok2        = cuGetErrorName(status, &perrnam);
+        if (ok == CUDA_SUCCESS && ok2 == CUDA_SUCCESS) {
+            if (perrstr) {
+                logging::error("%s:%d:\n  '%s'\n  status %s (%i): info: %s - %s\n", file, line, func, perrnam, status, perrstr, msg);
+            } else {
+                logging::error("%s:%d:\n  '%s'\n  status %s (%i): info: unknown error - %s\n", file, line, func, perrnam, status, msg);
+            }
+        } else {
+            logging::error("%s:%d:\n  '%s'\n  status %i: info: unknown error - %s\n", file, line, func, status, msg);
+        }
+        if (crash)  abort();
+        return true;
+    }
+    return false;
+}
+
+bool checkError(cudaError status, const char* func, const char* file, int line, bool crash, const char* msg)
+{
+    if (status != cudaSuccess) {
+        logging::error("%s:%d:  '%s'\n  %s\n  status %s (%i): info: %s - %s\n", file, line, func, cudaGetErrorName(status), status, cudaGetErrorString(status), msg);
+        if (crash)  abort();
+        return true;
+    }
+    return false;
 }
 
 //-----------------------------------------------------------------------------
 
-int gpuInitBufferState(GpuBufferState_t* b, const DataGPU& gpu, size_t bufSize)
+int gpuInitBufferState(GpuBufferState_t* b, int fd, size_t bufSize)
 {
     // Allocate buffers on the GPU
-    if (gpuMapFpgaMem(&b->bwrite, gpu.fd(), 0, bufSize, 1) != 0) {
+    if (gpuMapFpgaMem(&b->bwrite, fd, 0, bufSize, 1) != 0) {
         perror("gpuMapFpgaMem: write");
         return -1;
     }
 
-    if (gpuMapFpgaMem(&b->bread, gpu.fd(), 0, bufSize, 0) != 0) {
+    if (gpuMapFpgaMem(&b->bread, fd, 0, bufSize, 0) != 0) {
         perror("gpuMapFpgaMem: read");
         gpuUnmapFpgaMem(&b->bwrite);
         return -1;
@@ -192,11 +203,13 @@ int gpuMapFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t size, 
 {
     memset(outmem, 0, sizeof(*outmem));
 
-    if (cuMemAlloc(&outmem->dptr, size) != CUDA_SUCCESS) {
+    uint8_t* dp;
+    if (cudaMalloc(&dp, size) != cudaSuccess) {
         return -1;
     }
+    outmem->dptr = reinterpret_cast<CUdeviceptr>(dp);
     outmem->size = size;
-    cuMemsetD8(outmem->dptr, 0, size);
+    cudaMemset((void*)outmem->dptr, 0, size);
 
     int flag = 1;
     // This attribute is required for peer shared memory. It will synchronize every synchronous memory operation on this block of memory.

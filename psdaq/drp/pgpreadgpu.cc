@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
     // This handles allocating buffers on the device and registering them with the driver.
     // After this call, the FPGA will be properly configured to run the test code.
     for ( int i = 0; i < buffers; ++i ) {
-        if (gpuInitBufferState(&state.buffers[i], gpu0, GPU_BUFFER_SIZE) < 0) {
+        if (gpuInitBufferState(&state.buffers[i], gpu0.fd(), GPU_BUFFER_SIZE) < 0) {
             fprintf(stderr, "Failed to alloc buffer list\n");
             exit(1);
         }
@@ -211,16 +211,6 @@ int run_host_test(GpuTestState_t& state)
     }
 
     return 0;
-}
-
-static void show_buf(CUdeviceptr dptr, size_t size, CUstream stream = 0) {
-    uint8_t buf[size];
-    //cuMemcpyDtoH(buf, dptr, size);
-    chkFatal(cudaMemcpyAsync(buf, (void*)dptr, size, cudaMemcpyDeviceToHost, stream));
-    cuStreamSynchronize(stream);
-    for (unsigned i = 0; i < size / 4; ++i) {
-        printf("%2d: offset=0x%X,  0x%X\n",i,i*4,*((uint32_t*)(buf+(i*4))));
-    }
 }
 
 /*******************************************************************

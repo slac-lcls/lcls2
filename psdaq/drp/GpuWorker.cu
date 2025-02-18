@@ -22,7 +22,7 @@ namespace Drp {
 #ifdef SUDO
 static const unsigned GPU_OFFSET      = GPU_ASYNC_CORE_OFFSET;
 #endif
-static const size_t   DMA_BUFFER_SIZE = 128*1024;
+static const size_t   DMA_BUFFER_SIZE = 256*1024; // ePixUHR = 192*168*4 ASICs * 2B
 
 //https://github.com/slaclab/surf/blob/main/axi/dma/rtl/v2/AxiStreamDmaV2Write.vhd
 struct DmaDsc
@@ -53,7 +53,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   if (para.kwargs.find("gpuId") != para.kwargs.end())
     gpuId = std::stoul(const_cast<Parameters&>(para).kwargs["gpuId"]);
 
-  if (!m_context.init(gpuId)) {
+  if (!m_context.init(gpuId, para.verbose == 0)) {
     logging::critical("CUDA initialize failed");
     abort();
   }
@@ -622,7 +622,7 @@ void GpuWorker::_reader(Detector& det, GpuMetrics& metrics)
                      th->_opaque[0], th->_opaque[1]);
 
       uint32_t size = dsc->size;
-      ///uint32_t lane = 0;                  // The lane is always 0 for datagpu devices
+      ///uint32_t lane = 0;                  // The lane is always 0 for GPU-enabled PGP devices
       metrics.m_dmaSize   = size;
       metrics.m_dmaBytes += size;
       // @todo: Is this the case here also?
@@ -631,7 +631,7 @@ void GpuWorker::_reader(Detector& det, GpuMetrics& metrics)
       // which thus won't have the expected header.  Take the exact match as an overflow indicator.
       if (size == m_pool.dmaSize()) {
         logging::critical("%d DMA overflowed buffer: %d vs %d", index, size, m_pool.dmaSize());
-        abort();
+        //abort();
       }
 
       const Pds::TimingHeader* timingHeader = th; //det.getTimingHeader(index);
