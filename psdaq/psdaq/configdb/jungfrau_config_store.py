@@ -66,7 +66,7 @@ def write_to_daq_config_db(args):
     top.set("user.trigger_delay_s", 0.000238, "DOUBLE")
     top.set("user.exposure_time_s", 0.00001, "DOUBLE")
     top.set("user.exposure_period", 0.2, "DOUBLE")
-    top.set("user.port", 32410, "UINT16")
+    top.set("user.port", 8192, "UINT16")
 
     top.define_enum(
         "gainModeEnum",
@@ -93,7 +93,7 @@ def write_to_daq_config_db(args):
     )
     top.set("user.speedLevel", 1, "speedLevelEnum")
 
-    top.set("user.jungfrau_mac", "aa:bb:cc:dd:ee:ff", "CHARSTR")
+    top.set("user.jungfrau_mac", "aa\:bb\:cc\:dd\:ee\:ff", "CHARSTR")
     top.set("user.jungfrau_ip", "10.0.0.15", "CHARSTR")
 
     # For Kcu1500/C1100
