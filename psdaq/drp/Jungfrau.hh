@@ -4,6 +4,12 @@
 #include "psalg/alloc/Allocator.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include "xtcdata/xtc/Xtc.hh"
+#include "sls/Detector.h"
+
+namespace sls
+{
+  class Detector;
+} // namespace sls
 
 namespace Drp
 {
@@ -26,6 +32,8 @@ private:
     unsigned m_nModules = 0;
     std::vector<unsigned> m_segNos;
     std::vector<std::string> m_serNos;
+    std::vector<std::string> m_slsHosts;
+    std::unique_ptr<sls::Detector> m_slsDet;
 };
 
 } // namespace Drp

@@ -6,6 +6,7 @@
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psalg/detector/UtilsConfig.hh"
+#include "sls/Detector.h"
 
 #include <Python.h>
 #include <stdint.h>
@@ -20,6 +21,29 @@
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
+template<class T>
+static std::vector<T> split_string(const std::string& msg,
+                                   const std::string& inStr,
+                                   const std::string& delimiter,
+                                   std::function<T(const std::string&)> func)
+{
+    std::vector<T> tokens;
+    size_t nextPos = 0;
+    size_t lastPos = 0;
+    std::string subStr;
+    std::cout << "Will use the following " << msg << ": ";
+    while ((nextPos = inStr.find(delimiter, lastPos)) != std::string::npos) {
+        subStr = inStr.substr(lastPos, nextPos-lastPos);
+        tokens.push_back(func(subStr));
+        lastPos = nextPos + 1;
+        std::cout << subStr << ", ";
+    }
+    subStr = inStr.substr(lastPos);
+    tokens.push_back(func(subStr));
+    std::cout << subStr << "." << std::endl;
+    return tokens;
+}
+
 /**
  * \brief Split a delimited string of detector segment numbers into a vector.
  * Segment numbers may be passed as an optional keyword argument of the form
@@ -32,21 +56,31 @@ using json = nlohmann::json;
 static std::vector<unsigned> split_segNums(const std::string& inStr,
                                            const std::string& delimiter=std::string("_"))
 {
-    std::vector<unsigned> segNums;
-    size_t nextPos = 0;
-    size_t lastPos = 0;
-    std::string subStr;
-    std::cout << "Will use the following segment numbers: ";
-    while ((nextPos = inStr.find(delimiter, lastPos)) != std::string::npos) {
-        subStr = inStr.substr(lastPos, nextPos-lastPos);
-        segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
-        lastPos = nextPos + 1;
-        std::cout << subStr << ", ";
-    }
-    subStr = inStr.substr(lastPos);
-    segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
-    std::cout << subStr << "." << std::endl;
-    return segNums;
+    return split_string<unsigned>("segment numbers",
+                                  inStr,
+                                  delimiter,
+                                  [](const std::string& str) {
+                                      return static_cast<unsigned>(std::stoul(str));
+                                  });
+}
+
+/**
+ * \brief Split a delimited string of detector hostnames into a vector.
+ * Hostnames are passed as a keyword argument of the for
+ * `slsHosts=blah1_blah2_blah3_blah4` where the blah1,blah2,blah3,blah4 are
+ * the detector control interface hostname/ip  corresponding
+ * to the panels coming in on lanes in incrementing order.
+ * \param inStr Delimited string of segment numbers, e.g. `blah1_blah2_blah3_blah4`
+ * \param delimiter Segment number delimiter. Currently "_".
+ * \returns slsHosts A vector of std::string that contains the parsed segment numbers.
+ */
+static std::vector<std::string> split_slsHosts(const std::string& inStr,
+                                               const std::string& delimiter=std::string("_"))
+{
+    return split_string<std::string>("hostnames",
+                                     inStr,
+                                     delimiter,
+                                     [](const std::string& str) { return str; });
 }
 
 namespace Drp {
@@ -128,26 +162,72 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
             abort();
         }
     }
+
+    if (para->kwargs.find("slsHosts") != para->kwargs.end()) {
+      std::vector<std::string> slsHosts = split_slsHosts(para->kwargs["slsHosts"]);
+      if (slsHosts.size() != m_nModules) {
+        logging::critical("Number of detector hostnames doesn't match number of panels: %d "
+                          "panels, %d hostnames",
+                          m_nModules, slsHosts.size());
+        abort();
+      }
+      m_slsHosts = slsHosts;
+    } else {
+      logging::critical("Must specify a hostname/ip of the jungfrau control interface for each segment! Check cnf.");
+      abort();
+    } 
+
     virtChan = 0; // Set correct virtual channel to read from.
     m_para->serNo = std::string(""); // Will fill in during connect
+
+    try {
+      // initialize the slsDetector interface
+      // TODO shm_id must be unique per machine constructing it from the card num + lane mask should work
+      unsigned shm_id = m_para->detSegment;
+      m_slsDet = std::make_unique<sls::Detector>(shm_id);
+
+      try {
+        m_slsDet->setHostname(m_slsHosts);
+      }
+      catch (const sls::RuntimeError &err) {
+        sls::defs::runStatus status = m_slsDet->getDetectorStatus().squash();
+        if ((status == sls::defs::RUNNING) || (status == sls::defs::WAITING)) {
+          m_slsDet->stopDetector();
+          m_slsDet->setHostname(m_slsHosts);
+        } else {
+          // if detector wasn't running or stop fails re-raise to outer handler
+          throw;
+        }
+      }
+    }
+    catch(const sls::RuntimeError &err) {
+      logging::critical("Failed to initialize the Jungfrau control interface: %s", err.what());
+      abort();
+    }
 }
 
-void Jungfrau::_connectionInfo(PyObject* bytes)
+void Jungfrau::_connectionInfo(PyObject*)
 {
-    for (size_t i=0; i<m_nModules; ++i) {
-        // Grab serial number first...
-        std::string serNo("abcd");
-        serNo += i;
-        // End grab serial number
+  try {
+    std::stringstream serNo;
 
-        m_serNos.push_back(serNo);
+    auto moduleIds = m_slsDet->getModuleId();
+    auto boardIds = m_slsDet->getSerialNumber();
+    auto firmwareVers = m_slsDet->getFirmwareVersion();
+    auto softwareVers = m_slsDet->getDetectorServerVersion();
 
-        // BEBDetector relies on underscore delimited serNos to construct config obj
-        // correctly in the XTC
-        if (i>0)
-            serNo = "_" + serNo;
-        m_para->serNo += serNo;
+    for (size_t i=0; i < m_nModules; ++i) {
+      if (i > 0) {
+        serNo << "_";
+      }
+      std::cout << moduleIds[i] << " " << boardIds[i] << std::endl;
     }
+
+    m_para->serNo = serNo.str();
+  }
+  catch (const sls::RuntimeError &err) {
+    logging::error("Failed to retrieve Jungfrau module info: %s", err.what());
+  }
 }
 
 unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
