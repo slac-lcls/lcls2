@@ -80,6 +80,9 @@ def write_to_daq_config_db(args):
     )
     top.set("user.gainMode", 3, "gainModeEnum")
 
+    top.define_enum("gain0Enum", {"normal":0, "high":1})
+    top.set("user.gain0", 0, "gain0Enum")
+
     top.define_enum(
         "speedLevelEnum",
         {
