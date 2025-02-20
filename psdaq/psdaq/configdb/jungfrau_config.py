@@ -36,7 +36,7 @@ def jungfrau_init(
     lane = (lanemask & -lanemask).bit_length() - 1 # May be multiple lanes
     myargs = {
         "dev": dev,
-        "enLane": lane,
+        "enLane": lanemask,
         #'dataVcEn': False,      # Whether to open data path in devGui
         #"defaultFile": "",  # Empty string to skip config yaml
         "defaultFile": "",
@@ -139,20 +139,22 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
             segm_lane += 1
 
         print(f"Configuring lane: {segm_lane}")
-        # Is this the correct register??
-        # Not sure the correct register
-        #if jungfrau_kcu.DevPcie.AxiPcieCore.AxiPciePhy.LinkStatus.get() != 1:
-        #if jungfrau_kcu.Core.Pgp4AxiL.RxStatus.RemRxLinkReady.get() != 1:
-        #    raise ValueError("PGP Link Down")
+        udpLane = jungfrau_kcu.DevPcie.Hsio.UdpLane[segm_lane]
+        #udpLane.UdpEngine.SoftMac.set("08:00:56:00:00:00")
+        #udpLane.UdpEngine.SoftIp.set("10.0.0.10")
+        udpLane.UdpEngine.SoftMac.set(cfg["user"]["kcu_mac"])
+        udpLane.UdpEngine.SoftIp.set(cfg["user"]["kcu_ip"])
+        if udpLane.EthPhy.phyReady.get() != 1:
+            raise ValueError(f"PGP Link Down for lane: {segm_lane}")
 
-        # Do the descrambling stuff here?
-        ###################################
+        # Do some of the descrambling stuff here?
+        #########################################
         frameReorg = jungfrau_kcu.DevPcie.UdpFrameReorg[segm_lane]
         frameReorg.Blowoff.set(False)
 
         for i in range(128):
             frameReorg.RemapLut[i].set(i)
-        ###################################
+        #########################################
 
         # Need to do on all AppLanes
         appLane = jungfrau_kcu.DevPcie.Application.AppLane[segm_lane]
@@ -160,6 +162,7 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         appLane.EventBuilder.Blowoff.set(True)
         appLane.EventBuilder.Blowoff.set(False)
         #appLane.EventBuilder.Bypass.set(0x4)
+        #appLane.EventBuilder.Bypass.set(0x2)
         appLane.EventBuilder.Bypass.set(0x0)
         #appLane.EventBuilder.Timeout.set(0xffffff)
 
@@ -168,11 +171,6 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         trigEventBuf = jungfrau_kcu.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[segm_lane]
 
         trigEventBuf.Partition.set(grp)
-
-
-        udpLane = jungfrau_kcu.DevPcie.Hsio.UdpLane[segm_lane]
-        # udpLane.EthPhy. ....  # Don't think we need
-        # udpLane.UdpEngine ... # <- Probably not needed at all
         time.sleep(0.1)
         # Need to do on multiple lanes
 
@@ -187,10 +185,10 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     segm_lane = 0
     trigEventManager = jungfrau_kcu.DevPcie.Hsio.TimingRx.TriggerEventManager
     jungfrau_kcu.StartRun()
-    for i in range(4):
+    for i in range(7):
         print("Disabling all lanes")
         trigEventManager.TriggerEventBuffer[i].MasterEnable.set(0)
-    for i in range(4):
+    for i in range(7):
         if lm & (1 << i):
             print(f"Enabling lane {i}")
             trigEventManager.TriggerEventBuffer[i].MasterEnable.set(1)

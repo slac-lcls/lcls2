@@ -14,17 +14,18 @@ public:
     Jungfrau(Parameters* para, MemPool* pool);
 
 private:
+    void _connectionInfo(PyObject*) override;
     unsigned _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
     void _event(XtcData::Xtc&, const void* bufEnd, std::vector<XtcData::Array<uint8_t>>&) override;
 
 private:
-    //enum { m_rawNamesIndex=NamesIndex::BASE };
     const unsigned m_nAsics = 1;
     const unsigned m_nRows = 512;
     const unsigned m_nCols = 1024;
     const unsigned m_nElems = m_nAsics * m_nRows * m_nCols;
     unsigned m_nModules = 0;
     std::vector<unsigned> m_segNos;
+    std::vector<std::string> m_serNos;
 };
 
 } // namespace Drp

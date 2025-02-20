@@ -1,15 +1,16 @@
 #ifndef JSON2XTC__H
 #define JSON2XTC__H
-#include "rapidjson/filereadstream.h"
 #include "rapidjson/document.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
 #include "rapidjson/error/en.h"
-#include <vector>
-#include "xtcdata/xtc/ShapesData.hh"
-#include "xtcdata/xtc/NamesLookup.hh"
+#include "rapidjson/filereadstream.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
 #include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
+#include "xtcdata/xtc/ShapesData.hh"
 #include <Python.h>
+#include <string>
+#include <vector>
 
 namespace Pds
 {
@@ -30,9 +31,22 @@ namespace Pds
         std::vector<bool>        _isnum;
     };
 
-    int translateJson2Xtc(char *in, char *out, const void* bufEnd, XtcData::NamesId namesID, const char* detname=0, unsigned segment=0);
-    int translateJson2Xtc( PyObject* item, XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId namesID);
-    int translateJson2Xtc(PyObject* item, XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId namesID, unsigned segment);
+    int translateJson2Xtc(char *in,
+                          char *out,
+                          const void* bufEnd,
+                          XtcData::NamesId namesID,
+                          const char* detname=0,
+                          unsigned segment=0);
+    int translateJson2Xtc(PyObject* item,
+                          XtcData::Xtc& xtc,
+                          const void* bufEnd,
+                          XtcData::NamesId namesID);
+    int translateJson2Xtc(PyObject* item,
+                          XtcData::Xtc& xtc,
+                          const void* bufEnd,
+                          XtcData::NamesId namesID,
+                          unsigned segment,
+                          std::string serNo=std::string(""));
     int translateJson2XtcNames(rapidjson::Document* d,
                                XtcData::Xtc* xtc,
                                const void* bufEnd,
@@ -40,7 +54,9 @@ namespace Pds
                                XtcData::NamesId namesID,
                                rapidjson::Value& json,
                                const char* detname,
-                               unsigned segment);
+                               unsigned segment,
+                               std::string const& serNo = std::string(""));
+                               //const char* serNo=std::string("").c_str());
     int translateJson2XtcData (rapidjson::Document* d,
                                XtcData::Xtc* xtc,
                                const void* bufEnd,

@@ -51,17 +51,44 @@ static std::vector<unsigned> split_segNums(const std::string& inStr,
 
 namespace Drp {
   namespace JungfrauData {
+#pragma pack(push)
+#pragma pack(2)
+  struct JungfrauHeader {
+      uint64_t framenum;
+      uint32_t exptime;
+      uint32_t packetnum;
+      uint64_t bunchid;
+      uint64_t timestamp;
+      uint16_t moduleID;
+      uint16_t xCoord;
+      uint16_t yCoord;
+      uint16_t zCoord;
+      uint32_t debug;
+      uint16_t roundRobin;
+      uint8_t detectortype;
+      uint8_t headerVersion;
+  };
+  struct JungfrauPacket {
+      JungfrauHeader header;
+      uint16_t data[4096]; // 8240 bytes
+  };
+#pragma pack(pop)
   struct Stream {
   public:
       Stream() {}
-      void descramble(uint16_t** outBuffer) {
-          *outBuffer = scrambledData;
+      void descramble(uint8_t* outBuffer) {
+          for (size_t i=0; i < 128; ++i) {
+            unsigned offset = 4096*i*2;
+            unsigned dataSize = 4096*2;
+            memcpy(outBuffer+offset,m_scrambledData[i].data,dataSize);
+          }
+          //*outBuffer = scrambledData;
       }
       void printValues() const
       {
           std::cout << "For debugging..." << std::endl;
       }
-      uint16_t scrambledData[512*1024]; // Or whatever size...
+      JungfrauPacket m_scrambledData[128];
     };
 
   } // JungfrauData
@@ -79,11 +106,14 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
             m_nModules++;
         }
     }
-    if (m_nModules > 1)
-        m_multiSegment = true; // From BEBDetector
+    // Jungfrau always needs to take the m_multiSegment path
+    m_multiSegment = true; // From BEBDetector
 
     if (para->kwargs.find("segNums") != para->kwargs.end()) {
-        m_segNoStr = para->kwargs["segNums"]; // From BEBDetector
+        // BEBDetector will use the underscore delimited string to construct
+        // config obj correctly in the XTC
+        m_segNoStr = para->kwargs["segNums"];
+
         std::vector<unsigned> segNums = split_segNums(para->kwargs["segNums"]);
         if (segNums.size() != m_nModules) {
             logging::critical("Number of detector segments doesn't match number of panels: %d "
@@ -99,27 +129,44 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
         }
     }
     virtChan = 0; // Set correct virtual channel to read from.
+    m_para->serNo = std::string(""); // Will fill in during connect
+}
+
+void Jungfrau::_connectionInfo(PyObject* bytes)
+{
+    for (size_t i=0; i<m_nModules; ++i) {
+        // Grab serial number first...
+        std::string serNo("abcd");
+        serNo += i;
+        // End grab serial number
+
+        m_serNos.push_back(serNo);
+
+        // BEBDetector relies on underscore delimited serNos to construct config obj
+        // correctly in the XTC
+        if (i>0)
+            serNo = "_" + serNo;
+        m_para->serNo += serNo;
+    }
 }
 
 unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
 {
     XtcData::Alg rawAlg("raw", 0, 1, 0);
     for (size_t i=0; i<m_nModules; ++i) {
-        // Grab serial number first...
-        std::string serNo = "";
         // We have multiple DAQ segments per DRP executable (potentially)
         unsigned detSegment;
-        if (m_segNos.empty()) {
+        if (m_segNos.empty())
             detSegment = m_para->detSegment;
-        } else {
+        else
             detSegment = m_segNos[i];
-        }
+
         XtcData::NamesId rawNamesId(nodeId, EventNamesIndex + i);
         XtcData::Names& rawNames = *new (xtc, bufEnd) XtcData::Names(bufEnd,
                                                                      m_para->detName.c_str(),
                                                                      rawAlg,
                                                                      m_para->detType.c_str(),
-                                                                     serNo.c_str(),
+                                                                     m_serNos[i].c_str(),
                                                                      rawNamesId,
                                                                      detSegment);
         XtcData::VarDef v;
@@ -134,6 +181,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     }
 
     // Extract data from the configuration object for Jungfrau SDK configuration
+    // BEBDetector should have put one in for each module we have
     // Assume all modules have the same configuration names...
     XtcData::Names& configNames = detector::configNames(configo); //psalg/detector/UtilsConfig.hh
 
@@ -175,6 +223,14 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                 // do something with gain...
             } else if (strcmp(name.name(), "user.speedLevel") == 0) {
                 // do something with speedLevel...
+            } else if (strcmp(name.name(), "user.jungfrau_mac") == 0) {
+                // Set MAC address
+            } else if (strcmp(name.name(), "user.kcu_mac") == 0) {
+                // KCU Mac address
+            } else if (strcmp(name.name(), "user.jungfrau_ip") == 0) {
+                // Set IP address
+            } else if (strcmp(name.name(), "user.kcu_ip") == 0) {
+                // KCU IP address
             }
         }
     }
@@ -185,6 +241,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                       const void* bufEnd,
                       std::vector< XtcData::Array<uint8_t> >& subframes)
 {
+    std::cout << "Subframes[2]: " << subframes[2].num_elem() << std::endl;
     // Will need to loop over modules to extract data from each subframe
     unsigned rawShape[XtcData::MaxRank] = { 1, m_nRows, m_nCols };
     for (size_t moduleIdx=0; moduleIdx<m_nModules; ++moduleIdx) {
@@ -192,10 +249,11 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         XtcData::DescribedData desc(xtc, bufEnd, m_namesLookup, rawNamesId);
         unsigned subframeIdx = 2; // Calculate where data will be...
         JungfrauData::Stream& udpStream = *new (subframes[subframeIdx].data()) JungfrauData::Stream;
-        uint16_t* rawData;
-        udpStream.descramble(&rawData);
-        unsigned dataSize = m_nElems*2; // Bytes
-        memcpy(reinterpret_cast<uint8_t*>(desc.data()), reinterpret_cast<uint8_t*>(rawData), dataSize);
+        unsigned dataSize = m_nElems * 2; // Bytes
+        udpStream.descramble(reinterpret_cast<uint8_t*>(desc.data()));
+        //uint16_t rawData[m_nElems];
+        //udpStream.descramble(reinterpret_cast<uint8_t*>(rawData));
+        //memcpy(reinterpret_cast<uint8_t*>(desc.data()), reinterpret_cast<uint8_t*>(rawData), dataSize);
         desc.set_data_length(dataSize);
         desc.set_array_shape(0, rawShape);
     }

@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
+#include <type_traits>
 
 using namespace XtcData;
 using namespace rapidjson;
@@ -24,32 +25,38 @@ using logging = psalg::SysLog;
 using json = nlohmann::json;
 
 /**
- * \brief Split a delimited string of detector segment numbers into a vector.
- * Segment numbers may be passed as an optional keyword argument of the form
- * `segNums=0_1_2_3` where the 0,1,2,3 are the detector segment numbers corresponding
- * to the panels coming in on lanes in incrementing order.
- * \param inStr Delimited string of segment numbers, e.g. `0_1_2_3`
- * \param delimiter Segment number delimiter. Currently "_".
- * \returns segNums A vector of unsigned that contains the parsed segment numbers.
+ * \brief Split a delimited string of detector segment/serial numbers into a vector.
+ * May denote DAQ detector segments or serial numbers etc.
+ * \param inStr Delimited string, e.g. `0_1_2_3`
+ * \param delimiter Delimiter. Currently "_".
+ * \returns segs A vector of T that contains the parsed segment numbers.
  */
-static std::vector<unsigned> split_segNums(const std::string& inStr,
-                                           const std::string& delimiter=std::string("_"))
+template <class T>
+static std::vector<T> split_segs(const std::string& inStr,
+                                 const std::string& delimiter=std::string("_"))
 {
-    std::vector<unsigned> segNums;
+    std::vector<T> segs;
     size_t nextPos = 0;
     size_t lastPos = 0;
     std::string subStr;
-    std::cout << "Will use the following segment numbers: ";
     while ((nextPos = inStr.find(delimiter, lastPos)) != std::string::npos) {
         subStr = inStr.substr(lastPos, nextPos-lastPos);
-        segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
+        if constexpr(std::is_same_v<T, unsigned>) {
+            segs.push_back(static_cast<T>(std::stoul(subStr)));
+        } else {
+            segs.push_back(subStr);
+        }
         lastPos = nextPos + 1;
         std::cout << subStr << ", ";
     }
     subStr = inStr.substr(lastPos);
-    segNums.push_back(static_cast<unsigned>(std::stoul(subStr)));
+    if constexpr(std::is_same_v<T, unsigned>) {
+        segs.push_back(static_cast<T>(std::stoul(subStr)));
+    } else {
+        segs.push_back(subStr);
+    }
     std::cout << subStr << "." << std::endl;
-    return segNums;
+    return segs;
 }
 
 namespace Drp {
@@ -209,6 +216,7 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     // returns new reference
     PyObject* mybytes;
     std::vector<unsigned> segNums;
+    std::vector<std::string> segSerNos; // Assume multiSegment serNos are in m_para->serNo "_" delimited
     if (!m_multiSegment) {
         mybytes = _check(PyObject_CallFunction(pFunc, "Osssii",
                                                m_root, m_connect_json.c_str(), config_alias.c_str(),
@@ -218,7 +226,8 @@ unsigned BEBDetector::configure(const std::string& config_alias,
         mybytes = _check(PyObject_CallFunction(pFunc, "Ossssi",
                                                m_root, m_connect_json.c_str(), config_alias.c_str(),
                                                m_para->detName.c_str(), m_segNoStr.c_str(), m_readoutGroup));
-        segNums = split_segNums(m_segNoStr);
+        segNums = split_segs<unsigned>(m_segNoStr); // Underscore delimited passed from cnf in sub-class constructor
+        segSerNos = split_segs<std::string>(m_para->serNo); // Underscore delimited created during connect
     }
 
     char* buffer = new char[m_para->maxTrSize];
@@ -230,10 +239,14 @@ unsigned BEBDetector::configure(const std::string& config_alias,
         logging::debug("PyList_Check true");
         for(unsigned seg=0; seg<PyList_Size(mybytes); seg++) {
             unsigned detSegment;
-            if (!m_multiSegment)
+            std::string serNo;
+            if (!m_multiSegment) {
                 detSegment = m_para->detSegment;
-            else
+                serNo = std::string("");
+            } else {
                 detSegment = segNums[seg];
+                serNo = segSerNos[seg];
+            }
             if (!m_multiSegment)
                 logging::debug("seg %d",seg);
             else
@@ -241,7 +254,7 @@ unsigned BEBDetector::configure(const std::string& config_alias,
             PyObject* item = PyList_GetItem(mybytes,seg);
             logging::debug("item %p",item);
             NamesId namesId(nodeId,ConfigNamesIndex+seg);
-            if (Pds::translateJson2Xtc( item, jsonxtc, end, namesId, detSegment ))
+            if (Pds::translateJson2Xtc( item, jsonxtc, end, namesId, detSegment, serNo ))
                 return -1;
         }
     }

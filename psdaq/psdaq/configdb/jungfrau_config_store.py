@@ -90,7 +90,13 @@ def write_to_daq_config_db(args):
     )
     top.set("user.speedLevel", 1, "speedLevelEnum")
 
+    top.set("user.jungfrau_mac", "aa:bb:cc:dd:ee:ff", "CHARSTR")
+    top.set("user.jungfrau_ip", "10.0.0.15", "CHARSTR")
+
     # For Kcu1500/C1100
+    top.set("user.kcu_mac", "08:00:56:00:00:00", "CHARSTR")
+    top.set("user.kcu_ip", "10.0.0.10", "CHARSTR")
+
     top.set("expert.PauseThreshold", 16, "UINT8")
     top.set("expert.TriggerDelay", 42, "UINT32") # 185.7 MHz clocks
 
