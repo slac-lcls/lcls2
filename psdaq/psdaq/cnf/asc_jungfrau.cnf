@@ -87,8 +87,8 @@ procmgr_config = [
  { host: 'drp-det-cmp002', id:'timing_1',    flags:'spu',                cmd:drp_cmd0+' -l 0x4 -D ts'},
  { host: 'drp-det-cmp002', id:'epics_0',     flags:'spu', env:epics_env,  cmd:ea_cmd0+' -l 0x2 -T 4000000'},
 
- #{ host: 'drp-det-cmp003', id:'jungfrau_0',     flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0xf -D jungfrau -k segNums=0_1_2_3'},
- { host: 'drp-det-cmp003', id:'jungfrau_0',     flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0x1 -D jungfrau -k segNums=0,ep_provider=sockets,ep_domain=enp1s0f0'},
+ #{ host: 'drp-det-cmp003', id:'jungfrau_0',     flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0xf -D jungfrau -k segNums=0_1_2_3,slsHosts=det-jungfrau-01'},
+ { host: 'drp-det-cmp003', id:'jungfrau_0',     flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0x4 -D jungfrau -k segNums=0,ep_provider=sockets,ep_domain=enp1s0f0'},
  #{ host: 'drp-det-cmp001', id:'jungfrau_0',     flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -l 0x7 -D jungfrau -k segNums=0_1_2 -vvv'},
 ]
 
