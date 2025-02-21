@@ -143,8 +143,8 @@ def cbase_ASIC_init(cbase, asics):
         getattr(cbase.App,f'Asic{asic}').BgrCtrlDacComp.set(0)						
         getattr(cbase.App,f'Asic{asic}').DacVthrGain.set(2)						
         getattr(cbase.App,f'Asic{asic}').PpbitBe.set(1)						
-        getattr(cbase.App,f'Asic{asic}').BiasPxlCsa.set(1)						
-        getattr(cbase.App,f'Asic{asic}').BiasPxlBuf.set(1)						
+        getattr(cbase.App,f'Asic{asic}').BiasPxlCsa.set(0)						
+        getattr(cbase.App,f'Asic{asic}').BiasPxlBuf.set(0)						
         getattr(cbase.App,f'Asic{asic}').BiasAdcComp.set(0)						
         getattr(cbase.App,f'Asic{asic}').BiasAdcRef.set(0)						
         getattr(cbase.App,f'Asic{asic}').CmlRxBias.set(3)						
@@ -160,12 +160,12 @@ def cbase_ASIC_init(cbase, asics):
         getattr(cbase.App,f'Asic{asic}').BgrCtrlDacPrechCds.set(2)						
         getattr(cbase.App,f'Asic{asic}').BgrfCtrlDacAll.set(2)						
         getattr(cbase.App,f'Asic{asic}').BgrDisable.set(0)						
-        getattr(cbase.App,f'Asic{asic}').DacAdcVrefpGain.set(2)						
-        getattr(cbase.App,f'Asic{asic}').DacAdcVrefp.set(63)						
-        getattr(cbase.App,f'Asic{asic}').DacAdcVrefnGain.set(2)						
-        getattr(cbase.App,f'Asic{asic}').DacAdcVrefn.set(7)						
-        getattr(cbase.App,f'Asic{asic}').DacAdcVrefCmGain.set(2)						
-        getattr(cbase.App,f'Asic{asic}').DacAdcVrefCm.set(37)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefpGain.set(3)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefp.set(53)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefnGain.set(0)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefn.set(12)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefCmGain.set(1)						
+        getattr(cbase.App,f'Asic{asic}').DacAdcVrefCm.set(45)						
         getattr(cbase.App,f'Asic{asic}').AdcCalibEn.set(0)						
         getattr(cbase.App,f'Asic{asic}').CompEnGenEn.set(1)						
         getattr(cbase.App,f'Asic{asic}').CompEnGenCfg.set(5)						
@@ -196,8 +196,8 @@ def cbase_init(cbase):
     cbase.App.WaveformControl.R0Polarity.set(False)			  	
     cbase.App.WaveformControl.R0Delay.set(70)		  	
     cbase.App.WaveformControl.R0Width.set(1125)		  	
-    cbase.App.WaveformControl.InjPolarity.set(True)		  	
-    cbase.App.WaveformControl.InjDelay.set(660)	  	
+    cbase.App.WaveformControl.InjPolarity.set(False)		  	
+    cbase.App.WaveformControl.InjDelay.set(700)	  	
     cbase.App.WaveformControl.InjWidth.set(535)	  	
     cbase.App.WaveformControl.InjEn.set(False)		  	
     cbase.App.WaveformControl.InjSkipFrames.set(0) 		
@@ -384,7 +384,6 @@ def user_to_expert(base, cfg, full=False):
             logging.error('Raise start_ns >= {:}'.format(partitionDelay*base['msg_period']*base['clk_period']))
             raise ValueError('triggerDelay computes to < 0')
 
-  
         d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay']=triggerDelay
         triggerDelay=int(rawStart/base["clk_period"])-cfg['expert']['App']['TimingRx']['TriggerEventManager']['EvrV2CoreTriggers']['EvrV2TriggerReg[0]']['DelayDelta'] # value found empirically
         
@@ -556,9 +555,6 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         logging.info(f'Calling fnInitAsicScript(None,None,{arg})')
         cbase.App.fnInitAsicScript(None,None,arg)
         print("### FINISHED YAML LOAD ###")
-        # Remove the yml files
-        for f in tmpfiles:
-            os.remove(f)
 
        #for i in range(1, cbase.numOfAsics+1):
             # Prevent disabled ASICs from participating by disabling their lanes
@@ -616,14 +612,18 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #        saci.enable.set(False)
         
         #pixelBitMapDic = ['_FL_FM_FH', '_FL_FM_FH_InjOff', '_allConfigs', '_allPx_52', '_allPx_AutoHGLG_InjOff', '_allPx_AutoHGLG_InjOn', '_allPx_AutoMGLG_InjOff', '_allPx_AutoMGLG_InjOn', '_allPx_FixedHG_InjOff', '_allPx_FixedHG_InjOn', '_allPx_FixedLG_InjOff', '_allPx_FixedLG_InjOn', '_allPx_FixedMG_InjOff', '_allPx_FixedMG_InjOn', '_crilin', '_crilin_epixuhr100k', '_defaults', '_injection_corners', '_injection_corners_px1', '_management', '_management_epixuhr100k', '_management_inj', '_maskedCSA', '_truck', '_truck_epixuhr100k', '_xtalk_hole']
-        pixelBitMapDic = ['default', 'injection_truck', 'injection_corners_FHG', 'injection_corners_AHGLG1', 'extra_config_1', 'extra_config_2', 'truck2']
+        pixelBitMapDic = ['_0_default', '_1_injection_truck', '_2_injection_corners_FHG', '_3_injection_corners_AHGLG1', '_4_extra_config', '_5_extra_config', '_6_truck2', ]
+    
+        #pixelBitMapDic = ['default', 'injection_truck', 'injection_corners_FHG', 'injection_corners_AHGLG1', 'extra_config_1', 'extra_config_2', 'truck2']
         for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(True)
         csvCfg = 0
         gainValue = 0
     
         gainMapSelection=np.zeros((4, 168, 192))
         gainValSelection=np.zeros(4)
-  
+        
+        cbase.App.EpixUhrkMatrixConfig.enable.set("True")
+        
         if ( cfg['user']['Gain']['SetSameGain4All']):
             print("Set same Gain for all ASIC")
             if ( cfg['user']['Gain']['UsePixelMap']):
@@ -635,17 +635,27 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 
 #                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 192))
                 csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (168, 192))
-#                fn = pathPll+'csvConfig'+'.csv'
+                fn = pathPll+'csvConfig'+'.csv'
                 
-#                np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')    
-                #tmpfiles.append(fn)
+                np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')    
+                tmpfiles.append(fn)
 
                 for i in asics: 
                     print(f"ASIC{i}")
                     gainMapSelection[i-1,:,:]=csvCfg
-                    #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)    
+                    if i == 1:
+                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
+                    if i == 2:
+                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
+                    if i == 3:
+                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
+                    if i == 4:
+                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
+                   # print(f"EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic{i}('{fn}')")
+                   # getattr(cbase.App,f"EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic{i}('{fn}')")
                     
-                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
+                    #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)                        
+                    #getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
                     print(f"{PixMapSelected} CSV File Loaded")
                 
 
@@ -657,7 +667,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 for i in asics: 
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=gainValue
-                    getattr(cbase.App,f"Asic{i}").SetAllMatrix(gainValue)
+                    getattr(cbase.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
         else:
             print("Set single Gain per ASIC")
             if ( cfg['user']['Gain']['UsePixelMap']):
@@ -669,12 +679,21 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     PixMapSelected= pixelBitMapDic[PixMapSel]
                     print(PixMapSelected)
                     csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (168, 192))
-                    #fn = pathPll+f'csvConfigAsic{i}'+'.csv'
-                    #np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
-                    #tmpfiles.append(fn)
+                    fn = pathPll+f'csvConfigAsic{i}'+'.csv'
+                    np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
+                    tmpfiles.append(fn)
                     gainMapSelection[i-1,:,:]=csvCfg
-                    
-                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
+                    if i == 1:
+                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
+                    if i == 2:
+                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
+                    if i == 3:
+                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
+                    if i == 4:
+                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
+
+#                    getattr(cbase.App,f"EpixUhrkMatrixConfig.progPixelMapFromCSVAsic{i}('{fn}')")
+#                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
             else:
                 #a value per each
                 print("Use a value per ASIC")
@@ -683,7 +702,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=cfg['expert']['App'][f'Asic{i}']['SetGainValue']
-                    getattr(cbase.App,f"Asic{i}").SetAllMatrix(str(cfg['expert']['App'][f'Asic{i}']['SetGainValue']))
+                    getattr(cbase.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
             
         
         for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(False)
@@ -695,26 +714,46 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         cbase.App.GTReadoutBoardCtrl.timingOutEn2.set(app['GTReadoutBoardCtrl']['timingOutEn2'])
         
         cbase.App.AsicGtClk.enable.set(cfg['expert']['App']['AsicGtClk']['enable'])
-        cbase.App.AsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
+        #cbase.App.AsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
         for i in asics:
             getattr(cbase.App,f"AsicGtData{i}").enable.set(cfg['expert']['App'][f'AsicGtData{i}']['enable'])			
             getattr(cbase.App,f"AsicGtData{i}").gtStableRst.set(cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
         
         
-        if cbase.App.VINJ_DAC.dacSingleValue.get() != cfg['user']['App']['VINJ_DAC']['SetValue']:
-            cbase.App.VINJ_DAC.dacSingleValue.set(cfg['user']['App']['VINJ_DAC']['SetValue']			)	
-        cbase.App.VINJ_DAC.dacEn.set(True)
-        cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']						)	
+        if cbase.App.VINJ_DAC.dacSingleValue.get() != cfg['user']['App']['VINJ_DAC']['enable']:
+            cbase.App.VINJ_DAC.dacSingleValue.set(cfg['user']['App']['VINJ_DAC']['enable']			)	
+ 
+        if cbase.App.VCALIBP_DAC.dacSingleValue.get() != cfg['user']['App']['VCALIBP_DAC']['enable']:
+            cbase.App.VCALIBP_DAC.dacSingleValue.set(cfg['user']['App']['VCALIBP_DAC']['enable']			)	
+        
+        cbase.App.VCALIBP_DAC.dacEn.set(cfg['user']['App']['VCALIBP_DAC']['dacEn'])
+        cbase.App.VCALIBP_DAC.dacSingleValue.set(cfg['user']['App']['VCALIBP_DAC']['dacSingleValue'])
+        cbase.App.VCALIBP_DAC.rampEn.set(cfg['user']['App']['VCALIBP_DAC']['rampEn'])
+        cbase.App.VCALIBP_DAC.dacStartValue.set(cfg['user']['App']['VCALIBP_DAC']['dacStartValue'])
+        cbase.App.VCALIBP_DAC.dacStopValue.set(cfg['user']['App']['VCALIBP_DAC']['dacStopValue'])
+        cbase.App.VCALIBP_DAC.dacStepValue.set(cfg['user']['App']['VCALIBP_DAC']['dacStepValue'])
+        cbase.App.VCALIBP_DAC.resetDacRamp.set(cfg['user']['App']['VCALIBP_DAC']['resetDacRamp'])
+
+        cbase.App.VINJ_DAC.dacEn.set(cfg['user']['App']['VINJ_DAC']['dacEn'])
+        cbase.App.VINJ_DAC.dacSingleValue.set(cfg['user']['App']['VINJ_DAC']['dacSingleValue'])
+        cbase.App.VINJ_DAC.rampEn.set(cfg['user']['App']['VINJ_DAC']['rampEn'])
+        cbase.App.VINJ_DAC.dacStartValue.set(cfg['user']['App']['VINJ_DAC']['dacStartValue'])
+        cbase.App.VINJ_DAC.dacStopValue.set(cfg['user']['App']['VINJ_DAC']['dacStopValue'])
+        cbase.App.VINJ_DAC.dacStepValue.set(cfg['user']['App']['VINJ_DAC']['dacStepValue'])
+        cbase.App.VINJ_DAC.resetDacRamp.set(cfg['user']['App']['VINJ_DAC']['resetDacRamp'])
         
         if cbase.App.ADS1217.enable.get() != 	cfg['user']['App']['ADS1217']['adcStartEnManual']:
-            cbase.App.ADS1217.adcStartEnManual.set(cfg['user']['App']['ADS1217']['adcStartEnManual']	)
-        cbase.App.ADS1217.enable.set(cfg['user']['App']['ADS1217']['enable']						)	
+            cbase.App.ADS1217.enable.set(cfg['user']['App']['ADS1217']['enable']						)	
+        cbase.App.ADS1217.adcStartEnManual.set(cfg['user']['App']['ADS1217']['adcStartEnManual']	)
         
         #for i in asics: 
         #    print(f"ASIC{i}")
         #cbase.App.Asic1.LoadCsvPixelBitmap.set('/tmp/csvConfig.csv')            
         #print("########## ASIC1 csv test")        
-
+        # Remove the yml files
+    for f in tmpfiles:
+        os.remove(f)
+            
     logging.info('config_expert complete')
     config_completed = True
 def reset_counters(base):
@@ -838,7 +877,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     
     base['cfg']    = copy.deepcopy(cfg)
     base['result'] = copy.deepcopy(result)
-    
+    print("created gain values in XTC file")
     return result
 
 def epixUHR_unconfig(base):
@@ -1019,6 +1058,7 @@ def epixUHR_internal_trigger(base):
     
     cbase = base['cam']
     cbase.App.TriggerRegisters.SetAutoTrigger.set(1)
+    
 
 def epixUHR_enable(base):
     print('epixUHR_enable')
