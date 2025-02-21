@@ -36,16 +36,20 @@ def epixUHR_cdict():
     
     for n in range(1, 5):
         top.set(f"expert.App.Asic{n}.enable",							1   ,	"boolEnum")
-        top.set(f"expert.App.Asic{n}.DacVthr",							52	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.DacVthrGain",						2	,	'UINT8'   )
+        top.set(f"expert.App.Asic{n}.DacVthr",							53	,	'UINT8'   )
+        top.set(f"expert.App.Asic{n}.DacVthrGain",						3	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.DacVfiltGain",						2	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.DacVfilt",							28	,	'UINT8'   )	
+        top.set(f"expert.App.Asic{n}.DacVfilt",							30	,	'UINT8'   )	
         top.set(f"expert.App.Asic{n}.DacVrefCdsGain",					2	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.DacVrefCds",						44	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.DacVprechGain",				    2	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.DacVprech",						34	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.CompEnGenEn",						1	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.CompEnGenCfg",						5	,	'UINT8'   )
+        top.set(f"expert.App.Asic{n}.BiasPxlCsa",                       0   ,   "UINT8"   )						
+        top.set(f"expert.App.Asic{n}.BiasPxlBuf",                       0   ,   "UINT8"   )						
+        top.set(f"expert.App.Asic{n}.BiasAdcComp",                      0   ,   "UINT8"   )						
+        top.set(f"expert.App.Asic{n}.BiasAdcRef",                       0   ,   "UINT8"   )
         top.set(f"expert.App.BatcherEventBuilder{n}.enable",			1   ,	"boolEnum")
         top.set(f"expert.App.BatcherEventBuilder{n}.Timeout",			0	,   'UINT8'   )
         
@@ -63,12 +67,12 @@ def epixUHR_cdict():
             
     pathpix='/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pixelBitMaps_prod/'
     #pixelBitMapDic = {'_FL_FM_FH':0, '_FL_FM_FH_InjOff':1, '_allConfigs':2, '_allPx_52':3, '_allPx_AutoHGLG_InjOff':4, '_allPx_AutoHGLG_InjOn':5, '_allPx_AutoMGLG_InjOff':6, '_allPx_AutoMGLG_InjOn':7, '_allPx_FixedHG_InjOff':8, '_allPx_FixedHG_InjOn':9, '_allPx_FixedLG_InjOff':10, '_allPx_FixedLG_InjOn':11, '_allPx_FixedMG_InjOff':12, '_allPx_FixedMG_InjOn':13, '_crilin':14, '_crilin_epixuhr100k':15, '_defaults':16, '_injection_corners':17, '_injection_corners_px1':18, '_management':19, '_management_epixuhr100k':20, '_management_inj':21, '_maskedCSA':22, '_truck':23, '_truck_epixuhr100k':24, '_xtalk_hole':25}
-    pixelBitMapDic = {'default':0, 'injection_truck':1, 'injection_corners_FHG':2, 'injection_corners_AHGLG1':3, 'extra_config_1':4, 'extra_config_2':5, 'truck2':6, }
+    pixelBitMapDic = {'_0_default':0, '_1_injection_truck':1, '_2_injection_corners_FHG':2, '_3_injection_corners_AHGLG1':3, '_4_extra_config':4, '_5_extra_config':5, '_6_truck2':6, }
     top.define_enum('pixelMapEnum', pixelBitMapDic)
     
     base = 'expert.pixelBitMaps.'
     for pixelmap in pixelBitMapDic:
-        top.set(base+pixelmap, np.loadtxt(pathpix+pixelmap+'.csv', dtype='uint16', delimiter=','))
+        top.set(base+pixelmap, np.loadtxt(f'{pathpix}{pixelmap[1:]}.csv', dtype='uint16', delimiter=','))
     for n in range(1, 5):
         base = f'expert.App.Asic{n}.'
         top.set(base+'PixelBitMapSel', 5, 'pixelMapEnum')
@@ -116,8 +120,26 @@ def epixUHR_cdict():
     for n in range(1, 5):
         top.set(f"expert.App.AsicGtData{n}.enable",					1			  	,"boolEnum")
         top.set(f"expert.App.AsicGtData{n}.gtStableRst",			0				,"boolEnum")
-    top.set("user.App.VINJ_DAC.enable",							    0				,"boolEnum")
-    top.set("user.App.VINJ_DAC.SetValue",						    0				,"UINT32"  )
+    
+    top.set("user.App.VCALIBP_DAC.enable",                                      0				,"boolEnum")
+    top.set("user.App.VCALIBP_DAC.dacEn",                                       0				,"boolEnum")
+    top.set("user.App.VCALIBP_DAC.dacSingleValue",                              0				,"UINT32")
+    top.set("user.App.VCALIBP_DAC.rampEn",                                      0				,"boolEnum")
+    top.set("user.App.VCALIBP_DAC.dacStartValue",                               0				,"UINT32")
+    top.set("user.App.VCALIBP_DAC.dacStopValue",                                0				,"UINT32")
+    top.set("user.App.VCALIBP_DAC.dacStepValue",                                0				,"UINT32")
+    top.set("user.App.VCALIBP_DAC.resetDacRamp",                                0				,"boolEnum")
+    
+    top.set("user.App.VINJ_DAC.enable",                                      0				,"boolEnum")
+    top.set("user.App.VINJ_DAC.dacEn",                                       0				,"boolEnum")
+    top.set("user.App.VINJ_DAC.dacSingleValue",                              0				,"UINT32")
+    top.set("user.App.VINJ_DAC.rampEn",                                      0				,"boolEnum")
+    top.set("user.App.VINJ_DAC.dacStartValue",                               0				,"UINT32")
+    top.set("user.App.VINJ_DAC.dacStopValue",                                0				,"UINT32")
+    top.set("user.App.VINJ_DAC.dacStepValue",                                0				,"UINT32")
+    top.set("user.App.VINJ_DAC.resetDacRamp",                                0				,"boolEnum")
+    
+    
     top.set("user.App.ADS1217.enable",							    0				,"boolEnum")
     top.set("user.App.ADS1217.adcStartEnManual",				    0  				,"boolEnum")
     
