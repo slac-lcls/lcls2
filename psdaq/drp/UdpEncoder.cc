@@ -623,30 +623,37 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     }
 }
 
-unsigned UdpEncoder::connect(std::string& msg, unsigned slowGroup)
+unsigned UdpEncoder::connect(const nlohmann::json& msg,
+    std::string& errorMsg,
+    const std::string& id,
+    unsigned slowGroup)
 {
-    // Override the kwarg with connect json info from the TPR process, if found
-    if (slowGroup != -1u) {
+    // First call the parent class connect() with the required JSON and id.
+    XpmDetector::connect(msg, id);
+
+    // Configure interpolation based on slowGroup.
+    if (slowGroup != static_cast<unsigned>(-1)) {
         m_interpolating = true;
         m_slowGroup = slowGroup;
         logging::info("Interpolation enabled using group %u", m_slowGroup);
     }
 
+    // Create the UdpReceiver for this detector.
     try {
         m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_encQueue, m_bufferFreelist);
     }
-    catch(std::string& error) {
+    catch(const std::string& error) {
         logging::error("Failed to create UdpReceiver: %s", error.c_str());
         m_udpReceiver.reset();
-        msg = error;
+        errorMsg = error;
         return 1;
     }
-
     return 0;
 }
 
 unsigned UdpEncoder::disconnect()
 {
+    shutdown();
     m_udpReceiver.reset();
     return 0;
 }
@@ -1083,12 +1090,11 @@ UdpApp::UdpApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_udpDetector(std::make_unique<UdpEncoder>(m_para, m_drp)),
     m_unconfigure(false)
 {
-    Py_Initialize();                    // for use by configuration
+    Py_Initialize();  // Must be called before creating the UdpEncoder
 
-    m_det = m_udpDetector.get();
+    m_det = new UdpEncoder(m_para, m_drp);
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -1098,25 +1104,29 @@ UdpApp::UdpApp(Parameters& para) :
 
 UdpApp::~UdpApp()
 {
-    // Try to take things down gracefully when an exception takes us off the
-    // normal path so that the most chance is given for prints to show up
+    // Try to take things down gracefully when an exception takes us off the normal path
     handleReset(json({}));
 
-    Py_Finalize();                      // for use by configuration
+    // Clean up the detector object
+    if(m_det) {
+        delete m_det;
+        m_det = nullptr;
+    }
+
+    Py_Finalize();
 }
 
 void UdpApp::_disconnect()
 {
     m_drp.disconnect();
-    m_det->shutdown();
-    m_udpDetector->disconnect();
+    m_det->disconnect();
 }
 
 void UdpApp::_unconfigure()
 {
     m_drp.pool.shutdown();  // Release Tr buffer pool
     m_drp.unconfigure();    // TebContributor must be shut down before the worker
-    m_udpDetector->unconfigure();
+    m_det->unconfigure();
     m_unconfigure = false;
 }
 
@@ -1127,7 +1137,7 @@ json UdpApp::connectionInfo(const nlohmann::json& msg)
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo(msg);
+    json info = m_det->publicConnectionInfo(msg);
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
@@ -1137,7 +1147,7 @@ json UdpApp::connectionInfo(const nlohmann::json& msg)
 void UdpApp::connectionShutdown()
 {
     if (m_det) {
-        m_det->connectionShutdown();
+        m_det->publicConnectionShutdown();
     }
     m_drp.shutdown();
 }
@@ -1161,7 +1171,6 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
     }
 
     unsigned slowGroup = -1u;
-    std::string id = std::to_string(getId());
     if (m_para.kwargs.find("encTprAlias") != m_para.kwargs.end()) {
         std::string encTprAlias = m_para.kwargs["encTprAlias"];
         for (auto it : msg["body"]["tpr"].items()) {
@@ -1171,10 +1180,10 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
         }
     }
 
+    std::string id = std::to_string(getId());
     m_det->nodeId = msg["body"]["drp"][id]["drp_id"];
-    m_det->connect(msg, id);
+    unsigned rc = m_det->connect(msg, errorMsg, id, slowGroup);
 
-    unsigned rc = m_udpDetector->connect(errorMsg, slowGroup);
     if (!errorMsg.empty()) {
         if (!rc) {
             logging::warning(("UdpDetector::connect: " + errorMsg).c_str());
@@ -1239,7 +1248,7 @@ void UdpApp::handlePhase1(const json& msg)
 
         // Provide EbReceiver with the Detector interface so that additional
         // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp.ebReceiver().configure(m_det, m_udpDetector->pgp());
+        m_drp.ebReceiver().configure(m_det, m_det->pgp());
 
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);
@@ -1286,7 +1295,7 @@ void UdpApp::handlePhase1(const json& msg)
             logging::debug("handlePhase1 enable found chunkRequest");
             m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
         }
-        m_udpDetector->reset(); // needed?
+        m_det->reset(); // needed?
         logging::debug("handlePhase1 enable complete");
     }
 
