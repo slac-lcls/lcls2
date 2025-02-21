@@ -38,6 +38,7 @@ add_executable(drp
     Epix100.cc
     EpixQuad.cc
     Jungfrau.cc
+    JungfrauDetectorId.cc
     TimingDef.cc
     TimingBEB.cc
     TimingSystem.cc
@@ -63,6 +64,7 @@ target_link_libraries(drp
     trigger
     mmhw
     nlohmann_json::nlohmann_json
+    slsDetectorShared
 )
 
 add_executable(drp_bld
@@ -326,6 +328,7 @@ install(TARGETS drp
   drp_pva
   drp_udpencoder
   tpr_trigger
+  jungfrauTest
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
