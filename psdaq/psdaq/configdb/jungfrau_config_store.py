@@ -56,7 +56,7 @@ def write_to_daq_config_db(args):
         "  - bias_voltage_v : Module bias voltage in V.\n"
         "  - trigger_delay_s : Additional trigger delay in s.\n"
         "  - exposure_time_s : Exposure time in s.\n"
-        "  - exposure_period : Exposure period in ??.\n"
+        "  - exposure_period : Exposure period in s.\n"
         "  - port : Port.\n"
     )
     top.set("help:RO", help_str, "CHARSTR")
@@ -76,6 +76,7 @@ def write_to_daq_config_db(args):
             "FORCE_SWITCH_G2":2,
             "FIX_G1":3,
             "FIX_G2":4,
+            "FIX_G0":5,
         }
     )
     top.set("user.gainMode", 3, "gainModeEnum")
@@ -93,7 +94,7 @@ def write_to_daq_config_db(args):
     )
     top.set("user.speedLevel", 1, "speedLevelEnum")
 
-    top.set("user.jungfrau_mac", "aa\:bb\:cc\:dd\:ee\:ff", "CHARSTR")
+    top.set("user.jungfrau_mac", "aa:bb:cc:dd:ee:ff", "CHARSTR")
     top.set("user.jungfrau_ip", "10.0.0.15", "CHARSTR")
 
     # For Kcu1500/C1100
