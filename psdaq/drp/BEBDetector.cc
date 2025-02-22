@@ -314,6 +314,22 @@ std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, uns
     return subframes;
 }
 
+std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, unsigned length, size_t nsubhint)
+{
+    EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)buffer, length);
+    EvtBatcherSubFrameTail* ebsft = ebit.next();
+
+    std::vector<XtcData::Array<uint8_t>> subframes;
+    if (nsubhint > 0)
+        subframes.reserve(nsubhint);
+
+    do {
+        subframes.emplace_back(ebsft->data(), &ebsft->size(), 1);
+    } while((ebsft=ebit.next()));
+
+    return subframes;
+}
+
 void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
     // Deliver subframe vectors in lane order

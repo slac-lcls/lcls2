@@ -55,6 +55,7 @@ protected:
     void _init_feb();         // Must call from subclass constructor
     // Helper functions
     std::vector< XtcData::Array<uint8_t> > _subframes(void* buffer, unsigned length);
+    std::vector< XtcData::Array<uint8_t> > _subframes(void* buffer, unsigned length, size_t nsubhint);
     static std::string _string_from_PyDict(PyObject*, const char* key);
 protected:
     std::string          m_connect_json;  // info passed on connect phase

@@ -1,4 +1,5 @@
 #include "Jungfrau.hh"
+#include "JungfrauData.hh"
 
 #include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/VarDef.hh"
@@ -92,51 +93,6 @@ static std::chrono::nanoseconds secs_to_ns(double secs)
     return std::chrono::duration_cast<std::chrono::nanoseconds>(dursecs);
 }
 
-namespace Drp {
-  namespace JungfrauData {
-#pragma pack(push)
-#pragma pack(2)
-  struct JungfrauHeader {
-      uint64_t framenum;
-      uint32_t exptime;
-      uint32_t packetnum;
-      uint64_t bunchid;
-      uint64_t timestamp;
-      uint16_t moduleID;
-      uint16_t xCoord;
-      uint16_t yCoord;
-      uint16_t zCoord;
-      uint32_t debug;
-      uint16_t roundRobin;
-      uint8_t detectortype;
-      uint8_t headerVersion;
-  };
-  struct JungfrauPacket {
-      JungfrauHeader header;
-      uint16_t data[4096]; // 8240 bytes
-  };
-#pragma pack(pop)
-  struct Stream {
-  public:
-      Stream() {}
-      void descramble(uint8_t* outBuffer) {
-          for (size_t i=0; i < 128; ++i) {
-            unsigned offset = 4096*i*2;
-            unsigned dataSize = 4096*2;
-            memcpy(outBuffer+offset,m_scrambledData[i].data,dataSize);
-          }
-          //*outBuffer = scrambledData;
-      }
-      void printValues() const
-      {
-          std::cout << "For debugging..." << std::endl;
-      }
-      JungfrauPacket m_scrambledData[128];
-    };
-
-  } // JungfrauData
-
-
 static const std::unordered_map<std::string, sls::defs::gainMode> slsGainEnumMap
 {
     {"DYNAMIC", sls::defs::DYNAMIC},
@@ -160,6 +116,8 @@ static const std::unordered_map<std::string, sls::defs::detectorSettings> slsDet
     {"high", sls::defs::HIGHGAIN0},
 };
 
+namespace Drp {
+
 static Jungfrau* jungfrau = nullptr;
 
 static void sigHandler(int signal)
@@ -177,8 +135,9 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
     _init(para->kwargs["epics_prefix"].c_str());
 
     if (para->kwargs.find("timebase")!=para->kwargs.end() &&
-        para->kwargs["timebase"]==std::string("119M"))
+        para->kwargs["timebase"]==std::string("119M")) {
         m_debatch = true;
+    }
     for (size_t i = 0; i < PGP_MAX_LANES - 1; ++i) {
         if (para->laneMask & (1 << i)) {
             m_nModules++;
@@ -346,14 +305,6 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     // Assume all modules have the same configuration names...
     XtcData::Names& configNames = detector::configNames(configo); //psalg/detector/UtilsConfig.hh
 
-    /*std::set<std::string> configParamNames {
-          "user.bias_voltage_v",
-          "user.trigger_delay_s",
-          "user.exposure_time_s",
-          "user.exposure_period",
-          "user.gainMode",
-          "user.speedLevel"
-    };*/
     try {
         // Take all of the modules out of the acquiring state
         m_slsDet->stopDetector();
@@ -505,17 +456,59 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                       std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     // Will need to loop over modules to extract data from each subframe
-    unsigned rawShape[XtcData::MaxRank] = { 1, m_nRows, m_nCols };
+    unsigned rawShape[XtcData::MaxRank] = { 1, JungfrauData::Rows, JungfrauData::Cols };
     for (size_t moduleIdx=0; moduleIdx<m_nModules; ++moduleIdx) {
         XtcData::NamesId rawNamesId(nodeId, EventNamesIndex+moduleIdx);
         XtcData::DescribedData desc(xtc, bufEnd, m_namesLookup, rawNamesId);
+
         unsigned subframeIdx = 2; // Calculate where data will be...
-        JungfrauData::Stream& udpStream = *new (subframes[subframeIdx].data()) JungfrauData::Stream;
-        unsigned dataSize = m_nElems * 2; // Bytes
-        udpStream.descramble(reinterpret_cast<uint8_t*>(desc.data()));
-        //uint16_t rawData[m_nElems];
-        //udpStream.descramble(reinterpret_cast<uint8_t*>(rawData));
-        //memcpy(reinterpret_cast<uint8_t*>(desc.data()), reinterpret_cast<uint8_t*>(rawData), dataSize);
+        std::vector<XtcData::Array<uint8_t>> subframesUdp = _subframes(subframes[subframeIdx].data(),
+                                                                       subframes[subframeIdx].num_elem(),
+                                                                       JungfrauData::PacketNum);
+
+        // validate the number of packets
+        if (subframesUdp.size() < JungfrauData::PacketNum) {
+            logging::error("Missing data: subframe[%u] contains %zu packets [%zu]",
+                           subframeIdx, subframesUdp.size(), JungfrauData::PacketNum);
+            xtc.damage.increase(XtcData::Damage::MissingData);
+            return;
+        } else if (subframesUdp.size() > JungfrauData::PacketNum) {
+            logging::error("Extra data: subframe[%u] contains %zu packets [%zu]",
+                           subframeIdx, subframesUdp.size(), JungfrauData::PacketNum);
+            xtc.damage.increase(XtcData::Damage::Truncated);
+            return;
+        }
+
+        size_t dataSize = 0;
+        uint64_t framenum = 0;
+        uint8_t* dataPtr = reinterpret_cast<uint8_t*>(desc.data());
+        for (uint32_t udpIdx=0; udpIdx < subframesUdp.size(); udpIdx++) {
+            // validate the packet size
+            if (subframesUdp[udpIdx].num_elem() != JungfrauData::PacketSize) {
+                logging::error("Corrupted data: subframe[%u] packet[%u] unexpected size %lu [%zu]",
+                               subframeIdx, udpIdx, subframesUdp[udpIdx].num_elem(), JungfrauData::PacketSize);
+                xtc.damage.increase(XtcData::Damage::Corrupted);
+                return;
+            }
+            JungfrauData::JungfrauPacket* packet = reinterpret_cast<JungfrauData::JungfrauPacket*>(subframesUdp[udpIdx].data());
+            if (udpIdx == 0) {
+                framenum = packet->header.framenum;
+            } else {
+                // check framenum consistent
+                if (packet->header.framenum != framenum) {
+                    logging::error("Out-of-Order data: subframe[%u] packet[%u] unexpected framenum %lu [%lu]",
+                                   subframeIdx, udpIdx, packet->header.framenum, framenum);
+                    xtc.damage.increase(XtcData::Damage::OutOfOrder);
+                    return;
+                }
+            }
+
+            std::memcpy(dataPtr, &packet->data, JungfrauData::PayloadSize);
+            dataPtr += JungfrauData::PayloadSize;
+            dataSize += JungfrauData::PayloadSize;
+
+            std::cout << packet->header.framenum << " " << packet->header.packetnum << std::endl;
+        }
         desc.set_data_length(dataSize);
         desc.set_array_shape(0, rawShape);
     }
@@ -557,4 +550,5 @@ std::string Jungfrau::_buildDetId(uint64_t sensor_id,
 
     return id.str();
 }
+
 } // Drp

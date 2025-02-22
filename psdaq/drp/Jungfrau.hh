@@ -36,10 +36,6 @@ private:
                             std::string hostname);
 
 private:
-    const unsigned m_nAsics = 1;
-    const unsigned m_nRows = 512;
-    const unsigned m_nCols = 1024;
-    const unsigned m_nElems = m_nAsics * m_nRows * m_nCols;
     unsigned m_nModules = 0;
     std::vector<unsigned> m_segNos;
     std::vector<std::string> m_serNos;
