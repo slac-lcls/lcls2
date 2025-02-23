@@ -2,18 +2,21 @@
 
 #include "JungfrauDetectorId.hh"
 
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <cstdlib>
 #include <getopt.h>
+#include <signal.h>
 
-constexpr unsigned defPort { 32410 };
+constexpr unsigned defPort { 8192 };
 constexpr unsigned defNumImages { 1 };
 constexpr unsigned defBias { 200 };
 constexpr double defExposureTime { 0.00001 };
 constexpr double defExposurePeriod { 0.2 };
 constexpr double defTriggerDelay { 0.000238 };
+static const std::string defDetMac { "aa:bb:cc:dd:ee:ff" };
 
 constexpr double tsClock { 10.e6 };
 
@@ -31,15 +34,14 @@ static const std::vector<sls::defs::speedLevel> slsSpeeds {
   sls::defs::QUARTER_SPEED,
 };
 
-using namespace Drp::Jungfrau;
-
 static void showUsage(const char* p)
 {
   std::cout << "Usage: " << p << " [-v|--version] [-h|--help]" << std::endl;
   std::cout << "-H|--host <host> [-P|--port <port>]" << std::endl;
   std::cout << "[-w|--write <filename prefix>] [-n|--number <number of images>] [-e|--exposure <exposure time (sec)>]" << std::endl;
   std::cout << "[-b|--bias <bias>] [-g|--gain <gain>] [-S|--speed <speed>] [-t|--trigger <delay>] [-r|--receiver]" << std::endl;
-  std::cout << "-H|--host <host> [-P|--port <port>] -m|--mac <mac> -d|--detip <detip> -s|--sls <sls>" << std::endl;
+  std::cout << "-H|--host <host> [-P|--port <port>] -m|--mac <mac> -d|--detip <detip> -s|--sls <sls> [-D|--device <dev>]" << std::endl;
+  std::cout << "[-c|--configonly]" << std::endl;
   std::cout << " Options:" << std::endl;
   std::cout << "    -w|--write    <filename prefix>       output filename prefix" << std::endl;
   std::cout << "    -n|--number   <number of images>      number of images to be captured (default: " << defNumImages << ")" << std::endl;
@@ -57,6 +59,8 @@ static void showUsage(const char* p)
   std::cout << "    -G|--highg0                           use high G0 gain mode (default: false)" << std::endl;
   std::cout << "    -I|--internal                         use the internal trigger for acquistion (default: false)" << std::endl;
   std::cout << "    -i|--info                             display additional info about recieved frames (default: false)" << std::endl;
+  std::cout << "    -D|--device   <device>                set the slsDetector shm_id to use for the device (default: 0)" << std::endl;
+  std::cout << "    -c|--configonly                       exit after configuring the detector" << std::endl;
   std::cout << "    -v|--version                          show file version" << std::endl;
   std::cout << "    -h|--help                             print this message and exit" << std::endl;
 }
@@ -66,9 +70,26 @@ static void showVersion(const char* p)
   std::cout << "Version: " << p << " Ver 1.0.0" << std::endl; 
 }
 
+static std::chrono::nanoseconds secs_to_ns(double secs)
+{
+  std::chrono::duration<double> dursecs{secs};
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(dursecs);
+}
+
+static volatile sig_atomic_t running = 1;
+
+static void sigHandler(int signal)
+{
+  psignal(signal, "running stopped on signal");
+  running = 0;
+}
+
+using Drp::JungfrauId;
+using Drp::JungfrauIdLookup;
+
 int main(int argc, char* argv[])
 {
-  const char*         strOptions  = ":vhw:n:e:E:b:g:S:P:H:m:d:s:t:GIiD:";
+  const char*         strOptions  = ":vhw:n:e:E:b:g:S:P:H:m:d:s:t:GIiD:c";
   const struct option loOptions[] =
   {
     {"version",     0, 0, 'v'},
@@ -90,13 +111,14 @@ int main(int argc, char* argv[])
     {"internal",    0, 0, 'I'},
     {"info",        0, 0, 'i'},
     {"device",      0, 0, 'D'},
+    {"configonly",  0, 0, 'c'},
     {0,             0, 0,  0 }
   };
 
   unsigned port  = defPort;
   unsigned num_modules = 0;
   int device = 0;
-  int numImages = defNumImages;
+  unsigned numImages = defNumImages;
   unsigned bias = defBias;
   double exposureTime = defExposureTime;
   double exposurePeriod = defExposurePeriod;
@@ -200,6 +222,9 @@ int main(int argc, char* argv[])
     case 'D':
       device = strtol(optarg, NULL, 0);
       break;
+    case 'c':
+      running = 0;
+      break;
     case '?':
       if (optopt)
         std::cerr << argv[0] << ": Unknown option: " << char(optopt) << std::endl;
@@ -252,52 +277,140 @@ int main(int argc, char* argv[])
     return 1;
   }
 
+  // add signal handler
+  struct sigaction sa;
+  sa.sa_handler = sigHandler;
+  sa.sa_flags = SA_RESETHAND;
+
+  sigaction(SIGINT,&sa,NULL);
+
   // single Detector class can talk to multiple dets in parallel
   sls::Detector det(device);
 
-  det.setHostname(sSlsHost);
-
-  std::cout << "Using SlsDetector package version: " << det.getPackageVersion() << std::endl;
-
-  auto slsSize = det.size();
-  // Check if detector control hostname setup worked
-  if (slsSize != (int) num_modules) {
-    std::cerr << argv[0] << ": failed to initialize all modules: " << slsSize
-              << " versus expected of " << num_modules << std::endl;
-  } else {
-    std::cout << "Detector contains " << slsSize << " modules" << std::endl;
-  }
-
-  auto slsHostnames = det.getHostname();
-  auto slsTypes = det.getDetectorType();
-  auto slsFirmwareVers = det.getFirmwareVersion();
-  auto slsServerVers = det.getDetectorServerVersion();
-  auto slsHardwareVers  = det.getHardwareVersion();
-  auto slsKernelVers = det.getKernelVersion();
-  auto slsModuleId = det.getModuleId();
-  auto slsSerialNumber = det.getSerialNumber();
-
-  // construct full serial number used by psana
-  DetIdLookup lookup;
-
-  for (int d = 0; d < slsSize; d++) {
-    std::cout << "Module " << d << " Info:" << std::endl;
-    std::cout << "==========================" << std::endl;
-    std::cout << "  Hostname:   " << slsHostnames[d] << std::endl;
-    std::cout << "  Det Type:   " << sls::ToString(slsTypes[d]) << std::endl;
-    std::cout << "  Firmware:   " << std::hex << slsFirmwareVers[d] << std::endl;
-    std::cout << "  Hardware:   " << slsHardwareVers[d] << std::endl;
-    std::cout << "  Software:   " << slsServerVers[d] << std::endl;
-    std::cout << "  Kernel:     " << slsKernelVers[d] << std::endl;
-    std::cout << "  Module id:  " << slsModuleId[d] << std::endl;
-    std::cout << "  Serial Num: " << std::hex << slsSerialNumber[d] << std::endl;
-    DetId slacSerialNumber;
-    if (lookup.has(slsHostnames[d])) {
-      slacSerialNumber = DetId(lookup[slsHostnames[d]], slsModuleId[d]);
-    } else {
-      slacSerialNumber = DetId(slsSerialNumber[d], slsModuleId[d]);
+  try {
+    try {
+      det.setHostname(sSlsHost);
     }
-    std::cout << "  SLAC ID:    " << std::hex << slacSerialNumber.full() << std::endl;
-  }
+    catch (const sls::RuntimeError &err) {
+      auto status = det.getDetectorStatus();
+      if (status.any(sls::defs::RUNNING) || status.any(sls::defs::WAITING)) {
+        det.stopDetector();
+        det.setHostname(sSlsHost);
+      } else {
+        // if detector wasn't running or stop fails re-raise to outer handler
+        throw;
+      }
+    }
 
+    std::cout << "Using SlsDetector package version: " << det.getPackageVersion() << std::endl;
+
+    auto slsSize = det.size();
+    // Check if detector control hostname setup worked
+    if (slsSize != (int) num_modules) {
+      std::cerr << argv[0] << ": failed to initialize all modules: " << slsSize
+                << " versus expected of " << num_modules << std::endl;
+    } else {
+      std::cout << "Detector contains " << slsSize << " modules" << std::endl;
+    }
+
+    auto slsHostnames = det.getHostname();
+    auto slsTypes = det.getDetectorType();
+    auto slsFirmwareVers = det.getFirmwareVersion();
+    auto slsServerVers = det.getDetectorServerVersion();
+    auto slsHardwareVers  = det.getHardwareVersion();
+    auto slsKernelVers = det.getKernelVersion();
+    auto slsModuleId = det.getModuleId();
+    auto slsSerialNumber = det.getSerialNumber();
+
+    // construct full serial number used by psana
+    JungfrauIdLookup lookup;
+
+    for (int d = 0; d < slsSize; d++) {
+      std::cout << "Module " << d << " Info:" << std::endl;
+      std::cout << "==========================" << std::endl;
+      std::cout << "  Hostname:   " << slsHostnames[d] << std::endl;
+      std::cout << "  Det Type:   " << sls::ToString(slsTypes[d]) << std::endl;
+      std::cout << "  Firmware:   " << std::hex << slsFirmwareVers[d] << std::endl;
+      std::cout << "  Hardware:   " << slsHardwareVers[d] << std::endl;
+      std::cout << "  Software:   " << slsServerVers[d] << std::endl;
+      std::cout << "  Kernel:     " << slsKernelVers[d] << std::endl;
+      std::cout << "  Module id:  " << slsModuleId[d] << std::endl;
+      std::cout << "  Serial Num: " << std::hex << slsSerialNumber[d] << std::endl;
+      JungfrauId slacSerialNumber;
+      if (lookup.has(slsHostnames[d])) {
+        slacSerialNumber = JungfrauId(lookup[slsHostnames[d]], slsModuleId[d]);
+      } else {
+        slacSerialNumber = JungfrauId(slsSerialNumber[d], slsModuleId[d]);
+      }
+      std::cout << "  SLAC ID:    " << std::hex << slacSerialNumber.full() << std::endl;
+    }
+
+    // power and configure udp sender
+    for (int d = 0; d < slsSize; d++) {
+      sls::Positions pos{d};
+
+      if (!det.getPowerChip(pos).squash()) {
+        std::cout << "Powering on chip for module " << d << std::endl;
+        det.setPowerChip(true, pos);
+      }
+
+      det.setDestinationUDPPort(port, pos[0]);
+      det.setDestinationUDPIP(sls::HostnameToIp(sHost[d].c_str()), pos);
+      det.setDestinationUDPMAC(sls::MacAddr(sMac[d]), pos);
+      det.setSourceUDPIP(sls::HostnameToIp(sDetIp[d].c_str()), pos);
+      det.setSourceUDPMAC(sls::MacAddr(defDetMac), pos);
+
+      std::cout << "Module " << d << " Udp:" << std::endl;
+      std::cout << "==========================" << std::endl;
+      std::cout << "  DestUdpPort: " << det.getDestinationUDPPort(pos) << std::endl;
+      std::cout << "  DestUdpIp:   " << det.getDestinationUDPIP(pos) << std::endl;
+      std::cout << "  DestUdpMac:  " << det.getDestinationUDPMAC(pos) << std::endl;
+      std::cout << "  SrcUdpIp:    " << det.getSourceUDPIP(pos) << std::endl;
+      std::cout << "  SrcUdpMac:   " << det.getSourceUDPMAC(pos) << std::endl;
+    }
+
+    det.validateUDPConfiguration();
+
+    det.setExptime(secs_to_ns(exposureTime));
+    det.setDelayAfterTrigger(secs_to_ns(triggerDelay));
+    det.setPeriod(secs_to_ns(exposurePeriod));
+    if (internal) {
+      det.setTimingMode(sls::defs::AUTO_TIMING);
+      det.setNumberOfTriggers(1);
+      det.setNumberOfFrames(numImages);
+    } else {
+      det.setTimingMode(sls::defs::TRIGGER_EXPOSURE);
+      det.setNumberOfTriggers(numImages);
+      det.setNumberOfFrames(1);
+    }
+
+    det.setHighVoltage(bias);
+
+    det.setReadoutSpeed(speed);
+
+    det.setSettings(highg0 ? sls::defs::HIGHGAIN0 : sls::defs::GAIN0);
+    det.setGainMode(gain);
+
+    det.startDetector();
+
+    while(running) {
+      uint64_t nextframe = det.getNextFrameNumber().squash();
+      if (nextframe > numImages) {
+        break;
+      }
+      if (show_info) {
+        std::cout << "Next Frame Number: " << nextframe << std::endl;
+      }
+      sleep(1);
+    }
+
+    det.stopDetector();
+    sls::freeSharedMemory(device);
+    return 0;
+  }
+  catch (const sls::RuntimeError &err) {
+    std::cerr << "Failure communicating with jungfrau: " << err.what() << std::endl;
+    det.stopDetector();
+    sls::freeSharedMemory(device);
+  }
 }
