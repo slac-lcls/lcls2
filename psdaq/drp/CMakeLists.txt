@@ -168,6 +168,20 @@ target_link_libraries(tpr_trigger
     rt
 )
 
+add_executable(drp_kmicro_test
+    test_kmicro.cc
+)
+
+target_link_libraries(drp_kmicro_test
+    pipecallbackhandler_lib
+    drpbase
+    trigger
+    epicstools
+    mmhw
+    ${Readline_LIBRARY}
+)
+
+
 if(CMAKE_CUDA_COMPILER)
     #message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
     #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
@@ -353,6 +367,7 @@ install(TARGETS drp
   drp_pva
   drp_udpencoder
   tpr_trigger
+  drp_kmicro_test
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
