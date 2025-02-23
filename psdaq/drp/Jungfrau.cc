@@ -93,6 +93,19 @@ static std::chrono::nanoseconds secs_to_ns(double secs)
     return std::chrono::duration_cast<std::chrono::nanoseconds>(dursecs);
 }
 
+static unsigned calc_shm_id(const std::string& device, uint8_t laneMask)
+{
+    unsigned shm_id = 0;
+
+    // try find the index of the device name
+    size_t pos = device.find("_");
+    if (pos != std::string::npos) {
+        shm_id = std::stoul(device.substr(pos + 1), nullptr, 16);
+    }
+
+    return (shm_id << 8) | laneMask;
+}
+
 static const std::unordered_map<std::string, sls::defs::gainMode> slsGainEnumMap
 {
     {"DYNAMIC", sls::defs::DYNAMIC},
@@ -185,9 +198,8 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
 
     // try connecting to the jungfrau modules
     try {
-        // initialize the slsDetector interface
-        // TODO shm_id must be unique per machine constructing it from the card num + lane mask should work
-        unsigned shm_id = m_para->detSegment;
+        // shm_id must be unique per machine constructing it from the card num + lane mask should work
+        unsigned shm_id = calc_shm_id(para->device, para->laneMask);
         m_slsDet = std::make_unique<sls::Detector>(shm_id);
 
         try {
