@@ -129,6 +129,24 @@ static const std::unordered_map<std::string, sls::defs::detectorSettings> slsDet
     {"high", sls::defs::HIGHGAIN0},
 };
 
+class JungfrauDef : public XtcData::VarDef
+{
+public:
+    enum index
+    {
+        raw,
+        frame_cnt,
+        timestamp
+    };
+
+    JungfrauDef()
+    {
+        NameVec.push_back({"raw", XtcData::Name::UINT16, 3});
+        NameVec.push_back({"frame_cnt", XtcData::Name::UINT64});
+        NameVec.push_back({"timestamp", XtcData::Name::UINT64});
+    }
+} RawDef;
+
 namespace Drp {
 
 static Jungfrau* jungfrau = nullptr;
@@ -301,14 +319,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                                                                      m_serNos[i].c_str(),
                                                                      rawNamesId,
                                                                      detSegment);
-        XtcData::VarDef v;
-        // 3 Dimensional data for raw image
-        v.NameVec.push_back(XtcData::Name("raw", XtcData::Name::UINT16, 3));
-
-        // Add other metadata fields??
-        //v.NameVec.push_back(XtcData::Name("frame_cnt", XtcData::Name::UINT16));
-        //v.NameVec.push_back(XtcData::Name("timestamp", XtcData::Name::UINT64));
-        rawNames.add(xtc, bufEnd, v);
+        rawNames.add(xtc, bufEnd, RawDef);
         m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
     }
 
@@ -471,7 +482,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
     unsigned rawShape[XtcData::MaxRank] = { 1, JungfrauData::Rows, JungfrauData::Cols };
     for (size_t moduleIdx=0; moduleIdx<m_nModules; ++moduleIdx) {
         XtcData::NamesId rawNamesId(nodeId, EventNamesIndex+moduleIdx);
-        XtcData::DescribedData desc(xtc, bufEnd, m_namesLookup, rawNamesId);
+        XtcData::CreateData cd(xtc, bufEnd, m_namesLookup, rawNamesId);
 
         unsigned subframeIdx = 2; // Calculate where data will be...
         std::vector<XtcData::Array<uint8_t>> subframesUdp = _subframes(subframes[subframeIdx].data(),
@@ -491,9 +502,10 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
             return;
         }
 
-        size_t dataSize = 0;
         uint64_t framenum = 0;
-        uint8_t* dataPtr = reinterpret_cast<uint8_t*>(desc.data());
+        uint64_t timestamp = 0;
+        XtcData::Array<uint16_t> frame = cd.allocate<uint16_t>(JungfrauDef::raw, rawShape);
+        uint8_t* dataPtr = reinterpret_cast<uint8_t*>(frame.data());
         for (uint32_t udpIdx=0; udpIdx < subframesUdp.size(); udpIdx++) {
             // validate the packet size
             if (subframesUdp[udpIdx].num_elem() != JungfrauData::PacketSize) {
@@ -513,6 +525,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
             // check framenum is consistent
             if (udpIdx == 0) {
                 framenum = packet->header.framenum;
+                timestamp = packet->header.timestamp;
             } else {
                 if (packet->header.framenum != framenum) {
                     logging::error("Out-of-Order data: subframe[%u] packet[%u] unexpected framenum %lu [%lu]",
@@ -520,14 +533,20 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                     xtc.damage.increase(XtcData::Damage::OutOfOrder);
                     return;
                 }
+                // this should not happen so if it does the data in the packet is corrupted...
+                if (packet->header.timestamp != timestamp) {
+                    logging::error("Corrupted data: subframe[%u] packet[%u] unexpected timestamp %lu [%lu]",
+                                   subframeIdx, udpIdx, packet->header.timestamp, timestamp);
+                    xtc.damage.increase(XtcData::Damage::Corrupted);
+                    return;
+                }
             }
 
             std::memcpy(dataPtr, &packet->data, JungfrauData::PayloadSize);
             dataPtr += JungfrauData::PayloadSize;
-            dataSize += JungfrauData::PayloadSize;
         }
-        desc.set_data_length(dataSize);
-        desc.set_array_shape(0, rawShape);
+        cd.set_value(JungfrauDef::frame_cnt, framenum);
+        cd.set_value(JungfrauDef::timestamp, timestamp);
     }
 }
 
