@@ -491,10 +491,17 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                 return;
             }
             JungfrauData::JungfrauPacket* packet = reinterpret_cast<JungfrauData::JungfrauPacket*>(subframesUdp[udpIdx].data());
+            // check that the packets have been properly descrambled
+            if (packet->header.packetnum != udpIdx) {
+                logging::error("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packetnum %u [%u]",
+                               subframeIdx, framenum, packet->header.packetnum, udpIdx);
+                xtc.damage.increase(XtcData::Damage::OutOfOrder);
+                return;
+            }
+            // check framenum is consistent
             if (udpIdx == 0) {
                 framenum = packet->header.framenum;
             } else {
-                // check framenum consistent
                 if (packet->header.framenum != framenum) {
                     logging::error("Out-of-Order data: subframe[%u] packet[%u] unexpected framenum %lu [%lu]",
                                    subframeIdx, udpIdx, packet->header.framenum, framenum);
@@ -506,8 +513,6 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
             std::memcpy(dataPtr, &packet->data, JungfrauData::PayloadSize);
             dataPtr += JungfrauData::PayloadSize;
             dataSize += JungfrauData::PayloadSize;
-
-            std::cout << packet->header.framenum << " " << packet->header.packetnum << std::endl;
         }
         desc.set_data_length(dataSize);
         desc.set_array_shape(0, rawShape);

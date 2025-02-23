@@ -152,8 +152,15 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         frameReorg = jungfrau_kcu.DevPcie.UdpFrameReorg[segm_lane]
         frameReorg.Blowoff.set(False)
 
-        for i in range(128):
-            frameReorg.RemapLut[i].set(i)
+        npackets = 128
+        center = (npackets // 2)
+        for packet in range(npackets):
+            idx = packet // 2
+            if packet % 2 == 0:
+                remap = center + idx
+            else:
+                remap = center - idx - 1
+            frameReorg.RemapLut[packet].set(remap)
         #########################################
 
         # Need to do on all AppLanes
