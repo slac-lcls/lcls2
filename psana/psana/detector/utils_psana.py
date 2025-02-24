@@ -75,6 +75,11 @@ def datasource_kwargs_from_string(s):
     return ut.datasource_kwargs_from_string(s)
 
 
+def data_source_kwargs(**kwa):
+    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
+    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
+
+
 def datasource_arguments(args):
     """
     Parameters
