@@ -30,12 +30,13 @@ def selected_record(i, events=1000000):
        or i>events-5
 
 
-def detector_name_short(detlong):
-  """ converts long name like epixm320_0016908288-0000000000-0000000000-4005754881-2080374808-0177177345-2852126742
-      to short: epixm320_000004
-  """
-  from psana.pscalib.calib.MDBWebUtils import pro_detector_name
-  return pro_detector_name(detlong, add_shortname=True)
+#def detector_name_short(detlong):
+#  """ MOVED TO UtilsCalib.py
+#      converts long name like epixm320_0016908288-0000000000-0000000000-4005754881-2080374808-0177177345-2852126742
+#      to short: epixm320_000004
+#  """
+#  from psana.pscalib.calib.MDBWebUtils import pro_detector_name
+#  return pro_detector_name(detlong, add_shortname=True)
 
 
 def pedestals_calibration(parser):
@@ -67,7 +68,7 @@ def pedestals_calibration(parser):
   break_loop = False
   break_runs = False
   dettype = None
-  dic_consts_tot = {} # {<gain_mode>:{<ctype>:nda3d_shape:(4, 192, 384)}}
+  dic_consts_tot = {} # {<gain_mode>:{<ctype>:nda3d_shape=(4, 192, 384)}}
   kwa_depl = None
   odet = None
 
