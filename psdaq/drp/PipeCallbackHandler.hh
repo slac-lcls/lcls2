@@ -1,7 +1,6 @@
 #ifndef PIPE_CALLBACK_HANDLER_HH
 #define PIPE_CALLBACK_HANDLER_HH
 
-#include <queue>
 #include <mutex>
 #include <cstdint>
 #include <cstdio>
@@ -13,6 +12,7 @@
 #include <array>
 #include <cstring>  // for memset
 #include <scTDC/scTDC.h>
+#include "spscqueue.hh"  // Use SPSCQueue
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,7 +85,8 @@ public:
 
     PipeCallbackHandler(int measurementTimeMs,
                         const std::string& iniFilePath,
-                        size_t batchSize = 100);
+                        size_t batchSize,
+                        size_t queueCapacity);
     ~PipeCallbackHandler();
 
     void init();
@@ -111,16 +112,17 @@ private:
     sc_pipe_callback_params_t m_params;
     PrivData m_privData;
 
-    std::queue<KMicroscopeData> m_eventQueue;
-    std::mutex m_queueMutex;
-    std::vector<KMicroscopeData> m_pendingBatch;
-    std::mutex m_batchMutex;
-
     bool m_measurementStarted;
 
     // Member used to accumulate raw sc_DldEvent records until a pulseid change is seen.
     KMicroscopeData m_currentEvent; // in-progress KMicroscopeData
     bool m_hasCurrentEvent;         // flag indicating an event is in progress
+
+    // Replace the standard queue with a lock-free SPSCQueue.
+    SPSCQueue<KMicroscopeData> m_eventQueue;
+    // The pending batch (and the mutex protecting it) remains for intermediate accumulation.
+    std::vector<KMicroscopeData> m_pendingBatch;
+    std::mutex m_batchMutex;
 
     // Process a single raw sc_DldEvent.
     void processScDldEvent(const sc_DldEvent* obj);

@@ -177,11 +177,14 @@ BldFactory::BldFactory(const char* name,
         size_t batchSize = para.kwargs.find("batchSize") == para.kwargs.end()
                          ? 1000
                          : std::stoul(para.kwargs["batchSize"]);
+        size_t queueCapacity = para.kwargs.find("queueCapacity") == para.kwargs.end()
+                         ? 1024
+                         : std::stoul(para.kwargs["queueCapacity"]);
         _alg    = XtcData::Alg("raw", 1, 0, 0);
         _varDef.NameVec = BldNames::KMicroscopeV1().NameVec;
         _arraySizes = BldNames::KMicroscopeV1().arraySizes();
         unsigned payloadSize = getVarDefSize(_varDef,_arraySizes);
-        _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, batchSize, payloadSize);
+        _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, batchSize, queueCapacity, payloadSize);
         return;
     }
 
@@ -629,9 +632,10 @@ void Bld::initDevice()
 KMicroscopeBld::KMicroscopeBld(int measurementTimeMs,
     const std::string& iniFilePath,
     size_t batchSize,
+    size_t queueCapacity,
     unsigned payloadSize)
     : BldBase(0, 0, 0, 0, 0, payloadSize, 0),  // These values are unused.
-    m_callbackHandler(measurementTimeMs, iniFilePath, batchSize)
+    m_callbackHandler(measurementTimeMs, iniFilePath, batchSize, queueCapacity)
 {
 }
 
@@ -1405,6 +1409,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "measurementTimeMs") continue;
         if (kwargs.first == "iniFile") continue;
         if (kwargs.first == "batchSize") continue;
+        if (kwargs.first == "queueCapacity") continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
@@ -1435,9 +1440,13 @@ int main(int argc, char* argv[])
     size_t batchSize = para.kwargs.find("batchSize") == para.kwargs.end()
                      ? 1000
                      : std::stoul(para.kwargs["batchSize"]);
+    size_t queueCapacity = para.kwargs.find("queueCapacity") == para.kwargs.end()
+                     ? 1024
+                     : std::stoul(para.kwargs["queueCapacity"]);
     std::cout << "Using INI file: " << iniFilePath << "\n";
     std::cout << "Measurement time: " << measurementTimeMs << " ms\n";
     std::cout << "Batch size: " << batchSize << "\n";
+    std::cout << "Queue capacity: " << queueCapacity << "\n";
     para.maxTrSize = 256 * 1024;
     try {
         Drp::BldApp app(para);

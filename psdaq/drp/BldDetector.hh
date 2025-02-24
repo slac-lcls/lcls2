@@ -107,6 +107,7 @@ public:
     KMicroscopeBld(int measurementTimeMs,
                     const std::string& iniFilePath,
                     size_t batchSize,
+                    size_t queueCapacity,
                     unsigned payloadSize);
 
     // Delete copy constructor and copy-assignment operator.

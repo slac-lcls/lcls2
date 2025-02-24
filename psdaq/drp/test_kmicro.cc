@@ -22,6 +22,7 @@ int main(int argc, char* argv[]) {
     int measurementTimeMs = 1000;
     std::string iniFilePath = "tdc_gpx3.ini";
     size_t batchSize = 100;
+    size_t queueCapacity = 1024;
 
     // Command-line arguments (if provided) override defaults.
     // Expected arguments:
@@ -34,14 +35,17 @@ int main(int argc, char* argv[]) {
         iniFilePath = argv[2];
     if (argc > 3)
         batchSize = static_cast<size_t>(std::stoi(argv[3]));
+    if (argc > 4)
+        queueCapacity = static_cast<size_t>(std::stoi(argv[4]));
 
     std::cout << "Using options:" << std::endl;
     std::cout << "  measurementTimeMs: " << measurementTimeMs << std::endl;
     std::cout << "  iniFilePath: " << iniFilePath << std::endl;
     std::cout << "  batchSize: " << batchSize << std::endl;
+    std::cout << "  queueCapacity: " << queueCapacity << std::endl;
 
     // Create and initialize the handler.
-    PipeCallbackHandler handler(measurementTimeMs, iniFilePath, batchSize);
+    PipeCallbackHandler handler(measurementTimeMs, iniFilePath, batchSize, queueCapacity);
     handler.init();
     handler.startMeasurement();
 

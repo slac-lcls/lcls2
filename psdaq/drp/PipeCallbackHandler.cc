@@ -7,14 +7,26 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
+namespace {
+    // Helper function to validate that 'capacity' is a power of 2.
+    inline size_t validateCapacity(size_t capacity) {
+        if ((capacity & (capacity - 1)) != 0) {
+            throw std::runtime_error("Batch size must be a power of 2");
+        }
+        return capacity;
+    }
+} // anonymous namespace
+
 PipeCallbackHandler::PipeCallbackHandler(int measurementTimeMs,
-                                         const std::string& iniFilePath,
-                                         size_t batchSize)
+                                        const std::string& iniFilePath,
+                                        size_t batchSize,
+                                        size_t queueCapacity)
     : m_measurementTimeMs(measurementTimeMs),
-      m_batchSize(batchSize),
-      m_iniFilePath(iniFilePath),
-      m_measurementStarted(false),
-      m_hasCurrentEvent(false) // no event in progress yet
+    m_batchSize(batchSize),
+    m_iniFilePath(iniFilePath),
+    m_measurementStarted(false),
+    m_hasCurrentEvent(false),
+    m_eventQueue(validateCapacity(queueCapacity))  // Use batchSize as the capacity.
 {
     // SC initialization is deferred until init() is called.
 }
@@ -100,18 +112,14 @@ PipeCallbackHandler::~PipeCallbackHandler() {
 }
 
 bool PipeCallbackHandler::popEvent(KMicroscopeData &event) {
-    std::lock_guard<std::mutex> lock(m_queueMutex);
-    if (m_eventQueue.empty()) return false;
-    event = m_eventQueue.front();
-    m_eventQueue.pop();
-    return true;
+    // Use the lock-free try_pop() method from SPSCQueue.
+    return m_eventQueue.try_pop(event);
 }
 
 void PipeCallbackHandler::accumulateEvents(const std::vector<KMicroscopeData>& events) {
     std::lock_guard<std::mutex> lock(m_batchMutex);
     m_pendingBatch.insert(m_pendingBatch.end(), events.begin(), events.end());
     if (m_pendingBatch.size() >= m_batchSize) {
-        std::lock_guard<std::mutex> qlock(m_queueMutex);
         for (const auto &ev : m_pendingBatch) {
             m_eventQueue.push(ev);
         }
@@ -121,37 +129,30 @@ void PipeCallbackHandler::accumulateEvents(const std::vector<KMicroscopeData>& e
 
 void PipeCallbackHandler::flushPending() {
     std::lock_guard<std::mutex> lock(m_batchMutex);
-    if (!m_pendingBatch.empty()) {
-        std::lock_guard<std::mutex> qlock(m_queueMutex);
-        for (const auto &ev : m_pendingBatch) {
-            m_eventQueue.push(ev);
-        }
-        m_pendingBatch.clear();
+    for (const auto &ev : m_pendingBatch) {
+        m_eventQueue.push(ev);
     }
+    m_pendingBatch.clear();
 }
 
 //------------------------------------------------------------------------------
-// This method processes a single raw sc_DldEvent and updates the in-progress KMicroscopeData.
-// If the new event’s pulseid differs from the current one, the current event is marked complete,
-// stored in the pending batch, and a new KMicroscopeData is started.
+// processScDldEvent: Processes a single raw sc_DldEvent and updates the in-progress KMicroscopeData.
+// If a new pulseid is encountered, the current event is complete, stored in the pending batch,
+// and a new KMicroscopeData is started.
 //------------------------------------------------------------------------------
 void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
     std::lock_guard<std::mutex> lock(m_batchMutex);
     uint64_t newPulse = obj->time_tag; // using time_tag as pulseid
 
-    // If no event is in progress, start one.
     if (!m_hasCurrentEvent) {
         m_currentEvent = KMicroscopeData();
         m_currentEvent.pulseid = newPulse;
         m_hasCurrentEvent = true;
     }
 
-    // If the incoming event's pulseid is different from the current one,
-    // the current event is complete. Store it and start a new one.
     if (m_hasCurrentEvent && m_currentEvent.pulseid != newPulse) {
         m_pendingBatch.push_back(m_currentEvent);
         if (m_pendingBatch.size() >= m_batchSize) {
-            std::lock_guard<std::mutex> qlock(m_queueMutex);
             for (const auto &ev : m_pendingBatch) {
                 m_eventQueue.push(ev);
             }
@@ -161,7 +162,6 @@ void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
         m_currentEvent.pulseid = newPulse;
     }
 
-    // Add the raw event data into the current event if there is room.
     if (m_currentEvent.count < KMicroscopeData::MAX_EVENTS) {
         m_currentEvent.addEvent(obj->dif1, obj->dif2, obj->sum);
     }
