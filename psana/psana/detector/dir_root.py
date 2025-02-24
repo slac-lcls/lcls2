@@ -19,6 +19,7 @@ DIR_LOG_AT_START    = os.path.join(DIR_ROOT, 'detector/logs/atstart/')          
 DIR_REPO            = os.path.join(DIR_ROOT, 'detector/calib2/constants')       # common repository
 DIR_REPO_EPIX10KA   = DIR_REPO
 DIR_REPO_EPIXM320   = DIR_REPO
+DIR_REPO_JUNGFRAU   = DIR_REPO
 DIR_REPO_CALIBMAN   = DIR_REPO                                                  # prev: /cds/group/psdm/detector/calib2/constants/logs
 DIR_DATA_TEST       = os.path.join(DIR_ROOT, 'detector/data2_test')             # /cds/group/psdm/detector/data2_test/
 
