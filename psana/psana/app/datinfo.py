@@ -96,7 +96,8 @@ def ds_run_det(args):
 
     if '_config_object' in det_raw_attrs:
       dcfg = det.raw._config_object()
-      for k,v in dcfg.items():
+      if dcfg is not None:
+       for k,v in dcfg.items():
         trbit = getattr(v.config, 'trbit', None)  # v.config.trbit
         asicPixelConfig = getattr(v.config, 'asicPixelConfig', None)  # v.config.asicPixelConfig
         print('  seg:%s %s' % (str(k), info_ndarr(trbit, ' v.config.trbit for ASICs')))
