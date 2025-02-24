@@ -69,6 +69,24 @@ def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
     return ts_run, ts_now
 
 
+def merge_panels(lst):
+    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
+    """
+    npanels = len(lst)   # 16 or 4 or 1
+    shape = lst[0].shape # (7, 1, 352, 384)
+    ngmods = shape[0]    # 7
+    dtype = lst[0].dtype #
+
+    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
+
+    # make list for merging of (352,384) blocks in right order
+    mrg_lst = []
+    for igm in range(ngmods):
+        nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
+        mrg_lst.append(nda1gm)
+    return np.stack(mrg_lst)
+
+
 def proc_block(block, **kwa):
     """Dark data 1st stage processing to define gate limits.
        block.shape = (nrecs, <raw-detector-shape>),
@@ -144,6 +162,14 @@ def proc_block(block, **kwa):
                 +info_ndarr(gate_hi,     '\n    gate_hi[100:105]', first=100, last=105))
 
     return gate_lo, gate_hi, arr_med, arr_abs_dev
+
+
+def detector_name_short(detlong):
+  """ converts long name like epixm320_0016908288-0000000000-0000000000-4005754881-2080374808-0177177345-2852126742
+      to short: epixm320_000004
+  """
+  from psana.pscalib.calib.MDBWebUtils import pro_detector_name
+  return pro_detector_name(detlong, add_shortname=True)
 
 
 class DataBlock():
@@ -352,6 +378,11 @@ class DarkProc():
         logger.info('summary consumes %.3f sec' % (time()-t0_sec))
 
 
+    def show_plot_results(self):
+        logger.debug(self.info_results())
+        self.plot_images(titpref='')
+
+
     def add_event(self, raw, irec):
         logger.debug(info_ndarr(raw, 'add_event %3d raw' % irec))
         _raw = raw & self.datbits # use data bits only 16-bit default (should be 14 for jungfrau and epix10ka)
@@ -495,6 +526,8 @@ def add_metadata_kwargs(orun, odet, **kwa):
     kwa['version']    = kwa.get('version', 'N/A')
     kwa['comment']    = kwa.get('comment', 'no comment')
     kwa['extpars']    = {'content':'extended parameters dict->json->str',}
+    kwa['segment_ids'] = odet.raw._segment_ids()
+    kwa['segment_inds'] = odet.raw._sorted_segment_inds
     return kwa
 
 
