@@ -132,18 +132,28 @@ def plot_block(block, figpref=None, gmode='N/A'):
         gr.show()
 
 
-def graph_block(block, figpref=None, gmode='N/A', nbands=6):
+def graph_block(block, figpref=None, gmode='N/A', ncbanks=6, nrbanks=4):
         flimg1 = None
         logger.info(info_ndarr(block, 'data block'))
         nrecs, nasics, rows, cols = shape0 = block.shape
-        block.shape = (nrecs, nasics, rows, nbands, int(cols/nbands))
+        #block.shape = (nrecs, nasics, rows, ncbanks, int(cols/ncbanks))
         x = np.arange(0, nrecs, dtype=np.int16)
         logger.info(info_ndarr(x, 'x:'))
+        nrows1 = int(rows/nrbanks)
+        ncols1 = int(cols/ncbanks)
+
         for asic in range(nasics):
           fig = None
-          for band in range(nbands):
-            y = np.median(block[:,asic,band,:,:], axis=(-2,-1))
-            logger.info(info_ndarr(y, '%s median for asic: %d band: %d' % (gmode, asic,band)))
+          nregs = 0
+          for bc in range(ncbanks):
+           c0 = nrows1*bc
+           cslice = np.s_[c0:c0+ncols1]
+           for br in range(nrbanks):
+            nregs +=1
+            r0 = nrows1*br
+            rslice = np.s_[r0:r0+nrows1]
+            y = np.median(block[:,asic,rslice,cslice], axis=(-2,-1))
+            logger.info(info_ndarr(y, '%s median for asic: %d bc: %d br: %d' % (gmode, asic, bc, br)))
             if fig is None:
               fig, ax = gr.plotGraph(x,y, figsize=(10,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', lw=2)
               title = '%s asic:%d' % (gmode, asic)
@@ -153,7 +163,7 @@ def graph_block(block, figpref=None, gmode='N/A', nbands=6):
               ax.plot(x, y, linewidth=2)
           gr.show()
           gr.save_fig(fig, fname='%s-graph-asic%d-%s.png' % (figpref, asic, gmode), verb=True)
-        block.shape = shape0
+        #block.shape = shape0
 
 
 
