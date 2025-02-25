@@ -66,6 +66,33 @@ target_link_libraries(pipecallbackhandler_lib
     ${SC_TDC_LIB_DIR}/libscTDC.so
 )
 
+# Create a library for BufferedDataCallbackHandler
+add_library(buffereddatacallbackhandler_lib
+    BufferedDataCallbackHandler.cc
+)
+
+target_include_directories(buffereddatacallbackhandler_lib PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include/scTDC>
+)
+
+target_link_directories(buffereddatacallbackhandler_lib PUBLIC ${SC_TDC_LIB_DIR})
+
+set_target_properties(buffereddatacallbackhandler_lib PROPERTIES
+    BUILD_WITH_INSTALL_RPATH ON
+    INSTALL_RPATH ${SC_TDC_LIB_DIR}
+)
+
+target_link_libraries(buffereddatacallbackhandler_lib
+    drpbase
+    Threads::Threads
+    xtcdata::xtc
+    nlohmann_json::nlohmann_json
+    epicstools
+    ${SC_TDC_LIB_DIR}/libscTDC.so
+)
+
 add_executable(drp
     AreaDetector.cc
     Digitizer.cc
@@ -173,7 +200,7 @@ add_executable(drp_kmicro_test
 )
 
 target_link_libraries(drp_kmicro_test
-    pipecallbackhandler_lib
+    buffereddatacallbackhandler_lib
     drpbase
     trigger
     epicstools
