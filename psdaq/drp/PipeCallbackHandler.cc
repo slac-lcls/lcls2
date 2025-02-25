@@ -8,25 +8,26 @@ using logging = psalg::SysLog;
 namespace Drp {
 
 namespace {
-    // Helper function to validate that 'capacity' is a power of 2.
-    inline size_t validateCapacity(size_t capacity) {
-        if ((capacity & (capacity - 1)) != 0) {
-            throw std::runtime_error("Batch size must be a power of 2");
+    // Helper function to validate that 'value' is a power of 2.
+    inline size_t validatePowerOf2(size_t value, const std::string &name) {
+        if ((value & (value - 1)) != 0) {
+            throw std::runtime_error(name + " must be a power of 2");
         }
-        return capacity;
+        return value;
     }
-} // anonymous namespace
+}
 
+// Constructor that takes separate parameters for flushing and queue capacity.
 PipeCallbackHandler::PipeCallbackHandler(int measurementTimeMs,
-                                        const std::string& iniFilePath,
-                                        size_t batchSize,
-                                        size_t queueCapacity)
+                                         const std::string& iniFilePath,
+                                         size_t batchSize,
+                                         size_t queueCapacity)
     : m_measurementTimeMs(measurementTimeMs),
-    m_batchSize(batchSize),
-    m_iniFilePath(iniFilePath),
-    m_measurementStarted(false),
-    m_hasCurrentEvent(false),
-    m_eventQueue(validateCapacity(queueCapacity))  // Use batchSize as the capacity.
+      m_batchSize(batchSize),
+      m_iniFilePath(iniFilePath),
+      m_measurementStarted(false),
+      m_hasCurrentEvent(false),
+      m_eventQueue(validatePowerOf2(queueCapacity, "Queue capacity"))
 {
     // SC initialization is deferred until init() is called.
 }
@@ -116,8 +117,9 @@ bool PipeCallbackHandler::popEvent(KMicroscopeData &event) {
     return m_eventQueue.try_pop(event);
 }
 
+// Since we now guarantee single-producer access to m_pendingBatch,
+// we remove the lock_guard and use the vector directly.
 void PipeCallbackHandler::accumulateEvents(const std::vector<KMicroscopeData>& events) {
-    std::lock_guard<std::mutex> lock(m_batchMutex);
     m_pendingBatch.insert(m_pendingBatch.end(), events.begin(), events.end());
     if (m_pendingBatch.size() >= m_batchSize) {
         for (const auto &ev : m_pendingBatch) {
@@ -127,8 +129,8 @@ void PipeCallbackHandler::accumulateEvents(const std::vector<KMicroscopeData>& e
     }
 }
 
+// Similarly, flushPending() is now lock-free.
 void PipeCallbackHandler::flushPending() {
-    std::lock_guard<std::mutex> lock(m_batchMutex);
     for (const auto &ev : m_pendingBatch) {
         m_eventQueue.push(ev);
     }
@@ -141,7 +143,6 @@ void PipeCallbackHandler::flushPending() {
 // and a new KMicroscopeData is started.
 //------------------------------------------------------------------------------
 void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
-    std::lock_guard<std::mutex> lock(m_batchMutex);
     uint64_t newPulse = obj->time_tag; // using time_tag as pulseid
 
     if (!m_hasCurrentEvent) {
@@ -199,7 +200,6 @@ void cb_dld_event(void *priv, const sc_DldEvent* const event_array, size_t event
         static_cast<Drp::PipeCallbackHandler::PrivData*>(priv);
     pData->cn_dld_events++;
 
-    // The event_array is a contiguous buffer; process each raw event.
     const char* buffer = reinterpret_cast<const char*>(event_array);
     for (size_t j = 0; j < event_array_len; ++j) {
         const sc_DldEvent* obj = reinterpret_cast<const sc_DldEvent*>(buffer + j * pData->dld_event_size);

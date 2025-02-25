@@ -122,7 +122,6 @@ private:
     SPSCQueue<KMicroscopeData> m_eventQueue;
     // The pending batch (and the mutex protecting it) remains for intermediate accumulation.
     std::vector<KMicroscopeData> m_pendingBatch;
-    std::mutex m_batchMutex;
 
     // Process a single raw sc_DldEvent.
     void processScDldEvent(const sc_DldEvent* obj);
