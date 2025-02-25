@@ -325,25 +325,32 @@ int main(int argc, char* argv[])
     // construct full serial number used by psana
     JungfrauIdLookup lookup;
 
+    // backup state of cout fmt
+    std::ios oldState(nullptr);
+    oldState.copyfmt(std::cout);
+    std::cout << std::hex;
+
     for (int d = 0; d < slsSize; d++) {
       std::cout << "Module " << d << " Info:" << std::endl;
       std::cout << "==========================" << std::endl;
       std::cout << "  Hostname:   " << slsHostnames[d] << std::endl;
       std::cout << "  Det Type:   " << sls::ToString(slsTypes[d]) << std::endl;
-      std::cout << "  Firmware:   " << std::hex << slsFirmwareVers[d] << std::endl;
+      std::cout << "  Firmware:   " << slsFirmwareVers[d] << std::endl;
       std::cout << "  Hardware:   " << slsHardwareVers[d] << std::endl;
       std::cout << "  Software:   " << slsServerVers[d] << std::endl;
       std::cout << "  Kernel:     " << slsKernelVers[d] << std::endl;
       std::cout << "  Module id:  " << slsModuleId[d] << std::endl;
-      std::cout << "  Serial Num: " << std::hex << slsSerialNumber[d] << std::endl;
+      std::cout << "  Serial Num: " << slsSerialNumber[d] << std::endl;
       JungfrauId slacSerialNumber;
       if (lookup.has(slsHostnames[d])) {
         slacSerialNumber = JungfrauId(lookup[slsHostnames[d]], slsModuleId[d]);
       } else {
         slacSerialNumber = JungfrauId(slsSerialNumber[d], slsModuleId[d]);
       }
-      std::cout << "  SLAC ID:    " << std::hex << slacSerialNumber.full() << std::endl;
+      std::cout << "  SLAC ID:    " << slacSerialNumber.full() << std::endl;
     }
+
+    std::cout.copyfmt(oldState);
 
     // power and configure udp sender
     for (int d = 0; d < slsSize; d++) {
