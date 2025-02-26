@@ -209,7 +209,7 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
     } else {
         logging::critical("Must specify a hostname/ip of the jungfrau control interface for each segment! Check cnf.");
         abort();
-    } 
+    }
 
     virtChan = 0; // Set correct virtual channel to read from.
     m_para->serNo = std::string(""); // Will fill in during connect
@@ -459,7 +459,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                     }
                 }
             }
-            m_slsDet->validateUDPConfiguration();
+            m_slsDet->validateUDPConfiguration(pos);
         }
 
         // Put all of the modules in the acquiring state

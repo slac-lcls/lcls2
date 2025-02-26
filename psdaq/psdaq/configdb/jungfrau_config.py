@@ -140,8 +140,6 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
 
         print(f"Configuring lane: {segm_lane}")
         udpLane = jungfrau_kcu.DevPcie.Hsio.UdpLane[segm_lane]
-        #udpLane.UdpEngine.SoftMac.set("08:00:56:00:00:00")
-        #udpLane.UdpEngine.SoftIp.set("10.0.0.10")
         udpLane.UdpEngine.SoftMac.set(cfg["user"]["kcu_mac"])
         udpLane.UdpEngine.SoftIp.set(cfg["user"]["kcu_ip"])
         if udpLane.EthPhy.phyReady.get() != 1:
@@ -150,6 +148,8 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         # Do some of the descrambling stuff here?
         #########################################
         frameReorg = jungfrau_kcu.DevPcie.UdpFrameReorg[segm_lane]
+        frameReorg.Blowoff.set(True)
+        time.sleep(0.1)
         frameReorg.Blowoff.set(False)
 
         npackets = 128
@@ -166,14 +166,15 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         # Need to do on all AppLanes
         appLane = jungfrau_kcu.DevPcie.Application.AppLane[segm_lane]
 
-        appLane.EventBuilder.Blowoff.set(True)
-        appLane.EventBuilder.Blowoff.set(False)
-        #appLane.EventBuilder.Bypass.set(0x4)
-        #appLane.EventBuilder.Bypass.set(0x2)
-        appLane.EventBuilder.Bypass.set(0x0)
-        #appLane.EventBuilder.Timeout.set(0xffffff)
-
+        appLane.UdpBatcher.Blowoff.set(True)
+        time.sleep(0.1)
         appLane.UdpBatcher.Blowoff.set(False)
+
+        appLane.EventBuilder.Blowoff.set(True)
+        time.sleep(0.1)
+        appLane.EventBuilder.Blowoff.set(False)
+        appLane.EventBuilder.Bypass.set(0x0)
+        appLane.EventBuilder.Timeout.set(0x0)
 
         trigEventBuf = jungfrau_kcu.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[segm_lane]
 
@@ -188,6 +189,8 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         cfg[":types:"].update({"firmwareBuild": "CHARSTR"})
 
         cfg_list.append(json.dumps(cfg))
+        # Increment segm_lane once at the end of this lane's configuration
+        segm_lane += 1
 
     segm_lane = 0
     trigEventManager = jungfrau_kcu.DevPcie.Hsio.TimingRx.TriggerEventManager
