@@ -30,6 +30,7 @@ import psana.detector.utils_psana as ups # seconds, data_source_kwargs#
 from psana.detector.NDArrUtils import info_ndarr, save_2darray_in_textfile, save_ndarray_in_textfile # import divide_protected
 import psana.detector.Utils as uts # info_dict
 import psana.pscalib.calib.CalibConstants as cc
+from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
 
 SCRNAME = os.path.basename(sys.argv[0])
 
@@ -431,7 +432,7 @@ def jungfrau_dark_proc(parser):
         if dpo is not None:
             dpo.summary()
             dpo.show_plot_results()
-            kwa_save = add_metadata_kwargs(orun, odet, **kwargs)
+            kwa_save = uc.add_metadata_kwargs(orun, odet, **kwargs)
             save_results(dpo, **kwa_save)
             del(dpo)
             dpo=None
@@ -672,7 +673,8 @@ def check_exists(path, errskip, msg):
         if errskip: logger.warning(msg)
         else:
             msg += '\n  to fix this issue please process this or previous dark run using command jungfrau_dark_proc'\
-                   '\n  or add the command line parameter -E or --errskip to skip missing file errors, use default, and force to deploy constants.'
+                   '\n  or add the command line parameter -E or --errskip to skip missing file errors, use default,'\
+                   'and force to deploy constants.'
             logger.error(msg)
             sys.exit(1)
 
@@ -686,6 +688,9 @@ def jungfrau_deploy_constants(parser):
     group     = kwargs.get('group', 'ps-users')
     shape_seg = kwargs.get('shape_seg', (512,1024)) # pixel_gain:  shape:(3, 1, 512, 1024)  size:1572864  dtype:float32
     nsegstot  = kwargs.get('nsegstot', 32)
+    deploy    = kwargs.get('deploy', False)
+    detname   = kwargs.get('det', None)
+    ctdepl    = kwargs.get('ctdepl', None) # 'prs'
 
     DIC_CTYPE_FMT = dic_ctype_fmt(**kwargs)
 
@@ -703,7 +708,6 @@ def jungfrau_deploy_constants(parser):
     trun_sec = ups.seconds(orun.timestamp) # 1607569818.532117 sec
     ts_run, ts_now = ups.tstamps_run_and_now(trun_sec) #, fmt=uc.TSTAMP_FORMAT)
 
-    detname = kwargs.get('det', None)
     odet = orun.Detector(detname, **kwargs)
 
     dettype = odet.raw._dettype
@@ -723,7 +727,6 @@ def jungfrau_deploy_constants(parser):
     print('detector long name: %s' % longname)
     print('detector short name: %s' % shortname)
 
-    ctdepl = kwargs.get('ctdepl', None) # 'prs'
     ctypes = CTYPES
     ctypes = [dic_calib_char_to_name[c] for c in ctdepl]
 
@@ -740,7 +743,7 @@ def jungfrau_deploy_constants(parser):
             logger.warning('FOR NOW SKIP ctype: status_extra')
             continue
         octype = ctype
-        logger.info('%s\n merge gain range constants for calib type %s' % (110*'_', ctype))
+        logger.info('\n%s merge constants for calib type %s %s' % (50*'_', ctype, 50*'_'))
 
         dic_cons = {}
 
@@ -762,15 +765,15 @@ def jungfrau_deploy_constants(parser):
             nda = merge_jf_panel_gain_ranges(dir_ctype, segid, ctype, ts_run, shape_seg, fname,\
                                              fmt=fmt, fac_mode=fac_mode, errskip=errskip, group='ps-users')
 
-            logger.info('-- save array of panel constants "%s" merged for 3 gain ranges shaped as %s in file\n%s%s\n'\
-                        % (ctype, str(nda.shape), 21*' ', fname))
+            logger.info('-- save array of panel constants "%s" merged for 3 gain ranges shaped as %s in\n%s%s'\
+                        % (ctype, str(nda.shape), 4*' ', fname))
 
 #            if octype in dic_consts: dic_consts[octype].append(nda) # append for panel per ctype
 #            else:                    dic_consts[octype] = [nda,]
 
             dic_cons[segind] = nda
 
-        logger.info('\n%s\nmerge all panel constants for ctype %s and deploy them' % (80*'_', ctype))
+        logger.debug('\n%s\nmerge all panel constants for ctype %s and deploy them' % (80*'_', ctype))
 
         #nda_def = np.ones(shape, dtype=np.float32) if ctype in ('gain', 'rms', 'dark_max') else\
         #      np.zeros(shape, dtype=np.float32) # 'pedestals', 'status', 'dark_min'
@@ -780,15 +783,50 @@ def jungfrau_deploy_constants(parser):
 
         dmerge = repoman.makedir_merge()
         fmerge_prefix = fname_prefix_merge(dmerge, shortname, ts_run, orun.expt, orun.runnum)
-        logger.info('fmerge_prefix: %s' % fmerge_prefix)
+        logger.debug('fmerge_prefix: %s' % fmerge_prefix)
         nda = uc.merge_panels(lst_cons)
-        logger.info(info_ndarr(nda, 'merged constants for %s' % ctype))
         fmerge = '%s-%s.txt' % (fmerge_prefix, ctype)
-        logger.info('save merged for detector constants in %s' % fmerge)
-
-
+        logger.info(info_ndarr(nda, '%s\n    merged for detector constants of %s' % (10*'-', ctype))\
+                    + '\n    save in %s\n' % fmerge)
         save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
 
+        if deploy:
+          #kwa_depl = dict(kwargs)
+          kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwargs)
+          #kwa_depl['gainmode'] = gainmode
+          kwa_depl['repoman'] = repoman
+          kwa_depl['detname'] = shortname
+          kwa_depl['shortname'] = shortname
+          kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
+          kwa_depl['run_orig'] = orun.runnum
+          kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
+          kwa_depl['iofname'] = fmerge
+          kwa_depl['ctype'] = ctype
+          kwa_depl['dtype'] = 'ndarray'
+          kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
+
+          _ = kwa_depl.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
+          _ = kwa_depl.pop('det',None)
+
+          #print('XXXXX kwa_depl', kwa_depl)
+          #logger.info('kwa_depl:\n%s' % uts.info_dict(kwa_depl, fmt='  %12s: %s', sep='\n'))
+          #sys.exit('TEST EXIT')
+
+          logger.info('DEPLOY metadata: %s' % uts.info_dict(kwa_depl, fmt='%12s: %s', sep='\n  ')) #fmt='%12s: %s'
+
+          resp = add_data_and_two_docs(nda, orun.expt, longname, **kwa_depl) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+          if resp:
+              #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
+              logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
+          else:
+              logger.info('constants are not deployed')
+              exit()
+        else:
+          logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+
+
+
+        
 #        if dircalib is not None: calibdir = dircalib
 #        #ctypedir = .../calib/Epix10ka::CalibV1/MfxEndstation.0:Epix10ka.0/'
 #        calibgrp = uc.calib_group(dettype) # 'Epix10ka::CalibV1'
