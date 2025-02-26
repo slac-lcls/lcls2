@@ -14,7 +14,7 @@ USAGE = 'Usage:'\
       + '\n  datinfo -k exp=mfxdaq23,run=7 -d jungfrau # test data'\
       + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
       + '\nREGULAR COMMAND:'\
-      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
+      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work -D # data' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -24,7 +24,7 @@ def argument_parser():
     d_dskwargs = None
     d_det     = None # 'NoDetector.0:Epix10ka.3'
     d_tstamp  = None # 20180910111049
-    d_dirrepo = DIR_REPO_JUNGFRAU
+    d_dirrepo = './work' # DIR_REPO_JUNGFRAU
     d_nsegstot= 16
     d_deploy  = False
     d_logmode = 'INFO'
