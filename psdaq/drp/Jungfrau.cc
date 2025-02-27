@@ -112,7 +112,7 @@ static const std::unordered_map<std::string, sls::defs::gainMode> slsGainEnumMap
     {"DYNAMIC", sls::defs::DYNAMIC},
     {"FORCE_SWITCH_G1", sls::defs::FORCE_SWITCH_G1},
     {"FORCE_SWITCH_G2", sls::defs::FORCE_SWITCH_G2},
-    {"FIX_G0", sls::defs::FIX_G0},
+    //{"FIX_G0", sls::defs::FIX_G0}, //Not recommended for use.
     {"FIX_G1", sls::defs::FIX_G1},
     {"FIX_G2", sls::defs::FIX_G2},
 };

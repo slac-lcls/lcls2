@@ -76,7 +76,6 @@ def write_to_daq_config_db(args):
             "FORCE_SWITCH_G2":2,
             "FIX_G1":3,
             "FIX_G2":4,
-            "FIX_G0":5,
         }
     )
     top.set("user.gainMode", 3, "gainModeEnum")
