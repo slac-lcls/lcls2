@@ -3,7 +3,7 @@ import json
 import weakref
 
 from psdaq.configdb.get_config import get_config
-from psdaq.configdb.scan_utils import *
+from psdaq.configdb.scan_utils import copy_reconfig_keys, copy_config_entry, update_config_entry
 from psdaq.configdb.xpmmini import *
 from psdaq.cas.xpm_utils import timTxId
 from psdaq.utils import submod_lcls2_udp_pcie_apps # Required to find lcls2_udp_pcie_apps
@@ -127,11 +127,11 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     else:
         for segm in detsegm.split("_"):
             detsegm_list.append(int(segm))
-    cfg_list = []
+    ocfg = [] # per segment dicts for later use (config scans)
+    cfg_list = [] # Json strings
     segm_lane = 0
     for segm in detsegm_list:
         cfg = get_config(connect_str, cfgtype, detname, segm)
-        ocfg = cfg
 
         while True:
             if lm & (1 << segm_lane):
@@ -188,6 +188,7 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         cfg[":types:"].update({"firmwareVersion": "UINT32"})
         cfg[":types:"].update({"firmwareBuild": "CHARSTR"})
 
+        ocfg.append(cfg)
         cfg_list.append(json.dumps(cfg))
         # Increment segm_lane once at the end of this lane's configuration
         segm_lane += 1
@@ -215,15 +216,24 @@ def jungfrau_scan_keys(update):
     global ocfg
     global jungfrau_kcu
     print("jungfrau_scan_keys")
-    cfg = {}
-    copy_reconfig_keys(cfg, ocfg, json.loads(update))
 
-    user_to_expert(cl, cfg, full=False)
+    if ocfg is None:
+        raise ValueError("ocfg is None! Check jungfrau_config.py")
 
-    for key in ("detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"):
-        copy_config_entry(cfg, ocfg, key)
-        copy_config_entry(cfg[":types:"], ocfg[":types"], key)
-    return json.dumps(cfg)
+    updated_cfgs = []
+
+    for segcfg in ocfg:
+        cfg = {}
+        copy_reconfig_keys(cfg, segcfg, json.loads(update))
+
+        #user_to_expert(jungfrau_kcu, cfg)
+
+        for key in ("detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"):
+            copy_config_entry(cfg, segcfg, key)
+            copy_config_entry(cfg[":types:"], segcfg[":types:"], key)
+
+        updated_cfgs.append(json.dumps(cfg))
+    return updated_cfgs
 
 
 def jungfrau_update(update):
@@ -233,19 +243,25 @@ def jungfrau_update(update):
     config scans.
     """
     global ocfg
-    global cl
-    #  extract updates
-    cfg = {}
-    update_config_entry(cfg, ocfg, json.loads(update))
-    #  Apply group
-    user_to_expert(cl, cfg, full=False)
-    #  Apply config
-    config_expert(cl, cfg["expert"])
-    #  Retain mandatory fields for XTC translation
-    for key in ("detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"):
-        copy_config_entry(cfg, ocfg, key)
-        copy_config_entry(cfg[":types:"], ocfg[":types:"], key)
-    return json.dumps(cfg)
+    global jungfrau_kcu
+
+    if ocfg is None:
+        raise ValueError("ocfg is None! Check jungfrau_config.py")
+
+    updated_cfgs = []
+
+    for segcfg in ocfg:
+        cfg = {}
+        update_config_entry(cfg, segcfg, json.loads(update))
+
+        #user_to_expert(jungfrau_kcu, cfg)
+        #config_expert(jungfrau_kcu, cfg["expert"])
+
+        for key in ("detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"):
+            copy_config_entry(cfg, segcfg, key)
+            copy_config_entry(cfg[":types:"], segcfg[":types:"], key)
+        updated_cfgs.append(json.dumps(cfg))
+    return updated_cfgs
 
 
 def jungfrau_unconfig(jungfrau_kcu):

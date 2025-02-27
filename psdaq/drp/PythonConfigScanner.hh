@@ -23,16 +23,20 @@ public:
     PythonConfigScanner(const Parameters&, PyObject& module);
     ~PythonConfigScanner();
 public:
-    unsigned configure(const nlohmann::json& keys,
-                       XtcData::Xtc&         xtc,
-                       const void*           bufEnd,
-                       XtcData::NamesId&     namesId,
-                       XtcData::NamesLookup& namesLookup);
-    unsigned step     (const nlohmann::json& dict,
-                       XtcData::Xtc&         xtc,
-                       const void*           bufEnd,
-                       XtcData::NamesId&     namesId,
-                       XtcData::NamesLookup& namesLookup);
+    unsigned configure(const nlohmann::json&    keys,
+                       XtcData::Xtc&            xtc,
+                       const void*              bufEnd,
+                       XtcData::NamesId&        namesId,
+                       XtcData::NamesLookup&    namesLookup,
+                       std::vector<unsigned>    segNos={},
+                       std::vector<std::string> serNos={});
+    unsigned step     (const nlohmann::json&    dict,
+                       XtcData::Xtc&            xtc,
+                       const void*              bufEnd,
+                       XtcData::NamesId&        namesId,
+                       XtcData::NamesLookup&    namesLookup,
+                       std::vector<unsigned>    segNos={},
+                       std::vector<std::string> serNos={});
 private:
     const Parameters& m_para;
     PyObject&         m_module;

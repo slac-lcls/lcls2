@@ -1,13 +1,14 @@
 #include "Jungfrau.hh"
 #include "JungfrauData.hh"
 
+#include "PythonConfigScanner.hh"
+#include "psalg/detector/UtilsConfig.hh"
+#include "psalg/utils/SysLog.hh"
+#include "sls/Detector.h"
 #include "xtcdata/xtc/Array.hh"
-#include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "psalg/utils/SysLog.hh"
-#include "psalg/detector/UtilsConfig.hh"
-#include "sls/Detector.h"
+#include "xtcdata/xtc/VarDef.hh"
 
 #include <Python.h>
 #include <stdint.h>
@@ -342,8 +343,6 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
             sls::Positions pos{static_cast<int>(mod)};
             XtcData::ShapesData& shape = configo.getShape(mod);
             XtcData::DescData desc(shape, configo.namesLookup()[shape.namesId()]);
-            std::unordered_map<std::string, std::unordered_map<uint32_t, std::string>> configEnums;
-            //std::map <std::string, union { uint8_t, uint16_t, double }> configParams;
             // check if the chip is powered on
             if (!m_slsDet->getPowerChip(pos).squash()) {
                 logging::info("Powering on chip for module %d", mod);
@@ -374,7 +373,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                     m_slsDet->setDestinationUDPPort(port, pos[0]);
                 } else if (strcmp(name.name(), "user.gainMode:gainModeEnum") == 0) {
                     uint32_t gainMode = desc.get_value<uint32_t>(i);
-                    auto& gainModeEnums = configEnums["gainModeEnum"];
+                    auto& gainModeEnums = m_configEnums["gainModeEnum"];
                     if (gainModeEnums.find(gainMode) != gainModeEnums.end()) {
                         auto it = slsGainEnumMap.find(gainModeEnums[gainMode]);
                         if (it != slsGainEnumMap.end()) {
@@ -394,7 +393,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                     }
                 } else if (strcmp(name.name(), "user.speedLevel:speedLevelEnum") == 0) {
                     uint32_t speedLevel = desc.get_value<uint32_t>(i);
-                    auto& speedLevelEnums = configEnums["speedLevelEnum"];
+                    auto& speedLevelEnums = m_configEnums["speedLevelEnum"];
                     if (speedLevelEnums.find(speedLevel) != speedLevelEnums.end()) {
                         auto it = slsSpeedLevelMap.find(speedLevelEnums[speedLevel]);
                         if (it != slsSpeedLevelMap.end()) {
@@ -414,7 +413,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                     }
                 } else if (strcmp(name.name(), "user.gain0:gain0Enum") == 0) {
                     uint32_t gain0 = desc.get_value<uint32_t>(i);
-                    auto& gain0Enums = configEnums["gain0Enum"];
+                    auto& gain0Enums = m_configEnums["gain0Enum"];
                     if (gain0Enums.find(gain0) != gain0Enums.end()) {
                         auto it = slsDetSettingsMap.find(gain0Enums[gain0]);
                         if (it != slsDetSettingsMap.end()) {
@@ -455,7 +454,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                         std::string enumName(start, enumDelimiter - start);
                         std::string enumType(enumDelimiter + 1);
                         uint32_t enumValue = desc.get_value<uint32_t>(i);
-                        configEnums[enumType][enumValue] = enumName;
+                        m_configEnums[enumType][enumValue] = enumName;
                     }
                 }
             }
@@ -484,7 +483,8 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         XtcData::NamesId rawNamesId(nodeId, EventNamesIndex+moduleIdx);
         XtcData::CreateData cd(xtc, bufEnd, m_namesLookup, rawNamesId);
 
-        unsigned subframeIdx = 2; // Calculate where data will be...
+        //unsigned subframeIdx = 2;
+        unsigned subframeIdx = 2+2*moduleIdx; // Calculate where data will be...
         std::vector<XtcData::Array<uint8_t>> subframesUdp = _subframes(subframes[subframeIdx].data(),
                                                                        subframes[subframeIdx].num_elem(),
                                                                        JungfrauData::PacketNum);
@@ -587,4 +587,48 @@ std::string Jungfrau::_buildDetId(uint64_t sensor_id,
     return id.str();
 }
 
+unsigned Jungfrau::configureScan(const nlohmann::json& scanKeys, XtcData::Xtc& xtc, const void* bufEnd)
+{
+    NamesId namesId(nodeId, UpdateNamesIndex);
+    return m_configScanner->configure(scanKeys,
+                                      xtc,
+                                      bufEnd,
+                                      namesId,
+                                      m_namesLookup,
+                                      m_segNos,
+                                      m_serNos);
+}
+
+unsigned Jungfrau::stepScan(const nlohmann::json& stepInfo, Xtc& xtc, const void* bufEnd)
+{
+    NamesId namesId(nodeId, UpdateNamesIndex);
+    // XTC Updates
+    if (unsigned ret = m_configScanner->step(stepInfo, xtc, bufEnd, namesId, m_namesLookup, m_segNos, m_serNos))
+        return ret;
+    // Actual module configuration
+    for (size_t mod = 0; mod < m_nModules; ++mod) {
+        sls::Positions pos{ static_cast<int>(mod) };
+        if (stepInfo.contains("user.gainMode")) {
+            unsigned gainMode = stepInfo["user.gainMode"];
+            auto& gainModeEnums = m_configEnums["gainModeEnum"];
+            if (gainModeEnums.find(gainMode) != gainModeEnums.end()) {
+                if (gainModeEnums.find(gainMode) != gainModeEnums.end()) {
+                    auto it = slsGainEnumMap.find(gainModeEnums[gainMode]);
+                    if (it != slsGainEnumMap.end()) {
+                        logging::info("Setting module %zu gainMode to %s",
+                                      mod,
+                                      sls::ToString(it->second).c_str());
+                        m_slsDet->setGainMode(it->second, pos);
+                    } else {
+                        logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
+                                       gainModeEnums[gainMode].c_str(),
+                                       mod);
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
 } // Drp

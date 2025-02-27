@@ -22,6 +22,8 @@ public:
     Jungfrau(Parameters* para, MemPool* pool);
     virtual ~Jungfrau();
 
+    unsigned configureScan(const nlohmann::json& scanKeys, XtcData::Xtc& xtc, const void* bufEnd) override;
+    unsigned stepScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
     void cleanup();
 
 private:
@@ -41,6 +43,7 @@ private:
     std::vector<std::string> m_serNos;
     std::vector<std::string> m_slsHosts;
     std::unique_ptr<sls::Detector> m_slsDet;
+    std::unordered_map<std::string, std::unordered_map<uint32_t, std::string>> m_configEnums;
     JungfrauIdLookup m_idLookup;
 };
 
