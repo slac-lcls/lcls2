@@ -13,7 +13,7 @@ import numpy as np
 #    Defaults for platform, collection host, groups
 #
 hutch_def = {'tmo':(0,'drp-srcf-mon001'),
-             'rix':(0,'drp-srcf-mon002'),
+             'rix':(0,'drp-srcf-cmp004'),
              'ued':(0,'drp-ued-cmp002'),
              'asc':(2,'drp-det-cmp001')}
 
@@ -68,7 +68,6 @@ class ConfigScanBase(object):
     def run(self,keys,steps):
 
         args = self.args
-
         # instantiate DaqControl object
         control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
 
@@ -144,9 +143,7 @@ class ConfigScanBase(object):
             "alg_name":         "raw",
             "alg_version":      [1,0,0]
         }
-
         configureBlock = scan.getBlock(transition="Configure", data=data)
-
         configure_dict = {"NamesBlockHex": configureBlock,
                           "readout_count": args.events,
                           "group_mask"   : group_mask,
