@@ -85,8 +85,6 @@ def sorting_dict(asics):
                                         "DaqTriggerDelay",
                                         "TimingRunTriggerEnable",
                                         "TimingDaqTriggerEnable", 
-                                        "RunTriggerDelay",
-                                        "DaqTriggerDelay",
                                         "AutoRunEn", 
                                         "AutoDaqEn", 
                                         "AutoTrigPeriod", 
@@ -203,13 +201,11 @@ def cbase_init(cbase):
     cbase.App.WaveformControl.InjSkipFrames.set(0) 		
     cbase.App.TriggerRegisters.enable.set(True)			  	
     cbase.App.TriggerRegisters.RunTriggerEnable.set(False)					
-    cbase.App.TriggerRegisters.RunTriggerDelay.set(False)					
+    cbase.App.TriggerRegisters.RunTriggerDelay.set(0)					
     cbase.App.TriggerRegisters.DaqTriggerEnable.set(False)					
-    cbase.App.TriggerRegisters.DaqTriggerDelay.set(False)					
+    cbase.App.TriggerRegisters.DaqTriggerDelay.set(0)					
     cbase.App.TriggerRegisters.TimingRunTriggerEnable.set(False)				
     cbase.App.TriggerRegisters.TimingDaqTriggerEnable.set(False)			
-    cbase.App.TriggerRegisters.RunTriggerDelay.set(False)					
-    cbase.App.TriggerRegisters.DaqTriggerDelay.set(False)					
     cbase.App.TriggerRegisters.AutoRunEn.set(False)					
     cbase.App.TriggerRegisters.AutoDaqEn.set(False)					
     cbase.App.TriggerRegisters.AutoTrigPeriod.set(42700000)				
@@ -367,7 +363,9 @@ def user_to_expert(base, cfg, full=False):
     global lane
 
     cbase = base['cam']
-
+    
+    deltadelay = -192
+    
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
@@ -385,7 +383,8 @@ def user_to_expert(base, cfg, full=False):
             raise ValueError('triggerDelay computes to < 0')
 
         d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay']=triggerDelay
-        triggerDelay=int(rawStart/base["clk_period"])-cfg['expert']['App']['TimingRx']['TriggerEventManager']['EvrV2CoreTriggers']['EvrV2TriggerReg[0]']['DelayDelta'] # value found empirically
+        
+        triggerDelay=int(rawStart/base["clk_period"]) - deltadelay
         
         if triggerDelay < 0:
             logging.error(f'partitionDelay[{group+1}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
@@ -452,24 +451,25 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     pll = cbase.Core.Si5345Pll
     
     tmpfiles = []
-    Pll_sel=[None, '_temp250', '_2_3_7', '_0_5_7', '_2_3_9', '_0_5_7_v2']
-    if pll.enable.get() == False:
-        pll.enable.set(True)
-    
-    clk = cfg['user']['PllRegistersSel'] 
-    
-    freq = Pll_sel[clk]
-    print(f"Loading PLL file: {freq}")
-    
-    pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
-    fn = pathPll+'PllConfig'+'.csv'
-    np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
-    
-    tmpfiles.append(fn)
-    setattr(cbase, 'filenamePLL', fn)
-    
-    pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')    
-    cbase_ASIC_init(cbase, asics)
+    if not secondPass:
+        Pll_sel=[None, '_temp250', '_2_3_7', '_0_5_7', '_2_3_9', '_0_5_7_v2']
+        if pll.enable.get() == False:
+            pll.enable.set(True)
+        
+        clk = cfg['user']['PllRegistersSel'] 
+        
+        freq = Pll_sel[clk]
+        print(f"Loading PLL file: {freq}")
+        
+        pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
+        fn = pathPll+'PllConfig'+'.csv'
+        np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
+        
+        tmpfiles.append(fn)
+        setattr(cbase, 'filenamePLL', fn)
+        
+        pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')    
+        cbase_ASIC_init(cbase, asics)
                
                 # remove the ASIC configuration so we don't try it
             #    del app['Mv2Asic[{}]'.format(i)]
@@ -778,7 +778,6 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Retrieve the full configuration from the configDB
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
-
     origcfg = cfg
     
     
@@ -972,6 +971,7 @@ def epixUHR_update(update):
     cfg = {}
     update_config_entry(cfg,origcfg,json.loads(update))
     #  Apply to expert
+
     writeCalibRegs = user_to_expert(base,cfg,full=False)
     print(f'Partial config writeCalibRegs {writeCalibRegs}')
 
