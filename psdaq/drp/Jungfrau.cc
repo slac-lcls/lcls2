@@ -627,6 +627,10 @@ unsigned Jungfrau::stepScan(const nlohmann::json& stepInfo, Xtc& xtc, const void
                     }
                 }
             }
+        } else if (stepInfo.contains("user.trigger_delay_s")) {
+            double trigDelay = stepInfo["user.trigger_delay_s"];
+            logging::info("Setting module %zu trigger delay to %f s", mod, trigDelay);
+            m_slsDet->setDelayAfterTrigger(secs_to_ns(trigDelay), pos);
         }
     }
     return 0;
