@@ -23,7 +23,7 @@ In this class we use natural matrix notations like in data array
       |             |              |             |              |
       |             |              |             |              |
       -----------------------------------------------------------
-   (1199,0)                         |                          (1199,4799)
+   (1199,0)                        |                          (1199,4799)
    (Xmin,Ymin)                                                (Xmax,Ymin)
 
 
