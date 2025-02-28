@@ -215,9 +215,10 @@ class archon_raw_1_0_1(AreaDetectorRaw):
         for i in range(self._nbanks):
             c0 = st*i
             med = np.median(frame[:,c0:c0+sf], axis=1)
-            #med = np.mean(frame[:,c0:c0+sf], axis=1)
             st_of_med = np.array(st*(tuple(med),)).T
             frame[:,c0:c0+st] -= st_of_med
+            #st_of_med = np.array((st-sf)*(tuple(med),)).T
+            #frame[:,c0+sf:c0+st] -= st_of_med
         logger.debug('XXX _common_mode time: %.3f sec st_of_med.shape: %s' % (time()-t0_sec, str(st_of_med.shape)))
         #logger.debug('XXX st_of_med:\n', st_of_med)
 
@@ -237,6 +238,7 @@ class archon_raw_1_0_1(AreaDetectorRaw):
             logging.warning(f'incorrect archon pedestal shape: {peds.shape}, raw data shape: {raw.shape}')
             return raw
         cal = raw-peds
+        #cal = np.array(raw, dtype=float) #peds
         if self._cmpars is not None:
             self._common_mode(cal)
             #self._common_mode_v0(cal)
