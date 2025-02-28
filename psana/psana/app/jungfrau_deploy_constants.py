@@ -21,8 +21,8 @@ USAGE = 'Usage:'\
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_dskwargs = None
-    d_det     = None # 'NoDetector.0:Epix10ka.3'
+    d_dskwargs= None
+    d_detname = None # 'jungfrau'
     d_tstamp  = None # 20180910111049
     d_dirrepo = './work' # DIR_REPO_JUNGFRAU
     d_nsegstot= 16
@@ -30,10 +30,10 @@ def argument_parser():
     d_logmode = 'INFO'
     d_ctdepl  = 'psrg'
     d_paninds = None
-    d_high    = None #16.40 for epix10ka
+    d_high    = None #16.40
     d_medium  = None #5.466
     d_low     = None #0.164
-    d_version = 'V2025-02-18'
+    d_version = 'V2025-02-27'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_dbsuffix= ''
@@ -43,7 +43,7 @@ def argument_parser():
                 ' or <fname.xtc> or files=<fname.xtc>'\
                 ' or pythonic dict of generic kwargs, e.g.:'\
                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
-    h_det     = 'detector name, default = %s' % d_det
+    h_detname = 'detector name, default = %s' % d_detname
     h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS or run number(<10000) for constants selection in repo. '\
                 'By default run time is used, default = %s' % str(d_tstamp)
     h_dirrepo = 'non-default repository of calibration results, default = %s' % d_dirrepo
@@ -64,7 +64,7 @@ def argument_parser():
 
     parser = ArgumentParser(description='Deploy calibration files from repository to DB.', usage = USAGE)
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs, type=str,   help=h_dskwargs)
-    parser.add_argument('-d', '--det',     default=d_det,      type=str,   help=h_det)
+    parser.add_argument('-d', '--detname', default=d_detname,  type=str,   help=h_detname)
     parser.add_argument('-t', '--tstamp',  default=d_tstamp,   type=int,   help=h_tstamp)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,  type=str,   help=h_dirrepo)
     parser.add_argument('-N', '--nsegstot',default=d_nsegstot, type=int,   help=h_nsegstot)
@@ -90,7 +90,7 @@ def do_main():
     #opts = vars(args)
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
-    assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
+    assert args.detname is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 
     from time import time
     from psana.detector.UtilsJungfrauCalib import jungfrau_deploy_constants
