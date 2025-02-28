@@ -26,6 +26,7 @@ def issue_2025_mm_dd():
 def issue_2025_01_29():
     """test for common mode in det.raw.calib/image implementation for archon
        datinfo -k exp=rixx1016923,run=119 -d archon
+       datinfo -k exp=rixx1017523,run=393 -d archon
     """
     #ds, orun, det = ds_run_det(exp='rixc00121', run=140, detname='archon', dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc')
     import numpy as np
@@ -36,12 +37,13 @@ def issue_2025_01_29():
 
     #ds = DataSource(exp='rixc00121',run=154, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1200,4800), >200 evts
     #ds = DataSource(exp='rixx1016923',run=118, detectors=['archon'])
-    ds = DataSource(exp='rixx1016923',run=119, detectors=['archon'])
+    #ds = DataSource(exp='rixx1016923',run=119, detectors=['archon'])
+    ds = DataSource(exp='rixx1017523',run=393, detectors=['archon'])
     orun = next(ds.runs())
     det = orun.Detector('archon', gainfact=2, cmpars=(1,0,0))
 
     flimg = None
-    events = 2
+    events = 10
     evsel = 0
 
     for nev, evt in enumerate(orun.events()):
@@ -60,11 +62,12 @@ def issue_2025_01_29():
 
        t0_sec = time()
 
-       img = np.array(raw)[0,:]
-       img.shape = (1,4800)
+       #img = np.array(raw)[0,:]
+       #img.shape = (1,4800)
 
-       #img  = det.raw.image(evt)
-       #clb  = det.raw.calib(evt)
+       #img, title  = det.raw.raw(evt), 'raw'
+       #img, title  = det.raw.image(evt), 'image'
+       img, title  = det.raw.calib(evt), 'calib'
 
        #img = (raw.copy()/1000).astype(dtype=np.float64) # np.uint16)
        #img = clb
@@ -91,10 +94,10 @@ def issue_2025_01_29():
 
 
        if flimg is None:
-          flimg = fleximage(img, h_in=5, w_in=16) # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
+          flimg = fleximage(img, h_in=5, w_in=20) # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
 
        flimg.update(img)
-       flimg.fig.suptitle('Event %d: raw' % nev, fontsize=16)
+       flimg.fig.suptitle('Event %d: %s' % (nev, title), fontsize=16)
        gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
        gr.show(mode='DO NOT HOLD')
 
@@ -280,6 +283,23 @@ def issue_2025_02_25():
     print('post resp.text:', resp.text)
 
 
+def issue_2025_02_27():
+    """det_dark_proc -d archon -k exp=rixx1017523,run=393 -D -o work issues
+    """
+    import psana
+    ds = psana.DataSource(exp='rixx1017523', run=393) #, dir='/sdf/data/lcls/ds/asc/ascdaq023/xtc')
+    orun = next(ds.runs())
+    odet = orun.Detector('archon')
+    v = getattr(odet.raw,'_segment_ids', None) # odet.raw._segment_ids()
+    v = None if v is None else v()
+    print('odet.raw._segment_ids():', v)
+    print('odet.raw._sorted_segment_inds', odet.raw._sorted_segment_inds)
+    print('dir(odet)', dir(odet))
+    print('dir(odet.raw)', dir(odet.raw))
+    print('odet.calibconst.keys()', odet.calibconst.keys())
+    print('odet.raw._calibconst.keys()', odet.raw._calibconst.keys())
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -322,6 +342,7 @@ def selector():
     elif TNAME in  ('3',): issue_2025_02_05() # fleximage does not show image
     elif TNAME in  ('4',): issue_2025_02_21() # access to jungfrau panel configuration object
     elif TNAME in  ('5',): issue_2025_02_25() # test saving BIG 32-segment (3,16,512,1024) float32 jungfrau calib constants in DB
+    elif TNAME in  ('6',): issue_2025_02_27() # det_dark_proc -d archon -k exp=rixx1017523,run=393 -D -o work issue
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
