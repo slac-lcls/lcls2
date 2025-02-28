@@ -108,7 +108,7 @@ class SegGeometryArchonV1(SegGeometry):
         SegGeometry.__init__(sp, **kwa)
         det = kwa.get('detector', None)
         assert det is not None
-        assert 'pedestals' in det._calibconst.keys()
+        assert 'pedestals' in det._calibconst.keys(), 'unavailable constants in DB'
         peds = det._calibconst['pedestals'][0]
         logger.debug('__init__(): pedestals.shape=%s' % str(peds.shape))
         sp._rows = peds.shape[0]
