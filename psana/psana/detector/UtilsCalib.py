@@ -509,11 +509,15 @@ def add_metadata_kwargs(orun, odet, **kwa):
     ivalid_run = tstamp if use_external_run else orun.runnum\
                   if not use_external_ts else 0
 
+    v = getattr(odet.raw,'_segment_ids', None) # odet.raw._segment_ids()
+    segment_ids = None if v is None else v()
+
     kwa['exp']        = orun.expt
     kwa['experiment'] = orun.expt
-    kwa['detector']   = odet.raw._uniqueid
+    #kwa['detector']  = odet.raw._uniqueid
+    #kwa['uniqueid']  = odet.raw._uniqueid
     kwa['longname']   = odet.raw._uniqueid
-    kwa['uniqueid']   = odet.raw._uniqueid
+    kwa['shortname']  = detector_name_short(odet.raw._uniqueid)
     kwa['detname']    = odet.raw._det_name
     kwa['dettype']    = odet.raw._dettype
     kwa['time_sec']   = tvalid_sec
@@ -526,7 +530,7 @@ def add_metadata_kwargs(orun, odet, **kwa):
     kwa['version']    = kwa.get('version', 'N/A')
     kwa['comment']    = kwa.get('comment', 'no comment')
     kwa['extpars']    = {'content':'extended parameters dict->json->str',}
-    kwa['segment_ids'] = odet.raw._segment_ids()
+    kwa['segment_ids'] = segment_ids
     kwa['segment_inds'] = odet.raw._sorted_segment_inds
     return kwa
 
