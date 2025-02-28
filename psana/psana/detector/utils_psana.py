@@ -47,6 +47,10 @@ def timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S'):
     return str_tstamp(fmt=fmt, time_sec=seconds(run.timestamp))
 
 
+def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp')):
+    return {k:v for k,v in d.items() if k in list_keys}
+
+
 def datasource_kwargs_from_string(s):
     """ Parses string parameters like "exp=<exp-name>,run=<comma-separated-run-numbers>,dir=<xtc-files-directory>,max_events=<number-of-events>"
         to dict keyward arguments.
