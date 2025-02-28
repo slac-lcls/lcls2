@@ -3,12 +3,10 @@
 #include "EbEpoch.hh"
 #include "EbEvent.hh"
 
-#include "psdaq/service/Task.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdlib.h>
 #include <new>
-#include <chrono>
 
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
@@ -26,7 +24,8 @@ static constexpr unsigned CLS = 64;     // Cache Line Size
 EventBuilder::EventBuilder(unsigned        timeout,
                            const unsigned& verbose) :
   _pending     (),
-  _eventTimeout(uint64_t(timeout) * 1000000ul), // Convert to ns
+  _eventTimeout(timeout ? uint64_t(timeout) * 1000000ul : // Convert to ns
+                std::chrono::system_clock::duration::max().count()),
   _tmoEvtCnt   (0),
   _fixupCnt    (0),
   _missing     (0),
@@ -36,6 +35,7 @@ EventBuilder::EventBuilder(unsigned        timeout,
   _ebTime      (0),
   _verbose     (verbose)
 {
+  printf("EventBuilder timeout is %u ms, %lu ns\n", timeout, _eventTimeout.count());
 }
 
 EventBuilder::~EventBuilder()
@@ -54,6 +54,7 @@ int EventBuilder::initialize(unsigned epochs,
     return 1;
   }
   _mask = ~PulseId(duration - 1).pulseId();
+  _maxEntries = entries;
 
   // Revisit the factor of 2: it seems like the sum of the values over all RoGs
   // may be closer to the right answer
@@ -306,24 +307,25 @@ void EventBuilder::_fixup(EbEvent*             event,
   }
   while (remaining);
 
-  if (age < _eventTimeout)  ++_fixupCnt;
-  else                      ++_tmoEvtCnt;
-
   //if (_verbose >= VL_EVENT)
-  if (_fixupCnt + _tmoEvtCnt < 1000)
+  if (_fixupCnt + _tmoEvtCnt < 100)
   {
     const EbDgram* dg = event->creator();
-    printf("%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, tmo %ld ms\n",
+    printf("%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, latency %ld ms\n",
            age < _eventTimeout ? "Fixed-up" : "Timed-out",
            TransitionId::name(dg->service()), event->sequence(), event->_size,
            event->_remaining, dg->readoutGroups(), event->_contract,
            std::chrono::duration_cast<ms_t>(age).count(),
-           std::chrono::duration_cast<ms_t>(_eventTimeout).count());
+           latency<ms_t>(dg->time));
     if (age < _eventTimeout)
-      printf("Flushed by %15s %014lx, size %5zu, with remaining %016lx, RoGs %04hx, contract %016lx\n",
+      printf("Flushed by %15s %014lx, size %5zu, with remaining %016lx, RoGs %04hx, contract %016lx, latency %ld ms\n",
              TransitionId::name(due->creator()->service()), due->sequence(),
-             due->_size, due->_remaining, dg->readoutGroups(), due->_contract);
+             due->_size, due->_remaining, dg->readoutGroups(), due->_contract,
+             latency<ms_t>(due->creator()->time));
   }
+
+  if (age < _eventTimeout)  ++_fixupCnt;
+  else                      ++_tmoEvtCnt;
 }
 
 void EventBuilder::_retire(EbEpoch* epoch, EbEvent* event)
@@ -347,7 +349,7 @@ void EventBuilder::_flush(const EbEvent* const due)
 {
   const EbEpoch* const lastEpoch = _pending.empty();
   EbEpoch*             epoch     = _pending.forward();
-  auto                 now       = fast_monotonic_clock::now(CLOCK_MONOTONIC);
+  auto                 now       = fast_monotonic_clock::now();
 
   _tLastFlush = now;
 
@@ -413,7 +415,7 @@ void EventBuilder::_flush()
 void EventBuilder::_tryFlush()
 {
   const ms_t tmo{100};
-  auto       now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+  auto       now{fast_monotonic_clock::now()};
   if (now - _tLastFlush > tmo)  _flush();
 }
 
@@ -482,17 +484,20 @@ void EventBuilder::expired()            // Periodically called upon a timeout
 ** --
 */
 
-void EventBuilder::process(const EbDgram* ctrb,
-                           const size_t   size,
-                           unsigned       imm)
+void EventBuilder::process(const EbDgram*    buffer,
+                           const size_t      size,
+                           unsigned          immData,
+                           const void* const end)
 {
   auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
 
+  const EbDgram* ctrb  = buffer;
+  unsigned       imm   = immData;
   EbEpoch*       epoch = _match(ctrb->pulseId());
   EbEvent*       event = epoch->pending.forward();
   const EbEvent* due   = nullptr;
 
-  while (true)
+  for (unsigned i = 0; i < _maxEntries; ++i)
   {
     event = _insert(epoch, ctrb, event, imm, t0);
 
@@ -502,14 +507,14 @@ void EventBuilder::process(const EbDgram* ctrb,
       due = event;
     }
 
+    uint64_t  pid = ctrb->pulseId();
+    unsigned  env = ctrb->env;
+    unsigned  src = ctrb->xtc.src.value();
     if (UNLIKELY(_verbose >= VL_EVENT))
     {
-      unsigned  env = ctrb->env;
       unsigned  ctl = ctrb->control();
-      uint64_t  pid = ctrb->pulseId();
       uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
-      unsigned  src = ctrb->xtc.src.value();
       printf("EB found a ctrb                                 @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, pld [%08x, %08x], imm %08x, due %014lx%s\n",
              ctrb, ctl, pid, env, sz, src, pld[0], pld[1], imm, due ? due->sequence() : 0ul, ctrb->isEOL() ? ", EOL" : "");
@@ -519,6 +524,12 @@ void EventBuilder::process(const EbDgram* ctrb,
 
     ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
     imm++;
+    if ((ctrb > end) || (i == _maxEntries - 1))
+    {
+      fprintf(stderr, "%s:\n  Error: EOL not seen before buffer end, last pid %014lx, env %08x, src %u\n"
+              "  buffer %p, end %p, ctrb %p, entry size, %zu, immData %08x, imm %08x, i %u\n",
+              __PRETTY_FUNCTION__, pid, env, src, buffer, end, ctrb, size, immData, imm, i);
+    }
   }
 
   if (due)  _flush(due);     // Attempt to flush everything up to the due event
@@ -541,19 +552,21 @@ void EventBuilder::dump(unsigned detail) const
 {
   printf("\nEvent builder dump:\n");
 
-  if (detail)
-  {
-    const EbEpoch* const last  = _pending.empty();
-    EbEpoch*             epoch = _pending.forward();
+  const EbEpoch* const last  = _pending.empty();
+  EbEpoch*             epoch = _pending.forward();
 
-    if (epoch != last)
+  if (epoch != last)
+  {
+    if (detail)
     {
       int number = 1;
-      do epoch->dump(number++); while (epoch = epoch->forward(), epoch != last);
+      do epoch->dump(detail, number++); while (epoch = epoch->forward(), epoch != last);
     }
     else
-      printf(" Event Builder has no pending events...\n");
+      epoch->dump(detail, 0);
   }
+  else
+    printf(" Event Builder has no pending events...\n");
 
   printf("Event Builder epoch pool:\n");
   _epochFreelist->dump();

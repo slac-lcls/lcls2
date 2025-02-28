@@ -1,49 +1,91 @@
+import pickle
+import zlib
+
 import zmq
-import zlib, pickle
-import time
 
-class PubSocket:
-    def __init__(self, socket_name):
-        self._context = zmq.Context()
-        self._zmq_socket = self._context.socket(zmq.PUB)
-        self._zmq_socket.bind(socket_name)
+client_socket = None
 
-    def send(self, data):
-        return self.send_zipped_pickle(data)
 
-    def sendz(self, zdata, flags=0):
-        self._zmq_socket.send(zdata, flags=flags)
+def zmq_send(**kwargs):
+    global client_socket
+    if client_socket is None:
+        client_socket = SubSocket(kwargs["fake_dbase_server"], socket_type=zmq.PUSH)
+    data = {}
+    for key, val in kwargs.items():
+        if key == "fake_dbase_server":
+            continue
+        data[key] = val
+    client_socket.send(data)
+    print(f"sent {data} to {kwargs['fake_dbase_server']}")
+
+
+class ZMQSocket:
+    def __init__(self, zmq_socket):
+        self.socket = zmq_socket
 
     def send_zipped_pickle(self, obj, flags=0, protocol=-1):
         """pickle an object, and zip the pickle before sending it"""
         p = pickle.dumps(obj, protocol)
         z = zlib.compress(p)
-        self._zmq_socket.send(z, flags=flags)
+        self.socket.send(z, flags=flags)
         return z
 
+    def recv_zipped_pickle(self, flags=0, protocol=-1):
+        """unzip and unpickle received data"""
+        z = self.socket.recv(flags)
+        p = zlib.decompress(z)
+        return z, pickle.loads(p)
 
-class SubSocket:
-    def __init__(self, socket_name):
-        self._context = zmq.Context()
-        self._zmq_socket = self._context.socket(zmq.SUB)
-        self._zmq_socket.connect(socket_name)
+    def send(self, data):
+        return self.send_zipped_pickle(data)
 
-        # Subscribe to all
-        topicfilter = ""
-        self._zmq_socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
+    def sendz(self, zdata, flags=0):
+        self.socket.send(zdata, flags=flags)
 
     def recv(self):
         return self.recvz()[1]
 
     def recvz(self):
-        st = time.time()
-        z,data = self.recv_zipped_pickle()
-        en = time.time()
-        print(f"Subscriber recv took:{en-st:.2f}s.")
-        return z,data
+        z, data = self.recv_zipped_pickle()
+        return z, data
 
-    def recv_zipped_pickle(self, flags=0, protocol=-1):
-        """inverse of send_zipped_pickle"""
-        z = self._zmq_socket.recv(flags)
-        p = zlib.decompress(z)
-        return z,pickle.loads(p)
+
+class PubSocket(ZMQSocket):
+    """A helper for a Binder Zmq-Socket"""
+
+    def __init__(self, socket_name, socket_type=zmq.PUB):
+        context = zmq.Context()
+        zmq_socket = context.socket(socket_type)
+        zmq_socket.bind(socket_name)
+        super(PubSocket, self).__init__(zmq_socket)
+
+
+class SubSocket(ZMQSocket):
+    """A helper for a Connector Zmq-Socket"""
+
+    def __init__(self, socket_name, socket_type=zmq.SUB):
+        context = zmq.Context()
+        zmq_socket = context.socket(socket_type)
+        zmq_socket.connect(socket_name)
+        super(SubSocket, self).__init__(zmq_socket)
+
+        # Subscribe to all
+        if socket_type == zmq.SUB:
+            topicfilter = ""
+            self.socket.setsockopt_string(zmq.SUBSCRIBE, topicfilter)
+
+
+class SrvSocket(ZMQSocket):
+    def __init__(self, socket_name):
+        context = zmq.Context()
+        zmq_socket = context.socket(zmq.REP)
+        zmq_socket.bind(socket_name)
+        super(SrvSocket, self).__init__(zmq_socket)
+
+
+class ClientSocket(ZMQSocket):
+    def __init__(self, socket_name):
+        context = zmq.Context()
+        zmq_socket = context.socket(zmq.REQ)
+        zmq_socket.connect(socket_name)
+        super(ClientSocket, self).__init__(zmq_socket)

@@ -23,8 +23,15 @@ from psana.detector.UtilsEpix import FNAME_PANEL_ID_ALIASES, alias_for_id
 from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import seconds, datasource_kwargs_from_string
+import psana.detector.UtilsCalib as uc
+from psana.detector.utils_psana import seconds, data_source_kwargs#, datasource_kwargs_from_string
 from psana.detector.UtilsLogging import init_file_handler
+
+
+def is_none(par, msg, logger_method=logger.debug):
+    resp = par is None
+    if resp: logger_method(msg)
+    return resp
 
 
 def find_file_for_timestamp(dirname, pattern, tstamp):
@@ -208,7 +215,7 @@ def proc_dark_block(block, **kwa):
     """
     NOTE:
     - our data is uint16.
-    - np.median(block, axis=0) or np.quantile(...,interpolation='linear') return result rounded to int
+    - np.median(block, axis=0) or np.quantile(...,method='linear') return result rounded to int
     - in order to return interpolated float values apply the trick:
       data_block + random [0,1)-0.5
     - this would distort data in the range [-0.5,+0.5) ADU, but would allow to get better interpolation for median and quantile values
@@ -220,9 +227,9 @@ def proc_dark_block(block, **kwa):
 
     t1_sec = time()
     #arr_med = np.median(block, axis=0)
-    arr_med = np.quantile(blockf64, frac05, axis=0, interpolation='linear')
-    arr_qlo = np.quantile(blockf64, fraclo, axis=0, interpolation='linear')
-    arr_qhi = np.quantile(blockf64, frachi, axis=0, interpolation='linear')
+    arr_med = np.quantile(blockf64, frac05, axis=0, method='linear')
+    arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='linear')
+    arr_qhi = np.quantile(blockf64, frachi, axis=0, method='linear')
     logger.debug('block array median/quantile(0.5) for med, qlo, qhi time = %.3f sec' % (time()-t1_sec))
 
     med_med = np.median(arr_med)
@@ -366,9 +373,9 @@ def irun_first(runs):
            int(runs.split(',',1)[0].split('-',1)[0])
 
 
-def data_source_kwargs(**kwa):
-    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
-    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
+#def data_source_kwargs(**kwa):
+#    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
+#    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
 
 
 def pedestals_calibration(parser):
@@ -449,11 +456,10 @@ def pedestals_calibration(parser):
         sys.exit('Exit processing due to missing info about dark data step.')
       #cd = orun.Detector('ControlData') #LCLS1
 
-      logger.debug('--- det.raw._det_name: %s' % odet.raw._det_name) # epixquad
-      logger.debug('    det.raw._dettype : %s' % odet.raw._dettype)  # epix
-      logger.debug('    det.raw._calibconst.keys(): %s' % str(odet.raw._calibconst.keys())) # dict_keys(['geometry'])
+      logger.info('--- det.raw._det_name: %s' % odet.raw._det_name) # epixquad
+      logger.info('    det.raw._dettype : %s' % odet.raw._dettype)  # epix
       #logger.debug('    det.raw._uniqueid: %s' % det.raw._uniqueid)
-      #logger.debug('    det.raw._sorted_segment_ids: %s' % str(odet.raw._sorted_segment_ids))
+      #logger.debug('    det.raw._sorted_segment_inds: %s' % str(odet.raw._sorted_segment_inds))
       #logger.debug('    det.raw._fullname: %s' % odet.raw._fullname())
 
       segment_ids = odet.raw._segment_ids() #ue.segment_ids_det(odet)
@@ -464,7 +470,9 @@ def pedestals_calibration(parser):
       logger.info(s)
 
       BIT_MASK = odet.raw._data_bit_mask
-      logger.info('    odet.raw._data_bit_mask BIT_MASK: %s' % oct(BIT_MASK))
+      BIT_GAIN = odet.raw._data_gain_bit
+      logger.info('    det.raw._data_bit_mask BIT_MASK: %d or %s or %s' % (BIT_MASK, oct(BIT_MASK), hex(BIT_MASK)))
+      logger.info('    det.raw._data_gain_bit BIT_GAIN: %d or %s or %s' % (BIT_GAIN, oct(BIT_GAIN), hex(BIT_GAIN)))
 
       dcfg = odet.raw._config_object() #ue.config_object_det(odet)
 
@@ -473,15 +481,10 @@ def pedestals_calibration(parser):
         logger.info('\n=============== step %2d ===============' % nstep_tot)
         logger.debug('    step.evt._seconds: %d' % step.evt._seconds)
 
-
-        #print('XXX', step_docstring(step))
-        #sys.exit('TEST EXIT')
-
-
         metadic = json.loads(step_docstring(step))
         nstep = step_counter(metadic, nstep_tot, nstep_run, stype='pedestal')
 
-        if nstep is None: continue
+        if is_none(nstep, 'step is unknown, None', logger_method=logger.info): continue
 
         if nstep_tot>=stepmax:
             logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nstep_tot, stepmax))
@@ -494,6 +497,7 @@ def pedestals_calibration(parser):
             elif nstep > stepnum:
                 logger.info('==== Step:%02d loop is terminated, --stepnum=%d' % (nstep, stepnum))
                 break
+
 
         #for k,v in odet.raw._seg_configs().items(): # cpo's pattern DOES NOT WORK
         for k,v in dcfg.items():
@@ -537,11 +541,17 @@ def pedestals_calibration(parser):
         nrec,nevt = -1,0
 
         ss = None
+        counter = 0
+        counter_max = 60
         for nevt,evt in enumerate(step.events()):
             raw = odet.raw.raw(evt)
             do_print = selected_record(nevt)
             if raw is None:
-                logger.info('==== Ev:%04d rec:%04d raw is None' % (nevt,nrec))
+                counter += 1
+                if counter < counter_max:
+                    logger.info('==== Ev:%04d rec:%04d raw is None' % (nevt,nrec))
+                elif counter == counter_max:
+                    logger.info('==== DO NOT SHOW MORE MESSAGES THAT raw is None')
                 continue
 
             if nevt < evskip:
@@ -576,7 +586,7 @@ def pedestals_calibration(parser):
 
         for idx, panel_id in zip(segment_inds,segment_ids):
 
-            if idx_sel is not None and idx_sel != idx: continue # skip panels with inices other than idx_sel if specified
+            if idx_sel is not None and idx_sel != idx: continue # skip panels with indices other than idx_sel if specified
 
             logger.info('\n%s\nprocess panel:%02d id:%s' % (96*'=', idx, panel_id))
 
@@ -597,6 +607,10 @@ def pedestals_calibration(parser):
             create_directory(dir_status, mode=dirmode)
 
             #block.sahpe = (1024, 16, 352, 384)
+            int_hi = kwa.get('int_hi', None)
+            rms_hi = kwa.get('rms_hi', None)
+            kwa['int_hi'] = BIT_MASK-1 if int_hi is None else int_hi
+            kwa['rms_hi'] = BIT_MASK-1 if rms_hi is None else rms_hi
             dark, rms, status = proc_dark_block(block[:nrec,idx,:], **kwa) # process pedestals per-panel (352, 384)
 
             fname = '%s_pedestals_%s.dat' % (prefix_peds, mode)
@@ -769,23 +783,24 @@ def merge_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, dtype, of
     nda.shape = shape_merged # (7, 1, 352, 384) because save_ndarray_in_textfile changes shape
     return nda
 
+merge_panels = uc.merge_panels
 
-def merge_panels(lst):
-    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
-    """
-    npanels = len(lst)   # 16 or 4 or 1
-    shape = lst[0].shape # (7, 1, 352, 384)
-    ngmods = shape[0]    # 7
-    dtype = lst[0].dtype #
+#def merge_panels(lst):
+#    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
+#    """
+#    npanels = len(lst)   # 16 or 4 or 1
+#    shape = lst[0].shape # (7, 1, 352, 384)
+#    ngmods = shape[0]    # 7
+#    dtype = lst[0].dtype #
+#
+#    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
 
-    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
-
-    # make list for merging of (352,384) blocks in right order
-    mrg_lst = []
-    for igm in range(ngmods):
-        nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
-        mrg_lst.append(nda1gm)
-    return np.stack(mrg_lst)
+#    # make list for merging of (352,384) blocks in right order
+#    mrg_lst = []
+#    for igm in range(ngmods):
+#        nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
+#        mrg_lst.append(nda1gm)
+#    return np.stack(mrg_lst)
 
 
 def add_links_for_gainci_fixed_modes(dir_gain, fname_prefix):

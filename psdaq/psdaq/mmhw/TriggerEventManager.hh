@@ -1,6 +1,7 @@
 #ifndef Pds_TriggerEventManager_hh
 #define Pds_TriggerEventManager_hh
 
+#include "psdaq/mmhw/Reg.hh"
 #include <stdint.h>
 
 namespace Pds {
@@ -9,10 +10,10 @@ namespace Pds {
     public:
       XpmMessageAligner() {}
     public:
-      uint32_t messageDelay[8];
-      uint32_t txId;
-      uint32_t rxId;
-      uint32_t reserved_28[(0x100-0x28)>>2];
+      Reg      messageDelay[8];
+      Reg      txId;
+      Reg      rxId;
+      Reg      reserved_28[(0x100-0x28)>>2];
     };
 
     class TriggerEventBuffer {
@@ -24,23 +25,23 @@ namespace Pds {
                    unsigned pauseThresh=16);
       void stop   ();
     public:
-      uint32_t enable;
-      uint32_t group;
-      uint32_t pauseThresh;
-      uint32_t triggerDelay;
-      uint32_t status;
-      uint32_t l0Count;
-      uint32_t l1AcceptCount;
-      uint32_t l1RejectCount;
-      uint32_t transitionCount;
-      uint32_t validCount;
-      uint32_t triggerCount;
-      uint32_t currPartitionBcast;
+      Reg      enable;
+      Reg      group;
+      Reg      pauseThresh;
+      Reg      triggerDelay;
+      Reg      status;
+      Reg      l0Count;
+      Reg      l1AcceptCount;
+      Reg      l1RejectCount;
+      Reg      transitionCount;
+      Reg      validCount;
+      Reg      triggerCount;
+      Reg      currPartitionBcast;
       uint64_t currPartitionWord0;
-      uint32_t fullToTrig;
-      uint32_t nfullToTrig;
-      uint32_t resetCounters;
-      uint32_t reserved_44[(0x100-0x44)>>2];
+      Reg      fullToTrig;
+      Reg      nfullToTrig;
+      Reg      resetCounters;
+      Reg      reserved_44[(0x100-0x44)>>2];
     };
 
     class TriggerEventManager {

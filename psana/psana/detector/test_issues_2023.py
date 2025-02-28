@@ -185,7 +185,7 @@ def issue_2023_01_10():
         #gmaps = cc.gain_maps_epix(raw)
         #arr = ucc.event_constants_for_gmaps(gmaps, ones, default=0)
         #arr = ucc.map_gain_range_index_for_gmaps(gmaps, default=10) # stack bits...
-        #arr = np.array(raw & 0o100000, dtype=np.int) # 0o77777 # behaves ok
+        #arr = np.array(raw & 0o100000, dtype=np.int16) # 0o77777 # behaves ok
         arr1 = np.array(arr[0,irow,100:120], dtype=np.int16) & databitw
         print(info_ndarr(arr1,'%s  arr1:' % s, first=0, last=10), '  v[col]=%5d' % arr1[icol])
 
@@ -369,6 +369,66 @@ def issue_2023_07_27():
         print(s)
 
 
+def issue_2023_10_04():
+    """ detnames exp=tstx00417,run=286,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc
+    Name       | Data Type
+    ----------------------
+    epixhr_emu | raw ...
+    """
+    ds, orun, odet = ds_run_det(exp='tstx00417', run=286, detname='epixhr_emu', dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc')
+    print('odet.raw._uniqueid', odet.raw._uniqueid) # epixhremu_00cafe0002-0000000000-0000000000-0000000000-...
+    print('odet.raw._det_name', odet.raw._det_name) # epixhr_emu
+    print('odet.raw._dettype',  odet.raw._dettype)  # epixhremu
+
+    detname = longname = odet.raw._uniqueid
+    #detname = 'epixhremu_000002' # DB name
+    import psana.pscalib.calib.MDBWebUtils as wu
+    calib_const = wu.calib_constants_all_types(detname, exp='tstx00417', run=9999)
+    #calib_const = wu.calib_constants_all_types(detname, run=9999)
+    print('calib_const.keys:', calib_const.keys())
+
+def issue_2023_10_05():
+    from time import time
+    from psana import DataSource
+    ds = DataSource(exp='uedcom103',run=812)
+    t0_sec = time()
+    orun = next(ds.runs()) # 4.2 sec !!!!
+    print('next(ods.runs()) time = %.6f' % (time() - t0_sec))
+    uniqueid = orun.Detector('epixquad').raw._uniqueid
+    print('uniqueid:', uniqueid)
+
+
+def issue_2023_10_26():
+
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+
+    ds = DataSource(exp='rixx1003721', run=200, intg_det='epixhr')
+
+    M14 =  0x3fff  # 16383
+    M15 =  0x7fff  # 32767
+
+    print('data bits: %d' % M14)
+
+    for irun,orun in enumerate(ds.runs()):
+      print('\n\n== run:%d' % irun)
+      det = orun.Detector('epixhr')
+      for istep,ostep in enumerate(orun.steps()):
+        print('\n==== step:%d' % istep)
+        for ievt,evt in enumerate(ostep.events()):
+
+          if evt is None:
+              continue
+          raw = det.raw.raw(evt)
+          if raw is None:
+              continue
+          #a = raw[:,:144,:192] # min:0 max:0
+          #a = raw[:,:144,193:] # min:0 max:0
+          #a = raw[:,145:,193:] # min:0 max:0
+          a = raw[:,145:,:192] & M14  # min:4811 max:10054
+          print(info_ndarr(a,'raw:%4d' % ievt), 'min:%6d max:%6d' % (a.min(), a.max()), end='\r')
+
+
 def issue_2023_mm_dd():
     print('template')
 
@@ -386,6 +446,9 @@ USAGE = '\nUsage:'\
       + '\n    8 - issue_2023_07_25 - test epixhremu.fex.image for Ric'\
       + '\n    9 - issue_2023_07_26 - test calib_constants_all_types for Ric'\
       + '\n   10 - issue_2023_07_27 - test calib_constants_all_types for Ric - curl commands'\
+      + '\n   11 - issue_2023_10_04 - test calib constants for detector names'\
+      + '\n   12 - issue_2023_10_05 - test orun = next(ds.runs()) dt = 4.2 sec !!!'\
+      + '\n   13 - issue_2023_10_26 - issue reported by philip'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -400,6 +463,9 @@ elif TNAME in  ('7',): issue_2023_05_19()
 elif TNAME in  ('8',): issue_2023_07_25()
 elif TNAME in  ('9',): issue_2023_07_26()
 elif TNAME in ('10',): issue_2023_07_27()
+elif TNAME in ('11',): issue_2023_10_04()
+elif TNAME in ('12',): issue_2023_10_05()
+elif TNAME in ('13',): issue_2023_10_26()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

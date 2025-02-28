@@ -81,17 +81,17 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
 {
   ssize_t rc;
 
-  if (!_rxcq)  return -FI_ENOTCONN;     // Not connected (see connect())
+  if (!_rxcq)  return -FI_ENOTCONN; // Not connected (see connect())
 
   // Polling favors latency, waiting favors throughput
   if (!_tmo)
   {
-    rc = _rxcq->comp(cqEntry, 1); // Uses much less kernel time than comp_wait() with tmo = 0
+    rc = _rxcq->comp(cqEntry, 1);   // Uses much less kernel time than comp_wait() with tmo = 0
   }
   else
   {
     rc = _rxcq->comp_wait(cqEntry, 1, _tmo);
-    if (rc > 0)  _tmo = 0;     // Switch to polling after successful completion
+    if (rc > 0)  _tmo = 0;          // Switch to polling after successful completion
   }
 
   if (rc > 0)
@@ -136,18 +136,6 @@ int Pds::Eb::EbLfServer::pend(uint64_t* data, int msTmo)
   fi_cq_data_entry cqEntry;
 
   int rc = pend(&cqEntry, msTmo);
-  *data = cqEntry.data;
-
-  return rc;
-}
-
-inline
-int Pds::Eb::EbLfServer::poll(uint64_t* data)
-{
-  const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
-  fi_cq_data_entry cqEntry;
-
-  int rc = _poll(&cqEntry, flags);
   *data = cqEntry.data;
 
   return rc;

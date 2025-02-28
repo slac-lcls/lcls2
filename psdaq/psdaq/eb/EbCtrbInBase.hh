@@ -25,12 +25,12 @@ namespace Pds
     class EbCtrbInBase
     {
     public:
-      EbCtrbInBase(const TebCtrbParams&, const std::shared_ptr<MetricExporter>&);
+      EbCtrbInBase(const TebCtrbParams&);
       virtual ~EbCtrbInBase();
     public:
       int      resetCounters();
       int      startConnection(std::string& port);
-      int      connect();
+      int      connect(const std::shared_ptr<MetricExporter>);
       int      configure(unsigned numBuffers);
       void     unconfigure();
       void     disconnect();
@@ -41,6 +41,7 @@ namespace Pds
       virtual
       void     process(const ResultDgram& result, unsigned index) = 0;
     private:
+      int     _setupMetrics(const std::shared_ptr<MetricExporter>);
       int     _linksConfigure(std::vector<EbLfSvrLink*>& links,
                               unsigned                   numBuffers,
                               const char*                name);
@@ -59,6 +60,7 @@ namespace Pds
     private:
       EbLfServer                    _transport;
       std::vector<EbLfSvrLink*>     _links;
+      unsigned                      _numBuffers;
       size_t                        _maxResultSize;
       const EbDgram*                _inputs;
       std::list<const ResultDgram*> _deferred;

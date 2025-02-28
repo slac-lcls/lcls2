@@ -14,9 +14,10 @@ namespace Pds {
     public:
       StreamHeader() {}
     public:
-      unsigned num_samples() const { return _word[0]&0x3fffffff; }
+      unsigned num_samples() const { return _word[0]&0x1fffffff; }
       unsigned stream_id  () const { return (_word[1]>>24)&0xff; }
       unsigned samples () const { return num_samples(); } // number of samples
+      bool     out_of_range() const { return (_word[0]>>29)&1; }    // sample upper bits dropped
       bool     unlocked() const { return (_word[0]>>30)&1; }        // data serial link unlocked
       bool     overflow() const { return (_word[0]>>31)&1; }        // overflow of memory buffer
       unsigned strmtype() const { return (_word[1]>>24)&0xff; } // type of stream {raw, thr, ...}

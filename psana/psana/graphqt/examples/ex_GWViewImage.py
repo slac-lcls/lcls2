@@ -29,6 +29,8 @@ class TestGWViewImage(GWViewImage):
         fv = 0 if v is None else v
         self.setWindowTitle('TestGWViewImage x=%d y=%d v=%s%s' % (ix, iy, '%.1f'%fv, 25*' '))
 
+    def test_image_pixmap_changed(self):
+        logger.info('image_pixmap_changed')
 
     def keyPressEvent(self, e):
         logger.info('keyPressEvent, key = %s' % e.key())
@@ -49,7 +51,7 @@ class TestGWViewImage(GWViewImage):
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D
             logger.info('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
-            v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int)
+            v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int32)
             rs = QRectF(v[0], v[1], v[2]+1000, v[3]+1000)
             logger.info('Set scene rect: %s' % str(rs))
             img = image_with_random_peaks((int(rs.height()), int(rs.width())))
@@ -111,6 +113,7 @@ def test_gfviewimage(tname):
     w.connect_mouse_press_event(w.test_mouse_press_event_reception)
     w.connect_mouse_move_event(w.test_mouse_move_event_reception)
     w.connect_scene_rect_changed(w.test_scene_rect_changed_reception)
+    w.connect_image_pixmap_changed(w.test_image_pixmap_changed)
 
     w.setWindowTitle('ex_GWViewImage')
     w.setGeometry(20, 20, 600, 600)

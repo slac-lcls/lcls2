@@ -38,18 +38,20 @@ def ctxt_get(names):
 
 def ctxt_put(names, values):
 
+    r = []
     print(f'ctxt_put [{names}] [{values}]')
     if isinstance(names,str):
-        epics.PV(names).put(values)
+        r.append(epics.PV(names).put(values))
     else:
         if isinstance(names,list):
             for i,n in enumerate(names):
-                epics.PV(n).put(values[i])
+                r.append(epics.PV(n).put(values[i]))
+    print(f'returned {r}')
 
 #  Create a dictionary of config key to PV name
 def epics_get(d):
     # translate legal Python names to Rogue names
-    rogue_translate = {'TriggerEventBuffer':'TriggerEventBuffer[%d]'%lane,
+    rogue_translate = {'TriggerEventBuffer':'TriggerEventBuffer[0]',
                        'AdcReadout0'       :'AdcReadout[0]',
                        'AdcReadout1'       :'AdcReadout[1]',
                        'AdcReadout2'       :'AdcReadout[2]',
@@ -151,7 +153,7 @@ def wave8_init_feb(slane=None,schan=None):
     if slane is not None:
         lane = int(slane)
 
-def wave8_connect(base):
+def wave8_connectionInfo(base, alloc_json_str):
     epics_prefix = base['prefix']
 
     #  Switch to LCLS2 Timing
@@ -185,21 +187,31 @@ def user_to_expert(prefix, cfg, full=False):
 
     d = {}
     try:
-#        lcls1Delay     = ctxt_get(prefix+'TriggerEventManager:EvrV2CoreTriggers.EvrV2TriggerReg[0]:Delay')
+        lcls1Delay     = 0.9e-3*119e6
+        ctrlDelay      = ctxt_get(prefix+'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
         partitionDelay = ctxt_get(prefix+'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]'%group)
         delta          = cfg['user']['delta_ns']
         #  This is not so good; using timebase to distinguish LCLS from UED
         if timebase=='186M':
-            lcls1Delay = 0.9e-3*119e6
-            print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}'.format(lcls1Delay,partitionDelay,delta))
-            triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
+            if False:
+                print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}'.format(lcls1Delay,partitionDelay,delta))
+                triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
+            else:
+                #  LCLS2 timing.  Let controls set the delay value.
+                print('ctrlDelay {:}  partitionDelay {:}  delta_ns {:}'.format(ctrlDelay,partitionDelay,delta))
+                # since controls now also runs off the LCLS2 timing fiber there
+                # is not reason to have a "delta".  This was put in place to
+                # compensate for different lcls1/lcls2 timing fiber lengths
+                # when controls used the lcls1 timing fiber = cpo 02/01/24
+                #triggerDelay   = int(ctrlDelay + delta*1300/7000 - partitionDelay*200)
+                triggerDelay   = int(ctrlDelay - partitionDelay*200)
+
             print('triggerDelay {:}'.format(triggerDelay))
             if triggerDelay < 0:
-                print('Raise delta_ns >= {:}'.format((partitionDelay*200 - lcls1Delay*1300/(7*119)) * 7000/1300))
+                print('Raise controls trigger delay >= {:} nanoseconds ({:} 185MHz clock ticks)'.format(-triggerDelay*7000/1300.,-triggerDelay))
                 raise ValueError('triggerDelay computes to < 0')
 
             ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
-
         else:
             #  119M = UED, 238 clks per timing frame (500kHz)
             #  UED is only LCLS2 timing.  Let controls set the delay value.
@@ -248,10 +260,11 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     names_cfg = [epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
                  epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',
+                 epics_prefix+'DataPathCtrl:EnableStream', # 0x1 for Controls, 0x2 for DAQ
                  epics_prefix+'RawBuffers:FifoPauseThreshold',
                  epics_prefix+'Integrators:ProcFifoPauseThreshold',
                  epics_prefix+'Integrators:IntFifoPauseThreshold']
-    values = [group,16,1,127,127,127]
+    values = [group,16,1,0x2,127,127,127]
     ctxt_put(names_cfg, values)
 
     time.sleep(0.2)
@@ -298,10 +311,10 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     top.set("expert.Integrators.ProcFifoPauseThreshold",  255,'UINT32')
     top.set("expert.Integrators.IntFifoPauseThreshold" ,  255,'UINT32')
 
-    top.set("expert.RawBuffers.BuffEn"            ,[0]*8,'UINT32')  # user config
+    top.set("expert.RawBuffers.BuffEn"            ,[0]*8,'UINT8')  # user config
     top.set("expert.RawBuffers.BuffLen"           , 100,'UINT32')  # user config
     top.set("expert.RawBuffers.FifoPauseThreshold", 100,'UINT32')
-    top.set("expert.RawBuffers.TrigPrescale"      , 0,'UINT32')    # user config
+    top.set("expert.RawBuffers.TrigPrescale"      , 0,'INT32')    # user config
 
     top.set("expert.BatcherEventBuilder.Bypass" , 0,'UINT8')
     top.set("expert.BatcherEventBuilder.Timeout", 0,'UINT32')
@@ -347,6 +360,9 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     #
     #  Retrieve full configuration for recording
     #
+    # GFD 2024/03/13 - epics.PV().get returns None if PV does not exist - only
+    # replace cfg value if retrieval worked. This prevents JSON errors (due to
+    # typing) when converting to XTC
     d = epics_get(scfg['expert'])
     keys  = [key for key,v in d.items()]
     names = [epics_prefix+v for key,v in d.items()]
@@ -359,11 +375,11 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
             del k[0]
         if k[0][0]=='[':
             elem = int(k[0][1:-1])
-            c[elem] = v
+            c[elem] = v if v else c[elem]
         else:
-            c[k[0]] = v
-
-    scfg['firmwareVersion:RO'] = ctxt_get(prefix+':AxiVersion:FpgaVersion')
+            c[k[0]] = v if v else c[k[0]]
+    version = ctxt_get(prefix+':Top:AxiVersion:FpgaVersion')
+    scfg['firmwareVersion:RO'] = version if version else scfg['firmwareVersion:RO']
     #scfg['firmwareBuild:RO'  ] = ctxt_get(prefix+':AxiVersion:BuildStamp')
 
     pprint.pprint(scfg)
@@ -422,7 +438,7 @@ def wave8_unconfig(base):
     values = [0]
     ctxt_put(names_cfg, values)
 
-    #  Leaving DAQ control.  
+    #  Leaving DAQ control.
     if base['timebase']=='186M':
         config_timing(epics_prefix)
 

@@ -104,6 +104,37 @@ class NoMmcmPhaseLock(pr.Device):
     def dump(self):
         pass
 
+class NoXpmPhase(pr.Device):
+    def __init__(self,
+                 name        = "XpmPhase",
+                 description = "XpmPhase placeholder",
+                 **kwargs):
+        super().__init__(name=name, description=description, **kwargs)
+
+        self.add(pr.LocalVariable(name = "block", mode='RO', value=0))
+
+    def phase(self):
+        return 0
+
+class NoGthRxAlignCheck(pr.Device):
+    def __init__(   self, 
+            name        = "NoGthRxAlignCheck", 
+            description = "GthRxAlign Module", 
+            **kwargs):
+        super().__init__(name=name, description=description, **kwargs)
+
+        v = ['PhaseCount','ResetLen',
+             'LastPhase','TxClkFreq','RxClkFreq','sumPeriod' ]
+        for i in v:
+            self.add(pr.LocalVariable(name = i, mode = 'RO', value=0))
+
+        self.add(pr.LocalVariable(name = 'PhaseTarget', mode='RW', value=0))
+        self.add(pr.LocalVariable(name = 'PhaseTargetMask', mode='RW', value=0))
+        self.add(pr.LocalVariable(name = 'Drp', mode='RO', value=[256*0]))
+
+    def dump(self):
+        pass
+
 class DevPcie(pr.Device):
 
     mmcmParms = [ ['MmcmPL119', 0x08900000],
@@ -119,6 +150,7 @@ class DevPcie(pr.Device):
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
         self.isXpmGen = isXpmGen
+        self.fwVersion = 0x03070000
 
         ######################################################################
         
@@ -147,6 +179,10 @@ class DevPcie(pr.Device):
             name = 'AxiSy56040',
         ))
 
+        self.add(NoXpmPhase(
+            name   = 'CuToScPhase',
+        ))
+
         self.add(xpm.XpmApp(
             memBase = memBase,
             name   = 'XpmApp',
@@ -163,7 +199,7 @@ class DevPcie(pr.Device):
         self.add(xpm.XpmSequenceEngine(
             memBase = memBase,
             name   = 'SeqEng_0',
-            offset = 0x00820000,
+            offset = 0x00840000,
         ))
 
         self.add(timing.TPGMiniCore(
@@ -175,24 +211,12 @@ class DevPcie(pr.Device):
         self.add(DevReset(
             memBase = memBase,
             name   = 'DevReset',
-            offset = 0x00840000,
-        ))
-
-#        self.add(xpm.CuPhase(
-#            memBase = memBase,
-#            name = 'CuPhase',
-#            offset = 0x00850000,
-#        ))
-
-        self.add(xpm.XpmPhase(
-            memBase = memBase,
-            name   = 'CuToScPhase',
-            offset = 0x00850000,
+            offset = 0x00820000,
         ))
 
         self.add(timing.GthRxAlignCheck(
             memBase = memBase,
-            name    = 'GthRx',
+            name    = 'UsGthRx',
             offset  = 0x00880000,
         ))
 
@@ -202,9 +226,27 @@ class DevPcie(pr.Device):
             offset  = 0x008C0000,
         ))
 
+        self.add(NoGthRxAlignCheck(
+            memBase = memBase,
+            name    = 'CuGthRx'
+        ))
+
+
     def start(self):
         print('---DevPcie.start---')
         self.DevReset.clearTimingPhyReset.set(0)
+
+        #  Firmware version check
+        fwVersion = self.AxiPcieCore.AxiVersion.FpgaVersion.get()
+        if (fwVersion < self.fwVersion):
+            errMsg = f"""
+            PCIe.AxiVersion.FpgaVersion = {fwVersion:#04x} != {self.fwVersion:#04x}
+            Please update PCIe firmware using software/scripts/updatePcieFpga.py
+            https://github.com/slaclab/lcls2-pgp-pcie-apps/blob/master/firmware/targets/shared_config.mk
+            """
+            click.secho(errMsg, bg='red')
+            raise ValueError(errMsg)
+
         #  Reprogram the reference clock
         self.AxiPcieCore.I2cMux.set(1<<2)
         self.AxiPcieCore.Si570._program()
@@ -242,9 +284,9 @@ class DevPcie(pr.Device):
         self.UsTiming.Dump()
 
         print('--GthRx--')
-        print(f'phaseTarget {self.GthRx.PhaseTarget.get()}')
-        print(f'TxClkFreqRaw {self.GthRx.TxClkFreqRaw.get()}')
-        print(f'RxClkFreqRaw {self.GthRx.RxClkFreqRaw.get()}')
+        print(f'phaseTarget  {self.UsGthRx.PhaseTarget.get()}')
+        print(f'TxClkFreqRaw {self.UsGthRx.TxClkFreqRaw.get()}')
+        print(f'RxClkFreqRaw {self.UsGthRx.RxClkFreqRaw.get()}')
 
         self.AxiPcieCore.I2cMux.set(1<<4)
         print(f'QSFP0: {self.AxiPcieCore.QSFP.getRxPwr()}')

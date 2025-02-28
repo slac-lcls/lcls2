@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -910,14 +910,14 @@ void BldApp::_unconfigure()
     m_unconfigure = false;
 }
 
-json BldApp::connectionInfo()
+json BldApp::connectionInfo(const nlohmann::json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo();
+    json info = m_det->connectionInfo(msg);
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
@@ -926,6 +926,9 @@ json BldApp::connectionInfo()
 
 void BldApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det.connectionShutdown();
+    }
     m_drp.shutdown();
     if (m_exporter) {
         m_exporter.reset();
@@ -1020,6 +1023,10 @@ void BldApp::handlePhase1(const json& msg)
         }
 
         m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
+
+        // Provide EbReceiver with the Detector interface so that additional
+        // data blocks can be formatted into the XTC, e.g. trigger information
+        m_drp.ebReceiver().configure(m_det, m_pgp.get());
 
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
@@ -1135,7 +1142,7 @@ int main(int argc, char* argv[])
             case 'k':
                 kwargs_str = kwargs_str.empty()
                            ? optarg
-                           : kwargs_str + ", " + optarg;
+                           : kwargs_str + "," + optarg;
                 break;
             case 'M':
                 para.prometheusDir = optarg;
@@ -1203,6 +1210,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
+        if (kwargs.first == "pva_addr")       continue;  // DrpBase
         if (kwargs.first == "interface")      continue;
         if (kwargs.first == "timeout")        continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",

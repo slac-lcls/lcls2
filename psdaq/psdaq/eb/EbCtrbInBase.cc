@@ -20,6 +20,13 @@
 #include <bitset>
 #include <chrono>
 
+#if !defined(_GNU_SOURCE)
+#  define _GNU_SOURCE
+#endif
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
 
@@ -80,8 +87,7 @@ static void dumpBatch(const TebContributor& ctrb,
 }
 
 
-EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
-                           const std::shared_ptr<MetricExporter>& exporter) :
+EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _transport    (prms.verbose, prms.kwargs),
   _maxResultSize(0),
   _batchCount   (0),
@@ -94,18 +100,6 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   _regSize      (0),
   _region       (nullptr)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.detName},
-                                            {"detseg", std::to_string(prms.detSegment)},
-                                            {"alias", prms.alias}};
-  exporter->add("TCtbI_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
-  exporter->add("TCtbI_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;          });
-  exporter->add("TCtbI_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
-  exporter->add("TCtbI_MisCt",  labels, MetricType::Counter, [&](){ return _missing;             });
-  exporter->add("TCtbI_DefSz",  labels, MetricType::Counter, [&](){ return _deferred.size();     });
-  exporter->add("TCtbI_BypCt",  labels, MetricType::Counter, [&](){ return _bypassCount;         });
-  exporter->add("TCtbI_NPrgCt", labels, MetricType::Counter, [&](){ return _noProgCount;         });
 }
 
 EbCtrbInBase::~EbCtrbInBase()
@@ -155,13 +149,34 @@ int EbCtrbInBase::startConnection(std::string& port)
   return 0;
 }
 
-int EbCtrbInBase::connect()
+int EbCtrbInBase::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.detName},
+                                            {"detseg", std::to_string(_prms.detSegment)},
+                                            {"alias", _prms.alias}};
+  exporter->add("TCtbI_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add("TCtbI_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;          });
+  exporter->add("TCtbI_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
+  exporter->add("TCtbI_MisCt",  labels, MetricType::Counter, [&](){ return _missing;             });
+  exporter->add("TCtbI_DefSz",  labels, MetricType::Counter, [&](){ return _deferred.size();     });
+  exporter->add("TCtbI_BypCt",  labels, MetricType::Counter, [&](){ return _bypassCount;         });
+  exporter->add("TCtbI_NPrgCt", labels, MetricType::Counter, [&](){ return _noProgCount;         });
+
+  return 0;
+}
+
+int EbCtrbInBase::connect(const std::shared_ptr<MetricExporter> exporter)
+{
+  int rc = _setupMetrics(exporter);
+  if (rc)  return rc;
+
   unsigned numEbs = std::bitset<64>(_prms.builders).count();
 
   _links.resize(numEbs);
 
-  int rc = linksConnect(_transport, _links, _prms.id, "TEB");
+  rc = linksConnect(_transport, _links, _prms.id, "TEB");
   if (rc)  return rc;
 
   return 0;
@@ -222,6 +237,7 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
 
         _regSize = regSize;
       }
+      _numBuffers    = numTebBuffers;
       _maxResultSize = regSize / numTebBuffers;
       size           = regSize;
     }
@@ -261,12 +277,14 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
                    __PRETTY_FUNCTION__, _prms.core[1]);
   }
 
-  logging::info("Receiver thread is starting");
+  logging::info("EB Receiver thread is starting with process ID %lu", syscall(SYS_gettid));
 
   int rcPrv = 0;
-  while (running.load(std::memory_order_relaxed))
+  while (true)
   {
     rc = _process(ctrb);
+    if (!running.load(std::memory_order_relaxed))
+      break;                            // Don't report errors when exiting
     if (rc < 0)
     {
       if (rc == -FI_ENOTCONN)
@@ -274,7 +292,11 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
         logging::critical("Receiver thread lost connection with a TEB");
         throw "Receiver thread lost connection with a TEB";
       }
-      if (rc == rcPrv)  throw "Repeating fatal error";
+      if (rc == rcPrv)
+      {
+        logging::critical("Receiver thread aborting on repeating fatal error: %d", rc);
+        throw "Repeating fatal error";
+      }
     }
     rcPrv = rc;
   }
@@ -288,33 +310,58 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
 
   // Pend for a Results batch (a set of EbDgrams) and process it.
   uint64_t  data;
-  const int tmo = 100;                  // milliseconds
-  if ( (rc = _transport.pend(&data, tmo)) < 0)
+  const int msTmo = 100;
+  if ( (rc = _transport.pend(&data, msTmo)) < 0)
   {
     if (rc == -FI_EAGAIN)
     {
       _matchUp(ctrb, nullptr);         // Try to sweep out any deferred Results
       rc = 0;
-
-      // This does something only if errors prevented replenishment in pend/poll
-      for (auto link : _links)
-        link->postCompRecv(0);
     }
-    else if (_transport.pollEQ() == -FI_ENOTCONN)
-      rc = -FI_ENOTCONN;
-    else
+    else if (rc != -FI_ENOTCONN)
       logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;
   }
 
+  unsigned flg = ImmData::flg(data);
   unsigned src = ImmData::src(data);
   unsigned idx = ImmData::idx(data);
   auto     lnk = _links[src];
   auto     ofs = idx * _maxResultSize;
   auto     bdg = static_cast<const ResultDgram*>(lnk->lclAdx(ofs)); // (char*)_region + ofs;
 
-  if (UNLIKELY(_prms.verbose >= VL_BATCH))
+  // bdg is first dgram in batch; set end to end of region if idg is within 1 batch size of it
+  const void* end = idx < _numBuffers - _prms.maxEntries ? (char*)bdg + _prms.maxEntries * _maxResultSize
+                                                         : (char*)_region + _regSize;
+
+  auto print = false;
+  if (src != bdg->xtc.src.value())
+  {
+    logging::error("%s:\n  Link src (%d) != dgram src (%d)", __PRETTY_FUNCTION__, src, bdg->xtc.src.value());
+    print = true;
+  }
+  if (flg != ImmData::NoResponse_Buffer)
+  {
+    logging::error("%s:\n  Wrong flags %u in immediate data: "
+                   "dgram %p, idx %8u, pid %014lx, svc %u, env %08x, src %2u, imm %08x",
+                   __PRETTY_FUNCTION__, flg,
+                   bdg, idx, bdg->pulseId(), bdg->service(), bdg->env, src, data);
+    print = true;
+  }
+  if (idx > _numBuffers)
+  {
+    logging::error("%s:\n  Buffer index is out of range 0:%u: %u\n", __PRETTY_FUNCTION__, _numBuffers, idx);
+    print = true;
+  }
+  if ((bdg < _region) || (end > ((char*)_region + _regSize)))
+  {
+    logging::error("%s:\n  Dgram %p:%p falls outside of region %p:%p\n",
+                   __PRETTY_FUNCTION__, bdg, end, _region, (char*)_region + _regSize);
+    print = true;
+  }
+
+  if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
   {
     auto     pid     = bdg->pulseId();
     unsigned ctl     = bdg->control();

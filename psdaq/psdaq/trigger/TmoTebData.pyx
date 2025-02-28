@@ -11,8 +11,7 @@ cdef class TmoTebData():
         self._bufOwner = view is not None
         if self._bufOwner:
             PyObject_GetBuffer(view, &self.buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
-            view_ptr = <char *>self.buf.buf
-            self.cptr = <ttd.TmoTebData *>(view_ptr)
+            self.cptr = <ttd.TmoTebData *>(self.buf.buf)
 
     def __dealloc__(self):
         if self._bufOwner:

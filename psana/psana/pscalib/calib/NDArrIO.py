@@ -231,7 +231,7 @@ def load_txt(fname):
         str_metad = 'dtype=%s ndim=%d shape=%s' % (str(dtype), ndim, str(shape))
         raise IOError('Inconsistent metadata (NDIM != len(shape)) in file: %s' % str_metad)
 
-    if ndim > 2: nparr.shape = shape
+    if ndim > 1: nparr.shape = shape
 
     return nparr
 
@@ -250,7 +250,7 @@ if __name__ == "__main__":
 
     arr1 = (1,2,3,4,5)
 
-    npa  = np.array(np.array(arr3), dtype=np.int)
+    npa  = np.array(np.array(arr3), dtype=np.int32)
     save_txt('nda.txt', npa, cmts=('Test of PSCalib.NDArrIO.save_txt(...)', 'save numpy array in the text file'), verbos=True)
 
 

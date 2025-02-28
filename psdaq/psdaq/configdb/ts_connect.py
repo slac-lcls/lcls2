@@ -13,8 +13,8 @@ class xpm_link:
         return (int(self.value)>>24)&0xff == 0xff
 
     def xpm_num(self):
-        print('xpm_num {:x} {:}'.format(self.value,(int(self.value)>>20)&0xf))
-        return (int(self.value)>>20)&0xf
+        print('xpm_num {:x} {:}'.format(self.value,(int(self.value)>>16)&0xff))
+        return (int(self.value)>>16)&0xff
 
 class ts_connector:
     def __init__(self,json_connect_info):
@@ -55,11 +55,6 @@ class ts_connector:
 
     def get_xpm_info(self):
         self.xpm_info = []
-        # FIXME: cpo/weaver think this doesn't work for digitizers,
-        # for example, where the DRP node can't learn which XPM port
-        # is feeding it timing information.  Currently think we should
-        # try to get the information from the XPM side, instead of the
-        # drp side.
         for key,node_info in self.connect_info['body']['drp'].items():
             try:
                 # FIXME: should have a better method to map xpm ip
@@ -107,9 +102,13 @@ class ts_connector:
             for igroup in range(8):
                 if (1<<igroup)&groups:
                     pv_names_downstream_xpm_master_enable.append(name+':PART:%d:Master'%igroup)
+            # also need to disable the sequences running on the downstream xpms 
+            for iseq in range(8):
+                pv_names_downstream_xpm_master_enable.append(name+':SEQENG:%d:ENABLE'%iseq)
+       
         num_master_disable = len(pv_names_downstream_xpm_master_enable)
         if (num_master_disable):
-            print('*** Disable downstream xpm readout group master:',pv_names_downstream_xpm_master_enable)
+            print('*** Disable downstream xpm readout group master+sequences:',pv_names_downstream_xpm_master_enable)
             try:
                 self.ctxt.put(pv_names_downstream_xpm_master_enable,[0]*num_master_disable)
             except TimeoutError:
@@ -123,12 +122,28 @@ class ts_connector:
         self.xpm_link_disable_all()
 
         d = {}
+        pvnames_rxready = []
         for xpm_num,xpm_port,readout_group in self.xpm_info:
             pvname = self.xpm_base+str(xpm_num)+':'+'LinkGroupMask'+str(xpm_port)
+            pvnames_rxready.append(self.xpm_base+str(xpm_num)+':'+'LinkRxReady'+str(xpm_port))
             if pvname in d:
                 d[pvname] |= (1<<readout_group)
             else:
                 d[pvname] = (1<<readout_group)
+
+        # make sure the XPM links from the detectors are OK
+        cnt = 0
+        while cnt < 15:
+            cnt += 1
+            rxready_values = self.ctxt.get(pvnames_rxready)
+            for pvname,val in zip(pvnames_rxready,rxready_values):
+                if val==1:  break
+                time.sleep(1)
+            if val==1:  break
+        if val == 1:
+            if cnt > 1:  print('RxLink locked after %u tries' % cnt)
+        else:
+            raise ValueError('RxLink not locked! %s' % pvname)
 
         pv_names = []
         values = []

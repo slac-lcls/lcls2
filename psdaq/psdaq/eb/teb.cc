@@ -17,6 +17,7 @@
 #include "psdaq/service/Fifo.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -103,11 +104,11 @@ namespace Pds {
     class Teb : public EbAppBase
     {
     public:
-      Teb(const EbParams& prms, const MetricExporter_t& exporter);
+      Teb(const EbParams& prms);
     public:
       int      resetCounters();
       int      startConnection(std::string& tebPort, std::string& mrqPort);
-      int      connect();
+      int      connect(const std::shared_ptr<MetricExporter>);
       int      configure(Trigger* object, unsigned prescale);
       void     unconfigure();
       void     disconnect();
@@ -119,6 +120,7 @@ namespace Pds {
       virtual
       void     process(EbEvent* event) override;
     private:
+      int      _setupMetrics(const std::shared_ptr<MetricExporter>);
       void     _queueMrqBuffers();
       void     _monitor(ResultDgram* rdg);
       void     _tryPost(const EbDgram* dg, uint64_t dsts, unsigned idx);
@@ -137,6 +139,8 @@ namespace Pds {
       unsigned                     _prescale;
       unsigned                     _iMeb;
       unsigned                     _rogReserved[MAX_MRQS];
+      uint64_t                     _lastMonPid;
+      uint64_t                     _monThrottle;
     private:
       unsigned                     _wrtCounter;
       uint64_t                     _pidPrv;
@@ -150,12 +154,13 @@ namespace Pds {
       uint64_t                     _nMonCount;
       uint64_t                     _mebCount[MAX_MEBS];
       uint64_t                     _prescaleCount;
+      uint64_t                     _latPid;
       int64_t                      _latency;
       int64_t                      _trgTime;
+      uint64_t                     _entries;
     private:
       const EbParams&              _prms;
       EbLfClient                   _l3Transport;
-      const MetricExporter_t&      _exporter;
     };
   };
 };
@@ -191,15 +196,16 @@ using namespace Pds::Eb;
 //   }
 // }
 
-Teb::Teb(const EbParams&         prms,
-         const MetricExporter_t& exporter) :
-  EbAppBase     (prms, exporter, "TEB", EB_TMO_MS),
+Teb::Teb(const EbParams& prms) :
+  EbAppBase     (prms, "TEB"),
   _mrqTransport (prms.verbose, prms.kwargs),
   _batch        {nullptr, 0, 0},
   //_trimmed      (0),
   _trigger      (nullptr),
   _iMeb         (0),
   _rogReserved  {0, 0, 0, 0},
+  _lastMonPid   (0),
+  _monThrottle  (0),
   _pidPrv       (0),
   _eventCount   (0),
   _trCount      (0),
@@ -210,31 +216,14 @@ Teb::Teb(const EbParams&         prms,
   _nMonCount    (0),
   _mebCount     {0, 0, 0, 0},
   _prescaleCount(0),
+  _latPid       (0),
   _latency      (0),
   _trgTime      (0),
   _prms         (prms),
-  _l3Transport  (prms.verbose, prms.kwargs),
-  _exporter     (exporter)
+  _l3Transport  (prms.verbose, prms.kwargs)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias},
-                                            {"alias", prms.alias}};
-  exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;            });
-  exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;               });
-  exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;            });
-  exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;            }); // Outbound
-  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.posting(); });
-  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;            });
-  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;          });
-  exporter->add("TEB_nMonCt", labels, MetricType::Counter, [&](){ return _nMonCount;             });
-  exporter->add("TEB_MebCt0", labels, MetricType::Counter, [&](){ return _mebCount[0];           });
-  exporter->add("TEB_MebCt1", labels, MetricType::Counter, [&](){ return _mebCount[1];           });
-  exporter->add("TEB_MebCt2", labels, MetricType::Counter, [&](){ return _mebCount[2];           });
-  exporter->add("TEB_MebCt3", labels, MetricType::Counter, [&](){ return _mebCount[3];           });
-  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;         });
-  exporter->add("TEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;               });
-  exporter->add("TEB_trg_dt", labels, MetricType::Gauge,   [&](){ return _trgTime;               });
+  if (_prms.kwargs.find("mon_throttle") != _prms.kwargs.end())
+    _monThrottle = std::stoul(const_cast<EbParams&>(_prms).kwargs["mon_throttle"]);
 }
 
 int Teb::resetCounters()
@@ -303,27 +292,51 @@ int Teb::startConnection(std::string& tebPort,
   return 0;
 }
 
-int Teb::connect()
+int Teb::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
-  int rc;
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.alias},
+                                            {"alias", _prms.alias}};
+  exporter->constant("TEB_BEMax",  labels, _prms.maxEntries);
 
+  exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;            });
+  exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;               });
+  exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;            });
+  exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;            }); // Outbound
+  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.posting(); });
+  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;            });
+  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;          });
+  exporter->add("TEB_nMonCt", labels, MetricType::Counter, [&](){ return _nMonCount;             });
+  exporter->add("TEB_MebCt0", labels, MetricType::Counter, [&](){ return _mebCount[0];           });
+  exporter->add("TEB_MebCt1", labels, MetricType::Counter, [&](){ return _mebCount[1];           });
+  exporter->add("TEB_MebCt2", labels, MetricType::Counter, [&](){ return _mebCount[2];           });
+  exporter->add("TEB_MebCt3", labels, MetricType::Counter, [&](){ return _mebCount[3];           });
+  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;         });
+  exporter->add("TEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;               });
+  exporter->add("TEB_trg_dt", labels, MetricType::Gauge,   [&](){ return _trgTime;               });
+  exporter->add("TEB_BtEnt",  labels, MetricType::Gauge,   [&](){ return _entries;               });
+  for (unsigned i = 0; i < _monBufLists.size(); ++i)
+    exporter->add("TEB_MBufCt" + std::to_string(i), labels, MetricType::Gauge, [&, i](){ return _monBufLists[i].count(); });
+
+  return 0;
+}
+
+int Teb::connect(const MetricExporter_t exporter)
+{
   _l3Links .resize(_prms.addrs.size());
   _mrqLinks.resize(_prms.numMrqs);
 
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
     _monBufLists.emplace_back(_prms.numMebEvBufs[i]);
 
-  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
-                                            {"partition", std::to_string(_prms.partition)},
-                                            {"detname", _prms.alias},
-                                            {"alias", _prms.alias}};
-  for (unsigned i = 0; i < _monBufLists.size(); ++i)
-    _exporter->add("TEB_MBufCt" + std::to_string(i), labels, MetricType::Gauge, [&, i](){ return _monBufLists[i].count(); });
+  int rc = _setupMetrics(exporter);
+  if (rc)  return rc;
 
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
-  rc = EbAppBase::connect(TEB_TR_BUFFERS);
+  rc = EbAppBase::connect(TEB_TR_BUFFERS, exporter);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
@@ -432,9 +445,10 @@ void Teb::run()
   resetCounters();
 
   int rcPrv = 0;
-  while (lRunning)
+  while (true)
   {
     rc = EbAppBase::process();
+    if (!lRunning)  break;              // Don't report errors when exiting
     if (rc < 0)
     {
       if (rc == -FI_EAGAIN)
@@ -450,7 +464,7 @@ void Teb::run()
       }
       else if (rc == rcPrv)
       {
-        logging::critical("TEB thread aborting on repeating fatal error");
+        logging::critical("TEB thread aborting on repeating fatal error: %d", rc);
         throw "Repeating fatal error";
       }
     }
@@ -458,7 +472,9 @@ void Teb::run()
   }
 
   uint64_t immData;
-  while (_mrqTransport.poll(&immData) > 0);
+  while (_mrqTransport.poll(&immData) > 0); // Drain
+
+  EventBuilder::dump(0);
 
   //_tbDump();
 
@@ -467,34 +483,39 @@ void Teb::run()
 
 void Teb::_monitor(ResultDgram* rdg)
 {
-  const auto numMebs{_monBufLists.size()};
-  const auto allMebs{(1u << numMebs) - 1};
-  auto       dsts{rdg->monitor() & allMebs};
-  const bool roundRobin{dsts == allMebs};
-  while (dsts)
+  if (rdg->pulseId() - _lastMonPid > _monThrottle)
   {
-    unsigned iMeb;
-    if (roundRobin)
+    _lastMonPid = rdg->pulseId();
+
+    const auto numMebs{_monBufLists.size()};
+    const auto allMebs{(1u << numMebs) - 1};
+    auto       dsts{rdg->monitor() & allMebs};
+    const bool roundRobin{dsts == allMebs};
+    while (dsts)
     {
-      iMeb = _iMeb;
-      _iMeb = (iMeb + 1) % numMebs;
-    }
-    else
-      iMeb = __builtin_ffs(dsts) - 1;
+      unsigned iMeb;
+      if (roundRobin)
+      {
+        iMeb = _iMeb;
+        _iMeb = (iMeb + 1) % numMebs;
+      }
+      else
+        iMeb = __builtin_ffs(dsts) - 1;
 
-    dsts &= ~(1 << iMeb);
+      dsts &= ~(1 << iMeb);
 
-    if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
-    {
-      unsigned buffer;
-      _monBufLists[iMeb].pop(buffer);
+      if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
+      {
+        unsigned buffer;
+        _monBufLists[iMeb].pop(buffer);
 
-      rdg->monBufNo(buffer);
+        rdg->monBufNo(buffer);
 
-      ++_monitorCount;
-      ++_mebCount[iMeb];
+        ++_monitorCount;
+        ++_mebCount[iMeb];
 
-      return;
+        return;
+      }
     }
   }
 
@@ -511,7 +532,7 @@ void Teb::process(EbEvent* event)
   if (UNLIKELY(_prms.verbose >= VL_DETAILED))
   {
     printf("Teb::process event dump:\n");
-    event->dump(_trCount + _eventCount);
+    event->dump(1, _trCount + _eventCount);
   }
 
   const EbDgram* dgram = event->creator();
@@ -552,16 +573,17 @@ void Teb::process(EbEvent* event)
   _queueMrqBuffers();
 
   // "Selected" EBs respond with a Result, others simply acknowledge
-  if (ImmData::flg(imm) == (ImmData::Response | ImmData::Buffer))
+  if (ImmData::flg(imm) == ImmData::Response_Buffer)
   {
-    if (!ImmData::buf(ImmData::flg(imm)))
-    {
-      logging::critical("%s:\n  No valid index received from %016lx for Results: "
-                        "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
-                        __PRETTY_FUNCTION__, _prms.indexSources,
-                        pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
-      throw "No index for Results";
-    }
+    // Dead code:
+    //if (ImmData::buf(ImmData::flg(imm)) == ImmData::Transition)
+    //{
+    //  logging::critical("%s:\n  No valid index received from %016lx for Results: "
+    //                    "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
+    //                    __PRETTY_FUNCTION__, _prms.indexSources,
+    //                    pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
+    //  throw "No index for Results";
+    //}
     auto idx = ImmData::idx(imm);
     auto buf = _batMan.fetch(idx);
     auto rdg = new(buf) ResultDgram(*dgram, _prms.id);
@@ -571,9 +593,9 @@ void Teb::process(EbEvent* event)
     if (rdg->isEvent())
     {
       // Present event contributions to "user" code for building a result datagram
-      auto t0 = std::chrono::system_clock::now();
+      auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
       _trigger->event(event->begin(), event->end(), *rdg); // Consume
-      auto t1 = std::chrono::system_clock::now();
+      auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
       _trgTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
 
       // Handle prescale
@@ -608,7 +630,7 @@ void Teb::process(EbEvent* event)
 
     _tryPost(rdg, dsts, idx);
   }
-  else                                  // "Non-selected" TEB case
+  else if (ImmData::flg(imm) == ImmData::NoResponse_Transition) // "Non-selected" TEB case
   {
     // Only transitions are sent to "non-selected" TEBs.
     // "Non-selected" TEBs don't respond to any dgrams they receive, but
@@ -648,12 +670,21 @@ void Teb::process(EbEvent* event)
     // Make the transition buffer available to the contributor again
     post(event->begin(), event->end());
   }
+  else
+  {
+    // We can legitimately get here for timed-out/fixed-up events that are
+    // comprised of contributions from non-common RoG contributors
+    if (!event->remaining())
+      logging::error("%s:\n  Wrong flags %u in immediate data: "
+                     "pid %014lx, rem %016lx, con %016lx, imm %08x, svc %u, env %08x",
+                     __PRETTY_FUNCTION__, ImmData::flg(imm),
+                     pid, event->remaining(), event->contract(), imm, dgram->service(), dgram->env);
+  }
 
-  auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+  if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
+    _latency = latency<us_t>(dgram->time);
+    _latPid  = dgram->pulseId();
+  }
 }
 
 // Called by EB  on timeout when it is empty of events
@@ -718,16 +749,34 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 
 void Teb::_post(const Batch& batch)
 {
-  size_t   size   = _trigger->size();
+  size_t   maxResultSize = _trigger->size();
   size_t   extent = (reinterpret_cast<const char*>(batch.end) -
-                     reinterpret_cast<const char*>(batch.start)) + size;
-  unsigned offset = batch.idx * size;
-  uint64_t data   = ImmData::value(ImmData::Buffer, _prms.id, batch.idx);
+                     reinterpret_cast<const char*>(batch.start)) + maxResultSize;
+  unsigned offset = batch.idx * maxResultSize;
+  uint64_t data   = ImmData::value(ImmData::NoResponse_Buffer, _prms.id, batch.idx);
   uint64_t destns = batch.dsts; // & ~_trimmed;
+  _entries = extent / maxResultSize;
 
   batch.end->setEOL();                  // Terminate the batch
 
-  if (UNLIKELY(_prms.verbose >= VL_BATCH))
+  bool print = false;
+  if (UNLIKELY(extent > _prms.maxEntries * maxResultSize))
+  {
+    logging::error("%s:\n  Batch extent exceeds maximum: %zu vs %u * %zu = %zu",
+                   __PRETTY_FUNCTION__, extent,
+                   _prms.maxEntries, maxResultSize, _prms.maxEntries * maxResultSize);
+    print = true;
+  }
+  if (UNLIKELY((batch.start < _batMan.batchRegion()) ||
+               ((char*)(batch.start) + extent > (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize())))
+  {
+    logging::error("%s:\n  Batch %p:%p falls outide of region limits %p:%p",
+                   __PRETTY_FUNCTION__, batch.start, (char*)(batch.start) + extent,
+                   _batMan.batchRegion(), (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize());
+    print = true;
+  }
+
+  if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
   {
     uint64_t pid = batch.start->pulseId();
     printf("TEB posts          %9lu result  [%8u] @ "
@@ -815,7 +864,7 @@ public:
   TebApp(const std::string& collSrv, EbParams&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
-  json connectionInfo() override;
+  json connectionInfo(const json& msg) override;
   void connectionShutdown() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
@@ -849,16 +898,10 @@ TebApp::TebApp(const std::string& collSrv,
   _ebPortEph   (prms.ebPort.empty()),
   _mrqPortEph  (prms.mrqPort.empty()),
   _exposer     (Pds::createExposer(prms.prometheusDir, getHostname())),
-  _exporter    (std::make_shared<MetricExporter>()),
-  _teb         (std::make_unique<Teb>(_prms, _exporter)),
+  _teb         (std::make_unique<Teb>(_prms)),
   _unconfigFlag(false)
 {
   Py_Initialize();
-
-  if (_exposer)
-  {
-    _exposer->RegisterCollectable(_exporter);
-  }
 
   logging::info("Ready for transitions");
 }
@@ -883,7 +926,7 @@ std::string TebApp::_error(const json&        msg,
   return errorMsg;
 }
 
-json TebApp::connectionInfo()
+json TebApp::connectionInfo(const nlohmann::json& msg)
 {
   // Allow the default NIC choice to be overridden
   if (_prms.ifAddr.empty())
@@ -918,6 +961,13 @@ void TebApp::handleConnect(const json& msg)
   // the config database on configure
   _connectMsg = msg;
 
+  // If the exporter already exists, replace it so that previous metrics are deleted
+  _exporter = std::make_shared<MetricExporter>();
+  if (_exposer)
+  {
+    _exposer->RegisterCollectable(_exporter);
+  }
+
   json body = json({});
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
@@ -926,7 +976,7 @@ void TebApp::handleConnect(const json& msg)
     return;
   }
 
-  rc = _teb->connect();
+  rc = _teb->connect(_exporter);
   if (rc)
   {
     _error(msg, "Error in TEB connect()");
@@ -1073,6 +1123,8 @@ void TebApp::handleDisconnect(const json& msg)
 
   _teb->disconnect();
 
+  if (_exporter)  _exporter.reset();
+
   // Reply to collection with transition status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -1084,6 +1136,7 @@ void TebApp::handleReset(const json& msg)
 
   _unconfigure();
   _teb->disconnect();
+  if (_exporter)  _exporter.reset();
   connectionShutdown();
 }
 
@@ -1113,7 +1166,6 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.contractors.fill(0);
   _prms.receivers.fill(0);
 
-  _prms.maxEntries   = MAX_ENTRIES;     // Revisit: Make configurable?
   _prms.maxBuffers   = 0;               // Save the largest value
   _prms.indexSources = 0ull;            // DRP(s) with the largest DMA index range
   _prms.numBuffers.resize(MAX_DRPS, 0); // Number of buffers on each DRP
@@ -1376,6 +1428,8 @@ int main(int argc, char **argv)
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
     if (kwargs.first == "script_path")  continue;
+    if (kwargs.first == "mon_throttle") continue;
+    if (kwargs.first == "eb_timeout")   continue; // EbAppBase
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
@@ -1395,6 +1449,8 @@ int main(int argc, char **argv)
 
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
+
+  prms.maxEntries = MAX_ENTRIES;        // Revisit: Make configurable?
 
   try
   {

@@ -32,13 +32,13 @@ Usage::
     xe, ye = rqh_to_xy(re, qh) # Returns reciprocal (xe,ye) coordinates of the qh projection on Ewald sphere of radius re.
     xe, ye, ze = rqhqv_to_xyz(re, qh, qv) # Returns reciprocal (xe,ye,ze) coordinates of the qh,qv projection on Ewald sphere of radius re.
 
-    # Commands to test in the release directory: 
+    # Commands to test in the release directory:
     # python ./pyimgalgos/src/FiberAngles.py <test-id>
     # where
     # <test-id> = 1 - test of the Fraser transformation
     # <test-id> = 2 - test of the phi angle
-    # <test-id> = 3 - test of the beta angle 
-    
+    # <test-id> = 3 - test of the beta angle
+
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
@@ -67,10 +67,8 @@ See:
 Created in 2015 by Mikhail Dubrovin
 """
 
-##-----------------------------
 import numpy as np
 import math # pi, sin, sqrt, ceil, floor, fabs
-##-----------------------------
 
 class Storage :
     """Storage class for local data exchange between methods.
@@ -78,9 +76,7 @@ class Storage :
     def __init__(self) :
         pass
 
-#------------------------------
 sp = Storage() # singleton
-##-----------------------------
 
 def _fillimg(r,c,a) :
     """This method is used in fraser(...), is called in map(_fillimg, irows, icols, arr) and serves to fill image.
@@ -88,8 +84,7 @@ def _fillimg(r,c,a) :
     sp.image[r,c] += a
     sp.count[r,c] += 1
     return r
-    
-##-----------------------------
+
 
 def fraser_xyz(x, y, z, beta_deg, k=1.0) :
     """Do Fraser transformation for of 3-d points given by x,y,z arrays for angle beta around x and
@@ -120,7 +115,6 @@ def fraser_xyz(x, y, z, beta_deg, k=1.0) :
 
     return s12rot*k, s3rot*k
 
-##-----------------------------
 
 def fraser(arr, beta_deg, z, center=None, oshape=(1500,1500)) :
     """Do Fraser correction for an array at angle beta and sample-to-detector distance z, given in
@@ -128,18 +122,18 @@ def fraser(arr, beta_deg, z, center=None, oshape=(1500,1500)) :
        Example: fraser(array,10,909); (10 degrees at 100mm distance)
 
        ASSUMPTION:
-       1. by default 2-d arr image center corresponds to (x,y) origin 
+       1. by default 2-d arr image center corresponds to (x,y) origin
        - arr      - [in] 2-d image array
        - beta_deg - [in] angle beta in degrees
        - z        - [in] distance from sample to detector given in units of pixel size (110um)
-       - center   - [in] center (row,column) location on image, which will be used as (x,y) origin 
+       - center   - [in] center (row,column) location on image, which will be used as (x,y) origin
        - oshape   - [in] ouitput image shape
     """
 
     sizex = arr.shape[0]
     sizey = arr.shape[1]
 
-    xc, yc = center if center is not None else (sizex/2, sizey/2) 
+    xc, yc = center if center is not None else (sizex/2, sizey/2)
 
     xarr = np.arange(math.floor(-xc), math.floor(sizex-xc))
     yarr = np.arange(math.floor(-yc), math.floor(sizey-yc))
@@ -168,15 +162,15 @@ def fraser(arr, beta_deg, z, center=None, oshape=(1500,1500)) :
 
     orows, orows1 = oshape[0], oshape[0] - 1
     ocols, ocols1 = oshape[1], oshape[1] - 1
-    
-    icols = np.array(s12rot + math.ceil(ocols/2), dtype=np.int)
-    irows = np.array(s3rot  + math.ceil(orows/2), dtype=np.int)
+
+    icols = np.array(s12rot + math.ceil(ocols/2), dtype=np.int32)
+    irows = np.array(s3rot  + math.ceil(orows/2), dtype=np.int32)
 
     irows = np.select([irows<0, irows>orows1], [0,orows1], default=irows)
     icols = np.select([icols<0, icols>ocols1], [0,ocols1], default=icols)
 
     sp.image = np.zeros(oshape, dtype=arr.dtype)
-    sp.count = np.zeros(oshape, dtype=np.int)
+    sp.count = np.zeros(oshape, dtype=np.int32)
 
     unused_lst = map(_fillimg, irows, icols, arr)
 
@@ -184,19 +178,18 @@ def fraser(arr, beta_deg, z, center=None, oshape=(1500,1500)) :
     #print 's3rot.shape: ', s3rot.shape
     #print 's12rot.shape: ', s12rot.shape
     #print 'reciparr.shape: ', reciparr.shape
-    #print 'count min=%d, max=%d' % (sp.count.min(), sp.count.max())    
+    #print 'count min=%d, max=%d' % (sp.count.min(), sp.count.max())
 
     countpro = np.select([sp.count<1], [-1], default=sp.count)
     reciparr = np.select([countpro>0], [sp.image/countpro], default=0)
 
     return s12rot, s3rot, reciparr
 
-##-----------------------------
 
 def fraser_bins(fraser_img, dist_pix, dqv=0) :
     """Returns horizontal and vertical HBins objects for pixels in units of k=1
     Fraser imaging array, returned by method fraser(...).
-    Units: sample to detector distance dist_pix given in pixels, 
+    Units: sample to detector distance dist_pix given in pixels,
     dqv - normalized offset for qv (for l=1 etc.)
     """
     from pyimgalgos.HBins import HBins
@@ -209,16 +202,14 @@ def fraser_bins(fraser_img, dist_pix, dqv=0) :
     qv_bins = HBins((-qvmax+dqv, qvmax+dqv), rows, vtype=np.float32)
     return qh_bins, qv_bins
 
-#------------------------------
 
 def rotation_cs(X, Y, C, S) :
     """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot
     """
-    Xrot = X*C - Y*S 
-    Yrot = Y*C + X*S 
+    Xrot = X*C - Y*S
+    Yrot = Y*C + X*S
     return Xrot, Yrot
 
-#------------------------------
 
 def rotation(X, Y, angle_deg) :
     """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot rotated by angle_deg
@@ -227,7 +218,6 @@ def rotation(X, Y, angle_deg) :
     S, C = math.sin(angle_rad), math.cos(angle_rad)
     return rotation_cs(X, Y, C, S)
 
-#------------------------------
 
 def rotation_phi_beta(x, y, z, phi_deg, beta_deg, scale) :
     """Returns horizontal and vertical components of the scattering vector in units of scale (k)
@@ -236,39 +226,36 @@ def rotation_phi_beta(x, y, z, phi_deg, beta_deg, scale) :
     xrot, yrot = rotation(np.array(x), np.array(y), phi_deg)
     return fraser_xyz(xrot, yrot, z, beta_deg, scale)
 
-##-----------------------------
 
 def calc_phi(x1pix, y1pix, x2pix, y2pix, dist) :
     """Evaluates fiber phi angle [rad] for two peaks in equatorial region
        - x1pix - [in] x coordinate of the 1st point
-       - y1pix - [in] y coordinate of the 1st point 
-       - x1pix - [in] x coordinate of the 2nd point 
-       - y1pix - [in] y coordinate of the 2nd point 
+       - y1pix - [in] y coordinate of the 1st point
+       - x1pix - [in] x coordinate of the 2nd point
+       - y1pix - [in] y coordinate of the 2nd point
        - dist  - [in] distance from sample to detector
-    """	
+    """
     x1 = x1pix / dist
     y1 = y1pix / dist
     x2 = x2pix / dist
-    y2 = y2pix / dist	
+    y2 = y2pix / dist
     d1 = math.sqrt(x1*x1 + y1*y1 + 1.) - 1.
     d2 = math.sqrt(x2*x2 + y2*y2 + 1.) - 1.
-    return math.atan((y2*d1 - y1*d2) / (x1*d2 - x2*d1)) 
+    return math.atan((y2*d1 - y1*d2) / (x1*d2 - x2*d1))
 
-##-----------------------------
 
 def calc_beta(xpix, ypix, phi, dist) :
     """Evaluates fiber beta angle [rad] for two peaks in equatorial region
        - xpix - [in] x coordinate of the point
-       - ypix - [in] y coordinate of the point 
+       - ypix - [in] y coordinate of the point
        - phi  - [in] fiber tilt angle [rad] if the detector plane
        - dist - [in] distance from sample to detector
-    """	
+    """
     x1 = xpix / dist
     y1 = ypix / dist
     d = math.sqrt(1. + x1*x1 + y1*y1) - 1.
     return math.atan((y1*math.cos(phi) + x1*math.sin(phi)) / d)
 
-##-----------------------------
 
 def funcy_l0(x, phi_deg, bet_deg) :
     """Function for parameterization of y(x, phi, beta)
@@ -280,7 +267,7 @@ def funcy_l0(x, phi_deg, bet_deg) :
     s, c = math.sin(phi), math.cos(phi)
     sb, cb = math.sin(bet), math.cos(bet)
     if not sb :
-        return -x*s/c if c else INFI 
+        return -x*s/c if c else INFI
 
     t = sb/cb if cb else INFI
     s, c = (s/t, c/t) if t else (s*INFI, c*INFI)
@@ -300,13 +287,11 @@ def funcy_l0(x, phi_deg, bet_deg) :
     sqapro = np.select([sqarg>0,], [sqarg,], default=0)
     return -B + np.sign(B)*np.sqrt(sqapro)
 
-##-----------------------------
 
 # DEPRICATED methods alias for funcy_l0(x, phi, beta)
 funcy_v0 = funcy_l0
 funcy = funcy_l0
 
-##-----------------------------
 
 def funcy_l1_v0(x, phi_deg, bet_deg, DoR=0.474, sgnrt=-1.) :
     """DEPRICATED: D/L - is not a constant as it should be
@@ -329,7 +314,7 @@ def funcy_l1_v0(x, phi_deg, bet_deg, DoR=0.474, sgnrt=-1.) :
     G = 1-DoR/sb if sb else INFI
     denum = c*c - 1 if math.fabs(c)!=1 else ZERO
 
-    # parameters of of y^2 + 2By + C = 0 
+    # parameters of of y^2 + 2By + C = 0
     B = c*(x*s+G)/denum
     C = (x*x*(s*s-1) + 2*x*s*G + G*G - 1)/denum
     sqarg = B*B-C
@@ -346,7 +331,6 @@ def funcy_l1_v0(x, phi_deg, bet_deg, DoR=0.474, sgnrt=-1.) :
     #return -B + sign * np.sqrt(sqapro)
     return -B + sgnrt * np.sqrt(sqapro)
 
-##-----------------------------
 
 def funcy_l1_v1(x, phi_deg, bet_deg, DoR=0.4292, sgnrt=1.) :
     """v0: EQUATION FOR D/R. Function for parameterization of y(x, phi, beta)
@@ -370,7 +354,7 @@ def funcy_l1_v1(x, phi_deg, bet_deg, DoR=0.4292, sgnrt=1.) :
         s, c = s*cb/DoR, c*cb/DoR
     denum = c*c - 1 if math.fabs(c)!=1 else ZERO
 
-    # parameters of of y^2 + 2By + C = 0 
+    # parameters of of y^2 + 2By + C = 0
     B = c*(x*s+g)/denum
     C = (x*x*(s*s-1) + 2*g*x*s + g*g - 1)/denum
     sqarg = B*B-C
@@ -390,14 +374,13 @@ def funcy_l1_v1(x, phi_deg, bet_deg, DoR=0.4292, sgnrt=1.) :
     return -B + sgnrt * np.sqrt(sqapro)
     #return -B + sgn * np.sqrt(sqapro)
     #return -B - np.sign(B)*np.sqrt(sqapro)
-##-----------------------------
+
 
 def funcy2(x, a, b, c) :
     """Quadratic polynomial function to test curve_fit.
-    """    
+    """
     return a*x*x + b*x + c
 
-##-----------------------------
 
 def rqh_to_xz(re, qh) :
     """Returns reciprocal (qxe,qze) coordinates of the qh projection on Ewald sphere of radius re.
@@ -407,9 +390,9 @@ def rqh_to_xz(re, qh) :
       - re - (float scalar) Ewald sphere radius (1/A)
       - qh - (numpy array) horizontal component of q values (1/A)
 
-    Assumption: 
-       reciprocal frame origin (0,0) is on Ewald sphere,  
-       center of the Ewald sphere is in (-re,0), 
+    Assumption:
+       reciprocal frame origin (0,0) is on Ewald sphere,
+       center of the Ewald sphere is in (-re,0),
        qh is a length of the Ewald sphere chorde from origin to the point with peak.
        NOTE: qh, sina, cosa, qxe, qze - can be numpy arrays shaped as qh.
        Returns: qxe, qze - coordinates of the point on Ewald sphere equivalent to q(re,qh);
@@ -424,7 +407,6 @@ def rqh_to_xz(re, qh) :
     #qxe, qze =  qh*cosa, -qh*sina
     return  qh*cosa, -qh*sina
 
-##-----------------------------
 
 def rqhqv_to_xyz(re, qh, qv) :
     """Returns reciprocal (xe,ye,ze) coordinates of the q(re,qh,qv) projections on Ewald sphere frame.
@@ -442,7 +424,6 @@ def rqhqv_to_xyz(re, qh, qv) :
     qye = qv
     return  qxe, qye, qze
 
-##-----------------------------
 
 def qh_to_xy(qh, R) :
     """Alias to DEPRICATED method with swaped parameters.
@@ -450,7 +431,6 @@ def qh_to_xy(qh, R) :
     qxe, qze = rqh_to_xz(R, qh)
     return qze, qxe
 
-##-----------------------------
 
 def recipnorm(x, y, z) :
     """Returns normalizd reciprocal space coordinates (qx,qy,qz)
@@ -460,14 +440,12 @@ def recipnorm(x, y, z) :
        - k points from 3-d space origin to the point with coordinates x, y, z
        (pixel coordinates relative to IP)
        - scattering is elastic, no energy loss or gained, abs(k^prime)=abs(k)
-       - reciprocal space origin is in the intersection point of axes z and Ewald's sphere. 
+       - reciprocal space origin is in the intersection point of axes z and Ewald's sphere.
     """
-    L = np.sqrt(z*z + x*x + y*y) 
+    L = np.sqrt(z*z + x*x + y*y)
     return x/L, y/L, z/L-1.
 
-##-----------------------------
 ##---------- TESTS ------------
-##-----------------------------
 
 def test_plot_phi() :
     print """Test plot for phi angle"""
@@ -482,7 +460,7 @@ def test_plot_phi() :
     y3 = [funcy(x,  -7, tet) for x in xarr]
     y4 = [funcy(x, -10, tet) for x in xarr]
     y5 = [funcy(x,  10, tet) for x in xarr]
-    
+
     fig1, ax1 = gg.plotGraph(xarr, y0, figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80))
     ax1.plot(xarr, y1,'r-')
     ax1.plot(xarr, y2,'y-')
@@ -496,7 +474,6 @@ def test_plot_phi() :
     #gg.savefig('variation-phi.png')
     gg.show()
 
-##-----------------------------
 
 def test_plot_beta() :
     print """Test plot for beta angle"""
@@ -514,7 +491,7 @@ def test_plot_beta() :
     y6 = [funcy(x, phi,   2) for x in xarr]
     y7 = [funcy(x, phi,   5) for x in xarr]
     y8 = [funcy(x, phi,  10) for x in xarr]
-    
+
     fig2, ax2 = gg.plotGraph(xarr, y0, figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80)) 
     ax2.plot(xarr, y1,'r-')
     ax2.plot(xarr, y2,'y-')
@@ -531,7 +508,6 @@ def test_plot_beta() :
     #gg.savefig('variation-theta.png')
     gg.show()
 
-##-----------------------------
 
 def test_plot_beta_l0() :
     print """Test plot for beta angle"""
@@ -542,8 +518,6 @@ def test_plot_beta_l0() :
     phi = 0
     cmt = 'l0'
 
-
-    
     y_000 = [funcy_l0(x, phi,   0) for x in xarr]
     y_p10 = [funcy_l0(x, phi,  10) for x in xarr]
     y_p20 = [funcy_l0(x, phi,  20) for x in xarr]
@@ -552,12 +526,12 @@ def test_plot_beta_l0() :
     y_p50 = [funcy_l0(x, phi,  50) for x in xarr] # 48
     y_m10 = [funcy_l0(x, phi, -10) for x in xarr]
     y_m20 = [funcy_l0(x, phi, -20) for x in xarr]
-    y_m30 = [funcy_l0(x, phi, -30) for x in xarr]    
-    y_m40 = [funcy_l0(x, phi, -40) for x in xarr]    
+    y_m30 = [funcy_l0(x, phi, -30) for x in xarr]
+    y_m40 = [funcy_l0(x, phi, -40) for x in xarr]
     y_m50 = [funcy_l0(x, phi, -50) for x in xarr] # -48
 
-    #fig2, ax2 = gg.plotGraph(xarr, y_m01, pfmt='k.', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80)) 
-    fig2, ax2 = gg.plotGraph(xarr, y_000, pfmt='k-', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80), lw=2) 
+    #fig2, ax2 = gg.plotGraph(xarr, y_m01, pfmt='k.', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80))
+    fig2, ax2 = gg.plotGraph(xarr, y_000, pfmt='k-', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80), lw=2)
 
     #b: blue
     #g: green
@@ -567,7 +541,6 @@ def test_plot_beta_l0() :
     #y: yellow
     #k: black
     #w: white
-
 
     ax2.plot(xarr, y_p50,'g-x', label=' 50')
     ax2.plot(xarr, y_p40,'m-',  label=' 40')
@@ -580,7 +553,7 @@ def test_plot_beta_l0() :
     ax2.plot(xarr, y_m30,'b.',  label='-30')
     ax2.plot(xarr, y_m40,'m.',  label='-40')
     ax2.plot(xarr, y_m50,'g+',  label='-50')
-                                        
+
     ax2.legend(loc='upper right')
 
     ax2.set_xlabel('x', fontsize=14)
@@ -590,7 +563,6 @@ def test_plot_beta_l0() :
     gg.savefig('test-plot-beta-l0.png')
     gg.show()
 
-##-----------------------------
     #b: blue
     #g: green
     #r: red
@@ -599,7 +571,6 @@ def test_plot_beta_l0() :
     #y: yellow
     #k: black
     #w: white
-##-----------------------------
 
 def test_plot_beta_l1(DoR=0.4292, sgnrt=1.) :
     print """Test plot for beta angle"""
@@ -614,18 +585,18 @@ def test_plot_beta_l1(DoR=0.4292, sgnrt=1.) :
 
     cmt = 'POS' if sgnrt > 0 else 'NEG' #'-B -/+ sqrt(B*B-C)'
     cmt = '%s-DoR-%.3f' % (cmt, DoR)
-    
+
     y_p10 = [fancy_plt(x, phi,  10,   DoR, sgnrt) for x in xarr]
     y_000 = [fancy_plt(x, phi,   0,   DoR, sgnrt) for x in xarr]
     y_m10 = [fancy_plt(x, phi, -10,   DoR, sgnrt) for x in xarr]
-    y_m13 = [fancy_plt(x, phi, -13,   DoR, sgnrt) for x in xarr]    
-    y_m15 = [fancy_plt(x, phi, -15,   DoR, sgnrt) for x in xarr]    
+    y_m13 = [fancy_plt(x, phi, -13,   DoR, sgnrt) for x in xarr]
+    y_m15 = [fancy_plt(x, phi, -15,   DoR, sgnrt) for x in xarr]
     y_m20 = [fancy_plt(x, phi, -20,   DoR, sgnrt) for x in xarr]
     y_m30 = [fancy_plt(x, phi, -30,   DoR, sgnrt) for x in xarr]
-    y_m35 = [fancy_plt(x, phi, -35,   DoR, sgnrt) for x in xarr]    
+    y_m35 = [fancy_plt(x, phi, -35,   DoR, sgnrt) for x in xarr]
     y_m40 = [fancy_plt(x, phi, -40,   DoR, sgnrt) for x in xarr]
-    
-    fig2, ax2 = gg.plotGraph(xarr, y_000, pfmt='k-', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80), lw=2) 
+
+    fig2, ax2 = gg.plotGraph(xarr, y_000, pfmt='k-', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80), lw=2)
     ax2.plot(xarr, y_p10,'g-',  label=' 10')
     ax2.plot(xarr, y_000,'k-',  label='  0')
     ax2.plot(xarr, y_m10,'g.',  label='-10')
@@ -637,7 +608,7 @@ def test_plot_beta_l1(DoR=0.4292, sgnrt=1.) :
     ax2.plot(xarr, y_m40,'b+',  label='-40')
 
     ax2.legend(loc='upper right')
-    
+
     ax2.set_title('%s: phi=%.1f, beta=[-40,10]' % (cmt,phi), color='k', fontsize=20)
 
     ax2.set_xlabel('x', fontsize=14)
@@ -646,8 +617,6 @@ def test_plot_beta_l1(DoR=0.4292, sgnrt=1.) :
     gg.savefig('test-plot-beta-l1-%s.png' % cmt)
     gg.show()
 
-##-----------------------------
-##-----------------------------
     #b: blue
     #g: green
     #r: red
@@ -656,7 +625,6 @@ def test_plot_beta_l1(DoR=0.4292, sgnrt=1.) :
     #y: yellow
     #k: black
     #w: white
-##-----------------------------
 
 def test_plot_beta_l1_zoom(DoR=0.4292, sgnrt=1.) :
     print """Test plot for beta angle"""
@@ -668,36 +636,36 @@ def test_plot_beta_l1_zoom(DoR=0.4292, sgnrt=1.) :
     fancy_plt = funcy_l1_v1
     #fancy_plt = funcy_l1_v0
 
-    if sgnrt > 0 : 
+    if sgnrt > 0 :
 
         cmt = 'POS' #'-B -/+ sqrt(B*B-C)'
         cmt = '%s-DoR-%.3f' % (cmt, DoR)
-        
+
         xarr = np.linspace(-0.29,0.29,60)
 
         y_000 = [fancy_plt(x, phi,   0,   DoR, sgnrt) for x in xarr]
         y_m05 = [fancy_plt(x, phi,  -5,   DoR, sgnrt) for x in xarr]
         y_m09 = [fancy_plt(x, phi,  -9,   DoR, sgnrt) for x in xarr]
-        y_m13 = [fancy_plt(x, phi, -13.3, DoR, sgnrt) for x in xarr]    
+        y_m13 = [fancy_plt(x, phi, -13.3, DoR, sgnrt) for x in xarr]
         y_m18 = [fancy_plt(x, phi, -18,   DoR, sgnrt) for x in xarr]
         y_m20 = [fancy_plt(x, phi, -20,   DoR, sgnrt) for x in xarr]
-        
-        fig2, ax2 = gg.plotGraph(xarr, y_000, pfmt='k-', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80), lw=2) 
+
+        fig2, ax2 = gg.plotGraph(xarr, y_000, pfmt='k-', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80), lw=2)
         ax2.plot(xarr, y_000,'k-',  label='  0')
         ax2.plot(xarr, y_m05,'g.',  label=' -5')
         ax2.plot(xarr, y_m09,'y.',  label=' -9')
         ax2.plot(xarr, y_m13,'r-.', label='-13')
         ax2.plot(xarr, y_m18,'c.',  label='-18')
         ax2.plot(xarr, y_m20,'b.',  label='-20')
-        
+
         ax2.set_title('%s: phi=%.1f, beta=[-20,0]' % (cmt,phi), color='k', fontsize=20)
         ax2.legend(loc='upper center')
 
-    if sgnrt < 0 : 
+    if sgnrt < 0 :
 
         cmt = 'NEG' #'-B -/+ sqrt(B*B-C)'
         cmt = '%s-DoR-%.3f' % (cmt, DoR)
-        
+
         xarr = np.linspace(-1,1,50)
 
         y_m20 = [fancy_plt(x, phi, -20,   DoR, sgnrt) for x in xarr]
@@ -708,7 +676,7 @@ def test_plot_beta_l1_zoom(DoR=0.4292, sgnrt=1.) :
         y_m35 = [fancy_plt(x, phi, -35,   DoR, sgnrt) for x in xarr]
         y_m40 = [fancy_plt(x, phi, -40,   DoR, sgnrt) for x in xarr]
         y_m60 = [fancy_plt(x, phi, -60,   DoR, sgnrt) for x in xarr]
-        
+
         fig2, ax2 = gg.plotGraph(xarr, y_m25, pfmt='k-', figsize=(10,5), window=(0.15, 0.10, 0.78, 0.80), lw=2) 
         ax2.plot(xarr, y_m20,'g+-', label='-20')
         ax2.plot(xarr, y_m23,'m-',  label='-23')
@@ -718,7 +686,7 @@ def test_plot_beta_l1_zoom(DoR=0.4292, sgnrt=1.) :
         ax2.plot(xarr, y_m35,'r.',  label='-35')
         ax2.plot(xarr, y_m40,'c.',  label='-40')
         ax2.plot(xarr, y_m60,'+',   label='-60')
-        
+
         ax2.set_title('%s: phi=%.1f, beta=[-60,-20]' % (cmt,phi), color='k', fontsize=20)
         ax2.legend(loc='lower right')
 
@@ -728,7 +696,6 @@ def test_plot_beta_l1_zoom(DoR=0.4292, sgnrt=1.) :
     gg.savefig('test-plot-beta-l1-%s-zoomed.png' % cmt)
     gg.show()
 
-##-----------------------------
 
 def test_fraser() :
     print """Test fraser transformation"""
@@ -748,7 +715,6 @@ def test_fraser() :
     plt.ioff() # hold control on show() after the last image
     plt.show()
 
-#------------------------------
 
 if __name__ == "__main__" :
 
@@ -775,8 +741,6 @@ if __name__ == "__main__" :
         print 'Default test: test_fraser()'
         test_fraser()
     sys.exit('Test %s is completed' % sys.argv[1])
-    
-##-----------------------------
-##-----------------------------
-##-----------------------------
+
+# EOF
 

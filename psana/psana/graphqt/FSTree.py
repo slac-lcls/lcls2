@@ -180,7 +180,7 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
     w = FSTree(parent=None,\
-               topdir='/cds/data/psdm/MEC/mecx24215/calib',\
+               topdir='/sdf/data/lcls/ds/MFX/mfxlx5520/calib/',\
                is_selectable_dir=False,\
                selectable_ptrns=['.data'],\
                unselectable_ptrns=['HISTORY']\

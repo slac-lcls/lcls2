@@ -39,7 +39,7 @@ public:
         _offset[0]=0;
         _numentries = names.num();
         unsigned shapeIndex = 0;
-        for (unsigned i=0; i<_numentries-1; i++) {
+        for (unsigned i=0; _numentries && i<_numentries-1; i++) {
             Name& name = names.get(i);
             if (name.rank()==0) _offset[i+1]=_offset[i]+Name::get_element_size(name.type());
             else {
@@ -91,8 +91,7 @@ public:
         }
     }
     static void checkType(int32_t val, Name& name) {
-        if (Name::INT32!=name.type() && Name::ENUMVAL!=name.type() &&
-            Name::ENUMDICT!=name.type()) {
+        if (Name::INT32!=name.type() && Name::ENUMVAL!=name.type() && Name::ENUMDICT!=name.type()) {
             incorrectType(__FILE__,__LINE__,name);
         }
     }
@@ -271,6 +270,7 @@ public:
     {
         Shapes& shapes = *new (&_shapesdata, _bufEnd) Shapes(_parent, _bufEnd);
         Names& names = _nameindex.names();
+        _numExpectedEntries = names.num();
         shapes.alloc(names.numArrays()*sizeof(Shape), _shapesdata, _parent, _bufEnd);
         new (&_shapesdata, _bufEnd) Data(_parent, _bufEnd);
     }
@@ -280,10 +280,18 @@ public:
     {
         Shapes& shapes = *new (&_shapesdata, _bufEnd) Shapes(_parent, _bufEnd);
         Names& names = _nameindex.names();
+        _numExpectedEntries = names.num();
         shapes.alloc(names.numArrays()*sizeof(Shape), _shapesdata, _parent, _bufEnd);
         new (&_shapesdata, _bufEnd) Data(_parent, _bufEnd);
     }
 
+    ~CreateData()
+    {
+        if (_numentries != _numExpectedEntries) {
+            printf("CreateData: %d entries not equal to number of expected entries %d\n", _numentries, _numExpectedEntries);
+            abort();
+        }
+    }
 
     template <typename T>
     Array<T> allocate(unsigned index, unsigned *shape)
@@ -325,17 +333,14 @@ public:
     template <typename T>
     void set_value(unsigned index, T val)
     {
-
         Data& data = _shapesdata.data();
 
-        if(index != _numentries)
-            {
-                char error_string [500];
-                const char * error_it_name = _nameindex.names().get(index).name();
+        if(index != _numentries) {
+            const char * error_it_name = _nameindex.names().get(index).name();
 
-                snprintf(error_string,sizeof(error_string), "Item \"%s\" with index %d out of order",error_it_name, index);
-                throw std::runtime_error(error_string);
-            }
+            printf("Item \"%s\" with index %d out of order",error_it_name, index);
+            abort();
+        }
 
         Name& name = _nameindex.names().get(index);
 
@@ -369,6 +374,7 @@ public:
     }
 
 private:
+    unsigned    _numExpectedEntries;
     Xtc&        _parent;
     const void* _bufEnd;
 };

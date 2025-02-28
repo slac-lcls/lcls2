@@ -174,7 +174,7 @@ def issue_2022_03_16():
     """
     from psana import DataSource
 
-    ds    = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
+    ds    = DataSource(files='/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
     orun  = next(ds.runs())
     det   = orun.Detector('tmo_quadanode')
     cc    = det.calibconst

@@ -1,6 +1,7 @@
 add_library(utils SHARED
     src/Logger.cc
     src/DirFileIterator.cc
+    src/trim.cc
 )
 
 target_include_directories(utils PUBLIC
@@ -16,6 +17,7 @@ install(FILES
     ctest_utils.hh
     SysLog.hh
     NDArrayGenerators.hh
+    trim.hh
     DESTINATION include/psalg/utils
 )
 

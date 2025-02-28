@@ -12,7 +12,7 @@ logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(mess
 
 def issue_2020_11_09():
     from psana import DataSource
-    ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
+    ds = DataSource(files='/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
 
     orun = next(ds.runs())
     #for orun in ds.runs():
@@ -139,12 +139,12 @@ def issue_2020_12_19():
 
         det = run.Detector('epixquad')
 
-        print('det._det_name      : ', det._det_name) # epixquad
-        print('det._dettype       : ', det._dettype)  # epix
-        print('det.raw._det_name  : ', det.raw._det_name) # epixquad
-        print('det.raw._dettype   : ', det.raw._dettype)  # epix
-        print('det.raw._uniqueid  : ', det.raw._uniqueid)  # epix_3926196238-017....
-        print('_sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
+        print('det._det_name       : ', det._det_name) # epixquad
+        print('det._dettype        : ', det._dettype)  # epix
+        print('det.raw._det_name   : ', det.raw._det_name) # epixquad
+        print('det.raw._dettype    : ', det.raw._dettype)  # epix
+        print('det.raw._uniqueid   : ', det.raw._uniqueid)  # epix_3926196238-017....
+        print('_sorted_segment_inds: ', det.raw._sorted_segment_inds) # [0, 1, 2, 3]
 
         for stepnum,step in enumerate(run.steps()):
 
@@ -245,12 +245,12 @@ def issue_2021_02_09():
   run = next(ds.runs())
   det = run.Detector('tmoopal')
 
-  print('det._det_name      : ', det._det_name) # epixquad
-  print('det._dettype       : ', det._dettype)  # epix
-  print('det.raw._det_name  : ', det.raw._det_name) # epixquad
-  print('det.raw._dettype   : ', det.raw._dettype)  # epix
-  print('det.raw._uniqueid  : ', det.raw._uniqueid)  # epix_3926196238-017....
-  print('_sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
+  print('det._det_name       : ', det._det_name) # epixquad
+  print('det._dettype        : ', det._dettype)  # epix
+  print('det.raw._det_name   : ', det.raw._det_name) # epixquad
+  print('det.raw._dettype    : ', det.raw._dettype)  # epix
+  print('det.raw._uniqueid   : ', det.raw._uniqueid)  # epix_3926196238-017....
+  print('_sorted_segment_inds: ', det.raw._sorted_segment_inds) # [0, 1, 2, 3]
 
   for ievt, evt in enumerate(run.events()):
     print('Event %03d' % ievt)
@@ -305,10 +305,10 @@ def issue_2021_03_13_full():
 
   t0_sec = time()
   #arr_med = np.median(arr3d, axis=0)
-  arr_med = np.quantile(arr3d, 0.5, axis=0, interpolation='linear')
+  arr_med = np.quantile(arr3d, 0.5, axis=0, method='linear')
   print('median/quantile(0.5) time = %.3f sec' % (time()-t0_sec))
-  arr_qlo = np.quantile(arr3d, fraclo, axis=0, interpolation='linear')
-  arr_qhi = np.quantile(arr3d, frachi, axis=0, interpolation='linear')
+  arr_qlo = np.quantile(arr3d, fraclo, axis=0, method='linear')
+  arr_qhi = np.quantile(arr3d, frachi, axis=0, method='linear')
   arr_dev_3d = arr3d[:,] - arr_med # .astype(dtype=np.float64)
   arr_abs_dev = np.median(np.abs(arr_dev_3d), axis=0)
 
@@ -356,7 +356,7 @@ def issue_2021_03_13():
   print(info_ndarr(arr_med, '\nnp.median time = %.3f sec '%(time()-t0_sec), last=10))
 
   t0_sec = time()
-  arr_qua = np.quantile(arr3d_f64, 0.5, axis=0, interpolation='linear')
+  arr_qua = np.quantile(arr3d_f64, 0.5, axis=0, method='linear')
   print(info_ndarr(arr_qua, '\nnp.quantile(0.5) time = %.3f sec '%(time()-t0_sec), last=10))
 
   med_med = np.median(arr_med)
@@ -368,7 +368,7 @@ def issue_2021_03_13():
   a = [1,2,2]
   q = 0.5
   print('\nmedian(%s) = %.3f' % (str(a), np.median(a)))
-  print('quantile(%s, %.3f) = %.3f' % (str(a), q, np.quantile(a, q, interpolation='linear')))
+  print('quantile(%s, %.3f) = %.3f' % (str(a), q, np.quantile(a, q, method='linear')))
 
 
 def issue_2021_10_06():

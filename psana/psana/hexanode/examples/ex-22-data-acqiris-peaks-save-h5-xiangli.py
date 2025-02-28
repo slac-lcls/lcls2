@@ -20,14 +20,17 @@ from psana.hexanode.WFHDF5IO import open_output_h5file
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
+from psana.hexanode.examples.ex_test_data import DIR_DATA_TEST
 
+FNAME = '%s/%s' % (DIR_DATA_TEST, 'data-amox27716-r0100-acqiris-e001000.xtc2')
 USAGE = 'Usage: python %s' % sys.argv[0]
 
 def proc_data(**kwargs):
 
     logger.info(str_kwargs(kwargs, title='Input parameters:'))
 
-    DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
+#    DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
+    DSNAME       = kwargs.get('dsname', FNAME)
     DETNAME      = kwargs.get('detname','tmo_quadanode')
     EVSKIP       = kwargs.get('evskip', 0)
     EVENTS       = kwargs.get('events', 10) + EVSKIP
@@ -78,7 +81,7 @@ if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print('%s\nTEST %s' % (50*'_', tname))
 
-    kwargs = {'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2',
+    kwargs = {'dsname'   : FNAME,
               'detname'  : 'tmo_quadanode',
               'numchs'   : 5,
               'numhits'  : 16,

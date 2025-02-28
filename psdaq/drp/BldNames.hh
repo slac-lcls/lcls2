@@ -2,6 +2,9 @@
 #define BldNames_hh
 
 #include "xtcdata/xtc/VarDef.hh"
+#include <string>
+#include <vector>
+#include <map>
 
 namespace BldNames {
     class EBeamDataV7 : public XtcData::VarDef {
@@ -12,23 +15,24 @@ namespace BldNames {
     public:
         PCav();
     };
+    class GasDet : public XtcData::VarDef {
+    public:
+        GasDet();
+    };
+    class BeamMonitorV1 : public XtcData::VarDef {
+    public:
+        BeamMonitorV1();
+        static unsigned mcaddr(const char*);
+        static std::vector<unsigned> arraySizes();
+    };
     class GmdV1 : public XtcData::VarDef {
     public:
         GmdV1();
-    };
-    class IpimbDataV2 : public XtcData::VarDef {
-    public:
-        IpimbDataV2();
-    };
-    class IpimbConfigV2 : public XtcData::VarDef {
-    public:
-        IpimbConfigV2();
     };
     class GmdV2 : public XtcData::VarDef { 
     public:
         GmdV2();
     };
-
     class XGmdV2 : public XtcData::VarDef {
     public:
         XGmdV2();

@@ -1,11 +1,10 @@
 
 
 import os
-import subprocess
-import pytest
 import h5py
 import numpy as np
 from glob import glob
+from mpi4py import MPI
 
 
 from psana import DataSource
@@ -27,7 +26,6 @@ def global_except_hook(exctype, value, traceback):
 
 #sys.excepthook = global_except_hook
 
-from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
@@ -55,14 +53,14 @@ def gen_h5(source='xtc', pid=None):
     for run in ds.runs():
         # test that we can make a Detector, which is somewhat subtle
         # because SRV cores make dummy detectors using NullDataSource/NullRun
-        dummydet = run.Detector('xppcspad')
+        run.Detector('xppcspad')
         for i,evt in enumerate(run.events()):
 
             print('event:', i)
 
-            smd.event(evt, 
-                      timestamp=evt.timestamp, 
-                      oneint=1, 
+            smd.event(evt,
+                      timestamp=evt.timestamp,
+                      oneint=1,
                       twofloat=2.0,
                       arrint=np.ones(2, dtype=int),
                       arrfloat=np.ones(2, dtype=float)
@@ -72,8 +70,10 @@ def gen_h5(source='xtc', pid=None):
 
             if evt.timestamp % 2 == 0:
                 smd.event(evt.timestamp, # make sure passing int works
-                          unaligned_int=3,
                           every_other_missing=2)
+                smd.event(evt,
+                          unaligned_int=3,
+                          align_group="mygroup")
 
             if (rank % 2 == 0) and (smd._type == 'client'):
                 smd.event(evt, missing_vds=1)
@@ -99,16 +99,16 @@ class SmallDataTest:
         f = h5py.File(self.fn, 'r')
         self.f = f
         return
-        
-    def test_int(self): 
+
+    def test_int(self):
         assert np.all(np.array(self.f['/oneint']) == 1)
         return
 
-    def test_float(self): 
+    def test_float(self):
         assert np.all(np.array(self.f['/twofloat']) == 2.0)
         return
 
-    def test_arrint(self): 
+    def test_arrint(self):
         a = np.array(self.f['/arrint'])
         assert np.all(a == 1), a
         assert a.shape[1] == 2, a
@@ -118,12 +118,12 @@ class SmallDataTest:
     def test_arrfloat(self):
         a = np.array(self.f['/arrfloat'])
         assert np.all(a == 1.0), a
-        assert a.shape[1] == 2, a 
+        assert a.shape[1] == 2, a
         assert a.dtype == float, a
         return
 
     def test_unaligned(self, mode):
-        d = np.array(self.f['/unaligned_int'])
+        d = np.array(self.f['mygroup/unaligned_int'])
         assert np.all(d == 3), d
         if mode=='xtc':
             assert d.shape == (5,), d
@@ -170,7 +170,7 @@ def run_test(mode, tmp_path):
             ShmemTest.launch_server(tmp_file, pid)
 
         pid = comm.bcast(pid, root=0)
-        gen_h5('shmem', pid=pid) 
+        gen_h5('shmem', pid=pid)
 
     # make sure everyone is finished writing test file
     # then test with a single rank
@@ -219,5 +219,3 @@ if __name__ == '__main__':
     # COMMENT IN TO RUN pytest ...
     tmp_path = pathlib.Path(os.environ.get('TEST_XTC_DIR', os.getcwd()))
     main(tmp_path)
-
-

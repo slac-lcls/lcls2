@@ -24,12 +24,13 @@ import surf.devices.microchip       as microchip
 import LclsTimingCore               as timing
 import psdaq.pyxpm.xpm              as xpm
 from psdaq.pyxpm._AxiLiteRingBuffer import AxiLiteRingBuffer
+import click
 
 class Top(pr.Device):
     mmcmParms = [ ['MmcmPL119', 0x08900000],
                   ['MmcmPL70' , 0x08a00000],
                   ['MmcmPL130', 0x08b00000],
-                  ['MmcmPL186', 0x80040000] ]
+                  ['MmcmPL186', 0x80030000] ]
 
     def __init__(   self,       
                     name        = "Top",
@@ -37,9 +38,14 @@ class Top(pr.Device):
                     ipAddr      = '10.0.1.101',
                     memBase     = 0,
                     fidPrescale = 200,
+                    numDDC      = 0,
+                    noTiming    = False,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
-        
+        self.fwVersion = 0x030B0000
+
+        if noTiming:
+            self.mmcmParms = []
 
         ################################################################################################################
         # UDP_SRV_XVC_IDX_C         => 2542,  -- Xilinx XVC 
@@ -155,12 +161,12 @@ class Top(pr.Device):
                 offset = Top.mmcmParms[i][1],
             ))
         
-        hsrParms = [ ['HSRep0',0x09000000],
-                     ['HSRep1',0x09010000],
-                     ['HSRep2',0x09020000],
-                     ['HSRep3',0x09030000],
-                     ['HSRep4',0x09040000],
-                     ['HSRep5',0x09050000] ]
+        hsrParms = [ ['HSRep[0]',0x09000000],
+                     ['HSRep[1]',0x09010000],
+                     ['HSRep[2]',0x09020000],
+                     ['HSRep[3]',0x09030000],
+                     ['HSRep[4]',0x09040000],
+                     ['HSRep[5]',0x09050000] ]
         for i in range(len(hsrParms)):
             self.add(xpm.Ds125br401(
                 memBase = self.srp,
@@ -178,19 +184,18 @@ class Top(pr.Device):
             self.add(amc)
             self.amcs.append(amc)
 
-#        self.add(timing.GthRxAlignCheck(
-        self.add(xpm.GthRxAlignCheck(
-            memBase = self.srp,
-            name   = 'UsGthRxAlign',
-            offset = 0x0b000000,
-        ))        
-                       
-#        self.add(timing.GthRxAlignCheck(
-        self.add(xpm.GthRxAlignCheck(
-            memBase = self.srp,
-            name   = 'CuGthRxAlign',
-            offset = 0x0c000000,
-        ))        
+        if not noTiming:
+            self.add(xpm.GthRxAlignCheck(
+                memBase = self.srp,
+                name   = 'UsGthRx',
+                offset = 0x0b000000,
+            ))        
+
+            self.add(xpm.GthRxAlignCheck(
+                memBase = self.srp,
+                name   = 'CuGthRx',
+                offset = 0x0c000000,
+            ))        
                        
         self.add(xpm.XpmApp(
             memBase = self.srp,
@@ -209,8 +214,16 @@ class Top(pr.Device):
         self.add(xpm.XpmSequenceEngine(
             memBase = self.srp,
             name   = 'SeqEng_0',
-            offset = 0x80020000,
+            offset = 0x80040000,
         ))
+
+        # DDC at 0x80060000 + 0x1000*i
+        for i in range(numDDC):
+            self.add(xpm.DestDiagControl(
+                memBase = self.srp,
+                name    = f'DestDiagControl_{i}',
+                offset  = 0x80060000+i*0x1000,
+            ))
 
 #        self.add(xpm.CuPhase(
 #            memBase = self.srp,
@@ -221,6 +234,27 @@ class Top(pr.Device):
         self.add(xpm.XpmPhase(
             memBase = self.srp,
             name   = 'CuToScPhase',
-            offset = 0x80050000,
+            offset = 0x80080000,
         ))
 
+    def start(self):
+        #  Firmware version check
+        fwVersion = self.AxiVersion.FpgaVersion.get()
+        if (fwVersion < self.fwVersion):
+            errMsg = f"""
+            PCIe.AxiVersion.FpgaVersion = {fwVersion:#04x} != {self.fwVersion:#04x}
+            Please update PCIe firmware using software/scripts/updatePcieFpga.py
+            https://github.com/slaclab/lcls2-pgp-pcie-apps/blob/master/firmware/targets/shared_config.mk
+            """
+            click.secho(errMsg, bg='red')
+            raise ValueError(errMsg)
+
+        print('*** Setting default HSRepeater equalizer values ***')
+        #  Set default equalizer values
+        for idev in (0,1,3,4):
+            dev = self.HSRep[idev]
+            for ch in range(4):
+                try:
+                    dev.EQ_ch[ch].set(3)
+                except:
+                    print('Caught exception.  Carry on.')

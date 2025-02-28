@@ -18,6 +18,7 @@ namespace Pds {
       int32_t readcntsum;
       int32_t startcntsum;
       int32_t queuecntsum;
+      int32_t group;
       int32_t msgdelayset;
       int32_t msgdelayget;
       int32_t headercntl0;

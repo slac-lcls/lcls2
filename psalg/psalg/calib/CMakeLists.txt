@@ -16,6 +16,7 @@ add_library(calib SHARED
 target_include_directories(calib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${RapidJSON_INCLUDE_DIRS}
 )
 
 target_link_libraries(calib

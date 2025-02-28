@@ -67,7 +67,7 @@ for nstep,step in enumerate(myrun.steps()):
 
     avgimg = None
     for nevt,evt in enumerate(step.events()):
-        image = det.raw.image(evt).astype(np.float)
+        image = det.raw.image(evt).astype(np.float32)
         if avgimg is None:
             avgimg = image.copy()
         else:

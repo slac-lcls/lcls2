@@ -1,4 +1,5 @@
 from psdaq.configdb.typed_json import cdict
+from psdaq.configdb.get_config import update_config
 import psdaq.configdb.configdb as cdb
 import psdaq.configdb.opal_config_store as opal
 import sys
@@ -11,8 +12,11 @@ def opaltt_cdict():
 
     #  append to the help string
     help_str = top.get("help:RO")
-    help_str += "\nfex.eventcodes.beam  : beam present  = AND(.incl) and not OR(.excl)"
-    help_str += "\nfex.eventcodes.laser : laser present = AND(.incl) and not OR(.excl)"
+    help_str += "\nfex.beam  : beam present  = (.incl) and not OR(.excl)"
+    help_str += "\nfex.laser : laser present = (.incl) and not OR(.excl)"
+    help_str += "\nfex.[beam/laser].[incl/excl].eventcodes   : list of eventcodes"
+    help_str += "\nfex.[beam/laser].[incl/excl].destinations : list of destinations"
+
     help_str += "\nfex.roi              : inclusive columns (x) and rows (y)"
     help_str += "\nfex.pedestal_adj     : extra offset to image values"
     help_str += "\nfex.signal.minvalue  : minimum signal (ADU) to report valid value"
@@ -25,12 +29,13 @@ def opaltt_cdict():
     #  append new fields
     top.set("fex.enable",    1, 'UINT8')
 
-    #  assume mode is nobeam on separate events (vs nobeam in separate roi) 
-    top.set("fex.eventcodes.beam.incl" , [136], 'UINT8') # beam present = AND beam.incl NOR beam.excl
-    top.set("fex.eventcodes.beam.excl" , [161], 'UINT8') 
-    top.set("fex.eventcodes.laser.incl", [67], 'UINT8') # laser present = AND laser.incl NOR laser.excl
-    top.set("fex.eventcodes.laser.excl", [68], 'UINT8') 
+    top.define_enum("destEnum", {'DontCare':0, 'DIAG0':1, 'BSYDump':2, 'HXR':3, 'SXR':4, 'S30XL':5})
 
+    for sel in ('beam','laser'):
+        for op in ('incl','excl'):
+            top.set(f"fex.{sel}.{op}.eventcode"  , 0, 'UINT16')
+            top.set(f"fex.{sel}.{op}.destination", 0, 'destEnum')
+    
     top.set("fex.sig.roi.x0",    0, 'UINT32')
     top.set("fex.sig.roi.y0",  350, 'UINT32')
     top.set("fex.sig.roi.x1", 1023, 'UINT32')
@@ -81,18 +86,29 @@ def opaltt_cdict():
 if __name__ == "__main__":
     args = cdb.createArgs().args
 
-    create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
+    create = not args.update
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
-
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
-    mycdb.add_alias(args.alias)
-    mycdb.add_device_config('opal')
 
     top = opaltt_cdict()
     top.setInfo('opal', args.name, args.segm, args.id, 'No comment')
 
-    mycdb.modify_device(args.alias, top)
+    if args.update:
+        cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+        top = update_config(cfg, top.typed_json(), args.verbose)
+        # weight array size might have changed
+        wts  = top['fex']['fir_weights']
+        wlen = top[':types:']['fex']['fir_weights'][1]
+        if wlen!=len(wts):
+            print(f'Updating fir_weights len {wlen} to {len(wts)}')
+            top[':types:']['fex']['fir_weights'] = ['DOUBLE', len(wts)]
+    if not args.dryrun:
+        if create:
+            mycdb.add_alias(args.alias)
+            mycdb.add_device_config('opal')
+        mycdb.modify_device(args.alias, top)
+

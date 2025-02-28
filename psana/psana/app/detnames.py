@@ -44,7 +44,7 @@ def detnames():
     for name in names:
       datatype = name[1]
       data = getattr(myrun.Detector(name[0]),datatype)
-      segments = ','.join([str(segid) for segid in data._sorted_segment_ids])
+      segments = ','.join([str(segid) for segid in data._sorted_segment_inds])
       newnames.append((name[0],datatype,segments,data._uniqueid))
     names = newnames
   else:

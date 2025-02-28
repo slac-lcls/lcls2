@@ -18,13 +18,20 @@ except NameError:
     QChar = chr
 
 NAmcs       = 2
-NGroups     = 16
+NGroups     = 8
+NSeqCodes   = 32
 Masks       = ['None','0','1','2','3','4','5','6','7','All']
 
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 ATCAWidget  = None
+
+def isATCA(pvbase):
+    print(f'** isATCA {pvbase}')
+    pv = Pv(pvbase+':FwBuild')
+    v = pv.get()
+    return 'Kcu' not in v
 
 class PvPAddr(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name):
@@ -52,9 +59,15 @@ class PvPAddr(QtWidgets.QWidget):
             if qs[0:8]=='ffffffff':
                 s = 'XTPG'
             elif qs[0:2]=='ff':
-                shelf = int(qs[2:3],16)
+                shelf = int(qs[2:4],16)
                 port  = int(qs[6:8],16)
-                s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
+
+                pvbase = ':'.join(self.pv.pvname.split(':')[:-2])+f':{shelf}'
+                if isATCA(pvbase):
+                    s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
+                else:
+                    s = 'XPM:%d:QSFP%d-%d'%(shelf,port/4,port%4)
+                    
             self.__display.valueSet.emit(s)
         else:
             print(err)
@@ -78,6 +91,26 @@ class PvPushButtonX(QtWidgets.QPushButton):
     def buttonClicked(self):
         self.pv.put(1)
         self.pv.put(0)
+
+class PvPushButtonVal(QtWidgets.QPushButton):
+
+    valueSet = QtCore.pyqtSignal('QString',name='valueSet')
+
+    def __init__(self, pvname, label, value):
+        super(PvPushButtonVal, self).__init__(label)
+        self.value = value
+        if ATCAWidget:
+            self.setMaximumWidth(70)
+
+        self.clicked.connect(self.buttonClicked)
+
+        initPvMon(self,pvname)
+
+    def update(self, err):
+        pass
+
+    def buttonClicked(self):
+        self.pv.put(self.value)
 
 class PvEditIntX(PvEditInt):
 
@@ -103,7 +136,7 @@ class PvGroupMask(PvComboDisplay):
     def setValue(self):
         ivalue = self.currentIndex()
         value = 0
-        if ivalue>8:
+        if ivalue>NGroups:
             value = 0xff
         elif ivalue>0:
             value = 1<<(ivalue-1)
@@ -115,9 +148,9 @@ class PvGroupMask(PvComboDisplay):
         if err is None:
             idx = 0
             if (q&(q-1))!=0:
-                idx = 9
+                idx = NGroups+1
             else:
-                for i in range(8):
+                for i in range(NGroups):
                     if q&(1<<i):
                         idx = i+1
             self.setCurrentIndex(idx)
@@ -197,7 +230,7 @@ def DeadTime(pvbase,parent):
     deadgrid = QtWidgets.QGridLayout()
 
     textWidgets = []
-    for j in range(8):
+    for j in range(NGroups):
         ptextWidgets = []
         for i in range(32):
             ptextWidgets.append( PvDblArrayW() )
@@ -206,13 +239,13 @@ def DeadTime(pvbase,parent):
     parent.dtPvId = []
     deadgrid.addWidget( QtWidgets.QLabel('Group'), 0, 0, 1, 2 )
 #    deadgrid.addWidget( QtWidgets.QLabel('En'), 0, 2 )
-    for j in range(8):
+    for j in range(NGroups):
         deadgrid.addWidget( QtWidgets.QLabel('%d'%j ), 0, j+3 )
     for i in range(14):
         parent.dtPvId.append( PvLinkIdG(pvbase+'RemoteLinkId'+'%d'%i,
                                         deadgrid, i+1, 0) )
 #        deadgrid.addWidget( PvCheckBox(pvbase+'LinkEnable'+'%d'%i,None), i+1, 2 )
-        for j in range(8):
+        for j in range(NGroups):
             deadgrid.addWidget( textWidgets[j][i], i+1, j+3 )
     for i in range(28,32):
         k = i-12
@@ -222,7 +255,7 @@ def DeadTime(pvbase,parent):
             deadgrid.addWidget( textWidgets[j][i], k, j+3 )
 
     parent.deadflnk = []
-    for j in range(8):
+    for j in range(NGroups):
         ppvbase = pvbase+'PART:%d:'%j
         print(ppvbase)
         parent.deadflnk.append( PvDblArray( ppvbase+'DeadFLnk', textWidgets[j] ) )
@@ -378,17 +411,24 @@ class XpmGroups(object):
     # monitor PAddr recursively
     # monitor PART:[0..7].Master,L0InpRate
     def __init__(self,pvbase):
-        self.name    = pvbase[-6:]
+    # assuming that pvbase is of the form DAQ:NEH:XPM:1:
+        pvbase_split = pvbase.split(":")
+        pos = pvbase_split.index("XPM")
+        self.name = ":".join([pvbase_split[pos],pvbase_split[pos+1],""])
         self.parent  = None
+        # adding try except because in the fee teststand xpm0 is not reachable
         paddr = Pv(pvbase+'PAddr').get()
+
         if paddr!=0xffffffff:
             name = xpmLinkId(paddr)[0]
-            if name[:3]=='XPM':
-                self.parent = XpmGroups(pvbase[:-6]+name+':')
+            if 'XPM' in name:
+                xpmpath=":".join(pvbase_split[:pos])
+                xpmname=":".join(["",name,""])
+                self.parent = XpmGroups(f'{xpmpath}{xpmname}')
 
-        self.vals = {'master':{i:Pv(pvbase+f'PART:{i}:Master'   ,self.update) for i in range(8)},
-                    'l0rate':{i:Pv(pvbase+f'PART:{i}:L0InpRate' ,self.update) for i in range(8)},
-                     'codes' : Pv(pvbase+f'SEQCODES'            ,self.update, isStruct=True) }
+        self.vals = {'master':{i:Pv(pvbase+f'PART:{i}:Master'    ,self.update) for i in range(NGroups)},
+                     'l0rate':{i:Pv(pvbase+f'PART:{i}:L0InpRate' ,self.update) for i in range(NGroups)},
+                     'codes' : Pv(pvbase+f'SEQCODES'             ,self.update, isStruct=True) }
 
     def update(self,err):
         pass
@@ -397,20 +437,21 @@ class XpmGroups(object):
         if self.parent:
             vals = self.parent._update()
         else:
-            vals = {'master':{i:'-' for i in range(8)},
-                    'l0rate':{i:'-' for i in range(8)},
+            vals = {'master':{i:'-' for i in range(NGroups)},
+                    'l0rate':{i:'-' for i in range(NGroups)},
                     'codes' :{i:{'master':'-',
                                  'desc'  :'-',
-                                 'rate'  :'-'} for i in range(16)}}
-        for i in range(8):
-            if self.vals['master'][i].__value__ == 1:
+                                 'rate'  :'-'} for i in range(NSeqCodes)}}
+        for i in range(NGroups):
+            v = self.vals['master'][i].__value__
+            if v is not None and v > 0:
                 vals['master'][i] = self.name
                 vals['l0rate'][i] = str(self.vals['l0rate'][i].__value__)
 
         codesv = self.vals['codes'].__value__
         if codesv:
             codes = codesv.todict()['value']
-            for i in range(16):
+            for i in range(NSeqCodes):
                 if codes['Enabled'][i]:
                     vals['codes'][i] = {'master':self.name,
                                         'desc'  :codes['Description'][i],
@@ -422,20 +463,38 @@ class GroupsTab(QtWidgets.QWidget):
         super(GroupsTab,self).__init__()
 
         l = QtWidgets.QHBoxLayout()
+        lv = QtWidgets.QVBoxLayout()
         grid1 = QtWidgets.QGridLayout()
         grid1.addWidget( QtWidgets.QLabel('Group')    , 0, 0 )
         grid1.addWidget( QtWidgets.QLabel('Master')   , 0, 1 )
         grid1.addWidget( QtWidgets.QLabel('L0InpRate'), 0, 2 )
         self.masterText = {}
         self.l0RateText = {}
-        for i in range(8):
+        for i in range(NGroups):
             grid1.addWidget( QtWidgets.QLabel(str(i)), i+1, 0 )
             self.masterText[i] = QtWidgets.QLabel('None')
             grid1.addWidget( self.masterText[i], i+1, 1)
             self.l0RateText[i] = QtWidgets.QLabel('-')
             grid1.addWidget( self.l0RateText[i], i+1, 2)
-        grid1.setRowStretch(grid1.rowCount(),1)
-        l.addLayout(grid1)
+#        grid1.setRowStretch(grid1.rowCount(),1)
+        box1 = QtWidgets.QGroupBox("Groups")
+        box1.setLayout(grid1)
+
+        grid3 = QtWidgets.QGridLayout()
+        grid3.addWidget( QtWidgets.QLabel('Sequence'), 0, 0)
+        for i in range(NSeqCodes//4):
+            grid3.addWidget( QtWidgets.QLabel(str(i)), 1+i, 0)
+            grid3.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:ENABLE', 'Ena', 1), 1+i, 1 )
+            grid3.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:ENABLE', 'Dis', 0), 1+i, 2 )
+            grid3.addWidget( PvPushButtonVal(f'{pvbase}SEQENG:{i}:DUMP', 'Dump', 1), 1+i,3 )
+#        grid3.setRowStretch(grid3.rowCount(),1)
+        box3 = QtWidgets.QGroupBox("Sequence Control")
+        box3.setLayout(grid3)
+            
+        lv.addWidget(box1)
+        lv.addWidget(box3)
+        lv.addStretch()
+        l.addLayout(lv)
         l.addStretch()
 
         grid2 = QtWidgets.QGridLayout()
@@ -446,8 +505,8 @@ class GroupsTab(QtWidgets.QWidget):
         self.codesText = {'master':{},
                           'desc'  :{},
                           'rate'  :{}}
-        for i in range(16):
-            grid2.addWidget( QtWidgets.QLabel(str(i+272)), i+1, 0 )
+        for i in range(NSeqCodes):
+            grid2.addWidget( QtWidgets.QLabel(str(i+288-NSeqCodes)), i+1, 0 )
             self.codesText['master'][i] = QtWidgets.QLabel('None')
             grid2.addWidget( self.codesText['master'][i], i+1, 1 )
             self.codesText['desc'][i] = QtWidgets.QLabel('-')
@@ -455,7 +514,9 @@ class GroupsTab(QtWidgets.QWidget):
             self.codesText['rate'][i] = QtWidgets.QLabel('-')
             grid2.addWidget( self.codesText['rate'][i], i+1, 3 )
         grid2.setRowStretch(grid2.rowCount(),1)
-        l.addLayout(grid2)
+        box2 = QtWidgets.QGroupBox("Event Code Sources")
+        box2.setLayout(grid2)
+        l.addWidget(box2)
 
         self.setLayout(l)
 
@@ -465,16 +526,49 @@ class GroupsTab(QtWidgets.QWidget):
 
     def update(self,err):
         vals = self.xpm._update()
-        for i in range(8):
+        for i in range(NGroups):
             self.masterText[i].setText(vals['master'][i])
             self.l0RateText[i].setText(vals['l0rate'][i])
-        for i in range(16):
+        for i in range(NSeqCodes):
             self.codesText['master'][i].setText(vals['codes'][i]['master'])
             self.codesText['desc'  ][i].setText(vals['codes'][i]['desc'  ])
             self.codesText['rate'  ][i].setText(vals['codes'][i]['rate'  ])
 
+class PatternTab(QtWidgets.QWidget):
+    def __init__(self, pvbase):
+        super(PatternTab,self).__init__()
+
+        l = QtWidgets.QVBoxLayout()
+        v20b = (1<<20)-1
+        l.addWidget(PvTableDisplay(f'{pvbase}PATT:GROUPS', [f'Group{i}' for i in range(8)], (0, v20b, v20b, v20b, 0)))
+
+        self.coinc = []
+        g = QtWidgets.QGridLayout()
+        for i in range(8):
+            g.addWidget(QtWidgets.QLabel(f'G{i}'),0,i+1)
+            g.addWidget(QtWidgets.QLabel(f'G{i}'),i+1,0)
+        for i in range(8):
+            for j in range(i,8):
+                w = QtWidgets.QLabel('-')
+                self.coinc.append(w)
+                g.addWidget(w, i+1, j+1)
+        box = QtWidgets.QGroupBox("Group Coincidences")
+        box.setLayout(g)
+        l.addWidget(box)
+        l.addStretch()
+        initPvMon(self,f'{pvbase}PATT:COINC',isStruct=True)
+
+        self.setLayout(l)
+
+    def update(self,err):
+        if err is None:
+            v = self.pv.__value__
+            q = v.value.Coinc
+            for i,qv in enumerate(q):
+                self.coinc[i].setText(str(qv))
+
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, titles):
+    def setupUi(self, MainWindow, titles, nopatt):
         global ATCAWidget
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
@@ -487,9 +581,11 @@ class Ui_MainWindow(object):
         stack = QtWidgets.QStackedWidget()
 
         for title in titles:
-            pvbase = title + ':'
+            pvbase = title+':'
+
             pv = Pv(pvbase+'FwBuild')
             v = pv.get()
+
             if 'Kcu' in v:
                 amcTitle = 'QSFP'
                 nDsLinks = (4,4) # if 'Gen' in v else (3,4)
@@ -513,16 +609,6 @@ class Ui_MainWindow(object):
 #  These do nothing now
 #            LblPushButtonX(hl, pvbase, "DumpPll",        NAmcs)
 #            LblPushButtonX(hl, pvbase, "DumpTiming",     2)
-
-            seq_lo = QtWidgets.QHBoxLayout()
-            label  = QtWidgets.QLabel("DumpSeq")
-            label.setMinimumWidth(100)
-            seq_lo.addWidget(label)
-            for i in range(4):
-                w = PvPushButtonX(f'{pvbase}:SEQENG:{i}:DUMP',f'{i}')
-                w.setEnabled(True)
-                seq_lo.addWidget(w)
-            hl.addLayout(seq_lo)
 
 #            LblEditIntX   (hl, pvbase, "SetVerbose"      )
             LblPushButtonX(hl, pvbase, "Inhibit"         )
@@ -575,6 +661,9 @@ class Ui_MainWindow(object):
 
             tw.addTab(GroupsTab(pvbase),"Groups/EventCodes")
 
+            if nopatt==False:
+                tw.addTab(PatternTab(pvbase),"Pattern")
+
             if 'Kcu' not in v:
                 tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
 
@@ -606,13 +695,14 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
+    parser.add_argument("--nopatt", help="no pattern stats", action='store_true')
     parser.add_argument("pvs", help="pvs to monitor",nargs='+')
     args = parser.parse_args()
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.pvs)
+    ui.setupUi(MainWindow,args.pvs,args.nopatt)
     MainWindow.updateGeometry()
 
     MainWindow.show()

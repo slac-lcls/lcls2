@@ -11,7 +11,7 @@ from psana.pyalgos.generic.logger import config_logger, STR_LEVEL_NAMES
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 import psana.pscalib.calib.CalibConstants as cc
-from psana.pscalib.calib.MDBWeb_CLI import cdb_web, cdb, MODES # includes import from MDB_CLI
+from psana.pscalib.calib.MDBWeb_CLI import cdb_web, MODES  #  cdb  # includes import from MDB_CLI
 
 
 USAGE = '\nCommand: cdb <mode> [options]'\
@@ -36,8 +36,8 @@ USAGE = '\nCommand: cdb <mode> [options]'\
     '  cdb add -e exp12345 -d detector_1234 -c pedestals -r 123 -f mypeds.data\n'\
     '  cdb add -e new55555 -d detnew_5555   -c pedestals -r 123 -f mypeds.data\n'\
     '  cdb add -e amox27716 -d tmo_quadanode -c calibcfg -r 100 -f configuration_quad.txt -i txt\n'\
-    '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.json -i json\n'\
-    '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl\n'\
+    '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /sdf/group/lcls/ds/ana/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.json -i json\n'\
+    '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /sdf/group/lcls/ds/ana/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl\n'\
     '  cdb add -e amox23616 -d xtcav -c pedestals -r 104 -f xtcav_peds.data -i xtcav\n'\
     '  cdb add -e rixx45619 -d epixhr2x2_000001 -r1 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
     '  cdb add -e rixx45619 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
@@ -64,10 +64,10 @@ def argument_parser():
     from argparse import ArgumentParser
 
     d_mode       = 'print'
-    d_host       = cc.HOST
-    d_port       = cc.PORT
-    d_user       = cc.USERNAME
-    d_upwd       = ''
+#    d_host       = cc.HOST
+#    d_port       = cc.PORT
+#    d_user       = cc.USERNAME
+#    d_upwd       = ''
     d_ctout      = 5000
     d_stout      = 30000
     d_dbname     = None
@@ -86,15 +86,15 @@ def argument_parser():
     d_iofname    = None # './fname.txt'
     d_comment    = 'no comment'
     d_loglevel   = 'INFO'
-    d_webcli     = True
+#    d_webcli     = True
     d_cdbonly    = True
     d_dbsuffix   = ''
 
     h_mode       = 'Mode of DB access, one of %s, default = %s' % (str(MODES), d_mode)
-    h_host       = 'DB host, default = %s' % d_host
-    h_port       = 'DB port, default = %s' % d_port
-    h_user       = 'username to access DB, default = %s' % d_user
-    h_upwd       = 'password, default = %s' % d_upwd
+#    h_host       = 'DB host, default = %s' % d_host
+#    h_port       = 'DB port, default = %s' % d_port
+#    h_user       = 'username to access DB, default = %s' % d_user
+#    h_upwd       = 'password, default = %s' % d_upwd
     h_ctout      = 'connect timeout connectTimeoutMS, default = %d' % d_ctout
     h_stout      = 'socket timeout serverSelectionTimeoutMS, default = %d' % d_stout
     h_dbname     = 'database name, works for mode "print" or "delete", default = %s' % d_dbname
@@ -113,17 +113,17 @@ def argument_parser():
     h_iofname    = 'output file prefix, default = %s' % d_iofname
     h_comment    = 'comment to the document, default = %s' % d_comment
     h_loglevel   = 'logging level from list (%s), default = %s' % (STR_LEVEL_NAMES, d_loglevel)
-    h_webcli     = 'use web-based CLI, default = %s' % d_webcli
+#    h_webcli     = 'use web-based CLI, default = %s' % d_webcli
     h_cdbonly    = 'command valid for CDB only, ignores other DBs, default = %s' % d_cdbonly
     h_dbsuffix   = 'suffix of the PRIVATE DETECTOR-DB to deploy constants, default = %s' % str(d_dbsuffix)
 
     parser = ArgumentParser(description='CLI for LCLS2 calibration data base', usage=USAGE)
 
     parser.add_argument('mode', nargs='?',    default=d_mode,       type=str, help=h_mode)
-    parser.add_argument('--host',             default=d_host,       type=str, help=h_host)
-    parser.add_argument('--port',             default=d_port,       type=str, help=h_port)
-    parser.add_argument('-u', '--user',       default=d_user,       type=str, help=h_user)
-    parser.add_argument('-p', '--upwd',       default=d_upwd,       type=str, help=h_upwd)
+#    parser.add_argument('--host',             default=d_host,       type=str, help=h_host)
+#    parser.add_argument('--port',             default=d_port,       type=str, help=h_port)
+#    parser.add_argument('-u', '--user',       default=d_user,       type=str, help=h_user)
+#    parser.add_argument('-p', '--upwd',       default=d_upwd,       type=str, help=h_upwd)
     parser.add_argument('--ctout',            default=d_ctout,      type=int, help=h_ctout)
     parser.add_argument('--stout',            default=d_stout,      type=int, help=h_stout)
     parser.add_argument('--dbname',           default=d_dbname,     type=str, help=h_dbname)
@@ -143,7 +143,7 @@ def argument_parser():
     parser.add_argument('-l', '--loglevel',   default=d_loglevel,   type=str, help=h_loglevel)
     parser.add_argument('-S', '--dbsuffix',   default=d_dbsuffix,   type=str, help=h_dbsuffix)
     parser.add_argument('-C', '--confirm',    action='store_true',  help=h_confirm)
-    parser.add_argument('-w', '--webcli',     action='store_false', help=h_webcli)
+#    parser.add_argument('-w', '--webcli',     action='store_false', help=h_webcli)
     parser.add_argument('--cdbonly',          action='store_false', help=h_cdbonly)
 
     return parser
@@ -154,11 +154,9 @@ def cdb_cli():
     if len(sys.argv) < 2: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
 
     parser = argument_parser()
-    args = parser.parse_args()  # Namespace
+    #args = parser.parse_args()  # Namespace, e.g. args.webcli
     #kwargs = vars(args)        # dict
-
-    if args.webcli: cdb_web(parser)
-    else:           cdb(parser)
+    cdb_web(parser)
 
 
 if __name__ == "__main__":

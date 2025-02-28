@@ -20,6 +20,8 @@ Usage::
     sg = sgs.Create(segname='JUNGFRAU:V2')
     sg = sgs.Create(segname='MTRX:512:512:54:54')
     sg = sgs.Create(segname='MTRX:V2:512:512:54:54')
+    sg = sgs.Create(segname='MTRX:V2:192:384:50:50') # the same as EPIXMASIC:V1
+    sg = sgs.Create(segname='EPIXMASIC:V1') # the same as MTRX:V2:192:384:50:50
 
     sg.print_seg_info(pbits=0o377)
     size_arr = sg.size()
@@ -47,8 +49,11 @@ See:
  * :py:class:`SegGeometryEpix10kaV1`,
  * :py:class:`SegGeometryEpixHR2x2V1`
  * :py:class:`SegGeometryEpixHR1x4V1`
+ * :py:class:`SegGeometryEpixM320V1`
  * :py:class:`SegGeometryJungfrauV1`,
  * :py:class:`SegGeometryMatrixV1`,
+ * :py:class:`SegGeometryArchonV1`,
+ * :py:class:`SegGeometryArchonV2`,
  * :py:class:`SegGeometryStore`
 
 For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/Detector+Geometry>`_.
@@ -78,6 +83,15 @@ def segment_geometry(**kwa):
     elif segname=='EPIXHR1X4:V1':
         from psana.pscalib.geometry.SegGeometryEpixHR1x4V1 import epixhr1x4_one, epixhr1x4_wpc
         return epixhr1x4_wpc if wpc else epixhr1x4_one
+#    elif segname=='EPIXM320:V1': # 1x4 panel is deprecated because of non-uniform panel geometry
+#        from psana.pscalib.geometry.SegGeometryEpixM320V1 import epixm320_one
+#        return epixm320_one
+    elif segname=='EPIXMASIC:V1': # The same as 'MTRX:V2:192:384:50:50' # EPIXM ASIC
+        from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
+        return SegGeometryMatrixV2(192, 384, 50, 50, pix_size_depth=500, pix_scale_size=50)
+    elif segname=='EPIXUHRASIC:V1': # The same as 'MTRX:V2:192:384:50:50' # EPIXUHR ASIC
+        from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
+        return SegGeometryMatrixV2(168, 192, 100, 100, pix_size_depth=500, pix_scale_size=100)
     elif segname[:7]=='MTRX:V2':
         from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
         rows, cols, psize_row, psize_col = matrix_pars_v2(segname)
@@ -105,6 +119,12 @@ def segment_geometry(**kwa):
     elif segname=='SENS2X1:V1':
         from psana.pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one, cspad2x1_wpc
         return cspad2x1_wpc if wpc else cspad2x1_one
+    elif segname=='ARCHON:V1':
+        from psana.pscalib.geometry.SegGeometryArchonV1 import SegGeometryArchonV1
+        return SegGeometryArchonV1(detector=kwa.get('detector', None))
+    elif segname=='ARCHON:V2':
+        from psana.pscalib.geometry.SegGeometryArchonV2 import SegGeometryArchonV2
+        return SegGeometryArchonV2(detector=kwa.get('detector', None))
     #elif segname=='ANDOR3D:V1': return seg_andor3d # SegGeometryMatrixV1()
     else:
         logger.debug('segment "%s" gometry IS NOT IMPLEMENTED' % segname)

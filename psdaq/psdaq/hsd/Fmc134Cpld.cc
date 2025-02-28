@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <iostream>
 
-#include "psdaq/service/json.hpp"
+#include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
 #include "psalg/utils/SysLog.hh"
@@ -39,8 +39,8 @@ void Fmc134Cpld::initialize(bool lDualChannel,
         // turn off 0sc, point at ext ref enable LMX bits 3, 1, and 0
         v = C1_AD | C1_LMX | C1_LED | C1_EEPROM;
         _control1 = v;
-    
-        v = C0_SYNC_FPGA | C0_EXT;
+
+        v = C0_SYNC_FPGA | static_cast<unsigned>(C0_EXT);
         _control0 = v;
     }
 
@@ -706,8 +706,8 @@ unsigned Fmc134Cpld::_read()
 #define cpld_address 0
 #define spi_write(unit,sel,reg,val) writeRegister(sel,reg,val)
 #define spi_read(unit,sel,reg,valp) *(valp) = readRegister(sel,reg)
-#define i2c_write(unit,addr,val)  reinterpret_cast<volatile uint32_t*>(this)[addr]=val
-#define i2c_read(unit,addr,valp)  *(valp) = reinterpret_cast<volatile uint32_t*>(this)[addr]
+#define i2c_write(unit,addr,val)  reinterpret_cast<Mmhw::RegProxy*>(this)[addr]=val
+#define i2c_read(unit,addr,valp)  *(valp) = reinterpret_cast<Mmhw::RegProxy*>(this)[addr]
 #define unitapi_sleep_ms(tms) usleep(tms*1000)
 
 static const int32_t UNITAPI_OK = 0;
@@ -1555,3 +1555,8 @@ void Fmc134Cpld::adc_range(unsigned chip,unsigned fsrng)
     spi_write(0, dev, 0x213, (1<<3)); 
 }
 
+void Fmc134Cpld::adc_input(unsigned chip,unsigned ch)
+{
+    DevSel dev = (chip==0) ? ADC0 : ADC1;
+    spi_write(0, dev, 0x60, 1+(ch&1)); // 1=INA, 2=INB
+} 

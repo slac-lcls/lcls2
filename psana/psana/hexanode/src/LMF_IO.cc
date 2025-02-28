@@ -3971,7 +3971,7 @@ void LMF_IO::GetTDCDataArray(__int32 *tdc)
 		for (i=0;i<max_channel;++i) {
 			for (j=0;j<max_hits;++j) {
 				if (dTDC[i*num_ions+j] >= 0.) ii =__int32(dTDC[i*num_ions+j]+1.e-19);
-				if (dTDC[i*num_ions+j] <  0.) ii =__int32(dTDC[i*num_ions+j]-1.e-19);
+				else ii =__int32(dTDC[i*num_ions+j]-1.e-19);
 				tdc[i*num_ions+j] = ii;
 			}
 		}

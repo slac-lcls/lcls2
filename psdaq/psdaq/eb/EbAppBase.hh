@@ -35,17 +35,14 @@ namespace Pds {
       using MetricExporter_t = std::shared_ptr<Pds::MetricExporter>;
 
     public:
-      EbAppBase(const EbParams& prms,
-                const MetricExporter_t&,
-                const std::string& pfx,
-                const unsigned msTimeout);
+      EbAppBase(const EbParams& prms, const std::string& pfx);
       virtual ~EbAppBase();
     public:
       int              resetCounters();
       int              startConnection(const std::string& ifAddr,
                                        std::string&       port,
                                        unsigned           nLinks);
-      int              connect(unsigned maxTrBuffers);
+      int              connect(unsigned maxTrBuffers, const MetricExporter_t);
       int              configure();
       void             unconfigure();
       void             disconnect();
@@ -60,6 +57,7 @@ namespace Pds {
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contract(const Pds::EbDgram* contrib) const;
     private:
+      int              _setupMetrics(const MetricExporter_t);
       int              _linksConfigure(const EbParams&            prms,
                                        std::vector<EbLfSvrLink*>& links,
                                        const char*                name);
@@ -74,14 +72,13 @@ namespace Pds {
       unsigned                  _maxEvBuffers;
       unsigned                  _maxTrBuffers;
       unsigned&                 _verbose;
-      uint64_t                  _ebTime;
+      std::vector<uint64_t>     _lastPid;
       uint64_t                  _bufferCnt;
       PromHisto_t               _fixupSrc;
       PromHisto_t               _ctrbSrc;
     private:
       std::vector<size_t>       _regSize;
       std::vector<void*>        _region;
-      uint64_t                  _contributors;
       uint64_t                  _idxSrcs;
       unsigned                  _id;
       MetricExporter_t          _exporter;

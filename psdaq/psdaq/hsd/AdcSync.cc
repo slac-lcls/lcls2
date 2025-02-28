@@ -18,21 +18,21 @@ void AdcSync::set_delay(const unsigned* delay)
 
   for(unsigned i=0; i<4; i++)
     printf("SyncBit: %u  DelayIn: %u  DelaySet: %u  DelayOut: %u\n",
-           i, delay[i], _delay[2*i], _delay[2*i+1]);
+           i, unsigned(delay[i]), unsigned(_delay[2*i]), unsigned(_delay[2*i+1]));
 }
 
 void AdcSync::start_training()
 {
   //  _cmd = v | 1;
   _cmd = (4095<<1) | 1;
-  printf("AdcSync set %x\n",_cmd);
+  printf("AdcSync set %x\n",unsigned(_cmd));
 }
 
 void AdcSync::stop_training()
 {
   unsigned v = _cmd;
   _cmd = v & ~1;
-  printf("AdcSync set %x\n",_cmd);
+  printf("AdcSync set %x\n",unsigned(_cmd));
 }
 
 void AdcSync::dump_status() const

@@ -7,8 +7,8 @@
 #pragma once
 
 #include <Python.h>
+#include <nlohmann/json.hpp>
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "psdaq/service/json.hpp"
 
 namespace XtcData  {
     class Xtc;

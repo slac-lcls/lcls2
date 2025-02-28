@@ -38,8 +38,8 @@ Usage::
     #          = 0 - use indexes  0 and nbins-1 for underflow overflow, respectively
     #          = 1 - use extended indexes -1 and nbins for underflow overflow, respectively
 
-    hb.set_bin_data(data, dtype=np.float) # adds bin data to the HBins object. data size should be equal to hb.nbins()
-    data = bin_data(dtype=np.float)       # returns numpy array of data associated with HBins object.
+    hb.set_bin_data(data, dtype=np.float32) # adds bin data to the HBins object. data size should be equal to hb.nbins()
+    data = bin_data(dtype=np.float32)       # returns numpy array of data associated with HBins object.
     data = hb.set_bin_data_from_array(self, arr, dtype=np.float64, edgemode=0) # set bin data from array (like image or ndarray)
     mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w = hb.histogram_statistics()
 
@@ -279,9 +279,9 @@ class HBins():
         else:
             conds = None
             if self._ascending:
-                conds = np.array([arr<edge for edge in self.binedges()], dtype=np.bool)
+                conds = np.array([arr<edge for edge in self.binedges()], dtype=np.dtype(bool))
             else:
-                conds = np.array([arr>edge for edge in self.binedges()], dtype=np.bool)
+                conds = np.array([arr>edge for edge in self.binedges()], dtype=np.dtype(bool))
 
             inds1d = list(range(-1, self._nbins))
             inds1d[0] = indmin # re-define index for underflow

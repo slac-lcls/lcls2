@@ -5,15 +5,16 @@
 #include "Detector.hh"
 #include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/trigger/utilities.hh"
-#include "psdaq/service/json.hpp"
 #include "psdaq/eb/TebContributor.hh"
 #include "psdaq/eb/MebContributor.hh"
 #include "psdaq/eb/EbCtrbInBase.hh"
 #include "psdaq/eb/ResultDgram.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/TransitionId.hh"
+#include <nlohmann/json.hpp>
 
 namespace Pds {
     class TimingHeader;
@@ -80,17 +81,20 @@ public:
     std::string runName();
 };
 
+class PgpReader;
+
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
     EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
-               ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
-               const std::shared_ptr<Pds::MetricExporter>& exporter);
+               ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon);
     void process(const Pds::Eb::ResultDgram& result, unsigned index) override;
 public:
     void detector(Detector* det) {m_det = det;}
     void tsId(unsigned nodeId) {m_tsId = nodeId;}
     void resetCounters(bool all);
+    int  connect(const std::shared_ptr<Pds::MetricExporter> exporter);
+    void configure(Detector*, const PgpReader*);
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
     bool advanceChunkId();
     std::string reopenFiles();
@@ -103,10 +107,12 @@ public:
     static const uint64_t DefaultChunkThresh = 500ull * 1024ull * 1024ull * 1024ull;    // 500 GB
     FileParameters *fileParameters()    { return &m_fileParameters; }
 private:
+    int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
     void _writeDgram(XtcData::Dgram* dgram);
 private:
     MemPool& m_pool;
     Detector* m_det;
+    const PgpReader* m_pgp;
     unsigned m_tsId;
     Pds::Eb::MebContributor& m_mon;
     BufferedFileWriterMT m_fileWriter;
@@ -124,19 +130,18 @@ private:
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
     uint64_t m_evtSize;
+    uint64_t m_latPid;
     int64_t m_latency;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
     FileParameters m_fileParameters;
-    unsigned m_partition;
+    const Parameters& m_para;
 };
-
-class Detector;
 
 class PgpReader
 {
 public:
     PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt);
-    virtual ~PgpReader() {};
+    virtual ~PgpReader();
     int32_t read();
     void flush();
     const Pds::TimingHeader* handle(Detector* det, unsigned current);
@@ -152,9 +157,15 @@ public:
     const uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
     const uint64_t nPgpJumps()    const { return m_nPgpJumps; }
     const uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
+    std::chrono::nanoseconds age(const XtcData::TimeStamp& time) const;
+private:
+    void _setTimeOffset(const XtcData::TimeStamp& time);
 protected:
     const Parameters& m_para;
     MemPool& m_pool;
+    pollfd m_pfd;
+    Pds::fast_monotonic_clock::time_point m_t0;
+    int m_tmo;
     std::vector<int32_t> dmaRet;
     std::vector<uint32_t> dmaIndex;
     std::vector<uint32_t> dest;
@@ -167,6 +178,7 @@ protected:
     unsigned m_count;
     uint64_t m_dmaBytes;
     uint64_t m_dmaSize;
+    uint64_t m_latPid;
     int64_t m_latency;
     uint64_t m_nDmaErrors;
     uint64_t m_nNoComRoG;
@@ -174,6 +186,8 @@ protected:
     uint64_t m_nTmgHdrError;
     uint64_t m_nPgpJumps;
     uint64_t m_nNoTrDgrams;
+    std::mutex m_lock;
+    std::chrono::nanoseconds m_tOffset;
 };
 
 class PV;
@@ -205,6 +219,7 @@ public:
     const std::string& supervisorIpPort() const {return m_supervisorIpPort;}
     MemPool pool;
 private:
+    int setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     int setupTriggerPrimitives(const nlohmann::json& body);
     int parseConnectionParams(const nlohmann::json& body, size_t id);
     void printParams() const;
@@ -222,7 +237,6 @@ private:
     size_t m_collectionId;
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
-    std::string m_hostname;
     unsigned m_numTebBuffers;
     unsigned m_xpmPort;
     std::shared_ptr<PV> m_deadtimePv;

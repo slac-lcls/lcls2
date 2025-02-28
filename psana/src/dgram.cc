@@ -158,6 +158,31 @@ static void setXtcForSegment(PyObject* parent, PyObject* pycontainertype,
     setXtc(container, pycontainertype, myXtc);
 }
 
+// add _xtc to each algorithm (raw, fex, etc.) of det_name.segment[i] dictionary object
+static void setXtcForAlg(PyObject* parent, PyObject* pycontainertype,
+        const char* detName, unsigned segment, const char* algName, Xtc* myXtc) {
+    PyObject* dict;
+    dict = PyObject_GetAttrString(parent, detName);
+    Py_DECREF(dict); // transfer ownership to parent
+
+    // get segment container for this segment
+    PyObject* pySeg = Py_BuildValue("i", segment);
+    PyObject* container;
+    container = PyDict_GetItem(dict, pySeg);
+    Py_DECREF(pySeg);
+
+    // get algorithm container for this algName
+    PyObject* pyAlg;
+    pyAlg = PyObject_GetAttrString(container, algName);
+    Py_DECREF(pyAlg);
+
+    const char* xtcLabel = "_xtc";
+    int hasXtcLabel = PyObject_HasAttrString(pyAlg, xtcLabel);
+    if (hasXtcLabel == 1) return;
+
+    setXtc(pyAlg, pycontainertype, myXtc);
+}
+
 static void setAlg(PyObject* parent, PyObject* pycontainertype, const char* baseName, Alg& alg, unsigned segment) {
     const char* algName = alg.name();
     const uint32_t _v = alg.version();
@@ -474,6 +499,7 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
                      PyNameDelim,varName);
             addObjHierarchy((PyObject*)pyDgram, pyDgram->contInfo.pycontainertype, keyName, newobj, names.segment());
             setXtcForSegment((PyObject*)pyDgram, pyDgram->contInfo.pycontainertype, names.detName(), names.segment(), myXtc);
+            setXtcForAlg((PyObject*)pyDgram, pyDgram->contInfo.pycontainertype, names.detName(), names.segment(), names.alg().name(), myXtc);
         }
     }
 }
@@ -621,6 +647,10 @@ static int dgram_read(PyDgramObject* self, int sequential)
 
     //cout << "dgram_read offset=" << self->offset << " size=" << self->size << " readSuccess=" << readSuccess << endl;
     return readSuccess;
+}
+
+static PyObject* env(PyDgramObject* self) {
+    return PyLong_FromLong(self->dgram->env);
 }
 
 static PyObject* service(PyDgramObject* self) {
@@ -892,6 +922,7 @@ static PyMemberDef dgram_members[] = {
 };
 
 static PyMethodDef dgram_methods[] = {
+    {"env", (PyCFunction)env, METH_NOARGS, "env"},
     {"service", (PyCFunction)service, METH_NOARGS, "service"},
     {"timestamp", (PyCFunction)timestamp, METH_NOARGS, "timestamp"},
     {"get_dgram_ptr", (PyCFunction)get_dgram_ptr, METH_NOARGS, "dgram pointer"},

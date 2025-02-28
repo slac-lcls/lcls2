@@ -1,5 +1,6 @@
 #define __STDC_FORMAT_MACROS 1
 
+#include "psdaq/mmhw/Reg.hh"
 #include "psdaq/mmhw/RegProxy.hh"
 #include "psdaq/service/Semaphore.hh"
 #include <unistd.h>
@@ -8,23 +9,30 @@
 
 typedef volatile uint32_t vuint32_t;
 
+static bool _verbose = false;
 static uint64_t _base = 0;
-static vuint32_t* _csr = 0;
+static Pds::Mmhw::Reg* _csr = 0;
 static Pds::Semaphore _sem(Pds::Semaphore::FULL);
 
 using namespace Pds::Mmhw;
 
-void RegProxy::initialize(void* base, volatile void* csr)
+void RegProxy::initialize(void* base, void* csr, bool verbose)
 {
+   _verbose = verbose;
+   if (_verbose)
+      printf("RegProxy::initialize base %p  csr %p\n",base,csr);
+
   _base = reinterpret_cast<uint64_t>(base);
-  _csr  = reinterpret_cast<vuint32_t*>(csr);
+  _csr  = reinterpret_cast<Pds::Mmhw::Reg*>(csr);
   //  Test if proxy exists
   { 
     const unsigned t = 0xdeadbeef;
     _csr[2] = t;
     volatile unsigned v = _csr[2];
-    if (v != t)
+    if (v != t) {
+      printf("**RegProxy does not exist**\n");
       _csr = 0;
+    }
   }
 }
 

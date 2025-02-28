@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <linux/types.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 using namespace std;
 

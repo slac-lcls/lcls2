@@ -107,6 +107,7 @@ namespace Drp {
             Parameters*           m_para;
             XtcData::NamesId      m_fexNamesId;
             XtcData::NamesId      m_avgNamesId;
+            XtcData::NamesId      m_bkgNamesId;
             XtcData::NamesId      m_refNamesId;
             Pds::Semaphore        m_background_sem;
             std::atomic<bool>     m_background_empty; // cache image for slow update transition
@@ -114,6 +115,7 @@ namespace Drp {
             pvac::ClientChannel   m_fex_pv;
             pvd::PVStructure::const_shared_pointer m_request;
             double                *m_vec;
+            pvd::shared_vector<const double> m_ttvec;
             const char            *m_ttpv;
         };
 
@@ -273,7 +275,7 @@ void Piranha4::_fatal_error(std::string errMsg)
     throw errMsg;
 }
 
-void Piranha4::_connect(PyObject* mbytes)
+void Piranha4::_connectionInfo(PyObject* mbytes)
 {
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
 #define MODEL(num,pixels) case num: m_pixels = pixels; break
@@ -292,15 +294,6 @@ void Piranha4::_connect(PyObject* mbytes)
     const auto bist(_string_from_PyDict(mbytes,"bist"));
     if (bist != "Good")
         logging::error("Piranha4 BiST error: %s", bist.c_str());
-}
-
-json Piranha4::connectionInfo()
-{
-    return BEBDetector::connectionInfo();
-
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
 }
 
 unsigned Piranha4::_configure(XtcData::Xtc&        xtc,
@@ -366,7 +359,9 @@ TT::TT(Piranha4& d, Parameters* para) :
     m_para            (para),
     m_background_sem  (Pds::Semaphore::FULL),
     m_background_empty(true),
-    m_fex             (para)
+    m_fex             (para),
+    m_vec             (new double[6]),
+    m_ttvec           (m_vec,0,6) 
 {
     m_ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
     if (m_ttpv) {
@@ -397,20 +392,22 @@ TT::~TT() {}
 
 void     TT::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
 {
-    logging::debug("%s: m_background_empty = %s", __PRETTY_FUNCTION__, m_background_empty ? "true" : "false");
-    m_background_sem.take();
-    if (!m_background_empty) {
-        XtcData::Xtc& trXtc = m_det.transitionXtc();
-        xtc = trXtc; // Preserve header info, but allocate to check fit
-        auto payload = xtc.alloc(trXtc.sizeofPayload(), bufEnd);
-        memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-        m_background_empty = true;
-    }
-    else {
+    // Ric commented out this if block 10/4/23 since we plan to record
+    // background images on every L1Accept instead of on SlowUpdates
+    //logging::debug("%s: m_background_empty = %s", __PRETTY_FUNCTION__, m_background_empty ? "true" : "false");
+    //m_background_sem.take();
+    //if (!m_background_empty) {
+    //    XtcData::Xtc& trXtc = m_det.transitionXtc();
+    //    xtc = trXtc; // Preserve header info, but allocate to check fit
+    //    auto payload = xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+    //    memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
+    //    m_background_empty = true;
+    //}
+    //else {
         // no payload
         xtc = {{XtcData::TypeId::Parent, 0}, {m_det.nodeId}};
-    }
-    m_background_sem.give();
+    //}
+    //m_background_sem.give();
 }
 
 void     TT::shutdown() { m_fex.unconfigure(); }
@@ -441,21 +438,39 @@ unsigned TT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIte
         m_det.namesLookup()[m_avgNamesId] = NameIndex(fexNames);
     }
 
-    // set up the data for slow update
-    if (m_fex.write_ref_image() ||
-        m_fex.write_ref_average()) {
-        m_refNamesId = NamesId(m_det.nodeId, EventNamesIndex+3);
-        Alg alg("piranha4tt", 1, 0, 0);
+    // Ric commented out this if block 10/4/23 since we plan to record
+    // background images on every L1Accept instead of on SlowUpdates
+    //// set up the data for slow update
+    //if (m_fex.write_ref_image() ||
+    //    m_fex.write_ref_average()) {
+    //    m_refNamesId = NamesId(m_det.nodeId, EventNamesIndex+3);
+    //    Alg alg("piranha4tt", 1, 0, 0);
+    //    // cpo: rename this away from "epics" for now because the
+    //    // segment number can conflict with epicsarch.
+    //    Names& bkgNames = *new(xtc, bufEnd) Names(bufEnd,
+    //                                              "epics_dontuse", alg,
+    //                                              "epics_dontuse", m_para->serNo.c_str(), m_refNamesId, m_para->detSegment);
+    //    RefDef refDef(m_para->detName.c_str(),"piranhatt",
+    //                  m_fex.write_ref_image(),
+    //                  m_fex.write_ref_average());
+    //    bkgNames.add(xtc, bufEnd, refDef);
+    //    m_det.namesLookup()[m_refNamesId] = NameIndex(bkgNames);
+    //}
+
+    // set up the names for background images saved on L1Accepts
+    if (m_fex.write_ref_image() || m_fex.write_ref_average()) {
+        m_bkgNamesId = NamesId(m_det.nodeId, EventNamesIndex+4);
+        Alg alg("ttbkgd", 1, 0, 0);
         // cpo: rename this away from "epics" for now because the
         // segment number can conflict with epicsarch.
         Names& bkgNames = *new(xtc, bufEnd) Names(bufEnd,
                                                   "epics_dontuse", alg,
-                                                  "epics_dontuse", m_para->serNo.c_str(), m_refNamesId, m_para->detSegment);
-        RefDef refDef(m_para->detName.c_str(),"piranhatt",
+                                                  "epics_dontuse", m_para->serNo.c_str(), m_bkgNamesId, m_para->detSegment);
+        RefDef bkgDef(m_para->detName.c_str(),"ttbkgd",
                       m_fex.write_ref_image(),
                       m_fex.write_ref_average());
-        bkgNames.add(xtc, bufEnd, refDef);
-        m_det.namesLookup()[m_refNamesId] = NameIndex(bkgNames);
+        bkgNames.add(xtc, bufEnd, bkgDef);
+        m_det.namesLookup()[m_bkgNamesId] = NameIndex(bkgNames);
     }
 
     return 0;
@@ -472,17 +487,14 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
         xtc.damage.increase(Damage::UserDefined);
     }
     else if (result == Piranha4TTFex::VALID) {
-        //  Live feedback
-        m_vec = new double[6];
-        pvd::shared_vector<const double> ttvec(m_vec,0,6);
-        m_vec[0] = m_fex.amplitude();
-        m_vec[1] = m_fex.filtered_position();
-        m_vec[2] = m_fex.filtered_pos_ps();
-        m_vec[3] = m_fex.filtered_fwhm();
-        m_vec[4] = m_fex.next_amplitude();
-        m_vec[5] = m_fex.ref_amplitude();
         if (m_ttpv) {
-            m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
+            m_vec[0] = m_fex.amplitude();
+            m_vec[1] = m_fex.filtered_position();
+            m_vec[2] = m_fex.filtered_pos_ps();
+            m_vec[3] = m_fex.filtered_fwhm();
+            m_vec[4] = m_fex.next_amplitude();
+            m_vec[5] = m_fex.ref_amplitude();
+            m_fex_pv.put(m_request).set<const double>("value",m_ttvec).exec();
         }
         //  Insert the results
         CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_fexNamesId);
@@ -509,29 +521,47 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
         }
     }
     else if (result == Piranha4TTFex::NOBEAM) {
-        m_background_sem.take();
-        // Only do this once per SlowUpdate
-        if (m_background_empty) {
-            m_det.transitionXtc().extent = sizeof(Xtc);
-            if (m_fex.write_ref_image() || m_fex.write_ref_average()) {
-                CreateData cd(m_det.transitionXtc(), m_det.trXtcBufEnd(), m_det.m_namesLookup, m_refNamesId);
-                unsigned index=0;
-                if (m_fex.write_ref_image()) {
-                    unsigned shape[MaxRank];
-                    shape[0] = m_det.m_pixels;
-                    Array<uint16_t> arrayT = cd.allocate<uint16_t>(index++, shape);
-                    memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
-                }
-                if (m_fex.write_ref_average()) {
-                    unsigned shape[MaxRank];
-                    shape[0] = m_fex.ref_average().size();
-                    Array<double> arrayT = cd.allocate<double>(index++, shape);
-                    memcpy(arrayT.data(), m_fex.ref_average().data(), shape[0]*sizeof(double));
-                }
+        if (m_fex.write_ref_image() || m_fex.write_ref_average()) {
+            CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_bkgNamesId);
+            unsigned index=0;
+            if (m_fex.write_ref_image()) {
+                unsigned shape[MaxRank];
+                shape[0] = m_det.m_pixels;
+                Array<uint16_t> arrayT = cd.allocate<uint16_t>(index++, shape);
+                memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
             }
-            m_background_empty = false;
+            if (m_fex.write_ref_average()) {
+                unsigned shape[MaxRank];
+                shape[0] = m_fex.ref_average().size();
+                Array<double> arrayT = cd.allocate<double>(index++, shape);
+                memcpy(arrayT.data(), m_fex.ref_average().data(), shape[0]*sizeof(double));
+            }
         }
-        m_background_sem.give();
+        // Ric commented out this if block 10/4/23 since we plan to record
+        // background images on every L1Accept instead of on SlowUpdates
+        //m_background_sem.take();
+        //// Only do this once per SlowUpdate
+        //if (m_background_empty) {
+        //    m_det.transitionXtc().extent = sizeof(Xtc);
+        //    if (m_fex.write_ref_image() || m_fex.write_ref_average()) {
+        //        CreateData cd(m_det.transitionXtc(), m_det.trXtcBufEnd(), m_det.m_namesLookup, m_refNamesId);
+        //        unsigned index=0;
+        //        if (m_fex.write_ref_image()) {
+        //            unsigned shape[MaxRank];
+        //            shape[0] = m_det.m_pixels;
+        //            Array<uint16_t> arrayT = cd.allocate<uint16_t>(index++, shape);
+        //            memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
+        //        }
+        //        if (m_fex.write_ref_average()) {
+        //            unsigned shape[MaxRank];
+        //            shape[0] = m_fex.ref_average().size();
+        //            Array<double> arrayT = cd.allocate<double>(index++, shape);
+        //            memcpy(arrayT.data(), m_fex.ref_average().data(), shape[0]*sizeof(double));
+        //        }
+        //    }
+        //    m_background_empty = false;
+        //}
+        //m_background_sem.give();
     }
 
     return m_fex.write_image();
@@ -750,8 +780,7 @@ void TTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData:
         NameIndex&  index  = m_timinput.namesLookup[namesId];
         ShapesData& shapes = *m_timinput.shapesdata[namesId];
         DescData descdata(shapes, index);
-        EventInfo& info = *reinterpret_cast<EventInfo*>(subframes[3].data());
-        memcpy(info._seqInfo, descdata.get_array<uint8_t>(index.nameMap()["sequenceValues"]).data(), 18*sizeof(uint16_t));
+        EventInfo& info = *new(subframes[3].data()) EventInfo(descdata);
 #ifdef DBUG
         const uint16_t* p = (const uint16_t*)(info._seqInfo);
         printf("seq:");

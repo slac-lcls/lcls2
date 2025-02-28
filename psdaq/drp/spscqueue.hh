@@ -12,7 +12,7 @@
 template <typename T>
 class SPSCQueue
 {
-    using us_t = std::chrono::microseconds;
+    using ms_t = std::chrono::milliseconds;
 public:
     SPSCQueue(int capacity) : m_terminate(false), m_write_index(0), m_read_index(0)
     {
@@ -49,7 +49,7 @@ public:
         asm volatile("mfence" ::: "memory");
         // signal consumer that queue is no longer empty
         if (index == m_read_index.load(std::memory_order_acquire)) {
-            std::unique_lock<std::mutex> lock(m_mutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             m_condition.notify_one();
         }
     }
@@ -76,17 +76,16 @@ public:
         return true;
     }
 
-    // blocking read from queue with polling for the 1st N us before blocking
+    // blocking read from queue with polling for the 1st ms before blocking
     bool pop(T& value)
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
 
         // check if queue is empty
-        auto t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+        auto t0 = Pds::fast_monotonic_clock::now();
         while (index == m_write_index.load(std::memory_order_acquire)) {
-            auto t1 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
-            auto dt = std::chrono::duration_cast<us_t>(t1 - t0).count();
-            if (dt > 1000) {
+            auto t1 = Pds::fast_monotonic_clock::now();
+            if (t1 - t0 >= ms_t(1)) {
                 return popW(value);
             }
         }
@@ -123,6 +122,30 @@ public:
         }
         value = m_ring_buffer[index & m_buffer_mask];
         return true;
+    }
+
+    T& front()
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[index & m_buffer_mask];
+    }
+
+    const T& front() const
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[index & m_buffer_mask];
+    }
+
+    T& back()
+    {
+        int64_t index = m_write_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[index & m_buffer_mask];
+    }
+
+    const T& back() const
+    {
+        int64_t index = m_write_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[index & m_buffer_mask];
     }
 
     bool is_empty()

@@ -66,7 +66,7 @@ class TrainGenerator(object):
 
     def _wait(self, intv):
         if intv <= 0:
-            raise ValueError
+            raise ValueError(f'Calculated wait interval is {intv}')
         if intv >= 0xfff:
             self.instr.append('iinstr = len(instrset)')
             #  _Wait for 4095 intervals
@@ -152,7 +152,8 @@ class TrainGenerator(object):
             if self.notify:
                 self.instr.append('instrset.append( CheckPoint() )')
             if self.rrepeat:
-                self._wait(self.rpad)
+                if self.rpad:
+                    self._wait(self.rpad)
                 self.instr.append('instrset.append( Branch.unconditional(first) )')
             else:
                 self.instr.append('last = len(instrset)')

@@ -526,7 +526,7 @@ public:
           MebCtrbParams&,
           const std::shared_ptr<MetricExporter>&);
 public:                                 // For CollectionApp
-  json connectionInfo() override;
+  json connectionInfo(const nlohmann::json& msg) override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
   void handlePhase1(const json& msg) override;
@@ -558,7 +558,7 @@ CtrbApp::CtrbApp(const std::string&                     collSrv,
   printf("Ready for transitions\n");
 }
 
-json CtrbApp::connectionInfo()
+json CtrbApp::connectionInfo(const nlohmann::json& msg)
 {
   // Allow the default NIC choice to be overridden
   const bool forceEnet = false;

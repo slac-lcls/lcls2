@@ -6,6 +6,13 @@
 #include <vector>
 #include <array>
 #include <map>
+#include <chrono>
+
+#include "xtcdata/xtc/TimeStamp.hh"
+
+#ifndef POSIX_TIME_AT_EPICS_EPOCH
+#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
+#endif
 
 
 namespace Pds {
@@ -144,11 +151,35 @@ namespace Pds {
       unsigned  verbose;           // Level of detail to print
     };
 
+    template<typename T>
+    int64_t latency(const XtcData::TimeStamp&);
+
     // Sanity checks
     static_assert((BATCH_DURATION & (BATCH_DURATION - 1)) == 0, "BATCH_DURATION must be a power of 2");
     static_assert((MAX_BATCHES & (MAX_BATCHES - 1)) == 0, "MAX_BATCHES must be a power of 2");
     static_assert((EB_TMO_MS <= 1000ull * MAX_LATENCY/TICK_RATE), "EB_TMO_MS is too large");
   };
 };
+
+template<typename T>
+int64_t Pds::Eb::latency(const XtcData::TimeStamp& time)
+{
+  using sec_t = std::chrono::seconds;
+  static unsigned _epoch = POSIX_TIME_AT_EPICS_EPOCH;
+
+  auto now = std::chrono::system_clock::now();  // Takes a long time!
+  auto dgt = std::chrono::seconds    { time.seconds() + _epoch }
+           + std::chrono::nanoseconds{ time.nanoseconds() };
+  std::chrono::system_clock::time_point tp{ std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt) };
+  auto dt =  now - tp;
+
+  // If time difference is large, adjust the epoch to get differences near zero
+  if (std::chrono::duration_cast<sec_t>(dt).count() > POSIX_TIME_AT_EPICS_EPOCH)
+  {
+    _epoch = std::chrono::duration_cast<sec_t>(dt).count() + POSIX_TIME_AT_EPICS_EPOCH;
+    return latency<T>(time);
+  }
+  return std::chrono::duration_cast<T>(dt).count();
+}
 
 #endif

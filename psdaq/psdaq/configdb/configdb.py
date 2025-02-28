@@ -1,4 +1,5 @@
 import os
+import time
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -7,6 +8,7 @@ from urllib.parse import urlparse
 import json
 import logging
 import datetime
+import pytz
 from .typed_json import cdict
 
 class JSONEncoder(json.JSONEncoder):
@@ -71,6 +73,47 @@ class configdb(object):
         # raise exception if status is not ok
         resp.raise_for_status()
         return resp.json()
+
+    # Remove the specified device configuration.
+    def remove_device(self, alias, device, hutch=None):
+        if hutch is None:
+            hutch = self.hutch
+        try:
+            xx = self._get_response('remove_device/' + hutch + '/' +
+                                    alias + '/' + device + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            raise ex
+        except Exception as ex:
+            logging.error('%s' % ex)
+            raise ex
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+            raise RuntimeError('Internal error removing device configuration')
+
+    # Rename the specified device configuration.
+    def rename_device(self, alias, device, newname, hutch=None):
+
+        for xx in '/.':
+            if xx in newname:
+                raise RuntimeError(f"Error: '{xx}' character not allowed in device names")
+
+        if hutch is None:
+            hutch = self.hutch
+        try:
+            xx = self._get_response(f'rename_device/{hutch}/' +
+                                    f'{alias}/{device}/?newname={newname}')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            raise ex
+        except Exception as ex:
+            logging.error('%s' % ex)
+            raise ex
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+            raise RuntimeError('Internal error renaming device configuration')
 
     # Retrieve the configuration of the device with the specified alias.
     # This returns a dictionary where the keys are the collection names and the
@@ -429,6 +472,9 @@ def _cat(args):
         except NameError as ex:
             sys.exit(ex)
 
+    if args.key:
+        alias = args.key
+
     # authentication is not required, adjust url accordingly
     url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
 
@@ -440,6 +486,30 @@ def _cat(args):
         xx = mycdb.get_configuration(alias, f'{dev}_{seg}', hutch)
     if len(xx) > 0:
         pprint.pprint(xx)
+
+def _rm(args):
+    if isXpm(args.src):
+        seg = None
+        try:
+            hutch, alias, dev = _parse_device3(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+    else:
+        try:
+            hutch, alias, dev, seg = _parse_device4(args.src)
+        except NameError as ex:
+            sys.exit(ex)
+
+    if args.write:
+        mycdb = configdb(args.url, hutch, root=args.root,
+                         user=args.user, password=args.password)
+        if seg is None:
+            xx = mycdb.remove_device(alias, f'{dev}', hutch)
+        else:
+            xx = mycdb.remove_device(alias, f'{dev}_{seg}', hutch)
+    else:
+        print("")
+        print("WARNING: Not written to database (use the --write option)")
 
 def _cp(args):
     try:
@@ -469,6 +539,27 @@ def _cp(args):
         if retval == 0:
             print('failed to transfer configuration')
             sys.exit(1)
+    else:
+        print("")
+        print("WARNING: Not written to database (use the --write option)")
+
+def _mv(args):
+    try:
+        if isXpm(args.src):
+            oldseg = newseg = None
+            oldhutch, oldalias, olddev = _parse_device3(args.src)
+        else:
+            oldhutch, oldalias, olddev, oldseg = _parse_device4(args.src)
+    except NameError as ex:
+        print('%s' % ex)
+        sys.exit(1)
+
+    if args.write:
+        mycdb = configdb(args.url, oldhutch, root=args.root)
+        if oldseg is None:
+            xx = mycdb.rename_device(oldalias, f'{olddev}', args.newname, oldhutch)
+        else:
+            xx = mycdb.rename_device(oldalias, f'{olddev}_{oldseg}', args.newname, oldhutch)
     else:
         print("")
         print("WARNING: Not written to database (use the --write option)")
@@ -522,10 +613,20 @@ def _history(args):
                                 hutch=hutch, plist=["detName:RO"])
 
     if len(xx) > 0:
+
+        if args.utc:
+            zone_name = 'UTC'
+        else:
+            zone_name = 'US/Pacific'
+            pacific = pytz.timezone(zone_name)
+
         for entry in xx["value"]:
             date_obj = datetime.datetime.fromisoformat(entry['date'])
+            if not args.utc:
+                date_obj = date_obj.astimezone(pacific)
+
             fmtd_date = date_obj.strftime('%m/%d/%Y, %H:%M:%S')
-            print(f"Date: {fmtd_date} UTC - Key: {entry['key']}")
+            print(f"Date: {fmtd_date} {zone_name} - Key: {entry['key']}")
 
 def _rollback(args):
     if isXpm(args.src):
@@ -566,17 +667,24 @@ def _rollback(args):
 
 
 class createArgs(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        def opt(key,default):
+            return kwargs[key] if key in kwargs.keys() else default
+
         parser = argparse.ArgumentParser(description='Write a new segment configuration into the database')
-        parser.add_argument('--prod', help='use production db', action='store_true')
-        parser.add_argument('--inst', help='instrument', type=str, default='tst')
-        parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
-        parser.add_argument('--name', help='detector name', type=str, default='tstts')
-        parser.add_argument('--segm', help='detector segment', type=int, default=0)
-        parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
-        parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
-        parser.add_argument('--password', help='password for HTTP authentication', type=str, default=os.getenv('CONFIGDB_AUTH'))
-        parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=None)
+        parser.add_argument('--prod', help='use production db', action='store_true', default=opt('prod',False))
+        parser.add_argument('--inst', help='instrument', type=str, default=opt('inst','tst'))
+        parser.add_argument('--alias', help='alias name', type=str, default=opt('alias','BEAM'))
+        parser.add_argument('--name', help='detector name', type=str, default=opt('name','tstts'))
+        parser.add_argument('--segm', help='detector segment', type=int, default=opt('segm',0))
+        parser.add_argument('--id', help='device id/serial num', type=str, default=opt('id','serial1234'))
+        parser.add_argument('--user', help='user for HTTP authentication', type=str, default=opt('user','xppopr'))
+        parser.add_argument('--password', help='password for HTTP authentication', type=str, default=opt('password',os.getenv('CONFIGDB_AUTH')))
+        parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=opt('yaml',None))
+        parser.add_argument('--dir', help='Load values from directory tree', type=str, default=opt('dir',None))
+        parser.add_argument('--update', help='update an existing schema', action='store_true', default=opt('update',False))
+        parser.add_argument('--dryrun', help='make no DB changes', action='store_true', default=opt('dryrun',False))
+        parser.add_argument('--verbose', help='enable prints', action='store_true', default=opt('verbose',False))
         self.args = parser.parse_args()
 
 
@@ -592,10 +700,19 @@ def main():
     # create the parser for the "cat" command
     parser_cat = subparsers.add_parser('cat', help='print a configuration')
     parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_cat.add_argument('--key', default=None, help='key to print, if provided')
     parser_cat.set_defaults(func=_cat)
 
+    # create the parser for the "rm" command
+    parser_rm = subparsers.add_parser('rm', help='remove a configuration')
+    parser_rm.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_rm.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_rm.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_rm.add_argument('--write', action="store_true", help='Write to database')
+    parser_rm.set_defaults(func=_rm)
+
     # create the parser for the "cp" command
-    parser_cp = subparsers.add_parser('cp', help='copy a configuration')
+    parser_cp = subparsers.add_parser('cp', help='copy a configuration (EXAMPLE: configdb cp --create --write tmo/BEAM/timing_0 newhutch/BEAM/timing_0)')
     parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_cp.add_argument('--user', default='tstopr', help='default: tstopr')
@@ -604,11 +721,21 @@ def main():
     parser_cp.add_argument('--write', action="store_true", help='Write to database')
     parser_cp.set_defaults(func=_cp)
 
+    # create the parser for the "mv" command
+    parser_mv = subparsers.add_parser('mv', help='rename a configuration (EXAMPLE: configdb mv --write tst/BEAM/timing_45 timing_46)')
+    parser_mv.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_mv.add_argument('newname', help='new name')
+    parser_mv.add_argument('--user', default='tstopr', help='default: tstopr')
+    parser_mv.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_mv.add_argument('--write', action="store_true", help='Write to database')
+    parser_mv.set_defaults(func=_mv)
+
     # create the parser for the "history"
     parser_history = subparsers.add_parser('history', help='get history of a configuration')
     parser_history.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
     parser_history.add_argument('--user', default='tstopr', help='default: tstopr')
     parser_history.add_argument('--password', default=os.getenv('CONFIGDB_AUTH'), help='default: environmental variable')
+    parser_history.add_argument('--utc', action="store_true", help='UTC timestamps (default: US/Pacific)')
     parser_history.set_defaults(func=_history)
 
     # create the parser for the "rollback"

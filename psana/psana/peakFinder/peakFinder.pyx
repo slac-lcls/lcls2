@@ -304,15 +304,15 @@ cdef class peak_finder_algos :
 
         arr0 = PyAllocArray1D()
         rows_cgrav = arr0.init(&self.cptr.rows, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        rows_cgrav.base = <PyObject*> arr0
+        cnp.PyArray_SetBaseObject(rows_cgrav, arr0)
 
         arr1 = PyAllocArray1D()
         cols_cgrav = arr1.init(&self.cptr.cols, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        cols_cgrav.base = <PyObject*> arr1
+        cnp.PyArray_SetBaseObject(cols_cgrav, arr1)
 
         arr2 = PyAllocArray1D()
         intens = arr2.init(&self.cptr.intens, self.cptr.numPeaksSelected, cnp.NPY_FLOAT)
-        intens.base = <PyObject*> arr2
+        cnp.PyArray_SetBaseObject(intens, arr2)
 
         return rows_cgrav, cols_cgrav, intens
 

@@ -1,0 +1,23 @@
+if not platform: platform = '6'
+
+ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
+
+epics_env = ld_lib_path
+hsd_epics_env = ld_lib_path
+
+ioc_node = 'drp-neh-cmp024'
+pva_node = 'drp-neh-cmp023'
+hsd_epics = 'DAQ:FEE:HSD:1'
+hsd_ids = ['0']
+
+procmgr_config = []
+iport = 29071
+for hsd in hsd_ids:
+    for ch in ['a','b']:
+        procmgr_config.append({host:pva_node, id:'hsdpvs_fee_{:}_{:}'.format(hsd,ch), port:'%d'%iport, flags:'s', env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(hsd_epics,hsd.upper(),ch.upper())})
+        iport += 1
+
+for hsd in hsd_ids:
+    procmgr_config.append({host:ioc_node, id:'hsdioc_fee_{:}'.format(hsd), port:'%d'%iport, flags:'s', env:epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/datadev_{:}'.format(hsd_epics,hsd.upper(),hsd)})
+
+    iport += 1

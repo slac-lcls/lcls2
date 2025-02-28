@@ -60,7 +60,7 @@ class Pv(object):
                 self.subscription = pvactx.monitor(self.pvname, monitor_cb)
                 self.__value__ = None
             except TimeoutError as e:
-                logger.error("Timeout expection connecting to PV %s", pvname)
+                logger.error("Timeout exception connecting to PV %s", pvname)
         else:
             self.__value__ = None
             logger.debug("PV %s created without a callback", self.pvname) # Call get explictly for an sync get or use for put
@@ -78,14 +78,22 @@ class Pv(object):
             logger.error(f'Exception in monitor_cb for {self.pvname} {e} [{newval}]')
         return result
 
-    def get(self, useCached=True):
-        self.__value__ = self.to_value(pvactx.get(self.pvname))
+    def get(self, useCached=True, timeout=5.0):
+        try:
+            self.__value__ = self.to_value(pvactx.get(self.pvname,timeout=timeout))
+        except TimeoutError as e:
+            logger.error("Timeout exception getting from PV %s", self.pvname)
+            raise
         logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 
     def put(self, newval, wait=None):
         logger.info("Putting to PV %s current value %s new value %s", self.pvname, self.__value__, newval)
-        ret =  pvactx.put(self.pvname, newval, wait=wait)
+        try:
+            ret =  pvactx.put(self.pvname, newval, wait=wait)
+        except TimeoutError as e:
+            logger.error("Timeout exception putting to PV %s", self.pvname)
+            raise
         self.__value__ = newval
         return ret
 
@@ -290,9 +298,10 @@ class PvComboDisplay(QtWidgets.QComboBox):
 
 class PvTableDisplay(QtWidgets.QWidget):
 
-    def __init__(self, pvname, rowNames=None):
+    def __init__(self, pvname, rowNames=None, colEmpty=None):
         super(PvTableDisplay, self).__init__()
         self.ready = False
+        self.colEmpty = colEmpty
         initPvMon(self,pvname,isStruct=True)
 
         v = self.pv.get()
@@ -318,8 +327,10 @@ class PvTableDisplay(QtWidgets.QWidget):
         for j,r in enumerate(v.labels):
             w = getattr(self,r)
             q = getattr(v.value,r)
+            e = self.colEmpty[j] if self.colEmpty else None
             for i,qv in enumerate(q):
-                w[i].setText(str(qv))
+                sqv = str(qv) if qv != e else '-'
+                w[i].setText(sqv)
 
 class PvEditTxt(PvTextDisplay):
 
@@ -432,7 +443,7 @@ class PvEditDbl(PvEditTxt):
         super(PvEditDbl, self).__init__(pv, label)
 
     def setPv(self):
-        value = self.text().toDouble()
+        value = float(self.text())
         self.pv.put(value)
 
     def update(self, err):
@@ -882,6 +893,9 @@ def LblCheckBox(parent, pvbase, name, count=1, start=0, istart=0, enable=True, h
 def LblEditInt(parent, pvbase, name, count=1, horiz=True):
     return PvInput(PvEditInt, parent, pvbase, name, count, horiz=horiz)
 
+def LblEditDbl(parent, pvbase, name, count=1, horiz=True):
+    return PvInput(PvEditDbl, parent, pvbase, name, count, horiz=horiz)
+
 def LblEditHML(parent, pvbase, name, count=1):
     return PvInput(PvEditHML, parent, pvbase, name, count)
 
@@ -900,3 +914,9 @@ def LblMask(pvbase, label, bits=1):
     PvMask(hbox, pvbase+label, bits)
     hbox.addStretch(1)
     return hbox
+
+def to_mask(lista):
+    v = 0
+    for l in lista:
+        v |= (1<<l)
+    return v

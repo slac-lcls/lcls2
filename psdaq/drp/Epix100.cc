@@ -20,6 +20,7 @@ using logging = psalg::SysLog;
 using json = nlohmann::json;
 
 static unsigned cpocount=0;
+//#define DEBUG_PRINT
 
 namespace Drp {
 
@@ -94,7 +95,7 @@ Epix100::~Epix100()
 {
 }
 
-void Epix100::_connect(PyObject* mbytes)
+void Epix100::_connectionInfo(PyObject* mbytes)
 {
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
@@ -109,18 +110,6 @@ unsigned Epix100::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann:
 {
     // monStreamEnable();
     return 0;
-}
-
-json Epix100::connectionInfo()
-{
-    // Exclude connection info until lcls2-epix-hr-pcie timingTxLink is fixed
-    // What I observed with epix100: when deadtime is enabled the epix100
-    // asserted 90% deadtime (only 10Hz rate).  Matt says he also saw
-    // strange behavior with epixhr, but I don't know the details. -cpo
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
-
-    return BEBDetector::connectionInfo();
 }
 
 unsigned Epix100::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
@@ -186,6 +175,7 @@ void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
     shape[0] = nrows; shape[1] = ncols;
     Array<uint16_t> aframe = cd.allocate<uint16_t>(Epix100PanelDef::raw, shape);
 
+#ifdef DEBUG_PRINT
     cpocount++;
     if (cpocount%100==0) {
         printf("*** event %d subframes.size: %zd\n",cpocount,subframes.size());
@@ -193,6 +183,7 @@ void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
             printf("*** subframes[%d].num_elem(): %zd\n",i,subframes[i].num_elem());
         }
     }
+#endif
 
     if (subframes[3].num_elem() != expectedsize) {
         printf("*** incorrect size %zd %d\n",subframes[3].num_elem(),expectedsize);

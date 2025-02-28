@@ -9,8 +9,8 @@
 #include "Pgp.hh"
 #include "OptFmc.hh"
 #include "Jesd204b.hh"
-#include "TprCore.hh"
 
+#include "psdaq/mmhw/TprCore.hh"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 
@@ -73,6 +73,7 @@ namespace Pds {
         _testpattern = testp;
       }
 
+      _m.i2c().fmc_cpld.adc_input(fmc,PVGET(input_chan));
       _m.i2c().fmc_cpld.adc_range(fmc,PVGET(fs_range_vpp));
 
       _m.i2c_unlock();
@@ -106,6 +107,22 @@ namespace Pds {
       _ready[fmc]->putFrom<unsigned>(1);
     }
 
+    void PV134Ctrls::configPgp(unsigned fmc) {
+      Pds_Epics::EpicsPVA& pv = *_pv[4+fmc];
+      std::vector<Pgp*> pgp = _m.pgp();
+
+#define PVGETV(field) {                                 \
+          pvd::shared_vector<const int> v;              \
+          pv.getVectorAs(v,#field);                     \
+          for(unsigned i=4*fmc; i<4*(fmc+1); i++)       \
+              pgp[i]->tx##field(v[i]);                  \
+      }
+      
+      PVGETV(diffctrl);
+      PVGETV(precursor);
+      PVGETV(postcursor);
+    }
+
     void PV134Ctrls::reset(unsigned fmc) {
       Pds_Epics::EpicsPVA& pv = *_pv[2+fmc];
       if (PVGET(reset)) {
@@ -119,13 +136,13 @@ namespace Pds {
         }
       }
       if (PVGET(timpllrst)) {
-        Pds::HSD::TprCore& tpr = _m.tpr();
+        Pds::Mmhw::TprCore& tpr = _m.tpr();
         tpr.resetRxPll();
         usleep(10000);
         tpr.resetCounts();
       }
       if (PVGET(timrxrst)) {
-        Pds::HSD::TprCore& tpr = _m.tpr();
+        Pds::Mmhw::TprCore& tpr = _m.tpr();
         tpr.resetRx();
         usleep(10000);
         tpr.resetCounts();
@@ -153,6 +170,31 @@ namespace Pds {
         printf("--jesdadcinit\n");
         _m.jesdctl().reset();
         _m.i2c_unlock();
+      }
+      if (PVGET(cfgdump)) {
+          for(unsigned i=0; i<2; i++) {
+              FexCfg& fex = _m.chip(i).fex;
+              unsigned streamMask = unsigned(fex._streams)&0xff;
+#define PRINT_FEX_FIELD(title,arg,op) {                 \
+                  printf("%12.12s:",title);             \
+                  for(unsigned j=0; streamMask>>j; j++) \
+                      printf("%c%u",                    \
+                             j==0?' ':'/',              \
+                             fex._base[j].arg op);      \
+              }                                         \
+              printf("\n");                              
+
+              if (true) {
+                  PRINT_FEX_FIELD("GateBeg", _reg[0], &0xffffffff);
+                  PRINT_FEX_FIELD("GateLen", _reg[1], &0xfffff);
+                  PRINT_FEX_FIELD("FullRow", _reg[2], &0xffff);
+                  PRINT_FEX_FIELD("FullEvt", _reg[2], >>16&0x1f);
+                  PRINT_FEX_FIELD("Prescal", _reg[1], >>20&0x3ff);
+              }
+#undef PRINT_FEX_FIELD
+
+              printf("streams: %08x\n", unsigned(fex._streams));
+          }
       }
     }
     void PV134Ctrls::loopback(unsigned fmc, bool v) {

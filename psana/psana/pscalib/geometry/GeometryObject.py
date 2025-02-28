@@ -97,14 +97,14 @@ class GeometryObject:
                  x0=0, y0=0, z0=0,\
                  rot_z=0, rot_y=0, rot_x=0,\
                  tilt_z=0, tilt_y=0, tilt_x=0,\
-                 use_wide_pix_center=False):
+                 use_wide_pix_center=False, detector=None):
 
         self.pname  = pname
         self.pindex = pindex
         self.oname  = oname
         self.oindex = oindex
         self.set_geo_pars(x0, y0, z0, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x)
-        self.algo = sgs.Create(segname=self.oname, pbits=0, use_wide_pix_center=use_wide_pix_center) # ex.: SegGeometryCspad2x1V1(...)
+        self.algo = sgs.Create(segname=self.oname, pbits=0, use_wide_pix_center=use_wide_pix_center, detector=detector) # ex.: SegGeometryCspad2x1V1(...)
 
         # ---- 2-nd stage
         self.parent = None

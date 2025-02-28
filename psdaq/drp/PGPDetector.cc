@@ -1,10 +1,17 @@
+#if !defined(_GNU_SOURCE)
+#  define _GNU_SOURCE
+#endif
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+
 #include <iostream>
 #include <atomic>
 #include <limits.h>
 #include <fcntl.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Collection.hh"
@@ -16,7 +23,6 @@
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
 #include "psdaq/service/IpcUtils.hh"
-#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
@@ -54,16 +60,6 @@ bool checkPulseIds(const Detector* det, PGPEvent* event)
     }
     return true;
 }
-
-clockid_t test_coarse_clock() {
-    struct timespec t;
-    if (clock_gettime(CLOCK_MONOTONIC_COARSE, &t) == 0) {
-        return CLOCK_MONOTONIC_COARSE;
-    } else {
-        return CLOCK_MONOTONIC;
-    }
-}
-
 
 static int drpSendReceive(int inpMqId, int resMqId, XtcData::TransitionId::Value transitionId, unsigned threadNum)
 {
@@ -154,6 +150,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
     pythonTime = 0ll;
 
+    logging::info("Worker %u is starting with process ID %lu", threadNum, syscall(SYS_gettid));
+
     while (true) {
 
         if (!inputQueue.pop(batch)) {
@@ -214,10 +212,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
 
                 Pds::EbDgram* dgram = new(pool.pebble[pebbleIndex]) Pds::EbDgram(*timingHeader, src, para.rogMask);
-                logging::debug("[Thread %u] PGPDetector saw %s @ %u.%09u (%014lx)",
-                               threadNum,
+                logging::debug("PGPDetector saw %s @ %u.%09u (%014lx) [Thread %u]",
                                XtcData::TransitionId::name(transitionId),
-                               dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+                               dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId(), threadNum);
                 // Find the transition dgram in the pool and initialize its header
                 Pds::EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];
                 const void*   bufEnd  = (char*)trDgram + para.maxTrSize;
@@ -308,7 +305,9 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
     int* m_resShmId = resShmId;
 
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
-        logging::error("Failed to allocate lane/vc");
+        logging::critical("Failed to allocate lane/vc: '%m' "
+                          "- does another process have %s open?", para.device.c_str());
+        abort();
     }
 
     if (pythonDrp) {
@@ -427,12 +426,16 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     const std::chrono::microseconds tmo(m_flushTmo);
     auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
+    logging::info("PGP reader is starting with process ID %lu", syscall(SYS_gettid));
+
     while (1) {
          if (m_terminate.load(std::memory_order_relaxed)) {
             break;
         }
         int32_t ret = read();
         nDmaRet = ret;
+
+        // Time out and flush DRP and TEB batches when there no DMAed data came in
         if (ret == 0) {
             if (tmoState == TmoState::None) {
                 tmoState = TmoState::Started;
@@ -535,6 +538,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
 
 void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
 {
+    logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
+
     int64_t worker = 0L;
     Batch batch;
     const unsigned bufferMask = m_pool.nDmaBuffers() - 1;

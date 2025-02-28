@@ -1,7 +1,7 @@
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 
-if [[ ${HOSTNAME} == sdf* ]]
+if [ -d "/sdf/group/lcls/" ]
 then
     # for s3df
     source /sdf/group/lcls/ds/ana/sw/conda2/inst/etc/profile.d/conda.sh
@@ -16,7 +16,7 @@ else
     export SIT_PSDM_DATA=/cds/data/psdm
 fi
 
-conda activate ps-4.6.0
+conda activate ps-4.6.1
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
     source $AUTH_FILE
@@ -31,6 +31,7 @@ export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
 # for procmgr
 export TESTRELDIR=$RELDIR/install
 export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
+export PROCMGR_EXPORT=$PROCMGR_EXPORT,OPENBLAS_NUM_THREADS=1,PS_PARALLEL='none'
 
 # cpo: seems that in more recent versions blas is creating many threads
 export OPENBLAS_NUM_THREADS=1

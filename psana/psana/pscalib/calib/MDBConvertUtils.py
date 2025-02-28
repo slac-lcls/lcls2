@@ -190,7 +190,7 @@ if __name__ == "__main__":
 
   def test_serialize_numpy_array():
     nda = random_standard(shape=(4,6), mu=100, sigma=10, dtype=np.float32)
-    #nda = aranged_array(shape=(2,3), dtype=np.float) # uint32)
+    #nda = aranged_array(shape=(2,3), dtype=np.float32) # uint32)
     print_ndarr(nda, 'nda', first=0, last=12)
     d = serialize_numpy_array(nda)
     print('serialize_numpy_array: %s' % d)
@@ -200,8 +200,8 @@ if __name__ == "__main__":
 
   def test_serialize_dict():
       d = {'val':123,
-           'nda1': aranged_array(shape=(3,4), dtype=np.int),
-           'nda2': random_standard(shape=(2,3), mu=100, sigma=10, dtype=np.float)
+           'nda1': aranged_array(shape=(3,4), dtype=np.int32),
+           'nda2': random_standard(shape=(2,3), mu=100, sigma=10, dtype=np.float32)
           }
       print('initial dict:')
       print_dict(d)

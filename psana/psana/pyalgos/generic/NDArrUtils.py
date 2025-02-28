@@ -116,7 +116,7 @@ def size_from_shape(shape):
 def size_from_shape_v2(arrsh):
     """Returns size from the shape sequence (list, tuple, np.array)
     """
-    return np.prod(arrsh, axis=None, dtype=np.int)
+    return np.prod(arrsh, axis=None, dtype=np.int32)
 
 
 def shape_as_2d(sh):

@@ -108,7 +108,7 @@ EpixQuad::~EpixQuad()
 {
 }
 
-void EpixQuad::_connect(PyObject* mbytes)
+void EpixQuad::_connectionInfo(PyObject* mbytes)
 {
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
@@ -123,15 +123,6 @@ unsigned EpixQuad::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann
 {
     _monStreamEnable();
     return 0;
-}
-
-json EpixQuad::connectionInfo()
-{
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    // logging::error("Returning NO XPM link; implementation incomplete");
-    // return json({});
-
-    return BEBDetector::connectionInfo();
 }
 
 unsigned EpixQuad::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
@@ -216,6 +207,12 @@ void EpixQuad::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDat
         transitionXtc().extent = sizeof(Xtc);
     }
 #endif
+
+    if (subframes[2].num_elem() < 4*asicRows*elemRowSize) {
+      logging::error("Missing data: subframe[2] size %d\n", subframes[2].num_elem());
+      xtc.damage.increase(XtcData::Damage::MissingData);
+      return;
+    }
 
     unsigned seg=0;
     for(unsigned q=0; q<4; q++) {

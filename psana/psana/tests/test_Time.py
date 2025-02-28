@@ -1,4 +1,3 @@
-#------------------------------
 
 """Unit test application for psana.pscalib.calib.Time (Lusi.Time) class.
 
@@ -7,22 +6,17 @@ If you use all or part of it, please give an appropriate acknowledgement.
 
 Andrei Salnikov
 """
-#------------------------------
-
 import sys
 import os
 import unittest
-
 from psana.pscalib.calib.Time import *
 
-#------------------------------
+class TestTime(unittest.TestCase):
 
-class TestTime(unittest.TestCase) :
-
-    def setUp(self) :
+    def setUp(self):
         pass
-    
-    def tearDown(self) :
+
+    def tearDown(self):
         pass
 
     def testValid(self):
@@ -92,35 +86,34 @@ class TestTime(unittest.TestCase) :
     def test_cmp_6(self):
         t0 = Time()
         t1 = Time( 123, 123 )
-        self.assertRaises( Exception, lambda : t0 == t1 )
-        self.assertRaises( Exception, lambda : t0 != t1 )
-        self.assertRaises( Exception, lambda : t0 < t1 )
-        self.assertRaises( Exception, lambda : t0 <= t1 )
-        self.assertRaises( Exception, lambda : t0 > t1 )
-        self.assertRaises( Exception, lambda : t0 >= t1 )
+        self.assertRaises( Exception, lambda: t0 == t1 )
+        self.assertRaises( Exception, lambda: t0 != t1 )
+        self.assertRaises( Exception, lambda: t0 < t1 )
+        self.assertRaises( Exception, lambda: t0 <= t1 )
+        self.assertRaises( Exception, lambda: t0 > t1 )
+        self.assertRaises( Exception, lambda: t0 >= t1 )
 
     def test_cmp_7(self):
-        t0 = Time( 123, 123 ) 
+        t0 = Time( 123, 123 )
         t1 = Time()
-        self.assertRaises( Exception, lambda : t0 == t1 )
-        self.assertRaises( Exception, lambda : t0 != t1 )
-        self.assertRaises( Exception, lambda : t0 < t1 )
-        self.assertRaises( Exception, lambda : t0 <= t1 )
-        self.assertRaises( Exception, lambda : t0 > t1 )
-        self.assertRaises( Exception, lambda : t0 >= t1 )
+        self.assertRaises( Exception, lambda: t0 == t1 )
+        self.assertRaises( Exception, lambda: t0 != t1 )
+        self.assertRaises( Exception, lambda: t0 < t1 )
+        self.assertRaises( Exception, lambda: t0 <= t1 )
+        self.assertRaises( Exception, lambda: t0 > t1 )
+        self.assertRaises( Exception, lambda: t0 >= t1 )
 
     def test_cmp_8(self):
         t0 = Time()
         t1 = Time()
-        self.assertRaises( Exception, lambda : t0 == t1 )
-        self.assertRaises( Exception, lambda : t0 != t1 )
-        self.assertRaises( Exception, lambda : t0 < t1 )
-        self.assertRaises( Exception, lambda : t0 <= t1 )
-        self.assertRaises( Exception, lambda : t0 > t1 )
-        self.assertRaises( Exception, lambda : t0 >= t1 )
+        self.assertRaises( Exception, lambda: t0 == t1 )
+        self.assertRaises( Exception, lambda: t0 != t1 )
+        self.assertRaises( Exception, lambda: t0 < t1 )
+        self.assertRaises( Exception, lambda: t0 <= t1 )
+        self.assertRaises( Exception, lambda: t0 > t1 )
+        self.assertRaises( Exception, lambda: t0 >= t1 )
 
     def test_hash(self):
-
         d = {}
         d[Time(1)] = 1000
         d[Time(2)] = 10000
@@ -131,11 +124,9 @@ class TestTime(unittest.TestCase) :
         self.assertEqual( d[Time(2)], 10000 )
         self.assertEqual( d[Time(1000)], 3 )
         self.assertEqual( d.get(Time(5),5), 5 )
-        self.assertRaises( Exception, lambda : d.get(Time(),None) )
-
-#------------------------------
+        self.assertRaises( Exception, lambda: d.get(Time(),None) )
 
 if __name__ == "__main__":
     unittest.main()
 
-#------------------------------
+# EOF

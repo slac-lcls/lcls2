@@ -34,6 +34,7 @@ USAGE = '\n  %s -d <detector> -k <datasource-kwargs> [kwargs]' % SCRNAME\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00118-r0222-s006-c000.xtc2 -d tmo_atmopal' % SCRNAME\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/uedcom103-r0007-s002-c000.xtc2 -d epixquad' % SCRNAME\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/ueddaq02-r0569-s001-c000.xtc2  -d epixquad' % SCRNAME\
+      + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
 
 def ds_run_det(args):
@@ -95,9 +96,12 @@ def ds_run_det(args):
 
     if '_config_object' in det_raw_attrs:
       dcfg = det.raw._config_object()
-      for k,v in dcfg.items():
-        print('  seg:%s %s' % (str(k), info_ndarr(v.config.trbit, ' v.config.trbit for ASICs')))
-        print('  seg:%s %s' % (str(k), info_ndarr(v.config.asicPixelConfig, ' v.config.asicPixelConfig')))
+      if dcfg is not None:
+       for k,v in dcfg.items():
+        trbit = getattr(v.config, 'trbit', None)  # v.config.trbit
+        asicPixelConfig = getattr(v.config, 'asicPixelConfig', None)  # v.config.asicPixelConfig
+        print('  seg:%s %s' % (str(k), info_ndarr(trbit, ' v.config.trbit for ASICs')))
+        print('  seg:%s %s' % (str(k), info_ndarr(asicPixelConfig, ' v.config.asicPixelConfig')))
     else: print('det.raw._config_object  : MISSING')
 
     print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
@@ -111,7 +115,7 @@ def selected_record(nrec):
 
 
 def info_det_evt(det, evt, ievt):
-    return '  Event %05d %s '% (ievt, 'detector is None' if det is None else info_ndarr(det.raw.raw(evt), 'raw '))
+    return '  Event %05d %s' % (ievt, 'detector is None'+80*' ' if det is None else info_ndarr(det.raw.raw(evt), 'raw '))
 
 
 def loop_run_step_evt(args):
@@ -139,6 +143,7 @@ def loop_run_step_evt(args):
 
       is_epix10ka  = False if det is None else det.raw._dettype == 'epix10ka'
       is_epixhr2x2 = False if det is None else det.raw._dettype == 'epixhr2x2'
+      is_epixm320  = False if det is None else det.raw._dettype == 'epixm320'
 
       try:    step_docstring = run.Detector('step_docstring')
       except: step_docstring = None
@@ -155,9 +160,14 @@ def loop_run_step_evt(args):
 
       for istep, step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
+        if is_epixm320:
+          from psana.detector.UtilsEpixm320Calib import gain_mode_name
+          print(' gain mode name from config: %s' % gain_mode_name(det), end='')
+
 
         if step_docstring is not None:
           sds = step_docstring(step)
+          #print('XXX step_docstring(step):', sds)
           try: sdsdict = json.loads(sds)
           except Exception as err:
             print('\nERROR FOR step_docstring: ', sds)
@@ -191,7 +201,7 @@ def loop_run_step_evt(args):
              print(info_ndarr(raw,'    det.raw.raw(evt)'))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
 
-             if dcfg is not None:
+             if dcfg is not None and (is_epix10ka or is_epixhr2x2):
                s = '    gain mode fractions for: FH       FM       FL'\
                    '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
                print(ue.info_pixel_gain_mode_fractions(det.raw, evt, msg=s))

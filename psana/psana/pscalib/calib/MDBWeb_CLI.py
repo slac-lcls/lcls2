@@ -14,13 +14,10 @@ class MDBWeb_CLI(MDB_CLI):
     def __init__(self, parser):
         MDB_CLI.__init__(self, parser)
 
-
     def _warning(self): logger.warning('MDBWeb_CLI: TBD for mode: %s' % self.mode)
-
 
     def print_content(self):
         logger.info(wu.info_webclient(**self.kwargs))
-
 
     def deldoc(self):
         """Deletes document and associated data for specified docid. DB and collection names are evaluated from input parameters."""
@@ -43,7 +40,6 @@ class MDBWeb_CLI(MDB_CLI):
             logger.info('deldoc for DB/collection/docid: %s/%s/%s resp=%s' % (str(dbname), str(colname), str(docid), str(resp)))
         else:
             mu.request_confirmation()
-
 
     def delcol(self):
         """Deletes collection and all associated data. DB and collection names are evaluated from input parameters."""
@@ -80,7 +76,6 @@ class MDBWeb_CLI(MDB_CLI):
         else:
             mu.request_confirmation()
 
-
     def deldb(self):
         """Deletes data base. DB name is evaluated from input parameters."""
         dbname = mu.get_dbname(**self.kwargs)
@@ -100,7 +95,6 @@ class MDBWeb_CLI(MDB_CLI):
             logger.debug('Databases after %s:\n%s' % (self.mode, wu.str_formatted_list(dbnames)))
         else:
             mu.request_confirmation()
-
 
     def get(self):
         """Finds requested document and associated data and saves them in files."""
@@ -130,7 +124,6 @@ class MDBWeb_CLI(MDB_CLI):
         if prefix is None: prefix = mu.out_fname_prefix(**doc)
         mu.save_doc_and_data_in_file(doc, data, prefix, control={'data': True, 'meta': True})
 
-
     def add(self):
         """Adds calibration constants to database from file."""
         kwa = self.kwargs
@@ -147,11 +140,9 @@ class MDBWeb_CLI(MDB_CLI):
         resp = wu.deploy_constants(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
         #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp if resp is not None
 
-
     def test(self):
         self._warning()
         logger.warning('MDBWeb_CLI.test')
-
 
     def dispatcher(self):
         mode = self.mode
@@ -173,11 +164,9 @@ class MDBWeb_CLI(MDB_CLI):
 
         else: logger.warning('Non-implemented command mode "%s"\n  Known modes: %s' % (mode,', '.join(MODES)))
 
-
 def cdb_web(parser):
     """Calibration Data Base Command Line Interface"""
     MDBWeb_CLI(parser)
-
 
 if __name__ == "__main__":
     import sys

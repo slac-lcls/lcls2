@@ -1,28 +1,21 @@
 if not platform: platform = '7'
+username = 'detopr'
+
+#epics_host = 'daq-det-drp01'
+epics_host = 'drp-det-cmp001'
+
+hutch = 'asc'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'+' '+ld_lib_path
-prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.58.255'+' '+ld_lib_path
+prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
 
-# procmgr FLAGS: <port number> static port number to keep executable
-#                              running across multiple start/stop commands.
-#                "X" open xterm
-#                "s" send signal to child when stopping
-#
-# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
-# list of processes to run
-#   required fields: id, cmd
-#   optional fields: host, port, flags, conda, env, rtprio
-#     flags:
-#        'x' or 'X'  -> xterm: open small or large xterm for process console
-#        's'         -> stop: sends ctrl-c to process
-#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+pyxpm_optsdb = f'--db https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,{hutch},PROD -P DAQ:ASC:XPM:%d'
+pyxpm_opts = '-P DAQ:LAB2:ASC:%d'
 
 procmgr_config = [
- { id:'pyxpm',   port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.0.103 -P DAQ:ASC:XPM:0'},
+ { host: epics_host,  id:'pyxpm-0', port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.0.102 '+pyxpm_optsdb%0},
 
 ## EPICS PV exporter
- { id:'pvrtmon', port:'29467', flags:'s', env:epics_env, cmd:f'epics_exporter -H asc -M {prom_dir} -P DAQ:ASC:XPM:0 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
-
-# { id:'pykcu',   port:'29471', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'},
+ {                    id:'pvrtmon', port:'29452', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch} -M {prom_dir} -I xpm-0 -P DAQ:ASC:XPM:0 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'}
 ]

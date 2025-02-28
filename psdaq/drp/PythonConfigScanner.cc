@@ -71,7 +71,10 @@ unsigned PythonConfigScanner::configure(const json&  scan_keys,
         char* json = (char*)PyBytes_AsString(json_bytes);
 
         Document *d = new Document();
-        d->Parse(json);
+        ParseResult ok = d->Parse(json);
+        if (!ok)
+            logging::error("PythonConfigScanner::Configure: seg %u, JSON parse error: %s (%u)",
+                           seg, GetParseError_En(ok.Code()), ok.Offset());
 
         //  Extract detname, segment from document detName field
         const char* detname=0;
@@ -120,7 +123,10 @@ static int _translate( PyObject* item, Xtc* xtc, const void* bufEnd, NamesLookup
     Value jsonv;
 
     Document *d = new Document();
-    d->Parse(json);
+    ParseResult ok = d->Parse(json);
+    if (!ok)
+        logging::error("PythonConfigScanner::_translate: JSON parse error: %s (%u)",
+                       GetParseError_En(ok.Code()), ok.Offset());
 
     while(1) {
         const char* detname;

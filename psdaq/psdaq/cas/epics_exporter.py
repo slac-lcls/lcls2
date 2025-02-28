@@ -92,8 +92,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     # Start up the server to expose the metrics.
     i = args.I if args.I is not None else args.H  # Default to previous behavior if -I is not given
@@ -113,4 +112,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -14,8 +14,12 @@
 #include "EpixQuad.hh"
 #include "EpixHR2x2.hh"
 #include "EpixHRemu.hh"
+#include "EpixM320.hh"
+#include "EpixUHR.hh"
 #include "Epix100.hh"
+#include "JungfrauEmulator.hh"
 #include "Opal.hh"
+#include "HREncoder.hh"
 #include "Wave8.hh"
 #include "Piranha4.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -83,7 +87,7 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
             }
         }
     }
-
+    
     logging::debug("_getscankeys returning [%s]",update.dump().c_str());
     return update;
 }
@@ -183,6 +187,8 @@ static int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, cons
                std::to_string(para.detSegment).c_str(),
                std::to_string(workerNum).c_str(),
                std::to_string(para.verbose).c_str(),
+               para.instrument.c_str(),
+               para.prometheusDir.c_str(),
                nullptr);
 
         // Execlp returns only on error
@@ -307,30 +313,29 @@ void PGPDetectorApp::initialize()
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
     Factory<Detector> f;
-    f.register_type<AreaDetector>("fakecam");
-    f.register_type<AreaDetector>("cspad");
-    f.register_type<Digitizer>   ("hsd");
-    f.register_type<EpixQuad>    ("epixquad");
-    f.register_type<EpixHR2x2>   ("epixhr2x2");
-    f.register_type<EpixHRemu>   ("epixhremu");
-    f.register_type<Epix100>     ("epix100");
-    f.register_type<Opal>        ("opal");
-    f.register_type<TimeTool>    ("tt");
-    f.register_type<TimingBEB>   ("tb");
-    f.register_type<TimingSystem>("ts");
-    f.register_type<Wave8>       ("wave8");
-    f.register_type<Piranha4>    ("piranha4");
-
+    f.register_type<AreaDetector>    ("fakecam");
+    f.register_type<AreaDetector>    ("cspad");
+    f.register_type<Digitizer>       ("hsd");
+    f.register_type<EpixQuad>        ("epixquad");
+    f.register_type<EpixHR2x2>       ("epixhr2x2");
+    f.register_type<EpixHRemu>       ("epixhremu");
+    f.register_type<EpixM320>        ("epixm320");
+    f.register_type<EpixUHR>         ("epixUHR");
+    f.register_type<Epix100>         ("epix100");
+    f.register_type<JungfrauEmulator>("jungfrauemu");
+    f.register_type<Opal>            ("opal");
+    f.register_type<TimeTool>        ("tt");
+    f.register_type<TimingBEB>       ("tb");
+    f.register_type<TimingSystem>    ("ts");
+    f.register_type<Wave8>           ("wave8");
+    f.register_type<HREncoder>       ("hrencoder");
+    f.register_type<Piranha4>        ("piranha4");
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
     }
-
-    // Provide EbReceiver with the Detector interface so that additional
-    // data blocks can be formatted into the XTC, e.g. trigger information
-    m_drp.ebReceiver().detector(m_det);
 
     // Initialize these to zeros. They will store the file descriptors and
     // process numbers if Drp Python is used or be just zeros if it is not.
@@ -525,7 +530,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
         else {
             // Python-DRP is disabled during calibrations
-            std::string config_alias = msg["body"]["config_alias"];
+            const std::string& config_alias = msg["body"]["config_alias"];
             bool pythonDrp = config_alias != "CALIB" ? m_pythonDrp : false;
 
             m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, pythonDrp, m_inpMqId,
@@ -539,6 +544,10 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                                       std::ref(m_det), std::ref(m_drp.tebContributor())};
             m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                             std::ref(m_drp.tebContributor()));
+
+            // Provide EbReceiver with the Detector interface so that additional
+            // data blocks can be formatted into the XTC, e.g. trigger information
+            m_drp.ebReceiver().configure(m_det, m_pgpDetector.get());
 
             unsigned error = m_det->configure(config_alias, xtc, bufEnd);
             if (!error) {
@@ -678,22 +687,39 @@ void PGPDetectorApp::handleReset(const json& msg)
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
-json PGPDetectorApp::connectionInfo()
+void PGPDetectorApp::handleDealloc(const json& msg)
+{
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
+    CollectionApp::handleDealloc(msg);
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
+}
+
+json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo();
+
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
+
+    json info = m_det->connectionInfo(msg);
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
+
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
+
     return body;
 }
 
 void PGPDetectorApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det->connectionShutdown();
+    }
+
     m_drp.shutdown();
     if (m_exporter) {
         m_exporter.reset();

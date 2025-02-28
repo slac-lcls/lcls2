@@ -34,7 +34,7 @@ class TestGWViewHist(GWViewHist):
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D
             print('change scene rect %s' % ('set new default' if change_def else ''))
-            v = ag.random_standard((4,), mu=0, sigma=10, dtype=np.int)
+            v = ag.random_standard((4,), mu=0, sigma=10, dtype=np.int32)
             w, h = (1200, 120) if self.hist.orient == 'H' else (120, 1200)
             rs = QRectF(v[0], v[1], v[2]+w, v[3]+h)
             print('Set scene rect: %s' % str(rs))

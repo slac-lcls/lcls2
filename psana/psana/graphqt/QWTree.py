@@ -207,7 +207,7 @@ class QWTree(QTreeView):
         m = self.model
         pindex = m.indexFromItem(parent_item)
         if m.hasChildren(pindex):
-            logger.info('XXX item already has children - update')
+            logger.info('item already has children - update')
             #print('XXX rowCount %d' % m.rowCount(pindex))
             m.removeRows(0, m.rowCount(pindex), pindex)
             #print('XXX removeRows rowCount %d' % m.rowCount(pindex))

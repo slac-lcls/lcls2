@@ -8,7 +8,7 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 def issue_2020_11_09():
     from psana import DataSource
-    ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
+    ds = DataSource(files='/sdf/group/lcls/ds/ana/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
 
     orun = next(ds.runs())
     #for orun in ds.runs():
@@ -134,12 +134,12 @@ def issue_2020_12_19():
 
         det = run.Detector('epixquad')
 
-        print('det._det_name      : ', det._det_name) # epixquad
-        print('det._dettype       : ', det._dettype)  # epix
-        print('det.raw._det_name  : ', det.raw._det_name) # epixquad
-        print('det.raw._dettype   : ', det.raw._dettype)  # epix
-        print('det.raw._uniqueid  : ', det.raw._uniqueid)  # epix_3926196238-017....
-        print('_sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
+        print('det._det_name       : ', det._det_name) # epixquad
+        print('det._dettype        : ', det._dettype)  # epix
+        print('det.raw._det_name   : ', det.raw._det_name) # epixquad
+        print('det.raw._dettype    : ', det.raw._dettype)  # epix
+        print('det.raw._uniqueid   : ', det.raw._uniqueid)  # epix_3926196238-017....
+        print('_sorted_segment_inds: ', det.raw._sorted_segment_inds) # [0, 1, 2, 3]
 
         for stepnum,step in enumerate(run.steps()):
 

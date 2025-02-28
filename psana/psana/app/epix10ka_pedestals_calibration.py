@@ -16,7 +16,9 @@ USAGE = 'Usage:'\
       + '\n  %s -k exp=ueddaq02,run=83 -d epixquad -o ./work' % SCRNAME\
       + '\nTests:'\
       + '\n  %s -k exp=rixx45619,run=121 -d epixhr -o ./work' % SCRNAME\
+      + '\n  %s -k exp=rixx1003721,run=200 -d epixhr  -o ./work --int_hi 32000' % SCRNAME\
       + '\n  %s -k \"{\'exp\':\'rixx45619\', \'run\':121}\" -d epixhr -o ./work' % SCRNAME\
+      + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm -o ./work' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
       #+ '\n  ??? mpirun -n 5 %s -k exp=ueddaq02,run=27 -d epixquad -i15 -o ./work -L DEBUG' % SCRNAME\
 
@@ -32,8 +34,11 @@ def do_main():
     from psana.detector.UtilsEpix10kaCalib import pedestals_calibration
     from time import time
     t0_sec = time()
+    #if args.det  == 'tst_epixm': sys.exit('TEST EXIT FOR %s' % args.det)
     pedestals_calibration(parser)
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
+
+    sys.exit('End of %s' % SCRNAME)
 
 
 def argument_parser():
@@ -50,22 +55,22 @@ def argument_parser():
     d_stepnum = None
     d_stepmax = 5
     d_evskip  = 100     # number of events to skip in the beginning of each step
-    d_events  = 1000    # last event number in the step to process
+    d_events  = 1000000 # last event number in the step to process
     d_dirmode = 0o2775
     d_filemode= 0o664
     d_group   = 'ps-users'
     d_int_lo  = 1       # lowest  intensity accepted for dark evaluation
-    d_int_hi  = 16000   # highest intensity accepted for dark evaluation
+    d_int_hi  = None    # highest intensity accepted for dark evaluation, ex: 16000
     d_intnlo  = 6.0     # intensity ditribution number-of-sigmas low
     d_intnhi  = 6.0     # intensity ditribution number-of-sigmas high
     d_rms_lo  = 0.001   # rms ditribution low
-    d_rms_hi  = 16000   # rms ditribution high
+    d_rms_hi  = None    # rms ditribution high, ex: 16000
     d_rmsnlo  = 6.0     # rms ditribution number-of-sigmas low
     d_rmsnhi  = 6.0     # rms ditribution number-of-sigmas high
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2023-04-20'
+    d_version = 'V2024-04-01'
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -86,11 +91,11 @@ def argument_parser():
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_int_lo  = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
-    h_int_hi  = 'highest intensity accepted for dark evaluation, default = %d' % d_int_hi
+    h_int_hi  = 'highest intensity accepted for dark evaluation, for None derived from data_bit_mask, default = %s' % d_int_hi
     h_intnlo  = 'intensity ditribution number-of-sigmas low, default = %f' % d_intnlo
     h_intnhi  = 'intensity ditribution number-of-sigmas high, default = %f' % d_intnhi
     h_rms_lo  = 'rms ditribution low, default = %f' % d_rms_lo
-    h_rms_hi  = 'rms ditribution high, default = %f' % d_rms_hi
+    h_rms_hi  = 'rms ditribution high, for None derived from data_bit_mask, default = %s' % d_rms_hi
     h_rmsnlo  = 'rms ditribution number-of-sigmas low, default = %f' % d_rmsnlo
     h_rmsnhi  = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
     h_fraclm  = 'fraction of statistics [0,1] below low or above high gate limit to assign pixel bad status, default = %f' % d_fraclm
@@ -131,6 +136,5 @@ def argument_parser():
 
 if __name__ == "__main__":
     do_main()
-    sys.exit('End of %s'%SCRNAME)
 
 # EOF
