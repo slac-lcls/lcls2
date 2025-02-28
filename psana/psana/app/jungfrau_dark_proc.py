@@ -25,7 +25,7 @@ def argument_parser():
     from argparse import ArgumentParser
 
     d_dskwargs= 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc' # None
-    d_det     = 'jungfrau' #  None
+    d_detname = 'jungfrau' #  None
     d_nrecs   = 20   # number of records to collect and process
     d_nrecs1  = 10   # number of records to process at 1st stage
     d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
@@ -65,7 +65,7 @@ def argument_parser():
                 ' or pythonic dict of generic kwargs, e.g.:'\
                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
-    h_det     = 'detector name, default = %s' % d_det
+    h_detname = 'detector name, default = %s' % d_detname
     h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
     h_idx     = 'segment index (0-15 for epix10ka2m, 0-3 for quad) or all by default for processing, default = %s' % str(d_idx)
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
@@ -100,7 +100,7 @@ def argument_parser():
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
-    parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
+    parser.add_argument('-d', '--detname', default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
     parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)
     parser.add_argument('-i', '--idx',     default=d_idx,        type=int,   help=h_idx)
@@ -144,7 +144,7 @@ def do_main():
 
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
-    assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
+    assert args.detname is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 
     t0_sec = time()
     jungfrau_dark_proc(parser)
