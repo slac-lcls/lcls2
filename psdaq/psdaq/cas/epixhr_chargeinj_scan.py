@@ -4,8 +4,15 @@ import json
 
 def main():
 
+    # default command line arguments
+    defargs = {'--events'  :2000,
+               '--hutch'   :'rix',
+               '--detname' :'epixhr_0',
+               '--scantype':'chargeinj',
+               '--record'  :1}
+
     aargs = [('--spacing',{'type':int,'default':5,'help':'size of rectangular grid'})]
-    scan = ConfigScanBase(aargs)
+    scan = ConfigScanBase(userargs=aargs, defargs=defargs)
 
     args = scan.args
     keys = []
@@ -36,7 +43,7 @@ def main():
         d = {}
         metad = {}
         metad['detname'] = args.detname
-        metad['scantype'] = 'chargeinj'
+        metad['scantype'] = args.scantype
         d[f'{args.detname}:user.gain_mode'] = 5  # Map
         for a in range(4):
             saci = f'{args.detname}:expert.EpixHR.Hr10kTAsic{a}'

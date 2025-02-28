@@ -54,7 +54,12 @@ public:
 class L1Dgram : public Dgram {
 public:
     // 8 reserved bits.  Perhaps for future trigger lines?
+    // b0   - L0Accept
+    // b5:1 - L0Tag
+    // b6   - L0Raw
+    // b7   - L0Reject
     uint16_t reserved() const { return (env>>16)&0xff; }
+    bool     keepRaw () const { return (env>>22)&1; }
 };
 
 }

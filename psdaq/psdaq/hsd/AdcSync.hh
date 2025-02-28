@@ -1,6 +1,7 @@
 #ifndef HSD_AdcSync_hh
 #define HSD_AdcSync_hh
 
+#include "psdaq/mmhw/Reg.hh"
 #include "Globals.hh"
 
 namespace Pds {
@@ -12,19 +13,19 @@ namespace Pds {
       void stop_training ();
       void dump_status   () const;
     private:
-      vuint32_t _cmd;
+      Mmhw::Reg _cmd;
       //  cmd
       //  b0 = calibrate
       //  b15:1  = calib_time
       //  b19:16 = delay load
-      mutable vuint32_t _select;
+      mutable Mmhw::Reg _select;
       //  select
       //  b1:0 = channel for readout
       //  b7:4 = word for readout
-      vuint32_t _match;
-      vuint32_t _rsvd;
-      vuint32_t _delay[8];
-      vuint32_t _rsvd2[0x1f4];
+      Mmhw::Reg _match;
+      uint32_t  _rsvd;
+      Mmhw::Reg _delay[8];
+      uint32_t  _rsvd2[0x1f4];
     };
   };
 };

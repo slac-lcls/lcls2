@@ -12,10 +12,12 @@ class SeqUser:
         self.ninstr   = Pv(prefix+':INSTRCNT')
         self.desc     = Pv(prefix+':DESCINSTRS')
         self.instr    = Pv(prefix+':INSTRS')
-        self.idxseq   = Pv(prefix+':SEQ00IDX')
+        self.idxseq   = Pv(prefix+':SEQIDX')  # array of indices
+        self.seqnames = Pv(prefix+':SEQDESC') # array of names
+        self.idxseq0  = Pv(prefix+':SEQ00IDX')
         self.seqname  = Pv(prefix+':SEQ00DESC')
         self.seqbname = Pv(prefix+':SEQ00BDESC')
-        self.idxseqr  = Pv(prefix+':RMVIDX')
+        self.idxseq0r  = Pv(prefix+':RMVIDX')
         self.seqr     = Pv(prefix+':RMVSEQ')
         self.insert   = Pv(prefix+':INS')
         self.idxrun   = Pv(prefix+':RUNIDX')
@@ -46,25 +48,18 @@ class SeqUser:
         self.reset .put(1,wait=tmo)
         self.reset .put(0,wait=tmo)
 
-    def clean(self):
-        # Remove existing sub sequences
-        ridx = -1
-        print( 'Remove %d'%ridx)
-        if ridx < 0:
-            idx = self.idxseq.get()
-            print(f'idx {idx}')
-            while (idx>0):
-                print( 'Removing seq %d'%idx)
-#                self.seqr.put(0)
-                self.idxseqr.put(idx,wait=tmo)
-                self.seqr.put(1,wait=tmo)
-                time.sleep(1.0)
-                idx = self.idxseq.get()
-        elif ridx > 1:
-            print( 'Removing seq %d'%ridx)
-            self.seqr.put(0,wait=tmo)
-            self.idxseqr.put(ridx,wait=tmo)
+    def clean(self, ridx=None):
+        if ridx is None:
+            self.idxseq0r.put(-1,wait=tmo)
             self.seqr.put(1,wait=tmo)
+        else:
+            aidx = self.idxseq.get()
+            for idx in aidx:
+                if idx==0 or idx==ridx:
+                    continue
+                print( 'Removing seq %d'%idx)
+                self.idxseq0r.put(idx,wait=tmo)
+                self.seqr.put(1,wait=tmo)
 
     def load(self, title, instrset, descset=None):
         self.desc.put(title,wait=tmo)
@@ -73,13 +68,12 @@ class SeqUser:
         for instr in instrset:
             encoding = encoding + instr.encoding()
 
-        print( encoding)
+        #print( encoding)
 
         self.instr.put( tuple(encoding),wait=tmo)
 
         time.sleep(1.0)
 
-#        self.insert.put(0)
         ninstr = self.ninstr.get()
         if ninstr != len(instrset):
             print( 'Error: ninstr invalid %u (%u)' % (ninstr, len(instrset)))
@@ -89,11 +83,11 @@ class SeqUser:
 
         self.insert.put(1,wait=tmo)
 
-        #  How to handshake the insert.put -> idxseq.get (RPC?)
+        #  How to handshake the insert.put -> idxseq0.get (RPC?)
         time.sleep(1.0)
 
         #  Get the assigned sequence num
-        idx = self.idxseq.get()
+        idx = self.idxseq0.get()
         if idx < 2:
             print( 'Error: subsequence index  invalid (%u)' % idx)
             raise RuntimeError("Sequence failed")
@@ -119,7 +113,7 @@ class SeqUser:
         self._idx = idx
 
     def begin(self, wait=False, refresh=False):
-        self.start .put(0,wait=tmo)
+        self.start .put(0,wait=tmo) # noop
         self.idxrun.put(self._idx,wait=tmo)
         self.reset .put(0,wait=tmo)
         self.start .put(1 if not refresh else 3,wait=tmo)
@@ -128,21 +122,21 @@ class SeqUser:
             self.lock.acquire()
 
     def sync(self,refresh=False):
-        self.start .put(0,wait=tmo)
+        self.start .put(0,wait=tmo) # noop
         self.idxrun.put(self._idx,wait=tmo)
         self.reset .put(0,wait=tmo)
         self.start .put(2 if not refresh else 4,wait=tmo)
 
+    #  Move from one set to the next without stopping
     def execute(self, title, instrset, descset=None, sync=False, refresh=False):
-        self.insert.put(0,wait=tmo)
-        self.stop ()
-        self.clean()
+        self.clean(self.idxrun.get())
         self.load (title,instrset,descset)
         if sync:
-            self.sync(refresh)
+            self.sync(refresh)  # schedule the reset
         else:
-            self.begin(refresh)
-
+            self.begin(refresh) # reset now
+        #self.idxrun.put(self._idx,wait=tmo)
+        #self.start.put(2,wait=tmo)
 
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
@@ -191,14 +185,12 @@ def main():
             desc[4*engine+e] = d
         print(f'desc {desc}')
 
-    v = seqcodes.value
-    v.Description = desc
-    seqcodes.value = v
-
-    print(f'seqcodes_pv {seqcodes}')
-    seqcodes_pv.put(seqcodes,wait=tmo)
-
     if args.start:
+        v = seqcodes.value
+        v.Description = desc
+        seqcodes.value = v
+        seqcodes_pv.put(seqcodes,wait=tmo)
+
         pvSeqReset = Pv(f'{args.pv}:SeqReset')
         pvSeqReset.put(engineMask,wait=tmo)
         

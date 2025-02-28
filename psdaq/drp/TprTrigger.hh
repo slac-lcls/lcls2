@@ -15,7 +15,7 @@ public:
     TprApp(TprParameters& para);
     void handleReset(const nlohmann::json& msg) override;
 private:
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void _disconnect();

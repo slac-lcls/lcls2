@@ -2,13 +2,13 @@
 #define Pds_Trg_Trigger_hh
 
 #include "psdaq/service/Dl.hh"
-#include "psdaq/service/json.hpp"
 #include "psdaq/eb/eb.hh"               // For MAX_DRPS
 #include "psdaq/eb/ResultDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include "rapidjson/document.h"
 
+#include <nlohmann/json.hpp>
 #include <cstdint>
 #include <string>
 

@@ -1,4 +1,10 @@
+import sys
 from psana.detector.detector_impl import DetectorImpl
+from amitypes import Array2d
+import logging
+from psana.detector.NDArrUtils import info_ndarr #, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+from psana.detector.areadetector import AreaDetectorRaw, sgs
+import numpy as np
 
 # create a dictionary that can be used to look up other
 # information about an epics variable.  the key in
@@ -22,6 +28,24 @@ class epicsinfo_epicsinfo_1_0_0(DetectorImpl):
                         if n not in self._infodict: self._infodict[n]={}
                         values = getattr(names,n).split('\n')
                         for k,v in zip(keys,values): self._infodict[n][k]=v
+    def __call__(self):
+        return self._infodict
+
+class pvdetinfo_pvdetinfo_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._infodict={}
+        for c in self._configs:
+            if hasattr(c,'pvdetinfo'):
+                for seg,value in c.pvdetinfo.items():
+                    names = getattr(value,'pvdetinfo')
+                    keys = names.keys.split(',')
+                    for n in dir(names):
+                        if n.startswith('_') or n=='keys': continue
+                        if n not in self._infodict: self._infodict[n]={}
+                        values = getattr(names,n).split(',')
+                        for k,v in zip(keys,values): self._infodict[n][k]=v
+
     def __call__(self):
         return self._infodict
 
@@ -111,14 +135,35 @@ class encoder_raw_3_0_0(DetectorImpl):
        else:
            return segments[0].encoderValue*1.0
 
+class hrencoder_raw_0_1_0(DetectorImpl):
+    """High rate encoder.
+
+    The hrencoder detector returns 4 fields:
+        position - The encoder value/position.
+        missedTrig_cnt - Missed triggers
+        error_cnt - Number of errors.
+        latches - Only 3 bits of this integer correspond to the latch status.
+    """
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    def value(self, evt) -> float:
+        segments = self._segments(evt)
+
+        if segments is None:
+            return None
+
+        return segments[0].position
+
 class encoder_interpolated_3_0_0(encoder_raw_3_0_0):
-   def __init__(self, *args):
-       super().__init__(*args)
-   def value(self,evt) -> float:
-       """
-       Version 3.0.0 addresses fields as scalars, not as arrays.
-       """
-       return super().value(evt)
+    def __init__(self, *args):
+        super().__init__(*args)
+    def value(self,evt) -> float:
+        """
+        Version 3.0.0 addresses fields as scalars, not as arrays.
+        """
+        return super().value(evt)
+
 
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):
@@ -126,3 +171,5 @@ class justafloat_simplefloat32_1_2_4(DetectorImpl):
         super().__init__(*args)
     def value(self,evt) -> float:
         return self._segments(evt)[0].valfloat32
+
+# EOF

@@ -3,15 +3,23 @@ import json
 
 def main():
 
-    scan = ConfigScanBase([('--spacing',{'type':int,'default':5,'help':'size of rectangular grid'})])
+    # default command line arguments
+    defargs = {'--hutch'   :'rix',
+               '--detname' :'epixhr_0',
+               '--scantype':'pedestal',
+               '--events'  :1000,
+               '--record'  :1}
 
+    scan = ConfigScanBase(defargs=defargs)
     args = scan.args
+
+    args.scantype = 'pedestal'
     keys = [f'{args.detname}:user.gain_mode']
 
     def steps():
         d = {}
         metad = {'detname':args.detname,
-                 'scantype':'pedestal'}
+                 'scantype':args.scantype}
         for gain in range(5):
             d[f'{args.detname}:user.gain_mode'] = int(gain)
             metad['step'] = int(gain)

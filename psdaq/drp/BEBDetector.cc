@@ -1,5 +1,6 @@
 #include "BEBDetector.hh"
 #include "PythonConfigScanner.hh"
+#include "XpmInfo.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -7,7 +8,7 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/utils/SysLog.hh"
-#include "AxisDriver.h"
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
 
 #include <thread>
 #include <fcntl.h>
@@ -95,33 +96,6 @@ void BEBDetector::_init(const char* arg)
       }
     }
 
-    {
-      sprintf(func_name,"%s_connect",m_para->detType.c_str());
-      PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
-
-      // returns new reference
-      PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"O",m_root));
-
-      m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
-      printf("*** BebDetector: paddr is %08x = %u\n", m_paddr, m_paddr);
-
-      // there is currently a failure mode where the register reads
-      // back as zero or 0xffffffff (incorrectly). This is not the best
-      // longterm fix, but throw here to highlight the problem. the
-      // difficulty is that Matt says this register has to work
-      // so that an automated software solution would know which
-      // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-      // Also, register is corrupted when port number > 15 - Ric
-      if (!m_paddr || m_paddr==0xffffffff || (m_paddr & 0xff) > 15) {
-          logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
-          abort();
-      }
-
-      _connect(mbytes);
-
-      Py_DECREF(mbytes);
-    }
-
     m_configScanner = new PythonConfigScanner(*m_para,*m_module);
 }
 
@@ -140,13 +114,57 @@ void BEBDetector::_init_feb()
     Py_DECREF(mybytes);
 }
 
-json BEBDetector::connectionInfo()
+json BEBDetector::connectionInfo(const json& msg)
 {
-    unsigned reg = m_paddr;
-    int xpm  = (reg >> 20) & 0x0F;
-    int port = (reg >>  0) & 0xFF;
-    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
-    return info;
+    std::string alloc_json = msg.dump();
+    char func_name[64];
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    {
+      sprintf(func_name,"%s_connectionInfo",m_para->detType.c_str());
+      PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
+
+      // returns new reference
+      PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"Os",m_root,alloc_json.c_str()));
+
+      m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
+      printf("*** BebDetector: paddr is %08x = %u\n", m_paddr, m_paddr);
+
+      // there is currently a failure mode where the register reads
+      // back as zero or 0xffffffff (incorrectly). This is not the best
+      // longterm fix, but throw here to highlight the problem. the
+      // difficulty is that Matt says this register has to work
+      // so that an automated software solution would know which
+      // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
+      // Also, register is corrupted when port number > 15 - Ric
+      if (!m_paddr || m_paddr==0xffffffff || (m_paddr & 0xff) > 15) {
+          logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
+          abort();
+      }
+
+      _connectionInfo(mbytes);
+
+      Py_DECREF(mbytes);
+    }
+
+    return xpmInfo(m_paddr);
+}
+
+void BEBDetector::connectionShutdown()
+{
+    char func_name[64];
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    sprintf(func_name,"%s_connectionShutdown",m_para->detType.c_str());
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)func_name);
+    if (pFunc) {
+        Py_DECREF(_check(PyObject_CallFunction(pFunc,"")));
+    }
+}
+
+void BEBDetector::connect(const json& connect_json, const std::string& collectionId)
+{
+    logging::info("BEBDetector connect");
+    m_connect_json = connect_json.dump();
+    m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 }
 
 unsigned BEBDetector::configure(const std::string& config_alias,
@@ -183,8 +201,11 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     else if ( Pds::translateJson2Xtc( mybytes, jsonxtc, end, NamesId(nodeId,ConfigNamesIndex) ) )
         return -1;
 
-    if (jsonxtc.extent>m_para->maxTrSize)
+    if (jsonxtc.extent>m_para->maxTrSize) {
+        logging::critical("Config json output too large (%zu) for buffer (%zu)",
+                          jsonxtc.extent, m_para->maxTrSize);
         throw "**** Config json output too large for buffer\n";
+    }
 
     XtcData::ConfigIter iter(&jsonxtc, end);
     unsigned r = _configure(xtc,bufEnd,iter);
@@ -213,13 +234,6 @@ unsigned BEBDetector::stepScan(const json& stepInfo, Xtc& xtc, const void* bufEn
     return m_configScanner->step(stepInfo,xtc,bufEnd,namesId,m_namesLookup);
 }
 
-void BEBDetector::connect(const json& connect_json, const std::string& collectionId)
-{
-    logging::info("BEBDetector connect");
-    m_connect_json = connect_json.dump();
-    m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
-}
-
 Pds::TimingHeader* BEBDetector::getTimingHeader(uint32_t index) const
 {
     EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
@@ -242,13 +256,32 @@ std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, uns
 
 void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
-    int lane = __builtin_ffs(event->mask) - 1;
+    // Deliver subframe vectors in lane order
+    auto mask = event->mask;
+    unsigned lane = __builtin_ffs(mask) - 1;
     uint32_t dmaIndex = event->buffers[lane].index;
     unsigned data_size = event->buffers[lane].size;
 
     std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
     if (m_debatch)
         subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
+
+    while ( (mask &= mask - 1) ) {
+        lane = __builtin_ffs(mask) - 1;
+        dmaIndex = event->buffers[lane].index;
+        data_size = event->buffers[lane].size;
+
+        std::vector< XtcData::Array<uint8_t> > sf = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
+        if (m_debatch)
+            sf = _subframes(sf[2].data(), sf[2].shape()[0]);
+
+        if (sf.size() > 2)
+            subframes.push_back(sf[2]);
+        else {
+            logging::debug("BEBDetector::event: Missing subframes for lane %u; Got %zu, expected >2", lane, sf.size());
+        }
+    }
+
     _event(dgram.xtc, bufEnd, subframes);
 }
 
@@ -263,13 +296,7 @@ void BEBDetector::shutdown()
     PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
 
     // returns new reference
-    PyObject* val = PyObject_CallFunction(pFunc,"O",m_root);
-
-    if (val)
-        Py_DECREF(val);
-    else
-        PyErr_Print();
-
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"O",m_root)));
 }
 
 }

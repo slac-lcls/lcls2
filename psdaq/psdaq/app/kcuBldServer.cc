@@ -9,8 +9,8 @@
 #include <time.h>
 #include <arpa/inet.h>
 
-#include "AxisDriver.h"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 #include <string>
 
@@ -212,7 +212,7 @@ int main(int argc, char** argv) {
   // "connect" to the sending socket
   char buf[4];
   send(fd,buf,sizeof(buf),0);
-    
+
 
     static const int MAX_RET_CNT_C = 1024;
     int32_t dmaRet    [MAX_RET_CNT_C];
@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
     uint32_t dest     [MAX_RET_CNT_C];
     uint32_t dmaFlags [MAX_RET_CNT_C];
     uint32_t dmaErrors[MAX_RET_CNT_C];
-    
+
     while(1) {
 
         if (m_terminate.load(std::memory_order_relaxed)) {

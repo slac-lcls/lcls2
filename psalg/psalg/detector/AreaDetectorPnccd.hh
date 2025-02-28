@@ -25,7 +25,7 @@ public:
   AreaDetectorPnccd();
   virtual ~AreaDetectorPnccd();
 
-  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
+  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector
 
   virtual void _set_indexes_config(XtcData::ConfigIter&);
   virtual void _set_indexes_data(XtcData::DataIter&);
@@ -40,6 +40,7 @@ public:
   virtual NDArray<pnccd_raw_t>& raw(XtcData::DescData&);
   virtual NDArray<pnccd_raw_t>& raw(XtcData::DataIter& di) {return raw(descdata(di));}
 
+  virtual const NDArray<calib_t>& calib(const event_t& evt) {return AreaDetector::calib(evt);} // Silence compiler "hidden" warning
   virtual NDArray<pnccd_calib_t>& calib(XtcData::DescData&);
   virtual NDArray<pnccd_calib_t>& calib(XtcData::DataIter& di) {return calib(descdata(di));}
 

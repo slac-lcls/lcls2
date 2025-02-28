@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include "Client.hh"
-#include "DataDriver.h"
-#include "DmaDest.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
 typedef Pds::Mmhw::TriggerEventManager2 TEM;
 
@@ -10,10 +10,8 @@ using XtcData::Transition;
 
 using namespace Pds::Kcu;
 
-static void dmaWriteRegister(int, uint32_t*, uint32_t);
-
-Client::Client(const char* dev) : 
-  _dmaBuffers(0), _current(0), _ret(0), 
+Client::Client(const char* dev) :
+  _dmaBuffers(0), _current(0), _ret(0),
   _retry_intv(1000), _retry_num(10), // 10 ms
   _next    (0),
   _rxFlags (new uint32_t[max_ret_cnt]),
@@ -48,12 +46,14 @@ Client::Client(const char* dev) :
   dmaSetMaskBytes(_fd,mask);
 
   delete[] mask;
+
+  Pds::Mmhw::Reg::set(_fd);
 }
 
 Client::~Client() { stop(); close(_fd); }
 
 void Client::set_retry(unsigned intv_us,
-                       unsigned retries) 
+                       unsigned retries)
 {
   _retry_intv = intv_us;
   _retry_num  = retries;
@@ -75,10 +75,10 @@ void Client::start(unsigned group)
   for(unsigned i=0, l=links; l; i++) {
       Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
       if (l&(1<<i)) {
-          dmaWriteRegister(_fd, &b.enable, (1<<2)      );  // reset counters
-          dmaWriteRegister(_fd, &b.pauseThresh, 16     );
-          dmaWriteRegister(_fd, &b.group , group);
-          dmaWriteRegister(_fd, &b.enable, 3           );  // enable
+          b.enable = 1<<2;  // reset counters
+          b.pauseThresh = 16;
+          b.group = group;
+          b.enable = 3;
           l &= ~(1<<i);
 
           dmaWriteRegister(_fd, 0x00a00000+4*(i&3), (1<<30));  // clear
@@ -120,7 +120,7 @@ const Transition* Client::advance(uint64_t pulseId)
     //  Check if retrieved buffers are exhausted
     //
     if (_current == _ret) {
-      _current = 0; 
+      _current = 0;
       unsigned retries = 0;
       //
       //  Attempt to retrieve more buffers
@@ -141,7 +141,7 @@ const Transition* Client::advance(uint64_t pulseId)
       }
       _retries += retries;
     }
-  
+
     int x = _current;
     int last = _dmaRet[x];
     if (last > 0) {
@@ -152,7 +152,7 @@ const Transition* Client::advance(uint64_t pulseId)
         result = b;
         break;
       }
-      
+
       printf("pulseid %016lx : %016lx\n",
              b->pulseId(),pulseId);
 
@@ -183,8 +183,3 @@ void Client::dump()
   _skips = _retries = 0;
 }
 
-void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
-{
-  uintptr_t addri = (uintptr_t)addr;
-  dmaWriteRegister(fd, addri&0xffffffff, val);
-}

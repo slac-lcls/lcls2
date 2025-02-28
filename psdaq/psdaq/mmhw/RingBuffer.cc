@@ -34,6 +34,6 @@ void RingBuffer::dump()
   delete[] buff;
 #else
   for(unsigned i=0; i<len; i++)
-    printf("%08x%c", _dump[i], (i&0x7)==0x7 ? '\n':' ');
+    printf("%08x%c", unsigned(_dump[i]), (i&0x7)==0x7 ? '\n':' ');
 #endif
 }

@@ -104,5 +104,5 @@ mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.r
 
 # Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.
-RE(scan(dets, motor1, -10, 10, 5))
+RE(scan(dets, motor1, -10, 10, 10))
 

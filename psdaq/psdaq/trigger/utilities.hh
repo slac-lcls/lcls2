@@ -2,7 +2,7 @@
 #define Pds_Trg_utilities_hh
 
 #include "psdaq/service/Dl.hh"
-#include "psdaq/service/json.hpp"
+#include <nlohmann/json.hpp>
 
 #include <cstdint>
 #include <string>
@@ -70,7 +70,7 @@ T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
 
   if (_dl.open(so, RTLD_LAZY))
   {
-    fprintf(stderr, "%s:\n  Could not open library '%s'\n",
+    fprintf(stderr, "%s:\n  Error opening library '%s'\n",
             __PRETTY_FUNCTION__, so.c_str());
     return nullptr;
   }

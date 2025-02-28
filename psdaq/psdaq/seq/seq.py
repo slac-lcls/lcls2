@@ -88,6 +88,12 @@ class ACRateSync(Instruction):
             raise ValueError('ACRateSync called with occ={}'.format(occ))
         if timeslotm > 0x3f:
             raise ValueError('ACRateSync called with timeslotm={}'.format(timeslotm))
+        if marker in ACIntvsDict:
+            mk     = marker
+            marker = ACIntvsDict[mk]['marker']
+            self.intv = ACIntvsDict[mk]['intv']
+        else:
+            self.intv = ACIntvs[marker]
         super(ACRateSync, self).__init__( (self.opcode, timeslotm, marker, occ) )
 
     def _word(self):
@@ -97,7 +103,7 @@ class ACRateSync(Instruction):
         return 'ACRateSync({}/0x{:x}) # occ({})'.format(acRates[self.args[2]],self.args[1],self.args[3])
     
     def execute(self,engine):
-        intv = ACIntvs[self.args[2]]
+        intv = self.intv
         engine.instr += 1
         mask = self.args[1]&0x3f
 #        print('ACRateSync: args {:}  mask {:x}  intv {:}'.format(self.args,mask,intv))

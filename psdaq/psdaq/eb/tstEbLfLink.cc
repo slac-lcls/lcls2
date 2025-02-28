@@ -12,6 +12,7 @@
 
 #include "utilities.hh"
 
+#include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
@@ -29,6 +30,8 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
+using kwmap_t  = std::map<std::string,std::string>;
+
 static const unsigned max_servers      = 64;
 static const unsigned max_clients      = 64;
 static const unsigned port_base        = 54321; // Base port number
@@ -37,6 +40,7 @@ static const unsigned default_id       = 1;
 static const unsigned default_num_evts = 5;
 static const unsigned default_buf_cnt  = 10;
 static const unsigned default_buf_size = 4096;
+static const unsigned default_verbose  = 1;
 
 static std::atomic<bool> running(true);
 
@@ -60,12 +64,13 @@ int server(const std::string& ifAddr,
            std::string&       srvPort,
            unsigned           id,
            unsigned           numClients,
-           unsigned           numBuffers)
+           unsigned           numBuffers,
+           kwmap_t            kwargs,
+           unsigned           verbose)
 {
-  const unsigned verbose(1);
   size_t         trSize;
   size_t*        trOffset = _trSpace(&trSize);
-  EbLfServer*    svr      = new EbLfServer(verbose);
+  EbLfServer*    svr      = new EbLfServer(verbose, kwargs);
   int            rc;
 
   if ( (rc = svr->listen(ifAddr, srvPort, numClients)) )
@@ -81,16 +86,22 @@ int server(const std::string& ifAddr,
   for (unsigned i = 0; i < links.size(); ++i)
   {
     const unsigned tmo(120000);
-    if ( (rc = svr->connect(&links[i], tmo)) )
+    if ( (rc = svr->connect(&links[i], links.size(), tmo)) )
     {
       fprintf(stderr, "Error connecting to EbLfClient[%d]\n", i);
       return rc;
     }
+  }
+  for (unsigned i = 0; i < links.size(); ++i)
+  {
     if ( (rc = links[i]->exchangeId(id, "Server")) )
     {
       fprintf(stderr, "Error exchanging IDs on link[%d]\n", i);
       return rc;
     }
+  }
+  for (unsigned i = 0; i < links.size(); ++i)
+  {
     size_t regSize;
     if ( (rc = links[i]->prepare(&regSize, "Client")) < 0)
     {
@@ -120,7 +131,8 @@ int server(const std::string& ifAddr,
   {
     uint64_t  data;
     const int tmo = 5000;               // milliseconds
-    if ((rc = svr->pend(&data, tmo)) < 0)  continue;
+    if ((rc = svr->pend(&data, tmo)) == -FI_EAGAIN)  continue;
+    if (rc < 0)  break;
 
     unsigned     flg = ImmData::flg(data);
     unsigned     src = ImmData::src(data);
@@ -129,15 +141,11 @@ int server(const std::string& ifAddr,
     size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
                      ? trSize + idx * bufSize[src]
                      : trOffset[idx];
-    if ( (rc = links[src]->postCompRecv(rc)) )
-    {
-      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
-    }
 
     void*       buf = lnk->lclAdx(ofs);
     uint64_t*   b   = (uint64_t*)buf;
     const char* k   = (ImmData::buf(flg) == ImmData::Buffer) ? "l1a" : "tr";
-    printf("Rcvd buf %p, data %08lx [%2d %2d %2d]: cnt %2ld %3s %2ld c %2ld\n",
+    printf("Rcvd buf %p, data %08lx [%2d %2d %2d]: cnt %4ld %3s %2ld c %5ld\n",
            buf, data, flg, src, idx, b[0], k, b[1], b[2]);
   }
 
@@ -157,7 +165,9 @@ int client(std::vector<std::string>& svrAddrs,
            unsigned                  numBuffers,
            size_t                    bufSize,
            unsigned                  iters,
-           unsigned                  numEvents)
+           unsigned                  numEvents,
+           kwmap_t                   kwargs,
+           unsigned                  verbose)
 {
   static const int trId[TransitionId::NumberOf] =
     { TransitionId::ClearReadout,
@@ -165,12 +175,11 @@ int client(std::vector<std::string>& svrAddrs,
       TransitionId::Configure,       TransitionId::Unconfigure,
       TransitionId::Enable,          TransitionId::Disable,
       TransitionId::L1Accept };
-  const unsigned verbose(1);
   size_t         trSize;
   size_t*        trOffset = _trSpace(&trSize);
   size_t         regSize  = trSize + roundUpSize(numBuffers * bufSize);
   void*          region   = allocRegion(regSize);
-  EbLfClient*    clt      = new EbLfClient(verbose);
+  EbLfClient*    clt      = new EbLfClient(verbose, kwargs);
   const unsigned tmo(120000);
   int            rc;
 
@@ -188,11 +197,17 @@ int client(std::vector<std::string>& svrAddrs,
       fprintf(stderr, "Error connecting to EbLfServer[%d]\n", i);
       return rc;
     }
+  }
+  for (unsigned i = 0; i < links.size(); ++i)
+  {
     if ( (rc = links[i]->exchangeId(id, "Server")) )
     {
       fprintf(stderr, "Error exchanging IDs on link[%d]\n", i);
       return rc;
     }
+  }
+  for (unsigned i = 0; i < links.size(); ++i)
+  {
     if ( (rc = links[i]->prepare(region, regSize, "Server")) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
@@ -226,7 +241,7 @@ int client(std::vector<std::string>& svrAddrs,
         unsigned src  = ImmData::src(data);
         unsigned idx  = ImmData::idx(data);
 
-        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %2d tr  %2d c %2d - sz %zd to 0x%lx\n",
+        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %4d tr  %2d c %5d - sz %zd to 0x%lx\n",
                buf, data, flg, src, idx, cnt, tr, c - 1, size, links[dst]->rmtAdx(offset));
 
         if ((rc = links[dst]->post(buf, size, offset, data)))
@@ -254,7 +269,7 @@ int client(std::vector<std::string>& svrAddrs,
         unsigned src  = ImmData::src(data);
         unsigned idx  = ImmData::idx(data);
 
-        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %2d l1a %2d c %2d - sz %zd to 0x%lx\n",
+        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %4d l1a %2d c %5d - sz %zd to 0x%lx\n",
                buf, data, flg, src, idx, cnt, l1a, c - 1, size, links[dst]->rmtAdx(offset));
 
         if ((rc = links[dst]->post(buf, size, offset, data)))
@@ -293,7 +308,7 @@ int client(std::vector<std::string>& svrAddrs,
         unsigned src  = ImmData::src(data);
         unsigned idx  = ImmData::idx(data);
 
-        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %2d tr  %2d c %2d - sz %zd to 0x%lx\n",
+        printf("Post buf %p, data %08lx [%2d %2d %2d]: cnt %4d tr  %2d c %5d - sz %zd to 0x%lx\n",
                buf, data, flg, src, idx, cnt, tr, c - 1, size, links[dst]->rmtAdx(offset));
 
         if ((rc = links[dst]->post(buf, size, offset, data)))
@@ -339,6 +354,15 @@ static void usage(char *name, char *desc)
   if (desc)
     fprintf(stderr, "%s\n\n", desc);
 
+  fprintf(stderr, "This program was a test for the EbLfServer, Client and Link classes."         "\n"
+                  "It was also used to explore the idea of having two RDMA spaces, one for"      "\n"
+                  "batch data and one for transitions."                                          "\n"
+                  ""                                                                             "\n"
+                  "The program is working properly when the output on the Server and the Client" "\n"
+                  "match.  The sequence goes through the transitions from Unknown to Enabled,"   "\n"
+                  "then <numEvents> L1As, then the transitions from Diabled to to Reset.  This"  "\n"
+                  "repeates <iters> times.\n"                                                    "\n");
+
   fprintf(stderr, "Usage:\n");
   fprintf(stderr, "  %s [OPTIONS]\n", name);
 
@@ -359,12 +383,18 @@ static void usage(char *name, char *desc)
           "Unique ID of this client (0 - 63)",      default_id);
   fprintf(stderr, " %-20s %s (default: %d)\n",      "-n <iters>",
           "Number of times to iterate",             default_iters);
+  fprintf(stderr, " %-20s %s (default: %d)\n",      "-N <events>",
+          "Number of events",                       default_num_evts);
   fprintf(stderr, " %-20s %s (default: %s)\n",      "-c <clients>",
           "Number of clients",                      "None, must be provided for servers");
   fprintf(stderr, " %-20s %s (default: %d)\n",      "-b <buffers>",
           "Number of buffers",                      default_buf_cnt);
   fprintf(stderr, " %-20s %s (default: %d)\n",      "-s <buffer size>",
           "Max buffer size (ignored by server)",    default_buf_size);
+  fprintf(stderr, " %-20s %s\n",                    "-k <key=value>",
+          "Keyword arguments");
+  fprintf(stderr, " %-20s %s (default: %d)\n",      "-v",
+          "Toggle verbosity",                       default_verbose);
 
   fprintf(stderr, " %-20s %s\n", "-h", "display this help output");
 }
@@ -423,20 +453,27 @@ int main(int argc, char **argv)
   unsigned    nBuffers = default_buf_cnt;
   size_t      bufSize  = default_buf_size;
   char*       spec     = nullptr;
+  unsigned    verbose  = default_verbose;
+  std::string kwargs_str;
+  kwmap_t     kwargs;
 
-  while ((op = getopt(argc, argv, "h?A:S:P:i:n:N:c:b:s:")) != -1)
+  while ((op = getopt(argc, argv, "h?A:S:P:i:n:N:c:b:s:k:v")) != -1)
   {
     switch (op)
     {
-      case 'A':  ifAddr   = optarg;        break;
-      case 'S':  spec     = optarg;        break;
-      case 'P':  portBase = atoi(optarg);  break;
-      case 'i':  id       = atoi(optarg);  break;
-      case 'n':  iters    = atoi(optarg);  break;
-      case 'N':  nEvents  = atoi(optarg);  break;
-      case 'c':  nClients = atoi(optarg);  break;
-      case 'b':  nBuffers = atoi(optarg);  break;
-      case 's':  bufSize  = atoi(optarg);  break;
+      case 'A':  ifAddr     = optarg;                      break;
+      case 'S':  spec       = optarg;                      break;
+      case 'P':  portBase   = atoi(optarg);                break;
+      case 'i':  id         = atoi(optarg);                break;
+      case 'n':  iters      = atoi(optarg);                break;
+      case 'N':  nEvents    = atoi(optarg);                break;
+      case 'c':  nClients   = atoi(optarg);                break;
+      case 'b':  nBuffers   = atoi(optarg);                break;
+      case 's':  bufSize    = atoi(optarg);                break;
+      case 'k':  kwargs_str = kwargs_str.empty()
+                            ? optarg
+                            : kwargs_str + ", " + optarg;  break;
+      case 'v':  verbose   ^= verbose;                     break;
       case '?':
       case 'h':
       default:
@@ -474,6 +511,17 @@ int main(int argc, char **argv)
     if (rc)  return rc;
   }
 
+  get_kwargs(kwargs_str, kwargs);
+  for (const auto& kwargs : kwargs)
+  {
+    if (kwargs.first == "ep_fabric")    continue;
+    if (kwargs.first == "ep_domain")    continue;
+    if (kwargs.first == "ep_provider")  continue;
+    fprintf(stderr, "Unrecognized kwarg '%s=%s'\n",
+            kwargs.first.c_str(), kwargs.second.c_str());
+    return 1;
+  }
+
   ::signal( SIGINT, sigHandler );
 
   if (cltAddrs.size() == 0)
@@ -484,7 +532,7 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    rc = server(ifAddr, srvPort, id, nClients, nBuffers);
+    rc = server(ifAddr, srvPort, id, nClients, nBuffers, kwargs, verbose);
   }
   else
   {
@@ -494,7 +542,7 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    rc = client(cltAddrs, cltPorts, id, nBuffers, bufSize, iters, nEvents);
+    rc = client(cltAddrs, cltPorts, id, nBuffers, bufSize, iters, nEvents, kwargs, verbose);
   }
 
   return rc;

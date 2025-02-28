@@ -29,6 +29,8 @@ namespace Pds {
         switch(_a) {
         case ConfigureA : _pvc.configure(0); break;
         case ConfigureB : _pvc.configure(1); break;
+        case ConfigPgpA : _pvc.configPgp(0); break;
+        case ConfigPgpB : _pvc.configPgp(1); break;
         case ResetA     : _pvc.reset    (0); break;
         case ResetB     : _pvc.reset    (1); break;
         default: break;
@@ -73,6 +75,8 @@ namespace Pds {
     CPV(ResetB      ,{_ctrl.call(ResetB    );}, {})
     CPV(ConfigA     ,{_ctrl.call(ConfigureA);}, {})
     CPV(ConfigB     ,{_ctrl.call(ConfigureB);}, {})
+    CPV(PgpConfigA  ,{_ctrl.call(ConfigPgpA);}, {})
+    CPV(PgpConfigB  ,{_ctrl.call(ConfigPgpB);}, {})
 
     PVCtrlsBase::PVCtrlsBase(Pds::Task& t) : _pv(0), _task(t) 
     {}
@@ -113,6 +117,9 @@ namespace Pds {
       NPV(ResetA   ,"A:RESET");
       NPV(ResetB   ,"B:RESET");
 
+      NPV(PgpConfigA   ,"A:PGPCONFIG");
+      NPV(PgpConfigB   ,"B:PGPCONFIG");
+
       _allocate();
 
       printf("Allocate complete\n");
@@ -126,16 +133,24 @@ namespace Pds {
       Pds_Epics::EpicsPVA& pv = *_pv[fmc];
 
       unsigned streamMask=0;
+      unsigned rawStreams=0;
 
       // configure fex's for each channel
       unsigned fullEvt  = PVGET(full_event);
       unsigned fullSize = PVGET(full_size);
-      if (PVGET(raw_prescale)) {
+      unsigned rawPre   = PVGET(raw_prescale);
+      unsigned rawKeep  = PVGET(raw_keep);
+      if (rawPre) {
         streamMask |= (1<<0);
+        fex._base[0].setPrescale(PVGET(raw_prescale)-1);
+      }
+      else if (rawKeep) {
+        rawStreams |= (1<<0);
+      }
+      if (rawKeep || rawPre) {
         fex._base[0].setGate(PVGET(raw_start),
                              PVGET(raw_gate));
         fex._base[0].setFull(fullSize,fullEvt);
-        fex._base[0].setPrescale(PVGET(raw_prescale)-1);
       }
       if (PVGET(fex_prescale)) {
         streamMask |= (1<<1);
@@ -143,12 +158,15 @@ namespace Pds {
                              PVGET(fex_gate));
         fex._base[1].setFull(fullSize,fullEvt);
         fex._base[1].setPrescale(PVGET(fex_prescale)-1);
-        fex._stream[1].parms[0].v=PVGET(fex_ymin);
-        fex._stream[1].parms[1].v=PVGET(fex_ymax);
-        fex._stream[1].parms[2].v=PVGET(fex_xpre);
-        fex._stream[1].parms[3].v=PVGET(fex_xpost);
+        fex._stream[1].parms[0]=PVGET(fex_ymin);
+        fex._stream[1].parms[2]=PVGET(fex_ymax);
+        fex._stream[1].parms[4]=PVGET(fex_xpre);
+        fex._stream[1].parms[6]=PVGET(fex_xpost);
+        //  Baseline correction parameters
+        fex._stream[1].parms[12]=PVGET(fex_corr_baseline);
+        fex._stream[1].parms[13]=PVGET(fex_corr_accum);
       }
-      fex._streams= streamMask | (fullEvt<<8);
+      fex._streams= streamMask | (fullEvt<<8) | (rawStreams<<16);
     
 #define PRINT_FEX_FIELD(title,arg,op) {         \
         printf("%12.12s:",title);               \

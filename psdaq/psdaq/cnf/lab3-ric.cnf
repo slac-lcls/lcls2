@@ -21,16 +21,15 @@ data_dir = '/u1/data'
 
 #network  = 'ep_fabric="172.21.156.0/22",ep_domain=eno1,ep_provider=sockets'
 #network  = 'ep_provider=verbs'
-#network  = 'ep_fabric="172.21.148.0/22",ep_domain=eno1'
-network = 'ep_fabric="172.21.148.0",ep_provider=sockets'  # Doesn't work
+#network  = 'ep_fabric="172.21.148.0/22",ep_domain=eno1'  # Works
+#network = 'ep_fabric="172.21.148.0",ep_provider=sockets'  # Doesn't work
+network  = 'ep_provider=sockets,ep_domain=eno1'
 task_set = 'taskset 0xffbfeffbfe '
-batching = 'batching=yes'
-directIO = 'directIO=yes'
 pvaAddr  = 'pva_addr=172.21.148.150' # dev02
 
 std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir} -k {network}'
-std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir}  -k {batching},{directIO},{pvaAddr}'
-std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir}  -k {batching},{directIO},{pvaAddr}'
+std_opts0 = f'{std_opts} -d /dev/datadev_0 -o {data_dir} -k {pvaAddr}'
+std_opts1 = f'{std_opts} -d /dev/datadev_1 -o {data_dir} -k {pvaAddr}'
 
 #ea_cfg   = '/cds/home/c/claus/lclsii/daq/runs/eb/epicsArch.txt'
 ea_cfg   = '/cds/group/pcds/dist/pds/rix/misc/epicsArch.txt'
@@ -93,8 +92,8 @@ procmgr_config = [
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --expert {auth} --loglevel WARNING'},
 
  # TEB
- { host: 'drp-tst-acc01',  id:'teb0',        flags:'spux', cmd:f'{teb_cmd}'},
- #{ host: 'drp-tst-acc05',  id:'teb1',        flags:'spu', cmd:f'{teb_cmd}'},
+ #{ host: 'drp-tst-acc01',  id:'teb0',        flags:'spux', cmd:f'{teb_cmd}'},
+ { host: 'drp-tst-dev004',  id:'teb1',        flags:'spu', cmd:f'{teb_cmd}'},
 
  # MEB
 # { host: 'drp-tst-acc05',  id:'meb0',        flags:'spux', cmd:f'{meb_cmd} -d -q 4'},
@@ -125,7 +124,8 @@ procmgr_config = [
 #
 # # Timing System
 # { host: 'drp-tst-acc05', id:'timing_1',     flags:'spux', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
- { host: 'drp-tst-dev004', id:'timing_1',     flags:'spux', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
+# { host: 'drp-tst-dev004', id:'timing_1',     flags:'spux', cmd:f'{drp_cmd1} -l 0x8 -D ts'},
+ { host: 'drp-tst-acc01', id:'timing_1',     flags:'spux', cmd:f'{drp_cmd1} -l 0x1 -D ts'},
 #
 # # Wave8
 # #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    cmd:'wave8pvs --l 0'},

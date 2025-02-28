@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <linux/types.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 using namespace std;
 
@@ -72,14 +72,14 @@ int main (int argc, char **argv) {
   }
   printf("AppTxSim control = %08x\n", control);
 
-  control = 
+  control =
     ((txReqDelay&0x0f)<<24) |
     ((fifolo&0x0f)<<28);
 
   dmaWriteRegister(fd, 0x900100, control);  // clear fixed interval count
   dmaWriteRegister(fd, 0x900104, size);     // set Tx size
 
-  control |= 
+  control |=
     ((lanes&0xff)<<0) |
     ((opCode > 0x7f ? 0 : ((opCode<<1)|1))<<8);
 

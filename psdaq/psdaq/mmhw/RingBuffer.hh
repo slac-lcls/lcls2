@@ -1,6 +1,8 @@
 #ifndef Pds_RingBuffer_hh
 #define Pds_RingBuffer_hh
 
+#include "psdaq/mmhw/Reg.hh"
+
 #include <stdint.h>
 
 namespace Pds {
@@ -14,8 +16,8 @@ namespace Pds {
       void     clear  ();
       void     dump   ();
     private:
-      uint32_t   _csr;
-      uint32_t   _dump[0x1fff];
+      Reg   _csr;
+      Reg   _dump[0x1fff];
     };
   };
 };

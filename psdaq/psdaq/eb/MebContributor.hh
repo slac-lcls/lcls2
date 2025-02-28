@@ -21,10 +21,10 @@ namespace Pds {
     class MebContributor
     {
     public:
-      MebContributor(const MebCtrbParams&, std::shared_ptr<MetricExporter>);
+      MebContributor(const MebCtrbParams&);
     public:
       int  resetCounters();
-      int  connect();
+      int  connect(const std::shared_ptr<MetricExporter>);
       int  configure();
       void unconfigure();
       void disconnect();
@@ -35,6 +35,7 @@ namespace Pds {
       int  post(const Pds::EbDgram* dataDatagram,
                 uint32_t            destination);  // L1Accepts
     private:
+      int _setupMetrics(const std::shared_ptr<MetricExporter>);
       int _linksConfigure(const MebCtrbParams&       prms,
                           std::vector<EbLfCltLink*>& links,
                           const char*                peer);

@@ -372,19 +372,19 @@ def insert_document_and_data(dbname, colname, dicdoc, data, url=cc.URL_KRB, krbh
     return add_data_and_doc(data, dbname, colname, url, krbheaders, **dicdoc)
 
 
-def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
+def add_data_and_two_docs(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """Add data and document to experiment and detector data bases."""
     logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
 
-    detname = pro_detector_name(det, add_shortname=True)
-    colname = detname
-    dbname_exp = mu.db_prefixed_name(exp)
-    dbname_det = mu.db_prefixed_name(detname)
+    shortname = pro_detector_name(detname_long, add_shortname=True)
 
-    kwargs['detector']  = detname # ex: epix10ka_000001
-    kwargs['shortname'] = detname # ex: epix10ka_000001
-    kwargs['longname']  = det     # ex: epix10ka_<_uniqueid>
-    #kwargs['detname']  = det_name # already in kwargs ex: epixquad
+    colname = shortname
+    dbname_exp = mu.db_prefixed_name(exp)
+    dbname_det = mu.db_prefixed_name(shortname)
+
+    #kwargs['detector'] = detname         # ex: epix10ka
+    kwargs['shortname'] = shortname       # ex: epix10ka_000001
+    kwargs['longname']  = detname_long    # ex: epix10ka_<_uniqueid>
 
     resp = add_data_and_doc(data, dbname_exp, colname, url=url, krbheaders=krbheaders, **kwargs)
     if resp is None: return None
@@ -412,21 +412,21 @@ def detector_dbname(detname_short, **kwargs):
     return dbname_det
 
 
-def add_data_and_doc_to_detdb_extended(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
+def add_data_and_doc_to_detdb_extended(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """Add data and document to the detector data base with extended name using 'dbsuffix'.
     Data and associated document added to the detector db with extended name, e.g. epix10ka_000001_mysandbox
     All document fields stay unchanged.
     """
     logger.debug('add_data_and_doc_to_detdb_extended kwargs: %s' % str(kwargs))
 
-    short = pro_detector_name(det, add_shortname=True)
+    short = pro_detector_name(detname_long, add_shortname=True)
 
     dbname_det = detector_dbname(short, **kwargs)
     colname = short
 
     kwargs['detector']  = short # ex: epix10ka_000001
     kwargs['shortname'] = short # ex: epix10ka_000001
-    kwargs['longname']  = det     # ex: epix10ka_<_uniqueid>
+    kwargs['longname']  = detname_long     # ex: epix10ka_<_uniqueid>
     #kwargs['detname']  = det_name # already in kwargs ex: epixquad
     kwargs['id_data_exp'] = 'N/A'
     kwargs['id_doc_exp']  = 'N/A'
@@ -434,15 +434,15 @@ def add_data_and_doc_to_detdb_extended(data, exp, det, url=cc.URL_KRB, krbheader
     return resp # None or (id_data_det, id_doc_det)
 
 
-def deploy_constants(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa):
+def deploy_constants(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa):
     """Deploys constants depending on dbsuffix."""
 
-    detname = pro_detector_name(det, add_shortname=False)
+    detname = pro_detector_name(detname_long, add_shortname=False)
     ctype = kwa.get('ctype','')
     dbsuffix = kwa.get('dbsuffix','')
 
-    resp = add_data_and_doc_to_detdb_extended(data, exp, det, url=url, krbheaders=krbheaders, **kwa) if dbsuffix else\
-           add_data_and_two_docs(data, exp, det, url=url, krbheaders=krbheaders, **kwa)
+    resp = add_data_and_doc_to_detdb_extended(data, exp, detname_long, url=url, krbheaders=krbheaders, **kwa) if dbsuffix else\
+           add_data_and_two_docs(data, exp, detname_long, url=url, krbheaders=krbheaders, **kwa)
 
     if resp is None:
         logger.warning('CONSTANTS ARE NOT DEPLOYED for exp:%s det:%s dbsuffix:%s ctype:%s' %\

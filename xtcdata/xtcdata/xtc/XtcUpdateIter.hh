@@ -159,6 +159,8 @@ public:
                         uint64_t timestamp_val, char* buf);
     void createData(Xtc& xtc, const void* bufEnd, unsigned nodeId, unsigned namesId);
     void updateTimeStamp(Dgram& d, uint64_t timestamp_val);
+    void updateService(Dgram& d, uint8_t transtionId);
+    void updateDamage(Dgram& d, uint16_t damage);
     int getElementSize(unsigned nodeId, unsigned namesId,
             DataDef& datadef, char* varname);
     void copyParent(Dgram* parent_d);

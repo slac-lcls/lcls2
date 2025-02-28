@@ -1,4 +1,19 @@
-{"metrics": [{"name": "damage", "query": "sum(DRP_Damage{{instrument=\"%I\",partition=\"%P\"}}) by (alias, instance)"},
-             {"name": "record_rate", "query": "sum(irate(DRP_RecordSize{{instrument=\"%I\",partition=\"%P\"}})[5s]) by (instrument, partition)"},
-             {"name": "xpm_link_up", "query": "sum(Us:RxLinkUp{job=\"%J\",instrument=\"%I\"}) by (instrument)", "type": "I", "alarm": {"active": true, "lowAlarmLimit": 2, "highAlarmLimit": 4, "lowAlarmSeverity": 2, "highAlarmSeverity": 2}}]
+{"#": "Any keyword other than 'metrics' at this level is ignored",
+ "#": "The 'metrics' keyword must have a list as a value",
+ "metrics": [
+     {"#": "Any list item that does not contain the 'name' keyword is ignored."},
+     {"#": "The 'query' keyword is required and must have a valid prometheus query as value."},
+     {"#": "A percent sign followed by 'I' is substitued with the instrument/hutch name,"},
+     {"#": "'J' with the job name, 'P' with the partition number, and 'X' with the XPM id."},
+     {"#": "If a prometheus query doesn't return a floating point value,"},
+     {"#": "the 'type' keyword may be added with the value 'I' indicating integer."},
+     {"#": "The 'alarm' keyword may be added to set default thresholds, e.g.:",
+      "alarm": {"active": true, "lowAlarmLimit": 2, "highAlarmLimit": 4, "lowAlarmSeverity": 2, "highAlarmSeverity": 2}},
+
+     {"#": "DeadFrac isn't filtered on instrument to allow TMO, etc., XPMs to be used in the 'tst' hutch."},
+     {"name": "DeadFrac", "query": "100*DeadFrac{id=\"%X\",partition=\"%P\"}"},
+     {"name": "damage", "query": "sum(DRP_Damage{instrument=\"%I\",partition=\"%P\"}) by (instrument, partition)"},
+     {"name": "record_rate", "query": "sum(irate(DRP_RecordSize{instrument=\"%I\",partition=\"%P\"})[5s]) by (instrument,partition)"},
+     {"name": "xpm_link_up", "query": "sum(Us:RxLinkUp{job=\"%J\",instrument=\"%I\"}) by (instrument)", "type": "I", "alarm": {"active": true, "lowAlarmLimit": 2, "highAlarmLimit": 4, "lowAlarmSeverity": 2, "highAlarmSeverity": 2}}
+ ]
 }

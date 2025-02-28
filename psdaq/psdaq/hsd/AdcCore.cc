@@ -8,7 +8,7 @@ using namespace Pds::HSD;
 
 void AdcCore::dump_status() const
 {
-  printf("cal_status before : %x\n", _status);
+  printf("cal_status before : %x\n", unsigned(_status));
 }
 
 void AdcCore::init_training(unsigned ref_delay)

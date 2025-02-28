@@ -16,10 +16,11 @@ public:
     PGPDetectorApp(Parameters& para);
     virtual ~PGPDetectorApp();
     void initialize();
-    nlohmann::json connectionInfo() override;
+    nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void connectionShutdown() override;
     void handleReset(const nlohmann::json& msg) override;
 private:
+    void handleDealloc(const nlohmann::json& msg) override;
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;

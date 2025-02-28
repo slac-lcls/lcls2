@@ -22,11 +22,23 @@ def remove_read_only(cfg):
             new[k.replace(':RO', '')] = v
     return new
 
-def update_config(src, dst):
+def update_config(src, dst, verbose=False, pfx=None):
     for k, v in src.items():
+        if k not in dst:
+            if verbose:
+                print(f'key {k} not found in dst dict')
+            continue
         if isinstance(v, dict):
-            v = update_config(v, dst[k])
-        dst[k] = v
+            v = update_config(v, dst[k], verbose, k if pfx is None else f'{pfx}.{k}')
+        if (pfx is not None and pfx.startswith(':types:')) or k.endswith(':RO'):
+            # Keep the value that is in dst
+            if verbose and v != dst[k]:
+                print('Changed:', f'{k}:' if pfx is None else f'{pfx}.{k}:', f'{v} -> {dst[k]}')
+        else:
+            # Keep the value that is in src
+            if verbose and v != dst[k]:
+                print('Changed:', f'{k}:' if pfx is None else f'{pfx}.{k}:', f'{dst[k]} -> {v}')
+            dst[k] = v
     return dst
 
 # this interface requires the detector segment

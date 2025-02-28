@@ -6,9 +6,9 @@ using namespace Pds::HSD;
 
 Jesd204bStatus Jesd204b::status(unsigned i) const
 {
-  uint64_t r0 = reg[0x60+i];
+  uint64_t r0 = unsigned(reg[0x60+i]);
   r0 <<= 32;
-  r0 |= reg[0x10+i];
+  r0 |= unsigned(reg[0x10+i]);
 
   Jesd204bStatus r;
   r.gtResetDone   = (r0>> 0)&1;
@@ -30,7 +30,7 @@ Jesd204bStatus Jesd204b::status(unsigned i) const
 
 void Jesd204b::clearErrors()
 {
-  uint32_t v = reg[4];
+  uint32_t v = unsigned(reg[4]);
   reg[4] = v | (1<<3);
   usleep(10);
   reg[4] = v;

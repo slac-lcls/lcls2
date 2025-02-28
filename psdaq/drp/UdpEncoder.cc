@@ -17,9 +17,9 @@
 #include <cmath>
 #include <Python.h>
 #include <arpa/inet.h>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/QR>
-#include "DataDriver.h"
+#include <Eigen/Dense>
+#include <Eigen/QR>
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -42,7 +42,6 @@
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
-using ns_t = std::chrono::nanoseconds;
 
 // forward declarations
 int setrcvbuf(int socketFd, unsigned size);
@@ -75,15 +74,6 @@ public:
    }
 } RawDef, InterpolatedDef;
 
-template<typename T>
-static int64_t _deltaT(XtcData::TimeStamp& ts)
-{
-    auto now = std::chrono::system_clock::now();
-    auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{ts.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(tns)};
-    return std::chrono::duration_cast<T>(now - tp).count();
-}
 
 namespace Drp {
 
@@ -483,33 +473,17 @@ int UdpReceiver::reset()
   return (rv);
 }
 
-class Pgp : public PgpReader
-{
-public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
-        PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
-        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_nDmaRet(0)
-    {
-        m_nodeId = drp.nodeId();
-        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
-            logging::error("Failed to allocate lane/vc");
-        }
-    }
 
-    Pds::EbDgram* next(uint32_t& evtIndex);
-    const uint64_t nDmaRet() { return m_nDmaRet; }
-private:
-    Pds::EbDgram* _handle(uint32_t& evtIndex);
-    Detector* m_det;
-    Pds::Eb::TebContributor& m_tebContributor;
-    static const int MAX_RET_CNT_C = 100;
-    const bool& m_running;
-    int32_t m_available;
-    int32_t m_current;
-    unsigned m_nodeId;
-    uint64_t m_nDmaRet;
-};
+Pgp::Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+    m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
+    m_available(0), m_current(0), m_nDmaRet(0)
+{
+    m_nodeId = drp.nodeId();
+    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+        logging::error("Failed to allocate lane/vc");
+    }
+}
 
 Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
@@ -626,6 +600,7 @@ unsigned Interpolator::calculate(XtcData::TimeStamp ts, XtcData::Damage& damage)
 UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
+    m_pgp           (para, drp, this, m_running),
     m_interpolator  (MAX_ENC_VALUES, POLYNOMIAL_ORDER),
     m_evtQueue      (drp.pool.nbuffers()),
     m_encQueue      (drp.pool.nbuffers()),
@@ -648,30 +623,37 @@ UdpEncoder::UdpEncoder(Parameters& para, DrpBase& drp) :
     }
 }
 
-unsigned UdpEncoder::connect(std::string& msg, unsigned slowGroup)
+unsigned UdpEncoder::connect(const nlohmann::json& msg,
+    std::string& errorMsg,
+    const std::string& id,
+    unsigned slowGroup)
 {
-    // Override the kwarg with connect json info from the TPR process, if found
-    if (slowGroup != -1u) {
+    // First call the parent class connect() with the required JSON and id.
+    XpmDetector::connect(msg, id);
+
+    // Configure interpolation based on slowGroup.
+    if (slowGroup != static_cast<unsigned>(-1)) {
         m_interpolating = true;
         m_slowGroup = slowGroup;
         logging::info("Interpolation enabled using group %u", m_slowGroup);
     }
 
+    // Create the UdpReceiver for this detector.
     try {
         m_udpReceiver = std::make_shared<UdpReceiver>(*m_para, m_encQueue, m_bufferFreelist);
     }
-    catch(std::string& error) {
+    catch(const std::string& error) {
         logging::error("Failed to create UdpReceiver: %s", error.c_str());
         m_udpReceiver.reset();
-        msg = error;
+        errorMsg = error;
         return 1;
     }
-
     return 0;
 }
 
 unsigned UdpEncoder::disconnect()
 {
+    shutdown();
     m_udpReceiver.reset();
     return 0;
 }
@@ -779,32 +761,36 @@ void UdpEncoder::_worker()
     m_exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
                     [&](){return m_encQueue.guess_size();});
 
-    Pgp pgp(*m_para, m_drp, this, m_running);
-
     m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nDmaRet();});
+                    [&](){return m_pgp.nDmaRet();});
     m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
-                    [&](){return pgp.dmaBytes();});
+                    [&](){return m_pgp.dmaBytes();});
     m_exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.dmaSize();});
+                    [&](){return m_pgp.dmaSize();});
     m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.latency();});
+                    [&](){return m_pgp.latency();});
     m_exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nDmaErrors();});
+                    [&](){return m_pgp.nDmaErrors();});
     m_exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nNoComRoG();});
+                    [&](){return m_pgp.nNoComRoG();});
     m_exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nMissingRoGs();});
+                    [&](){return m_pgp.nMissingRoGs();});
     m_exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nTmgHdrError();});
+                    [&](){return m_pgp.nTmgHdrError();});
     m_exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nPgpJumps();});
+                    [&](){return m_pgp.nPgpJumps();});
     m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nNoTrDgrams();});
+                    [&](){return m_pgp.nNoTrDgrams();});
 
-    const uint64_t nsTmo = (m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end() ?
-                            std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
-                            1500) * 1000000;
+    const ms_t tmo{ m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end() ?
+                    std::stoul(Detector::m_para->kwargs["match_tmo_ms"])        :
+                    1500 };
+
+    const ms_t no_tmo{ 0 };
+
+    // Reset counters to avoid 'jumping' errors reconfigures
+    m_pool->resetCounters();
+    m_pgp.resetEventCounter();
 
     m_udpReceiver->start();
 
@@ -814,7 +800,7 @@ void UdpEncoder::_worker()
         }
 
         uint32_t index;
-        Pds::EbDgram* dgram = pgp.next(index);
+        Pds::EbDgram* dgram = m_pgp.next(index);
         if (dgram) {
             m_nEvents++;
 
@@ -827,10 +813,8 @@ void UdpEncoder::_worker()
             // up with any encoder updates that may have arrived
             _process(dgram);            // Was _matchUp
 
-            // Generate a timestamp in the past for timing out encoder and PGP events
-            XtcData::TimeStamp timestamp(0, nsTmo);
-            auto ns = _deltaT<ns_t>(timestamp);
-            _timeout(timestamp.from_ns(ns));
+            // Time out older encoder packets and datagrams
+            _timeout(m_running ? tmo : no_tmo);
 
             // Time out batches for the TEB
             m_drp.tebContributor().timeout();
@@ -840,7 +824,7 @@ void UdpEncoder::_worker()
     m_udpReceiver->stop();
 
     // Flush the DMA buffers
-    pgp.flush();
+    m_pgp.flush();
 
     logging::info("Worker thread finished");
 }
@@ -862,10 +846,10 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
             if (dgram && (dgram->readoutGroups() & (1 << m_slowGroup)) &&
                 (dgram->service() == XtcData::TransitionId::L1Accept)) {
                 const ms_t tmo(1500);
-                auto tInitial = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
+                auto tInitial = Pds::fast_monotonic_clock::now();
                 XtcData::Dgram* encDg;
                 while (!m_encQueue.peek(encDg)) {  // Wait for an encoder value
-                    if (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - tInitial > tmo) {
+                    if (Pds::fast_monotonic_clock::now() - tInitial > tmo) {
                         logging::warning("encQueue peek timed out: %u\n", m_encQueue.guess_size());
                         return;
                     }
@@ -901,6 +885,10 @@ void UdpEncoder::_process(Pds::EbDgram* dgram)
                     if (pgpDg == dgram)  return;
                 }
             } else {
+                //  Trigger a fast flush of the events awaiting interpolation
+                if (dgram && dgram->service() == XtcData::TransitionId::Disable) {
+                    m_running = false;
+                }
                 break;
             }
         } else {
@@ -1040,31 +1028,38 @@ void UdpEncoder::_handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& fra
     _sendToTeb(pgpDg, evtIdx);
 }
 
-void UdpEncoder::_timeout(const XtcData::TimeStamp& timestamp)
+void UdpEncoder::_timeout(ms_t timeout)
 {
-    // Time out older pending PGP datagrams
-    uint32_t index;
-    if (!m_evtQueue.peek(index))  return;
+    // Try to clear out as many of the older queue entries as we can in one go
+    while (true) {
+        // Time out older pending PGP datagrams
+        uint32_t index;
+        if (!m_evtQueue.peek(index))  break;
 
-    Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
-    if (dgram.time > timestamp)  return;  // dgram is newer than the timeout timestamp
+        Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
+        if (m_pgp.age(dgram.time) < timeout)  break;
 
-    uint32_t idx;
-    auto rc = m_evtQueue.try_pop(idx);              // Actually consume the element
-    if (rc)  assert(idx == index);
-
-    if (dgram.service() == XtcData::TransitionId::L1Accept) {
-        // No encoder data so mark event as damaged
-        dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
-        ++m_nTimedOut;
         logging::debug("Event timed out!! "
-                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       _deltaT<ms_t>(dgram.time));
-    }
+                       Pds::Eb::latency<ms_t>(dgram.time), dgram.service());
 
-    _sendToTeb(dgram, index);
+        if (dgram.service() == XtcData::TransitionId::L1Accept) {
+            // No encoder data so mark event as damaged
+            dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
+            ++m_nTimedOut;
+
+            uint32_t idx;
+            auto rc = m_evtQueue.try_pop(idx);              // Actually consume the element
+            if (rc)  assert(idx == index);
+
+            _sendToTeb(dgram, index);
+        }
+        else {
+            _handleTransition(index, &dgram);
+        }
+    }
 }
 
 void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
@@ -1095,12 +1090,11 @@ UdpApp::UdpApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_udpDetector(std::make_unique<UdpEncoder>(m_para, m_drp)),
-    m_det(m_udpDetector.get()),
     m_unconfigure(false)
 {
-    Py_Initialize();                    // for use by configuration
+    Py_Initialize();  // Must be called before creating the UdpEncoder
 
+    m_det = new UdpEncoder(m_para, m_drp);
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -1110,36 +1104,40 @@ UdpApp::UdpApp(Parameters& para) :
 
 UdpApp::~UdpApp()
 {
-    // Try to take things down gracefully when an exception takes us off the
-    // normal path so that the most chance is given for prints to show up
+    // Try to take things down gracefully when an exception takes us off the normal path
     handleReset(json({}));
 
-    Py_Finalize();                      // for use by configuration
+    // Clean up the detector object
+    if(m_det) {
+        delete m_det;
+        m_det = nullptr;
+    }
+
+    Py_Finalize();
 }
 
 void UdpApp::_disconnect()
 {
     m_drp.disconnect();
-    m_det->shutdown();
-    m_udpDetector->disconnect();
+    m_det->disconnect();
 }
 
 void UdpApp::_unconfigure()
 {
     m_drp.pool.shutdown();  // Release Tr buffer pool
     m_drp.unconfigure();    // TebContributor must be shut down before the worker
-    m_udpDetector->unconfigure();
+    m_det->unconfigure();
     m_unconfigure = false;
 }
 
-json UdpApp::connectionInfo()
+json UdpApp::connectionInfo(const nlohmann::json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo();
+    json info = m_det->publicConnectionInfo(msg);
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
@@ -1148,6 +1146,9 @@ json UdpApp::connectionInfo()
 
 void UdpApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det->publicConnectionShutdown();
+    }
     m_drp.shutdown();
 }
 
@@ -1170,7 +1171,6 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
     }
 
     unsigned slowGroup = -1u;
-    std::string id = std::to_string(getId());
     if (m_para.kwargs.find("encTprAlias") != m_para.kwargs.end()) {
         std::string encTprAlias = m_para.kwargs["encTprAlias"];
         for (auto it : msg["body"]["tpr"].items()) {
@@ -1180,10 +1180,10 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
         }
     }
 
+    std::string id = std::to_string(getId());
     m_det->nodeId = msg["body"]["drp"][id]["drp_id"];
-    m_det->connect(msg, id);
+    unsigned rc = m_det->connect(msg, errorMsg, id, slowGroup);
 
-    unsigned rc = m_udpDetector->connect(errorMsg, slowGroup);
     if (!errorMsg.empty()) {
         if (!rc) {
             logging::warning(("UdpDetector::connect: " + errorMsg).c_str());
@@ -1246,6 +1246,10 @@ void UdpApp::handlePhase1(const json& msg)
             return;
         }
 
+        // Provide EbReceiver with the Detector interface so that additional
+        // data blocks can be formatted into the XTC, e.g. trigger information
+        m_drp.ebReceiver().configure(m_det, m_det->pgp());
+
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
@@ -1291,7 +1295,7 @@ void UdpApp::handlePhase1(const json& msg)
             logging::debug("handlePhase1 enable found chunkRequest");
             m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
         }
-        m_udpDetector->reset(); // needed?
+        m_det->reset(); // needed?
         logging::debug("handlePhase1 enable complete");
     }
 

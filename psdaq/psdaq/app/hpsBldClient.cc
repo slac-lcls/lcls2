@@ -196,7 +196,9 @@ int main(int argc, char* argv[])
   //
   //  Fetch channel field names from PVA
   //
+#if 0 // For debug??
   BldPV* pvaPayload    = new BldPV (payName);
+#endif
   PVBase* pvaAddr      = new PVBase("ca",addName);
   PVBase* pvaPort      = new PVBase("ca",prtName);
   // PVBase* pvaAddr      = new PVBase((std::string(bldName)+":ADDR"   ).c_str());
@@ -274,7 +276,7 @@ int main(int argc, char* argv[])
     VarDef         bldDef = pvaPayload->getVarDef(payloadSz);
 #else
     unsigned id = 1;
-    bld.setID(_id = 1);
+    bld.setID(_id = id);
     NameIndex      nameIndex;
     NamesId        namesId(0,0);
     size_t         payloadSz=4;

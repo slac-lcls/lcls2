@@ -10,7 +10,7 @@ import rogue.hardware.axi
 import pyrogue.protocols
 
 import epix_hr_m_320k
-import ePix320kM as fpgaBoard
+import ePix320kM as ePixM
 import epix_hr_leap_common as leapCommon
 import surf.protocols.batcher as batcher
 
@@ -21,6 +21,7 @@ import numpy as np
 import IPython
 import datetime
 import logging
+import copy # deepcopy
 
 import pprint
 
@@ -31,15 +32,15 @@ pv = None
 #lane = 0  # An element consumes all 4 lanes
 chan = None
 group = None
-ocfg = None
+origcfg = None
 segids = None
 seglist = [0,1]
 asics = None
 
-RTP = 6   # run trigger partition
+nColumns = 384
 
 #  Timing delay scans can be limited by this
-EventBuilderTimeout = int(1.0e-3*156.25e6)
+EventBuilderTimeout = 0 #4*int(1.0e-3*156.25e6)
 
 #  Register ordering matters, but our configdb does not preserve the order.
 #  For now, put the ordering in code here, until the configdb can be updated to preserve order.
@@ -84,7 +85,6 @@ ordering['RegisterControlDualClock'] = ['IDreset',
                                         'AsicPwrManualFpga',
                                         'DebugSel0',
                                         'DebugSel1',
-                                        'StartupReq',
                                         'getSerialNumbers',
                                         'AsicRdClk',]
 
@@ -144,10 +144,6 @@ for i in range(4):
                                  'SlvdsBit',
                                  'FE_Autogain',
                                  'FE_Lowgain',
-                                 'RowStartAddr',
-                                 'RowStopAddr',
-                                 'ColStartAddr',
-                                 'ColStopAddr',
                                  'DCycle_DAC',
                                  'DCycle_en',
                                  'DCycle_bypass',
@@ -206,7 +202,13 @@ for i in range(4):
                                         'LockOnIdleOnly',
                                         'RollOverEn',])
 for i in range(4):
-    ordering[f'DigAsicStrmRegisters{i}'] = ['asicDataReq','DisableLane','EnumerateDisLane',]
+    ordering[f'DigAsicStrmRegisters{i}'] = ['asicDataReq',
+                                            'DisableLane',
+                                            'EnumerateDisLane',
+                                            'FillOnFailEn',
+                                            'FillOnFailPersistantDisable',
+                                            'SroToSofTimeout',
+                                            'DataTimeout',]
 
 ordering['TriggerRegisters'] = ['RunTriggerEnable',
                                 'TimingRunTriggerEnable',
@@ -220,153 +222,46 @@ ordering['TriggerRegisters'] = ['RunTriggerEnable',
                                 'PgpTrigEn',
                                 'numberTrigger',]
 for i in range(4):
-    ordering['BatcherEventBuilder{i}'] = ['Bypass','Timeout','Blowoff',]
+    ordering[f'BatcherEventBuilder{i}'] = ['Bypass','Timeout','Blowoff',]
 
 
-#class EpixMRoot(pr.Root):
-class Root(pr.Root):
-    def __init__(self,dev='/dev/datadev_0', **kwargs):
-        #  Allow ePixFpga to find the yaml files for fnInitAsic()
-        self.top_level = '/tmp'
+def _dict_compare(d1,d2,path):
+    for k in d1.keys():
+        if k in d2.keys():
+            if isinstance(d1[k],dict):
+                _dict_compare(d1[k],d2[k],path+'.'+k)
+            elif (d1[k] != d2[k]):
+                print(f'key[{k}] d1[{d1[k]}] != d2[{d2[k]}]')
+        else:
+            print(f'key[{k}] not in d1')
+    for k in d2.keys():
+        if k not in d1.keys():
+            print(f'key[{k}] not in d2')
 
-        self.numOfAsics = 4
-        self.sim = False
-        self.promProg = False
+def gain_mode_name(gain_mode):
+    return ('SH', 'SL', 'AHL', 'User')[gain_mode]
 
-        # Set the timeout
-        kwargs['timeout'] = 10.0 # 5.0 seconds default
+def gain_mode_value(gain_mode):
+    return ('SH', 'SL', 'AHL', 'User').index(gain_mode)
 
-        super().__init__(**kwargs)
+def gain_mode_map(gain_mode):
+    compTH        = ( 0,   44,   24)[gain_mode] # SoftHigh/SoftLow/Auto
+    precharge_DAC = (50,   50,   50)[gain_mode]
+    return (compTH, precharge_DAC)
 
-        # # Map the DMA streams
-        self.srpStream = rogue.hardware.axi.AxiStreamDma(dev, 0x100 * 5 + 0, 1) # Registers
+# Sanitize the json for json2xtc by removing offensive characters
+def sanitize_config(src):
+    dst = {}
+    for k, v in src.items():
+        if isinstance(v, dict):
+            v = sanitize_config(v)
+        dst[k.replace('[','').replace(']','').replace('(','').replace(')','')] = v
+    return dst
 
-        # # Create SRPv3
-        self.srp = rogue.protocols.srp.SrpV3()
-
-        # # Connect SRPv3 to srpStream
-        pyrogue.streamConnectBiDir(self.srpStream, self.srp)
-
-        # Add Devices
-        self.add(leapCommon.Core(offset = 0x0000_0000, memBase = self.srp, sim = False, promProg = False, expand = False,))
-        self.add(fpgaBoard.App  (offset = 0x8000_0000, memBase = self.srp, sim = False, enabled  = True,  expand = False,))
-
-    def start(self, **kwargs):
-        super().start(**kwargs)
-        # Check if not simulation and not PROM programming
-        if not self.sim and not self.promProg:
-            self.CountReset()
-
-    def enableAllAsics(self, enable) :
-        for batcherIndex in range(self.numOfAsics) :
-            self.enableAsic(batcherIndex, enable)
-
-    def enableAsic(self, batcherIndex, enable) :
-        getattr(self.App.AsicTop, f"BatcherEventBuilder{batcherIndex}").Blowoff.set(not enable)
-
-    def hwTrigger(self, frames, rate) :
-        with self.root.updateGroup(.25):
-            # precaution in case someone stops the acquire function in the middle
-            self.App.AsicTop.TriggerRegisters.StopTriggers()
-
-            self.App.AsicTop.TriggerRegisters.AcqCountReset()
-            self.App.AsicTop.TriggerRegisters.SetAutoTrigger(rate)
-            self.App.AsicTop.TriggerRegisters.numberTrigger.set(frames)
-            self.App.AsicTop.TriggerRegisters.StartAutoTrigger()
-
-            # Wait for the file write to write the 10 waveforms
-            #time.sleep(frames/rate)
-            while (self.App.AsicTop.TriggerRegisters.AcqCount.get() != frames) :
-                print("Triggers sent: {}".format(self.App.AsicTop.TriggerRegisters.AcqCount.get()) , end='\r')
-                time.sleep(0.1)
-            print("Triggers sent: {}".format(self.App.AsicTop.TriggerRegisters.AcqCount.get()))
-
-            # stops triggers
-            self.App.AsicTop.TriggerRegisters.StopTriggers()
-
-    def getLaneLocks(self) :
-        for asicIndex in range(self.numOfAsics) :
-            self.App.SspMonGrp[asicIndex].enable.set(True)
-            print("ASIC{}: {:#x}".format(asicIndex, self.App.SspMonGrp[asicIndex].Locked.get()))
-
-    def fnInitAsicScript(self, dev,cmd,arg):
-        """SetTestBitmap command function"""
-        arguments = np.asarray(arg)
-
-        print("Init ASIC script started")
-        #delay = 1
-        delay = 0.1
-        print('*** cpo and dawood set delay to 0.1')
-
-
-        # configure PLL
-        print("Loading PLL configuration")
-        self.App.enable.set(False)
-        if not self.sim :
-            self.Core.Si5345Pll.enable.set(True)
-            self.Core.Si5345Pll.LoadCsvFile(self.filenamePLL)
-            print("Loaded. Waiting for lock...")
-            time.sleep(6)
-            self.App.enable.set(True)
-            self.Core.Si5345Pll.enable.set(False)
-
-        # load config that sets prog supply
-        print("Loading supply configuration")
-        self.root.LoadConfig(self.filenamePowerSupply)
-        print("Loading {}".format(self.filenamePowerSupply))
-        #time.sleep(delay)
-
-        if (not self.sim):
-            # load deserializer
-            print("Loading lane delay configurations")
-            self.root.LoadConfig(self.filenameDESER)
-            print("Loading {}".format(self.filenameDESER))
-            #time.sleep(delay)
-
-
-        # load config that sets waveforms
-        print("Loading waveforms configuration")
-        self.root.LoadConfig(self.filenameWaveForms)
-        print("Loading {}".format(self.filenameWaveForms))
-        #time.sleep(delay)
-
-        # load config that sets packet registers
-        print("Loading packet register configurations")
-        self.root.LoadConfig(self.filenamePacketReg)
-        print("Loading {}".format(self.filenamePacketReg))
-        #time.sleep(delay)
-
-        # load batcher
-        print("Loading batcher configurations")
-        self.root.LoadConfig(self.filenameBatcher)
-        print("Loading {}".format(self.filenameBatcher))
-        #time.sleep(delay)
-
-        ## takes the asics off of reset
-        print("Taking asic off of reset")
-        self.App.AsicTop.RegisterControlDualClock.enable.set(True)
-        self.App.AsicTop.RegisterControlDualClock.ClkSyncEn.set(False)
-        self.App.AsicTop.RegisterControlDualClock.GlblRstPolarityN.set(False)
-        time.sleep(delay)
-        self.App.AsicTop.RegisterControlDualClock.GlblRstPolarityN.set(True)
-        #time.sleep(delay)
-        self.App.AsicTop.RegisterControlDualClock.ClkSyncEn.set(True)
-        self.root.readBlocks()
-        #time.sleep(delay)
-
-        ## load config for the asic
-        if not self.sim :
-            print("Loading ASICs and timing configuration")
-            for asicIndex in range(1 ,5, 1):
-                if arguments[asicIndex] != 0:
-                    self.root.LoadConfig(self.filenameASIC.format(asicIndex))
-                    print("Loading {}".format(self.filenameASIC.format(asicIndex)))
-                    #time.sleep(5*delay)
-
-        print("Initialization routine completed.")
-
-        return
-
+def setSaci(reg,field,di):
+    if field in di:
+        v = di[field]
+        reg.set(v)
 
 #
 #  Initialize the rogue accessor
@@ -380,40 +275,33 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
 
     base = {}
     #  Connect to the camera and the PCIe card
-    assert(lanemask.bit_length() == 4)
-    #root = EpixMRoot(dev=dev)
-    root = Root(dev=dev)
-    root.__enter__()
-    base['root'] = root
+    cbase = ePixM.Root(top_level              = '/tmp',
+                       dev                    = '/dev/datadev_0',
+                       pollEn                 = False,
+                       initRead               = False,
+                       justCtrl               = True,
+                       fullRateDataReceiverEn = False)
+    cbase.__enter__()
+    base['cam'] = cbase
 
-    firmwareVersion = root.Core.AxiVersion.FpgaVersion.get()
-    buildDate       = root.Core.AxiVersion.BuildDate.get()
-    gitHashShort    = root.Core.AxiVersion.GitHashShort.get()
+    firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
+    buildDate       = cbase.Core.AxiVersion.BuildDate.get()
+    gitHashShort    = cbase.Core.AxiVersion.GitHashShort.get()
     print(f'firmwareVersion [{firmwareVersion:x}]')
     print(f'buildDate       [{buildDate}]')
     print(f'gitHashShort    [{gitHashShort}]')
 
     # Ric: These don't exist, so need to find equivalents
     ##  Enable the environmental monitoring
-    #root.App.SlowAdcRegisters.enable.set(1)
-    #root.App.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
-    #root.App.SlowAdcRegisters.StreamEn.set(1)
-    #root.App.SlowAdcRegisters.enable.set(0)
+    #cbase.App.SlowAdcRegisters.enable.set(1)
+    #cbase.App.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
+    #cbase.App.SlowAdcRegisters.StreamEn.set(1)
+    #cbase.App.SlowAdcRegisters.enable.set(0)
 
     # configure timing
     logging.warning(f'Using timebase {timebase}')
-    if timebase=="186M":
-        base['bypass'] = root.numOfAsics * [0x3]
-        base['clk_period'] = 7000/1300. # default 185.7 MHz clock
-        base['msg_period'] = 200
-        base['pcie_timing'] = False
-
-        logging.warning('epixm320_unconfig')
-        epixm320_unconfig(base)
-
-        root.App.TimingRx.ConfigLclsTimingV2()
-    else:                       # UED
-        base['bypass'] = root.numOfAsics * [0x3]
+    if timebase=="119M":  # UED
+        base['bypass'] = cbase.numOfAsics * [0x3]
         base['clk_period'] = 1000/119.
         base['msg_period'] = 238
         base['pcie_timing'] = True
@@ -421,24 +309,39 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
         logging.warning('epixm320_unconfig')
         epixm320_unconfig(base)
 
-        root.App.TimingRx.TimingFrameRx.ModeSelEn.set(1) # UseModeSel
-        root.App.TimingRx.TimingFrameRx.ClkSel.set(0)    # LCLS-1 Clock
-        root.App.TimingRx.TimingFrameRx.RxDown.set(0)
+        cbase.App.TimingRx.TimingFrameRx.ModeSelEn.set(1) # UseModeSel
+        cbase.App.TimingRx.TimingFrameRx.ClkSel.set(0)    # LCLS-1 Clock
+        cbase.App.TimingRx.TimingFrameRx.RxDown.set(0)
+    else:
+        base['bypass'] = cbase.numOfAsics * [0x3]
+        base['clk_period'] = 7000/1300. # default 185.7 MHz clock
+        base['msg_period'] = 200
+        base['pcie_timing'] = False
+
+        logging.warning('epixm320_unconfig')
+        epixm320_unconfig(base)
+
+        cbase.App.TimingRx.ConfigLclsTimingV2()
 
     # Delay long enough to ensure that timing configuration effects have completed
     cnt = 0
-    while cnt < 10:
+    while cnt < 15:
         time.sleep(1)
-        rxId = root.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+        rxId = cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
         if rxId != 0xffffffff:  break
+        del rxId                # Maybe this can help getting RxId reevaluated
         cnt += 1
 
-    if cnt == 10:
+    if cnt == 15:
         raise ValueError("rxId didn't become valid after configuring timing")
+    print(f"rxId {rxId:x} found after {cnt}s")
 
     # Ric: Not working yet
     ## configure internal ADC
-    ##root.App.InitHSADC()
+    ##cbase.App.InitHSADC()
+
+    #  store previously applied configuration
+    base['cfg'] = None
 
     time.sleep(1)               # Still needed?
 #    epixm320_internal_trigger(base)
@@ -458,7 +361,7 @@ def epixm320_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epixm320_connect(base):
+def epixm320_connectionInfo(base, alloc_json_str):
 
 #
 #  To do:  get the IDs from the detector and not the timing link
@@ -466,10 +369,10 @@ def epixm320_connect(base):
     txId = timTxId('epixm320')
     logging.info('TxId {:x}'.format(txId))
 
-    root = base['root']
-    rxId = root.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+    cbase = base['cam']
+    rxId = cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     logging.info('RxId {:x}'.format(rxId))
-    root.App.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+    cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
 
     epixmid = '-'
 
@@ -481,191 +384,249 @@ def epixm320_connect(base):
 
 #
 #  Translate the 'user' components of the cfg dictionary into 'expert' settings
-#  The cfg dictionary may be partial (scanning), so the ocfg dictionary is
+#  The cfg dictionary may be partial (scanning), so the origcfg dictionary is
 #  reference for the full set.
 #
 def user_to_expert(base, cfg, full=False):
-    global ocfg
+    global origcfg
     global group
     global lane
+
+    cbase = base['cam']
 
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
-        root = base['root']
-        for i,p in enumerate([RTP,group]):
-            partitionDelay = getattr(root.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
+        rtp = origcfg['user']['run_trigger_group'] # run trigger partition
+        for i,p in enumerate([rtp,group]):
+            partitionDelay = getattr(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%p).get()
             rawStart       = cfg['user']['start_ns']
-            triggerDelay   = int(rawStart*base['clk_period'] - partitionDelay*base['msg_period'])
+            triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
             logging.warning(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
             if triggerDelay < 0:
                 logging.error(f'partitionDelay[{p}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
+                logging.error('Raise start_ns >= {:}'.format(partitionDelay*base['msg_period']*base['clk_period']))
                 raise ValueError('triggerDelay computes to < 0')
 
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[{i}].TriggerDelay']=triggerDelay
 
         if full:
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']=RTP
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']=group
+            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']=rtp    # Run trigger
+            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']=group  # DAQ trigger
 
-    pixel_map_changed = False
-    # Ric: ePixM is autoranging, so not yet clear what to do here
-    #a = None
-    #hasUser = 'user' in cfg
-    #if hasUser and ('pixel_map' in cfg['user'] or
-    #                'gain_mode' in cfg['user']):
-    #    gain_mode = cfg['user']['gain_mode']
-    #    if gain_mode==5:  # user map
-    #        a  = cfg['user']['pixel_map']
-    #        logging.warning('pixel_map len {}'.format(len(a)))
-    #        d['user.pixel_map'] = a
-    #        # what about associated trbit?
-    #    else:
-    #        mapv, trbit = gain_mode_map(gain_mode)
-    #        for i in range(4):
-    #            d[f'expert.App.Mv2Asic[{i}].trbit'] = trbit
-    #    pixel_map_changed = True
+    calibRegsChanged = False
+    if hasUser and 'gain_mode'  in cfg['user']:
+        gain_mode = cfg['user']['gain_mode']
+        if gain_mode==3:  # user's choices from the configDb
+            for i in range(cbase.numOfAsics):
+                d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM']        = origcfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']
+                d[f'expert.App.Mv2Asic[{i}].Precharge_DAC_ePixM'] = origcfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM']
+        else:
+            compTH, precharge_DAC = gain_mode_map(gain_mode)
+            for i in range(cbase.numOfAsics):
+                d[f'expert.App.Mv2Asic[{i}].CompTH_ePixM']        = compTH
+                d[f'expert.App.Mv2Asic[{i}].Precharge_DAC_ePixM'] = precharge_DAC
 
-    update_config_entry(cfg,ocfg,d)
+        # For charge injection
+        # Run and DAQ triggers to be enabled @ 10Hz. BOTH MUST BE 10HZ
+        if 'expert' in cfg and cfg['expert']['App']['FPGAChargeInjection']['step'] != 0:
+            d['expert.App.FPGAChargeInjection.startCol']    = cfg['expert']['App']['FPGAChargeInjection']['startCol']
+            d['expert.App.FPGAChargeInjection.endCol']      = cfg['expert']['App']['FPGAChargeInjection']['endCol']
+            d['expert.App.FPGAChargeInjection.step']        = cfg['expert']['App']['FPGAChargeInjection']['step']
+            d['expert.App.FPGAChargeInjection.currentAsic'] = cfg['expert']['App']['FPGAChargeInjection']['currentAsic']
+        calibRegsChanged = True
 
-    return pixel_map_changed
+    update_config_entry(cfg,origcfg,d)
+
+    return calibRegsChanged
 
 #
 #  Apply the cfg dictionary settings
 #
-def config_expert(base, cfg, writePixelMap=True, secondPass=False):
+def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     global asics  # Need to maintain this across configuration updates
 
     #  Disable internal triggers during configuration
     epixm320_external_trigger(base)
 
-    root = base['root']
+    cbase = base['cam']
 
     # overwrite the low-level configuration parameters with calculations from the user configuration
     if 'expert' in cfg:
         try:  # config update might not have this
-            apply_dict('root.App.TimingRx.TriggerEventManager',root.App.TimingRx.TriggerEventManager,cfg['expert']['App']['TimingRx']['TriggerEventManager'])
+            apply_dict('cbase.App.TimingRx.TriggerEventManager',
+                       cbase.App.TimingRx.TriggerEventManager,
+                       cfg['expert']['App']['TimingRx']['TriggerEventManager'])
         except KeyError:
             pass
 
     app = None
     if 'expert' in cfg and 'App' in cfg['expert']:
-        app = cfg['expert']['App'].copy()
+        app = copy.deepcopy(cfg['expert']['App'])
 
     #  Make list of enabled ASICs
     if 'user' in cfg and 'asic_enable' in cfg['user']:
         asics = []
-        for i in range(root.numOfAsics):
+        for i in range(cbase.numOfAsics):
             if cfg['user']['asic_enable']&(1<<i):
                 asics.append(i)
             else:
                 # remove the ASIC configuration so we don't try it
                 del app['Mv2Asic[{}]'.format(i)]
 
-# Ric: Don't understand what this is doing
-#    #  Set the application event builder for the set of enabled asics
-#    if base['pcie_timing']:
-#        m=3
-#        for i in asics:
-#            m = m | (4<<i)
-#    else:
-##        Enable batchers for all ASICs.  Data will be padded.
-##        m=0
-##        for i in asics:
-##            m = m | (4<<int(i/2))
-#        m=3<<2
-#    base['bypass'] = 0x3f^m  # mask of active batcher channels
-#    base['batchers'] = m>>2  # mask of active batchers
-    base['batchers'] = root.numOfAsics * [1]  # list of active batchers
-    print(f'=== configure bypass {base["bypass"]} ===')
+    # Enable batchers for all ASICs.  Data will be padded.
+    base['bypass'] = cbase.numOfAsics * [0x2]  # Enable Timing (bit-0) for all ASICs
+    base['batchers'] = cbase.numOfAsics * [1]  # list of active batchers
     for i in asics:
-        getattr(root.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
+        base['bypass'][i] = 0       # Enable Data (bit-1) only for for enabled ASICs
+    print(f'=== configure bypass {base["bypass"]} ===')
+    for i in range(cbase.numOfAsics):
+        getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(base['bypass'][i])
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
     #  Without a timeout, dropped contributions create an off-by-one between contributors
     for i in asics:
-        getattr(root.App.AsicTop, f'BatcherEventBuilder{i}').Timeout.set(EventBuilderTimeout) # 400 us
+        getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Timeout.set(EventBuilderTimeout) # 400 us
     if not base['pcie_timing']:
-        eventBuilder = root.find(typ=batcher.AxiStreamBatcherEventBuilder)
+        eventBuilder = cbase.find(typ=batcher.AxiStreamBatcherEventBuilder)
         for eb in eventBuilder:
             eb.Timeout.set(EventBuilderTimeout)
             eb.Blowoff.set(True)
-
     #
     #  For some unknown reason, performing this part of the configuration on BeginStep
     #  causes the readout to fail until the next Configure
     #
     if app is not None and not secondPass:
         # Work hard to use the underlying rogue interface
+        # Config data was initialized from the distribution's yaml files by epixhr_config_from_yaml.py
         # Translate config data to yaml files
         path = '/tmp/ePixM320_'
-        epixMTypes = cfg[':types:']['expert']['App']
+        ePixMTypes = cfg[':types:']['expert']['App']
         tree = ('Root','App')
         tmpfiles = []
         def toYaml(sect,keys,name):
             if sect == tree[-1]:
-                tmpfiles.append(dictToYaml(app,epixMTypes,keys,root,path,name,tree,ordering))
+                tmpfiles.append(dictToYaml(app,ePixMTypes,keys,cbase,path,name,tree,ordering))
             else:
-                tmpfiles.append(dictToYaml(app[sect],epixMTypes[sect],keys,root,path,name,(*tree,sect),ordering))
+                tmpfiles.append(dictToYaml(app[sect],ePixMTypes[sect],keys,cbase,path,name,(*tree,sect),ordering))
 
         clk = cfg['expert']['Pll']['Clock']
-        freq = [None,'_250_MHz','_125_MHz','_168_MHz'][clk]
-        pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
-        fn = path+'PllConfig'+'.csv'
-        np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
-        tmpfiles.append(fn)
-        setattr(root, 'filenamePLL', fn)
+        if clk != 4:            # 4 is the Default firmware setting
+            freq = [None,'_250_MHz','_125_MHz','_168_MHz'][clk]
+            pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
+            fn = path+'PllConfig'+'.csv'
+            np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
+            tmpfiles.append(fn)
+            setattr(cbase, 'filenamePLL', fn)
 
+        # Generate Yaml files for all ASICs
         toYaml('App',['PowerControl'],'PowerSupply')
-        toYaml('App',[f'SspMonGrp[{i}]' for i in asics],'DESER')
+        toYaml('App',[f'SspMonGrp[{i}]' for i in range(cbase.numOfAsics)],'DESER')
         toYaml('AsicTop',['RegisterControlDualClock'],'WaveForms')
-        toYaml('AsicTop',[f'DigAsicStrmRegisters{i}' for i in asics],'PacketReg')
-        toYaml('AsicTop',[f'BatcherEventBuilder{i}' for i in asics],'Batcher')
-        for i in asics:
+        toYaml('AsicTop',[f'DigAsicStrmRegisters{i}' for i in range(cbase.numOfAsics)],'PacketReg')
+        toYaml('AsicTop',[f'BatcherEventBuilder{i}' for i in range(cbase.numOfAsics)],'Batcher')
+        setattr(cbase, 'filenameASIC',cbase.numOfAsics*[None]) # This one is a little different
+        for i in range(cbase.numOfAsics):
             toYaml('App',[f'Mv2Asic[{i}]'],f'ASIC_u{i+1}')
-        setattr(root, 'filenameASIC', path+'ASIC_u{}'+'.yml') # This one is a little different
+            cbase.filenameASIC[i] = getattr(cbase,f'filenameASIC_u{i+1}')
 
         arg = [clk,0,0,0,0]
         for i in asics:
-            arg[i+1] = 1
+            arg[1+i] = 1
         logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
-        ###raise Exception('Aborting before fnInitAsic: Check the yaml files')
-        root.fnInitAsicScript(None,None,arg)
+        cbase.fnInitAsicScript(None,None,arg)
 
-        #  Remove the yml files
+        # Remove the yml files
         for f in tmpfiles:
             os.remove(f)
 
-    # run some triggers and exercise lanes and locks
-    frames = 5000
-    rate = 1000
+        # Adjust for intermitent lanes of enabled ASICs
+        cbase.laneDiagnostics(arg[1:5], threshold=1, loops=0, debugPrint=False)
 
-    root.hwTrigger(frames, rate)
+        # Delay determination needs laneDiagnostics. Exercising the lanes seem to stablize
+        # the lanes better for later evaluating the best lanes delays.
+        # Adding sleeps does not seem to suffice. Images need to be sent on the lanes.
 
-    #get locked lanes
-    print('Locked lanes:')
-    root.getLaneLocks()
+        time.sleep(1)
+        logging.info("Evaluating optimal delays")
 
-    # Disable non-locking lanes
-    for i in asics:
-        lanes = root.App.SspMonGrp[i].Locked.get();
-        print(f'Setting DigAsicStrmRegisters[{i}].DisableLane to 0x{lanes:x}')
-        getattr(root.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(lanes);
+        cbase.App.FPGADelayDetermination.Start()
+        time.sleep(1)
+        while (cbase.App.FPGADelayDetermination.Busy.get() != 0) :
+            time.sleep(1)
+
+        for i in range(cbase.numOfAsics):
+            # Prevent disabled ASICs from participating by disabling their lanes
+            # It seems like disabling their Batchers should be sufficient,
+            # but that prevents transitions from going through
+            if i not in asics:  # Override configDb's value for disabled ASICs
+                getattr(cbase.App.AsicTop, f'DigAsicStrmRegisters{i}').DisableLane.set(0xffffff)
+
+        # Enable the batchers for all ASICs
+        for i in range(cbase.numOfAsics):
+            getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').enable.set(base['batchers'][i] == 1)
+
+    if writeCalibRegs:
+        gain_mode = cfg['user']['gain_mode'] if 'gain_mode' in cfg['user'] else 3
+        if gain_mode == 3:
+            compTH        = []
+            precharge_DAC = []
+            for i in asics:
+                asicName = f'Mv2Asic[{i}]'
+                saci = getattr(cbase.App,asicName)
+                saci.enable.set(True)
+
+                if app is not None and asicName in app:
+                    di = app[asicName]
+                    compTH.append       (di['CompTH_ePixM'])
+                    precharge_DAC.append(di['Precharge_DAC_ePixM'])
+                    setSaci(saci.CompTH_ePixM,       'CompTH_ePixM',       di)
+                    setSaci(saci.Precharge_DAC_ePixM,'Precharge_DAC_ePixM',di)
+
+                saci.enable.set(False)
+            print(f'Setting gain mode {gain_mode}:  CompTH {compTH},  Precharge_DAC {precharge_DAC}')
+        else:
+            compTH, precharge_DAC = gain_mode_map(gain_mode)
+            print(f'Setting gain mode {gain_mode}:  CompTH {compTH},  Precharge_DAC {precharge_DAC}')
+
+            for i in asics:
+                saci = getattr(cbase.App,f'Mv2Asic[{i}]')
+                saci.enable.set(True)
+                saci.CompTH_ePixM.set(compTH)
+                saci.Precharge_DAC_ePixM.set(precharge_DAC)
+                saci.enable.set(False)
+
+        #  Enable charge injection when pulser step is non-zero
+        hasChgInj = app is not None and 'FPGAChargeInjection' in app
+        if hasChgInj and app['FPGAChargeInjection']['step'] != 0:
+            cbase.App.FPGAChargeInjection.startCol.set   (app['FPGAChargeInjection']['startCol'])
+            cbase.App.FPGAChargeInjection.endCol.set     (app['FPGAChargeInjection']['endCol'])
+            cbase.App.FPGAChargeInjection.step.set       (app['FPGAChargeInjection']['step'])
+            cbase.App.FPGAChargeInjection.currentAsic.set(app['FPGAChargeInjection']['currentAsic'])
+            cbase.App.FPGAChargeInjection.UseTiming.set(True)
+        else:
+            cbase.App.FPGAChargeInjection.step.set(0) # Disable charge injection
 
     logging.warning('config_expert complete')
 
 def reset_counters(base):
+    cbase = base['cam']
+
     # Reset the timing counters
-    base['root'].App.TimingRx.TimingFrameRx.countReset()
+    cbase.App.TimingRx.TimingFrameRx.countReset()
 
     # Reset the trigger counters
-    base['root'].App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].countReset()
+    cbase.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].countReset()
+
+    # Reset the ASIC counters
+    for i in range (cbase.numOfAsics):
+        getattr(cbase.App.AsicTop, f"DigAsicStrmRegisters{i}").CountReset()
 
 #
 #  Called on Configure
 #
 def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
-    global ocfg
+    global origcfg
     global group
     global segids
 
@@ -675,29 +636,24 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Retrieve the full configuration from the configDB
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
-
-    if not base['pcie_timing']:
-        if 'TriggerEventManager' not in cfg['expert']['App']['TimingRx']:
-            #  Add missing fields
-            f = {'Partition':'UINT32','PauseThreshold':'UINT32','TriggerDelay':'UINT32'}
-            cfg[':types:']['expert']['App']['TimingRx']['TriggerEventManager'] = {'TriggerEventBuffer[0]':f.copy(),
-                                                                                  'TriggerEventBuffer[1]':f.copy()}
-            f = cfg['expert']['App']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
-            cfg['expert']['App']['TimingRx']['TriggerEventManager'] = {'TriggerEventBuffer[0]':f.copy(),
-                                                                       'TriggerEventBuffer[1]':f.copy()}
-            #  Remove the old ones
-            del cfg[':types:']['expert']['App']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
-            del cfg['expert']['App']['TimingRx']['TriggerEventManager']['TriggerEventBuffer']
-
-    ocfg = cfg
+    origcfg = cfg
 
     #  Translate user settings to the expert fields
-    writePixelMap=user_to_expert(base, cfg, full=True)
+    writeCalibRegs=user_to_expert(base, cfg, full=True)
+
+    if cfg==base['cfg']:
+        print('### Skipping redundant configure')
+        return base['result']
+
+    if base['cfg']:
+        print('--- config changed ---')
+        _dict_compare(base['cfg'],cfg,'cfg')
+        print('--- /config changed ---')
 
     #  Apply the expert settings to the device
     _stop(base)
 
-    config_expert(base, cfg, writePixelMap)
+    config_expert(base, cfg, writeCalibRegs)
 
     time.sleep(0.01)
     _start(base)
@@ -709,188 +665,190 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
 #    epixm320_internal_trigger(base)
 
     #  Capture the firmware version to persist in the xtc
-    root = base['root']
-    firmwareVersion = root.Core.AxiVersion.FpgaVersion.get()
-    ocfg = cfg
+    cbase = base['cam']
+    cfg['firmwareVersion'] = cbase.Core.AxiVersion.FpgaVersion.get()
+    cfg['firmwareBuild'  ] = cbase.Core.AxiVersion.BuildDate.get()
 
     #
     #  Create the segment configurations from parameters required for analysis
     #
-    trbit = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['trbit'] for i in range(root.numOfAsics) ]
+    compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(cbase.numOfAsics) ]
+    precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(cbase.numOfAsics) ]
 
     topname = cfg['detName:RO'].split('_')
 
-    scfg = {}
+    segcfg = {}
     segids = {}
 
     #  Rename the complete config detector
-    scfg[0] = cfg.copy()
-    scfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
+    segcfg[0] = cfg.copy()
+    segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
-    # Ric: ePixM is autoranging; deal with gain later
-    ##  User pixel map is assumed to be 288x384 in standard element orientation
-    #gain_mode = cfg['user']['gain_mode']
-    #if False:
-    #    if gain_mode==5:
-    #        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape((2*elemRowsD,2*elemCols))
-    #    else:
-    #        mapv,trbit0 = gain_mode_map(gain_mode)
-    #        trbit = [trbit0 for i in range(4)]
-    #        pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
-    #else:
-    #    if gain_mode==5:
-    #        pixelConfigSet = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-    #    else:
-    #        mapv,trbit0 = gain_mode_map(gain_mode)
-    #        pixelConfigSet = np.zeros((2*elemRowsD*2*elemCols),dtype=np.uint8)+mapv
-    #
-    #    s = user_to_rogue(pixelConfigSet)
-    #    for i in asics:
-    #        cname = f'/tmp/Hr10kTAsic{i}.latest'
-    #        s[i] = np.loadtxt(cname, dtype=np.uint8, delimiter=',')
-    #
-    #    pixelConfigUsr = rogue_to_user(s)
-    #
-    #    # Lets do some validation
-    #
-    #    if pixelConfigUsr.shape != pixelConfigSet.shape:
-    #        logging.error(f'  shape error  wrote {pixelConfigSet.shape}  read {pixelConfigUsr.shape}')
-    #    else:
-    #        nerr = 0
-    #        for i in range(pixelConfigUsr.shape[0]):
-    #            if pixelConfigUsr[i] != pixelConfigSet[i]:
-    #                nerr += 1
-    #                if nerr < 20:
-    #                    logging.error(f'  mismatch at {i}({i//(2*elemCols)},{i%(2*elemCols)})  wrote {pixelConfigSet[i]}  read {pixelConfigUsr[i]}')
-    #        logging.warning(f'Gain map validation complete with {nerr} mismatches')
-    #
-    #print(f'pixelConfigUsr shape {pixelConfigUsr.shape}  trbit {trbit}')
+    gain_mode = cfg['user']['gain_mode']
+    if gain_mode != 3:
+        compTH0,precharge_DAC0 = gain_mode_map(gain_mode)
+        compTH        = [compTH0        for i in range(cbase.numOfAsics)]
+        precharge_DAC = [precharge_DAC0 for i in range(cbase.numOfAsics)]
 
-    for seg in range(1):
+    print(f'gain_mode {gain_mode}  CompTH_ePixM {compTH}  Precharge_DAC_ePixM {precharge_DAC}')
+
+    for seg in range(1):  # Loop over 'tiles', of which the ePixM has only one
+        # Get serial numbers
+        cbase.App.AsicTop.RegisterControlDualClock.enable.set(True)
+        cbase.App.AsicTop.RegisterControlDualClock.IDreset.set(0x7)
+        cbase.App.AsicTop.RegisterControlDualClock.IDreset.set(0x0)
+
+        # Wait for hardware to get serial numbers
+        time.sleep(0.1)
+
         #  Construct the ID
-        digitalId = [0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.DigIDLow.get(),
-                     0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.DigIDHigh.get()]
-        pwrCommId = [0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.PowerAndCommIDLow.get(),
-                     0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.PowerAndCommIDHigh.get()]
-        carrierId = [0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.CarrierIDLow.get(),
-                     0 if base['pcie_timing'] else root.App.AsicTop.RegisterControlDualClock.CarrierIDHigh.get()]
-        id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
+        digitalId = [0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.DigIDLow.get(),
+                     0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.DigIDHigh.get()]
+        pwrCommId = [0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.PowerAndCommIDLow.get(),
+                     0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.PowerAndCommIDHigh.get()]
+        carrierId = [0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.CarrierIDLow.get(),
+                     0 if base['pcie_timing'] else cbase.App.AsicTop.RegisterControlDualClock.CarrierIDHigh.get()]
+        digital = (digitalId[1] << 32) | digitalId[0]
+        pwrComm = (pwrCommId[1] << 32) | pwrCommId[0]
+        carrier = (carrierId[1] << 32) | carrierId[0]
+        print(f'ePixM320k ids: f/w {cfg["firmwareVersion"]:x}, carrier {carrier:x}, digital {digital:x}, pwrComm {pwrComm:x}')
+        id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(cfg['firmwareVersion'],
                                                           carrierId[0], carrierId[1],
                                                           digitalId[0], digitalId[1],
                                                           pwrCommId[0], pwrCommId[1])
-        print(f'id {id}')
+        print(f'ePixM320k id: {id}')
         segids[seg] = id
         top = cdict()
-        top.setAlg('config', [0,0,0])
+        top.setAlg('config', [1,0,0])
         top.setInfo(detType='epixm320', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-        #top.set('asicPixelConfig', pixelConfigUsr)
-        top.set('trbit'          , trbit, 'UINT8')
-        scfg[seg+1] = top.typed_json()
 
-    # Sanitize the json for json2xtc by removing offensive characters
-    def translate_config(src):
-        dst = {}
-        for k, v in src.items():
-            if isinstance(v, dict):
-                v = translate_config(v)
-            dst[k.replace('[','').replace(']','').replace('(','').replace(')','')] = v
-        return dst
+        # Add some convenience variables for the offline analysis.
+        # In this case, these are somewhat redundant because the information is already in
+        # segcfg[0], but we're preserving the pattern in case it makes a difference downstream.
+        # Note that at this point we don't know whether we are about to begin a normal data-taking
+        # run or some kind of scan, so we can't conditionally add things to segcfg[1] here.
+        top.set('CompTH_ePixM',        compTH,        'UINT8')
+        top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
+        top.set('startCol',    cfg['expert']['App']['FPGAChargeInjection']['startCol'],    'UINT32')
+        top.set('endCol',      cfg['expert']['App']['FPGAChargeInjection']['endCol'],      'UINT32')
+        top.set('step',        cfg['expert']['App']['FPGAChargeInjection']['step'],        'UINT32')
+        top.set('currentAsic', cfg['expert']['App']['FPGAChargeInjection']['currentAsic'], 'UINT32')
+        segcfg[seg+1] = top.typed_json()
 
     result = []
     for i in seglist:
-        logging.warning('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
-        result.append( json.dumps(translate_config(scfg[i])) )
+        logging.warning('json seg {}  detname {}'.format(i, segcfg[i]['detName:RO']))
+        result.append( json.dumps(sanitize_config(segcfg[i])) )
 
-    #print('*** json result:')
-    #pprint.pprint(result)
+    base['cfg']    = copy.deepcopy(cfg)
+    base['result'] = copy.deepcopy(result)
+
+    # @todo: Sanity check result here.
+    # Not sure what that means.  Check that all entry's names and values are valid python, perhaps?
+
     return result
 
 def epixm320_unconfig(base):
+    logging.info('epixm320_unconfig')
     _stop(base)
     return base
 
 #
-#  Build the set of all configuration parameters that will change
-#  in response to the scan parameters
+#  Build the set of all configuration parameters that will change in
+#  response to the scan parameters.  Called on Configure, after <det>_config().
 #
 def epixm320_scan_keys(update):
+    """Returns an updated config JSON to record in an XTC file.
+
+    This function and the <det>_update function are used in BEBDetector config
+    scans.  The update argument contains the keys of the scan parameters.
+    """
     logging.warning('epixm320_scan_keys')
-    global ocfg
+    global origcfg
     global base
     global segids
 
     cfg = {}
-    copy_reconfig_keys(cfg,ocfg,json.loads(update))
+    copy_reconfig_keys(cfg,origcfg,json.loads(update))
     # Apply to expert
-    pixelMapChanged = user_to_expert(base,cfg,full=False)
+    calibRegsChanged = user_to_expert(base,cfg,full=False)
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
-        copy_config_entry(cfg,ocfg,key)
-        copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
+        copy_config_entry(cfg,origcfg,key)
+        copy_config_entry(cfg[':types:'],origcfg[':types:'],key)
 
     topname = cfg['detName:RO'].split('_')
 
-    scfg = {}
+    segcfg = {}
 
     #  Rename the complete config detector
-    scfg[0] = cfg.copy()
-    scfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
+    segcfg[0] = cfg.copy()
+    segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
-    if pixelMapChanged:
-        gain_mode = cfg['user']['gain_mode']
-        if gain_mode==5:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
-        else:
-            mapv,trbit = gain_mode_map(gain_mode)
-            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+    if calibRegsChanged:
+        numAsics = base['cam'].numOfAsics
+        compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(numAsics) ]
+        precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(numAsics) ]
 
-        pixelConfigMap = user_to_rogue(pixelConfigUsr)
-        trbit = [ cfg['expert']['EpixM'][f'Hr10kTAsic{i}']['trbit'] for i in range(4)]
-
-        cbase = base['cam']
-        for seg in range(1):
+        for seg in range(1):    # Loop over 'tiles', of which the ePixM has only one
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [0,0,0])
+            top.setAlg('config', [1,0,0])
             top.setInfo(detType='epixm320', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigUsr)
-            top.set('trbit'          , trbit                  , 'UINT8')
-            scfg[seg+1] = top.typed_json()
+
+            # Add some convenience variables for the offline
+            top.set('CompTH_ePixM',        compTH,        'UINT8')
+            top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
+
+            hasChgInj = 'FPGAChargeInjection' in cfg['expert']['App']
+            if hasChgInj:
+                top.set('startCol',    cfg['expert']['App']['FPGAChargeInjection']['startCol'],    'UINT32')
+                top.set('endCol',      cfg['expert']['App']['FPGAChargeInjection']['endCol'],      'UINT32')
+                top.set('step',        cfg['expert']['App']['FPGAChargeInjection']['step'],        'UINT32')
+                top.set('currentAsic', cfg['expert']['App']['FPGAChargeInjection']['currentAsic'], 'UINT32')
+            segcfg[seg+1] = top.typed_json()
 
     result = []
-    for i in range(len(scfg)):
-        result.append( json.dumps(scfg[i]) )
+    for i in range(len(segcfg)):
+        result.append( json.dumps(sanitize_config(segcfg[i])) )
+
+    base['scan_keys'] = copy.deepcopy(result)
+
+    # Sanity check result here.  All keys in result must also be in base['result'].
+    if not check_json_keys(result, base['result']): # @todo: Too strict?
+        logging.error('epixm320_scan_keys json is inconsistent with that of epix320_config')
+        # Expect to crash in descData.hh, but let's see
 
     return result
 
 #
-#  Return the set of configuration updates for a scan step
+#  Return the set of configuration updates for a scan step.
+#  Called on BeginStep.
 #
 def epixm320_update(update):
+    """Applies an updated configuration to a detector during a scan.
+
+    This function and the <det>_scan_keys function are used in BEBDetector
+    config scans.  This function is called on every scan step with step-
+    dependent (key, value) pairs for the scan parameters.
+    """
     logging.warning('epixm320_update')
-    global ocfg
+    global origcfg
     global base
-    ##
-    ##  Having problems with partial configuration
-    ##
+
+    #  Queue full configuration next Configure transition
+    base['cfg'] = None
+
+    _stop(base)
+
     # extract updates
     cfg = {}
-    update_config_entry(cfg,ocfg,json.loads(update))
+    update_config_entry(cfg,origcfg,json.loads(update))
     #  Apply to expert
-    writePixelMap = user_to_expert(base,cfg,full=False)
-    print(f'Partial config writePixelMap {writePixelMap}')
-    if True:
-        #  Apply config
-        config_expert(base, cfg, writePixelMap, secondPass=True)
-    else:
-        ##
-        ##  Try full configuration
-        ##
-        ncfg = ocfg.copy()
-        update_config_entry(ncfg,ocfg,json.loads(update))
-        _writePixelMap = user_to_expert(base,ncfg,full=True)
-        print(f'Full config writePixelMap {_writePixelMap}')
-        config_expert(base, ncfg, _writePixelMap, secondPass=True)
+    writeCalibRegs = user_to_expert(base,cfg,full=False)
+    print(f'Partial config writeCalibRegs {writeCalibRegs}')
+    #  Apply config
+    config_expert(base, cfg, writeCalibRegs, secondPass=True)
 
     _start(base)
 
@@ -899,101 +857,119 @@ def epixm320_update(update):
 
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
-        copy_config_entry(cfg,ocfg,key)
-        copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
+        copy_config_entry(cfg,origcfg,key)
+        copy_config_entry(cfg[':types:'],origcfg[':types:'],key)
 
     topname = cfg['detName:RO'].split('_')
 
-    scfg = {}
+    segcfg = {}
 
     #  Rename the complete config detector
-    scfg[0] = cfg.copy()
-    scfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
+    segcfg[0] = cfg.copy()
+    segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
-    scfg[0] = cfg
+    if writeCalibRegs:
+        numAsics = base['cam'].numOfAsics
+        compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(numAsics) ]
+        precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(numAsics) ]
 
-    if writePixelMap:
-        gain_mode = cfg['user']['gain_mode']
-        if gain_mode==5:
-            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8).reshape(2*elemRowsD,2*elemCols)
-        else:
-            mapv,trbit = gain_mode_map(gain_mode)
-            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
-
-        pixelConfigMap = user_to_rogue(pixelConfigUsr)
-        try:
-            trbit = [ cfg['expert']['EpixM'][f'Hr10kTAsic{i}']['trbit'] for i in range(4)]
-        except:
-            trbit = None
-
-        cbase = base['cam']
-        for seg in range(1):
+        for seg in range(1):    # Loop over 'tiles', of which the ePixM has only one
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [0,0,0])
+            top.setAlg('config', [1,0,0])
             top.setInfo(detType='epixm320', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigUsr)
-            if trbit is not None:
-                top.set('trbit'      , trbit                  , 'UINT8')
-            scfg[seg+1] = top.typed_json()
+
+            # Add some convenience variables for the offline
+            top.set('CompTH_ePixM',        compTH,        'UINT8')
+            top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
+
+            hasChgInj = 'FPGAChargeInjection' in cfg['expert']['App']
+            if hasChgInj:
+                top.set('startCol',    cfg['expert']['App']['FPGAChargeInjection']['startCol'],    'UINT32')
+                top.set('endCol',      cfg['expert']['App']['FPGAChargeInjection']['endCol'],      'UINT32')
+                top.set('step',        cfg['expert']['App']['FPGAChargeInjection']['step'],        'UINT32')
+                top.set('currentAsic', cfg['expert']['App']['FPGAChargeInjection']['currentAsic'], 'UINT32')
+            segcfg[seg+1] = top.typed_json()
 
     result = []
-    for i in range(len(scfg)):
-        result.append( json.dumps(scfg[i]) )
+    for i in range(len(segcfg)):
+        result.append( json.dumps(sanitize_config(segcfg[i])) )
 
-    logging.warning('update complete')
+    # Sanity check result.  All keys in result must also be in base['scan_keys'].
+    if not check_json_keys(result, base['scan_keys'], exact=True):
+        logging.error('epixm320_update json is inconsistent with that of epix320_scan_keys')
+        # Expect to crash in descData.hh, but let's see
+
+    logging.info('epixm320_update complete')
 
     return result
 
 def _resetSequenceCount():
-    root = base['root']
-    root.App.AsicTop.RegisterControlDualClock.ResetCounters.set(1)
+    cbase = base['cam']
+    cbase.App.AsicTop.RegisterControlDualClock.ResetCounters.set(1)
     time.sleep(1.e6)
-    root.App.AsicTop.RegisterControlDualClock.ResetCounters.set(0)
+    cbase.App.AsicTop.RegisterControlDualClock.ResetCounters.set(0)
 
 def epixm320_external_trigger(base):
     #  Switch to external triggering
-    print(f"=== external triggering with bypass {base['bypass']} ===")
-    root = base['root']
-    root.App.AsicTop.TriggerRegisters.SetTimingTrigger(1)
+    print(f"=== external triggering ===")
+    cbase = base['cam']
+    cbase.App.AsicTop.TriggerRegisters.SetTimingTrigger()
 
 def epixm320_internal_trigger(base):
-    #  Disable frame readout
-    mask = 0x3
-    print('=== internal triggering with bypass {:x} ==='.format(mask))
-    root = base['root']
-    for i in range(root.numOfAsics):
-        getattr(root.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(mask)
-    return
+    ##  Disable frame readout
+    #mask = 0x3
+    #print('=== internal triggering with bypass {:x} ==='.format(mask))
+    #cbase = base['cam']
+    #for i in range(cbase.numOfAsics):
+    #    # This should be base['pci'].DevPcie.Application.EventBuilder.Bypass
+    #    getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(mask)
+    #return
 
     #  Switch to internal triggering
     print('=== internal triggering ===')
-    root = base['root']
-    root.App.AsicTop.TriggerRegisters.SetAutoTrigger(1)
+    cbase = base['cam']
+    cbase.App.AsicTop.TriggerRegisters.SetAutoTrigger()
 
 def epixm320_enable(base):
-    print('epixm320_enable')
+    logging.info('epixm320_enable')
+    cbase = base['cam']
+
+    # If charge injection was enabled, start the f/w engine
+    if cbase.App.FPGAChargeInjection.step.get() != 0:
+        cbase.App.FPGAChargeInjection.Start()
+
     epixm320_external_trigger(base)
-    _start(base)
+    #_start(base)
 
 def epixm320_disable(base):
-    print('epixm320_disable')
-    epixm320_internal_trigger(base)
+    logging.info('epixm320_disable')
+    cbase = base['cam']
+
+    # If charge injection was enabled, stop the f/w engine
+    if cbase.App.FPGAChargeInjection.step.get() != 0:
+        cbase.App.FPGAChargeInjection.Stop()
+
+    # The following prevents transitions from going through
+    # epixm320_internal_trigger(base)
+    # Seems like we should do the following, but it also blows off transitions
+    #_stop(base)
 
 def _stop(base):
-    root = base['root']
-    root.App.StopRun()
+    print('_stop')
+    cbase = base['cam']
+    cbase.App.StopRun()
     time.sleep(0.1)  #  let last triggers pass through
 
 def _start(base):
-    root = base['root']
-    root.App.StartRun()
-    root.App.AsicTop.TriggerRegisters.PgpTrigEn.set(True)
-    for i in range(root.numOfAsics):
-        getattr(root.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(0)
-    for i in range(root.numOfAsics):
-        getattr(root.App.AsicTop,f'BatcherEventBuilder{i}').Blowoff.set(base['batchers'][i]==0)
-    print(f'Blowoff BatcherEventBuilders {[base["batchers"][i]==0 for i in range(root.numOfAsics)]}')
+    print('_start')
+    cbase = base['cam']
+    cbase.App.StartRun()
+    # This is unneccessary as Bypass is handled above and Blowoff in StartRun()
+    #m = base['batchers']
+    #for i in range(cbase.numOfAsics):
+    #    getattr(cbase.App.AsicTop,f'BatcherEventBuilder{i}').Bypass.set(0x0)
+    #    getattr(cbase.App.AsicTop,f'BatcherEventBuilder{i}').Blowoff.set(m[i]==0)
 
 #
 #  Test standalone
@@ -1002,7 +978,7 @@ if __name__ == "__main__":
 
     _base = epixm320_init(None,dev='/dev/datadev_0')
     epixm320_init_feb()
-    epixm320_connect(_base)
+    epixm320_connectionInfo(_base, None)
 
     db = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws/configDB'
     d = {'body':{'control':{'0':{'control_info':{'instrument':'tst',
@@ -1012,12 +988,12 @@ if __name__ == "__main__":
     _connect_str = json.dumps(d)
     epixm320_config(_base,_connect_str,'BEAM','tst_epixm',0,4)
 
-    #print('***** SCAN_KEYS *****')
-    #epixm320_scan_keys(json.dumps(["user.gain_mode"]))
-    #
-    #for i in range(100):
-    #    print(f'***** UPDATE {i} *****')
-    #    epixm320_update(json.dumps({'user.gain_mode':i%5}))
+    print('***** SCAN_KEYS *****')
+    epixm320_scan_keys(json.dumps(["user.gain_mode"]))
+
+    for i in range(100):
+        print(f'***** UPDATE {i} *****')
+        epixm320_update(json.dumps({'user.gain_mode':i%3}))
 
     print('***** DONE *****')
 

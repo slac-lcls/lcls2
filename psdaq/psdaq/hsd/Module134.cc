@@ -7,18 +7,22 @@
 #include "ChipAdcCore.hh"
 #include "Jesd204b.hh"
 #include "Fmc134Ctrl.hh"
-#include "FlashController.hh"
+//#include "FlashController.hh"
 #include "OptFmc.hh"
+#include "psdaq/aes-stream-drivers/DmaDriver.h"
+#include "psdaq/aes-stream-drivers/AxiVersion.h"
 
 #include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/TriggerEventManager2.hh"
-#include "psdaq/mmhw/Xvc.hh"
+#include "psdaq/mmhw/TprCore.hh"
+//#include "psdaq/mmhw/Xvc.hh"
 
-using Pds::Mmhw::AxiVersion;
+//using Pds::Mmhw::AxiVersion;
 using Pds::Mmhw::Pgp3Axil;
 using Pds::Mmhw::RingBuffer;
 using Pds::Mmhw::TriggerEventManager2;
 using Pds::Mmhw::TriggerEventBuffer;
+using Pds::Mmhw::TprCore;
 
 #include <string>
 #include <unistd.h>
@@ -41,25 +45,23 @@ namespace Pds {
       //  Low level API
       //
       //  Core registers
-      ModuleBase  base                ; // 0
+      ModuleBase  base                 ; // 0
+      uint32_t    rsvd_800000[(0x800000-sizeof(base))>>2];
       //  App registers
-      ChipAdcCore chip[2]             ; // 0x80000, 0x82000
-        //      TriggerEventManager tem         ; // 0x84000
-        //      uint32_t    rsvd_88000[(0x4000-sizeof(tem))>>2];
-      uint32_t    rsvd_84000[0x4000>>2];
-      Fmc134Ctrl  fmc_ctrl            ; // 0x88000
-      uint32_t    rsvd_88800[(0x800-sizeof(fmc_ctrl))>>2];
-      Mmcm        mmcm                ; // 0x88800
-      uint32_t    rsvd_90000[(0x7800-sizeof(mmcm))>>2];
-      uint32_t    pgp_reg  [0x8000>>2]; // 0x90000
-      uint32_t    opt_fmc  [0x1000>>2]; // 0x98000
-      vuint32_t   qsfp0_i2c[0x1000>>2]; // 0x99000
-      vuint32_t   qsfp1_i2c[0x1000>>2]; // 0x9A000
-      uint32_t    surf_jesd0[0x800>>2]; // 0x9B000
-      uint32_t    surf_jesd1[0x800>>2]; // 0x9B800
-      uint32_t    rsvd_9C000[0x4000>>2];
-      TriggerEventManager2 tem         ; // 0xA0000
-      uint32_t    rsvd_tem[2*sizeof(TriggerEventBuffer)>>2];
+      ChipAdcCore chip[2]              ; // 0x800000, 0x802000
+      uint32_t    rsvd_810000[0xc000>>2];
+      Fmc134Ctrl  fmc_ctrl             ; // 0x810000
+      uint32_t    rsvd_820000[(0x10000-sizeof(fmc_ctrl))>>2];
+      Mmcm        mmcm                 ; // 0x820000
+      uint32_t    rsvd_840000[(0x20000-sizeof(mmcm))>>2];
+      Mmhw::Reg   opt_fmc  [0x10000>>2]; // 0x840000
+      Mmhw::Reg   qsfp0_i2c[0x10000>>2]; // 0x850000
+      Mmhw::Reg   qsfp1_i2c[0x10000>>2]; // 0x860000
+      Mmhw::Reg   surf_jesd0[0x10000>>2]; // 0x870000
+      Mmhw::Reg   surf_jesd1[0x10000>>2]; // 0x880000
+      TriggerEventManager2 tem          ; // 0x890000
+      Mmhw::Reg   rsvd_900000[(0x70000-sizeof(tem))>>2];
+      Mmhw::Reg   pgp_reg  [0x100000>>2]  ; // 0x900000
     };
   };
 };
@@ -68,25 +70,31 @@ using namespace Pds::HSD;
 
 Module134* Module134::create(int fd)
 {
-  void* ptr = mmap(0, sizeof(Module134::PrivateData), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-  if (ptr == MAP_FAILED) {
-    perror("Failed to map");
-    return 0;
-  }
-
-  printf("Module134 mapped at %p with size %zx\n", ptr, sizeof(Module134::PrivateData));
+  // void* ptr = mmap(0, sizeof(Module134::PrivateData), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+  // if (ptr == MAP_FAILED) {
+  //   perror("Failed to map");
+  //   return 0;
+  // }
 
   Module134* m = new Module134;
-  m->p = reinterpret_cast<Module134::PrivateData*>(ptr);
+  m->p = 0;
   m->_fd = fd;
 
-  Pds::Mmhw::RegProxy::initialize(m->p, m->p->base.regProxy);
-  
+  Pds::Mmhw::Reg::set(fd);
+  Pds::Mmhw::RegProxy::initialize(m->p, m->p->base.regProxy); // this hangs the CPU
+
+  AxiVersion vsn;
+  axiVersionGet(fd,&vsn);
+  m->_vsn.FpgaVersion = vsn.firmwareVersion;
+  memcpy((void*)(&m->_vsn.dnaValue),&vsn.dnaValue,16);
+  memcpy((void*)(&m->_vsn.BuildStamp),&vsn.buildString,256);
+
   return m;
 }
 
-void Module134::setup_timing()
+void Module134::setup_timing(bool lLoopback)
 {
+  p->base.tprLoopback = lLoopback ? 8:0;
   //
   //  Verify clock synthesizer is setup
   //  Necessary for timing and dual firefly channel pgp
@@ -95,6 +103,8 @@ void Module134::setup_timing()
     TprCore& tpr = p->base.tpr;
     double txclkr = tpr.txRefClockRate();
     printf("TxRefClk: %f MHz\n", txclkr);
+
+    const_cast<Module134*>(this)->i2c().i2c_sw_control.dump();
 
     static const double TXCLKR_MIN = 185.;
     static const double TXCLKR_MAX = 187.;
@@ -127,17 +137,24 @@ void Module134::setup_timing()
 
       optfmc().resetPgp();
     }
+    else {
+      tpr.resetCounts();
+      usleep(100000);
+      tpr.dump();
+    }
+    double rxclkr = tpr.rxRecClockRate();
+    printf("RxRecClk: %f MHz\n", rxclkr);
   }
 }
 
-void Module134::_jesd_init(unsigned mode) 
+void Module134::_jesd_init(unsigned mode)
 {
   Fmc134Ctrl& ctrl = jesdctl();
   Fmc134Cpld& cpld = i2c().fmc_cpld;
-  vuint32_t* jesd0  = &p->surf_jesd0[0];
-  vuint32_t* jesd1  = &p->surf_jesd1[0];
+  Mmhw::Reg* jesd0  = &p->surf_jesd0[0];
+  Mmhw::Reg* jesd1  = &p->surf_jesd1[0];
   while(1) {
-      if (!ctrl.default_init(cpld, mode)) {
+      if (!ctrl.default_init(cpld, mode, true)) {
           usleep(2000000);
           unsigned dvalid=0;
           for(unsigned i=0; i<8; i++) {
@@ -147,9 +164,10 @@ void Module134::_jesd_init(unsigned mode)
           if (dvalid == 0xffff)
               break;
           printf("dvalid: 0x%x\n",dvalid);
+          break;
       }
       usleep(1000);
-  }            
+  }
 
   ctrl.dump();
 }
@@ -162,9 +180,9 @@ void Module134::setup_jesd(bool lAbortOnErr,
   i2c_lock(I2cSwitch::PrimaryFmc);
   Fmc134Cpld* cpld = &i2c().fmc_cpld;
   Fmc134Ctrl* ctrl = &p->fmc_ctrl;
-  vuint32_t* jesd0  = &p->surf_jesd0[0];
-  vuint32_t* jesd1  = &p->surf_jesd1[0];
-  while (cpld->default_clocktree_init(lInternalTiming ? 
+  Mmhw::Reg* jesd0  = &p->surf_jesd0[0];
+  Mmhw::Reg* jesd1  = &p->surf_jesd1[0];
+  while (cpld->default_clocktree_init(lInternalTiming ?
                                       Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL :
                                       Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL)) {
     if (lAbortOnErr)
@@ -201,23 +219,23 @@ Module134::~Module134()
 #define LPRINT(title,field) {                     \
       printf("\t%20.20s :",title);                \
       for(unsigned i=0; i<PGPLANES; i++)          \
-        printf(" %11x",pgp[i].field);             \
+          printf(" %11x",unsigned(pgp[i].field)); \
       printf("\n"); }
-    
+
 #define LPRBF(title,field,shift,mask) {                 \
       printf("\t%20.20s :",title);                      \
       for(unsigned i=0; i<PGPLANES; i++)                \
-        printf(" %11x",(pgp[i].field>>shift)&mask);     \
+          printf(" %11x",(unsigned(pgp[i].field)>>shift)&mask); \
       printf("\n"); }
-    
+
 #define LPRVC(title,field) {                      \
       printf("\t%20.20s :",title);                \
       for(unsigned i=0; i<PGPLANES; i++)          \
         printf(" %2x %2x %2x %2x",                \
-               pgp[i].field##0,                   \
-             pgp[i].field##1,                     \
-             pgp[i].field##2,                     \
-             pgp[i].field##3 );                   \
+            unsigned(pgp[i].field##0),                    \
+               unsigned(pgp[i].field##1),                 \
+               unsigned(pgp[i].field##2),                 \
+               unsigned(pgp[i].field##3) );               \
     printf("\n"); }
 
 #define LPRFRQ(title,field) {                           \
@@ -225,10 +243,10 @@ Module134::~Module134()
       for(unsigned i=0; i<PGPLANES; i++)                \
         printf(" %11.4f",double(pgp[i].field)*1.e-6);   \
       printf("\n"); }
-    
+
 void Module134::PrivateData::dumpPgp     () const
 {
-  const volatile Pgp3Axil* pgp = reinterpret_cast<const volatile Pgp3Axil*>(pgp_reg);
+  const Pgp3Axil* pgp = reinterpret_cast<const Pgp3Axil*>(pgp_reg);
   LPRINT("loopback"       ,loopback);
   LPRINT("skpInterval"    ,skpInterval);
   LPRBF ("localLinkReady" ,rxStatus,1,1);
@@ -249,7 +267,7 @@ void Module134::PrivateData::dumpPgp     () const
   printf("%10.10s %10.10s SLOW FAST LOCK\n","Clock","Rate, MHz");
   for(unsigned i=0; i<7; i++)
     printf("%10.10s %10.5f    %c   %c   %c\n",
-           clock_name[i], double(opt_fmc[2+i]&0x1fffffff)*1.e-6, 
+           clock_name[i], double(opt_fmc[2+i]&0x1fffffff)*1.e-6,
            opt_fmc[2+i]&(1<<29) ? 'Y':'.',
            opt_fmc[2+i]&(1<<30) ? 'Y':'.',
            opt_fmc[2+i]&(1<<31) ? 'Y':'.');
@@ -266,13 +284,13 @@ void Module134::dumpMap() const
   I2c134& i2c = const_cast<Module134*>(this)->i2c();
 #define OFFS(member) (reinterpret_cast<const char*>(&p->member)-cthis)
 #define OFFP(pval  ) (reinterpret_cast<const char*>(&pval)-cthis)
-  printf("AxiVersion     : 0x%lx\n", OFFS(base.version));
-  printf("FlashController: 0x%lx\n", OFFS(base.flash));
+  //  printf("AxiVersion     : 0x%lx\n", OFFS(base.version));
+  //  printf("FlashController: 0x%lx\n", OFFS(base.flash));
   printf("I2cSwitch      : 0x%lx\n", OFFP(i2c.i2c_sw_control));
   printf("ClkSynth       : 0x%lx\n", OFFP(i2c.clksynth));
   printf("LocalCpld      : 0x%lx\n", OFFP(i2c.local_cpld));
   //  printf("FmcSpi         : 0x%x\n", &p->fmc_spi);
-  printf("DmaCore        : 0x%lx\n", OFFS(base.dma_core));
+  //  printf("DmaCore        : 0x%lx\n", OFFS(base.dma_core));
   printf("TprCore        : 0x%lx\n", OFFS(base.tpr));
   printf("ChipAdcCore[0] : 0x%lx\n", OFFS(chip[0]));
   printf("ChipAdcCore[1] : 0x%lx\n", OFFS(chip[1]));
@@ -285,9 +303,9 @@ void Module134::dumpMap() const
 
 uint64_t Module134::device_dna() const
 {
-  uint64_t v = p->base.version.DeviceDnaHigh;
+  uint64_t v = version().DeviceDnaHigh;
   v <<= 32;
-  v |= p->base.version.DeviceDnaLow;
+  v |= version().DeviceDnaLow;
   return v;
 }
 
@@ -301,19 +319,23 @@ void Module134::disable_test_pattern()
   _jesd_init(0);
 }
 
-// Update ID advertised on timing link
+// Update ID advertised on timing and pgp link
 
 void Module134::set_local_id(unsigned bus)
 {
   p->tem.xma().txId = ModuleBase::local_id(bus);
+  optfmc    ().txId = bus;
+  printf("***********************\n");
+  printf("Programmed txId %08x\n", unsigned(optfmc().txId));
+  printf("***********************\n");
 }
 
 unsigned Module134::remote_id() const { return p->tem.xma().rxId; }
 
 void Module134::board_status()
 {
-  { AxiVersion& v = p->base.version;
-    printf("Axi Version [%p]: BuildStamp[%p]: %s\n", 
+    { const Pds::Mmhw::AxiVersion& v = version();
+    printf("Axi Version [%p]: BuildStamp[%p]: %s\n",
            &v, &v.BuildStamp[0], v.buildStamp().c_str());
     printf("Dna: %08x%08x  Serial: %08x%08x\n",
            v.DeviceDnaHigh,
@@ -365,7 +387,6 @@ void Module134::board_status()
   i2c_unlock();
 }
 
-const Pds::Mmhw::AxiVersion& Module134::version() const { return p->base.version; }
 ChipAdcCore& Module134::chip   (unsigned ch) { return p->chip[ch]; }
 
 void Module134::dumpRxAlign     () const { p->base.dumpRxAlign(); }
@@ -441,12 +462,14 @@ I2c134& Module134::i2c()
 
 void Module134::i2c_lock  (I2cSwitch::Port port) const
 {
-  _sem_i2c.take(); 
+  _sem_i2c.take();
   const_cast<Module134*>(this)->i2c().i2c_sw_control.select(port);
 }
 void Module134::i2c_unlock() const { _sem_i2c.give(); }
 
+#if 0
 Pds::Mmhw::Jtag& Module134::xvc()
 {
   return p->base.xvc;
 }
+#endif

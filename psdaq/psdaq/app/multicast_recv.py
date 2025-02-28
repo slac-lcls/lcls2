@@ -1,6 +1,7 @@
 import socket
 import struct
 import sys
+import time
 import numpy as np
 
 assert(len(sys.argv)==2)
@@ -58,14 +59,31 @@ class BldPacket:
         # a guess from looking at the ebeam packet
         # lower 17 bits are the fiducial
         return self.array[0]
+    def pulseId(self):
+        # From the BLD DRP code
+        return (self.array[3] << 32) + self.array[2]
+    def bldId(self):
+        # A guess from a comment in BldDetectorSlow.cc
+        return self.array[4]
 
 # Receive/respond loop
+POSIX_TIME_AT_EPICS_EPOCH = 631152000
 nevt = 0
+wct_last = time.time_ns()
 while True:
     data, address = sock.recvfrom(32768)
 
     packet = BldPacket(np.frombuffer(data,dtype=np.uint32))
+    wct = time.time_ns()
+    bt  = int((packet.seconds() + POSIX_TIME_AT_EPICS_EPOCH) * 1e9) + packet.nanoseconds()
+    latency = (wct - bt) * 1e-9
+    dt = (wct - wct_last) * 1e-9
     if nevt==0: print('Received from addr/port',address[0],address[1])
-    print('sec/nsec/fid/dmg:',hex(packet.seconds()),hex(packet.nanoseconds()),hex(packet.fiducials()),hex(packet.damage()))
+    if nevt<4:
+        print('sec/nsec/pid/id/dmg:',hex(packet.seconds()),hex(packet.nanoseconds()),
+                                     hex(packet.pulseId()),hex(packet.bldId()),hex(packet.damage()))
+    if latency > 0.5 or dt > 5.0:
+        print(f'{time.ctime()}: latency {latency}, wall clock {wct:x}, timestamp {bt:x}, recv gap {dt} s')
+    wct_last = wct
     nevt+=1
-    if nevt>3: break
+    #if nevt>3: break

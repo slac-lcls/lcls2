@@ -9,13 +9,15 @@
 #include <bitset>
 #include <chrono>
 #include <unistd.h>
-#include <iostream>
 #include <map>
 #include <algorithm>
 #include <limits>
 #include <thread>
+#include <fstream>      // std::ifstream
+#include <cctype>       // std::isspace
+#include <regex>
 #include <Python.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -26,37 +28,37 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
+#include "psalg/utils/trim.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
 
+using namespace XtcData;
+using namespace Pds;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
-using ns_t = std::chrono::nanoseconds;
+using us_t = std::chrono::microseconds;
 
 namespace Drp {
 
-struct PvaParameters : public Parameters
+struct PvParameters : public Parameters
 {
-    std::string pvName;
-    std::string provider;
-    std::string request;
-    std::string field;
+    std::vector<std::string> pvSpecs;
 };
 
 };
 
-static const XtcData::TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
-                                        std::numeric_limits<unsigned>::max());
+static const TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
+                               std::numeric_limits<unsigned>::max());
 static unsigned tsMatchDegree = 2;
 
 //
 //  Put all the ugliness of non-global timestamps here
 //
-static int _compare(const XtcData::TimeStamp& ts1,
-                    const XtcData::TimeStamp& ts2) {
+static int _compare(const TimeStamp& ts1,
+                    const TimeStamp& ts2) {
   int result = 0;
 
   if ((tsMatchDegree == 0) && !(ts2 == TimeMax))
@@ -82,182 +84,262 @@ static int _compare(const XtcData::TimeStamp& ts1,
   return result;
 }
 
-template<typename T>
-static int64_t _deltaT(XtcData::TimeStamp& ts)
-{
-    auto now = std::chrono::system_clock::now();
-    auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{ts.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(tns)};
-    return std::chrono::duration_cast<T>(now - tp).count();
-}
 
 namespace Drp {
 
-static const XtcData::Name::DataType xtype[] = {
-  XtcData::Name::UINT8 , // pvBoolean
-  XtcData::Name::INT8  , // pvByte
-  XtcData::Name::INT16 , // pvShort
-  XtcData::Name::INT32 , // pvInt
-  XtcData::Name::INT64 , // pvLong
-  XtcData::Name::UINT8 , // pvUByte
-  XtcData::Name::UINT16, // pvUShort
-  XtcData::Name::UINT32, // pvUInt
-  XtcData::Name::UINT64, // pvULong
-  XtcData::Name::FLOAT , // pvFloat
-  XtcData::Name::DOUBLE, // pvDouble
-  XtcData::Name::CHARSTR, // pvString
+static const Name::DataType xtype[] = {
+  Name::UINT8 , // pvBoolean
+  Name::INT8  , // pvByte
+  Name::INT16 , // pvShort
+  Name::INT32 , // pvInt
+  Name::INT64 , // pvLong
+  Name::UINT8 , // pvUByte
+  Name::UINT16, // pvUShort
+  Name::UINT32, // pvUInt
+  Name::UINT64, // pvULong
+  Name::FLOAT , // pvFloat
+  Name::DOUBLE, // pvDouble
+  Name::CHARSTR, // pvString
 };
 
-PvaMonitor::PvaMonitor(const PvaParameters& para,
-                       PvaDetector&         pvaDetector) :
-    Pds_Epics::PvMonitorBase(para.pvName, para.provider, para.request, para.field),
+struct DataDsc {
+    uint32_t shape[MaxRank];
+    void*    data;
+};
+
+class RawDef : public VarDef
+{
+public:
+    enum index { field };
+    RawDef(std::string& field, Name::DataType dType, int rank)
+    {
+        NameVec.push_back({field.c_str(), dType, rank});
+    }
+};
+
+class InfoDef : public VarDef
+{
+public:
+    enum index { keys, detName };
+    InfoDef(std::string& detName)
+    {
+        NameVec.push_back({"keys",          Name::CHARSTR, 1});
+        NameVec.push_back({detName.c_str(), Name::CHARSTR, 1});
+    }
+};
+
+PvMonitor::PvMonitor(const PvParameters&      para,
+                     const std::string&       alias,
+                     const std::string&       pvName,
+                     const std::string&       provider,
+                     const std::string&       request,
+                     const std::string&       field,
+                     unsigned                 id,
+                     size_t                   nBuffers,
+                     unsigned                 type,
+                     size_t                   nelem,
+                     size_t                   rank,
+                     uint32_t                 firstDim,
+                     const std::atomic<bool>& running) :
+    Pds_Epics::PvMonitorBase(pvName, provider, request, field),
     m_para                  (para),
     m_state                 (NotReady),
-    m_pvaDetector           (pvaDetector),
-    m_notifySocket          {&m_context, ZMQ_PUSH}
+    m_id                    (id),
+    m_type                  (type),
+    m_nelem                 (nelem),
+    m_rank                  (rank),
+    m_firstDimOverride      (firstDim),
+    m_alias                 (alias),
+    m_running               (running),
+    pvQueue                 (nBuffers),
+    bufferFreelist          (pvQueue.size()),
+    m_notifySocket          {&m_context, ZMQ_PUSH},
+    m_nUpdates              (0),
+    m_nMissed               (0),
+    m_latency               (0)
 {
     // ZMQ socket for reporting errors
     m_notifySocket.connect({"tcp://" + m_para.collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para.partition)});
 }
 
-void PvaMonitor::clear()
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
-
-    m_state = NotReady;
-}
-
-int PvaMonitor::getVarDef(XtcData::VarDef& varDef,
-                          size_t&          payloadSize,
-                          size_t           rankHack)
+int PvMonitor::getParams(std::string&    fieldName,
+                         Name::DataType& xtcType,
+                         int&            rank)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    if (m_state != Ready) {
-        if (getParams(m_type, m_nelem, m_rank))  {
-            const std::chrono::seconds tmo(3);
-            m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
-            if (m_state != Ready) {
-                auto msg("Failed to get parameters for PV "+ name());
-                logging::error("getVardef: %s", msg.c_str());
-                json jmsg = createAsyncErrMsg(m_para.alias, msg);
-                m_notifySocket.send(jmsg.dump());
+    if (m_state == NotReady) {
+        // Wait for PV to connect
+        const std::chrono::seconds tmo(3);
+        m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
+        if (m_state != Ready) {
+            auto msg("PV "+name()+" hasn't connected");
+            json jmsg = createAsyncWarnMsg(m_para.alias, msg);
+            m_notifySocket.send(jmsg.dump());
+            if (m_type == -1u || m_nelem == -1ul || m_rank == -1ul) {
+                // Parameter(s) weren't defaulted in PV specs so can't Configure
+                logging::error("Failed to get parameters for PV %s", name().c_str());
                 return 1;
             }
-        }
-        else {
-            m_state = Ready;
+            logging::warning("%s; using defaulted parameter values\n", msg.c_str(), name().c_str());
         }
     }
 
-    size_t rank = m_rank;
-    if (rankHack != size_t(-1))
+    fieldName = m_fieldName;
+    xtcType   = xtype[m_type];
+    rank      = m_rank;
+    if (m_firstDimOverride && m_rank != 2)
     {
-      rank = rankHack; // Revisit: Hack!
-      logging::warning("%s rank overridden from %zu to %zu\n",
-                       name().c_str(), m_rank, rank);
+        rank = 2;                       // Override rank
+        logging::warning("%s rank overridden from %zu to %zu\n",
+                         name().c_str(), m_rank, rank);
     }
 
-    auto xtcType = xtype[m_type];
-    varDef.NameVec.push_back(XtcData::Name(m_fieldName.c_str(), xtcType, rank));
-
-    payloadSize = m_nelem * XtcData::Name::get_element_size(xtcType);
+    m_payloadSize = m_nelem * Name::get_element_size(xtcType);
 
     return 0;
 }
 
-void PvaMonitor::onConnect()
+void PvMonitor::startup()
 {
-    logging::info("PV %s connected", name().c_str());
+    pvQueue.startup();
+    bufferFreelist.startup();
+    size_t bufSize = sizeof(EbDgram) + sizeof(DataDsc) + m_payloadSize;
+    m_buffer.resize(pvQueue.size() * bufSize);
+    for (unsigned i = 0; i < pvQueue.size(); ++i) {
+        bufferFreelist.push(reinterpret_cast<Dgram*>(&m_buffer[i * bufSize]));
+    }
+}
 
-    if (m_para.verbose) {
+void PvMonitor::shutdown()
+{
+    pvQueue.shutdown();
+    bufferFreelist.shutdown();
+
+    m_nUpdates = 0;
+    m_nMissed  = 0;
+}
+
+void PvMonitor::onConnect()
+{
+    logging::debug("PV  %s connected", name().c_str());
+
+    if (m_state == NotReady) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        pvd::ScalarType type;
+        size_t nelem;
+        size_t rank;
+        if (!this->Pds_Epics::PvMonitorBase::getParams(type, nelem, rank))  {
+            if (m_type  == -1u)   m_type  = type;
+            if (m_nelem == -1ul)  m_nelem = nelem;
+            if (m_rank  == -1ul)  m_rank  = rank;
+            if (type == m_type && nelem == m_nelem && rank == m_rank) {
+                m_state = Ready;
+            }
+            else {
+                logging::critical("PV's defaulted and introspected parameter(s) don't match: "
+                                  "type %d vs %d, nelem %zu vs %zu, rank %zu vs %zu",
+                                  m_type, type, m_nelem, nelem, m_rank, rank);
+                abort();                // Crash so user can fix config file
+            }
+        }
+        m_condition.notify_one();
+    }
+
+    if (m_para.verbose > 1) {           // Use -vv to get increased detail
         if (printStructure())
             logging::error("onConnect: printStructure() failed");
     }
 }
 
-void PvaMonitor::onDisconnect()
+void PvMonitor::onDisconnect()
 {
+    // This unfortunately seems not to get called for CA PVs
+    m_state = NotReady;
+
     auto msg("PV "+ name() + " disconnected");
-    logging::error("%s", msg.c_str());
-    json jmsg = createAsyncErrMsg(m_para.alias, msg);
+    logging::warning("%s", msg.c_str());
+    json jmsg = createAsyncWarnMsg(m_para.alias, msg);
     m_notifySocket.send(jmsg.dump());
 }
 
-void PvaMonitor::updated()
+void PvMonitor::updated()
 {
-    if (m_state == Ready) {
+    // Queue updates only when Ready and in Running
+    if (m_state == Ready && m_running.load(std::memory_order_relaxed)) {
         int64_t seconds;
         int32_t nanoseconds;
         getTimestampEpics(seconds, nanoseconds);
-        XtcData::TimeStamp timestamp(seconds, nanoseconds);
-        //static XtcData::TimeStamp ts_prv(0, 0);
-        //
-        //if (timestamp > ts_prv) {
-        m_pvaDetector.process(timestamp);
-        //}
-        //else {
-        //  printf("Updated: ts didn't advance: new %016lx  prv %016lx  d %ld\n",
-        //         timestamp.value(), ts_prv.value(), timestamp.to_ns() - ts_prv.to_ns());
-        //}
-        //ts_prv = timestamp;
-        //
-        //if (nanoseconds > 1000000000) {
-        //  printf("Updated: nsec > 1 second: %016lx  s %ld  ns %d\n",
-        //         timestamp.value(), seconds, nanoseconds);
-        //}
-        //
-        //if ((timestamp.to_ns() > ts_prv.to_ns()) &&
-        //    !(timestamp.value() > ts_prv.value())) {
-        //  printf("Updated: > disagreement: ts to_ns %016lx  val %016lx\n"
-        //         "                        prv to_ns %016lx  val %016lx\n",
-        //         timestamp.to_ns(), timestamp.value(),
-        //         ts_prv.to_ns(), ts_prv.value());
-        //}
-    }
-    else {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        TimeStamp timestamp(seconds, nanoseconds);
 
-        if (!getParams(m_type, m_nelem, m_rank))  {
-            m_state = Ready;
+        ++m_nUpdates;
+        m_latency = Pds::Eb::latency<us_t>(timestamp); // Grafana plots latency in us
+        logging::debug("%s updated @ %u.%09u, latency %ld ms", name().c_str(), timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000);
+
+        Dgram* dgram;
+        if (bufferFreelist.try_pop(dgram)) { // If a buffer is available...
+            //static uint64_t last_ts = 0;
+            //uint64_t ts = timestamp.to_ns();
+            //int64_t  dT = ts - last_ts;
+            //printf("  PV:  %u.%09u, dT %9ld, ts %18lu, last %18lu\n", timestamp.seconds(), timestamp.nanoseconds(), dT, ts, last_ts);
+            //if (dT > 0)  last_ts = ts;
+
+            dgram->time = timestamp;         // Save the PV's timestamp
+            dgram->xtc = {{TypeId::Parent, 0}, {m_id}};
+
+            size_t      bufSize = sizeof(DataDsc) + m_payloadSize;
+            const void* bufEnd  = dgram->xtc.payload() + bufSize;
+            DataDsc*    payload = (DataDsc*)dgram->xtc.alloc(bufSize, bufEnd);
+            auto        size    = getData(&payload->data, m_payloadSize, payload->shape);
+            if (size > m_payloadSize) {      // Check actual size vs available size
+                logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
+                               m_payloadSize, size, name().c_str());
+                dgram->xtc.damage.increase(Damage::Truncated);
+            }
+
+            if (m_firstDimOverride != 0) {
+                payload->shape[1] = payload->shape[0] / m_firstDimOverride;
+                payload->shape[0] = m_firstDimOverride;
+            }
+            pvQueue.push(dgram);
         }
-        m_condition.notify_one();
+        else {
+            ++m_nMissed;                     // Else count it as missed
+        }
+    }
+}
+
+void PvMonitor::timeout(const PgpReader& pgp, ms_t timeout)
+{
+    Dgram* pvDg;
+    if (pvQueue.peek(pvDg)) {
+        if (pgp.age(pvDg->time) > timeout) {
+            logging::debug("PV timed out!! "
+                           "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                           pvDg->time.seconds(),  pvDg->time.nanoseconds(),
+                           pvDg->time.seconds(), (pvDg->time.nanoseconds()>>16)&0xfffe, pvDg->time.nanoseconds()&0x1ffff,
+                           Pds::Eb::latency<ms_t>(pvDg->time));
+            pvQueue.try_pop(pvDg);      // Actually consume the element
+            bufferFreelist.push(pvDg);  // Return buffer to freelist
+        }
     }
 }
 
 
-class Pgp : public PgpReader
+Pgp::Pgp(const Parameters& para, DrpBase& drp, Detector* det) :
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+    m_det(det), m_tebContributor(drp.tebContributor()),
+    m_available(0), m_current(0), m_nDmaRet(0)
 {
-public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running) :
-        PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
-        m_det(det), m_tebContributor(drp.tebContributor()), m_running(running),
-        m_available(0), m_current(0), m_nDmaRet(0)
-    {
-        m_nodeId = drp.nodeId();
-        if (drp.pool.setMaskBytes(para.laneMask, 0)) {
-            logging::error("Failed to allocate lane/vc");
-        }
+    m_nodeId = drp.nodeId();
+    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+        logging::error("Failed to allocate lane/vc");
     }
+}
 
-    Pds::EbDgram* next(uint32_t& evtIndex);
-    const uint64_t nDmaRet() { return m_nDmaRet; }
-private:
-    Pds::EbDgram* _handle(uint32_t& evtIndex);
-    Detector* m_det;
-    Pds::Eb::TebContributor& m_tebContributor;
-    static const int MAX_RET_CNT_C = 100;
-    const bool& m_running;
-    int32_t m_available;
-    int32_t m_current;
-    unsigned m_nodeId;
-    uint64_t m_nDmaRet;
-};
-
-Pds::EbDgram* Pgp::_handle(uint32_t& pebbleIndex)
+EbDgram* Pgp::_handle(uint32_t& pebbleIndex)
 {
-    const Pds::TimingHeader* timingHeader = handle(m_det, m_current);
+    const TimingHeader* timingHeader = handle(m_det, m_current);
     if (!timingHeader)  return nullptr;
 
     uint32_t pgpIndex = timingHeader->evtCounter & (m_pool.nDmaBuffers() - 1);
@@ -267,8 +349,8 @@ Pds::EbDgram* Pgp::_handle(uint32_t& pebbleIndex)
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
     pebbleIndex = event->pebbleIndex;
-    XtcData::Src src = m_det->nodeId;
-    Pds::EbDgram* dgram = new(m_pool.pebble[pebbleIndex]) Pds::EbDgram(*timingHeader, src, m_para.rogMask);
+    Src src = m_det->nodeId;
+    EbDgram* dgram = new(m_pool.pebble[pebbleIndex]) EbDgram(*timingHeader, src, m_para.rogMask);
 
     // Collect indices of DMA buffers that can be recycled and reset event
     freeDma(event);
@@ -276,7 +358,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& pebbleIndex)
     return dgram;
 }
 
-Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
+EbDgram* Pgp::next(uint32_t& evtIndex)
 {
     // get new buffers
     if (m_current == m_available) {
@@ -288,122 +370,251 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
         }
     }
 
-    Pds::EbDgram* dgram = _handle(evtIndex);
+    EbDgram* dgram = _handle(evtIndex);
     m_current++;
     return dgram;
 }
 
 
-PvaDetector::PvaDetector(PvaParameters& para,
-                         DrpBase&       drp) :
-    XpmDetector     (&para, &drp.pool),
-    m_para          (para),
-    m_drp           (drp),
-    m_evtQueue      (drp.pool.nbuffers()),
-    m_pvQueue       (drp.pool.nbuffers()),
-    m_bufferFreelist(m_pvQueue.size()),
-    m_terminate     (false),
-    m_running       (false),
-    m_firstDimKw    (0)
+PvDetector::PvDetector(PvParameters& para, DrpBase& drp) :
+    XpmDetector(&para, &drp.pool),
+    m_para     (para),
+    m_drp      (drp),
+    m_pgp      (para, drp, this),
+    m_evtQueue (drp.pool.nbuffers()),
+    m_terminate(false),
+    m_running  (false)
 {
-    if (para.kwargs.find("firstdim") != para.kwargs.end())
-        m_firstDimKw = std::stoul(para.kwargs["firstdim"]);
 }
 
-unsigned PvaDetector::connect(std::string& msg)
+unsigned PvDetector::connect(std::string& msg)
 {
-    try {
-        m_pvaMonitor = std::make_shared<Drp::PvaMonitor>(m_para, *this);
-    }
-    catch(std::string& error) {
-        logging::error("Failed to create PvaMonitor( %s ): %s",
-                       m_para.pvName.c_str(), error.c_str());
-        m_pvaMonitor.reset();
-        msg = error;
-        return 1;
+    unsigned rc = 0;
+
+    // Check for a default first dimension specification
+    uint32_t firstDimDef = 0;
+    if (m_para.kwargs.find("firstdim") != m_para.kwargs.end()) {
+        firstDimDef = std::stoul(m_para.kwargs["firstdim"]);
     }
 
+    unsigned id = 0;
+    for (const auto& pvSpec : m_para.pvSpecs) {
+        // Parse the pvSpec string of the forms
+        //   "[<alias>=][<provider>/]<PV name>[.<field>][,firstDim]"
+        //   "[<alias>=][<provider>/]<PV name>[.<field>][<shape>][(<type>)]"
+        try {
+            std::string alias     = m_para.detName;
+            std::string pvName    = pvSpec;
+            std::string provider  = "pva";
+            std::string field     = "value";
+            uint32_t    firstDim  = firstDimDef;
+            uint32_t    secondDim = 0;
+            auto pos = pvName.find("=", 0);
+            if (pos != std::string::npos) { // Parse alias
+                alias  = pvName.substr(0, pos);
+                pvName = pvName.substr(pos+1);
+            }
+            pos = pvName.find("/", 0);
+            if (pos != std::string::npos) { // Parse provider
+                provider = pvName.substr(0, pos);
+                pvName   = pvName.substr(pos+1);
+            }
+            pos = pvName.find(",", 0);
+            if (pos != std::string::npos) { // Parse firstDim value
+                // Let '[dim1,dim2]' syntax take precedence
+                if (pvName.find("[", 0) == std::string::npos) {
+                    firstDim = std::stoul(pvName.substr(pos+1));
+                    pvName   = pvName.substr(0, pos);
+                }
+            }
+            pos = pvName.find(".", 0);
+            if (pos != std::string::npos) { // Parse field name
+                field  = pvName.substr(pos+1);
+                pvName = pvName.substr(0, pos);
+            }
+            // Provided values will be clobbered when PV connects
+            // I think this is fine since it means things are working
+            // firstDim will still work as originally
+            // PV shape (optionally) provided as [dim1,dim2]
+            // Shape comes before type [shape](type)
+            std::regex pattern("\\[(.*?)\\]");
+            std::smatch matches;
+            ssize_t rank = -1;
+            size_t nelem = -1ul;
+            if (std::regex_search(pvSpec, matches, pattern)) {
+                // Cleanup pvName or field
+                pos = pvName.find("[", 0);
+                if (pos != std::string::npos)
+                    pvName = pvName.substr(0, pos);
+                else
+                    field = field.substr(0, field.find("[",0));
+                // Extract shape and rank
+                auto dataShape = matches[1].str();
+                pos = dataShape.find(",", 0);
+                if (pos != std::string::npos) { // Rank 2
+                    auto tmp = dataShape.substr(0,pos);
+                    firstDim = std::stoul(tmp);
+                    secondDim = std::stoul(dataShape.substr(pos+1));
+                    rank = 2;
+                    nelem = firstDim * secondDim;
+                } else { // Rank 0/1
+                    // Check if scalar or array
+                    nelem = std::stoul(dataShape);
+                    rank = nelem == 1 ? 0 : 1;
+                    // firstDim should remain 0 or rank = 2 results
+                }
+            }
+            // PV type (optionally) provided as (type)
+            pattern = std::regex("\\((.*?)\\)");
+            unsigned type = -1u;
+            if (std::regex_search(pvSpec, matches, pattern)) {
+                // Cleanup pvName or field
+                pos = pvName.find("(", 0);
+                if (pos != std::string::npos)
+                    pvName = pvName.substr(0, pos);
+                else
+                    field = field.substr(0, field.find("(",0));
+                if (matches[1].str().compare("bool") == 0)
+                    type = pvd::pvBoolean;
+                else if (matches[1].str().compare("byte") == 0)
+                    type = pvd::pvByte;
+                else if (matches[1].str().compare("short") == 0)
+                    type = pvd::pvShort;
+                else if (matches[1].str().compare("int") == 0)
+                    type = pvd::pvInt;
+                else if (matches[1].str().compare("long") == 0)
+                    type = pvd::pvLong;
+                else if (matches[1].str().compare("ubyte") == 0)
+                    type = pvd::pvUByte;
+                else if (matches[1].str().compare("ushort") == 0)
+                    type = pvd::pvUShort;
+                else if (matches[1].str().compare("uint") == 0)
+                    type = pvd::pvUInt;
+                else if (matches[1].str().compare("ulong") == 0)
+                    type = pvd::pvULong;
+                else if (matches[1].str().compare("float") == 0)
+                    type = pvd::pvFloat;
+                else if (matches[1].str().compare("double") == 0)
+                    type = pvd::pvDouble;
+                else if (matches[1].str().compare("string") == 0) {
+                    type = pvd::pvString;
+                    nelem = MAX_STRING_SIZE;
+                }
+                else {
+                    throw std::string("Unrecognized type '" + matches[1].str() + "'");
+                }
+                // ...
+            }
+            std::string request = provider == "pva" ? "field(value,timeStamp,dimension)"
+                                                    : "field(value,timeStamp)";
+            if (field != "value" && field != "timeStamp" && (provider != "pva" || field != "dimension")) {
+                pos = request.find(")", 0);
+                if (pos  != std::string::npos) {
+                    request = request.substr(0, pos) + "," + field + ")";
+                }
+            }
+
+            logging::debug("For '%s', alias '%s', provider '%s', PV '%s', field '%s', "
+                           "type %d, firstDim %u, nelem %zd, rank %zd, request '%s'",
+                           pvSpec.c_str(), alias.c_str(), provider.c_str(), pvName.c_str(), field.c_str(),
+                           type, firstDim, nelem, rank, request.c_str());
+            auto pvMonitor = std::make_shared<PvMonitor>(m_para,
+                                                         alias, pvName, provider, request, field,
+                                                         id++, m_evtQueue.size(), type, nelem, rank, firstDim,
+                                                         m_running);
+            m_pvMonitors.push_back(pvMonitor);
+        }
+        catch(std::string& error) {
+            logging::error("Failed to create PvMonitor for '%s': %s",
+                           pvSpec.c_str(), error.c_str());
+            m_pvMonitors.clear();
+            msg = error;
+            rc = 1;
+        }
+    }
+
+    return rc;
+}
+
+unsigned PvDetector::disconnect()
+{
+    m_pvMonitors.clear();
     return 0;
 }
 
-unsigned PvaDetector::disconnect()
+//std::string PvDetector::sconfigure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
+unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-    m_pvaMonitor.reset();
-    return 0;
-}
-
-//std::string PvaDetector::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
-unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
-{
-    logging::info("PVA configure");
+    logging::info("PV configure");
 
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
-    m_exporter = std::make_shared<Pds::MetricExporter>();
+    m_exporter = std::make_shared<MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
     }
 
-    XtcData::Alg     rawAlg("raw", 1, 0, 0);
-    XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
-    XtcData::Names&  rawNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                 m_para.detName.c_str(), rawAlg,
-                                                                 m_para.detType.c_str(), m_para.serNo.c_str(), rawNamesId);
-    size_t           payloadSize;
-    XtcData::VarDef  rawVarDef;
-    size_t           rankHack = m_firstDimKw != 0 ? 2 : -1; // Revisit: Hack!
-    if (m_pvaMonitor->getVarDef(rawVarDef, payloadSize, rankHack)) {
-        return 1;
-    }
-    payloadSize += (sizeof(Pds::EbDgram)    + // An EbDgram is needed by the MEB
-                    24                      + // Space needed by DescribedData
-                    sizeof(XtcData::Shapes) + // Needed by DescribedData
-                    sizeof(XtcData::Shape));  // Also need 1 of these per PV
-    if (payloadSize > m_pool->pebble.bufferSize()) {
-        logging::warning("Increase Pebble buffer size from %zd to %zd to avoid truncation of %s data",
-                         m_pool->pebble.bufferSize(), payloadSize, m_pvaMonitor->name().c_str());
-    }
-    rawNames.add(xtc, bufEnd, rawVarDef);
-    m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
+    for (auto& pvMonitor : m_pvMonitors) {
+        // Set up the names for L1Accept data
+        unsigned uvsn = m_para.kwargs.find("data_vsn") != m_para.kwargs.end() ? std::stoul(m_para.kwargs["data_vsn"],NULL,0) : 0x010000;
+        AlgVersion& vsn = *reinterpret_cast<AlgVersion*>(&uvsn);
+        logging::debug("AlgVersion %d.%d.%d",vsn.major(),vsn.minor(),vsn.micro());
+        Alg     rawAlg("raw", vsn.major(), vsn.minor(), vsn.micro());
+        NamesId rawNamesId(nodeId, RawNamesIndex + pvMonitor->id());
+        Names&  rawNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                   pvMonitor->alias().c_str(), rawAlg,
+                                                   m_para.detType.c_str(), m_para.serNo.c_str(), rawNamesId);
+        std::string    fieldName;
+        Name::DataType xtcType;
+        int            rank;
+        if (pvMonitor->getParams(fieldName, xtcType, rank)) {
+            return 1;
+        }
 
-    XtcData::Alg     infoAlg("epicsinfo", 1, 0, 0);
-    XtcData::NamesId infoNamesId(nodeId, InfoNamesIndex);
-    XtcData::Names&  infoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                  "epicsinfo", infoAlg,
-                                                                  "epicsinfo", "detnum1234", infoNamesId);
-    XtcData::VarDef  infoVarDef;
-    infoVarDef.NameVec.push_back({"keys", XtcData::Name::CHARSTR, 1});
-    infoVarDef.NameVec.push_back({m_para.detName.c_str(), XtcData::Name::CHARSTR, 1});
-    infoNames.add(xtc, bufEnd, infoVarDef);
-    m_namesLookup[infoNamesId] = XtcData::NameIndex(infoNames);
+        RawDef rawDef(fieldName, xtcType, rank);
+        rawNames.add(xtc, bufEnd, rawDef);
+        m_namesLookup[rawNamesId] = NameIndex(rawNames);
+    }
+
+    // Set up the names for PvDetector informational data
+    Alg     infoAlg("pvdetinfo", 1, 0, 0);
+    NamesId infoNamesId(nodeId, InfoNamesIndex + m_pvMonitors.size());
+    Names&  infoNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                ("pvdetinfo_" + m_para.detName).c_str(), infoAlg,
+                                                "pvdetinfo", "detnum1234", infoNamesId);
+    InfoDef infoDef(m_para.detName);
+    infoNames.add(xtc, bufEnd, infoDef);
+    m_namesLookup[infoNamesId] = NameIndex(infoNames);
 
     // add dictionary of information for each epics detname above.
     // first name is required to be "keys".  keys and values
     // are delimited by ",".
-    XtcData::CreateData epicsInfo(xtc, bufEnd, m_namesLookup, infoNamesId);
-    epicsInfo.set_string(0, "epicsname"); //  "," "provider");
-    epicsInfo.set_string(1, (m_pvaMonitor->name()).c_str()); // + "," + provider).c_str());
+    CreateData cd(xtc, bufEnd, m_namesLookup, infoNamesId);
+    std::string str = "";
+    for (auto& pvMonitor : m_pvMonitors)
+        str = str + pvMonitor->alias() + ",";
+    cd.set_string(InfoDef::keys,    str.substr(0, str.length()-1).c_str());
+    str = "";
+    for (auto& pvMonitor : m_pvMonitors)
+        str = str + pvMonitor->name() + "\n";
+    cd.set_string(InfoDef::detName, str.substr(0, str.length()-1).c_str());
 
     // (Re)initialize the queues
-    m_pvQueue.startup();
     m_evtQueue.startup();
-    m_bufferFreelist.startup();
-    size_t bufSize = m_pool->pebble.bufferSize();
-    m_buffer.resize(m_pvQueue.size() * bufSize);
-    for(unsigned i = 0; i < m_pvQueue.size(); ++i) {
-        m_bufferFreelist.push(reinterpret_cast<XtcData::Dgram*>(&m_buffer[i * bufSize]));
+    for (auto& pvMonitor : m_pvMonitors) {
+        pvMonitor->startup();
     }
 
     m_terminate.store(false, std::memory_order_release);
 
-    m_workerThread = std::thread{&PvaDetector::_worker, this};
+    m_workerThread = std::thread{&PvDetector::_worker, this};
 
     //    return std::string();
     return 0;
 }
 
-unsigned PvaDetector::unconfigure()
+unsigned PvDetector::unconfigure()
 {
     if (m_exporter)  m_exporter.reset();
 
@@ -411,57 +622,54 @@ unsigned PvaDetector::unconfigure()
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
-    m_pvQueue.shutdown();
     m_evtQueue.shutdown();
-    m_bufferFreelist.shutdown();
-    if (m_pvaMonitor)  m_pvaMonitor->clear();   // Start afresh
+    for (auto& pvMonitor : m_pvMonitors) {
+        pvMonitor->shutdown();
+    }
     m_namesLookup.clear();   // erase all elements
 
     return 0;
 }
 
-void PvaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* pgpEvent)
+void PvDetector::_event(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
 {
-    XtcData::NamesId namesId(nodeId, RawNamesIndex);
-    XtcData::DescribedData desc(dgram.xtc, bufEnd, m_namesLookup, namesId);
-    auto ohSize      = (sizeof(Pds::EbDgram)      +
-                        dgram.xtc.sizeofPayload() + // = the '24' in configure()
-                        sizeof(XtcData::Shapes)   +
-                        sizeof(XtcData::Shape));
-    auto payloadSize = m_pool->pebble.bufferSize() - ohSize; // Subtract overhead
-    uint32_t shape[XtcData::MaxRank];
-    auto     size    = m_pvaMonitor->getData(desc.data(), payloadSize, shape);
-    if (size > payloadSize) {           // Check actual size vs available size
-        logging::debug("Truncated: Pebble buffer of size %zu is too small for payload of size %zu for %s\n",
-                       m_pool->pebble.bufferSize(), size + ohSize, m_pvaMonitor->name().c_str());
-        dgram.xtc.damage.increase(XtcData::Damage::Truncated);
-        size = payloadSize;
+    NamesId namesId(nodeId, RawNamesIndex + pvXtc.src.value());
+    CreateData cd(dgram.xtc, bufEnd, m_namesLookup, namesId);
+    DataDsc* payload = reinterpret_cast<DataDsc*>(pvXtc.payload());
+    void* data = &payload->data;
+    Name& name = cd.nameindex().names().get(RawDef::field);
+    if (name.rank()) {                  // Handle vectors and arrays, etc.
+        uint32_t* shape = payload->shape;
+        size_t size = pvXtc.extent - ((char*)data - (char*)payload); // Exclude shape info
+        void* ptr = cd.get_ptr(); // Fetch a pointer to the next part of contiguous memory
+        cd.set_array_shape(RawDef::field, shape); // Allocate the space before filling it
+        memcpy(ptr, data, size);  // size is the same as the amount of space allocated
     }
-
-    desc.set_data_length(size);
-
-    if (m_pvaMonitor->rank() > 0) {
-        if (m_firstDimKw != 0) {            // Revisit: Hack!
-            shape[1] = shape[0] / m_firstDimKw;
-            shape[0] = m_firstDimKw;
+    else {                              // Handle scalars
+        switch (name.type()) {
+            case Name::INT8:      cd.set_value(RawDef::field, *static_cast<int8_t  *>(data));  break;
+            case Name::INT16:     cd.set_value(RawDef::field, *static_cast<int16_t *>(data));  break;
+            case Name::INT32:
+            case Name::ENUMVAL:
+            case Name::ENUMDICT:  cd.set_value(RawDef::field, *static_cast<int32_t *>(data));  break;
+            case Name::INT64:     cd.set_value(RawDef::field, *static_cast<int64_t *>(data));  break;
+            case Name::UINT8:     cd.set_value(RawDef::field, *static_cast<uint8_t *>(data));  break;
+            case Name::UINT16:    cd.set_value(RawDef::field, *static_cast<uint16_t*>(data));  break;
+            case Name::UINT32:    cd.set_value(RawDef::field, *static_cast<uint32_t*>(data));  break;
+            case Name::UINT64:    cd.set_value(RawDef::field, *static_cast<uint64_t*>(data));  break;
+            case Name::FLOAT:     cd.set_value(RawDef::field, *static_cast<float   *>(data));  break;
+            case Name::DOUBLE:    cd.set_value(RawDef::field, *static_cast<double  *>(data));  break;
+            default: {
+                logging::critical("Unsupported scalar type %d for %s\n", name.type(), name.name());
+                abort();
+                break;
+            }
         }
-        desc.set_array_shape(0, shape);
     }
-
-    //size_t sz = (sizeof(dgram) + dgram.xtc.sizeofPayload()) >> 2;
-    //uint32_t* payload = (uint32_t*)dgram.xtc.payload();
-    //printf("sz = %zd, size = %zd, extent = %d, szofPyld = %d, pyldIdx = %ld\n", sz, size, dgram.xtc.extent, dgram.xtc.sizeofPayload(), payload - (uint32_t*)&dgram);
-    //uint32_t* buf = (uint32_t*)&dgram;
-    //for (unsigned i = 0; i < sz; ++i) {
-    //  if (&buf[i] == (uint32_t*)&dgram)       printf(  "dgram:   ");
-    //  if (&buf[i] == (uint32_t*)payload)      printf("\npayload: ");
-    //  if (&buf[i] == (uint32_t*)desc.data())  printf("\ndata:    ");
-    //  printf("%08x ", buf[i]);
-    //}
-    //printf("\n");
+    dgram.xtc.damage.increase(pvXtc.damage.value());
 }
 
-void PvaDetector::_worker()
+void PvDetector::_worker()
 {
     // setup monitoring
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
@@ -470,64 +678,82 @@ void PvaDetector::_worker()
                                               {"detseg", std::to_string(m_para.detSegment)},
                                               {"alias", m_para.alias}};
     m_nEvents = 0;
-    m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
+    m_exporter->add("drp_event_rate", labels, MetricType::Rate,
                     [&](){return m_nEvents;});
     m_nUpdates = 0;
-    m_exporter->add("drp_update_rate", labels, Pds::MetricType::Rate,
-                    [&](){return m_nUpdates;});
+    m_exporter->add("drp_update_rate", labels, MetricType::Rate,
+                    [&](){ uint64_t nUpdates = 0;
+                           for (const auto& pvMonitor : m_pvMonitors)
+                               nUpdates += pvMonitor->nUpdates();
+                           m_nUpdates = nUpdates;
+                           return m_nUpdates; });
     m_nMatch = 0;
-    m_exporter->add("drp_match_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_match_count", labels, MetricType::Counter,
                     [&](){return m_nMatch;});
     m_nEmpty = 0;
-    m_exporter->add("drp_empty_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_empty_count", labels, MetricType::Counter,
                     [&](){return m_nEmpty;});
     m_nMissed = 0;
-    m_exporter->add("drp_miss_count", labels, Pds::MetricType::Counter,
-                    [&](){return m_nMissed;});
+    m_exporter->add("drp_miss_count", labels, MetricType::Counter,
+                    [&](){ uint64_t nMissed = 0;
+                           for (const auto& pvMonitor : m_pvMonitors)
+                               nMissed += pvMonitor->nMissed();
+                           m_nMissed = nMissed;
+                           return m_nMissed; });
     m_nTooOld = 0;
-    m_exporter->add("drp_tooOld_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_tooOld_count", labels, MetricType::Counter,
                     [&](){return m_nTooOld;});
     m_nTimedOut = 0;
-    m_exporter->add("drp_timeout_count", labels, Pds::MetricType::Counter,
+    m_exporter->add("drp_timeout_count", labels, MetricType::Counter,
                     [&](){return m_nTimedOut;});
     m_timeDiff = 0;
-    m_exporter->add("drp_time_diff", labels, Pds::MetricType::Gauge,
+    m_exporter->add("drp_time_diff", labels, MetricType::Gauge,
                     [&](){return m_timeDiff;});
 
-    m_exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
+    m_exporter->add("drp_worker_input_queue", labels, MetricType::Gauge,
                     [&](){return m_evtQueue.guess_size();});
     m_exporter->constant("drp_worker_queue_depth", labels, m_evtQueue.size());
 
     // Borrow this for awhile
-    m_exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
-                    [&](){return m_pvQueue.guess_size();});
+    m_exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
+                    [&](){return m_pvMonitors[0]->pvQueue.guess_size();});
 
-    Pgp pgp(m_para, m_drp, this, m_running);
+    // @todo: Support multiple PVs
+    m_exporter->add("drp_pv_latency", labels, MetricType::Gauge,
+                    [&](){return m_pvMonitors[0]->latency();});
 
-    m_exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nDmaRet();});
-    m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
-                    [&](){return pgp.dmaBytes();});
-    m_exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.dmaSize();});
-    m_exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.latency();});
-    m_exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nDmaErrors();});
-    m_exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nNoComRoG();});
-    m_exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nMissingRoGs();});
-    m_exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nTmgHdrError();});
-    m_exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nPgpJumps();});
-    m_exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
-                    [&](){return pgp.nNoTrDgrams();});
+    m_exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
+                    [&](){return m_pgp.nDmaRet();});
+    m_exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
+                    [&](){return m_pgp.dmaBytes();});
+    m_exporter->add("drp_dma_size", labels, MetricType::Gauge,
+                    [&](){return m_pgp.dmaSize();});
+    m_exporter->add("drp_th_latency", labels, MetricType::Gauge,
+                    [&](){return m_pgp.latency();});
+    m_exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
+                    [&](){return m_pgp.nDmaErrors();});
+    m_exporter->add("drp_num_no_common_rog", labels, MetricType::Gauge,
+                    [&](){return m_pgp.nNoComRoG();});
+    m_exporter->add("drp_num_missing_rogs", labels, MetricType::Gauge,
+                    [&](){return m_pgp.nMissingRoGs();});
+    m_exporter->add("drp_num_th_error", labels, MetricType::Gauge,
+                    [&](){return m_pgp.nTmgHdrError();});
+    m_exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
+                    [&](){return m_pgp.nPgpJumps();});
+    m_exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
+                    [&](){return m_pgp.nNoTrDgrams();});
 
-    const uint64_t nsTmo = (m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
-                            std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
-                            1500) * 1000000;
+    // Avoid running off the end of the word
+    uint64_t mask = 1ul << (m_pvMonitors.size() - 1);
+    uint64_t contract = mask | (mask - 1ul);
+
+    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
+                    std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
+                    1500 };
+
+    // Reset counters to avoid 'jumping' errors on reconfigures
+    m_pool->resetCounters();
+    m_pgp.resetEventCounter();
 
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
@@ -535,10 +761,10 @@ void PvaDetector::_worker()
         }
 
         uint32_t index;
-        if (pgp.next(index)) {
+        if (m_pgp.next(index)) {
             m_nEvents++;
 
-            m_evtQueue.push(index);
+            m_evtQueue.push({contract, index});
 
             _matchUp();
         }
@@ -547,10 +773,8 @@ void PvaDetector::_worker()
             // up with any PV updates that may have arrived
             _matchUp();
 
-            // Generate a timestamp in the past for timing out PVs and PGP events
-            XtcData::TimeStamp timestamp(0, nsTmo);
-            auto ns = _deltaT<ns_t>(timestamp);
-            _timeout(timestamp.from_ns(ns));
+            // Time out older PVs and datagrams
+            _timeout(tmo);
 
             // Time out batches for the TEB
             m_drp.tebContributor().timeout();
@@ -558,209 +782,193 @@ void PvaDetector::_worker()
     }
 
     // Flush the DMA buffers
-    pgp.flush();
+    m_pgp.flush();
 
     logging::info("Worker thread finished");
 }
 
-void PvaDetector::process(const XtcData::TimeStamp& timestamp)
-{
-    // Protect against namesLookup not being stable before Enable
-    if (m_running.load(std::memory_order_relaxed)) {
-        ++m_nUpdates;
-        logging::debug("%s updated @ %u.%09u", m_pvaMonitor->name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
-
-        XtcData::Dgram* dgram;
-        if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
-            //static uint64_t last_ts = 0;
-            //uint64_t ts = timestamp.to_ns();
-            //int64_t  dT = ts - last_ts;
-            //printf("  PV:  %u.%09u, dT %9ld, ts %18lu, last %18lu\n", timestamp.seconds(), timestamp.nanoseconds(), dT, ts, last_ts);
-            //if (dT > 0)  last_ts = ts;
-
-            dgram->time = timestamp;           // Save the PV's timestamp
-            dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
-
-            const void* bufEnd = (char*)dgram + m_pool->pebble.bufferSize();
-            event(*dgram, bufEnd, nullptr);    // PGPEvent not needed in this case
-
-            m_pvQueue.push(dgram);
-        }
-        else {
-            ++m_nMissed;                       // Else count it as missed
-        }
-    }
-}
-
-void PvaDetector::_matchUp()
+void PvDetector::_matchUp()
 {
     while (true) {
-        uint32_t pebbleIdx;
-        if (!m_evtQueue.peek(pebbleIdx))  break;
+        if (m_evtQueue.is_empty())  break;
+        Event& evt = m_evtQueue.front();
 
-        Pds::EbDgram* pebbleDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pebbleIdx]);
-        XtcData::TransitionId::Value service = pebbleDg->service();
-        if (service != XtcData::TransitionId::L1Accept) {
-            _handleTransition(pebbleIdx, pebbleDg);
-            continue;
+        EbDgram* evtDg = reinterpret_cast<EbDgram*>(m_pool->pebble[evt.index]);
+        TransitionId::Value service = evtDg->service();
+        if (service == TransitionId::L1Accept) {
+            uint64_t remaining = evt.remaining;
+            while (remaining) {
+                unsigned id = __builtin_ffsl(remaining) - 1;
+                remaining &= ~(1ull << id);
+
+                auto& pvMonitor = m_pvMonitors[id];
+
+                Dgram* pvDg;
+                if (!pvMonitor->pvQueue.peek(pvDg))  continue;
+
+                m_timeDiff = evtDg->time.to_ns() - pvDg->time.to_ns();
+
+                int result = _compare(evtDg->time, pvDg->time);
+
+                logging::debug("PGP: %u.%09d %c PV: %u.%09d, PGP - PV: %12ld ns, "
+                               "pid %014lx, svc %2d, PGP age %ld ms",
+                               evtDg->time.seconds(), evtDg->time.nanoseconds(),
+                               result == 0 ? '=' : (result < 0 ? '<' : '>'),
+                               pvDg->time.seconds(), pvDg->time.nanoseconds(),
+                               m_timeDiff, evtDg->pulseId(), evtDg->service(),
+                               Pds::Eb::latency<ms_t>(evtDg->time));
+
+                if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
+                else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
+                else                  { _tEvtGtPv(pvMonitor, *evtDg, *pvDg); }
+            }
+            if (evt.remaining)  break;  // Break so the timeout routine can run
+        }
+        else {
+            // Find the transition dgram in the pool
+            EbDgram* trDg = m_pool->transitionDgrams[evt.index];
+            if (trDg)                   // nullptr can happen during shutdown
+                _handleTransition(*evtDg, *trDg);
         }
 
-        XtcData::Dgram* pvDg;
-        if (!m_pvQueue.peek(pvDg))  break;
+        Event event;
+        m_evtQueue.try_pop(event);      // Actually consume the element
+        assert(event.index == evt.index);
 
-        m_timeDiff = pebbleDg->time.to_ns() - pvDg->time.to_ns();
-
-        int result = _compare(pebbleDg->time, pvDg->time);
-
-        logging::debug("PGP: %u.%09d, PV: %u.%09d, PGP - PV: %12ld ns, pid %014lx, svc %2d, compare %c, latency %ld ms",
-                       pebbleDg->time.seconds(), pebbleDg->time.nanoseconds(),
-                       pvDg->time.seconds(), pvDg->time.nanoseconds(),
-                       m_timeDiff, pebbleDg->pulseId(), pebbleDg->service(),
-                       result == 0 ? '=' : (result < 0 ? '<' : '>'), _deltaT<ms_t>(pebbleDg->time));
-
-        if      (result == 0)  _handleMatch  (*pvDg, *pebbleDg);
-        else if (result  < 0)  _handleYounger(*pvDg, *pebbleDg);
-        else                   _handleOlder  (*pvDg, *pebbleDg);
+        _sendToTeb(*evtDg, evt.index);
     }
 }
 
-void PvaDetector::_handleTransition(uint32_t pebbleIdx, Pds::EbDgram* pebbleDg)
+void PvDetector::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
 {
-    // Find the transition dgram in the pool and initialize its header
-    Pds::EbDgram* trDgram = m_pool->transitionDgrams[pebbleIdx];
-    if (trDgram) {                      // nullptr happen during shutdown
-        *trDgram = *pebbleDg;
+    // Initialize the transition dgram's header
+    trDg = evtDg;
 
-        XtcData::TransitionId::Value service = trDgram->service();
-        if (service != XtcData::TransitionId::SlowUpdate) {
-            // copy the temporary xtc created on phase 1 of the transition
-            // into the real location
-            XtcData::Xtc& trXtc = transitionXtc();
-            trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
-            const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
-            auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
-            memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
+    TransitionId::Value service = trDg.service();
+    if (service != TransitionId::SlowUpdate) {
+        // copy the temporary xtc created on phase 1 of the transition
+        // into the real location
+        Xtc& trXtc = transitionXtc();
+        trDg.xtc = trXtc; // Preserve header info, but allocate to check fit
+        const void* bufEnd = (char*)&trDg + m_para.maxTrSize;
+        auto payload = trDg.xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+        memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
-            if (service == XtcData::TransitionId::Enable) {
-                m_running = true;
-            }
-            else if (service == XtcData::TransitionId::Disable) {
-                m_running = false;
-            }
+        if (service == TransitionId::Enable) {
+            m_running = true;
+        }
+        else if (service == TransitionId::Disable) {
+            m_running = false;
         }
     }
-    _sendToTeb(*pebbleDg, pebbleIdx);
-
-    uint32_t evtIdx;
-    m_evtQueue.try_pop(evtIdx);       // Actually consume the pebble index
-    assert(evtIdx == pebbleIdx);
 }
 
-void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pebbleDg)
+void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
-    uint32_t pebbleIdx;
-    m_evtQueue.try_pop(pebbleIdx);      // Actually consume the element
-
-    pebbleDg.xtc.damage.increase(pvDg.xtc.damage.value());
-    auto bufEnd  = (char*)&pebbleDg + m_pool->pebble.bufferSize();
-    auto payload = pebbleDg.xtc.alloc(pvDg.xtc.sizeofPayload(), bufEnd);
-    memcpy(payload, (const void*)pvDg.xtc.payload(), pvDg.xtc.sizeofPayload());
+    auto bufEnd = (char*)&evtDg + m_pool->pebble.bufferSize();
+    _event(evtDg, bufEnd, pvDg.xtc);
 
     ++m_nMatch;
     logging::debug("PV matches PGP!!  "
                    "TimeStamps: PV %u.%09u == PGP %u.%09u",
                    pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   pebbleDg.time.seconds(), pebbleDg.time.nanoseconds());
+                   evtDg.time.seconds(), evtDg.time.nanoseconds());
 
-    _sendToTeb(pebbleDg, pebbleIdx);
-
-    XtcData::Dgram* dgram;
-    m_pvQueue.try_pop(dgram);       // Actually consume the element
-    m_bufferFreelist.push(dgram);   // Return buffer to freelist
+    Dgram* dgram;
+    pvMonitor->pvQueue.try_pop(dgram);     // Actually consume the element
+    pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
 }
 
-void PvaDetector::_handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pebbleDg)
+void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
-    uint32_t pebbleIdx;
-    m_evtQueue.try_pop(pebbleIdx);      // Actually consume the element
-
-    // No corresponding PV data so mark event damaged
-    pebbleDg.xtc.damage.increase(XtcData::Damage::MissingData);
+    // Because PVs show up in time order, when the most recent PV is younger
+    // than the PGP event (t(PV) > t(PGP)), we know that no older PV will show
+    // up to possibly match the PGP timestamp.  Thus, mark the event damaged and
+    // leave the PV on the queue to perhaps be matched with a newer PGP event.
+    evtDg.xtc.damage.increase(Damage::MissingData);
 
     ++m_nEmpty;
     logging::debug("PV too young!!    "
-                   "TimeStamps: PV %u.%09u > PGP %u.%09u",
-                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   pebbleDg.time.seconds(), pebbleDg.time.nanoseconds());
-
-    _sendToTeb(pebbleDg, pebbleIdx);
+                   "TimeStamps: PGP %u.%09u < PV %u.%09u",
+                   evtDg.time.seconds(), evtDg.time.nanoseconds(),
+                   pvDg.time.seconds(), pvDg.time.nanoseconds());
 }
 
-void PvaDetector::_handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pebbleDg)
+void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
+    // Because PGP events show up in time order, when the most recent PV is older
+    // than the PGP event (t(PV) < t(PGP)), we know that no older PGP event will
+    // show up to match the PV's timestamp.  Thus, the PV is discarded and
+    // the PGP event is left on the queue to perhaps be matched with a newer PV.
     ++m_nTooOld;
     logging::debug("PV too old!!      "
-                   "TimeStamps: PV %u.%09u < PGP %u.%09u [0x%08x%04x.%05x < 0x%08x%04x.%05x]",
+                   "TimeStamps: PGP %u.%09u > PV %u.%09u [0x%08x%04x.%05x > 0x%08x%04x.%05x]",
+                   evtDg.time.seconds(), evtDg.time.nanoseconds(),
                    pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   pebbleDg.time.seconds(), pebbleDg.time.nanoseconds(),
-                   pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff,
-                   pebbleDg.time.seconds(), (pebbleDg.time.nanoseconds()>>16)&0xfffe, pebbleDg.time.nanoseconds()&0x1ffff);
+                   evtDg.time.seconds(), (evtDg.time.nanoseconds()>>16)&0xfffe, evtDg.time.nanoseconds()&0x1ffff,
+                   pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff);
 
-    XtcData::Dgram* dgram;
-    m_pvQueue.try_pop(dgram);           // Actually consume the element
-    m_bufferFreelist.push(dgram);       // Return buffer to freelist
+    Dgram* dgram;
+    pvMonitor->pvQueue.try_pop(dgram);     // Actually consume the element
+    pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
 }
 
-void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
+void PvDetector::_timeout(ms_t timeout)
 {
-    // Time out older PV updates
-    XtcData::Dgram* pvDg;
-    if (m_pvQueue.peek(pvDg)) {
-        if (!(pvDg->time > timestamp)) { // pvDg is newer than the timeout timestamp
-            m_pvQueue.try_pop(pvDg);     // Actually consume the element
-            m_bufferFreelist.push(pvDg); // Return buffer to freelist
+    // Try to clear out as many of the older queue entries as we can in one go
+    while (true) {
+        // Time out older PV updates
+        for (auto& pvMonitor : m_pvMonitors) {
+            pvMonitor->timeout(m_pgp, timeout);
         }
-    }
 
-    // Time out older pending PGP datagrams
-    uint32_t index;
-    if (!m_evtQueue.peek(index))  return;
+        // Time out older pending PGP datagrams
+        Event event;
+        if (!m_evtQueue.peek(event))  break;
 
-    Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
-    if (dgram.time > timestamp)  return; // dgram is newer than the timeout timestamp
+        EbDgram& dgram = *reinterpret_cast<EbDgram*>(m_pool->pebble[event.index]);
+        if (m_pgp.age(dgram.time) < timeout)  break;
 
-    uint32_t idx;
-    m_evtQueue.try_pop(idx);             // Actually consume the element
-    assert(idx == index);
-
-    if (dgram.service() == XtcData::TransitionId::L1Accept) {
-        // No PVA data so mark event as damaged
-        dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
-        ++m_nTimedOut;
         logging::debug("Event timed out!! "
-                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       _deltaT<ms_t>(dgram.time));
-    }
+                       Pds::Eb::latency<ms_t>(dgram.time), dgram.service());
 
-    _sendToTeb(dgram, index);
+        if (dgram.service() == TransitionId::L1Accept) {
+            // No PV data so mark event as damaged
+            dgram.xtc.damage.increase(Damage::TimedOut);
+            ++m_nTimedOut;
+        }
+        else {
+            // Find the transition dgram in the pool
+            EbDgram* trDg = m_pool->transitionDgrams[event.index];
+            if (trDg)                   // nullptr can happen during shutdown
+                _handleTransition(dgram, *trDg);
+        }
+
+        Event evt;
+        m_evtQueue.try_pop(evt);        // Actually consume the element
+        assert(evt.index == event.index);
+
+        _sendToTeb(dgram, event.index);
+    }
 }
 
-void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
+void PvDetector::_sendToTeb(const EbDgram& dgram, uint32_t index)
 {
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
-    const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
+    const size_t maxSize = (dgram.service() == TransitionId::L1Accept)
                          ? m_pool->pebble.bufferSize()
                          : m_para.maxTrSize;
     if (size > maxSize) {
-        logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
+        logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", TransitionId::name(dgram.service()), size, maxSize);
         throw "Dgram overflowed buffer";
     }
 
     auto l3InpBuf = m_drp.tebContributor().fetch(index);
-    Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(dgram);
+    EbDgram* l3InpDg = new(l3InpBuf) EbDgram(dgram);
     if (l3InpDg->isEvent()) {
         auto triggerPrimitive = m_drp.triggerPrimitive();
         if (triggerPrimitive) { // else this DRP doesn't provide input
@@ -772,16 +980,17 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 }
 
 
-PvaApp::PvaApp(PvaParameters& para) :
+PvApp::PvApp(PvParameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_pvaDetector(std::make_unique<PvaDetector>(para, m_drp)),
-    m_det(m_pvaDetector.get()),
+    m_det(nullptr),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
 
+    m_pvDetector = std::make_unique<PvDetector>(para, m_drp);
+    m_det = m_pvDetector.get();
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -789,7 +998,7 @@ PvaApp::PvaApp(PvaParameters& para) :
     logging::info("Ready for transitions");
 }
 
-PvaApp::~PvaApp()
+PvApp::~PvApp()
 {
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
@@ -798,41 +1007,44 @@ PvaApp::~PvaApp()
     Py_Finalize();                      // for use by configuration
 }
 
-void PvaApp::_disconnect()
+void PvApp::_disconnect()
 {
     m_drp.disconnect();
     m_det->shutdown();
-    m_pvaDetector->disconnect();
+    m_pvDetector->disconnect();
 }
 
-void PvaApp::_unconfigure()
+void PvApp::_unconfigure()
 {
     m_drp.pool.shutdown();  // Release Tr buffer pool
     m_drp.unconfigure();    // TebContributor must be shut down before the worker
-    m_pvaDetector->unconfigure();
+    m_pvDetector->unconfigure();
     m_unconfigure = false;
 }
 
-json PvaApp::connectionInfo()
+json PvApp::connectionInfo(const nlohmann::json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo();
+    json info = m_det->connectionInfo(msg);
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
 }
 
-void PvaApp::connectionShutdown()
+void PvApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det->connectionShutdown();
+    }
     m_drp.shutdown();
 }
 
-void PvaApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
+void PvApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
 {
     json body = json({});
     body["err_info"] = errorMsg;
@@ -840,7 +1052,7 @@ void PvaApp::_error(const std::string& which, const nlohmann::json& msg, const s
     reply(answer);
 }
 
-void PvaApp::handleConnect(const nlohmann::json& msg)
+void PvApp::handleConnect(const nlohmann::json& msg)
 {
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
@@ -853,15 +1065,15 @@ void PvaApp::handleConnect(const nlohmann::json& msg)
     m_det->nodeId = m_drp.nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
-    unsigned rc = m_pvaDetector->connect(errorMsg);
+    unsigned rc = m_pvDetector->connect(errorMsg);
     if (!errorMsg.empty()) {
         if (!rc) {
-            logging::warning(("PvaDetector::connect: " + errorMsg).c_str());
+            logging::warning(("PvDetector::connect: " + errorMsg).c_str());
             json warning = createAsyncWarnMsg(m_para.alias, errorMsg);
             reply(warning);
         }
         else {
-            logging::error(("PvaDetector::connect: " + errorMsg).c_str());
+            logging::error(("PvDetector::connect: " + errorMsg).c_str());
             _error("connect", msg, errorMsg);
             return;
         }
@@ -872,7 +1084,7 @@ void PvaApp::handleConnect(const nlohmann::json& msg)
     reply(answer);
 }
 
-void PvaApp::handleDisconnect(const json& msg)
+void PvApp::handleDisconnect(const json& msg)
 {
     // Carry out the queued Unconfigure, if there was one
     if (m_unconfigure) {
@@ -885,13 +1097,13 @@ void PvaApp::handleDisconnect(const json& msg)
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
-void PvaApp::handlePhase1(const json& msg)
+void PvApp::handlePhase1(const json& msg)
 {
     std::string key = msg["header"]["key"];
-    logging::debug("handlePhase1 for %s in PvaDetectorApp", key.c_str());
+    logging::debug("handlePhase1 for %s in PvDetectorApp", key.c_str());
 
-    XtcData::Xtc& xtc = m_det->transitionXtc();
-    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    Xtc& xtc = m_det->transitionXtc();
+    xtc = {{TypeId::Parent, 0}, {m_det->nodeId}};
     auto bufEnd = m_det->trXtcBufEnd();
 
     json phase1Info{ "" };
@@ -915,6 +1127,10 @@ void PvaApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
+
+        // Provide EbReceiver with the Detector interface so that additional
+        // data blocks can be formatted into the XTC, e.g. trigger information
+        m_drp.ebReceiver().configure(m_det, m_pvDetector->pgp());
 
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);
@@ -968,7 +1184,7 @@ void PvaApp::handlePhase1(const json& msg)
     reply(answer);
 }
 
-void PvaApp::handleReset(const nlohmann::json& msg)
+void PvApp::handleReset(const nlohmann::json& msg)
 {
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
     _unconfigure();
@@ -981,10 +1197,11 @@ void PvaApp::handleReset(const nlohmann::json& msg)
 
 int main(int argc, char* argv[])
 {
-    Drp::PvaParameters para;
+    Drp::PvParameters para;
     std::string kwargs_str;
+    std::string filename;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:01v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:01f:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -1028,6 +1245,9 @@ int main(int argc, char* argv[])
             case '1':
                 fprintf(stderr, "Option -1 is disabled\n");  exit(EXIT_FAILURE);
                 tsMatchDegree = 1;
+                break;
+            case 'f':
+                filename = optarg;
                 break;
             case 'v':
                 ++para.verbose;
@@ -1079,21 +1299,48 @@ int main(int argc, char* argv[])
     para.detName = para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
-    // Provider is "pva" (default) or "ca"
-    if (optind < argc)                  // [<provider>/]<PV name>[.<field>]
-    {
-        para.pvName = argv[optind++];
-
-        if (optind < argc)
-        {
-            logging::error("Unrecognized argument:");
-            while (optind < argc)
-                logging::error("  %s ", argv[optind++]);
+    // Read PVs from a file, if specified
+    unsigned nPVs = 0;
+    if (!filename.empty()) {
+        unsigned lineNo = 0;
+        std::ifstream pvFile(filename.c_str());
+        if (!pvFile) {
+            logging::critical("Failed to open file %s", filename.c_str());
             return 1;
         }
+        logging::debug("Processing file %s", filename.c_str());
+        while (!pvFile.eof()) {
+            std::string line;
+            std::getline(pvFile, line);
+            ++lineNo;
+
+            // Remove whitespaces
+            std::string pvSpec = psalg::strip(line);
+
+            // Skip blank and commented out lines
+            if (pvSpec.size() == 0 || pvSpec[0] == '#')  continue;
+
+            // Remove trailing comments
+            pvSpec = pvSpec.substr(0, pvSpec.find("#", 0));
+
+            logging::debug("line %u, PV spec: '%s'\n", lineNo, pvSpec.c_str());
+
+            para.pvSpecs.push_back({pvSpec});
+            ++nPVs;
+        }
     }
-    else {
-        logging::critical("A PV ([<provider>/]<PV name>[.<field>]) is mandatory");
+    // Also read PVs from the command line
+    while (optind < argc) {
+        para.pvSpecs.push_back({argv[optind++]});
+        ++nPVs;
+    }
+    if (para.pvSpecs.empty()) {
+        // Provider is "pva" (default) or "ca"
+        logging::critical("At least one PV is required");
+        return 1;
+    }
+    if (nPVs > 64) { // Limit is set by the number of bits in contract/remaining variables
+        logging::critical("Found %u PVs when max supported is %u", nPVs, 64);
         return 1;
     }
 
@@ -1114,27 +1361,13 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pva_addr")       continue;  // DrpBase
             if (kwargs.first == "firstdim")       continue;
             if (kwargs.first == "match_tmo_ms")   continue;
+            if (kwargs.first == "data_vsn")       continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
 
-        para.provider = "pva";
-        para.field    = "value";
-        auto pos = para.pvName.find("/", 0);
-        if (pos != std::string::npos) { // Parse provider
-            para.provider = para.pvName.substr(0, pos);
-            para.pvName   = para.pvName.substr(pos+1);
-        }
-        pos = para.pvName.find(".", 0);
-        if (pos != std::string::npos) { // Parse field name
-            para.field  = para.pvName.substr(pos+1);
-            para.pvName = para.pvName.substr(0, pos);
-        }
-        para.request = para.provider == "pva" ? "field(value,timeStamp,dimension)"
-                                              : "field(value,timeStamp)";
-
-        Drp::PvaApp(para).run();
+        Drp::PvApp(para).run();
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }

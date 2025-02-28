@@ -1,9 +1,11 @@
-from psana import DataSource
 import sys
+
+from psana import DataSource
 
 # a small utility for taking a command line datasource string
 # like "exp=rixx43518,run=341" or "files=<filename>" and returning
 # a DataSource object. Used by utilities like "detnames".
+
 
 def datasource_kwargs_from_string(dsstring):
     """
@@ -31,39 +33,54 @@ def datasource_kwargs_from_string(dsstring):
     small_xtc   = ['tmo_opal1'],                    - detectors to be used in smalldata callback ???? THIS WOULD NOT WORK
     shmem='tmo' or 'rix',...
     """
-    if dsstring.lstrip()[0] == '{': return eval(dsstring)
+    if dsstring.lstrip()[0] == "{":
+        return eval(dsstring)
 
-    if '=' in dsstring:
-      if ':' in dsstring:
-        print('Error: DataSource fields in psana2 must be split with "," not ":"')
-        sys.exit(-1)
-      # experiment/run specified, or shmem
-      kwargs = {}
-      for kwarg in dsstring.split(','):
-        k,v = kwarg.split('=')
-        val = str(v) if k in ('files', 'exp', 'dir', 'shmem') else\
-              int(v) if k == 'run' and (not ',' in v) else\
-              int(v) if k in ('max_events', 'batch_size') else\
-              v == 'True' if k in ('live', ) else\
-              None
-        if val is None:
-          try:
-            # see if it's a run number
-            val = int(v)
-          except ValueError:
-            val = v
-        kwargs[k] = val
-      return kwargs
+    if "=" in dsstring:
+        if ":" in dsstring:
+            print('Error: DataSource fields in psana2 must be split with "," not ":"')
+            sys.exit(-1)
+        # experiment/run specified, or shmem
+        kwargs = {}
+        for kwarg in dsstring.split(","):
+            k, v = kwarg.split("=")
+            val = (
+                str(v)
+                if k in ("files", "exp", "dir", "shmem")
+                else (
+                    int(v)
+                    if k == "run" and ("," not in v)
+                    else (
+                        int(v)
+                        if k in ("max_events", "batch_size")
+                        else v == "True"
+                        if k in ("live",)
+                        else None
+                    )
+                )
+            )
+            if val is None:
+                try:
+                    # see if it's a run number
+                    val = int(v)
+                except ValueError:
+                    val = v
+            kwargs[k] = val
+        return kwargs
     else:
-      # filename specified
-      return {'files': dsstring,}
+        # filename specified
+        return {
+            "files": dsstring,
+        }
+
 
 def datasource_kwargs_to_string(**kwargs):
     """returns string presentation for dict of DataSource kwargs"""
-    return ','.join(['%s=%s' % (k,str(v)) for k,v in kwargs.items()])
+    return ",".join(["%s=%s" % (k, str(v)) for k, v in kwargs.items()])
 
 
 def DataSourceFromString(dsstring):
     return DataSource(**datasource_kwargs_from_string(dsstring))
+
 
 # EOF

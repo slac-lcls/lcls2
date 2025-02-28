@@ -1,0 +1,82 @@
+# TO BYPASS GATEWAY EPICS_CA_ADDR_LIST=172.27.131.255:5068
+
+# Example PV list file for PvaDetector -f
+# If the first not-blank character encountered is a '#', the line is a comment
+# Blank lines are ignored
+# Leading and trailing whitespaces are trimmed
+# There should be one PV per line
+# Duplicate PVs are ignored
+# PVs are specified with the following format:
+#   [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+# <provider> can be "pva" (the default) or "ca"
+
+  # This comment has preceding spaces
+# X position
+bpms_unds_1690_x=ca/BPMS:UNDS:1690:XCUSBR[1](double)
+bpms_unds_1990_x=ca/BPMS:UNDS:1990:XCUSBR[1](double)
+bpms_unds_2190_x=ca/BPMS:UNDS:2190:XCUSBR[1](double)
+bpms_unds_2490_x=ca/BPMS:UNDS:2490:XCUSBR[1](double)
+bpms_unds_2590_x=ca/BPMS:UNDS:2590:XCUSBR[1](double)
+bpms_unds_2690_x=ca/BPMS:UNDS:2690:XCUSBR[1](double)
+bpms_unds_2790_x=ca/BPMS:UNDS:2790:XCUSBR[1](double)
+bpms_unds_2890_x=ca/BPMS:UNDS:2890:XCUSBR[1](double)
+bpms_unds_2990_x=ca/BPMS:UNDS:2990:XCUSBR[1](double)
+bpms_unds_3090_x=ca/BPMS:UNDS:3090:XCUSBR[1](double)
+bpms_unds_3190_x=ca/BPMS:UNDS:3190:XCUSBR[1](double)
+bpms_unds_3290_x=ca/BPMS:UNDS:3290:XCUSBR[1](double)
+bpms_unds_3390_x=ca/BPMS:UNDS:3390:XCUSBR[1](double)
+bpms_unds_3490_x=ca/BPMS:UNDS:3490:XCUSBR[1](double)
+bpms_unds_3590_x=ca/BPMS:UNDS:3590:XCUSBR[1](double)
+bpms_unds_3690_x=ca/BPMS:UNDS:3690:XCUSBR[1](double)
+bpms_unds_3790_x=ca/BPMS:UNDS:3790:XCUSBR[1](double)
+bpms_unds_3890_x=ca/BPMS:UNDS:3890:XCUSBR[1](double)
+bpms_unds_3990_x=ca/BPMS:UNDS:3990:XCUSBR[1](double)
+bpms_unds_4090_x=ca/BPMS:UNDS:4090:XCUSBR[1](double)
+bpms_unds_4190_x=ca/BPMS:UNDS:4190:XCUSBR[1](double)
+bpms_unds_4290_x=ca/BPMS:UNDS:4290:XCUSBR[1](double)
+bpms_unds_4390_x=ca/BPMS:UNDS:4390:XCUSBR[1](double)
+bpms_unds_4490_x=ca/BPMS:UNDS:4490:XCUSBR[1](double)
+bpms_unds_4590_x=ca/BPMS:UNDS:4590:XCUSBR[1](double)
+bpms_unds_4690_x=ca/BPMS:UNDS:4690:XCUSBR[1](double)
+bpms_unds_4790_x=ca/BPMS:UNDS:4790:XCUSBR[1](double)
+bpms_unds_5190_x=ca/BPMS:UNDS:5190:XCUSBR[1](double)
+
+# Y position
+bpms_unds_1690_y=ca/BPMS:UNDS:1690:YCUSBR[1](double)
+bpms_unds_1990_y=ca/BPMS:UNDS:1990:YCUSBR[1](double)
+bpms_unds_2190_y=ca/BPMS:UNDS:2190:YCUSBR[1](double)
+bpms_unds_2490_y=ca/BPMS:UNDS:2490:YCUSBR[1](double)
+bpms_unds_2590_y=ca/BPMS:UNDS:2590:YCUSBR[1](double)
+bpms_unds_2690_y=ca/BPMS:UNDS:2690:YCUSBR[1](double)
+bpms_unds_2790_y=ca/BPMS:UNDS:2790:YCUSBR[1](double)
+bpms_unds_2890_y=ca/BPMS:UNDS:2890:YCUSBR[1](double)
+bpms_unds_2990_y=ca/BPMS:UNDS:2990:YCUSBR[1](double)
+bpms_unds_3090_y=ca/BPMS:UNDS:3090:YCUSBR[1](double)
+bpms_unds_3190_y=ca/BPMS:UNDS:3190:YCUSBR[1](double)
+bpms_unds_3290_y=ca/BPMS:UNDS:3290:YCUSBR[1](double)
+bpms_unds_3390_y=ca/BPMS:UNDS:3390:YCUSBR[1](double)
+bpms_unds_3490_y=ca/BPMS:UNDS:3490:YCUSBR[1](double)
+bpms_unds_3590_y=ca/BPMS:UNDS:3590:YCUSBR[1](double)
+bpms_unds_3690_y=ca/BPMS:UNDS:3690:YCUSBR[1](double)
+bpms_unds_3790_y=ca/BPMS:UNDS:3790:YCUSBR[1](double)
+bpms_unds_3890_y=ca/BPMS:UNDS:3890:YCUSBR[1](double)
+bpms_unds_3990_y=ca/BPMS:UNDS:3990:YCUSBR[1](double)
+bpms_unds_4090_y=ca/BPMS:UNDS:4090:YCUSBR[1](double)
+bpms_unds_4190_y=ca/BPMS:UNDS:4190:YCUSBR[1](double)
+bpms_unds_4290_y=ca/BPMS:UNDS:4290:YCUSBR[1](double)
+bpms_unds_4390_y=ca/BPMS:UNDS:4390:YCUSBR[1](double)
+bpms_unds_4490_y=ca/BPMS:UNDS:4490:YCUSBR[1](double)
+bpms_unds_4590_y=ca/BPMS:UNDS:4590:YCUSBR[1](double)
+bpms_unds_4690_y=ca/BPMS:UNDS:4690:YCUSBR[1](double)
+bpms_unds_4790_y=ca/BPMS:UNDS:4790:YCUSBR[1](double)
+bpms_unds_5190_y=ca/BPMS:UNDS:5190:YCUSBR[1](double)
+
+# Energy reference bpm in CLTS
+bpms_clts_570_y=ca/BPMS:CLTS:570:YCUSBR[1](double)
+
+# Charge in CLTS
+bpms_clts_570_tmit=ca/BPMS:CLTS:570:TMITCUSBR[1](double)
+
+# Charge after LTUS
+bpms_ltus_820_tmit=ca/BPMS:LTUS:820:TMITCUSBR[1](double)
+

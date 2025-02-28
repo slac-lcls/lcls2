@@ -1,10 +1,7 @@
 
 #include "XpmDetector.hh"
-#include "Si570.hh"
-#include "AxisDriver.h"
-#include "DataDriver.h"
+#include "XpmInfo.hh"
 #include "psalg/utils/SysLog.hh"
-#include "psdaq/mmhw/TriggerEventManager2.hh"
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -13,178 +10,63 @@ using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 
-static void dmaReadRegister (int, uint32_t*, uint32_t*);
-static void dmaWriteRegister(int, uint32_t*, uint32_t);
-static void resetTimingPll  (int);
-
-//typedef Pds::Mmhw::TriggerEventManager TEM;
-typedef Pds::Mmhw::TriggerEventManager2 TEM;
-
 namespace Drp {
 
-XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
-    Detector(para, pool)
-{
-    int fd = pool->fd();
-
-    static const double flo[] = {115.,180.};
-    static const double fhi[] = {125.,190.};
-
-    unsigned index = (para->kwargs["timebase"]=="119M") ? 0:1;
-
-    // Check timing reference clock, program if necessary
-    unsigned ccnt0,ccnt1;
-    dmaReadRegister(fd, 0x00C00028, &ccnt0);
-    usleep(100000);
-    dmaReadRegister(fd, 0x00C00028, &ccnt1);
-    ccnt1 -= ccnt0;
-    double clkr = double(ccnt1)*16.e-5;
-    logging::info("Timing RefClk %f MHz\n", clkr);
-    if (clkr < flo[index] || clkr > fhi[index]) {
-      AxiVersion vsn;
-      axiVersionGet(fd, &vsn);
-      if (vsn.userValues[2]) {  // Only one PCIe interface has access to I2C bus
-         logging::error("Si570 clock needs programming.  This PCIe interface has no I2C access.");
-         return;
-      }
-
-      //  Flush I2C by reading the Mux
-      unsigned mux;
-      dmaReadRegister(fd, 0x00E00000, &mux);
-      logging::info("I2C mux:  0x%x\n", mux); // Force the read not to be optimized out
-      //  Set the I2C Mux
-      dmaWriteRegister(fd, 0x00E00000, (1<<2));
-
-      Si570 rclk(fd,0x00E00800);
-      rclk.program(index);
-
-      unsigned v;
-      dmaReadRegister(fd, 0x00C00020, &v);
-      logging::info("Skip reset timing PLL\n");
-      // v |= 0x80;
-      // dmaWriteRegister(fd, 0x00C00020, v);
-      // usleep(10);
-      // v &= ~0x80;
-      // dmaWriteRegister(fd, 0x00C00020, v);
-      // usleep(100);
-      logging::info("Reset timing data path\n");
-      v |= 0x8;
-      dmaWriteRegister(fd, 0x00C00020, v);
-      usleep(10);
-      v &= ~0x8;
-      dmaWriteRegister(fd, 0x00C00020, v);
-      usleep(100000);
+static PyObject* _check(PyObject* obj) {
+    if (!obj) {
+        PyErr_Print();
+        logging::critical("**** python error");
+        abort();
     }
+    return obj;
 }
 
-json XpmDetector::connectionInfo()
+XpmDetector::XpmDetector(Parameters* para, MemPool* pool, unsigned len) :
+    Detector(para, pool),
+    m_length(len)
 {
-    int fd = m_pool->fd();
+    _init();
+}
 
-    TEM* mem_pointer = (TEM*)0x00C20000;
-    TEM* tem = new (mem_pointer) TEM;
+void XpmDetector::_init()
+{
+    std::map<std::string,std::string>::iterator it = m_para->kwargs.find("timebase");
+    const char* timebase = (it != m_para->kwargs.end()) ? it->second.data() : "186M";
 
-    //  Advertise ID on the timing link
-    {
-      struct addrinfo hints;
-      struct addrinfo* result;
+    // returns new reference
+    m_xmodule = _check(PyImport_ImportModule("psdaq.configdb.xpmdet_config"));
 
-      memset(&hints, 0, sizeof(struct addrinfo));
-      hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
-      hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
-      hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+    PyObject* pDict = _check(PyModule_GetDict(m_xmodule));
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, "xpmdet_init"));
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"sisi",
+                                           m_para->device.c_str(),
+                                           m_para->laneMask,
+                                           timebase,
+                                           m_para->verbose)));
+}
 
-      char hname[64];
-      gethostname(hname,64);
-      int s = getaddrinfo(hname, NULL, &hints, &result);
-      if (s != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-        exit(EXIT_FAILURE);
-      }
-
-      while(result) {
-          sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
-          unsigned ip = ntohl(saddr->sin_addr.s_addr);
-          if ((ip>>16)==0xac15) {
-              unsigned id = 0xfb000000 | (ip&0xffff);
-              dmaWriteRegister(fd, &tem->xma().txId, id);
-              break;
-          }
-          result = result->ai_next;
-      }
-
-      if (!result) {
-          logging::info("No 172.21 address found.  Defaulting");
-          unsigned id = 0xfb000000;
-          dmaWriteRegister(fd, &tem->xma().txId, id);
-      }
-    }
-
-    //  Retrieve the timing link ID
-    uint32_t reg;
-    dmaReadRegister(fd, &tem->xma().rxId, &reg);
-    printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
-
-    // there is currently a failure mode where the register reads
-    // back as zero or 0xffffffff (incorrectly). This is not the best
-    // longterm fix, but throw here to highlight the problem. the
-    // difficulty is that Matt says this register has to work
-    // so that an automated software solution would know which
-    // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-    // Also, register is corrupted when port number > 15 - Ric
-    if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
-        logging::critical("XPM Remote link id register illegal value: 0x%x. Trying RxPllReset.",reg);
-        resetTimingPll(fd);
-
-        dmaReadRegister(fd, &tem->xma().rxId, &reg);
-        printf("*** XpmDetector: timing link ID is %08x = %u\n", reg, reg);
-
-        if (!reg || reg==0xffffffff || (reg & 0xff) > 15) {
-            logging::critical("XPM Remote link id register illegal value: 0x%x. Aborting. Try XPM TxLink reset.",reg);
-            abort();
-        }
-    }
-    int xpm  = (reg >> 20) & 0x0F;
-    int port = (reg >>  0) & 0xFF;
-    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
-    return info;
+json XpmDetector::connectionInfo(const json& msg)
+{
+    PyObject* pDict  = _check(PyModule_GetDict(m_xmodule));
+    PyObject* pFunc  = _check(PyDict_GetItemString(pDict, "xpmdet_connectionInfo"));
+    PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"s",msg.dump().c_str()));
+    json result = xpmInfo(PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr")));
+    Py_DECREF(mbytes);
+    return result;
 }
 
 // setup up device to receive data over pgp
 void XpmDetector::connect(const json& connect_json, const std::string& collectionId)
 {
-    logging::info("XpmDetector connect");
-    m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
-
+    unsigned readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
     // FIXME make configureable
-    m_length = 100;
     std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sim_length");
     if (it != m_para->kwargs.end())
         m_length = stoi(it->second);
 
-    int fd = m_pool->fd();
-    int links = m_para->laneMask;
-
-    AxiVersion vsn;
-    axiVersionGet(fd, &vsn);
-    if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
-       links <<= 4;
-
-    //Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
-    TEM* mem_pointer = (TEM*)0x00C20000;
-    TEM* tem = new (mem_pointer) TEM;
-    for(unsigned i=0; i<8; i++) {
-        if (links&(1<<i)) {
-            Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-            dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
-            dmaWriteRegister(fd, &b.pauseThresh, 16     );
-            dmaWriteRegister(fd, &b.group , m_readoutGroup);
-            dmaWriteRegister(fd, &b.enable, 3           );  // enable
-
-            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (m_length&0xffffff) | (1<<31));  // enable
-        }
-    }
+    PyObject* pDict  = _check(PyModule_GetDict(m_xmodule));
+    PyObject* pFunc  = _check(PyDict_GetItemString(pDict, "xpmdet_connect"));
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"ii",readoutGroup,m_length)));
 }
 
 unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd)
@@ -194,55 +76,15 @@ unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 
 void XpmDetector::shutdown()
 {
-    int fd = m_pool->fd();
-    int links = m_para->laneMask;
-
-    AxiVersion vsn;
-    axiVersionGet(fd, &vsn);
-    if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
-       links <<= 4;
-
-    TEM* mem_pointer = (TEM*)0x00C20000;
-    TEM* tem = new (mem_pointer) TEM;
-    for(unsigned i=0; i<8; i++) {
-        if (links&(1<<i)) {
-            Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-            dmaWriteRegister(fd, &b.enable, 0               );  // enable
-        }
-    }
-}
+    PyObject* pDict  = _check(PyModule_GetDict(m_xmodule));
+    PyObject* pFunc  = _check(PyDict_GetItemString(pDict, "xpmdet_unconfig"));
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"")));
 }
 
-void dmaReadRegister (int fd, uint32_t* addr, uint32_t* valp)
+void XpmDetector::connectionShutdown()
 {
-  uintptr_t addri = (uintptr_t)addr;
-  dmaReadRegister(fd, addri&0xffffffff, valp);
-  logging::debug("[%08lx] = %08x\n",addri,*valp);
+    PyObject* pDict  = _check(PyModule_GetDict(m_xmodule));
+    PyObject* pFunc  = _check(PyDict_GetItemString(pDict, "xpmdet_connectionShutdown"));
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"")));
 }
-
-void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
-{
-  uintptr_t addri = (uintptr_t)addr;
-  dmaWriteRegister(fd, addri&0xffffffff, val);
-  logging::debug("[%08lx] %08x\n",addri,val);
-}
-
-void resetTimingPll(int fd)
-{
-  uint32_t v;
-  dmaReadRegister(fd, 0x00c0020, &v);
-
-  v |= 0x80;
-  dmaWriteRegister(fd, 0x00c00020, v);
-  usleep(10);
-  v &= ~0x80;
-  dmaWriteRegister(fd, 0x00c00020, v);
-  usleep(100);
-  v |= 0x8;
-  dmaWriteRegister(fd, 0x00c00020, v);
-  usleep(10);
-  v &= ~0x8;
-  dmaWriteRegister(fd, 0x00c00020, v);
-  usleep(100000);
 }

@@ -15,7 +15,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "Si570.hh"
 
 using namespace std;
@@ -58,7 +58,7 @@ static int print_mig_lane(const char* name, int addr, int offset, int mask)
 static bool lInit = false;
 static bool lReset = false;
 
-static void check_program_clock(int ifd, const AxiVersion& vsn) 
+static void check_program_clock(int ifd, const AxiVersion& vsn)
 {
   if (lInit || lReset) {
     if (vsn.userValues[2] == 0) {
@@ -138,7 +138,7 @@ int main (int argc, char **argv) {
         printf("firmwareVersion : %x\n", vsn.firmwareVersion);
         printf("upTimeCount     : %u\n", vsn.upTimeCount);
         printf("deviceId        : %x\n", vsn.deviceId);
-        printf("buildString     : %s\n", vsn.buildString); 
+        printf("buildString     : %s\n", vsn.buildString);
         printf("corePcie        : %c\n", (vsn.userValues[2] == 0) ? 'T':'F');
         printf("dmaSize         : %u\n", vsn.userValues[0]);
         printf("dmaClkFreq      : %u\n", vsn.userValues[4]);
@@ -146,11 +146,17 @@ int main (int argc, char **argv) {
         printf("axiDataWidth    : %u\n", (vsn.userValues[7]>>16)&0xff);
         printf("axiIdBits       : %u\n", (vsn.userValues[7]>> 8)&0xff);
         printf("axiLenBits      : %u\n", (vsn.userValues[7]>> 0)&0xff);
+
+        if (strstr((char*)vsn.buildString,"DrpPgpIlv")==0) {
+          printf("Unexpected firmware image. Exiting.\n");
+          return 1;
+        }
+
         check_program_clock(ifd, vsn);
       }
-    }   
+    }
   }
-  
+
 #define PRINTFIELD(name, addr, offset, mask) {                  \
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
@@ -227,7 +233,7 @@ int main (int argc, char **argv) {
 
     sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
 
-    unsigned id = 0xfb000000 | 
+    unsigned id = 0xfb000000 |
       (ntohl(saddr->sin_addr.s_addr)&0xffff);
 
     for(unsigned i=0; i<8; i++) {

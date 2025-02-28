@@ -51,6 +51,7 @@ using logging  = psalg::SysLog;
 using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
 using tp_t     = std::chrono::system_clock::time_point;
 using ms_t     = std::chrono::milliseconds;
+using us_t     = std::chrono::microseconds;
 using ns_t     = std::chrono::nanoseconds;
 
 static struct sigaction      lIntAction;
@@ -334,10 +335,10 @@ namespace Pds {
   class Meb : public EbAppBase
   {
   public:
-    Meb(const MebParams& prms, ZmqContext& context, const MetricExporter_t& exporter);
+    Meb(const MebParams& prms, ZmqContext& context);
   public:
     int  resetCounters();
-    int  connect();
+    int  connect(const std::shared_ptr<MetricExporter>);
     int  configure();
     void unconfigure();
     void disconnect();
@@ -346,10 +347,13 @@ namespace Pds {
     virtual
     void process(EbEvent* event);
   private:
+      int _setupMetrics(const std::shared_ptr<MetricExporter>);
+  private:
     std::unique_ptr<MyXtcMonitorServer> _apps;
     std::vector<EbLfCltLink*>           _mrqLinks;
     std::unique_ptr<GenericPool>        _pool;
     uint64_t                            _pidPrv;
+    uint64_t                            _latPid;
     int64_t                             _latency;
     uint64_t                            _eventCount;
     uint64_t                            _trCount;
@@ -379,10 +383,10 @@ static json createPulseIdMsg(uint64_t pulseId)
 }
 
 Meb::Meb(const MebParams&        prms,
-         ZmqContext&             context,
-         const MetricExporter_t& exporter) :
-  EbAppBase    (prms, exporter, "MEB", EB_TMO_MS),
+         ZmqContext&             context) :
+  EbAppBase    (prms, "MEB"),
   _pidPrv      (0),
+  _latPid      (0),
   _latency     (0),
   _eventCount  (0),
   _trCount     (0),
@@ -398,45 +402,6 @@ Meb::Meb(const MebParams&        prms,
   _mrqTransport(prms.verbose, prms.kwargs),
   _inprocSend  (&context, ZMQ_PAIR)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias},
-                                            {"alias", prms.alias}};
-  exporter->add("MEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;      });
-  exporter->add("MEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;         });
-  exporter->add("MEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;         });
-  exporter->add("MEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;      });
-  exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
-  exporter->add("MRQ_TxPdg",  labels, MetricType::Gauge,   [&](){ return _mrqTransport.posting(); });
-  exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
-  exporter->add("MEB_PrcCt",  labels, MetricType::Gauge,   [&](){ return _prcBufCount.load(); });
-  exporter->add("MEB_PrcTmC", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.count();   });
-  exporter->add("MEB_PrcTm",  labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.sample();  });
-  exporter->add("MEB_PrcTmm", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.minimum(); });
-  exporter->add("MEB_PrcTmM", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.maximum(); });
-  exporter->add("MEB_PrcTmA", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.average(); });
-  exporter->add("MEB_TrgTmC", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.count();   });
-  exporter->add("MEB_TrgTm",  labels, MetricType::Gauge,   [&](){ return _monTrgMetric.sample();  });
-  exporter->add("MEB_TrgTmm", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.minimum(); });
-  exporter->add("MEB_TrgTmM", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.maximum(); });
-  exporter->add("MEB_TrgTmA", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.average(); });
-  exporter->add("MEB_AppTmC", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.count();   });
-  exporter->add("MEB_AppTm",  labels, MetricType::Gauge,   [&](){ return _appPrcMetric.sample();  });
-  exporter->add("MEB_AppTmm", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.minimum(); });
-  exporter->add("MEB_AppTmM", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.maximum(); });
-  exporter->add("MEB_AppTmA", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.average(); });
-  exporter->add("MEB_ScrpCt", labels, MetricType::Counter, [&](){ return _scrapeCount++;  });
-  exporter->add("MEB_RogCt0", labels, MetricType::Counter, [&](){ return _rogCount[0];    });
-  exporter->add("MEB_RogCt1", labels, MetricType::Counter, [&](){ return _rogCount[1];    });
-  exporter->add("MEB_RogCt2", labels, MetricType::Counter, [&](){ return _rogCount[2];    });
-  exporter->add("MEB_RogCt3", labels, MetricType::Counter, [&](){ return _rogCount[3];    });
-  exporter->add("MEB_RogCt4", labels, MetricType::Counter, [&](){ return _rogCount[4];    });
-  exporter->add("MEB_RogCt5", labels, MetricType::Counter, [&](){ return _rogCount[5];    });
-  exporter->add("MEB_RogCt6", labels, MetricType::Counter, [&](){ return _rogCount[6];    });
-  exporter->add("MEB_RogCt7", labels, MetricType::Counter, [&](){ return _rogCount[7];    });
-  exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
-  _bufUseCnts = exporter->histogram("MRQ_BufUseCnts", labels, prms.numEvBuffers);
-
   _inprocSend.connect("inproc://drp");  // Yes, 'drp' is the name
 }
 
@@ -474,16 +439,61 @@ void Meb::unconfigure()
   EbAppBase::unconfigure();
 }
 
-int Meb::connect()
+int Meb::_setupMetrics(const MetricExporter_t exporter)
 {
-  int rc;
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.alias},
+                                            {"alias", _prms.alias}};
+  exporter->add("MEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;      });
+  exporter->add("MEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;         });
+  exporter->add("MEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;         });
+  exporter->add("MEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;      });
+  exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
+  exporter->add("MRQ_TxPdg",  labels, MetricType::Gauge,   [&](){ return _mrqTransport.posting(); });
+  exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
+  exporter->add("MEB_PrcCt",  labels, MetricType::Gauge,   [&](){ return _prcBufCount.load(); });
+  exporter->add("MEB_PrcTmC", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.count();   });
+  exporter->add("MEB_PrcTm",  labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.sample();  });
+  exporter->add("MEB_PrcTmm", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.minimum(); });
+  exporter->add("MEB_PrcTmM", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.maximum(); });
+  exporter->add("MEB_PrcTmA", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.average(); });
+  exporter->add("MEB_TrgTmC", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.count();   });
+  exporter->add("MEB_TrgTm",  labels, MetricType::Gauge,   [&](){ return _monTrgMetric.sample();  });
+  exporter->add("MEB_TrgTmm", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.minimum(); });
+  exporter->add("MEB_TrgTmM", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.maximum(); });
+  exporter->add("MEB_TrgTmA", labels, MetricType::Gauge,   [&](){ return _monTrgMetric.average(); });
+  exporter->add("MEB_AppTmC", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.count();   });
+  exporter->add("MEB_AppTm",  labels, MetricType::Gauge,   [&](){ return _appPrcMetric.sample();  });
+  exporter->add("MEB_AppTmm", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.minimum(); });
+  exporter->add("MEB_AppTmM", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.maximum(); });
+  exporter->add("MEB_AppTmA", labels, MetricType::Gauge,   [&](){ return _appPrcMetric.average(); });
+  exporter->add("MEB_ScrpCt", labels, MetricType::Counter, [&](){ return _scrapeCount++;  });
+  exporter->add("MEB_RogCt0", labels, MetricType::Counter, [&](){ return _rogCount[0];    });
+  exporter->add("MEB_RogCt1", labels, MetricType::Counter, [&](){ return _rogCount[1];    });
+  exporter->add("MEB_RogCt2", labels, MetricType::Counter, [&](){ return _rogCount[2];    });
+  exporter->add("MEB_RogCt3", labels, MetricType::Counter, [&](){ return _rogCount[3];    });
+  exporter->add("MEB_RogCt4", labels, MetricType::Counter, [&](){ return _rogCount[4];    });
+  exporter->add("MEB_RogCt5", labels, MetricType::Counter, [&](){ return _rogCount[5];    });
+  exporter->add("MEB_RogCt6", labels, MetricType::Counter, [&](){ return _rogCount[6];    });
+  exporter->add("MEB_RogCt7", labels, MetricType::Counter, [&](){ return _rogCount[7];    });
+  exporter->constant("MRQ_BufCtMax", labels, _prms.numEvBuffers);
+  _bufUseCnts = exporter->histogram("MRQ_BufUseCnts", labels, _prms.numEvBuffers);
+
+  return 0;
+}
+
+int Meb::connect(const std::shared_ptr<MetricExporter> exporter)
+{
+  int rc = _setupMetrics(exporter);
+  if (rc)  return rc;
 
   _mrqLinks.resize(_prms.addrs.size());
 
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
   if (rc)  return rc;
 
-  rc = EbAppBase::connect(MEB_TR_BUFFERS);
+  rc = EbAppBase::connect(MEB_TR_BUFFERS, exporter);
   if (rc)  return rc;
 
   return 0;
@@ -548,6 +558,8 @@ void Meb::run()
     rcPrv = rc;
   }
 
+  EventBuilder::dump(0);
+
   logging::info("MEB thread finished");
 }
 
@@ -555,9 +567,8 @@ void Meb::process(EbEvent* event)
 {
   if (_prms.verbose >= VL_DETAILED)
   {
-    static unsigned cnt = 0;
     printf("Meb::process event dump:\n");
-    event->dump(++cnt);
+    event->dump(1, _trCount + _eventCount);
   }
 
   const EbDgram* dgram = event->creator();
@@ -611,7 +622,7 @@ void Meb::process(EbEvent* event)
     printf("Directory datagram pool\n");
     _pool->dump();
     printf("Meb::process event dump:\n");
-    event->dump(-1);
+    event->dump(1, -1);
     abort();
   }
 
@@ -644,11 +655,10 @@ void Meb::process(EbEvent* event)
     }
   }
 
-  auto now = std::chrono::system_clock::now();
-  auto dgt = std::chrono::seconds{dgram->time.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-           + std::chrono::nanoseconds{dgram->time.nanoseconds()};
-  tp_t tp   {std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt)};
-  _latency = std::chrono::duration_cast<ms_t>(now - tp).count();
+  if (!dgram->isEvent() || (dgram->pulseId() - _latPid > 13000000/14)) {
+    _latency = latency<us_t>(dgram->time);
+    _latPid  = dgram->pulseId();
+  }
 
   if (dg->service() == TransitionId::L1Accept)
   {
@@ -696,7 +706,7 @@ public:
   MebApp(const std::string& collSrv, MebParams&);
   virtual ~MebApp();
 public:                                 // For CollectionApp
-  json connectionInfo() override;
+  json connectionInfo(const json& msg) override;
   void connectionShutdown() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
@@ -725,8 +735,7 @@ MebApp::MebApp(const std::string& collSrv,
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
   _exposer     (createExposer(prms.prometheusDir, getHostname())),
-  _exporter    (std::make_shared<MetricExporter>()),
-  _meb         (std::make_unique<Meb>(_prms, context(), _exporter)),
+  _meb         (std::make_unique<Meb>(_prms, context())),
   _unconfigFlag(false)
 {
   if (_exposer)
@@ -755,7 +764,7 @@ std::string MebApp::_error(const json&        msg,
   return errorMsg;
 }
 
-json MebApp::connectionInfo()
+json MebApp::connectionInfo(const nlohmann::json& msg)
 {
   // Allow the default NIC choice to be overridden
   if (_prms.ifAddr.empty())
@@ -784,6 +793,13 @@ void MebApp::connectionShutdown()
 
 void MebApp::handleConnect(const json &msg)
 {
+  // If the exporter already exists, replace it so that previous metrics are deleted
+  _exporter = std::make_shared<MetricExporter>();
+  if (_exposer)
+  {
+    _exposer->RegisterCollectable(_exporter);
+  }
+
   json body = json({});
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
@@ -792,7 +808,7 @@ void MebApp::handleConnect(const json &msg)
     return;
   }
 
-  rc = _meb->connect();
+  rc = _meb->connect(_exporter);
   if (rc)
   {
     _error(msg, "Error in MEB connect()");
@@ -869,6 +885,8 @@ void MebApp::handleDisconnect(const json &msg)
 
   _meb->disconnect();
 
+  if (_exporter)  _exporter.reset();
+
   // Reply to collection with connect status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -880,6 +898,7 @@ void MebApp::handleReset(const json &msg)
 
   _unconfigure();
   _meb->disconnect();
+  if (_exporter)  _exporter.reset();
   connectionShutdown();
 }
 
@@ -1165,6 +1184,7 @@ int main(int argc, char** argv)
     if (kwargs.first == "ep_fabric")    continue;
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
+    if (kwargs.first == "eb_timeout")   continue; // EbAppBase
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;

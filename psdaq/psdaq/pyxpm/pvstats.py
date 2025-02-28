@@ -2,6 +2,7 @@ import sys
 import time
 import traceback
 import struct
+import logging
 from datetime import datetime
 from p4p.nt import NTScalar
 from p4p.nt import NTTable
@@ -19,6 +20,14 @@ def updatePv(pv,v,timev):
         value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
         pv.post(value)
 
+def updatePvC(pv,v,timev):
+    if v is not None:
+        value = pv.current()
+        if value['value']!=v:
+            value['value']=v
+            value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
+            pv.post(value)
+            
 NFPLINKS = 14
 sfpStatus  = {'LossOfSignal' : ('ai',[0]*NFPLINKS),
               'ModuleAbsent' : ('ai',[0]*NFPLINKS),
@@ -27,15 +36,16 @@ sfpStatus  = {'LossOfSignal' : ('ai',[0]*NFPLINKS),
 
 class SFPStatus(object):
 
-    def __init__(self, name, xpm):
+    def __init__(self, name, xpm, nLinks=14):
         self._xpm   = xpm
         self._pv    = addPVT(name,sfpStatus)
         self._value = toDict(sfpStatus)
         self._link  = 0
+        self._nlinks= nLinks
 
         amc = self._xpm.amcs[0]
         mod = amc.SfpSummary.modabs.get()
-        print(f'SFPStatus mod {mod:x}')
+        logging.info(f'SFPStatus mod {mod:x}')
 
     def update(self):
 
@@ -54,7 +64,7 @@ class SFPStatus(object):
                 self._value['RxPower'][self._link] = rxp
 
         self._link += 1
-        if self._link==14:
+        if self._link==self._nlinks:
             self._link = 0
             value = self._pv.current()
             value['value'] = self._value
@@ -66,8 +76,8 @@ class LinkStatus(object):
         self._app = app
         self._idx = i
         self._app.link.set(i)
-        self._rxRcv = self._app.dsLinkRxCnt.get()
-        self._rxErr = self._app.dsLinkStatus.get()&0xffff
+        self._rxRcv = 0 # self._app.dsLinkRxCnt.get()
+        self._rxErr = 0 # self._app.dsLinkStatus.get()&0xffff
 
         def _addPVI(label):
             return addPV(name+':'+label+'%d'%i,'I')
@@ -149,7 +159,7 @@ class TimingStatus(object):
                 value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
                 pv.post(value)
                 if type(verbose) is type("") and nv != ov:
-                    print(f'*** {datetime.now()} {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
+                    logging.warning(f'*** {datetime.now()} {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
                 return nv
             else:
                 return ov
@@ -177,14 +187,14 @@ class TimingStatus(object):
             self._pv_rxLinkUp.post(value)
 
             if v != self._vLast:
-                print(f'*** {datetime.now()} {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
+                logging.warning(f'*** {datetime.now()} {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
                 self._vLast = v
 #                if v and self._linkUpdate:
 #                    self._linkUpdate()
 
             #  Link was down but now is up
             if v and self._device.RxDown.get():
-                print(f'*** {datetime.now()} {self._name}:RxDown latched and linkUp')
+                logging.warning(f'*** {datetime.now()} {self._name}:RxDown latched and linkUp')
                 self._device.RxDownCTL.set(0)
                 if self._linkUpdate:
                     self._linkUpdate()
@@ -210,7 +220,7 @@ class AmcPLLStatus(object):
         self._pv_los    = _addPVI('PLL_LOS')
         self._pv_losCnt = _addPVI('PLL_LOSCNT')
 
-        print(f'amcPLL{idx} {app.amcPLL.rstn.get()} {app.amcPLL.bypass.get()}')
+        logging.info(f'amcPLL{idx} {app.amcPLL.rstn.get()} {app.amcPLL.bypass.get()}')
 
     def handle(self, msg, offset, timev):
         w = struct.unpack_from('<B',msg,offset)
@@ -283,7 +293,7 @@ class GroupStats(object):
         self._master = 0
         self._timeval = float(time.time_ns())
         self._app.partition.set(group)
-        l0Stats        = self._app.l0Stats.get()
+        l0Stats        = 0
         self._l0Ena    = self._app.l0EnaCnt(l0Stats)
         self._l0Inh    = self._app.l0InhCnt(l0Stats)
         self._numL0    = self._app.numL0   (l0Stats)
@@ -295,6 +305,8 @@ class GroupStats(object):
         def _addPVF(label):
             return addPV(name+':'+label,'f')
 
+        self._pv_running   = addPV(name+':Running'  ,'b',False)
+        self._pv_recording = addPV(name+':Recording','b',False)
         self._pv_runTime   = _addPVF('RunTime')
 #        self._pv_msgDelay  = _addPVF('MsgDelay')
         self._pv_l0InpRate = _addPVF('L0InpRate')
@@ -332,6 +344,7 @@ class GroupStats(object):
         (numL0   ,offset) = bytes2Int(msg,offset)
         (numL0Inh,offset) = bytes2Int(msg,offset)
         (numL0Acc,offset) = bytes2Int(msg,offset)
+
         offset += 1
         rT = l0Ena*fidPeriod
         updatePv(self._pv_runTime , rT, timev)
@@ -362,13 +375,16 @@ class GroupStats(object):
             else:
                 deadFrac = 0
             updatePv(self._pv_deadFrac, deadFrac, timev)
+            updatePvC(self._pv_running, dL0Ena>0, timev)
 
             self._l0Ena   = l0Ena
             self._l0Inh   = l0Inh
             self._numL0   = numL0
             self._numL0Acc= numL0Acc
             self._numL0Inh= numL0Inh
-
+        else:
+            updatePvC(self._pv_running, False, timev)
+            
         if True:
             if self._linkInhTm:
                 den = fidPeriod
@@ -377,11 +393,68 @@ class GroupStats(object):
                     linkInhTmV.append((linkInhTm[i] - self._linkInhTm[i])*den)
             else:
                 linkInhTmV = [0 for i in range(32)]
+
             self._linkInhTm = linkInhTm
             updatePv(self._pv_deadFLink, linkInhTmV, timev)
 
         return offset
 
+NGROUPS = 8
+pattStats  = {'Sum'    : ('ai',[0]*NGROUPS),
+              'First'  : ('ai',[0]*NGROUPS),
+              'Last'   : ('ai',[0]*NGROUPS),
+              'MinIntv': ('ai',[0]*NGROUPS),
+              'MaxIntv': ('ai',[0]*NGROUPS)}
+NCOINC = NGROUPS*(NGROUPS+1)//2
+pattCoinc = {'Coinc' : ('ai',[0]*NCOINC)}
+
+class PatternStats(object):
+    def __init__(self, name):
+        # statistics
+        self._stats_pv    = addPVT(f'{name}:GROUPS',pattStats)
+        self._stats_value = toDict(pattStats)
+
+        self._coinc_pv    = addPVT(f'{name}:COINC',pattCoinc)
+        self._coinc_value = toDict(pattCoinc)
+
+    def handle(self,msg,offset,timev):
+
+        def bytes22Int(msg,words,offset):
+            if words%2:
+                raise ValueError
+            nb = 5*words//2
+            b = struct.unpack_from(f'<{nb}B',msg,offset)
+            offset += nb
+            a = []
+            w = 0
+            for i,v in enumerate(b):
+                w += v<<(8*(i%5))
+                if (i%5)==4:
+                    a.append(w&0xfffff)
+                    w >>= 20
+                    a.append(w&0xfffff)
+                    w = 0
+                    
+            #print(f'inp {words} len {len(a)} {a}')
+            return (a,offset)
+
+        (a, offset) = bytes22Int(msg,NGROUPS*5,offset)
+        for i in range(NGROUPS):
+            self._stats_value['Sum'    ][i] = a[5*i+0]
+            self._stats_value['First'  ][i] = a[5*i+1]
+            self._stats_value['Last'   ][i] = a[5*i+2]
+            self._stats_value['MinIntv'][i] = a[5*i+3]
+            self._stats_value['MaxIntv'][i] = a[5*i+4]
+
+        (a, offset) = bytes22Int(msg,NCOINC,offset)
+        for i,v in enumerate(a):
+            self._coinc_value['Coinc'][i] = v
+
+        updatePv(self._stats_pv, self._stats_value, timev)
+        updatePv(self._coinc_pv, self._coinc_value, timev)
+
+        return offset
+        
 class PVMmcmPhaseLock(object):
     def __init__(self, name, mmcm):
         v = []
@@ -391,7 +464,7 @@ class PVMmcmPhaseLock(object):
 
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None,nAMCs=2,noTiming=False):
         setProvider(p)
         global lock
         lock     = m
@@ -420,18 +493,20 @@ class PVStats(object):
         for i in range(8):
             self._groups.append(GroupStats(name+':PART:%d'%i,self._app,i))
 
+        self._pattern = PatternStats(name+':PATT')
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp)
 
-#  Expose for dumping the input link locking status
-        self._usTimingLock = TimingLock(name+':Us',xpm.UsGthRx)
-        self._cuTimingLock = TimingLock(name+':Cu',xpm.CuGthRx)
+        if not noTiming:
+            #  Expose for dumping the input link locking status
+            self._usTimingLock = TimingLock(name+':Us',xpm.UsGthRx)
+            self._cuTimingLock = TimingLock(name+':Cu',xpm.CuGthRx)
 
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
 
         self._monClks  = MonClkStatus(name,self._app)
         if hasSfp:
-            self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
+            self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm,7*nAMCs)
         else:
             self._sfpStat  = None
 
@@ -450,7 +525,7 @@ class PVStats(object):
 
     def updatePaddr(self):
         v = self._app.paddr.get()
-        print(f'-- updating PADDR to {v}')
+        logging.info(f'-- updating PADDR to {v}')
         pvUpdate(self.paddr,v)
 
     def handle(self, msg):
@@ -460,6 +535,7 @@ class PVStats(object):
             offset = self._links[i].handle(msg,offset,timev)
         for i in range(8):
             offset = self._groups[i].handle(msg,offset,timev)
+        offset = self._pattern.handle(msg,offset,timev)
         for i in range(2):
             offset = self._amcPll[i].handle(msg,offset,timev)
         offset = self._monClks.handle(msg,offset,timev)
@@ -484,4 +560,4 @@ class PVStats(object):
                 raise
             else:
                 traceback.print_exception(exc[0],exc[1],exc[2])
-                print('Caught exception... retrying.')
+                logging.error('Caught exception... retrying.')

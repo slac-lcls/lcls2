@@ -23,8 +23,8 @@ class Engine(object):
     def __init__(self, acmode=False):
         self.request = 0
         self.instr   = 0
-        self.frame   = -1  # 1MHz timeslot
-        self.acframe = -1  # 360Hz timeslot
+        self.frame   = 0  # 1MHz timeslot
+        self.acframe = 0  # 360Hz timeslot
         self.acmode  = acmode
         self.modes   = 0
         self.ccnt    = [0]*4
@@ -52,6 +52,8 @@ class SeqUser(object):
 
         x = 0
 
+        # keep separate lists for each request line and merge at the end
+        xdata = {}
         engine  = Engine(self.acmode)
         while engine.frame_number() < self.stop and not engine.done:
 
@@ -68,10 +70,17 @@ class SeqUser(object):
                 if request != 0:
                     for i in range(16):
                         if (request&(1<<i)):
-                            self.xdata.append(frame)
-                            self.ydata.append(i)
+                            if i in xdata:
+                                xdata[i].append(frame)
+                            else:
+                                xdata[i]=[frame]
                 frame   = engine.frame_number()
                 request = int(engine.request)
+
+        for i in range(16):
+            if i in xdata:
+                self.xdata.extend(xdata[i])
+                self.ydata.extend([i]*len(xdata[i]))
 
         print(f'engine exited {engine}')
 
@@ -81,6 +90,7 @@ class SeqUser(object):
 class PatternWaveform(object):
     def __init__(self):
         self.gl = pg.GraphicsLayoutWidget()
+        self.gl.setBackground('w')
         self.index = 0
         self.q0 = None
 
@@ -108,7 +118,7 @@ class PatternWaveform(object):
                     if b==bnext and y[i]==dlast:
                         bnext = b+1
                     elif bnext-bfirst > 1:
-                        q.plot([bfirst,bnext-1],[dlast,dlast],pen=pg.mkPen('w',width=5))
+                        q.plot([bfirst,bnext-1],[dlast,dlast],pen=pg.mkPen('k',width=5))
                         dlast  = y[i]
                         bfirst = b
                         bnext  = b+1
@@ -119,7 +129,7 @@ class PatternWaveform(object):
                         bfirst = b
                         bnext  = b+1
                 if bnext-bfirst > 1:
-                    q.plot([bfirst,bnext-1],[dlast,dlast],pen=pg.mkPen('w',width=5))
+                    q.plot([bfirst,bnext-1],[dlast,dlast],pen=pg.mkPen('k',width=5))
                 else:
                     rx.append(bfirst)
                     ry.append(dlast)
@@ -149,8 +159,10 @@ class PatternWaveform(object):
 def main():
     parser = argparse.ArgumentParser(description='simple sequence plotting gui')
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
-    parser.add_argument("--time", required=False, type=float, default=1., help="simulated time (sec)")
+    parser.add_argument("--time", required=False, type=float, nargs='+', default=[0.,1.], help="simulated time (sec)")
     args = parser.parse_args()
+    if len(args.time)==1:
+        args.time.insert(0,0.)
 
     config = {'title':'TITLE', 'descset':None, 'instrset':None}
 
@@ -168,7 +180,7 @@ def main():
         for i,ins in enumerate(config['instrset']):
             print(f'{i}: {ins}')
 
-        seq = SeqUser(start=0,stop=int(args.time*TPGSEC),acmode=False)
+        seq = SeqUser(start=int(args.time[0]*TPGSEC),stop=int(args.time[1]*TPGSEC),acmode=False)
         seq.execute(config['title'],config['instrset'],config['descset'])
 
         ydata = np.array(seq.ydata)+int(engine)*4+272

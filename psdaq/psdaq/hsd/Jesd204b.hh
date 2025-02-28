@@ -1,6 +1,7 @@
 #ifndef Jesd204b_hh
 #define Jesd204b_hh
 
+#include "psdaq/mmhw/Reg.hh"
 #include "Globals.hh"
 
 namespace Pds {
@@ -31,7 +32,7 @@ namespace Pds {
     public:
       void clearErrors();
     public:
-      vuint32_t reg[256];
+      Mmhw::Reg reg[256];
       //  0.0  enableRx
       //  1.0  sysRefDlyRx
       //  2.0  rxPolarity

@@ -17,6 +17,17 @@ if not instdir_env:
     raise Exception('Parameter --instdir is missing')
 instdir = instdir_env
 
+xtcdatadir_env = os.environ.get('XTCDATADIR')
+if not xtcdatadir_env:
+    xtcdatadir = instdir_env
+else:
+    xtcdatadir = xtcdatadir_env
+psdaqdir_env = os.environ.get('PSDAQDIR')
+if not psdaqdir_env:
+    psdaqdir = instdir_env
+else:
+    psdaqdir = psdaqdir_env
+
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
 BUILD_LIST = ('PSDAQ','TRIGGER')
@@ -42,7 +53,7 @@ if sys.platform == 'darwin':
     #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-W#warnings]
     macos_sdk_version_arg = '-mmacosx-version-min=10.9'
     extra_c_compile_args = ['-Wno-#warnings', macos_sdk_version_arg]
-    extra_cxx_compile_args = ['-std=c++11', '-Wno-#warnings', macos_sdk_version_arg]
+    extra_cxx_compile_args = ['-std=c++20', '-Wno-#warnings', macos_sdk_version_arg]
     extra_link_args = [macos_sdk_version_arg]
     # Use libgomp instead of the version provided by the compiler. Passing plain -fopenmp uses the llvm version of OpenMP
     # which appears to have a conflict with the numpy we use from conda. numpy uses Intel MKL which itself uses OpenMP,
@@ -53,13 +64,17 @@ else:
     # Flag -Wno-cpp hides warning:
     #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-Wcpp]
     extra_c_compile_args=['-Wno-cpp']
-    extra_cxx_compile_args=['-std=c++11', '-Wno-cpp']
+    extra_cxx_compile_args=['-std=c++20', '-Wno-cpp']
     extra_link_args = []
     # Use the version of openmp provided by the compiler
     openmp_compile_args = ['-fopenmp']
     openmp_link_args = ['-fopenmp']
 
 extra_link_args_rpath = extra_link_args + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(instdir, 'lib'))]
+if xtcdatadir_env:
+    extra_link_args_rpath = extra_link_args_rpath + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdatadir, 'lib'))]
+if psdaqdir_env:
+    extra_link_args_rpath = extra_link_args_rpath + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(psdaqdir, 'lib'))]
 
 CYT_BLD_DIR = 'build'
 
@@ -72,6 +87,19 @@ PACKAGE_DATA = {}
 SCRIPTS = []
 ENTRY_POINTS = {}
 
+if xtcdatadir_env:
+    xtc_headers =  os.path.join(xtcdatadir, 'include')
+    xtc_lib_path = os.path.join(xtcdatadir, 'lib')
+else:
+    xtc_headers =  os.path.join(instdir, 'include')
+    xtc_lib_path = os.path.join(instdir, 'lib')
+
+if psdaqdir_env:
+    psdaq_headers =  os.path.join(psdaqdir, 'include')
+    psdaq_lib_path = os.path.join(psdaqdir, 'lib')
+else:
+    psdaq_headers =  os.path.join(instdir, 'include')
+    psdaq_lib_path = os.path.join(instdir, 'lib')
 
 if 'PSDAQ' in BUILD_LIST :
     PACKAGES = find_packages()
@@ -88,6 +116,8 @@ if 'PSDAQ' in BUILD_LIST :
             'testAsyncErr = psdaq.control.testAsyncErr:main',
             'testFileReport = psdaq.control.testFileReport:main',
             'configdb = psdaq.configdb.configdb:main',
+            'configdb_GUI = psdaq.configdb.configdb_GUI:main',
+            'configdb_multimod = psdaq.configdb.configdb_multimod:configdb_multimod',
             'epixquad_store_gainmap = psdaq.configdb.epixquad_store_gainmap:main',
             'epixquad_create_pixelmask = psdaq.configdb.epixquad_create_pixelmask:main',
             'epixhr_config_from_yaml_set = psdaq.configdb.epixhr_config_from_yaml_set:main',
@@ -96,15 +126,14 @@ if 'PSDAQ' in BUILD_LIST :
             'epixhr_timing_scan = psdaq.cas.epixhr_timing_scan:main',
             'epixhr_config_scan = psdaq.cas.epixhr_config_scan:main',
             'epixhr_r0acq_scan = psdaq.cas.epixhr_r0acq_scan:main',
+            'epixquad_chargeinj_scan = psdaq.cas.epixquad_chargeinj_scan:main',
+            'epixquad_pedestal_scan = psdaq.cas.epixquad_pedestal_scan:main',
             'seq_epixhr = psdaq.seq.seq_epixhr:main',
             'generic_timing_scan = psdaq.cas.generic_timing_scan:main',
             'getrun = psdaq.control.getrun:main',
             'groupca = psdaq.cas.groupca:main',
-            'partca = psdaq.cas.partca:main',
             'xpmpva = psdaq.cas.xpmpva:main',
-            'deadca = psdaq.cas.deadca:main',
-            'dtica = psdaq.cas.dtica:main',
-            'dticas = psdaq.cas.dticas:main',
+            'xpmpatt = psdaq.cas.xpmpatt:main',
             'hsdca = psdaq.cas.hsdca:main',
             'hsdcas = psdaq.cas.hsdcas:main',
             'hsdpva = psdaq.cas.hsdpva:main',
@@ -127,13 +156,21 @@ if 'PSDAQ' in BUILD_LIST :
             'bluesky_simple = psdaq.control.bluesky_simple:main',
             'opal_config_scan = psdaq.control.opal_config_scan:main',
             'ts_config_scan = psdaq.control.ts_config_scan:main',
+            'timed_run = psdaq.control.timed_run:main',
             'epics_exporter = psdaq.cas.epics_exporter:main',
             'seqplot = psdaq.seq.seqplot:main',
             'seqprogram = psdaq.seq.seqprogram:main',
             'traingenerator = psdaq.seq.traingenerator:main',
             'periodicgenerator = psdaq.seq.periodicgenerator:main',
             'rixgenerator = psdaq.seq.rixgeneratory:main',
+            'ued_seq_setup = psdaq.seq.ued_seq_setup:main',
             'bos = psdaq.bos.bos:main',
+            'prometheus2pvs = psdaq.cas.prometheus2pvs:main',
+            'prometheusIOC = psdaq.cas.prometheusIOC:main',
+            'daqmgr = psdaq.slurm.main:_do_main',
+            'cnf2py = psdaq.slurm.cnftopy:_do_main',
+            'daqstat = psdaq.slurm.daqstat:_do_main',
+            'daqlog_header = psdaq.slurm.daqlog_header:_do_main',
         ]
     }
 
@@ -141,8 +178,8 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('EbDgram',
                     sources=["psdaq/trigger/EbDgram.pyx"],
                     libraries = ['xtc','service','trigger'],
-                    include_dirs = [os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
@@ -152,8 +189,8 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('ResultDgram',
                     sources=["psdaq/trigger/ResultDgram.pyx"],
                     libraries = ['xtc','service','trigger'],
-                    include_dirs = [os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
@@ -163,8 +200,19 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('TmoTebData',
                     sources=["psdaq/trigger/TmoTebData.pyx"],
                     libraries = ['xtc','service','trigger'],
-                    include_dirs = [os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args,
+                    extra_link_args = extra_link_args_rpath,
+    )
+    CYTHON_EXTS.append(ext)
+
+    ext = Extension('TimingTebData',
+                    sources=["psdaq/trigger/TimingTebData.pyx"],
+                    libraries = ['xtc','service','trigger'],
+                    include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,

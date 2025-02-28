@@ -1,5 +1,6 @@
 from psdaq.configdb.typed_json import cdict
 from psdaq.configdb.tsdef import *
+from psdaq.configdb.get_config import update_config
 import psdaq.configdb.configdb as cdb
 import sys
 import IPython
@@ -102,6 +103,7 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.DST",        0,'dstEnum')   # Device Scan Type <0:Line Scan, 1:Area Scan> [Must preceed SBV command]
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBV",        1,'binEnum')   # Vertical Binning <1|2> pixels
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SBH",        1,'binEnum')   # Horizontal Binning <1|2> pixels
+    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",        2,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.FFM",        0,'ffmEnum')   # Flat Field Mode <0:Disable, 1:Enable, 2:Reset, 3:Scan>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSB",        0,  'INT32')   # Contrast Offset <DN>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SSG", '0 f1.0','CHARSTR')   # Gain <0:System Gain, 1:Bottom Line, 2:Top Line>  f<gain>
@@ -109,7 +111,6 @@ def piranha4_cdict():
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SAM",        0,'offOnEnum') # AOI Mode <0:Off/Disable 1:Active/Enable>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLS",        0,'clsEnum')   # Camera Link Speed  <0:85MHz, 1:66MHz>
     top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.CLM",        1,'clmEnum')   # Camera Link Mode <0:Base 1:Med 2:Full>
-    top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SPF",        2,'pixEnum')   # Pixel Format <0:8 bits 1:10 bits 2:12 bits>
     # This is broken or I'm not doing it right:
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.ROI[0]",     1, 'UINT32')   # Flat field ROI first pixel <An int in range [1-2048], 1st < 2nd>
     #top.set("expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.ROI[1]",  2048, 'UINT32')   # Flat field ROI last  pixel <An int in range [1-2048], 2nd > 1st>
@@ -117,33 +118,26 @@ def piranha4_cdict():
     return top
 
 if __name__ == "__main__":
-    create = True
+
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
     args = cdb.createArgs().args
 
-    # These override the command line arguments, so left commented out
-    #args.name = 'tstpiranha4'
-    #args.segm = 0
-    #args.id = 'piranha4_serial1235'
-    #args.alias = 'BEAM'
-    #args.prod = True
-    #args.inst = 'tst'
-    #args.user = 'tstopr'
-    #args.password = '*****'
-
+    create = not args.update
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
-
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
-    mycdb.add_alias(args.alias)
-    mycdb.add_device_config('piranha4')
 
     top = piranha4_cdict()
     top.setInfo('piranha4', args.name, args.segm, args.id, 'No comment')
 
-    retval = mycdb.modify_device(args.alias, top)
-    if retval == 0:
-        print('Failed to store configuration')
-        sys.exit(1)
+    if args.update:
+        cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
+        top = update_config(cfg, top.typed_json(), args.verbose)
+
+    if not args.dryrun:
+        if create:
+            mycdb.add_alias(args.alias)
+            mycdb.add_device_config('piranha4')
+        mycdb.modify_device(args.alias, top)

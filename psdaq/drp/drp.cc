@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")          continue;  // DrpBase
         if (kwargs.first == "directIO")          continue;  // DrpBase
         if (kwargs.first == "pva_addr")          continue;  // DrpBase
-        if (para.detType == "opal") {
+        if (para.detType == "opal" || para.detType == "piranha4") {
             if (kwargs.first == "simxtc")            continue;  // Opal
             if (kwargs.first == "simxtc2")           continue;  // Opal
             if (kwargs.first == "simtime")           continue;  // Opal
@@ -141,6 +141,9 @@ int main(int argc, char* argv[])
         if (para.detType == "epixhremu") {
             if (kwargs.first == "xtcfile")           continue;  // EpixHRemu
             if (kwargs.first == "l1aOffset")         continue;  // EpixHRemu
+        } else if (para.detType == "jungfrauemu") {
+            if (kwargs.first == "imgArray")          continue;
+            if (kwargs.first == "segNums")           continue;
         }
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());

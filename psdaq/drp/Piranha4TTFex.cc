@@ -53,10 +53,6 @@ static std::vector<double> parab_fit(double* qwf, unsigned ix, unsigned len, dou
 static const unsigned no_shape[] = {0,0};
 
 Piranha4TTFex::Piranha4TTFex(Parameters* para) :
-  m_eventcodes_beam_incl (0),
-  m_eventcodes_beam_excl (0),
-  m_eventcodes_laser_incl(0),
-  m_eventcodes_laser_excl(0),
   m_sig_avg_sem          (Pds::Semaphore::FULL),
   m_ref_avg_sem          (Pds::Semaphore::FULL)
 {
@@ -109,23 +105,7 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
       int data_rank = name.rank();
       int data_type = name.type();
       printf("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
-#define GET_VECTOR(a,b)                                         \
-      if (strcmp(name.name(),"fex.eventcodes." #a "." #b)==0) { \
-        Array<uint8_t> t = descdata.get_array<uint8_t>(i);      \
-        std::vector<uint8_t>& v = m_eventcodes_##a##_##b;       \
-          unsigned len = t.num_elem();                          \
-          v.resize(len);                                        \
-          memcpy(v.data(),t.data(),len);                        \
-          printf("m_eventcodes_" #a "_" #b);                    \
-          for(unsigned k=0; k<len; k++)                         \
-            printf(" %u", v[k]);                                \
-          printf("\n");                                         \
-      }
-      GET_VECTOR(beam,incl);
-      GET_VECTOR(beam,excl);
-      GET_VECTOR(laser,incl);
-      GET_VECTOR(laser,excl);
-#undef GET_VECTOR
+
 #define GET_VECTOR(a)                                           \
       if (strcmp(name.name(),"fex." #a)==0) {                   \
         Array<double> t = descdata.get_array<double>(i);        \
@@ -141,17 +121,27 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
       GET_VECTOR(fir_weights);
       GET_VECTOR(calib_poly);
 #undef GET_VECTOR
+  }          
+   
+  m_beam_select.set_incl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.incl.eventcode") );
+  m_beam_select.set_incl_destination( descdata.get_value<int32_t> ("fex.beam.incl.destination:destEnum") );
+  m_beam_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.excl.eventcode") );
+  m_beam_select.set_excl_destination( descdata.get_value<int32_t> ("fex.beam.excl.destination:destEnum") );
 
-    {
+  m_laser_select.set_incl_eventcode  ( descdata.get_value<uint16_t>("fex.laser.incl.eventcode") );
+  m_laser_select.set_incl_destination( descdata.get_value<int32_t> ("fex.laser.incl.destination:destEnum") );
+  m_laser_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.laser.excl.eventcode") );
+  m_laser_select.set_excl_destination( descdata.get_value<int32_t> ("fex.laser.excl.destination:destEnum") );
+
+  {
       if (nameMap.find("fex.invert_weights:boolEnum") != nameMap.end()) {
-        int invert = descdata.get_value<int32_t>("fex.invert_weights:boolEnum");
-        if (invert) {
-          for(unsigned k=0; k<m_fir_weights.size(); k++)
-            m_fir_weights[k] = -1.*m_fir_weights[k];
-          printf("weights inverted\n");
-        }
+          int invert = descdata.get_value<int32_t>("fex.invert_weights:boolEnum");
+          if (invert) {
+              for(unsigned k=0; k<m_fir_weights.size(); k++)
+                  m_fir_weights[k] = -1.*m_fir_weights[k];
+              printf("weights inverted\n");
+          }
       }
-    }
   }
 
 #define GET_ENUM(a,b,c) {                                                \
@@ -210,15 +200,6 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
   m_prescale_image_counter = 0;
   m_prescale_averages_counter = 0;
 
-#ifdef DBUG
-  printf("incl_beam size %zd  excl_beam size %zd\n",
-         m_eventcodes_beam_incl.size(),
-         m_eventcodes_beam_excl.size());
-  printf("incl_laser size %zd  excl_laser size %zd\n",
-         m_eventcodes_laser_incl.size(),
-         m_eventcodes_laser_excl.size());
-#endif
-
 }
 
 void Piranha4TTFex::unconfigure()
@@ -252,27 +233,8 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
   //  EventInfo is in subframe 3
   const EventInfo& info = *reinterpret_cast<const EventInfo*>(subframes[3].data());
 
-
-  bool beam = true;
-  for(unsigned i=0; i<m_eventcodes_beam_incl.size(); i++)
-    beam &= info.eventCode(m_eventcodes_beam_incl[i]);
-  for(unsigned i=0; i<m_eventcodes_beam_excl.size(); i++)
-    beam &= !info.eventCode(m_eventcodes_beam_excl[i]);
-
-  bool laser = true;
-  for(unsigned i=0; i<m_eventcodes_laser_incl.size(); i++)
-    laser &= info.eventCode(m_eventcodes_laser_incl[i]);
-  for(unsigned i=0; i<m_eventcodes_laser_excl.size(); i++)
-    laser &= !info.eventCode(m_eventcodes_laser_excl[i]);
-
-#ifdef DBUG
-  { const uint32_t* p = reinterpret_cast<const uint32_t*>(&info);
-    printf("EventInfo [beam %c]: ",beam?'T':'F');
-    for(unsigned i=3; i<11; i++)
-      printf("%08x ",p[i]);
-    printf("\n");
-  }
-#endif
+  bool beam  = m_beam_select.select (info);
+  bool laser = m_laser_select.select(info);
 
   bool nobeam   = !beam;
   bool nolaser  = !laser;
@@ -310,7 +272,7 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
   //
   //  Extract signal ROI
   //
-  m_sig = extract_roi(f, m_sig_roi, m_pedestal);
+  std::vector<int> m_sig = extract_roi(f, m_sig_roi, m_pedestal);
 
   m_prescale_averages_counter++;
 
@@ -373,6 +335,17 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
   _monitor_raw_sig( sigd );
 
   if (m_ref_avg.size()==0) {
+      //  Fake a reference once
+      m_ref_avg_sem.take();
+      m_ref_avg.resize(refd.size());
+      double avg = 0;
+      for(unsigned i=0; i<refd.size(); i++)
+          avg += refd[i];
+      avg /= double(refd.size());
+      for(unsigned i=0; i<refd.size(); i++)
+          m_ref_avg[i] = avg;
+      m_ref_avg_sem.give();
+      //
       m_cut[_NOREF]++;
 #ifdef DBUG
       printf("-->NOREF\n");
@@ -785,6 +758,7 @@ void Piranha4TTFex::_monitor_flt_sig (std::vector<double>& a)
 
 bool   Piranha4TTFex::write_evt_image      ()
 {
+  return true;
   bool r = m_prescale_image_counter>=m_prescale_image;
   if (m_prescale_image_counter >= m_prescale_image)
     m_prescale_image_counter = 0;
@@ -792,8 +766,9 @@ bool   Piranha4TTFex::write_evt_image      ()
 }
 bool   Piranha4TTFex::write_evt_averages()
 {
-  bool r = m_prescale_averages_counter>=m_prescale_averages;
-  if (m_prescale_averages_counter >= m_prescale_averages)
+  return false;
+  bool r = (m_prescale_averages>0) && m_prescale_averages_counter>=m_prescale_averages;
+  if (r)
     m_prescale_averages_counter = 0;
   return r;
 }

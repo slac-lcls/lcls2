@@ -31,7 +31,7 @@ class TestFWView(FWView):
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D
             print('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
-            v = ag.random_standard((4,), mu=0, sigma=20, dtype=np.int)
+            v = ag.random_standard((4,), mu=0, sigma=20, dtype=np.int32)
             rs = QRectF(v[0], v[1], v[2]+100, v[3]+100)
             print('Set scene rect: %s' % str(rs))
             self.set_rect_scene(rs, set_def=change_def)

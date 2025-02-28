@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <linux/types.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 using namespace std;
 
@@ -22,7 +22,7 @@ int main (int argc, char **argv) {
   int           fd;
   const char*  dev = "/dev/datadev_0";
 
-  if (argc>2 || 
+  if (argc>2 ||
       (argc==2 && argv[1][0]=='-')) {
     printf("Usage: %s [<device>]\n", argv[0]);
     return(0);
@@ -40,11 +40,11 @@ int main (int argc, char **argv) {
     uint32_t buff_lo, buff_hi;
     dmaReadRegister(fd, 0x4000+8*i, &buff_lo);
     dmaReadRegister(fd, 0x4004+8*i, &buff_hi);
-    uint64_t buff = buff_hi; 
+    uint64_t buff = buff_hi;
     buff <<= 32;
     buff |= buff_lo;
     printf("%016llx%c", buff, (i&7)==7 ? '\n':' ');
   }
-    
+
   close(fd);
 }

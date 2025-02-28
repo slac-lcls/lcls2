@@ -8,6 +8,9 @@
 #include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
+namespace XtcData {
+  class TimeStamp;
+};
 namespace Pds {
   class EbDgram;
 };

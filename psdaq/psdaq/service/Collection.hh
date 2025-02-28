@@ -2,7 +2,7 @@
 
 #include <string>
 #include <zmq.h>
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 
 class ZmqContext
 {
@@ -60,8 +60,8 @@ public:
 protected:
     void handleRollcall(const nlohmann::json& msg);
     void handleAlloc(const nlohmann::json& msg);
-    void handleDealloc(const nlohmann::json& msg);
-    virtual nlohmann::json connectionInfo() = 0;
+    virtual void handleDealloc(const nlohmann::json& msg);
+    virtual nlohmann::json connectionInfo(const nlohmann::json& msg) = 0;
     virtual void connectionShutdown() {};
     virtual void handleConnect(const nlohmann::json& msg) = 0;
     virtual void handleDisconnect(const nlohmann::json& msg) {};
@@ -89,3 +89,5 @@ private:
 nlohmann::json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, nlohmann::json& body);
 nlohmann::json createAsyncErrMsg(const std::string& alias, const std::string& errMsg);
 nlohmann::json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg);
+
+bool checkResourceLimits();

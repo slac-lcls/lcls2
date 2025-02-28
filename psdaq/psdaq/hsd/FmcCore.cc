@@ -16,7 +16,7 @@ double FmcCore::clockRate() const
 { return double(_clock_count)/8192.*125.e6; }
 
 void FmcCore::cal_enable()
-{ _cmd |= (1<<0); }
+{ _cmd.setBit(0); }
 
 void FmcCore::cal_disable()
-{ _cmd &= ~(1<<0); }
+{ _cmd.clearBit(0); }

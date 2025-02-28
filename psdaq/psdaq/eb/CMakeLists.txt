@@ -5,7 +5,7 @@ find_package(Threads REQUIRED)
 
 add_library(utilities SHARED
   utilities.cc
-  IndexPool.cc
+#  IndexPool.cc
   Endpoint.cc
   EbLfLink.cc
   EbLfServer.cc
@@ -41,6 +41,7 @@ target_include_directories(contributor PUBLIC
 
 target_link_libraries(contributor
   utilities
+  prometheus-cpp::push
 )
 
 add_library(eventBuilder SHARED
@@ -59,6 +60,7 @@ target_include_directories(eventBuilder PUBLIC
 
 target_link_libraries(eventBuilder
   utilities
+  prometheus-cpp::push
 )
 
 add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
@@ -146,6 +148,7 @@ target_link_libraries(eblf_pingpong
 
 target_link_libraries(tstEbLfLink
   utilities
+  collection
   Threads::Threads
   rt
 )
@@ -194,15 +197,15 @@ install(TARGETS
   RUNTIME DESTINATION bin
 )
 
-add_executable(tstIndexPool    tstIndexPool.cc IndexPool.cc)
-
-target_include_directories(tstIndexPool PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-  $<INSTALL_INTERFACE:include>
-)
-
-target_link_libraries(tstIndexPool
-)
+#add_executable(tstIndexPool    tstIndexPool.cc IndexPool.cc)
+#
+#target_include_directories(tstIndexPool PUBLIC
+#  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#  $<INSTALL_INTERFACE:include>
+#)
+#
+#target_link_libraries(tstIndexPool
+#)
 
 add_executable(tstClocks    tstClocks.cc)
 

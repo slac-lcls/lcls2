@@ -112,7 +112,15 @@ void MonTracker::monitorEvent(const pvac::MonitorEvent& evt)
   // running on internal provider worker thread
   // minimize work here.
   // TODO: bound queue size
-  _monwork.push(shared_from_this(), evt);
+  try {
+    _monwork.push(shared_from_this(), evt);
+  } catch(std::bad_weak_ptr&) {
+    // There's a race between update events and the dtor being called that can
+    // cause these (?).  Since it occurs only at dtor time, it can be ignored.
+    //printf("*** Caught bad weak ptr exception\n");
+  } catch(std::exception& error) {
+    std::cerr<<"MonTracker::monitorEvent: Error: "<<error.what()<<"\n";
+  }
 }
 
 void MonTracker::process(const pvac::MonitorEvent& evt)

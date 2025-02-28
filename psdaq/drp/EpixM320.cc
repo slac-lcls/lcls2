@@ -26,12 +26,14 @@ namespace Drp {
     class EpixMPanelDef : public VarDef
     {
     public:
-        //        enum index { raw, aux, numfields };
-        enum index { raw, numfields };
+        enum { HeaderSize  = 48 };
+        enum { TrailerSize = 48 };
+        enum index { header, raw, trailer, numfields };
 
         EpixMPanelDef() {
-            ADD_FIELD(raw              ,UINT16,2);
-            //            ADD_FIELD(aux              ,UINT16,2);
+            ADD_FIELD(header,  UINT8,  2);
+            ADD_FIELD(raw,     UINT16, 3);
+            ADD_FIELD(trailer, UINT8,  2);
         }
     } epixMPanelDef;
 
@@ -102,14 +104,19 @@ static void sigHandler(int signal)
   ::exit(signal);
 }
 
+
 EpixM320::EpixM320(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
     m_env_sem     (Pds::Semaphore::FULL),
     m_env_empty   (true)
 {
+    // VC 0 is used with XilinxKcu1500Pgp4_10Gbps
+    // VC 1 is used with Lcls2EpixHrXilinxKcu1500Pgp4_10Gbps, which is the default
+    virtChan = 0;
+
     _init(para->detName.c_str());  // an argument is required here
 
-    m_descramble = false;
+    m_descramble = true;
 
     epix = this;
 
@@ -127,61 +134,56 @@ EpixM320::~EpixM320()
 {
 }
 
-void EpixM320::_connect(PyObject* mbytes)
+void EpixM320::_connectionInfo(PyObject* mbytes)
 {
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
 
-unsigned EpixM320::enable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
+unsigned EpixM320::enable(Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
     logging::debug("EpixM320 enable");
     monStreamDisable();
     return 0;
 }
 
-unsigned EpixM320::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
+unsigned EpixM320::disable(Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
     logging::debug("EpixM320 disable");
     monStreamEnable();
     return 0;
 }
 
-json EpixM320::connectionInfo()
+unsigned EpixM320::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
 {
-    return BEBDetector::connectionInfo();
-}
+    // copy the detName, detType, detId from the Config Names
+    Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
 
-unsigned EpixM320::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
-{
     // set up the names for L1Accept data
     // Generic panel data
     {
-        Alg alg("raw", 0, 0, 0);
-        // copy the detName, detType, detId from the Config Names
-        Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
-        NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
+        Alg alg("raw", 0, 1, 0);
+        m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
         logging::debug("Constructing panel eventNames src 0x%x",
-                       unsigned(nid));
-        Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
-                                                    configNames.detName(), alg,
-                                                    configNames.detType(),
-                                                    configNames.detId(),
-                                                    nid,
-                                                    m_para->detSegment);
-
-        eventNames.add(xtc, bufEnd, epixMPanelDef);
-        m_namesLookup[nid] = NameIndex(eventNames);
+                       unsigned(m_evtNamesId[0]));
+        Names& names = *new(xtc, bufEnd) Names(bufEnd,
+                                               configNames.detName(), alg,
+                                               configNames.detType(), configNames.detId(), m_evtNamesId[0], m_para->detSegment);
+        names.add(xtc, bufEnd, epixMPanelDef);
+        m_namesLookup[m_evtNamesId[0]] = NameIndex(names);
     }
 
     {
-        XtcData::Names&    names    = detector::configNames(configo);
-        XtcData::DescData& descdata = configo.desc_shape();
+        Names&    names    = detector::configNames(configo);
+        DescData& descdata = configo.desc_shape();
         for(unsigned i=0; i< names.num(); i++) {
-            XtcData::Name& name = names.get(i);
+            Name& name = names.get(i);
             if (strcmp(name.name(),"user.asic_enable")==0)
                 m_asics = descdata.get_value<uint32_t>(name.name());
         }
     }
+
+    // Rearm logging of certain messages
+    m_logOnce = true;
 
     return 0;
 }
@@ -195,10 +197,18 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
     EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
     ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
     //  This may get called multiple times, so we can't overwrite input we need
-    uint32_t* p = reinterpret_cast<uint32_t*>(ebh->next());
+    uint32_t* p = reinterpret_cast<uint32_t*>(ebh);
 
     if (m_descramble) {
-        // @todo: Descrambling will be done in software
+        //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
+        //  Padding has been removed as of 3/25/24
+        if (p[2]==0 && p[3]==0) {
+            // A zero timestamp means the data has not been rearranged.
+            for(unsigned i=1; i<5; i++) {
+                p[2*i+0] = p[4*i+0];
+                p[2*i+1] = p[4*i+1];
+            }
+        }
     }
     else {
         // Descrambling will be done in firmware
@@ -207,171 +217,140 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
 }
 
 //
-//  Subframes:  3:   ASIC0/1
+//  Subframes:  2:   ASIC0
 //                   0:  Timing
-//                   2:  ASIC0/1 2B interleaved
-//              4:   ASIC2/3
+//                   2:  ASIC0 2B interleaved
+//              3:   ASIC1
 //                   0:  Timing
-//                   2:  ASIC2/3 2B interleaved
+//                   2:  ASIC1 2B interleaved
+//              4:   ASIC2
+//                   0:  Timing
+//                   2:  ASIC2 2B interleaved
+//              5:   ASIC3
+//                   0:  Timing
+//                   2:  ASIC3 2B interleaved
 //
-void EpixM320::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> >& subframes)
 {
-    unsigned shape[MaxRank] = {0,0,0,0,0};
-
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
-    const unsigned elemRows     = 384;
-    const unsigned elemRowSize  = 192;
-    const unsigned timHdrSize   =  60; // timing header prepended to every ASIC segment
+    const size_t headerSize  = EpixMPanelDef::HeaderSize;
+    const auto   asicSize    = ElemRows*ElemRowSize*sizeof(uint16_t);
+    const size_t trailerSize = EpixMPanelDef::TrailerSize;
 
-    //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
-    shape[0] = elemRows*2; shape[1] = elemRowSize*2;
-    Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixMPanelDef::raw, shape);
+    unsigned hShape[MaxRank] = { NumAsics, 48, 0,0,0 };
+    unsigned fShape[MaxRank] = { NumAsics, ElemRows, ElemRowSize, 0,0 };
+    unsigned tShape[MaxRank] = { NumAsics, 48, 0,0,0 };
+    // Maintain this order to keep these contiguous:
+    Array<uint8_t>  aHeader  = cd.allocate<uint8_t> (EpixMPanelDef::header,  hShape);
+    Array<uint16_t> aFrame   = cd.allocate<uint16_t>(EpixMPanelDef::raw,     fShape);
+    Array<uint8_t>  aTrailer = cd.allocate<uint8_t> (EpixMPanelDef::trailer, tShape);
 
-    if (!m_descramble) {
-        if (subframes.size()<5) {
-            logging::error("Missing data: subframe size %d [5]\n",
-                           subframes.size());
-            xtc.damage.increase(XtcData::Damage::MissingData);
-            return;
-        }
-
-        if (0) {  // debug
-            uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
-            for(unsigned i=3; i<5; i++) {
-                std::vector< XtcData::Array<uint8_t> > ssf =
-                    _subframes(subframes[i].data(),subframes[i].shape()[0]);
-                for(unsigned j=0; j<ssf.size(); j++)
-                    printf("Subframe %u/%u  Num_Elem %lu\n",
-                           i, j, ssf[j].num_elem());
-            }
-        }
-
-        uint8_t* p = reinterpret_cast<uint8_t*>(aframe.data());
-        for(unsigned i=3; i<5; i++) {
-            std::vector< XtcData::Array<uint8_t> > ssf =
-                _subframes(subframes[i].data(),subframes[i].shape()[0]);
-            if (ssf.size()<3) {
-                logging::error("Missing data: subframe[%d] size %d [3]\n",
-                               i,ssf.size());
-                xtc.damage.increase(XtcData::Damage::MissingData);
-                return;
-            }
-
-            unsigned sz = elemRows*elemRowSize*4;
-
-            if (ssf[2].num_elem() < sz+2*elemRowSize*4) {
-                logging::error("Missing data: subframe[%d] num_elems %u [%u]\n",
-                               i,ssf[2].num_elem(),sz + 2*elemRowSize*4);
-                xtc.damage.increase(XtcData::Damage::MissingData);
-                return;
-            }
-
-            // skip the first row, drop the last row
-            memcpy(p,ssf[2].data()+elemRowSize*4,sz);
-            p += sz;
-        }
+    unsigned nSubframes = __builtin_popcount(m_asics)+2;
+    if (subframes.size() < nSubframes) {
+        logging::error("Missing data: subframe size %d vs %d expected\n",
+                        subframes.size(), nSubframes);
+        xtc.damage.increase(Damage::MissingData);
         return;
+    } else if (subframes.size() > nSubframes) {
+        if (m_logOnce) {
+            logging::warning("Ignoring extra data: subframe size %d vs %d expected\n",
+                             subframes.size(), nSubframes);
+            m_logOnce = false;
+        }
     }
-    //  Missing ASICS are padded with zeroes
-    m_asics = 0xf;
-
-    memset(aframe.data(),0,4*elemRows*elemRowSize*2);
 
     logging::debug("m_asics[%d] subframes.num_elem[%d]",m_asics,subframes.size());
 
     //  Validate timing headers
 
     //
-    //    A1   |   A3       (A1,A3) rotated 180deg
+    //    A1   |   A3
     // --------+--------
     //    A0   |   A2
     //
 
     //  Check which ASICs are in the streams
+    unsigned asic = 2;                  // Point to the first ASIC subframe
     unsigned q_asics = m_asics;
-    for(unsigned q=0; q<4; q++) {
+    for(unsigned q=0; q<NumAsics; q++) {
         if (q_asics & (1<<q)) {
-            if (subframes.size()<(q/2+4)) {
-                logging::error("Missing data from asic %d\n",q);
-                xtc.damage.increase(XtcData::Damage::MissingData);
+            if (subframes.size() < asic) {
+                logging::error("Missing data from asic %d\n", q);
+                xtc.damage.increase(Damage::MissingData);
                 q_asics ^= (1<<q);
             }
-            else if (subframes[q/2+3].num_elem()!=2*(56076+timHdrSize)) {
+            else if (subframes[asic].num_elem() != headerSize+asicSize+trailerSize) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                               subframes[q/2+3].num_elem()/2,56076+timHdrSize,q);
-                xtc.damage.increase(XtcData::Damage::MissingData);
+                               subframes[q+2].num_elem()/2, (headerSize+asicSize+trailerSize)/2, q);
+                xtc.damage.increase(Damage::MissingData);
                 q_asics ^= (1<<q);
             }
+            ++asic;                     // On to the next ASIC in the subframes
         }
     }
 
-    char dline[5*128+32];
-    //  Copy A0,A1 into the 2x2 buffer
-    for(unsigned iq=0; iq<2; iq++) {
-        unsigned q = iq;
-        if ((q_asics & (1<<q))==0)
+    asic = 2;                           // Point to the first ASIC subframes
+    for (unsigned q = 0; q < NumAsics; ++q) {
+        if ((q_asics & (1<<q))==0) {
+            //  Missing ASICS are padded with zeroes
+            memset(&aHeader (q, 0),    0, headerSize);
+            memset(&aFrame  (q, 0, 0), 0, asicSize);
+            memset(&aTrailer(q, 0),    0, trailerSize);
             continue;
-        logging::debug("asic[%d] nelem[%d]",q,subframes[q/2+3].num_elem()/2);
-        {
-            const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
-            { for(unsigned i=0; i<128; i++)
-                    sprintf(&dline[i*5]," %04x", u[i]);
-                logging::debug("asic[%d] sz[%d] [0:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
-            u += 192*144+timHdrSize;
-            { for(unsigned i=0; i<128; i++)
-                    sprintf(&dline[i*5]," %04x", u[i]);
-                logging::debug("asic[%d] sz[%d] [next:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
         }
-        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
-        u += timHdrSize;
-        u += 6*(iq&1);
-        for(unsigned row=0, e=0; row<elemRows; row++, e+=2*elemRowSize) {
-            uint16_t* dst = &aframe(row+elemRows,elemRowSize*(q>>1));
-            for(unsigned m=0; m<elemRowSize; m++) {
-                //  special fixup for the last two columns
-                if (row > 1 && (m&0x1f) > 0x1d)
-                    dst[m] = u[e+12*(m&0x1f)+(m>>5)-2*elemRowSize];
-                else
-                    dst[m] = u[e+12*(m&0x1f)+(m>>5)];
-            }
-        }
+
+        // Pack the header into the Xtc
+        auto header = subframes[asic].data();
+        memcpy(&aHeader(q, 0), header, headerSize);
+
+        // Pack the image data into the Xtc
+        auto src = reinterpret_cast<const uint16_t*>(subframes[asic].data() + headerSize);
+        auto dst = &aFrame(q, 0, 0);
+#if 1
+        _descramble(dst, src);
+#else
+        memcpy(dst, src, asicSize);
+#endif
+
+        // Pack the trailer into the Xtc
+        auto trailer = subframes[asic].data() + headerSize + asicSize;
+        memcpy(&aTrailer(q, 0), trailer, trailerSize);
+
+        ++asic;                         // On to the next ASIC in the subframes
     }
-    //  Copy A2,A3 into the 2x2 buffer (rotated 180)
-    for(unsigned iq=0; iq<2; iq++) {
-        unsigned q = iq+2;
-        if ((q_asics & (1<<q))==0)
-            continue;
-        logging::debug("asic[%d] nelem[%d]",q,subframes[q/2+3].num_elem()/2);
-        {
-            const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
-            { for(unsigned i=0; i<128; i++)
-                    sprintf(&dline[i*5]," %04x", u[i]);
-                logging::debug("asic[%d] sz[%d] [0:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
-            u += 192*144+timHdrSize;
-            { for(unsigned i=0; i<128; i++)
-                    sprintf(&dline[i*5]," %04x", u[i]);
-                logging::debug("asic[%d] sz[%d] [next:127] %s",q,subframes[q/2+3].num_elem()/2,dline); }
-        }
-        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q/2+3].data());
-        u += timHdrSize;
-        u += 12;
-        u += 6*(iq&1);
-        for(unsigned row=0, e=0; row<elemRows; row++, e+=2*elemRowSize) {
-            uint16_t* dst = &aframe(elemRows-1-row,elemRowSize*(1-(q>>1)));
-            for(unsigned m=0; m<elemRowSize; m++) {
-                //  special fixup for the last two columns
-                if (row > 1 && (m&0x1f) > 0x1d)
-                    dst[elemRowSize-1-m] = u[e+12*(m&0x1f)+(m>>5)-2*elemRowSize];
-                else
-                    dst[elemRowSize-1-m] = u[e+12*(m&0x1f)+(m>>5)];
+}
+
+void     EpixM320::_descramble(uint16_t* dst, const uint16_t* src) const
+{
+    // Reorder banks from:                 to:
+    // 18    19    20    21    22    23        3     7    11    15    19    23
+    // 12    13    14    15    16    17        2     6    10    14    18    22
+    //  6     7     8     9    10    11        1     5     9    13    17    21
+    //  0     1     2     3     4     5        0     4     8    12    16    20
+
+    const unsigned bankHeight = ElemRows / BankRows;
+    const unsigned bankWidth  = ElemRowSize / BankCols;
+    const unsigned hw         = bankWidth / 2;
+    const unsigned hb         = bankHeight * hw;
+
+    for (unsigned bankRow = 0; bankRow < BankRows; ++bankRow) {
+        for (unsigned row = 0; row < bankHeight; ++row) {
+            auto rowFix = row == 0 ? bankHeight - 1 : row - 1; // Shift rows up by one for ASIC f/w bug
+            for (unsigned bankCol = 0; bankCol < BankCols; ++bankCol) {
+                unsigned bank = BankRows * bankCol + bankRow;  // Given (column, row), reorder banks
+                for (unsigned col = 0; col < bankWidth; ++col) {
+                    //          (even cols w/ offset + row offset  + inc every 2 cols) * fill one pixel / bank + bank inc
+                    auto idx = (((col+1) % 2) * hb   + hw * rowFix + int(col / 2))     * NumBanks              + bank;
+                    *dst++ = src[idx];
+                }
             }
         }
     }
 }
 
-void     EpixM320::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)
+void     EpixM320::slowupdate(Xtc& xtc, const void* bufEnd)
 {
     this->Detector::slowupdate(xtc, bufEnd);
 }

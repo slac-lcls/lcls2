@@ -1,49 +1,43 @@
-import os
-import time
-import socket
-from prometheus_client import CollectorRegistry, Counter, push_to_gateway, Summary, Gauge
-from prometheus_client import start_http_server
-
+import getpass
 import logging
-logger = logging.getLogger(__name__)
+import os
+import socket
+import time
+from subprocess import Popen
 
-PUSH_INTERVAL_SECS  = 5
-PUSH_GATEWAY        = 'psdm03:9091'
-PROM_PORT_BASE      = 9200      # Used by the http exposer; Value should match DAQ's
+from prometheus_client import (CollectorRegistry, Counter, Gauge, Summary,
+                               push_to_gateway, start_http_server)
+from prometheus_client.exposition import tls_auth_handler
 
-registry = CollectorRegistry()
-metrics ={
-        'psana_smd0_read'       : ('Counter', 'Counting no. of events/batches/MB read by Smd0'),
-        'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB'),
-        'psana_smd0_wait_eb'    : ('Summary', 'time spent (s) waiting for EventBuilders'),
-        'psana_eb_sent'         : ('Counter', 'Counting no. of events/batches/MB'),
-        'psana_eb_filter'       : ('Counter', 'Counting no. of batches and time spent'),
-        'psana_eb_wait_smd0'    : ('Summary', 'time spent (s) waiting for Smd0'),
-        'psana_eb_wait_bd'      : ('Summary', 'time spent (s) waiting for BigData cores'),
-        'psana_bd_read'         : ('Counter', 'Counting no. of events processed by BigData'),
-        'psana_bd_just_read'    : ('Summary', 'time spent (s) reading bigdata'),
-        'psana_bd_gen_smd_batch': ('Summary', 'time spent (s) creating a batch of smd events'),
-        'psana_bd_gen_evt'      : ('Summary', 'time spent (s) creating an evt'),
-        'psana_bd_ana'          : ('Counter', 'time spent (s) in analysis fn on                 \
-                                    BigData core'),
-        'psana_timestamp'       : ('Gauge',   'Uses different labels (e.g. python_init,         \
-                                    first_event) to set the timestamp of that stage'),
-        'psana_bd_wait_eb'      : ('Summary', 'time spent (s) waiting for EventBuilder'),
-        }
+from psana import utils
+from psana.psexp.tools import mode
 
-for metric_name, (metric_type, desc) in metrics.items():
-    if metric_type == 'Counter':
-        registry.register(Counter(metric_name, desc, ['unit', 'endpoint']))
-    elif metric_type == 'Summary':
-        registry.register(Summary(metric_name, desc))
-    elif metric_type == 'Gauge':
-        registry.register(Gauge(metric_name, desc, ['checkpoint']))
+if mode == "mpi":
+    from mpi4py import MPI
+
+    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
+    size = MPI.COMM_WORLD.Get_size()
+else:
+    logger = utils.Logger()
+    size = 1
+
+PUSH_INTERVAL_SECS = 5
+
+if socket.gethostname().startswith("sdf"):
+    PUSH_GATEWAY = "https://172.24.5.157:9091"
+else:
+    PUSH_GATEWAY = "psdm03:9091"
+
+PROM_PORT_BASE = 9200  # Used by the http exposer; Value should match DAQ's
 
 HTTP_EXPOSER_STARTED = False
 
+
 def createExposer(prometheusCfgDir):
-    if prometheusCfgDir == '':
-        logging.warning('Unable to update Prometheus configuration: directory not provided')
+    if prometheusCfgDir == "":
+        logging.warning(
+            "Unable to update Prometheus configuration: directory not provided"
+        )
         return
 
     # Start only one server per session to avoid multiple scrapings per time point
@@ -56,51 +50,137 @@ def createExposer(prometheusCfgDir):
     while port < PROM_PORT_BASE + 100:
         try:
             start_http_server(port)
-            fileName = f'{prometheusCfgDir}/drpmon_{hostname}_{port - PROM_PORT_BASE}.yaml'
+            fileName = (
+                f"{prometheusCfgDir}/drpmon_{hostname}_{port - PROM_PORT_BASE}.yaml"
+            )
             if not os.path.exists(fileName):
                 try:
-                    with open(fileName, 'wt') as f:
-                        f.write(f'- targets:\n    - {hostname}:{port}\n')
+                    with open(fileName, "wt") as f:
+                        f.write(f"- targets:\n    - {hostname}:{port}\n")
                 except Exception as ex:
-                    logging.error(f'Error creating file {fileName}: {ex}')
+                    logging.error(f"Error creating file {fileName}: {ex}")
                     return False
             else:
-                pass            # File exists; no need to rewrite it
-            logging.info(f'Providing run-time monitoring data on port {port}')
+                pass  # File exists; no need to rewrite it
+            logger.info(f"Providing run-time monitoring data on port {port}")
             HTTP_EXPOSER_STARTED = True
             return True
         except OSError:
-            pass                # Port in use
+            pass  # Port in use
         port += 1
-    logging.error('No available port found for providing run-time monitoring')
+    logging.error("No available port found for providing run-time monitoring")
     return False
 
+
+def my_auth_handler(url, method, timeout, headers, data):
+    # TODO Certificate and key files are hard-coded
+    certfile = "/sdf/group/lcls/ds/ana/data/prom/promgwclient.pem"
+    keyfile = "/sdf/group/lcls/ds/ana/data/prom/promgwclient.key"
+    return tls_auth_handler(
+        url,
+        method,
+        timeout,
+        headers,
+        data,
+        certfile,
+        keyfile,
+        insecure_skip_verify=True,
+    )
+
+
 class PrometheusManager(object):
-    def __init__(self, jobid):
-        self.jobid = jobid
-        pass
+    registry = CollectorRegistry()
+    # Store available psana metrics by metric_type, description, and labelnames
+    metrics = {
+        "psana_smd0_read": ("Gauge", "Disk reading rate (MB/s) for smd0", ()),
+        "psana_smd0_rate": ("Gauge", "Processing rate by smd0 (kHz)", ()),
+        "psana_smd0_wait": ("Gauge", "time spent (s) waiting for EventBuilders", ()),
+        "psana_eb_rate": ("Gauge", "Processing rate by eb (kHz)", ()),
+        "psana_eb_wait_smd0": ("Gauge", "time spent (s) waiting for Smd0", ()),
+        "psana_eb_wait_bd": ("Gauge", "time spent (s) waiting for BigData cores", ()),
+        "psana_bd_rate": ("Gauge", "Processing rate by bd (kHz)", ()),
+        "psana_bd_read": ("Gauge", "Disk reading rate (MB/s) for bd", ()),
+        "psana_bd_ana_rate": ("Gauge", "User-analysis rate on bd (kHz)", ()),
+        "psana_bd_wait": ("Gauge", "time spent (s) waiting for EventBuilder", ()),
+    }
+
+    def __init__(self, job=None):
+        self.username = getpass.getuser()
+        self.rank = 0
+        if job is None:
+            default_job_id = os.environ.get("SLURM_JOB_ID", f"{self.username}")
+            self.job = default_job_id
+        else:
+            self.job = job
+
+    def set_rank(self, rank):
+        self.rank = rank
 
     def register(self, metric_name):
-        registry.register(metric_name)
+        self.registry.register(metric_name)
 
-    def push_metrics(self, e, from_whom=''):
+    def push_metrics(self, e):
+        # TODO: Certificate is read at every push, find a better way.
         while not e.isSet():
-            push_to_gateway(PUSH_GATEWAY, job='psana_pushgateway', grouping_key={'jobid': self.jobid, 'rank': from_whom}, registry=registry, timeout=None)
-            logger.debug('TS: %s PUSHED JOBID: %s RANK: %s e.isSet():%s'%(time.time(), self.jobid, from_whom, e.isSet()))
+            if socket.gethostname().startswith("sdf"):
+                push_to_gateway(
+                    PUSH_GATEWAY,
+                    job=self.job,
+                    grouping_key={"rank": self.rank},
+                    registry=self.registry,
+                    handler=my_auth_handler,
+                    timeout=None,
+                )
+            else:
+                push_to_gateway(
+                    PUSH_GATEWAY,
+                    job=self.job,
+                    grouping_key={"rank": self.rank},
+                    registry=self.registry,
+                    timeout=None,
+                )
+            logger.debug(
+                f"TS: %s PUSHED JOBID:{self.job} RANK:{self.rank} {e.isSet()=}"
+            )
             time.sleep(PUSH_INTERVAL_SECS)
+
+    def delete_all_metrics_on_pushgateway(self, n_ranks=0):
+        if not n_ranks:
+            n_ranks = size
+        for i_rank in range(n_ranks):
+            args = [
+                "curl",
+                "-k",
+                "-X",
+                "DELETE",
+                f"{PUSH_GATEWAY}/metrics/job/{self.job}/rank/{i_rank}",
+            ]
+            Popen(args)
+            logger.debug(f"CLEANUP {args}")
 
     def create_exposer(self, prometheus_cfg_dir):
         return createExposer(prometheus_cfg_dir)
 
-    @staticmethod
-    def get_metric(metric_name):
+    def create_metric(self, metric_name):
+        if metric_name in self.metrics:
+            metric_type, desc, labelnames = self.metrics[metric_name]
+            if metric_type == "Counter":
+                self.registry.register(Counter(metric_name, desc, labelnames))
+            elif metric_type == "Summary":
+                self.registry.register(Summary(metric_name, desc, labelnames))
+            elif metric_type == "Gauge":
+                self.registry.register(Gauge(metric_name, desc, labelnames))
+        else:
+            logger.info(
+                f"Warning: {metric_name} is not found in the list of available prometheus metrics"
+            )
+
+    def get_metric(self, metric_name):
         # get metric object from its name
         # NOTE that _created has to be appended to locate the key
-        if metric_name in registry._names_to_collectors:
-            collector = registry._names_to_collectors[metric_name]
+        if metric_name in self.registry._names_to_collectors:
+            collector = self.registry._names_to_collectors[metric_name]
         else:
-            collector = registry._names_to_collectors[f'{metric_name}_created']
+            self.create_metric(metric_name)
+            collector = self.registry._names_to_collectors[metric_name]
         return collector
-
-
-

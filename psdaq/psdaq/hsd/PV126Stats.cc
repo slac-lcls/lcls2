@@ -5,7 +5,8 @@
 #include "psdaq/hsd/PhaseMsmt.hh"
 #include "psdaq/hsd/Pgp.hh"
 #include "psdaq/hsd/QABase.hh"
-#include "psdaq/hsd/TprCore.hh"
+#include "psdaq/mmhw/TprCore.hh"
+using Pds::Mmhw::TprCore;
 
 #include "psdaq/epicstools/EpicsPVA.hh"
 using Pds_Epics::EpicsPVA;

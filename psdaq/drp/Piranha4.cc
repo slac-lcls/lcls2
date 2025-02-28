@@ -115,6 +115,7 @@ namespace Drp {
             pvac::ClientChannel   m_fex_pv;
             pvd::PVStructure::const_shared_pointer m_request;
             double                *m_vec;
+            pvd::shared_vector<const double> m_ttvec;
             const char            *m_ttpv;
         };
 
@@ -274,7 +275,7 @@ void Piranha4::_fatal_error(std::string errMsg)
     throw errMsg;
 }
 
-void Piranha4::_connect(PyObject* mbytes)
+void Piranha4::_connectionInfo(PyObject* mbytes)
 {
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
 #define MODEL(num,pixels) case num: m_pixels = pixels; break
@@ -293,15 +294,6 @@ void Piranha4::_connect(PyObject* mbytes)
     const auto bist(_string_from_PyDict(mbytes,"bist"));
     if (bist != "Good")
         logging::error("Piranha4 BiST error: %s", bist.c_str());
-}
-
-json Piranha4::connectionInfo()
-{
-    return BEBDetector::connectionInfo();
-
-    // Exclude connection info until cameralink-gateway timingTxLink is fixed
-    logging::error("Returning NO XPM link; implementation incomplete");
-    return json({});
 }
 
 unsigned Piranha4::_configure(XtcData::Xtc&        xtc,
@@ -367,7 +359,9 @@ TT::TT(Piranha4& d, Parameters* para) :
     m_para            (para),
     m_background_sem  (Pds::Semaphore::FULL),
     m_background_empty(true),
-    m_fex             (para)
+    m_fex             (para),
+    m_vec             (new double[6]),
+    m_ttvec           (m_vec,0,6) 
 {
     m_ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
     if (m_ttpv) {
@@ -493,17 +487,14 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
         xtc.damage.increase(Damage::UserDefined);
     }
     else if (result == Piranha4TTFex::VALID) {
-        //  Live feedback
-        m_vec = new double[6];
-        pvd::shared_vector<const double> ttvec(m_vec,0,6);
-        m_vec[0] = m_fex.amplitude();
-        m_vec[1] = m_fex.filtered_position();
-        m_vec[2] = m_fex.filtered_pos_ps();
-        m_vec[3] = m_fex.filtered_fwhm();
-        m_vec[4] = m_fex.next_amplitude();
-        m_vec[5] = m_fex.ref_amplitude();
         if (m_ttpv) {
-            m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
+            m_vec[0] = m_fex.amplitude();
+            m_vec[1] = m_fex.filtered_position();
+            m_vec[2] = m_fex.filtered_pos_ps();
+            m_vec[3] = m_fex.filtered_fwhm();
+            m_vec[4] = m_fex.next_amplitude();
+            m_vec[5] = m_fex.ref_amplitude();
+            m_fex_pv.put(m_request).set<const double>("value",m_ttvec).exec();
         }
         //  Insert the results
         CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_fexNamesId);
@@ -789,8 +780,7 @@ void TTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData:
         NameIndex&  index  = m_timinput.namesLookup[namesId];
         ShapesData& shapes = *m_timinput.shapesdata[namesId];
         DescData descdata(shapes, index);
-        EventInfo& info = *reinterpret_cast<EventInfo*>(subframes[3].data());
-        memcpy(info._seqInfo, descdata.get_array<uint8_t>(index.nameMap()["sequenceValues"]).data(), 18*sizeof(uint16_t));
+        EventInfo& info = *new(subframes[3].data()) EventInfo(descdata);
 #ifdef DBUG
         const uint16_t* p = (const uint16_t*)(info._seqInfo);
         printf("seq:");

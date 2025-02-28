@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
 find_package(xtcdata REQUIRED)
 find_package(PythonInterp 3.5 REQUIRED)

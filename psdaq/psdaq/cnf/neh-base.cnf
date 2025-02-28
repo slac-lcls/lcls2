@@ -28,6 +28,7 @@ procmgr_config = [
  { host: base_host, id:'pvrtmon-5',  port:'29464', flags:'s', env:epics_env, cmd:f'epics_exporter -H rix -I xpm-5 -M {prom_dir} -P DAQ:NEH:XPM:5 -G Us:RxLinkUp,Us:RxDspErrs DeadFrac'},
  { host: base_host, id:'pvrtmon-6',  port:'29465', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo -I xpm-6 -M {prom_dir} -P DAQ:NEH:XPM:6 -G Us:RxLinkUp,Us:RxDspErrs DeadFrac'},
  { host: base_host, id:'pvrtmon-0',  port:'29466', flags:'s', env:epics_env, cmd:f'epics_exporter -H tst -I xpm-0 -M {prom_dir} -P DAQ:NEH:XPM:0 -G Us:RxLinkUp,Us:RxDspErrs DeadFrac'},
+ { host: base_host, id:'pvrtmon-7',  port:'29469', flags:'s', env:epics_env, cmd:f'epics_exporter -H tst -I xpm-7 -M {prom_dir} -P DAQ:NEH:XPM:7 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
  { host: fee_host, id:'pvrtmon-10',  port:'29462', flags:'s', env:epics_env, cmd:f'epics_exporter -H tst -I xpm-10 -M {prom_dir} -P DAQ:NEH:XPM:10 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
  { host: fee_host, id:'pvrtmon-11',  port:'29468', flags:'s', env:epics_env, cmd:f'epics_exporter -H tst -I xpm-11 -M {prom_dir} -P DAQ:NEH:XPM:11 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
  { host: base_host, id:'pvrtmon-rix',  port:'29461', flags:'s', env:epics_env, cmd:f'epics_exporter -H rix -I xpm-3 -M {prom_dir} -P DAQ:NEH:XPM:3 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},

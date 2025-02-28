@@ -48,6 +48,11 @@ def selected_record(nrec):
        or (not nrec%1000)
 
 
+def inverse_dict(d):
+    assert type(d) == dict
+    return {v:k for k,v in d.items()}
+
+
 def info_dict(d, fmt='  %12s: %s', sep='\n', sepnext=13*' '):
     return (sep if sep[0]!=',' else '')\
          + sep.join([fmt % (k, info_dict(v, fmt=fmt, sep=sep+sepnext)\
@@ -64,18 +69,17 @@ def info_command_line(sep=' '):
 
 def info_command_line_parameters(parser):
     """Prints input arguments and optional parameters
-       from optparse import OptionParser
-       parser = OptionParser(...)
+       from optparse import ArgumentParser
+       parser = ArgumentParser(...)
     """
-    (popts, pargs) = parser.parse_args()
-    args = pargs                             # list of positional arguments
-    opts = vars(popts)                       # dict of options
-    defs = vars(parser.get_default_values()) # dict of default options
+    args = parser.parse_args()         # namespace of parameters
+    kwas = vars(args)                  # dict of parameters
+    defs = vars(parser.parse_args([])) # defaults only
 
     s = 'Command: ' + ' '.join(sys.argv)+\
         '\n  Argument list: %s\n  Optional parameters:\n' % str(args)+\
         '    <key>      <value>              <default>\n'
-    for k,v in opts.items():
+    for k,v in kwas.items():
         s += '    %s %s %s\n' % (k.ljust(10), str(v).ljust(20), str(defs[k]).ljust(20))
     return s
 

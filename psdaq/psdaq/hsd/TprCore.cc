@@ -5,6 +5,7 @@
 #include <time.h>
 
 using namespace Pds::HSD;
+using Pds::Mmhw::Reg;
 
 bool TprCore::rxPolarity() const {
   volatile uint32_t v = CSR;
@@ -59,11 +60,11 @@ void TprCore::setLCLSII() {
   CSR = v | (1<<4);
 }
 
-static double clockRate(volatile uint32_t& clockReg)
+static double clockRate(const Reg& clockReg)
 {
   timespec tvb;
   clock_gettime(CLOCK_REALTIME,&tvb);
-  volatile unsigned vvb = clockReg;
+  unsigned vvb = clockReg;
 
   usleep(10000);
 
@@ -75,18 +76,18 @@ static double clockRate(volatile uint32_t& clockReg)
   return 16.e-6*double(vve-vvb)/dt;
 }
 
-double TprCore::txRefClockRate() const { return clockRate(const_cast<volatile uint32_t&>(TxRefClks)); }
-double TprCore::rxRecClockRate() const { return clockRate(const_cast<volatile uint32_t&>(RxRecClks)); }
+double TprCore::txRefClockRate() const { return clockRate(TxRefClks); }
+double TprCore::rxRecClockRate() const { return clockRate(RxRecClks); }
 
 void TprCore::dump() const {
-  printf("SOFcounts: %08x\n", SOFcounts);
-  printf("EOFcounts: %08x\n", EOFcounts);
-  printf("Msgcounts: %08x\n", Msgcounts);
-  printf("CRCerrors: %08x\n", CRCerrors);
-  printf("RxRecClks: %08x\n", RxRecClks);
-  printf("RxRstDone: %08x\n", RxRstDone);
-  printf("RxDecErrs: %08x\n", RxDecErrs);
-  printf("RxDspErrs: %08x\n", RxDspErrs);
+    printf("SOFcounts: %08x\n", unsigned(SOFcounts));
+    printf("EOFcounts: %08x\n", unsigned(EOFcounts));
+    printf("Msgcounts: %08x\n", unsigned(Msgcounts));
+    printf("CRCerrors: %08x\n", unsigned(CRCerrors));
+    printf("RxRecClks: %08x\n", unsigned(RxRecClks));
+    printf("RxRstDone: %08x\n", unsigned(RxRstDone));
+    printf("RxDecErrs: %08x\n", unsigned(RxDecErrs));
+    printf("RxDspErrs: %08x\n", unsigned(RxDspErrs));
   { unsigned v = CSR;
     printf("CSR      : %08x", v); 
     printf(" %s", v&(1<<1) ? "LinkUp":"LinkDn");
@@ -97,9 +98,9 @@ void TprCore::dump() const {
     //  Acknowledge linkDownL bit
     const_cast<TprCore*>(this)->CSR = v & ~(1<<5);
   }
-  printf("RxDspErrs: %08x\n", RxDspErrs);
-  printf("TxRefClks: %08x\n", TxRefClks);
-  printf("BypDone  : %04x\n", (BypassCnts>> 0)&0xffff);
-  printf("BypResets: %04x\n", (BypassCnts>>16)&0xffff);
-  printf("Version  : %08x\n", Version);
+  printf("RxDspErrs: %08x\n", unsigned(RxDspErrs));
+  printf("TxRefClks: %08x\n", unsigned(TxRefClks));
+  printf("BypDone  : %04x\n", (unsigned(BypassCnts)>> 0)&0xffff);
+  printf("BypResets: %04x\n", (unsigned(BypassCnts)>>16)&0xffff);
+  printf("Version  : %08x\n", unsigned(Version));
 }

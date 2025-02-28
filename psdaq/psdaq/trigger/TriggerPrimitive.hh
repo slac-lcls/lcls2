@@ -2,7 +2,7 @@
 #define Pds_Trg_TriggerPrimitive_hh
 
 #include "psdaq/service/Dl.hh"
-#include "psdaq/service/json.hpp"
+#include <nlohmann/json.hpp>
 
 #include "rapidjson/document.h"
 

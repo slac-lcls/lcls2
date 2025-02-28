@@ -1,14 +1,15 @@
-if not platform: platform = '7'
+if not platform: platform = '0'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = f'{ld_lib_path}'
 
 collect_host = 'drp-srcf-mon001'
 
-groups = platform
-hutch, user = ('tst', 'tstopr')
+groups = platform+' 1'
+hutch, user = ('tmo', 'tmoopr')
+#hutch, user = ('tst', 'tstopr')
 auth = ' --user {:} '.format(user)
-url  = ' --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ '
+url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 
 #
@@ -81,11 +82,11 @@ procmgr_config = [
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
- {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
+ {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 2 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  {host: 'drp-srcf-cmp019', id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
- {host: 'drp-srcf-cmp029', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
+ {host: 'drp-srcf-cmp028', id:'timing_0',    flags:'spu', env:epics_env, cmd:f'{drp_cmd1} -l 0x1 -D ts'},
  {host: 'drp-srcf-cmp004', id:'txi_fim1_0',  flags:'spu', env:epics_env, cmd:drp_cmd0+' -l 0x20 -D wave8 -k epics_prefix=TXI:RP:W8:01'},
 ]
 

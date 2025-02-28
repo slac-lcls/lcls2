@@ -6,7 +6,7 @@ using namespace Pds::HSD;
 
 void I2cSwitch::dump() const
 {
-  printf("I2C Switch: %x\n", (unsigned)_control&0xff);
+  printf("I2C Switch: %x\n", unsigned(_control)&0xff);
 }
 
 void I2cSwitch::select(Port p)

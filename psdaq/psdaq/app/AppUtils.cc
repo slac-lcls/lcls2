@@ -54,7 +54,7 @@ std::string AppUtils::parse_paddr(unsigned v)
   if (v==0xffffffff)
     sprintf(buff,"XTPG");
   else if ((v>>24)==0xff) {
-    unsigned shelf = (v>>20)&0xf;
+    unsigned shelf = (v>>16)&0xff;
     unsigned port  = (v>> 0)&0xff;
     sprintf(buff,"XPM:%d:AMC%d-%d",shelf,port/7,port%7);
   }    

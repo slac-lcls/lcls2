@@ -73,7 +73,7 @@ class PvBuf(PvScalarBox):
         super(PvBuf,self).__init__(pvname, title, monBuf)
 
 class PvArrayTable(QtWidgets.QGroupBox):
-    def __init__( self, pvname, title, struct, vertical=False):
+    def __init__( self, pvname, title, struct, vertical=False, edit=False):
         super(PvArrayTable,self).__init__(title)
         self.struct = struct
         glo = QtWidgets.QGridLayout()
@@ -86,10 +86,17 @@ class PvArrayTable(QtWidgets.QGroupBox):
             for j in range(len(struct[ttl][1])):
                 x = j+1 if vertical else i
                 y = i   if vertical else j+1
-                w = QtWidgets.QLabel('')
+                w = QtWidgets.QLineEdit('-') if edit else QtWidgets.QLabel('')
                 glo.addWidget(w,x,y)
                 wl.append(w)
             self.widgets.append(wl)
+
+        if edit:
+            b = QtWidgets.QPushButton('Apply')
+            glo.addWidget(b,x+1,1)
+            x += 1
+            b.clicked.connect(self.put)
+
         glo.setRowStretch   (x+1,1)
         glo.setColumnStretch(y+1,1)
         self.setLayout(glo)
@@ -105,6 +112,19 @@ class PvArrayTable(QtWidgets.QGroupBox):
                         self.widgets[i][j].setText(QString(self.struct[v][2].format(w)))
                     else:
                         self.widgets[i][j].setText(QString(w))
+
+    def put(self):
+        d = {}
+        for i,v in enumerate(self.struct):
+            val = []
+            for j,w in enumerate(self.struct[v][1]):
+                #if len(self.struct[v])>2:
+                #    val.append(int(w[i][j].text()))
+                val.append(int(self.widgets[i][j].text()))
+                    # or float
+            d[v] = tuple(val)
+
+        self.pv.put(d)
 
 class PvJesd(object):
     def __init__( self, pvname, statWidgets, clockWidgets):
@@ -298,6 +318,8 @@ class Ui_MainWindow(object):
                             'Timing' )
             maintab.addTab( PvArrayTable(title+':MONPGP','Pgp',monPgp),
                             'PGP' )
+            maintab.addTab( PvArrayTable(title+':PGPCONFIG','Pgp Config',pgpConfig,edit=True),
+                            'PgpCfg' )
             maintab.addTab( HsdBufferSummary(title), 
                             'Buffers' )
             maintab.addTab( PvArrayTable(title+':MONRAWDET','Raw Buffers',monBufDetail,vertical=True), 

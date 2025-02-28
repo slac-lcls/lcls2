@@ -51,7 +51,7 @@ class TestGWViewImage(GWViewImage):
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D
             logger.info('%s: change scene rect %s' % (self._name, 'set new default' if change_def else ''))
-            v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int)
+            v = ag.random_standard((4,), mu=0, sigma=200, dtype=np.int32)
             rs = QRectF(v[0], v[1], v[2]+1000, v[3]+1000)
             logger.info('Set scene rect: %s' % str(rs))
             img = image_with_random_peaks((int(rs.height()), int(rs.width())))

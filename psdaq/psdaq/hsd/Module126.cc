@@ -1,20 +1,20 @@
 #include "psdaq/hsd/Module126.hh"
 #include "psdaq/hsd/ModuleBase.hh"
 
-#include "psdaq/mmhw/AxiVersion.hh"
+#include "psdaq/aes-stream-drivers/AxiVersion.h"
 #include "psdaq/mmhw/RegProxy.hh"
-#include "psdaq/hsd/TprCore.hh"
+#include "psdaq/mmhw/TprCore.hh"
 #include "psdaq/hsd/RxDesc.hh"
 #include "psdaq/hsd/ClkSynth.hh"
 #include "psdaq/hsd/Mmcm.hh"
-#include "psdaq/hsd/DmaCore.hh"
+//#include "psdaq/hsd/DmaCore.hh"
 #include "psdaq/hsd/PhyCore.hh"
 #include "psdaq/hsd/Pgp2b.hh"
 #include "psdaq/mmhw/Pgp2bAxi.hh"
 #include "psdaq/hsd/Pgp3.hh"
 #include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/RingBuffer.hh"
-#include "psdaq/mmhw/Xvc.hh"
+//#include "psdaq/mmhw/Xvc.hh"
 #include "psdaq/hsd/I2cSwitch.hh"
 #include "psdaq/hsd/LocalCpld.hh"
 #include "psdaq/hsd/FmcSpi.hh"
@@ -28,13 +28,14 @@
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/HdrFifo.hh"
 #include "psdaq/hsd/PhaseMsmt.hh"
-#include "psdaq/hsd/FlashController.hh"
+//#include "psdaq/hsd/FlashController.hh"
 #include "psdaq/hsd/OptFmc.hh"
 
-using Pds::Mmhw::AxiVersion;
+//using Pds::Mmhw::AxiVersion;
 using Pds::Mmhw::Pgp2bAxi;
 using Pds::Mmhw::Pgp3Axil;
 using Pds::Mmhw::RingBuffer;
+using Pds::Mmhw::TprCore;
 
 #include <string>
 #include <unistd.h>
@@ -52,12 +53,13 @@ namespace Pds {
   namespace HSD {
     class Module126::PrivateData {
     public:
-      void dumpPgp         () const;
+      void dumpPgp         (string) const;
       //
       //  Low level API
       //
     public:
       ModuleBase mbase;          // 0
+      uint32_t rsvd_to_0x200000  [(0x200000-sizeof(mbase))>>2];
       //  App registers
       QABase   base;             // 0x80000
       uint32_t rsvd_to_0x80800  [(0x800-sizeof(QABase))/4];
@@ -76,7 +78,7 @@ namespace Pds {
       FexCfg   fex_chan[4];      // 0x88000
       uint32_t rsvd_to_0x90000  [(0x8000-4*sizeof(FexCfg))/4];
 
-      //  Pgp (optional)  
+      //  Pgp (optional)
       //      Pgp2bAxi pgp[4];           // 0x90000
       //      uint32_t pgp_fmc1;
       //      uint32_t pgp_fmc2;
@@ -100,6 +102,12 @@ Module126* Module126::create(int fd)
   Pds::HSD::Module126* m = new Pds::HSD::Module126;
   m->p = reinterpret_cast<Pds::HSD::Module126::PrivateData*>(ptr);
   m->_fd = fd;
+
+  AxiVersion vsn;
+  axiVersionGet(fd,&vsn);
+  m->_vsn.FpgaVersion = vsn.firmwareVersion;
+  memcpy((void*)(&m->_vsn.dnaValue),&vsn.dnaValue,16);
+  memcpy((void*)(&m->_vsn.BuildStamp),&vsn.buildString,256);
 
   Pds::Mmhw::RegProxy::initialize(m->p, m->p->mbase.regProxy);
 
@@ -168,7 +176,7 @@ int Module126::read(uint32_t* data, unsigned data_size)
   return nw;
 }
 
-enum 
+enum
 {
         FMC12X_INTERNAL_CLK = 0,                                                /*!< FMC12x_init() configure the FMC12x for internal clock operations */
         FMC12X_EXTERNAL_CLK = 1,                                                /*!< FMC12x_init() configure the FMC12x for external clock operations */
@@ -179,7 +187,7 @@ enum
         FMC12X_VCXO_TYPE_2000MHZ = 2,                                   /*!< FMC12x_init() Vco on the card is 2.0GHz */
 };
 
-enum 
+enum
 {
         CLOCKTREE_CLKSRC_EXTERNAL = 0,                                                  /*!< FMC12x_clocktree_init() configure the clock tree for external clock operations */
         CLOCKTREE_CLKSRC_INTERNAL = 1,                                                  /*!< FMC12x_clocktree_init() configure the clock tree for internal clock operations */
@@ -193,7 +201,7 @@ enum
         CLOCKTREE_VCXO_TYPE_2400MHZ = 5                                                 /*!< FMC12x_clocktree_init() Vco on the card is 2.4GHz */
 };
 
-enum 
+enum
 {       // clock sources
         CLKSRC_EXTERNAL_CLK = 0,                                                /*!< FMC12x_cpld_init() external clock. */
         CLKSRC_INTERNAL_CLK_EXTERNAL_REF = 3,                   /*!< FMC12x_cpld_init() internal clock / external reference. */
@@ -228,17 +236,17 @@ enum
 
 void Module126::init()
 {
-  i2c_lock(I2cSwitch::PrimaryFmc); 
+  i2c_lock(I2cSwitch::PrimaryFmc);
   i2c().fmc_spi.initSPI();
   i2c_unlock();
-  i2c_lock(I2cSwitch::SecondaryFmc); 
+  i2c_lock(I2cSwitch::SecondaryFmc);
   i2c().fmc_spi.initSPI();
   i2c_unlock();
 }
 
 void Module126::fmc_init(TimingType timing)
 {
-// if(FMC12x_init(AddrSipFMC12xBridge, AddrSipFMC12xClkSpi, AddrSipFMC12xAdcSpi, AddrSipFMC12xCpldSpi, AddrSipFMC12xAdcPhy, 
+// if(FMC12x_init(AddrSipFMC12xBridge, AddrSipFMC12xClkSpi, AddrSipFMC12xAdcSpi, AddrSipFMC12xCpldSpi, AddrSipFMC12xAdcPhy,
 //                modeClock, cardType, GA, typeVco, carrierKC705)!=FMC12X_ERR_OK) {
 
 #if 1
@@ -272,7 +280,7 @@ void Module126::fmc_init(TimingType timing)
 
   {
     printf("FMC card A initializing\n");
-    i2c_lock(I2cSwitch::PrimaryFmc); 
+    i2c_lock(I2cSwitch::PrimaryFmc);
     if (i2c().fmc_spi.cpld_init())
       printf("cpld_init failed!\n");
     if (i2c().fmc_spi.clocktree_init(clksrc_clktree, vcotype, timing))
@@ -282,7 +290,7 @@ void Module126::fmc_init(TimingType timing)
 
   if (p->fmcb_core.present()) {
     printf("FMC card B initializing\n");
-    i2c_lock(I2cSwitch::SecondaryFmc); 
+    i2c_lock(I2cSwitch::SecondaryFmc);
     if (i2c().fmc_spi.cpld_init())
       printf("cpld_init failed!\n");
     if (i2c().fmc_spi.clocktree_init(clksrc_clktree, vcotype, timing))
@@ -305,16 +313,16 @@ int Module126::train_io(unsigned ref_delay)
   bool fmcb_present = p->fmcb_core.present();
 
   int rval = -1;
-  
+
   while(1) {
 
-    i2c_lock(I2cSwitch::PrimaryFmc); 
+    i2c_lock(I2cSwitch::PrimaryFmc);
     if (i2c().fmc_spi.adc_enable_test(Flash11))
       break;
     i2c_unlock();
 
     if (fmcb_present) {
-      i2c_lock(I2cSwitch::SecondaryFmc); 
+      i2c_lock(I2cSwitch::SecondaryFmc);
       if (i2c().fmc_spi.adc_enable_test(Flash11))
         break;
       i2c_unlock();
@@ -331,11 +339,11 @@ int Module126::train_io(unsigned ref_delay)
     adca_core.start_training();
 
     adca_core.dump_training();
-  
+
     if (fmcb_present)
       adcb_core.dump_training();
 
-    i2c_lock(I2cSwitch::PrimaryFmc); 
+    i2c_lock(I2cSwitch::PrimaryFmc);
     if (i2c().fmc_spi.adc_disable_test())
       break;
 
@@ -344,7 +352,7 @@ int Module126::train_io(unsigned ref_delay)
     i2c_unlock();
 
     if (fmcb_present) {
-      i2c_lock(I2cSwitch::SecondaryFmc); 
+      i2c_lock(I2cSwitch::SecondaryFmc);
       if (i2c().fmc_spi.adc_disable_test())
         break;
       if (i2c().fmc_spi.adc_enable_test(Flash11))
@@ -356,35 +364,35 @@ int Module126::train_io(unsigned ref_delay)
     if (fmcb_present)
       adcb_core.loop_checking();
 
-    i2c_lock(I2cSwitch::PrimaryFmc); 
+    i2c_lock(I2cSwitch::PrimaryFmc);
     if (i2c().fmc_spi.adc_disable_test())
       break;
     i2c_unlock();
 
     if (fmcb_present) {
-      i2c_lock(I2cSwitch::SecondaryFmc); 
+      i2c_lock(I2cSwitch::SecondaryFmc);
       if (i2c().fmc_spi.adc_disable_test())
         break;
       i2c_unlock();
     }
 
-    i2c_lock(I2cSwitch::PrimaryFmc); 
+    i2c_lock(I2cSwitch::PrimaryFmc);
     rval = 0;
     break;
   }
   i2c_unlock();
-  
+
   return rval;
 }
 
 void Module126::enable_test_pattern(TestPattern pat)
 {
   if (pat < 8) {
-    i2c_lock(I2cSwitch::PrimaryFmc); 
+    i2c_lock(I2cSwitch::PrimaryFmc);
     i2c().fmc_spi.adc_enable_test(pat);
     i2c_unlock();
     if (p->fmcb_core.present()) {
-      i2c_lock(I2cSwitch::SecondaryFmc); 
+      i2c_lock(I2cSwitch::SecondaryFmc);
       i2c().fmc_spi.adc_enable_test(pat);
       i2c_unlock();
     }
@@ -395,11 +403,11 @@ void Module126::enable_test_pattern(TestPattern pat)
 
 void Module126::disable_test_pattern()
 {
-  i2c_lock(I2cSwitch::PrimaryFmc); 
+  i2c_lock(I2cSwitch::PrimaryFmc);
   i2c().fmc_spi.adc_disable_test();
   i2c_unlock();
   if (p->fmcb_core.present()) {
-    i2c_lock(I2cSwitch::SecondaryFmc); 
+    i2c_lock(I2cSwitch::SecondaryFmc);
     i2c().fmc_spi.adc_disable_test();
     i2c_unlock();
   }
@@ -408,12 +416,12 @@ void Module126::disable_test_pattern()
 
 void Module126::enable_cal()
 {
-  i2c_lock(I2cSwitch::PrimaryFmc); 
+  i2c_lock(I2cSwitch::PrimaryFmc);
   i2c().fmc_spi.adc_enable_cal();
   i2c_unlock();
   p->fmca_core.cal_enable();
   if (p->fmcb_core.present()) {
-    i2c_lock(I2cSwitch::SecondaryFmc); 
+    i2c_lock(I2cSwitch::SecondaryFmc);
     i2c().fmc_spi.adc_enable_cal();
     i2c_unlock();
     p->fmcb_core.cal_enable();
@@ -422,12 +430,12 @@ void Module126::enable_cal()
 
 void Module126::disable_cal()
 {
-  i2c_lock(I2cSwitch::PrimaryFmc); 
+  i2c_lock(I2cSwitch::PrimaryFmc);
   p->fmca_core.cal_disable();
   i2c().fmc_spi.adc_disable_cal();
   i2c_unlock();
   if (p->fmcb_core.present()) {
-    i2c_lock(I2cSwitch::SecondaryFmc); 
+    i2c_lock(I2cSwitch::SecondaryFmc);
     p->fmcb_core.cal_disable();
     i2c().fmc_spi.adc_disable_cal();
     i2c_unlock();
@@ -437,34 +445,33 @@ void Module126::disable_cal()
 #define LPRINT(title,field) {                     \
       printf("\t%20.20s :",title);                \
       for(unsigned i=0; i<4; i++)                 \
-        printf(" %11x",pgp[i].field);             \
+          printf(" %11x",unsigned(pgp[i].field)); \
       printf("\n"); }
-    
+
 #define LPRBF(title,field,shift,mask) {                 \
       printf("\t%20.20s :",title);                      \
       for(unsigned i=0; i<4; i++)                       \
-        printf(" %11x",(pgp[i].field>>shift)&mask);     \
+          printf(" %11x",(unsigned(pgp[i].field)>>shift)&mask); \
       printf("\n"); }
-    
+
 #define LPRVC(title,field) {                      \
       printf("\t%20.20s :",title);                \
       for(unsigned i=0; i<4; i++)                 \
         printf(" %2x %2x %2x %2x",                \
-               pgp[i].field##0,                   \
-             pgp[i].field##1,                     \
-             pgp[i].field##2,                     \
-             pgp[i].field##3 );                   \
+               unsigned(pgp[i].field##0),                               \
+               unsigned(pgp[i].field##1),                               \
+               unsigned(pgp[i].field##2),                               \
+               unsigned(pgp[i].field##3) );                             \
     printf("\n"); }
 
 #define LPRFRQ(title,field) {                           \
       printf("\t%20.20s :",title);                      \
       for(unsigned i=0; i<4; i++)                       \
-        printf(" %11.4f",double(pgp[i].field)*1.e-6);   \
+          printf(" %11.4f",double(unsigned(pgp[i].field))*1.e-6);       \
       printf("\n"); }
-    
-void Module126::PrivateData::dumpPgp     () const
+
+void Module126::PrivateData::dumpPgp     (string buildStamp) const
 {
-  string buildStamp = mbase.version.buildStamp();
   if (buildStamp.find("pgp")==string::npos)
     return;
 
@@ -545,10 +552,9 @@ void Module126::dumpBase() const
 
 void Module126::dumpMap() const
 {
-  printf("AxiVersion     : %p\n", &p->mbase.version);
   printf("LocalCpld      : %p\n", &i2c().local_cpld);
   printf("FmcSpi         : %p\n", &i2c().fmc_spi);
-  printf("DmaCore        : %p\n", &p->mbase.dma_core);
+  //  printf("DmaCore        : %p\n", &p->mbase.dma_core);
   printf("TprCore        : %p\n", &p->mbase.tpr);
   printf("QABase         : %p\n", &p->base);
   printf("HdrFifo        : %p\n", &p->hdr_fifo[0]);
@@ -561,11 +567,11 @@ void Module126::setAdcMux(bool     interleave,
   if (interleave) {
     p->base.setChannels(channels);
     p->base.setMode( QABase::Q_ABCD );
-    i2c_lock(I2cSwitch::PrimaryFmc); 
+    i2c_lock(I2cSwitch::PrimaryFmc);
     i2c().fmc_spi.setAdcMux(interleave, channels&0x0f);
     i2c_unlock();
     if (p->fmcb_core.present()) {
-      i2c_lock(I2cSwitch::SecondaryFmc); 
+      i2c_lock(I2cSwitch::SecondaryFmc);
       i2c().fmc_spi.setAdcMux(interleave, (channels>>4)&0x0f);
       i2c_unlock();
     }
@@ -574,17 +580,17 @@ void Module126::setAdcMux(bool     interleave,
     if (p->fmcb_core.present()) {
       p->base.setChannels(channels & 0xff);
       p->base.setMode( QABase::Q_NONE );
-      i2c_lock(I2cSwitch::PrimaryFmc); 
+      i2c_lock(I2cSwitch::PrimaryFmc);
       i2c().fmc_spi.setAdcMux(interleave, (channels>>0)&0xf);
       i2c_unlock();
-      i2c_lock(I2cSwitch::SecondaryFmc); 
+      i2c_lock(I2cSwitch::SecondaryFmc);
       i2c().fmc_spi.setAdcMux(interleave, (channels>>4)&0xf);
       i2c_unlock();
     }
     else {
       p->base.setChannels(channels & 0xf);
       p->base.setMode( QABase::Q_NONE );
-      i2c_lock(I2cSwitch::PrimaryFmc); 
+      i2c_lock(I2cSwitch::PrimaryFmc);
       i2c().fmc_spi.setAdcMux(interleave, channels&0xf);
       i2c_unlock();
     }
@@ -598,7 +604,7 @@ void Module126::fmc_dump() {
       usleep(100000);
       printf("Clock [%i]: rate %f MHz\n", i, p->fmca_core.clockRate()*1.e-6);
     }
-  
+
   if (p->fmcb_core.present())
     for(unsigned i=0; i<9; i++) {
       p->fmcb_core.selectClock(i);
@@ -616,17 +622,17 @@ void Module126::fmc_clksynth_setup(TimingType timing)
 }
 
 void Module126::fmc_modify(int A, int B, int P, int R, int cp, int ab)
-{ 
-  i2c_lock(I2cSwitch::PrimaryFmc); 
+{
+  i2c_lock(I2cSwitch::PrimaryFmc);
   i2c().fmc_spi.clocktree_modify(A,B,P,R,cp,ab);
   i2c_unlock();
 }
 
 uint64_t Module126::device_dna() const
 {
-  uint64_t v = p->mbase.version.DeviceDnaHigh;
+  uint64_t v = version().DeviceDnaHigh;
   v <<= 32;
-  v |= p->mbase.version.DeviceDnaLow;
+  v |= version().DeviceDnaLow;
   return v;
 }
 
@@ -637,15 +643,15 @@ void Module126::set_local_id(unsigned bus)
 {
   unsigned id = ModuleBase::local_id(bus);
   p->base.localId = id;
-  p->mbase.version.UserConstants[0] = id;
+  //  p->version().UserConstants[0] = id;
 }
 
 unsigned Module126::remote_id() const { return p->base.partitionAddr; }
 
 void Module126::board_status()
 {
-  { AxiVersion& v = p->mbase.version;
-    printf("Axi Version [%p]: BuildStamp[%p]: %s\n", 
+  { const Pds::Mmhw::AxiVersion& v = version();
+    printf("Axi Version [%p]: BuildStamp[%p]: %s\n",
            &v, &v.BuildStamp[0], v.buildStamp().c_str());
     printf("Dna: %08x%08x  Serial: %08x%08x\n",
            v.DeviceDnaHigh,
@@ -694,29 +700,31 @@ void Module126::board_status()
          p->fmcb_core.powerGood() ? "up":"down");
 
   if (p->fmca_core.present()) {
-    i2c_lock(I2cSwitch::PrimaryFmc); 
+    i2c_lock(I2cSwitch::PrimaryFmc);
     i2c().i2c_sw_control.dump();
     printf("vtmona mfg:dev %x:%x\n", i2c().vtmona.manufacturerId(), i2c().vtmona.deviceId());
     i2c_unlock();
   }
 
   if (p->fmcb_core.present()) {
-    i2c_lock(I2cSwitch::SecondaryFmc); 
+    i2c_lock(I2cSwitch::SecondaryFmc);
     i2c().i2c_sw_control.dump();
     printf("vtmonb mfg:dev %x:%x\n", i2c().vtmona.manufacturerId(), i2c().vtmona.deviceId());
     i2c_unlock();
   }
 }
 
+#if 0
 void Module126::flash_write(const char* fname)
 {
   p->mbase.flash.write(fname);
 }
 
 FlashController& Module126::flash() { return p->mbase.flash; }
+#endif
 
 void Module126::clear_test_pattern_errors() {
-#if 0   // removed from hsd/v3 
+#if 0   // removed from hsd/v3
   for(unsigned i=0; i<4; i++) {
     p->fex_chan[i]._test_pattern_errors  = 0;
     p->fex_chan[i]._test_pattern_errbits = 0;
@@ -730,29 +738,28 @@ void Module126::setAdcMux(unsigned channels)
   if (p->fmcb_core.present()) {
     p->base.setChannels(0xff);
     p->base.setMode( QABase::Q_NONE );
-    i2c().i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+    i2c().i2c_sw_control.select(I2cSwitch::PrimaryFmc);
     i2c().fmc_spi.setAdcMux((channels>>0)&0xf);
-    i2c().i2c_sw_control.select(I2cSwitch::SecondaryFmc); 
+    i2c().i2c_sw_control.select(I2cSwitch::SecondaryFmc);
     i2c().fmc_spi.setAdcMux((channels>>4)&0xf);
   }
   else {
     p->base.setChannels(0xf);
     p->base.setMode( QABase::Q_NONE );
-    i2c().i2c_sw_control.select(I2cSwitch::PrimaryFmc); 
+    i2c().i2c_sw_control.select(I2cSwitch::PrimaryFmc);
     i2c().fmc_spi.setAdcMux(channels&0xf);
   }
   _sem_i2c.give();
 }
 
-const Pds::Mmhw::AxiVersion& Module126::version() const { return p->mbase.version; }
-Pds::HSD::TprCore&    Module126::tpr    () { return p->mbase.tpr; }
+Pds::Mmhw::TprCore&    Module126::tpr    () { return p->mbase.tpr; }
 
 void Module126::setRxAlignTarget(unsigned v) { p->mbase.setRxAlignTarget(v); }
 void Module126::setRxResetLength(unsigned v) { p->mbase.setRxResetLength(v); }
 void Module126::dumpRxAlign     () const { p->mbase.dumpRxAlign(); }
-void Module126::dumpPgp         () const { p->dumpPgp(); }
+void Module126::dumpPgp         () const { p->dumpPgp(version().buildStamp()); }
 
-void Module126::sample_init(unsigned length, 
+void Module126::sample_init(unsigned length,
                          unsigned delay,
                          unsigned prescale)
 {
@@ -760,9 +767,9 @@ void Module126::sample_init(unsigned length,
   p->base.samples  = length;
   p->base.prescale = (delay<<6) | (prescale&0x3f);
 
-  p->mbase.dma_core.init(32+48*length);
+  //  p->mbase.dma_core.init(32+48*length);
 
-  p->mbase.dma_core.dump();
+  //  p->mbase.dma_core.dump();
 
   //  p->dma.setEmptyThr(emptyThr);
   //  p->base.dmaFullThr=fullThr;
@@ -775,7 +782,7 @@ void Module126::sample_init(unsigned length,
     pollfd pfd;
     pfd.fd = _fd;
     pfd.events = POLLIN;
-    while(poll(&pfd,1,0)>0) { 
+    while(poll(&pfd,1,0)>0) {
       ::read(_fd, desc, sizeof(*desc));
       nflush++;
     }
@@ -783,7 +790,7 @@ void Module126::sample_init(unsigned length,
     delete desc;
     printf("done flushing [%u]\n",nflush);
   }
-    
+
   p->base.resetCounts();
 }
 
@@ -815,14 +822,14 @@ void Module126::start()
 void Module126::stop()
 {
   p->base.stop();
-  p->mbase.dma_core.dump();
+  //  p->mbase.dma_core.dump();
 }
 
 unsigned Module126::get_offset(unsigned channel)
 {
-  i2c_lock((channel&0x4)==0 ? 
+  i2c_lock((channel&0x4)==0 ?
            I2cSwitch::PrimaryFmc :
-           I2cSwitch::SecondaryFmc); 
+           I2cSwitch::SecondaryFmc);
   unsigned v = i2c().fmc_spi.get_offset(channel&0x3);
   i2c_unlock();
   return v;
@@ -830,9 +837,9 @@ unsigned Module126::get_offset(unsigned channel)
 
 unsigned Module126::get_gain(unsigned channel)
 {
-  i2c_lock((channel&0x4)==0 ? 
+  i2c_lock((channel&0x4)==0 ?
            I2cSwitch::PrimaryFmc :
-           I2cSwitch::SecondaryFmc); 
+           I2cSwitch::SecondaryFmc);
   unsigned v = i2c().fmc_spi.get_gain(channel&0x3);
   i2c_unlock();
   return v;
@@ -840,32 +847,32 @@ unsigned Module126::get_gain(unsigned channel)
 
 void Module126::set_offset(unsigned channel, unsigned value)
 {
-  i2c_lock((channel&0x4)==0 ? 
+  i2c_lock((channel&0x4)==0 ?
            I2cSwitch::PrimaryFmc :
-           I2cSwitch::SecondaryFmc); 
+           I2cSwitch::SecondaryFmc);
   i2c().fmc_spi.set_offset(channel&0x3,value);
   i2c_unlock();
 }
 
 void Module126::set_gain(unsigned channel, unsigned value)
 {
-  i2c_lock((channel&0x4)==0 ? 
+  i2c_lock((channel&0x4)==0 ?
            I2cSwitch::PrimaryFmc :
-           I2cSwitch::SecondaryFmc); 
+           I2cSwitch::SecondaryFmc);
   i2c().fmc_spi.set_gain(channel&0x3,value);
   i2c_unlock();
 }
 
 void Module126::clocktree_sync()
 {
-  i2c_lock(I2cSwitch::PrimaryFmc); 
+  i2c_lock(I2cSwitch::PrimaryFmc);
   i2c().fmc_spi.clocktree_sync();
   i2c_unlock();
 }
 
 void Module126::sync()
 {
-  i2c_lock(I2cSwitch::PrimaryFmc); 
+  i2c_lock(I2cSwitch::PrimaryFmc);
   i2c().fmc_spi.applySync();
   i2c_unlock();
 }
@@ -875,7 +882,7 @@ void* Module126::reg() { return (void*)p; }
 std::vector<Pgp*> Module126::pgp() {
   std::vector<Pgp*> v(0);
   while(1) {
-    string buildStamp = p->mbase.version.buildStamp();
+    string buildStamp = version().buildStamp();
     if (buildStamp.find("pgp")==string::npos)
       break;
     if (buildStamp.find("pgp3")==string::npos) {
@@ -893,7 +900,7 @@ std::vector<Pgp*> Module126::pgp() {
   return v;
 }
 
-Pds::Mmhw::Jtag* Module126::xvc() { return &p->mbase.xvc; }
+//Pds::Mmhw::Jtag* Module126::xvc() { return &p->mbase.xvc; }
 
 FexCfg* Module126::fex() { return &p->fex_chan[0]; }
 
@@ -944,7 +951,7 @@ I2c126& Module126::i2c() const
 
 void Module126::i2c_lock(I2cSwitch::Port port) const
 {
-  _sem_i2c.take(); 
+  _sem_i2c.take();
   const_cast<Module126*>(this)->i2c().i2c_sw_control.select(port);
 }
 void Module126::i2c_unlock() const { _sem_i2c.give(); }

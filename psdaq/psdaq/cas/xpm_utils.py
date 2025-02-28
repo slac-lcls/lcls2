@@ -2,7 +2,7 @@ import socket
 from psdaq.cas.pvedit import *
 
 def atcaIp(v):
-    return '10.0.{:}.{:}'.format((v>>16)&0xf,(v>>8)&0xff)
+    return '10.0.{:}.{:}'.format((v>>12)&0xf,100+((v>>8)&0xf))
 
 def hostName(v):
     ip = '172.21.{:d}.{:d}'.format((v>>8)&0xff,(v>>0)&0xff)
@@ -13,7 +13,7 @@ def hostName(v):
     return name
 
 def nameLinkXpm(v):
-    return ('XPM:{:}'.format((v>>20)&0xf), atcaIp(v))
+    return ('XPM:{:}'.format((v>>16)&0xff), atcaIp(v))
 
 def nameLinkDti(v):
     return ('DTI', atcaIp(v))
@@ -22,7 +22,7 @@ def nameLinkDrp(v):
     return ('TDetSim', hostName(v))
 
 def nameLinkHsd(v):
-    return ('HSD', '{:}.{:x}'.format(hostName(v),(v>>16)&0xff))
+    return ('HSD', '{:}.{:02X}'.format(hostName(v),(v>>16)&0xff))
 
 def nameLinkTDet(v):
     return ('TDetSim', hostName(v))
@@ -51,20 +51,29 @@ def nameLinkPiranha4(v):
 def nameLinkEpixM320(v):
     return ('ePixM320', hostName(v))
 
+def nameLinkEpixUHR(v):
+    return ('epixUHR', hostName(v))
+
+def nameLinkHREncoder(v):
+    return ('HREncoder', hostName(v))
+
 timDevType = {}
-timDevType['xpm']      = 0xff
-timDevType['dti']      = 0xfe
-timDevType['drp']      = 0xfd
-timDevType['hsd']      = 0xfc
-timDevType['tdet']     = 0xfb
-timDevType['wave8']    = 0xfa
-timDevType['opal']     = 0xf9
-timDevType['timetool'] = 0xf8
-timDevType['epixquad'] = 0xf7
-timDevType['epixhr2x2']= 0xf6
-timDevType['epix100']  = 0xf5
-timDevType['piranha4'] = 0xf4
-timDevType['epixm320'] = 0xf3
+timDevType['xpm']       = 0xff
+timDevType['dti']       = 0xfe
+timDevType['drp']       = 0xfd
+timDevType['hsd']       = 0xfc
+timDevType['tdet']      = 0xfb
+timDevType['wave8']     = 0xfa
+timDevType['opal']      = 0xf9
+timDevType['timetool']  = 0xf8
+timDevType['epixquad']  = 0xf7
+timDevType['epixhr2x2'] = 0xf6
+timDevType['epix100']   = 0xf5
+timDevType['piranha4']  = 0xf4
+timDevType['epixm320']  = 0xf3
+timDevType['epixUHR']   = 0xf2
+timDevType['hrencoder'] = 0xf1
+
 
 linkType = {}
 linkType[0xff] = nameLinkXpm
@@ -80,12 +89,16 @@ linkType[0xf6] = nameLinkEpixHR2x2
 linkType[0xf5] = nameLinkEpix100
 linkType[0xf4] = nameLinkPiranha4
 linkType[0xf3] = nameLinkEpixM320
+linkType[0xf2] = nameLinkEpixUHR
+linkType[0xf1] = nameLinkHREncoder
 
 def xpmLinkId(value):
     itype = (value>>24)&0xff
     names = None
     if itype in linkType:
         names = linkType[itype](value)
+    elif value==0x10080:
+        names = ('Fanout/','Loopback')
     else:
         names = ('undef','{:x}'.format(value))
     return names

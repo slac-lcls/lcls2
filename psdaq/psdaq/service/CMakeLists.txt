@@ -1,4 +1,5 @@
 find_package(PythonLibs REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 add_library(service SHARED
     SysClk.cc
@@ -21,11 +22,13 @@ target_include_directories(service PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
-    ${RAPIDJSON_INCLUDE_DIRS}
+    ${RapidJSON_INCLUDE_DIRS}
+    ${XTCDATA_INCLUDE_DIRS}
 )
 
 target_link_libraries(service PUBLIC
     xtcdata::xtc
+    psalg::utils
     dl
     rt
     ${PYTHON_LIBRARIES}
@@ -34,16 +37,19 @@ target_link_libraries(service PUBLIC
 add_library(collection SHARED
     Collection.cc
     kwargs.cc
+    range.cc
 )
 
 target_link_libraries(collection
     psalg::utils
     libzmq
+    nlohmann_json::nlohmann_json
 )
 
 target_include_directories(collection PUBLIC
      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
      $<INSTALL_INTERFACE:include>
+     ${ZeroMQ_INCLUDE_DIRS}
 )
 
 add_library(exporter SHARED
@@ -58,6 +64,7 @@ target_include_directories(exporter PUBLIC
 target_link_libraries(exporter PUBLIC
     psalg::utils
     prometheus-cpp::pull
+    prometheus-cpp::push
 )
 
 install(FILES

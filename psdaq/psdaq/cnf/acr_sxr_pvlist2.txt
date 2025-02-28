@@ -1,0 +1,38 @@
+# TO BYPASS GATEWAY EPICS_CA_ADDR_LIST=172.27.3.255:5068
+
+# Example PV list file for PvaDetector -f
+# If the first not-blank character encountered is a '#', the line is a comment
+# Blank lines are ignored
+# Leading and trailing whitespaces are trimmed
+# There should be one PV per line
+# Duplicate PVs are ignored
+# PVs are specified with the following format:
+#   [<alias>=][<provider>/]<PV name>[.<field>][,<firstDim>]
+# <provider> can be "pva" (the default) or "ca"
+
+  # This comment has preceding spaces
+
+# Undulator launch feedback pos/angle
+fbck_unds_1_xpos=ca/FBCK:UNDS:1:X_POSCUSBR[1](double)
+fbck_unds_1_ypos=ca/FBCK:UNDS:1:Y_POSCUSBR[1](double)
+fbck_unds_1_xang=ca/FBCK:UNDS:1:X_ANGCUSBR[1](double)
+fbck_unds_1_yang=ca/FBCK:UNDS:1:Y_ANGCUSBR[1](double)
+
+# Laser heater pulse energy
+lasr_in20_196_pwr=ca/LASR:IN20:196:PWRCUSBR[1](double)
+
+# Charge in injector
+bpms_in20_221_tmit=ca/BPMS:IN20:221:TMITCUSBR[1](double)
+
+# Charge after LTUS
+# bpms_ltus_820_tmit=ca/BPMS:LTUS:820:TMITCUSBR[1](double)
+
+# BC1 peak current
+blen_li21_265_aimax=ca/BLEN:LI21:265:AIMAXCUSBR[1](double)
+
+# BC2 peak current
+blen_li24_886_aimax=ca/BLEN:LI24:886:AIMAXCUSBR[1](double)
+
+# XTCAV Amplitude and Phase
+tcav_dmph_360_0_fb_fast_amp=ca/TCAV:DMPH:360:0:FB_FAST_AACTCUSBR[1](double)
+tcav_dmph_360_0_fb_fast_phase=ca/TCAV:DMPH:360:0:FB_FAST_PACTCUSBR[1](double)

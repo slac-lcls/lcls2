@@ -167,12 +167,12 @@ inline Pds::Entry* Pds::Entry::insertList(Entry* after)
 
 inline Pds::Entry* Pds::Entry::remove()
   {
-  register Pds::Entry* next = _flink;
-  register Pds::Entry* prev = _blink;
-  prev->_flink            = next;
-  next->_blink            = prev;
-  _flink                  = (Entry*) &_flink;
-  _blink                  = (Entry*) &_flink;
+  Pds::Entry* next = _flink;
+  Pds::Entry* prev = _blink;
+  prev->_flink     = next;
+  next->_blink     = prev;
+  _flink           = (Entry*) &_flink;
+  _blink           = (Entry*) &_flink;
   return this;
   }
 

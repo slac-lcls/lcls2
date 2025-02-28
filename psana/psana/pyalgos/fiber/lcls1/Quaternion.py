@@ -119,7 +119,7 @@ class Matrix :
                 [self.m10, self.m11, self.m12],\
                 [self.m20, self.m21, self.m22]]
 
-    def np_matrix(self, dtype=np.double) :
+    def np_matrix(self, dtype=np.float64) :
         return np.matrix(as_list, dtype, copy=True)
 
     def set_from_np_matrix(self, npm) :

@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 #include "GthEyeScan.hh"
 
@@ -38,7 +38,7 @@ void* scan_routine(void* arg)
   printf("gth[%u] @ %p\n",lane,gth[lane]);
 
   gth[lane]->enable(true);
-  if (gth[lane]->enabled()) 
+  if (gth[lane]->enabled())
     gth[lane]->scan(ofile, prescale, 0, lsparse, true);
   else
     printf("enable failed\n");
@@ -104,7 +104,7 @@ int main (int argc, char **argv) {
       if (pthread_create(&tid[i], &tattr, &scan_routine, &lane[i]))
         perror("Error creating scan thread");
     }
-  } 
+  }
 
   void* retval;
   for(unsigned i=0; i<8; i++)

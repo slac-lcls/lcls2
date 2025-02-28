@@ -1,4 +1,5 @@
 find_package(PythonLibs REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -8,8 +9,8 @@ add_library(hsd SHARED
   AdcSync.cc
   Adt7411.cc
   ClkSynth.cc
-  DmaCore.cc
-  FlashController.cc
+  #DmaCore.cc
+  #FlashController.cc
   FexCfg.cc
   FmcCore.cc
   FmcSpi.cc
@@ -23,7 +24,6 @@ add_library(hsd SHARED
   PhyCore.cc
   PvDef.cc
   QABase.cc
-  TprCore.cc
   Tps2481.cc
   #Validator.cc
 
@@ -42,6 +42,7 @@ target_include_directories(hsd PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
+    ${Readline_INCLUDE_DIR}
 )
 
 target_link_libraries(hsd
@@ -49,13 +50,15 @@ target_link_libraries(hsd
     xtcdata::xtc
     service
     mmhw
-    readline
+    ${Readline_LIBRARY}
     rt
+    nlohmann_json::nlohmann_json
 )
 
 add_executable(mempeek mempeek.cc)
 
 target_link_libraries(mempeek
+   mmhw
    dl
    rt
 )
@@ -106,10 +109,6 @@ target_link_libraries(hsd_sim
 
 #add_executable(hsd_validate hsd_validate.cc)
 
-#target_include_directories(hsd_validate PUBLIC
-#    ../pgp/aes-stream-drivers/include
-#)
-
 #target_link_libraries(hsd_validate
 #    Threads::Threads
 #    hsd
@@ -140,20 +139,7 @@ target_link_libraries(hsdRead
    rt
 )
 
-add_executable(hsd_promload promload.cc)
-target_include_directories(hsdRead PUBLIC
-     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-)
-
-target_link_libraries(hsd_promload
-   hsd
-   mmhw
-   rt
-)
-
-
 install(TARGETS hsd
-                hsd_promload
  		hsd126PVs
  		hsd134PVs
     ARCHIVE DESTINATION lib

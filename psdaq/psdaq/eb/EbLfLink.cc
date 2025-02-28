@@ -117,8 +117,8 @@ EbLfLink::~EbLfLink()
   _posting = 0;
 
   if (_credits != _depth)
-    fprintf(stderr, "%s:\n  *** _credits (%u) != _depth (%u)\n",
-            __PRETTY_FUNCTION__, _credits, _depth);
+    fprintf(stderr, "%s:\n  *** link %p, id %d, _credits (%u) != _depth (%u)\n",
+            __PRETTY_FUNCTION__, this, _id, _credits, _depth);
 }
 
 int EbLfLink::recvU32(uint32_t*   u32,
@@ -573,12 +573,41 @@ int EbLfLink::post(const void* buf,
   return rc;
 }
 
+static bool isDisconnected(EventQueue* eq)
+{
+  bool                  cmEntry;
+  struct fi_eq_cm_entry entry;
+  uint32_t              event;
+
+  // @todo: Should have a 3rd state: true, false and don't know (error)
+  return (eq->event(&event, &entry, &cmEntry) &&
+          cmEntry && (event == FI_SHUTDOWN));
+}
+
+static int dumpCqError(unsigned id, CompletionQueue* cq, const char* fn)
+{
+  struct fi_cq_err_entry compErr;
+  auto rc = cq->comp_error(&compErr);
+  if (rc > 0)
+  {
+    fprintf(stderr, "%s:\n  No CQ entries for ID %d:\n", fn, id);
+    cq->comp_error_dump(compErr);
+    rc = -compErr.err;                  // Return the real error
+  }
+  else
+    fprintf(stderr, "%s:\n  Error decoding Rx CQ error: rc %zd: %s\n",
+            fn, rc, cq->error());
+
+  return rc;
+}
+
 int EbLfLink::poll(uint64_t* data)      // Sample only, don't wait
 {
   int              rc;
   fi_cq_data_entry cqEntry;
+  auto             cq = _ep->rxcq();
 
-  rc = _ep->rxcq()->comp(&cqEntry, 1);
+  rc = cq->comp(&cqEntry, 1);
   if (postCompRecv(rc > 0 ? rc : 0))
   {
     fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
@@ -594,10 +623,20 @@ int EbLfLink::poll(uint64_t* data)      // Sample only, don't wait
 
   if (rc == -FI_EAGAIN)
     ++_timedOut;
-  else
-    fprintf(stderr, "%s:\n  No CQ entries for ID %d: rc %d: %s\n",
-            __PRETTY_FUNCTION__, _id, rc, _ep->rxcq()->error());
-
+  else if (isDisconnected(_ep->eq()))   // rc uninteresting if disconnected
+  {
+    fprintf(stderr, "%s:\n  Link ID %d is disconnected\n",
+            __PRETTY_FUNCTION__, _id);
+    rc = -FI_ENOTCONN;
+  }
+  else                                 // Notify of unexpected error
+  {
+    if (rc == -FI_EAVAIL)              // Return actual error instead of EAVAIL
+      rc = dumpCqError(_id, cq, __PRETTY_FUNCTION__);
+    else
+      fprintf(stderr, "%s:\n  No CQ entries for ID %d: rc %d: %s\n",
+              __PRETTY_FUNCTION__, _id, rc, cq->error());
+  }
   return rc;
 }
 
@@ -610,8 +649,8 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
   class Pending
   {
   public:
-    Pending(volatile uint64_t& pending) : _pending(pending) { ++_pending; }
-    ~Pending() { --_pending; }
+    Pending(volatile uint64_t& pending) : _pending(pending) { _pending += 1; }
+    ~Pending() { _pending -= 1; }
   private:
     volatile uint64_t& _pending;
   } pending(_pending);
@@ -645,8 +684,20 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
   }
   while ((rc == -FI_EAGAIN) || (rc == 0));
 
-  fprintf(stderr, "%s:\n  No CQ entries for ID %d: rc %d: %s\n",
-          __PRETTY_FUNCTION__, _id, rc, cq->error());
+  if (isDisconnected(_ep->eq()))        // rc uninteresting if disconnected
+  {
+    fprintf(stderr, "%s:\n  Link ID %d is disconnected\n",
+            __PRETTY_FUNCTION__, _id);
+    rc = -FI_ENOTCONN;
+  }
+  else                                 // Notify of unexpected error
+  {
+    if (rc == -FI_EAVAIL)              // Return actual error instead of EAVAIL
+      rc = dumpCqError(_id, cq, __PRETTY_FUNCTION__);
+    else
+      fprintf(stderr, "%s:\n  No CQ entries for ID %d: rc %d: %s\n",
+              __PRETTY_FUNCTION__, _id, rc, cq->error());
+  }
   return rc;
 }
 
@@ -654,31 +705,39 @@ ssize_t Pds::Eb::EbLfLink::postCompRecv(unsigned count)
 {
   ssize_t rc = 0;
 
-  // Subtract the number of credits consummed (count)
-  if (count <= _credits)  _credits -= count;
-  else
+  // The number of consumable credits (count) must be
+  // less than or equal to the number of credits available
+  if (count > _credits)
   {
-    fprintf(stderr, "%s:\n  Error: _credits (%u) - count (%u) < 0\n",
-            __PRETTY_FUNCTION__, _credits, count);
-    _credits = 0;
+    fprintf(stderr, "%s:\n  Error: Link ID %d credits consummed (%u) > available (%u)\n",
+            __PRETTY_FUNCTION__, _id, count, _credits);
+    count = _credits;
   }
 
+  _credits -= count;                    // Consume credits
+
   // Replenish credits
-  for (unsigned i = _credits; i < _depth; ++i)
+  unsigned retries = 0;
+  while (_credits < _depth)
   {
     if ((rc = _ep->recv_comp_data(this)) < 0)
     {
-      if (rc != -FI_EAGAIN)
-        fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
-                __PRETTY_FUNCTION__, _id, _ep->error());
-      break;
+      if ((rc != -FI_EAGAIN) || (++retries == 100000))
+        break;
+      else
+        usleep(10);
     }
     ++_credits;
+    retries = 0;
   }
 
-  if (_credits == 0)
-    fprintf(stderr, "%s:\n  Error: _credits is %u, count = %u\n",
-            __PRETTY_FUNCTION__, _credits, count);
+  if ((rc < 0) && (rc != -FI_EAGAIN))
+    fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
+            __PRETTY_FUNCTION__, _id, _ep->error());
+
+  if (_credits != _depth)
+    fprintf(stderr, "%s:\n  Error: Link ID %d credits: %u, max: %u, count: %u\n",
+            __PRETTY_FUNCTION__, _id, _credits, _depth, count);
 
   return rc != -FI_EAGAIN ? rc : 0;
 }

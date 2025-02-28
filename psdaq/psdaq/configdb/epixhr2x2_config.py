@@ -18,6 +18,7 @@ import numpy as np
 import IPython
 import datetime
 import logging
+import copy # deepcopy
 
 base = None
 pv = None
@@ -193,6 +194,19 @@ ordering['TriggerRegisters'] = ['RunTriggerEnable',
                                 'AutoTrigPeriod',
                                 'PgpTrigEn',]
 
+def _dict_compare(d1,d2,path):
+    for k in d1.keys():
+        if k in d2.keys():
+            if isinstance(d1[k],dict):
+                _dict_compare(d1[k],d2[k],path+'.'+k)
+            elif (d1[k] != d2[k]):
+                print(f'key[{k}] d1[{d1[k]}] != d2[{d2[k]}]')
+        else:
+            print(f'key[{k}] not in d1')
+    for k in d2.keys():
+        if k not in d1.keys():
+            print(f'key[{k}] not in d2')
+
 def gain_mode_map(gain_mode):
     mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
     trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
@@ -232,7 +246,7 @@ def pixel_mask_square(value0,value1,spacing,position):
     if position>=spacing**2:
         logging.error('position out of range')
         position=0;
-    out=np.zeros((ny,nx),dtype=np.int)+value0
+    out=np.zeros((ny,nx),dtype=np.int32)+value0
     position_x=position%spacing; position_y=position//spacing
     out[position_y::spacing,position_x::spacing]=value1
     return out
@@ -306,7 +320,7 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     print(f'buildStamp      [{buildStamp}]')
     print(f'gitHash         [{gitHash:x}]')
     #cbase.Core.enable.set(False)
-    
+
     #  Enable the environmental monitoring
     cbase.EpixHR.SlowAdcRegisters.enable.set(1)
     cbase.EpixHR.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
@@ -317,7 +331,7 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     if timebase=="119M":  # UED
         logging.warning('Using timebase 119M')
         base['bypass'] = 0x3f
-        base['clk_period'] = 1000/119. 
+        base['clk_period'] = 1000/119.
         base['msg_period'] = 238
         base['pcie_timing'] = True
 
@@ -341,6 +355,9 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
 
     # configure internal ADC
     cbase.EpixHR.InitHSADC()
+
+    #  store previously applied configuration
+    base['cfg'] = None
 
     time.sleep(1)
 #    epixhr2x2_internal_trigger(base)
@@ -475,7 +492,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
 
     epixHR = None
     if ('expert' in cfg and 'EpixHR' in cfg['expert']):
-        epixHR = cfg['expert']['EpixHR'].copy()
+        epixHR = copy.deepcopy(cfg['expert']['EpixHR'])
 
     #  Make list of enabled ASICs
     if 'user' in cfg and 'asic_enable' in cfg['user']:
@@ -546,7 +563,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
         for i in asics:
             arg[i+1] = 1
         logging.warning(f'Calling fnInitAsicScript(None,None,{arg})')
-        cbase.EpixHR.fnInitAsicScript(None,None,arg) 
+        cbase.EpixHR.fnInitAsicScript(None,None,arg)
 
         #  Remove the yml files
         for f in tmpfiles:
@@ -586,7 +603,7 @@ def config_expert(base, cfg, writePixelMap=True, secondPass=False):
                     setSaci(saci.test,'test',di)
                     setSaci(saci.trbit,'trbit',di)
                     setSaci(saci.Pulser,'Pulser',di)
-                    
+
                 saci.enable.set(False)
 
             logging.warning('SetAsicsMatrix complete')
@@ -662,6 +679,15 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     #  Translate user settings to the expert fields
     writePixelMap=user_to_expert(base, cfg, full=True)
+
+    if cfg==base['cfg']:
+        print('### Skipping redundant configure')
+        return base['result']
+
+    if base['cfg']:
+        print('--- config changed ---')
+        _dict_compare(base['cfg'],cfg,'cfg')
+        print('--- /config changed ---')
 
     #  Apply the expert settings to the device
     _stop(base)
@@ -764,6 +790,9 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
         logging.warning('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
         result.append( json.dumps(scfg[i]) )
 
+    base['cfg']    = copy.deepcopy(cfg)
+    base['result'] = copy.deepcopy(result)
+
     return result
 
 def epixhr2x2_unconfig(base):
@@ -831,6 +860,9 @@ def epixhr2x2_update(update):
     logging.warning('epixhr2x2_update')
     global ocfg
     global base
+
+    #  Queue full configuration next Configure transition
+    base['cfg'] = None
 
     _stop(base)
     ##
@@ -921,7 +953,7 @@ def epixhr2x2_external_trigger(base):
     cbase.TriggerRegisters.SetTimingTrigger(1)
 
 def epixhr2x2_internal_trigger(base):
-    #  Disable frame readout 
+    #  Disable frame readout
     mask = 0x3f if base['pcie_timing'] else 0x3b
     print('=== internal triggering with bypass {:x} ==='.format(mask))
     pbase = base['pci']

@@ -66,6 +66,10 @@ def random_one(shape=(40,60), dtype=np.float32):
 
 random_1 = random_one
 
+def random_0or1(shape=(40,60), p1=0.5, dtype=np.uint8):
+    """Returns numpy array of requested shape and type filled with random 0 and 1. probability of ones is p1 [0,1]"""
+    return np.select((random_one(shape=shape, dtype=np.float32)<p1,),\
+                     (np.ones(shape, dtype=dtype),), 0)
 
 def random_256(shape=(40,60), dtype=np.uint8):
     """Returns numpy array of requested shape and type filled with random numbers in the range [0,255]."""
