@@ -43,15 +43,15 @@ def argument_parser():
 
     d_dskwargs= None    # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
     d_det     = None    # 'tmoopal'
-    d_nrecs   = 1000    # number of records to collect and process
-    d_nrecs1  = 100     # number of records to process at 1st stage
+    d_nrecs   = 500     # number of records to collect and process
+    d_nrecs1  = 50      # number of records to process at 1st stage
     d_dirrepo = DIR_REPO  # '<DIR_ROOT>/detector/calib2'
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
     d_stepmax = 1
     d_evskip  = 0       # number of events to skip in the beginning of each step
-    d_events  = 1000    # number of events to process from the beginning of each step
+    d_events  = 1000000 # number of events to process from the beginning of each step
     d_datbits = 0x3fff
     d_dirmode = 0o2775
     d_filemode= 0o664
@@ -69,7 +69,7 @@ def argument_parser():
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
     d_deploy  = False
     d_tstamp  = None    # 20180910111049 or run number <10000
-    d_version = 'V2023-04-20'
+    d_version = 'V2024-02-28'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_plotim  = 0
