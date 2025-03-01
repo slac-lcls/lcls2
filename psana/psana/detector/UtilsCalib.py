@@ -511,13 +511,14 @@ def add_metadata_kwargs(orun, odet, **kwa):
 
     v = getattr(odet.raw,'_segment_ids', None) # odet.raw._segment_ids()
     segment_ids = None if v is None else v()
+    shortname = detector_name_short(odet.raw._uniqueid)
 
     kwa['exp']        = orun.expt
     kwa['experiment'] = orun.expt
-    #kwa['detector']  = odet.raw._uniqueid
+    kwa['detector']   = shortname
     #kwa['uniqueid']  = odet.raw._uniqueid
     kwa['longname']   = odet.raw._uniqueid
-    kwa['shortname']  = detector_name_short(odet.raw._uniqueid)
+    kwa['shortname']  = shortname
     kwa['detname']    = odet.raw._det_name
     kwa['dettype']    = odet.raw._dettype
     kwa['time_sec']   = tvalid_sec
@@ -569,9 +570,11 @@ def deploy_constants(dic_consts, **kwa):
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
-#                 'pixel_max'   : fmt_max,
-#                 'pixel_min'   : fmt_min,
+                 'pixel_max'   : fmt_max,
+                 'pixel_min'   : fmt_min,
                  'status_extra': fmt_status}
+
+    list_keys= ('experiment', 'run_orig', 'run', 'detname', 'shortname', 'ctype', 'tsshort', 'dettype', 'version')
 
     if repoman is None:
        repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
@@ -602,7 +605,7 @@ def deploy_constants(dic_consts, **kwa):
         _ = kwa.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
         _ = kwa.pop('det',None)
 
-        logger.info('DEPLOY metadata: %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
+        logger.debug('DEPLOY metadata: %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
 
         data = data_from_file(fname, ctype, dtype, True)
         logger.info(info_ndarr(data, 'constants loaded from file', last=10))
@@ -610,6 +613,7 @@ def deploy_constants(dic_consts, **kwa):
         if deploy:
             detname = kwa['longname']
             resp = add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+            logger.info('partial metadata: %s' % str(up.dict_filter(kwa, list_keys=list_keys)))
             if resp:
                 #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
                 logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
@@ -645,6 +649,7 @@ def pedestals_calibration(parser):
   dpo = None
   nevtot = 0
   nevsel = 0
+  nnones = 0
   nsteptot = 0
   break_loop = False
   dettype = None
@@ -720,7 +725,8 @@ def pedestals_calibration(parser):
         raw = odet.raw.raw(evt)
 
         if raw is None:
-            logger.info('==== Ev:%04d raw is None' % (ievt))
+            logger.debug('==== Ev:%04d raw is None' % (ievt))
+            nnones += 1
             continue
 
         nevsel += 1
@@ -729,8 +735,8 @@ def pedestals_calibration(parser):
         dt   = tsec - tdt
         tdt  = tsec
         if selected_record(ievt+1, events):
-            ss = 'run[%d] %d  step %d  events total/run/step/selected: %4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
-                 (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, time()-t0_sec, dt)
+            ss = 'run[%d] %d  step %d  events total/run/step/selected/none: %4d/%4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
+                 (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, nnones, time()-t0_sec, dt)
             logger.info(ss)
 
         status = dpo.event(raw,ievt)
@@ -744,12 +750,12 @@ def pedestals_calibration(parser):
                                      (ievt, orun.runnum, istep))
       if True:
           dpo.summary()
-          #ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
-          ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
+          ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
+          #ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
           arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
           arr_max, arr_min = dpo.constants_max_min()
-          #consts = (arr_av1, arr_rms, arr_sta, arr_max, arr_min)
-          consts = (arr_av1, arr_rms, arr_sta)
+          consts = (arr_av1, arr_rms, arr_sta, arr_max, arr_min)
+          #consts = (arr_av1, arr_rms, arr_sta)
 
           logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
                       info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
