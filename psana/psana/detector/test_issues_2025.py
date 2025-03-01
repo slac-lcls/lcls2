@@ -26,24 +26,29 @@ def issue_2025_mm_dd():
 def issue_2025_01_29():
     """test for common mode in det.raw.calib/image implementation for archon
        datinfo -k exp=rixx1016923,run=119 -d archon
-       datinfo -k exp=rixx1017523,run=393 -d archon
+       datinfo -k exp=rixx1017523,run=395 -d archon - (1, 4800) 20kevts
+       datinfo -k exp=rixx1017523,run=396 -d archon   (600, 4800) 1836 evts
+
+      rhttps://pswww.slac.stanford.edu/lgbk/lgbk/rixx1017523/eLog
+      ixx1017523, DARK runs: 393, 394, 396, 397, 401, 402, 403, 404, 406, 410, 411
     """
-    #ds, orun, det = ds_run_det(exp='rixc00121', run=140, detname='archon', dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc')
     import numpy as np
     from time import time
     from psana.detector.NDArrUtils import info_ndarr
     from psana import DataSource
     from psana.detector.UtilsGraphics import gr, fleximage
 
-    #ds = DataSource(exp='rixc00121',run=154, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1200,4800), >200 evts
+    #ds, orun, det = ds_run_det(exp='rixc00121', run=140, detname='archon', dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc')
+    #ds = DataSource(exp='rixc00121',run=154, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw shape=(1200,4800), >200 evts
     #ds = DataSource(exp='rixx1016923',run=118, detectors=['archon'])
     #ds = DataSource(exp='rixx1016923',run=119, detectors=['archon'])
-    ds = DataSource(exp='rixx1017523',run=393, detectors=['archon'])
+    #ds = DataSource(exp='rixx1017523',run=395, detectors=['archon']) # (1, 4800)
+    ds = DataSource(exp='rixx1017523',run=396, detectors=['archon']) # (600, 4800)
     orun = next(ds.runs())
     det = orun.Detector('archon', gainfact=2, cmpars=(1,0,0))
 
     flimg = None
-    events = 10
+    events = 3
     evsel = 0
 
     for nev, evt in enumerate(orun.events()):
@@ -66,8 +71,8 @@ def issue_2025_01_29():
        #img.shape = (1,4800)
 
        #img, title  = det.raw.raw(evt), 'raw'
-       #img, title  = det.raw.image(evt), 'image'
        img, title  = det.raw.calib(evt), 'calib'
+       #img, title  = det.raw.image(evt), 'image'
 
        #img = (raw.copy()/1000).astype(dtype=np.float64) # np.uint16)
        #img = clb
