@@ -121,10 +121,12 @@ def segment_geometry(**kwa):
         return cspad2x1_wpc if wpc else cspad2x1_one
     elif segname=='ARCHON:V1':
         from psana.pscalib.geometry.SegGeometryArchonV1 import SegGeometryArchonV1
-        return SegGeometryArchonV1(detector=kwa.get('detector', None))
+        return SegGeometryArchonV1(detector=kwa.get('detector', None),
+                                   shape=kwa.get('shape', None))
     elif segname=='ARCHON:V2':
         from psana.pscalib.geometry.SegGeometryArchonV2 import SegGeometryArchonV2
-        return SegGeometryArchonV2(detector=kwa.get('detector', None))
+        return SegGeometryArchonV2(detector=kwa.get('detector', None),
+                                   shape=kwa.get('shape', None))
     #elif segname=='ANDOR3D:V1': return seg_andor3d # SegGeometryMatrixV1()
     else:
         logger.debug('segment "%s" gometry IS NOT IMPLEMENTED' % segname)
@@ -133,12 +135,29 @@ def segment_geometry(**kwa):
 
 class SegGeometryStore():
     def __init__(sp):
-        pass
+        sp.dict_dets = {} # {<det-object>:{segname:<seg_geo-object>}}
+
+    def create_single_segment_geometry(sp, **kwa):
+        """returns segment_geometry singleton for detector and segname
+           - update_seggeo - enforce update for segment_geometry
+        """
+        detector = kwa.get('detector', None)
+        segname  = kwa.get('segname', None)
+        update   = kwa.get('update_seggeo', False)
+        logger.debug('segname: %s det: %s' % (segname, str(detector)))
+        if segname is None: return None
+        dict_segs = sp.dict_dets.get(detector, {})
+        seg_geo = dict_segs.get(segname, None)
+        if seg_geo is None or update:
+            seg_geo = segment_geometry(**kwa)
+            dict_segs[segname] = seg_geo
+            sp.dict_dets[detector] = dict_segs
+        return seg_geo
 
     def Create(sp, **kwa):
-        return segment_geometry(**kwa)
+        return sp.create_single_segment_geometry(**kwa)
+        #return segment_geometry(**kwa)
 
-
-sgs = SegGeometryStore() # singleton
+sgs = SegGeometryStore()
 
 # EOF - See test_SegGeometryStore.py
