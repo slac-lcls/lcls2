@@ -1,13 +1,13 @@
 
 #import sys
+import numpy as np
+from time import time
 import logging
 logger = logging.getLogger(__name__)
 from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array2d
-#from psana.detector.NDArrUtils import info_ndarr #, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 from psana.detector.areadetector import AreaDetectorRaw, sgs
-import numpy as np
-from time import time
+#from psana.detector.NDArrUtils import info_ndarr #, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
 
 class archon_raw_1_0_0(AreaDetectorRaw):
@@ -26,22 +26,11 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         self._seg_geo = sgs.Create(segname='ARCHON:V1', detector=self)
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-archon.data'
         self._geo = self._det_geo()
-        #print('XXX archon_raw_1_0_0._cmpars: %s' % str(self._cmpars))
-        #print('XXX archon_raw_1_0_0._gainfact: %.3f' % self._gainfact)
-        #print('XXX calibconst _gain_factor(): %s' % str(self._gain_factor()))
-        #print('XXX dir(_seg_geo):', dir(self._seg_geo))
-        #self._mask_arr = self._seg_geo.mask_fake()
-        #self._ixy = self._seg_geo.get_seg_xy_maps_pix_with_offset()
-        #print('XXX dir(_seg_geo):', dir(self._seg_geo))
-        #print(info_ndarr(self._ixy[0], 'X pixmap:'))
-        #print(info_ndarr(self._ixy[1], 'Y pixmap:'))
-        #sys.exit('TEST EXIT')
 
     def _common_mode_v0(self, frame):
-        # courtesy of Phil Hart
+        # courtesy of Phil Hartz
         # this is slow because of the python loops, but the
         # camera readout is <1Hz with many rows, so perhaps OK? - cpo
-        #print('XXX in archon_raw_1_0_0._common_mode')
         logger.debug('_common_mode_v0')
         bankSize = self._totPixelsPerBank
         rows = frame.shape[0]
@@ -55,7 +44,6 @@ class archon_raw_1_0_0(AreaDetectorRaw):
 
     def _common_mode_v1(self, frame):
         """the same as above with short indices and test for median"""
-        #print('XXX in archon_raw_1_0_0._common_mode_v1')
         logger.debug('_common_mode_v1')
         sf, st = self._fakePixelsPerBank, self._totPixelsPerBank # = 264, 36, 300
         rows = frame.shape[0]
@@ -69,7 +57,6 @@ class archon_raw_1_0_0(AreaDetectorRaw):
     def _common_mode(self, frame):
         """median for entire array of fake pixels, axis=1"""
         logger.debug('_common_mode')
-        #print('XXX in archon_raw_1_0_0._common_mode')
         t0_sec = time()
         sr, sf, st = self._realPixelsPerBank, self._fakePixelsPerBank, self._totPixelsPerBank # = 264, 36, 300
         rows = frame.shape[0]
@@ -79,7 +66,7 @@ class archon_raw_1_0_0(AreaDetectorRaw):
             #med = np.mean(frame[:,c0+st-sf:c0+st], axis=1)
             st_of_med = np.array(st*(tuple(med),)).T # this also corrects the fake pixels themselves
             frame[:,c0:c0+st] -= st_of_med
-        logger.debug('XXX _common_mode time: %.3f sec st_of_med.shape: %s' % (time()-t0_sec, str(st_of_med.shape)))
+        logger.debug('_common_mode time: %.3f sec st_of_med.shape: %s' % (time()-t0_sec, str(st_of_med.shape)))
 
     def raw(self, evt) -> Array2d:
         segs = self._segments(evt)
@@ -145,22 +132,6 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         raw = self.raw(evt)
         return None if raw is None else self._tstamp_raw(raw)
 
-#    def _tstamp_raw(self, raw, ibank=0):
-#        """the same as previous but raw in the input"""
-#        if raw is None: return None
-#        sr, st = self._realPixelsPerBank, self._totPixelsPerBank # = 264, 300
-#        sb = st*ibank+sr
-#        return np.frombuffer(raw[0,sb:sb+4].tobytes(), dtype=np.uint64)
-
-#    def _set_tstamp_pixel_values(self, a, value=0):
-#        """sets 4 pixel intensities in the beginning of each fake bank to specified value"""
-#        if a is None: return None
-#        sr, st = self._realPixelsPerBank, self._totPixelsPerBank # = 264, 300
-#        for i in range(self._nbanks):
-#             sb = st*i+sr
-#             a[0,sb:sb+4] = value
-#        return a
-
     def _tstamp_raw(self, raw):
         """the same as previous but raw passed in the input"""
         return None if raw is None else\
@@ -187,14 +158,18 @@ class archon_raw_1_0_1(AreaDetectorRaw):
         self._totRealPixels = self._realPixelsPerBank*self._nbanks
         self._gainfact = self._kwargs.get('gainfact', 3.65) # 3.65eV/ADU
         self._cmpars = self._kwargs.get('cmpars', (1,0,0))
-        self._seg_geo = sgs.Create(segname='ARCHON:V2', detector=self)
+        self._geo = None
+
+    def _init_geometry(self, shape):
+        """delayed geometry initialization when raw.shape is available in det.raw.raw"""
+        logger.info('_init_geometry for raw.shape %s' % str(shape))
+        self._seg_geo = sgs.Create(segname='ARCHON:V2', detector=self, shape=shape)
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-archon.data'
         self._geo = self._det_geo()
 
     def _common_mode_v0(self, frame):
         """cm from fake with loop over rows"""
         logger.debug('_common_mode_v0')
-        #print('XXX in _common_mode_v0')
         sf, st = self._fakePixelsPerBank, self._totPixelsPerBank # = 264, 36, 300
         rows = frame.shape[0]
         for r in range(rows):
@@ -208,7 +183,6 @@ class archon_raw_1_0_1(AreaDetectorRaw):
     def _common_mode(self, frame):
         """cm as median for entire fake, axis=1"""
         logger.debug('_common_mode')
-        #print('XXX in _common_mode')
         t0_sec = time()
         sr, sf, st = self._realPixelsPerBank, self._fakePixelsPerBank, self._totPixelsPerBank # = 264, 36, 300
         rows = frame.shape[0]
@@ -219,13 +193,15 @@ class archon_raw_1_0_1(AreaDetectorRaw):
             frame[:,c0:c0+st] -= st_of_med
             #st_of_med = np.array((st-sf)*(tuple(med),)).T
             #frame[:,c0+sf:c0+st] -= st_of_med
-        logger.debug('XXX _common_mode time: %.3f sec st_of_med.shape: %s' % (time()-t0_sec, str(st_of_med.shape)))
-        #logger.debug('XXX st_of_med:\n', st_of_med)
+        logger.debug('_common_mode time: %.3f sec st_of_med.shape: %s' % (time()-t0_sec, str(st_of_med.shape)))
 
     def raw(self, evt) -> Array2d:
         segs = self._segments(evt)
         if segs is None: return None
-        return segs[0].value
+        r = segs[0].value
+        if self._geo is None and r is not None:
+            self._init_geometry(r.shape)
+        return r
 
     def calib(self, evt) -> Array2d:
         raw = self.raw(evt)
@@ -283,7 +259,6 @@ class archon_raw_1_0_1(AreaDetectorRaw):
         mask = np.ones(raw_shape, dtype=dtype)
         for i in range(self._nbanks):
              mask[:,st*i:st*i+sf] = fake1bank
-        #print(info_ndarr(mask, 'XXX mask:', last=50))
         return mask
 
     def _tstamp(self, evt):
