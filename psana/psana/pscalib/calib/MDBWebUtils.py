@@ -381,6 +381,9 @@ def add_data_and_two_docs(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc
     colname = shortname
     dbname_exp = mu.db_prefixed_name(exp)
     dbname_det = mu.db_prefixed_name(shortname)
+    
+    ctype = kwargs.get('ctype','N/A')
+    logger.info('add_data_and_two_docs save constants: %s in DBs: %s %s collection: %s' % (ctype, dbname_exp, dbname_det, colname))
 
     #kwargs['detector'] = detname         # ex: epix10ka
     kwargs['shortname'] = shortname       # ex: epix10ka_000001
