@@ -265,6 +265,7 @@ def jungfrau_dark_proc(parser):
 
         terminate_steps = False
         nevrun = 0
+        nnones = 0
         for istep, step in enumerate(orun.steps()):
             nsteptot += 1
 
@@ -352,7 +353,8 @@ def jungfrau_dark_proc(parser):
 
                 raw = odet.raw.raw(evt)
                 if raw is None:
-                    logger.info('det.raw.raw(evt) is None in event %d' % ievt)
+                    logger.debug('det.raw.raw(evt) is None in event %d' % ievt)
+                    nnones =+ 1
                     continue
 
                 raw = (raw if segind is None else raw[segind,:]) # NO & M14 herte
@@ -364,8 +366,8 @@ def jungfrau_dark_proc(parser):
                 tdt  = tsec
                 if selected_record(ievt+1, events):
                     #print()
-                    ss = 'run[%d] %d  step %d  events total/run/step/selected: %4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
-                         (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, time()-t0_sec, dt)
+                    ss = 'run[%d] %d  step %d  events total/run/step/selected/none: %4d/%4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
+                         (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, nnones, time()-t0_sec, dt)
                     if ecm:
                        print()
                        ss += ' event codes: %s' % str(ecm.event_codes(evt))
