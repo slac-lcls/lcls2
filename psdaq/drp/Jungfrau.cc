@@ -483,7 +483,8 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         XtcData::NamesId rawNamesId(nodeId, EventNamesIndex+moduleIdx);
         XtcData::CreateData cd(xtc, bufEnd, m_namesLookup, rawNamesId);
 
-        unsigned subframeIdx = 2+2*moduleIdx; // Calculate where data will be...
+        // first lane is at index 2 other lanes at 4,5,6, etc...
+        unsigned subframeIdx = moduleIdx == 0 ? 2 : moduleIdx + 3;
         std::vector<XtcData::Array<uint8_t>> subframesUdp = _subframes(subframes[subframeIdx].data(),
                                                                        subframes[subframeIdx].num_elem(),
                                                                        JungfrauData::PacketNum);
