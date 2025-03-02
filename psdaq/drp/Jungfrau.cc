@@ -483,67 +483,64 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         XtcData::NamesId rawNamesId(nodeId, EventNamesIndex+moduleIdx);
         XtcData::CreateData cd(xtc, bufEnd, m_namesLookup, rawNamesId);
 
-        //unsigned subframeIdx = 2;
         unsigned subframeIdx = 2+2*moduleIdx; // Calculate where data will be...
         std::vector<XtcData::Array<uint8_t>> subframesUdp = _subframes(subframes[subframeIdx].data(),
                                                                        subframes[subframeIdx].num_elem(),
                                                                        JungfrauData::PacketNum);
 
+        uint64_t framenum = 0;
+        uint64_t timestamp = 0;
+        XtcData::Array<uint16_t> frame = cd.allocate<uint16_t>(JungfrauDef::raw, rawShape);
         // validate the number of packets
         if (subframesUdp.size() < JungfrauData::PacketNum) {
             logging::error("Missing data: subframe[%u] contains %zu packets [%zu]",
                            subframeIdx, subframesUdp.size(), JungfrauData::PacketNum);
             xtc.damage.increase(XtcData::Damage::MissingData);
-            return;
         } else if (subframesUdp.size() > JungfrauData::PacketNum) {
             logging::error("Extra data: subframe[%u] contains %zu packets [%zu]",
                            subframeIdx, subframesUdp.size(), JungfrauData::PacketNum);
             xtc.damage.increase(XtcData::Damage::Truncated);
-            return;
-        }
-
-        uint64_t framenum = 0;
-        uint64_t timestamp = 0;
-        XtcData::Array<uint16_t> frame = cd.allocate<uint16_t>(JungfrauDef::raw, rawShape);
-        uint8_t* dataPtr = reinterpret_cast<uint8_t*>(frame.data());
-        for (uint32_t udpIdx=0; udpIdx < subframesUdp.size(); udpIdx++) {
-            // validate the packet size
-            if (subframesUdp[udpIdx].num_elem() != JungfrauData::PacketSize) {
-                logging::error("Corrupted data: subframe[%u] packet[%u] unexpected size %lu [%zu]",
-                               subframeIdx, udpIdx, subframesUdp[udpIdx].num_elem(), JungfrauData::PacketSize);
-                xtc.damage.increase(XtcData::Damage::Corrupted);
-                return;
-            }
-            JungfrauData::JungfrauPacket* packet = reinterpret_cast<JungfrauData::JungfrauPacket*>(subframesUdp[udpIdx].data());
-            // check that the packets have been properly descrambled
-            if (packet->header.packetnum != udpIdx) {
-                logging::error("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packetnum %u [%u]",
-                               subframeIdx, framenum, packet->header.packetnum, udpIdx);
-                xtc.damage.increase(XtcData::Damage::OutOfOrder);
-                return;
-            }
-            // check framenum is consistent
-            if (udpIdx == 0) {
-                framenum = packet->header.framenum;
-                timestamp = packet->header.timestamp;
-            } else {
-                if (packet->header.framenum != framenum) {
-                    logging::error("Out-of-Order data: subframe[%u] packet[%u] unexpected framenum %lu [%lu]",
-                                   subframeIdx, udpIdx, packet->header.framenum, framenum);
-                    xtc.damage.increase(XtcData::Damage::OutOfOrder);
-                    return;
-                }
-                // this should not happen so if it does the data in the packet is corrupted...
-                if (packet->header.timestamp != timestamp) {
-                    logging::error("Corrupted data: subframe[%u] packet[%u] unexpected timestamp %lu [%lu]",
-                                   subframeIdx, udpIdx, packet->header.timestamp, timestamp);
+        } else {
+            uint8_t* dataPtr = reinterpret_cast<uint8_t*>(frame.data());
+            for (uint32_t udpIdx=0; udpIdx < subframesUdp.size(); udpIdx++) {
+                // validate the packet size
+                if (subframesUdp[udpIdx].num_elem() != JungfrauData::PacketSize) {
+                    logging::error("Corrupted data: subframe[%u] packet[%u] unexpected size %lu [%zu]",
+                                   subframeIdx, udpIdx, subframesUdp[udpIdx].num_elem(), JungfrauData::PacketSize);
                     xtc.damage.increase(XtcData::Damage::Corrupted);
-                    return;
+                    break;
                 }
-            }
+                JungfrauData::JungfrauPacket* packet = reinterpret_cast<JungfrauData::JungfrauPacket*>(subframesUdp[udpIdx].data());
+                // check framenum is consistent
+                if (udpIdx == 0) {
+                    framenum = packet->header.framenum;
+                    timestamp = packet->header.timestamp;
+                } else {
+                    if (packet->header.framenum != framenum) {
+                        logging::error("Out-of-Order data: subframe[%u] packet[%u] unexpected framenum %lu [%lu]",
+                                       subframeIdx, udpIdx, packet->header.framenum, framenum);
+                        xtc.damage.increase(XtcData::Damage::OutOfOrder);
+                        break;
+                    }
+                    // this should not happen so if it does the data in the packet is corrupted...
+                    if (packet->header.timestamp != timestamp) {
+                        logging::error("Corrupted data: subframe[%u] packet[%u] unexpected timestamp %lu [%lu]",
+                                       subframeIdx, udpIdx, packet->header.timestamp, timestamp);
+                        xtc.damage.increase(XtcData::Damage::Corrupted);
+                        break;
+                    }
+                }
+                // check that the packets have been properly descrambled
+                if (packet->header.packetnum != udpIdx) {
+                    logging::error("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packetnum %u [%u]",
+                                   subframeIdx, packet->header.framenum, packet->header.packetnum, udpIdx);
+                    xtc.damage.increase(XtcData::Damage::OutOfOrder);
+                    break;
+                }
 
-            std::memcpy(dataPtr, &packet->data, JungfrauData::PayloadSize);
-            dataPtr += JungfrauData::PayloadSize;
+                std::memcpy(dataPtr, &packet->data, JungfrauData::PayloadSize);
+                dataPtr += JungfrauData::PayloadSize;
+            }
         }
         cd.set_value(JungfrauDef::frame_cnt, framenum);
         cd.set_value(JungfrauDef::timestamp, timestamp);
