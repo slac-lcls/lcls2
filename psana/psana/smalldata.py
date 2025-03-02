@@ -313,20 +313,22 @@ class Server:  # (hdf5 handling)
                     self.num_events_seen[datagroup] = 0
                 dsets = self._dsets[datagroup]
 
+                to_backfill = []
                 if self.filename is not None:
                     # to_backfill: list of keys we have seen previously
                     #              we want to be sure to backfill if we
                     #              dont see them
                     to_backfill = list(dsets.keys())
 
-                    for dataset_name, data in event_data_dict.items():
-                        # save with proper flatten key for the callbacks
-                        if datagroup != ALIGN_GROUP_DEFAULT:
-                            flatten_key = datagroup + "/" + dataset_name
-                        else:
-                            flatten_key = dataset_name
-                        flatten_event_data_dict[flatten_key] = data
+                for dataset_name, data in event_data_dict.items():
+                    # save with proper flatten key for the callbacks
+                    if datagroup != ALIGN_GROUP_DEFAULT:
+                        flatten_key = datagroup + "/" + dataset_name
+                    else:
+                        flatten_key = dataset_name
+                    flatten_event_data_dict[flatten_key] = data
 
+                    if self.filename is not None:
                         is_var = is_var_key(dataset_name)
                         is_len = is_len_key(dataset_name)
                         if is_var:
@@ -372,27 +374,26 @@ class Server:  # (hdf5 handling)
                                 len_evt[len_name] = {ts: len(data)}
                                 self.append_to_cache(len_name, len(data), datagroup)
 
-                    # end for dataset_name
-
-                    for dataset_name in to_backfill:
-                        if is_var_key(dataset_name):
-                            # So, we never have to backfill a variable key.  Or for
-                            # that matter, the length key should never be in the event,
-                            # so we can ignore it in the to_backfill list.
-                            #
-                            # However, we might have to fill its length *if* the key
-                            # itself is in the list!
-                            if is_len_key(dataset_name):
-                                continue
-                            len_name = len_map[dataset_name]
-                            try:
-                                exp_len = len_evt[len_name][event_data_dict["timestamp"]]
-                            except Exception:
-                                # Only backfill the first time we see this timestamp.
-                                self.backfill(len_name, 1, datagroup, missing_value=0)
-                                len_evt[len_name][event_data_dict["timestamp"]] = 0
-                        else:
-                            self.backfill(dataset_name, 1, datagroup)
+                # end for dataset_name
+                for dataset_name in to_backfill:
+                    if is_var_key(dataset_name):
+                        # So, we never have to backfill a variable key.  Or for
+                        # that matter, the length key should never be in the event,
+                        # so we can ignore it in the to_backfill list.
+                        #
+                        # However, we might have to fill its length *if* the key
+                        # itself is in the list!
+                        if is_len_key(dataset_name):
+                            continue
+                        len_name = len_map[dataset_name]
+                        try:
+                            exp_len = len_evt[len_name][event_data_dict["timestamp"]]
+                        except Exception:
+                            # Only backfill the first time we see this timestamp.
+                            self.backfill(len_name, 1, datagroup, missing_value=0)
+                            len_evt[len_name][event_data_dict["timestamp"]] = 0
+                    else:
+                        self.backfill(dataset_name, 1, datagroup)
 
                 # end if self.filename...
                 self.num_events_seen[datagroup] += 1
