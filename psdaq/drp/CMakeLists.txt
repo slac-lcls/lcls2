@@ -251,6 +251,19 @@ target_link_libraries(pgpread_timetool
     rt
 )
 
+add_executable(pgpread_jungfrau
+    pgpread_jungfrau.cc
+)
+target_include_directories(pgpread_jungfrau PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+target_link_libraries(pgpread_jungfrau
+    mmhw
+    psalg::utils
+    xtcdata::xtc
+    Threads::Threads
+)
+
 add_executable(AxiBatcherParserTest
     AxiBatcherParserTest.cc
     AxiBatcherParser.cc
@@ -324,12 +337,23 @@ target_link_libraries(jungfrauTest
     slsDetectorShared
 )
 
+add_executable(jungfrauSim
+    jungfrauSim.cc
+)
+
+target_include_directories(jungfrauSim PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+target_link_libraries(jungfrauSim
+    xtcdata::xtc
+)
+
+
 install(TARGETS drp
   drp_bld
   drp_pva
   drp_udpencoder
   tpr_trigger
-  jungfrauTest
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
