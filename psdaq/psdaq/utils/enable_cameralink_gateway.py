@@ -2,9 +2,9 @@ import pyrogue as pr
 import os
 import sys
 
-testreldir = os.environ["TESTRELDIR"]
+submoduledir = os.environ["SUBMODULEDIR"]
 
-top_level = testreldir + "/submodules/cameralink_gateway/"
+top_level = submoduledir + "/cameralink_gateway/"
 
 sys.path.append("%s/firmware/python".format(top_level))
 
