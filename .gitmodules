@@ -1,6 +1,0 @@
-[submodule "psdaq/psdaq/submodules/cameralink_gateway"]
-	path = psdaq/psdaq/submodules/cameralink_gateway
-	url = git@github.com:slaclab/cameralink-gateway
-[submodule "psdaq/submodules/l2si_drp"]
-	path = psdaq/submodules/l2si_drp
-	url = git@github.com:slaclab/l2si-drp
