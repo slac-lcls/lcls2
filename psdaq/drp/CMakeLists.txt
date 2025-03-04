@@ -200,7 +200,7 @@ add_executable(drp_kmicro_test
 )
 
 target_link_libraries(drp_kmicro_test
-    buffereddatacallbackhandler_lib
+    pipecallbackhandler_lib
     drpbase
     trigger
     epicstools
